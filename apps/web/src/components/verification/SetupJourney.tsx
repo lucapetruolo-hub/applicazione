@@ -2,14 +2,14 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { taxIdCheckMessage, type MyVerificationStatus } from "@professionisti/shared";
+import { formatEur, subscriptionTierInfo, taxIdCheckMessage, type MySubscription, type MyVerificationStatus } from "@professionisti/shared";
 import { Button, Icon, Surface, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { loadMyProfessionalProfile } from "@/lib/myProfessionalProfile";
 import { useAuth } from "@/lib/AuthContext";
 import { CardButton } from "@/components/CardButton";
 
-export type JourneyStepKey = "fiscal" | "identity" | "payments";
+export type JourneyStepKey = "fiscal" | "plan" | "identity" | "payments";
 export type JourneyStepState = "done" | "waiting" | "current" | "locked";
 
 export type JourneyStep = {
@@ -29,17 +29,65 @@ export type JourneyStep = {
 // prima un'ancora in fondo a Dati fiscali, che resta e rimanda qui.
 export const PAYMENTS_ANCHOR = "/dashboard/fiscale/pagamenti";
 
+// Livelli della pagina Abbonamento: su Base "Attiva i mesi gratis" apre il Checkout di Stripe.
+const PLAN_HREF = "/dashboard/abbonamento#livelli";
+
+/**
+ * Il passo "Piano e carta" (docs/changelog/2026-10-29-piano-in-registrazione.md):
+ * la carta per i mesi gratis passa dallo stesso Checkout della pagina
+ * Abbonamento. Il passo non compare senza abbonamento leggibile né finché la
+ * carta non si può dare (senza Stripe, o prima del lancio senza `LAUNCH_DATE`):
+ * altrimenti "Completa il profilo" resterebbe aperto per tutti fino al lancio.
+ */
+function planStep(sub: MySubscription): JourneyStep | null {
+  const base = { key: "plan" as const, icon: "tag" as const, title: "Piano e carta", short: "Piano" };
+  const baseInfo = subscriptionTierInfo("BASE");
+  if (sub.state === "ACTIVE" || sub.state === "PAST_DUE") {
+    const free = sub.freeMonths?.currentMonth != null;
+    return { ...base, state: "done", text: free ? `Mesi gratis attivi, poi Base a ${formatEur(baseInfo.priceEurCents)} + IVA al mese.` : `Livello ${subscriptionTierInfo(sub.tier ?? "BASE").label} attivo.` };
+  }
+  // Prima del lancio senza data, o senza Stripe: la carta non si può ancora dare.
+  const available = sub.checkoutAvailable && (sub.state !== "TRIAL" || sub.trialEndsAt !== null);
+  if (!available) return null;
+  if (sub.state === "TRIAL" && sub.freeMonths) {
+    const months = sub.freeMonths.months === 1 ? "1 mese" : `${sub.freeMonths.months} mesi`;
+    return {
+      ...base,
+      state: "current",
+      text: `${months} Base gratis, oggi 0 €. Poi Base a ${formatEur(baseInfo.priceEurCents)} + IVA al mese, annulli quando vuoi.`,
+      action: { href: PLAN_HREF, label: "Attiva i mesi gratis" },
+    };
+  }
+  return { ...base, state: "current", text: "Scegli il livello: senza abbonamento il profilo resta in pausa.", action: { href: PLAN_HREF, label: "Scegli il piano" } };
+}
+
+/** Abbonamento letto per il percorso: null se non leggibile (il passo "Piano e carta" non compare). */
+export function useJourneySubscription(token: string | null, reloadKey: unknown = 0): MySubscription | null | undefined {
+  const [sub, setSub] = useState<MySubscription | null | undefined>(undefined);
+  useEffect(() => {
+    if (!token) return;
+    apiClient
+      .getMySubscription(token)
+      .then(setSub)
+      .catch(() => setSub(null));
+  }, [token, reloadKey]);
+  return sub;
+}
+
 /**
  * Il percorso per completare il profilo, sempre nello stesso ordine
- * (richiesta dell'utente, docs/CHANGELOG.md §262): dati fiscali → identità →
- * pagamenti online. Un passo si sblocca solo quando il precedente è fatto (o
- * in verifica), così c'è sempre una sola cosa da fare. La verifica
- * dell'identità sparisce dove non è attiva.
+ * (richiesta dell'utente, docs/CHANGELOG.md §262): piano e carta (subito
+ * dopo il profilo, docs/changelog/2026-10-29-piano-in-registrazione.md) →
+ * dati fiscali → identità → pagamenti online. Un passo si sblocca solo quando il
+ * precedente è fatto (o in verifica), così c'è sempre una sola cosa da fare.
+ * La verifica dell'identità sparisce dove non è attiva.
  */
-export function setupJourney(status: MyVerificationStatus, stripeVerified: boolean): JourneyStep[] {
+export function setupJourney(status: MyVerificationStatus, stripeVerified: boolean, subscription?: MySubscription | null): JourneyStep[] {
   const fiscalHref = "/dashboard/fiscale";
   const invalid = status.taxIdChecks.filter((check) => check.status === "INVALID");
-  const fiscal: JourneyStep = !status.fiscalDataComplete
+  const plan = subscription ? planStep(subscription) : null;
+  const planReady = !plan || plan.state === "done";
+  const fiscalTodo: JourneyStep = !status.fiscalDataComplete
     ? { key: "fiscal", icon: "file-text", title: "Dati fiscali", short: "Dati fiscali", state: "current", text: "Servono per comparire nelle ricerche. Circa 2 minuti.", action: { href: fiscalHref, label: "Compila i dati fiscali" } }
     : status.taxIdState === "TO_FIX"
       ? {
@@ -55,8 +103,10 @@ export function setupJourney(status: MyVerificationStatus, stripeVerified: boole
         ? { key: "fiscal", icon: "file-text", title: "Dati fiscali", short: "Dati fiscali", state: "waiting", text: "Li stiamo verificando. Intanto puoi andare avanti." }
         : { key: "fiscal", icon: "file-text", title: "Dati fiscali", short: "Dati fiscali", state: "done", text: status.publicVisible ? "Compari nelle ricerche." : "Compilati." };
 
-  const fiscalReady = fiscal.state === "done" || fiscal.state === "waiting";
-  const steps: JourneyStep[] = [fiscal];
+  // Una cosa alla volta: i dati fiscali da fare aspettano il piano.
+  const fiscal: JourneyStep = fiscalTodo.state === "current" && !planReady ? { ...fiscalTodo, state: "locked", text: "Dopo il piano.", action: undefined } : fiscalTodo;
+  const fiscalReady = planReady && (fiscal.state === "done" || fiscal.state === "waiting");
+  const steps: JourneyStep[] = plan ? [plan, fiscal] : [fiscal];
 
   const identity = status.identity;
   let identityStep: JourneyStep | null = null;
@@ -64,7 +114,7 @@ export function setupJourney(status: MyVerificationStatus, stripeVerified: boole
   else if (identity.available) {
     const base = { key: "identity" as const, icon: "id-card" as const, title: "Verifica identità", short: "Identità" };
     const href = "/dashboard/verifica-identita";
-    if (!fiscalReady) identityStep = { ...base, state: "locked", text: "Dopo i dati fiscali. Serve per rispondere ai preventivi." };
+    if (!fiscalReady) identityStep = { ...base, state: "locked", text: planReady ? "Dopo i dati fiscali. Serve per rispondere ai preventivi." : "Dopo il piano. Serve per rispondere ai preventivi." };
     else if (identity.standby) identityStep = { ...base, state: "waiting", text: "Il servizio di verifica non risponde: ti avvisiamo noi appena puoi continuare." };
     else if (identity.renewal && identity.status !== "PROCESSING" && identity.status !== "STARTED")
       identityStep = { ...base, state: "current", text: "Il documento è scaduto: rifai la verifica per riavere il badge.", action: { href, label: "Rinnova la verifica" } };
@@ -84,7 +134,8 @@ export function setupJourney(status: MyVerificationStatus, stripeVerified: boole
   const base = { key: "payments" as const, icon: "credit-card" as const, title: "Pagamenti online", short: "Pagamenti", optional: true };
   const before = identityStep ?? fiscal;
   if (stripeVerified) steps.push({ ...base, state: "done", text: "Puoi ricevere acconti e saldi online." });
-  else if (before.state !== "done" || !fiscalReady) steps.push({ ...base, state: "locked", text: identityStep ? "Dopo la verifica dell'identità." : "Dopo i dati fiscali." });
+  else if (before.state !== "done" || !fiscalReady)
+    steps.push({ ...base, state: "locked", text: !planReady ? "Dopo il piano." : identityStep ? "Dopo la verifica dell'identità." : "Dopo i dati fiscali." });
   else steps.push({ ...base, state: "current", text: "Per farti pagare un acconto online prima del lavoro.", action: { href: PAYMENTS_ANCHOR, label: "Attiva i pagamenti online" } });
 
   return steps;
@@ -209,6 +260,7 @@ export function useSetupJourney(
 ): { steps: JourneyStep[] | null; status: MyVerificationStatus | null; settled: boolean } {
   const [status, setStatus] = useState<MyVerificationStatus | null>(null);
   const [stripeVerified, setStripeVerified] = useState<boolean | null>(null);
+  const [subscription, setSubscription] = useState<MySubscription | null | undefined>(undefined);
   // Risposte arrivate (anche con errore): Oggi aspetta questo per non far
   // saltare la colonna di destra quando compare il riquadro (§334).
   const [settled, setSettled] = useState(false);
@@ -223,10 +275,14 @@ export function useSetupJourney(
       loadMyProfessionalProfile(token)
         .then((profile) => setStripeVerified(profile?.stripeVerified ?? false))
         .catch(() => setStripeVerified(false)),
+      apiClient
+        .getMySubscription(token)
+        .then(setSubscription)
+        .catch(() => setSubscription(null)),
     ]).then(() => setSettled(true));
   }, [token, reloadKey]);
 
-  return { steps: status && stripeVerified !== null ? setupJourney(status, stripeVerified) : null, status, settled };
+  return { steps: status && stripeVerified !== null && subscription !== undefined ? setupJourney(status, stripeVerified, subscription) : null, status, settled };
 }
 
 /** "Completa il profilo" in Oggi: sparisce quando è tutto fatto. */
@@ -282,6 +338,7 @@ function SetupJourneyCompact({ steps, step }: { steps: JourneyStep[]; step: Jour
  */
 const STEP_MENU_HREF: Record<JourneyStepKey, string> = {
   fiscal: "/dashboard/fiscale",
+  plan: "/dashboard/abbonamento",
   identity: "/dashboard/verifica-identita",
   // La scheda dei pagamenti: il menu "Fisco e pagamenti" lo riconosce come sua sottopagina (`hasNavAttention`).
   payments: "/dashboard/fiscale/pagamenti",
@@ -312,8 +369,12 @@ async function loadJourney(token: string) {
   if (journeyLoading === token) return;
   journeyLoading = token;
   try {
-    const [status, profile] = await Promise.all([apiClient.myVerificationStatus(token), loadMyProfessionalProfile(token)]);
-    publishJourney(token, setupJourney(status, profile?.stripeVerified ?? false));
+    const [status, profile, subscription] = await Promise.all([
+      apiClient.myVerificationStatus(token),
+      loadMyProfessionalProfile(token),
+      apiClient.getMySubscription(token).catch(() => null),
+    ]);
+    publishJourney(token, setupJourney(status, profile?.stripeVerified ?? false, subscription));
   } catch {
     // Senza percorso nessun pallino: il menu resta com'era.
   } finally {

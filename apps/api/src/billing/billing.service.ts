@@ -1,10 +1,11 @@
 import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import {
   SUBSCRIPTION_TIERS,
+  TRIAL_DAYS,
   subscriptionTierInfo,
-  freePeriodUpgradeFeeEurCents,
   upgradeFeeEurCents,
   type BillingInterval,
   type SubscriptionTier,
@@ -40,6 +41,9 @@ const SUBSCRIPTION_PRICE_ENV: Record<SubscriptionTier, Record<BillingInterval, s
 const TAX_RATE_ENV = "STRIPE_TAX_RATE_IVA";
 // Stripe accetta un `trial_end` solo almeno 48 ore nel futuro.
 const MIN_TRIAL_END_MS = 48 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+// "Torna a Base" si fa poco prima della scadenza, prima che Stripe rinnovi il livello pagato.
+const RETURN_TO_BASE_LEAD_MS = 20 * 60 * 1000;
 
 function tierRank(tier: SubscriptionTier): number {
   return SUBSCRIPTION_TIERS.findIndex((t) => t.tier === tier);
@@ -188,94 +192,112 @@ export class BillingService {
       cancelAtPeriodEnd: subscription.cancel_at_period_end || Boolean(subscription.cancel_at),
       currentPeriodStart: item?.current_period_start ? new Date(item.current_period_start * 1000) : null,
       currentPeriodEnd: item?.current_period_end ? new Date(item.current_period_end * 1000) : null,
+      stripeTrialEnd: subscription.status === "trialing" && subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
     });
   }
 
   /**
-   * Scelta o cambio di livello (docs/CHANGELOG.md §162, §361). Restituisce
-   * l'URL di una pagina di pagamento Stripe, oppure `url: null` se il cambio
-   * è già fatto (addebito sulla carta salvata). Prezzi IVA esclusa, l'IVA si
-   * aggiunge con l'aliquota di `STRIPE_TAX_RATE_IVA`.
-   * - Nessun abbonamento attivo: nuovo abbonamento mensile o annuale con
-   *   rinnovo automatico. Durante il periodo gratuito (che vale come Base) il
-   *   canone parte a fine periodo; per un livello superiore si paga subito la
-   *   quota di passaggio per i giorni gratuiti che restano.
-   * - Abbonamento attivo, livello superiore: quota di passaggio (10 € più la
+   * Scelta o cambio di livello (docs/CHANGELOG.md §162, §361; mesi gratis
+   * decisi da Luca il 29/10/2026, docs/changelog/2026-10-29-offerta-mesi-gratis.md).
+   * Restituisce l'URL di una pagina di pagamento Stripe, oppure `url: null`
+   * se il cambio è già fatto (addebito sulla carta salvata). Prezzi IVA
+   * esclusa, l'IVA si aggiunge con l'aliquota di `STRIPE_TAX_RATE_IVA`. Per
+   * ora solo il mensile (Luca: "per valutare con dati reali").
+   * - Base nei mesi gratis ("Attiva i mesi gratis"): la carta si dà subito e
+   *   il primo canone parte alla fine dei mesi gratis. Lo stesso per chi
+   *   torna a Base con mesi gratis in attesa.
+   * - Plus o Pro nei mesi gratis: si paga subito il mese del livello meno il
+   *   mese Base regalato; da oggi parte un mese nuovo con 0 lavori e i mesi
+   *   gratis rimasti aspettano il ritorno a Base. Prima del lancio no: non ci
+   *   sono limiti di lavori.
+   * - Abbonamento pagato, livello superiore: quota di passaggio (10 € più la
    *   differenza per i giorni che mancano al rinnovo, maggiorata del 10%)
    *   addebitata subito, poi il nuovo livello fino al rinnovo e oltre.
-   * - Livello inferiore: non ancora previsto (annullare e sceglierlo alla scadenza).
+   * - Livello inferiore: "Torna a Base" alla scadenza (`setReturnToBase`).
    */
-  async createSubscriptionCheckout(userId: string, plan: SubscriptionTier, interval: BillingInterval = "MONTH"): Promise<{ url: string | null }> {
+  async createSubscriptionCheckout(userId: string, plan: SubscriptionTier): Promise<{ url: string | null }> {
+    const interval: BillingInterval = "MONTH";
     const stripe = this.requireStripe();
     const profile = await this.requireMyProfile(userId);
     const now = new Date();
     const current = await this.prisma.subscription.findUnique({ where: { professionalProfileId: profile.id } });
     const state = subscriptionState(current, now);
+    const launch = launchDate();
+    const launched = hasLaunched(now, launch);
 
     if (current?.stripeSubscriptionId && (state === "ACTIVE" || state === "PAST_DUE")) {
-      // Il cambio di livello tiene il rinnovo già scelto (mensile o annuale).
-      return this.upgradeTier(stripe, profile.id, current.stripeSubscriptionId, tierOfPlan(current.plan), plan);
+      return this.upgradeTier(stripe, profile.id, current.stripeSubscriptionId, tierOfPlan(current.plan), plan, launched);
+    }
+    // Prima del lancio non c'è limite di lavori: si dà solo la carta per i mesi gratis.
+    if (!launched && plan !== "BASE") {
+      throw new BadRequestException("Plus e Pro si scelgono dal giorno del lancio: fino ad allora non c'è limite di lavori.");
     }
     const priceId = this.requirePrice(plan, interval);
     const taxRates = this.requireTaxRates();
 
+    // Fine dei giorni gratis. Come la pagina Abbonamento (`waitingLaunch` in
+    // getMySubscription): prima del lancio, anche senza LAUNCH_DATE, non si
+    // paga niente (collaudo del 29/10/2026). Con mesi in attesa (dopo Plus o
+    // Pro, abbonamento concluso) ripartono da oggi tornando a Base.
+    const preLaunchTrial = current?.status === "TRIALING" && !launched;
+    const freeEnd =
+      plan !== "BASE"
+        ? null
+        : state === "TRIAL" || preLaunchTrial
+          ? preLaunchTrial && launch
+            ? trialEndFor(now, launch, trialDaysOf(current))
+            : (current?.trialEndsAt ?? null)
+          : current && current.freeMonthsWaiting > 0
+            ? new Date(now.getTime() + current.freeMonthsWaiting * TRIAL_DAYS * DAY_MS)
+            : null;
+    // Senza data di lancio la fine dei mesi gratis non è sicura: la carta si dà quando è fissata.
+    if (preLaunchTrial && !launch) {
+      throw new BadRequestException("La data del lancio non è ancora fissata: potrai attivare i mesi gratis appena lo sarà.");
+    }
+    const trialEnd = freeEnd && freeEnd.getTime() - now.getTime() > MIN_TRIAL_END_MS ? Math.floor(freeEnd.getTime() / 1000) : undefined;
+    // Plus o Pro mentre scorrono i mesi gratis: il mese Base regalato si toglie dal primo mese.
+    const freeRunning = state === "TRIAL" && current?.trialEndsAt && current.trialEndsAt.getTime() > now.getTime();
+    const discount = plan !== "BASE" && freeRunning ? [{ coupon: await this.freeBaseMonthCoupon(stripe) }] : [];
+
     // Nessun `invoice_creation` qui: per le Checkout Session in modalità
     // `subscription` Stripe genera già da sola una fattura reale a ogni
-    // ciclo di fatturazione (comportamento nativo, non disattivabile né
-    // configurabile da questo parametro — che l'API Stripe accetta solo in
-    // modalità `payment`, vedi sotto). Il professionista la riceve già via
-    // email Stripe e può scaricarla dal Customer Portal.
-    // Chi sceglie un livello durante la prova gratuita non perde i giorni
-    // rimasti: il primo canone parte alla fine della prova. Prima del lancio
-    // la prova finisce un mese dopo il lancio (docs/CHANGELOG.md §170).
-    const launch = launchDate();
-    const preLaunchTrial = current?.status === "TRIALING" && launch !== null && !hasLaunched(now, launch);
-    const trialEndsAt = preLaunchTrial ? trialEndFor(now, launch, trialDaysOf(current)) : current?.trialEndsAt;
-    const trialEnd =
-      (preLaunchTrial || state === "TRIAL") && trialEndsAt && trialEndsAt.getTime() - now.getTime() > MIN_TRIAL_END_MS
-        ? Math.floor(trialEndsAt.getTime() / 1000)
-        : undefined;
-    // Prima del lancio la prova non scorre ancora: nessuna quota da pagare
-    // per i giorni gratuiti, il livello scelto vale dal primo rinnovo.
-    const fee = trialEnd && !preLaunchTrial ? this.trialUpgradeFee(plan, trialEndsAt!, now) : 0;
+    // ciclo di fatturazione. Il professionista la riceve via email Stripe e
+    // la scarica dal Customer Portal.
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       ...EUR_ONLY,
-      line_items: [
-        { price: priceId, quantity: 1 },
-        // Il periodo gratuito vale come Base: per un livello superiore si
-        // paga subito la quota di passaggio (una tantum sulla prima fattura).
-        ...(fee > 0
-          ? [
-              {
-                price_data: {
-                  currency: "eur",
-                  unit_amount: fee,
-                  product_data: { name: `Passaggio al livello ${subscriptionTierInfo(plan).label} nel periodo gratuito` },
-                },
-                quantity: 1,
-                tax_rates: taxRates,
-              },
-            ]
-          : []),
-      ],
+      line_items: [{ price: priceId, quantity: 1 }],
+      ...(discount.length ? { discounts: discount } : {}),
       subscription_data: {
         ...(trialEnd ? { trial_end: trialEnd } : {}),
         default_tax_rates: taxRates,
         metadata: { professionalProfileId: profile.id },
       },
       customer: await this.ensureCustomer(stripe, profile),
-      success_url: `${this.frontendUrl()}/dashboard/abbonamento?attivato=1`,
-      cancel_url: `${this.frontendUrl()}/dashboard/abbonamento`,
+      // Ritorno con il messaggio giusto: carta salvata a 0 € o pagamento fatto; finestra chiusa a metà.
+      success_url: `${this.frontendUrl()}/dashboard/abbonamento?attivato=${trialEnd ? "carta" : "1"}`,
+      cancel_url: `${this.frontendUrl()}/dashboard/abbonamento?annullato=1#livelli`,
       metadata: { kind: "subscription", professionalProfileId: profile.id, plan, interval },
     });
 
     return { url: session.url };
   }
 
-  /** Quota per avere un livello sopra Base nei giorni gratuiti che restano (a mesi di 30 giorni, §363). */
-  private trialUpgradeFee(plan: SubscriptionTier, trialEndsAt: Date, now: Date): number {
-    return freePeriodUpgradeFeeEurCents({ from: "BASE", to: plan, remainingMs: trialEndsAt.getTime() - now.getTime() });
+  /**
+   * Coupon Stripe "mese Base regalato" (una volta, IVA esclusa), creato al
+   * primo uso con un id fisso: si toglie dal primo mese di Plus o Pro scelto
+   * durante i mesi gratis.
+   */
+  private async freeBaseMonthCoupon(stripe: Stripe): Promise<string> {
+    const amount = subscriptionTierInfo("BASE").priceEurCents;
+    const id = `mese-base-gratis-${amount}`;
+    try {
+      await stripe.coupons.retrieve(id);
+    } catch (error) {
+      if (!(error instanceof Stripe.errors.StripeInvalidRequestError) || error.statusCode !== 404) throw error;
+      await stripe.coupons.create({ id, amount_off: amount, currency: "eur", duration: "once", name: "Mese Base gratis" });
+    }
+    return id;
   }
 
   private async upgradeTier(
@@ -284,10 +306,11 @@ export class BillingService {
     stripeSubscriptionId: string,
     currentTier: SubscriptionTier | null,
     plan: SubscriptionTier,
+    launched: boolean,
   ): Promise<{ url: string | null }> {
     if (currentTier === plan) throw new BadRequestException("È già il tuo livello.");
     if (currentTier && tierRank(plan) < tierRank(currentTier)) {
-      throw new BadRequestException("Per passare a un livello inferiore annulla l'abbonamento e scegli il nuovo livello alla scadenza.");
+      throw new BadRequestException("Per tornare a Base usa \"Torna a Base\": vale dalla scadenza del mese pagato.");
     }
     const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
     const item = subscription.items.data[0];
@@ -298,35 +321,28 @@ export class BillingService {
     const customer = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
     const now = new Date();
 
-    // Ancora nel periodo gratuito con un livello già scelto: si paga subito
-    // la quota di passaggio per i giorni gratuiti che restano, con una pagina
-    // di pagamento; il nuovo canone parte a fine periodo gratuito.
+    // Carta data e mesi gratis in corso: finisce la prova di Stripe adesso e
+    // si paga subito il mese del nuovo livello meno il mese Base regalato.
+    // Se la carta non passa non cambia niente.
     if (subscription.status === "trialing") {
-      const trialEndsAt = subscription.trial_end ? new Date(subscription.trial_end * 1000) : now;
-      const fee = freePeriodUpgradeFeeEurCents({ from: currentTier ?? "BASE", to: plan, remainingMs: trialEndsAt.getTime() - now.getTime() });
-      if (fee === 0) return this.switchPrice(stripe, subscription.id, item.id, priceId);
-      const session = await stripe.checkout.sessions.create({
-        mode: "payment",
-        ...EUR_ONLY,
-        customer,
-        line_items: [
-          {
-            price_data: {
-              currency: "eur",
-              unit_amount: fee,
-              product_data: { name: `Passaggio al livello ${subscriptionTierInfo(plan).label} nel periodo gratuito` },
-            },
-            quantity: 1,
-            tax_rates: taxRates,
-          },
-        ],
-        success_url: `${this.frontendUrl()}/dashboard/abbonamento?attivato=1`,
-        cancel_url: `${this.frontendUrl()}/dashboard/abbonamento`,
-        metadata: { kind: "tier_upgrade", professionalProfileId, stripeSubscriptionId, plan, interval },
-        // La fattura di Stripe diventa la nostra fattura elettronica (§378).
-        invoice_creation: { enabled: true, invoice_data: { metadata: { kind: "tier_upgrade_fee", professionalProfileId } } },
-      });
-      return { url: session.url };
+      if (!launched) throw new BadRequestException("Plus e Pro si scelgono dal giorno del lancio: fino ad allora non c'è limite di lavori.");
+      try {
+        const updated = await stripe.subscriptions.update(subscription.id, {
+          items: [{ id: item.id, price: priceId }],
+          trial_end: "now",
+          proration_behavior: "none",
+          discounts: [{ coupon: await this.freeBaseMonthCoupon(stripe) }],
+          payment_behavior: "error_if_incomplete",
+          cancel_at_period_end: false,
+        });
+        await this.syncStripeSubscription(updated);
+      } catch (error) {
+        if (error instanceof Stripe.errors.StripeCardError) {
+          throw new BadRequestException("Il pagamento non è andato a buon fine: controlla la carta e riprova.");
+        }
+        throw error;
+      }
+      return { url: null };
     }
 
     // Abbonamento pagato: quota di passaggio su una fattura a parte, pagata
@@ -395,6 +411,73 @@ export class BillingService {
     const updated = await stripe.subscriptions.update(current.stripeSubscriptionId, { cancel_at_period_end: cancel });
     await this.syncStripeSubscription(updated);
     return { ok: true };
+  }
+
+  /**
+   * "Torna a Base" da Plus o Pro (decisione di Luca del 29/10/2026,
+   * docs/changelog/2026-10-29-offerta-mesi-gratis.md): il livello pagato
+   * resta fino alla scadenza, poi riparte Base con i mesi gratis in attesa
+   * (se ce ne sono) e infine Base mensile. Il rinnovo automatico resta acceso.
+   */
+  async setReturnToBase(userId: string, on: boolean): Promise<{ ok: true }> {
+    const stripe = this.requireStripe();
+    const profile = await this.requireMyProfile(userId);
+    const current = await this.prisma.subscription.findUnique({ where: { professionalProfileId: profile.id } });
+    const state = subscriptionState(current, new Date());
+    const tier = current ? tierOfPlan(current.plan) : null;
+    if (!current?.stripeSubscriptionId || (state !== "ACTIVE" && state !== "PAST_DUE") || !tier || tier === "BASE") {
+      throw new BadRequestException("Torna a Base vale solo con Plus o Pro attivo.");
+    }
+    if (on && current.cancelAtPeriodEnd) {
+      await this.syncStripeSubscription(await stripe.subscriptions.update(current.stripeSubscriptionId, { cancel_at_period_end: false }));
+    }
+    await this.prisma.subscription.update({ where: { id: current.id }, data: { returnToBaseAt: on ? new Date() : null } });
+    return { ok: true };
+  }
+
+  /**
+   * Ogni 10 minuti: chi ha chiesto "Torna a Base" passa a Base poco prima
+   * della scadenza del mese pagato, così Stripe non rinnova Plus o Pro. Con
+   * mesi gratis in attesa Base parte con quei mesi di prova da adesso (e il
+   * periodo dei lavori riparte da 0), altrimenti al rinnovo paga Base.
+   */
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async runReturnToBase(now = new Date()): Promise<void> {
+    if (!this.stripe) return;
+    const rows = await this.prisma.subscription.findMany({
+      where: {
+        returnToBaseAt: { not: null },
+        status: { in: ["ACTIVE", "PAST_DUE"] },
+        stripeSubscriptionId: { not: null },
+        currentPeriodEnd: { lte: new Date(now.getTime() + RETURN_TO_BASE_LEAD_MS) },
+      },
+    });
+    for (const row of rows) {
+      try {
+        const subscription = await this.stripe.subscriptions.retrieve(row.stripeSubscriptionId!);
+        const item = subscription.items.data[0];
+        if (!item || subscription.status === "canceled") {
+          await this.prisma.subscription.update({ where: { id: row.id }, data: { returnToBaseAt: null } });
+          continue;
+        }
+        const waiting = row.freeMonthsWaiting;
+        const trialEnd = waiting > 0 ? Math.floor((now.getTime() + waiting * TRIAL_DAYS * DAY_MS) / 1000) : undefined;
+        const updated = await this.stripe.subscriptions.update(
+          subscription.id,
+          {
+            items: [{ id: item.id, price: this.requirePrice("BASE", "MONTH") }],
+            proration_behavior: "none",
+            cancel_at_period_end: false,
+            ...(trialEnd ? { trial_end: trialEnd } : {}),
+          },
+          { idempotencyKey: `return-to-base-${row.id}-${row.returnToBaseAt!.getTime()}` },
+        );
+        await this.prisma.subscription.update({ where: { id: row.id }, data: { returnToBaseAt: null } });
+        await this.syncStripeSubscription(updated);
+      } catch (error) {
+        this.logger.error(`Ritorno a Base non riuscito per ${row.id}`, error as Error);
+      }
+    }
   }
 
   async createBoostCheckout(userId: string, boostType: string) {

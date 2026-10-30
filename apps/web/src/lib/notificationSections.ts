@@ -147,7 +147,11 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   }
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
   if (type === "TAX_ID_INVALID") return "/dashboard/fiscale";
-  if (type === "PROFILE_SETUP_REMINDER") return "/dashboard";
+  if (type === "PROFILE_SETUP_REMINDER") {
+    // Carta per i mesi gratis (docs/changelog/2026-10-30-iscrizione-carta-solida.md): dritti ai livelli.
+    const missing = payload && typeof payload === "object" ? (payload as { missing?: unknown }).missing : null;
+    return Array.isArray(missing) && missing.includes("CARD") ? "/dashboard/abbonamento#livelli" : "/dashboard";
+  }
   if (type === "AGENDA_REMINDER") return "/dashboard/agenda?tab=disponibilita";
   if (type === "AGENDA_TOMORROW_SUMMARY") return "/dashboard/agenda";
   if (type.startsWith("IDENTITY_VERIFICATION_") || type === "PROFILE_VERIFICATION_REMOVED") return "/dashboard/verifica-identita";

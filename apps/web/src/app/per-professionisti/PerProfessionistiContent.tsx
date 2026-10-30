@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Check } from "lucide-react";
 import {
   PROFESSIONAL_CATEGORIES,
@@ -10,15 +10,12 @@ import {
   SUBSCRIPTION_TIERS,
   formatEur,
   withVatEurCents,
-  FOUNDER_FREE_MONTHS,
   ONLINE_APP_FEE_PERCENT,
-  type BillingInterval,
   type FounderSpots,
   type ProfessionalCategorySlug,
   type SubscriptionTier,
 } from "@professionisti/shared";
 import { Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc, type IconName } from "@professionisti/ui";
-import { BillingIntervalToggle } from "@/components/BillingIntervalToggle";
 import { MagneticButton } from "@/components/MagneticButton";
 import { GlowLights } from "@/components/GlowLights";
 import { useAuth } from "@/lib/AuthContext";
@@ -65,7 +62,7 @@ export function PerProfessionistiContent({ founders = null }: { founders?: Found
       <ProGallery />
       <ProSteps />
       <ProPricing isProfessional={Boolean(user?.isProfessional)} founders={founders} />
-      <ProFaq founderOffer={Boolean(founders && founders.left > 0)} />
+      <ProFaq offerMonths={founders?.offerMonths ?? null} />
       <ProFinalCta />
     </YStack>
   );
@@ -520,17 +517,18 @@ const TIER_FOR: Record<SubscriptionTier, string> = {
  * si sceglieva la scheda e sotto restava un "Scegli un livello" spento, che
  * diceva "non puoi andare avanti". Porta al pagamento del livello (§177): un
  * professionista già iscritto va dritto in Abbonamento, gli altri si
- * iscrivono e poi ci arrivano (`?livello=`, con `&rinnovo=` mensile o annuale).
+ * iscrivono e poi ci arrivano (`?livello=`).
  *
- * Prezzi + IVA con l'IVA compresa in piccolo, mensile o annuale con
- * l'annuale in vista (decisioni dell'utente del 26/10/2026, §361).
+ * Prezzi + IVA con l'IVA compresa in piccolo (decisioni dell'utente del
+ * 26/10/2026, §361). Per ora solo mensile e mesi gratis dell'offerta attiva
+ * (decisioni di Luca del 29/10/2026, docs/changelog/2026-10-29-offerta-mesi-gratis.md).
  */
 /**
  * Banda verde dell'offerta di lancio (§363, anteprima approvata da Luca):
  * "GRATIS PER 3 MESI" ben in vista con il numero dei posti, 100, mai il
  * conto alla rovescia (decisione dell'utente).
  */
-function FounderBand({ spots }: { spots: FounderSpots }) {
+function FounderBand({ spots, months }: { spots: FounderSpots; months: number }) {
   return (
     <XStack
       width="100%"
@@ -544,7 +542,7 @@ function FounderBand({ spots }: { spots: FounderSpots }) {
     >
       <YStack flex={1} gap="$1">
         <Text tag="p" margin={0} fontFamily="$heading" fontWeight="800" fontSize={28} lineHeight={32} letterSpacing={-0.5} color="white" $gtSm={{ fontSize: 40, lineHeight: 44 }}>
-          GRATIS PER {FOUNDER_FREE_MONTHS} MESI
+          {months === 1 ? "GRATIS PER 1 MESE" : `GRATIS PER ${months} MESI`}
         </Text>
         <Text color="white" fontSize={15} lineHeight={21}>
           Per i primi {spots.total} professionisti che si iscrivono. Poi decidi tu se continuare.
@@ -564,10 +562,9 @@ function FounderBand({ spots }: { spots: FounderSpots }) {
 }
 
 function ProPricing({ isProfessional, founders }: { isProfessional: boolean; founders: FounderSpots | null }) {
-  const [interval, setInterval] = useState<BillingInterval>("YEAR");
-  const annual = interval === "YEAR";
-  // Offerta di lancio finché restano posti (decisione dell'utente, §363).
-  const offer = founders && founders.left > 0 ? founders : null;
+  // Mesi gratis dell'offerta attiva, per tutti; la banda "primi 100" finché restano posti (§363).
+  const offerMonths = founders?.offerMonths ?? null;
+  const offer = founders && founders.left > 0 && offerMonths ? founders : null;
   return (
     <Band id="prezzi">
       <YStack paddingHorizontal="$5" paddingVertical="$7" gap="$4" $gtMd={{ paddingHorizontal: "$6", paddingVertical: "$9" }}>
@@ -588,27 +585,25 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
             I livelli cambiano solo per quanti lavori accettati al mese sono compresi.
           </Text>
         </YStack>
-        <BillingIntervalToggle value={interval} onChange={setInterval} />
       </YStack>
-      {offer ? <FounderBand spots={offer} /> : null}
+      {offer && offerMonths ? <FounderBand spots={offer} months={offerMonths} /> : null}
       <Grid>
         {SUBSCRIPTION_TIERS.map((tier) => {
           const welcome = tier.tier === "BASE";
-          const monthlyShown = annual ? tier.annualMonthlyEurCents : tier.priceEurCents;
-          const periodPrice = annual ? tier.annualPriceEurCents : tier.priceEurCents;
-          const per = annual ? "all'anno" : "al mese";
-          const href = isProfessional
-            ? `/dashboard/abbonamento?livello=${tier.tier}&rinnovo=${interval}`
-            : `/registrati?ruolo=professionista&livello=${tier.tier}&rinnovo=${interval}`;
-          const label = welcome && !isProfessional ? "Inizia gratis" : `Scegli ${tier.label}`;
+          const monthlyShown = tier.priceEurCents;
+          const periodPrice = tier.priceEurCents;
+          const per = "al mese";
+          const href = isProfessional ? `/dashboard/abbonamento?livello=${tier.tier}` : `/registrati?ruolo=professionista&livello=${tier.tier}`;
+          const free = welcome && offerMonths !== null;
+          const label = free && !isProfessional ? "Inizia gratis" : `Scegli ${tier.label}`;
           return (
             <YStack
               key={tier.tier}
               flex={1}
               $gtSm={{ flexBasis: 0 }}
-              backgroundColor={welcome ? brand.calce : brand.gesso}
+              backgroundColor={free ? brand.calce : brand.gesso}
               borderTopWidth={3}
-              borderTopColor={welcome ? brand.cianografia : "transparent"}
+              borderTopColor={free ? brand.cianografia : "transparent"}
               padding="$5"
               gap="$3"
               $gtMd={{ padding: "$6" }}
@@ -618,7 +613,7 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
                   <Text tag="h3" margin={0} fontFamily="$heading" fontWeight="700" fontSize="$7" color={brand.grafite}>
                     {tier.label}
                   </Text>
-                  {welcome ? (
+                  {free ? (
                     // Verde, non rosso: nel sito il rosso vuol dire urgenza o errore (§349).
                     <Text
                       fontSize={13}
@@ -637,7 +632,7 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
                   {TIER_FOR[tier.tier]}
                 </Text>
               </YStack>
-              {welcome ? (
+              {free ? (
                 <YStack gap="$1">
                   <XStack alignItems="baseline" gap="$2" flexWrap="wrap">
                     <Text fontFamily="$heading" fontSize="$7" color={brand.grafite70} textDecorationLine="line-through">
@@ -646,10 +641,10 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
                     <Text fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.cianografiaScuro}>
                       Gratis
                     </Text>
-                    {offer ? <Text color={brand.grafite70}>per {FOUNDER_FREE_MONTHS} mesi</Text> : null}
+                    <Text color={brand.grafite70}>{offerMonths === 1 ? "per 1 mese" : `per ${offerMonths} mesi`}</Text>
                   </XStack>
                   <Text color={brand.grafite70} fontSize={13}>
-                    {offer ? "poi" : "il primo mese, poi"} {formatEur(periodPrice)} {per} + IVA
+                    poi {formatEur(periodPrice)} {per} + IVA, in automatico
                   </Text>
                 </YStack>
               ) : (
@@ -661,7 +656,7 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
                     <Text color={brand.grafite70}>al mese + IVA</Text>
                   </XStack>
                   <Text color={brand.grafite70} fontSize={13}>
-                    {annual ? `${formatEur(periodPrice)} all'anno + IVA. ` : ""}IVA inclusa: {formatEur(withVatEurCents(periodPrice))} {per}
+                    IVA inclusa: {formatEur(withVatEurCents(periodPrice))} {per}
                   </Text>
                 </YStack>
               )}
@@ -686,7 +681,7 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
                 </Button>
               </Link>
               <Text fontSize={13} color={brand.grafite70} textAlign="center">
-                {annual ? "Annulli il rinnovo quando vuoi" : "Nessun vincolo, annulli quando vuoi"}
+                Nessun vincolo, annulli quando vuoi
               </Text>
             </YStack>
           );
@@ -720,9 +715,10 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
 /** Solo fatti già decisi e in funzione (CLAUDE.md §5 punto 9, §6). */
 const FAQ: { question: string; answer: string; paymentsLink?: boolean; founderOffer?: boolean }[] = [
   {
-    question: "Come funzionano i 3 mesi gratis?",
+    // "N" diventa i mesi dell'offerta attiva (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
+    question: "Come funzionano i N mesi gratis?",
     answer:
-      "Ai primi 100 professionisti che completano il profilo il livello Base è gratis per 3 mesi, a partire dal lancio del sito. Se ti servono più lavori puoi passare a Plus o Pro anche durante i mesi gratis, pagando la quota di passaggio. Alla fine scegli tu se continuare: niente rinnovo se non scegli un livello.",
+      "Il livello Base è gratis per N, a partire dal lancio del sito. Per attivarli aggiungi la carta: oggi non paghi nulla e alla fine parte Base a 19 € + IVA al mese, in automatico, con un avviso qualche giorno prima. Annulli quando vuoi. Se ti servono più lavori puoi passare a Plus o Pro anche durante i mesi gratis: paghi il primo mese meno 19 €, e i mesi gratis che restano ti aspettano se torni a Base.",
     founderOffer: true,
   },
   {
@@ -733,10 +729,6 @@ const FAQ: { question: string; answer: string; paymentsLink?: boolean; founderOf
     question: "Cosa succede se arrivo al limite di lavori del mio livello?",
     answer:
       "Ti avvisiamo prima. Resti nelle ricerche e ricevi le richieste, ma per mandare preventivi nuovi passi al livello sopra: paghi 10 € più la differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del 10% (+ IVA). Altrimenti aspetti il rinnovo, quando i lavori ripartono. I preventivi già mandati restano validi. Su Plus e Pro lo stesso cliente conta una volta al mese.",
-  },
-  {
-    question: "Meglio mensile o annuale?",
-    answer: "Con l'annuale paghi 10 mesi invece di 12. Il limite di lavori resta mensile e puoi passare a un livello superiore anche durante l'anno.",
   },
   {
     question: "I prezzi comprendono l'IVA?",
@@ -757,7 +749,7 @@ const FAQ: { question: string; answer: string; paymentsLink?: boolean; founderOf
   },
 ];
 
-function ProFaq({ founderOffer }: { founderOffer: boolean }) {
+function ProFaq({ offerMonths }: { offerMonths: number | null }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   return (
@@ -786,11 +778,11 @@ function ProFaq({ founderOffer }: { founderOffer: boolean }) {
         </YStack>
         <YStack backgroundColor={brand.gesso} flexGrow={1} $gtSm={{ width: "50%" }}>
           <div className="pro-faq">
-            {FAQ.filter((item) => !item.founderOffer || founderOffer).map((item, index) => (
+            {FAQ.filter((item) => !item.founderOffer || offerMonths).map((item, index) => (
               <details key={item.question} className="pro-faq-item" open={index === 0}>
-                <summary>{item.question}</summary>
+                <summary>{item.founderOffer ? item.question.replace("N mesi", offerMonths === 1 ? "1 mese" : `${offerMonths} mesi`) : item.question}</summary>
                 <p>
-                  {item.answer}
+                  {item.founderOffer ? item.answer.replace("per N,", offerMonths === 1 ? "per 1 mese," : `per ${offerMonths} mesi,`) : item.answer}
                   {item.paymentsLink ? (
                     <>
                       {" "}

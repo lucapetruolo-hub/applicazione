@@ -709,6 +709,18 @@ model Subscription {
   // Offerta di lancio (docs/CHANGELOG.md §363): numero d'ordine tra i primi
   // 100 professionisti con il profilo completo, che hanno 3 mesi gratis.
   founderNumber         Int?               @unique
+  // Offerta mesi gratis decisa in Admin (docs/changelog/2026-10-29-offerta-mesi-gratis.md):
+  // mesi gratis del giro in corso (quelli dell'offerta all'iscrizione, o
+  // quelli ripresi tornando a Base; null = righe di prima, valgono 3), mesi in
+  // attesa dopo il passaggio a Plus o Pro (ripartono tornando a Base, mai
+  // persi) e la richiesta di tornare a Base alla fine del mese pagato.
+  freeMonthsGranted     Int?
+  freeMonthsWaiting     Int                @default(0)
+  returnToBaseAt        DateTime?
+  offerId               String?
+  // Carta data per l'abbonamento: primo abbonamento di Stripe attivo o in
+  // prova (imbuto dell'iscrizione, docs/changelog/2026-10-30-iscrizione-carta-solida.md).
+  cardAddedAt           DateTime?
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 
@@ -2999,6 +3011,23 @@ model GeneralRequestSettings {
   updatedByUserId    String?
 
   @@map("general_request_settings")
+}
+
+// Offerte di mesi gratis ai nuovi professionisti, decise in Admin (richiesta
+// di Luca del 29/10/2026, docs/changelog/2026-10-29-offerta-mesi-gratis.md):
+// attiva quella senza stoppedAt. Senza nessuna riga vale l'offerta di serie
+// di 3 mesi. Chi si è iscritto con un'offerta tiene i suoi mesi anche se la
+// si ferma.
+model SubscriptionOffer {
+  id              String    @id @default(uuid())
+  freeMonths      Int
+  startedAt       DateTime  @default(now())
+  stoppedAt       DateTime?
+  createdByUserId String?
+  stoppedByUserId String?
+
+  @@index([stoppedAt])
+  @@map("subscription_offers")
 }
 
 // Consigli di "Andamento del sito" segnati come fatti dal super admin

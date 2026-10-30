@@ -43,7 +43,7 @@ import { SaveBar } from "@/components/SaveBar";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { CategoryMultiPicker } from "@/components/CategoryMultiPicker";
 import { ProfessionalDetailContent } from "@/app/professionista/[id]/ProfessionalDetailContent";
-import { journeyCurrent, setupJourney } from "@/components/verification/SetupJourney";
+import { journeyCurrent, setupJourney, useJourneySubscription } from "@/components/verification/SetupJourney";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 import { localPreviewUrl } from "@/lib/media";
 import { keyActivate } from "@/lib/keyActivate";
@@ -235,6 +235,8 @@ export default function DashboardProfiloPage() {
   // prompt per un fetch fallito/non ancora tornato).
   const [isFirstProfileSave, setIsFirstProfileSave] = useState(false);
   const [showAgendaPrompt, setShowAgendaPrompt] = useState(false);
+  // Dopo il primo salvataggio, se la carta si può già dare: si sceglie il piano (docs/changelog/2026-10-29-piano-in-registrazione.md).
+  const [showPlanPrompt, setShowPlanPrompt] = useState(false);
   // Profilo preparato da un operatore (docs/CHANGELOG.md §170) o dichiarazione
   // cambiata: il profilo entra in ricerca solo quando il professionista salva.
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
@@ -246,6 +248,7 @@ export default function DashboardProfiloPage() {
   // Cosa manca per comparire nelle ricerche e inviare preventivi (richiesta
   // dell'utente, docs/CHANGELOG.md §260): i tre passi finché non sono fatti.
   const [verification, setVerification] = useState<MyVerificationStatus | null>(null);
+  const subscription = useJourneySubscription(token);
   // "Torna all'anteprima" con modifiche non salvate: stesso popup dei link.
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   // "Online" salvato l'ultima volta: spegnendolo si chiede se togliere gli
@@ -535,7 +538,10 @@ export default function DashboardProfiloPage() {
     // disponibilità — il momento con la motivazione più alta di tutto
     // il ciclo di vita dell'account, appena dopo essersi iscritti.
     if (isFirstProfileSave) {
-      setShowAgendaPrompt(true);
+      // Il piano con la carta prima degli orari: senza carta, dal lancio il profilo resta in pausa.
+      const sub = token ? await apiClient.getMySubscription(token).catch(() => null) : null;
+      if (sub && sub.cardNeeded && sub.checkoutAvailable && sub.trialEndsAt) setShowPlanPrompt(true);
+      else setShowAgendaPrompt(true);
       loadPreview();
     } else {
       // Salvato: si torna all'anteprima aggiornata (docs/CHANGELOG.md §252).
@@ -701,7 +707,7 @@ export default function DashboardProfiloPage() {
     .slice(0, 10);
 
   const visibilityStatus = preview ? VISIBILITY_STATUS[preview.visibility] : null;
-  const journey = preview && verification ? setupJourney(verification, !!preview.profile.stripeVerified) : null;
+  const journey = preview && verification && subscription !== undefined ? setupJourney(verification, !!preview.profile.stripeVerified, subscription) : null;
   const identityStep = journey?.find((step) => step.key === "identity") ?? null;
   const paymentsStep = journey?.find((step) => step.key === "payments") ?? null;
   const nextStep = journey ? journeyCurrent(journey) : null;
@@ -1684,6 +1690,41 @@ export default function DashboardProfiloPage() {
                   Lasciali
                 </Button>
               </XStack>
+            </YStack>
+          </div>
+        </div>
+      ) : null}
+
+      {showPlanPrompt ? (
+        <div
+          role="presentation"
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(43,32,19,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            zIndex: 300,
+          }}
+        >
+          <div role="dialog" aria-modal="true" aria-label="Scegli il piano" style={{ width: "100%", maxWidth: 420 }}>
+            <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
+              <YStack gap="$2">
+                <XStack alignItems="center" gap="$2">
+                  <Icon name="tag" size={20} color={brand.cianografiaScuro} />
+                  <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+                    Profilo salvato! Ora scegli il piano
+                  </Text>
+                </XStack>
+                <Text fontSize={16} color={brand.grafite70}>
+                  Con Base hai i mesi gratis: aggiungi la carta, oggi paghi 0 €.
+                </Text>
+              </YStack>
+              <Button variant="primary" onPress={() => router.push("/dashboard/abbonamento#livelli")}>
+                Scegli il piano
+              </Button>
             </YStack>
           </div>
         </div>

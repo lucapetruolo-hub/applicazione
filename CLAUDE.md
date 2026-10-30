@@ -328,21 +328,24 @@ in piccolo, annuale (dieci mensilità, "Risparmi 2 mesi") in vista per primo;
 prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
 `STRIPE_PRICE_<LIVELLO>_ANNUAL`, IVA con `STRIPE_TAX_RATE_IVA`.
 
-- **Primo mese gratis per tutti.**
-- **Offerta di lancio** (decisione dell'utente, docs/CHANGELOG.md §363): ai
-  primi 100 professionisti con il profilo completo Base gratis per **3 mesi**
-  dal lancio (`Subscription.founderNumber`, `FOUNDER_SPOTS` in
-  `packages/shared/src/plans.ts`), niente mese a sorpresa; banda "GRATIS PER
-  3 MESI" con "100 posti", mai il conto alla rovescia, su `/per-professionisti` (`GET
-  /subscriptions/founders`) e tre caselle in Abbonamento. Nei giorni
-  gratuiti la quota di passaggio conta tutti i giorni che restano, come se
-  Base costasse 19 € (`freePeriodUpgradeFeeEurCents`).
-- **Mese regalato a sorpresa:** a chi non ha avuto nessun preventivo
-  accettato si regala un altro mese, comunicato solo in prossimità della
-  scadenza del primo mese (gratis o pagato), non all'iscrizione.
-- **Il mese gratuito vale come Base** (3 lavori). Sulla pagina prezzi Base
-  mostra "€19" barrato e "Gratuito", con la condizione in piccolo ("il
-  primo mese, poi €19/mese"): il mese gratis non si annuncia altrove.
+- **Mesi gratis decisi dall'offerta in Admin** (decisioni di Luca del
+  29/10/2026, docs/changelog/2026-10-29-offerta-mesi-gratis.md, sostituiscono
+  il mese gratuito per tutti e il mese regalato a sorpresa): chi si iscrive
+  mentre un'offerta è attiva (di partenza 3 mesi, `SubscriptionOffer`) ha
+  quei mesi Base gratis, uno dopo l'altro, poi **Base mensile in automatico**
+  (va detto all'attivazione). **Carta obbligatoria**: "Attiva i mesi gratis"
+  è un abbonamento Base di Stripe in prova; senza carta dal lancio il profilo
+  è in pausa (`CARD_NEEDED`). Luca ferma l'offerta o ne crea un'altra in
+  Admin → Profili da confermare, con gli iscritti professionisti e clienti;
+  chi è già iscritto tiene i suoi mesi. **Plus o Pro nei mesi gratis**: il
+  mese del livello meno 19 €, mese nuovo da quel giorno con 0 lavori, i mesi
+  non iniziati in attesa (`freeMonthsWaiting`) e **mai persi**: si
+  riprendono con "Torna a Base" o scegliendo Base. Mesi a 0,99 € valutati e
+  scartati da Luca. **Per ora solo mensile** (l'annuale torna con i dati
+  reali). Sul sito resta la banda "GRATIS PER 3 MESI" dei primi 100
+  (`founderNumber`, `FOUNDER_SPOTS`), mai il conto alla rovescia.
+- **I mesi gratis valgono come Base** (3 lavori). Sulla pagina prezzi Base
+  mostra "€19" barrato e "Gratis per N mesi".
 - **Account in pausa** (`ProfessionalProfile.pausedAt`/`pausedReason`,
   docs/CHANGELOG.md §162): a fine mese gratuito senza livello e ad
   abbonamento concluso il profilo esce dalla
@@ -354,15 +357,13 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
   i pagamenti non sono attivi** (`STRIPE_SECRET_KEY` assente) **e prima
   di `LAUNCH_DATE`**: senza Stripe nessuno potrebbe scegliere un livello e
   a fine prova la ricerca resterebbe vuota.
-- **Il mese gratuito parte dal lancio** (`LAUNCH_DATE` su Render,
-  AAAA-MM-GG, docs/CHANGELOG.md §170): chi si iscrive prima ha la prova
-  fino a lancio + 30 giorni. Senza la variabile la prova parte
-  dall'iscrizione.
+- **I mesi gratis partono dal lancio** (`LAUNCH_DATE` su Render,
+  AAAA-MM-GG, docs/CHANGELOG.md §170): chi si iscrive prima li ha dal
+  lancio. Senza la variabile non si dà la carta e non si paga nulla.
 - **Al limite:** si passa al livello superiore pagando **10 € più la
   differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del
   10%**, senza tetto (decisione dell'utente, §361; `upgradeFeeEurCents` in
-  `packages/shared/src/plans.ts`, nel periodo gratuito si conta da Base sui
-  suoi 30 giorni); il nuovo livello vale fino al rinnovo, poi si paga
+  `packages/shared/src/plans.ts`; nei mesi gratis vale la regola sopra); il nuovo livello vale fino al rinnovo, poi si paga
   intero. Una sola cifra nell'interfaccia, il calcolo in "Scopri di più" e
   nei Termini. Altrimenti si aspetta il rinnovo.
 - **Lavori esauriti** (decisioni dell'utente, docs/CHANGELOG.md §362): i

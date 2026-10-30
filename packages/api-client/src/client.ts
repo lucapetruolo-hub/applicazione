@@ -95,6 +95,9 @@ import type {
   OperatorProfileInviteInput,
   PendingProfileInvite,
   AdminFounders,
+  AdminSubscriptionOffer,
+  AdminProfessionalWithoutCard,
+  AdminSignupFunnel,
   AdminProfessionalStats,
   AdminSiteStats,
   ChurnReason,
@@ -1944,6 +1947,14 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         body: JSON.stringify(renew ? {} : { reason }),
       }),
 
+    /** "Torna a Base" da Plus o Pro alla scadenza, con i mesi gratis in attesa (docs/changelog/2026-10-29-offerta-mesi-gratis.md). */
+    setSubscriptionReturnToBase: (token: string, on: boolean) =>
+      request<{ ok: true }>("/billing/subscription/return-to-base", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ on }),
+      }),
+
     /** Customer Portal di Stripe: carta e fatture di abbonamento e boost. */
     createBillingPortal: (token: string) =>
       request<{ url: string }>("/billing/portal", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
@@ -2051,6 +2062,23 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       }),
 
     adminListFounders: (token: string) => request<AdminFounders>("/admin/founders", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Offerta dei mesi gratis (docs/changelog/2026-10-29-offerta-mesi-gratis.md): la cambia solo il super admin. */
+    /** Profili senza la carta per i mesi gratis (docs/changelog/2026-10-30-iscrizione-carta-solida.md). */
+    adminProfessionalsWithoutCard: (token: string) =>
+      request<AdminProfessionalWithoutCard[]>("/admin/subscription-offer/without-card", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    /** Imbuto dell'iscrizione per settimana. */
+    adminSignupFunnel: (token: string) => request<AdminSignupFunnel>("/admin/professionals/signup-funnel", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminGetSubscriptionOffer: (token: string) =>
+      request<AdminSubscriptionOffer>("/admin/subscription-offer", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminStopSubscriptionOffer: (token: string) =>
+      request<AdminSubscriptionOffer>("/admin/subscription-offer/stop", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+    adminStartSubscriptionOffer: (token: string, freeMonths: number) =>
+      request<AdminSubscriptionOffer>("/admin/subscription-offer", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ freeMonths }),
+      }),
 
     /** Profili creati al telefono da un operatore (docs/CHANGELOG.md §170). */
     adminListProfileInvites: (token: string) =>

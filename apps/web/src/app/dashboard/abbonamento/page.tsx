@@ -5,11 +5,10 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Check } from "lucide-react";
 import {
-  RENEWAL_NOTICE_DAYS,
+  FREE_MONTHS_END_NOTICE_DAYS,
   freePeriodSummary,
   SUBSCRIPTION_FEATURES,
   SUBSCRIPTION_TIERS,
-  parseBillingInterval,
   parseSubscriptionTier,
   subscriptionTierInfo,
   tierPeriodPriceEurCents,
@@ -27,9 +26,9 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProfileMissingNotice, isProfileMissingError } from "@/components/ProfileMissingNotice";
-import { BillingIntervalToggle } from "@/components/BillingIntervalToggle";
 import { SubscriptionPauseBanner, upgradeQuoteOf } from "@/components/SubscriptionPauseBanner";
 import { SkeletonBlock } from "@/components/Skeleton";
+import { JourneyProgress, useSetupJourney } from "@/components/verification/SetupJourney";
 
 /**
  * "Abbonamento" del professionista (docs/CHANGELOG.md §161-§162): stato del
@@ -41,8 +40,12 @@ import { SkeletonBlock } from "@/components/Skeleton";
  * Più leggibile a colpo d'occhio (decisione dell'utente, docs/CHANGELOG.md
  * §361): ogni livello con prezzo + IVA, lavori, il riquadro "Se passi ora"
  * con una sola cifra e un pulsante; rinnovo, cambio di livello e
- * annullamento in tre schede da una frase. Mensile o annuale si sceglie solo
- * finché non c'è un abbonamento pagato.
+ * annullamento in tre schede da una frase.
+ *
+ * Mesi gratis dell'offerta (decisione di Luca del 29/10/2026,
+ * docs/changelog/2026-10-29-offerta-mesi-gratis.md): si attivano dando la
+ * carta, poi Base mensile; Plus e Pro nei mesi gratis costano il mese meno
+ * Base, e i mesi rimasti aspettano il ritorno a Base. Per ora solo mensile.
  */
 
 function perLabel(interval: BillingInterval): string {
@@ -81,62 +84,72 @@ function tierRank(tier: SubscriptionTier): number {
   return SUBSCRIPTION_TIERS.findIndex((t) => t.tier === tier);
 }
 
+function monthsWord(months: number): string {
+  return months === 1 ? "1 mese" : `${months} mesi`;
+}
+
 function statusText(sub: MySubscription): { title: string; detail: string } {
   const tierLabel = sub.tier ? subscriptionTierInfo(sub.tier).label : null;
   const trialFuture = sub.trialEndsAt && new Date(sub.trialEndsAt).getTime() > Date.now();
+  const months = sub.freeMonths?.months ?? 0;
+  const basePrice = `${formatEur(subscriptionTierInfo("BASE").priceEurCents)} + IVA al mese`;
   switch (sub.state) {
     case "TRIAL":
-      // Primi 100 professionisti: 3 mesi gratis invece di uno (docs/CHANGELOG.md §363).
-      if (sub.founder) {
-        return {
-          title: `${sub.founder.months} mesi gratis · livello Base`,
-          detail: sub.trialEndsAt
-            ? `Sei tra i primi 100 professionisti: usi tutte le funzioni del livello Base gratis fino al ${formatDate(sub.trialEndsAt)}. Poi scegli tu se continuare.`
-            : `Sei tra i primi 100 professionisti: usi tutte le funzioni del livello Base gratis. I ${sub.founder.months} mesi partono il giorno del lancio del sito.`,
-        };
+      if (!months) {
+        return { title: "Livello Base fino al lancio", detail: "Fino al lancio del sito non paghi nulla. Dal lancio scegli il livello che fa per te." };
       }
       return {
-        title: sub.bonusMonthGranted ? "Mese gratuito in regalo · livello Base" : "Mese gratuito · livello Base",
+        title: `${monthsWord(months)} gratis · livello Base`,
         detail: sub.trialEndsAt
-          ? `${sub.bonusMonthGranted ? "Ti abbiamo regalato un altro mese: usi" : "Usi"} tutte le funzioni del livello Base gratis fino al ${formatDate(sub.trialEndsAt)}. Poi scegli il livello che fa per te.`
-          : "Usi tutte le funzioni del livello Base gratis. Il mese gratuito inizia il giorno del lancio del sito: prima non scorre.",
+          ? `Usi tutte le funzioni del livello Base gratis fino al ${formatDate(sub.trialEndsAt)}. Per attivarli aggiungi la carta: oggi non paghi nulla, poi Base a ${basePrice}.`
+          : `Usi tutte le funzioni del livello Base gratis. I mesi partono il giorno del lancio del sito.`,
       };
     case "TRIAL_ENDED":
-      return { title: sub.founder ? "Mesi gratuiti terminati" : "Mese gratuito terminato", detail: "Scegli il livello che fa per te qui sotto." };
+      return { title: months ? "Mesi gratis terminati" : "Scegli il tuo livello", detail: "Scegli il livello che fa per te qui sotto." };
     case "ACTIVE":
       if (sub.cancelAtPeriodEnd && sub.currentPeriodEnd) {
         return { title: `Livello ${tierLabel} · annullato`, detail: `Resta attivo fino al ${formatDate(sub.currentPeriodEnd)}, poi non si rinnova.` };
       }
+      if (trialFuture && sub.trialEndsAt) {
+        return {
+          title: `${monthsWord(months || 1)} gratis attivi · livello Base`,
+          detail: `Gratis fino al ${formatDate(sub.trialEndsAt)}, poi Base a ${basePrice}, in automatico. Ti avvisiamo ${FREE_MONTHS_END_NOTICE_DAYS} giorni prima e annulli quando vuoi.`,
+        };
+      }
       return {
         title: `Livello ${tierLabel}`,
-        detail:
-          trialFuture && sub.trialEndsAt
-            ? `Il primo addebito parte alla fine ${sub.founder ? "dei mesi gratuiti" : "del mese gratuito"}, il ${formatDate(sub.trialEndsAt)}, poi si rinnova in automatico ${sub.billingInterval === "YEAR" ? "ogni anno" : "ogni mese"}.`
-            : sub.currentPeriodEnd
-              ? `Si rinnova in automatico il ${formatDate(sub.currentPeriodEnd)}. Ti avvisiamo qualche giorno prima.`
-              : `Si rinnova in automatico ${sub.billingInterval === "YEAR" ? "ogni anno" : "ogni mese"}.`,
+        detail: sub.currentPeriodEnd
+          ? sub.returnToBase
+            ? `Fino al ${formatDate(sub.currentPeriodEnd)}, poi torni a Base${sub.freeMonthsWaiting ? ` con ${monthsWord(sub.freeMonthsWaiting)} gratis` : ""}.`
+            : `Si rinnova in automatico il ${formatDate(sub.currentPeriodEnd)}. Ti avvisiamo qualche giorno prima.`
+          : "Si rinnova in automatico ogni mese.",
       };
     case "PAST_DUE":
       return { title: `Livello ${tierLabel}: pagamento non riuscito`, detail: "Riproveremo nei prossimi giorni: controlla il metodo di pagamento." };
     case "CANCELED":
-      return { title: "Abbonamento concluso", detail: "Scegli di nuovo un livello quando vuoi." };
+      return {
+        title: "Abbonamento concluso",
+        detail: sub.freeMonthsWaiting
+          ? `Hai ancora ${monthsWord(sub.freeMonthsWaiting)} gratis: li riprendi scegliendo Base.`
+          : "Scegli di nuovo un livello quando vuoi.",
+      };
   }
 }
 
 /**
- * Tre caselle dei mesi gratuiti dei primi 100 professionisti (decisione
- * dell'utente, docs/CHANGELOG.md §363): usato, in corso, da fare.
+ * Caselle dei mesi gratis (docs/CHANGELOG.md §363, offerta del 29/10/2026):
+ * usato, in corso, da fare.
  */
-function FounderMonths({ founder, trialEndsAt }: { founder: NonNullable<MySubscription["founder"]>; trialEndsAt: string | null }) {
-  const current = founder.currentMonth ?? 0;
-  const start = trialEndsAt ? new Date(trialEndsAt).getTime() - founder.months * 30 * DAY_MS : null;
+function FreeMonths({ freeMonths, trialEndsAt }: { freeMonths: NonNullable<MySubscription["freeMonths"]>; trialEndsAt: string | null }) {
+  const current = freeMonths.currentMonth ?? 0;
+  const start = trialEndsAt ? new Date(trialEndsAt).getTime() - freeMonths.months * 30 * DAY_MS : null;
   return (
     <YStack gap="$2">
       <Text fontWeight="700" color={brand.grafite}>
-        {current > 0 ? `Sei nel ${current}° mese gratis su ${founder.months}` : `I tuoi ${founder.months} mesi gratis partono al lancio`}
+        {current > 0 ? `Sei nel ${current}° mese gratis su ${freeMonths.months}` : `I tuoi ${monthsWord(freeMonths.months)} gratis partono al lancio`}
       </Text>
       <XStack gap="$2">
-        {Array.from({ length: founder.months }, (_, index) => {
+        {Array.from({ length: freeMonths.months }, (_, index) => {
           const month = index + 1;
           const state = month < current ? "Usato" : month === current ? "In corso" : "Da fare";
           const active = month === current;
@@ -202,8 +215,9 @@ function AbbonamentoContent() {
   // sua card viene evidenziata e la pagina scorre fino alla scelta.
   const chosenTier = parseSubscriptionTier(searchParams.get("livello"));
   const justRegistered = searchParams.get("nuovo") === "1";
-  // Mensile o annuale scelto su /per-professionisti (`?rinnovo=`); in vista l'annuale.
-  const [chosenInterval, setChosenInterval] = useState<BillingInterval>(() => parseBillingInterval(searchParams.get("rinnovo")) ?? "YEAR");
+  // Passo "Piano e carta" di Completa il profilo: la barra dei passi in cima finché va fatto.
+  const { steps: journey } = useSetupJourney(user?.isProfessional ? token : null, searchParams.get("attivato"));
+  const planCurrent = journey?.find((step) => step.key === "plan")?.state === "current";
   const [feeDetailsOpen, setFeeDetailsOpen] = useState(false);
 
   const load = useCallback(() => {
@@ -232,11 +246,8 @@ function AbbonamentoContent() {
     setNotice(null);
     setPendingTier(tier);
     try {
-      const { url } = await apiClient.createSubscriptionCheckout(
-        token,
-        tier,
-        sub?.state === "ACTIVE" || sub?.state === "PAST_DUE" ? (sub.billingInterval ?? "MONTH") : chosenInterval,
-      );
+      // Per ora solo mensile (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
+      const { url } = await apiClient.createSubscriptionCheckout(token, tier, "MONTH");
       if (url) {
         window.location.assign(url);
         return;
@@ -263,6 +274,23 @@ function AbbonamentoContent() {
     } catch (err) {
       setCheckoutError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
       setPortalPending(false);
+    }
+  }
+
+  // "Torna a Base" da Plus o Pro, con i mesi gratis in attesa.
+  const [returnPending, setReturnPending] = useState(false);
+  async function setReturnToBase(on: boolean) {
+    if (!token) return;
+    setCheckoutError(null);
+    setReturnPending(true);
+    try {
+      await apiClient.setSubscriptionReturnToBase(token, on);
+      setNotice(on ? "Fatto: alla scadenza torni a Base." : "Resti al tuo livello anche dopo la scadenza.");
+      load();
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setReturnPending(false);
     }
   }
 
@@ -318,8 +346,10 @@ function AbbonamentoContent() {
   const barColor = limit && used >= limit ? brand.urgenza : ratio >= 0.8 ? brand.ottone : brand.cianografia;
   const paidActive = sub?.state === "ACTIVE" || sub?.state === "PAST_DUE";
   const inTrial = sub?.state === "TRIAL";
-  // Con un abbonamento pagato il rinnovo è già deciso; altrimenti lo sceglie l'interruttore.
-  const interval: BillingInterval = paidActive ? (sub?.billingInterval ?? "MONTH") : chosenInterval;
+  // Mesi gratis con la carta già data: Base di Stripe ancora in prova.
+  const freeWithCard = paidActive && sub?.freeMonths?.currentMonth != null;
+  // Solo mensile per ora; chi aveva già l'annuale lo vede com'è.
+  const interval: BillingInterval = paidActive ? (sub?.billingInterval ?? "MONTH") : "MONTH";
 
   const heading = (
     <YStack gap="$1">
@@ -346,11 +376,22 @@ function AbbonamentoContent() {
   return (
     <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={1000} gap="$5">
+        {journey && planCurrent ? <JourneyProgress steps={journey} here="plan" /> : null}
         {heading}
 
         {searchParams.get("attivato") ? (
           <Surface borderRadius={radiusDoc} padding="$4" backgroundColor={brand.cianografiaVelo}>
-            <Text color={brand.grafite}>Grazie! Il pagamento è andato a buon fine: l&apos;abbonamento si aggiorna qui tra pochi istanti.</Text>
+            <Text color={brand.grafite}>
+              {searchParams.get("attivato") === "carta"
+                ? "Fatto: carta salvata e mesi gratis attivi. Oggi non hai pagato nulla; ti avvisiamo una settimana prima del primo addebito."
+                : "Grazie! Il pagamento è andato a buon fine: l'abbonamento si aggiorna qui tra pochi istanti."}
+            </Text>
+          </Surface>
+        ) : null}
+        {/* Finestra di Stripe chiusa prima della fine (docs/changelog/2026-10-30-iscrizione-carta-solida.md). */}
+        {searchParams.get("annullato") && !paidActive ? (
+          <Surface borderRadius={radiusDoc} padding="$4" backgroundColor={brand.ottoneVelo}>
+            <Text color={brand.grafite}>Non hai finito di aggiungere la carta, quindi non è stato salvato nulla. Puoi riprovare qui sotto quando vuoi.</Text>
           </Surface>
         ) : null}
 
@@ -379,7 +420,7 @@ function AbbonamentoContent() {
               </Text>
               <Text color={brand.grafite70}>{status.detail}</Text>
             </YStack>
-            {sub.founder && sub.founder.currentMonth !== null ? <FounderMonths founder={sub.founder} trialEndsAt={sub.trialEndsAt} /> : null}
+            {sub.freeMonths && sub.freeMonths.currentMonth !== null ? <FreeMonths freeMonths={sub.freeMonths} trialEndsAt={sub.trialEndsAt} /> : null}
             {/* Riepilogo a 0 € del mese gratuito (docs/CHANGELOG.md §378): non è una fattura. */}
             {freePeriodSummary(sub, new Date()) ? (
               <Link href="/dashboard/documenti/mese-gratuito" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 16 }}>
@@ -418,7 +459,6 @@ function AbbonamentoContent() {
             <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
               {paidActive ? "Livelli" : "Scegli il tuo livello"}
             </Text>
-            {paidActive ? null : <BillingIntervalToggle value={chosenInterval} onChange={setChosenInterval} />}
           </XStack>
           {chosenTier ? (
             <Surface borderRadius={radiusDoc} padding="$4" gap="$1" backgroundColor={brand.cianografiaVelo}>
@@ -442,10 +482,13 @@ function AbbonamentoContent() {
           {checkoutError ? <Text color={brand.urgenza}>{checkoutError}</Text> : null}
           <YStack gap="$3" $gtSm={{ flexDirection: "row" }}>
             {SUBSCRIPTION_TIERS.map((tier) => {
-              const current = (paidActive && sub?.tier === tier.tier) || (inTrial && !sub?.tier && tier.tier === "BASE");
+              // Senza la carta Base non è ancora "il tuo livello": il pulsante attiva i mesi gratis.
+              const current = paidActive && sub?.tier === tier.tier;
               const lower = paidActive && sub?.tier ? tierRank(tier.tier) < tierRank(sub.tier) : false;
-              // Durante il mese gratuito Base è gratis: il prezzo barrato mostra quanto vale.
-              const freeNow = inTrial && tier.tier === "BASE";
+              // Nei mesi gratis Base è gratis: il prezzo barrato mostra quanto vale.
+              const freeNow = (inTrial || freeWithCard) && tier.tier === "BASE";
+              // Plus e Pro nei mesi gratis solo dal lancio (prima non c'è limite di lavori).
+              const fromLaunch = !current && !lower && (inTrial || freeWithCard) && !upgradeQuoteOf(sub!, tier.tier) && tier.tier !== "BASE";
               const disabled = current || lower || pendingTier !== null || !sub?.checkoutAvailable;
               const periodPrice = tierPeriodPriceEurCents(tier.tier, interval);
               const shownMonthly = interval === "YEAR" ? tier.annualMonthlyEurCents : tier.priceEurCents;
@@ -453,6 +496,8 @@ function AbbonamentoContent() {
               let label: string;
               if (current) label = "Il tuo livello";
               else if (pendingTier === tier.tier) label = "Attendi...";
+              else if (inTrial && tier.tier === "BASE" && sub?.freeMonths) label = "Attiva i mesi gratis";
+              else if (!paidActive && tier.tier === "BASE" && sub?.freeMonthsWaiting) label = `Riprendi ${monthsWord(sub.freeMonthsWaiting)} gratis`;
               else if (paidActive || inTrial) label = tier.tier === "BASE" ? "Conferma Base" : `Passa a ${tier.label}`;
               else label = `Scegli ${tier.label}`;
               return (
@@ -506,7 +551,7 @@ function AbbonamentoContent() {
                     </XStack>
                     <Text color={brand.grafite70} fontSize={15}>
                       {freeNow
-                        ? `${sub?.trialEndsAt ? `fino al ${formatDate(sub.trialEndsAt)}, ` : ""}poi ${formatEur(periodPrice)} ${perLabel(interval)} + IVA`
+                        ? `${sub?.trialEndsAt ? `fino al ${formatDate(sub.trialEndsAt)}, ` : "per i mesi gratis, "}poi ${formatEur(periodPrice)} ${perLabel(interval)} + IVA`
                         : `${interval === "YEAR" ? `${formatEur(periodPrice)} all'anno + IVA · ` : ""}IVA inclusa ${formatEur(withVatEurCents(periodPrice))}`}
                     </Text>
                   </YStack>
@@ -533,7 +578,7 @@ function AbbonamentoContent() {
                         <Text fontWeight="800" color={brand.grafite}>
                           {quote.amountEurCents === 0 ? "Nessun costo" : `${formatEur(quote.amountEurCents)} + IVA`}
                         </Text>
-                        {quote.amountEurCents > 0 && quote.until ? ` fino al ${shortDate(quote.until)}` : quote.amountEurCents === 0 ? " fino al lancio" : ""}
+                        {quote.until ? ` fino al ${shortDate(quote.until)}` : " il primo mese, da oggi"}
                       </Text>
                     </YStack>
                   ) : null}
@@ -542,13 +587,18 @@ function AbbonamentoContent() {
                       Per scendere di livello annulla e sceglilo alla scadenza.
                     </Text>
                   ) : null}
-                  {!current && inTrial && tier.tier === "BASE" ? (
+                  {!current && inTrial && tier.tier === "BASE" && sub?.freeMonths ? (
+                    // Va detto quando si attivano i mesi gratis (decisione di Luca del 29/10/2026).
                     <Text color={brand.grafite70} fontSize={15}>
-                      Nessun addebito fino alla fine {sub?.founder ? "dei mesi gratuiti" : "del mese gratuito"}.
+                      Aggiungi la carta: oggi 0 €. Dopo i mesi gratis parte Base a {formatEur(periodPrice)} + IVA al mese, in automatico. Annulli quando vuoi.
                     </Text>
                   ) : null}
                   <YStack flex={1} />
-                  {lower ? null : !current && sub && !sub.checkoutAvailable ? (
+                  {lower ? null : fromLaunch ? (
+                    <Text color={brand.grafite70} fontSize={16} paddingVertical="$2">
+                      Disponibile dal lancio
+                    </Text>
+                  ) : !current && sub && !sub.checkoutAvailable ? (
                     // Senza Stripe nessun livello si può scegliere: una riga chiara
                     // al posto di un pulsante spento che sembra attivo (§349).
                     <Text color={brand.grafite70} fontSize={16} paddingVertical="$2">
@@ -583,7 +633,7 @@ function AbbonamentoContent() {
                 Rinnovo
               </Text>
               <Text color={brand.grafite70} fontSize={15} lineHeight={22}>
-                {interval === "YEAR" ? "Ogni anno" : "Ogni mese"} in automatico. Ti avvisiamo {RENEWAL_NOTICE_DAYS} giorni prima.
+                {interval === "YEAR" ? "Ogni anno" : "Ogni mese"} in automatico, anche dopo i mesi gratis. Ti avvisiamo prima di ogni addebito.
               </Text>
             </Surface>
             <Surface $gtSm={{ flex: 1, flexBasis: 0, minWidth: 0 }} borderRadius={radiusDoc} padding="$4" gap="$1">
@@ -591,15 +641,17 @@ function AbbonamentoContent() {
                 Cambio di livello
               </Text>
               <Text color={brand.grafite70} fontSize={15} lineHeight={22}>
-                10 € più i giorni che restano, con il 10% in più.{" "}
+                Nei mesi gratis: il mese del livello meno 19 €.{" "}
                 <button type="button" className="fee-more" aria-expanded={feeDetailsOpen} onClick={() => setFeeDetailsOpen((open) => !open)}>
                   {feeDetailsOpen ? "Chiudi" : "Scopri di più"}
                 </button>
               </Text>
               {feeDetailsOpen ? (
                 <Text color={brand.grafite70} fontSize={15} lineHeight={22} marginTop="$1">
-                  Paghi 10 € più la differenza di prezzo tra i due livelli per i giorni che mancano al rinnovo, maggiorata del 10% (+ IVA). Esempio: da
-                  Base a Plus con 7 giorni rimasti su 30 paghi 20,27 € + IVA. Il nuovo livello vale da subito; al rinnovo paghi il nuovo livello intero.
+                  Nei mesi gratis passi a Plus o Pro pagando il primo mese meno il mese Base regalato (Plus 40 € + IVA): da quel giorno parte un mese
+                  nuovo con 0 lavori, e i mesi gratis che restano ti aspettano. Li riprendi tornando a Base. Con un livello già pagato paghi 10 € più la
+                  differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del 10% (+ IVA): da Base a Plus con 7 giorni rimasti su 30 paghi
+                  20,27 € + IVA. Il nuovo livello vale da subito; al rinnovo paghi il nuovo livello intero.
                 </Text>
               ) : null}
             </Surface>
@@ -634,6 +686,7 @@ function AbbonamentoContent() {
                 <Text color={brand.grafite}>
                   Vuoi davvero annullare? L&apos;abbonamento resta attivo
                   {sub.currentPeriodEnd ? ` fino al ${formatDate(sub.currentPeriodEnd)}` : " fino alla scadenza"}, poi non si rinnova e il tuo profilo esce dalle ricerche.
+                  {sub.freeMonthsWaiting ? ` I tuoi ${monthsWord(sub.freeMonthsWaiting)} gratis restano: li riprendi scegliendo Base.` : ""}
                 </Text>
                 <ChurnReasonPicker reasons={PRO_CHURN_REASONS} value={cancelReason} onChange={setCancelReason} />
                 <XStack gap="$2" flexWrap="wrap">
@@ -649,15 +702,29 @@ function AbbonamentoContent() {
               <>
                 <Text color={brand.grafite70}>
                   {sub.currentPeriodEnd && sub.tier
-                    ? `Prossimo rinnovo il ${formatDate(sub.currentPeriodEnd)}: ${formatEur(tierPeriodPriceEurCents(sub.tier, interval))} + IVA.`
+                    ? sub.returnToBase
+                      ? `Il ${formatDate(sub.currentPeriodEnd)} torni a Base${sub.freeMonthsWaiting ? `: ${monthsWord(sub.freeMonthsWaiting)} gratis, poi ${formatEur(tierPeriodPriceEurCents("BASE", "MONTH"))} + IVA al mese` : ` a ${formatEur(tierPeriodPriceEurCents("BASE", "MONTH"))} + IVA al mese`}.`
+                      : `Prossimo rinnovo il ${formatDate(sub.currentPeriodEnd)}: ${formatEur(tierPeriodPriceEurCents(freeWithCard ? "BASE" : sub.tier, interval))} + IVA.`
                     : interval === "YEAR"
                       ? "Si rinnova ogni anno."
                       : "Si rinnova ogni mese."}{" "}
                   Se annulli, resta attivo fino alla scadenza.
                 </Text>
-                <Button variant="secondary" alignSelf="flex-start" onPress={() => setConfirmCancel(true)}>
-                  Annulla abbonamento
-                </Button>
+                <XStack gap="$2" flexWrap="wrap">
+                  {sub.tier && sub.tier !== "BASE" && !sub.returnToBase ? (
+                    <Button variant="secondary" disabled={returnPending} opacity={returnPending ? 0.6 : 1} onPress={() => setReturnToBase(true)}>
+                      {returnPending ? "Attendi..." : sub.freeMonthsWaiting ? `Torna a Base con ${monthsWord(sub.freeMonthsWaiting)} gratis` : "Torna a Base alla scadenza"}
+                    </Button>
+                  ) : null}
+                  {sub.returnToBase ? (
+                    <Button variant="secondary" disabled={returnPending} opacity={returnPending ? 0.6 : 1} onPress={() => setReturnToBase(false)}>
+                      {returnPending ? "Attendi..." : `Resta a ${subscriptionTierInfo(sub.tier ?? "BASE").label}`}
+                    </Button>
+                  ) : null}
+                  <Button variant="secondary" onPress={() => setConfirmCancel(true)}>
+                    Annulla abbonamento
+                  </Button>
+                </XStack>
               </>
             )}
           </Surface>

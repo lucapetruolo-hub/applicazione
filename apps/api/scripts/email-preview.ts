@@ -222,15 +222,18 @@ notification("JOB_ISSUE_APPEAL_DECIDED", "Professionista", "Segnalazioni sul lav
 notification("JOB_ISSUE_SANCTION", "Professionista", "Segnalazioni sul lavoro", { sanction: "DEMOTED", until: inThreeDays });
 
 // Abbonamento
-notification("SUBSCRIPTION_TRIAL_ENDING", "Professionista", "Abbonamento", { date: inThreeDays });
+notification("SUBSCRIPTION_TRIAL_ENDING", "Professionista", "Abbonamento", { date: inThreeDays, freeMonths: 3 });
 notification("SUBSCRIPTION_BONUS_MONTH", "Professionista", "Abbonamento", { date: inThreeDays });
 notification("SUBSCRIPTION_LIMIT_NEAR", "Professionista", "Abbonamento", { used: 4, limit: 5 });
 notification("SUBSCRIPTION_LIMIT_REACHED", "Professionista", "Abbonamento");
 notification("SUBSCRIPTION_PAUSED", "Professionista", "Abbonamento", { reason: "TRIAL_ENDED" });
+add("subscription_paused-carta", "Abbonamento", "Professionista", renderEmail(notificationEmail("SUBSCRIPTION_PAUSED", { reason: "CARD_NEEDED" }, forPro)!));
 notification("SUBSCRIPTION_RENEWING", "Professionista", "Abbonamento", { tierLabel: "Plus", amountEurCents: 5900, date: inThreeDays });
 notification("SUBSCRIPTION_RENEWED", "Professionista", "Abbonamento", { tierLabel: "Plus", amountEurCents: 5900, date: inThreeDays });
 notification("SUBSCRIPTION_ENDING", "Professionista", "Abbonamento", { tierLabel: "Plus", date: inThreeDays });
 notification("SUBSCRIPTION_PAYMENT_FAILED", "Professionista", "Abbonamento");
+notification("SUBSCRIPTION_FREE_MONTHS_STARTED", "Professionista", "Abbonamento", { date: inThreeDays, amountEurCents: 1900 });
+notification("SUBSCRIPTION_RENEWING", "Professionista", "Abbonamento (fine dei mesi gratis)", { tierLabel: "Base", amountEurCents: 1900, interval: "MONTH", date: inThreeDays, freeMonthsEnding: true });
 // Documenti del mese (§378): i mesi gratis a 0 €.
 notification("MONTHLY_DOCUMENTS_READY", "Professionista", "Abbonamento", {
   monthLabel: "novembre 2026",
