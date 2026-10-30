@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { brand } from "@professionisti/ui";
 import { LegalPage } from "@/components/LegalPage";
 import { BRAND } from "@professionisti/shared";
 
@@ -46,7 +45,7 @@ export default function AccessibilitaPage() {
           body: (
             <>
               Se qualcosa non si riesce a usare (con la tastiera, con un lettore di schermo, ingrandendo il testo o da telefono), scrivici a {BRAND.supportEmail} o dal{" "}
-              <Link href="/contatti" style={{ color: brand.cianografiaScuro, fontWeight: 700, textDecoration: "underline" }}>
+              <Link href="/contatti">
                 modulo Contatti
               </Link>
               : indica la pagina e cosa non ha funzionato. Ti rispondiamo e lo correggiamo.
