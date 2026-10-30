@@ -74,15 +74,18 @@ async function openCheckout(page: Page) {
 }
 
 async function fillCard(page: Page, number: string) {
-  const accordion = page.getByTestId("card-accordion-item-button");
-  if (await accordion.isVisible().catch(() => false)) await accordion.click();
-  await page.locator("#cardNumber").fill(number);
+  // Con più metodi di pagamento Stripe mostra un elenco: si apre "Carta".
+  const cardNumber = page.locator("#cardNumber");
+  const payWithCard = page.getByRole("button", { name: "Paga con carta" }).or(page.getByTestId("card-accordion-item-button")).first();
+  await expect(cardNumber.or(payWithCard).first()).toBeVisible({ timeout: 30_000 });
+  if (!(await cardNumber.isVisible())) await payWithCard.click();
+  await cardNumber.fill(number);
   await page.locator("#cardExpiry").fill("12 / 34");
   await page.locator("#cardCvc").fill("123");
   await page.locator("#billingName").fill("Paolo Neri");
   const country = page.locator("#billingCountry");
   if (await country.isVisible().catch(() => false)) await country.selectOption("IT");
-  await page.getByTestId("hosted-payment-submit-button").click();
+  await page.getByTestId("hosted-payment-submit-button").or(page.getByRole("button", { name: "Avvia prova" })).first().click();
 }
 
 /** Pulsante della finestra di prova del 3D Secure, in uno degli iframe di Stripe. */
