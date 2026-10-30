@@ -1,25 +1,20 @@
 "use client";
 
-import { Suspense, useEffect, useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   NO_CATEGORY_MESSAGE,
-  SUBSCRIPTION_TIERS,
-  formatEur,
   PASSWORD_CONTAINS_EMAIL_MESSAGE,
   parseBillingInterval,
   parseSubscriptionTier,
-  subscriptionTierInfo,
   isMissingRulesProblem,
   isProfessionalCategorySlug,
   passwordContainsEmail,
   passwordProblem,
   registerSchema,
-  type FounderSpots,
   type ProfessionalCategorySlug,
-  type SubscriptionTier,
   type ProfessionalEntityTypeValue,
 } from "@professionisti/shared";
 import { Button, ButtonArrow, Icon, Surface, Text, XStack, YStack, brand, radiusDocLg, type IconName } from "@professionisti/ui";
@@ -70,67 +65,32 @@ function TrustChips() {
 
 /** Scheda di scelta (ruolo, modo di lavorare) come link vero: tastiera,
  * apertura con il tasto "indietro" del telefono, risposta al tocco. */
-function ChoiceCard({
-  href,
-  replace,
-  icon,
-  title,
-  text,
-  badge,
-  unavailable,
-}: {
-  href: string;
-  replace?: boolean;
-  icon: IconName;
-  title: string;
-  text: string;
-  /** Etichetta accanto al titolo (es. "3 mesi gratis"). */
-  badge?: string;
-  /** Scelta non ancora possibile: scheda spenta con il motivo al posto della freccia. */
-  unavailable?: string;
-}) {
-  const card = (
-    <XStack
-      className={unavailable ? undefined : "auth-role-card"}
-      alignItems="center"
-      gap="$3"
-      padding="$4"
-      backgroundColor={unavailable ? brand.gesso : brand.calce}
-      borderWidth={1}
-      borderColor={brand.filetto}
-      borderRadius="$4"
-    >
-      <XStack width={44} height={44} borderRadius={12} backgroundColor={unavailable ? brand.calce : brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
-        <Icon name={icon} size={20} color={unavailable ? brand.grafite70 : brand.cianografiaScuro} strokeWidth={1.5} />
-      </XStack>
-      <YStack flex={1} flexBasis={0} minWidth={0} gap="$1">
-        <XStack alignItems="center" gap="$2" flexWrap="wrap">
-          <Text fontWeight="700" color={unavailable ? brand.grafite70 : brand.grafite}>
-            {title}
-          </Text>
-          {badge ? (
-            <Text fontSize={13} fontWeight="700" color="#FFFFFF" backgroundColor={brand.cianografiaPieno} borderRadius={999} paddingHorizontal="$2" paddingVertical={2}>
-              {badge}
-            </Text>
-          ) : null}
-        </XStack>
-        <Text fontSize={13} color={brand.grafite70}>
-          {text}
-        </Text>
-      </YStack>
-      {unavailable ? (
-        <Text fontSize={13} fontWeight="700" color={brand.grafite70} flexShrink={0}>
-          {unavailable}
-        </Text>
-      ) : (
-        <Icon name="chevron-right" size={18} color={brand.grafite70} />
-      )}
-    </XStack>
-  );
-  if (unavailable) return <div aria-disabled="true">{card}</div>;
+function ChoiceCard({ href, replace, icon, title, text }: { href: string; replace?: boolean; icon: IconName; title: string; text: string }) {
   return (
     <Link href={href} replace={replace} className="auth-role-card-link">
-      {card}
+      <XStack
+        className="auth-role-card"
+        alignItems="center"
+        gap="$3"
+        padding="$4"
+        backgroundColor={brand.calce}
+        borderWidth={1}
+        borderColor={brand.filetto}
+        borderRadius="$4"
+      >
+        <XStack width={44} height={44} borderRadius={12} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
+          <Icon name={icon} size={20} color={brand.cianografiaScuro} strokeWidth={1.5} />
+        </XStack>
+        <YStack flex={1} flexBasis={0} minWidth={0} gap="$1">
+          <Text fontWeight="700" color={brand.grafite}>
+            {title}
+          </Text>
+          <Text fontSize={13} color={brand.grafite70}>
+            {text}
+          </Text>
+        </YStack>
+        <Icon name="chevron-right" size={18} color={brand.grafite70} />
+      </XStack>
     </Link>
   );
 }
@@ -214,7 +174,7 @@ function EntityTypeScreen({ hrefFor, onBack }: { hrefFor: (param: string) => str
           icon="briefcase"
           title="Come lavori?"
           subtitle="Così ti chiediamo solo i dati fiscali che servono a te."
-          step={{ current: 2, total: 5 }}
+          step={{ current: 2, total: 4 }}
           onBack={onBack}
         />
 
@@ -232,79 +192,20 @@ function EntityTypeScreen({ hrefFor, onBack }: { hrefFor: (param: string) => str
   );
 }
 
-const PLAN_ICONS: Record<SubscriptionTier, IconName> = { BASE: "sprout", PLUS: "trending-up", PRO: "sparkles" };
-
-/**
- * Scelta del piano in registrazione (docs/changelog/2026-10-29-piano-in-registrazione.md,
- * richiesta di Luca): Base con i mesi gratis dell'offerta in cima. Plus e Pro
- * si scelgono solo dal lancio. La carta non si chiede qui: è il passo
- * "Piano e carta" di Completa il profilo, dopo i dati fiscali.
- */
-function PlanScreen({ hrefFor, onBack }: { hrefFor: (tier: SubscriptionTier) => string; onBack: () => void }) {
-  const [spots, setSpots] = useState<FounderSpots | null | undefined>(undefined);
-  useEffect(() => {
-    apiClient
-      .founderSpots()
-      .then(setSpots)
-      .catch(() => setSpots(null));
-  }, []);
-  const months = spots?.offerMonths ?? null;
-  const monthsLabel = months === 1 ? "1 mese" : `${months} mesi`;
-
-  return (
-    <AuthPageBackground>
-      <Surface className="auth-card-in" width="100%" maxWidth={480} borderRadius={radiusDocLg} padding="$6" gap="$5">
-        <AuthStepHeader icon="tag" title="Scegli il piano" subtitle="Tutte le funzioni in ogni piano: cambia solo quanti lavori accetti al mese." step={{ current: 3, total: 5 }} onBack={onBack} />
-
-        {spots === undefined ? (
-          <YStack gap="$3" aria-busy>
-            {SUBSCRIPTION_TIERS.map((tier) => (
-              <YStack key={tier.tier} height={78} borderRadius="$4" backgroundColor={brand.gesso} />
-            ))}
-          </YStack>
-        ) : (
-          <YStack gap="$3">
-            {SUBSCRIPTION_TIERS.map((tier) => {
-              const jobs = tier.monthlyAcceptedJobs === null ? "Lavori senza limite" : `${tier.monthlyAcceptedJobs} lavori accettati al mese`;
-              const price = `${formatEur(tier.priceEurCents)} + IVA al mese`;
-              const free = tier.tier === "BASE" && months !== null;
-              return (
-                <ChoiceCard
-                  key={tier.tier}
-                  href={hrefFor(tier.tier)}
-                  icon={PLAN_ICONS[tier.tier]}
-                  title={tier.label}
-                  badge={free ? `${monthsLabel} gratis` : undefined}
-                  text={free ? `Gratis per ${monthsLabel}, poi ${price}. ${jobs}.` : `${price}. ${jobs}.`}
-                  unavailable={tier.tier !== "BASE" && !spots?.paidTiersOpen ? "Dal lancio" : undefined}
-                />
-              );
-            })}
-          </YStack>
-        )}
-
-        <Text fontSize={13} color={brand.grafite70} textAlign="center">
-          Oggi non paghi nulla. La carta te la chiediamo dopo i dati fiscali.
-        </Text>
-      </Surface>
-    </AuthPageBackground>
-  );
-}
-
-/** Riepilogo di una scelta fatta (tipo, piano) in cima al modulo, con "Cambia" per tornarci. */
-function ChoiceSummary({ icon, caption, value, changeLabel, onChange }: { icon: IconName; caption: string; value: string; changeLabel: string; onChange: () => void }) {
+/** Riepilogo del tipo scelto in cima al modulo, con "Cambia" per tornare alla scelta. */
+function EntityTypeSummary({ choice, onChange }: { choice: (typeof ENTITY_CHOICES)[number]; onChange: () => void }) {
   return (
     <XStack alignItems="center" gap="$3" padding="$3" borderRadius="$4" backgroundColor={brand.cianografiaVelo}>
-      <Icon name={icon} size={18} color={brand.cianografiaScuro} strokeWidth={1.75} />
+      <Icon name={choice.icon} size={18} color={brand.cianografiaScuro} strokeWidth={1.75} />
       <YStack flex={1} flexBasis={0} minWidth={0}>
         <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
-          {caption}
+          Ti iscrivi come
         </Text>
         <Text fontWeight="700" color={brand.grafite}>
-          {value}
+          {choice.label}
         </Text>
       </YStack>
-      <button type="button" className="link-button" onClick={onChange} aria-label={changeLabel}>
+      <button type="button" className="link-button" onClick={onChange} aria-label="Cambia il modo in cui lavori">
         Cambia
       </button>
     </XStack>
@@ -326,7 +227,7 @@ const SIGNUP_BENEFITS: { icon: IconName; title: string; text: string }[] = [
  */
 function ProfessionalSignupLayout({
   children,
-  step = 4,
+  step = 3,
   icon = "hard-hat",
   title = "Crea il tuo account",
   subtitle = "Poi completi il profilo e ricevi le richieste.",
@@ -346,7 +247,7 @@ function ProfessionalSignupLayout({
     <AuthPageBackground>
       <YStack width="100%" maxWidth={480} gap="$6">
         <Surface className="auth-card-in" width="100%" borderRadius={radiusDocLg} padding="$6" gap="$5">
-          <AuthStepHeader icon={icon} title={title} subtitle={subtitle || undefined} step={{ current: step, total: 5 }} onBack={onBack} />
+          <AuthStepHeader icon={icon} title={title} subtitle={subtitle || undefined} step={{ current: step, total: 4 }} onBack={onBack} />
           {children}
           {showFooter ? (
           <Text fontSize={16} textAlign="center" color={brand.grafite70}>
@@ -530,11 +431,6 @@ function RegistratiForm() {
     return <EntityTypeScreen hrefFor={(param) => hrefWith("tipo", param)} onBack={() => setParam("ruolo", null)} />;
   }
 
-  // Piano scelto prima dell'account; da /per-professionisti arriva già nel link.
-  if (!chosenTier) {
-    return <PlanScreen hrefFor={(tier) => hrefWith("livello", tier)} onBack={() => setParam("tipo", null)} />;
-  }
-
   // Con Google Sign-In questa pagina può autenticare anche un account
   // professionista già esistente (es. cliccando "Iscriviti gratis" da
   // /per-professionisti pur avendo già un profilo) — non solo una vera
@@ -546,8 +442,7 @@ function RegistratiForm() {
   function afterAuth(isNewUser: boolean) {
     // Un professionista che accede di nuovo (non isNewUser) va dritto in
     // Dashboard come già prima.
-    // Base: si va al profilo, la carta è il passo "Piano e carta" dopo i dati fiscali.
-    if (chosenTier && chosenTier !== "BASE") {
+    if (chosenTier) {
       router.push(`/dashboard/abbonamento?livello=${chosenTier}${chosenInterval ? `&rinnovo=${chosenInterval}` : ""}${isNewUser ? "&nuovo=1" : ""}`);
       return;
     }
@@ -705,7 +600,7 @@ function RegistratiForm() {
 
   if (codeStep) {
     return (
-      <ProfessionalSignupLayout step={5} icon="mail" title="Conferma la tua email" subtitle="" showFooter={false}>
+      <ProfessionalSignupLayout step={4} icon="mail" title="Conferma la tua email" subtitle="" showFooter={false}>
         <EmailCodeForm
           token={codeStep.token}
           email={codeStep.email}
@@ -739,14 +634,7 @@ function RegistratiForm() {
   // ClientSignup, sopra).
   const formFields = (
     <>
-      <ChoiceSummary icon={entityChoice.icon} caption="Ti iscrivi come" value={entityChoice.label} changeLabel="Cambia il modo in cui lavori" onChange={() => setParam("tipo", null)} />
-      <ChoiceSummary
-        icon={PLAN_ICONS[chosenTier]}
-        caption="Piano"
-        value={subscriptionTierInfo(chosenTier).label}
-        changeLabel="Cambia il piano"
-        onChange={() => setParam("livello", null)}
-      />
+      <EntityTypeSummary choice={entityChoice} onChange={() => setParam("tipo", null)} />
 
       <div id="categorie">
         <span className="auth-field-label" style={{ display: "block", marginBottom: 8 }}>

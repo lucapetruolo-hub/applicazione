@@ -39,7 +39,7 @@ const PLAN_HREF = "/dashboard/abbonamento#livelli";
  * carta non si può dare (senza Stripe, o prima del lancio senza `LAUNCH_DATE`):
  * altrimenti "Completa il profilo" resterebbe aperto per tutti fino al lancio.
  */
-function planStep(sub: MySubscription, unlocked: boolean): JourneyStep | null {
+function planStep(sub: MySubscription): JourneyStep | null {
   const base = { key: "plan" as const, icon: "tag" as const, title: "Piano e carta", short: "Piano" };
   const baseInfo = subscriptionTierInfo("BASE");
   if (sub.state === "ACTIVE" || sub.state === "PAST_DUE") {
@@ -49,7 +49,6 @@ function planStep(sub: MySubscription, unlocked: boolean): JourneyStep | null {
   // Prima del lancio senza data, o senza Stripe: la carta non si può ancora dare.
   const available = sub.checkoutAvailable && (sub.state !== "TRIAL" || sub.trialEndsAt !== null);
   if (!available) return null;
-  if (!unlocked) return { ...base, state: "locked", text: "Dopo i dati fiscali." };
   if (sub.state === "TRIAL" && sub.freeMonths) {
     const months = sub.freeMonths.months === 1 ? "1 mese" : `${sub.freeMonths.months} mesi`;
     return {
@@ -77,15 +76,18 @@ export function useJourneySubscription(token: string | null, reloadKey: unknown 
 
 /**
  * Il percorso per completare il profilo, sempre nello stesso ordine
- * (richiesta dell'utente, docs/CHANGELOG.md §262): dati fiscali → piano e
- * carta → identità → pagamenti online. Un passo si sblocca solo quando il
+ * (richiesta dell'utente, docs/CHANGELOG.md §262): piano e carta (subito
+ * dopo il profilo, docs/changelog/2026-10-29-piano-in-registrazione.md) →
+ * dati fiscali → identità → pagamenti online. Un passo si sblocca solo quando il
  * precedente è fatto (o in verifica), così c'è sempre una sola cosa da fare.
  * La verifica dell'identità sparisce dove non è attiva.
  */
 export function setupJourney(status: MyVerificationStatus, stripeVerified: boolean, subscription?: MySubscription | null): JourneyStep[] {
   const fiscalHref = "/dashboard/fiscale";
   const invalid = status.taxIdChecks.filter((check) => check.status === "INVALID");
-  const fiscal: JourneyStep = !status.fiscalDataComplete
+  const plan = subscription ? planStep(subscription) : null;
+  const planReady = !plan || plan.state === "done";
+  const fiscalTodo: JourneyStep = !status.fiscalDataComplete
     ? { key: "fiscal", icon: "file-text", title: "Dati fiscali", short: "Dati fiscali", state: "current", text: "Servono per comparire nelle ricerche. Circa 2 minuti.", action: { href: fiscalHref, label: "Compila i dati fiscali" } }
     : status.taxIdState === "TO_FIX"
       ? {
@@ -101,11 +103,10 @@ export function setupJourney(status: MyVerificationStatus, stripeVerified: boole
         ? { key: "fiscal", icon: "file-text", title: "Dati fiscali", short: "Dati fiscali", state: "waiting", text: "Li stiamo verificando. Intanto puoi andare avanti." }
         : { key: "fiscal", icon: "file-text", title: "Dati fiscali", short: "Dati fiscali", state: "done", text: status.publicVisible ? "Compari nelle ricerche." : "Compilati." };
 
-  const fiscalReady = fiscal.state === "done" || fiscal.state === "waiting";
-  const steps: JourneyStep[] = [fiscal];
-  const plan = subscription ? planStep(subscription, fiscalReady) : null;
-  if (plan) steps.push(plan);
-  const planReady = !plan || plan.state === "done";
+  // Una cosa alla volta: i dati fiscali da fare aspettano il piano.
+  const fiscal: JourneyStep = fiscalTodo.state === "current" && !planReady ? { ...fiscalTodo, state: "locked", text: "Dopo il piano.", action: undefined } : fiscalTodo;
+  const fiscalReady = planReady && (fiscal.state === "done" || fiscal.state === "waiting");
+  const steps: JourneyStep[] = plan ? [plan, fiscal] : [fiscal];
 
   const identity = status.identity;
   let identityStep: JourneyStep | null = null;
@@ -113,8 +114,7 @@ export function setupJourney(status: MyVerificationStatus, stripeVerified: boole
   else if (identity.available) {
     const base = { key: "identity" as const, icon: "id-card" as const, title: "Verifica identità", short: "Identità" };
     const href = "/dashboard/verifica-identita";
-    if (!fiscalReady) identityStep = { ...base, state: "locked", text: "Dopo i dati fiscali. Serve per rispondere ai preventivi." };
-    else if (!planReady) identityStep = { ...base, state: "locked", text: "Dopo il piano. Serve per rispondere ai preventivi." };
+    if (!fiscalReady) identityStep = { ...base, state: "locked", text: planReady ? "Dopo i dati fiscali. Serve per rispondere ai preventivi." : "Dopo il piano. Serve per rispondere ai preventivi." };
     else if (identity.standby) identityStep = { ...base, state: "waiting", text: "Il servizio di verifica non risponde: ti avvisiamo noi appena puoi continuare." };
     else if (identity.renewal && identity.status !== "PROCESSING" && identity.status !== "STARTED")
       identityStep = { ...base, state: "current", text: "Il documento è scaduto: rifai la verifica per riavere il badge.", action: { href, label: "Rinnova la verifica" } };
@@ -132,9 +132,10 @@ export function setupJourney(status: MyVerificationStatus, stripeVerified: boole
   if (identityStep) steps.push(identityStep);
 
   const base = { key: "payments" as const, icon: "credit-card" as const, title: "Pagamenti online", short: "Pagamenti", optional: true };
-  const before = identityStep ?? plan ?? fiscal;
+  const before = identityStep ?? fiscal;
   if (stripeVerified) steps.push({ ...base, state: "done", text: "Puoi ricevere acconti e saldi online." });
-  else if (before.state !== "done" || !fiscalReady) steps.push({ ...base, state: "locked", text: identityStep ? "Dopo la verifica dell'identità." : plan ? "Dopo il piano." : "Dopo i dati fiscali." });
+  else if (before.state !== "done" || !fiscalReady)
+    steps.push({ ...base, state: "locked", text: !planReady ? "Dopo il piano." : identityStep ? "Dopo la verifica dell'identità." : "Dopo i dati fiscali." });
   else steps.push({ ...base, state: "current", text: "Per farti pagare un acconto online prima del lavoro.", action: { href: PAYMENTS_ANCHOR, label: "Attiva i pagamenti online" } });
 
   return steps;

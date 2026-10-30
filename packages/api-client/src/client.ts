@@ -7,7 +7,6 @@ import type {
   EmailStatus,
   ProfessionalEntityTypeValue,
   MySubscription,
-  FounderSpots,
   SubscriptionTier,
   BillingInterval,
   PROFESSIONAL_CATEGORIES,
@@ -1928,9 +1927,6 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
 
     /** Recensioni scritte dal cliente ai professionisti (scheda "Inviate", docs/CHANGELOG.md §180). */
     mySentReviews: (token: string) => request<SentReview[]>("/reviews/me", { headers: { Authorization: `Bearer ${token}` } }),
-
-    /** Posti dei primi 100, mesi dell'offerta attiva e livelli aperti (pubblico, scelta del piano in registrazione). */
-    founderSpots: () => request<FounderSpots>("/subscriptions/founders", { cache: "no-store" }),
 
     getMySubscription: (token: string) =>
       request<MySubscription>("/professionals/me/subscription", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
