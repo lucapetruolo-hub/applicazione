@@ -202,8 +202,10 @@ test("pagina della carta chiusa a metà: si torna con il messaggio e si può rip
 
 test("primo addebito fallito dopo i mesi gratis (0341, test clock): abbonamento non pagato e avviso", async ({ browser }) => {
   const clock = await stripe<{ id: string }>("POST", "test_helpers/test_clocks", { frozen_time: Math.floor(Date.now() / 1000), name: "carta 0341" });
-  const customer = await stripe<{ id: string }>("POST", "customers", { test_clock: clock.id, name: "Neri Impianti (prova)" });
-  const { user, profileId } = await newProfessional({ withProfile: true, stripeCustomerId: customer.id });
+  const { user, profileId } = await newProfessional({ withProfile: true });
+  // Cliente Stripe sul test clock con l'email, come quello che crea il sito (ensureCustomer).
+  const customer = await stripe<{ id: string }>("POST", "customers", { test_clock: clock.id, name: "Neri Impianti (prova)", email: user.email! });
+  await prisma.professionalProfile.update({ where: { id: profileId! }, data: { stripeCustomerId: customer.id } });
   const page = await signedIn(browser, user.id);
   await openCheckout(page);
   await fillCard(page, "4000000000000341");
