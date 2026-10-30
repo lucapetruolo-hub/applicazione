@@ -11,6 +11,7 @@ import {
   BAD_WORK_REPORT_DAYS,
   jobIssueTypesAllowed,
   jobIssueLateAllowed,
+  clientCanUpdateReview,
   jobIssueAssisted,
   JOB_ISSUE_LATE_NOTE,
   toJobIssueSummary,
@@ -1572,6 +1573,15 @@ export class BookingsService implements OnModuleInit {
       // prenotazioni dirette da agenda pubblica.
       guidedRequestId: booking.quote?.guidedRequestId ?? null,
       hasReview: booking.review !== null,
+      // Recensione aggiornabile una volta dopo una segnalazione a lavoro chiuso senza accordo.
+      canUpdateReview: clientCanUpdateReview({
+        hasReview: booking.review !== null,
+        reviewUpdatedAt: booking.review?.updatedAfterIssueAt ?? null,
+        issue: booking.issue,
+      }),
+      myReview: booking.review
+        ? { id: booking.review.id, rating: booking.review.rating, comment: booking.review.comment, photoUrls: booking.review.photoUrls }
+        : null,
       // Titolo/categoria, descrizione e foto della richiesta guidata
       // originale — richiesta esplicita dell'utente ("i dati del
       // preventivo da lui inviato all'inizio come la descrizione

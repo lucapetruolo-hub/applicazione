@@ -63,6 +63,7 @@ import type {
   ResolveDisputeInput,
   ResolveContentReportInput,
   ReviewInput,
+  ReviewUpdateInput,
   SetDac7RuleInput,
   PlatformDac7SettingsInput,
   PayoutIbanInput,
@@ -174,6 +175,9 @@ export type ClientBooking = {
   /** Richiesta guidata di origine, per il bottone "Vai alla cronologia della richiesta" (richiesta esplicita dell'utente) — null per le prenotazioni dirette da agenda pubblica. */
   guidedRequestId: string | null;
   hasReview: boolean;
+  /** Recensione aggiornabile una volta, dopo una segnalazione a lavoro chiuso senza accordo. */
+  canUpdateReview: boolean;
+  myReview: { id: string; rating: number; comment: string | null; photoUrls: string[] } | null;
   /**
    * Conferma del cliente che il lavoro è davvero terminato dal suo lato
    * (richiesta esplicita dell'utente: "servono i completed da entrambi") —
@@ -1932,6 +1936,22 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
+      }),
+
+    /** Aggiornamento una volta sola, dopo una segnalazione a lavoro chiuso senza accordo. */
+    updateReview: (token: string, reviewId: string, input: ReviewUpdateInput) =>
+      request<{ id: string }>(`/reviews/${reviewId}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    /** Risposta pubblica del professionista a una recensione, scritta o modificata. */
+    replyToReview: (token: string, reviewId: string, reply: string) =>
+      request<{ id: string }>(`/reviews/${reviewId}/reply`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reply }),
       }),
 
     uploadReviewPhoto: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/reviews/photos", token, file, "image"),

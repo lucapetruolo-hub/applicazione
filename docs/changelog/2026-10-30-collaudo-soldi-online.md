@@ -100,6 +100,24 @@ Migliorie approvate da Luca il 30/10:
   professionista, la garanzia di legge e le vie se non vi accordate; nel menu
   la voce dice "Senza rimborso, in chat con il professionista".
 
+- **Pagina "Problemi e rimborsi"** (`/problemi-e-rimborsi`, richiesta di Luca:
+  le spiegazioni in una pagina sola, non nella finestra): cosa succede in
+  ordine di tempo (annullare, non si presenta, nei 7 giorni, dopo i 7 giorni,
+  pagamento diretto, banca), con le ancore. Ci portano il piede del sito,
+  "Scopri di più" nelle Domande frequenti (una domanda nuova sul dopo i 7
+  giorni) e la finestra "Segnala un problema", che ora ha una frase e il link
+  (in una nuova scheda, per non perdere quanto scritto). I Termini restano il
+  testo che vale.
+- **Recensioni** (decisioni di Luca): il professionista risponde pubblicamente
+  sotto ogni recensione dal suo profilo pubblico e può modificare la risposta
+  (`Review.professionalReply`, `PUT /reviews/:id/reply`); l'email della nuova
+  recensione lo dice. Il cliente aggiorna la recensione una sola volta, voto
+  compreso, dopo una segnalazione a lavoro chiuso finita senza accordo
+  (`Review.updatedAfterIssueAt`, `PATCH /reviews/:id`, `clientCanUpdateReview`):
+  la media si ricalcola, il professionista riceve l'avviso con il link alla
+  recensione e sotto compare "Aggiornata il … dopo una segnalazione a lavoro
+  chiuso". Termini (recensioni) e cronologia dei Termini aggiornati.
+
 F-21 e G-14 (cifre dei bonifici): servono i dati di Stripe.
 
 ## Verifica

@@ -387,6 +387,18 @@ export function jobIssueAssisted(paymentMethod: string | null | undefined, late:
   return paymentMethod !== "DIRECT" && !late;
 }
 
+/**
+ * Il cliente può aggiornare la sua recensione una volta, dopo una segnalazione
+ * a lavoro chiuso finita senza accordo (decisione di Luca del 30/10/2026).
+ */
+export function clientCanUpdateReview(b: {
+  hasReview: boolean;
+  reviewUpdatedAt: Date | string | null;
+  issue: { late?: boolean | null; status: string } | null;
+}): boolean {
+  return b.hasReview && !b.reviewUpdatedAt && !!b.issue?.late && b.issue.status === "UNRESOLVED";
+}
+
 /** Il cliente può segnalare un lavoro non andato bene dopo il termine (senza rimborso)? */
 export function jobIssueLateAllowed(b: JobIssueWindowInput, now: Date): boolean {
   if (b.hasIssue) return false;

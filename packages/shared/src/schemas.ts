@@ -773,6 +773,16 @@ export const reviewSchema = z.object({
 });
 export type ReviewInput = z.infer<typeof reviewSchema>;
 
+/** Aggiornamento della recensione dopo una segnalazione a lavoro chiuso senza accordo (una volta sola). */
+export const reviewUpdateSchema = reviewSchema.omit({ bookingId: true });
+export type ReviewUpdateInput = z.infer<typeof reviewUpdateSchema>;
+
+/** Risposta pubblica del professionista a una recensione. */
+export const reviewReplySchema = z.object({
+  reply: z.string().trim().min(2, "Scrivi la risposta.").max(1000),
+});
+export type ReviewReplyInput = z.infer<typeof reviewReplySchema>;
+
 /** Prestazione offerta dal professionista: nome + prezzo facoltativo (in centesimi). */
 export const professionalServiceSchema = z
   .object({

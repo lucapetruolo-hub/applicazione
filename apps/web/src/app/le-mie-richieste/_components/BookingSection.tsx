@@ -49,6 +49,7 @@ export function BookingSection({
 }) {
   const [showClientCompleteModal, setShowClientCompleteModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showUpdateReviewModal, setShowUpdateReviewModal] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
   const [confirmReopen, setConfirmReopen] = useState(false);
   const [reopenError, setReopenError] = useState<string | null>(null);
@@ -115,6 +116,13 @@ export function BookingSection({
   async function handleSubmitReview(input: { rating: number; comment?: string; mediaUrls: string[] }) {
     await apiClient.createReview(token, { bookingId: booking.id, rating: input.rating, comment: input.comment, photoUrls: input.mediaUrls });
     setShowReviewModal(false);
+    onChanged();
+  }
+
+  async function handleUpdateReview(input: { rating: number; comment?: string; mediaUrls: string[] }) {
+    if (!booking.myReview) return;
+    await apiClient.updateReview(token, booking.myReview.id, { rating: input.rating, comment: input.comment, photoUrls: input.mediaUrls });
+    setShowUpdateReviewModal(false);
     onChanged();
   }
 
@@ -475,6 +483,17 @@ export function BookingSection({
                 Recensione inviata
               </Text>
             </XStack>
+            {/* Una volta sola, dopo una segnalazione a lavoro chiuso senza accordo (decisione di Luca del 30/10/2026). */}
+            {booking.canUpdateReview ? (
+              <YStack gap="$1" alignItems="flex-start">
+                <Text fontSize={13} color={brand.grafite70}>
+                  Non vi siete accordati sul problema: puoi aggiornare la recensione una volta, perché anche gli altri clienti lo sappiano.
+                </Text>
+                <CardButton tone="primary" onPress={() => setShowUpdateReviewModal(true)}>
+                  Aggiorna la recensione
+                </CardButton>
+              </YStack>
+            ) : null}
             {/* Il prossimo lavoro con lo stesso professionista passa dal sito (docs/CHANGELOG.md §348). */}
             {rebookHref && booking.status === "COMPLETED" && !booking.professionalAccountDeleted ? (
               <Link href={rebookHref} style={{ textDecoration: "none" }}>
@@ -532,6 +551,18 @@ export function BookingSection({
           uploadPhoto={(file) => apiClient.uploadReviewPhoto(token, file).then((r) => r.imageUrl)}
           onSubmit={handleSubmitReview}
           onClose={closeReviewModal}
+        />
+      ) : null}
+
+      {showUpdateReviewModal && booking.myReview ? (
+        <ReviewModal
+          title="Aggiorna la recensione"
+          subtitle="Racconta cosa è successo dopo il lavoro. Puoi farlo una volta sola: sotto comparirà la data dell'aggiornamento."
+          initial={{ rating: booking.myReview.rating, comment: booking.myReview.comment, mediaUrls: booking.myReview.photoUrls }}
+          submitLabel="Aggiorna la recensione"
+          uploadPhoto={(file) => apiClient.uploadReviewPhoto(token, file).then((r) => r.imageUrl)}
+          onSubmit={handleUpdateReview}
+          onClose={() => setShowUpdateReviewModal(false)}
         />
       ) : null}
 

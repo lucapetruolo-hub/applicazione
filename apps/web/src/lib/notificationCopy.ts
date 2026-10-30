@@ -238,6 +238,9 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   if (type === "JOB_ISSUE_UNRESOLVED" && data.late === true) {
     return { icon: "🤝", message: "Il cliente ha indicato che non avete trovato un accordo sulla segnalazione arrivata a lavoro chiuso." };
   }
+  if (type === "NEW_REVIEW" && data.updated === true) {
+    return { icon: "⭐", message: "Un cliente ha aggiornato la sua recensione dopo la segnalazione a lavoro chiuso." };
+  }
   if (type === "JOB_ISSUE_REFUND_OFFERED" && typeof data.amountEurCents === "number") {
     return { icon: "🤝", message: `Il professionista ti propone un rimborso di ${formatEur(data.amountEurCents)}: accettalo dalla scheda del lavoro.` };
   }

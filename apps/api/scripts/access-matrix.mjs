@@ -114,6 +114,8 @@ async function seed() {
     },
   });
   await prisma.jobPayment.create({ data: { bookingId: bookingA.id, paymentMethod: "DIRECT", grossAmountEurCents: 10000, netAmountEurCents: 10000 } });
+  // Recensione di clientA: la può aggiornare solo lui, rispondere solo proA (docs/changelog/2026-10-30-collaudo-soldi-online.md).
+  const reviewA = await prisma.review.create({ data: { bookingId: bookingA.id, rating: 4, comment: "Lavoro fatto bene" } });
   // Copia del documento già scaricata da proA: il cliente la può aprire (§386).
   await prisma.courtesyDocument.create({ data: { bookingId: bookingA.id, professionalProfileId: profileA.id, kind: "INVOICE", year: 2026, ownNumber: "1/A", pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000 } });
 
@@ -161,6 +163,7 @@ async function seed() {
       quoteA: quoteA.id,
       quoteDone: quoteDone.id,
       bookingA: bookingA.id,
+      reviewA: reviewA.id,
       invoiceA: invoiceA.id,
       notificationA: notificationA.id,
       externalJobA: externalJobA.id,

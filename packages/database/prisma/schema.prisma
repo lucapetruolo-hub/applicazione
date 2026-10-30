@@ -1498,6 +1498,13 @@ model Review {
   // da profilo pubblico, ricerca, home e media voti. La riga resta.
   hiddenAt  DateTime?
   createdAt DateTime  @default(now())
+  // Risposta pubblica del professionista, modificabile (decisione di Luca del
+  // 30/10/2026, docs/changelog/2026-10-30-collaudo-soldi-online.md).
+  professionalReply     String?
+  professionalRepliedAt DateTime?
+  // Aggiornata dal cliente una sola volta dopo una segnalazione a lavoro
+  // chiuso finita senza accordo (stessa decisione).
+  updatedAfterIssueAt   DateTime?
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 

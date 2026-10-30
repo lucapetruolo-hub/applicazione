@@ -166,6 +166,12 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
     if (getPayloadValue(payload, "audience") === "PROFESSIONAL") return guidedRequestId ? `/dashboard/richieste?open=${guidedRequestId}` : "/dashboard/richieste";
     return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}` : "/le-mie-richieste?tab=lavori";
   }
+  // Recensione aggiornata dopo una segnalazione a lavoro chiuso: sotto la recensione, dove si risponde.
+  if (type === "NEW_REVIEW" && payload && typeof payload === "object" && (payload as Record<string, unknown>).updated === true) {
+    const profileId = getPayloadValue(payload, "professionalProfileId");
+    const reviewId = getPayloadValue(payload, "reviewId");
+    if (profileId) return `/professionista/${profileId}${reviewId ? `#recensione-${reviewId}` : ""}`;
+  }
   if (type === "JOB_REFUND_REJECTED") {
     // Chi aveva chiesto il rimborso può essere il cliente o il professionista.
     const guidedRequestId = getPayloadValue(payload, "guidedRequestId");

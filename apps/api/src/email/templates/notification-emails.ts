@@ -665,16 +665,24 @@ const BUILDERS: Record<string, Builder> = {
   // §215). Il voto non si anticipa nell'email.
   NEW_REVIEW: (payload, ctx) => ({
     kind: "notification",
-    subject: "Hai ricevuto una nuova recensione",
+    subject: payload.updated === true ? "Un cliente ha aggiornato la sua recensione" : "Hai ricevuto una nuova recensione",
     greeting: ctx.name,
-    title: "Nuova recensione",
+    title: payload.updated === true ? "Recensione aggiornata" : "Nuova recensione",
     paragraphs:
-      payload.professionalCompleted === false
+      payload.updated === true
+        ? [
+            `Il cliente ha aggiornato la recensione del lavoro per **${job(ctx)}** dopo la segnalazione arrivata a lavoro chiuso: la trovi sul tuo profilo.`,
+            "Puoi rispondere dal tuo profilo pubblico, sotto la recensione: la tua risposta la leggono tutti.",
+          ]
+        : payload.professionalCompleted === false
         ? [
             `Il cliente ha segnato come terminato il lavoro per **${job(ctx)}** e lo ha recensito: la recensione è già visibile sul tuo profilo.`,
             "Ricordati di segnare anche tu il lavoro come terminato.",
           ]
-        : [`Il cliente ha recensito il lavoro per **${job(ctx)}**: la recensione è già visibile sul tuo profilo.`],
+        : [
+            `Il cliente ha recensito il lavoro per **${job(ctx)}**: la recensione è già visibile sul tuo profilo.`,
+            "Se vuoi, rispondi sotto la recensione dal tuo profilo pubblico: la tua risposta la leggono tutti.",
+          ],
     cta: proRequests(payload.professionalCompleted === false ? "Segna il lavoro come terminato" : "Apri il lavoro"),
   }),
 

@@ -718,6 +718,9 @@ export class ProfessionalsService {
         // Pagina pubblica: solo nome e iniziale del cognome (§216).
         clientName: publicClientName(booking.client),
         jobLabel: booking.quote?.guidedRequest.category.label ?? null,
+        professionalReply: review.professionalReply,
+        professionalRepliedAt: review.professionalRepliedAt?.toISOString() ?? null,
+        updatedAfterIssueAt: review.updatedAfterIssueAt?.toISOString() ?? null,
       })),
     };
   }

@@ -1,6 +1,6 @@
-import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
-import { clientCanReview, type ReviewInput } from "@professionisti/shared";
+import { clientCanReview, clientCanUpdateReview, type ReviewInput, type ReviewUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { publicVisibilityWhere } from "../professional-fiscal/public-visibility";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -171,5 +171,60 @@ export class ReviewsService {
     });
 
     return { id: review.id };
+  }
+
+  /**
+   * Aggiornamento della recensione, una volta sola, dopo una segnalazione a
+   * lavoro chiuso finita senza accordo (decisione di Luca del 30/10/2026):
+   * l'unico modo per far sapere agli altri di un difetto scoperto dopo.
+   */
+  async update(clientId: string, reviewId: string, input: ReviewUpdateInput) {
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+      include: {
+        booking: {
+          select: {
+            id: true,
+            clientId: true,
+            professionalProfileId: true,
+            professionalProfile: { select: { userId: true } },
+            quote: { select: { guidedRequestId: true } },
+            issue: { select: { late: true, status: true } },
+          },
+        },
+      },
+    });
+    if (!review) throw new NotFoundException("Recensione non trovata.");
+    if (review.booking.clientId !== clientId) throw new ForbiddenException("Questa recensione non è tua.");
+    if (!clientCanUpdateReview({ hasReview: true, reviewUpdatedAt: review.updatedAfterIssueAt, issue: review.booking.issue })) {
+      throw new BadRequestException("La recensione si può aggiornare una volta sola, dopo una segnalazione a lavoro chiuso senza accordo.");
+    }
+    // Una sola volta anche con due tocchi insieme.
+    const updated = await this.prisma.review.updateMany({
+      where: { id: reviewId, updatedAfterIssueAt: null },
+      data: { rating: input.rating, comment: input.comment ?? null, photoUrls: input.photoUrls, updatedAfterIssueAt: new Date() },
+    });
+    if (updated.count === 0) throw new ConflictException("Hai già aggiornato questa recensione.");
+    await this.professionalMetricsService.recomputeReviews(review.booking.professionalProfileId);
+    await this.notificationsService.notify(review.booking.professionalProfile.userId, "NEW_REVIEW", {
+      bookingId: review.booking.id,
+      guidedRequestId: review.booking.quote?.guidedRequestId ?? null,
+      updated: true,
+      reviewId,
+      professionalProfileId: review.booking.professionalProfileId,
+    });
+    return { id: reviewId };
+  }
+
+  /** Risposta pubblica del professionista alla recensione di un suo lavoro, modificabile (decisione di Luca del 30/10/2026). */
+  async reply(professionalUserId: string, reviewId: string, reply: string) {
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+      select: { id: true, booking: { select: { professionalProfile: { select: { userId: true } } } } },
+    });
+    if (!review) throw new NotFoundException("Recensione non trovata.");
+    if (review.booking.professionalProfile.userId !== professionalUserId) throw new ForbiddenException("Puoi rispondere solo alle recensioni dei tuoi lavori.");
+    await this.prisma.review.update({ where: { id: reviewId }, data: { professionalReply: reply.trim(), professionalRepliedAt: new Date() } });
+    return { id: reviewId };
   }
 }

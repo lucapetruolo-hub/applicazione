@@ -169,7 +169,7 @@ export function ReportIssueModal({
               <>
                 <Text color={brand.grafite70}>
                   Abbiamo avvisato {businessName} e gli abbiamo scritto in chat cosa è successo. Scrivetevi in chat per trovare insieme
-                  una soluzione: dalla scheda del lavoro potrai poi chiudere la segnalazione{hasReview ? "" : " e lasciare la recensione"}.
+                  una soluzione: dalla scheda del lavoro potrai poi chiudere la segnalazione{hasReview ? " e, se non vi accordate, aggiornare la recensione" : " e lasciare la recensione"}.
                 </Text>
                 <XStack gap="$2" flexWrap="wrap">
                   {onOpenChat ? (

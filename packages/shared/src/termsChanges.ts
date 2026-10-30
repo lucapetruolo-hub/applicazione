@@ -35,6 +35,7 @@ export const TERMS_CHANGES: readonly TermsChange[] = [
       "Nuovo punto sul diritto di recesso dei clienti.",
       "Un lavoro non andato bene si segnala entro 7 giorni e prima di confermarlo; dopo resta la chat con il professionista, senza rimborso.",
       "Per i professionisti nuovi al massimo 3.000 € di pagamenti online non ancora sbloccati.",
+      "Il professionista può rispondere alle recensioni; il cliente può aggiornarne una dopo una segnalazione a lavoro chiuso.",
     ],
     // Prima del lancio: nessun avviso agli account di prova.
     notify: false,

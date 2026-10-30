@@ -294,6 +294,8 @@ const owned = {
     body: () => ({ text: "Contesto la decisione perché il contenuto era corretto." }),
   },
   "POST /reviews": { kind: "owned", owners: ["clientA"], body: (f) => ({ bookingId: f.bookingA, rating: 5, comment: "Recensione di un estraneo" }) },
+  "PATCH /reviews/:id": { kind: "owned", owners: ["clientA"], params: (f) => ({ id: f.reviewA }), body: () => ({ rating: 1, comment: "Aggiornata da un estraneo" }) },
+  "PUT /reviews/:id/reply": { kind: "owned", owners: ["proA"], params: (f) => ({ id: f.reviewA }), body: () => ({ reply: "Risposta di un estraneo" }) },
 };
 
 function quoteBody(f) {

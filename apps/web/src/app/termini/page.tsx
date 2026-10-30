@@ -36,7 +36,7 @@ export default function TerminiPage() {
         },
         {
           heading: "3. Per i clienti",
-          body: "Il servizio di ricerca e richiesta preventivi è gratuito. I preventivi ricevuti sono emessi dai professionisti, che ne sono gli unici responsabili: la piattaforma non garantisce prezzi, tempi o esiti dei lavori. Le recensioni possono essere pubblicate solo a seguito di lavori confermati attraverso la piattaforma, oppure dopo la chiusura di una segnalazione sul lavoro.",
+          body: "Il servizio di ricerca e richiesta preventivi è gratuito. I preventivi ricevuti sono emessi dai professionisti, che ne sono gli unici responsabili: la piattaforma non garantisce prezzi, tempi o esiti dei lavori. Le recensioni possono essere pubblicate solo a seguito di lavori confermati attraverso la piattaforma, oppure dopo la chiusura di una segnalazione sul lavoro. Il professionista può rispondere pubblicamente a ogni recensione; il cliente può aggiornare la propria recensione una sola volta, dopo una segnalazione arrivata a lavoro chiuso e finita senza accordo, e la recensione mostra la data dell'aggiornamento.",
         },
         {
           heading: "4. Per i professionisti",
