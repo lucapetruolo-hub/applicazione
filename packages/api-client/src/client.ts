@@ -147,6 +147,7 @@ import type {
   FeeReconciliation,
   SdiSandboxTestResult,
   AdminCourtesyDocumentRow,
+  AdminQueue,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
@@ -1972,6 +1973,10 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     },
 
     adminOverview: (token: string) => request<AdminOverview>("/admin/overview", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    // Coda "Da fare" (docs/changelog/2026-10-30-admin-riordino.md).
+    adminQueue: (token: string) => request<AdminQueue>("/admin/queue", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminClaimCase: (token: string, caseKey: string, claim: boolean) =>
+      request<void>(`/admin/queue/${claim ? "claim" : "release"}`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ caseKey }) }),
 
     adminTrends: (token: string) => request<AdminTrends>("/admin/trends", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 

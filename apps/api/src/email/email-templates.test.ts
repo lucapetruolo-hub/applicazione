@@ -247,6 +247,15 @@ describe("promemoria del giorno prima (docs/CHANGELOG.md §234)", () => {
     expect(email.text).toContain("/admin/numeri-professionisti");
   });
 
+  it("casi presi in scadenza: una riga per caso, link ai propri casi (riordino admin)", () => {
+    const email = renderEmail(
+      notificationEmail("ADMIN_CLAIMED_CASES_DUE", { cases: [{ title: "Contestazione in banca", who: "Paola Verdi → Marco Rossi", due: "scade oggi alle 18:00" }] }, ctx)!,
+    );
+    expect(email.subject).toBe("Un caso che hai preso scade oggi");
+    expect(email.text).toContain("Contestazione in banca, Paola Verdi → Marco Rossi: scade oggi alle 18:00.");
+    expect(email.text).toContain("/admin?chi=mie");
+  });
+
   it("consigli della settimana: cosa fare, una riga per consiglio (§372)", () => {
     const email = renderEmail(
       notificationEmail(
