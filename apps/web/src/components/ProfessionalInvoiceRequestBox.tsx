@@ -47,13 +47,14 @@ export function ProfessionalInvoiceRequestBox({ request, courtesyHref, receipt =
         </Text>
         {courtesyHref ? (
           <Link href={courtesyHref} style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 16 }}>
-            {receipt ? "Prepara la ricevuta" : "Prepara la copia per il cliente"}
+            Prepara la ricevuta
           </Link>
         ) : null}
       </XStack>
       {courtesyHref ? null : (
         <Text fontSize={13} color={brand.grafite70}>
-          {receipt ? "La ricevuta" : "La copia della fattura"} la prepari qui dopo &quot;Lavoro terminato&quot;, con l&apos;importo finale.
+          {/* Con la partita IVA la fattura la fa col suo programma (docs/changelog/2026-10-30-documenti-snelli.md). */}
+          {receipt ? "La ricevuta la prepari qui dopo \"Lavoro terminato\", con l'importo finale." : "Fai la fattura col tuo programma con questi dati."}
         </Text>
       )}
     </YStack>

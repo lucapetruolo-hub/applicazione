@@ -1399,7 +1399,10 @@ model Booking {
 // prestazione occasionale lo diamo noi, progressivo per professionista e
 // anno e sempre lo stesso per quel lavoro; per la fattura il professionista
 // scrive il numero del suo programma. Ci resta l'elenco dei documenti dati
-// ai clienti, utile per l'assistenza e le segnalazioni.
+// ai clienti, utile per l'assistenza e le segnalazioni. Dal 30/10/2026 si
+// fanno solo ricevute: chi ha la partita IVA fa la fattura col suo programma
+// (docs/changelog/2026-10-30-documenti-snelli.md); le righe INVOICE restano
+// solo per i documenti di prima.
 model CourtesyDocument {
   id                    String   @id @default(uuid())
   bookingId             String   @unique
@@ -1414,13 +1417,9 @@ model CourtesyDocument {
   pdfDownloadedAt       DateTime?
   /// Importo scritto su quel PDF: se il lavoro cambia dopo, l'admin lo vede.
   pdfTotalEurCents      Int?
-  /// Fatture: la data della fattura vera, scritta dal professionista con il numero (collaudo G-03).
-  ownDate               DateTime? @db.Date
-  /// Nome e codice fiscale del cliente scritti dal professionista, quando il cliente non ha chiesto la fattura (C-05, G-07).
+  /// Nome e codice fiscale del cliente scritti dal professionista, quando il cliente non ha dato i suoi dati (C-05, G-07).
   customerName          String?
   customerTaxCode       String?
-  /// Fatture con IVA: aliquota scelta dal professionista (22, 10, 5, 4). Null = 22 (B-04).
-  vatRatePercent        Int?
   /// Ricevute a una partita IVA: il cliente trattiene la ritenuta d'acconto del 20%. Null = sì (C-04).
   withholding           Boolean?
   createdAt             DateTime @default(now())

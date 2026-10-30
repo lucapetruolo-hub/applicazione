@@ -408,9 +408,12 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
   DAC7, docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md; voce
   solo nella tendina dell'account) con estratto del mese e riepilogo a 0 € dei mesi gratuiti (mai una
   fattura a zero). La fattura del professionista al cliente la fa lui:
-  noi diamo solo i dati chiesti dal cliente e una copia di cortesia, **mai
-  nulla all'Agenzia delle Entrate per conto del professionista**. L'estratto
-  (e a gennaio il riepilogo dell'anno dei documenti dati ai clienti, §390)
+  noi diamo solo i dati chiesti dal cliente, **mai
+  nulla all'Agenzia delle Entrate per conto del professionista**. Solo per il
+  lavoro occasionale prepariamo la ricevuta col numero dato da noi; con la
+  partita IVA nessuna copia della fattura, la fa col suo programma (decisione
+  di Luca del 30/10, docs/changelog/2026-10-30-documenti-snelli.md). L'estratto
+  (e a gennaio il riepilogo dell'anno delle ricevute, §390)
   va al commercialista solo con la spunta del professionista.
 
 ### Pacchetti di visibilità
@@ -515,7 +518,7 @@ Una riga per voce; dettaglio completo (endpoint, file, bug corretti) in
 - [x] Smistamento delle richieste: a tutti i professionisti nel raggio, senza scadenza per rispondere (docs/CHANGELOG.md §210); richieste generali spegnibili (`GENERAL_REQUESTS_ENABLED=false` su Render) e chiuse in automatico per categoria e città (§211)
 - [x] Segnalazioni di problemi sul lavoro e controversie (modello A-Z)
 - [x] Pagamento online dei lavori con Stripe (serve Stripe Connect per andare live)
-- [x] Fatture e documenti: fattura del mese delle trattenute, fatture dell'abbonamento, estratto mensile (anche al commercialista), fattura chiesta dal cliente al professionista, copia di cortesia con numero della ricevuta (elenco con il totale e il riepilogo dell'anno per il commercialista, e in Admin → Documenti ai clienti), voce "Documenti" nel menu di ogni lavoro per professionista e cliente, PDF fatti dal server, quadratura con Stripe (invio allo SdI con `OPENAPI_TOKEN_SDI`, prova in Finanza)
+- [x] Fatture e documenti: fattura del mese delle trattenute, fatture dell'abbonamento, estratto mensile (anche al commercialista), fattura chiesta dal cliente al professionista, ricevuta per il lavoro occasionale col nostro numero (elenco con il totale e il riepilogo dell'anno per il commercialista, e in Admin → Documenti ai clienti), voce "Documenti" nel menu di ogni lavoro per professionista e cliente, PDF fatti dal server, quadratura con Stripe (invio allo SdI con `OPENAPI_TOKEN_SDI`, prova in Finanza)
 - [x] Profilo creato da un operatore al telefono (`/admin/professionisti` → link `/completa-profilo`; fuori dalla ricerca finché non è confermato, `invitePendingAt`)
 - [x] Dal problema scritto ai professionisti adatti: dizionario + IA nei dubbi, avviso di sicurezza, domanda cliccabile, "Ce ne occupiamo noi", admin "Mestieri richiesti" e "Richieste da seguire" e scelta di fino a 5 professionisti (docs/CHANGELOG.md §392, §393)
 - [x] Verifica dei professionisti: codice fiscale e partita IVA controllati (formato, coerenza con nome e data, Openapi); documento + selfie con Didit obbligatori prima del primo preventivo, danno il badge "Verificato"; `/admin/verifiche` solo per guardare, ricontrollare e togliere il badge (docs/CHANGELOG.md §253-§255)

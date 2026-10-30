@@ -137,9 +137,11 @@ async function seed() {
     },
   });
   await prisma.jobPayment.create({ data: { bookingId: bookingCompleted.id, paymentMethod: "DIRECT", grossAmountEurCents: 10000, netAmountEurCents: 10000 } });
-  // Copia del documento già scaricata da proA: il cliente la può aprire (§386).
+  // Ricevuta già scaricata da proA, che lavora in modo occasionale: il cliente la può aprire (§386).
+  // Con la partita IVA la ricevuta sul sito non c'è (docs/changelog/2026-10-30-documenti-snelli.md).
+  await prisma.professionalFiscalProfile.create({ data: { professionalProfileId: profileA.id, entityType: "PRIVATE_INDIVIDUAL" } });
   await prisma.courtesyDocument.create({
-    data: { bookingId: bookingCompleted.id, professionalProfileId: profileA.id, kind: "INVOICE", year: 2026, ownNumber: "1/A", ownDate: new Date("2026-10-01"), customerName: "Cliente A", pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000 },
+    data: { bookingId: bookingCompleted.id, professionalProfileId: profileA.id, kind: "RECEIPT", year: 2026, number: 1, customerName: "Cliente A", pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000 },
   });
 
   // Fattura delle trattenute di proA (§378).

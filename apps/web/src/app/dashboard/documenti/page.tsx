@@ -155,7 +155,7 @@ export default function DocumentsPage() {
 
             {data.missingDocuments?.length ? <MissingDocuments rows={data.missingDocuments} /> : null}
 
-            <ClientDocuments token={token ?? ""} documents={data.clientDocuments ?? []} />
+            {data.receipts || data.clientDocuments?.length ? <ClientDocuments token={token ?? ""} documents={data.clientDocuments ?? []} /> : null}
 
             {token ? <AccountantCard token={token} initial={data.accountant} /> : null}
           </>
@@ -166,22 +166,19 @@ export default function DocumentsPage() {
 }
 
 /**
- * Lavori pagati online ancora senza documento al cliente
+ * Lavori pagati online ancora senza ricevuta (solo senza partita IVA)
  * (docs/changelog/2026-10-30-documenti-migliorie.md): una riga per lavoro che
  * porta alla pagina dove si prepara.
  */
 function MissingDocuments({ rows }: { rows: MissingClientDocument[] }) {
-  const receipt = rows[0]?.receipt ?? false;
   const count = rows.length === 1 ? "1 lavoro pagato online" : `${rows.length} lavori pagati online`;
   return (
     <Surface borderRadius={radiusDoc} padding="$4" gap="$2" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce}>
       <Text tag="h2" fontSize={18} fontWeight="800" color={brand.grafite}>
-        {count} senza {receipt ? "ricevuta" : "il numero della tua fattura"}
+        {count} senza ricevuta
       </Text>
       <Text fontSize={16} color={brand.grafite70}>
-        {receipt
-          ? "Prepara la ricevuta e dalla al cliente: ti serve per la dichiarazione dei redditi."
-          : "Fai la fattura col tuo programma e scrivi qui numero e data: così il riepilogo per il commercialista torna."}
+        Prepara la ricevuta e dalla al cliente: ti serve per la dichiarazione dei redditi.
       </Text>
       <YStack>
         {rows.map((row, index) => (
@@ -198,7 +195,7 @@ function MissingDocuments({ rows }: { rows: MissingClientDocument[] }) {
                 ) : null}
               </YStack>
               <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
-                {receipt ? "Prepara →" : "Scrivi il numero →"}
+                Prepara →
               </Text>
             </XStack>
           </Link>
@@ -209,7 +206,7 @@ function MissingDocuments({ rows }: { rows: MissingClientDocument[] }) {
 }
 
 /**
- * Ricevute e copie di fattura date ai clienti (docs/CHANGELOG.md §381), col
+ * Ricevute date ai clienti (docs/CHANGELOG.md §381), col
  * totale dell'anno: le ricevute per prestazione occasionale vanno nella
  * dichiarazione dei redditi. Se l'importo è cambiato dopo il PDF, lo dice.
  */
@@ -219,11 +216,11 @@ function ClientDocuments({ token, documents }: { token: string; documents: Court
   return (
     <YStack gap="$3">
       <Text tag="h2" fontFamily="$heading" fontSize={22} fontWeight="800" color={brand.grafite}>
-        Documenti dati ai clienti
+        Ricevute date ai clienti
       </Text>
       {documents.length === 0 ? (
         <Text fontSize={16} color={brand.grafite70}>
-          Le ricevute e le copie delle fatture che prepari per i clienti, dalla scheda del lavoro dopo &quot;Lavoro terminato&quot;, le trovi qui.
+          Le ricevute che prepari per i clienti, dalla scheda del lavoro dopo &quot;Lavoro terminato&quot;, le trovi qui.
         </Text>
       ) : (
         <>
@@ -231,7 +228,7 @@ function ClientDocuments({ token, documents }: { token: string; documents: Court
             {totals.map((row) => (
               <Surface key={`${row.year}-${row.kind}`} borderRadius={radiusDoc} padding="$4" gap={2} flexGrow={1} flexBasis={220}>
                 <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase" letterSpacing={0.5}>
-                  {row.kind === "RECEIPT" ? "Ricevute" : "Fatture"} {row.year}
+                  Ricevute {row.year}
                 </Text>
                 <Text fontFamily="$heading" fontSize={26} fontWeight="800" color={brand.grafite} fontVariant={["tabular-nums"]}>
                   {formatEurCents(row.totalEurCents)}
@@ -243,7 +240,7 @@ function ClientDocuments({ token, documents }: { token: string; documents: Court
               </Surface>
             ))}
           </XStack>
-          {totals.some((row) => row.kind === "RECEIPT") ? (
+          {totals.length > 0 ? (
             <Text fontSize={16} color={brand.grafite70}>
               Il totale delle ricevute dell&apos;anno va nella dichiarazione dei redditi: scarica il riepilogo per il tuo commercialista, oppure scrivi qui sotto la sua email e spunta &quot;Mandagli l&apos;estratto&quot;: a gennaio gli arriva anche il riepilogo.
             </Text>
@@ -357,7 +354,7 @@ function AccountantCard({ token, initial }: { token: string; initial: DocumentsO
         <YStack gap="$2">
           {[
             ["Ogni mese", "l'estratto, con i pagamenti dei clienti, le nostre trattenute e i bonifici, più le nostre fatture del mese in PDF."],
-            ["A gennaio", "il riepilogo dell'anno delle ricevute e delle fatture che hai dato ai clienti."],
+            ["A gennaio", "il riepilogo dell'anno delle ricevute che hai dato ai clienti, se lavori senza partita IVA."],
             ["Quando serve", "i dati DAC7 che comunichiamo all'Agenzia delle Entrate, da Fisco e pagamenti → Dati DAC7."],
             ["Da te", "le fatture che fai col tuo programma e le spese della tua attività: quelle noi non le vediamo."],
           ].map(([when, what]) => (

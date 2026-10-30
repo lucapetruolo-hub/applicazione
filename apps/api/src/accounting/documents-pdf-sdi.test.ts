@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { NotFoundException } from "@nestjs/common";
+import { ConflictException, NotFoundException } from "@nestjs/common";
 import { courtesyAmountChanged, courtesyDocumentLabel, courtesyTotalEurCents, courtesyYearCsv, courtesyYearTotals, type CourtesyDocumentSummary, type CourtesyYearSummary, type MonthlyStatement } from "@professionisti/shared";
 import { courtesyDocumentSummary } from "./courtesy-documents";
 import { pdfText, renderDocumentPdf } from "./document-pdf";
@@ -93,10 +93,8 @@ describe("PDF dei documenti", () => {
       issuer: party,
       customer: party,
       date: "2026-10-20T10:00:00Z",
-      ownDate: null,
       lines: [{ description: "Pulizie", amountEurCents: 18000 }],
       totalEurCents: 18000,
-      vat: null,
       withholding: { applies: true, amountEurCents: 3600, netEurCents: 14400 },
       paidHow: null,
       notes: [],
@@ -185,41 +183,26 @@ describe("numero della copia di cortesia", () => {
     expect((await service.forProfessional("u1", "b1")).number).toBe("5/2026");
   });
 
-  it("per la fattura numero e data sono quelli del professionista, e si salvano", async () => {
+  it("con la partita IVA niente copia: la fattura la fa il professionista col suo programma", async () => {
     const { service, prisma } = build("SOLE_PROPRIETOR", null, null);
-    const copy = await service.forProfessional("u1", "b1");
-    expect(copy.number).toBeNull();
-    expect(copy.missing).toEqual(["il numero della tua fattura", "la data della tua fattura"]);
-    expect(prisma.courtesyDocument.aggregate).not.toHaveBeenCalled();
-    await service.saveDetails("u1", "b1", { number: " 12/A ", date: "2026-10-21", vatRatePercent: 10 });
-    expect(prisma.courtesyDocument.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ create: expect.objectContaining({ kind: "INVOICE", ownNumber: "12/A", ownDate: new Date("2026-10-21T00:00:00Z"), year: 2026 }) }),
-    );
-    // Il forfettario non applica l'IVA: l'aliquota non si salva.
-    expect(prisma.courtesyDocument.upsert.mock.calls[0]![0].create).not.toHaveProperty("vatRatePercent");
-  });
-
-  it("senza numero o data della fattura il PDF non si scarica (D-14, G-03)", async () => {
-    const { service, prisma } = build("SOLE_PROPRIETOR", { number: null, year: 2026, ownNumber: "7", ownDate: null }, null);
-    await expect(service.forProfessionalPdf("u1", "b1")).rejects.toThrow("Prima di scaricare il documento scrivi la data della tua fattura.");
+    await expect(service.forProfessional("u1", "b1")).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.forProfessionalPdf("u1", "b1")).rejects.toThrow("fai col tuo programma");
     expect(prisma.courtesyDocument.upsert).not.toHaveBeenCalled();
   });
 
   it("scaricando il PDF ci segniamo quando e con che importo", async () => {
-    const { service, prisma } = build("SOLE_PROPRIETOR", { number: null, year: 2026, ownNumber: "7", ownDate: new Date("2026-10-21T00:00:00Z") }, null);
+    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { number: 2, year: 2026, ownNumber: null }, null);
     const copy = await service.forProfessionalPdf("u1", "b1");
-    // La data è quella della fattura vera, le righe sono le voci del lavoro terminato (B-03, G-03).
-    expect(copy.date).toBe("2026-10-21T00:00:00.000Z");
+    // Le righe sono le voci del lavoro terminato (B-03).
     expect(copy.lines).toEqual([
       { description: "Manodopera", amountEurCents: 10000 },
       { description: "Materiali", amountEurCents: 2000 },
     ]);
     expect(copy.customer.name).toBe("Anna Bianchi");
-    expect(copy.hints).toContain("Per la fattura elettronica a un privato serve il suo codice fiscale: chiediglielo e scrivilo qui sotto.");
     expect(copy.paidHow).toBe("Pagato direttamente al professionista");
     expect(prisma.courtesyDocument.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        create: expect.objectContaining({ kind: "INVOICE", year: 2026, ownNumber: "7", pdfTotalEurCents: 12000, pdfDownloadedAt: expect.any(Date) }),
+        create: expect.objectContaining({ kind: "RECEIPT", year: 2026, pdfTotalEurCents: 12000, pdfDownloadedAt: expect.any(Date) }),
         update: { pdfDownloadedAt: expect.any(Date), pdfTotalEurCents: 12000 },
       }),
     );
@@ -232,22 +215,13 @@ describe("numero della copia di cortesia", () => {
     expect(prisma.courtesyDocument.upsert).not.toHaveBeenCalled();
   });
 
-  it("ricevuta: diciture, data del pagamento e IVA scorporata per voce con l'aliquota scelta", async () => {
+  it("ricevuta: diciture, promemoria del bollo e data del pagamento", async () => {
     const receipt = build("PRIVATE_INDIVIDUAL", null, null);
     const copy = await receipt.service.forProfessional("u1", "b1");
     expect(copy.notes).toContain("Operazione fuori campo IVA ai sensi dell'art. 5 del DPR n. 633/1972.");
     expect(copy.notes).toContain("Marca da bollo da 2 € sull'originale (importo oltre 77,47 €).");
     expect(copy.date).toBe("2026-10-20T10:00:00.000Z");
     expect(copy.withholding).toBeNull();
-
-    const vat = build("SOLE_PROPRIETOR", { number: null, year: 2026, ownNumber: "7", ownDate: null, vatRatePercent: 10 }, null);
-    vat.prisma.booking.findUnique.mockResolvedValueOnce({
-      ...(await vat.prisma.booking.findUnique()),
-      professionalProfile: { businessName: "Mario", fiscalProfile: { entityType: "SOLE_PROPRIETOR", fiscalFirstName: "Mario", fiscalLastName: "Rossi", chargesVat: true } },
-    });
-    const invoice = await vat.service.forProfessional("u1", "b1");
-    expect(invoice.vat).toEqual({ taxableEurCents: 10909, vatEurCents: 1091, ratePercent: 10 });
-    expect(invoice.lines.reduce((sum, line) => sum + line.amountEurCents, 0)).toBe(10909);
   });
 
   it("ricevuta a una partita IVA: ritenuta del 20% salvo spunta tolta, niente codice destinatario (C-01, C-04)", async () => {
@@ -271,21 +245,21 @@ describe("numero della copia di cortesia", () => {
     await expect(missing.service.forAdmin("b1", "admin-1")).rejects.toThrow("Documento non trovato.");
     expect(missing.prisma.courtesyDocument.upsert).not.toHaveBeenCalled();
 
-    const { service, prisma, audit } = build("PRIVATE_INDIVIDUAL", { id: "d1", number: 2, year: 2026, ownNumber: null }, 9);
+    const { service, prisma, audit } = build("PRIVATE_INDIVIDUAL", { id: "d1", kind: "RECEIPT", number: 2, year: 2026, ownNumber: null }, 9);
     expect((await service.forAdmin("b1", "admin-1")).number).toBe("2/2026");
     expect(prisma.courtesyDocument.upsert).not.toHaveBeenCalled();
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ entityType: "CourtesyDocument", entityId: "b1", fieldName: "read", changedByUserId: "admin-1" }));
   });
 
-  it("ricerca per numero della ricevuta, numero della fattura o nome", async () => {
+  it("ricerca per numero della ricevuta o nome, solo ricevute", async () => {
     const { service, prisma } = build("PRIVATE_INDIVIDUAL", null, null);
     await service.adminList({ q: "4/2026" });
     const where = prisma.courtesyDocument.findMany.mock.calls[0]![0].where;
-    expect(where.OR).toContainEqual({ kind: "RECEIPT", number: 4, year: 2026 });
-    expect(where.OR).toContainEqual({ ownNumber: { contains: "4/2026", mode: "insensitive" } });
-    await service.adminList({ q: "Rossi", kind: "INVOICE", year: 2026 });
+    expect(where.kind).toBe("RECEIPT");
+    expect(where.OR).toContainEqual({ number: 4, year: 2026 });
+    await service.adminList({ q: "Rossi", year: 2026 });
     const second = prisma.courtesyDocument.findMany.mock.calls[1]![0].where;
-    expect(second).toMatchObject({ kind: "INVOICE", year: 2026 });
+    expect(second).toMatchObject({ kind: "RECEIPT", year: 2026 });
     expect(second.OR).not.toContainEqual(expect.objectContaining({ number: expect.anything() }));
   });
 
@@ -343,9 +317,7 @@ describe("riepilogo dell'anno per il commercialista", () => {
     pdfDownloadedAt: null,
     pdfTotalEurCents: null,
     customerName: null,
-    ownDate: null,
     customerTaxCode: null,
-    vatRatePercent: null,
     withholding: null,
     ...over,
     booking: {
@@ -359,7 +331,7 @@ describe("riepilogo dell'anno per il commercialista", () => {
       ...booking,
     },
   });
-  function build(documents: unknown[], fiscal: Record<string, unknown> = { entityType: "SOLE_PROPRIETOR", chargesVat: true, businessName: null, fiscalFirstName: "Mario", fiscalLastName: "Rossi" }) {
+  function build(documents: unknown[], fiscal: Record<string, unknown> = { entityType: "PRIVATE_INDIVIDUAL", chargesVat: false, businessName: null, fiscalFirstName: "Mario", fiscalLastName: "Rossi" }) {
     const prisma = {
       professionalProfile: { findUnique: vi.fn().mockResolvedValue({ businessName: "Mario idraulico", fiscalProfile: fiscal }) },
       courtesyDocument: { findMany: vi.fn().mockResolvedValue(documents) },
@@ -368,34 +340,31 @@ describe("riepilogo dell'anno per il commercialista", () => {
     return { service: new CourtesyCopyService(prisma as never, invoices as never, { record: vi.fn() } as never, {} as never), prisma };
   }
 
-  it("ricevute in ordine di numero, fatture con l'IVA, bollo e clienti con partita IVA", async () => {
+  it("ricevute in ordine di numero, bollo e clienti con partita IVA", async () => {
     const { service, prisma } = build([
-      doc({ bookingId: "r2", number: 2 }, { jobPayment: paid(10000), quote: { invoiceRequest: vatRequest, guidedRequest: { category: { label: "Elettricista" } } } }),
-      doc({ bookingId: "f1", kind: "INVOICE", ownNumber: "12/A", ownDate: new Date("2026-07-11T00:00:00Z"), customerTaxCode: "BNCNNA80A41H501X", pdfTotalEurCents: 15000 }, { jobPayment: paid(12200), professionalCompletedAt: new Date("2026-07-10T22:30:00Z") }),
+      doc({ bookingId: "r2", number: 2, pdfTotalEurCents: 10000 }, { jobPayment: paid(10000), quote: { invoiceRequest: vatRequest, guidedRequest: { category: { label: "Elettricista" } } } }),
+      doc({ bookingId: "r3", number: 3, pdfTotalEurCents: 15000 }, { jobPayment: paid(12200) }),
       doc({ bookingId: "r1", number: 1 }, { jobPayment: paid(5000) }),
     ]);
     const summary = await service.yearSummaryForProfessional("user-1", 2026);
 
-    expect(prisma.courtesyDocument.findMany.mock.calls[0]![0].where).toEqual({ professionalProfileId: "pro-1", year: 2026, booking: { status: "COMPLETED" } });
+    expect(prisma.courtesyDocument.findMany.mock.calls[0]![0].where).toEqual({ professionalProfileId: "pro-1", year: 2026, kind: "RECEIPT", booking: { status: "COMPLETED" } });
     expect(summary.who).toBe("Mario Rossi");
-    expect(summary.receipts.map((r) => r.number)).toEqual(["1/2026", "2/2026"]);
-    expect(summary.receipts[1]).toMatchObject({ customerName: "Bar Sport S.r.l.", customerHasVatNumber: true, customerTaxId: "12345678903", stampDuty: true, vatEurCents: null, totalEurCents: 10000, withholdingEurCents: 2000 });
+    expect(summary.receipts.map((r) => r.number)).toEqual(["1/2026", "2/2026", "3/2026"]);
+    expect(summary.receipts[1]).toMatchObject({ customerName: "Bar Sport S.r.l.", customerHasVatNumber: true, customerTaxId: "12345678903", stampDuty: true, totalEurCents: 10000, withholdingEurCents: 2000 });
     expect(summary.receipts[0]).toMatchObject({ customerName: "Anna Bianchi", customerHasVatNumber: false, stampDuty: false, withholdingEurCents: null });
-    // La fattura di chi applica l'IVA: niente bollo, l'IVA dentro il totale. L'importo è quello del PDF
-    // dato al cliente, quello di oggi a parte (G-10); la data è quella della fattura vera (G-03).
-    expect(summary.invoices[0]).toMatchObject({ number: "12/A", totalEurCents: 15000, currentEurCents: 12200, vatEurCents: 2705, stampDuty: false, amountChanged: true, date: "2026-07-11T00:00:00.000Z", customerTaxId: "BNCNNA80A41H501X" });
+    // L'importo è quello del PDF dato al cliente, quello di oggi a parte (G-10).
+    expect(summary.receipts[2]).toMatchObject({ totalEurCents: 15000, currentEurCents: 12200, amountChanged: true });
 
     const csv = courtesyYearCsv(summary);
     const lines = csv.replace(/^\ufeff/, "").trim().split("\r\n");
-    expect(lines[0]).toBe("Documento;Numero;Data;Cliente;Codice fiscale o partita IVA;Cliente con partita IVA;Data di incasso;Lavoro;Importo;di cui IVA;Ritenuta d'acconto;Marca da bollo;Importo di oggi");
-    expect(lines[2]).toBe("Ricevuta per prestazione occasionale;2/2026;2026-06-02;Bar Sport S.r.l.;12345678903;Sì;2026-06-02;Elettricista;100,00;;20,00;Sì;");
-    expect(lines[3]).toBe("Copia della fattura;12/A;2026-07-11;Anna Bianchi;BNCNNA80A41H501X;No;2026-06-02;Idraulico;150,00;27,05;;No;122,00");
+    expect(lines[0]).toBe("Documento;Numero;Data;Cliente;Codice fiscale o partita IVA;Cliente con partita IVA;Data di incasso;Lavoro;Importo;Ritenuta d'acconto;Marca da bollo;Importo di oggi");
+    expect(lines[2]).toBe("Ricevuta per prestazione occasionale;2/2026;2026-06-02;Bar Sport S.r.l.;12345678903;Sì;2026-06-02;Elettricista;100,00;20,00;Sì;");
 
     const model = courtesyYearPdfModel(summary, new Date("2027-01-15T10:00:00Z"));
     const texts = JSON.stringify(model.blocks);
-    expect(model.title).toBe("Documenti dati ai clienti nel 2026");
+    expect(model.title).toBe("Ricevute del 2026");
     expect(texts).toContain("Totale ricevute");
-    expect(texts).toContain("150,00");
     expect(texts.replace(/\u00a0|\u202f/g, " ")).toMatch(/Ritenute d'acconto trattenute dai clienti con partita IVA: 20,00\s€/);
     expect(texts).toContain("marca da bollo");
     expect(texts).toContain("1 documento ha l'importo cambiato dopo il PDF");
@@ -403,13 +372,7 @@ describe("riepilogo dell'anno per il commercialista", () => {
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
   });
 
-  it("forfettario: niente IVA e bollo anche sulla fattura; anno senza documenti", async () => {
-    const { service } = build([doc({ bookingId: "f1", kind: "INVOICE" }, { jobPayment: paid(9000) })], { entityType: "SOLE_PROPRIETOR", chargesVat: false, businessName: "Ditta Rossi", fiscalFirstName: null, fiscalLastName: null });
-    const summary = await service.yearSummaryForProfessional("user-1", 2026);
-    expect(summary.who).toBe("Ditta Rossi");
-    expect(summary.invoices[0]).toMatchObject({ number: null, vatEurCents: null, stampDuty: true });
-    expect(JSON.stringify(courtesyYearPdfModel(summary).blocks)).not.toContain("Ricevute per prestazione occasionale");
-
+  it("anno senza ricevute", async () => {
     await expect(build([]).service.yearSummaryForProfessional("user-1", 2025)).rejects.toBeInstanceOf(NotFoundException);
   });
 });
@@ -436,11 +399,10 @@ describe("riepilogo dell'anno al commercialista a gennaio", () => {
     totalEurCents: 5000,
     currentEurCents: 5000,
     withholdingEurCents: null,
-    vatEurCents: null,
     stampDuty: false,
     amountChanged: false,
   };
-  const yearly = (receipts: (typeof row)[]): CourtesyYearSummary => ({ year: 2026, who: "Mario Rossi", receipts, invoices: [] });
+  const yearly = (receipts: (typeof row)[]): CourtesyYearSummary => ({ year: 2026, who: "Mario Rossi", receipts });
 
   const invoiceView = {
     id: "i",
@@ -512,14 +474,13 @@ describe("riepilogo dell'anno al commercialista a gennaio", () => {
   });
 
   it("testo dell'email con e senza estratto", () => {
-    const both = accountantStatementEmail("Mario Rossi", statement, { ...yearly([row]), invoices: [{ ...row, number: "12/A", totalEurCents: 12200, vatEurCents: 2200 }] });
-    expect(both.paragraphs.join(" ")).toContain("C'è anche il **riepilogo del 2026**: i documenti dati ai clienti nell'anno (le ricevute per prestazione occasionale e le copie delle fatture), in PDF e nel foglio di calcolo.");
+    const both = accountantStatementEmail("Mario Rossi", statement, yearly([row]));
+    expect(both.paragraphs.join(" ")).toContain("C'è anche il **riepilogo del 2026**: le ricevute per prestazione occasionale date ai clienti nell'anno, in PDF e nel foglio di calcolo.");
     expect(both.details).toContainEqual({ label: "Ricevute del 2026", value: "50,00 €" });
-    expect(both.details).toContainEqual({ label: "Copie delle fatture del 2026", value: "122,00 €" });
 
     const alone = accountantStatementEmail("Mario Rossi", null, yearly([row]));
     expect(alone.title).toBe("Riepilogo del 2026");
-    expect(alone.paragraphs).toEqual(["Le mandiamo il **riepilogo del 2026** di **Mario Rossi**, come ci ha chiesto: i documenti dati ai clienti nell'anno (le ricevute per prestazione occasionale), in PDF e nel foglio di calcolo. A dicembre non ci sono stati movimenti, quindi niente estratto del mese."]);
+    expect(alone.paragraphs).toEqual(["Le mandiamo il **riepilogo del 2026** di **Mario Rossi**, come ci ha chiesto: le ricevute per prestazione occasionale date ai clienti nell'anno, in PDF e nel foglio di calcolo. A dicembre non ci sono stati movimenti, quindi niente estratto del mese."]);
     expect(alone.details).toEqual([{ label: "Ricevute del 2026", value: "50,00 €" }]);
   });
 });
@@ -563,7 +524,7 @@ describe("documenti da sistemare a dicembre", () => {
     const service = new CourtesyCopyService(prisma as never, {} as never, {} as never, notifications as never);
 
     expect(await service.remindDocumentsToFix(new Date("2026-12-15T08:00:00Z"))).toBe(1);
-    expect(prisma.courtesyDocument.findMany.mock.calls[0]![0].where).toEqual({ year: 2026, booking: { status: "COMPLETED" } });
+    expect(prisma.courtesyDocument.findMany.mock.calls[0]![0].where).toEqual({ year: 2026, kind: "RECEIPT", booking: { status: "COMPLETED" } });
     expect(prisma.professionalProfile.findMany.mock.calls[0]![0].where).toEqual({ id: { in: ["p1", "p3"] }, user: { deletedAt: null } });
     expect(notifications.notify).toHaveBeenCalledTimes(1);
     expect(notifications.notify).toHaveBeenCalledWith("u1", "CLIENT_DOCUMENTS_TO_FIX", {

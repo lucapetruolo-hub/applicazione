@@ -1708,10 +1708,9 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       request<PlatformInvoiceAdminRow>(`/admin/invoices/${encodeURIComponent(id)}/resend`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     /** Admin → Documenti ai clienti (docs/CHANGELOG.md §380). */
-    adminCourtesyDocuments: (token: string, filter: { q?: string; kind?: "RECEIPT" | "INVOICE"; year?: number; bookingId?: string } = {}) => {
+    adminCourtesyDocuments: (token: string, filter: { q?: string; year?: number; bookingId?: string } = {}) => {
       const params = new URLSearchParams();
       if (filter.q?.trim()) params.set("q", filter.q.trim());
-      if (filter.kind) params.set("kind", filter.kind);
       if (filter.year) params.set("year", String(filter.year));
       if (filter.bookingId) params.set("bookingId", filter.bookingId);
       const query = params.toString();

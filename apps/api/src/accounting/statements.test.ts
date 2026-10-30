@@ -131,7 +131,7 @@ describe("lavori pagati online senza documento al cliente", () => {
     const invoices = { profileIdOf: vi.fn().mockResolvedValue("pro-1") };
     const service = new CourtesyCopyService(prisma as never, invoices as never, {} as never, {} as never);
     expect(await service.missingForProfessional("user-1")).toEqual([
-      { bookingId: "b1", date: "2026-10-02T09:00:00.000Z", jobLabel: "Pulizie", customerName: "Anna Bianchi", amountEurCents: 15000, receipt: true },
+      { bookingId: "b1", date: "2026-10-02T09:00:00.000Z", jobLabel: "Pulizie", customerName: "Anna Bianchi", amountEurCents: 15000 },
     ]);
     const where = prisma.booking.findMany.mock.calls[0]![0].where;
     expect(where).toMatchObject({ professionalProfileId: "pro-1", status: "COMPLETED" });

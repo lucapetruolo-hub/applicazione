@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { COURTESY_VAT_RATES, WITHHOLDING_RATE_PERCENT, courtesyAmountChanged, courtesyDetailsSchema, type CourtesyCopyView, type CourtesyDetailsInput, type CourtesyVatRate } from "@professionisti/shared";
+import { WITHHOLDING_RATE_PERCENT, courtesyAmountChanged, courtesyDetailsSchema, type CourtesyCopyView, type CourtesyDetailsInput } from "@professionisti/shared";
 import { Button, Field, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { ConsentCheckbox } from "@/components/ConsentCheckbox";
-import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AmountRow, DocumentPage, LoadingDocument, NoteBox, PartyBoxes, PdfButton, eur } from "../../_components/DocumentParts";
@@ -15,27 +14,13 @@ function day(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Rome" });
 }
 
-/** "2026-10-31" → "31/10/2026". */
-function dayOfInput(value: string): string {
-  const [year, month, date] = value.split("-");
-  return year && month && date ? `${date}/${month}/${year}` : "";
-}
-
-/** Oggi in ora italiana, per il massimo del campo data ("2026-10-30"). */
-function todayIso(): string {
-  return new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
-}
-
-/** Quello che il professionista scrive sulla copia, come lo tiene la pagina. */
-type Draft = { number: string; date: string; customerName: string; customerTaxCode: string; vatRatePercent: CourtesyVatRate; withholding: boolean };
+/** Quello che il professionista scrive sulla ricevuta, come lo tiene la pagina. */
+type Draft = { customerName: string; customerTaxCode: string; withholding: boolean };
 
 function draftOf(copy: CourtesyCopyView): Draft {
   return {
-    number: copy.kind === "INVOICE" ? (copy.number ?? "") : "",
-    date: copy.ownDate ?? "",
     customerName: copy.customerFields?.name ?? "",
     customerTaxCode: copy.customerFields?.taxCode ?? "",
-    vatRatePercent: copy.vat?.ratePercent ?? 22,
     withholding: copy.withholding?.applies ?? true,
   };
 }
@@ -44,25 +29,20 @@ function draftOf(copy: CourtesyCopyView): Draft {
 function changesOf(copy: CourtesyCopyView, draft: Draft): CourtesyDetailsInput {
   const saved = draftOf(copy);
   const input: CourtesyDetailsInput = {};
-  if (copy.kind === "INVOICE" && draft.number.trim() !== saved.number) input.number = draft.number.trim();
-  if (copy.kind === "INVOICE" && draft.date !== saved.date) input.date = draft.date;
   if (copy.customerFields && draft.customerName.trim() !== saved.customerName) input.customerName = draft.customerName.trim();
   if (copy.customerFields && draft.customerTaxCode.trim().toUpperCase() !== saved.customerTaxCode) input.customerTaxCode = draft.customerTaxCode.trim().toUpperCase();
-  if (copy.vat && draft.vatRatePercent !== saved.vatRatePercent) input.vatRatePercent = draft.vatRatePercent;
   if (copy.withholding && draft.withholding !== saved.withholding) input.withholding = draft.withholding;
   return input;
 }
 
-const dateInputStyle = { height: 50, padding: "0 12px", borderRadius: radiusDoc, border: `1px solid ${brand.bordoCampo}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite, background: brand.calce, width: "100%" };
-
 /**
- * Copia di cortesia del documento del lavoro (decisione dell'utente del
- * 27/10/2026, docs/CHANGELOG.md §378): la fattura vera la fa il
- * professionista col suo programma, la ricevuta per prestazione occasionale
- * la firma lui. Noi non mandiamo nulla all'Agenzia delle Entrate. Dopo il
- * collaudo del 29/10/2026 (docs/changelog/2026-10-30-documenti-fiscali.md)
- * si prepara solo a lavoro terminato e prima di scaricarla si scrivono
- * numero e data della fattura, il nome del cliente, l'aliquota e la ritenuta.
+ * Ricevuta per prestazione occasionale (decisione dell'utente del
+ * 27/10/2026, docs/CHANGELOG.md §378): la firma il professionista, noi non
+ * mandiamo nulla all'Agenzia delle Entrate. Si prepara solo a lavoro
+ * terminato, con il nome del cliente e la ritenuta
+ * (docs/changelog/2026-10-30-documenti-fiscali.md). Chi ha la partita IVA fa
+ * la fattura col suo programma e qui trova solo un avviso
+ * (docs/changelog/2026-10-30-documenti-snelli.md).
  */
 export default function CourtesyCopyPage() {
   const { bookingId } = useParams<{ bookingId: string }>();
@@ -83,7 +63,8 @@ export default function CourtesyCopyPage() {
       .catch((e) => {
         setCopy(null);
         const message = e instanceof Error ? e.message : "Non riusciamo a preparare il documento.";
-        setError({ message, notYet: /Lavoro terminato/.test(message) });
+        // Prima di "Lavoro terminato", o con la partita IVA: un avviso, non un errore.
+        setError({ message, notYet: /Lavoro terminato|partita IVA/.test(message) });
       });
   }, [token, bookingId]);
 
@@ -114,7 +95,7 @@ export default function CourtesyCopyPage() {
   if (copy === undefined) return <LoadingDocument />;
   if (!copy || !draft) {
     return (
-      <DocumentPage back={back} title="Documento per il cliente">
+      <DocumentPage back={back} title="Ricevuta per il cliente">
         {error?.notYet ? (
           <NoteBox>
             <Text fontSize={16} color={brand.grafite} role="status">
@@ -133,15 +114,12 @@ export default function CourtesyCopyPage() {
     );
   }
 
-  const receipt = copy.kind === "RECEIPT";
   const amountChanged = courtesyAmountChanged(copy.pdfTotalEurCents ?? null, copy.totalEurCents);
   const set = (patch: Partial<Draft>) => {
     setDraft({ ...draft, ...patch });
     setFieldError(null);
   };
   // L'anteprima segue subito quello che scrive, prima di salvare.
-  const shownNumber = (receipt ? copy.number : draft.number.trim()) || "______";
-  const shownDate = receipt ? day(copy.date) : dayOfInput(draft.date) || "______";
   const customer = copy.customerFields
     ? {
         name: draft.customerName.trim(),
@@ -152,22 +130,16 @@ export default function CourtesyCopyPage() {
     : copy.customer;
   const withholding = copy.withholding && draft.withholding && copy.totalEurCents !== null ? copy.withholding : null;
   const withholdingAmount = withholding && copy.totalEurCents !== null ? Math.round((copy.totalEurCents * WITHHOLDING_RATE_PERCENT) / 100) : 0;
-  const hasFields = !receipt || !!copy.customerFields || !!copy.withholding;
-  // Cosa manca ancora, tenendo conto di quello appena scritto e non ancora salvato.
-  const written: Record<string, boolean> = {
-    "il numero della tua fattura": !!draft.number.trim(),
-    "la data della tua fattura": !!draft.date,
-    "il nome del cliente": !!customer.name,
-  };
+  const hasFields = !!copy.customerFields || !!copy.withholding;
+  // Cosa manca ancora, tenendo conto del nome appena scritto e non ancora salvato.
+  const nameMissing = "il nome del cliente";
   const missing = [
-    ...copy.missing.filter((item) => !written[item]),
-    ...Object.entries(written)
-      .filter(([item, ok]) => !ok && !copy.missing.includes(item) && (item === "il nome del cliente" ? !!copy.customerFields : !receipt))
-      .map(([item]) => item),
+    ...copy.missing.filter((item) => item !== nameMissing || !customer.name),
+    ...(copy.customerFields && !customer.name && !copy.missing.includes(nameMissing) ? [nameMissing] : []),
   ];
 
   return (
-    <DocumentPage back={back} title={receipt ? "Ricevuta per prestazione occasionale" : "Copia di cortesia della fattura"}>
+    <DocumentPage back={back} title="Ricevuta per prestazione occasionale">
       <div data-print-hide>
         <YStack gap="$3">
           {/* L'importo è cambiato dopo il PDF scaricato, per esempio per un rimborso (docs/CHANGELOG.md §381). */}
@@ -182,13 +154,11 @@ export default function CourtesyCopyPage() {
           ) : null}
           <NoteBox>
             <Text fontSize={16} color={brand.grafite}>
-              {receipt
-                ? "Stampala, firmala e dalla al cliente. Tienine una copia per te. Il numero lo diamo noi, uno dopo l'altro ogni anno."
-                : "La fattura vera la fai tu col tuo programma delle fatture: qui scrivi il suo numero e la sua data, così la copia è uguale. Noi non mandiamo nulla all'Agenzia delle Entrate."}
+              Stampala, firmala e dalla al cliente. Tienine una copia per te. Il numero lo diamo noi, uno dopo l&apos;altro ogni anno.
             </Text>
             {copy.invoiceRequested ? (
               <Text fontSize={16} color={brand.grafite}>
-                Il cliente ti ha chiesto {receipt ? "la ricevuta" : "la fattura"}: i suoi dati sono già qui sotto.
+                Il cliente ti ha chiesto la ricevuta: i suoi dati sono già qui sotto.
               </Text>
             ) : null}
             {copy.hints.map((hint) => (
@@ -200,45 +170,6 @@ export default function CourtesyCopyPage() {
 
           {hasFields ? (
             <YStack gap="$3" padding="$4" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto}>
-              {!receipt ? (
-                <XStack gap="$3" flexWrap="wrap">
-                  <YStack flexGrow={1} flexBasis={200}>
-                    <Field
-                      label="Numero della tua fattura"
-                      accessibilityLabel="Numero della tua fattura"
-                      value={draft.number}
-                      onChangeText={(value) => set({ number: value })}
-                      maxLength={30}
-                      autoComplete="off"
-                    />
-                  </YStack>
-                  <YStack flexGrow={1} flexBasis={200} gap="$2">
-                    <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.grafite70}>
-                      Data della tua fattura
-                    </Text>
-                    <ItalianDateInput ariaLabel="Data della tua fattura" value={draft.date} max={todayIso()} onChange={(value) => set({ date: value })} style={dateInputStyle} />
-                  </YStack>
-                </XStack>
-              ) : null}
-              {copy.vat ? (
-                <YStack gap="$2">
-                  <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.grafite70} id="aliquota-iva">
-                    Aliquota IVA
-                  </Text>
-                  <XStack gap="$2" flexWrap="wrap" role="radiogroup" aria-labelledby="aliquota-iva">
-                    {COURTESY_VAT_RATES.map((rate) => (
-                      <Button key={rate} size="$3" variant={draft.vatRatePercent === rate ? "primary" : "secondary"} role="radio" aria-checked={draft.vatRatePercent === rate} onPress={() => set({ vatRatePercent: rate })}>
-                        {`${rate}%`}
-                      </Button>
-                    ))}
-                  </XStack>
-                  {draft.vatRatePercent !== copy.vat.ratePercent ? (
-                    <Text fontSize={15} color={brand.grafite70}>
-                      Imponibile e IVA si aggiornano quando salvi o scarichi il PDF.
-                    </Text>
-                  ) : null}
-                </YStack>
-              ) : null}
               {copy.customerFields ? (
                 <XStack gap="$3" flexWrap="wrap">
                   <YStack flexGrow={1} flexBasis={220}>
@@ -253,7 +184,7 @@ export default function CourtesyCopyPage() {
                   </YStack>
                   <YStack flexGrow={1} flexBasis={220}>
                     <Field
-                      label={receipt ? "Codice fiscale del cliente (facoltativo)" : "Codice fiscale del cliente"}
+                      label="Codice fiscale del cliente (facoltativo)"
                       accessibilityLabel="Codice fiscale del cliente"
                       value={draft.customerTaxCode}
                       onChangeText={(value) => set({ customerTaxCode: value.toUpperCase() })}
@@ -286,25 +217,19 @@ export default function CourtesyCopyPage() {
 
       <XStack justifyContent="space-between" gap="$3" flexWrap="wrap">
         <Text fontSize={16} color={brand.grafite}>
-          Numero: {shownNumber}
+          Numero: {copy.number ?? "______"}
         </Text>
         <Text fontSize={16} color={brand.grafite}>
-          Data: {shownDate}
+          Data: {day(copy.date)}
         </Text>
       </XStack>
 
-      <PartyBoxes from={copy.issuer} to={customer} toLabel={receipt ? "Ricevuto da" : "Per"} />
+      <PartyBoxes from={copy.issuer} to={customer} toLabel="Ricevuto da" />
 
       <YStack>
         {copy.lines.map((line, index) => (
           <AmountRow key={`${index}-${line.description}`} label={line.description} value={copy.totalEurCents !== null ? eur(line.amountEurCents) : "______"} />
         ))}
-        {copy.vat && copy.totalEurCents !== null ? (
-          <YStack paddingTop="$2">
-            <AmountRow label="Imponibile" value={eur(copy.vat.taxableEurCents)} divider={false} />
-            <AmountRow label={`IVA ${copy.vat.ratePercent}%`} value={eur(copy.vat.vatEurCents)} divider={false} />
-          </YStack>
-        ) : null}
         {withholding && copy.totalEurCents !== null ? (
           <YStack paddingTop="$2">
             <AmountRow label="Compenso lordo" value={eur(copy.totalEurCents)} divider={false} />
@@ -333,15 +258,9 @@ export default function CourtesyCopyPage() {
         </YStack>
       ) : null}
 
-      {receipt ? (
-        <Text fontSize={16} color={brand.grafite} paddingTop="$4">
-          Firma ______________________
-        </Text>
-      ) : (
-        <Text fontSize={15} color={brand.grafite70}>
-          Copia di cortesia: il documento valido è la fattura elettronica inviata all&apos;Agenzia delle Entrate.
-        </Text>
-      )}
+      <Text fontSize={16} color={brand.grafite} paddingTop="$4">
+        Firma ______________________
+      </Text>
 
       <div data-print-hide>
         <YStack gap="$2">
@@ -353,7 +272,7 @@ export default function CourtesyCopyPage() {
           <PdfButton
             before={beforePdf}
             load={() => apiClient.courtesyCopyPdf(token ?? "", bookingId)}
-            fileName={receipt ? `ricevuta-${(copy.number ?? "").replace(/\//g, "-")}.pdf` : `fattura-cortesia-${(draft.number.trim() || day(copy.date)).replace(/[^\w-]+/g, "-")}.pdf`}
+            fileName={`ricevuta-${(copy.number ?? "").replace(/\//g, "-")}.pdf`}
           />
         </YStack>
       </div>
@@ -361,7 +280,7 @@ export default function CourtesyCopyPage() {
   );
 }
 
-/** "il numero, la data e il nome del cliente". */
+/** "il nome del cliente e l'importo finale del lavoro". */
 function joinMissing(items: string[]): string {
   return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}`;
 }

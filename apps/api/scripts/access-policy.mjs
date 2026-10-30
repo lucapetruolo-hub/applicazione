@@ -241,7 +241,7 @@ const owned = {
   "GET /documents/jobs/:bookingId": { kind: "owned", owners: BOTH, params: (f) => ({ bookingId: f.bookingA }) },
   "GET /documents/jobs/:bookingId/copy/pdf": { kind: "owned", owners: ["clientA"], strangers: ["clientB", "proB", "proA"], params: (f) => ({ bookingId: f.bookingCompleted }) },
   "GET /documents/courtesy/:bookingId/pdf": courtesy,
-  "PUT /documents/courtesy/:bookingId/details": { ...courtesy, body: () => ({ number: "1/A", date: "2026-10-01" }) },
+  "PUT /documents/courtesy/:bookingId/details": { ...courtesy, body: () => ({ customerName: "Cliente A" }) },
 
   "DELETE /external-jobs/:id": externalJob,
   "PATCH /external-jobs/:id": externalJob,

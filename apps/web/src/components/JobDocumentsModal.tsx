@@ -11,7 +11,7 @@ import { downloadBlobFile } from "@/components/admin/adminUi";
 /**
  * "Documenti" dal menu di una richiesta con un lavoro accettato (decisione
  * dell'utente del 27/10/2026, docs/CHANGELOG.md §386), uguale per
- * professionista e cliente: la ricevuta o la copia della fattura e i soldi
+ * professionista e cliente: la ricevuta (senza partita IVA) e i soldi
  * del lavoro. Il professionista vede anche le nostre trattenute, le fatture
  * che le contengono e gli estratti dei mesi; il cliente la copia solo dopo
  * che il professionista l'ha scaricata (lo decide il server).
@@ -114,10 +114,12 @@ function ProfessionalDocuments({ view }: { view: JobDocumentsView }) {
               </Text>
             ) : null}
           </YStack>
+        ) : view.ownInvoice ? (
+          <Muted>La fattura al cliente la fai col tuo programma.</Muted>
         ) : view.clientDocumentAvailable ? (
-          <DocLink href={copyHref}>Prepara la ricevuta o la copia della fattura</DocLink>
+          <DocLink href={copyHref}>Prepara la ricevuta</DocLink>
         ) : (
-          <Muted>La ricevuta o la copia della fattura la prepari a lavoro terminato.</Muted>
+          <Muted>La ricevuta la prepari a lavoro terminato.</Muted>
         )}
         {view.invoiceRequested ? <Muted>Il cliente ti ha chiesto la fattura: i dati da copiare sono nella scheda del lavoro.</Muted> : null}
       </Part>
@@ -179,7 +181,11 @@ function ClientDocuments({ token, view }: { token: string; view: JobDocumentsVie
             ) : null}
           </YStack>
         ) : (
-          <Muted>La ricevuta o la fattura te la dà il professionista. Quando l&apos;ha preparata, qui trovi anche una copia.</Muted>
+          <Muted>
+            {view.ownInvoice
+              ? "La fattura te la manda il professionista."
+              : "La ricevuta te la dà il professionista. Quando l'ha preparata, qui trovi anche una copia."}
+          </Muted>
         )}
         {view.invoiceRequested ? <Muted>Hai chiesto la fattura: la fa il professionista con il suo programma.</Muted> : null}
       </Part>

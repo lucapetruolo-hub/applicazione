@@ -35,12 +35,13 @@ export class AccountingController {
 
   @Get()
   async overview(@Req() req: AuthenticatedRequest): Promise<DocumentsOverview> {
-    const [overview, clientDocuments, missingDocuments] = await Promise.all([
+    const [overview, clientDocuments, receipts] = await Promise.all([
       this.invoicesService.overview(req.user.userId),
       this.courtesyCopyService.listForProfessional(req.user.userId),
-      this.courtesyCopyService.missingForProfessional(req.user.userId),
+      this.courtesyCopyService.makesReceipts(req.user.userId),
     ]);
-    return { ...overview, clientDocuments, missingDocuments };
+    const missingDocuments = receipts ? await this.courtesyCopyService.missingForProfessional(req.user.userId) : [];
+    return { ...overview, clientDocuments, missingDocuments, receipts };
   }
 
   @Get("invoices/:id")

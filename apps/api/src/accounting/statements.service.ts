@@ -69,10 +69,16 @@ function clientOf(booking: BookingInfo | null | undefined): string | null {
   return name || null;
 }
 
-/** Il documento dato al cliente per quel lavoro, per abbinarlo al pagamento nel foglio di calcolo (G-04). */
-function clientDocumentOf(booking: BookingInfo | null | undefined): string {
+/**
+ * Il documento dato al cliente per quel lavoro, per abbinarlo al pagamento
+ * nel foglio di calcolo (G-04): la ricevuta fatta sul sito, o la fattura che
+ * chi ha la partita IVA fa col suo programma
+ * (docs/changelog/2026-10-30-documenti-snelli.md).
+ */
+function clientDocumentOf(booking: BookingInfo | null | undefined, receipts: boolean): string {
+  if (!receipts) return "Fattura del professionista (dal suo programma)";
   const doc = booking?.courtesyDocument;
-  if (!doc) return "Documento del professionista al cliente (non fatto sul sito)";
+  if (doc?.kind !== "RECEIPT") return "Ricevuta non ancora fatta sul sito";
   return courtesyDocumentLabel(doc);
 }
 
@@ -207,6 +213,7 @@ export class StatementsService {
       this.invoicesService.activeIssuer(new Date(end.getTime() - 1)),
     ]);
     const feeInvoiceExpected = !!issuer;
+    const receipts = fiscal?.entityType === "PRIVATE_INDIVIDUAL";
     // Rimborsi al cliente con la loro data: il registro delle modifiche li
     // scrive tutti (rimborsi.service, annullamenti, segnalazioni), collaudo G-12.
     const refundLogs = online.some((jp) => jp.refundedEurCents > 0)
@@ -260,7 +267,7 @@ export class StatementsService {
       const date = romeDayIso(e.occurredAt);
       if (e.kind === "HOLD" && e.paymentEurCents > 0) {
         row.onlineEurCents += e.paymentEurCents;
-        csvRows.push({ date, kind: "Pagamento online del cliente", job: row.job, client: row.client ?? "", amountEurCents: e.paymentEurCents, taxableEurCents: null, vatEurCents: null, document: clientDocumentOf(booking) });
+        csvRows.push({ date, kind: "Pagamento online del cliente", job: row.job, client: row.client ?? "", amountEurCents: e.paymentEurCents, taxableEurCents: null, vatEurCents: null, document: clientDocumentOf(booking, receipts) });
       }
       csvRows.push({
         date,
@@ -277,7 +284,7 @@ export class StatementsService {
       const row = rowFor(jp.id, jp.booking, jp.directReportedAt ?? start);
       row.directEurCents += jp.grossAmountEurCents;
       row.payoutNote = payoutNoteOf(jp, null, null);
-      csvRows.push({ date: romeDayIso(jp.directReportedAt ?? start), kind: "Pagamento diretto del cliente", job: row.job, client: row.client ?? "", amountEurCents: jp.grossAmountEurCents, taxableEurCents: null, vatEurCents: null, document: clientDocumentOf(jp.booking) });
+      csvRows.push({ date: romeDayIso(jp.directReportedAt ?? start), kind: "Pagamento diretto del cliente", job: row.job, client: row.client ?? "", amountEurCents: jp.grossAmountEurCents, taxableEurCents: null, vatEurCents: null, document: clientDocumentOf(jp.booking, receipts) });
     }
     for (const jp of payouts) {
       const row = rowFor(jp.id, jp.booking, jp.payoutPaidAt ?? start);
@@ -292,7 +299,7 @@ export class StatementsService {
         if (amountEurCents <= 0) return;
         const row = rowFor(jp.id, jp.booking, at);
         row.refundsEurCents += amountEurCents;
-        csvRows.push({ date: romeDayIso(at), kind, job: row.job, client: row.client ?? "", amountEurCents: -amountEurCents, taxableEurCents: null, vatEurCents: null, document: clientDocumentOf(jp.booking) });
+        csvRows.push({ date: romeDayIso(at), kind, job: row.job, client: row.client ?? "", amountEurCents: -amountEurCents, taxableEurCents: null, vatEurCents: null, document: clientDocumentOf(jp.booking, receipts) });
       };
       let logged = 0;
       for (const log of refundLogs) {
@@ -398,7 +405,7 @@ export class StatementsService {
       try {
         const { statement, csvRows, movements, invoices } = await this.build(r.professionalProfileId, month);
         const yearly = closedYear !== null ? await this.courtesyCopyService.yearSummaryForProfile(r.professionalProfileId, closedYear) : null;
-        const withYearly = yearly && yearly.receipts.length + yearly.invoices.length > 0 ? yearly : null;
+        const withYearly = yearly && yearly.receipts.length > 0 ? yearly : null;
         if (movements === 0 && !withYearly) continue;
         const who = professionalFiscalName(r, r.professionalProfile.businessName) ?? "";
         const email = renderEmail(accountantStatementEmail(who, movements > 0 ? statement : null, withYearly, movements > 0 ? invoices.length : 0));
@@ -440,13 +447,7 @@ export class StatementsService {
  */
 export function accountantStatementEmail(who: string, statement: MonthlyStatement | null, yearly: CourtesyYearSummary | null = null, invoiceCount = 0): EmailContent {
   const eur = (cents: number) => `${(cents / 100).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
-  const yearlyParts = yearly
-    ? [
-        yearly.receipts.length > 0 ? { what: "le ricevute per prestazione occasionale", label: `Ricevute del ${yearly.year}`, rows: yearly.receipts } : null,
-        yearly.invoices.length > 0 ? { what: "le copie delle fatture", label: `Copie delle fatture del ${yearly.year}`, rows: yearly.invoices } : null,
-      ].filter((part) => part !== null)
-    : [];
-  const yearlyWhat = `i documenti dati ai clienti nell'anno (${yearlyParts.map((p) => p.what).join(" e ")}), in PDF e nel foglio di calcolo`;
+  const yearlyWhat = "le ricevute per prestazione occasionale date ai clienti nell'anno, in PDF e nel foglio di calcolo";
   return {
     kind: "external",
     subject: statement
@@ -474,7 +475,7 @@ export function accountantStatementEmail(who: string, statement: MonthlyStatemen
             { label: "Bonifici arrivati in banca", value: eur(statement.totals.payoutsArrivedEurCents) },
           ]
         : []),
-      ...yearlyParts.map((part) => ({ label: part.label, value: eur(courtesyYearPart(part.rows).totalEurCents) })),
+      ...(yearly && yearly.receipts.length > 0 ? [{ label: `Ricevute del ${yearly.year}`, value: eur(courtesyYearPart(yearly.receipts).totalEurCents) }] : []),
     ],
     after: [`La riceve perché ${who} ha indicato questo indirizzo nel suo profilo su ${EMAIL_BRAND.name}. Per non riceverla più basta che tolga la spunta.`],
   };

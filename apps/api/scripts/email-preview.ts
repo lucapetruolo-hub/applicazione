@@ -161,7 +161,7 @@ notification("CLIENT_DOCUMENTS_TO_FIX", "Professionista", "Lavori e appuntamenti
 });
 // Copia della ricevuta pronta per il cliente (§387).
 notification("JOB_DOCUMENT_READY", "Cliente", "Lavori e appuntamenti", { kind: "RECEIPT", label: "Ricevuta n. 4/2026", guidedRequestId: "preview", updated: false });
-add("job_document_ready_aggiornata", "Lavori e appuntamenti", "Cliente", renderEmail(notificationEmail("JOB_DOCUMENT_READY", { kind: "INVOICE", label: "Fattura n. 12/A", guidedRequestId: "preview", updated: true }, forClient)!));
+add("job_document_ready_aggiornata", "Lavori e appuntamenti", "Cliente", renderEmail(notificationEmail("JOB_DOCUMENT_READY", { kind: "RECEIPT", label: "Ricevuta n. 4/2026", guidedRequestId: "preview", updated: true }, forClient)!));
 notification("QUOTE_REJECTED", "Professionista", "Preventivi e date", {
   note: "Il prezzo è più alto di quanto pensavo, e mi servirebbe prima di venerdì.",
   canResend: true,

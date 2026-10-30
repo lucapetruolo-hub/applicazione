@@ -29,7 +29,7 @@ function booking(over: Record<string, unknown> = {}) {
     id: "b1",
     clientId: "client-1",
     status: "COMPLETED",
-    professionalProfile: { userId: "pro-1" },
+    professionalProfile: { userId: "pro-1", fiscalProfile: { entityType: "PRIVATE_INDIVIDUAL" } },
     courtesyDocument: { kind: "RECEIPT", number: 4, year: 2026, ownNumber: null, pdfDownloadedAt: new Date("2026-10-26T10:00:00Z"), pdfTotalEurCents: 10000 },
     quote: { invoiceRequest: null },
     jobPayment: paid,
@@ -90,6 +90,14 @@ describe("documenti del lavoro", () => {
     expect(confirmed.clientDocumentAvailable).toBe(false);
   });
 
+  it("con la partita IVA la fattura la fa il professionista: niente ricevuta sul sito", async () => {
+    const pro = { userId: "pro-1", fiscalProfile: { entityType: "SOLE_PROPRIETOR" } };
+    const view = await service(booking({ professionalProfile: pro, courtesyDocument: null })).forUser("pro-1", "b1");
+    expect(view).toMatchObject({ ownInvoice: true, clientDocumentAvailable: false, clientDocument: null });
+    const client = await service(booking({ professionalProfile: pro, courtesyDocument: null })).forUser("client-1", "b1");
+    expect(client.ownInvoice).toBe(true);
+  });
+
   it("un estraneo non vede niente", async () => {
     await expect(service(booking()).forUser("altro", "b1")).rejects.toBeInstanceOf(NotFoundException);
     await expect(service(null).forUser("client-1", "b1")).rejects.toBeInstanceOf(NotFoundException);
@@ -125,7 +133,7 @@ describe("copia per il cliente", () => {
     };
     return new CourtesyCopyService(prisma as never, {} as never, {} as never, {} as never);
   }
-  const saved = { pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000, number: 4, year: 2026, ownNumber: null };
+  const saved = { kind: "RECEIPT", pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000, number: 4, year: 2026, ownNumber: null };
 
   it("solo il cliente del lavoro, dopo il PDF del professionista e con lo stesso importo", async () => {
     const copy = await build(loaded(), saved).forClient("client-1", "b1");
