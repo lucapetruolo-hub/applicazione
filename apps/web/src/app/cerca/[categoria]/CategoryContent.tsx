@@ -62,11 +62,16 @@ export function CategoryContent({
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent">
-      {/* Titolo principale (h1) per Google e i lettori di schermo, non
-          mostrato: il riquadro in cima ai risultati era stato tolto su
-          richiesta (docs/CHANGELOG.md §271). */}
-      <h1 className="sr-only">{title}</h1>
       <YStack width="100%" maxWidth={1200} paddingHorizontal="$4" paddingVertical="$6">
+        {/* Titolo principale (h1): da telefono si vede, in testo semplice sopra
+            i filtri, perché chi arriva da Google legga subito "Idraulico a
+            Latina" (collaudo N-15, scelto da Luca,
+            docs/changelog/2026-10-30-velocita-telefono.md). Da computer resta
+            solo per Google e i lettori di schermo: lì il riquadro in cima ai
+            risultati era stato tolto su richiesta e la ricerca in alto dice
+            già cosa si sta guardando (docs/CHANGELOG.md §271). */}
+        {/* Senza risultati il titolo c'è già nel riquadro "nessun professionista". */}
+        <h1 className={header ? "sr-only" : "results-title"}>{title}</h1>
         <ResultsListWithMap
           professionals={professionals}
           mapPool={mapPool}

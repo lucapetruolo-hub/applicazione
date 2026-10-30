@@ -54,8 +54,6 @@ collaudo del 29/10 (`collaudo/2026-10-29/riepilogo.md`). Questo è il gruppo 11
   vercel/next.js#62228). Provati `connection()` al posto di `force-dynamic`,
   un `not-found.tsx` per cartella e senza `generateMetadata`: stesso
   risultato. Il codice di risposta resta 404, quindi Google non la indicizza.
-- N-04, N-05, N-06, N-15: proposte a Luca (testi per città, pagine "quanto
-  costa", prezzi in home, titolo visibile che va contro la scelta del §271).
 
 **Verifica**
 
@@ -70,3 +68,35 @@ collaudo del 29/10 (`collaudo/2026-10-29/riepilogo.md`). Questo è il gruppo 11
   - `/cerca/idraulico/latina`: primo byte 4,7-5,0 s → 1,4-1,6 s, contenuto
     principale 7,7-8,2 s → 1,9-2,0 s, tempo bloccato 1,35-1,5 s → 0,85-1,0 s.
 - Prove a schermo da iPhone: home, città, mestiere e profilo come prima.
+
+## Migliorie (stesso giorno)
+
+**Richiesta**: Luca, dopo l'elenco delle migliorie della PR: "Effettua tutte
+le migliorie". Quella su Render a pagamento resta a lui (non è codice).
+
+- **Testo proprio per ogni città (N-04)**: in "[Lavoro] a [città] in breve"
+  i lavori offerti lì e le ultime 3 recensioni del mestiere in quella città
+  (`GET /reviews/recent?category=&city=`, stessi filtri delle recensioni in
+  home più categoria, anche secondaria, e città del professionista). I numeri
+  restano nelle tessere; il testo li ripete solo con un professionista.
+- **Pagine "Quanto costa" raggiungibili (N-05)**: nuova `/prezzi` con i
+  mestieri che hanno una pagina prezzi (stesse soglie della sitemap del §296,
+  in sitemap solo se ne ha almeno una), link "Prezzi per mestiere" sotto
+  "Quanto costa in media?" in home e nel piede pagina. Il menu "Quanto costa"
+  in alto resta allo strumento della home (decisione di Luca, §398).
+- **"Quanto costa in media?" senza attese (N-06)**: i prezzi arrivano con la
+  pagina dal server, quindi niente "Caricamento..." e Google li legge. Le
+  cifre restano solo da 3 professionisti (§398): finché nessun lavoro ci
+  arriva, la riga sopra dice questo invece di promettere "prezzi veri".
+- **Elenco dei comuni a parte anche in Richiedi preventivo e Urgente**:
+  primo caricamento da 431 a 321 KB. Si scarica subito dopo la pagina; se
+  non è ancora arrivato quando si invia, la città la controlla il server.
+- **Titolo visibile da telefono (N-15, scelto da Luca)**: "Idraulico a
+  Latina" sopra i filtri fino a 1020 px; da computer resta solo per Google e
+  i lettori di schermo come deciso nel §271. Senza risultati resta nascosto:
+  il titolo c'è già nel riquadro "nessun professionista".
+
+**Verifica**: typecheck e lint di `apps/web`, typecheck e test delle
+recensioni dell'API verdi; prove a schermo da iPhone (titolo, testo della
+città con le recensioni, `/prezzi`, prezzi in home) e da computer (titolo non
+visibile).

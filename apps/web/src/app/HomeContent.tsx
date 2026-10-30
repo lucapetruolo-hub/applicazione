@@ -1,6 +1,6 @@
 "use client";
 
-import type { ProfessionalSearchResult } from "@professionisti/shared";
+import type { ProfessionalSearchResult, ServicePriceIndexEntry } from "@professionisti/shared";
 import { Section, SectionDensityProvider, YStack } from "@professionisti/ui";
 import { CategoryShowAllButton, CategoryStoryRail, useCategoryStoryRail } from "@/components/CategoryStoryRail";
 import { FadeInSection } from "@/components/FadeInSection";
@@ -17,8 +17,11 @@ import { ProCtaSection } from "@/components/ProCtaSection";
 export default function HomeContent({
   professionals,
   platformStats,
+  priceIndex,
 }: {
   professionals: ProfessionalSearchResult[];
+  /** "Quanto costa in media" già dal server; `null` se l'API non ha risposto. */
+  priceIndex: ServicePriceIndexEntry[] | null;
   platformStats: { totalUsers: number; totalProfessionals: number; reviewCount?: number; averageRating?: number | null } | null;
 }) {
   const categoryRail = useCategoryStoryRail();
@@ -89,7 +92,7 @@ export default function HomeContent({
         <FadeInSection>
           {/* Ancora per "Quanto costa" nella barra in alto (§398). */}
           <div id="quanto-costa" style={{ width: "100%", scrollMarginTop: 72 }}>
-            <PriceEstimatorTool>
+            <PriceEstimatorTool initialEntries={priceIndex}>
               <HomeFaq />
             </PriceEstimatorTool>
           </div>

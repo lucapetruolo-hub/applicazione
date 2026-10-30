@@ -1,7 +1,7 @@
-import { BadRequestException, Body, Controller, Get, Post, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Post, Query, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
-import { reviewSchema, type ReviewInput } from "@professionisti/shared";
+import { isProfessionalCategorySlug, reviewSchema, type ReviewInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
@@ -23,8 +23,15 @@ export class ReviewsController {
   // Pubblico (nessuna guardia): riprova sociale reale per la home, stesso
   // criterio di visibilità delle recensioni sulla pagina profilo pubblica.
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  // Con categoria e città: le ultime recensioni di quel mestiere in quella
+  // città, per il testo della pagina città (collaudo N-04,
+  // docs/changelog/2026-10-30-velocita-telefono.md).
   @Get("recent")
-  getRecent() {
+  getRecent(@Query("category") category?: string, @Query("city") city?: string) {
+    const cityName = typeof city === "string" ? city.trim() : "";
+    if (typeof category === "string" && isProfessionalCategorySlug(category) && cityName && cityName.length <= 80) {
+      return this.reviewsService.getRecentPublic(3, { category, city: cityName });
+    }
     return this.reviewsService.getRecentPublic();
   }
 

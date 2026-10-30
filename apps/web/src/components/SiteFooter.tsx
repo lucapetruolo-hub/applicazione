@@ -114,6 +114,8 @@ export function SiteFooter() {
             <FooterLink href="/urgente">Richiesta urgente</FooterLink>
             <FooterLink href="/#come-funziona">Come funziona</FooterLink>
             <FooterLink href="/#quanto-costa">Quanto costa</FooterLink>
+            {/* Pagine dei prezzi per mestiere (collaudo N-05). */}
+            <FooterLink href="/prezzi">Prezzi per mestiere</FooterLink>
             <FooterLink href="/accedi">Accedi</FooterLink>
             <FooterLink href="/faq">Domande frequenti</FooterLink>
             <FooterLink href="/sicurezza">Sicurezza e truffe</FooterLink>

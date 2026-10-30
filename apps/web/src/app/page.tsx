@@ -24,8 +24,8 @@ const siteJsonLd = [
 ];
 
 export default async function HomePage() {
-  // Le due richieste insieme, non una dopo l'altra (collaudo N-01/N-02).
-  const [professionals, platformStats] = await Promise.all([
+  // Le richieste insieme, non una dopo l'altra (collaudo N-01/N-02).
+  const [professionals, platformStats, priceIndex] = await Promise.all([
     // excludeDemo: la home dichiara esplicitamente di mostrare conteggi e
     // professionisti reali (redesign "Scheda Intervento" §4.3/§4.6) — i
     // profili del seed (PLACEHOLDER_PROFESSIONALS) non devono contribuire
@@ -35,6 +35,8 @@ export default async function HomePage() {
     // dell'utente) — se l'API non risponde, la striscia semplicemente non
     // compare invece di mostrare uno zero fuorviante (vedi PlatformStats).
     apiClient.platformStats().catch(() => null),
+    // Prezzi del "Quanto costa in media" già nella pagina (collaudo N-06).
+    apiClient.getServicePriceIndex().catch(() => null),
   ]);
 
   return (
@@ -42,7 +44,7 @@ export default async function HomePage() {
       {siteJsonLd.map((data) => (
         <JsonLd key={data["@type"]} data={data} />
       ))}
-      <HomeContent professionals={professionals} platformStats={platformStats} />
+      <HomeContent professionals={professionals} platformStats={platformStats} priceIndex={priceIndex} />
     </>
   );
 }

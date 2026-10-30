@@ -5,13 +5,11 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { X } from "lucide-react";
 import {
-  allItalianCityNames,
   CATEGORY_DESCRIPTION_EXAMPLES,
   CATEGORY_URGENT_DESCRIPTION_EXAMPLES,
   MAX_CHOSEN_PROFESSIONALS,
   MAX_REQUEST_CATEGORIES,
   PROFESSIONAL_CATEGORIES,
-  findComuneByName,
   isPlausiblePhoneNumber,
   isProfessionalCategorySlug,
   normalizePhoneNumber,
@@ -38,11 +36,15 @@ import { RequestSentScreen } from "@/components/RequestSentScreen";
 import { UploadingDots } from "@/components/UploadingDots";
 import { CategoryTiles } from "@/components/CategoryTiles";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
+import { useComuni } from "@/lib/comuniLazy";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 import { cleanPostalCode, postalCodeCityProblem, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
 import { localPreviewUrl } from "@/lib/media";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
+
+/** Elenco vuoto stabile mentre i comuni arrivano. */
+const NO_CITIES: string[] = [];
 
 // Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
 // (aumentato da 3, stessa richiesta).
@@ -438,7 +440,11 @@ export function GuidedRequestForm({
   useEffect(() => {
     if (chosenAddress.lostWhileTyping) streetInputRef.current?.focus();
   }, [chosenAddress.lostWhileTyping]);
-  const cityComune = findComuneByName(city);
+  // Elenco dei comuni scaricato a parte, subito dopo la pagina (collaudo N-01,
+  // docs/changelog/2026-10-30-velocita-telefono.md): prima pesava 130 KB sul
+  // primo caricamento di Richiedi preventivo e Urgente.
+  const comuni = useComuni(true);
+  const cityComune = comuni?.findComuneByName(city);
   /** Cambiando città l'indirizzo già scritto non vale più: si svuota insieme a civico, CAP e provincia. */
   function changeCity(next: string) {
     if (next.trim().toLowerCase() === city.trim().toLowerCase()) {
@@ -453,7 +459,7 @@ export function GuidedRequestForm({
       setProvince("");
     }
     setAddressVerified(false);
-    const comune = findComuneByName(next);
+    const comune = comuni?.findComuneByName(next);
     if (comune) setProvince(comune.province);
   }
   // Destinatario + resto dell'indirizzo strutturato, raccolti fin da qui
@@ -779,7 +785,8 @@ export function GuidedRequestForm({
     // Città obbligatoria anche online se la richiesta è generale: decide a
     // chi arriva (docs/CHANGELOG.md §210).
     if (serviceMode === "ONLINE" && !professionalProfileId && !city.trim()) return { message: "Indica la città: la richiesta arriva ai professionisti della zona.", field: "citta" };
-    if (city.trim() && !cityComune) return { message: "Scegli la città dall'elenco dei comuni.", field: "citta" };
+    // Finché l'elenco non è arrivato decide il server, che controlla la città comunque.
+    if (city.trim() && comuni && !cityComune) return { message: "Scegli la città dall'elenco dei comuni.", field: "citta" };
     // Città, indirizzo e destinatario obbligatori a domicilio: per una
     // consulenza online restano facoltativi (richiesta esplicita dell'utente).
     if (serviceMode === "HOME") {
@@ -985,7 +992,7 @@ export function GuidedRequestForm({
         backgroundColor={brand.calce}
       >
         <Autocomplete
-          items={allItalianCityNames()}
+          items={comuni?.allItalianCityNames() ?? NO_CITIES}
           getKey={(item) => item}
           getLabel={(item) => item}
           onSelect={changeCity}
@@ -1469,7 +1476,7 @@ export function GuidedRequestForm({
                     setAddressVerified(false);
                   }}
                   onSelect={(selected) => {
-                    const comune = selected.locality ? findComuneByName(selected.locality) : undefined;
+                    const comune = selected.locality ? comuni?.findComuneByName(selected.locality) : undefined;
                     setStreet(selected.street ?? selected.address);
                     setHouseNumber(selected.houseNumber ?? "");
                     setAskHouseNumber(!selected.houseNumber);

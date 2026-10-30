@@ -18,7 +18,7 @@ import { breadcrumbJsonLd } from "@/lib/jsonLd";
 import { JsonLd } from "@/components/JsonLd";
 import { PopularServicesLinks } from "@/components/PopularServicesLinks";
 import { CategoryCityLinks } from "@/components/CategoryCityLinks";
-import { CityFacts } from "@/components/CityFacts";
+import { CityFacts, type CityReview } from "@/components/CityFacts";
 import { SearchHeader } from "@/components/SearchHeader";
 import type { MapPoolQuery } from "@/components/ResultsListWithMap";
 import { CategoryContent } from "./CategoryContent";
@@ -166,6 +166,15 @@ export async function CategoryResults({
   // Link alla pagina "Quanto costa" solo se ha prezzi veri (§296): quella
   // della città se la provincia ha abbastanza dati, altrimenti la nazionale.
   const pricePagePromise = comune ? pricePageHref(category.slug, comune.name) : Promise.resolve(null);
+  // Ultime recensioni del mestiere in questa città, per il testo "in breve"
+  // (collaudo N-04); senza risposta la sezione resta senza recensioni.
+  const reviewsPromise = comune && !loadFailed && professionals.length > 0
+    ? apiClient
+        .getRecentReviews({ category: category.slug, city: comune.name })
+        // Solo di questa città anche da un'API non ancora aggiornata, che darebbe quelle di tutto il sito.
+        .then((reviews) => reviews.filter((review) => review.professional.city.trim().toLowerCase() === comune.name.toLowerCase()))
+        .catch((): CityReview[] => [])
+    : Promise.resolve([]);
 
   // Tutti i professionisti della categoria (nessun filtro città, ma stesso
   // filtro online): alimenta i puntini sulla mappa così, allontanando lo
@@ -197,6 +206,7 @@ export async function CategoryResults({
           city={comune.name}
           professionals={professionals}
           pricePageHref={pricePagePromise}
+          reviews={reviewsPromise}
           subTag={subTag}
         />
       </Suspense>
@@ -229,8 +239,13 @@ export async function CategoryResults({
   );
 }
 
-async function CityFactsWhenReady({ pricePageHref, ...props }: Omit<ComponentProps<typeof CityFacts>, "pricePageHref"> & { pricePageHref: Promise<string | null> }) {
-  return <CityFacts {...props} pricePageHref={await pricePageHref} />;
+async function CityFactsWhenReady({
+  pricePageHref,
+  reviews,
+  ...props
+}: Omit<ComponentProps<typeof CityFacts>, "pricePageHref" | "reviews"> & { pricePageHref: Promise<string | null>; reviews: Promise<CityReview[]> }) {
+  const [href, reviewList] = await Promise.all([pricePageHref, reviews]);
+  return <CityFacts {...props} pricePageHref={href} reviews={reviewList} />;
 }
 
 async function PopularServicesLinksWhenReady({
