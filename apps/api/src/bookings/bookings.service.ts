@@ -10,6 +10,9 @@ import {
   clientCanReview,
   BAD_WORK_REPORT_DAYS,
   jobIssueTypesAllowed,
+  jobIssueLateAllowed,
+  jobIssueAssisted,
+  JOB_ISSUE_LATE_NOTE,
   toJobIssueSummary,
   jobPaidOnline,
   quotePriceTotals,
@@ -1215,7 +1218,9 @@ export class BookingsService implements OnModuleInit {
       throw new ConflictException("Hai già segnalato un problema su questo lavoro.");
     }
     const allowed = jobIssueTypesAllowed({ ...booking, hasIssue: false }, new Date());
-    if (!allowed.includes(input.type)) {
+    // Passato il termine resta la segnalazione senza rimborso (decisione di Luca del 30/10/2026).
+    const late = !allowed.includes(input.type) && input.type === "BAD_WORK" && jobIssueLateAllowed({ ...booking, hasIssue: false }, new Date());
+    if (!allowed.includes(input.type) && !late) {
       throw new BadRequestException(
         input.type === "NO_SHOW"
           ? "La mancata presentazione si può segnalare dalla fine dell'appuntamento, entro 7 giorni, se non hai già confermato il lavoro."
@@ -1226,8 +1231,8 @@ export class BookingsService implements OnModuleInit {
     // Prima fase in chat (§165): cliente e professionista provano a
     // risolvere da soli. Senza una richiesta collegata non c'è chat
     // (prenotazione diretta dall'agenda): si passa subito al nostro team.
-    // Pagamento diretto (§168): resta sempre tra le parti, niente team.
-    const assisted = booking.jobPayment?.paymentMethod !== "DIRECT";
+    // Pagamento diretto (§168) o dopo il termine: resta sempre tra le parti, niente team.
+    const assisted = jobIssueAssisted(booking.jobPayment?.paymentMethod, late);
     const inChat = booking.quote !== null || !assisted;
     const issue = await this.prisma.jobIssue.create({
       data: {
@@ -1236,6 +1241,7 @@ export class BookingsService implements OnModuleInit {
         description: input.description.trim(),
         photoUrls: input.photoUrls,
         status: inChat ? "CHAT" : "OPEN",
+        late,
         // Senza chat va subito al nostro team: da qui le 72 ore per la
         // versione del professionista (§167).
         ...(inChat ? {} : { escalatedAt: new Date(), escalationReason: "CLIENT" }),
@@ -1248,6 +1254,7 @@ export class BookingsService implements OnModuleInit {
       issueType: input.type,
       inChat,
       assisted,
+      late,
       guidedRequestId: booking.quote?.guidedRequestId,
       professionalProfileId: booking.professionalProfileId,
     });
@@ -1256,7 +1263,9 @@ export class BookingsService implements OnModuleInit {
         booking.quote.guidedRequestId,
         booking.professionalProfileId,
         "CLIENT",
-        assisted
+        late
+          ? `Il cliente ha segnalato un problema: ${JOB_ISSUE_LABEL[input.type].toLowerCase()}. «${input.description.trim()}» ${JOB_ISSUE_LATE_NOTE} Scrivetevi qui in chat per trovare insieme una soluzione.`
+          : assisted
           ? `Il cliente ha segnalato un problema: ${JOB_ISSUE_LABEL[input.type].toLowerCase()}. «${input.description.trim()}» Il professionista ha 48 ore per rispondere qui in chat e provare a trovare una soluzione; se non risponde la segnalazione passa da sola al nostro team, se non trovate un accordo il cliente può chiedere al nostro team di decidere.`
           : `Il cliente ha segnalato un problema: ${JOB_ISSUE_LABEL[input.type].toLowerCase()}. «${input.description.trim()}» Il lavoro è pagato direttamente al professionista: scrivetevi qui in chat per trovare insieme una soluzione. Il cliente potrà poi lasciare la recensione.`,
       );
@@ -1284,9 +1293,9 @@ export class BookingsService implements OnModuleInit {
     if (booking.issue.status !== "CHAT") throw new BadRequestException("La segnalazione non è più in chat.");
     const now = new Date();
 
-    // Pagamento diretto (§168): "Non abbiamo risolto" chiude la segnalazione
-    // tra le parti, senza il nostro team; il cliente può recensire.
-    if (booking.jobPayment?.paymentMethod === "DIRECT") {
+    // Pagamento diretto (§168) o dopo il termine: "Non abbiamo risolto"
+    // chiude la segnalazione tra le parti, senza il nostro team; il cliente può recensire.
+    if (!jobIssueAssisted(booking.jobPayment?.paymentMethod, booking.issue.late)) {
       const status = outcome === "RESOLVED" ? "RESOLVED" : "UNRESOLVED";
       await this.prisma.jobIssue.update({ where: { id: booking.issue.id }, data: { status, resolvedAt: now } });
       await this.notificationsService.notify(booking.professionalProfile.userId, outcome === "RESOLVED" ? "JOB_ISSUE_SETTLED" : "JOB_ISSUE_UNRESOLVED", {
@@ -1294,6 +1303,7 @@ export class BookingsService implements OnModuleInit {
         issueType: booking.issue.type,
         guidedRequestId: booking.quote?.guidedRequestId,
         audience: "PROFESSIONAL",
+        late: booking.issue.late,
       });
       if (booking.quote) {
         await this.timelineService.log(
@@ -1529,11 +1539,15 @@ export class BookingsService implements OnModuleInit {
       issue: toJobIssueSummary(booking.issue, {
         proRepliedAt: booking.issue ? chatReplies.get(booking.issue.id) : null,
         paidOnline: jobPaidOnline(booking.jobPayment),
-        assisted: booking.jobPayment?.paymentMethod !== "DIRECT",
+        assisted: jobIssueAssisted(booking.jobPayment?.paymentMethod, booking.issue?.late),
       }),
       // Pagamento del lavoro (§168): metodo scelto, acconto, saldo, rimborsi.
       payment: toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents),
-      issueTypesAllowed: jobIssueTypesAllowed({ ...booking, hasIssue: booking.issue !== null }, now),
+      issueTypesAllowed: jobIssueLateAllowed({ ...booking, hasIssue: booking.issue !== null }, now)
+        ? ["BAD_WORK" as const]
+        : jobIssueTypesAllowed({ ...booking, hasIssue: booking.issue !== null }, now),
+      // Dopo il termine si segnala ancora un lavoro non andato bene, senza rimborso.
+      issueLate: jobIssueLateAllowed({ ...booking, hasIssue: booking.issue !== null }, now),
       canReview: clientCanReview({
         status: booking.status,
         clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt,

@@ -1201,7 +1201,8 @@ export function GuidedRequestCard({
           phone={booking.professionalPhone}
           email={booking.professionalEmail}
           allowedTypes={booking.issueTypesAllowed}
-          assisted={booking.payment?.method !== "DIRECT"}
+          assisted={booking.payment?.method !== "DIRECT" && !booking.issueLate}
+          late={booking.issueLate}
           onClose={() => {
             setShowReportModal(false);
             onChanged();

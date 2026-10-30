@@ -27,6 +27,17 @@ export type JobIssueStatus = "CHAT" | "RESOLVED" | "OPEN" | "UPHELD" | "REJECTED
 
 export const NO_SHOW_REPORT_DAYS = 7;
 export const BAD_WORK_REPORT_DAYS = 7;
+/**
+ * Segnalazione dopo il termine (decisione di Luca del 30/10/2026): passati i
+ * 7 giorni o dopo "Lavoro terminato" il cliente può ancora segnalare un lavoro
+ * non andato bene per 2 anni (garanzia di legge sui beni installati, la più
+ * lunga che di solito si applica), ma senza rimborso né decisione nostra: la
+ * segnalazione resta tra le parti come con il pagamento diretto, e il
+ * professionista resta tenuto alla garanzia di legge.
+ */
+export const JOB_ISSUE_LATE_DAYS = 730;
+export const JOB_ISSUE_LATE_NOTE =
+  "Sono passati i giorni per chiedere un rimborso dal sito: ti mettiamo in contatto con il professionista in chat. Per legge il professionista risponde comunque dei difetti del suo lavoro.";
 
 export const JOB_ISSUE_LABEL: Record<JobIssueType, string> = {
   NO_SHOW: "Il professionista non si è presentato",
@@ -335,8 +346,10 @@ export type JobIssueSummary = {
   paidOnline: boolean;
   /** Percentuale rimborsata al cliente se accolta (§267), null finché non è decisa. */
   refundPercent: number | null;
-  /** Pagamento online scelto: la segnalazione ha la nostra assistenza. False con il pagamento diretto (§168). */
+  /** Pagamento online scelto: la segnalazione ha la nostra assistenza. False con il pagamento diretto (§168) o dopo il termine. */
   assisted: boolean;
+  /** Segnalata dopo il termine: niente rimborso né decisione nostra, resta tra le parti. */
+  late: boolean;
   /** Rimborso proposto dal professionista in chat, da accettare dal cliente (collaudo F-03). */
   refundOfferEurCents: number | null;
   /** Rimborso concordato e partito: la segnalazione si è chiusa così. */
@@ -364,6 +377,26 @@ export type JobIssueWindowInput = {
   hasIssue: boolean;
 };
 
+
+/**
+ * La segnalazione ha la nostra assistenza (team, rimborso): solo con il
+ * pagamento online e dentro il termine. Una segnalazione dopo il termine resta
+ * tra le parti come con il pagamento diretto (§168).
+ */
+export function jobIssueAssisted(paymentMethod: string | null | undefined, late: boolean | null | undefined): boolean {
+  return paymentMethod !== "DIRECT" && !late;
+}
+
+/** Il cliente può segnalare un lavoro non andato bene dopo il termine (senza rimborso)? */
+export function jobIssueLateAllowed(b: JobIssueWindowInput, now: Date): boolean {
+  if (b.hasIssue) return false;
+  if (b.status !== "CONFIRMED" && b.status !== "COMPLETED") return false;
+  if (jobIssueTypesAllowed(b, now).includes("BAD_WORK")) return false;
+  const t = now.getTime();
+  const end = (b.scheduledEndAt ?? b.scheduledAt).getTime();
+  const lastEvent = Math.max(end, b.professionalCompletedAt?.getTime() ?? 0, b.clientConfirmedCompletedAt?.getTime() ?? 0);
+  return t >= b.scheduledAt.getTime() && t <= lastEvent + JOB_ISSUE_LATE_DAYS * DAY_MS;
+}
 
 /** Quali problemi il cliente può segnalare adesso su questo lavoro (vuoto = nessuno). */
 export function jobIssueTypesAllowed(b: JobIssueWindowInput, now: Date): JobIssueType[] {
@@ -488,6 +521,8 @@ type IssueRow = {
   appealDecision: string | null;
   appealNote: string | null;
   redispatchedGuidedRequestId: string | null;
+  /** Assente nelle letture che non lo selezionano: dentro il termine. */
+  late?: boolean;
 };
 
 /**
@@ -503,7 +538,7 @@ export function toJobIssueSummary(
   if (!issue) return null;
   const escalatedAt = issue.escalatedAt ?? (issue.status === "OPEN" ? issue.createdAt : null);
   const proRepliedAt = extra.proRepliedAt ?? issue.professionalRespondedAt;
-  const assisted = extra.assisted !== false;
+  const assisted = extra.assisted !== false && !issue.late;
   const chat = { status: issue.status, createdAt: issue.createdAt, proRepliedAt, assisted };
   const phase = jobIssueReviewPhase({ ...issue, escalatedAt });
   return {
@@ -532,6 +567,7 @@ export function toJobIssueSummary(
     paidOnline: !!extra.paidOnline,
     refundPercent: issue.status === "UPHELD" ? jobIssueRefundPercent(issue.type, issue.refundPercent) : null,
     assisted,
+    late: !!issue.late,
     refundOfferEurCents: issue.status === "CHAT" ? (issue.refundOfferEurCents ?? null) : null,
     agreedRefundEurCents: issue.agreedRefundEurCents ?? null,
     sanction: (issue.sanction as JobIssueSanction | null) ?? null,

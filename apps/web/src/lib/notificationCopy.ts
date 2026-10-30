@@ -230,6 +230,13 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   if (type === "ADMIN_JOB_ISSUE_TO_REVIEW" && data.stage === "VERSION") {
     return { icon: "⚖️", message: "Il professionista ha mandato la sua versione: c'è una segnalazione da decidere in Problemi segnalati." };
   }
+  // Segnalazione dopo il termine: senza rimborso né nostro team (decisione di Luca del 30/10/2026).
+  if (type === "JOB_ISSUE_REPORTED" && data.late === true) {
+    return { icon: "⚠️", message: "Un cliente ha segnalato un problema su un lavoro già chiuso: rispondigli in chat per trovare una soluzione." };
+  }
+  if (type === "JOB_ISSUE_UNRESOLVED" && data.late === true) {
+    return { icon: "🤝", message: "Il cliente ha indicato che non avete trovato un accordo sulla segnalazione arrivata a lavoro chiuso." };
+  }
   if (type === "JOB_ISSUE_REFUND_OFFERED" && typeof data.amountEurCents === "number") {
     return { icon: "🤝", message: `Il professionista ti propone un rimborso di ${formatEur(data.amountEurCents)}: accettalo dalla scheda del lavoro.` };
   }

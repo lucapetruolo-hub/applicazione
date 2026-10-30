@@ -48,7 +48,9 @@ export function ClientIssueStatus({
     return (
       <YStack gap="$2">
         <Text fontSize={13} color={brand.grafite70}>
-          {!issue.assisted
+          {issue.late
+            ? `Scrivi a ${pro} in chat per trovare insieme una soluzione. Sono passati i giorni per un rimborso dal sito, ma per legge ${pro} risponde comunque dei difetti del suo lavoro.`
+            : !issue.assisted
             ? `Hai scelto il pagamento diretto: scrivi a ${pro} in chat per trovare insieme una soluzione. In questo caso non possiamo rimborsarti né decidere noi, ma potrai sempre lasciare la recensione.`
             : issue.proRepliedInChat
             ? `${pro} ti ha risposto in chat. Se non trovate un accordo, chiedi al nostro team di decidere.`

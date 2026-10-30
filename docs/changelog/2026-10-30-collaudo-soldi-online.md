@@ -86,6 +86,17 @@ Migliorie approvate da Luca il 30/10:
   "Segnala un problema", "E se…" in home, Termini punto 6 (e il tetto dei
   3.000 € al punto dei pagamenti). Domanda 84 per l'avvocato.
 
+- **Segnalazione dopo il termine** (decisione di Luca del 30/10): passati i 7
+  giorni o dopo "Lavoro terminato" il cliente può ancora segnalare un lavoro
+  non andato bene per 2 anni (`JOB_ISSUE_LATE_DAYS`, `JobIssue.late`). Resta
+  tra le parti come con il pagamento diretto (`jobIssueAssisted`): chat con il
+  professionista, niente rimborso né team, una riga sulla garanzia di legge
+  (`JOB_ISSUE_LATE_NOTE`); chiusa la segnalazione il cliente può recensire.
+  In Admin → Problemi si vedono le segnalazioni a lavoro chiuso finite senza
+  accordo nell'ultimo anno (in rosso da 3). La formula del punteggio di
+  affidabilità non cambia: una segnalazione non decisa potrebbe essere falsa.
+  Termini punto 6.
+
 F-21 e G-14 (cifre dei bonifici): servono i dati di Stripe.
 
 ## Verifica

@@ -154,6 +154,8 @@ export type ClientBooking = {
   issue: JobIssueSummary | null;
   /** Problemi che il cliente può segnalare adesso (finestre di 7 e 14 giorni). */
   issueTypesAllowed: JobIssueType[];
+  /** Passato il termine: "Segnala un problema" resta, senza rimborso né decisione nostra. */
+  issueLate: boolean;
   /** Pagamento del lavoro (§168): online con acconto e saldo, o diretto. Null per prenotazioni senza scelta. */
   payment: JobPaymentSummary | null;
   /** Può lasciare la recensione (anche dopo la decisione su una segnalazione). */
@@ -691,7 +693,7 @@ export type AdminJobIssue = {
   requestDescription: string | null;
   scheduledAt: string;
   bookingStatus: string;
-  professional: { profileId: string; userId: string; businessName: string; upheldLast30Days: number; demoted: boolean; blocked: boolean };
+  professional: { profileId: string; userId: string; businessName: string; upheldLast30Days: number; lateUnresolvedLastYear: number; demoted: boolean; blocked: boolean };
   client: { userId: string; name: string | null; accountDeleted: boolean };
   /** L'admin corrente ha deciso la segnalazione: non può decidere il ricorso. */
   decidedByMe: boolean;

@@ -2909,6 +2909,9 @@ model JobIssue {
   refundOfferEurCents         Int?
   refundOfferedAt             DateTime?
   agreedRefundEurCents        Int?
+  // Segnalata dopo il termine (7 giorni o "Lavoro terminato", decisione di
+  // Luca del 30/10/2026): niente rimborso né team, resta tra le parti.
+  late                        Boolean        @default(false)
   // Ricorso del professionista entro 30 giorni dalla decisione, esaminato
   // da un admin diverso da chi ha deciso. ACCEPTED ribalta la decisione.
   appealText                  String?

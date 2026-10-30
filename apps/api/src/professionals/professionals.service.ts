@@ -37,6 +37,7 @@ import {
   type ProfessionalProfileSelfInput,
   type UpdateEngagementRadiusInput,
   toJobIssueSummary,
+  jobIssueAssisted,
   toJobPaymentSummary,
   professionalRestrictions,
   jobPaidOnline,
@@ -1673,7 +1674,7 @@ export class ProfessionalsService {
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
       // Segnalazione del cliente sul lavoro, con la risposta del professionista (docs/CHANGELOG.md §164).
-      issue: toJobIssueSummary(booking.issue, { paidOnline: jobPaidOnline(booking.jobPayment), assisted: booking.jobPayment?.paymentMethod !== "DIRECT" }),
+      issue: toJobIssueSummary(booking.issue, { paidOnline: jobPaidOnline(booking.jobPayment), assisted: jobIssueAssisted(booking.jobPayment?.paymentMethod, booking.issue?.late) }),
       // Pagamento del lavoro (§168), con commissione, costo Stripe e quanto riceve.
       payment: toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents, true),
       // Fattura chiesta dal cliente (docs/CHANGELOG.md §378): c'è la Booking, quindi il preventivo è accettato.

@@ -687,7 +687,9 @@ const BUILDERS: Record<string, Builder> = {
       title: "Un cliente ha segnalato un problema",
       paragraphs: [
         `Il cliente ha segnalato un problema sul lavoro per **${job(ctx)}**${type ? `: "${JOB_ISSUE_LABEL[type].toLowerCase()}"` : ""}.`,
-        assisted
+        payload.late === true
+          ? "Sono passati i giorni per un rimborso dal sito, quindi il nostro team non interviene: rispondigli in chat per trovare insieme una soluzione. Ricorda che per legge rispondi comunque dei difetti del tuo lavoro."
+          : assisted
           ? `Rispondigli in chat **entro ${JOB_ISSUE_PRO_REPLY_HOURS} ore** per trovare insieme una soluzione. Se non rispondi, la segnalazione passa al nostro team.`
           : "Rispondigli in chat per trovare insieme una soluzione.",
       ],
@@ -719,14 +721,16 @@ const BUILDERS: Record<string, Builder> = {
     details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso proposto", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: clientRequests(),
   }),
-  JOB_ISSUE_UNRESOLVED: (_payload, ctx) => ({
+  JOB_ISSUE_UNRESOLVED: (payload, ctx) => ({
     kind: "notification",
     subject: "Nessun accordo sulla segnalazione",
     greeting: ctx.name,
     title: "Nessun accordo sulla segnalazione",
     paragraphs: [
       `Il cliente ha indicato che non avete trovato un accordo sul problema del lavoro per **${job(ctx)}**.`,
-      "Il lavoro era pagato direttamente: la questione resta tra te e il cliente, il nostro team non interviene.",
+      payload.late === true
+        ? "La segnalazione è arrivata dopo i giorni per un rimborso dal sito: la questione resta tra te e il cliente, il nostro team non interviene."
+        : "Il lavoro era pagato direttamente: la questione resta tra te e il cliente, il nostro team non interviene.",
     ],
     cta: proRequests(),
   }),

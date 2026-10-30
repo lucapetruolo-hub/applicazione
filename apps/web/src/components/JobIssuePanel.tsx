@@ -61,7 +61,9 @@ export function JobIssuePanel({
       {issue.status === "CHAT" ? (
         <YStack gap="$2">
           <Text fontSize={13} color={brand.grafite70}>
-            {!issue.assisted
+            {issue.late
+              ? "Il cliente ha segnalato il problema dopo i giorni per un rimborso dal sito: rispondigli qui in chat per trovare insieme una soluzione. Per legge rispondi comunque dei difetti del tuo lavoro."
+              : !issue.assisted
               ? "Il cliente ha pagato direttamente: rispondigli qui in chat per trovare insieme una soluzione. Il cliente potrà comunque lasciare la recensione."
               : issue.proRepliedInChat
               ? "Hai risposto al cliente in chat. Se non vi accordate, il cliente può chiedere al nostro team di decidere: in quel caso avrai 72 ore per inviare la tua versione."

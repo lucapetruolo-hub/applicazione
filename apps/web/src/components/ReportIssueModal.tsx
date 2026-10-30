@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { X } from "lucide-react";
-import { BAD_WORK_REPORT_DAYS, JOB_ISSUE_LABEL, NO_SHOW_REPORT_DAYS, type JobIssueType, type ReportJobIssueInput } from "@professionisti/shared";
+import { BAD_WORK_REPORT_DAYS, JOB_ISSUE_LABEL, JOB_ISSUE_LATE_NOTE, NO_SHOW_REPORT_DAYS, type JobIssueType, type ReportJobIssueInput } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
@@ -34,6 +34,7 @@ export function ReportIssueModal({
   uploadPhoto,
   onOpenChat,
   assisted = true,
+  late = false,
 }: {
   businessName: string;
   phone: string | null;
@@ -46,6 +47,8 @@ export function ReportIssueModal({
   onOpenChat?: () => void;
   /** Lavoro pagato online: segnalazione con la nostra assistenza. False con il pagamento diretto (§168). */
   assisted?: boolean;
+  /** Passato il termine (7 giorni o lavoro confermato): solo "lavoro non andato bene", senza rimborso. */
+  late?: boolean;
 }) {
   const [type, setType] = useState<JobIssueType | null>(allowedTypes.length === 1 ? (allowedTypes[0] ?? null) : null);
   const [description, setDescription] = useState("");
@@ -194,7 +197,9 @@ export function ReportIssueModal({
                 Segnala un problema
               </Text>
               <Text fontSize={16} color={brand.grafite70}>
-                {!assisted
+                {late
+                  ? JOB_ISSUE_LATE_NOTE
+                  : !assisted
                   ? `Hai scelto il pagamento diretto: ti mettiamo in contatto con ${businessName} per trovare un accordo, ma non possiamo rimborsarti né decidere noi. Con il pagamento online avresti avuto la nostra assistenza.`
                   : onOpenChat
                   ? `Come primo passo proverete a risolvere in chat con ${businessName}. Se non vi accordate, decide il nostro team dopo aver sentito entrambi.`
@@ -224,7 +229,7 @@ export function ReportIssueModal({
                       {JOB_ISSUE_LABEL[option]}
                     </Text>
                     <Text fontSize={13} color={brand.grafite70}>
-                      {enabled ? HINT[option] : `Non disponibile adesso. ${HINT[option]}`}
+                      {late ? (enabled ? "Senza rimborso dal sito: ne parli in chat con il professionista." : "Non disponibile adesso.") : enabled ? HINT[option] : `Non disponibile adesso. ${HINT[option]}`}
                     </Text>
                   </YStack>
                 );

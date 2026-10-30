@@ -7,6 +7,7 @@ import {
   JOB_ISSUE_SANCTION_WINDOW_DAYS,
   jobIssueAutoDecision,
   jobIssueAutoEscalation,
+  jobIssueAssisted,
   jobIssueCanAppeal,
   jobIssueEvidenceDueAt,
   jobIssueOutcomeText,
@@ -428,8 +429,8 @@ export class JobIssueOutcomeService {
       })),
     );
     for (const issue of chats) {
-      // Pagamento diretto (§168): resta tra cliente e professionista, mai al nostro team.
-      const assisted = issue.booking.jobPayment?.paymentMethod !== "DIRECT";
+      // Pagamento diretto (§168) o segnalazione dopo il termine: resta tra cliente e professionista, mai al nostro team.
+      const assisted = jobIssueAssisted(issue.booking.jobPayment?.paymentMethod, issue.late);
       const reason = jobIssueAutoEscalation({ status: issue.status, createdAt: issue.createdAt, proRepliedAt: replies.get(issue.id) ?? null, assisted }, now);
       if (!reason) continue;
       const moved = await this.prisma.jobIssue.updateMany({

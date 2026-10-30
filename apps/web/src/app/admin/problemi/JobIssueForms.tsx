@@ -34,7 +34,9 @@ export function PhaseDeadline({ row }: { row: AdminJobIssue }) {
   if (issue.status === "CHAT") {
     return (
       <Text fontSize={13} color={brand.grafite70}>
-        {!issue.assisted
+        {issue.late
+          ? "Segnalata dopo il termine (7 giorni o lavoro confermato): resta tra cliente e professionista, senza rimborso né decisione nostra."
+          : !issue.assisted
           ? "Pagamento diretto: la segnalazione resta tra cliente e professionista, non arriva a noi."
           : issue.proRepliedInChat
           ? "Il professionista ha risposto in chat: decide il cliente se passarla a noi."
