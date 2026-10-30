@@ -74,6 +74,9 @@ export class JobIssueOutcomeService {
           guidedRequestId: issue.guidedRequestId,
           professionalProfileId: issue.professionalProfileId,
           actor: "PROFESSIONAL",
+          // Solo un messaggio scritto da lui: gli eventi registrati dal sito
+          // (preventivo, lavoro terminato...) non sono una risposta (collaudo F-20).
+          automatic: false,
           createdAt: { gt: issue.createdAt },
         },
         orderBy: { createdAt: "asc" },

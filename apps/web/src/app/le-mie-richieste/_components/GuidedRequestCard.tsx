@@ -55,6 +55,12 @@ import { announceRequestDeleted } from "./RequestDeletedNotice";
 import { ClientMiniTimeline, ClientStagePill, MAX_REQUEST_PHOTOS, STAGE_STYLE, ServiceBadge, formatDateTime, requestJobAddress, textareaStyle } from "./clientRequestHelpers";
 
 /** Acconto online che resta al professionista se il cliente annulla ora, dentro il preavviso (docs/CHANGELOG.md §348). */
+/** Pagato online e non ancora rimborsato (collaudo F-02). */
+function paidOnline(booking: ClientBooking | null | undefined): number {
+  if (booking?.payment?.method !== "ONLINE") return 0;
+  return Math.max(0, booking.payment.paidEurCents - booking.payment.refundedEurCents);
+}
+
 function keptDeposit(booking: ClientBooking): number {
   if (!booking.lateCancelKeepsDeposit || booking.payment?.method !== "ONLINE") return 0;
   return Math.max(0, booking.payment.paidEurCents - booking.payment.refundedEurCents);
@@ -1233,9 +1239,15 @@ export function GuidedRequestCard({
           description={
             booking && isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours)
               ? `Il professionista verrà avvisato. Mancano meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)}, il preavviso che aveva chiesto.${
-                  keptDeposit(booking) > 0 ? ` Come scritto nel preventivo, l'acconto di ${formatEurCents(keptDeposit(booking))} resta a lui.` : ""
+                  keptDeposit(booking) > 0
+                    ? ` Come scritto nel preventivo, l'acconto di ${formatEurCents(keptDeposit(booking))} resta a lui.`
+                    : paidOnline(booking) > 0
+                      ? ` I ${formatEurCents(paidOnline(booking))} che hai pagato online ti tornano sulla carta.`
+                      : ""
                 }`
-              : "Il professionista verrà avvisato dell'annullamento."
+              : `Il professionista verrà avvisato dell'annullamento.${
+                  paidOnline(booking) > 0 ? ` I ${formatEurCents(paidOnline(booking))} che hai pagato online ti tornano sulla carta.` : ""
+                }`
           }
           confirmLabel="Sì, annulla prenotazione"
           confirmingLabel="Annullamento..."

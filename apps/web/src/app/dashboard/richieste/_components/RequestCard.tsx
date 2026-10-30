@@ -15,6 +15,7 @@ import {
   QUOTE_PAYMENT_OPTION_LABEL,
   jobPaymentChoices,
   onlineLimitHint,
+  onlineDepositTooLowProblem,
   onlineLimitProblem,
   paymentChoiceIsOnline,
   type JobPaymentChoice,
@@ -39,6 +40,7 @@ import {
   type CancellationNoticeHours,
   type MySubscription,
   type MyProfessionalProfile,
+  wallClockToday,
 } from "@professionisti/shared";
 import { Avatar, Badge, Chip, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -418,6 +420,8 @@ export function RequestCard({
       const { totalMaxEurCents } = quotePriceTotals(parsed.map((item) => ({ priceMinEurCents: item.priceMinEurCents ?? null, priceMaxEurCents: item.priceMaxEurCents ?? null })));
       const limitProblem = onlineLimitProblem({ paymentOptions: offered, depositPercent, totalMaxEurCents, limitEurCents: onlineLimitEurCents });
       if (limitProblem) return setQuoteError(limitProblem);
+      const lowProblem = onlineDepositTooLowProblem({ paymentOptions: offered, depositPercent, totalMaxEurCents });
+      if (lowProblem) return setQuoteError(lowProblem);
     }
 
     setIsSubmittingQuote(true);
@@ -692,8 +696,12 @@ export function RequestCard({
   if (dateChangePending) {
     menuActions.push({ icon: "check", text: proposalChange ? "Accetta nuova data" : "Conferma appuntamento", onPress: handleConfirmDate });
   }
-  if (booking?.status === "CONFIRMED") {
+  // "Lavoro terminato" dal giorno dell'appuntamento, come in Agenda (§311, collaudo F-01).
+  const canComplete = booking?.status === "CONFIRMED" && new Date(booking.scheduledAt).toISOString().slice(0, 10) <= wallClockToday().toISOString().slice(0, 10);
+  if (canComplete) {
     menuActions.push({ icon: "check", text: "Lavoro terminato", onPress: () => setShowCompleteModal(true) });
+  }
+  if (booking?.status === "CONFIRMED") {
     menuActions.push({ icon: "x", text: "Annulla intervento", tone: "danger", onPress: () => setShowCancelModal(true) });
   }
   // Regola simmetrica (§197): ognuno riapre solo ciò che ha annullato lui.
@@ -1195,7 +1203,7 @@ export function RequestCard({
           ) : null}
           {/* Segnalazione del cliente sul lavoro (docs/CHANGELOG.md §164). */}
           {/* Pagamento del lavoro (docs/CHANGELOG.md §168). */}
-          {booking?.payment && booking.status !== "CANCELED" ? <JobPaymentStatus payment={booking.payment} audience="professional" /> : null}
+          {booking?.payment && (booking.status !== "CANCELED" || booking.payment.paidEurCents > 0) ? <JobPaymentStatus payment={booking.payment} audience="professional" /> : null}
           {/* Contestazione in banca: la sua spiegazione per le prove (docs/changelog/2026-10-28-stripe-prova.md). */}
           {booking?.payment?.bankDispute ? (
             <BankDisputeNotePanel
@@ -1352,7 +1360,7 @@ export function RequestCard({
                     richiesta esplicita dell'utente di implementarli identici
                     qui: "Lavoro terminato"/"Annulla intervento" finché la
                     prenotazione è CONFIRMED. */}
-                {booking?.status === "CONFIRMED" ? (
+                {canComplete ? (
                   <>
                     {/* Turchese su richiesta esplicita dell'utente — stesso hex
                         già in uso per lo stato "Completata" in STAGE_STYLE
@@ -1825,7 +1833,18 @@ export function RequestCard({
           uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
         />
       ) : null}
-      {showCancelModal && booking ? <CancelBookingModal onClose={() => setShowCancelModal(false)} onCancel={handleCancelBooking} /> : null}
+      {showCancelModal && booking ? (
+        <CancelBookingModal
+          // Che fine fa l'acconto pagato online (collaudo F-02).
+          description={`Il cliente verrà avvisato dell'annullamento${
+            booking.payment?.method === "ONLINE" && booking.payment.paidEurCents - booking.payment.refundedEurCents > 0
+              ? ` e gli restituiamo sulla carta i ${formatEurCents(booking.payment.paidEurCents - booking.payment.refundedEurCents)} che ha pagato online`
+              : ""
+          }. Puoi lasciare una nota facoltativa per spiegargli il motivo.`}
+          onClose={() => setShowCancelModal(false)}
+          onCancel={handleCancelBooking}
+        />
+      ) : null}
       {showDocuments && booking ? <JobDocumentsModal token={token} bookingId={booking.id} onClose={() => setShowDocuments(false)} /> : null}
       {showReportModal ? (
         <ReportContentModal

@@ -322,6 +322,10 @@ export function BookingSection({
           ad altri professionisti della zona.
         </Text>
       ) : null}
+      {/* Che fine fa l'acconto pagato online dopo l'annullamento (collaudo F-02). */}
+      {booking.status === "CANCELED" && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0 ? (
+        <JobPaymentStatus payment={booking.payment} audience="client" />
+      ) : null}
       {reopenError ? (
         <Text color={brand.urgenza} fontSize={16}>
           {reopenError}

@@ -1,4 +1,4 @@
-import { asScheduleChange, formatAppointmentDate, formatAppointmentTimeRange, scheduleChangeAlternative, scheduleChangeObject } from "@professionisti/shared";
+import { asScheduleChange, formatAppointmentDate, formatEur, formatAppointmentTimeRange, scheduleChangeAlternative, scheduleChangeObject } from "@professionisti/shared";
 
 /**
  * Testo simpatico per il popup "toast" quando arriva una nuova notifica
@@ -219,6 +219,14 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
     // Appuntamento già fissato: "Non posso più" → "Proponi un'altra data" (docs/changelog/2026-10-28-promemoria-whatsapp.md).
     const what = data.booked === true ? "l'appuntamento" : "il preventivo";
     return { icon: "🗓️", message: `Il cliente ha proposto ${scheduleChangeAlternative(change)} per ${what}${newSlot ? `: ${newSlot}` : ""}.` };
+  }
+  // Quanto torna al cliente e perché (collaudo F-02, I-02).
+  if ((type === "JOB_REFUND_COMPLETED" || type === "JOB_REFUND_PENDING") && typeof data.amountEurCents === "number" && data.amountEurCents > 0) {
+    const amount = formatEur(data.amountEurCents);
+    const what = data.duplicate === true ? `Avevi pagato due volte: ti rimborsiamo il secondo pagamento di ${amount}` : `Rimborso di ${amount}`;
+    return type === "JOB_REFUND_COMPLETED"
+      ? { icon: "↩️", message: `${what}${data.duplicate === true ? "" : " partito"}: lo rivedi sulla carta in pochi giorni.` }
+      : { icon: "↩️", message: `${what}: è in arrivo, ti avvisiamo appena parte verso la carta.` };
   }
   if (type === "AGENDA_TOMORROW_SUMMARY" && Array.isArray(data.items)) {
     const count = data.items.length;

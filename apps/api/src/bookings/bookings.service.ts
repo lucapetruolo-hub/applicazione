@@ -18,6 +18,7 @@ import {
   paymentChoiceIsOnline,
   quotePaymentOffer,
   onlineDepositEurCents,
+  ONLINE_MIN_CHARGE_EUR_CENTS,
   jobIssueCanEscalate,
   jobIssueEvidenceDueAt,
   type JobIssueResponseInput,
@@ -59,6 +60,11 @@ type AcceptableQuote = Awaited<ReturnType<BookingsService["loadAcceptableQuote"]
 
 /** Nota per il cliente sui lavori annullati perché il professionista ha chiuso l'account (docs/CHANGELOG.md §348). */
 export const ACCOUNT_CLOSED_NOTE = "Il professionista ha chiuso il suo account.";
+
+/** L'appuntamento è in un giorno dopo oggi (ora italiana). */
+function startsAfterToday(scheduledAt: Date): boolean {
+  return scheduledAt.toISOString().slice(0, 10) > wallClockNow().toISOString().slice(0, 10);
+}
 
 @Injectable()
 export class BookingsService implements OnModuleInit {
@@ -147,6 +153,10 @@ export class BookingsService implements OnModuleInit {
       if (!stripeVerified(fiscal)) {
         throw new BadRequestException("Questo professionista non può ancora ricevere pagamenti online: scegli il pagamento diretto.");
       }
+      // Acconto sotto il minimo di Stripe (collaudo I-01): il pagamento non partirebbe davvero.
+      if (this.quoteDepositEurCents(quote) < ONLINE_MIN_CHARGE_EUR_CENTS) {
+        throw new BadRequestException("L'acconto di questo preventivo è troppo basso per pagarlo con la carta: scegli il pagamento diretto.");
+      }
       // Prima di far pagare l'acconto: niente pagamento per un'ora già occupata (§310).
       await this.assertProfessionalFree(this.prisma, quote);
       const { url } = await this.jobPaymentsService.createQuoteDepositCheckout({
@@ -234,8 +244,11 @@ export class BookingsService implements OnModuleInit {
 
     const existing = await this.prisma.booking.findUnique({ where: { quoteId }, include: { jobPayment: true } });
     if (existing?.jobPayment?.stripePaymentIntentId === paymentIntentId) return;
-    // Lavoro creato da un tentativo precedente interrotto prima di registrare l'acconto.
-    if (existing && existing.clientId === clientUserId && existing.jobPayment?.onlineStage === "AWAITING_DEPOSIT" && !existing.jobPayment.stripePaymentIntentId) {
+    // Lavoro creato da un tentativo precedente interrotto prima di registrare
+    // l'acconto, oppure acconto pagato una seconda volta da un'altra scheda
+    // (collaudo I-02): la registrazione tiene solo il primo pagamento e
+    // rimborsa subito il secondo, dicendolo al cliente.
+    if (existing?.jobPayment && existing.clientId === clientUserId && (existing.jobPayment.onlineStage === "AWAITING_DEPOSIT" || existing.jobPayment.stripePaymentIntentId)) {
       await this.jobPaymentsService.recordQuoteDeposit(existing.jobPayment.id, session);
       return;
     }
@@ -258,9 +271,17 @@ export class BookingsService implements OnModuleInit {
         bookingId = await this.confirmAcceptedQuote(quote, clientUserId, paymentMethod);
       } catch (err) {
         // Nel frattempo il professionista ha preso un altro lavoro a quell'ora
-        // (§310). Se invece è lo stesso evento arrivato due volte, il lavoro
-        // c'è già: Stripe riprova e il controllo in cima lo riconosce.
-        if (!(err instanceof ConflictException) || (await this.prisma.booking.findUnique({ where: { quoteId }, select: { id: true } }))) throw err;
+        // (§310). Se invece il lavoro c'è già (stesso evento arrivato due volte
+        // o acconto pagato anche da un'altra scheda), si registra lì: un
+        // secondo pagamento torna subito al cliente. Senza ancora il pagamento
+        // del lavoro Stripe riprova e il controllo in cima lo riconosce.
+        if (!(err instanceof ConflictException)) throw err;
+        const job = await this.prisma.booking.findUnique({ where: { quoteId }, select: { clientId: true, jobPayment: { select: { id: true } } } });
+        if (job?.jobPayment && job.clientId === clientUserId) {
+          await this.jobPaymentsService.recordQuoteDeposit(job.jobPayment.id, session);
+          return;
+        }
+        if (job) throw err;
         refundReason = err.message;
       }
     }
@@ -621,6 +642,13 @@ export class BookingsService implements OnModuleInit {
     if (booking.status !== "CONFIRMED") {
       throw new BadRequestException("Solo un lavoro confermato può essere segnalato come terminato.");
     }
+    // Mai prima del giorno dell'appuntamento, come il pulsante in Agenda
+    // (§311, collaudo F-01): il saldo si addebiterebbe al cliente prima del lavoro.
+    if (startsAfterToday(booking.scheduledAt)) {
+      throw new BadRequestException(
+        "Puoi segnare il lavoro come terminato dal giorno dell'appuntamento. Se l'hai fatto prima, sposta prima la data con il cliente.",
+      );
+    }
 
     // Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §246): il testo
     // dipende dal tipo fiscale; se nel frattempo è cambiato il professionista
@@ -749,6 +777,10 @@ export class BookingsService implements OnModuleInit {
     }
     if (booking.clientConfirmedCompletedAt) {
       throw new ForbiddenException("Hai già confermato il completamento di questo lavoro.");
+    }
+    // Mai prima del giorno dell'appuntamento (§346, collaudo F-01).
+    if (booking.status === "CONFIRMED" && startsAfterToday(booking.scheduledAt)) {
+      throw new BadRequestException("Potrai confermare che il lavoro è terminato dal giorno dell'appuntamento.");
     }
 
     await this.prisma.booking.update({

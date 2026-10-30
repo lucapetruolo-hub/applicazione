@@ -1006,7 +1006,9 @@ const BUILDERS: Record<string, Builder> = {
     greeting: ctx.name,
     title: "Rimborso in arrivo",
     paragraphs: [
-      `Il rimborso per **${job(ctx)}** è stato chiesto, ma serve qualche giorno in più per completarlo.`,
+      payload.duplicate === true
+        ? `Per **${job(ctx)}** avevi pagato due volte: il rimborso del secondo pagamento è chiesto, ma serve qualche giorno in più per completarlo.`
+        : `Il rimborso per **${job(ctx)}** è stato chiesto, ma serve qualche giorno in più per completarlo.`,
       "Non devi fare nulla: ti scriviamo appena parte verso la tua carta.",
     ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso", value: formatEur(payload.amountEurCents) }] : undefined,
@@ -1017,7 +1019,11 @@ const BUILDERS: Record<string, Builder> = {
     subject: "Rimborso completato",
     greeting: ctx.name,
     title: "Rimborso completato",
-    paragraphs: [`Il rimborso per **${job(ctx)}** è partito: lo rivedi sulla carta in pochi giorni.`],
+    paragraphs: [
+      payload.duplicate === true
+        ? `Per **${job(ctx)}** avevi pagato due volte: il secondo pagamento ti è già stato rimborsato. Lo rivedi sulla carta in pochi giorni.`
+        : `Il rimborso per **${job(ctx)}** è partito: lo rivedi sulla carta in pochi giorni.`,
+    ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: clientRequests(),
   }),

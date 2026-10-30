@@ -69,6 +69,9 @@ function clientView(payment: JobPaymentSummary): View {
       ? { tone: "danger", icon: "credit-card", title: "Saldo da pagare", body: "Pagalo ora per chiudere il lavoro.", step: 1 }
       : { tone: "action", icon: "credit-card", title: "Saldo da pagare", body: until ? `Pagalo entro ${until}.` : "Pagalo per chiudere il lavoro.", step: 1 };
   }
+  if (stage === "PAID" && payment.depositKept) {
+    return { tone: "neutral", icon: "lock", title: "Acconto trattenuto", body: "Hai annullato dentro il preavviso: l'acconto resta al professionista, come diceva il preventivo.", step: null };
+  }
   if (stage === "PAID") {
     return {
       tone: "blocked",
@@ -123,6 +126,15 @@ function professionalView(payment: JobPaymentSummary): View {
   }
   if (stage === "AWAITING_BALANCE") {
     return { tone: "blocked", icon: "clock", title: "In attesa del saldo", body: "Il cliente deve pagare il saldo.", step: 1 };
+  }
+  if (stage === "PAID" && payment.depositKept) {
+    return {
+      tone: "blocked",
+      icon: "lock",
+      title: "Acconto trattenuto",
+      body: `Il cliente ha annullato dentro il preavviso: l'acconto resta a te. Lo ricevi in banca${until ? ` il ${until}` : " dopo i giorni di blocco"}.`,
+      step: 1,
+    };
   }
   if (stage === "PAID") {
     return {
