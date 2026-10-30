@@ -137,6 +137,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   if (type === "ADMIN_URGENCY_ALERT") return "/admin";
   if (type === "ADMIN_SEARCH_DEMAND_ALERT") return "/admin/numeri-professionisti";
   if (type === "ADMIN_WEEKLY_ADVICE") return "/admin/andamento";
+  if (type === "ADMIN_CLAIMED_CASES_DUE") return "/admin?chi=mie";
   // Documenti contabili (docs/CHANGELOG.md §378).
   if (type === "MONTHLY_DOCUMENTS_READY" || type === "CLIENT_DOCUMENTS_TO_FIX") return "/dashboard/documenti";
   if (type === "ADMIN_FEE_RECONCILIATION") return "/admin/finanza";

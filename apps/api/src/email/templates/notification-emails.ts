@@ -1251,6 +1251,25 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Vedi i consigli", url: `${frontendUrl()}/admin/andamento` },
     };
   },
+  // Casi presi con "Prendo io" che scadono entro 24 ore (docs/changelog/2026-10-30-admin-riordino.md).
+  ADMIN_CLAIMED_CASES_DUE: (payload) => {
+    const items = Array.isArray(payload.cases)
+      ? payload.cases.flatMap((item) => {
+          if (!item || typeof item !== "object") return [];
+          const c = item as Record<string, unknown>;
+          if (typeof c.title !== "string" || typeof c.due !== "string") return [];
+          return [`**${c.title}**${typeof c.who === "string" ? `, ${c.who}` : ""}: ${c.due}.`];
+        })
+      : [];
+    return {
+      kind: "notification",
+      tone: "urgent",
+      subject: items.length === 1 ? "Un caso che hai preso scade oggi" : `${items.length} casi che hai preso scadono oggi`,
+      title: "Casi in scadenza",
+      paragraphs: ["Hai detto \"Prendo io\" su questi casi e la scadenza è vicina:", ...items],
+      cta: { label: "Apri i tuoi casi", url: `${frontendUrl()}/admin?chi=mie` },
+    };
+  },
   ADMIN_JOB_BALANCE_UNPAID: () => ({
     kind: "notification",
     tone: "urgent",

@@ -36,6 +36,13 @@ confermata il 30/10). Questa è la PR 1 di 3 (poi Persone e Protezioni):
   `admin_case_claims`, migrazione `20261030120000_admin_casi_presi`): due
   admin non lavorano più lo stesso caso senza saperlo. Il caso preso resta
   in coda finché non è deciso nella sua pagina.
+- **Avviso del mattino sui casi presi** (miglioria proposta e accolta da Luca
+  il 30/10): ogni giorno alle 8 (ora di Roma) chi ha detto "Prendo io" su un
+  caso che scade entro 24 ore, o è già scaduto, riceve un avviso in
+  campanella ed email (`ADMIN_CLAIMED_CASES_DUE`, argomento "Avvisi per
+  l'amministrazione", si spegne dalle Notifiche) con un link a "Presi da me".
+  Lo stesso giro toglie i "presi" dei casi già chiusi e di chi non è più
+  admin (`AdminQueueService.morningClaimedDue`).
 - **Grafici e numeri della vecchia Home** in Numeri → Andamento e consigli
   (`AdminSummaryNumbers`); in "Da fare" il super admin vede solo il primo
   consiglio della settimana.
@@ -54,7 +61,10 @@ confermata il 30/10). Questa è la PR 1 di 3 (poi Persone e Protezioni):
   etichetta (`aria-label`): vale per tutti i moduli del sito che lo usano,
   prima il lettore di schermo leggeva "campo di testo" senza nome.
 
-**Verifica**: `e2e/tests/admin-da-fare.spec.ts` (telefono e computer: gas in
+**Verifica**: prova dell'email in `email-templates.test.ts`; avviso del
+mattino provato in locale (contestazione in banca presa che scade fra 5 ore →
+una notifica "scade oggi alle 19:57"; un "preso" su un caso inesistente
+tolto). `e2e/tests/admin-da-fare.spec.ts` (telefono e computer: gas in
 cima anche se più nuovo di un messaggio, "Prendo io" che resta dopo il
 ricaricamento con "Presi da me", "Lascia", nessuna riga più larga dello
 schermo, axe a 0, menu → Fisco e fatture → DAC7). Riprovate le prove admin

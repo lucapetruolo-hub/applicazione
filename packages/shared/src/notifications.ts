@@ -129,6 +129,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "ADMIN_SEARCH_DEMAND_ALERT",
       // Cosa fare questa settimana, consigli dai numeri del sito, ogni lunedì (docs/CHANGELOG.md §372).
       "ADMIN_WEEKLY_ADVICE",
+      // Casi presi con "Prendo io" che scadono entro 24 ore, ogni mattina (docs/changelog/2026-10-30-admin-riordino.md).
+      "ADMIN_CLAIMED_CASES_DUE",
       // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
       "JOB_CONFIRM_REMINDER",
       "JOB_AUTO_CONFIRMED",
@@ -401,6 +403,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "ADMIN_URGENCY_ALERT",
       "ADMIN_SEARCH_DEMAND_ALERT",
       "ADMIN_WEEKLY_ADVICE",
+      "ADMIN_CLAIMED_CASES_DUE",
       "ADMIN_JOB_NOT_CLOSED",
       "ADMIN_JOB_PAYMENT_LONG_HOLD",
       "ADMIN_FEE_RECONCILIATION",

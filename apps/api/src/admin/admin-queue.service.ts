@@ -1,4 +1,5 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Cron } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import {
   ADMIN_QUEUE_KINDS,
@@ -13,6 +14,7 @@ import {
   type AdminRoleValue,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { NotificationsService } from "../notifications/notifications.service";
 
 type Person = { name: string | null; surname: string | null } | null;
 const personName = (p: Person) => [p?.name, p?.surname].filter(Boolean).join(" ") || "Utente";
@@ -27,7 +29,12 @@ const short = (text: string | null | undefined, max = 110) => (text ? (text.leng
  */
 @Injectable()
 export class AdminQueueService {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  private readonly logger = new Logger(AdminQueueService.name);
+
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   private async rolesOf(adminUserId: string): Promise<AdminRoleValue[]> {
     const user = await this.prisma.user.findUnique({ where: { id: adminUserId }, select: { adminRoles: true } });
@@ -319,4 +326,47 @@ export class AdminQueueService {
   async release(caseKey: string): Promise<void> {
     await this.prisma.adminCaseClaim.deleteMany({ where: { caseKey } });
   }
+
+  /**
+   * Ogni mattina alle 8 (ora di Roma): a chi ha preso un caso con "Prendo io"
+   * che scade entro 24 ore, o è già scaduto, un avviso in campanella ed email
+   * (proposta accolta da Luca il 30/10/2026). Toglie anche i "presi" dei casi
+   * già chiusi, che non compaiono più in coda.
+   */
+  @Cron("0 8 * * *", { timeZone: "Europe/Rome" })
+  async morningClaimedDue(now: Date = new Date()): Promise<number> {
+    const claims = await this.prisma.adminCaseClaim.findMany({ select: { caseKey: true, adminUserId: true } });
+    const admins = [...new Set(claims.map((c) => c.adminUserId))];
+    let notified = 0;
+    for (const adminUserId of admins) {
+      const admin = await this.prisma.user.findFirst({ where: { id: adminUserId, role: "ADMIN", deletedAt: null }, select: { id: true } });
+      const mine = claims.filter((c) => c.adminUserId === adminUserId).map((c) => c.caseKey);
+      if (!admin) {
+        await this.prisma.adminCaseClaim.deleteMany({ where: { adminUserId } });
+        continue;
+      }
+      const { items } = await this.getQueue(adminUserId);
+      const open = new Set(items.map((i) => i.key));
+      const closed = mine.filter((key) => !open.has(key));
+      if (closed.length) await this.prisma.adminCaseClaim.deleteMany({ where: { caseKey: { in: closed }, adminUserId } });
+      const limit = now.getTime() + 24 * 3_600_000;
+      const due = items.filter((i) => i.claimedBy?.id === adminUserId && i.dueAt && new Date(i.dueAt).getTime() <= limit);
+      if (!due.length) continue;
+      const cases = due.map((i) => ({ title: i.title, who: i.who, due: dueText(i.dueAt as string, now) }));
+      await this.notificationsService.notify(adminUserId, "ADMIN_CLAIMED_CASES_DUE", { cases });
+      notified += 1;
+    }
+    if (notified) this.logger.log(`Casi presi in scadenza: avvisati ${notified} admin.`);
+    return notified;
+  }
+}
+
+/** "scaduto da 3 ore" oppure "scade alle 18:00". */
+function dueText(dueAt: string, now: Date): string {
+  const due = new Date(dueAt);
+  const diffHours = Math.round((now.getTime() - due.getTime()) / 3_600_000);
+  if (due.getTime() <= now.getTime()) return diffHours < 1 ? "scaduto ora" : `scaduto da ${diffHours} ${diffHours === 1 ? "ora" : "ore"}`;
+  const time = new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit" }).format(due);
+  const sameDay = new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", dateStyle: "short" });
+  return sameDay.format(due) === sameDay.format(now) ? `scade oggi alle ${time}` : `scade domani alle ${time}`;
 }
