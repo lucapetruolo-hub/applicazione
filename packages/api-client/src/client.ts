@@ -52,6 +52,10 @@ import type {
   ProfessionalFiscalProfileInput,
   ProfessionalInsights,
   ProfessionalStats,
+  ProfessionalStatusKey,
+  AdminUserSignal,
+  AdminSuspiciousUser,
+  AdminModerateInput,
   NotificationPreferences,
   ProfessionalLead,
   ProfessionalProfileSelfInput,
@@ -389,6 +393,8 @@ export type AdminUserRow = {
   businessName: string | null;
   professionalProfileId: string | null;
   profileSuspended: boolean;
+  /** Il profilo è nella ricerca? Se no, perché (docs/changelog/2026-10-30-admin-persone.md). null per chi non è professionista. */
+  searchStatus: ProfessionalStatusKey | null;
   createdAt: string;
   deletedAt: string | null;
   suspendedAt: string | null;
@@ -424,11 +430,58 @@ export type AdminUserDetail = {
   testAccountAt: string | null;
   /** Verifica in due passaggi attiva (solo per gli admin, docs/CHANGELOG.md §359). */
   adminTwoFactorEnabled: boolean;
-  professionalProfile: { id: string; businessName: string; categoryLabel: string; city: string; suspendedAt: string | null } | null;
-  counts: { requests: number; bookings: number; reviewsWritten: number; reviewsReceived: number; reportsMade: number; reportsReceived: number };
+  professionalProfile: {
+    id: string;
+    businessName: string;
+    categoryLabel: string;
+    city: string;
+    suspendedAt: string | null;
+    /** Nella ricerca o, se no, perché (docs/changelog/2026-10-30-admin-persone.md). */
+    searchStatus: ProfessionalStatusKey;
+    /** La decisione che l'ha tolto dalla ricerca, da annullare con "Rimetti nella ricerca". */
+    hiddenBy: { reportId: string; note: string | null } | null;
+  } | null;
+  counts: {
+    requests: number;
+    bookings: number;
+    reviewsWritten: number;
+    reviewsReceived: number;
+    /** Quelle che si vedono sul profilo pubblico: la differenza sono le nascoste. */
+    reviewsReceivedVisible: number;
+    reportsMade: number;
+    reportsReceived: number;
+  };
+  signals: AdminUserSignal[];
+  requests: { id: string; categoryLabel: string; city: string; description: string; status: string; hidden: boolean; createdAt: string }[];
+  jobs: {
+    id: string;
+    /** Questa persona nel lavoro: cliente o professionista. */
+    as: "CLIENT" | "PROFESSIONAL";
+    other: string;
+    otherUserId: string | null;
+    categoryLabel: string | null;
+    scheduledAt: string;
+    status: string;
+    issueStatus: string | null;
+    paymentLabel: string;
+    paidOnline: boolean;
+  }[];
+  reviewsWritten: AdminUserReview[];
+  reviewsReceived: AdminUserReview[];
   reportsMade: AdminReportRow[];
   reportsReceived: AdminReportRow[];
   timeline: { at: string; kind: string; text: string }[];
+};
+
+export type AdminUserReview = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  other: string;
+  createdAt: string;
+  hiddenAt: string | null;
+  /** La decisione che la tiene nascosta, da annullare con "Rimetti visibile". */
+  hiddenBy: { reportId: string; note: string | null } | null;
 };
 
 export type AdminAuditLogPage = {
@@ -1993,6 +2046,13 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
 
     adminSuspendUser: (token: string, id: string, note: string) =>
       request<{ id: string }>(`/admin/users/${id}/suspend`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ note }) }),
+
+    /** "Nascondi la recensione" / "Togli dalla ricerca" dalla scheda (docs/changelog/2026-10-30-admin-persone.md). */
+    adminModerateFromUser: (token: string, id: string, input: AdminModerateInput) =>
+      request<{ id: string }>(`/admin/users/${id}/moderate`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    adminSuspiciousUsers: (token: string) =>
+      request<AdminSuspiciousUser[]>("/admin/suspicious-users", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminReactivateUser: (token: string, id: string, note: string) =>
       request<{ id: string }>(`/admin/users/${id}/reactivate`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ note }) }),

@@ -17,6 +17,16 @@ export const PROFESSIONAL_STATUS_LABEL: Record<ProfessionalStatusKey, string> = 
   SUSPENDED: "Sospesi",
 };
 
+/** Lo stesso stato per un solo profilo, nella scheda della persona (docs/changelog/2026-10-30-admin-persone.md). */
+export const PROFESSIONAL_STATUS_ONE_LABEL: Record<ProfessionalStatusKey, string> = {
+  VISIBLE: "Nella ricerca",
+  FISCAL_MISSING: "Fuori dalla ricerca: dati fiscali da completare",
+  PAUSED: "Fuori dalla ricerca: in pausa (abbonamento)",
+  INVITE_PENDING: "Fuori dalla ricerca: creato al telefono, da confermare",
+  BLOCKED: "Fuori dalla ricerca: bloccato per segnalazioni",
+  SUSPENDED: "Tolto dalla ricerca",
+};
+
 export const PROFESSIONAL_PLAN_KEYS = ["TRIAL", "FOUNDER", "BASE", "PLUS", "PRO", "NONE"] as const;
 export type ProfessionalPlanKey = (typeof PROFESSIONAL_PLAN_KEYS)[number];
 

@@ -84,6 +84,10 @@ model User {
   // FK, il login torna impossibile (email non più corrispondente, password
   // azzerata, googleId azzerato) senza dover cancellare nulla a cascata.
   deletedAt                  DateTime?
+  // Impronta (HMAC) dell'email di un account chiuso, mai l'email: in Admin →
+  // Persone chi scrive l'email esatta ritrova "Account chiuso il …"
+  // (collaudo, gruppo 12, docs/changelog/2026-10-30-admin-persone.md).
+  deletedEmailHash           String?
   // Sospensione decisa da un admin su una segnalazione (docs/CHANGELOG.md
   // §144, DSA art. 17/23): l'account non può più accedere né usare l'API
   // (JwtAuthGuard legge questo campo a ogni richiesta). Revocabile
@@ -212,6 +216,8 @@ model User {
   outboundMessages    OutboundMessage[]
 
   @@map("users")
+
+  @@index([deletedEmailHash])
 }
 
 // Dispositivi da cui un professionista ha già fatto l'accesso

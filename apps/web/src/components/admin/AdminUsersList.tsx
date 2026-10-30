@@ -12,6 +12,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import {
   PROFESSIONAL_CATEGORIES,
+  PROFESSIONAL_STATUS_ONE_LABEL,
   adminCan,
   adminRolesLabel,
 } from "@professionisti/shared";
@@ -203,7 +204,7 @@ export function AdminUsersList({
           style={{ flex: 1, minWidth: 220 }}
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Cerca email, nome, attività…"
+          placeholder="Nome e cognome, email o attività"
         />
         {preset?.role ? null : (
           <select
@@ -332,7 +333,10 @@ export function AdminUsersList({
                 <tr key={row.id}>
                   <td>
                     <Link href={`/admin/utenti/${row.id}`}>
-                      {row.email ?? "(senza email)"}
+                      {/* L'email di un account chiuso è cancellata: lo si ritrova con l'email esatta (docs/changelog/2026-10-30-admin-persone.md). */}
+                      {row.deletedAt
+                        ? "Account chiuso"
+                        : (row.email ?? "(senza email)")}
                     </Link>
                   </td>
                   <td className="admin-cell-main">
@@ -359,16 +363,25 @@ export function AdminUsersList({
                   </td>
                   <td>
                     <XStack gap={4} flexWrap="wrap">
-                      {row.deletedAt ? <AdminPill>Eliminato</AdminPill> : null}
+                      {row.deletedAt ? (
+                        <AdminPill>
+                          Chiuso il {formatAdminDate(row.deletedAt)}
+                        </AdminPill>
+                      ) : null}
                       {row.suspendedAt ? (
                         <AdminPill tone="danger">Sospeso</AdminPill>
                       ) : null}
-                      {!row.suspendedAt && row.profileSuspended ? (
-                        <AdminPill tone="warn">Profilo nascosto</AdminPill>
+                      {!row.deletedAt &&
+                      !row.suspendedAt &&
+                      row.searchStatus &&
+                      row.searchStatus !== "VISIBLE" ? (
+                        <AdminPill tone="warn">
+                          {PROFESSIONAL_STATUS_ONE_LABEL[row.searchStatus]}
+                        </AdminPill>
                       ) : null}
                       {!row.deletedAt &&
                       !row.suspendedAt &&
-                      !row.profileSuspended ? (
+                      (!row.searchStatus || row.searchStatus === "VISIBLE") ? (
                         <AdminPill tone="ok">Attivo</AdminPill>
                       ) : null}
                       {row.testAccountAt && !isSuper ? (

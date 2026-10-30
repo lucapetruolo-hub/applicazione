@@ -1,26 +1,69 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import type { AdminRoleName, AdminUserDetail } from "@professionisti/api-client";
-import { ADMIN_ROLE_DESCRIPTION, ADMIN_ROLE_LABEL, CONTENT_REPORT_TARGET_LABEL, adminCan, adminRolesLabel, moderationActionAdminLabel } from "@professionisti/shared";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
+import type { AdminRoleName, AdminUserDetail, AdminUserReview } from "@professionisti/api-client";
+import {
+  ADMIN_ROLE_DESCRIPTION,
+  ADMIN_ROLE_LABEL,
+  ADMIN_USER_SIGNAL_LABEL,
+  CONTENT_REPORT_REASONS,
+  CONTENT_REPORT_TARGET_LABEL,
+  JOB_ISSUE_STATUS_LABEL,
+  MODERATION_GROUNDS,
+  MODERATION_REASON_TEMPLATES,
+  PROFESSIONAL_STATUS_ONE_LABEL,
+  adminCan,
+  adminRolesLabel,
+  moderationActionAdminLabel,
+  type ContentReportReasonCode,
+  type ModerationGroundCode,
+} from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
+import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
 
 const ROLE_LABEL = { CLIENT: "Cliente", PROFESSIONAL: "Professionista", ADMIN: "Amministratore" } as const;
 const KIND_ICON: Record<string, string> = { account: "👤", request: "📝", booking: "📅", review: "⭐", report: "🚩", admin: "🛡️" };
 
-/**
- * Scheda utente (docs/CHANGELOG.md §145), come la pagina cliente di Stripe
- * o Shopify: stato, numeri, segnalazioni fatte e ricevute, cronologia, e
- * le azioni sospendi/riattiva (moderatori) e ruolo admin (super admin).
- */
+/** Schede della persona (docs/changelog/2026-10-30-admin-persone.md), salvate nell'indirizzo. */
+const TABS = [
+  { key: "riepilogo", label: "Riepilogo" },
+  { key: "richieste", label: "Richieste" },
+  { key: "lavori", label: "Lavori" },
+  { key: "recensioni", label: "Recensioni" },
+  { key: "pagamenti", label: "Pagamenti" },
+  { key: "segnalazioni", label: "Segnalazioni" },
+  { key: "cronologia", label: "Cronologia" },
+] as const;
+type TabKey = (typeof TABS)[number]["key"];
+
 export default function AdminUserDetailPage() {
+  return (
+    <Suspense fallback={null}>
+      <UserDetail />
+    </Suspense>
+  );
+}
+
+/**
+ * Scheda della persona (docs/CHANGELOG.md §145, a schede dal riordino
+ * dell'Admin, docs/changelog/2026-10-30-admin-persone.md): in cima i segnali
+ * da controllare, poi le schede con richieste, lavori, recensioni, pagamenti,
+ * segnalazioni e cronologia. Le recensioni si nascondono e il profilo si
+ * toglie dalla ricerca da qui, sulla strada delle segnalazioni.
+ */
+function UserDetail() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("scheda");
+  const tab: TabKey = TABS.some((t) => t.key === tabParam) ? (tabParam as TabKey) : "riepilogo";
   const { user: me, token } = useAuth();
   const myRoles = me?.adminRoles ?? [];
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
@@ -41,6 +84,14 @@ export default function AdminUserDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, params.id]);
 
+  function setTab(key: TabKey) {
+    const next = new URLSearchParams(searchParams.toString());
+    if (key === "riepilogo") next.delete("scheda");
+    else next.set("scheda", key);
+    const query = next.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
+
   if (error && !detail) return <Text color={brand.urgenza}>{error}</Text>;
   if (!detail) {
     return (
@@ -53,94 +104,276 @@ export default function AdminUserDetailPage() {
 
   const fullName = [detail.name, detail.surname].filter(Boolean).join(" ");
   const isSelf = me?.id === detail.id;
+  const canModerate = adminCan(myRoles, "MODERATION") && !detail.deletedAt;
+  const profile = detail.professionalProfile;
+  // "Attivo" solo se può davvero lavorare: un profilo fuori dalla ricerca non lo è (misura prima del riordino).
+  const active = !detail.deletedAt && !detail.suspendedAt && (!profile || profile.searchStatus === "VISIBLE");
+  const hiddenReviews = detail.counts.reviewsReceived - detail.counts.reviewsReceivedVisible;
+  const tabCount: Partial<Record<TabKey, number>> = {
+    richieste: detail.requests.length,
+    lavori: detail.jobs.length,
+    recensioni: detail.reviewsWritten.length + detail.reviewsReceived.length,
+    pagamenti: detail.jobs.filter((j) => j.paidOnline).length,
+    segnalazioni: detail.reportsMade.length + detail.reportsReceived.length,
+  };
 
   return (
-    <YStack gap="$5">
+    <YStack gap="$4">
       <YStack gap="$2">
         <Link href="/admin/utenti" style={{ fontSize: 14, color: brand.grafite70 }}>
-          ← Utenti
+          ← Persone
         </Link>
         <AdminPageHeader
-          title={detail.professionalProfile?.businessName ?? (fullName || detail.email || "Utente")}
-          description={[detail.email, detail.phone].filter(Boolean).join(" · ") || undefined}
+          title={profile?.businessName ?? (fullName || (detail.deletedAt ? "Account chiuso" : detail.email) || "Utente")}
+          description={detail.deletedAt ? "Account chiuso: nome, email e telefono sono stati cancellati." : [detail.email, detail.phone].filter(Boolean).join(" · ") || undefined}
         />
         <XStack gap="$2" flexWrap="wrap" marginTop={-8}>
           <AdminPill>{detail.role === "ADMIN" ? `Admin · ${adminRolesLabel(detail.adminRoles)}` : ROLE_LABEL[detail.role]}</AdminPill>
-          {detail.deletedAt ? <AdminPill>Eliminato il {formatAdminDate(detail.deletedAt)}</AdminPill> : null}
+          {detail.deletedAt ? <AdminPill>Account chiuso il {formatAdminDate(detail.deletedAt)}</AdminPill> : null}
           {detail.suspendedAt ? <AdminPill tone="danger">Sospeso dal {formatAdminDate(detail.suspendedAt)}</AdminPill> : null}
-          {!detail.suspendedAt && detail.professionalProfile?.suspendedAt ? <AdminPill tone="warn">Profilo tolto dalla ricerca</AdminPill> : null}
-          {!detail.deletedAt && !detail.suspendedAt ? <AdminPill tone="ok">Attivo</AdminPill> : null}
+          {!detail.suspendedAt && !detail.deletedAt && profile && profile.searchStatus !== "VISIBLE" ? (
+            <AdminPill tone="warn">{PROFESSIONAL_STATUS_ONE_LABEL[profile.searchStatus]}</AdminPill>
+          ) : null}
+          {active ? <AdminPill tone="ok">Attivo</AdminPill> : null}
           {detail.testAccountAt ? <AdminPill tone="warn">Account di prova: fuori dai numeri</AdminPill> : null}
           <AdminPill>Iscritto il {formatAdminDate(detail.createdAt)}</AdminPill>
         </XStack>
       </YStack>
 
-      {detail.professionalProfile ? (
-        <AdminCard>
-          <Text fontWeight="700" color={brand.grafite}>
-            Profilo professionista
+      {detail.signals.length > 0 ? (
+        <section className="admin-signals" aria-label="Da controllare">
+          <Text fontWeight="800" color={brand.grafite}>
+            Da controllare
           </Text>
-          <Text color={brand.grafite}>
-            {detail.professionalProfile.businessName} · {detail.professionalProfile.categoryLabel} · {detail.professionalProfile.city}
+          <ul className="admin-signal-list">
+            {detail.signals.map((signal, index) => (
+              <li key={`${signal.kind}-${index}`}>
+                <strong>{ADMIN_USER_SIGNAL_LABEL[signal.kind]}</strong>
+                {signal.others.length > 0 ? (
+                  <>
+                    {": anche "}
+                    {signal.others.map((other, i) => (
+                      <span key={other.id}>
+                        {i > 0 ? ", " : ""}
+                        <Link href={`/admin/utenti/${other.id}`}>{other.label}</Link>
+                      </span>
+                    ))}
+                  </>
+                ) : (
+                  `: ${signal.detail}`
+                )}
+              </li>
+            ))}
+          </ul>
+          <Text fontSize={13} color={brand.grafite70}>
+            Da soli non provano niente: guardali insieme alle recensioni e ai lavori prima di decidere.
           </Text>
-          {!detail.professionalProfile.suspendedAt && !detail.deletedAt ? (
-            <Link href={`/professionista/${detail.professionalProfile.id}`} target="_blank" style={{ fontSize: 14 }}>
-              Apri il profilo pubblico
+        </section>
+      ) : null}
+
+      <AdminTabs tabs={TABS.map((t) => ({ key: t.key, label: tabCount[t.key] ? `${t.label} (${tabCount[t.key]})` : t.label }))} value={tab} onChange={setTab} />
+
+      {tab === "riepilogo" ? (
+        <YStack gap="$4">
+          {profile ? (
+            <ProfilePanel detail={detail} token={token ?? ""} canModerate={canModerate} onChanged={reload} />
+          ) : null}
+
+          <div className="admin-kpi-grid admin-kpi-grid-3">
+            {[
+              { label: "Richieste", value: String(detail.counts.requests) },
+              { label: "Lavori", value: String(detail.counts.bookings) },
+              { label: "Recensioni scritte", value: String(detail.counts.reviewsWritten) },
+              {
+                label: hiddenReviews > 0 ? `Recensioni ricevute (${hiddenReviews} nascost${hiddenReviews === 1 ? "a" : "e"}: il profilo ne mostra ${detail.counts.reviewsReceivedVisible})` : "Recensioni ricevute",
+                value: String(detail.counts.reviewsReceived),
+              },
+              { label: "Segnalazioni fatte", value: String(detail.counts.reportsMade) },
+              { label: "Segnalazioni ricevute", value: String(detail.counts.reportsReceived), urgent: detail.counts.reportsReceived > 0 },
+            ].map((k) => (
+              <div key={k.label} className={`admin-kpi${k.urgent ? " is-urgent" : ""}`}>
+                <span className="admin-kpi-value">{k.value}</span>
+                <span className="admin-kpi-label">{k.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {adminCan(myRoles, "MODERATION") && !detail.deletedAt && detail.role !== "ADMIN" ? (
+            <SuspendPanel detail={detail} token={token ?? ""} onChanged={reload} />
+          ) : null}
+
+          {adminCan(myRoles, "SUPER") && !detail.deletedAt && !isSelf ? <AdminRolePanel detail={detail} token={token ?? ""} onChanged={reload} /> : null}
+
+          {adminCan(myRoles, "SUPER") && !detail.deletedAt && !isSelf && detail.role === "ADMIN" ? (
+            <TwoFactorResetPanel detail={detail} token={token ?? ""} onChanged={reload} />
+          ) : null}
+
+          {adminCan(myRoles, "SUPER") && !isSelf && detail.role !== "ADMIN" ? <TestAccountPanel detail={detail} token={token ?? ""} onChanged={reload} /> : null}
+          {adminCan(myRoles, "SUPER") && detail.testAccountAt && !detail.deletedAt ? <TestTimePanel detail={detail} token={token ?? ""} onChanged={reload} /> : null}
+        </YStack>
+      ) : null}
+
+      {tab === "richieste" ? (
+        detail.requests.length === 0 ? (
+          <EmptyTab text="Nessuna richiesta." />
+        ) : (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Lavoro</th>
+                  <th>Descrizione</th>
+                  <th>Stato</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detail.requests.map((r) => (
+                  <tr key={r.id}>
+                    <td style={{ whiteSpace: "nowrap" }}>{formatAdminDate(r.createdAt)}</td>
+                    <td>
+                      {r.categoryLabel}
+                      {r.city ? ` · ${r.city}` : ""}
+                    </td>
+                    <td>{r.description}</td>
+                    <td>
+                      {r.status}
+                      {r.hidden ? " · nascosta" : ""}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : null}
+
+      {tab === "lavori" ? (
+        detail.jobs.length === 0 ? (
+          <EmptyTab text="Nessun lavoro." />
+        ) : (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Appuntamento</th>
+                  <th>Con chi</th>
+                  <th>Stato</th>
+                  <th>Problema</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detail.jobs.map((j) => (
+                  <tr key={j.id}>
+                    <td style={{ whiteSpace: "nowrap" }}>{formatAdminDate(j.scheduledAt, true)}</td>
+                    <td>
+                      {j.as === "CLIENT" ? "Professionista: " : "Cliente: "}
+                      {j.otherUserId ? <Link href={`/admin/utenti/${j.otherUserId}`}>{j.other}</Link> : j.other}
+                      {j.categoryLabel ? ` · ${j.categoryLabel}` : ""}
+                    </td>
+                    <td>{j.status}</td>
+                    <td>
+                      {j.issueStatus ? (
+                        <Link href="/admin/problemi">{JOB_ISSUE_STATUS_LABEL[j.issueStatus as keyof typeof JOB_ISSUE_STATUS_LABEL] ?? "Problema segnalato"}</Link>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : null}
+
+      {tab === "recensioni" ? (
+        <YStack gap="$4">
+          <ReviewsTable
+            title={`Scritte da ${detail.role === "PROFESSIONAL" ? "questa persona come cliente" : "questa persona"}`}
+            rows={detail.reviewsWritten}
+            otherLabel="Professionista"
+            detail={detail}
+            token={token ?? ""}
+            canModerate={canModerate}
+            onChanged={reload}
+          />
+          {profile ? (
+            <ReviewsTable
+              title={hiddenReviews > 0 ? `Ricevute (il profilo pubblico ne mostra ${detail.counts.reviewsReceivedVisible}: le nascoste non si vedono)` : "Ricevute"}
+              rows={detail.reviewsReceived}
+              otherLabel="Cliente"
+              detail={detail}
+              token={token ?? ""}
+              canModerate={canModerate}
+              onChanged={reload}
+            />
+          ) : null}
+        </YStack>
+      ) : null}
+
+      {tab === "pagamenti" ? (
+        detail.jobs.length === 0 ? (
+          <EmptyTab text="Nessun lavoro, quindi nessun pagamento." />
+        ) : (
+          <YStack gap="$2">
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Appuntamento</th>
+                    <th>Con chi</th>
+                    <th>Pagamento</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detail.jobs.map((j) => (
+                    <tr key={j.id}>
+                      <td style={{ whiteSpace: "nowrap" }}>{formatAdminDate(j.scheduledAt)}</td>
+                      <td>{j.other}</td>
+                      <td>{j.paymentLabel}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {adminCan(myRoles, "FINANCE") ? (
+              <Link href="/admin/pagamenti" style={{ fontSize: 14 }}>
+                Rimborsi e contestazioni in Pagamenti
+              </Link>
+            ) : null}
+          </YStack>
+        )
+      ) : null}
+
+      {tab === "segnalazioni" ? (
+        <YStack gap="$4">
+          {detail.reportsReceived.length === 0 && detail.reportsMade.length === 0 ? <EmptyTab text="Nessuna segnalazione." /> : null}
+          {detail.reportsReceived.length > 0 ? (
+            <YStack gap="$2">
+              <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+                Segnalazioni che lo riguardano
+              </Text>
+              <ReportsTable rows={detail.reportsReceived} />
+            </YStack>
+          ) : null}
+          {detail.reportsMade.length > 0 ? (
+            <YStack gap="$2">
+              <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+                Segnalazioni fatte
+              </Text>
+              <ReportsTable rows={detail.reportsMade} />
+            </YStack>
+          ) : null}
+          {adminCan(myRoles, "MODERATION") && detail.reportsReceived.some((r) => r.status === "OPEN") ? (
+            <Link href="/admin/segnalazioni" style={{ fontSize: 14 }}>
+              Decidi le segnalazioni aperte
             </Link>
           ) : null}
-        </AdminCard>
-      ) : null}
-
-      <div className="admin-kpi-grid admin-kpi-grid-3">
-        {[
-          { label: "Richieste", value: detail.counts.requests },
-          { label: "Interventi", value: detail.counts.bookings },
-          { label: "Recensioni scritte", value: detail.counts.reviewsWritten },
-          { label: "Recensioni ricevute", value: detail.counts.reviewsReceived },
-          { label: "Segnalazioni fatte", value: detail.counts.reportsMade },
-          { label: "Segnalazioni ricevute", value: detail.counts.reportsReceived },
-        ].map((k) => (
-          <div key={k.label} className={`admin-kpi${k.label === "Segnalazioni ricevute" && k.value > 0 ? " is-urgent" : ""}`}>
-            <span className="admin-kpi-value">{k.value}</span>
-            <span className="admin-kpi-label">{k.label}</span>
-          </div>
-        ))}
-      </div>
-
-      {adminCan(myRoles, "MODERATION") && !detail.deletedAt && detail.role !== "ADMIN" ? (
-        <SuspendPanel detail={detail} token={token ?? ""} onChanged={reload} />
-      ) : null}
-
-      {adminCan(myRoles, "SUPER") && !detail.deletedAt && !isSelf ? <AdminRolePanel detail={detail} token={token ?? ""} onChanged={reload} /> : null}
-
-      {adminCan(myRoles, "SUPER") && !detail.deletedAt && !isSelf && detail.role === "ADMIN" ? (
-        <TwoFactorResetPanel detail={detail} token={token ?? ""} onChanged={reload} />
-      ) : null}
-
-      {adminCan(myRoles, "SUPER") && !isSelf && detail.role !== "ADMIN" ? <TestAccountPanel detail={detail} token={token ?? ""} onChanged={reload} /> : null}
-      {adminCan(myRoles, "SUPER") && detail.testAccountAt && !detail.deletedAt ? <TestTimePanel detail={detail} token={token ?? ""} onChanged={reload} /> : null}
-
-      {detail.reportsReceived.length > 0 ? (
-        <YStack gap="$2">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
-            Segnalazioni che lo riguardano
-          </Text>
-          <ReportsTable rows={detail.reportsReceived} />
-        </YStack>
-      ) : null}
-      {detail.reportsMade.length > 0 ? (
-        <YStack gap="$2">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
-            Segnalazioni fatte
-          </Text>
-          <ReportsTable rows={detail.reportsMade} />
         </YStack>
       ) : null}
 
-      <YStack gap="$2">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
-          Cronologia
-        </Text>
+      {tab === "cronologia" ? (
         <div className="admin-table-wrap">
           <table className="admin-table">
             <tbody>
@@ -156,8 +389,293 @@ export default function AdminUserDetailPage() {
             </tbody>
           </table>
         </div>
-      </YStack>
+      ) : null}
     </YStack>
+  );
+}
+
+function EmptyTab({ text }: { text: string }) {
+  return <Text color={brand.grafite70}>{text}</Text>;
+}
+
+/**
+ * Profilo nella ricerca o no, con "Togli dalla ricerca" separato da
+ * "Sospendi account" (misura prima del riordino): il profilo sparisce da
+ * ricerca e pagina pubblica, la persona può ancora entrare e lavorare sui
+ * lavori già presi.
+ */
+function ProfilePanel({ detail, token, canModerate, onChanged }: { detail: AdminUserDetail; token: string; canModerate: boolean; onChanged: () => void }) {
+  const profile = detail.professionalProfile!;
+  const [modal, setModal] = useState<"hide" | "show" | null>(null);
+  return (
+    <AdminCard highlight={profile.searchStatus !== "VISIBLE"}>
+      <XStack gap="$2" alignItems="center" flexWrap="wrap">
+        <Text fontWeight="700" color={brand.grafite}>
+          Profilo professionista
+        </Text>
+        <AdminPill tone={profile.searchStatus === "VISIBLE" ? "ok" : "warn"}>{PROFESSIONAL_STATUS_ONE_LABEL[profile.searchStatus]}</AdminPill>
+      </XStack>
+      <Text color={brand.grafite}>
+        {profile.businessName} · {profile.categoryLabel} · {profile.city}
+      </Text>
+      {profile.hiddenBy?.note ? <Text color={brand.grafite70}>Motivo: {profile.hiddenBy.note}</Text> : null}
+      <XStack gap="$3" flexWrap="wrap" alignItems="center">
+        {profile.searchStatus === "VISIBLE" && !detail.deletedAt ? (
+          <Link href={`/professionista/${profile.id}`} target="_blank" style={{ fontSize: 14 }}>
+            Apri il profilo pubblico
+          </Link>
+        ) : null}
+        {canModerate && !profile.suspendedAt ? (
+          <Button variant="secondary" size="$3" onPress={() => setModal("hide")}>
+            Togli dalla ricerca
+          </Button>
+        ) : null}
+        {canModerate && profile.hiddenBy && !detail.suspendedAt ? (
+          <Button variant="primary" size="$3" onPress={() => setModal("show")}>
+            Rimetti nella ricerca
+          </Button>
+        ) : null}
+      </XStack>
+      {modal === "hide" ? (
+        <ModerateModal
+          kind="PROFESSIONAL_PROFILE"
+          targetId={profile.id}
+          who={profile.businessName}
+          detail={detail}
+          token={token}
+          onClose={() => setModal(null)}
+          onDone={() => {
+            setModal(null);
+            onChanged();
+          }}
+        />
+      ) : null}
+      {modal === "show" && profile.hiddenBy ? (
+        <RevertModal
+          title="Rimetti nella ricerca"
+          description={`${profile.businessName} torna nella ricerca e sulla pagina pubblica. Riceve un'email che la decisione è stata annullata.`}
+          reportId={profile.hiddenBy.reportId}
+          token={token}
+          onClose={() => setModal(null)}
+          onDone={() => {
+            setModal(null);
+            onChanged();
+          }}
+        />
+      ) : null}
+    </AdminCard>
+  );
+}
+
+function ReviewsTable({
+  title,
+  rows,
+  otherLabel,
+  detail,
+  token,
+  canModerate,
+  onChanged,
+}: {
+  title: string;
+  rows: AdminUserReview[];
+  otherLabel: string;
+  detail: AdminUserDetail;
+  token: string;
+  canModerate: boolean;
+  onChanged: () => void;
+}) {
+  const [hiding, setHiding] = useState<AdminUserReview | null>(null);
+  const [showing, setShowing] = useState<AdminUserReview | null>(null);
+  return (
+    <YStack gap="$2">
+      <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+        {title}
+      </Text>
+      {rows.length === 0 ? (
+        <EmptyTab text="Nessuna recensione." />
+      ) : (
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>{otherLabel}</th>
+                <th>Voto e testo</th>
+                <th>Stato</th>
+                {canModerate ? <th>Azione</th> : null}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td style={{ whiteSpace: "nowrap" }}>{formatAdminDate(r.createdAt)}</td>
+                  <td>{r.other}</td>
+                  <td>
+                    <strong>{r.rating}★</strong> {r.comment ?? ""}
+                  </td>
+                  <td>
+                    {r.hiddenAt ? `Nascosta dal ${formatAdminDate(r.hiddenAt)}` : "Visibile"}
+                    {r.hiddenBy?.note ? <small className="admin-cell-note">Motivo: {r.hiddenBy.note}</small> : null}
+                  </td>
+                  {canModerate ? (
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      {!r.hiddenAt ? (
+                        <button type="button" className="admin-link-button" onClick={() => setHiding(r)}>
+                          Nascondi
+                        </button>
+                      ) : r.hiddenBy ? (
+                        <button type="button" className="admin-link-button" onClick={() => setShowing(r)}>
+                          Rimetti visibile
+                        </button>
+                      ) : null}
+                    </td>
+                  ) : null}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {hiding ? (
+        <ModerateModal
+          kind="REVIEW"
+          targetId={hiding.id}
+          who={`la recensione da ${hiding.rating}★ ${otherLabel === "Cliente" ? `di ${hiding.other}` : `a ${hiding.other}`}`}
+          detail={detail}
+          token={token}
+          onClose={() => setHiding(null)}
+          onDone={() => {
+            setHiding(null);
+            onChanged();
+          }}
+        />
+      ) : null}
+      {showing?.hiddenBy ? (
+        <RevertModal
+          title="Rimetti visibile la recensione"
+          description="La recensione torna sul profilo e nella media dei voti. L'autore riceve un'email che la decisione è stata annullata."
+          reportId={showing.hiddenBy.reportId}
+          token={token}
+          onClose={() => setShowing(null)}
+          onDone={() => {
+            setShowing(null);
+            onChanged();
+          }}
+        />
+      ) : null}
+    </YStack>
+  );
+}
+
+const selectStyle = { padding: 10, borderRadius: 10, border: `1px solid ${brand.bordoCampo}`, backgroundColor: "#ffffff", fontSize: 16, fontFamily: "inherit", color: brand.grafite, width: "100%" };
+
+/**
+ * "Nascondi la recensione" e "Togli dalla ricerca": motivo da un elenco,
+ * regola o legge violata e spiegazione per l'autore, tutti obbligatori. Il
+ * pulsante dice cosa fa. Sotto è una segnalazione decisa subito: l'autore
+ * riceve la stessa email delle segnalazioni, con come contestare.
+ */
+function ModerateModal({
+  kind,
+  targetId,
+  who,
+  detail,
+  token,
+  onClose,
+  onDone,
+}: {
+  kind: "REVIEW" | "PROFESSIONAL_PROFILE";
+  targetId: string;
+  who: string;
+  detail: AdminUserDetail;
+  token: string;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [reason, setReason] = useState<ContentReportReasonCode | "">("");
+  const [ground, setGround] = useState<ModerationGroundCode | "">("");
+  const [note, setNote] = useState("");
+  const isReview = kind === "REVIEW";
+  const label = moderationActionAdminLabel(isReview ? "HIDE_CONTENT" : "SUSPEND_PROFILE", kind);
+  const confirm = isReview ? "Nascondi la recensione" : "Togli dalla ricerca";
+
+  async function submit() {
+    if (!reason) throw new Error("Scegli il motivo.");
+    if (!ground) throw new Error("Scegli la regola o la legge violata.");
+    if (note.trim().length < 10) throw new Error("Spiega all'autore cosa non va, in almeno una frase.");
+    await apiClient.adminModerateFromUser(token, detail.id, { targetType: kind, targetId, reason, ground, note: note.trim() });
+    onDone();
+  }
+
+  return (
+    <CancelBookingModal
+      title={confirm}
+      description={
+        isReview
+          ? `Nascondi ${who}: sparisce dal profilo e dalla media dei voti. L'autore riceve un'email con il motivo e come contestare.`
+          : `${label} di ${who}. La persona può ancora entrare e finire i lavori già presi. Riceve un'email con il motivo e come contestare.`
+      }
+      confirmLabel={confirm}
+      confirmingLabel="Un momento..."
+      backLabel="Annulla"
+      showNote={false}
+      onClose={onClose}
+      onCancel={submit}
+    >
+      <YStack gap="$3">
+        <label className="admin-field">
+          <span>Motivo</span>
+          <select style={selectStyle} value={reason} onChange={(e) => setReason(e.target.value as ContentReportReasonCode)}>
+            <option value="">Scegli…</option>
+            {CONTENT_REPORT_REASONS.map((r) => (
+              <option key={r.code} value={r.code}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="admin-field">
+          <span>Regola o legge violata</span>
+          <select style={selectStyle} value={ground} onChange={(e) => setGround(e.target.value as ModerationGroundCode)}>
+            <option value="">Scegli…</option>
+            {MODERATION_GROUNDS.map((g) => (
+              <option key={g.code} value={g.code}>
+                {g.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="admin-field">
+          <span>Spiegazione per l&apos;autore</span>
+          <textarea className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Cosa non va e perché" />
+        </label>
+        <XStack gap="$2" flexWrap="wrap">
+          {MODERATION_REASON_TEMPLATES.map((t) => (
+            <button key={t.label} type="button" className="admin-chip-button" onClick={() => setNote(t.text)}>
+              {t.label}
+            </button>
+          ))}
+        </XStack>
+      </YStack>
+    </CancelBookingModal>
+  );
+}
+
+/** "Rimetti visibile" / "Rimetti nella ricerca": annulla la decisione, con il motivo obbligatorio. */
+function RevertModal({ title, description, reportId, token, onClose, onDone }: { title: string; description: string; reportId: string; token: string; onClose: () => void; onDone: () => void }) {
+  const [note, setNote] = useState("");
+  async function submit() {
+    if (note.trim().length < 3) throw new Error("Scrivi il motivo.");
+    await apiClient.adminRevertContentReport(token, reportId, note.trim());
+    onDone();
+  }
+  return (
+    <CancelBookingModal title={title} description={description} confirmLabel={title} confirmingLabel="Un momento..." backLabel="Annulla" showNote={false} onClose={onClose} onCancel={submit}>
+      <label className="admin-field">
+        <span>Motivo</span>
+        <textarea className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Es. ricorso accolto, errore" />
+      </label>
+    </CancelBookingModal>
   );
 }
 

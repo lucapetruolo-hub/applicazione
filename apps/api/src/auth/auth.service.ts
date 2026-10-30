@@ -26,6 +26,7 @@ import { SUSPENDED_ACCOUNT_MESSAGE, sessionExpiresIn, sessionTokenPayload } from
 import { googleNameFields, googleNameRepair } from "./google-name";
 import { assertPasswordWithoutEmail } from "./password-checks";
 import { loginDeviceHash, loginDeviceLabel, type LoginDeviceInfo } from "./login-device";
+import { emailFingerprint } from "../common/email-fingerprint";
 
 const BCRYPT_SALT_ROUNDS = 10;
 /** Validità del link di conferma email (docs/CHANGELOG.md §178). */
@@ -747,6 +748,8 @@ export class AuthService {
         // può mai collidere con una vera perché non è un formato valido
         // per la registrazione (contiene l'id).
         email: `deleted-${userId}@deleted.invalid`,
+        // Per ritrovare l'account in Admin con l'email esatta (docs/changelog/2026-10-30-admin-persone.md).
+        deletedEmailHash: before?.email ? emailFingerprint(before.email) : null,
         phone: null,
         googleId: null,
         passwordHash: null,

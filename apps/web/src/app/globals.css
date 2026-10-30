@@ -2688,6 +2688,48 @@ a.admin-kpi:hover {
   font-size: 14px;
   color: #4a423b;
 }
+/* Segnali da controllare sulla scheda della persona (docs/changelog/2026-10-30-admin-persone.md). */
+.admin-signals {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid #e6c98a;
+  background: #fdf6e7;
+}
+.admin-signal-list {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+  color: #2b2420;
+}
+.admin-field {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #4a423b;
+}
+.admin-chip-button {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #d9cbb8;
+  background: #ffffff;
+  color: #2b2420;
+  font-size: 13px;
+  cursor: pointer;
+}
+.admin-chip-button:hover {
+  border-color: #2b2420;
+}
+.admin-cell-note {
+  display: block;
+  margin-top: 2px;
+  color: #6e6459;
+}
 .admin-stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
