@@ -225,6 +225,8 @@ const owned = {
   "POST /bookings/:id/on-the-way": booking(),
   "POST /bookings/:id/professional-problem": booking({ body: () => ({ type: "CLIENT_ABSENT", description: "Il cliente non era in casa." }) }),
   "PATCH /bookings/:id/reopen": booking(),
+  "POST /bookings/:id/reopen/accept": booking(),
+  "POST /bookings/:id/reopen/decline": booking(),
   "PATCH /bookings/:id/report-no-show": booking(),
   "PATCH /bookings/:id/status": booking({ body: () => ({ status: "CANCELED" }) }),
   "POST /bookings/from-quote/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteA }) },

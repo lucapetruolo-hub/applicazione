@@ -57,12 +57,29 @@ Admin (riordino):
 - "Pagamenti online" del professionista: i soldi contestati in banca non sono
   più tra i "Bloccati" (come nell'estratto del gruppo 2) e compaiono a parte.
 
-Restano aperti, in attesa di Luca: P-02 (anticipo massimo) e P-04 (giorni dei
-soldi fermi). F-21 e G-14 (cifre dei bonifici) servono i dati di Stripe.
+Migliorie approvate da Luca il 30/10:
+
+- **P-02** (decisione di Luca, "solo il totale"): finché vale il tetto dei
+  professionisti nuovi, al massimo 3.000 € online fermi in tutto
+  (`ONLINE_HELD_LIMIT_EUR_CENTS`, pagati e non ancora sbloccati). Si
+  controlla sugli acconti, all'inizio di un lavoro: il saldo di un lavoro già
+  iniziato passa sempre. Oltre, il cliente legge di scegliere il pagamento
+  diretto o riprovare tra qualche giorno. Nessun limite sulla percentuale
+  dell'anticipo.
+- Chi paga online tutto il massimo accettando legge che i soldi restano fermi
+  fino alla sua conferma e che la differenza gli torna.
+- **F-08** Un appuntamento annullato non torna più valido da solo: chi l'ha
+  annullato "chiede di riaprire", l'altro accetta o rifiuta dalla scheda
+  (`Booking.reopenRequestedAt/By`, avvisi `BOOKING_REOPEN_REQUESTED` e
+  `BOOKING_REOPEN_DECLINED`). I controlli (orario passato, fascia libera,
+  altro lavoro sulla stessa richiesta) si rifanno all'accettazione.
+
+Resta aperto, in attesa di Luca: P-04 (giorni per segnalare e soldi fermi).
+F-21 e G-14 (cifre dei bonifici) servono i dati di Stripe.
 
 ## Verifica
 
 Test nuovi: `issue-refund-agreement.test.ts`, `refund-decision.test.ts`,
-`job-issue-chat-reply.test.ts` e casi in `online-limit-completion`,
+`job-issue-chat-reply.test.ts`, `online-held-limit.test.ts`, `reopen-request.test.ts` e casi in `online-limit-completion`,
 `destination-charges`, `direct-charges`, `online-payments`. Tutta la suite
 API, typecheck del sito e `pnpm lint` passano.

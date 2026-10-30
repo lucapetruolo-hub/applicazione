@@ -927,20 +927,111 @@ export class BookingsService implements OnModuleInit {
   }
 
   /**
-   * Riapre una prenotazione annullata (richiesta esplicita dell'utente:
-   * "una volta annullata dai la possibilità di riaprirla") — disponibile a
-   * entrambe le parti, chiunque l'abbia annullata: a differenza
-   * dell'annullamento (motivi/nota diversi per cliente e professionista,
-   * due metodi separati sopra), riaprire è la stessa identica azione da
-   * qualunque lato, un solo metodo condiviso. Rivalida la capienza della
-   * fascia sottostante (se la data corrisponde a una vera
-   * AvailabilitySlot — potrebbe non esserlo, es. una data negoziata
-   * manualmente) prima di riportare lo stato a CONFIRMED: nel frattempo
-   * quella stessa fascia potrebbe essere stata presa da qualcun altro,
-   * stessa cautela già applicata a QuotesService.confirmProposedDate
-   * (transazione Serializable).
+   * Riapertura di un appuntamento annullato (collaudo F-08, miglioria
+   * approvata da Luca il 30/10/2026): chi l'ha annullato chiede di
+   * riaprirlo e l'altro accetta o rifiuta. Prima tornava valido subito,
+   * anche se l'altro aveva già preso altri impegni.
    */
   async reopenBooking(userId: string, bookingId: string) {
+    const { booking, requester } = await this.loadReopenable(userId, bookingId, "request");
+    if (booking.reopenRequestedAt) throw new BadRequestException("Hai già chiesto di riaprirlo: aspetta la risposta.");
+    await this.assertCanReopen(booking);
+    await this.prisma.booking.update({ where: { id: bookingId }, data: { reopenRequestedAt: new Date(), reopenRequestedBy: requester } });
+    const byClient = requester === "CLIENT";
+    await this.notificationsService.notify(byClient ? booking.professionalProfile.userId : booking.clientId, "BOOKING_REOPEN_REQUESTED", {
+      bookingId,
+      guidedRequestId: booking.quote?.guidedRequestId,
+      audience: byClient ? "PROFESSIONAL" : "CLIENT",
+      scheduledAt: booking.scheduledAt.toISOString(),
+    });
+    if (booking.quote) {
+      await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, requester, `${byClient ? "Il cliente" : "Il professionista"} ha chiesto di riaprire l'appuntamento annullato.`);
+    }
+    return { bookingId, status: "REOPEN_REQUESTED" as const };
+  }
+
+  /** Risposta di chi non ha annullato alla richiesta di riaprire. */
+  async answerReopen(userId: string, bookingId: string, accept: boolean) {
+    const { booking, requester } = await this.loadReopenable(userId, bookingId, "answer");
+    const byClient = requester === "CLIENT";
+    const requesterUserId = byClient ? booking.clientId : booking.professionalProfile.userId;
+    const answerer = byClient ? "PROFESSIONAL" : "CLIENT";
+    if (!accept) {
+      const cleared = await this.prisma.booking.updateMany({ where: { id: bookingId, reopenRequestedAt: { not: null } }, data: { reopenRequestedAt: null, reopenRequestedBy: null } });
+      if (cleared.count === 0) throw new BadRequestException("Questa richiesta ha già una risposta.");
+      await this.notificationsService.notify(requesterUserId, "BOOKING_REOPEN_DECLINED", {
+        bookingId,
+        guidedRequestId: booking.quote?.guidedRequestId,
+        audience: requester,
+      });
+      if (booking.quote) {
+        await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, answerer, `${byClient ? "Il professionista" : "Il cliente"} non ha accettato di riaprire l'appuntamento.`);
+      }
+      return { bookingId, status: "CANCELED" as const };
+    }
+
+    const { scheduledAt, dayStart, dayEnd, requestServiceMode, maxBookings } = await this.assertCanReopen(booking);
+    try {
+      await this.prisma.$transaction(
+        async (tx) => {
+          const existingBookings = await tx.booking.findMany({
+            where: {
+              professionalProfileId: booking.professionalProfileId,
+              status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
+              scheduledAt: { gte: dayStart, lt: dayEnd },
+            },
+            select: { scheduledAt: true, serviceMode: true },
+          });
+          const bookedCount = existingBookings.filter(
+            (b) => b.scheduledAt.getTime() === scheduledAt.getTime() && (requestServiceMode ? b.serviceMode === requestServiceMode : true),
+          ).length;
+          if (bookedCount >= maxBookings) {
+            throw new ConflictException("Questa fascia non è più libera.");
+          }
+          // Anche i lavori su più giorni e quelli segnati a mano in Agenda (§310, collaudo F-08).
+          await this.assertSlotFree(tx, booking.professionalProfileId, booking.scheduledAt, booking.scheduledEndAt, booking.serviceMode);
+          await tx.booking.update({
+            where: { id: bookingId },
+            data: { status: "CONFIRMED", canceledBy: null, cancellationNote: null, canceledLate: false, reopenRequestedAt: null, reopenRequestedBy: null },
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
+        throw new ConflictException("Questa fascia non è più libera.");
+      }
+      if (isOtherJobViolation(err)) throw new ConflictException(OTHER_JOB_MESSAGE);
+      throw err;
+    }
+
+    await this.notificationsService.notify(requesterUserId, byClient ? "BOOKING_REOPENED_BY_PROFESSIONAL" : "BOOKING_REOPENED_BY_CLIENT", {
+      bookingId,
+      guidedRequestId: booking.quote?.guidedRequestId,
+    });
+    if (!byClient) {
+      await this.professionalMetricsService.touchActivity(booking.professionalProfileId);
+    }
+    if (booking.quote) {
+      await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, answerer, `${byClient ? "Il professionista" : "Il cliente"} ha accettato: l'appuntamento è di nuovo valido.`);
+    }
+
+    // Acconto trattenuto per l'annullamento tardivo (§348): torna acconto.
+    await this.jobPaymentsService.undoKeptDeposit(bookingId);
+    // Lavoro online con acconto già rimborsato all'annullamento: si riparte dall'acconto.
+    await this.prisma.jobPayment.updateMany({
+      where: { bookingId, paymentMethod: "MANOVIA", onlineStage: "REFUNDED" },
+      data: { onlineStage: "AWAITING_DEPOSIT", status: "PENDING", releasedAt: null },
+    });
+
+    return { bookingId, status: "CONFIRMED" as const };
+  }
+
+  /**
+   * Appuntamento annullato e chi agisce: `request` per chi l'ha annullato
+   * (regola simmetrica, §197), `answer` per l'altro, con una richiesta aperta.
+   */
+  private async loadReopenable(userId: string, bookingId: string, action: "request" | "answer") {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: { quote: true, professionalProfile: true },
@@ -956,16 +1047,29 @@ export class BookingsService implements OnModuleInit {
     if (booking.status !== "CANCELED") {
       throw new ForbiddenException("Questa prenotazione non è annullata.");
     }
-    // Regola simmetrica (richiesta esplicita dell'utente, §197): ognuno riapre
-    // solo ciò che ha annullato lui. Le righe senza autore (precedenti a
-    // canceledBy) non si riaprono da nessun lato. Il cliente può sempre
-    // inviare una richiesta nuova.
+    if (action === "answer") {
+      const by = booking.reopenRequestedBy;
+      const requester: "CLIENT" | "PROFESSIONAL" | null = by === "CLIENT" ? "CLIENT" : by === "PROFESSIONAL" ? "PROFESSIONAL" : null;
+      if (!booking.reopenRequestedAt || !requester) throw new BadRequestException("Nessuna richiesta di riaprire questo appuntamento.");
+      if ((requester === "CLIENT") === isClient) throw new ForbiddenException("Risponde l'altra parte.");
+      return { booking, requester };
+    }
+    // Regola simmetrica (richiesta esplicita dell'utente, §197): ognuno chiede
+    // di riaprire solo ciò che ha annullato lui. Le righe senza autore
+    // (precedenti a canceledBy) non si riaprono da nessun lato. Il cliente può
+    // sempre inviare una richiesta nuova.
     if (isClient && booking.canceledBy !== "CLIENT") {
       throw new ForbiddenException("Il professionista ha annullato questo intervento: non puoi riaprirlo. Puoi inviare una nuova richiesta.");
     }
     if (!isClient && booking.canceledBy !== "PROFESSIONAL") {
       throw new ForbiddenException("Il cliente ha annullato questo intervento: solo lui può riaprirlo.");
     }
+    return { booking, requester: isClient ? ("CLIENT" as const) : ("PROFESSIONAL" as const) };
+  }
+
+  /** Controlli prima di chiedere e prima di riaprire davvero: la situazione può cambiare nel frattempo. */
+  private async assertCanReopen(booking: Prisma.BookingGetPayload<{ include: { quote: true; professionalProfile: true } }>) {
+    const bookingId = booking.id;
     // Nel frattempo il cliente ha accettato un altro preventivo della stessa richiesta (§346).
     if (booking.quote) await this.assertNoOtherJob(this.prisma, booking.quote.guidedRequestId, booking.id);
     // Acconto trattenuto e già passato al professionista (§348): il lavoro non torna indietro.
@@ -1004,67 +1108,7 @@ export class BookingsService implements OnModuleInit {
     }
     const maxBookings =
       requestServiceMode === "ONLINE" ? (matchingSlot?.onlineMaxBookings ?? 1) : (matchingSlot?.homeMaxBookings ?? 1);
-
-    try {
-      await this.prisma.$transaction(
-        async (tx) => {
-          const existingBookings = await tx.booking.findMany({
-            where: {
-              professionalProfileId: booking.professionalProfileId,
-              status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
-              scheduledAt: { gte: dayStart, lt: dayEnd },
-            },
-            select: { scheduledAt: true, serviceMode: true },
-          });
-          const bookedCount = existingBookings.filter(
-            (b) => b.scheduledAt.getTime() === scheduledAt.getTime() && (requestServiceMode ? b.serviceMode === requestServiceMode : true),
-          ).length;
-          if (bookedCount >= maxBookings) {
-            throw new ConflictException("Questa fascia non è più libera.");
-          }
-          // Anche i lavori su più giorni e quelli segnati a mano in Agenda (§310, collaudo F-08).
-          await this.assertSlotFree(tx, booking.professionalProfileId, booking.scheduledAt, booking.scheduledEndAt, booking.serviceMode);
-          await tx.booking.update({
-            where: { id: bookingId },
-            data: { status: "CONFIRMED", canceledBy: null, cancellationNote: null, canceledLate: false },
-          });
-        },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-      );
-    } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
-        throw new ConflictException("Questa fascia non è più libera.");
-      }
-      if (isOtherJobViolation(err)) throw new ConflictException(OTHER_JOB_MESSAGE);
-      throw err;
-    }
-
-    const otherPartyUserId = isClient ? booking.professionalProfile.userId : booking.clientId;
-    await this.notificationsService.notify(otherPartyUserId, isClient ? "BOOKING_REOPENED_BY_CLIENT" : "BOOKING_REOPENED_BY_PROFESSIONAL", {
-      bookingId,
-      guidedRequestId: booking.quote?.guidedRequestId,
-    });
-    if (isProfessional) {
-      await this.professionalMetricsService.touchActivity(booking.professionalProfileId);
-    }
-    if (booking.quote) {
-      await this.timelineService.log(
-        booking.quote.guidedRequestId,
-        booking.professionalProfileId,
-        isClient ? "CLIENT" : "PROFESSIONAL",
-        `${isClient ? "Il cliente" : "Il professionista"} ha riaperto la prenotazione annullata.`,
-      );
-    }
-
-    // Acconto trattenuto per l'annullamento tardivo (§348): torna acconto.
-    await this.jobPaymentsService.undoKeptDeposit(bookingId);
-    // Lavoro online con acconto già rimborsato all'annullamento: si riparte dall'acconto.
-    await this.prisma.jobPayment.updateMany({
-      where: { bookingId, paymentMethod: "MANOVIA", onlineStage: "REFUNDED" },
-      data: { onlineStage: "AWAITING_DEPOSIT", status: "PENDING", releasedAt: null },
-    });
-
-    return { bookingId, status: "CONFIRMED" as const };
+    return { scheduledAt, dayStart, dayEnd, requestServiceMode, maxBookings };
   }
 
   /**
@@ -1543,6 +1587,8 @@ export class BookingsService implements OnModuleInit {
       // Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto
       // all'etichetta "Annullata".
       canceledBy: booking.canceledBy,
+      // Richiesta di riaprire un appuntamento annullato, in attesa della risposta (collaudo F-08).
+      reopenRequestedBy: booking.status === "CANCELED" && booking.reopenRequestedAt ? (booking.reopenRequestedBy === "PROFESSIONAL" ? ("PROFESSIONAL" as const) : ("CLIENT" as const)) : null,
       // Dati di contatto del professionista, per il popup "Non presentato"
       // (contatta oppure chiedi il rimborso) — richiesta esplicita
       // dell'utente, visibili solo qui, non prima nel ciclo di vita.

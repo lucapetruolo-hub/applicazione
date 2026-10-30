@@ -73,6 +73,19 @@ export function BookingSection({
     }
   }
 
+  async function handleAnswerReopen(accept: boolean) {
+    setReopenError(null);
+    setIsReopening(true);
+    try {
+      await apiClient.answerReopenBooking(token, booking.id, accept);
+      onChanged();
+    } catch (err) {
+      setReopenError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsReopening(false);
+    }
+  }
+
   async function handleDeleteBooking() {
     setDeleteError(null);
     setIsDeletingBooking(true);
@@ -326,13 +339,31 @@ export function BookingSection({
         ) : null}
       </XStack>
 
-      {/* Solo ciò che ha annullato il cliente: un intervento annullato dal professionista non si riapre. */}
-      {booking.status === "CANCELED" && booking.canceledBy === "CLIENT" ? (
+      {/* Chi ha annullato chiede di riaprire, l'altro accetta (collaudo F-08). */}
+      {booking.status === "CANCELED" && booking.canceledBy === "CLIENT" && booking.reopenRequestedBy === "CLIENT" ? (
+        <Text fontSize={16} color={brand.grafite70}>
+          Hai chiesto di riaprire l&apos;appuntamento: aspetta la risposta di {booking.businessName}.
+        </Text>
+      ) : booking.status === "CANCELED" && booking.canceledBy === "CLIENT" ? (
         <XStack gap="$2" alignItems="center" flexWrap="wrap">
           <CardButton onPress={() => setConfirmReopen(true)} disabled={isReopening}>
-            {isReopening ? "Riapertura..." : "Riapri prenotazione"}
+            {isReopening ? "Invio..." : "Chiedi di riaprire"}
           </CardButton>
         </XStack>
+      ) : booking.status === "CANCELED" && booking.reopenRequestedBy === "PROFESSIONAL" ? (
+        <YStack gap="$2">
+          <Text fontSize={16} color={brand.grafite}>
+            {booking.businessName} chiede di riaprire l&apos;appuntamento annullato. Se accetti torna valido.
+          </Text>
+          <XStack gap="$2" alignItems="center" flexWrap="wrap">
+            <CardButton onPress={() => handleAnswerReopen(true)} disabled={isReopening}>
+              Accetta
+            </CardButton>
+            <CardButton tone="danger" onPress={() => handleAnswerReopen(false)} disabled={isReopening}>
+              Rifiuta
+            </CardButton>
+          </XStack>
+        </YStack>
       ) : booking.status === "CANCELED" ? (
         <Text fontSize={16} color={brand.grafite70}>
           Il professionista ha annullato questo intervento, quindi non si può riaprire. Con &ldquo;Ripeti la richiesta&rdquo; puoi inviarla
@@ -346,12 +377,12 @@ export function BookingSection({
       {/* Conferma prima di riaprire (collaudo F-08). */}
       {confirmReopen ? (
         <CancelBookingModal
-          title="Riaprire la prenotazione?"
-          description={`L'appuntamento torna valido e ${booking.businessName} riceve un avviso.${
+          title="Chiedere di riaprire?"
+          description={`${booking.businessName} riceve la richiesta: se accetta, l'appuntamento torna valido.${
             booking.payment?.method === "ONLINE" && booking.payment.stage === "REFUNDED" ? " L'acconto che ti avevamo rimborsato va pagato di nuovo." : ""
           }`}
-          confirmLabel="Riapri prenotazione"
-          confirmingLabel="Riapertura..."
+          confirmLabel="Chiedi di riaprire"
+          confirmingLabel="Invio..."
           backLabel="Torna indietro"
           confirmVariant="primary"
           showNote={false}

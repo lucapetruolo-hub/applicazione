@@ -15,6 +15,7 @@ import {
   onlineBalanceDueEurCents,
   onlineTargetEurCents,
   onlineCanRelease,
+  onlineHeldLimitProblem,
   onlinePayoutEurCents,
   splitVatEurCents,
   vatOnEurCents,
@@ -24,7 +25,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { readStripeConnectStatus } from "../professional-fiscal/stripe-connect-status";
-import { professionalOnlineLimit } from "./online-limit";
+import { professionalHeldEurCents, professionalOnlineLimit } from "./online-limit";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OPEN_ISSUE_STATUSES = ["CHAT", "OPEN"];
@@ -197,6 +198,7 @@ export class OnlineMoneyService {
     if (part === "deposit") {
       if (jp.onlineStage !== "AWAITING_DEPOSIT" || !jp.depositEurCents) throw new BadRequestException("L'acconto risulta già pagato.");
       amount = jp.depositEurCents;
+      await this.assertHeldLimit(booking.professionalProfileId, amount);
     } else {
       if (booking.finalAmountEurCents === null) throw new BadRequestException("Il saldo si paga quando il professionista chiude il lavoro con l'importo finale.");
       // Col saldo diretto (§237) online si paga al massimo l'acconto: il resto va al professionista.
@@ -273,6 +275,7 @@ export class OnlineMoneyService {
     const metadata = { kind: "quote_deposit", quoteId: params.quoteId, clientUserId: params.clientUserId, paymentMethod: params.paymentMethod, stripeAccount: account };
     const reused = await this.reuseQuoteDepositCheckout(params, account);
     if (reused) return { url: reused };
+    await this.assertHeldLimit(params.professionalProfileId, params.amountEurCents);
     // Col saldo online la carta resta salvata per il saldo (§267); col saldo diretto (MIXED) no.
     const saveCard = saveCardForBalance(params.paymentMethod === "ONLINE");
     const session = await this.requireStripe().checkout.sessions.create({
@@ -302,6 +305,15 @@ export class OnlineMoneyService {
     }, onAccount(account));
     await this.prisma.quote.update({ where: { id: params.quoteId }, data: { depositCheckoutSessionId: session.id } });
     return { url: session.url };
+  }
+
+  /** Professionisti nuovi: al massimo 3.000 € online fermi in tutto (collaudo P-02). */
+  private async assertHeldLimit(professionalProfileId: string, amountEurCents: number): Promise<void> {
+    const { limitEurCents } = await professionalOnlineLimit(this.prisma, professionalProfileId);
+    if (limitEurCents === null) return;
+    const heldEurCents = await professionalHeldEurCents(this.prisma, professionalProfileId);
+    const problem = onlineHeldLimitProblem({ limitEurCents, heldEurCents, amountEurCents });
+    if (problem) throw new BadRequestException(problem);
   }
 
   /**

@@ -1635,6 +1635,8 @@ export class ProfessionalsService {
       // Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto
       // all'etichetta "Annullata".
       canceledBy: booking.canceledBy,
+      // Richiesta di riaprire un appuntamento annullato, in attesa della risposta (collaudo F-08).
+      reopenRequestedBy: booking.status === "CANCELED" && booking.reopenRequestedAt ? (booking.reopenRequestedBy === "PROFESSIONAL" ? ("PROFESSIONAL" as const) : ("CLIENT" as const)) : null,
       // Il cliente ha annullato dentro il preavviso scelto (docs/CHANGELOG.md §347).
       canceledLate: booking.canceledLate,
       // Pulsanti del promemoria WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md).

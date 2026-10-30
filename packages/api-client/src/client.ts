@@ -204,6 +204,8 @@ export type ClientBooking = {
   cancellationNote: string | null;
   /** Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto all'etichetta "Annullata". `null` finché non CANCELED, o per righe annullate prima di questo campo. */
   canceledBy: "CLIENT" | "PROFESSIONAL" | null;
+  /** Chi ha chiesto di riaprire l'appuntamento annullato, in attesa della risposta dell'altro (collaudo F-08). */
+  reopenRequestedBy: "CLIENT" | "PROFESSIONAL" | null;
   /** Dati di contatto del professionista, per il popup "Non presentato" (contatta oppure chiedi il rimborso). */
   professionalPhone: string | null;
   professionalEmail: string | null;
@@ -1814,6 +1816,13 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     reopenBooking: (token: string, bookingId: string) =>
       request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/reopen`, {
         method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    /** Risposta alla richiesta di riaprire un appuntamento annullato (collaudo F-08). */
+    answerReopenBooking: (token: string, bookingId: string, accept: boolean) =>
+      request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/reopen/${accept ? "accept" : "decline"}`, {
+        method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
 

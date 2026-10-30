@@ -43,6 +43,9 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   BOOKING_CLIENT_CANT_COME: { icon: "⚠️", message: "Il cliente ha scritto che non può più esserci all'appuntamento: scrivigli in chat." },
   BOOKING_CLIENT_CANT_COME_UNDONE: { icon: "👍", message: "Il cliente aveva premuto «Non posso più» per errore: ci sarà." },
   BOOKING_REOPENED_BY_PROFESSIONAL: { icon: "🔄", message: "Il professionista ha riaperto una prenotazione annullata." },
+  // Riapertura su richiesta (collaudo F-08).
+  BOOKING_REOPEN_REQUESTED: { icon: "🔄", message: "Ti hanno chiesto di riaprire un appuntamento annullato: accetta o rifiuta dalla scheda." },
+  BOOKING_REOPEN_DECLINED: { icon: "🔄", message: "La tua richiesta di riaprire l'appuntamento non è stata accettata." },
   // Recensione del cliente (docs/CHANGELOG.md §185): pubblica subito (§215).
   NEW_REVIEW: { icon: "⭐", message: "Un cliente ha recensito un tuo lavoro: la sua recensione è ora visibile." },
   // DSA art. 16 c. 4-5 (docs/CHANGELOG.md §319): a chi segnala la presa in

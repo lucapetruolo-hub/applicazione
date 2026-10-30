@@ -622,6 +622,33 @@ const BUILDERS: Record<string, Builder> = {
     details: jobDetails(ctx),
     cta: clientRequests(),
   }),
+  // Riapertura su richiesta (collaudo F-08): risponde chi non ha annullato.
+  BOOKING_REOPEN_REQUESTED: (payload, ctx) => ({
+    kind: "notification",
+    subject: payload.audience === "PROFESSIONAL" ? "Il cliente vuole riaprire un appuntamento" : `${pro(ctx)} vuole riaprire l'appuntamento`,
+    greeting: ctx.name,
+    title: "Riaprire l'appuntamento?",
+    paragraphs: [
+      payload.audience === "PROFESSIONAL"
+        ? `Il cliente aveva annullato l'appuntamento per **${job(ctx)}** e ora chiede di riaprirlo.`
+        : `**${pro(ctx)}** aveva annullato l'appuntamento per **${job(ctx)}** e ora chiede di riaprirlo.`,
+      "Accetta o rifiuta dalla scheda del lavoro: finché non rispondi resta annullato.",
+    ],
+    details: payload.audience === "PROFESSIONAL" ? proJobDetails(ctx) : jobDetails(ctx),
+    cta: payload.audience === "PROFESSIONAL" ? proRequests("Rispondi") : clientRequests(),
+  }),
+  BOOKING_REOPEN_DECLINED: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Appuntamento non riaperto",
+    greeting: ctx.name,
+    title: "Appuntamento non riaperto",
+    paragraphs: [
+      payload.audience === "PROFESSIONAL"
+        ? `Il cliente non ha accettato di riaprire l'appuntamento per **${job(ctx)}**: resta annullato.`
+        : `**${pro(ctx)}** non ha accettato di riaprire l'appuntamento per **${job(ctx)}**: resta annullato. Puoi ripetere la richiesta ad altri professionisti.`,
+    ],
+    cta: payload.audience === "PROFESSIONAL" ? proRequests("Apri il lavoro") : clientRequests(),
+  }),
   BOOKING_REOPENED_BY_CLIENT: (_payload, ctx) => ({
     kind: "notification",
     subject: "Il cliente ha riaperto una prenotazione",

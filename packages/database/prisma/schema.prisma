@@ -1217,6 +1217,9 @@ model Booking {
   // valgono 24 ore. canceledLate: il cliente ha annullato dentro il preavviso.
   cancellationNoticeHours Int?
   canceledLate            Boolean       @default(false)
+  // Chi ha annullato chiede di riaprire, l'altro accetta (collaudo F-08, docs/changelog/2026-10-30-collaudo-soldi-online.md).
+  reopenRequestedAt       DateTime?
+  reopenRequestedBy       String?
   // Fine della fascia (richiesta esplicita dell'utente: mostrare tutta la
   // fascia oraria, non solo l'inizio), copiata da Quote.estimatedEndDate/
   // clientProposedEndDate al momento della creazione — null per le

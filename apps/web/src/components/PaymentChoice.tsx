@@ -6,6 +6,7 @@ import {
   paymentChoiceIsOnline,
   type JobPaymentChoice,
   formatEurCents,
+  UPFRONT_PAYMENT_NOTE,
 } from "@professionisti/shared";
 import Link from "next/link";
 import { Text, YStack, brand } from "@professionisti/ui";
@@ -79,6 +80,11 @@ export function PaymentOffer({
               {depositPercent >= 100 ? "Da pagare accettando" : `Acconto accettando (${depositPercent}% del massimo)`}: {deposit}
             </Text>
           ) : null}
+          {paymentChoiceIsOnline(only) && deposit && depositPercent >= 100 ? (
+            <Text fontSize={13} color={brand.grafite70}>
+              {UPFRONT_PAYMENT_NOTE}
+            </Text>
+          ) : null}
         </>
       ) : (
         options.map((option) => (
@@ -132,10 +138,17 @@ export function PaymentChoice({
   const onlineHidden = !onlineAvailable && offered.some(paymentChoiceIsOnline);
   const depositLine = (option: JobPaymentChoice) =>
     paymentChoiceIsOnline(option) && quoteMaxEurCents > 0 ? (
-      <Text fontSize={13} fontWeight="700" color={brand.grafite}>
-        {depositPercent >= 100 ? "Da pagare ora (l'intero massimo del preventivo)" : `Acconto ora (${depositPercent}% del massimo del preventivo)`}:{" "}
-        {eur(onlineDepositEurCents(quoteMaxEurCents, depositPercent))}
-      </Text>
+      <>
+        <Text fontSize={13} fontWeight="700" color={brand.grafite}>
+          {depositPercent >= 100 ? "Da pagare ora (l'intero massimo del preventivo)" : `Acconto ora (${depositPercent}% del massimo del preventivo)`}:{" "}
+          {eur(onlineDepositEurCents(quoteMaxEurCents, depositPercent))}
+        </Text>
+        {depositPercent >= 100 ? (
+          <Text fontSize={13} color={brand.grafite70}>
+            {UPFRONT_PAYMENT_NOTE}
+          </Text>
+        ) : null}
+      </>
     ) : null;
   return (
     <YStack gap="$2" role="radiogroup" aria-label="Come vuoi pagare">

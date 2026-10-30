@@ -772,8 +772,8 @@ export function GuidedRequestCard({
     menuActions.push({ icon: "x", text: "Annulla prenotazione", tone: "danger", onPress: () => setShowCancelModal(true) });
   } else if (booking?.status === "CANCELED") {
     // Un intervento annullato dal professionista non si riapre dal lato cliente.
-    if (booking.canceledBy === "CLIENT") {
-      menuActions.push({ icon: "rotate-ccw", text: "Riapri prenotazione", onPress: handleReopenBooking });
+    if (booking.canceledBy === "CLIENT" && !booking.reopenRequestedBy) {
+      menuActions.push({ icon: "rotate-ccw", text: "Chiedi di riaprire", onPress: handleReopenBooking });
     }
   } else if (!booking) {
     // Una sola voce finché la richiesta non è diventata un lavoro (§343, al

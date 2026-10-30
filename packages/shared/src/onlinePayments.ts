@@ -94,6 +94,13 @@ export function quoteChangeWhat(change: { itemsChanged: boolean; notesChanged: b
 export function paymentChoiceIsOnline(choice: JobPaymentChoice): boolean {
   return choice === "ONLINE" || choice === "MIXED";
 }
+/**
+ * Avviso a chi paga online tutto il massimo accettando (collaudo P-02): sa
+ * subito che i soldi restano fermi e che la differenza gli torna.
+ */
+export const UPFRONT_PAYMENT_NOTE =
+  "Paghi tutto adesso. I soldi restano fermi finché confermi che il lavoro è fatto; se il prezzo finale è più basso, la differenza ti torna.";
+
 /** Giorni dopo la chiusura del lavoro in cui i soldi passano al professionista se il cliente non conferma né segnala. */
 export const ONLINE_RELEASE_DAYS = 7;
 /**

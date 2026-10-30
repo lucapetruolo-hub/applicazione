@@ -564,6 +564,20 @@ export function RequestCard({
     }
   }
 
+  async function handleAnswerReopen(accept: boolean) {
+    if (!booking) return;
+    setReopenError(null);
+    setIsReopening(true);
+    try {
+      await apiClient.answerReopenBooking(token, booking.id, accept);
+      onChanged();
+    } catch (err) {
+      setReopenError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsReopening(false);
+    }
+  }
+
   async function handleDelete() {
     setIsDeleting(true);
     try {
@@ -705,8 +719,8 @@ export function RequestCard({
     menuActions.push({ icon: "x", text: "Annulla intervento", tone: "danger", onPress: () => setShowCancelModal(true) });
   }
   // Regola simmetrica (§197): ognuno riapre solo ciò che ha annullato lui.
-  if (booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL") {
-    menuActions.push({ icon: "rotate-ccw", text: "Riapri intervento", onPress: handleReopenBooking });
+  if (booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL" && !booking.reopenRequestedBy) {
+    menuActions.push({ icon: "rotate-ccw", text: "Chiedi di riaprire", onPress: handleReopenBooking });
   }
   // Il professionista segnala un problema sull'intervento (§197): cliente
   // assente, mancato pagamento, ecc. Arriva al nostro team e in chat.
@@ -1375,10 +1389,21 @@ export function RequestCard({
                     </CardButton>
                   </>
                 ) : null}
-                {booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL" ? (
+                {/* Chi ha annullato chiede di riaprire, l'altro accetta (collaudo F-08). */}
+                {booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL" && !booking.reopenRequestedBy ? (
                   <CardButton compactOnPhone fill={brand.verificato} onPress={handleReopenBooking} disabled={isReopening}>
-                    {isReopening ? "Riapertura..." : "Riapri intervento"}
+                    {isReopening ? "Invio..." : "Chiedi di riaprire"}
                   </CardButton>
+                ) : null}
+                {booking?.status === "CANCELED" && booking.reopenRequestedBy === "CLIENT" ? (
+                  <>
+                    <CardButton compactOnPhone fill={brand.verificato} onPress={() => handleAnswerReopen(true)} disabled={isReopening}>
+                      Accetta di riaprire
+                    </CardButton>
+                    <CardButton compactOnPhone tone="danger" onPress={() => handleAnswerReopen(false)} disabled={isReopening}>
+                      Non riaprire
+                    </CardButton>
+                  </>
                 ) : null}
                 {/* Bug reale corretto: il link portava sempre alla data odierna
                     del calendario "Prenotazioni" invece che alla data vera
@@ -1397,6 +1422,13 @@ export function RequestCard({
                   </CardButton>
                 ) : null}
               </XStack>
+            ) : null}
+            {booking?.status === "CANCELED" && booking.reopenRequestedBy ? (
+              <Text fontSize={13} color={brand.grafite70}>
+                {booking.reopenRequestedBy === "CLIENT"
+                  ? "Il cliente chiede di riaprire l'appuntamento annullato: se accetti torna valido e in agenda."
+                  : "Hai chiesto al cliente di riaprire l'appuntamento: aspetta la sua risposta."}
+              </Text>
             ) : null}
             {reopenError ? (
               <Text fontSize={13} color={brand.urgenza}>

@@ -160,6 +160,11 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
     const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
     return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}` : "/le-mie-richieste?tab=lavori";
   }
+  if (type === "BOOKING_REOPEN_REQUESTED" || type === "BOOKING_REOPEN_DECLINED") {
+    const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
+    if (getPayloadValue(payload, "audience") === "PROFESSIONAL") return guidedRequestId ? `/dashboard/richieste?open=${guidedRequestId}` : "/dashboard/richieste";
+    return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}` : "/le-mie-richieste?tab=lavori";
+  }
   if (type === "JOB_REFUND_REJECTED") {
     // Chi aveva chiesto il rimborso può essere il cliente o il professionista.
     const guidedRequestId = getPayloadValue(payload, "guidedRequestId");

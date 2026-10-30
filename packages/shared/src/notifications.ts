@@ -74,6 +74,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "BOOKING_CANCELED_BY_CLIENT",
       "BOOKING_REOPENED_BY_CLIENT",
       "BOOKING_REOPENED_BY_PROFESSIONAL",
+      // Chi ha annullato chiede di riaprire, l'altro accetta o no (collaudo F-08).
+      "BOOKING_REOPEN_REQUESTED",
+      "BOOKING_REOPEN_DECLINED",
       // Risposta del cliente al promemoria WhatsApp: "Ci sarò" o "Non posso più".
       "BOOKING_CLIENT_CONFIRMED",
       "BOOKING_CLIENT_CANT_COME",
@@ -314,6 +317,8 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "BOOKING_CANCELED_BY_CLIENT",
       "BOOKING_REOPENED_BY_CLIENT",
       "BOOKING_REOPENED_BY_PROFESSIONAL",
+      "BOOKING_REOPEN_REQUESTED",
+      "BOOKING_REOPEN_DECLINED",
       "BOOKING_NO_SHOW_REPORTED",
       // Risposte del cliente al promemoria: "Ci sarò", "Non posso più", "Ho sbagliato".
       "BOOKING_CLIENT_CONFIRMED",

@@ -97,11 +97,23 @@ export class BookingsController {
     return this.bookingsService.cancelForClient(req.user.userId, id);
   }
 
-  /** Riapre una prenotazione annullata — disponibile a entrambe le parti, chiunque l'abbia annullata. */
+  /** Chi ha annullato chiede di riaprire la prenotazione; l'altra parte risponde (collaudo F-08). */
   @UseGuards(JwtAuthGuard)
   @Patch(":id/reopen")
   reopen(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
     return this.bookingsService.reopenBooking(req.user.userId, id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/reopen/accept")
+  acceptReopen(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.bookingsService.answerReopen(req.user.userId, id, true);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/reopen/decline")
+  declineReopen(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.bookingsService.answerReopen(req.user.userId, id, false);
   }
 
   /** Il professionista segnala un "Lavoro accettato" come terminato, con l'importo preciso (voci del preventivo + eventuali extra). */
