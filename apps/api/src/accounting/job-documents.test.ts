@@ -30,7 +30,7 @@ function booking(over: Record<string, unknown> = {}) {
     clientId: "client-1",
     status: "COMPLETED",
     professionalProfile: { userId: "pro-1", fiscalProfile: { entityType: "PRIVATE_INDIVIDUAL" } },
-    courtesyDocument: { kind: "RECEIPT", number: 4, year: 2026, ownNumber: null, pdfDownloadedAt: new Date("2026-10-26T10:00:00Z"), pdfTotalEurCents: 10000 },
+    courtesyDocument: { kind: "RECEIPT", number: 4, year: 2026, pdfDownloadedAt: new Date("2026-10-26T10:00:00Z"), pdfTotalEurCents: 10000 },
     quote: { invoiceRequest: null },
     jobPayment: paid,
     ...over,
@@ -133,7 +133,7 @@ describe("copia per il cliente", () => {
     };
     return new CourtesyCopyService(prisma as never, {} as never, {} as never, {} as never);
   }
-  const saved = { kind: "RECEIPT", pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000, number: 4, year: 2026, ownNumber: null };
+  const saved = { kind: "RECEIPT", pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000, number: 4, year: 2026 };
 
   it("solo il cliente del lavoro, dopo il PDF del professionista e con lo stesso importo", async () => {
     const copy = await build(loaded(), saved).forClient("client-1", "b1");
@@ -158,7 +158,7 @@ describe("copia per il cliente", () => {
         booking: { findUnique: vi.fn().mockResolvedValue(booking) },
         courtesyDocument: {
           findUnique: vi.fn().mockResolvedValue(previous ? { ...saved, ...previous } : null),
-          upsert: vi.fn().mockResolvedValue({ kind: "RECEIPT", number: 4, year: 2026, ownNumber: null }),
+          upsert: vi.fn().mockResolvedValue({ kind: "RECEIPT", number: 4, year: 2026 }),
         },
       };
       const notifications = { notify: vi.fn().mockResolvedValue(undefined) };

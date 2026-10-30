@@ -30,13 +30,19 @@ snello e funzionale". Sulla scheda ha scelto "Sì, solo ricevuta ed estratto".
   del lavoro "La fattura te la manda il professionista".
 - **Database**: la migrazione `20261030100000_documenti_ai_clienti`, non
   ancora unita né in produzione, ora aggiunge solo nome, codice fiscale e
-  ritenuta. Data e aliquota IVA della copia della fattura sono tolte. Le
-  vecchie copie delle fatture (`kind = INVOICE`) restano nel database ma non si
-  mostrano più.
+  ritenuta. Data e aliquota IVA della copia della fattura sono tolte.
+- **Vecchie copie delle fatture tolte dal database** (Luca, 30/10: "Effettua
+  miglioria"). Lo fa la migrazione `20261030140000_via_copie_fatture`: cancella
+  le righe con `kind` diverso da `RECEIPT` e toglie la colonna `ownNumber`. Nel
+  codice i documenti dati ai clienti sono ormai solo ricevute, e il loro nome è
+  sempre "Ricevuta n. 4/2026". Le vecchie notifiche "Copia della fattura
+  pronta" già mandate si leggono ancora come prima.
 
 **Verifica**:
 - In tutto 1037 prove dell'API verdi, comprese le nuove per il 409 con la
   partita IVA e per `ownInvoice` nei documenti del lavoro.
+- La migrazione è provata in locale su una copia con una riga INVOICE e una
+  RECEIPT: resta solo la ricevuta. Lo schema coincide con le migrazioni.
 - Test dei permessi in locale: 320 rotte, nessun problema. proA ora lavora in
   modo occasionale e la ricevuta è un documento `RECEIPT`.
 - Controlli dei tipi del sito verdi, `pnpm lint` verde.

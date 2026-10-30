@@ -609,10 +609,9 @@ export function courtesyReceiptNumber(number: number, year: number): string {
   return `${number}/${year}`;
 }
 
-/** Come si chiama il documento nelle liste: "Ricevuta n. 4/2026", "Fattura n. 12/A". */
-export function courtesyDocumentLabel(doc: { kind: string; number: number | null; year: number; ownNumber: string | null }): string {
-  if (doc.kind === "RECEIPT") return doc.number ? `Ricevuta n. ${courtesyReceiptNumber(doc.number, doc.year)}` : "Ricevuta senza numero";
-  return doc.ownNumber ? `Fattura n. ${doc.ownNumber}` : "Fattura, numero non ancora scritto";
+/** Come si chiama la ricevuta nelle liste: "Ricevuta n. 4/2026". */
+export function courtesyDocumentLabel(doc: { number: number | null; year: number }): string {
+  return doc.number ? `Ricevuta n. ${courtesyReceiptNumber(doc.number, doc.year)}` : "Ricevuta senza numero";
 }
 
 /**
@@ -622,7 +621,7 @@ export function courtesyDocumentLabel(doc: { kind: string; number: number | null
  */
 export type AdminCourtesyDocumentRow = {
   bookingId: string;
-  kind: "INVOICE" | "RECEIPT";
+  kind: "RECEIPT";
   label: string;
   year: number;
   /** Quando il professionista l'ha preparato la prima volta. */
@@ -649,7 +648,7 @@ export type AdminCourtesyDocumentRow = {
  */
 export type CourtesyDocumentSummary = {
   bookingId: string;
-  kind: "INVOICE" | "RECEIPT";
+  kind: "RECEIPT";
   label: string;
   year: number;
   customerName: string | null;
@@ -680,18 +679,17 @@ export function courtesyAmountChanged(pdfTotalEurCents: number | null, totalEurC
   return pdfTotalEurCents !== null && pdfTotalEurCents !== totalEurCents;
 }
 
-/** Totali per anno dei documenti dati ai clienti, dal più recente: per la dichiarazione dei redditi. */
-export function courtesyYearTotals(documents: CourtesyDocumentSummary[]): { year: number; kind: "INVOICE" | "RECEIPT"; count: number; totalEurCents: number; missingAmounts: number }[] {
-  const totals = new Map<string, { year: number; kind: "INVOICE" | "RECEIPT"; count: number; totalEurCents: number; missingAmounts: number }>();
+/** Totali per anno delle ricevute date ai clienti, dal più recente: per la dichiarazione dei redditi. */
+export function courtesyYearTotals(documents: CourtesyDocumentSummary[]): { year: number; kind: "RECEIPT"; count: number; totalEurCents: number; missingAmounts: number }[] {
+  const totals = new Map<number, { year: number; kind: "RECEIPT"; count: number; totalEurCents: number; missingAmounts: number }>();
   for (const doc of documents) {
-    const key = `${doc.year}:${doc.kind}`;
-    const row = totals.get(key) ?? { year: doc.year, kind: doc.kind, count: 0, totalEurCents: 0, missingAmounts: 0 };
+    const row = totals.get(doc.year) ?? { year: doc.year, kind: "RECEIPT" as const, count: 0, totalEurCents: 0, missingAmounts: 0 };
     row.count += 1;
     if (doc.totalEurCents === null) row.missingAmounts += 1;
     else row.totalEurCents += doc.totalEurCents;
-    totals.set(key, row);
+    totals.set(doc.year, row);
   }
-  return [...totals.values()].sort((a, b) => b.year - a.year || (a.kind === "RECEIPT" ? -1 : 1));
+  return [...totals.values()].sort((a, b) => b.year - a.year);
 }
 
 /** Sopra questa cifra, senza IVA, serve la marca da bollo da 2 €. */

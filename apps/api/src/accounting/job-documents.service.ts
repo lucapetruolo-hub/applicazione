@@ -32,7 +32,7 @@ export class JobDocumentsService {
         clientId: true,
         status: true,
         professionalProfile: { select: { userId: true, fiscalProfile: { select: { entityType: true } } } },
-        courtesyDocument: { select: { kind: true, number: true, year: true, ownNumber: true, pdfDownloadedAt: true, pdfTotalEurCents: true } },
+        courtesyDocument: { select: { kind: true, number: true, year: true, pdfDownloadedAt: true, pdfTotalEurCents: true } },
         quote: { select: { invoiceRequest: { select: { id: true } } } },
         jobPayment: {
           select: {

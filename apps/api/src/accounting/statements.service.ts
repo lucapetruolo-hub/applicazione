@@ -40,7 +40,7 @@ const BOOKING_SELECT = {
   recipientName: true,
   recipientSurname: true,
   client: { select: { name: true, surname: true } },
-  courtesyDocument: { select: { kind: true, number: true, year: true, ownNumber: true, customerName: true } },
+  courtesyDocument: { select: { kind: true, number: true, year: true, customerName: true } },
   quote: { select: { invoiceRequest: { select: { name: true } }, guidedRequest: { select: { description: true, category: { select: { label: true } } } } } },
 } as const;
 
@@ -49,7 +49,7 @@ type BookingInfo = {
   recipientName: string | null;
   recipientSurname: string | null;
   client: { name: string | null; surname: string | null };
-  courtesyDocument: { kind: string; number: number | null; year: number; ownNumber: string | null; customerName: string | null } | null;
+  courtesyDocument: { kind: string; number: number | null; year: number; customerName: string | null } | null;
   quote: { invoiceRequest: { name: string } | null; guidedRequest: { description: string; category: { label: string } } } | null;
 };
 

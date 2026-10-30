@@ -7,7 +7,6 @@ export const COURTESY_DOCUMENT_FIELDS = {
   kind: true,
   number: true,
   year: true,
-  ownNumber: true,
   pdfDownloadedAt: true,
   pdfTotalEurCents: true,
   customerName: true,
@@ -50,7 +49,7 @@ export function courtesyDocumentSummary(doc: CourtesyDocumentFields, booking: Co
   const total = courtesyTotalEurCents(booking.jobPayment);
   return {
     bookingId: doc.bookingId,
-    kind: doc.kind === "RECEIPT" ? "RECEIPT" : "INVOICE",
+    kind: "RECEIPT",
     label: courtesyDocumentLabel(doc),
     year: doc.year,
     customerName: courtesyCustomerName(doc, booking),

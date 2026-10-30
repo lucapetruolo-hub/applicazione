@@ -92,7 +92,7 @@ export class CourtesyCopyService {
       where: { bookingId },
       create: { bookingId, professionalProfileId, kind: copy.kind, year: yearOf(copy.date), ...downloaded },
       update: downloaded,
-      select: { kind: true, number: true, year: true, ownNumber: true },
+      select: { number: true, year: true },
     });
     const updated = !!previous?.pdfDownloadedAt;
     if (copy.totalEurCents !== null && (!updated || courtesyAmountChanged(previous?.pdfTotalEurCents ?? null, copy.totalEurCents))) {
@@ -101,7 +101,7 @@ export class CourtesyCopyService {
     return copy;
   }
 
-  private async notifyClientDocumentReady(bookingId: string, doc: { kind: string; number: number | null; year: number; ownNumber: string | null }, updated: boolean): Promise<void> {
+  private async notifyClientDocumentReady(bookingId: string, doc: { number: number | null; year: number }, updated: boolean): Promise<void> {
     try {
       const booking = await this.prisma.booking.findUnique({
         where: { id: bookingId },
@@ -339,8 +339,7 @@ export class CourtesyCopyService {
   /**
    * Admin → Documenti ai clienti (docs/CHANGELOG.md §380): le ricevute, le
    * più recenti per prime. `q` cerca il numero ("4/2026") o il nome del
-   * professionista o del cliente. Le vecchie copie delle fatture restano nel
-   * database ma non si mostrano più (docs/changelog/2026-10-30-documenti-snelli.md).
+   * professionista o del cliente.
    */
   async adminList(filter: { q?: string; year?: number; bookingId?: string }): Promise<AdminCourtesyDocumentRow[]> {
     const q = filter.q?.trim();
@@ -382,7 +381,7 @@ export class CourtesyCopyService {
       const request = booking.quote?.guidedRequest ?? null;
       return {
         bookingId: booking.id,
-        kind: doc.kind === "RECEIPT" ? "RECEIPT" : "INVOICE",
+        kind: "RECEIPT",
         label: courtesyDocumentLabel(doc),
         year: doc.year,
         createdAt: doc.createdAt.toISOString(),

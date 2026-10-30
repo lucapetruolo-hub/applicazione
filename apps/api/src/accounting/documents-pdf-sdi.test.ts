@@ -171,7 +171,7 @@ describe("numero della copia di cortesia", () => {
   });
 
   it("riaprendo la stessa ricevuta il numero resta lo stesso", async () => {
-    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { number: 2, year: 2026, ownNumber: null }, 9);
+    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { number: 2, year: 2026 }, 9);
     expect((await service.forProfessional("u1", "b1")).number).toBe("2/2026");
     expect(prisma.courtesyDocument.upsert).not.toHaveBeenCalled();
   });
@@ -191,7 +191,7 @@ describe("numero della copia di cortesia", () => {
   });
 
   it("scaricando il PDF ci segniamo quando e con che importo", async () => {
-    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { number: 2, year: 2026, ownNumber: null }, null);
+    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { number: 2, year: 2026 }, null);
     const copy = await service.forProfessionalPdf("u1", "b1");
     // Le righe sono le voci del lavoro terminato (B-03).
     expect(copy.lines).toEqual([
@@ -225,7 +225,7 @@ describe("numero della copia di cortesia", () => {
   });
 
   it("ricevuta a una partita IVA: ritenuta del 20% salvo spunta tolta, niente codice destinatario (C-01, C-04)", async () => {
-    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { number: 3, year: 2026, ownNumber: null }, null);
+    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { number: 3, year: 2026 }, null);
     const vatRequest = { kind: "VAT", name: "Bar Sport S.r.l.", taxCode: "RSSMRA80A01H501U", vatNumber: "12345678903", sdiRecipientCode: "ABC1234", pecEmail: null, street: "Via Roma", houseNumber: "1", postalCode: "00100", city: "Roma", province: "RM", updatedAt: new Date() };
     prisma.booking.findUnique.mockResolvedValue({ ...(await prisma.booking.findUnique()), quote: { invoiceRequest: vatRequest, guidedRequest: { description: "Babysitter", category: { label: "Babysitter" } } } });
     const copy = await service.forProfessional("u1", "b1");
@@ -236,7 +236,7 @@ describe("numero della copia di cortesia", () => {
     expect(copy.customerFields).toBeNull();
     expect(copy.hints[0]).toContain("Certificazione Unica");
 
-    prisma.courtesyDocument.findUnique.mockResolvedValue({ number: 3, year: 2026, ownNumber: null, withholding: false });
+    prisma.courtesyDocument.findUnique.mockResolvedValue({ number: 3, year: 2026, withholding: false });
     expect((await service.forProfessional("u1", "b1")).withholding).toEqual({ applies: false, amountEurCents: 0, netEurCents: 12000 });
   });
 
@@ -245,7 +245,7 @@ describe("numero della copia di cortesia", () => {
     await expect(missing.service.forAdmin("b1", "admin-1")).rejects.toThrow("Documento non trovato.");
     expect(missing.prisma.courtesyDocument.upsert).not.toHaveBeenCalled();
 
-    const { service, prisma, audit } = build("PRIVATE_INDIVIDUAL", { id: "d1", kind: "RECEIPT", number: 2, year: 2026, ownNumber: null }, 9);
+    const { service, prisma, audit } = build("PRIVATE_INDIVIDUAL", { id: "d1", kind: "RECEIPT", number: 2, year: 2026 }, 9);
     expect((await service.forAdmin("b1", "admin-1")).number).toBe("2/2026");
     expect(prisma.courtesyDocument.upsert).not.toHaveBeenCalled();
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ entityType: "CourtesyDocument", entityId: "b1", fieldName: "read", changedByUserId: "admin-1" }));
@@ -264,7 +264,7 @@ describe("numero della copia di cortesia", () => {
   });
 
   it("sulla copia c'è l'importo dell'ultimo PDF, e si scrive \"Pagato online\" senza dire con cosa", async () => {
-    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { number: 2, year: 2026, ownNumber: null, pdfTotalEurCents: 12000 }, null);
+    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { number: 2, year: 2026, pdfTotalEurCents: 12000 }, null);
     prisma.booking.findUnique.mockResolvedValueOnce({
       ...(await prisma.booking.findUnique()),
       jobPayment: { paymentMethod: "MANOVIA", balanceDirect: false, paidEurCents: 12000, refundedEurCents: 2000, grossAmountEurCents: 12000, balancePaidAt: null, directReportedAt: null },
@@ -282,26 +282,25 @@ describe("numero della copia di cortesia", () => {
       client: { name: "Anna", surname: "Bianchi", deletedAt: null },
       quote: { invoiceRequest: null, guidedRequest: { category: { label: "Idraulico" } } },
     });
-    const doc = { bookingId: "b1", kind: "RECEIPT", number: 4, year: 2026, ownNumber: null, customerName: null, pdfDownloadedAt: new Date("2026-10-20T10:00:00Z"), pdfTotalEurCents: 12000 };
+    const doc = { bookingId: "b1", kind: "RECEIPT", number: 4, year: 2026, customerName: null, pdfDownloadedAt: new Date("2026-10-20T10:00:00Z"), pdfTotalEurCents: 12000 };
     expect(courtesyDocumentSummary(doc, booking(0))).toMatchObject({ label: "Ricevuta n. 4/2026", customerName: "Anna Bianchi", jobLabel: "Idraulico", totalEurCents: 12000, amountChanged: false });
     expect(courtesyDocumentSummary(doc, booking(2000)).amountChanged).toBe(true);
     // Mai "cambiato" prima del primo PDF.
     expect(courtesyAmountChanged(null, 5000)).toBe(false);
     expect(courtesyTotalEurCents(null)).toBeNull();
 
-    const summary = (year: number, kind: "RECEIPT" | "INVOICE", total: number | null): CourtesyDocumentSummary => ({
-      bookingId: `${year}-${kind}-${total}`, kind, label: "", year, customerName: null, jobLabel: null, totalEurCents: total, pdfDownloadedAt: null, pdfTotalEurCents: null, amountChanged: false,
+    const summary = (year: number, total: number | null): CourtesyDocumentSummary => ({
+      bookingId: `${year}-${total}`, kind: "RECEIPT", label: "", year, customerName: null, jobLabel: null, totalEurCents: total, pdfDownloadedAt: null, pdfTotalEurCents: null, amountChanged: false,
     });
-    expect(courtesyYearTotals([summary(2026, "RECEIPT", 10000), summary(2026, "RECEIPT", 5000), summary(2026, "RECEIPT", null), summary(2027, "INVOICE", 3000)])).toEqual([
-      { year: 2027, kind: "INVOICE", count: 1, totalEurCents: 3000, missingAmounts: 0 },
+    expect(courtesyYearTotals([summary(2026, 10000), summary(2026, 5000), summary(2026, null), summary(2027, 3000)])).toEqual([
+      { year: 2027, kind: "RECEIPT", count: 1, totalEurCents: 3000, missingAmounts: 0 },
       { year: 2026, kind: "RECEIPT", count: 3, totalEurCents: 15000, missingAmounts: 1 },
     ]);
   });
 
   it("nome del documento nelle liste", () => {
-    expect(courtesyDocumentLabel({ kind: "RECEIPT", number: 4, year: 2026, ownNumber: null })).toBe("Ricevuta n. 4/2026");
-    expect(courtesyDocumentLabel({ kind: "INVOICE", number: null, year: 2026, ownNumber: "12/A" })).toBe("Fattura n. 12/A");
-    expect(courtesyDocumentLabel({ kind: "INVOICE", number: null, year: 2026, ownNumber: null })).toBe("Fattura, numero non ancora scritto");
+    expect(courtesyDocumentLabel({ number: 4, year: 2026 })).toBe("Ricevuta n. 4/2026");
+    expect(courtesyDocumentLabel({ number: null, year: 2026 })).toBe("Ricevuta senza numero");
   });
 });
 
@@ -313,7 +312,6 @@ describe("riepilogo dell'anno per il commercialista", () => {
     kind: "RECEIPT",
     number: null,
     year: 2026,
-    ownNumber: null,
     pdfDownloadedAt: null,
     pdfTotalEurCents: null,
     customerName: null,
@@ -492,7 +490,6 @@ describe("documenti da sistemare a dicembre", () => {
     kind: "RECEIPT",
     number,
     year: 2026,
-    ownNumber: null,
     pdfDownloadedAt: pdfTotalEurCents !== null ? new Date("2026-06-02T09:00:00Z") : null,
     pdfTotalEurCents,
     customerName: null,

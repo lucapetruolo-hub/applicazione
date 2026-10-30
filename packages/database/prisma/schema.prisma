@@ -1407,12 +1407,11 @@ model CourtesyDocument {
   id                    String   @id @default(uuid())
   bookingId             String   @unique
   professionalProfileId String
-  kind                  String // INVOICE | RECEIPT (CourtesyCopyView in packages/shared)
+  /// Sempre RECEIPT: con la partita IVA nessuna copia della fattura (docs/changelog/2026-10-30-documenti-snelli.md).
+  kind                  String
   year                  Int
-  /// Ricevute: il nostro progressivo dell'anno (1, 2, 3...).
+  /// Il nostro progressivo dell'anno (1, 2, 3...).
   number                Int?
-  /// Fatture: il numero del programma delle fatture del professionista.
-  ownNumber             String?
   /// Ultima volta che il professionista ha scaricato il PDF (Admin → Documenti ai clienti, §380).
   pdfDownloadedAt       DateTime?
   /// Importo scritto su quel PDF: se il lavoro cambia dopo, l'admin lo vede.
