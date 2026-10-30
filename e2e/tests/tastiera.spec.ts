@@ -53,17 +53,24 @@ async function tabTo(page: Page, match: (name: string, role: string | null) => b
   throw new Error("Il fuoco non è mai arrivato sull'elemento cercato.");
 }
 
+const focusedRole = (page: Page) => page.evaluate(() => document.activeElement?.getAttribute("role"));
+
 const focused = (page: Page) => page.evaluate(() => ({ name: (document.activeElement as HTMLElement).innerText?.trim(), expanded: document.activeElement?.getAttribute("aria-expanded"), checked: document.activeElement?.getAttribute("aria-checked") }));
 
+const PUBLIC_PAGES = ["/", "/registrati", "/registrati?ruolo=PROFESSIONAL", "/preventivo?categoria=idraulico", "/urgente", "/per-professionisti", "/accedi"];
+
 for (const [deviceName, device] of [["telefono", PHONE], ["computer", COMPUTER]] as const) {
-  test(`pagine pubbliche senza problemi gravi per axe (${deviceName})`, async ({ browser }) => {
-    const page = await anonymousPage(browser, device);
-    for (const url of ["/", "/registrati", "/registrati?ruolo=PROFESSIONAL", "/preventivo?categoria=idraulico", "/urgente", "/per-professionisti", "/accedi"]) {
+  for (const url of PUBLIC_PAGES) {
+    // Niente attesa di "rete ferma": alcune pagine continuano a chiedere
+    // dati (suggerimenti, contatori) e l'attesa non finirebbe mai.
+    test(`${url} senza problemi gravi per axe (${deviceName})`, async ({ browser }) => {
+      const page = await anonymousPage(browser, device);
       await page.goto(url);
-      await page.waitForLoadState("networkidle");
-      expect(await seriousIssues(page), url).toEqual([]);
-    }
-  });
+      await expect(page.locator("h1").first()).toBeVisible();
+      await expect(page.locator("[aria-busy='true']")).toHaveCount(0, { timeout: 15_000 });
+      expect(await seriousIssues(page)).toEqual([]);
+    });
+  }
 
   test(`richieste di cliente e professionista senza problemi gravi per axe (${deviceName})`, async ({ browser }) => {
     const client = await createClient(prisma);
@@ -95,18 +102,18 @@ test("il cliente apre la scheda e arriva ad Accetta preventivo con la sola tasti
   // Una scheda chiusa si apre con Invio, si richiude con Spazio.
   await tabTo(page, (name) => name === "Vedi dettagli");
   await page.keyboard.press("Enter");
-  expect(await focused(page)).toMatchObject({ name: "Chiudi dettagli", expanded: "true" });
+  await expect.poll(() => focused(page)).toMatchObject({ name: "Chiudi dettagli", expanded: "true" });
   await page.keyboard.press(" ");
-  expect(await focused(page)).toMatchObject({ name: "Vedi dettagli", expanded: "false" });
+  await expect.poll(() => focused(page)).toMatchObject({ name: "Vedi dettagli", expanded: "false" });
   await page.keyboard.press("Enter");
 
   // Il menu delle azioni si apre, le frecce si muovono, Esc torna al pulsante.
   await page.keyboard.press("Shift+Tab");
   await tabTo(page, (name) => name === "Azioni sulla richiesta");
   await page.keyboard.press("Enter");
-  expect(await page.evaluate(() => document.activeElement?.getAttribute("role"))).toBe("menuitem");
+  await expect.poll(() => focusedRole(page)).toBe("menuitem");
   await page.keyboard.press("Escape");
-  expect(await page.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe("Azioni sulla richiesta");
+  await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe("Azioni sulla richiesta");
 
   // Dentro la scheda aperta si arriva al pulsante per accettare.
   await tabTo(page, (name) => name.startsWith("Accetta preventivo"));
@@ -118,11 +125,11 @@ test("menu dell'account con Esci raggiungibile dalla tastiera", async ({ browser
   await page.goto("/le-mie-richieste");
   await tabTo(page, (name) => name.includes("il mio account"));
   await page.keyboard.press("Enter");
-  expect(await page.evaluate(() => document.activeElement?.getAttribute("role"))).toBe("menuitem");
+  await expect.poll(() => focusedRole(page)).toBe("menuitem");
   await page.keyboard.press("End");
-  expect(await page.evaluate(() => (document.activeElement as HTMLElement).innerText.trim())).toBe("Esci");
+  await expect.poll(() => page.evaluate(() => (document.activeElement as HTMLElement).innerText.trim())).toBe("Esci");
   await page.keyboard.press("Escape");
-  expect(await page.evaluate(() => document.activeElement?.getAttribute("aria-expanded"))).toBe("false");
+  await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("aria-expanded"))).toBe("false");
 });
 
 test("la casella dei Termini della registrazione si spunta con Spazio", async ({ browser }) => {
@@ -134,7 +141,7 @@ test("la casella dei Termini della registrazione si spunta con Spazio", async ({
   await page.keyboard.press("Enter");
   await tabTo(page, (_name, role) => role === "checkbox");
   await page.keyboard.press(" ");
-  expect((await focused(page)).checked).toBe("true");
+  await expect.poll(async () => (await focused(page)).checked).toBe("true");
 });
 
 test("l'anello del fuoco si vede sui pulsanti verdi", async ({ browser }) => {
