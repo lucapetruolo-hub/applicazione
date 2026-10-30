@@ -1066,6 +1066,95 @@ button.notif-row-main:hover {
   color: #6e6459;
   background: #ffffff;
 }
+/* Titolo della sezione e schede (docs/changelog/2026-10-30-admin-riordino.md). */
+.admin-section-head {
+  margin-bottom: 16px;
+}
+.admin-section-title {
+  margin: 0 0 8px;
+  font-family: var(--font-display), sans-serif;
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 700;
+  color: #2b2420;
+}
+.admin-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid #f0dcc0;
+  scrollbar-width: none;
+}
+.admin-tabs::-webkit-scrollbar {
+  display: none;
+}
+.admin-tab {
+  padding: 10px 12px;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  color: #6e6459;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.admin-tab:hover {
+  color: #2b2420;
+}
+.admin-tab.is-active {
+  color: #2b2420;
+  font-weight: 700;
+  border-bottom-color: #128552;
+}
+.admin-tab-count {
+  margin-left: 6px;
+  color: #b02a37;
+  font-size: 12px;
+  font-weight: 700;
+}
+/* Coda "Da fare": una tabella compatta, su telefono righe una sotto l'altra. */
+.admin-queue td {
+  vertical-align: top;
+}
+.admin-queue-due {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.admin-queue-due.is-late {
+  color: #b02a37;
+}
+.admin-queue-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+@media (max-width: 699px) {
+  .admin-queue thead {
+    display: none;
+  }
+  .admin-queue,
+  .admin-queue tbody,
+  .admin-queue tr,
+  .admin-queue td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .admin-queue tr {
+    padding: 10px 12px;
+    border-bottom: 1px solid #efe7de;
+  }
+  .admin-queue td {
+    padding: 2px 0;
+    border: 0;
+  }
+  .admin-queue-actions {
+    justify-content: flex-start;
+    padding-top: 6px;
+  }
+}
 /* Ricerca globale ⌘K (docs/CHANGELOG.md §145). */
 .admin-palette-backdrop {
   position: fixed;

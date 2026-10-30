@@ -7,7 +7,7 @@ import { ApiError, type AdminOverview, type AdminTwoFactorStatus } from "@profes
 import { Button, H1, Paragraph, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { ADMIN_NAV_ITEMS, AdminNav } from "@/components/admin/AdminNav";
+import { AdminNav, AdminSectionTabs, adminTabFor } from "@/components/admin/AdminNav";
 import { AdminCommandPalette } from "@/components/admin/AdminCommandPalette";
 import { adminCan } from "@professionisti/shared";
 import { AdminOverviewContext } from "@/components/admin/AdminOverviewContext";
@@ -161,9 +161,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // Sezione fuori dal ruolo (link diretto): messaggio chiaro invece di una
   // pagina che fallisce con un errore dell'API (docs/CHANGELOG.md §145).
-  const section = [...ADMIN_NAV_ITEMS]
-    .sort((a, b) => b.href.length - a.href.length)
-    .find((item) => (item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href)));
+  const section = adminTabFor(pathname)?.tab;
   const allowed = !section || adminCan(adminRoles, section.scope);
 
   return (
@@ -171,11 +169,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="admin-shell">
         <AdminNav overview={overview} adminRoles={adminRoles} onOpenSearch={() => setSearchOpen(true)} />
         <main className="admin-main">
+          <AdminSectionTabs overview={overview} adminRoles={adminRoles} />
           {allowed ? (
             children
           ) : (
             <YStack gap="$2" paddingVertical="$6">
-              <H1 size="$7">Sezione non disponibile</H1>
+              <Paragraph fontWeight="700">Sezione non disponibile</Paragraph>
               <Paragraph color={brand.grafite70}>Questa sezione non rientra nel tuo ruolo di amministratore.</Paragraph>
             </YStack>
           )}

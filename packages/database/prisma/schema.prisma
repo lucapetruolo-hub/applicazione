@@ -2841,6 +2841,18 @@ model SiteNote {
   @@map("site_notes")
 }
 
+// Coda "Da fare" dell'area admin (docs/changelog/2026-10-30-admin-riordino.md):
+// chi ha preso un caso, perché due admin non lavorino sullo stesso. La chiave
+// è "<tipo>:<id>" (es. "JOB_ISSUE:<uuid>"), senza relazioni: i casi stanno in
+// tabelle diverse e una riga rimasta dopo la chiusura del caso non dà fastidio.
+model AdminCaseClaim {
+  caseKey     String   @id
+  adminUserId String
+  claimedAt   DateTime @default(now())
+
+  @@map("admin_case_claims")
+}
+
 // ---------------------------------------------------------------------------
 // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164)
 // ---------------------------------------------------------------------------

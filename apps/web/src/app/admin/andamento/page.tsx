@@ -43,6 +43,7 @@ import {
   formatAdminDate,
 } from "@/components/admin/adminUi";
 import { SiteAdviceList } from "@/components/admin/SiteAdviceList";
+import { AdminSummaryNumbers } from "@/components/admin/AdminSummaryNumbers";
 import { StatsBarChart } from "@/components/StatsBarChart";
 import { SkeletonTableRows } from "@/components/Skeleton";
 
@@ -90,7 +91,7 @@ export default function AdminAndamentoPage() {
   return (
     <YStack gap="$5">
       <AdminPageHeader
-        title="Andamento del sito"
+        title="Andamento e consigli"
         description="Cosa fare questa settimana, già deciso dai numeri. Ogni lunedì mattina arriva anche per email."
       />
 
@@ -160,6 +161,7 @@ export default function AdminAndamentoPage() {
               ) : null}
             </YStack>
           </section>
+          <AdminSummaryNumbers />
 
           <YStack gap="$1" marginTop="$4">
             <Text
