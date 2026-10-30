@@ -32,10 +32,10 @@ export function NotFoundContent() {
       </YStack>
       <XStack gap="$3" flexWrap="wrap" justifyContent="center">
         <Link href="/cerca" style={{ textDecoration: "none" }}>
-          <Button variant="primary">Cerca un professionista</Button>
+          <Button tabIndex={-1} variant="primary">Cerca un professionista</Button>
         </Link>
         <Link href="/" style={{ textDecoration: "none" }}>
-          <Button variant="secondary">Torna alla home</Button>
+          <Button tabIndex={-1} variant="secondary">Torna alla home</Button>
         </Link>
       </XStack>
     </>

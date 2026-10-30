@@ -664,7 +664,7 @@ function DashboardAgendaContent() {
             Accedi come professionista
           </Text>
           <Link href="/accedi?redirect=/dashboard/agenda" style={{ textDecoration: "none" }}>
-            <Button variant="primary">Accedi</Button>
+            <Button tabIndex={-1} variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>
@@ -694,7 +694,7 @@ function DashboardAgendaContent() {
             Serve un profilo completo (nome attività, categoria, città) prima di poter impostare l&apos;agenda.
           </Text>
           <Link href="/dashboard/profilo" style={{ textDecoration: "none" }}>
-            <Button variant="primary">Completa profilo</Button>
+            <Button tabIndex={-1} variant="primary">Completa profilo</Button>
           </Link>
         </YStack>
       </YStack>

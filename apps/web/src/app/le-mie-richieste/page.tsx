@@ -403,7 +403,7 @@ function LeMieRichiesteContent() {
             Accedi per vedere le tue richieste
           </Text>
           <Link href="/accedi?redirect=/le-mie-richieste" style={{ textDecoration: "none" }}>
-            <Button variant="primary">Accedi</Button>
+            <Button tabIndex={-1} variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>
@@ -456,12 +456,13 @@ function LeMieRichiesteContent() {
                       paddingHorizontal="$3"
                       paddingVertical={9}
                       borderRadius={999}
-                      backgroundColor={active ? brand.cianografia : brand.calce}
+                      backgroundColor={active ? brand.cianografiaPieno : brand.calce}
                       borderWidth={1}
                       borderColor={active ? brand.cianografia : brand.filetto}
                       cursor="pointer"
                       onPress={() => updateStageTab(tab.key)}
                       accessibilityRole="button"
+                      aria-pressed={active}
                     >
                       <Text fontFamily="$body" fontSize={16} fontWeight="800" color={active ? "white" : brand.grafite}>
                         {tab.label}
@@ -549,7 +550,7 @@ function LeMieRichiesteContent() {
                       gap={6}
                       paddingHorizontal="$3"
                       paddingVertical={12}
-                      backgroundColor={active ? brand.cianografia : brand.calce}
+                      backgroundColor={active ? brand.cianografiaPieno : brand.calce}
                       cursor="pointer"
                       onPress={() => {
                         setServiceModeFilter(opt.key);

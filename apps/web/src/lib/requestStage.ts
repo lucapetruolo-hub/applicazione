@@ -51,8 +51,10 @@ export function classifyLeadStage(lead: ProfessionalLead): RequestStage {
  * caselle degli appuntamento in base ai colori che sono stati usati per le
  * schede in richieste ricevute".
  */
+// Testi scuriti fino ad almeno 4,5:1 sul loro sfondo, bordi invariati
+// (docs/changelog/2026-10-30-tastiera.md, collaudo L-09).
 export const REQUEST_STAGE_STYLE: Record<RequestStage, { label: string; icon: IconName; fg: string; bg: string; border: string }> = {
-  da_quotare: { label: "Da quotare", icon: "zap", fg: "#0D6EFD", bg: "#E7F1FF", border: "#0D6EFD" },
+  da_quotare: { label: "Da quotare", icon: "zap", fg: "#0A58CA", bg: "#E7F1FF", border: "#0D6EFD" },
   // "In attesa" da solo era ambiguo sulla singola card (segnalato in
   // revisione UX: "il pro ha già inviato il preventivo, in attesa di
   // chi?") — la pillola sulla card ora lo dice esplicitamente, il tab
@@ -61,15 +63,15 @@ export const REQUEST_STAGE_STYLE: Record<RequestStage, { label: string; icon: Ic
   // #7A5F00: 5,5:1 sul giallo chiaro, #8A6D00 si fermava a 4,4:1 (docs/CHANGELOG.md §395).
   in_attesa: { label: "In attesa del cliente", icon: "clock", fg: "#7A5F00", bg: "#FFF3CD", border: "#FFC107" },
   modifica_richiesta: { label: "Modifica richiesta", icon: "rotate-ccw", fg: "#7A4F01", bg: "#FFE8A3", border: "#B8860B" },
-  accettata: { label: "Accettata", icon: "check", fg: "#28A745", bg: "#E6F4EA", border: "#28A745" },
-  completata: { label: "Completata", icon: "check", fg: "#0E7C7B", bg: "#DFF7F5", border: "#20B2AA" },
+  accettata: { label: "Accettata", icon: "check", fg: "#1B7A33", bg: "#E6F4EA", border: "#28A745" },
+  completata: { label: "Completata", icon: "check", fg: "#0A6968", bg: "#DFF7F5", border: "#20B2AA" },
   // Richiesta esplicita dell'utente: "rendi chiare quelle che sono state
   // annullate" — prima indistinguibile da "accettata" (nessuno stadio
   // dedicato). Icona "x" (già usata per "chiusa", stesso significato
   // "non riuscita") a distinguerla visivamente da "scaduta" pur
   // condividendo lo stesso significato semantico "rosso".
   annullata: { label: "Annullata", icon: "x", fg: "#B22222", bg: "#F8D7DA", border: "#B22222" },
-  scaduta: { label: "Scaduta", icon: "clock", fg: "#DC3545", bg: "#FBEAEA", border: "#DC3545" },
+  scaduta: { label: "Scaduta", icon: "clock", fg: "#B02A37", bg: "#FBEAEA", border: "#DC3545" },
   chiusa: { label: "Chiusa", icon: "x", fg: brand.grafite70, bg: brand.gesso, border: brand.filetto },
 };
 

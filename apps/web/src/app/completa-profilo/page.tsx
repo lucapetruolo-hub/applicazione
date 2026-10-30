@@ -4,13 +4,14 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { PASSWORD_CONTAINS_EMAIL_MESSAGE, acceptProfileInviteSchema, isMissingRulesProblem, passwordProblem, type ProfileInvitePreview } from "@professionisti/shared";
-import { Button, Icon, Text, YStack, brand } from "@professionisti/ui";
+import { Button, Text, YStack, brand } from "@professionisti/ui";
 import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
 import { AuthField } from "@/components/AuthField";
 import { LegalConsentCheckbox, scrollToLegalConsent } from "@/components/LegalConsentCheckbox";
 import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/components/PasswordRules";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle";
 
 export default function CompletaProfiloPage() {
   return (
@@ -122,14 +123,7 @@ function CompletaProfiloForm() {
               <AuthField
                 label="Password"
                 rightElement={
-                  <Text
-                    cursor="pointer"
-                    onPress={() => setShowPassword((v) => !v)}
-                    accessibilityRole="button"
-                    accessibilityLabel={showPassword ? "Nascondi password" : "Mostra password"}
-                  >
-                    <Icon name={showPassword ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
-                  </Text>
+                  <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />
                 }
                 value={password}
                 onChangeText={setPassword}

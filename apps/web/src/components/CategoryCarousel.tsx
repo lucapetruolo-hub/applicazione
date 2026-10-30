@@ -40,17 +40,15 @@ export function CategoryCarousel({ children, className, id }: { children: ReactN
 
   return (
     <div id={id} className={className} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
-      <div
+      <button
+        type="button"
         className="category-carousel-arrow"
-        role="button"
-        tabIndex={0}
         aria-label="Scorri a sinistra"
         onClick={() => scrollByStep(-1)}
-        onKeyDown={(e) => e.key === "Enter" && scrollByStep(-1)}
         style={arrowStyle}
       >
         <Icon name="chevron-left" size={18} color={brand.grafite} />
-      </div>
+      </button>
 
       <div
         ref={trackRef}
@@ -69,17 +67,15 @@ export function CategoryCarousel({ children, className, id }: { children: ReactN
         {children}
       </div>
 
-      <div
+      <button
+        type="button"
         className="category-carousel-arrow"
-        role="button"
-        tabIndex={0}
         aria-label="Scorri a destra"
         onClick={() => scrollByStep(1)}
-        onKeyDown={(e) => e.key === "Enter" && scrollByStep(1)}
         style={arrowStyle}
       >
         <Icon name="chevron-right" size={18} color={brand.grafite} />
-      </div>
+      </button>
     </div>
   );
 }

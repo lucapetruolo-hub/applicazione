@@ -102,7 +102,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             Accedi per continuare
           </H1>
           <Link href={`/accedi?redirect=${pathname}`} style={{ textDecoration: "none" }}>
-            <Button size="$5">Accedi</Button>
+            <Button tabIndex={-1} size="$5">Accedi</Button>
           </Link>
         </YStack>
       </YStack>
@@ -170,7 +170,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <AdminOverviewContext.Provider value={{ overview, refresh: refreshOverview }}>
       <div className="admin-shell">
         <AdminNav overview={overview} adminRoles={adminRoles} onOpenSearch={() => setSearchOpen(true)} />
-        <main className="admin-main">
+        <div className="admin-main">
           {allowed ? (
             children
           ) : (
@@ -179,7 +179,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Paragraph color={brand.grafite70}>Questa sezione non rientra nel tuo ruolo di amministratore.</Paragraph>
             </YStack>
           )}
-        </main>
+        </div>
       </div>
       <AdminCommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} token={token} adminRoles={adminRoles} />
     </AdminOverviewContext.Provider>

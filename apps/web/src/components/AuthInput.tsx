@@ -21,7 +21,8 @@ export function AuthInput({ icon, rightElement, size, ...inputProps }: AuthInput
       gap="$2"
     >
       {icon}
-      <Input flex={1} size={size} borderWidth={0} backgroundColor="transparent" {...inputProps} />
+      {/* Invio non toglie il fuoco dal campo (collaudo L-08). */}
+      <Input flex={1} size={size} borderWidth={0} backgroundColor="transparent" blurOnSubmit={false} {...inputProps} />
       {rightElement}
     </XStack>
   );

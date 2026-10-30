@@ -150,7 +150,7 @@ export default function ChatPage() {
             Accedi per vedere le tue conversazioni
           </Text>
           <Link href="/accedi?redirect=/chat" style={{ textDecoration: "none" }}>
-            <Button variant="primary">Accedi</Button>
+            <Button tabIndex={-1} variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>

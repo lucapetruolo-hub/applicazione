@@ -181,7 +181,7 @@ export function RequestSentScreen({
 
         <YStack alignItems="center" gap="$4">
           <Link href="/le-mie-richieste" style={{ textDecoration: "none" }}>
-            <Button variant="primary">Vai alle mie richieste</Button>
+            <Button tabIndex={-1} variant="primary">Vai alle mie richieste</Button>
           </Link>
           <Link href="/" className="request-sent-home">
             Torna alla home

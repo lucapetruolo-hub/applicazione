@@ -148,7 +148,7 @@ function OnlinePaymentsContent() {
               </XStack>
               {nextStep?.action ? (
                 <Link href={nextStep.action.href} style={{ textDecoration: "none", alignSelf: "flex-start" }}>
-                  <Button variant="primary">{nextStep.action.label}</Button>
+                  <Button tabIndex={-1} variant="primary">{nextStep.action.label}</Button>
                 </Link>
               ) : null}
             </Surface>

@@ -745,7 +745,11 @@ export function RequestCard({
 
   return (
     <Surface borderLeftWidth={4} borderLeftColor={s.border} gap="$0" padding={0} overflow="hidden">
-      <YStack padding="$4" gap="$2" cursor="pointer" onPress={onToggle} accessibilityRole="button">
+      {/* Tutta l'intestazione si apre con un clic; per tastiera e lettore di
+          schermo il comando è la freccia in fondo: un pulsante che contiene
+          altri pulsanti (il menu delle azioni) non si legge e non si usa
+          (docs/changelog/2026-10-30-tastiera.md, collaudo L-01). */}
+      <YStack padding="$4" gap="$2" cursor="pointer" onPress={onToggle}>
         <XStack justifyContent="space-between" alignItems="flex-start" gap="$2" flexWrap="wrap">
           <XStack gap="$2" flexWrap="wrap" flexShrink={1} minWidth={0}>
             {/* Le richieste urgenti (costo lead maggiore, scadenza breve —
@@ -868,7 +872,22 @@ export function RequestCard({
           </Text>
         </XStack>
 
-        <XStack justifyContent="center" paddingTop="$1">
+        <XStack
+          alignSelf="center"
+          width={44}
+          height={44}
+          marginBottom={-12}
+          borderRadius={999}
+          alignItems="center"
+          justifyContent="center"
+          onPress={(e: { stopPropagation: () => void }) => {
+            e.stopPropagation();
+            onToggle();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={isOpen ? "Chiudi la richiesta" : "Apri la richiesta"}
+          aria-expanded={isOpen}
+        >
           <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={18} color={brand.grafite70} />
         </XStack>
       </YStack>
@@ -1029,7 +1048,8 @@ export function RequestCard({
                       </a>
                       {whatsAppLink ? (
                         <a href={whatsAppLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
-                          <XStack paddingHorizontal="$2.5" paddingVertical={5} borderRadius={10} backgroundColor="#25d366">
+                          {/* Alto 44 per il dito e verde scuro di WhatsApp: il bianco sul verde chiaro si leggeva a 2:1 (collaudo D-07, L-09). */}
+                          <XStack minHeight={44} alignItems="center" paddingHorizontal="$3" borderRadius={10} backgroundColor="#075E54">
                             <Text fontSize={13} fontWeight="700" color="white">
                               WhatsApp
                             </Text>
@@ -1037,7 +1057,7 @@ export function RequestCard({
                         </a>
                       ) : null}
                       <a href={`tel:${revealedPhone}`} style={{ textDecoration: "none" }}>
-                        <XStack paddingHorizontal="$2.5" paddingVertical={5} borderRadius={10} backgroundColor={brand.cianografiaPieno}>
+                        <XStack minHeight={44} alignItems="center" paddingHorizontal="$3" borderRadius={10} backgroundColor={brand.cianografiaPieno}>
                           <Text fontSize={13} fontWeight="700" color="white">
                             Chiama
                           </Text>
