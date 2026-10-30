@@ -970,7 +970,7 @@ function DashboardFiscaleContent() {
                 </button>
               </XStack>
               {saveSuccess ? (
-                <XStack alignItems="center" gap="$2">
+                <XStack role="status" alignItems="center" gap="$2">
                   <Icon name="check" size={16} strokeWidth={2.5} color={brand.verificato} />
                   <Text fontWeight="700" color={brand.verificato}>
                     Salvati

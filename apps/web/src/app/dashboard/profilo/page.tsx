@@ -1565,12 +1565,13 @@ export default function DashboardProfiloPage() {
         ) : null}
 
         {error ? (
-          <Text color={brand.urgenza} fontSize={16}>
+          // Letti dal lettore di schermo senza spostare il fuoco (collaudo L-07).
+          <Text role="alert" color={brand.urgenza} fontSize={16}>
             {error}
           </Text>
         ) : null}
         {saved ? (
-          <Text color={brand.verificato} fontSize={16}>
+          <Text role="status" color={brand.verificato} fontSize={16}>
             Profilo salvato!
           </Text>
         ) : null}
