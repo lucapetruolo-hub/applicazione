@@ -23,8 +23,10 @@ export const BADGE_INFO: Record<BadgeInfoKey, { title: string; text: string; not
     note: "Non è una garanzia sulla qualità del lavoro.",
   },
   stripeVerified: {
-    title: "Identità verificata da Stripe",
-    text: "Stripe, il servizio dei pagamenti online, ha verificato l'identità del professionista.",
+    // Prima "Identità verificata da Stripe": sembrava una garanzia di Stripe
+    // per il cliente (collaudo del 29/10/2026, M-14; scelta di Luca il 30/10).
+    title: "Pagamenti online attivi",
+    text: "Puoi pagare online con carta: Stripe, il servizio dei pagamenti, ha controllato i dati del professionista per farlo incassare.",
     note: "Non è una garanzia sulla qualità del lavoro.",
   },
   boosted: {

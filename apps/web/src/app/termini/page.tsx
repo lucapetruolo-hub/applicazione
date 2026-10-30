@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { LegalPage } from "@/components/LegalPage";
+import { LegalList, LegalPage, LegalSummary } from "@/components/LegalPage";
 import { OnlinePaymentsTermsNote } from "@/components/OnlinePaymentsTermsNote";
-import { BRAND } from "@professionisti/shared";
+import { BRAND, TERMS_CHANGES, formatTermsDate } from "@professionisti/shared";
 
 export const metadata: Metadata = {
   title: "Termini di Servizio",
@@ -14,6 +14,17 @@ export default function TerminiPage() {
     <LegalPage
       title="Termini di Servizio"
       updatedAt="30 ottobre 2026"
+      intro={
+        <LegalSummary
+          points={[
+            `${BRAND.name} mette in contatto clienti e professionisti: il lavoro lo concordi e lo paghi al professionista, che ne risponde.`,
+            "Per i clienti cercare e chiedere preventivi è gratis; pagando online hai il nostro aiuto e il rimborso se una segnalazione è accolta.",
+            "I professionisti pagano un abbonamento a livelli e, sui pagamenti online, una trattenuta del 7% più IVA.",
+            "Recensioni solo da lavori confermati; chiunque può segnalare un contenuto, anche senza account.",
+            "Se cambiamo questi termini ti avvisiamo per email 15 giorni prima, e puoi chiudere l'account senza costi.",
+          ]}
+        />
+      }
       sections={[
         {
           heading: `1. Cos'è ${BRAND.name}`,
@@ -91,6 +102,22 @@ export default function TerminiPage() {
         {
           heading: "13. Legge applicabile",
           body: "Vale la legge italiana; per i consumatori resta fermo il foro del luogo di residenza e restano sempre i diritti che la legge del loro paese gli riconosce. Bozza da far verificare a un legale prima del lancio definitivo.",
+        },
+        {
+          heading: "Versioni dei termini",
+          id: "versioni",
+          body: "Ogni cambio dei termini, con la data da cui vale e cosa cambia:",
+          after: (
+            <LegalList
+              items={[...TERMS_CHANGES].reverse().map((change) => ({
+                title: `Dal ${formatTermsDate(change.effectiveAt)}`,
+                rows: [
+                  ["Pubblicata", formatTermsDate(change.publishedAt)],
+                  ["Cosa cambia", change.summary.join(" ")],
+                ],
+              }))}
+            />
+          ),
         },
       ]}
     />

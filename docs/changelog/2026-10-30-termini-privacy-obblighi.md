@@ -76,3 +76,25 @@ nuove per l'avvocato.
 caso del collaudo); pagine legali, contatti e note legali fotografate da
 telefono e computer senza scorrimento di lato
 (`collaudo/2026-10-29/gruppo7/`).
+
+## Migliorie scelte da Luca (30/10/2026, "Effettua le migliorie")
+
+- **Badge "Pagamenti online attivi"** al posto di "Identità verificata da
+  Stripe" (M-14), con l'icona della carta: nella scheda dei risultati, nel
+  profilo, nella spiegazione del badge e nelle email di Stripe attivo o
+  sospeso. Il campo resta `stripeVerified`.
+- **Niente più data di nascita nel profilo dell'account** (M-15): tolta da
+  Impostazioni, dall'API (`updateAccountSchema`, `/auth/me`) e cancellata
+  quella già salvata con la migrazione `20261030110000_termini_e_data_nascita`
+  (la colonna resta, vuota). Ai professionisti la chiedono i Dati fiscali.
+- **Avviso automatico del cambio dei Termini** (come promette il punto 12):
+  le versioni stanno in `TERMS_CHANGES` (`packages/shared/src/termsChanges.ts`,
+  un test controlla i 15 giorni di preavviso). Dal giorno di pubblicazione
+  `TermsNoticeService` manda a ogni account la notifica `TERMS_CHANGED`
+  (campanella ed email, argomento "Account e sicurezza", non si spegne), 300
+  account ogni 10 minuti con una pausa tra un'email e l'altra, e riparte da
+  dove era arrivato (tabella `terms_change_notices`). La versione di oggi è
+  segnata `notify: false`: prima del lancio non parte nessuna email.
+  In fondo a /termini la cronologia "Versioni dei termini".
+- **"In breve"** in cima a Termini e Privacy: cinque righe, con "vale il
+  testo completo".

@@ -221,7 +221,6 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export const updateAccountSchema = z.object({
   name: z.string().min(2).max(120).optional(),
   surname: z.string().min(1).max(120).optional(),
-  birthDate: z.string().date("Data non valida").optional(),
   email: accountEmailSchema.optional(),
   phone: phoneNumberSchema.optional(),
   street: z.string().max(200).optional(),

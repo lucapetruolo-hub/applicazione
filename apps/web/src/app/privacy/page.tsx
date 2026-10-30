@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { LegalList, LegalPage } from "@/components/LegalPage";
+import { LegalList, LegalPage, LegalSummary } from "@/components/LegalPage";
 import { BRAND, CLIENT_DELETED_REQUEST_RETENTION_DAYS, COMPANY } from "@professionisti/shared";
 
 export const metadata: Metadata = {
@@ -13,6 +13,17 @@ export default function PrivacyPage() {
     <LegalPage
       title="Privacy Policy"
       updatedAt="30 ottobre 2026"
+      intro={
+        <LegalSummary
+          points={[
+            "Usiamo i tuoi dati per farti trovare un professionista o dei clienti, e per la sicurezza del sito.",
+            "Al professionista diamo telefono, email e indirizzo solo quando accetti un suo preventivo.",
+            "Non vendiamo i tuoi dati a nessuno.",
+            "Ogni dato ha un tempo di conservazione, scritto al punto 5; chiudendo l'account nome e contatti si cancellano subito.",
+            "Puoi vedere, scaricare, correggere o cancellare i tuoi dati quando vuoi.",
+          ]}
+        />
+      }
       sections={[
         {
           heading: "1. Titolare del trattamento",

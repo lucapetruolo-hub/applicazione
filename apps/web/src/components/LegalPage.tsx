@@ -17,7 +17,7 @@ type LegalSection = { heading: string; body: ReactNode; id?: string; after?: Rea
  * P.IVA, sede, email privacy) prima del lancio definitivo — i segnaposto
  * [DA COMPILARE] rendono evidente dove intervenire.
  */
-export function LegalPage({ title, updatedAt, sections }: { title: string; updatedAt: string; sections: LegalSection[] }) {
+export function LegalPage({ title, updatedAt, sections, intro }: { title: string; updatedAt: string; sections: LegalSection[]; intro?: ReactNode }) {
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={720} gap="$5">
@@ -29,6 +29,7 @@ export function LegalPage({ title, updatedAt, sections }: { title: string; updat
             Ultimo aggiornamento: {updatedAt}
           </Text>
         </YStack>
+        {intro}
         {sections.map((section) => (
           <YStack key={section.heading} id={section.id} gap="$2" style={{ scrollMarginTop: 96 }}>
             <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
@@ -68,6 +69,30 @@ export function LegalList({ items }: { items: { title: string; rows: [label: str
           ))}
         </YStack>
       ))}
+    </YStack>
+  );
+}
+
+/**
+ * "In breve" in cima a Termini e Privacy: le cose più importanti in poche
+ * righe per chi non è un giurista. Vale il testo completo che segue.
+ */
+export function LegalSummary({ points }: { points: string[] }) {
+  return (
+    <YStack gap="$2" padding="$4" borderRadius={20} backgroundColor={brand.cianografiaVelo}>
+      <Text tag="h2" margin={0} fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+        In breve
+      </Text>
+      <YStack tag="ul" margin={0} paddingLeft={20} gap="$1">
+        {points.map((point) => (
+          <Text key={point} tag="li" fontSize={16} color={brand.grafite} lineHeight={24}>
+            {point}
+          </Text>
+        ))}
+      </YStack>
+      <Text fontSize={14} color={brand.grafite70}>
+        È un riassunto: vale il testo completo qui sotto.
+      </Text>
     </YStack>
   );
 }
