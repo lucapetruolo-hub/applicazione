@@ -84,7 +84,7 @@ export function ClientCompleteModal({
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
             {directPayment ? "Confermando dichiari di aver pagato il professionista. " : ""}
-            Confermando accetti il lavoro: dopo non potrai più segnalare un problema. Subito dopo potrai lasciare una recensione, anche con foto.
+            Confermando accetti il lavoro: dopo un problema si potrà solo segnalare in chat al professionista, senza rimborso dal sito. Subito dopo potrai lasciare una recensione, anche con foto.
           </Text>
         </YStack>
 
