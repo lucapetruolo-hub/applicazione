@@ -95,7 +95,10 @@ Migliorie approvate da Luca il 30/10:
   In Admin → Problemi si vedono le segnalazioni a lavoro chiuso finite senza
   accordo nell'ultimo anno (in rosso da 3). La formula del punteggio di
   affidabilità non cambia: una segnalazione non decisa potrebbe essere falsa.
-  Termini punto 6.
+  Termini punto 6. Nella finestra "Segnala un problema" (richiesta di Luca)
+  una frase e "Scopri di più": perché niente rimborso, cosa fare con il
+  professionista, la garanzia di legge e le vie se non vi accordate; nel menu
+  la voce dice "Senza rimborso, in chat con il professionista".
 
 F-21 e G-14 (cifre dei bonifici): servono i dati di Stripe.
 

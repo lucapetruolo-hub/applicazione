@@ -766,7 +766,13 @@ export function GuidedRequestCard({
   }
   // Quali segnalazioni si possono inviare lo decide il server (docs/CHANGELOG.md §164).
   if (booking && booking.issueTypesAllowed.length > 0) {
-    menuActions.push({ icon: "flag", text: "Segnala un problema", tone: "danger", onPress: () => setShowReportModal(true) });
+    menuActions.push({
+      icon: "flag",
+      text: "Segnala un problema",
+      hint: booking.issueLate ? "Senza rimborso, in chat con il professionista" : undefined,
+      tone: "danger",
+      onPress: () => setShowReportModal(true),
+    });
   }
   // Cominciato l'appuntamento non si annulla più (§346): per un problema c'è "Segnala un problema".
   if (booking && (booking.status === "PENDING" || booking.status === "CONFIRMED") && new Date(booking.scheduledAt) > wallClockNow()) {
@@ -1220,6 +1226,7 @@ export function GuidedRequestCard({
           allowedTypes={booking.issueTypesAllowed}
           assisted={booking.payment?.method !== "DIRECT" && !booking.issueLate}
           late={booking.issueLate}
+          paidDirect={booking.payment?.method === "DIRECT"}
           onClose={() => {
             setShowReportModal(false);
             onChanged();

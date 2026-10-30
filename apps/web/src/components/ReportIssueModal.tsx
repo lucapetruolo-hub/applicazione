@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { X } from "lucide-react";
-import { BAD_WORK_REPORT_DAYS, JOB_ISSUE_LABEL, JOB_ISSUE_LATE_NOTE, NO_SHOW_REPORT_DAYS, type JobIssueType, type ReportJobIssueInput } from "@professionisti/shared";
+import { BAD_WORK_REPORT_DAYS, JOB_ISSUE_LABEL, NO_SHOW_REPORT_DAYS, type JobIssueType, type ReportJobIssueInput } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
@@ -14,6 +14,43 @@ const HINT: Record<JobIssueType, string> = {
   NO_SHOW: `Dalla fine dell'appuntamento, entro ${NO_SHOW_REPORT_DAYS} giorni.`,
   BAD_WORK: `Entro ${BAD_WORK_REPORT_DAYS} giorni dalla fine del lavoro, finché non confermi che è terminato.`,
 };
+
+/**
+ * Segnalazione dopo il termine (richiesta di Luca del 30/10/2026): una frase
+ * e "Scopri di più" con la spiegazione completa e cosa si può fare con il
+ * professionista.
+ */
+function LateReportInfo({ businessName, paidDirect }: { businessName: string; paidDirect: boolean }) {
+  return (
+    <YStack gap="$1">
+      <Text fontSize={16} color={brand.grafite70}>
+        Sono passati i giorni per un rimborso dal sito, ma puoi ancora scrivere a {businessName}: la segnalazione gli arriva in chat.
+      </Text>
+      <details className="bio-tips">
+        <summary>Scopri di più</summary>
+        <YStack gap="$2" paddingTop="$1">
+          <Text fontSize={13} color={brand.grafite70}>
+            {paidDirect
+              ? "Perché niente rimborso: hai pagato direttamente il professionista, quindi non teniamo soldi e il nostro team non decide sulle segnalazioni."
+              : `Perché niente rimborso: i soldi pagati online arrivano al professionista ${BAD_WORK_REPORT_DAYS} giorni dopo il lavoro, o prima se confermi che è terminato. Da quel momento non li teniamo più fermi e il nostro team non decide sulle segnalazioni.`}
+          </Text>
+          <Text fontSize={13} color={brand.grafite70}>
+            Cosa puoi fare: descrivi il problema e aggiungi le foto. {businessName} le riceve in chat e potete accordarvi, per esempio perché
+            torni a sistemare il lavoro o ti restituisca una parte del prezzo.
+          </Text>
+          <Text fontSize={13} color={brand.grafite70}>
+            La garanzia di legge: il professionista risponde comunque dei difetti del suo lavoro. Conviene segnalarli appena li scopri, perché la
+            legge fissa termini brevi; il messaggio in chat resta scritto, con la data.
+          </Text>
+          <Text fontSize={13} color={brand.grafite70}>
+            Se non vi accordate: chiudi la segnalazione dalla scheda del lavoro e puoi lasciare la recensione. Resta sempre possibile rivolgersi
+            a un organismo di mediazione, a un&apos;associazione dei consumatori o al giudice.
+          </Text>
+        </YStack>
+      </details>
+    </YStack>
+  );
+}
 
 /**
  * "Segnala un problema" (docs/CHANGELOG.md §164, decisione dell'utente):
@@ -35,6 +72,7 @@ export function ReportIssueModal({
   onOpenChat,
   assisted = true,
   late = false,
+  paidDirect = false,
 }: {
   businessName: string;
   phone: string | null;
@@ -49,6 +87,8 @@ export function ReportIssueModal({
   assisted?: boolean;
   /** Passato il termine (7 giorni o lavoro confermato): solo "lavoro non andato bene", senza rimborso. */
   late?: boolean;
+  /** Lavoro pagato direttamente al professionista: cambia il perché del "niente rimborso". */
+  paidDirect?: boolean;
 }) {
   const [type, setType] = useState<JobIssueType | null>(allowedTypes.length === 1 ? (allowedTypes[0] ?? null) : null);
   const [description, setDescription] = useState("");
@@ -196,15 +236,17 @@ export function ReportIssueModal({
               <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
                 Segnala un problema
               </Text>
-              <Text fontSize={16} color={brand.grafite70}>
-                {late
-                  ? JOB_ISSUE_LATE_NOTE
-                  : !assisted
+              {late ? (
+                <LateReportInfo businessName={businessName} paidDirect={paidDirect} />
+              ) : (
+                <Text fontSize={16} color={brand.grafite70}>
+                  {!assisted
                   ? `Hai scelto il pagamento diretto: ti mettiamo in contatto con ${businessName} per trovare un accordo, ma non possiamo rimborsarti né decidere noi. Con il pagamento online avresti avuto la nostra assistenza.`
                   : onOpenChat
                   ? `Come primo passo proverete a risolvere in chat con ${businessName}. Se non vi accordate, decide il nostro team dopo aver sentito entrambi.`
                   : `Il nostro team esamina ogni segnalazione e sente anche ${businessName} prima di decidere.`}
-              </Text>
+                </Text>
+              )}
             </YStack>
 
             <YStack gap="$2" role="radiogroup" aria-label="Cosa è successo">
