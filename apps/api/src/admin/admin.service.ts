@@ -2,9 +2,11 @@ import { ACTION_SHORT_LABEL, auditLabel } from "./audit-label";
 import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, type AdminSignupFunnel, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, type AdminSignupFunnel, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES, ADMIN_BOOKING_STATUS_LABEL, ADMIN_REQUEST_STATUS_LABEL, contentReportReason, type AdminModerateInput, type AdminSuspiciousUser, type ProfessionalStatusKey } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
-import { bookingSearchWhere } from "./admin-search";
+import { PUBLIC_VISIBILITY_SELECT } from "../professional-fiscal/public-visibility";
+import { loadUserSignals } from "./user-signals";
+import { bookingSearchWhere, userSearchWhere } from "./admin-search";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
@@ -25,6 +27,8 @@ export type AdminUserRow = {
   businessName: string | null;
   professionalProfileId: string | null;
   profileSuspended: boolean;
+  /** Il profilo è nella ricerca? Se no, perché (docs/changelog/2026-10-30-admin-persone.md). */
+  searchStatus: ProfessionalStatusKey | null;
   createdAt: string;
   deletedAt: string | null;
   suspendedAt: string | null;
@@ -299,24 +303,16 @@ export class AdminService {
     const q = params.q?.trim();
     // Categoria e città valgono per i professionisti (docs/CHANGELOG.md §368).
     const professional = params.category?.trim() || params.city?.trim() ? { professionalProfile: { is: professionalFilterWhere(params) } } : {};
-    return {
+    const base: Prisma.UserWhereInput = {
       ...professional,
       ...(params.role === "CLIENT" || params.role === "PROFESSIONAL" || params.role === "ADMIN" ? { role: params.role } : {}),
       ...(params.status === "active" ? { deletedAt: null, suspendedAt: null } : {}),
       ...(params.status === "suspended" ? { suspendedAt: { not: null } } : {}),
       ...(params.status === "deleted" ? { deletedAt: { not: null } } : {}),
       ...(params.status === "test" ? { testAccountAt: { not: null } } : {}),
-      ...(q
-        ? {
-            OR: [
-              { email: { contains: q, mode: "insensitive" } },
-              { name: { contains: q, mode: "insensitive" } },
-              { surname: { contains: q, mode: "insensitive" } },
-              { professionalProfile: { businessName: { contains: q, mode: "insensitive" } } },
-            ],
-          }
-        : {}),
     };
+    const search = q ? userSearchWhere(q) : null;
+    return search ? { AND: [base, search] } : base;
   }
 
   /** Tutti gli utenti con gli stessi filtri della tabella, in CSV (docs/CHANGELOG.md §145). */
@@ -348,32 +344,36 @@ export class AdminService {
   async getUserDetail(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { professionalProfile: { include: { category: true } } },
+      include: {
+        professionalProfile: {
+          // isDemo c'è già; dei dati fiscali basta quello che dice se il profilo è visibile.
+          include: { category: true, fiscalProfile: PUBLIC_VISIBILITY_SELECT.fiscalProfile },
+        },
+      },
     });
     if (!user) throw new NotFoundException("Utente non trovato.");
     const profileId = user.professionalProfile?.id ?? null;
+    const bookingSelect = {
+      id: true,
+      status: true,
+      scheduledAt: true,
+      finalAmountEurCents: true,
+      jobPayment: true,
+      issue: { select: { status: true } },
+      quote: { select: { guidedRequest: { select: { category: { select: { label: true } } } } } },
+      client: { select: { name: true, surname: true, email: true, deletedAt: true } },
+      professionalProfile: { select: { businessName: true, userId: true } },
+    } satisfies Prisma.BookingSelect;
 
-    const [requests, clientBookings, proBookings, reviewsWritten, reviewsReceived, reportsMade, reportsReceived, profileReports, audit] = await Promise.all([
+    const [requests, clientBookings, proBookings, reviewsWritten, reviewsReceived, reportsMade, reportsReceived, profileReports, audit, signalData] = await Promise.all([
       this.prisma.guidedRequest.findMany({
         where: { clientId: userId },
         orderBy: { createdAt: "desc" },
         take: 50,
         select: { id: true, description: true, city: true, status: true, hiddenAt: true, createdAt: true, category: { select: { label: true } } },
       }),
-      this.prisma.booking.findMany({
-        where: { clientId: userId },
-        orderBy: { scheduledAt: "desc" },
-        take: 50,
-        select: { id: true, status: true, scheduledAt: true, professionalProfile: { select: { businessName: true } } },
-      }),
-      profileId
-        ? this.prisma.booking.findMany({
-            where: { professionalProfileId: profileId },
-            orderBy: { scheduledAt: "desc" },
-            take: 50,
-            select: { id: true, status: true, scheduledAt: true, client: { select: { name: true, surname: true } } },
-          })
-        : Promise.resolve([]),
+      this.prisma.booking.findMany({ where: { clientId: userId }, orderBy: { scheduledAt: "desc" }, take: 50, select: bookingSelect }),
+      profileId ? this.prisma.booking.findMany({ where: { professionalProfileId: profileId }, orderBy: { scheduledAt: "desc" }, take: 50, select: bookingSelect }) : Promise.resolve([]),
       this.prisma.review.findMany({
         where: { booking: { clientId: userId } },
         orderBy: { createdAt: "desc" },
@@ -385,7 +385,7 @@ export class AdminService {
             where: { booking: { professionalProfileId: profileId } },
             orderBy: { createdAt: "desc" },
             take: 50,
-            select: { id: true, rating: true, comment: true, hiddenAt: true, createdAt: true },
+            select: { id: true, rating: true, comment: true, hiddenAt: true, createdAt: true, booking: { select: { client: { select: { name: true, surname: true, email: true } } } } },
           })
         : Promise.resolve([]),
       this.prisma.contentReport.findMany({ where: { reporterId: userId }, orderBy: { createdAt: "desc" }, take: 50 }),
@@ -394,6 +394,7 @@ export class AdminService {
         ? this.prisma.contentReport.findMany({ where: { targetType: "PROFESSIONAL_PROFILE", targetId: profileId }, orderBy: { createdAt: "desc" }, take: 50 })
         : Promise.resolve([]),
       this.prisma.auditLog.findMany({ where: { entityType: "User", entityId: userId }, orderBy: { createdAt: "desc" }, take: 50 }),
+      loadUserSignals(this.prisma),
     ]);
 
     // Segnalazioni che riguardano questa persona: decise su un suo contenuto
@@ -405,34 +406,66 @@ export class AdminService {
       (await this.prisma.user.findMany({ where: { id: { in: adminIds } }, select: { id: true, email: true } })).map((a) => [a.id, a.email]),
     );
 
+    // La decisione (segnalazione accolta e non annullata) che tiene nascosta
+    // una recensione o fuori dalla ricerca il profilo: "Rimetti visibile" la
+    // annulla, sulla stessa strada delle segnalazioni.
+    const reviewIds = [...reviewsWritten, ...reviewsReceived].map((r) => r.id);
+    const activeMeasures = await this.prisma.contentReport.findMany({
+      where: {
+        status: "RESOLVED",
+        revertedAt: null,
+        OR: [
+          ...(reviewIds.length ? [{ targetType: "REVIEW" as const, targetId: { in: reviewIds }, action: { in: ["HIDE_CONTENT", "SUSPEND_USER"] as ModerationAction[] } }] : []),
+          ...(profileId ? [{ targetType: "PROFESSIONAL_PROFILE" as const, targetId: profileId, action: { in: ["SUSPEND_PROFILE", "SUSPEND_USER"] as ModerationAction[] } }] : []),
+        ],
+      },
+      orderBy: { resolvedAt: "desc" },
+      select: { id: true, targetId: true, resolutionNote: true },
+    });
+    const measureFor = (targetId: string) => activeMeasures.find((m) => m.targetId === targetId) ?? null;
+
     const reportRow = (r: (typeof reportsMade)[number]) => ({
       id: r.id,
       targetType: r.targetType,
-      reason: r.reason,
+      reason: contentReportReason(r.reason)?.label ?? r.reason,
       status: r.status,
       action: r.action,
       createdAt: r.createdAt.toISOString(),
       revertedAt: r.revertedAt?.toISOString() ?? null,
     });
+    const nameOf = (u: { name: string | null; surname: string | null; email?: string | null; deletedAt?: Date | null }) =>
+      u.deletedAt ? "account chiuso" : [u.name, u.surname].filter(Boolean).join(" ") || u.email || "cliente";
+    const jobRow = (b: (typeof clientBookings)[number], as: "CLIENT" | "PROFESSIONAL") => ({
+      id: b.id,
+      as,
+      other: as === "CLIENT" ? b.professionalProfile.businessName : nameOf(b.client),
+      otherUserId: as === "CLIENT" ? b.professionalProfile.userId : null,
+      categoryLabel: b.quote?.guidedRequest.category.label ?? null,
+      scheduledAt: b.scheduledAt.toISOString(),
+      status: ADMIN_BOOKING_STATUS_LABEL[b.status],
+      issueStatus: b.issue ? b.issue.status : null,
+      paymentLabel: jobPaymentAdminLabel(toJobPaymentSummary(b.jobPayment, b.finalAmountEurCents)),
+      paidOnline: (b.jobPayment?.paidEurCents ?? 0) > 0,
+    });
+    const jobs = [...clientBookings.map((b) => jobRow(b, "CLIENT")), ...proBookings.map((b) => jobRow(b, "PROFESSIONAL"))].sort((a, b) => b.scheduledAt.localeCompare(a.scheduledAt));
 
     type TimelineItem = { at: string; kind: string; text: string };
     const timeline: TimelineItem[] = [
       { at: user.createdAt.toISOString(), kind: "account", text: "Iscrizione" },
-      ...(user.deletedAt ? [{ at: user.deletedAt.toISOString(), kind: "account", text: "Account eliminato dall'utente" }] : []),
+      ...(user.deletedAt ? [{ at: user.deletedAt.toISOString(), kind: "account", text: "Account chiuso dall'utente" }] : []),
       ...requests.map((r) => ({ at: r.createdAt.toISOString(), kind: "request", text: `Richiesta ${r.category.label}${r.city ? ` a ${r.city}` : ""}` })),
-      ...clientBookings.map((b) => ({ at: b.scheduledAt.toISOString(), kind: "booking", text: `Intervento con ${b.professionalProfile.businessName} (${b.status})` })),
-      ...proBookings.map((b) => ({
-        at: b.scheduledAt.toISOString(),
+      ...jobs.map((j) => ({
+        at: j.scheduledAt,
         kind: "booking",
-        text: `Intervento per ${[b.client.name, b.client.surname].filter(Boolean).join(" ") || "cliente"} (${b.status})`,
+        text: `${j.as === "CLIENT" ? `Lavoro con ${j.other}` : `Lavoro per ${j.other}`} (${j.status.toLowerCase()})`,
       })),
       ...reviewsWritten.map((r) => ({ at: r.createdAt.toISOString(), kind: "review", text: `Recensione ${r.rating}★ a ${r.booking.professionalProfile.businessName}` })),
       ...reviewsReceived.map((r) => ({ at: r.createdAt.toISOString(), kind: "review", text: `Recensione ricevuta ${r.rating}★` })),
-      ...reportsMade.map((r) => ({ at: r.createdAt.toISOString(), kind: "report", text: `Ha segnalato: ${r.reason}` })),
+      ...reportsMade.map((r) => ({ at: r.createdAt.toISOString(), kind: "report", text: `Ha segnalato: ${contentReportReason(r.reason)?.label ?? r.reason}` })),
       ...received.map((r) => ({
         at: r.createdAt.toISOString(),
         kind: "report",
-        text: `Segnalato: ${r.reason}${r.action ? ` → ${ACTION_SHORT_LABEL[r.action] ?? r.action}` : ""}`,
+        text: `Segnalato: ${contentReportReason(r.reason)?.label ?? r.reason}${r.action ? ` → ${ACTION_SHORT_LABEL[r.action] ?? r.action}` : ""}`,
       })),
       ...audit.map((a) => ({
         at: a.createdAt.toISOString(),
@@ -441,9 +474,24 @@ export class AdminService {
       })),
     ].sort((a, b) => b.at.localeCompare(a.at));
 
+    const profile = user.professionalProfile;
+    const profileMeasure = profile ? measureFor(profile.id) : null;
+    const reviewRow = (r: { id: string; rating: number; comment: string | null; hiddenAt: Date | null; createdAt: Date }, other: string) => {
+      const measure = r.hiddenAt ? measureFor(r.id) : null;
+      return {
+        id: r.id,
+        rating: r.rating,
+        comment: r.comment,
+        other,
+        createdAt: r.createdAt.toISOString(),
+        hiddenAt: r.hiddenAt?.toISOString() ?? null,
+        hiddenBy: measure ? { reportId: measure.id, note: measure.resolutionNote } : null,
+      };
+    };
+
     return {
       id: user.id,
-      email: user.email,
+      email: user.deletedAt ? null : user.email,
       name: user.name,
       surname: user.surname,
       phone: user.phone,
@@ -456,27 +504,96 @@ export class AdminService {
       testAccountAt: user.testAccountAt?.toISOString() ?? null,
       // Solo se è attiva, mai la chiave (docs/CHANGELOG.md §359).
       adminTwoFactorEnabled: user.role === "ADMIN" && Boolean(user.adminTotpEnabledAt),
-      professionalProfile: user.professionalProfile
+      professionalProfile: profile
         ? {
-            id: user.professionalProfile.id,
-            businessName: user.professionalProfile.businessName,
-            categoryLabel: user.professionalProfile.category.label,
-            city: user.professionalProfile.city,
-            suspendedAt: user.professionalProfile.suspendedAt?.toISOString() ?? null,
+            id: profile.id,
+            businessName: profile.businessName,
+            categoryLabel: profile.category.label,
+            city: profile.city,
+            suspendedAt: profile.suspendedAt?.toISOString() ?? null,
+            searchStatus: professionalStatusOf({ ...profile, user: { suspendedAt: user.suspendedAt } }, new Date()),
+            // "Rimetti nella ricerca": la decisione che l'ha tolto, se c'è.
+            hiddenBy: profileMeasure ? { reportId: profileMeasure.id, note: profileMeasure.resolutionNote } : null,
           }
         : null,
       counts: {
         requests: requests.length,
-        bookings: clientBookings.length + proBookings.length,
+        bookings: jobs.length,
         reviewsWritten: reviewsWritten.length,
         reviewsReceived: reviewsReceived.length,
+        // Il profilo pubblico conta solo queste: la differenza sono le nascoste.
+        reviewsReceivedVisible: reviewsReceived.filter((r) => !r.hiddenAt).length,
         reportsMade: reportsMade.length,
         reportsReceived: received.length,
       },
+      signals: signalData.signals.get(user.id) ?? [],
+      requests: requests.map((r) => ({
+        id: r.id,
+        categoryLabel: r.category.label,
+        city: r.city,
+        description: r.description.length > 140 ? `${r.description.slice(0, 140)}…` : r.description,
+        status: ADMIN_REQUEST_STATUS_LABEL[r.status],
+        hidden: r.hiddenAt !== null,
+        createdAt: r.createdAt.toISOString(),
+      })),
+      jobs,
+      reviewsWritten: reviewsWritten.map((r) => reviewRow(r, r.booking.professionalProfile.businessName)),
+      reviewsReceived: reviewsReceived.map((r) => reviewRow(r, nameOf(r.booking.client))),
       reportsMade: reportsMade.map(reportRow),
       reportsReceived: received.map(reportRow),
       timeline: timeline.slice(0, 100),
     };
+  }
+
+  /**
+   * Nascondi una recensione o togli il profilo dalla ricerca dalla scheda
+   * della persona (docs/changelog/2026-10-30-admin-persone.md): passa dalla
+   * strada delle segnalazioni, senza una strada nuova. Si apre una
+   * segnalazione a nome dell'admin e la si decide subito con la misura, il
+   * motivo e la regola: l'autore riceve la stessa email con motivazione e
+   * come contestare, e "Rimetti visibile" è "Annulla misura".
+   */
+  async moderateFromUserPage(adminUserId: string, userId: string, input: AdminModerateInput) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, professionalProfile: { select: { id: true } } } });
+    if (!user) throw new NotFoundException("Utente non trovato.");
+    if (input.targetType === "REVIEW") {
+      const review = await this.prisma.review.findUnique({
+        where: { id: input.targetId },
+        select: { hiddenAt: true, booking: { select: { clientId: true, professionalProfileId: true } } },
+      });
+      const mine = review && (review.booking.clientId === userId || review.booking.professionalProfileId === user.professionalProfile?.id);
+      if (!review || !mine) throw new NotFoundException("Recensione non trovata su questa scheda.");
+      if (review.hiddenAt) throw new BadRequestException("La recensione è già nascosta.");
+    } else {
+      if (user.professionalProfile?.id !== input.targetId) throw new NotFoundException("Profilo non trovato su questa scheda.");
+      const profile = await this.prisma.professionalProfile.findUnique({ where: { id: input.targetId }, select: { suspendedAt: true } });
+      if (profile?.suspendedAt) throw new BadRequestException("Il profilo è già fuori dalla ricerca.");
+    }
+    const report = await this.prisma.contentReport.create({
+      data: {
+        reporterId: adminUserId,
+        targetType: input.targetType,
+        targetId: input.targetId,
+        reason: input.reason,
+        details: "Decisione presa da un admin dalla scheda della persona.",
+      },
+    });
+    return this.resolveContentReport(
+      report.id,
+      { status: "RESOLVED", action: input.targetType === "REVIEW" ? "HIDE_CONTENT" : "SUSPEND_PROFILE", resolutionNote: input.note, ground: input.ground },
+      adminUserId,
+    );
+  }
+
+  /** Account sospetti (docs/changelog/2026-10-30-admin-persone.md): chi ha almeno un segnale, prima chi ne ha di più. */
+  async listSuspiciousUsers(): Promise<AdminSuspiciousUser[]> {
+    const { signals, people } = await loadUserSignals(this.prisma);
+    return [...signals.entries()]
+      .flatMap(([id, list]) => {
+        const person = people.get(id);
+        return person ? [{ id, label: person.label, role: person.role, signals: list }] : [];
+      })
+      .sort((a, b) => b.signals.length - a.signals.length || a.label.localeCompare(b.label, "it"));
   }
 
   /**
@@ -1736,7 +1853,17 @@ const USER_ROW_SELECT = {
   deletedAt: true,
   suspendedAt: true,
   testAccountAt: true,
-  professionalProfile: { select: { id: true, businessName: true, suspendedAt: true } },
+  professionalProfile: {
+    select: {
+      id: true,
+      businessName: true,
+      suspendedAt: true,
+      pausedAt: true,
+      invitePendingAt: true,
+      requestsBlockedUntil: true,
+      ...PUBLIC_VISIBILITY_SELECT,
+    },
+  },
 } satisfies Prisma.UserSelect;
 
 function toUserRow(u: Prisma.UserGetPayload<{ select: typeof USER_ROW_SELECT }>): AdminUserRow {
@@ -1750,6 +1877,7 @@ function toUserRow(u: Prisma.UserGetPayload<{ select: typeof USER_ROW_SELECT }>)
     businessName: u.professionalProfile?.businessName ?? null,
     professionalProfileId: u.professionalProfile?.id ?? null,
     profileSuspended: u.professionalProfile?.suspendedAt != null,
+    searchStatus: u.professionalProfile ? professionalStatusOf({ ...u.professionalProfile, user: { suspendedAt: u.suspendedAt } }, new Date()) : null,
     createdAt: u.createdAt.toISOString(),
     deletedAt: u.deletedAt?.toISOString() ?? null,
     suspendedAt: u.suspendedAt?.toISOString() ?? null,

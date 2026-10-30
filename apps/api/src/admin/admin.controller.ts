@@ -20,6 +20,8 @@ import {
   type ResolveContentReportInput,
   adminQueueClaimSchema,
   type AdminQueueClaimInput,
+  adminModerateSchema,
+  type AdminModerateInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
@@ -178,6 +180,20 @@ export class AdminController {
   @Get("users/:id")
   getUser(@Param("id") id: string) {
     return this.adminService.getUserDetail(id);
+  }
+
+  /** "Nascondi la recensione" / "Togli dalla ricerca" dalla scheda (docs/changelog/2026-10-30-admin-persone.md). */
+  @RequireAdminScope("MODERATION")
+  @Post("users/:id/moderate")
+  moderateFromUserPage(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(adminModerateSchema)) body: AdminModerateInput) {
+    return this.adminService.moderateFromUserPage(req.user.userId, id, body);
+  }
+
+  /** Account con almeno un segnale da controllare (docs/changelog/2026-10-30-admin-persone.md). */
+  @RequireAdminScope("MODERATION")
+  @Get("suspicious-users")
+  suspiciousUsers() {
+    return this.adminService.listSuspiciousUsers();
   }
 
   @RequireAdminScope("MODERATION")
