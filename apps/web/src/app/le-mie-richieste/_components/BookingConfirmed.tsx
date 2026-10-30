@@ -88,7 +88,7 @@ export function BookingConfirmed({ booking, address, token, onDone }: { booking:
               borderRadius={999}
               alignItems="center"
               justifyContent="center"
-              backgroundColor={index === 0 ? brand.cianografia : "transparent"}
+              backgroundColor={index === 0 ? brand.cianografiaPieno : "transparent"}
               borderWidth={index === 0 ? 0 : 2}
               borderColor={brand.filetto}
             >

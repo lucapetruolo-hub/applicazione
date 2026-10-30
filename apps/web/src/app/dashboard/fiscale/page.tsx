@@ -24,12 +24,12 @@ import { apiClient } from "@/lib/apiClient";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProfileMissingNotice, isProfileMissingError } from "@/components/ProfileMissingNotice";
 import { useAuth } from "@/lib/AuthContext";
+import { useStepFocus } from "@/lib/useStepFocus";
 import { JourneyProgress, journeyCurrent, setupJourney } from "@/components/verification/SetupJourney";
 import { FiscoArea } from "@/components/fisco/FiscoArea";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { FiscalWhyModal } from "@/components/verification/FiscalWhyModal";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
-import { keyActivate } from "@/lib/keyActivate";
 
 const isPersonType = (type: string) => type === "PRIVATE_INDIVIDUAL" || type === "SOLE_PROPRIETOR";
 
@@ -197,6 +197,8 @@ function DashboardFiscaleContent() {
   // Modulo in due passi, uno alla volta (docs/CHANGELOG.md §262): 1 i tuoi
   // dati, 2 l'indirizzo. `editing` riapre il modulo da dati già completi.
   const [formStep, setFormStep] = useState<1 | 2>(1);
+  // Fuoco sul titolo della parte nuova (docs/changelog/2026-10-30-tastiera.md, collaudo L-06).
+  const formStepTitleRef = useStepFocus<HTMLHeadingElement>(formStep);
   const [editing, setEditing] = useState(false);
   const [abroad, setAbroad] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
@@ -293,6 +295,11 @@ function DashboardFiscaleContent() {
 
   async function handleSave() {
     if (!token) return;
+    // Prima "Salva" restava spento senza dire perché (collaudo L-07).
+    if (!declarationAccepted) {
+      setSaveError("Spunta «Confermo che i dati sono corretti» per salvare.");
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
@@ -574,7 +581,7 @@ function DashboardFiscaleContent() {
               <Text fontSize={16} fontWeight="700" color={brand.grafite70}>
                 Parte {formStep} di 2
               </Text>
-              <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+              <Text ref={formStepTitleRef} tag="h2" tabIndex={-1} className="step-focus-target" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
                 {formStep === 1 ? (entityType === "BUSINESS" ? "Dati dell'azienda" : "I tuoi dati") : entityType === "BUSINESS" ? "Sede legale" : "Indirizzo di residenza"}
               </Text>
               {formStep === 1 ? (
@@ -637,10 +644,10 @@ function DashboardFiscaleContent() {
                   <>
                     <XStack gap="$3" flexWrap="wrap">
                       <YStack flex={1} flexBasis={0} minWidth={200}>
-                        <Field label="Nome" accessibilityLabel="Nome" value={fields.fiscalFirstName ?? ""} onChangeText={(v) => setField("fiscalFirstName", v)} />
+                        <Field label="Nome" accessibilityLabel="Nome" autoComplete="given-name" value={fields.fiscalFirstName ?? ""} onChangeText={(v) => setField("fiscalFirstName", v)} />
                       </YStack>
                       <YStack flex={1} flexBasis={0} minWidth={200}>
-                        <Field label="Cognome" accessibilityLabel="Cognome" value={fields.fiscalLastName ?? ""} onChangeText={(v) => setField("fiscalLastName", v)} />
+                        <Field label="Cognome" accessibilityLabel="Cognome" autoComplete="family-name" value={fields.fiscalLastName ?? ""} onChangeText={(v) => setField("fiscalLastName", v)} />
                       </YStack>
                     </XStack>
                     {cfField}
@@ -815,6 +822,7 @@ function DashboardFiscaleContent() {
                               registeredProvince: selected.province ?? comune?.province ?? prev.registeredProvince ?? "",
                             }));
                           }}
+                          ariaLabel={entityType === "BUSINESS" ? "Indirizzo della sede legale" : "Indirizzo di residenza"}
                           placeholder="Inizia a scrivere"
                           style={addressInputStyle}
                         />
@@ -874,12 +882,22 @@ function DashboardFiscaleContent() {
                   gap="$2"
                   marginTop="$2"
                   cursor="pointer"
-                  onPress={() => setDeclarationAccepted((v) => !v)}
-                  onKeyDown={keyActivate(() => setDeclarationAccepted((v) => !v))}
-                  accessibilityRole="checkbox"
-                  aria-checked={declarationAccepted}
+                  onPress={() => {
+                    setDeclarationAccepted((v) => !v);
+                    setSaveError(null);
+                  }}
                 >
+                  {/* La casella è il quadratino, la scritta il suo nome: il link
+                      ai Termini non sta dentro la casella (docs/changelog/2026-10-30-tastiera.md). */}
                   <YStack
+                    accessibilityRole="checkbox"
+                    aria-checked={declarationAccepted}
+                    aria-labelledby="fiscal-declaration-label"
+                    onPress={(e: { stopPropagation: () => void }) => {
+                      e.stopPropagation();
+                      setDeclarationAccepted((v) => !v);
+                      setSaveError(null);
+                    }}
                     width={20}
                     height={20}
                     marginTop={1}
@@ -894,8 +912,8 @@ function DashboardFiscaleContent() {
                     {declarationAccepted ? <Icon name="check" size={13} strokeWidth={2.5} color="white" /> : null}
                   </YStack>
                   <Text fontSize={16} color={brand.grafite}>
-                    Confermo che i dati sono corretti.{" "}
-                    <Link href="/termini" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
+                    <span id="fiscal-declaration-label">Confermo che i dati sono corretti.</span>{" "}
+                    <Link href="/termini" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700 }} onClick={(e) => e.stopPropagation()}>
                       Termini
                     </Link>
                   </Text>
@@ -908,8 +926,8 @@ function DashboardFiscaleContent() {
                   <Button
                     variant="primary"
                     onPress={handleSave}
-                    disabled={saving || step2Missing.length > 0 || !declarationAccepted || hasLiveErrors || !!recipientError}
-                    opacity={saving || step2Missing.length > 0 || !declarationAccepted || hasLiveErrors || !!recipientError ? 0.45 : 1}
+                    disabled={saving || step2Missing.length > 0 || hasLiveErrors || !!recipientError}
+                    opacity={saving || step2Missing.length > 0 || hasLiveErrors || !!recipientError ? 0.45 : 1}
                   >
                     {saving ? "Salvataggio..." : "Salva"}
                   </Button>
@@ -1007,7 +1025,7 @@ function DashboardFiscaleContent() {
                 </Text>
                 <Text color={brand.grafite70}>{nextStep.text}</Text>
                 <Link href={nextStep.action.href} style={{ textDecoration: "none", alignSelf: "flex-start" }}>
-                  <Button variant="primary">{nextStep.action.label}</Button>
+                  <Button tabIndex={-1} variant="primary">{nextStep.action.label}</Button>
                 </Link>
               </Surface>
             ) : null}

@@ -29,6 +29,7 @@ import { Autocomplete, Button, ButtonArrow, Icon, Text, XStack, YStack, brand, r
 import { MagneticButton } from "./MagneticButton";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { useStepFocus } from "@/lib/useStepFocus";
 import { MediaPreview } from "@/components/MediaPreview";
 import { storedTrafficSource } from "@/lib/storedTrafficSource";
 import { countPriceToolRequest, countRequestStep } from "@/lib/siteCounts";
@@ -1171,7 +1172,7 @@ export function GuidedRequestForm({
                   paddingHorizontal="$3"
                   paddingVertical="$2"
                   borderRadius="$10"
-                  backgroundColor={active ? brand.cianografia : "transparent"}
+                  backgroundColor={active ? brand.cianografiaPieno : "transparent"}
                   cursor="pointer"
                   onPress={() => {
                     setServiceMode(option.value);
@@ -1184,6 +1185,7 @@ export function GuidedRequestForm({
                     setSelectedSlotValue("");
                   }}
                   accessibilityRole="button"
+                  aria-pressed={active}
                   accessibilityLabel={option.label}
                 >
                   <Icon name={option.icon} size={15} color={active ? "white" : brand.grafite70} />
@@ -1351,6 +1353,7 @@ export function GuidedRequestForm({
                 <input
                   id="guided-field-nome"
                   aria-label="Nome"
+                  autoComplete="given-name"
                   aria-invalid={fieldInvalid("nome")}
                   value={recipientName}
                   onChange={(e) => setRecipientName(e.target.value)}
@@ -1362,6 +1365,7 @@ export function GuidedRequestForm({
                 <FieldLabel>Cognome</FieldLabel>
                 <input
                   aria-label="Cognome"
+                  autoComplete="family-name"
                   aria-invalid={fieldInvalid("nome")}
                   value={recipientSurname}
                   onChange={(e) => setRecipientSurname(e.target.value)}
@@ -1487,6 +1491,7 @@ export function GuidedRequestForm({
                     if (!street.trim() && addressText.trim()) setStreet(addressText.trim());
                     chosenAddress.markServiceDown();
                   }}
+                  ariaLabel="Indirizzo"
                   placeholder="Indirizzo, es. Via Roma 5, Bari"
                   style={fieldInputStyle}
                 />
@@ -1623,7 +1628,7 @@ export function GuidedRequestForm({
         </p>
 
         {error ? (
-          <Text color={brand.urgenza} fontSize={16}>
+          <Text role="alert" color={brand.urgenza} fontSize={16}>
             {error}
           </Text>
         ) : null}
@@ -1709,7 +1714,7 @@ function GeneralRequestsClosedNotice({
       </Text>
       <XStack gap="$2" flexWrap="wrap">
         <Link href={searchHref}>
-          <Button variant="primary">Cerca un professionista</Button>
+          <Button tabIndex={-1} variant="primary">Cerca un professionista</Button>
         </Link>
         {canRemove && categoryLabel ? (
           <Button variant="secondary" onPress={onRemove}>
@@ -1725,8 +1730,11 @@ const STEPS = ["Il lavoro", "Dove", "Riepilogo"] as const;
 
 /** Avanzamento del modulo (docs/CHANGELOG.md §154); si torna indietro toccando un passo già fatto. */
 function StepIndicator({ step, onGo }: { step: 1 | 2 | 3; onGo: (next: 1 | 2 | 3) => void }) {
+  // A ogni passo nuovo il fuoco va qui e il lettore di schermo legge il
+  // passo (docs/changelog/2026-10-30-tastiera.md, collaudo L-06).
+  const listRef = useStepFocus<HTMLOListElement>(step);
   return (
-    <ol className="guided-steps" aria-label="Passaggi della richiesta">
+    <ol ref={listRef} tabIndex={-1} className="guided-steps step-focus-target" aria-label={`Passo ${step} di ${STEPS.length}: ${STEPS[step - 1]}`}>
       {STEPS.map((label, index) => {
         const n = (index + 1) as 1 | 2 | 3;
         const state = n === step ? "is-current" : n < step ? "is-done" : "";

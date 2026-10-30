@@ -304,7 +304,7 @@ export default function AccountPage() {
             Accedi per gestire il tuo account
           </Text>
           <Link href="/accedi?redirect=/account" style={{ textDecoration: "none" }}>
-            <Button variant="primary">Accedi</Button>
+            <Button tabIndex={-1} variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>
@@ -669,6 +669,7 @@ export default function AccountPage() {
                 }}
                 biasTowards={cityComune ? { latitude: cityComune.lat, longitude: cityComune.lon } : null}
                 onServiceUnavailable={chosenAddress.markServiceDown}
+                ariaLabel="Indirizzo"
                 placeholder="Indirizzo, es. Via Roma 5, Bari"
                 style={inputStyle}
               />

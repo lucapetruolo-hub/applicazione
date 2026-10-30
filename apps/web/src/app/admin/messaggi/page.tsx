@@ -125,7 +125,7 @@ function MessageCard({ message, token, onChanged }: { message: AdminContactMessa
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       <XStack gap="$2" flexWrap="wrap">
         <a href={mailto} style={{ textDecoration: "none" }}>
-          <Button variant="secondary" size="$3">
+          <Button tabIndex={-1} variant="secondary" size="$3">
             {isReport ? "Invia l'esito via email" : "Rispondi via email"}
           </Button>
         </a>

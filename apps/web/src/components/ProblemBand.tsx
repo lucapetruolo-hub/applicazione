@@ -190,7 +190,7 @@ export function ProblemBand({
                   : `${count} professionisti qui sotto.`}
             </Text>
             <Link href={quoteHref} style={{ textDecoration: "none" }}>
-              <Button variant="primary">{count > 1 ? "Chiedi preventivo a tutti" : "Chiedi un preventivo"}</Button>
+              <Button tabIndex={-1} variant="primary">{count > 1 ? "Chiedi preventivo a tutti" : "Chiedi un preventivo"}</Button>
             </Link>
           </XStack>
           {maxChosen ? (
