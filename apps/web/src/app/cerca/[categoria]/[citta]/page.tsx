@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { findComuneBySlug, isProfessionalCategorySlug } from "@professionisti/shared";
 import { CategoryResults, categoryMetadata, findCategory, type CategorySearchParams } from "../CategoryResults";
@@ -27,6 +27,13 @@ export default async function CategoryCityPage(props: { params: Promise<PagePara
   const [params, searchParams] = await Promise.all([props.params, props.searchParams]);
   const comune = findComuneBySlug(params.citta);
   if (!isProfessionalCategorySlug(params.categoria) || !comune) {
+    // Indirizzo scritto a mano con le maiuscole ("/cerca/Idraulico/Latina"):
+    // si porta a quello giusto invece di "non trovata" (collaudo N-12).
+    const lower = { categoria: params.categoria.toLowerCase(), citta: params.citta.toLowerCase() };
+    if ((lower.categoria !== params.categoria || lower.citta !== params.citta) && isProfessionalCategorySlug(lower.categoria) && findComuneBySlug(lower.citta)) {
+      const query = new URLSearchParams(Object.entries(searchParams).filter((entry): entry is [string, string] => typeof entry[1] === "string")).toString();
+      permanentRedirect(`/cerca/${lower.categoria}/${lower.citta}${query ? `?${query}` : ""}`);
+    }
     notFound();
   }
   return <CategoryResults category={findCategory(params.categoria)} city={comune.name} searchParams={searchParams} />;

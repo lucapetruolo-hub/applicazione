@@ -16,6 +16,7 @@ import { display, body, mono } from "./fonts";
 import "./globals.css";
 import { BRAND } from "@professionisti/shared";
 import { ACCOUNT_NAV_BOOT_SCRIPT } from "@/lib/accountNavCollapsed";
+import { COOKIE_CHOICE_BOOT_SCRIPT } from "@/lib/cookieChoiceBoot";
 
 const TAMAGUI_CSS_VERSION = (process.env.VERCEL_GIT_COMMIT_SHA ?? String(Date.now())).slice(0, 13);
 
@@ -54,6 +55,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href={`/tamagui.css?v=${TAMAGUI_CSS_VERSION}`} />
         {/* Menu laterale ridotto a icone, se scelto (lib/accountNavCollapsed.ts). */}
         <script dangerouslySetInnerHTML={{ __html: ACCOUNT_NAV_BOOT_SCRIPT }} />
+        {/* Banner cookie nascosto subito a chi ha già scelto (lib/cookieConsent.ts). */}
+        <script dangerouslySetInnerHTML={{ __html: COOKIE_CHOICE_BOOT_SCRIPT }} />
       </head>
       <body>
         {/* Sfondo sfocato di tutto il sito (docs/CHANGELOG.md §180): due forme

@@ -1,6 +1,8 @@
+import { Suspense, type ComponentProps } from "react";
 import type { Metadata } from "next";
 import {
   PROFESSIONAL_CATEGORIES,
+  CATEGORY_SEO_NOUN,
   comuneSlug,
   MIN_PROFESSIONALS_TO_INDEX_CITY,
   hasCategoryPrices,
@@ -15,8 +17,10 @@ import { shouldCountVisit } from "@/lib/serverCounting";
 import { breadcrumbJsonLd } from "@/lib/jsonLd";
 import { JsonLd } from "@/components/JsonLd";
 import { PopularServicesLinks } from "@/components/PopularServicesLinks";
+import { CategoryCityLinks } from "@/components/CategoryCityLinks";
 import { CityFacts } from "@/components/CityFacts";
 import { SearchHeader } from "@/components/SearchHeader";
+import type { MapPoolQuery } from "@/components/ResultsListWithMap";
 import { CategoryContent } from "./CategoryContent";
 
 type Category = (typeof PROFESSIONAL_CATEGORIES)[number];
@@ -108,14 +112,15 @@ export async function categoryMetadata(category: Category, city?: string, subTag
     return {
       ...robots,
       title: `${category.label} a ${comune.name}`,
-      description: `Trova e contatta ${category.label.toLowerCase()} a ${comune.name}: confronta profili, prezzi e recensioni e chiedi un preventivo gratis.`,
+      // Con l'articolo ("un idraulico"), collaudo N-11.
+      description: `Trova e contatta ${CATEGORY_SEO_NOUN[category.slug].findQuestion} a ${comune.name}: confronta profili, prezzi e recensioni e chiedi un preventivo gratis.`,
       alternates: { canonical: `/cerca/${category.slug}/${comuneSlug(comune.name)}` },
     };
   }
   return {
     ...robots,
     title: `${category.label} vicino a te`,
-    description: `Trova e contatta ${category.label.toLowerCase()} nella tua zona.`,
+    description: `Trova e contatta ${CATEGORY_SEO_NOUN[category.slug].findQuestion} nella tua zona: confronta profili, prezzi e recensioni e chiedi un preventivo gratis.`,
     alternates: { canonical: `/cerca/${category.slug}` },
   };
 }
@@ -138,13 +143,6 @@ export async function CategoryResults({
   const isOnline = searchParams.online === "1";
   // Solo un comune vero ha la sua pagina categoria+città a cui collegarsi.
   const comune = city ? findComuneByName(city) : undefined;
-  // In parallelo alla ricerca, così non allunga il caricamento.
-  const popularPromise = popularOrder(comune?.name);
-  const availablePromise = comune ? categoriesInCity(comune.name) : Promise.resolve(undefined);
-  // Link alla pagina "Quanto costa" solo se ha prezzi veri (§296): quella
-  // della città se la provincia ha abbastanza dati, altrimenti la nazionale.
-  const pricePagePromise = comune ? pricePageHref(category.slug, comune.name) : Promise.resolve(null);
-
   // Fetch server-side: contenuto SEO-critico deve essere presente nell'HTML
   // già al primo render, non caricato via client-side fetch (CLAUDE.md §5.4).
   let professionals: ProfessionalSearchResult[] = [];
@@ -157,18 +155,25 @@ export async function CategoryResults({
     loadFailed = true;
   }
 
+  // Dopo la ricerca e fuori dall'attesa della pagina: arrivano dopo, nella
+  // stessa risposta, dentro <Suspense> (collaudo N-02,
+  // docs/changelog/2026-10-30-velocita-telefono.md). Prima la pagina
+  // aspettava tre ricerche di fila e arrivava dopo 4-6 secondi; partite
+  // insieme alla ricerca principale la rallentavano, perché il server
+  // dell'API le serve quasi una alla volta.
+  const popularPromise = popularOrder(comune?.name);
+  const availablePromise = comune ? categoriesInCity(comune.name) : Promise.resolve(undefined);
+  // Link alla pagina "Quanto costa" solo se ha prezzi veri (§296): quella
+  // della città se la provincia ha abbastanza dati, altrimenti la nazionale.
+  const pricePagePromise = comune ? pricePageHref(category.slug, comune.name) : Promise.resolve(null);
+
   // Tutti i professionisti della categoria (nessun filtro città, ma stesso
   // filtro online): alimenta i puntini sulla mappa così, allontanando lo
   // zoom, ne compaiono altri oltre a quelli della città cercata — la colonna
   // a sinistra si aggiorna di conseguenza in base a cosa è visibile sulla
-  // mappa (ResultsListWithMap). La mappa è mostrata anche in modalità
-  // "Online", quindi serve calcolarla in entrambe le modalità.
-  let allProfessionals: ProfessionalSearchResult[];
-  try {
-    allProfessionals = withSubTag(await apiClient.searchProfessionals({ category: category.slug, remote: isOnline }), subTag);
-  } catch {
-    allProfessionals = professionals;
-  }
+  // mappa (ResultsListWithMap). Li chiede il browser quando apre la mappa;
+  // senza città la ricerca è già quella.
+  const mapPool: MapPoolQuery | undefined = city ? { category: category.slug, remote: isOnline, subTag } : undefined;
 
   // Percorso per Google (Home › Idraulico › Latina), senza riquadro visibile:
   // il titolo sopra i risultati era stato tolto (docs/CHANGELOG.md §271, §295).
@@ -185,14 +190,16 @@ export async function CategoryResults({
   // mappa, con un vuoto di 900 px quando c'era un solo risultato.
   const cityFacts =
     comune && !loadFailed ? (
-      <CityFacts
-        categorySlug={category.slug}
-        categoryLabel={category.label}
-        city={comune.name}
-        professionals={professionals}
-        pricePageHref={await pricePagePromise}
-        subTag={subTag}
-      />
+      <Suspense fallback={null}>
+        <CityFactsWhenReady
+          categorySlug={category.slug}
+          categoryLabel={category.label}
+          city={comune.name}
+          professionals={professionals}
+          pricePageHref={pricePagePromise}
+          subTag={subTag}
+        />
+      </Suspense>
     ) : null;
 
   return (
@@ -206,19 +213,34 @@ export async function CategoryResults({
         key={`${category.slug}-${isOnline}-${city ?? ""}-${subTag ?? ""}`}
         category={category}
         city={city}
+        cityCenter={comune ? [comune.lat, comune.lon] : undefined}
         online={isOnline}
         professionals={professionals}
-        allProfessionals={allProfessionals}
+        mapPool={mapPool}
         loadFailed={loadFailed}
         initialUrgentOnly={searchParams.urgente === "1"}
         footer={cityFacts}
       />
-      <PopularServicesLinks
-        currentSlug={category.slug}
-        city={comune?.name}
-        order={await popularPromise}
-        available={await availablePromise}
-      />
+      {!city && !loadFailed ? <CategoryCityLinks categorySlug={category.slug} categoryLabel={category.label} professionals={professionals} /> : null}
+      <Suspense fallback={null}>
+        <PopularServicesLinksWhenReady currentSlug={category.slug} city={comune?.name} citySlug={citySlug} order={popularPromise} available={availablePromise} />
+      </Suspense>
     </div>
   );
+}
+
+async function CityFactsWhenReady({ pricePageHref, ...props }: Omit<ComponentProps<typeof CityFacts>, "pricePageHref"> & { pricePageHref: Promise<string | null> }) {
+  return <CityFacts {...props} pricePageHref={await pricePageHref} />;
+}
+
+async function PopularServicesLinksWhenReady({
+  order,
+  available,
+  ...props
+}: Omit<ComponentProps<typeof PopularServicesLinks>, "order" | "available"> & {
+  order: Promise<string[]>;
+  available: Promise<string[] | null | undefined>;
+}) {
+  const [orderValue, availableValue] = await Promise.all([order, available]);
+  return <PopularServicesLinks {...props} order={orderValue} available={availableValue} />;
 }

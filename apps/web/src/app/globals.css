@@ -64,6 +64,12 @@ span.is_Button._fos-f-size-true {
   }
 }
 
+/* Banner cookie scritto dal server: nascosto subito a chi ha già scelto
+   (lib/cookieChoiceBoot.ts, collaudo N-09). */
+html[data-cookie-choice] .cookie-banner {
+  display: none !important;
+}
+
 /* Skip link (Fase 6, accessibilità): fuori schermo finché non riceve il
    focus da tastiera (Tab), poi torna visibile in alto a sinistra. */
 .skip-link {

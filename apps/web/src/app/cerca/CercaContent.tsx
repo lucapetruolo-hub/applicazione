@@ -8,7 +8,6 @@ import { X } from "lucide-react";
 import {
   MAX_CHOSEN_PROFESSIONALS,
   OUT_OF_SERVICE_KEYWORDS,
-  allItalianCityNames,
   normalizeProblemText,
   type ProblemMatchResult,
   type ProfessionalCategorySlug,
@@ -16,17 +15,18 @@ import {
 } from "@professionisti/shared";
 import { Text, XStack, YStack, brand } from "@professionisti/ui";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
-import { ResultsListWithMap } from "@/components/ResultsListWithMap";
+import { ResultsListWithMap, type MapPoolQuery } from "@/components/ResultsListWithMap";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProblemBand } from "@/components/ProblemBand";
 import { ChosenProsBar, chosenRequestHref, type ChosenPro } from "@/components/ChosenProsBar";
 import { saveLastSearchCity } from "@/lib/lastSearchCity";
+import { useComuni, type ComuniModule } from "@/lib/comuniLazy";
 
 /** Suggerimenti di comuni mentre si scrive: pochi, per non riempire la pagina. */
-function citySuggestions(text: string): string[] {
+function citySuggestions(text: string, comuni: ComuniModule | null): string[] {
   const typed = text.trim().toLowerCase();
-  if (typed.length < 2) return [];
-  return allItalianCityNames().filter((name) => name.toLowerCase().startsWith(typed)).slice(0, 8);
+  if (typed.length < 2 || !comuni) return [];
+  return comuni.allItalianCityNames().filter((name) => name.toLowerCase().startsWith(typed)).slice(0, 8);
 }
 
 /** Ricerca partita dalla descrizione del problema (docs/CHANGELOG.md §392). */
@@ -55,23 +55,26 @@ function problemReason(problem: ProblemSearch, pro: ProfessionalSearchResult): s
 
 export function CercaContent({
   city,
+  cityCenter,
   online,
   q,
   service,
   professionals,
-  allProfessionals,
+  mapPool,
   loadFailed,
   initialUrgentOnly,
   problem,
 }: {
   city?: string;
+  /** Centro del comune, per la mappa. */
+  cityCenter?: [number, number];
   online?: boolean;
   q?: string;
   /** Prestazione scelta in "Quanto costa in media" (docs/CHANGELOG.md §398). */
   service?: string;
   professionals: ProfessionalSearchResult[];
-  /** Tutti i professionisti (nessun filtro città), per i puntini sulla mappa. */
-  allProfessionals?: ProfessionalSearchResult[];
+  /** Tutti i professionisti (nessun filtro città), per i puntini sulla mappa: li chiede il browser. */
+  mapPool?: MapPoolQuery;
   /** La ricerca non è arrivata dall'API: "Riprova" invece di "nessun risultato". */
   loadFailed?: boolean;
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage. */
@@ -131,6 +134,7 @@ export function CercaContent({
   })();
   const router = useRouter();
   const [cityText, setCityText] = useState("");
+  const comuni = useComuni();
   const submitCity = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const chosen = cityText.trim();
@@ -169,7 +173,7 @@ export function CercaContent({
             autoComplete="address-level2"
           />
           <datalist id="service-city-list">
-            {citySuggestions(cityText).map((name) => (
+            {citySuggestions(cityText, comuni).map((name) => (
               <option key={name} value={name} />
             ))}
           </datalist>
@@ -292,9 +296,10 @@ export function CercaContent({
       <YStack width="100%" maxWidth={1200} paddingHorizontal="$4" paddingVertical="$6">
         <ResultsListWithMap
           professionals={professionals}
-          allProfessionals={allProfessionals}
+          mapPool={mapPool}
           showMap
           city={city}
+          cityCenter={cityCenter}
           header={header}
           defaultMode={online ? "ONLINE" : "HOME"}
           initialUrgentOnly={initialUrgentOnly}

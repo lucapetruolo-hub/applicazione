@@ -1,4 +1,3 @@
-import { CODICI_CATASTALI_DATA } from "./data/comuniCompatti";
 /**
  * Validazione in tempo reale dei documenti fiscali raccolti in
  * `/dashboard/fiscale` (CLAUDE.md §88/§89 — MANOVIA/DAC7). Funzioni pure,
@@ -206,24 +205,20 @@ export function birthDateFromCodiceFiscale(value: string, today: Date = new Date
 }
 
 /**
- * Comune di nascita da un codice fiscale valido (docs/CHANGELOG.md §272):
- * `{ name, province }` per i comuni di oggi (elenco ISTAT con i codici
- * catastali), `abroad` per chi è nato all'estero (codice "Z"), `null` per un
- * comune che non esiste più o un codice non valido.
+ * Codice catastale del comune di nascita (4 caratteri, "Z…" per l'estero)
+ * da un codice fiscale valido, o `null`. Il nome del comune lo dà
+ * `birthPlaceFromCodiceFiscale` (codiceFiscaleBirthPlace.ts), che porta con
+ * sé l'elenco dei codici: tenuto fuori da qui perché questo file entra in
+ * molte pagine del sito (collaudo N-01, docs/changelog/2026-10-30-velocita-telefono.md).
  */
-export function birthPlaceFromCodiceFiscale(value: string): { name: string; province: string } | "abroad" | null {
+export function codiceFiscaleBirthPlaceCode(value: string): string | null {
   const cf = normalize(value);
   if (!isValidCodiceFiscale(cf)) return null;
-  const code = cf.charAt(11) + cf
+  return cf.charAt(11) + cf
     .slice(12, 15)
     .split("")
     .map((char) => OMOCODIA_DIGIT[char] ?? char)
     .join("");
-  if (code.startsWith("Z")) return "abroad";
-  const entry = codiciCatastali().get(code);
-  if (!entry) return null;
-  const [name = "", province = ""] = entry.split("|");
-  return { name, province };
 }
 
 /** "F" o "M" da un codice fiscale valido (il giorno di nascita delle donne è aumentato di 40). */
@@ -291,13 +286,4 @@ export function fiscalFieldErrors(input: FiscalValidationInput): FiscalFieldErro
     }
   }
   return errors;
-}
-
-let codiciCatastaliMap: Map<string, string> | null = null;
-/** Codice catastale → "nome|provincia", costruita al primo uso (docs/CHANGELOG.md §320). */
-function codiciCatastali(): Map<string, string> {
-  if (!codiciCatastaliMap) {
-    codiciCatastaliMap = new Map(CODICI_CATASTALI_DATA.split("\n").map((line) => [line.slice(0, 4), line.slice(5)]));
-  }
-  return codiciCatastaliMap;
 }

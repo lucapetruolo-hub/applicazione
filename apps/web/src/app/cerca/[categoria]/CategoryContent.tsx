@@ -5,7 +5,7 @@ import type { PROFESSIONAL_CATEGORIES, ProfessionalSearchResult } from "@profess
 import { YStack } from "@professionisti/ui";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
-import { ResultsListWithMap } from "@/components/ResultsListWithMap";
+import { ResultsListWithMap, type MapPoolQuery } from "@/components/ResultsListWithMap";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { saveLastSearchCity } from "@/lib/lastSearchCity";
 
@@ -14,19 +14,22 @@ type Category = (typeof PROFESSIONAL_CATEGORIES)[number];
 export function CategoryContent({
   category,
   city,
+  cityCenter,
   online,
   professionals,
-  allProfessionals,
+  mapPool,
   loadFailed,
   initialUrgentOnly,
   footer,
 }: {
   category: Category;
   city?: string;
+  /** Centro del comune, per la mappa. */
+  cityCenter?: [number, number];
   online?: boolean;
   professionals: ProfessionalSearchResult[];
-  /** Tutti i professionisti della categoria (nessun filtro città), per i puntini sulla mappa. */
-  allProfessionals?: ProfessionalSearchResult[];
+  /** Tutti i professionisti della categoria (nessun filtro città), per i puntini sulla mappa: li chiede il browser. */
+  mapPool?: MapPoolQuery;
   /** La ricerca non è arrivata dall'API: "Riprova" invece di "nessun risultato". */
   loadFailed?: boolean;
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage. */
@@ -66,9 +69,10 @@ export function CategoryContent({
       <YStack width="100%" maxWidth={1200} paddingHorizontal="$4" paddingVertical="$6">
         <ResultsListWithMap
           professionals={professionals}
-          allProfessionals={allProfessionals}
+          mapPool={mapPool}
           showMap
           city={city}
+          cityCenter={cityCenter}
           header={header}
           defaultMode={online ? "ONLINE" : "HOME"}
           initialUrgentOnly={initialUrgentOnly}

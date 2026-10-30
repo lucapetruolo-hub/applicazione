@@ -1,6 +1,6 @@
 import { z } from "zod";
 import "./zod";
-import { trafficSourceSchema } from "./trafficSource";
+import { TRAFFIC_SOURCES } from "./trafficSources";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
 import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
 import { quotePaymentOfferSchema } from "./onlinePayments";
@@ -8,6 +8,15 @@ import { contentReportReason, contentReportReasonCodes, moderationGroundCodes } 
 import { newPasswordSchema } from "./password";
 import { REQUEST_TIMINGS } from "./requestTiming";
 import { SERVICE_PRICE_UNITS } from "./professionals";
+
+/**
+ * Da dove arriva chi manda una richiesta di preventivo (docs/CHANGELOG.md
+ * §296, strategia SEO): l'unica prova che Google porta lavoro vero. Solo una
+ * categoria, mai l'indirizzo di provenienza né dati personali. Qui e non in
+ * `trafficSource.ts`, che entra in ogni pagina del sito senza zod (collaudo
+ * N-01, docs/changelog/2026-10-30-velocita-telefono.md).
+ */
+export const trafficSourceSchema = z.enum(TRAFFIC_SOURCES);
 
 const categorySlugs = PROFESSIONAL_CATEGORIES.map((category) => category.slug) as [string, ...string[]];
 

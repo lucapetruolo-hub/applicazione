@@ -6,7 +6,15 @@ import { BRAND, COMPANY, PROFESSIONAL_CATEGORIES, companyDataReady } from "@prof
 import { Icon, Logo, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { reopenCookieChoice } from "@/lib/cookieConsent";
 
-const MAIN_CATEGORIES = PROFESSIONAL_CATEGORIES.slice(0, 8);
+// Prima i quattro mestieri del lancio (CLAUDE.md §7), poi gli altri fino a
+// otto: Falegname restava fuori (collaudo N-13,
+// docs/changelog/2026-10-30-velocita-telefono.md). Tutti gli altri da
+// "Tutti i servizi" e dal menu in alto.
+const LAUNCH_SLUGS = ["idraulico", "elettricista", "pulizie", "falegname"];
+const MAIN_CATEGORIES = [
+  ...PROFESSIONAL_CATEGORIES.filter((category) => LAUNCH_SLUGS.includes(category.slug)),
+  ...PROFESSIONAL_CATEGORIES.filter((category) => !LAUNCH_SLUGS.includes(category.slug)),
+].slice(0, 8);
 
 function FooterColumnTitle({ children }: { children: string }) {
   return (
@@ -91,6 +99,7 @@ export function SiteFooter() {
                 {category.label}
               </FooterLink>
             ))}
+            <FooterLink href="/cerca">Tutti i servizi</FooterLink>
             {/* "Contatti" dentro la colonna "Servizi" (richiesta esplicita
                 dell'utente, corretta rispetto a un giro precedente che
                 aveva sostituito l'intera colonna con un form inline) —
