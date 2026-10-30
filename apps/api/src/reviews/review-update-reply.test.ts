@@ -71,10 +71,17 @@ describe("aggiornare la recensione dopo una segnalazione a lavoro chiuso", () =>
 });
 
 describe("risposta del professionista", () => {
-  it("il titolare risponde e può modificare la risposta", async () => {
-    const { service, prisma } = build({ booking: { professionalProfile: { userId: "pro-user-1" } } });
+  const proBooking = { id: "b-1", clientId: "client-1", professionalProfileId: "pro-1", professionalProfile: { userId: "pro-user-1" }, quote: null };
+  it("il titolare risponde e il cliente riceve l'avviso", async () => {
+    const { service, prisma, notifications } = build({ professionalReply: null, booking: proBooking });
     await service.reply("pro-user-1", "r-1", "  Grazie, torno a sistemare  ");
     expect(prisma.review.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ professionalReply: "Grazie, torno a sistemare" }) }));
+    expect(notifications.notify).toHaveBeenCalledWith("client-1", "REVIEW_REPLIED", expect.objectContaining({ reviewId: "r-1" }));
+  });
+  it("modificare la risposta non manda un altro avviso", async () => {
+    const { service, notifications } = build({ professionalReply: "Grazie", booking: proBooking });
+    await service.reply("pro-user-1", "r-1", "Grazie mille");
+    expect(notifications.notify).not.toHaveBeenCalled();
   });
 
   it("un altro professionista no", async () => {

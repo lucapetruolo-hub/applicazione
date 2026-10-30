@@ -166,11 +166,14 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
     if (getPayloadValue(payload, "audience") === "PROFESSIONAL") return guidedRequestId ? `/dashboard/richieste?open=${guidedRequestId}` : "/dashboard/richieste";
     return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}` : "/le-mie-richieste?tab=lavori";
   }
-  // Recensione aggiornata dopo una segnalazione a lavoro chiuso: sotto la recensione, dove si risponde.
-  if (type === "NEW_REVIEW" && payload && typeof payload === "object" && (payload as Record<string, unknown>).updated === true) {
-    const profileId = getPayloadValue(payload, "professionalProfileId");
+  // Recensioni: il professionista risponde dalla sua pagina Recensioni, il cliente legge la risposta tra le sue.
+  if (type === "NEW_REVIEW") {
     const reviewId = getPayloadValue(payload, "reviewId");
-    if (profileId) return `/professionista/${profileId}${reviewId ? `#recensione-${reviewId}` : ""}`;
+    return `/dashboard/recensioni${reviewId ? `#recensione-${reviewId}` : ""}`;
+  }
+  if (type === "REVIEW_REPLIED") {
+    const reviewId = getPayloadValue(payload, "reviewId");
+    return `/le-mie-recensioni${reviewId ? `#recensione-${reviewId}` : ""}`;
   }
   if (type === "JOB_REFUND_REJECTED") {
     // Chi aveva chiesto il rimborso può essere il cliente o il professionista.

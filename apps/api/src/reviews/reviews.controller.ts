@@ -34,6 +34,13 @@ export class ReviewsController {
     return this.reviewsService.listMine(req.user.userId);
   }
 
+  /** Recensioni ricevute dal professionista, per rispondere (pagina "Recensioni" della sua area). */
+  @UseGuards(JwtAuthGuard)
+  @Get("received")
+  listReceived(@Req() req: AuthenticatedRequest) {
+    return this.reviewsService.listReceived(req.user.userId);
+  }
+
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard)
   @Post()

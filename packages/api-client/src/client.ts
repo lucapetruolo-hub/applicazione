@@ -832,6 +832,26 @@ export type SentReview = {
   /** `null` se il professionista ha eliminato il profilo. */
   professionalProfileId: string | null;
   businessName: string;
+  /** Risposta pubblica del professionista, se c'è. */
+  professionalReply?: string | null;
+  updatedAfterIssueAt?: string | null;
+};
+
+/** Recensione ricevuta dal professionista, nella sua pagina "Recensioni". */
+export type ReceivedReview = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  photoUrls: string[];
+  createdAt: string;
+  clientName: string;
+  jobLabel: string | null;
+  guidedRequestId: string | null;
+  professionalReply: string | null;
+  professionalRepliedAt: string | null;
+  updatedAfterIssueAt: string | null;
+  /** Nascosta da un admin: non la vede nessun altro. */
+  hidden: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -1958,6 +1978,10 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
 
     /** Recensioni scritte dal cliente ai professionisti (scheda "Inviate", docs/CHANGELOG.md §180). */
     mySentReviews: (token: string) => request<SentReview[]>("/reviews/me", { headers: { Authorization: `Bearer ${token}` } }),
+
+    /** Recensioni ricevute dal professionista, per rispondere. */
+    receivedReviews: (token: string) =>
+      request<ReceivedReview[]>("/reviews/received", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     getMySubscription: (token: string) =>
       request<MySubscription>("/professionals/me/subscription", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

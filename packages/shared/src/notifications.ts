@@ -155,6 +155,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "AGENDA_TOMORROW_SUMMARY",
       // Nuova recensione ricevuta dal professionista (docs/CHANGELOG.md §185).
       "NEW_REVIEW",
+      // Al cliente: il professionista ha risposto alla sua recensione (docs/changelog/2026-10-30-collaudo-soldi-online.md).
+      "REVIEW_REPLIED",
       // Il cliente chiede la fattura dopo l'accettazione, o cambia i dati (docs/CHANGELOG.md §378).
       "JOB_INVOICE_REQUESTED",
       // Al cliente: la copia della ricevuta o della fattura è pronta, o aggiornata (docs/CHANGELOG.md §387).
@@ -392,8 +394,9 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "lavori.recensioni",
     topic: "lavori",
-    types: ["NEW_REVIEW"],
+    types: ["NEW_REVIEW", "REVIEW_REPLIED"],
     professional: { label: "Nuove recensioni" },
+    client: { label: "Risposte alle tue recensioni" },
   },
   {
     key: "lavori.documenti",

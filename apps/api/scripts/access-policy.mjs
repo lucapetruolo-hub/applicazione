@@ -132,6 +132,8 @@ const selfAny = [
 ];
 
 const selfProfessional = [
+  // Recensioni ricevute, per rispondere (docs/changelog/2026-10-30-collaudo-soldi-online.md).
+  "GET /reviews/received",
   "DELETE /agenda/calendar-feed",
   "GET /agenda/calendar-feed",
   "POST /agenda/calendar-feed",

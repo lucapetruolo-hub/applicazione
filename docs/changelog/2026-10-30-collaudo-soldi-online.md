@@ -117,6 +117,13 @@ Migliorie approvate da Luca il 30/10:
   la media si ricalcola, il professionista riceve l'avviso con il link alla
   recensione e sotto compare "Aggiornata il … dopo una segnalazione a lavoro
   chiuso". Termini (recensioni) e cronologia dei Termini aggiornati.
+- **Migliorie sulle recensioni** (Luca: "da esperto del settore"): pagina
+  "Recensioni" nell'area del professionista (`/dashboard/recensioni`, voce in
+  "La tua attività", `GET /reviews/received`) con media, filtro "Da
+  rispondere" e "Rispondi" accanto a ognuna, anche quelle nascoste segnate
+  come tali; l'email e la notifica della nuova recensione portano lì. Il
+  cliente riceve l'avviso `REVIEW_REPLIED` alla prima risposta (non a ogni
+  correzione) e legge la risposta in "Le mie recensioni".
 
 F-21 e G-14 (cifre dei bonifici): servono i dati di Stripe.
 

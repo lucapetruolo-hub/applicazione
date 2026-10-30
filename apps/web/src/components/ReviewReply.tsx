@@ -18,12 +18,17 @@ export function ReviewReply({
   reply: initialReply,
   canEdit,
   token,
+  title,
+  onSaved,
 }: {
   reviewId: string;
   businessName: string;
   reply: string | null;
   canEdit: boolean;
   token: string | null;
+  /** Titolo sopra la risposta: di serie "Risposta di <nome>". */
+  title?: string;
+  onSaved?: (reply: string) => void;
 }) {
   const [reply, setReply] = useState(initialReply);
   const [editing, setEditing] = useState(false);
@@ -43,6 +48,7 @@ export function ReviewReply({
       await apiClient.replyToReview(token, reviewId, draft.trim());
       setReply(draft.trim());
       setEditing(false);
+      onSaved?.(draft.trim());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -99,7 +105,7 @@ export function ReviewReply({
       {reply ? (
         <YStack gap={2} paddingLeft="$3" borderLeftWidth={2} borderLeftColor={brand.filetto}>
           <Text fontSize={13} fontWeight="700" color={brand.grafite}>
-            Risposta di {businessName}
+            {title ?? `Risposta di ${businessName}`}
           </Text>
           <Text fontSize={14} color={brand.grafite70}>
             {reply}

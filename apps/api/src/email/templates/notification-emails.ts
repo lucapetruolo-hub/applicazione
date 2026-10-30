@@ -672,7 +672,7 @@ const BUILDERS: Record<string, Builder> = {
       payload.updated === true
         ? [
             `Il cliente ha aggiornato la recensione del lavoro per **${job(ctx)}** dopo la segnalazione arrivata a lavoro chiuso: la trovi sul tuo profilo.`,
-            "Puoi rispondere dal tuo profilo pubblico, sotto la recensione: la tua risposta la leggono tutti.",
+            "Puoi rispondere dalla pagina Recensioni della tua area: la tua risposta compare sotto la recensione e la leggono tutti.",
           ]
         : payload.professionalCompleted === false
         ? [
@@ -681,9 +681,24 @@ const BUILDERS: Record<string, Builder> = {
           ]
         : [
             `Il cliente ha recensito il lavoro per **${job(ctx)}**: la recensione è già visibile sul tuo profilo.`,
-            "Se vuoi, rispondi sotto la recensione dal tuo profilo pubblico: la tua risposta la leggono tutti.",
+            "Se vuoi, rispondi dalla pagina Recensioni della tua area: la tua risposta compare sotto la recensione e la leggono tutti.",
           ],
-    cta: proRequests(payload.professionalCompleted === false ? "Segna il lavoro come terminato" : "Apri il lavoro"),
+    cta:
+      payload.professionalCompleted === false && payload.updated !== true
+        ? proRequests("Segna il lavoro come terminato")
+        : { label: "Leggi e rispondi", url: `${frontendUrl()}/dashboard/recensioni${str(payload.reviewId) ? `#recensione-${str(payload.reviewId)}` : ""}` },
+  }),
+
+  // Al cliente: risposta del professionista alla sua recensione (docs/changelog/2026-10-30-collaudo-soldi-online.md).
+  REVIEW_REPLIED: (payload, ctx) => ({
+    kind: "notification",
+    subject: `${pro(ctx)} ha risposto alla tua recensione`,
+    greeting: ctx.name,
+    title: "Risposta alla tua recensione",
+    paragraphs: [
+      `**${pro(ctx)}** ha risposto alla recensione che hai lasciato per **${job(ctx)}**. La risposta è pubblica, sotto la tua recensione.`,
+    ],
+    cta: { label: "Leggi la risposta", url: `${frontendUrl()}/le-mie-recensioni${str(payload.reviewId) ? `#recensione-${str(payload.reviewId)}` : ""}` },
   }),
 
   // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164, §167).

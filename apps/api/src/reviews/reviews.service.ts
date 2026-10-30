@@ -48,6 +48,45 @@ export class ReviewsService {
       hidden: review.hiddenAt !== null,
       professionalProfileId: review.booking.professionalProfile.deletedAt ? null : review.booking.professionalProfile.id,
       businessName: review.booking.professionalProfile.businessName,
+      professionalReply: review.professionalReply,
+      updatedAfterIssueAt: review.updatedAfterIssueAt?.toISOString() ?? null,
+    }));
+  }
+
+  /**
+   * Recensioni ricevute dal professionista, per la pagina "Recensioni" della
+   * sua area (decisione di Luca del 30/10/2026): tutte, con quelle da
+   * rispondere in evidenza; quelle nascoste da un admin restano visibili solo
+   * a lui, segnate come nascoste.
+   */
+  async listReceived(professionalUserId: string) {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId }, select: { id: true } });
+    if (!profile) throw new ForbiddenException("Solo i professionisti ricevono recensioni.");
+    const reviews = await this.prisma.review.findMany({
+      where: { booking: { professionalProfileId: profile.id } },
+      include: {
+        booking: {
+          select: {
+            client: { select: { name: true, surname: true } },
+            quote: { select: { guidedRequestId: true, guidedRequest: { select: { category: { select: { label: true } } } } } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return reviews.map((review) => ({
+      id: review.id,
+      rating: review.rating,
+      comment: review.comment,
+      photoUrls: review.photoUrls,
+      createdAt: review.createdAt.toISOString(),
+      clientName: publicClientName(review.booking.client) ?? "Cliente",
+      jobLabel: review.booking.quote?.guidedRequest.category.label ?? null,
+      guidedRequestId: review.booking.quote?.guidedRequestId ?? null,
+      professionalReply: review.professionalReply,
+      professionalRepliedAt: review.professionalRepliedAt?.toISOString() ?? null,
+      updatedAfterIssueAt: review.updatedAfterIssueAt?.toISOString() ?? null,
+      hidden: review.hiddenAt !== null,
     }));
   }
 
@@ -164,6 +203,7 @@ export class ReviewsService {
     // pubblica sul suo profilo.
     await this.notificationsService.notify(booking.professionalProfile.userId, "NEW_REVIEW", {
       bookingId: booking.id,
+      reviewId: review.id,
       guidedRequestId: booking.quote?.guidedRequestId ?? null,
       // Il cliente può recensire prima che il professionista segni il lavoro
       // come terminato (§189): l'email gli ricorda di farlo.
@@ -220,11 +260,24 @@ export class ReviewsService {
   async reply(professionalUserId: string, reviewId: string, reply: string) {
     const review = await this.prisma.review.findUnique({
       where: { id: reviewId },
-      select: { id: true, booking: { select: { professionalProfile: { select: { userId: true } } } } },
+      select: {
+        id: true,
+        professionalReply: true,
+        booking: { select: { id: true, clientId: true, professionalProfileId: true, professionalProfile: { select: { userId: true } }, quote: { select: { guidedRequestId: true } } } },
+      },
     });
     if (!review) throw new NotFoundException("Recensione non trovata.");
     if (review.booking.professionalProfile.userId !== professionalUserId) throw new ForbiddenException("Puoi rispondere solo alle recensioni dei tuoi lavori.");
     await this.prisma.review.update({ where: { id: reviewId }, data: { professionalReply: reply.trim(), professionalRepliedAt: new Date() } });
+    // Avviso al cliente solo alla prima risposta: una correzione non lo disturba di nuovo.
+    if (!review.professionalReply) {
+      await this.notificationsService.notify(review.booking.clientId, "REVIEW_REPLIED", {
+        bookingId: review.booking.id,
+        guidedRequestId: review.booking.quote?.guidedRequestId ?? null,
+        professionalProfileId: review.booking.professionalProfileId,
+        reviewId,
+      });
+    }
     return { id: reviewId };
   }
 }
