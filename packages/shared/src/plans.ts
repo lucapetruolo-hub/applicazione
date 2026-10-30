@@ -174,6 +174,12 @@ export const USAGE_WARNING_RATIO = 0.8;
 
 /** Avviso di rinnovo automatico (o di fine abbonamento annullato) questi giorni prima. */
 export const RENEWAL_NOTICE_DAYS = 3;
+/**
+ * Avviso del primo addebito dopo i mesi gratis, a chi ha dato la carta:
+ * almeno 7 giorni prima, come chiedono le regole di Visa e Mastercard sulle
+ * prove gratuite con carta (docs/changelog/2026-10-30-iscrizione-carta-solida.md).
+ */
+export const FREE_MONTHS_END_NOTICE_DAYS = 7;
 
 /**
  * Perché un account professionista è in pausa (docs/CHANGELOG.md §162):

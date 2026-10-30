@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Check } from "lucide-react";
 import {
-  RENEWAL_NOTICE_DAYS,
+  FREE_MONTHS_END_NOTICE_DAYS,
   freePeriodSummary,
   SUBSCRIPTION_FEATURES,
   SUBSCRIPTION_TIERS,
@@ -113,7 +113,7 @@ function statusText(sub: MySubscription): { title: string; detail: string } {
       if (trialFuture && sub.trialEndsAt) {
         return {
           title: `${monthsWord(months || 1)} gratis attivi · livello Base`,
-          detail: `Gratis fino al ${formatDate(sub.trialEndsAt)}, poi Base a ${basePrice}, in automatico. Ti avvisiamo ${RENEWAL_NOTICE_DAYS} giorni prima e annulli quando vuoi.`,
+          detail: `Gratis fino al ${formatDate(sub.trialEndsAt)}, poi Base a ${basePrice}, in automatico. Ti avvisiamo ${FREE_MONTHS_END_NOTICE_DAYS} giorni prima e annulli quando vuoi.`,
         };
       }
       return {
@@ -383,7 +383,7 @@ function AbbonamentoContent() {
           <Surface borderRadius={radiusDoc} padding="$4" backgroundColor={brand.cianografiaVelo}>
             <Text color={brand.grafite}>
               {searchParams.get("attivato") === "carta"
-                ? "Fatto: carta salvata e mesi gratis attivi. Oggi non hai pagato nulla; ti avvisiamo 3 giorni prima del primo addebito."
+                ? "Fatto: carta salvata e mesi gratis attivi. Oggi non hai pagato nulla; ti avvisiamo una settimana prima del primo addebito."
                 : "Grazie! Il pagamento è andato a buon fine: l'abbonamento si aggiorna qui tra pochi istanti."}
             </Text>
           </Surface>
@@ -633,7 +633,7 @@ function AbbonamentoContent() {
                 Rinnovo
               </Text>
               <Text color={brand.grafite70} fontSize={15} lineHeight={22}>
-                {interval === "YEAR" ? "Ogni anno" : "Ogni mese"} in automatico, anche dopo i mesi gratis. Ti avvisiamo {RENEWAL_NOTICE_DAYS} giorni prima.
+                {interval === "YEAR" ? "Ogni anno" : "Ogni mese"} in automatico, anche dopo i mesi gratis. Ti avvisiamo prima di ogni addebito.
               </Text>
             </Surface>
             <Surface $gtSm={{ flex: 1, flexBasis: 0, minWidth: 0 }} borderRadius={radiusDoc} padding="$4" gap="$1">

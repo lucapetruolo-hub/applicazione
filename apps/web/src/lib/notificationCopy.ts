@@ -127,6 +127,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_ISSUE_RESOLVED: { icon: "⚖️", message: "C'è una decisione su una segnalazione di un lavoro: tocca per leggerla." },
   // Abbonamento a livelli (docs/CHANGELOG.md §161).
   SUBSCRIPTION_BONUS_MONTH: { icon: "🎁", message: "Ti regaliamo un altro mese gratis." },
+  SUBSCRIPTION_FREE_MONTHS_STARTED: { icon: "✅", message: "Carta salvata: i tuoi mesi gratis sono attivi. Ti avvisiamo una settimana prima del primo addebito." },
   SUBSCRIPTION_TRIAL_ENDING: { icon: "⏳", message: "I tuoi mesi gratis stanno per finire: scegli un livello per restare visibile nelle ricerche." },
   SUBSCRIPTION_LIMIT_NEAR: { icon: "📈", message: "Ti stai avvicinando ai lavori compresi nel tuo livello." },
   // Lavori esauriti: il profilo resta nelle ricerche (docs/CHANGELOG.md §362).

@@ -214,6 +214,22 @@ describe("carta data per l'abbonamento (docs/changelog/2026-10-30-iscrizione-car
     vi.useRealTimers();
   });
 
+  it("alla prima carta parte la conferma dei mesi gratis con fine e importo, una volta sola", async () => {
+    vi.useFakeTimers({ now, toFake: ["Date"] });
+    const { service, prisma, notificationsService } = buildService();
+    const trialEnd = new Date(now.getTime() + 60 * DAY);
+    prisma.subscription.findUnique.mockResolvedValueOnce({ id: "s-1", professionalProfileId: "pro-1", stripeSubscriptionId: null, status: "TRIALING", trialEndsAt: trialEnd, cardAddedAt: null, freeMonthsWaiting: 0 });
+    prisma.professionalProfile.findUnique.mockResolvedValue({ userId: "u-1" });
+    await apply(service, "ACTIVE");
+    expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "SUBSCRIPTION_FREE_MONTHS_STARTED", { date: trialEnd.toISOString(), amountEurCents: 1900 });
+
+    notificationsService.notify.mockClear();
+    prisma.subscription.findUnique.mockResolvedValueOnce({ id: "s-1", professionalProfileId: "pro-1", stripeSubscriptionId: "sub_1", status: "ACTIVE", trialEndsAt: trialEnd, cardAddedAt: now, freeMonthsWaiting: 0 });
+    await apply(service, "ACTIVE");
+    expect(notificationsService.notify).not.toHaveBeenCalledWith("u-1", "SUBSCRIPTION_FREE_MONTHS_STARTED", expect.anything());
+    vi.useRealTimers();
+  });
+
   it("non si riscrive dopo, né con un abbonamento non pagato", async () => {
     const { service, prisma } = buildService();
     prisma.subscription.findUnique.mockResolvedValue({ id: "s-1", professionalProfileId: "pro-1", stripeSubscriptionId: "sub_1", status: "ACTIVE", trialEndsAt: null, cardAddedAt: new Date("2026-11-01T10:00:00Z"), freeMonthsWaiting: 0 });
@@ -224,6 +240,37 @@ describe("carta data per l'abbonamento (docs/changelog/2026-10-30-iscrizione-car
     prisma.subscription.findUnique.mockResolvedValue({ id: "s-1", professionalProfileId: "pro-1", stripeSubscriptionId: "sub_1", status: "TRIALING", trialEndsAt: null, cardAddedAt: null, freeMonthsWaiting: 0 });
     await apply(service, null);
     expect(prisma.subscription.update.mock.calls[1]![0].data.cardAddedAt).toBeUndefined();
+  });
+});
+
+describe("avviso del primo addebito dopo i mesi gratis (regole Visa e Mastercard)", () => {
+  const now = new Date("2026-11-20T10:00:00Z");
+  const inSixDays = new Date(now.getTime() + 6 * DAY);
+  const row = (trialEndsAt: Date | null) => ({
+    id: "s-1",
+    plan: "BASE",
+    billingInterval: "MONTH",
+    status: "ACTIVE",
+    stripeSubscriptionId: "sub_1",
+    cancelAtPeriodEnd: false,
+    currentPeriodEnd: inSixDays,
+    trialEndsAt,
+    periodNoticeFor: null,
+    professionalProfile: { userId: "u-1" },
+  });
+
+  it("arriva 7 giorni prima della fine dei mesi gratis, con importo e data", async () => {
+    const { service, prisma, notificationsService } = buildService();
+    prisma.subscription.findMany.mockResolvedValue([row(inSixDays)]);
+    await service.runPeriodNotices(now);
+    expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "SUBSCRIPTION_RENEWING", expect.objectContaining({ freeMonthsEnding: true, amountEurCents: 1900, date: inSixDays.toISOString() }));
+  });
+
+  it("un rinnovo normale resta a 3 giorni", async () => {
+    const { service, prisma, notificationsService } = buildService();
+    prisma.subscription.findMany.mockResolvedValue([row(null)]);
+    await service.runPeriodNotices(now);
+    expect(notificationsService.notify).not.toHaveBeenCalled();
   });
 });
 

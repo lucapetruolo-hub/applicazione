@@ -8,6 +8,7 @@ import {
   RENEWAL_NOTICE_DAYS,
   TRIAL_DAYS,
   TRIAL_ENDING_NOTICE_DAYS,
+  FREE_MONTHS_END_NOTICE_DAYS,
   subscriptionTierInfo,
   tierPeriodPriceEurCents,
   type MySubscription,
@@ -472,6 +473,18 @@ export class SubscriptionsService {
         ...(!row.cardAddedAt && input.status === "ACTIVE" ? { cardAddedAt: now } : {}),
       },
     });
+    // Conferma dei mesi gratis appena data la carta: fine, importo e come annullare
+    // (regole Visa e Mastercard sulle prove gratuite con carta).
+    const trialEnd = freeMonths.trialEndsAt ?? null;
+    if (!row.cardAddedAt && input.status === "ACTIVE" && input.tier === "BASE" && trialEnd && trialEnd.getTime() > now.getTime()) {
+      const profile = await this.prisma.professionalProfile.findUnique({ where: { id: row.professionalProfileId }, select: { userId: true } });
+      if (profile) {
+        await this.notificationsService.notify(profile.userId, "SUBSCRIPTION_FREE_MONTHS_STARTED", {
+          date: trialEnd.toISOString(),
+          amountEurCents: tierPeriodPriceEurCents("BASE", "MONTH"),
+        });
+      }
+    }
     await this.syncPause(row.professionalProfileId);
   }
 
@@ -549,14 +562,17 @@ export class SubscriptionsService {
     const subs = await this.prisma.subscription.findMany({
       where: {
         status: { in: ["ACTIVE", "PAST_DUE"] },
-        currentPeriodEnd: { gt: now, lte: new Date(now.getTime() + RENEWAL_NOTICE_DAYS * DAY_MS) },
+        currentPeriodEnd: { gt: now, lte: new Date(now.getTime() + Math.max(RENEWAL_NOTICE_DAYS, FREE_MONTHS_END_NOTICE_DAYS) * DAY_MS) },
         professionalProfile: { deletedAt: null },
       },
       include: { professionalProfile: { select: { userId: true } } },
     });
     for (const sub of subs) {
       try {
-        const notice = periodNoticeToSend({ ...sub, noticeFor: sub.periodNoticeFor }, now, RENEWAL_NOTICE_DAYS);
+        // Su Stripe la prova finisce con il periodo: è il primo addebito dopo i mesi gratis.
+        const freeMonthsEnding = sub.trialEndsAt !== null && sub.trialEndsAt.getTime() === sub.currentPeriodEnd?.getTime();
+        const noticeDays = freeMonthsEnding ? FREE_MONTHS_END_NOTICE_DAYS : RENEWAL_NOTICE_DAYS;
+        const notice = periodNoticeToSend({ ...sub, noticeFor: sub.periodNoticeFor }, now, noticeDays);
         if (!notice) continue;
         await this.prisma.subscription.update({ where: { id: sub.id }, data: { periodNoticeFor: sub.currentPeriodEnd } });
         const tier = tierOfPlan(sub.plan);
@@ -565,6 +581,7 @@ export class SubscriptionsService {
           amountEurCents: tier ? tierPeriodPriceEurCents(tier, sub.billingInterval) : null,
           interval: sub.billingInterval,
           date: sub.currentPeriodEnd!.toISOString(),
+          ...(freeMonthsEnding ? { freeMonthsEnding: true } : {}),
         });
       } catch (error) {
         this.logger.error(`Avviso di rinnovo non riuscito per ${sub.id}`, error as Error);

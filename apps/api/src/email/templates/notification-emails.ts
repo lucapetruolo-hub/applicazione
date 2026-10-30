@@ -1689,9 +1689,39 @@ const BUILDERS: Record<string, Builder> = {
           ],
     cta: payload.reason === "CARD_NEEDED" ? { label: "Attiva i mesi gratis", url: `${frontendUrl()}/dashboard/abbonamento` } : { label: "Scegli un livello", url: `${frontendUrl()}/dashboard/abbonamento` },
   }),
+  SUBSCRIPTION_FREE_MONTHS_STARTED: (payload, ctx) => {
+    const date = formatDay(str(payload.date));
+    return {
+      kind: "account",
+      subject: "I tuoi mesi gratis sono attivi",
+      greeting: ctx.name,
+      title: "Mesi gratis attivi",
+      paragraphs: [
+        `Abbiamo salvato la tua carta: oggi non hai pagato nulla. I mesi gratis durano fino al **${date}**, poi parte Base in automatico ogni mese.`,
+        "Ti avvisiamo una settimana prima del primo addebito. Puoi annullare quando vuoi dalla pagina Abbonamento, anche prima della fine dei mesi gratis: non ti addebitiamo nulla.",
+      ],
+      details: typeof payload.amountEurCents === "number" ? [{ label: "Dopo i mesi gratis", value: `${formatEur(payload.amountEurCents)} al mese + IVA, dal ${date}` }] : undefined,
+      cta: subscriptionPage(),
+    };
+  },
   SUBSCRIPTION_RENEWING: (payload, ctx) => {
     const tier = str(payload.tierLabel) ?? "";
     const date = formatDay(str(payload.date));
+    if (payload.freeMonthsEnding === true) {
+      // Primo addebito dopo i mesi gratis: importo, data e come annullare (regole Visa e Mastercard).
+      return {
+        kind: "account",
+        subject: `I tuoi mesi gratis finiscono il ${date}`,
+        greeting: ctx.name,
+        title: "Finiscono i mesi gratis",
+        paragraphs: [
+          `I tuoi mesi gratis finiscono il **${date}**. Da quel giorno parte ${tier || "Base"} in automatico, ogni mese, sulla carta che hai dato.`,
+          "Se non vuoi continuare puoi annullare dalla pagina Abbonamento prima di quella data: non ti addebitiamo nulla.",
+        ],
+        details: typeof payload.amountEurCents === "number" ? [{ label: "Primo addebito", value: `${formatEur(payload.amountEurCents)} al mese + IVA, il ${date}` }] : undefined,
+        cta: subscriptionPage(),
+      };
+    }
     return {
       kind: "account",
       subject: `Il tuo abbonamento ${tier} si rinnova il ${date}`.replace(/\s+/g, " "),

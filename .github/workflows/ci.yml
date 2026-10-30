@@ -270,6 +270,100 @@ jobs:
             e2e/schede-results/
           if-no-files-found: ignore
 
+  # Iscrizione con la carta, Checkout di Stripe di prova compreso
+  # (docs/changelog/2026-10-30-iscrizione-carta-solida.md). Gira solo con il
+  # segreto E2E_STRIPE_SECRET_KEY (chiave sk_test_ di Stripe di prova); senza,
+  # lo dice e passa. Stripe CLI inoltra i webhook all'API sulla macchina.
+  iscrizione-carta:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      JWT_SECRET: e2e-secret
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      E2E_STRIPE_SECRET_KEY: ${{ secrets.E2E_STRIPE_SECRET_KEY }}
+    steps:
+      - name: Chiave Stripe di prova
+        id: chiave
+        run: |
+          if [ -z "$E2E_STRIPE_SECRET_KEY" ]; then
+            echo "::notice::Prova della carta saltata: manca il segreto E2E_STRIPE_SECRET_KEY."
+            echo "presente=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "presente=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.chiave.outputs.presente == 'true'
+
+      - uses: pnpm/action-setup@v6
+        if: steps.chiave.outputs.presente == 'true'
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v7
+        if: steps.chiave.outputs.presente == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        if: steps.chiave.outputs.presente == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build API, pacchetti e sito
+        if: steps.chiave.outputs.presente == 'true'
+        env:
+          CI_BUILD_SENZA_CONTROLLI: "1"
+        run: |
+          pnpm turbo run build --filter=@professionisti/api --filter=@professionisti/api-client
+          pnpm --filter @professionisti/web build
+
+      - name: Migrazioni sul database di prova
+        if: steps.chiave.outputs.presente == 'true'
+        run: pnpm --filter @professionisti/database exec prisma migrate deploy
+
+      - name: Prezzo e IVA su Stripe di prova, webhook inoltrati
+        if: steps.chiave.outputs.presente == 'true'
+        run: |
+          node e2e/carta/prepara-stripe.mjs
+          curl -sSL https://github.com/stripe/stripe-cli/releases/download/v1.21.8/stripe_1.21.8_linux_x86_64.tar.gz | tar -xz -C "$RUNNER_TEMP" stripe
+          echo "STRIPE_WEBHOOK_SECRET=$("$RUNNER_TEMP/stripe" listen --api-key "$E2E_STRIPE_SECRET_KEY" --print-secret)" >> "$GITHUB_ENV"
+          nohup "$RUNNER_TEMP/stripe" listen --api-key "$E2E_STRIPE_SECRET_KEY" --forward-to http://localhost:3001/billing/webhook > stripe-listen.log 2>&1 &
+
+      - name: Browser per le prove
+        if: steps.chiave.outputs.presente == 'true'
+        run: pnpm --filter @professionisti/e2e exec playwright install --with-deps chromium
+
+      - name: Prove della carta
+        if: steps.chiave.outputs.presente == 'true'
+        env:
+          CI: "true"
+        run: pnpm --filter @professionisti/e2e exec playwright test -c playwright.carta.config.ts
+
+      - name: Risultati
+        if: always() && steps.chiave.outputs.presente == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: iscrizione-carta
+          path: |
+            e2e/playwright-report-carta/
+            e2e/test-results/
+            stripe-listen.log
+          if-no-files-found: ignore
+
   # Test dei permessi (docs/CHANGELOG.md §312): ogni rotta dell'API chiamata
   # senza accesso, con ogni ruolo (cliente, professionista, admin di ogni
   # tipo) e con gli id di un altro utente, su un Postgres vuoto creato qui.
