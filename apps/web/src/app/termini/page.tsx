@@ -13,7 +13,7 @@ export default function TerminiPage() {
   return (
     <LegalPage
       title="Termini di Servizio"
-      updatedAt="27 ottobre 2026"
+      updatedAt="30 ottobre 2026"
       sections={[
         {
           heading: `1. Cos'è ${BRAND.name}`,
@@ -21,7 +21,7 @@ export default function TerminiPage() {
         },
         {
           heading: "2. Account",
-          body: "Per inviare richieste o offrire servizi serve un account gratuito. Sei responsabile della riservatezza delle tue credenziali e della veridicità dei dati inseriti. Ci riserviamo di sospendere account che violino questi termini, forniscano dati falsi o abusino del servizio.",
+          body: "Per inviare richieste o offrire servizi serve un account gratuito. Sei responsabile della riservatezza delle tue credenziali e della veridicità dei dati inseriti. Possiamo sospendere un account che violi questi termini, fornisca dati falsi o abusi del servizio: ti scriviamo per email il motivo e come contestarlo (per i professionisti vedi anche il punto 10). Puoi chiudere il tuo account quando vuoi da Impostazioni.",
         },
         {
           heading: "3. Per i clienti",
@@ -60,8 +60,37 @@ export default function TerminiPage() {
           body: "La piattaforma non è parte del contratto tra cliente e professionista. Fatto salvo quanto previsto ai punti 5 e 6 per i lavori pagati online (blocco delle somme, rimborsi e decisioni sulle segnalazioni) e fatti salvi i diritti riconosciuti al consumatore dalla legge, la piattaforma non risponde di danni, ritardi o lavori non conformi, che restano a carico del professionista. Non garantiamo la disponibilità continua del servizio.",
         },
         {
-          heading: "10. Modifiche e legge applicabile",
-          body: "Possiamo aggiornare questi termini: le modifiche saranno comunicate in piattaforma e l'uso continuato vale come accettazione. Vale la legge italiana; per i consumatori resta fermo il foro del luogo di residenza. Bozza da far verificare a un legale prima del lancio definitivo.",
+          // Regolamento UE 2019/1150 (P2B), artt. 3, 4, 5, 7, 9 e 11: collaudo
+          // del 29/10/2026, M-05 (docs/changelog/2026-10-30-termini-privacy-obblighi.md).
+          heading: "10. Per i professionisti: ordine dei risultati, sospensione e dati",
+          id: "professionisti",
+          body: (
+            <>
+              {"ORDINE DEI RISULTATI: Nella ricerca per mestiere e città i profili sono ordinati così: prima chi ha un pacchetto di visibilità a pagamento attivo, mostrato con l'etichetta \"Sponsorizzato\"; poi la valutazione media più alta; a parità, il numero di recensioni; a parità di tutto, il più vicino al luogo cercato. I pacchetti a pagamento non contano quando il cliente parte dalla descrizione del problema e nello smistamento delle richieste. Il livello dell'abbonamento non cambia l'ordine. Un professionista con più segnalazioni accolte negli ultimi 30 giorni va in fondo per 14 giorni (punto 6). La stessa spiegazione è nella finestra \"Ordinato per pertinenza\" della ricerca. "}
+              {"CHI COMPARE: Compaiono nella ricerca e ricevono richieste i profili con i dati fiscali compilati, non in pausa (mese gratuito finito senza un livello scelto, o abbonamento concluso) e non sospesi; un codice fiscale o una partita IVA risultati non validi tolgono il profilo dalla ricerca finché non vengono corretti. Prima del primo preventivo serve la verifica dell'identità (documento e selfie). "}
+              {"TRATTAMENTI DIVERSI: Le regole sono le stesse per tutti i professionisti, con queste differenze: il pacchetto di visibilità (sopra); il numero di lavori compresi nel livello dell'abbonamento (punto 4); il limite di 2.000 € per lavoro chiesti online per chi è nuovo, finché non ha 10 lavori pagati online senza contestazioni e 120 giorni dal primo (punto 5). "}
+              {"SOSPENSIONE E CHIUSURA: Se limitiamo o sospendiamo il tuo profilo ti scriviamo per email, al più tardi quando la misura parte, il motivo, i fatti e la regola di questi termini su cui si basa, e come contestarla; la contestazione la esamina una persona del nostro team. Se decidiamo di chiudere definitivamente il tuo account ti avvisiamo per email con il motivo almeno 30 giorni prima, salvo un obbligo di legge, una violazione ripetuta di questi termini o un rischio per la sicurezza dei clienti (per esempio una truffa o dati falsi). "}
+              {"DATI: Vedi nella tua area i dati del tuo profilo e della tua attività: richieste ricevute, preventivi, lavori, pagamenti online, documenti, visite al profilo e confronto con la media della zona. I dati di contatto del cliente li ricevi solo quando accetta un tuo preventivo, e li usi solo per quel lavoro. Usiamo i dati dei professionisti per far funzionare la piattaforma, per la sicurezza e, solo in forma di numeri complessivi senza nomi, per migliorarla; non li vendiamo e non li diamo ad altri professionisti. Dopo la chiusura dell'account restano solo i dati che dobbiamo conservare per legge (vedi la Privacy Policy). "}
+              {"RECLAMI: Per un reclamo sull'uso della piattaforma scrivici dalla pagina Contatti, scegliendo \"Sono un professionista\": ti rispondiamo per email."}
+            </>
+          ),
+        },
+        {
+          // Codice del consumo artt. 49, 52 e 59: M-02 del collaudo. Bozza per
+          // l'avvocato (domande 42 e 72); la scheda del preventivo la
+          // collega il gruppo 3 del collaudo.
+          heading: "11. Diritto di recesso dei clienti",
+          id: "recesso",
+          body: "Il contratto per il lavoro lo concludi con il professionista, che lo esegue e ne risponde (punto 1). Se sei un consumatore e il professionista lavora con partita IVA o come azienda, hai in genere 14 giorni dall'accettazione del preventivo per recedere senza dare motivi: basta dirlo al professionista in chat o annullare il lavoro dalla richiesta. Se chiedi che il lavoro inizi prima dei 14 giorni, per esempio con un appuntamento già fissato, e il lavoro viene completato, il recesso non c'è più; se recedi a lavoro iniziato paghi la parte già fatta. Per le riparazioni urgenti chieste da te il recesso non si applica. Il recesso non vale verso chi lavora come privato, in modo occasionale e senza partita IVA (indicato con \"Privato\" sul profilo), perché non è un professionista per il Codice del consumo. Fuori dai casi di recesso, l'annullamento segue il preavviso indicato nel preventivo e le regole dell'acconto (punto 5). Bozza da far verificare a un legale prima del lancio definitivo.",
+        },
+        {
+          heading: "12. Modifiche ai termini",
+          id: "modifiche",
+          body: "Possiamo cambiare questi termini per adeguarli alla legge, per motivi di sicurezza o quando cambiamo i servizi o i prezzi della piattaforma. Ti avvisiamo per email e con un avviso sul sito almeno 15 giorni prima che le modifiche valgano, dicendo cosa cambia; se una modifica ti chiede di fare qualcosa di nuovo, il preavviso è più lungo. Se non sei d'accordo puoi chiudere l'account prima di quella data, senza costi; l'abbonamento già pagato resta valido fino alla scadenza. Il preavviso non serve per una modifica imposta dalla legge o da un'autorità, o per affrontare un pericolo urgente (per esempio una truffa). Le modifiche non cambiano i preventivi già accettati e i lavori in corso.",
+        },
+        {
+          heading: "13. Legge applicabile",
+          body: "Vale la legge italiana; per i consumatori resta fermo il foro del luogo di residenza e restano sempre i diritti che la legge del loro paese gli riconosce. Bozza da far verificare a un legale prima del lancio definitivo.",
         },
       ]}
     />

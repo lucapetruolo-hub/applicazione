@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { ContactMessageInput } from "@professionisti/shared";
+import { BRAND, COMPANY, type ContactMessageInput } from "@professionisti/shared";
 import { Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
@@ -28,10 +28,14 @@ const fieldStyle = {
   backgroundColor: brand.calce,
 };
 
-const COMPANY_ROWS: { icon: "file-text" | "map-pin"; label: string; value: string }[] = [
-  { icon: "file-text", label: "Ragione sociale", value: "[DA COMPILARE: ragione sociale]" },
-  { icon: "map-pin", label: "Sede legale", value: "[DA COMPILARE: indirizzo sede legale]" },
-  { icon: "file-text", label: "P.IVA e codice fiscale", value: "[DA COMPILARE: P.IVA e codice fiscale]" },
+// Dati della società da un solo punto (`COMPANY` in packages/shared/src/brand.ts,
+// D.Lgs. 70/2003 art. 7; collaudo del 29/10/2026, M-01 e M-10).
+const COMPANY_ROWS: { icon: "file-text" | "map-pin" | "mail"; label: string; value: string }[] = [
+  { icon: "file-text", label: "Ragione sociale", value: COMPANY.legalName },
+  { icon: "map-pin", label: "Sede legale", value: COMPANY.address },
+  { icon: "file-text", label: "P.IVA e codice fiscale", value: COMPANY.vatNumber },
+  { icon: "file-text", label: "Registro delle imprese", value: COMPANY.rea },
+  { icon: "mail", label: "PEC", value: COMPANY.pec },
 ];
 
 /**
@@ -55,6 +59,10 @@ const COMPANY_ROWS: { icon: "file-text" | "map-pin"; label: string; value: strin
 export default function ContattiContent({ initialReport = false }: { initialReport?: boolean }) {
   const [role, setRole] = useState<ContactMessageInput["role"]>(initialReport ? "REPORT_ILLEGAL" : "CLIENT");
   const [email, setEmail] = useState("");
+  // Segnalazione di un contenuto illegale: nome e indirizzo della pagina in
+  // campi a sé (DSA art. 16 c. 2 lett. b-c; collaudo del 29/10/2026, M-09).
+  const [reporterName, setReporterName] = useState("");
+  const [contentUrl, setContentUrl] = useState("");
   const [content, setContent] = useState("");
   const [website, setWebsite] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
@@ -70,8 +78,18 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
       setStatus("error");
       return;
     }
+    if (isReport && reporterName.trim().length < 2) {
+      setErrorMessage("Scrivi il tuo nome e cognome.");
+      setStatus("error");
+      return;
+    }
+    if (isReport && !contentUrl.trim()) {
+      setErrorMessage("Incolla l'indirizzo della pagina con il contenuto.");
+      setStatus("error");
+      return;
+    }
     if (isReport && content.trim().length < 20) {
-      setErrorMessage("Indica dove si trova il contenuto e perché è illegale.");
+      setErrorMessage("Spiega perché il contenuto è illegale.");
       setStatus("error");
       return;
     }
@@ -91,7 +109,7 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
         role,
         email: email.trim(),
         content: content.trim(),
-        ...(isReport ? { goodFaith } : {}),
+        ...(isReport ? { goodFaith, reporterName: reporterName.trim(), contentUrl: contentUrl.trim() } : {}),
         website,
         turnstileToken: turnstileToken ?? undefined,
       });
@@ -112,7 +130,14 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
             Contatti
           </Text>
           <Text fontSize={18} color={brand.grafite70} maxWidth={560} lineHeight={26}>
-            Scrivici per qualsiasi domanda: ti rispondiamo il prima possibile.
+            Scrivici per qualsiasi domanda: ti rispondiamo il prima possibile, in italiano o in inglese.
+          </Text>
+          {/* Punto di contatto per utenti e autorità (DSA artt. 11-12, D.Lgs. 70/2003 art. 7 c. 1 lett. c; M-10). */}
+          <Text fontSize={16} color={brand.grafite70}>
+            Oppure scrivi a{" "}
+            <a href={`mailto:${BRAND.supportEmail}`} style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>
+              {BRAND.supportEmail}
+            </a>
           </Text>
         </YStack>
 
@@ -178,17 +203,54 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
                   />
                 </YStack>
 
+                {isReport ? (
+                  <>
+                    <YStack gap="$2">
+                      <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
+                        Nome e cognome
+                      </Text>
+                      <input
+                        aria-label="Nome e cognome"
+                        value={reporterName}
+                        autoComplete="name"
+                        onChange={(e) => {
+                          setReporterName(e.target.value);
+                          if (status === "error") setStatus("idle");
+                        }}
+                        style={fieldStyle}
+                      />
+                    </YStack>
+                    <YStack gap="$2">
+                      <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
+                        Indirizzo della pagina
+                      </Text>
+                      <input
+                        aria-label="Indirizzo della pagina"
+                        type="url"
+                        inputMode="url"
+                        value={contentUrl}
+                        onChange={(e) => {
+                          setContentUrl(e.target.value);
+                          if (status === "error") setStatus("idle");
+                        }}
+                        placeholder="Incolla il link del profilo o della recensione"
+                        style={fieldStyle}
+                      />
+                    </YStack>
+                  </>
+                ) : null}
+
                 <YStack gap="$2">
                   <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
-                    {isReport ? "Cosa vuoi segnalare" : "Messaggio"}
+                    {isReport ? "Perché è illegale" : "Messaggio"}
                   </Text>
-                  <textarea aria-label={isReport ? "Cosa vuoi segnalare" : "Messaggio"}
+                  <textarea aria-label={isReport ? "Perché è illegale" : "Messaggio"}
                     value={content}
                     onChange={(e) => {
                       setContent(e.target.value);
                       if (status === "error") setStatus("idle");
                     }}
-                    placeholder={isReport ? "Incolla il link della pagina, indica il contenuto e spiega perché è illegale." : "Scrivi qui la tua richiesta..."}
+                    placeholder={isReport ? "Indica il contenuto (per esempio la frase o la foto) e spiega perché è illegale." : "Scrivi qui la tua richiesta..."}
                     rows={7}
                     style={{ ...fieldStyle, resize: "vertical", minHeight: 160, fontFamily: "inherit" }}
                   />
@@ -263,11 +325,11 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
               ))}
             </YStack>
             <Text fontSize={16} color={brand.grafite70} lineHeight={21} paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
-              Questi dati verranno completati con le informazioni reali dell&apos;azienda prima del lancio definitivo (vedi anche{" "}
-              <a href="/privacy" style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>
-                Privacy Policy
-              </a>
-              ).
+              Tutti i dati legali sono anche nelle{" "}
+              <Link href="/note-legali" style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>
+                Note legali
+              </Link>
+              .
             </Text>
           </Surface>
         </XStack>
