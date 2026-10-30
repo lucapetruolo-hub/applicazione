@@ -11,7 +11,11 @@ describe("bucketStatsRows", () => {
         ...emptyRows,
         views: [{ day: d("2026-09-02T00:00:00Z"), count: 5 }],
         requests: [{ createdAt: d("2026-09-02T10:00:00Z") }, { createdAt: d("2026-09-03T23:59:00Z") }],
-        completed: [{ updatedAt: d("2026-09-01T08:00:00Z"), finalAmountEurCents: 12000 }, { updatedAt: d("2026-09-01T09:00:00Z"), finalAmountEurCents: null }],
+        // Conta il giorno di "Lavoro terminato", non l'ultima modifica della prenotazione (collaudo D-11).
+        completed: [
+          { updatedAt: d("2026-09-03T08:00:00Z"), professionalCompletedAt: d("2026-09-01T08:00:00Z"), finalAmountEurCents: 12000 },
+          { updatedAt: d("2026-09-01T09:00:00Z"), professionalCompletedAt: null, finalAmountEurCents: null },
+        ],
       },
       d("2026-09-01T00:00:00Z"),
       d("2026-09-03T00:00:00Z"),

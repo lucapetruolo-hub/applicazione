@@ -221,6 +221,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "PAYOUT_IBAN_MISMATCH",
       // Abbonamento (docs/CHANGELOG.md §161): scadenze e limiti mensili.
       "SUBSCRIPTION_BONUS_MONTH",
+      // Carta data: mesi gratis attivi, con fine, importo e come annullare
+      // (docs/changelog/2026-10-30-iscrizione-carta-solida.md).
+      "SUBSCRIPTION_FREE_MONTHS_STARTED",
       "SUBSCRIPTION_TRIAL_ENDING",
       "SUBSCRIPTION_LIMIT_NEAR",
       "SUBSCRIPTION_LIMIT_REACHED",

@@ -1,18 +1,22 @@
-import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import {
+  DEFAULT_FREE_MONTHS,
   FOUNDER_SPOTS,
-  FOUNDER_TRIAL_DAYS,
-  BONUS_MONTH_DAYS,
-  BONUS_MONTH_NOTICE_DAYS,
+  MAX_OFFER_FREE_MONTHS,
   RENEWAL_NOTICE_DAYS,
+  TRIAL_DAYS,
+  TRIAL_ENDING_NOTICE_DAYS,
+  FREE_MONTHS_END_NOTICE_DAYS,
   subscriptionTierInfo,
   tierPeriodPriceEurCents,
   type MySubscription,
   type BillingInterval,
   type AdminFounders,
+  type AdminSubscriptionOffer,
   type FounderSpots,
+  type AdminProfessionalWithoutCard,
   type PauseReason,
   type SubscriptionTier,
 } from "@professionisti/shared";
@@ -20,9 +24,13 @@ import { PRISMA } from "../prisma/prisma.module";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing } from "../professional-fiscal/public-visibility";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { NotificationsService } from "../notifications/notifications.service";
+import { AuditLogService } from "../audit-log/audit-log.service";
+import { COUNTED_USER } from "../site-counts/counted";
 import {
   countsClientsOnce,
-  founderFreeMonths,
+  freeMonthsLeftAfterCurrent,
+  freeMonthsOf,
+  freeMonthsProgress,
   hasLaunched,
   jobLimitReached,
   launchDate,
@@ -59,8 +67,8 @@ function pausesActive(now: Date): boolean {
 
 /**
  * Abbonamento unico a livelli (CLAUDE.md §6, docs/CHANGELOG.md §161):
- * prova gratuita di un mese per tutti, mese regalato a sorpresa a chi non
- * ha ancora avuto lavori, conteggio dei lavori accettati del periodo (dal
+ * mesi gratis dell'offerta decisa in Admin (docs/changelog/2026-10-29-offerta-mesi-gratis.md),
+ * conteggio dei lavori accettati del periodo (dal
  * rinnovo, §362) con avvisi all'80% e al 100%. Account in pausa (fuori dalla
  * ricerca, niente nuove richieste) a fine prova senza livello o ad
  * abbonamento concluso (docs/CHANGELOG.md §162); a lavori esauriti resta
@@ -75,30 +83,104 @@ export class SubscriptionsService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly notificationsService: NotificationsService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
-  /** Avvia la prova gratuita alla creazione del profilo (idempotente): un mese dal lancio, o da oggi dopo il lancio. */
+  /**
+   * Offerta dei mesi gratis attiva (decisione di Luca del 29/10/2026,
+   * docs/changelog/2026-10-29-offerta-mesi-gratis.md): l'ultima creata in
+   * Admin se non è fermata; senza nessuna offerta, quella di partenza da 3
+   * mesi. Null se Luca l'ha fermata.
+   */
+  async activeOffer(): Promise<{ id: string | null; freeMonths: number; startedAt: Date | null } | null> {
+    const last = await this.prisma.subscriptionOffer.findFirst({ orderBy: { startedAt: "desc" } });
+    if (!last) return { id: null, freeMonths: DEFAULT_FREE_MONTHS, startedAt: null };
+    return last.stoppedAt ? null : { id: last.id, freeMonths: last.freeMonths, startedAt: last.startedAt };
+  }
+
+  /**
+   * Mesi gratis alla creazione del profilo (idempotente): quelli dell'offerta
+   * attiva, dal lancio o da oggi dopo il lancio. A offerta fermata nessun mese
+   * gratis: prima del lancio non si paga comunque, dopo serve un livello.
+   */
   async ensureTrial(professionalProfileId: string, now = new Date()): Promise<void> {
+    const existing = await this.prisma.subscription.findUnique({ where: { professionalProfileId }, select: { id: true } });
+    if (existing) return;
+    const offer = await this.activeOffer();
+    const freeMonths = offer?.freeMonths ?? 0;
     await this.prisma.subscription.upsert({
       where: { professionalProfileId },
       create: {
         professionalProfileId,
         plan: "FREE",
         status: "TRIALING",
-        trialEndsAt: trialEndFor(now, launchDate()),
+        trialEndsAt: trialEndFor(now, launchDate(), freeMonths * TRIAL_DAYS),
+        freeMonthsGranted: freeMonths,
+        offerId: offer?.id ?? null,
       },
       update: {},
     });
   }
 
+  /** Offerta, storico e iscritti per Admin → Profili da confermare. */
+  async getOfferAdmin(now = new Date()): Promise<AdminSubscriptionOffer> {
+    const [offers, current] = await Promise.all([this.prisma.subscriptionOffer.findMany({ orderBy: { startedAt: "desc" }, take: 20 }), this.activeOffer()]);
+    const since = current?.startedAt ?? null;
+    const professional = { deletedAt: null, isDemo: false, user: COUNTED_USER };
+    const client = { role: "CLIENT" as const, deletedAt: null, ...COUNTED_USER };
+    const [professionals, professionalsSince, clients, clientsSince, inFreeMonths, withWaitingMonths] = await Promise.all([
+      this.prisma.professionalProfile.count({ where: professional }),
+      since ? this.prisma.professionalProfile.count({ where: { ...professional, createdAt: { gte: since } } }) : Promise.resolve(null),
+      this.prisma.user.count({ where: client }),
+      since ? this.prisma.user.count({ where: { ...client, createdAt: { gte: since } } }) : Promise.resolve(null),
+      this.prisma.subscription.count({ where: { trialEndsAt: { gt: now }, status: { not: "CANCELED" }, professionalProfile: professional } }),
+      this.prisma.subscription.count({ where: { freeMonthsWaiting: { gt: 0 }, professionalProfile: professional } }),
+    ]);
+    return {
+      current: current ? { freeMonths: current.freeMonths, startedAt: current.startedAt?.toISOString() ?? null } : null,
+      history: offers.map((offer) => ({ freeMonths: offer.freeMonths, startedAt: offer.startedAt.toISOString(), stoppedAt: offer.stoppedAt?.toISOString() ?? null })),
+      signups: {
+        professionals: { total: professionals, sinceOffer: professionalsSince },
+        clients: { total: clients, sinceOffer: clientsSince },
+      },
+      inFreeMonths,
+      withWaitingMonths,
+    };
+  }
+
+  /** Ferma l'offerta: chi è già iscritto tiene i suoi mesi, chi arriva dopo non ne ha. */
+  async stopOffer(adminUserId: string, now = new Date()): Promise<AdminSubscriptionOffer> {
+    const current = await this.activeOffer();
+    if (!current) throw new BadRequestException("L'offerta è già ferma.");
+    // L'offerta di partenza non ha una riga: la si scrive già fermata, così resta nello storico.
+    const offer = current.id
+      ? await this.prisma.subscriptionOffer.update({ where: { id: current.id }, data: { stoppedAt: now, stoppedByUserId: adminUserId } })
+      : await this.prisma.subscriptionOffer.create({ data: { freeMonths: current.freeMonths, startedAt: new Date(0), stoppedAt: now, stoppedByUserId: adminUserId } });
+    await this.auditLogService.record({ entityType: "SubscriptionOffer", entityId: offer.id, fieldName: "stoppedAt", newValue: "STOPPED", changedByUserId: adminUserId });
+    return this.getOfferAdmin(now);
+  }
+
+  /** Nuova offerta da N mesi gratis per chi si iscrive da adesso; quella attiva si ferma. */
+  async startOffer(adminUserId: string, freeMonths: number, now = new Date()): Promise<AdminSubscriptionOffer> {
+    if (!Number.isInteger(freeMonths) || freeMonths < 1 || freeMonths > MAX_OFFER_FREE_MONTHS) {
+      throw new BadRequestException(`Scegli da 1 a ${MAX_OFFER_FREE_MONTHS} mesi gratis.`);
+    }
+    if (await this.activeOffer()) await this.stopOffer(adminUserId, now);
+    const offer = await this.prisma.subscriptionOffer.create({ data: { freeMonths, startedAt: now, createdByUserId: adminUserId } });
+    await this.auditLogService.record({ entityType: "SubscriptionOffer", entityId: offer.id, fieldName: "freeMonths", newValue: String(freeMonths), changedByUserId: adminUserId });
+    return this.getOfferAdmin(now);
+  }
+
   /**
-   * Offerta di lancio (decisione dell'utente, docs/CHANGELOG.md §363): ai
-   * primi 100 professionisti con il profilo completo (non quelli di prova,
-   * né dimostrativi né segnati "Account di prova" in Admin, §395, non i
-   * profili creati da un operatore finché non li confermano) 3 mesi
-   * gratis dal lancio al posto del mese gratuito. Idempotente; chi ha già un
-   * abbonamento Stripe o un posto non ne prende un altro. Due iscrizioni
-   * nello stesso istante: il numero è unico, la seconda riprova col successivo.
+   * Offerta di lancio (decisione dell'utente, docs/CHANGELOG.md §363): un
+   * posto numerato ai primi 100 professionisti con il profilo completo (non
+   * quelli di prova, né dimostrativi né segnati "Account di prova" in Admin,
+   * §395, non i profili creati da un operatore finché non li confermano).
+   * Dal 29/10/2026 i mesi gratis li dà l'offerta a tutti
+   * (docs/changelog/2026-10-29-offerta-mesi-gratis.md): il posto serve solo
+   * alla scritta "100 posti" della pagina prezzi e all'elenco in Admin.
+   * Idempotente; due iscrizioni nello stesso istante: il numero è unico, la
+   * seconda riprova col successivo.
    */
   async claimFounderSpot(professionalProfileId: string, now = new Date()): Promise<boolean> {
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -109,7 +191,8 @@ export class SubscriptionsService {
       const sub = profile?.subscription;
       if (!profile || !sub || profile.isDemo || profile.user.testAccountAt || profile.deletedAt || profile.invitePendingAt) return false;
       if (sub.founderNumber) return true;
-      if (sub.status !== "TRIALING" || sub.stripeSubscriptionId) return false;
+      // Con la carta data (abbonamento Base di Stripe nei mesi gratis) il posto vale lo stesso.
+      if (sub.status === "CANCELED" || (sub.trialEndsAt && sub.trialEndsAt.getTime() <= now.getTime())) return false;
       // Posti contati, non l'ultimo numero: un account segnato di prova libera il suo (§395).
       const [taken, last] = await Promise.all([
         this.prisma.subscription.count({ where: { founderNumber: { not: null } } }),
@@ -117,11 +200,8 @@ export class SubscriptionsService {
       ]);
       if (taken >= FOUNDER_SPOTS) return false;
       const next = (last._max.founderNumber ?? 0) + 1;
-      // I tre mesi partono dal lancio (o da oggi dopo il lancio), mai prima della prova già data.
-      const founderEnd = trialEndFor(now, launchDate(), FOUNDER_TRIAL_DAYS);
-      const trialEndsAt = sub.trialEndsAt && sub.trialEndsAt.getTime() > founderEnd.getTime() ? sub.trialEndsAt : founderEnd;
       try {
-        await this.prisma.subscription.update({ where: { id: sub.id }, data: { founderNumber: next, trialEndsAt } });
+        await this.prisma.subscription.update({ where: { id: sub.id }, data: { founderNumber: next } });
         return true;
       } catch (error) {
         if ((error as { code?: string }).code !== "P2002") throw error;
@@ -156,9 +236,43 @@ export class SubscriptionsService {
   }
 
   /** Posti dell'offerta di lancio rimasti (pagina prezzi). */
+  /**
+   * Profili senza la carta per i mesi gratis (docs/changelog/2026-10-30-iscrizione-carta-solida.md):
+   * l'elenco da chiamare in Admin, i più vecchi prima. Senza account di prova,
+   * dimostrativi, chiusi o creati da un operatore e non ancora confermati.
+   */
+  async professionalsWithoutCard(): Promise<AdminProfessionalWithoutCard[]> {
+    const rows = await this.prisma.professionalProfile.findMany({
+      where: {
+        isDemo: false,
+        deletedAt: null,
+        invitePendingAt: null,
+        user: { ...COUNTED_USER, deletedAt: null },
+        subscription: { status: "TRIALING", stripeSubscriptionId: null },
+      },
+      orderBy: { createdAt: "asc" },
+      take: 200,
+      select: { userId: true, businessName: true, city: true, createdAt: true, user: { select: { name: true, email: true, phone: true } } },
+    });
+    const reminders = rows.length
+      ? await this.prisma.notification.groupBy({ by: ["userId"], where: { userId: { in: rows.map((r) => r.userId) }, type: "PROFILE_SETUP_REMINDER" }, _count: { _all: true } })
+      : [];
+    const sent = new Map(reminders.map((r) => [r.userId, r._count._all]));
+    return rows.map((row) => ({
+      userId: row.userId,
+      businessName: row.businessName,
+      name: row.user.name,
+      email: row.user.email,
+      phone: row.user.phone,
+      city: row.city,
+      profileCreatedAt: row.createdAt.toISOString(),
+      remindersSent: sent.get(row.userId) ?? 0,
+    }));
+  }
+
   async founderSpots(): Promise<FounderSpots> {
-    const taken = await this.prisma.subscription.count({ where: { founderNumber: { not: null } } });
-    return { total: FOUNDER_SPOTS, left: Math.max(0, FOUNDER_SPOTS - taken) };
+    const [taken, offer] = await Promise.all([this.prisma.subscription.count({ where: { founderNumber: { not: null } } }), this.activeOffer()]);
+    return { total: FOUNDER_SPOTS, left: Math.max(0, FOUNDER_SPOTS - taken), offerMonths: offer?.freeMonths ?? null };
   }
 
   /**
@@ -242,7 +356,7 @@ export class SubscriptionsService {
         ...(limitChanged ? { jobLimitReachedAt: limitReached ? now : null } : {}),
       },
     });
-    if (pauseChanged && (reason === "TRIAL_ENDED" || reason === "SUBSCRIPTION_ENDED")) {
+    if (pauseChanged && reason) {
       await this.notificationsService.notify(profile.userId, "SUBSCRIPTION_PAUSED", { reason });
     }
     return { reason, limitReached };
@@ -271,7 +385,10 @@ export class SubscriptionsService {
       cancelAtPeriodEnd: Boolean(sub?.cancelAtPeriodEnd),
       trialEndsAt: trialEndsAt?.toISOString() ?? null,
       bonusMonthGranted: Boolean(sub?.bonusMonthGrantedAt),
-      founder: founderFreeMonths(sub?.founderNumber, trialEndsAt, now),
+      freeMonths: freeMonthsProgress(sub ? freeMonthsOf(sub) : 0, trialEndsAt, now),
+      freeMonthsWaiting: sub?.freeMonthsWaiting ?? 0,
+      returnToBase: Boolean(sub?.returnToBaseAt),
+      cardNeeded: state === "TRIAL" && !sub?.stripeSubscriptionId,
       usage: {
         used,
         limit: monthlyLimit(sub, now),
@@ -301,6 +418,13 @@ export class SubscriptionsService {
    * Stato dell'abbonamento Stripe applicato alla riga locale (webhook, cambio
    * livello, annullamento). Ignora un evento di un vecchio abbonamento già
    * sostituito da uno nuovo.
+   *
+   * Mesi gratis (docs/changelog/2026-10-29-offerta-mesi-gratis.md): finché
+   * Stripe è in prova, la fine dei giorni gratis è la sua. Se l'abbonamento
+   * diventa pagato mentre i mesi gratis scorrono (passaggio a Plus o Pro), i
+   * mesi dopo quello in corso vanno in attesa e il periodo pagato parte da
+   * oggi con 0 lavori. Ripresi con un nuovo giro gratis (ritorno a Base),
+   * l'attesa si azzera e il giro vale quei mesi.
    */
   async applyStripeSubscription(input: {
     professionalProfileId?: string | null;
@@ -311,12 +435,27 @@ export class SubscriptionsService {
     cancelAtPeriodEnd: boolean;
     currentPeriodStart?: Date | null;
     currentPeriodEnd: Date | null;
+    /** Fine della prova di Stripe se è ancora in prova, altrimenti null. */
+    stripeTrialEnd?: Date | null;
   }): Promise<void> {
     const row =
       (await this.prisma.subscription.findUnique({ where: { stripeSubscriptionId: input.stripeSubscriptionId } })) ??
       (input.professionalProfileId ? await this.prisma.subscription.findUnique({ where: { professionalProfileId: input.professionalProfileId } }) : null);
     if (!row) return;
     if (row.stripeSubscriptionId && row.stripeSubscriptionId !== input.stripeSubscriptionId && row.status !== "CANCELED") return;
+    const now = new Date();
+    const freeRunning = row.trialEndsAt !== null && row.trialEndsAt.getTime() > now.getTime();
+    let freeMonths: { trialEndsAt?: Date; freeMonthsWaiting?: number; freeMonthsGranted?: number } = {};
+    if (input.stripeTrialEnd && input.stripeTrialEnd.getTime() > now.getTime()) {
+      if (!freeRunning && row.freeMonthsWaiting > 0) {
+        freeMonths = { trialEndsAt: input.stripeTrialEnd, freeMonthsWaiting: 0, freeMonthsGranted: row.freeMonthsWaiting };
+      } else {
+        freeMonths = { trialEndsAt: input.stripeTrialEnd };
+      }
+    } else if (input.status === "ACTIVE" && freeRunning) {
+      const left = freeMonthsLeftAfterCurrent(freeMonthsOf(row), row.trialEndsAt, now);
+      freeMonths = { trialEndsAt: now, freeMonthsWaiting: row.freeMonthsWaiting + left };
+    }
     await this.prisma.subscription.update({
       where: { id: row.id },
       data: {
@@ -327,8 +466,25 @@ export class SubscriptionsService {
         cancelAtPeriodEnd: input.cancelAtPeriodEnd,
         ...(input.currentPeriodStart !== undefined ? { currentPeriodStart: input.currentPeriodStart } : {}),
         currentPeriodEnd: input.currentPeriodEnd,
+        ...freeMonths,
+        // Abbonamento concluso: niente ritorno a Base in sospeso.
+        ...(input.status === "CANCELED" ? { returnToBaseAt: null } : {}),
+        // Prima carta data (imbuto dell'iscrizione, docs/changelog/2026-10-30-iscrizione-carta-solida.md).
+        ...(!row.cardAddedAt && input.status === "ACTIVE" ? { cardAddedAt: now } : {}),
       },
     });
+    // Conferma dei mesi gratis appena data la carta: fine, importo e come annullare
+    // (regole Visa e Mastercard sulle prove gratuite con carta).
+    const trialEnd = freeMonths.trialEndsAt ?? null;
+    if (!row.cardAddedAt && input.status === "ACTIVE" && input.tier === "BASE" && trialEnd && trialEnd.getTime() > now.getTime()) {
+      const profile = await this.prisma.professionalProfile.findUnique({ where: { id: row.professionalProfileId }, select: { userId: true } });
+      if (profile) {
+        await this.notificationsService.notify(profile.userId, "SUBSCRIPTION_FREE_MONTHS_STARTED", {
+          date: trialEnd.toISOString(),
+          amountEurCents: tierPeriodPriceEurCents("BASE", "MONTH"),
+        });
+      }
+    }
     await this.syncPause(row.professionalProfileId);
   }
 
@@ -379,25 +535,25 @@ export class SubscriptionsService {
   }
 
   /**
-   * Dal lancio in poi: chi era in prova da prima del lancio la finisce un
-   * mese dopo il lancio (docs/CHANGELOG.md §170). Solo prove non ancora
-   * allungate oltre quella data e senza abbonamento Stripe; idempotente.
+   * Dal lancio in poi: chi era nei mesi gratis da prima del lancio senza la
+   * carta li finisce dal lancio (docs/CHANGELOG.md §170). Chi ha dato la
+   * carta ha già la fine giusta su Stripe. Idempotente.
    */
   async alignTrialsToLaunch(now = new Date()): Promise<number> {
     const launch = launchDate();
     if (!hasLaunched(now, launch)) return 0;
-    const launchTrialEnd = trialEndFor(launch!, launch);
-    // I fondatori hanno tre mesi dal lancio (§363).
-    const founderTrialEnd = trialEndFor(launch!, launch, FOUNDER_TRIAL_DAYS);
-    const founders = await this.prisma.subscription.updateMany({
-      where: { status: "TRIALING", stripeSubscriptionId: null, founderNumber: { not: null }, createdAt: { lt: launch! }, trialEndsAt: { lt: founderTrialEnd } },
-      data: { trialEndsAt: founderTrialEnd },
+    const rows = await this.prisma.subscription.findMany({
+      where: { status: "TRIALING", stripeSubscriptionId: null, createdAt: { lt: launch! } },
+      select: { id: true, trialEndsAt: true, freeMonthsGranted: true },
     });
-    const result = await this.prisma.subscription.updateMany({
-      where: { status: "TRIALING", stripeSubscriptionId: null, founderNumber: null, createdAt: { lt: launch! }, trialEndsAt: { lt: launchTrialEnd } },
-      data: { trialEndsAt: launchTrialEnd },
-    });
-    return founders.count + result.count;
+    let updated = 0;
+    for (const row of rows) {
+      const end = trialEndFor(launch!, launch, freeMonthsOf(row) * TRIAL_DAYS);
+      if (row.trialEndsAt && row.trialEndsAt.getTime() >= end.getTime()) continue;
+      await this.prisma.subscription.update({ where: { id: row.id }, data: { trialEndsAt: end } });
+      updated++;
+    }
+    return updated;
   }
 
   /** Ogni giorno: avviso pochi giorni prima del rinnovo automatico, o della fine se annullato. */
@@ -406,14 +562,17 @@ export class SubscriptionsService {
     const subs = await this.prisma.subscription.findMany({
       where: {
         status: { in: ["ACTIVE", "PAST_DUE"] },
-        currentPeriodEnd: { gt: now, lte: new Date(now.getTime() + RENEWAL_NOTICE_DAYS * DAY_MS) },
+        currentPeriodEnd: { gt: now, lte: new Date(now.getTime() + Math.max(RENEWAL_NOTICE_DAYS, FREE_MONTHS_END_NOTICE_DAYS) * DAY_MS) },
         professionalProfile: { deletedAt: null },
       },
       include: { professionalProfile: { select: { userId: true } } },
     });
     for (const sub of subs) {
       try {
-        const notice = periodNoticeToSend({ ...sub, noticeFor: sub.periodNoticeFor }, now, RENEWAL_NOTICE_DAYS);
+        // Su Stripe la prova finisce con il periodo: è il primo addebito dopo i mesi gratis.
+        const freeMonthsEnding = sub.trialEndsAt !== null && sub.trialEndsAt.getTime() === sub.currentPeriodEnd?.getTime();
+        const noticeDays = freeMonthsEnding ? FREE_MONTHS_END_NOTICE_DAYS : RENEWAL_NOTICE_DAYS;
+        const notice = periodNoticeToSend({ ...sub, noticeFor: sub.periodNoticeFor }, now, noticeDays);
         if (!notice) continue;
         await this.prisma.subscription.update({ where: { id: sub.id }, data: { periodNoticeFor: sub.currentPeriodEnd } });
         const tier = tierOfPlan(sub.plan);
@@ -422,6 +581,7 @@ export class SubscriptionsService {
           amountEurCents: tier ? tierPeriodPriceEurCents(tier, sub.billingInterval) : null,
           interval: sub.billingInterval,
           date: sub.currentPeriodEnd!.toISOString(),
+          ...(freeMonthsEnding ? { freeMonthsEnding: true } : {}),
         });
       } catch (error) {
         this.logger.error(`Avviso di rinnovo non riuscito per ${sub.id}`, error as Error);
@@ -430,48 +590,34 @@ export class SubscriptionsService {
   }
 
   /**
-   * Ogni giorno: a chi è in prova, a pochi giorni dalla scadenza, senza
-   * ancora nessun lavoro → mese regalato (una volta sola). Agli altri,
-   * avviso di fine prova. Chi ha già scelto un livello durante la prova
-   * riceve invece l'avviso di rinnovo (runPeriodNotices).
+   * Ogni giorno: avviso di fine dei mesi gratis a chi non ha dato la carta
+   * (chi l'ha data riceve l'avviso di rinnovo di Base, runPeriodNotices). Il
+   * mese regalato a sorpresa non c'è più: i mesi gratis li decide l'offerta
+   * (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
    */
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
   async runTrialCheck(now = new Date()): Promise<void> {
-    // Prima del lancio la prova non scorre: nessun regalo né avviso di fine prova.
+    // Prima del lancio i mesi gratis non scorrono: nessun avviso.
     if (!hasLaunched(now, launchDate())) return;
-    const endingBefore = new Date(now.getTime() + BONUS_MONTH_NOTICE_DAYS * DAY_MS);
     const subs = await this.prisma.subscription.findMany({
       where: {
         status: "TRIALING",
-        trialEndsAt: { gt: now, lte: endingBefore },
-        OR: [{ bonusMonthGrantedAt: null }, { trialEndingNotifiedAt: null }],
+        trialEndsAt: { gt: now, lte: new Date(now.getTime() + TRIAL_ENDING_NOTICE_DAYS * DAY_MS) },
+        trialEndingNotifiedAt: null,
         professionalProfile: { deletedAt: null },
       },
       include: { professionalProfile: { select: { userId: true } } },
     });
     for (const sub of subs) {
       try {
-        const userId = sub.professionalProfile.userId;
-        // Ai fondatori niente mese a sorpresa: hanno già tre mesi (§363).
-        if (!sub.bonusMonthGrantedAt && !sub.founderNumber) {
-          const jobs = await this.prisma.booking.count({ where: { professionalProfileId: sub.professionalProfileId } });
-          if (jobs === 0) {
-            const trialEndsAt = new Date(sub.trialEndsAt!.getTime() + BONUS_MONTH_DAYS * DAY_MS);
-            await this.prisma.subscription.update({ where: { id: sub.id }, data: { trialEndsAt, bonusMonthGrantedAt: now } });
-            await this.notificationsService.notify(userId, "SUBSCRIPTION_BONUS_MONTH", { trialEndsAt: trialEndsAt.toISOString(), date: trialEndsAt.toISOString() });
-            continue;
-          }
-        }
-        if (!sub.trialEndingNotifiedAt) {
-          await this.prisma.subscription.update({ where: { id: sub.id }, data: { trialEndingNotifiedAt: now } });
-          await this.notificationsService.notify(userId, "SUBSCRIPTION_TRIAL_ENDING", {
-            trialEndsAt: sub.trialEndsAt!.toISOString(),
-            date: sub.trialEndsAt!.toISOString(),
-            founder: Boolean(sub.founderNumber),
-          });
-        }
+        await this.prisma.subscription.update({ where: { id: sub.id }, data: { trialEndingNotifiedAt: now } });
+        await this.notificationsService.notify(sub.professionalProfile.userId, "SUBSCRIPTION_TRIAL_ENDING", {
+          trialEndsAt: sub.trialEndsAt!.toISOString(),
+          date: sub.trialEndsAt!.toISOString(),
+          freeMonths: freeMonthsOf(sub),
+        });
       } catch (error) {
-        this.logger.error(`Controllo fine prova non riuscito per ${sub.id}`, error as Error);
+        this.logger.error(`Controllo fine mesi gratis non riuscito per ${sub.id}`, error as Error);
       }
     }
   }

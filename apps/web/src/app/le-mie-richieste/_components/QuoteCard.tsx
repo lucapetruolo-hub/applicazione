@@ -163,7 +163,7 @@ export function QuoteCard({
     setError(null);
     let invoiceRequest: ClientInvoiceRequestInput | undefined;
     if (invoiceWanted) {
-      const parsed = parseInvoiceDraft(invoiceDraft);
+      const parsed = parseInvoiceDraft(invoiceDraft, quote.professionalKind === "PRIVATE");
       if (!parsed.ok) {
         setInvoiceErrors(parsed.errors);
         setError("Controlla i dati per la fattura.");
@@ -399,8 +399,8 @@ export function QuoteCard({
           {/* Fattura chiesta al professionista, non a noi (richiesta dell'utente del 27/10/2026, §378). */}
           {!isChoosingDate && !confirmingReject ? (
             <YStack gap="$3" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
-              <InvoiceRequestToggle professionalName={quote.businessName} checked={invoiceWanted} onToggle={() => void toggleInvoice()} />
-              {invoiceWanted ? <InvoiceRequestFields draft={invoiceDraft} onChange={setInvoiceDraft} errors={invoiceErrors} /> : null}
+              <InvoiceRequestToggle professionalName={quote.businessName} checked={invoiceWanted} receipt={quote.professionalKind === "PRIVATE"} onToggle={() => void toggleInvoice()} />
+              {invoiceWanted ? <InvoiceRequestFields draft={invoiceDraft} onChange={setInvoiceDraft} errors={invoiceErrors} receipt={quote.professionalKind === "PRIVATE"} /> : null}
             </YStack>
           ) : null}
           {!choosingPayment && !isChoosingDate && !confirmingReject ? (

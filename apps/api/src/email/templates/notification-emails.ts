@@ -261,7 +261,7 @@ const BUILDERS: Record<string, Builder> = {
       ...(clientName ? [{ label: "Cliente", value: clientName }] : []),
       ...(clientPhone ? [{ label: "Telefono", value: clientPhone }] : []),
       ...(clientAddress ? [{ label: "Indirizzo", value: clientAddress }] : []),
-      ...(invoiceLines.length > 0 ? [{ label: "Fattura a", value: invoiceLines.join("\n"), long: true }] : []),
+      ...(invoiceLines.length > 0 ? [{ label: payload.receipt === true ? "Ricevuta a" : "Fattura a", value: invoiceLines.join("\n"), long: true }] : []),
     ];
     return {
       kind: "notification",
@@ -273,7 +273,9 @@ const BUILDERS: Record<string, Builder> = {
         clientName || clientPhone || clientAddress
           ? "Qui sotto trovi i dati del cliente e dell'appuntamento, già nella tua agenda."
           : "Nella richiesta ora trovi i suoi contatti e l'indirizzo dell'intervento. L'appuntamento è già nella tua agenda.",
-        ...(payload.invoiceRequested === true ? ["**Il cliente ti chiede la fattura.** I dati sono qui sotto e nella scheda del lavoro."] : []),
+        ...(payload.invoiceRequested === true
+          ? [`**Il cliente ti chiede ${payload.receipt === true ? "la ricevuta" : "la fattura"}.** I dati sono qui sotto e nella scheda del lavoro.`]
+          : []),
       ],
       details: details.length > 0 ? details : undefined,
       cta: proRequests("Apri il lavoro"),
@@ -1248,20 +1250,25 @@ const BUILDERS: Record<string, Builder> = {
     cta: { label: "Vedi i numeri", url: `${frontendUrl()}/admin/numeri-professionisti` },
   }),
   // Documenti contabili (docs/CHANGELOG.md §378).
+  // Chi lavora senza partita IVA fa una ricevuta (collaudo C-01): la prepara dal sito a lavoro terminato.
   JOB_INVOICE_REQUESTED: (payload, ctx) => {
     const invoiceLines = Array.isArray(payload.invoiceLines) ? payload.invoiceLines.filter((line): line is string => typeof line === "string") : [];
+    const receipt = payload.receipt === true;
+    const what = receipt ? "la ricevuta" : "la fattura";
     return {
       kind: "notification",
-      subject: payload.changed === true ? "Il cliente ha cambiato i dati per la fattura" : "Il cliente ti chiede la fattura",
+      subject: payload.changed === true ? `Il cliente ha cambiato i dati per ${what}` : `Il cliente ti chiede ${what}`,
       greeting: ctx.name,
-      title: payload.changed === true ? "Dati per la fattura cambiati" : "Ti chiede la fattura",
+      title: payload.changed === true ? `Dati per ${what} cambiati` : `Ti chiede ${what}`,
       paragraphs: [
         payload.changed === true
-          ? `Il cliente ha cambiato i dati per la fattura del lavoro **${job(ctx)}**.`
-          : `Il cliente ti chiede la fattura per il lavoro **${job(ctx)}**.`,
-        "La fai tu, col tuo programma delle fatture: qui sotto i dati da copiare.",
+          ? `Il cliente ha cambiato i dati per ${what} del lavoro **${job(ctx)}**.`
+          : `Il cliente ti chiede ${what} per il lavoro **${job(ctx)}**.`,
+        receipt
+          ? "La ricevuta te la prepariamo noi dopo \"Lavoro terminato\": tu la stampi, la firmi e la dai al cliente. Qui sotto i suoi dati."
+          : "La fai tu, col tuo programma delle fatture: qui sotto i dati da copiare.",
       ],
-      details: invoiceLines.length > 0 ? [{ label: "Fattura a", value: invoiceLines.join("\n"), long: true }] : undefined,
+      details: invoiceLines.length > 0 ? [{ label: receipt ? "Ricevuta a" : "Fattura a", value: invoiceLines.join("\n"), long: true }] : undefined,
       cta: proRequests("Apri il lavoro"),
     };
   },
@@ -1618,17 +1625,22 @@ const BUILDERS: Record<string, Builder> = {
   PROFILE_SETUP_REMINDER: (payload, ctx) => {
     const missing = Array.isArray(payload.missing) ? payload.missing : [];
     const lines: string[] = [];
+    // Carta per i mesi gratis (docs/changelog/2026-10-30-iscrizione-carta-solida.md): va detto il rinnovo automatico.
+    if (missing.includes("CARD"))
+      lines.push("**Aggiungi la carta per attivare i mesi gratis**: oggi non paghi nulla. Alla fine dei mesi gratis parte Base a 19 € + IVA al mese, in automatico, e puoi annullare quando vuoi.");
     if (missing.includes("SEARCH")) lines.push("**Non compari ancora nelle ricerche**: completa i dati fiscali.");
     if (missing.includes("QUOTES")) lines.push("**Non puoi ancora rispondere alle richieste di preventivo**: verifica la tua identità con documento e selfie, circa 2 minuti.");
     if (missing.includes("ONLINE_PAYMENTS")) lines.push("**Non puoi ancora ricevere pagamenti online**: attivali da Fisco e pagamenti, scheda Pagamenti online.");
     if (lines.length === 0) lines.push("Ti mancano ancora alcuni passi per comparire nelle ricerche e rispondere ai clienti.");
     return {
       kind: "account",
-      subject: "Completa il tuo profilo",
+      subject: missing.includes("CARD") ? "Attiva i tuoi mesi gratis" : "Completa il tuo profilo",
       greeting: ctx.name,
-      title: "Ti manca poco per iniziare",
+      title: missing.includes("CARD") ? "Manca solo la carta per i mesi gratis" : "Ti manca poco per iniziare",
       paragraphs: [...lines, "Trovi tutto in Oggi, con il prossimo passo da fare."],
-      cta: { label: "Completa il profilo", url: `${frontendUrl()}/dashboard` },
+      cta: missing.includes("CARD")
+        ? { label: "Attiva i mesi gratis", url: `${frontendUrl()}/dashboard/abbonamento#livelli` }
+        : { label: "Completa il profilo", url: `${frontendUrl()}/dashboard` },
     };
   },
   // Agenda vuota o senza disponibilità nei prossimi giorni (§274).
@@ -1742,20 +1754,22 @@ const BUILDERS: Record<string, Builder> = {
     details: str(payload.date) ? [{ label: "Gratis fino al", value: formatDay(str(payload.date)) }] : undefined,
     cta: subscriptionPage(),
   }),
-  // I primi 100 professionisti hanno 3 mesi gratis (docs/CHANGELOG.md §363).
-  SUBSCRIPTION_TRIAL_ENDING: (payload, ctx) => ({
-    kind: "account",
-    subject: payload.founder === true ? "I tuoi 3 mesi gratis stanno per finire" : "Il tuo mese gratuito sta per finire",
-    greeting: ctx.name,
-    title: payload.founder === true ? "I 3 mesi gratis stanno per finire" : "Il mese gratuito sta per finire",
-    paragraphs: [
-      payload.founder === true
-        ? `I tuoi 3 mesi gratis finiscono il **${formatDay(str(payload.date))}**.`
-        : `Il tuo mese gratuito finisce il **${formatDay(str(payload.date))}**.`,
-      "Scegli un livello per restare visibile nelle ricerche e continuare a ricevere richieste.",
-    ],
-    cta: { label: "Scegli un livello", url: `${frontendUrl()}/dashboard/abbonamento` },
-  }),
+  // Mesi gratis senza carta che stanno per finire (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
+  SUBSCRIPTION_TRIAL_ENDING: (payload, ctx) => {
+    const months = typeof payload.freeMonths === "number" ? payload.freeMonths : payload.founder === true ? 3 : 1;
+    const what = months === 1 ? "Il tuo mese gratis" : `I tuoi ${months} mesi gratis`;
+    return {
+      kind: "account",
+      subject: `${what} ${months === 1 ? "sta" : "stanno"} per finire`,
+      greeting: ctx.name,
+      title: `${months === 1 ? "Il mese gratis sta" : `I ${months} mesi gratis stanno`} per finire`,
+      paragraphs: [
+        `${what} ${months === 1 ? "finisce" : "finiscono"} il **${formatDay(str(payload.date))}**.`,
+        "Scegli un livello per restare visibile nelle ricerche e continuare a ricevere richieste.",
+      ],
+      cta: { label: "Scegli un livello", url: `${frontendUrl()}/dashboard/abbonamento` },
+    };
+  },
   SUBSCRIPTION_LIMIT_NEAR: (payload, ctx) => {
     const used = typeof payload.used === "number" ? payload.used : null;
     const limit = typeof payload.limit === "number" ? payload.limit : null;
@@ -1797,17 +1811,54 @@ const BUILDERS: Record<string, Builder> = {
     subject: "Il tuo account è in pausa",
     greeting: ctx.name,
     title: "Account in pausa",
-    paragraphs: [
-      payload.reason === "SUBSCRIPTION_ENDED"
-        ? "Il tuo abbonamento è concluso: il tuo profilo non compare più nelle ricerche e non ricevi nuove richieste."
-        : "Il tuo mese gratuito è finito: il tuo profilo non compare più nelle ricerche e non ricevi nuove richieste.",
-      "Scegli un livello per renderlo di nuovo visibile e operativo.",
-    ],
-    cta: { label: "Scegli un livello", url: `${frontendUrl()}/dashboard/abbonamento` },
+    paragraphs:
+      // Mesi gratis senza la carta (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
+      payload.reason === "CARD_NEEDED"
+        ? [
+            "Per usare i mesi gratis serve la carta: finché non la aggiungi il tuo profilo non compare nelle ricerche e non ricevi nuove richieste.",
+            "Oggi non paghi nulla. Alla fine dei mesi gratis parte Base a 19 € + IVA al mese, e puoi annullare quando vuoi.",
+          ]
+        : [
+            payload.reason === "SUBSCRIPTION_ENDED"
+              ? "Il tuo abbonamento è concluso: il tuo profilo non compare più nelle ricerche e non ricevi nuove richieste."
+              : "I tuoi mesi gratis sono finiti: il tuo profilo non compare più nelle ricerche e non ricevi nuove richieste.",
+            "Scegli un livello per renderlo di nuovo visibile e operativo.",
+          ],
+    cta: payload.reason === "CARD_NEEDED" ? { label: "Attiva i mesi gratis", url: `${frontendUrl()}/dashboard/abbonamento` } : { label: "Scegli un livello", url: `${frontendUrl()}/dashboard/abbonamento` },
   }),
+  SUBSCRIPTION_FREE_MONTHS_STARTED: (payload, ctx) => {
+    const date = formatDay(str(payload.date));
+    return {
+      kind: "account",
+      subject: "I tuoi mesi gratis sono attivi",
+      greeting: ctx.name,
+      title: "Mesi gratis attivi",
+      paragraphs: [
+        `Abbiamo salvato la tua carta: oggi non hai pagato nulla. I mesi gratis durano fino al **${date}**, poi parte Base in automatico ogni mese.`,
+        "Ti avvisiamo una settimana prima del primo addebito. Puoi annullare quando vuoi dalla pagina Abbonamento, anche prima della fine dei mesi gratis: non ti addebitiamo nulla.",
+      ],
+      details: typeof payload.amountEurCents === "number" ? [{ label: "Dopo i mesi gratis", value: `${formatEur(payload.amountEurCents)} al mese + IVA, dal ${date}` }] : undefined,
+      cta: subscriptionPage(),
+    };
+  },
   SUBSCRIPTION_RENEWING: (payload, ctx) => {
     const tier = str(payload.tierLabel) ?? "";
     const date = formatDay(str(payload.date));
+    if (payload.freeMonthsEnding === true) {
+      // Primo addebito dopo i mesi gratis: importo, data e come annullare (regole Visa e Mastercard).
+      return {
+        kind: "account",
+        subject: `I tuoi mesi gratis finiscono il ${date}`,
+        greeting: ctx.name,
+        title: "Finiscono i mesi gratis",
+        paragraphs: [
+          `I tuoi mesi gratis finiscono il **${date}**. Da quel giorno parte ${tier || "Base"} in automatico, ogni mese, sulla carta che hai dato.`,
+          "Se non vuoi continuare puoi annullare dalla pagina Abbonamento prima di quella data: non ti addebitiamo nulla.",
+        ],
+        details: typeof payload.amountEurCents === "number" ? [{ label: "Primo addebito", value: `${formatEur(payload.amountEurCents)} al mese + IVA, il ${date}` }] : undefined,
+        cta: subscriptionPage(),
+      };
+    }
     return {
       kind: "account",
       subject: `Il tuo abbonamento ${tier} si rinnova il ${date}`.replace(/\s+/g, " "),
@@ -1858,8 +1909,8 @@ const BUILDERS: Record<string, Builder> = {
     greeting: ctx.name,
     title: "Pagamento non riuscito",
     paragraphs: [
-      "Non siamo riusciti ad addebitare il rinnovo del tuo abbonamento. Riproveremo nei prossimi giorni.",
-      "Controlla il metodo di pagamento per non andare in pausa.",
+      "Non siamo riusciti ad addebitare l'abbonamento sulla tua carta. Riproveremo nei prossimi giorni.",
+      "Controlla la carta o cambiala dalla pagina Abbonamento, con \"Cambia la carta\": se il pagamento non riesce l'abbonamento si chiude e il profilo va in pausa.",
     ],
     cta: subscriptionPage(),
   }),

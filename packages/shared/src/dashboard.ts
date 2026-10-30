@@ -384,6 +384,8 @@ export type ProfessionalBooking = {
   invoiceRequest?: ClientInvoiceRequestView | null;
   /** Ricevuta o copia di cortesia già preparata, e se l'importo è cambiato dopo il PDF (docs/CHANGELOG.md §381). */
   courtesyDocument?: CourtesyDocumentSummary | null;
+  /** Il documento che il professionista dà al cliente: ricevuta se è un privato, altrimenti fattura (collaudo C-01). */
+  clientDocumentKind?: "RECEIPT" | "INVOICE";
 };
 
 /**

@@ -61,9 +61,13 @@ import { buildDac7Xml, type Dac7XmlPayload, type Dac7XmlQuarterAmounts, type Dac
  * `markSubmitted`/`correctPeriod` restano azioni manuali dell'admin, mai
  * automatiche — nessuna integrazione reale con il Desktop Telematico.
  */
+/** Dati DAC7 visti dal professionista: si rifanno se più vecchi di così. */
+const DAC7_FRESH_MS = 10 * 60_000;
+
 @Injectable()
 export class Dac7Service implements OnModuleInit {
   private readonly logger = new Logger(Dac7Service.name);
+  private refreshing: Promise<unknown> | null = null;
 
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
@@ -214,6 +218,25 @@ export class Dac7Service implements OnModuleInit {
     const agg = await this.aggregate(this.yearRange(year), rule.includeDirectPayments);
     await this.upsertPeriodRecords(period.id, agg);
     return this.prisma.dac7ReportingPeriod.update({ where: { id: period.id }, data: { updatedAt: new Date() } });
+  }
+
+  /**
+   * Il calcolo del trimestre e dell'anno correnti, se l'ultimo ha più di 10
+   * minuti. Uno solo alla volta; un errore lascia i dati di prima.
+   */
+  private async refreshIfStale(now: Date = new Date()): Promise<void> {
+    const year = now.getUTCFullYear();
+    const quarter = Math.floor(now.getUTCMonth() / 3) + 1;
+    const period = await this.prisma.dac7ReportingPeriod.findUnique({ where: { year_quarter: { year, quarter } }, select: { updatedAt: true } });
+    if (period && now.getTime() - period.updatedAt.getTime() < DAC7_FRESH_MS) return;
+    this.refreshing ??= this.runDailyAggregation().finally(() => {
+      this.refreshing = null;
+    });
+    try {
+      await this.refreshing;
+    } catch (err) {
+      this.logger.error(`Calcolo DAC7 non aggiornato: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   /** Tiene aggiornato il trimestre e l'anno correnti — mai i periodi passati (quelli si aggiornano solo per correzione esplicita, vedi correctPeriod). */
@@ -503,10 +526,13 @@ export class Dac7Service implements OnModuleInit {
 
   /**
    * Riepilogo DAC7 del professionista, anno per anno: trimestri con diretti e
-   * online, commissioni, lavori; se e quando è stato comunicato. Dati di
-   * sola lettura dai Dac7Record (aggiornati ogni notte), mai ricalcolati qui.
+   * online, commissioni, lavori; se e quando è stato comunicato. Dati dai
+   * Dac7Record, rifatti prima se l'ultimo calcolo ha più di 10 minuti: un
+   * lavoro chiuso compare subito, non il giorno dopo
+   * (docs/changelog/2026-10-30-documenti-migliorie.md).
    */
   async summaryForProfessional(userId: string): Promise<{ years: Dac7YearSummary[]; maskedIban: string | null }> {
+    await this.refreshIfStale();
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
       select: { id: true, fiscalProfile: { select: { payoutAccount: { select: { ibanCountry: true, ibanLast4: true } } } } },

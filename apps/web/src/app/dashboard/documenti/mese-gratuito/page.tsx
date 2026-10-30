@@ -8,11 +8,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AmountRow, BigTotal, DocumentPage, LoadingDocument, NoteBox, documentDate, eur } from "../_components/DocumentParts";
 
-const SUBTITLE: Record<string, string> = {
-  "Offerta di lancio": "Offerta di lancio per i primi 100 professionisti.",
-  "Mese gratuito": "Il primo mese è gratis per tutti.",
-  "Mese regalato": "Un mese in più, regalato da noi.",
-};
+const subtitle = (free: { month: number; months: number }) => `Mese gratis ${free.month} di ${free.months}, livello Base.`;
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
@@ -56,7 +52,7 @@ export default function FreeMonthPage() {
   const limit = sub.usage.limit ?? base.monthlyAcceptedJobs;
 
   return (
-    <DocumentPage back={back} title={`${capitalize(accountingMonthLabel(month))}: 0 €`} subtitle={SUBTITLE[free.label]}>
+    <DocumentPage back={back} title={`${capitalize(accountingMonthLabel(month))}: 0 €`} subtitle={subtitle(free)}>
       <BigTotal label="Da pagare" value={eur(0)} badge={free.label}>
         <Text fontSize={16} color={brand.grafite70}>
           {free.months > 1 ? `Mese ${free.month} di ${free.months}, dal` : "Dal"} {documentDate(free.from)} al {documentDate(new Date(new Date(free.to).getTime() - 1).toISOString())}.

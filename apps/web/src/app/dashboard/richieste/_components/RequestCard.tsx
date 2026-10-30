@@ -1198,21 +1198,25 @@ export function RequestCard({
             </YStack>
           ) : null}
 
-          {/* Fattura chiesta dal cliente (docs/CHANGELOG.md §378): i dati da copiare, e la copia di cortesia. */}
+          {/* Fattura o ricevuta chiesta dal cliente (docs/CHANGELOG.md §378): i dati da copiare e, senza partita IVA, la ricevuta. */}
           {booking?.invoiceRequest && booking.status !== "CANCELED" ? (
-            <ProfessionalInvoiceRequestBox request={booking.invoiceRequest} courtesyHref={`/dashboard/documenti/cortesia/${booking.id}`} />
+            <ProfessionalInvoiceRequestBox
+              request={booking.invoiceRequest}
+              receipt={booking.clientDocumentKind === "RECEIPT"}
+              courtesyHref={booking.status === "COMPLETED" && booking.clientDocumentKind === "RECEIPT" ? `/dashboard/documenti/cortesia/${booking.id}` : undefined}
+            />
           ) : null}
-          {/* Copia di cortesia anche senza richiesta, a lavoro terminato (§378). */}
-          {booking && !booking.invoiceRequest && booking.status === "COMPLETED" ? (
+          {/* La ricevuta anche senza richiesta, a lavoro terminato (§378); con la partita IVA la fattura la fa col suo programma (docs/changelog/2026-10-30-documenti-snelli.md). */}
+          {booking && !booking.invoiceRequest && booking.status === "COMPLETED" && booking.clientDocumentKind === "RECEIPT" ? (
             <Link href={`/dashboard/documenti/cortesia/${booking.id}`} style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 13 }}>
-              {booking.courtesyDocument ? `Apri: ${booking.courtesyDocument.label}` : "Prepara la ricevuta o la copia della fattura per il cliente"}
+              {booking.courtesyDocument ? `Apri: ${booking.courtesyDocument.label}` : "Prepara la ricevuta per il cliente"}
             </Link>
           ) : null}
           {/* Importo cambiato dopo il PDF scaricato, per esempio per un rimborso: il documento va rifatto (§381). */}
-          {booking?.courtesyDocument?.amountChanged && booking.status !== "CANCELED" ? (
+          {booking?.courtesyDocument?.amountChanged && booking.courtesyDocument.kind === "RECEIPT" && booking.status !== "CANCELED" ? (
             <Link href={`/dashboard/documenti/cortesia/${booking.id}`} style={{ textDecoration: "none" }}>
               <Text fontSize={13} fontWeight="700" color={brand.ottoneScuro}>
-                L&apos;importo è cambiato dopo il PDF: scarica di nuovo {booking.courtesyDocument.kind === "RECEIPT" ? "la ricevuta" : "la copia della fattura"} e ridalla al cliente →
+                L&apos;importo è cambiato dopo il PDF: scarica di nuovo la ricevuta e ridalla al cliente →
               </Text>
             </Link>
           ) : null}

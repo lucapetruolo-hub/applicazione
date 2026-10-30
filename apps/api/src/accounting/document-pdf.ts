@@ -29,7 +29,11 @@ export type PdfBlock =
   /** Foto (JPEG o PNG già scaricate), due per riga con la didascalia sotto. */
   | { type: "images"; images: { data: Buffer; caption?: string | null }[] };
 
-export type PdfDocumentModel = { title: string; subtitle?: string | null; blocks: PdfBlock[] };
+/**
+ * `issuedBy`: il documento lo emette il professionista (ricevuta, copia della
+ * fattura): in alto il suo nome, il sito solo in piccolo nel piede (collaudo G-11).
+ */
+export type PdfDocumentModel = { title: string; subtitle?: string | null; blocks: PdfBlock[]; issuedBy?: string | null };
 
 const COLORS = {
   text: EMAIL_BRAND.colors.text,
@@ -72,7 +76,10 @@ class Writer {
   readonly doc: PDFKit.PDFDocument;
   y = MARGIN;
 
-  constructor(title: string) {
+  constructor(
+    title: string,
+    private readonly top: string = EMAIL_BRAND.name,
+  ) {
     this.doc = new PDFDocument({
       size: "A4",
       // Il margine sotto è più stretto del nostro limite (BOTTOM): così pdfkit
@@ -80,13 +87,13 @@ class Writer {
       margins: { top: MARGIN, left: MARGIN, right: MARGIN, bottom: 20 },
       bufferPages: true,
       lang: "it-IT",
-      info: { Title: pdfText(title), Author: EMAIL_BRAND.name, Creator: EMAIL_BRAND.name },
+      info: { Title: pdfText(title), Author: pdfText(top), Creator: EMAIL_BRAND.name },
     });
     this.header();
   }
 
   private header(): void {
-    this.doc.font(BOLD).fontSize(12).fillColor(COLORS.green).text(pdfText(EMAIL_BRAND.name), MARGIN, MARGIN, { width: CONTENT_WIDTH, lineBreak: false });
+    this.doc.font(BOLD).fontSize(12).fillColor(COLORS.green).text(pdfText(this.top), MARGIN, MARGIN, { width: CONTENT_WIDTH, lineBreak: false });
     this.y = MARGIN + 30;
   }
 
@@ -338,7 +345,7 @@ function images(w: Writer, block: Extract<PdfBlock, { type: "images" }>): void {
 
 /** Il PDF del documento, pronto da mandare o allegare. */
 export function renderDocumentPdf(model: PdfDocumentModel): Promise<Buffer> {
-  const w = new Writer(model.title);
+  const w = new Writer(model.title, model.issuedBy || EMAIL_BRAND.name);
   const chunks: Buffer[] = [];
   const done = new Promise<Buffer>((resolve, reject) => {
     w.doc.on("data", (chunk: Buffer) => chunks.push(chunk));
@@ -364,7 +371,8 @@ export function renderDocumentPdf(model: PdfDocumentModel): Promise<Buffer> {
 
   // Piede: il sito e, se le pagine sono più di una, "Pagina 1 di 2".
   const range = w.doc.bufferedPageRange();
-  const site = frontendUrl().replace(/^https?:\/\//, "");
+  const url = frontendUrl().replace(/^https?:\/\//, "");
+  const site = model.issuedBy ? `Preparato con ${EMAIL_BRAND.name} (${url})` : url;
   for (let index = 0; index < range.count; index += 1) {
     w.doc.switchToPage(range.start + index);
     const y = PAGE.height - 40;

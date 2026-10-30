@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Put, Req, UseGuards } from "@nestjs/common";
-import { accountantSettingsSchema, courtesyNumberSchema, courtesyYearCsv, type AccountantSettingsInput, type CourtesyNumberInput, type DocumentsOverview } from "@professionisti/shared";
+import { accountantSettingsSchema, courtesyDetailsSchema, courtesyYearCsv, type AccountantSettingsInput, type CourtesyDetailsInput, type DocumentsOverview } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { InvoicesService } from "./invoices.service";
@@ -35,8 +35,13 @@ export class AccountingController {
 
   @Get()
   async overview(@Req() req: AuthenticatedRequest): Promise<DocumentsOverview> {
-    const [overview, clientDocuments] = await Promise.all([this.invoicesService.overview(req.user.userId), this.courtesyCopyService.listForProfessional(req.user.userId)]);
-    return { ...overview, clientDocuments };
+    const [overview, clientDocuments, receipts] = await Promise.all([
+      this.invoicesService.overview(req.user.userId),
+      this.courtesyCopyService.listForProfessional(req.user.userId),
+      this.courtesyCopyService.makesReceipts(req.user.userId),
+    ]);
+    const missingDocuments = receipts ? await this.courtesyCopyService.missingForProfessional(req.user.userId) : [];
+    return { ...overview, clientDocuments, missingDocuments, receipts };
   }
 
   @Get("invoices/:id")
@@ -96,10 +101,10 @@ export class AccountingController {
     return this.courtesyCopyService.forProfessional(req.user.userId, bookingId);
   }
 
-  /** Il numero della sua fattura, da riportare sulla copia (la ricevuta lo ha già da noi). */
-  @Put("courtesy/:bookingId/number")
-  courtesyNumber(@Req() req: AuthenticatedRequest, @Param("bookingId") bookingId: string, @Body(new ZodValidationPipe(courtesyNumberSchema)) body: CourtesyNumberInput) {
-    return this.courtesyCopyService.setOwnNumber(req.user.userId, bookingId, body);
+  /** Numero e data della sua fattura, aliquota, nome e codice fiscale del cliente, ritenuta (collaudo del 29/10/2026). */
+  @Put("courtesy/:bookingId/details")
+  courtesyDetails(@Req() req: AuthenticatedRequest, @Param("bookingId") bookingId: string, @Body(new ZodValidationPipe(courtesyDetailsSchema)) body: CourtesyDetailsInput) {
+    return this.courtesyCopyService.saveDetails(req.user.userId, bookingId, body);
   }
 
   @Get("courtesy/:bookingId/pdf")

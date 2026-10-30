@@ -96,6 +96,9 @@ import type {
   OperatorProfileInviteInput,
   PendingProfileInvite,
   AdminFounders,
+  AdminSubscriptionOffer,
+  AdminProfessionalWithoutCard,
+  AdminSignupFunnel,
   AdminProfessionalStats,
   AdminSiteStats,
   ChurnReason,
@@ -135,7 +138,7 @@ import type {
   AccountantSettingsInput,
   CourtesyCopyView,
   JobDocumentsView,
-  CourtesyNumberInput,
+  CourtesyDetailsInput,
   DocumentsOverview,
   MonthlyStatement,
   PlatformInvoiceAdminRow,
@@ -1692,9 +1695,9 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     courtesyCopy: (token: string, bookingId: string) =>
       request<CourtesyCopyView>(`/documents/courtesy/${encodeURIComponent(bookingId)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
-    /** Il numero della fattura del professionista sulla copia di cortesia (docs/CHANGELOG.md §379). */
-    setCourtesyNumber: (token: string, bookingId: string, input: CourtesyNumberInput) =>
-      request<CourtesyCopyView>(`/documents/courtesy/${encodeURIComponent(bookingId)}/number`, { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    /** Quello che il professionista scrive sulla copia: numero e data della fattura, cliente, aliquota, ritenuta (collaudo del 29/10/2026). */
+    saveCourtesyDetails: (token: string, bookingId: string, input: CourtesyDetailsInput) =>
+      request<CourtesyCopyView>(`/documents/courtesy/${encodeURIComponent(bookingId)}/details`, { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
 
     courtesyCopyPdf: (token: string, bookingId: string) => downloadFile(`/documents/courtesy/${encodeURIComponent(bookingId)}/pdf`, token),
     /** Riepilogo dell'anno dei documenti dati ai clienti, per il commercialista (docs/CHANGELOG.md §382). */
@@ -1737,10 +1740,9 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       request<PlatformInvoiceAdminRow>(`/admin/invoices/${encodeURIComponent(id)}/resend`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     /** Admin → Documenti ai clienti (docs/CHANGELOG.md §380). */
-    adminCourtesyDocuments: (token: string, filter: { q?: string; kind?: "RECEIPT" | "INVOICE"; year?: number; bookingId?: string } = {}) => {
+    adminCourtesyDocuments: (token: string, filter: { q?: string; year?: number; bookingId?: string } = {}) => {
       const params = new URLSearchParams();
       if (filter.q?.trim()) params.set("q", filter.q.trim());
-      if (filter.kind) params.set("kind", filter.kind);
       if (filter.year) params.set("year", String(filter.year));
       if (filter.bookingId) params.set("bookingId", filter.bookingId);
       const query = params.toString();
@@ -2002,6 +2004,14 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         body: JSON.stringify(renew ? {} : { reason }),
       }),
 
+    /** "Torna a Base" da Plus o Pro alla scadenza, con i mesi gratis in attesa (docs/changelog/2026-10-29-offerta-mesi-gratis.md). */
+    setSubscriptionReturnToBase: (token: string, on: boolean) =>
+      request<{ ok: true }>("/billing/subscription/return-to-base", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ on }),
+      }),
+
     /** Customer Portal di Stripe: carta e fatture di abbonamento e boost. */
     createBillingPortal: (token: string) =>
       request<{ url: string }>("/billing/portal", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
@@ -2109,6 +2119,23 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       }),
 
     adminListFounders: (token: string) => request<AdminFounders>("/admin/founders", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Offerta dei mesi gratis (docs/changelog/2026-10-29-offerta-mesi-gratis.md): la cambia solo il super admin. */
+    /** Profili senza la carta per i mesi gratis (docs/changelog/2026-10-30-iscrizione-carta-solida.md). */
+    adminProfessionalsWithoutCard: (token: string) =>
+      request<AdminProfessionalWithoutCard[]>("/admin/subscription-offer/without-card", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    /** Imbuto dell'iscrizione per settimana. */
+    adminSignupFunnel: (token: string) => request<AdminSignupFunnel>("/admin/professionals/signup-funnel", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminGetSubscriptionOffer: (token: string) =>
+      request<AdminSubscriptionOffer>("/admin/subscription-offer", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminStopSubscriptionOffer: (token: string) =>
+      request<AdminSubscriptionOffer>("/admin/subscription-offer/stop", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+    adminStartSubscriptionOffer: (token: string, freeMonths: number) =>
+      request<AdminSubscriptionOffer>("/admin/subscription-offer", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ freeMonths }),
+      }),
 
     /** Profili creati al telefono da un operatore (docs/CHANGELOG.md §170). */
     adminListProfileInvites: (token: string) =>
