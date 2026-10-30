@@ -77,8 +77,7 @@ le migliorie". Quella su Render a pagamento resta a lui (non è codice).
 - **Testo proprio per ogni città (N-04)**: in "[Lavoro] a [città] in breve"
   i lavori offerti lì e le ultime 3 recensioni del mestiere in quella città
   (`GET /reviews/recent?category=&city=`, stessi filtri delle recensioni in
-  home più categoria, anche secondaria, e città del professionista), solo quando sono almeno 3 (scelta di Luca
-  dopo le foto). I numeri
+  home più categoria, anche secondaria, e città del professionista). I numeri
   restano nelle tessere; il testo li ripete solo con un professionista.
 - **Pagine "Quanto costa" raggiungibili (N-05)**: nuova `/prezzi` con i
   mestieri che hanno una pagina prezzi (stesse soglie della sitemap del §296,
@@ -101,3 +100,10 @@ le migliorie". Quella su Render a pagamento resta a lui (non è codice).
 recensioni dell'API verdi; prove a schermo da iPhone (titolo, testo della
 città con le recensioni, `/prezzi`, prezzi in home) e da computer (titolo non
 visibile).
+
+**Link alle pagine città solo da 3 professionisti** (Luca, dopo le foto:
+"un numero minimo per farlo vedere sul nostro sito... tutta la pagina quindi
+il link cliccabile"): "[Mestiere] nelle città" e "Servizi più richiesti a
+[città]" collegano una pagina città solo con almeno 3 professionisti
+(`MIN_PROFESSIONALS_TO_INDEX_CITY`, la stessa soglia per entrare in Google).
+La pagina resta raggiungibile dalla ricerca e dal profilo di chi c'è.

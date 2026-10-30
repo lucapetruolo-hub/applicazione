@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { comuneSlug, type ProfessionalCategorySlug, type ProfessionalSearchResult } from "@professionisti/shared";
+import { MIN_PROFESSIONALS_TO_INDEX_CITY, comuneSlug, type ProfessionalCategorySlug, type ProfessionalSearchResult } from "@professionisti/shared";
 import { CATEGORY_ACCENT, CategoryIcon } from "@/components/icons/CategoryIcons";
 
 const MAX_LINKS = 12;
@@ -8,7 +8,8 @@ const MAX_LINKS = 12;
  * "Idraulico nelle città" sotto i risultati di un mestiere in tutta Italia
  * (collaudo N-07, docs/changelog/2026-10-30-velocita-telefono.md): le pagine
  * città ("Idraulico a Latina"), quelle che cercano su Google, erano a tre
- * clic dalla home. Solo città dove c'è almeno un professionista, prima
+ * clic dalla home. Solo città con almeno 3 professionisti, come le pagine
+ * città in Google (scelta di Luca: niente link a pagine quasi vuote), prima
  * quelle con più professionisti; stesso aspetto di "Servizi più richiesti".
  */
 export function CategoryCityLinks({
@@ -28,7 +29,9 @@ export function CategoryCityLinks({
     entry.count += 1;
     counts.set(slug, entry);
   }
-  const cities = [...counts.values()].sort((a, b) => b.count - a.count || a.city.localeCompare(b.city, "it")).slice(0, MAX_LINKS);
+  const cities = [...counts.values()]
+    .filter((item) => item.count >= MIN_PROFESSIONALS_TO_INDEX_CITY)
+    .sort((a, b) => b.count - a.count || a.city.localeCompare(b.city, "it")).slice(0, MAX_LINKS);
   if (cities.length === 0) return null;
   const accent = CATEGORY_ACCENT[categorySlug];
 

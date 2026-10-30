@@ -57,7 +57,12 @@ async function popularOrder(city?: string): Promise<string[]> {
 async function categoriesInCity(city: string): Promise<string[] | null> {
   try {
     const list = await apiClient.searchProfessionals({ city, excludeDemo: SITE_INDEXABLE });
-    return [...new Set(list.flatMap((pro) => pro.categories.map((item) => item.slug)))];
+    // Solo i mestieri con abbastanza professionisti in città: un link a una
+    // pagina città compare dai 3 in su, come in Google (scelta di Luca,
+    // docs/changelog/2026-10-30-velocita-telefono.md).
+    const counts = new Map<string, number>();
+    for (const slug of list.flatMap((pro) => pro.categories.map((item) => item.slug))) counts.set(slug, (counts.get(slug) ?? 0) + 1);
+    return [...counts].filter(([, count]) => count >= MIN_PROFESSIONALS_TO_INDEX_CITY).map(([slug]) => slug);
   } catch {
     return null;
   }
