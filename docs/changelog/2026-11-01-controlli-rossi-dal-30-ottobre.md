@@ -1,4 +1,4 @@
-# Falle nuove in glob, joi e minimatch
+# Controlli rossi dal 30/10: falle in glob, joi e minimatch e prova C2 dell'agenda
 
 **Richiesta**: il controllo `osv-scanner` della CI è diventato rosso su ogni
 PR per tre segnalazioni pubblicate il 30/10/2026 (GHSA-3g3m-2fjr-6pw4 glob,
@@ -19,3 +19,14 @@ GHSA-4528-x5fx-h6hg joi, GHSA-g3hv-75wg-m249 minimatch).
 
 **Verifica**: `pnpm install`, lint di sito e API, build dell'API e
 `expo config` dell'app senza errori.
+
+## Prova "C2 chiudo un giorno" con la data fissa
+
+Dal 31/10 la prova `tempi-compiti.spec.ts` C2 falliva su ogni PR: chiudeva
+venerdì 30/10 con l'orologio del browser fermo al 26/10, ma l'API elenca i
+giorni chiusi da oggi con il proprio orologio, quindi dopo il 30/10 il giorno
+chiuso non tornava più e "Riapri venerdì 30" non compariva. Ora la prova usa
+il lunedì vero successivo e il suo venerdì. Nessun cambio al sito.
+
+**Verifica**: in locale (Postgres 16, API e sito compilati) la versione
+vecchia fallisce come nella CI, la nuova passa con tutte le altre misure.
