@@ -8,6 +8,7 @@ import { SiteCountsService } from "../site-counts/site-counts.service";
 import { BillingService } from "./billing.service";
 
 const subscriptionCheckoutSchema = z.object({ plan: z.enum(["BASE", "PLUS", "PRO"]), interval: z.enum(["MONTH", "YEAR"]).optional() });
+const returnToBaseSchema = z.object({ on: z.boolean() });
 const boostCheckoutSchema = z.object({ type: z.enum(["BOOST_LOCALE", "BADGE_REPUTAZIONE", "STORIA_SUCCESSO"]) });
 
 @Controller("billing")
@@ -23,7 +24,14 @@ export class BillingController {
     @Req() req: AuthenticatedRequest,
     @Body(new ZodValidationPipe(subscriptionCheckoutSchema)) body: { plan: "BASE" | "PLUS" | "PRO"; interval?: "MONTH" | "YEAR" },
   ) {
-    return this.billingService.createSubscriptionCheckout(req.user.userId, body.plan, body.interval);
+    // Per ora solo il mensile (docs/changelog/2026-10-29-offerta-mesi-gratis.md): `interval` si ignora.
+    return this.billingService.createSubscriptionCheckout(req.user.userId, body.plan);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post("subscription/return-to-base")
+  setReturnToBase(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(returnToBaseSchema)) body: { on: boolean }) {
+    return this.billingService.setReturnToBase(req.user.userId, body.on);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -52,6 +52,8 @@ export function Field({ label, hint, error, rightElement, ...inputProps }: Field
           // all'inizio della pagina (collaudo L-08).
           blurOnSubmit={false}
           aria-invalid={error ? true : undefined}
+          // Il testo sopra non è un <label>: senza questo il lettore di schermo legge un campo senza nome (axe "label").
+          aria-label={label}
           aria-describedby={error || hint ? messageId : undefined}
           {...inputProps}
         />

@@ -114,6 +114,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   ADMIN_URGENCY_ALERT: { icon: "⚡", message: "Richieste urgenti fuori soglia questa settimana: guarda i numeri nell'area admin." },
   ADMIN_SEARCH_DEMAND_ALERT: { icon: "🔎", message: "Questa settimana alcune ricerche non hanno trovato nessun professionista vicino: guarda dove." },
   ADMIN_WEEKLY_ADVICE: { icon: "💡", message: "Sono pronti i consigli della settimana: cosa fare, già deciso dai numeri." },
+  ADMIN_CLAIMED_CASES_DUE: { icon: "⏳", message: "Un caso che hai preso scade entro oggi: aprilo da Da fare." },
   ADMIN_STRIPE_DISPUTE: { icon: "⚠️", message: "Contestazione in banca su un pagamento: rileggi e manda le prove da Pagamenti." },
   JOB_STRIPE_DISPUTE_NOTE_DUE: { icon: "⏳", message: "Contestazione in banca: scrivi come è andato il lavoro, mancano pochi giorni all'invio delle prove." },
   ADMIN_STRIPE_DISPUTE_DUE: { icon: "⏳", message: "Scadenza vicina: le prove di una contestazione in banca non sono ancora partite." },
@@ -128,7 +129,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_ISSUE_RESOLVED: { icon: "⚖️", message: "C'è una decisione su una segnalazione di un lavoro: tocca per leggerla." },
   // Abbonamento a livelli (docs/CHANGELOG.md §161).
   SUBSCRIPTION_BONUS_MONTH: { icon: "🎁", message: "Ti regaliamo un altro mese gratis." },
-  SUBSCRIPTION_TRIAL_ENDING: { icon: "⏳", message: "Il tuo periodo gratuito sta per finire: scegli un livello per restare visibile nelle ricerche." },
+  SUBSCRIPTION_FREE_MONTHS_STARTED: { icon: "✅", message: "Carta salvata: i tuoi mesi gratis sono attivi. Ti avvisiamo una settimana prima del primo addebito." },
+  SUBSCRIPTION_TRIAL_ENDING: { icon: "⏳", message: "I tuoi mesi gratis stanno per finire: scegli un livello per restare visibile nelle ricerche." },
   SUBSCRIPTION_LIMIT_NEAR: { icon: "📈", message: "Ti stai avvicinando ai lavori compresi nel tuo livello." },
   // Lavori esauriti: il profilo resta nelle ricerche (docs/CHANGELOG.md §362).
   SUBSCRIPTION_LIMIT_REACHED: { icon: "🏁", message: "Hai esaurito i lavori del tuo abbonamento: resti nelle ricerche, ma per mandare preventivi nuovi passa al livello superiore." },
@@ -201,6 +203,14 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   if (type === "JOB_INVOICE_REQUESTED" && data.receipt === true) {
     // Chi lavora senza partita IVA fa una ricevuta (collaudo C-01).
     return { icon: "🧾", message: `Un cliente ti chiede la ricevuta${jobSuffix}: la prepari dalla scheda del lavoro dopo "Lavoro terminato".` };
+  }
+  // Promemoria della carta (docs/changelog/2026-10-30-iscrizione-carta-solida.md).
+  if (type === "PROFILE_SETUP_REMINDER" && Array.isArray(data.missing) && data.missing.includes("CARD")) {
+    return { icon: "💳", message: "Aggiungi la carta per attivare i mesi gratis: oggi non paghi nulla." };
+  }
+  // Mesi gratis senza la carta (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
+  if (type === "SUBSCRIPTION_PAUSED" && data.reason === "CARD_NEEDED") {
+    return { icon: "💳", message: "Aggiungi la carta per usare i mesi gratis: oggi non paghi nulla e il tuo profilo torna nelle ricerche." };
   }
   if (type === "NEW_LEAD" && text(data.category)) {
     const where = text(data.city) ? ` a ${text(data.city)}` : "";

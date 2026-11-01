@@ -154,6 +154,8 @@ const selfProfessional = [
   "POST /billing/subscription/cancel",
   "POST /billing/subscription/checkout",
   "POST /billing/subscription/resume",
+  // "Torna a Base" da Plus o Pro (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
+  "POST /billing/subscription/return-to-base",
   "POST /external-jobs",
   "GET /external-jobs/me",
   "GET /professionals/me",

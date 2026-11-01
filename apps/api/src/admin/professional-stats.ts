@@ -57,7 +57,9 @@ export function professionalStatusOf(row: ProfessionalStatsRow, now: Date): Prof
 export function professionalPlanOf(row: ProfessionalStatsRow, now: Date): ProfessionalPlanKey {
   const sub = row.subscription;
   const state = subscriptionState(sub, now);
-  if (state === "TRIAL") return sub?.founderNumber ? "FOUNDER" : "TRIAL";
+  // Mesi gratis senza carta (TRIAL) o con la carta data (FOUNDER), docs/changelog/2026-10-29-offerta-mesi-gratis.md.
+  if (state === "TRIAL") return "TRIAL";
+  if (state === "ACTIVE" && sub?.trialEndsAt && sub.trialEndsAt.getTime() > now.getTime()) return "FOUNDER";
   if (state === "ACTIVE" || state === "PAST_DUE") return tierOfPlan(sub?.plan ?? "") ?? "NONE";
   return "NONE";
 }

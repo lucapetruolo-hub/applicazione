@@ -13,7 +13,7 @@ import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { OnlinePaymentsCard } from "@/components/OnlinePaymentsCard";
 import { PayoutIbanCard } from "@/components/PayoutIbanCard";
 import { ProfileMissingNotice, isProfileMissingError } from "@/components/ProfileMissingNotice";
-import { JourneyProgress, journeyCurrent, setupJourney } from "@/components/verification/SetupJourney";
+import { JourneyProgress, journeyCurrent, setupJourney, useJourneySubscription } from "@/components/verification/SetupJourney";
 
 /**
  * Scheda "Pagamenti online" dell'area Fisco e pagamenti
@@ -42,6 +42,7 @@ function OnlinePaymentsContent() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [verification, setVerification] = useState<MyVerificationStatus | null | undefined>(undefined);
+  const subscription = useJourneySubscription(token);
   const [payoutIban, setPayoutIban] = useState<PayoutIbanView | null | undefined>(undefined);
   const [ibanStepOpen, setIbanStepOpen] = useState(false);
   const [stripeError, setStripeError] = useState<string | null>(null);
@@ -112,7 +113,7 @@ function OnlinePaymentsContent() {
 
   const holderName =
     profile?.entityType === "BUSINESS" ? (profile.businessName ?? "") : [profile?.fiscalFirstName, profile?.fiscalLastName].filter(Boolean).join(" ");
-  const steps = verification ? setupJourney(verification, !!profile?.stripeChargesEnabled) : null;
+  const steps = verification && subscription !== undefined ? setupJourney(verification, !!profile?.stripeChargesEnabled, subscription) : null;
   const paymentsStep = steps?.find((step) => step.key === "payments") ?? null;
   const nextStep = steps ? journeyCurrent(steps) : null;
   const loading = isLoading || profile === undefined || verification === undefined;

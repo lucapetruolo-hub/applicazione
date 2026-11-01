@@ -47,9 +47,9 @@ describe("Professionisti in numeri (§368)", () => {
     expect(professionalStatusOf(row({ pausedAt: NOW }), NOW)).toBe("PAUSED");
   });
 
-  it("abbonamento: prova, offerta di lancio, livello pagato, nessuno", () => {
+  it("abbonamento: mesi gratis senza e con la carta, livello pagato, nessuno", () => {
     expect(professionalPlanOf(row(), NOW)).toBe("TRIAL");
-    expect(professionalPlanOf(row({ subscription: { plan: "FREE", status: "TRIALING", trialEndsAt: new Date("2027-01-01T00:00:00Z"), founderNumber: 7 } }), NOW)).toBe(
+    expect(professionalPlanOf(row({ subscription: { plan: "BASE", status: "ACTIVE", trialEndsAt: new Date("2027-01-01T00:00:00Z") } }), NOW)).toBe(
       "FOUNDER",
     );
     expect(professionalPlanOf(row({ subscription: { plan: "PLUS", status: "ACTIVE", trialEndsAt: null } }), NOW)).toBe("PLUS");

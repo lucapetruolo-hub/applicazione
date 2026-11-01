@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { freePeriodUpgradeFeeEurCents, upgradeFeeEurCents } from "@professionisti/shared";
+import { freeMonthUpgradeEurCents, upgradeFeeEurCents } from "@professionisti/shared";
 import {
   addMonthsUtc,
   countsClientsOnce,
-  founderFreeMonths,
+  freeMonthsLeftAfterCurrent,
+  freeMonthsProgress,
   hasLaunched,
   jobLimitReached,
   launchDate,
@@ -77,15 +78,18 @@ describe("account in pausa", () => {
     expect(pauseReason({ plan: "BASE", status: "CANCELED", trialEndsAt: null }, NOW)).toBe("SUBSCRIPTION_ENDED");
     expect(pauseReason(null, NOW)).toBe("TRIAL_ENDED");
   });
+  it("mesi gratis senza la carta: in pausa finché non la dà", () => {
+    expect(pauseReason({ plan: "FREE", status: "TRIALING", trialEndsAt: future }, NOW)).toBe("CARD_NEEDED");
+    expect(pauseReason({ plan: "BASE", status: "ACTIVE", trialEndsAt: future }, NOW)).toBeNull();
+  });
   it("i lavori esauriti e un pagamento non riuscito non mettono in pausa", () => {
-    expect(pauseReason({ plan: "FREE", status: "TRIALING", trialEndsAt: future }, NOW)).toBeNull();
     expect(pauseReason({ plan: "PLUS", status: "PAST_DUE", trialEndsAt: null }, NOW)).toBeNull();
   });
 });
 
 describe("lavori esauriti (§362)", () => {
-  it("mese gratuito: libero fino al 3° lavoro, al limite dal 3°", () => {
-    const row = { plan: "FREE", status: "TRIALING", trialEndsAt: future };
+  it("mese gratis con la carta: libero fino al 3° lavoro, al limite dal 3°", () => {
+    const row = { plan: "BASE", status: "ACTIVE", trialEndsAt: future };
     expect(jobLimitReached(row, 2, NOW)).toBe(false);
     expect(jobLimitReached(row, 3, NOW)).toBe(true);
   });
@@ -217,15 +221,17 @@ describe("quota di passaggio a un livello superiore (§361)", () => {
   });
 
   const base = { interval: "MONTH" as const, waitingLaunch: false, currentPeriodStart: null, currentPeriodEnd: null, now: NOW };
-  it("in prova: da Base verso Plus e Pro fino alla fine del periodo gratuito", () => {
-    const trialEndsAt = new Date(NOW.getTime() + 7 * DAY);
-    expect(upgradeQuotes({ ...base, state: "TRIAL", tier: null, trialEndsAt })).toEqual([
-      { tier: "PLUS", amountEurCents: 2027, until: trialEndsAt.toISOString() },
-      { tier: "PRO", amountEurCents: 3053, until: trialEndsAt.toISOString() },
-    ]);
+  it("nei mesi gratis, con o senza carta: il mese del livello meno Base, da oggi", () => {
+    const trialEndsAt = new Date(NOW.getTime() + 75 * DAY);
+    const quotes = [
+      { tier: "PLUS", amountEurCents: 4000, until: null },
+      { tier: "PRO", amountEurCents: 8000, until: null },
+    ];
+    expect(upgradeQuotes({ ...base, state: "TRIAL", tier: null, trialEndsAt })).toEqual(quotes);
+    expect(upgradeQuotes({ ...base, state: "ACTIVE", tier: "BASE", trialEndsAt })).toEqual(quotes);
   });
-  it("prima del lancio la prova non scorre: passaggio senza costi", () => {
-    expect(upgradeQuotes({ ...base, state: "TRIAL", tier: null, waitingLaunch: true, trialEndsAt: null }).map((q) => q.amountEurCents)).toEqual([0, 0]);
+  it("prima del lancio non si passa: non c'è limite di lavori", () => {
+    expect(upgradeQuotes({ ...base, state: "TRIAL", tier: null, waitingLaunch: true, trialEndsAt: null })).toEqual([]);
   });
   it("abbonamento pagato: periodo di Stripe fino al rinnovo; Pro e prova finita senza quote", () => {
     const start = new Date(NOW.getTime() - 23 * DAY);
@@ -238,35 +244,42 @@ describe("quota di passaggio a un livello superiore (§361)", () => {
   });
 });
 
-describe("primi 100 professionisti: 3 mesi gratis (§363)", () => {
+describe("mesi gratis dell'offerta (docs/changelog/2026-10-29-offerta-mesi-gratis.md)", () => {
   const DAY = 24 * 60 * 60 * 1000;
-  it("tre mesi dal lancio, o da oggi dopo il lancio", () => {
+  it("mesi dal lancio, o da oggi dopo il lancio", () => {
     const launch = new Date("2026-11-01T23:00:00Z");
     expect(trialEndFor(new Date("2026-10-02T10:00:00Z"), launch, 90).toISOString()).toBe("2027-01-30T23:00:00.000Z");
     expect(trialEndFor(new Date("2026-12-01T10:00:00Z"), launch, 90).toISOString()).toBe("2027-03-01T10:00:00.000Z");
+    // Offerta ferma: nessun mese gratis, fino al lancio non si paga comunque.
+    expect(trialEndFor(new Date("2026-10-02T10:00:00Z"), launch, 0).toISOString()).toBe(launch.toISOString());
   });
-  it("mese gratuito in corso per le tre caselle", () => {
+  it("mese gratis in corso per le caselle", () => {
     const end = new Date("2027-01-30T23:00:00Z");
-    const at = (days: number) => founderFreeMonths(7, end, new Date(end.getTime() - 90 * DAY + days * DAY))?.currentMonth;
+    const at = (days: number) => freeMonthsProgress(3, end, new Date(end.getTime() - 90 * DAY + days * DAY))?.currentMonth;
     expect(at(-1)).toBe(0);
     expect(at(0)).toBe(1);
     expect(at(29.9)).toBe(1);
     expect(at(30)).toBe(2);
     expect(at(65)).toBe(3);
     expect(at(90)).toBeNull();
-    expect(founderFreeMonths(7, null, NOW)).toEqual({ months: 3, currentMonth: 0 });
-    expect(founderFreeMonths(null, end, NOW)).toBeNull();
+    expect(freeMonthsProgress(3, null, NOW)).toEqual({ months: 3, currentMonth: 0 });
+    expect(freeMonthsProgress(0, end, NOW)).toBeNull();
   });
-  it("passaggio nei mesi gratis: come se Base costasse 19 €, su tutti i giorni gratuiti che restano", () => {
-    const fee = (days: number) => freePeriodUpgradeFeeEurCents({ from: "BASE", to: "PLUS", remainingMs: days * DAY });
-    expect(fee(7)).toBe(2027);
-    expect(fee(30)).toBe(5400);
-    expect(fee(75)).toBe(1000 + Math.round(4000 * 2.5 * 1.1));
-    expect(freePeriodUpgradeFeeEurCents({ from: "PRO", to: "PRO", remainingMs: 30 * DAY })).toBe(0);
+  it("passando a Plus o Pro il mese iniziato conta come usato, gli altri aspettano", () => {
+    const end = new Date(NOW.getTime() + 80 * DAY);
+    expect(freeMonthsLeftAfterCurrent(3, end, NOW)).toBe(2);
+    expect(freeMonthsLeftAfterCurrent(3, new Date(NOW.getTime() + 20 * DAY), NOW)).toBe(0);
+    expect(freeMonthsLeftAfterCurrent(3, new Date(NOW.getTime() + 300 * DAY), NOW)).toBe(3);
+    expect(freeMonthsLeftAfterCurrent(3, null, NOW)).toBe(0);
   });
-  it("con tre mesi davanti il periodo dei lavori è il mese gratuito in corso", () => {
+  it("Plus e Pro nei mesi gratis: il prezzo meno il mese Base", () => {
+    expect(freeMonthUpgradeEurCents("PLUS")).toBe(4000);
+    expect(freeMonthUpgradeEurCents("PRO")).toBe(8000);
+    expect(freeMonthUpgradeEurCents("BASE")).toBe(0);
+  });
+  it("con tre mesi davanti il periodo dei lavori è il mese gratis in corso", () => {
     const trialEndsAt = new Date(NOW.getTime() + 75 * DAY);
-    const period = usagePeriod({ plan: "FREE", status: "TRIALING", trialEndsAt, founderNumber: 3 }, NOW);
+    const period = usagePeriod({ plan: "FREE", status: "TRIALING", trialEndsAt, freeMonthsGranted: 3 }, NOW);
     expect(period.start.toISOString()).toBe(new Date(trialEndsAt.getTime() - 90 * DAY).toISOString());
     expect(period.end.toISOString()).toBe(new Date(trialEndsAt.getTime() - 60 * DAY).toISOString());
   });

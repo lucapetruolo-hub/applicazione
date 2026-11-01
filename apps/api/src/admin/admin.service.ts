@@ -2,7 +2,7 @@ import { ACTION_SHORT_LABEL, auditLabel } from "./audit-label";
 import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, type AdminSignupFunnel, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { bookingSearchWhere } from "./admin-search";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -12,6 +12,7 @@ import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service"
 import { loadNotificationOptOuts } from "../notifications/opt-outs";
 import { COUNTED_USER, countingFrom, daySinceLaunch, sinceLaunch } from "../site-counts/counted";
 import { launchDate } from "../subscriptions/subscription-rules";
+import { buildSignupFunnel, signupFunnelSql, type SignupFunnelRow } from "./signup-funnel";
 import { buildCategoryActivity, buildChurnByMonth, buildCoverage, buildProfessionalStats, buildSearchStats, professionalStatusOf } from "./professional-stats";
 
 export type AdminUserRow = {
@@ -132,6 +133,12 @@ export class AdminService {
    * (anche prima del lancio, reclutato al telefono); richieste, risposte,
    * ricerche e abbandoni solo dal lancio (docs/CHANGELOG.md §395).
    */
+  async getSignupFunnel(now = new Date()): Promise<AdminSignupFunnel> {
+    const from = countingFrom(now);
+    const rows = await this.prisma.$queryRaw<SignupFunnelRow[]>(signupFunnelSql(from, now));
+    return buildSignupFunnel(rows, from);
+  }
+
   async getProfessionalStats(params: { category?: string; city?: string }): Promise<AdminProfessionalStats> {
     const filter = professionalFilterWhere(params);
     const active: Prisma.ProfessionalProfileWhereInput = { deletedAt: null, user: { deletedAt: null } };

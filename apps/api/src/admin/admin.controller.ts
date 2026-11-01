@@ -18,12 +18,15 @@ import {
   type ResolveJobIssueInput,
   type ContentReportDecisionNoteInput,
   type ResolveContentReportInput,
+  adminQueueClaimSchema,
+  type AdminQueueClaimInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "./admin.guard";
 import { AdminService } from "./admin.service";
 import { SiteStatsService } from "./site-stats.service";
+import { AdminQueueService } from "./admin-queue.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 
 @UseGuards(JwtAuthGuard, AdminGuard)
@@ -33,7 +36,29 @@ export class AdminController {
     private readonly adminService: AdminService,
     private readonly jobIssueOutcomeService: JobIssueOutcomeService,
     private readonly siteStatsService: SiteStatsService,
+    private readonly adminQueueService: AdminQueueService,
   ) {}
+
+  /** Coda "Da fare": ogni tipo di caso solo a chi ha il ruolo per deciderlo (docs/changelog/2026-10-30-admin-riordino.md). */
+  @RequireAdminScope("ANY")
+  @Get("queue")
+  queue(@Req() req: AuthenticatedRequest) {
+    return this.adminQueueService.getQueue(req.user.userId);
+  }
+
+  @RequireAdminScope("ANY")
+  @Post("queue/claim")
+  @HttpCode(204)
+  async claimCase(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(adminQueueClaimSchema)) body: AdminQueueClaimInput): Promise<void> {
+    await this.adminQueueService.claim(req.user.userId, body.caseKey);
+  }
+
+  @RequireAdminScope("ANY")
+  @Post("queue/release")
+  @HttpCode(204)
+  async releaseCase(@Body(new ZodValidationPipe(adminQueueClaimSchema)) body: AdminQueueClaimInput): Promise<void> {
+    await this.adminQueueService.release(body.caseKey);
+  }
 
   /** Andamento del sito e consigli della settimana (docs/CHANGELOG.md §372). */
   @RequireAdminScope("ANY")
@@ -111,6 +136,13 @@ export class AdminController {
   @Get("professionals/stats")
   professionalStats(@Query("category") category?: string, @Query("city") city?: string) {
     return this.adminService.getProfessionalStats({ category, city });
+  }
+
+  /** Imbuto dell'iscrizione per settimana (docs/changelog/2026-10-30-iscrizione-carta-solida.md). */
+  @RequireAdminScope("ANY")
+  @Get("professionals/signup-funnel")
+  signupFunnel() {
+    return this.adminService.getSignupFunnel();
   }
 
   @RequireAdminScope("ANY")

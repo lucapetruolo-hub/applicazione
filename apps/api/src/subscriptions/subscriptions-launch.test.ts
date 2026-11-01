@@ -10,17 +10,27 @@ function buildService() {
   const prisma = {
     subscription: {
       upsert: vi.fn(),
+      findUnique: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
       updateMany: vi.fn().mockResolvedValue({ count: 2 }),
       update: vi.fn(),
       aggregate: vi.fn().mockResolvedValue({ _max: { founderNumber: null } }),
       count: vi.fn().mockResolvedValue(0),
     },
-    professionalProfile: { findUnique: vi.fn(), update: vi.fn() },
+    subscriptionOffer: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ id: "offer-new", ...data })),
+      update: vi.fn().mockImplementation(({ where, data }) => Promise.resolve({ id: where.id, ...data })),
+    },
+    professionalProfile: { findUnique: vi.fn(), update: vi.fn(), count: vi.fn().mockResolvedValue(0) },
+    user: { count: vi.fn().mockResolvedValue(0) },
     booking: { count: vi.fn().mockResolvedValue(0) },
   };
   const notificationsService = { notify: vi.fn() };
-  const service = new SubscriptionsService(prisma as never, notificationsService as never);
-  return { service, prisma, notificationsService };
+  const auditLogService = { record: vi.fn() };
+  const service = new SubscriptionsService(prisma as never, notificationsService as never, auditLogService as never);
+  return { service, prisma, notificationsService, auditLogService };
 }
 
 const trialEnded = {
@@ -31,19 +41,23 @@ const trialEnded = {
   subscription: { plan: "FREE", status: "TRIALING", trialEndsAt: new Date("2026-09-01T00:00:00Z") },
 };
 
+const DAY = 24 * 60 * 60 * 1000;
+
 afterEach(() => {
   delete process.env.STRIPE_SECRET_KEY;
   delete process.env.LAUNCH_DATE;
 });
 
 describe("SubscriptionsService e data di lancio", () => {
-  it("la prova di chi si iscrive prima del lancio finisce un mese dopo il lancio", async () => {
+  it("senza offerte create: 3 mesi gratis dal lancio per chi si iscrive prima", async () => {
     process.env.LAUNCH_DATE = "2026-11-02";
     const { service, prisma } = buildService();
 
     await service.ensureTrial("pro-1", new Date("2026-10-02T10:00:00Z"));
 
-    expect(prisma.subscription.upsert.mock.calls[0]![0].create.trialEndsAt.toISOString()).toBe("2026-12-01T23:00:00.000Z");
+    const create = prisma.subscription.upsert.mock.calls[0]![0].create;
+    expect(create.trialEndsAt.toISOString()).toBe("2027-01-30T23:00:00.000Z");
+    expect(create.freeMonthsGranted).toBe(3);
   });
 
   it("con Stripe acceso ma senza data di lancio nessuno va in pausa", async () => {
@@ -64,50 +78,218 @@ describe("SubscriptionsService e data di lancio", () => {
     await expect(service.syncPause("pro-1", new Date("2026-10-02T10:00:00Z"), 0)).resolves.toEqual({ reason: "TRIAL_ENDED", limitReached: false });
   });
 
-  it("al lancio allunga le prove iniziate prima, fino a un mese dopo il lancio", async () => {
-    process.env.LAUNCH_DATE = "2026-11-02";
-    const { service, prisma } = buildService();
+  it("dopo il lancio i mesi gratis senza carta mettono in pausa finché non la dà", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test";
+    process.env.LAUNCH_DATE = "2026-08-01";
+    const { service, prisma, notificationsService } = buildService();
+    prisma.professionalProfile.findUnique.mockResolvedValue({ ...trialEnded, subscription: { ...trialEnded.subscription, trialEndsAt: new Date("2026-12-01T00:00:00Z") } });
 
-    await expect(service.alignTrialsToLaunch(new Date("2026-11-03T10:00:00Z"))).resolves.toBe(4);
-    // Prima i fondatori (tre mesi dal lancio, §363), poi gli altri (un mese).
-    const founders = prisma.subscription.updateMany.mock.calls[0]![0];
-    expect(founders.where.founderNumber).toEqual({ not: null });
-    expect(founders.data.trialEndsAt.toISOString()).toBe("2027-01-30T23:00:00.000Z");
-    const others = prisma.subscription.updateMany.mock.calls[1]![0];
-    expect(others.where.status).toBe("TRIALING");
-    expect(others.where.stripeSubscriptionId).toBeNull();
-    expect(others.where.founderNumber).toBeNull();
-    expect(others.where.createdAt.lt.toISOString()).toBe("2026-11-01T23:00:00.000Z");
-    expect(others.data.trialEndsAt.toISOString()).toBe("2026-12-01T23:00:00.000Z");
+    await expect(service.syncPause("pro-1", new Date("2026-10-02T10:00:00Z"), 0)).resolves.toEqual({ reason: "CARD_NEEDED", limitReached: false });
+    expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "SUBSCRIPTION_PAUSED", { reason: "CARD_NEEDED" });
   });
 
-  it("prima del lancio non tocca le prove", async () => {
+  it("al lancio porta i mesi gratis senza carta iniziati prima alla fine giusta, secondo i mesi di ognuno", async () => {
+    process.env.LAUNCH_DATE = "2026-11-02";
+    const { service, prisma } = buildService();
+    prisma.subscription.findMany.mockResolvedValue([
+      { id: "s-3", trialEndsAt: new Date("2026-11-02T00:00:00Z"), freeMonthsGranted: 3 },
+      { id: "s-1", trialEndsAt: new Date("2026-11-02T00:00:00Z"), freeMonthsGranted: 1 },
+      { id: "s-ok", trialEndsAt: new Date("2027-02-01T00:00:00Z"), freeMonthsGranted: 3 },
+    ]);
+
+    await expect(service.alignTrialsToLaunch(new Date("2026-11-03T10:00:00Z"))).resolves.toBe(2);
+    const where = prisma.subscription.findMany.mock.calls[0]![0].where;
+    expect(where).toMatchObject({ status: "TRIALING", stripeSubscriptionId: null });
+    expect(where.createdAt.lt.toISOString()).toBe("2026-11-01T23:00:00.000Z");
+    expect(prisma.subscription.update.mock.calls.map((call) => [call[0].where.id, call[0].data.trialEndsAt.toISOString()])).toEqual([
+      ["s-3", "2027-01-30T23:00:00.000Z"],
+      ["s-1", "2026-12-01T23:00:00.000Z"],
+    ]);
+  });
+
+  it("prima del lancio non tocca i mesi gratis", async () => {
     process.env.LAUNCH_DATE = "2026-11-02";
     const { service, prisma } = buildService();
 
     await expect(service.alignTrialsToLaunch(new Date("2026-10-02T10:00:00Z"))).resolves.toBe(0);
-    expect(prisma.subscription.updateMany).not.toHaveBeenCalled();
+    expect(prisma.subscription.findMany).not.toHaveBeenCalled();
   });
 });
 
-/** Offerta di lancio (§363): 3 mesi gratis ai primi 100 professionisti. */
+/** Offerta dei mesi gratis decisa in Admin (docs/changelog/2026-10-29-offerta-mesi-gratis.md). */
+describe("SubscriptionsService e offerta dei mesi gratis", () => {
+  const now = new Date("2026-12-10T10:00:00Z");
+
+  it("offerta attiva da 1 mese: un mese gratis a chi si iscrive", async () => {
+    process.env.LAUNCH_DATE = "2026-11-02";
+    const { service, prisma } = buildService();
+    prisma.subscriptionOffer.findFirst.mockResolvedValue({ id: "offer-1", freeMonths: 1, startedAt: new Date("2026-12-01T00:00:00Z"), stoppedAt: null });
+
+    await service.ensureTrial("pro-1", now);
+
+    const create = prisma.subscription.upsert.mock.calls[0]![0].create;
+    expect(create).toMatchObject({ freeMonthsGranted: 1, offerId: "offer-1" });
+    expect(create.trialEndsAt.toISOString()).toBe("2027-01-09T10:00:00.000Z");
+  });
+
+  it("offerta fermata: nessun mese gratis per chi arriva dopo", async () => {
+    process.env.LAUNCH_DATE = "2026-11-02";
+    const { service, prisma } = buildService();
+    prisma.subscriptionOffer.findFirst.mockResolvedValue({ id: "offer-1", freeMonths: 3, startedAt: new Date(0), stoppedAt: new Date("2026-12-01T00:00:00Z") });
+
+    await service.ensureTrial("pro-1", now);
+
+    const create = prisma.subscription.upsert.mock.calls[0]![0].create;
+    expect(create.freeMonthsGranted).toBe(0);
+    expect(create.trialEndsAt.toISOString()).toBe(now.toISOString());
+  });
+
+  it("chi ha già la riga non cambia mesi", async () => {
+    const { service, prisma } = buildService();
+    prisma.subscription.findUnique.mockResolvedValue({ id: "s-1" });
+
+    await service.ensureTrial("pro-1", now);
+    expect(prisma.subscription.upsert).not.toHaveBeenCalled();
+  });
+
+  it("fermare l'offerta di partenza la scrive nello storico; una nuova ferma quella attiva", async () => {
+    const { service, prisma, auditLogService } = buildService();
+
+    await service.stopOffer("admin-1", now);
+    expect(prisma.subscriptionOffer.create.mock.calls[0]![0].data).toMatchObject({ freeMonths: 3, stoppedAt: now, stoppedByUserId: "admin-1" });
+    expect(auditLogService.record).toHaveBeenCalledWith(expect.objectContaining({ entityType: "SubscriptionOffer", newValue: "STOPPED" }));
+
+    prisma.subscriptionOffer.findFirst.mockResolvedValue({ id: "offer-2", freeMonths: 2, startedAt: now, stoppedAt: null });
+    await service.startOffer("admin-1", 1, now);
+    expect(prisma.subscriptionOffer.update.mock.calls[0]![0]).toMatchObject({ where: { id: "offer-2" }, data: { stoppedAt: now } });
+    expect(prisma.subscriptionOffer.create.mock.calls[1]![0].data).toMatchObject({ freeMonths: 1, createdByUserId: "admin-1" });
+  });
+
+  it("offerta già ferma o mesi fuori misura: errore", async () => {
+    const { service, prisma } = buildService();
+    await expect(service.startOffer("admin-1", 0, now)).rejects.toThrow("da 1 a 12");
+    prisma.subscriptionOffer.findFirst.mockResolvedValue({ id: "offer-1", freeMonths: 3, startedAt: new Date(0), stoppedAt: now });
+    await expect(service.stopOffer("admin-1", now)).rejects.toThrow("già ferma");
+  });
+
+  it("passaggio a Plus nel secondo mese gratis: un mese in attesa, periodo nuovo da oggi", async () => {
+    vi.useFakeTimers({ now, toFake: ["Date"] });
+    const { service, prisma } = buildService();
+    prisma.subscription.findUnique.mockResolvedValue({ id: "s-1", professionalProfileId: "pro-1", stripeSubscriptionId: "sub_1", status: "ACTIVE", trialEndsAt: new Date(now.getTime() + 50 * DAY), freeMonthsGranted: 3, freeMonthsWaiting: 0 });
+    prisma.professionalProfile.findUnique.mockResolvedValue(null);
+
+    await service.applyStripeSubscription({ stripeSubscriptionId: "sub_1", status: "ACTIVE", tier: "PLUS", interval: "MONTH", cancelAtPeriodEnd: false, currentPeriodStart: now, currentPeriodEnd: new Date(now.getTime() + 31 * DAY), stripeTrialEnd: null });
+
+    expect(prisma.subscription.update.mock.calls[0]![0].data).toMatchObject({ plan: "PLUS", trialEndsAt: now, freeMonthsWaiting: 1 });
+    vi.useRealTimers();
+  });
+
+  it("ritorno a Base con mesi in attesa: il nuovo giro vale quei mesi", async () => {
+    vi.useFakeTimers({ now, toFake: ["Date"] });
+    const { service, prisma } = buildService();
+    const trialEnd = new Date(now.getTime() + 60 * DAY);
+    prisma.subscription.findUnique.mockResolvedValue({ id: "s-1", professionalProfileId: "pro-1", stripeSubscriptionId: "sub_1", status: "ACTIVE", trialEndsAt: new Date(now.getTime() - 20 * DAY), freeMonthsGranted: 3, freeMonthsWaiting: 2 });
+    prisma.professionalProfile.findUnique.mockResolvedValue(null);
+
+    await service.applyStripeSubscription({ stripeSubscriptionId: "sub_1", status: "ACTIVE", tier: "BASE", interval: "MONTH", cancelAtPeriodEnd: false, currentPeriodEnd: trialEnd, stripeTrialEnd: trialEnd });
+
+    expect(prisma.subscription.update.mock.calls[0]![0].data).toMatchObject({ plan: "BASE", trialEndsAt: trialEnd, freeMonthsWaiting: 0, freeMonthsGranted: 2 });
+    vi.useRealTimers();
+  });
+});
+
+describe("carta data per l'abbonamento (docs/changelog/2026-10-30-iscrizione-carta-solida.md)", () => {
+  const now = new Date("2026-11-20T10:00:00Z");
+  const DAY = 24 * 60 * 60 * 1000;
+  const apply = (service: SubscriptionsService, status: "ACTIVE" | "PAST_DUE" | "CANCELED" | null) =>
+    service.applyStripeSubscription({ stripeSubscriptionId: "sub_1", status, tier: "BASE", interval: "MONTH", cancelAtPeriodEnd: false, currentPeriodEnd: new Date(now.getTime() + 60 * DAY), stripeTrialEnd: new Date(now.getTime() + 60 * DAY) });
+
+  it("la prima volta che l'abbonamento è in prova o attivo si segna il giorno", async () => {
+    vi.useFakeTimers({ now, toFake: ["Date"] });
+    const { service, prisma } = buildService();
+    prisma.subscription.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: "s-1", professionalProfileId: "pro-1", stripeSubscriptionId: null, status: "TRIALING", trialEndsAt: new Date(now.getTime() + 60 * DAY), cardAddedAt: null, freeMonthsWaiting: 0 });
+    prisma.professionalProfile.findUnique.mockResolvedValue(null);
+    await service.applyStripeSubscription({ professionalProfileId: "pro-1", stripeSubscriptionId: "sub_1", status: "ACTIVE", tier: "BASE", interval: "MONTH", cancelAtPeriodEnd: false, currentPeriodEnd: new Date(now.getTime() + 60 * DAY), stripeTrialEnd: new Date(now.getTime() + 60 * DAY) });
+    expect(prisma.subscription.update.mock.calls[0]![0].data.cardAddedAt).toEqual(now);
+    vi.useRealTimers();
+  });
+
+  it("alla prima carta parte la conferma dei mesi gratis con fine e importo, una volta sola", async () => {
+    vi.useFakeTimers({ now, toFake: ["Date"] });
+    const { service, prisma, notificationsService } = buildService();
+    const trialEnd = new Date(now.getTime() + 60 * DAY);
+    prisma.subscription.findUnique.mockResolvedValueOnce({ id: "s-1", professionalProfileId: "pro-1", stripeSubscriptionId: null, status: "TRIALING", trialEndsAt: trialEnd, cardAddedAt: null, freeMonthsWaiting: 0 });
+    prisma.professionalProfile.findUnique.mockResolvedValue({ userId: "u-1" });
+    await apply(service, "ACTIVE");
+    expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "SUBSCRIPTION_FREE_MONTHS_STARTED", { date: trialEnd.toISOString(), amountEurCents: 1900 });
+
+    notificationsService.notify.mockClear();
+    prisma.subscription.findUnique.mockResolvedValueOnce({ id: "s-1", professionalProfileId: "pro-1", stripeSubscriptionId: "sub_1", status: "ACTIVE", trialEndsAt: trialEnd, cardAddedAt: now, freeMonthsWaiting: 0 });
+    await apply(service, "ACTIVE");
+    expect(notificationsService.notify).not.toHaveBeenCalledWith("u-1", "SUBSCRIPTION_FREE_MONTHS_STARTED", expect.anything());
+    vi.useRealTimers();
+  });
+
+  it("non si riscrive dopo, né con un abbonamento non pagato", async () => {
+    const { service, prisma } = buildService();
+    prisma.subscription.findUnique.mockResolvedValue({ id: "s-1", professionalProfileId: "pro-1", stripeSubscriptionId: "sub_1", status: "ACTIVE", trialEndsAt: null, cardAddedAt: new Date("2026-11-01T10:00:00Z"), freeMonthsWaiting: 0 });
+    prisma.professionalProfile.findUnique.mockResolvedValue(null);
+    await apply(service, "ACTIVE");
+    expect(prisma.subscription.update.mock.calls[0]![0].data.cardAddedAt).toBeUndefined();
+
+    prisma.subscription.findUnique.mockResolvedValue({ id: "s-1", professionalProfileId: "pro-1", stripeSubscriptionId: "sub_1", status: "TRIALING", trialEndsAt: null, cardAddedAt: null, freeMonthsWaiting: 0 });
+    await apply(service, null);
+    expect(prisma.subscription.update.mock.calls[1]![0].data.cardAddedAt).toBeUndefined();
+  });
+});
+
+describe("avviso del primo addebito dopo i mesi gratis (regole Visa e Mastercard)", () => {
+  const now = new Date("2026-11-20T10:00:00Z");
+  const inSixDays = new Date(now.getTime() + 6 * DAY);
+  const row = (trialEndsAt: Date | null) => ({
+    id: "s-1",
+    plan: "BASE",
+    billingInterval: "MONTH",
+    status: "ACTIVE",
+    stripeSubscriptionId: "sub_1",
+    cancelAtPeriodEnd: false,
+    currentPeriodEnd: inSixDays,
+    trialEndsAt,
+    periodNoticeFor: null,
+    professionalProfile: { userId: "u-1" },
+  });
+
+  it("arriva 7 giorni prima della fine dei mesi gratis, con importo e data", async () => {
+    const { service, prisma, notificationsService } = buildService();
+    prisma.subscription.findMany.mockResolvedValue([row(inSixDays)]);
+    await service.runPeriodNotices(now);
+    expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "SUBSCRIPTION_RENEWING", expect.objectContaining({ freeMonthsEnding: true, amountEurCents: 1900, date: inSixDays.toISOString() }));
+  });
+
+  it("un rinnovo normale resta a 3 giorni", async () => {
+    const { service, prisma, notificationsService } = buildService();
+    prisma.subscription.findMany.mockResolvedValue([row(null)]);
+    await service.runPeriodNotices(now);
+    expect(notificationsService.notify).not.toHaveBeenCalled();
+  });
+});
+
+/** Posti numerati dell'offerta di lancio (§363): restano per la scritta "100 posti". */
 describe("SubscriptionsService e primi 100 professionisti", () => {
   const trialing = { id: "s-1", status: "TRIALING", stripeSubscriptionId: null, founderNumber: null, trialEndsAt: new Date("2026-12-01T23:00:00Z") };
   const profile = (overrides: Record<string, unknown> = {}) => ({ isDemo: false, deletedAt: null, invitePendingAt: null, subscription: trialing, user: { testAccountAt: null }, ...overrides });
 
-  it("prima del lancio dà il posto successivo e tre mesi dal lancio", async () => {
+  it("dà il posto successivo senza toccare i mesi gratis (li dà l'offerta)", async () => {
     process.env.LAUNCH_DATE = "2026-11-02";
     const { service, prisma } = buildService();
     prisma.professionalProfile.findUnique.mockResolvedValue(profile());
     prisma.subscription.aggregate.mockResolvedValue({ _max: { founderNumber: 41 } });
 
     await expect(service.claimFounderSpot("pro-1", new Date("2026-10-02T10:00:00Z"))).resolves.toBe(true);
-    const data = prisma.subscription.update.mock.calls[0]![0].data;
-    expect(data.founderNumber).toBe(42);
-    expect(data.trialEndsAt.toISOString()).toBe("2027-01-30T23:00:00.000Z");
+    expect(prisma.subscription.update.mock.calls[0]![0].data).toEqual({ founderNumber: 42 });
   });
 
-  it("finiti i 100 posti resta il mese gratuito", async () => {
+  it("finiti i 100 posti nessun numero", async () => {
     const { service, prisma } = buildService();
     prisma.professionalProfile.findUnique.mockResolvedValue(profile());
     prisma.subscription.count.mockResolvedValue(100);
@@ -117,9 +299,9 @@ describe("SubscriptionsService e primi 100 professionisti", () => {
     expect(prisma.subscription.update).not.toHaveBeenCalled();
   });
 
-  it("niente posto ai profili di prova, a quelli da confermare e a chi ha già un abbonamento", async () => {
+  it("niente posto ai profili di prova, a quelli da confermare e a chi ha finito i mesi gratis", async () => {
     const { service, prisma } = buildService();
-    for (const p of [profile({ isDemo: true }), profile({ user: { testAccountAt: new Date() } }), profile({ invitePendingAt: new Date() }), profile({ subscription: { ...trialing, stripeSubscriptionId: "sub_1" } })]) {
+    for (const p of [profile({ isDemo: true }), profile({ user: { testAccountAt: new Date() } }), profile({ invitePendingAt: new Date() }), profile({ subscription: { ...trialing, status: "CANCELED" } })]) {
       prisma.professionalProfile.findUnique.mockResolvedValueOnce(p);
       await expect(service.claimFounderSpot("pro-1")).resolves.toBe(false);
     }
@@ -148,7 +330,7 @@ describe("SubscriptionsService e primi 100 professionisti", () => {
     const { service, prisma } = buildService();
     prisma.subscription.count.mockResolvedValue(37);
 
-    await expect(service.founderSpots()).resolves.toEqual({ total: 100, left: 63 });
+    await expect(service.founderSpots()).resolves.toEqual({ total: 100, left: 63, offerMonths: 3 });
   });
 
   it("un posto liberato da un account di prova torna disponibile (§395)", async () => {

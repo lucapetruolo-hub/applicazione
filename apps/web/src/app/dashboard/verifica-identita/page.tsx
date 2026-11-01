@@ -7,7 +7,7 @@ import { biometricConsentText, type MyVerificationStatus } from "@professionisti
 import { Button, Icon, Section, Surface, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { JourneyProgress, PAYMENTS_ANCHOR, setupJourney } from "@/components/verification/SetupJourney";
+import { JourneyProgress, PAYMENTS_ANCHOR, setupJourney, useJourneySubscription } from "@/components/verification/SetupJourney";
 
 /** Mentre si aspetta l'esito la pagina si aggiorna da sola, per al massimo 3 minuti. */
 const POLL_MS = 4000;
@@ -40,6 +40,7 @@ function VerificaIdentitaContent() {
   // Inizio dei controlli dopo il ritorno da Didit, segnato al primo controllo.
   const pollStartedAt = useRef<number | null>(null);
   const [stripeVerified, setStripeVerified] = useState(false);
+  const subscription = useJourneySubscription(token);
 
   useEffect(() => {
     if (!token) return;
@@ -128,7 +129,7 @@ function VerificaIdentitaContent() {
   return (
     <Section title="Verifica identità" maxWidth={760}>
       <YStack gap="$5">
-        <JourneyProgress steps={setupJourney(status, stripeVerified)} here="identity" />
+        {subscription !== undefined ? <JourneyProgress steps={setupJourney(status, stripeVerified, subscription)} here="identity" /> : null}
         <ActionPanel
           status={status}
           waiting={waiting}

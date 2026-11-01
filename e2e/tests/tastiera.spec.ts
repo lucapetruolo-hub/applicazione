@@ -36,6 +36,10 @@ async function anonymousPage(browser: Browser, device: typeof PHONE): Promise<Pa
 async function seriousIssues(page: Page): Promise<string[]> {
   // Un pulsante a metà di una transizione di colore (Tamagui anima "all")
   // darebbe un contrasto sbagliato: si aspetta che le transizioni finiscano.
+  // Nella CI una transizione partiva anche dopo l'attesa (testo #fafcfb su
+  // #188755 sul pulsante Accedi, a metà strada): si tolgono del tutto, così
+  // axe legge sempre i colori finali.
+  await page.addStyleTag({ content: "*, *::before, *::after { transition: none !important; animation: none !important; }" });
   await page.waitForFunction(() => document.getAnimations().every((a) => !(a instanceof CSSTransition) || a.playState !== "running"));
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   return results.violations
