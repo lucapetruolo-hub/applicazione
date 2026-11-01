@@ -133,3 +133,21 @@ Test nuovi: `issue-refund-agreement.test.ts`, `refund-decision.test.ts`,
 `job-issue-chat-reply.test.ts`, `online-held-limit.test.ts`, `reopen-request.test.ts` e casi in `online-limit-completion`,
 `destination-charges`, `direct-charges`, `online-payments`. Tutta la suite
 API, typecheck del sito e `pnpm lint` passano.
+
+### Recensioni senza risposta (migliorie del 1/11)
+
+Richiesta di Luca: il numero delle recensioni senza risposta non va nel menu
+generale (creerebbe confusione), ma si vede quando il professionista apre la
+pagina Recensioni; e un promemoria per le recensioni critiche.
+
+- `/dashboard/recensioni`: riquadro in cima "Hai N recensioni senza risposta",
+  con quante hanno 1 o 2 stelle e "Mostra solo queste". Nessun numero nel menu.
+- Promemoria `REVIEW_REPLY_REMINDER` (sito + email, voce "Nuove recensioni",
+  spegnibile): ogni mattina alle 10 per le recensioni da 1 o 2 stelle senza
+  risposta da 3 giorni (dalla data dell'aggiornamento se il cliente l'ha
+  aggiornata), uno solo per recensione (`Review.replyReminderSentAt`,
+  migrazione `20261101120000_promemoria_risposta_recensioni`), un solo avviso
+  per professionista anche con più recensioni, mai per quelle nascoste, più
+  vecchie di 30 giorni o di profili eliminati o sospesi
+  (`apps/api/src/reviews/review-reply-reminders.service.ts`).
+- Prove in `apps/api/src/reviews/review-reply-reminders.test.ts`.

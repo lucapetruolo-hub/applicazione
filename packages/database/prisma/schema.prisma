@@ -1524,6 +1524,9 @@ model Review {
   // Aggiornata dal cliente una sola volta dopo una segnalazione a lavoro
   // chiuso finita senza accordo (stessa decisione).
   updatedAfterIssueAt   DateTime?
+  // Promemoria al professionista per una recensione da 1-2 stelle ancora
+  // senza risposta dopo 3 giorni, uno solo (decisione di Luca del 30/10/2026).
+  replyReminderSentAt   DateTime?
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 

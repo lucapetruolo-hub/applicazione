@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { ReceivedReview } from "@professionisti/api-client";
-import { Button, Chip, EmptyState, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Button, Chip, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
@@ -78,7 +78,9 @@ export default function DashboardRecensioniPage() {
 
   const visible = reviews?.filter((review) => !review.hidden) ?? [];
   const average = visible.length > 0 ? visible.reduce((sum, review) => sum + review.rating, 0) / visible.length : null;
-  const unanswered = reviews?.filter((review) => !review.professionalReply && !review.hidden).length ?? 0;
+  const unansweredList = reviews?.filter((review) => !review.professionalReply && !review.hidden) ?? [];
+  const unanswered = unansweredList.length;
+  const unansweredLow = unansweredList.filter((review) => review.rating <= 2).length;
   const shown = onlyUnanswered ? (reviews ?? []).filter((review) => !review.professionalReply && !review.hidden) : (reviews ?? []);
 
   return (
@@ -127,6 +129,23 @@ export default function DashboardRecensioniPage() {
                 </Chip>
               </XStack>
             </XStack>
+
+            {/* Il numero sta qui e non nel menu (decisione di Luca del 30/10/2026): lo vede chi apre la pagina. */}
+            {unanswered > 0 && !onlyUnanswered ? (
+              <Surface borderRadius={radiusDoc} padding="$4" gap="$2" backgroundColor={brand.ottoneVelo}>
+                <Text fontWeight="700" color={brand.grafite}>
+                  {unanswered === 1 ? "Hai 1 recensione senza risposta" : `Hai ${unanswered} recensioni senza risposta`}
+                </Text>
+                {unansweredLow > 0 ? (
+                  <Text color={brand.grafite}>
+                    {unansweredLow === 1 ? "Una ha 1 o 2 stelle" : `${unansweredLow} hanno 1 o 2 stelle`}: comincia da lì, una risposta calma conta molto per chi legge.
+                  </Text>
+                ) : null}
+                <Text fontWeight="700" color={brand.cianografiaScuro} cursor="pointer" alignSelf="flex-start" accessibilityRole="button" onPress={() => setOnlyUnanswered(true)}>
+                  Mostra solo queste
+                </Text>
+              </Surface>
+            ) : null}
 
             {shown.length === 0 ? <Text color={brand.grafite70}>Hai risposto a tutte le recensioni.</Text> : null}
 

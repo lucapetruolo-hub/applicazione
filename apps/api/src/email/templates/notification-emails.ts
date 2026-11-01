@@ -691,6 +691,25 @@ const BUILDERS: Record<string, Builder> = {
         : { label: "Leggi e rispondi", url: `${frontendUrl()}/dashboard/recensioni${str(payload.reviewId) ? `#recensione-${str(payload.reviewId)}` : ""}` },
   }),
 
+  // Al professionista: recensione da 1-2 stelle senza risposta da 3 giorni,
+  // un promemoria solo (docs/changelog/2026-10-30-collaudo-soldi-online.md).
+  REVIEW_REPLY_REMINDER: (payload, ctx) => {
+    const count = typeof payload.count === "number" && payload.count > 1 ? payload.count : 1;
+    return {
+      kind: "notification",
+      subject: count > 1 ? `${count} recensioni critiche aspettano una tua risposta` : "Una recensione critica aspetta una tua risposta",
+      greeting: ctx.name,
+      title: count > 1 ? "Recensioni senza risposta" : "Recensione senza risposta",
+      paragraphs: [
+        count > 1
+          ? `Da qualche giorno hai **${count} recensioni con 1 o 2 stelle** senza risposta.`
+          : `Da qualche giorno la recensione con 1 o 2 stelle per **${job(ctx)}** è senza risposta.`,
+        "Chi sceglie un professionista legge soprattutto come risponde alle critiche: bastano due righe calme, per ringraziare o spiegare com'è andata.",
+      ],
+      cta: { label: "Rispondi", url: `${frontendUrl()}/dashboard/recensioni${count === 1 && str(payload.reviewId) ? `#recensione-${str(payload.reviewId)}` : ""}` },
+    };
+  },
+
   // Al cliente: risposta del professionista alla sua recensione (docs/changelog/2026-10-30-collaudo-soldi-online.md).
   REVIEW_REPLIED: (payload, ctx) => ({
     kind: "notification",

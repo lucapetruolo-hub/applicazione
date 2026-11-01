@@ -172,7 +172,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
     return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}` : "/le-mie-richieste?tab=lavori";
   }
   // Recensioni: il professionista risponde dalla sua pagina Recensioni, il cliente legge la risposta tra le sue.
-  if (type === "NEW_REVIEW") {
+  if (type === "NEW_REVIEW" || type === "REVIEW_REPLY_REMINDER") {
     const reviewId = getPayloadValue(payload, "reviewId");
     return `/dashboard/recensioni${reviewId ? `#recensione-${reviewId}` : ""}`;
   }
