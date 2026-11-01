@@ -115,3 +115,11 @@ sviluppo (CLI di React Native ed Expo, ESLint, CLI di Nest). minimatch 3 non
 ha una versione corretta ed è solo in ESLint (jsx-a11y) e fork-ts-checker:
 eccezione con il motivo in `osv-scanner.toml`. Verificati lint, build
 dell'API ed `expo export` di Android.
+
+**Prove legate al calendario** (rosse su questa PR dal 31/10 e dal 1/11, non
+causate da lei): la prova C2 dei tempi dell'agenda chiudeva venerdì 30/10 e il
+server mostra solo i giorni chiusi da oggi in poi, ora chiude il venerdì della
+settimana prossima. E un difetto vero dell'agenda sul telefono: la domenica,
+aprendo un appuntamento da un link ("Vedi in agenda", `?booking=`), la
+Settimana automatica portava alla settimana dopo, lontano dall'appuntamento;
+ora con un appuntamento aperto dal link non scatta.
