@@ -160,3 +160,11 @@ sito, app o API. joi passa alla 17.13.9 (stessa versione principale, regola
 in `pnpm-workspace.yaml`). glob e minimatch sono corretti solo nelle versioni
 principali nuove (14 e 11), che cambiano il modo di importarli e
 romperebbero ESLint: decide Luca.
+
+### Prova "C2 chiudo venerdì" con la data vera (1/11)
+
+La prova dei tempi dell'agenda chiudeva venerdì 30 ottobre con l'orologio
+del browser fermo al 26/10, ma il server mostra solo i giorni chiusi da oggi
+in poi con la sua ora vera: dal 31/10 il giorno risultava passato e la prova
+falliva anche sul ramo principale. Ora chiude il venerdì della settimana
+prossima rispetto alla data vera (`e2e/tests/tempi-compiti.spec.ts`).

@@ -58,8 +58,22 @@ test("C1 stasera so dove devo andare domani", async ({ page }) => {
   done("C1 Stasera so dove devo andare domani", log);
 });
 
+/**
+ * Il lunedì della settimana prossima rispetto all'ora vera: il server mostra
+ * solo i giorni chiusi da oggi in poi (ora del server, che le prove non
+ * spostano), quindi il venerdì da chiudere deve essere ancora futuro.
+ */
+function nextMonday(): Date {
+  const date = new Date();
+  date.setUTCHours(8, 0, 0, 0);
+  date.setUTCDate(date.getUTCDate() + ((8 - date.getUTCDay()) % 7 || 7));
+  return date;
+}
+
 test("C2 chiudo un giorno (venerdì) per un impegno", async ({ page }) => {
-  await page.clock.setFixedTime(new Date("2026-10-26T08:00:00Z"));
+  const monday = nextMonday();
+  const friday = new Date(monday.getTime() + 4 * 24 * 60 * 60_000).getUTCDate();
+  await page.clock.setFixedTime(monday);
   const log: Log = { ops: [], waitMs: 0 };
   await openAgenda(page, log);
   log.ops.push("M", "T");
@@ -68,13 +82,13 @@ test("C2 chiudo un giorno (venerdì) per un impegno", async ({ page }) => {
   log.ops.push("S", "S", "M");
   const section = page.getByRole("heading", { name: "Giorno per giorno" }).locator("xpath=ancestor::div[2]");
   await section.scrollIntoViewIfNeeded();
-  log.ops.push("T"); // venerdì 30 nella striscia
-  await section.getByRole("group", { name: "Giorni della settimana" }).getByRole("button", { name: /30/ }).click();
-  await expect(section.getByRole("button", { name: /30/, pressed: true })).toBeVisible();
+  log.ops.push("T"); // il venerdì nella striscia
+  await section.getByRole("group", { name: "Giorni della settimana" }).getByRole("button", { name: new RegExp(`\\b${friday}\\b`) }).click();
+  await expect(section.getByRole("button", { name: new RegExp(`\\b${friday}\\b`), pressed: true })).toBeVisible();
   log.ops.push("M", "T");
   await timed(log, async () => {
-    await section.getByRole("button", { name: "Chiudi venerdì 30", exact: true }).click();
-    await expect(section.getByRole("button", { name: "Riapri venerdì 30", exact: true })).toBeVisible();
+    await section.getByRole("button", { name: `Chiudi venerdì ${friday}`, exact: true }).click();
+    await expect(section.getByRole("button", { name: `Riapri venerdì ${friday}`, exact: true })).toBeVisible();
   });
   done("C2 Chiudo venerdì", log);
 });
