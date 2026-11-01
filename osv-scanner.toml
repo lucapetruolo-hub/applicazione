@@ -33,3 +33,15 @@ version = "4.3.1"
 ecosystem = "npm"
 vulnerability.ignore = true
 reason = "Nessuna versione corretta; unisce solo opzioni fisse (html-to-text) e strumenti di sviluppo, mai dati delle persone"
+
+# minimatch 3 non ha una versione corretta di GHSA-g3hv-75wg-m249 (la prima è
+# la 11, con un'altra API). Lo usano solo strumenti di sviluppo: le regole di
+# accessibilità di ESLint (eslint-plugin-jsx-a11y) e il controllo dei tipi del
+# build di Nest (fork-ts-checker), con schemi di file scritti da noi, mai dati
+# delle persone. Le versioni 10 sono passate alla 11 in pnpm-workspace.yaml.
+[[PackageOverrides]]
+name = "minimatch"
+version = "3.1.5"
+ecosystem = "npm"
+vulnerability.ignore = true
+reason = "Nessuna versione 3 corretta; solo ESLint jsx-a11y e fork-ts-checker, schemi di file nostri"
