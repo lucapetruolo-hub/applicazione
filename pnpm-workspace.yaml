@@ -38,3 +38,6 @@ overrides:
   "postcss@<8.5.23": "^8.5.31"
   "deepmerge-ts@<8": "^8.0.2"
   "fast-xml-parser@<5.7.0": "^5.11.2"
+  # GHSA-4528-x5fx-h6hg (docs/changelog/2026-10-30-collaudo-soldi-online.md): joi
+  # negli strumenti a riga di comando di React Native, stessa versione 17.
+  "joi@>=17.1.1 <17.13.9": "^17.13.9"

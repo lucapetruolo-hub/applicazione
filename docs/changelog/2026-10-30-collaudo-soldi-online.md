@@ -151,3 +151,12 @@ pagina Recensioni; e un promemoria per le recensioni critiche.
   vecchie di 30 giorni o di profili eliminati o sospesi
   (`apps/api/src/reviews/review-reply-reminders.service.ts`).
 - Prove in `apps/api/src/reviews/review-reply-reminders.test.ts`.
+
+### Falle nuove di joi, glob e minimatch (1/11)
+
+Il 30/10 sono uscite tre segnalazioni su pacchetti usati solo dagli strumenti
+di sviluppo (riga di comando di Expo, React Native e NestJS, ESLint), non da
+sito, app o API. joi passa alla 17.13.9 (stessa versione principale, regola
+in `pnpm-workspace.yaml`). glob e minimatch sono corretti solo nelle versioni
+principali nuove (14 e 11), che cambiano il modo di importarli e
+romperebbero ESLint: decide Luca.

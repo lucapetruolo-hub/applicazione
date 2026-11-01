@@ -17,6 +17,7 @@ overrides:
   postcss@<8.5.23: ^8.5.31
   deepmerge-ts@<8: ^8.0.2
   fast-xml-parser@<5.7.0: ^5.11.2
+  joi@>=17.1.1 <17.13.9: ^17.13.9
 
 importers:
 
@@ -5161,8 +5162,8 @@ packages:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
 
-  joi@17.13.8:
-    resolution: {integrity: sha512-iPKOGmiRw1jxf/JOPwxmCcUQAOdF359mdzYiP2DJ+TMX0YK2zjK3D+zYOaGjpumWxOFF/l2xVWjRVK5bGSLdEw==}
+  joi@17.13.9:
+    resolution: {integrity: sha512-llFCT2rVtfwgBCaIqxtjim+iHqrgss4ONiGSYiiGH9jnjWq90ppSRffqmqKvwpa8W+YfILyQV6XyGcegXX2T4g==}
 
   jpeg-js@0.4.4:
     resolution: {integrity: sha512-WZzeDOEtTOBK4Mdsar0IqEU5sMr3vSV2RqkAIzUEV2BHnUfKGyswWFPFwK5EeDo93K3FohSHbLAjj0s1Wzd+dg==}
@@ -9296,7 +9297,7 @@ snapshots:
       cosmiconfig: 5.2.1
       deepmerge: 4.3.1
       fast-glob: 3.3.3
-      joi: 17.13.8
+      joi: 17.13.9
     transitivePeerDependencies:
       - encoding
     optional: true
@@ -9409,7 +9410,7 @@ snapshots:
 
   '@react-native-community/cli-types@13.6.9':
     dependencies:
-      joi: 17.13.8
+      joi: 17.13.9
     optional: true
 
   '@react-native-community/cli@13.6.9':
@@ -13233,7 +13234,7 @@ snapshots:
 
   jiti@2.7.0: {}
 
-  joi@17.13.8:
+  joi@17.13.9:
     dependencies:
       '@hapi/hoek': 9.3.0
       '@hapi/topo': 5.1.0
