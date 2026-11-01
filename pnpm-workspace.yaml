@@ -25,9 +25,6 @@ peerDependencyRules:
 # usa fissa una versione vecchia: postcss in Next.js (prepara i CSS nella
 # build), deepmerge-ts nella configurazione di Prisma, fast-xml-parser negli
 # strumenti di React Native per Android. Stessa API, solo versioni nuove.
-# joi, glob e minimatch (docs/changelog/2026-11-01-falle-glob-joi-minimatch.md):
-# falle pubblicate il 30/10, solo in strumenti di sviluppo (CLI di Expo, React
-# Native e NestJS, ESLint).
 overrides:
   react: "19.3.0"
   react-dom: "19.3.0"
@@ -41,6 +38,3 @@ overrides:
   "postcss@<8.5.23": "^8.5.31"
   "deepmerge-ts@<8": "^8.0.2"
   "fast-xml-parser@<5.7.0": "^5.11.2"
-  "joi@>=17.1.1 <17.13.9": "^17.13.9"
-  "glob@>=13 <14.0.2": "^14.0.2"
-  "minimatch@>=10 <11.0.1": "^11.0.1"
