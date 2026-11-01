@@ -7,6 +7,7 @@ import type { AdminRoleName, AdminUserDetail, AdminUserReview } from "@professio
 import {
   ADMIN_ROLE_DESCRIPTION,
   ADMIN_ROLE_LABEL,
+  ADMIN_SIGNAL_ADVICE_LEVEL_LABEL,
   ADMIN_USER_SIGNAL_LABEL,
   CONTENT_REPORT_REASONS,
   CONTENT_REPORT_TARGET_LABEL,
@@ -16,6 +17,7 @@ import {
   PROFESSIONAL_STATUS_ONE_LABEL,
   adminCan,
   adminRolesLabel,
+  isSharedSignal,
   moderationActionAdminLabel,
   type ContentReportReasonCode,
   type ModerationGroundCode,
@@ -23,7 +25,7 @@ import {
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
+import { ADVICE_TONE, AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
 
@@ -149,7 +151,7 @@ function UserDetail() {
             {detail.signals.map((signal, index) => (
               <li key={`${signal.kind}-${index}`}>
                 <strong>{ADMIN_USER_SIGNAL_LABEL[signal.kind]}</strong>
-                {signal.others.length > 0 ? (
+                {isSharedSignal(signal.kind) && signal.others.length > 0 ? (
                   <>
                     {": anche "}
                     {signal.others.map((other, i) => (
@@ -165,8 +167,21 @@ function UserDetail() {
               </li>
             ))}
           </ul>
+          {detail.advice ? (
+            <XStack gap="$2" alignItems="center" flexWrap="wrap">
+              <AdminPill tone={ADVICE_TONE[detail.advice.level]}>{ADMIN_SIGNAL_ADVICE_LEVEL_LABEL[detail.advice.level]}</AdminPill>
+              <Text color={brand.grafite} flexShrink={1}>
+                {detail.advice.text}
+              </Text>
+              {detail.advice.level !== "BASSA" && tab !== detail.advice.tab ? (
+                <button type="button" className="admin-chip-button" onClick={() => setTab(detail.advice!.tab)}>
+                  Apri {TABS.find((t) => t.key === detail.advice!.tab)?.label ?? "la scheda"}
+                </button>
+              ) : null}
+            </XStack>
+          ) : null}
           <Text fontSize={13} color={brand.grafite70}>
-            Da soli non provano niente: guardali insieme alle recensioni e ai lavori prima di decidere.
+            Da soli non provano niente: guardali insieme alle recensioni e ai lavori prima di decidere. Controllo di ogni mattina alle 7.
           </Text>
         </section>
       ) : null}

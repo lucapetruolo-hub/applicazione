@@ -54,7 +54,8 @@ import type {
   ProfessionalStats,
   ProfessionalStatusKey,
   AdminUserSignal,
-  AdminSuspiciousUser,
+  AdminSuspiciousUsers,
+  AdminSignalAdvice,
   AdminModerateInput,
   NotificationPreferences,
   ProfessionalLead,
@@ -452,6 +453,8 @@ export type AdminUserDetail = {
     reportsReceived: number;
   };
   signals: AdminUserSignal[];
+  /** Cosa conviene fare, dal controllo del mattino; `null` se nessun segnale. */
+  advice: AdminSignalAdvice | null;
   requests: { id: string; categoryLabel: string; city: string; description: string; status: string; hidden: boolean; createdAt: string }[];
   jobs: {
     id: string;
@@ -2052,7 +2055,11 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       request<{ id: string }>(`/admin/users/${id}/moderate`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
 
     adminSuspiciousUsers: (token: string) =>
-      request<AdminSuspiciousUser[]>("/admin/suspicious-users", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+      request<AdminSuspiciousUsers>("/admin/suspicious-users", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** "Controlla ora": rifà il controllo degli account sospetti e restituisce l'elenco aggiornato. */
+    adminCheckSuspiciousUsers: (token: string) =>
+      request<AdminSuspiciousUsers>("/admin/suspicious-users/check", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     adminReactivateUser: (token: string, id: string, note: string) =>
       request<{ id: string }>(`/admin/users/${id}/reactivate`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ note }) }),

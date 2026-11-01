@@ -2878,6 +2878,30 @@ model AdminCaseClaim {
   @@map("admin_case_claims")
 }
 
+// Account sospetti calcolati dal controllo del mattino
+// (docs/changelog/2026-10-30-admin-persone.md): segnali e consiglio salvati,
+// le pagine admin leggono questi invece di ricalcolare tutto a ogni apertura.
+// Una riga per account con almeno un segnale; sparisce quando non ne ha più.
+model SuspiciousAccount {
+  userId      String    @id
+  // AdminUserSignal[] di packages/shared/src/adminSignals.ts.
+  signals     Json
+  firstSeenAt DateTime  @default(now())
+  checkedAt   DateTime
+  // Avviso agli admin già mandato per questo account.
+  notifiedAt  DateTime?
+
+  @@map("suspicious_accounts")
+}
+
+// Quando è stato fatto l'ultimo controllo degli account sospetti (una riga sola).
+model SuspiciousAccountsCheck {
+  id        String   @id @default("ultimo")
+  checkedAt DateTime
+
+  @@map("suspicious_accounts_checks")
+}
+
 // ---------------------------------------------------------------------------
 // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164)
 // ---------------------------------------------------------------------------

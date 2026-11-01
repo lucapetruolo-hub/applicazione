@@ -8,7 +8,8 @@ import { testToken } from "../fixtures/preventivi";
  * Persone in Admin (docs/changelog/2026-10-30-admin-persone.md): ricerca con
  * nome e cognome, account chiuso ritrovato con l'email esatta, recensione
  * nascosta con il motivo e rimessa visibile, profilo tolto dalla ricerca
- * senza sospendere l'account, segnali da controllare e "Account sospetti".
+ * senza sospendere l'account, segnali da controllare e "Account sospetti"
+ * con cosa fare in cima e "Controlla ora".
  */
 const prisma = new PrismaClient();
 const stamp = Date.now();
@@ -45,7 +46,9 @@ test.beforeAll(async () => {
     data: { clientId: twin.id, categoryId: category.id, description: "Rubinetto che gocciola.", city: "Latina", recipientPhone: phone.replace(/\s/g, "") },
   });
 
-  const pro = await user({ role: "PROFESSIONAL", key: "pro-persone", name: "Ugo", surname: "Tubi" });
+  // Lo stesso telefono anche sul professionista, scritto senza prefisso (il telefono è unico per account):
+  // la recensione di Vera è tra due account con gli stessi dati.
+  const pro = await user({ role: "PROFESSIONAL", key: "pro-persone", name: "Ugo", surname: "Tubi", phone: phone.replace("+39 ", "").replace(/\s/g, "") });
   ids.pro = pro.id;
   const profile = await prisma.professionalProfile.create({
     data: { userId: pro.id, categoryId: category.id, businessName: `Idraulica Tubi ${stamp}`, city: "Latina", latitude: 41.4677, longitude: 12.9036 },
@@ -94,11 +97,33 @@ async function adminPage(browser: Browser, isMobile: boolean) {
 }
 
 test("Persone: ricerca, account chiuso, recensione nascosta e rimessa, profilo fuori dalla ricerca, segnali", async ({ browser }, testInfo) => {
-  test.setTimeout(90_000);
+  test.setTimeout(150_000);
   const isMobile = testInfo.project.name === "telefono-italia";
   const { context, page } = await adminPage(browser, isMobile);
   const search = page.getByRole("textbox", { name: "Cerca utenti" });
   const rows = page.locator("table.admin-table tbody tr");
+
+  // Account sospetti: "Controlla ora" e, in cima, cosa fare senza aprire le schede.
+  await page.goto("/admin/account-sospetti");
+  await expect(page.getByRole("heading", { name: "Account sospetti" })).toBeVisible();
+  await page.getByRole("button", { name: "Controlla ora" }).click();
+  await expect(page.getByText(/Ultimo controllo:/)).toBeVisible();
+  const todo = page.getByRole("region", { name: "Cosa fare" });
+  // Per persona: anche il consiglio sul professionista nomina Vera.
+  const veraTodo = todo.getByRole("listitem").filter({ has: page.getByRole("link", { name: `Vera Russo${stamp}` }) });
+  await expect(veraTodo.getByText("Da fare subito")).toBeVisible();
+  await expect(veraTodo.getByText(`Nascondi la sua recensione a Idraulica Tubi ${stamp}`)).toBeVisible();
+  await expect(todo.getByRole("link", { name: `Idraulica Tubi ${stamp}` })).toBeVisible();
+  // Gina ha solo lo stesso telefono di un cliente e del professionista: nessuna azione, solo nella tabella.
+  await expect(todo.getByRole("link", { name: `Gina Russo${stamp}` })).toHaveCount(0);
+  await expect(rows.filter({ hasText: `Gina Russo${stamp}` }).getByText("Nessuna azione", { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  const axeTodo = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+  expect(axeTodo.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+  // Il link porta dritto alla scheda giusta.
+  await veraTodo.getByRole("link", { name: `Vera Russo${stamp}` }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/utenti/${ids.client}\\?scheda=recensioni`));
+  await expect(rows.filter({ hasText: `Bravissimo ${stamp}` })).toBeVisible();
 
   // Nome e cognome insieme.
   await page.goto("/admin/utenti");
@@ -116,6 +141,7 @@ test("Persone: ricerca, account chiuso, recensione nascosta e rimessa, profilo f
   await expect(signals.getByText("Stesso telefono di un altro account")).toBeVisible();
   await expect(signals.getByText("Recensione scritta poco dopo l'iscrizione")).toBeVisible();
   await expect(signals.getByRole("link", { name: `Gina Russo${stamp}` })).toBeVisible();
+  await expect(signals.getByText(`Nascondi la sua recensione a Idraulica Tubi ${stamp}`)).toBeVisible();
 
   // Lavori con lo stato in italiano.
   await page.getByRole("button", { name: /^Lavori/ }).click();
@@ -171,12 +197,6 @@ test("Persone: ricerca, account chiuso, recensione nascosta e rimessa, profilo f
   await show.getByLabel("Motivo").fill("Ha corretto il profilo.");
   await show.getByRole("button", { name: "Rimetti nella ricerca" }).click();
   await expect(page.getByText("Nella ricerca").first()).toBeVisible();
-
-  // Account sospetti: Vera e la gemella con lo stesso telefono.
-  await page.goto("/admin/account-sospetti");
-  await expect(page.getByRole("heading", { name: "Account sospetti" })).toBeVisible();
-  await expect(page.getByRole("link", { name: `Vera Russo${stamp}` })).toBeVisible();
-  await expect(page.getByRole("link", { name: `Gina Russo${stamp}` })).toBeVisible();
 
   await context.close();
 });

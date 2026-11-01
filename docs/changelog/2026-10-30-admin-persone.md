@@ -23,11 +23,37 @@ chiuso e a vedere gli account con lo stesso telefono. Dentro anche il gruppo
   recensione scritta entro 48 ore dall'iscrizione; lavoro chiuso prima
   dell'appuntamento; acconto del 100% chiesto da un professionista iscritto da
   meno di 30 giorni. Fuori gli account chiusi e quelli di prova. Si guardano
-  i dati dell'ultimo anno; con i numeri di oggi si calcolano a ogni apertura,
-  se un giorno diventasse lento si passa a un calcolo notturno salvato.
+  i dati dell'ultimo anno.
+- **Controllo ogni mattina alle 7, salvato** (miglioria approvata da Luca il
+  30/10/2026, `apps/api/src/admin/suspicious-accounts.service.ts`): il
+  calcolo gira alle 7 (ora italiana) e salva segnali e data della prima
+  volta in `suspicious_accounts`, l'ora dell'ultimo controllo in
+  `suspicious_accounts_checks` (migrazione `20261101120000_account_sospetti`).
+  Scheda e Account sospetti leggono il risultato salvato; "Controlla ora"
+  (`POST /admin/suspicious-users/check`, solo moderatori) lo rifà subito.
+- **Recensione tra due account con gli stessi dati**: nuovo segnale, su
+  cliente e professionista, quando chi scrive la recensione ha lo stesso
+  telefono, indirizzo o codice fiscale di chi la riceve. Le recensioni già
+  nascoste non contano.
 - **Persone → Account sospetti** (`/admin/account-sospetti`,
-  `GET /admin/suspicious-users`, solo moderatori): chi ha almeno un segnale,
-  prima chi ne ha di più. Il sito non decide niente da solo.
+  `GET /admin/suspicious-users`, solo moderatori): in cima "Cosa fare", con
+  il consiglio già scritto per ogni account che chiede un'azione e il link
+  alla scheda giusta, così non serve aprirle tutte (richiesta di Luca del
+  30/10/2026); sotto la tabella di tutti. Il consiglio
+  (`adviseSuspiciousUser` in `packages/shared/src/adminSignals.ts`) vince il
+  più urgente: "Da fare subito" per una recensione tra account con gli stessi
+  dati (nascondila) e per lo stesso codice fiscale tra due professionisti;
+  "Da guardare" per telefono o indirizzo uguale tra professionisti, lavoro
+  chiuso prima dell'appuntamento e acconto del 100% di un professionista
+  nuovo; "Nessuna azione" per clienti con gli stessi dati (di solito la
+  stessa famiglia), cliente e professionista con gli stessi dati senza
+  recensioni e recensione scritta presto. Lo stesso consiglio compare nella
+  scheda con "Apri Recensioni" o "Apri Lavori". Il sito non decide niente da
+  solo.
+- **Avviso ai moderatori** (`ADMIN_SUSPICIOUS_ACCOUNTS`, sito ed email,
+  argomento admin delle notifiche): dopo il controllo del mattino, una volta
+  sola per account e solo se c'è qualcosa da fare (non per "Nessuna azione"),
+  con l'elenco dei consigli.
 - **"Nascondi la recensione" e "Togli dalla ricerca" dalla scheda**
   (`POST /admin/users/:id/moderate`, solo moderatori), sulla strada delle
   segnalazioni, senza una strada nuova: si apre una segnalazione a nome
@@ -69,10 +95,14 @@ ruoli admin, DAC7, fatture, SdI e zone.
   nome e cognome, account chiuso ritrovato con l'email in maiuscolo senza
   mostrarla, segnali con il link alla gemella, stato "Terminato", recensione
   nascosta (prima senza motivo: errore) e rimessa visibile, profilo tolto
-  dalla ricerca senza sospendere l'account e rimesso, Account sospetti, axe a
+  dalla ricerca senza sospendere l'account e rimesso, Account sospetti con
+  "Controlla ora", "Cosa fare" (recensione tra account con lo stesso telefono
+  da nascondere, famiglia senza azione) e link alla scheda Recensioni, axe a
   0, nessuno scorrimento in orizzontale; I-08 sulla richiesta di un altro.
 - Test unitari: `user-signals.test.ts` (telefono scritto in modi diversi,
-  indirizzo senza civico, 48 ore, appuntamento, acconto) e la ricerca in
+  indirizzo senza civico, 48 ore, appuntamento, acconto, recensione tra
+  account con gli stessi dati, consigli e ordine), il modello dell'email
+  dell'avviso e la ricerca in
   `admin-search.test.ts`.
 - Riprovate le altre prove admin e quelle che toccano le richieste del
   cliente (Da fare, due passaggi, andamento, conteggi, elimina richiesta,

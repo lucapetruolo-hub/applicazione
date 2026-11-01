@@ -2705,6 +2705,17 @@ a.admin-kpi:hover {
   font-size: 14px;
   color: #2b2420;
 }
+.admin-advice-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+.admin-advice-list li {
+  display: grid;
+  gap: 4px;
+}
 .admin-field {
   display: grid;
   gap: 6px;

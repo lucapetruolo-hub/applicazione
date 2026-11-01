@@ -1,21 +1,22 @@
 import type { PrismaClient } from "@professionisti/database";
-import { NEW_PROFESSIONAL_DAYS, QUICK_REVIEW_HOURS, type AdminUserSignal, type AdminUserSignalKind } from "@professionisti/shared";
+import { NEW_PROFESSIONAL_DAYS, QUICK_REVIEW_HOURS, type AdminSignalRole, type AdminUserSignal, type AdminUserSignalKind } from "@professionisti/shared";
 
 /**
  * Segnali da controllare (docs/changelog/2026-10-30-admin-persone.md): stesso
  * telefono, indirizzo, codice fiscale o P.IVA di un altro account, recensione
  * scritta subito dopo l'iscrizione, lavoro chiuso prima dell'appuntamento,
- * acconto del 100% da un professionista nuovo. Restano fuori gli account
- * chiusi e quelli di prova, che userebbero gli stessi dati di proposito.
+ * acconto del 100% da un professionista nuovo, recensione tra due account con
+ * gli stessi dati. Restano fuori gli account chiusi e quelli di prova, che
+ * userebbero gli stessi dati di proposito.
  */
-export type SignalPerson = { id: string; label: string };
+export type SignalPerson = { id: string; label: string; role?: AdminSignalRole };
 export type SignalInput = {
   people: SignalPerson[];
   /** Un valore (telefono, indirizzo, codice fiscale) usato da una persona. */
   phones: { userId: string; value: string }[];
   addresses: { userId: string; value: string }[];
   taxIds: { userId: string; value: string }[];
-  reviews: { clientId: string; clientCreatedAt: Date; createdAt: Date; professionalLabel: string }[];
+  reviews: { clientId: string; clientCreatedAt: Date; createdAt: Date; proUserId: string; professionalLabel: string }[];
   completions: { proUserId: string; clientLabel: string; scheduledAt: Date; completedAt: Date }[];
   fullDeposits: { proUserId: string; proCreatedAt: Date; createdAt: Date; clientLabel: string }[];
 };
@@ -44,7 +45,11 @@ export function normalizeTaxId(value: string | null | undefined): string | null 
 
 export function buildUserSignals(input: SignalInput): Map<string, AdminUserSignal[]> {
   const labels = new Map(input.people.map((p) => [p.id, p.label]));
+  const roles = new Map(input.people.map((p) => [p.id, p.role]));
   const known = (id: string) => labels.has(id);
+  const person = (id: string) => ({ id, label: labels.get(id) ?? "Account", ...(roles.get(id) ? { role: roles.get(id) } : {}) });
+  /** Coppie di account con un dato in comune, per le recensioni tra loro. */
+  const sameData = new Map<string, Set<string>>();
   const result = new Map<string, AdminUserSignal[]>();
   const add = (userId: string, signal: AdminUserSignal) => {
     if (!known(userId)) return;
@@ -64,8 +69,11 @@ export function buildUserSignals(input: SignalInput): Map<string, AdminUserSigna
     for (const users of byValue.values()) {
       if (users.size < 2) continue;
       for (const userId of users) {
-        const others = [...users].filter((id) => id !== userId).map((id) => ({ id, label: labels.get(id) ?? "Account" }));
+        const others = [...users].filter((id) => id !== userId).map(person);
         add(userId, { kind, detail: `anche ${others.map((o) => o.label).join(", ")}`, others });
+        const set = sameData.get(userId) ?? new Set<string>();
+        for (const o of others) set.add(o.id);
+        sameData.set(userId, set);
       }
     }
   };
@@ -75,8 +83,14 @@ export function buildUserSignals(input: SignalInput): Map<string, AdminUserSigna
 
   for (const review of input.reviews) {
     const hours = (review.createdAt.getTime() - review.clientCreatedAt.getTime()) / HOUR_MS;
+    const pro = known(review.proUserId) ? [person(review.proUserId)] : [];
     if (hours < QUICK_REVIEW_HOURS) {
-      add(review.clientId, { kind: "QUICK_REVIEW", detail: `a ${review.professionalLabel}, ${Math.max(0, Math.round(hours))} ore dopo l'iscrizione`, others: [] });
+      add(review.clientId, { kind: "QUICK_REVIEW", detail: `a ${review.professionalLabel}, ${Math.max(0, Math.round(hours))} ore dopo l'iscrizione`, others: pro });
+    }
+    // Il caso più chiaro di recensione finta: chi la scrive e chi la riceve hanno gli stessi dati.
+    if (sameData.get(review.clientId)?.has(review.proUserId)) {
+      add(review.clientId, { kind: "REVIEW_SAME_PERSON", detail: `a ${review.professionalLabel}`, others: pro });
+      add(review.proUserId, { kind: "REVIEW_SAME_PERSON", detail: `da ${labels.get(review.clientId) ?? "Account"}`, others: [person(review.clientId)] });
     }
   }
   for (const job of input.completions) {
@@ -99,11 +113,11 @@ export function personLabel(user: { name: string | null; surname: string | null;
 const PERSON_SELECT = { id: true, name: true, surname: true, email: true, professionalProfile: { select: { businessName: true } } } as const;
 
 /**
- * Carica i dati dell'ultimo anno e calcola i segnali di tutti: con i numeri
- * di oggi (pochi account) basta una lettura alla volta; se un giorno
- * diventasse lenta, si sposta in un calcolo notturno salvato.
+ * Carica i dati dell'ultimo anno e calcola i segnali di tutti. Lo fa il
+ * controllo del mattino (SuspiciousAccountsService), che salva il risultato:
+ * le pagine leggono solo quello.
  */
-export async function loadUserSignals(prisma: PrismaClient, now: Date = new Date()): Promise<{ signals: Map<string, AdminUserSignal[]>; people: Map<string, SignalPerson & { role: "CLIENT" | "PROFESSIONAL" | "ADMIN" }> }> {
+export async function loadUserSignals(prisma: PrismaClient, now: Date = new Date()): Promise<{ signals: Map<string, AdminUserSignal[]>; people: Map<string, SignalPerson & { role: AdminSignalRole }> }> {
   const since = new Date(now.getTime() - 365 * 24 * HOUR_MS);
   const [users, requests, fiscal, reviews, completions, fullDeposits] = await Promise.all([
     prisma.user.findMany({
@@ -116,8 +130,9 @@ export async function loadUserSignals(prisma: PrismaClient, now: Date = new Date
     }),
     prisma.professionalFiscalProfile.findMany({ select: { fiscalCodiceFiscale: true, vatNumber: true, professionalProfile: { select: { userId: true } } } }),
     prisma.review.findMany({
-      where: { createdAt: { gte: since } },
-      select: { createdAt: true, booking: { select: { clientId: true, client: { select: { createdAt: true } }, professionalProfile: { select: { businessName: true } } } } },
+      // Una recensione già nascosta da un admin è un caso chiuso.
+      where: { createdAt: { gte: since }, hiddenAt: null },
+      select: { createdAt: true, booking: { select: { clientId: true, client: { select: { createdAt: true } }, professionalProfile: { select: { businessName: true, userId: true } } } } },
     }),
     prisma.booking.findMany({
       where: { professionalCompletedAt: { gte: since } },
@@ -129,7 +144,7 @@ export async function loadUserSignals(prisma: PrismaClient, now: Date = new Date
     }),
   ]);
 
-  const people = new Map(users.map((u) => [u.id, { id: u.id, label: personLabel(u), role: u.role }]));
+  const people = new Map(users.map((u) => [u.id, { id: u.id, label: personLabel(u), role: u.role as AdminSignalRole }]));
   const phones: SignalInput["phones"] = [];
   const addresses: SignalInput["addresses"] = [];
   for (const u of users) {
@@ -157,6 +172,7 @@ export async function loadUserSignals(prisma: PrismaClient, now: Date = new Date
       clientId: r.booking.clientId,
       clientCreatedAt: r.booking.client.createdAt,
       createdAt: r.createdAt,
+      proUserId: r.booking.professionalProfile.userId,
       professionalLabel: r.booking.professionalProfile.businessName,
     })),
     completions: completions.flatMap((b) =>
