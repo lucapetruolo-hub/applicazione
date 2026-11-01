@@ -25,7 +25,7 @@ peerDependencyRules:
 # usa fissa una versione vecchia: postcss in Next.js (prepara i CSS nella
 # build), deepmerge-ts nella configurazione di Prisma, fast-xml-parser negli
 # strumenti di React Native per Android. Stessa API, solo versioni nuove.
-# joi, glob e minimatch (docs/changelog/2026-11-01-controlli-rossi-dal-30-ottobre.md):
+# joi, glob e minimatch (docs/changelog/2026-11-01-falle-glob-joi-minimatch.md):
 # falle pubblicate il 30/10, solo in strumenti di sviluppo (CLI di Expo, React
 # Native e NestJS, ESLint).
 overrides:
