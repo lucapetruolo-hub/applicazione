@@ -35,13 +35,12 @@ async function anonymousPage(browser: Browser, device: typeof PHONE): Promise<Pa
 /** Problemi gravi o critici (WCAG 2.1 A e AA) sulla pagina, uno per riga. */
 async function seriousIssues(page: Page): Promise<string[]> {
   // Un pulsante a metà di una transizione di colore (Tamagui anima "all")
-  // o una scheda che sta ancora comparendo in dissolvenza (auth-card-in di
-  // /accedi) darebbe un contrasto sbagliato: si aspetta che transizioni e
-  // animazioni finiscano, tranne quelle senza fine (luci della home,
-  // caricamenti) e quelle legate allo scorrimento, che non hanno una durata.
-  await page.waitForFunction(() =>
-    document.getAnimations().every((a) => a.playState !== "running" || !Number.isFinite(Number(a.effect?.getComputedTiming().endTime))),
-  );
+  // darebbe un contrasto sbagliato: si aspetta che le transizioni finiscano.
+  // Nella CI una transizione partiva anche dopo l'attesa (testo #fafcfb su
+  // #188755 sul pulsante Accedi, a metà strada): si tolgono del tutto, così
+  // axe legge sempre i colori finali.
+  await page.addStyleTag({ content: "*, *::before, *::after { transition: none !important; animation: none !important; }" });
+  await page.waitForFunction(() => document.getAnimations().every((a) => !(a instanceof CSSTransition) || a.playState !== "running"));
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   return results.violations
     .filter((v) => v.impact === "serious" || v.impact === "critical")

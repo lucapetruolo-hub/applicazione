@@ -8,7 +8,7 @@ import { adminCan } from "@professionisti/shared";
 import { Icon, motionBase, motionEasing, motionFast } from "@professionisti/ui";
 import { MEGA_MENU_GROUPS, MEGA_MENU_MICRO_DESCRIPTION, categoryBySlug } from "@/lib/megaMenuGroups";
 import { getAccountMenuGroups, isNavItemActive, type AccountNavGroup } from "@/lib/accountMenuItems";
-import { ADMIN_NAV_ITEMS } from "@/components/admin/AdminNav";
+import { ADMIN_SECTIONS } from "@/components/admin/AdminNav";
 import { useAuth } from "@/lib/AuthContext";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
@@ -45,11 +45,11 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
       ? [
           {
             title: "Amministrazione",
-            items: ADMIN_NAV_ITEMS.filter((item) => adminCan(user.adminRoles ?? [], item.scope) && !item.hidden?.(null)).map((item) => ({
-              href: item.href,
-              label: item.label,
-              icon: item.icon,
-            })),
+            // Una voce per sezione, come il menu dell'area admin (docs/changelog/2026-10-30-admin-riordino.md).
+            items: ADMIN_SECTIONS.flatMap((section) => {
+              const first = section.tabs.find((tab) => adminCan(user.adminRoles ?? [], tab.scope));
+              return first ? [{ href: first.href, label: section.label, icon: section.icon }] : [];
+            }),
           },
         ]
       : getAccountMenuGroups(user.isProfessional);

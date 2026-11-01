@@ -1,15 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import type { AdminNotificationOptOutGroup, AdminTrafficSources, RevenueAnalyticsSummary } from "@professionisti/api-client";
-import { Icon, Paragraph, Text, XStack, YStack, brand } from "@professionisti/ui";
+import type {
+  AdminNotificationOptOutGroup,
+  AdminTrafficSources,
+  RevenueAnalyticsSummary,
+} from "@professionisti/api-client";
+import { Paragraph, Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { SkeletonRevenuePanel } from "@/components/Skeleton";
 import { RevenueAnalyticsPanel } from "@/components/RevenueAnalyticsPanel";
 import { TrafficSourcesPanel } from "@/components/TrafficSourcesPanel";
 import { NotificationOptOutsPanel } from "@/components/NotificationOptOutsPanel";
+import { AdminPageHeader } from "@/components/admin/adminUi";
 
 /**
  * "Statistiche" → Revenue Analytics (richiesta esplicita dell'utente,
@@ -30,75 +34,68 @@ export default function AdminStatistichePage() {
   const [data, setData] = useState<RevenueAnalyticsSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [traffic, setTraffic] = useState<AdminTrafficSources | null>(null);
-  const [optOuts, setOptOuts] = useState<AdminNotificationOptOutGroup[] | null>(null);
+  const [optOuts, setOptOuts] = useState<AdminNotificationOptOutGroup[] | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!token || user?.role !== "ADMIN") return;
     apiClient
       .adminRevenueAnalytics(token)
       .then(setData)
-      .catch((err) => setError(err instanceof Error ? err.message : "Errore nel caricamento."));
+      .catch((err) =>
+        setError(
+          err instanceof Error ? err.message : "Errore nel caricamento.",
+        ),
+      );
     // Pannello a parte: se non risponde, le entrate restano visibili.
-    apiClient.adminTrafficSources(token).then(setTraffic).catch(() => setTraffic(null));
-    apiClient.adminNotificationOptOuts(token).then(setOptOuts).catch(() => setOptOuts(null));
+    apiClient
+      .adminTrafficSources(token)
+      .then(setTraffic)
+      .catch(() => setTraffic(null));
+    apiClient
+      .adminNotificationOptOuts(token)
+      .then(setOptOuts)
+      .catch(() => setOptOuts(null));
   }, [token, user]);
 
   if (isLoading) return null;
 
   if (!user || !token || user.role !== "ADMIN") {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
-        <Paragraph color={brand.grafite70}>Questa pagina è visibile solo agli amministratori.</Paragraph>
+      <YStack
+        width="100%"
+        alignItems="center"
+        paddingVertical="$9"
+        paddingHorizontal="$4"
+      >
+        <Paragraph color={brand.grafite70}>
+          Questa pagina è visibile solo agli amministratori.
+        </Paragraph>
       </YStack>
     );
   }
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={960} gap="$7">
-        <YStack gap="$2">
-          <Link href="/admin" style={{ textDecoration: "none" }}>
-            <Text color={brand.cianografiaScuro} fontSize={13}>
-              ← Torna ad Amministrazione
-            </Text>
-          </Link>
-          <XStack alignItems="center" gap="$3">
-            <YStack
-              width={44}
-              height={44}
-              borderRadius={999}
-              alignItems="center"
-              justifyContent="center"
-              backgroundColor={brand.cianografiaVelo}
-            >
-              <Icon name="trending-up" size={22} color={brand.cianografiaScuro} />
-            </YStack>
-            <YStack>
-              <Text fontFamily="$heading" fontWeight="800" fontSize={30}>
-                Statistiche
-              </Text>
-              <Text fontSize={13} color={brand.grafite70}>
-                Entrate dai lavori completati
-              </Text>
-            </YStack>
-          </XStack>
-        </YStack>
+    <YStack gap="$7">
+      <AdminPageHeader
+        title="Entrate"
+        description="Entrate dai lavori completati, da dove arrivano le visite e chi ha spento le notifiche."
+      />
+      {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
-        {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+      {data === null && !error ? (
+        <SkeletonRevenuePanel />
+      ) : data ? (
+        <RevenueAnalyticsPanel
+          data={data}
+          chartCaption="Solo lavori confermati completati da entrambe le parti (professionista e cliente), su tutta la piattaforma. Passa il mouse su un punto per i dettagli."
+        />
+      ) : null}
 
-        {data === null && !error ? (
-          <SkeletonRevenuePanel />
-        ) : data ? (
-          <RevenueAnalyticsPanel
-            data={data}
-            chartCaption="Solo lavori confermati completati da entrambe le parti (professionista e cliente), su tutta la piattaforma. Passa il mouse su un punto per i dettagli."
-          />
-        ) : null}
+      {traffic ? <TrafficSourcesPanel data={traffic} /> : null}
 
-        {traffic ? <TrafficSourcesPanel data={traffic} /> : null}
-
-        {optOuts ? <NotificationOptOutsPanel data={optOuts} /> : null}
-      </YStack>
+      {optOuts ? <NotificationOptOutsPanel data={optOuts} /> : null}
     </YStack>
   );
 }

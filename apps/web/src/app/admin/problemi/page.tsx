@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { AdminJobIssue } from "@professionisti/api-client";
 import { JOB_ISSUE_ESCALATION_LABEL, JOB_ISSUE_LABEL, JOB_ISSUE_SANCTION_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents } from "@professionisti/shared";
 import { AppealForm, DecisionForm, PhaseDeadline } from "./JobIssueForms";
@@ -47,8 +48,20 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
  * foto a lavoro terminato. Visibile a ogni ruolo admin.
  */
 export default function AdminProblemiPage() {
+  return (
+    <Suspense fallback={null}>
+      <ProblemiContent />
+    </Suspense>
+  );
+}
+
+const VIEWS: View[] = ["open", "chat", "appeals", "closed"];
+
+function ProblemiContent() {
   const { token } = useAuth();
-  const [view, setView] = useState<View>("open");
+  // `?vista=` arriva dalla coda "Da fare" (docs/changelog/2026-10-30-admin-riordino.md).
+  const initialView = useSearchParams().get("vista") as View | null;
+  const [view, setView] = useState<View>(initialView && VIEWS.includes(initialView) ? initialView : "open");
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   // Ricerca in tutte le segnalazioni, aperte e chiuse (docs/changelog/2026-10-28-stripe-prova.md).
