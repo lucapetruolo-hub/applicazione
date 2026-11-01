@@ -107,3 +107,11 @@ ruoli admin, DAC7, fatture, SdI e zone.
 - Riprovate le altre prove admin e quelle che toccano le richieste del
   cliente (Da fare, due passaggi, andamento, conteggi, elimina richiesta,
   segnalazioni, stelle, preventivo accettato, menu laterale): tutte verdi.
+
+**Difetti delle librerie del 30/10/2026** (osv-scanner rosso su questa PR,
+non causati da lei): joi passa alla 17.13.9, glob alla 14 e minimatch 10 alla
+11 con `overrides` in `pnpm-workspace.yaml`; sono solo negli strumenti di
+sviluppo (CLI di React Native ed Expo, ESLint, CLI di Nest). minimatch 3 non
+ha una versione corretta ed è solo in ESLint (jsx-a11y) e fork-ts-checker:
+eccezione con il motivo in `osv-scanner.toml`. Verificati lint, build
+dell'API ed `expo export` di Android.
