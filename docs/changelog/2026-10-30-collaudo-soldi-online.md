@@ -168,3 +168,11 @@ del browser fermo al 26/10, ma il server mostra solo i giorni chiusi da oggi
 in poi con la sua ora vera: dal 31/10 il giorno risultava passato e la prova
 falliva anche sul ramo principale. Ora chiude il venerdì della settimana
 prossima rispetto alla data vera (`e2e/tests/tempi-compiti.spec.ts`).
+
+### Agenda aperta da un appuntamento, di domenica (1/11)
+
+Le prove dell'agenda sono fallite domenica 1/11: sul telefono, se oggi è
+vuoto, l'agenda passa alla Settimana e la domenica a quella dopo; questo
+scattava anche aprendo un appuntamento da un link (`?booking=`, `?esterno=`,
+per esempio dalle email), e lo spostava fuori vista. Ora un link a un
+appuntamento resta sul suo giorno (`apps/web/src/app/dashboard/agenda/page.tsx`).
