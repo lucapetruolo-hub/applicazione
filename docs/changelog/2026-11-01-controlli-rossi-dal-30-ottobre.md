@@ -30,16 +30,3 @@ il lunedì vero successivo e il suo venerdì. Nessun cambio al sito.
 
 **Verifica**: in locale (Postgres 16, API e sito compilati) la versione
 vecchia fallisce come nella CI, la nuova passa con tutte le altre misure.
-
-## Agenda aperta da un appuntamento, di domenica
-
-Le prove `agenda-orari.spec.ts` sul telefono fallivano oggi (domenica
-1/11): aprendo l'agenda da un appuntamento (`?booking=`, per esempio da
-"Oggi" o da un'email) con la giornata di oggi vuota, la regola "di domenica
-si apre la settimana di domani" (§311) spostava il calendario alla settimana
-dopo, mentre il riquadro dell'appuntamento restava aperto su un altro giorno.
-Difetto vero del sito, non solo della prova: ora con `?booking=` o
-`?esterno=` l'agenda resta sul giorno dell'appuntamento.
-
-**Verifica**: in locale, di domenica, le prove dell'ora italiana su telefono
-(Italia e New York) prima fallivano e ora passano.

@@ -222,10 +222,6 @@ function DashboardAgendaContent() {
     if (autoWeekChecked.current) return;
     autoWeekChecked.current = true;
     if (deepLinkedDay || !window.matchMedia("(max-width: 640px)").matches) return;
-    // Aperta da un appuntamento (`?booking=`, `?esterno=`): resta sul suo giorno.
-    // Prima la domenica saltava alla settimana dopo, lontano dall'appuntamento
-    // (docs/changelog/2026-11-01-controlli-rossi-dal-30-ottobre.md).
-    if (searchParams.get("booking") || searchParams.get("esterno")) return;
     const todayStr = toIsoDate(todayUtc());
     const busyToday =
       loadedBookings.some((b) => b.status !== "CANCELED" && jobOccurrenceOn(b.scheduledAt, b.scheduledEndAt, todayStr) !== null) ||
