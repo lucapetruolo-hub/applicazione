@@ -12,7 +12,7 @@ export type PopularOrder = ProfessionalCategorySlug[] | null;
 /**
  * Su cosa si basa l'ordine: "searches" i lavori più cercati (richiesta di
  * preventivo, §280), "professionals" quelli con più professionisti iscritti
- * e visibili (scelta dei lavori del professionista, richiesta di Luca,
+ * e visibili vicino alla città, o in tutta Italia (scelta dei lavori del professionista, richiesta di Luca,
  * docs/changelog/2026-11-02-categorie-telefono.md).
  */
 export type CategoryOrderBy = "searches" | "professionals";
@@ -24,8 +24,7 @@ export type CategoryOrderBy = "searches" | "professionals";
 const popularOrderCache = new Map<string, { promise: Promise<PopularOrder>; value?: PopularOrder }>();
 
 function cacheKey(city: string | undefined, orderBy: CategoryOrderBy): string {
-  // L'ordine per iscritti non dipende dalla città.
-  return orderBy === "professionals" ? "#professionals" : (city?.trim().toLowerCase() ?? "");
+  return `${orderBy}:${city?.trim().toLowerCase() ?? ""}`;
 }
 
 function sortByCounts(counts: { slug: string; count: number }[]): PopularOrder {
@@ -41,9 +40,10 @@ export function loadPopularOrder(city?: string, orderBy: CategoryOrderBy = "sear
   if (!entry) {
     const created: { promise: Promise<PopularOrder>; value?: PopularOrder } = {
       promise: (orderBy === "professionals"
-        ? apiClient.getCategoryProfessionalCounts()
-        : apiClient.getCategoryPopularity(city?.trim() || undefined).then(({ counts }) => counts)
+        ? apiClient.getCategoryProfessionalCounts(city?.trim() || undefined)
+        : apiClient.getCategoryPopularity(city?.trim() || undefined)
       )
+        .then(({ counts }) => counts)
         .then(sortByCounts)
         .catch(() => {
           // Un errore non resta in memoria: alla prossima apertura si riprova.

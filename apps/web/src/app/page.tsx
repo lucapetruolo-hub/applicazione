@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import type { ProfessionalSearchResult } from "@professionisti/shared";
+import { cookies } from "next/headers";
+import type { ProfessionalCategorySlug, ProfessionalSearchResult } from "@professionisti/shared";
 import { apiClient } from "../lib/apiClient";
+import { LAST_SEARCH_CITY_COOKIE } from "../lib/lastSearchCity";
 import HomeContent from "./HomeContent";
 
 // Server-rendered ad ogni richiesta: stesso motivo di /cerca/[categoria],
@@ -32,5 +34,25 @@ export default async function HomePage() {
     platformStats = null;
   }
 
-  return <HomeContent professionals={professionals} platformStats={platformStats} />;
+  // Ordine delle categorie (docs/changelog/2026-11-02-categorie-telefono.md):
+  // prima quelle con più professionisti vicino all'ultima città cercata su
+  // questo browser, se c'è, altrimenti in tutta Italia. Letto qui dal server,
+  // così le schede arrivano già in ordine. Se l'API non risponde, l'ordine
+  // fisso del catalogo.
+  let categoryCounts: Partial<Record<ProfessionalCategorySlug, number>> = {};
+  try {
+    const raw = (await cookies()).get(LAST_SEARCH_CITY_COOKIE)?.value;
+    let city: string | undefined;
+    try {
+      city = raw ? decodeURIComponent(raw).trim().slice(0, 80) || undefined : undefined;
+    } catch {
+      city = undefined;
+    }
+    const { counts } = await apiClient.getCategoryProfessionalCounts(city);
+    categoryCounts = Object.fromEntries(counts.map((item) => [item.slug, item.count]));
+  } catch {
+    // Resta vuoto: l'ordine fisso del catalogo.
+  }
+
+  return <HomeContent professionals={professionals} platformStats={platformStats} categoryCounts={categoryCounts} />;
 }

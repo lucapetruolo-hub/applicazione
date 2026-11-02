@@ -17,17 +17,15 @@ import { ProCtaSection } from "@/components/ProCtaSection";
 export default function HomeContent({
   professionals,
   platformStats,
+  categoryCounts,
 }: {
   professionals: ProfessionalSearchResult[];
+  categoryCounts: Partial<Record<ProfessionalCategorySlug, number>>;
   platformStats: { totalUsers: number; totalProfessionals: number; reviewCount?: number; averageRating?: number | null } | null;
 }) {
-  // Professionisti visibili per categoria (uno conta in ognuna delle sue
-  // categorie): decide l'ordine delle schede "Di cosa hai bisogno?".
-  const professionalsBySlug: Partial<Record<ProfessionalCategorySlug, number>> = {};
-  for (const p of professionals) {
-    for (const c of p.categories) professionalsBySlug[c.slug] = (professionalsBySlug[c.slug] ?? 0) + 1;
-  }
-  const categoryRail = useCategoryStoryRail(professionalsBySlug);
+  // Professionisti visibili per categoria, vicino all'ultima città cercata o
+  // in tutta Italia (app/page.tsx): decide l'ordine di "Di cosa hai bisogno?".
+  const categoryRail = useCategoryStoryRail(categoryCounts);
 
   return (
     // Spazi tra le sezioni più stretti che nel resto del sito: la home ha

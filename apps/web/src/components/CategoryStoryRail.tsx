@@ -53,10 +53,13 @@ export function CategoryStoryRail({ state }: { state: CategoryStoryRailState }) 
   const hidden = categories.length - MOBILE_VISIBLE;
   const firstExtraRef = useRef<HTMLAnchorElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
+  // Annuncio per chi usa il lettore di schermo: vuoto finché non si tocca il pulsante.
+  const [announcement, setAnnouncement] = useState("");
 
   function toggleShowAll() {
     const next = !showAll;
     setShowAll(next);
+    setAnnouncement(next ? `${hidden} categorie aggiunte all'elenco.` : `Elenco ridotto a ${MOBILE_VISIBLE} categorie.`);
     // Aprendo, il fuoco va alla prima categoria comparsa (chi usa la tastiera
     // o il lettore di schermo continua da lì); chiudendo, il pulsante torna
     // sotto le prime sei e la pagina lo segue invece di restare più in basso.
@@ -68,6 +71,9 @@ export function CategoryStoryRail({ state }: { state: CategoryStoryRailState }) 
 
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 18 }}>
+      <p className="sr-only" aria-live="polite">
+        {announcement}
+      </p>
       <div className="story-filters scroll-fade" role="group" aria-label="Filtra le categorie">
         {[ALL, ...MEGA_MENU_GROUPS.map((g) => g.title)].map((title) => (
           <button
@@ -78,6 +84,7 @@ export function CategoryStoryRail({ state }: { state: CategoryStoryRailState }) 
             onClick={() => {
               setGroup(title);
               setShowAll(false);
+              setAnnouncement("");
             }}
           >
             {title}
