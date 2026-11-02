@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Icon } from "@professionisti/ui";
 import { CATEGORY_ACCENT, CategoryIcon } from "@/components/icons/CategoryIcons";
-import { cachedPopularOrder, loadPopularOrder, type PopularOrder } from "@/lib/categoryOrder";
+import { cachedPopularOrder, loadPopularOrder, type CategoryOrderBy, type PopularOrder } from "@/lib/categoryOrder";
 
 /**
  * Oltre questo tempo si mostrano le tessere nell'ordine del catalogo: meglio
@@ -31,7 +31,9 @@ const COMPACT_LABELS: Partial<Record<ProfessionalCategorySlug, string>> = {
  *
  * Ordine: in cima le categorie già scelte all'apertura (nella richiesta, la
  * categoria cercata, docs/CHANGELOG.md §281), poi le più cercate nella città
- * indicata o in tutta la piattaforma (`GET /categories/popular`). Le tessere
+ * indicata o in tutta la piattaforma (`GET /categories/popular`); con
+ * `orderBy="professionals"` quelle con più professionisti iscritti
+ * (`GET /professionals/category-counts`, scelta dei lavori del professionista). Le tessere
  * compaiono una volta sola, già nell'ordine giusto (richiesta dell'utente,
  * docs/CHANGELOG.md §324: non si deve vedere il riordino): finché l'ordine
  * non arriva si vedono tessere vuote della stessa misura, al massimo per
@@ -45,6 +47,7 @@ export function CategoryTiles({
   city,
   showPrimary = false,
   ariaLabel,
+  orderBy = "searches",
   compact = false,
 }: {
   value: ProfessionalCategorySlug[];
@@ -55,13 +58,15 @@ export function CategoryTiles({
   /** "Principale" sotto la prima scelta (solo per il professionista). */
   showPrimary?: boolean;
   ariaLabel?: string;
+  /** Più cercati (di serie) o con più professionisti iscritti (scelta dei lavori del professionista). */
+  orderBy?: CategoryOrderBy;
   /** Sul telefono 3 per riga e più basse (docs/changelog/2026-11-02-registrazione-pro-grafica.md). */
   compact?: boolean;
 }) {
   const gridClass = compact ? "cat-tiles is-compact" : "cat-tiles";
   const [initialCity] = useState(city?.trim() || undefined);
   // Ordine già in memoria (seconda apertura): niente attesa.
-  const [popularOrder, setPopularOrder] = useState<PopularOrder | undefined>(() => cachedPopularOrder(initialCity));
+  const [popularOrder, setPopularOrder] = useState<PopularOrder | undefined>(() => cachedPopularOrder(initialCity, orderBy));
   const ready = popularOrder !== undefined;
   // Scelte già fatte all'apertura: restano in cima per tutta la visita.
   const [pinned] = useState(value);
@@ -75,12 +80,12 @@ export function CategoryTiles({
       setPopularOrder(order);
     };
     const timer = setTimeout(() => settle(null), POPULAR_ORDER_TIMEOUT_MS);
-    void loadPopularOrder(initialCity).promise.then(settle);
+    void loadPopularOrder(initialCity, orderBy).promise.then(settle);
     return () => {
       settled = true;
       clearTimeout(timer);
     };
-  }, [initialCity, ready]);
+  }, [initialCity, orderBy, ready]);
 
   if (!ready) {
     return (
