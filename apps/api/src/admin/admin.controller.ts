@@ -20,6 +20,8 @@ import {
   type ResolveContentReportInput,
   adminQueueClaimSchema,
   type AdminQueueClaimInput,
+  adminModerateSchema,
+  type AdminModerateInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
@@ -27,6 +29,7 @@ import { AdminGuard, RequireAdminScope } from "./admin.guard";
 import { AdminService } from "./admin.service";
 import { SiteStatsService } from "./site-stats.service";
 import { AdminQueueService } from "./admin-queue.service";
+import { SuspiciousAccountsService } from "./suspicious-accounts.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 
 @UseGuards(JwtAuthGuard, AdminGuard)
@@ -36,6 +39,7 @@ export class AdminController {
     private readonly adminService: AdminService,
     private readonly jobIssueOutcomeService: JobIssueOutcomeService,
     private readonly siteStatsService: SiteStatsService,
+    private readonly suspiciousAccountsService: SuspiciousAccountsService,
     private readonly adminQueueService: AdminQueueService,
   ) {}
 
@@ -178,6 +182,44 @@ export class AdminController {
   @Get("users/:id")
   getUser(@Param("id") id: string) {
     return this.adminService.getUserDetail(id);
+  }
+
+  /** "Nascondi la recensione" / "Togli dalla ricerca" dalla scheda (docs/changelog/2026-10-30-admin-persone.md). */
+  @RequireAdminScope("MODERATION")
+  @Post("users/:id/moderate")
+  moderateFromUserPage(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(adminModerateSchema)) body: AdminModerateInput) {
+    return this.adminService.moderateFromUserPage(req.user.userId, id, body);
+  }
+
+  /** Account con almeno un segnale da controllare, dal controllo del mattino (docs/changelog/2026-10-30-admin-persone.md). */
+  @RequireAdminScope("MODERATION")
+  @Get("suspicious-users")
+  suspiciousUsers() {
+    return this.suspiciousAccountsService.list();
+  }
+
+  /** "Controlla ora": rifà subito il controllo, senza avvisare gli altri admin. */
+  @RequireAdminScope("MODERATION")
+  @Post("suspicious-users/check")
+  @HttpCode(200)
+  async checkSuspiciousUsers() {
+    await this.suspiciousAccountsService.check({ notify: false });
+    return this.suspiciousAccountsService.list();
+  }
+
+  /** "Va bene così" con il motivo: esce da "Cosa fare" finché non arriva un segnale nuovo. */
+  @RequireAdminScope("MODERATION")
+  @Post("suspicious-users/:id/dismiss")
+  @HttpCode(204)
+  async dismissSuspiciousUser(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(contentReportDecisionNoteSchema)) body: ContentReportDecisionNoteInput): Promise<void> {
+    await this.suspiciousAccountsService.dismiss(req.user.userId, id, body.note);
+  }
+
+  @RequireAdminScope("MODERATION")
+  @Delete("suspicious-users/:id/dismiss")
+  @HttpCode(204)
+  async undismissSuspiciousUser(@Req() req: AuthenticatedRequest, @Param("id") id: string): Promise<void> {
+    await this.suspiciousAccountsService.undismiss(req.user.userId, id);
   }
 
   @RequireAdminScope("MODERATION")

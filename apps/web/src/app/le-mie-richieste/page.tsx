@@ -434,9 +434,12 @@ function LeMieRichiesteContent() {
 
         {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
-        {depositPaid ? (
-          <Text color={brand.grafite} fontSize={16}>
-            Pagamento ricevuto: il lavoro viene confermato appena Stripe ce lo comunica, di solito in pochi secondi.
+        {/* Solo sulla propria richiesta e senza dire "ricevuto" prima che Stripe lo confermi: l'indirizzo
+            con "pagamento=completato" lo può scrivere chiunque (collaudo I-08, docs/changelog/2026-10-30-admin-persone.md).
+            A pagamento confermato si apre "Appuntamento prenotato". */}
+        {paidRequestId && requests?.some((r) => r.id === paidRequestId) ? (
+          <Text color={brand.grafite} fontSize={16} role="status">
+            Stiamo controllando il pagamento: il lavoro si conferma appena Stripe ce lo comunica, di solito in pochi secondi.
           </Text>
         ) : null}
 

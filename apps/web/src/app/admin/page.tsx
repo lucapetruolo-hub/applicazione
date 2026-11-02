@@ -194,7 +194,7 @@ function DaFare() {
                       <td>{item.who ?? "—"}</td>
                       <td>
                         <YStack gap={4} alignItems="flex-start">
-                          <AdminPill tone={item.danger ? "danger" : item.status === "Da decidere" || item.status === "Prove da mandare" ? "warn" : "neutral"}>{item.status}</AdminPill>
+                          <AdminPill tone={item.danger ? "danger" : item.status === "Da decidere" || item.status === "Prove da mandare" || item.status === "Da fare subito" ? "warn" : "neutral"}>{item.status}</AdminPill>
                           {item.claimedBy ? (
                             <Text fontSize={13} color={brand.grafite70}>
                               {mine ? "Preso da te" : `Preso da ${item.claimedBy.name}`}

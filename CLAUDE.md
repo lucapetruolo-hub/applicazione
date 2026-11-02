@@ -108,7 +108,10 @@ prima discuterne e aggiornare questo file.
   piccoli raggruppati, da unire se la CI è verde; gli aggiornamenti grandi
   arrivano in PR separate e vanno trattati in un thread dedicato con il
   confronto delle pagine. React, React Native e le versioni grandi di Expo
-  sono esclusi: si aggiornano a mano, insieme.
+  sono esclusi: si aggiornano a mano, insieme. Per questi e per la fine del
+  supporto di Next.js, React, React Native e NestJS c'è il controllo mensile
+  `.github/workflows/aggiornamenti.yml` (apre una segnalazione); PostgreSQL di
+  Render lo controlla l'API ogni mese (email ai super admin).
 - **Il sito usa i sorgenti di `packages/shared`** (alias in
   `apps/web/next.config.mjs`, `sideEffects: false`, docs/CHANGELOG.md §345):
   ogni pagina prende solo le parti che usa. Un modulo di `packages/shared`

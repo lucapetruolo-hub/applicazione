@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import type { AdminSignalAdviceLevel } from "@professionisti/shared";
 import { Text, XStack, YStack, brand } from "@professionisti/ui";
 
 /** Piccoli pezzi condivisi dalle pagine admin (docs/CHANGELOG.md §144). */
@@ -27,6 +28,9 @@ export function AdminCard({ children, highlight }: { children: ReactNode; highli
     </YStack>
   );
 }
+
+/** Colore del consiglio sugli account sospetti (docs/changelog/2026-10-30-admin-persone.md). */
+export const ADVICE_TONE: Record<AdminSignalAdviceLevel, "danger" | "warn" | "neutral"> = { ALTA: "danger", MEDIA: "warn", BASSA: "neutral" };
 
 export function AdminPill({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "danger" | "ok" | "warn" }) {
   const colors = {
