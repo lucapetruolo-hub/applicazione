@@ -25,6 +25,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   BOOKING_CANCELED_BY_PROFESSIONAL: { icon: "⚠️", message: "Un intervento è stato annullato dal professionista." },
   BOOKING_CANCELED_BY_CLIENT: { icon: "⚠️", message: "Il cliente ha annullato un intervento." },
   QUOTE_REJECTED: { icon: "😕", message: "Il cliente ha rifiutato il tuo preventivo." },
+  QUOTE_NOT_CHOSEN: { icon: "🙁", message: "Il cliente ha scelto un altro professionista." },
+  REQUEST_WITHDRAWN: { icon: "↩️", message: "Il cliente ha ritirato una richiesta: non gli serve più." },
   QUOTE_WITHDRAWN: { icon: "↩️", message: "Il professionista ha ritirato il preventivo." },
   QUOTE_DEPOSIT_REFUNDED: { icon: "↩️", message: "Il preventivo non si poteva più confermare: ti abbiamo rimborsato l'acconto." },
   LEAD_DECLINED: { icon: "🙁", message: "Un professionista ha rifiutato la tua richiesta." },
@@ -223,6 +225,37 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   if (type === "SUBSCRIPTION_PAUSED" && data.reason === "CARD_NEEDED") {
     return { icon: "💳", message: "Aggiungi la carta per usare i mesi gratis: oggi non paghi nulla e il tuo profilo torna nelle ricerche." };
   }
+  // Lavori: quale e con chi (collaudo F-16); `who` e `jobLabel` li aggiunge il server.
+  const who = text(data.who);
+  if (type === "REQUEST_WITHDRAWN") {
+    return { icon: "↩️", message: `Il cliente ha ritirato la richiesta${jobSuffix}: non gli serve più.` };
+  }
+  if (type === "QUOTE_NOT_CHOSEN") {
+    return { icon: "🙁", message: `Il cliente ha scelto un altro professionista${jobSuffix}.` };
+  }
+  if (type === "BOOKING_CANCELED_BY_CLIENT") {
+    const late = text(data.lateNotice) ? `, con meno di ${text(data.lateNotice)} di preavviso` : "";
+    const kept = typeof data.keptDepositEurCents === "number" && data.keptDepositEurCents > 0 ? `: l'acconto di ${formatEur(data.keptDepositEurCents)} resta a te` : "";
+    if (data.clientAccountClosed === true) return { icon: "⚠️", message: `Il cliente ha chiuso il suo account: l'appuntamento${jobSuffix} è annullato.` };
+    return { icon: "⚠️", message: `${who ?? "Il cliente"} ha annullato l'appuntamento${jobSuffix}${late}${kept}.` };
+  }
+  if (type === "BOOKING_CANCELED_BY_PROFESSIONAL") {
+    if (data.accountClosed === true) return { icon: "⚠️", message: `${who ?? "Il professionista"} ha chiuso il suo account: l'appuntamento${jobSuffix} è annullato.` };
+    return { icon: "⚠️", message: `${who ?? "Il professionista"} ha annullato l'appuntamento${jobSuffix}.` };
+  }
+  if (type === "NEW_REVIEW" && data.updated !== true && (who || typeof data.rating === "number")) {
+    const stars = typeof data.rating === "number" ? ` ${data.rating} ${data.rating === 1 ? "stella" : "stelle"}` : "";
+    return { icon: "⭐", message: `${who ?? "Un cliente"} ti ha lasciato una recensione${stars ? ` da${stars}` : ""}${jobSuffix}: è già visibile.` };
+  }
+  if (type === "JOB_BALANCE_AUTO_CHARGED" && typeof data.amountEurCents === "number") {
+    return { icon: "💳", message: `Il lavoro è chiuso${jobSuffix}: abbiamo addebitato il saldo di ${formatEur(data.amountEurCents)} sulla carta dell'acconto.` };
+  }
+  if (type === "JOB_COMPLETED" && typeof data.finalAmountEurCents === "number" && !(typeof data.changeReason === "string" && data.changeReason.trim())) {
+    return { icon: "✅", message: `${who ?? "Il professionista"} ha segnato il lavoro come terminato${jobSuffix}: importo finale ${formatEur(data.finalAmountEurCents)}.` };
+  }
+  if (type === "JOB_CLOSE_REMINDER" && data.immediate === true) {
+    return { icon: "✅", message: `${who ?? "Il cliente"} ha confermato che il lavoro${jobSuffix} è terminato: segnalalo anche tu con l'importo finale.` };
+  }
   if (type === "NEW_LEAD" && text(data.category)) {
     const where = text(data.city) ? ` a ${text(data.city)}` : "";
     return { icon: data.isUrgent === true ? "⚡" : "🎉", message: `${data.isUrgent === true ? "Richiesta urgente" : "Nuova richiesta"}: ${text(data.category)}${where}` };
@@ -303,5 +336,10 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
     const resend = data.canResend === true ? " Puoi inviargli un nuovo preventivo." : "";
     return { icon: "😕", message: `Il cliente ha rifiutato il tuo preventivo.${note}${resend}` };
   }
-  return NOTIFICATION_COPY[type] ?? DEFAULT_COPY;
+  const base = NOTIFICATION_COPY[type] ?? DEFAULT_COPY;
+  // Ogni altro avviso di un lavoro dice almeno quale (collaudo F-16).
+  if (job && typeof data.bookingId === "string" && NOTIFICATION_COPY[type]) {
+    return { icon: base.icon, message: `${base.message.replace(/\.$/, "")}${jobSuffix}` };
+  }
+  return base;
 }

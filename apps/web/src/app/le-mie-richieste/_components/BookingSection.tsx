@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { ClientBooking } from "@professionisti/api-client";
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { cancellationNoticeLabel, JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents, formatServicePriceRange, quotePriceTotals, type AppointmentMoment } from "@professionisti/shared";
+import { cancellationNoticeLabel, isLateCancellation, JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents, formatServicePriceRange, quotePriceTotals, type AppointmentMoment } from "@professionisti/shared";
 import { AppointmentWhen, useAppointmentMoment } from "./AppointmentWhen";
 import { AddToCalendar } from "./AddToCalendar";
 import { WhatsAppReminderLink } from "@/components/WhatsAppReminderLink";
@@ -256,6 +256,18 @@ export function BookingSection({
               </CardButton>
             ) : null}
           </XStack>
+        </YStack>
+      ) : null}
+
+      {/* Chi deve fare ancora cosa (collaudo A-17): prima restava "Accettata" senza spiegazione. */}
+      {booking.status === "CONFIRMED" && booking.clientConfirmedCompletedAt ? (
+        <YStack gap="$1" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="$4">
+          <Text fontFamily="$heading" fontWeight="800" fontSize={18} color={brand.grafite}>
+            Hai confermato che il lavoro è terminato
+          </Text>
+          <Text fontSize={16} color={brand.grafite70}>
+            Ora {proGone ? "il professionista" : booking.businessName} segna l&apos;importo finale: poi il lavoro risulta completato. Te lo diciamo noi.
+          </Text>
         </YStack>
       ) : null}
 
@@ -607,10 +619,18 @@ export function ChangeLinks({ booking, onReschedule, onMessage, onCancel }: { bo
         Annulla appuntamento
       </Text>
     </XStack>
-      {/* Preavviso scelto dal professionista (docs/CHANGELOG.md §347). */}
+      {/* Preavviso scelto dal professionista (docs/CHANGELOG.md §347); già
+          dentro il preavviso si dice cosa succede, non "avvisa prima" (collaudo A-06). */}
       <Text fontSize={13} color={brand.grafite70}>
-        Se devi annullare, avvisa almeno {cancellationNoticeLabel(booking.cancellationNoticeHours)} prima.
-        {booking.lateCancelKeepsDeposit && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0 ? " Più tardi, l'acconto resta al professionista." : ""}
+        {isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours)
+          ? `Mancano meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)}, il preavviso chiesto: ${
+              booking.lateCancelKeepsDeposit && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0
+                ? "se annulli, l'acconto resta al professionista."
+                : "se annulli non paghi niente, ma il professionista vede che hai annullato all'ultimo."
+            }`
+          : `Se devi annullare, avvisa almeno ${cancellationNoticeLabel(booking.cancellationNoticeHours)} prima.${
+              booking.lateCancelKeepsDeposit && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0 ? " Più tardi, l'acconto resta al professionista." : ""
+            }`}
       </Text>
     </YStack>
   );

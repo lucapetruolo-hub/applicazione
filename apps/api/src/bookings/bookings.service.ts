@@ -36,6 +36,7 @@ import {
   PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
   type ReportProfessionalJobProblemInput,
   notificationJobLabel,
+  CLIENT_ACCOUNT_CLOSED_NOTE,
   type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput,
   cancellationNoticeLabel,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
@@ -92,6 +93,29 @@ export class BookingsService implements OnModuleInit {
     this.authService?.onProfessionalAccountClosed(async (professionalProfileId, userId) => {
       await this.cancelFutureJobsOfClosedAccount(professionalProfileId, userId);
     });
+    this.authService?.onClientAccountClosed(async (clientId) => {
+      await this.cancelFutureJobsOfClosedClient(clientId);
+    });
+  }
+
+  /**
+   * Il cliente chiude l'account (collaudo B-01): come per il professionista
+   * (§348) gli appuntamenti non ancora cominciati si annullano, con le
+   * stesse regole di "Annulla appuntamento" (preavviso e acconto), e il
+   * professionista riceve l'avviso. Prima il lavoro restava confermato, con
+   * l'indirizzo, e il professionista rischiava di andarci.
+   */
+  async cancelFutureJobsOfClosedClient(clientId: string): Promise<number> {
+    const jobs = await this.prisma.booking.findMany({
+      where: { clientId, status: { in: ["PENDING", "CONFIRMED"] }, scheduledAt: { gt: wallClockNow() } },
+      select: { id: true },
+    });
+    for (const job of jobs) {
+      await this.cancelForClient(clientId, job.id, { accountClosed: true }).catch((err: unknown) =>
+        this.logger.error(`Lavoro ${job.id} del cliente che ha chiuso l'account non annullato: ${(err as Error).message}`),
+      );
+    }
+    return jobs.length;
   }
 
   /**
@@ -423,6 +447,19 @@ export class BookingsService implements OnModuleInit {
       clientAddress,
       scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,
     });
+    // Gli altri professionisti con un preventivo ancora aperto lo sanno
+    // subito, solo sul sito (collaudo F-11): prima lo scoprivano aprendo la lista.
+    const others = await this.prisma.quote.findMany({
+      where: { guidedRequestId: quote.guidedRequestId, id: { not: quote.id }, status: { in: ["SENT", "MODIFICATION_REQUESTED"] } },
+      select: { professionalProfile: { select: { userId: true } } },
+    });
+    for (const other of others) {
+      await this.notificationsService.notify(other.professionalProfile.userId, "QUOTE_NOT_CHOSEN", {
+        guidedRequestId: quote.guidedRequestId,
+        category: guidedRequest.category.label,
+        jobLabel: notificationJobLabel(guidedRequest.description),
+      });
+    }
     // Conferma al cliente con il calendario (§346), solo email: sul sito ha appena visto "Appuntamento prenotato".
     this.notificationsService.emailOnly(clientId, "BOOKING_CONFIRMED", { bookingId: booking.id, guidedRequestId: quote.guidedRequestId });
 
@@ -810,6 +847,18 @@ export class BookingsService implements OnModuleInit {
         "Il cliente ha confermato che il lavoro è terminato.",
       );
     }
+    // Il professionista lo sa subito, non solo dal promemoria dei giorni
+    // dopo (collaudo A-17): tocca a lui chiudere con l'importo finale.
+    if (booking.status === "CONFIRMED") {
+      const professional = await this.prisma.professionalProfile.findUnique({ where: { id: booking.professionalProfileId }, select: { userId: true } });
+      if (professional) {
+        await this.notificationsService.notify(professional.userId, "JOB_CLOSE_REMINDER", {
+          bookingId,
+          guidedRequestId: booking.quote?.guidedRequestId ?? null,
+          immediate: true,
+        });
+      }
+    }
 
     // Conferma anche il pagamento DIRECT (CLAUDE.md §88) — la stessa
     // conferma "lavoro terminato" vale come conferma di aver pagato
@@ -879,7 +928,7 @@ export class BookingsService implements OnModuleInit {
    * direttamente una fascia dall'agenda pubblica (bookAgendaSlot) non aveva
    * alcun modo di disdire — solo il professionista poteva farlo.
    */
-  async cancelForClient(clientId: string, bookingId: string) {
+  async cancelForClient(clientId: string, bookingId: string, opts: { accountClosed?: boolean } = {}) {
     const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: true } });
     if (!booking || booking.clientId !== clientId) {
       throw new ForbiddenException("Questa prenotazione non è tua.");
@@ -897,7 +946,18 @@ export class BookingsService implements OnModuleInit {
     // annullare, ma resta segnato: lo vede il professionista. L'acconto
     // online resta a lui solo se l'aveva scritto nel preventivo (§348).
     const late = isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours);
-    await this.prisma.booking.update({ where: { id: bookingId }, data: { status: "CANCELED", canceledBy: "CLIENT", canceledLate: late } });
+    await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        status: "CANCELED",
+        canceledBy: "CLIENT",
+        canceledLate: late,
+        // Account chiuso: niente più indirizzo né telefono per il professionista (collaudo B-01).
+        ...(opts.accountClosed
+          ? { cancellationNote: CLIENT_ACCOUNT_CLOSED_NOTE, street: null, houseNumber: null, addressExtra: null, recipientPhone: null }
+          : {}),
+      },
+    });
     const keptEurCents = late && booking.quote?.lateCancelKeepsDeposit ? await this.jobPaymentsService.keepDepositOnLateCancel(bookingId) : 0;
     // Lavoro pagato online (§168): altrimenti l'acconto torna al cliente.
     if (keptEurCents === 0) await this.jobPaymentsService.refundOnCancel(bookingId, clientId);
@@ -910,9 +970,12 @@ export class BookingsService implements OnModuleInit {
         guidedRequestId: booking.quote?.guidedRequestId,
         ...(late ? { lateNotice: cancellationNoticeLabel(booking.cancellationNoticeHours) } : {}),
         ...(keptEurCents > 0 ? { keptDepositEurCents: keptEurCents } : {}),
+        ...(opts.accountClosed ? { clientAccountClosed: true } : {}),
       });
     }
-    if (booking.quote) {
+    if (booking.quote && opts.accountClosed) {
+      await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, "CLIENT", "Il cliente ha chiuso l'account: l'appuntamento è annullato.");
+    } else if (booking.quote) {
       const note = late
         ? ` con meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)} di preavviso${keptEurCents > 0 ? `: l'acconto di ${formatEurCents(keptEurCents)} resta al professionista` : ""}`
         : "";

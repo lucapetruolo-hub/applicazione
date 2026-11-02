@@ -31,6 +31,7 @@ import { TimelineModal } from "@/components/TimelineModal";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { textareaStyle } from "./clientRequestHelpers";
 import { QuoteDateChooser } from "./QuoteDateChooser";
+import { QuoteAcceptSummary } from "./QuoteAcceptSummary";
 import { InvoiceRequestFields, InvoiceRequestToggle, emptyInvoiceDraft, invoiceDraftFromView, parseInvoiceDraft, type InvoiceDraft } from "@/components/ClientInvoiceRequestForm";
 
 export function formatQuoteDate(iso: string): string {
@@ -56,7 +57,7 @@ export function formatQuoteDateRange(startIso: string, endIso: string | null): s
 /** Data+ora di invio di un preventivo (timestamp reale, fuso orario del browser). */
 export function formatSentAt(iso: string): string {
   const date = new Date(iso);
-  return `${date.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })} alle ${date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+  return `${date.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" })} alle ${date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })}`;
 }
 
 /**
@@ -392,7 +393,7 @@ export function QuoteCard({
       ) : quote.status === "SENT" ? (
         <>
           {/* Da telefono "Accetta preventivo" largo in fondo, dove arriva il
-              pollice, con "Modifica" e "Rifiuta" affiancati sopra; da
+              pollice, con "Proponi un'altra data" e "Rifiuta" affiancati sopra; da
               computer tutti in riga (richiesta dell'utente, §338). Durante
               accettazione, modifica o rifiuto restano solo i pulsanti di
               quel passaggio (docs/CHANGELOG.md §225). */}
@@ -407,26 +408,26 @@ export function QuoteCard({
             <XStack gap="$2" flexWrap="wrap" alignItems="center" $xs={{ flexDirection: "column-reverse", alignItems: "stretch" }}>
               <CardButton
                 tone="primary"
-                arrow={onlyPayment !== undefined}
+                arrow={false}
                 disabled={isAccepting || selectablePayments.length === 0}
                 $xs={{ height: 48 }}
                 onPress={() => {
-                  if (onlyPayment) {
-                    void handleAccept(onlyPayment);
-                    return;
-                  }
+                  // Sempre il riepilogo prima di accettare, anche con un solo
+                  // modo di pagamento (collaudo A-07): un tocco per sbaglio da
+                  // telefono fissava il lavoro e passava i contatti.
                   // Preselezionato il primo modo offerto dal professionista (online per primo, se c'è).
-                  setPaymentMethod(selectablePayments[0] ?? "DIRECT");
+                  setPaymentMethod(onlyPayment ?? selectablePayments[0] ?? "DIRECT");
                   setChoosingPayment(true);
                 }}
               >
-                {isAccepting ? "Accettazione..." : onlyPayment && paymentChoiceIsOnline(onlyPayment) ? "Accetta e paga l'acconto" : "Accetta preventivo"}
+                Accetta preventivo
               </CardButton>
-              <XStack gap="$2">
-                <CardButton $xs={{ height: 48, flex: 1, paddingHorizontal: 12 }} onPress={startChoosingDate}>
-                  Modifica
+              {/* "Proponi un'altra data", non "Modifica": il prezzo non si cambia da qui (collaudo A-05). */}
+              <XStack gap="$2" flexWrap="wrap">
+                <CardButton $xs={{ height: 48, flexGrow: 1, flexBasis: 150, paddingHorizontal: 12 }} onPress={startChoosingDate}>
+                  Proponi un&apos;altra data
                 </CardButton>
-                <CardButton tone="danger" $xs={{ height: 48, flex: 1, paddingHorizontal: 12 }} onPress={() => setConfirmingReject(true)}>
+                <CardButton tone="danger" $xs={{ height: 48, flexGrow: 1, flexBasis: 100, paddingHorizontal: 12 }} onPress={() => setConfirmingReject(true)}>
                   Rifiuta
                 </CardButton>
               </XStack>
@@ -434,13 +435,23 @@ export function QuoteCard({
           ) : null}
           {choosingPayment ? (
             <YStack gap="$3" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
-              <PaymentChoice
-                value={paymentMethod}
-                onChange={setPaymentMethod}
-                quoteMaxEurCents={priceTotals.totalMaxEurCents}
-                onlineAvailable={onlinePayments}
-                offered={quote.paymentOptions}
-                depositPercent={quote.depositPercent}
+              {selectablePayments.length > 1 ? (
+                <PaymentChoice
+                  value={paymentMethod}
+                  onChange={setPaymentMethod}
+                  quoteMaxEurCents={priceTotals.totalMaxEurCents}
+                  onlineAvailable={onlinePayments}
+                  offered={quote.paymentOptions}
+                  depositPercent={quote.depositPercent}
+                />
+              ) : null}
+              <QuoteAcceptSummary
+                quote={quote}
+                dateText={formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
+                priceTotals={priceTotals}
+                payment={paymentMethod}
+                showPaymentLine={selectablePayments.length <= 1}
+                onlinePayments={onlinePayments}
               />
               {/* Detrazioni per i lavori in casa (domanda 28 al commercialista): di solito serve il bonifico parlante (§378). */}
               {categoryMayHaveTaxBonus(categorySlug) && selectablePayments.some(paymentChoiceIsOnline) ? (
@@ -462,7 +473,8 @@ export function QuoteCard({
                   onPress={() => void handleAccept()}
                   disabled={isAccepting || !selectablePayments.includes(paymentMethod)}
                 >
-                  {isAccepting ? "Accettazione..." : paymentChoiceIsOnline(paymentMethod) ? "Accetta e paga l'acconto" : "Accetta preventivo"}
+                  {/* Il pulsante dice che nasce l'obbligo di pagare (collaudo A-07, Codice del consumo art. 51 c. 2). */}
+                  {isAccepting ? "Accettazione..." : paymentChoiceIsOnline(paymentMethod) ? "Accetta e paga l'acconto" : "Accetta con obbligo di pagare"}
                 </CardButton>
                 <CardButton onPress={() => setChoosingPayment(false)} disabled={isAccepting}>
                   Annulla

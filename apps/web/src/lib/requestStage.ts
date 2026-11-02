@@ -93,6 +93,32 @@ export function bookingStageStyle(status: ProfessionalBooking["status"]): (typeo
   return REQUEST_STAGE_STYLE.accettata; // CONFIRMED
 }
 
+/**
+ * Etichetta della pillola per una scheda "chiusa", detta per il motivo
+ * (collaudo F-10, B-09): "Chiusa" da sola non diceva chi aveva fatto cosa, e
+ * dopo un rifiuto del cliente il professionista può ancora rimandare il
+ * preventivo.
+ */
+export function closedStageLabel(lead: ProfessionalLead): string {
+  if (lead.guidedRequest.withdrawnByClient) return "Ritirata dal cliente";
+  if (lead.status === "DECLINED") return "Rifiutata da te";
+  if (lead.quote?.otherProfessionalChosen) return "Scelto un altro";
+  if (lead.quote?.status === "WITHDRAWN") return "Preventivo ritirato";
+  if (lead.quote?.status === "REJECTED") return lead.quote.canResend ? "Rifiutato, puoi rimandarlo" : "Preventivo rifiutato";
+  return "Chiusa";
+}
+
+/**
+ * Scheda in cui finisce una richiesta nei filtri del professionista: una
+ * ritirata dal cliente va in "Annullate" (collaudo B-09), le altre chiuse in
+ * "Chiuse" insieme alle scadute (collaudo F-10: prima "Scadute" anche per un
+ * rifiuto).
+ */
+export function leadTabBucket(lead: ProfessionalLead, stage: RequestStage): RequestStage {
+  if (stage !== "chiusa") return stage;
+  return lead.guidedRequest.withdrawnByClient ? "annullata" : "scaduta";
+}
+
 /** Motivo per cui un preventivo/richiesta "chiusa" non è più azionabile — mostrato al posto delle azioni. */
 export function describeClosedReason(lead: ProfessionalLead): string {
   const withdrawn = lead.guidedRequest.withdrawnByClient;

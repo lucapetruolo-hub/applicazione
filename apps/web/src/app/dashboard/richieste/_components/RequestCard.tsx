@@ -36,6 +36,7 @@ import {
   CANCELLATION_NOTICE_OPTIONS,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
   cancellationNoticeLabel,
+  isLateCancellation,
   isCancellationNoticeHours,
   type CancellationNoticeHours,
   type MySubscription,
@@ -55,7 +56,7 @@ import { JobIssuePanel } from "@/components/JobIssuePanel";
 import { JobPaymentStatus } from "@/components/JobPaymentStatus";
 import { BankDisputeNotePanel } from "@/components/BankDisputeNotePanel";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
-import { describeClosedReason, type RequestStage } from "@/lib/requestStage";
+import { closedStageLabel, describeClosedReason, type RequestStage } from "@/lib/requestStage";
 import { UnreadDot } from "@/components/UnreadDot";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
@@ -156,7 +157,15 @@ export function RequestCard({
   const [showQuoteForm, setShowQuoteForm] = useState(false);
   const [items, setItems] = useState<QuoteItemDraft[]>([{ name: "Manodopera", priceMin: "", priceMax: "" }]);
   const modeAvailableSlots = availableSlots.filter((sl) => (isOnline ? sl.onlineAvailable : sl.homeAvailable));
-  const [selectedSlotKey, setSelectedSlotKey] = useState(modeAvailableSlots[0] ? slotKey(modeAvailableSlots[0]) : "");
+  // Orario chiesto dal cliente, già scelto aprendo il preventivo (collaudo
+  // C-07, 0-07): prima era già scelto il primo libero, spesso oggi, e il
+  // lavoro finiva in agenda nel giorno sbagliato.
+  const requestedSlotText =
+    gr.preferredDate && gr.preferredTimeSlot
+      ? `${new Date(`${gr.preferredDate}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })} · ${gr.preferredTimeSlot.replace("-", "–")}`
+      : null;
+  const requestedSlot = gr.preferredDate && gr.preferredTimeSlot ? modeAvailableSlots.find((sl) => sl.date === gr.preferredDate && `${sl.startTime}-${sl.endTime}` === gr.preferredTimeSlot) : undefined;
+  const [selectedSlotKey, setSelectedSlotKey] = useState(requestedSlot ? slotKey(requestedSlot) : "");
   const [showAllSlots, setShowAllSlots] = useState(false);
   // Data/orario inserita a mano (richiesta esplicita dell'utente: "dai la
   // possibilità di inserire una data orario manualmente"), non solo come
@@ -201,6 +210,14 @@ export function RequestCard({
     if (!showQuoteForm) setNoticeHours(standardNotice);
   }
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  // Inizio scelto nel modulo, per l'avviso sul preavviso (collaudo C-08).
+  const chosenQuoteStart = (() => {
+    if (modeAvailableSlots.length > 0 && !useManualDateTime) {
+      const slot = modeAvailableSlots.find((sl) => slotKey(sl) === selectedSlotKey);
+      return slot ? `${slot.date}T${slot.startTime}:00.000Z` : null;
+    }
+    return manualDate && manualStartTime ? `${manualDate}T${manualStartTime}:00.000Z` : null;
+  })();
   const [isSubmittingQuote, setIsSubmittingQuote] = useState(false);
   // Anteprima "Dal 4 al 6 novembre, ogni giorno 08:00–17:00" di un lavoro su più giorni.
   const jobDaysPreview = (() => {
@@ -261,7 +278,8 @@ export function RequestCard({
   const [menuError, setMenuError] = useState<string | null>(null);
   // "Nuovo": aggiornamenti non letti arrivati in questa pagina, o scheda
   // segnata a mano "da leggere" dal menu (docs/CHANGELOG.md §130).
-  const isNew = Boolean(lead.myState.markedUnreadAt) || (unreadCount ?? 0) > 0;
+  // Mai su una richiesta ritirata dal cliente: non c'è più niente da fare (collaudo B-09).
+  const isNew = !lead.guidedRequest.withdrawnByClient && (Boolean(lead.myState.markedUnreadAt) || (unreadCount ?? 0) > 0);
   const [showTimeline, setShowTimeline] = useState(false);
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
   // Il pallino "Contatta/Cronologia" deve sparire non appena si apre la
@@ -612,6 +630,12 @@ export function RequestCard({
     }
   }
 
+  /** Nuovo preventivo: l'orario del cliente già scelto, se è libero; altrimenti nessuno. */
+  function openNewQuoteForm() {
+    setSelectedSlotKey(requestedSlot ? slotKey(requestedSlot) : "");
+    setShowQuoteForm(true);
+  }
+
   function startEditingQuote() {
     if (!lead.quote) return;
     presetSchedule(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate, {
@@ -667,7 +691,7 @@ export function RequestCard({
       text: "Prepara il preventivo",
       onPress: () => {
         ensureOpen();
-        setShowQuoteForm(true);
+        openNewQuoteForm();
       },
     });
     menuActions.push({
@@ -782,7 +806,7 @@ export function RequestCard({
             {/* Ordine invertito su richiesta esplicita dell'utente: lo stato
                 della richiesta (StagePill) precede il badge di modalità
                 (ServiceBadge, "A domicilio"/"Consulenza online"). */}
-            <StagePill stage={stage} label={stage === "chiusa" && gr.withdrawnByClient ? "Ritirata dal cliente" : undefined} />
+            <StagePill stage={stage} label={stage === "chiusa" ? closedStageLabel(lead) : undefined} />
             <ServiceBadge online={isOnline} />
             {/* Quando serve, scelto dal cliente (§344): "Oggi" è già il badge Urgente. */}
             {gr.timing === "WEEK" || gr.timing === "CALM" ? (
@@ -1318,7 +1342,7 @@ export function RequestCard({
                     "Invia preventivo" con esiti diversi (uno apriva, l'altro
                     inviava) erano un errore da un tocco (docs/CHANGELOG.md §349). */}
                 {!showQuoteForm ? (
-                  <CardButton tone="primary" onPress={() => setShowQuoteForm(true)}>
+                  <CardButton tone="primary" onPress={openNewQuoteForm}>
                     Prepara il preventivo
                   </CardButton>
                 ) : null}
@@ -1439,13 +1463,21 @@ export function RequestCard({
                   <CardButton compactOnPhone fill={brand.verificato}>Vedi in agenda</CardButton>
                 </Link>
                 <ContactButton compactOnPhone onPress={openTimeline} unreadCount={effectiveUnreadCount} />
-                {/* Annulla sempre per ultimo (richiesta esplicita dell'utente). */}
-                {booking?.status === "CONFIRMED" ? (
+                {/* Annulla sempre per ultimo (richiesta esplicita dell'utente).
+                    Il giorno del lavoro resta solo nel menu ≡, lontano da
+                    "Lavoro terminato" (collaudo D-07). */}
+                {booking?.status === "CONFIRMED" && !canComplete ? (
                   <CardButton compactOnPhone tone="danger" onPress={() => setShowCancelModal(true)}>
                     Annulla intervento
                   </CardButton>
                 ) : null}
               </XStack>
+            ) : null}
+            {/* Chi deve fare ancora cosa (collaudo A-17). */}
+            {booking?.status === "CONFIRMED" && booking.clientConfirmedCompletedAt ? (
+              <Text fontSize={16} fontWeight="600" color={brand.grafite}>
+                Il cliente ha confermato che il lavoro è terminato: premi &quot;Lavoro terminato&quot; e scrivi l&apos;importo finale.
+              </Text>
             ) : null}
             {booking?.status === "CANCELED" && booking.reopenRequestedBy ? (
               <Text fontSize={13} color={brand.grafite70}>
@@ -1584,6 +1616,14 @@ export function RequestCard({
                       );
                     })}
                   </div>
+                  {/* Orario diverso da quello chiesto, o chiesto e non libero (collaudo C-07). */}
+                  {requestedSlotText && (!requestedSlot || selectedSlotKey !== slotKey(requestedSlot)) ? (
+                    <Text fontSize={13} fontWeight="600" color={brand.ottoneScuro}>
+                      {requestedSlot
+                        ? `Il cliente aveva chiesto ${requestedSlotText}.`
+                        : `Il cliente aveva chiesto ${requestedSlotText}: non è tra i tuoi orari liberi, scegline uno.`}
+                    </Text>
+                  ) : null}
                   <XStack gap="$4" flexWrap="wrap">
                     {!showAllSlots && modeAvailableSlots.length > QUOTE_SLOTS_SHOWN ? (
                       <button type="button" className="slot-more" onClick={() => setShowAllSlots(true)}>
@@ -1756,6 +1796,12 @@ export function RequestCard({
                     <input type="checkbox" checked={keepDeposit} onChange={(e) => setKeepDeposit(e.target.checked)} style={{ accentColor: brand.verificato }} />
                     Se annulla più tardi, l&apos;acconto online resta a me
                   </label>
+                ) : null}
+                {/* Preavviso più lungo del tempo che manca (collaudo C-08). */}
+                {chosenQuoteStart && isLateCancellation(chosenQuoteStart, noticeHours) ? (
+                  <Text fontSize={13} fontWeight="600" color={brand.urgenza}>
+                    Mancano meno di {cancellationNoticeLabel(noticeHours)} all&apos;appuntamento: il cliente sarebbe già oltre il preavviso. Scegli un preavviso più breve o un&apos;altra data.
+                  </Text>
                 ) : null}
                 <Text fontSize={13} color={brand.grafite70}>
                   Il cliente lo legge prima di accettare. Lo standard lo cambi nel Profilo.

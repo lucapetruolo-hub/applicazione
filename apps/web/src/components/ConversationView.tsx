@@ -54,7 +54,7 @@ const ACTOR_BUBBLE_BG: Record<ConversationEvent["actor"], string> = {
 
 /** Solo l'ora sotto ogni messaggio (docs/CHANGELOG.md §198): il giorno lo dice il separatore sopra. Fuso orario del browser. */
 function formatEventTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
 }
 
 /** Etichetta del separatore di giorno: "Oggi", "Ieri", altrimenti "8 ottobre 2026". */

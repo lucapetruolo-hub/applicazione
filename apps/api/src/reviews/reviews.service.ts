@@ -220,6 +220,8 @@ export class ReviewsService {
     await this.notificationsService.notify(booking.professionalProfile.userId, "NEW_REVIEW", {
       bookingId: booking.id,
       reviewId: review.id,
+      // Le stelle nel testo dell'avviso (collaudo F-16).
+      rating: review.rating,
       guidedRequestId: booking.quote?.guidedRequestId ?? null,
       // Il cliente può recensire prima che il professionista segni il lavoro
       // come terminato (§189): l'email gli ricorda di farlo.

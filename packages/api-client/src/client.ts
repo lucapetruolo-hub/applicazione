@@ -109,6 +109,7 @@ import type {
   AdminProfessionalStats,
   AdminSiteStats,
   ChurnReason,
+  AccountClosureCheck,
   SiteNoteInput,
   SiteAdviceDoneInput,
   ProfessionalVerificationFilter,
@@ -328,6 +329,12 @@ export type ClientGuidedRequest = {
     reviews: ProfessionalReviewSummary | null;
     /** Privato, partita IVA o azienda, badge accanto al nome (docs/CHANGELOG.md §338); null se non ancora indicato. */
     professionalKind: ProfessionalKind | null;
+    /**
+     * Chi esegue il lavoro, detto prima di accettare (collaudo M-02, Codice
+     * del consumo art. 49): ragione sociale o nome, partita IVA e sede. null
+     * per chi lavora come privato o senza dati fiscali.
+     */
+    executor?: { name: string; vatNumber: string | null; seat: string | null } | null;
     /** Applica l'IVA: "IVA inclusa" accanto al totale, altrimenti "Prezzo finale" (docs/CHANGELOG.md §378). */
     chargesVat?: boolean | null;
     /** Fattura chiesta a questo professionista (docs/CHANGELOG.md §378). */
@@ -1352,6 +1359,10 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     logoutOtherDevices: (token: string) =>
       request<{ token: string }>("/auth/logout-others", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
+    /** Cosa resta aperto e cosa si annulla chiudendo l'account (collaudo B-01, P-06). */
+    accountClosureCheck: (token: string) =>
+      request<AccountClosureCheck>("/auth/me/closure-check", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
     /** `reason`: motivo scelto da un elenco, facoltativo (docs/CHANGELOG.md §372). */
     deleteAccount: (token: string, reason?: ChurnReason) =>
       request<{ success: boolean }>("/auth/me", {
@@ -1651,10 +1662,10 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       uploadFile<{ imageUrl: string }>("/professionals/me/portfolio-photos", token, file, "image"),
 
     myLeads: (token: string) =>
-      request<ProfessionalLead[]>("/professionals/me/leads", { headers: { Authorization: `Bearer ${token}` } }),
+      request<ProfessionalLead[]>("/professionals/me/leads", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     myProfessionalBookings: (token: string) =>
-      request<ProfessionalBooking[]>("/professionals/me/bookings", { headers: { Authorization: `Bearer ${token}` } }),
+      request<ProfessionalBooking[]>("/professionals/me/bookings", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     /** Lavori presi al di fuori della piattaforma, inseriti a mano dal professionista nella propria agenda (richiesta esplicita dell'utente). */
     createExternalJob: (token: string, input: ExternalJobInput) =>

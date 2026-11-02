@@ -22,7 +22,7 @@ export function slotLabel(slot: ProfessionalAvailableSlot): string {
 }
 export function formatDateTime(iso: string): string {
   const d = new Date(iso);
-  return `${d.toLocaleDateString("it-IT", { day: "numeric", month: "short" })} · ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+  return `${d.toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "Europe/Rome" })} · ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })}`;
 }
 export function formatSlotRange(startIso: string, endIso: string | null): string {
   // Lavoro su più giorni (docs/CHANGELOG.md §310).
