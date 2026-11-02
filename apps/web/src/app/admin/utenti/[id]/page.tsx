@@ -15,6 +15,7 @@ import {
   JOB_ISSUE_STATUS_LABEL,
   MODERATION_GROUNDS,
   MODERATION_REASON_TEMPLATES,
+  REVIEW_HOLD_REASON_LABEL,
   PROFESSIONAL_STATUS_ONE_LABEL,
   adminCan,
   adminRolesLabel,
@@ -547,6 +548,22 @@ function ReviewsTable({
 }) {
   const [hiding, setHiding] = useState<AdminUserReview | null>(null);
   const [showing, setShowing] = useState<AdminUserReview | null>(null);
+  const [publishing, setPublishing] = useState<string | null>(null);
+  const [publishError, setPublishError] = useState<{ id: string; message: string } | null>(null);
+
+  // Recensione in controllo (collaudo P-01): un tocco la pubblica, come chiesto dal controllo.
+  async function publish(review: AdminUserReview) {
+    setPublishing(review.id);
+    setPublishError(null);
+    try {
+      await apiClient.adminPublishHeldReview(token, review.id);
+      onChanged();
+    } catch (err) {
+      setPublishError({ id: review.id, message: err instanceof Error ? err.message : "Non è stato possibile pubblicarla, riprova." });
+    } finally {
+      setPublishing(null);
+    }
+  }
   return (
     <YStack gap="$2">
       <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
@@ -575,12 +592,40 @@ function ReviewsTable({
                     <strong>{r.rating}★</strong> {r.comment ?? ""}
                   </td>
                   <td>
-                    {r.hiddenAt ? `Nascosta dal ${formatAdminDate(r.hiddenAt)}` : "Visibile"}
+                    {r.heldAt ? (
+                      <>
+                        <strong>In controllo</strong>: non si vede finché non decidi
+                        {r.heldReasons.map((reason) => (
+                          <small key={reason} className="admin-cell-note">
+                            {REVIEW_HOLD_REASON_LABEL[reason]}
+                          </small>
+                        ))}
+                      </>
+                    ) : r.hiddenAt ? (
+                      `Nascosta dal ${formatAdminDate(r.hiddenAt)}`
+                    ) : (
+                      "Visibile"
+                    )}
                     {r.hiddenBy?.note ? <small className="admin-cell-note">Motivo: {r.hiddenBy.note}</small> : null}
                   </td>
                   {canModerate ? (
                     <td style={{ whiteSpace: "nowrap" }}>
-                      {!r.hiddenAt ? (
+                      {r.heldAt ? (
+                        <>
+                          <button type="button" className="admin-link-button" disabled={publishing === r.id} onClick={() => void publish(r)}>
+                            {publishing === r.id ? "Pubblico..." : "Pubblica"}
+                          </button>{" "}
+                          ·{" "}
+                          <button type="button" className="admin-link-button" onClick={() => setHiding(r)}>
+                            Nascondi
+                          </button>
+                          {publishError?.id === r.id ? (
+                            <small className="admin-cell-note" role="alert">
+                              {publishError.message}
+                            </small>
+                          ) : null}
+                        </>
+                      ) : !r.hiddenAt ? (
                         <button type="button" className="admin-link-button" onClick={() => setHiding(r)}>
                           Nascondi
                         </button>

@@ -124,7 +124,8 @@ export class TimelineService {
    */
   async canDownloadAttachment(userId: string, url: string): Promise<boolean> {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
-    const participant = user?.role === "ADMIN" ? {} : { OR: [{ guidedRequest: { clientId: userId } }, { professionalProfile: { userId } }] };
+    // Un allegato di un messaggio nascosto lo apre solo l'admin.
+    const participant = user?.role === "ADMIN" ? {} : { hiddenAt: null, OR: [{ guidedRequest: { clientId: userId } }, { professionalProfile: { userId } }] };
     const event = await this.prisma.conversationEvent.findFirst({ where: { mediaUrls: { has: url }, ...participant }, select: { id: true } });
     return event !== null;
   }
@@ -190,8 +191,8 @@ export class TimelineService {
         otherPartyImageUrl,
         categoryLabel: event.guidedRequest.category.label,
         requestDescription: event.guidedRequest.description,
-        lastMessage: event.message || null,
-        lastMessageHasMedia: event.mediaUrls.length > 0,
+        lastMessage: event.hiddenAt ? "Messaggio nascosto" : event.message || null,
+        lastMessageHasMedia: !event.hiddenAt && event.mediaUrls.length > 0,
         lastMessageAt: event.createdAt.toISOString(),
         // Un messaggio automatico non è "tuo" anche se porta il tuo ruolo
         // ("Tu: Il professionista ha annullato…" non si legge bene).
@@ -220,12 +221,16 @@ export class TimelineService {
   }
 
   private serializeEvent(event: ConversationEventRow): ConversationEvent {
+    // Messaggio nascosto da una segnalazione accolta: né testo né allegati
+    // (docs/changelog/2026-11-02-collaudo-recensioni-abusi.md).
+    const hidden = event.hiddenAt !== null;
     return {
       id: event.id,
       actor: event.actor,
-      message: event.message,
-      mediaUrls: event.mediaUrls,
+      message: hidden ? "" : event.message,
+      mediaUrls: hidden ? [] : event.mediaUrls,
       automatic: event.automatic,
+      ...(hidden ? { hidden: true } : {}),
       createdAt: event.createdAt.toISOString(),
     };
   }

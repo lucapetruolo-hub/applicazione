@@ -59,3 +59,39 @@ describe("segnalazione di un contenuto", () => {
     expect(result.received[0]).toMatchObject({ id: "rep-1", ground: "legge-diffamazione" });
   });
 });
+
+describe("segnalazione di un messaggio in chat", () => {
+  const message = (actor: "CLIENT" | "PROFESSIONAL" | "SYSTEM", automatic = false) => ({
+    actor,
+    automatic,
+    guidedRequest: { clientId: "client-1" },
+    professionalProfile: { userId: "pro-user-1" },
+  });
+
+  function withMessage(row: ReturnType<typeof message> | null) {
+    const built = buildService();
+    (built.prisma as Record<string, unknown>).conversationEvent = { findUnique: vi.fn().mockResolvedValue(row) };
+    return built;
+  }
+
+  it("il professionista segnala un messaggio del cliente", async () => {
+    const { service, prisma } = withMessage(message("CLIENT"));
+    await service.create("pro-user-1", { targetType: "CHAT_MESSAGE", targetId: "ev-1", reason: "spam" });
+    expect(prisma.contentReport.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ targetType: "CHAT_MESSAGE", targetId: "ev-1" }) }));
+  });
+
+  it("non si segnala un proprio messaggio, uno automatico o una chat altrui", async () => {
+    await expect(withMessage(message("CLIENT")).service.create("client-1", { targetType: "CHAT_MESSAGE", targetId: "ev-1", reason: "spam" })).rejects.toThrow(
+      "Puoi segnalare solo un messaggio che hai ricevuto",
+    );
+    await expect(withMessage(message("PROFESSIONAL", true)).service.create("client-1", { targetType: "CHAT_MESSAGE", targetId: "ev-1", reason: "spam" })).rejects.toThrow(
+      "Puoi segnalare solo un messaggio che hai ricevuto",
+    );
+    await expect(withMessage(message("PROFESSIONAL")).service.create("someone-else", { targetType: "CHAT_MESSAGE", targetId: "ev-1", reason: "spam" })).rejects.toThrow(
+      "Puoi segnalare solo un messaggio che hai ricevuto",
+    );
+    await expect(withMessage(null).service.create("client-1", { targetType: "CHAT_MESSAGE", targetId: "ev-1", reason: "spam" })).rejects.toThrow(
+      "Puoi segnalare solo un messaggio che hai ricevuto",
+    );
+  });
+});

@@ -113,6 +113,8 @@ function reportTargetHref(report: AdminContentReport): string | null {
   if (report.targetType === "REVIEW" && report.linkedProfessionalProfileId) {
     return `/professionista/${report.linkedProfessionalProfileId}#recensione-${report.targetId}`;
   }
+  // Un messaggio in chat si apre nella chat in sola lettura di Admin.
+  if (report.targetType === "CHAT_MESSAGE") return report.linkedChatPath ?? null;
   return null;
 }
 
@@ -310,7 +312,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
           {href ? (
             <Link href={href} target="_blank" style={{ textDecoration: "none" }}>
               <Button tabIndex={-1} variant="secondary" size="$3">
-                Pagina pubblica
+                {report.targetType === "CHAT_MESSAGE" ? "Apri la chat" : "Pagina pubblica"}
               </Button>
             </Link>
           ) : null}
