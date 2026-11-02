@@ -92,7 +92,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const priceEntries: MetadataRoute.Sitemap = pricePaths
       .filter((path): path is string => path !== null)
       .map((path) => ({ url: `${SITE_URL}${path}`, changeFrequency: "weekly", priority: 0.6 }));
-    return [...staticEntries, ...categories, ...cityEntries, ...priceEntries, ...professionalEntries];
+    // Elenco "Quanto costa" solo se ha almeno una pagina mestiere (collaudo N-05).
+    const priceIndexEntry: MetadataRoute.Sitemap = priceEntries.length > 0 ? [{ url: `${SITE_URL}/prezzi`, changeFrequency: "weekly", priority: 0.6 }] : [];
+    return [...staticEntries, ...categories, ...cityEntries, ...priceIndexEntry, ...priceEntries, ...professionalEntries];
   } catch {
     // API ferma: sitemap con le pagine fisse e tutte le categorie, meglio di nessuna.
     return [...staticEntries, ...categoryEntries(PROFESSIONAL_CATEGORIES.map((category) => category.slug))];

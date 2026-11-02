@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown, ChevronUp, Info, Map as MapIcon, Maximize2, Minimize2, Plus, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
-import { findComuneByName, PROFILE_REQUEST_SOURCE_PARAM, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type ProfessionalSearchResult, professionalPath, subTagLabel } from "@professionisti/shared";
+import { PROFILE_REQUEST_SOURCE_PARAM, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type ProfessionalSearchResult, professionalPath, subTagLabel } from "@professionisti/shared";
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
+import { apiClient } from "@/lib/apiClient";
 import { CARD_PHOTO, ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { useSavedProfessionals } from "@/lib/useSavedProfessionals";
@@ -46,11 +47,30 @@ function serviceDescriptionParam(pro: ProfessionalSearchResult): string {
   return service ? `&descrizione=${encodeURIComponent(`${service}. `)}` : "";
 }
 
+/**
+ * Ricerca senza città per i puntini della mappa (stessi filtri della pagina):
+ * la fa il browser quando la mappa si apre, non il server prima di mandare
+ * la pagina, che così arriva prima (collaudo N-02,
+ * docs/changelog/2026-10-30-velocita-telefono.md). Da telefono la mappa parte
+ * chiusa: chi non la apre non la scarica.
+ */
+export type MapPoolQuery = {
+  category?: string;
+  q?: string;
+  remote?: boolean;
+  service?: string;
+  offers?: string;
+  merit?: boolean;
+  /** Solo i professionisti con questa specializzazione (pagine per servizio). */
+  subTag?: string;
+};
+
 export function ResultsListWithMap({
   professionals,
-  allProfessionals,
+  mapPool,
   showMap,
   city,
+  cityCenter,
   header,
   footer,
   defaultMode,
@@ -64,12 +84,14 @@ export function ResultsListWithMap({
   /**
    * Tutti i professionisti disponibili per il puntinamento sulla mappa (es. stessa categoria, nessun filtro città).
    * Muovendo/zoomando la mappa la colonna a sinistra si aggiorna mostrando chi è visibile nell'inquadratura corrente.
-   * Default: `professionals` (nessun professionista aggiuntivo oltre ai risultati della ricerca).
+   * Senza (nessuna città cercata): `professionals`, la ricerca è già quella.
    */
-  allProfessionals?: ProfessionalSearchResult[];
+  mapPool?: MapPoolQuery;
   showMap: boolean;
-  /** Città cercata: se non ci sono professionisti con coordinate, la mappa zooma comunque qui invece di sparire. */
+  /** Città cercata, come scritta nel comune (es. "Latina"). */
   city?: string;
+  /** Centro del comune cercato, dal server: se non ci sono professionisti con coordinate, la mappa zooma comunque qui invece di sparire. */
+  cityCenter?: [number, number];
   /** Contenuto mostrato in cima alla colonna sinistra, allineato con l'inizio della mappa (titolo/filtri categoria). */
   header?: ReactNode;
   /**
@@ -100,11 +122,7 @@ export function ResultsListWithMap({
   "use no memo";
   const router = useRouter();
   const { canSave, savedIds, pendingId, toggleSave } = useSavedProfessionals();
-  const fallbackCenter = useMemo<[number, number] | undefined>(() => {
-    const comune = city ? findComuneByName(city) : undefined;
-    return comune ? [comune.lat, comune.lon] : undefined;
-  }, [city]);
-  const pool = allProfessionals ?? professionals;
+  const fallbackCenter = cityCenter;
   // Nessuno entro il raggio di ricerca: l'API ha allargato fino al
   // professionista più vicino (ProfessionalsService.search), lo diciamo.
   const nearestOutsideKm = useMemo(() => {
@@ -114,7 +132,8 @@ export function ResultsListWithMap({
     return Math.round(Math.min(...(distances as number[])));
   }, [city, professionals]);
 
-  const [visible, setVisible] = useState(professionals);
+  // Inquadratura della mappa (null finché non c'è): la lista mostra chi ci sta dentro.
+  const [bounds, setBounds] = useState<MapBounds | null>(null);
   // Da mobile la mappa parte chiusa: si apre solo toccando il bottone nella
   // barra in alto, invece di occupare subito spazio verticale sotto la
   // ricerca. Da desktop ($gtMd) resta sempre visibile a fianco della lista,
@@ -165,6 +184,26 @@ export function ResultsListWithMap({
   const wideScreen = useMediaQuery("(min-width: 700px)");
   if ((mobileMapOpen || wideScreen) && !shouldMountMap) setShouldMountMap(true);
 
+  // Puntini oltre la città cercata, chiesti quando la mappa si monta (vedi MapPoolQuery).
+  const [extraPool, setExtraPool] = useState<ProfessionalSearchResult[] | null>(null);
+  const mapPoolKey = mapPool ? JSON.stringify(mapPool) : null;
+  useEffect(() => {
+    if (!shouldMountMap || !mapPoolKey) return;
+    let active = true;
+    const { subTag, ...query } = JSON.parse(mapPoolKey) as MapPoolQuery;
+    apiClient.searchProfessionals(query).then(
+      (list) => {
+        if (active) setExtraPool(subTag ? list.filter((pro) => pro.subTags.includes(subTag)) : list);
+      },
+      // Senza risposta la mappa resta con i risultati della città.
+      () => undefined,
+    );
+    return () => {
+      active = false;
+    };
+  }, [shouldMountMap, mapPoolKey]);
+  const pool = extraPool ?? professionals;
+
   function handleBoundsChange(bounds: MapBounds) {
     // Su mobile la mappa parte chiusa (display:none) ma resta montata: una mappa
     // inizializzata in un contenitore di dimensione zero calcola un
@@ -174,16 +213,21 @@ export function ResultsListWithMap({
     // (14 professionisti trovati ma lista vuota). Ignoriamo un inquadramento
     // di questo tipo invece di applicarlo.
     if (!(bounds.north > bounds.south) || !(bounds.east > bounds.west)) return;
-    const within = pool.filter(
-      (pro) =>
-        (pro.latitude !== 0 || pro.longitude !== 0) &&
-        pro.latitude <= bounds.north &&
-        pro.latitude >= bounds.south &&
-        pro.longitude <= bounds.east &&
-        pro.longitude >= bounds.west,
-    );
-    setVisible(within);
+    setBounds(bounds);
   }
+
+  // Calcolata dall'inquadratura e non salvata: quando arrivano i puntini
+  // oltre la città, la lista si aggiorna senza dover muovere la mappa.
+  const visible = bounds
+    ? pool.filter(
+        (pro) =>
+          (pro.latitude !== 0 || pro.longitude !== 0) &&
+          pro.latitude <= bounds.north &&
+          pro.latitude >= bounds.south &&
+          pro.longitude <= bounds.east &&
+          pro.longitude >= bounds.west,
+      )
+    : professionals;
 
   // Ranking già applicato da apiClient.searchProfessionals (boost→rating→recensioni→distanza):
   // manteniamo lo stesso ordine anche nel sottoinsieme filtrato per inquadratura mappa.
@@ -658,7 +702,7 @@ export function ResultsListWithMap({
           {nearestOutsideKm !== null ? (
             <YStack backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="$4" padding="$3">
               <Text color={brand.grafite} fontSize={16}>
-                Nessun professionista entro {SEARCH_RADIUS_KM} km da {findComuneByName(city!)?.name ?? city}: ti mostriamo il più
+                Nessun professionista entro {SEARCH_RADIUS_KM} km da {city}: ti mostriamo il più
                 vicino, a circa {nearestOutsideKm} km.
               </Text>
             </YStack>
@@ -746,6 +790,7 @@ export function ResultsListWithMap({
                     size={CARD_PHOTO.size}
                     mobileSize={CARD_PHOTO.mobileSize}
                     shape={CARD_PHOTO.shape}
+                    priority={index === 0}
                   />
                   {canSave ? (
                     // Il clic sul cuoricino non deve aprire anche il profilo (clic sulla card).
