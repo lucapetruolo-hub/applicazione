@@ -421,12 +421,15 @@ describe("OnlineMoneyService.handleStripeDisputeFunds (§267)", () => {
 
     // Sul conto ci sono 100 € meno 6,75 € di trattenuta: si riprendono 93,25 €.
     expect(stripe.transfers.createReversal).toHaveBeenCalledWith("tr_1", expect.objectContaining({ amount: 9325 }), expect.anything());
-    expect(prisma.jobPayment.update).toHaveBeenCalledWith({ where: { id: "jp-1" }, data: { disputeRecoveredEurCents: 9325 } });
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith({
+      where: { id: "jp-1", disputeRecoveredEurCents: 0 },
+      data: { disputeFunds: { dp_1: 9325 }, disputeRecoveredEurCents: { increment: 9325 } },
+    });
   });
 
   it("se la contestazione è vinta la cifra torna al professionista", async () => {
     const { service, prisma, stripe } = buildService();
-    const job = releasedJob({ onlineStage: "PAID", releasedAt: null, payoutPendingEurCents: 0, stripeDisputeId: "dp_1", stripeDisputeStatus: "under_review", disputeRecoveredEurCents: 9325 });
+    const job = releasedJob({ onlineStage: "PAID", releasedAt: null, payoutPendingEurCents: 0, stripeDisputeId: "dp_1", stripeDisputeStatus: "under_review", disputeRecoveredEurCents: 9325, disputeFunds: { dp_1: 9325 } });
     prisma.jobPayment.findFirst.mockResolvedValue(job);
     prisma.jobPayment.findUnique.mockResolvedValue(null);
     stripe.transfers.create.mockResolvedValue({ id: "tr_back" });
@@ -434,7 +437,7 @@ describe("OnlineMoneyService.handleStripeDisputeFunds (§267)", () => {
     await service.handleStripeDisputeFunds(dispute({ status: "won" }), "reinstated");
 
     expect(stripe.transfers.create).toHaveBeenCalledWith(expect.objectContaining({ amount: 9325, destination: "acct_1" }), { idempotencyKey: "job-dispute-return-dp_1" });
-    expect(prisma.jobPayment.update).toHaveBeenCalledWith({ where: { id: "jp-1" }, data: { disputeRecoveredEurCents: 0, disputeReturnTransferId: "tr_back" } });
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith({ where: { id: "jp-1" }, data: { disputeFunds: { dp_1: -1 }, disputeRecoveredEurCents: { decrement: 9325 }, disputeReturnTransferId: "tr_back" } });
   });
 
   it("persa dopo il bonifico: la parte del professionista e la commissione di Stripe con l'IVA diventano un suo debito", async () => {

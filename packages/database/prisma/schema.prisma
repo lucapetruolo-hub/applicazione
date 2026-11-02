@@ -1426,15 +1426,14 @@ model Booking {
   @@map("bookings")
 }
 
-// Copia di cortesia del documento del lavoro (decisione dell'utente del
-// 27/10/2026, docs/CHANGELOG.md §379): il numero della ricevuta per
-// prestazione occasionale lo diamo noi, progressivo per professionista e
-// anno e sempre lo stesso per quel lavoro; per la fattura il professionista
-// scrive il numero del suo programma. Ci resta l'elenco dei documenti dati
-// ai clienti, utile per l'assistenza e le segnalazioni. Dal 30/10/2026 si
-// fanno solo ricevute: chi ha la partita IVA fa la fattura col suo programma
-// (docs/changelog/2026-10-30-documenti-snelli.md); le righe INVOICE restano
-// solo per i documenti di prima.
+// Ricevuta per prestazione occasionale (decisione dell'utente del 27/10/2026,
+// docs/CHANGELOG.md §379). Dal 02/11/2026 è un modello già compilato che il
+// professionista controlla, numera e firma come documento suo: il numero lo
+// scrive lui, noi non lo diamo più
+// (docs/changelog/2026-11-02-ricevuta-modello.md). Ci resta l'elenco dei
+// documenti dati ai clienti, utile per l'assistenza e le segnalazioni. Dal
+// 30/10/2026 si fanno solo ricevute: chi ha la partita IVA fa la fattura col
+// suo programma (docs/changelog/2026-10-30-documenti-snelli.md).
 model CourtesyDocument {
   id                    String   @id @default(uuid())
   bookingId             String   @unique
@@ -1442,8 +1441,8 @@ model CourtesyDocument {
   /// Sempre RECEIPT: con la partita IVA nessuna copia della fattura (docs/changelog/2026-10-30-documenti-snelli.md).
   kind                  String
   year                  Int
-  /// Il nostro progressivo dell'anno (1, 2, 3...).
-  number                Int?
+  /// Il numero scritto dal professionista ("4/2026", "12"...): la ricevuta è sua (docs/changelog/2026-11-02-ricevuta-modello.md).
+  receiptNumber         String?
   /// Ultima volta che il professionista ha scaricato il PDF (Admin → Documenti ai clienti, §380).
   pdfDownloadedAt       DateTime?
   /// Importo scritto su quel PDF: se il lavoro cambia dopo, l'admin lo vede.
@@ -1458,7 +1457,7 @@ model CourtesyDocument {
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
-  @@unique([professionalProfileId, year, number])
+  @@index([professionalProfileId, year])
   @@index([createdAt])
   @@map("courtesy_documents")
 }
@@ -2283,6 +2282,22 @@ model JobPayment {
   // trasferimento con cui gliela restituiamo se la contestazione è vinta.
   disputeRecoveredEurCents  Int       @default(0)
   disputeReturnTransferId   String?
+  // Una contestazione per ogni addebito (acconto e saldo sono due addebiti,
+  // collaudo F-21): quanto ha preso ciascuna dai soldi di questo lavoro,
+  // { "<id contestazione>": centesimi }, -1 quando è chiusa e già sistemata.
+  // `disputeRecoveredEurCents` resta la somma di quelle ancora aperte.
+  disputeFunds              Json      @default("{}")
+  // Stato di ciascuna contestazione, { "<id>": "needs_response" | "won" | ... }:
+  // `stripeDisputeId`/`stripeDisputeStatus` mostrano quella ancora aperta.
+  disputeStatuses           Json      @default("{}")
+  // Per l'archivio, senza chiedere a Stripe: { "<id>": { payment: "DEPOSIT" | "BALANCE", amountEurCents } }.
+  disputeDetails            Json      @default("{}")
+  // Allo sblocco (collaudo F-21): parte che Stripe aveva già preso dal saldo
+  // del professionista per rimborsi o contestazioni di altri lavori, e debito
+  // di lavori precedenti ripreso prima del bonifico. Ognuna ha la sua riga
+  // nella scheda, così pagato − trattenuta − queste voci = in banca.
+  releaseTakenByStripeEurCents Int    @default(0)
+  releaseDebtRecoveredEurCents Int    @default(0)
   // Quanto il professionista deve ancora alla piattaforma per questo lavoro
   // (rimborso o contestazione persa per colpa sua quando i soldi erano già
   // partiti, trattenuta che resta a suo carico): si riprende dai prossimi
