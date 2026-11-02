@@ -639,6 +639,20 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
                       {offer ? "Offerta di lancio" : "Offerta di benvenuto"}
                     </Text>
                   ) : null}
+                  {tier.tier === "PLUS" ? (
+                    // Aiuta chi non sa quale scegliere (richiesta di Luca del 2/11/2026): verde pieno, distinto dall'offerta del Base.
+                    <Text
+                      fontSize={13}
+                      fontWeight="700"
+                      color="white"
+                      backgroundColor={brand.cianografiaPieno}
+                      paddingHorizontal="$2"
+                      paddingVertical={2}
+                      borderRadius="$10"
+                    >
+                      Consigliato
+                    </Text>
+                  ) : null}
                 </XStack>
                 <Text color={brand.grafite70} fontSize={15}>
                   {TIER_FOR[tier.tier]}

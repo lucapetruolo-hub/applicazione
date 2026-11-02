@@ -14,6 +14,8 @@ riga dei lavori e metterla, con i 10 lavori, in un elenco con la spunta come
 - La frase nuova sta in un solo punto (`SAME_CLIENT_ONCE` in
   `packages/shared/src/plans.ts`) e si usa anche in `/dashboard/abbonamento`,
   con la stessa forma nella domanda frequente sul limite dei lavori.
+- Etichetta "Consigliato" (verde pieno, testo bianco) accanto al nome del
+  Plus, scelta da Luca tra le migliorie proposte.
 - La regola non cambia (§362): su Plus e Pro lo stesso cliente conta una
   volta per periodo; su Pro non c'è limite, quindi si dice solo su Plus.
 
