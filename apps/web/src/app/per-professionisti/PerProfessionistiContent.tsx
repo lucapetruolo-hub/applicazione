@@ -8,6 +8,7 @@ import {
   PROFESSIONAL_CATEGORIES,
   SUBSCRIPTION_FEATURES,
   SUBSCRIPTION_TIERS,
+  SAME_CLIENT_ONCE,
   formatEur,
   withVatEurCents,
   ONLINE_APP_FEE_PERCENT,
@@ -524,6 +525,17 @@ const TIER_FOR: Record<SubscriptionTier, string> = {
  * (decisioni di Luca del 29/10/2026, docs/changelog/2026-10-29-offerta-mesi-gratis.md).
  */
 /**
+ * Vantaggi di ogni livello in elenco con la spunta. Su Plus e Pro lo stesso
+ * cliente conta una volta (§362): su Pro non c'è limite, quindi si dice solo
+ * su Plus, con parole che spiegano cosa vuol dire (richiesta di Luca del 2/11/2026).
+ */
+function tierPerks(tier: (typeof SUBSCRIPTION_TIERS)[number]): string[] {
+  if (tier.monthlyAcceptedJobs === null) return ["Lavori senza limite"];
+  const jobs = `${tier.monthlyAcceptedJobs} lavori accettati al mese`;
+  return tier.tier === "PLUS" ? [jobs, SAME_CLIENT_ONCE] : [jobs];
+}
+
+/**
  * Banda verde dell'offerta di lancio (§363, anteprima approvata da Luca):
  * "GRATIS PER 3 MESI" ben in vista con il numero dei posti, 100, mai il
  * conto alla rovescia (decisione dell'utente).
@@ -660,15 +672,17 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
                   </Text>
                 </YStack>
               )}
-              <Text fontWeight="700" color={brand.cianografiaScuro}>
-                {tier.monthlyAcceptedJobs === null ? "Lavori senza limite" : `${tier.monthlyAcceptedJobs} lavori accettati al mese`}
-              </Text>
-              {tier.tier === "PLUS" ? (
-                // Su Plus e Pro lo stesso cliente conta una volta (§362): su Pro non c'è limite, si dice solo qui.
-                <Text color={brand.grafite70} fontSize={15} marginTop={-8}>
-                  Lo stesso cliente conta una volta al mese
-                </Text>
-              ) : null}
+              {/* Cosa dà il livello, con la spunta come "Compreso in ogni livello": su Plus si vede subito cosa c'è in più rispetto a Base. */}
+              <YStack tag="ul" margin={0} padding={0} gap="$2" style={{ listStyle: "none" }}>
+                {tierPerks(tier).map((perk) => (
+                  <XStack key={perk} tag="li" gap="$2" alignItems="flex-start">
+                    <Check size={18} strokeWidth={2.25} color={brand.cianografiaScuro} aria-hidden style={{ flexShrink: 0, marginTop: 3 }} />
+                    <Text flex={1} fontWeight="700" color={brand.cianografiaScuro}>
+                      {perk}
+                    </Text>
+                  </XStack>
+                ))}
+              </YStack>
               <YStack flex={1} />
               <Link href={href} style={{ textDecoration: "none" }} aria-label={`${label}${isProfessional ? "" : ": iscriviti come professionista"}`}>
                 <Button tabIndex={-1} variant="acquisto" width="100%">
@@ -728,7 +742,7 @@ const FAQ: { question: string; answer: string; paymentsLink?: boolean; founderOf
   {
     question: "Cosa succede se arrivo al limite di lavori del mio livello?",
     answer:
-      "Ti avvisiamo prima. Resti nelle ricerche e ricevi le richieste, ma per mandare preventivi nuovi passi al livello sopra: paghi 10 € più la differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del 10% (+ IVA). Altrimenti aspetti il rinnovo, quando i lavori ripartono. I preventivi già mandati restano validi. Su Plus e Pro lo stesso cliente conta una volta al mese.",
+      "Ti avvisiamo prima. Resti nelle ricerche e ricevi le richieste, ma per mandare preventivi nuovi passi al livello sopra: paghi 10 € più la differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del 10% (+ IVA). Altrimenti aspetti il rinnovo, quando i lavori ripartono. I preventivi già mandati restano validi. Su Plus e Pro più lavori allo stesso cliente nello stesso mese contano come uno.",
   },
   {
     question: "I prezzi comprendono l'IVA?",
