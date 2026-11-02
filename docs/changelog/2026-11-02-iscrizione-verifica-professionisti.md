@@ -94,21 +94,50 @@ verificato l'identità. Esperienza, lingue, qualifiche e assicurazione le
 scrive il professionista." (la prima frase solo se verificato). O-14 era già
 risolto dalla PR #191 (bollino Stripe rinominato, M-14).
 
-## Lasciati aperti, da decidere con Luca
+## Le quattro migliorie scelte da Luca ("effettua le 4 migliorie")
 
-- **C-15**: due lavori alla stessa ora. Il limite di 5 clienti per fascia è
-  una decisione (§364); si può aggiungere un avviso quando si propone un
-  orario già occupato.
-- **C-16**: "Metti in pausa" in un tocco. È una funzione nuova e la pausa di
-  oggi (`pausedAt`) è dell'abbonamento: serve un campo suo.
-- **0-02**: da ricontrollare con le chiavi vere di Openapi.
+- **C-15, orario già occupato**: quando il professionista sceglie l'orario
+  di un preventivo o di una controproposta e in quell'orario ha già un
+  lavoro confermato o in attesa, sotto compare "In quell'orario hai già un
+  lavoro: … Puoi mandarlo lo stesso." (`BusyTimeNotice`). Non blocca: il
+  limite di 5 clienti per fascia resta (§364). **Piccola modifica a §364**:
+  il babysitter parte con 1 cliente per fascia (`starterHomeCapacity`),
+  perché non può seguire due famiglie alla stessa ora; il numero si cambia
+  in Agenda come per tutti.
+- **C-16, "Metti in pausa"**: un campo suo, `ProfessionalProfile.awayUntil`
+  (la pausa dell'abbonamento, `pausedAt`, resta separata). In Agenda →
+  Orari "Metti in pausa" con "Torno il" (da domani, al massimo 180 giorni);
+  durante la pausa la scheda "Sei in pausa: torni …" con "Riprendi ora" e
+  "Cambia data" sta anche in Home. Fino a quel giorno il profilo esce dalla
+  ricerca e dallo smistamento delle richieste e non accetta prenotazioni
+  dirette; i lavori già fissati restano. Il profilo pubblico (dal link)
+  dice "In pausa: torna giovedì 12 novembre" e propone altri professionisti.
+  Il filtro sta in `searchableProfileConditions()` e in
+  `professionalRestrictions` (`away`), gli stessi punti del blocco per le
+  segnalazioni.
+- **0-02, "Verificati" falso**: con `OPENAPI_SANDBOX=true` Openapi risponde
+  con dati finti a qualunque numero, quindi un "valido" di prova vale come
+  "numero corretto" (REVIEW, "PROVA") e non dà il bollino; la scritta dice
+  "Siamo in prova: il controllo ufficiale parte con il lancio.". Se la prova
+  resta accesa dopo `LAUNCH_DATE` l'API lo segnala in Sentry. Prima del
+  lancio servono le chiavi vere (checklist).
+- **Admin, cambiare il tipo**: in `/admin/verifiche` "Cambia tipo" (privato senza
+  Partita IVA, con Partita IVA, azienda) con un motivo obbligatorio, solo
+  finché il professionista non ha collegato Stripe (il conto Stripe è legato
+  al tipo). Il cambio toglie la dichiarazione dei dati fiscali da rifirmare,
+  toglie il "Verificato" se c'era, va nel registro azioni e avvisa il
+  professionista (`FISCAL_ENTITY_TYPE_CHANGED`, link a Dati fiscali).
 
 ## Verifica
 
 - Test nuovi: richieste a un profilo in pausa o senza dati fiscali, messaggi
   di codice fiscale/P.IVA/REA, nomi di società, link del legale
-  rappresentante, ordine dei suggerimenti degli indirizzi. API: 1.146 test
-  verdi; tipi e lint verdi su API, sito e pacchetti.
+  rappresentante, ordine dei suggerimenti degli indirizzi, pausa con data di
+  ritorno, risposte di prova di Openapi, cambio di tipo dall'admin, orari di
+  partenza del babysitter. API: 1.157 test verdi; tipi e lint verdi su API,
+  sito e pacchetti.
+- Pausa provata dal vivo: oggi rifiutato, 12/11 salvato, il profilo sparisce
+  dalla ricerca di Latina e torna con "Riprendi ora".
 - Prova dal vivo in locale (Postgres, API, sito): "IT 12485671007" salvata
   come 12485671007, "lt 123456" come LT-123456, "XX-1" rifiutato con la
   sigla, link del legale rappresentante creato e aperto. Schermate da
