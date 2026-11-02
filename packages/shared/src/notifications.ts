@@ -211,6 +211,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // selfie da rifare, codice fiscale o P.IVA risultati inesistenti.
       "IDENTITY_VERIFICATION_DECLINED",
       "TAX_ID_INVALID",
+      // Tipo (privato, partita IVA, azienda) cambiato dall'admin (migliorie del collaudo, gruppo 8).
+      "FISCAL_ENTITY_TYPE_CHANGED",
       // Servizio di verifica tornato disponibile, promemoria a chi non l'ha fatta (§256).
       "IDENTITY_VERIFICATION_READY",
       "IDENTITY_VERIFICATION_REMINDER",

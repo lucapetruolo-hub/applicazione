@@ -1628,6 +1628,23 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Rifai la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
     };
   },
+  // Tipo cambiato dall'admin (migliorie del collaudo, gruppo 8).
+  FISCAL_ENTITY_TYPE_CHANGED: (payload, ctx) => {
+    const label = str(payload.label);
+    const note = str(payload.note);
+    return {
+      kind: "account",
+      subject: "Abbiamo cambiato il tipo del tuo account",
+      greeting: ctx.name,
+      title: "Completa i dati fiscali",
+      paragraphs: [
+        label ? `Il tuo account ora è **${label}**.` : "Abbiamo cambiato il tipo del tuo account.",
+        ...(note ? [`**Motivazione:** ${note}`] : []),
+        "Completa i dati fiscali che servono per questo tipo: ci vogliono pochi minuti. Se pensi che sia un errore, scrivici dal modulo Contatti.",
+      ],
+      cta: { label: "Completa i dati fiscali", url: `${frontendUrl()}/dashboard/fiscale` },
+    };
+  },
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
   IDENTITY_VERIFICATION_DECLINED: (payload, ctx) => {
     const reason = str(payload.reason);

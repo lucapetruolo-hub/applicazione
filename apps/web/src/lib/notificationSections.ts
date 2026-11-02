@@ -149,7 +149,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
     return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}&documenti=1` : "/le-mie-richieste?tab=lavori";
   }
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
-  if (type === "TAX_ID_INVALID") return "/dashboard/fiscale";
+  if (type === "TAX_ID_INVALID" || type === "FISCAL_ENTITY_TYPE_CHANGED") return "/dashboard/fiscale";
   if (type === "PROFILE_SETUP_REMINDER") {
     // Carta per i mesi gratis (docs/changelog/2026-10-30-iscrizione-carta-solida.md): dritti ai livelli.
     const missing = payload && typeof payload === "object" ? (payload as { missing?: unknown }).missing : null;

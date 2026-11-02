@@ -113,6 +113,7 @@ import type {
   SiteAdviceDoneInput,
   ProfessionalVerificationFilter,
   ProfessionalVerificationRow,
+  ProfessionalEntityTypeValue,
   MyVerificationStatus,
   RepresentativeVerificationView,
   AddressSuggestion,
@@ -2387,6 +2388,12 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         method: "POST",
         body: JSON.stringify({ biometricConsent: true }),
       }),
+    adminChangeProfessionalEntityType: (token: string, professionalProfileId: string, entityType: ProfessionalEntityTypeValue, note: string) =>
+      request<{ professionalProfileId: string; entityType: ProfessionalEntityTypeValue }>(
+        `/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/entity-type`,
+        { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ entityType, note }) },
+      ),
+
     adminUnverifyProfessional: (token: string, professionalProfileId: string, note: string) =>
       request<{ professionalProfileId: string; verified: boolean }>(
         `/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/unverify`,

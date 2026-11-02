@@ -7,6 +7,25 @@ export const unverifyProfessionalSchema = z.object({
 });
 export type UnverifyProfessionalInput = z.infer<typeof unverifyProfessionalSchema>;
 
+/**
+ * "Cambia tipo" in /admin/verifiche (migliorie del collaudo, gruppo 8): chi si
+ * è iscritto col tipo sbagliato (es. una S.R.L. come privato) non può
+ * cambiarlo da sé dopo il primo salvataggio dei dati fiscali.
+ */
+export const PROFESSIONAL_ENTITY_TYPES = ["PRIVATE_INDIVIDUAL", "SOLE_PROPRIETOR", "BUSINESS"] as const;
+export type ProfessionalEntityTypeValue = (typeof PROFESSIONAL_ENTITY_TYPES)[number];
+/** Stesse parole della registrazione e dei dati fiscali. */
+export const PROFESSIONAL_ENTITY_TYPE_LABEL: Record<ProfessionalEntityTypeValue, string> = {
+  PRIVATE_INDIVIDUAL: "Privato, senza Partita IVA",
+  SOLE_PROPRIETOR: "Con Partita IVA",
+  BUSINESS: "Azienda",
+};
+export const changeProfessionalEntityTypeSchema = z.object({
+  entityType: z.enum(PROFESSIONAL_ENTITY_TYPES),
+  note: z.string().trim().min(3, "Scrivi il motivo.").max(500),
+});
+export type ChangeProfessionalEntityTypeInput = z.infer<typeof changeProfessionalEntityTypeSchema>;
+
 export type ProfessionalVerificationFilter = "pending" | "verified";
 
 /** Riga dell'elenco in /admin/verifiche. */
@@ -24,6 +43,10 @@ export type ProfessionalVerificationRow = {
   vatNumber: string | null;
   codiceFiscale: string | null;
   hasLiabilityInsurance: boolean;
+  /** Tipo dei dati fiscali, o quello scelto all'iscrizione se non li ha ancora salvati. */
+  entityType: ProfessionalEntityTypeValue | null;
+  /** Ha già collegato Stripe: il tipo su Stripe non si cambia da qui. */
+  stripeConnected: boolean;
   verified: boolean;
   /** Ha premuto "Richiedi la verifica" (docs/CHANGELOG.md §201). */
   verificationRequestedAt: string | null;
