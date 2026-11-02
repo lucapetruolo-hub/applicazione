@@ -1,3 +1,5 @@
+import { Logger } from "@nestjs/common";
+import { launchDate } from "../subscriptions/subscription-rules";
 import { TaxIdProviderUnavailableError, type TaxIdLookup, type TaxIdProvider } from "./tax-id-provider";
 import { ViesFirstTaxIdProvider } from "./vies-tax-id.provider";
 
@@ -36,11 +38,20 @@ export class OpenapiTaxIdProvider implements TaxIdProvider {
     return { status: response.status, body };
   }
 
+  /**
+   * Nella prova Openapi risponde con dati finti a qualunque numero (collaudo
+   * 0-02: una P.IVA inventata risultava "Verificati"): un "valido" di prova
+   * non conferma nulla, quindi resta "numero corretto" (REVIEW) con "PROVA".
+   */
+  private fromSandbox(lookup: TaxIdLookup): TaxIdLookup {
+    return this.sandbox && lookup.outcome === "VALID" ? { ...lookup, outcome: "REVIEW", detail: "PROVA" } : lookup;
+  }
+
   async checkCodiceFiscale(codiceFiscale: string): Promise<TaxIdLookup> {
     const { status, body } = await this.get(`${this.host("risk")}/IT-verifica_cf/${encodeURIComponent(codiceFiscale)}`, this.tokens.risk);
     const validita = readPath(body, ["data", "validita"]);
     if (status === 200 && typeof validita === "boolean") {
-      return validita ? { outcome: "VALID" } : { outcome: "INVALID", detail: "INESISTENTE" };
+      return this.fromSandbox(validita ? { outcome: "VALID" } : { outcome: "INVALID", detail: "INESISTENTE" });
     }
     // Credito finito, token scaduto, errore del servizio: mai un "inesistente" per sbaglio.
     throw new TaxIdProviderUnavailableError(`Openapi verifica_cf: risposta ${status}`);
@@ -56,7 +67,7 @@ export class OpenapiTaxIdProvider implements TaxIdProvider {
     const activity = String((data as Record<string, unknown>).activityStatus ?? "").trim().toUpperCase();
     const companyName = (data as Record<string, unknown>).companyName;
     const officialName = typeof companyName === "string" && companyName.trim() ? companyName.trim() : null;
-    return { outcome: partitaIvaOutcome(activity), detail: activity || null, officialName };
+    return this.fromSandbox({ outcome: partitaIvaOutcome(activity), detail: activity || null, officialName });
   }
 }
 
@@ -83,5 +94,11 @@ export function taxIdProviderFromEnv(): TaxIdProvider | null {
   const risk = process.env.OPENAPI_TOKEN_RISK?.trim() || null;
   const company = process.env.OPENAPI_TOKEN_COMPANY?.trim() || null;
   if (!risk && !company) return null;
-  return new ViesFirstTaxIdProvider(new OpenapiTaxIdProvider({ risk, company }, process.env.OPENAPI_SANDBOX === "true"));
+  const sandbox = process.env.OPENAPI_SANDBOX === "true";
+  const launch = launchDate();
+  // Dopo il lancio la prova non deve più girare (checklist di lancio): lo si vede in Sentry.
+  if (sandbox && launch && launch.getTime() <= Date.now()) {
+    new Logger("TaxIdCheck").error("OPENAPI_SANDBOX=true dopo il lancio: codice fiscale e P.IVA non vengono controllati davvero. Mettila a false su Render.");
+  }
+  return new ViesFirstTaxIdProvider(new OpenapiTaxIdProvider({ risk, company }, sandbox));
 }

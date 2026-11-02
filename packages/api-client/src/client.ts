@@ -116,6 +116,7 @@ import type {
   ProfessionalVerificationFilter,
   ProfessionalVerificationRow,
   MyVerificationStatus,
+  RepresentativeVerificationView,
   AddressSuggestion,
   AddressPlace,
   TaxIdCheckView,
@@ -1665,6 +1666,14 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       }),
 
     /** Raggio di ingaggio (standard/urgente, 1-25 km): salvato a parte dal resto del profilo, vedi EngagementRadiusMap. */
+    /** "Metti in pausa" fino al giorno `until` (AAAA-MM-GG), `null` per riprendere (collaudo C-16). */
+    setAway: (token: string, until: string | null) =>
+      request<{ awayUntil: string | null }>("/professionals/me/away", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ until }),
+      }),
+
     updateEngagementRadius: (token: string, input: UpdateEngagementRadiusInput) =>
       request<{ engagementRadiusKm: number; urgentEngagementRadiusKm: number }>("/professionals/me/engagement-radius", {
         method: "PATCH",
@@ -2406,6 +2415,26 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ biometricConsent: true }),
       }),
+    /** Azienda: link da mandare al legale rappresentante, che fa la verifica dal suo telefono (collaudo E-03). */
+    createRepresentativeVerificationLink: (token: string) =>
+      request<{ url: string; expiresAt: string; name: string }>("/professionals/me/verification/representative-link", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    /** Pagina del legale rappresentante, aperta dal link firmato: senza accesso. */
+    representativeVerificationStatus: (linkToken: string) =>
+      request<RepresentativeVerificationView>(`/identity-verification/representative/${encodeURIComponent(linkToken)}`, { cache: "no-store" }),
+    startRepresentativeVerification: (linkToken: string) =>
+      request<{ url: string | null; standby: boolean }>(`/identity-verification/representative/${encodeURIComponent(linkToken)}/start`, {
+        method: "POST",
+        body: JSON.stringify({ biometricConsent: true }),
+      }),
+    adminChangeProfessionalEntityType: (token: string, professionalProfileId: string, entityType: ProfessionalEntityTypeValue, note: string) =>
+      request<{ professionalProfileId: string; entityType: ProfessionalEntityTypeValue }>(
+        `/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/entity-type`,
+        { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ entityType, note }) },
+      ),
+
     adminUnverifyProfessional: (token: string, professionalProfileId: string, note: string) =>
       request<{ professionalProfileId: string; verified: boolean }>(
         `/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/unverify`,

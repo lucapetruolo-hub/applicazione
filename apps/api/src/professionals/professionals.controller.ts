@@ -27,6 +27,8 @@ import {
   professionalAvailabilitySchema,
   professionalProfileSelfSchema,
   updateEngagementRadiusSchema,
+  setAwaySchema,
+  type SetAwayInput,
   updateLeadNoteSchema,
   type AvailabilityExceptionInput,
   type BookAgendaSlotInput,
@@ -181,6 +183,13 @@ export class ProfessionalsController {
     @Body(new ZodValidationPipe(updateEngagementRadiusSchema)) body: UpdateEngagementRadiusInput,
   ) {
     return this.professionalsService.updateEngagementRadius(req.user.userId, body);
+  }
+
+  /** "Metti in pausa" fino a un giorno o "Riprendi ora" (collaudo C-16). */
+  @UseGuards(JwtAuthGuard)
+  @Put("me/away")
+  setAway(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(setAwaySchema)) body: SetAwayInput) {
+    return this.professionalsService.setAway(req.user.userId, body);
   }
 
   @UseGuards(JwtAuthGuard)

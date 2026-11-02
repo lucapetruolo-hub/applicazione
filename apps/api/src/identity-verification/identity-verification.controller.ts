@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Req, UseGuards } from "@nestjs/common";
-import { SkipThrottle } from "@nestjs/throttler";
+import { SkipThrottle, Throttle } from "@nestjs/throttler";
 import type { Request } from "express";
 import { startIdentityVerificationSchema } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
@@ -24,6 +24,35 @@ export class IdentityVerificationController {
   @Post("identity")
   start(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(startIdentityVerificationSchema)) _body: unknown) {
     return this.identityVerificationService.start(req.user.userId);
+  }
+
+  /** Azienda: link per il legale rappresentante, che fa la verifica dal suo telefono (collaudo E-03, M-07). */
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post("representative-link")
+  representativeLink(@Req() req: AuthenticatedRequest) {
+    return this.identityVerificationService.representativeLink(req.user.userId);
+  }
+}
+
+/**
+ * Pagina del legale rappresentante: pubblica, aperta dal link firmato che
+ * gli manda l'azienda. Il consenso al volto lo dà lui (GDPR art. 9).
+ */
+@Controller("identity-verification/representative")
+export class RepresentativeVerificationController {
+  constructor(private readonly identityVerificationService: IdentityVerificationService) {}
+
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Get(":token")
+  status(@Param("token") token: string) {
+    return this.identityVerificationService.representativeStatus(token);
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post(":token/start")
+  start(@Param("token") token: string, @Body(new ZodValidationPipe(startIdentityVerificationSchema)) _body: unknown) {
+    return this.identityVerificationService.representativeStart(token);
   }
 }
 

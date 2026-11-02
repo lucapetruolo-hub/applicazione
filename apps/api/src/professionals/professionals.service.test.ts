@@ -278,6 +278,38 @@ describe("voci di \"Quanto costa in media\" (§398)", () => {
   });
 });
 
+describe("Metti in pausa (collaudo C-16)", () => {
+  function build() {
+    const prisma = {
+      professionalProfile: { findUnique: vi.fn().mockResolvedValue({ id: "p-1" }), update: vi.fn().mockResolvedValue({ id: "p-1" }) },
+    };
+    const guided = { matchWhenVisible: vi.fn() };
+    const service = new ProfessionalsService(prisma as never, {} as never, {} as never, guided as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    return { service, prisma, guided };
+  }
+  const now = new Date("2026-11-02T10:00:00.000Z");
+
+  it("salva il giorno di ritorno e riprende con null", async () => {
+    const { service, prisma, guided } = build();
+    await expect(service.setAway("u-1", { until: "2026-11-10" }, now)).resolves.toEqual({ awayUntil: "2026-11-10T00:00:00.000Z" });
+    expect(prisma.professionalProfile.update).toHaveBeenCalledWith({
+      where: { userId: "u-1" },
+      data: { awayUntil: new Date("2026-11-10T00:00:00.000Z"), awayReminderSentAt: null },
+      select: { id: true },
+    });
+    expect(guided.matchWhenVisible).not.toHaveBeenCalled();
+    await expect(service.setAway("u-1", { until: null }, now)).resolves.toEqual({ awayUntil: null });
+    // "Riprendi ora": subito le richieste ancora aperte della zona.
+    expect(guided.matchWhenVisible).toHaveBeenCalledWith("p-1");
+  });
+
+  it("non oggi né nel passato, non oltre 180 giorni", async () => {
+    const { service } = build();
+    await expect(service.setAway("u-1", { until: "2026-11-02" }, now)).rejects.toThrow("da domani");
+    await expect(service.setAway("u-1", { until: "2027-06-30" }, now)).rejects.toThrow("180 giorni");
+  });
+});
+
 describe("getCategoryProfessionalCounts", () => {
   // Latina (41.47, 12.90), Roma (41.90, 12.50) a ~60 km, Milano lontanissima.
   const LATINA = { latitude: 41.4676, longitude: 12.9037 };

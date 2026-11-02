@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AddressSuggestionsService, placeFromGoogle } from "./address-suggestions.service";
+import { AddressSuggestionsService, comuneNamedIn, placeFromGoogle, rankSuggestions } from "./address-suggestions.service";
 
 describe("suggerimenti di indirizzo dal server (§264)", () => {
   afterEach(() => {
@@ -47,6 +47,44 @@ describe("suggerimenti di indirizzo dal server (§264)", () => {
     const body = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
     expect(body.includedRegionCodes).toEqual(["it"]);
     expect(body.sessionToken).toBe("sess-12345");
+  });
+
+  it("riconosce il comune scritto dopo il civico o la virgola, mai da solo (collaudo 0-09)", () => {
+    expect(comuneNamedIn("Via Roma 10 Latina")?.name).toBe("Latina");
+    expect(comuneNamedIn("Via Roma, Latina LT")?.name).toBe("Latina");
+    expect(comuneNamedIn("Via Emanuele Filiberto 10 Latina")?.name).toBe("Latina");
+    expect(comuneNamedIn("Via Roma")).toBeNull();
+    expect(comuneNamedIn("Via Isonzo 30")).toBeNull();
+  });
+
+  it("mette prima le vie del comune scritto, poi le più vicine (collaudo 0-09, C-20)", () => {
+    const items = [
+      { id: "1", secondary: "Cisterna di Latina LT, Italia", distance: 15000 },
+      { id: "2", secondary: "Roccasecca dei Volsci LT, Italia", distance: 30000 },
+      { id: "3", secondary: "04100 Latina LT, Italia", distance: 800 },
+    ];
+    expect(rankSuggestions(items, "Latina").map((i) => i.id)).toEqual(["3", "1", "2"]);
+    expect(rankSuggestions([{ id: "a", secondary: "Nettuno RM", distance: 25000 }, { id: "b", secondary: "Latina LT", distance: 1000 }], null).map((i) => i.id)).toEqual(["b", "a"]);
+  });
+
+  it("con una zona cerca solo lì e, se non trova quasi nulla, in tutta Italia", async () => {
+    process.env.GOOGLE_MAPS_API_KEY = "k";
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ suggestions: [] }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ suggestions: [{ placePrediction: { placeId: "x", distanceMeters: 50000, structuredFormat: { mainText: { text: "Via Isonzo" }, secondaryText: { text: "Roma RM" } } } }] }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+    const result = await new AddressSuggestionsService().suggest({ q: "via isonzo 30", session: "sess-12345", latitude: 41.47, longitude: 12.9 });
+    expect(result).toEqual([{ id: "x", main: "Via Isonzo", secondary: "Roma RM" }]);
+    const first = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    const second = JSON.parse(fetchMock.mock.calls[1]![1].body as string);
+    expect(first.locationRestriction.circle.radius).toBe(30000);
+    expect(first.origin).toEqual({ latitude: 41.47, longitude: 12.9 });
+    expect(second.locationBias).toBeDefined();
+    expect(second.locationRestriction).toBeUndefined();
   });
 
   it("senza chiave o con testo troppo corto non chiama Google", async () => {

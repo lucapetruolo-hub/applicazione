@@ -74,6 +74,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   STRIPE_ACCOUNT_RESTRICTED: { icon: "⚠️", message: "Stripe ha sospeso i pagamenti online sul tuo account: completa i dati in Fisco e pagamenti." },
   PROFILE_VERIFIED: { icon: "✅", message: "Identità verificata: ora mostri il badge Verificato e puoi inviare preventivi." },
   PROFILE_VERIFICATION_REMOVED: { icon: "⚠️", message: "Abbiamo tolto il badge Verificato dal tuo profilo: rifai la verifica dell'identità." },
+  // Tipo cambiato dall'admin (migliorie del collaudo, gruppo 8).
+  FISCAL_ENTITY_TYPE_CHANGED: { icon: "🧾", message: "Abbiamo cambiato il tipo del tuo account: completa i dati fiscali." },
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
   IDENTITY_VERIFICATION_DECLINED: { icon: "🪪", message: "La verifica dell'identità non è andata a buon fine: puoi riprovare subito." },
   // Verifica in attesa ripresa e promemoria (§256).
@@ -84,6 +86,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   PROFILE_SETUP_REMINDER: { icon: "📋", message: "Ti manca poco per completare il profilo: in Oggi trovi il prossimo passo." },
   // Agenda vuota o senza disponibilità nei prossimi giorni (§274): il testo dipende dal payload, vedi sotto.
   AGENDA_REMINDER: { icon: "📅", message: "Non hai ancora orari liberi in agenda: aggiungili per farti prenotare." },
+  AWAY_ENDING: { icon: "📅", message: "La tua pausa finisce domani: controlla gli orari in agenda." },
   // Agenda (§288).
   PROFESSIONAL_ON_THE_WAY: { icon: "🚐", message: "Il professionista sta arrivando." },
   AGENDA_TOMORROW_SUMMARY: { icon: "📅", message: "Ecco i tuoi lavori di domani." },

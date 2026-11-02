@@ -9,7 +9,7 @@ import { GuidedRequestsService } from "./guided-requests.service";
  */
 const milano = findComuneByName("Milano")!;
 
-function buildService(existingLeadsOnRequest: number) {
+function buildService(existingLeadsOnRequest: number, candidate: Record<string, unknown> = {}) {
   const request = {
     id: "gr-1",
     clientId: "client-1",
@@ -20,6 +20,19 @@ function buildService(existingLeadsOnRequest: number) {
     category: { label: "Idraulico" },
   };
   const prisma = {
+    professionalProfile: {
+      findUnique: vi.fn().mockResolvedValue({
+        deletedAt: null,
+        suspendedAt: null,
+        invitePendingAt: null,
+        pausedAt: null,
+        requestsBlockedUntil: null,
+        demotedUntil: null,
+        isDemo: false,
+        fiscalProfile: null,
+        ...candidate,
+      }),
+    },
     guidedRequest: { findMany: vi.fn().mockResolvedValue([request]), update: vi.fn().mockResolvedValue(request) },
     lead: {
       // Prima chiamata: lead di questo professionista; seconda: tutti i lead della richiesta.
@@ -66,5 +79,23 @@ describe("GuidedRequestsService.matchNewProfileToOpenRequests", () => {
     await service.matchNewProfileToOpenRequests({ ...profile, latitude: 41.9, longitude: 12.5 });
     expect(prisma.lead.create).not.toHaveBeenCalled();
     expect(notifications.notify).not.toHaveBeenCalled();
+  });
+
+  it("non manda nulla a chi non è ancora visibile nella ricerca (collaudo 0-01)", async () => {
+    const { service, prisma, notifications } = buildService(0, { pausedAt: new Date() });
+    await service.matchNewProfileToOpenRequests(profile);
+    expect(prisma.guidedRequest.findMany).not.toHaveBeenCalled();
+    expect(notifications.notify).not.toHaveBeenCalled();
+  });
+
+  it("senza dati fiscali, con i pagamenti attivi, non riceve le richieste aperte", async () => {
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_x");
+    try {
+      const { service, prisma } = buildService(0, { fiscalProfile: null });
+      await service.matchNewProfileToOpenRequests(profile);
+      expect(prisma.lead.create).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

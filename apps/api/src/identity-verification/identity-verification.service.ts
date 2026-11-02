@@ -7,6 +7,7 @@ import {
   birthDateFromCodiceFiscale,
   fiscalDataMissing,
   type MyVerificationStatus,
+  type RepresentativeVerificationView,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
@@ -19,6 +20,7 @@ import { IdentityProviderError, type IdentityDecision, type IdentityProvider } f
 import { identityProviderFromEnv, identityVerificationNeeded } from "./identity-provider-env";
 import { matchDocumentToFiscal, type ExpectedPerson } from "./identity-match";
 import { verificationValidUntil } from "./validity";
+import { parseRepresentativeLinkToken, representativeLinkToken, representativeLinkValid } from "./representative-link-token";
 import { cardCanBeGiven } from "../subscriptions/subscription-rules";
 
 export { VERIFICATION_VALID_YEARS, verificationValidUntil } from "./validity";
@@ -151,6 +153,17 @@ export function documentExpiry(value: string | null | undefined): Date | null {
 
 const FISCAL_INCLUDE = { taxIdChecks: true, representative: true } satisfies Prisma.ProfessionalFiscalProfileInclude;
 type FiscalWithChecks = Prisma.ProfessionalFiscalProfileGetPayload<{ include: typeof FISCAL_INCLUDE }>;
+const PROFILE_SELECT = {
+  id: true,
+  userId: true,
+  businessName: true,
+  isDemo: true,
+  verified: true,
+  identityExpiredAt: true,
+  deletedAt: true,
+  fiscalProfile: { include: FISCAL_INCLUDE },
+} satisfies Prisma.ProfessionalProfileSelect;
+type LoadedProfile = Prisma.ProfessionalProfileGetPayload<{ select: typeof PROFILE_SELECT }>;
 
 /**
  * Verifica di documento e selfie (docs/CHANGELOG.md §253, decisioni
@@ -178,11 +191,22 @@ export class IdentityVerificationService {
   }
 
   private async loadMine(userId: string) {
-    const profile = await this.prisma.professionalProfile.findUnique({
-      where: { userId },
-      select: { id: true, userId: true, isDemo: true, verified: true, identityExpiredAt: true, deletedAt: true, fiscalProfile: { include: FISCAL_INCLUDE } },
-    });
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: PROFILE_SELECT });
     if (!profile || profile.deletedAt) throw new NotFoundException("Completa prima il tuo profilo professionista.");
+    return profile;
+  }
+
+  /**
+   * Profilo dal link del legale rappresentante (collaudo E-03, M-07): solo
+   * per un'azienda, con la firma giusta per il legale rappresentante di oggi.
+   */
+  private async loadForRepresentative(token: string) {
+    const parsed = parseRepresentativeLinkToken(token);
+    const invalid = new NotFoundException("Questo link non vale più: chiedi all'azienda di mandartene uno nuovo.");
+    if (!parsed) throw invalid;
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { id: parsed.profileId }, select: PROFILE_SELECT });
+    const rep = profile?.fiscalProfile?.entityType === "BUSINESS" ? profile.fiscalProfile.representative : null;
+    if (!profile || profile.deletedAt || !rep || !representativeLinkValid(parsed, rep)) throw invalid;
     return profile;
   }
 
@@ -191,7 +215,10 @@ export class IdentityVerificationService {
   }
 
   async myStatus(userId: string): Promise<MyVerificationStatus> {
-    const profile = await this.loadMine(userId);
+    return this.statusFor(await this.loadMine(userId));
+  }
+
+  private async statusFor(profile: LoadedProfile): Promise<MyVerificationStatus> {
     let latest = await this.latest(profile.id);
     // Di ritorno dalla pagina del fornitore il webhook può non essere ancora arrivato.
     if (latest && this.provider && !isStandby(latest) && (latest.status === "STARTED" || latest.status === "PROCESSING") && Date.now() - latest.updatedAt.getTime() > REFRESH_EVERY_MS) {
@@ -200,14 +227,72 @@ export class IdentityVerificationService {
         return latest;
       });
     }
-    const fresh = latest && latest.status === "APPROVED" ? await this.loadMine(userId) : profile;
+    const fresh =
+      latest && latest.status === "APPROVED" ? ((await this.prisma.professionalProfile.findUnique({ where: { id: profile.id }, select: PROFILE_SELECT })) ?? profile) : profile;
     return this.buildStatus(fresh, latest);
+  }
+
+  /**
+   * Link da mandare al legale rappresentante (collaudo E-03, M-07): la
+   * verifica la fa lui dal suo telefono e il consenso al volto lo dà lui.
+   */
+  async representativeLink(userId: string): Promise<{ url: string; expiresAt: string; name: string }> {
+    const profile = await this.loadMine(userId);
+    const rep = profile.fiscalProfile?.entityType === "BUSINESS" ? profile.fiscalProfile.representative : null;
+    if (!rep) throw new BadRequestException("Il link serve solo alle aziende: indica prima il legale rappresentante nei dati fiscali.");
+    const status = this.buildStatus(profile, await this.latest(profile.id));
+    if (status.verified) throw new BadRequestException("Il tuo profilo è già verificato.");
+    if (!status.identity.available || (!status.identity.canStart && !status.identity.standby)) {
+      throw new BadRequestException(status.identity.blockedReason ?? "La verifica non si può ancora fare.");
+    }
+    const { token, expiresAt } = representativeLinkToken(profile.id, rep);
+    await this.auditLogService.record({
+      entityType: "IdentityVerification",
+      entityId: profile.id,
+      fieldName: "representativeLink",
+      newValue: expiresAt.toISOString(),
+      changedByUserId: userId,
+      reason: "Link per la verifica dell'identità creato per il legale rappresentante.",
+    });
+    return { url: `${this.frontendUrl()}/verifica-legale/${token}`, expiresAt: expiresAt.toISOString(), name: `${rep.firstName} ${rep.lastName}`.trim() };
+  }
+
+  /** Cosa vede il legale rappresentante aprendo il link: chi è, per quale azienda e a che punto è la verifica. */
+  async representativeStatus(token: string): Promise<RepresentativeVerificationView> {
+    const profile = await this.loadForRepresentative(token);
+    const status = await this.statusFor(profile);
+    const rep = profile.fiscalProfile!.representative!;
+    return {
+      businessName: profile.fiscalProfile?.businessName || profile.businessName,
+      representativeName: `${rep.firstName} ${rep.lastName}`.trim(),
+      verified: status.verified,
+      identity: {
+        available: status.identity.available,
+        status: status.identity.status,
+        reason: status.identity.reason,
+        standby: status.identity.standby,
+        canStart: status.identity.canStart,
+        blockedReason: status.identity.blockedReason,
+      },
+    };
+  }
+
+  /** Il legale rappresentante spunta il consenso sul suo telefono e inizia. */
+  async representativeStart(token: string): Promise<{ url: string | null; standby: boolean }> {
+    const profile = await this.loadForRepresentative(token);
+    const rep = profile.fiscalProfile!.representative!;
+    return this.startFor(profile, {
+      actorUserId: null,
+      callbackPath: `/verifica-legale/${token}?ritorno=1`,
+      consentReason: `Consenso al confronto del selfie dato da ${rep.firstName} ${rep.lastName}, legale rappresentante, dal link ricevuto dall'azienda.`,
+    });
   }
 
   private buildStatus(
     profile: { isDemo: boolean; verified: boolean; identityExpiredAt: Date | null; fiscalProfile: FiscalWithChecks | null },
     latest: IdentityVerification | null,
   ): MyVerificationStatus {
+    const representative = profile.fiscalProfile?.entityType === "BUSINESS" ? profile.fiscalProfile.representative : null;
     const fiscal = profile.fiscalProfile;
     const fiscalMissing = fiscalDataMissing(fiscal);
     const fiscalDataComplete = fiscalMissing.length === 0;
@@ -235,6 +320,7 @@ export class IdentityVerificationService {
               : null;
     return {
       isBusiness: fiscal?.entityType === "BUSINESS",
+      representativeName: representative ? `${representative.firstName} ${representative.lastName}`.trim() || null : null,
       fiscalDataComplete,
       fiscalMissing,
       taxIdState,
@@ -264,14 +350,20 @@ export class IdentityVerificationService {
    * avvisato con una notifica e un'email appena può continuare.
    */
   async start(userId: string): Promise<{ url: string | null; standby: boolean }> {
-    const profile = await this.loadMine(userId);
+    return this.startFor(await this.loadMine(userId), { actorUserId: userId, callbackPath: "/dashboard/verifica-identita?ritorno=1", consentReason: null });
+  }
+
+  private async startFor(
+    profile: LoadedProfile,
+    options: { actorUserId: string | null; callbackPath: string; consentReason: string | null },
+  ): Promise<{ url: string | null; standby: boolean }> {
     const latest = await this.latest(profile.id);
     const status = this.buildStatus(profile, latest);
     if (!status.identity.canStart || !this.provider) {
       throw new BadRequestException(status.identity.blockedReason ?? "Il tuo profilo è già verificato.");
     }
     if (latest && isStandby(latest)) {
-      const url = await this.resumeStandby(latest);
+      const url = await this.resumeStandby(latest, options.callbackPath);
       return { url, standby: url === null };
     }
     if (latest?.status === "STARTED" && latest.sessionUrl && Date.now() - latest.updatedAt.getTime() < REUSE_SESSION_MS) {
@@ -282,7 +374,7 @@ export class IdentityVerificationService {
     if (!this.provider.sandbox && attemptsToday >= MAX_IDENTITY_ATTEMPTS_PER_DAY) {
       throw new BadRequestException(`Hai già fatto ${MAX_IDENTITY_ATTEMPTS_PER_DAY} tentativi oggi: riprova domani, oppure scrivici dalla pagina Contatti e ti aiutiamo.`);
     }
-    const session = await this.createSession(profile.id);
+    const session = await this.createSession(profile.id, options.callbackPath);
     const row = await this.prisma.identityVerification.create({
       data: {
         professionalProfileId: profile.id,
@@ -301,13 +393,15 @@ export class IdentityVerificationService {
       entityId: row.id,
       fieldName: "biometricConsent",
       newValue: BIOMETRIC_CONSENT_VERSION,
-      changedByUserId: userId,
-      reason: session ? "Consenso al confronto del selfie e avvio della verifica." : "Consenso al confronto del selfie; verifica in attesa, il servizio non risponde.",
+      changedByUserId: options.actorUserId,
+      reason:
+        (options.consentReason ?? "Consenso al confronto del selfie.") +
+        (session ? " Verifica avviata." : " Verifica in attesa, il servizio non risponde."),
     });
     return { url: session?.url ?? null, standby: !session };
   }
 
-  private async createSession(professionalProfileId: string): Promise<{ sessionId: string; url: string } | null> {
+  private async createSession(professionalProfileId: string, callbackPath = "/dashboard/verifica-identita?ritorno=1"): Promise<{ sessionId: string; url: string } | null> {
     if (!this.provider) return null;
     const fiscal = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, include: FISCAL_INCLUDE });
     const expected = expectedPerson(fiscal);
@@ -315,7 +409,7 @@ export class IdentityVerificationService {
       return await this.provider.createSession({
         reference: professionalProfileId,
         expected: { firstName: expected.firstName, lastName: expected.lastName, dateOfBirth: expected.dateOfBirth },
-        callbackUrl: `${this.frontendUrl()}/dashboard/verifica-identita?ritorno=1`,
+        callbackUrl: `${this.frontendUrl()}${callbackPath}`,
       });
     } catch (error) {
       this.logger.warn(`Sessione di verifica non creata, resta in attesa: ${String(error)}`);
@@ -324,8 +418,8 @@ export class IdentityVerificationService {
   }
 
   /** Riprova un tentativo in attesa: torna il link se il fornitore ora risponde, altrimenti null. */
-  private async resumeStandby(row: IdentityVerification): Promise<string | null> {
-    const session = await this.createSession(row.professionalProfileId);
+  private async resumeStandby(row: IdentityVerification, callbackPath?: string): Promise<string | null> {
+    const session = await this.createSession(row.professionalProfileId, callbackPath);
     if (!session) return null;
     await this.prisma.identityVerification.update({
       where: { id: row.id },

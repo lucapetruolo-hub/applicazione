@@ -62,8 +62,13 @@ describe("misure progressive (§167)", () => {
   });
   it("le restrizioni valgono solo fino alla scadenza", () => {
     const p = { demotedUntil: after(14 * DAY), requestsBlockedUntil: null };
-    expect(professionalRestrictions(p, after(DAY))).toEqual({ demoted: true, blocked: false });
-    expect(professionalRestrictions(p, after(15 * DAY))).toEqual({ demoted: false, blocked: false });
+    expect(professionalRestrictions(p, after(DAY))).toEqual({ demoted: true, blocked: false, away: false });
+    expect(professionalRestrictions(p, after(15 * DAY))).toEqual({ demoted: false, blocked: false, away: false });
+  });
+  it("la pausa scelta dal professionista ferma le richieste fino al giorno di ritorno (collaudo C-16)", () => {
+    const p = { demotedUntil: null, requestsBlockedUntil: null, awayUntil: after(7 * DAY) };
+    expect(professionalRestrictions(p, after(DAY))).toEqual({ demoted: false, blocked: true, away: true });
+    expect(professionalRestrictions(p, after(8 * DAY))).toEqual({ demoted: false, blocked: false, away: false });
   });
 });
 

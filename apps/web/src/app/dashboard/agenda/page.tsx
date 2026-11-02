@@ -26,6 +26,7 @@ import {
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { loadMyProfessionalProfile } from "@/lib/myProfessionalProfile";
+import { AwayCard } from "@/components/AwayCard";
 import { useAuth } from "@/lib/AuthContext";
 import { CalendarShell, MonthGrid, type CalendarView } from "@/components/calendar/CalendarShell";
 import { SkeletonBlock } from "@/components/Skeleton";
@@ -345,6 +346,8 @@ function DashboardAgendaContent() {
   const [vacationFrom, setVacationFrom] = useState("");
   const [vacationTo, setVacationTo] = useState("");
   const [vacationBusy, setVacationBusy] = useState(false);
+  // "Metti in pausa" (collaudo C-16).
+  const [awayUntil, setAwayUntil] = useState<string | null>(null);
 
   // Deep-link "Vedi in agenda" da /dashboard/richieste (?booking=<id>) —
   // bug reale segnalato dall'utente: il link portava sempre alla data
@@ -555,7 +558,12 @@ function DashboardAgendaContent() {
   useEffect(() => {
     if (!token) return;
     loadMyProfessionalProfile(token)
-      .then((profile) => startTransition(() => setMyProfileId(profile?.id ?? null)))
+      .then((profile) =>
+        startTransition(() => {
+          setMyProfileId(profile?.id ?? null);
+          setAwayUntil(profile?.awayUntil ?? null);
+        }),
+      )
       .catch(() => {});
   }, [token]);
 
@@ -2150,6 +2158,8 @@ function DashboardAgendaContent() {
           </div>
         ) : activeTab === "orari" ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* Pausa con data di ritorno (collaudo C-16): ferma richieste e ricerca senza chiudere i giorni uno per uno. */}
+            {token ? <AwayCard token={token} awayUntil={awayUntil} onChange={setAwayUntil} /> : null}
             {/* Chiudere un giorno è il compito più frequente della scheda: prima di tutto (T1, §311). */}
             <div className="ag-card" style={{ padding: 20 }}>
               <h2 style={{ fontSize: 19 }}>Chiudi un giorno o le ferie</h2>

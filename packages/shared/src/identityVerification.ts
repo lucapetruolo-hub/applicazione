@@ -41,6 +41,8 @@ export type IdentityVerificationStep = "NOT_STARTED" | "STARTED" | "PROCESSING" 
 export type MyVerificationStatus = {
   /** Azienda: il documento è quello del legale rappresentante. */
   isBusiness: boolean;
+  /** Nome e cognome del legale rappresentante, che fa la verifica per l'azienda (collaudo E-03). */
+  representativeName: string | null;
   /** Passo 1: dati fiscali compilati; `fiscalMissing` dice cosa manca. */
   fiscalDataComplete: boolean;
   fiscalMissing: string[];
@@ -71,6 +73,19 @@ export type MyVerificationStatus = {
   /** Può inviare preventivi (per quanto riguarda la verifica). */
   canSendQuotes: boolean;
 };
+
+/** Cosa vede il legale rappresentante aprendo il link dell'azienda (collaudo E-03, M-07). */
+export type RepresentativeVerificationView = {
+  businessName: string;
+  representativeName: string;
+  verified: boolean;
+  identity: Pick<MyVerificationStatus["identity"], "available" | "status" | "reason" | "standby" | "canStart" | "blockedReason">;
+};
+
+/** Consenso al volto dato dal legale rappresentante, con il suo nome. */
+export function representativeConsentText(name: string): string {
+  return `Sono ${name} e acconsento al confronto del mio volto con la foto del mio documento, solo per verificare la mia identità.`;
+}
 
 export const TAX_ID_KIND_LABEL: Record<TaxIdKind, string> = {
   CODICE_FISCALE: "Codice fiscale",
@@ -104,6 +119,8 @@ export function taxIdCheckMessage(check: Pick<TaxIdCheckView, "kind" | "status" 
     case "REVIEW":
       // P.IVA giusta nella forma ma non nel registro delle imprese (es. libero
       // professionista): non blocca e non passa all'admin (§255).
+      // Ambiente di prova di Openapi (collaudo 0-02): nessun controllo vero.
+      if (check.detail === "PROVA") return `${label}: numero corretto. Siamo in prova: il controllo ufficiale parte con il lancio.`;
       return `${label}: numero corretto.`;
     default:
       return `${label}: verifica in corso, intanto il profilo resta visibile.`;

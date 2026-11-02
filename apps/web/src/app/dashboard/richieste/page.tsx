@@ -663,6 +663,7 @@ function RichiesteContent() {
                   booking={bookingByRequestId.get(lead.guidedRequest.id) ?? null}
                   token={token}
                   availableSlots={availableSlots}
+                  bookings={bookings ?? undefined}
                   myProfileId={myProfileId}
                   defaultPaymentOffer={defaultPaymentOffer}
                   defaultCancellationNoticeHours={defaultCancellationNoticeHours}

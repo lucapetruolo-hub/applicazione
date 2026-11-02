@@ -150,13 +150,14 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
     return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}&documenti=1` : "/le-mie-richieste?tab=lavori";
   }
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
-  if (type === "TAX_ID_INVALID") return "/dashboard/fiscale";
+  if (type === "TAX_ID_INVALID" || type === "FISCAL_ENTITY_TYPE_CHANGED") return "/dashboard/fiscale";
   if (type === "PROFILE_SETUP_REMINDER") {
     // Carta per i mesi gratis (docs/changelog/2026-10-30-iscrizione-carta-solida.md): dritti ai livelli.
     const missing = payload && typeof payload === "object" ? (payload as { missing?: unknown }).missing : null;
     return Array.isArray(missing) && missing.includes("CARD") ? "/dashboard/abbonamento#livelli" : "/dashboard";
   }
   if (type === "AGENDA_REMINDER") return "/dashboard/agenda?tab=disponibilita";
+  if (type === "AWAY_ENDING") return "/dashboard/agenda?tab=orari";
   if (type === "AGENDA_TOMORROW_SUMMARY") return "/dashboard/agenda";
   if (type.startsWith("IDENTITY_VERIFICATION_") || type === "PROFILE_VERIFICATION_REMOVED") return "/dashboard/verifica-identita";
   if (type === "ADMIN_JOB_BALANCE_UNPAID" || type === "ADMIN_JOB_NOT_CLOSED" || type === "ADMIN_STRIPE_DISPUTE" || type === "ADMIN_STRIPE_DISPUTE_DUE" || type === "ADMIN_JOB_PAYMENT_LONG_HOLD" || type === "ADMIN_JOB_REFUND_FAILED" || type === "ADMIN_STRIPE_ACCOUNT_UNREADABLE") return "/admin/pagamenti";

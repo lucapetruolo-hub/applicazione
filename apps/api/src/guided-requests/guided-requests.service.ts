@@ -261,6 +261,7 @@ export class GuidedRequestsService {
         pausedAt: true,
         demotedUntil: true,
         requestsBlockedUntil: true,
+        awayUntil: true,
         businessName: true,
         categoryId: true,
         extraCategories: { select: { id: true } },
@@ -318,6 +319,7 @@ export class GuidedRequestsService {
       pausedAt: Date | null;
       demotedUntil: Date | null;
       requestsBlockedUntil: Date | null;
+      awayUntil: Date | null;
       businessName: string;
       category: NonNullable<typeof category>;
       extraCategories: { id: string }[];
@@ -335,6 +337,7 @@ export class GuidedRequestsService {
           pausedAt: true,
           demotedUntil: true,
           requestsBlockedUntil: true,
+          awayUntil: true,
           businessName: true,
           category: true,
           extraCategories: { select: { id: true } },
@@ -1144,16 +1147,21 @@ export class GuidedRequestsService {
     // mai nel fan-out — stesso filtro già applicato a search()/getById().
     const candidates = await this.prisma.professionalProfile.findMany({
       where: {
-        // Categoria principale o una delle aggiuntive (docs/CHANGELOG.md §217).
-        // Solo professionisti verificati su Stripe (docs/CHANGELOG.md §239).
-        AND: [{ OR: [{ categoryId }, { extraCategories: { some: { id: categoryId } } }] }, publicVisibilityWhere()],
         deletedAt: null,
         suspendedAt: null,
         pausedAt: null,
         // Profilo creato da un operatore, non ancora confermato (§170).
         invitePendingAt: null,
-        // Nessuna nuova richiesta per 14 giorni dopo la 3ª segnalazione accolta (§167).
-        OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }],
+        // Nessuna nuova richiesta per 14 giorni dopo la 3ª segnalazione accolta (§167),
+        // né durante la pausa scelta dal professionista (collaudo C-16).
+        AND: [
+          // Categoria principale o una delle aggiuntive (docs/CHANGELOG.md §217).
+          { OR: [{ categoryId }, { extraCategories: { some: { id: categoryId } } }] },
+          // Dati fiscali compilati (docs/CHANGELOG.md §239, §241).
+          publicVisibilityWhere(),
+          { OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }] },
+          { OR: [{ awayUntil: null }, { awayUntil: { lte: new Date() } }] },
+        ],
         ...(excludeProfileId ? { id: { not: excludeProfileId } } : {}),
         // Intervento online: solo chi offre consulenza da remoto (§210).
         ...(remoteOnly ? { remoteAvailable: true } : {}),
@@ -1209,6 +1217,12 @@ export class GuidedRequestsService {
     // Comune non ancora geocodificato (0,0 placeholder) — stessa
     // convenzione già usata in matchProfilesForFanOut, mai eleggibile.
     if (profile.latitude === 0 && profile.longitude === 0) return;
+    // Solo chi è già visibile nella ricerca, con gli stessi filtri dello
+    // smistamento (collaudo 0-01, docs/changelog/2026-11-02-iscrizione-verifica-professionisti.md):
+    // prima un professionista appena iscritto, senza dati fiscali, riceveva
+    // subito le richieste aperte. Diventato visibile le riceve da
+    // `matchWhenVisible`.
+    if (!(await this.receivesRequests(profile.id))) return;
 
     const now = new Date();
     const openRequests = await this.prisma.guidedRequest.findMany({
@@ -1269,6 +1283,66 @@ export class GuidedRequestsService {
         "La richiesta ti è stata inoltrata: sei un professionista compatibile appena iscritto.",
       );
     }
+  }
+
+  /** Il professionista può ricevere richieste generali (stessi filtri di `matchProfilesForFanOut`)? */
+  private async receivesRequests(professionalProfileId: string): Promise<boolean> {
+    const candidate = await this.prisma.professionalProfile.findUnique({
+      where: { id: professionalProfileId },
+      select: {
+        deletedAt: true,
+        suspendedAt: true,
+        invitePendingAt: true,
+        pausedAt: true,
+        requestsBlockedUntil: true,
+        awayUntil: true,
+        demotedUntil: true,
+        ...PUBLIC_VISIBILITY_SELECT,
+      },
+    });
+    return (
+      !!candidate &&
+      !candidate.deletedAt &&
+      !candidate.suspendedAt &&
+      !candidate.invitePendingAt &&
+      !candidate.pausedAt &&
+      !publicVisibilityMissing(candidate) &&
+      !professionalRestrictions(candidate, new Date()).blocked
+    );
+  }
+
+  /**
+   * Il professionista è appena diventato visibile (dati fiscali completati o
+   * corretti): riceve le richieste generali aperte della sua zona, come chi
+   * si iscrive dopo una richiesta (§271). Le richieste già ricevute non si
+   * ripetono, quindi si può chiamare a ogni salvataggio dei dati fiscali.
+   */
+  async matchWhenVisible(professionalProfileId: string): Promise<void> {
+    const profile = await this.prisma.professionalProfile.findUnique({
+      where: { id: professionalProfileId },
+      select: {
+        id: true,
+        userId: true,
+        categoryId: true,
+        extraCategories: { select: { id: true } },
+        latitude: true,
+        longitude: true,
+        engagementRadiusKm: true,
+        urgentEngagementRadiusKm: true,
+        remoteAvailable: true,
+      },
+    });
+    if (!profile) return;
+    await this.matchNewProfileToOpenRequests({
+      id: profile.id,
+      userId: profile.userId,
+      categoryIds: [profile.categoryId, ...profile.extraCategories.map((category) => category.id)],
+      latitude: profile.latitude,
+      longitude: profile.longitude,
+      engagementRadiusKm: profile.engagementRadiusKm,
+      urgentEngagementRadiusKm: profile.urgentEngagementRadiusKm,
+      remoteAvailable: profile.remoteAvailable,
+    });
   }
 
   private computeRequestExpiry(isUrgent: boolean): Date {

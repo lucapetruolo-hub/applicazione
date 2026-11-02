@@ -50,6 +50,9 @@ const publicRoutes = [
   "GET /guided-requests/reach",
   "GET /health",
   "GET /health/features",
+  // Verifica del legale rappresentante di una società: link firmato, senza accedere (docs/changelog/2026-11-02-iscrizione-verifica-professionisti.md).
+  "GET /identity-verification/representative/:token",
+  "POST /identity-verification/representative/:token/start",
   "POST /identity-verification/webhook",
   // Webhook di WhatsApp (Meta): registrazione con il token e firma sul corpo (docs/changelog/2026-10-28-promemoria-whatsapp.md).
   "GET /whatsapp/webhook",
@@ -189,6 +192,8 @@ const selfProfessional = [
   "GET /professionals/me/subscription",
   "GET /professionals/me/verification",
   "POST /professionals/me/verification/identity",
+  "POST /professionals/me/verification/representative-link",
+  "PUT /professionals/me/away",
 ];
 
 const booking = (extra = {}) => ({ kind: "owned", owners: BOTH, params: (f) => ({ id: f.bookingA }), ...extra });

@@ -161,6 +161,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "BOOKING_REMINDER",
       // Agenda vuota o senza disponibilità nei prossimi 7 giorni (docs/CHANGELOG.md §274).
       "AGENDA_REMINDER",
+      // "Metti in pausa": il giorno prima del ritorno (docs/changelog/2026-11-02-iscrizione-verifica-professionisti.md).
+      "AWAY_ENDING",
       // Agenda (docs/CHANGELOG.md §288): "Sto arrivando" al cliente, riepilogo della sera prima al professionista.
       "PROFESSIONAL_ON_THE_WAY",
       "AGENDA_TOMORROW_SUMMARY",
@@ -216,6 +218,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // selfie da rifare, codice fiscale o P.IVA risultati inesistenti.
       "IDENTITY_VERIFICATION_DECLINED",
       "TAX_ID_INVALID",
+      // Tipo (privato, partita IVA, azienda) cambiato dall'admin (migliorie del collaudo, gruppo 8).
+      "FISCAL_ENTITY_TYPE_CHANGED",
       // Servizio di verifica tornato disponibile, promemoria a chi non l'ha fatta (§256).
       "IDENTITY_VERIFICATION_READY",
       "IDENTITY_VERIFICATION_REMINDER",
@@ -362,8 +366,8 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "lavori.promemoria",
     topic: "lavori",
-    types: ["BOOKING_REMINDER", "AGENDA_REMINDER", "AGENDA_TOMORROW_SUMMARY", "PROFESSIONAL_ON_THE_WAY"],
-    professional: { label: "Promemoria e agenda", description: "Il giorno prima, il riepilogo della sera, l'agenda senza orari liberi." },
+    types: ["BOOKING_REMINDER", "AGENDA_REMINDER", "AWAY_ENDING", "AGENDA_TOMORROW_SUMMARY", "PROFESSIONAL_ON_THE_WAY"],
+    professional: { label: "Promemoria e agenda", description: "Il giorno prima, il riepilogo della sera, l'agenda senza orari liberi, la fine della pausa." },
     client: { label: "Promemoria", description: "Il giorno prima e quando il professionista sta arrivando." },
   },
   {
