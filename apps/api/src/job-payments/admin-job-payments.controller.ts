@@ -98,7 +98,7 @@ export class AdminJobPaymentsController {
 
   @Patch("refunds/:id")
   decideRefund(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(decideRefundSchema)) body: DecideRefundInput) {
-    return this.refundsService.decide(id, body.decision, req.user.userId);
+    return this.refundsService.decide(id, body.decision, req.user.userId, body.note);
   }
 
   @Get("disputes")

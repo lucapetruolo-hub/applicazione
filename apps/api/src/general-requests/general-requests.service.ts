@@ -285,11 +285,11 @@ export class GeneralRequestsService {
     return counts;
   }
 
-  async close(adminUserId: string, categorySlug: string, rawCity: string): Promise<void> {
+  async close(adminUserId: string, categorySlug: string, rawCity: string, adminReason: string): Promise<void> {
     const category = await this.prisma.category.findUnique({ where: { slug: categorySlug }, select: { id: true } });
     if (!category) throw new NotFoundException("Categoria non trovata.");
     const city = generalRequestCityKey(rawCity);
-    const reason = "Chiusa a mano dall'area admin.";
+    const reason = `Chiusa a mano: ${adminReason.trim()}`;
     const saved = await this.prisma.generalRequestBlock.upsert({
       where: { categoryId_city: { categoryId: category.id, city } },
       create: { categoryId: category.id, city, reason, closeTrigger: "MANUAL", closedByUserId: adminUserId },

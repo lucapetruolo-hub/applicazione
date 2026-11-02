@@ -16,6 +16,8 @@ export type AdminQueueKind =
   | "DISPUTE"
   | "UNPAID_BALANCE"
   | "SDI_REJECTED"
+  | "SDI_STUCK"
+  | "DAC7_DUE"
   | "CONTENT_REPORT"
   | "REPORT_APPEAL"
   | "PROBLEM_TAKEOVER"
@@ -35,6 +37,8 @@ export const ADMIN_QUEUE_KINDS: Record<AdminQueueKind, { label: string; group: A
   DISPUTE: { label: "Contestazione di pagamento", group: "soldi", scope: "FINANCE" },
   UNPAID_BALANCE: { label: "Saldo non pagato", group: "soldi", scope: "FINANCE" },
   SDI_REJECTED: { label: "Fattura scartata dallo SdI", group: "fisco", scope: "FINANCE" },
+  SDI_STUCK: { label: "Fattura ferma allo SdI", group: "fisco", scope: "FINANCE" },
+  DAC7_DUE: { label: "Comunicazione DAC7", group: "fisco", scope: "FINANCE" },
   CONTENT_REPORT: { label: "Segnalazione", group: "reclami", scope: "MODERATION" },
   REPORT_APPEAL: { label: "Ricorso su una segnalazione", group: "reclami", scope: "MODERATION" },
   PROBLEM_TAKEOVER: { label: "Ce ne occupiamo noi", group: "richieste", scope: "MODERATION" },

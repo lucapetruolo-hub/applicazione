@@ -7,6 +7,7 @@ import {
   JOB_ISSUE_SANCTION_WINDOW_DAYS,
   jobIssueAutoDecision,
   jobIssueAutoEscalation,
+  jobIssueAssisted,
   jobIssueCanAppeal,
   jobIssueEvidenceDueAt,
   jobIssueOutcomeText,
@@ -61,7 +62,7 @@ export class JobIssueOutcomeService {
 
   /** Primo messaggio del professionista in chat dopo la segnalazione, per ogni segnalazione indicata. */
   async proChatReplies(
-    issues: { id: string; createdAt: Date; professionalRespondedAt: Date | null; guidedRequestId: string | null; professionalProfileId: string }[],
+    issues: { id: string; createdAt: Date; professionalRespondedAt: Date | null; refundOfferedAt?: Date | null; guidedRequestId: string | null; professionalProfileId: string }[],
   ): Promise<Map<string, Date | null>> {
     const out = new Map<string, Date | null>();
     for (const issue of issues) {
@@ -74,14 +75,29 @@ export class JobIssueOutcomeService {
           guidedRequestId: issue.guidedRequestId,
           professionalProfileId: issue.professionalProfileId,
           actor: "PROFESSIONAL",
+          // Solo un messaggio scritto da lui: gli eventi registrati dal sito
+          // (preventivo, lavoro terminato...) non sono una risposta (collaudo F-20).
+          automatic: false,
           createdAt: { gt: issue.createdAt },
         },
         orderBy: { createdAt: "asc" },
         select: { createdAt: true },
       });
-      out.set(issue.id, first?.createdAt ?? null);
+      // Anche una proposta di rimborso è una risposta (collaudo F-03).
+      const offered = issue.refundOfferedAt ?? null;
+      out.set(issue.id, first && (!offered || first.createdAt < offered) ? first.createdAt : offered);
     }
     return out;
+  }
+
+  /**
+   * Avviso a tutti gli admin: un caso è passato al nostro team, ha la
+   * versione del professionista da decidere, o c'è un ricorso. Prima nessuno
+   * lo sapeva, mentre i Termini promettono una decisione entro 2 giorni.
+   */
+  async notifyIssueAdmins(type: "ADMIN_JOB_ISSUE_TO_REVIEW" | "ADMIN_JOB_ISSUE_APPEAL", payload: { bookingId: string; issueType: string; stage?: "ESCALATED" | "VERSION" }): Promise<void> {
+    const admins = await this.prisma.user.findMany({ where: { role: "ADMIN", deletedAt: null }, select: { id: true } });
+    for (const admin of admins) await this.notificationsService.notify(admin.id, type, payload);
   }
 
   /**
@@ -279,20 +295,24 @@ export class JobIssueOutcomeService {
     }
     await this.prisma.jobIssue.update({ where: { id: issue.id }, data: { appealText: text, appealedAt: new Date() } });
     await this.auditLogService.record({ entityType: "JobIssue", entityId: issue.id, fieldName: "appeal", newValue: text, changedByUserId: professionalUserId });
+    await this.notifyIssueAdmins("ADMIN_JOB_ISSUE_APPEAL", { bookingId, issueType: issue.type });
     return { bookingId };
   }
 
   /**
-   * Decisione sul ricorso, sempre da un admin diverso da chi ha deciso la
-   * segnalazione. Accolto: la segnalazione diventa respinta, l'affidabilità
+   * Decisione sul ricorso, da un admin diverso da chi ha deciso la
+   * segnalazione quando ce n'è più di uno. Accolto: la segnalazione diventa respinta, l'affidabilità
    * torna com'era e la misura presa per questa segnalazione viene tolta.
    */
   async decideAppeal(adminUserId: string, issueId: string, input: { decision: "ACCEPTED" | "REJECTED"; note: string }) {
     const issue = await this.prisma.jobIssue.findUnique({ where: { id: issueId }, include: issueInclude });
     if (!issue) throw new NotFoundException("Segnalazione non trovata.");
     if (!issue.appealedAt || issue.appealDecision) throw new BadRequestException("Nessun ricorso da decidere su questa segnalazione.");
+    // Un admin diverso da chi ha deciso; se c'è un solo admin, decide lui
+    // (prima il ricorso restava fermo per sempre).
     if (issue.resolvedByUserId && issue.resolvedByUserId === adminUserId) {
-      throw new ForbiddenException("Il ricorso deve essere esaminato da un admin diverso da chi ha deciso la segnalazione.");
+      const otherAdmins = await this.prisma.user.count({ where: { role: "ADMIN", deletedAt: null, id: { not: adminUserId } } });
+      if (otherAdmins > 0) throw new ForbiddenException("Il ricorso deve essere esaminato da un admin diverso da chi ha deciso la segnalazione.");
     }
     const accepted = input.decision === "ACCEPTED";
     await this.prisma.jobIssue.update({
@@ -403,13 +423,14 @@ export class JobIssueOutcomeService {
         id: i.id,
         createdAt: i.createdAt,
         professionalRespondedAt: i.professionalRespondedAt,
+        refundOfferedAt: i.refundOfferedAt,
         guidedRequestId: i.booking.quote?.guidedRequestId ?? null,
         professionalProfileId: i.booking.professionalProfileId,
       })),
     );
     for (const issue of chats) {
-      // Pagamento diretto (§168): resta tra cliente e professionista, mai al nostro team.
-      const assisted = issue.booking.jobPayment?.paymentMethod !== "DIRECT";
+      // Pagamento diretto (§168) o segnalazione dopo il termine: resta tra cliente e professionista, mai al nostro team.
+      const assisted = jobIssueAssisted(issue.booking.jobPayment?.paymentMethod, issue.late);
       const reason = jobIssueAutoEscalation({ status: issue.status, createdAt: issue.createdAt, proRepliedAt: replies.get(issue.id) ?? null, assisted }, now);
       if (!reason) continue;
       const moved = await this.prisma.jobIssue.updateMany({
@@ -426,6 +447,7 @@ export class JobIssueOutcomeService {
       };
       await this.notificationsService.notify(issue.booking.professionalProfile.userId, "JOB_ISSUE_AUTO_ESCALATED", { ...payload, audience: "PROFESSIONAL" });
       await this.notificationsService.notify(issue.booking.clientId, "JOB_ISSUE_TEAM_REVIEW", { ...payload, audience: "CLIENT" });
+      await this.notifyIssueAdmins("ADMIN_JOB_ISSUE_TO_REVIEW", { bookingId: issue.booking.id, issueType: issue.type, stage: "ESCALATED" });
       if (issue.booking.quote) {
         await this.timelineService.log(
           issue.booking.quote.guidedRequestId,

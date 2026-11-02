@@ -6,6 +6,8 @@ import {
   clientConfirmCompleteSchema,
   completeBookingSchema,
   jobIssueChatOutcomeSchema,
+  jobIssueRefundOfferSchema,
+  type JobIssueRefundOfferInput,
   jobIssueResponseSchema,
   reportJobIssueSchema,
   reportProfessionalJobProblemSchema,
@@ -95,11 +97,23 @@ export class BookingsController {
     return this.bookingsService.cancelForClient(req.user.userId, id);
   }
 
-  /** Riapre una prenotazione annullata — disponibile a entrambe le parti, chiunque l'abbia annullata. */
+  /** Chi ha annullato chiede di riaprire la prenotazione; l'altra parte risponde (collaudo F-08). */
   @UseGuards(JwtAuthGuard)
   @Patch(":id/reopen")
   reopen(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
     return this.bookingsService.reopenBooking(req.user.userId, id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/reopen/accept")
+  acceptReopen(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.bookingsService.answerReopen(req.user.userId, id, true);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/reopen/decline")
+  declineReopen(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.bookingsService.answerReopen(req.user.userId, id, false);
   }
 
   /** Il professionista segnala un "Lavoro accettato" come terminato, con l'importo preciso (voci del preventivo + eventuali extra). */
@@ -201,6 +215,20 @@ export class BookingsController {
   @Patch(":id/issue/chat-outcome")
   closeIssueChat(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(jobIssueChatOutcomeSchema)) body: { outcome: "RESOLVED" | "ESCALATE" }) {
     return this.bookingsService.closeIssueChat(req.user.userId, id, body.outcome);
+  }
+
+  /** Il professionista propone in chat un rimborso al cliente (collaudo F-03). */
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/issue/refund-offer")
+  offerIssueRefund(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(jobIssueRefundOfferSchema)) body: JobIssueRefundOfferInput) {
+    return this.bookingsService.offerIssueRefund(req.user.userId, id, body.amountEurCents);
+  }
+
+  /** Il cliente accetta il rimborso proposto: parte subito e la segnalazione si chiude. */
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/issue/accept-refund")
+  acceptIssueRefund(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.bookingsService.acceptIssueRefund(req.user.userId, id);
   }
 
   /** Il professionista risponde alla segnalazione con la sua versione. */

@@ -232,7 +232,11 @@ sia UI/routing — la logica va in `apps/api` o `packages/shared`.
    della conversazione (chat) — mai un dato di contatto diretto. Non
    invertire questa regola una quarta volta senza discuterne
    esplicitamente con l'utente: se sembra necessario un'eccezione, è un
-   segnale che va posta la domanda invece di cambiare il codice.
+   segnale che va posta la domanda invece di cambiare il codice. Stessa
+   regola in chat (decisione di Luca del 02/11/2026): prima
+   dell'accettazione un messaggio con telefono, email, link o "WhatsApp" non
+   parte, per nessuno dei due (controllo sul server,
+   docs/changelog/2026-11-02-admin-protezioni.md).
 10. **Regola "zero emoji nell'interfaccia" (§10, Fase 2) abrogata** —
     decisione esplicita dell'utente, in risposta al rilievo F8.1 del
     "Verbale Cognitivo" (che anzi la elogiava com'era: "nessuna azione,

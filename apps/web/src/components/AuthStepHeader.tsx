@@ -43,7 +43,8 @@ export function AuthStepHeader({
   icon: IconName;
   title: string;
   subtitle?: string;
-  step?: { current: number; total: number };
+  /** `note`: accanto al numero del passo, es. "circa 2 minuti" sul primo. */
+  step?: { current: number; total: number; note?: string };
   onBack?: () => void;
 }) {
   // A ogni passo nuovo il fuoco va sul titolo (collaudo L-06).
@@ -62,6 +63,7 @@ export function AuthStepHeader({
             {step ? (
               <span className="auth-step-count">
                 Passo {step.current} di {step.total}
+                {step.note ? <span className="auth-step-note"> · {step.note}</span> : null}
               </span>
             ) : null}
           </div>
