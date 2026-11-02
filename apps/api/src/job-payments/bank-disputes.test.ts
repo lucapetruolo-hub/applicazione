@@ -100,6 +100,7 @@ describe("BankDisputesService", () => {
       where: { id: "jp-1" },
       data: {
         stripeDisputeStatus: "under_review",
+        disputeStatuses: { du_1: "under_review" },
         disputeEvidence: { productDescription: "Idraulico a domicilio", explanation: "Il cliente ha confermato il lavoro sul sito." },
         disputeEvidenceFileId: "file_1",
         disputeEvidenceSentAt: expect.any(Date),
@@ -121,6 +122,19 @@ describe("BankDisputesService", () => {
     const [row] = await service.listOpen();
     expect(row!.draft).toEqual({ productDescription: "Idraulico a domicilio", explanation: "Il cliente ha confermato il lavoro sul sito." });
     expect(row!.sentExplanation).toBeNull();
+  });
+
+  it("acconto e saldo contestati: le stesse prove vanno anche alla seconda contestazione aperta (collaudo F-21)", async () => {
+    const { service, stripe, prisma } = setup();
+    prisma.jobPayment.findUnique.mockResolvedValue({ ...job, disputeStatuses: { du_1: "needs_response", du_2: "needs_response", du_0: "won" } });
+
+    await service.saveEvidence("admin-1", "jp-1", input);
+
+    expect(stripe.disputes.update).toHaveBeenCalledWith("du_2", expect.objectContaining({ submit: true }), { stripeAccount: "acct_pro" });
+    expect(stripe.disputes.update).not.toHaveBeenCalledWith("du_0", expect.anything(), expect.anything());
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ disputeStatuses: { du_0: "won", du_1: "under_review", du_2: "under_review" } }) }),
+    );
   });
 
   it("archivio: cerca anche per nome e cognome e per cifra, con chi ha mandato le prove e la cronologia", async () => {

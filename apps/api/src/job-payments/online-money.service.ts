@@ -105,6 +105,17 @@ function eurAmount(entries: Array<{ amount: number; currency: string }> | undefi
   return (entries ?? []).filter((entry) => entry.currency === "eur").reduce((sum, entry) => sum + entry.amount, 0);
 }
 
+/** Stato di ogni contestazione del lavoro (collaudo F-21); per i dati di prima quella salvata. */
+function disputeStatusesOf(jp: { disputeStatuses?: Prisma.JsonValue; stripeDisputeId: string | null; stripeDisputeStatus: string | null }): Record<string, string> {
+  const out: Record<string, string> = {};
+  const value = jp.disputeStatuses;
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    for (const [id, status] of Object.entries(value)) if (typeof status === "string") out[id] = status;
+  }
+  if (Object.keys(out).length === 0 && jp.stripeDisputeId) out[jp.stripeDisputeId] = jp.stripeDisputeStatus ?? "needs_response";
+  return out;
+}
+
 /** Contestazione chiusa e già sistemata in `disputeFunds`. */
 const DISPUTE_SETTLED = -1;
 
@@ -1353,44 +1364,68 @@ export class OnlineMoneyService {
     if (!jp) return false;
 
     const closed = CLOSED_DISPUTE_STATUSES.includes(dispute.status);
-    const wasClosed = CLOSED_DISPUTE_STATUSES.includes(jp.stripeDisputeStatus ?? "");
-    // Una notizia arrivata in ritardo non riapre una contestazione già chiusa.
-    if (wasClosed && !closed) return true;
-    // Stripe manda più notizie quasi insieme (chiusura e soldi restituiti o
-    // ripresi, prova dal vivo del 29/10, docs/changelog/2026-10-29-contestazioni-doppie.md):
-    // apertura e chiusura le segna una sola, così avvisi, rimborso e debito non si ripetono.
+    // Ogni addebito (acconto, saldo) ha la sua contestazione: stato di
+    // ciascuna in `disputeStatuses` (collaudo F-21). Stripe manda più notizie
+    // quasi insieme (chiusura e soldi restituiti o ripresi, prova dal vivo del
+    // 29/10, docs/changelog/2026-10-29-contestazioni-doppie.md): apertura e
+    // chiusura di ognuna le segna una sola, così avvisi, rimborso e debito non
+    // si ripetono.
+    let current = jp;
+    let statuses = disputeStatusesOf(current);
     let opened = false;
-    if (!jp.stripeDisputeId) {
-      const claim = await this.prisma.jobPayment.updateMany({ where: { id: jp.id, stripeDisputeId: null }, data: { stripeDisputeId: dispute.id, stripeDisputedAt: new Date() } });
-      opened = claim.count === 1;
-    }
     let justClosed = false;
-    if (closed && !wasClosed) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const prev = statuses[dispute.id];
+      // Una notizia arrivata in ritardo non riapre una contestazione già chiusa.
+      if (prev && CLOSED_DISPUTE_STATUSES.includes(prev) && !closed) return true;
+      if (prev === dispute.status) break;
+      const next = { ...statuses, [dispute.id]: dispute.status };
       const claim = await this.prisma.jobPayment.updateMany({
-        where: { id: jp.id, OR: [{ stripeDisputeStatus: null }, { stripeDisputeStatus: { notIn: CLOSED_DISPUTE_STATUSES } }] },
-        data: { stripeDisputeStatus: dispute.status, stripeDisputeClosedAt: new Date() },
+        where: { id: jp.id, disputeStatuses: { equals: (current.disputeStatuses ?? {}) as Prisma.InputJsonValue } },
+        data: { disputeStatuses: next },
       });
-      justClosed = claim.count === 1;
+      if (claim.count === 1) {
+        opened = prev === undefined;
+        justClosed = closed && !(prev && CLOSED_DISPUTE_STATUSES.includes(prev));
+        statuses = next;
+        break;
+      }
+      // Un'altra notizia è arrivata intanto: si rilegge e si riprova.
+      const fresh = await this.prisma.jobPayment.findUnique({ where: { id: jp.id } });
+      if (!fresh) return true;
+      current = { ...jp, ...fresh };
+      statuses = disputeStatusesOf(current);
     }
+    jp.refundedEurCents = current.refundedEurCents;
+    jp.releasedAt = current.releasedAt;
+    // La contestazione mostrata (prove, scadenza) è una ancora aperta, se c'è.
+    const openIds = Object.keys(statuses).filter((id) => !CLOSED_DISPUTE_STATUSES.includes(statuses[id]!));
+    const anyOpen = openIds.length > 0;
+    const shownId = anyOpen ? (openIds.includes(dispute.id) ? dispute.id : openIds[0]!) : dispute.id;
     const lost = dispute.status === "lost";
     // Contestazione persa: la banca ha restituito la cifra al cliente.
     const lostAmount = justClosed && lost ? Math.min(dispute.amount, jp.paidEurCents - jp.refundedEurCents) : 0;
     const refunded = jp.refundedEurCents + lostAmount;
     let statusData: Record<string, unknown> = {};
-    if (!closed) statusData = { status: "DISPUTED" };
+    if (anyOpen) statusData = { status: "DISPUTED" };
     else if (justClosed && lostAmount > 0 && refunded >= jp.paidEurCents) {
       statusData = { status: "REFUNDED", onlineStage: "REFUNDED", releasedAt: jp.releasedAt ?? new Date() };
     } else if (justClosed) statusData = { status: jp.releasedAt ? "CONFIRMED" : "PENDING" };
     await this.prisma.jobPayment.update({
       where: { id: jp.id },
       data: {
-        stripeDisputeId: dispute.id,
-        stripeDisputeStatus: dispute.status,
+        stripeDisputeId: shownId,
+        stripeDisputeStatus: statuses[shownId] ?? dispute.status,
         stripeDisputedAt: jp.stripeDisputedAt ?? new Date(),
-        stripeDisputeDueBy: dispute.evidence_details?.due_by ? new Date(dispute.evidence_details.due_by * 1000) : null,
-        stripeDisputeReason: dispute.reason ?? null,
-        // Solo chi ha chiuso scrive il rimborso: le altre notizie hanno letto il pagamento prima.
-        ...(justClosed ? { refundedEurCents: refunded } : {}),
+        ...(shownId === dispute.id
+          ? {
+              stripeDisputeDueBy: dispute.evidence_details?.due_by ? new Date(dispute.evidence_details.due_by * 1000) : null,
+              stripeDisputeReason: dispute.reason ?? null,
+            }
+          : {}),
+        ...(justClosed && !anyOpen ? { stripeDisputeClosedAt: new Date() } : {}),
+        // Solo chi ha chiuso scrive il rimborso, sommandolo a quelli delle altre contestazioni.
+        ...(justClosed && lostAmount > 0 ? { refundedEurCents: { increment: lostAmount } } : {}),
         ...statusData,
       },
     });
@@ -1434,8 +1469,8 @@ export class OnlineMoneyService {
       await this.notifyFinanceAdmins("ADMIN_STRIPE_DISPUTE", payload);
       await this.notificationsService.notify(jp.booking.professionalProfile.userId, "JOB_STRIPE_DISPUTE", payload);
     }
-    // Contestazione vinta: se era il momento, l'accredito parte subito.
-    if (justClosed && !lost) await this.releaseIfDue(jp.id).catch(() => false);
+    // Chiusa l'ultima contestazione senza perdere tutto: se era il momento, l'accredito parte subito.
+    if (justClosed && !anyOpen && statusData.status !== "REFUNDED") await this.releaseIfDue(jp.id).catch(() => false);
     return true;
   }
 

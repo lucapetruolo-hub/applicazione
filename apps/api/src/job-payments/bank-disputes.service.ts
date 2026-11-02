@@ -128,21 +128,26 @@ export class BankDisputesService {
       options,
     );
     const stripeText = stripeTestKeyword(input.explanation) ?? input.explanation;
-    const updated = await stripe.disputes.update(
-      job.stripeDisputeId,
-      {
-        evidence: {
-          product_description: input.productDescription,
-          customer_name: input.customerName || undefined,
-          customer_email_address: input.customerEmail || undefined,
-          service_date: input.serviceDate || undefined,
-          uncategorized_text: stripeText,
-          service_documentation: file.id,
-        },
-        submit: input.submit,
+    const params: Stripe.DisputeUpdateParams = {
+      evidence: {
+        product_description: input.productDescription,
+        customer_name: input.customerName || undefined,
+        customer_email_address: input.customerEmail || undefined,
+        service_date: input.serviceDate || undefined,
+        uncategorized_text: stripeText,
+        service_documentation: file.id,
       },
-      options,
-    );
+      submit: input.submit,
+    };
+    const updated = await stripe.disputes.update(job.stripeDisputeId, params, options);
+    // Acconto e saldo contestati insieme (collaudo F-21): le stesse prove
+    // vanno anche all'altra contestazione ancora aperta dello stesso lavoro.
+    const statuses: Record<string, string> = { ...disputeStatusMap(job.disputeStatuses), [job.stripeDisputeId]: updated.status };
+    for (const [id, status] of Object.entries(statuses)) {
+      if (id === job.stripeDisputeId || !(BANK_DISPUTE_OPEN_STATUSES as readonly string[]).includes(status)) continue;
+      const other = await stripe.disputes.update(id, params, options);
+      statuses[id] = other.status;
+    }
     // Archivio: le prove come le ha scritte l'admin, anche solo salvate, e
     // chi e quando le ha mandate alla banca.
     const { submit, ...fields } = input;
@@ -151,6 +156,7 @@ export class BankDisputesService {
       where: { id: job.id },
       data: {
         stripeDisputeStatus: updated.status,
+        disputeStatuses: statuses,
         disputeEvidence: evidence as Prisma.InputJsonValue,
         disputeEvidenceFileId: file.id,
         ...(submit ? { disputeEvidenceSentAt: new Date(), disputeEvidenceSentById: adminUserId } : {}),
@@ -462,4 +468,13 @@ export class BankDisputesService {
       noteAt: now.toISOString(),
     };
   }
+}
+
+/** Stato di ogni contestazione del lavoro (`JobPayment.disputeStatuses`). */
+function disputeStatusMap(value: Prisma.JsonValue | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    for (const [id, status] of Object.entries(value)) if (typeof status === "string") out[id] = status;
+  }
+  return out;
 }

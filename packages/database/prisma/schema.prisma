@@ -2268,6 +2268,9 @@ model JobPayment {
   // { "<id contestazione>": centesimi }, -1 quando è chiusa e già sistemata.
   // `disputeRecoveredEurCents` resta la somma di quelle ancora aperte.
   disputeFunds              Json      @default("{}")
+  // Stato di ciascuna contestazione, { "<id>": "needs_response" | "won" | ... }:
+  // `stripeDisputeId`/`stripeDisputeStatus` mostrano quella ancora aperta.
+  disputeStatuses           Json      @default("{}")
   // Allo sblocco (collaudo F-21): parte che Stripe aveva già preso dal saldo
   // del professionista per rimborsi o contestazioni di altri lavori, e debito
   // di lavori precedenti ripreso prima del bonifico. Ognuna ha la sua riga

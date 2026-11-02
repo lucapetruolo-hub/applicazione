@@ -324,6 +324,33 @@ describe("sblocco: ogni differenza ha la sua riga (collaudo F-21)", () => {
   });
 });
 
+describe("conto di Marco nel collaudo del 29/10, al centesimo (F12, F13, F22)", () => {
+  // Trattenute lette su Stripe: F22 Paola 2 × 40 € (3,42 € ciascuno), tutti e
+  // due contestati con la carta 0259; F13 Ugo 380 € (32,45 €), saldo mai
+  // pagato; F12 Tina 30 € (2,56 €). Stripe ha preso 80 € dal saldo per F22.
+  const paola = { releasedAt: null, paidEurCents: 8000, refundedEurCents: 0, applicationFeeEurCents: 684, payoutPendingEurCents: 0, disputeRecoveredEurCents: 4000 + 3316 };
+  const tina = { releasedAt: null, paidEurCents: 3000, refundedEurCents: 0, applicationFeeEurCents: 256, payoutPendingEurCents: 0, disputeRecoveredEurCents: 0 };
+  // Sul conto: 347,55 € (F13) + 27,44 € (F12) + 73,16 € (F22) − 80 € (le due contestazioni).
+  const balance = 34755 + 2744 + 7316 - 8000;
+
+  it("F13: a Marco 347,55 € meno i 6,84 € della trattenuta di F22 ancora sul conto della piattaforma, con la sua riga", async () => {
+    const { service, prisma, stripe } = buildService();
+    const job = toRelease({ id: "jp-f13", onlineStage: "AWAITING_BALANCE", releaseDueAt: new Date("2026-10-10T10:00:00Z"), paidEurCents: 38000, applicationFeeEurCents: 3245, stripeFeeEurCents: 0, platformFeeEurCents: 17080 });
+    job.booking.finalAmountEurCents = 200000;
+    prisma.jobPayment.findUnique.mockResolvedValueOnce(job).mockResolvedValue(null);
+    prisma.jobPayment.findUniqueOrThrow.mockResolvedValue(job);
+    prisma.jobPayment.findMany.mockImplementation(async (args: { where: Record<string, unknown> }) => ("professionalDebtEurCents" in args.where ? [] : [paola, tina]));
+    stripe.balance.retrieve.mockResolvedValue({ available: [{ amount: balance, currency: "eur" }], pending: [] });
+
+    await expect(service.releaseIfDue("jp-f13", new Date("2026-10-15T10:00:00Z"))).resolves.toBe(true);
+
+    // Prima mancavano 55,98 € senza spiegazione; con le due contestazioni contate solo 6,84 €, scritti a parte.
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ netAmountEurCents: 34755 - 684, platformFeeEurCents: 3245, releaseTakenByStripeEurCents: 684 }) }),
+    );
+  });
+});
+
 describe("contestazioni in banca con l'addebito diretto", () => {
   function dispute(overrides: Record<string, unknown> = {}) {
     return { id: "dp_1", payment_intent: "pi_dep", amount: 10000, status: "needs_response", reason: "product_unacceptable", balance_transactions: [], ...overrides } as never;

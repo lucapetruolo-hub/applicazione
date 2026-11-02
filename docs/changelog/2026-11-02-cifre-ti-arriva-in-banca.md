@@ -51,3 +51,31 @@ contata solo per i soldi che restano, stessa contestazione due volte,
 trattenuta restituita allo sblocco (fallisce senza la correzione), parte presa
 da Stripe salvata. `pnpm --filter @professionisti/api test` (1143 test) e
 typecheck verdi.
+
+## Secondo giro: ogni contestazione si chiude da sola
+
+**Richiesta** di Luca: "effettua le prime due migliorie" (chiusura di ogni
+contestazione per conto suo; rifare F12, F13 e F22 al centesimo).
+
+**Decisione.**
+- `JobPayment.disputeStatuses`: lo stato di ciascuna contestazione. Apertura e
+  chiusura di ognuna si segnano una volta sola (anche con due notizie quasi
+  insieme); la seconda contestazione avvisa anche lei team e professionista.
+  Persa, la sua cifra si somma ai rimborsi delle altre; il pagamento resta
+  "Contestato" e i soldi fermi finché ce n'è una aperta.
+  `stripeDisputeId`/`stripeDisputeStatus` mostrano quella ancora aperta.
+- Admin → Contestazioni: le prove mandate alla banca vanno anche all'altra
+  contestazione aperta dello stesso lavoro.
+- F12, F13 e F22 rifatti in una prova automatica con le trattenute lette su
+  Stripe (dal lato piattaforma): su F13 a Marco 340,71 € con la riga
+  "Già preso da Stripe per un altro lavoro" di 6,84 €, cioè la trattenuta dei
+  due addebiti contestati di Paola, che Stripe ha preso dal suo saldo insieme
+  agli 80 €; prima mancavano 55,98 € senza spiegazione. I 6,84 € tornano a lui
+  se le contestazioni si chiudono (persa: trattenuta restituita; vinta: tutta
+  la cifra di nuovo sul conto).
+
+**Verifica.** 4 test nuovi (due contestazioni chiuse una alla volta, avviso
+della seconda, prove a tutte e due, conto di Marco al centesimo).
+`pnpm --filter @professionisti/api test` 1147 verdi, typecheck verde. La
+prova dal vivo su Stripe resta da fare dopo l'unione, con una chiave in sola
+lettura dell'ambiente di Render per leggere il saldo di Marco.
