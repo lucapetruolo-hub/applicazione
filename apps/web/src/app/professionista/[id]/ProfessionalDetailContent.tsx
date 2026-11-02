@@ -603,8 +603,11 @@ export function ProfessionalDetailContent({
                 </Text>
               </XStack>
             ) : null}
-            <Text fontSize={10.5} color={brand.grafite70} fontStyle="italic">
-              Dati dichiarati dal professionista, non verificati da {BRAND.name}.
+            {/* Cosa abbiamo controllato e cosa no, senza contraddire "Verificato" (collaudo B-11, E-10). */}
+            <Text fontSize={13} color={brand.grafite70} fontStyle="italic">
+              {professional.verified
+                ? "Abbiamo verificato l'identità. Esperienza, lingue, qualifiche e assicurazione le scrive il professionista."
+                : "Esperienza, lingue, qualifiche e assicurazione le scrive il professionista."}
             </Text>
           </YStack>
         ) : null}

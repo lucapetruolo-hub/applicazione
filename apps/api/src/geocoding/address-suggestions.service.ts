@@ -1,5 +1,5 @@
 import { Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
-import type { AddressPlace, AddressSuggestion } from "@professionisti/shared";
+import { findComuneByName, type AddressPlace, type AddressSuggestion } from "@professionisti/shared";
 import { DailyBudget } from "../common/daily-budget";
 import { opsAlert } from "../common/ops-alert";
 import { normalizePlaceName } from "./geocoding.service";
@@ -8,6 +8,8 @@ type GoogleAutocompleteResponse = {
   suggestions?: {
     placePrediction?: {
       placeId: string;
+      /** Distanza dall'`origin` della richiesta, in metri. */
+      distanceMeters?: number;
       text?: { text: string };
       structuredFormat?: { mainText?: { text: string }; secondaryText?: { text: string } };
     };
@@ -112,30 +114,62 @@ export class AddressSuggestionsService {
     }
   }
 
+  /**
+   * Prima gli indirizzi della zona giusta (collaudo 0-03, 0-09, C-20): prima
+   * Google li favoriva soltanto e con "Via Isonzo 30" a Latina proponeva
+   * Nettuno e Roma. Con un comune scritto nel testo ("Via Roma 10 Latina") o
+   * una zona data dal sito si cercano solo gli indirizzi entro 30 km (15 km
+   * dal comune scritto), dal più vicino, con quelli del comune scritto in
+   * cima; se così non esce quasi nulla si cerca in tutta Italia.
+   */
   async suggest(input: { q: string; session: string; latitude?: number; longitude?: number }): Promise<AddressSuggestion[]> {
     const text = input.q.trim().slice(0, 200);
     if (text.length < 3) return [];
     const key = this.apiKey();
     this.takeBudget(this.suggestionsBudget);
+    const named = comuneNamedIn(text);
     const hasBias = input.latitude !== undefined && input.longitude !== undefined && Number.isFinite(input.latitude) && Number.isFinite(input.longitude);
-    const data = await this.call<GoogleAutocompleteResponse>("https://places.googleapis.com/v1/places:autocomplete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key },
-      body: JSON.stringify({
-        input: text,
-        sessionToken: input.session,
-        includedRegionCodes: ["it"],
-        // Solo vie e numeri civici, niente negozi o luoghi di interesse.
-        includedPrimaryTypes: ["street_address", "route", "premise", "subpremise"],
-        languageCode: "it",
-        ...(hasBias ? { locationBias: { circle: { center: { latitude: input.latitude, longitude: input.longitude }, radius: 30_000 } } } : {}),
-      }),
-    });
-    return (data.suggestions ?? []).flatMap((s) => {
-      const p = s.placePrediction;
-      if (!p) return [];
-      return [{ id: p.placeId, main: p.structuredFormat?.mainText?.text ?? p.text?.text ?? "", secondary: p.structuredFormat?.secondaryText?.text ?? "" }];
-    });
+    const center = named ? { latitude: named.lat, longitude: named.lon } : hasBias ? { latitude: input.latitude!, longitude: input.longitude! } : null;
+    const ask = async (restrict: boolean) => {
+      const data = await this.call<GoogleAutocompleteResponse>("https://places.googleapis.com/v1/places:autocomplete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key },
+        body: JSON.stringify({
+          input: text,
+          sessionToken: input.session,
+          includedRegionCodes: ["it"],
+          // Solo vie e numeri civici, niente negozi o luoghi di interesse.
+          includedPrimaryTypes: ["street_address", "route", "premise", "subpremise"],
+          languageCode: "it",
+          ...(center
+            ? {
+                origin: center,
+                ...(restrict
+                  ? { locationRestriction: { circle: { center, radius: named ? 15_000 : 30_000 } } }
+                  : { locationBias: { circle: { center, radius: 30_000 } } }),
+              }
+            : {}),
+        }),
+      });
+      return (data.suggestions ?? []).flatMap((s) => {
+        const p = s.placePrediction;
+        if (!p) return [];
+        return [
+          {
+            id: p.placeId,
+            main: p.structuredFormat?.mainText?.text ?? p.text?.text ?? "",
+            secondary: p.structuredFormat?.secondaryText?.text ?? "",
+            distance: p.distanceMeters,
+          },
+        ];
+      });
+    };
+    let found = await ask(center !== null);
+    if (center && found.length < 2 && this.suggestionsBudget.take()) {
+      const wider = await ask(false);
+      found = [...found, ...wider.filter((item) => !found.some((f) => f.id === item.id))];
+    }
+    return rankSuggestions(found, named?.name ?? null).map(({ id, main, secondary }) => ({ id, main, secondary }));
   }
 
   /**
@@ -191,4 +225,46 @@ export function placeFromGoogle(data: GooglePlaceResponse): AddressPlace {
     postalCode: component("postal_code")?.longText ?? null,
     province: component("administrative_area_level_2")?.shortText ?? null,
   };
+}
+
+/**
+ * Il comune scritto in fondo all'indirizzo, dopo il civico o una virgola
+ * ("Via Roma 10 Latina", "Via Roma, Latina LT"); mai da solo ("Via Roma"
+ * non è Roma).
+ */
+export function comuneNamedIn(text: string): { name: string; lat: number; lon: number } | null {
+  const match = /(?:,|\d[a-z]?(?:\/\w{1,3})?)\s+([^\d,]{2,60})$/i.exec(text.trim());
+  if (!match) return null;
+  const tail = match[1]!.trim();
+  const candidates = [tail, tail.replace(/\s+\(?[A-Za-z]{2}\)?$/, "")];
+  for (const candidate of candidates) {
+    const comune = findComuneByName(candidate);
+    if (comune) return { name: comune.name, lat: comune.lat, lon: comune.lon };
+  }
+  return null;
+}
+
+/** Il comune del testo secondario di Google: "04100 Cisterna di Latina LT, Italia" → "cisterna di latina". */
+function suggestionComune(secondary: string): string {
+  const first = secondary.split(",")[0] ?? "";
+  return normalizePlaceName(first.replace(/^\d{5}\s+/, "").replace(/\s+[A-Z]{2}$/, ""));
+}
+
+/** Prima quelli del comune scritto, poi dal più vicino; senza distanza resta l'ordine di Google. */
+export function rankSuggestions<T extends { secondary: string; distance?: number }>(items: T[], comune: string | null): T[] {
+  const wanted = comune ? normalizePlaceName(comune) : null;
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => {
+      if (wanted) {
+        const inA = suggestionComune(a.item.secondary) === wanted;
+        const inB = suggestionComune(b.item.secondary) === wanted;
+        if (inA !== inB) return inA ? -1 : 1;
+      }
+      const da = a.item.distance ?? Number.POSITIVE_INFINITY;
+      const db = b.item.distance ?? Number.POSITIVE_INFINITY;
+      if (da !== db) return da - db;
+      return a.index - b.index;
+    })
+    .map(({ item }) => item);
 }

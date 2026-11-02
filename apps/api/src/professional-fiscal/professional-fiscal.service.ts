@@ -6,6 +6,9 @@ import {
   FISCAL_DECLARATION_VERSION,
   fiscalDataMissing,
   fiscalFieldErrors,
+  looksLikeCompanyName,
+  normalizePartitaIva,
+  normalizeReaNumber,
   parseInvoiceRecipient,
   type ProfessionalFiscalProfileInput,
   type SetFiscalVerificationInput,
@@ -19,6 +22,7 @@ import { readStripeConnectStatus } from "./stripe-connect-status";
 import { stripeAccountPrefill } from "./stripe-account-prefill";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { PayoutAccountService } from "./payout-account.service";
+import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
 
 /** Solo le ultime 4 cifre di un codice fiscale, per il registro delle modifiche. */
 export function maskTaxId(value: unknown): unknown {
@@ -78,6 +82,7 @@ export class ProfessionalFiscalService {
     private readonly notificationsService: NotificationsService,
     private readonly taxIdCheckService: TaxIdCheckService,
     @Optional() private readonly payoutAccountService?: PayoutAccountService,
+    @Optional() private readonly guidedRequestsService?: GuidedRequestsService,
   ) {
     this.stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
   }
@@ -119,12 +124,22 @@ export class ProfessionalFiscalService {
     return { businessName: profile.businessName, fiscalProfile, auditLog };
   }
 
-  async upsertMine(userId: string, input: ProfessionalFiscalProfileInput) {
+  async upsertMine(userId: string, rawInput: ProfessionalFiscalProfileInput) {
     const professionalProfileId = await this.requireMyProfileId(userId);
     const existing = await this.prisma.professionalFiscalProfile.findUnique({
       where: { professionalProfileId },
       include: { representative: true },
     });
+    // Partita IVA senza "IT" davanti e numero REA nella forma "LT-123456"
+    // (collaudo D-12, E-05, E-07), solo per i dati italiani.
+    const italianIds = (rawInput.fiscalIdIssuingCountry ?? existing?.fiscalIdIssuingCountry ?? "IT").trim().toUpperCase() === "IT";
+    const input: ProfessionalFiscalProfileInput = italianIds
+      ? {
+          ...rawInput,
+          ...(rawInput.vatNumber !== undefined ? { vatNumber: normalizePartitaIva(rawInput.vatNumber) } : {}),
+          ...(rawInput.businessRegistrationNumber !== undefined ? { businessRegistrationNumber: normalizeReaNumber(rawInput.businessRegistrationNumber) } : {}),
+        }
+      : rawInput;
 
     // Stessi controlli del browser anche qui (docs/CHANGELOG.md §253): forma
     // di codice fiscale e P.IVA e coerenza del codice fiscale con nome,
@@ -137,9 +152,19 @@ export class ProfessionalFiscalService {
       fiscalCodiceFiscale: input.fiscalCodiceFiscale ?? existing?.fiscalCodiceFiscale,
       dateOfBirth: input.dateOfBirth ?? existing?.dateOfBirth,
       vatNumber: input.vatNumber ?? existing?.vatNumber,
+      businessRegistrationNumber: input.businessRegistrationNumber ?? existing?.businessRegistrationNumber,
       representative: input.representative ?? existing?.representative,
     });
     if (fieldErrors.length > 0) throw new BadRequestException(fieldErrors[0]?.message);
+    // Privato senza partita IVA con il nome di una società (collaudo A-11, M-03).
+    if ((input.entityType ?? existing?.entityType) === "PRIVATE_INDIVIDUAL") {
+      const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { businessName: true } });
+      if (looksLikeCompanyName(profile?.businessName)) {
+        throw new BadRequestException(
+          "Il nome della tua attività ha la forma di una società (S.R.L., S.N.C., S.p.A.): un privato senza partita IVA non può usarla. Cambia il nome nel profilo, oppure scrivici dalla pagina Contatti se sei un'azienda.",
+        );
+      }
+    }
 
     const data: Record<string, unknown> = {};
     for (const field of FISCAL_FIELDS) {
@@ -263,6 +288,14 @@ export class ProfessionalFiscalService {
     // Codice fiscale e P.IVA all'Agenzia delle Entrate / Registro Imprese
     // (Openapi, §253): subito, e solo per i dati nuovi o cambiati.
     await this.taxIdCheckService.syncForFiscalProfile(fiscalProfile.id, userId);
+
+    // Appena visibile riceve anche le richieste aperte della zona (collaudo
+    // 0-01): prima arrivavano già al salvataggio del profilo, senza dati fiscali.
+    try {
+      await this.guidedRequestsService?.matchWhenVisible(professionalProfileId);
+    } catch (err) {
+      this.logger.error(`Richieste aperte non inoltrate a ${professionalProfileId}`, err instanceof Error ? err.stack : String(err));
+    }
 
     return this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, include: { representative: true, taxIdChecks: true } });
   }

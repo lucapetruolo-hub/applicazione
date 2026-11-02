@@ -9,13 +9,14 @@ import {
   AdminIdentityVerificationController,
   IdentityVerificationController,
   IdentityVerificationWebhookController,
+  RepresentativeVerificationController,
 } from "./identity-verification.controller";
 import { IdentityVerificationService } from "./identity-verification.service";
 
 /** Documento e selfie con Didit (docs/CHANGELOG.md §253). */
 @Module({
   imports: [AuthModule, AdminModule, AuditLogModule, NotificationsModule, ProfessionalVerificationModule, TaxIdCheckModule],
-  controllers: [IdentityVerificationController, IdentityVerificationWebhookController, AdminIdentityVerificationController],
+  controllers: [IdentityVerificationController, IdentityVerificationWebhookController, RepresentativeVerificationController, AdminIdentityVerificationController],
   providers: [IdentityVerificationService],
   exports: [IdentityVerificationService],
 })

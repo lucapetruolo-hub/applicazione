@@ -114,6 +114,7 @@ import type {
   ProfessionalVerificationFilter,
   ProfessionalVerificationRow,
   MyVerificationStatus,
+  RepresentativeVerificationView,
   AddressSuggestion,
   AddressPlace,
   TaxIdCheckView,
@@ -2370,6 +2371,20 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       request<{ url: string | null; standby: boolean }>("/professionals/me/verification/identity", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ biometricConsent: true }),
+      }),
+    /** Azienda: link da mandare al legale rappresentante, che fa la verifica dal suo telefono (collaudo E-03). */
+    createRepresentativeVerificationLink: (token: string) =>
+      request<{ url: string; expiresAt: string; name: string }>("/professionals/me/verification/representative-link", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    /** Pagina del legale rappresentante, aperta dal link firmato: senza accesso. */
+    representativeVerificationStatus: (linkToken: string) =>
+      request<RepresentativeVerificationView>(`/identity-verification/representative/${encodeURIComponent(linkToken)}`, { cache: "no-store" }),
+    startRepresentativeVerification: (linkToken: string) =>
+      request<{ url: string | null; standby: boolean }>(`/identity-verification/representative/${encodeURIComponent(linkToken)}/start`, {
+        method: "POST",
         body: JSON.stringify({ biometricConsent: true }),
       }),
     adminUnverifyProfessional: (token: string, professionalProfileId: string, note: string) =>

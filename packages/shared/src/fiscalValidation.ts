@@ -51,11 +51,49 @@ export function isValidCodiceFiscale(value: string): boolean {
   return cf[15] === expectedCheckChar;
 }
 
+/**
+ * Cosa non va in un codice fiscale italiano, detto in parole semplici
+ * (collaudo C-17, D-13): quanti caratteri mancano o avanzano, oppure un
+ * errore di battitura. `null` se è valido.
+ */
+export function codiceFiscaleProblem(value: string): string | null {
+  const cf = normalize(value);
+  if (!cf) return null;
+  if (cf.length < 16) {
+    const missing = 16 - cf.length;
+    return `Il codice fiscale ha 16 caratteri: ${missing === 1 ? "ne manca 1" : `ne mancano ${missing}`}.`;
+  }
+  if (cf.length > 16) return `Il codice fiscale ha 16 caratteri: ne hai scritti ${cf.length}.`;
+  if (!/^[A-Z0-9]+$/.test(cf)) return "Il codice fiscale ha solo lettere e numeri: togli gli altri segni.";
+  if (isValidCodiceFiscale(cf)) return null;
+  return "C'è un errore di battitura: ricopialo lettera per lettera dalla tessera sanitaria.";
+}
+
 // --- Partita IVA italiana -------------------------------------------------
+
+/**
+ * Partita IVA come la salviamo: senza spazi, punti e trattini e senza "IT"
+ * davanti, come la scrivono fatture e visure (collaudo D-12, E-07).
+ */
+export function normalizePartitaIva(value: string): string {
+  const piva = normalize(value).replace(/\./g, "");
+  return /^IT\d{11}$/.test(piva) ? piva.slice(2) : piva;
+}
+
+/** Cosa non va in una partita IVA italiana, in parole semplici; `null` se è valida. */
+export function partitaIvaProblem(value: string): string | null {
+  const piva = normalizePartitaIva(value);
+  if (!piva) return null;
+  if (!/^\d+$/.test(piva)) return "La partita IVA ha solo numeri: 11 cifre.";
+  if (piva.length !== 11) return `La partita IVA ha 11 cifre: ne hai scritte ${piva.length}.`;
+  if (isValidPartitaIva(piva)) return null;
+  return "Una cifra è sbagliata: ricopiala dalla visura camerale o da una tua fattura.";
+}
+
 // 11 cifre, ultima è un carattere di controllo (variante dell'algoritmo di
 // Luhn: le cifre in posizione dispari raddoppiate, sottratto 9 se >9).
 export function isValidPartitaIva(value: string): boolean {
-  const piva = normalize(value);
+  const piva = normalizePartitaIva(value);
   if (!/^\d{11}$/.test(piva)) return false;
   let sum = 0;
   for (let i = 0; i < 10; i += 1) {
@@ -95,14 +133,8 @@ export function checkFiscalId(value: string, issuingCountry: string | undefined,
   if (!trimmed) return { valid: true, message: null };
   const country = (issuingCountry || "IT").trim().toUpperCase();
   if (country === "IT" || country === "") {
-    if (kind === "codiceFiscale") {
-      return isValidCodiceFiscale(trimmed)
-        ? { valid: true, message: null }
-        : { valid: false, message: "Il codice fiscale non sembra valido (formato o carattere di controllo errato)." };
-    }
-    return isValidPartitaIva(trimmed)
-      ? { valid: true, message: null }
-      : { valid: false, message: "La partita IVA non sembra valida (11 cifre, carattere di controllo errato)." };
+    const problem = kind === "codiceFiscale" ? codiceFiscaleProblem(trimmed) : partitaIvaProblem(trimmed);
+    return problem ? { valid: false, message: problem } : { valid: true, message: null };
   }
   return looksLikeForeignTin(trimmed)
     ? { valid: true, message: null }
@@ -187,12 +219,53 @@ export function codiceFiscaleMismatches(codiceFiscale: string | null | undefined
   return mismatches;
 }
 
+const MISMATCH_ARTICLE: Record<string, string> = { cognome: "al cognome", nome: "al nome", "data di nascita": "alla data di nascita" };
+
+/** "al nome", "al cognome e alla data di nascita" (collaudo D-13, E-12: prima "a nome"). */
+function mismatchList(mismatches: string[]): string {
+  const parts = mismatches.map((item) => MISMATCH_ARTICLE[item] ?? item);
+  return parts.length === 1 ? parts[0]! : `${parts.slice(0, -1).join(", ")} e ${parts[parts.length - 1]}`;
+}
+
 /** Messaggio per l'utente quando il codice fiscale non corrisponde: dice cosa controllare. */
 export function codiceFiscaleMismatchMessage(mismatches: string[]): string | null {
   if (mismatches.length === 0) return null;
-  const list = mismatches.length === 1 ? mismatches[0] : `${mismatches.slice(0, -1).join(", ")} e ${mismatches[mismatches.length - 1]}`;
   const hint = mismatches.includes("nome") ? " Se hai più nomi scrivili tutti, come sul documento." : "";
-  return `Il codice fiscale non corrisponde a ${list}: controlla di averli scritti come sul documento.${hint}`;
+  const what = mismatches.length === 1 ? "l'uno e l'altro" : "quei dati";
+  return `Il codice fiscale non corrisponde ${mismatchList(mismatches)}: controlla ${what} sul documento.${hint}`;
+}
+
+// --- Numero REA (Registro delle Imprese) ----------------------------------
+
+/** Sigle delle province italiane, quelle delle Camere di commercio che danno il numero REA. */
+const PROVINCE_SIGLE = new Set(
+  (
+    "AG AL AN AO AP AQ AR AT AV BA BG BI BL BN BO BR BS BT BZ CA CB CE CH CL CN CO CR CS CT CZ EN FC FE FG FI FM FR GE GO GR " +
+    "IM IS KR LC LE LI LO LT LU MB MC ME MI MN MO MS MT NA NO NU OR PA PC PD PE PG PI PN PO PR PT PU PV PZ RA RC RE RG RI RM RN " +
+    "RO SA SI SO SP SR SS SU SV TA TE TN TO TP TR TS TV UD VA VB VC VE VI VR VT VV " +
+    // Province sarde soppresse: i numeri REA dati allora restano validi.
+    "CI OG OT VS"
+  ).split(" "),
+);
+
+/** "lt 123456", "LT123456" → "LT-123456"; un valore che non ha la forma giusta resta com'è. */
+export function normalizeReaNumber(value: string): string {
+  const rea = value.trim().toUpperCase().replace(/\s+/g, " ");
+  const match = /^([A-Z]{2})[\s./-]*(\d{1,7})$/.exec(rea);
+  return match ? `${match[1]}-${match[2]}` : rea;
+}
+
+/**
+ * Cosa non va nel numero REA (collaudo E-05: prima si accettava qualunque
+ * cosa): sigla della provincia e numero, fino a 7 cifre. `null` se va bene.
+ */
+export function reaNumberProblem(value: string): string | null {
+  const rea = normalizeReaNumber(value);
+  if (!rea) return null;
+  const match = /^([A-Z]{2})-(\d{1,7})$/.exec(rea);
+  if (!match) return "Scrivi la sigla della provincia e il numero, come nella visura: per esempio LT-123456.";
+  if (!PROVINCE_SIGLE.has(match[1]!)) return `${match[1]} non è la sigla di una provincia: controlla la visura camerale.`;
+  return null;
 }
 
 /** Data di nascita (AAAA-MM-GG) da un codice fiscale valido; il secolo si deduce dall'età (18-100 anni). */
@@ -237,6 +310,7 @@ export type FiscalValidationInput = {
   fiscalCodiceFiscale?: string | null;
   dateOfBirth?: string | Date | null;
   vatNumber?: string | null;
+  businessRegistrationNumber?: string | null;
   representative?: { firstName?: string | null; lastName?: string | null; codiceFiscale?: string | null } | null;
 };
 
@@ -270,17 +344,24 @@ export function fiscalFieldErrors(input: FiscalValidationInput): FiscalFieldErro
     const check = checkFiscalId(vat, country, "vatNumber");
     if (!check.valid) errors.push({ field: "vatNumber", message: check.message ?? "Partita IVA non valida." });
   }
+  const italian = (country ?? "IT").toUpperCase() === "IT";
+  const rea = (input.businessRegistrationNumber ?? "").trim();
+  if (input.entityType === "BUSINESS" && italian && rea) {
+    const problem = reaNumberProblem(rea);
+    if (problem) errors.push({ field: "businessRegistrationNumber", message: problem });
+  }
   const rep = input.representative;
   const repCf = (rep?.codiceFiscale ?? "").trim();
   if (input.entityType === "BUSINESS" && repCf) {
-    if (!isValidCodiceFiscale(repCf)) {
-      errors.push({ field: "representative.codiceFiscale", message: "Il codice fiscale del legale rappresentante non sembra valido." });
+    const problem = codiceFiscaleProblem(repCf);
+    if (problem) {
+      errors.push({ field: "representative.codiceFiscale", message: problem });
     } else {
       const mismatches = codiceFiscaleMismatches(repCf, { firstName: rep?.firstName, lastName: rep?.lastName });
       if (mismatches.length > 0) {
         errors.push({
           field: "representative.codiceFiscale",
-          message: `Il codice fiscale del legale rappresentante non corrisponde a ${mismatches.join(" e ")}.`,
+          message: `Il codice fiscale non corrisponde ${mismatchList(mismatches)} del legale rappresentante: controlla l'uno e l'altro sul documento.`,
         });
       }
     }

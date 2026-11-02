@@ -238,6 +238,8 @@ export default function DashboardProfiloPage() {
   const [engagementLocation, setEngagementLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [engagementRadiusKm, setEngagementRadiusKm] = useState(25);
   const [urgentEngagementRadiusKm, setUrgentEngagementRadiusKm] = useState(25);
+  // I raggi salvati: "Salva profilo" salva anche il raggio se è cambiato (collaudo E-04).
+  const [savedRadius, setSavedRadius] = useState({ engagementRadiusKm: 25, urgentEngagementRadiusKm: 25 });
   // Vero solo se, al primo caricamento, non esisteva ancora alcun profilo:
   // distingue "questo è il primo salvataggio in assoluto" da "una modifica
   // a un profilo già esistente" — serve a decidere se, dopo il salvataggio,
@@ -316,6 +318,7 @@ export default function DashboardProfiloPage() {
     }
     setEngagementRadiusKm(profile.engagementRadiusKm);
     setUrgentEngagementRadiusKm(profile.urgentEngagementRadiusKm);
+    setSavedRadius({ engagementRadiusKm: profile.engagementRadiusKm, urgentEngagementRadiusKm: profile.urgentEngagementRadiusKm });
     setServices(
       profile.services.map((service) => ({
         name: service.name,
@@ -377,8 +380,10 @@ export default function DashboardProfiloPage() {
   // Modifiche non salvate (richiesta esplicita dell'utente, docs/CHANGELOG.md
   // §136): confronto tra i campi del form principale e com'erano all'ultimo
   // caricamento/salvataggio. Fuori dal confronto la foto profilo (salvata
-  // subito dal suo caricamento) e il raggio di ingaggio (proprio "Salva").
+  // subito dal suo caricamento). Il raggio di ingaggio ora è dentro (collaudo E-04).
   const formSnapshot = JSON.stringify({
+    engagementRadiusKm,
+    urgentEngagementRadiusKm,
     businessName,
     categorySlugs,
     subTags,
@@ -530,6 +535,11 @@ export default function DashboardProfiloPage() {
           priceUnit: service.priceUnit,
         })),
       });
+      // Il raggio ha il suo indirizzo nell'API: si salva subito dopo il profilo, solo se è cambiato.
+      if (engagementRadiusKm !== savedRadius.engagementRadiusKm || urgentEngagementRadiusKm !== savedRadius.urgentEngagementRadiusKm) {
+        await apiClient.updateEngagementRadius(token as string, { engagementRadiusKm, urgentEngagementRadiusKm });
+        setSavedRadius({ engagementRadiusKm, urgentEngagementRadiusKm });
+      }
       setSaved(true);
       setSavedRemoteAvailable(remoteAvailable);
       setNeedsConfirmation(false);
@@ -794,7 +804,10 @@ export default function DashboardProfiloPage() {
                 <div className="profile-visibility is-warn">
                   <span className="profile-visibility-dot" aria-hidden="true" />
                   <span className="profile-visibility-text">
-                    {identityStep.state === "waiting" ? "Identità in verifica: presto potrai rispondere ai preventivi" : "Non puoi ancora rispondere alle richieste di preventivo"}
+                    {identityStep.state === "waiting"
+                      ? "Identità in verifica: presto potrai rispondere ai preventivi"
+                      : // Nella ricerca compare dopo chi può già rispondere (collaudo E-09).
+                        "Non puoi ancora rispondere: finché non verifichi l'identità, nella ricerca compari dopo gli altri"}
                   </span>
                 </div>
               ) : null}
@@ -1605,11 +1618,16 @@ export default function DashboardProfiloPage() {
             distinte invece di lasciarlo isolato più in basso nella pagina. */}
         {token && engagementLocation ? (
           <EngagementRadiusSection
-            token={token}
             latitude={engagementLocation.latitude}
             longitude={engagementLocation.longitude}
-            initialEngagementRadiusKm={engagementRadiusKm}
-            initialUrgentEngagementRadiusKm={urgentEngagementRadiusKm}
+            engagementRadiusKm={engagementRadiusKm}
+            urgentEngagementRadiusKm={urgentEngagementRadiusKm}
+            onChange={(radius) => {
+              setEngagementRadiusKm(radius.engagementRadiusKm);
+              setUrgentEngagementRadiusKm(radius.urgentEngagementRadiusKm);
+            }}
+            savedEngagementRadiusKm={savedRadius.engagementRadiusKm}
+            savedUrgentEngagementRadiusKm={savedRadius.urgentEngagementRadiusKm}
           />
         ) : null}
 

@@ -33,6 +33,42 @@ import { ItalianDateInput } from "@/components/ItalianDateInput";
 
 const isPersonType = (type: string) => type === "PRIVATE_INDIVIDUAL" || type === "SOLE_PROPRIETOR";
 
+/**
+ * Dati scritti e non ancora salvati (collaudo 0-04): ricaricando la pagina
+ * prima si perdevano senza avviso. Restano solo nella scheda del browser
+ * (sessionStorage, si cancella chiudendola) e si tolgono appena si salva.
+ */
+const FISCAL_DRAFT_KEY = "dati-fiscali-bozza";
+type FiscalDraft = {
+  entityType: string;
+  fields: Record<string, string>;
+  repFields: { firstName: string; lastName: string; codiceFiscale: string; role: string };
+  abroad: boolean;
+  chargesVat: boolean | null;
+  invoiceRecipient: string;
+  formStep: 1 | 2;
+};
+
+function readFiscalDraft(userId: string): FiscalDraft | null {
+  try {
+    const raw = window.sessionStorage.getItem(FISCAL_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { userId?: string; draft?: FiscalDraft };
+    return parsed.userId === userId && parsed.draft ? parsed.draft : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeFiscalDraft(userId: string, draft: FiscalDraft | null) {
+  try {
+    if (draft) window.sessionStorage.setItem(FISCAL_DRAFT_KEY, JSON.stringify({ userId, draft }));
+    else window.sessionStorage.removeItem(FISCAL_DRAFT_KEY);
+  } catch {
+    // Archivio del browser non disponibile (navigazione privata): si va avanti senza.
+  }
+}
+
 function birthDateFromCf(value: string | undefined): string | null {
   const cf = (value ?? "").trim().toUpperCase();
   return isValidCodiceFiscale(cf) ? birthDateFromCodiceFiscale(cf) : null;
@@ -203,6 +239,22 @@ function DashboardFiscaleContent() {
   const [editing, setEditing] = useState(false);
   const [abroad, setAbroad] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
+  // Bozza ripresa dopo un ricaricamento (collaudo 0-04): `loadedDraft` è com'erano i dati salvati.
+  const [draftChecked, setDraftChecked] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [loadedDraft, setLoadedDraft] = useState<string | null>(null);
+  const currentDraft: FiscalDraft = { entityType, fields, repFields, abroad, chargesVat, invoiceRecipient, formStep };
+  const currentDraftJson = JSON.stringify(currentDraft);
+
+  // La città del profilo: i suggerimenti dell'indirizzo partono da lì (collaudo 0-03).
+  const [profileCity, setProfileCity] = useState<string | null>(null);
+  useEffect(() => {
+    if (!token) return;
+    apiClient
+      .getMyProfessionalProfile(token)
+      .then((p) => setProfileCity(p?.city ?? null))
+      .catch(() => undefined);
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -274,6 +326,40 @@ function DashboardFiscaleContent() {
     if (!profile?.entityType && (prefillEntityType === "PRIVATE_INDIVIDUAL" || prefillEntityType === "SOLE_PROPRIETOR" || prefillEntityType === "BUSINESS")) {
       setEntityType(prefillEntityType);
     }
+  }
+
+  // Dopo il caricamento (e il tipo della registrazione): si riprende la bozza, se c'è.
+  if (!draftChecked && prefillApplied && profile !== undefined && user) {
+    setDraftChecked(true);
+    setLoadedDraft(currentDraftJson);
+    const draft = readFiscalDraft(user.id);
+    if (draft && JSON.stringify(draft) !== currentDraftJson) {
+      setEntityType(isEntityType(draft.entityType) ? draft.entityType : "");
+      setFields(draft.fields);
+      setRepFields(draft.repFields);
+      setAbroad(draft.abroad);
+      setChargesVat(draft.chargesVat);
+      setInvoiceRecipient(draft.invoiceRecipient);
+      setFormStep(draft.formStep);
+      setEditing(true);
+      setDraftRestored(true);
+    }
+  }
+
+  const userId = user?.id;
+  useEffect(() => {
+    if (!draftChecked || !userId || loadedDraft === null) return;
+    writeFiscalDraft(userId, currentDraftJson === loadedDraft ? null : (JSON.parse(currentDraftJson) as FiscalDraft));
+  }, [draftChecked, userId, loadedDraft, currentDraftJson]);
+
+  function discardDraft() {
+    if (userId) writeFiscalDraft(userId, null);
+    setDraftRestored(false);
+    setDraftChecked(false);
+    setLoadedDraft(null);
+    setEditing(false);
+    setFormStep(1);
+    setProfileLoadAttempt((n) => n + 1);
   }
 
   useEffect(() => {
@@ -387,6 +473,10 @@ function DashboardFiscaleContent() {
     try {
       const updated = await apiClient.updateMyFiscalProfile(token, parsed.data);
       setProfile(updated);
+      // Salvati: la bozza non serve più, e quanto salvato è il nuovo punto di partenza.
+      if (userId) writeFiscalDraft(userId, null);
+      setLoadedDraft(JSON.stringify({ ...currentDraft, formStep: 1 }));
+      setDraftRestored(false);
       setSaveSuccess(true);
       setEditing(false);
       setFormStep(1);
@@ -471,6 +561,7 @@ function DashboardFiscaleContent() {
     fiscalCodiceFiscale: fields.fiscalCodiceFiscale,
     dateOfBirth: cfBirthDate ?? (/^\d{4}-\d{2}-\d{2}$/.test(fields.dateOfBirth ?? "") ? fields.dateOfBirth : null),
     vatNumber: fields.vatNumber,
+    businessRegistrationNumber: fields.businessRegistrationNumber,
     representative: repFields,
   });
   const liveError = (field: string) => liveErrors.find((e) => e.field === field)?.message;
@@ -550,7 +641,9 @@ function DashboardFiscaleContent() {
       tab="fiscale"
       heading="Dati fiscali"
       headingExtra={
-        !showForm && verification?.taxIdState === "OK" ? (
+        // "Verificati" solo se ogni dato è stato trovato davvero: un numero
+        // giusto nella forma ma non nel registro non è verificato (collaudo 0-02).
+        !showForm && verification?.taxIdState === "OK" && verification.taxIdChecks.every((check) => check.status === "VALID") ? (
           <Badge variant="verificato">Verificati</Badge>
         ) : !showForm && verification?.taxIdState === "CHECKING" ? (
           <Badge variant="nuovo">In verifica</Badge>
@@ -605,6 +698,18 @@ function DashboardFiscaleContent() {
                 </Text>
               ) : null}
             </YStack>
+
+            {draftRestored ? (
+              <XStack gap="$2" padding="$3" borderRadius={20} backgroundColor={brand.cianografiaVelo} alignItems="center" flexWrap="wrap" role="status">
+                <Icon name="rotate-ccw" size={16} strokeWidth={2} color={brand.cianografiaScuro} />
+                <Text flex={1} minWidth={200} fontSize={16} color={brand.grafite}>
+                  Abbiamo ripreso i dati che avevi scritto. Salvali per non perderli.
+                </Text>
+                <button type="button" className="fiscal-link-button" onClick={discardDraft}>
+                  Ricomincia
+                </button>
+              </XStack>
+            ) : null}
 
             {toFix && formStep === 1 && invalidChecks.length > 0 ? (
               <XStack gap="$2" padding="$3" borderRadius={20} backgroundColor={brand.urgenzaVelo} alignItems="flex-start" role="alert">
@@ -719,9 +824,11 @@ function DashboardFiscaleContent() {
                       label="Numero REA"
                       accessibilityLabel="Numero REA"
                       value={fields.businessRegistrationNumber ?? ""}
-                      onChangeText={(v) => setField("businessRegistrationNumber", v)}
-                      placeholder="es. RM-1234567"
-                      hint="Lo trovi nella visura camerale."
+                      onChangeText={(v) => setField("businessRegistrationNumber", v.toUpperCase())}
+                      autoCapitalize="characters"
+                      placeholder="es. LT-123456"
+                      hint={liveError("businessRegistrationNumber") ? undefined : "Sigla della provincia e numero. Lo trovi nella visura camerale."}
+                      error={liveError("businessRegistrationNumber")}
                     />
                     <YStack gap="$1" marginTop="$2">
                       <Text fontSize={16} fontWeight="800" color={brand.grafite}>
@@ -824,6 +931,10 @@ function DashboardFiscaleContent() {
                             }));
                           }}
                           ariaLabel={entityType === "BUSINESS" ? "Indirizzo della sede legale" : "Indirizzo di residenza"}
+                          biasTowards={(() => {
+                            const comune = findComuneByName(fields.registeredCity || profileCity || "");
+                            return comune ? { latitude: comune.lat, longitude: comune.lon } : null;
+                          })()}
                           placeholder="Inizia a scrivere"
                           style={addressInputStyle}
                         />
@@ -933,6 +1044,16 @@ function DashboardFiscaleContent() {
                     {saving ? "Salvataggio..." : "Salva"}
                   </Button>
                 </XStack>
+                {/* Il controllo della partita IVA può durare qualche secondo (collaudo 0-06). */}
+                {saving ? (
+                  <Text fontSize={16} color={brand.grafite70} role="status">
+                    {entityType === "PRIVATE_INDIVIDUAL"
+                      ? "Stiamo controllando il codice fiscale: pochi secondi."
+                      : entityType === "BUSINESS"
+                        ? "Stiamo controllando la partita IVA: pochi secondi."
+                        : "Stiamo controllando codice fiscale e partita IVA: pochi secondi."}
+                  </Text>
+                ) : null}
                 {saveError ? (
                   <Text fontSize={16} color={brand.urgenza} role="alert">
                     {saveError}
@@ -983,8 +1104,20 @@ function DashboardFiscaleContent() {
                   {entityType === "BUSINESS" ? fields.businessName : holderName}
                 </Text>
                 <Text color={brand.grafite70}>
-                  {[isPerson ? fields.fiscalCodiceFiscale : null, fields.vatNumber ? `P.IVA ${fields.vatNumber}` : null].filter(Boolean).join(" · ")}
+                  {[
+                    isPerson ? fields.fiscalCodiceFiscale : null,
+                    fields.vatNumber ? `P.IVA ${fields.vatNumber}` : null,
+                    entityType === "BUSINESS" && fields.businessRegistrationNumber ? `REA ${fields.businessRegistrationNumber}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </Text>
+                {/* Chi fa la verifica dell'identità per l'azienda (collaudo E-06). */}
+                {entityType === "BUSINESS" && (repFields.firstName || repFields.lastName) ? (
+                  <Text color={brand.grafite70}>
+                    Legale rappresentante: {[repFields.firstName, repFields.lastName].filter(Boolean).join(" ")}
+                  </Text>
+                ) : null}
                 <Text color={brand.grafite70}>
                   {[[fields.registeredStreet, fields.registeredHouseNumber].filter(Boolean).join(" "), [fields.registeredPostalCode, fields.registeredCity, fields.registeredProvince ? `(${fields.registeredProvince})` : null].filter(Boolean).join(" ")]
                     .filter(Boolean)

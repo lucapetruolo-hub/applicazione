@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DiditIdentityProvider, canonicalJson, diditDecision, diditReason } from "./didit.provider";
 import { matchDocumentToFiscal } from "./identity-match";
+import { parseRepresentativeLinkToken, representativeLinkToken, representativeLinkValid } from "./representative-link-token";
 import { identityVerificationNeeded } from "./identity-provider-env";
 import { EXPIRED_BADGE_REASON, IdentityVerificationService, SANDBOX_BADGE_REASON, STANDBY_PROVIDER_STATUS, badgeOverTime, documentExpiry, expectedPerson, startOfRomeDay, profileSetupMissing, reminderDue, setupReminderDue } from "./identity-verification.service";
 
@@ -421,5 +422,27 @@ describe("badge Verificato nel tempo (§338)", () => {
       documentExpiresAt: "2031-03-15",
     });
     expect(update.mock.calls[0]![0].data.documentExpiresAt?.toISOString().slice(0, 10)).toBe("2031-03-15");
+  });
+});
+
+describe("link del legale rappresentante (collaudo E-03, M-07)", () => {
+  const profileId = "0b6f4c1e-7d1a-4c8e-9a51-2f5a3c9d7e10";
+  const paolo = { firstName: "Paolo", lastName: "Collaudo" };
+
+  it("vale per lo stesso legale rappresentante finché non scade", () => {
+    const now = new Date("2026-11-02T10:00:00Z");
+    const { token } = representativeLinkToken(profileId, paolo, now);
+    const parsed = parseRepresentativeLinkToken(token)!;
+    expect(parsed.profileId).toBe(profileId);
+    expect(representativeLinkValid(parsed, { firstName: " paolo", lastName: "COLLAUDO" }, now)).toBe(true);
+    expect(representativeLinkValid(parsed, paolo, new Date("2026-11-10T10:00:00Z"))).toBe(false);
+  });
+
+  it("non vale più se cambia il legale rappresentante o se il link è manomesso", () => {
+    const { token } = representativeLinkToken(profileId, paolo);
+    const parsed = parseRepresentativeLinkToken(token)!;
+    expect(representativeLinkValid(parsed, { firstName: "Anna", lastName: "Collaudo" })).toBe(false);
+    expect(representativeLinkValid({ ...parsed, profileId: "1b6f4c1e-7d1a-4c8e-9a51-2f5a3c9d7e10" }, paolo)).toBe(false);
+    expect(parseRepresentativeLinkToken("non-un-link")).toBeNull();
   });
 });

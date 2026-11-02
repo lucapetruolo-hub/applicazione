@@ -6,8 +6,9 @@ import {
   notificationChannelEnabled,
   resolveNotificationPreferences,
   wallClockNow,
-  professionalKindOf,
-  traderStatusOf,
+  looksLikeCompanyName,
+  publicProfessionalKindOf,
+  publicTraderStatusOf,
   findComuneByName,
   italianComuni,
   PROFILE_DECLARATION_VERSION,
@@ -360,7 +361,7 @@ export class ProfessionalsService {
         address: profile.address,
         verified: publicVerified(profile),
         stripeVerified: stripeVerified(profile.fiscalProfile),
-        professionalKind: professionalKindOf(profile.fiscalProfile?.entityType),
+        professionalKind: publicProfessionalKindOf(profile.fiscalProfile?.entityType, profile.businessName),
         rating,
         reviewCount,
         boosted: profile.visibilityBoosts.length > 0,
@@ -388,9 +389,15 @@ export class ProfessionalsService {
     // 14 giorni, anche se ha un boost.
     const now = new Date();
     const demotedIds = new Set(profiles.filter((p) => professionalRestrictions(p, now).demoted).map((p) => p.id));
+    // Chi non ha ancora fatto la verifica dell'identità resta nella ricerca
+    // (decisione §253) ma dopo chi può già mandare un preventivo (collaudo
+    // C-13): un cliente non deve scegliere per primo chi non può rispondergli.
+    const notReadyIds = new Set(profiles.filter((p) => identityVerificationNeeded(p)).map((p) => p.id));
     results.sort((a, b) => {
       const demotedDiff = Number(demotedIds.has(a.id)) - Number(demotedIds.has(b.id));
       if (demotedDiff !== 0) return demotedDiff;
+      const notReadyDiff = Number(notReadyIds.has(a.id)) - Number(notReadyIds.has(b.id));
+      if (notReadyDiff !== 0) return notReadyDiff;
       if (!merit && a.boosted !== b.boosted) return a.boosted ? -1 : 1;
       const ratingDiff = (b.rating ?? 0) - (a.rating ?? 0);
       if (ratingDiff !== 0) return ratingDiff;
@@ -678,8 +685,8 @@ export class ProfessionalsService {
       verified: publicVerified(profile),
       stripeVerified: stripeVerified(profile.fiscalProfile),
       // Privato o professionista, per il cliente (Codice del consumo art. 49-bis, §241).
-      traderStatus: traderStatusOf(profile.fiscalProfile?.entityType),
-      professionalKind: professionalKindOf(profile.fiscalProfile?.entityType),
+      traderStatus: publicTraderStatusOf(profile.fiscalProfile?.entityType, profile.businessName),
+      professionalKind: publicProfessionalKindOf(profile.fiscalProfile?.entityType, profile.businessName),
       rating,
       reviewCount,
       boosted: profile.visibilityBoosts.length > 0,
@@ -825,6 +832,20 @@ export class ProfessionalsService {
       },
     });
     const isFirstTimeCreation = existingProfile === null;
+    // Un privato senza partita IVA non può avere il nome di una società
+    // (collaudo A-11, M-03): ai clienti comparirebbe "Privato" accanto a "S.R.L.".
+    if (looksLikeCompanyName(input.businessName)) {
+      const declared = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { signupEntityType: true, professionalProfile: { select: { fiscalProfile: { select: { entityType: true } } } } },
+      });
+      const entityType = declared?.professionalProfile?.fiscalProfile?.entityType ?? declared?.signupEntityType ?? null;
+      if (entityType === "PRIVATE_INDIVIDUAL") {
+        throw new BadRequestException(
+          "Ti sei iscritto come privato senza partita IVA: il nome non può avere la forma di una società (S.R.L., S.N.C., S.p.A.). Toglila, oppure scrivici dalla pagina Contatti se sei un'azienda.",
+        );
+      }
+    }
     // Alla creazione senza un'immagine scelta, il profilo pubblico parte
     // dalla foto dell'account (quella di Google, se registrato con Google).
     const accountImageUrl =
