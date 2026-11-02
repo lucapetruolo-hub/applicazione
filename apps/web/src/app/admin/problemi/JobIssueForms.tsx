@@ -7,6 +7,7 @@ import {
   JOB_ISSUE_REFUND_LABEL,
   JOB_ISSUE_REFUND_PERCENTS,
   JOB_ISSUE_SANCTION_LABEL,
+  formatEurCents,
   jobIssueSanctionFor,
   type JobIssueRefundPercent,
 } from "@professionisti/shared";
@@ -14,6 +15,7 @@ import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { errorMessage } from "@/components/admin/adminUi";
 import { formatIssueDeadline, isPastDeadline } from "@/lib/leadDeadline";
+import { CancelBookingModal } from "@/components/CancelBookingModal";
 
 const textareaStyle = {
   width: "100%",
@@ -32,7 +34,9 @@ export function PhaseDeadline({ row }: { row: AdminJobIssue }) {
   if (issue.status === "CHAT") {
     return (
       <Text fontSize={13} color={brand.grafite70}>
-        {!issue.assisted
+        {issue.late
+          ? "Segnalata dopo il termine (7 giorni o lavoro confermato): resta tra cliente e professionista, senza rimborso né decisione nostra."
+          : !issue.assisted
           ? "Pagamento diretto: la segnalazione resta tra cliente e professionista, non arriva a noi."
           : issue.proRepliedInChat
           ? "Il professionista ha risposto in chat: decide il cliente se passarla a noi."
@@ -74,26 +78,29 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
   const choosesRefund = row.issue.paidOnline && row.issue.type !== "NO_SHOW";
   const nextCount = row.professional.upheldLast30Days + 1;
   const nextSanction = jobIssueSanctionFor(nextCount);
+  // Decisione in attesa di conferma nella finestra: cosa succede, a chi, quanto.
+  const [confirming, setConfirming] = useState<"UPHELD" | "REJECTED" | null>(null);
+  const percent = choosesRefund ? refundPercent : 100;
+  const refundEur = (p: number) => (row.issue.paidOnline && row.refundableEurCents ? formatEurCents(Math.round((row.refundableEurCents * p) / 100)) : null);
+  const client = row.client.name ?? "il cliente";
 
-  async function decide(decision: "UPHELD" | "REJECTED") {
+  function askConfirm(decision: "UPHELD" | "REJECTED") {
     setError(null);
     if (note.trim().length < 3) {
       setError("Scrivi la motivazione: la leggono cliente e professionista.");
       return;
     }
-    setSaving(decision);
-    try {
-      await apiClient.adminResolveJobIssue(token, row.issue.id, {
-        decision,
-        note: note.trim(),
-        ...(decision === "UPHELD" && choosesRefund ? { refundPercent } : {}),
-      });
-      onDone();
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setSaving(null);
-    }
+    setConfirming(decision);
+  }
+
+  async function decide(decision: "UPHELD" | "REJECTED") {
+    await apiClient.adminResolveJobIssue(token, row.issue.id, {
+      decision,
+      note: note.trim(),
+      ...(decision === "UPHELD" && choosesRefund ? { refundPercent } : {}),
+    });
+    setConfirming(null);
+    onDone();
   }
 
   async function askInfo() {
@@ -138,7 +145,7 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
       <Text fontSize={13} color={brand.grafite70}>
         {`Se la accogli: affidabilità del professionista più bassa nell'assegnazione delle richieste e misura «${JOB_ISSUE_SANCTION_LABEL[nextSanction]}» (${
           nextCount === 1 ? "prima segnalazione accolta in 30 giorni" : `${nextCount}ª segnalazione accolta in 30 giorni`
-        }).${row.issue.paidOnline ? ` Lavoro pagato sul sito: rimborso al cliente del ${choosesRefund ? refundPercent : 100}% di quanto pagato, a carico del professionista.` : ""}`}
+        }).${row.issue.paidOnline ? ` Lavoro pagato sul sito: rimborso al cliente del ${percent}% di quanto pagato${refundEur(percent) ? ` (${refundEur(percent)})` : ""}, a carico del professionista.` : ""}`}
       </Text>
       {choosesRefund ? (
         <YStack gap="$1">
@@ -156,7 +163,7 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
                 height={32}
                 onPress={() => setRefundPercent(percent)}
               >
-                {JOB_ISSUE_REFUND_LABEL[percent]}
+                {refundEur(percent) ? `${JOB_ISSUE_REFUND_LABEL[percent]} · ${refundEur(percent)}` : JOB_ISSUE_REFUND_LABEL[percent]}
               </Button>
             ))}
           </XStack>
@@ -164,11 +171,11 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
       ) : null}
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       <XStack gap="$2" flexWrap="wrap">
-        <Button variant="urgent" size="$3" height={40} disabled={saving !== null} opacity={saving ? 0.6 : 1} onPress={() => decide("UPHELD")}>
-          {saving === "UPHELD" ? "Salvataggio..." : "Accogli la segnalazione"}
+        <Button variant="urgent" size="$3" height={40} disabled={saving !== null} opacity={saving ? 0.6 : 1} onPress={() => askConfirm("UPHELD")}>
+          Accogli la segnalazione
         </Button>
-        <Button variant="secondary" size="$3" height={40} disabled={saving !== null} opacity={saving ? 0.6 : 1} onPress={() => decide("REJECTED")}>
-          {saving === "REJECTED" ? "Salvataggio..." : "Respingi"}
+        <Button variant="secondary" size="$3" height={40} disabled={saving !== null} opacity={saving ? 0.6 : 1} onPress={() => askConfirm("REJECTED")}>
+          Respingi
         </Button>
         {row.issue.reviewPhase !== "AWAITING_INFO" ? (
           <Button variant="ghost" size="$3" height={40} disabled={saving !== null} onPress={() => setAsking((v) => !v)}>
@@ -176,6 +183,26 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
           </Button>
         ) : null}
       </XStack>
+      {confirming ? (
+        <CancelBookingModal
+          onClose={() => setConfirming(null)}
+          onCancel={() => decide(confirming)}
+          title={confirming === "UPHELD" ? "Accogliere la segnalazione?" : "Respingere la segnalazione?"}
+          description={
+            confirming === "UPHELD"
+              ? `${row.professional.businessName} riceve la misura «${JOB_ISSUE_SANCTION_LABEL[nextSanction]}».${
+                  row.issue.paidOnline ? ` ${client} riceve subito il rimborso del ${percent}%${refundEur(percent) ? `, ${refundEur(percent)},` : ""} preso dal conto del professionista.` : ""
+                } Cliente e professionista leggono la tua motivazione. Non si può annullare: il professionista può solo fare ricorso.`
+              : `Nessuna misura per ${row.professional.businessName} e nessun rimborso a ${client}. Cliente e professionista leggono la tua motivazione.`
+          }
+          showNote={false}
+          confirmLabel={confirming === "UPHELD" ? (refundEur(percent) ? `Accogli e rimborsa ${refundEur(percent)}` : "Accogli la segnalazione") : "Respingi la segnalazione"}
+          confirmingLabel="Salvataggio..."
+          confirmVariant={confirming === "UPHELD" ? "urgent" : "primary"}
+        >
+          <Text fontSize={14} color={brand.grafite}>{`Motivazione: ${note.trim()}`}</Text>
+        </CancelBookingModal>
+      ) : null}
       {asking ? (
         <YStack gap="$2">
           <textarea

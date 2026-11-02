@@ -7,9 +7,12 @@ import "./zod";
  * - "Il professionista non si è presentato": dall'orario di fine
  *   dell'appuntamento, entro 7 giorni, finché il cliente non ha confermato
  *   che il lavoro è terminato;
- * - "Il lavoro non è andato bene": dall'inizio dell'appuntamento, entro 14
- *   giorni dall'ultimo tra fine appuntamento, chiusura del professionista e
- *   conferma del cliente (difetti scoperti dopo).
+ * - "Il lavoro non è andato bene": dall'inizio dell'appuntamento, entro 7
+ *   giorni dall'ultimo tra fine appuntamento e chiusura del professionista,
+ *   finché il cliente non conferma che è terminato: la conferma vale come
+ *   accettazione del lavoro (decisione di Luca del 30/10/2026, collaudo P-04,
+ *   regola di Upwork e Fiverr). Così si segnala solo mentre i soldi online
+ *   sono ancora fermi (ONLINE_RELEASE_DAYS) e un rimborso non tocca mai noi.
  * Una sola segnalazione per lavoro. Prima fase (§165, decisione
  * dell'utente): cliente e professionista provano a risolvere in chat
  * (`CHAT`); se si accordano la segnalazione si chiude (`RESOLVED`), se no il
@@ -23,7 +26,18 @@ export type JobIssueType = (typeof jobIssueTypes)[number];
 export type JobIssueStatus = "CHAT" | "RESOLVED" | "OPEN" | "UPHELD" | "REJECTED" | "UNRESOLVED";
 
 export const NO_SHOW_REPORT_DAYS = 7;
-export const BAD_WORK_REPORT_DAYS = 14;
+export const BAD_WORK_REPORT_DAYS = 7;
+/**
+ * Segnalazione dopo il termine (decisione di Luca del 30/10/2026): passati i
+ * 7 giorni o dopo "Lavoro terminato" il cliente può ancora segnalare un lavoro
+ * non andato bene per 2 anni (garanzia di legge sui beni installati, la più
+ * lunga che di solito si applica), ma senza rimborso né decisione nostra: la
+ * segnalazione resta tra le parti come con il pagamento diretto, e il
+ * professionista resta tenuto alla garanzia di legge.
+ */
+export const JOB_ISSUE_LATE_DAYS = 730;
+export const JOB_ISSUE_LATE_NOTE =
+  "Sono passati i giorni per chiedere un rimborso dal sito: ti mettiamo in contatto con il professionista in chat. Per legge il professionista risponde comunque dei difetti del suo lavoro.";
 
 export const JOB_ISSUE_LABEL: Record<JobIssueType, string> = {
   NO_SHOW: "Il professionista non si è presentato",
@@ -332,8 +346,14 @@ export type JobIssueSummary = {
   paidOnline: boolean;
   /** Percentuale rimborsata al cliente se accolta (§267), null finché non è decisa. */
   refundPercent: number | null;
-  /** Pagamento online scelto: la segnalazione ha la nostra assistenza. False con il pagamento diretto (§168). */
+  /** Pagamento online scelto: la segnalazione ha la nostra assistenza. False con il pagamento diretto (§168) o dopo il termine. */
   assisted: boolean;
+  /** Segnalata dopo il termine: niente rimborso né decisione nostra, resta tra le parti. */
+  late: boolean;
+  /** Rimborso proposto dal professionista in chat, da accettare dal cliente (collaudo F-03). */
+  refundOfferEurCents: number | null;
+  /** Rimborso concordato e partito: la segnalazione si è chiusa così. */
+  agreedRefundEurCents: number | null;
   sanction: JobIssueSanction | null;
   appealedAt: string | null;
   appealText: string | null;
@@ -358,6 +378,38 @@ export type JobIssueWindowInput = {
 };
 
 
+/**
+ * La segnalazione ha la nostra assistenza (team, rimborso): solo con il
+ * pagamento online e dentro il termine. Una segnalazione dopo il termine resta
+ * tra le parti come con il pagamento diretto (§168).
+ */
+export function jobIssueAssisted(paymentMethod: string | null | undefined, late: boolean | null | undefined): boolean {
+  return paymentMethod !== "DIRECT" && !late;
+}
+
+/**
+ * Il cliente può aggiornare la sua recensione una volta, dopo una segnalazione
+ * a lavoro chiuso finita senza accordo (decisione di Luca del 30/10/2026).
+ */
+export function clientCanUpdateReview(b: {
+  hasReview: boolean;
+  reviewUpdatedAt: Date | string | null;
+  issue: { late?: boolean | null; status: string } | null;
+}): boolean {
+  return b.hasReview && !b.reviewUpdatedAt && !!b.issue?.late && b.issue.status === "UNRESOLVED";
+}
+
+/** Il cliente può segnalare un lavoro non andato bene dopo il termine (senza rimborso)? */
+export function jobIssueLateAllowed(b: JobIssueWindowInput, now: Date): boolean {
+  if (b.hasIssue) return false;
+  if (b.status !== "CONFIRMED" && b.status !== "COMPLETED") return false;
+  if (jobIssueTypesAllowed(b, now).includes("BAD_WORK")) return false;
+  const t = now.getTime();
+  const end = (b.scheduledEndAt ?? b.scheduledAt).getTime();
+  const lastEvent = Math.max(end, b.professionalCompletedAt?.getTime() ?? 0, b.clientConfirmedCompletedAt?.getTime() ?? 0);
+  return t >= b.scheduledAt.getTime() && t <= lastEvent + JOB_ISSUE_LATE_DAYS * DAY_MS;
+}
+
 /** Quali problemi il cliente può segnalare adesso su questo lavoro (vuoto = nessuno). */
 export function jobIssueTypesAllowed(b: JobIssueWindowInput, now: Date): JobIssueType[] {
   if (b.hasIssue) return [];
@@ -368,9 +420,10 @@ export function jobIssueTypesAllowed(b: JobIssueWindowInput, now: Date): JobIssu
   if (!b.clientConfirmedCompletedAt && t >= end && t <= end + NO_SHOW_REPORT_DAYS * DAY_MS) {
     allowed.push("NO_SHOW");
   }
-  const clientConfirmed = b.completionAutoClosedAt ? null : b.clientConfirmedCompletedAt;
-  const lastEvent = Math.max(end, b.professionalCompletedAt?.getTime() ?? 0, clientConfirmed?.getTime() ?? 0);
-  if (t >= b.scheduledAt.getTime() && t <= lastEvent + BAD_WORK_REPORT_DAYS * DAY_MS) {
+  // "Lavoro terminato" del cliente vale come accettazione (collaudo P-04); la conferma d'ufficio chiude comunque il termine.
+  const clientAccepted = !!b.clientConfirmedCompletedAt;
+  const lastEvent = Math.max(end, b.professionalCompletedAt?.getTime() ?? 0);
+  if (!clientAccepted && t >= b.scheduledAt.getTime() && t <= lastEvent + BAD_WORK_REPORT_DAYS * DAY_MS) {
     allowed.push("BAD_WORK");
   }
   return allowed;
@@ -396,6 +449,10 @@ export const jobIssueResponseSchema = z.object({
 export type JobIssueResponseInput = z.infer<typeof jobIssueResponseSchema>;
 
 export const jobIssueChatOutcomeSchema = z.object({ outcome: z.enum(["RESOLVED", "ESCALATE"]) });
+
+/** Rimborso proposto dal professionista in chat su un lavoro pagato online (collaudo F-03). */
+export const jobIssueRefundOfferSchema = z.object({ amountEurCents: z.number().int().positive() });
+export type JobIssueRefundOfferInput = z.infer<typeof jobIssueRefundOfferSchema>;
 export type JobIssueChatOutcomeInput = z.infer<typeof jobIssueChatOutcomeSchema>;
 
 export const resolveJobIssueSchema = z.object({
@@ -467,11 +524,17 @@ type IssueRow = {
   sanction: string | null;
   /** Assente nelle letture che non lo selezionano: vale 100%. */
   refundPercent?: number | null;
+  /** Assenti nelle letture che non li selezionano (collaudo F-03). */
+  refundOfferEurCents?: number | null;
+  refundOfferedAt?: Date | null;
+  agreedRefundEurCents?: number | null;
   appealedAt: Date | null;
   appealText: string | null;
   appealDecision: string | null;
   appealNote: string | null;
   redispatchedGuidedRequestId: string | null;
+  /** Assente nelle letture che non lo selezionano: dentro il termine. */
+  late?: boolean;
 };
 
 /**
@@ -487,7 +550,7 @@ export function toJobIssueSummary(
   if (!issue) return null;
   const escalatedAt = issue.escalatedAt ?? (issue.status === "OPEN" ? issue.createdAt : null);
   const proRepliedAt = extra.proRepliedAt ?? issue.professionalRespondedAt;
-  const assisted = extra.assisted !== false;
+  const assisted = extra.assisted !== false && !issue.late;
   const chat = { status: issue.status, createdAt: issue.createdAt, proRepliedAt, assisted };
   const phase = jobIssueReviewPhase({ ...issue, escalatedAt });
   return {
@@ -516,6 +579,9 @@ export function toJobIssueSummary(
     paidOnline: !!extra.paidOnline,
     refundPercent: issue.status === "UPHELD" ? jobIssueRefundPercent(issue.type, issue.refundPercent) : null,
     assisted,
+    late: !!issue.late,
+    refundOfferEurCents: issue.status === "CHAT" ? (issue.refundOfferEurCents ?? null) : null,
+    agreedRefundEurCents: issue.agreedRefundEurCents ?? null,
     sanction: (issue.sanction as JobIssueSanction | null) ?? null,
     appealedAt: issue.appealedAt?.toISOString() ?? null,
     appealText: issue.appealText,

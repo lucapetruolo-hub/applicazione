@@ -3,6 +3,7 @@ import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { bookingSearchWhere, searchEurCents } from "../admin/admin-search";
 import { AuditLogService } from "../audit-log/audit-log.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { OnlineMoneyService } from "./online-money.service";
 
 /**
@@ -21,6 +22,7 @@ export class RefundsService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditLogService: AuditLogService,
     private readonly onlineMoneyService: OnlineMoneyService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async request(userId: string, bookingId: string, input: { amountEurCents: number; reason?: string }) {
@@ -66,19 +68,25 @@ export class RefundsService {
       where: booking ? { OR: [{ jobPayment: { booking } }, { reason: text }, { id: text }, ...(cents ? [{ amountEurCents: cents }] : [])] } : undefined,
       orderBy: { createdAt: "desc" },
       take: booking ? 200 : undefined,
-      include: { jobPayment: { include: { booking: { include: { professionalProfile: true } } } } },
+      include: { jobPayment: { include: { booking: { include: { professionalProfile: true, client: { select: { name: true, surname: true, deletedAt: true } } } } } } },
     });
   }
 
-  /** Decisione admin (mai automatica) — per un rifiuto basta lo status, nessun movimento di denaro. */
-  async decide(refundId: string, decision: "APPROVED" | "REJECTED", adminUserId: string) {
-    const refund = await this.prisma.refund.findUnique({ where: { id: refundId }, include: { jobPayment: true } });
+  /**
+   * Decisione admin (mai automatica). Un rifiuto ha sempre un motivo, detto
+   * a chi aveva chiesto il rimborso; se Stripe non risponde dopo "Approva"
+   * il rimborso torna da decidere invece di restare fermo (admin-riordino).
+   */
+  async decide(refundId: string, decision: "APPROVED" | "REJECTED", adminUserId: string, note?: string) {
+    const refund = await this.prisma.refund.findUnique({ where: { id: refundId }, include: { jobPayment: { include: { booking: { select: { id: true, clientId: true, quote: { select: { guidedRequestId: true } } } } } } } });
     if (!refund) throw new NotFoundException("Rimborso non trovato.");
     if (refund.status !== "REQUESTED") {
       throw new BadRequestException("Questo rimborso è già stato deciso.");
     }
 
     if (decision === "REJECTED") {
+      const reason = note?.trim();
+      if (!reason) throw new BadRequestException("Scrivi il motivo del rifiuto.");
       const updated = await this.prisma.refund.update({ where: { id: refundId }, data: { status: "REJECTED" } });
       await this.auditLogService.record({
         entityType: "Refund",
@@ -87,11 +95,21 @@ export class RefundsService {
         oldValue: "REQUESTED",
         newValue: "REJECTED",
         changedByUserId: adminUserId,
+        reason,
+      });
+      await this.notificationsService.notify(refund.requestedById, "JOB_REFUND_REJECTED", {
+        bookingId: refund.jobPayment.booking.id,
+        guidedRequestId: refund.jobPayment.booking.quote?.guidedRequestId ?? null,
+        amountEurCents: refund.amountEurCents,
+        audience: refund.requestedById === refund.jobPayment.booking.clientId ? "CLIENT" : "PROFESSIONAL",
+        note: reason,
       });
       return updated;
     }
 
-    await this.prisma.refund.update({ where: { id: refundId }, data: { status: "APPROVED" } });
+    // Una sola approvazione anche con due tocchi insieme.
+    const claimed = await this.prisma.refund.updateMany({ where: { id: refundId, status: "REQUESTED" }, data: { status: "APPROVED" } });
+    if (claimed.count === 0) throw new BadRequestException("Questo rimborso è già stato deciso.");
 
     // Pagamento online (§168): rimborso Stripe spalmato su acconto e saldo;
     // se i soldi erano già passati al professionista, la sua quota viene
@@ -99,9 +117,14 @@ export class RefundsService {
     if (refund.jobPayment.paymentMethod === "MANOVIA") {
       // Rimborso di una segnalazione accolta passato alla Finanza: colpa del professionista (§267).
       const issue = await this.prisma.jobIssue.findUnique({ where: { bookingId: refund.jobPayment.bookingId }, select: { status: true } });
-      await this.onlineMoneyService.refundOnline(refund.jobPaymentId, refund.amountEurCents, refund.reason ?? "Rimborso approvato dalla Finanza.", adminUserId, {
-        professionalFault: issue?.status === "UPHELD",
-      });
+      try {
+        await this.onlineMoneyService.refundOnline(refund.jobPaymentId, refund.amountEurCents, refund.reason ?? "Rimborso approvato dalla Finanza.", adminUserId, {
+          professionalFault: issue?.status === "UPHELD",
+        });
+      } catch (err) {
+        await this.prisma.refund.update({ where: { id: refundId }, data: { status: "REQUESTED" } });
+        throw new BadRequestException(`Stripe non ha eseguito il rimborso (${(err as Error).message}): resta da decidere, riprova tra poco.`);
+      }
     }
 
     const processed = await this.prisma.refund.update({
@@ -118,7 +141,7 @@ export class RefundsService {
       oldValue: "APPROVED",
       newValue: "PROCESSED",
       changedByUserId: adminUserId,
-      reason: refund.jobPayment.paymentMethod === "DIRECT" ? "Nessun movimento Stripe: pagamento diretto, rimborso concordato fuori piattaforma." : undefined,
+      reason: [note?.trim(), refund.jobPayment.paymentMethod === "DIRECT" ? "Nessun movimento Stripe: pagamento diretto, rimborso concordato fuori piattaforma." : ""].filter(Boolean).join(" ") || undefined,
     });
     return processed;
   }

@@ -43,6 +43,8 @@ export const PROFESSIONAL_NAV: AccountNavGroup[] = [
       // Dati fiscali controllati, documento e selfie (docs/CHANGELOG.md §253).
       { href: "/dashboard/verifica-identita", label: "Verifica identità", shortLabel: "Verifica", icon: "badge-check" },
       { href: "/dashboard/statistiche", label: "Statistiche", icon: "trending-up" },
+      // Recensioni ricevute, per rispondere (docs/changelog/2026-10-30-collaudo-soldi-online.md).
+      { href: "/dashboard/recensioni", label: "Recensioni", icon: "star" },
       { href: "/dashboard/abbonamento", label: "Abbonamento", icon: "credit-card" },
     ],
   },

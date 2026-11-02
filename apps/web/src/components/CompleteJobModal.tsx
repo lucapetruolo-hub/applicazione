@@ -8,6 +8,8 @@ import {
   completionDeviationText,
   formatEurCents,
   formatServicePriceRange,
+  ONLINE_APP_FEE_PERCENT,
+  onlineFeeWithVatEurCents,
   type CompleteBookingInput,
 } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -70,6 +72,7 @@ function parseEuroToCents(value: string): number | null {
 export function CompleteJobModal({
   quotedItems,
   jobName,
+  paidOnline = false,
   onClose,
   onComplete,
   uploadPhoto,
@@ -77,6 +80,8 @@ export function CompleteJobModal({
   quotedItems: { name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
   /** Nome del lavoro (es. "Idraulico"): già scritto nella voce quando il preventivo non ha voci (U2, §310). */
   jobName?: string | null;
+  /** Lavoro pagato tutto online: si dice quanto arriva tolta la trattenuta (collaudo F-06). */
+  paidOnline?: boolean;
   onClose: () => void;
   onComplete: (input: CompleteBookingInput) => Promise<void>;
   /** Upload di una foto/video del lavoro terminato (richiesta esplicita dell'utente), restituisce l'URL. */
@@ -484,7 +489,10 @@ export function CompleteJobModal({
             con data e versione; il testo completo dietro "Scopri di più". */}
         <YStack gap="$2">
           <Text fontSize={13} color={brand.grafite70}>
-            Confermando dichiari che {formatEurCents(totalEurCents)} è l&apos;importo che ricevi per questo lavoro.{" "}
+            Confermando dichiari che il cliente paga {formatEurCents(totalEurCents)} per questo lavoro.
+            {paidOnline && totalEurCents > 0
+              ? ` Online ti arrivano ${formatEurCents(totalEurCents - onlineFeeWithVatEurCents(totalEurCents))}, tolta la trattenuta del ${ONLINE_APP_FEE_PERCENT}% + IVA.`
+              : ""}{" "}
             <LearnMoreToggle open={declarationOpen} onToggle={() => setDeclarationOpen((v) => !v)} controls="completion-declaration" />
           </Text>
           {declarationOpen ? (

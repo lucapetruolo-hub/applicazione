@@ -26,7 +26,7 @@ function buildService() {
     manoviaRevenue: { create: vi.fn() },
     platformFeeEntry: { upsert: vi.fn() },
     professionalProfile: { findUnique: vi.fn(), findMany: vi.fn().mockResolvedValue([]), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
-    quote: { findUnique: vi.fn() },
+    quote: { findUnique: vi.fn(), update: vi.fn() },
     user: { findMany: vi.fn().mockResolvedValue([]) },
   };
   const stripe = {
@@ -44,7 +44,7 @@ function buildService() {
       },
     },
     balanceSettings: { update: vi.fn() },
-    checkout: { sessions: { create: vi.fn().mockResolvedValue({ url: "https://checkout.stripe.test/s" }) } },
+    checkout: { sessions: { create: vi.fn().mockResolvedValue({ url: "https://checkout.stripe.test/s" }), retrieve: vi.fn(), expire: vi.fn().mockResolvedValue({}) } },
     balance: { retrieve: vi.fn().mockResolvedValue({ available: [{ amount: 100000, currency: "eur" }], pending: [] }) },
     payouts: { create: vi.fn().mockResolvedValue({ id: "po_1" }) },
     transfers: { create: vi.fn(), createReversal: vi.fn(), retrieve: vi.fn() },
@@ -158,7 +158,7 @@ describe("pagamenti sul conto del professionista", () => {
 
     expect(stripe.paymentIntents.retrieve).toHaveBeenCalledWith("pi_dep", { expand: ["latest_charge.balance_transaction"] }, { stripeAccount: "acct_1" });
     // Carta europea: 1,5% + 0,25 € = 1,75 €, pagati da noi.
-    expect(prisma.jobPayment.update).toHaveBeenCalledWith(
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ stripeDestinationAccountId: "acct_1", stripeDirectCharge: true, applicationFeeEurCents: 854, cardFeeEurCents: { increment: 175 } }) }),
     );
     expect(stripe.applicationFees.createRefund).not.toHaveBeenCalled();
@@ -179,6 +179,25 @@ describe("pagamenti sul conto del professionista", () => {
   });
 });
 
+describe("pagamento doppio (collaudo I-02)", () => {
+  it("lo stesso acconto pagato da due schede: il secondo torna subito al cliente, con l'avviso", async () => {
+    const { service, prisma, stripe } = buildService();
+    const notify = (service as unknown as { notificationsService: { notify: ReturnType<typeof vi.fn> } }).notificationsService.notify;
+    const job = { id: "jp-1", bookingId: "bk-1", paymentMethod: "MANOVIA", paidEurCents: 0, refundedEurCents: 0, stripeFeeEurCents: 0, applicationFeeEurCents: 0, stripePaymentIntentId: null, balancePaymentIntentId: null, balanceDirect: false, depositEurCents: 2400, releasedAt: null, booking: { finalAmountEurCents: null, professionalProfileId: "pro-1", quoteId: null } };
+    // Letto prima che l'altra scheda registrasse il suo acconto.
+    prisma.jobPayment.findUnique.mockResolvedValueOnce(job).mockResolvedValueOnce({ stripePaymentIntentId: "pi_first", balancePaymentIntentId: null });
+    prisma.jobPayment.updateMany.mockResolvedValueOnce({ count: 0 });
+    prisma.jobPayment.findUniqueOrThrow.mockResolvedValue({ booking: { id: "bk-1", clientId: "client-1", quote: { guidedRequestId: "gr-1" } } });
+    stripe.paymentIntents.retrieve.mockResolvedValue({ id: "pi_second", latest_charge: { id: "ch_2", amount: 2400, application_fee_amount: 205, balance_transaction: { fee: 61 } } });
+
+    await service.recordCheckoutPayment("jp-1", "deposit", { payment_intent: "pi_second", amount_total: 2400, metadata: { stripeAccount: "acct_1" } } as never, { notify: false });
+
+    expect(stripe.refunds.create).toHaveBeenCalledWith(expect.objectContaining({ payment_intent: "pi_second", refund_application_fee: true }), expect.objectContaining({ stripeAccount: "acct_1" }));
+    expect(notify).toHaveBeenCalledWith("client-1", "JOB_REFUND_COMPLETED", expect.objectContaining({ amountEurCents: 2400, duplicate: true }));
+    expect(prisma.platformFeeEntry.upsert).not.toHaveBeenCalled();
+  });
+});
+
 describe("rimborsi con l'addebito diretto", () => {
   it("prima dello sblocco rimborsa sul conto del professionista e gli restituisce la trattenuta", async () => {
     const { service, prisma, stripe } = buildService();
@@ -192,6 +211,9 @@ describe("rimborsi con l'addebito diretto", () => {
     expect(stripe.refunds.create).toHaveBeenCalledWith(expect.not.objectContaining({ reverse_transfer: true }), expect.objectContaining({ stripeAccount: "acct_1" }));
     expect(stripe.applicationFees.createRefund).toHaveBeenCalledWith("fee_1", expect.objectContaining({ amount: 675 }), expect.anything());
     expect(stripe.transfers.createReversal).not.toHaveBeenCalled();
+    // Il cliente sa quanto gli torna (collaudo F-02).
+    const notify = (service as unknown as { notificationsService: { notify: ReturnType<typeof vi.fn> } }).notificationsService.notify;
+    expect(notify).toHaveBeenCalledWith(undefined, "JOB_REFUND_COMPLETED", expect.objectContaining({ amountEurCents: 10000, bookingId: "bk-1" }));
   });
 
   it("dopo lo sblocco Stripe lo prende dal suo saldo: niente debito, la nostra parte gli torna se non è colpa sua", async () => {

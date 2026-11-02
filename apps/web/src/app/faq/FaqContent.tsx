@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Section, brand } from "@professionisti/ui";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 import { FAQ_ITEMS } from "@/components/HomeFaq";
@@ -14,7 +15,7 @@ import { WHAT_IF_ITEMS } from "@/components/WhatIfSection";
  * `FAQ_ITEMS`, CLAUDE.md §24) — qui concatenati in un solo accordion
  * sotto l'unico titolo di pagina "Domande frequenti".
  */
-const ALL_ITEMS: { question: string; answer: string; answerWithoutOnline?: string }[] = [...FAQ_ITEMS, ...WHAT_IF_ITEMS];
+const ALL_ITEMS: { question: string; answer: string; answerWithoutOnline?: string; more?: string }[] = [...FAQ_ITEMS, ...WHAT_IF_ITEMS];
 
 export default function FaqContent() {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
@@ -26,7 +27,15 @@ export default function FaqContent() {
         {ALL_ITEMS.map((item) => (
           <details key={item.question} className="faq-item">
             <summary>{item.question}</summary>
-            <p>{!onlinePayments && item.answerWithoutOnline ? item.answerWithoutOnline : item.answer}</p>
+            <p>
+              {!onlinePayments && item.answerWithoutOnline ? item.answerWithoutOnline : item.answer}
+              {item.more ? (
+                <>
+                  {" "}
+                  <Link href={item.more}>Scopri di più</Link>
+                </>
+              ) : null}
+            </p>
           </details>
         ))}
       </div>

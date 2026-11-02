@@ -26,7 +26,7 @@ function buildService() {
     manoviaRevenue: { create: vi.fn() },
     platformFeeEntry: { upsert: vi.fn() },
     professionalProfile: { findUnique: vi.fn(), findMany: vi.fn().mockResolvedValue([]), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
-    quote: { findUnique: vi.fn() },
+    quote: { findUnique: vi.fn(), update: vi.fn() },
     user: { findMany: vi.fn().mockResolvedValue([]) },
   };
   const auditLogService = { record: vi.fn() };
@@ -46,7 +46,7 @@ function buildService() {
       },
     },
     balanceSettings: { update: vi.fn() },
-    checkout: { sessions: { create: vi.fn().mockResolvedValue({ url: "https://checkout.stripe.test/s" }) } },
+    checkout: { sessions: { create: vi.fn().mockResolvedValue({ url: "https://checkout.stripe.test/s" }), retrieve: vi.fn(), expire: vi.fn().mockResolvedValue({}) } },
     balance: { retrieve: vi.fn() },
     payouts: { create: vi.fn().mockResolvedValue({ id: "po_1" }) },
     transfers: { create: vi.fn(), createReversal: vi.fn(), retrieve: vi.fn() },
@@ -112,6 +112,28 @@ describe("OnlineMoneyService.createQuoteDepositCheckout", () => {
     expect(params.payment_intent_data.transfer_data).toBeUndefined();
   });
 
+  it("da una seconda scheda riapre la stessa pagina di pagamento, mai una seconda (collaudo I-02)", async () => {
+    const { service, prisma, stripe } = buildService();
+    prisma.professionalFiscalProfile.findUnique.mockResolvedValue({ id: "fp-1", stripeConnectAccountId: "acct_1", stripePayoutsEnabled: true, stripeManualPayoutsAt: new Date(), stripeNegativeDebitAt: new Date() });
+    prisma.quote.findUnique.mockResolvedValue({ depositCheckoutSessionId: "cs_1" });
+    const params = { clientUserId: "c-1", quoteId: "q-1", guidedRequestId: "gr-1", paymentMethod: "ONLINE", amountEurCents: 10000, businessName: "Rossi", professionalProfileId: "pro-1" };
+
+    stripe.checkout.sessions.retrieve.mockResolvedValueOnce({ id: "cs_1", status: "open", url: "https://checkout.stripe.test/cs_1", amount_total: 10000, metadata: { clientUserId: "c-1", paymentMethod: "ONLINE" } });
+    await expect(service.createQuoteDepositCheckout(params)).resolves.toEqual({ url: "https://checkout.stripe.test/cs_1" });
+    expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+
+    // Già pagata: lo diciamo invece di far pagare di nuovo.
+    stripe.checkout.sessions.retrieve.mockResolvedValueOnce({ id: "cs_1", status: "complete", payment_intent: { latest_charge: { amount_refunded: 0 } }, metadata: { clientUserId: "c-1" } });
+    await expect(service.createQuoteDepositCheckout(params)).rejects.toThrow("Hai già pagato l'acconto");
+
+    // Importo cambiato: la vecchia pagina si chiude e se ne apre una nuova.
+    stripe.checkout.sessions.retrieve.mockResolvedValueOnce({ id: "cs_1", status: "open", url: "https://checkout.stripe.test/cs_1", amount_total: 8000, metadata: { clientUserId: "c-1", paymentMethod: "ONLINE" } });
+    stripe.checkout.sessions.create.mockResolvedValueOnce({ id: "cs_2", url: "https://checkout.stripe.test/cs_2" });
+    await expect(service.createQuoteDepositCheckout(params)).resolves.toEqual({ url: "https://checkout.stripe.test/cs_2" });
+    expect(stripe.checkout.sessions.expire).toHaveBeenCalledWith("cs_1", {}, { stripeAccount: "acct_1" });
+    expect(prisma.quote.update).toHaveBeenCalledWith({ where: { id: "q-1" }, data: { depositCheckoutSessionId: "cs_2" } });
+  });
+
   it("non fa partire il pagamento se i bonifici non si possono bloccare", async () => {
     const { service, prisma, stripe } = buildService();
     prisma.professionalFiscalProfile.findUnique.mockResolvedValue({ id: "fp-1", stripeConnectAccountId: "acct_1", stripePayoutsEnabled: true, stripeManualPayoutsAt: null });
@@ -133,7 +155,7 @@ describe("OnlineMoneyService.recordCheckoutPayment", () => {
 
     await service.recordCheckoutPayment("jp-1", "deposit", { payment_intent: "pi_dep", amount_total: 10000 } as never, { notify: false });
 
-    expect(prisma.jobPayment.update).toHaveBeenCalledWith(
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ stripeDestinationAccountId: "acct_1", applicationFeeEurCents: 854, cardFeeEurCents: { increment: 175 } }) }),
     );
     // La trattenuta è già quella definitiva: niente conguaglio.
@@ -482,7 +504,7 @@ describe("saldo addebitato sulla carta dell'acconto (§267)", () => {
       expect.objectContaining({ amount: 8000, customer: "cus_1", payment_method: "pm_1", off_session: true, confirm: true, transfer_data: { destination: "acct_1" } }),
       { idempotencyKey: "job-auto-balance-jp-1-2000-8000" },
     );
-    expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ balancePaymentIntentId: "pi_bal", paidEurCents: 10000 }) }));
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ balancePaymentIntentId: "pi_bal", paidEurCents: 10000 }) }));
     expect(notificationsService.notify).toHaveBeenCalledWith("client-1", "JOB_BALANCE_AUTO_CHARGED", expect.objectContaining({ amountEurCents: 8000 }));
   });
 
@@ -549,7 +571,17 @@ describe("professionalPayoutTotals", () => {
       preparingEurCents: 700,
       sentEurCents: 300,
       paidEurCents: 500,
+      disputedEurCents: 0,
       hasFailed: true,
+    });
+  });
+
+  it("i contestati in banca non ancora decisi non sono tra i bloccati (come nell'estratto)", () => {
+    const disputed = (status: string) => ({ payoutStatus: "BLOCKED", payoutEurCents: 800, bankDispute: { status } }) as unknown as JobPaymentSummary;
+    const blocked = { payoutStatus: "BLOCKED", payoutEurCents: 1000 } as JobPaymentSummary;
+    expect(professionalPayoutTotals([blocked, disputed("needs_response"), disputed("under_review"), disputed("won")])).toMatchObject({
+      blockedEurCents: 1800,
+      disputedEurCents: 1600,
     });
   });
 });

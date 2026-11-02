@@ -24,9 +24,10 @@ export function HomeHero() {
   const router = useRouter();
   const searchHints = useSearchBarHints("");
 
-  function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
+  async function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
     rememberSearchCity(params.city);
-    navigateWithTransition(() => router.push(buildSearchDestination(params)));
+    const destination = await buildSearchDestination(params);
+    navigateWithTransition(() => router.push(destination));
   }
 
   return (

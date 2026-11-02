@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { COOKIE_CHOICE_ATTRIBUTE } from "@/lib/cookieChoiceBoot";
 import { COOKIE_CONSENT_ACCEPTED_EVENT, COOKIE_CONSENT_CHANGED_EVENT, denyCookieConsent, grantCookieConsent, hasCookieChoice } from "@/lib/cookieConsent";
 
 /**
@@ -23,16 +24,21 @@ const buttonStyle = {
 export function CookieBanner() {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
-  const [visible, setVisible] = useState(false);
+  // Scritto dal server: chi ha già scelto non lo vede grazie all'attributo su
+  // <html> (COOKIE_CHOICE_BOOT_SCRIPT), poi qui sotto si toglie del tutto.
+  const [visible, setVisible] = useState(true);
   const bannerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // La scelta salvata nel browser si legge solo dopo il montaggio (nel render del server non c'è).
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!hasCookieChoice()) setVisible(true);
+    if (hasCookieChoice()) setVisible(false);
     // "Preferenze cookie" nel footer riapre il banner per cambiare idea
     // (revoca del consenso, docs/CHANGELOG.md §170).
-    const reopen = () => setVisible(true);
+    const reopen = () => {
+      document.documentElement.removeAttribute(COOKIE_CHOICE_ATTRIBUTE);
+      setVisible(true);
+    };
     // Consenso dato da un altro punto ("Usa la mappa interattiva", "Mostra la mappa"): il banner sparisce.
     const hide = () => setVisible(false);
     window.addEventListener(COOKIE_CONSENT_CHANGED_EVENT, reopen);
@@ -95,6 +101,7 @@ export function CookieBanner() {
     // rilievo.
     <div
       ref={bannerRef}
+      className="cookie-banner"
       role="dialog"
       aria-label="Informativa cookie"
       style={{
