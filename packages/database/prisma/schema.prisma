@@ -427,6 +427,8 @@ model ProfessionalProfile {
   // non riceve nuove richieste né prenotazioni e non compare nella ricerca.
   // I lavori già fissati restano. Non c'entra con `pausedAt` (abbonamento).
   awayUntil            DateTime?
+  // Avviso "la pausa finisce domani" già mandato per questa pausa (si azzera cambiando la data).
+  awayReminderSentAt   DateTime?
 
   user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Categoria principale: la prima scelta, usata dove serve una sola

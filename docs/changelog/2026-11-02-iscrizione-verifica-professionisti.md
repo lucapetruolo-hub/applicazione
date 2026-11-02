@@ -128,13 +128,29 @@ risolto dalla PR #191 (bollino Stripe rinominato, M-14).
   toglie il "Verificato" se c'era, va nel registro azioni e avvisa il
   professionista (`FISCAL_ENTITY_TYPE_CHANGED`, link a Dati fiscali).
 
+## Migliorie alla pausa (Luca, "effettua miglioria 1-2-4")
+
+- **Avviso il giorno prima del ritorno**: alle 10 (ora di Roma) sito ed
+  email "La tua pausa finisce: torni …" con "Apri l'agenda" (`AWAY_ENDING`,
+  in "Promemoria e agenda", spegnibile). Una volta sola per pausa
+  (`awayReminderSentAt`, migrazione `20261102200000_pausa_avviso`), di nuovo
+  da mandare se cambia la data.
+- **Richieste aperte alla ripresa**: con "Riprendi ora" e a fine pausa
+  (controllo ogni ora in `AwayService`, che azzera `awayUntil`) il
+  professionista riceve le richieste ancora aperte della sua zona, come chi
+  si iscrive dopo una richiesta (§271, `matchWhenVisible`); quelle già
+  ricevute non si ripetono.
+- **In Admin**: in "Professionisti in numeri" e nella scheda della persona
+  lo stato "In pausa per scelta, con il giorno di ritorno" (`AWAY`), separato
+  dalla pausa dell'abbonamento.
+
 ## Verifica
 
 - Test nuovi: richieste a un profilo in pausa o senza dati fiscali, messaggi
   di codice fiscale/P.IVA/REA, nomi di società, link del legale
   rappresentante, ordine dei suggerimenti degli indirizzi, pausa con data di
   ritorno, risposte di prova di Openapi, cambio di tipo dall'admin, orari di
-  partenza del babysitter. API: 1.157 test verdi; tipi e lint verdi su API,
+  partenza del babysitter, avviso e fine della pausa. API: 1.161 test verdi; tipi e lint verdi su API,
   sito e pacchetti.
 - Pausa provata dal vivo: oggi rifiutato, 12/11 salvato, il profilo sparisce
   dalla ricerca di Latina e torna con "Riprendi ora".

@@ -45,6 +45,9 @@ describe("Professionisti in numeri (§368)", () => {
     expect(professionalStatusOf(row({ requestsBlockedUntil: new Date("2026-10-01T00:00:00Z") }), NOW)).toBe("VISIBLE");
     expect(professionalStatusOf(row({ invitePendingAt: NOW, pausedAt: NOW }), NOW)).toBe("INVITE_PENDING");
     expect(professionalStatusOf(row({ pausedAt: NOW }), NOW)).toBe("PAUSED");
+    // "Metti in pausa": conta finché non arriva il giorno di ritorno.
+    expect(professionalStatusOf(row({ awayUntil: new Date(NOW.getTime() + 86_400_000) }), NOW)).toBe("AWAY");
+    expect(professionalStatusOf(row({ awayUntil: NOW }), NOW)).toBe("VISIBLE");
   });
 
   it("abbonamento: mesi gratis senza e con la carta, livello pagato, nessuno", () => {

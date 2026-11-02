@@ -1734,6 +1734,21 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda?tab=disponibilita` },
     };
   },
+  // "Metti in pausa": il giorno prima del ritorno (docs/changelog/2026-11-02-iscrizione-verifica-professionisti.md).
+  AWAY_ENDING: (payload, ctx) => {
+    const day = str(payload.dayLabel);
+    return {
+      kind: "notification",
+      subject: day ? `La tua pausa finisce: torni ${day}` : "La tua pausa finisce domani",
+      greeting: ctx.name,
+      title: "Domani torni nella ricerca",
+      paragraphs: [
+        "Da domani ricompari nella ricerca e ricevi di nuovo richieste e prenotazioni.",
+        "Controlla che gli orari in agenda siano giusti. Se ti serve qualche giorno in più, cambia la data della pausa.",
+      ],
+      cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda?tab=orari` },
+    };
+  },
   // "Sto arrivando" dall'agenda (§288).
   // Conferma al cliente appena accetta (docs/CHANGELOG.md §346): prima col
   // pagamento diretto non riceveva nulla, e il calendario arrivava solo col

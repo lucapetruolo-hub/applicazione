@@ -1101,7 +1101,10 @@ export class ProfessionalsService {
         throw new BadRequestException(`La pausa dura al massimo ${MAX_AWAY_DAYS} giorni.`);
       }
     }
-    await this.prisma.professionalProfile.update({ where: { userId }, data: { awayUntil } });
+    // Data nuova: l'avviso del giorno prima torna da mandare.
+    const profile = await this.prisma.professionalProfile.update({ where: { userId }, data: { awayUntil, awayReminderSentAt: null }, select: { id: true } });
+    // "Riprendi ora": subito le richieste ancora aperte della sua zona, come a fine pausa (AwayService).
+    if (!awayUntil) await this.guidedRequestsService.matchWhenVisible(profile.id);
     return { awayUntil: awayUntil?.toISOString() ?? null };
   }
 
