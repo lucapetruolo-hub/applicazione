@@ -73,15 +73,18 @@ export function xmlAmount(cents: number): string {
   return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, "0")}`;
 }
 
-/** I campi di testo della FatturaPA accettano solo caratteri Latin-1: il resto si toglie. */
+/** I campi di testo della FatturaPA accettano solo caratteri Latin-1: il resto si toglie (€ diventa "EUR"). */
 export function latin1(value: string, max: number): string {
   return value
     .normalize("NFC")
+    .replace(/€/g, "EUR")
+    .replace(/[\u00a0\u202f]/g, " ")
     .replace(/[‘’]/g, "'")
     .replace(/[“”]/g, '"')
     .replace(/[–—]/g, "-")
     .replace(/…/g, "...")
     .replace(/[^\x20-\x7E\xA0-\xFF]/g, "")
+    .replace(/ {2,}/g, " ")
     .trim()
     .slice(0, max);
 }

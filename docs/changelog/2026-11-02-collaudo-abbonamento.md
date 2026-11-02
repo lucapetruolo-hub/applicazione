@@ -62,3 +62,15 @@
 gratis senza la carta o finiti senza un livello", come le regole in vigore
 (offerta dei mesi gratis con la carta). Solo la parola, nessuna regola
 nuova: nessuna versione nuova dei Termini.
+
+**Dopo, su richiesta di Luca (2/11): pacchetto per il commercialista.**
+`apps/api/scripts/pacchetto-commercialista.ts` crea con dati inventati un PDF
+per ogni documento (fatture COM e ABB, nota di credito, estratto, ricevute
+del lavoro occasionale, riepilogo dell'anno, DAC7) e l'XML delle quattro
+fatture; il pacchetto con le domande aperte è in
+`analisi/pacchetto-commercialista/` dei file del progetto. I quattro XML
+passano lo schema ufficiale FatturaPA 1.2.2. Preparandolo sono venuti fuori
+due errori nell'XML, corretti: il simbolo dell'euro spariva dalle descrizioni
+(ora "EUR", senza spazi doppi) e il capitale sociale scritto all'italiana in
+Admin → Finanza ("10.000,00 €") sarebbe stato scartato dallo SdI (ora
+"10000.00"; nel PDF "10.000,00 €"). Test in `accounting.test.ts`.

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { freePeriodSummary, invoiceNumberLabel, statementCsv } from "@professionisti/shared";
 import { lastDayOfMonth, previousMonth, romeDayIso, romeMonthOf, romeMonthRange } from "./accounting-dates";
 import { buildFatturaPaXml, latin1, xmlAmount } from "./invoice-xml";
-import { invoiceTotals, monthlyFeeInvoiceDraft, recipientComplete, recipientFromFiscal, sdiProgressive } from "./invoice-documents";
+import { invoiceTotals, monthlyFeeInvoiceDraft, recipientComplete, recipientFromFiscal, sdiProgressive, shareCapitalCents } from "./invoice-documents";
 import { sdiOutcome } from "./sdi-provider";
 import { InvoicesService } from "./invoices.service";
 
@@ -145,6 +145,11 @@ describe("fattura elettronica", () => {
   it("importi e testi nel formato giusto", () => {
     expect(xmlAmount(-140)).toBe("-1.40");
     expect(latin1("L’idraulico — «bravo» 🙂", 200)).toBe("L'idraulico - «bravo»");
+    // Capitale sociale scritto all'italiana: allo SdI va "10000.00" (pacchetto per il commercialista).
+    expect(["10.000", "10.000,00 €", "10000.00", "10000", "10 000 euro", "1.000.000,5"].map(shareCapitalCents)).toEqual([1000000, 1000000, 1000000, 1000000, 1000000, 100000050]);
+    expect(shareCapitalCents("diecimila")).toBeNull();
+    // Il simbolo dell'euro non è Latin-1: diventa "EUR", senza spazi doppi (pacchetto per il commercialista).
+    expect(latin1("su 40,00\u00a0€ pagati online", 200)).toBe("su 40,00 EUR pagati online");
     expect(buildFatturaPaXml({ ...base, lines: [{ description: "A & B <c>", taxableEurCents: 1400 }] })).toContain("<Descrizione>A &amp; B &lt;c&gt;</Descrizione>");
   });
 
