@@ -256,6 +256,15 @@ describe("promemoria del giorno prima (docs/CHANGELOG.md §234)", () => {
     expect(email.text).toContain("/admin?chi=mie");
   });
 
+  it("account sospetti: una riga per account con il consiglio, link alla pagina", () => {
+    const email = renderEmail(
+      notificationEmail("ADMIN_SUSPICIOUS_ACCOUNTS", { accounts: [{ label: "Vera Russo", level: "ALTA", text: "Nascondi la sua recensione a Idraulica Tubi." }] }, ctx)!,
+    );
+    expect(email.subject).toBe("Un account sospetto da guardare");
+    expect(email.text).toContain("Da fare subito · Vera Russo: Nascondi la sua recensione a Idraulica Tubi.");
+    expect(email.text).toContain("/admin/account-sospetti");
+  });
+
   it("consigli della settimana: cosa fare, una riga per consiglio (§372)", () => {
     const email = renderEmail(
       notificationEmail(

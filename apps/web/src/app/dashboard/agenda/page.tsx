@@ -367,8 +367,9 @@ function DashboardAgendaContent() {
     savedSlotsRef.current = next;
     setSlots(next);
   }
-  function openDeepLinkedBooking(list: ProfessionalBooking[], jobs: ExternalJob[]) {
-    if (consumedBookingDeepLinkRef.current) return;
+  /** true se ha aperto un appuntamento dell'indirizzo: allora la Settimana automatica non scatta. */
+  function openDeepLinkedBooking(list: ProfessionalBooking[], jobs: ExternalJob[]): boolean {
+    if (consumedBookingDeepLinkRef.current) return false;
     consumedBookingDeepLinkRef.current = true;
     const targetId = searchParams.get("booking");
     const match = targetId ? list.find((b) => b.id === targetId) : undefined;
@@ -382,7 +383,10 @@ function DashboardAgendaContent() {
       setBookingCurrentDate(startOfDayUtc(new Date(target.scheduledAt)));
       if (match) setSelectedBooking(match);
       else if (externalMatch) setSelectedExternalJob(externalMatch);
+      autoWeekChecked.current = true;
+      return true;
     }
+    return false;
   }
 
   // I dati che arrivano dall'API aggiornano la pagina con `startTransition`
@@ -480,8 +484,8 @@ function DashboardAgendaContent() {
         saveAgendaOffline(user.id, loadedBookings, loadedJobs);
         startTransition(() => {
           setBookings(loadedBookings);
-          openDeepLinkedBooking(loadedBookings, loadedJobs);
-          openWeekIfTodayEmpty(loadedBookings, loadedJobs);
+          // Con "?booking=" la domenica la Settimana automatica portava alla settimana dopo, lontano dall'appuntamento aperto.
+          if (!openDeepLinkedBooking(loadedBookings, loadedJobs)) openWeekIfTodayEmpty(loadedBookings, loadedJobs);
           setExternalJobs(loadedJobs);
           // Il riquadro aperto mostra subito lo stato nuovo (es. annullato dal cliente).
           setSelectedBooking((current) => (current ? (loadedBookings.find((b) => b.id === current.id) ?? current) : current));
@@ -494,8 +498,7 @@ function DashboardAgendaContent() {
         startTransition(() => {
           if (copy) {
             setBookings(copy.bookings);
-            openDeepLinkedBooking(copy.bookings, copy.externalJobs);
-            openWeekIfTodayEmpty(copy.bookings, copy.externalJobs);
+            if (!openDeepLinkedBooking(copy.bookings, copy.externalJobs)) openWeekIfTodayEmpty(copy.bookings, copy.externalJobs);
             setExternalJobs(copy.externalJobs);
             setOfflineSavedAt(copy.savedAt);
             return;

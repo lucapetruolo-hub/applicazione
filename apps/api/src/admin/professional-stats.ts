@@ -45,7 +45,10 @@ export type ProfessionalStatsRow = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Un solo stato per professionista: prima quello che lo tiene fuori dalla ricerca per più tempo. */
-export function professionalStatusOf(row: ProfessionalStatsRow, now: Date): ProfessionalStatusKey {
+export function professionalStatusOf(
+  row: Pick<ProfessionalStatsRow, "suspendedAt" | "requestsBlockedUntil" | "invitePendingAt" | "pausedAt" | "isDemo" | "user"> & Parameters<typeof publicVisibilityMissing>[0],
+  now: Date,
+): ProfessionalStatusKey {
   if (row.suspendedAt || row.user.suspendedAt) return "SUSPENDED";
   if (row.requestsBlockedUntil && row.requestsBlockedUntil.getTime() > now.getTime()) return "BLOCKED";
   if (row.invitePendingAt) return "INVITE_PENDING";
