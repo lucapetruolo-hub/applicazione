@@ -91,21 +91,27 @@ async function fillCard(page: Page, number: string) {
   await page.getByTestId("hosted-payment-submit-button").or(page.getByRole("button", { name: "Avvia prova" })).first().click();
 }
 
-/** Pulsante della finestra di prova del 3D Secure, in uno degli iframe di Stripe. */
+/**
+ * Pulsante della finestra di prova del 3D Secure, in uno degli iframe di
+ * Stripe. Un clic che arriva mentre la pagina della banca finisce di caricarsi
+ * va perso (visto nella CI): si riclicca finché il pulsante non sparisce.
+ */
 async function complete3DSecure(page: Page) {
+  let clicked = false;
   await expect
     .poll(
       async () => {
         for (const frame of page.frames()) {
           const button = frame.locator("#test-source-authorize-3ds");
           if (await button.isVisible().catch(() => false)) {
-            await button.click();
-            return true;
+            await button.click({ timeout: 5_000 }).catch(() => undefined);
+            clicked = true;
+            return false;
           }
         }
-        return false;
+        return clicked;
       },
-      { timeout: 60_000 },
+      { timeout: 60_000, intervals: [1_000, 2_000, 3_000] },
     )
     .toBe(true);
 }

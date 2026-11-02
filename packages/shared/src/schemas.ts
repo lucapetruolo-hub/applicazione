@@ -1030,6 +1030,21 @@ export const resolveContentReportSchema = z
   });
 export type ResolveContentReportInput = z.infer<typeof resolveContentReportSchema>;
 
+/**
+ * "Nascondi la recensione" e "Togli dalla ricerca" dalla scheda della persona
+ * in Admin (docs/changelog/2026-10-30-admin-persone.md): stessa decisione di
+ * una segnalazione, con il motivo, la regola o legge e la spiegazione per
+ * l'autore, che la riceve per email.
+ */
+export const adminModerateSchema = z.object({
+  targetType: z.enum(["REVIEW", "PROFESSIONAL_PROFILE"]),
+  targetId: z.string().uuid(),
+  reason: z.enum(contentReportReasonCodes),
+  ground: z.enum(moderationGroundCodes),
+  note: z.string().trim().min(10, "Spiega all'autore cosa non va, in almeno una frase.").max(2000),
+});
+export type AdminModerateInput = z.infer<typeof adminModerateSchema>;
+
 /** "Annulla misura" (ricorso accolto o errore) e "Respingi ricorso": motivazione obbligatoria. */
 export const contentReportDecisionNoteSchema = z.object({
   note: z.string().trim().min(3, "Scrivi la motivazione.").max(2000),

@@ -43,6 +43,7 @@ export const ADMIN_SECTIONS: NavSection[] = [
       { href: "/admin/utenti", label: "Utenti", icon: "user-round", scope: "ANY" },
       { href: "/admin/professionisti", label: "Nuovo professionista", icon: "plus", scope: "MODERATION" },
       { href: "/admin/verifiche", label: "Verifiche", searchLabel: "Verifiche dei profili", icon: "badge-check", scope: "MODERATION", badge: (o) => o.verificationRequests },
+      { href: "/admin/account-sospetti", label: "Account sospetti", searchLabel: "Account sospetti: stesso telefono, recensioni finte", icon: "triangle-alert", scope: "MODERATION" },
     ],
   },
   {
