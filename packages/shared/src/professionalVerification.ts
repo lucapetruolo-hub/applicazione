@@ -1,5 +1,6 @@
 import { z } from "zod";
 import "./zod";
+import { professionalEntityTypes, type ProfessionalEntityTypeValue } from "./schemas";
 
 /** "Togli verifica" dall'area admin: il motivo arriva al professionista. */
 export const unverifyProfessionalSchema = z.object({
@@ -12,8 +13,7 @@ export type UnverifyProfessionalInput = z.infer<typeof unverifyProfessionalSchem
  * è iscritto col tipo sbagliato (es. una S.R.L. come privato) non può
  * cambiarlo da sé dopo il primo salvataggio dei dati fiscali.
  */
-export const PROFESSIONAL_ENTITY_TYPES = ["PRIVATE_INDIVIDUAL", "SOLE_PROPRIETOR", "BUSINESS"] as const;
-export type ProfessionalEntityTypeValue = (typeof PROFESSIONAL_ENTITY_TYPES)[number];
+export const PROFESSIONAL_ENTITY_TYPES = professionalEntityTypes;
 /** Stesse parole della registrazione e dei dati fiscali. */
 export const PROFESSIONAL_ENTITY_TYPE_LABEL: Record<ProfessionalEntityTypeValue, string> = {
   PRIVATE_INDIVIDUAL: "Privato, senza Partita IVA",

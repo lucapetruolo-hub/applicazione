@@ -113,7 +113,6 @@ import type {
   SiteAdviceDoneInput,
   ProfessionalVerificationFilter,
   ProfessionalVerificationRow,
-  ProfessionalEntityTypeValue,
   MyVerificationStatus,
   RepresentativeVerificationView,
   AddressSuggestion,
