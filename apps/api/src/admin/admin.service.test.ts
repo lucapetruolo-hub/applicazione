@@ -39,7 +39,7 @@ describe("AdminService.resolveContentReport — misure reali", () => {
     const { service, tx, notifications, metrics } = buildService({ targetType: "REVIEW", claimsIllegal: true });
     await service.resolveContentReport("rep-1", { status: "RESOLVED", action: "HIDE_CONTENT", ground: "legge-diffamazione", resolutionNote: "Insulti" });
 
-    expect(tx.review.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "target-1" }, data: { hiddenAt: expect.any(Date) } }));
+    expect(tx.review.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "target-1" }, data: { hiddenAt: expect.any(Date), heldAt: null } }));
     expect(tx.contentReport.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: "RESOLVED", action: "HIDE_CONTENT", contentOwnerId: "author-1" }) }),
     );
@@ -120,7 +120,7 @@ describe("AdminService.revertContentReport — annulla misura", () => {
       revertedAt: null,
     });
     await service.revertContentReport("rep-1", "Ricorso accolto");
-    expect(tx.review.update).toHaveBeenCalledWith(expect.objectContaining({ data: { hiddenAt: null } }));
+    expect(tx.review.update).toHaveBeenCalledWith(expect.objectContaining({ data: { hiddenAt: null, heldAt: null } }));
     expect(metrics.recomputeReviews).toHaveBeenCalledWith("pro-1");
     expect(notifications.notify).toHaveBeenCalledWith("author-1", "CONTENT_REPORT_REVERTED", expect.objectContaining({ note: "Ricorso accolto" }));
   });

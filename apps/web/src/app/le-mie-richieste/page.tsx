@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type ClientInvoiceRequestInput, type JobPaymentChoice } from "@professionisti/shared";
+import { type ClientInvoiceRequestInput, type JobPaymentChoice, type SameTimeBookingCandidate } from "@professionisti/shared";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
@@ -167,6 +167,19 @@ function LeMieRichiesteContent() {
     });
     return map;
   }, [bookings]);
+
+  // Appuntamenti confermati per mestiere (collaudo I-11): avviso se un altro
+  // preventivo dello stesso mestiere cade alla stessa ora.
+  const confirmedByCategory = useMemo(() => {
+    const categoryOf = new Map((requests ?? []).map((r) => [r.id, r.categorySlug]));
+    const map = new Map<string, (SameTimeBookingCandidate & { guidedRequestId: string })[]>();
+    (bookings ?? []).forEach((b) => {
+      const category = b.guidedRequestId ? categoryOf.get(b.guidedRequestId) : undefined;
+      if (b.status !== "CONFIRMED" || !category || !b.guidedRequestId) return;
+      map.set(category, [...(map.get(category) ?? []), { businessName: b.businessName, scheduledAt: b.scheduledAt, scheduledEndAt: b.scheduledEndAt, guidedRequestId: b.guidedRequestId }]);
+    });
+    return map;
+  }, [requests, bookings]);
 
   const stageByRequestId = useMemo(() => {
     const map = new Map<string, RequestStage>();
@@ -733,6 +746,7 @@ function LeMieRichiesteContent() {
                 <GuidedRequestCard
                   request={request}
                   booking={bookingByRequestId.get(request.id) ?? null}
+                  sameTradeBookings={(confirmedByCategory.get(request.categorySlug) ?? []).filter((b) => b.guidedRequestId !== request.id)}
                   stage={stageByRequestId.get(request.id)!}
                   token={token}
                   onChanged={reload}
