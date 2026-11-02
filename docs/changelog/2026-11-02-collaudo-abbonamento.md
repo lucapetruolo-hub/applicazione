@@ -80,5 +80,5 @@ riga finale finiva da sola su una seconda pagina. Ora, quando nell'ultima
 pagina resterebbe solo qualche riga, il PDF si impagina di nuovo con meno
 spazio tra i blocchi e si tiene la versione con meno pagine
 (`renderDocumentPdf`, test in `documents-pdf-sdi.test.ts`). Email di Stripe
-(checklist 14c, decisione di Luca): restano le ricevute dei pagamenti, si
-spengono solo le "fatture finalizzate".
+(checklist 14c, decisione di Luca): restano accese sia le ricevute sia le
+"fatture finalizzate", come doppio controllo per il commercialista.
