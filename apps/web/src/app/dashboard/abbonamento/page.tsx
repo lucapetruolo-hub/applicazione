@@ -214,7 +214,6 @@ function AbbonamentoContent() {
   // Livello toccato su /per-professionisti (docs/CHANGELOG.md §177): la
   // sua card viene evidenziata e la pagina scorre fino alla scelta.
   const chosenTier = parseSubscriptionTier(searchParams.get("livello"));
-  const justRegistered = searchParams.get("nuovo") === "1";
   // Passo "Piano e carta" di Completa il profilo: la barra dei passi in cima finché va fatto.
   const { steps: journey } = useSetupJourney(user?.isProfessional ? token : null, searchParams.get("attivato"));
   const planCurrent = journey?.find((step) => step.key === "plan")?.state === "current";
@@ -465,15 +464,6 @@ function AbbonamentoContent() {
               <Text color={brand.grafite} fontWeight="700">
                 Hai scelto il livello {subscriptionTierInfo(chosenTier).label}: confermalo qui sotto.
               </Text>
-              {justRegistered ? (
-                <Text color={brand.grafite}>
-                  Poi{" "}
-                  <Link href="/dashboard/profilo" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
-                    completa il tuo profilo
-                  </Link>{" "}
-                  per comparire nelle ricerche.
-                </Text>
-              ) : null}
             </Surface>
           ) : null}
           {sub && !sub.checkoutAvailable ? (

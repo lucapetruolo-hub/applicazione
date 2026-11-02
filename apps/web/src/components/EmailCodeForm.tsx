@@ -446,7 +446,7 @@ export function EmailCodeForm({
         {allowChangeEmail && state !== "done" ? (
           <button
             type="button"
-            className="link-button"
+            className={linkFirst ? "link-button is-quiet" : "link-button"}
             onClick={() => {
               setNewEmail(email);
               setEditingEmail(true);

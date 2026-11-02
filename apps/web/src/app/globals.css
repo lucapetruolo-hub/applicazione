@@ -2406,6 +2406,67 @@ button.notif-row-main:hover {
 .profile-visibility-link:hover {
   text-decoration: underline;
 }
+/* Profilo: "Account creato" sopra il titolo del primo profilo e indice dei
+   riquadri (docs/changelog/2026-11-02-registrazione-pro-grafica.md). */
+.profile-welcome-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #dcf3e7;
+  color: #0e7a4c;
+  font-size: 13px;
+  font-weight: 700;
+}
+.profile-index {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 -16px;
+  padding: 2px 16px;
+  -webkit-overflow-scrolling: touch;
+}
+.profile-index::-webkit-scrollbar {
+  display: none;
+}
+@media (min-width: 760px) {
+  .profile-index {
+    flex-wrap: wrap;
+    overflow: visible;
+    margin: 0;
+    padding: 0;
+  }
+}
+.profile-index-link {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid #f0dcc0;
+  background: #ffffff;
+  color: #2b2420;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  touch-action: manipulation;
+  transition: border-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.profile-index-link:hover {
+  border-color: #189a63;
+}
+.profile-index-link:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.profile-section {
+  scroll-margin-top: 140px;
+}
 .profile-back-link {
   align-self: flex-start;
   display: inline-flex;
@@ -3220,6 +3281,100 @@ a.admin-kpi:hover {
 }
 .auth-step-bar span.is-done {
   background: #128552;
+}
+
+/* Iscrizione del professionista (docs/changelog/2026-11-02-registrazione-pro-grafica.md):
+   sul telefono solo la scheda; sul computer foto e vantaggi in una colonna
+   accanto, così si vede tutto senza scorrere. */
+.pro-signup {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.pro-signup-aside {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .pro-signup.has-aside {
+    max-width: 960px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 480px;
+    align-items: start;
+    gap: 48px;
+  }
+  .pro-signup.has-aside .pro-signup-aside {
+    display: block;
+    position: sticky;
+    top: 96px;
+    order: -1;
+    padding-top: 8px;
+  }
+}
+/* Piano scelto su /per-professionisti, sotto il titolo dei passi. */
+.plan-chip {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  gap: 6px;
+  max-width: 100%;
+  margin: 0;
+  padding: 4px 6px 4px 14px;
+  border-radius: 999px;
+  background: #fdefe1;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #2b2420;
+}
+.plan-chip strong {
+  font-weight: 700;
+}
+.plan-chip-detail {
+  color: #6e6459;
+}
+/* Scheda dei passi un po' meno imbottita sul telefono: più spazio alle
+   tessere dei mestieri e ai campi. */
+@media (max-width: 480px) {
+  .pro-signup-card {
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+  }
+}
+.plan-chip-change {
+  flex-shrink: 0;
+  padding: 6px 8px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e7a4c;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.plan-chip-change:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+/* Rotellina dentro i pulsanti mentre si aspetta il server. */
+.button-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #ffffff;
+  animation: button-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .button-spinner {
+    animation-duration: 2.4s;
+  }
 }
 
 /* Tendina "Il mio account" nell'header, a gruppi (docs/CHANGELOG.md §148). */
@@ -5306,6 +5461,12 @@ a.admin-kpi:hover {
   text-underline-offset: 3px;
   cursor: pointer;
 }
+/* Link di riserva accanto a uno principale: stesso tocco, meno peso. */
+.link-button.is-quiet {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6e6459;
+}
 .link-button:focus-visible {
   outline: 2px solid #189a63;
   outline-offset: 2px;
@@ -5522,6 +5683,39 @@ a.admin-kpi:hover {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+/* Tessere compatte (scelta dei mestieri del professionista,
+   docs/changelog/2026-11-02-registrazione-pro-grafica.md): sul telefono 3
+   per riga e più basse, i 13 mestieri stanno in una schermata invece di due. */
+@media (max-width: 560px) {
+  .cat-tiles.is-compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .cat-tiles.is-compact .cat-tile {
+    min-height: 82px;
+    gap: 6px;
+    padding: 10px 4px;
+  }
+  .cat-tiles.is-compact .cat-tile.is-on {
+    padding: 9px 3px;
+  }
+  .cat-tiles.is-compact .cat-tile-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+  .cat-tiles.is-compact .cat-tile-label {
+    font-size: 13px;
+    hyphens: auto;
+    overflow-wrap: anywhere;
+  }
+  .cat-tiles.is-compact .cat-tile-check {
+    top: 5px;
+    right: 5px;
+    width: 18px;
+    height: 18px;
+  }
 }
 /* Tessere vuote finché non arriva l'ordine dei più cercati (§324): stessa
    misura delle vere, così la pagina non salta; poi compaiono con una

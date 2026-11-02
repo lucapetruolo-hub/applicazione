@@ -95,6 +95,7 @@ import type {
   OperatorProfileInviteInput,
   PendingProfileInvite,
   AdminFounders,
+  FounderSpots,
   AdminSubscriptionOffer,
   AdminProfessionalWithoutCard,
   AdminSignupFunnel,
@@ -1947,6 +1948,9 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(renew ? {} : { reason }),
       }),
+
+    /** Mesi gratis dell'offerta attiva e posti dell'offerta di lancio (pubblico, §363): etichetta del piano in registrazione. */
+    founderSpots: () => request<FounderSpots>("/subscriptions/founders"),
 
     /** "Torna a Base" da Plus o Pro alla scadenza, con i mesi gratis in attesa (docs/changelog/2026-10-29-offerta-mesi-gratis.md). */
     setSubscriptionReturnToBase: (token: string, on: boolean) =>
