@@ -122,6 +122,62 @@ export class SubscriptionsService {
     });
   }
 
+  /**
+   * Fine della prova su Stripe, impostata da BillingService (che ha il client
+   * Stripe e dipende già da questo servizio: un import al contrario farebbe un giro).
+   */
+  private stripeTrialEnder: ((stripeSubscriptionId: string, end: Date) => Promise<void>) | null = null;
+
+  setStripeTrialEnder(fn: (stripeSubscriptionId: string, end: Date) => Promise<void>): void {
+    this.stripeTrialEnder = fn;
+  }
+
+  /**
+   * Mesi gratis una volta per persona o impresa (richiesta di Luca del
+   * 2/11/2026, docs/changelog/2026-11-02-collaudo-recensioni-abusi.md): chi
+   * li ha già avuti con un account chiuso e torna con la stessa partita IVA o
+   * lo stesso codice fiscale non li riceve di nuovo. Tolti anche quelli in
+   * attesa; quelli in corso finiscono oggi, o al lancio se il lancio non c'è
+   * ancora stato (prima del lancio non si paga mai). Restituisce true se ha
+   * tolto qualcosa.
+   */
+  async revokeUsedFreeMonths(professionalProfileId: string, now = new Date()): Promise<boolean> {
+    const row = await this.prisma.subscription.findUnique({
+      where: { professionalProfileId },
+      include: { professionalProfile: { select: { userId: true } } },
+    });
+    if (!row || (freeMonthsOf(row) === 0 && row.freeMonthsWaiting === 0)) return false;
+    const launch = launchDate();
+    const launched = hasLaunched(now, launch);
+    const end = trialEndFor(now, launch, 0);
+    const freeRunning = row.trialEndsAt !== null && row.trialEndsAt.getTime() > end.getTime();
+    await this.prisma.subscription.update({
+      where: { id: row.id },
+      data: { freeMonthsGranted: 0, freeMonthsWaiting: 0, ...(freeRunning || row.trialEndsAt === null ? { trialEndsAt: end } : {}) },
+    });
+    if (freeRunning && row.stripeSubscriptionId && row.status !== "CANCELED" && this.stripeTrialEnder) {
+      await this.stripeTrialEnder(row.stripeSubscriptionId, end).catch((err: unknown) =>
+        this.logger.error(`Prova Stripe ${row.stripeSubscriptionId} non chiusa: ${err instanceof Error ? err.message : String(err)}`),
+      );
+    }
+    await this.auditLogService.record({
+      entityType: "Subscription",
+      entityId: row.id,
+      fieldName: "freeMonthsGranted",
+      oldValue: freeMonthsOf(row),
+      newValue: 0,
+      reason: "Mesi gratis già usati con un account chiuso con la stessa partita IVA o lo stesso codice fiscale.",
+    });
+    await this.notificationsService.notify(row.professionalProfile.userId, "SUBSCRIPTION_FREE_MONTHS_USED", {
+      date: launch && !launched ? launch.toISOString() : null,
+      launched,
+      card: Boolean(row.stripeSubscriptionId && row.status !== "CANCELED"),
+      amountEurCents: tierPeriodPriceEurCents("BASE", "MONTH"),
+    });
+    await this.syncPause(professionalProfileId);
+    return true;
+  }
+
   /** Offerta, storico e iscritti per Admin → Profili da confermare. */
   async getOfferAdmin(now = new Date()): Promise<AdminSubscriptionOffer> {
     const [offers, current] = await Promise.all([this.prisma.subscriptionOffer.findMany({ orderBy: { startedAt: "desc" }, take: 20 }), this.activeOffer()]);

@@ -37,3 +37,88 @@ describe("ProfessionalFiscalService.upsertMine — dati fiscali già usati", () 
     expect(prisma.professionalFiscalProfile.findMany).not.toHaveBeenCalled();
   });
 });
+
+describe("ProfessionalFiscalService.upsertMine — mesi gratis una volta per partita IVA", () => {
+  function buildWithSubscription(
+    closedWithFreeMonths: boolean,
+    mine = { freeMonthsGranted: 3, freeMonthsWaiting: 0 },
+  ) {
+    const saved = {
+      id: "fp-2",
+      vatNumber: "12345678903",
+      fiscalCodiceFiscale: null,
+    };
+    const prisma = {
+      professionalProfile: {
+        findUnique: vi.fn().mockResolvedValue({ id: "pro-2" }),
+      },
+      professionalFiscalProfile: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValue(saved),
+        // Primo giro: account attivi (nessuno); secondo: account chiusi con mesi gratis.
+        findMany: vi
+          .fn()
+          .mockResolvedValueOnce([])
+          .mockResolvedValueOnce(
+            closedWithFreeMonths
+              ? [{ fiscalCodiceFiscale: null, vatNumber: "IT12345678903" }]
+              : [],
+          ),
+        create: vi.fn().mockResolvedValue(saved),
+        update: vi.fn().mockResolvedValue(saved),
+      },
+      subscription: { findUnique: vi.fn().mockResolvedValue(mine) },
+      user: { findUnique: vi.fn().mockResolvedValue({ testAccountAt: null }) },
+    };
+    const subscriptions = { revokeUsedFreeMonths: vi.fn() };
+    const service = new ProfessionalFiscalService(
+      prisma as never,
+      { record: vi.fn() } as never,
+      {} as never,
+      {} as never,
+      { syncForFiscalProfile: vi.fn() } as never,
+      undefined,
+      subscriptions as never,
+    );
+    return { service, prisma, subscriptions };
+  }
+
+  it("toglie i mesi gratis se un account chiuso con la stessa partita IVA li aveva già avuti", async () => {
+    const { service, prisma, subscriptions } = buildWithSubscription(true);
+    await service.upsertMine("user-2", input);
+    expect(subscriptions.revokeUsedFreeMonths).toHaveBeenCalledWith("pro-2");
+    // Solo account chiusi, non dimostrativi né di prova, che avevano avuto mesi gratis.
+    expect(
+      prisma.professionalFiscalProfile.findMany.mock.calls[1]?.[0].where
+        .professionalProfile,
+    ).toEqual({
+      isDemo: false,
+      OR: [
+        { deletedAt: { not: null } },
+        { user: { deletedAt: { not: null } } },
+      ],
+      user: { testAccountAt: null },
+      subscription: {
+        OR: [{ freeMonthsGranted: null }, { freeMonthsGranted: { gt: 0 } }],
+      },
+    });
+  });
+
+  it("partita IVA mai usata prima: i mesi gratis restano", async () => {
+    const { service, subscriptions } = buildWithSubscription(false);
+    await service.upsertMine("user-2", input);
+    expect(subscriptions.revokeUsedFreeMonths).not.toHaveBeenCalled();
+  });
+
+  it("nessun mese gratis su questo account: nessun controllo", async () => {
+    const { service, prisma, subscriptions } = buildWithSubscription(true, {
+      freeMonthsGranted: 0,
+      freeMonthsWaiting: 0,
+    });
+    await service.upsertMine("user-2", input);
+    expect(prisma.professionalFiscalProfile.findMany).toHaveBeenCalledTimes(1);
+    expect(subscriptions.revokeUsedFreeMonths).not.toHaveBeenCalled();
+  });
+});

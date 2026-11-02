@@ -1917,6 +1917,31 @@ const BUILDERS: Record<string, Builder> = {
       cta: subscriptionPage(),
     };
   },
+  // Mesi gratis una volta per persona o impresa (docs/changelog/2026-11-02-collaudo-recensioni-abusi.md).
+  SUBSCRIPTION_FREE_MONTHS_USED: (payload, ctx) => {
+    const until = str(payload.date) ? `Fino al lancio del **${formatDay(str(payload.date))}**` : "Fino al lancio";
+    const launched = payload.launched === true;
+    const card = payload.card === true;
+    const amount = typeof payload.amountEurCents === "number" ? `${formatEur(payload.amountEurCents)} al mese + IVA` : "al prezzo indicato";
+    return {
+      kind: "account",
+      subject: "I mesi gratis li hai già avuti",
+      greeting: ctx.name,
+      title: "Mesi gratis già usati",
+      paragraphs: [
+        "I mesi gratis spettano una volta per persona o impresa. Con questa partita IVA o questo codice fiscale li hai già avuti con un account che hai chiuso, quindi a questo account non si applicano.",
+        card
+          ? launched
+            ? `Da oggi parte Base, ${amount}, sulla carta che hai dato. Se non vuoi continuare puoi annullare dalla pagina Abbonamento.`
+            : `${until} non paghi nulla. Da quel giorno parte Base, ${amount}, sulla carta che hai dato. Puoi annullare prima dalla pagina Abbonamento: non ti addebitiamo nulla.`
+          : launched
+            ? "Per restare visibile nelle ricerche scegli un livello dalla pagina Abbonamento."
+            : `${until} non paghi nulla. Da quel giorno, per restare visibile, scegli un livello dalla pagina Abbonamento.`,
+        "Se pensi che sia un errore, scrivici da Contatti.",
+      ],
+      cta: subscriptionPage(),
+    };
+  },
   SUBSCRIPTION_RENEWING: (payload, ctx) => {
     const tier = str(payload.tierLabel) ?? "";
     const date = formatDay(str(payload.date));

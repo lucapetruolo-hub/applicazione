@@ -68,6 +68,25 @@ Termini, punto 2: un solo account professionista per persona o impresa. Gli
 account doppi già esistenti restano segnalati in Admin (segnale "Stesso
 codice fiscale o partita IVA").
 
+## Mesi gratis una volta per partita IVA
+
+**Richiesta di Luca (2/11)**: "Fai miglioria dei mesi gratis per la partita
+iva". Chiudendo l'account la partita IVA si liberava: ci si poteva iscrivere
+di nuovo e riavere i mesi gratis.
+
+**Decisione**: i mesi gratis spettano una volta per persona o impresa. Al
+salvataggio dei dati fiscali, se un account chiuso (non dimostrativo né di
+prova) con la stessa partita IVA o lo stesso codice fiscale li aveva già
+avuti, al nuovo account si tolgono (`SubscriptionsService.revokeUsedFreeMonths`):
+anche quelli in attesa; quelli in corso finiscono oggi, o al lancio se il
+lancio non c'è ancora stato (prima del lancio non si paga mai). Se la carta
+è già data, la prova su Stripe si chiude alla stessa data
+(`BillingService.endStripeTrial`, registrata all'avvio per non creare un giro
+tra i moduli) e parte Base. Avviso sul sito e per email
+(`SUBSCRIPTION_FREE_MONTHS_USED`, argomento Abbonamento) con cosa succede e
+come annullare; riga nel registro azioni. Termini, punto 4, e voce
+`2026-11-02` in `TERMS_CHANGES`.
+
 ## I-10 la stessa richiesta mandata due volte
 
 **Decisione**: la stessa richiesta (stesso testo, senza contare maiuscole,
@@ -89,7 +108,8 @@ annullare l'altro." (`sameTimeBooking` in `packages/shared`).
 - Test: `review-hold.test.ts` (scenario del collaudo con tutti e 5 i
   segnali, pagamento online, indirizzo senza civico, caselle email),
   `reviews.service.test.ts` (recensione in controllo senza avviso né media),
-  `tax-id-unique.test.ts`, doppio invio in `chosen-professionals.test.ts`,
+  `tax-id-unique.test.ts` (anche i mesi gratis già usati),
+  `free-months-once.test.ts`, doppio invio in `chosen-professionals.test.ts`,
   `sameTimeBooking.test.ts`.
-- API 1145 test verdi, shared 25; typecheck e lint di API e sito.
+- API 1156 test verdi, shared 27; typecheck e lint di API e sito.
 - `prisma migrate diff` dalle migrazioni allo schema: nessuna differenza.

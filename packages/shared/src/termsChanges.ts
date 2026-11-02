@@ -46,6 +46,7 @@ export const TERMS_CHANGES: readonly TermsChange[] = [
     effectiveAt: "2026-11-02",
     summary: [
       "Ogni persona o impresa può avere un solo account professionista.",
+      "I mesi gratuiti spettano una sola volta per persona o impresa, anche dopo aver chiuso un account.",
       "Le recensioni con segnali di possibile falsità le controlla una persona del nostro team prima di pubblicarle.",
     ],
     // Prima del lancio: nessun avviso agli account di prova.
