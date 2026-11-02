@@ -1,6 +1,6 @@
 "use client";
 
-import type { ProfessionalSearchResult } from "@professionisti/shared";
+import type { ProfessionalCategorySlug, ProfessionalSearchResult } from "@professionisti/shared";
 import { Section, SectionDensityProvider, YStack } from "@professionisti/ui";
 import { CategoryStoryRail, useCategoryStoryRail } from "@/components/CategoryStoryRail";
 import { FadeInSection } from "@/components/FadeInSection";
@@ -21,7 +21,13 @@ export default function HomeContent({
   professionals: ProfessionalSearchResult[];
   platformStats: { totalUsers: number; totalProfessionals: number; reviewCount?: number; averageRating?: number | null } | null;
 }) {
-  const categoryRail = useCategoryStoryRail();
+  // Professionisti visibili per categoria (uno conta in ognuna delle sue
+  // categorie): decide l'ordine delle schede "Di cosa hai bisogno?".
+  const professionalsBySlug: Partial<Record<ProfessionalCategorySlug, number>> = {};
+  for (const p of professionals) {
+    for (const c of p.categories) professionalsBySlug[c.slug] = (professionalsBySlug[c.slug] ?? 0) + 1;
+  }
+  const categoryRail = useCategoryStoryRail(professionalsBySlug);
 
   return (
     // Spazi tra le sezioni più stretti che nel resto del sito: la home ha

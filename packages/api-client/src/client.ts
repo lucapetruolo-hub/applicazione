@@ -1136,6 +1136,9 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         `/categories/popular${city ? `?city=${encodeURIComponent(city)}` : ""}`,
       ),
 
+    /** Professionisti visibili per categoria, per mettere prima i lavori più scelti (docs/changelog/2026-11-02-categorie-telefono.md). */
+    getCategoryProfessionalCounts: () => request<{ slug: string; count: number }[]>("/professionals/category-counts"),
+
     /**
      * Stream SSE in tempo reale (CTO — "socket.io vs websocket vs
      * alternative", scelta SSE). `EventSource` prende un URL grezzo, senza

@@ -16,7 +16,9 @@ import { keyActivate } from "@/lib/keyActivate";
  * (docs/CHANGELOG.md §279, stile A scelto dall'utente al posto delle
  * etichette con il bordo dorato animato di §248): spunta verde sulle
  * scelte, "Principale" sotto il nome della prima, "N su 3" in alto.
- * Tessere in `CategoryTiles`, con i lavori più cercati prima.
+ * Tessere in `CategoryTiles`, con prima i lavori che hanno più professionisti
+ * iscritti (richiesta di Luca, docs/changelog/2026-11-02-categorie-telefono.md;
+ * prima i più cercati).
  */
 export function CategoryMultiPicker({
   value,
@@ -49,7 +51,15 @@ export function CategoryMultiPicker({
         </Text>
       </XStack>
 
-      <CategoryTiles value={value} onToggle={toggle} max={MAX_PROFESSIONAL_CATEGORIES} city={city} showPrimary ariaLabel="Che lavori fai?" />
+      <CategoryTiles
+        value={value}
+        onToggle={toggle}
+        max={MAX_PROFESSIONAL_CATEGORIES}
+        city={city}
+        showPrimary
+        ariaLabel="Che lavori fai?"
+        orderBy="professionals"
+      />
 
       {value.length > 1 ? (
         <XStack alignItems="center" gap="$2" flexWrap="wrap">

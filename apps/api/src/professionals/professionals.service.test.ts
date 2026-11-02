@@ -277,3 +277,27 @@ describe("voci di \"Quanto costa in media\" (§398)", () => {
     expect(profileWhere).toMatchObject({ isDemo: false, user: { testAccountAt: null }, deletedAt: null, suspendedAt: null, pausedAt: null, invitePendingAt: null });
   });
 });
+
+describe("getCategoryProfessionalCounts", () => {
+  it("conta ogni professionista visibile una volta per categoria, i più scelti prima", async () => {
+    const prisma = {
+      professionalProfile: {
+        findMany: vi.fn().mockResolvedValue([
+          { category: { slug: "idraulico" }, extraCategories: [{ slug: "elettricista" }] },
+          { category: { slug: "elettricista" }, extraCategories: [] },
+          // Una categoria ripetuta tra principale e aggiuntive conta una volta.
+          { category: { slug: "fabbro" }, extraCategories: [{ slug: "fabbro" }, { slug: "elettricista" }] },
+        ]),
+      },
+    };
+    const service = new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    await expect(service.getCategoryProfessionalCounts()).resolves.toEqual([
+      { slug: "elettricista", count: 3 },
+      { slug: "idraulico", count: 1 },
+      { slug: "fabbro", count: 1 },
+    ]);
+    // Stessi filtri della ricerca pubblica, senza demo.
+    const where = prisma.professionalProfile.findMany.mock.calls[0]![0].where;
+    expect(where).toMatchObject({ isDemo: false, deletedAt: null, suspendedAt: null, pausedAt: null });
+  });
+});

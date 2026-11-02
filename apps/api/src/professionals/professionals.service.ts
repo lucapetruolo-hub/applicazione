@@ -503,6 +503,26 @@ export class ProfessionalsService {
   }
 
   /**
+   * Professionisti visibili nella ricerca per ogni categoria (richiesta di
+   * Luca, docs/changelog/2026-11-02-categorie-telefono.md): ordina le
+   * categorie nella scelta dei lavori in registrazione, con le più scelte
+   * prima. Stessi filtri della ricerca pubblica, senza i profili demo; un
+   * professionista conta in ognuna delle sue categorie. Solo numeri.
+   */
+  async getCategoryProfessionalCounts(): Promise<{ slug: string; count: number }[]> {
+    const profiles = await this.prisma.professionalProfile.findMany({
+      where: this.publicSearchWhere(undefined, true),
+      select: { category: { select: { slug: true } }, extraCategories: { select: { slug: true } } },
+    });
+    const counts = new Map<string, number>();
+    for (const profile of profiles) {
+      const slugs = new Set([profile.category.slug, ...profile.extraCategories.map((c) => c.slug)]);
+      for (const slug of slugs) counts.set(slug, (counts.get(slug) ?? 0) + 1);
+    }
+    return [...counts.entries()].map(([slug, count]) => ({ slug, count })).sort((a, b) => b.count - a.count);
+  }
+
+  /**
    * Conteggio reale di quante volte ogni lingua compare già in
    * `ProfessionalProfile.spokenLanguages` su tutta la piattaforma — richiesta
    * esplicita dell'utente: quando si aggiunge una lingua parlata in

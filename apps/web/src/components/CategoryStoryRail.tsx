@@ -25,12 +25,22 @@ const MOBILE_VISIBLE = 6;
  * "Disponibile" solo con almeno un professionista reale, mai un numero
  * (stessa regola della vecchia scheda categoria).
  */
-/** Filtro e "Mostra tutte" condivisi tra la home e la riga delle categorie. */
-export function useCategoryStoryRail() {
+/**
+ * Filtro e "Mostra tutte" condivisi tra la home e la riga delle categorie.
+ * Ordine: prima le categorie con più professionisti iscritti e visibili
+ * nella ricerca (`professionalsBySlug`, contati dai profili che la home già
+ * riceve), a parità l'ordine fisso di `PROFESSIONAL_CATEGORIES` (richiesta
+ * di Luca, docs/changelog/2026-11-02-categorie-telefono.md). Da telefono
+ * le prime sei sono quindi quelle dove il cliente trova davvero qualcuno.
+ */
+export function useCategoryStoryRail(professionalsBySlug: Partial<Record<ProfessionalCategorySlug, number>> = {}) {
   const [group, setGroup] = useState(ALL);
   const [showAll, setShowAll] = useState(false);
   const slugs = group === ALL ? null : new Set<ProfessionalCategorySlug>(MEGA_MENU_GROUPS.find((g) => g.title === group)?.slugs);
-  const categories = PROFESSIONAL_CATEGORIES.filter((c) => !slugs || slugs.has(c.slug));
+  // sort è stabile: a parità di iscritti resta l'ordine di PROFESSIONAL_CATEGORIES.
+  const categories = PROFESSIONAL_CATEGORIES.filter((c) => !slugs || slugs.has(c.slug)).sort(
+    (a, b) => (professionalsBySlug[b.slug] ?? 0) - (professionalsBySlug[a.slug] ?? 0),
+  );
   return { group, setGroup, showAll, setShowAll, categories };
 }
 
