@@ -119,6 +119,8 @@ export function taxIdCheckMessage(check: Pick<TaxIdCheckView, "kind" | "status" 
     case "REVIEW":
       // P.IVA giusta nella forma ma non nel registro delle imprese (es. libero
       // professionista): non blocca e non passa all'admin (§255).
+      // Ambiente di prova di Openapi (collaudo 0-02): nessun controllo vero.
+      if (check.detail === "PROVA") return `${label}: numero corretto. Siamo in prova: il controllo ufficiale parte con il lancio.`;
       return `${label}: numero corretto.`;
     default:
       return `${label}: verifica in corso, intanto il profilo resta visibile.`;

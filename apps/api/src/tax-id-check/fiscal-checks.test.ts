@@ -16,7 +16,7 @@ import {
   sexFromCodiceFiscale,
 } from "@professionisti/shared";
 import { nextTaxIdAttempt, wantedTaxIdChecks, MAX_TAX_ID_ATTEMPTS } from "./tax-id-check.service";
-import { partitaIvaOutcome } from "./openapi-tax-id.provider";
+import { OpenapiTaxIdProvider, partitaIvaOutcome } from "./openapi-tax-id.provider";
 import { ViesFirstTaxIdProvider, viesLookup } from "./vies-tax-id.provider";
 
 /** Messaggi chiari su codice fiscale, partita IVA e REA (collaudo C-17, D-12, D-13, E-05, E-07, E-12). */
@@ -186,5 +186,30 @@ describe("VIES prima di Openapi", () => {
     expect(wantedTaxIdChecks({ entityType: "BUSINESS", fiscalIdIssuingCountry: "IT", fiscalCodiceFiscale: null, vatNumber: "12485671007" })).toEqual([
       { kind: "PARTITA_IVA", value: "12485671007" },
     ]);
+  });
+});
+
+describe("Openapi in prova (collaudo 0-02)", () => {
+  const reply = (body: unknown) => vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(body), { status: 200 }));
+
+  it("un \"valido\" di prova non conta come verificato", async () => {
+    const spy = reply({ data: [{ activityStatus: "ATTIVA", companyName: "Finta Srl" }] });
+    const lookup = await new OpenapiTaxIdProvider({ risk: "r", company: "c" }, true).checkPartitaIva("12345678903");
+    expect(lookup).toMatchObject({ outcome: "REVIEW", detail: "PROVA" });
+    spy.mockRestore();
+  });
+
+  it("con le chiavi vere resta valido", async () => {
+    const spy = reply({ data: [{ activityStatus: "ATTIVA", companyName: "Vera Srl" }] });
+    const lookup = await new OpenapiTaxIdProvider({ risk: "r", company: "c" }, false).checkPartitaIva("12345678903");
+    expect(lookup).toMatchObject({ outcome: "VALID", detail: "ATTIVA" });
+    spy.mockRestore();
+  });
+
+  it("un codice fiscale inesistente resta inesistente anche in prova", async () => {
+    const spy = reply({ data: { validita: false } });
+    const lookup = await new OpenapiTaxIdProvider({ risk: "r", company: "c" }, true).checkCodiceFiscale("RSSMRA80A01H501U");
+    expect(lookup).toMatchObject({ outcome: "INVALID" });
+    spy.mockRestore();
   });
 });
