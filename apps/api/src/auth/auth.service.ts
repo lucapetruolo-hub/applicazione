@@ -3,7 +3,7 @@ import { JwtService } from "@nestjs/jwt";
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import * as bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
-import { EMAIL_CODE_LENGTH, LEGAL_CONSENT_VERSION, NO_CATEGORY_MESSAGE, NO_ENTITY_TYPE_MESSAGE, type ChurnReason, type EmailStatus, type ProfessionalEntityTypeValue, type TrafficSource } from "@professionisti/shared";
+import { EMAIL_CODE_LENGTH, LEGAL_CONSENT_VERSION, NO_CATEGORY_MESSAGE, NO_ENTITY_TYPE_MESSAGE, formatEurCents, wallClockNow, type AccountClosureCheck, type ChurnReason, type EmailStatus, type ProfessionalEntityTypeValue, type TrafficSource } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -27,6 +27,7 @@ import { googleNameFields, googleNameRepair } from "./google-name";
 import { assertPasswordWithoutEmail } from "./password-checks";
 import { loginDeviceHash, loginDeviceLabel, type LoginDeviceInfo } from "./login-device";
 import { emailFingerprint } from "../common/email-fingerprint";
+import { professionalHeldEurCents } from "../job-payments/online-limit";
 
 const BCRYPT_SALT_ROUNDS = 10;
 /** Validità del link di conferma email (docs/CHANGELOG.md §178). */
@@ -717,8 +718,69 @@ export class AuthService {
     this.professionalClosedHandlers.push(handler);
   }
 
+  /** Chi deve sapere che un cliente ha chiuso l'account (collaudo B-01): BookingsService, come sopra. */
+  private readonly clientClosedHandlers: ((userId: string) => Promise<void>)[] = [];
+  onClientAccountClosed(handler: (userId: string) => Promise<void>): void {
+    this.clientClosedHandlers.push(handler);
+  }
+
+  /**
+   * Cosa resta aperto prima di chiudere l'account (collaudo B-01, P-06).
+   * Il professionista non chiude con soldi online ancora fermi, una
+   * contestazione in banca o una segnalazione aperte, o una cifra da
+   * restituire: dopo nessuno potrebbe più rimborsare il cliente. Gli
+   * appuntamenti non ancora cominciati si annullano da soli, per tutti e
+   * due, e l'altra parte riceve l'avviso.
+   */
+  async accountClosureCheck(userId: string): Promise<AccountClosureCheck> {
+    const now = wallClockNow();
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true } });
+    const blockers: string[] = [];
+    if (profile) {
+      const [held, disputes, issues, debt] = await Promise.all([
+        professionalHeldEurCents(this.prisma, profile.id),
+        this.prisma.jobPayment.count({ where: { booking: { professionalProfileId: profile.id }, stripeDisputeId: { not: null }, stripeDisputeClosedAt: null } }),
+        this.prisma.jobIssue.count({ where: { booking: { professionalProfileId: profile.id }, status: { in: ["CHAT", "OPEN"] } } }),
+        this.prisma.jobPayment.aggregate({ where: { booking: { professionalProfileId: profile.id } }, _sum: { professionalDebtEurCents: true } }),
+      ]);
+      if (held > 0) blockers.push(`Hai ${formatEurCents(held)} di pagamenti online ancora fermi: aspetta che arrivino in banca.`);
+      if (disputes > 0) blockers.push(disputes === 1 ? "Hai una contestazione in banca aperta." : `Hai ${disputes} contestazioni in banca aperte.`);
+      if (issues > 0) blockers.push(issues === 1 ? "Hai una segnalazione di un cliente ancora aperta." : `Hai ${issues} segnalazioni di clienti ancora aperte.`);
+      const owed = debt._sum.professionalDebtEurCents ?? 0;
+      if (owed > 0) blockers.push(`Hai ${formatEurCents(owed)} da restituire per rimborsi già fatti ai clienti.`);
+    }
+    const jobs = await this.prisma.booking.findMany({
+      where: {
+        status: { in: ["PENDING", "CONFIRMED"] },
+        scheduledAt: { gt: now },
+        ...(profile ? { professionalProfileId: profile.id } : { clientId: userId }),
+      },
+      select: {
+        id: true,
+        scheduledAt: true,
+        recipientName: true,
+        client: { select: { name: true } },
+        professionalProfile: { select: { businessName: true } },
+      },
+      orderBy: { scheduledAt: "asc" },
+    });
+    return {
+      blockers,
+      jobsToCancel: jobs.map((job) => ({
+        id: job.id,
+        withName: profile ? (job.recipientName ?? job.client.name ?? "un cliente") : job.professionalProfile.businessName,
+        scheduledAt: job.scheduledAt.toISOString(),
+      })),
+    };
+  }
+
   async deleteAccount(userId: string, reason?: ChurnReason): Promise<void> {
     const before = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true, role: true } });
+    // Mai con qualcosa che dopo nessuno potrebbe più chiudere (collaudo P-06).
+    const check = await this.accountClosureCheck(userId);
+    if (check.blockers.length > 0) {
+      throw new BadRequestException(`Non puoi ancora chiudere l'account. ${check.blockers.join(" ")}`);
+    }
     const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId } });
     // Motivo scelto da un elenco, facoltativo (§372): solo il conteggio, mai chi l'ha scelto.
     if (reason && before && before.role !== "ADMIN") {
@@ -731,6 +793,14 @@ export class AuthService {
         await handler(professionalProfile.id, userId).catch((err: unknown) =>
           this.logger.error(`Lavori del professionista ${professionalProfile.id} non annullati: ${(err as Error).message}`),
         );
+      }
+    }
+
+    // Cliente: i suoi appuntamenti non ancora cominciati si annullano e il
+    // professionista lo sa subito (collaudo B-01, come §348 per il professionista).
+    if (!professionalProfile) {
+      for (const handler of this.clientClosedHandlers) {
+        await handler(userId).catch((err: unknown) => this.logger.error(`Lavori del cliente ${userId} non annullati: ${(err as Error).message}`));
       }
     }
 

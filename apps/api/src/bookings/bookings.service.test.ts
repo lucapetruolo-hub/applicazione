@@ -14,7 +14,7 @@ import { wallClockNow } from "@professionisti/shared";
  */
 function buildService(prismaOverrides: Record<string, unknown> = {}) {
   const prisma = {
-    quote: { findUnique: vi.fn(), update: vi.fn() },
+    quote: { findUnique: vi.fn(), update: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
     booking: { create: vi.fn(), update: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
     externalJob: { findMany: vi.fn().mockResolvedValue([]) },
     availabilitySlot: { findMany: vi.fn().mockResolvedValue([]) },
@@ -144,6 +144,22 @@ describe("BookingsService.createFromQuote", () => {
     expect(notificationsService.emailOnly).toHaveBeenCalledWith("client-1", "BOOKING_CONFIRMED", { bookingId: expect.any(String), guidedRequestId: "gr-1" });
     expect(professionalMetricsService.recordJobAccepted).toHaveBeenCalledWith("pro-1");
     expect(timelineService.log).toHaveBeenCalled();
+  });
+});
+
+describe("BookingsService.createFromQuote — avviso a chi non è stato scelto (collaudo F-11)", () => {
+  it("avvisa sul sito i professionisti con un preventivo ancora aperto sulla stessa richiesta", async () => {
+    const { service, prisma, notificationsService } = buildService();
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
+    (prisma.booking.create as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "new-booking-1" });
+    (prisma.quote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([{ professionalProfile: { userId: "altro-pro" } }]);
+
+    await service.createFromQuote("client-1", "quote-1");
+
+    expect(prisma.quote.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { guidedRequestId: "gr-1", id: { not: "quote-1" }, status: { in: ["SENT", "MODIFICATION_REQUESTED"] } } }),
+    );
+    expect(notificationsService.notify).toHaveBeenCalledWith("altro-pro", "QUOTE_NOT_CHOSEN", expect.objectContaining({ guidedRequestId: "gr-1" }));
   });
 });
 

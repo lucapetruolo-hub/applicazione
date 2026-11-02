@@ -35,8 +35,8 @@ const STATES: State[] = [
   { name: "02-domani", start: wallDay(1, "09:00"), expectText: "Domani" },
   { name: "03-oggi", start: wallFromNow(150), expectText: /Oggi|Domani/ },
   { name: "04-sta-arrivando", start: wallFromNow(30), after: ({ bookingId }) => booking(bookingId, { onTheWayAt: new Date() }), expectText: "sta arrivando" },
-  { name: "05-in-corso", start: wallFromNow(-30), end: wallFromNow(90), expectText: "Lavoro in corso", absentText: ["Aggiungi al calendario", "Annulla appuntamento"] },
-  { name: "06-finito-da-confermare", start: wallDay(-1, "10:00"), end: wallDay(-1, "12:00"), expectText: "Lavoro terminato", absentText: ["Annulla appuntamento"] },
+  { name: "05-in-corso", start: wallFromNow(-30), end: wallFromNow(90), expectText: "Lavoro in corso", absentText: ["Aggiungi al calendario", "Annulla il lavoro"] },
+  { name: "06-finito-da-confermare", start: wallDay(-1, "10:00"), end: wallDay(-1, "12:00"), expectText: "Lavoro terminato", absentText: ["Annulla il lavoro"] },
   {
     name: "07-da-recensire",
     start: wallDay(-2, "10:00"),
@@ -75,21 +75,21 @@ const STATES: State[] = [
     name: "14-segnalazione-aperta",
     start: wallDay(-1, "09:00"),
     after: ({ bookingId }) => prisma.jobIssue.create({ data: { bookingId, type: "BAD_WORK", description: "Il sifone perde ancora.", status: "OPEN" } }),
-    absentText: ["Lavoro terminato", "Annulla appuntamento"],
+    absentText: ["Lavoro terminato", "Annulla il lavoro"],
   },
   {
     name: "15-professionista-eliminato",
     start: wallDay(3, "14:00"),
     after: ({ professionalProfileId }) => prisma.professionalProfile.update({ where: { id: professionalProfileId }, data: { deletedAt: new Date() } }),
     expectText: "Questo appuntamento non si farà",
-    absentText: ["Chiama", "Messaggi", "Aggiungi al calendario", "Annulla appuntamento"],
+    absentText: ["Chiama", "Messaggi", "Aggiungi al calendario", "Annulla il lavoro"],
   },
   {
     name: "16-non-presentato",
     start: wallDay(-3, "10:00"),
     after: ({ bookingId }) => booking(bookingId, { status: "NO_SHOW" }),
     expectText: "Appuntamento segnato come mancato",
-    absentText: ["Annulla appuntamento"],
+    absentText: ["Annulla il lavoro"],
   },
 ];
 
@@ -146,6 +146,7 @@ test("scheda del lavoro: 00-appuntamento-prenotato (subito dopo Accetta)", async
     const page = await pageAsClient(browser, client.id, settings);
     await page.goto(`/le-mie-richieste?open=${request.id}`);
     await page.locator(`#quote-${quotes[0].id}`).getByText("Accetta preventivo", { exact: true }).click();
+    await page.getByText("Accetta con obbligo di pagare", { exact: true }).click();
     await expect(page.getByRole("heading", { name: "Appuntamento prenotato" })).toBeVisible();
     await page.screenshot({ path: `${OUT}00-appuntamento-prenotato-${device}.png`, fullPage: true, animations: "disabled" });
     await page.context().close();

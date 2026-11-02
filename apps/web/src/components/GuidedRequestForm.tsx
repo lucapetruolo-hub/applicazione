@@ -12,6 +12,7 @@ import {
   PROFESSIONAL_CATEGORIES,
   isPlausiblePhoneNumber,
   isProfessionalCategorySlug,
+  linkSlotUsable,
   normalizePhoneNumber,
   profileRequestSourceOf,
   type ProfessionalAgenda,
@@ -233,8 +234,14 @@ export function GuidedRequestForm({
   // packages/shared/src/availability.ts): mostrati come info bloccata sotto,
   // stesso pattern già in uso per la categoria quando si arriva dal profilo
   // di un professionista specifico.
-  const preferredDate = searchParams.get("data") ?? undefined;
-  const preferredTimeSlot = searchParams.get("fasciaOraria") ?? undefined;
+  // Fascia arrivata da un link: usata solo se ben scritta e non passata (collaudo I-07).
+  const linkDate = searchParams.get("data") ?? undefined;
+  const linkTimeSlot = searchParams.get("fasciaOraria") ?? undefined;
+  const [linkSlotOk] = useState(() => linkSlotUsable(linkDate, linkTimeSlot));
+  const preferredDate = linkSlotOk ? linkDate : undefined;
+  const preferredTimeSlot = linkSlotOk ? linkTimeSlot : undefined;
+  // L'orario del link non c'è più (passato, sbagliato o già preso): lo si dice sopra la scelta.
+  const [linkSlotGone, setLinkSlotGone] = useState(Boolean(linkDate || linkTimeSlot) && !linkSlotOk);
   // Modalità già decisa dal tab attivo sull'agenda pubblica (A domicilio/
   // Online) quando si arriva da una pillola di quella griglia — richiesta
   // esplicita dell'utente: "differenzia sempre se si è partiti con una
@@ -291,13 +298,24 @@ export function GuidedRequestForm({
     if (!professionalProfileId) return;
     apiClient
       .getProfessionalAgenda(professionalProfileId)
-      .then((agenda) => setPickableSlots(flattenPickableSlots(agenda, serviceMode)))
+      .then((agenda) => {
+        const slots = flattenPickableSlots(agenda, serviceMode);
+        setPickableSlots(slots);
+        // L'orario del link non è più libero: "Nessuna preferenza" e una riga che lo dice (collaudo I-07).
+        if (preferredDate && preferredTimeSlot && serviceMode === initialServiceMode) {
+          const linkValue = `${preferredDate}|${preferredTimeSlot}`;
+          if (!slots.some((slot) => pickableSlotValue(slot) === linkValue)) {
+            setSelectedSlotValue((current) => (current === linkValue ? "" : current));
+            setLinkSlotGone(true);
+          }
+        }
+      })
       .catch(() => {});
     // Nessun reset di selectedSlotValue qui: al primo giro deve restare
     // valorizzato dall'URL (se presente); ai cambi successivi di modalità
     // ci pensa già il tasto A domicilio/Online stesso (vedi onPress sotto),
     // un reset anche qui cancellerebbe il prefill dell'URL al primo render.
-  }, [professionalProfileId, serviceMode]);
+  }, [professionalProfileId, serviceMode, preferredDate, preferredTimeSlot, initialServiceMode]);
 
   // Fascia effettivamente inviata: sempre quella corrente nel selettore
   // (inizializzata dall'URL se si è cliccata una pillola dell'agenda, ma
@@ -1216,11 +1234,16 @@ export function GuidedRequestForm({
 
         {professionalProfileId && displaySlots.length > 0 ? (
           <YStack gap="$2">
-            <FieldLabel>Data e orario dell&apos;intervento (facoltativo)</FieldLabel>
+            <FieldLabel>Data e orario dell&apos;appuntamento (facoltativo)</FieldLabel>
             {/* Pillole con i primi tre orari liberi e "Altri orari", al posto
                 del menu a tendina nativo che stonava con il resto del modulo
                 (docs/CHANGELOG.md §349). L'orario scelto dall'agenda resta
                 selezionato e in vista anche se non è tra i primi tre. */}
+            {linkSlotGone && !selectedSlotValue ? (
+              <Text fontSize={16} fontWeight="600" color={brand.urgenza}>
+                L&apos;orario del link non è più disponibile: scegline un altro qui sotto.
+              </Text>
+            ) : null}
             <Text fontSize={13} color={brand.grafite70}>
               Scegli un orario libero o lascia senza preferenza: non è ancora una prenotazione.
             </Text>
@@ -2037,7 +2060,7 @@ function SlotPills({
   };
   return (
     <div className="slot-picker">
-      <div className="slot-pills" role="radiogroup" aria-label="Data e orario dell'intervento">
+      <div className="slot-pills" role="radiogroup" aria-label="Data e orario dell'appuntamento">
         <button type="button" role="radio" aria-checked={selected === ""} className={`slot-pill${selected === "" ? " is-on" : ""}`} onClick={() => onSelect("")}>
           Nessuna preferenza
         </button>
