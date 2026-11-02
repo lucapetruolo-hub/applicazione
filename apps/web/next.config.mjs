@@ -52,6 +52,14 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  // Versione di /tamagui.css (`?v=`, layout.tsx): il commit su Vercel,
+  // altrove l'ora della build. Calcolata qui una volta sola e scritta nel
+  // codice di tutte le pagine: con Date.now() nel layout Turbopack la
+  // ricalcolava per ogni pagina e il browser scaricava lo stesso file 4 volte
+  // (docs/changelog/2026-11-02-nextjs-16.md).
+  env: {
+    TAMAGUI_CSS_VERSION: (process.env.VERCEL_GIT_COMMIT_SHA ?? String(Date.now())).slice(0, 13),
+  },
   // Solo nelle build della CI per le prove nel browser e il SEO
   // (docs/changelog/2026-10-28-controlli-pr-veloci.md): i tipi li controlla
   // già il job typecheck-build-test, rifarli costava tempo a ogni job.
