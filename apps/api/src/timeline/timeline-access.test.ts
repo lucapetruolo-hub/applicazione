@@ -37,3 +37,26 @@ describe("accesso alla chat", () => {
     await expect(service({ systemEvent: true }).listForUser("cliente", "r", "p")).resolves.toEqual([]);
   });
 });
+
+describe("messaggio nascosto da una segnalazione", () => {
+  it("in chat arriva senza testo né allegati, segnato come nascosto", async () => {
+    const prisma = {
+      guidedRequest: { findUnique: vi.fn().mockResolvedValue({ clientId: "cliente" }) },
+      professionalProfile: { findUnique: vi.fn().mockResolvedValue({ userId: "professionista" }) },
+      lead: { findUnique: vi.fn().mockResolvedValue({ id: "l" }) },
+      quote: { findFirst: vi.fn().mockResolvedValue(null) },
+      conversationEvent: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        findMany: vi.fn().mockResolvedValue([
+          { id: "e1", actor: "CLIENT", message: "Insulto", mediaUrls: ["https://x/f.jpg"], automatic: false, hiddenAt: new Date(), createdAt: new Date("2026-11-02T10:00:00Z") },
+          { id: "e2", actor: "CLIENT", message: "Ciao", mediaUrls: [], automatic: false, hiddenAt: null, createdAt: new Date("2026-11-02T10:01:00Z") },
+        ]),
+      },
+    };
+    const svc = new TimelineService(prisma as unknown as PrismaClient, {} as never, {} as never);
+    const events = await svc.listForUser("professionista", "r", "p");
+    expect(events[0]).toMatchObject({ id: "e1", message: "", mediaUrls: [], hidden: true });
+    expect(events[1]).toMatchObject({ id: "e2", message: "Ciao" });
+    expect(events[1]).not.toHaveProperty("hidden");
+  });
+});
