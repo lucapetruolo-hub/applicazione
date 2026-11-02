@@ -1300,7 +1300,7 @@ const BUILDERS: Record<string, Builder> = {
           ? `Il cliente ha cambiato i dati per ${what} del lavoro **${job(ctx)}**.`
           : `Il cliente ti chiede ${what} per il lavoro **${job(ctx)}**.`,
         receipt
-          ? "La ricevuta te la prepariamo noi dopo \"Lavoro terminato\": tu la stampi, la firmi e la dai al cliente. Qui sotto i suoi dati."
+          ? "Dopo \"Lavoro terminato\" trovi la ricevuta già compilata: è un documento tuo, la controlli, le dai il tuo numero, la firmi e la dai al cliente. Qui sotto i suoi dati."
           : "La fai tu, col tuo programma delle fatture: qui sotto i dati da copiare.",
       ],
       details: invoiceLines.length > 0 ? [{ label: receipt ? "Ricevuta a" : "Fattura a", value: invoiceLines.join("\n"), long: true }] : undefined,

@@ -1419,15 +1419,14 @@ model Booking {
   @@map("bookings")
 }
 
-// Copia di cortesia del documento del lavoro (decisione dell'utente del
-// 27/10/2026, docs/CHANGELOG.md §379): il numero della ricevuta per
-// prestazione occasionale lo diamo noi, progressivo per professionista e
-// anno e sempre lo stesso per quel lavoro; per la fattura il professionista
-// scrive il numero del suo programma. Ci resta l'elenco dei documenti dati
-// ai clienti, utile per l'assistenza e le segnalazioni. Dal 30/10/2026 si
-// fanno solo ricevute: chi ha la partita IVA fa la fattura col suo programma
-// (docs/changelog/2026-10-30-documenti-snelli.md); le righe INVOICE restano
-// solo per i documenti di prima.
+// Ricevuta per prestazione occasionale (decisione dell'utente del 27/10/2026,
+// docs/CHANGELOG.md §379). Dal 02/11/2026 è un modello già compilato che il
+// professionista controlla, numera e firma come documento suo: il numero lo
+// scrive lui, noi non lo diamo più
+// (docs/changelog/2026-11-02-ricevuta-modello.md). Ci resta l'elenco dei
+// documenti dati ai clienti, utile per l'assistenza e le segnalazioni. Dal
+// 30/10/2026 si fanno solo ricevute: chi ha la partita IVA fa la fattura col
+// suo programma (docs/changelog/2026-10-30-documenti-snelli.md).
 model CourtesyDocument {
   id                    String   @id @default(uuid())
   bookingId             String   @unique
@@ -1435,8 +1434,8 @@ model CourtesyDocument {
   /// Sempre RECEIPT: con la partita IVA nessuna copia della fattura (docs/changelog/2026-10-30-documenti-snelli.md).
   kind                  String
   year                  Int
-  /// Il nostro progressivo dell'anno (1, 2, 3...).
-  number                Int?
+  /// Il numero scritto dal professionista ("4/2026", "12"...): la ricevuta è sua (docs/changelog/2026-11-02-ricevuta-modello.md).
+  receiptNumber         String?
   /// Ultima volta che il professionista ha scaricato il PDF (Admin → Documenti ai clienti, §380).
   pdfDownloadedAt       DateTime?
   /// Importo scritto su quel PDF: se il lavoro cambia dopo, l'admin lo vede.
@@ -1451,7 +1450,7 @@ model CourtesyDocument {
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
-  @@unique([professionalProfileId, year, number])
+  @@index([professionalProfileId, year])
   @@index([createdAt])
   @@map("courtesy_documents")
 }
