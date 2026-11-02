@@ -5688,7 +5688,7 @@ a.admin-kpi:hover {
 }
 
 /* Categorie in home da telefono (CategoryStoryRail, docs/CHANGELOG.md §271):
-   griglia a due colonne con le prime sei, le altre con "Mostra tutte". Gli
+   griglia a due colonne con le prime sei, le altre con "Mostra altre N categorie". Gli
    !important vincono sugli stili in linea della riga da scorrere
    (CategoryCarousel), che da computer restano com'erano. */
 .story-show-all {
@@ -5726,24 +5726,49 @@ a.admin-kpi:hover {
   .story-rail:not(.show-all) .story-card.is-extra {
     display: none;
   }
+  /* "Mostra altre N categorie": pulsante vero a tutta larghezza subito
+     sotto le schede (docs/changelog/2026-11-02-categorie-telefono.md),
+     bianco con bordo e testo verdi, come i pulsanti secondari del sito. */
   .story-show-all {
-    display: inline-flex;
+    grid-column: 1 / -1;
+    display: flex;
     align-items: center;
-    gap: 4px;
-    min-height: 44px;
-    padding: 0 4px;
-    border: 0;
-    background: none;
+    justify-content: center;
+    gap: 6px;
+    min-height: 48px;
+    padding: 0 20px;
+    border: 1.5px solid #189a63;
+    border-radius: 999px;
+    background: #fff;
     color: #0e7a4c;
     font: inherit;
     font-weight: 700;
     font-size: 16px;
     cursor: pointer;
     touch-action: manipulation;
+    transition: background-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .story-show-all:active {
+    background: #eaf6ef;
+    transform: scale(0.98);
   }
   .story-show-all:focus-visible {
     outline: 3px solid #189a63;
     outline-offset: 2px;
+  }
+  /* Le categorie che compaiono entrano piano, non di colpo. */
+  .story-rail.show-all .story-card.is-extra {
+    animation: story-card-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+}
+@keyframes story-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 

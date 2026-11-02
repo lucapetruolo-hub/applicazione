@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@professionisti/shared";
@@ -25,10 +25,7 @@ const MOBILE_VISIBLE = 6;
  * "Disponibile" solo con almeno un professionista reale, mai un numero
  * (stessa regola della vecchia scheda categoria).
  */
-/**
- * Filtro e "Mostra tutte" condivisi tra la riga e il pulsante, che sta
- * accanto al titolo della sezione (scelta dell'utente, docs/CHANGELOG.md §271).
- */
+/** Filtro e "Mostra tutte" condivisi tra la home e la riga delle categorie. */
 export function useCategoryStoryRail() {
   const [group, setGroup] = useState(ALL);
   const [showAll, setShowAll] = useState(false);
@@ -39,26 +36,29 @@ export function useCategoryStoryRail() {
 
 export type CategoryStoryRailState = ReturnType<typeof useCategoryStoryRail>;
 
-/** Solo da telefono (globals.css): da computer le categorie stanno in una riga da scorrere. */
-export function CategoryShowAllButton({ state }: { state: CategoryStoryRailState }) {
-  const { categories, showAll, setShowAll } = state;
-  if (categories.length <= MOBILE_VISIBLE) return null;
-  return (
-    <button type="button" className="story-show-all" aria-expanded={showAll} aria-controls={RAIL_ID} onClick={() => setShowAll(!showAll)}>
-      {showAll ? "Vedi meno" : `Vedi tutte (${categories.length})`}
-      <Icon name={showAll ? "chevron-up" : "chevron-down"} size={16} color="currentColor" />
-    </button>
-  );
-}
-
 const RAIL_ID = "categorie-home";
 
 export function CategoryStoryRail({ state }: { state: CategoryStoryRailState }) {
   const { group, setGroup, showAll, setShowAll, categories } = state;
+  const hidden = categories.length - MOBILE_VISIBLE;
+  const firstExtraRef = useRef<HTMLAnchorElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+
+  function toggleShowAll() {
+    const next = !showAll;
+    setShowAll(next);
+    // Aprendo, il fuoco va alla prima categoria comparsa (chi usa la tastiera
+    // o il lettore di schermo continua da lì); chiudendo, il pulsante torna
+    // sotto le prime sei e la pagina lo segue invece di restare più in basso.
+    requestAnimationFrame(() => {
+      if (next) firstExtraRef.current?.focus({ preventScroll: true });
+      else toggleRef.current?.scrollIntoView({ block: "nearest" });
+    });
+  }
 
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 18 }}>
-      <div className="story-filters" role="group" aria-label="Filtra le categorie">
+      <div className="story-filters scroll-fade" role="group" aria-label="Filtra le categorie">
         {[ALL, ...MEGA_MENU_GROUPS.map((g) => g.title)].map((title) => (
           <button
             key={title}
@@ -77,7 +77,7 @@ export function CategoryStoryRail({ state }: { state: CategoryStoryRailState }) 
 
       {/* key: cambiando filtro la riga riparte dall'inizio invece di restare
           scorsa a metà su un elenco più corto. */}
-      {/* Da telefono griglia a due colonne con le prime sei e "Mostra tutte" accanto al titolo
+      {/* Da telefono griglia a due colonne con le prime sei e "Mostra altre N categorie" sotto
           (regole CSS in .story-rail, globals.css): la riga da scorrere
           mostrava una scheda alla volta (revisione UX, docs/CHANGELOG.md §271).
           Da computer resta la riga da scorrere. */}
@@ -85,7 +85,12 @@ export function CategoryStoryRail({ state }: { state: CategoryStoryRailState }) 
         {categories.map((c, index) => {
           const photoUrl = CATEGORY_PHOTOS[c.slug];
           return (
-            <Link key={c.slug} href={`/cerca/${c.slug}`} className={`story-card${index >= MOBILE_VISIBLE ? " is-extra" : ""}`}>
+            <Link
+              key={c.slug}
+              ref={index === MOBILE_VISIBLE ? firstExtraRef : undefined}
+              href={`/cerca/${c.slug}`}
+              className={`story-card${index >= MOBILE_VISIBLE ? " is-extra" : ""}`}
+            >
               {photoUrl ? (
                 <Image
                   src={photoUrl}
@@ -109,6 +114,23 @@ export function CategoryStoryRail({ state }: { state: CategoryStoryRailState }) 
             </Link>
           );
         })}
+        {/* Solo da telefono (globals.css): subito sotto l'ultima scheda
+            visibile, dove finisce lo sguardo, e a tutta larghezza. Prima era
+            un link accanto al titolo e non si notava (richiesta di Luca,
+            docs/changelog/2026-11-02-categorie-telefono.md). */}
+        {hidden > 0 ? (
+          <button
+            ref={toggleRef}
+            type="button"
+            className="story-show-all"
+            aria-expanded={showAll}
+            aria-controls={RAIL_ID}
+            onClick={toggleShowAll}
+          >
+            {showAll ? "Mostra meno" : `Mostra altre ${hidden} categorie`}
+            <Icon name={showAll ? "chevron-up" : "chevron-down"} size={18} color="currentColor" />
+          </button>
+        ) : null}
         <Link href="/preventivo" className="story-card story-card-other">
           <GlowLights tone="verde" />
           <Icon name="file-text" size={26} color="white" strokeWidth={1.5} />

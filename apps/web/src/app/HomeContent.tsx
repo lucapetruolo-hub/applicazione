@@ -2,7 +2,7 @@
 
 import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { Section, SectionDensityProvider, YStack } from "@professionisti/ui";
-import { CategoryShowAllButton, CategoryStoryRail, useCategoryStoryRail } from "@/components/CategoryStoryRail";
+import { CategoryStoryRail, useCategoryStoryRail } from "@/components/CategoryStoryRail";
 import { FadeInSection } from "@/components/FadeInSection";
 import { HomeFaq } from "@/components/HomeFaq";
 import { HomeHero } from "@/components/HomeHero";
@@ -41,11 +41,7 @@ export default function HomeContent({
 
         {/* 2. Categorie. */}
         <FadeInSection>
-          <Section
-            title="Di cosa hai bisogno?"
-            titleAction={<CategoryShowAllButton state={categoryRail} />}
-            maxWidth={1080}
-          >
+          <Section title="Di cosa hai bisogno?" maxWidth={1080}>
             <CategoryStoryRail state={categoryRail} />
           </Section>
         </FadeInSection>
