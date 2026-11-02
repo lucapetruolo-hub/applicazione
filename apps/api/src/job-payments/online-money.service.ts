@@ -15,6 +15,7 @@ import {
   onlineBalanceDueEurCents,
   onlineTargetEurCents,
   onlineCanRelease,
+  onlineHeldLimitProblem,
   onlinePayoutEurCents,
   splitVatEurCents,
   vatOnEurCents,
@@ -24,7 +25,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { readStripeConnectStatus } from "../professional-fiscal/stripe-connect-status";
-import { professionalOnlineLimit } from "./online-limit";
+import { professionalHeldEurCents, professionalOnlineLimit } from "./online-limit";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OPEN_ISSUE_STATUSES = ["CHAT", "OPEN"];
@@ -197,6 +198,7 @@ export class OnlineMoneyService {
     if (part === "deposit") {
       if (jp.onlineStage !== "AWAITING_DEPOSIT" || !jp.depositEurCents) throw new BadRequestException("L'acconto risulta già pagato.");
       amount = jp.depositEurCents;
+      await this.assertHeldLimit(booking.professionalProfileId, amount);
     } else {
       if (booking.finalAmountEurCents === null) throw new BadRequestException("Il saldo si paga quando il professionista chiude il lavoro con l'importo finale.");
       // Col saldo diretto (§237) online si paga al massimo l'acconto: il resto va al professionista.
@@ -271,6 +273,9 @@ export class OnlineMoneyService {
     const suffix = statementSuffix(params.businessName);
     const account = await this.professionalAccount(params.professionalProfileId, { direct: true });
     const metadata = { kind: "quote_deposit", quoteId: params.quoteId, clientUserId: params.clientUserId, paymentMethod: params.paymentMethod, stripeAccount: account };
+    const reused = await this.reuseQuoteDepositCheckout(params, account);
+    if (reused) return { url: reused };
+    await this.assertHeldLimit(params.professionalProfileId, params.amountEurCents);
     // Col saldo online la carta resta salvata per il saldo (§267); col saldo diretto (MIXED) no.
     const saveCard = saveCardForBalance(params.paymentMethod === "ONLINE");
     const session = await this.requireStripe().checkout.sessions.create({
@@ -298,7 +303,50 @@ export class OnlineMoneyService {
       cancel_url: back,
       metadata,
     }, onAccount(account));
+    await this.prisma.quote.update({ where: { id: params.quoteId }, data: { depositCheckoutSessionId: session.id } });
     return { url: session.url };
+  }
+
+  /** Professionisti nuovi: al massimo 3.000 € online fermi in tutto (collaudo P-02). */
+  private async assertHeldLimit(professionalProfileId: string, amountEurCents: number): Promise<void> {
+    const { limitEurCents } = await professionalOnlineLimit(this.prisma, professionalProfileId);
+    if (limitEurCents === null) return;
+    const heldEurCents = await professionalHeldEurCents(this.prisma, professionalProfileId);
+    const problem = onlineHeldLimitProblem({ limitEurCents, heldEurCents, amountEurCents });
+    if (problem) throw new BadRequestException(problem);
+  }
+
+  /**
+   * Pagina dell'acconto già aperta per lo stesso preventivo (collaudo I-02):
+   * da una seconda scheda si riapre quella, così lo stesso acconto non si
+   * paga due volte. Se è già pagata lo diciamo; se nel frattempo è cambiato
+   * l'importo o il modo di pagare, la vecchia pagina si chiude.
+   */
+  private async reuseQuoteDepositCheckout(
+    params: { quoteId: string; clientUserId: string; paymentMethod: string; amountEurCents: number },
+    account: string | null,
+  ): Promise<string | null> {
+    const quote = await this.prisma.quote.findUnique({ where: { id: params.quoteId }, select: { depositCheckoutSessionId: true } });
+    if (!quote?.depositCheckoutSessionId) return null;
+    const stripe = this.requireStripe();
+    const previous = await stripe.checkout.sessions
+      .retrieve(quote.depositCheckoutSessionId, { expand: ["payment_intent.latest_charge"] }, onAccount(account))
+      .catch(() => null);
+    if (!previous) return null;
+    // Pagata e non rimborsata (un acconto rimborsato si può pagare di nuovo).
+    const charge = typeof previous.payment_intent === "object" ? (previous.payment_intent?.latest_charge as Stripe.Charge | null) : null;
+    if (previous.status === "complete" && previous.metadata?.clientUserId === params.clientUserId && !charge?.amount_refunded) {
+      throw new BadRequestException("Hai già pagato l'acconto di questo preventivo: il lavoro si conferma tra pochi secondi. Ricarica la pagina.");
+    }
+    if (previous.status !== "open") return null;
+    const same =
+      previous.amount_total === params.amountEurCents &&
+      previous.metadata?.paymentMethod === params.paymentMethod &&
+      previous.metadata?.clientUserId === params.clientUserId;
+    if (same && previous.url) return previous.url;
+    // Se intanto viene pagata, il pagamento doppio torna da solo al cliente.
+    await stripe.checkout.sessions.expire(previous.id, {}, onAccount(account)).catch(() => undefined);
+    return null;
   }
 
   /**
@@ -497,8 +545,11 @@ export class OnlineMoneyService {
     if (final === null) stage = "DEPOSIT_PAID";
     else stage = onlineBalanceDueEurCents(onlineTargetEurCents(final, jp), paid - jp.refundedEurCents) > 0 ? "AWAITING_BALANCE" : "PAID";
 
-    await this.prisma.jobPayment.update({
-      where: { id: jp.id },
+    // Solo il primo pagamento dello stesso acconto o saldo si registra: due
+    // schede aperte possono pagarlo due volte (collaudo I-02). Il secondo si
+    // rimborsa subito e il cliente lo sa.
+    const claimed = await this.prisma.jobPayment.updateMany({
+      where: { id: jp.id, ...(part === "deposit" ? { stripePaymentIntentId: null } : { balancePaymentIntentId: null }) },
       data: {
         paidEurCents: paid,
         // Il costo della carta è nostro, dentro la trattenuta unica (§378).
@@ -518,6 +569,13 @@ export class OnlineMoneyService {
         ...(part === "deposit" ? { stripePaymentIntentId: paymentIntentId, depositPaidAt: new Date() } : { balancePaymentIntentId: paymentIntentId, balancePaidAt: new Date() }),
       },
     });
+    if (claimed.count === 0) {
+      const now = await this.prisma.jobPayment.findUnique({ where: { id: jp.id }, select: { stripePaymentIntentId: true, balancePaymentIntentId: true } });
+      if (now?.stripePaymentIntentId !== paymentIntentId && now?.balancePaymentIntentId !== paymentIntentId) {
+        await this.refundDuplicatePayment(jp.id, paymentIntentId, amount, opts.stripeAccount ?? null);
+      }
+      return;
+    }
     // Dal §378 la trattenuta è già quella definitiva: va nell'estratto e
     // nella fattura del mese del professionista.
     if (charge.destination) {
@@ -692,6 +750,37 @@ export class OnlineMoneyService {
   }
 
   /**
+   * Stesso acconto o saldo pagato una seconda volta (due schede aperte,
+   * collaudo I-02): torna tutto subito al cliente, con l'avviso.
+   */
+  private async refundDuplicatePayment(jobPaymentId: string, paymentIntentId: string, amount: number, stripeAccount: string | null): Promise<void> {
+    const jp = await this.prisma.jobPayment.findUniqueOrThrow({
+      where: { id: jobPaymentId },
+      select: { booking: { select: { id: true, clientId: true, quote: { select: { guidedRequestId: true } } } } },
+    });
+    const guidedRequestId = jp.booking.quote?.guidedRequestId ?? null;
+    const { pending } = await this.refundQuoteDeposit(paymentIntentId, "Pagamento doppio: questa parte era già stata pagata.", stripeAccount, {
+      clientUserId: jp.booking.clientId,
+      guidedRequestId,
+    });
+    await this.auditLogService.record({
+      entityType: "JobPayment",
+      entityId: jobPaymentId,
+      fieldName: "duplicatePaymentRefunded",
+      newValue: { paymentIntentId, amountEurCents: amount, pending },
+      reason: "Pagamento doppio dalla stessa pagina: rimborsato subito al cliente.",
+    });
+    // In attesa di fondi sul conto del professionista (§269): "in arrivo", poi l'avviso all'arrivo.
+    await this.notificationsService.notify(jp.booking.clientId, pending ? "JOB_REFUND_PENDING" : "JOB_REFUND_COMPLETED", {
+      bookingId: jp.booking.id,
+      guidedRequestId,
+      amountEurCents: amount,
+      duplicate: true,
+      audience: "CLIENT",
+    });
+  }
+
+  /**
    * Dopo la chiusura del lavoro (importo finale noto): fase del saldo e data
    * in cui i soldi passano al professionista se il cliente non conferma.
    */
@@ -715,6 +804,15 @@ export class OnlineMoneyService {
         releaseDueAt: new Date(Date.now() + ONLINE_RELEASE_DAYS * DAY_MS),
       },
     });
+    // Pagato più dell'importo finale: la differenza torna subito al cliente,
+    // non dopo i giorni di blocco (collaudo P-05). Se Stripe non risponde ci
+    // riprova lo sblocco, come prima.
+    const excess = jp.paidEurCents - jp.refundedEurCents - onlineTarget;
+    if (excess > 0 && !jp.releasedAt) {
+      await this.refundAcrossPayments(jp.id, excess, "Differenza tra quanto pagato e importo finale.", { beforeRelease: true }).catch((err: unknown) =>
+        this.logger.warn(`Differenza di ${jp.id} non rimborsata alla chiusura: ${(err as Error).message}`),
+      );
+    }
     // Saldo addebitato da solo sulla carta salvata con l'acconto (§267):
     // solo se l'importo finale resta nel preventivo accettato dal cliente.
     if (due > 0 && opts.autoCharge && (await this.chargeSavedCard(jp.id, due))) return { balanceDueEurCents: 0, autoChargedEurCents: due };
@@ -1854,6 +1952,24 @@ export class OnlineMoneyService {
     const after = await this.prisma.jobPayment.update({ where: { id: jobPaymentId }, data: { refundedEurCents: { increment: refunded } } });
     if (fromProfessional) await this.keepProfessionalBalancePositive(after);
     if (account && waiting.length > 0) await this.reportRefundWaiting(jobPaymentId, account, waiting);
+    // Il cliente sa quanto gli torna e quando (collaudo F-02, P-05): prima
+    // un rimborso partito subito non gli arrivava in nessun avviso.
+    const sent = refunded - waiting.reduce((sum, r) => sum + r.amount, 0);
+    if (sent > 0) await this.notifyRefundSent(jobPaymentId, sent);
+  }
+
+  private async notifyRefundSent(jobPaymentId: string, amountEurCents: number): Promise<void> {
+    const jp = await this.prisma.jobPayment.findUnique({
+      where: { id: jobPaymentId },
+      select: { booking: { select: { id: true, clientId: true, quote: { select: { guidedRequestId: true } } } } },
+    });
+    if (!jp) return;
+    await this.notificationsService.notify(jp.booking.clientId, "JOB_REFUND_COMPLETED", {
+      bookingId: jp.booking.id,
+      guidedRequestId: jp.booking.quote?.guidedRequestId ?? null,
+      amountEurCents,
+      audience: "CLIENT",
+    });
   }
 
   /**

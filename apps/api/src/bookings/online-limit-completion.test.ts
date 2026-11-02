@@ -17,6 +17,7 @@ function buildService(jobPayment: { paymentMethod: string; balanceDirect: boolea
         professionalProfileId: "pro-1",
         clientId: "client-1",
         status: "CONFIRMED",
+        scheduledAt: new Date("2026-01-10T09:00:00Z"),
         clientConfirmedCompletedAt: null,
         quote: { guidedRequestId: "gr-1", items: [{ name: "Manodopera", priceMinEurCents: 200000, priceMaxEurCents: 300000 }] },
       }),
@@ -59,5 +60,37 @@ describe("chiusura del lavoro e tetto ai pagamenti online", () => {
       await expect(service.completeWithFinalAmount("pro-user-1", "bk-1", input)).resolves.toMatchObject({ status: "COMPLETED" });
       expect(prisma.$transaction).toHaveBeenCalled();
     }
+  });
+});
+
+describe("lavoro terminato prima dell'appuntamento (collaudo F-01)", () => {
+  it("né il professionista né il cliente lo chiudono prima dell'ora dell'appuntamento", async () => {
+    const { service, prisma } = buildService({ paymentMethod: "MANOVIA", balanceDirect: false });
+    const future = { ...(await prisma.booking.findUnique()), scheduledAt: new Date(Date.now() + 3 * 86_400_000) };
+    prisma.booking.findUnique.mockResolvedValue(future);
+
+    await expect(service.completeWithFinalAmount("pro-user-1", "bk-1", input)).rejects.toThrow(/dal giorno dell'appuntamento/);
+    await expect(service.clientConfirmComplete("client-1", "bk-1", { photoUrls: [] } as never)).rejects.toThrow(/dal giorno dell'appuntamento/);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.booking.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("riapertura di un appuntamento annullato (collaudo F-08)", () => {
+  it("un appuntamento già passato non si riapre", async () => {
+    const { service, prisma } = buildService(null);
+    prisma.booking.findUnique.mockResolvedValue({
+      id: "bk-1",
+      clientId: "client-1",
+      status: "CANCELED",
+      canceledBy: "CLIENT",
+      scheduledAt: new Date(Date.now() - 2 * 86_400_000),
+      quote: null,
+      professionalProfile: { userId: "pro-user-1" },
+    });
+    (prisma.jobPayment as unknown as { findFirst: unknown }).findFirst = vi.fn().mockResolvedValue(null);
+
+    await expect(service.reopenBooking("client-1", "bk-1")).rejects.toThrow(/già passata/);
+    expect(prisma.booking.update).not.toHaveBeenCalled();
   });
 });

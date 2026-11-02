@@ -72,6 +72,27 @@ describe("pagamento online: acconto, saldo, accredito (§168)", () => {
     expect(toJobPaymentSummary({ ...jp, platformFeeEurCents: 0 }, 42000, true)!.appFeeEurCents).toBe(3587);
     expect(toJobPaymentSummary(jp, 42000)!.payoutEurCents).toBeUndefined();
   });
+  it("riepilogo: un saldo non ancora pagato non entra in quanto riceve (collaudo F-04)", () => {
+    // Lavoro chiuso a 2.000 €, il cliente ha pagato solo l'acconto di 380 €.
+    const jp = {
+      paymentMethod: "MANOVIA",
+      onlineStage: "AWAITING_BALANCE",
+      depositEurCents: 38000,
+      paidEurCents: 38000,
+      refundedEurCents: 0,
+      platformFeeEurCents: 17080,
+      stripeFeeEurCents: 0,
+      netAmountEurCents: 0,
+      releaseDueAt: now,
+      releasedAt: null,
+      balanceUnpaidAt: null, balanceDirect: false,
+    };
+    const pro = toJobPaymentSummary(jp, 200000, true)!;
+    expect(pro.balanceDueEurCents).toBe(162000);
+    // Trattenuta solo sui 380 € incassati: 170,80 € × 380 / 2.000 = 32,45 €.
+    expect(pro.appFeeEurCents).toBe(3245);
+    expect(pro.payoutEurCents).toBe(38000 - 3245);
+  });
 });
 
 describe("pagamento diretto: la segnalazione resta tra le parti (§168)", () => {

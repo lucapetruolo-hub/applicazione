@@ -37,6 +37,7 @@ import {
   type ProfessionalProfileSelfInput,
   type UpdateEngagementRadiusInput,
   toJobIssueSummary,
+  jobIssueAssisted,
   toJobPaymentSummary,
   professionalRestrictions,
   jobPaidOnline,
@@ -717,6 +718,9 @@ export class ProfessionalsService {
         // Pagina pubblica: solo nome e iniziale del cognome (§216).
         clientName: publicClientName(booking.client),
         jobLabel: booking.quote?.guidedRequest.category.label ?? null,
+        professionalReply: review.professionalReply,
+        professionalRepliedAt: review.professionalRepliedAt?.toISOString() ?? null,
+        updatedAfterIssueAt: review.updatedAfterIssueAt?.toISOString() ?? null,
       })),
     };
   }
@@ -1644,6 +1648,8 @@ export class ProfessionalsService {
       // Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto
       // all'etichetta "Annullata".
       canceledBy: booking.canceledBy,
+      // Richiesta di riaprire un appuntamento annullato, in attesa della risposta (collaudo F-08).
+      reopenRequestedBy: booking.status === "CANCELED" && booking.reopenRequestedAt ? (booking.reopenRequestedBy === "PROFESSIONAL" ? ("PROFESSIONAL" as const) : ("CLIENT" as const)) : null,
       // Il cliente ha annullato dentro il preavviso scelto (docs/CHANGELOG.md §347).
       canceledLate: booking.canceledLate,
       // Pulsanti del promemoria WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md).
@@ -1680,7 +1686,7 @@ export class ProfessionalsService {
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
       // Segnalazione del cliente sul lavoro, con la risposta del professionista (docs/CHANGELOG.md §164).
-      issue: toJobIssueSummary(booking.issue, { paidOnline: jobPaidOnline(booking.jobPayment), assisted: booking.jobPayment?.paymentMethod !== "DIRECT" }),
+      issue: toJobIssueSummary(booking.issue, { paidOnline: jobPaidOnline(booking.jobPayment), assisted: jobIssueAssisted(booking.jobPayment?.paymentMethod, booking.issue?.late) }),
       // Pagamento del lavoro (§168), con commissione, costo Stripe e quanto riceve.
       payment: toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents, true),
       // Fattura chiesta dal cliente (docs/CHANGELOG.md §378): c'è la Booking, quindi il preventivo è accettato.

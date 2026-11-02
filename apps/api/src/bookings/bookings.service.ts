@@ -1,5 +1,5 @@
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional, type OnModuleInit } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, Optional, type OnModuleInit } from "@nestjs/common";
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import type Stripe from "stripe";
 import {
@@ -8,7 +8,12 @@ import {
   completionDeviation,
   completionDeviationText,
   clientCanReview,
+  BAD_WORK_REPORT_DAYS,
   jobIssueTypesAllowed,
+  jobIssueLateAllowed,
+  clientCanUpdateReview,
+  jobIssueAssisted,
+  JOB_ISSUE_LATE_NOTE,
   toJobIssueSummary,
   jobPaidOnline,
   quotePriceTotals,
@@ -18,6 +23,7 @@ import {
   paymentChoiceIsOnline,
   quotePaymentOffer,
   onlineDepositEurCents,
+  ONLINE_MIN_CHARGE_EUR_CENTS,
   jobIssueCanEscalate,
   jobIssueEvidenceDueAt,
   type JobIssueResponseInput,
@@ -60,8 +66,15 @@ type AcceptableQuote = Awaited<ReturnType<BookingsService["loadAcceptableQuote"]
 /** Nota per il cliente sui lavori annullati perché il professionista ha chiuso l'account (docs/CHANGELOG.md §348). */
 export const ACCOUNT_CLOSED_NOTE = "Il professionista ha chiuso il suo account.";
 
+/** L'appuntamento è in un giorno dopo oggi (ora italiana). */
+function startsAfterToday(scheduledAt: Date): boolean {
+  return scheduledAt.toISOString().slice(0, 10) > wallClockNow().toISOString().slice(0, 10);
+}
+
 @Injectable()
 export class BookingsService implements OnModuleInit {
+  private readonly logger = new Logger(BookingsService.name);
+
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly notificationsService: NotificationsService,
@@ -146,6 +159,10 @@ export class BookingsService implements OnModuleInit {
       });
       if (!stripeVerified(fiscal)) {
         throw new BadRequestException("Questo professionista non può ancora ricevere pagamenti online: scegli il pagamento diretto.");
+      }
+      // Acconto sotto il minimo di Stripe (collaudo I-01): il pagamento non partirebbe davvero.
+      if (this.quoteDepositEurCents(quote) < ONLINE_MIN_CHARGE_EUR_CENTS) {
+        throw new BadRequestException("L'acconto di questo preventivo è troppo basso per pagarlo con la carta: scegli il pagamento diretto.");
       }
       // Prima di far pagare l'acconto: niente pagamento per un'ora già occupata (§310).
       await this.assertProfessionalFree(this.prisma, quote);
@@ -234,8 +251,11 @@ export class BookingsService implements OnModuleInit {
 
     const existing = await this.prisma.booking.findUnique({ where: { quoteId }, include: { jobPayment: true } });
     if (existing?.jobPayment?.stripePaymentIntentId === paymentIntentId) return;
-    // Lavoro creato da un tentativo precedente interrotto prima di registrare l'acconto.
-    if (existing && existing.clientId === clientUserId && existing.jobPayment?.onlineStage === "AWAITING_DEPOSIT" && !existing.jobPayment.stripePaymentIntentId) {
+    // Lavoro creato da un tentativo precedente interrotto prima di registrare
+    // l'acconto, oppure acconto pagato una seconda volta da un'altra scheda
+    // (collaudo I-02): la registrazione tiene solo il primo pagamento e
+    // rimborsa subito il secondo, dicendolo al cliente.
+    if (existing?.jobPayment && existing.clientId === clientUserId && (existing.jobPayment.onlineStage === "AWAITING_DEPOSIT" || existing.jobPayment.stripePaymentIntentId)) {
       await this.jobPaymentsService.recordQuoteDeposit(existing.jobPayment.id, session);
       return;
     }
@@ -258,9 +278,17 @@ export class BookingsService implements OnModuleInit {
         bookingId = await this.confirmAcceptedQuote(quote, clientUserId, paymentMethod);
       } catch (err) {
         // Nel frattempo il professionista ha preso un altro lavoro a quell'ora
-        // (§310). Se invece è lo stesso evento arrivato due volte, il lavoro
-        // c'è già: Stripe riprova e il controllo in cima lo riconosce.
-        if (!(err instanceof ConflictException) || (await this.prisma.booking.findUnique({ where: { quoteId }, select: { id: true } }))) throw err;
+        // (§310). Se invece il lavoro c'è già (stesso evento arrivato due volte
+        // o acconto pagato anche da un'altra scheda), si registra lì: un
+        // secondo pagamento torna subito al cliente. Senza ancora il pagamento
+        // del lavoro Stripe riprova e il controllo in cima lo riconosce.
+        if (!(err instanceof ConflictException)) throw err;
+        const job = await this.prisma.booking.findUnique({ where: { quoteId }, select: { clientId: true, jobPayment: { select: { id: true } } } });
+        if (job?.jobPayment && job.clientId === clientUserId) {
+          await this.jobPaymentsService.recordQuoteDeposit(job.jobPayment.id, session);
+          return;
+        }
+        if (job) throw err;
         refundReason = err.message;
       }
     }
@@ -292,14 +320,21 @@ export class BookingsService implements OnModuleInit {
    * o lavoro esterno sovrapposto oltre la capienza della fascia (§310).
    */
   private async assertProfessionalFree(db: PrismaClient | Prisma.TransactionClient, quote: AcceptableQuote): Promise<void> {
-    const start = quote.estimatedStartDate;
-    const end = quote.estimatedEndDate;
-    const mode = quote.guidedRequest.serviceMode;
+    await this.assertSlotFree(db, quote.professionalProfileId, quote.estimatedStartDate, quote.estimatedEndDate, quote.guidedRequest.serviceMode);
+  }
+
+  private async assertSlotFree(
+    db: PrismaClient | Prisma.TransactionClient,
+    professionalProfileId: string,
+    start: Date,
+    end: Date | null,
+    mode: Parameters<typeof countOverlapping>[3],
+  ): Promise<void> {
     const dayStart = new Date(start);
     dayStart.setUTCHours(0, 0, 0, 0);
     const until = end && end > start ? end : new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-    const commitments = (await loadCommitments(db, [quote.professionalProfileId], dayStart, until)).get(quote.professionalProfileId) ?? [];
-    if (countOverlapping(commitments, start, end, mode) >= (await capacityAt(db, quote.professionalProfileId, start, mode))) {
+    const commitments = (await loadCommitments(db, [professionalProfileId], dayStart, until)).get(professionalProfileId) ?? [];
+    if (countOverlapping(commitments, start, end, mode) >= (await capacityAt(db, professionalProfileId, start, mode))) {
       throw new ConflictException(PROFESSIONAL_BUSY_MESSAGE);
     }
   }
@@ -621,6 +656,13 @@ export class BookingsService implements OnModuleInit {
     if (booking.status !== "CONFIRMED") {
       throw new BadRequestException("Solo un lavoro confermato può essere segnalato come terminato.");
     }
+    // Mai prima del giorno dell'appuntamento, come il pulsante in Agenda
+    // (§311, collaudo F-01): il saldo si addebiterebbe al cliente prima del lavoro.
+    if (startsAfterToday(booking.scheduledAt)) {
+      throw new BadRequestException(
+        "Puoi segnare il lavoro come terminato dal giorno dell'appuntamento. Se l'hai fatto prima, sposta prima la data con il cliente.",
+      );
+    }
 
     // Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §246): il testo
     // dipende dal tipo fiscale; se nel frattempo è cambiato il professionista
@@ -749,6 +791,10 @@ export class BookingsService implements OnModuleInit {
     }
     if (booking.clientConfirmedCompletedAt) {
       throw new ForbiddenException("Hai già confermato il completamento di questo lavoro.");
+    }
+    // Mai prima del giorno dell'appuntamento (§346, collaudo F-01).
+    if (booking.status === "CONFIRMED" && startsAfterToday(booking.scheduledAt)) {
+      throw new BadRequestException("Potrai confermare che il lavoro è terminato dal giorno dell'appuntamento.");
     }
 
     await this.prisma.booking.update({
@@ -886,20 +932,111 @@ export class BookingsService implements OnModuleInit {
   }
 
   /**
-   * Riapre una prenotazione annullata (richiesta esplicita dell'utente:
-   * "una volta annullata dai la possibilità di riaprirla") — disponibile a
-   * entrambe le parti, chiunque l'abbia annullata: a differenza
-   * dell'annullamento (motivi/nota diversi per cliente e professionista,
-   * due metodi separati sopra), riaprire è la stessa identica azione da
-   * qualunque lato, un solo metodo condiviso. Rivalida la capienza della
-   * fascia sottostante (se la data corrisponde a una vera
-   * AvailabilitySlot — potrebbe non esserlo, es. una data negoziata
-   * manualmente) prima di riportare lo stato a CONFIRMED: nel frattempo
-   * quella stessa fascia potrebbe essere stata presa da qualcun altro,
-   * stessa cautela già applicata a QuotesService.confirmProposedDate
-   * (transazione Serializable).
+   * Riapertura di un appuntamento annullato (collaudo F-08, miglioria
+   * approvata da Luca il 30/10/2026): chi l'ha annullato chiede di
+   * riaprirlo e l'altro accetta o rifiuta. Prima tornava valido subito,
+   * anche se l'altro aveva già preso altri impegni.
    */
   async reopenBooking(userId: string, bookingId: string) {
+    const { booking, requester } = await this.loadReopenable(userId, bookingId, "request");
+    if (booking.reopenRequestedAt) throw new BadRequestException("Hai già chiesto di riaprirlo: aspetta la risposta.");
+    await this.assertCanReopen(booking);
+    await this.prisma.booking.update({ where: { id: bookingId }, data: { reopenRequestedAt: new Date(), reopenRequestedBy: requester } });
+    const byClient = requester === "CLIENT";
+    await this.notificationsService.notify(byClient ? booking.professionalProfile.userId : booking.clientId, "BOOKING_REOPEN_REQUESTED", {
+      bookingId,
+      guidedRequestId: booking.quote?.guidedRequestId,
+      audience: byClient ? "PROFESSIONAL" : "CLIENT",
+      scheduledAt: booking.scheduledAt.toISOString(),
+    });
+    if (booking.quote) {
+      await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, requester, `${byClient ? "Il cliente" : "Il professionista"} ha chiesto di riaprire l'appuntamento annullato.`);
+    }
+    return { bookingId, status: "REOPEN_REQUESTED" as const };
+  }
+
+  /** Risposta di chi non ha annullato alla richiesta di riaprire. */
+  async answerReopen(userId: string, bookingId: string, accept: boolean) {
+    const { booking, requester } = await this.loadReopenable(userId, bookingId, "answer");
+    const byClient = requester === "CLIENT";
+    const requesterUserId = byClient ? booking.clientId : booking.professionalProfile.userId;
+    const answerer = byClient ? "PROFESSIONAL" : "CLIENT";
+    if (!accept) {
+      const cleared = await this.prisma.booking.updateMany({ where: { id: bookingId, reopenRequestedAt: { not: null } }, data: { reopenRequestedAt: null, reopenRequestedBy: null } });
+      if (cleared.count === 0) throw new BadRequestException("Questa richiesta ha già una risposta.");
+      await this.notificationsService.notify(requesterUserId, "BOOKING_REOPEN_DECLINED", {
+        bookingId,
+        guidedRequestId: booking.quote?.guidedRequestId,
+        audience: requester,
+      });
+      if (booking.quote) {
+        await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, answerer, `${byClient ? "Il professionista" : "Il cliente"} non ha accettato di riaprire l'appuntamento.`);
+      }
+      return { bookingId, status: "CANCELED" as const };
+    }
+
+    const { scheduledAt, dayStart, dayEnd, requestServiceMode, maxBookings } = await this.assertCanReopen(booking);
+    try {
+      await this.prisma.$transaction(
+        async (tx) => {
+          const existingBookings = await tx.booking.findMany({
+            where: {
+              professionalProfileId: booking.professionalProfileId,
+              status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
+              scheduledAt: { gte: dayStart, lt: dayEnd },
+            },
+            select: { scheduledAt: true, serviceMode: true },
+          });
+          const bookedCount = existingBookings.filter(
+            (b) => b.scheduledAt.getTime() === scheduledAt.getTime() && (requestServiceMode ? b.serviceMode === requestServiceMode : true),
+          ).length;
+          if (bookedCount >= maxBookings) {
+            throw new ConflictException("Questa fascia non è più libera.");
+          }
+          // Anche i lavori su più giorni e quelli segnati a mano in Agenda (§310, collaudo F-08).
+          await this.assertSlotFree(tx, booking.professionalProfileId, booking.scheduledAt, booking.scheduledEndAt, booking.serviceMode);
+          await tx.booking.update({
+            where: { id: bookingId },
+            data: { status: "CONFIRMED", canceledBy: null, cancellationNote: null, canceledLate: false, reopenRequestedAt: null, reopenRequestedBy: null },
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
+        throw new ConflictException("Questa fascia non è più libera.");
+      }
+      if (isOtherJobViolation(err)) throw new ConflictException(OTHER_JOB_MESSAGE);
+      throw err;
+    }
+
+    await this.notificationsService.notify(requesterUserId, byClient ? "BOOKING_REOPENED_BY_PROFESSIONAL" : "BOOKING_REOPENED_BY_CLIENT", {
+      bookingId,
+      guidedRequestId: booking.quote?.guidedRequestId,
+    });
+    if (!byClient) {
+      await this.professionalMetricsService.touchActivity(booking.professionalProfileId);
+    }
+    if (booking.quote) {
+      await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, answerer, `${byClient ? "Il professionista" : "Il cliente"} ha accettato: l'appuntamento è di nuovo valido.`);
+    }
+
+    // Acconto trattenuto per l'annullamento tardivo (§348): torna acconto.
+    await this.jobPaymentsService.undoKeptDeposit(bookingId);
+    // Lavoro online con acconto già rimborsato all'annullamento: si riparte dall'acconto.
+    await this.prisma.jobPayment.updateMany({
+      where: { bookingId, paymentMethod: "MANOVIA", onlineStage: "REFUNDED" },
+      data: { onlineStage: "AWAITING_DEPOSIT", status: "PENDING", releasedAt: null },
+    });
+
+    return { bookingId, status: "CONFIRMED" as const };
+  }
+
+  /**
+   * Appuntamento annullato e chi agisce: `request` per chi l'ha annullato
+   * (regola simmetrica, §197), `answer` per l'altro, con una richiesta aperta.
+   */
+  private async loadReopenable(userId: string, bookingId: string, action: "request" | "answer") {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: { quote: true, professionalProfile: true },
@@ -915,22 +1052,40 @@ export class BookingsService implements OnModuleInit {
     if (booking.status !== "CANCELED") {
       throw new ForbiddenException("Questa prenotazione non è annullata.");
     }
-    // Regola simmetrica (richiesta esplicita dell'utente, §197): ognuno riapre
-    // solo ciò che ha annullato lui. Le righe senza autore (precedenti a
-    // canceledBy) non si riaprono da nessun lato. Il cliente può sempre
-    // inviare una richiesta nuova.
+    if (action === "answer") {
+      const by = booking.reopenRequestedBy;
+      const requester: "CLIENT" | "PROFESSIONAL" | null = by === "CLIENT" ? "CLIENT" : by === "PROFESSIONAL" ? "PROFESSIONAL" : null;
+      if (!booking.reopenRequestedAt || !requester) throw new BadRequestException("Nessuna richiesta di riaprire questo appuntamento.");
+      if ((requester === "CLIENT") === isClient) throw new ForbiddenException("Risponde l'altra parte.");
+      return { booking, requester };
+    }
+    // Regola simmetrica (richiesta esplicita dell'utente, §197): ognuno chiede
+    // di riaprire solo ciò che ha annullato lui. Le righe senza autore
+    // (precedenti a canceledBy) non si riaprono da nessun lato. Il cliente può
+    // sempre inviare una richiesta nuova.
     if (isClient && booking.canceledBy !== "CLIENT") {
       throw new ForbiddenException("Il professionista ha annullato questo intervento: non puoi riaprirlo. Puoi inviare una nuova richiesta.");
     }
     if (!isClient && booking.canceledBy !== "PROFESSIONAL") {
       throw new ForbiddenException("Il cliente ha annullato questo intervento: solo lui può riaprirlo.");
     }
+    return { booking, requester: isClient ? ("CLIENT" as const) : ("PROFESSIONAL" as const) };
+  }
+
+  /** Controlli prima di chiedere e prima di riaprire davvero: la situazione può cambiare nel frattempo. */
+  private async assertCanReopen(booking: Prisma.BookingGetPayload<{ include: { quote: true; professionalProfile: true } }>) {
+    const bookingId = booking.id;
     // Nel frattempo il cliente ha accettato un altro preventivo della stessa richiesta (§346).
     if (booking.quote) await this.assertNoOtherJob(this.prisma, booking.quote.guidedRequestId, booking.id);
     // Acconto trattenuto e già passato al professionista (§348): il lavoro non torna indietro.
     const keptAndReleased = await this.prisma.jobPayment.findFirst({ where: { bookingId, depositKeptAt: { not: null }, releasedAt: { not: null } }, select: { id: true } });
     if (keptAndReleased) {
       throw new ForbiddenException("L'acconto è già passato al professionista: per un nuovo appuntamento invia una nuova richiesta.");
+    }
+
+    // Un appuntamento già passato non si riapre (collaudo F-08).
+    if (booking.scheduledAt.getTime() <= wallClockNow().getTime()) {
+      throw new ForbiddenException("L'ora di questo appuntamento è già passata: per un nuovo appuntamento invia una nuova richiesta.");
     }
 
     const scheduledAt = booking.scheduledAt;
@@ -958,65 +1113,7 @@ export class BookingsService implements OnModuleInit {
     }
     const maxBookings =
       requestServiceMode === "ONLINE" ? (matchingSlot?.onlineMaxBookings ?? 1) : (matchingSlot?.homeMaxBookings ?? 1);
-
-    try {
-      await this.prisma.$transaction(
-        async (tx) => {
-          const existingBookings = await tx.booking.findMany({
-            where: {
-              professionalProfileId: booking.professionalProfileId,
-              status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
-              scheduledAt: { gte: dayStart, lt: dayEnd },
-            },
-            select: { scheduledAt: true, serviceMode: true },
-          });
-          const bookedCount = existingBookings.filter(
-            (b) => b.scheduledAt.getTime() === scheduledAt.getTime() && (requestServiceMode ? b.serviceMode === requestServiceMode : true),
-          ).length;
-          if (bookedCount >= maxBookings) {
-            throw new ConflictException("Questa fascia non è più libera.");
-          }
-          await tx.booking.update({
-            where: { id: bookingId },
-            data: { status: "CONFIRMED", canceledBy: null, cancellationNote: null, canceledLate: false },
-          });
-        },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-      );
-    } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
-        throw new ConflictException("Questa fascia non è più libera.");
-      }
-      if (isOtherJobViolation(err)) throw new ConflictException(OTHER_JOB_MESSAGE);
-      throw err;
-    }
-
-    const otherPartyUserId = isClient ? booking.professionalProfile.userId : booking.clientId;
-    await this.notificationsService.notify(otherPartyUserId, isClient ? "BOOKING_REOPENED_BY_CLIENT" : "BOOKING_REOPENED_BY_PROFESSIONAL", {
-      bookingId,
-      guidedRequestId: booking.quote?.guidedRequestId,
-    });
-    if (isProfessional) {
-      await this.professionalMetricsService.touchActivity(booking.professionalProfileId);
-    }
-    if (booking.quote) {
-      await this.timelineService.log(
-        booking.quote.guidedRequestId,
-        booking.professionalProfileId,
-        isClient ? "CLIENT" : "PROFESSIONAL",
-        `${isClient ? "Il cliente" : "Il professionista"} ha riaperto la prenotazione annullata.`,
-      );
-    }
-
-    // Acconto trattenuto per l'annullamento tardivo (§348): torna acconto.
-    await this.jobPaymentsService.undoKeptDeposit(bookingId);
-    // Lavoro online con acconto già rimborsato all'annullamento: si riparte dall'acconto.
-    await this.prisma.jobPayment.updateMany({
-      where: { bookingId, paymentMethod: "MANOVIA", onlineStage: "REFUNDED" },
-      data: { onlineStage: "AWAITING_DEPOSIT", status: "PENDING", releasedAt: null },
-    });
-
-    return { bookingId, status: "CONFIRMED" as const };
+    return { scheduledAt, dayStart, dayEnd, requestServiceMode, maxBookings };
   }
 
   /**
@@ -1037,7 +1134,7 @@ export class BookingsService implements OnModuleInit {
   /**
    * Il cliente segnala un problema sul lavoro (docs/CHANGELOG.md §164):
    * mancata presentazione (entro 7 giorni dalla fine dell'appuntamento) o
-   * lavoro non andato bene (entro 14 giorni). Finestre ricalcolate qui, mai
+   * lavoro non andato bene (entro 7 giorni, finché il cliente non conferma). Finestre ricalcolate qui, mai
    * fidarsi del client. Una sola segnalazione per lavoro; la decide un admin.
    */
   /**
@@ -1122,19 +1219,21 @@ export class BookingsService implements OnModuleInit {
       throw new ConflictException("Hai già segnalato un problema su questo lavoro.");
     }
     const allowed = jobIssueTypesAllowed({ ...booking, hasIssue: false }, new Date());
-    if (!allowed.includes(input.type)) {
+    // Passato il termine resta la segnalazione senza rimborso (decisione di Luca del 30/10/2026).
+    const late = !allowed.includes(input.type) && input.type === "BAD_WORK" && jobIssueLateAllowed({ ...booking, hasIssue: false }, new Date());
+    if (!allowed.includes(input.type) && !late) {
       throw new BadRequestException(
         input.type === "NO_SHOW"
           ? "La mancata presentazione si può segnalare dalla fine dell'appuntamento, entro 7 giorni, se non hai già confermato il lavoro."
-          : "Un lavoro non andato bene si può segnalare dall'inizio dell'appuntamento, entro 14 giorni dalla sua conclusione.",
+          : `Un lavoro non andato bene si può segnalare dall'inizio dell'appuntamento, entro ${BAD_WORK_REPORT_DAYS} giorni dalla sua conclusione, finché non hai confermato che è terminato.`,
       );
     }
 
     // Prima fase in chat (§165): cliente e professionista provano a
     // risolvere da soli. Senza una richiesta collegata non c'è chat
     // (prenotazione diretta dall'agenda): si passa subito al nostro team.
-    // Pagamento diretto (§168): resta sempre tra le parti, niente team.
-    const assisted = booking.jobPayment?.paymentMethod !== "DIRECT";
+    // Pagamento diretto (§168) o dopo il termine: resta sempre tra le parti, niente team.
+    const assisted = jobIssueAssisted(booking.jobPayment?.paymentMethod, late);
     const inChat = booking.quote !== null || !assisted;
     const issue = await this.prisma.jobIssue.create({
       data: {
@@ -1143,17 +1242,20 @@ export class BookingsService implements OnModuleInit {
         description: input.description.trim(),
         photoUrls: input.photoUrls,
         status: inChat ? "CHAT" : "OPEN",
+        late,
         // Senza chat va subito al nostro team: da qui le 72 ore per la
         // versione del professionista (§167).
         ...(inChat ? {} : { escalatedAt: new Date(), escalationReason: "CLIENT" }),
       },
     });
+    if (!inChat) await this.jobIssueOutcomeService.notifyIssueAdmins("ADMIN_JOB_ISSUE_TO_REVIEW", { bookingId, issueType: input.type, stage: "ESCALATED" });
 
     await this.notificationsService.notify(booking.professionalProfile.userId, "JOB_ISSUE_REPORTED", {
       bookingId,
       issueType: input.type,
       inChat,
       assisted,
+      late,
       guidedRequestId: booking.quote?.guidedRequestId,
       professionalProfileId: booking.professionalProfileId,
     });
@@ -1162,7 +1264,9 @@ export class BookingsService implements OnModuleInit {
         booking.quote.guidedRequestId,
         booking.professionalProfileId,
         "CLIENT",
-        assisted
+        late
+          ? `Il cliente ha segnalato un problema: ${JOB_ISSUE_LABEL[input.type].toLowerCase()}. «${input.description.trim()}» ${JOB_ISSUE_LATE_NOTE} Scrivetevi qui in chat per trovare insieme una soluzione.`
+          : assisted
           ? `Il cliente ha segnalato un problema: ${JOB_ISSUE_LABEL[input.type].toLowerCase()}. «${input.description.trim()}» Il professionista ha 48 ore per rispondere qui in chat e provare a trovare una soluzione; se non risponde la segnalazione passa da sola al nostro team, se non trovate un accordo il cliente può chiedere al nostro team di decidere.`
           : `Il cliente ha segnalato un problema: ${JOB_ISSUE_LABEL[input.type].toLowerCase()}. «${input.description.trim()}» Il lavoro è pagato direttamente al professionista: scrivetevi qui in chat per trovare insieme una soluzione. Il cliente potrà poi lasciare la recensione.`,
       );
@@ -1190,9 +1294,9 @@ export class BookingsService implements OnModuleInit {
     if (booking.issue.status !== "CHAT") throw new BadRequestException("La segnalazione non è più in chat.");
     const now = new Date();
 
-    // Pagamento diretto (§168): "Non abbiamo risolto" chiude la segnalazione
-    // tra le parti, senza il nostro team; il cliente può recensire.
-    if (booking.jobPayment?.paymentMethod === "DIRECT") {
+    // Pagamento diretto (§168) o dopo il termine: "Non abbiamo risolto"
+    // chiude la segnalazione tra le parti, senza il nostro team; il cliente può recensire.
+    if (!jobIssueAssisted(booking.jobPayment?.paymentMethod, booking.issue.late)) {
       const status = outcome === "RESOLVED" ? "RESOLVED" : "UNRESOLVED";
       await this.prisma.jobIssue.update({ where: { id: booking.issue.id }, data: { status, resolvedAt: now } });
       await this.notificationsService.notify(booking.professionalProfile.userId, outcome === "RESOLVED" ? "JOB_ISSUE_SETTLED" : "JOB_ISSUE_UNRESOLVED", {
@@ -1200,6 +1304,7 @@ export class BookingsService implements OnModuleInit {
         issueType: booking.issue.type,
         guidedRequestId: booking.quote?.guidedRequestId,
         audience: "PROFESSIONAL",
+        late: booking.issue.late,
       });
       if (booking.quote) {
         await this.timelineService.log(
@@ -1223,6 +1328,7 @@ export class BookingsService implements OnModuleInit {
           id: booking.issue.id,
           createdAt: booking.issue.createdAt,
           professionalRespondedAt: booking.issue.professionalRespondedAt,
+          refundOfferedAt: booking.issue.refundOfferedAt,
           guidedRequestId: booking.quote?.guidedRequestId ?? null,
           professionalProfileId: booking.professionalProfileId,
         },
@@ -1247,6 +1353,7 @@ export class BookingsService implements OnModuleInit {
       audience: "PROFESSIONAL",
       ...(outcome === "ESCALATE" ? { evidenceDueAt: jobIssueEvidenceDueAt(now).toISOString() } : {}),
     });
+    if (outcome === "ESCALATE") await this.jobIssueOutcomeService.notifyIssueAdmins("ADMIN_JOB_ISSUE_TO_REVIEW", { bookingId, issueType: booking.issue.type, stage: "ESCALATED" });
     if (booking.quote) {
       await this.timelineService.log(
         booking.quote.guidedRequestId,
@@ -1258,6 +1365,87 @@ export class BookingsService implements OnModuleInit {
       );
     }
     return { bookingId, status };
+  }
+
+  /**
+   * Il professionista propone in chat un rimborso al cliente su un lavoro
+   * pagato online (collaudo F-03): prima l'accordo restava a parole e non
+   * diventava mai vero sul sito. Una nuova proposta sostituisce la vecchia.
+   */
+  async offerIssueRefund(professionalUserId: string, bookingId: string, amountEurCents: number) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { professionalProfile: { select: { userId: true } }, issue: true, quote: { select: { guidedRequestId: true } }, jobPayment: true },
+    });
+    if (!booking || booking.professionalProfile.userId !== professionalUserId) throw new ForbiddenException("Questa prenotazione non è tua.");
+    if (!booking.issue) throw new NotFoundException("Nessuna segnalazione su questo lavoro.");
+    if (booking.issue.status !== "CHAT") throw new BadRequestException("La segnalazione non è più in chat: ora decide il nostro team.");
+    const jp = booking.jobPayment;
+    if (!jp || jp.paymentMethod !== "MANOVIA" || jp.releasedAt) {
+      throw new BadRequestException("Il rimborso dal sito si propone solo su un lavoro pagato online e con i soldi ancora fermi.");
+    }
+    const available = jp.paidEurCents - jp.refundedEurCents;
+    if (amountEurCents > available) {
+      throw new BadRequestException(`Puoi proporre al massimo ${formatEurCents(available)}, quanto il cliente ha pagato online.`);
+    }
+    await this.prisma.jobIssue.update({ where: { id: booking.issue.id }, data: { refundOfferEurCents: amountEurCents, refundOfferedAt: new Date() } });
+    await this.notificationsService.notify(booking.clientId, "JOB_ISSUE_REFUND_OFFERED", {
+      bookingId,
+      guidedRequestId: booking.quote?.guidedRequestId,
+      amountEurCents,
+      audience: "CLIENT",
+    });
+    if (booking.quote) {
+      await this.timelineService.log(
+        booking.quote.guidedRequestId,
+        booking.professionalProfileId,
+        "PROFESSIONAL",
+        `Il professionista propone un rimborso di ${formatEurCents(amountEurCents)}. Se il cliente lo accetta parte subito e la segnalazione si chiude.`,
+      );
+    }
+    return { bookingId, refundOfferEurCents: amountEurCents };
+  }
+
+  /** Il cliente accetta il rimborso proposto: parte subito e la segnalazione si chiude (collaudo F-03). */
+  async acceptIssueRefund(clientId: string, bookingId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { professionalProfile: { select: { userId: true } }, issue: true, quote: { select: { guidedRequestId: true } }, jobPayment: { select: { id: true } } },
+    });
+    if (!booking || booking.clientId !== clientId) throw new ForbiddenException("Questa prenotazione non è tua.");
+    const issue = booking.issue;
+    const amount = issue?.refundOfferEurCents ?? 0;
+    if (!issue || issue.status !== "CHAT" || amount <= 0 || !booking.jobPayment) throw new BadRequestException("Non c'è nessun rimborso da accettare.");
+    // Una sola accettazione anche con due tocchi insieme.
+    const claimed = await this.prisma.jobIssue.updateMany({
+      where: { id: issue.id, status: "CHAT", refundOfferEurCents: amount },
+      data: { status: "RESOLVED", resolvedAt: new Date(), agreedRefundEurCents: amount, refundOfferEurCents: null },
+    });
+    if (claimed.count === 0) throw new BadRequestException("La proposta è cambiata: ricarica la pagina.");
+    try {
+      await this.jobPaymentsService.refundAgreed(booking.jobPayment.id, amount, clientId);
+    } catch (err) {
+      // Stripe non risponde: la segnalazione torna in chat con la stessa proposta.
+      await this.prisma.jobIssue.update({ where: { id: issue.id }, data: { status: "CHAT", resolvedAt: null, agreedRefundEurCents: null, refundOfferEurCents: amount } });
+      this.logger.warn(`Rimborso concordato non partito per ${bookingId}: ${(err as Error).message}`);
+      throw new BadRequestException("Il rimborso non è partito: riprova tra qualche minuto.");
+    }
+    await this.notificationsService.notify(booking.professionalProfile.userId, "JOB_ISSUE_SETTLED", {
+      bookingId,
+      issueType: issue.type,
+      guidedRequestId: booking.quote?.guidedRequestId,
+      agreedRefundEurCents: amount,
+      audience: "PROFESSIONAL",
+    });
+    if (booking.quote) {
+      await this.timelineService.log(
+        booking.quote.guidedRequestId,
+        booking.professionalProfileId,
+        "CLIENT",
+        `Il cliente ha accettato il rimborso di ${formatEurCents(amount)}: la segnalazione è chiusa.`,
+      );
+    }
+    return { bookingId, status: "RESOLVED" as const, agreedRefundEurCents: amount };
   }
 
   /** Il professionista risponde alla segnalazione con la sua versione, finché è in esame. */
@@ -1276,6 +1464,8 @@ export class BookingsService implements OnModuleInit {
       where: { id: booking.issue.id },
       data: { professionalResponse: input.response.trim(), professionalRespondedAt: new Date() },
     });
+    // In esame: ora c'è da decidere (§167).
+    if (booking.issue.status === "OPEN") await this.jobIssueOutcomeService.notifyIssueAdmins("ADMIN_JOB_ISSUE_TO_REVIEW", { bookingId, issueType: booking.issue.type, stage: "VERSION" });
     if (booking.quote) {
       await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, "PROFESSIONAL", "Il professionista ha risposto alla segnalazione.");
     }
@@ -1337,6 +1527,7 @@ export class BookingsService implements OnModuleInit {
           id: b.issue!.id,
           createdAt: b.issue!.createdAt,
           professionalRespondedAt: b.issue!.professionalRespondedAt,
+          refundOfferedAt: b.issue!.refundOfferedAt,
           guidedRequestId: b.quote?.guidedRequestId ?? null,
           professionalProfileId: b.professionalProfileId,
         })),
@@ -1349,11 +1540,15 @@ export class BookingsService implements OnModuleInit {
       issue: toJobIssueSummary(booking.issue, {
         proRepliedAt: booking.issue ? chatReplies.get(booking.issue.id) : null,
         paidOnline: jobPaidOnline(booking.jobPayment),
-        assisted: booking.jobPayment?.paymentMethod !== "DIRECT",
+        assisted: jobIssueAssisted(booking.jobPayment?.paymentMethod, booking.issue?.late),
       }),
       // Pagamento del lavoro (§168): metodo scelto, acconto, saldo, rimborsi.
       payment: toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents),
-      issueTypesAllowed: jobIssueTypesAllowed({ ...booking, hasIssue: booking.issue !== null }, now),
+      issueTypesAllowed: jobIssueLateAllowed({ ...booking, hasIssue: booking.issue !== null }, now)
+        ? ["BAD_WORK" as const]
+        : jobIssueTypesAllowed({ ...booking, hasIssue: booking.issue !== null }, now),
+      // Dopo il termine si segnala ancora un lavoro non andato bene, senza rimborso.
+      issueLate: jobIssueLateAllowed({ ...booking, hasIssue: booking.issue !== null }, now),
       canReview: clientCanReview({
         status: booking.status,
         clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt,
@@ -1378,6 +1573,15 @@ export class BookingsService implements OnModuleInit {
       // prenotazioni dirette da agenda pubblica.
       guidedRequestId: booking.quote?.guidedRequestId ?? null,
       hasReview: booking.review !== null,
+      // Recensione aggiornabile una volta dopo una segnalazione a lavoro chiuso senza accordo.
+      canUpdateReview: clientCanUpdateReview({
+        hasReview: booking.review !== null,
+        reviewUpdatedAt: booking.review?.updatedAfterIssueAt ?? null,
+        issue: booking.issue,
+      }),
+      myReview: booking.review
+        ? { id: booking.review.id, rating: booking.review.rating, comment: booking.review.comment, photoUrls: booking.review.photoUrls }
+        : null,
       // Titolo/categoria, descrizione e foto della richiesta guidata
       // originale — richiesta esplicita dell'utente ("i dati del
       // preventivo da lui inviato all'inizio come la descrizione
@@ -1408,6 +1612,8 @@ export class BookingsService implements OnModuleInit {
       // Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto
       // all'etichetta "Annullata".
       canceledBy: booking.canceledBy,
+      // Richiesta di riaprire un appuntamento annullato, in attesa della risposta (collaudo F-08).
+      reopenRequestedBy: booking.status === "CANCELED" && booking.reopenRequestedAt ? (booking.reopenRequestedBy === "PROFESSIONAL" ? ("PROFESSIONAL" as const) : ("CLIENT" as const)) : null,
       // Dati di contatto del professionista, per il popup "Non presentato"
       // (contatta oppure chiedi il rimborso) — richiesta esplicita
       // dell'utente, visibili solo qui, non prima nel ciclo di vita.
