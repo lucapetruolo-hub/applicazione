@@ -1,15 +1,12 @@
-import type { Metadata } from "next";
+"use client";
+
 import Link from "next/link";
 import { Button, Icon, Text, YStack, brand } from "@professionisti/ui";
 
-export const metadata: Metadata = {
-  title: "Account eliminato",
-  robots: { index: false, follow: false },
-};
-
 /**
  * Conferma dopo "Elimina definitivamente" (collaudo B-01): prima si tornava
- * alla home senza nessun segno che l'account fosse stato chiuso.
+ * alla home senza nessun segno che l'account fosse stato chiuso. Titolo e
+ * noindex in layout.tsx: la pagina usa le primitive Tamagui (client).
  */
 export default function AccountEliminatoPage() {
   return (
