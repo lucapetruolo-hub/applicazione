@@ -79,3 +79,17 @@ della seconda, prove a tutte e due, conto di Marco al centesimo).
 `pnpm --filter @professionisti/api test` 1147 verdi, typecheck verde. La
 prova dal vivo su Stripe resta da fare dopo l'unione, con una chiave in sola
 lettura dell'ambiente di Render per leggere il saldo di Marco.
+
+## Terzo giro: Admin → Contestazioni, una riga per contestazione
+
+**Richiesta** di Luca: "effettua la miglioria 3".
+
+**Decisione.** Nella scheda della contestazione (da preparare e
+nell'archivio), quando lo stesso lavoro ha più contestazioni compare un
+riquadro "2 contestazioni sullo stesso lavoro: le prove vanno a tutte" con una
+riga ciascuna: Acconto o Saldo, cifra, stato e scadenza (nell'archivio solo
+lo stato, senza chiedere a Stripe). In testa la somma di quelle ancora
+aperte. Le prove restano un solo modulo, che va a tutte (secondo giro).
+
+**Verifica.** Test nuovo in `bank-disputes.test.ts` (due righe, somma 80 €).
+`pnpm --filter @professionisti/api test` verde; typecheck e lint del sito verdi.

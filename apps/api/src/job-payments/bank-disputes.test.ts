@@ -124,6 +124,27 @@ describe("BankDisputesService", () => {
     expect(row!.sentExplanation).toBeNull();
   });
 
+  it("acconto e saldo contestati: una riga per ciascuna, con la somma in testa (collaudo F-21)", async () => {
+    const { service, stripe, prisma } = setup();
+    prisma.jobPayment.findMany.mockResolvedValue([{ ...job, stripePaymentIntentId: "pi_dep", balancePaymentIntentId: "pi_bal", disputeStatuses: { du_1: "needs_response", du_2: "needs_response" } }]);
+    stripe.disputes.retrieve.mockImplementation(async (id: string) => ({
+      id,
+      status: "needs_response",
+      reason: "fraudulent",
+      amount: 4000,
+      payment_intent: id === "du_1" ? "pi_dep" : "pi_bal",
+      evidence_details: { due_by: 1_762_300_800 },
+    }));
+
+    const [row] = await service.listOpen();
+
+    expect(row!.amountEurCents).toBe(8000);
+    expect(row!.parts).toEqual([
+      expect.objectContaining({ disputeId: "du_1", payment: "DEPOSIT", amountEurCents: 4000, status: "needs_response" }),
+      expect.objectContaining({ disputeId: "du_2", payment: "BALANCE", amountEurCents: 4000, status: "needs_response" }),
+    ]);
+  });
+
   it("acconto e saldo contestati: le stesse prove vanno anche alla seconda contestazione aperta (collaudo F-21)", async () => {
     const { service, stripe, prisma } = setup();
     prisma.jobPayment.findUnique.mockResolvedValue({ ...job, disputeStatuses: { du_1: "needs_response", du_2: "needs_response", du_0: "won" } });

@@ -12,6 +12,7 @@ import {
   formatEurCents,
   type AdminBankDispute,
   type AdminBankDisputeArchiveRow,
+  type BankDisputePart,
   type AdminOnlineLimitRow,
   type AdminUnpaidBalance,
 } from "@professionisti/shared";
@@ -497,6 +498,7 @@ function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; tok
         </Text>
         <Text color={brand.grafite}>{bankDisputeReasonLabel(row.reason)}</Text>
       </XStack>
+      <DisputeParts parts={row.parts} />
       {row.dueBy && !row.submitted ? (
         // Scadenza in vista sulla scheda da preparare, non solo in Home e nell'archivio (riordino admin).
         <Text fontWeight="800" color={dueWithinDays(row.dueBy, 3) ? brand.urgenza : brand.grafite}>
@@ -651,6 +653,33 @@ function BankDisputeArchive({ token, reloadKey }: { token: string; reloadKey: un
   );
 }
 
+const DISPUTE_PAYMENT_LABEL = { DEPOSIT: "Acconto", BALANCE: "Saldo" } as const;
+
+/**
+ * Acconto e saldo contestati insieme (collaudo F-21): una riga per ciascuna
+ * contestazione. Le prove sono le stesse e vanno a tutte e due.
+ */
+function DisputeParts({ parts }: { parts: BankDisputePart[] }) {
+  if (parts.length < 2) return null;
+  return (
+    <YStack gap="$1" padding="$3" borderRadius="$3" backgroundColor={brand.gesso}>
+      <Text fontSize={13} color={brand.grafite70}>
+        {parts.length} contestazioni sullo stesso lavoro: le prove vanno a tutte.
+      </Text>
+      {parts.map((part, i) => (
+        <XStack key={part.disputeId} gap="$2" alignItems="center" flexWrap="wrap">
+          <Text fontWeight="700" color={brand.grafite}>
+            {part.payment ? DISPUTE_PAYMENT_LABEL[part.payment] : `Contestazione ${i + 1}`}
+          </Text>
+          {part.amountEurCents !== null ? <Text color={brand.grafite}>{formatEurCents(part.amountEurCents)}</Text> : null}
+          <Text color={brand.grafite70}>· {bankDisputeStatusLabel(part.status)}</Text>
+          {part.dueBy ? <Text color={brand.grafite70}>· entro il {formatAdminDate(part.dueBy)}</Text> : null}
+        </XStack>
+      ))}
+    </YStack>
+  );
+}
+
 function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRow; token: string }) {
   const [open, setOpen] = useState(false);
   const tone = row.status === "won" ? "ok" : row.status === "lost" ? "danger" : row.closedAt ? "neutral" : "warn";
@@ -664,6 +693,7 @@ function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRo
         </Text>
         <Text color={brand.grafite}>{bankDisputeReasonLabel(row.reason)}</Text>
       </XStack>
+      <DisputeParts parts={row.parts} />
       <Text fontSize={13} color={brand.grafite70}>
         {row.businessName} · cliente {row.clientName}
         {row.openedAt ? ` · aperta il ${formatAdminDate(row.openedAt)}` : ""}

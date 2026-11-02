@@ -9,6 +9,7 @@ import {
   type AdminBankDisputeArchiveRow,
   type BankDisputeEvidenceInput,
   type BankDisputeEvidenceRecord,
+  type BankDisputePart,
   type BankDisputeProNoteInput,
   type ProfessionalBankDispute,
 } from "@professionisti/shared";
@@ -16,6 +17,9 @@ import { PRISMA } from "../prisma/prisma.module";
 import { bookingSearchWhere, searchEurCents } from "../admin/admin-search";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { renderDocumentPdf, type PdfBlock, type PdfDocumentModel } from "../accounting/document-pdf";
+
+/** Contestazioni chiuse da Stripe. */
+const CLOSED = ["won", "lost", "warning_closed", "prevented"];
 
 /** Messaggi nel PDF: gli ultimi, abbastanza per la banca senza farne un libro. */
 const MAX_MESSAGES = 80;
@@ -193,6 +197,16 @@ export class BankDisputesService {
         return null;
       });
     }
+    // Le altre contestazioni dello stesso lavoro (acconto e saldo), una riga ciascuna.
+    const statuses = disputeStatusMap(job.disputeStatuses);
+    const others = Object.keys(statuses).filter((id) => id !== job.stripeDisputeId);
+    const otherDisputes = this.stripe
+      ? await Promise.all(others.map((id) => this.stripe!.disputes.retrieve(id, {}, this.requestOptions(job)).catch(() => null)))
+      : others.map(() => null);
+    const parts = [
+      this.part(job, job.stripeDisputeId!, dispute, job.stripeDisputeStatus),
+      ...others.map((id, i) => this.part(job, id, otherDisputes[i] ?? null, statuses[id] ?? null)),
+    ];
     const status = dispute?.status ?? job.stripeDisputeStatus ?? "needs_response";
     const dueBy = dispute?.evidence_details?.due_by;
     const submitted = !(BANK_DISPUTE_OPEN_STATUSES as readonly string[]).includes(status);
@@ -206,7 +220,11 @@ export class BankDisputesService {
       disputeId: job.stripeDisputeId!,
       businessName: businessName(job),
       clientName: clientName(job),
-      amountEurCents: dispute?.amount ?? job.paidEurCents,
+      // Con più contestazioni la somma di quelle ancora aperte o in mano alla banca.
+      amountEurCents:
+        parts.length > 1
+          ? parts.filter((p) => !CLOSED.includes(p.status)).reduce((sum, p) => sum + (p.amountEurCents ?? 0), 0) || (dispute?.amount ?? job.paidEurCents)
+          : (dispute?.amount ?? job.paidEurCents),
       reason: dispute?.reason ?? null,
       status,
       dueBy: dueBy ? new Date(dueBy * 1000).toISOString() : null,
@@ -214,6 +232,20 @@ export class BankDisputesService {
       sentExplanation: submitted ? (savedEvidence(job)?.explanation ?? dispute?.evidence?.uncategorized_text ?? null) : null,
       professionalNote: job.disputeProNote && job.disputeProNoteAt ? { text: job.disputeProNote, photoUrls: job.disputeProPhotoUrls, at: job.disputeProNoteAt.toISOString() } : null,
       draft: draftFromSaved(savedEvidence(job)) ?? this.draft(job, dispute?.reason ?? null),
+      parts,
+    };
+  }
+
+  /** Una contestazione del lavoro: quale pagamento, stato, cifra e scadenza. */
+  private part(job: Job, disputeId: string, dispute: Stripe.Dispute | null, savedStatus: string | null): BankDisputePart {
+    const intent = typeof dispute?.payment_intent === "string" ? dispute.payment_intent : (dispute?.payment_intent?.id ?? null);
+    const due = dispute?.evidence_details?.due_by;
+    return {
+      disputeId,
+      payment: intent && intent === job.stripePaymentIntentId ? "DEPOSIT" : intent && intent === job.balancePaymentIntentId ? "BALANCE" : null,
+      status: dispute?.status ?? savedStatus ?? "needs_response",
+      amountEurCents: dispute?.amount ?? null,
+      dueBy: due ? new Date(due * 1000).toISOString() : null,
     };
   }
 
@@ -267,6 +299,13 @@ export class BankDisputesService {
       history: logs
         .filter((l) => l.entityId === job.id && l.reason)
         .map((l) => ({ at: l.createdAt.toISOString(), text: l.reason!, by: l.changedByUserId ? (userEmail.get(l.changedByUserId) ?? "utente non più presente") : null })),
+      parts: Object.entries({ [job.stripeDisputeId!]: job.stripeDisputeStatus ?? "needs_response", ...disputeStatusMap(job.disputeStatuses) }).map(([disputeId, status]) => ({
+        disputeId,
+        payment: null,
+        status,
+        amountEurCents: null,
+        dueBy: null,
+      })),
     }));
   }
 
