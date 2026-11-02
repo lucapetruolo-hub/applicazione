@@ -40,6 +40,17 @@ export const TERMS_CHANGES: readonly TermsChange[] = [
     // Prima del lancio: nessun avviso agli account di prova.
     notify: false,
   },
+  {
+    version: "2026-11-02",
+    publishedAt: "2026-11-02",
+    effectiveAt: "2026-11-02",
+    summary: [
+      "Ogni persona o impresa può avere un solo account professionista.",
+      "Le recensioni con segnali di possibile falsità le controlla una persona del nostro team prima di pubblicarle.",
+    ],
+    // Prima del lancio: nessun avviso agli account di prova.
+    notify: false,
+  },
 ];
 
 export function findTermsChange(version: string): TermsChange | undefined {

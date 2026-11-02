@@ -1,4 +1,5 @@
 import type {
+  ReviewHoldReason,
   AgendaAttention,
   AppointmentReplyAction,
   AppointmentReplyState,
@@ -459,6 +460,8 @@ export type AdminUserDetail = {
     reviewsReceived: number;
     /** Quelle che si vedono sul profilo pubblico: la differenza sono le nascoste. */
     reviewsReceivedVisible: number;
+    /** Recensioni (scritte o ricevute) in controllo prima della pubblicazione. */
+    reviewsHeld: number;
     reportsMade: number;
     reportsReceived: number;
   };
@@ -494,6 +497,9 @@ export type AdminUserReview = {
   comment: string | null;
   other: string;
   createdAt: string;
+  /** In controllo prima della pubblicazione (collaudo P-01): "Pubblica" o "Nascondi". */
+  heldAt: string | null;
+  heldReasons: ReviewHoldReason[];
   hiddenAt: string | null;
   /** La decisione che la tiene nascosta, da annullare con "Rimetti visibile". */
   hiddenBy: { reportId: string; note: string | null } | null;
@@ -893,6 +899,8 @@ export type SentReview = {
   createdAt: string;
   /** Nascosta da un admin dopo una segnalazione. */
   hidden: boolean;
+  /** In controllo prima della pubblicazione (collaudo P-01). */
+  held?: boolean;
   /** `null` se il professionista ha eliminato il profilo. */
   professionalProfileId: string | null;
   businessName: string;
@@ -2015,7 +2023,7 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       uploadFile<{ imageUrl: string }>("/bookings/completion-photos", token, file, "image"),
 
     createReview: (token: string, input: ReviewInput) =>
-      request<{ id: string }>("/reviews", {
+      request<{ id: string; held?: boolean }>("/reviews", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
@@ -2117,6 +2125,10 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     /** "Nascondi la recensione" / "Togli dalla ricerca" dalla scheda (docs/changelog/2026-10-30-admin-persone.md). */
     adminModerateFromUser: (token: string, id: string, input: AdminModerateInput) =>
       request<{ id: string }>(`/admin/users/${id}/moderate`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    /** Pubblica una recensione in controllo (collaudo P-01). */
+    adminPublishHeldReview: (token: string, reviewId: string) =>
+      request<{ id: string }>(`/admin/reviews/${reviewId}/publish`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     adminSuspiciousUsers: (token: string) =>
       request<AdminSuspiciousUsers>("/admin/suspicious-users", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

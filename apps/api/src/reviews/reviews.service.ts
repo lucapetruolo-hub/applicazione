@@ -6,6 +6,7 @@ import { publicVisibilityWhere } from "../professional-fiscal/public-visibility"
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { publicClientName } from "../common/client-name.util";
+import { loadReviewHoldReasons } from "./review-hold";
 
 // Le recensioni del cliente sono pubbliche subito: il professionista non
 // recensisce più il cliente e il "doppio cieco" non esiste più
@@ -45,7 +46,9 @@ export class ReviewsService {
       comment: review.comment,
       mediaUrls: review.photoUrls,
       createdAt: review.createdAt.toISOString(),
-      hidden: review.hiddenAt !== null,
+      // In controllo (collaudo P-01) non è "nascosta da un admin".
+      hidden: review.hiddenAt !== null && review.heldAt === null,
+      held: review.heldAt !== null,
       professionalProfileId: review.booking.professionalProfile.deletedAt ? null : review.booking.professionalProfile.id,
       businessName: review.booking.professionalProfile.businessName,
       professionalReply: review.professionalReply,
@@ -63,7 +66,8 @@ export class ReviewsService {
     const profile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId }, select: { id: true } });
     if (!profile) throw new ForbiddenException("Solo i professionisti ricevono recensioni.");
     const reviews = await this.prisma.review.findMany({
-      where: { booking: { professionalProfileId: profile.id } },
+      // Quelle in controllo il professionista le vede solo dopo la pubblicazione (collaudo P-01).
+      where: { booking: { professionalProfileId: profile.id }, heldAt: null },
       include: {
         booking: {
           select: {
@@ -208,26 +212,52 @@ export class ReviewsService {
       throw new ForbiddenException("Puoi recensire solo un lavoro completato.");
     }
 
+    // Con un segnale di recensione finta resta in controllo, nascosta, finché
+    // un admin non decide (collaudo P-01).
+    const now = new Date();
+    const heldReasons = await loadReviewHoldReasons(this.prisma, booking.id, now);
+    const held = heldReasons.length > 0;
     const review = await this.prisma.review.create({
-      data: { bookingId: input.bookingId, rating: input.rating, comment: input.comment, photoUrls: input.photoUrls },
+      data: {
+        bookingId: input.bookingId,
+        rating: input.rating,
+        comment: input.comment,
+        photoUrls: input.photoUrls,
+        ...(held ? { hiddenAt: now, heldAt: now, heldReasons } : {}),
+      },
     });
+    if (held) return { id: review.id, held: true };
 
-    // Metriche di affidabilità (CLAUDE.md §15, evento 5).
-    await this.professionalMetricsService.recordReview(booking.professionalProfileId, input.rating);
-
-    // Avviso al professionista (docs/CHANGELOG.md §185): la recensione è già
-    // pubblica sul suo profilo.
-    await this.notificationsService.notify(booking.professionalProfile.userId, "NEW_REVIEW", {
+    await this.afterPublished(booking.professionalProfileId, input.rating, {
+      userId: booking.professionalProfile.userId,
       bookingId: booking.id,
       reviewId: review.id,
       guidedRequestId: booking.quote?.guidedRequestId ?? null,
-      // Il cliente può recensire prima che il professionista segni il lavoro
-      // come terminato (§189): l'email gli ricorda di farlo.
       professionalCompleted: booking.status === "COMPLETED",
     });
-
-    return { id: review.id };
+    return { id: review.id, held: false };
   }
+
+  /** Media dei voti e avviso al professionista quando la recensione diventa pubblica. */
+  private async afterPublished(
+    professionalProfileId: string,
+    rating: number,
+    notice: { userId: string; bookingId: string; reviewId: string; guidedRequestId: string | null; professionalCompleted: boolean },
+  ) {
+    // Metriche di affidabilità (CLAUDE.md §15, evento 5).
+    await this.professionalMetricsService.recordReview(professionalProfileId, rating);
+    // Avviso al professionista (docs/CHANGELOG.md §185): la recensione è già
+    // pubblica sul suo profilo.
+    await this.notificationsService.notify(notice.userId, "NEW_REVIEW", {
+      bookingId: notice.bookingId,
+      reviewId: notice.reviewId,
+      guidedRequestId: notice.guidedRequestId,
+      // Il cliente può recensire prima che il professionista segni il lavoro
+      // come terminato (§189): l'email gli ricorda di farlo.
+      professionalCompleted: notice.professionalCompleted,
+    });
+  }
+
 
   /**
    * Aggiornamento della recensione, una volta sola, dopo una segnalazione a

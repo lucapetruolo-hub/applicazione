@@ -16,6 +16,9 @@ import {
   type AdminRoleValue,
   type AdminSignalRole,
   type AdminUserSignal,
+  REVIEW_HOLD_DECISION_HOURS,
+  REVIEW_HOLD_REASON_LABEL,
+  type ReviewHoldReason,
 } from "@professionisti/shared";
 import { personLabel } from "./user-signals";
 import { PRISMA } from "../prisma/prisma.module";
@@ -56,7 +59,7 @@ export class AdminQueueService {
       quote: { select: { guidedRequest: { select: { description: true, category: { select: { label: true } } } } } },
     } as const;
 
-    const [bankDisputes, issues, appeals, refunds, disputes, unpaid, sdi, reports, reportAppeals, takeovers, messages, verifications, zones, chatIssues, suspicious] = await Promise.all([
+    const [bankDisputes, issues, appeals, refunds, disputes, unpaid, sdi, reports, reportAppeals, takeovers, messages, verifications, zones, chatIssues, suspicious, heldReviews] = await Promise.all([
       can("BANK_DISPUTE")
         ? this.prisma.jobPayment.findMany({ where: { stripeDisputeStatus: { in: [...BANK_DISPUTE_OPEN_STATUSES] } }, include: { booking: { include: bookingInclude } } })
         : [],
@@ -82,6 +85,12 @@ export class AdminQueueService {
       can("CLOSED_ZONE") ? this.prisma.generalRequestBlock.findMany({ where: { reopenedAt: null }, include: { category: { select: { label: true } } } }) : [],
       can("JOB_ISSUE") ? this.prisma.jobIssue.findMany({ where: { status: "CHAT" }, include: { booking: { include: bookingInclude } } }) : [],
       can("SUSPICIOUS_ACCOUNT") ? this.prisma.suspiciousAccount.findMany({ where: { archiveReason: null }, select: { userId: true, signals: true, firstSeenAt: true } }) : [],
+      can("HELD_REVIEW")
+        ? this.prisma.review.findMany({
+            where: { heldAt: { not: null } },
+            select: { id: true, rating: true, comment: true, heldAt: true, heldReasons: true, booking: { select: { clientId: true, client: { select: { name: true, surname: true } }, professionalProfile: { select: { businessName: true } } } } },
+          })
+        : [],
     ]);
     // Account sospetti con qualcosa da fare (non "Nessuna azione" né "Va bene così"), con il consiglio già scritto.
     const suspiciousUsers = suspicious.length
@@ -321,6 +330,25 @@ export class AdminQueueService {
         dueNote: null,
         createdAt: row.firstSeenAt.toISOString(),
         status: ADMIN_SIGNAL_ADVICE_LEVEL_LABEL[advice.level],
+        danger: false,
+      });
+    }
+
+    // Recensioni in controllo (collaudo P-01): si decidono dalla scheda di chi le ha scritte.
+    for (const r of heldReviews) {
+      const heldAt = r.heldAt ?? new Date();
+      items.push({
+        key: `HELD_REVIEW:${r.id}`,
+        kind: "HELD_REVIEW",
+        href: `/admin/utenti/${r.booking.clientId}?scheda=recensioni`,
+        title: `Recensione ${r.rating}★ da controllare`,
+        detail: short([r.heldReasons.map((reason) => REVIEW_HOLD_REASON_LABEL[reason as ReviewHoldReason] ?? reason).join("; "), r.comment].filter(Boolean).join(" · "), 160),
+        who: between(r.booking.client, r.booking.professionalProfile.businessName),
+        amountEurCents: null,
+        dueAt: new Date(heldAt.getTime() + REVIEW_HOLD_DECISION_HOURS * 60 * 60 * 1000).toISOString(),
+        dueNote: "il cliente aspetta la pubblicazione",
+        createdAt: heldAt.toISOString(),
+        status: "Da pubblicare o nascondere",
         danger: false,
       });
     }

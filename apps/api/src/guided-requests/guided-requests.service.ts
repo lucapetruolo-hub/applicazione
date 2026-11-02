@@ -87,6 +87,13 @@ function joinItalian(items: string[]): string {
   return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}`;
 }
 
+/** Finestra in cui la stessa richiesta mandata di nuovo è un doppio invio (collaudo I-10). */
+const DUPLICATE_REQUEST_MINUTES = 30;
+/** Testo confrontato senza maiuscole, spazi doppi e punteggiatura finale. */
+function sameRequestText(text: string | null | undefined): string {
+  return (text ?? "").toLowerCase().replace(/\s+/g, " ").replace(/[\s.!?]+$/u, "").trim();
+}
+
 @Injectable()
 export class GuidedRequestsService {
   private readonly logger = new Logger(GuidedRequestsService.name);
@@ -122,6 +129,7 @@ export class GuidedRequestsService {
     for (const slug of slugs) {
       const category = categories.find((c) => c.slug === slug)!;
       await this.assertGeneralRequestsOpen(category, input.city ?? null, true);
+      await this.assertNotDuplicate(clientId, category.id, input, null);
     }
     await this.assertAddressInCity(input);
     const submissionGroupId = randomUUID();
@@ -146,6 +154,41 @@ export class GuidedRequestsService {
       matchedProfessionals: requests.reduce((sum, r) => sum + r.matchedProfessionals, 0),
       requests,
     };
+  }
+
+  /**
+   * La stessa richiesta mandata di nuovo entro pochi minuti (collaudo I-10):
+   * con "indietro" e "Invia", o ricaricando la pagina, il professionista se ne
+   * trovava due uguali. Stesso testo, stessa categoria e stesso professionista
+   * (o stessa città per una richiesta generale); una richiesta eliminata dal
+   * cliente non conta.
+   */
+  private async assertNotDuplicate(
+    clientId: string,
+    categoryId: string,
+    input: Pick<GuidedRequestInput, "description" | "city">,
+    target: { id: string; businessName: string } | null,
+  ) {
+    const since = new Date(Date.now() - DUPLICATE_REQUEST_MINUTES * 60 * 1000);
+    const recent = await this.prisma.guidedRequest.findMany({
+      where: {
+        clientId,
+        categoryId,
+        createdAt: { gte: since },
+        deletedByClientAt: null,
+        professionalProfileId: target?.id ?? null,
+        ...(target ? {} : { city: { equals: input.city ?? "", mode: "insensitive" as const } }),
+      },
+      select: { description: true },
+    });
+    const text = sameRequestText(input.description);
+    if (recent.some((r) => sameRequestText(r.description) === text)) {
+      throw new ConflictException(
+        target
+          ? `Hai già mandato questa richiesta a ${target.businessName} pochi minuti fa: la trovi in "Le mie richieste".`
+          : `Hai già mandato questa richiesta pochi minuti fa: la trovi in "Le mie richieste".`,
+      );
+    }
   }
 
   /** Indirizzo vero e nel comune indicato (docs/CHANGELOG.md §214). */
@@ -292,6 +335,10 @@ export class GuidedRequestsService {
       if (!ownCategoryIds.includes(category.id)) {
         category = targetProfile.category;
       }
+    }
+
+    if (!opts.excludeProfileId && !opts.checksDone) {
+      await this.assertNotDuplicate(clientId, category.id, input, targetProfile ? { id: targetProfile.id, businessName: targetProfile.businessName } : null);
     }
 
     // Richiesta agganciata a una fascia "generica" dell'agenda pubblica

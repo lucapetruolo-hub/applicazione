@@ -1533,9 +1533,16 @@ model Review {
   // Promemoria al professionista per una recensione da 1-2 stelle ancora
   // senza risposta dopo 3 giorni, uno solo (decisione di Luca del 30/10/2026).
   replyReminderSentAt   DateTime?
+  // In controllo prima della pubblicazione (collaudo P-01,
+  // docs/changelog/2026-11-02-collaudo-recensioni-abusi.md): con un segnale di
+  // recensione finta resta nascosta (hiddenAt) finché un admin non la pubblica
+  // o la nasconde. heldReasons: i segnali (ReviewHoldReason).
+  heldAt                DateTime?
+  heldReasons           String[]  @default([])
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
+  @@index([heldAt])
   @@map("reviews")
 }
 
