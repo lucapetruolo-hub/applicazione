@@ -133,7 +133,10 @@ describe("controlli in più (02/11/2026)", () => {
     expect(messageHasContacts("scrivimi a mario.rossi@gmail.com")).toBe(true);
     expect(messageHasContacts("guarda www.mioSito.it")).toBe(true);
     expect(messageHasContacts("ci sentiamo su WhatsApp")).toBe(true);
+    expect(messageHasContacts("+39 333-123-4567")).toBe(true);
     expect(messageHasContacts("passo il 12.11.2026 alle 9, costo 1.250 euro")).toBe(false);
+    expect(messageHasContacts("vengo il 12.11.2026 10.30")).toBe(false);
+    expect(messageHasContacts(`${"+".repeat(50_000)}@`)).toBe(false);
   });
 
   it("contatti in chat: un segnale per persona con quanti messaggi; per il professionista Da guardare, per il cliente niente", () => {

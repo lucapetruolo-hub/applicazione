@@ -101,13 +101,31 @@ export function isDisposableEmail(email: string | null | undefined): boolean {
 
 /**
  * Telefono, email o link in un messaggio, o l'invito a scriversi su WhatsApp.
- * Un numero conta da 9 cifre in su, così date ("12.11.2026") e prezzi non
- * contano. Solo per contare i messaggi: il testo non si salva nei segnali.
+ * Un numero conta da 9 cifre in su, separate al massimo da uno spazio o un
+ * trattino: date ("12.11.2026 10.30") e prezzi non contano. Solo per contare i messaggi: il testo non si salva nei segnali.
  */
 export function messageHasContacts(text: string): boolean {
-  if (/[\w.+-]+@[\w-]+(\.[\w-]+)+/.test(text) || /https?:\/\/\S+|www\.\S+/i.test(text) || /\bwhats\s?app\b/i.test(text)) return true;
-  for (const match of text.match(/\+?\d[\d\s.-]{6,}\d/g) ?? []) {
-    if (match.replace(/\D/g, "").length >= 9) return true;
+  // Parola per parola e cifra per cifra, senza espressioni regolari che su un testo lungo diventano lente.
+  const lower = text.toLowerCase();
+  if (lower.includes("whatsapp") || lower.includes("whats app")) return true;
+  for (const word of lower.split(/\s+/)) {
+    if (word.startsWith("http://") || word.startsWith("https://") || word.startsWith("www.")) return true;
+    const at = word.indexOf("@");
+    if (at > 0 && word.indexOf(".", at + 2) > at + 1) return true;
+  }
+  let digits = 0;
+  let separators = 0;
+  for (const char of text) {
+    if (char >= "0" && char <= "9") {
+      digits += 1;
+      separators = 0;
+      if (digits >= 9) return true;
+    } else if ((char === " " || char === "-" || (char === "+" && digits === 0)) && separators === 0) {
+      separators += char === "+" ? 0 : 1;
+    } else {
+      digits = 0;
+      separators = 0;
+    }
   }
   return false;
 }

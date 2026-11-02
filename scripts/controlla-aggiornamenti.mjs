@@ -10,9 +10,10 @@
 // Node ha il suo controllo (node.yml); PostgreSQL lo controlla l'API stessa
 // ogni mese (apps/api/src/admin/database-version.service.ts), perché la
 // versione del database su Render si legge solo da dentro.
-// Ogni avviso diventa una segnalazione (issue) su GitHub, una sola per titolo.
+// Ogni avviso diventa una segnalazione (issue) su GitHub, una sola per titolo
+// (la apre il workflow aggiornamenti.yml).
 // Uso in locale (solo stampa): `node scripts/controlla-aggiornamenti.mjs`.
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 
 const MESI_PREAVVISO = 6;
 const leggi = (path) => JSON.parse(readFileSync(new URL(`../${path}`, import.meta.url), "utf8"));
@@ -100,15 +101,6 @@ for (const c of calendari) {
 for (const a of avvisi) console.error(`- ${a.titolo}`);
 if (avvisi.length === 0) console.error("Niente da aggiornare.");
 
-// 3. Una segnalazione per avviso, se non ce n'è già una aperta con lo stesso titolo.
-const { GITHUB_TOKEN, GITHUB_REPOSITORY, APRI_SEGNALAZIONI } = process.env;
-if (APRI_SEGNALAZIONI === "true" && GITHUB_TOKEN && GITHUB_REPOSITORY && avvisi.length > 0) {
-  const headers = { Authorization: `Bearer ${GITHUB_TOKEN}`, Accept: "application/vnd.github+json" };
-  const aperte = await (await fetch(`https://api.github.com/repos/${GITHUB_REPOSITORY}/issues?state=open&per_page=100`, { headers })).json();
-  const titoli = new Set(Array.isArray(aperte) ? aperte.map((i) => i.title) : []);
-  for (const a of avvisi) {
-    if (titoli.has(a.titolo)) continue;
-    const risposta = await fetch(`https://api.github.com/repos/${GITHUB_REPOSITORY}/issues`, { method: "POST", headers, body: JSON.stringify({ title: a.titolo, body: a.corpo }) });
-    if (!risposta.ok) throw new Error(`Segnalazione non aperta (${risposta.status}): ${a.titolo}`);
-  }
-}
+// 3. Gli avvisi vanno in un file: le segnalazioni le apre il workflow con `gh`,
+// una per titolo, come in node.yml.
+if (process.env.AVVISI_FILE) writeFileSync(process.env.AVVISI_FILE, JSON.stringify(avvisi));

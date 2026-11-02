@@ -32,7 +32,23 @@ jobs:
           node-version-file: .nvmrc
       - name: Confronto con npm ed endoflife.date
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-          # Sulle PR solo la prova che lo script funziona, senza segnalazioni.
-          APRI_SEGNALAZIONI: ${{ github.event_name != 'pull_request' }}
+          AVVISI_FILE: ${{ runner.temp }}/avvisi.json
         run: node scripts/controlla-aggiornamenti.mjs
+
+      # Sulle PR solo la prova che lo script funziona, senza segnalazioni.
+      - name: Segnalazioni
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AVVISI_FILE: ${{ runner.temp }}/avvisi.json
+        run: |
+          count=$(jq length "$AVVISI_FILE")
+          for i in $(seq 0 $((count - 1))); do
+            titolo=$(jq -r ".[$i].titolo" "$AVVISI_FILE")
+            if gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$titolo\" in:title" --json title --jq '.[].title' | grep -Fxq "$titolo"; then
+              echo "Segnalazione già aperta: $titolo"
+              continue
+            fi
+            jq -r ".[$i].corpo" "$AVVISI_FILE" > "$RUNNER_TEMP/corpo.md"
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$titolo" --body-file "$RUNNER_TEMP/corpo.md"
+          done
