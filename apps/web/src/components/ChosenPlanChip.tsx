@@ -12,8 +12,8 @@ import { apiClient } from "@/lib/apiClient";
  * prima spariva dal link alla pagina Abbonamento. Base con i mesi gratis
  * dell'offerta attiva; Plus e Pro con il prezzo mensile.
  */
-export function ChosenPlanChip({ tier, changeHref }: { tier: SubscriptionTier; changeHref?: string }) {
-  const info = subscriptionTierInfo(tier);
+/** "gratis per 3 mesi" per Base con l'offerta attiva, altrimenti il prezzo; null finché Base aspetta l'offerta. */
+export function useChosenPlanDetail(tier: SubscriptionTier | null): string | null {
   const [offerMonths, setOfferMonths] = useState<number | null | undefined>(undefined);
 
   useEffect(() => {
@@ -32,13 +32,16 @@ export function ChosenPlanChip({ tier, changeHref }: { tier: SubscriptionTier; c
     };
   }, [tier]);
 
+  if (!tier) return null;
   // Base: niente prezzo finché non si sa se c'è l'offerta, per non cambiarlo davanti a chi legge.
-  const detail =
-    tier === "BASE" && offerMonths === undefined
-      ? null
-      : tier === "BASE" && offerMonths
-        ? `gratis per ${offerMonths === 1 ? "1 mese" : `${offerMonths} mesi`}`
-        : `${formatEur(info.priceEurCents)} + IVA al mese`;
+  if (tier === "BASE" && offerMonths === undefined) return null;
+  if (tier === "BASE" && offerMonths) return `gratis per ${offerMonths === 1 ? "1 mese" : `${offerMonths} mesi`}`;
+  return `${formatEur(subscriptionTierInfo(tier).priceEurCents)} + IVA al mese`;
+}
+
+export function ChosenPlanChip({ tier, changeHref }: { tier: SubscriptionTier; changeHref?: string }) {
+  const info = subscriptionTierInfo(tier);
+  const detail = useChosenPlanDetail(tier);
 
   // Una riga sola di testo (non tessere flessibili): sul telefono andava a capo a metà.
   return (

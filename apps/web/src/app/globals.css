@@ -2426,25 +2426,39 @@ button.notif-row-main:hover {
   font-size: 13px;
   font-weight: 700;
 }
+/* Resta in vista scorrendo, attaccato sotto l'intestazione del sito (e sul
+   telefono sotto la barra dell'area account, 64 + 54 px), su una riga sola
+   che scorre di lato (docs/changelog/2026-11-02-registrazione-pro-migliorie.md). */
 .profile-index {
+  position: sticky;
+  top: 118px;
+  z-index: 5;
   display: flex;
   gap: 8px;
   overflow-x: auto;
   scrollbar-width: none;
   margin: 0 -16px;
-  padding: 2px 16px;
+  padding: 8px 16px;
+  background: rgba(253, 239, 225, 0.94);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   -webkit-overflow-scrolling: touch;
+}
+@media (min-width: 760px) {
+  /* Le 7 voci entrano su una riga nella colonna da 760 px, senza scorrere. */
+  .profile-index {
+    top: 64px;
+    gap: 6px;
+    margin: 0;
+    padding: 8px 0;
+  }
+  .profile-index .profile-index-link {
+    padding: 0 13px;
+    font-size: 15px;
+  }
 }
 .profile-index::-webkit-scrollbar {
   display: none;
-}
-@media (min-width: 760px) {
-  .profile-index {
-    flex-wrap: wrap;
-    overflow: visible;
-    margin: 0;
-    padding: 0;
-  }
 }
 .profile-index-link {
   flex-shrink: 0;
@@ -2466,12 +2480,86 @@ button.notif-row-main:hover {
 .profile-index-link:hover {
   border-color: #189a63;
 }
+.profile-index-link.is-active {
+  border-color: #0e7a4c;
+  background: #dcf3e7;
+  color: #0e7a4c;
+}
+/* Campi che servono per pubblicare il primo profilo, spuntati mentre si
+   compilano (docs/changelog/2026-11-02-registrazione-pro-migliorie.md). */
+.profile-required {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.profile-required-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6e6459;
+}
+.profile-required-count {
+  color: #0e7a4c;
+}
+.profile-required-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.profile-required-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px 0 6px;
+  border-radius: 999px;
+  border: 1px solid #f0dcc0;
+  background: #ffffff;
+  color: #2b2420;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.profile-required-item:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.profile-required-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 2px solid #d9c6ad;
+  box-sizing: border-box;
+}
+.profile-required-item.is-done {
+  border-color: #b7e2cb;
+}
+.profile-required-item.is-done .profile-required-mark {
+  border: none;
+  background: #128552;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .profile-required-mark {
+    transition: background-color 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
 .profile-index-link:focus-visible {
   outline: 2px solid #189a63;
   outline-offset: 2px;
 }
 .profile-section {
-  scroll-margin-top: 140px;
+  scroll-margin-top: 190px;
+}
+@media (min-width: 760px) {
+  .profile-section {
+    scroll-margin-top: 136px;
+  }
 }
 .profile-back-link {
   align-self: flex-start;
@@ -3327,6 +3415,11 @@ a.admin-kpi:hover {
   font-size: 13px;
   font-weight: 700;
   color: #0e7a4c;
+}
+/* "circa 2 minuti" accanto al primo passo, meno in vista del numero. */
+.auth-step-note {
+  font-weight: 600;
+  color: #6e6459;
 }
 .auth-step-bar {
   display: flex;
@@ -5769,12 +5862,22 @@ a.admin-kpi:hover {
     hyphens: auto;
     overflow-wrap: anywhere;
   }
+  .cat-tiles.is-compact .cat-tile-label-full {
+    display: none;
+  }
+  .cat-tiles.is-compact .cat-tile-label-short {
+    display: inline;
+  }
   .cat-tiles.is-compact .cat-tile-check {
     top: 5px;
     right: 5px;
     width: 18px;
     height: 18px;
   }
+}
+/* Nome corto solo nelle tessere compatte del telefono (sopra). */
+.cat-tile-label-short {
+  display: none;
 }
 /* Tessere vuote finché non arriva l'ordine dei più cercati (§324): stessa
    misura delle vere, così la pagina non salta; poi compaiono con una
@@ -7462,4 +7565,58 @@ a.admin-kpi:hover {
    il solo restringimento su una pillola trasparente quasi non si vedeva. */
 .guided-timing-option:active input:not(:checked) + span {
   background: rgba(18, 133, 82, 0.1);
+}
+
+/* "Forse intendevi …?" sotto l'email (docs/changelog/2026-11-02-registrazione-pro-migliorie.md). */
+.email-suggestion {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: #6e6459;
+  overflow-wrap: anywhere;
+}
+.email-suggestion:empty {
+  display: none;
+}
+.email-suggestion .email-suggestion-apply {
+  font-size: 14px;
+  padding: 4px 2px;
+  margin: -4px -2px;
+}
+
+/* Riepilogo delle scelte in cima al modulo dell'iscrizione: come lavori e
+   piano in un solo riquadro (docs/changelog/2026-11-02-registrazione-pro-migliorie.md). */
+.signup-summary {
+  background: #dcf3e7;
+  border-radius: 10px;
+  padding: 4px 14px;
+}
+.signup-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.signup-summary-row + .signup-summary-row {
+  border-top: 1px solid rgba(14, 122, 76, 0.16);
+}
+.signup-summary-text {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 16px;
+  line-height: 21px;
+  color: #2b2420;
+}
+.signup-summary-label {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+  color: #6e6459;
+}
+.signup-summary-detail {
+  font-weight: 600;
+  color: #4a433b;
 }
