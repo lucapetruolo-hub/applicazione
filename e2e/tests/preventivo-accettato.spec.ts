@@ -83,6 +83,10 @@ test("percorso completo: Accetta, Appuntamento prenotato, biglietto con calendar
   await page.goto(`/le-mie-richieste?open=${request.id}`);
   const card = page.locator(`#request-${request.id}`);
   await card.locator(`#quote-${quotes[0].id}`).getByText("Accetta preventivo", { exact: true }).click();
+  // Prima il riepilogo, poi l'impegno (collaudo A-07, M-02).
+  await expect(card.getByText("Prima di accettare", { exact: true })).toBeVisible();
+  await expect(card.getByRole("link", { name: "Recesso e annullamento" })).toBeVisible();
+  await card.getByText("Accetta con obbligo di pagare", { exact: true }).click();
 
   // Schermata di conferma: titolo con il cursore sopra, per chi usa il lettore di schermo.
   const title = page.getByRole("heading", { name: "Appuntamento prenotato" });
@@ -126,8 +130,12 @@ test("preavviso per annullare scelto dal professionista: detto prima di Accetta,
   const card = page.locator(`#request-${request.id}`);
   await expect(card.locator(`#quote-${quotes[0].id}`).getByText("Se poi devi annullare, avvisa almeno 48 ore prima.")).toBeVisible();
   await card.locator(`#quote-${quotes[0].id}`).getByText("Accetta preventivo", { exact: true }).click();
+  // Già dentro il preavviso: lo dice il riepilogo prima di accettare (collaudo A-06).
+  await expect(card.getByText(/già dentro il preavviso|meno di 48 ore/).first()).toBeVisible();
+  await card.getByText("Accetta con obbligo di pagare", { exact: true }).click();
   await page.getByText("Vai all'appuntamento", { exact: true }).click();
-  await expect(card.getByText("Se devi annullare, avvisa almeno 48 ore prima.")).toBeVisible();
+  // Già dentro il preavviso: si dice cosa succede annullando, non "avvisa prima" (collaudo A-06).
+  await expect(card.getByText(/Mancano meno di 48 ore, il preavviso chiesto: se annulli non paghi niente/)).toBeVisible();
 
   // Il professionista cambia idea dopo: il lavoro già prenotato resta a 48 ore.
   await prisma.professionalProfile.update({ where: { id: pro.id }, data: { cancellationNoticeHours: 72 } });
@@ -137,7 +145,7 @@ test("preavviso per annullare scelto dal professionista: detto prima di Accetta,
   // Annullare si può ancora, ma resta segnato come tardivo.
   await card.getByText("Annulla appuntamento", { exact: true }).click();
   await expect(page.getByRole("dialog").getByText(/Mancano meno di 48 ore/)).toBeVisible();
-  await page.getByText("Sì, annulla prenotazione", { exact: true }).click();
+  await page.getByText("Sì, annulla appuntamento", { exact: true }).click();
   await expect.poll(async () => (await prisma.booking.findUniqueOrThrow({ where: { id: job.id } })).status).toBe("CANCELED");
   expect((await prisma.booking.findUniqueOrThrow({ where: { id: job.id } })).canceledLate).toBe(true);
   await page.context().close();

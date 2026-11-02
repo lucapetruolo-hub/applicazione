@@ -146,6 +146,7 @@ test("scheda del lavoro: 00-appuntamento-prenotato (subito dopo Accetta)", async
     const page = await pageAsClient(browser, client.id, settings);
     await page.goto(`/le-mie-richieste?open=${request.id}`);
     await page.locator(`#quote-${quotes[0].id}`).getByText("Accetta preventivo", { exact: true }).click();
+    await page.getByText("Accetta con obbligo di pagare", { exact: true }).click();
     await expect(page.getByRole("heading", { name: "Appuntamento prenotato" })).toBeVisible();
     await page.screenshot({ path: `${OUT}00-appuntamento-prenotato-${device}.png`, fullPage: true, animations: "disabled" });
     await page.context().close();
