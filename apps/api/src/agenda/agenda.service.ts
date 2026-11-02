@@ -8,6 +8,7 @@ import {
   italianComuni,
   jobOccurrenceOn,
   starterWeekTemplate,
+  starterHomeCapacity,
   PUBLIC_AGENDA_DAYS,
   wallClockToday,
   weekTemplateSync,
@@ -98,13 +99,14 @@ export class AgendaService {
    * 14–20 entra subito nell'agenda, come se l'avesse salvata lui. Solo se
    * l'agenda è ancora vuota: un profilo con orari suoi non si tocca.
    */
-  async applyStarterHours(professionalProfileId: string, remoteAvailable: boolean): Promise<void> {
+  async applyStarterHours(professionalProfileId: string, remoteAvailable: boolean, categorySlugs: readonly string[] = []): Promise<void> {
     const [profile, slotCount] = await Promise.all([
       this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { agendaTemplateFilledUntil: true } }),
       this.prisma.availabilitySlot.count({ where: { professionalProfileId } }),
     ]);
     if (!profile || profile.agendaTemplateFilledUntil || slotCount > 0) return;
-    await this.syncWeekTemplate(professionalProfileId, starterWeekTemplate(remoteAvailable), null, null);
+    // Babysitter: 1 cliente per fascia, non 5 (collaudo C-15).
+    await this.syncWeekTemplate(professionalProfileId, starterWeekTemplate(remoteAvailable, starterHomeCapacity(categorySlugs)), null, null);
     await this.prisma.professionalProfile.update({ where: { id: professionalProfileId }, data: { agendaStarterHoursAt: new Date() } });
   }
 

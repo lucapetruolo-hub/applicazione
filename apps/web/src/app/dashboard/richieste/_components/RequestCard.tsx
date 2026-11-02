@@ -68,7 +68,7 @@ import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { ProfessionalInvoiceRequestBox } from "@/components/ProfessionalInvoiceRequestBox";
 import { JobDocumentsModal } from "@/components/JobDocumentsModal";
 import { AppointmentReplyStatus } from "./AppointmentReplyStatus";
-import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle } from "./requestHelpers";
+import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle, bookingsOverlapping, BusyTimeNotice } from "./requestHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import { JobLimitModal } from "@/components/JobLimitModal";
@@ -84,6 +84,7 @@ export function RequestCard({
   booking,
   token,
   availableSlots,
+  bookings = [],
   myProfileId,
   defaultPaymentOffer,
   defaultCancellationNoticeHours,
@@ -107,6 +108,8 @@ export function RequestCard({
   booking: ProfessionalBooking | null;
   token: string;
   availableSlots: ProfessionalAvailableSlot[];
+  /** Tutti i lavori del professionista: avviso quando propone un orario già preso (collaudo C-15). */
+  bookings?: readonly ProfessionalBooking[];
   myProfileId: string | null;
   /** Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §239); null = valori di sistema. */
   defaultPaymentOffer?: { paymentOptions: JobPaymentChoice[]; depositPercent: number } | null;
@@ -219,6 +222,13 @@ export function RequestCard({
     return `${days.charAt(0).toUpperCase()}${days.slice(1)}, ogni giorno ${formatAppointmentTimeRange(start, firstEnd)}.`;
   })();
 
+  // Lavori già fissati nell'orario scelto (collaudo C-15).
+  const quoteBusy = (() => {
+    const slot = modeAvailableSlots.length > 0 && !useManualDateTime ? modeAvailableSlots.find((sl) => slotKey(sl) === selectedSlotKey) : null;
+    const chosen = slot ? { date: slot.date, start: slot.startTime, end: slot.endTime } : manualDate && manualStartTime ? { date: manualDate, start: manualStartTime, end: manualEndTime } : null;
+    return bookingsOverlapping(bookings, chosen, booking?.id);
+  })();
+
   const [showCounterForm, setShowCounterForm] = useState(false);
   const [counterSlotKey, setCounterSlotKey] = useState(modeAvailableSlots[0] ? slotKey(modeAvailableSlots[0]) : "");
   // Data/orario libera anche qui (richiesta esplicita dell'utente: "ogni
@@ -232,6 +242,15 @@ export function RequestCard({
   const [manualCounterDate, setManualCounterDate] = useState("");
   const [manualCounterStartTime, setManualCounterStartTime] = useState("");
   const [manualCounterEndTime, setManualCounterEndTime] = useState("");
+  const counterBusy = (() => {
+    const slot = modeAvailableSlots.length > 0 && !useManualCounterDateTime ? modeAvailableSlots.find((sl) => slotKey(sl) === counterSlotKey) : null;
+    const chosen = slot
+      ? { date: slot.date, start: slot.startTime, end: slot.endTime }
+      : manualCounterDate && manualCounterStartTime
+        ? { date: manualCounterDate, start: manualCounterStartTime, end: manualCounterEndTime }
+        : null;
+    return bookingsOverlapping(bookings, chosen, booking?.id);
+  })();
   const [counterNote, setCounterNote] = useState("");
   const [counterError, setCounterError] = useState<string | null>(null);
   const [isCountering, setIsCountering] = useState(false);
@@ -1626,6 +1645,7 @@ export function RequestCard({
                   ) : null}
                 </YStack>
               )}
+              <BusyTimeNotice bookings={quoteBusy} />
 
               {/* Lavoro su più giorni (docs/CHANGELOG.md §310): stesso orario ogni giorno, non blocca altri lavori. */}
               <YStack gap="$1">
@@ -1837,6 +1857,7 @@ export function RequestCard({
                   ) : null}
                 </YStack>
               )}
+              <BusyTimeNotice bookings={counterBusy} />
               <textarea aria-label="Nota per il cliente" value={counterNote} onChange={(e) => setCounterNote(e.target.value)} placeholder="Nota per il cliente (facoltativa)" rows={2} style={{ ...smallInputStyle, resize: "vertical" }} />
               {counterError ? (
                 <Text color={brand.urgenza} fontSize={16}>

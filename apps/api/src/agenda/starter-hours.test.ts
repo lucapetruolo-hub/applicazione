@@ -37,6 +37,13 @@ describe("orari di partenza", () => {
     expect(added.every((slot) => !slot.allowsOnline && slot.onlineMaxBookings === null)).toBe(true);
   });
 
+  it("babysitter: 1 cliente a domicilio per fascia (collaudo C-15)", async () => {
+    const { service, tx } = build();
+    await service.applyStarterHours("pro-1", false, ["dogsitter", "babysitter"]);
+    const added = tx.availabilitySlot.createMany.mock.calls[0]![0].data as { homeMaxBookings: number }[];
+    expect(added.every((slot) => slot.homeMaxBookings === 1)).toBe(true);
+  });
+
   it("un'agenda che ha già orari non si tocca", async () => {
     for (const setup of [{ slotCount: 3 }, { filledUntil: new Date() }]) {
       const { service, prisma } = build(setup);

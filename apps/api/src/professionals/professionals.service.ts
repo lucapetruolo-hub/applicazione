@@ -961,7 +961,10 @@ export class ProfessionalsService {
       // Orari di partenza nell'agenda (docs/CHANGELOG.md §364): non devono
       // mai bloccare il salvataggio del profilo.
       try {
-        await this.agendaService.applyStarterHours(profile.id, profile.remoteAvailable);
+        await this.agendaService.applyStarterHours(profile.id, profile.remoteAvailable, [
+          profile.category.slug,
+          ...profile.extraCategories.map((category) => category.slug),
+        ]);
       } catch (err) {
         this.logger.error(`Orari di partenza non messi per ${profile.id}`, err instanceof Error ? err.stack : String(err));
       }
