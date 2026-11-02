@@ -144,9 +144,9 @@ export default function ChatPage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi per vedere le tue conversazioni
           </Text>
           <Link href="/accedi?redirect=/chat" style={{ textDecoration: "none" }}>
@@ -165,7 +165,7 @@ export default function ChatPage() {
           esplicita dell'utente): la voce attiva nel menu dice già dove si
           è, lo spazio va alle conversazioni. */}
       {error ? (
-        <Text color={brand.urgenza} paddingHorizontal="$4" paddingTop="$3" width="100%" maxWidth={1200}>
+        <Text color={brand.urgenza} paddingHorizontal="4" paddingTop="3" width="100%" maxWidth={1200}>
           {error}
         </Text>
       ) : null}
@@ -173,17 +173,17 @@ export default function ChatPage() {
       <div className={`chat-shell${user.isProfessional ? " is-pro" : ""}${selectedThread ? " has-selection" : ""}`}>
         <div className="chat-list-pane">
           {threads === null ? (
-            <YStack backgroundColor={brand.calce} borderRadius={20} overflow="hidden" margin="$4">
+            <YStack backgroundColor={brand.calce} borderRadius={20} overflow="hidden" margin="4">
               {[0, 1, 2, 3].map((i) => (
                 <SkeletonThreadRow key={i} zebra={i % 2 !== 0} />
               ))}
             </YStack>
           ) : threads.length === 0 ? (
-            <YStack padding="$4">
+            <YStack padding="4">
               <EmptyState icon="message-circle" title="Nessuna conversazione" description="Le chat delle tue richieste e dei tuoi preventivi compariranno qui." />
             </YStack>
           ) : (
-            <YStack backgroundColor={brand.calce} borderRadius={20} overflow="hidden" margin="$4">
+            <YStack backgroundColor={brand.calce} borderRadius={20} overflow="hidden" margin="4">
               {threads.map((thread, index) => (
                 <ChatThreadRow
                   key={threadKey(thread)}
@@ -217,7 +217,7 @@ export default function ChatPage() {
               backIcon="chevron-left"
             />
           ) : (
-            <YStack flex={1} alignItems="center" justifyContent="center" padding="$6">
+            <YStack flex={1} alignItems="center" justifyContent="center" padding="6">
               <EmptyState icon="message-circle" title="Seleziona una conversazione" description="Scegli una chat dall'elenco per vedere i messaggi." />
             </YStack>
           )}
@@ -323,16 +323,16 @@ function ChatThreadRow({
   return (
     <XStack
       alignItems="center"
-      gap="$3"
-      paddingHorizontal="$3"
-      paddingVertical="$3"
+      gap="3"
+      paddingHorizontal="3"
+      paddingVertical="3"
       backgroundColor={active ? brand.cianografiaVelo : zebra ? brand.gesso : "transparent"}
       cursor="pointer"
-      accessibilityRole="button"
+      role="button"
       onPress={() => {
-        onOpen();
-        dismissUnread();
-      }}
+            onOpen();
+            dismissUnread();
+          }}
     >
       <Avatar name={thread.otherPartyName} imageUrl={thread.otherPartyImageUrl} size={48} />
       <YStack flex={1} minWidth={0} gap={2}>
@@ -350,7 +350,7 @@ function ChatThreadRow({
           {previewText}
         </Text>
       </YStack>
-      <YStack alignItems="flex-end" gap="$1" flexShrink={0}>
+      <YStack alignItems="flex-end" gap="1" flexShrink={0}>
         <Text fontSize={13} color={brand.grafite70}>
           {formatThreadTimestamp(thread.lastMessageAt)}
         </Text>
@@ -371,8 +371,8 @@ function ChatThreadRow({
         backgroundColor={brand.gesso}
         cursor="pointer"
         flexShrink={0}
-        accessibilityRole="button"
-        accessibilityLabel="Vai alla richiesta"
+        role="button"
+        aria-label="Vai alla richiesta"
         onPress={(e: { stopPropagation: () => void }) => {
           e.stopPropagation();
           onGoToRequest();

@@ -14,12 +14,12 @@
     "test": "tsx --test src/*.test.ts"
   },
   "dependencies": {
-    "@tamagui/config": "1.144.4",
+    "@tamagui/config": "3.1.10",
     "lucide-react": "^1.61.0",
     "lucide-react-native": "^1.61.0",
     "react-native-svg": "^15.16.0",
     "react-native-web": "^0.21.4",
-    "tamagui": "1.144.4"
+    "tamagui": "3.1.10"
   },
   "peerDependencies": {
     "react": ">=18",

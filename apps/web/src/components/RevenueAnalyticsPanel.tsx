@@ -89,9 +89,9 @@ export function RevenueAnalyticsPanel({ data, chartCaption }: { data: RevenueAna
         />
       </div>
 
-      <Surface padding="$5" gap="$4">
-        <XStack justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$3">
-          <YStack gap="$1" flexBasis={0} flexGrow={1} minWidth={220}>
+      <Surface padding="5" gap="4">
+        <XStack justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="3">
+          <YStack gap="1" flexBasis={0} flexGrow={1} minWidth={220}>
             <Text fontWeight="700" fontSize={17}>
               Andamento entrate — {rangeHeadingSuffix(range)}
             </Text>
@@ -106,13 +106,13 @@ export function RevenueAnalyticsPanel({ data, chartCaption }: { data: RevenueAna
               return (
                 <XStack
                   key={opt.key}
-                  paddingHorizontal="$3"
+                  paddingHorizontal="3"
                   paddingVertical={9}
                   backgroundColor={active ? brand.cianografiaPieno : brand.calce}
                   cursor="pointer"
                   onPress={() => setRange(opt.key)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Mostra ${opt.label === "Tutto" ? "tutto lo storico" : "gli ultimi " + opt.label} nel grafico`}
+                  role="button"
+                  aria-label={`Mostra ${opt.label === "Tutto" ? "tutto lo storico" : "gli ultimi " + opt.label} nel grafico`}
                 >
                   <Text fontSize={12.5} fontWeight="700" color={active ? "white" : brand.grafite}>
                     {opt.label}
@@ -140,7 +140,7 @@ function StatTile({
   accent?: boolean;
 }) {
   return (
-    <Surface padding="$4" gap="$2" borderRadius={radiusDoc}>
+    <Surface padding="4" gap="2" borderRadius={radiusDoc}>
       <Text fontSize={12} fontWeight="700" color={brand.grafite70}>
         {label}
       </Text>
@@ -184,11 +184,11 @@ function DeltaStatTile({
   }
 
   return (
-    <Surface padding="$4" gap="$2" borderRadius={radiusDoc}>
+    <Surface padding="4" gap="2" borderRadius={radiusDoc}>
       <Text fontSize={12} fontWeight="700" color={brand.grafite70}>
         Variazione vs mese precedente
       </Text>
-      <XStack alignItems="center" gap="$2">
+      <XStack alignItems="center" gap="2">
         {hasComparableData ? (
           <div style={{ display: "inline-flex", transform: isUp ? undefined : "rotate(135deg)" }}>
             <Icon name="trending-up" size={20} color={color} />

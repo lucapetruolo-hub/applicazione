@@ -45,13 +45,13 @@ export function LoadErrorNotice({
   }, []);
 
   return (
-    <YStack role="status" gap="$3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="$4" padding="$4">
-      <XStack alignItems="center" gap="$3">
+    <YStack role="status" gap="3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4" padding="4">
+      <XStack alignItems="center" gap="3">
         <span aria-hidden style={{ display: "inline-flex", flexShrink: 0, width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", background: brand.filetto }}>
           <RefreshCw size={22} strokeWidth={1.75} color={brand.grafite70} />
         </span>
-        <YStack gap="$1" flex={1} minWidth={0}>
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+        <YStack gap="1" flex={1} minWidth={0}>
+          <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
             {title}
           </Text>
           <Text color={brand.grafite70} fontSize={16}>
@@ -59,7 +59,7 @@ export function LoadErrorNotice({
           </Text>
         </YStack>
       </XStack>
-      <XStack alignItems="center" gap="$4" flexWrap="wrap">
+      <XStack alignItems="center" gap="4" flexWrap="wrap">
         <Button variant="primary" onPress={retry} disabled={isPending}>
           {isPending ? "Caricamento…" : "Riprova"}
         </Button>

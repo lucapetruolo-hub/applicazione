@@ -48,7 +48,7 @@ export function BookedDateChangeAnswer({
   }
 
   return (
-    <YStack gap="$2">
+    <YStack gap="2">
       <ScheduleChangeBox
         title="Il professionista propone un'altra data"
         beforeLabel="Appuntamento di adesso"
@@ -57,14 +57,14 @@ export function BookedDateChangeAnswer({
         afterText={formatQuoteDateRange(dateChange.start, dateChange.end)}
         note={dateChange.note}
       />
-      <XStack gap="$2" flexWrap="wrap" $xs={{ flexDirection: "column", alignItems: "stretch" }}>
-        <CardButton tone="primary" $xs={{ height: 48 }} disabled={busy !== null} onPress={() => void run("accept")}>
+      <XStack gap="2" flexWrap="wrap" flexDirection="xs:column" alignItems="xs:stretch">
+        <CardButton tone="primary" height="44px xs:48px" disabled={busy !== null} onPress={() => void run("accept")}>
           {busy === "accept" ? "Conferma..." : "Accetta nuova data"}
         </CardButton>
-        <CardButton $xs={{ height: 48 }} disabled={busy !== null} onPress={onPropose}>
+        <CardButton height="44px xs:48px" disabled={busy !== null} onPress={onPropose}>
           Proponi un&apos;altra data
         </CardButton>
-        <CardButton tone="danger" $xs={{ height: 48 }} disabled={busy !== null} onPress={() => void run("reject")}>
+        <CardButton tone="danger" height="44px xs:48px" disabled={busy !== null} onPress={() => void run("reject")}>
           {busy === "reject" ? "..." : "Rifiuta"}
         </CardButton>
       </XStack>

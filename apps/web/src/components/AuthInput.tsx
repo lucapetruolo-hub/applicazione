@@ -14,11 +14,11 @@ export function AuthInput({ icon, rightElement, size, ...inputProps }: AuthInput
     <XStack
       alignItems="center"
       borderWidth={1}
-      borderColor="$borderColor"
-      borderRadius="$4"
+      borderColor="borderColor"
+      borderRadius="4"
       backgroundColor="white"
-      paddingHorizontal="$3"
-      gap="$2"
+      paddingHorizontal="3"
+      gap="2"
     >
       {icon}
       {/* Invio non toglie il fuoco dal campo (collaudo L-08). */}

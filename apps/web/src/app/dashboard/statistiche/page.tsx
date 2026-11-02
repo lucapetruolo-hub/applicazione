@@ -144,9 +144,9 @@ export default function DashboardStatistichePage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi come professionista
           </Text>
           <Link href="/accedi?redirect=/dashboard/statistiche" style={{ textDecoration: "none" }}>
@@ -159,8 +159,8 @@ export default function DashboardStatistichePage() {
 
   if (!user.isProfessional) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+        <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
           Questa sezione è per i professionisti
         </Text>
       </YStack>
@@ -170,10 +170,10 @@ export default function DashboardStatistichePage() {
   const today = isoDay(new Date());
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={1180} gap="$5">
-        <YStack gap="$1">
-          <Text fontFamily="$heading" fontWeight="800" fontSize={30} color={brand.grafite}>
+    <YStack width="100%" alignItems="center" paddingVertical="8" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={1180} gap="5">
+        <YStack gap="1">
+          <Text fontFamily="heading" fontWeight="800" fontSize={30} color={brand.grafite}>
             Statistiche
           </Text>
           <Text fontSize={16} color={brand.grafite70}>

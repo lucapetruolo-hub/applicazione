@@ -441,9 +441,9 @@ function DashboardFiscaleContent() {
     // Stessa larghezza della pagina caricata: niente salto di lato (CLS, docs/CHANGELOG.md §334).
     return (
       <FiscoArea tab="fiscale" heading="Dati fiscali" maxWidth={640}>
-        <YStack gap="$3" aria-busy>
-          <YStack height={72} borderRadius="$3" backgroundColor={brand.gesso} />
-          <YStack height={200} borderRadius="$3" backgroundColor={brand.gesso} />
+        <YStack gap="3" aria-busy>
+          <YStack height={72} borderRadius="3" backgroundColor={brand.gesso} />
+          <YStack height={200} borderRadius="3" backgroundColor={brand.gesso} />
         </YStack>
       </FiscoArea>
     );
@@ -525,7 +525,7 @@ function DashboardFiscaleContent() {
   const cfField = (
     <Field
       label={abroad ? "Codice fiscale italiano (se ce l'hai)" : "Codice fiscale"}
-      accessibilityLabel="Codice fiscale"
+      aria-label="Codice fiscale"
       value={fields.fiscalCodiceFiscale ?? ""}
       onChangeText={(v) => setField("fiscalCodiceFiscale", v.toUpperCase())}
       autoCapitalize="characters"
@@ -536,7 +536,7 @@ function DashboardFiscaleContent() {
   const vatField = (
     <Field
       label="Partita IVA"
-      accessibilityLabel="Partita IVA"
+      aria-label="Partita IVA"
       value={fields.vatNumber ?? ""}
       onChangeText={(v) => setField("vatNumber", v)}
       inputMode="numeric"
@@ -559,13 +559,13 @@ function DashboardFiscaleContent() {
       maxWidth={640}
     >
       {whyOpen ? <FiscalWhyModal onClose={() => setWhyOpen(false)} /> : null}
-      <YStack gap="$5">
+      <YStack gap="5">
         {steps ? <JourneyProgress steps={steps} here="fiscal" /> : null}
 
         {/* Esito della revisione manuale dell'admin (area Finanza), solo se c'è qualcosa da fare. */}
         {profile && (profile.verificationStatus === "REJECTED" || profile.verificationStatus === "REQUIRES_UPDATE") ? (
-          <YStack gap="$1">
-            <XStack alignItems="center" gap="$2">
+          <YStack gap="1">
+            <XStack alignItems="center" gap="2">
               <Badge variant={adminVerification.variant}>{adminVerification.label}</Badge>
             </XStack>
             {profile.verificationNote ? (
@@ -577,19 +577,19 @@ function DashboardFiscaleContent() {
         ) : null}
 
         {showForm ? (
-          <Surface gap="$4">
-            <YStack gap="$1">
+          <Surface gap="4">
+            <YStack gap="1">
               <Text fontSize={16} fontWeight="700" color={brand.grafite70}>
                 Parte {formStep} di 2
               </Text>
-              <Text ref={formStepTitleRef} tag="h2" tabIndex={-1} className="step-focus-target" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+              <Text ref={formStepTitleRef as never} render="h2" tabIndex={-1} className="step-focus-target" margin={0} fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
                 {formStep === 1 ? (entityType === "BUSINESS" ? "Dati dell'azienda" : "I tuoi dati") : entityType === "BUSINESS" ? "Sede legale" : "Indirizzo di residenza"}
               </Text>
               {formStep === 1 ? (
                 <Text fontSize={16} color={brand.grafite70}>
                   Non li vede nessun cliente.{" "}
                   <Text
-                    tag="button"
+                    render="button"
                     fontSize={16}
                     fontWeight="700"
                     color={brand.cianografiaScuro}
@@ -607,7 +607,7 @@ function DashboardFiscaleContent() {
             </YStack>
 
             {toFix && formStep === 1 && invalidChecks.length > 0 ? (
-              <XStack gap="$2" padding="$3" borderRadius={20} backgroundColor={brand.urgenzaVelo} alignItems="flex-start" role="alert">
+              <XStack gap="2" padding="3" borderRadius={20} backgroundColor={brand.urgenzaVelo} alignItems="flex-start" role="alert">
                 <Icon name="triangle-alert" size={18} strokeWidth={2} color={brand.urgenza} />
                 <Text flex={1} fontSize={16} color={brand.grafite}>
                   {invalidChecks.map(taxIdCheckMessage).join(" ")}
@@ -616,22 +616,22 @@ function DashboardFiscaleContent() {
             ) : null}
 
             {formStep === 1 ? (
-              <YStack gap="$3">
+              <YStack gap="3">
                 {/* Tipo già scelto alla registrazione (o salvato): si mostra e
                     basta. La scelta resta solo per gli account senza un tipo. */}
                 {lockedEntityType ? (
-                  <XStack alignSelf="flex-start" gap="$2" alignItems="center" paddingHorizontal="$3" paddingVertical="$1.5" borderRadius={999} backgroundColor={brand.gesso}>
+                  <XStack alignSelf="flex-start" gap="2" alignItems="center" paddingHorizontal="3" paddingVertical="1-5" borderRadius={999} backgroundColor={brand.gesso}>
                     <Icon name={lockedEntityType === "BUSINESS" ? "briefcase" : "user-round"} size={15} strokeWidth={2} color={brand.grafite70} />
                     <Text fontSize={16} fontWeight="700" color={brand.grafite}>
                       {ENTITY_TYPE_LABELS[lockedEntityType]}
                     </Text>
                   </XStack>
                 ) : (
-                  <YStack gap="$2">
+                  <YStack gap="2">
                     <Text fontSize={16} fontWeight="700" color={brand.grafite}>
                       Come lavori?
                     </Text>
-                    <XStack gap="$2" flexWrap="wrap">
+                    <XStack gap="2" flexWrap="wrap">
                       {(Object.keys(ENTITY_TYPE_LABELS) as EntityType[]).map((type) => (
                         <Button key={type} variant={entityType === type ? "primary" : "secondary"} onPress={() => setEntityType(type)}>
                           {ENTITY_TYPE_LABELS[type]}
@@ -643,12 +643,12 @@ function DashboardFiscaleContent() {
 
                 {isPerson ? (
                   <>
-                    <XStack gap="$3" flexWrap="wrap">
+                    <XStack gap="3" flexWrap="wrap">
                       <YStack flex={1} flexBasis={0} minWidth={200}>
-                        <Field label="Nome" accessibilityLabel="Nome" autoComplete="given-name" value={fields.fiscalFirstName ?? ""} onChangeText={(v) => setField("fiscalFirstName", v)} />
+                        <Field label="Nome" aria-label="Nome" autoComplete="given-name" value={fields.fiscalFirstName ?? ""} onChangeText={(v) => setField("fiscalFirstName", v)} />
                       </YStack>
                       <YStack flex={1} flexBasis={0} minWidth={200}>
-                        <Field label="Cognome" accessibilityLabel="Cognome" autoComplete="family-name" value={fields.fiscalLastName ?? ""} onChangeText={(v) => setField("fiscalLastName", v)} />
+                        <Field label="Cognome" aria-label="Cognome" autoComplete="family-name" value={fields.fiscalLastName ?? ""} onChangeText={(v) => setField("fiscalLastName", v)} />
                       </YStack>
                     </XStack>
                     {cfField}
@@ -669,8 +669,8 @@ function DashboardFiscaleContent() {
                     ) : null}
                     {/* Calendario del telefono o del browser (docs/CHANGELOG.md §263). */}
                     {askBirthDate ? (
-                      <YStack gap="$2">
-                        <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+                      <YStack gap="2">
+                        <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                           Data di nascita
                         </Text>
                         <ItalianDateInput
@@ -690,11 +690,11 @@ function DashboardFiscaleContent() {
                     {entityType === "SOLE_PROPRIETOR" ? (
                       <>
                         {vatField}
-                        <YStack gap="$2">
+                        <YStack gap="2">
                           <Text fontSize={16} fontWeight="700" color={brand.grafite}>
                             Nelle tue fatture applichi l&apos;IVA?
                           </Text>
-                          <XStack gap="$2" flexWrap="wrap">
+                          <XStack gap="2" flexWrap="wrap">
                             <Button variant={chargesVat === true ? "primary" : "secondary"} aria-pressed={chargesVat === true} onPress={() => setChargesVat(true)}>
                               Sì
                             </Button>
@@ -713,17 +713,17 @@ function DashboardFiscaleContent() {
 
                 {entityType === "BUSINESS" ? (
                   <>
-                    <Field label="Ragione sociale" accessibilityLabel="Ragione sociale" value={fields.businessName ?? ""} onChangeText={(v) => setField("businessName", v)} />
+                    <Field label="Ragione sociale" aria-label="Ragione sociale" value={fields.businessName ?? ""} onChangeText={(v) => setField("businessName", v)} />
                     {vatField}
                     <Field
                       label="Numero REA"
-                      accessibilityLabel="Numero REA"
+                      aria-label="Numero REA"
                       value={fields.businessRegistrationNumber ?? ""}
                       onChangeText={(v) => setField("businessRegistrationNumber", v)}
                       placeholder="es. RM-1234567"
                       hint="Lo trovi nella visura camerale."
                     />
-                    <YStack gap="$1" marginTop="$2">
+                    <YStack gap="1" marginTop="2">
                       <Text fontSize={16} fontWeight="800" color={brand.grafite}>
                         Legale rappresentante
                       </Text>
@@ -731,17 +731,17 @@ function DashboardFiscaleContent() {
                         Sarà lui a fare la verifica dell&apos;identità.
                       </Text>
                     </YStack>
-                    <XStack gap="$3" flexWrap="wrap">
+                    <XStack gap="3" flexWrap="wrap">
                       <YStack flex={1} flexBasis={0} minWidth={200}>
-                        <Field label="Nome" accessibilityLabel="Nome del legale rappresentante" value={repFields.firstName} onChangeText={(v) => setRepFields((p) => ({ ...p, firstName: v }))} />
+                        <Field label="Nome" aria-label="Nome del legale rappresentante" value={repFields.firstName} onChangeText={(v) => setRepFields((p) => ({ ...p, firstName: v }))} />
                       </YStack>
                       <YStack flex={1} flexBasis={0} minWidth={200}>
-                        <Field label="Cognome" accessibilityLabel="Cognome del legale rappresentante" value={repFields.lastName} onChangeText={(v) => setRepFields((p) => ({ ...p, lastName: v }))} />
+                        <Field label="Cognome" aria-label="Cognome del legale rappresentante" value={repFields.lastName} onChangeText={(v) => setRepFields((p) => ({ ...p, lastName: v }))} />
                       </YStack>
                     </XStack>
                     <Field
                       label="Codice fiscale"
-                      accessibilityLabel="Codice fiscale del legale rappresentante"
+                      aria-label="Codice fiscale del legale rappresentante"
                       value={repFields.codiceFiscale}
                       onChangeText={(v) => setRepFields((p) => ({ ...p, codiceFiscale: v.toUpperCase() }))}
                       autoCapitalize="characters"
@@ -753,17 +753,17 @@ function DashboardFiscaleContent() {
                 {/* Fuori dall'Italia: paese e codice fiscale estero (DAC7). */}
                 {entityType ? (
                   abroad ? (
-                    <YStack gap="$3" padding="$3" borderRadius={20} backgroundColor={brand.gesso}>
+                    <YStack gap="3" padding="3" borderRadius={20} backgroundColor={brand.gesso}>
                       <Field
                         label={entityType === "BUSINESS" ? "Paese della sede (sigla, es. FR)" : "Paese di residenza fiscale (sigla, es. FR)"}
-                        accessibilityLabel="Paese di residenza fiscale"
+                        aria-label="Paese di residenza fiscale"
                         value={fields.taxResidenceCountry ?? ""}
                         onChangeText={(v) => setField("taxResidenceCountry", v.toUpperCase().slice(0, 2))}
                         autoCapitalize="characters"
                       />
-                      <Field label="Codice fiscale estero" accessibilityLabel="Codice fiscale estero" value={fields.foreignTin ?? ""} onChangeText={(v) => setField("foreignTin", v)} />
+                      <Field label="Codice fiscale estero" aria-label="Codice fiscale estero" value={fields.foreignTin ?? ""} onChangeText={(v) => setField("foreignTin", v)} />
                       {isPerson && !filled("fiscalCodiceFiscale") ? (
-                        <Field label="Luogo di nascita" accessibilityLabel="Luogo di nascita" value={fields.placeOfBirth ?? ""} onChangeText={(v) => setField("placeOfBirth", v)} />
+                        <Field label="Luogo di nascita" aria-label="Luogo di nascita" value={fields.placeOfBirth ?? ""} onChangeText={(v) => setField("placeOfBirth", v)} />
                       ) : null}
                       <button type="button" className="fiscal-link-button" onClick={() => setAbroad(false)}>
                         Sono in Italia
@@ -776,7 +776,7 @@ function DashboardFiscaleContent() {
                   )
                 ) : null}
 
-                <XStack gap="$3" alignItems="center" flexWrap="wrap" marginTop="$2">
+                <XStack gap="3" alignItems="center" flexWrap="wrap" marginTop="2">
                   <Button variant="primary" disabled={step1Missing.length > 0 || hasLiveErrors} opacity={step1Missing.length > 0 || hasLiveErrors ? 0.45 : 1} onPress={() => setFormStep(2)}>
                     Avanti
                   </Button>
@@ -797,16 +797,16 @@ function DashboardFiscaleContent() {
                 </XStack>
               </YStack>
             ) : (
-              <YStack gap="$3">
-                <XStack gap="$3" flexWrap="wrap">
+              <YStack gap="3">
+                <XStack gap="3" flexWrap="wrap">
                   <YStack flex={3} flexBasis={0} minWidth={180}>
                     {abroad ? (
-                      <Field label="Via o piazza" accessibilityLabel="Via o piazza" value={fields.registeredStreet ?? ""} onChangeText={(v) => setField("registeredStreet", v)} />
+                      <Field label="Via o piazza" aria-label="Via o piazza" value={fields.registeredStreet ?? ""} onChangeText={(v) => setField("registeredStreet", v)} />
                     ) : (
                       // Suggerimenti di Google mentre si scrive: la scelta compila
                       // anche civico, CAP, comune e provincia (docs/CHANGELOG.md §263).
-                      <YStack gap="$2">
-                        <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+                      <YStack gap="2">
+                        <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                           Via o piazza
                         </Text>
                         <AddressAutocompleteInput
@@ -831,17 +831,17 @@ function DashboardFiscaleContent() {
                     )}
                   </YStack>
                   <YStack flex={1} flexBasis={0} minWidth={80}>
-                    <Field label="Civico" accessibilityLabel="Numero civico" value={fields.registeredHouseNumber ?? ""} onChangeText={(v) => setField("registeredHouseNumber", v)} />
+                    <Field label="Civico" aria-label="Numero civico" value={fields.registeredHouseNumber ?? ""} onChangeText={(v) => setField("registeredHouseNumber", v)} />
                   </YStack>
                 </XStack>
-                <XStack gap="$3" flexWrap="wrap">
+                <XStack gap="3" flexWrap="wrap">
                   <YStack flex={1} flexBasis={0} minWidth={80}>
-                    <Field label="CAP" accessibilityLabel="CAP" value={fields.registeredPostalCode ?? ""} onChangeText={(v) => setField("registeredPostalCode", v)} inputMode={abroad ? undefined : "numeric"} />
+                    <Field label="CAP" aria-label="CAP" value={fields.registeredPostalCode ?? ""} onChangeText={(v) => setField("registeredPostalCode", v)} inputMode={abroad ? undefined : "numeric"} />
                   </YStack>
                   <YStack flex={2} flexBasis={0} minWidth={100}>
                     <Field
                       label="Comune"
-                      accessibilityLabel="Comune"
+                      aria-label="Comune"
                       value={fields.registeredCity ?? ""}
                       onChangeText={(v) => {
                         // La provincia si ricava dal comune (elenco ISTAT), si può comunque correggere.
@@ -854,7 +854,7 @@ function DashboardFiscaleContent() {
                     <YStack width={72} flexShrink={0}>
                       <Field
                         label="Prov."
-                        accessibilityLabel="Provincia (sigla)"
+                        aria-label="Provincia (sigla)"
                         value={fields.registeredProvince ?? ""}
                         onChangeText={(v) => setField("registeredProvince", v.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2))}
                         autoCapitalize="characters"
@@ -868,7 +868,7 @@ function DashboardFiscaleContent() {
                 {entityType === "SOLE_PROPRIETOR" || entityType === "BUSINESS" ? (
                   <Field
                     label="Codice destinatario o PEC (facoltativo)"
-                    accessibilityLabel="Codice destinatario o PEC"
+                    aria-label="Codice destinatario o PEC"
                     value={invoiceRecipient}
                     onChangeText={setInvoiceRecipient}
                     autoCapitalize="none"
@@ -879,37 +879,37 @@ function DashboardFiscaleContent() {
                 ) : null}
 
                 <XStack
-                  alignItems="flex-start"
-                  gap="$2"
-                  marginTop="$2"
-                  cursor="pointer"
-                  onPress={() => {
-                    setDeclarationAccepted((v) => !v);
-                    setSaveError(null);
-                  }}
-                >
+                    alignItems="flex-start"
+                    gap="2"
+                    marginTop="2"
+                    cursor="pointer"
+                    onPress={() => {
+                                      setDeclarationAccepted((v) => !v);
+                                      setSaveError(null);
+                                    }}
+                  >
                   {/* La casella è il quadratino, la scritta il suo nome: il link
                       ai Termini non sta dentro la casella (docs/changelog/2026-10-30-tastiera.md). */}
                   <YStack
-                    accessibilityRole="checkbox"
-                    aria-checked={declarationAccepted}
-                    aria-labelledby="fiscal-declaration-label"
-                    onPress={(e: { stopPropagation: () => void }) => {
-                      e.stopPropagation();
-                      setDeclarationAccepted((v) => !v);
-                      setSaveError(null);
-                    }}
-                    width={20}
-                    height={20}
-                    marginTop={1}
-                    borderRadius="$1"
-                    borderWidth={2}
-                    borderColor={declarationAccepted ? brand.cianografia : brand.filetto}
-                    backgroundColor={declarationAccepted ? brand.cianografia : brand.calce}
-                    alignItems="center"
-                    justifyContent="center"
-                    flexShrink={0}
-                  >
+                      role="checkbox"
+                      aria-checked={declarationAccepted}
+                      aria-labelledby="fiscal-declaration-label"
+                      onPress={(e: { stopPropagation: () => void }) => {
+                                          e.stopPropagation();
+                                          setDeclarationAccepted((v) => !v);
+                                          setSaveError(null);
+                                        }}
+                      width={20}
+                      height={20}
+                      marginTop={1}
+                      borderRadius="1"
+                      borderWidth={2}
+                      borderColor={declarationAccepted ? brand.cianografia : brand.filetto}
+                      backgroundColor={declarationAccepted ? brand.cianografia : brand.calce}
+                      alignItems="center"
+                      justifyContent="center"
+                      flexShrink={0}
+                    >
                     {declarationAccepted ? <Icon name="check" size={13} strokeWidth={2.5} color="white" /> : null}
                   </YStack>
                   <Text fontSize={16} color={brand.grafite}>
@@ -920,7 +920,7 @@ function DashboardFiscaleContent() {
                   </Text>
                 </XStack>
 
-                <XStack gap="$3" alignItems="center" flexWrap="wrap" marginTop="$2">
+                <XStack gap="3" alignItems="center" flexWrap="wrap" marginTop="2">
                   <Button variant="secondary" onPress={() => setFormStep(1)}>
                     Indietro
                   </Button>
@@ -954,8 +954,8 @@ function DashboardFiscaleContent() {
         ) : (
           <>
             {/* Dati già completi: un riepilogo e il prossimo passo, nient'altro. */}
-            <Surface gap="$3">
-              <XStack alignItems="center" justifyContent="space-between" gap="$3" flexWrap="wrap">
+            <Surface gap="3">
+              <XStack alignItems="center" justifyContent="space-between" gap="3" flexWrap="wrap">
                 {/* Il titolo "Dati fiscali" e il badge stanno in cima alla scheda (FiscoArea): qui il tipo e "Modifica". */}
                 {typeLabel ? <Text color={brand.grafite70}>{typeLabel}</Text> : <Text color={brand.grafite70}>I tuoi dati</Text>}
                 <button
@@ -971,14 +971,14 @@ function DashboardFiscaleContent() {
                 </button>
               </XStack>
               {saveSuccess ? (
-                <XStack role="status" alignItems="center" gap="$2">
+                <XStack role="status" alignItems="center" gap="2">
                   <Icon name="check" size={16} strokeWidth={2.5} color={brand.verificato} />
                   <Text fontWeight="700" color={brand.verificato}>
                     Salvati
                   </Text>
                 </XStack>
               ) : null}
-              <YStack gap="$1">
+              <YStack gap="1">
                 <Text fontWeight="700" color={brand.grafite}>
                   {entityType === "BUSINESS" ? fields.businessName : holderName}
                 </Text>
@@ -997,14 +997,14 @@ function DashboardFiscaleContent() {
               </YStack>
               {/* Chi aveva compilato i dati prima della domanda (§378): una risposta, senza riaprire il modulo. */}
               {entityType === "SOLE_PROPRIETOR" && chargesVat === null ? (
-                <YStack gap="$2" padding="$3" borderRadius={20} backgroundColor={brand.gesso}>
+                <YStack gap="2" padding="3" borderRadius={20} backgroundColor={brand.gesso}>
                   <Text fontSize={16} fontWeight="700" color={brand.grafite}>
                     Nelle tue fatture applichi l&apos;IVA?
                   </Text>
                   <Text fontSize={16} color={brand.grafite70}>
                     No se sei nel regime forfettario. Serve a mostrare bene i prezzi ai clienti.
                   </Text>
-                  <XStack gap="$2">
+                  <XStack gap="2">
                     <Button variant="secondary" disabled={vatSaving} onPress={() => void saveChargesVat(true)}>
                       Sì
                     </Button>
@@ -1017,11 +1017,11 @@ function DashboardFiscaleContent() {
             </Surface>
 
             {nextStep?.key === "identity" && nextStep.action ? (
-              <Surface gap="$3" borderLeftWidth={4} borderLeftColor={brand.cianografia}>
+              <Surface gap="3" borderLeftWidth={4} borderLeftColor={brand.cianografia}>
                 <Text fontSize={13} fontWeight="700" letterSpacing={0.5} textTransform="uppercase" color={brand.grafite70}>
                   Prossimo passo
                 </Text>
-                <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+                <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
                   {nextStep.title}
                 </Text>
                 <Text color={brand.grafite70}>{nextStep.text}</Text>

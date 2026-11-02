@@ -89,7 +89,7 @@ export default function AdminWhatsAppPage() {
   const effect = data?.reminderEffect;
 
   return (
-    <YStack gap="$5">
+    <YStack gap="5">
       <AdminPageHeader
         title="WhatsApp"
         description="Promemoria degli appuntamenti: messaggi, costo, risposte dei clienti e lavori saltati con e senza promemoria."
@@ -159,13 +159,13 @@ export default function AdminWhatsAppPage() {
           </div>
 
           {effect ? (
-            <YStack gap="$2">
+            <YStack gap="2">
               <Text
-                fontFamily="$heading"
-                fontWeight="700"
-                fontSize="$5"
-                color={brand.grafite}
-              >
+                  fontFamily="heading"
+                  fontWeight="700"
+                  fontSize="5"
+                  color={brand.grafite}
+                >
                 Servono?
               </Text>
               <Text fontSize={14} color={brand.grafite70}>
@@ -270,13 +270,13 @@ export default function AdminWhatsAppPage() {
             </YStack>
           ) : null}
 
-          <YStack gap="$2">
+          <YStack gap="2">
             <Text
-              fontFamily="$heading"
-              fontWeight="700"
-              fontSize="$5"
-              color={brand.grafite}
-            >
+                fontFamily="heading"
+                fontWeight="700"
+                fontSize="5"
+                color={brand.grafite}
+              >
               Per tipo
             </Text>
             {data.byType.length === 0 ? (
@@ -310,13 +310,13 @@ export default function AdminWhatsAppPage() {
           </YStack>
 
           {data.skipped.length > 0 ? (
-            <YStack gap="$2">
+            <YStack gap="2">
               <Text
-                fontFamily="$heading"
-                fontWeight="700"
-                fontSize="$5"
-                color={brand.grafite}
-              >
+                  fontFamily="heading"
+                  fontWeight="700"
+                  fontSize="5"
+                  color={brand.grafite}
+                >
                 Perché non sono partiti
               </Text>
               <div className="admin-table-wrap">
@@ -335,13 +335,13 @@ export default function AdminWhatsAppPage() {
           ) : null}
 
           {data.recent.length > 0 ? (
-            <YStack gap="$2">
+            <YStack gap="2">
               <Text
-                fontFamily="$heading"
-                fontWeight="700"
-                fontSize="$5"
-                color={brand.grafite}
-              >
+                  fontFamily="heading"
+                  fontWeight="700"
+                  fontSize="5"
+                  color={brand.grafite}
+                >
                 Ultimi messaggi
               </Text>
               <div className="admin-table-wrap">

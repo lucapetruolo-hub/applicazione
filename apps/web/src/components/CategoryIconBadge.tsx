@@ -20,14 +20,13 @@ export function CategoryIconBadge({ slug, size = 48, mobileSize, iconSize, shape
   const heightFor = (width: number) => (portrait ? Math.round((width * 4) / 3) : width);
   return (
     <YStack
-      width={size}
-      height={heightFor(size)}
-      borderRadius={portrait ? 20 : size}
+      width={mobileSize ? `${size}px xs:${mobileSize}px` : size}
+      height={mobileSize ? `${heightFor(size)}px xs:${heightFor(mobileSize)}px` : heightFor(size)}
+      borderRadius={mobileSize ? `${portrait ? 20 : size}px xs:${portrait ? 20 : mobileSize}px` : portrait ? 20 : size}
       backgroundColor={accent.bg}
       alignItems="center"
       justifyContent="center"
       flexShrink={0}
-      $xs={mobileSize ? { width: mobileSize, height: heightFor(mobileSize), borderRadius: portrait ? 20 : mobileSize } : undefined}
     >
       <CategoryIcon slug={slug} size={iconSize ?? Math.round((mobileSize ? Math.min(size, mobileSize) : size) * 0.5)} color={accent.fg} />
     </YStack>

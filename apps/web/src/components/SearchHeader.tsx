@@ -63,14 +63,14 @@ export function SearchHeader({
     <YStack
       width="100%"
       backgroundColor={brand.cianografiaVelo}
-      paddingVertical={expanded ? "$5" : "$3"}
-      paddingHorizontal="$4"
+      paddingVertical={`${expanded ? "5" : "3"}`}
+      paddingHorizontal="4"
       alignItems="center"
-      $gtMd={{ display: "none" }}
+      display="gtMd:none"
     >
       <YStack width="100%" maxWidth={680}>
         {expanded ? (
-          <YStack gap="$2">
+          <YStack gap="2">
             {/* "Chiudi" per tornare ai risultati senza cercare, e "Cerca"
                 largo quanto i campi come in home (docs/CHANGELOG.md §349). */}
             <XStack justifyContent="flex-end">

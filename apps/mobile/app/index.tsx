@@ -21,13 +21,13 @@ export default function HomeScreen() {
 
   return (
     <YStack flex={1} backgroundColor="white">
-      <YStack padding="$4" gap="$3" backgroundColor="$blue2">
-        <YStack gap="$1">
-          <H1 size="$8">Trova il professionista giusto</H1>
-          <Paragraph color="$color10">Idraulici, elettricisti, imbianchini vicino a te.</Paragraph>
+      <YStack padding="4" gap="3" backgroundColor="blue2">
+        <YStack gap="1">
+          <H1 size="8">Trova il professionista giusto</H1>
+          <Paragraph color="color10">Idraulici, elettricisti, imbianchini vicino a te.</Paragraph>
         </YStack>
         <SearchBar onSearch={handleSearch} />
-        {errorSlug ? <Paragraph color="$red10">Nessuna categoria trovata per &quot;{errorSlug}&quot;.</Paragraph> : null}
+        {errorSlug ? <Paragraph color="red10">Nessuna categoria trovata per &quot;{errorSlug}&quot;.</Paragraph> : null}
       </YStack>
 
       <FlatList

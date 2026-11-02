@@ -70,14 +70,14 @@ export function JobDocumentsModal({ token, bookingId, onClose }: { token: string
         borderRadius={radiusDoc}
         borderWidth={1}
         borderColor={brand.filetto}
-        padding="$5"
-        gap="$4"
+        padding="5"
+        gap="4"
       >
-        <XStack justifyContent="space-between" alignItems="center" gap="$3">
-          <Text tag="h2" fontFamily="$heading" fontSize={22} fontWeight="800" color={brand.grafite}>
+        <XStack justifyContent="space-between" alignItems="center" gap="3">
+          <Text render="h2" fontFamily="heading" fontSize={22} fontWeight="800" color={brand.grafite}>
             Documenti del lavoro
           </Text>
-          <Text fontSize="$5" color={brand.grafite70} cursor="pointer" onPress={onClose} accessibilityRole="button" accessibilityLabel="Chiudi">
+          <Text fontSize="5" color={brand.grafite70} cursor="pointer" onPress={onClose} role="button" aria-label="Chiudi">
             ✕
           </Text>
         </XStack>
@@ -106,7 +106,7 @@ function ProfessionalDocuments({ view }: { view: JobDocumentsView }) {
     <>
       <Part title="Per il cliente">
         {view.clientDocument ? (
-          <YStack gap="$1">
+          <YStack gap="1">
             <DocLink href={copyHref}>Apri: {view.clientDocument.label}</DocLink>
             {view.clientDocument.amountChanged ? (
               <Text fontSize={13} fontWeight="700" color={brand.ottoneScuro}>
@@ -167,7 +167,7 @@ function ClientDocuments({ token, view }: { token: string; view: JobDocumentsVie
     <>
       <Part title="Dal professionista">
         {doc ? (
-          <YStack gap="$2">
+          <YStack gap="2">
             <Text fontSize={16} fontWeight="700" color={brand.grafite}>
               Copia: {doc.label}
             </Text>
@@ -204,7 +204,7 @@ function Movements({ view }: { view: JobDocumentsView }) {
   return (
     <YStack>
       {view.movements.map((m, index) => (
-        <XStack key={`${m.date}-${index}`} justifyContent="space-between" alignItems="flex-start" gap="$3" paddingVertical="$2" borderTopWidth={index === 0 ? 0 : 1} borderColor={brand.filetto}>
+        <XStack key={`${m.date}-${index}`} justifyContent="space-between" alignItems="flex-start" gap="3" paddingVertical="2" borderTopWidth={index === 0 ? 0 : 1} borderColor={brand.filetto}>
           <YStack flex={1} minWidth={0} gap={2}>
             <Text fontSize={16} color={brand.grafite}>
               {m.label}
@@ -226,8 +226,8 @@ function Movements({ view }: { view: JobDocumentsView }) {
 
 function Part({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <YStack gap="$2">
-      <Text tag="h3" fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase" letterSpacing={0.6}>
+    <YStack gap="2">
+      <Text render="h3" fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase" letterSpacing={0.6}>
         {title}
       </Text>
       {children}

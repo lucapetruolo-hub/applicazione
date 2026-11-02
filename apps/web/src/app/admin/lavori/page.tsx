@@ -26,7 +26,7 @@ function quoteRange(job: AdminCompletedJob): string | null {
 function Photos({ urls }: { urls: string[] }) {
   if (urls.length === 0) return null;
   return (
-    <XStack gap="$2" flexWrap="wrap">
+    <XStack gap="2" flexWrap="wrap">
       {urls.map((url) => (
         <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 84, height: 84, borderRadius: 10, overflow: "hidden", border: `1px solid ${brand.filetto}`, display: "block" }}>
           <MediaPreview url={url} />
@@ -39,7 +39,7 @@ function Photos({ urls }: { urls: string[] }) {
 /** Una parte (professionista o cliente): cosa ha scritto e allegato a lavoro terminato. */
 function Side({ title, done, note, photos }: { title: string; done: string; note: string | null; photos: string[] }) {
   return (
-    <YStack flex={1} minWidth={240} gap="$2">
+    <YStack flex={1} minWidth={240} gap="2">
       <Text fontWeight="700" color={brand.grafite}>
         {title}
       </Text>
@@ -99,7 +99,7 @@ export default function AdminLavoriPage() {
       ) : rows && rows.length === 0 ? (
         <Text color={brand.grafite70}>Nessun lavoro terminato in questa vista.</Text>
       ) : rows ? (
-        <YStack gap="$3">
+        <YStack gap="3">
           {rows.map((job) => {
             const range = quoteRange(job);
             const plain =
@@ -112,8 +112,8 @@ export default function AdminLavoriPage() {
             const showDetails = !plain || expandedIds.has(job.bookingId);
             return (
               <AdminCard key={job.bookingId} highlight={Boolean(job.changeReason)}>
-                <XStack justifyContent="space-between" gap="$2" flexWrap="wrap">
-                  <YStack gap="$1" flex={1} minWidth={220}>
+                <XStack justifyContent="space-between" gap="2" flexWrap="wrap">
+                  <YStack gap="1" flex={1} minWidth={220}>
                     <Text fontWeight="800" color={brand.grafite}>
                       {job.categoryLabel ?? "Prenotazione dall'agenda"}
                       {job.city ? ` · ${job.city}` : ""}
@@ -135,7 +135,7 @@ export default function AdminLavoriPage() {
                       </Link>
                     ) : null}
                   </YStack>
-                  <YStack alignItems="flex-end" gap="$1">
+                  <YStack alignItems="flex-end" gap="1">
                     {job.finalAmountEurCents !== null ? (
                       <Text fontWeight="800" fontSize={18} color={brand.grafite}>
                         {eur(job.finalAmountEurCents)}
@@ -161,7 +161,7 @@ export default function AdminLavoriPage() {
                       fontWeight="700"
                       color={brand.cianografiaScuro}
                       cursor="pointer"
-                      accessibilityRole="button"
+                      role="button"
                       onPress={() => setExpandedIds((prev) => new Set(prev).add(job.bookingId))}
                     >
                       Mostra dettagli
@@ -178,7 +178,7 @@ export default function AdminLavoriPage() {
                 {showDetails && job.finalItems.length > 0 ? (
                   <YStack gap={2}>
                     {job.finalItems.map((item, index) => (
-                      <XStack key={index} justifyContent="space-between" gap="$2">
+                      <XStack key={index} justifyContent="space-between" gap="2">
                         <Text fontSize={14} color={brand.grafite}>
                           {item.name}
                           {item.added ? "  (aggiunta)" : ""}
@@ -192,7 +192,7 @@ export default function AdminLavoriPage() {
                 ) : null}
 
                 {job.changeReason ? (
-                  <YStack padding="$3" borderRadius={20} backgroundColor={brand.urgenzaVelo} gap="$1">
+                  <YStack padding="3" borderRadius={20} backgroundColor={brand.urgenzaVelo} gap="1">
                     <Text fontWeight="700" color={brand.grafite}>
                       Motivo delle differenze (professionista)
                     </Text>
@@ -201,7 +201,7 @@ export default function AdminLavoriPage() {
                 ) : null}
 
                 {showDetails ? (
-                <XStack gap="$4" flexWrap="wrap" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+                <XStack gap="4" flexWrap="wrap" paddingTop="2" borderTopWidth={1} borderTopColor={brand.filetto}>
                   <Side
                     title="Professionista"
                     done={job.professionalCompleted ? "Ha segnato il lavoro come terminato." : "Non ha ancora segnato il lavoro come terminato."}

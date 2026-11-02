@@ -189,7 +189,7 @@ export function AdminUsersList({
         right={
           <Button
             variant="secondary"
-            size="$3"
+            size="3"
             disabled={exporting}
             onPress={exportCsv}
           >
@@ -197,7 +197,7 @@ export function AdminUsersList({
           </Button>
         }
       />
-      <XStack gap="$2" flexWrap="wrap" marginBottom="$3">
+      <XStack gap="2" flexWrap="wrap" marginBottom="3">
         <input
           aria-label="Cerca utenti"
           className="admin-input"
@@ -416,14 +416,14 @@ export function AdminUsersList({
       ) : null}
 
       {data && totalPages > 1 ? (
-        <XStack gap="$2" alignItems="center" marginTop="$3">
+        <XStack gap="2" alignItems="center" marginTop="3">
           <Button
             variant="secondary"
-            size="$3"
+            size="3"
             disabled={data.page <= 1}
             onPress={() =>
-              setQuery((prev) => ({ ...prev, page: data.page - 1 }))
-            }
+                        setQuery((prev) => ({ ...prev, page: data.page - 1 }))
+                      }
           >
             Precedente
           </Button>
@@ -432,11 +432,11 @@ export function AdminUsersList({
           </Text>
           <Button
             variant="secondary"
-            size="$3"
+            size="3"
             disabled={data.page >= totalPages}
             onPress={() =>
-              setQuery((prev) => ({ ...prev, page: data.page + 1 }))
-            }
+                        setQuery((prev) => ({ ...prev, page: data.page + 1 }))
+                      }
           >
             Successiva
           </Button>

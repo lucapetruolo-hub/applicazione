@@ -114,29 +114,29 @@ export function ReportContentModal({
         width="100%"
         maxWidth={460}
         backgroundColor={brand.calce}
-        borderRadius="$3"
+        borderRadius="3"
         borderWidth={1.5}
         borderColor={brand.urgenza}
-        padding="$5"
-        gap="$4"
-        marginVertical="$6"
+        padding="5"
+        gap="4"
+        marginVertical="6"
       >
         {done ? (
-          <YStack gap="$3">
-            <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+          <YStack gap="3">
+            <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
               Segnalazione inviata
             </Text>
             <Text fontSize={16} color={brand.grafite70}>
               Grazie, l&apos;abbiamo presa in carico.
             </Text>
-            <Button variant="secondary" size="$3" onPress={onClose}>
+            <Button variant="secondary" size="3" onPress={onClose}>
               Chiudi
             </Button>
           </YStack>
         ) : (
           <>
-            <YStack gap="$1">
-              <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+            <YStack gap="1">
+              <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
                 Segnala {targetLabel}
               </Text>
               <Text fontSize={16} color={brand.grafite70}>
@@ -144,8 +144,8 @@ export function ReportContentModal({
               </Text>
             </YStack>
 
-            <YStack gap="$2">
-              <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+            <YStack gap="2">
+              <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Motivo
               </Text>
               <select
@@ -180,8 +180,8 @@ export function ReportContentModal({
               ) : null}
             </YStack>
 
-            <YStack gap="$2">
-              <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+            <YStack gap="2">
+              <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 {illegal ? "Perché è illegale?" : "Dettagli (facoltativi)"}
               </Text>
               <textarea
@@ -216,11 +216,11 @@ export function ReportContentModal({
               </Text>
             ) : null}
 
-            <XStack gap="$2" flexWrap="wrap">
-              <Button variant="urgent" size="$3" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+            <XStack gap="2" flexWrap="wrap">
+              <Button variant="urgent" size="3" opacity={isSubmitting ? 0.6 : 1} onPress={handleSubmit} disabled={isSubmitting}>
                 {isSubmitting ? "Invio..." : "Invia segnalazione"}
               </Button>
-              <Button variant="ghost" size="$3" onPress={onClose} disabled={isSubmitting}>
+              <Button variant="ghost" size="3" onPress={onClose} disabled={isSubmitting}>
                 Annulla
               </Button>
             </XStack>

@@ -105,15 +105,15 @@ export function CancelBookingModal({
         width="100%"
         maxWidth={480}
         backgroundColor={brand.calce}
-        borderRadius="$3"
+        borderRadius="3"
         borderWidth={1.5}
         borderColor={brand.urgenza}
-        padding="$5"
-        gap="$4"
-        marginVertical="$6"
+        padding="5"
+        gap="4"
+        marginVertical="6"
       >
-        <YStack gap="$1">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+        <YStack gap="1">
+          <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
             {title}
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
@@ -124,8 +124,8 @@ export function CancelBookingModal({
         {children}
 
         {showNote ? (
-          <YStack gap="$2">
-            <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+          <YStack gap="2">
+            <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
               Nota (facoltativa)
             </Text>
             <textarea aria-label="Nota" value={note} onChange={(e) => setNote(e.target.value)} placeholder={notePlaceholder} rows={3} style={textareaStyle} />
@@ -138,11 +138,11 @@ export function CancelBookingModal({
           </Text>
         ) : null}
 
-        <XStack gap="$2" flexWrap="wrap">
-          <Button variant="urgent" size="$3" height={44} onPress={handleSubmit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
+        <XStack gap="2" flexWrap="wrap">
+          <Button variant="urgent" size="3" height={44} opacity={isSaving ? 0.6 : 1} onPress={handleSubmit} disabled={isSaving}>
             {isSaving ? confirmingLabel : confirmLabel}
           </Button>
-          <Button variant="ghost" size="$3" height={44} onPress={onClose} disabled={isSaving}>
+          <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSaving}>
             {backLabel}
           </Button>
         </XStack>

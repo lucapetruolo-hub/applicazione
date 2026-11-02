@@ -20,7 +20,7 @@ export function RequestStepper({ stage }: { stage: number }) {
         const isLast = index === STAGES.length - 1;
         return (
           <XStack key={label} flex={isLast ? 0 : 1} alignItems="center">
-            <YStack alignItems="center" gap="$1" width={isLast ? "auto" : undefined} flexShrink={0}>
+            <YStack alignItems="center" gap="1" width={isLast ? "auto" : undefined} flexShrink={0}>
               <YStack
                 width={22}
                 height={22}

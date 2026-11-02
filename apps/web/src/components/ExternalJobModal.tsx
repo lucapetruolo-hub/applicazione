@@ -203,56 +203,56 @@ export function ExternalJobModal({
         maxWidth={480}
         marginTop="5vh"
         backgroundColor={brand.calce}
-        borderRadius="$3"
-        padding="$5"
-        gap="$4"
+        borderRadius="3"
+        padding="5"
+        gap="4"
       >
-        <XStack justifyContent="space-between" alignItems="center" gap="$3">
+        <XStack justifyContent="space-between" alignItems="center" gap="3">
           {/* flex + minWidth 0: la frase sotto il titolo va a capo invece di uscire dal bordo (T10, docs/CHANGELOG.md §311). */}
           <YStack gap={2} flex={1} minWidth={0}>
-            <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+            <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
               {/* Parole di chi lavora, non "lavoro esterno" (T9, §311). */}
               {job ? "Modifica il lavoro" : "Aggiungi un tuo lavoro"}
             </Text>
             {job ? (
-              <Text fontFamily="$body" fontSize={11} fontWeight="700" color={STATUS_COLOR[job.status]}>
+              <Text fontFamily="body" fontSize={11} fontWeight="700" color={STATUS_COLOR[job.status]}>
                 {STATUS_LABEL[job.status]}
               </Text>
             ) : (
-              <Text fontSize="$2" color={brand.grafite70}>
+              <Text fontSize="2" color={brand.grafite70}>
                 Un lavoro preso fuori dall&apos;app: lo vedi in agenda insieme agli altri.
               </Text>
             )}
           </YStack>
-          <Text fontSize="$5" color={brand.grafite70} cursor="pointer" onPress={onClose} accessibilityRole="button" accessibilityLabel="Chiudi">
+          <Text fontSize="5" color={brand.grafite70} cursor="pointer" onPress={onClose} role="button" aria-label="Chiudi">
             ✕
           </Text>
         </XStack>
 
-        <YStack gap="$3">
-          <YStack gap="$1">
-            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+        <YStack gap="3">
+          <YStack gap="1">
+            <Text fontFamily="body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               Nome cliente *
             </Text>
             <input aria-label="Nome cliente" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Es. Mario Rossi" style={inputStyle} />
           </YStack>
 
-          <YStack gap="$1">
-            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+          <YStack gap="1">
+            <Text fontFamily="body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               Telefono
             </Text>
             <input aria-label="Telefono" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="Es. 333 1234567" style={inputStyle} />
           </YStack>
 
-          <YStack gap="$1">
-            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+          <YStack gap="1">
+            <Text fontFamily="body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               Indirizzo
             </Text>
             <input aria-label="Indirizzo" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Dove si svolge l'intervento" style={inputStyle} />
           </YStack>
 
-          <YStack gap="$1">
-            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+          <YStack gap="1">
+            <Text fontFamily="body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               Descrizione del lavoro
             </Text>
             <textarea aria-label="Descrizione del lavoro"
@@ -264,36 +264,36 @@ export function ExternalJobModal({
             />
           </YStack>
 
-          <XStack gap="$2" flexWrap="wrap">
-            <YStack gap="$1" flex={1} minWidth={140}>
-              <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+          <XStack gap="2" flexWrap="wrap">
+            <YStack gap="1" flex={1} minWidth={140}>
+              <Text fontFamily="body" fontWeight="700" fontSize={11} color={brand.grafite70}>
                 Data *
               </Text>
               <ItalianDateInput ariaLabel="Data" value={dateStr} onChange={setDateStr} style={inputStyle} padX={10} />
             </YStack>
-            <YStack gap="$1" flex={1} minWidth={100}>
-              <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+            <YStack gap="1" flex={1} minWidth={100}>
+              <Text fontFamily="body" fontWeight="700" fontSize={11} color={brand.grafite70}>
                 Ora inizio *
               </Text>
               <ItalianTimeInput ariaLabel="Ora di inizio" value={startTime} onChange={setStartTime} style={inputStyle} padX={10} />
             </YStack>
-            <YStack gap="$1" flex={1} minWidth={100}>
-              <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+            <YStack gap="1" flex={1} minWidth={100}>
+              <Text fontFamily="body" fontWeight="700" fontSize={11} color={brand.grafite70}>
                 Ora fine
               </Text>
               <ItalianTimeInput ariaLabel="Ora di fine" value={endTime} onChange={setEndTime} style={inputStyle} padX={10} />
             </YStack>
           </XStack>
 
-          <YStack gap="$1">
-            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+          <YStack gap="1">
+            <Text fontFamily="body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               Prezzo concordato (€)
             </Text>
             <input aria-label="Prezzo concordato in euro" value={priceEuro} onChange={(e) => setPriceEuro(e.target.value)} placeholder="Facoltativo" style={inputStyle} />
           </YStack>
 
-          <YStack gap="$1">
-            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+          <YStack gap="1">
+            <Text fontFamily="body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               Note private
             </Text>
             <textarea aria-label="Note private" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} style={{ ...inputStyle, resize: "vertical" }} />
@@ -301,30 +301,30 @@ export function ExternalJobModal({
         </YStack>
 
         {error ? (
-          <Text color={brand.urgenza} fontSize="$3">
+          <Text color={brand.urgenza} fontSize="3">
             {error}
           </Text>
         ) : null}
 
-        <XStack gap="$2" flexWrap="wrap">
-          <Button variant="primary" size="$3" height={40} disabled={isSaving} opacity={isSaving ? 0.6 : 1} onPress={handleSubmit}>
+        <XStack gap="2" flexWrap="wrap">
+          <Button variant="primary" size="3" height={40} opacity={isSaving ? 0.6 : 1} disabled={isSaving} onPress={handleSubmit}>
             {isSaving ? "Salvataggio..." : "Salva"}
           </Button>
-          <Button variant="ghost" size="$3" height={40} onPress={onClose}>
+          <Button variant="ghost" size="3" height={40} onPress={onClose}>
             Annulla
           </Button>
         </XStack>
 
         {job ? (
-          <YStack gap="$3" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
-            <XStack gap="$2" flexWrap="wrap">
+          <YStack gap="3" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="3">
+            <XStack gap="2" flexWrap="wrap">
               {job.status !== "COMPLETED" ? (
                 <Button
                   variant="secondary"
-                  size="$3"
+                  size="3"
                   height={40}
-                  disabled={isChangingStatus}
                   opacity={isChangingStatus ? 0.6 : 1}
+                  disabled={isChangingStatus}
                   onPress={() => handleStatusChange("COMPLETED")}
                 >
                   Segna completato
@@ -333,10 +333,10 @@ export function ExternalJobModal({
               {job.status !== "CANCELED" ? (
                 <Button
                   variant="secondary"
-                  size="$3"
+                  size="3"
                   height={40}
-                  disabled={isChangingStatus}
                   opacity={isChangingStatus ? 0.6 : 1}
+                  disabled={isChangingStatus}
                   onPress={() => handleStatusChange("CANCELED")}
                 >
                   Annulla lavoro
@@ -345,10 +345,10 @@ export function ExternalJobModal({
               {job.status !== "SCHEDULED" ? (
                 <Button
                   variant="ghost"
-                  size="$3"
+                  size="3"
                   height={40}
-                  disabled={isChangingStatus}
                   opacity={isChangingStatus ? 0.6 : 1}
+                  disabled={isChangingStatus}
                   onPress={() => handleStatusChange("SCHEDULED")}
                 >
                   Riapri
@@ -357,27 +357,27 @@ export function ExternalJobModal({
             </XStack>
 
             {confirmingDelete ? (
-              <XStack gap="$2" alignItems="center" flexWrap="wrap">
-                <Text fontSize="$2" color={brand.urgenza}>
+              <XStack gap="2" alignItems="center" flexWrap="wrap">
+                <Text fontSize="2" color={brand.urgenza}>
                   Eliminare definitivamente questo lavoro?
                 </Text>
-                <Button variant="urgent" size="$2" height={36} disabled={isDeleting} opacity={isDeleting ? 0.6 : 1} onPress={handleDelete}>
+                <Button variant="urgent" size="2" height={36} opacity={isDeleting ? 0.6 : 1} disabled={isDeleting} onPress={handleDelete}>
                   {isDeleting ? "Eliminazione..." : "Conferma"}
                 </Button>
-                <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingDelete(false)}>
+                <Button variant="ghost" size="2" height={36} onPress={() => setConfirmingDelete(false)}>
                   Annulla
                 </Button>
               </XStack>
             ) : (
               <Text
-                fontSize="$2"
-                fontWeight="600"
-                color={brand.urgenza}
-                alignSelf="flex-start"
-                cursor="pointer"
-                accessibilityRole="button"
-                onPress={() => setConfirmingDelete(true)}
-              >
+                  fontSize="2"
+                  fontWeight="600"
+                  color={brand.urgenza}
+                  alignSelf="flex-start"
+                  cursor="pointer"
+                  role="button"
+                  onPress={() => setConfirmingDelete(true)}
+                >
                 Elimina lavoro
               </Text>
             )}

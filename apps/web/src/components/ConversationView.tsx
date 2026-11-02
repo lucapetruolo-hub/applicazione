@@ -511,7 +511,7 @@ export function ConversationView({
   function renderEventMedia(event: ConversationEvent) {
     if (event.mediaUrls.length === 0) return null;
     return (
-      <XStack gap="$2" flexWrap="wrap">
+      <XStack gap="2" flexWrap="wrap">
         {event.mediaUrls.map((url) =>
           // Un documento (PDF/Word/Excel) deve mostrare già
           // il proprio nome in chat, non solo un'icona
@@ -523,17 +523,17 @@ export function ConversationView({
             <XStack
               key={url}
               alignItems="center"
-              gap="$1.5"
+              gap="1-5"
               maxWidth={200}
-              paddingHorizontal="$2"
-              paddingVertical="$1.5"
-              borderRadius="$2"
+              paddingHorizontal="2"
+              paddingVertical="1-5"
+              borderRadius="2"
               borderWidth={1}
               borderColor={brand.filetto}
               backgroundColor={brand.calce}
               cursor="pointer"
               onPress={() => openMediaAt(event.mediaUrls, url)}
-              accessibilityRole="button"
+              role="button"
             >
               <Icon name="file-text" size={14} color={brand.cianografiaScuro} />
               <Text fontSize={13} color={brand.grafite} numberOfLines={1} flexShrink={1}>
@@ -577,8 +577,8 @@ export function ConversationView({
     // scrollabile dei messaggi qui sotto (`minHeight: 0` nello style
     // inline).
     <YStack width="100%" flex={1} minHeight={0} backgroundColor={brand.calce} overflow="hidden">
-      <XStack justifyContent="space-between" alignItems="center" flexShrink={0} paddingHorizontal="$5" paddingTop="$5" paddingBottom="$3">
-        <XStack alignItems="center" gap="$3" flex={1} minWidth={0}>
+      <XStack justifyContent="space-between" alignItems="center" flexShrink={0} paddingHorizontal="5" paddingTop="5" paddingBottom="3">
+        <XStack alignItems="center" gap="3" flex={1} minWidth={0}>
           {onBack && backIcon === "chevron-left" ? (
             <XStack
               width={32}
@@ -587,8 +587,8 @@ export function ConversationView({
               justifyContent="center"
               cursor="pointer"
               onPress={onBack}
-              accessibilityRole="button"
-              accessibilityLabel="Torna all'elenco delle chat"
+              role="button"
+              aria-label="Torna all'elenco delle chat"
               flexShrink={0}
             >
               <Icon name="chevron-left" size={22} color={brand.grafite} />
@@ -612,23 +612,23 @@ export function ConversationView({
                 flexShrink={0}
                 cursor={headerOnPress ? "pointer" : undefined}
                 onPress={headerOnPress}
-                accessibilityRole={headerOnPress ? "button" : undefined}
-                accessibilityLabel={headerOnPress ? `Apri il profilo di ${otherPartyName}` : undefined}
+                role={headerOnPress ? "button" : undefined}
+                aria-label={headerOnPress ? `Apri il profilo di ${otherPartyName}` : undefined}
               >
                 <Avatar name={otherPartyName} imageUrl={otherPartyImageUrl} size={40} />
               </XStack>
               <YStack minWidth={0} flex={1}>
                 <Text
-                  fontFamily="$heading"
+                  fontFamily="heading"
                   fontWeight="800"
-                  fontSize="$5"
+                  fontSize="5"
                   color={brand.grafite}
                   numberOfLines={1}
                   cursor={headerOnPress ? "pointer" : undefined}
-                  hoverStyle={headerOnPress ? { textDecorationLine: "underline" } : undefined}
+                  {...(headerOnPress ? { textDecorationLine: "none hover:underline" } : null)}
                   onPress={headerOnPress}
-                  accessibilityRole={headerOnPress ? "link" : undefined}
-                  accessibilityLabel={headerOnPress ? `Apri il profilo di ${otherPartyName}` : undefined}
+                  role={headerOnPress ? "link" : undefined}
+                  aria-label={headerOnPress ? `Apri il profilo di ${otherPartyName}` : undefined}
                 >
                   {otherPartyName}
                 </Text>
@@ -638,15 +638,15 @@ export function ConversationView({
               </YStack>
             </>
           ) : (
-            <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite} numberOfLines={1}>
+            <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite} numberOfLines={1}>
               {title}
             </Text>
           )}
         </XStack>
         {onBack && backIcon === "x" ? (
           // 44x44 attorno alla ✕: prima era grande quanto il segno (collaudo D-07).
-          <XStack width={44} height={44} marginVertical={-8} marginRight={-10} borderRadius={999} alignItems="center" justifyContent="center" cursor="pointer" onPress={onBack} accessibilityRole="button" accessibilityLabel="Chiudi">
-            <Text fontSize="$5" color={brand.grafite70}>
+          <XStack width={44} height={44} marginVertical={-8} marginRight={-10} borderRadius={999} alignItems="center" justifyContent="center" cursor="pointer" onPress={onBack} role="button" aria-label="Chiudi">
+            <Text fontSize="5" color={brand.grafite70}>
               ✕
             </Text>
           </XStack>
@@ -656,15 +656,15 @@ export function ConversationView({
       {/* Avviso di sicurezza sempre visibile in cima alla chat
           (docs/CHANGELOG.md §166, richiesta esplicita dell'utente). */}
       <XStack
-        gap="$2"
+        gap="2"
         alignItems="center"
-        paddingHorizontal="$3"
-        paddingVertical="$2"
+        paddingHorizontal="3"
+        paddingVertical="2"
         marginHorizontal={20}
-        marginTop="$3"
-        marginBottom="$2"
+        marginTop="3"
+        marginBottom="2"
         flexShrink={0}
-        borderRadius="$3"
+        borderRadius="3"
         backgroundColor={brand.cianografiaVelo}
         role="note"
       >
@@ -690,7 +690,7 @@ export function ConversationView({
         }}
         style={{ flex: 1, overflowY: "auto", paddingLeft: 20, paddingRight: 20, minHeight: 0 }}
       >
-        <YStack gap="$3" paddingBottom="$2">
+        <YStack gap="3" paddingBottom="2">
           {loadError ? (
             <Text color={brand.urgenza} fontSize={16}>
               {loadError}
@@ -712,7 +712,7 @@ export function ConversationView({
               const previous = events[index - 1];
               const daySeparator =
                 !previous || formatDayLabel(previous.createdAt) !== dayLabel ? (
-                  <Text fontSize={13} fontWeight="600" color={brand.grafite70} textAlign="center" paddingTop="$1">
+                  <Text fontSize={13} fontWeight="600" color={brand.grafite70} textAlign="center" paddingTop="1">
                     {dayLabel}
                   </Text>
                 ) : null;
@@ -731,13 +731,13 @@ export function ConversationView({
                     {/* Una riga compatta con l'ora accanto, in seconda persona
                         per chi ha fatto l'azione (docs/CHANGELOG.md §349). */}
                     <YStack
-                      gap="$1"
+                      gap="1"
                       alignItems="center"
                       alignSelf="center"
                       maxWidth="90%"
-                      paddingHorizontal="$3"
+                      paddingHorizontal="3"
                       paddingVertical={6}
-                      borderRadius="$3"
+                      borderRadius="3"
                       borderWidth={1}
                       borderColor={brand.filetto}
                       backgroundColor={brand.calce}
@@ -766,14 +766,14 @@ export function ConversationView({
                   {daySeparator}
                   <YStack alignItems={isMine ? "flex-end" : "flex-start"} gap={2}>
                     <YStack
-                      gap="$1.5"
+                      gap="1-5"
                       maxWidth="85%"
                       backgroundColor={ACTOR_BUBBLE_BG[event.actor]}
-                      borderRadius="$4"
+                      borderRadius="4"
                       borderTopRightRadius={isMine ? 4 : undefined}
                       borderTopLeftRadius={isMine ? undefined : 4}
-                      paddingHorizontal="$3"
-                      paddingVertical="$2.5"
+                      paddingHorizontal="3"
+                      paddingVertical="2-5"
                     >
                       {event.message ? (
                         <Text color={brand.grafite} fontSize={16}>
@@ -782,7 +782,7 @@ export function ConversationView({
                       ) : null}
                       {renderEventMedia(event)}
                     </YStack>
-                    <Text fontSize={10} color={brand.grafite70} paddingHorizontal="$1">
+                    <Text fontSize={10} color={brand.grafite70} paddingHorizontal="1">
                       {formatEventTime(event.createdAt)}
                     </Text>
                   </YStack>
@@ -799,9 +799,9 @@ export function ConversationView({
           col testo, invio rotondo con freccia dentro il campo a destra,
           tasto rotondo "+" a sinistra per allegare. Stessa logica di invio e
           allegati di prima, cambia solo l'aspetto. */}
-      <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingHorizontal="$4" paddingTop="$3" paddingBottom="$4" flexShrink={0}>
+      <YStack gap="2" borderTopWidth={1} borderTopColor={brand.filetto} paddingHorizontal="4" paddingTop="3" paddingBottom="4" flexShrink={0}>
         {mediaUrls.length > 0 ? (
-          <XStack gap="$2" flexWrap="wrap" paddingLeft={52}>
+          <XStack gap="2" flexWrap="wrap" paddingLeft={52}>
             {mediaUrls.map((url) =>
               // Un documento non ancora inviato mostra già il proprio nome
               // reale (richiesta esplicita dell'utente, stesso principio
@@ -812,17 +812,17 @@ export function ConversationView({
                 <XStack
                   key={url}
                   alignItems="center"
-                  gap="$1.5"
+                  gap="1-5"
                   maxWidth={220}
-                  paddingHorizontal="$2"
-                  paddingVertical="$1.5"
-                  borderRadius="$2"
+                  paddingHorizontal="2"
+                  paddingVertical="1-5"
+                  borderRadius="2"
                   borderWidth={1}
                   borderColor={brand.filetto}
                   backgroundColor={brand.gesso}
                   cursor="pointer"
                   onPress={() => openMediaAt(mediaUrls, url)}
-                  accessibilityRole="button"
+                  role="button"
                 >
                   <Icon name="file-text" size={14} color={brand.cianografiaScuro} />
                   <Text fontSize={13} color={brand.grafite} numberOfLines={1} flexShrink={1}>
@@ -839,14 +839,14 @@ export function ConversationView({
                       e.stopPropagation();
                       removeMedia(url);
                     }}
-                    accessibilityRole="button"
-                    accessibilityLabel="Rimuovi allegato"
+                    role="button"
+                    aria-label="Rimuovi allegato"
                   >
                     <Icon name="x" size={11} color={brand.grafite70} strokeWidth={2} />
                   </YStack>
                 </XStack>
               ) : (
-                <YStack key={url} width={56} height={56} borderRadius="$2" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+                <YStack key={url} width={56} height={56} borderRadius="2" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
                   <MediaPreview url={url} onClick={() => openMediaAt(mediaUrls, url)} style={{ cursor: "pointer" }} />
                   <YStack
                     position="absolute"
@@ -860,8 +860,8 @@ export function ConversationView({
                     justifyContent="center"
                     cursor="pointer"
                     onPress={() => removeMedia(url)}
-                    accessibilityRole="button"
-                    accessibilityLabel="Rimuovi foto"
+                    role="button"
+                    aria-label="Rimuovi foto"
                   >
                     <Icon name="x" size={11} color="white" strokeWidth={2} />
                   </YStack>
@@ -892,11 +892,11 @@ export function ConversationView({
             {submitError}
           </Text>
         ) : null}
-        <XStack alignItems="flex-end" gap="$2">
+        <XStack alignItems="flex-end" gap="2">
           {/* "+" rotondo con menu (Fotocamera, Foto o video, File) aperto
               verso l'alto: il tasto vive in fondo al pannello, un menu
               verso il basso finirebbe tagliato dal bordo. */}
-          <YStack ref={attachMenuContainerRef} position="relative" flexShrink={0}>
+          <YStack ref={attachMenuContainerRef as never} position="relative" flexShrink={0}>
             <button
               type="button"
               className="composer-round composer-attach"
@@ -914,10 +914,10 @@ export function ConversationView({
                 position="absolute"
                 bottom="100%"
                 left={0}
-                marginBottom="$2"
+                marginBottom="2"
                 minWidth={190}
                 backgroundColor={brand.calce}
-                borderRadius="$3"
+                borderRadius="3"
                 overflow="hidden"
                 zIndex={1200}
                 borderWidth={1}
@@ -926,14 +926,14 @@ export function ConversationView({
                 {ATTACH_OPTIONS.map((item) => (
                   <XStack
                     key={item.label}
-                    paddingHorizontal="$4"
-                    paddingVertical="$3"
+                    paddingHorizontal="4"
+                    paddingVertical="3"
                     alignItems="center"
-                    gap="$2"
+                    gap="2"
                     cursor="pointer"
-                    hoverStyle={{ backgroundColor: brand.gesso }}
+                    backgroundColor={`hover:${brand.gesso}`}
                     onPress={() => (item.kind === "camera" ? void handleCameraOption() : openAttachPicker(item.kind))}
-                    accessibilityRole="button"
+                    role="button"
                   >
                     <Icon name={item.icon} size={16} color={brand.grafite} />
                     <Text fontSize={16} color={brand.grafite} fontWeight="600">
@@ -1119,14 +1119,14 @@ export function ConversationView({
             padding: 16,
           }}
         >
-          <YStack role="dialog" aria-modal aria-label="Scatta una foto" backgroundColor={brand.calce} borderRadius="$4" padding="$4" gap="$3" maxWidth={480} width="100%">
+          <YStack role="dialog" aria-modal aria-label="Scatta una foto" backgroundColor={brand.calce} borderRadius="4" padding="4" gap="3" maxWidth={480} width="100%">
             <Text fontSize={16} fontWeight="700" color={brand.grafite}>
               Scatta una foto
             </Text>
             <div style={{ borderRadius: 10, overflow: "hidden", backgroundColor: "#000" }}>
               <video ref={videoRef} autoPlay playsInline muted style={{ width: "100%", display: "block" }} />
             </div>
-            <XStack gap="$3" justifyContent="flex-end">
+            <XStack gap="3" justifyContent="flex-end">
               <Button variant="ghost" onPress={stopCameraStream}>
                 Annulla
               </Button>

@@ -27,8 +27,8 @@ export function ProfessionalInvoiceRequestBox({ request, courtesyHref, receipt =
   }
 
   return (
-    <YStack gap="$2" padding="$3" borderRadius={20} borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce}>
-      <XStack alignItems="center" gap="$2">
+    <YStack gap="2" padding="3" borderRadius={20} borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce}>
+      <XStack alignItems="center" gap="2">
         <Icon name="receipt-text" size={18} strokeWidth={2} color={brand.ottone} />
         <Text fontSize={16} fontWeight="800" color={brand.grafite}>
           {receipt ? "Il cliente chiede la ricevuta" : "Il cliente chiede la fattura"}
@@ -41,8 +41,8 @@ export function ProfessionalInvoiceRequestBox({ request, courtesyHref, receipt =
           </Text>
         ))}
       </YStack>
-      <XStack gap="$3" flexWrap="wrap" alignItems="center">
-        <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={() => void copy()}>
+      <XStack gap="3" flexWrap="wrap" alignItems="center">
+        <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro} textDecorationLine="underline" cursor="pointer" role="button" onPress={() => void copy()}>
           {copied ? "Copiati" : "Copia i dati"}
         </Text>
         {courtesyHref ? (

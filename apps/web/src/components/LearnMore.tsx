@@ -38,12 +38,12 @@ export function LearnMore({ summary, children, fontSize = 13 }: { summary: React
   const [open, setOpen] = useState(false);
   const id = useId();
   return (
-    <YStack gap="$2">
+    <YStack gap="2">
       <Text fontSize={fontSize} color={brand.grafite70}>
         {summary} <LearnMoreToggle open={open} onToggle={() => setOpen((v) => !v)} controls={id} />
       </Text>
       {open ? (
-        <YStack id={id} padding="$3" borderRadius="$3" backgroundColor={brand.gesso} gap="$2">
+        <YStack id={id} padding="3" borderRadius="3" backgroundColor={brand.gesso} gap="2">
           {children}
         </YStack>
       ) : null}

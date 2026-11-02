@@ -94,12 +94,12 @@ export function invoiceFromProfessionalNote(receipt = false): string {
 /** Casella "Chiedi la fattura a …" (o "la ricevuta"), chiusa finché non si spunta. */
 export function InvoiceRequestToggle({ professionalName, checked, onToggle, receipt = false }: { professionalName: string; checked: boolean; onToggle: () => void; receipt?: boolean }) {
   return (
-    <XStack alignItems="flex-start" gap="$2" cursor="pointer" onPress={onToggle} onKeyDown={keyActivate(onToggle)} accessibilityRole="checkbox" aria-checked={checked} tabIndex={0}>
+    <XStack alignItems="flex-start" gap="2" cursor="pointer" onPress={onToggle} onKeyDown={keyActivate(onToggle)} role="checkbox" aria-checked={checked} tabIndex={0}>
       <YStack
         width={20}
         height={20}
         marginTop={1}
-        borderRadius="$1"
+        borderRadius="1"
         borderWidth={2}
         borderColor={checked ? brand.cianografia : brand.filetto}
         backgroundColor={checked ? brand.cianografia : brand.calce}
@@ -136,8 +136,8 @@ export function InvoiceRequestFields({
   const set = (key: keyof InvoiceDraft, value: string) => onChange({ ...draft, [key]: value });
   const vat = draft.kind === "VAT";
   return (
-    <YStack gap="$3">
-      <XStack gap="$2" flexWrap="wrap">
+    <YStack gap="3">
+      <XStack gap="2" flexWrap="wrap">
         {clientInvoiceKinds.map((kind) => (
           <Button key={kind} variant={draft.kind === kind ? "primary" : "secondary"} aria-pressed={draft.kind === kind} onPress={() => onChange({ ...draft, kind })}>
             {CLIENT_INVOICE_KIND_LABEL[kind]}
@@ -146,7 +146,7 @@ export function InvoiceRequestFields({
       </XStack>
       <Field
         label={vat ? "Intestazione" : "Nome e cognome"}
-        accessibilityLabel={vat ? "Intestazione della fattura" : "Nome e cognome per la fattura"}
+        aria-label={vat ? "Intestazione della fattura" : "Nome e cognome per la fattura"}
         placeholder={vat ? "Ragione sociale o nome della ditta" : undefined}
         value={draft.name}
         onChangeText={(v) => set("name", v)}
@@ -154,11 +154,11 @@ export function InvoiceRequestFields({
       />
       {vat ? (
         <>
-          <Field label="Partita IVA" accessibilityLabel="Partita IVA per la fattura" value={draft.vatNumber} onChangeText={(v) => set("vatNumber", v)} inputMode="numeric" error={errors?.vatNumber} />
+          <Field label="Partita IVA" aria-label="Partita IVA per la fattura" value={draft.vatNumber} onChangeText={(v) => set("vatNumber", v)} inputMode="numeric" error={errors?.vatNumber} />
           {receipt ? null : (
             <Field
               label="Codice destinatario o PEC (facoltativo)"
-              accessibilityLabel="Codice destinatario o PEC per la fattura"
+              aria-label="Codice destinatario o PEC per la fattura"
               value={draft.recipient}
               onChangeText={(v) => set("recipient", v)}
               autoCapitalize="none"
@@ -169,29 +169,29 @@ export function InvoiceRequestFields({
       ) : (
         <Field
           label="Codice fiscale"
-          accessibilityLabel="Codice fiscale per la fattura"
+          aria-label="Codice fiscale per la fattura"
           value={draft.taxCode}
           onChangeText={(v) => set("taxCode", v.toUpperCase())}
           autoCapitalize="characters"
           error={errors?.taxCode}
         />
       )}
-      <XStack gap="$3" flexWrap="wrap">
+      <XStack gap="3" flexWrap="wrap">
         <YStack flex={3} flexBasis={0} minWidth={180}>
-          <Field label={vat ? "Via della sede" : "Via di residenza"} accessibilityLabel="Via per la fattura" value={draft.street} onChangeText={(v) => set("street", v)} error={errors?.street} />
+          <Field label={vat ? "Via della sede" : "Via di residenza"} aria-label="Via per la fattura" value={draft.street} onChangeText={(v) => set("street", v)} error={errors?.street} />
         </YStack>
         <YStack flex={1} flexBasis={0} minWidth={80}>
-          <Field label="Civico" accessibilityLabel="Civico per la fattura" value={draft.houseNumber} onChangeText={(v) => set("houseNumber", v)} />
+          <Field label="Civico" aria-label="Civico per la fattura" value={draft.houseNumber} onChangeText={(v) => set("houseNumber", v)} />
         </YStack>
       </XStack>
-      <XStack gap="$3" flexWrap="wrap">
+      <XStack gap="3" flexWrap="wrap">
         <YStack flex={1} flexBasis={0} minWidth={80}>
-          <Field label="CAP" accessibilityLabel="CAP per la fattura" value={draft.postalCode} onChangeText={(v) => set("postalCode", v.replace(/\D/g, "").slice(0, 5))} inputMode="numeric" error={errors?.postalCode} />
+          <Field label="CAP" aria-label="CAP per la fattura" value={draft.postalCode} onChangeText={(v) => set("postalCode", v.replace(/\D/g, "").slice(0, 5))} inputMode="numeric" error={errors?.postalCode} />
         </YStack>
         <YStack flex={2} flexBasis={0} minWidth={120}>
           <Field
             label="Comune"
-            accessibilityLabel="Comune per la fattura"
+            aria-label="Comune per la fattura"
             value={draft.city}
             onChangeText={(v) => {
               const comune = findComuneByName(v);
@@ -203,7 +203,7 @@ export function InvoiceRequestFields({
         <YStack width={72} flexShrink={0}>
           <Field
             label="Prov."
-            accessibilityLabel="Provincia per la fattura (sigla)"
+            aria-label="Provincia per la fattura (sigla)"
             value={draft.province}
             onChangeText={(v) => set("province", v.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2))}
             autoCapitalize="characters"
@@ -290,8 +290,8 @@ export function ClientInvoiceRequestPanel({
 
   if (!editing && initial) {
     return (
-      <YStack gap="$2" padding="$3" borderRadius={20} backgroundColor={brand.gesso}>
-        <XStack alignItems="center" gap="$2">
+      <YStack gap="2" padding="3" borderRadius={20} backgroundColor={brand.gesso}>
+        <XStack alignItems="center" gap="2">
           <Icon name="receipt-text" size={18} strokeWidth={2} color={brand.grafite70} />
           <Text fontSize={16} fontWeight="700" color={brand.grafite}>
             Hai chiesto {receipt ? "la ricevuta" : "la fattura"} a {professionalName}
@@ -309,11 +309,11 @@ export function ClientInvoiceRequestPanel({
             </Text>
           ))}
         </YStack>
-        <XStack gap="$3" flexWrap="wrap">
-          <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={() => void open()}>
+        <XStack gap="3" flexWrap="wrap">
+          <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro} textDecorationLine="underline" cursor="pointer" role="button" onPress={() => void open()}>
             Modifica
           </Text>
-          <Text fontSize={16} fontWeight="700" color={brand.grafite70} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={() => (saving ? undefined : void remove())}>
+          <Text fontSize={16} fontWeight="700" color={brand.grafite70} textDecorationLine="underline" cursor="pointer" role="button" onPress={() => (saving ? undefined : void remove())}>
             Non mi serve più
           </Text>
         </XStack>
@@ -327,12 +327,12 @@ export function ClientInvoiceRequestPanel({
   }
 
   return (
-    <YStack gap="$3">
+    <YStack gap="3">
       <InvoiceRequestToggle professionalName={professionalName} checked={editing} receipt={receipt} onToggle={() => (editing ? setEditing(false) : void open())} />
       {editing ? (
         <>
           <InvoiceRequestFields draft={draft} onChange={setDraft} errors={errors} receipt={receipt} />
-          <XStack gap="$2" flexWrap="wrap">
+          <XStack gap="2" flexWrap="wrap">
             <Button variant="primary" onPress={() => void save()} disabled={saving} opacity={saving ? 0.45 : 1}>
               {saving ? "Invio..." : initial ? "Salva i dati" : "Manda la richiesta"}
             </Button>

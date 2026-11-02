@@ -33,8 +33,8 @@ export function BookingConfirmed({ booking, address, token, onDone }: { booking:
   ];
 
   return (
-    <YStack width="100%" maxWidth={560} alignSelf="center" gap="$5">
-      <YStack alignItems="center" gap="$3">
+    <YStack width="100%" maxWidth={560} alignSelf="center" gap="5">
+      <YStack alignItems="center" gap="3">
         <YStack position="relative" padding={6} borderRadius={999} backgroundColor={brand.cianografiaVelo}>
           <Avatar name={booking.businessName} imageUrl={booking.professionalImageUrl} size={88} />
           <XStack position="absolute" right={0} bottom={0} width={32} height={32} borderRadius={999} backgroundColor={brand.cianografiaPieno} borderWidth={3} borderColor={brand.gesso} alignItems="center" justifyContent="center">
@@ -42,7 +42,7 @@ export function BookingConfirmed({ booking, address, token, onDone }: { booking:
           </XStack>
         </YStack>
         <div ref={headingRef} tabIndex={-1} style={{ outline: "none" }}>
-          <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+          <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center">
             Appuntamento prenotato
           </Text>
         </div>
@@ -51,10 +51,10 @@ export function BookingConfirmed({ booking, address, token, onDone }: { booking:
         </Text>
       </YStack>
 
-      <Surface gap="$3">
+      <Surface gap="3">
         <AppointmentWhen booking={booking} moment={moment} />
         {address ? (
-          <XStack alignItems="center" gap="$2">
+          <XStack alignItems="center" gap="2">
             <Icon name="map-pin" size={18} color={brand.grafite70} />
             <Text flex={1} fontSize={16} color={brand.grafite}>
               {address}
@@ -63,7 +63,7 @@ export function BookingConfirmed({ booking, address, token, onDone }: { booking:
         ) : null}
         <YStack height={1} backgroundColor={brand.filetto} />
         {priceText ? (
-          <XStack justifyContent="space-between" alignItems="baseline" gap="$2" flexWrap="wrap">
+          <XStack justifyContent="space-between" alignItems="baseline" gap="2" flexWrap="wrap">
             <Text fontSize={16} color={brand.grafite70}>
               Totale indicativo
             </Text>
@@ -75,12 +75,12 @@ export function BookingConfirmed({ booking, address, token, onDone }: { booking:
         {booking.payment ? <JobPaymentStatus payment={booking.payment} audience="client" /> : null}
       </Surface>
 
-      <YStack gap="$3">
+      <YStack gap="3">
         <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
           Cosa succede adesso
         </Text>
         {steps.map((step, index) => (
-          <XStack key={step.title} gap="$3" alignItems="flex-start">
+          <XStack key={step.title} gap="3" alignItems="flex-start">
             <XStack
               width={28}
               height={28}
@@ -114,7 +114,7 @@ export function BookingConfirmed({ booking, address, token, onDone }: { booking:
         ))}
       </YStack>
 
-      <YStack gap="$3" alignItems="center">
+      <YStack gap="3" alignItems="center">
         <CardButton tone="primary" alignSelf="stretch" onPress={onDone}>
           Vai all&apos;appuntamento
         </CardButton>

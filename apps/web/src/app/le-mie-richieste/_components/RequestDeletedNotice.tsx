@@ -64,12 +64,12 @@ export function RequestDeletedNotice({ onUndo }: { onUndo: (guidedRequestId: str
       {state ? (
         <XStack
           alignItems="center"
-          gap="$3"
+          gap="3"
           backgroundColor={brand.grafite}
-          borderRadius="$3"
-          paddingVertical="$2"
-          paddingLeft="$4"
-          paddingRight={state.phase === "deleted" || state.phase === "undoing" ? "$2" : "$4"}
+          borderRadius="3"
+          paddingVertical="2"
+          paddingLeft="4"
+          paddingRight={`${state.phase === "deleted" || state.phase === "undoing" ? "2" : "4"}`}
           minHeight={52}
           maxWidth={420}
           style={{ pointerEvents: "auto" }}

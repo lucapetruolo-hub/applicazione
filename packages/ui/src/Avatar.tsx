@@ -43,7 +43,7 @@ export function Avatar({ name, imageUrl, size = 40 }: AvatarProps) {
       alignItems="center"
       justifyContent="center"
     >
-      <Text fontFamily="$heading" fontWeight="700" fontSize={size * 0.4} color={brand.cianografiaScuro}>
+      <Text fontFamily="heading" fontWeight="700" fontSize={size * 0.4} color={brand.cianografiaScuro}>
         {initials(name)}
       </Text>
     </YStack>

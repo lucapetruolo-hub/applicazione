@@ -71,12 +71,12 @@ export function GoogleConsentModal({
       }}
     >
       <div role="dialog" aria-modal="true" aria-label="Accetta Privacy Policy e Termini di Servizio" style={{ width: "100%", maxWidth: 420 }}>
-        <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
-          <YStack gap="$1">
-            <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
+        <YStack width="100%" backgroundColor={brand.calce} borderRadius="5" padding="5" gap="4">
+          <YStack gap="1">
+            <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
               Un&apos;ultima cosa
             </Text>
-            <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+            <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
               Prima di continuare
             </Text>
             <Text fontSize={16} color={brand.grafite70}>
@@ -92,7 +92,7 @@ export function GoogleConsentModal({
             </Text>
           ) : null}
 
-          <XStack gap="$3">
+          <XStack gap="3">
             <Button variant="secondary" flex={1} onPress={onCancel} disabled={isSubmitting}>
               Annulla
             </Button>

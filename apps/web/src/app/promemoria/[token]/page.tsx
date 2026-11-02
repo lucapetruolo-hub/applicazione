@@ -72,7 +72,7 @@ function Promemoria({ token }: { token: string }) {
   }
 
   const title = (text: string) => (
-    <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center" style={{ textWrap: "balance" }}>
+    <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center" style={{ textWrap: "balance" }}>
       {text}
     </Text>
   );
@@ -82,7 +82,7 @@ function Promemoria({ token }: { token: string }) {
     </Text>
   );
   const quietLink = (label: string, onPress: () => void) => (
-    <Text fontSize={16} fontWeight="600" color={brand.grafite} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={sending ? undefined : onPress}>
+    <Text fontSize={16} fontWeight="600" color={brand.grafite} textDecorationLine="underline" cursor="pointer" role="button" onPress={sending ? undefined : onPress}>
       {label}
     </Text>
   );
@@ -171,7 +171,7 @@ function Promemoria({ token }: { token: string }) {
   return (
     <AuthPageBackground>
       <AuthCard maxWidth={440}>
-        <YStack gap="$4" alignItems="center" minHeight={state || loadError ? undefined : 220}>
+        <YStack gap="4" alignItems="center" minHeight={state || loadError ? undefined : 220}>
           {content}
           {error ? (
             <Text fontSize={16} color={brand.urgenza} textAlign="center" role="alert">

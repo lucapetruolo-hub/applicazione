@@ -114,16 +114,16 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
   }
 
   return (
-    <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+    <YStack gap="2" paddingTop="2" borderTopWidth={1} borderTopColor={brand.filetto}>
       <Text fontWeight="700" color={brand.grafite}>
         Decisione
       </Text>
       <Text fontSize={13} color={brand.grafite70}>
         Esiti standard: sceglilo e ritocca il testo se serve.
       </Text>
-      <XStack gap="$2" flexWrap="wrap">
+      <XStack gap="2" flexWrap="wrap">
         {JOB_ISSUE_DECISION_TEMPLATES[row.issue.type].map((template) => (
-          <Button key={template.label} variant="secondary" size="$2" height={32} onPress={() => setNote(template.note)}>
+          <Button key={template.label} variant="secondary" size="2" height={32} onPress={() => setNote(template.note)}>
             {`${template.decision === "UPHELD" ? "Accolta" : "Respinta"}: ${template.label}`}
           </Button>
         ))}
@@ -141,18 +141,18 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
         }).${row.issue.paidOnline ? ` Lavoro pagato sul sito: rimborso al cliente del ${choosesRefund ? refundPercent : 100}% di quanto pagato, a carico del professionista.` : ""}`}
       </Text>
       {choosesRefund ? (
-        <YStack gap="$1">
+        <YStack gap="1">
           <Text fontSize={13} fontWeight="700" color={brand.grafite}>
             Rimborso se la accogli
           </Text>
-          <XStack gap="$2" flexWrap="wrap" role="radiogroup" aria-label="Rimborso al cliente">
+          <XStack gap="2" flexWrap="wrap" role="radiogroup" aria-label="Rimborso al cliente">
             {JOB_ISSUE_REFUND_PERCENTS.map((percent) => (
               <Button
                 key={percent}
                 role="radio"
                 aria-checked={refundPercent === percent}
                 variant={refundPercent === percent ? "primary" : "secondary"}
-                size="$2"
+                size="2"
                 height={32}
                 onPress={() => setRefundPercent(percent)}
               >
@@ -163,21 +163,21 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
         </YStack>
       ) : null}
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
-      <XStack gap="$2" flexWrap="wrap">
-        <Button variant="urgent" size="$3" height={40} disabled={saving !== null} opacity={saving ? 0.6 : 1} onPress={() => decide("UPHELD")}>
+      <XStack gap="2" flexWrap="wrap">
+        <Button variant="urgent" size="3" height={40} opacity={saving ? 0.6 : 1} disabled={saving !== null} onPress={() => decide("UPHELD")}>
           {saving === "UPHELD" ? "Salvataggio..." : "Accogli la segnalazione"}
         </Button>
-        <Button variant="secondary" size="$3" height={40} disabled={saving !== null} opacity={saving ? 0.6 : 1} onPress={() => decide("REJECTED")}>
+        <Button variant="secondary" size="3" height={40} opacity={saving ? 0.6 : 1} disabled={saving !== null} onPress={() => decide("REJECTED")}>
           {saving === "REJECTED" ? "Salvataggio..." : "Respingi"}
         </Button>
         {row.issue.reviewPhase !== "AWAITING_INFO" ? (
-          <Button variant="ghost" size="$3" height={40} disabled={saving !== null} onPress={() => setAsking((v) => !v)}>
+          <Button variant="ghost" size="3" height={40} disabled={saving !== null} onPress={() => setAsking((v) => !v)}>
             Chiedi altre informazioni
           </Button>
         ) : null}
       </XStack>
       {asking ? (
-        <YStack gap="$2">
+        <YStack gap="2">
           <textarea
             value={question}
             onChange={(e) => setQuestion(e.target.value.slice(0, 1000))}
@@ -188,7 +188,7 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
           <Text fontSize={13} color={brand.grafite70}>
             Il professionista ha 72 ore per rispondere, poi la segnalazione è accolta automaticamente.
           </Text>
-          <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" disabled={saving !== null} opacity={saving ? 0.6 : 1} onPress={askInfo}>
+          <Button variant="secondary" size="3" height={40} alignSelf="flex-start" opacity={saving ? 0.6 : 1} disabled={saving !== null} onPress={askInfo}>
             {saving === "INFO" ? "Invio..." : "Invia la richiesta"}
           </Button>
         </YStack>
@@ -228,7 +228,7 @@ export function AppealForm({ row, token, onDone }: { row: AdminJobIssue; token: 
     );
   }
   return (
-    <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+    <YStack gap="2" paddingTop="2" borderTopWidth={1} borderTopColor={brand.filetto}>
       <Text fontWeight="700" color={brand.grafite}>
         Decisione sul ricorso
       </Text>
@@ -243,11 +243,11 @@ export function AppealForm({ row, token, onDone }: { row: AdminJobIssue; token: 
         Se accogli il ricorso la segnalazione diventa respinta, l&apos;affidabilità torna com&apos;era e la misura presa viene tolta.
       </Text>
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
-      <XStack gap="$2" flexWrap="wrap">
-        <Button variant="secondary" size="$3" height={40} disabled={saving !== null} opacity={saving ? 0.6 : 1} onPress={() => decide("ACCEPTED")}>
+      <XStack gap="2" flexWrap="wrap">
+        <Button variant="secondary" size="3" height={40} opacity={saving ? 0.6 : 1} disabled={saving !== null} onPress={() => decide("ACCEPTED")}>
           {saving === "ACCEPTED" ? "Salvataggio..." : "Accogli il ricorso"}
         </Button>
-        <Button variant="ghost" size="$3" height={40} disabled={saving !== null} opacity={saving ? 0.6 : 1} onPress={() => decide("REJECTED")}>
+        <Button variant="ghost" size="3" height={40} opacity={saving ? 0.6 : 1} disabled={saving !== null} onPress={() => decide("REJECTED")}>
           {saving === "REJECTED" ? "Salvataggio..." : "Respingi il ricorso"}
         </Button>
       </XStack>

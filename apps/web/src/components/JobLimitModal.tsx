@@ -87,19 +87,19 @@ export function JobLimitModal({
       }}
     >
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="job-limit-title" style={{ width: "100%", maxWidth: 460, maxHeight: "100%", overflowY: "auto" }}>
-        <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
-          <YStack gap="$2">
-            <Text id="job-limit-title" tag="h2" fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
+        <YStack width="100%" backgroundColor={brand.calce} borderRadius="5" padding="5" gap="4">
+          <YStack gap="2">
+            <Text id="job-limit-title" render="h2" fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
               Hai esaurito l&apos;abbonamento {currentLabel}
             </Text>
             {nextInfo ? (
-              <Text color={brand.grafite70} lineHeight={22}>
+              <Text color={brand.grafite70} lineHeight="22px">
                 Passa a {nextInfo.label} per rispondere subito: vale da oggi fino al rinnovo.
               </Text>
             ) : null}
           </YStack>
 
-          <YStack backgroundColor={brand.gesso} borderRadius={10} padding="$3" gap={2}>
+          <YStack backgroundColor={brand.gesso} borderRadius={10} padding="3" gap={2}>
             <Text fontSize={13} color={brand.grafite70}>
               Stai rispondendo a
             </Text>
@@ -109,12 +109,12 @@ export function JobLimitModal({
           </YStack>
 
           {nextInfo && next ? (
-            <YStack borderWidth={2} borderColor={brand.cianografia} borderRadius={10} padding="$4" gap="$1">
+            <YStack borderWidth={2} borderColor={brand.cianografia} borderRadius={10} padding="4" gap="1">
               <Text fontWeight="700" color={brand.grafite}>
                 {nextInfo.label} · {nextInfo.monthlyAcceptedJobs === null ? "lavori senza limite" : `${nextInfo.monthlyAcceptedJobs} lavori al mese`}
               </Text>
-              <XStack alignItems="baseline" gap="$2" flexWrap="wrap" marginTop="$1">
-                <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+              <XStack alignItems="baseline" gap="2" flexWrap="wrap" marginTop="1">
+                <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
                   {quote && quote.amountEurCents > 0 ? formatEur(quote.amountEurCents) : "Nessun costo"}
                 </Text>
                 <Text color={brand.grafite70}>
@@ -131,11 +131,11 @@ export function JobLimitModal({
           {error ? <Text color={brand.urgenza}>{error}</Text> : null}
           {!sub.checkoutAvailable ? <Text color={brand.grafite70}>I pagamenti online non sono ancora attivi su questo ambiente.</Text> : null}
 
-          <YStack gap="$2">
+          <YStack gap="2">
             {nextInfo && sub.checkoutAvailable ? (
               <Button variant="acquisto" disabled={pending} opacity={pending ? 0.6 : 1} onPress={upgrade}>
-                <XStack alignItems="center" gap="$2">
-                  <Text color="white" fontFamily="$body" fontWeight="600">
+                <XStack alignItems="center" gap="2">
+                  <Text color="white" fontFamily="body" fontWeight="600">
                     {pending ? "Attendi..." : `Passa a ${nextInfo.label} e rispondi`}
                   </Text>
                   {pending ? null : <ButtonArrow tone="red" />}

@@ -57,18 +57,18 @@ export default function AdminFinanzaPage() {
   if (!token) return null;
 
   return (
-    <YStack gap="$7">
-      <YStack gap="$4">
-        <H2 size="$7">Riepilogo finanza</H2>
+    <YStack gap="7">
+      <YStack gap="4">
+        <H2 size="7">Riepilogo finanza</H2>
         {finance === null ? (
-          <YStack gap="$2" maxWidth={400}>
+          <YStack gap="2" maxWidth={400}>
             <SkeletonBlock height={16} />
             <SkeletonBlock height={16} width="80%" />
             <SkeletonBlock height={16} width="60%" />
           </YStack>
         ) : (
-          <YStack gap="$4">
-            <YStack gap="$2">
+          <YStack gap="4">
+            <YStack gap="2">
               <Text fontWeight="700">Ricavo {BRAND.name} per fonte</Text>
               {finance.revenueBySource.length === 0 ? (
                 <Text color={brand.grafite70}>
@@ -89,7 +89,7 @@ export default function AdminFinanzaPage() {
                 ))
               )}
             </YStack>
-            <YStack gap="$2">
+            <YStack gap="2">
               <Text fontWeight="700">Pagamenti del lavoro per metodo</Text>
               {finance.jobPaymentsByMethod.map((m) => (
                 <XStack
@@ -109,7 +109,7 @@ export default function AdminFinanzaPage() {
                 </XStack>
               ))}
             </YStack>
-            <YStack gap="$2">
+            <YStack gap="2">
               <Text fontWeight="700">Pagamenti del lavoro per stato</Text>
               {finance.jobPaymentsByStatus.map((s) => (
                 <XStack
@@ -129,14 +129,14 @@ export default function AdminFinanzaPage() {
       {/* Le nostre fatture ai professionisti (docs/CHANGELOG.md §378). */}
       <AdminInvoicesSection token={token} />
 
-      <YStack gap="$4">
+      <YStack gap="4">
         <XStack
           justifyContent="space-between"
           alignItems="center"
           flexWrap="wrap"
-          gap="$3"
+          gap="3"
         >
-          <H2 size="$7">Regole di commissione</H2>
+          <H2 size="7">Regole di commissione</H2>
           <Text fontSize={12} color={brand.grafite70}>
             Mai valori fissi nel codice — ogni regola è un dato, modificabile
             qui senza deploy.

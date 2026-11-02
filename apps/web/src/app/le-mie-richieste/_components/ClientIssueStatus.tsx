@@ -40,7 +40,7 @@ export function ClientIssueStatus({
 
   if (issue.status === "CHAT") {
     return (
-      <YStack gap="$2">
+      <YStack gap="2">
         <Text fontSize={13} color={brand.grafite70}>
           {!issue.assisted
             ? `Hai scelto il pagamento diretto: scrivi a ${pro} in chat per trovare insieme una soluzione. In questo caso non possiamo rimborsarti né decidere noi, ma potrai sempre lasciare la recensione.`
@@ -48,7 +48,7 @@ export function ClientIssueStatus({
             ? `${pro} ti ha risposto in chat. Se non trovate un accordo, chiedi al nostro team di decidere.`
             : `${pro} ha tempo fino a ${formatIssueDeadline(issue.chatReplyDueAt)} per risponderti in chat e proporti una soluzione. Se non risponde, la segnalazione passa da sola al nostro team.`}
         </Text>
-        <XStack gap="$2" flexWrap="wrap">
+        <XStack gap="2" flexWrap="wrap">
           {onOpenChat ? (
             <CardButton tone="primary" onPress={onOpenChat}>
               Apri la chat
@@ -70,7 +70,7 @@ export function ClientIssueStatus({
 
   if (issue.status === "UNRESOLVED") {
     return (
-      <YStack gap="$2">
+      <YStack gap="2">
         <Text fontSize={13} color={brand.grafite70}>
           Non avete trovato un accordo con {pro}. Puoi lasciare la recensione per raccontare com&apos;è andata.
         </Text>
@@ -110,7 +110,7 @@ export function ClientIssueStatus({
   // Decisa (accolta o respinta), eventualmente dopo un ricorso del professionista.
   const appealAccepted = issue.appealDecision === "ACCEPTED";
   return (
-    <YStack gap="$2">
+    <YStack gap="2">
       {issue.resolutionNote && !appealAccepted ? (
         <Text fontSize={13} color={brand.grafite70}>
           {jobIssueOutcomeText({
@@ -129,7 +129,7 @@ export function ClientIssueStatus({
         </Text>
       ) : null}
       {issue.canRedispatch ? (
-        <YStack gap="$1">
+        <YStack gap="1">
           <CardButton tone="primary" alignSelf="flex-start" disabled={busy} onPress={onRedispatch}>
             Invia la richiesta ad altri professionisti
           </CardButton>
@@ -139,7 +139,7 @@ export function ClientIssueStatus({
         </YStack>
       ) : null}
       {issue.redispatchedGuidedRequestId ? (
-        <YStack gap="$2" alignItems="flex-start">
+        <YStack gap="2" alignItems="flex-start">
           <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
             Hai inviato la richiesta ad altri professionisti.
           </Text>

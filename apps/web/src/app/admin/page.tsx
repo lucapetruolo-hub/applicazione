@@ -119,14 +119,14 @@ function DaFare() {
   );
 
   return (
-    <YStack gap="$5">
+    <YStack gap="5">
       <Text color={brand.grafite70} marginTop={-8}>
         Tutto quello che aspetta una decisione, prima i pericoli e quello che scade prima.
       </Text>
 
       {isSuper && advice && advice.length > 0 ? (
-        <YStack gap="$2">
-          <Text tag="h2" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+        <YStack gap="2">
+          <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
             Cosa fare questa settimana
           </Text>
           <SiteAdviceList advice={advice} limit={1} />
@@ -136,8 +136,8 @@ function DaFare() {
         </YStack>
       ) : null}
 
-      <YStack gap="$3">
-        <XStack gap="$2" flexWrap="wrap" alignItems="center">
+      <YStack gap="3">
+        <XStack gap="2" flexWrap="wrap" alignItems="center">
           <select className="admin-input" aria-label="Tipo di caso" value={group ?? ""} onChange={(e) => setFilter("tipo", e.target.value)}>
             <option value="">Tutti i tipi ({all.length})</option>
             {groups.map((g) => (
@@ -228,8 +228,8 @@ function DaFare() {
       </YStack>
 
       {queue && queue.watching.length > 0 ? (
-        <YStack gap="$2">
-          <Text tag="h2" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+        <YStack gap="2">
+          <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
             Da guardare, senza decisione
           </Text>
           <Text fontSize={14} color={brand.grafite70}>

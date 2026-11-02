@@ -119,20 +119,20 @@ function DescriptionsTab() {
   const month = data?.lastMonth;
 
   return (
-    <YStack gap="$4" marginTop="$3">
+    <YStack gap="4" marginTop="3">
       {month ? (
         <AdminCard>
           <Text fontWeight="700">Ultimi 30 giorni: {month.total} descrizioni</Text>
-          <Text color={brand.grafite70} marginTop="$1">
+          <Text color={brand.grafite70} marginTop="1">
             {month.safety} con avviso di sicurezza · {month.ai} decise dall&apos;intelligenza artificiale · {month.none} non capite
           </Text>
           {month.byCategory.length > 0 ? (
-            <Text color={brand.grafite70} marginTop="$1">
+            <Text color={brand.grafite70} marginTop="1">
               Mestieri: {month.byCategory.map((row) => `${targetLabel(row.key, null)} ${row.count}`).join(" · ")}
             </Text>
           ) : null}
           {month.byOutOfService.length > 0 ? (
-            <Text color={brand.grafite} fontWeight="600" marginTop="$1">
+            <Text color={brand.grafite} fontWeight="600" marginTop="1">
               Lavori che non copriamo:{" "}
               {month.byOutOfService
                 .map((row) => `${OUT_OF_SERVICE_LABELS[row.key as keyof typeof OUT_OF_SERVICE_LABELS] ?? row.key} ${row.count}`)
@@ -142,13 +142,13 @@ function DescriptionsTab() {
         </AdminCard>
       ) : null}
 
-      <YStack gap="$2">
+      <YStack gap="2">
         <Text fontWeight="700">Insegna una parola al dizionario</Text>
         <Text color={brand.grafite70} fontSize={13}>
           Se la parola compare nella descrizione, il cliente va a quel mestiere senza chiedere all&apos;intelligenza artificiale. Basta
           l&apos;inizio della parola: «zanzarier» vale per zanzariera e zanzariere.
         </Text>
-        <XStack gap="$2" flexWrap="wrap">
+        <XStack gap="2" flexWrap="wrap">
           <input
             aria-label="Parola"
             className="admin-input"
@@ -174,28 +174,28 @@ function DescriptionsTab() {
               ))}
             </optgroup>
           </select>
-          <Button variant="primary" size="$3" disabled={busy || word.trim().length < 3 || !target} onPress={() => void teach()}>
+          <Button variant="primary" size="3" disabled={busy || word.trim().length < 3 || !target} onPress={() => void teach()}>
             Insegna
           </Button>
         </XStack>
         {data && data.words.length > 0 ? (
-          <XStack gap="$2" flexWrap="wrap" marginTop="$1">
+          <XStack gap="2" flexWrap="wrap" marginTop="1">
             {data.words.map((entry) => (
               <XStack
                 key={entry.id}
-                gap="$2"
+                gap="2"
                 alignItems="center"
                 borderWidth={1}
                 borderColor={brand.filetto}
                 borderRadius={999}
-                paddingLeft="$3"
-                paddingRight="$1"
+                paddingLeft="3"
+                paddingRight="1"
                 paddingVertical={2}
               >
                 <Text fontSize={13}>
                   «{entry.word}» → {targetLabel(entry.categorySlug, entry.outOfService)}
                 </Text>
-                <Button size="$2" variant="secondary" onPress={() => void forget(entry.id)} aria-label={`Togli la parola ${entry.word}`}>
+                <Button size="2" variant="secondary" onPress={() => void forget(entry.id)} aria-label={`Togli la parola ${entry.word}`}>
                   Togli
                 </Button>
               </XStack>
@@ -295,7 +295,7 @@ function ServiceNamesTab() {
   const categories = data ? data.categories.filter((category) => !onlyToReview || category.handwritten.length > 0) : [];
 
   return (
-    <YStack gap="$3" marginTop="$3">
+    <YStack gap="3" marginTop="3">
       <Text color={brand.grafite70}>
         Accanto a ogni prestazione, quanti professionisti la usano. Con <Text fontWeight="700">+</Text> una prestazione scritta dai
         professionisti entra tra le standard e compare in iscrizione e nel profilo; &quot;Unisci a…&quot; se è lo stesso lavoro di una
@@ -314,14 +314,14 @@ function ServiceNamesTab() {
       {data
         ? categories.map((category) => (
             <AdminCard key={category.slug}>
-              <XStack gap="$2" alignItems="center" flexWrap="wrap">
+              <XStack gap="2" alignItems="center" flexWrap="wrap">
                 <Text fontSize={17} fontWeight="700">
                   {category.label}
                 </Text>
                 {category.handwritten.length > 0 ? <AdminPill tone="warn">{category.handwritten.length} scritte a mano</AdminPill> : null}
               </XStack>
 
-              <Text fontSize={13} fontWeight="700" color={brand.grafite70} marginTop="$2">
+              <Text fontSize={13} fontWeight="700" color={brand.grafite70} marginTop="2">
                 Standard
               </Text>
               <ul className="mr-chips" aria-label={`Prestazioni standard di ${category.label}`}>
@@ -348,7 +348,7 @@ function ServiceNamesTab() {
 
               {category.handwritten.length > 0 ? (
                 <>
-                  <Text fontSize={13} fontWeight="700" color={brand.grafite70} marginTop="$2">
+                  <Text fontSize={13} fontWeight="700" color={brand.grafite70} marginTop="2">
                     Scritte dai professionisti
                   </Text>
                   <ul className="mr-rows">
@@ -395,14 +395,14 @@ function ServiceNamesTab() {
                               ))}
                             </select>
                             <Button
-                              size="$2"
+                              size="2"
                               variant="secondary"
                               disabled={!targets[targetKey] || busy !== null}
                               onPress={() =>
-                                void run(`merge-${targetKey}`, (t) =>
-                                  apiClient.adminMergeServiceName(t, { name: row.name, canonical: targets[targetKey] as string }),
-                                )
-                              }
+                                                            void run(`merge-${targetKey}`, (t) =>
+                                                              apiClient.adminMergeServiceName(t, { name: row.name, canonical: targets[targetKey] as string }),
+                                                            )
+                                                          }
                             >
                               Unisci
                             </Button>
@@ -418,15 +418,15 @@ function ServiceNamesTab() {
         : null}
 
       {data && data.aliases.length > 0 ? (
-        <YStack gap="$2" marginTop="$3">
+        <YStack gap="2" marginTop="3">
           <Text fontWeight="700">Già uniti</Text>
           {data.aliases.map((alias) => (
-            <XStack key={alias.key} gap="$2" alignItems="center">
+            <XStack key={alias.key} gap="2" alignItems="center">
               <Text fontSize={13}>
                 «{alias.key}» → {alias.canonical}
               </Text>
               <Button
-                size="$2"
+                size="2"
                 variant="secondary"
                 disabled={busy !== null}
                 onPress={() => void run(`unmerge-${alias.key}`, (t) => apiClient.adminUnmergeServiceName(t, alias.key))}

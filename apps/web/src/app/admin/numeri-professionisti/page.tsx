@@ -89,7 +89,7 @@ function NumeriContent() {
   const scope = [categoryLabel, filters.city].filter(Boolean).join(" a ");
 
   return (
-    <YStack gap="$5">
+    <YStack gap="5">
       <AdminPageHeader
         title="Professionisti in numeri"
         description="Quanti sono e come si dividono. Ogni barra mostra la quota sul totale."
@@ -129,7 +129,7 @@ function NumeriContent() {
           ))}
         </select>
         {filtered ? (
-          <Button variant="secondary" size="$3" onPress={() => setFilters({})}>
+          <Button variant="secondary" size="3" onPress={() => setFilters({})}>
             Togli i filtri
           </Button>
         ) : null}
@@ -175,7 +175,7 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
   const periodTotal = months.reduce((sum, m) => sum + m.value, 0);
 
   return (
-    <YStack gap="$5">
+    <YStack gap="5">
       <CountingFromNote countingFrom={data.countingFrom} launchDate={data.launchDate} />
       <div className="admin-kpi-grid">
         <div className="admin-kpi">
@@ -258,8 +258,8 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
 
       <AdminCard>
         <div className="admin-chart-head">
-          <YStack gap="$1">
-            <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+          <YStack gap="1">
+            <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
               Iscrizioni per mese
             </Text>
             <Text color={brand.grafite70} fontSize={13}>
@@ -291,8 +291,8 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
 
 function CardTitle({ title, note }: { title: string; note: string }) {
   return (
-    <YStack gap="$1">
-      <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+    <YStack gap="1">
+      <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
         {title}
       </Text>
       <Text color={brand.grafite70} fontSize={13}>
@@ -339,7 +339,7 @@ function SearchCard({ searches, withCategory, countingFrom }: { searches: AdminP
               </div>
             ))}
           </div>
-          <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
+          <Text fontFamily="heading" fontWeight="700" fontSize="5" color={brand.grafite}>
             Città più cercate
           </Text>
           <ul className="admin-bars">
@@ -561,7 +561,7 @@ type BarRow = { key: string; label: string; count: number; href?: string };
 function BarSection({ title, note, total, rows }: { title: string; note?: string; total: number; rows: BarRow[] }) {
   return (
     <AdminCard>
-      <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+      <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
         {title}
       </Text>
       <ul className="admin-bars">

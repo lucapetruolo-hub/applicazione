@@ -59,7 +59,7 @@ export function SubscriptionOfferCard({ token, adminRoles }: { token: string; ad
   const since = current?.startedAt ? ` dal ${formatAdminDate(current.startedAt)}` : "";
   return (
     <AdminCard>
-      <XStack justifyContent="space-between" alignItems="center" gap="$2" flexWrap="wrap">
+      <XStack justifyContent="space-between" alignItems="center" gap="2" flexWrap="wrap">
         <Text fontWeight="700" fontSize={18} color={brand.grafite}>
           Offerta mesi gratis
         </Text>
@@ -71,12 +71,12 @@ export function SubscriptionOfferCard({ token, adminRoles }: { token: string; ad
           : "Chi si iscrive ora non ha mesi gratis. Chi era già iscritto tiene i suoi."}
       </Text>
 
-      <XStack gap="$3" flexWrap="wrap">
+      <XStack gap="3" flexWrap="wrap">
         {[
           { label: "Professionisti iscritti", total: signups.professionals.total, since: signups.professionals.sinceOffer },
           { label: "Clienti iscritti", total: signups.clients.total, since: signups.clients.sinceOffer },
         ].map((item) => (
-          <YStack key={item.label} flex={1} minWidth={180} padding="$3" borderRadius={10} backgroundColor={brand.gesso} gap={2}>
+          <YStack key={item.label} flex={1} minWidth={180} padding="3" borderRadius={10} backgroundColor={brand.gesso} gap={2}>
             <Text fontSize={14} color={brand.grafite70}>
               {item.label}
             </Text>
@@ -96,12 +96,12 @@ export function SubscriptionOfferCard({ token, adminRoles }: { token: string; ad
       </Text>
 
       {canEdit ? (
-        <YStack gap="$2" marginTop="$2">
+        <YStack gap="2" marginTop="2">
           {current ? (
             confirmStop ? (
-              <YStack gap="$2">
+              <YStack gap="2">
                 <Text color={brand.grafite}>Fermi l&apos;offerta? Da adesso chi si iscrive non ha mesi gratis; chi è già iscritto tiene i suoi. Potrai crearne una nuova quando vuoi.</Text>
-                <XStack gap="$2" flexWrap="wrap">
+                <XStack gap="2" flexWrap="wrap">
                   <Button variant="urgent" disabled={busy} opacity={busy ? 0.6 : 1} onPress={() => run(() => apiClient.adminStopSubscriptionOffer(token))}>
                     {busy ? "Attendi..." : "Sì, ferma l'offerta"}
                   </Button>
@@ -116,7 +116,7 @@ export function SubscriptionOfferCard({ token, adminRoles }: { token: string; ad
               </Button>
             )
           ) : null}
-          <XStack gap="$2" alignItems="center" flexWrap="wrap">
+          <XStack gap="2" alignItems="center" flexWrap="wrap">
             <label htmlFor="offer-months" style={{ color: brand.grafite }}>
               {current ? "Oppure sostituiscila con" : "Nuova offerta:"}
             </label>
@@ -140,7 +140,7 @@ export function SubscriptionOfferCard({ token, adminRoles }: { token: string; ad
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
       {offer.history.length ? (
-        <YStack gap={2} marginTop="$2">
+        <YStack gap={2} marginTop="2">
           <Text fontSize={14} fontWeight="700" color={brand.grafite}>
             Offerte passate
           </Text>

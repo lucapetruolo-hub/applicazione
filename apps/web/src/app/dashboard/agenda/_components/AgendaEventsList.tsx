@@ -16,8 +16,8 @@ import { AgendaListItem, WEEKDAY_FULL_LABELS } from "./agendaHelpers";
 export function AgendaEventsList({ items, groupByMonth = false, emptyLabel }: { items: AgendaListItem[]; groupByMonth?: boolean; emptyLabel: string }) {
   if (items.length === 0) {
     return (
-      <YStack padding="$5" alignItems="center" backgroundColor={brand.calce} borderRadius="$3">
-        <Text color={brand.grafite70} fontSize="$3">
+      <YStack padding="5" alignItems="center" backgroundColor={brand.calce} borderRadius="3">
+        <Text color={brand.grafite70} fontSize="3">
           {emptyLabel}
         </Text>
       </YStack>
@@ -26,7 +26,7 @@ export function AgendaEventsList({ items, groupByMonth = false, emptyLabel }: { 
 
   if (!groupByMonth) {
     return (
-      <YStack gap="$2">
+      <YStack gap="2">
         {items.map((item) => (
           <AgendaEventRow key={item.key} item={item} />
         ))}
@@ -49,13 +49,13 @@ export function AgendaEventsList({ items, groupByMonth = false, emptyLabel }: { 
   }
 
   return (
-    <YStack gap="$5">
+    <YStack gap="5">
       {groups.map((group) => (
-        <YStack key={group.monthKey} gap="$2">
-          <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70} textTransform="capitalize">
+        <YStack key={group.monthKey} gap="2">
+          <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70} textTransform="capitalize">
             {group.label}
           </Text>
-          <YStack gap="$2">
+          <YStack gap="2">
             {group.items.map((item) => (
               <AgendaEventRow key={item.key} item={item} />
             ))}
@@ -72,22 +72,22 @@ export function AgendaEventRow({ item }: { item: AgendaListItem }) {
     <XStack
       minWidth={0}
       alignItems="center"
-      gap="$3"
-      padding="$3"
+      gap="3"
+      padding="3"
       backgroundColor={brand.calce}
-      borderRadius="$3"
+      borderRadius="3"
       borderLeftWidth={3}
       borderStyle={item.dashed ? "dashed" : "solid"}
       borderLeftColor={item.statusColor}
       cursor="pointer"
       onPress={item.onPress}
-      accessibilityRole="button"
+      role="button"
     >
       <YStack minWidth={92}>
-        <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite} numberOfLines={1}>
+        <Text fontFamily="body" fontSize={12} fontWeight="700" color={brand.grafite} numberOfLines={1}>
           {dateLabel}
         </Text>
-        <Text fontFamily="$body" fontSize={11} color={brand.grafite70} numberOfLines={1}>
+        <Text fontFamily="body" fontSize={11} color={brand.grafite70} numberOfLines={1}>
           {item.timeLabel}
         </Text>
       </YStack>

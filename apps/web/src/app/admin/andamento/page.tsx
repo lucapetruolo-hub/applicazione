@@ -89,7 +89,7 @@ export default function AdminAndamentoPage() {
   }
 
   return (
-    <YStack gap="$5">
+    <YStack gap="5">
       <AdminPageHeader
         title="Andamento e consigli"
         description="Cosa fare questa settimana, già deciso dai numeri. Ogni lunedì mattina arriva anche per email."
@@ -103,13 +103,13 @@ export default function AdminAndamentoPage() {
         <>
           <CountingFromNote countingFrom={data.countingFrom} launchDate={data.launchDate} />
           <section aria-labelledby="advice-title">
-            <YStack gap="$3">
+            <YStack gap="3">
               <Text
                 id="advice-title"
-                tag="h2"
-                fontFamily="$heading"
+                render="h2"
+                fontFamily="heading"
                 fontWeight="800"
-                fontSize="$7"
+                fontSize="7"
                 color={brand.grafite}
               >
                 Cosa fare questa settimana
@@ -163,12 +163,12 @@ export default function AdminAndamentoPage() {
           </section>
           <AdminSummaryNumbers />
 
-          <YStack gap="$1" marginTop="$4">
+          <YStack gap="1" marginTop="4">
             <Text
-              tag="h2"
-              fontFamily="$heading"
+              render="h2"
+              fontFamily="heading"
               fontWeight="800"
-              fontSize="$7"
+              fontSize="7"
               color={brand.grafite}
             >
               I numeri dietro i consigli
@@ -209,12 +209,12 @@ export default function AdminAndamentoPage() {
 
 function CardTitle({ title, note }: { title: string; note?: string }) {
   return (
-    <YStack gap="$1">
+    <YStack gap="1">
       <Text
-        tag="h3"
-        fontFamily="$heading"
+        render="h3"
+        fontFamily="heading"
         fontWeight="800"
-        fontSize="$6"
+        fontSize="6"
         color={brand.grafite}
       >
         {title}
@@ -288,11 +288,11 @@ function GuideCard({ data }: { data: AdminSiteStats }) {
         {Math.round(GUIDE_RED_SHARE * 100)}% i clienti restano senza risposta.
       </Text>
       <Text
-        fontFamily="$heading"
+        fontFamily="heading"
         fontWeight="700"
-        fontSize="$5"
+        fontSize="5"
         color={brand.grafite}
-        marginTop="$2"
+        marginTop="2"
       >
         Richieste con un preventivo entro {GUIDE_QUOTE_HOURS} ore, per settimana
       </Text>
@@ -538,7 +538,7 @@ function StepsCard({ data }: { data: AdminSiteStats }) {
         note="Quante volte è stato raggiunto ogni passo del modulo di richiesta. Chi era già entrato salta l'accesso: per questo quel passo può essere più basso."
       />
       <Bars rows={rows} total={0} steps />
-      <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite} marginTop="$3">
+      <Text fontFamily="heading" fontWeight="700" fontSize="5" color={brand.grafite} marginTop="3">
         Di queste, dalla pagina di un professionista
       </Text>
       <Text color={brand.grafite70} fontSize={13}>
@@ -628,7 +628,7 @@ function ProfileSourcesCard({ data }: { data: AdminSiteStats }) {
           </tbody>
         </table>
       </div>
-      <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite} marginTop="$3">
+      <Text fontFamily="heading" fontWeight="700" fontSize="5" color={brand.grafite} marginTop="3">
         Da quale pulsante
       </Text>
       <div className="admin-table-wrap">
@@ -874,8 +874,8 @@ function PopularServicesCard({ data }: { data: AdminSiteStats }) {
         <Text color={brand.grafite70}>Ancora nessuna ricerca di una prestazione.</Text>
       ) : (
         data.popularServices.slice(0, 6).map((category) => (
-          <YStack key={category.categorySlug} gap="$1">
-            <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite} marginTop="$2">
+          <YStack key={category.categorySlug} gap="1">
+            <Text fontFamily="heading" fontWeight="700" fontSize="5" color={brand.grafite} marginTop="2">
               {category.categoryLabel}
             </Text>
             <Bars
@@ -890,7 +890,7 @@ function PopularServicesCard({ data }: { data: AdminSiteStats }) {
           </YStack>
         ))
       )}
-      <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite} marginTop="$3">
+      <Text fontFamily="heading" fontWeight="700" fontSize="5" color={brand.grafite} marginTop="3">
         Scritte a mano dai professionisti, non suggerite
       </Text>
       <Text color={brand.grafite70} fontSize={13}>

@@ -38,9 +38,9 @@ export default function SegnalazioniPage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi per vedere la decisione
           </Text>
           <Link href="/accedi?redirect=/segnalazioni" style={{ textDecoration: "none" }}>
@@ -52,10 +52,10 @@ export default function SegnalazioniPage() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={880} gap="$6">
-        <YStack gap="$2">
-          <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="8" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={880} gap="6">
+        <YStack gap="2">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             Decisioni sui tuoi contenuti
           </Text>
           <Text color={brand.grafite70}>Le decisioni prese dopo una segnalazione, con il motivo. Se pensi che sia un errore puoi contestarla.</Text>
@@ -63,7 +63,7 @@ export default function SegnalazioniPage() {
 
         {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
-        <YStack gap="$3">
+        <YStack gap="3">
           {data === null && !error ? (
             <Text color={brand.grafite70}>Caricamento…</Text>
           ) : data && data.received.length === 0 ? (
@@ -103,14 +103,14 @@ function DecisionCard({ decision, token, onChanged }: { decision: MyContentRepor
   return (
     <YStack
       id={`segnalazione-${decision.id}`}
-      gap="$2"
-      padding="$4"
+      gap="2"
+      padding="4"
       borderRadius={radiusDoc}
       backgroundColor={brand.calce}
       borderWidth={1}
       borderColor={decision.revertedAt ? brand.filetto : brand.urgenza}
     >
-      <XStack justifyContent="space-between" gap="$2" flexWrap="wrap">
+      <XStack justifyContent="space-between" gap="2" flexWrap="wrap">
         <Text fontWeight="700" color={brand.grafite}>
           {CONTENT_REPORT_TARGET_LABEL[decision.targetType]}
         </Text>
@@ -157,7 +157,7 @@ function DecisionCard({ decision, token, onChanged }: { decision: MyContentRepor
 
       {!decision.appealedAt && !decision.revertedAt ? (
         appealing ? (
-          <YStack gap="$2">
+          <YStack gap="2">
             <textarea aria-label="Motivo della contestazione"
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -166,7 +166,7 @@ function DecisionCard({ decision, token, onChanged }: { decision: MyContentRepor
               style={{ width: "100%", boxSizing: "border-box", padding: 10, borderRadius: 10, border: `1px solid ${brand.bordoCampo}`, font: "inherit" }}
             />
             {error ? <Text color={brand.urgenza}>{error}</Text> : null}
-            <XStack gap="$2" flexWrap="wrap">
+            <XStack gap="2" flexWrap="wrap">
               <Button variant="primary" onPress={submitAppeal} disabled={busy || text.trim().length < 10}>
                 {busy ? "Invio…" : "Invia contestazione"}
               </Button>

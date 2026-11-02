@@ -29,15 +29,15 @@ export function AddToCalendar({ token, bookingId }: { token: string; bookingId: 
 
   const icon = <Icon name="calendar" size={18} color={brand.grafite} />;
   return (
-    <YStack gap="$2" alignItems="flex-start">
+    <YStack gap="2" alignItems="flex-start">
       {calendar ? (
-        <XStack gap="$2" flexWrap="wrap">
+        <XStack gap="2" flexWrap="wrap">
           {calendar.googleUrl ? (
             <a href={calendar.googleUrl} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
               <CardButton>
-                <XStack alignItems="center" gap="$2">
+                <XStack alignItems="center" gap="2">
                   {icon}
-                  <Text fontFamily="$body" fontWeight="600" fontSize="$3" color={brand.grafite}>
+                  <Text fontFamily="body" fontWeight="600" fontSize="3" color={brand.grafite}>
                     Google Calendar
                   </Text>
                 </XStack>
@@ -46,9 +46,9 @@ export function AddToCalendar({ token, bookingId }: { token: string; bookingId: 
           ) : null}
           <a href={`data:text/calendar;charset=utf-8,${encodeURIComponent(calendar.ics)}`} download="appuntamento.ics" style={{ textDecoration: "none" }}>
             <CardButton>
-              <XStack alignItems="center" gap="$2">
+              <XStack alignItems="center" gap="2">
                 {icon}
-                <Text fontFamily="$body" fontWeight="600" fontSize="$3" color={brand.grafite}>
+                <Text fontFamily="body" fontWeight="600" fontSize="3" color={brand.grafite}>
                   iPhone e altri
                 </Text>
               </XStack>
@@ -57,9 +57,9 @@ export function AddToCalendar({ token, bookingId }: { token: string; bookingId: 
         </XStack>
       ) : (
         <CardButton onPress={load} disabled={loading}>
-          <XStack alignItems="center" gap="$2">
+          <XStack alignItems="center" gap="2">
             {icon}
-            <Text fontFamily="$body" fontWeight="600" fontSize="$3" color={brand.grafite}>
+            <Text fontFamily="body" fontWeight="600" fontSize="3" color={brand.grafite}>
               {loading ? "Un momento..." : "Aggiungi al calendario"}
             </Text>
           </XStack>

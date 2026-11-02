@@ -25,26 +25,26 @@ export function ScheduleChangeBox({
   afterLabel: string;
   afterText: string;
   note?: string | null;
-  marginTop?: "$3";
+  marginTop?: "3";
 }) {
   return (
     <YStack
       marginTop={marginTop}
-      padding="$4"
+      padding="4"
       borderRadius={radiusDoc}
       backgroundColor="#FFF8E1"
       borderWidth={1.5}
       borderStyle="dashed"
       borderColor={brand.ottone}
-      gap="$3"
+      gap="3"
     >
-      <Text fontFamily="$body" fontWeight="800" fontSize={16} color="#8a5a00">
+      <Text fontFamily="body" fontWeight="800" fontSize={16} color="#8a5a00">
         {title}
       </Text>
-      <XStack alignItems="center" gap="$2">
+      <XStack alignItems="center" gap="2">
         {beforeText ? (
           <>
-            <YStack flex={1} padding="$3" borderRadius={20} backgroundColor="#F5F5F5">
+            <YStack flex={1} padding="3" borderRadius={20} backgroundColor="#F5F5F5">
               <Text fontSize={10.5} fontWeight="700" color={brand.grafite70} textTransform="uppercase">
                 {beforeLabel}
               </Text>
@@ -57,7 +57,7 @@ export function ScheduleChangeBox({
             </Text>
           </>
         ) : null}
-        <YStack flex={1} padding="$3" borderRadius={20} backgroundColor={brand.calce} borderWidth={2} borderColor={brand.ottone}>
+        <YStack flex={1} padding="3" borderRadius={20} backgroundColor={brand.calce} borderWidth={2} borderColor={brand.ottone}>
           <Text fontSize={10.5} fontWeight="700" color={brand.ottone} textTransform="uppercase">
             {afterLabel}
           </Text>
@@ -67,7 +67,7 @@ export function ScheduleChangeBox({
         </YStack>
       </XStack>
       {note ? (
-        <YStack padding="$3" borderRadius={10} backgroundColor={brand.calce} borderLeftWidth={3} borderLeftColor={brand.ottone}>
+        <YStack padding="3" borderRadius={10} backgroundColor={brand.calce} borderLeftWidth={3} borderLeftColor={brand.ottone}>
           <Text fontSize={16} color={brand.grafite}>
             {note}
           </Text>

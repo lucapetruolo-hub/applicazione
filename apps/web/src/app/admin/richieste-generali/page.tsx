@@ -80,7 +80,7 @@ export default function AdminRichiesteGeneraliPage() {
           <Text fontWeight="700">
             {data.globallyEnabled ? "Richieste generali attive su tutto il sito" : "Richieste generali spente su tutto il sito"}
           </Text>
-          <Text color={brand.grafite70} marginTop="$1">
+          <Text color={brand.grafite70} marginTop="1">
             {data.globallyEnabled
               ? "Per spegnerle ovunque imposta GENERAL_REQUESTS_ENABLED=false sul servizio API di Render. Le richieste a un professionista scelto continuano a funzionare."
               : "Spente da GENERAL_REQUESTS_ENABLED=false su Render. Per riaccenderle togli la variabile o mettila a true."}
@@ -97,9 +97,9 @@ export default function AdminRichiesteGeneraliPage() {
         />
       ) : null}
 
-      <YStack marginTop="$4" marginBottom="$3" gap="$2">
+      <YStack marginTop="4" marginBottom="3" gap="2">
         <Text fontWeight="700">Chiudi a mano una zona</Text>
-        <XStack gap="$2" flexWrap="wrap">
+        <XStack gap="2" flexWrap="wrap">
           <select
             aria-label="Categoria"
             className="admin-input"
@@ -116,7 +116,7 @@ export default function AdminRichiesteGeneraliPage() {
           <input aria-label="Città" className="admin-input" style={{ flex: 1, minWidth: 180 }} value={city} onChange={(e) => setCity(e.target.value)} placeholder="Città" />
           <Button
             variant="secondary"
-            size="$3"
+            size="3"
             disabled={!categorySlug || city.trim().length < 2 || busy !== null}
             onPress={() => categorySlug && void close(categorySlug, city.trim())}
           >
@@ -167,7 +167,7 @@ export default function AdminRichiesteGeneraliPage() {
                     </td>
                     <td>
                       {row.block ? (
-                        <YStack gap="$1">
+                        <YStack gap="1">
                           <AdminPill tone="danger">{row.block.automatic ? "Chiusa in automatico" : "Chiusa a mano"}</AdminPill>
                           <Text fontSize={12} color={brand.grafite70}>
                             {formatAdminDate(row.block.closedAt)}: {row.block.reason}
@@ -187,7 +187,7 @@ export default function AdminRichiesteGeneraliPage() {
                     <td>
                       {row.block ? (
                         <Button
-                          size="$2"
+                          size="2"
                           variant={row.block.reopenSuggestion ? "primary" : "secondary"}
                           disabled={busy !== null}
                           onPress={() => row.block && void reopen(row.block.id)}
@@ -195,7 +195,7 @@ export default function AdminRichiesteGeneraliPage() {
                           Riapri
                         </Button>
                       ) : (
-                        <Button size="$2" variant="secondary" disabled={busy !== null} onPress={() => void close(row.categorySlug, row.city)}>
+                        <Button size="2" variant="secondary" disabled={busy !== null} onPress={() => void close(row.categorySlug, row.city)}>
                           Chiudi
                         </Button>
                       )}
@@ -208,7 +208,7 @@ export default function AdminRichiesteGeneraliPage() {
         </div>
       ) : null}
       {data && data.rows.some((r) => r.block) ? (
-        <Text color={brand.grafite70} marginTop="$2" fontSize={13}>
+        <Text color={brand.grafite70} marginTop="2" fontSize={13}>
           Riaprendo una zona, il controllo automatico non la richiude per {data.thresholds.keepOpenDays} giorni.
         </Text>
       ) : null}
@@ -286,7 +286,7 @@ function ThresholdsForm({
   );
 
   return (
-    <YStack marginTop="$4">
+    <YStack marginTop="4">
       <AdminCard>
         <Text fontWeight="700">Chiusura automatica</Text>
         <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
@@ -297,17 +297,17 @@ function ThresholdsForm({
           />
           <span>Chiudi da sole le zone che superano le soglie (controllo ogni ora)</span>
         </label>
-        <XStack gap="$3" flexWrap="wrap" marginTop="$3">
+        <XStack gap="3" flexWrap="wrap" marginTop="3">
           {field("maxWeeklyPerPro", "Richieste a settimana per professionista", "Oltre questa media la zona si chiude.")}
           {field("minResponsePercent", "Risposte minime (%)", "Sotto questa percentuale la zona si chiude. 0 per non controllarle.")}
           {field("minMeasuredLeads", "Richieste per misurare le risposte", "Quante ne servono, arrivate da almeno 48 ore, prima di giudicare.")}
           {field("keepOpenDays", "Giorni aperta dopo una riapertura", "Per quanto il controllo non richiude una zona riaperta a mano.")}
         </XStack>
-        <XStack gap="$2" marginTop="$3" alignItems="center" flexWrap="wrap">
-          <Button variant="primary" size="$3" disabled={saving} onPress={() => void save()}>
+        <XStack gap="2" marginTop="3" alignItems="center" flexWrap="wrap">
+          <Button variant="primary" size="3" disabled={saving} onPress={() => void save()}>
             {saving ? "Salvataggio…" : "Salva le soglie"}
           </Button>
-          <Button variant="secondary" size="$3" disabled={saving} onPress={() => setDraft(toDraft(DEFAULT_GENERAL_REQUEST_THRESHOLDS))}>
+          <Button variant="secondary" size="3" disabled={saving} onPress={() => setDraft(toDraft(DEFAULT_GENERAL_REQUEST_THRESHOLDS))}>
             Valori iniziali
           </Button>
           {message ? <Text color={message.ok ? brand.grafite70 : brand.urgenza}>{message.text}</Text> : null}

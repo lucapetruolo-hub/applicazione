@@ -19,8 +19,8 @@ export function NotificationOptOutsPanel({ data }: { data: AdminNotificationOptO
   const cell = (count: number) => (group.people > 0 && count > 0 ? `${count} · ${Math.round((count / group.people) * 100)}%` : count > 0 ? String(count) : "—");
 
   return (
-    <Surface padding="$5" gap="$4">
-      <YStack gap="$1">
+    <Surface padding="5" gap="4">
+      <YStack gap="1">
         <Text fontWeight="700" fontSize={17}>
           Avvisi spenti
         </Text>

@@ -149,26 +149,26 @@ export function CalendarShell({
   }
 
   const content = (
-    <YStack gap="$3">
-      <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
-        <XStack backgroundColor={brand.gesso} borderRadius={999} padding="$1" gap="$1">
+    <YStack gap="3">
+      <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="3">
+        <XStack backgroundColor={brand.gesso} borderRadius={999} padding="1" gap="1">
           {viewLabels.map((item) => {
             const active = item.value === view;
             return (
               <XStack
                 key={item.value}
-                paddingHorizontal="$3"
-                paddingVertical="$2"
+                paddingHorizontal="3"
+                paddingVertical="2"
                 borderRadius={999}
                 backgroundColor={active ? "#ECECE8" : "transparent"}
                 cursor="pointer"
                 onPress={() => onViewChange(item.value)}
-                accessibilityRole="button"
+                role="button"
                 style={{
-                  transition: `background-color ${motionFast} ${motionEasing}`,
-                }}
+                                transition: `background-color ${motionFast} ${motionEasing}`,
+                              }}
               >
-                <Text fontFamily="$body" fontSize={13} fontWeight="600" color={active ? brand.grafite : brand.grafite70}>
+                <Text fontFamily="body" fontSize={13} fontWeight="600" color={active ? brand.grafite : brand.grafite70}>
                   {item.label}
                 </Text>
               </XStack>
@@ -176,56 +176,56 @@ export function CalendarShell({
           })}
         </XStack>
 
-        <XStack alignItems="center" gap="$3">
+        <XStack alignItems="center" gap="3">
           {compactDay ? null : (
             <>
               <XStack
-                paddingHorizontal="$2"
+                paddingHorizontal="2"
                 height={30}
-                borderRadius="$2"
+                borderRadius="2"
                 borderWidth={1}
                 borderColor={brand.filetto}
                 alignItems="center"
                 justifyContent="center"
                 cursor="pointer"
                 onPress={() => onNavigate(today)}
-                accessibilityRole="button"
+                role="button"
               >
-                <Text fontFamily="$body" fontSize={12} fontWeight="600" color={brand.grafite}>
+                <Text fontFamily="body" fontSize={12} fontWeight="600" color={brand.grafite}>
                   Oggi
                 </Text>
               </XStack>
-              <XStack alignItems="center" gap="$2">
+              <XStack alignItems="center" gap="2">
                 <XStack
                   width={30}
                   height={30}
-                  borderRadius="$2"
+                  borderRadius="2"
                   borderWidth={1}
                   borderColor={brand.filetto}
                   alignItems="center"
                   justifyContent="center"
                   cursor="pointer"
                   onPress={handlePrev}
-                  accessibilityRole="button"
-                  accessibilityLabel="Periodo precedente"
+                  role="button"
+                  aria-label="Periodo precedente"
                 >
                   <Icon name="chevron-left" size={15} color={brand.grafite} />
                 </XStack>
-                <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite} minWidth={140} textAlign="center">
+                <Text fontFamily="body" fontSize={13} fontWeight="600" color={brand.grafite} minWidth={140} textAlign="center">
                   {rangeLabel}
                 </Text>
                 <XStack
                   width={30}
                   height={30}
-                  borderRadius="$2"
+                  borderRadius="2"
                   borderWidth={1}
                   borderColor={brand.filetto}
                   alignItems="center"
                   justifyContent="center"
                   cursor="pointer"
                   onPress={handleNext}
-                  accessibilityRole="button"
-                  accessibilityLabel="Periodo successivo"
+                  role="button"
+                  aria-label="Periodo successivo"
                 >
                   <Icon name="chevron-right" size={15} color={brand.grafite} />
                 </XStack>
@@ -235,15 +235,15 @@ export function CalendarShell({
           <XStack
             width={30}
             height={30}
-            borderRadius="$2"
+            borderRadius="2"
             borderWidth={1}
             borderColor={brand.filetto}
             alignItems="center"
             justifyContent="center"
             cursor="pointer"
             onPress={() => setIsFullscreen((v) => !v)}
-            accessibilityRole="button"
-            accessibilityLabel={isFullscreen ? "Esci da schermo intero" : "Apri a schermo intero"}
+            role="button"
+            aria-label={isFullscreen ? "Esci da schermo intero" : "Apri a schermo intero"}
           >
             <Icon name={isFullscreen ? "minimize-2" : "maximize-2"} size={14} color={brand.grafite} />
           </XStack>
@@ -358,15 +358,15 @@ function WeekOrDayGrid({
           <YStack key={date.toISOString()} borderRightWidth={1} borderRightColor={brand.filetto} minWidth={0} overflow="hidden">
             {hideHeader ? null : (
               <YStack
-                paddingVertical="$2"
-                paddingHorizontal="$2"
+                paddingVertical="2"
+                paddingHorizontal="2"
                 borderBottomWidth={1}
                 borderBottomColor={brand.filetto}
                 backgroundColor={brand.gesso}
                 alignItems="center"
-                gap="$1"
+                gap="1"
               >
-                <Text fontFamily="$body" fontSize={11} fontWeight="600" color={brand.grafite70}>
+                <Text fontFamily="body" fontSize={11} fontWeight="600" color={brand.grafite70}>
                   {weekdayShortLabel(date)}
                 </Text>
                 <XStack
@@ -377,13 +377,13 @@ function WeekOrDayGrid({
                   justifyContent="center"
                   backgroundColor={isToday ? brand.grafite : "transparent"}
                 >
-                  <Text fontFamily="$body" fontWeight="600" fontSize={14} color={isToday ? "white" : brand.grafite}>
+                  <Text fontFamily="body" fontWeight="600" fontSize={14} color={isToday ? "white" : brand.grafite}>
                     {date.getUTCDate()}
                   </Text>
                 </XStack>
               </YStack>
             )}
-            <YStack padding="$2" gap="$2" minHeight={220} minWidth={0} overflow="hidden">
+            <YStack padding="2" gap="2" minHeight={220} minWidth={0} overflow="hidden">
               {renderDayColumn(date)}
             </YStack>
           </YStack>
@@ -412,10 +412,10 @@ export function MonthGrid({
 
   return (
     <YStack>
-      <XStack borderWidth={1} borderColor={brand.filetto} borderBottomWidth={0} borderTopLeftRadius="$2" borderTopRightRadius="$2" overflow="hidden">
+      <XStack borderWidth={1} borderColor={brand.filetto} borderBottomWidth={0} borderTopLeftRadius="2" borderTopRightRadius="2" overflow="hidden">
         {["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"].map((label) => (
-          <YStack key={label} flex={1} paddingVertical="$2" alignItems="center" backgroundColor={brand.gesso}>
-            <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={brand.grafite70}>
+          <YStack key={label} flex={1} paddingVertical="2" alignItems="center" backgroundColor={brand.gesso}>
+            <Text fontFamily="body" fontSize={10.5} fontWeight="700" color={brand.grafite70}>
               {label}
             </Text>
           </YStack>
@@ -431,8 +431,8 @@ export function MonthGrid({
               minHeight={84}
               minWidth={0}
               overflow="hidden"
-              padding="$2"
-              gap="$1"
+              padding="2"
+              gap="1"
               borderRightWidth={1}
               borderBottomWidth={1}
               borderColor={brand.filetto}
@@ -440,8 +440,8 @@ export function MonthGrid({
               opacity={inMonth ? 1 : 0.55}
               cursor={onSelectDay ? "pointer" : undefined}
               onPress={onSelectDay ? () => onSelectDay(date) : undefined}
-              accessibilityRole={onSelectDay ? "button" : undefined}
-              accessibilityLabel={onSelectDay ? `Vai al ${date.getUTCDate()} ${monthLabel(date)} ${date.getUTCFullYear()}` : undefined}
+              role={onSelectDay ? "button" : undefined}
+              aria-label={onSelectDay ? `Vai al ${date.getUTCDate()} ${monthLabel(date)} ${date.getUTCFullYear()}` : undefined}
             >
               <XStack
                 width={22}
@@ -451,7 +451,7 @@ export function MonthGrid({
                 justifyContent="center"
                 backgroundColor={isToday ? brand.grafite : "transparent"}
               >
-                <Text fontFamily="$body" fontWeight="600" fontSize={12} color={isToday ? "white" : brand.grafite}>
+                <Text fontFamily="body" fontWeight="600" fontSize={12} color={isToday ? "white" : brand.grafite}>
                   {date.getUTCDate()}
                 </Text>
               </XStack>

@@ -22,9 +22,9 @@ export function UnreadDot({ count }: { count: number | undefined }) {
       backgroundColor={brand.urgenza}
       alignItems="center"
       justifyContent="center"
-      accessibilityLabel={`${count} aggiornamenti non letti`}
+      aria-label={`${count} aggiornamenti non letti`}
     >
-      <Text fontSize={13} fontWeight="800" color="white" lineHeight={14}>
+      <Text fontSize={13} fontWeight="800" color="white" lineHeight="14px">
         {count > 9 ? "9+" : count}
       </Text>
     </XStack>

@@ -21,7 +21,7 @@ export type SectionProps = {
 };
 
 const TONE_BACKGROUND: Record<SectionTone, string> = {
-  light: "$gesso",
+  light: "gesso",
   // "blueprint" condivide lo sfondo di "light": il pattern a griglia
   // cianografica vero e proprio (repeating-linear-gradient) è CSS puro,
   // web-only per costruzione (non porta a nulla su React Native) — vive
@@ -30,8 +30,8 @@ const TONE_BACKGROUND: Record<SectionTone, string> = {
   // Section resta un componente portabile al 100%, coerente con la regola
   // di progetto "niente DOM/CSS specifico del web dentro packages/ui"
   // (vedi CLAUDE.md, stessa ragione per cui Leaflet resta in apps/web).
-  blueprint: "$gesso",
-  dark: "$grafite",
+  blueprint: "gesso",
+  dark: "grafite",
 };
 
 /**
@@ -84,14 +84,14 @@ function SectionTitle({
   const Heading = nested ? H3 : H2;
   return (
     <Heading
-      {...(pageTitle && !nested ? { tag: "h1" } : null)}
-      fontFamily="$heading"
-      color={isDark ? "white" : "$grafite"}
+      {...(pageTitle && !nested ? { render: "h1" } : null)}
+      fontFamily="heading"
+      color={isDark ? "white" : "grafite"}
       {...(nested
-        ? { fontSize: "$7", lineHeight: "$7" }
+        ? { fontSize: "7", lineHeight: "7" }
         : // Titolo di sezione del sistema unico (docs/CHANGELOG.md §305): 26 px
           // sul telefono, 32 dal tablet in su.
-          { fontSize: 26, lineHeight: 31, $gtSm: { fontSize: 32, lineHeight: 38 } })}
+          { fontSize: "26px gtSm:32px", lineHeight: "31px gtSm:38px" })}
     >
       {title}
     </Heading>
@@ -114,10 +114,10 @@ export function Section({
 
   const header =
     title || lead ? (
-      <YStack gap="$3">
+      <YStack gap="3">
         {title && titleAction ? (
           // Il titolo può andare a capo, il comando resta sulla stessa riga.
-          <XStack alignItems="center" justifyContent="space-between" gap="$3">
+          <XStack alignItems="center" justifyContent="space-between" gap="3">
             <YStack flex={1} minWidth={0}>
               <SectionTitle
                 title={title}
@@ -138,7 +138,7 @@ export function Section({
         ) : null}
         {lead ? (
           <Paragraph
-            color={isDark ? "rgba(255,255,255,0.75)" : "$grafite70"}
+            color={`${isDark ? "rgba(255,255,255,0.75)" : "grafite70"}`}
             maxWidth={640}
           >
             {lead}
@@ -149,7 +149,7 @@ export function Section({
 
   if (nested) {
     return (
-      <YStack width="100%" maxWidth={maxWidth} alignSelf="center" gap="$5">
+      <YStack width="100%" maxWidth={maxWidth} alignSelf="center" gap="5">
         {header}
         {children}
       </YStack>
@@ -161,11 +161,10 @@ export function Section({
       width="100%"
       alignItems="center"
       backgroundColor={TONE_BACKGROUND[tone]}
-      paddingVertical={padding.mobile}
-      paddingHorizontal={24}
-      $gtSm={{ paddingVertical: padding.desktop, paddingHorizontal: 40 }}
+      paddingVertical={`${padding.mobile}px gtSm:${padding.desktop}px`}
+      paddingHorizontal="24px gtSm:40px"
     >
-      <YStack width="100%" maxWidth={maxWidth} gap="$6">
+      <YStack width="100%" maxWidth={maxWidth} gap="6">
         {header}
         <SectionNestingContext.Provider value={tone}>
           {children}

@@ -66,7 +66,7 @@ export function TimelineModal({
         maxWidth={520}
         maxHeight="85vh"
         backgroundColor={brand.calce}
-        borderRadius="$3"
+        borderRadius="3"
         overflow="hidden"
       >
         <ConversationView

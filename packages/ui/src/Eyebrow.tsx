@@ -17,8 +17,8 @@ export function Eyebrow({ children, tone = "light" }: EyebrowProps) {
   const textColor = tone === "dark" ? "white" : brand.cianografiaScuro;
 
   return (
-    <XStack alignSelf="flex-start" backgroundColor={bg} paddingHorizontal="$3" paddingVertical={6} borderRadius={999}>
-      <Text fontFamily="$body" fontSize={13} fontWeight="700" color={textColor}>
+    <XStack alignSelf="flex-start" backgroundColor={bg} paddingHorizontal="3" paddingVertical={6} borderRadius={999}>
+      <Text fontFamily="body" fontSize={13} fontWeight="700" color={textColor}>
         {children}
       </Text>
     </XStack>

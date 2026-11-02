@@ -35,21 +35,6 @@ textarea {
   font-family: inherit;
 }
 
-/* Testo dei pulsanti a 16 px come il testo base (sistema unico, §305): la
-   misura "$3" di Tamagui li scriveva a 13 px. I pulsanti piccoli ($1-$2)
-   restano compatti. */
-span.is_Button._fos-f-size-3,
-span.is_Button._fos-f-size-true {
-  font-size: 16px;
-}
-/* Nell'intestazione dei telefoni stretti lo spazio non basta: 15 px. */
-@media (max-width: 400px) {
-  .site-header-cta-link span.is_Button,
-  .site-header-cta-link .site-header-cta-long,
-  .site-header-cta-link .site-header-cta-short {
-    font-size: 15px;
-  }
-}
 /* Telefoni da 320-359 px: etichetta corta "Preventivo" per chi non ha fatto l'accesso
    (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md). */
 .site-header-cta-short {

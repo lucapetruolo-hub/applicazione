@@ -32,9 +32,9 @@ export function Logo({ name, variant = "full", size = 28 }: LogoProps) {
   }
 
   return (
-    <XStack alignItems="center" gap="$2">
+    <XStack alignItems="center" gap="2">
       <Mark size={size} />
-      <Text fontFamily="$heading" fontWeight="800" fontSize={size * 0.7} letterSpacing={-0.5} color={brand.grafite}>
+      <Text fontFamily="heading" fontWeight="800" fontSize={size * 0.7} letterSpacing={-0.5} color={brand.grafite}>
         {name}
       </Text>
     </XStack>

@@ -1,5 +1,6 @@
 import { useId, type ComponentProps, type ReactNode } from "react";
-import { Input, Text, XStack, YStack } from "tamagui";
+import { Text, XStack, YStack } from "tamagui";
+import { Input } from "./Input";
 import { brand, radiusDoc } from "./tokens";
 
 export type FieldProps = ComponentProps<typeof Input> & {
@@ -27,8 +28,8 @@ export type FieldProps = ComponentProps<typeof Input> & {
 export function Field({ label, hint, error, rightElement, ...inputProps }: FieldProps) {
   const messageId = useId();
   return (
-    <YStack gap="$2">
-      <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.grafite70}>
+    <YStack gap="2">
+      <Text fontFamily="body" fontSize={16} fontWeight="700" color={brand.grafite70}>
         {label}
       </Text>
       <XStack
@@ -37,8 +38,11 @@ export function Field({ label, hint, error, rightElement, ...inputProps }: Field
         borderColor={error ? brand.urgenza : brand.bordoCampo}
         borderRadius={radiusDoc}
         backgroundColor={brand.calce}
-        paddingHorizontal="$3"
-        focusWithinStyle={{ outlineWidth: 2, outlineColor: error ? brand.urgenza : brand.cianografia, outlineStyle: "solid", outlineOffset: 1 }}
+        paddingHorizontal="3"
+        outlineWidth="focus-within:2px"
+        outlineColor={`focus-within:${error ? brand.urgenza : brand.cianografia}`}
+        outlineStyle="focus-within:solid"
+        outlineOffset="focus-within:1px"
       >
         <Input
           flex={1}
@@ -46,16 +50,12 @@ export function Field({ label, hint, error, rightElement, ...inputProps }: Field
           backgroundColor="transparent"
           height={48}
           paddingHorizontal={0}
-          focusStyle={{ outlineWidth: 0 }}
-          // Sul sito Invio toglieva il fuoco dal campo (comportamento di
-          // serie di React Native Web): chi usa la tastiera si ritrovava
-          // all'inizio della pagina (collaudo L-08).
+          outlineWidth="focus:0px"
+          {...inputProps}
           blurOnSubmit={false}
           aria-invalid={error ? true : undefined}
-          // Il testo sopra non è un <label>: senza questo il lettore di schermo legge un campo senza nome (axe "label").
           aria-label={label}
           aria-describedby={error || hint ? messageId : undefined}
-          {...inputProps}
         />
         {rightElement}
       </XStack>

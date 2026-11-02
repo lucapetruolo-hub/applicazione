@@ -29,13 +29,13 @@ export function SaveBar({
   return (
     <div className={`save-bar${dirty ? " is-dirty" : ""}`}>
       {children}
-      <XStack gap="$3" alignItems="center" flexWrap="wrap" justifyContent={dirty ? "space-between" : "flex-start"}>
+      <XStack gap="3" alignItems="center" flexWrap="wrap" justifyContent={dirty ? "space-between" : "flex-start"}>
         {dirty ? (
           <Text fontSize={16} fontWeight="700" color={brand.grafite} role="status">
             Modifiche non salvate
           </Text>
         ) : null}
-        <XStack gap="$3" alignItems="center" marginLeft={dirty ? "auto" : 0}>
+        <XStack gap="3" alignItems="center" marginLeft={dirty ? "auto" : 0}>
           {onCancel && dirty ? (
             <Button variant="secondary" onPress={onCancel} disabled={saving}>
               Annulla

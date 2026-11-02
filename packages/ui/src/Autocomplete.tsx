@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { Input, Label, ScrollView, Text, YStack } from "tamagui";
+import { Label, ScrollView, Text, YStack, isWeb } from "tamagui";
+import { Input } from "./Input";
 import { buildSearchIndex, rankSearchMatches } from "./searchMatch";
 import { brand } from "./tokens";
 
@@ -26,7 +27,7 @@ export type AutocompleteProps<T> = {
   label?: string;
   id?: string;
   /** Nome per il lettore di schermo quando l'etichetta visibile non è legata al campo: senza, si legge il segnaposto ("Es. Milano"). */
-  accessibilityLabel?: string;
+  "aria-label"?: string;
   /**
    * Testo su cui si cerca, se diverso da `getLabel` (es. una frazione:
    * si cerca "Borgo Sabotino", si mostra anche il comune).
@@ -49,6 +50,17 @@ export type AutocompleteProps<T> = {
  * Campo di testo con elenco a discesa filtrato in tempo reale, usato per la
  * ricerca professionisti/città (condiviso web+mobile).
  */
+/**
+ * Il campo ha il fuoco? Nell'app lo dice il TextInput (`isFocused`), sul
+ * sito (Tamagui 3: un <input> vero) l'elemento attivo della pagina.
+ */
+function inputHasFocus(input: { isFocused?: () => boolean } | null): boolean {
+  if (!input) return false;
+  if (typeof input.isFocused === "function") return input.isFocused();
+  const doc = (globalThis as { document?: { activeElement?: unknown } }).document;
+  return doc?.activeElement === input;
+}
+
 export function Autocomplete<T>({
   items,
   getKey,
@@ -63,7 +75,7 @@ export function Autocomplete<T>({
   size,
   label,
   id,
-  accessibilityLabel,
+  "aria-label": accessibilityLabel,
   getSearchText,
   priority,
   emptyItems,
@@ -187,7 +199,7 @@ export function Autocomplete<T>({
   return (
     <YStack position="relative" flex={1} ref={containerRef as never}>
       {label ? (
-        <Label htmlFor={id} fontSize={16} lineHeight={18} height="auto" fontWeight="600" color={brand.grafite70} paddingLeft="$1" paddingBottom={4}>
+        <Label htmlFor={id} fontSize={16} lineHeight="18px" height="auto" fontWeight="600" color={brand.grafite70} paddingLeft="1" paddingBottom={4}>
           {label}
         </Label>
       ) : null}
@@ -204,17 +216,27 @@ export function Autocomplete<T>({
           onChangeText(text);
         }}
         placeholder={placeholder}
-        accessibilityLabel={label ? undefined : accessibilityLabel ?? placeholder}
+        aria-label={label ? undefined : accessibilityLabel ?? placeholder}
         autoComplete="off"
         // Invio senza suggerimento scelto non toglie il fuoco dal campo (collaudo L-08).
         blurOnSubmit={false}
         onFocus={() => setIsFocused(true)}
         onBlur={() =>
           setTimeout(() => {
-            if (!inputRef.current?.isFocused?.()) setIsFocused(false);
+            if (!inputHasFocus(inputRef.current)) setIsFocused(false);
           }, 150)
         }
-        onKeyPress={(event) => handleKey(event.nativeEvent.key, () => event.preventDefault())}
+        // Sul sito il tasto arriva da onKeyDown (con Tamagui 3 l'Input del
+        // web è un <input> vero e ignora onKeyPress), nell'app da onKeyPress.
+        onKeyDown={(event: { key: string; preventDefault: () => void }) => handleKey(event.key, () => event.preventDefault())}
+        {...(isWeb
+          ? null
+          : {
+              onKeyPress: (event: unknown) => {
+                const key = (event as { nativeEvent?: { key?: string } }).nativeEvent?.key;
+                if (key) handleKey(key, () => undefined);
+              },
+            })}
         {...comboboxProps}
       />
       {/* Annuncio per i lettori di schermo: quanti suggerimenti ci sono. */}
@@ -227,14 +249,14 @@ export function Autocomplete<T>({
           top="100%"
           left={0}
           right={0}
-          marginTop="$2"
+          marginTop="2"
           backgroundColor="white"
           borderWidth={1}
-          borderColor="$borderColor"
-          borderRadius="$4"
+          borderColor="borderColor"
+          borderRadius="4"
           overflow="hidden"
           zIndex={1000}
-          shadowColor="$shadowColor"
+          shadowColor="shadowColor"
           shadowRadius={12}
           shadowOpacity={0.15}
         >
@@ -251,19 +273,18 @@ export function Autocomplete<T>({
                   id={optionId(0)}
                   role="option"
                   aria-selected={activeIndex === 0}
-                  padding="$3"
+                  padding="3"
                   borderBottomWidth={1}
-                  borderBottomColor="$borderColor"
+                  borderBottomColor="borderColor"
                   cursor="pointer"
-                  backgroundColor={activeIndex === 0 ? "$color3" : undefined}
-                  hoverStyle={{ backgroundColor: "$color3" }}
+                  backgroundColor={`${activeIndex === 0 ? "color3" : undefined} hover:color3`}
                   onPress={() => choose(0)}
                 >
                   <Text fontWeight="600" color={brand.cianografiaPieno}>
                     {action.label}
                   </Text>
                   {action.description ? (
-                    <Text fontSize={13} color="$color10">
+                    <Text fontSize={13} color="color10">
                       {action.description}
                     </Text>
                   ) : null}
@@ -277,12 +298,11 @@ export function Autocomplete<T>({
                     id={optionId(index)}
                     role="option"
                     aria-selected={activeIndex === index}
-                    padding="$3"
+                    padding="3"
                     borderBottomWidth={1}
-                    borderBottomColor="$borderColor"
+                    borderBottomColor="borderColor"
                     cursor="pointer"
-                    backgroundColor={activeIndex === index ? "$color3" : undefined}
-                    hoverStyle={{ backgroundColor: "$color3" }}
+                    backgroundColor={`${activeIndex === index ? "color3" : undefined} hover:color3`}
                     onPress={() => choose(index)}
                   >
                     {renderItem ? renderItem(item) : <Text>{getLabel(item)}</Text>}

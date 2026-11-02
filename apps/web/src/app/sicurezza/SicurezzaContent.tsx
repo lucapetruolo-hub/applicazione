@@ -14,8 +14,8 @@ import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 
 function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <YStack gap="$2">
-      <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+    <YStack gap="2">
+      <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
         {title}
       </Text>
       {children}
@@ -25,7 +25,7 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
 
 function P({ children }: { children: ReactNode }) {
   return (
-    <Text fontSize={16} color={brand.grafite70} lineHeight={24}>
+    <Text fontSize={16} color={brand.grafite70} lineHeight="24px">
       {children}
     </Text>
   );
@@ -33,7 +33,7 @@ function P({ children }: { children: ReactNode }) {
 
 function Point({ n, title, children }: { n?: number; title: string; children: ReactNode }) {
   return (
-    <YStack gap="$1" paddingLeft="$3" borderLeftWidth={3} borderLeftColor={brand.filetto}>
+    <YStack gap="1" paddingLeft="3" borderLeftWidth={3} borderLeftColor={brand.filetto}>
       <Text fontWeight="700" color={brand.grafite}>
         {n !== undefined ? `${n}. ` : ""}
         {title}
@@ -45,17 +45,17 @@ function Point({ n, title, children }: { n?: number; title: string; children: Re
 
 export function SicurezzaContent() {
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={720} gap="$6">
-        <YStack gap="$3">
-          <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.grafite}>
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={720} gap="6">
+        <YStack gap="3">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="9" color={brand.grafite}>
             La tua sicurezza prima di tutto: resta nella chat
           </Text>
-          <XStack gap="$3" padding="$4" borderRadius="$4" backgroundColor={brand.cianografiaVelo} alignItems="flex-start">
+          <XStack gap="3" padding="4" borderRadius="4" backgroundColor={brand.cianografiaVelo} alignItems="flex-start">
             <YStack flexShrink={0}>
               <Icon name="shield-check" size={22} color={brand.cianografiaScuro} strokeWidth={1.75} />
             </YStack>
-            <Text fontSize={16} color={brand.grafite} flex={1} lineHeight={24}>
+            <Text fontSize={16} color={brand.grafite} flex={1} lineHeight="24px">
               Attenzione a chi ti chiede di uscire dalla nostra chat. Qualsiasi scusa per spostarti su WhatsApp, Telegram o altre app (&quot;ti mando
               più foto&quot;, &quot;così facciamo prima&quot;, &quot;ti giro il preventivo lì&quot;) è un segnale d&apos;allarme. Nella chat resta una traccia di
               cosa vi siete detti, e se nasce un problema il nostro team può aiutarti.

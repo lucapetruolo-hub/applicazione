@@ -20,8 +20,8 @@ export function PasswordVisibilityToggle({ visible, onToggle }: { visible: boole
       justifyContent="center"
       cursor="pointer"
       onPress={onToggle}
-      accessibilityRole="button"
-      accessibilityLabel={visible ? "Nascondi password" : "Mostra password"}
+      role="button"
+      aria-label={visible ? "Nascondi password" : "Mostra password"}
     >
       <Icon name={visible ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
     </XStack>

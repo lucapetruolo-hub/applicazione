@@ -105,16 +105,16 @@ function AccediForm() {
         <GoogleSignInButton onCredential={handleGoogleCredential} />
 
         {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
-          <YStack flexDirection="row" alignItems="center" gap="$3">
+          <YStack flexDirection="row" alignItems="center" gap="3">
             <YStack flex={1} height={1} backgroundColor={brand.filetto} />
-            <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="body" fontWeight="700" fontSize={13} color={brand.grafite70}>
               oppure
             </Text>
             <YStack flex={1} height={1} backgroundColor={brand.filetto} />
           </YStack>
         ) : null}
 
-        <YStack gap="$4">
+        <YStack gap="4">
           <AuthField
             label="Email"
             value={email}
@@ -138,7 +138,7 @@ function AccediForm() {
             // /registrati e InlineAuthGate per il bug del prompt "vuoi
             // salvare la password?" ripetuto.
             nativeID="email"
-            accessibilityLabel="Email"
+            aria-label="Email"
             error={error && errorField === "email" ? error : undefined}
             onSubmitEditing={handleLogin}
           />
@@ -153,7 +153,7 @@ function AccediForm() {
             secureTextEntry={!showPassword}
             autoComplete="current-password"
             nativeID="current-password"
-            accessibilityLabel="Password"
+            aria-label="Password"
             error={error && errorField === "password" ? error : undefined}
             onSubmitEditing={handleLogin}
           />
@@ -175,7 +175,7 @@ function AccediForm() {
           </Link>
         </YStack>
 
-        <YStack borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$4" gap="$3">
+        <YStack borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="4" gap="3">
           <Text fontSize={16} textAlign="center" color={brand.grafite70}>
             Non hai ancora un account?{" "}
             <Link href="/registrati" style={{ textDecoration: "none" }}>
@@ -187,16 +187,16 @@ function AccediForm() {
         </YStack>
 
         {/* Centrato come gli altri link della scheda (docs/CHANGELOG.md §349). */}
-        <YStack gap="$2" alignItems="center">
+        <YStack gap="2" alignItems="center">
           <Text
             textAlign="center"
-            fontFamily="$body"
+            fontFamily="body"
             fontSize={16}
             fontWeight="700"
             color={brand.grafite}
             cursor="pointer"
             onPress={() => setHelpOpen((open) => !open)}
-            accessibilityRole="button"
+            role="button"
             aria-expanded={helpOpen}
           >
             Hai bisogno di aiuto? {helpOpen ? "−" : "+"}

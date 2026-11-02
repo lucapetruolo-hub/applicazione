@@ -350,46 +350,41 @@ export function ProfessionalCard({
     <Surface
       onPress={onPress}
       cursor={onPress ? "pointer" : undefined}
-      // Con `href` la tastiera e i lettori di schermo arrivano al profilo dal
-      // link del nome: la card non si annuncia anche come pulsante.
-      accessibilityRole={onPress && !href ? "button" : undefined}
-      padding="$5"
-      $xs={{ padding: "$4" }}
-      hoverStyle={onPress ? { borderColor: brand.cianografia } : undefined}
-      pressStyle={onPress ? { borderColor: brand.cianografiaScuro } : undefined}
+      padding="5 xs:4"
+      {...(onPress ? { borderColor: `${brand.filetto} hover:${brand.cianografia} press:${brand.cianografiaScuro}` } : null)}
+      role={onPress && !href ? "button" : undefined}
     >
       {/* Sotto i 660px meno spazio tra foto e nome: sui telefoni da 360px la
           colonna del nome restava stretta e i bollini (Verificato, Nuovo
           profilo...) e le recensioni toccavano il bordo. */}
-      <XStack gap="$4" $xs={{ gap: "$3" }} alignItems="flex-start">
+      <XStack gap="4 xs:3" alignItems="flex-start">
         {icon}
-        <YStack gap="$2" flex={1} minWidth={0}>
-          <XStack alignItems="flex-start" gap="$2">
+        <YStack gap="2" flex={1} minWidth={0}>
+          <XStack alignItems="flex-start" gap="2">
             {/* Nome e bollini sulla stessa riga, che va a capo quando non
                 c'è spazio (docs/CHANGELOG.md §349): prima, nella colonna
                 stretta, i bollini finivano uno sotto l'altro. */}
-            <XStack flex={1} minWidth={0} alignItems="center" columnGap="$2" rowGap={6} flexWrap="wrap">
+            <XStack flex={1} minWidth={0} alignItems="center" columnGap="2" rowGap={6} flexWrap="wrap">
               <Text
-                fontFamily="$heading"
+                fontFamily="heading"
                 fontWeight="800"
                 fontSize={22}
-                lineHeight={26}
+                lineHeight="26px"
                 color={brand.grafite}
                 {...(href
-                  ? {
-                      tag: "a",
-                      href,
-                      textDecorationLine: "none" as const,
-                      hoverStyle: { textDecorationLine: "underline" as const },
-                      // Clic normale: niente ricarica della pagina, apre il
-                      // profilo `onPress` della card. Con Ctrl/Cmd/Maiusc il
-                      // browser apre un'altra scheda e la card non naviga.
-                      onPress: (e: { metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean; preventDefault?: () => void; stopPropagation?: () => void }) => {
-                        if (e.metaKey || e.ctrlKey || e.shiftKey) e.stopPropagation?.();
-                        else e.preventDefault?.();
-                      },
-                    }
-                  : null)}
+                                ? {
+                                    render: "a",
+                                    href,
+                                    textDecorationLine: "none hover:underline",
+                                    // Clic normale: niente ricarica della pagina, apre il
+                                    // profilo `onPress` della card. Con Ctrl/Cmd/Maiusc il
+                                    // browser apre un'altra scheda e la card non naviga.
+                                    onPress: (e: { metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean; preventDefault?: () => void; stopPropagation?: () => void }) => {
+                                      if (e.metaKey || e.ctrlKey || e.shiftKey) e.stopPropagation?.();
+                                      else e.preventDefault?.();
+                                    },
+                                  }
+                                : null)}
               >
                 {businessName}
               </Text>
@@ -401,13 +396,13 @@ export function ProfessionalCard({
                   <XStack
                     alignItems="center"
                     gap={4}
-                    paddingHorizontal="$2"
+                    paddingHorizontal="2"
                     paddingVertical={2}
-                    borderRadius="$10"
+                    borderRadius="10"
                     backgroundColor={brand.cianografiaVelo}
                   >
                     <Icon name="badge-check" size={14} color={brand.verificato} strokeWidth={2} />
-                    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.verificato}>
+                    <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.verificato}>
                       Verificato
                     </Text>
                   </XStack>
@@ -419,13 +414,13 @@ export function ProfessionalCard({
                   <XStack
                     alignItems="center"
                     gap={4}
-                    paddingHorizontal="$2"
+                    paddingHorizontal="2"
                     paddingVertical={2}
-                    borderRadius="$10"
+                    borderRadius="10"
                     backgroundColor={brand.cianografiaVelo}
                   >
                     <Icon name="credit-card" size={13} color={brand.verificato} strokeWidth={2} />
-                    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.verificato}>
+                    <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.verificato}>
                       Pagamenti online attivi
                     </Text>
                   </XStack>
@@ -433,9 +428,9 @@ export function ProfessionalCard({
               ) : null}
               {boosted ? (
                 <BadgeInfo info="boosted">
-                  <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.ottoneVelo}>
+                  <XStack alignItems="center" gap={4} paddingHorizontal="2" paddingVertical={2} borderRadius="10" backgroundColor={brand.ottoneVelo}>
                     <Icon name="zap" size={13} color={brand.ottone} strokeWidth={2} />
-                    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.ottone}>
+                    <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.ottone}>
                       Sponsorizzato
                     </Text>
                   </XStack>
@@ -443,9 +438,9 @@ export function ProfessionalCard({
               ) : null}
               {isNewProfile ? (
                 <BadgeInfo info="newProfile">
-                  <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
+                  <XStack alignItems="center" gap={4} paddingHorizontal="2" paddingVertical={2} borderRadius="10" backgroundColor={brand.cianografiaVelo}>
                     <Icon name="sprout" size={13} color={brand.cianografiaScuro} strokeWidth={2} />
-                    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
+                    <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
                       Nuovo profilo
                     </Text>
                   </XStack>
@@ -453,12 +448,12 @@ export function ProfessionalCard({
               ) : null}
               {hasLiabilityInsurance ? (
                 <BadgeInfo info="liabilityInsurance">
-                  <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.gesso}>
+                  <XStack alignItems="center" gap={4} paddingHorizontal="2" paddingVertical={2} borderRadius="10" backgroundColor={brand.gesso}>
                     <Icon name="shield-check" size={13} color={brand.grafite} strokeWidth={2} />
-                    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
+                    <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite}>
                       Assicurazione RC
                     </Text>
-                    <Text fontFamily="$body" fontSize={10.5} fontWeight="500" color={brand.grafite70}>
+                    <Text fontFamily="body" fontSize={10.5} fontWeight="500" color={brand.grafite70}>
                       dichiarata
                     </Text>
                   </XStack>
@@ -467,24 +462,24 @@ export function ProfessionalCard({
             </XStack>
             {action}
           </XStack>
-          <Text fontSize={16} lineHeight={22} color={brand.grafite70} numberOfLines={2}>
-            <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.grafite}>
+          <Text fontSize={16} lineHeight="22px" color={brand.grafite70} numberOfLines={2}>
+            <Text fontFamily="body" fontSize={16} fontWeight="700" color={brand.grafite}>
               {categoriesLine}
             </Text>
             {specialties ? ` · ${specialties}` : null}
           </Text>
-          <XStack gap="$3" alignItems="center" flexWrap="wrap">
+          <XStack gap="3" alignItems="center" flexWrap="wrap">
             {rating !== undefined ? <Rating value={rating} count={reviewCount} size={15} /> : null}
             {remoteAvailable ? (
-              <XStack gap="$1" alignItems="center">
+              <XStack gap="1" alignItems="center">
                 <Icon name="video" size={13} color={brand.cianografiaScuro} strokeWidth={1.5} />
-                <Text fontFamily="$body" fontSize={13} color={brand.cianografiaScuro} fontWeight="700">
+                <Text fontFamily="body" fontSize={13} color={brand.cianografiaScuro} fontWeight="700">
                   Offre consulenza online
                 </Text>
               </XStack>
             ) : null}
           </XStack>
-          <XStack gap="$1" alignItems="center">
+          <XStack gap="1" alignItems="center">
             <Icon name="map-pin" size={13} color={brand.grafite70} strokeWidth={1.5} />
             <Text fontSize={16} color={brand.grafite70}>
               {distanceKm !== undefined ? `${city} · a ${distanceKm.toString().replace(".", ",")} km` : city}
@@ -498,8 +493,8 @@ export function ProfessionalCard({
             </Text>
           ) : null}
           {reason ? (
-            <Text fontSize={16} lineHeight={22} color={brand.grafite}>
-              <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
+            <Text fontSize={16} lineHeight="22px" color={brand.grafite}>
+              <Text fontFamily="body" fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
                 Perché:{" "}
               </Text>
               {reason}
@@ -510,38 +505,32 @@ export function ProfessionalCard({
 
       {hasAgenda || hasServices ? (
         <YStack
-          marginTop="$4"
-          paddingTop="$3"
+          marginTop="4"
+          paddingTop="3"
           borderTopWidth={1}
           borderTopColor={brand.filetto}
-          gap="$3"
-          // Richiesta esplicita dell'utente: "rendi cliccabile solo i vari
-          // pulsanti e non tutta l'area dell'agenda". Un clic su uno spazio
-          // vuoto qui (tra le pillole, sui trattini "-") non apre il profilo
-          // dalla card; i singoli controlli fermano da sé la propagazione. Il
-          // clic che porta all'agenda del profilo (`onAgendaPress`) sta solo
-          // sulle intestazioni dei giorni e sulle celle senza orario libero.
+          gap="3"
           onPress={stop}
         >
           <XStack
-            tag="button"
+            render="button"
             alignItems="center"
             justifyContent="space-between"
-            gap="$2"
+            gap="2"
             minHeight={32}
             padding={0}
             borderWidth={0}
             backgroundColor="transparent"
             cursor="pointer"
             aria-expanded={expanded}
-            accessibilityRole="button"
+            role="button"
             onPress={(e: unknown) => {
-              stop(e);
-              setExpanded((prev) => !prev);
-            }}
+                        stop(e);
+                        setExpanded((prev) => !prev);
+                      }}
           >
             <Text fontSize={16} color={brand.grafite70} textAlign="left">
-              <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
+              <Text fontFamily="body" fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
                 {expanded ? `Nascondi ${detailsLabel}` : `Vedi ${detailsLabel}`}
               </Text>
               {/* Con una prestazione cercata (§398) il suo prezzo, non il più basso. */}
@@ -555,38 +544,38 @@ export function ProfessionalCard({
           </XStack>
 
           {expanded && hasAgenda ? (
-            <YStack gap="$2">
-              <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">
+            <YStack gap="2">
+              <XStack alignItems="center" justifyContent="space-between" gap="2" flexWrap="wrap">
                 {/* Segmentato come la barra di ricerca, con "Orari per:"
                     davanti (docs/CHANGELOG.md §349): le due pillole separate
                     sembravano un interruttore, e "Online" grigio sembrava
                     "non offerto". */}
-                <XStack alignItems="center" gap="$2">
-                  <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite70}>
+                <XStack alignItems="center" gap="2">
+                  <Text fontFamily="body" fontSize={13} fontWeight="600" color={brand.grafite70}>
                     Orari per:
                   </Text>
-                  <XStack gap={2} backgroundColor={brand.gesso} borderRadius="$10" padding={2}>
+                  <XStack gap={2} backgroundColor={brand.gesso} borderRadius="10" padding={2}>
                     {(["HOME", "ONLINE"] as const).map((mode) => {
                       const active = activeMode === mode;
                       return (
                         <XStack
                           key={mode}
-                          tag="button"
-                          paddingHorizontal="$3"
+                          render="button"
+                          paddingHorizontal="3"
                           paddingVertical={5}
                           borderWidth={0}
-                          borderRadius="$10"
+                          borderRadius="10"
                           backgroundColor={active ? brand.cianografia : "transparent"}
                           cursor="pointer"
-                          accessibilityRole="button"
+                          role="button"
                           aria-pressed={active}
                           onPress={(e: unknown) => {
-                            stop(e);
-                            setActiveMode(mode);
-                            setWindowOffset(0);
-                          }}
+                                                    stop(e);
+                                                    setActiveMode(mode);
+                                                    setWindowOffset(0);
+                                                  }}
                         >
-                          <Text fontFamily="$body" fontSize={13} fontWeight="700" color={active ? "#FFFFFF" : brand.grafite}>
+                          <Text fontFamily="body" fontSize={13} fontWeight="700" color={active ? "#FFFFFF" : brand.grafite}>
                             {mode === "HOME" ? "A domicilio" : "Online"}
                           </Text>
                         </XStack>
@@ -595,48 +584,48 @@ export function ProfessionalCard({
                   </XStack>
                 </XStack>
                 {totalDays > AGENDA_VISIBLE_DAYS ? (
-                  <XStack gap="$1" alignItems="center">
+                  <XStack gap="1" alignItems="center">
                     <XStack
                       width={32}
                       height={32}
-                      borderRadius="$10"
+                      borderRadius="10"
                       alignItems="center"
                       justifyContent="center"
                       backgroundColor={brand.gesso}
                       opacity={canGoBack ? 1 : 0.3}
                       cursor={canGoBack ? "pointer" : undefined}
-                      accessibilityRole={canGoBack ? "button" : undefined}
-                      accessibilityLabel="Giorni precedenti"
+                      role={canGoBack ? "button" : undefined}
+                      aria-label="Giorni precedenti"
                       onPress={
-                        canGoBack
-                          ? (e: unknown) => {
-                              stop(e);
-                              setWindowOffset(Math.max(0, offset - AGENDA_VISIBLE_DAYS));
-                            }
-                          : undefined
-                      }
+                                            canGoBack
+                                              ? (e: unknown) => {
+                                                  stop(e);
+                                                  setWindowOffset(Math.max(0, offset - AGENDA_VISIBLE_DAYS));
+                                                }
+                                              : undefined
+                                          }
                     >
                       <Icon name="chevron-left" size={16} color={brand.grafite} />
                     </XStack>
                     <XStack
                       width={32}
                       height={32}
-                      borderRadius="$10"
+                      borderRadius="10"
                       alignItems="center"
                       justifyContent="center"
                       backgroundColor={brand.gesso}
                       opacity={canGoForward ? 1 : 0.3}
                       cursor={canGoForward ? "pointer" : undefined}
-                      accessibilityRole={canGoForward ? "button" : undefined}
-                      accessibilityLabel="Giorni successivi"
+                      role={canGoForward ? "button" : undefined}
+                      aria-label="Giorni successivi"
                       onPress={
-                        canGoForward
-                          ? (e: unknown) => {
-                              stop(e);
-                              setWindowOffset(offset + AGENDA_VISIBLE_DAYS);
-                            }
-                          : undefined
-                      }
+                                            canGoForward
+                                              ? (e: unknown) => {
+                                                  stop(e);
+                                                  setWindowOffset(offset + AGENDA_VISIBLE_DAYS);
+                                                }
+                                              : undefined
+                                          }
                     >
                       <Icon name="chevron-right" size={16} color={brand.grafite} />
                     </XStack>
@@ -657,10 +646,10 @@ export function ProfessionalCard({
                     alignItems="center"
                     gap={2}
                     cursor={openAgendaAt ? "pointer" : undefined}
-                    accessibilityRole={openAgendaAt ? "button" : undefined}
+                    role={openAgendaAt ? "button" : undefined}
                     onPress={openAgendaAt?.(day.date)}
                   >
-                    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
+                    <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite}>
                       {day.label}
                     </Text>
                     <Text fontVariant={["tabular-nums"]} fontSize={12} color={brand.grafite70}>
@@ -671,7 +660,7 @@ export function ProfessionalCard({
               </XStack>
 
               {timeRows.length > 0 ? (
-                <YStack gap="$1">
+                <YStack gap="1">
                   {timeRows.map((time) => (
                     <XStack key={time}>
                       {visibleDays.map((day) => {
@@ -696,8 +685,8 @@ export function ProfessionalCard({
                             justifyContent="center"
                             paddingVertical={3}
                             cursor={onSlotPress ? "pointer" : undefined}
-                            accessibilityRole={onSlotPress ? "button" : undefined}
-                            accessibilityLabel={onSlotPress ? `Richiedi un preventivo per ${range} il ${day.label}` : undefined}
+                            role={onSlotPress ? "button" : undefined}
+                            aria-label={onSlotPress ? `Richiedi un preventivo per ${range} il ${day.label}` : undefined}
                             onPress={
                               onSlotPress
                                 ? (e: unknown) => {
@@ -707,11 +696,11 @@ export function ProfessionalCard({
                                 : undefined
                             }
                           >
-                            <XStack paddingHorizontal={6} paddingVertical={4} $xs={{ paddingHorizontal: 3 }} borderRadius="$10" backgroundColor={brand.cianografiaVelo} maxWidth="100%">
+                            <XStack paddingHorizontal="6px xs:3px" paddingVertical={4} borderRadius="10" backgroundColor={brand.cianografiaVelo} maxWidth="100%">
                               <Text
                                 fontVariant={["tabular-nums"]}
-                                fontSize={12}
-                                $xs={{ fontSize: 11, letterSpacing: -0.2 }}
+                                fontSize="12px xs:11px"
+                                letterSpacing="xs:-0.2px"
                                 fontWeight="700"
                                 color={brand.cianografiaScuro}
                                 textAlign="center"
@@ -728,7 +717,7 @@ export function ProfessionalCard({
               ) : null}
 
               {hasAvailableInWindow ? null : firstFree ? (
-                <YStack gap="$2" padding="$3" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto}>
+                <YStack gap="2" padding="3" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto}>
                   <YStack gap={2}>
                     <Text fontSize={13} color={brand.grafite70}>
                       Nessun orario libero in questi giorni. Primo orario libero:
@@ -740,28 +729,25 @@ export function ProfessionalCard({
                   </YStack>
                   <XStack
                     alignSelf="flex-start"
-                    paddingHorizontal="$3"
+                    paddingHorizontal="3"
                     paddingVertical={6}
-                    borderRadius="$10"
+                    borderRadius="10"
                     backgroundColor={brand.cianografiaPieno}
                     cursor="pointer"
-                    accessibilityRole="button"
-                    accessibilityLabel="Mostra orari disponibili"
-                    // Porta la finestra della mini-agenda sul giorno del primo
-                    // orario libero, che resta cliccabile come ogni altra fascia
-                    // per aprire la richiesta di preventivo precompilata.
+                    role="button"
+                    aria-label="Mostra orari disponibili"
                     onPress={(e: unknown) => {
-                      stop(e);
-                      setWindowOffset(firstFree.index);
-                    }}
+                                        stop(e);
+                                        setWindowOffset(firstFree.index);
+                                      }}
                   >
-                    <Text fontFamily="$body" fontSize={13} fontWeight="700" color="#FFFFFF">
+                    <Text fontFamily="body" fontSize={13} fontWeight="700" color="#FFFFFF">
                       Mostra orari disponibili →
                     </Text>
                   </XStack>
                 </YStack>
               ) : (
-                <Text fontSize={13} color={brand.grafite70} paddingVertical="$2">
+                <Text fontSize={13} color={brand.grafite70} paddingVertical="2">
                   Nessun orario libero nei prossimi due mesi.
                 </Text>
               )}
@@ -774,21 +760,21 @@ export function ProfessionalCard({
             // §358): l'area qui sopra ferma il clic per l'agenda, non per i
             // prezzi. Da tastiera il profilo si apre dal link del nome.
             <YStack
-              gap="$1"
-              {...(hasAgenda ? { paddingTop: "$3", borderTopWidth: 1, borderTopColor: brand.filetto } : null)}
+              gap="1"
+              {...(hasAgenda ? { paddingTop: "3", borderTopWidth: 1, borderTopColor: brand.filetto } : null)}
               cursor={onPress ? "pointer" : undefined}
               onPress={
-                onPress
-                  ? (e: unknown) => {
-                      stop(e);
-                      onPress();
-                    }
-                  : undefined
-              }
+                            onPress
+                              ? (e: unknown) => {
+                                  stop(e);
+                                  onPress();
+                                }
+                              : undefined
+                          }
             >
               {(showAllServices ? serviceList : serviceList.slice(0, 3)).map((service) =>
                 service === highlighted ? (
-                  <YStack key={service.id} backgroundColor={brand.cianografiaVelo} borderRadius={10} paddingHorizontal="$2" marginHorizontal={-8}>
+                  <YStack key={service.id} backgroundColor={brand.cianografiaVelo} borderRadius={10} paddingHorizontal="2" marginHorizontal={-8}>
                     <PriceLine label={service.name} labelColor={brand.grafite} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)} unit={priceUnitLabel(service)} />
                   </YStack>
                 ) : (
@@ -798,15 +784,15 @@ export function ProfessionalCard({
               {serviceList.length > 3 ? (
                 <XStack
                   alignItems="center"
-                  gap="$1"
-                  paddingTop="$1"
+                  gap="1"
+                  paddingTop="1"
                   cursor="pointer"
                   onPress={(e: unknown) => {
-                    stop(e);
-                    setShowAllServices((prev) => !prev);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={showAllServices ? "Mostra meno prestazioni" : "Mostra tutte le prestazioni"}
+                                    stop(e);
+                                    setShowAllServices((prev) => !prev);
+                                  }}
+                  role="button"
+                  aria-label={showAllServices ? "Mostra meno prestazioni" : "Mostra tutte le prestazioni"}
                 >
                   <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro}>
                     {showAllServices ? "Mostra meno" : `Mostra tutte (${serviceList.length})`}

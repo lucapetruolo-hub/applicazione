@@ -39,6 +39,8 @@ export type { BadgeInfoKey } from "./badgeInfo";
 export type { BadgeProps, BadgeVariant } from "./Badge";
 export { Rating } from "./Rating";
 export type { RatingProps } from "./Rating";
+export { Input } from "./Input";
+export type { InputProps } from "./Input";
 export { Field } from "./Field";
 export type { FieldProps } from "./Field";
 export { Avatar } from "./Avatar";
@@ -62,7 +64,5 @@ export {
   H2,
   H3,
   Paragraph,
-  Input,
-  Card,
   Separator,
 } from "tamagui";

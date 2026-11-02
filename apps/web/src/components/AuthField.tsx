@@ -39,7 +39,7 @@ export function AuthField({
   autoCapitalize,
   autoComplete,
   nativeID,
-  accessibilityLabel,
+  "aria-label": accessibilityLabel,
   onSubmitEditing,
   footer,
   footerId,
@@ -58,7 +58,7 @@ export function AuthField({
   autoCapitalize?: "none" | "sentences";
   autoComplete?: string;
   nativeID?: string;
-  accessibilityLabel?: string;
+  "aria-label"?: string;
   onSubmitEditing?: () => void;
   /** Sotto il campo, dopo l'errore o il suggerimento (es. le regole della password, §289). */
   footer?: ReactNode;

@@ -19,10 +19,10 @@ type LegalSection = { heading: string; body: ReactNode; id?: string; after?: Rea
  */
 export function LegalPage({ title, updatedAt, sections, intro }: { title: string; updatedAt: string; sections: LegalSection[]; intro?: ReactNode }) {
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={720} gap="$5">
-        <YStack gap="$2">
-          <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.grafite}>
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={720} gap="5">
+        <YStack gap="2">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="9" color={brand.grafite}>
             {title}
           </Text>
           <Text fontSize={13} color={brand.grafite70}>
@@ -31,11 +31,11 @@ export function LegalPage({ title, updatedAt, sections, intro }: { title: string
         </YStack>
         {intro}
         {sections.map((section) => (
-          <YStack key={section.heading} id={section.id} gap="$2" style={{ scrollMarginTop: 96 }}>
-            <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+          <YStack key={section.heading} id={section.id} gap="2" style={{ scrollMarginTop: 96 }}>
+            <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
               {section.heading}
             </Text>
-            <Text fontSize={16} color={brand.grafite70} lineHeight={24}>
+            <Text fontSize={16} color={brand.grafite70} lineHeight="24px">
               {section.body}
             </Text>
             {section.after}
@@ -53,14 +53,14 @@ export function LegalPage({ title, updatedAt, sections, intro }: { title: string
  */
 export function LegalList({ items }: { items: { title: string; rows: [label: string, value: string][] }[] }) {
   return (
-    <YStack tag="ul" margin={0} padding={0} gap="$2" style={{ listStyle: "none" }}>
+    <YStack render="ul" margin={0} padding={0} gap="2" style={{ listStyle: "none" }}>
       {items.map((item) => (
-        <YStack key={item.title} tag="li" gap="$1" padding="$3" borderWidth={1} borderColor={brand.filetto} borderRadius={10} backgroundColor={brand.calce}>
+        <YStack key={item.title} render="li" gap="1" padding="3" borderWidth={1} borderColor={brand.filetto} borderRadius={10} backgroundColor={brand.calce}>
           <Text fontWeight="700" fontSize={16} color={brand.grafite}>
             {item.title}
           </Text>
           {item.rows.map(([label, value]) => (
-            <Text key={label} fontSize={14} color={brand.grafite70} lineHeight={20}>
+            <Text key={label} fontSize={14} color={brand.grafite70} lineHeight="20px">
               <Text fontSize={14} fontWeight="600" color={brand.grafite}>
                 {label}:
               </Text>{" "}
@@ -79,13 +79,13 @@ export function LegalList({ items }: { items: { title: string; rows: [label: str
  */
 export function LegalSummary({ points }: { points: string[] }) {
   return (
-    <YStack gap="$2" padding="$4" borderRadius={20} backgroundColor={brand.cianografiaVelo}>
-      <Text tag="h2" margin={0} fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+    <YStack gap="2" padding="4" borderRadius={20} backgroundColor={brand.cianografiaVelo}>
+      <Text render="h2" margin={0} fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
         In breve
       </Text>
-      <YStack tag="ul" margin={0} paddingLeft={20} gap="$1">
+      <YStack render="ul" margin={0} paddingLeft={20} gap="1">
         {points.map((point) => (
-          <Text key={point} tag="li" fontSize={16} color={brand.grafite} lineHeight={24}>
+          <Text key={point} render="li" fontSize={16} color={brand.grafite} lineHeight="24px">
             {point}
           </Text>
         ))}

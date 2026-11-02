@@ -33,12 +33,12 @@ export default function AdminRichiesteEliminatePage() {
   }, [token]);
 
   return (
-    <YStack gap="$5">
+    <YStack gap="5">
       <AdminPageHeader title="Richieste eliminate" description="Tolte dalla lista di un cliente o di un professionista. Qui restano con chat e preventivi." />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
-      <YStack gap="$2">
-        <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
+      <YStack gap="2">
+        <Text fontFamily="heading" fontWeight="700" fontSize="5" color={brand.grafite}>
           Dai clienti
         </Text>
         <Text fontSize={14} color={brand.grafite70}>
@@ -108,8 +108,8 @@ export default function AdminRichiesteEliminatePage() {
         ) : null}
       </YStack>
 
-      <YStack gap="$2">
-        <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
+      <YStack gap="2">
+        <Text fontFamily="heading" fontWeight="700" fontSize="5" color={brand.grafite}>
           Dai professionisti
         </Text>
         <Text fontSize={14} color={brand.grafite70}>

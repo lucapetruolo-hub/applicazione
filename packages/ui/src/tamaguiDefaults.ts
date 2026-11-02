@@ -1,5 +1,7 @@
-// File generato da scripts/genera-default-tamagui.ts: non modificarlo a mano.
-// Valori di @tamagui/config 1.144.4 (docs/CHANGELOG.md §345).
+// Valori di @tamagui/config 1.144.4 (docs/CHANGELOG.md §345), fissati qui dal
+// passaggio a Tamagui 3, che non ha più questa config (docs/changelog/2026-11-02-tamagui-3.md).
+// Si cambiano a mano; dopo, `pnpm --filter @professionisti/ui genera-default-tamagui`
+// li controlla (scripts/genera-default-tamagui.ts).
 /* eslint-disable */
 
 export const defaultTokens = {

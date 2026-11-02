@@ -397,9 +397,9 @@ function LeMieRichiesteContent() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi per vedere le tue richieste
           </Text>
           <Link href="/accedi?redirect=/le-mie-richieste" style={{ textDecoration: "none" }}>
@@ -412,22 +412,22 @@ function LeMieRichiesteContent() {
 
   if (confirmedBooking && confirmedRequest) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="8" paddingHorizontal="4">
         <BookingConfirmed booking={confirmedBooking} address={requestJobAddress(confirmedRequest)} token={token} onDone={closeConfirmation} />
       </YStack>
     );
   }
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="8" paddingHorizontal="4">
       {/* Come "Richieste e lavori" del professionista (richiesta dell'utente,
           docs/CHANGELOG.md §334): stessa larghezza, titolo e riga sotto. */}
-      <YStack width="100%" maxWidth={1180} gap="$5">
-        <YStack gap="$1">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
+      <YStack width="100%" maxWidth={1180} gap="5">
+        <YStack gap="1">
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
             Le mie richieste
           </Text>
-          <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+          <Text fontFamily="body" fontSize={16} color={brand.grafite70}>
             Preventivi, appuntamenti e pagamenti di ogni tua richiesta
           </Text>
         </YStack>
@@ -456,7 +456,7 @@ function LeMieRichiesteContent() {
                   <XStack key={tab.key} flexShrink={0} position="relative">
                     <XStack
                       alignItems="center"
-                      paddingHorizontal="$3"
+                      paddingHorizontal="3"
                       paddingVertical={9}
                       borderRadius={999}
                       backgroundColor={active ? brand.cianografiaPieno : brand.calce}
@@ -464,14 +464,14 @@ function LeMieRichiesteContent() {
                       borderColor={active ? brand.cianografia : brand.filetto}
                       cursor="pointer"
                       onPress={() => updateStageTab(tab.key)}
-                      accessibilityRole="button"
+                      role="button"
                       aria-pressed={active}
                     >
-                      <Text fontFamily="$body" fontSize={16} fontWeight="800" color={active ? "white" : brand.grafite}>
+                      <Text fontFamily="body" fontSize={16} fontWeight="800" color={active ? "white" : brand.grafite}>
                         {tab.label}
                       </Text>
                       {count > 0 && !ACTION_TABS.has(tab.key) ? (
-                        <Text fontFamily="$body" fontSize={14} fontWeight="600" color={active ? "rgba(255,255,255,0.85)" : brand.grafite70} marginLeft={6}>
+                        <Text fontFamily="body" fontSize={14} fontWeight="600" color={active ? "rgba(255,255,255,0.85)" : brand.grafite70} marginLeft={6}>
                           {count}
                         </Text>
                       ) : null}
@@ -504,7 +504,7 @@ function LeMieRichiesteContent() {
             {/* Da telefono restano solo le schede di stato e "Filtri", con
                 dentro ricerca e modalità (docs/CHANGELOG.md §349): tre file di
                 controlli spingevano la prima richiesta a metà schermo. */}
-            <YStack $xs={{ display: "none" }}>
+            <YStack display="xs:none">
               <input
                 aria-label="Cerca nelle richieste"
                 value={search}
@@ -517,11 +517,11 @@ function LeMieRichiesteContent() {
               />
             </YStack>
 
-            <XStack gap="$2" alignItems="center" flexWrap="wrap">
+            <XStack gap="2" alignItems="center" flexWrap="wrap">
               <XStack
                 alignItems="center"
                 gap={6}
-                paddingHorizontal="$4"
+                paddingHorizontal="4"
                 paddingVertical={12}
                 borderRadius={radiusDoc}
                 backgroundColor={brand.calce}
@@ -529,7 +529,7 @@ function LeMieRichiesteContent() {
                 borderColor={brand.filetto}
                 cursor="pointer"
                 onPress={() => setShowFiltersModal(true)}
-                accessibilityRole="button"
+                role="button"
               >
                 <Icon name="sliders-horizontal" size={16} color={brand.grafite} />
                 <Text fontWeight="700" fontSize={16} color={brand.grafite}>
@@ -537,7 +537,7 @@ function LeMieRichiesteContent() {
                 </Text>
               </XStack>
 
-              <XStack $xs={{ display: "none" }} borderRadius={999} borderWidth={1} borderColor={brand.filetto} overflow="hidden">
+              <XStack display="xs:none" borderRadius={999} borderWidth={1} borderColor={brand.filetto} overflow="hidden">
                 {(
                   [
                     { key: "tutte", label: "Tutte", icon: null },
@@ -551,15 +551,15 @@ function LeMieRichiesteContent() {
                       key={opt.key}
                       alignItems="center"
                       gap={6}
-                      paddingHorizontal="$3"
+                      paddingHorizontal="3"
                       paddingVertical={12}
                       backgroundColor={active ? brand.cianografiaPieno : brand.calce}
                       cursor="pointer"
                       onPress={() => {
-                        setServiceModeFilter(opt.key);
-                        setPage(1);
-                      }}
-                      accessibilityRole="button"
+                                            setServiceModeFilter(opt.key);
+                                            setPage(1);
+                                          }}
+                      role="button"
                       aria-pressed={active}
                     >
                       {opt.icon ? <Icon name={opt.icon} size={14} strokeWidth={2} color={active ? "white" : brand.grafite} /> : null}
@@ -598,22 +598,22 @@ function LeMieRichiesteContent() {
                   width="100%"
                   maxWidth={420}
                   backgroundColor={brand.calce}
-                  borderRadius="$3"
-                  padding="$5"
-                  gap="$4"
-                  marginVertical="$6"
+                  borderRadius="3"
+                  padding="5"
+                  gap="4"
+                  marginVertical="6"
                 >
                   <XStack justifyContent="space-between" alignItems="center">
-                    <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
+                    <Text fontFamily="heading" fontWeight="800" fontSize="5" color={brand.grafite}>
                       Filtri
                     </Text>
-                    <XStack cursor="pointer" onPress={() => setShowFiltersModal(false)} accessibilityRole="button" accessibilityLabel="Chiudi">
+                    <XStack cursor="pointer" onPress={() => setShowFiltersModal(false)} role="button" aria-label="Chiudi">
                       <Icon name="x" size={20} color={brand.grafite70} />
                     </XStack>
                   </XStack>
 
-                  <YStack gap="$3">
-                    <YStack gap="$3" $gtXs={{ display: "none" }}>
+                  <YStack gap="3">
+                    <YStack gap="3" display="gtXs:none">
                       <input
                         aria-label="Cerca nelle richieste"
                         value={search}
@@ -676,7 +676,7 @@ function LeMieRichiesteContent() {
                         setZoneFilter("tutte");
                         setPage(1);
                       }}
-                      accessibilityRole="button"
+                      role="button"
                     >
                       <Text fontSize={16} fontWeight="700" color={brand.grafite70} textDecorationLine="underline">
                         Reimposta filtri
@@ -693,7 +693,7 @@ function LeMieRichiesteContent() {
           </>
         ) : null}
 
-        <YStack ref={listTopRef} gap="$4">
+        <YStack ref={listTopRef as never} gap="4">
           <RestoredNotice />
           <RequestDeletedNotice
             onUndo={async (guidedRequestId) => {

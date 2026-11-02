@@ -30,17 +30,17 @@ export function HomeHero() {
   }
 
   return (
-    <YStack width="100%" backgroundColor="transparent" paddingTop="$6" paddingBottom="$5" paddingHorizontal="$4" alignItems="center">
+    <YStack width="100%" backgroundColor="transparent" paddingTop="6" paddingBottom="5" paddingHorizontal="4" alignItems="center">
       <YStack
         width="100%"
         maxWidth={1160}
-        className="home-hero-panel"
         backgroundColor={brand.cianografia}
         borderRadius={40}
-        paddingVertical="$8"
-        paddingHorizontal="$5"
+        paddingVertical="8"
+        paddingHorizontal="5"
         alignItems="center"
         position="relative"
+        className="home-hero-panel"
       >
         {/* Luci sfumate (scelta dell'utente, docs/CHANGELOG.md §305): in un
             livello a parte con "overflow:hidden" invece che sull'intero
@@ -48,29 +48,28 @@ export function HomeHero() {
             §10). */}
         <GlowLights tone="verde-opaco" radius={40} />
 
-        <YStack width="100%" maxWidth={720} alignItems="center" gap="$4" position="relative">
+        <YStack width="100%" maxWidth={720} alignItems="center" gap="4" position="relative">
           <Eyebrow tone="dark">Non chiamare a caso. Chiamalo giusto.</Eyebrow>
           {/* Titolo principale della pagina (h1) per Google e i lettori di schermo. */}
           <Text
-            tag="h1"
+            render="h1"
             margin={0}
-            fontFamily="$heading"
+            fontFamily="heading"
             fontWeight="600"
-            fontSize={38}
-            lineHeight={42}
+            fontSize="38px gtSm:54px"
+            lineHeight="42px gtSm:56px"
             letterSpacing={-0.5}
             textAlign="center"
             color="white"
-            $gtSm={{ fontSize: 54, lineHeight: 56 }}
           >
             Trova un professionista vicino a te
           </Text>
-          <Text fontSize="$5" color="rgba(255,255,255,0.88)" textAlign="center" maxWidth={520}>
+          <Text fontSize="5" color="rgba(255,255,255,0.88)" textAlign="center" maxWidth={520}>
             Idraulici, elettricisti, imbianchini e altri professionisti della tua zona. Cerca per zona o scegli una
             consulenza online.
           </Text>
 
-          <YStack width="100%" marginTop="$4">
+          <YStack width="100%" marginTop="4">
             <SearchBar
               wrapSearchButton={(button) => <MagneticButton block>{button}</MagneticButton>}
               onSearch={handleSearch}
@@ -83,7 +82,7 @@ export function HomeHero() {
               che il sito non fa (nessuno controlla chi è disponibile) ed era il
               secondo controllo "urgente" nello stesso schermo, col link rosso
               "Richiesta urgente" qui sotto, che resta. */}
-          <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.75)" marginTop="$2" textAlign="center">
+          <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.75)" marginTop="2" textAlign="center">
             Ricerca gratuita · Nessuna registrazione
           </Text>
 
@@ -93,8 +92,8 @@ export function HomeHero() {
               è in alto a destra. Resta la richiesta urgente, una strada
               diversa, come pillola dentro il riquadro (scelta di Luca,
               docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md). */}
-          <YStack width="100%" maxWidth={560} alignItems="center" gap="$3" marginTop="$3">
-            <XStack width="100%" alignItems="center" gap="$3">
+          <YStack width="100%" maxWidth={560} alignItems="center" gap="3" marginTop="3">
+            <XStack width="100%" alignItems="center" gap="3">
               <YStack flex={1} height={1} backgroundColor="rgba(255,255,255,0.3)" aria-hidden />
               <Text fontSize={14} fontWeight="600" color="rgba(255,255,255,0.8)">
                 Un guasto da sistemare oggi?

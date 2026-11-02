@@ -305,13 +305,13 @@ function NewProfileCard({ pro, delayMs }: { pro: ProfessionalSearchResult; delay
         <div className="npc-band" style={{ backgroundColor: accent.bg }}>
           <span className="npc-chip">
             <CategoryIcon slug={pro.categorySlug} size={14} color={accent.fg} />
-            <Text fontSize={13} lineHeight={16} fontWeight="700" color={accent.fg} numberOfLines={1}>
+            <Text fontSize={13} lineHeight="16px" fontWeight="700" color={accent.fg} numberOfLines={1}>
               {pro.categoryLabel}
             </Text>
           </span>
           {isNewProfile(pro.createdAt) ? (
             <span className="npc-new">
-              <Text fontSize={13} lineHeight={16} fontWeight="700" color={brand.calce}>
+              <Text fontSize={13} lineHeight="16px" fontWeight="700" color={brand.calce}>
                 Nuovo
               </Text>
             </span>
@@ -322,13 +322,13 @@ function NewProfileCard({ pro, delayMs }: { pro: ProfessionalSearchResult; delay
         </div>
 
         <div className="npc-body">
-          <Text fontFamily="$heading" fontWeight="700" fontSize={18} color={brand.grafite} numberOfLines={1}>
+          <Text fontFamily="heading" fontWeight="700" fontSize={18} color={brand.grafite} numberOfLines={1}>
             {pro.businessName}
           </Text>
           <Text fontSize={16} color={brand.grafite70} numberOfLines={1}>
             {pro.city} · iscritto {joinedAgo(pro.createdAt)}
           </Text>
-          <XStack alignItems="center" justifyContent="center" gap="$2" flexWrap="wrap" minHeight={22} marginBottom="$3">
+          <XStack alignItems="center" justifyContent="center" gap="2" flexWrap="wrap" minHeight={22} marginBottom="3">
             {pro.rating !== null ? (
               <Rating value={pro.rating} size={13} />
             ) : (

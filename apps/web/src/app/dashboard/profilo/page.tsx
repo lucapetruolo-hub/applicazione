@@ -102,7 +102,7 @@ function eurInputValue(cents: number): string {
 
 function FieldLabel({ children }: { children: string }) {
   return (
-    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+    <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
       {children}
     </Text>
   );
@@ -114,7 +114,7 @@ function FieldLabel({ children }: { children: string }) {
 // titolo, invece di un unico scroll continuo di soli FieldLabel).
 function SectionTitle({ children }: { children: string }) {
   return (
-    <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
+    <Text fontFamily="heading" fontWeight="800" fontSize="5" color={brand.grafite}>
       {children}
     </Text>
   );
@@ -387,7 +387,7 @@ export default function DashboardProfiloPage() {
 
   if (token && profileLoadFailed) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="8" paddingHorizontal="4">
         <YStack width="100%" maxWidth={720}>
           <LoadErrorNotice
             title="Non riusciamo a caricare il tuo profilo"
@@ -404,9 +404,9 @@ export default function DashboardProfiloPage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi come professionista
           </Text>
           <Link href="/accedi?redirect=/dashboard/profilo" style={{ textDecoration: "none" }}>
@@ -419,9 +419,9 @@ export default function DashboardProfiloPage() {
 
   if (!user.isProfessional) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$3" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="3" alignItems="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Questa sezione è per i professionisti
           </Text>
           <Text color={brand.grafite70} textAlign="center">
@@ -713,12 +713,12 @@ export default function DashboardProfiloPage() {
   const nextStep = journey ? journeyCurrent(journey) : null;
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4" gap="$5">
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="8" paddingHorizontal="4" gap="5">
       {mode === "preview" ? (
-        <YStack width="100%" maxWidth={920} gap="$5">
-          <XStack justifyContent="space-between" alignItems="flex-end" gap="$3" flexWrap="wrap">
-            <YStack gap="$1" flex={1} minWidth={220}>
-              <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+        <YStack width="100%" maxWidth={920} gap="5">
+          <XStack justifyContent="space-between" alignItems="flex-end" gap="3" flexWrap="wrap">
+            <YStack gap="1" flex={1} minWidth={220}>
+              <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
                 Profilo pubblico
               </Text>
               <Text color={brand.grafite70}>Così ti vedono i clienti su {BRAND.name}.</Text>
@@ -737,7 +737,7 @@ export default function DashboardProfiloPage() {
           </XStack>
 
           {saved ? (
-            <XStack alignItems="center" gap="$2" padding="$3" borderRadius={20} backgroundColor={brand.cianografiaVelo}>
+            <XStack alignItems="center" gap="2" padding="3" borderRadius={20} backgroundColor={brand.cianografiaVelo}>
               <Icon name="check" size={16} strokeWidth={2.5} color={brand.cianografiaScuro} />
               <Text fontWeight="700" color={brand.cianografiaScuro}>
                 Profilo salvato
@@ -814,7 +814,7 @@ export default function DashboardProfiloPage() {
                 <ProfessionalDetailContent professional={preview.profile} preview />
               </Suspense>
             ) : (
-              <YStack padding="$6" alignItems="center">
+              <YStack padding="6" alignItems="center">
                 <Text color={brand.grafite70} textAlign="center">
                   Anteprima non disponibile al momento.
                 </Text>
@@ -823,8 +823,8 @@ export default function DashboardProfiloPage() {
           </div>
         </YStack>
       ) : (
-      <YStack width="100%" maxWidth={760} gap="$5">
-        <YStack gap="$2">
+      <YStack width="100%" maxWidth={760} gap="5">
+        <YStack gap="2">
           {isFirstProfileSave ? null : (
             <button
               type="button"
@@ -838,7 +838,7 @@ export default function DashboardProfiloPage() {
               Torna all&apos;anteprima
             </button>
           )}
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+          <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             {isFirstProfileSave ? "Profilo pubblico" : "Modifica profilo"}
           </Text>
           <Text color={brand.grafite70}>
@@ -848,7 +848,7 @@ export default function DashboardProfiloPage() {
         </YStack>
 
         {needsConfirmation ? (
-          <Surface gap="$2" borderColor={brand.cianografia} borderWidth={1}>
+          <Surface gap="2" borderColor={brand.cianografia} borderWidth={1}>
             <Text fontWeight="700" color={brand.grafite}>
               Controlla i dati e salva il profilo
             </Text>
@@ -863,12 +863,12 @@ export default function DashboardProfiloPage() {
             (spostati qui subito sotto il nome, richiesta esplicita
             dell'utente) e "Verbale Cognitivo" F5.2: pagina lunghissima
             spezzata in blocchi percepibili invece di un unico scroll. */}
-        <Surface gap="$4">
+        <Surface gap="4">
           <SectionTitle>Identità</SectionTitle>
 
-          <YStack gap="$2">
+          <YStack gap="2">
             <FieldLabel>Immagine profilo</FieldLabel>
-            <YStack flexDirection="row" alignItems="center" gap="$3">
+            <YStack flexDirection="row" alignItems="center" gap="3">
               <YStack
                 width={72}
                 height={72}
@@ -886,17 +886,17 @@ export default function DashboardProfiloPage() {
                   <Camera size={28} strokeWidth={1.5} color={brand.grafite70} />
                 )}
               </YStack>
-              <YStack gap="$1" flex={1} maxWidth={400} alignItems="flex-start">
+              <YStack gap="1" flex={1} maxWidth={400} alignItems="flex-start">
                 <Button
-                  variant="secondary"
-                  size="$3"
-                  height={40}
-                  disabled={isUploadingImage}
-                  opacity={isUploadingImage ? 0.6 : 1}
-                  onPress={() => imageInputRef.current?.click()}
-                >
+                      variant="secondary"
+                      size="3"
+                      height={40}
+                      opacity={isUploadingImage ? 0.6 : 1}
+                      disabled={isUploadingImage}
+                      onPress={() => imageInputRef.current?.click()}
+                    >
                   {isUploadingImage ? (
-                    <XStack alignItems="center" gap="$2">
+                    <XStack alignItems="center" gap="2">
                       <Text color={brand.grafite} fontWeight="600">
                         Caricamento
                       </Text>
@@ -925,12 +925,12 @@ export default function DashboardProfiloPage() {
             </YStack>
           </YStack>
 
-          <YStack gap="$2">
+          <YStack gap="2">
             <FieldLabel>Nome attività</FieldLabel>
             <input aria-label="Nome attività" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Es. Rossi Impianti" style={inputStyle} />
           </YStack>
 
-          <YStack gap="$1">
+          <YStack gap="1">
             <FieldLabel>Posizione</FieldLabel>
             <Text fontSize={13} color={brand.grafite70}>
               La città è obbligatoria e ti fa trovare nelle ricerche per zona. Se aggiungi anche l&apos;indirizzo
@@ -939,9 +939,9 @@ export default function DashboardProfiloPage() {
             </Text>
           </YStack>
 
-          <YStack gap="$2">
+          <YStack gap="2">
             <FieldLabel>Città in cui operi</FieldLabel>
-            <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
+            <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="4" backgroundColor={brand.calce}>
               <Autocomplete
                 items={allItalianCityNames()}
                 getKey={(item) => item}
@@ -949,15 +949,15 @@ export default function DashboardProfiloPage() {
                 onSelect={setCity}
                 value={city}
                 onChangeText={setCity}
-                accessibilityLabel="Città"
+                aria-label="Città"
                 placeholder="Es. Milano"
-                size="$5"
+                size="5"
                 minChars={3}
               />
             </YStack>
           </YStack>
 
-          <YStack gap="$2">
+          <YStack gap="2">
             <FieldLabel>Indirizzo preciso (opzionale)</FieldLabel>
             <AddressAutocompleteInput
               value={address}
@@ -989,37 +989,37 @@ export default function DashboardProfiloPage() {
             subito sotto la scelta delle categorie (richiesta esplicita
             dell'utente), "(opzionale)" tolto dall'etichetta pur restando
             un campo facoltativo lato validazione. */}
-        <Surface gap="$4">
+        <Surface gap="4">
           <SectionTitle>Categorie e presentazione</SectionTitle>
 
-          <YStack gap="$2">
+          <YStack gap="2">
             <FieldLabel>Categorie</FieldLabel>
             <CategoryMultiPicker value={categorySlugs} onChange={setCategorySlugs} />
           </YStack>
 
           {categorySlugs.length > 0 ? (
-            <YStack gap="$2">
+            <YStack gap="2">
               <FieldLabel>Specializzazioni</FieldLabel>
-              <Text fontSize="$2" color={brand.grafite70}>
+              <Text fontSize="2" color={brand.grafite70}>
                 Scegli in cosa sei più forte: i clienti ti trovano anche cercando quel lavoro.
               </Text>
               {categorySlugs.map((slug) => (
-                <YStack key={slug} gap="$2">
+                <YStack key={slug} gap="2">
                   {categorySlugs.length > 1 ? (
-                    <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+                    <Text fontSize="2" fontWeight="600" color={brand.grafite}>
                       {PROFESSIONAL_CATEGORIES.find((category) => category.slug === slug)?.label}
                     </Text>
                   ) : null}
-                  <XStack flexWrap="wrap" gap="$2">
+                  <XStack flexWrap="wrap" gap="2">
                     {categorySubTags(slug).map((tag) => {
                       const selected = subTags.includes(tag);
                       return (
                         <XStack
                           key={tag}
                           alignItems="center"
-                          gap="$1"
+                          gap="1"
                           minHeight={40}
-                          paddingHorizontal="$3"
+                          paddingHorizontal="3"
                           borderRadius={999}
                           borderWidth={1}
                           borderColor={selected ? brand.cianografia : brand.filetto}
@@ -1027,12 +1027,12 @@ export default function DashboardProfiloPage() {
                           cursor="pointer"
                           onPress={() => setSubTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))}
                           onKeyDown={keyActivate(() => setSubTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag])))}
-                          accessibilityRole="checkbox"
+                          role="checkbox"
                           aria-checked={selected}
-                          accessibilityLabel={subTagLabel(tag)}
+                          aria-label={subTagLabel(tag)}
                         >
                           {selected ? <Icon name="check" size={14} color={brand.cianografiaScuro} /> : null}
-                          <Text fontSize="$3" fontWeight="600" color={selected ? brand.cianografiaScuro : brand.grafite}>
+                          <Text fontSize="3" fontWeight="600" color={selected ? brand.cianografiaScuro : brand.grafite}>
                             {subTagLabel(tag)}
                           </Text>
                         </XStack>
@@ -1044,9 +1044,9 @@ export default function DashboardProfiloPage() {
             </YStack>
           ) : null}
 
-          <YStack gap="$2">
+          <YStack gap="2">
             <FieldLabel>Bio</FieldLabel>
-            <YStack gap="$2" padding="$3" backgroundColor={brand.gesso} borderRadius="$4">
+            <YStack gap="2" padding="3" backgroundColor={brand.gesso} borderRadius="4">
               {/* Chiusi di serie (docs/CHANGELOG.md §349): sei righe sempre
                   aperte prima del campo. */}
               <details className="bio-tips">
@@ -1054,9 +1054,9 @@ export default function DashboardProfiloPage() {
                   <Icon name="lightbulb" size={14} color={brand.cianografiaScuro} />
                   Consigli per una bio più professionale
                 </summary>
-                <YStack gap="$1" paddingTop="$2">
+                <YStack gap="1" paddingTop="2">
                   {BIO_TIPS.map((tip) => (
-                    <XStack key={tip} gap="$2" alignItems="flex-start">
+                    <XStack key={tip} gap="2" alignItems="flex-start">
                       <Text fontSize={13} color={brand.cianografiaScuro}>
                         ·
                       </Text>
@@ -1074,7 +1074,7 @@ export default function DashboardProfiloPage() {
                   color={brand.cianografiaScuro}
                   alignSelf="flex-start"
                   cursor="pointer"
-                  accessibilityRole="button"
+                  role="button"
                   onPress={() => setBio(BIO_EXAMPLE)}
                 >
                   Usa un esempio come punto di partenza
@@ -1097,10 +1097,10 @@ export default function DashboardProfiloPage() {
             riconoscibile). Nessuna verifica documentale dietro — stesso
             principio già seguito per le qualifiche professionali nel resto
             del prodotto: autodichiarate, mai confuse con `verified`. */}
-        <Surface gap="$4">
-          <XStack alignItems="center" gap="$2">
+        <Surface gap="4">
+          <XStack alignItems="center" gap="2">
             <Icon name="shield" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
-            <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
+            <Text fontFamily="heading" fontWeight="700" fontSize="5" color={brand.grafite}>
               Esperienza e affidabilità
             </Text>
           </XStack>
@@ -1108,8 +1108,8 @@ export default function DashboardProfiloPage() {
             Dati dichiarati da te, mostrati sul tuo profilo pubblico per aiutare i clienti a scegliere.
           </Text>
 
-          <YStack gap="$2">
-            <Text fontFamily="$body" fontSize={16} fontWeight="600" color={brand.grafite}>
+          <YStack gap="2">
+            <Text fontFamily="body" fontSize={16} fontWeight="600" color={brand.grafite}>
               Anni di esperienza
             </Text>
             <input aria-label="Anni di esperienza"
@@ -1123,8 +1123,8 @@ export default function DashboardProfiloPage() {
             />
           </YStack>
 
-          <YStack gap="$2">
-            <Text fontFamily="$body" fontSize={16} fontWeight="600" color={brand.grafite}>
+          <YStack gap="2">
+            <Text fontFamily="body" fontSize={16} fontWeight="600" color={brand.grafite}>
               Certificazioni e qualifiche
             </Text>
             <textarea aria-label="Certificazioni e qualifiche"
@@ -1138,26 +1138,26 @@ export default function DashboardProfiloPage() {
           </YStack>
 
           <YStack
-            flexDirection="row"
-            alignItems="center"
-            gap="$3"
-            cursor="pointer"
-            onPress={() => setHasLiabilityInsurance((v) => !v)}
-            onKeyDown={keyActivate(() => setHasLiabilityInsurance((v) => !v))}
-            accessibilityRole="checkbox"
-            aria-checked={hasLiabilityInsurance}
-          >
+                flexDirection="row"
+                alignItems="center"
+                gap="3"
+                cursor="pointer"
+                onPress={() => setHasLiabilityInsurance((v) => !v)}
+                onKeyDown={keyActivate(() => setHasLiabilityInsurance((v) => !v))}
+                role="checkbox"
+                aria-checked={hasLiabilityInsurance}
+              >
             <YStack
-              width={22}
-              height={22}
-              borderRadius="$2"
-              borderWidth={2}
-              borderColor={hasLiabilityInsurance ? brand.cianografia : brand.filetto}
-              backgroundColor={hasLiabilityInsurance ? brand.cianografia : brand.calce}
-              alignItems="center"
-              justifyContent="center"
-              flexShrink={0}
-            >
+                  width={22}
+                  height={22}
+                  borderRadius="2"
+                  borderWidth={2}
+                  borderColor={hasLiabilityInsurance ? brand.cianografia : brand.filetto}
+                  backgroundColor={hasLiabilityInsurance ? brand.cianografia : brand.calce}
+                  alignItems="center"
+                  justifyContent="center"
+                  flexShrink={0}
+                >
               {hasLiabilityInsurance ? <Icon name="check" size={14} strokeWidth={2} color="white" /> : null}
             </YStack>
             <Text fontWeight="600" color={brand.grafite}>
@@ -1171,34 +1171,34 @@ export default function DashboardProfiloPage() {
         </Surface>
 
         <YStack
-          flexDirection="row"
-          alignItems="center"
-          gap="$3"
-          padding="$3"
-          backgroundColor={brand.calce}
-          borderWidth={1}
-          borderColor={brand.filetto}
-          borderRadius="$4"
-          cursor="pointer"
-          onPress={() => setRemoteAvailable((v) => !v)}
-          onKeyDown={keyActivate(() => setRemoteAvailable((v) => !v))}
-          accessibilityRole="checkbox"
-          aria-checked={remoteAvailable}
-        >
+              flexDirection="row"
+              alignItems="center"
+              gap="3"
+              padding="3"
+              backgroundColor={brand.calce}
+              borderWidth={1}
+              borderColor={brand.filetto}
+              borderRadius="4"
+              cursor="pointer"
+              onPress={() => setRemoteAvailable((v) => !v)}
+              onKeyDown={keyActivate(() => setRemoteAvailable((v) => !v))}
+              role="checkbox"
+              aria-checked={remoteAvailable}
+            >
           <YStack
-            width={22}
-            height={22}
-            borderRadius="$2"
-            borderWidth={2}
-            borderColor={remoteAvailable ? brand.cianografia : brand.filetto}
-            backgroundColor={remoteAvailable ? brand.cianografia : brand.calce}
-            alignItems="center"
-            justifyContent="center"
-          >
+                width={22}
+                height={22}
+                borderRadius="2"
+                borderWidth={2}
+                borderColor={remoteAvailable ? brand.cianografia : brand.filetto}
+                backgroundColor={remoteAvailable ? brand.cianografia : brand.calce}
+                alignItems="center"
+                justifyContent="center"
+              >
             {remoteAvailable ? <Icon name="check" size={14} strokeWidth={2} color="white" /> : null}
           </YStack>
-          <YStack flex={1} gap="$1">
-            <XStack alignItems="center" gap="$2">
+          <YStack flex={1} gap="1">
+            <XStack alignItems="center" gap="2">
               <Icon name="video" size={16} strokeWidth={1.5} color={brand.grafite} />
               <Text fontWeight="600" color={brand.grafite}>
                 Offro anche consulenza online
@@ -1210,12 +1210,12 @@ export default function DashboardProfiloPage() {
           </YStack>
         </YStack>
 
-        <Surface gap="$3">
+        <Surface gap="3">
           <SectionTitle>Preavviso per annullare</SectionTitle>
           <Text fontSize={13} color={brand.grafite70}>
             Se il cliente deve annullare, quanto prima deve avvisarti? È già scelto nei tuoi preventivi e puoi cambiarlo ogni volta.
           </Text>
-          <XStack gap="$2" flexWrap="wrap">
+          <XStack gap="2" flexWrap="wrap">
             {CANCELLATION_NOTICE_OPTIONS.map((hours) => (
               <Chip key={hours} selected={cancellationNoticeHours === hours} onPress={() => setCancellationNoticeHours(hours)}>
                 {cancellationNoticeLabel(hours)}
@@ -1224,7 +1224,7 @@ export default function DashboardProfiloPage() {
           </XStack>
         </Surface>
 
-        <Surface gap="$3">
+        <Surface gap="3">
           <SectionTitle>Prestazioni offerte</SectionTitle>
           <Text fontSize={13} color={brand.grafite70}>
             Aggiungi i servizi che offri, con un range di prezzo se vuoi indicarlo (es. da 50€ a 100€, utile quando il
@@ -1232,23 +1232,23 @@ export default function DashboardProfiloPage() {
           </Text>
 
           {suggestedServices.length > 0 ? (
-            <YStack gap="$1">
+            <YStack gap="1">
               <Text fontSize={13} color={brand.grafite70}>
                 {categorySlugs.length > 1 ? "Le più richieste per le tue categorie:" : "Le più richieste per questa categoria:"}
               </Text>
-              <YStack flexDirection="row" flexWrap="wrap" gap="$2">
+              <YStack flexDirection="row" flexWrap="wrap" gap="2">
                 {visibleSuggestedServices.map((name) => (
                   <XStack
                     key={name}
-                    paddingHorizontal="$3"
-                    paddingVertical="$2"
+                    paddingHorizontal="3"
+                    paddingVertical="2"
                     borderRadius={999}
                     borderWidth={1}
                     borderColor={brand.cianografia}
                     backgroundColor={brand.cianografiaVelo}
                     cursor="pointer"
                     onPress={() => addSuggestedService(name)}
-                    accessibilityRole="button"
+                    role="button"
                   >
                     <Text color={brand.cianografiaScuro} fontWeight="600" fontSize={16}>
                       + {name}
@@ -1257,16 +1257,16 @@ export default function DashboardProfiloPage() {
                 ))}
                 {suggestedServices.length > SUGGESTED_IDLE_COUNT ? (
                   <XStack
-                    paddingHorizontal="$3"
-                    paddingVertical="$2"
-                    borderRadius={999}
-                    borderWidth={1}
-                    borderColor={brand.bordoCampo}
-                    cursor="pointer"
-                    onPress={() => setShowAllSuggested((value) => !value)}
-                    accessibilityRole="button"
-                    aria-expanded={showAllSuggested}
-                  >
+                        paddingHorizontal="3"
+                        paddingVertical="2"
+                        borderRadius={999}
+                        borderWidth={1}
+                        borderColor={brand.bordoCampo}
+                        cursor="pointer"
+                        onPress={() => setShowAllSuggested((value) => !value)}
+                        role="button"
+                        aria-expanded={showAllSuggested}
+                      >
                     <Text color={brand.grafite} fontWeight="600" fontSize={16}>
                       {showAllSuggested ? "Mostra meno" : `Altre ${suggestedServices.length - SUGGESTED_IDLE_COUNT}`}
                     </Text>
@@ -1285,9 +1285,9 @@ export default function DashboardProfiloPage() {
             ))}
           </datalist>
 
-          <YStack gap="$2">
+          <YStack gap="2">
             {services.map((service, index) => (
-              <YStack key={index} flexDirection="row" gap="$2" alignItems="center" flexWrap="wrap">
+              <YStack key={index} flexDirection="row" gap="2" alignItems="center" flexWrap="wrap">
                 <input aria-label="Nome della prestazione"
                   list="prestazioni-suggerite"
                   value={service.name}
@@ -1300,7 +1300,7 @@ export default function DashboardProfiloPage() {
                     gruppo va a capo insieme sotto al nome, invece di spezzarsi
                     lasciando la "X" isolata su una riga a parte, lontana dalla
                     voce a cui appartiene — bug reale segnalato dall'utente. */}
-                <XStack gap="$2" alignItems="center" flexWrap="wrap">
+                <XStack gap="2" alignItems="center" flexWrap="wrap">
                   {/* Unità prima del prezzo, nello stesso ordine in cui la
                       vedono i clienti (Luca, docs/CHANGELOG.md §399). */}
                   <select
@@ -1316,7 +1316,7 @@ export default function DashboardProfiloPage() {
                     ))}
                   </select>
                   {/* Prezzo e "X" sempre insieme: sul telefono vanno a capo uniti. */}
-                  <XStack gap="$2" alignItems="center" flexWrap="nowrap">
+                  <XStack gap="2" alignItems="center" flexWrap="nowrap">
                   <input aria-label="Prezzo minimo in euro"
                     value={service.priceMin}
                     onChange={(e) => updateService(index, "priceMin", e.target.value)}
@@ -1335,20 +1335,20 @@ export default function DashboardProfiloPage() {
                     style={{ ...smallInputStyle, width: 90 }}
                   />
                   <XStack
-                    width={36}
-                    height={36}
-                    flexShrink={0}
-                    borderRadius="$2"
-                    borderWidth={1}
-                    borderColor={brand.urgenza}
-                    backgroundColor={brand.urgenzaVelo}
-                    alignItems="center"
-                    justifyContent="center"
-                    cursor="pointer"
-                    onPress={() => removeService(index)}
-                    accessibilityRole="button"
-                    accessibilityLabel="Rimuovi prestazione"
-                  >
+                      width={36}
+                      height={36}
+                      flexShrink={0}
+                      borderRadius="2"
+                      borderWidth={1}
+                      borderColor={brand.urgenza}
+                      backgroundColor={brand.urgenzaVelo}
+                      alignItems="center"
+                      justifyContent="center"
+                      cursor="pointer"
+                      onPress={() => removeService(index)}
+                      role="button"
+                      aria-label="Rimuovi prestazione"
+                    >
                     <X size={16} strokeWidth={2} color={brand.urgenza} />
                   </XStack>
                   </XStack>
@@ -1356,25 +1356,25 @@ export default function DashboardProfiloPage() {
               </YStack>
             ))}
           </YStack>
-          <Button variant="ghost" size="$3" height={40} alignSelf="flex-start" onPress={() => setServices((prev) => [...prev, { name: "", priceMin: "", priceMax: "", priceUnit: "JOB" }])}>
+          <Button variant="ghost" size="3" height={40} alignSelf="flex-start" onPress={() => setServices((prev) => [...prev, { name: "", priceMin: "", priceMax: "", priceUnit: "JOB" }])}>
             + Aggiungi prestazione
           </Button>
         </Surface>
 
-        <Surface gap="$3">
+        <Surface gap="3">
           <SectionTitle>Lingue parlate</SectionTitle>
           <Text fontSize={13} color={brand.grafite70}>
             Usate dai clienti per filtrare la ricerca (es. &quot;Inglese&quot;, &quot;Francese&quot;).
           </Text>
-          <XStack flexWrap="wrap" gap="$2">
+          <XStack flexWrap="wrap" gap="2">
             {spokenLanguages.map((lang, index) => (
               <XStack
                 key={`${lang}-${index}`}
                 alignItems="center"
-                gap="$1"
-                paddingHorizontal="$3"
-                paddingVertical="$2"
-                borderRadius="$10"
+                gap="1"
+                paddingHorizontal="3"
+                paddingVertical="2"
+                borderRadius="10"
                 borderWidth={1}
                 borderColor={brand.filetto}
                 backgroundColor={brand.calce}
@@ -1388,21 +1388,21 @@ export default function DashboardProfiloPage() {
                   height={32}
                   marginVertical={-6}
                   marginRight={-8}
-                  borderRadius="$10"
+                  borderRadius="10"
                   alignItems="center"
                   justifyContent="center"
                   cursor="pointer"
                   onPress={() => setSpokenLanguages((prev) => prev.filter((_, i) => i !== index))}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Rimuovi ${lang}`}
+                  role="button"
+                  aria-label={`Rimuovi ${lang}`}
                 >
                   <X size={13} strokeWidth={2} color={brand.urgenza} />
                 </XStack>
               </XStack>
             ))}
           </XStack>
-          <YStack position="relative" gap="$2">
-            <XStack gap="$2" alignItems="center">
+          <YStack position="relative" gap="2">
+            <XStack gap="2" alignItems="center">
               <input aria-label="Aggiungi una lingua"
                 value={newLanguage}
                 onChange={(e) => setNewLanguage(e.target.value)}
@@ -1421,17 +1421,17 @@ export default function DashboardProfiloPage() {
                 }}
               />
               <Button
-                variant="ghost"
-                size="$3"
-                height={40}
-                onPress={() => {
-                  const trimmed = newLanguage.trim();
-                  if (trimmed && !spokenLanguages.includes(trimmed)) {
-                    setSpokenLanguages((prev) => [...prev, trimmed]);
-                  }
-                  setNewLanguage("");
-                }}
-              >
+                    variant="ghost"
+                    size="3"
+                    height={40}
+                    onPress={() => {
+                                    const trimmed = newLanguage.trim();
+                                    if (trimmed && !spokenLanguages.includes(trimmed)) {
+                                      setSpokenLanguages((prev) => [...prev, trimmed]);
+                                    }
+                                    setNewLanguage("");
+                                  }}
+                  >
                 + Aggiungi
               </Button>
             </XStack>
@@ -1442,33 +1442,33 @@ export default function DashboardProfiloPage() {
                 in ordine alfabetico. */}
             {isLanguageFieldFocused && languageSuggestions.length > 0 ? (
               <YStack
-                position="absolute"
-                top="100%"
-                left={0}
-                right={0}
-                marginTop="$1"
-                backgroundColor={brand.calce}
-                borderWidth={1}
-                borderColor={brand.filetto}
-                borderRadius="$3"
-                overflow="hidden"
-                zIndex={10}
-                shadowColor="rgba(43,32,19,0.1)"
-                shadowRadius={12}
-                shadowOffset={{ width: 0, height: 4 }}
-                shadowOpacity={1}
-              >
+                    position="absolute"
+                    top="100%"
+                    left={0}
+                    right={0}
+                    marginTop="1"
+                    backgroundColor={brand.calce}
+                    borderWidth={1}
+                    borderColor={brand.filetto}
+                    borderRadius="3"
+                    overflow="hidden"
+                    zIndex={10}
+                    shadowColor="rgba(43,32,19,0.1)"
+                    shadowRadius={12}
+                    shadowOffset={{ width: 0, height: 4 }}
+                    shadowOpacity={1}
+                  >
                 {languageSuggestions.map((lang) => (
                   <XStack
                     key={lang}
-                    padding="$3"
+                    padding="3"
                     cursor="pointer"
-                    hoverStyle={{ backgroundColor: brand.gesso }}
+                    backgroundColor={`hover:${brand.gesso}`}
                     onPress={() => {
-                      setSpokenLanguages((prev) => [...prev, lang]);
-                      setNewLanguage("");
-                    }}
-                    accessibilityRole="button"
+                                        setSpokenLanguages((prev) => [...prev, lang]);
+                                        setNewLanguage("");
+                                      }}
+                    role="button"
                   >
                     <Text fontSize={16} color={brand.grafite}>
                       {lang}
@@ -1480,16 +1480,16 @@ export default function DashboardProfiloPage() {
           </YStack>
         </Surface>
 
-        <Surface gap="$2">
+        <Surface gap="2">
           <SectionTitle>Portfolio</SectionTitle>
           <FieldLabel>{`Foto o video dei lavori svolti (fino a ${MAX_PORTFOLIO_PHOTOS}, opzionale)`}</FieldLabel>
           <Text fontSize={13} color={brand.grafite70}>
             Foto o video reali di lavori completati: aiutano chi apre il tuo profilo a farsi un&apos;idea concreta di
             cosa sai fare.
           </Text>
-          <YStack flexDirection="row" flexWrap="wrap" gap="$2">
+          <YStack flexDirection="row" flexWrap="wrap" gap="2">
             {portfolioUrls.map((url) => (
-              <YStack key={url} width={88} height={88} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+              <YStack key={url} width={88} height={88} borderRadius="3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
                 <MediaPreview url={url} />
                 <YStack
                   position="absolute"
@@ -1503,8 +1503,8 @@ export default function DashboardProfiloPage() {
                   justifyContent="center"
                   cursor="pointer"
                   onPress={() => removePortfolioPhoto(url)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Rimuovi foto"
+                  role="button"
+                  aria-label="Rimuovi foto"
                 >
                   <X size={13} strokeWidth={2} color="white" />
                 </YStack>
@@ -1512,25 +1512,25 @@ export default function DashboardProfiloPage() {
             ))}
             {portfolioUrls.length < MAX_PORTFOLIO_PHOTOS ? (
               <YStack
-                width={88}
-                height={88}
-                borderRadius="$3"
-                borderWidth={1}
-                borderColor={brand.filetto}
-                borderStyle="dashed"
-                alignItems="center"
-                justifyContent="center"
-                gap="$1"
-                cursor="pointer"
-                opacity={isUploadingPortfolioPhoto ? 0.6 : 1}
-                onPress={() => !isUploadingPortfolioPhoto && portfolioPhotoInputRef.current?.click()}
-                accessibilityRole="button"
-                accessibilityLabel="Aggiungi foto"
-              >
+                    width={88}
+                    height={88}
+                    borderRadius="3"
+                    borderWidth={1}
+                    borderColor={brand.filetto}
+                    borderStyle="dashed"
+                    alignItems="center"
+                    justifyContent="center"
+                    gap="1"
+                    cursor="pointer"
+                    opacity={isUploadingPortfolioPhoto ? 0.6 : 1}
+                    onPress={() => !isUploadingPortfolioPhoto && portfolioPhotoInputRef.current?.click()}
+                    role="button"
+                    aria-label="Aggiungi foto"
+                  >
                 {isUploadingPortfolioPhoto ? (
                   <UploadingDots dotSize={7} />
                 ) : (
-                  <Text fontSize="$7" color={brand.grafite70}>
+                  <Text fontSize="7" color={brand.grafite70}>
                     +
                   </Text>
                 )}
@@ -1621,9 +1621,9 @@ export default function DashboardProfiloPage() {
           }}
         >
           <div role="dialog" aria-modal="true" aria-label="Modifiche non salvate" style={{ width: "100%", maxWidth: 420 }}>
-            <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
-              <YStack gap="$2">
-                <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+            <YStack width="100%" backgroundColor={brand.calce} borderRadius="5" padding="5" gap="4">
+              <YStack gap="2">
+                <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
                   Salvare le modifiche?
                 </Text>
                 <Text fontSize={16} color={brand.grafite70}>
@@ -1641,7 +1641,7 @@ export default function DashboardProfiloPage() {
                   dell'utente); per restare sulla pagina basta toccare fuori
                   dal popup. Il rosso della variante "urgent" qui è usato
                   per l'azione distruttiva (le modifiche vanno perse). */}
-              <XStack gap="$3" flexWrap="wrap">
+              <XStack gap="3" flexWrap="wrap">
                 <Button flex={1} variant="primary" onPress={handleSaveAndLeave} disabled={isSavingBeforeLeave} opacity={isSavingBeforeLeave ? 0.6 : 1}>
                   {isSavingBeforeLeave ? "Salvataggio..." : "Salva"}
                 </Button>
@@ -1672,9 +1672,9 @@ export default function DashboardProfiloPage() {
           }}
         >
           <div role="dialog" aria-modal="true" aria-label="Orari online in agenda" style={{ width: "100%", maxWidth: 420 }}>
-            <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
-              <YStack gap="$2">
-                <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+            <YStack width="100%" backgroundColor={brand.calce} borderRadius="5" padding="5" gap="4">
+              <YStack gap="2">
+                <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
                   Togli anche gli orari online?
                 </Text>
                 <Text fontSize={16} color={brand.grafite70}>
@@ -1682,7 +1682,7 @@ export default function DashboardProfiloPage() {
                   prenotare. I lavori già fissati restano.
                 </Text>
               </YStack>
-              <XStack gap="$3" flexWrap="wrap">
+              <XStack gap="3" flexWrap="wrap">
                 <Button flex={1} variant="primary" onPress={() => void closeOnlineSlotsPrompt(true)} disabled={removingOnlineSlots} opacity={removingOnlineSlots ? 0.6 : 1}>
                   {removingOnlineSlots ? "Tolgo..." : "Togli gli orari online"}
                 </Button>
@@ -1710,11 +1710,11 @@ export default function DashboardProfiloPage() {
           }}
         >
           <div role="dialog" aria-modal="true" aria-label="Scegli il piano" style={{ width: "100%", maxWidth: 420 }}>
-            <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
-              <YStack gap="$2">
-                <XStack alignItems="center" gap="$2">
+            <YStack width="100%" backgroundColor={brand.calce} borderRadius="5" padding="5" gap="4">
+              <YStack gap="2">
+                <XStack alignItems="center" gap="2">
                   <Icon name="tag" size={20} color={brand.cianografiaScuro} />
-                  <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+                  <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
                     Profilo salvato! Ora scegli il piano
                   </Text>
                 </XStack>
@@ -1751,11 +1751,11 @@ export default function DashboardProfiloPage() {
           }}
         >
           <div role="dialog" aria-modal="true" aria-label="Profilo salvato" style={{ width: "100%", maxWidth: 420 }}>
-            <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
-              <YStack gap="$2">
-                <XStack alignItems="center" gap="$2">
+            <YStack width="100%" backgroundColor={brand.calce} borderRadius="5" padding="5" gap="4">
+              <YStack gap="2">
+                <XStack alignItems="center" gap="2">
                   <Icon name="calendar" size={20} color={brand.cianografiaScuro} />
-                  <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+                  <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
                     Profilo salvato!
                   </Text>
                 </XStack>
@@ -1764,7 +1764,7 @@ export default function DashboardProfiloPage() {
                   vedono sul tuo profilo. Vuoi controllarli adesso?
                 </Text>
               </YStack>
-              <XStack gap="$3" flexWrap="wrap">
+              <XStack gap="3" flexWrap="wrap">
                 <Button variant="primary" onPress={() => router.push("/dashboard/agenda?tab=orari")}>
                   Controlla gli orari
                 </Button>

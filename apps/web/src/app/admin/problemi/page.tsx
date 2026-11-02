@@ -18,7 +18,7 @@ type View = "open" | "chat" | "appeals" | "closed";
 function Photos({ urls }: { urls: string[] }) {
   if (urls.length === 0) return null;
   return (
-    <XStack gap="$2" flexWrap="wrap">
+    <XStack gap="2" flexWrap="wrap">
       {urls.map((url) => (
         <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 84, height: 84, borderRadius: 10, overflow: "hidden", border: `1px solid ${brand.filetto}`, display: "block" }}>
           <MediaPreview url={url} />
@@ -30,7 +30,7 @@ function Photos({ urls }: { urls: string[] }) {
 
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <YStack flex={1} minWidth={240} gap="$1">
+    <YStack flex={1} minWidth={240} gap="1">
       <Text fontWeight="700" color={brand.grafite}>
         {title}
       </Text>
@@ -101,7 +101,7 @@ function ProblemiContent() {
         value={view}
         onChange={setView}
       />
-      <YStack gap="$1" marginBottom="$3">
+      <YStack gap="1" marginBottom="3">
         <input
           type="search"
           aria-label="Cerca nelle segnalazioni"
@@ -133,11 +133,11 @@ function ProblemiContent() {
                 : "Nessuna segnalazione chiusa finora."}
         </Text>
       ) : rows && token ? (
-        <YStack gap="$3">
+        <YStack gap="3">
           {rows.map((row) => (
             <AdminCard key={row.issue.id} highlight={row.issue.status === "OPEN"}>
-              <XStack justifyContent="space-between" gap="$2" flexWrap="wrap">
-                <YStack gap="$1" flex={1} minWidth={220}>
+              <XStack justifyContent="space-between" gap="2" flexWrap="wrap">
+                <YStack gap="1" flex={1} minWidth={220}>
                   <Text fontWeight="800" color={brand.grafite}>
                     {JOB_ISSUE_LABEL[row.issue.type]}
                   </Text>
@@ -171,7 +171,7 @@ function ProblemiContent() {
                     </Text>
                   ) : null}
                 </YStack>
-                <YStack alignItems="flex-end" gap="$1">
+                <YStack alignItems="flex-end" gap="1">
                   <AdminPill tone={row.issue.status === "OPEN" ? "warn" : row.issue.status === "UPHELD" ? "danger" : row.issue.status === "RESOLVED" ? "ok" : "neutral"}>
                     {JOB_ISSUE_STATUS_LABEL[row.issue.status]}
                   </AdminPill>
@@ -181,7 +181,7 @@ function ProblemiContent() {
                 </YStack>
               </XStack>
 
-              <XStack gap="$4" flexWrap="wrap">
+              <XStack gap="4" flexWrap="wrap">
                 <Block title="Versione del cliente">
                   <Text color={brand.grafite}>“{row.issue.description}”</Text>
                   <Photos urls={row.issue.photoUrls} />
@@ -203,7 +203,7 @@ function ProblemiContent() {
                 </Block>
               </XStack>
 
-              <XStack gap="$4" flexWrap="wrap" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+              <XStack gap="4" flexWrap="wrap" paddingTop="2" borderTopWidth={1} borderTopColor={brand.filetto}>
                 <Block title="A lavoro terminato: professionista">
                   <Text fontSize={13} color={brand.grafite70}>
                     {row.professionalCompletedAt
@@ -224,7 +224,7 @@ function ProblemiContent() {
               </XStack>
 
               {view === "appeals" ? (
-                <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+                <YStack gap="2" paddingTop="2" borderTopWidth={1} borderTopColor={brand.filetto}>
                   <Text fontWeight="700" color={brand.grafite}>
                     Decisa il {formatAdminDate(row.issue.resolvedAt, true)}
                     {row.issue.autoDecision ? " automaticamente" : ""}
@@ -249,7 +249,7 @@ function ProblemiContent() {
                   Risolta tra le parti il {formatAdminDate(row.issue.resolvedAt, true)}
                 </Text>
               ) : (
-                <YStack gap="$1" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+                <YStack gap="1" paddingTop="2" borderTopWidth={1} borderTopColor={brand.filetto}>
                   <Text fontWeight="700" color={brand.grafite}>
                     Decisa il {formatAdminDate(row.issue.resolvedAt, true)}
                     {row.issue.autoDecision ? " automaticamente" : ""}

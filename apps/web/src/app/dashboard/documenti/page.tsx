@@ -55,7 +55,7 @@ export default function DocumentsPage() {
 
   return (
     <FiscoArea tab="documenti" heading="Fatture e documenti">
-      <YStack gap="$5">
+      <YStack gap="5">
         <LearnMore fontSize={16} summary="Le nostre fatture e l'estratto di ogni mese, da scaricare o dare al commercialista.">
           <Text fontSize={16} color={brand.grafite70}>
             Ogni mese ti mandiamo una fattura con le trattenute sui pagamenti online, e una per l&apos;abbonamento quando lo paghi. Sono già
@@ -68,8 +68,8 @@ export default function DocumentsPage() {
 
         {free ? (
           <Link href="/dashboard/documenti/mese-gratuito" style={{ textDecoration: "none" }}>
-            <Surface borderRadius={radiusDoc} padding="$4" gap="$1" backgroundColor={brand.cianografiaVelo}>
-              <XStack justifyContent="space-between" alignItems="center" gap="$3" flexWrap="wrap">
+            <Surface borderRadius={radiusDoc} padding="4" gap="1" backgroundColor={brand.cianografiaVelo}>
+              <XStack justifyContent="space-between" alignItems="center" gap="3" flexWrap="wrap">
                 <Text fontSize={16} fontWeight="800" color={brand.grafite}>
                   Abbonamento di questo mese: 0 €
                 </Text>
@@ -86,9 +86,9 @@ export default function DocumentsPage() {
         ) : null}
 
         {isLoading || data === undefined ? (
-          <YStack gap="$3" aria-busy>
-            <YStack height={88} borderRadius="$3" backgroundColor={brand.gesso} />
-            <YStack height={140} borderRadius="$3" backgroundColor={brand.gesso} />
+          <YStack gap="3" aria-busy>
+            <YStack height={88} borderRadius="3" backgroundColor={brand.gesso} />
+            <YStack height={140} borderRadius="3" backgroundColor={brand.gesso} />
           </YStack>
         ) : error || !data ? (
           <Text fontSize={16} color={brand.urgenza} role="alert">
@@ -96,17 +96,17 @@ export default function DocumentsPage() {
           </Text>
         ) : (
           <>
-            <YStack gap="$3">
-              <Text tag="h2" fontFamily="$heading" fontSize={22} fontWeight="800" color={brand.grafite}>
+            <YStack gap="3">
+              <Text render="h2" fontFamily="heading" fontSize={22} fontWeight="800" color={brand.grafite}>
                 Estratti del mese
               </Text>
               {data.months.length === 0 ? (
                 <EmptyState icon="coins" title="Ancora nessun movimento" description="L'estratto compare dal primo pagamento di un cliente." />
               ) : (
-                <Surface borderRadius={radiusDoc} padding="$2">
+                <Surface borderRadius={radiusDoc} padding="2">
                   {data.months.map((month, index) => (
                     <Link key={month} href={`/dashboard/documenti/estratto/${month}`} style={{ textDecoration: "none" }}>
-                      <XStack justifyContent="space-between" alignItems="center" padding="$3" borderTopWidth={index === 0 ? 0 : 1} borderColor={brand.filetto}>
+                      <XStack justifyContent="space-between" alignItems="center" padding="3" borderTopWidth={index === 0 ? 0 : 1} borderColor={brand.filetto}>
                         <Text fontSize={16} fontWeight="700" color={brand.grafite} textTransform="capitalize">
                           {accountingMonthLabel(month)}
                         </Text>
@@ -120,8 +120,8 @@ export default function DocumentsPage() {
               )}
             </YStack>
 
-            <YStack gap="$3">
-              <Text tag="h2" fontFamily="$heading" fontSize={22} fontWeight="800" color={brand.grafite}>
+            <YStack gap="3">
+              <Text render="h2" fontFamily="heading" fontSize={22} fontWeight="800" color={brand.grafite}>
                 Fatture
               </Text>
               {data.invoices.length === 0 ? (
@@ -129,10 +129,10 @@ export default function DocumentsPage() {
                   {data.invoicesActive ? "Ancora nessuna fattura: la prima arriva il mese dopo il primo pagamento online." : "Le nostre fatture partono con l'apertura del sito. Intanto qui trovi gli estratti."}
                 </Text>
               ) : (
-                <Surface borderRadius={radiusDoc} padding="$2">
+                <Surface borderRadius={radiusDoc} padding="2">
                   {data.invoices.map((invoice, index) => (
                     <Link key={invoice.id} href={`/dashboard/documenti/fattura/${invoice.id}`} style={{ textDecoration: "none" }}>
-                      <XStack justifyContent="space-between" alignItems="center" gap="$3" padding="$3" borderTopWidth={index === 0 ? 0 : 1} borderColor={brand.filetto}>
+                      <XStack justifyContent="space-between" alignItems="center" gap="3" padding="3" borderTopWidth={index === 0 ? 0 : 1} borderColor={brand.filetto}>
                         <YStack flex={1} minWidth={0} gap={2}>
                           <Text fontSize={16} fontWeight="700" color={brand.grafite}>
                             {invoice.creditNote ? "Nota di credito" : INVOICE_SOURCE_LABEL[invoice.source]}
@@ -173,8 +173,8 @@ export default function DocumentsPage() {
 function MissingDocuments({ rows }: { rows: MissingClientDocument[] }) {
   const count = rows.length === 1 ? "1 lavoro pagato online" : `${rows.length} lavori pagati online`;
   return (
-    <Surface borderRadius={radiusDoc} padding="$4" gap="$2" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce}>
-      <Text tag="h2" fontSize={18} fontWeight="800" color={brand.grafite}>
+    <Surface borderRadius={radiusDoc} padding="4" gap="2" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce}>
+      <Text render="h2" fontSize={18} fontWeight="800" color={brand.grafite}>
         {count} senza ricevuta
       </Text>
       <Text fontSize={16} color={brand.grafite70}>
@@ -183,7 +183,7 @@ function MissingDocuments({ rows }: { rows: MissingClientDocument[] }) {
       <YStack>
         {rows.map((row, index) => (
           <Link key={row.bookingId} href={`/dashboard/documenti/cortesia/${row.bookingId}`} style={{ textDecoration: "none" }}>
-            <XStack justifyContent="space-between" alignItems="center" gap="$3" paddingVertical="$2" borderTopWidth={index === 0 ? 0 : 1} borderColor={brand.filetto}>
+            <XStack justifyContent="space-between" alignItems="center" gap="3" paddingVertical="2" borderTopWidth={index === 0 ? 0 : 1} borderColor={brand.filetto}>
               <YStack flex={1} minWidth={0} gap={2}>
                 <Text fontSize={16} fontWeight="700" color={brand.grafite}>
                   {[row.jobLabel ?? "Lavoro", documentDate(row.date)].join(" del ")}
@@ -214,8 +214,8 @@ function ClientDocuments({ token, documents }: { token: string; documents: Court
   const totals = courtesyYearTotals(documents);
   const years = [...new Set(totals.map((row) => row.year))];
   return (
-    <YStack gap="$3">
-      <Text tag="h2" fontFamily="$heading" fontSize={22} fontWeight="800" color={brand.grafite}>
+    <YStack gap="3">
+      <Text render="h2" fontFamily="heading" fontSize={22} fontWeight="800" color={brand.grafite}>
         Ricevute date ai clienti
       </Text>
       {documents.length === 0 ? (
@@ -224,13 +224,13 @@ function ClientDocuments({ token, documents }: { token: string; documents: Court
         </Text>
       ) : (
         <>
-          <XStack gap="$3" flexWrap="wrap">
+          <XStack gap="3" flexWrap="wrap">
             {totals.map((row) => (
-              <Surface key={`${row.year}-${row.kind}`} borderRadius={radiusDoc} padding="$4" gap={2} flexGrow={1} flexBasis={220}>
+              <Surface key={`${row.year}-${row.kind}`} borderRadius={radiusDoc} padding="4" gap={2} flexGrow={1} flexBasis={220}>
                 <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase" letterSpacing={0.5}>
                   Ricevute {row.year}
                 </Text>
-                <Text fontFamily="$heading" fontSize={26} fontWeight="800" color={brand.grafite} fontVariant={["tabular-nums"]}>
+                <Text fontFamily="heading" fontSize={26} fontWeight="800" color={brand.grafite} fontVariant={["tabular-nums"]}>
                   {formatEurCents(row.totalEurCents)}
                 </Text>
                 <Text fontSize={15} color={brand.grafite70}>
@@ -248,10 +248,10 @@ function ClientDocuments({ token, documents }: { token: string; documents: Court
           {years.map((year) => (
             <YearDownloads key={year} token={token} year={year} />
           ))}
-          <Surface borderRadius={radiusDoc} padding="$2">
+          <Surface borderRadius={radiusDoc} padding="2">
             {documents.map((doc, index) => (
               <Link key={doc.bookingId} href={`/dashboard/documenti/cortesia/${doc.bookingId}`} style={{ textDecoration: "none" }}>
-                <XStack justifyContent="space-between" alignItems="center" gap="$3" padding="$3" borderTopWidth={index === 0 ? 0 : 1} borderColor={brand.filetto}>
+                <XStack justifyContent="space-between" alignItems="center" gap="3" padding="3" borderTopWidth={index === 0 ? 0 : 1} borderColor={brand.filetto}>
                   <YStack flex={1} minWidth={0} gap={2}>
                     <Text fontSize={16} fontWeight="700" color={brand.grafite}>
                       {doc.label}
@@ -297,8 +297,8 @@ function YearDownloads({ token, year }: { token: string; year: number }) {
   }
 
   return (
-    <YStack gap="$2">
-      <XStack gap="$3" flexWrap="wrap" alignItems="flex-start">
+    <YStack gap="2">
+      <XStack gap="3" flexWrap="wrap" alignItems="flex-start">
         <PdfButton label={`Scarica il riepilogo del ${year}`} load={() => apiClient.clientDocumentsYearPdf(token, year)} fileName={`documenti-clienti-${year}.pdf`} />
         <Button variant="secondary" onPress={() => void downloadCsv()}>
           Foglio di calcolo
@@ -345,13 +345,13 @@ function AccountantCard({ token, initial }: { token: string; initial: DocumentsO
   }
 
   return (
-    <Surface borderRadius={radiusDoc} padding="$5" gap="$3">
-      <Text tag="h2" fontFamily="$heading" fontSize={22} fontWeight="800" color={brand.grafite}>
+    <Surface borderRadius={radiusDoc} padding="5" gap="3">
+      <Text render="h2" fontFamily="heading" fontSize={22} fontWeight="800" color={brand.grafite}>
         Il tuo commercialista
       </Text>
       <LearnMore fontSize={16} summary="Cosa dargli: con la spunta qui sotto gli arriva quasi tutto da solo.">
         {/* Cosa dare al commercialista (docs/changelog/2026-10-30-documenti-migliorie.md). */}
-        <YStack gap="$2">
+        <YStack gap="2">
           {[
             ["Ogni mese", "l'estratto, con i pagamenti dei clienti, le nostre trattenute e i bonifici, più le nostre fatture del mese in PDF."],
             ["A gennaio", "il riepilogo dell'anno delle ricevute che hai dato ai clienti, se lavori senza partita IVA."],
@@ -369,7 +369,7 @@ function AccountantCard({ token, initial }: { token: string; initial: DocumentsO
       </LearnMore>
       <Field
         label="Email del commercialista"
-        accessibilityLabel="Email del commercialista"
+        aria-label="Email del commercialista"
         value={email}
         onChangeText={(value) => {
           setEmail(value);
@@ -388,7 +388,7 @@ function AccountantCard({ token, initial }: { token: string; initial: DocumentsO
       >
         Mandagli l&apos;estratto ogni mese e a gennaio il riepilogo dell&apos;anno, in PDF e nel foglio di calcolo
       </ConsentCheckbox>
-      <XStack gap="$3" alignItems="center" flexWrap="wrap">
+      <XStack gap="3" alignItems="center" flexWrap="wrap">
         <Button variant="primary" alignSelf="flex-start" disabled={!dirty || pending} opacity={!dirty || pending ? 0.6 : 1} onPress={() => void save()}>
           {pending ? "Salvataggio..." : "Salva"}
         </Button>

@@ -66,8 +66,8 @@ export default function AdminStatistichePage() {
       <YStack
         width="100%"
         alignItems="center"
-        paddingVertical="$9"
-        paddingHorizontal="$4"
+        paddingVertical="9"
+        paddingHorizontal="4"
       >
         <Paragraph color={brand.grafite70}>
           Questa pagina è visibile solo agli amministratori.
@@ -77,7 +77,7 @@ export default function AdminStatistichePage() {
   }
 
   return (
-    <YStack gap="$7">
+    <YStack gap="7">
       <AdminPageHeader
         title="Entrate"
         description="Entrate dai lavori completati, da dove arrivano le visite e chi ha spento le notifiche."

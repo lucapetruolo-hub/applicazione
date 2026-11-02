@@ -31,14 +31,14 @@ export function ContactButton({
   if (light) {
     return (
       // Da telefono solo l'icona tonda, così sta sulla riga del nome.
-      <CardButton aria-label="Messaggi" paddingHorizontal={16} $xs={{ width: 44, height: 44, paddingHorizontal: 0 }} onPress={onPress}>
-        <XStack alignItems="center" gap="$2">
+      <CardButton aria-label="Messaggi" paddingHorizontal="16px xs:0px" width="xs:44px" onPress={onPress}>
+        <XStack alignItems="center" gap="2">
           <Icon name="message-circle" size={18} color={brand.grafite} />
-          <Text color={brand.grafite} fontFamily="$body" fontWeight="600" fontSize="$3" $xs={{ display: "none" }}>
+          <Text color={brand.grafite} fontFamily="body" fontWeight="600" fontSize="3" display="xs:none">
             Messaggi
           </Text>
           {/* Da telefono il pallino sta sull'angolo dell'icona. */}
-          <XStack $xs={{ position: "absolute", top: -6, right: -10 }}>
+          <XStack position="xs:absolute" top="xs:-6px" right="xs:-10px">
             <UnreadDot count={unreadCount} />
           </XStack>
         </XStack>
@@ -50,9 +50,9 @@ export function ContactButton({
   // principale della scheda (Invia preventivo, Lavoro terminato).
   return (
     <CardButton compact={compact} compactOnPhone={compactOnPhone} alignSelf="flex-start" onPress={onPress}>
-      <XStack alignItems="center" gap="$2">
+      <XStack alignItems="center" gap="2">
         <Icon name="message-circle" size={compact ? 16 : 18} color={brand.grafite} />
-        <Text color={brand.grafite} fontFamily="$body" fontWeight="600" fontSize={compact ? "$2" : "$3"} {...(compactOnPhone ? { $xs: { fontSize: 13 } } : {})}>
+        <Text color={brand.grafite} fontFamily="body" fontWeight="600" fontSize={compact ? "2" : compactOnPhone ? "3 xs:13px" : "3"}>
           Messaggi
         </Text>
         <UnreadDot count={unreadCount} />

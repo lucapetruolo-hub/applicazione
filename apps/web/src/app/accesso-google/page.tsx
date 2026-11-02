@@ -75,12 +75,12 @@ export default function AccessoGooglePage() {
   }, []);
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-      <Surface floating width="100%" maxWidth={400} borderRadius={radiusDocLg} padding="$6" gap="$3">
-        <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+      <Surface floating width="100%" maxWidth={400} borderRadius={radiusDocLg} padding="6" gap="3">
+        <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
           {outcome === "error" ? "Accesso non riuscito" : outcome === "close" ? "Fatto" : "Un attimo..."}
         </Text>
-        <Text fontSize="$3" color={brand.grafite70} textAlign="center">
+        <Text fontSize="3" color={brand.grafite70} textAlign="center">
           {outcome === "error"
             ? "Torna alla pagina di prima e tocca di nuovo “Continua con Google”."
             : outcome === "close"

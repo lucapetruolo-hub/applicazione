@@ -137,8 +137,8 @@ export function QuoteExampleSection() {
         {STEPS.map((step, index) => (
           <li key={step.title}>
             <span className="qx-step-number">{index + 1}</span>
-            <YStack gap="$1" flex={1}>
-              <Text fontFamily="$heading" fontWeight="600" fontSize="$5" color={brand.grafite}>
+            <YStack gap="1" flex={1}>
+              <Text fontFamily="heading" fontWeight="600" fontSize="5" color={brand.grafite}>
                 {step.title}
               </Text>
               <Text fontSize={16} color={brand.grafite70}>

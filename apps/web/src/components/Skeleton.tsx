@@ -48,14 +48,14 @@ export function SkeletonSummaryRow() {
   return (
     <XStack
       alignItems="center"
-      gap="$2"
+      gap="2"
       backgroundColor={brand.calce}
-      borderRadius="$3"
+      borderRadius="3"
       borderLeftWidth={3}
       borderLeftColor={brand.filetto}
-      padding="$3"
+      padding="3"
     >
-      <YStack flex={1} minWidth={200} gap="$2">
+      <YStack flex={1} minWidth={200} gap="2">
         <SkeletonBlock width="45%" height={14} />
         <SkeletonBlock width="65%" height={12} />
       </YStack>
@@ -71,9 +71,9 @@ export function SkeletonSummaryRow() {
  */
 export function SkeletonThreadRow({ zebra = false }: { zebra?: boolean }) {
   return (
-    <XStack alignItems="center" gap="$3" paddingHorizontal="$3" paddingVertical="$3" backgroundColor={zebra ? brand.gesso : "transparent"}>
+    <XStack alignItems="center" gap="3" paddingHorizontal="3" paddingVertical="3" backgroundColor={zebra ? brand.gesso : "transparent"}>
       <SkeletonCircle size={48} />
-      <YStack flex={1} minWidth={0} gap="$2">
+      <YStack flex={1} minWidth={0} gap="2">
         <SkeletonBlock width="40%" height={13} />
         <SkeletonBlock width="70%" height={12} />
       </YStack>
@@ -89,20 +89,19 @@ export function SkeletonThreadRow({ zebra = false }: { zebra?: boolean }) {
  */
 export function SkeletonProfessionalCard() {
   return (
-    <XStack alignItems="flex-start" gap="$4" $xs={{ gap: "$3", padding: "$4" }} backgroundColor={brand.calce} borderRadius={radiusDoc} padding="$5">
+    <XStack alignItems="flex-start" gap="4 xs:3" padding="5 xs:4" backgroundColor={brand.calce} borderRadius={radiusDoc}>
       {/* Stessa forma e misura della foto vera (CARD_PHOTO), così la scheda non salta quando arriva. */}
       <YStack
-        width={CARD_PHOTO.size}
-        height={avatarHeight(CARD_PHOTO.size, CARD_PHOTO.shape)}
+        width={`${CARD_PHOTO.size}px xs:${CARD_PHOTO.mobileSize}px`}
+        height={`${avatarHeight(CARD_PHOTO.size, CARD_PHOTO.shape)}px xs:${avatarHeight(CARD_PHOTO.mobileSize, CARD_PHOTO.shape)}px`}
         flexShrink={0}
-        $xs={{ width: CARD_PHOTO.mobileSize, height: avatarHeight(CARD_PHOTO.mobileSize, CARD_PHOTO.shape) }}
       >
         <SkeletonBlock width="100%" height="100%" radius={CARD_PHOTO.shape === "portrait" ? 20 : CARD_PHOTO.size} />
       </YStack>
-      <YStack flex={1} minWidth={0} gap="$2">
+      <YStack flex={1} minWidth={0} gap="2">
         <SkeletonBlock width="55%" height={18} />
         <SkeletonBlock width="35%" height={13} />
-        <XStack gap="$2" marginTop="$1">
+        <XStack gap="2" marginTop="1">
           <SkeletonBlock width={90} height={20} radius={10} />
           <SkeletonBlock width={70} height={20} radius={10} />
         </XStack>
@@ -119,14 +118,14 @@ export function SkeletonProfessionalCard() {
  */
 export function SkeletonRequestCard() {
   return (
-    <YStack backgroundColor={brand.calce} borderRadius={radiusDoc} padding="$4" gap="$3">
-      <XStack alignItems="center" gap="$2" flexWrap="wrap">
+    <YStack backgroundColor={brand.calce} borderRadius={radiusDoc} padding="4" gap="3">
+      <XStack alignItems="center" gap="2" flexWrap="wrap">
         <SkeletonBlock width={92} height={22} radius={11} />
         <SkeletonBlock width={64} height={22} radius={11} />
       </XStack>
       <SkeletonBlock width="50%" height={17} />
       <SkeletonBlock width="30%" height={13} />
-      <YStack gap="$1">
+      <YStack gap="1">
         <SkeletonBlock width="90%" height={12} />
         <SkeletonBlock width="60%" height={12} />
       </YStack>
@@ -137,7 +136,7 @@ export function SkeletonRequestCard() {
 /** N card richiesta in colonna — scorciatoia per i punti che ne mostrano 3. */
 export function SkeletonRequestList({ count = 3 }: { count?: number }) {
   return (
-    <YStack gap="$3">
+    <YStack gap="3">
       {Array.from({ length: count }).map((_, i) => (
         <SkeletonRequestCard key={i} />
       ))}
@@ -151,7 +150,7 @@ export function SkeletonRequestList({ count = 3 }: { count?: number }) {
  */
 export function SkeletonStatTile() {
   return (
-    <YStack backgroundColor={brand.calce} borderRadius={radiusDoc} padding="$4" gap="$2">
+    <YStack backgroundColor={brand.calce} borderRadius={radiusDoc} padding="4" gap="2">
       <SkeletonBlock width="60%" height={12} />
       <SkeletonBlock width="45%" height={26} />
       <SkeletonBlock width="70%" height={12} />
@@ -173,9 +172,9 @@ export function SkeletonRevenuePanel() {
         <SkeletonStatTile />
         <SkeletonStatTile />
       </div>
-      <YStack backgroundColor={brand.calce} borderRadius={radiusDoc} padding="$5" gap="$4" marginTop="$4">
-        <XStack justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$3">
-          <YStack gap="$2" flexBasis={0} flexGrow={1} minWidth={220}>
+      <YStack backgroundColor={brand.calce} borderRadius={radiusDoc} padding="5" gap="4" marginTop="4">
+        <XStack justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="3">
+          <YStack gap="2" flexBasis={0} flexGrow={1} minWidth={220}>
             <SkeletonBlock width="55%" height={17} />
             <SkeletonBlock width="75%" height={12} />
           </YStack>

@@ -189,12 +189,12 @@ export default function AdminDac7Page() {
   if (!token) return null;
 
   return (
-    <YStack gap="$7">
+    <YStack gap="7">
       {error && <Text color={brand.urgenza}>{error}</Text>}
       {actionMessage && (
         <YStack
           backgroundColor={brand.gesso}
-          padding="$3"
+          padding="3"
           borderRadius={10}
           maxHeight={240}
           style={{ overflow: "auto" as const }}
@@ -205,14 +205,14 @@ export default function AdminDac7Page() {
         </YStack>
       )}
 
-      <YStack gap="$4">
+      <YStack gap="4">
         <XStack
           justifyContent="space-between"
           alignItems="center"
           flexWrap="wrap"
-          gap="$3"
+          gap="3"
         >
-          <H2 size="$7">Impostazioni piattaforma DAC7</H2>
+          <H2 size="7">Impostazioni piattaforma DAC7</H2>
           <Text fontSize={12} color={brand.grafite70}>
             Identità richiesta dallo schema OECD DPI (MessageSpec/Platform) —
             senza questi dati l&apos;export non può costruire un identificativo
@@ -228,7 +228,7 @@ export default function AdminDac7Page() {
             mancanza (non blocca l&apos;esportazione, la contrassegna).
           </Text>
         )}
-        <YStack gap="$3" maxWidth={460}>
+        <YStack gap="3" maxWidth={460}>
           <Field
             label={`P.IVA / identificativo fiscale di ${BRAND.name} (es. IT01234567890)`}
             value={settingsFields.sendingEntityIn}
@@ -262,14 +262,14 @@ export default function AdminDac7Page() {
         </YStack>
       </YStack>
 
-      <YStack gap="$4">
+      <YStack gap="4">
         <XStack
           justifyContent="space-between"
           alignItems="center"
           flexWrap="wrap"
-          gap="$3"
+          gap="3"
         >
-          <H2 size="$7">Periodi DAC7</H2>
+          <H2 size="7">Periodi DAC7</H2>
           <Button variant="secondary" onPress={handleAggregateNow}>
             Aggiorna aggregazione ora
           </Button>
@@ -316,16 +316,16 @@ export default function AdminDac7Page() {
                     </td>
                     <td>{p.reportVersion}</td>
                     <td>
-                      <XStack gap="$2" flexWrap="wrap">
+                      <XStack gap="2" flexWrap="wrap">
                         <Button
-                          size="$2"
+                          size="2"
                           variant="secondary"
                           onPress={() => openPeriod(p.id)}
                         >
                           Dettaglio
                         </Button>
                         <Button
-                          size="$2"
+                          size="2"
                           variant="secondary"
                           onPress={() => handleExport(p.id)}
                         >
@@ -333,7 +333,7 @@ export default function AdminDac7Page() {
                         </Button>
                         {p.status === "EXPORTED" && (
                           <Button
-                            size="$2"
+                            size="2"
                             variant="secondary"
                             onPress={() => handleMarkSubmitted(p.id)}
                           >
@@ -343,7 +343,7 @@ export default function AdminDac7Page() {
                         {(p.status === "SUBMITTED" ||
                           p.status === "REJECTED") && (
                           <Button
-                            size="$2"
+                            size="2"
                             variant="secondary"
                             onPress={() => handleCorrect(p.id)}
                           >
@@ -354,10 +354,10 @@ export default function AdminDac7Page() {
                           (p.status === "SUBMITTED" ||
                             p.status === "CORRECTED") && (
                             <Button
-                              size="$2"
-                              variant="secondary"
-                              onPress={() => handleNotifySellers(p.id)}
-                            >
+                            size="2"
+                            variant="secondary"
+                            onPress={() => handleNotifySellers(p.id)}
+                          >
                               Rimanda avviso ai professionisti
                             </Button>
                           )}
@@ -372,9 +372,9 @@ export default function AdminDac7Page() {
 
         {selectedPeriod && (
           <YStack
-            gap="$2"
+            gap="2"
             backgroundColor={brand.gesso}
-            padding="$4"
+            padding="4"
             borderRadius={10}
           >
             <Text fontWeight="700">
@@ -397,7 +397,7 @@ export default function AdminDac7Page() {
                   key={r.id}
                   justifyContent="space-between"
                   flexWrap="wrap"
-                  gap="$2"
+                  gap="2"
                 >
                   <Text fontSize={13}>
                     <Text fontSize={13} fontWeight="700">

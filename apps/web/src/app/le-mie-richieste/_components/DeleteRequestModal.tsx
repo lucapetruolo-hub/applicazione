@@ -34,8 +34,8 @@ export function DeleteRequestModal({
       onCancel={() => onConfirm(reason)}
     >
       {stillOpen ? (
-        <YStack gap="$1">
-          <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+        <YStack gap="1">
+          <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
             Perché? (facoltativo)
           </Text>
           <YStack role="radiogroup" aria-label="Motivo">

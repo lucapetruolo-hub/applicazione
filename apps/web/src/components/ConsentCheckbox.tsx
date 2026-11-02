@@ -34,11 +34,11 @@ export function ConsentCheckbox({
       id={id}
       className={showError ? "consent-invalid" : undefined}
       alignItems="flex-start"
-      gap="$2"
+      gap="2"
       paddingHorizontal={8}
       paddingVertical={6}
       marginHorizontal={-8}
-      borderRadius="$2"
+      borderRadius="2"
       borderWidth={1}
       borderColor={showError ? brand.urgenza : "transparent"}
       backgroundColor={showError ? brand.urgenzaVelo : "transparent"}
@@ -46,18 +46,18 @@ export function ConsentCheckbox({
       onPress={onToggle}
     >
       <YStack
-        accessibilityRole="checkbox"
+        role="checkbox"
         aria-checked={checked}
         aria-invalid={showError || undefined}
         aria-labelledby={labelId}
         onPress={(e: { stopPropagation: () => void }) => {
-          e.stopPropagation();
-          onToggle();
-        }}
+                e.stopPropagation();
+                onToggle();
+              }}
         width={18}
         height={18}
         marginTop={2}
-        borderRadius="$1"
+        borderRadius="1"
         borderWidth={2}
         borderColor={checked ? brand.cianografia : showError ? brand.urgenza : brand.bordoCampo}
         backgroundColor={checked ? brand.cianografia : brand.calce}
@@ -67,7 +67,7 @@ export function ConsentCheckbox({
       >
         {checked ? <Icon name="check" size={12} strokeWidth={2.5} color="white" /> : null}
       </YStack>
-      <Text id={labelId} fontSize={13} color={showError ? brand.grafite : brand.grafite70} lineHeight={18}>
+      <Text id={labelId} fontSize={13} color={showError ? brand.grafite : brand.grafite70} lineHeight="18px">
         {children}
       </Text>
     </XStack>

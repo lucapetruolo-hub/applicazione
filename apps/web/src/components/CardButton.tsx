@@ -18,7 +18,7 @@ import { Button, ButtonArrow, Text, XStack, brand } from "@professionisti/ui";
  */
 type Tone = "primary" | "outline" | "danger" | "dangerSolid";
 
-type CardButtonProps = Omit<ComponentProps<typeof Button>, "variant" | "size" | "height" | "children"> & {
+type CardButtonProps = Omit<ComponentProps<typeof Button>, "variant" | "size" | "children"> & {
   tone?: Tone;
   fill?: string;
   /** Versione più piccola, per i pannelli stretti come la prenotazione in Agenda (richiesta dell'utente). */
@@ -38,18 +38,18 @@ const CARD_BUTTON_HEIGHT_COMPACT = 40;
 export function CardButton({ tone = "outline", fill, compact, compactOnPhone, arrow, children, disabled, ...rest }: CardButtonProps) {
   const textColor = fill || tone === "primary" || tone === "dangerSolid" ? "white" : tone === "danger" ? brand.urgenza : brand.grafite;
   const toneProps: ComponentProps<typeof Button> = fill
-    ? { variant: "secondary", backgroundColor: fill, borderColor: fill, hoverStyle: { backgroundColor: fill, opacity: 0.88 }, pressStyle: { backgroundColor: fill, opacity: 0.8 } }
+    ? { variant: "secondary", backgroundColor: fill, borderColor: fill }
     : tone === "primary"
       ? { variant: "primary" }
       : tone === "dangerSolid"
         ? { variant: "urgent" }
         : tone === "danger"
-          ? { variant: "secondary", borderColor: brand.urgenza, hoverStyle: { backgroundColor: brand.urgenzaVelo }, pressStyle: { backgroundColor: brand.urgenzaVelo } }
+          ? { variant: "secondary", borderColor: brand.urgenza, backgroundColor: `transparent hover:${brand.urgenzaVelo} press:${brand.urgenzaVelo}` }
           : { variant: "secondary" };
 
   const label =
     typeof children === "string" ? (
-      <Text color={textColor} fontFamily="$body" fontWeight="600" fontSize={compact ? "$2" : "$3"} {...(compactOnPhone ? { $xs: { fontSize: 13 } } : {})}>
+      <Text color={textColor} fontFamily="body" fontWeight="600" fontSize={compact ? "2" : compactOnPhone ? "3 xs:13px" : "3"}>
         {children}
       </Text>
     ) : (
@@ -61,16 +61,16 @@ export function CardButton({ tone = "outline", fill, compact, compactOnPhone, ar
     // per ultima, e le varianti di Button impostano altezza 48.
     <Button
       {...toneProps}
-      size={compact ? "$2" : "$3"}
-      height={compact ? CARD_BUTTON_HEIGHT_COMPACT : CARD_BUTTON_HEIGHT}
-      paddingHorizontal={compact ? 14 : 24}
-      disabled={disabled}
-      opacity={disabled ? 0.6 : 1}
-      {...(compactOnPhone && !compact ? { $xs: { height: CARD_BUTTON_HEIGHT_COMPACT, paddingHorizontal: 14 } } : {})}
+      size={compact ? "2" : "3"}
+      height={compact ? CARD_BUTTON_HEIGHT_COMPACT : compactOnPhone ? `${CARD_BUTTON_HEIGHT}px xs:${CARD_BUTTON_HEIGHT_COMPACT}px` : CARD_BUTTON_HEIGHT}
+      paddingHorizontal={compact ? 14 : compactOnPhone ? "24px xs:14px" : 24}
+      // Il colore pieno si schiarisce un poco al passaggio e alla pressione.
+      opacity={disabled ? 0.6 : fill ? "1 hover:0.88 press:0.8" : 1}
       {...rest}
+      disabled={disabled}
     >
       {arrow ? (
-        <XStack alignItems="center" gap="$2">
+        <XStack alignItems="center" gap="2">
           {label}
           <ButtonArrow size={compact ? 20 : 24} />
         </XStack>

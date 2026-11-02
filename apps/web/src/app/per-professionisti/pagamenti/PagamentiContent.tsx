@@ -21,8 +21,8 @@ const EXAMPLE = onlineFeeExample();
 
 function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <YStack gap="$2">
-      <Text tag="h2" fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+    <YStack gap="2">
+      <Text render="h2" fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
         {title}
       </Text>
       {children}
@@ -32,7 +32,7 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
 
 function P({ children }: { children: ReactNode }) {
   return (
-    <Text fontSize={16} color={brand.grafite70} lineHeight={24}>
+    <Text fontSize={16} color={brand.grafite70} lineHeight="24px">
       {children}
     </Text>
   );
@@ -40,19 +40,19 @@ function P({ children }: { children: ReactNode }) {
 
 function Point({ n, title, children, list }: { n: number; title: string; children: ReactNode; list?: string[] }) {
   return (
-    <YStack gap="$1" paddingLeft="$3" borderLeftWidth={3} borderLeftColor={brand.filetto}>
+    <YStack gap="1" paddingLeft="3" borderLeftWidth={3} borderLeftColor={brand.filetto}>
       <Text fontWeight="700" color={brand.grafite}>
         {n}. {title}
       </Text>
       <P>{children}</P>
       {list ? (
-        <YStack tag="ul" margin={0} padding={0} gap="$1">
+        <YStack render="ul" margin={0} padding={0} gap="1">
           {list.map((item) => (
-            <XStack key={item} tag="li" gap="$2" alignItems="flex-start">
+            <XStack key={item} render="li" gap="2" alignItems="flex-start">
               <YStack paddingTop={3} flexShrink={0}>
                 <Icon name="check" size={16} color={brand.cianografiaScuro} strokeWidth={2} />
               </YStack>
-              <Text fontSize={16} color={brand.grafite70} lineHeight={24} flex={1}>
+              <Text fontSize={16} color={brand.grafite70} lineHeight="24px" flex={1}>
                 {item}
               </Text>
             </XStack>
@@ -75,10 +75,10 @@ const SUMMARY = [
 export function PagamentiContent() {
   const onlinePayments = useOnlinePayments();
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={720} gap="$6">
-        <YStack gap="$3">
-          <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.grafite}>
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={720} gap="6">
+        <YStack gap="3">
+          <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="9" color={brand.grafite}>
             Come vieni pagato
           </Text>
           <P>
@@ -86,11 +86,11 @@ export function PagamentiContent() {
             direttamente a te, come vi accordate.
           </P>
           {!onlinePayments ? (
-            <XStack gap="$3" padding="$4" borderRadius="$4" backgroundColor={brand.cianografiaVelo} alignItems="flex-start">
+            <XStack gap="3" padding="4" borderRadius="4" backgroundColor={brand.cianografiaVelo} alignItems="flex-start">
               <YStack flexShrink={0}>
                 <Icon name="credit-card" size={20} color={brand.cianografiaScuro} strokeWidth={1.75} />
               </YStack>
-              <Text fontSize={16} color={brand.grafite} flex={1} lineHeight={24}>
+              <Text fontSize={16} color={brand.grafite} flex={1} lineHeight="24px">
                 Il pagamento online è in arrivo: per ora i clienti ti pagano direttamente. Qui sotto trovi come funzionerà.
               </Text>
             </XStack>
@@ -99,13 +99,13 @@ export function PagamentiContent() {
 
         {/* Tre righe in cima e i dettagli sotto (docs/CHANGELOG.md §349): la
             regola dell'utente è il minimo indispensabile prima. */}
-        <YStack tag="ul" margin={0} padding="$4" gap="$2" borderRadius={20} backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto}>
+        <YStack render="ul" margin={0} padding="4" gap="2" borderRadius={20} backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto}>
           {SUMMARY.map((line) => (
-            <XStack key={line} tag="li" gap="$2" alignItems="flex-start">
+            <XStack key={line} render="li" gap="2" alignItems="flex-start">
               <YStack paddingTop={3} flexShrink={0}>
                 <Icon name="check" size={16} color={brand.cianografiaScuro} strokeWidth={2} />
               </YStack>
-              <Text fontSize={16} color={brand.grafite} lineHeight={24} flex={1}>
+              <Text fontSize={16} color={brand.grafite} lineHeight="24px" flex={1}>
                 {line}
               </Text>
             </XStack>

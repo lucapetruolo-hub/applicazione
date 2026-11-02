@@ -55,7 +55,7 @@ export function sortListItems<T>(
 
 function ControlLabel({ children }: { children: string }) {
   return (
-    <Text fontFamily="$body" fontSize={10} fontWeight="700" color={brand.grafite70}>
+    <Text fontFamily="body" fontSize={10} fontWeight="700" color={brand.grafite70}>
       {children}
     </Text>
   );
@@ -91,8 +91,8 @@ export function ListControls<S extends string>({
   onPageSizeChange: (value: number) => void;
 }) {
   return (
-    <XStack flexWrap="wrap" gap="$4" alignItems="flex-end">
-      <YStack gap="$1">
+    <XStack flexWrap="wrap" gap="4" alignItems="flex-end">
+      <YStack gap="1">
         <ControlLabel>Filtra</ControlLabel>
         <select aria-label="Filtra" value={statusValue} onChange={(e) => onStatusChange(e.target.value as S)} style={selectStyle}>
           {statusOptions.map((option) => (
@@ -103,7 +103,7 @@ export function ListControls<S extends string>({
         </select>
       </YStack>
 
-      <YStack gap="$1">
+      <YStack gap="1">
         <ControlLabel>Ordina per</ControlLabel>
         <select aria-label="Ordina per" value={sortValue} onChange={(e) => onSortChange(e.target.value as ListSortKey)} style={selectStyle}>
           {sortOptions.map((key) => (
@@ -114,7 +114,7 @@ export function ListControls<S extends string>({
         </select>
       </YStack>
 
-      <YStack gap="$1">
+      <YStack gap="1">
         <ControlLabel>Mostra</ControlLabel>
         <select aria-label="Mostra" value={pageSize} onChange={(e) => onPageSizeChange(Number(e.target.value))} style={selectStyle}>
           {PAGE_SIZE_OPTIONS.map((size) => (
@@ -141,11 +141,11 @@ export function Pagination({ page, totalPages, onPageChange }: { page: number; t
   const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
 
   return (
-    <XStack gap="$1" alignItems="center" flexWrap="wrap">
+    <XStack gap="1" alignItems="center" flexWrap="wrap">
       <XStack
         width={28}
         height={28}
-        borderRadius="$2"
+        borderRadius="2"
         borderWidth={1}
         borderColor={brand.filetto}
         alignItems="center"
@@ -153,8 +153,8 @@ export function Pagination({ page, totalPages, onPageChange }: { page: number; t
         opacity={page === 1 ? 0.4 : 1}
         cursor={page === 1 ? "default" : "pointer"}
         onPress={() => page > 1 && onPageChange(page - 1)}
-        accessibilityRole="button"
-        accessibilityLabel="Pagina precedente"
+        role="button"
+        aria-label="Pagina precedente"
       >
         <Icon name="chevron-left" size={14} color={brand.grafite} />
       </XStack>
@@ -163,7 +163,7 @@ export function Pagination({ page, totalPages, onPageChange }: { page: number; t
           key={p}
           width={28}
           height={28}
-          borderRadius="$2"
+          borderRadius="2"
           alignItems="center"
           justifyContent="center"
           borderWidth={1}
@@ -171,8 +171,8 @@ export function Pagination({ page, totalPages, onPageChange }: { page: number; t
           backgroundColor={p === page ? brand.cianografiaVelo : "transparent"}
           cursor="pointer"
           onPress={() => onPageChange(p)}
-          accessibilityRole="button"
-          accessibilityLabel={`Pagina ${p}`}
+          role="button"
+          aria-label={`Pagina ${p}`}
         >
           <Text fontSize={13} fontWeight={p === page ? "700" : "400"} color={p === page ? brand.cianografiaScuro : brand.grafite70}>
             {p}
@@ -182,7 +182,7 @@ export function Pagination({ page, totalPages, onPageChange }: { page: number; t
       <XStack
         width={28}
         height={28}
-        borderRadius="$2"
+        borderRadius="2"
         borderWidth={1}
         borderColor={brand.filetto}
         alignItems="center"
@@ -190,8 +190,8 @@ export function Pagination({ page, totalPages, onPageChange }: { page: number; t
         opacity={page === totalPages ? 0.4 : 1}
         cursor={page === totalPages ? "default" : "pointer"}
         onPress={() => page < totalPages && onPageChange(page + 1)}
-        accessibilityRole="button"
-        accessibilityLabel="Pagina successiva"
+        role="button"
+        aria-label="Pagina successiva"
       >
         <Icon name="chevron-right" size={14} color={brand.grafite} />
       </XStack>

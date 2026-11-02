@@ -103,9 +103,9 @@ export function SubscriptionPauseBanner({ sub, showAction = true, profileStepsEl
 
   const accent = tone === "stop" ? brand.urgenza : brand.ottone;
   return (
-    <Surface borderRadius={radiusDoc} padding="$4" gap="$3" borderLeftWidth={4} borderLeftColor={accent} role="status">
-      <YStack gap="$1">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+    <Surface borderRadius={radiusDoc} padding="4" gap="3" borderLeftWidth={4} borderLeftColor={accent} role="status">
+      <YStack gap="1">
+        <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
           {title}
         </Text>
         <Text color={brand.grafite70}>{body}</Text>

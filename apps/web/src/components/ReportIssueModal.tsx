@@ -130,16 +130,16 @@ export function ReportIssueModal({
         width="100%"
         maxWidth={520}
         backgroundColor={brand.calce}
-        borderRadius="$3"
+        borderRadius="3"
         borderWidth={1}
         borderColor={brand.filetto}
-        padding="$5"
-        gap="$4"
-        marginVertical="$6"
+        padding="5"
+        gap="4"
+        marginVertical="6"
       >
         {sent ? (
-          <YStack gap="$3">
-            <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+          <YStack gap="3">
+            <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
               Segnalazione inviata
             </Text>
             {!assisted ? (
@@ -148,13 +148,13 @@ export function ReportIssueModal({
                   Abbiamo avvisato {businessName} e gli abbiamo scritto in chat cosa è successo. Scrivetevi in chat per trovare insieme
                   una soluzione: dalla scheda del lavoro potrai poi chiudere la segnalazione e lasciare la recensione.
                 </Text>
-                <XStack gap="$2" flexWrap="wrap">
+                <XStack gap="2" flexWrap="wrap">
                   {onOpenChat ? (
-                    <Button variant="primary" size="$3" height={44} onPress={onOpenChat}>
+                    <Button variant="primary" size="3" height={44} onPress={onOpenChat}>
                       Apri la chat
                     </Button>
                   ) : null}
-                  <Button variant="ghost" size="$3" height={44} onPress={onClose}>
+                  <Button variant="ghost" size="3" height={44} onPress={onClose}>
                     Chiudi
                   </Button>
                 </XStack>
@@ -166,11 +166,11 @@ export function ReportIssueModal({
                   soluzione. Se non risponde, la segnalazione passa da sola al nostro team; se risponde ma non vi accordate, dalla scheda del
                   lavoro puoi chiedere al nostro team di decidere.
                 </Text>
-                <XStack gap="$2" flexWrap="wrap">
-                  <Button variant="primary" size="$3" height={44} onPress={onOpenChat}>
+                <XStack gap="2" flexWrap="wrap">
+                  <Button variant="primary" size="3" height={44} onPress={onOpenChat}>
                     Apri la chat
                   </Button>
-                  <Button variant="ghost" size="$3" height={44} onPress={onClose}>
+                  <Button variant="ghost" size="3" height={44} onPress={onClose}>
                     Chiudi
                   </Button>
                 </XStack>
@@ -181,7 +181,7 @@ export function ReportIssueModal({
                   Abbiamo avvisato {businessName}, che ha 72 ore per inviare la sua versione: se non risponde, la segnalazione è accolta. Poi il
                   nostro team decide entro 2 giorni e ti comunica l&apos;esito. Dopo la decisione potrai lasciare la recensione.
                 </Text>
-                <Button variant="primary" size="$3" height={44} alignSelf="flex-start" onPress={onClose}>
+                <Button variant="primary" size="3" height={44} alignSelf="flex-start" onPress={onClose}>
                   Chiudi
                 </Button>
               </>
@@ -189,8 +189,8 @@ export function ReportIssueModal({
           </YStack>
         ) : (
           <>
-            <YStack gap="$1">
-              <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+            <YStack gap="1">
+              <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
                 Segnala un problema
               </Text>
               <Text fontSize={16} color={brand.grafite70}>
@@ -202,21 +202,21 @@ export function ReportIssueModal({
               </Text>
             </YStack>
 
-            <YStack gap="$2" role="radiogroup" aria-label="Cosa è successo">
+            <YStack gap="2" role="radiogroup" aria-label="Cosa è successo">
               {(["NO_SHOW", "BAD_WORK"] as const).map((option) => {
                 const enabled = allowedTypes.includes(option);
                 const selected = type === option;
                 return (
                   <YStack
                     key={option}
-                    padding="$3"
-                    borderRadius="$3"
+                    padding="3"
+                    borderRadius="3"
                     borderWidth={selected ? 2 : 1}
                     borderColor={selected ? brand.cianografia : brand.filetto}
                     opacity={enabled ? 1 : 0.5}
                     cursor={enabled ? "pointer" : "not-allowed"}
                     onPress={() => enabled && setType(option)}
-                    accessibilityRole="radio"
+                    role="radio"
                     aria-checked={selected}
                     aria-disabled={!enabled}
                   >
@@ -239,7 +239,7 @@ export function ReportIssueModal({
               </Text>
             ) : null}
 
-            <YStack gap="$1">
+            <YStack gap="1">
               <Text fontSize={13} color={brand.grafite70}>
                 Cosa è successo? *
               </Text>
@@ -263,13 +263,13 @@ export function ReportIssueModal({
               />
             </YStack>
 
-            <YStack gap="$1">
+            <YStack gap="1">
               <Text fontSize={13} color={brand.grafite70}>
                 {type === "BAD_WORK" ? `Foto o video del lavoro (almeno una, fino a ${MAX_PHOTOS})` : `Foto o video (opzionale, fino a ${MAX_PHOTOS})`}
               </Text>
-              <XStack flexWrap="wrap" gap="$2">
+              <XStack flexWrap="wrap" gap="2">
                 {photoUrls.map((url) => (
-                  <YStack key={url} width={64} height={64} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+                  <YStack key={url} width={64} height={64} borderRadius="3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
                     <MediaPreview url={url} />
                     <YStack
                       position="absolute"
@@ -283,8 +283,8 @@ export function ReportIssueModal({
                       justifyContent="center"
                       cursor="pointer"
                       onPress={() => setPhotoUrls((prev) => prev.filter((u) => u !== url))}
-                      accessibilityRole="button"
-                      accessibilityLabel="Rimuovi foto"
+                      role="button"
+                      aria-label="Rimuovi foto"
                     >
                       <X size={11} strokeWidth={2} color="white" />
                     </YStack>
@@ -292,24 +292,24 @@ export function ReportIssueModal({
                 ))}
                 {photoUrls.length < MAX_PHOTOS ? (
                   <YStack
-                    width={64}
-                    height={64}
-                    borderRadius="$3"
-                    borderWidth={1}
-                    borderColor={brand.filetto}
-                    borderStyle="dashed"
-                    alignItems="center"
-                    justifyContent="center"
-                    cursor="pointer"
-                    opacity={isUploading ? 0.6 : 1}
-                    onPress={() => !isUploading && inputRef.current?.click()}
-                    accessibilityRole="button"
-                    accessibilityLabel="Aggiungi foto"
-                  >
+                      width={64}
+                      height={64}
+                      borderRadius="3"
+                      borderWidth={1}
+                      borderColor={brand.filetto}
+                      borderStyle="dashed"
+                      alignItems="center"
+                      justifyContent="center"
+                      cursor="pointer"
+                      opacity={isUploading ? 0.6 : 1}
+                      onPress={() => !isUploading && inputRef.current?.click()}
+                      role="button"
+                      aria-label="Aggiungi foto"
+                    >
                     {isUploading ? (
                       <UploadingDots dotSize={6} />
                     ) : (
-                      <Text fontSize="$6" color={brand.grafite70}>
+                      <Text fontSize="6" color={brand.grafite70}>
                         +
                       </Text>
                     )}
@@ -325,11 +325,11 @@ export function ReportIssueModal({
               </Text>
             ) : null}
 
-            <XStack gap="$2" flexWrap="wrap">
-              <Button variant="urgent" size="$3" height={44} onPress={handleSubmit} disabled={isSaving || isUploading} opacity={isSaving ? 0.6 : 1}>
+            <XStack gap="2" flexWrap="wrap">
+              <Button variant="urgent" size="3" height={44} opacity={isSaving ? 0.6 : 1} onPress={handleSubmit} disabled={isSaving || isUploading}>
                 {isSaving ? "Invio..." : "Invia segnalazione"}
               </Button>
-              <Button variant="ghost" size="$3" height={44} onPress={onClose} disabled={isSaving}>
+              <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSaving}>
                 Annulla
               </Button>
             </XStack>

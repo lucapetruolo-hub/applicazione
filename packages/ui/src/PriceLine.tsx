@@ -12,7 +12,7 @@ import { brand } from "./tokens";
 export function PriceLine({ label, price, unit, labelColor = brand.grafite70 }: { label: string; price: string; unit?: string; labelColor?: string }) {
   const isAmount = /\d/.test(price);
   return (
-    <XStack alignItems="flex-start" gap="$3" paddingVertical={3}>
+    <XStack alignItems="flex-start" gap="3" paddingVertical={3}>
       <Text fontSize={16} color={labelColor} flexShrink={1}>
         {label}
       </Text>
@@ -23,7 +23,7 @@ export function PriceLine({ label, price, unit, labelColor = brand.grafite70 }: 
         </Text>
       ) : null}
       <Text
-        fontFamily="$body"
+        fontFamily="body"
         fontVariant={isAmount ? ["tabular-nums"] : undefined}
         fontSize={16}
         fontWeight="600"

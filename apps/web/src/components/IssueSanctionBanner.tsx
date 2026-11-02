@@ -14,9 +14,9 @@ export function IssueSanctionBanner({ demotedUntil, requestsBlockedUntil }: { de
   if (!demotedUntil && !requestsBlockedUntil) return null;
   const blocked = !!requestsBlockedUntil;
   return (
-    <Surface borderRadius={radiusDoc} padding="$4" gap="$2" borderLeftWidth={4} borderLeftColor={blocked ? brand.urgenza : brand.ottone} role="status">
-      <YStack gap="$1">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+    <Surface borderRadius={radiusDoc} padding="4" gap="2" borderLeftWidth={4} borderLeftColor={blocked ? brand.urgenza : brand.ottone} role="status">
+      <YStack gap="1">
+        <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
           {blocked ? "Non puoi ricevere nuove richieste" : "Il tuo profilo è più in basso"}
         </Text>
         <Text color={brand.grafite70}>

@@ -72,9 +72,20 @@ const radius = Object.fromEntries(
   }),
 ) as Record<keyof typeof defaultTokens.radius, number>;
 
+// Tamagui 3 riserva la chiave "true" dei token (vuol dire "misura di
+// serie" del componente): in Tamagui 1 era un doppione di "4" in ogni scala,
+// quindi si toglie e chi la usava usa "4" (docs/changelog/2026-11-02-tamagui-3.md).
+const withoutTrue = <T extends Record<string, unknown>>(scale: T) => {
+  const { true: _true, ...rest } = scale as T & { true?: unknown };
+  return rest as Omit<T, "true">;
+};
+
 const customTokens = createTokens({
   ...defaultTokens,
-  radius,
+  size: withoutTrue(defaultTokens.size),
+  space: withoutTrue(defaultTokens.space),
+  zIndex: withoutTrue(defaultTokens.zIndex),
+  radius: withoutTrue(radius),
   color: {
     ...defaultTokens.color,
     gesso: brand.gesso,
@@ -102,13 +113,22 @@ const themes = Object.fromEntries(
   Object.entries(defaultThemes).map(([name, theme]) => [name, { ...theme, outlineColor: brand.grafite }]),
 ) as { [K in keyof typeof defaultThemes]: (typeof defaultThemes)[K] & { outlineColor: string } };
 
+// Impostazioni di Tamagui 1 portate su Tamagui 3 senza cambiare l'aspetto
+// (docs/changelog/2026-11-02-tamagui-3.md): `styleCompat: "legacy"` tiene il
+// `flex` di Tamagui 1 (con la 3 `flex={1}` diventa quello del CSS) e
+// `defaultPosition: "relative"` la posizione di serie di prima (con la 3
+// diventa "static"). `themeClassNameOnRoot` non esiste più: la classe del
+// tema va su <html> di serie (`addThemeClassName`).
+const { themeClassNameOnRoot: _themeClassNameOnRoot, ...settingsV1 } = defaultSettings;
+const tamaguiSettings = { ...settingsV1, styleCompat: "legacy", defaultPosition: "relative" } as const;
+
 export const tamaguiConfig = createTamagui({
   themes,
   media: defaultMedia,
   shorthands: defaultShorthands,
-  settings: defaultSettings,
+  settings: tamaguiSettings,
   animations,
-  selectionStyles: (theme) => (theme.color5 ? { backgroundColor: theme.color5, color: theme.color11 } : null),
+  selectionStyles: (theme: Record<string, string>) => (theme.color5 ? { backgroundColor: theme.color5, color: theme.color11 } : null),
   tokens: customTokens,
   fonts: {
     ...defaultFonts,

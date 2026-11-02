@@ -45,13 +45,13 @@ export function FiscalWhyModal({ onClose }: { onClose: () => void }) {
       }}
     >
       <div role="dialog" aria-modal="true" aria-labelledby="fiscal-why-title" style={{ width: "100%", maxWidth: 420 }}>
-        <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
-          <Text id="fiscal-why-title" tag="h2" fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+        <YStack width="100%" backgroundColor={brand.calce} borderRadius="5" padding="5" gap="4">
+          <Text id="fiscal-why-title" render="h2" fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
             Perché ti chiediamo questi dati
           </Text>
-          <YStack gap="$3">
+          <YStack gap="3">
             {REASONS.map((reason) => (
-              <XStack key={reason.icon} gap="$3" alignItems="flex-start">
+              <XStack key={reason.icon} gap="3" alignItems="flex-start">
                 <YStack width={32} height={32} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor={brand.cianografiaVelo} flexShrink={0}>
                   <Icon name={reason.icon} size={16} strokeWidth={2} color={brand.cianografiaScuro} />
                 </YStack>
@@ -61,7 +61,7 @@ export function FiscalWhyModal({ onClose }: { onClose: () => void }) {
               </XStack>
             ))}
           </YStack>
-          <XStack alignItems="center" justifyContent="space-between" gap="$3" flexWrap="wrap">
+          <XStack alignItems="center" justifyContent="space-between" gap="3" flexWrap="wrap">
             <Link href="/privacy" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 16 }}>
               Privacy
             </Link>

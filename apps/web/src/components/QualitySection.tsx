@@ -53,14 +53,14 @@ export function QualitySection() {
   const points = POINTS.filter((point) => !point.online || onlinePayments);
   return (
     <Section tone="dark" title="La trasparenza che non trovi in giro" maxWidth={1080}>
-      <YStack width="100%" gap="$4" $gtMd={{ flexDirection: "row", flexWrap: "wrap" }} data-stagger="">
+      <YStack width="100%" gap="4" flexDirection="gtMd:row" flexWrap="gtMd:wrap" data-stagger="">
         {points.map((point) => (
-          <XStack key={point.title} alignItems="flex-start" gap="$3" $gtMd={{ flexBasis: "48%", flexGrow: 0 }}>
+          <XStack key={point.title} alignItems="flex-start" gap="3" flexBasis="gtMd:48%" flexGrow="gtMd:0">
             <YStack width={26} height={26} borderRadius={13} backgroundColor="rgba(255,255,255,0.14)" alignItems="center" justifyContent="center" flexShrink={0} marginTop={1}>
               <Icon name="check" size={15} strokeWidth={2.5} color="white" />
             </YStack>
-            <Text fontSize={16} color="rgba(255,255,255,0.78)" lineHeight={24} flex={1} minWidth={0}>
-              <Text fontFamily="$body" fontWeight="700" color="white">
+            <Text fontSize={16} color="rgba(255,255,255,0.78)" lineHeight="24px" flex={1} minWidth={0}>
+              <Text fontFamily="body" fontWeight="700" color="white">
                 {point.title}.
               </Text>{" "}
               {point.text}

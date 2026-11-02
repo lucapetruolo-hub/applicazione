@@ -8,7 +8,12 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "react-native": ["../../../node_modules/react-native-web"]
+      "react-native": [
+        "../../../node_modules/react-native-web"
+      ],
+      "@tamagui/config/animations-rn": [
+        "./senza-animazioni.ts"
+      ]
     }
   }
 }

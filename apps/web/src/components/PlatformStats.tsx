@@ -26,10 +26,10 @@ export function PlatformStats({ stats }: { stats: { totalUsers: number; totalPro
   if (stats.totalUsers < 10) return null;
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$5" paddingHorizontal="$4">
-      <XStack gap="$7" flexWrap="wrap" justifyContent="center" alignItems="center">
+    <YStack width="100%" alignItems="center" paddingVertical="5" paddingHorizontal="4">
+      <XStack gap="7" flexWrap="wrap" justifyContent="center" alignItems="center">
         <YStack ref={attachUsers} alignItems="center" gap={2}>
-          <Text fontFamily="$heading" fontWeight="700" fontSize={28} color={brand.grafite} style={{ fontVariantNumeric: "tabular-nums" }}>
+          <Text fontFamily="heading" fontWeight="700" fontSize={28} color={brand.grafite} style={{ fontVariantNumeric: "tabular-nums" }}>
             {usersValue.toLocaleString("it-IT")}
           </Text>
           <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
@@ -37,7 +37,7 @@ export function PlatformStats({ stats }: { stats: { totalUsers: number; totalPro
           </Text>
         </YStack>
         <YStack ref={attachProfessionals} alignItems="center" gap={2}>
-          <Text fontFamily="$heading" fontWeight="700" fontSize={28} color={brand.grafite} style={{ fontVariantNumeric: "tabular-nums" }}>
+          <Text fontFamily="heading" fontWeight="700" fontSize={28} color={brand.grafite} style={{ fontVariantNumeric: "tabular-nums" }}>
             {professionalsValue.toLocaleString("it-IT")}
           </Text>
           <Text fontSize={16} fontWeight="600" color={brand.grafite70}>

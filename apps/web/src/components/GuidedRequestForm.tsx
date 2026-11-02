@@ -128,7 +128,7 @@ const fieldInputStyle = {
 
 function FieldLabel({ children }: { children: ReactNode }) {
   return (
-    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+    <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
       {children}
     </Text>
   );
@@ -154,10 +154,10 @@ export type GuidedRequestFormProps = {
  */
 export function GuidedRequestHeading({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={560} gap="$5">
-        <YStack gap="$3">
-          <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={560} gap="5">
+        <YStack gap="3">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             {title}
           </Text>
           <Text color={brand.grafite70}>{subtitle}</Text>
@@ -668,16 +668,16 @@ export function GuidedRequestForm({
                   <div className="request-sent-save-actions">
                     {/* Due risposte chiare invece di "Salva / No" (docs/CHANGELOG.md §349). */}
                     <Button
-                      variant="primary"
-                      size="$2"
-                      height={44}
-                      onPress={handleSaveAsDefaults}
-                      disabled={savingDefaults}
-                      opacity={savingDefaults ? 0.6 : 1}
-                    >
+                        variant="primary"
+                        size="2"
+                        height={44}
+                        opacity={savingDefaults ? 0.6 : 1}
+                        onPress={handleSaveAsDefaults}
+                        disabled={savingDefaults}
+                      >
                       {savingDefaults ? "Salvataggio..." : "Sì, salva"}
                     </Button>
-                    <Button variant="secondary" size="$2" height={44} onPress={() => setDefaultsDeclined(true)} disabled={savingDefaults}>
+                    <Button variant="secondary" size="2" height={44} onPress={() => setDefaultsDeclined(true)} disabled={savingDefaults}>
                       No, grazie
                     </Button>
                   </div>
@@ -982,7 +982,7 @@ export function GuidedRequestForm({
       <YStack
         borderWidth={1}
         borderColor={serviceMode === "HOME" ? brand.bordoCampo : brand.filetto}
-        borderRadius={serviceMode === "HOME" ? 6 : "$4"}
+        borderRadius={serviceMode === "HOME" ? 6 : "4"}
         backgroundColor={brand.calce}
       >
         <Autocomplete
@@ -993,14 +993,14 @@ export function GuidedRequestForm({
           value={city}
           onChangeText={changeCity}
           placeholder={serviceMode === "HOME" ? "Città" : "Es. Roma"}
-          size="$5"
+          size="5"
           minChars={3}
         />
       </YStack>
     </div>
   );
   const cityField = (
-    <YStack gap="$2">
+    <YStack gap="2">
       <FieldLabel>{cityOptional ? "Città (facoltativa)" : "Città"}</FieldLabel>
       {cityInput}
       {fieldErrorFor("citta")}
@@ -1023,10 +1023,10 @@ export function GuidedRequestForm({
 
   return (
     <>
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={560} gap="$5">
-        <YStack gap="$3">
-          <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={560} gap="5">
+        <YStack gap="3">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             {title}
           </Text>
           {professionalProfileId && shownProfessionalName ? (
@@ -1039,22 +1039,22 @@ export function GuidedRequestForm({
             // foto+nome al posto del sottotitolo generico, non in aggiunta.
             <>
               <XStack
-                alignItems="center"
-                gap="$3"
-                alignSelf="flex-start"
-                backgroundColor={brand.calce}
-                borderWidth={1}
-                borderColor={brand.filetto}
-                borderRadius={radiusDoc}
-                paddingHorizontal="$4"
-                paddingVertical="$3"
-              >
+                  alignItems="center"
+                  gap="3"
+                  alignSelf="flex-start"
+                  backgroundColor={brand.calce}
+                  borderWidth={1}
+                  borderColor={brand.filetto}
+                  borderRadius={radiusDoc}
+                  paddingHorizontal="4"
+                  paddingVertical="3"
+                >
                 <ProfessionalAvatar imageUrl={shownProfessionalImage} categorySlug={selectedCategory?.slug ?? categorySlug} size={48} />
                 <YStack>
                   <Text fontSize={13} color={brand.grafite70}>
                     Stai inviando una richiesta a
                   </Text>
-                  <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
+                  <Text fontFamily="heading" fontWeight="800" fontSize="5" color={brand.grafite}>
                     {shownProfessionalName}
                   </Text>
                   {professional ? (
@@ -1118,8 +1118,8 @@ export function GuidedRequestForm({
           // quella del link se è una delle sue, altrimenti la principale.
           null
         ) : (
-          <YStack gap="$2">
-            <XStack justifyContent="space-between" alignItems="baseline" gap="$2">
+          <YStack gap="2">
+            <XStack justifyContent="space-between" alignItems="baseline" gap="2">
               <FieldLabel>Categorie</FieldLabel>
               <Text fontSize={13} color={brand.grafite70} aria-live="polite">
                 {/* "Scegli fino a 3", poi "1 di 3" (docs/CHANGELOG.md §349): "Fino a 3"
@@ -1139,7 +1139,7 @@ export function GuidedRequestForm({
           </YStack>
         )}
 
-        <YStack gap="$2">
+        <YStack gap="2">
           <FieldLabel>Tipo di intervento</FieldLabel>
           {/* Resa a interruttore/toggle (richiesta esplicita dell'utente),
               non più due caselle indipendenti: un'unica pista con le due
@@ -1149,14 +1149,14 @@ export function GuidedRequestForm({
               toggle controlla anche la visibilità del blocco destinatario
               sotto, non solo un filtro di ricerca. */}
           <XStack
-            gap="$1"
-            padding={4}
-            borderRadius="$10"
-            backgroundColor={brand.gesso}
-            alignSelf="flex-start"
-            borderWidth={1}
-            borderColor={brand.filetto}
-          >
+                      gap="1"
+                      padding={4}
+                      borderRadius="10"
+                      backgroundColor={brand.gesso}
+                      alignSelf="flex-start"
+                      borderWidth={1}
+                      borderColor={brand.filetto}
+                    >
             {(
               [
                 { value: "HOME", label: "A domicilio", icon: "house" },
@@ -1168,25 +1168,25 @@ export function GuidedRequestForm({
                 <XStack
                   key={option.value}
                   alignItems="center"
-                  gap="$2"
-                  paddingHorizontal="$3"
-                  paddingVertical="$2"
-                  borderRadius="$10"
+                  gap="2"
+                  paddingHorizontal="3"
+                  paddingVertical="2"
+                  borderRadius="10"
                   backgroundColor={active ? brand.cianografiaPieno : "transparent"}
                   cursor="pointer"
                   onPress={() => {
-                    setServiceMode(option.value);
-                    // Un orario scelto per una modalità può non valere per
-                    // l'altra (fasce home/online indipendenti) — richiesta
-                    // esplicita dell'utente, "differenzia sempre se si è
-                    // partiti con una consulenza online": cambiare modalità
-                    // a mano azzera la scelta, il nuovo fetch sotto ripopola
-                    // il selettore con le fasce della modalità corretta.
-                    setSelectedSlotValue("");
-                  }}
-                  accessibilityRole="button"
+                                    setServiceMode(option.value);
+                                    // Un orario scelto per una modalità può non valere per
+                                    // l'altra (fasce home/online indipendenti) — richiesta
+                                    // esplicita dell'utente, "differenzia sempre se si è
+                                    // partiti con una consulenza online": cambiare modalità
+                                    // a mano azzera la scelta, il nuovo fetch sotto ripopola
+                                    // il selettore con le fasce della modalità corretta.
+                                    setSelectedSlotValue("");
+                                  }}
+                  role="button"
                   aria-pressed={active}
-                  accessibilityLabel={option.label}
+                  aria-label={option.label}
                 >
                   <Icon name={option.icon} size={15} color={active ? "white" : brand.grafite70} />
                   <Text color={active ? "white" : brand.grafite70} fontWeight="600">
@@ -1208,7 +1208,7 @@ export function GuidedRequestForm({
         </div>
 
         {professionalProfileId && displaySlots.length > 0 ? (
-          <YStack gap="$2">
+          <YStack gap="2">
             <FieldLabel>Data e orario dell&apos;intervento (facoltativo)</FieldLabel>
             {/* Pillole con i primi tre orari liberi e "Altri orari", al posto
                 del menu a tendina nativo che stonava con il resto del modulo
@@ -1227,7 +1227,7 @@ export function GuidedRequestForm({
           </YStack>
         ) : null}
 
-        <YStack gap="$2">
+        <YStack gap="2">
           <FieldLabel>Descrivi il lavoro</FieldLabel>
           <textarea aria-label="Descrivi il lavoro"
             value={description}
@@ -1246,18 +1246,18 @@ export function GuidedRequestForm({
           />
         </YStack>
 
-        <YStack gap="$2">
+        <YStack gap="2">
           <FieldLabel>Foto o video (fino a {MAX_PHOTOS})</FieldLabel>
           <Text fontSize={13} color={brand.grafite70}>
             Una foto o un video aiutano il professionista a capire subito il lavoro e a darti un preventivo più preciso.
           </Text>
-          <YStack flexDirection="row" flexWrap="wrap" gap="$2">
+          <YStack flexDirection="row" flexWrap="wrap" gap="2">
             {photos.map((photo) => (
               <YStack
                 key={photo.url}
                 width={88}
                 height={88}
-                borderRadius="$3"
+                borderRadius="3"
                 overflow="hidden"
                 position="relative"
                 borderWidth={1}
@@ -1276,8 +1276,8 @@ export function GuidedRequestForm({
                   justifyContent="center"
                   cursor="pointer"
                   onPress={() => removePhoto(photo.url)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Rimuovi foto"
+                  role="button"
+                  aria-label="Rimuovi foto"
                 >
                   <X size={13} strokeWidth={2} color="white" />
                 </YStack>
@@ -1285,25 +1285,25 @@ export function GuidedRequestForm({
             ))}
             {photos.length < MAX_PHOTOS ? (
               <YStack
-                width={88}
-                height={88}
-                borderRadius="$3"
-                borderWidth={1}
-                borderColor={brand.filetto}
-                borderStyle="dashed"
-                alignItems="center"
-                justifyContent="center"
-                gap="$1"
-                cursor="pointer"
-                opacity={isUploadingPhoto ? 0.6 : 1}
-                onPress={() => !isUploadingPhoto && photoInputRef.current?.click()}
-                accessibilityRole="button"
-                accessibilityLabel="Aggiungi foto"
-              >
+                          width={88}
+                          height={88}
+                          borderRadius="3"
+                          borderWidth={1}
+                          borderColor={brand.filetto}
+                          borderStyle="dashed"
+                          alignItems="center"
+                          justifyContent="center"
+                          gap="1"
+                          cursor="pointer"
+                          opacity={isUploadingPhoto ? 0.6 : 1}
+                          onPress={() => !isUploadingPhoto && photoInputRef.current?.click()}
+                          role="button"
+                          aria-label="Aggiungi foto"
+                        >
                 {isUploadingPhoto ? (
                   <UploadingDots dotSize={7} />
                 ) : (
-                  <Text fontSize="$7" color={brand.grafite70}>
+                  <Text fontSize="7" color={brand.grafite70}>
                     +
                   </Text>
                 )}
@@ -1336,8 +1336,8 @@ export function GuidedRequestForm({
         {serviceMode === "HOME" ? null : cityField}
 
         {serviceMode === "HOME" ? (
-          <YStack gap="$3">
-            <YStack gap="$1">
+          <YStack gap="3">
+            <YStack gap="1">
               <Text fontSize={13} color={brand.grafite70}>
                 I dati di seguito rimarranno nascosti al professionista finché non accetterai un preventivo.
               </Text>
@@ -1347,8 +1347,8 @@ export function GuidedRequestForm({
                 §349): col solo segnaposto, appena scritto non si sapeva più
                 cos'era "04100" o "LT". L'`aria-label` resta per i lettori di
                 schermo e per le prove. */}
-            <XStack gap="$2" flexWrap="wrap">
-              <YStack flex={1} minWidth={160} gap="$1">
+            <XStack gap="2" flexWrap="wrap">
+              <YStack flex={1} minWidth={160} gap="1">
                 <FieldLabel>Nome</FieldLabel>
                 <input
                   id="guided-field-nome"
@@ -1361,7 +1361,7 @@ export function GuidedRequestForm({
                   style={fieldInputStyle}
                 />
               </YStack>
-              <YStack flex={1} minWidth={160} gap="$1">
+              <YStack flex={1} minWidth={160} gap="1">
                 <FieldLabel>Cognome</FieldLabel>
                 <input
                   aria-label="Cognome"
@@ -1376,7 +1376,7 @@ export function GuidedRequestForm({
               {fieldErrorFor("nome")}
             </XStack>
 
-            <YStack gap="$1">
+            <YStack gap="1">
               <FieldLabel>Telefono</FieldLabel>
               <div id="guided-field-telefono">
                 <PhoneNumberInput value={recipientPhone} onChange={setRecipientPhone} style={fieldInputStyle} />
@@ -1393,8 +1393,8 @@ export function GuidedRequestForm({
                     I suggerimenti non sono disponibili: completa l&apos;indirizzo nei campi qui sotto.
                   </Text>
                 ) : null}
-                <XStack gap="$2" flexWrap="wrap">
-                  <YStack flex={2} flexBasis={0} minWidth={180} gap="$1">
+                <XStack gap="2" flexWrap="wrap">
+                  <YStack flex={2} flexBasis={0} minWidth={180} gap="1">
                     <FieldLabel>Via o piazza</FieldLabel>
                     <input
                       id="guided-field-indirizzo"
@@ -1407,7 +1407,7 @@ export function GuidedRequestForm({
                       ref={streetInputRef}
                     />
                   </YStack>
-                  <YStack flex={1} flexBasis={0} minWidth={110} gap="$1">
+                  <YStack flex={1} flexBasis={0} minWidth={110} gap="1">
                     <FieldLabel>Numero civico</FieldLabel>
                     <input
                       id="guided-field-civico"
@@ -1422,13 +1422,13 @@ export function GuidedRequestForm({
                   {fieldErrorFor("indirizzo")}
                   {fieldErrorFor("civico")}
                 </XStack>
-                <YStack gap="$1">
+                <YStack gap="1">
                   <FieldLabel>Città</FieldLabel>
                   {cityInput}
                   {fieldErrorFor("citta")}
                 </YStack>
-                <XStack gap="$2" flexWrap="wrap">
-                  <YStack flex={1} flexBasis={0} minWidth={100} gap="$1">
+                <XStack gap="2" flexWrap="wrap">
+                  <YStack flex={1} flexBasis={0} minWidth={100} gap="1">
                     <FieldLabel>CAP</FieldLabel>
                     <input
                       id="guided-field-cap"
@@ -1444,7 +1444,7 @@ export function GuidedRequestForm({
                       style={fieldInputStyle}
                     />
                   </YStack>
-                  <YStack flex={1} flexBasis={0} minWidth={100} gap="$1">
+                  <YStack flex={1} flexBasis={0} minWidth={100} gap="1">
                     <FieldLabel>Provincia</FieldLabel>
                     <input
                       id="guided-field-provincia"
@@ -1461,7 +1461,7 @@ export function GuidedRequestForm({
                 </XStack>
               </>
             ) : (
-              <YStack gap="$1">
+              <YStack gap="1">
                 <FieldLabel>Indirizzo</FieldLabel>
                 {/* Via e città insieme: la scelta dall'elenco compila città,
                     civico, CAP e provincia (docs/CHANGELOG.md §141, §214, §264). */}
@@ -1504,10 +1504,10 @@ export function GuidedRequestForm({
                 {fieldErrorFor("indirizzo")}
                 {chosenAddress.chosen && (showHouseNumber || showPostalCode || showProvince) ? (
                   // Pezzi che Google non ha dato: si chiedono qui, uno accanto all'altro.
-                  <YStack gap="$1" marginTop={6}>
-                    <XStack gap="$2" flexWrap="wrap">
+                  <YStack gap="1" marginTop={6}>
+                    <XStack gap="2" flexWrap="wrap">
                       {showHouseNumber ? (
-                        <YStack flex={1} flexBasis={0} minWidth={110} maxWidth={180} gap="$1">
+                        <YStack flex={1} flexBasis={0} minWidth={110} maxWidth={180} gap="1">
                           <FieldLabel>Numero civico</FieldLabel>
                           <input
                             id="guided-field-civico"
@@ -1524,7 +1524,7 @@ export function GuidedRequestForm({
                         </YStack>
                       ) : null}
                       {showPostalCode ? (
-                        <YStack flex={1} flexBasis={0} minWidth={110} maxWidth={180} gap="$1">
+                        <YStack flex={1} flexBasis={0} minWidth={110} maxWidth={180} gap="1">
                           <FieldLabel>CAP</FieldLabel>
                           <input
                             id="guided-field-cap"
@@ -1545,7 +1545,7 @@ export function GuidedRequestForm({
                         </YStack>
                       ) : null}
                       {showProvince ? (
-                        <YStack flex={1} flexBasis={0} minWidth={110} maxWidth={180} gap="$1">
+                        <YStack flex={1} flexBasis={0} minWidth={110} maxWidth={180} gap="1">
                           <FieldLabel>Provincia</FieldLabel>
                           <input
                             id="guided-field-provincia"
@@ -1575,7 +1575,7 @@ export function GuidedRequestForm({
               </YStack>
             )}
 
-            <YStack gap="$1">
+            <YStack gap="1">
               <FieldLabel>Scala, piano, interno (facoltativo)</FieldLabel>
               <input aria-label="Scala, piano, interno" value={addressExtra} onChange={(e) => setAddressExtra(e.target.value)} placeholder="Es. scala B, 2° piano" style={fieldInputStyle} />
             </YStack>
@@ -1633,7 +1633,7 @@ export function GuidedRequestForm({
           </Text>
         ) : null}
 
-        <XStack gap="$2" flexWrap="wrap">
+        <XStack gap="2" flexWrap="wrap">
           {step > 1 ? (
             <Button variant="secondary" onPress={() => goToStep((step - 1) as 1 | 2)} flexGrow={1} flexBasis={120}>
               Indietro
@@ -1653,8 +1653,8 @@ export function GuidedRequestForm({
               flexGrow={2}
               flexBasis={200}
             >
-              <XStack alignItems="center" gap="$2">
-                <Text color="white" fontFamily="$body" fontWeight="600">
+              <XStack alignItems="center" gap="2">
+                <Text color="white" fontFamily="body" fontWeight="600">
                   {isSubmitting ? submittingLabel : shownSubmitLabel}
                 </Text>
                 <ButtonArrow />
@@ -1703,7 +1703,7 @@ function GeneralRequestsClosedNotice({
 }) {
   const searchHref = categorySlug ? `/cerca/${categorySlug}${city.trim() ? `?citta=${encodeURIComponent(city.trim())}` : ""}` : "/cerca";
   return (
-    <YStack gap="$2" padding="$4" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="$4">
+    <YStack gap="2" padding="4" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4">
       <Text fontWeight="700" color={brand.grafite}>
         {scope === "GLOBAL" ? "Scegli tu il professionista" : `A ${city.trim()} scegli tu il professionista`}
       </Text>
@@ -1712,7 +1712,7 @@ function GeneralRequestsClosedNotice({
           ? "Per ora le richieste si inviano direttamente a un professionista: cercalo, guarda profilo e recensioni e scrivigli dalla sua pagina."
           : `I professionisti${categoryLabel ? ` di ${categoryLabel}` : ""} di questa zona ricevono già molte richieste: per avere risposte più rapide scegline uno e scrivigli dalla sua pagina.`}
       </Text>
-      <XStack gap="$2" flexWrap="wrap">
+      <XStack gap="2" flexWrap="wrap">
         <Link href={searchHref}>
           <Button tabIndex={-1} variant="primary">Cerca un professionista</Button>
         </Link>
@@ -1816,7 +1816,7 @@ function RequestSummary({
           ? `anche a un altro professionista simile ${forwardZone}`
           : `anche ad altri ${reachCount} professionisti simili ${forwardZone}`;
   return (
-    <YStack gap="$4">
+    <YStack gap="4">
       <div className="guided-next">
         <strong>Cosa succede dopo l&apos;invio</strong>
         {chosen ? (
@@ -2073,23 +2073,23 @@ function ChosenProsHeading({
   return (
     <>
       <YStack
-        gap="$3"
+        gap="3"
         alignSelf="stretch"
         backgroundColor={brand.calce}
         borderWidth={1}
         borderColor={brand.filetto}
         borderRadius={radiusDoc}
-        paddingHorizontal="$4"
-        paddingVertical="$3"
+        paddingHorizontal="4"
+        paddingVertical="3"
       >
         <Text fontSize={13} color={brand.grafite70}>
           Stai inviando la richiesta ai {count} professionisti che hai scelto
         </Text>
         {pros.map((pro) => (
-          <XStack key={pro.id} alignItems="center" gap="$3">
+          <XStack key={pro.id} alignItems="center" gap="3">
             <ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug || categorySlug} size={40} />
             <YStack flexShrink={1}>
-              <Text fontFamily="$heading" fontWeight="800" fontSize="$4" color={brand.grafite}>
+              <Text fontFamily="heading" fontWeight="800" fontSize="4" color={brand.grafite}>
                 {pro.businessName}
               </Text>
               <Text fontSize={13} color={brand.grafite70}>

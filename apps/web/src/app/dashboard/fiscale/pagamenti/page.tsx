@@ -130,9 +130,9 @@ function OnlinePaymentsContent() {
         />
       ) : loading ? (
         // Stessa altezza del contenuto caricato: niente salto (CLS, docs/CHANGELOG.md §334).
-        <YStack gap="$3" aria-busy>
-          <YStack height={72} borderRadius="$3" backgroundColor={brand.gesso} />
-          <YStack height={160} borderRadius="$3" backgroundColor={brand.gesso} />
+        <YStack gap="3" aria-busy>
+          <YStack height={72} borderRadius="3" backgroundColor={brand.gesso} />
+          <YStack height={160} borderRadius="3" backgroundColor={brand.gesso} />
         </YStack>
       ) : (
         <>
@@ -140,8 +140,8 @@ function OnlinePaymentsContent() {
 
           {paymentsStep?.state === "locked" ? (
             // Prima i dati fiscali e l'identità (§262): una cosa alla volta, con il passo da fare.
-            <Surface gap="$3">
-              <XStack gap="$3" alignItems="center">
+            <Surface gap="3">
+              <XStack gap="3" alignItems="center">
                 <Icon name="lock" size={20} strokeWidth={2} color={brand.grafite70} />
                 <Text flex={1} fontSize={16} color={brand.grafite70}>
                   {paymentsStep.text}

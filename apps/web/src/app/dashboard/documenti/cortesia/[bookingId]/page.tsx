@@ -141,7 +141,7 @@ export default function CourtesyCopyPage() {
   return (
     <DocumentPage back={back} title="Ricevuta per prestazione occasionale">
       <div data-print-hide>
-        <YStack gap="$3">
+        <YStack gap="3">
           {/* L'importo è cambiato dopo il PDF scaricato, per esempio per un rimborso (docs/CHANGELOG.md §381). */}
           {amountChanged ? (
             <NoteBox tone="sand">
@@ -169,13 +169,13 @@ export default function CourtesyCopyPage() {
           </NoteBox>
 
           {hasFields ? (
-            <YStack gap="$3" padding="$4" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto}>
+            <YStack gap="3" padding="4" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto}>
               {copy.customerFields ? (
-                <XStack gap="$3" flexWrap="wrap">
+                <XStack gap="3" flexWrap="wrap">
                   <YStack flexGrow={1} flexBasis={220}>
                     <Field
                       label="Nome e cognome del cliente"
-                      accessibilityLabel="Nome e cognome del cliente"
+                      aria-label="Nome e cognome del cliente"
                       value={draft.customerName}
                       onChangeText={(value) => set({ customerName: value })}
                       maxLength={120}
@@ -185,7 +185,7 @@ export default function CourtesyCopyPage() {
                   <YStack flexGrow={1} flexBasis={220}>
                     <Field
                       label="Codice fiscale del cliente (facoltativo)"
-                      accessibilityLabel="Codice fiscale del cliente"
+                      aria-label="Codice fiscale del cliente"
                       value={draft.customerTaxCode}
                       onChangeText={(value) => set({ customerTaxCode: value.toUpperCase() })}
                       autoCapitalize="characters"
@@ -200,7 +200,7 @@ export default function CourtesyCopyPage() {
                   Il cliente trattiene la ritenuta d&apos;acconto del 20%
                 </ConsentCheckbox>
               ) : null}
-              <XStack gap="$3" alignItems="center" flexWrap="wrap">
+              <XStack gap="3" alignItems="center" flexWrap="wrap">
                 <Button variant="secondary" alignSelf="flex-start" onPress={() => void save().catch(() => undefined)}>
                   Salva
                 </Button>
@@ -215,7 +215,7 @@ export default function CourtesyCopyPage() {
         </YStack>
       </div>
 
-      <XStack justifyContent="space-between" gap="$3" flexWrap="wrap">
+      <XStack justifyContent="space-between" gap="3" flexWrap="wrap">
         <Text fontSize={16} color={brand.grafite}>
           Numero: {copy.number ?? "______"}
         </Text>
@@ -231,12 +231,12 @@ export default function CourtesyCopyPage() {
           <AmountRow key={`${index}-${line.description}`} label={line.description} value={copy.totalEurCents !== null ? eur(line.amountEurCents) : "______"} />
         ))}
         {withholding && copy.totalEurCents !== null ? (
-          <YStack paddingTop="$2">
+          <YStack paddingTop="2">
             <AmountRow label="Compenso lordo" value={eur(copy.totalEurCents)} divider={false} />
             <AmountRow label="Ritenuta d'acconto 20%" value={`−${eur(withholdingAmount)}`} divider={false} />
           </YStack>
         ) : null}
-        <YStack borderTopWidth={2} borderColor={brand.grafite} marginTop="$2">
+        <YStack borderTopWidth={2} borderColor={brand.grafite} marginTop="2">
           <AmountRow
             label={withholding ? "Netto pagato" : "Totale"}
             detail={copy.paidHow}
@@ -249,7 +249,7 @@ export default function CourtesyCopyPage() {
       </YStack>
 
       {copy.notes.length > 0 ? (
-        <YStack gap="$1">
+        <YStack gap="1">
           {copy.notes.map((note) => (
             <Text key={note} fontSize={15} color={brand.grafite70}>
               {note}
@@ -258,12 +258,12 @@ export default function CourtesyCopyPage() {
         </YStack>
       ) : null}
 
-      <Text fontSize={16} color={brand.grafite} paddingTop="$4">
+      <Text fontSize={16} color={brand.grafite} paddingTop="4">
         Firma ______________________
       </Text>
 
       <div data-print-hide>
-        <YStack gap="$2">
+        <YStack gap="2">
           {missing.length > 0 ? (
             <Text fontSize={16} color={brand.grafite70}>
               Per scaricarlo manca {joinMissing(missing)}.

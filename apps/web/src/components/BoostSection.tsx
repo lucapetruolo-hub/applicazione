@@ -45,9 +45,9 @@ const BOOST_OPTIONS: BoostOption[] = [
  */
 export function BoostSection() {
   return (
-    <YStack gap="$3">
+    <YStack gap="3">
       <YStack>
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+        <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
           Aumenta la tua visibilità
         </Text>
         <Text fontSize={13} color={brand.grafite70}>

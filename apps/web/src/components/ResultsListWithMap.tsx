@@ -591,7 +591,7 @@ export function ResultsListWithMap({
               {mapExpanded ? <Minimize2 size={14} strokeWidth={1.5} /> : <Maximize2 size={14} strokeWidth={1.5} />}
               {mapExpanded ? "Riduci mappa" : "Espandi mappa"}
             </button>
-            <YStack width="100%" height="100%" borderRadius="$4" overflow="hidden" borderWidth={1} borderColor={brand.filetto}>
+            <YStack width="100%" height="100%" borderRadius="4" overflow="hidden" borderWidth={1} borderColor={brand.filetto}>
               {shouldMountMap ? (
                 <ResultsMap
                   professionals={filteredPool}
@@ -606,7 +606,7 @@ export function ResultsListWithMap({
       ) : null}
 
       <div className="results-list-col">
-        <YStack gap="$3">
+        <YStack gap="3">
           {/* Il bottone filtri vive DENTRO la colonna lista (sopra
               l'intestazione), non come figlio diretto del layout a righe:
               su desktop (>=700px) il contenitore e' un flex orizzontale, e
@@ -620,8 +620,8 @@ export function ResultsListWithMap({
               resta solo il riquadro per inviare lo stesso la richiesta
               (docs/CHANGELOG.md §271). */}
           {professionals.length === 0 ? null : (
-          <XStack alignItems="center" justifyContent="space-between" flexWrap="wrap" gap="$2">
-            <XStack alignItems="center" gap="$2" flexWrap="wrap">
+          <XStack alignItems="center" justifyContent="space-between" flexWrap="wrap" gap="2">
+            <XStack alignItems="center" gap="2" flexWrap="wrap">
               <button type="button" className="filters-toggle" onClick={() => setShowFilters((v) => !v)}>
                 <SlidersHorizontal size={16} strokeWidth={1.5} />
                 Filtri{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
@@ -656,7 +656,7 @@ export function ResultsListWithMap({
           )}
           {header}
           {nearestOutsideKm !== null ? (
-            <YStack backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="$4" padding="$3">
+            <YStack backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4" padding="3">
               <Text color={brand.grafite} fontSize={16}>
                 Nessun professionista entro {SEARCH_RADIUS_KM} km da {findComuneByName(city!)?.name ?? city}: ti mostriamo il più
                 vicino, a circa {nearestOutsideKm} km.

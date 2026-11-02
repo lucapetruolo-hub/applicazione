@@ -93,7 +93,7 @@ export function buildPersonalStateActions({
 export function RequestStateIndicators({ myState }: { myState: GuidedRequestMyState }) {
   if (!myState.remindAt && !myState.mutedAt) return null;
   return (
-    <XStack gap="$3" flexWrap="wrap" alignItems="center">
+    <XStack gap="3" flexWrap="wrap" alignItems="center">
       {myState.remindAt ? (
         <XStack alignItems="center" gap={4}>
           <Icon name="clock" size={13} color={brand.cianografiaScuro} />
@@ -151,9 +151,9 @@ export function ArchivedRestoreBar({
   }
 
   return (
-    <YStack paddingHorizontal="$4" paddingBottom="$4" marginTop="$-2" gap="$2">
-      <XStack alignItems="center" justifyContent="space-between" gap="$3" flexWrap="wrap" backgroundColor={brand.gesso} borderRadius="$3" padding="$3">
-        <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
+    <YStack paddingHorizontal="4" paddingBottom="4" marginTop="-2" gap="2">
+      <XStack alignItems="center" justifyContent="space-between" gap="3" flexWrap="wrap" backgroundColor={brand.gesso} borderRadius="3" padding="3">
+        <XStack alignItems="center" gap="2" flexShrink={1} minWidth={0}>
           <Icon name="archive" size={16} color={brand.grafite70} />
           <Text fontSize={16} color={brand.grafite70}>
             Archiviata il {new Date(myState.archivedAt).toLocaleDateString("it-IT", { day: "numeric", month: "long" })}
@@ -207,14 +207,14 @@ export function RestoreAllArchivedBar({
   }
 
   return (
-    <YStack gap="$2">
-      <XStack alignItems="center" justifyContent="flex-end" gap="$2" flexWrap="wrap">
+    <YStack gap="2">
+      <XStack alignItems="center" justifyContent="flex-end" gap="2" flexWrap="wrap">
         {confirming ? (
-          <YStack alignItems="flex-end" gap="$2">
+          <YStack alignItems="flex-end" gap="2">
             <Text fontSize={16} color={brand.grafite} textAlign="right">
               Ripristinare tutte le {guidedRequestIds.length} richieste archiviate?
             </Text>
-            <XStack gap="$2">
+            <XStack gap="2">
               <CardButton tone="primary" onPress={handleRestoreAll} disabled={isBusy}>
                 {isBusy ? "Ripristino..." : "Sì, ripristina"}
               </CardButton>
@@ -264,7 +264,7 @@ export function RestoredNotice() {
   }, []);
   if (count === null) return null;
   return (
-    <XStack role="status" alignItems="center" gap="$2" backgroundColor={brand.cianografiaVelo} borderRadius="$3" padding="$3">
+    <XStack role="status" alignItems="center" gap="2" backgroundColor={brand.cianografiaVelo} borderRadius="3" padding="3">
       <Icon name="check" size={16} color={brand.cianografiaScuro} strokeWidth={2.5} />
       <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro}>
         {count === 1 ? `Richiesta ripristinata: la trovi di nuovo in "Tutte".` : `${count} richieste ripristinate: le trovi di nuovo in "Tutte".`}

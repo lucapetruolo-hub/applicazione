@@ -29,7 +29,7 @@ export function LegalConsentCheckbox({
   id?: string;
 }) {
   return (
-    <YStack key={attempt} gap="$2">
+    <YStack key={attempt} gap="2">
       <ConsentCheckbox id={id} checked={checked} invalid={attempt > 0} onToggle={onToggle}>
         Accetto i{" "}
         <Link href="/termini" target="_blank" style={linkStyle} onClick={(e) => e.stopPropagation()}>

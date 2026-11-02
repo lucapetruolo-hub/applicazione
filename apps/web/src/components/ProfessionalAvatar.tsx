@@ -41,12 +41,11 @@ export function ProfessionalAvatar({ imageUrl, categorySlug, size = 44, mobileSi
   const radius = shape === "portrait" ? 20 : size;
   return (
     <YStack
-      width={size}
-      height={height}
-      borderRadius={radius}
+      width={mobileSize ? `${size}px xs:${mobileSize}px` : size}
+      height={mobileSize ? `${height}px xs:${avatarHeight(mobileSize, shape)}px` : height}
+      borderRadius={mobileSize ? `${radius}px xs:${shape === "portrait" ? 20 : mobileSize}px` : radius}
       overflow="hidden"
       flexShrink={0}
-      $xs={mobileSize ? { width: mobileSize, height: avatarHeight(mobileSize, shape), borderRadius: shape === "portrait" ? 20 : mobileSize } : undefined}
     >
       {/* `next/image` (dimensione nota in anticipo, `size`): lazy-loading e
           formati moderni automatici, a differenza del vecchio <img> grezzo. */}

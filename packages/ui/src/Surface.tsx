@@ -10,11 +10,11 @@ import { brand, radiusDoc } from "./tokens";
  * `Card` di Tamagui, già re-esportato da questo package.
  */
 export const Surface = styled(YStack, {
-  name: "Surface",
+  displayName: "Surface",
   backgroundColor: brand.calce,
   borderWidth: 0,
   borderRadius: radiusDoc,
-  padding: "$4",
+  padding: "4",
   // Nessuna ombra di default (richiesta esplicita dell'utente, quattro giri
   // di "ancora meno ombra"): il contrasto bianco-su-pesca basta a
   // distinguere una card in flusso normale, un'ombra qui era ridondante.
@@ -22,7 +22,6 @@ export const Surface = styled(YStack, {
   shadowRadius: 0,
   shadowOffset: { width: 0, height: 0 },
   shadowOpacity: 1,
-
   variants: {
     /** Superficie flottante (dropdown, modali): unico caso che tiene un
      * accenno di ombra, appena percettibile — separarsi dal contenuto
@@ -36,5 +35,5 @@ export const Surface = styled(YStack, {
         shadowOpacity: 1,
       },
     },
-  } as const,
+  } as const
 });

@@ -40,23 +40,22 @@ export function PayoutSummary() {
   if (!totals || TILES.every((tile) => totals[tile.key] <= 0)) return null;
 
   return (
-    <YStack gap="$2">
-      <XStack flexWrap="wrap" gap="$2">
+    <YStack gap="2">
+      <XStack flexWrap="wrap" gap="2">
         {TILES.map((tile) => (
           <YStack
             key={tile.key}
             flexGrow={1}
-            flexBasis="40%"
-            $gtSm={{ flexBasis: "20%" }}
+            flexBasis="40% gtSm:20%"
             minWidth={140}
             gap={6}
-            padding="$3"
-            borderRadius="$3"
+            padding="3"
+            borderRadius="3"
             borderWidth={1}
             borderColor={brand.filetto}
             backgroundColor={brand.calce}
           >
-            <XStack gap="$2" alignItems="center">
+            <XStack gap="2" alignItems="center">
               <YStack width={24} height={24} borderRadius={20} backgroundColor={tile.bg} alignItems="center" justifyContent="center">
                 <Icon name={tile.icon} size={13} strokeWidth={2.4} color={tile.color} />
               </YStack>
@@ -64,7 +63,7 @@ export function PayoutSummary() {
                 {tile.label}
               </Text>
             </XStack>
-            <Text fontSize="$5" fontWeight="700" color={totals[tile.key] > 0 ? brand.grafite : brand.grafite70} style={{ fontVariantNumeric: "tabular-nums" }}>
+            <Text fontSize="5" fontWeight="700" color={totals[tile.key] > 0 ? brand.grafite : brand.grafite70} style={{ fontVariantNumeric: "tabular-nums" }}>
               {eur(totals[tile.key])}
             </Text>
           </YStack>

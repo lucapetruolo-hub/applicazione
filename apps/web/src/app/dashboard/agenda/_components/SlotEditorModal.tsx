@@ -72,15 +72,15 @@ export function SlotChip({
       cursor="pointer"
       backgroundColor={isConflicting ? brand.urgenzaVelo : highlighted ? brand.cianografiaVelo : "#edf8f2"}
       onPress={onEdit}
-      accessibilityRole="button"
-      accessibilityLabel={isSelected !== undefined ? `${isSelected ? "Deseleziona" : "Seleziona"} fascia ${slot.start}–${slot.end}` : `Modifica fascia ${slot.start}–${slot.end}`}
+      role="button"
+      aria-label={isSelected !== undefined ? `${isSelected ? "Deseleziona" : "Seleziona"} fascia ${slot.start}–${slot.end}` : `Modifica fascia ${slot.start}–${slot.end}`}
     >
       {isSelected !== undefined ? (
         <SelectionCheckbox checked={isSelected} />
       ) : slot.hasUpcomingBooking ? (
         <Icon name="bell-ring" size={10} color={brand.urgenza} />
       ) : null}
-      <Text fontFamily="$body" fontSize={11.5} fontWeight="600" color={isConflicting ? brand.urgenza : brand.cianografiaScuro} numberOfLines={1}>
+      <Text fontFamily="body" fontSize={11.5} fontWeight="600" color={isConflicting ? brand.urgenza : brand.cianografiaScuro} numberOfLines={1}>
         {slot.start}–{slot.end}
       </Text>
       {/* Simbolo "online" in piccolo sulla fascia (richiesta esplicita
@@ -224,61 +224,61 @@ export function SlotEditorModal({
         width="100%"
         maxWidth={400}
         backgroundColor={brand.calce}
-        borderRadius="$3"
+        borderRadius="3"
         borderWidth={1}
         borderColor={brand.filetto}
-        padding="$5"
-        gap="$4"
+        padding="5"
+        gap="4"
       >
         <XStack justifyContent="space-between" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+          <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
             {dayLabel}
           </Text>
-          <Text fontSize="$5" color={brand.grafite70} cursor="pointer" onPress={onCancel} accessibilityRole="button" accessibilityLabel="Chiudi">
+          <Text fontSize="5" color={brand.grafite70} cursor="pointer" onPress={onCancel} role="button" aria-label="Chiudi">
             ✕
           </Text>
         </XStack>
 
-        <YStack gap="$2">
-          <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+        <YStack gap="2">
+          <Text fontFamily="body" fontWeight="700" fontSize={11} color={brand.grafite70}>
             Orario
           </Text>
-          <XStack gap="$2" alignItems="center" flexWrap="wrap">
+          <XStack gap="2" alignItems="center" flexWrap="wrap">
             <ItalianTimeInput ariaLabel="Ora di inizio" value={start} onChange={onStartChange} style={modalTimeInputStyle} />
-            <Text fontSize="$3" color={brand.grafite70}>
+            <Text fontSize="3" color={brand.grafite70}>
               –
             </Text>
             <ItalianTimeInput ariaLabel="Ora di fine" value={end} onChange={onEndChange} style={modalTimeInputStyle} />
           </XStack>
         </YStack>
 
-        <YStack gap="$3">
-          <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+        <YStack gap="3">
+          <Text fontFamily="body" fontWeight="700" fontSize={11} color={brand.grafite70}>
             Modalità (almeno una obbligatoria)
           </Text>
           {/* Due caselle indipendenti, richiesta esplicita dell'utente: "a
               domicilio"/"online", ognuna con la propria capienza massima —
               un professionista può offrire, ad esempio, 2 interventi a
               domicilio E 5 consulenze online sulla stessa fascia oraria. */}
-          <YStack gap="$2">
+          <YStack gap="2">
             <XStack
               alignItems="center"
-              gap="$3"
-              padding="$3"
+              gap="3"
+              padding="3"
               backgroundColor={brand.gesso}
               borderWidth={1}
               borderColor={brand.filetto}
-              borderRadius="$3"
+              borderRadius="3"
               cursor="pointer"
               onPress={() => onAllowsHomeChange(!allowsHome)}
               onKeyDown={keyActivate(() => onAllowsHomeChange(!allowsHome))}
-              accessibilityRole="checkbox"
+              role="checkbox"
               aria-checked={allowsHome}
             >
               <YStack
                 width={22}
                 height={22}
-                borderRadius="$2"
+                borderRadius="2"
                 borderWidth={2}
                 borderColor={allowsHome ? brand.cianografia : brand.filetto}
                 backgroundColor={allowsHome ? brand.cianografia : brand.calce}
@@ -287,7 +287,7 @@ export function SlotEditorModal({
               >
                 {allowsHome ? <Icon name="check" size={14} strokeWidth={2} color="white" /> : null}
               </YStack>
-              <Text flex={1} fontSize="$3" color={brand.grafite}>
+              <Text flex={1} fontSize="3" color={brand.grafite}>
                 A domicilio
               </Text>
               {allowsHome ? (
@@ -306,22 +306,22 @@ export function SlotEditorModal({
             {offersOnline || allowsOnline ? (
               <XStack
                 alignItems="center"
-                gap="$3"
-                padding="$3"
+                gap="3"
+                padding="3"
                 backgroundColor={brand.gesso}
                 borderWidth={1}
                 borderColor={brand.filetto}
-                borderRadius="$3"
+                borderRadius="3"
                 cursor="pointer"
                 onPress={() => onAllowsOnlineChange(!allowsOnline)}
                 onKeyDown={keyActivate(() => onAllowsOnlineChange(!allowsOnline))}
-                accessibilityRole="checkbox"
+                role="checkbox"
                 aria-checked={allowsOnline}
               >
                 <YStack
                   width={22}
                   height={22}
-                  borderRadius="$2"
+                  borderRadius="2"
                   borderWidth={2}
                   borderColor={allowsOnline ? brand.cianografia : brand.filetto}
                   backgroundColor={allowsOnline ? brand.cianografia : brand.calce}
@@ -330,7 +330,7 @@ export function SlotEditorModal({
                 >
                   {allowsOnline ? <Icon name="check" size={14} strokeWidth={2} color="white" /> : null}
                 </YStack>
-                <Text flex={1} fontSize="$3" color={brand.grafite}>
+                <Text flex={1} fontSize="3" color={brand.grafite}>
                   Online
                 </Text>
                 {allowsOnline ? (
@@ -347,25 +347,25 @@ export function SlotEditorModal({
               </XStack>
             ) : onEnableOnline ? (
               <XStack
-                alignItems="center"
-                gap="$3"
-                padding="$3"
-                borderWidth={1}
-                borderStyle="dashed"
-                borderColor={brand.filetto}
-                borderRadius="$3"
-                cursor={enablingOnline ? "progress" : "pointer"}
-                onPress={() => void enableOnline()}
-                onKeyDown={keyActivate(() => void enableOnline())}
-                accessibilityRole="button"
-                aria-label={onlineError ? undefined : "Online: attivalo per lavorare anche in videochiamata"}
-                aria-disabled={enablingOnline}
-              >
+                  alignItems="center"
+                  gap="3"
+                  padding="3"
+                  borderWidth={1}
+                  borderStyle="dashed"
+                  borderColor={brand.filetto}
+                  borderRadius="3"
+                  cursor={enablingOnline ? "progress" : "pointer"}
+                  onPress={() => void enableOnline()}
+                  onKeyDown={keyActivate(() => void enableOnline())}
+                  role="button"
+                  aria-label={onlineError ? undefined : "Online: attivalo per lavorare anche in videochiamata"}
+                  aria-disabled={enablingOnline}
+                >
                 <Icon name="plus" size={18} strokeWidth={2} color={brand.grafite70} />
-                <Text flex={1} fontSize="$3" color={brand.grafite70}>
+                <Text flex={1} fontSize="3" color={brand.grafite70}>
                   {onlineError ? "Online non attivato, riprova" : "Online"}
                 </Text>
-                <Text fontSize="$3" fontWeight="600" color={brand.cianografiaScuro}>
+                <Text fontSize="3" fontWeight="600" color={brand.cianografiaScuro}>
                   {enablingOnline ? "Attivo…" : "Attiva"}
                 </Text>
               </XStack>
@@ -376,22 +376,22 @@ export function SlotEditorModal({
         {canRepeatForMonth ? (
           <XStack
             alignItems="center"
-            gap="$3"
-            padding="$3"
+            gap="3"
+            padding="3"
             backgroundColor={brand.gesso}
             borderWidth={1}
             borderColor={brand.filetto}
-            borderRadius="$3"
+            borderRadius="3"
             cursor="pointer"
             onPress={() => onRepeatForMonthChange(!repeatForMonth)}
             onKeyDown={keyActivate(() => onRepeatForMonthChange(!repeatForMonth))}
-            accessibilityRole="checkbox"
+            role="checkbox"
             aria-checked={repeatForMonth}
           >
             <YStack
               width={22}
               height={22}
-              borderRadius="$2"
+              borderRadius="2"
               borderWidth={2}
               borderColor={repeatForMonth ? brand.cianografia : brand.filetto}
               backgroundColor={repeatForMonth ? brand.cianografia : brand.calce}
@@ -406,7 +406,7 @@ export function SlotEditorModal({
                 fasce gemelle del mese — senza spunta, la modifica resta
                 sempre limitata a questo solo giorno (richiesta esplicita
                 dell'utente). */}
-            <Text flex={1} fontSize="$3" color={brand.grafite}>
+            <Text flex={1} fontSize="3" color={brand.grafite}>
               {isNew
                 ? `Ripeti per tutti i ${repeatWeekdayLabel.toLowerCase()} di ${repeatMonthLabel.toLowerCase()}`
                 : `Applica anche a tutti i ${repeatWeekdayLabel.toLowerCase()} di ${repeatMonthLabel.toLowerCase()}`}
@@ -414,7 +414,7 @@ export function SlotEditorModal({
           </XStack>
         ) : null}
         {!isNew ? (
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize="2" color={brand.grafite70}>
             {canRepeatForMonth
               ? "Senza spunta, la modifica riguarda solo questo giorno."
               : "Questa fascia è ricorrente: la modifica si applica a ogni occorrenza futura."}
@@ -422,15 +422,15 @@ export function SlotEditorModal({
         ) : null}
 
         {liveError ? (
-          <XStack borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo} borderRadius="$2" paddingHorizontal="$3" paddingVertical="$2" gap="$2" alignItems="center">
+          <XStack borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo} borderRadius="2" paddingHorizontal="3" paddingVertical="2" gap="2" alignItems="center">
             <Icon name="bell-ring" size={14} color={brand.urgenza} />
-            <Text color={brand.urgenza} fontSize="$3" fontWeight="600" flex={1}>
+            <Text color={brand.urgenza} fontSize="3" fontWeight="600" flex={1}>
               {liveError}
             </Text>
           </XStack>
         ) : null}
 
-        <XStack gap="$3">
+        <XStack gap="3">
           <Button variant="primary" disabled={!!liveError} opacity={liveError ? 0.5 : 1} onPress={liveError ? undefined : onSave}>
             Salva
           </Button>
@@ -440,31 +440,31 @@ export function SlotEditorModal({
         </XStack>
 
         {onDelete ? (
-          <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
+          <YStack gap="2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="3">
             {confirmingDelete ? (
-              <YStack gap="$2">
+              <YStack gap="2">
                 {hasUpcomingBooking ? (
                   <XStack
                     borderWidth={1}
                     borderColor={brand.urgenza}
                     backgroundColor={brand.urgenzaVelo}
-                    borderRadius="$2"
-                    paddingHorizontal="$3"
-                    paddingVertical="$2"
-                    gap="$2"
+                    borderRadius="2"
+                    paddingHorizontal="3"
+                    paddingVertical="2"
+                    gap="2"
                     alignItems="center"
                   >
                     <Icon name="bell-ring" size={14} color={brand.urgenza} />
-                    <Text color={brand.urgenza} fontSize="$3" fontWeight="600" flex={1}>
+                    <Text color={brand.urgenza} fontSize="3" fontWeight="600" flex={1}>
                       Questa fascia ha una prenotazione futura. Eliminarla comunque?
                     </Text>
                   </XStack>
                 ) : (
-                  <Text color={brand.grafite70} fontSize="$3">
+                  <Text color={brand.grafite70} fontSize="3">
                     Eliminare questa fascia?
                   </Text>
                 )}
-                <XStack gap="$3">
+                <XStack gap="3">
                   <Button variant="urgent" onPress={onDelete}>
                     Conferma eliminazione
                   </Button>
@@ -475,14 +475,14 @@ export function SlotEditorModal({
               </YStack>
             ) : (
               <Text
-                fontSize="$3"
-                fontWeight="700"
-                color={brand.urgenza}
-                cursor="pointer"
-                onPress={() => setConfirmingDelete(true)}
-                accessibilityRole="button"
-                accessibilityLabel="Elimina fascia"
-              >
+                  fontSize="3"
+                  fontWeight="700"
+                  color={brand.urgenza}
+                  cursor="pointer"
+                  onPress={() => setConfirmingDelete(true)}
+                  role="button"
+                  aria-label="Elimina fascia"
+                >
                 Elimina fascia
               </Text>
             )}
@@ -507,7 +507,7 @@ export function ExceptionTag({ compact = false, className }: { compact?: boolean
   }
   return (
     <XStack className={className} alignSelf="flex-start" borderRadius={999} paddingHorizontal={8} paddingVertical={2} backgroundColor="#ECECE8">
-      <Text fontFamily="$body" fontSize={11} fontWeight="600" color={brand.grafite70}>
+      <Text fontFamily="body" fontSize={11} fontWeight="600" color={brand.grafite70}>
         eccezione
       </Text>
     </XStack>
@@ -519,7 +519,7 @@ export function ExceptionLegend({ className }: { className?: string }) {
   return (
     <XStack className={className} alignItems="center" gap={6} marginTop={10}>
       <YStack width={6} height={6} borderRadius={3} borderWidth={1.5} borderColor={brand.grafite70} />
-      <Text fontFamily="$body" fontSize={12} color={brand.grafite70}>
+      <Text fontFamily="body" fontSize={12} color={brand.grafite70}>
         eccezione
       </Text>
     </XStack>

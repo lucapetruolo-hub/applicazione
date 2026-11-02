@@ -29,8 +29,8 @@ export function AdminTwoFactorGate({
   onReset: (token: string) => Promise<void>;
 }) {
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={460} gap="$5">
+    <YStack width="100%" alignItems="center" paddingVertical="8" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={460} gap="5">
         {enabled ? <VerifyStep token={token} email={email} onVerified={onVerified} onReset={onReset} /> : <SetupStep token={token} onVerified={onVerified} />}
       </YStack>
     </YStack>
@@ -39,11 +39,11 @@ export function AdminTwoFactorGate({
 
 function Heading({ title, text }: { title: string; text: string }) {
   return (
-    <YStack gap="$2" alignItems="center">
+    <YStack gap="2" alignItems="center">
       <XStack width={56} height={56} borderRadius={999} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center">
         <Icon name="shield-check" size={28} color={brand.cianografiaScuro} strokeWidth={2} />
       </XStack>
-      <H1 size="$8" textAlign="center">
+      <H1 size="8" textAlign="center">
         {title}
       </H1>
       <Paragraph color={brand.grafite70} textAlign="center" fontSize={16}>
@@ -81,20 +81,20 @@ function SetupStep({ token, onVerified }: { token: string; onVerified: (token: s
     <>
       <Heading title="Proteggi l'area admin" text="Oltre alla password servirà un codice dall'app sul tuo telefono. Lo chiediamo ogni 8 ore." />
 
-      <YStack gap="$3">
+      <YStack gap="3">
         <StepTitle number={1} text="Apri un'app di autenticazione e inquadra il codice QR" />
         <Text fontSize={14} color={brand.grafite70}>
           Va bene Google Authenticator, Microsoft Authenticator o Password dell&apos;iPhone.
         </Text>
         {loadError ? (
-          <YStack gap="$2" alignItems="flex-start">
+          <YStack gap="2" alignItems="flex-start">
             <Text color={brand.urgenza}>{loadError}</Text>
             <Button variant="secondary" onPress={() => setAttempt((n) => n + 1)}>
               Riprova
             </Button>
           </YStack>
         ) : setup ? (
-          <YStack gap="$3" alignItems="center">
+          <YStack gap="3" alignItems="center">
             <div className="admin-2fa-qr">
               {/* eslint-disable-next-line @next/next/no-img-element -- immagine SVG generata dall'API, non un file da ottimizzare */}
               <img src={setup.qrCode} alt="Codice QR da inquadrare con l'app di autenticazione" width={196} height={196} />
@@ -103,7 +103,7 @@ function SetupStep({ token, onVerified }: { token: string; onVerified: (token: s
               Sei sul telefono? Apri nell&apos;app
             </a>
             {showKey ? (
-              <YStack gap="$2" alignItems="center">
+              <YStack gap="2" alignItems="center">
                 <Text fontSize={14} color={brand.grafite70}>
                   Nell&apos;app scegli &quot;Inserisci una chiave&quot; e scrivi:
                 </Text>
@@ -132,7 +132,7 @@ function SetupStep({ token, onVerified }: { token: string; onVerified: (token: s
         )}
       </YStack>
 
-      <YStack gap="$3">
+      <YStack gap="3">
         <StepTitle number={2} text="Scrivi il codice che vedi nell'app" />
         <CodeBoxes
           disabled={!setup}
@@ -147,7 +147,7 @@ function SetupStep({ token, onVerified }: { token: string; onVerified: (token: s
 
 function StepTitle({ number, text }: { number: number; text: string }) {
   return (
-    <XStack gap="$3" alignItems="center">
+    <XStack gap="3" alignItems="center">
       <XStack width={28} height={28} borderRadius={999} backgroundColor={brand.cianografiaPieno} alignItems="center" justifyContent="center" flexShrink={0}>
         <Text color="white" fontWeight="700" fontSize={14}>
           {number}
@@ -183,7 +183,7 @@ function VerifyStep({
           await onVerified((await apiClient.adminTwoFactorVerify(token, code)).token);
         }}
       />
-      <YStack gap="$2" alignItems="center">
+      <YStack gap="2" alignItems="center">
         <Text fontSize={14} color={brand.grafite70} textAlign="center">
           Il codice vale 8 ore su questo dispositivo.
         </Text>
@@ -240,7 +240,7 @@ function LostPhoneStep({ token, email, onReset, onBack }: { token: string; email
           {error}
         </Text>
       ) : null}
-      <YStack gap="$2" alignItems="center">
+      <YStack gap="2" alignItems="center">
         {sentTo ? (
           <button type="button" className="link-button" onClick={send} disabled={sending}>
             Non è arrivato? Mandalo di nuovo
@@ -298,7 +298,7 @@ function CodeBoxes({
 
   const boxesClass = `email-code-boxes${state === "error" ? " is-error" : ""}${state === "done" ? " is-done" : ""}`;
   return (
-    <YStack gap="$3">
+    <YStack gap="3">
       <div className="email-code">
         <input
           ref={inputRef}
@@ -333,7 +333,7 @@ function CodeBoxes({
             Controllo il codice...
           </Text>
         ) : state === "done" ? (
-          <XStack gap="$2" alignItems="center" justifyContent="center">
+          <XStack gap="2" alignItems="center" justifyContent="center">
             <Icon name="check" size={18} color={brand.cianografiaScuro} strokeWidth={2.5} />
             <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
               Codice giusto

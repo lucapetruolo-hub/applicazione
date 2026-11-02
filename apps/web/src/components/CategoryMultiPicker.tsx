@@ -39,8 +39,8 @@ export function CategoryMultiPicker({
   }
 
   return (
-    <YStack gap="$3">
-      <XStack alignItems="baseline" justifyContent="space-between" gap="$3">
+    <YStack gap="3">
+      <XStack alignItems="baseline" justifyContent="space-between" gap="3">
         <Text fontSize={13} color={brand.grafite70} flexShrink={1}>
           {isFull ? "Hai scelto il massimo: togline una per cambiarla." : `Fino a ${MAX_PROFESSIONAL_CATEGORIES}. La prima è la principale.`}
         </Text>
@@ -52,7 +52,7 @@ export function CategoryMultiPicker({
       <CategoryTiles value={value} onToggle={toggle} max={MAX_PROFESSIONAL_CATEGORIES} city={city} showPrimary ariaLabel="Che lavori fai?" />
 
       {value.length > 1 ? (
-        <XStack alignItems="center" gap="$2" flexWrap="wrap">
+        <XStack alignItems="center" gap="2" flexWrap="wrap">
           <Text fontSize={13} fontWeight="700" color={brand.grafite}>
             Cambia la principale:
           </Text>
@@ -64,9 +64,9 @@ export function CategoryMultiPicker({
               <XStack
                 key={slug}
                 alignItems="center"
-                gap="$1"
+                gap="1"
                 minHeight={36}
-                paddingHorizontal="$3"
+                paddingHorizontal="3"
                 borderRadius={999}
                 borderWidth={1}
                 borderColor={isPrimary ? brand.ottone : brand.bordoCampo}
@@ -74,7 +74,7 @@ export function CategoryMultiPicker({
                 cursor={isPrimary ? "default" : "pointer"}
                 onPress={isPrimary ? undefined : () => onChange([slug, ...value.filter((item) => item !== slug)])}
                 onKeyDown={keyActivate(isPrimary ? undefined : () => onChange([slug, ...value.filter((item) => item !== slug)]))}
-                accessibilityRole="radio"
+                role="radio"
                 aria-checked={isPrimary}
               >
                 {isPrimary ? <Icon name="star" size={13} color={brand.ottoneScuro} /> : null}

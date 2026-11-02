@@ -56,8 +56,8 @@ export function PaymentOffer({
   const only = options.length === 1 ? options[0] : undefined;
   const onlyCopy = only ? jobPaymentChoiceCopy(only, depositPercent, true) : null;
   return (
-    <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$1">
-      <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+    <YStack backgroundColor={brand.gesso} borderRadius="3" padding="3" gap="1">
+      <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
         {options.length > 1 ? "Pagamento, a tua scelta" : "Pagamento"}
       </Text>
       {options.length === 0 ? (
@@ -138,7 +138,7 @@ export function PaymentChoice({
       </Text>
     ) : null;
   return (
-    <YStack gap="$2" role="radiogroup" aria-label="Come vuoi pagare">
+    <YStack gap="2" role="radiogroup" aria-label="Come vuoi pagare">
       <Text fontWeight="800" color={brand.grafite}>
         Come vuoi pagare?
       </Text>

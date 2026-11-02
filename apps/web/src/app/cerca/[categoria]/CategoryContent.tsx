@@ -63,7 +63,7 @@ export function CategoryContent({
           mostrato: il riquadro in cima ai risultati era stato tolto su
           richiesta (docs/CHANGELOG.md §271). */}
       <h1 className="sr-only">{title}</h1>
-      <YStack width="100%" maxWidth={1200} paddingHorizontal="$4" paddingVertical="$6">
+      <YStack width="100%" maxWidth={1200} paddingHorizontal="4" paddingVertical="6">
         <ResultsListWithMap
           professionals={professionals}
           allProfessionals={allProfessionals}

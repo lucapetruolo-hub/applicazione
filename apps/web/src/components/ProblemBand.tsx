@@ -85,16 +85,16 @@ export function ProblemBand({
   const shortText = description.length > 90 ? `${description.slice(0, 90)}…` : description;
 
   return (
-    <YStack gap="$3" width="100%" marginBottom="$4">
+    <YStack gap="3" width="100%" marginBottom="4">
       {result.safety ? <SafetyNotice safety={result.safety} /> : null}
 
-      <YStack gap="$3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="$4" padding="$4">
+      <YStack gap="3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4" padding="4">
         <Text fontSize={13} color={brand.grafite70}>
           Per «{shortText}»
         </Text>
         {chosen ? (
-          <YStack gap="$2">
-            <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
+          <YStack gap="2">
+            <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
               Ti serve {WHO[chosen]}
             </Text>
             <Text fontSize={16} color={brand.grafite70}>
@@ -113,17 +113,17 @@ export function ProblemBand({
             ) : null}
           </YStack>
         ) : result.outOfService ? (
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
             {OUT_OF_SERVICE_LABELS[result.outOfService]}
           </Text>
         ) : (
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
             Che lavoro ti serve?
           </Text>
         )}
 
         {chosen && others.length > 0 ? (
-          <XStack gap="$2" flexWrap="wrap" alignItems="center">
+          <XStack gap="2" flexWrap="wrap" alignItems="center">
             <Text fontSize={16} color={brand.grafite70}>
               Oppure:
             </Text>
@@ -134,11 +134,11 @@ export function ProblemBand({
         ) : null}
 
         {!chosen && !result.outOfService ? (
-          <YStack gap="$2">
+          <YStack gap="2">
             <Text fontSize={16} color={brand.grafite70}>
               Non siamo sicuri di aver capito. Scegli tu il mestiere:
             </Text>
-            <XStack gap="$2" flexWrap="wrap">
+            <XStack gap="2" flexWrap="wrap">
               {PROFESSIONAL_CATEGORIES.map((category) => (
                 <ChoiceLink
                   key={category.slug}
@@ -154,8 +154,8 @@ export function ProblemBand({
       </YStack>
 
       {result.question && !questionDone ? (
-        <YStack gap="$3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="$4" padding="$4">
-          <YStack gap="$1">
+        <YStack gap="3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4" padding="4">
+          <YStack gap="1">
             <Text fontWeight="700" fontSize={16} color={brand.grafite}>
               Una domanda per mandarti la persona giusta
             </Text>
@@ -163,7 +163,7 @@ export function ProblemBand({
               {result.question.text}
             </Text>
           </YStack>
-          <XStack gap="$2" flexWrap="wrap">
+          <XStack gap="2" flexWrap="wrap">
             {result.question.answers.map((answer) => (
               <ChoiceLink
                 key={answer.label}
@@ -180,7 +180,7 @@ export function ProblemBand({
 
       {/* Dopo la domanda: prima si sceglie la persona giusta, poi si chiede il preventivo. */}
       {chosen && chosenPros.length > 0 ? (
-        <XStack gap="$3" alignItems="center" flexWrap="wrap" justifyContent="space-between">
+        <XStack gap="3" alignItems="center" flexWrap="wrap" justifyContent="space-between">
           <Text fontSize={16} color={brand.grafite} role="status">
             {chosenPros.length === 1
               ? `Hai scelto ${chosenPros[0]!.businessName}: puoi aggiungerne altri, fino a ${maxChosen}.`
@@ -191,8 +191,8 @@ export function ProblemBand({
           </Button>
         </XStack>
       ) : chosen ? (
-        <YStack gap="$2">
-          <XStack gap="$3" alignItems="center" flexWrap="wrap" justifyContent="space-between">
+        <YStack gap="2">
+          <XStack gap="3" alignItems="center" flexWrap="wrap" justifyContent="space-between">
             <Text fontSize={16} color={brand.grafite}>
               {count === 0
                 ? "Per ora nessuno vicino: invia lo stesso la richiesta, ti avvisiamo appena c'è qualcuno."
@@ -229,13 +229,12 @@ function ChoiceLink({ href, label }: { href: string; label: string }) {
   return (
     <Link href={href} style={{ textDecoration: "none" }} scroll={false}>
       <XStack
-        paddingHorizontal="$3"
-        paddingVertical="$2"
+        paddingHorizontal="3"
+        paddingVertical="2"
         borderRadius={999}
         borderWidth={1}
         borderColor={brand.cianografia}
-        backgroundColor={brand.cianografiaVelo}
-        hoverStyle={{ backgroundColor: brand.calce }}
+        backgroundColor={`${brand.cianografiaVelo} hover:${brand.calce}`}
       >
         <Text color={brand.cianografiaScuro} fontWeight="600" fontSize={16}>
           {label}
@@ -249,16 +248,16 @@ function SafetyNotice({ safety }: { safety: NonNullable<ProblemMatchResult["safe
   const text = PROBLEM_SAFETY_TEXTS[safety];
   return (
     <YStack
-      gap="$2"
+      gap="2"
       backgroundColor={brand.urgenzaVelo}
       borderWidth={1}
       borderColor={brand.urgenza}
-      borderRadius="$4"
-      padding="$4"
+      borderRadius="4"
+      padding="4"
       role="note"
       aria-label="Prima di tutto la sicurezza"
     >
-      <XStack gap="$2" alignItems="center">
+      <XStack gap="2" alignItems="center">
         <Icon name="triangle-alert" size={18} color={brand.urgenza} />
         <Text fontWeight="800" fontSize={18} color={brand.grafite}>
           Prima di tutto la sicurezza
@@ -324,7 +323,7 @@ function TakeoverCard({ description, city, outOfService }: { description: string
 
   if (state === "sent" || state === "declined") {
     return (
-      <YStack gap="$2" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="$4" padding="$4">
+      <YStack gap="2" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4" padding="4">
         <Text fontSize={16} color={brand.grafite} role="status">
           {state === "sent"
             ? "Fatto: ce ne occupiamo noi. Ti scriviamo all'email del tuo account appena troviamo chi può farlo."
@@ -340,9 +339,9 @@ function TakeoverCard({ description, city, outOfService }: { description: string
   }
 
   return (
-    <YStack gap="$3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="$4" padding="$4">
-      <YStack gap="$1">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+    <YStack gap="3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4" padding="4">
+      <YStack gap="1">
+        <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
           Ce ne occupiamo noi
         </Text>
         <Text fontSize={16} color={brand.grafite70}>
@@ -354,7 +353,7 @@ function TakeoverCard({ description, city, outOfService }: { description: string
           Non siamo riusciti a inviare la richiesta. Riprova.
         </Text>
       ) : null}
-      <XStack gap="$2" flexWrap="wrap">
+      <XStack gap="2" flexWrap="wrap">
         <Button variant="primary" disabled={state === "sending"} onPress={() => (token ? void send(token) : setState("auth"))}>
           {state === "sending" ? "Invio in corso..." : "Prendete in carico la richiesta"}
         </Button>

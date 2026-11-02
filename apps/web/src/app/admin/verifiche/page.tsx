@@ -170,7 +170,7 @@ export default function AdminVerifichePage() {
   }
 
   return (
-    <YStack gap="$4">
+    <YStack gap="4">
       <AdminPageHeader
         title="Verifica profili"
         description="La verifica è tutta automatica: documento e selfie con Didit, codice fiscale e partita IVA con VIES e Openapi. Se qualcosa non torna il professionista riceve il motivo e la rifà da solo. Qui vedi a che punto è ognuno, puoi ricontrollare i dati fiscali o togliere il badge a chi non lo merita più."
@@ -193,7 +193,7 @@ export default function AdminVerifichePage() {
 
       {selected ? (
         <AdminCard highlight>
-          <YStack gap="$3">
+          <YStack gap="3">
             <Text fontWeight="700" color={brand.grafite}>
               Togli la verifica a {selected.businessName}
             </Text>
@@ -206,11 +206,11 @@ export default function AdminVerifichePage() {
               onChange={(e) => setNote(e.target.value)}
             />
             {actionError ? <Text color={brand.urgenza}>{actionError}</Text> : null}
-            <XStack gap="$2">
-              <Button size="$3" disabled={saving} backgroundColor={brand.urgenza} onPress={() => void confirm()}>
+            <XStack gap="2">
+              <Button size="3" backgroundColor={brand.urgenza} disabled={saving} onPress={() => void confirm()}>
                 {saving ? "…" : "Togli verifica"}
               </Button>
-              <Button variant="secondary" size="$3" onPress={() => setSelected(null)}>
+              <Button variant="secondary" size="3" onPress={() => setSelected(null)}>
                 Annulla
               </Button>
             </XStack>
@@ -291,7 +291,7 @@ export default function AdminVerifichePage() {
                   </td>
                   <td>
                     {row.verified ? (
-                      <Button variant="secondary" size="$2" onPress={() => open(row)}>
+                      <Button variant="secondary" size="2" onPress={() => open(row)}>
                         Togli verifica
                       </Button>
                     ) : null}

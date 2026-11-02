@@ -123,13 +123,13 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
   }
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="$gesso" paddingHorizontal={16} paddingTop={40} paddingBottom={64} $gtSm={{ paddingHorizontal: 40, paddingTop: 56, paddingBottom: 96 }}>
-      <YStack width="100%" maxWidth={1080} gap="$5">
-        <YStack gap="$2">
-          <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" color={brand.grafite} fontSize={34} $gtSm={{ fontSize: 44 }}>
+    <YStack width="100%" alignItems="center" backgroundColor="gesso" paddingHorizontal="16px gtSm:40px" paddingTop="40px gtSm:56px" paddingBottom="64px gtSm:96px">
+      <YStack width="100%" maxWidth={1080} gap="5">
+        <YStack gap="2">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" color={brand.grafite} fontSize="34px gtSm:44px">
             Contatti
           </Text>
-          <Text fontSize={18} color={brand.grafite70} maxWidth={560} lineHeight={26}>
+          <Text fontSize={18} color={brand.grafite70} maxWidth={560} lineHeight="26px">
             Scrivici per qualsiasi domanda: ti rispondiamo il prima possibile, in italiano o in inglese.
           </Text>
           {/* Punto di contatto per utenti e autorità (DSA artt. 11-12, D.Lgs. 70/2003 art. 7 c. 1 lett. c; M-10). */}
@@ -141,9 +141,9 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
           </Text>
         </YStack>
 
-        <XStack flexWrap="wrap" gap="$5" width="100%" alignItems="flex-start">
-          <Surface flexGrow={2} flexShrink={1} flexBasis={340} minWidth={0} padding="$4" $gtSm={{ padding: "$6" }} gap="$4">
-            <Text fontFamily="$heading" fontWeight="700" fontSize={24} color={brand.grafite}>
+        <XStack flexWrap="wrap" gap="5" width="100%" alignItems="flex-start">
+          <Surface flexGrow={2} flexShrink={1} flexBasis={340} minWidth={0} padding="4 gtSm:6" gap="4">
+            <Text fontFamily="heading" fontWeight="700" fontSize={24} color={brand.grafite}>
               {isReport ? "Segnala un contenuto illegale" : "Invia un messaggio"}
             </Text>
 
@@ -154,8 +154,8 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
                   : "Messaggio inviato. Ti risponderemo il prima possibile."}
               </Text>
             ) : (
-              <YStack gap="$4">
-                <YStack gap="$2">
+              <YStack gap="4">
+                <YStack gap="2">
                   <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
                     Chi sei?
                   </Text>
@@ -187,7 +187,7 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
                   style={{ position: "absolute", left: -9999, width: 1, height: 1, opacity: 0 }}
                 />
 
-                <YStack gap="$2">
+                <YStack gap="2">
                   <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
                     La tua email
                   </Text>
@@ -205,7 +205,7 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
 
                 {isReport ? (
                   <>
-                    <YStack gap="$2">
+                    <YStack gap="2">
                       <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
                         Nome e cognome
                       </Text>
@@ -220,7 +220,7 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
                         style={fieldStyle}
                       />
                     </YStack>
-                    <YStack gap="$2">
+                    <YStack gap="2">
                       <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
                         Indirizzo della pagina
                       </Text>
@@ -240,7 +240,7 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
                   </>
                 ) : null}
 
-                <YStack gap="$2">
+                <YStack gap="2">
                   <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
                     {isReport ? "Perché è illegale" : "Messaggio"}
                   </Text>
@@ -295,13 +295,13 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
             )}
           </Surface>
 
-          <Surface flexGrow={1} flexShrink={1} flexBasis={300} minWidth={0} padding="$4" $gtSm={{ padding: "$6" }} gap="$4">
-            <Text fontFamily="$heading" fontWeight="700" fontSize={24} color={brand.grafite}>
+          <Surface flexGrow={1} flexShrink={1} flexBasis={300} minWidth={0} padding="4 gtSm:6" gap="4">
+            <Text fontFamily="heading" fontWeight="700" fontSize={24} color={brand.grafite}>
               Dati dell&apos;azienda
             </Text>
-            <YStack gap="$4">
+            <YStack gap="4">
               {COMPANY_ROWS.map((row) => (
-                <XStack key={row.label} gap="$3" alignItems="flex-start">
+                <XStack key={row.label} gap="3" alignItems="flex-start">
                   <YStack
                     width={40}
                     height={40}
@@ -313,18 +313,18 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
                   >
                     <Icon name={row.icon} size={19} color={brand.cianografiaScuro} />
                   </YStack>
-                  <YStack gap="$1" flex={1} minWidth={0}>
+                  <YStack gap="1" flex={1} minWidth={0}>
                     <Text fontSize={16} fontWeight="700" color={brand.grafite70}>
                       {row.label}
                     </Text>
-                    <Text fontSize={16} color={brand.grafite} lineHeight={23}>
+                    <Text fontSize={16} color={brand.grafite} lineHeight="23px">
                       {row.value}
                     </Text>
                   </YStack>
                 </XStack>
               ))}
             </YStack>
-            <Text fontSize={16} color={brand.grafite70} lineHeight={21} paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+            <Text fontSize={16} color={brand.grafite70} lineHeight="21px" paddingTop="2" borderTopWidth={1} borderTopColor={brand.filetto}>
               Tutti i dati legali sono anche nelle{" "}
               <Link href="/note-legali" style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>
                 Note legali
