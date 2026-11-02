@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import type { ApiClient } from "@professionisti/api-client";
 import Link from "next/link";
 import {
   CATEGORY_SEO_NOUN,
@@ -20,6 +21,14 @@ import {
  * prezzo. Nessun prezzo inventato: le prestazioni dei profili non dicono a
  * quale categoria appartengono, quindi qui il prezzo rimanda al preventivo.
  */
+/** Recensione recente della pagina città (`GET /reviews/recent?category=&city=`). */
+export type CityReview = Awaited<ReturnType<ApiClient["getRecentReviews"]>>[number];
+
+/** "12 marzo 2026": la data dice che la recensione è recente, senza l'ora. */
+function reviewDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
+}
+
 export function CityFacts({
   categorySlug,
   categoryLabel,
@@ -27,6 +36,7 @@ export function CityFacts({
   professionals,
   pricePageHref = null,
   subTag,
+  reviews = [],
 }: {
   categorySlug: ProfessionalCategorySlug;
   categoryLabel: string;
@@ -36,6 +46,8 @@ export function CityFacts({
   pricePageHref?: string | null;
   /** Pagina per servizio: i dati sono già dei soli professionisti con questa specializzazione. */
   subTag?: string;
+  /** Ultime recensioni del mestiere in questa città (collaudo N-04). */
+  reviews?: CityReview[];
 }) {
   if (professionals.length === 0) return null;
   const noun = CATEGORY_SEO_NOUN[categorySlug];
@@ -67,6 +79,16 @@ export function CityFacts({
     : categorySubTags(categorySlug).filter(
         (tag) => professionals.filter((pro) => pro.subTags.includes(tag)).length >= MIN_PROFESSIONALS_TO_INDEX_CITY,
       );
+
+  const what = subTag ? `${categoryLabel} (${subTagLabel(subTag).toLowerCase()})` : categoryLabel;
+  const servicesOffered = [...new Set(professionals.flatMap((pro) => pro.services.map((service) => service.name)))].slice(0, 3);
+  // I numeri stanno già nelle tessere: il testo li ripete solo quando le
+  // tessere non ci sono (un solo professionista).
+  const intro = [
+    facts.length === 0 ? `${what} a ${city}: un professionista sul sito${verified > 0 ? ", con il badge Verificato" : ""}. ` : "",
+    facts.length === 0 && averageRating ? `Chi l'ha chiamato dà ${averageRating} stelle su 5. ` : "",
+    servicesOffered.length > 0 ? `${facts.length === 0 ? "Lavori" : `${what} a ${city}, lavori`} offerti: ${servicesOffered.join(", ").toLowerCase()}.` : "",
+  ].join("").trim();
 
   const faqs = [
     {
@@ -116,6 +138,31 @@ export function CityFacts({
             </li>
           ))}
         </ul>
+      ) : null}
+      {/* Due righe con i dati veri di questa città, diverse da una città
+          all'altra (collaudo N-04, docs/changelog/2026-10-30-velocita-telefono.md):
+          prima cambiava solo il nome e Google le leggeva come fotocopie. */}
+      {intro ? <p className="city-facts-intro">{intro}</p> : null}
+      {reviews.length > 0 ? (
+        <>
+          <h3 className="city-facts-subtitle">Le ultime recensioni a {city}</h3>
+          <ul className="city-facts-reviews">
+            {reviews.map((review) => (
+              <li key={review.id} className="city-facts-review">
+                <p className="city-facts-review-text">
+                  <span className="city-facts-review-stars" aria-label={`${review.rating} stelle su 5`}>
+                    {"★".repeat(review.rating)}
+                  </span>{" "}
+                  «{review.comment}»
+                </p>
+                <p className="city-facts-review-meta">
+                  {review.clientName}, {reviewDate(review.createdAt)}, per{" "}
+                  <Link href={`/professionista/${review.professional.id}`}>{review.professional.businessName}</Link>
+                </p>
+              </li>
+            ))}
+          </ul>
+        </>
       ) : null}
       {serviceLinks.length > 0 && citySlug ? (
         <>

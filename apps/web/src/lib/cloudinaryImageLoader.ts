@@ -1,3 +1,6 @@
+/** Copie ridotte delle foto dei mestieri (scripts/riduci-foto-mestieri.mjs). */
+const CATEGORY_PHOTO = /^\/category-photos\/([a-z]+)\.webp$/;
+
 /**
  * Loader globale di `next/image` (next.config.mjs → images.loaderFile),
  * docs/CHANGELOG.md §131: le foto su Cloudinary vengono ridimensionate e
@@ -8,11 +11,19 @@
  * Trasformazione inserita subito dopo `/upload/`: `c_limit` non ingrandisce
  * mai oltre l'originale, `f_auto` sceglie il formato più leggero per il
  * browser (es. WebP/AVIF), `q_auto` la compressione. Qualunque altra origine
- * (le piccole foto categoria in /public, già in WebP) resta invariata: il
+ * (file in /public, già in WebP) resta invariata: il
  * `?w=` serve solo a Next.js, che altrimenti avvisa di un loader che
  * ignora la larghezza (i file statici lo ignorano).
  */
 export default function cloudinaryImageLoader({ src, width, quality }: { src: string; width: number; quality?: number }): string {
+  // Foto dei mestieri della home: la copia più vicina alla larghezza chiesta,
+  // non sempre l'originale da 1536 px (collaudo N-08,
+  // docs/changelog/2026-10-30-velocita-telefono.md). `?w=` resta per Next.js.
+  const category = CATEGORY_PHOTO.exec(src);
+  if (category) {
+    const copy = width <= 480 ? 480 : width <= 828 ? 768 : 1024;
+    return `/category-photos/${category[1]}-${copy}.webp?w=${width}`;
+  }
   const marker = "/image/upload/";
   if (!src.startsWith("https://res.cloudinary.com/") || !src.includes(marker)) {
     return `${src}${src.includes("?") ? "&" : "?"}w=${width}`;

@@ -28,9 +28,9 @@ export function SearchHeader({
 
   const searchHints = useSearchBarHints(initialQuery);
 
-  function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
+  async function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
     rememberSearchCity(params.city);
-    const destination = buildSearchDestination({ ...params, service });
+    const destination = await buildSearchDestination({ ...params, service });
     // Richiesta esplicita dell'utente: cambiare "Online/A domicilio" dalla
     // barra di ricerca di una pagina risultati deve aggiornare SUBITO la
     // lista. Next.js 14 tiene in cache client-side (Router Cache) le pagine

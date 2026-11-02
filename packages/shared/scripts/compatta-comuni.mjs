@@ -1,4 +1,4 @@
-// Rigenera src/data/comuniCompatti.ts da comuni.json e codiciCatastali.json
+// Rigenera src/data/comuniCompatti.ts e codiciCatastaliCompatti.ts da comuni.json e codiciCatastali.json
 // (docs/CHANGELOG.md §320): i dati restano gli stessi, ma come un'unica
 // stringa per elenco invece di ~8000 oggetti, perché finiscono nel
 // JavaScript di ogni pagina del sito e su un telefono lento il loro peso si
@@ -22,8 +22,14 @@ const out = `// Generato da scripts/compatta-comuni.mjs: non modificare a mano.
 // Comuni ISTAT: nome|provincia|lat|lon|capoluogo (1/0), uno per riga.
 export const COMUNI_DATA = ${JSON.stringify(comuniLines)};
 export const REGION_BY_PROVINCE: Record<string, string> = ${JSON.stringify(regions)};
-// Codici catastali (anche di comuni soppressi): codice|nome|provincia, uno per riga.
-export const CODICI_CATASTALI_DATA = ${JSON.stringify(codiciLines)};
 `;
 writeFileSync(new URL("comuniCompatti.ts", dir), out);
 console.log(`comuniCompatti.ts: ${(out.length / 1024).toFixed(0)} KB`);
+// In un file a parte: chi controlla un codice fiscale non deve scaricare
+// anche le coordinate di tutti i comuni (collaudo N-01, docs/changelog/2026-10-30-velocita-telefono.md).
+const codiciOut = `// Generato da scripts/compatta-comuni.mjs: non modificare a mano.
+// Codici catastali (anche di comuni soppressi): codice|nome|provincia, uno per riga.
+export const CODICI_CATASTALI_DATA = ${JSON.stringify(codiciLines)};
+`;
+writeFileSync(new URL("codiciCatastaliCompatti.ts", dir), codiciOut);
+console.log(`codiciCatastaliCompatti.ts: ${(codiciOut.length / 1024).toFixed(0)} KB`);

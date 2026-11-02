@@ -91,7 +91,10 @@ export function CategoryStoryRail({ state }: { state: CategoryStoryRailState }) 
                   src={photoUrl}
                   alt=""
                   fill
-                  sizes="(max-width: 700px) 170px, 230px"
+                  // Larghezza della foto, non della scheda: la foto (3:2) riempie una
+                  // scheda verticale, quindi è larga 1,5 volte l'altezza (200 px da
+                  // telefono, 250 fino a 700 px, 340 da computer).
+                  sizes="(max-width: 480px) 300px, (max-width: 700px) 375px, 510px"
                   style={{ objectFit: "cover", objectPosition: CATEGORY_PHOTO_FOCUS[c.slug] ?? "center" }}
                 />
               ) : (
