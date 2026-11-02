@@ -57,6 +57,7 @@ export function CategoryMultiPicker({
         max={MAX_PROFESSIONAL_CATEGORIES}
         city={city}
         showPrimary
+        compact
         ariaLabel="Che lavori fai?"
         orderBy="professionals"
       />

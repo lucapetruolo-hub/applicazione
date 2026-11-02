@@ -38,6 +38,7 @@ export function CategoryTiles({
   showPrimary = false,
   ariaLabel,
   orderBy = "searches",
+  compact = false,
 }: {
   value: ProfessionalCategorySlug[];
   onToggle: (slug: ProfessionalCategorySlug) => void;
@@ -49,7 +50,10 @@ export function CategoryTiles({
   ariaLabel?: string;
   /** Più cercati (di serie) o con più professionisti iscritti (scelta dei lavori del professionista). */
   orderBy?: CategoryOrderBy;
+  /** Sul telefono 3 per riga e più basse (docs/changelog/2026-11-02-registrazione-pro-grafica.md). */
+  compact?: boolean;
 }) {
+  const gridClass = compact ? "cat-tiles is-compact" : "cat-tiles";
   const [initialCity] = useState(city?.trim() || undefined);
   // Ordine già in memoria (seconda apertura): niente attesa.
   const [popularOrder, setPopularOrder] = useState<PopularOrder | undefined>(() => cachedPopularOrder(initialCity, orderBy));
@@ -75,7 +79,7 @@ export function CategoryTiles({
 
   if (!ready) {
     return (
-      <div className="cat-tiles" role="group" aria-label={ariaLabel} aria-busy="true">
+      <div className={gridClass} role="group" aria-label={ariaLabel} aria-busy="true">
         {PROFESSIONAL_CATEGORIES.map((category) => (
           <div key={category.slug} className="cat-tile cat-tile-placeholder" aria-hidden="true">
             <span className="cat-tile-icon skeleton-shimmer" />
@@ -94,7 +98,7 @@ export function CategoryTiles({
   const isFull = value.length >= max;
 
   return (
-    <div className="cat-tiles cat-tiles-ready" role="group" aria-label={ariaLabel}>
+    <div className={`${gridClass} cat-tiles-ready`} role="group" aria-label={ariaLabel}>
       {categories.map((category) => {
         const active = value.includes(category.slug);
         const isPrimary = showPrimary && value[0] === category.slug;
@@ -111,7 +115,7 @@ export function CategoryTiles({
             aria-label={isPrimary ? `${category.label}, principale` : category.label}
           >
             <span className="cat-tile-icon" style={{ background: accent.bg, color: accent.fg }} aria-hidden="true">
-              <CategoryIcon slug={category.slug} size={26} />
+              <CategoryIcon slug={category.slug} size={compact ? 22 : 26} />
             </span>
             <span className="cat-tile-label">{category.label}</span>
             {isPrimary ? <span className="cat-tile-primary">Principale</span> : null}

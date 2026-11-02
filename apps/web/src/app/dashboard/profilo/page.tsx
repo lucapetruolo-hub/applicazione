@@ -29,7 +29,7 @@ import {
   type MyProfessionalProfile,
   type MyProfilePreview,
   type MyVerificationStatus,
-  type ProfessionalCategorySlug, professionalPath, SERVICE_PRICE_UNITS, SERVICE_PRICE_UNIT_LABEL, type ServicePriceUnit } from "@professionisti/shared";
+  type ProfessionalCategorySlug, professionalPath, parseSubscriptionTier, subscriptionTierInfo, type SubscriptionTier, SERVICE_PRICE_UNITS, SERVICE_PRICE_UNIT_LABEL, type ServicePriceUnit } from "@professionisti/shared";
 import { Autocomplete, Button, Chip, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -47,6 +47,7 @@ import { journeyCurrent, setupJourney, useJourneySubscription } from "@/componen
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 import { localPreviewUrl } from "@/lib/media";
 import { keyActivate } from "@/lib/keyActivate";
+import { ChosenPlanChip } from "@/components/ChosenPlanChip";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 /** Prestazioni suggerite visibili prima di "Altre". */
@@ -112,6 +113,17 @@ function FieldLabel({ children }: { children: string }) {
 // Cognitivo" F5.2: una singola pagina lunghissima senza sezioni percepibili
 // — spezzata in blocchi (Surface, chunking alla Miller) ognuno col proprio
 // titolo, invece di un unico scroll continuo di soli FieldLabel).
+/** Indice in cima al modulo del profilo (docs/changelog/2026-11-02-registrazione-pro-grafica.md). */
+const PROFILE_SECTIONS = [
+  { id: "profilo-identita", label: "Identità" },
+  { id: "profilo-mestieri", label: "Mestieri e bio" },
+  { id: "profilo-esperienza", label: "Esperienza" },
+  { id: "profilo-preavviso", label: "Preavviso" },
+  { id: "profilo-prestazioni", label: "Prestazioni" },
+  { id: "profilo-lingue", label: "Lingue" },
+  { id: "profilo-portfolio", label: "Portfolio" },
+] as const;
+
 function SectionTitle({ children }: { children: string }) {
   return (
     <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
@@ -237,6 +249,15 @@ export default function DashboardProfiloPage() {
   const [showAgendaPrompt, setShowAgendaPrompt] = useState(false);
   // Dopo il primo salvataggio, se la carta si può già dare: si sceglie il piano (docs/changelog/2026-10-29-piano-in-registrazione.md).
   const [showPlanPrompt, setShowPlanPrompt] = useState(false);
+  // Livello toccato su /per-professionisti, portato qui dall'iscrizione
+  // (?livello=, docs/changelog/2026-11-02-registrazione-pro-grafica.md):
+  // ricordato in cima e passato alla pagina Abbonamento dopo il primo salvataggio.
+  const [chosenTier, setChosenTier] = useState<SubscriptionTier | null>(null);
+  useEffect(() => {
+    // L'indirizzo si legge solo nel browser (nel render del server non c'è).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setChosenTier(parseSubscriptionTier(new URLSearchParams(window.location.search).get("livello")));
+  }, []);
   // Profilo preparato da un operatore (docs/CHANGELOG.md §170) o dichiarazione
   // cambiata: il profilo entra in ricerca solo quando il professionista salva.
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
@@ -838,14 +859,36 @@ export default function DashboardProfiloPage() {
               Torna all&apos;anteprima
             </button>
           )}
+          {isFirstProfileSave ? (
+            <span className="profile-welcome-eyebrow">
+              <Icon name="check" size={14} strokeWidth={2.6} color={brand.cianografiaScuro} />
+              Account creato
+            </span>
+          ) : null}
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
-            {isFirstProfileSave ? "Profilo pubblico" : "Modifica profilo"}
+            {isFirstProfileSave ? "Ora il tuo profilo pubblico" : "Modifica profilo"}
           </Text>
           <Text color={brand.grafite70}>
-            Queste informazioni sono visibili pubblicamente su {BRAND.name} e determinano in quali ricerche
-            compari.
+            {isFirstProfileSave
+              ? "Servono nome, mestiere e città: il resto puoi aggiungerlo anche dopo."
+              : `Queste informazioni sono visibili pubblicamente su ${BRAND.name} e determinano in quali ricerche compari.`}
           </Text>
+          {isFirstProfileSave && chosenTier ? (
+            <XStack>
+              <ChosenPlanChip tier={chosenTier} />
+            </XStack>
+          ) : null}
         </YStack>
+
+        {/* Indice dei riquadri: la pagina è lunga quasi 9.000 px sul telefono
+            (docs/changelog/2026-11-02-registrazione-pro-grafica.md). */}
+        <nav className="profile-index" aria-label="Parti del profilo">
+          {PROFILE_SECTIONS.map((section) => (
+            <a key={section.id} href={`#${section.id}`} className="profile-index-link">
+              {section.label}
+            </a>
+          ))}
+        </nav>
 
         {needsConfirmation ? (
           <Surface gap="$2" borderColor={brand.cianografia} borderWidth={1}>
@@ -863,7 +906,7 @@ export default function DashboardProfiloPage() {
             (spostati qui subito sotto il nome, richiesta esplicita
             dell'utente) e "Verbale Cognitivo" F5.2: pagina lunghissima
             spezzata in blocchi percepibili invece di un unico scroll. */}
-        <Surface gap="$4">
+        <Surface gap="$4" id="profilo-identita" className="profile-section">
           <SectionTitle>Identità</SectionTitle>
 
           <YStack gap="$2">
@@ -989,7 +1032,7 @@ export default function DashboardProfiloPage() {
             subito sotto la scelta delle categorie (richiesta esplicita
             dell'utente), "(opzionale)" tolto dall'etichetta pur restando
             un campo facoltativo lato validazione. */}
-        <Surface gap="$4">
+        <Surface gap="$4" id="profilo-mestieri" className="profile-section">
           <SectionTitle>Categorie e presentazione</SectionTitle>
 
           <YStack gap="$2">
@@ -1097,7 +1140,7 @@ export default function DashboardProfiloPage() {
             riconoscibile). Nessuna verifica documentale dietro — stesso
             principio già seguito per le qualifiche professionali nel resto
             del prodotto: autodichiarate, mai confuse con `verified`. */}
-        <Surface gap="$4">
+        <Surface gap="$4" id="profilo-esperienza" className="profile-section">
           <XStack alignItems="center" gap="$2">
             <Icon name="shield" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
             <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
@@ -1210,7 +1253,7 @@ export default function DashboardProfiloPage() {
           </YStack>
         </YStack>
 
-        <Surface gap="$3">
+        <Surface gap="$3" id="profilo-preavviso" className="profile-section">
           <SectionTitle>Preavviso per annullare</SectionTitle>
           <Text fontSize={13} color={brand.grafite70}>
             Se il cliente deve annullare, quanto prima deve avvisarti? È già scelto nei tuoi preventivi e puoi cambiarlo ogni volta.
@@ -1224,7 +1267,7 @@ export default function DashboardProfiloPage() {
           </XStack>
         </Surface>
 
-        <Surface gap="$3">
+        <Surface gap="$3" id="profilo-prestazioni" className="profile-section">
           <SectionTitle>Prestazioni offerte</SectionTitle>
           <Text fontSize={13} color={brand.grafite70}>
             Aggiungi i servizi che offri, con un range di prezzo se vuoi indicarlo (es. da 50€ a 100€, utile quando il
@@ -1361,7 +1404,7 @@ export default function DashboardProfiloPage() {
           </Button>
         </Surface>
 
-        <Surface gap="$3">
+        <Surface gap="$3" id="profilo-lingue" className="profile-section">
           <SectionTitle>Lingue parlate</SectionTitle>
           <Text fontSize={13} color={brand.grafite70}>
             Usate dai clienti per filtrare la ricerca (es. &quot;Inglese&quot;, &quot;Francese&quot;).
@@ -1480,7 +1523,7 @@ export default function DashboardProfiloPage() {
           </YStack>
         </Surface>
 
-        <Surface gap="$2">
+        <Surface gap="$2" id="profilo-portfolio" className="profile-section">
           <SectionTitle>Portfolio</SectionTitle>
           <FieldLabel>{`Foto o video dei lavori svolti (fino a ${MAX_PORTFOLIO_PHOTOS}, opzionale)`}</FieldLabel>
           <Text fontSize={13} color={brand.grafite70}>
@@ -1722,8 +1765,8 @@ export default function DashboardProfiloPage() {
                   Con Base hai i mesi gratis: aggiungi la carta, oggi paghi 0 €.
                 </Text>
               </YStack>
-              <Button variant="primary" onPress={() => router.push("/dashboard/abbonamento#livelli")}>
-                Scegli il piano
+              <Button variant="primary" onPress={() => router.push(chosenTier ? `/dashboard/abbonamento?livello=${chosenTier}#livelli` : "/dashboard/abbonamento#livelli")}>
+                {chosenTier ? `Attiva ${subscriptionTierInfo(chosenTier).label}` : "Scegli il piano"}
               </Button>
             </YStack>
           </div>

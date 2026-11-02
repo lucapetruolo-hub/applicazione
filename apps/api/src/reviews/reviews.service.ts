@@ -60,7 +60,7 @@ export class ReviewsService {
    * (decisioni dell'utente, docs/CHANGELOG.md §232): le altre restano sul
    * profilo, non in home.
    */
-  async getRecentPublic(limit = 6) {
+  async getRecentPublic(limit = 6, place?: { category: string; city: string }) {
     const reviews = await this.prisma.review.findMany({
       where: {
         hiddenAt: null,
@@ -68,7 +68,23 @@ export class ReviewsService {
         comment: { not: null },
         NOT: { comment: "" },
         booking: {
-          professionalProfile: { isDemo: false, deletedAt: null, suspendedAt: null, pausedAt: null, invitePendingAt: null, ...publicVisibilityWhere() },
+          professionalProfile: {
+            isDemo: false,
+            deletedAt: null,
+            suspendedAt: null,
+            pausedAt: null,
+            invitePendingAt: null,
+            // In un AND: publicVisibilityWhere può portare un suo OR.
+            AND: [
+              publicVisibilityWhere(),
+              place
+                ? {
+                    city: { equals: place.city, mode: "insensitive" },
+                    OR: [{ category: { slug: place.category } }, { extraCategories: { some: { slug: place.category } } }],
+                  }
+                : {},
+            ],
+          },
         },
       },
       include: {

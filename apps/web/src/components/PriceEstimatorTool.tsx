@@ -1,7 +1,8 @@
 "use client";
 "use no memo";
 
-import { useEffect, useState, type FocusEvent, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type FocusEvent, type ReactNode } from "react";
+import Link from "next/link";
 import { SERVICE_PRICE_UNIT_LABEL, formatServicePriceRange, serviceNameMatches, type ServicePriceIndexEntry } from "@professionisti/shared";
 import { Search } from "lucide-react";
 import { Section, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
@@ -10,6 +11,9 @@ import { readLastSearchCity } from "@/lib/lastSearchCity";
 import { countPriceToolEntry } from "@/lib/siteCounts";
 
 type PriceEntry = ServicePriceIndexEntry;
+
+/** La città dell'ultima ricerca non cambia mentre si guarda la home. */
+const subscribeNothing = () => () => undefined;
 
 /** Indirizzo dell'elenco di chi offre la voce, nella città dell'ultima ricerca se c'è (§398). */
 function entryHref(name: string, city: string | null): string {
@@ -37,8 +41,12 @@ const IDLE_VISIBLE_COUNT = 10;
  * In homepage sotto i prezzi ci sono anche le domande frequenti (`children`),
  * prima sezione a parte (docs/CHANGELOG.md §219).
  */
-export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
-  const [entries, setEntries] = useState<PriceEntry[] | null>(null);
+export function PriceEstimatorTool({ children, initialEntries }: { children?: ReactNode; initialEntries?: PriceEntry[] | null }) {
+  // Prezzi già arrivati dal server con la pagina: si leggono subito, anche
+  // senza JavaScript e da Google (collaudo N-06,
+  // docs/changelog/2026-10-30-velocita-telefono.md). Se il server non li ha
+  // avuti, li chiede il browser come prima.
+  const [entries, setEntries] = useState<PriceEntry[] | null>(initialEntries ?? null);
   const [query, setQuery] = useState("");
   // Campo attivo (a fuoco) o con del testo scritto: solo in quel caso si
   // apre l'elenco completo scorribile — richiesta esplicita dell'utente
@@ -54,17 +62,16 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
   const showFullList = isFocused || query.trim().length > 0;
   // Città dell'ultima ricerca su questo browser: il clic apre già la zona
   // giusta, senza obbligarla (si cambia dalla pagina dei risultati).
-  const [lastCity, setLastCity] = useState<string | null>(null);
+  // Letta dopo l'idratazione (sul server non c'è): stesso HTML del server.
+  const lastCity = useSyncExternalStore(subscribeNothing, readLastSearchCity, () => null);
 
   useEffect(() => {
+    if (initialEntries) return;
     apiClient
       .getServicePriceIndex()
-      .then((loaded) => {
-        setLastCity(readLastSearchCity());
-        setEntries(loaded);
-      })
+      .then(setEntries)
       .catch(() => setEntries([]));
-  }, []);
+  }, [initialEntries]);
 
   // Nessun dato reale ancora (piattaforma agli inizi, §7): il tool non ha
   // senso da mostrare finché nessun professionista ha inserito un prezzo,
@@ -90,7 +97,11 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
     <Section title="Quanto costa in media?" maxWidth={780}>
       <YStack width="100%" gap="$3">
         <Text fontSize={16} color={brand.grafite70}>
-          Prezzi veri dei professionisti del sito. Tocca un lavoro per vedere chi lo fa.
+          {/* Nessuna cifra finché nessun lavoro ha 3 prezzi (§398): allora la
+              riga non promette "prezzi veri" (collaudo N-06). */}
+          {entries && entries.length > 0 && !entries.some((entry) => entry.price)
+            ? "I lavori offerti dai professionisti del sito: il prezzo medio compare quando almeno 3 lo indicano. Tocca un lavoro per vedere chi lo fa."
+            : "Prezzi veri dei professionisti del sito. Tocca un lavoro per vedere chi lo fa."}
         </Text>
         {/* Campo e voci in un unico riquadro bianco (Luca: "quella finestra
             non mi convince", §398): si legge come una finestra sola, il campo
@@ -229,6 +240,11 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
             </YStack>
           )}
         </div>
+        {/* Le pagine dei prezzi per mestiere (collaudo N-05,
+            docs/changelog/2026-10-30-velocita-telefono.md). */}
+        <span className="price-index">
+          <Link href="/prezzi">Prezzi per mestiere</Link>
+        </span>
       </YStack>
       {children}
       <style jsx>{`
@@ -289,6 +305,17 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
           text-decoration: underline;
           text-underline-offset: 3px;
         }
+        .price-index :global(a) {
+          display: inline-flex;
+          align-items: center;
+          min-height: 44px;
+          font-size: 16px;
+          font-weight: 700;
+          color: ${brand.cianografiaScuro};
+          text-decoration: underline;
+          text-underline-offset: 3px;
+        }
+        .price-index :global(a:focus-visible),
         .price-empty-link:focus-visible {
           outline: 2px solid ${brand.cianografiaScuro};
           outline-offset: 2px;
