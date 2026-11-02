@@ -8,7 +8,6 @@ import {
   clientInvoiceLines,
   courtesyAmountChanged,
   courtesyDocumentLabel,
-  courtesyReceiptNumber,
   courtesyTotalEurCents,
   type AdminCourtesyDocumentRow,
   type CourtesyCopyView,
@@ -32,8 +31,10 @@ import { COURTESY_BOOKING_FIELDS, COURTESY_DOCUMENT_FIELDS, courtesyCustomerName
  * Ricevuta per prestazione occasionale che il professionista senza partita
  * IVA dà al cliente (decisione dell'utente del 27/10/2026, docs/CHANGELOG.md
  * §378): solo una pagina da stampare e firmare, noi non mandiamo nulla
- * all'Agenzia delle Entrate. Il numero lo diamo noi (§379); l'elenco lo vede
- * l'admin per l'assistenza (§380). Dopo il collaudo del 29/10/2026
+ * all'Agenzia delle Entrate. Dal 02/11/2026 è un modello già compilato che il
+ * professionista controlla, numera e firma come documento suo: il numero lo
+ * scrive lui (docs/changelog/2026-11-02-ricevuta-modello.md). L'elenco lo
+ * vede l'admin per l'assistenza (§380). Dopo il collaudo del 29/10/2026
  * (docs/changelog/2026-10-30-documenti-fiscali.md) si prepara solo a lavoro
  * terminato, con le voci del lavoro e il nome del cliente. Dal 30/10/2026
  * niente più copia della fattura per chi ha la partita IVA: la fa col suo
@@ -58,13 +59,13 @@ export class CourtesyCopyService {
     // Prima del lavoro niente documento: data, importo e "Pagato" sarebbero sbagliati (collaudo C-02, C-03, B-02).
     if (booking.professionalProfile.fiscalProfile?.entityType !== "PRIVATE_INDIVIDUAL") throw new ConflictException(OWN_INVOICE_MESSAGE);
     if (booking.status !== "COMPLETED") throw new ConflictException(NOT_COMPLETED_MESSAGE);
-    return this.build(booking, true);
+    return this.build(booking);
   }
 
   /**
    * La copia per il cliente, dai documenti della sua richiesta (decisione
    * dell'utente, docs/CHANGELOG.md §386): solo dopo che il professionista ha
-   * scaricato il PDF e con lo stesso importo, senza dare numeri nuovi.
+   * scaricato il PDF e con lo stesso importo.
    */
   async forClient(clientUserId: string, bookingId: string): Promise<CourtesyCopyView> {
     const [booking, saved] = await Promise.all([
@@ -73,7 +74,7 @@ export class CourtesyCopyService {
     ]);
     if (!booking || booking.clientId !== clientUserId || booking.status !== "COMPLETED" || saved?.kind !== "RECEIPT" || !saved.pdfDownloadedAt) throw new NotFoundException("Documento non trovato.");
     if (courtesyAmountChanged(saved.pdfTotalEurCents, courtesyTotalEurCents(booking.jobPayment))) throw new NotFoundException("Documento non trovato.");
-    return this.build(booking, false, "client");
+    return this.build(booking, "client");
   }
 
   /**
@@ -92,7 +93,7 @@ export class CourtesyCopyService {
       where: { bookingId },
       create: { bookingId, professionalProfileId, kind: copy.kind, year: yearOf(copy.date), ...downloaded },
       update: downloaded,
-      select: { number: true, year: true },
+      select: { receiptNumber: true },
     });
     const updated = !!previous?.pdfDownloadedAt;
     if (copy.totalEurCents !== null && (!updated || courtesyAmountChanged(previous?.pdfTotalEurCents ?? null, copy.totalEurCents))) {
@@ -101,7 +102,7 @@ export class CourtesyCopyService {
     return copy;
   }
 
-  private async notifyClientDocumentReady(bookingId: string, doc: { number: number | null; year: number }, updated: boolean): Promise<void> {
+  private async notifyClientDocumentReady(bookingId: string, doc: { receiptNumber: string | null }, updated: boolean): Promise<void> {
     try {
       const booking = await this.prisma.booking.findUnique({
         where: { id: bookingId },
@@ -177,8 +178,9 @@ export class CourtesyCopyService {
 
   /**
    * Riepilogo dell'anno per il commercialista (docs/CHANGELOG.md §382): le
-   * ricevute in ordine di numero, con l'importo della ricevuta data al
-   * cliente (G-10). Contano solo i lavori terminati (C-06).
+   * ricevute in ordine di data, col numero scritto dal professionista e
+   * l'importo della ricevuta data al cliente (G-10). Contano solo i lavori
+   * terminati (C-06).
    */
   async yearSummaryForProfessional(userId: string, year: number): Promise<CourtesyYearSummary> {
     const summary = await this.yearSummaryForProfile(await this.invoicesService.profileIdOf(userId), year);
@@ -216,7 +218,7 @@ export class CourtesyCopyService {
     ]);
 
     const fiscal = profile?.fiscalProfile;
-    const receipts: { sort: number; row: CourtesyYearRow }[] = [];
+    const receipts: CourtesyYearRow[] = [];
     for (const doc of documents) {
       const booking = doc.booking;
       const summary = courtesyDocumentSummary(doc, booking);
@@ -226,7 +228,7 @@ export class CourtesyCopyService {
       const withholding = request?.kind === "VAT" && doc.withholding !== false && total !== null ? withholdingOf(total) : null;
       const paidAt = paidAtOf(booking);
       const row: CourtesyYearRow = {
-        number: doc.number !== null ? courtesyReceiptNumber(doc.number, doc.year) : null,
+        number: doc.receiptNumber,
         date: courtesyDateOf(booking).toISOString(),
         customerName: summary.customerName,
         customerHasVatNumber: request?.kind === "VAT",
@@ -239,12 +241,12 @@ export class CourtesyCopyService {
         stampDuty: total !== null && total > STAMP_DUTY_THRESHOLD_EUR_CENTS,
         amountChanged: summary.amountChanged,
       };
-      receipts.push({ sort: doc.number ?? Number.MAX_SAFE_INTEGER, row });
+      receipts.push(row);
     }
     return {
       year,
       who: professionalFiscalName(fiscal, profile?.businessName),
-      receipts: receipts.sort((a, b) => a.sort - b.sort || a.row.date.localeCompare(b.row.date)).map((r) => r.row),
+      receipts: receipts.sort((a, b) => a.date.localeCompare(b.date)),
     };
   }
 
@@ -328,12 +330,12 @@ export class CourtesyCopyService {
     return sent;
   }
 
-  /** La stessa copia vista dall'admin: solo se il professionista l'ha preparata, senza dare numeri nuovi, e resta nel registro azioni. */
+  /** La stessa copia vista dall'admin: solo se il professionista l'ha preparata, e resta nel registro azioni. */
   async forAdmin(bookingId: string, adminUserId: string): Promise<CourtesyCopyView> {
     const [booking, saved] = await Promise.all([this.loadBooking(bookingId), this.prisma.courtesyDocument.findUnique({ where: { bookingId }, select: { kind: true } })]);
     if (!booking || saved?.kind !== "RECEIPT") throw new NotFoundException("Documento non trovato.");
     await this.auditLogService.record({ entityType: "CourtesyDocument", entityId: bookingId, fieldName: "read", changedByUserId: adminUserId, reason: "PDF del documento dato al cliente aperto da un admin" });
-    return this.build(booking, false);
+    return this.build(booking, "admin");
   }
 
   /**
@@ -343,10 +345,10 @@ export class CourtesyCopyService {
    */
   async adminList(filter: { q?: string; year?: number; bookingId?: string }): Promise<AdminCourtesyDocumentRow[]> {
     const q = filter.q?.trim();
-    const receipt = q?.match(/^(\d{1,6})(?:\s*\/\s*(\d{4}))?$/);
     const search: Prisma.CourtesyDocumentWhereInput[] = q
       ? [
-          ...(receipt ? [{ number: Number(receipt[1]), ...(receipt[2] ? { year: Number(receipt[2]) } : {}) }] : []),
+          // Il numero lo scrive il professionista: "4", "4/2026", "2026-4"...
+          ...(/\d/.test(q) ? [{ receiptNumber: { contains: q, mode: "insensitive" as const } }] : []),
           { booking: { professionalProfile: { businessName: { contains: q, mode: "insensitive" } } } },
           { booking: { client: { name: { contains: q, mode: "insensitive" } } } },
           { booking: { client: { surname: { contains: q, mode: "insensitive" } } } },
@@ -418,15 +420,15 @@ export class CourtesyCopyService {
   }
 
   /**
-   * `assignNumber`: la prima volta che il professionista apre la ricevuta le
-   * diamo il numero; l'admin e il cliente non ne danno mai. I consigli per
-   * il professionista (la ritenuta, il codice fiscale da chiedere) restano
-   * sullo schermo, mai nel documento (collaudo C-04).
+   * La ricevuta già compilata con i dati del lavoro. Il numero lo scrive il
+   * professionista (docs/changelog/2026-11-02-ricevuta-modello.md): a lui
+   * mostriamo l'ultimo che ha usato, per seguire il filo. I consigli per il
+   * professionista (la ritenuta, il codice fiscale da chiedere) restano sullo
+   * schermo, mai nel documento (collaudo C-04).
    */
   private async build(
     booking: NonNullable<Awaited<ReturnType<CourtesyCopyService["loadBooking"]>>>,
-    assignNumber: boolean,
-    audience: "professional" | "client" = "professional",
+    audience: "professional" | "client" | "admin" = "professional",
   ): Promise<CourtesyCopyView> {
     const bookingId = booking.id;
     const professionalProfileId = booking.professionalProfileId;
@@ -452,11 +454,8 @@ export class CourtesyCopyService {
     const jp = booking.jobPayment;
     const total = courtesyTotalEurCents(jp);
     const date = courtesyDateOf(booking);
-    const number = saved?.number
-      ? courtesyReceiptNumber(saved.number, saved.year)
-      : assignNumber
-        ? await this.assignReceiptNumber(bookingId, professionalProfileId, yearOf(date))
-        : null;
+    const number = saved?.receiptNumber ?? null;
+    const lastNumber = audience === "professional" ? await this.lastReceiptNumber(professionalProfileId, bookingId) : null;
 
     // Le voci del lavoro terminato (B-03, C-18, D-15): se non tornano col
     // totale (un rimborso), una riga sola col mestiere.
@@ -485,8 +484,9 @@ export class CourtesyCopyService {
       );
     }
 
-    // Prima di scaricare: il nome del cliente e il pagamento completo.
+    // Prima di scaricare: il numero, il nome del cliente e il pagamento completo.
     const missing: string[] = [];
+    if (!number) missing.push("il numero della ricevuta");
     if (!customer.name.trim()) missing.push("il nome del cliente");
     if (total === null) missing.push("l'importo finale del lavoro");
     if (jp && onlineBalanceUnpaid(jp)) missing.push("il saldo online, quando il cliente lo paga");
@@ -505,21 +505,32 @@ export class CourtesyCopyService {
       invoiceRequested: !!request,
       customerFields: audience === "professional" ? customerFields : null,
       number,
+      ...(audience === "professional" ? { lastNumber } : {}),
       missing,
       pdfTotalEurCents: saved?.pdfTotalEurCents ?? null,
     };
   }
 
   /**
-   * Quello che il professionista scrive sulla copia (collaudo del
-   * 29/10/2026): numero e data della sua fattura, aliquota, nome e codice
-   * fiscale del cliente quando il cliente non li ha dati, ritenuta sulle
-   * ricevute a una partita IVA. Un campo vuoto toglie il valore.
+   * Quello che il professionista scrive sulla ricevuta (collaudo del
+   * 29/10/2026): il numero (docs/changelog/2026-11-02-ricevuta-modello.md),
+   * nome e codice fiscale del cliente quando il cliente non li ha dati,
+   * ritenuta sulle ricevute a una partita IVA. Un campo vuoto toglie il
+   * valore. Lo stesso numero su due ricevute non passa.
    */
   async saveDetails(userId: string, bookingId: string, input: CourtesyDetailsInput): Promise<CourtesyCopyView> {
     const copy = await this.forProfessional(userId, bookingId);
     const professionalProfileId = await this.invoicesService.profileIdOf(userId);
+    const receiptNumber = input.number !== undefined ? input.number.trim() || null : undefined;
+    if (receiptNumber) {
+      const taken = await this.prisma.courtesyDocument.findFirst({
+        where: { professionalProfileId, bookingId: { not: bookingId }, receiptNumber: { equals: receiptNumber, mode: "insensitive" } },
+        select: { id: true },
+      });
+      if (taken) throw new BadRequestException(`Il numero ${receiptNumber} l'hai già usato per un'altra ricevuta: scrivine un altro.`);
+    }
     const data = {
+      ...(receiptNumber !== undefined ? { receiptNumber } : {}),
       ...(copy.customerFields && input.customerName !== undefined ? { customerName: input.customerName.trim() || null } : {}),
       ...(copy.customerFields && input.customerTaxCode !== undefined ? { customerTaxCode: input.customerTaxCode.trim().toUpperCase() || null } : {}),
       ...(copy.withholding && input.withholding !== undefined ? { withholding: input.withholding } : {}),
@@ -532,28 +543,14 @@ export class CourtesyCopyService {
     return this.forProfessional(userId, bookingId);
   }
 
-  /**
-   * Prossimo numero della ricevuta del professionista per l'anno, dato una
-   * volta sola per lavoro: riaprendo la copia resta lo stesso. Due copie
-   * aperte nello stesso istante si contendono il numero: chi perde prende
-   * il successivo.
-   */
-  private async assignReceiptNumber(bookingId: string, professionalProfileId: string, year: number): Promise<string> {
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const last = await this.prisma.courtesyDocument.aggregate({ where: { professionalProfileId, year, number: { not: null } }, _max: { number: true } });
-      const number = (last._max.number ?? 0) + 1;
-      try {
-        const saved = await this.prisma.courtesyDocument.upsert({
-          where: { bookingId },
-          create: { bookingId, professionalProfileId, kind: "RECEIPT", year, number },
-          update: { kind: "RECEIPT", year, number },
-        });
-        return courtesyReceiptNumber(saved.number ?? number, saved.year);
-      } catch (err) {
-        if ((err as { code?: string }).code !== "P2002") throw err;
-      }
-    }
-    throw new ConflictException("Non riusciamo a dare il numero alla ricevuta: riprova tra un attimo.");
+  /** L'ultimo numero scritto dal professionista su un'altra ricevuta: un aiuto, mai una scelta nostra. */
+  private async lastReceiptNumber(professionalProfileId: string, bookingId: string): Promise<string | null> {
+    const last = await this.prisma.courtesyDocument.findFirst({
+      where: { professionalProfileId, bookingId: { not: bookingId }, receiptNumber: { not: null } },
+      orderBy: { updatedAt: "desc" },
+      select: { receiptNumber: true },
+    });
+    return last?.receiptNumber ?? null;
   }
 }
 
@@ -614,7 +611,7 @@ function bookingCustomerName(booking: { recipientName: string | null; recipientS
   return name || null;
 }
 
-/** "il numero, la data e il nome del cliente". */
+/** "il numero, il nome del cliente e l'importo finale del lavoro". */
 function joinMissing(items: string[]): string {
   return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}`;
 }
