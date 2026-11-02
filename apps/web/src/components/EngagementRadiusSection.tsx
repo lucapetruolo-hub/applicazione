@@ -12,7 +12,6 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MAX_ENGAGEMENT_RADIUS_KM, MAX_URGENT_ENGAGEMENT_RADIUS_KM } from "@professionisti/shared";
-import { apiClient } from "@/lib/apiClient";
 
 const EngagementRadiusMap = dynamic(() => import("./EngagementRadiusMap").then((mod) => mod.EngagementRadiusMap), {
   ssr: false,
@@ -34,58 +33,39 @@ function FieldLabel({ children }: { children: string }) {
 }
 
 export type EngagementRadiusSectionProps = {
-  token: string;
   latitude: number;
   longitude: number;
-  initialEngagementRadiusKm: number;
-  initialUrgentEngagementRadiusKm: number;
+  engagementRadiusKm: number;
+  urgentEngagementRadiusKm: number;
+  /** I raggi scelti: si salvano con "Salva profilo", insieme al resto (collaudo E-04). */
+  onChange: (radius: { engagementRadiusKm: number; urgentEngagementRadiusKm: number }) => void;
+  /** I raggi salvati, per "Annulla". */
+  savedEngagementRadiusKm: number;
+  savedUrgentEngagementRadiusKm: number;
 };
 
+/**
+ * Raggio di ingaggio nel modulo del profilo. Prima aveva un suo "Salva" e
+ * "Salva profilo" non lo salvava: chi spostava i cursori e premeva "Salva
+ * profilo" lo perdeva (collaudo E-04). Ora i valori stanno nel modulo e si
+ * salvano con lui; "Modifica" sblocca i cursori, per non trascinarli per
+ * sbaglio scorrendo la pagina.
+ */
 export function EngagementRadiusSection({
-  token,
   latitude,
   longitude,
-  initialEngagementRadiusKm,
-  initialUrgentEngagementRadiusKm,
+  engagementRadiusKm,
+  urgentEngagementRadiusKm,
+  onChange,
+  savedEngagementRadiusKm,
+  savedUrgentEngagementRadiusKm,
 }: EngagementRadiusSectionProps) {
-  const [engagementRadiusKm, setEngagementRadiusKm] = useState(initialEngagementRadiusKm);
-  const [urgentEngagementRadiusKm, setUrgentEngagementRadiusKm] = useState(initialUrgentEngagementRadiusKm);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-  // Richiesta esplicita dell'utente: gli slider non sono più modificabili
-  // direttamente — "Modifica" li sblocca, "Salva" conferma e li richiude.
-  // Riduce il rischio di trascinare per sbaglio uno slider decisivo per il
-  // fan-out dei lead (proprio la funzione che decide quante richieste
-  // riceve un professionista) durante un normale scroll della pagina.
+  const changed = engagementRadiusKm !== savedEngagementRadiusKm || urgentEngagementRadiusKm !== savedUrgentEngagementRadiusKm;
   const [isEditing, setIsEditing] = useState(false);
 
-  function handleStartEditing() {
-    setError(null);
-    setSaved(false);
-    setIsEditing(true);
-  }
-
   function handleCancelEditing() {
-    setEngagementRadiusKm(initialEngagementRadiusKm);
-    setUrgentEngagementRadiusKm(initialUrgentEngagementRadiusKm);
-    setError(null);
+    onChange({ engagementRadiusKm: savedEngagementRadiusKm, urgentEngagementRadiusKm: savedUrgentEngagementRadiusKm });
     setIsEditing(false);
-  }
-
-  async function handleSave() {
-    setIsSaving(true);
-    setError(null);
-    setSaved(false);
-    try {
-      await apiClient.updateEngagementRadius(token, { engagementRadiusKm, urgentEngagementRadiusKm });
-      setSaved(true);
-      setIsEditing(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-    } finally {
-      setIsSaving(false);
-    }
   }
 
   return (
@@ -136,7 +116,7 @@ export function EngagementRadiusSection({
           max={MAX_ENGAGEMENT_RADIUS_KM}
           step={1}
           value={engagementRadiusKm}
-          onChange={(e) => setEngagementRadiusKm(Number(e.target.value))}
+          onChange={(e) => onChange({ engagementRadiusKm: Number(e.target.value), urgentEngagementRadiusKm })}
           disabled={!isEditing}
           // Traccia/maniglia colorate come il resto del sito (Verbale
           // Cognitivo F5.1: erano gli unici due controlli rimasti sul blu
@@ -163,35 +143,24 @@ export function EngagementRadiusSection({
           max={MAX_URGENT_ENGAGEMENT_RADIUS_KM}
           step={1}
           value={urgentEngagementRadiusKm}
-          onChange={(e) => setUrgentEngagementRadiusKm(Number(e.target.value))}
+          onChange={(e) => onChange({ engagementRadiusKm, urgentEngagementRadiusKm: Number(e.target.value) })}
           disabled={!isEditing}
           style={{ accentColor: brand.ottone, width: "100%", opacity: isEditing ? 1 : 0.55 }}
           aria-label="Raggio di ingaggio per le richieste urgenti, in chilometri"
         />
       </YStack>
 
-      {error ? (
-        <Text color={brand.urgenza} fontSize={16}>
-          {error}
-        </Text>
-      ) : null}
-      {saved ? (
-        <Text color={brand.verificato} fontSize={16}>
-          Raggio di ingaggio salvato!
-        </Text>
-      ) : null}
-
       {isEditing ? (
-        <XStack gap="3" flexWrap="wrap">
-          <Button variant="secondary" onPress={handleSave} disabled={isSaving} opacity={isSaving ? 0.6 : 1} alignSelf="flex-start">
-            {isSaving ? "Salvataggio..." : "Salva"}
-          </Button>
-          <Button variant="ghost" onPress={handleCancelEditing} disabled={isSaving} alignSelf="flex-start">
+        <XStack gap="3" flexWrap="wrap" alignItems="center">
+          <Button variant="ghost" onPress={handleCancelEditing} alignSelf="flex-start">
             Annulla
           </Button>
+          <Text fontSize={16} color={brand.grafite70} flex={1} minWidth={200}>
+            {changed ? "Si salva con «Salva profilo»." : "Sposta i cursori, poi premi «Salva profilo»."}
+          </Text>
         </XStack>
       ) : (
-        <Button variant="secondary" onPress={handleStartEditing} alignSelf="flex-start">
+        <Button variant="secondary" onPress={() => setIsEditing(true)} alignSelf="flex-start">
           Modifica
         </Button>
       )}

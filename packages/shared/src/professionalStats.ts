@@ -5,12 +5,13 @@
  */
 
 /** Stato del profilo, uno solo per professionista, nell'ordine di questa lista. */
-export const PROFESSIONAL_STATUS_KEYS = ["VISIBLE", "FISCAL_MISSING", "PAUSED", "INVITE_PENDING", "BLOCKED", "SUSPENDED"] as const;
+export const PROFESSIONAL_STATUS_KEYS = ["VISIBLE", "FISCAL_MISSING", "AWAY", "PAUSED", "INVITE_PENDING", "BLOCKED", "SUSPENDED"] as const;
 export type ProfessionalStatusKey = (typeof PROFESSIONAL_STATUS_KEYS)[number];
 
 export const PROFESSIONAL_STATUS_LABEL: Record<ProfessionalStatusKey, string> = {
   VISIBLE: "Visibili nella ricerca",
   FISCAL_MISSING: "Dati fiscali da completare",
+  AWAY: "In pausa per scelta, con il giorno di ritorno",
   PAUSED: "In pausa (abbonamento)",
   INVITE_PENDING: "Creati al telefono, da confermare",
   BLOCKED: "Bloccati per segnalazioni",
@@ -21,6 +22,7 @@ export const PROFESSIONAL_STATUS_LABEL: Record<ProfessionalStatusKey, string> = 
 export const PROFESSIONAL_STATUS_ONE_LABEL: Record<ProfessionalStatusKey, string> = {
   VISIBLE: "Nella ricerca",
   FISCAL_MISSING: "Fuori dalla ricerca: dati fiscali da completare",
+  AWAY: "Fuori dalla ricerca: in pausa per scelta",
   PAUSED: "Fuori dalla ricerca: in pausa (abbonamento)",
   INVITE_PENDING: "Fuori dalla ricerca: creato al telefono, da confermare",
   BLOCKED: "Fuori dalla ricerca: bloccato per segnalazioni",

@@ -34,9 +34,9 @@ export default function CookiePage() {
                 {
                   title: "Preferenze",
                   rows: [
-                    ["Nome", "ultima_citta_cercata, ricerca:ultima-citta, professionisti_menu_ridotto, agenda-vista, agenda-colonna-nascosta"],
-                    ["Scopo", "ricordare l'ultima città cercata e come preferisci vedere menu e agenda"],
-                    ["Durata", "finché non le cancelli dal browser"],
+                    ["Nome", "ultima_citta_cercata (anche cookie), ricerca:ultima-citta, professionisti_menu_ridotto, agenda-vista, agenda-colonna-nascosta"],
+                    ["Scopo", "ricordare l'ultima città cercata, per proporla di nuovo e mostrare in home prima i servizi con più professionisti vicino, e come preferisci vedere menu e agenda"],
+                    ["Durata", "1 anno il cookie; le altre finché non le cancelli dal browser"],
                   ],
                 },
                 { title: "Agenda senza rete", rows: [["Nome", "agenda-offline-v1, agenda-offline-user-v1"], ["Scopo", "mostrare ai professionisti gli appuntamenti anche senza connessione"], ["Durata", "al massimo 7 giorni, cancellata all'uscita dall'account"]] },

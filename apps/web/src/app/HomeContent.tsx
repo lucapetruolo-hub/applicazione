@@ -1,8 +1,8 @@
 "use client";
 
-import type { ProfessionalSearchResult } from "@professionisti/shared";
+import type { ProfessionalCategorySlug, ProfessionalSearchResult, ServicePriceIndexEntry } from "@professionisti/shared";
 import { Section, SectionDensityProvider, YStack } from "@professionisti/ui";
-import { CategoryShowAllButton, CategoryStoryRail, useCategoryStoryRail } from "@/components/CategoryStoryRail";
+import { CategoryStoryRail, useCategoryStoryRail } from "@/components/CategoryStoryRail";
 import { FadeInSection } from "@/components/FadeInSection";
 import { HomeFaq } from "@/components/HomeFaq";
 import { HomeHero } from "@/components/HomeHero";
@@ -17,11 +17,18 @@ import { ProCtaSection } from "@/components/ProCtaSection";
 export default function HomeContent({
   professionals,
   platformStats,
+  priceIndex,
+  categoryCounts,
 }: {
   professionals: ProfessionalSearchResult[];
+  /** Professionisti per categoria, vicino all'ultima città cercata o in tutta Italia (app/page.tsx). */
+  categoryCounts: Partial<Record<ProfessionalCategorySlug, number>>;
+  /** "Quanto costa in media" già dal server; `null` se l'API non ha risposto. */
+  priceIndex: ServicePriceIndexEntry[] | null;
   platformStats: { totalUsers: number; totalProfessionals: number; reviewCount?: number; averageRating?: number | null } | null;
 }) {
-  const categoryRail = useCategoryStoryRail();
+  // L'ordine di "Di cosa hai bisogno?": prima le categorie con più professionisti.
+  const categoryRail = useCategoryStoryRail(categoryCounts);
 
   return (
     // Spazi tra le sezioni più stretti che nel resto del sito: la home ha
@@ -41,11 +48,7 @@ export default function HomeContent({
 
         {/* 2. Categorie. */}
         <FadeInSection>
-          <Section
-            title="Di cosa hai bisogno?"
-            titleAction={<CategoryShowAllButton state={categoryRail} />}
-            maxWidth={1080}
-          >
+          <Section title="Di cosa hai bisogno?" maxWidth={1080}>
             <CategoryStoryRail state={categoryRail} />
           </Section>
         </FadeInSection>
@@ -89,7 +92,7 @@ export default function HomeContent({
         <FadeInSection>
           {/* Ancora per "Quanto costa" nella barra in alto (§398). */}
           <div id="quanto-costa" style={{ width: "100%", scrollMarginTop: 72 }}>
-            <PriceEstimatorTool>
+            <PriceEstimatorTool initialEntries={priceIndex}>
               <HomeFaq />
             </PriceEstimatorTool>
           </div>

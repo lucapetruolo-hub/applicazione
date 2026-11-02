@@ -1,11 +1,12 @@
-import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
-import { clientCanReview, type ReviewInput } from "@professionisti/shared";
+import { clientCanReview, clientCanUpdateReview, type ReviewInput, type ReviewUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { publicVisibilityWhere } from "../professional-fiscal/public-visibility";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { publicClientName } from "../common/client-name.util";
+import { loadReviewHoldReasons } from "./review-hold";
 
 // Le recensioni del cliente sono pubbliche subito: il professionista non
 // recensisce più il cliente e il "doppio cieco" non esiste più
@@ -45,9 +46,51 @@ export class ReviewsService {
       comment: review.comment,
       mediaUrls: review.photoUrls,
       createdAt: review.createdAt.toISOString(),
-      hidden: review.hiddenAt !== null,
+      // In controllo (collaudo P-01) non è "nascosta da un admin".
+      hidden: review.hiddenAt !== null && review.heldAt === null,
+      held: review.heldAt !== null,
       professionalProfileId: review.booking.professionalProfile.deletedAt ? null : review.booking.professionalProfile.id,
       businessName: review.booking.professionalProfile.businessName,
+      professionalReply: review.professionalReply,
+      updatedAfterIssueAt: review.updatedAfterIssueAt?.toISOString() ?? null,
+    }));
+  }
+
+  /**
+   * Recensioni ricevute dal professionista, per la pagina "Recensioni" della
+   * sua area (decisione di Luca del 30/10/2026): tutte, con quelle da
+   * rispondere in evidenza; quelle nascoste da un admin restano visibili solo
+   * a lui, segnate come nascoste.
+   */
+  async listReceived(professionalUserId: string) {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId }, select: { id: true } });
+    if (!profile) throw new ForbiddenException("Solo i professionisti ricevono recensioni.");
+    const reviews = await this.prisma.review.findMany({
+      // Quelle in controllo il professionista le vede solo dopo la pubblicazione (collaudo P-01).
+      where: { booking: { professionalProfileId: profile.id }, heldAt: null },
+      include: {
+        booking: {
+          select: {
+            client: { select: { name: true, surname: true } },
+            quote: { select: { guidedRequestId: true, guidedRequest: { select: { category: { select: { label: true } } } } } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return reviews.map((review) => ({
+      id: review.id,
+      rating: review.rating,
+      comment: review.comment,
+      photoUrls: review.photoUrls,
+      createdAt: review.createdAt.toISOString(),
+      clientName: publicClientName(review.booking.client) ?? "Cliente",
+      jobLabel: review.booking.quote?.guidedRequest.category.label ?? null,
+      guidedRequestId: review.booking.quote?.guidedRequestId ?? null,
+      professionalReply: review.professionalReply,
+      professionalRepliedAt: review.professionalRepliedAt?.toISOString() ?? null,
+      updatedAfterIssueAt: review.updatedAfterIssueAt?.toISOString() ?? null,
+      hidden: review.hiddenAt !== null,
     }));
   }
 
@@ -60,7 +103,7 @@ export class ReviewsService {
    * (decisioni dell'utente, docs/CHANGELOG.md §232): le altre restano sul
    * profilo, non in home.
    */
-  async getRecentPublic(limit = 6) {
+  async getRecentPublic(limit = 6, place?: { category: string; city: string }) {
     const reviews = await this.prisma.review.findMany({
       where: {
         hiddenAt: null,
@@ -68,7 +111,23 @@ export class ReviewsService {
         comment: { not: null },
         NOT: { comment: "" },
         booking: {
-          professionalProfile: { isDemo: false, deletedAt: null, suspendedAt: null, pausedAt: null, invitePendingAt: null, ...publicVisibilityWhere() },
+          professionalProfile: {
+            isDemo: false,
+            deletedAt: null,
+            suspendedAt: null,
+            pausedAt: null,
+            invitePendingAt: null,
+            // In un AND: publicVisibilityWhere può portare un suo OR.
+            AND: [
+              publicVisibilityWhere(),
+              place
+                ? {
+                    city: { equals: place.city, mode: "insensitive" },
+                    OR: [{ category: { slug: place.category } }, { extraCategories: { some: { slug: place.category } } }],
+                  }
+                : {},
+            ],
+          },
         },
       },
       include: {
@@ -153,23 +212,120 @@ export class ReviewsService {
       throw new ForbiddenException("Puoi recensire solo un lavoro completato.");
     }
 
+    // Con un segnale di recensione finta resta in controllo, nascosta, finché
+    // un admin non decide (collaudo P-01).
+    const now = new Date();
+    const heldReasons = await loadReviewHoldReasons(this.prisma, booking.id, now);
+    const held = heldReasons.length > 0;
     const review = await this.prisma.review.create({
-      data: { bookingId: input.bookingId, rating: input.rating, comment: input.comment, photoUrls: input.photoUrls },
+      data: {
+        bookingId: input.bookingId,
+        rating: input.rating,
+        comment: input.comment,
+        photoUrls: input.photoUrls,
+        ...(held ? { hiddenAt: now, heldAt: now, heldReasons } : {}),
+      },
     });
+    if (held) return { id: review.id, held: true };
 
-    // Metriche di affidabilità (CLAUDE.md §15, evento 5).
-    await this.professionalMetricsService.recordReview(booking.professionalProfileId, input.rating);
-
-    // Avviso al professionista (docs/CHANGELOG.md §185): la recensione è già
-    // pubblica sul suo profilo.
-    await this.notificationsService.notify(booking.professionalProfile.userId, "NEW_REVIEW", {
+    await this.afterPublished(booking.professionalProfileId, input.rating, {
+      userId: booking.professionalProfile.userId,
       bookingId: booking.id,
+      reviewId: review.id,
       guidedRequestId: booking.quote?.guidedRequestId ?? null,
-      // Il cliente può recensire prima che il professionista segni il lavoro
-      // come terminato (§189): l'email gli ricorda di farlo.
       professionalCompleted: booking.status === "COMPLETED",
     });
+    return { id: review.id, held: false };
+  }
 
-    return { id: review.id };
+  /** Media dei voti e avviso al professionista quando la recensione diventa pubblica. */
+  private async afterPublished(
+    professionalProfileId: string,
+    rating: number,
+    notice: { userId: string; bookingId: string; reviewId: string; guidedRequestId: string | null; professionalCompleted: boolean },
+  ) {
+    // Metriche di affidabilità (CLAUDE.md §15, evento 5).
+    await this.professionalMetricsService.recordReview(professionalProfileId, rating);
+    // Avviso al professionista (docs/CHANGELOG.md §185): la recensione è già
+    // pubblica sul suo profilo.
+    await this.notificationsService.notify(notice.userId, "NEW_REVIEW", {
+      bookingId: notice.bookingId,
+      reviewId: notice.reviewId,
+      // Le stelle nel testo dell'avviso (collaudo F-16).
+      rating,
+      guidedRequestId: notice.guidedRequestId,
+      // Il cliente può recensire prima che il professionista segni il lavoro
+      // come terminato (§189): l'email gli ricorda di farlo.
+      professionalCompleted: notice.professionalCompleted,
+    });
+  }
+
+
+  /**
+   * Aggiornamento della recensione, una volta sola, dopo una segnalazione a
+   * lavoro chiuso finita senza accordo (decisione di Luca del 30/10/2026):
+   * l'unico modo per far sapere agli altri di un difetto scoperto dopo.
+   */
+  async update(clientId: string, reviewId: string, input: ReviewUpdateInput) {
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+      include: {
+        booking: {
+          select: {
+            id: true,
+            clientId: true,
+            professionalProfileId: true,
+            professionalProfile: { select: { userId: true } },
+            quote: { select: { guidedRequestId: true } },
+            issue: { select: { late: true, status: true } },
+          },
+        },
+      },
+    });
+    if (!review) throw new NotFoundException("Recensione non trovata.");
+    if (review.booking.clientId !== clientId) throw new ForbiddenException("Questa recensione non è tua.");
+    if (!clientCanUpdateReview({ hasReview: true, reviewUpdatedAt: review.updatedAfterIssueAt, issue: review.booking.issue })) {
+      throw new BadRequestException("La recensione si può aggiornare una volta sola, dopo una segnalazione a lavoro chiuso senza accordo.");
+    }
+    // Una sola volta anche con due tocchi insieme.
+    const updated = await this.prisma.review.updateMany({
+      where: { id: reviewId, updatedAfterIssueAt: null },
+      data: { rating: input.rating, comment: input.comment ?? null, photoUrls: input.photoUrls, updatedAfterIssueAt: new Date() },
+    });
+    if (updated.count === 0) throw new ConflictException("Hai già aggiornato questa recensione.");
+    await this.professionalMetricsService.recomputeReviews(review.booking.professionalProfileId);
+    await this.notificationsService.notify(review.booking.professionalProfile.userId, "NEW_REVIEW", {
+      bookingId: review.booking.id,
+      guidedRequestId: review.booking.quote?.guidedRequestId ?? null,
+      updated: true,
+      reviewId,
+      professionalProfileId: review.booking.professionalProfileId,
+    });
+    return { id: reviewId };
+  }
+
+  /** Risposta pubblica del professionista alla recensione di un suo lavoro, modificabile (decisione di Luca del 30/10/2026). */
+  async reply(professionalUserId: string, reviewId: string, reply: string) {
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+      select: {
+        id: true,
+        professionalReply: true,
+        booking: { select: { id: true, clientId: true, professionalProfileId: true, professionalProfile: { select: { userId: true } }, quote: { select: { guidedRequestId: true } } } },
+      },
+    });
+    if (!review) throw new NotFoundException("Recensione non trovata.");
+    if (review.booking.professionalProfile.userId !== professionalUserId) throw new ForbiddenException("Puoi rispondere solo alle recensioni dei tuoi lavori.");
+    await this.prisma.review.update({ where: { id: reviewId }, data: { professionalReply: reply.trim(), professionalRepliedAt: new Date() } });
+    // Avviso al cliente solo alla prima risposta: una correzione non lo disturba di nuovo.
+    if (!review.professionalReply) {
+      await this.notificationsService.notify(review.booking.clientId, "REVIEW_REPLIED", {
+        bookingId: review.booking.id,
+        guidedRequestId: review.booking.quote?.guidedRequestId ?? null,
+        professionalProfileId: review.booking.professionalProfileId,
+        reviewId,
+      });
+    }
+    return { id: reviewId };
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { REQUEST_TIMING_LABEL, type ClientInvoiceRequestInput, type JobPaymentChoice, type RequestWithdrawReason } from "@professionisti/shared";
+import { REQUEST_TIMING_LABEL, type ClientInvoiceRequestInput, type JobPaymentChoice, type RequestWithdrawReason, type SameTimeBookingCandidate } from "@professionisti/shared";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -55,6 +55,12 @@ import { announceRequestDeleted } from "./RequestDeletedNotice";
 import { ClientMiniTimeline, ClientStagePill, MAX_REQUEST_PHOTOS, STAGE_STYLE, ServiceBadge, formatDateTime, requestJobAddress, textareaStyle } from "./clientRequestHelpers";
 
 /** Acconto online che resta al professionista se il cliente annulla ora, dentro il preavviso (docs/CHANGELOG.md §348). */
+/** Pagato online e non ancora rimborsato (collaudo F-02). */
+function paidOnline(booking: ClientBooking | null | undefined): number {
+  if (booking?.payment?.method !== "ONLINE") return 0;
+  return Math.max(0, booking.payment.paidEurCents - booking.payment.refundedEurCents);
+}
+
 function keptDeposit(booking: ClientBooking): number {
   if (!booking.lateCancelKeepsDeposit || booking.payment?.method !== "ONLINE") return 0;
   return Math.max(0, booking.payment.paidEurCents - booking.payment.refundedEurCents);
@@ -63,6 +69,7 @@ function keptDeposit(booking: ClientBooking): number {
 export function GuidedRequestCard({
   request,
   booking,
+  sameTradeBookings,
   stage,
   token,
   onChanged,
@@ -87,6 +94,8 @@ export function GuidedRequestCard({
   request: ClientGuidedRequest;
   /** Prenotazione nata dal preventivo accettato di questa richiesta, se esiste. */
   booking: ClientBooking | null;
+  /** Appuntamenti confermati dello stesso mestiere in altre richieste: avviso sulla stessa ora (collaudo I-11). */
+  sameTradeBookings?: SameTimeBookingCandidate[];
   stage: RequestStage;
   token: string;
   onChanged: () => void;
@@ -760,15 +769,21 @@ export function GuidedRequestCard({
   }
   // Quali segnalazioni si possono inviare lo decide il server (docs/CHANGELOG.md §164).
   if (booking && booking.issueTypesAllowed.length > 0) {
-    menuActions.push({ icon: "flag", text: "Segnala un problema", tone: "danger", onPress: () => setShowReportModal(true) });
+    menuActions.push({
+      icon: "flag",
+      text: "Segnala un problema",
+      hint: booking.issueLate ? "Senza rimborso, in chat con il professionista" : undefined,
+      tone: "danger",
+      onPress: () => setShowReportModal(true),
+    });
   }
   // Cominciato l'appuntamento non si annulla più (§346): per un problema c'è "Segnala un problema".
   if (booking && (booking.status === "PENDING" || booking.status === "CONFIRMED") && new Date(booking.scheduledAt) > wallClockNow()) {
-    menuActions.push({ icon: "x", text: "Annulla prenotazione", tone: "danger", onPress: () => setShowCancelModal(true) });
+    menuActions.push({ icon: "x", text: "Annulla il lavoro", tone: "danger", onPress: () => setShowCancelModal(true) });
   } else if (booking?.status === "CANCELED") {
     // Un intervento annullato dal professionista non si riapre dal lato cliente.
-    if (booking.canceledBy === "CLIENT") {
-      menuActions.push({ icon: "rotate-ccw", text: "Riapri prenotazione", onPress: handleReopenBooking });
+    if (booking.canceledBy === "CLIENT" && !booking.reopenRequestedBy) {
+      menuActions.push({ icon: "rotate-ccw", text: "Chiedi di riaprire", onPress: handleReopenBooking });
     }
   } else if (!booking) {
     // Una sola voce finché la richiesta non è diventata un lavoro (§343, al
@@ -808,6 +823,7 @@ export function GuidedRequestCard({
       onDeleteRequest={!booking ? () => setShowDeleteModal(true) : undefined}
       categorySlug={request.categorySlug}
       invoiceDefaults={invoiceDefaults}
+      sameTradeBookings={sameTradeBookings}
     />
   );
   const acceptedTotals = acceptedQuote ? quotePriceTotals(acceptedQuote.items) : null;
@@ -1100,12 +1116,22 @@ export function GuidedRequestCard({
           {/* "Ripeti la richiesta" e "Modifica" sulla stessa riga, con bordo
               come gli altri pulsanti della scheda (docs/CHANGELOG.md §195:
               prima il primo era solo testo e il secondo più piccolo). */}
+          {/* "Elimina richiesta" in vista finché è aperta (collaudo B-07;
+              stesso nome del menu, §343):
+              prima era solo in fondo a "Modifica" o nel menu ≡; "Ripeti la
+              richiesta" solo quando è chiusa. */}
           {booking ? null : (
             <XStack gap="2" flexWrap="wrap" alignItems="center">
               {canDelete && canEditDetails ? <CardButton onPress={startEditing}>Modifica</CardButton> : null}
-              <Link href={repeatHref} style={{ textDecoration: "none" }}>
-                <CardButton>Ripeti la richiesta</CardButton>
-              </Link>
+              {canDelete ? (
+                <CardButton tone="danger" onPress={() => setShowDeleteModal(true)}>
+                  Elimina richiesta
+                </CardButton>
+              ) : (
+                <Link href={repeatHref} style={{ textDecoration: "none" }}>
+                  <CardButton>Ripeti la richiesta</CardButton>
+                </Link>
+              )}
             </XStack>
           )}
           {canDelete && !canEditDetails ? (
@@ -1213,7 +1239,9 @@ export function GuidedRequestCard({
           phone={booking.professionalPhone}
           email={booking.professionalEmail}
           allowedTypes={booking.issueTypesAllowed}
-          assisted={booking.payment?.method !== "DIRECT"}
+          assisted={booking.payment?.method !== "DIRECT" && !booking.issueLate}
+          late={booking.issueLate}
+          hasReview={booking.hasReview}
           onClose={() => {
             setShowReportModal(false);
             onChanged();
@@ -1247,15 +1275,23 @@ export function GuidedRequestCard({
       {showDeleteModal ? <DeleteRequestModal stillOpen={canDelete} onClose={() => setShowDeleteModal(false)} onConfirm={handleDeleteRequest} /> : null}
       {showCancelModal ? (
         <CancelBookingModal
-          title="Annulla prenotazione"
+          // Stesso nome del pulsante, per cliente e professionista (collaudo A-06, O-03).
+          title="Annulla il lavoro"
           description={
             booking && isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours)
               ? `Il professionista verrà avvisato. Mancano meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)}, il preavviso che aveva chiesto.${
-                  keptDeposit(booking) > 0 ? ` Come scritto nel preventivo, l'acconto di ${formatEurCents(keptDeposit(booking))} resta a lui.` : ""
+                  keptDeposit(booking) > 0
+                    ? ` Come scritto nel preventivo, l'acconto di ${formatEurCents(keptDeposit(booking))} resta a lui.`
+                    : paidOnline(booking) > 0
+                      ? ` I ${formatEurCents(paidOnline(booking))} che hai pagato online ti tornano sulla carta.`
+                      : // Cosa si perde, detto chiaro (collaudo A-06): con il pagamento diretto niente.
+                        " Non paghi niente, ma il professionista vede che hai annullato all'ultimo."
                 }`
-              : "Il professionista verrà avvisato dell'annullamento."
+              : `Il professionista verrà avvisato dell'annullamento.${
+                  paidOnline(booking) > 0 ? ` I ${formatEurCents(paidOnline(booking))} che hai pagato online ti tornano sulla carta.` : ""
+                }`
           }
-          confirmLabel="Sì, annulla prenotazione"
+          confirmLabel="Sì, annulla il lavoro"
           confirmingLabel="Annullamento..."
           showNote={false}
           onClose={() => setShowCancelModal(false)}

@@ -83,8 +83,8 @@ export function AdminTabs<T extends string>({ tabs, value, onChange }: { tabs: {
 export function formatAdminDate(iso: string | null | undefined, withTime = false): string {
   if (!iso) return "—";
   const date = new Date(iso);
-  const day = date.toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" });
-  return withTime ? `${day}, ${date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : day;
+  const day = date.toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Rome" });
+  return withTime ? `${day}, ${date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })}` : day;
 }
 
 export function errorMessage(err: unknown): string {

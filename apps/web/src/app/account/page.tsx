@@ -4,7 +4,7 @@ import { useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Camera, Download, Trash2, Eye, EyeOff } from "lucide-react";
-import { allItalianCityNames, findComuneByName, isMissingRulesProblem, isPlausiblePhoneNumber, passwordProblem, CLIENT_CHURN_REASONS, PRO_CHURN_REASONS, type ChurnReason } from "@professionisti/shared";
+import { allItalianCityNames, findComuneByName, formatAppointmentDate, formatAppointmentTime, isMissingRulesProblem, isPlausiblePhoneNumber, passwordProblem, CLIENT_CHURN_REASONS, PRO_CHURN_REASONS, type AccountClosureCheck, type ChurnReason } from "@professionisti/shared";
 import { ChurnReasonPicker } from "@/components/ChurnReasonPicker";
 import { Autocomplete, Avatar, Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -184,6 +184,8 @@ export default function AccountPage() {
   const [deleteReason, setDeleteReason] = useState<ChurnReason | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Cosa resta aperto e cosa si annulla, detto prima di confermare (collaudo B-01, P-06).
+  const [closureCheck, setClosureCheck] = useState<AccountClosureCheck | null>(null);
   // Esportazione dati personali (richiesta esplicita dell'utente, "Verbale
   // di Conformità" — diritto alla portabilità, art. 20 GDPR).
   const [isExporting, setIsExporting] = useState(false);
@@ -409,7 +411,8 @@ export default function AccountPage() {
     try {
       await apiClient.deleteAccount(token as string, deleteReason ?? undefined);
       logout();
-      router.push("/");
+      // Una conferma, non la home senza nulla (collaudo B-01).
+      router.push("/account-eliminato");
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
       setIsDeleting(false);
@@ -499,8 +502,8 @@ export default function AccountPage() {
                     variant="secondary"
                     size="2"
                     height={36}
-                    opacity={isUploadingImage ? 0.6 : 1}
                     disabled={isUploadingImage}
+                    opacity={isUploadingImage ? 0.6 : 1}
                     onPress={() => imageInputRef.current?.click()}
                   >
                     {isUploadingImage ? (
@@ -710,9 +713,9 @@ export default function AccountPage() {
                     variant="secondary"
                     size="3"
                     height={40}
-                    opacity={isSavingPassword ? 0.6 : 1}
                     onPress={handleChangePassword}
                     disabled={isSavingPassword}
+                    opacity={isSavingPassword ? 0.6 : 1}
                   >
                     {isSavingPassword ? "Salvataggio..." : "Salva password"}
                   </Button>
@@ -771,9 +774,9 @@ export default function AccountPage() {
                     variant="secondary"
                     size="3"
                     height={40}
-                    opacity={isLoggingOutOthers ? 0.6 : 1}
                     onPress={handleLogoutOthers}
                     disabled={isLoggingOutOthers}
+                    opacity={isLoggingOutOthers ? 0.6 : 1}
                   >
                     {isLoggingOutOthers ? "Uscita..." : "Conferma"}
                   </Button>
@@ -867,7 +870,11 @@ export default function AccountPage() {
                 gap="1"
                 alignItems="center"
                 cursor="pointer"
-                onPress={() => setIsConfirmingDelete(true)}
+                onPress={() => {
+                                setIsConfirmingDelete(true);
+                                setClosureCheck(null);
+                                apiClient.accountClosureCheck(token as string).then(setClosureCheck).catch(() => setClosureCheck({ blockers: [], jobsToCancel: [] }));
+                              }}
                 role="button"
                 aria-label="Elimina il mio account"
               >
@@ -879,8 +886,52 @@ export default function AccountPage() {
             ) : null}
           </XStack>
 
-          {isConfirmingDelete ? (
+          {isConfirmingDelete && closureCheck === null ? (
+            <Text fontSize={16} color={brand.grafite70}>
+              Controllo cosa hai in corso...
+            </Text>
+          ) : null}
+          {isConfirmingDelete && closureCheck && closureCheck.blockers.length > 0 ? (
+            <YStack gap="3" padding="4" backgroundColor={brand.gesso} borderRadius="4" borderWidth={1} borderColor={brand.filetto}>
+              <Text fontWeight="700" color={brand.grafite} fontSize={16}>
+                Prima di chiudere l&apos;account
+              </Text>
+              {closureCheck.blockers.map((blocker) => (
+                <Text key={blocker} color={brand.grafite} fontSize={16}>
+                  • {blocker}
+                </Text>
+              ))}
+              <Text color={brand.grafite70} fontSize={16}>
+                Quando sono chiusi puoi eliminare l&apos;account. Ti serve aiuto? <Link href="/contatti">Scrivici</Link>.
+              </Text>
+              <Text
+                color={brand.grafite70}
+                fontWeight="600"
+                cursor="pointer"
+                role="button"
+                onPress={() => setIsConfirmingDelete(false)}
+              >
+                Chiudi
+              </Text>
+            </YStack>
+          ) : null}
+          {isConfirmingDelete && closureCheck && closureCheck.blockers.length === 0 ? (
             <YStack gap="3" padding="4" backgroundColor="#FBEAE8" borderRadius="4" borderWidth={1} borderColor={brand.urgenza}>
+              {closureCheck.jobsToCancel.length > 0 ? (
+                <YStack gap="1">
+                  <Text fontWeight="700" color={brand.grafite} fontSize={16}>
+                    {closureCheck.jobsToCancel.length === 1 ? "Hai un appuntamento in programma" : `Hai ${closureCheck.jobsToCancel.length} appuntamenti in programma`}
+                  </Text>
+                  {closureCheck.jobsToCancel.map((job) => (
+                    <Text key={job.id} color={brand.grafite} fontSize={16}>
+                      • {formatAppointmentDate(job.scheduledAt, { weekday: "long", day: "numeric", month: "long" })} alle {formatAppointmentTime(job.scheduledAt)} con {job.withName}
+                    </Text>
+                  ))}
+                  <Text color={brand.grafite70} fontSize={16}>
+                    Li annulliamo noi e {user?.role === "PROFESSIONAL" ? "avvisiamo i clienti" : "avvisiamo il professionista"}, con le regole di sempre su preavviso e acconto.
+                  </Text>
+                </YStack>
+              ) : null}
               <Text color={brand.grafite} fontSize={16}>
                 Questa azione è definitiva: verranno eliminati il tuo profilo, le richieste, le prenotazioni e le
                 recensioni collegate al tuo account. Scrivi <Text fontWeight="800">ELIMINA</Text> per confermare.
@@ -906,9 +957,9 @@ export default function AccountPage() {
                   variant="urgent"
                   size="3"
                   height={40}
-                  opacity={isDeleting ? 0.6 : 1}
                   onPress={handleDeleteAccount}
                   disabled={isDeleting}
+                  opacity={isDeleting ? 0.6 : 1}
                 >
                   {isDeleting ? "Eliminazione..." : "Elimina definitivamente"}
                 </Button>

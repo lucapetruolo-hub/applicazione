@@ -1,22 +1,20 @@
-"use client";
-
 import { useEffect, useState } from "react";
 
 /**
- * Elenco dei comuni caricato solo quando serve (docs/changelog/2026-11-02-nextjs-16.md):
- * sono circa 100 KB compressi, che la home e le barre di ricerca mandavano a
- * ogni visita anche a chi non tocca il campo "Città". Qui arriva dopo che la
- * pagina è pronta, prima che si scriva una città; chi deve usarlo subito
- * (per esempio al clic su "Cerca") aspetta `loadComuni()`.
+ * Elenco dei comuni d'Italia (~8000, 175 KB compressi) caricato solo quando
+ * serve, non con la pagina (collaudo N-01, docs/changelog/2026-10-30-velocita-telefono.md):
+ * nella home, nella ricerca e nelle pagine città teneva il telefono occupato
+ * per un secondo prima che la pagina rispondesse ai tocchi. Le pagine del
+ * server (titoli, indirizzi delle città) lo leggono come prima da
+ * `@professionisti/shared`; nel browser si passa da qui.
  */
-export type ComuniModule = typeof import("@professionisti/shared/comuni");
+export type ComuniModule = typeof import("./comuniData");
 
 let loaded: ComuniModule | null = null;
 let pending: Promise<ComuniModule> | null = null;
 
 export function loadComuni(): Promise<ComuniModule> {
-  if (loaded) return Promise.resolve(loaded);
-  pending ??= import("@professionisti/shared/comuni").then(
+  pending ??= import("./comuniData").then(
     (module) => (loaded = module),
     (error: unknown) => {
       // Rete caduta: al prossimo tentativo si riprova.
@@ -27,25 +25,36 @@ export function loadComuni(): Promise<ComuniModule> {
   return pending;
 }
 
-/** L'elenco, `null` finché non è arrivato. Lo chiede quando il browser è libero. */
-export function useComuni(): ComuniModule | null {
+/**
+ * Elenco dei comuni, o `null` finché non è arrivato. Con `eager` si scarica
+ * subito; altrimenti al primo campo selezionato della pagina (per scrivere
+ * una città bisogna prima toccare il campo), così chi legge e basta non lo
+ * scarica mai.
+ */
+export function useComuni(eager = false): ComuniModule | null {
   const [comuni, setComuni] = useState<ComuniModule | null>(loaded);
   useEffect(() => {
     if (comuni) return;
     let active = true;
-    const load = () =>
+    const start = () => {
       loadComuni().then(
         (module) => {
           if (active) setComuni(module);
         },
-        () => {},
+        () => undefined,
       );
-    const idle = typeof window.requestIdleCallback === "function" ? window.requestIdleCallback(load, { timeout: 2000 }) : window.setTimeout(load, 300);
+    };
+    if (eager) {
+      start();
+      return () => {
+        active = false;
+      };
+    }
+    window.addEventListener("focusin", start, { once: true });
     return () => {
       active = false;
-      if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idle);
-      else window.clearTimeout(idle);
+      window.removeEventListener("focusin", start);
     };
-  }, [comuni]);
+  }, [comuni, eager]);
   return comuni;
 }

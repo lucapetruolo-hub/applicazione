@@ -7,7 +7,15 @@ import { Icon, Logo, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { reopenCookieChoice } from "@/lib/cookieConsent";
 import { useAuth } from "@/lib/AuthContext";
 
-const MAIN_CATEGORIES = PROFESSIONAL_CATEGORIES.slice(0, 8);
+// Prima i quattro mestieri del lancio (CLAUDE.md §7), poi gli altri fino a
+// otto: Falegname restava fuori (collaudo N-13,
+// docs/changelog/2026-10-30-velocita-telefono.md). Tutti gli altri da
+// "Tutti i servizi" e dal menu in alto.
+const LAUNCH_SLUGS = ["idraulico", "elettricista", "pulizie", "falegname"];
+const MAIN_CATEGORIES = [
+  ...PROFESSIONAL_CATEGORIES.filter((category) => LAUNCH_SLUGS.includes(category.slug)),
+  ...PROFESSIONAL_CATEGORIES.filter((category) => !LAUNCH_SLUGS.includes(category.slug)),
+].slice(0, 8);
 
 function FooterColumnTitle({ children }: { children: string }) {
   return (
@@ -34,6 +42,9 @@ function FooterLink({ href, children }: { href: string; children: string }) {
 // dell'azienda (ragione sociale, P.IVA, sede) appena disponibili.
 /** Aree riservate (cliente, professionista, admin): piede corto, senza i link di marketing. */
 const RESERVED_AREAS = ["/dashboard", "/admin", "/account", "/chat", "/le-mie-richieste", "/professionisti-salvati", "/le-mie-recensioni", "/segnalazioni"];
+/** Pagine di accesso e iscrizione: stesso piede corto, per non distrarre a metà dei passi
+ * (docs/changelog/2026-11-02-registrazione-pro-grafica.md). */
+const AUTH_PAGES = ["/registrati", "/accedi", "/password-dimenticata", "/reimposta-password", "/conferma-email", "/completa-profilo", "/accesso-google"];
 
 function ShortFooterLink({ href, children }: { href: string; children: string }) {
   return (
@@ -51,7 +62,7 @@ export function SiteFooter() {
   // Dentro le aree riservate il piede completo (quattro colonne, "Iscriviti
   // gratis", "Accedi") non serve a chi è già dentro e su telefono era più
   // lungo della chat (docs/CHANGELOG.md §349): resta una riga sola.
-  if (RESERVED_AREAS.some((area) => pathname === area || pathname.startsWith(`${area}/`))) {
+  if ([...RESERVED_AREAS, ...AUTH_PAGES].some((area) => pathname === area || pathname.startsWith(`${area}/`))) {
     return (
       <YStack width="100%" alignItems="center" paddingVertical="5" paddingHorizontal="4">
         <XStack flexWrap="wrap" justifyContent="center" alignItems="center" columnGap="4" rowGap="2">
@@ -93,6 +104,7 @@ export function SiteFooter() {
                 {category.label}
               </FooterLink>
             ))}
+            <FooterLink href="/cerca">Tutti i servizi</FooterLink>
             {/* "Contatti" dentro la colonna "Servizi" (richiesta esplicita
                 dell'utente, corretta rispetto a un giro precedente che
                 aveva sostituito l'intera colonna con un form inline) —
@@ -107,9 +119,12 @@ export function SiteFooter() {
             <FooterLink href="/urgente">Richiesta urgente</FooterLink>
             <FooterLink href="/#come-funziona">Come funziona</FooterLink>
             <FooterLink href="/#quanto-costa">Quanto costa</FooterLink>
+            {/* Pagine dei prezzi per mestiere (collaudo N-05). */}
+            <FooterLink href="/prezzi">Prezzi per mestiere</FooterLink>
             {/* Chi è già dentro non deve vedere "Accedi" (collaudo L, migliorie). */}
             {user ? null : <FooterLink href="/accedi">Accedi</FooterLink>}
             <FooterLink href="/faq">Domande frequenti</FooterLink>
+            <FooterLink href="/problemi-e-rimborsi">Problemi e rimborsi</FooterLink>
             <FooterLink href="/sicurezza">Sicurezza e truffe</FooterLink>
           </YStack>
 
@@ -138,7 +153,7 @@ export function SiteFooter() {
           <XStack alignItems="center" gap="2" flexShrink={1} minWidth={0}>
             <Icon name="shield" size={16} color={brand.grafite70} strokeWidth={1.5} />
             <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
-              Recensioni solo da lavori confermati
+              Recensioni solo da lavori fatti tramite il sito
             </Text>
           </XStack>
           <XStack alignItems="center" gap="2" flexShrink={1} minWidth={0}>

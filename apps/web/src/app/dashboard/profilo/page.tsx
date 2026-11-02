@@ -29,7 +29,7 @@ import {
   type MyProfessionalProfile,
   type MyProfilePreview,
   type MyVerificationStatus,
-  type ProfessionalCategorySlug, professionalPath, SERVICE_PRICE_UNITS, SERVICE_PRICE_UNIT_LABEL, type ServicePriceUnit } from "@professionisti/shared";
+  type ProfessionalCategorySlug, professionalPath, parseSubscriptionTier, subscriptionTierInfo, type SubscriptionTier, SERVICE_PRICE_UNITS, SERVICE_PRICE_UNIT_LABEL, type ServicePriceUnit } from "@professionisti/shared";
 import { Autocomplete, Button, Chip, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -47,6 +47,7 @@ import { journeyCurrent, setupJourney, useJourneySubscription } from "@/componen
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 import { localPreviewUrl } from "@/lib/media";
 import { keyActivate } from "@/lib/keyActivate";
+import { ChosenPlanChip } from "@/components/ChosenPlanChip";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 /** Prestazioni suggerite visibili prima di "Altre". */
@@ -112,6 +113,115 @@ function FieldLabel({ children }: { children: string }) {
 // Cognitivo" F5.2: una singola pagina lunghissima senza sezioni percepibili
 // — spezzata in blocchi (Surface, chunking alla Miller) ognuno col proprio
 // titolo, invece di un unico scroll continuo di soli FieldLabel).
+/** Indice in cima al modulo del profilo (docs/changelog/2026-11-02-registrazione-pro-grafica.md). */
+const PROFILE_SECTIONS = [
+  { id: "profilo-identita", label: "Identità" },
+  { id: "profilo-mestieri", label: "Mestieri e bio" },
+  { id: "profilo-esperienza", label: "Esperienza" },
+  { id: "profilo-preavviso", label: "Preavviso" },
+  { id: "profilo-prestazioni", label: "Prestazioni" },
+  { id: "profilo-lingue", label: "Lingue" },
+  { id: "profilo-portfolio", label: "Portfolio" },
+] as const;
+
+/**
+ * Indice che resta in vista scorrendo, con la parte che si sta guardando in
+ * evidenza (docs/changelog/2026-11-02-registrazione-pro-migliorie.md).
+ */
+function ProfileIndex() {
+  const [activeId, setActiveId] = useState<string>(PROFILE_SECTIONS[0].id);
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const sections = PROFILE_SECTIONS.map((section) => document.getElementById(section.id)).filter((el): el is HTMLElement => !!el);
+    if (sections.length === 0 || typeof IntersectionObserver === "undefined") return;
+    const visible = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.add(entry.target.id);
+          else visible.delete(entry.target.id);
+        }
+        // La prima parte (in ordine di pagina) dentro la fascia alta dello schermo.
+        const first = PROFILE_SECTIONS.find((section) => visible.has(section.id));
+        if (first) setActiveId(first.id);
+      },
+      // Fascia sotto l'intestazione e l'indice stesso, fino a metà schermo.
+      { rootMargin: "-190px 0px -50% 0px" },
+    );
+    for (const section of sections) observer.observe(section);
+    // In fondo alla pagina le ultime parti non arrivano mai in alto: vale
+    // l'ultima che si vede.
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        if (window.innerHeight + window.scrollY < document.documentElement.scrollHeight - 4) return;
+        const last = [...sections].reverse().find((el) => el.getBoundingClientRect().top < window.innerHeight);
+        if (last) setActiveId(last.id);
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  // La voce attiva resta visibile nell'indice che scorre di lato (telefono),
+  // senza muovere la pagina.
+  useEffect(() => {
+    const nav = navRef.current;
+    const link = nav?.querySelector<HTMLElement>(`[data-section="${activeId}"]`);
+    if (!nav || !link || nav.scrollWidth <= nav.clientWidth) return;
+    const target = link.offsetLeft - (nav.clientWidth - link.offsetWidth) / 2;
+    nav.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+  }, [activeId]);
+
+  return (
+    <nav ref={navRef} className="profile-index" aria-label="Parti del profilo">
+      {PROFILE_SECTIONS.map((section) => (
+        <a
+          key={section.id}
+          href={`#${section.id}`}
+          data-section={section.id}
+          className={`profile-index-link${activeId === section.id ? " is-active" : ""}`}
+          aria-current={activeId === section.id ? "location" : undefined}
+          onClick={() => setActiveId(section.id)}
+        >
+          {section.label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+/** "Per pubblicarlo: Nome · Mestiere · Città", spuntati mentre si compilano. */
+function RequiredFieldsProgress({ items }: { items: { label: string; done: boolean; sectionId: string }[] }) {
+  const doneCount = items.filter((item) => item.done).length;
+  return (
+    <div className="profile-required">
+      <span className="profile-required-title">
+        Per pubblicarlo <span className="profile-required-count">{doneCount} su {items.length}</span>
+      </span>
+      <ul className="profile-required-list">
+        {items.map((item) => (
+          <li key={item.label}>
+            <a href={`#${item.sectionId}`} className={`profile-required-item${item.done ? " is-done" : ""}`}>
+              <span className="profile-required-mark" aria-hidden="true">
+                {item.done ? <Icon name="check" size={12} strokeWidth={3} color="white" /> : null}
+              </span>
+              {item.label}
+              <span className="sr-only">{item.done ? ", fatto" : ", da compilare"}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function SectionTitle({ children }: { children: string }) {
   return (
     <Text fontFamily="heading" fontWeight="800" fontSize="5" color={brand.grafite}>
@@ -226,6 +336,8 @@ export default function DashboardProfiloPage() {
   const [engagementLocation, setEngagementLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [engagementRadiusKm, setEngagementRadiusKm] = useState(25);
   const [urgentEngagementRadiusKm, setUrgentEngagementRadiusKm] = useState(25);
+  // I raggi salvati: "Salva profilo" salva anche il raggio se è cambiato (collaudo E-04).
+  const [savedRadius, setSavedRadius] = useState({ engagementRadiusKm: 25, urgentEngagementRadiusKm: 25 });
   // Vero solo se, al primo caricamento, non esisteva ancora alcun profilo:
   // distingue "questo è il primo salvataggio in assoluto" da "una modifica
   // a un profilo già esistente" — serve a decidere se, dopo il salvataggio,
@@ -237,6 +349,15 @@ export default function DashboardProfiloPage() {
   const [showAgendaPrompt, setShowAgendaPrompt] = useState(false);
   // Dopo il primo salvataggio, se la carta si può già dare: si sceglie il piano (docs/changelog/2026-10-29-piano-in-registrazione.md).
   const [showPlanPrompt, setShowPlanPrompt] = useState(false);
+  // Livello toccato su /per-professionisti, portato qui dall'iscrizione
+  // (?livello=, docs/changelog/2026-11-02-registrazione-pro-grafica.md):
+  // ricordato in cima e passato alla pagina Abbonamento dopo il primo salvataggio.
+  const [chosenTier, setChosenTier] = useState<SubscriptionTier | null>(null);
+  useEffect(() => {
+    // L'indirizzo si legge solo nel browser (nel render del server non c'è).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setChosenTier(parseSubscriptionTier(new URLSearchParams(window.location.search).get("livello")));
+  }, []);
   // Profilo preparato da un operatore (docs/CHANGELOG.md §170) o dichiarazione
   // cambiata: il profilo entra in ricerca solo quando il professionista salva.
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
@@ -295,6 +416,7 @@ export default function DashboardProfiloPage() {
     }
     setEngagementRadiusKm(profile.engagementRadiusKm);
     setUrgentEngagementRadiusKm(profile.urgentEngagementRadiusKm);
+    setSavedRadius({ engagementRadiusKm: profile.engagementRadiusKm, urgentEngagementRadiusKm: profile.urgentEngagementRadiusKm });
     setServices(
       profile.services.map((service) => ({
         name: service.name,
@@ -356,8 +478,10 @@ export default function DashboardProfiloPage() {
   // Modifiche non salvate (richiesta esplicita dell'utente, docs/CHANGELOG.md
   // §136): confronto tra i campi del form principale e com'erano all'ultimo
   // caricamento/salvataggio. Fuori dal confronto la foto profilo (salvata
-  // subito dal suo caricamento) e il raggio di ingaggio (proprio "Salva").
+  // subito dal suo caricamento). Il raggio di ingaggio ora è dentro (collaudo E-04).
   const formSnapshot = JSON.stringify({
+    engagementRadiusKm,
+    urgentEngagementRadiusKm,
     businessName,
     categorySlugs,
     subTags,
@@ -509,6 +633,11 @@ export default function DashboardProfiloPage() {
           priceUnit: service.priceUnit,
         })),
       });
+      // Il raggio ha il suo indirizzo nell'API: si salva subito dopo il profilo, solo se è cambiato.
+      if (engagementRadiusKm !== savedRadius.engagementRadiusKm || urgentEngagementRadiusKm !== savedRadius.urgentEngagementRadiusKm) {
+        await apiClient.updateEngagementRadius(token as string, { engagementRadiusKm, urgentEngagementRadiusKm });
+        setSavedRadius({ engagementRadiusKm, urgentEngagementRadiusKm });
+      }
       setSaved(true);
       setSavedRemoteAvailable(remoteAvailable);
       setNeedsConfirmation(false);
@@ -773,7 +902,10 @@ export default function DashboardProfiloPage() {
                 <div className="profile-visibility is-warn">
                   <span className="profile-visibility-dot" aria-hidden="true" />
                   <span className="profile-visibility-text">
-                    {identityStep.state === "waiting" ? "Identità in verifica: presto potrai rispondere ai preventivi" : "Non puoi ancora rispondere alle richieste di preventivo"}
+                    {identityStep.state === "waiting"
+                      ? "Identità in verifica: presto potrai rispondere ai preventivi"
+                      : // Nella ricerca compare dopo chi può già rispondere (collaudo E-09).
+                        "Non puoi ancora rispondere: finché non verifichi l'identità, nella ricerca compari dopo gli altri"}
                   </span>
                 </div>
               ) : null}
@@ -838,14 +970,39 @@ export default function DashboardProfiloPage() {
               Torna all&apos;anteprima
             </button>
           )}
+          {isFirstProfileSave ? (
+            <span className="profile-welcome-eyebrow">
+              <Icon name="check" size={14} strokeWidth={2.6} color={brand.cianografiaScuro} />
+              Account creato
+            </span>
+          ) : null}
           <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
-            {isFirstProfileSave ? "Profilo pubblico" : "Modifica profilo"}
+            {isFirstProfileSave ? "Ora il tuo profilo pubblico" : "Modifica profilo"}
           </Text>
           <Text color={brand.grafite70}>
-            Queste informazioni sono visibili pubblicamente su {BRAND.name} e determinano in quali ricerche
-            compari.
+            {isFirstProfileSave
+              ? "Servono nome, mestiere e città: il resto puoi aggiungerlo anche dopo."
+              : `Queste informazioni sono visibili pubblicamente su ${BRAND.name} e determinano in quali ricerche compari.`}
           </Text>
+          {isFirstProfileSave ? (
+            <RequiredFieldsProgress
+              items={[
+                { label: "Nome", done: businessName.trim().length >= 2, sectionId: "profilo-identita" },
+                { label: "Mestiere", done: categorySlugs.length > 0, sectionId: "profilo-mestieri" },
+                { label: "Città", done: city.trim().length > 0, sectionId: "profilo-identita" },
+              ]}
+            />
+          ) : null}
+          {isFirstProfileSave && chosenTier ? (
+            <XStack>
+              <ChosenPlanChip tier={chosenTier} />
+            </XStack>
+          ) : null}
         </YStack>
+
+        {/* Indice dei riquadri: la pagina è lunga quasi 9.000 px sul telefono
+            (docs/changelog/2026-11-02-registrazione-pro-grafica.md). */}
+        <ProfileIndex />
 
         {needsConfirmation ? (
           <Surface gap="2" borderColor={brand.cianografia} borderWidth={1}>
@@ -863,7 +1020,7 @@ export default function DashboardProfiloPage() {
             (spostati qui subito sotto il nome, richiesta esplicita
             dell'utente) e "Verbale Cognitivo" F5.2: pagina lunghissima
             spezzata in blocchi percepibili invece di un unico scroll. */}
-        <Surface gap="4">
+        <Surface gap="4" id="profilo-identita" className="profile-section">
           <SectionTitle>Identità</SectionTitle>
 
           <YStack gap="2">
@@ -888,13 +1045,13 @@ export default function DashboardProfiloPage() {
               </YStack>
               <YStack gap="1" flex={1} maxWidth={400} alignItems="flex-start">
                 <Button
-                      variant="secondary"
-                      size="3"
-                      height={40}
-                      opacity={isUploadingImage ? 0.6 : 1}
-                      disabled={isUploadingImage}
-                      onPress={() => imageInputRef.current?.click()}
-                    >
+                  variant="secondary"
+                  size="3"
+                  height={40}
+                  disabled={isUploadingImage}
+                  opacity={isUploadingImage ? 0.6 : 1}
+                  onPress={() => imageInputRef.current?.click()}
+                >
                   {isUploadingImage ? (
                     <XStack alignItems="center" gap="2">
                       <Text color={brand.grafite} fontWeight="600">
@@ -989,7 +1146,7 @@ export default function DashboardProfiloPage() {
             subito sotto la scelta delle categorie (richiesta esplicita
             dell'utente), "(opzionale)" tolto dall'etichetta pur restando
             un campo facoltativo lato validazione. */}
-        <Surface gap="4">
+        <Surface gap="4" id="profilo-mestieri" className="profile-section">
           <SectionTitle>Categorie e presentazione</SectionTitle>
 
           <YStack gap="2">
@@ -1097,7 +1254,7 @@ export default function DashboardProfiloPage() {
             riconoscibile). Nessuna verifica documentale dietro — stesso
             principio già seguito per le qualifiche professionali nel resto
             del prodotto: autodichiarate, mai confuse con `verified`. */}
-        <Surface gap="4">
+        <Surface gap="4" id="profilo-esperienza" className="profile-section">
           <XStack alignItems="center" gap="2">
             <Icon name="shield" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
             <Text fontFamily="heading" fontWeight="700" fontSize="5" color={brand.grafite}>
@@ -1210,7 +1367,7 @@ export default function DashboardProfiloPage() {
           </YStack>
         </YStack>
 
-        <Surface gap="3">
+        <Surface gap="3" id="profilo-preavviso" className="profile-section">
           <SectionTitle>Preavviso per annullare</SectionTitle>
           <Text fontSize={13} color={brand.grafite70}>
             Se il cliente deve annullare, quanto prima deve avvisarti? È già scelto nei tuoi preventivi e puoi cambiarlo ogni volta.
@@ -1224,7 +1381,7 @@ export default function DashboardProfiloPage() {
           </XStack>
         </Surface>
 
-        <Surface gap="3">
+        <Surface gap="3" id="profilo-prestazioni" className="profile-section">
           <SectionTitle>Prestazioni offerte</SectionTitle>
           <Text fontSize={13} color={brand.grafite70}>
             Aggiungi i servizi che offri, con un range di prezzo se vuoi indicarlo (es. da 50€ a 100€, utile quando il
@@ -1361,7 +1518,7 @@ export default function DashboardProfiloPage() {
           </Button>
         </Surface>
 
-        <Surface gap="3">
+        <Surface gap="3" id="profilo-lingue" className="profile-section">
           <SectionTitle>Lingue parlate</SectionTitle>
           <Text fontSize={13} color={brand.grafite70}>
             Usate dai clienti per filtrare la ricerca (es. &quot;Inglese&quot;, &quot;Francese&quot;).
@@ -1421,17 +1578,17 @@ export default function DashboardProfiloPage() {
                 }}
               />
               <Button
-                    variant="ghost"
-                    size="3"
-                    height={40}
-                    onPress={() => {
-                                    const trimmed = newLanguage.trim();
-                                    if (trimmed && !spokenLanguages.includes(trimmed)) {
-                                      setSpokenLanguages((prev) => [...prev, trimmed]);
-                                    }
-                                    setNewLanguage("");
-                                  }}
-                  >
+                variant="ghost"
+                size="3"
+                height={40}
+                onPress={() => {
+                  const trimmed = newLanguage.trim();
+                  if (trimmed && !spokenLanguages.includes(trimmed)) {
+                    setSpokenLanguages((prev) => [...prev, trimmed]);
+                  }
+                  setNewLanguage("");
+                }}
+              >
                 + Aggiungi
               </Button>
             </XStack>
@@ -1480,11 +1637,11 @@ export default function DashboardProfiloPage() {
           </YStack>
         </Surface>
 
-        <Surface gap="2">
+        <Surface gap="2" id="profilo-portfolio" className="profile-section">
           <SectionTitle>Portfolio</SectionTitle>
           <FieldLabel>{`Foto o video dei lavori svolti (fino a ${MAX_PORTFOLIO_PHOTOS}, opzionale)`}</FieldLabel>
           <Text fontSize={13} color={brand.grafite70}>
-            Foto o video reali di lavori completati: aiutano chi apre il tuo profilo a farsi un&apos;idea concreta di
+            Foto o video reali di lavori terminati: aiutano chi apre il tuo profilo a farsi un&apos;idea concreta di
             cosa sai fare.
           </Text>
           <YStack flexDirection="row" flexWrap="wrap" gap="2">
@@ -1562,11 +1719,16 @@ export default function DashboardProfiloPage() {
             distinte invece di lasciarlo isolato più in basso nella pagina. */}
         {token && engagementLocation ? (
           <EngagementRadiusSection
-            token={token}
             latitude={engagementLocation.latitude}
             longitude={engagementLocation.longitude}
-            initialEngagementRadiusKm={engagementRadiusKm}
-            initialUrgentEngagementRadiusKm={urgentEngagementRadiusKm}
+            engagementRadiusKm={engagementRadiusKm}
+            urgentEngagementRadiusKm={urgentEngagementRadiusKm}
+            onChange={(radius) => {
+              setEngagementRadiusKm(radius.engagementRadiusKm);
+              setUrgentEngagementRadiusKm(radius.urgentEngagementRadiusKm);
+            }}
+            savedEngagementRadiusKm={savedRadius.engagementRadiusKm}
+            savedUrgentEngagementRadiusKm={savedRadius.urgentEngagementRadiusKm}
           />
         ) : null}
 
@@ -1722,8 +1884,8 @@ export default function DashboardProfiloPage() {
                   Con Base hai i mesi gratis: aggiungi la carta, oggi paghi 0 €.
                 </Text>
               </YStack>
-              <Button variant="primary" onPress={() => router.push("/dashboard/abbonamento#livelli")}>
-                Scegli il piano
+              <Button variant="primary" onPress={() => router.push(chosenTier ? `/dashboard/abbonamento?livello=${chosenTier}#livelli` : "/dashboard/abbonamento#livelli")}>
+                {chosenTier ? `Attiva ${subscriptionTierInfo(chosenTier).label}` : "Scegli il piano"}
               </Button>
             </YStack>
           </div>

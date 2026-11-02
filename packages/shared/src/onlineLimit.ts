@@ -18,6 +18,22 @@ export const ONLINE_LIMIT_FREE_JOBS = 10;
 export const ONLINE_LIMIT_FREE_DAYS = 120;
 
 /**
+ * Finché vale il tetto, al massimo 3.000 € online fermi in tutto sul conto
+ * del professionista, cioè pagati e non ancora sbloccati (collaudo P-02,
+ * decisione di Luca del 30/10/2026): un profilo nuovo non incassa da molti
+ * clienti insieme prima che si veda come lavora. Si controlla sugli acconti,
+ * cioè all'inizio di un lavoro; il saldo di un lavoro già iniziato passa.
+ */
+export const ONLINE_HELD_LIMIT_EUR_CENTS = 300_000;
+
+/** Frase per il cliente quando un acconto supererebbe i 3.000 € fermi, null se va bene. */
+export function onlineHeldLimitProblem(input: { limitEurCents: number | null; heldEurCents: number; amountEurCents: number }): string | null {
+  if (input.limitEurCents === null) return null;
+  if (input.heldEurCents + input.amountEurCents <= ONLINE_HELD_LIMIT_EUR_CENTS) return null;
+  return "Questo professionista è nuovo sul sito e per ora ha raggiunto i pagamenti online che può ricevere. Scegli il pagamento diretto, se lo offre, o riprova tra qualche giorno.";
+}
+
+/**
  * Tetto del professionista in centesimi, null = nessun tetto. `cleanJobs`:
  * lavori pagati online, con i soldi già passati a lui e senza contestazioni,
  * pagati dopo l'ultima contestazione persa; `firstCleanJobAt`: il primo.

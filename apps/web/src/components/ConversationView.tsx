@@ -16,6 +16,8 @@ import { UploadingDots } from "@/components/UploadingDots";
 import { JobLimitModal } from "@/components/JobLimitModal";
 import { attachmentFileName, documentTypeLabel, isDocumentUrl } from "@/lib/media";
 import { personalizeEventMessage } from "@/lib/conversationText";
+import { ReportContentModal } from "@/components/ReportContentModal";
+import { hasRecentlyReported, markReported } from "@/lib/reportedContent";
 
 // Documenti accettati dall'opzione "File" del menu allegati (richiesta
 // esplicita dell'utente: "in modo che puo essere caricata anche la fattura
@@ -54,7 +56,7 @@ const ACTOR_BUBBLE_BG: Record<ConversationEvent["actor"], string> = {
 
 /** Solo l'ora sotto ogni messaggio (docs/CHANGELOG.md §198): il giorno lo dice il separatore sopra. Fuso orario del browser. */
 function formatEventTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
 }
 
 /** Etichetta del separatore di giorno: "Oggi", "Ieri", altrimenti "8 ottobre 2026". */
@@ -150,6 +152,9 @@ export function ConversationView({
   // ricevute: stessi dati di `RequestCard`, niente contatti prima
   // dell'accettazione (CLAUDE.md §5.9).
   const [clientCard, setClientCard] = useState<{ name: string; detailsUnlocked: boolean; imageUrl: string | null } | null>(null);
+  // "Segnala" su un messaggio dell'altra parte (docs/changelog/2026-11-02-collaudo-recensioni-abusi.md).
+  const [reportEventId, setReportEventId] = useState<string | null>(null);
+  const [reportedIds, setReportedIds] = useState<Set<string>>(() => new Set());
   async function openClientCard() {
     try {
       const leads = await apiClient.myLeads(token);
@@ -758,6 +763,7 @@ export function ConversationView({
               // qualunque chat), quelli dell'altra parte a sinistra —
               // richiesta esplicita dell'utente.
               const isMine = event.actor === viewerRole;
+              const reported = reportedIds.has(event.id) || hasRecentlyReported("CHAT_MESSAGE", event.id);
               // Niente nome dentro la nuvoletta (docs/CHANGELOG.md §198): in
               // una chat a due il lato dice già chi scrive, il nome
               // dell'altra parte è nell'intestazione.
@@ -775,16 +781,34 @@ export function ConversationView({
                       paddingHorizontal="3"
                       paddingVertical="2-5"
                     >
-                      {event.message ? (
+                      {event.hidden ? (
+                        <Text color={brand.grafite70} fontSize={15} fontStyle="italic">
+                          Messaggio nascosto dopo una segnalazione.
+                        </Text>
+                      ) : event.message ? (
                         <Text color={brand.grafite} fontSize={16}>
                           {event.message}
                         </Text>
                       ) : null}
                       {renderEventMedia(event)}
                     </YStack>
-                    <Text fontSize={10} color={brand.grafite70} paddingHorizontal="1">
-                      {formatEventTime(event.createdAt)}
-                    </Text>
+                    <XStack gap="1-5" alignItems="center" paddingHorizontal="1">
+                      <Text fontSize={10} color={brand.grafite70}>
+                        {formatEventTime(event.createdAt)}
+                      </Text>
+                      {/* Solo sui messaggi dell'altra parte, mai su quelli nascosti. */}
+                      {!isMine && !event.hidden ? (
+                        reported ? (
+                          <Text fontSize={11} color={brand.grafite70}>
+                            · Segnalato
+                          </Text>
+                        ) : (
+                          <button type="button" className="report-message" onClick={() => setReportEventId(event.id)} aria-label="Segnala questo messaggio">
+                            · Segnala
+                          </button>
+                        )
+                      ) : null}
+                    </XStack>
                   </YStack>
                 </Fragment>
               );
@@ -874,6 +898,19 @@ export function ConversationView({
           <Text color={brand.urgenza} fontSize={13} paddingLeft={52}>
             {mediaError}
           </Text>
+        ) : null}
+        {reportEventId ? (
+          <ReportContentModal
+            targetType="CHAT_MESSAGE"
+            targetLabel="questo messaggio"
+            onClose={() => setReportEventId(null)}
+            onSubmit={async (input) => {
+              await apiClient.createContentReport(token, { targetType: "CHAT_MESSAGE", targetId: reportEventId, ...input });
+              // Solo se la chiamata non ha lanciato (es. già segnalato nelle ultime 24 ore).
+              markReported("CHAT_MESSAGE", reportEventId);
+              setReportedIds((prev) => new Set(prev).add(reportEventId));
+            }}
+          />
         ) : null}
         {jobLimit ? (
           <JobLimitModal
@@ -996,6 +1033,22 @@ export function ConversationView({
         />
       </YStack>
       <style jsx>{`
+        .report-message {
+          background: none;
+          border: 0;
+          padding: 4px 2px;
+          min-height: 24px;
+          font: inherit;
+          font-size: 11px;
+          color: ${brand.grafite70};
+          text-decoration: underline;
+          cursor: pointer;
+        }
+        .report-message:focus-visible {
+          outline: 2px solid ${brand.cianografiaScuro};
+          outline-offset: 2px;
+          border-radius: 4px;
+        }
         .composer-round {
           width: 44px;
           height: 44px;

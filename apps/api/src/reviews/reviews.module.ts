@@ -4,10 +4,11 @@ import { NotificationsModule } from "../notifications/notifications.module";
 import { ProfessionalMetricsModule } from "../professional-metrics/professional-metrics.module";
 import { ReviewsController } from "./reviews.controller";
 import { ReviewsService } from "./reviews.service";
+import { ReviewReplyRemindersService } from "./review-reply-reminders.service";
 
 @Module({
   imports: [AuthModule, NotificationsModule, ProfessionalMetricsModule],
   controllers: [ReviewsController],
-  providers: [ReviewsService],
+  providers: [ReviewsService, ReviewReplyRemindersService],
 })
 export class ReviewsModule {}

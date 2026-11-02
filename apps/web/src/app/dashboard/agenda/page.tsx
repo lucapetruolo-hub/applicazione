@@ -26,6 +26,7 @@ import {
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { loadMyProfessionalProfile } from "@/lib/myProfessionalProfile";
+import { AwayCard } from "@/components/AwayCard";
 import { useAuth } from "@/lib/AuthContext";
 import { CalendarShell, MonthGrid, type CalendarView } from "@/components/calendar/CalendarShell";
 import { SkeletonBlock } from "@/components/Skeleton";
@@ -221,7 +222,8 @@ function DashboardAgendaContent() {
   function openWeekIfTodayEmpty(loadedBookings: ProfessionalBooking[], loadedJobs: ExternalJob[]) {
     if (autoWeekChecked.current) return;
     autoWeekChecked.current = true;
-    if (deepLinkedDay || !window.matchMedia("(max-width: 640px)").matches) return;
+    // Un appuntamento aperto da un link (?booking=, ?esterno=) resta sul suo giorno: prima, la domenica, la settimana dopo lo copriva.
+    if (deepLinkedDay || searchParams.get("booking") || searchParams.get("esterno") || !window.matchMedia("(max-width: 640px)").matches) return;
     const todayStr = toIsoDate(todayUtc());
     const busyToday =
       loadedBookings.some((b) => b.status !== "CANCELED" && jobOccurrenceOn(b.scheduledAt, b.scheduledEndAt, todayStr) !== null) ||
@@ -344,6 +346,8 @@ function DashboardAgendaContent() {
   const [vacationFrom, setVacationFrom] = useState("");
   const [vacationTo, setVacationTo] = useState("");
   const [vacationBusy, setVacationBusy] = useState(false);
+  // "Metti in pausa" (collaudo C-16).
+  const [awayUntil, setAwayUntil] = useState<string | null>(null);
 
   // Deep-link "Vedi in agenda" da /dashboard/richieste (?booking=<id>) —
   // bug reale segnalato dall'utente: il link portava sempre alla data
@@ -554,7 +558,12 @@ function DashboardAgendaContent() {
   useEffect(() => {
     if (!token) return;
     loadMyProfessionalProfile(token)
-      .then((profile) => startTransition(() => setMyProfileId(profile?.id ?? null)))
+      .then((profile) =>
+        startTransition(() => {
+          setMyProfileId(profile?.id ?? null);
+          setAwayUntil(profile?.awayUntil ?? null);
+        }),
+      )
       .catch(() => {});
   }, [token]);
 
@@ -2148,6 +2157,8 @@ function DashboardAgendaContent() {
           </div>
         ) : activeTab === "orari" ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* Pausa con data di ritorno (collaudo C-16): ferma richieste e ricerca senza chiudere i giorni uno per uno. */}
+            {token ? <AwayCard token={token} awayUntil={awayUntil} onChange={setAwayUntil} /> : null}
             {/* Chiudere un giorno è il compito più frequente della scheda: prima di tutto (T1, §311). */}
             <div className="ag-card" style={{ padding: 20 }}>
               <h2 style={{ fontSize: 19 }}>Chiudi un giorno o le ferie</h2>
@@ -2314,7 +2325,14 @@ function DashboardAgendaContent() {
           uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
         />
       ) : null}
-      {cancelingBooking ? <CancelBookingModal onClose={() => setCancelingBooking(null)} onCancel={handleCancelWithNote} /> : null}
+      {cancelingBooking ? (
+        <CancelBookingModal
+          // Che fine fa l'acconto pagato online (collaudo F-02).
+          description="Il cliente verrà avvisato dell'annullamento e, se ha pagato online, gli restituiamo tutto sulla carta. Puoi lasciare una nota facoltativa per spiegargli il motivo."
+          onClose={() => setCancelingBooking(null)}
+          onCancel={handleCancelWithNote}
+        />
+      ) : null}
 
       {showCalendarLink ? <CalendarLinkModal token={token} onClose={() => setShowCalendarLink(false)} /> : null}
 

@@ -1,7 +1,7 @@
-import { BadRequestException, Body, Controller, Get, Post, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Put, Query, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
-import { reviewSchema, type ReviewInput } from "@professionisti/shared";
+import { isProfessionalCategorySlug, reviewReplySchema, reviewSchema, reviewUpdateSchema, type ReviewInput, type ReviewReplyInput, type ReviewUpdateInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
@@ -23,8 +23,15 @@ export class ReviewsController {
   // Pubblico (nessuna guardia): riprova sociale reale per la home, stesso
   // criterio di visibilità delle recensioni sulla pagina profilo pubblica.
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  // Con categoria e città: le ultime recensioni di quel mestiere in quella
+  // città, per il testo della pagina città (collaudo N-04,
+  // docs/changelog/2026-10-30-velocita-telefono.md).
   @Get("recent")
-  getRecent() {
+  getRecent(@Query("category") category?: string, @Query("city") city?: string) {
+    const cityName = typeof city === "string" ? city.trim() : "";
+    if (typeof category === "string" && isProfessionalCategorySlug(category) && cityName && cityName.length <= 80) {
+      return this.reviewsService.getRecentPublic(3, { category, city: cityName });
+    }
     return this.reviewsService.getRecentPublic();
   }
 
@@ -34,11 +41,34 @@ export class ReviewsController {
     return this.reviewsService.listMine(req.user.userId);
   }
 
+  /** Recensioni ricevute dal professionista, per rispondere (pagina "Recensioni" della sua area). */
+  @UseGuards(JwtAuthGuard)
+  @Get("received")
+  listReceived(@Req() req: AuthenticatedRequest) {
+    return this.reviewsService.listReceived(req.user.userId);
+  }
+
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard)
   @Post()
   create(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(reviewSchema)) body: ReviewInput) {
     return this.reviewsService.create(req.user.userId, body);
+  }
+
+  /** Aggiornamento una volta sola dopo una segnalazione a lavoro chiuso senza accordo. */
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id")
+  update(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(reviewUpdateSchema)) body: ReviewUpdateInput) {
+    return this.reviewsService.update(req.user.userId, id, body);
+  }
+
+  /** Risposta pubblica del professionista, scritta o modificata. */
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @UseGuards(JwtAuthGuard)
+  @Put(":id/reply")
+  reply(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(reviewReplySchema)) body: ReviewReplyInput) {
+    return this.reviewsService.reply(req.user.userId, id, body.reply);
   }
 
   // Una chiamata per foto/video (fino a 5, vedi reviewSchema.photoUrls),

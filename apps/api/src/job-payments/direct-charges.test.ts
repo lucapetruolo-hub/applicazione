@@ -26,7 +26,7 @@ function buildService() {
     manoviaRevenue: { create: vi.fn() },
     platformFeeEntry: { upsert: vi.fn() },
     professionalProfile: { findUnique: vi.fn(), findMany: vi.fn().mockResolvedValue([]), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
-    quote: { findUnique: vi.fn() },
+    quote: { findUnique: vi.fn(), update: vi.fn() },
     user: { findMany: vi.fn().mockResolvedValue([]) },
   };
   const stripe = {
@@ -44,7 +44,7 @@ function buildService() {
       },
     },
     balanceSettings: { update: vi.fn() },
-    checkout: { sessions: { create: vi.fn().mockResolvedValue({ url: "https://checkout.stripe.test/s" }) } },
+    checkout: { sessions: { create: vi.fn().mockResolvedValue({ url: "https://checkout.stripe.test/s" }), retrieve: vi.fn(), expire: vi.fn().mockResolvedValue({}) } },
     balance: { retrieve: vi.fn().mockResolvedValue({ available: [{ amount: 100000, currency: "eur" }], pending: [] }) },
     payouts: { create: vi.fn().mockResolvedValue({ id: "po_1" }) },
     transfers: { create: vi.fn(), createReversal: vi.fn(), retrieve: vi.fn() },
@@ -158,7 +158,7 @@ describe("pagamenti sul conto del professionista", () => {
 
     expect(stripe.paymentIntents.retrieve).toHaveBeenCalledWith("pi_dep", { expand: ["latest_charge.balance_transaction"] }, { stripeAccount: "acct_1" });
     // Carta europea: 1,5% + 0,25 € = 1,75 €, pagati da noi.
-    expect(prisma.jobPayment.update).toHaveBeenCalledWith(
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ stripeDestinationAccountId: "acct_1", stripeDirectCharge: true, applicationFeeEurCents: 854, cardFeeEurCents: { increment: 175 } }) }),
     );
     expect(stripe.applicationFees.createRefund).not.toHaveBeenCalled();
@@ -179,6 +179,25 @@ describe("pagamenti sul conto del professionista", () => {
   });
 });
 
+describe("pagamento doppio (collaudo I-02)", () => {
+  it("lo stesso acconto pagato da due schede: il secondo torna subito al cliente, con l'avviso", async () => {
+    const { service, prisma, stripe } = buildService();
+    const notify = (service as unknown as { notificationsService: { notify: ReturnType<typeof vi.fn> } }).notificationsService.notify;
+    const job = { id: "jp-1", bookingId: "bk-1", paymentMethod: "MANOVIA", paidEurCents: 0, refundedEurCents: 0, stripeFeeEurCents: 0, applicationFeeEurCents: 0, stripePaymentIntentId: null, balancePaymentIntentId: null, balanceDirect: false, depositEurCents: 2400, releasedAt: null, booking: { finalAmountEurCents: null, professionalProfileId: "pro-1", quoteId: null } };
+    // Letto prima che l'altra scheda registrasse il suo acconto.
+    prisma.jobPayment.findUnique.mockResolvedValueOnce(job).mockResolvedValueOnce({ stripePaymentIntentId: "pi_first", balancePaymentIntentId: null });
+    prisma.jobPayment.updateMany.mockResolvedValueOnce({ count: 0 });
+    prisma.jobPayment.findUniqueOrThrow.mockResolvedValue({ booking: { id: "bk-1", clientId: "client-1", quote: { guidedRequestId: "gr-1" } } });
+    stripe.paymentIntents.retrieve.mockResolvedValue({ id: "pi_second", latest_charge: { id: "ch_2", amount: 2400, application_fee_amount: 205, balance_transaction: { fee: 61 } } });
+
+    await service.recordCheckoutPayment("jp-1", "deposit", { payment_intent: "pi_second", amount_total: 2400, metadata: { stripeAccount: "acct_1" } } as never, { notify: false });
+
+    expect(stripe.refunds.create).toHaveBeenCalledWith(expect.objectContaining({ payment_intent: "pi_second", refund_application_fee: true }), expect.objectContaining({ stripeAccount: "acct_1" }));
+    expect(notify).toHaveBeenCalledWith("client-1", "JOB_REFUND_COMPLETED", expect.objectContaining({ amountEurCents: 2400, duplicate: true }));
+    expect(prisma.platformFeeEntry.upsert).not.toHaveBeenCalled();
+  });
+});
+
 describe("rimborsi con l'addebito diretto", () => {
   it("prima dello sblocco rimborsa sul conto del professionista e gli restituisce la trattenuta", async () => {
     const { service, prisma, stripe } = buildService();
@@ -192,6 +211,9 @@ describe("rimborsi con l'addebito diretto", () => {
     expect(stripe.refunds.create).toHaveBeenCalledWith(expect.not.objectContaining({ reverse_transfer: true }), expect.objectContaining({ stripeAccount: "acct_1" }));
     expect(stripe.applicationFees.createRefund).toHaveBeenCalledWith("fee_1", expect.objectContaining({ amount: 675 }), expect.anything());
     expect(stripe.transfers.createReversal).not.toHaveBeenCalled();
+    // Il cliente sa quanto gli torna (collaudo F-02).
+    const notify = (service as unknown as { notificationsService: { notify: ReturnType<typeof vi.fn> } }).notificationsService.notify;
+    expect(notify).toHaveBeenCalledWith(undefined, "JOB_REFUND_COMPLETED", expect.objectContaining({ amountEurCents: 10000, bookingId: "bk-1" }));
   });
 
   it("dopo lo sblocco Stripe lo prende dal suo saldo: niente debito, la nostra parte gli torna se non è colpa sua", async () => {
@@ -266,6 +288,69 @@ describe("sblocco con l'addebito diretto", () => {
   });
 });
 
+describe("sblocco: ogni differenza ha la sua riga (collaudo F-21)", () => {
+  it("la trattenuta restituita allo sblocco non sembra presa da Stripe", async () => {
+    const { service, prisma, stripe } = buildService();
+    // 100 € pagati, 70 € già rimborsati, lavoro chiuso a 30 €: sul conto 21,46 €
+    // (100 − 8,54 − 70) e allo sblocco tornano 5,98 € di trattenuta.
+    const job = toRelease({ refundedEurCents: 7000, applicationFeeEurCents: 854, stripeFeeEurCents: 0, platformFeeEurCents: 256 });
+    job.booking.finalAmountEurCents = 3000;
+    prisma.jobPayment.findUnique.mockResolvedValueOnce(job).mockResolvedValue(null);
+    prisma.jobPayment.findUniqueOrThrow.mockResolvedValue(job);
+    stripe.applicationFees.retrieve.mockResolvedValue({ id: "fee_1", amount: 854, amount_refunded: 0 });
+    stripe.balance.retrieve.mockResolvedValue({ available: [{ amount: 2146, currency: "eur" }], pending: [] });
+
+    await expect(service.releaseIfDue("jp-1")).resolves.toBe(true);
+
+    expect(stripe.applicationFees.createRefund).toHaveBeenCalledWith("fee_1", expect.objectContaining({ amount: 598 }), expect.anything());
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ payoutPendingEurCents: 2744, releaseTakenByStripeEurCents: 0, releaseDebtRecoveredEurCents: 0 }) }),
+    );
+  });
+
+  it("salva la parte già presa da Stripe per un altro lavoro", async () => {
+    const { service, prisma, stripe } = buildService();
+    const job = toRelease({ applicationFeeEurCents: 854, stripeFeeEurCents: 0, platformFeeEurCents: 854 });
+    prisma.jobPayment.findUnique.mockResolvedValueOnce(job).mockResolvedValue(null);
+    prisma.jobPayment.findUniqueOrThrow.mockResolvedValue(job);
+    stripe.balance.retrieve.mockResolvedValue({ available: [{ amount: 5000, currency: "eur" }], pending: [] });
+
+    await service.releaseIfDue("jp-1");
+
+    // 100 − 8,54 − 41,46 = 50: le tre cifre tornano con la riga in più.
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ payoutPendingEurCents: 5000, platformFeeEurCents: 854, releaseTakenByStripeEurCents: 4146 }) }),
+    );
+  });
+});
+
+describe("conto di Marco nel collaudo del 29/10, al centesimo (F12, F13, F22)", () => {
+  // Trattenute lette su Stripe: F22 Paola 2 × 40 € (3,42 € ciascuno), tutti e
+  // due contestati con la carta 0259; F13 Ugo 380 € (32,45 €), saldo mai
+  // pagato; F12 Tina 30 € (2,56 €). Stripe ha preso 80 € dal saldo per F22.
+  const paola = { releasedAt: null, paidEurCents: 8000, refundedEurCents: 0, applicationFeeEurCents: 684, payoutPendingEurCents: 0, disputeRecoveredEurCents: 4000 + 3316 };
+  const tina = { releasedAt: null, paidEurCents: 3000, refundedEurCents: 0, applicationFeeEurCents: 256, payoutPendingEurCents: 0, disputeRecoveredEurCents: 0 };
+  // Sul conto: 347,55 € (F13) + 27,44 € (F12) + 73,16 € (F22) − 80 € (le due contestazioni).
+  const balance = 34755 + 2744 + 7316 - 8000;
+
+  it("F13: a Marco 347,55 € meno i 6,84 € della trattenuta di F22 ancora sul conto della piattaforma, con la sua riga", async () => {
+    const { service, prisma, stripe } = buildService();
+    const job = toRelease({ id: "jp-f13", onlineStage: "AWAITING_BALANCE", releaseDueAt: new Date("2026-10-10T10:00:00Z"), paidEurCents: 38000, applicationFeeEurCents: 3245, stripeFeeEurCents: 0, platformFeeEurCents: 17080 });
+    job.booking.finalAmountEurCents = 200000;
+    prisma.jobPayment.findUnique.mockResolvedValueOnce(job).mockResolvedValue(null);
+    prisma.jobPayment.findUniqueOrThrow.mockResolvedValue(job);
+    prisma.jobPayment.findMany.mockImplementation(async (args: { where: Record<string, unknown> }) => ("professionalDebtEurCents" in args.where ? [] : [paola, tina]));
+    stripe.balance.retrieve.mockResolvedValue({ available: [{ amount: balance, currency: "eur" }], pending: [] });
+
+    await expect(service.releaseIfDue("jp-f13", new Date("2026-10-15T10:00:00Z"))).resolves.toBe(true);
+
+    // Prima mancavano 55,98 € senza spiegazione; con le due contestazioni contate solo 6,84 €, scritti a parte.
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ netAmountEurCents: 34755 - 684, platformFeeEurCents: 3245, releaseTakenByStripeEurCents: 684 }) }),
+    );
+  });
+});
+
 describe("contestazioni in banca con l'addebito diretto", () => {
   function dispute(overrides: Record<string, unknown> = {}) {
     return { id: "dp_1", payment_intent: "pi_dep", amount: 10000, status: "needs_response", reason: "product_unacceptable", balance_transactions: [], ...overrides } as never;
@@ -280,7 +365,44 @@ describe("contestazioni in banca con l'addebito diretto", () => {
 
     expect(stripe.transfers.createReversal).not.toHaveBeenCalled();
     expect(stripe.charges.create).not.toHaveBeenCalled();
-    expect(prisma.jobPayment.update).toHaveBeenCalledWith({ where: { id: "jp-1" }, data: { disputeRecoveredEurCents: 9325 } });
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith({
+      where: { id: "jp-1", disputeRecoveredEurCents: 0 },
+      data: { disputeFunds: { dp_1: 9325 }, disputeRecoveredEurCents: { increment: 9325 } },
+    });
+  });
+
+  it("acconto e saldo contestati: anche la seconda contestazione si conta, solo per i soldi che restano (collaudo F-21)", async () => {
+    const { service, prisma } = buildService();
+    // 80 € in due addebiti da 40 €, trattenuta 6,84 €: la prima ha già preso 40 €.
+    const job = directJob({
+      onlineStage: "PAID",
+      releasedAt: null,
+      payoutPendingEurCents: 0,
+      paidEurCents: 8000,
+      applicationFeeEurCents: 684,
+      stripeDisputeId: "dp_1",
+      stripeDisputeStatus: "needs_response",
+      disputeFunds: { dp_1: 4000 },
+      disputeRecoveredEurCents: 4000,
+    });
+    prisma.jobPayment.findFirst.mockResolvedValue(job);
+
+    await service.handleStripeDisputeFunds(dispute({ id: "dp_2", payment_intent: "pi_bal", amount: 4000 }), "withdrawn");
+
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith({
+      where: { id: "jp-1", disputeRecoveredEurCents: 4000 },
+      data: { disputeFunds: { dp_1: 4000, dp_2: 3316 }, disputeRecoveredEurCents: { increment: 3316 } },
+    });
+  });
+
+  it("la stessa contestazione arrivata due volte si conta una volta sola", async () => {
+    const { service, prisma } = buildService();
+    const job = directJob({ onlineStage: "PAID", releasedAt: null, payoutPendingEurCents: 0, stripeDisputeId: "dp_1", stripeDisputeStatus: "needs_response", disputeFunds: { dp_1: 9325 }, disputeRecoveredEurCents: 9325 });
+    prisma.jobPayment.findFirst.mockResolvedValue(job);
+
+    await service.handleStripeDisputeFunds(dispute(), "withdrawn");
+
+    expect(prisma.jobPayment.updateMany).not.toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ disputeFunds: expect.anything() }) }));
   });
 
   it("vinta dopo il bonifico: la cifra rimessa da Stripe torna tutta nel bonifico", async () => {
@@ -293,8 +415,8 @@ describe("contestazioni in banca con l'addebito diretto", () => {
 
     expect(stripe.transfers.create).not.toHaveBeenCalled();
     expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith({
-      where: { id: "jp-1", disputeReturnTransferId: null },
-      data: { disputeRecoveredEurCents: 0, disputeReturnTransferId: "reinstated-dp_1", payoutPendingEurCents: { increment: 10000 } },
+      where: { id: "jp-1", disputeRecoveredEurCents: 0 },
+      data: { disputeFunds: { dp_1: -1 }, disputeRecoveredEurCents: { decrement: 0 }, disputeReturnTransferId: "reinstated-dp_1", payoutPendingEurCents: { increment: 10000 } },
     });
   });
 

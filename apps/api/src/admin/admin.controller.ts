@@ -191,6 +191,13 @@ export class AdminController {
     return this.adminService.moderateFromUserPage(req.user.userId, id, body);
   }
 
+  /** Pubblica una recensione in controllo (collaudo P-01); per nasconderla si usa "users/:id/moderate". */
+  @RequireAdminScope("MODERATION")
+  @Post("reviews/:id/publish")
+  publishHeldReview(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.adminService.publishHeldReview(req.user.userId, id);
+  }
+
   /** Account con almeno un segnale da controllare, dal controllo del mattino (docs/changelog/2026-10-30-admin-persone.md). */
   @RequireAdminScope("MODERATION")
   @Get("suspicious-users")
@@ -245,7 +252,7 @@ export class AdminController {
   @RequireAdminScope("SUPER")
   @Patch("users/:id/admin-role")
   setAdminRole(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(adminRoleUpdateSchema)) body: AdminRoleUpdateInput) {
-    return this.adminService.setAdminRoles(req.user.userId, id, body.adminRoles);
+    return this.adminService.setAdminRoles(req.user.userId, id, body.adminRoles, body.reason);
   }
 
   /** Registro delle azioni admin — solo super admin. */

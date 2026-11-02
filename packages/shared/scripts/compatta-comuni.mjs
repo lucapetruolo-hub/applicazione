@@ -1,13 +1,8 @@
-// Rigenera src/data/comuniCompatti.ts e src/data/codiciCatastaliCompatti.ts
-// da comuni.json e codiciCatastali.json
+// Rigenera src/data/comuniCompatti.ts e codiciCatastaliCompatti.ts da comuni.json e codiciCatastali.json
 // (docs/CHANGELOG.md §320): i dati restano gli stessi, ma come un'unica
 // stringa per elenco invece di ~8000 oggetti, perché finiscono nel
 // JavaScript di ogni pagina del sito e su un telefono lento il loro peso si
-// sentiva. Due file: il sito carica i codici catastali solo dove controlla
-// un codice fiscale e l'elenco dei comuni solo dove serve una città (Turbopack
-// prende il file intero, non solo le costanti usate,
-// docs/changelog/2026-11-02-nextjs-16.md).
-// Uso: node packages/shared/scripts/compatta-comuni.mjs
+// sentiva. Uso: node packages/shared/scripts/compatta-comuni.mjs
 import { readFileSync, writeFileSync } from "node:fs";
 
 const dir = new URL("../src/data/", import.meta.url);
@@ -28,10 +23,13 @@ const out = `// Generato da scripts/compatta-comuni.mjs: non modificare a mano.
 export const COMUNI_DATA = ${JSON.stringify(comuniLines)};
 export const REGION_BY_PROVINCE: Record<string, string> = ${JSON.stringify(regions)};
 `;
-const outCodici = `// Generato da scripts/compatta-comuni.mjs: non modificare a mano.
+writeFileSync(new URL("comuniCompatti.ts", dir), out);
+console.log(`comuniCompatti.ts: ${(out.length / 1024).toFixed(0)} KB`);
+// In un file a parte: chi controlla un codice fiscale non deve scaricare
+// anche le coordinate di tutti i comuni (collaudo N-01, docs/changelog/2026-10-30-velocita-telefono.md).
+const codiciOut = `// Generato da scripts/compatta-comuni.mjs: non modificare a mano.
 // Codici catastali (anche di comuni soppressi): codice|nome|provincia, uno per riga.
 export const CODICI_CATASTALI_DATA = ${JSON.stringify(codiciLines)};
 `;
-writeFileSync(new URL("comuniCompatti.ts", dir), out);
-writeFileSync(new URL("codiciCatastaliCompatti.ts", dir), outCodici);
-console.log(`comuniCompatti.ts: ${(out.length / 1024).toFixed(0)} KB, codiciCatastaliCompatti.ts: ${(outCodici.length / 1024).toFixed(0)} KB`);
+writeFileSync(new URL("codiciCatastaliCompatti.ts", dir), codiciOut);
+console.log(`codiciCatastaliCompatti.ts: ${(codiciOut.length / 1024).toFixed(0)} KB`);

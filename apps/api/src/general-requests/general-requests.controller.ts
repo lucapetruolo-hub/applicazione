@@ -40,7 +40,7 @@ export class AdminGeneralRequestsController {
   @RequireAdminScope("MODERATION")
   @Post("close")
   close(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(closeGeneralRequestsSchema)) body: CloseGeneralRequestsInput) {
-    return this.generalRequestsService.close(req.user.userId, body.categorySlug, body.city);
+    return this.generalRequestsService.close(req.user.userId, body.categorySlug, body.city, body.reason);
   }
 
   @RequireAdminScope("MODERATION")

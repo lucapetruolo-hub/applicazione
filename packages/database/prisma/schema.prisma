@@ -422,6 +422,13 @@ model ProfessionalProfile {
   // (`requestsBlockedUntil`). Regole in packages/shared/src/jobIssues.ts.
   demotedUntil         DateTime?
   requestsBlockedUntil DateTime?
+  // Pausa scelta dal professionista (collaudo C-16): fino a questo giorno
+  // (inizio del giorno di ritorno, ora "dell'orologio" in UTC come l'agenda)
+  // non riceve nuove richieste né prenotazioni e non compare nella ricerca.
+  // I lavori già fissati restano. Non c'entra con `pausedAt` (abbonamento).
+  awayUntil            DateTime?
+  // Avviso "la pausa finisce domani" già mandato per questa pausa (si azzera cambiando la data).
+  awayReminderSentAt   DateTime?
 
   user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Categoria principale: la prima scelta, usata dove serve una sola
@@ -1086,6 +1093,10 @@ model Quote {
   // Null nei preventivi più vecchi: vale il preavviso del profilo.
   cancellationNoticeHours  Int?
   lateCancelKeepsDeposit   Boolean     @default(false)
+  // Ultima pagina di pagamento Stripe dell'acconto aperta accettando il
+  // preventivo (collaudo I-02): una seconda scheda riapre la stessa pagina,
+  // così lo stesso acconto non si paga due volte.
+  depositCheckoutSessionId String?
   // Data alternativa proposta dal cliente (vedi QuoteStatus.MODIFICATION_REQUESTED),
   // valorizzata solo in quello stato — null altrimenti.
   clientProposedDate       DateTime?
@@ -1231,6 +1242,9 @@ model Booking {
   // valgono 24 ore. canceledLate: il cliente ha annullato dentro il preavviso.
   cancellationNoticeHours Int?
   canceledLate            Boolean       @default(false)
+  // Chi ha annullato chiede di riaprire, l'altro accetta (collaudo F-08, docs/changelog/2026-10-30-collaudo-soldi-online.md).
+  reopenRequestedAt       DateTime?
+  reopenRequestedBy       String?
   // Fine della fascia (richiesta esplicita dell'utente: mostrare tutta la
   // fascia oraria, non solo l'inizio), copiata da Quote.estimatedEndDate/
   // clientProposedEndDate al momento della creazione — null per le
@@ -1412,15 +1426,14 @@ model Booking {
   @@map("bookings")
 }
 
-// Copia di cortesia del documento del lavoro (decisione dell'utente del
-// 27/10/2026, docs/CHANGELOG.md §379): il numero della ricevuta per
-// prestazione occasionale lo diamo noi, progressivo per professionista e
-// anno e sempre lo stesso per quel lavoro; per la fattura il professionista
-// scrive il numero del suo programma. Ci resta l'elenco dei documenti dati
-// ai clienti, utile per l'assistenza e le segnalazioni. Dal 30/10/2026 si
-// fanno solo ricevute: chi ha la partita IVA fa la fattura col suo programma
-// (docs/changelog/2026-10-30-documenti-snelli.md); le righe INVOICE restano
-// solo per i documenti di prima.
+// Ricevuta per prestazione occasionale (decisione dell'utente del 27/10/2026,
+// docs/CHANGELOG.md §379). Dal 02/11/2026 è un modello già compilato che il
+// professionista controlla, numera e firma come documento suo: il numero lo
+// scrive lui, noi non lo diamo più
+// (docs/changelog/2026-11-02-ricevuta-modello.md). Ci resta l'elenco dei
+// documenti dati ai clienti, utile per l'assistenza e le segnalazioni. Dal
+// 30/10/2026 si fanno solo ricevute: chi ha la partita IVA fa la fattura col
+// suo programma (docs/changelog/2026-10-30-documenti-snelli.md).
 model CourtesyDocument {
   id                    String   @id @default(uuid())
   bookingId             String   @unique
@@ -1428,8 +1441,8 @@ model CourtesyDocument {
   /// Sempre RECEIPT: con la partita IVA nessuna copia della fattura (docs/changelog/2026-10-30-documenti-snelli.md).
   kind                  String
   year                  Int
-  /// Il nostro progressivo dell'anno (1, 2, 3...).
-  number                Int?
+  /// Il numero scritto dal professionista ("4/2026", "12"...): la ricevuta è sua (docs/changelog/2026-11-02-ricevuta-modello.md).
+  receiptNumber         String?
   /// Ultima volta che il professionista ha scaricato il PDF (Admin → Documenti ai clienti, §380).
   pdfDownloadedAt       DateTime?
   /// Importo scritto su quel PDF: se il lavoro cambia dopo, l'admin lo vede.
@@ -1444,7 +1457,7 @@ model CourtesyDocument {
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
-  @@unique([professionalProfileId, year, number])
+  @@index([professionalProfileId, year])
   @@index([createdAt])
   @@map("courtesy_documents")
 }
@@ -1516,9 +1529,26 @@ model Review {
   // da profilo pubblico, ricerca, home e media voti. La riga resta.
   hiddenAt  DateTime?
   createdAt DateTime  @default(now())
+  // Risposta pubblica del professionista, modificabile (decisione di Luca del
+  // 30/10/2026, docs/changelog/2026-10-30-collaudo-soldi-online.md).
+  professionalReply     String?
+  professionalRepliedAt DateTime?
+  // Aggiornata dal cliente una sola volta dopo una segnalazione a lavoro
+  // chiuso finita senza accordo (stessa decisione).
+  updatedAfterIssueAt   DateTime?
+  // Promemoria al professionista per una recensione da 1-2 stelle ancora
+  // senza risposta dopo 3 giorni, uno solo (decisione di Luca del 30/10/2026).
+  replyReminderSentAt   DateTime?
+  // In controllo prima della pubblicazione (collaudo P-01,
+  // docs/changelog/2026-11-02-collaudo-recensioni-abusi.md): con un segnale di
+  // recensione finta resta nascosta (hiddenAt) finché un admin non la pubblica
+  // o la nasconde. heldReasons: i segnali (ReviewHoldReason).
+  heldAt                DateTime?
+  heldReasons           String[]  @default([])
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
+  @@index([heldAt])
   @@map("reviews")
 }
 
@@ -1624,6 +1654,9 @@ model ConversationEvent {
   // falso per quelli scritti a mano (addUpdate): la chat mostra i primi
   // centrati e in grigio, non come nuvoletta (docs/CHANGELOG.md §198).
   automatic             Boolean                @default(false)
+  // Nascosto da una segnalazione accolta: in chat resta "Messaggio nascosto",
+  // l'admin vede ancora il testo (docs/changelog/2026-11-02-collaudo-recensioni-abusi.md).
+  hiddenAt              DateTime?
   createdAt             DateTime               @default(now())
 
   guidedRequest       GuidedRequest       @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
@@ -1693,6 +1726,9 @@ enum ContentReportTargetType {
   // Richiesta di un cliente segnalata dal professionista che l'ha ricevuta
   // (CHANGELOG §130) — solo chi ha un Lead su quella richiesta può segnalarla.
   GUIDED_REQUEST
+  // Messaggio scritto a mano in chat, segnalato dall'altra parte
+  // (docs/changelog/2026-11-02-collaudo-recensioni-abusi.md).
+  CHAT_MESSAGE
 }
 
 enum ContentReportStatus {
@@ -2246,6 +2282,22 @@ model JobPayment {
   // trasferimento con cui gliela restituiamo se la contestazione è vinta.
   disputeRecoveredEurCents  Int       @default(0)
   disputeReturnTransferId   String?
+  // Una contestazione per ogni addebito (acconto e saldo sono due addebiti,
+  // collaudo F-21): quanto ha preso ciascuna dai soldi di questo lavoro,
+  // { "<id contestazione>": centesimi }, -1 quando è chiusa e già sistemata.
+  // `disputeRecoveredEurCents` resta la somma di quelle ancora aperte.
+  disputeFunds              Json      @default("{}")
+  // Stato di ciascuna contestazione, { "<id>": "needs_response" | "won" | ... }:
+  // `stripeDisputeId`/`stripeDisputeStatus` mostrano quella ancora aperta.
+  disputeStatuses           Json      @default("{}")
+  // Per l'archivio, senza chiedere a Stripe: { "<id>": { payment: "DEPOSIT" | "BALANCE", amountEurCents } }.
+  disputeDetails            Json      @default("{}")
+  // Allo sblocco (collaudo F-21): parte che Stripe aveva già preso dal saldo
+  // del professionista per rimborsi o contestazioni di altri lavori, e debito
+  // di lavori precedenti ripreso prima del bonifico. Ognuna ha la sua riga
+  // nella scheda, così pagato − trattenuta − queste voci = in banca.
+  releaseTakenByStripeEurCents Int    @default(0)
+  releaseDebtRecoveredEurCents Int    @default(0)
   // Quanto il professionista deve ancora alla piattaforma per questo lavoro
   // (rimborso o contestazione persa per colpa sua quando i soldi erano già
   // partiti, trattenuta che resta a suo carico): si riprende dai prossimi
@@ -2374,6 +2426,9 @@ model Dac7ReportingPeriod {
   // Importi cambiati dopo l'invio (rimborso, lavoro riaperto): da correggere
   // (docs/CHANGELOG.md §247). Si azzera con la correzione.
   needsCorrectionAt DateTime?
+  // Numero di protocollo della ricevuta dell'Agenzia delle Entrate, scritto con
+  // "Segna come inviato" (docs/changelog/2026-11-02-admin-protezioni.md).
+  submissionProtocol String?
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 
@@ -2973,6 +3028,14 @@ model JobIssue {
   // Percentuale di quanto pagato online rimborsata al cliente quando la
   // segnalazione è accolta: 100, 50 o 20 (docs/CHANGELOG.md §267).
   refundPercent               Int?
+  // Accordo in chat su un lavoro pagato online (collaudo F-03): rimborso
+  // proposto dal professionista e, se il cliente lo accetta, rimborsato.
+  refundOfferEurCents         Int?
+  refundOfferedAt             DateTime?
+  agreedRefundEurCents        Int?
+  // Segnalata dopo il termine (7 giorni o "Lavoro terminato", decisione di
+  // Luca del 30/10/2026): niente rimborso né team, resta tra le parti.
+  late                        Boolean        @default(false)
   // Ricorso del professionista entro 30 giorni dalla decisione, esaminato
   // da un admin diverso da chi ha deciso. ACCEPTED ribalta la decisione.
   appealText                  String?

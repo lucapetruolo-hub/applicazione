@@ -11,6 +11,7 @@ import {
   paymentOfferChanged,
   quoteChangeWhat,
   quotePaymentOffer,
+  onlineDepositTooLowProblem,
   onlineLimitProblem,
   quotePriceTotals,
   scheduleChangeAlternative,
@@ -192,7 +193,9 @@ export class QuotesService {
     if (onlinePaymentsEnabled() && offer.paymentOptions.some(paymentChoiceIsOnline)) {
       const { totalMaxEurCents } = quotePriceTotals(input.items.map((item) => ({ priceMinEurCents: item.priceMinEurCents ?? null, priceMaxEurCents: item.priceMaxEurCents ?? null })));
       const { limitEurCents } = await professionalOnlineLimit(this.prisma, professionalProfile.id);
-      const problem = onlineLimitProblem({ paymentOptions: offer.paymentOptions, depositPercent: offer.depositPercent, totalMaxEurCents, limitEurCents });
+      const problem =
+        onlineLimitProblem({ paymentOptions: offer.paymentOptions, depositPercent: offer.depositPercent, totalMaxEurCents, limitEurCents }) ??
+        onlineDepositTooLowProblem({ paymentOptions: offer.paymentOptions, depositPercent: offer.depositPercent, totalMaxEurCents });
       if (problem) throw new BadRequestException(problem);
     }
 
@@ -201,6 +204,12 @@ export class QuotesService {
         where: { id: professionalProfile.id },
         data: { defaultPaymentOptions: offer.paymentOptions, defaultDepositPercent: offer.depositPercent },
       });
+    }
+
+    // Mai un appuntamento già cominciato (collaudo B-05, D-09, I agente): un
+    // preventivo per "oggi 08:00–13:00" mandato alle 14:50 veniva accettato e pagato.
+    if (new Date(input.estimatedStartDate).getTime() <= wallClockNow().getTime()) {
+      throw new BadRequestException("Questo orario è già passato: scegli un'altra data o un orario più tardi.");
     }
 
     // Fine dopo l'inizio, al massimo MAX_JOB_DAYS giorni (lavori su più giorni, docs/CHANGELOG.md §310).

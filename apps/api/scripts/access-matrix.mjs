@@ -114,6 +114,8 @@ async function seed() {
     },
   });
   await prisma.jobPayment.create({ data: { bookingId: bookingA.id, paymentMethod: "DIRECT", grossAmountEurCents: 10000, netAmountEurCents: 10000 } });
+  // Recensione di clientA: la può aggiornare solo lui, rispondere solo proA (docs/changelog/2026-10-30-collaudo-soldi-online.md).
+  const reviewA = await prisma.review.create({ data: { bookingId: bookingA.id, rating: 4, comment: "Lavoro fatto bene" } });
 
   // Lavoro terminato tra clientA e proA: la copia del documento si fa solo a
   // lavoro terminato (docs/changelog/2026-10-30-documenti-fiscali.md).
@@ -141,7 +143,7 @@ async function seed() {
   // Con la partita IVA la ricevuta sul sito non c'è (docs/changelog/2026-10-30-documenti-snelli.md).
   await prisma.professionalFiscalProfile.create({ data: { professionalProfileId: profileA.id, entityType: "PRIVATE_INDIVIDUAL" } });
   await prisma.courtesyDocument.create({
-    data: { bookingId: bookingCompleted.id, professionalProfileId: profileA.id, kind: "RECEIPT", year: 2026, number: 1, customerName: "Cliente A", pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000 },
+    data: { bookingId: bookingCompleted.id, professionalProfileId: profileA.id, kind: "RECEIPT", year: 2026, receiptNumber: "1/2026", customerName: "Cliente A", pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000 },
   });
 
   // Fattura delle trattenute di proA (§378).
@@ -188,6 +190,7 @@ async function seed() {
       quoteA: quoteA.id,
       quoteDone: quoteDone.id,
       bookingA: bookingA.id,
+      reviewA: reviewA.id,
       bookingCompleted: bookingCompleted.id,
       invoiceA: invoiceA.id,
       notificationA: notificationA.id,

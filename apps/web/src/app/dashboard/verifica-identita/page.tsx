@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { biometricConsentText, type MyVerificationStatus } from "@professionisti/shared";
+import { biometricConsentText, representativeConsentText, type MyVerificationStatus } from "@professionisti/shared";
 import { Button, Icon, Section, Surface, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -131,6 +131,7 @@ function VerificaIdentitaContent() {
       <YStack gap="5">
         {subscription !== undefined ? <JourneyProgress steps={setupJourney(status, stripeVerified, subscription)} here="identity" /> : null}
         <ActionPanel
+          token={token}
           status={status}
           waiting={waiting}
           stillDown={retrying}
@@ -175,6 +176,7 @@ function Need({ icon, children }: { icon: IconName; children: React.ReactNode })
 }
 
 function ActionPanel({
+  token,
   status,
   waiting,
   stillDown,
@@ -185,6 +187,7 @@ function ActionPanel({
   onStart,
   stripeVerified,
 }: {
+  token: string | null;
   status: MyVerificationStatus;
   stripeVerified: boolean;
   waiting: boolean;
@@ -201,6 +204,10 @@ function ActionPanel({
   // caselle della registrazione, §248).
   const [consentAttempt, setConsentAttempt] = useState(0);
   const consentMissing = consentAttempt > 0 && !consent;
+  // Azienda: la verifica la fa il legale rappresentante (collaudo E-03, M-07).
+  // Di norma gli si manda il link; se è lì, la fa da questo dispositivo e il consenso lo spunta lui.
+  const representative = status.isBusiness ? status.representativeName : null;
+  const [representativeHere, setRepresentativeHere] = useState(false);
 
   if (status.verified) {
     return (
@@ -292,11 +299,22 @@ function ActionPanel({
 
   const retry = identity.status === "DECLINED" || identity.status === "EXPIRED";
   const resume = identity.status === "STARTED";
+  const showConsent = !representative || representativeHere;
   return (
     <Panel
       icon={retry ? "rotate-ccw" : "id-card"}
       tone={retry ? "error" : "neutral"}
-      title={retry ? "Riprova la verifica" : resume ? "Finisci la verifica" : identity.renewal ? "Rinnova la verifica" : "Verifica la tua identità"}
+      title={
+        representative
+          ? `${retry ? "Riprova la verifica" : "Verifica dell'identità"} di ${representative}`
+          : retry
+            ? "Riprova la verifica"
+            : resume
+              ? "Finisci la verifica"
+              : identity.renewal
+                ? "Rinnova la verifica"
+                : "Verifica la tua identità"
+      }
     >
       {retry && identity.reason ? (
         <YStack gap="1-5">
@@ -308,19 +326,26 @@ function ActionPanel({
         </YStack>
       ) : null}
       <Text color={brand.grafite70}>
-        {identity.renewal
-          ? "Il documento della tua verifica è scaduto: rifalla con un documento valido per riavere il badge Verificato. Intanto puoi continuare a inviare preventivi."
-          : "Serve prima del tuo primo preventivo: così i clienti sanno che dietro il profilo ci sei davvero tu. Ci vogliono circa 2 minuti."}
+        {representative
+          ? `La fa ${representative}, il legale rappresentante: servono il suo documento e un suo selfie. Serve prima del primo preventivo e ci vogliono circa 2 minuti.`
+          : identity.renewal
+            ? "Il documento della tua verifica è scaduto: rifalla con un documento valido per riavere il badge Verificato. Intanto puoi continuare a inviare preventivi."
+            : "Serve prima del tuo primo preventivo: così i clienti sanno che dietro il profilo ci sei davvero tu. Ci vogliono circa 2 minuti."}
       </Text>
       <YStack gap="2-5">
         <Need icon="id-card">
-          {status.isBusiness
-            ? "Il documento del legale rappresentante indicato nei dati fiscali: carta d'identità, patente o passaporto, valido. La verifica la fa lui."
+          {representative
+            ? `Un documento valido di ${representative}: carta d'identità, patente o passaporto.`
             : "Un tuo documento valido: carta d'identità, patente o passaporto."}
         </Need>
         <Need icon="sun">Un posto con buona luce, senza riflessi sul documento.</Need>
         <Need icon="smartphone">Meglio dal telefono. Dal computer ti mostriamo un codice QR per continuare dal telefono.</Need>
       </YStack>
+      {representative && !representativeHere ? (
+        <RepresentativeLink token={token} name={representative} onHere={() => setRepresentativeHere(true)} />
+      ) : null}
+      {showConsent ? (
+      <>
       <label
         key={consentAttempt}
         className={consentMissing ? "consent-invalid" : undefined}
@@ -343,7 +368,7 @@ function ActionPanel({
           style={{ width: 20, height: 20, marginTop: 1, flexShrink: 0, accentColor: brand.cianografia, cursor: "pointer" }}
         />
         <Text fontSize={16} color={brand.grafite} lineHeight="19px" flex={1}>
-          {biometricConsentText()}{" "}
+          {representative ? representativeConsentText(representative) : biometricConsentText()}{" "}
           <Link href="/privacy#verifica-identita" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
             Informativa
           </Link>
@@ -373,7 +398,14 @@ function ActionPanel({
             {identity.blockedReason}
           </Text>
         ) : null}
+        {representative ? (
+          <Text fontSize={16} color={brand.grafite70}>
+            La casella la spunta {representative}: il consenso al confronto del volto lo dà solo lui.
+          </Text>
+        ) : null}
       </YStack>
+      </>
+      ) : null}
       <XStack gap="2" alignItems="center">
         <Icon name="lock" size={14} color={brand.grafite70} />
         <Text fontSize={13} color={brand.grafite70} flex={1}>
@@ -382,4 +414,97 @@ function ActionPanel({
       </XStack>
     </Panel>
   );
+}
+
+/**
+ * Link per il legale rappresentante (collaudo E-03, M-07): gli si manda e
+ * fa la verifica dal suo telefono, senza un account, dando lui il consenso.
+ */
+function RepresentativeLink({ token, name, onHere }: { token: string | null; name: string; onHere: () => void }) {
+  const [link, setLink] = useState<{ url: string; expiresAt: string } | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const firstName = name.split(" ")[0] ?? name;
+
+  async function create() {
+    if (!token) return;
+    setCreating(true);
+    setError(null);
+    try {
+      const created = await apiClient.createRepresentativeVerificationLink(token);
+      setLink(created);
+      // Dal telefono si apre subito la scelta dell'app con cui mandarlo.
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function" && window.matchMedia("(pointer: coarse)").matches) {
+        await navigator.share({ title: "Verifica dell'identità", text: shareText(name), url: created.url }).catch(() => undefined);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Non siamo riusciti a creare il link. Riprova.");
+    }
+    setCreating(false);
+  }
+
+  async function copy() {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link.url);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  if (!link) {
+    return (
+      <YStack gap="2">
+        <XStack gap="3" flexWrap="wrap">
+          <Button variant="primary" disabled={creating || !token} onPress={() => void create()}>
+            {creating ? "Preparo il link…" : `Manda il link a ${firstName}`}
+          </Button>
+          <Button variant="secondary" onPress={onHere}>
+            {`${firstName} è qui con me`}
+          </Button>
+        </XStack>
+        {error ? (
+          <Text fontSize={16} color={brand.urgenza} role="alert">
+            {error}
+          </Text>
+        ) : null}
+      </YStack>
+    );
+  }
+
+  const expires = new Date(link.expiresAt).toLocaleDateString("it-IT", { day: "numeric", month: "long" });
+  return (
+    <YStack gap="2-5" padding="3" borderRadius={20} backgroundColor={brand.gesso} role="status">
+      <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+        Link pronto: mandalo a {name}
+      </Text>
+      <Text fontSize={16} color={brand.grafite70} style={{ overflowWrap: "anywhere" }}>
+        {link.url}
+      </Text>
+      <XStack gap="3" flexWrap="wrap">
+        <Button variant="primary" onPress={() => void copy()}>
+          {copied ? "Copiato" : "Copia il link"}
+        </Button>
+        <a
+          href={`https://wa.me/?text=${encodeURIComponent(`${shareText(name)} ${link.url}`)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ textDecoration: "none" }}
+        >
+          <Button tabIndex={-1} variant="secondary">
+            Mandalo su WhatsApp
+          </Button>
+        </a>
+      </XStack>
+      <Text fontSize={16} color={brand.grafite70}>
+        Vale fino al {expires}. Quando {firstName} ha finito, il risultato lo vedi qui.
+      </Text>
+    </YStack>
+  );
+}
+
+function shareText(name: string): string {
+  return `Ciao ${name.split(" ")[0] ?? name}, per attivare il profilo della nostra azienda serve la verifica della tua identità: documento e selfie, 2 minuti dal telefono.`;
 }

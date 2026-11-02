@@ -1,6 +1,8 @@
 import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from "@nestjs/common";
 import {
+  changeProfessionalEntityTypeSchema,
   unverifyProfessionalSchema,
+  type ChangeProfessionalEntityTypeInput,
   type UnverifyProfessionalInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
@@ -28,5 +30,16 @@ export class AdminProfessionalVerificationController {
   @Post(":id/unverify")
   unverify(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(unverifyProfessionalSchema)) body: UnverifyProfessionalInput) {
     return this.verificationService.unverify(req.user.userId, id, body.note);
+  }
+
+  /** "Cambia tipo": privato, con partita IVA o azienda (migliorie del collaudo, gruppo 8). */
+  @RequireAdminScope("MODERATION")
+  @Post(":id/entity-type")
+  changeEntityType(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(changeProfessionalEntityTypeSchema)) body: ChangeProfessionalEntityTypeInput,
+  ) {
+    return this.verificationService.changeEntityType(req.user.userId, id, body.entityType, body.note);
   }
 }

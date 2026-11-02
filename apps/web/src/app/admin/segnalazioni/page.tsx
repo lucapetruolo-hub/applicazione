@@ -113,6 +113,8 @@ function reportTargetHref(report: AdminContentReport): string | null {
   if (report.targetType === "REVIEW" && report.linkedProfessionalProfileId) {
     return `/professionista/${report.linkedProfessionalProfileId}#recensione-${report.targetId}`;
   }
+  // Un messaggio in chat si apre nella chat in sola lettura di Admin.
+  if (report.targetType === "CHAT_MESSAGE") return report.linkedChatPath ?? null;
   return null;
 }
 
@@ -310,7 +312,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
           {href ? (
             <Link href={href} target="_blank" style={{ textDecoration: "none" }}>
               <Button tabIndex={-1} variant="secondary" size="3">
-                Pagina pubblica
+                {report.targetType === "CHAT_MESSAGE" ? "Apri la chat" : "Pagina pubblica"}
               </Button>
             </Link>
           ) : null}
@@ -426,26 +428,26 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
           {error ? <Text color={brand.urgenza}>{error}</Text> : null}
           <XStack gap="2" flexWrap="wrap">
             <Button
-                variant="primary"
-                size="3"
-                disabled={busy || !canConfirm}
-                onPress={() =>
-                              run(() => {
-                                if (mode === "resolve")
-                                  return apiClient.adminResolveContentReport(token, report.id, {
-                                    status: "RESOLVED",
-                                    action: action ?? undefined,
-                                    ground: (ground || undefined) as ModerationGroundCode | undefined,
-                                    resolutionNote: note,
-                                    authoritiesNotified: authorities,
-                                  });
-                                if (mode === "dismiss")
-                                  return apiClient.adminResolveContentReport(token, report.id, { status: "DISMISSED", resolutionNote: note || undefined });
-                                if (mode === "revert") return apiClient.adminRevertContentReport(token, report.id, note);
-                                return apiClient.adminRejectAppeal(token, report.id, note);
-                              })
-                            }
-              >
+              variant="primary"
+              size="3"
+              disabled={busy || !canConfirm}
+              onPress={() =>
+                run(() => {
+                  if (mode === "resolve")
+                    return apiClient.adminResolveContentReport(token, report.id, {
+                      status: "RESOLVED",
+                      action: action ?? undefined,
+                      ground: (ground || undefined) as ModerationGroundCode | undefined,
+                      resolutionNote: note,
+                      authoritiesNotified: authorities,
+                    });
+                  if (mode === "dismiss")
+                    return apiClient.adminResolveContentReport(token, report.id, { status: "DISMISSED", resolutionNote: note || undefined });
+                  if (mode === "revert") return apiClient.adminRevertContentReport(token, report.id, note);
+                  return apiClient.adminRejectAppeal(token, report.id, note);
+                })
+              }
+            >
               {busy ? "Salvataggio…" : mode === "resolve" ? "Applica misura" : mode === "dismiss" ? "Conferma: non accolta" : "Conferma"}
             </Button>
             <Button variant="secondary" size="3" onPress={() => setMode("idle")}>

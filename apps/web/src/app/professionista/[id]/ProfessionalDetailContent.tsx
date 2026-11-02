@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BRAND, PROFILE_REQUEST_SOURCE_PARAM, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, SERVICE_PRICE_UNIT_LABEL, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, SERVICE_PRICE_UNIT_LABEL, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -11,6 +11,7 @@ import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { ProfileQuoteCta } from "@/components/ProfileQuoteCta";
 import { MediaPreview } from "@/components/MediaPreview";
 import { ReportContentModal } from "@/components/ReportContentModal";
+import { ReviewReply } from "@/components/ReviewReply";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { hasRecentlyReported, markReported } from "@/lib/reportedContent";
@@ -68,11 +69,14 @@ function reviewTimeAgo(iso: string): string {
  */
 export function ProfessionalDetailContent({
   professional,
+  initialAgenda = null,
   preview = false,
   breadcrumbs,
   query = {},
 }: {
   professional: ProfessionalDetail;
+  /** Agenda già chiesta dal server (pagina pubblica): c'è da subito e non sposta la pagina. */
+  initialAgenda?: ProfessionalAgenda | null;
   preview?: boolean;
   /** Percorso "Home › Categoria › Città › Nome" sopra la scheda (solo pagina pubblica). */
   breadcrumbs?: ReactNode;
@@ -108,7 +112,7 @@ export function ProfessionalDetailContent({
     if (user?.professionalProfileId !== professional.id) countProfileView();
   }, [isAuthLoading, preview, professional.id, token, user?.professionalProfileId]);
   const [isSaving, setIsSaving] = useState(false);
-  const [agenda, setAgenda] = useState<ProfessionalAgenda | null>(null);
+  const [agenda, setAgenda] = useState<ProfessionalAgenda | null>(initialAgenda);
   const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);
   // Segnalazione contenuti (richiesta esplicita dell'utente, "Verbale di
   // Conformità" — notice-and-action, DSA art. 16): profilo o singola
@@ -253,6 +257,7 @@ export function ProfessionalDetailContent({
   }, [token, user, professional.id, saveAfterLogin]);
 
   useEffect(() => {
+    if (initialAgenda) return;
     apiClient
       .getProfessionalAgenda(professional.id)
       .then((res) => {
@@ -267,7 +272,7 @@ export function ProfessionalDetailContent({
         if (res && Array.isArray(res.days)) setAgenda(res);
       })
       .catch(() => {});
-  }, [professional.id]);
+  }, [professional.id, initialAgenda]);
 
   const [shareFeedback, setShareFeedback] = useState<string | null>(null);
 
@@ -430,7 +435,7 @@ export function ProfessionalDetailContent({
               {completedTotal > 0 || professional.avgResponseTimeMinutes !== null ? (
                 <Text fontSize={16} color={brand.grafite70}>
                   {[
-                    completedTotal > 0 ? `${completedTotal} ${completedTotal === 1 ? "lavoro completato" : "lavori completati"}` : null,
+                    completedTotal > 0 ? `${completedTotal} ${completedTotal === 1 ? "lavoro terminato" : "lavori terminati"}` : null,
                     professional.avgResponseTimeMinutes !== null
                       ? respondsRightAway(professional.avgResponseTimeMinutes)
                         ? "Risponde subito"
@@ -598,8 +603,11 @@ export function ProfessionalDetailContent({
                 </Text>
               </XStack>
             ) : null}
-            <Text fontSize={10.5} color={brand.grafite70} fontStyle="italic">
-              Dati dichiarati dal professionista, non verificati da {BRAND.name}.
+            {/* Cosa abbiamo controllato e cosa no, senza contraddire "Verificato" (collaudo B-11, E-10). */}
+            <Text fontSize={13} color={brand.grafite70} fontStyle="italic">
+              {professional.verified
+                ? "Abbiamo verificato l'identità. Esperienza, lingue, qualifiche e assicurazione le scrive il professionista."
+                : "Esperienza, lingue, qualifiche e assicurazione le scrive il professionista."}
             </Text>
           </YStack>
         ) : null}
@@ -670,7 +678,7 @@ export function ProfessionalDetailContent({
             </XStack>
 
             {/* Frecce raggruppate a ridosso delle intestazioni giorno
-                (`gap="$1"`, molto meno del `gap="$3"` che separa gli altri
+                (`gap="1"`, molto meno del `gap="3"` che separa gli altri
                 blocchi della sezione) — richiesta esplicita dell'utente:
                 prima le frecce e le intestazioni erano alla stessa
                 distanza reciproca di ogni altro blocco della sezione (tab
@@ -905,7 +913,8 @@ export function ProfessionalDetailContent({
         ) : (
           <Surface gap="2">
             <Text fontWeight="700" color={brand.grafite}>
-              Al momento non accetta nuove richieste
+              {/* Pausa scelta da lui (collaudo C-16): si dice quando torna. */}
+              {professional.awayUntil ? `In pausa: torna ${formatAppointmentDate(professional.awayUntil, { weekday: "long", day: "numeric", month: "long" })}` : "Al momento non accetta nuove richieste"}
             </Text>
             <Text color={brand.grafite70}>Puoi chiedere un preventivo ad altri professionisti della stessa categoria nella tua zona.</Text>
             <Link href={`/cerca/${professional.categorySlug}`} style={{ textDecoration: "none", alignSelf: "flex-start", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>
@@ -950,7 +959,7 @@ export function ProfessionalDetailContent({
             {professional.rating !== null ? <Rating value={professional.rating} count={professional.reviewCount} /> : null}
           </YStack>
           {professional.reviews.length === 0 ? (
-            <EmptyState icon="star" title="Nessuna recensione ancora" description="Le recensioni arrivano solo da prenotazioni confermate." />
+            <EmptyState icon="star" title="Nessuna recensione ancora" description="Le recensioni arrivano solo da lavori fatti tramite il sito." />
           ) : (
             professional.reviews.map((review) => (
               <YStack key={review.id} gap="0">
@@ -980,7 +989,7 @@ export function ProfessionalDetailContent({
                         <XStack alignItems="center" gap={4}>
                           <Icon name="badge-check" size={13} strokeWidth={2} color={brand.verificato} />
                           <Text fontSize={13} fontWeight="700" color={brand.verificato}>
-                            Lavoro confermato
+                            Lavoro fatto tramite il sito
                           </Text>
                         </XStack>
                       </BadgeInfo>
@@ -1017,6 +1026,12 @@ export function ProfessionalDetailContent({
                   ) : null}
                 </XStack>
                 {review.comment ? <Text color={brand.grafite70}>{review.comment}</Text> : null}
+                {review.updatedAfterIssueAt ? (
+                  <Text fontSize={13} color={brand.grafite70}>
+                    Aggiornata il {new Date(review.updatedAfterIssueAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })} dopo una
+                    segnalazione a lavoro chiuso
+                  </Text>
+                ) : null}
                 {/* `?? []`: stessa cautela dell'agenda, un'API non ancora allineata all'ultimo deploy
                     potrebbe non includere ancora photoUrls su una recensione. */}
                 {(review.photoUrls ?? []).length > 0 ? (
@@ -1040,6 +1055,13 @@ export function ProfessionalDetailContent({
                     ))}
                   </XStack>
                 ) : null}
+                <ReviewReply
+                  reviewId={review.id}
+                  businessName={professional.businessName}
+                  reply={review.professionalReply ?? null}
+                  canEdit={!preview && !!token && user?.professionalProfileId === professional.id}
+                  token={token}
+                />
               </Surface>
               </YStack>
             ))

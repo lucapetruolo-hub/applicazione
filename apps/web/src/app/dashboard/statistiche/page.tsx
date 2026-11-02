@@ -27,9 +27,9 @@ const METRICS: { key: MetricKey; label: string; icon: "eye" | "file-text" | "sen
   { key: "views", label: "Visite al profilo", icon: "eye", hint: "Quante volte è stato aperto il tuo profilo pubblico" },
   { key: "requests", label: "Richieste ricevute", icon: "file-text", hint: "Richieste di preventivo arrivate a te" },
   { key: "quotes", label: "Preventivi inviati", icon: "send", hint: "Preventivi che hai mandato" },
-  { key: "won", label: "Lavori ottenuti", icon: "badge-check", hint: "Preventivi accettati e prenotazioni dirette" },
+  { key: "won", label: "Lavori fissati", icon: "badge-check", hint: "Preventivi accettati e prenotazioni dirette" },
   { key: "completed", label: "Lavori completati", icon: "check", hint: "Confermati come terminati da te e dal cliente" },
-  { key: "revenueEurCents", label: "Entrate", icon: "coins", hint: "Importi finali dei lavori completati. I soldi incassati, anche senza la conferma del cliente, sono nell'estratto del mese" },
+  { key: "revenueEurCents", label: "Entrate", icon: "coins", hint: "Importi finali dei lavori terminati. I soldi incassati, anche senza la conferma del cliente, sono nell'estratto del mese" },
 ];
 
 type PresetKey = "7d" | "30d" | "90d" | "365d" | "year" | "custom";
@@ -355,7 +355,7 @@ function RatiosSection({ totals, previous }: { totals: ProfessionalStatsTotals; 
     {
       label: "Valore medio per lavoro",
       value: totals.completed > 0 ? formatEuro(totals.revenueEurCents / totals.completed) : "—",
-      detail: `${totals.completed} ${totals.completed === 1 ? "lavoro completato" : "lavori completati"}`,
+      detail: `${totals.completed} ${totals.completed === 1 ? "lavoro terminato" : "lavori terminati"}`,
       before: previous.completed > 0 ? formatEuro(previous.revenueEurCents / previous.completed) : "—",
     },
     {

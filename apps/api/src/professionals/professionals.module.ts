@@ -12,11 +12,12 @@ import { TimelineModule } from "../timeline/timeline.module";
 import { ServiceNamesModule } from "../problem-match/service-names.module";
 import { ProfessionalsController } from "./professionals.controller";
 import { ProfessionalsService } from "./professionals.service";
+import { AwayService } from "./away.service";
 
 @Module({
   imports: [AuthModule, NotificationsModule, GuidedRequestsModule, ProfessionalMetricsModule, TimelineModule, SubscriptionsModule, ProfessionalVerificationModule, CategoriesModule, AgendaModule, SiteCountsModule, ServiceNamesModule],
   controllers: [ProfessionalsController],
-  providers: [ProfessionalsService],
+  providers: [ProfessionalsService, AwayService],
   exports: [ProfessionalsService],
 })
 export class ProfessionalsModule {}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PASSWORD_CONTAINS_EMAIL_MESSAGE, emailStatusSchema, isMissingRulesProblem, passwordProblem, type EmailStatus } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
+import { EmailSuggestion } from "@/components/EmailSuggestion";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/components/PasswordRules";
 import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
@@ -83,6 +84,8 @@ export function ClientEmailFirstAuth({
   const { login } = useAuth();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
+  // Uscita dal campo: da lì in poi si propone la correzione del dominio.
+  const [emailChecked, setEmailChecked] = useState(false);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -230,6 +233,9 @@ export function ClientEmailFirstAuth({
                 if (errorField === "email") setError(null);
               }}
               onSubmitEditing={handleContinue}
+              onBlur={() => setEmailChecked(true)}
+              footer={<EmailSuggestion id="email-suggestion" email={email} checked={emailChecked} onApply={setEmail} />}
+              footerId="email-suggestion"
             />
             {errorText}
             <Button variant="primary" onPress={handleContinue} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>

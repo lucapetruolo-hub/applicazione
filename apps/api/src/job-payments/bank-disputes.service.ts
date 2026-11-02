@@ -9,6 +9,7 @@ import {
   type AdminBankDisputeArchiveRow,
   type BankDisputeEvidenceInput,
   type BankDisputeEvidenceRecord,
+  type BankDisputePart,
   type BankDisputeProNoteInput,
   type ProfessionalBankDispute,
 } from "@professionisti/shared";
@@ -16,6 +17,9 @@ import { PRISMA } from "../prisma/prisma.module";
 import { bookingSearchWhere, searchEurCents } from "../admin/admin-search";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { renderDocumentPdf, type PdfBlock, type PdfDocumentModel } from "../accounting/document-pdf";
+
+/** Contestazioni chiuse da Stripe. */
+const CLOSED = ["won", "lost", "warning_closed", "prevented"];
 
 /** Messaggi nel PDF: gli ultimi, abbastanza per la banca senza farne un libro. */
 const MAX_MESSAGES = 80;
@@ -128,21 +132,26 @@ export class BankDisputesService {
       options,
     );
     const stripeText = stripeTestKeyword(input.explanation) ?? input.explanation;
-    const updated = await stripe.disputes.update(
-      job.stripeDisputeId,
-      {
-        evidence: {
-          product_description: input.productDescription,
-          customer_name: input.customerName || undefined,
-          customer_email_address: input.customerEmail || undefined,
-          service_date: input.serviceDate || undefined,
-          uncategorized_text: stripeText,
-          service_documentation: file.id,
-        },
-        submit: input.submit,
+    const params: Stripe.DisputeUpdateParams = {
+      evidence: {
+        product_description: input.productDescription,
+        customer_name: input.customerName || undefined,
+        customer_email_address: input.customerEmail || undefined,
+        service_date: input.serviceDate || undefined,
+        uncategorized_text: stripeText,
+        service_documentation: file.id,
       },
-      options,
-    );
+      submit: input.submit,
+    };
+    const updated = await stripe.disputes.update(job.stripeDisputeId, params, options);
+    // Acconto e saldo contestati insieme (collaudo F-21): le stesse prove
+    // vanno anche all'altra contestazione ancora aperta dello stesso lavoro.
+    const statuses: Record<string, string> = { ...disputeStatusMap(job.disputeStatuses), [job.stripeDisputeId]: updated.status };
+    for (const [id, status] of Object.entries(statuses)) {
+      if (id === job.stripeDisputeId || !(BANK_DISPUTE_OPEN_STATUSES as readonly string[]).includes(status)) continue;
+      const other = await stripe.disputes.update(id, params, options);
+      statuses[id] = other.status;
+    }
     // Archivio: le prove come le ha scritte l'admin, anche solo salvate, e
     // chi e quando le ha mandate alla banca.
     const { submit, ...fields } = input;
@@ -151,6 +160,7 @@ export class BankDisputesService {
       where: { id: job.id },
       data: {
         stripeDisputeStatus: updated.status,
+        disputeStatuses: statuses,
         disputeEvidence: evidence as Prisma.InputJsonValue,
         disputeEvidenceFileId: file.id,
         ...(submit ? { disputeEvidenceSentAt: new Date(), disputeEvidenceSentById: adminUserId } : {}),
@@ -187,6 +197,16 @@ export class BankDisputesService {
         return null;
       });
     }
+    // Le altre contestazioni dello stesso lavoro (acconto e saldo), una riga ciascuna.
+    const statuses = disputeStatusMap(job.disputeStatuses);
+    const others = Object.keys(statuses).filter((id) => id !== job.stripeDisputeId);
+    const otherDisputes = this.stripe
+      ? await Promise.all(others.map((id) => this.stripe!.disputes.retrieve(id, {}, this.requestOptions(job)).catch(() => null)))
+      : others.map(() => null);
+    const parts = [
+      this.part(job, job.stripeDisputeId!, dispute, job.stripeDisputeStatus),
+      ...others.map((id, i) => this.part(job, id, otherDisputes[i] ?? null, statuses[id] ?? null)),
+    ];
     const status = dispute?.status ?? job.stripeDisputeStatus ?? "needs_response";
     const dueBy = dispute?.evidence_details?.due_by;
     const submitted = !(BANK_DISPUTE_OPEN_STATUSES as readonly string[]).includes(status);
@@ -200,7 +220,11 @@ export class BankDisputesService {
       disputeId: job.stripeDisputeId!,
       businessName: businessName(job),
       clientName: clientName(job),
-      amountEurCents: dispute?.amount ?? job.paidEurCents,
+      // Con più contestazioni la somma di quelle ancora aperte o in mano alla banca.
+      amountEurCents:
+        parts.length > 1
+          ? parts.filter((p) => !CLOSED.includes(p.status)).reduce((sum, p) => sum + (p.amountEurCents ?? 0), 0) || (dispute?.amount ?? job.paidEurCents)
+          : (dispute?.amount ?? job.paidEurCents),
       reason: dispute?.reason ?? null,
       status,
       dueBy: dueBy ? new Date(dueBy * 1000).toISOString() : null,
@@ -208,6 +232,20 @@ export class BankDisputesService {
       sentExplanation: submitted ? (savedEvidence(job)?.explanation ?? dispute?.evidence?.uncategorized_text ?? null) : null,
       professionalNote: job.disputeProNote && job.disputeProNoteAt ? { text: job.disputeProNote, photoUrls: job.disputeProPhotoUrls, at: job.disputeProNoteAt.toISOString() } : null,
       draft: draftFromSaved(savedEvidence(job)) ?? this.draft(job, dispute?.reason ?? null),
+      parts,
+    };
+  }
+
+  /** Una contestazione del lavoro: quale pagamento, stato, cifra e scadenza. */
+  private part(job: Job, disputeId: string, dispute: Stripe.Dispute | null, savedStatus: string | null): BankDisputePart {
+    const intent = typeof dispute?.payment_intent === "string" ? dispute.payment_intent : (dispute?.payment_intent?.id ?? null);
+    const due = dispute?.evidence_details?.due_by;
+    return {
+      disputeId,
+      payment: intent && intent === job.stripePaymentIntentId ? "DEPOSIT" : intent && intent === job.balancePaymentIntentId ? "BALANCE" : savedDetail(job.disputeDetails, disputeId).payment,
+      status: dispute?.status ?? savedStatus ?? "needs_response",
+      amountEurCents: dispute?.amount ?? savedDetail(job.disputeDetails, disputeId).amountEurCents,
+      dueBy: due ? new Date(due * 1000).toISOString() : null,
     };
   }
 
@@ -261,6 +299,12 @@ export class BankDisputesService {
       history: logs
         .filter((l) => l.entityId === job.id && l.reason)
         .map((l) => ({ at: l.createdAt.toISOString(), text: l.reason!, by: l.changedByUserId ? (userEmail.get(l.changedByUserId) ?? "utente non più presente") : null })),
+      parts: Object.entries({ [job.stripeDisputeId!]: job.stripeDisputeStatus ?? "needs_response", ...disputeStatusMap(job.disputeStatuses) }).map(([disputeId, status]) => ({
+        disputeId,
+        ...savedDetail(job.disputeDetails, disputeId),
+        status,
+        dueBy: null,
+      })),
     }));
   }
 
@@ -330,7 +374,7 @@ export class BankDisputesService {
           { label: "Preventivo accettato e acconto pagato", value: dayTime(job.depositPaidAt ?? b.createdAt) },
           { label: "Appuntamento", value: dayTime(b.scheduledAt) },
           ...(b.professionalCompletedAt ? [{ label: "Lavoro terminato (professionista)", value: dayTime(b.professionalCompletedAt) }] : []),
-          ...(b.clientConfirmedCompletedAt ? [{ label: "Lavoro confermato dal cliente", value: dayTime(b.clientConfirmedCompletedAt) }] : []),
+          ...(b.clientConfirmedCompletedAt ? [{ label: "Lavoro terminato confermato dal cliente", value: dayTime(b.clientConfirmedCompletedAt) }] : []),
           ...(b.completionAutoClosedAt ? [{ label: "Chiuso senza segnalazioni del cliente", value: dayTime(b.completionAutoClosedAt) }] : []),
         ],
       },
@@ -462,4 +506,22 @@ export class BankDisputesService {
       noteAt: now.toISOString(),
     };
   }
+}
+
+/** Stato di ogni contestazione del lavoro (`JobPayment.disputeStatuses`). */
+function disputeStatusMap(value: Prisma.JsonValue | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    for (const [id, status] of Object.entries(value)) if (typeof status === "string") out[id] = status;
+  }
+  return out;
+}
+
+/** Pagamento e cifra di una contestazione, salvati quando è arrivata (`JobPayment.disputeDetails`). */
+function savedDetail(value: Prisma.JsonValue | undefined, disputeId: string): Pick<BankDisputePart, "payment" | "amountEurCents"> {
+  const all = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  const one = all[disputeId];
+  const detail = one && typeof one === "object" && !Array.isArray(one) ? (one as Record<string, unknown>) : {};
+  const payment = detail.payment === "DEPOSIT" || detail.payment === "BALANCE" ? detail.payment : null;
+  return { payment, amountEurCents: typeof detail.amountEurCents === "number" ? detail.amountEurCents : null };
 }

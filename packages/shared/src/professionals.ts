@@ -367,6 +367,11 @@ export type ProfessionalDetail = ProfessionalSearchResult & {
     clientName?: string | null;
     /** Il servizio del lavoro recensito (la categoria della richiesta), se noto. */
     jobLabel?: string | null;
+    /** Risposta pubblica del professionista (decisione di Luca del 30/10/2026). */
+    professionalReply?: string | null;
+    professionalRepliedAt?: string | null;
+    /** Aggiornata dal cliente dopo una segnalazione a lavoro chiuso. */
+    updatedAfterIssueAt?: string | null;
   }[];
   /**
    * Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul
@@ -400,6 +405,8 @@ export type ProfessionalDetail = ProfessionalSearchResult & {
    * né prenotazioni. Mai il motivo: è un fatto tra il professionista e noi.
    */
   acceptingRequests: boolean;
+  /** In pausa per scelta sua (collaudo C-16): da questo giorno torna a ricevere richieste. */
+  awayUntil?: string | null;
 };
 
 export const PLACEHOLDER_PROFESSIONALS: PlaceholderProfessional[] = [

@@ -1,5 +1,5 @@
 // Elenco e tipo in un file senza zod: il sito li usa in ogni pagina (§372).
-import { TRAFFIC_SOURCES, type TrafficSource } from "./trafficSources";
+import type { TrafficSource } from "./trafficSources";
 
 export const TRAFFIC_SOURCE_LABELS: Record<TrafficSource, string> = {
   GOOGLE: "Google",

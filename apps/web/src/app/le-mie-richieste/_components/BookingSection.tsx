@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { ClientBooking } from "@professionisti/api-client";
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { cancellationNoticeLabel, JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents, formatServicePriceRange, quotePriceTotals, type AppointmentMoment } from "@professionisti/shared";
+import { cancellationNoticeLabel, isLateCancellation, JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents, formatServicePriceRange, quotePriceTotals, type AppointmentMoment } from "@professionisti/shared";
 import { AppointmentWhen, useAppointmentMoment } from "./AppointmentWhen";
 import { AddToCalendar } from "./AddToCalendar";
 import { WhatsAppReminderLink } from "@/components/WhatsAppReminderLink";
@@ -16,6 +16,7 @@ import { TimelineModal } from "@/components/TimelineModal";
 import { ClientCompleteModal } from "@/components/ClientCompleteModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import { CardButton } from "@/components/CardButton";
+import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 
 /**
@@ -48,7 +49,9 @@ export function BookingSection({
 }) {
   const [showClientCompleteModal, setShowClientCompleteModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showUpdateReviewModal, setShowUpdateReviewModal] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
+  const [confirmReopen, setConfirmReopen] = useState(false);
   const [reopenError, setReopenError] = useState<string | null>(null);
   const [confirmingDeleteBooking, setConfirmingDeleteBooking] = useState(false);
   const [isDeletingBooking, setIsDeletingBooking] = useState(false);
@@ -63,6 +66,19 @@ export function BookingSection({
     setIsReopening(true);
     try {
       await apiClient.reopenBooking(token, booking.id);
+      onChanged();
+    } catch (err) {
+      setReopenError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsReopening(false);
+    }
+  }
+
+  async function handleAnswerReopen(accept: boolean) {
+    setReopenError(null);
+    setIsReopening(true);
+    try {
+      await apiClient.answerReopenBooking(token, booking.id, accept);
       onChanged();
     } catch (err) {
       setReopenError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
@@ -103,6 +119,13 @@ export function BookingSection({
     onChanged();
   }
 
+  async function handleUpdateReview(input: { rating: number; comment?: string; mediaUrls: string[] }) {
+    if (!booking.myReview) return;
+    await apiClient.updateReview(token, booking.myReview.id, { rating: input.rating, comment: input.comment, photoUrls: input.mediaUrls });
+    setShowUpdateReviewModal(false);
+    onChanged();
+  }
+
   function closeReviewModal() {
     setShowReviewModal(false);
     onChanged();
@@ -114,6 +137,20 @@ export function BookingSection({
     setIssueBusy(true);
     try {
       await apiClient.closeJobIssueChat(token, booking.id, outcome);
+      onChanged();
+    } catch (err) {
+      setIssueError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIssueBusy(false);
+    }
+  }
+
+  // Rimborso proposto dal professionista in chat (collaudo F-03).
+  async function acceptIssueRefund() {
+    setIssueError(null);
+    setIssueBusy(true);
+    try {
+      await apiClient.acceptJobIssueRefund(token, booking.id);
       onChanged();
     } catch (err) {
       setIssueError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
@@ -222,6 +259,18 @@ export function BookingSection({
         </YStack>
       ) : null}
 
+      {/* Chi deve fare ancora cosa (collaudo A-17): prima restava "Accettata" senza spiegazione. */}
+      {booking.status === "CONFIRMED" && booking.clientConfirmedCompletedAt ? (
+        <YStack gap="1" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="4">
+          <Text fontFamily="heading" fontWeight="800" fontSize={18} color={brand.grafite}>
+            Hai confermato che il lavoro è terminato
+          </Text>
+          <Text fontSize={16} color={brand.grafite70}>
+            Ora {proGone ? "il professionista" : booking.businessName} segna l&apos;importo finale: poi il lavoro risulta completato. Te lo diciamo noi.
+          </Text>
+        </YStack>
+      ) : null}
+
       <XStack gap="4" flexWrap="wrap" alignItems="flex-start">
         <YStack flex={1} flexBasis={300} minWidth={0} gap="3">
           <AppointmentWhen booking={booking} moment={moment} />
@@ -299,6 +348,7 @@ export function BookingSection({
               <JobPaymentStatus
                 payment={booking.payment}
                 audience="client"
+                issueOpen={issueOpen}
                 onPay={async (part) => {
                   const { url } = await apiClient.jobPaymentCheckout(token, booking.id, part);
                   if (url) window.location.href = url;
@@ -309,18 +359,59 @@ export function BookingSection({
         ) : null}
       </XStack>
 
-      {/* Solo ciò che ha annullato il cliente: un intervento annullato dal professionista non si riapre. */}
-      {booking.status === "CANCELED" && booking.canceledBy === "CLIENT" ? (
+      {/* Chi ha annullato chiede di riaprire, l'altro accetta (collaudo F-08). */}
+      {booking.status === "CANCELED" && booking.canceledBy === "CLIENT" && booking.reopenRequestedBy === "CLIENT" ? (
+        <Text fontSize={16} color={brand.grafite70}>
+          Hai chiesto di riaprire l&apos;appuntamento: aspetta la risposta di {booking.businessName}.
+        </Text>
+      ) : booking.status === "CANCELED" && booking.canceledBy === "CLIENT" ? (
         <XStack gap="2" alignItems="center" flexWrap="wrap">
-          <CardButton onPress={handleReopenBooking} disabled={isReopening}>
-            {isReopening ? "Riapertura..." : "Riapri prenotazione"}
+          <CardButton onPress={() => setConfirmReopen(true)} disabled={isReopening}>
+            {isReopening ? "Invio..." : "Chiedi di riaprire"}
           </CardButton>
         </XStack>
+      ) : booking.status === "CANCELED" && booking.reopenRequestedBy === "PROFESSIONAL" ? (
+        <YStack gap="2">
+          <Text fontSize={16} color={brand.grafite}>
+            {booking.businessName} chiede di riaprire l&apos;appuntamento annullato. Se accetti torna valido.
+          </Text>
+          <XStack gap="2" alignItems="center" flexWrap="wrap">
+            <CardButton onPress={() => handleAnswerReopen(true)} disabled={isReopening}>
+              Accetta
+            </CardButton>
+            <CardButton tone="danger" onPress={() => handleAnswerReopen(false)} disabled={isReopening}>
+              Rifiuta
+            </CardButton>
+          </XStack>
+        </YStack>
       ) : booking.status === "CANCELED" ? (
         <Text fontSize={16} color={brand.grafite70}>
-          Il professionista ha annullato questo intervento, quindi non si può riaprire. Con &ldquo;Ripeti la richiesta&rdquo; puoi inviarla
+          Il professionista ha annullato questo lavoro, quindi non si può riaprire. Con &ldquo;Ripeti la richiesta&rdquo; puoi inviarla
           ad altri professionisti della zona.
         </Text>
+      ) : null}
+      {/* Che fine fa l'acconto pagato online dopo l'annullamento (collaudo F-02). */}
+      {booking.status === "CANCELED" && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0 ? (
+        <JobPaymentStatus payment={booking.payment} audience="client" />
+      ) : null}
+      {/* Conferma prima di riaprire (collaudo F-08). */}
+      {confirmReopen ? (
+        <CancelBookingModal
+          title="Chiedere di riaprire?"
+          description={`${booking.businessName} riceve la richiesta: se accetta, l'appuntamento torna valido.${
+            booking.payment?.method === "ONLINE" && booking.payment.stage === "REFUNDED" ? " L'acconto che ti avevamo rimborsato va pagato di nuovo." : ""
+          }`}
+          confirmLabel="Chiedi di riaprire"
+          confirmingLabel="Invio..."
+          backLabel="Torna indietro"
+          confirmVariant="primary"
+          showNote={false}
+          onClose={() => setConfirmReopen(false)}
+          onCancel={async () => {
+            setConfirmReopen(false);
+            await handleReopenBooking();
+          }}
+        />
       ) : null}
       {reopenError ? (
         <Text color={brand.urgenza} fontSize={16}>
@@ -339,6 +430,7 @@ export function BookingSection({
             error={issueError}
             onOpenChat={booking.guidedRequestId ? () => setShowTimeline(true) : null}
             onCloseChat={closeIssueChat}
+            onAcceptRefund={() => void acceptIssueRefund()}
             onRedispatch={redispatch}
           />
         </YStack>
@@ -403,6 +495,17 @@ export function BookingSection({
                 Recensione inviata
               </Text>
             </XStack>
+            {/* Una volta sola, dopo una segnalazione a lavoro chiuso senza accordo (decisione di Luca del 30/10/2026). */}
+            {booking.canUpdateReview ? (
+              <YStack gap="1" alignItems="flex-start">
+                <Text fontSize={13} color={brand.grafite70}>
+                  Non vi siete accordati sul problema: puoi aggiornare la recensione una volta, perché anche gli altri clienti lo sappiano.
+                </Text>
+                <CardButton tone="primary" onPress={() => setShowUpdateReviewModal(true)}>
+                  Aggiorna la recensione
+                </CardButton>
+              </YStack>
+            ) : null}
             {/* Il prossimo lavoro con lo stesso professionista passa dal sito (docs/CHANGELOG.md §348). */}
             {rebookHref && booking.status === "COMPLETED" && !booking.professionalAccountDeleted ? (
               <Link href={rebookHref} style={{ textDecoration: "none" }}>
@@ -463,6 +566,18 @@ export function BookingSection({
         />
       ) : null}
 
+      {showUpdateReviewModal && booking.myReview ? (
+        <ReviewModal
+          title="Aggiorna la recensione"
+          subtitle="Racconta cosa è successo dopo il lavoro. Puoi farlo una volta sola: sotto comparirà la data dell'aggiornamento."
+          initial={{ rating: booking.myReview.rating, comment: booking.myReview.comment, mediaUrls: booking.myReview.photoUrls }}
+          submitLabel="Aggiorna la recensione"
+          uploadPhoto={(file) => apiClient.uploadReviewPhoto(token, file).then((r) => r.imageUrl)}
+          onSubmit={handleUpdateReview}
+          onClose={() => setShowUpdateReviewModal(false)}
+        />
+      ) : null}
+
       {showTimeline && booking.guidedRequestId ? (
         <TimelineModal token={token} guidedRequestId={booking.guidedRequestId} professionalProfileId={booking.professionalProfileId} viewerRole="CLIENT" otherPartyName={booking.businessName} otherPartyImageUrl={booking.professionalImageUrl} onClose={() => setShowTimeline(false)} />
       ) : null}
@@ -476,7 +591,7 @@ function isUpcoming(moment: AppointmentMoment | null): boolean {
 }
 
 /**
- * "Serve cambiare? Proponi un'altra data · Scrivi un messaggio · Annulla appuntamento" sotto la
+ * "Serve cambiare? Proponi un'altra data · Scrivi un messaggio · Annulla il lavoro" sotto la
  * trattativa chiusa (§346): solo prima dell'appuntamento, quando il
  * professionista c'è ancora. Dopo, per qualcosa che non va c'è "C'è un problema".
  */
@@ -501,13 +616,21 @@ export function ChangeLinks({ booking, onReschedule, onMessage, onCancel }: { bo
         </Text>
       ) : null}
       <Text fontSize={16} fontWeight="600" color={brand.urgenza} textDecorationLine="underline" cursor="pointer" role="button" onPress={onCancel}>
-        Annulla appuntamento
+        Annulla il lavoro
       </Text>
     </XStack>
-      {/* Preavviso scelto dal professionista (docs/CHANGELOG.md §347). */}
+      {/* Preavviso scelto dal professionista (docs/CHANGELOG.md §347); già
+          dentro il preavviso si dice cosa succede, non "avvisa prima" (collaudo A-06). */}
       <Text fontSize={13} color={brand.grafite70}>
-        Se devi annullare, avvisa almeno {cancellationNoticeLabel(booking.cancellationNoticeHours)} prima.
-        {booking.lateCancelKeepsDeposit && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0 ? " Più tardi, l'acconto resta al professionista." : ""}
+        {isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours)
+          ? `Mancano meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)}, il preavviso chiesto: ${
+              booking.lateCancelKeepsDeposit && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0
+                ? "se annulli, l'acconto resta al professionista."
+                : "se annulli non paghi niente, ma il professionista vede che hai annullato all'ultimo."
+            }`
+          : `Se devi annullare, avvisa almeno ${cancellationNoticeLabel(booking.cancellationNoticeHours)} prima.${
+              booking.lateCancelKeepsDeposit && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0 ? " Più tardi, l'acconto resta al professionista." : ""
+            }`}
       </Text>
     </YStack>
   );

@@ -10,6 +10,7 @@ import {
   NOTIFICATION_TOPIC_INFO,
   notificationChannelEnabled,
   notificationItemChannelOn,
+  notificationJobLabel,
   notificationMuteTarget,
   resolveNotificationPreferences,
   type ContentReportTargetType,
@@ -125,7 +126,8 @@ export class NotificationsService {
    * comunque al prossimo poll, invariato) ma dimezza la latenza percepita
    * di badge/toast rispetto al solo poll da 15-45s già esistente.
    */
-  async notify(userId: string, type: string, payload: Prisma.InputJsonValue): Promise<void> {
+  async notify(userId: string, type: string, rawPayload: Prisma.InputJsonValue): Promise<void> {
+    const payload = await this.withJobContext(userId, rawPayload);
     // Richiesta silenziata dall'utente (menu hamburger della scheda,
     // docs/CHANGELOG.md §130): la notifica resta nella cronologia della
     // campanella ma nasce già letta, niente badge/toast/push SSE. Mai per
@@ -175,6 +177,37 @@ export class NotificationsService {
       kind: "notification",
       notification: { id: created.id, type: created.type, payload: created.payload, createdAt: created.createdAt.toISOString() },
     });
+  }
+
+  /**
+   * Quale lavoro e con chi, in ogni avviso di un lavoro (collaudo F-16): con
+   * più lavori aperti "Il cliente ha annullato un intervento" non diceva
+   * quale. Aggiunge `jobLabel` e `who` (il professionista per il cliente, il
+   * nome del cliente per il professionista) a chi porta un `bookingId` e non
+   * li ha già. Mai bloccante: senza la prenotazione il payload resta com'era.
+   */
+  private async withJobContext(userId: string, payload: Prisma.InputJsonValue): Promise<Prisma.InputJsonValue> {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return payload;
+    const data = payload as Record<string, unknown>;
+    if (typeof data.bookingId !== "string" || (data.jobLabel && data.who)) return payload;
+    const booking = await this.prisma.booking
+      .findUnique({
+        where: { id: data.bookingId },
+        select: {
+          clientId: true,
+          recipientName: true,
+          client: { select: { name: true, deletedAt: true } },
+          professionalProfile: { select: { businessName: true } },
+          quote: { select: { guidedRequest: { select: { description: true, category: { select: { label: true } } } } } },
+        },
+      })
+      .catch(() => null);
+    if (!booking) return payload;
+    const forClient = booking.clientId === userId;
+    const clientName = booking.client.deletedAt ? null : (booking.recipientName ?? booking.client.name)?.trim() || null;
+    const who = forClient ? booking.professionalProfile.businessName : clientName;
+    const jobLabel = notificationJobLabel(booking.quote?.guidedRequest.description) ?? booking.quote?.guidedRequest.category.label ?? null;
+    return { ...data, ...(data.jobLabel ? {} : { jobLabel }), ...(data.who || !who ? {} : { who }) } as Prisma.InputJsonValue;
   }
 
   /** Preferenze di notifica dell'utente, con i valori predefiniti per ciò che non ha scelto (docs/CHANGELOG.md §152). */

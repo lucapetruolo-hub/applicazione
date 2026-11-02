@@ -15,6 +15,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AdminCard, AdminPageHeader, AdminPill, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonTableRows } from "@/components/Skeleton";
+import { AdminConfirmModal } from "@/components/admin/AdminConfirmModal";
 
 /**
  * Richieste generali (senza un professionista scelto) per categoria e città
@@ -39,16 +40,17 @@ export default function AdminRichiesteGeneraliPage() {
 
   useEffect(load, [load]);
 
-  const close = async (slug: ProfessionalCategorySlug, zoneCity: string) => {
+  // Chiudere una zona ferma i clienti: conferma con il motivo, che finisce nel registro e nella riga della zona (docs/changelog/2026-11-02-admin-protezioni.md).
+  const [closing, setClosing] = useState<{ slug: ProfessionalCategorySlug; city: string } | null>(null);
+  const close = async (slug: ProfessionalCategorySlug, zoneCity: string, reason: string) => {
     if (!token) return;
     setBusy(`${slug}|${zoneCity}`);
     setError(null);
     try {
-      await apiClient.adminCloseGeneralRequests(token, { categorySlug: slug, city: zoneCity });
+      await apiClient.adminCloseGeneralRequests(token, { categorySlug: slug, city: zoneCity, reason });
       setCity("");
+      setClosing(null);
       load();
-    } catch (err) {
-      setError(errorMessage(err));
     } finally {
       setBusy(null);
     }
@@ -118,7 +120,7 @@ export default function AdminRichiesteGeneraliPage() {
             variant="secondary"
             size="3"
             disabled={!categorySlug || city.trim().length < 2 || busy !== null}
-            onPress={() => categorySlug && void close(categorySlug, city.trim())}
+            onPress={() => categorySlug && setClosing({ slug: categorySlug, city: city.trim() })}
           >
             Chiudi
           </Button>
@@ -195,7 +197,7 @@ export default function AdminRichiesteGeneraliPage() {
                           Riapri
                         </Button>
                       ) : (
-                        <Button size="2" variant="secondary" disabled={busy !== null} onPress={() => void close(row.categorySlug, row.city)}>
+                        <Button size="2" variant="secondary" disabled={busy !== null} onPress={() => setClosing({ slug: row.categorySlug, city: row.city })}>
                           Chiudi
                         </Button>
                       )}
@@ -211,6 +213,17 @@ export default function AdminRichiesteGeneraliPage() {
         <Text color={brand.grafite70} marginTop="2" fontSize={13}>
           Riaprendo una zona, il controllo automatico non la richiude per {data.thresholds.keepOpenDays} giorni.
         </Text>
+      ) : null}
+      {closing ? (
+        <AdminConfirmModal
+          title="Chiudi la zona"
+          description={`${PROFESSIONAL_CATEGORIES.find((c) => c.slug === closing.slug)?.label ?? closing.slug} a ${closing.city}: i clienti non possono più mandare una richiesta senza scegliere un professionista e vedono un avviso. Si riapre da qui.`}
+          confirmLabel="Chiudi la zona"
+          reasonLabel="Motivo"
+          reasonPlaceholder="Es. troppe richieste per i 2 professionisti della zona"
+          onClose={() => setClosing(null)}
+          onConfirm={(reason) => close(closing.slug, closing.city, reason ?? "")}
+        />
       ) : null}
     </YStack>
   );

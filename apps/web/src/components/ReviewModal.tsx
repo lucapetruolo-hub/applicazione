@@ -32,16 +32,21 @@ export function ReviewModal({
   uploadPhoto,
   onSubmit,
   onClose,
+  initial,
+  submitLabel = "Invia recensione",
 }: {
   title: string;
   subtitle: string;
+  /** Recensione da aggiornare (una volta, dopo una segnalazione a lavoro chiuso): parte dai valori di prima. */
+  initial?: { rating: number; comment: string | null; mediaUrls: string[] };
+  submitLabel?: string;
   uploadPhoto: (file: File) => Promise<string>;
   onSubmit: (input: { rating: number; comment?: string; mediaUrls: string[] }) => Promise<void>;
   onClose: () => void;
 }) {
-  const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState("");
-  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  const [rating, setRating] = useState(initial?.rating ?? 5);
+  const [comment, setComment] = useState(initial?.comment ?? "");
+  const [mediaUrls, setMediaUrls] = useState<string[]>(initial?.mediaUrls ?? []);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -209,8 +214,8 @@ export function ReviewModal({
         ) : null}
 
         <XStack gap="2" flexWrap="wrap">
-          <Button variant="primary" size="3" height={44} opacity={isSubmitting ? 0.6 : 1} onPress={handleSubmit} disabled={isSubmitting || isUploadingPhoto}>
-            {isSubmitting ? "Invio..." : "Invia recensione"}
+          <Button variant="primary" size="3" height={44} onPress={handleSubmit} disabled={isSubmitting || isUploadingPhoto} opacity={isSubmitting ? 0.6 : 1}>
+            {isSubmitting ? "Invio..." : submitLabel}
           </Button>
           <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSubmitting}>
             Più tardi

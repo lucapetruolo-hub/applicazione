@@ -72,16 +72,27 @@ export const STARTER_SLOT_CAPACITY = 5;
  * docs/CHANGELOG.md §364): dal lunedì al sabato 8–13 e 14–20, 5 clienti a
  * domicilio e 5 online per fascia. Online solo per chi lavora anche online.
  */
-export function starterWeekTemplate(online: boolean): AgendaWeekTemplate {
+export function starterWeekTemplate(online: boolean, homeMax: number = STARTER_SLOT_CAPACITY): AgendaWeekTemplate {
   const slot = (start: string, end: string) => ({
     start,
     end,
     allowsHome: true,
     allowsOnline: online,
-    homeMax: STARTER_SLOT_CAPACITY,
+    homeMax,
     onlineMax: online ? STARTER_SLOT_CAPACITY : null,
   });
   return { days: [0, 1, 2, 3, 4, 5, 6].map((day) => (day === 0 ? [] : [slot("08:00", "13:00"), slot("14:00", "20:00")])) };
+}
+
+/**
+ * Mestieri in cui si segue un cliente alla volta, per ore (collaudo C-15):
+ * negli orari di partenza 1 cliente a domicilio per fascia invece di 5.
+ */
+export const ONE_CLIENT_AT_A_TIME_CATEGORIES: readonly string[] = ["babysitter"];
+
+/** Clienti a domicilio per fascia negli orari di partenza, secondo i mestieri del profilo. */
+export function starterHomeCapacity(categorySlugs: readonly string[]): number {
+  return categorySlugs.some((slug) => ONE_CLIENT_AT_A_TIME_CATEGORIES.includes(slug)) ? 1 : STARTER_SLOT_CAPACITY;
 }
 
 /** Settimana tipo proposta a chi non l'ha mai salvata: gli stessi orari di partenza dei nuovi profili. */

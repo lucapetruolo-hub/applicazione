@@ -12,7 +12,7 @@
 // - "Privato" / "Partita IVA" / "Azienda": tipo scelto all'iscrizione e
 //   confermato dai dati fiscali (`professionalKindOf`); per un privato i
 //   diritti del consumatore non si applicano (Codice del consumo art. 49-bis).
-// - "Lavoro confermato": recensione possibile solo dopo che il cliente ha
+// - "Lavoro fatto tramite il sito" (collaudo O-03, prima "Lavoro confermato"): recensione possibile solo dopo che il cliente ha
 //   confermato la fine del lavoro (reviews.service.ts).
 export type BadgeInfoKey = "verified" | "stripeVerified" | "boosted" | "newProfile" | "liabilityInsurance" | "confirmedJob" | "kindPrivate" | "kindVat" | "kindBusiness";
 
@@ -42,7 +42,7 @@ export const BADGE_INFO: Record<BadgeInfoKey, { title: string; text: string; not
     text: "Il professionista dichiara di possedere un'assicurazione per i danni causati durante il lavoro.",
   },
   confirmedJob: {
-    title: "Lavoro confermato",
+    title: "Lavoro fatto tramite il sito",
     text: "Recensione di un cliente che ha prenotato il lavoro sul sito.",
   },
   kindPrivate: {

@@ -84,9 +84,15 @@ export const SUBSCRIPTION_FEATURES = [
   "Preventivi e chat con i clienti",
   "Agenda e prenotazioni online",
   "Promemoria email anti no-show",
-  "Recensioni da lavori confermati",
+  "Recensioni da lavori fatti tramite il sito",
   "Statistiche della tua attività",
 ] as const;
+
+/**
+ * Su Plus e Pro lo stesso cliente conta una volta per periodo (§362), detto
+ * solo ai professionisti: frase unica per la pagina prezzi e Abbonamento.
+ */
+export const SAME_CLIENT_ONCE = "Più lavori allo stesso cliente nello stesso mese contano come uno";
 
 /** Un mese gratis dura 30 giorni e vale come il livello Base (stesso limite di lavori). */
 export const TRIAL_DAYS = 30;

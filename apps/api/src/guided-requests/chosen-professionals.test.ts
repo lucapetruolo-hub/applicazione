@@ -33,6 +33,7 @@ function buildService(pros: Pro[]) {
     guidedRequest: {
       create: vi.fn(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: "gr-1", ...data })),
       update: vi.fn().mockResolvedValue({}),
+      findMany: vi.fn().mockResolvedValue([]),
     },
     lead: { createMany: vi.fn().mockResolvedValue({ count: pros.length }) },
     $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(prisma)),
@@ -116,5 +117,28 @@ describe("GuidedRequestsService.create con i professionisti scelti", () => {
   it("un professionista che non è più sul sito viene rifiutato", async () => {
     const { service } = buildService([{ id: ids[0]!, businessName: "Idraulica Rossi", categoryId: "cat-1" }]);
     await expect(service.create("client-1", input)).rejects.toThrow("non è più sul sito");
+  });
+});
+
+/** La stessa richiesta mandata di nuovo entro pochi minuti (collaudo I-10). */
+describe("GuidedRequestsService.create — doppio invio", () => {
+  it("rifiuta lo stesso testo per la stessa categoria entro 30 minuti, senza crearne un'altra", async () => {
+    const { service, prisma } = buildService([
+      { id: ids[0]!, businessName: "Idraulica Rossi", categoryId: "cat-1" },
+      { id: ids[1]!, businessName: "Bianchi Impianti", categoryId: "cat-1" },
+    ]);
+    prisma.guidedRequest.findMany.mockResolvedValue([{ description: "perde il rubinetto  della cucina." }]);
+    await expect(service.create("client-1", input)).rejects.toThrow("Hai già mandato questa richiesta pochi minuti fa");
+    expect(prisma.guidedRequest.create).not.toHaveBeenCalled();
+    expect(prisma.guidedRequest.findMany.mock.calls[0]![0].where).toMatchObject({ clientId: "client-1", deletedByClientAt: null, professionalProfileId: null });
+  });
+
+  it("un testo diverso parte", async () => {
+    const { service, prisma } = buildService([
+      { id: ids[0]!, businessName: "Idraulica Rossi", categoryId: "cat-1" },
+      { id: ids[1]!, businessName: "Bianchi Impianti", categoryId: "cat-1" },
+    ]);
+    prisma.guidedRequest.findMany.mockResolvedValue([{ description: "Si è rotto lo scarico del bagno" }]);
+    await expect(service.create("client-1", input)).resolves.toMatchObject({ matchedProfessionals: 2 });
   });
 });

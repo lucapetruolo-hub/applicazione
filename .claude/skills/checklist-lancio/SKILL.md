@@ -320,6 +320,14 @@ prima del lancio"):
    che sia quella voluta (di partenza 3 mesi) e, sul conto Stripe vero,
    provare una volta "Attiva i mesi gratis" e il passaggio a Plus (coupon
    `mese-base-gratis-1900`, creato da solo al primo uso).
+0quater. **Prova dell'iscrizione completa con il piano** (Luca, 02/11/2026,
+   docs/changelog/2026-11-02-registrazione-pro-grafica.md): con Stripe acceso
+   e `LAUNCH_DATE` fissata, iscriversi come professionista da
+   /per-professionisti → "Base" e controllare tutto il percorso: piano scelto
+   in vista nei passi, conferma email, profilo, finestra "Attiva Base" dopo
+   il primo salvataggio, carta su Stripe e passo "Piano e carta" segnato
+   fatto. Finché Stripe e la data mancano quel passo non compare, quindi
+   oggi non si può provare. Rifarla anche partendo da Plus.
 
 **Prodotto**:
 17. Rimuovere il blocco "Presto disponibile" (`WaitlistBlock`, homepage)

@@ -12,6 +12,7 @@ import {
   formatEurCents,
   type AdminBankDispute,
   type AdminBankDisputeArchiveRow,
+  type BankDisputePart,
   type AdminOnlineLimitRow,
   type AdminUnpaidBalance,
 } from "@professionisti/shared";
@@ -22,6 +23,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useAdminOverview } from "@/components/admin/AdminOverviewContext";
 import { AdminCard, AdminPageHeader, AdminPill, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { PdfButton } from "@/app/dashboard/documenti/_components/DocumentParts";
+import { CancelBookingModal } from "@/components/CancelBookingModal";
 
 const REFUND_STATUS: Record<AdminRefund["status"], { label: string; tone: "warn" | "ok" | "neutral" | "danger" }> = {
   REQUESTED: { label: "Da decidere", tone: "warn" },
@@ -175,24 +177,28 @@ export default function AdminPagamentiPage() {
   );
 }
 
+/** Nome del cliente del lavoro, o "Cliente" se l'account è stato eliminato. */
+function refundClientName(refund: AdminRefund): string {
+  const client = refund.jobPayment.booking.client;
+  if (!client || client.deletedAt) return "Cliente (account eliminato)";
+  return [client.name, client.surname].filter(Boolean).join(" ") || "Cliente";
+}
+
+/**
+ * Rimborso da decidere. Prima di decidere una finestra dice cosa succede e a
+ * chi, con la cifra esatta e il nome, e chiede il motivo; il pulsante porta il
+ * nome dell'azione (collaudo 29/10 e riordino admin).
+ */
 function RefundCard({ refund, token, onChanged }: { refund: AdminRefund; token: string; onChanged: () => void }) {
   const [confirming, setConfirming] = useState<"APPROVED" | "REJECTED" | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const status = REFUND_STATUS[refund.status];
+  const client = refundClientName(refund);
+  const professional = refund.jobPayment.booking.professionalProfile.businessName;
 
-  async function decide(decision: "APPROVED" | "REJECTED") {
-    setBusy(true);
-    setError(null);
-    try {
-      await apiClient.adminDecideRefund(token, refund.id, { decision });
-      setConfirming(null);
-      onChanged();
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
+  async function decide(decision: "APPROVED" | "REJECTED", note: string | undefined) {
+    await apiClient.adminDecideRefund(token, refund.id, { decision, note });
+    setConfirming(null);
+    onChanged();
   }
 
   return (
@@ -201,7 +207,7 @@ function RefundCard({ refund, token, onChanged }: { refund: AdminRefund; token: 
         <XStack gap="2" alignItems="center">
           <AdminPill tone={status.tone}>{status.label}</AdminPill>
           <Text fontWeight="700" color={brand.grafite}>
-            {euro(refund.amountEurCents)} · {refund.jobPayment.booking.professionalProfile.businessName}
+            {euro(refund.amountEurCents)} · {client} · {professional}
           </Text>
         </XStack>
         <Text fontSize="2" color={brand.grafite70}>
@@ -209,28 +215,33 @@ function RefundCard({ refund, token, onChanged }: { refund: AdminRefund; token: 
         </Text>
       </XStack>
       {refund.reason ? <Text color={brand.grafite}>Motivo: {refund.reason}</Text> : null}
-      {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {refund.status === "REQUESTED" ? (
-        confirming ? (
-          <XStack gap="2" alignItems="center" flexWrap="wrap">
-            <Text color={brand.grafite}>{confirming === "APPROVED" ? "Approvare e rimborsare il cliente?" : "Rifiutare il rimborso?"}</Text>
-            <Button variant="primary" size="3" disabled={busy} onPress={() => decide(confirming)}>
-              {busy ? "…" : "Conferma"}
-            </Button>
-            <Button variant="secondary" size="3" onPress={() => setConfirming(null)}>
-              Annulla
-            </Button>
-          </XStack>
-        ) : (
-          <XStack gap="2">
-            <Button variant="primary" size="3" onPress={() => setConfirming("APPROVED")}>
-              Approva
-            </Button>
-            <Button variant="secondary" size="3" onPress={() => setConfirming("REJECTED")}>
-              Rifiuta
-            </Button>
-          </XStack>
-        )
+        <XStack gap="2">
+          <Button variant="primary" size="3" onPress={() => setConfirming("APPROVED")}>
+            Approva
+          </Button>
+          <Button variant="secondary" size="3" onPress={() => setConfirming("REJECTED")}>
+            Rifiuta
+          </Button>
+        </XStack>
+      ) : null}
+      {confirming ? (
+        <CancelBookingModal
+          onClose={() => setConfirming(null)}
+          onCancel={(note) => decide(confirming, note)}
+          title={confirming === "APPROVED" ? `Rimborsare ${euro(refund.amountEurCents)} a ${client}?` : "Rifiutare il rimborso?"}
+          description={
+            confirming === "APPROVED"
+              ? `Stripe restituisce ${euro(refund.amountEurCents)} sulla carta di ${client}. La cifra viene ripresa dal conto di ${professional}. Non si può annullare.`
+              : `${client} non riceve ${euro(refund.amountEurCents)}. Gli scriviamo il motivo che metti qui.`
+          }
+          notePlaceholder={confirming === "APPROVED" ? "Es. Lavoro non fatto, d'accordo con il professionista." : "Es. Il lavoro risulta fatto come da preventivo."}
+          noteMinLength={5}
+          confirmLabel={confirming === "APPROVED" ? `Rimborsa ${euro(refund.amountEurCents)}` : "Rifiuta il rimborso"}
+          confirmingLabel="Salvataggio..."
+          backLabel="Torna indietro"
+          confirmVariant={confirming === "APPROVED" ? "urgent" : "primary"}
+        />
       ) : null}
     </AdminCard>
   );
@@ -430,9 +441,9 @@ function OnlineLimitCard({ row, token, onChanged }: { row: AdminOnlineLimitRow; 
               variant="secondary"
               size="3"
               onPress={() => {
-                            setAskReason(false);
-                            setError(null);
-                          }}
+                setAskReason(false);
+                setError(null);
+              }}
             >
               Annulla
             </Button>
@@ -442,6 +453,11 @@ function OnlineLimitCard({ row, token, onChanged }: { row: AdminOnlineLimitRow; 
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
     </AdminCard>
   );
+}
+
+/** Scadenza entro tanti giorni da adesso. */
+function dueWithinDays(iso: string, days: number): boolean {
+  return new Date(iso).getTime() - Date.now() < days * 86_400_000;
 }
 
 function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; token: string; onChanged: () => void }) {
@@ -482,9 +498,15 @@ function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; tok
         </Text>
         <Text color={brand.grafite}>{bankDisputeReasonLabel(row.reason)}</Text>
       </XStack>
+      <DisputeParts parts={row.parts} />
+      {row.dueBy && !row.submitted ? (
+        // Scadenza in vista sulla scheda da preparare, non solo in Home e nell'archivio (riordino admin).
+        <Text fontWeight="800" color={dueWithinDays(row.dueBy, 3) ? brand.urgenza : brand.grafite}>
+          Prove da mandare entro il {formatAdminDate(row.dueBy)}
+        </Text>
+      ) : null}
       <Text fontSize={13} color={brand.grafite70}>
         {row.businessName} · cliente {row.clientName}
-        {row.dueBy && !row.submitted ? ` · prove entro il ${formatAdminDate(row.dueBy)}` : ""}
         {!row.submitted ? (row.professionalNote ? " · il professionista ha scritto la sua spiegazione" : " · il professionista non ha ancora scritto") : ""}
       </Text>
       {row.submitted ? (
@@ -631,6 +653,33 @@ function BankDisputeArchive({ token, reloadKey }: { token: string; reloadKey: un
   );
 }
 
+const DISPUTE_PAYMENT_LABEL = { DEPOSIT: "Acconto", BALANCE: "Saldo" } as const;
+
+/**
+ * Acconto e saldo contestati insieme (collaudo F-21): una riga per ciascuna
+ * contestazione. Le prove sono le stesse e vanno a tutte e due.
+ */
+function DisputeParts({ parts }: { parts: BankDisputePart[] }) {
+  if (parts.length < 2) return null;
+  return (
+    <YStack gap="1" padding="3" borderRadius="3" backgroundColor={brand.gesso}>
+      <Text fontSize={13} color={brand.grafite70}>
+        {parts.length} contestazioni sullo stesso lavoro: le prove vanno a tutte.
+      </Text>
+      {parts.map((part, i) => (
+        <XStack key={part.disputeId} gap="2" alignItems="center" flexWrap="wrap">
+          <Text fontWeight="700" color={brand.grafite}>
+            {part.payment ? DISPUTE_PAYMENT_LABEL[part.payment] : `Contestazione ${i + 1}`}
+          </Text>
+          {part.amountEurCents !== null ? <Text color={brand.grafite}>{formatEurCents(part.amountEurCents)}</Text> : null}
+          <Text color={brand.grafite70}>· {bankDisputeStatusLabel(part.status)}</Text>
+          {part.dueBy ? <Text color={brand.grafite70}>· entro il {formatAdminDate(part.dueBy)}</Text> : null}
+        </XStack>
+      ))}
+    </YStack>
+  );
+}
+
 function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRow; token: string }) {
   const [open, setOpen] = useState(false);
   const tone = row.status === "won" ? "ok" : row.status === "lost" ? "danger" : row.closedAt ? "neutral" : "warn";
@@ -644,6 +693,7 @@ function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRo
         </Text>
         <Text color={brand.grafite}>{bankDisputeReasonLabel(row.reason)}</Text>
       </XStack>
+      <DisputeParts parts={row.parts} />
       <Text fontSize={13} color={brand.grafite70}>
         {row.businessName} · cliente {row.clientName}
         {row.openedAt ? ` · aperta il ${formatAdminDate(row.openedAt)}` : ""}

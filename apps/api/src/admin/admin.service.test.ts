@@ -39,7 +39,7 @@ describe("AdminService.resolveContentReport — misure reali", () => {
     const { service, tx, notifications, metrics } = buildService({ targetType: "REVIEW", claimsIllegal: true });
     await service.resolveContentReport("rep-1", { status: "RESOLVED", action: "HIDE_CONTENT", ground: "legge-diffamazione", resolutionNote: "Insulti" });
 
-    expect(tx.review.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "target-1" }, data: { hiddenAt: expect.any(Date) } }));
+    expect(tx.review.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "target-1" }, data: { hiddenAt: expect.any(Date), heldAt: null } }));
     expect(tx.contentReport.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: "RESOLVED", action: "HIDE_CONTENT", contentOwnerId: "author-1" }) }),
     );
@@ -120,7 +120,7 @@ describe("AdminService.revertContentReport — annulla misura", () => {
       revertedAt: null,
     });
     await service.revertContentReport("rep-1", "Ricorso accolto");
-    expect(tx.review.update).toHaveBeenCalledWith(expect.objectContaining({ data: { hiddenAt: null } }));
+    expect(tx.review.update).toHaveBeenCalledWith(expect.objectContaining({ data: { hiddenAt: null, heldAt: null } }));
     expect(metrics.recomputeReviews).toHaveBeenCalledWith("pro-1");
     expect(notifications.notify).toHaveBeenCalledWith("author-1", "CONTENT_REPORT_REVERTED", expect.objectContaining({ note: "Ricorso accolto" }));
   });
@@ -172,18 +172,18 @@ describe("AdminService — sospensione dalla scheda utente e ruoli admin (docs/C
 
   it("non toglie l'ultimo super admin", async () => {
     const { service } = build({ id: "u2", role: "ADMIN", adminRoles: ["SUPER"], deletedAt: null, professionalProfile: null }, 1);
-    await expect(service.setAdminRoles("admin-1", "u2", ["MODERATOR"])).rejects.toThrow("almeno un super admin");
+    await expect(service.setAdminRoles("admin-1", "u2", ["MODERATOR"], "Prova: motivo del cambio di ruolo")).rejects.toThrow("almeno un super admin");
   });
 
   it("togliendo i ruoli admin a un professionista torna professionista", async () => {
     const { service, prisma } = build({ id: "u2", role: "ADMIN", adminRoles: ["MODERATOR"], deletedAt: null, professionalProfile: { id: "p1" } });
-    await service.setAdminRoles("admin-1", "u2", []);
+    await service.setAdminRoles("admin-1", "u2", [], "Prova: motivo del cambio di ruolo");
     expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: "u2" }, data: { role: "PROFESSIONAL", adminRoles: [] } });
   });
 
   it("assegna insieme moderatore e finanza (docs/CHANGELOG.md §146)", async () => {
     const { service, prisma, securityAlerts } = build({ id: "u2", role: "CLIENT", adminRoles: [], deletedAt: null, professionalProfile: null });
-    await service.setAdminRoles("admin-1", "u2", ["FINANCE", "MODERATOR"]);
+    await service.setAdminRoles("admin-1", "u2", ["FINANCE", "MODERATOR"], "Prova: motivo del cambio di ruolo");
     expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: "u2" }, data: { role: "ADMIN", adminRoles: ["MODERATOR", "FINANCE"] } });
     // Avviso a tutti i super admin (docs/CHANGELOG.md §359).
     expect(securityAlerts.adminRolesChanged).toHaveBeenCalledWith("admin-1", "u2", ["MODERATOR", "FINANCE"]);
@@ -191,7 +191,7 @@ describe("AdminService — sospensione dalla scheda utente e ruoli admin (docs/C
 
   it("nessuno cambia il proprio ruolo", async () => {
     const { service } = build({ id: "admin-1", role: "ADMIN", adminRoles: ["SUPER"], deletedAt: null, professionalProfile: null });
-    await expect(service.setAdminRoles("admin-1", "admin-1", [])).rejects.toThrow("tuo stesso ruolo");
+    await expect(service.setAdminRoles("admin-1", "admin-1", [], "Prova: motivo del cambio di ruolo")).rejects.toThrow("tuo stesso ruolo");
   });
 });
 

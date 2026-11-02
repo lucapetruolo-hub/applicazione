@@ -10,7 +10,7 @@ export function formatEuro(cents: number): string {
 }
 
 function jobsLabel(count: number): string {
-  return `${count} ${count === 1 ? "lavoro completato" : "lavori completati"}`;
+  return `${count} ${count === 1 ? "lavoro terminato" : "lavori terminati"}`;
 }
 
 // Selettore range temporale del grafico (richiesta esplicita dell'utente:

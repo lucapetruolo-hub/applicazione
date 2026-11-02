@@ -15,6 +15,7 @@ import {
 import { Button, Field, H2, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { downloadTextFile, errorMessage } from "./adminUi";
+import { AdminConfirmModal } from "./AdminConfirmModal";
 
 const SDI_LABEL: Record<InvoiceSdiStatusValue, string> = {
   NOT_SENT: "Da inviare",
@@ -71,6 +72,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [confirm, setConfirm] = useState<{ kind: "run" } | { kind: "resend"; id: string; number: string } | null>(null);
   const [reconciliation, setReconciliation] = useState<FeeReconciliation | null>(null);
   const [sdiTest, setSdiTest] = useState<SdiSandboxTestResult | null>(null);
 
@@ -114,15 +116,16 @@ export function AdminInvoicesSection({ token }: { token: string }) {
     }
   }
 
+  // Emettere e rimandare allo SdI passano dalla finestra di conferma, che mostra
+  // anche l'errore (docs/changelog/2026-11-02-admin-protezioni.md).
   async function runMonth() {
     setPending(true);
     setError(null);
     try {
       const { issued } = await apiClient.adminRunInvoiceMonth(token, month);
       setMessage(issued === 0 ? "Nessuna fattura nuova per quel mese." : `${issued} fatture emesse.`);
+      setConfirm(null);
       load();
-    } catch (e) {
-      setError(errorMessage(e));
     } finally {
       setPending(false);
     }
@@ -163,13 +166,10 @@ export function AdminInvoicesSection({ token }: { token: string }) {
   }
 
   async function resend(id: string) {
-    try {
-      const row = await apiClient.adminResendInvoice(token, id);
-      setInvoices((current) => current?.map((r) => (r.id === id ? row : r)) ?? null);
-      setMessage(row.sdiStatus === "SENT" ? "Fattura inviata allo SdI." : (row.sdiMessage ?? "XML rigenerato."));
-    } catch (e) {
-      setError(errorMessage(e));
-    }
+    const row = await apiClient.adminResendInvoice(token, id);
+    setInvoices((current) => current?.map((r) => (r.id === id ? row : r)) ?? null);
+    setMessage(row.sdiStatus === "SENT" ? "Fattura inviata allo SdI." : (row.sdiMessage ?? "XML rigenerato."));
+    setConfirm(null);
   }
 
   return (
@@ -225,7 +225,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
         <YStack width={200}>
           <Field label="Mese (AAAA-MM)" aria-label="Mese delle trattenute da fatturare" value={month} onChangeText={setMonth} />
         </YStack>
-        <Button variant="secondary" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => void runMonth()}>
+        <Button variant="secondary" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => setConfirm({ kind: "run" })}>
           Emetti le fatture del mese
         </Button>
         <Button variant="secondary" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => void checkReconciliation()}>
@@ -276,7 +276,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
                         </Button>
                       ) : null}
                       {row.sdiStatus === "NOT_SENT" || row.sdiStatus === "REJECTED" ? (
-                        <Button size="2" variant="secondary" onPress={() => void resend(row.id)}>
+                        <Button size="2" variant="secondary" onPress={() => setConfirm({ kind: "resend", id: row.id, number: row.number })}>
                           {settings?.sdiConfigured ? "Rimanda" : "Rigenera"}
                         </Button>
                       ) : null}
@@ -288,6 +288,19 @@ export function AdminInvoicesSection({ token }: { token: string }) {
           </table>
         </div>
       )}
+      {confirm ? (
+        <AdminConfirmModal
+          title={confirm.kind === "run" ? "Emetti le fatture del mese" : settings?.sdiConfigured ? "Rimanda allo SdI" : "Rigenera la fattura"}
+          description={
+            confirm.kind === "run"
+              ? `Emette le fatture delle trattenute di ${month} a tutti i professionisti${settings?.sdiConfigured ? " e le manda allo SdI" : ""}. Una fattura emessa non si cancella: si corregge solo con una nota di credito. Non crea doppioni.`
+              : `${settings?.sdiConfigured ? "Manda di nuovo allo SdI la fattura" : "Rifà l'XML della fattura"} ${confirm.number} con i dati fiscali di oggi del professionista.`
+          }
+          confirmLabel={confirm.kind === "run" ? "Emetti le fatture" : settings?.sdiConfigured ? "Rimanda" : "Rigenera"}
+          onClose={() => setConfirm(null)}
+          onConfirm={() => (confirm.kind === "run" ? runMonth() : resend(confirm.id))}
+        />
+      ) : null}
     </YStack>
   );
 }

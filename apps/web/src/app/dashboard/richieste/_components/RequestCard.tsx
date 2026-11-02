@@ -15,6 +15,7 @@ import {
   QUOTE_PAYMENT_OPTION_LABEL,
   jobPaymentChoices,
   onlineLimitHint,
+  onlineDepositTooLowProblem,
   onlineLimitProblem,
   paymentChoiceIsOnline,
   type JobPaymentChoice,
@@ -35,10 +36,12 @@ import {
   CANCELLATION_NOTICE_OPTIONS,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
   cancellationNoticeLabel,
+  isLateCancellation,
   isCancellationNoticeHours,
   type CancellationNoticeHours,
   type MySubscription,
   type MyProfessionalProfile,
+  wallClockToday,
 } from "@professionisti/shared";
 import { Avatar, Badge, Chip, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -53,7 +56,7 @@ import { JobIssuePanel } from "@/components/JobIssuePanel";
 import { JobPaymentStatus } from "@/components/JobPaymentStatus";
 import { BankDisputeNotePanel } from "@/components/BankDisputeNotePanel";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
-import { describeClosedReason, type RequestStage } from "@/lib/requestStage";
+import { closedStageLabel, describeClosedReason, type RequestStage } from "@/lib/requestStage";
 import { UnreadDot } from "@/components/UnreadDot";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
@@ -66,7 +69,7 @@ import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { ProfessionalInvoiceRequestBox } from "@/components/ProfessionalInvoiceRequestBox";
 import { JobDocumentsModal } from "@/components/JobDocumentsModal";
 import { AppointmentReplyStatus } from "./AppointmentReplyStatus";
-import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle } from "./requestHelpers";
+import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle, bookingsOverlapping, BusyTimeNotice } from "./requestHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import { JobLimitModal } from "@/components/JobLimitModal";
@@ -82,6 +85,7 @@ export function RequestCard({
   booking,
   token,
   availableSlots,
+  bookings = [],
   myProfileId,
   defaultPaymentOffer,
   defaultCancellationNoticeHours,
@@ -105,6 +109,8 @@ export function RequestCard({
   booking: ProfessionalBooking | null;
   token: string;
   availableSlots: ProfessionalAvailableSlot[];
+  /** Tutti i lavori del professionista: avviso quando propone un orario già preso (collaudo C-15). */
+  bookings?: readonly ProfessionalBooking[];
   myProfileId: string | null;
   /** Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §239); null = valori di sistema. */
   defaultPaymentOffer?: { paymentOptions: JobPaymentChoice[]; depositPercent: number } | null;
@@ -154,7 +160,15 @@ export function RequestCard({
   const [showQuoteForm, setShowQuoteForm] = useState(false);
   const [items, setItems] = useState<QuoteItemDraft[]>([{ name: "Manodopera", priceMin: "", priceMax: "" }]);
   const modeAvailableSlots = availableSlots.filter((sl) => (isOnline ? sl.onlineAvailable : sl.homeAvailable));
-  const [selectedSlotKey, setSelectedSlotKey] = useState(modeAvailableSlots[0] ? slotKey(modeAvailableSlots[0]) : "");
+  // Orario chiesto dal cliente, già scelto aprendo il preventivo (collaudo
+  // C-07, 0-07): prima era già scelto il primo libero, spesso oggi, e il
+  // lavoro finiva in agenda nel giorno sbagliato.
+  const requestedSlotText =
+    gr.preferredDate && gr.preferredTimeSlot
+      ? `${new Date(`${gr.preferredDate}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })} · ${gr.preferredTimeSlot.replace("-", "–")}`
+      : null;
+  const requestedSlot = gr.preferredDate && gr.preferredTimeSlot ? modeAvailableSlots.find((sl) => sl.date === gr.preferredDate && `${sl.startTime}-${sl.endTime}` === gr.preferredTimeSlot) : undefined;
+  const [selectedSlotKey, setSelectedSlotKey] = useState(requestedSlot ? slotKey(requestedSlot) : "");
   const [showAllSlots, setShowAllSlots] = useState(false);
   // Data/orario inserita a mano (richiesta esplicita dell'utente: "dai la
   // possibilità di inserire una data orario manualmente"), non solo come
@@ -199,6 +213,14 @@ export function RequestCard({
     if (!showQuoteForm) setNoticeHours(standardNotice);
   }
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  // Inizio scelto nel modulo, per l'avviso sul preavviso (collaudo C-08).
+  const chosenQuoteStart = (() => {
+    if (modeAvailableSlots.length > 0 && !useManualDateTime) {
+      const slot = modeAvailableSlots.find((sl) => slotKey(sl) === selectedSlotKey);
+      return slot ? `${slot.date}T${slot.startTime}:00.000Z` : null;
+    }
+    return manualDate && manualStartTime ? `${manualDate}T${manualStartTime}:00.000Z` : null;
+  })();
   const [isSubmittingQuote, setIsSubmittingQuote] = useState(false);
   // Anteprima "Dal 4 al 6 novembre, ogni giorno 08:00–17:00" di un lavoro su più giorni.
   const jobDaysPreview = (() => {
@@ -217,6 +239,13 @@ export function RequestCard({
     return `${days.charAt(0).toUpperCase()}${days.slice(1)}, ogni giorno ${formatAppointmentTimeRange(start, firstEnd)}.`;
   })();
 
+  // Lavori già fissati nell'orario scelto (collaudo C-15).
+  const quoteBusy = (() => {
+    const slot = modeAvailableSlots.length > 0 && !useManualDateTime ? modeAvailableSlots.find((sl) => slotKey(sl) === selectedSlotKey) : null;
+    const chosen = slot ? { date: slot.date, start: slot.startTime, end: slot.endTime } : manualDate && manualStartTime ? { date: manualDate, start: manualStartTime, end: manualEndTime } : null;
+    return bookingsOverlapping(bookings, chosen, booking?.id);
+  })();
+
   const [showCounterForm, setShowCounterForm] = useState(false);
   const [counterSlotKey, setCounterSlotKey] = useState(modeAvailableSlots[0] ? slotKey(modeAvailableSlots[0]) : "");
   // Data/orario libera anche qui (richiesta esplicita dell'utente: "ogni
@@ -230,6 +259,15 @@ export function RequestCard({
   const [manualCounterDate, setManualCounterDate] = useState("");
   const [manualCounterStartTime, setManualCounterStartTime] = useState("");
   const [manualCounterEndTime, setManualCounterEndTime] = useState("");
+  const counterBusy = (() => {
+    const slot = modeAvailableSlots.length > 0 && !useManualCounterDateTime ? modeAvailableSlots.find((sl) => slotKey(sl) === counterSlotKey) : null;
+    const chosen = slot
+      ? { date: slot.date, start: slot.startTime, end: slot.endTime }
+      : manualCounterDate && manualCounterStartTime
+        ? { date: manualCounterDate, start: manualCounterStartTime, end: manualCounterEndTime }
+        : null;
+    return bookingsOverlapping(bookings, chosen, booking?.id);
+  })();
   const [counterNote, setCounterNote] = useState("");
   const [counterError, setCounterError] = useState<string | null>(null);
   const [isCountering, setIsCountering] = useState(false);
@@ -259,7 +297,8 @@ export function RequestCard({
   const [menuError, setMenuError] = useState<string | null>(null);
   // "Nuovo": aggiornamenti non letti arrivati in questa pagina, o scheda
   // segnata a mano "da leggere" dal menu (docs/CHANGELOG.md §130).
-  const isNew = Boolean(lead.myState.markedUnreadAt) || (unreadCount ?? 0) > 0;
+  // Mai su una richiesta ritirata dal cliente: non c'è più niente da fare (collaudo B-09).
+  const isNew = !lead.guidedRequest.withdrawnByClient && (Boolean(lead.myState.markedUnreadAt) || (unreadCount ?? 0) > 0);
   const [showTimeline, setShowTimeline] = useState(false);
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
   // Il pallino "Contatta/Cronologia" deve sparire non appena si apre la
@@ -418,6 +457,8 @@ export function RequestCard({
       const { totalMaxEurCents } = quotePriceTotals(parsed.map((item) => ({ priceMinEurCents: item.priceMinEurCents ?? null, priceMaxEurCents: item.priceMaxEurCents ?? null })));
       const limitProblem = onlineLimitProblem({ paymentOptions: offered, depositPercent, totalMaxEurCents, limitEurCents: onlineLimitEurCents });
       if (limitProblem) return setQuoteError(limitProblem);
+      const lowProblem = onlineDepositTooLowProblem({ paymentOptions: offered, depositPercent, totalMaxEurCents });
+      if (lowProblem) return setQuoteError(lowProblem);
     }
 
     setIsSubmittingQuote(true);
@@ -560,6 +601,20 @@ export function RequestCard({
     }
   }
 
+  async function handleAnswerReopen(accept: boolean) {
+    if (!booking) return;
+    setReopenError(null);
+    setIsReopening(true);
+    try {
+      await apiClient.answerReopenBooking(token, booking.id, accept);
+      onChanged();
+    } catch (err) {
+      setReopenError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsReopening(false);
+    }
+  }
+
   async function handleDelete() {
     setIsDeleting(true);
     try {
@@ -592,6 +647,12 @@ export function RequestCard({
       set.start(start);
       set.end(end);
     }
+  }
+
+  /** Nuovo preventivo: l'orario del cliente già scelto, se è libero; altrimenti nessuno. */
+  function openNewQuoteForm() {
+    setSelectedSlotKey(requestedSlot ? slotKey(requestedSlot) : "");
+    setShowQuoteForm(true);
   }
 
   function startEditingQuote() {
@@ -649,7 +710,7 @@ export function RequestCard({
       text: "Prepara il preventivo",
       onPress: () => {
         ensureOpen();
-        setShowQuoteForm(true);
+        openNewQuoteForm();
       },
     });
     menuActions.push({
@@ -692,13 +753,17 @@ export function RequestCard({
   if (dateChangePending) {
     menuActions.push({ icon: "check", text: proposalChange ? "Accetta nuova data" : "Conferma appuntamento", onPress: handleConfirmDate });
   }
-  if (booking?.status === "CONFIRMED") {
+  // "Lavoro terminato" dal giorno dell'appuntamento, come in Agenda (§311, collaudo F-01).
+  const canComplete = booking?.status === "CONFIRMED" && new Date(booking.scheduledAt).toISOString().slice(0, 10) <= wallClockToday().toISOString().slice(0, 10);
+  if (canComplete) {
     menuActions.push({ icon: "check", text: "Lavoro terminato", onPress: () => setShowCompleteModal(true) });
-    menuActions.push({ icon: "x", text: "Annulla intervento", tone: "danger", onPress: () => setShowCancelModal(true) });
+  }
+  if (booking?.status === "CONFIRMED") {
+    menuActions.push({ icon: "x", text: "Annulla il lavoro", tone: "danger", onPress: () => setShowCancelModal(true) });
   }
   // Regola simmetrica (§197): ognuno riapre solo ciò che ha annullato lui.
-  if (booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL") {
-    menuActions.push({ icon: "rotate-ccw", text: "Riapri intervento", onPress: handleReopenBooking });
+  if (booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL" && !booking.reopenRequestedBy) {
+    menuActions.push({ icon: "rotate-ccw", text: "Chiedi di riaprire", onPress: handleReopenBooking });
   }
   // Il professionista segnala un problema sull'intervento (§197): cliente
   // assente, mancato pagamento, ecc. Arriva al nostro team e in chat.
@@ -760,7 +825,7 @@ export function RequestCard({
             {/* Ordine invertito su richiesta esplicita dell'utente: lo stato
                 della richiesta (StagePill) precede il badge di modalità
                 (ServiceBadge, "A domicilio"/"Consulenza online"). */}
-            <StagePill stage={stage} label={stage === "chiusa" && gr.withdrawnByClient ? "Ritirata dal cliente" : undefined} />
+            <StagePill stage={stage} label={stage === "chiusa" ? closedStageLabel(lead) : undefined} />
             <ServiceBadge online={isOnline} />
             {/* Quando serve, scelto dal cliente (§344): "Oggi" è già il badge Urgente. */}
             {gr.timing === "WEEK" || gr.timing === "CALM" ? (
@@ -995,7 +1060,7 @@ export function RequestCard({
                       scheda, appena sopra il tasto Chat. */}
                   {booking?.scheduledAt && (stage === "accettata" || stage === "completata" || stage === "annullata") ? (
                     <Text fontSize={13} fontWeight="700" color={brand.grafite}>
-                      Intervento: {formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}
+                      Appuntamento: {formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}
                     </Text>
                   ) : null}
                   {/* Nome e cognome del destinatario indicati sulla
@@ -1219,7 +1284,7 @@ export function RequestCard({
           ) : null}
           {/* Segnalazione del cliente sul lavoro (docs/CHANGELOG.md §164). */}
           {/* Pagamento del lavoro (docs/CHANGELOG.md §168). */}
-          {booking?.payment && booking.status !== "CANCELED" ? <JobPaymentStatus payment={booking.payment} audience="professional" /> : null}
+          {booking?.payment && (booking.status !== "CANCELED" || booking.payment.paidEurCents > 0) ? <JobPaymentStatus payment={booking.payment} audience="professional" issueOpen={booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT"} /> : null}
           {/* Contestazione in banca: la sua spiegazione per le prove (docs/changelog/2026-10-28-stripe-prova.md). */}
           {booking?.payment?.bankDispute ? (
             <BankDisputeNotePanel
@@ -1237,6 +1302,10 @@ export function RequestCard({
               onOpenChat={myProfileId ? openTimeline : undefined}
               onRespond={async (response) => {
                 await apiClient.respondToJobIssue(token, booking.id, { response });
+                onChanged();
+              }}
+              onOfferRefund={async (amountEurCents) => {
+                await apiClient.offerJobIssueRefund(token, booking.id, amountEurCents);
                 onChanged();
               }}
               onAnswerInfo={async (response) => {
@@ -1292,7 +1361,7 @@ export function RequestCard({
                     "Invia preventivo" con esiti diversi (uno apriva, l'altro
                     inviava) erano un errore da un tocco (docs/CHANGELOG.md §349). */}
                 {!showQuoteForm ? (
-                  <CardButton tone="primary" onPress={() => setShowQuoteForm(true)}>
+                  <CardButton tone="primary" onPress={openNewQuoteForm}>
                     Prepara il preventivo
                   </CardButton>
                 ) : null}
@@ -1376,7 +1445,7 @@ export function RequestCard({
                     richiesta esplicita dell'utente di implementarli identici
                     qui: "Lavoro terminato"/"Annulla intervento" finché la
                     prenotazione è CONFIRMED. */}
-                {booking?.status === "CONFIRMED" ? (
+                {canComplete ? (
                   <>
                     {/* Turchese su richiesta esplicita dell'utente — stesso hex
                         già in uso per lo stato "Completata" in STAGE_STYLE
@@ -1387,10 +1456,21 @@ export function RequestCard({
                     </CardButton>
                   </>
                 ) : null}
-                {booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL" ? (
+                {/* Chi ha annullato chiede di riaprire, l'altro accetta (collaudo F-08). */}
+                {booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL" && !booking.reopenRequestedBy ? (
                   <CardButton compactOnPhone fill={brand.verificato} onPress={handleReopenBooking} disabled={isReopening}>
-                    {isReopening ? "Riapertura..." : "Riapri intervento"}
+                    {isReopening ? "Invio..." : "Chiedi di riaprire"}
                   </CardButton>
+                ) : null}
+                {booking?.status === "CANCELED" && booking.reopenRequestedBy === "CLIENT" ? (
+                  <>
+                    <CardButton compactOnPhone fill={brand.verificato} onPress={() => handleAnswerReopen(true)} disabled={isReopening}>
+                      Accetta di riaprire
+                    </CardButton>
+                    <CardButton compactOnPhone tone="danger" onPress={() => handleAnswerReopen(false)} disabled={isReopening}>
+                      Non riaprire
+                    </CardButton>
+                  </>
                 ) : null}
                 {/* Bug reale corretto: il link portava sempre alla data odierna
                     del calendario "Prenotazioni" invece che alla data vera
@@ -1402,13 +1482,28 @@ export function RequestCard({
                   <CardButton compactOnPhone fill={brand.verificato}>Vedi in agenda</CardButton>
                 </Link>
                 <ContactButton compactOnPhone onPress={openTimeline} unreadCount={effectiveUnreadCount} />
-                {/* Annulla sempre per ultimo (richiesta esplicita dell'utente). */}
-                {booking?.status === "CONFIRMED" ? (
+                {/* Annulla sempre per ultimo (richiesta esplicita dell'utente).
+                    Il giorno del lavoro resta solo nel menu ≡, lontano da
+                    "Lavoro terminato" (collaudo D-07). */}
+                {booking?.status === "CONFIRMED" && !canComplete ? (
                   <CardButton compactOnPhone tone="danger" onPress={() => setShowCancelModal(true)}>
-                    Annulla intervento
+                    Annulla il lavoro
                   </CardButton>
                 ) : null}
               </XStack>
+            ) : null}
+            {/* Chi deve fare ancora cosa (collaudo A-17). */}
+            {booking?.status === "CONFIRMED" && booking.clientConfirmedCompletedAt ? (
+              <Text fontSize={16} fontWeight="600" color={brand.grafite}>
+                Il cliente ha confermato che il lavoro è terminato: premi &quot;Lavoro terminato&quot; e scrivi l&apos;importo finale.
+              </Text>
+            ) : null}
+            {booking?.status === "CANCELED" && booking.reopenRequestedBy ? (
+              <Text fontSize={13} color={brand.grafite70}>
+                {booking.reopenRequestedBy === "CLIENT"
+                  ? "Il cliente chiede di riaprire l'appuntamento annullato: se accetti torna valido e in agenda."
+                  : "Hai chiesto al cliente di riaprire l'appuntamento: aspetta la sua risposta."}
+              </Text>
             ) : null}
             {reopenError ? (
               <Text fontSize={13} color={brand.urgenza}>
@@ -1540,6 +1635,14 @@ export function RequestCard({
                       );
                     })}
                   </div>
+                  {/* Orario diverso da quello chiesto, o chiesto e non libero (collaudo C-07). */}
+                  {requestedSlotText && (!requestedSlot || selectedSlotKey !== slotKey(requestedSlot)) ? (
+                    <Text fontSize={13} fontWeight="600" color={brand.ottoneScuro}>
+                      {requestedSlot
+                        ? `Il cliente aveva chiesto ${requestedSlotText}.`
+                        : `Il cliente aveva chiesto ${requestedSlotText}: non è tra i tuoi orari liberi, scegline uno.`}
+                    </Text>
+                  ) : null}
                   <XStack gap="4" flexWrap="wrap">
                     {!showAllSlots && modeAvailableSlots.length > QUOTE_SLOTS_SHOWN ? (
                       <button type="button" className="slot-more" onClick={() => setShowAllSlots(true)}>
@@ -1582,6 +1685,7 @@ export function RequestCard({
                   ) : null}
                 </YStack>
               )}
+              <BusyTimeNotice bookings={quoteBusy} />
 
               {/* Lavoro su più giorni (docs/CHANGELOG.md §310): stesso orario ogni giorno, non blocca altri lavori. */}
               <YStack gap="1">
@@ -1713,6 +1817,12 @@ export function RequestCard({
                     Se annulla più tardi, l&apos;acconto online resta a me
                   </label>
                 ) : null}
+                {/* Preavviso più lungo del tempo che manca (collaudo C-08). */}
+                {chosenQuoteStart && isLateCancellation(chosenQuoteStart, noticeHours) ? (
+                  <Text fontSize={13} fontWeight="600" color={brand.urgenza}>
+                    Mancano meno di {cancellationNoticeLabel(noticeHours)} all&apos;appuntamento: il cliente sarebbe già oltre il preavviso. Scegli un preavviso più breve o un&apos;altra data.
+                  </Text>
+                ) : null}
                 <Text fontSize={13} color={brand.grafite70}>
                   Il cliente lo legge prima di accettare. Lo standard lo cambi nel Profilo.
                 </Text>
@@ -1793,6 +1903,7 @@ export function RequestCard({
                   ) : null}
                 </YStack>
               )}
+              <BusyTimeNotice bookings={counterBusy} />
               <textarea aria-label="Nota per il cliente" value={counterNote} onChange={(e) => setCounterNote(e.target.value)} placeholder="Nota per il cliente (facoltativa)" rows={2} style={{ ...smallInputStyle, resize: "vertical" }} />
               {counterError ? (
                 <Text color={brand.urgenza} fontSize={16}>
@@ -1844,12 +1955,24 @@ export function RequestCard({
         <CompleteJobModal
           quotedItems={booking.items}
           jobName={gr.categoryLabel}
+          paidOnline={booking.payment?.method === "ONLINE" && !booking.payment.balanceDirect}
           onClose={() => setShowCompleteModal(false)}
           onComplete={handleComplete}
           uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
         />
       ) : null}
-      {showCancelModal && booking ? <CancelBookingModal onClose={() => setShowCancelModal(false)} onCancel={handleCancelBooking} /> : null}
+      {showCancelModal && booking ? (
+        <CancelBookingModal
+          // Che fine fa l'acconto pagato online (collaudo F-02).
+          description={`Il cliente verrà avvisato dell'annullamento${
+            booking.payment?.method === "ONLINE" && booking.payment.paidEurCents - booking.payment.refundedEurCents > 0
+              ? ` e gli restituiamo sulla carta i ${formatEurCents(booking.payment.paidEurCents - booking.payment.refundedEurCents)} che ha pagato online`
+              : ""
+          }. Puoi lasciare una nota facoltativa per spiegargli il motivo.`}
+          onClose={() => setShowCancelModal(false)}
+          onCancel={handleCancelBooking}
+        />
+      ) : null}
       {showDocuments && booking ? <JobDocumentsModal token={token} bookingId={booking.id} onClose={() => setShowDocuments(false)} /> : null}
       {showReportModal ? (
         <ReportContentModal

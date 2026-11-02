@@ -1,4 +1,7 @@
-import type { NotificationPreferences } from "./notificationPreferencesSchema";
+// Schema delle preferenze in un file a parte: questo file entra in ogni
+// pagina del sito (campanella), zod no (collaudo N-01,
+// docs/changelog/2026-10-30-velocita-telefono.md).
+import type { NotificationPreferences } from "./notificationSchemas";
 
 /**
  * Preferenze di notifica per argomento e canale (docs/CHANGELOG.md §152,
@@ -36,7 +39,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
     client: { label: "Le tue richieste", description: "Conferma dell'invio, un professionista trovato più tardi, e se un professionista rifiuta, la richiesta scade o viene inoltrata ad altri." },
     // REQUEST_SENT: solo email, la conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §185).
     // REQUEST_MATCHED_LATER: richiesta senza destinatari arrivata al primo professionista iscritto dopo (§271).
-    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_MATCHED_LATER", "REQUEST_SENT"],
+    // REQUEST_WITHDRAWN: al professionista, il cliente ha ritirato la richiesta (collaudo B-09).
+    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_MATCHED_LATER", "REQUEST_SENT", "REQUEST_WITHDRAWN"],
     activeChannels: ["inApp", "email"],
   },
   preventivi: {
@@ -46,6 +50,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "NEW_QUOTE",
       "QUOTE_ACCEPTED",
       "QUOTE_REJECTED",
+      // Il cliente ha accettato il preventivo di un altro (collaudo F-11).
+      "QUOTE_NOT_CHOSEN",
       "QUOTE_WITHDRAWN",
       "QUOTE_DATE_PROPOSED",
       "QUOTE_DATE_CHANGED",
@@ -73,6 +79,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "BOOKING_CANCELED_BY_CLIENT",
       "BOOKING_REOPENED_BY_CLIENT",
       "BOOKING_REOPENED_BY_PROFESSIONAL",
+      // Chi ha annullato chiede di riaprire, l'altro accetta o no (collaudo F-08).
+      "BOOKING_REOPEN_REQUESTED",
+      "BOOKING_REOPEN_DECLINED",
       // Risposta del cliente al promemoria WhatsApp: "Ci sarò" o "Non posso più".
       "BOOKING_CLIENT_CONFIRMED",
       "BOOKING_CLIENT_CANT_COME",
@@ -83,6 +92,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_ISSUE_REPORTED",
       "JOB_ISSUE_RESOLVED",
       "JOB_ISSUE_SETTLED",
+      // Rimborso proposto dal professionista in chat (collaudo F-03).
+      "JOB_ISSUE_REFUND_OFFERED",
       "JOB_ISSUE_ESCALATED",
       // Controversie standard (docs/CHANGELOG.md §167).
       "JOB_ISSUE_AUTO_ESCALATED",
@@ -105,6 +116,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Contestazione del cliente presso la sua banca (docs/CHANGELOG.md §236).
       "JOB_STRIPE_DISPUTE",
       "ADMIN_STRIPE_DISPUTE",
+      // Segnalazione passata al nostro team, da decidere, o ricorso (collaudo, admin-riordino).
+      "ADMIN_JOB_ISSUE_TO_REVIEW",
+      "ADMIN_JOB_ISSUE_APPEAL",
       // Prove della contestazione non ancora mandate a 3 giorni dalla scadenza (docs/changelog/2026-10-28-stripe-prova.md).
       "ADMIN_STRIPE_DISPUTE_DUE",
       // Al professionista che non ha ancora scritto la sua spiegazione, 5 giorni prima della scadenza.
@@ -115,6 +129,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_REFUND_PENDING",
       "JOB_REFUND_COMPLETED",
       "JOB_REFUND_WAITING_FUNDS",
+      // Richiesta di rimborso non accolta, col motivo (collaudo, docs/changelog/2026-10-30-collaudo-soldi-online.md).
+      "JOB_REFUND_REJECTED",
       "ADMIN_JOB_REFUND_FAILED",
       // Stato del conto Stripe di un professionista non riletto (docs/changelog/2026-10-28-stripe-prova.md).
       "ADMIN_STRIPE_ACCOUNT_UNREADABLE",
@@ -122,6 +138,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "ONLINE_LIMIT_LIFTED",
       // Anno DAC7 già comunicato con importi cambiati dopo l'invio (docs/CHANGELOG.md §247).
       "ADMIN_DAC7_NEEDS_CORRECTION",
+      // Comunicazione DAC7 dell'anno prima non ancora inviata, a gennaio (docs/changelog/2026-11-02-admin-protezioni.md).
+      "ADMIN_DAC7_DUE",
       // Urgenti oltre il 30% o non più veloci delle normali, ogni lunedì (docs/CHANGELOG.md §338).
       "ADMIN_URGENCY_ALERT",
       // Lavori e città con molte ricerche senza nessun professionista vicino, ogni lunedì (docs/CHANGELOG.md §371).
@@ -143,11 +161,17 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "BOOKING_REMINDER",
       // Agenda vuota o senza disponibilità nei prossimi 7 giorni (docs/CHANGELOG.md §274).
       "AGENDA_REMINDER",
+      // "Metti in pausa": il giorno prima del ritorno (docs/changelog/2026-11-02-iscrizione-verifica-professionisti.md).
+      "AWAY_ENDING",
       // Agenda (docs/CHANGELOG.md §288): "Sto arrivando" al cliente, riepilogo della sera prima al professionista.
       "PROFESSIONAL_ON_THE_WAY",
       "AGENDA_TOMORROW_SUMMARY",
       // Nuova recensione ricevuta dal professionista (docs/CHANGELOG.md §185).
       "NEW_REVIEW",
+      // Al cliente: il professionista ha risposto alla sua recensione (docs/changelog/2026-10-30-collaudo-soldi-online.md).
+      "REVIEW_REPLIED",
+      // Al professionista: recensione da 1-2 stelle senza risposta da 3 giorni (stessa voce del changelog).
+      "REVIEW_REPLY_REMINDER",
       // Il cliente chiede la fattura dopo l'accettazione, o cambia i dati (docs/CHANGELOG.md §378).
       "JOB_INVOICE_REQUESTED",
       // Al cliente: la copia della ricevuta o della fattura è pronta, o aggiornata (docs/CHANGELOG.md §387).
@@ -194,6 +218,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // selfie da rifare, codice fiscale o P.IVA risultati inesistenti.
       "IDENTITY_VERIFICATION_DECLINED",
       "TAX_ID_INVALID",
+      // Tipo (privato, partita IVA, azienda) cambiato dall'admin (migliorie del collaudo, gruppo 8).
+      "FISCAL_ENTITY_TYPE_CHANGED",
       // Servizio di verifica tornato disponibile, promemoria a chi non l'ha fatta (§256).
       "IDENTITY_VERIFICATION_READY",
       "IDENTITY_VERIFICATION_REMINDER",
@@ -215,6 +241,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Carta data: mesi gratis attivi, con fine, importo e come annullare
       // (docs/changelog/2026-10-30-iscrizione-carta-solida.md).
       "SUBSCRIPTION_FREE_MONTHS_STARTED",
+      // Mesi gratis già avuti con un account chiuso con la stessa partita IVA
+      // (docs/changelog/2026-11-02-collaudo-recensioni-abusi.md).
+      "SUBSCRIPTION_FREE_MONTHS_USED",
       "SUBSCRIPTION_TRIAL_ENDING",
       "SUBSCRIPTION_LIMIT_NEAR",
       "SUBSCRIPTION_LIMIT_REACHED",
@@ -268,6 +297,14 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
     professional: { label: "Nuove richieste", description: "Un cliente ti chiede un preventivo." },
   },
   {
+    key: "richieste.ritirate",
+    topic: "richieste",
+    types: ["REQUEST_WITHDRAWN"],
+    // Solo sul sito, nessuna email (docs/CHANGELOG.md §343).
+    channels: ["inApp"],
+    professional: { label: "Richieste ritirate", description: "Il cliente non ha più bisogno del lavoro." },
+  },
+  {
     key: "richieste.inviata",
     topic: "richieste",
     types: ["REQUEST_SENT"],
@@ -290,8 +327,8 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "preventivi.esito",
     topic: "preventivi",
-    types: ["QUOTE_ACCEPTED", "QUOTE_REJECTED"],
-    professional: { label: "Preventivo accettato o rifiutato" },
+    types: ["QUOTE_ACCEPTED", "QUOTE_REJECTED", "QUOTE_NOT_CHOSEN"],
+    professional: { label: "Preventivo accettato o rifiutato", description: "Anche quando il cliente sceglie un altro professionista." },
   },
   {
     key: "preventivi.modifiche",
@@ -315,6 +352,8 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "BOOKING_CANCELED_BY_CLIENT",
       "BOOKING_REOPENED_BY_CLIENT",
       "BOOKING_REOPENED_BY_PROFESSIONAL",
+      "BOOKING_REOPEN_REQUESTED",
+      "BOOKING_REOPEN_DECLINED",
       "BOOKING_NO_SHOW_REPORTED",
       // Risposte del cliente al promemoria: "Ci sarò", "Non posso più", "Ho sbagliato".
       "BOOKING_CLIENT_CONFIRMED",
@@ -327,8 +366,8 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "lavori.promemoria",
     topic: "lavori",
-    types: ["BOOKING_REMINDER", "AGENDA_REMINDER", "AGENDA_TOMORROW_SUMMARY", "PROFESSIONAL_ON_THE_WAY"],
-    professional: { label: "Promemoria e agenda", description: "Il giorno prima, il riepilogo della sera, l'agenda senza orari liberi." },
+    types: ["BOOKING_REMINDER", "AGENDA_REMINDER", "AWAY_ENDING", "AGENDA_TOMORROW_SUMMARY", "PROFESSIONAL_ON_THE_WAY"],
+    professional: { label: "Promemoria e agenda", description: "Il giorno prima, il riepilogo della sera, l'agenda senza orari liberi, la fine della pausa." },
     client: { label: "Promemoria", description: "Il giorno prima e quando il professionista sta arrivando." },
   },
   {
@@ -354,6 +393,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "JOB_REFUND_PENDING",
       "JOB_REFUND_COMPLETED",
       "JOB_REFUND_WAITING_FUNDS",
+      "JOB_REFUND_REJECTED",
       "ONLINE_LIMIT_LIFTED",
     ],
     professional: { label: "Pagamenti online", description: "Acconti e saldi pagati, bonifici, rimborsi." },
@@ -366,6 +406,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "JOB_ISSUE_REPORTED",
       "JOB_ISSUE_RESOLVED",
       "JOB_ISSUE_SETTLED",
+      "JOB_ISSUE_REFUND_OFFERED",
       "JOB_ISSUE_ESCALATED",
       "JOB_ISSUE_AUTO_ESCALATED",
       "JOB_ISSUE_TEAM_REVIEW",
@@ -384,8 +425,9 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "lavori.recensioni",
     topic: "lavori",
-    types: ["NEW_REVIEW"],
+    types: ["NEW_REVIEW", "REVIEW_REPLIED", "REVIEW_REPLY_REMINDER"],
     professional: { label: "Nuove recensioni" },
+    client: { label: "Risposte alle tue recensioni" },
   },
   {
     key: "lavori.documenti",
@@ -401,9 +443,12 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "ADMIN_JOB_BALANCE_UNPAID",
       "ADMIN_STRIPE_DISPUTE",
       "ADMIN_STRIPE_DISPUTE_DUE",
+      "ADMIN_JOB_ISSUE_TO_REVIEW",
+      "ADMIN_JOB_ISSUE_APPEAL",
       "ADMIN_JOB_REFUND_FAILED",
       "ADMIN_STRIPE_ACCOUNT_UNREADABLE",
       "ADMIN_DAC7_NEEDS_CORRECTION",
+      "ADMIN_DAC7_DUE",
       "ADMIN_URGENCY_ALERT",
       "ADMIN_SEARCH_DEMAND_ALERT",
       "ADMIN_WEEKLY_ADVICE",
@@ -438,7 +483,6 @@ export function notificationTopicOf(type: string): NotificationTopic | null {
   return null;
 }
 
-export type { NotificationPreferences } from "./notificationPreferencesSchema";
 
 /** Tutto acceso. */
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {

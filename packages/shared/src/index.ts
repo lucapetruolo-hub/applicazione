@@ -1,9 +1,5 @@
-// I messaggi d'errore di zod 3 (src/zod.ts) li carica ogni file con schemi
-// (`import "./zod"`), non questo indice: importato qui, zod finiva nel
-// JavaScript di ogni pagina del sito anche senza un modulo
-// (docs/changelog/2026-11-02-nextjs-16.md). L'API carica comunque tutti i
-// file da dist/, quindi la configurazione resta attiva prima di ogni
-// validazione.
+// I messaggi d'errore di zod 3 per tutti gli schemi (src/zod.ts).
+import "./zod";
 
 export * from "./availability";
 export * from "./categories";
@@ -11,15 +7,17 @@ export * from "./cities";
 export * from "./data/comuni";
 export * from "./frazioni";
 export * from "./dashboard";
+export * from "./accountClosure";
 export * from "./fiscalValidation";
+export * from "./codiceFiscaleBirthPlace";
 export * from "./moderation";
 export * from "./adminRoles";
-export * from "./adminRolesSchemas";
+export * from "./adminRoleSchemas";
 export * from "./plans";
 export * from "./professionals";
 export * from "./schemas";
 export * from "./notifications";
-export * from "./notificationPreferencesSchema";
+export * from "./notificationSchemas";
 export * from "./completion";
 export * from "./jobIssues";
 export * from "./onlinePayments";
@@ -36,18 +34,18 @@ export * from "./phoneCountries";
 export * from "./requestDeadline";
 export * from "./fiscalCompleteness";
 export * from "./identityVerification";
-export * from "./identityVerificationSchema";
+export * from "./identityVerificationSchemas";
 export * from "./addressSuggestions";
 export * from "./dac7";
 export * from "./appointmentTime";
 export * from "./safeRedirect";
 export * from "./agendaTools";
 export * from "./password";
+export * from "./emailSuggestion";
 export * from "./professionalUrl";
 export * from "./categorySeo";
 export * from "./categoryPrices";
 export * from "./trafficSource";
-export * from "./trafficSourceSchema";
 export * from "./trafficSources";
 export * from "./requestWithdraw";
 export * from "./cancellationNotice";
@@ -64,3 +62,5 @@ export * from "./whatsapp";
 export * from "./appointmentReply";
 export * from "./adminQueue";
 export * from "./adminSignals";
+export * from "./reviewHold";
+export * from "./sameTimeBooking";

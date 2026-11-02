@@ -17,6 +17,7 @@ export type {
   AdminUsersQuery,
   AdminOverview,
   SentReview,
+  ReceivedReview,
   AdminRefund,
   AdminDispute,
   ModerationActionValue,

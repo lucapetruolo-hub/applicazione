@@ -6,7 +6,7 @@ import type { UnreadNotification } from "./AuthContext";
  * esplicita dell'utente: "indica anche in quale sezione c'è stato
  * l'aggiornamento"), non solo il totale nell'header.
  */
-const PROFESSIONAL_RICHIESTE_TYPES = new Set(["NEW_LEAD", "QUOTE_DATE_PROPOSED", "QUOTE_REJECTED", "TIMELINE_MESSAGE_FROM_CLIENT"]);
+const PROFESSIONAL_RICHIESTE_TYPES = new Set(["NEW_LEAD", "QUOTE_DATE_PROPOSED", "QUOTE_REJECTED", "QUOTE_NOT_CHOSEN", "REQUEST_WITHDRAWN", "TIMELINE_MESSAGE_FROM_CLIENT"]);
 const PROFESSIONAL_LAVORI_TYPES = new Set(["QUOTE_ACCEPTED", "JOB_INVOICE_REQUESTED", "BOOKING_NO_SHOW_REPORTED", "BOOKING_CANCELED_BY_CLIENT", "BOOKING_REOPENED_BY_CLIENT", "BOOKING_CLIENT_CONFIRMED", "BOOKING_CLIENT_CANT_COME", "BOOKING_CLIENT_CANT_COME_UNDONE", "QUOTE_DATE_CONFIRMED_BY_CLIENT", "QUOTE_DATE_REJECTED_BY_CLIENT", "JOB_ISSUE_REPORTED", "JOB_ISSUE_SETTLED", "JOB_ISSUE_ESCALATED", "JOB_ISSUE_AUTO_ESCALATED", "JOB_ISSUE_INFO_REQUESTED", "JOB_ISSUE_UNRESOLVED", "JOB_DEPOSIT_PAID", "JOB_BALANCE_PAID", "JOB_PAYOUT_SENT", "NEW_REVIEW", "JOB_CLOSE_REMINDER", "JOB_CLOSE_EXPIRED"]);
 const CLIENT_RICHIESTE_TYPES = new Set([
   "NEW_QUOTE",
@@ -23,7 +23,7 @@ const CLIENT_RICHIESTE_TYPES = new Set([
   "REQUEST_MATCHED_LATER",
   "TIMELINE_MESSAGE_FROM_PROFESSIONAL",
 ]);
-const CLIENT_LAVORI_TYPES = new Set(["JOB_COMPLETED", "JOB_DOCUMENT_READY", "PROFESSIONAL_ON_THE_WAY", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "BOOKING_CANCELED_BY_PROFESSIONAL", "BOOKING_REOPENED_BY_PROFESSIONAL"]);
+const CLIENT_LAVORI_TYPES = new Set(["JOB_COMPLETED", "JOB_DOCUMENT_READY", "PROFESSIONAL_ON_THE_WAY", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "BOOKING_CANCELED_BY_PROFESSIONAL", "BOOKING_REOPENED_BY_PROFESSIONAL", "JOB_ISSUE_REFUND_OFFERED"]);
 // Messaggi di chat non letti, indipendentemente dal ruolo — un viewer
 // riceve sempre e solo il tipo pertinente al proprio lato (mai entrambi),
 // quindi sommare i due insiemi è sicuro. Usato per il pallino sulla voce
@@ -134,6 +134,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   if (type === "DAC7_ANNUAL_NOTICE") return "/dashboard/fiscale/dac7";
   if (type === "DAC7_DATA_REMINDER") return "/dashboard/fiscale";
   if (type === "ADMIN_DAC7_NEEDS_CORRECTION") return "/admin/finanza";
+  if (type === "ADMIN_DAC7_DUE") return "/admin/finanza/dac7";
   if (type === "ADMIN_URGENCY_ALERT") return "/admin";
   if (type === "ADMIN_SEARCH_DEMAND_ALERT") return "/admin/numeri-professionisti";
   if (type === "ADMIN_WEEKLY_ADVICE") return "/admin/andamento";
@@ -142,19 +143,21 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   // Documenti contabili (docs/CHANGELOG.md §378).
   if (type === "MONTHLY_DOCUMENTS_READY" || type === "CLIENT_DOCUMENTS_TO_FIX") return "/dashboard/documenti";
   if (type === "ADMIN_FEE_RECONCILIATION") return "/admin/finanza";
+  if (type === "ADMIN_JOB_ISSUE_TO_REVIEW" || type === "ADMIN_JOB_ISSUE_APPEAL") return "/admin/problemi";
   // Copia del documento per il cliente (§387): apre subito i documenti della richiesta.
   if (type === "JOB_DOCUMENT_READY") {
     const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
     return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}&documenti=1` : "/le-mie-richieste?tab=lavori";
   }
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
-  if (type === "TAX_ID_INVALID") return "/dashboard/fiscale";
+  if (type === "TAX_ID_INVALID" || type === "FISCAL_ENTITY_TYPE_CHANGED") return "/dashboard/fiscale";
   if (type === "PROFILE_SETUP_REMINDER") {
     // Carta per i mesi gratis (docs/changelog/2026-10-30-iscrizione-carta-solida.md): dritti ai livelli.
     const missing = payload && typeof payload === "object" ? (payload as { missing?: unknown }).missing : null;
     return Array.isArray(missing) && missing.includes("CARD") ? "/dashboard/abbonamento#livelli" : "/dashboard";
   }
   if (type === "AGENDA_REMINDER") return "/dashboard/agenda?tab=disponibilita";
+  if (type === "AWAY_ENDING") return "/dashboard/agenda?tab=orari";
   if (type === "AGENDA_TOMORROW_SUMMARY") return "/dashboard/agenda";
   if (type.startsWith("IDENTITY_VERIFICATION_") || type === "PROFILE_VERIFICATION_REMOVED") return "/dashboard/verifica-identita";
   if (type === "ADMIN_JOB_BALANCE_UNPAID" || type === "ADMIN_JOB_NOT_CLOSED" || type === "ADMIN_STRIPE_DISPUTE" || type === "ADMIN_STRIPE_DISPUTE_DUE" || type === "ADMIN_JOB_PAYMENT_LONG_HOLD" || type === "ADMIN_JOB_REFUND_FAILED" || type === "ADMIN_STRIPE_ACCOUNT_UNREADABLE") return "/admin/pagamenti";
@@ -164,6 +167,26 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   }
   if (type === "JOB_BALANCE_DUE" || type === "JOB_BALANCE_UNPAID" || type === "JOB_BALANCE_AUTO_CHARGED" || type === "JOB_REFUND_PENDING" || type === "JOB_REFUND_COMPLETED") {
     const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
+    return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}` : "/le-mie-richieste?tab=lavori";
+  }
+  if (type === "BOOKING_REOPEN_REQUESTED" || type === "BOOKING_REOPEN_DECLINED") {
+    const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
+    if (getPayloadValue(payload, "audience") === "PROFESSIONAL") return guidedRequestId ? `/dashboard/richieste?open=${guidedRequestId}` : "/dashboard/richieste";
+    return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}` : "/le-mie-richieste?tab=lavori";
+  }
+  // Recensioni: il professionista risponde dalla sua pagina Recensioni, il cliente legge la risposta tra le sue.
+  if (type === "NEW_REVIEW" || type === "REVIEW_REPLY_REMINDER") {
+    const reviewId = getPayloadValue(payload, "reviewId");
+    return `/dashboard/recensioni${reviewId ? `#recensione-${reviewId}` : ""}`;
+  }
+  if (type === "REVIEW_REPLIED") {
+    const reviewId = getPayloadValue(payload, "reviewId");
+    return `/le-mie-recensioni${reviewId ? `#recensione-${reviewId}` : ""}`;
+  }
+  if (type === "JOB_REFUND_REJECTED") {
+    // Chi aveva chiesto il rimborso può essere il cliente o il professionista.
+    const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
+    if (getPayloadValue(payload, "audience") === "PROFESSIONAL") return guidedRequestId ? `/dashboard/richieste?open=${guidedRequestId}` : "/dashboard/richieste";
     return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}` : "/le-mie-richieste?tab=lavori";
   }
   if (type.startsWith("JOB_ISSUE_")) {

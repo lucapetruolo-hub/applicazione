@@ -16,13 +16,16 @@ export type AdminQueueKind =
   | "DISPUTE"
   | "UNPAID_BALANCE"
   | "SDI_REJECTED"
+  | "SDI_STUCK"
+  | "DAC7_DUE"
   | "CONTENT_REPORT"
   | "REPORT_APPEAL"
   | "PROBLEM_TAKEOVER"
   | "CONTACT_MESSAGE"
   | "VERIFICATION"
   | "CLOSED_ZONE"
-  | "SUSPICIOUS_ACCOUNT";
+  | "SUSPICIOUS_ACCOUNT"
+  | "HELD_REVIEW";
 
 /** Gruppo del filtro "Tipo" della coda: gli stessi nomi delle voci del menu. */
 export type AdminQueueGroup = "soldi" | "reclami" | "richieste" | "persone" | "fisco";
@@ -35,6 +38,8 @@ export const ADMIN_QUEUE_KINDS: Record<AdminQueueKind, { label: string; group: A
   DISPUTE: { label: "Contestazione di pagamento", group: "soldi", scope: "FINANCE" },
   UNPAID_BALANCE: { label: "Saldo non pagato", group: "soldi", scope: "FINANCE" },
   SDI_REJECTED: { label: "Fattura scartata dallo SdI", group: "fisco", scope: "FINANCE" },
+  SDI_STUCK: { label: "Fattura ferma allo SdI", group: "fisco", scope: "FINANCE" },
+  DAC7_DUE: { label: "Comunicazione DAC7", group: "fisco", scope: "FINANCE" },
   CONTENT_REPORT: { label: "Segnalazione", group: "reclami", scope: "MODERATION" },
   REPORT_APPEAL: { label: "Ricorso su una segnalazione", group: "reclami", scope: "MODERATION" },
   PROBLEM_TAKEOVER: { label: "Ce ne occupiamo noi", group: "richieste", scope: "MODERATION" },
@@ -42,6 +47,7 @@ export const ADMIN_QUEUE_KINDS: Record<AdminQueueKind, { label: string; group: A
   VERIFICATION: { label: "Verifica del profilo", group: "persone", scope: "MODERATION" },
   CLOSED_ZONE: { label: "Zona con le richieste chiuse", group: "richieste", scope: "MODERATION" },
   SUSPICIOUS_ACCOUNT: { label: "Account sospetto", group: "persone", scope: "MODERATION" },
+  HELD_REVIEW: { label: "Recensione da controllare", group: "reclami", scope: "MODERATION" },
 };
 
 export const ADMIN_QUEUE_GROUP_LABEL: Record<AdminQueueGroup, string> = {

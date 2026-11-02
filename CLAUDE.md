@@ -122,11 +122,7 @@ prima discuterne e aggiornare questo file.
   `apps/web/next.config.mjs`, `sideEffects: false`, docs/CHANGELOG.md §345):
   ogni pagina prende solo le parti che usa. Un modulo di `packages/shared`
   non deve contare su effetti al solo import (registrazioni, globali). L'API
-  usa sempre `dist/`. Turbopack però prende un file intero, non la sola
-  funzione: dati grandi e schemi zod stanno in file loro, mai insieme a
-  costanti usate ovunque; l'elenco dei comuni nelle parti comuni a ogni
-  pagina si carica dopo (`apps/web/src/lib/comuniLazy.ts`,
-  docs/changelog/2026-11-02-nextjs-16.md).
+  usa sempre `dist/`.
 - **Tamagui 3** (docs/changelog/2026-11-02-tamagui-3.md, prima Tamagui 1):
   valori "piatti", token senza `$` e stati nel valore
   (`backgroundColor="blue10 hover:blue9 press:blue8"`, `fontSize="16px xs:13px"`),
@@ -255,7 +251,11 @@ sia UI/routing — la logica va in `apps/api` o `packages/shared`.
    della conversazione (chat) — mai un dato di contatto diretto. Non
    invertire questa regola una quarta volta senza discuterne
    esplicitamente con l'utente: se sembra necessario un'eccezione, è un
-   segnale che va posta la domanda invece di cambiare il codice.
+   segnale che va posta la domanda invece di cambiare il codice. Stessa
+   regola in chat (decisione di Luca del 02/11/2026): prima
+   dell'accettazione un messaggio con telefono, email, link o "WhatsApp" non
+   parte, per nessuno dei due (controllo sul server,
+   docs/changelog/2026-11-02-admin-protezioni.md).
 10. **Regola "zero emoji nell'interfaccia" (§10, Fase 2) abrogata** —
     decisione esplicita dell'utente, in risposta al rilievo F8.1 del
     "Verbale Cognitivo" (che anzi la elogiava com'era: "nessuna azione,
@@ -437,7 +437,9 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
   fattura a zero). La fattura del professionista al cliente la fa lui:
   noi diamo solo i dati chiesti dal cliente, **mai
   nulla all'Agenzia delle Entrate per conto del professionista**. Solo per il
-  lavoro occasionale prepariamo la ricevuta col numero dato da noi; con la
+  lavoro occasionale prepariamo un modello di ricevuta già compilato, che il
+  professionista controlla, numera e firma come documento suo (decisione di
+  Luca del 02/11, docs/changelog/2026-11-02-ricevuta-modello.md); con la
   partita IVA nessuna copia della fattura, la fa col suo programma (decisione
   di Luca del 30/10, docs/changelog/2026-10-30-documenti-snelli.md). L'estratto
   (e a gennaio il riepilogo dell'anno delle ricevute, §390)
@@ -545,7 +547,7 @@ Una riga per voce; dettaglio completo (endpoint, file, bug corretti) in
 - [x] Smistamento delle richieste: a tutti i professionisti nel raggio, senza scadenza per rispondere (docs/CHANGELOG.md §210); richieste generali spegnibili (`GENERAL_REQUESTS_ENABLED=false` su Render) e chiuse in automatico per categoria e città (§211)
 - [x] Segnalazioni di problemi sul lavoro e controversie (modello A-Z)
 - [x] Pagamento online dei lavori con Stripe (serve Stripe Connect per andare live)
-- [x] Fatture e documenti: fattura del mese delle trattenute, fatture dell'abbonamento, estratto mensile (anche al commercialista), fattura chiesta dal cliente al professionista, ricevuta per il lavoro occasionale col nostro numero (elenco con il totale e il riepilogo dell'anno per il commercialista, e in Admin → Documenti ai clienti), voce "Documenti" nel menu di ogni lavoro per professionista e cliente, PDF fatti dal server, quadratura con Stripe (invio allo SdI con `OPENAPI_TOKEN_SDI`, prova in Finanza)
+- [x] Fatture e documenti: fattura del mese delle trattenute, fatture dell'abbonamento, estratto mensile (anche al commercialista), fattura chiesta dal cliente al professionista, modello di ricevuta per il lavoro occasionale, numerato e firmato dal professionista (elenco con il totale e il riepilogo dell'anno per il commercialista, e in Admin → Documenti ai clienti), voce "Documenti" nel menu di ogni lavoro per professionista e cliente, PDF fatti dal server, quadratura con Stripe (invio allo SdI con `OPENAPI_TOKEN_SDI`, prova in Finanza)
 - [x] Profilo creato da un operatore al telefono (`/admin/professionisti` → link `/completa-profilo`; fuori dalla ricerca finché non è confermato, `invitePendingAt`)
 - [x] Dal problema scritto ai professionisti adatti: dizionario + IA nei dubbi, avviso di sicurezza, domanda cliccabile, "Ce ne occupiamo noi", admin "Mestieri richiesti" e "Richieste da seguire" e scelta di fino a 5 professionisti (docs/CHANGELOG.md §392, §393)
 - [x] Verifica dei professionisti: codice fiscale e partita IVA controllati (formato, coerenza con nome e data, Openapi); documento + selfie con Didit obbligatori prima del primo preventivo, danno il badge "Verificato"; `/admin/verifiche` solo per guardare, ricontrollare e togliere il badge (docs/CHANGELOG.md §253-§255)

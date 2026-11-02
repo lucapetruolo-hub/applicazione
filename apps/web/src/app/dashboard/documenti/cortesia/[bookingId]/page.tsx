@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { WITHHOLDING_RATE_PERCENT, courtesyAmountChanged, courtesyDetailsSchema, type CourtesyCopyView, type CourtesyDetailsInput } from "@professionisti/shared";
+import { RECEIPT_NUMBER_MAX, WITHHOLDING_RATE_PERCENT, courtesyAmountChanged, courtesyDetailsSchema, type CourtesyCopyView, type CourtesyDetailsInput } from "@professionisti/shared";
 import { Button, Field, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { ConsentCheckbox } from "@/components/ConsentCheckbox";
 import { apiClient } from "@/lib/apiClient";
@@ -15,10 +15,11 @@ function day(iso: string): string {
 }
 
 /** Quello che il professionista scrive sulla ricevuta, come lo tiene la pagina. */
-type Draft = { customerName: string; customerTaxCode: string; withholding: boolean };
+type Draft = { number: string; customerName: string; customerTaxCode: string; withholding: boolean };
 
 function draftOf(copy: CourtesyCopyView): Draft {
   return {
+    number: copy.number ?? "",
     customerName: copy.customerFields?.name ?? "",
     customerTaxCode: copy.customerFields?.taxCode ?? "",
     withholding: copy.withholding?.applies ?? true,
@@ -29,6 +30,7 @@ function draftOf(copy: CourtesyCopyView): Draft {
 function changesOf(copy: CourtesyCopyView, draft: Draft): CourtesyDetailsInput {
   const saved = draftOf(copy);
   const input: CourtesyDetailsInput = {};
+  if (draft.number.trim() !== saved.number) input.number = draft.number.trim();
   if (copy.customerFields && draft.customerName.trim() !== saved.customerName) input.customerName = draft.customerName.trim();
   if (copy.customerFields && draft.customerTaxCode.trim().toUpperCase() !== saved.customerTaxCode) input.customerTaxCode = draft.customerTaxCode.trim().toUpperCase();
   if (copy.withholding && draft.withholding !== saved.withholding) input.withholding = draft.withholding;
@@ -37,8 +39,10 @@ function changesOf(copy: CourtesyCopyView, draft: Draft): CourtesyDetailsInput {
 
 /**
  * Ricevuta per prestazione occasionale (decisione dell'utente del
- * 27/10/2026, docs/CHANGELOG.md §378): la firma il professionista, noi non
- * mandiamo nulla all'Agenzia delle Entrate. Si prepara solo a lavoro
+ * 27/10/2026, docs/CHANGELOG.md §378): noi non mandiamo nulla all'Agenzia
+ * delle Entrate. Dal 02/11/2026 è un modello già compilato che il
+ * professionista controlla, numera e firma come documento suo
+ * (docs/changelog/2026-11-02-ricevuta-modello.md). Si prepara solo a lavoro
  * terminato, con il nome del cliente e la ritenuta
  * (docs/changelog/2026-10-30-documenti-fiscali.md). Chi ha la partita IVA fa
  * la fattura col suo programma e qui trova solo un avviso
@@ -80,7 +84,12 @@ export default function CourtesyCopyPage() {
       setFieldError(message);
       throw new Error(message);
     }
-    const updated = await apiClient.saveCourtesyDetails(token, bookingId, parsed.data);
+    // Un errore del server (per esempio un numero già usato) si legge sotto "Salva".
+    const updated = await apiClient.saveCourtesyDetails(token, bookingId, parsed.data).catch((e: unknown) => {
+      const message = e instanceof Error ? e.message : "Non riusciamo a salvare: riprova.";
+      setFieldError(message);
+      throw new Error(message);
+    });
     setCopy(updated);
     setDraft(draftOf(updated));
     return updated;
@@ -130,11 +139,13 @@ export default function CourtesyCopyPage() {
     : copy.customer;
   const withholding = copy.withholding && draft.withholding && copy.totalEurCents !== null ? copy.withholding : null;
   const withholdingAmount = withholding && copy.totalEurCents !== null ? Math.round((copy.totalEurCents * WITHHOLDING_RATE_PERCENT) / 100) : 0;
-  const hasFields = !!copy.customerFields || !!copy.withholding;
-  // Cosa manca ancora, tenendo conto del nome appena scritto e non ancora salvato.
+  const number = draft.number.trim();
+  // Cosa manca ancora, tenendo conto di quello appena scritto e non ancora salvato.
   const nameMissing = "il nome del cliente";
+  const numberMissing = "il numero della ricevuta";
   const missing = [
-    ...copy.missing.filter((item) => item !== nameMissing || !customer.name),
+    ...(!number ? [numberMissing] : []),
+    ...copy.missing.filter((item) => item !== numberMissing && (item !== nameMissing || !customer.name)),
     ...(copy.customerFields && !customer.name && !copy.missing.includes(nameMissing) ? [nameMissing] : []),
   ];
 
@@ -154,7 +165,8 @@ export default function CourtesyCopyPage() {
           ) : null}
           <NoteBox>
             <Text fontSize={16} color={brand.grafite}>
-              Stampala, firmala e dalla al cliente. Tienine una copia per te. Il numero lo diamo noi, uno dopo l&apos;altro ogni anno.
+              <Text fontWeight="700">È un documento tuo.</Text> L&apos;abbiamo compilata con i dati del lavoro: controllala, dalle il tuo numero, stampala, firmala e
+              dalla al cliente. Tienine una copia per te.
             </Text>
             {copy.invoiceRequested ? (
               <Text fontSize={16} color={brand.grafite}>
@@ -168,56 +180,65 @@ export default function CourtesyCopyPage() {
             ))}
           </NoteBox>
 
-          {hasFields ? (
-            <YStack gap="3" padding="4" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto}>
-              {copy.customerFields ? (
-                <XStack gap="3" flexWrap="wrap">
-                  <YStack flexGrow={1} flexBasis={220}>
-                    <Field
-                      label="Nome e cognome del cliente"
-                      aria-label="Nome e cognome del cliente"
-                      value={draft.customerName}
-                      onChangeText={(value) => set({ customerName: value })}
-                      maxLength={120}
-                      autoComplete="off"
-                    />
-                  </YStack>
-                  <YStack flexGrow={1} flexBasis={220}>
-                    <Field
-                      label="Codice fiscale del cliente (facoltativo)"
-                      aria-label="Codice fiscale del cliente"
-                      value={draft.customerTaxCode}
-                      onChangeText={(value) => set({ customerTaxCode: value.toUpperCase() })}
-                      autoCapitalize="characters"
-                      maxLength={16}
-                      autoComplete="off"
-                    />
-                  </YStack>
-                </XStack>
-              ) : null}
-              {copy.withholding ? (
-                <ConsentCheckbox checked={draft.withholding} onToggle={() => set({ withholding: !draft.withholding })}>
-                  Il cliente trattiene la ritenuta d&apos;acconto del 20%
-                </ConsentCheckbox>
-              ) : null}
-              <XStack gap="3" alignItems="center" flexWrap="wrap">
-                <Button variant="secondary" alignSelf="flex-start" onPress={() => void save().catch(() => undefined)}>
-                  Salva
-                </Button>
-                {fieldError ? (
-                  <Text fontSize={16} color={brand.urgenza} role="alert">
-                    {fieldError}
-                  </Text>
-                ) : null}
-              </XStack>
+          <YStack gap="3" padding="4" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto}>
+            <YStack maxWidth={320}>
+              <Field
+                label="Numero della ricevuta"
+                aria-label="Numero della ricevuta"
+                hint={copy.lastNumber ? `L'ultima che hai numerato: ${copy.lastNumber}.` : "Segui la tua numerazione, per esempio 1/2026."}
+                value={draft.number}
+                onChangeText={(value) => set({ number: value })}
+                maxLength={RECEIPT_NUMBER_MAX}
+                autoComplete="off"
+              />
             </YStack>
-          ) : null}
+            {copy.customerFields ? (
+              <XStack gap="3" flexWrap="wrap">
+                <YStack flexGrow={1} flexBasis={220}>
+                  <Field
+                    label="Nome e cognome del cliente"
+                    aria-label="Nome e cognome del cliente"
+                    value={draft.customerName}
+                    onChangeText={(value) => set({ customerName: value })}
+                    maxLength={120}
+                    autoComplete="off"
+                  />
+                </YStack>
+                <YStack flexGrow={1} flexBasis={220}>
+                  <Field
+                    label="Codice fiscale del cliente (facoltativo)"
+                    aria-label="Codice fiscale del cliente"
+                    value={draft.customerTaxCode}
+                    onChangeText={(value) => set({ customerTaxCode: value.toUpperCase() })}
+                    autoCapitalize="characters"
+                    maxLength={16}
+                    autoComplete="off"
+                  />
+                </YStack>
+              </XStack>
+            ) : null}
+            {copy.withholding ? (
+              <ConsentCheckbox checked={draft.withholding} onToggle={() => set({ withholding: !draft.withholding })}>
+                Il cliente trattiene la ritenuta d&apos;acconto del 20%
+              </ConsentCheckbox>
+            ) : null}
+            <XStack gap="3" alignItems="center" flexWrap="wrap">
+              <Button variant="secondary" alignSelf="flex-start" onPress={() => void save().catch(() => undefined)}>
+                Salva
+              </Button>
+              {fieldError ? (
+                <Text fontSize={16} color={brand.urgenza} role="alert">
+                  {fieldError}
+                </Text>
+              ) : null}
+            </XStack>
+          </YStack>
         </YStack>
       </div>
 
       <XStack justifyContent="space-between" gap="3" flexWrap="wrap">
         <Text fontSize={16} color={brand.grafite}>
-          Numero: {copy.number ?? "______"}
+          Numero: {number || "______"}
         </Text>
         <Text fontSize={16} color={brand.grafite}>
           Data: {day(copy.date)}
@@ -272,7 +293,7 @@ export default function CourtesyCopyPage() {
           <PdfButton
             before={beforePdf}
             load={() => apiClient.courtesyCopyPdf(token ?? "", bookingId)}
-            fileName={`ricevuta-${(copy.number ?? "").replace(/\//g, "-")}.pdf`}
+            fileName={`ricevuta-${number.replace(/[^\w.-]+/g, "-")}.pdf`}
           />
         </YStack>
       </div>

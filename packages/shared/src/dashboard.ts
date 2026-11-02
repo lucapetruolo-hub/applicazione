@@ -64,6 +64,8 @@ export type MyProfessionalProfile = {
   /** Misure in corso per segnalazioni accolte (docs/CHANGELOG.md §167): fino a quando. */
   demotedUntil?: string | null;
   requestsBlockedUntil?: string | null;
+  /** Pausa scelta da lui (collaudo C-16): il giorno in cui torna a ricevere richieste. */
+  awayUntil?: string | null;
 };
 
 /** Lead ricevuto da un professionista in seguito a una richiesta guidata. */
@@ -317,6 +319,8 @@ export type ProfessionalBooking = {
   cancellationNote: string | null;
   /** Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto all'etichetta "Annullata". `null` finché non CANCELED, o per righe annullate prima di questo campo. */
   canceledBy: "CLIENT" | "PROFESSIONAL" | null;
+  /** Chi ha chiesto di riaprire l'appuntamento annullato, in attesa della risposta dell'altro (collaudo F-08). */
+  reopenRequestedBy: "CLIENT" | "PROFESSIONAL" | null;
   /** Il cliente ha annullato dentro il preavviso scelto dal professionista (docs/CHANGELOG.md §347). */
   canceledLate: boolean;
   /** Risposta del cliente ai pulsanti del promemoria WhatsApp, "Ci sarò" e "Non posso più" (ISO). */
@@ -459,6 +463,8 @@ export type ConversationEvent = {
   mediaUrls: string[];
   /** Scritto dal sistema a nome di una parte (es. "Il cliente ha accettato il preventivo"), non a mano: mostrato centrato e in grigio. Facoltativo solo per un'API non ancora aggiornata. */
   automatic?: boolean;
+  /** Nascosto da una segnalazione accolta: testo e allegati vuoti, in chat "Messaggio nascosto". */
+  hidden?: boolean;
   createdAt: string;
 };
 

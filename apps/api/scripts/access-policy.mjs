@@ -50,6 +50,9 @@ const publicRoutes = [
   "GET /guided-requests/reach",
   "GET /health",
   "GET /health/features",
+  // Verifica del legale rappresentante di una società: link firmato, senza accedere (docs/changelog/2026-11-02-iscrizione-verifica-professionisti.md).
+  "GET /identity-verification/representative/:token",
+  "POST /identity-verification/representative/:token/start",
   "POST /identity-verification/webhook",
   // Webhook di WhatsApp (Meta): registrazione con il token e firma sul corpo (docs/changelog/2026-10-28-promemoria-whatsapp.md).
   "GET /whatsapp/webhook",
@@ -71,6 +74,7 @@ const publicRoutes = [
   "POST /site/profile-view",
   // Passi dalle voci di "Quanto costa" (§399), senza account.
   "POST /site/price-tool",
+  "GET /professionals/category-counts",
   "GET /professionals/languages/popular",
   // Prezzi aggregati della pagina "Quanto costa", mai sotto le soglie (§296).
   "GET /professionals/prices/:category",
@@ -92,6 +96,7 @@ const selfAny = [
   "GET /auth/me",
   "PATCH /auth/me",
   "PATCH /auth/me/preferences",
+  "GET /auth/me/closure-check",
   "GET /auth/me/export",
   "POST /auth/me/image",
   "POST /auth/verify-email/code",
@@ -132,6 +137,8 @@ const selfAny = [
 ];
 
 const selfProfessional = [
+  // Recensioni ricevute, per rispondere (docs/changelog/2026-10-30-collaudo-soldi-online.md).
+  "GET /reviews/received",
   "DELETE /agenda/calendar-feed",
   "GET /agenda/calendar-feed",
   "POST /agenda/calendar-feed",
@@ -185,6 +192,8 @@ const selfProfessional = [
   "GET /professionals/me/subscription",
   "GET /professionals/me/verification",
   "POST /professionals/me/verification/identity",
+  "POST /professionals/me/verification/representative-link",
+  "PUT /professionals/me/away",
 ];
 
 const booking = (extra = {}) => ({ kind: "owned", owners: BOTH, params: (f) => ({ id: f.bookingA }), ...extra });
@@ -208,7 +217,9 @@ const owned = {
   "POST /bookings/:id/issue/appeal": booking({ body: () => ({ text: "Non sono d'accordo con la decisione presa." }) }),
   "PATCH /bookings/:id/issue/chat-outcome": booking({ body: () => ({ outcome: "RESOLVED" }) }),
   "PATCH /bookings/:id/issue/info": booking({ body: () => ({ response: "Ecco le informazioni richieste." }) }),
+  "POST /bookings/:id/issue/accept-refund": booking(),
   "POST /bookings/:id/issue/redispatch": booking(),
+  "POST /bookings/:id/issue/refund-offer": booking({ body: () => ({ amountEurCents: 1000 }) }),
   "PATCH /bookings/:id/issue/response": booking({ body: () => ({ response: "Ecco la mia versione dei fatti." }) }),
   "GET /bookings/:id/calendar": booking({ owners: ["clientA"] }),
   "GET /bookings/:id/job-payment": booking(),
@@ -226,6 +237,8 @@ const owned = {
   "POST /bookings/:id/on-the-way": booking(),
   "POST /bookings/:id/professional-problem": booking({ body: () => ({ type: "CLIENT_ABSENT", description: "Il cliente non era in casa." }) }),
   "PATCH /bookings/:id/reopen": booking(),
+  "POST /bookings/:id/reopen/accept": booking(),
+  "POST /bookings/:id/reopen/decline": booking(),
   "PATCH /bookings/:id/report-no-show": booking(),
   "PATCH /bookings/:id/status": booking({ body: () => ({ status: "CANCELED" }) }),
   "POST /bookings/from-quote/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteA }) },
@@ -293,6 +306,8 @@ const owned = {
     body: () => ({ text: "Contesto la decisione perché il contenuto era corretto." }),
   },
   "POST /reviews": { kind: "owned", owners: ["clientA"], body: (f) => ({ bookingId: f.bookingA, rating: 5, comment: "Recensione di un estraneo" }) },
+  "PATCH /reviews/:id": { kind: "owned", owners: ["clientA"], params: (f) => ({ id: f.reviewA }), body: () => ({ rating: 1, comment: "Aggiornata da un estraneo" }) },
+  "PUT /reviews/:id/reply": { kind: "owned", owners: ["proA"], params: (f) => ({ id: f.reviewA }), body: () => ({ reply: "Risposta di un estraneo" }) },
 };
 
 function quoteBody(f) {

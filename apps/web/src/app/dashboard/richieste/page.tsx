@@ -12,7 +12,7 @@ import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProfileMissingNotice, isProfileMissingError } from "@/components/ProfileMissingNotice";
 import { SkeletonRequestList } from "@/components/Skeleton";
-import { classifyLeadStage, type RequestStage } from "@/lib/requestStage";
+import { classifyLeadStage, leadTabBucket, type RequestStage } from "@/lib/requestStage";
 import { mergeCounts, unreadGuidedRequestCounts } from "@/lib/notificationSections";
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 import { CategoryCarousel } from "@/components/CategoryCarousel";
@@ -51,10 +51,11 @@ const TABS: { key: ProTabKey; label: string }[] = [
   { key: "da_quotare", label: "Da quotare" },
   { key: "in_attesa", label: "In attesa" },
   { key: "modifica_richiesta", label: "Modifiche" },
-  { key: "accettata", label: "Accettate" },
-  { key: "completata", label: "Completate" },
+  { key: "accettata", label: "Fissati" },
+  { key: "completata", label: "Terminati" },
   { key: "annullata", label: "Annullate" },
-  { key: "scaduta", label: "Scadute" },
+  // Scadute e chiuse per un rifiuto o un preventivo ritirato (collaudo F-10).
+  { key: "scaduta", label: "Chiuse" },
   { key: "archiviate", label: "Archiviate" },
 ];
 /** Numero rosso solo dove tocca al professionista (§349); altrove il numero sta nella pillola, in grigio. */
@@ -301,7 +302,7 @@ function RichiesteContent() {
       }
       counts.tutte = (counts.tutte ?? 0) + 1;
       const stage = stageByLeadId.get(l.id)!;
-      const bucket = stage === "chiusa" ? "scaduta" : stage;
+      const bucket = leadTabBucket(l, stage);
       counts[bucket] = (counts[bucket] ?? 0) + 1;
     });
     return counts;
@@ -314,7 +315,7 @@ function RichiesteContent() {
     if (activeTab !== "tutte" && activeTab !== "archiviate") {
       list = list.filter((l) => {
         const stage = stageByLeadId.get(l.id);
-        return activeTab === "scaduta" ? stage === "scaduta" || stage === "chiusa" : stage === activeTab;
+        return stage !== undefined && leadTabBucket(l, stage) === activeTab;
       });
     }
     if (zoneFilter !== "tutte") list = list.filter((l) => l.guidedRequest.city === zoneFilter);
@@ -662,6 +663,7 @@ function RichiesteContent() {
                   booking={bookingByRequestId.get(lead.guidedRequest.id) ?? null}
                   token={token}
                   availableSlots={availableSlots}
+                  bookings={bookings ?? undefined}
                   myProfileId={myProfileId}
                   defaultPaymentOffer={defaultPaymentOffer}
                   defaultCancellationNoticeHours={defaultCancellationNoticeHours}

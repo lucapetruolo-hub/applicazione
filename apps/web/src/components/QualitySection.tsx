@@ -9,7 +9,7 @@ const POINTS: { title: string; text: string; online?: boolean }[] = [
     text: "Manodopera, materiali e tempi sempre separati: mai una cifra unica senza dettaglio.",
   },
   {
-    title: "Recensioni solo da lavori conclusi",
+    title: "Recensioni solo da lavori fatti tramite il sito",
     text: "Nessuna recensione libera: solo chi ha prenotato il lavoro sul sito può lasciarne una.",
   },
   {

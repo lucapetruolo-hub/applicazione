@@ -22,6 +22,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/per-professionisti`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE_URL}/per-professionisti/pagamenti`, changeFrequency: "monthly", priority: 0.3 },
     { url: `${SITE_URL}/faq`, changeFrequency: "monthly", priority: 0.4 },
+    { url: `${SITE_URL}/problemi-e-rimborsi`, changeFrequency: "monthly", priority: 0.3 },
     { url: `${SITE_URL}/sicurezza`, changeFrequency: "monthly", priority: 0.3 },
     { url: `${SITE_URL}/contatti`, changeFrequency: "monthly", priority: 0.4 },
     // "Lavora con noi" per ogni lavoro (docs/CHANGELOG.md §296).
@@ -92,7 +93,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const priceEntries: MetadataRoute.Sitemap = pricePaths
       .filter((path): path is string => path !== null)
       .map((path) => ({ url: `${SITE_URL}${path}`, changeFrequency: "weekly", priority: 0.6 }));
-    return [...staticEntries, ...categories, ...cityEntries, ...priceEntries, ...professionalEntries];
+    // Elenco "Quanto costa" solo se ha almeno una pagina mestiere (collaudo N-05).
+    const priceIndexEntry: MetadataRoute.Sitemap = priceEntries.length > 0 ? [{ url: `${SITE_URL}/prezzi`, changeFrequency: "weekly", priority: 0.6 }] : [];
+    return [...staticEntries, ...categories, ...cityEntries, ...priceIndexEntry, ...priceEntries, ...professionalEntries];
   } catch {
     // API ferma: sitemap con le pagine fisse e tutte le categorie, meglio di nessuna.
     return [...staticEntries, ...categoryEntries(PROFESSIONAL_CATEGORIES.map((category) => category.slug))];

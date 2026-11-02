@@ -16,7 +16,8 @@ const FIRST_YEAR = 2026;
 
 /**
  * Documenti ai clienti (docs/CHANGELOG.md §380): ricevute per prestazione
- * occasionale (col numero dato da noi) preparate dai professionisti. Serve all'assistenza e ai problemi
+ * occasionale preparate dai professionisti, col numero che scrivono loro
+ * (docs/changelog/2026-11-02-ricevuta-modello.md). Serve all'assistenza e ai problemi
  * segnalati: chi l'ha dato, a chi, con che importo. `?lavoro=` arriva da
  * "Lavori terminati" e "Problemi segnalati".
  */

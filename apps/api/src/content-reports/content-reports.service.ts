@@ -45,6 +45,25 @@ export class ContentReportsService {
         throw new ForbiddenException("Puoi segnalare solo una richiesta che hai ricevuto.");
       }
     }
+    // Un messaggio in chat lo segnala solo l'altra parte di quella chat, e
+    // solo se è scritto a mano (docs/changelog/2026-11-02-collaudo-recensioni-abusi.md).
+    if (input.targetType === "CHAT_MESSAGE") {
+      const event = await this.prisma.conversationEvent.findUnique({
+        where: { id: input.targetId },
+        select: { actor: true, automatic: true, guidedRequest: { select: { clientId: true } }, professionalProfile: { select: { userId: true } } },
+      });
+      const otherParty =
+        event && !event.automatic
+          ? event.actor === "CLIENT"
+            ? event.professionalProfile.userId
+            : event.actor === "PROFESSIONAL"
+              ? event.guidedRequest.clientId
+              : null
+          : null;
+      if (!otherParty || otherParty !== reporterId) {
+        throw new ForbiddenException("Puoi segnalare solo un messaggio che hai ricevuto in una tua chat.");
+      }
+    }
 
     const recentDuplicate = await this.prisma.contentReport.findFirst({
       where: {

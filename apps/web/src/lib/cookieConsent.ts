@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { COOKIE_CONSENT_KEY } from "./cookieChoiceBoot";
 
 /**
  * Consenso ai servizi Google di terze parti (dal docs/CHANGELOG.md §265
@@ -10,7 +11,6 @@ import { useEffect, useState } from "react";
  * da `CookieBanner` e `GoogleMapGate`. Salvato in localStorage, niente
  * cookie nostri.
  */
-const COOKIE_CONSENT_KEY = "cookie-consent-v1";
 /** Evento globale emesso quando l'utente accetta: sveglia chi aspetta il consenso per caricare script Google. */
 export const COOKIE_CONSENT_ACCEPTED_EVENT = "cookie-consent-accepted";
 /** Evento globale emesso quando l'utente rifiuta o vuole rivedere la scelta (link "Preferenze cookie"). */

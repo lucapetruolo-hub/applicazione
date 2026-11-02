@@ -107,7 +107,11 @@ export function CardActionsMenu({
   const wasOpen = useRef(false);
   useEffect(() => {
     if (isOpen) {
-      dropdownRef.current?.querySelector<HTMLElement>('[role="menuitem"], button')?.focus();
+      // preventScroll: la tendina è già nello schermo (posizione fissa). Se il
+      // fuoco facesse scorrere la pagina (per esempio con lo spazio lasciato
+      // dal banner dei cookie), lo scroll la chiuderebbe subito e il fuoco
+      // tornerebbe sul pulsante: da tastiera il menu non si aprirebbe mai.
+      dropdownRef.current?.querySelector<HTMLElement>('[role="menuitem"], button')?.focus({ preventScroll: true });
     } else if (wasOpen.current && (!document.activeElement || document.activeElement === document.body)) {
       // Il fuoco era nella tendina appena tolta: torna sul pulsante.
       buttonRef.current?.focus();
