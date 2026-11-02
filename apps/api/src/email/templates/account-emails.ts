@@ -234,6 +234,23 @@ export function adminSecurityAlertEmail(name: string | null, alert: { title: str
   });
 }
 
+/**
+ * Manutenzione da pianificare (docs/changelog/2026-10-30-admin-persone.md): per
+ * ora la versione di PostgreSQL su Render vicina alla fine del supporto.
+ */
+export function adminMaintenanceEmail(name: string | null, notice: { title: string; paragraphs: string[]; url: string }): RenderedEmail {
+  return renderEmail({
+    kind: "account",
+    subject: `Da pianificare: ${notice.title.charAt(0).toLowerCase()}${notice.title.slice(1)}`,
+    preheader: notice.paragraphs[0] ?? notice.title,
+    greeting: name,
+    title: notice.title,
+    paragraphs: notice.paragraphs,
+    cta: { label: "Vedi il calendario", url: notice.url },
+    after: ["Ti avvisiamo perché sei super admin. Arriva una volta al mese finché non è fatto."],
+  });
+}
+
 /** Troppi codici sbagliati per l'area admin: accesso fermo per qualche minuto (§359). */
 export function adminCodeLockedEmail(name: string | null, minutes: number): RenderedEmail {
   const site = frontendUrl();

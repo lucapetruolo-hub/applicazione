@@ -23,6 +23,7 @@ export type {
   MyContentReports,
   AdminRoleName,
   AdminUserDetail,
+  AdminUserReview,
   AdminAuditLogPage,
   AdminSearchResult,
   AdminTrends,

@@ -131,6 +131,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "ADMIN_WEEKLY_ADVICE",
       // Casi presi con "Prendo io" che scadono entro 24 ore, ogni mattina (docs/changelog/2026-10-30-admin-riordino.md).
       "ADMIN_CLAIMED_CASES_DUE",
+      // Account sospetti nuovi con qualcosa da fare, dal controllo delle 7 (docs/changelog/2026-10-30-admin-persone.md).
+      "ADMIN_SUSPICIOUS_ACCOUNTS",
       // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
       "JOB_CONFIRM_REMINDER",
       "JOB_AUTO_CONFIRMED",
@@ -407,11 +409,12 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "ADMIN_SEARCH_DEMAND_ALERT",
       "ADMIN_WEEKLY_ADVICE",
       "ADMIN_CLAIMED_CASES_DUE",
+      "ADMIN_SUSPICIOUS_ACCOUNTS",
       "ADMIN_JOB_NOT_CLOSED",
       "ADMIN_JOB_PAYMENT_LONG_HOLD",
       "ADMIN_FEE_RECONCILIATION",
     ],
-    admin: { label: "Avvisi per l'amministrazione", description: "Pagamenti da controllare, contestazioni, consigli del lunedì." },
+    admin: { label: "Avvisi per l'amministrazione", description: "Pagamenti da controllare, contestazioni, account sospetti, consigli del lunedì." },
   },
 ];
 
