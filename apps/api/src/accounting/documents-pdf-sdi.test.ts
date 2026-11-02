@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import { courtesyAmountChanged, courtesyDocumentLabel, courtesyTotalEurCents, courtesyYearCsv, courtesyYearTotals, type CourtesyDocumentSummary, type CourtesyYearSummary, type MonthlyStatement } from "@professionisti/shared";
 import { courtesyDocumentSummary } from "./courtesy-documents";
-import { pdfText, renderDocumentPdf } from "./document-pdf";
+import { layout, pdfText, renderDocumentPdf } from "./document-pdf";
 import { courtesyPdfModel, courtesyYearPdfModel, dac7PdfModel, invoicePdfModel, pdfFileName, statementPdfModel } from "./document-pdf-models";
 import { sandboxTestInvoiceXml, sdiCompanyOf, type IssuerSnapshot } from "./invoice-documents";
 import { OpenapiSdiProvider, sdiOutcomeFromNotifications, sdiRejectionMessage } from "./sdi-provider";
@@ -120,6 +120,25 @@ describe("PDF dei documenti", () => {
       expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
       expect(pdf.length).toBeGreaterThan(1000);
     }
+  });
+});
+
+describe("impaginazione del PDF", () => {
+  it("se l'ultima pagina avrebbe solo qualche riga, stringe gli spazi e resta su una pagina", async () => {
+    // Una fattura delle trattenute vera, con in fondo righe di nota finché non sborda.
+    const invoice = invoicePdfModel({
+      id: "i", number: "COM/2026/0001", source: "JOB_FEES", creditNote: false, periodMonth: "2026-10", issuedAt: "2026-10-31T12:00:00Z", totalEurCents: 4270, sdiStatus: "SENT",
+      issuer: party, recipient: { name: "Mario Rossi", lines: ["P.IVA 01234567897", "Codice destinatario ABC1234"] },
+      lines: [1, 2].map((i) => ({ description: `Trattenuta ${i}`, detail: "su 100,00 € pagati online", group: `Lavoro ${i}`, taxableEurCents: 700 })),
+      taxableEurCents: 2800, vatEurCents: 616, roundingEurCents: 0, vatRatePercent: 22, relatedNumber: null, vatRecoverable: true, onlinePaidEurCents: 40000,
+    } as never);
+    const model = (notes: number) => ({ ...invoice, blocks: [...invoice.blocks, { type: "text", lines: Array.from({ length: notes }, () => "Nota finale."), muted: true }] }) as never;
+    // La prima nota che con lo spazio normale andrebbe da sola su una seconda pagina.
+    let notes = 1;
+    expect(layout(model(notes), 16).doc.bufferedPageRange().count).toBe(1);
+    while (layout(model(notes), 16).doc.bufferedPageRange().count === 1) notes += 1;
+    const pdf = await renderDocumentPdf(model(notes));
+    expect((pdf.toString("latin1").match(/\/Type \/Page\b/g) ?? []).length).toBe(1);
   });
 });
 
