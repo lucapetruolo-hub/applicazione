@@ -146,7 +146,7 @@ pagina Recensioni; e un promemoria per le recensioni critiche.
   spegnibile): ogni mattina alle 10 per le recensioni da 1 o 2 stelle senza
   risposta da 3 giorni (dalla data dell'aggiornamento se il cliente l'ha
   aggiornata), uno solo per recensione (`Review.replyReminderSentAt`,
-  migrazione `20261101120000_promemoria_risposta_recensioni`), un solo avviso
+  migrazione `20261102120000_promemoria_risposta_recensioni`), un solo avviso
   per professionista anche con più recensioni, mai per quelle nascoste, più
   vecchie di 30 giorni o di profili eliminati o sospesi
   (`apps/api/src/reviews/review-reply-reminders.service.ts`).
