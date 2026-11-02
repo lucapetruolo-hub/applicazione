@@ -417,7 +417,7 @@ export type AdminRoleName = "SUPER" | "MODERATOR" | "FINANCE";
 
 type AdminReportRow = {
   id: string;
-  targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "GUIDED_REQUEST";
+  targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "GUIDED_REQUEST" | "CHAT_MESSAGE";
   reason: string;
   status: "OPEN" | "RESOLVED" | "DISMISSED";
   action: ModerationActionValue | null;
@@ -670,11 +670,13 @@ export type AdminDispute = {
 /** Segnalazione contenuti (richiesta esplicita dell'utente, "Verbale di Conformità" — DSA art. 16), vista admin. */
 export type AdminContentReport = {
   id: string;
-  targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "GUIDED_REQUEST";
+  targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "GUIDED_REQUEST" | "CHAT_MESSAGE";
   targetId: string;
   targetLabel: string | null;
   /** Profilo professionista su cui è raggiungibile il contenuto segnalato (`null` per una recensione sul cliente, priva di pagina pubblica). */
   linkedProfessionalProfileId: string | null;
+  /** Chat in Admin dove si trova il messaggio segnalato (solo CHAT_MESSAGE). */
+  linkedChatPath?: string | null;
   reason: string;
   details: string | null;
   /** Chi segnala dice che il contenuto è illegale (DSA art. 16, docs/CHANGELOG.md §319). */
@@ -754,7 +756,7 @@ export type AdminConversation = {
 export type AdminConversationDetail = Omit<AdminConversation, "lastMessage" | "lastActor" | "lastMessageAt" | "messageCount"> & {
   requestDescription: string;
   issue: { type: JobIssueType; status: JobIssueSummary["status"] } | null;
-  events: { id: string; actor: "CLIENT" | "PROFESSIONAL" | "SYSTEM"; message: string; mediaUrls: string[]; createdAt: string }[];
+  events: { id: string; actor: "CLIENT" | "PROFESSIONAL" | "SYSTEM"; message: string; mediaUrls: string[]; hidden?: boolean; createdAt: string }[];
 };
 
 /** Segnalazione di un problema vista dall'admin (docs/CHANGELOG.md §164). */

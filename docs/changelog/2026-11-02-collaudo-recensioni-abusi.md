@@ -103,13 +103,35 @@ appuntamento confermato dello stesso mestiere in un'altra richiesta: "A
 quell'ora hai già un appuntamento con …. Se accetti questo, ricordati di
 annullare l'altro." (`sameTimeBooking` in `packages/shared`).
 
+## "Segnala" nella chat
+
+**Richiesta di Luca (2/11)**: "effettua la miglioria 3", cioè un modo per
+segnalare un messaggio in chat (prima si segnalavano solo profili,
+recensioni e richieste).
+
+**Decisione**: sotto ogni messaggio scritto a mano dall'altra parte, accanto
+all'ora, "· Segnala" (dopo l'invio "· Segnalato"). Si apre la stessa finestra
+delle altre segnalazioni (motivo, contenuto illegale con spiegazione e buona
+fede) e la segnalazione segue la strada di sempre (`ContentReport`, nuovo
+tipo `CHAT_MESSAGE`, migrazione `20261102170000_segnala_messaggio_chat`):
+presa in carico a chi segnala, email agli admin, Admin → Segnalazioni con il
+testo del messaggio e "Apri la chat" (la chat in sola lettura, sul
+messaggio). Lo segnala solo chi l'ha ricevuto, mai un messaggio automatico.
+Misure: "Nascondi il messaggio", avviso all'autore, sospensione dell'account.
+Il messaggio nascosto (`ConversationEvent.hiddenAt`) resta in chat come
+"Messaggio nascosto dopo una segnalazione", senza testo né allegati (gli
+allegati li apre solo l'admin); in Admin si legge ancora, segnato
+"Nascosto dopo una segnalazione". L'autore riceve misura, motivo e come
+contestare, come per gli altri contenuti; "Annulla misura" lo rimette.
+
 ## Verifica
 
 - Test: `review-hold.test.ts` (scenario del collaudo con tutti e 5 i
   segnali, pagamento online, indirizzo senza civico, caselle email),
   `reviews.service.test.ts` (recensione in controllo senza avviso né media),
   `tax-id-unique.test.ts` (anche i mesi gratis già usati),
-  `free-months-once.test.ts`, doppio invio in `chosen-professionals.test.ts`,
+  `free-months-once.test.ts`, messaggio in chat in
+  `content-reports.service.test.ts` e `timeline-access.test.ts`, doppio invio in `chosen-professionals.test.ts`,
   `sameTimeBooking.test.ts`.
 - API 1156 test verdi, shared 27; typecheck e lint di API e sito.
 - `prisma migrate diff` dalle migrazioni allo schema: nessuna differenza.

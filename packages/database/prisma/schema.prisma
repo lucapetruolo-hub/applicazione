@@ -1648,6 +1648,9 @@ model ConversationEvent {
   // falso per quelli scritti a mano (addUpdate): la chat mostra i primi
   // centrati e in grigio, non come nuvoletta (docs/CHANGELOG.md §198).
   automatic             Boolean                @default(false)
+  // Nascosto da una segnalazione accolta: in chat resta "Messaggio nascosto",
+  // l'admin vede ancora il testo (docs/changelog/2026-11-02-collaudo-recensioni-abusi.md).
+  hiddenAt              DateTime?
   createdAt             DateTime               @default(now())
 
   guidedRequest       GuidedRequest       @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
@@ -1717,6 +1720,9 @@ enum ContentReportTargetType {
   // Richiesta di un cliente segnalata dal professionista che l'ha ricevuta
   // (CHANGELOG §130) — solo chi ha un Lead su quella richiesta può segnalarla.
   GUIDED_REQUEST
+  // Messaggio scritto a mano in chat, segnalato dall'altra parte
+  // (docs/changelog/2026-11-02-collaudo-recensioni-abusi.md).
+  CHAT_MESSAGE
 }
 
 enum ContentReportStatus {

@@ -887,6 +887,27 @@ export class AdminService {
         ownerUserId: r.booking.client.id,
       };
     }
+    if (targetType === "CHAT_MESSAGE") {
+      const e = await this.prisma.conversationEvent.findUnique({
+        where: { id: targetId },
+        include: {
+          guidedRequest: { select: { client: { select: { id: true, email: true } }, category: { select: { label: true } } } },
+          professionalProfile: { select: { businessName: true, user: { select: { id: true, email: true } } } },
+        },
+      });
+      if (!e) return { exists: false };
+      const author = e.actor === "CLIENT" ? e.guidedRequest.client : e.professionalProfile.user;
+      return {
+        exists: true,
+        title: `Messaggio in chat · ${e.guidedRequest.category.label} · ${e.professionalProfile.businessName}`,
+        author: author.email,
+        text: e.message,
+        photos: e.mediaUrls,
+        rating: null,
+        state: e.hiddenAt ? "Nascosto" : "Visibile",
+        ownerUserId: author.id,
+      };
+    }
     const g = await this.prisma.guidedRequest.findUnique({ where: { id: targetId }, include: { category: true, client: { select: { id: true, email: true } } } });
     if (!g) return { exists: false };
     return {
@@ -1020,7 +1041,7 @@ export class AdminService {
     // profilo su cui vive (serve a costruire il link pubblico
     // `/professionista/{id}#recensione-{reviewId}`).
     const targetInfo = await Promise.all(
-      reports.map(async (report): Promise<{ label: string | null; linkedProfessionalProfileId: string | null; excerpt?: string | null }> => {
+      reports.map(async (report): Promise<{ label: string | null; linkedProfessionalProfileId: string | null; excerpt?: string | null; chatPath?: string | null }> => {
         if (report.targetType === "PROFESSIONAL_PROFILE") {
           const profile = await this.prisma.professionalProfile.findUnique({
             where: { id: report.targetId },
@@ -1037,6 +1058,22 @@ export class AdminService {
             label: review ? `Recensione su ${review.booking.professionalProfile.businessName}` : null,
             linkedProfessionalProfileId: review?.booking.professionalProfile.id ?? null,
             excerpt: review?.comment ?? null,
+          };
+        }
+        if (report.targetType === "CHAT_MESSAGE") {
+          const event = await this.prisma.conversationEvent.findUnique({
+            where: { id: report.targetId },
+            select: { message: true, guidedRequestId: true, professionalProfileId: true, actor: true, professionalProfile: { select: { businessName: true } } },
+          });
+          return {
+            label: event
+              ? event.actor === "CLIENT"
+                ? `Messaggio del cliente a ${event.professionalProfile.businessName}`
+                : `Messaggio di ${event.professionalProfile.businessName} al cliente`
+              : null,
+            linkedProfessionalProfileId: null,
+            excerpt: event?.message ?? null,
+            chatPath: event ? `/admin/chat/${event.guidedRequestId}/${event.professionalProfileId}#messaggio-${report.targetId}` : null,
           };
         }
         const request = await this.prisma.guidedRequest.findUnique({
@@ -1058,6 +1095,7 @@ export class AdminService {
       targetId: report.targetId,
       targetLabel: targetInfo[index]?.label ?? null,
       linkedProfessionalProfileId: targetInfo[index]?.linkedProfessionalProfileId ?? null,
+      linkedChatPath: targetInfo[index]?.chatPath ?? null,
       reason: report.reason,
       details: report.details,
       claimsIllegal: report.claimsIllegal,
@@ -1253,6 +1291,7 @@ export class AdminService {
   private async targetExists(targetType: ContentReportTargetType, targetId: string): Promise<boolean> {
     if (targetType === "PROFESSIONAL_PROFILE") return (await this.prisma.professionalProfile.count({ where: { id: targetId } })) > 0;
     if (targetType === "REVIEW") return (await this.prisma.review.count({ where: { id: targetId } })) > 0;
+    if (targetType === "CHAT_MESSAGE") return (await this.prisma.conversationEvent.count({ where: { id: targetId } })) > 0;
     return (await this.prisma.guidedRequest.count({ where: { id: targetId } })) > 0;
   }
 
@@ -1328,6 +1367,9 @@ export class AdminService {
       const closeIt = hiddenAt !== null && request?.status === "OPEN";
       await tx.guidedRequest.update({ where: { id: targetId }, data: { hiddenAt, ...(closeIt ? { status: "CLOSED" } : {}) } });
     }
+    if (targetType === "CHAT_MESSAGE") {
+      await tx.conversationEvent.update({ where: { id: targetId }, data: { hiddenAt } });
+    }
     return [];
   }
 
@@ -1345,6 +1387,14 @@ export class AdminService {
     if (targetType === "REVIEW") {
       const review = await this.prisma.review.findUnique({ where: { id: targetId }, select: { booking: { select: { clientId: true } } } });
       return review?.booking.clientId ?? null;
+    }
+    if (targetType === "CHAT_MESSAGE") {
+      const event = await this.prisma.conversationEvent.findUnique({
+        where: { id: targetId },
+        select: { actor: true, guidedRequest: { select: { clientId: true } }, professionalProfile: { select: { userId: true } } },
+      });
+      if (!event || event.actor === "SYSTEM") return null;
+      return event.actor === "CLIENT" ? event.guidedRequest.clientId : event.professionalProfile.userId;
     }
     const request = await this.prisma.guidedRequest.findUnique({ where: { id: targetId }, select: { clientId: true } });
     return request?.clientId ?? null;
@@ -1786,6 +1836,8 @@ export class AdminService {
         actor: event.actor,
         message: event.message,
         mediaUrls: event.mediaUrls,
+        // L'admin legge anche i messaggi nascosti, segnati come tali.
+        hidden: event.hiddenAt !== null,
         createdAt: event.createdAt.toISOString(),
       })),
     };
