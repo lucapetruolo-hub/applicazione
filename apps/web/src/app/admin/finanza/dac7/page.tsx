@@ -18,6 +18,7 @@ import {
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { SkeletonTableRows } from "@/components/Skeleton";
+import { AdminConfirmModal } from "@/components/admin/AdminConfirmModal";
 import { BRAND, formatEurCents } from "@professionisti/shared";
 
 /**
@@ -58,6 +59,8 @@ export default function AdminDac7Page() {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  // Conferma prima delle azioni che non si annullano o scrivono a tutti (docs/changelog/2026-11-02-admin-protezioni.md).
+  const [confirming, setConfirming] = useState<{ kind: "submit" | "notify"; period: Dac7ReportingPeriod } | null>(null);
 
   function reloadAll() {
     if (!token) return;
@@ -146,32 +149,27 @@ export default function AdminDac7Page() {
     }
   }
 
+  // Gli errori li mostra la finestra di conferma.
   async function handleMarkSubmitted(id: string) {
     if (!token) return;
     setError(null);
-    try {
-      const updated = await apiClient.adminMarkDac7Submitted(token, id);
-      setActionMessage(
-        updated.quarter === null
-          ? "Anno segnato come inviato: ai professionisti è partito l'avviso con i loro dati DAC7."
-          : "Periodo segnato come inviato.",
-      );
-      reloadAll();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Errore.");
-    }
+    const updated = await apiClient.adminMarkDac7Submitted(token, id);
+    setActionMessage(
+      updated.quarter === null
+        ? "Anno segnato come inviato: ai professionisti è partito l'avviso con i loro dati DAC7."
+        : "Periodo segnato come inviato.",
+    );
+    setConfirming(null);
+    reloadAll();
   }
 
   async function handleNotifySellers(id: string) {
     if (!token) return;
     setError(null);
-    try {
-      const { sent } = await apiClient.adminNotifyDac7Sellers(token, id);
-      setActionMessage(`Avviso DAC7 rimandato a ${sent} professionisti.`);
-      if (selectedPeriod?.id === id) openPeriod(id);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Errore.");
-    }
+    const { sent } = await apiClient.adminNotifyDac7Sellers(token, id);
+    setActionMessage(`Avviso DAC7 rimandato a ${sent} professionisti.`);
+    setConfirming(null);
+    if (selectedPeriod?.id === id) openPeriod(id);
   }
 
   async function handleCorrect(id: string) {
@@ -335,7 +333,7 @@ export default function AdminDac7Page() {
                           <Button
                             size="$2"
                             variant="secondary"
-                            onPress={() => handleMarkSubmitted(p.id)}
+                            onPress={() => setConfirming({ kind: "submit", period: p })}
                           >
                             Segna come inviato
                           </Button>
@@ -356,7 +354,7 @@ export default function AdminDac7Page() {
                             <Button
                               size="$2"
                               variant="secondary"
-                              onPress={() => handleNotifySellers(p.id)}
+                              onPress={() => setConfirming({ kind: "notify", period: p })}
                             >
                               Rimanda avviso ai professionisti
                             </Button>
@@ -429,6 +427,19 @@ export default function AdminDac7Page() {
           </YStack>
         )}
       </YStack>
+      {confirming ? (
+        <AdminConfirmModal
+          title={confirming.kind === "submit" ? "Segna come inviato" : "Rimanda l'avviso ai professionisti"}
+          description={
+            confirming.kind === "submit"
+              ? `Segna ${confirming.period.year}${confirming.period.quarter ? ` Q${confirming.period.quarter}` : ""} come inviato all'Agenzia delle Entrate. Non si annulla${confirming.period.quarter === null ? " e parte subito l'avviso via email a ogni professionista con i suoi dati" : ""}. Fallo solo dopo l'invio vero.`
+              : `Ogni professionista del ${confirming.period.year} riceve di nuovo l'email con i suoi dati DAC7. Serve dopo una correzione.`
+          }
+          confirmLabel={confirming.kind === "submit" ? "Segna come inviato" : "Rimanda l'avviso"}
+          onClose={() => setConfirming(null)}
+          onConfirm={() => (confirming.kind === "submit" ? handleMarkSubmitted(confirming.period.id) : handleNotifySellers(confirming.period.id))}
+        />
+      ) : null}
     </YStack>
   );
 }

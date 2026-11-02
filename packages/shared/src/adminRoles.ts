@@ -52,7 +52,17 @@ export function adminRolesLabel(roles: readonly AdminRoleValue[] | null | undefi
 }
 
 /** Assegna o toglie i ruoli admin (lista vuota = non più admin). */
-export const adminRoleUpdateSchema = z.object({ adminRoles: z.array(z.enum(adminRoles)).max(3) });
+/**
+ * Motivo delle azioni pericolose dell'admin (docs/changelog/2026-11-02-admin-protezioni.md):
+ * obbligatorio per i ruoli e per la chiusura di una zona, finisce nel registro azioni.
+ */
+export const ADMIN_ACTION_REASON_MIN = 10;
+export const adminActionReasonSchema = z.object({
+  reason: z.string().trim().min(ADMIN_ACTION_REASON_MIN, `Scrivi il motivo (almeno ${ADMIN_ACTION_REASON_MIN} caratteri).`).max(500),
+});
+export type AdminActionReasonInput = z.infer<typeof adminActionReasonSchema>;
+
+export const adminRoleUpdateSchema = z.object({ adminRoles: z.array(z.enum(adminRoles)).max(3), reason: adminActionReasonSchema.shape.reason });
 export type AdminRoleUpdateInput = z.infer<typeof adminRoleUpdateSchema>;
 
 /** "Account di prova" acceso o spento da un super admin (docs/CHANGELOG.md §395). */

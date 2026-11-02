@@ -1,6 +1,6 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ConversationEvent as ConversationEventRow, PrismaClient } from "@professionisti/database";
-import type { ChatThreadSummary, ConversationEvent, RealtimeEvent } from "@professionisti/shared";
+import { chatContactBlockedMessage, chatContactKind, type ChatThreadSummary, type ConversationEvent, type RealtimeEvent } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { RealtimeService } from "../realtime/realtime.service";
@@ -65,6 +65,7 @@ export class TimelineService {
       throw new ForbiddenException("Il cliente ha ritirato questa richiesta: non si possono più inviare messaggi.");
     }
     if (actor === "PROFESSIONAL") await this.assertCanReply(guidedRequestId, professionalProfileId);
+    await this.assertNoContactsBeforeAcceptance(guidedRequestId, professionalProfileId, message);
     const event = await this.prisma.conversationEvent.create({
       data: { guidedRequestId, professionalProfileId, actor, message: message.trim(), mediaUrls },
     });
@@ -80,6 +81,21 @@ export class TimelineService {
     await this.notificationsService.notify(recipientUserId, notificationType, { guidedRequestId, professionalProfileId });
     this.publishChatMessage(guidedRequestId, professionalProfileId, event, { clientUserId, professionalUserId });
     return this.serializeEvent(event);
+  }
+
+  /**
+   * Contatti in chat solo dopo l'accettazione (decisione di Luca del
+   * 02/11/2026, "Bloccare per tutti", docs/changelog/2026-11-02-admin-protezioni.md;
+   * stesso principio di CLAUDE.md §5 punto 9): prima che il cliente accetti un
+   * preventivo di questo professionista, un messaggio con telefono, email, link
+   * o "WhatsApp" non parte, per tutti e due. Anche qui, non solo nel sito, così
+   * non si aggira con l'app o con un altro programma.
+   */
+  private async assertNoContactsBeforeAcceptance(guidedRequestId: string, professionalProfileId: string, message: string): Promise<void> {
+    const kind = chatContactKind(message);
+    if (!kind) return;
+    const booking = await this.prisma.booking.findFirst({ where: { professionalProfileId, guidedRequestId }, select: { id: true } });
+    if (!booking) throw new BadRequestException(chatContactBlockedMessage(kind));
   }
 
   /**

@@ -696,8 +696,27 @@ export class Dac7Service implements OnModuleInit {
     return sent;
   }
 
+  /**
+   * Promemoria di gennaio alla Finanza (docs/changelog/2026-11-02-admin-protezioni.md):
+   * il 10, il 20, il 27 e il 30, se la comunicazione dell'anno prima non è
+   * ancora segnata come inviata e c'è almeno un professionista con compensi.
+   * Scadenza: 31 gennaio, per la comunicazione e per l'avviso ai professionisti.
+   */
+  @Cron("0 9 10,20,27,30 1 *", { timeZone: "Europe/Rome" })
+  async remindAnnualDeadline(now: Date = new Date()): Promise<boolean> {
+    const year = now.getUTCFullYear() - 1;
+    const period = await this.prisma.dac7ReportingPeriod.findFirst({ where: { year, quarter: null }, select: { id: true, status: true } });
+    if (period && (period.status === "SUBMITTED" || period.status === "CORRECTED")) return false;
+    const reportable = period ? await this.prisma.dac7Record.count({ where: { reportingPeriodId: period.id, considerationEurCents: { gt: 0 } } }) : 0;
+    if (reportable === 0) return false;
+    const deadline = Date.UTC(now.getUTCFullYear(), 0, 31);
+    const daysLeft = Math.max(0, Math.ceil((deadline - now.getTime()) / (24 * 60 * 60 * 1000)));
+    await this.notifyFinanceAdmins("ADMIN_DAC7_DUE", { year, daysLeft });
+    return true;
+  }
+
   /** Avviso agli admin Finanza (o senza ruoli specifici / SUPER), come per i pagamenti. */
-  private async notifyFinanceAdmins(type: "ADMIN_DAC7_NEEDS_CORRECTION", payload: Record<string, unknown>): Promise<void> {
+  private async notifyFinanceAdmins(type: "ADMIN_DAC7_NEEDS_CORRECTION" | "ADMIN_DAC7_DUE", payload: Record<string, unknown>): Promise<void> {
     const admins = await this.prisma.user.findMany({ where: { role: "ADMIN", deletedAt: null }, select: { id: true, adminRoles: true } });
     for (const admin of admins) {
       const roles = admin.adminRoles ?? [];

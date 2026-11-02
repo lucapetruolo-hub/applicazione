@@ -123,6 +123,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "ONLINE_LIMIT_LIFTED",
       // Anno DAC7 già comunicato con importi cambiati dopo l'invio (docs/CHANGELOG.md §247).
       "ADMIN_DAC7_NEEDS_CORRECTION",
+      // Comunicazione DAC7 dell'anno prima non ancora inviata, a gennaio (docs/changelog/2026-11-02-admin-protezioni.md).
+      "ADMIN_DAC7_DUE",
       // Urgenti oltre il 30% o non più veloci delle normali, ogni lunedì (docs/CHANGELOG.md §338).
       "ADMIN_URGENCY_ALERT",
       // Lavori e città con molte ricerche senza nessun professionista vicino, ogni lunedì (docs/CHANGELOG.md §371).
@@ -405,6 +407,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "ADMIN_JOB_REFUND_FAILED",
       "ADMIN_STRIPE_ACCOUNT_UNREADABLE",
       "ADMIN_DAC7_NEEDS_CORRECTION",
+      "ADMIN_DAC7_DUE",
       "ADMIN_URGENCY_ALERT",
       "ADMIN_SEARCH_DEMAND_ALERT",
       "ADMIN_WEEKLY_ADVICE",

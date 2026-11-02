@@ -2074,8 +2074,8 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       request<{ id: string }>(`/admin/users/${id}/reactivate`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ note }) }),
 
     /** Ruoli admin combinabili (docs/CHANGELOG.md §146); lista vuota = non più admin. */
-    adminSetAdminRoles: (token: string, id: string, adminRoles: AdminRoleName[]) =>
-      request<{ id: string }>(`/admin/users/${id}/admin-role`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ adminRoles }) }),
+    adminSetAdminRoles: (token: string, id: string, adminRoles: AdminRoleName[], reason: string) =>
+      request<{ id: string }>(`/admin/users/${id}/admin-role`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ adminRoles, reason }) }),
 
     adminAuditLog: (token: string, page = 1, entityType?: string) =>
       request<AdminAuditLogPage>(`/admin/audit-log?page=${page}${entityType ? `&entityType=${encodeURIComponent(entityType)}` : ""}`, {
