@@ -779,7 +779,7 @@ export function GuidedRequestCard({
   }
   // Cominciato l'appuntamento non si annulla più (§346): per un problema c'è "Segnala un problema".
   if (booking && (booking.status === "PENDING" || booking.status === "CONFIRMED") && new Date(booking.scheduledAt) > wallClockNow()) {
-    menuActions.push({ icon: "x", text: "Annulla prenotazione", tone: "danger", onPress: () => setShowCancelModal(true) });
+    menuActions.push({ icon: "x", text: "Annulla il lavoro", tone: "danger", onPress: () => setShowCancelModal(true) });
   } else if (booking?.status === "CANCELED") {
     // Un intervento annullato dal professionista non si riapre dal lato cliente.
     if (booking.canceledBy === "CLIENT" && !booking.reopenRequestedBy) {
@@ -1116,12 +1116,22 @@ export function GuidedRequestCard({
           {/* "Ripeti la richiesta" e "Modifica" sulla stessa riga, con bordo
               come gli altri pulsanti della scheda (docs/CHANGELOG.md §195:
               prima il primo era solo testo e il secondo più piccolo). */}
+          {/* "Elimina richiesta" in vista finché è aperta (collaudo B-07;
+              stesso nome del menu, §343):
+              prima era solo in fondo a "Modifica" o nel menu ≡; "Ripeti la
+              richiesta" solo quando è chiusa. */}
           {booking ? null : (
             <XStack gap="$2" flexWrap="wrap" alignItems="center">
               {canDelete && canEditDetails ? <CardButton onPress={startEditing}>Modifica</CardButton> : null}
-              <Link href={repeatHref} style={{ textDecoration: "none" }}>
-                <CardButton>Ripeti la richiesta</CardButton>
-              </Link>
+              {canDelete ? (
+                <CardButton tone="danger" onPress={() => setShowDeleteModal(true)}>
+                  Elimina richiesta
+                </CardButton>
+              ) : (
+                <Link href={repeatHref} style={{ textDecoration: "none" }}>
+                  <CardButton>Ripeti la richiesta</CardButton>
+                </Link>
+              )}
             </XStack>
           )}
           {canDelete && !canEditDetails ? (
@@ -1265,7 +1275,8 @@ export function GuidedRequestCard({
       {showDeleteModal ? <DeleteRequestModal stillOpen={canDelete} onClose={() => setShowDeleteModal(false)} onConfirm={handleDeleteRequest} /> : null}
       {showCancelModal ? (
         <CancelBookingModal
-          title="Annulla prenotazione"
+          // Stesso nome del pulsante, per cliente e professionista (collaudo A-06, O-03).
+          title="Annulla il lavoro"
           description={
             booking && isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours)
               ? `Il professionista verrà avvisato. Mancano meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)}, il preavviso che aveva chiesto.${
@@ -1273,13 +1284,14 @@ export function GuidedRequestCard({
                     ? ` Come scritto nel preventivo, l'acconto di ${formatEurCents(keptDeposit(booking))} resta a lui.`
                     : paidOnline(booking) > 0
                       ? ` I ${formatEurCents(paidOnline(booking))} che hai pagato online ti tornano sulla carta.`
-                      : ""
+                      : // Cosa si perde, detto chiaro (collaudo A-06): con il pagamento diretto niente.
+                        " Non paghi niente, ma il professionista vede che hai annullato all'ultimo."
                 }`
               : `Il professionista verrà avvisato dell'annullamento.${
                   paidOnline(booking) > 0 ? ` I ${formatEurCents(paidOnline(booking))} che hai pagato online ti tornano sulla carta.` : ""
                 }`
           }
-          confirmLabel="Sì, annulla prenotazione"
+          confirmLabel="Sì, annulla il lavoro"
           confirmingLabel="Annullamento..."
           showNote={false}
           onClose={() => setShowCancelModal(false)}

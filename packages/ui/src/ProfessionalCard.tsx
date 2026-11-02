@@ -494,7 +494,7 @@ export function ProfessionalCard({
               nel resto del sito il verde vuol dire "cliccabile". */}
           {completedThisMonth && completedThisMonth > 0 ? (
             <Text fontSize={13} color={brand.grafite70}>
-              Ha completato {completedThisMonth} {completedThisMonth === 1 ? "intervento" : "interventi"} questo mese
+              Ha terminato {completedThisMonth} {completedThisMonth === 1 ? "lavoro" : "lavori"} questo mese
             </Text>
           ) : null}
           {reason ? (

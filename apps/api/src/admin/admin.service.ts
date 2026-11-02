@@ -610,6 +610,7 @@ export class AdminService {
       where: { id: reviewId },
       select: {
         heldAt: true,
+        rating: true,
         booking: { select: { id: true, status: true, professionalProfileId: true, professionalProfile: { select: { userId: true } }, quote: { select: { guidedRequestId: true } } } },
       },
     });
@@ -623,6 +624,8 @@ export class AdminService {
     await this.notificationsService.notify(review.booking.professionalProfile.userId, "NEW_REVIEW", {
       bookingId: review.booking.id,
       reviewId,
+      // Le stelle nel testo dell'avviso (collaudo F-16).
+      rating: review.rating,
       guidedRequestId: review.booking.quote?.guidedRequestId ?? null,
       professionalCompleted: review.booking.status === "COMPLETED",
     });

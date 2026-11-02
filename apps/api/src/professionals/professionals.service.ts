@@ -43,6 +43,7 @@ import {
   jobPaidOnline,
   PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
   wallClockToday,
+  slotStillOffered,
   isProfessionalCategorySlug,
   validSubTags,
   type CategoryPriceStats,
@@ -639,7 +640,8 @@ export class ProfessionalsService {
         if (exceptionDates?.has(dateStr)) continue;
 
         const times = profileSlots
-          .filter((slot) => slotAppliesOnDate(slot, date))
+          // Mai una fascia di oggi già finita o quasi (collaudo B-05, D-09).
+          .filter((slot) => slotAppliesOnDate(slot, date) && slotStillOffered(dateStr, slot.endTime))
           .sort((a, b) => a.startTime.localeCompare(b.startTime))
           .map((slot) => {
             // Una fascia resta prenotabile finché ha capienza residua per
@@ -1777,6 +1779,8 @@ export class ProfessionalsService {
 
       const candidateSlots = slots.filter((slot) => slotAppliesOnDate(slot, date)).sort((a, b) => a.startTime.localeCompare(b.startTime));
       for (const slot of candidateSlots) {
+        // Mai una fascia di oggi già finita o quasi (collaudo B-05, D-09).
+        if (!slotStillOffered(dateStr, slot.endTime)) continue;
         const homeAvailable = slot.allowsHome && countBookingsInSlot(bookings, dateStr, slot.startTime, slot.endTime, "HOME") < (slot.homeMaxBookings ?? 1);
         const onlineAvailable =
           slot.allowsOnline && countBookingsInSlot(bookings, dateStr, slot.startTime, slot.endTime, "ONLINE") < (slot.onlineMaxBookings ?? 1);
@@ -1991,7 +1995,8 @@ export class ProfessionalsService {
       const daySlots = exceptionDates.has(dateStr)
         ? []
         : slots
-            .filter((slot) => slotAppliesOnDate(slot, date))
+            // Mai una fascia di oggi già finita o quasi (collaudo B-05, D-09).
+            .filter((slot) => slotAppliesOnDate(slot, date) && slotStillOffered(dateStr, slot.endTime))
             .sort((a, b) => a.startTime.localeCompare(b.startTime))
             .map((slot) => {
               // Sia per le fasce esatte che per quelle generiche, "prenotato"

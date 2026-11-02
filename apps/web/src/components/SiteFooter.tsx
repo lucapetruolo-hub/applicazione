@@ -153,7 +153,7 @@ export function SiteFooter() {
           <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
             <Icon name="shield" size={16} color={brand.grafite70} strokeWidth={1.5} />
             <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
-              Recensioni solo da lavori confermati
+              Recensioni solo da lavori fatti tramite il sito
             </Text>
           </XStack>
           <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>

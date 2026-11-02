@@ -435,7 +435,7 @@ export function ProfessionalDetailContent({
               {completedTotal > 0 || professional.avgResponseTimeMinutes !== null ? (
                 <Text fontSize={16} color={brand.grafite70}>
                   {[
-                    completedTotal > 0 ? `${completedTotal} ${completedTotal === 1 ? "lavoro completato" : "lavori completati"}` : null,
+                    completedTotal > 0 ? `${completedTotal} ${completedTotal === 1 ? "lavoro terminato" : "lavori terminati"}` : null,
                     professional.avgResponseTimeMinutes !== null
                       ? respondsRightAway(professional.avgResponseTimeMinutes)
                         ? "Risponde subito"
@@ -959,7 +959,7 @@ export function ProfessionalDetailContent({
             {professional.rating !== null ? <Rating value={professional.rating} count={professional.reviewCount} /> : null}
           </YStack>
           {professional.reviews.length === 0 ? (
-            <EmptyState icon="star" title="Nessuna recensione ancora" description="Le recensioni arrivano solo da prenotazioni confermate." />
+            <EmptyState icon="star" title="Nessuna recensione ancora" description="Le recensioni arrivano solo da lavori fatti tramite il sito." />
           ) : (
             professional.reviews.map((review) => (
               <YStack key={review.id} gap="$0">
@@ -989,7 +989,7 @@ export function ProfessionalDetailContent({
                         <XStack alignItems="center" gap={4}>
                           <Icon name="badge-check" size={13} strokeWidth={2} color={brand.verificato} />
                           <Text fontSize={13} fontWeight="700" color={brand.verificato}>
-                            Lavoro confermato
+                            Lavoro fatto tramite il sito
                           </Text>
                         </XStack>
                       </BadgeInfo>

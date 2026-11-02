@@ -206,6 +206,12 @@ export class QuotesService {
       });
     }
 
+    // Mai un appuntamento già cominciato (collaudo B-05, D-09, I agente): un
+    // preventivo per "oggi 08:00–13:00" mandato alle 14:50 veniva accettato e pagato.
+    if (new Date(input.estimatedStartDate).getTime() <= wallClockNow().getTime()) {
+      throw new BadRequestException("Questo orario è già passato: scegli un'altra data o un orario più tardi.");
+    }
+
     // Fine dopo l'inizio, al massimo MAX_JOB_DAYS giorni (lavori su più giorni, docs/CHANGELOG.md §310).
     if (input.estimatedEndDate) {
       if (new Date(input.estimatedEndDate) <= new Date(input.estimatedStartDate)) {

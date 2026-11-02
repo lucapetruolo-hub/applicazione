@@ -20,7 +20,7 @@ export default function TerminiPage() {
             `${BRAND.name} mette in contatto clienti e professionisti: il lavoro lo concordi e lo paghi al professionista, che ne risponde.`,
             "Per i clienti cercare e chiedere preventivi è gratis; pagando online hai il nostro aiuto e il rimborso se una segnalazione è accolta.",
             "I professionisti pagano un abbonamento a livelli e, sui pagamenti online, una trattenuta del 7% più IVA.",
-            "Recensioni solo da lavori confermati; chiunque può segnalare un contenuto, anche senza account.",
+            "Recensioni solo da lavori fatti tramite il sito; chiunque può segnalare un contenuto, anche senza account.",
             "Se cambiamo questi termini ti avvisiamo per email 15 giorni prima, e puoi chiudere l'account senza costi.",
           ]}
         />
@@ -36,7 +36,7 @@ export default function TerminiPage() {
         },
         {
           heading: "3. Per i clienti",
-          body: "Il servizio di ricerca e richiesta preventivi è gratuito. I preventivi ricevuti sono emessi dai professionisti, che ne sono gli unici responsabili: la piattaforma non garantisce prezzi, tempi o esiti dei lavori. Le recensioni possono essere pubblicate solo a seguito di lavori confermati attraverso la piattaforma, oppure dopo la chiusura di una segnalazione sul lavoro. Una recensione con segnali di possibile falsità (per esempio lo stesso telefono, indirizzo o email di chi la riceve, o un lavoro fissato a un orario già passato) la controlla una persona del nostro team prima di pubblicarla: se non la pubblichiamo, chi l'ha scritta riceve il motivo e come contestarlo. Il professionista può rispondere pubblicamente a ogni recensione; il cliente può aggiornare la propria recensione una sola volta, dopo una segnalazione arrivata a lavoro chiuso e finita senza accordo, e la recensione mostra la data dell'aggiornamento.",
+          body: "Il servizio di ricerca e richiesta preventivi è gratuito. I preventivi ricevuti sono emessi dai professionisti, che ne sono gli unici responsabili: la piattaforma non garantisce prezzi, tempi o esiti dei lavori. Le recensioni possono essere pubblicate solo a seguito di lavori fatti tramite il sito, oppure dopo la chiusura di una segnalazione sul lavoro. Una recensione con segnali di possibile falsità (per esempio lo stesso telefono, indirizzo o email di chi la riceve, o un lavoro fissato a un orario già passato) la controlla una persona del nostro team prima di pubblicarla: se non la pubblichiamo, chi l'ha scritta riceve il motivo e come contestarlo. Il professionista può rispondere pubblicamente a ogni recensione; il cliente può aggiornare la propria recensione una sola volta, dopo una segnalazione arrivata a lavoro chiuso e finita senza accordo, e la recensione mostra la data dell'aggiornamento.",
         },
         {
           heading: "4. Per i professionisti",

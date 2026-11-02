@@ -7,6 +7,7 @@ export * from "./cities";
 export * from "./data/comuni";
 export * from "./frazioni";
 export * from "./dashboard";
+export * from "./accountClosure";
 export * from "./fiscalValidation";
 export * from "./codiceFiscaleBirthPlace";
 export * from "./moderation";
