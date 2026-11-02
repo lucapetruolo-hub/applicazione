@@ -99,7 +99,7 @@ export function ClientMiniTimeline({ stage }: { stage: RequestStage }) {
     { key: "preventivo", label: "Preventivo ricevuto" },
   ];
   if (stage === "modifica_richiesta") steps.push({ key: "modifica", label: "Hai proposto un'altra data", extra: true });
-  steps.push({ key: "accettata", label: "Accettata" }, { key: "completata", label: "Completata" });
+  steps.push({ key: "accettata", label: "Fissato" }, { key: "completata", label: "Terminato" });
 
   const reachedIndex: Record<RequestStage, number> = {
     da_quotare: 0,

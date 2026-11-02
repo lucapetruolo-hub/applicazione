@@ -132,7 +132,7 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
       title="Chi ha già trovato il professionista giusto"
       lead={
         summary && summary.count >= MIN_REVIEWS_FOR_AVERAGE
-          ? `★ ${summary.average.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} su 5 · ${summary.count} recensioni, solo di lavori confermati`
+          ? `★ ${summary.average.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} su 5 · ${summary.count} recensioni, solo di lavori fatti tramite il sito`
           : undefined
       }
       maxWidth={1160}
@@ -176,7 +176,7 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
                 <XStack alignItems="center" gap={3}>
                   <Icon name="badge-check" size={13} color={brand.verificato} strokeWidth={2} />
                   <Text fontSize={13} fontWeight="700" color={brand.verificato}>
-                    Lavoro confermato
+                    Lavoro fatto tramite il sito
                   </Text>
                 </XStack>
               </BadgeInfo>

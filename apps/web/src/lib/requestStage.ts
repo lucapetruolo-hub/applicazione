@@ -63,8 +63,8 @@ export const REQUEST_STAGE_STYLE: Record<RequestStage, { label: string; icon: Ic
   // #7A5F00: 5,5:1 sul giallo chiaro, #8A6D00 si fermava a 4,4:1 (docs/CHANGELOG.md §395).
   in_attesa: { label: "In attesa del cliente", icon: "clock", fg: "#7A5F00", bg: "#FFF3CD", border: "#FFC107" },
   modifica_richiesta: { label: "Modifica richiesta", icon: "rotate-ccw", fg: "#7A4F01", bg: "#FFE8A3", border: "#B8860B" },
-  accettata: { label: "Accettata", icon: "check", fg: "#1B7A33", bg: "#E6F4EA", border: "#28A745" },
-  completata: { label: "Completata", icon: "check", fg: "#0A6968", bg: "#DFF7F5", border: "#20B2AA" },
+  accettata: { label: "Fissato", icon: "check", fg: "#1B7A33", bg: "#E6F4EA", border: "#28A745" },
+  completata: { label: "Terminato", icon: "check", fg: "#0A6968", bg: "#DFF7F5", border: "#20B2AA" },
   // Richiesta esplicita dell'utente: "rendi chiare quelle che sono state
   // annullate" — prima indistinguibile da "accettata" (nessuno stadio
   // dedicato). Icona "x" (già usata per "chiusa", stesso significato
@@ -145,8 +145,8 @@ export const CLIENT_STAGE_LABEL: Record<RequestStage, string> = {
   da_quotare: "In attesa di preventivo",
   in_attesa: "Preventivo ricevuto",
   modifica_richiesta: "In attesa di conferma",
-  accettata: "Accettata",
-  completata: "Completata",
+  accettata: "Fissato",
+  completata: "Terminato",
   annullata: "Annullata",
   scaduta: "Scaduta",
   chiusa: "Annullata da te",

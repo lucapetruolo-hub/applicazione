@@ -51,8 +51,8 @@ const TABS: { key: ProTabKey; label: string }[] = [
   { key: "da_quotare", label: "Da quotare" },
   { key: "in_attesa", label: "In attesa" },
   { key: "modifica_richiesta", label: "Modifiche" },
-  { key: "accettata", label: "Accettate" },
-  { key: "completata", label: "Completate" },
+  { key: "accettata", label: "Fissati" },
+  { key: "completata", label: "Terminati" },
   { key: "annullata", label: "Annullate" },
   // Scadute e chiuse per un rifiuto o un preventivo ritirato (collaudo F-10).
   { key: "scaduta", label: "Chiuse" },

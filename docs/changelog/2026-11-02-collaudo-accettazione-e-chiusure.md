@@ -49,15 +49,23 @@ D-07 ("Annulla intervento" accanto a "Lavoro terminato") lasciato dal gruppo 6.
   Il cliente ha confermato che il lavoro è terminato".
 - **0-10, O-02**: già corretti nella PR #194 (F-01). "Lavoro terminato" è
   bloccato sul server prima del giorno dell'appuntamento.
-- **0-14**: non riprodotto nel codice. La finestra "Oggi e domani" tiene
-  l'appuntamento di oggi finché non è chiuso. Ora la lista degli
-  appuntamenti si ricarica sempre senza cache (`no-store`), come quella
-  delle richieste (F-10). Da ricontrollare al prossimo collaudo.
+- **0-14**: non riprodotto. La nuova prova nel browser `e2e/tests/oggi-appuntamento.spec.ts`
+  rifà il caso del collaudo (appuntamento di domani 08:00-13:00, poi "Fai
+  passare il tempo" di un giorno, pagina aperta dopo le 13): l'appuntamento
+  resta in "Oggi e domani". La lista degli appuntamenti ora si ricarica sempre
+  senza cache (`no-store`), come quella delle richieste (F-10): con la pagina
+  già aperta prima di far passare il tempo, il professionista vedeva i dati
+  vecchi.
 - **D-07**: con "Lavoro terminato" disponibile, "Annulla intervento" esce
   dalla riga dei pulsanti e resta nel menu.
-- **O-03, in parte**: la finestra di annullamento del cliente ora si chiama
-  come il pulsante, "Annulla appuntamento". Il glossario completo (una
-  parola per ogni momento in tutto il sito) passa al gruppo 10.
+- **O-03** (decisione di Luca del 2/11, migliorie accettate): una parola
+  per ogni momento, scritta in `docs/glossario.md`. Preventivo accettato =
+  **Fissato** (schede, filtri, agenda, messaggi, statistiche "Lavori
+  fissati"); lavoro fatto = **Terminato** (stesso nome del pulsante "Lavoro
+  terminato", già usato nei Termini); **Annulla il lavoro** per cliente e
+  professionista, con la finestra dallo stesso nome; **appuntamento** per
+  giorno e ora; sotto le recensioni "Lavoro fatto tramite il sito". Restano
+  le parole già decise da Luca ("Elimina richiesta", "Lavoro occasionale").
 
 ## Chiusura degli account (B-01, P-06)
 
@@ -94,10 +102,13 @@ D-07 ("Annulla intervento" accanto a "Lavoro terminato") lasciato dal gruppo 6.
   `who`), e dove serve la cifra: importo finale, saldo addebitato, stelle
   della recensione, acconto trattenuto.
 
-## Non fatti in questa PR
+## Decisioni di Luca del 2/11
 
 - **F-05** (importo finale sopra il preventivo che il cliente deve accettare
-  o rifiutare): cambia il flusso dei soldi, va deciso con Luca.
+  o rifiutare): non si fa.
+- Il pulsante "Accetta con obbligo di pagare" resta (Codice del consumo art. 51).
+- La chiusura dell'account del professionista resta bloccata con soldi
+  trattenuti, contestazioni o segnalazioni aperte.
 
 **Verifica**: typecheck di API e sito, `pnpm lint`, test dell'API (1136) e
 di `packages/shared` (25, nuovi `availability.test.ts`), nuovi test per F-11

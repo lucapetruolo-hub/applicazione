@@ -474,10 +474,10 @@ export class BookingsService implements OnModuleInit {
       quote.professionalProfileId,
       "CLIENT",
       paymentMethod === "ONLINE"
-        ? "Il cliente ha accettato il preventivo e pagato l'acconto online: prenotazione confermata, saldo online a lavoro finito."
+        ? "Il cliente ha accettato il preventivo e pagato l'acconto online: lavoro fissato, saldo online a lavoro finito."
         : paymentMethod === "MIXED"
-          ? "Il cliente ha accettato il preventivo e pagato l'acconto online: prenotazione confermata, saldo diretto al professionista."
-          : "Il cliente ha accettato il preventivo: prenotazione confermata, pagamento diretto al professionista.",
+          ? "Il cliente ha accettato il preventivo e pagato l'acconto online: lavoro fissato, saldo diretto al professionista."
+          : "Il cliente ha accettato il preventivo: lavoro fissato, pagamento diretto al professionista.",
     );
 
     return booking.id;

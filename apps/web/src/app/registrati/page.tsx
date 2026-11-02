@@ -291,7 +291,7 @@ function SignupChoicesSummary({
 const SIGNUP_BENEFITS: { icon: IconName; title: string; text: string }[] = [
   { icon: "map-pin", title: "Richieste dalla tua zona", text: "Clienti vicino a te che cercano proprio il tuo mestiere." },
   { icon: "calendar", title: "Agenda e promemoria", text: "Appuntamenti in ordine e meno clienti che non si presentano." },
-  { icon: "star", title: "Recensioni vere", text: "Solo da lavori confermati: la tua reputazione conta di più." },
+  { icon: "star", title: "Recensioni vere", text: "Solo da lavori fatti tramite il sito: la tua reputazione conta di più." },
 ];
 
 /**

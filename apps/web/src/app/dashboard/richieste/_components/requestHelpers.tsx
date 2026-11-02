@@ -160,7 +160,7 @@ export function DeadlinePill({ deadline }: { deadline: { label: string; urgent: 
 export function MiniTimeline({ stage }: { stage: RequestStage }) {
   const steps: { key: string; label: string; extra?: boolean }[] = [{ key: "richiesta", label: "Richiesta" }, { key: "preventivo", label: "Preventivo inviato" }];
   if (stage === "modifica_richiesta") steps.push({ key: "modifica", label: "Modifica richiesta dal cliente", extra: true });
-  steps.push({ key: "accettata", label: "Accettata" }, { key: "completata", label: "Completata" });
+  steps.push({ key: "accettata", label: "Fissato" }, { key: "completata", label: "Terminato" });
 
   const reachedIndex: Record<RequestStage, number> = {
     da_quotare: 0,

@@ -386,7 +386,7 @@ export function BookingSection({
         </YStack>
       ) : booking.status === "CANCELED" ? (
         <Text fontSize={16} color={brand.grafite70}>
-          Il professionista ha annullato questo intervento, quindi non si può riaprire. Con &ldquo;Ripeti la richiesta&rdquo; puoi inviarla
+          Il professionista ha annullato questo lavoro, quindi non si può riaprire. Con &ldquo;Ripeti la richiesta&rdquo; puoi inviarla
           ad altri professionisti della zona.
         </Text>
       ) : null}
@@ -591,7 +591,7 @@ function isUpcoming(moment: AppointmentMoment | null): boolean {
 }
 
 /**
- * "Serve cambiare? Proponi un'altra data · Scrivi un messaggio · Annulla appuntamento" sotto la
+ * "Serve cambiare? Proponi un'altra data · Scrivi un messaggio · Annulla il lavoro" sotto la
  * trattativa chiusa (§346): solo prima dell'appuntamento, quando il
  * professionista c'è ancora. Dopo, per qualcosa che non va c'è "C'è un problema".
  */
@@ -616,7 +616,7 @@ export function ChangeLinks({ booking, onReschedule, onMessage, onCancel }: { bo
         </Text>
       ) : null}
       <Text fontSize={16} fontWeight="600" color={brand.urgenza} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={onCancel}>
-        Annulla appuntamento
+        Annulla il lavoro
       </Text>
     </XStack>
       {/* Preavviso scelto dal professionista (docs/CHANGELOG.md §347); già

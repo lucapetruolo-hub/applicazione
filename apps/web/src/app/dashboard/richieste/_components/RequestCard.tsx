@@ -740,7 +740,7 @@ export function RequestCard({
     menuActions.push({ icon: "check", text: "Lavoro terminato", onPress: () => setShowCompleteModal(true) });
   }
   if (booking?.status === "CONFIRMED") {
-    menuActions.push({ icon: "x", text: "Annulla intervento", tone: "danger", onPress: () => setShowCancelModal(true) });
+    menuActions.push({ icon: "x", text: "Annulla il lavoro", tone: "danger", onPress: () => setShowCancelModal(true) });
   }
   // Regola simmetrica (§197): ognuno riapre solo ciò che ha annullato lui.
   if (booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL" && !booking.reopenRequestedBy) {
@@ -1041,7 +1041,7 @@ export function RequestCard({
                       scheda, appena sopra il tasto Chat. */}
                   {booking?.scheduledAt && (stage === "accettata" || stage === "completata" || stage === "annullata") ? (
                     <Text fontSize={13} fontWeight="700" color={brand.grafite}>
-                      Intervento: {formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}
+                      Appuntamento: {formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}
                     </Text>
                   ) : null}
                   {/* Nome e cognome del destinatario indicati sulla
@@ -1468,7 +1468,7 @@ export function RequestCard({
                     "Lavoro terminato" (collaudo D-07). */}
                 {booking?.status === "CONFIRMED" && !canComplete ? (
                   <CardButton compactOnPhone tone="danger" onPress={() => setShowCancelModal(true)}>
-                    Annulla intervento
+                    Annulla il lavoro
                   </CardButton>
                 ) : null}
               </XStack>

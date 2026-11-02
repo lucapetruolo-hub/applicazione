@@ -71,11 +71,11 @@ export const PENDING_QUOTE_COLOR = brand.ottone;
 
 // Etichette italiane per stato — usate sia in UI (lista annuale/risultati di
 // ricerca) sia come testo indicizzato dalla ricerca full-text (così cercare
-// "confermat" trova le prenotazioni confermate, non solo un nome cliente).
+// "fissat" trova i lavori fissati, non solo un nome cliente).
 export const AGENDA_BOOKING_STATUS_LABEL: Record<ProfessionalBooking["status"], string> = {
   PENDING: "In attesa di conferma",
-  CONFIRMED: "Confermata",
-  COMPLETED: "Completata",
+  CONFIRMED: "Fissato",
+  COMPLETED: "Terminato",
   CANCELED: "Annullata",
   NO_SHOW: "Cliente non presentato",
 };

@@ -776,7 +776,7 @@ export function GuidedRequestCard({
   }
   // Cominciato l'appuntamento non si annulla più (§346): per un problema c'è "Segnala un problema".
   if (booking && (booking.status === "PENDING" || booking.status === "CONFIRMED") && new Date(booking.scheduledAt) > wallClockNow()) {
-    menuActions.push({ icon: "x", text: "Annulla appuntamento", tone: "danger", onPress: () => setShowCancelModal(true) });
+    menuActions.push({ icon: "x", text: "Annulla il lavoro", tone: "danger", onPress: () => setShowCancelModal(true) });
   } else if (booking?.status === "CANCELED") {
     // Un intervento annullato dal professionista non si riapre dal lato cliente.
     if (booking.canceledBy === "CLIENT" && !booking.reopenRequestedBy) {
@@ -1271,8 +1271,8 @@ export function GuidedRequestCard({
       {showDeleteModal ? <DeleteRequestModal stillOpen={canDelete} onClose={() => setShowDeleteModal(false)} onConfirm={handleDeleteRequest} /> : null}
       {showCancelModal ? (
         <CancelBookingModal
-          // Stesso nome del pulsante "Annulla appuntamento" (collaudo A-06, O-03).
-          title="Annulla appuntamento"
+          // Stesso nome del pulsante, per cliente e professionista (collaudo A-06, O-03).
+          title="Annulla il lavoro"
           description={
             booking && isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours)
               ? `Il professionista verrà avvisato. Mancano meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)}, il preavviso che aveva chiesto.${
@@ -1287,7 +1287,7 @@ export function GuidedRequestCard({
                   paidOnline(booking) > 0 ? ` I ${formatEurCents(paidOnline(booking))} che hai pagato online ti tornano sulla carta.` : ""
                 }`
           }
-          confirmLabel="Sì, annulla appuntamento"
+          confirmLabel="Sì, annulla il lavoro"
           confirmingLabel="Annullamento..."
           showNote={false}
           onClose={() => setShowCancelModal(false)}
