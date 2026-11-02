@@ -9,6 +9,7 @@ import {
   freePeriodSummary,
   SUBSCRIPTION_FEATURES,
   SUBSCRIPTION_TIERS,
+  SAME_CLIENT_ONCE,
   parseSubscriptionTier,
   subscriptionTierInfo,
   tierPeriodPriceEurCents,
@@ -446,7 +447,7 @@ function AbbonamentoContent() {
               ) : null}
               {sub.usage.countsClientsOnce ? (
                 <Text color={brand.grafite70} fontSize={16}>
-                  Lo stesso cliente conta una volta sola in questo periodo.
+                  Più lavori allo stesso cliente in questo periodo contano come uno.
                 </Text>
               ) : null}
             </YStack>
@@ -563,9 +564,11 @@ function AbbonamentoContent() {
                   </XStack>
                   {tier.tier === "PLUS" ? (
                     // Su Plus e Pro lo stesso cliente conta una volta (§362); su Pro non c'è limite, quindi si dice solo su Plus.
-                    <XStack alignItems="center" gap="$2">
-                      <Check size={18} strokeWidth={2.25} color={brand.cianografiaScuro} />
-                      <Text color={brand.grafite}>Lo stesso cliente conta una volta al mese</Text>
+                    <XStack alignItems="flex-start" gap="$2">
+                      <Check size={18} strokeWidth={2.25} color={brand.cianografiaScuro} style={{ flexShrink: 0, marginTop: 3 }} />
+                      <Text flex={1} color={brand.cianografiaScuro} fontWeight="700">
+                        {SAME_CLIENT_ONCE}
+                      </Text>
                     </XStack>
                   ) : null}
                   {quote && tier.tier !== "BASE" ? (
