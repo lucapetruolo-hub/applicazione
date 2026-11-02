@@ -23,7 +23,11 @@ Luca ha chiesto anche un controllo dei messaggi in chat all'invio e ha scelto
   - Chiudere una zona delle richieste generali: motivo obbligatorio, nel
     registro e nella riga della zona ("Chiusa a mano: …").
   - DAC7 "Segna come inviato" (non si annulla, fa partire l'avviso a ogni
-    professionista) e "Rimanda avviso ai professionisti": conferma.
+    professionista): conferma con il numero di protocollo della ricevuta
+    dell'Agenzia delle Entrate (miglioria scelta da Luca il 02/11/2026), salvato
+    sul periodo (`submissionProtocol`, migrazione `20261102120000_dac7_protocollo`),
+    mostrato in tabella e nel registro come prova dell'invio.
+  - "Rimanda avviso ai professionisti": conferma.
   - "Emetti le fatture del mese" e "Rimanda"/"Rigenera" allo SdI: conferma.
 - **Registro azioni**: anche DAC7 segnato come inviato, avviso rimandato,
   fatture emesse a mano e fattura rimandata allo SdI, con chi l'ha fatto

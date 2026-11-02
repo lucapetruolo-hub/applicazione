@@ -29,3 +29,13 @@ describe("promemoria DAC7 di gennaio", () => {
     expect(await build(null, 0).service.remindAnnualDeadline(new Date("2027-01-20T08:00:00Z"))).toBe(false);
   });
 });
+
+describe("Segna come inviato", () => {
+  it("salva il protocollo della ricevuta dell'Agenzia delle Entrate", async () => {
+    const update = vi.fn().mockResolvedValue({ id: "q", year: 2026, quarter: 2, status: "SUBMITTED", reportVersion: 1 });
+    const prisma = { dac7ReportingPeriod: { findUnique: vi.fn().mockResolvedValue({ id: "q", year: 2026, quarter: 2, status: "EXPORTED", records: [] }), update } };
+    const service = new Dac7Service(prisma as unknown as PrismaClient, { notify: vi.fn() } as never);
+    await service.markSubmitted("q", " 26013112345678901 ");
+    expect(update).toHaveBeenCalledWith({ where: { id: "q" }, data: expect.objectContaining({ status: "SUBMITTED", submissionProtocol: "26013112345678901" }) });
+  });
+});

@@ -1180,6 +1180,13 @@ export const setDac7RuleSchema = z.object({
 });
 export type SetDac7RuleInput = z.infer<typeof setDac7RuleSchema>;
 
+/** "Segna come inviato": il protocollo della ricevuta dell'Agenzia delle Entrate, come prova dell'invio (docs/changelog/2026-11-02-admin-protezioni.md). */
+export const DAC7_PROTOCOL_MIN = 5;
+export const dac7SubmittedSchema = z.object({
+  protocol: z.string().trim().min(DAC7_PROTOCOL_MIN, "Scrivi il numero di protocollo della ricevuta.").max(100),
+});
+export type Dac7SubmittedInput = z.infer<typeof dac7SubmittedSchema>;
+
 /**
  * Identità della piattaforma richiesta dal blocco MessageSpec/Platform
  * dello schema OECD DPI usato da DAC7 (SendingEntityIN, PlatformName,

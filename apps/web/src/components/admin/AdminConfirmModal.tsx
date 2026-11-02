@@ -16,6 +16,8 @@ export function AdminConfirmModal({
   confirmLabel,
   reasonLabel,
   reasonPlaceholder,
+  reasonMin = ADMIN_ACTION_REASON_MIN,
+  reasonMissing = "Scrivi il motivo",
   onClose,
   onConfirm,
 }: {
@@ -24,12 +26,16 @@ export function AdminConfirmModal({
   confirmLabel: string;
   reasonLabel?: string;
   reasonPlaceholder?: string;
+  /** Lunghezza minima del motivo (di serie 10). */
+  reasonMin?: number;
+  /** Cosa dice l'errore se manca (di serie "Scrivi il motivo"). */
+  reasonMissing?: string;
   onClose: () => void;
   onConfirm: (reason: string | undefined) => Promise<void>;
 }) {
   const [reason, setReason] = useState("");
   async function submit() {
-    if (reasonLabel && reason.trim().length < ADMIN_ACTION_REASON_MIN) throw new Error(`Scrivi il motivo (almeno ${ADMIN_ACTION_REASON_MIN} caratteri).`);
+    if (reasonLabel && reason.trim().length < reasonMin) throw new Error(`${reasonMissing} (almeno ${reasonMin} caratteri).`);
     await onConfirm(reasonLabel ? reason.trim() : undefined);
   }
   return (

@@ -482,12 +482,12 @@ export class Dac7Service implements OnModuleInit {
   }
 
   /** Azione manuale dell'admin — nessuna integrazione reale con il Desktop Telematico dell'Agenzia delle Entrate. */
-  async markSubmitted(id: string) {
+  async markSubmitted(id: string, protocol: string) {
     const period = await this.getPeriod(id);
     if (period.status !== "EXPORTED") {
       throw new BadRequestException("Il periodo deve essere prima esportato.");
     }
-    const updated = await this.prisma.dac7ReportingPeriod.update({ where: { id }, data: { status: "SUBMITTED", submittedAt: new Date() } });
+    const updated = await this.prisma.dac7ReportingPeriod.update({ where: { id }, data: { status: "SUBMITTED", submittedAt: new Date(), submissionProtocol: protocol.trim() } });
     // Comunicazione annuale inviata: ogni professionista riceve l'avviso
     // con i suoi dati, come chiede la direttiva (docs/CHANGELOG.md §246).
     // Dopo una correzione l'avviso riparte per tutti, come "dati corretti".

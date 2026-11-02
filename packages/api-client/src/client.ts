@@ -997,6 +997,8 @@ export type Dac7ReportingPeriod = {
   submittedAt: string | null;
   /** Importi cambiati dopo l'invio: da correggere (docs/CHANGELOG.md §247). */
   needsCorrectionAt: string | null;
+  /** Protocollo della ricevuta dell'Agenzia delle Entrate (docs/changelog/2026-11-02-admin-protezioni.md). */
+  submissionProtocol: string | null;
 };
 
 export type Dac7Record = {
@@ -2783,8 +2785,8 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     adminExportDac7Period: (token: string, id: string) =>
       request<unknown>(`/admin/dac7/periods/${id}/export`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
-    adminMarkDac7Submitted: (token: string, id: string) =>
-      request<Dac7ReportingPeriod>(`/admin/dac7/periods/${id}/mark-submitted`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+    adminMarkDac7Submitted: (token: string, id: string, protocol: string) =>
+      request<Dac7ReportingPeriod>(`/admin/dac7/periods/${id}/mark-submitted`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ protocol }) }),
 
     adminNotifyDac7Sellers: (token: string, id: string) =>
       request<{ sent: number }>(`/admin/dac7/periods/${id}/notify-sellers`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),

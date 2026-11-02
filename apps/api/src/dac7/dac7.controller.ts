@@ -1,5 +1,5 @@
 import { Body, Controller, Get, NotFoundException, Param, ParseIntPipe, Post, Req, UseGuards } from "@nestjs/common";
-import { setDac7RuleSchema, platformDac7SettingsSchema, type SetDac7RuleInput, type PlatformDac7SettingsInput } from "@professionisti/shared";
+import { dac7SubmittedSchema, setDac7RuleSchema, platformDac7SettingsSchema, type Dac7SubmittedInput, type SetDac7RuleInput, type PlatformDac7SettingsInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
@@ -60,9 +60,9 @@ export class Dac7Controller {
 
   /** Non si annulla: nel registro azioni con chi l'ha fatto (docs/changelog/2026-11-02-admin-protezioni.md). */
   @Post("periods/:id/mark-submitted")
-  async markSubmitted(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
-    const updated = await this.dac7Service.markSubmitted(id);
-    await this.auditLogService.record({ entityType: "Dac7ReportingPeriod", entityId: id, fieldName: "dac7Submitted", newValue: String(updated.year), changedByUserId: req.user.userId });
+  async markSubmitted(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(dac7SubmittedSchema)) body: Dac7SubmittedInput) {
+    const updated = await this.dac7Service.markSubmitted(id, body.protocol);
+    await this.auditLogService.record({ entityType: "Dac7ReportingPeriod", entityId: id, fieldName: "dac7Submitted", newValue: String(updated.year), changedByUserId: req.user.userId, reason: `Protocollo ${body.protocol}` });
     return updated;
   }
 

@@ -19,7 +19,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { SkeletonTableRows } from "@/components/Skeleton";
 import { AdminConfirmModal } from "@/components/admin/AdminConfirmModal";
-import { BRAND, formatEurCents } from "@professionisti/shared";
+import { BRAND, DAC7_PROTOCOL_MIN, formatEurCents } from "@professionisti/shared";
 
 /**
  * Fisco e fatture → DAC7 (CLAUDE.md §88): compensi dei professionisti da
@@ -150,10 +150,10 @@ export default function AdminDac7Page() {
   }
 
   // Gli errori li mostra la finestra di conferma.
-  async function handleMarkSubmitted(id: string) {
+  async function handleMarkSubmitted(id: string, protocol: string) {
     if (!token) return;
     setError(null);
-    const updated = await apiClient.adminMarkDac7Submitted(token, id);
+    const updated = await apiClient.adminMarkDac7Submitted(token, id, protocol);
     setActionMessage(
       updated.quarter === null
         ? "Anno segnato come inviato: ai professionisti è partito l'avviso con i loro dati DAC7."
@@ -301,6 +301,11 @@ export default function AdminDac7Page() {
                     </td>
                     <td>
                       {DAC7_STATUS_LABEL[p.status] ?? p.status}
+                      {p.submissionProtocol ? (
+                        <Text display="flex" fontSize={12} color={brand.grafite70}>
+                          Protocollo {p.submissionProtocol}
+                        </Text>
+                      ) : null}
                       {p.needsCorrectionAt ? (
                         <Text
                           display="flex"
@@ -436,8 +441,12 @@ export default function AdminDac7Page() {
               : `Ogni professionista del ${confirming.period.year} riceve di nuovo l'email con i suoi dati DAC7. Serve dopo una correzione.`
           }
           confirmLabel={confirming.kind === "submit" ? "Segna come inviato" : "Rimanda l'avviso"}
+          reasonLabel={confirming.kind === "submit" ? "Numero di protocollo della ricevuta" : undefined}
+          reasonPlaceholder="Es. 26013112345678901"
+          reasonMin={DAC7_PROTOCOL_MIN}
+          reasonMissing="Scrivi il numero di protocollo della ricevuta"
           onClose={() => setConfirming(null)}
-          onConfirm={() => (confirming.kind === "submit" ? handleMarkSubmitted(confirming.period.id) : handleNotifySellers(confirming.period.id))}
+          onConfirm={(protocol) => (confirming.kind === "submit" ? handleMarkSubmitted(confirming.period.id, protocol ?? "") : handleNotifySellers(confirming.period.id))}
         />
       ) : null}
     </YStack>
