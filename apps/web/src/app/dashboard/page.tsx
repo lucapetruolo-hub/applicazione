@@ -1,12 +1,12 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, startTransition, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, Navigation, Phone, Truck } from "lucide-react";
 import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, jobOccurrences, navigateUrl, scheduleChangeBetween, wallClockNow, wallClockToday, type AgendaAttention, type DayAhead, type ExternalJob, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
 import { Badge, Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { loadMyProfessionalProfile } from "@/lib/myProfessionalProfile";
+import { loadMyProfessionalProfile, loadMySubscription } from "@/lib/myProfessionalProfile";
 import { useAuth } from "@/lib/AuthContext";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { classifyLeadStage } from "@/lib/requestStage";
@@ -21,6 +21,11 @@ import { AwayCard } from "@/components/AwayCard";
 import { BoostSection } from "@/components/BoostSection";
 import { SetupJourneyCard, useSetupJourney } from "@/components/verification/SetupJourney";
 import { WeatherStrip, jobsHeadline, type DayJobRow } from "@/components/DaysAhead";
+
+/** Applica una risposta dell'API dentro `startTransition` (vedi sotto, §345). */
+function later<T>(apply: (value: T) => void): (value: T) => void {
+  return (value) => startTransition(() => apply(value));
+}
 
 /**
  * Home "Oggi" del professionista (docs/CHANGELOG.md §147, decisione esplicita
@@ -56,24 +61,33 @@ export default function DashboardTodayPage() {
   const [onTheWayError, setOnTheWayError] = useState<string | null>(null);
   const journey = useSetupJourney(user?.isProfessional ? token : null);
 
+  // Le risposte dell'API aggiornano la pagina con `startTransition`, come
+  // l'agenda (docs/CHANGELOG.md §345): sono una decina, e ognuna ridisegnava
+  // tutta la pagina in un blocco unico che su un telefono lento la fermava
+  // (TBT oltre il limite della prova Lighthouse,
+  // docs/changelog/2026-11-02-oggi-piu-leggera.md). React ora disegna a
+  // piccoli pezzi; l'aspetto finale e l'ordine in cui compaiono le parti non
+  // cambiano. Le azioni del professionista ("Sto arrivando") restano immediate.
   useEffect(() => {
     if (!token || !user?.isProfessional) return;
-    const onError = (err: unknown) => {
+    const onError = later((err: unknown) => {
       if (err instanceof Error && err.message.includes("profilo")) setProfileMissing(true);
       else setError(err instanceof Error ? err.message : "Errore nel caricamento.");
-    };
-    apiClient.myLeads(token).then(setLeads).catch(onError);
-    apiClient.myProfessionalBookings(token).then(setBookings).catch(onError);
-    apiClient.myExternalJobs(token).then(setExternalJobs).catch(() => setExternalJobs([]));
-    apiClient.agendaDaysAhead(token).then(setDaysAhead).catch(() => setDaysAhead("failed"));
-    apiClient.getMyInsights(token).then(setInsights).catch(() => setInsightsFailed(true));
-    apiClient.getMySubscription(token).then(setSubscription).catch(() => setSubscription(null));
+    });
+    apiClient.myLeads(token).then(later(setLeads)).catch(onError);
+    apiClient.myProfessionalBookings(token).then(later(setBookings)).catch(onError);
+    apiClient.myExternalJobs(token).then(later(setExternalJobs)).catch(later(() => setExternalJobs([])));
+    apiClient.agendaDaysAhead(token).then(later(setDaysAhead)).catch(later(() => setDaysAhead("failed")));
+    apiClient.getMyInsights(token).then(later(setInsights)).catch(later(() => setInsightsFailed(true)));
+    loadMySubscription(token).then(later(setSubscription)).catch(later(() => setSubscription(null)));
     loadMyProfessionalProfile(token)
-      .then((p) => {
-        setRestrictions(p ? { demotedUntil: p.demotedUntil, requestsBlockedUntil: p.requestsBlockedUntil } : null);
-        setAwayUntil(p?.awayUntil ?? null);
-      })
-      .catch(() => setRestrictions(null));
+      .then(
+        later((p: Awaited<ReturnType<typeof loadMyProfessionalProfile>>) => {
+          setRestrictions(p ? { demotedUntil: p.demotedUntil, requestsBlockedUntil: p.requestsBlockedUntil } : null);
+          setAwayUntil(p?.awayUntil ?? null);
+        }),
+      )
+      .catch(later(() => setRestrictions(null)));
   }, [token, user?.isProfessional, loadAttempt]);
 
   // Aggiornamento in background (nuova richiesta, preventivo accettato, ecc.):
@@ -81,10 +95,10 @@ export default function DashboardTodayPage() {
   // d'errore — se il giro fallisce restano i dati già mostrati.
   const refreshInBackground = useCallback(() => {
     if (!token) return;
-    apiClient.myLeads(token).then(setLeads).catch(() => {});
-    apiClient.myProfessionalBookings(token).then(setBookings).catch(() => {});
-    apiClient.myExternalJobs(token).then(setExternalJobs).catch(() => {});
-    apiClient.agendaDaysAhead(token).then(setDaysAhead).catch(() => {});
+    apiClient.myLeads(token).then(later(setLeads)).catch(() => {});
+    apiClient.myProfessionalBookings(token).then(later(setBookings)).catch(() => {});
+    apiClient.myExternalJobs(token).then(later(setExternalJobs)).catch(() => {});
+    apiClient.agendaDaysAhead(token).then(later(setDaysAhead)).catch(() => {});
   }, [token]);
   useLiveRefresh(refreshInBackground, Boolean(token && user?.isProfessional));
 

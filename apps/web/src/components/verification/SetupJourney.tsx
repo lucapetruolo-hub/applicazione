@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { startTransition, useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { formatEur, subscriptionTierInfo, taxIdCheckMessage, type MySubscription, type MyVerificationStatus } from "@professionisti/shared";
 import { Button, Icon, Surface, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
-import { apiClient } from "@/lib/apiClient";
-import { loadMyProfessionalProfile } from "@/lib/myProfessionalProfile";
+import { loadMyProfessionalProfile, loadMySubscription, loadMyVerificationStatus } from "@/lib/myProfessionalProfile";
 import { useAuth } from "@/lib/AuthContext";
 import { CardButton } from "@/components/CardButton";
 
@@ -66,8 +65,7 @@ export function useJourneySubscription(token: string | null, reloadKey: unknown 
   const [sub, setSub] = useState<MySubscription | null | undefined>(undefined);
   useEffect(() => {
     if (!token) return;
-    apiClient
-      .getMySubscription(token)
+    loadMySubscription(token)
       .then(setSub)
       .catch(() => setSub(null));
   }, [token, reloadKey]);
@@ -265,21 +263,27 @@ export function useSetupJourney(
   // saltare la colonna di destra quando compare il riquadro (§334).
   const [settled, setSettled] = useState(false);
 
+  // Le tre risposte arrivano insieme, in un solo ridisegno dentro
+  // `startTransition` (docs/CHANGELOG.md §345): prima erano quattro
+  // ridisegni completi della pagina, che in Oggi su un telefono lento la
+  // fermavano (docs/changelog/2026-11-02-oggi-piu-leggera.md). Il riquadro
+  // compariva comunque solo con tutte e tre.
   useEffect(() => {
     if (!token) return;
-    Promise.allSettled([
-      apiClient
-        .myVerificationStatus(token)
-        .then(setStatus)
-        .catch(() => setStatus(null)),
+    void Promise.all([
+      loadMyVerificationStatus(token).catch(() => null),
       loadMyProfessionalProfile(token)
-        .then((profile) => setStripeVerified(profile?.stripeVerified ?? false))
-        .catch(() => setStripeVerified(false)),
-      apiClient
-        .getMySubscription(token)
-        .then(setSubscription)
-        .catch(() => setSubscription(null)),
-    ]).then(() => setSettled(true));
+        .then((profile) => profile?.stripeVerified ?? false)
+        .catch(() => false),
+      loadMySubscription(token).catch(() => null),
+    ]).then(([nextStatus, nextStripeVerified, nextSubscription]) =>
+      startTransition(() => {
+        setStatus(nextStatus);
+        setStripeVerified(nextStripeVerified);
+        setSubscription(nextSubscription);
+        setSettled(true);
+      }),
+    );
   }, [token, reloadKey]);
 
   return { steps: status && stripeVerified !== null && subscription !== undefined ? setupJourney(status, stripeVerified, subscription) : null, status, settled };
@@ -370,9 +374,9 @@ async function loadJourney(token: string) {
   journeyLoading = token;
   try {
     const [status, profile, subscription] = await Promise.all([
-      apiClient.myVerificationStatus(token),
+      loadMyVerificationStatus(token),
       loadMyProfessionalProfile(token),
-      apiClient.getMySubscription(token).catch(() => null),
+      loadMySubscription(token).catch(() => null),
     ]);
     publishJourney(token, setupJourney(status, profile?.stripeVerified ?? false, subscription));
   } catch {
