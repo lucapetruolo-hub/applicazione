@@ -46,3 +46,4 @@ decisione del 30/10 (`2026-10-30-documenti-snelli.md`) sul numero dato da noi.
   numero, mai scaricata col numero, senza numero): resta solo "1/2026" sulla
   prima. Dopo la migrazione lo schema coincide con `schema.prisma`.
 - Controllo dei tipi di sito e API e `pnpm lint` verdi.
+- Test dei permessi in locale (dati di prova con la ricevuta "1/2026"): 341 rotte, nessun problema.
