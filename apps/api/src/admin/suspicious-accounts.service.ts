@@ -4,11 +4,13 @@ import { Prisma, type PrismaClient } from "@professionisti/database";
 import {
   adminCan,
   adviseSuspiciousUser,
-  hasNewSignals,
   signalKey,
   sortSuspiciousUsers,
   type AdminRoleValue,
   type AdminSignalRole,
+  type AdminSignalArchive,
+  type AdminSignalArchiveReason,
+  type AdminSuspiciousStatus,
   type AdminSuspiciousUsers,
   type AdminUserSignal,
 } from "@professionisti/shared";
@@ -16,10 +18,24 @@ import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { loadUserSignals, personLabel } from "./user-signals";
+import { planSuspicious } from "./suspicious-archive";
 
 const CHECK_ID = "ultimo";
 /** Stessa chiave della coda "Da fare" (admin-queue.service.ts). */
 const claimKey = (userId: string) => `SUSPICIOUS_ACCOUNT:${userId}`;
+
+function archiveOf(
+  row: { archiveReason: string | null; dismissedAt: Date | null; dismissedById: string | null; dismissedNote: string | null },
+  names: Map<string, string>,
+): AdminSignalArchive | null {
+  if (!row.archiveReason) return null;
+  return {
+    reason: row.archiveReason as AdminSignalArchiveReason,
+    at: (row.dismissedAt ?? new Date()).toISOString(),
+    by: row.dismissedById ? (names.get(row.dismissedById) ?? "Admin") : null,
+    note: row.dismissedNote,
+  };
+}
 
 /**
  * Account sospetti (docs/changelog/2026-10-30-admin-persone.md): il controllo
@@ -39,34 +55,68 @@ export class SuspiciousAccountsService {
     private readonly auditLogService: AuditLogService,
   ) {}
 
-  /** Ricalcola e salva. Con `notify` avvisa i moderatori dei nuovi casi. */
+  /** Ricalcola e salva, con l'archivio (suspicious-archive.ts). Con `notify` avvisa i moderatori dei nuovi casi. */
   async check(options: { notify: boolean }, now: Date = new Date()): Promise<{ accounts: number; notified: number }> {
     const { signals, people } = await loadUserSignals(this.prisma, now);
-    const existing = await this.prisma.suspiciousAccount.findMany({ select: { userId: true, dismissedAt: true, dismissedSignals: true } });
-    const stale = existing.map((row) => row.userId).filter((id) => !signals.has(id));
-    // "Va bene così" vale finché non arriva un segnale nuovo: allora l'account torna in "Cosa fare" e l'avviso riparte.
-    const reopened = new Set(
-      existing.filter((row) => row.dismissedAt && hasNewSignals(signals.get(row.userId) ?? [], (row.dismissedSignals as string[] | null) ?? [])).map((row) => row.userId),
-    );
+    const existing = await this.prisma.suspiciousAccount.findMany({
+      select: { userId: true, signals: true, archiveReason: true, dismissedAt: true, dismissedSignals: true, lastChangedAt: true },
+    });
+    const flagged = await this.prisma.user.findMany({
+      where: { id: { in: [...signals.keys()] }, OR: [{ suspendedAt: { not: null } }, { professionalProfile: { suspendedAt: { not: null } } }] },
+      select: { id: true, suspendedAt: true },
+    });
+    const measures = new Map(flagged.map((u) => [u.id, u.suspendedAt ? ("SUSPENDED" as const) : ("PROFILE_HIDDEN" as const)]));
+    const plans = planSuspicious({
+      stored: existing.map((row) => ({
+        userId: row.userId,
+        signals: row.signals as AdminUserSignal[],
+        archiveReason: row.archiveReason as AdminSignalArchiveReason | null,
+        archivedAt: row.dismissedAt,
+        archivedKeys: (row.dismissedSignals as string[] | null) ?? [],
+        lastChangedAt: row.lastChangedAt,
+      })),
+      signals,
+      people,
+      measures,
+      now,
+    });
+
+    const leftQueue = plans.filter((p) => p.action === "ARCHIVE" || p.action === "DELETE").map((p) => claimKey(p.userId));
     await this.prisma.$transaction([
-      this.prisma.suspiciousAccount.deleteMany({ where: { userId: { in: stale } } }),
-      // Un account che non è più sospetto lascia la coda: anche il suo "Prendo io".
-      this.prisma.adminCaseClaim.deleteMany({ where: { caseKey: { in: stale.map(claimKey) } } }),
-      ...[...signals.entries()].map(([userId, list]) =>
-        this.prisma.suspiciousAccount.upsert({
-          where: { userId },
-          create: { userId, signals: list, checkedAt: now, firstSeenAt: now },
-          update: reopened.has(userId)
-            ? { signals: list, checkedAt: now, dismissedAt: null, dismissedById: null, dismissedNote: null, dismissedSignals: Prisma.DbNull, notifiedAt: null }
-            : { signals: list, checkedAt: now },
-        }),
-      ),
+      ...plans.map((plan) => {
+        switch (plan.action) {
+          case "DELETE":
+            return this.prisma.suspiciousAccount.delete({ where: { userId: plan.userId } });
+          case "ARCHIVE": {
+            const archive = { archiveReason: plan.reason, dismissedAt: now, dismissedById: null, dismissedNote: null, dismissedSignals: plan.keys };
+            return this.prisma.suspiciousAccount.upsert({
+              where: { userId: plan.userId },
+              create: { userId: plan.userId, signals: plan.signals, checkedAt: now, firstSeenAt: now, lastChangedAt: plan.lastChangedAt, ...archive },
+              update: { signals: plan.signals, checkedAt: now, lastChangedAt: plan.lastChangedAt, ...archive },
+            });
+          }
+          case "REOPEN":
+            // Un segnale nuovo: torna da gestire e l'avviso riparte.
+            return this.prisma.suspiciousAccount.update({
+              where: { userId: plan.userId },
+              data: { signals: plan.signals, checkedAt: now, lastChangedAt: plan.lastChangedAt, archiveReason: null, dismissedAt: null, dismissedById: null, dismissedNote: null, dismissedSignals: Prisma.DbNull, notifiedAt: null },
+            });
+          default:
+            return this.prisma.suspiciousAccount.upsert({
+              where: { userId: plan.userId },
+              create: { userId: plan.userId, signals: plan.signals, checkedAt: now, firstSeenAt: now, lastChangedAt: plan.lastChangedAt },
+              update: { signals: plan.signals, checkedAt: now, lastChangedAt: plan.lastChangedAt },
+            });
+        }
+      }),
+      // Un account che lascia la coda (archiviato o cancellato) porta via anche il suo "Prendo io".
+      this.prisma.adminCaseClaim.deleteMany({ where: { caseKey: { in: leftQueue } } }),
       this.prisma.suspiciousAccountsCheck.upsert({ where: { id: CHECK_ID }, create: { id: CHECK_ID, checkedAt: now }, update: { checkedAt: now } }),
     ]);
 
     let notified = 0;
     if (options.notify) {
-      const pending = await this.prisma.suspiciousAccount.findMany({ where: { notifiedAt: null, dismissedAt: null }, select: { userId: true, signals: true } });
+      const pending = await this.prisma.suspiciousAccount.findMany({ where: { notifiedAt: null, archiveReason: null }, select: { userId: true, signals: true } });
       const toTell = pending
         .map((row) => {
           const person = people.get(row.userId);
@@ -96,26 +146,34 @@ export class SuspiciousAccountsService {
     return this.check({ notify: true }, now);
   }
 
-  /** Elenco per Persone → Account sospetti, prima i consigli più urgenti. */
+  /** Elenco per Persone → Account sospetti, prima i consigli più urgenti, con la scheda di ognuno. */
   async list(): Promise<AdminSuspiciousUsers> {
     const [rows, last] = await Promise.all([
-      this.prisma.suspiciousAccount.findMany({ select: { userId: true, signals: true, firstSeenAt: true, dismissedAt: true, dismissedById: true, dismissedNote: true } }),
+      this.prisma.suspiciousAccount.findMany({
+        select: { userId: true, signals: true, firstSeenAt: true, archiveReason: true, dismissedAt: true, dismissedById: true, dismissedNote: true },
+      }),
       this.prisma.suspiciousAccountsCheck.findUnique({ where: { id: CHECK_ID } }),
     ]);
     // Un account chiuso o segnato di prova dopo il controllo non si mostra più.
     const users = await this.prisma.user.findMany({
       where: { id: { in: rows.map((row) => row.userId) }, deletedAt: null, testAccountAt: null },
-      select: { id: true, role: true, name: true, surname: true, email: true, professionalProfile: { select: { businessName: true } } },
+      select: { id: true, role: true, name: true, surname: true, email: true, suspendedAt: true, professionalProfile: { select: { businessName: true, suspendedAt: true } } },
     });
     const byId = new Map(users.map((u) => [u.id, u]));
-    const dismissers = await this.adminNames(rows.flatMap((row) => (row.dismissedById ? [row.dismissedById] : [])));
+    const names = await this.adminNames(rows.flatMap((row) => (row.dismissedById ? [row.dismissedById] : [])));
     const list = rows.flatMap((row) => {
       const user = byId.get(row.userId);
       if (!user) return [];
       const signals = row.signals as AdminUserSignal[];
       const role = user.role as AdminSignalRole;
-      const dismissed = row.dismissedAt ? { at: row.dismissedAt.toISOString(), by: dismissers.get(row.dismissedById ?? "") ?? "Admin", note: row.dismissedNote ?? "" } : null;
-      return [{ id: user.id, label: personLabel(user), role, signals, advice: adviseSuspiciousUser(role, signals), firstSeenAt: row.firstSeenAt.toISOString(), dismissed }];
+      const advice = adviseSuspiciousUser(role, signals);
+      let archived = archiveOf(row, names);
+      // Una misura presa dopo il controllo del mattino conta subito, senza aspettare domani.
+      if (!archived && (user.suspendedAt || user.professionalProfile?.suspendedAt)) {
+        archived = { reason: user.suspendedAt ? "SUSPENDED" : "PROFILE_HIDDEN", at: (user.suspendedAt ?? user.professionalProfile?.suspendedAt ?? new Date()).toISOString(), by: null, note: null };
+      }
+      const status: AdminSuspiciousStatus = archived ? "ARCHIVED" : advice.level === "BASSA" ? "NO_ACTION" : "TODO";
+      return [{ id: user.id, label: personLabel(user), role, signals, advice, firstSeenAt: row.firstSeenAt.toISOString(), status, archived }];
     });
     return { checkedAt: last?.checkedAt.toISOString() ?? null, users: sortSuspiciousUsers(list) };
   }
@@ -126,12 +184,11 @@ export class SuspiciousAccountsService {
     return new Map(admins.map((a) => [a.id, [a.name, a.surname].filter(Boolean).join(" ") || a.email || "Admin"]));
   }
 
-  /** Stato di "Va bene così" per la scheda della persona. */
-  async dismissalOf(userId: string): Promise<{ at: string; by: string; note: string } | null> {
-    const row = await this.prisma.suspiciousAccount.findUnique({ where: { userId }, select: { dismissedAt: true, dismissedById: true, dismissedNote: true } });
-    if (!row?.dismissedAt) return null;
-    const names = await this.adminNames(row.dismissedById ? [row.dismissedById] : []);
-    return { at: row.dismissedAt.toISOString(), by: names.get(row.dismissedById ?? "") ?? "Admin", note: row.dismissedNote ?? "" };
+  /** Archivio per la scheda della persona. */
+  async archiveOfUser(userId: string): Promise<AdminSignalArchive | null> {
+    const row = await this.prisma.suspiciousAccount.findUnique({ where: { userId }, select: { archiveReason: true, dismissedAt: true, dismissedById: true, dismissedNote: true } });
+    if (!row) return null;
+    return archiveOf(row, await this.adminNames(row.dismissedById ? [row.dismissedById] : []));
   }
 
   /**
@@ -148,7 +205,7 @@ export class SuspiciousAccountsService {
     await this.prisma.$transaction([
       this.prisma.suspiciousAccount.update({
         where: { userId },
-        data: { dismissedAt: new Date(), dismissedById: adminUserId, dismissedNote: text, dismissedSignals: keys },
+        data: { archiveReason: "OK", dismissedAt: new Date(), dismissedById: adminUserId, dismissedNote: text, dismissedSignals: keys },
       }),
       // Esce dalla coda della Home: il "Prendo io" non resta appeso a un caso chiuso.
       this.prisma.adminCaseClaim.deleteMany({ where: { caseKey: claimKey(userId) } }),
@@ -159,10 +216,10 @@ export class SuspiciousAccountsService {
   /** Toglie il "Va bene così": l'account torna in "Cosa fare". */
   async undismiss(adminUserId: string, userId: string): Promise<void> {
     const result = await this.prisma.suspiciousAccount.updateMany({
-      where: { userId, dismissedAt: { not: null } },
-      data: { dismissedAt: null, dismissedById: null, dismissedNote: null, dismissedSignals: Prisma.DbNull },
+      where: { userId, archiveReason: { not: null } },
+      data: { archiveReason: null, dismissedAt: null, dismissedById: null, dismissedNote: null, dismissedSignals: Prisma.DbNull, lastChangedAt: new Date() },
     });
-    if (result.count === 0) throw new NotFoundException("Questo account non era segnato \"Va bene così\".");
+    if (result.count === 0) throw new NotFoundException("Questo account non è in archivio.");
     await this.auditLogService.record({ entityType: "User", entityId: userId, fieldName: "suspiciousDismissed", newValue: "REOPENED", changedByUserId: adminUserId });
   }
 }

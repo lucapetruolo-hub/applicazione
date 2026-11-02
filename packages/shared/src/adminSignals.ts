@@ -167,11 +167,39 @@ export type AdminSuspiciousUser = {
   advice: AdminSignalAdvice;
   /** Prima volta che il controllo l'ha trovato. */
   firstSeenAt: string;
-  /** "Va bene così" di un admin; torna \`null\` quando il controllo trova un segnale nuovo. */
-  dismissed: AdminSignalDismissal | null;
+  /** Scheda della pagina: da gestire, nessuna azione o archiviato. */
+  status: AdminSuspiciousStatus;
+  archived: AdminSignalArchive | null;
 };
 
-export type AdminSignalDismissal = { at: string; by: string; note: string };
+/**
+ * Archivio degli account sospetti (richiesta di Luca del 02/11/2026: "mica
+ * sono sempre lì a fare numero in modo disordinato"). Un account archiviato
+ * torna "Da gestire" da solo se compare un segnale nuovo.
+ */
+export type AdminSuspiciousStatus = "TODO" | "NO_ACTION" | "ARCHIVED";
+export type AdminSignalArchiveReason = "OK" | "SUSPENDED" | "PROFILE_HIDDEN" | "RESOLVED" | "EXPIRED";
+export const ADMIN_SIGNAL_ARCHIVE_LABEL: Record<AdminSignalArchiveReason, string> = {
+  OK: "Va bene così",
+  SUSPENDED: "Gestito: account sospeso",
+  PROFILE_HIDDEN: "Gestito: profilo tolto dalla ricerca",
+  RESOLVED: "Segnali spariti",
+  EXPIRED: "Nessuna novità per 90 giorni",
+};
+/** "Nessuna azione" senza segnali nuovi esce da sola dopo questi giorni. */
+export const SUSPICIOUS_NO_ACTION_EXPIRY_DAYS = 90;
+/** Gli archiviati si tengono per i precedenti e i controlli, poi si cancellano. */
+export const SUSPICIOUS_ARCHIVE_KEEP_DAYS = 730;
+
+export type AdminSignalArchive = {
+  reason: AdminSignalArchiveReason;
+  at: string;
+  /** Admin che l'ha deciso; `null` se l'ha fatto il controllo del mattino. */
+  by: string | null;
+  note: string | null;
+};
+/** @deprecated nome vecchio, stesso dato. */
+export type AdminSignalDismissal = AdminSignalArchive;
 
 /** Chiave di un segnale per "Va bene così": se cambia il dettaglio (es. un messaggio in più) è un segnale nuovo. */
 export function signalKey(signal: Pick<AdminUserSignal, "kind" | "detail">): string {

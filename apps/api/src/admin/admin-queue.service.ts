@@ -81,12 +81,13 @@ export class AdminQueueService {
         : [],
       can("CLOSED_ZONE") ? this.prisma.generalRequestBlock.findMany({ where: { reopenedAt: null }, include: { category: { select: { label: true } } } }) : [],
       can("JOB_ISSUE") ? this.prisma.jobIssue.findMany({ where: { status: "CHAT" }, include: { booking: { include: bookingInclude } } }) : [],
-      can("SUSPICIOUS_ACCOUNT") ? this.prisma.suspiciousAccount.findMany({ where: { dismissedAt: null }, select: { userId: true, signals: true, firstSeenAt: true } }) : [],
+      can("SUSPICIOUS_ACCOUNT") ? this.prisma.suspiciousAccount.findMany({ where: { archiveReason: null }, select: { userId: true, signals: true, firstSeenAt: true } }) : [],
     ]);
     // Account sospetti con qualcosa da fare (non "Nessuna azione" né "Va bene così"), con il consiglio già scritto.
     const suspiciousUsers = suspicious.length
       ? await this.prisma.user.findMany({
-          where: { id: { in: suspicious.map((row) => row.userId) }, deletedAt: null, testAccountAt: null },
+          // Una misura già presa (account sospeso, profilo tolto dalla ricerca) toglie il caso dalla coda subito.
+          where: { id: { in: suspicious.map((row) => row.userId) }, deletedAt: null, testAccountAt: null, suspendedAt: null, NOT: { professionalProfile: { suspendedAt: { not: null } } } },
           select: { id: true, role: true, name: true, surname: true, email: true, professionalProfile: { select: { businessName: true } } },
         })
       : [];

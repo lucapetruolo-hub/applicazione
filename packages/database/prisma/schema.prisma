@@ -2897,6 +2897,14 @@ model SuspiciousAccount {
   dismissedById    String?
   dismissedNote    String?
   dismissedSignals Json?
+  // Archivio (docs/changelog/2026-10-30-admin-persone.md, 02/11/2026): perché
+  // l'account è in "Archiviati". OK = "Va bene così" di un admin; SUSPENDED e
+  // PROFILE_HIDDEN = gestito con una misura; RESOLVED = i segnali sono spariti
+  // (es. recensione nascosta); EXPIRED = "Nessuna azione" senza novità per 90
+  // giorni. Le righe archiviate si cancellano dopo 2 anni.
+  archiveReason    String?
+  // Ultima volta che i segnali sono cambiati (per i 90 giorni).
+  lastChangedAt    DateTime  @default(now())
 
   @@map("suspicious_accounts")
 }

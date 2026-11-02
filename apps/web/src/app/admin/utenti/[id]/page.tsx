@@ -8,6 +8,7 @@ import {
   ADMIN_ROLE_DESCRIPTION,
   ADMIN_ROLE_LABEL,
   ADMIN_SIGNAL_ADVICE_LEVEL_LABEL,
+  ADMIN_SIGNAL_ARCHIVE_LABEL,
   ADMIN_USER_SIGNAL_LABEL,
   CONTENT_REPORT_REASONS,
   CONTENT_REPORT_TARGET_LABEL,
@@ -182,11 +183,12 @@ function UserDetail() {
               ) : null}
             </XStack>
           ) : null}
-          {detail.signalsDismissed ? (
+          {detail.signalsArchived ? (
             <XStack gap="$2" alignItems="center" flexWrap="wrap">
-              <AdminPill tone="ok">Va bene così</AdminPill>
+              <AdminPill tone="ok">{ADMIN_SIGNAL_ARCHIVE_LABEL[detail.signalsArchived.reason]}</AdminPill>
               <Text color={brand.grafite} flexShrink={1}>
-                {detail.signalsDismissed.by}, {formatAdminDate(detail.signalsDismissed.at)}: {detail.signalsDismissed.note}
+                {[detail.signalsArchived.by, formatAdminDate(detail.signalsArchived.at)].filter(Boolean).join(", ")}
+                {detail.signalsArchived.note ? `: ${detail.signalsArchived.note}` : ""}
               </Text>
               {canModerate && token ? (
                 <button
@@ -199,7 +201,7 @@ function UserDetail() {
                       .catch((err) => setError(errorMessage(err)));
                   }}
                 >
-                  Togli &quot;Va bene così&quot;
+                  Riapri
                 </button>
               ) : null}
             </XStack>

@@ -56,7 +56,7 @@ import type {
   AdminUserSignal,
   AdminSuspiciousUsers,
   AdminSignalAdvice,
-  AdminSignalDismissal,
+  AdminSignalArchive,
   AdminModerateInput,
   NotificationPreferences,
   ProfessionalLead,
@@ -456,8 +456,8 @@ export type AdminUserDetail = {
   signals: AdminUserSignal[];
   /** Cosa conviene fare, dal controllo del mattino; `null` se nessun segnale. */
   advice: AdminSignalAdvice | null;
-  /** "Va bene così" di un admin sui segnali, finché non arriva un segnale nuovo. */
-  signalsDismissed: AdminSignalDismissal | null;
+  /** Archivio dei segnali ("Va bene così", gestito, spariti, scaduti), finché non arriva un segnale nuovo. */
+  signalsArchived: AdminSignalArchive | null;
   requests: { id: string; categoryLabel: string; city: string; description: string; status: string; hidden: boolean; createdAt: string }[];
   jobs: {
     id: string;

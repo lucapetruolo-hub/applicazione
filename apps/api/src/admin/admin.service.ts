@@ -2,7 +2,7 @@ import { ACTION_SHORT_LABEL, auditLabel } from "./audit-label";
 import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, type AdminSignupFunnel, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES, ADMIN_BOOKING_STATUS_LABEL, ADMIN_REQUEST_STATUS_LABEL, contentReportReason, type AdminModerateInput, type AdminSignalRole, type AdminUserSignal, adviseSuspiciousUser, type ProfessionalStatusKey } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, type AdminSignupFunnel, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES, ADMIN_BOOKING_STATUS_LABEL, ADMIN_REQUEST_STATUS_LABEL, contentReportReason, type AdminModerateInput, type AdminSignalArchiveReason, type AdminSignalRole, type AdminUserSignal, adviseSuspiciousUser, type ProfessionalStatusKey } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { PUBLIC_VISIBILITY_SELECT } from "../professional-fiscal/public-visibility";
 import { bookingSearchWhere, userSearchWhere } from "./admin-search";
@@ -393,7 +393,7 @@ export class AdminService {
         ? this.prisma.contentReport.findMany({ where: { targetType: "PROFESSIONAL_PROFILE", targetId: profileId }, orderBy: { createdAt: "desc" }, take: 50 })
         : Promise.resolve([]),
       this.prisma.auditLog.findMany({ where: { entityType: "User", entityId: userId }, orderBy: { createdAt: "desc" }, take: 50 }),
-      this.prisma.suspiciousAccount.findUnique({ where: { userId }, select: { signals: true, dismissedAt: true, dismissedNote: true, dismissedById: true } }),
+      this.prisma.suspiciousAccount.findUnique({ where: { userId }, select: { signals: true, archiveReason: true, dismissedAt: true, dismissedNote: true, dismissedById: true } }),
     ]);
 
     // Segnalazioni che riguardano questa persona: decise su un suo contenuto
@@ -527,7 +527,14 @@ export class AdminService {
       },
       signals: (signalRow?.signals as AdminUserSignal[] | undefined) ?? [],
       advice: signalRow ? adviseSuspiciousUser(user.role as AdminSignalRole, signalRow.signals as AdminUserSignal[]) : null,
-      signalsDismissed: signalRow?.dismissedAt ? { at: signalRow.dismissedAt.toISOString(), by: await this.adminName(signalRow.dismissedById), note: signalRow.dismissedNote ?? "" } : null,
+      signalsArchived: signalRow?.archiveReason
+        ? {
+            reason: signalRow.archiveReason as AdminSignalArchiveReason,
+            at: (signalRow.dismissedAt ?? new Date()).toISOString(),
+            by: signalRow.dismissedById ? await this.adminName(signalRow.dismissedById) : null,
+            note: signalRow.dismissedNote,
+          }
+        : null,
       requests: requests.map((r) => ({
         id: r.id,
         categoryLabel: r.category.label,

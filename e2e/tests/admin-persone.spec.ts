@@ -134,13 +134,16 @@ test("Persone: ricerca, account chiuso, recensione nascosta e rimessa, profilo f
   const chatTodo = todo.getByRole("listitem").filter({ has: page.getByRole("link", { name: `Elettrica Fili ${stamp}` }) });
   await expect(chatTodo.getByText("Da guardare")).toBeVisible();
   await expect(chatTodo.getByText(/Ha scritto telefono, email o link in chat prima che il cliente accettasse/)).toBeVisible();
-  await expect(rows.filter({ hasText: `Elettrica Fili ${stamp}` }).getByText(`1 messaggio con Gina Russo${stamp}`, { exact: false })).toBeVisible();
-  // Gina ha lo stesso telefono di un cliente e del professionista e ha scritto "WhatsApp": nessuna azione, solo nella tabella.
-  await expect(todo.getByRole("link", { name: `Gina Russo${stamp}` })).toHaveCount(0);
-  await expect(rows.filter({ hasText: `Gina Russo${stamp}` }).getByText("Nessuna azione", { exact: true })).toBeVisible();
+  await expect(chatTodo.getByText(`1 messaggio con Gina Russo${stamp}`, { exact: false })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   const axeTodo = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   expect(axeTodo.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+  // Gina ha lo stesso telefono di un cliente e del professionista e ha scritto "WhatsApp": nessuna azione, nella sua scheda.
+  await expect(todo.getByRole("link", { name: `Gina Russo${stamp}` })).toHaveCount(0);
+  await page.getByRole("button", { name: /^Nessuna azione \(/ }).click();
+  await expect(page).toHaveURL(/vista=nessuna-azione/);
+  await expect(rows.filter({ hasText: `Gina Russo${stamp}` }).getByText("Nessuna azione", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /^Da gestire \(/ }).click();
   // Il link porta dritto alla scheda giusta.
   await veraTodo.getByRole("link", { name: `Vera Russo${stamp}` }).click();
   await expect(page).toHaveURL(new RegExp(`/admin/utenti/${ids.client}\\?scheda=recensioni`));
@@ -218,6 +221,13 @@ test("Persone: ricerca, account chiuso, recensione nascosta e rimessa, profilo f
   await show.getByLabel("Motivo").fill("Ha corretto il profilo.");
   await show.getByRole("button", { name: "Rimetti nella ricerca" }).click();
   await expect(page.getByText("Nella ricerca").first()).toBeVisible();
+  // Una misura presa archivia il caso da sola, come "Gestito".
+  await prisma.professionalProfile.update({ where: { userId: ids.pro }, data: { suspendedAt: new Date() } });
+  await page.goto("/admin/account-sospetti?vista=archiviati");
+  await page.getByRole("button", { name: "Controlla ora" }).click();
+  await expect(rows.filter({ hasText: `Idraulica Tubi ${stamp}` }).getByText("Gestito: profilo tolto dalla ricerca", { exact: true })).toBeVisible();
+  await expect.poll(async () => (await prisma.suspiciousAccount.findUniqueOrThrow({ where: { userId: ids.pro } })).archiveReason).toBe("PROFILE_HIDDEN");
+  await prisma.professionalProfile.update({ where: { userId: ids.pro }, data: { suspendedAt: null } });
 
   // Gli account da fare sono anche nella coda "Da fare" della Home.
   await page.goto("/admin");
@@ -228,7 +238,7 @@ test("Persone: ricerca, account chiuso, recensione nascosta e rimessa, profilo f
   await veraQueueRow.getByRole("button", { name: "Prendo io" }).click();
   await expect(veraQueueRow.getByText("Preso da te")).toBeVisible();
 
-  // "Va bene così": motivo obbligatorio, esce da "Cosa fare" e dalla Home, resta in tabella.
+  // "Va bene così": motivo obbligatorio, esce da "Cosa fare" e dalla Home, va negli archiviati.
   await page.goto("/admin/account-sospetti");
   const veraItem = page.getByRole("region", { name: "Cosa fare" }).getByRole("listitem").filter({ has: page.getByRole("link", { name: `Vera Russo${stamp}` }) });
   await veraItem.getByRole("button", { name: `Va bene così: Vera Russo${stamp}` }).click();
@@ -239,18 +249,22 @@ test("Persone: ricerca, account chiuso, recensione nascosta e rimessa, profilo f
   await okDialog.getByRole("button", { name: "Va bene così" }).click();
   await expect(okDialog).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Cosa fare" }).getByRole("link", { name: `Vera Russo${stamp}` })).toHaveCount(0);
+  await page.getByRole("button", { name: /^Archiviati \(/ }).click();
+  await page.getByRole("searchbox", { name: "Cerca negli archiviati" }).fill("controllato a mano");
   await expect(rows.filter({ hasText: `Vera Russo${stamp}` }).getByText("Va bene così", { exact: true })).toBeVisible();
-  expect((await prisma.suspiciousAccount.findUniqueOrThrow({ where: { userId: ids.client } })).dismissedAt).not.toBeNull();
+  await page.getByRole("searchbox", { name: "Cerca negli archiviati" }).fill("parola che non c'è");
+  await expect(rows.filter({ hasText: `Vera Russo${stamp}` })).toHaveCount(0);
+  expect((await prisma.suspiciousAccount.findUniqueOrThrow({ where: { userId: ids.client } })).archiveReason).toBe("OK");
   expect(await prisma.adminCaseClaim.count({ where: { caseKey: `SUSPICIOUS_ACCOUNT:${ids.client}` } })).toBe(0);
   await page.goto("/admin");
   await expect(page.getByRole("heading").first()).toBeVisible();
   await expect(page.getByText(`Account sospetto: Vera Russo${stamp}`)).toHaveCount(0);
-  // Dalla scheda si toglie, e torna da fare.
+  // Dalla scheda si riapre, e torna da fare.
   await page.goto(`/admin/utenti/${ids.client}`);
   await expect(page.getByText(/Prova automatica: controllato a mano/)).toBeVisible();
-  await page.getByRole("button", { name: 'Togli "Va bene così"' }).click();
+  await page.getByRole("button", { name: "Riapri" }).click();
   await expect(page.getByRole("button", { name: "Va bene così" })).toBeVisible();
-  expect((await prisma.suspiciousAccount.findUniqueOrThrow({ where: { userId: ids.client } })).dismissedAt).toBeNull();
+  expect((await prisma.suspiciousAccount.findUniqueOrThrow({ where: { userId: ids.client } })).archiveReason).toBeNull();
 
   await context.close();
 });

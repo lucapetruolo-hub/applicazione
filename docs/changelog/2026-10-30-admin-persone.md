@@ -191,3 +191,28 @@ scrive il suo numero prima dell'accettazione ("Da guardare", "1 messaggio con
 …"), la cliente risponde "su WhatsApp" (nessuna azione), un messaggio automatico
 con un numero non conta; e controlla che "Va bene così" tolga il "Prendo io".
 
+
+**Archivio degli account sospetti** (Luca, 02/11/2026: "le cose da guardare si
+archiviano o restano lì a fare numero?", poi "fai tutti i punti"). La pagina ha
+tre schede (`?vista=`): "Da gestire" (solo "Da fare subito" e "Da guardare",
+con il consiglio), "Nessuna azione" e "Archiviati". Il controllo del mattino
+(`apps/api/src/admin/suspicious-archive.ts`, funzione pura con i test) archivia
+da solo:
+- come "Gestito: account sospeso" o "Gestito: profilo tolto dalla ricerca"
+  quando la misura è presa (finché resta in vigore non si riapre);
+- come "Segnali spariti" quando non c'è più niente (es. recensione nascosta),
+  tenendo gli ultimi segnali per i precedenti;
+- come "Nessuna novità per 90 giorni" i casi "Nessuna azione" fermi da 90
+  giorni (`SUSPICIOUS_NO_ACTION_EXPIRY_DAYS`).
+Un archiviato torna in "Da gestire" con un segnale nuovo; "Riapri" lo fa a mano,
+dalla pagina o dalla scheda della persona (prima "Togli "Va bene così""). Gli
+archiviati si cercano per nome o motivo e si cancellano dopo 2 anni senza
+segnali (`SUSPICIOUS_ARCHIVE_KEEP_DAYS`). Archiviando si toglie anche il
+"Prendo io". Migrazione `20261102110000_account_sospetti_archivio`
+(`archiveReason`, `lastChangedAt`; i "Va bene così" già dati diventano `OK`).
+
+**Verifica:** 7 test unitari dell'archivio (misura, segnali spariti, 90 giorni,
+riapertura con segnale nuovo, nessuna riapertura con la misura in vigore,
+cancellazione dopo 2 anni); `admin-persone.spec.ts` su telefono e computer
+(Gina in "Nessuna azione", profilo tolto dalla ricerca archiviato come
+"Gestito", Vera negli archiviati trovata con la ricerca, "Riapri" dalla scheda).
