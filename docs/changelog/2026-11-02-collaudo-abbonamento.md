@@ -56,3 +56,9 @@
   0 €), recupero delle fatture mancate, riga del Checkout, portale solo
   carta creato una volta e ritrovato; frase del tetto aggiornata.
 - Test dell'API (1142) e di shared verdi; typecheck e lint di API e sito puliti.
+
+**Dopo, su richiesta di Luca (2/11)**: nei Termini, punto "Chi compare",
+"mese gratuito finito senza un livello scelto" diventa "dal lancio: mesi
+gratis senza la carta o finiti senza un livello", come le regole in vigore
+(offerta dei mesi gratis con la carta). Solo la parola, nessuna regola
+nuova: nessuna versione nuova dei Termini.
