@@ -24,4 +24,6 @@
 
 **Ordine pronto in registrazione** (02/11, Luca: "Effettua solo la 3"): `/registrati?ruolo=professionista` chiede l'ordine delle tessere (`prefetchCategoryOrder(undefined, "professionals")`) appena si apre la pagina, così al passo "Che lavori fai?" le tessere compaiono subito, senza le tessere grigie di attesa. Scartata da Luca l'ultima scheda a tutta riga quando resta da sola.
 
+**Menu "Azioni" da tastiera** (correzione trovata dai controlli di questa PR): la prova `e2e/tests/tastiera.spec.ts` ("il cliente apre la scheda e arriva ad Accetta preventivo con la sola tastiera") falliva a volte su telefono. In `CardActionsMenu` il fuoco portato sulla prima voce all'apertura poteva far scorrere la pagina, e lo scroll chiude la tendina: il fuoco tornava sul pulsante. Ora `focus({ preventScroll: true })` (la tendina ha posizione fissa ed è già nello schermo).
+
 **Verifica**: lint e typecheck di `apps/web` e `apps/api`, test di `getCategoryProfessionalCounts` (una volta per categoria, i più scelti prima, filtri pubblici, raggio della città con ritorno a tutta Italia, account di prova esclusi solo dal lancio), 1067 test dell'API verdi, rotta aggiunta alle pubbliche in `access-policy.mjs`. Provato nel browser a 390 e 320 px (chiuso e aperto) e a 1366 px; foto prima e dopo in `/mnt/project-files/anteprime/categorie-telefono/`.
