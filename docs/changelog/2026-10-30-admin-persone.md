@@ -181,3 +181,13 @@ messaggi, ritorno dopo sospensione, usa e getta con sottodominio, ondata 7 contr
 versione di PostgreSQL), prova `admin-persone.spec.ts` su telefono e computer
 ("Va bene così" senza motivo: errore; poi fuori da "Cosa fare" e dalla Home,
 "Togli" dalla scheda), `admin-da-fare.spec.ts` verde.
+
+**Ultime due migliorie** (Luca, 02/11/2026, "effettua le 2 migliorie"):
+"Prendo io" su un account sospetto si toglie da solo con "Va bene così" e
+quando il controllo non lo trova più (nella coda non restano casi chiusi
+assegnati a qualcuno); "Da fare subito" in giallo nella coda. La prova
+`admin-persone.spec.ts` ora passa anche dalla chat vera: un professionista
+scrive il suo numero prima dell'accettazione ("Da guardare", "1 messaggio con
+…"), la cliente risponde "su WhatsApp" (nessuna azione), un messaggio automatico
+con un numero non conta; e controlla che "Va bene così" tolga il "Prendo io".
+

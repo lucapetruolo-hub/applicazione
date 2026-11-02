@@ -13,7 +13,7 @@ import { testToken } from "../fixtures/preventivi";
  */
 const prisma = new PrismaClient();
 const stamp = Date.now();
-const ids = { admin: "", client: "", twin: "", pro: "", profile: "", review: "" };
+const ids = { admin: "", client: "", twin: "", pro: "", profile: "", review: "", chatPro: "" };
 const closedEmail = `chiuso-${stamp}@test.it`;
 const phone = `+39 345 ${String(stamp).slice(-7)}`;
 
@@ -42,7 +42,7 @@ test.beforeAll(async () => {
   ids.client = client.id;
   const twin = await user({ role: "CLIENT", key: "gemella", name: "Gina", surname: `Russo${stamp}` });
   ids.twin = twin.id;
-  await prisma.guidedRequest.create({
+  const twinRequest = await prisma.guidedRequest.create({
     data: { clientId: twin.id, categoryId: category.id, description: "Rubinetto che gocciola.", city: "Latina", recipientPhone: phone.replace(/\s/g, "") },
   });
 
@@ -63,6 +63,22 @@ test.beforeAll(async () => {
   });
   // Scritta subito dopo l'iscrizione: segnale "recensione scritta poco dopo l'iscrizione".
   ids.review = (await prisma.review.create({ data: { bookingId: booking.id, rating: 5, comment: `Bravissimo ${stamp}` } })).id;
+
+  // Un altro professionista scrive il suo numero in chat prima che Gina accetti: "Da guardare".
+  // Gina risponde "scrivimi su WhatsApp": per il cliente nessuna azione.
+  const chatPro = await user({ role: "PROFESSIONAL", key: "pro-chat", name: "Leo", surname: "Fili" });
+  const chatProfile = await prisma.professionalProfile.create({
+    data: { userId: chatPro.id, categoryId: category.id, businessName: `Elettrica Fili ${stamp}`, city: "Latina", latitude: 41.4677, longitude: 12.9036 },
+  });
+  ids.chatPro = chatPro.id;
+  await prisma.conversationEvent.createMany({
+    data: [
+      { guidedRequestId: twinRequest.id, professionalProfileId: chatProfile.id, actor: "PROFESSIONAL", message: "Mi chiami pure al 347 555 1234 così ci accordiamo." },
+      { guidedRequestId: twinRequest.id, professionalProfileId: chatProfile.id, actor: "CLIENT", message: "Va bene, ci sentiamo su WhatsApp." },
+      // Un messaggio automatico non conta mai.
+      { guidedRequestId: twinRequest.id, professionalProfileId: chatProfile.id, actor: "SYSTEM", message: "Preventivo inviato: 347 555 1234", automatic: true },
+    ],
+  });
 
   // Account chiuso: l'email non c'è più, resta l'impronta (la mette il server alla chiusura).
   const closed = await user({ role: "CLIENT", key: "da-chiudere", name: "Carlo", surname: "Chiuso" });
@@ -114,7 +130,12 @@ test("Persone: ricerca, account chiuso, recensione nascosta e rimessa, profilo f
   await expect(veraTodo.getByText("Da fare subito")).toBeVisible();
   await expect(veraTodo.getByText(`Nascondi la sua recensione a Idraulica Tubi ${stamp}`)).toBeVisible();
   await expect(todo.getByRole("link", { name: `Idraulica Tubi ${stamp}` })).toBeVisible();
-  // Gina ha solo lo stesso telefono di un cliente e del professionista: nessuna azione, solo nella tabella.
+  // Contatti in chat prima dell'accettazione: il professionista è da guardare, con chi e quanti messaggi.
+  const chatTodo = todo.getByRole("listitem").filter({ has: page.getByRole("link", { name: `Elettrica Fili ${stamp}` }) });
+  await expect(chatTodo.getByText("Da guardare")).toBeVisible();
+  await expect(chatTodo.getByText(/Ha scritto telefono, email o link in chat prima che il cliente accettasse/)).toBeVisible();
+  await expect(rows.filter({ hasText: `Elettrica Fili ${stamp}` }).getByText(`1 messaggio con Gina Russo${stamp}`, { exact: false })).toBeVisible();
+  // Gina ha lo stesso telefono di un cliente e del professionista e ha scritto "WhatsApp": nessuna azione, solo nella tabella.
   await expect(todo.getByRole("link", { name: `Gina Russo${stamp}` })).toHaveCount(0);
   await expect(rows.filter({ hasText: `Gina Russo${stamp}` }).getByText("Nessuna azione", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -202,6 +223,11 @@ test("Persone: ricerca, account chiuso, recensione nascosta e rimessa, profilo f
   await page.goto("/admin");
   await expect(page.getByText(`Account sospetto: Vera Russo${stamp}`)).toBeVisible();
 
+  // "Prendo io" sul caso: con "Va bene così" si toglie da solo.
+  const veraQueueRow = page.locator("table.admin-queue tbody tr").filter({ hasText: `Account sospetto: Vera Russo${stamp}` });
+  await veraQueueRow.getByRole("button", { name: "Prendo io" }).click();
+  await expect(veraQueueRow.getByText("Preso da te")).toBeVisible();
+
   // "Va bene così": motivo obbligatorio, esce da "Cosa fare" e dalla Home, resta in tabella.
   await page.goto("/admin/account-sospetti");
   const veraItem = page.getByRole("region", { name: "Cosa fare" }).getByRole("listitem").filter({ has: page.getByRole("link", { name: `Vera Russo${stamp}` }) });
@@ -215,6 +241,7 @@ test("Persone: ricerca, account chiuso, recensione nascosta e rimessa, profilo f
   await expect(page.getByRole("region", { name: "Cosa fare" }).getByRole("link", { name: `Vera Russo${stamp}` })).toHaveCount(0);
   await expect(rows.filter({ hasText: `Vera Russo${stamp}` }).getByText("Va bene così", { exact: true })).toBeVisible();
   expect((await prisma.suspiciousAccount.findUniqueOrThrow({ where: { userId: ids.client } })).dismissedAt).not.toBeNull();
+  expect(await prisma.adminCaseClaim.count({ where: { caseKey: `SUSPICIOUS_ACCOUNT:${ids.client}` } })).toBe(0);
   await page.goto("/admin");
   await expect(page.getByRole("heading").first()).toBeVisible();
   await expect(page.getByText(`Account sospetto: Vera Russo${stamp}`)).toHaveCount(0);

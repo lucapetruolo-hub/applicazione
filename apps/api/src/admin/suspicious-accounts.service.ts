@@ -18,6 +18,8 @@ import { AuditLogService } from "../audit-log/audit-log.service";
 import { loadUserSignals, personLabel } from "./user-signals";
 
 const CHECK_ID = "ultimo";
+/** Stessa chiave della coda "Da fare" (admin-queue.service.ts). */
+const claimKey = (userId: string) => `SUSPICIOUS_ACCOUNT:${userId}`;
 
 /**
  * Account sospetti (docs/changelog/2026-10-30-admin-persone.md): il controllo
@@ -48,6 +50,8 @@ export class SuspiciousAccountsService {
     );
     await this.prisma.$transaction([
       this.prisma.suspiciousAccount.deleteMany({ where: { userId: { in: stale } } }),
+      // Un account che non è più sospetto lascia la coda: anche il suo "Prendo io".
+      this.prisma.adminCaseClaim.deleteMany({ where: { caseKey: { in: stale.map(claimKey) } } }),
       ...[...signals.entries()].map(([userId, list]) =>
         this.prisma.suspiciousAccount.upsert({
           where: { userId },
@@ -141,10 +145,14 @@ export class SuspiciousAccountsService {
     const row = await this.prisma.suspiciousAccount.findUnique({ where: { userId }, select: { signals: true } });
     if (!row) throw new NotFoundException("Questo account non ha segnali da controllare.");
     const keys = (row.signals as AdminUserSignal[]).map(signalKey);
-    await this.prisma.suspiciousAccount.update({
-      where: { userId },
-      data: { dismissedAt: new Date(), dismissedById: adminUserId, dismissedNote: text, dismissedSignals: keys },
-    });
+    await this.prisma.$transaction([
+      this.prisma.suspiciousAccount.update({
+        where: { userId },
+        data: { dismissedAt: new Date(), dismissedById: adminUserId, dismissedNote: text, dismissedSignals: keys },
+      }),
+      // Esce dalla coda della Home: il "Prendo io" non resta appeso a un caso chiuso.
+      this.prisma.adminCaseClaim.deleteMany({ where: { caseKey: claimKey(userId) } }),
+    ]);
     await this.auditLogService.record({ entityType: "User", entityId: userId, fieldName: "suspiciousDismissed", newValue: "DISMISSED", changedByUserId: adminUserId, reason: text });
   }
 
