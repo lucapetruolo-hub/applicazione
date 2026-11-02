@@ -48,5 +48,5 @@ export function adminRolesLabel(roles: readonly AdminRoleValue[] | null | undefi
     .join(" + ");
 }
 
-/** "Fai passare il tempo" sui lavori di un account di prova (docs/changelog/2026-10-29-collaudo-tempo.md). */
-export const TEST_TIME_SHIFT_MAX_DAYS = 30;
+/** Lunghezza minima del motivo delle azioni pericolose dell'admin (docs/changelog/2026-11-02-admin-protezioni.md). */
+export const ADMIN_ACTION_REASON_MIN = 10;

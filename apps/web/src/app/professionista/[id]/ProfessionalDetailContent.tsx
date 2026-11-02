@@ -11,6 +11,7 @@ import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { ProfileQuoteCta } from "@/components/ProfileQuoteCta";
 import { MediaPreview } from "@/components/MediaPreview";
 import { ReportContentModal } from "@/components/ReportContentModal";
+import { ReviewReply } from "@/components/ReviewReply";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { hasRecentlyReported, markReported } from "@/lib/reportedContent";
@@ -68,11 +69,14 @@ function reviewTimeAgo(iso: string): string {
  */
 export function ProfessionalDetailContent({
   professional,
+  initialAgenda = null,
   preview = false,
   breadcrumbs,
   query = {},
 }: {
   professional: ProfessionalDetail;
+  /** Agenda già chiesta dal server (pagina pubblica): c'è da subito e non sposta la pagina. */
+  initialAgenda?: ProfessionalAgenda | null;
   preview?: boolean;
   /** Percorso "Home › Categoria › Città › Nome" sopra la scheda (solo pagina pubblica). */
   breadcrumbs?: ReactNode;
@@ -108,7 +112,7 @@ export function ProfessionalDetailContent({
     if (user?.professionalProfileId !== professional.id) countProfileView();
   }, [isAuthLoading, preview, professional.id, token, user?.professionalProfileId]);
   const [isSaving, setIsSaving] = useState(false);
-  const [agenda, setAgenda] = useState<ProfessionalAgenda | null>(null);
+  const [agenda, setAgenda] = useState<ProfessionalAgenda | null>(initialAgenda);
   const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);
   // Segnalazione contenuti (richiesta esplicita dell'utente, "Verbale di
   // Conformità" — notice-and-action, DSA art. 16): profilo o singola
@@ -253,6 +257,7 @@ export function ProfessionalDetailContent({
   }, [token, user, professional.id, saveAfterLogin]);
 
   useEffect(() => {
+    if (initialAgenda) return;
     apiClient
       .getProfessionalAgenda(professional.id)
       .then((res) => {
@@ -267,7 +272,7 @@ export function ProfessionalDetailContent({
         if (res && Array.isArray(res.days)) setAgenda(res);
       })
       .catch(() => {});
-  }, [professional.id]);
+  }, [professional.id, initialAgenda]);
 
   const [shareFeedback, setShareFeedback] = useState<string | null>(null);
 
@@ -1021,6 +1026,12 @@ export function ProfessionalDetailContent({
                   ) : null}
                 </XStack>
                 {review.comment ? <Text color={brand.grafite70}>{review.comment}</Text> : null}
+                {review.updatedAfterIssueAt ? (
+                  <Text fontSize={13} color={brand.grafite70}>
+                    Aggiornata il {new Date(review.updatedAfterIssueAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })} dopo una
+                    segnalazione a lavoro chiuso
+                  </Text>
+                ) : null}
                 {/* `?? []`: stessa cautela dell'agenda, un'API non ancora allineata all'ultimo deploy
                     potrebbe non includere ancora photoUrls su una recensione. */}
                 {(review.photoUrls ?? []).length > 0 ? (
@@ -1044,6 +1055,13 @@ export function ProfessionalDetailContent({
                     ))}
                   </XStack>
                 ) : null}
+                <ReviewReply
+                  reviewId={review.id}
+                  businessName={professional.businessName}
+                  reply={review.professionalReply ?? null}
+                  canEdit={!preview && !!token && user?.professionalProfileId === professional.id}
+                  token={token}
+                />
               </Surface>
               </YStack>
             ))

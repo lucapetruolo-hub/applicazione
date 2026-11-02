@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -14,8 +14,10 @@ import {
   passwordContainsEmail,
   passwordProblem,
   registerSchema,
+  subscriptionTierInfo,
   type ProfessionalCategorySlug,
   type ProfessionalEntityTypeValue,
+  type SubscriptionTier,
 } from "@professionisti/shared";
 import { Button, ButtonArrow, Icon, Surface, Text, XStack, YStack, brand, radiusDocLg, type IconName } from "@professionisti/ui";
 import { MagneticButton } from "@/components/MagneticButton";
@@ -33,6 +35,8 @@ import { AuthPageBackground } from "@/components/AuthPageBackground";
 import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
 import { AuthStepHeader } from "@/components/AuthStepHeader";
 import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle";
+import { ChosenPlanChip, useChosenPlanDetail } from "@/components/ChosenPlanChip";
+import { EmailSuggestion } from "@/components/EmailSuggestion";
 
 export default function RegistratiPage() {
   return (
@@ -147,6 +151,16 @@ function RoleChoiceScreen({
 }
 
 /**
+ * Passi del professionista (docs/changelog/2026-11-02-registrazione-pro-grafica.md):
+ * come lavori, account, email. La scelta cliente/professionista non conta:
+ * chi arriva da "Iscriviti" la salta, e partire da "Passo 2" sembrava un passo perso.
+ */
+const PRO_STEPS = 3;
+
+/** Dove cambiare il piano scelto: i livelli di /per-professionisti. */
+const CHANGE_PLAN_HREF = "/per-professionisti#prezzi";
+
+/**
  * Tipo del professionista scelto in registrazione (docs/CHANGELOG.md §243,
  * decisione dell'utente: tre tipi). Nell'URL con parole leggibili, così il
  * tasto "indietro" del telefono torna alla scelta.
@@ -163,53 +177,114 @@ const ENTITY_CHOICES: {
   { value: "BUSINESS", param: "azienda", icon: "building-2", label: "Azienda", description: "Società con dipendenti o soci: SRL, SNC, SAS, SPA." },
 ];
 
+/**
+ * Bozza dell'iscrizione nella scheda del browser: email e mestieri scelti
+ * restano se si ricarica o si va a cambiare il piano e si torna. Mai la
+ * password. Si cancella a iscrizione fatta
+ * (docs/changelog/2026-11-02-registrazione-pro-migliorie.md).
+ */
+const SIGNUP_DRAFT_KEY = "registrati-professionista-bozza";
+
+function readSignupDraft(): { email: string; categorySlugs: ProfessionalCategorySlug[] } | null {
+  try {
+    const raw = window.sessionStorage.getItem(SIGNUP_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    const { email, categorySlugs } = parsed as { email?: unknown; categorySlugs?: unknown };
+    return {
+      email: typeof email === "string" ? email.slice(0, 254) : "",
+      categorySlugs: Array.isArray(categorySlugs)
+        ? categorySlugs.filter((slug): slug is ProfessionalCategorySlug => typeof slug === "string" && isProfessionalCategorySlug(slug))
+        : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeSignupDraft(draft: { email: string; categorySlugs: ProfessionalCategorySlug[] } | null) {
+  try {
+    if (draft && (draft.email.trim() || draft.categorySlugs.length > 0)) window.sessionStorage.setItem(SIGNUP_DRAFT_KEY, JSON.stringify(draft));
+    else window.sessionStorage.removeItem(SIGNUP_DRAFT_KEY);
+  } catch {
+    // Archivio del browser non disponibile (navigazione privata): niente bozza.
+  }
+}
+
 function entityChoiceFromParam(param: string | null) {
   return ENTITY_CHOICES.find((choice) => choice.param === param) ?? null;
 }
 
-function EntityTypeScreen({ hrefFor, onBack }: { hrefFor: (param: string) => string; onBack: () => void }) {
+function EntityTypeScreen({ hrefFor, onBack, chosenTier }: { hrefFor: (param: string) => string; onBack: () => void; chosenTier: SubscriptionTier | null }) {
   return (
-    <AuthPageBackground>
-      <Surface className="auth-card-in" width="100%" maxWidth={480} borderRadius={radiusDocLg} padding="$6" gap="$5">
-        <AuthStepHeader
-          icon="briefcase"
-          title="Come lavori?"
-          subtitle="Così ti chiediamo solo i dati fiscali che servono a te."
-          step={{ current: 2, total: 4 }}
-          onBack={onBack}
-        />
+    <ProfessionalSignupLayout
+      step={1}
+      stepNote="circa 2 minuti"
+      icon="receipt-text"
+      title="Come lavori?"
+      subtitle="Così ti chiediamo solo i dati fiscali che servono a te."
+      onBack={onBack}
+      chosenTier={chosenTier}
+      showClientLink={false}
+    >
+      <YStack gap="$3">
+        {ENTITY_CHOICES.map((choice) => (
+          <ChoiceCard key={choice.value} href={hrefFor(choice.param)} icon={choice.icon} title={choice.label} text={choice.description} />
+        ))}
+      </YStack>
 
-        <YStack gap="$3">
-          {ENTITY_CHOICES.map((choice) => (
-            <ChoiceCard key={choice.value} href={hrefFor(choice.param)} icon={choice.icon} title={choice.label} text={choice.description} />
-          ))}
-        </YStack>
-
-        <Text fontSize={13} color={brand.grafite70} textAlign="center">
-          Senza Partita IVA scegli &quot;Privato&quot;. Puoi cambiarlo dopo da Dati fiscali.
-        </Text>
-      </Surface>
-    </AuthPageBackground>
+      <Text fontSize={13} color={brand.grafite70} textAlign="center">
+        Senza Partita IVA scegli &quot;Privato&quot;. Puoi cambiarlo dopo da Dati fiscali.
+      </Text>
+    </ProfessionalSignupLayout>
   );
 }
 
-/** Riepilogo del tipo scelto in cima al modulo, con "Cambia" per tornare alla scelta. */
-function EntityTypeSummary({ choice, onChange }: { choice: (typeof ENTITY_CHOICES)[number]; onChange: () => void }) {
+/**
+ * Riepilogo delle scelte fatte, in cima al modulo: come lavori e, se arriva
+ * da /per-professionisti, il piano. Un solo riquadro invece di un'etichetta
+ * e un riquadro uno sopra l'altro
+ * (docs/changelog/2026-11-02-registrazione-pro-migliorie.md).
+ */
+function SignupChoicesSummary({
+  choice,
+  onChangeChoice,
+  chosenTier,
+}: {
+  choice: (typeof ENTITY_CHOICES)[number];
+  onChangeChoice: () => void;
+  chosenTier: SubscriptionTier | null;
+}) {
+  const planDetail = useChosenPlanDetail(chosenTier);
   return (
-    <XStack alignItems="center" gap="$3" padding="$3" borderRadius="$4" backgroundColor={brand.cianografiaVelo}>
-      <Icon name={choice.icon} size={18} color={brand.cianografiaScuro} strokeWidth={1.75} />
-      <YStack flex={1} flexBasis={0} minWidth={0}>
-        <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
-          Ti iscrivi come
-        </Text>
-        <Text fontWeight="700" color={brand.grafite}>
-          {choice.label}
-        </Text>
-      </YStack>
-      <button type="button" className="link-button" onClick={onChange} aria-label="Cambia il modo in cui lavori">
-        Cambia
-      </button>
-    </XStack>
+    <div className="signup-summary">
+      <div className="signup-summary-row">
+        <Icon name={choice.icon} size={18} color={brand.cianografiaScuro} strokeWidth={1.75} />
+        <p className="signup-summary-text">
+          <span className="signup-summary-label">Ti iscrivi come</span>
+          <strong>{choice.label}</strong>
+        </p>
+        <button type="button" className="link-button" onClick={onChangeChoice} aria-label="Cambia il modo in cui lavori">
+          Cambia
+        </button>
+      </div>
+      {chosenTier ? (
+        <div className="signup-summary-row">
+          <Icon name="tag" size={18} color={brand.cianografiaScuro} strokeWidth={1.75} />
+          <p className="signup-summary-text">
+            <span className="signup-summary-label">Piano scelto</span>
+            <strong>
+              {subscriptionTierInfo(chosenTier).label}
+              {planDetail ? <span className="signup-summary-detail"> · {planDetail}</span> : null}
+            </strong>
+          </p>
+          <Link href={CHANGE_PLAN_HREF} className="link-button" aria-label="Cambia il piano scelto">
+            Cambia
+          </Link>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -221,83 +296,96 @@ const SIGNUP_BENEFITS: { icon: IconName; title: string; text: string }[] = [
 
 /**
  * Registrazione del professionista nella stessa scheda della scelta del
- * ruolo (stessa larghezza, stesso sfondo sfocato, docs/CHANGELOG.md §181,
- * richiesta dell'utente): prima era una pagina a due colonne (§173). Foto e
- * vantaggi restano, sotto la scheda. La presentazione completa è in
- * /per-professionisti.
+ * ruolo (stessa larghezza, docs/CHANGELOG.md §181). Foto e vantaggi
+ * (§173) sul computer stanno in una colonna accanto alla scheda, sul
+ * telefono non ci sono: allungavano la pagina a metà iscrizione
+ * (docs/changelog/2026-11-02-registrazione-pro-grafica.md). La
+ * presentazione completa è in /per-professionisti.
  */
 function ProfessionalSignupLayout({
   children,
-  step = 3,
+  step = 2,
+  stepNote,
   icon = "hard-hat",
   title = "Crea il tuo account",
   subtitle = "Poi completi il profilo e ricevi le richieste.",
-  showFooter = true,
+  showClientLink = true,
+  showAside = true,
+  chosenTier = null,
   onBack,
 }: {
   children: ReactNode;
   step?: number;
+  /** Accanto a "Passo N di 3" (sul primo: quanto ci vuole). */
+  stepNote?: string;
   icon?: IconName;
   title?: string;
   subtitle?: string;
   onBack?: () => void;
-  /** Link al cliente, foto e vantaggi: non nella schermata del codice. */
-  showFooter?: boolean;
+  /** "Cerchi un professionista? Registrati come cliente" in fondo alla scheda. */
+  showClientLink?: boolean;
+  /** Foto e vantaggi accanto alla scheda (solo computer): non nella schermata dell'email. */
+  showAside?: boolean;
+  /** Piano toccato su /per-professionisti, ricordato sotto il titolo. */
+  chosenTier?: SubscriptionTier | null;
 }) {
   return (
     <AuthPageBackground>
-      <YStack width="100%" maxWidth={480} gap="$6">
-        <Surface className="auth-card-in" width="100%" borderRadius={radiusDocLg} padding="$6" gap="$5">
-          <AuthStepHeader icon={icon} title={title} subtitle={subtitle || undefined} step={{ current: step, total: 4 }} onBack={onBack} />
+      <div className={`pro-signup${showAside ? " has-aside" : ""}`}>
+        <Surface className="auth-card-in pro-signup-card" width="100%" borderRadius={radiusDocLg} padding="$6" gap="$5">
+          <AuthStepHeader icon={icon} title={title} subtitle={subtitle || undefined} step={{ current: step, total: PRO_STEPS, note: stepNote }} onBack={onBack} />
+          {chosenTier ? <ChosenPlanChip tier={chosenTier} changeHref={CHANGE_PLAN_HREF} /> : null}
           {children}
-          {showFooter ? (
-          <Text fontSize={16} textAlign="center" color={brand.grafite70}>
-            Cerchi un professionista?{" "}
-            <Link href="/registrati?ruolo=cliente" style={{ textDecoration: "none" }}>
-              <Text color={brand.cianografiaScuro} fontWeight="600">
-                Registrati come cliente
-              </Text>
-            </Link>
-          </Text>
+          {showClientLink ? (
+            <Text fontSize={16} textAlign="center" color={brand.grafite70}>
+              Cerchi un professionista?{" "}
+              <Link href="/registrati?ruolo=cliente" style={{ textDecoration: "none" }}>
+                <Text color={brand.cianografiaScuro} fontWeight="600">
+                  Registrati come cliente
+                </Text>
+              </Link>
+            </Text>
           ) : null}
         </Surface>
 
-        {showFooter ? (
-        <YStack width="100%" gap="$5">
-          <div style={{ position: "relative", width: "100%", aspectRatio: "3 / 2", borderRadius: radiusDocLg, overflow: "hidden" }}>
-            <Image
-              src="/page-photos/registrati-elettricista.webp"
-              alt="Un elettricista sorride mentre lavora a un quadro elettrico"
-              fill
-              sizes="(max-width: 520px) 100vw, 480px"
-              style={{ objectFit: "cover" }}
-            />
-          </div>
-          <YStack gap="$4">
-            {SIGNUP_BENEFITS.map((benefit) => (
-              <XStack key={benefit.title} gap="$3" alignItems="flex-start">
-                <XStack width={40} height={40} borderRadius={12} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
-                  <Icon name={benefit.icon} size={19} color={brand.cianografiaScuro} strokeWidth={1.75} />
-                </XStack>
-                <YStack flex={1} gap="$1">
-                  <Text fontWeight="700" color={brand.grafite}>
-                    {benefit.title}
-                  </Text>
-                  <Text fontSize={16} color={brand.grafite70}>
-                    {benefit.text}
-                  </Text>
-                </YStack>
-              </XStack>
-            ))}
-          </YStack>
-          <Link href="/per-professionisti" style={{ textDecoration: "none", alignSelf: "center" }}>
-            <Text color={brand.cianografiaScuro} fontWeight="600">
-              Scopri come funziona e quanto costa
-            </Text>
-          </Link>
-        </YStack>
+        {showAside ? (
+          <aside className="pro-signup-aside" aria-label="Perché iscriversi">
+            <YStack width="100%" gap="$5">
+              <div style={{ position: "relative", width: "100%", aspectRatio: "3 / 2", borderRadius: radiusDocLg, overflow: "hidden" }}>
+                <Image
+                  src="/page-photos/registrati-elettricista.webp"
+                  alt="Un elettricista sorride mentre lavora a un quadro elettrico"
+                  fill
+                  sizes="420px"
+                  style={{ objectFit: "cover" }}
+                />
+              </div>
+              <YStack gap="$4">
+                {SIGNUP_BENEFITS.map((benefit) => (
+                  <XStack key={benefit.title} gap="$3" alignItems="flex-start">
+                    <XStack width={40} height={40} borderRadius={12} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
+                      <Icon name={benefit.icon} size={19} color={brand.cianografiaScuro} strokeWidth={1.75} />
+                    </XStack>
+                    <YStack flex={1} gap="$1">
+                      <Text fontWeight="700" color={brand.grafite}>
+                        {benefit.title}
+                      </Text>
+                      <Text fontSize={16} color={brand.grafite70}>
+                        {benefit.text}
+                      </Text>
+                    </YStack>
+                  </XStack>
+                ))}
+              </YStack>
+              <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
+                <Text color={brand.cianografiaScuro} fontWeight="600">
+                  Scopri come funziona e quanto costa
+                </Text>
+              </Link>
+            </YStack>
+          </aside>
         ) : null}
-      </YStack>
+      </div>
     </AuthPageBackground>
   );
 }
@@ -320,7 +408,7 @@ function ClientSignup({ onAuthenticated, onBack }: { onAuthenticated: () => void
           submitSuffix=""
           onAuthenticated={onAuthenticated}
           renderHeader={(step, back) => (
-            <AuthStepHeader icon={CLIENT_ICONS[step]} title={CLIENT_HEADERS[step]} step={{ current: 2, total: 2 }} onBack={back ?? onBack} />
+            <AuthStepHeader icon={CLIENT_ICONS[step]} title={CLIENT_HEADERS[step]} onBack={back ?? onBack} />
           )}
         />
         <TrustChips />
@@ -369,6 +457,25 @@ function RegistratiForm() {
     return fromLink && isProfessionalCategorySlug(fromLink) ? [fromLink] : [];
   });
   const [email, setEmail] = useState("");
+  // Uscita dal campo email: da lì in poi "Forse intendevi …?" se il dominio sembra sbagliato.
+  const [emailChecked, setEmailChecked] = useState(false);
+  // Bozza ripresa dopo il primo disegno (sul server non c'è): prima di
+  // allora non si scrive, per non cancellarla con i campi ancora vuoti.
+  const draftLoaded = useRef(false);
+  useEffect(() => {
+    if (!isProfessional || draftLoaded.current) return;
+    draftLoaded.current = true;
+    const draft = readSignupDraft();
+    if (!draft) return;
+    /* eslint-disable react-hooks/set-state-in-effect -- la bozza esiste solo nel browser */
+    if (draft.email) setEmail((current) => current || draft.email);
+    if (draft.categorySlugs.length > 0) setCategorySlugs((current) => (current.length > 0 ? current : draft.categorySlugs));
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [isProfessional]);
+  useEffect(() => {
+    if (!isProfessional || !draftLoaded.current) return;
+    writeSignupDraft({ email, categorySlugs });
+  }, [isProfessional, email, categorySlugs]);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   // Richiesta esplicita dell'utente: campo "Conferma password" oltre a
@@ -429,7 +536,7 @@ function RegistratiForm() {
   }
 
   if (!entityChoice) {
-    return <EntityTypeScreen hrefFor={(param) => hrefWith("tipo", param)} onBack={() => setParam("ruolo", null)} />;
+    return <EntityTypeScreen hrefFor={(param) => hrefWith("tipo", param)} onBack={() => setParam("ruolo", null)} chosenTier={chosenTier} />;
   }
 
   // Con Google Sign-In questa pagina può autenticare anche un account
@@ -443,12 +550,19 @@ function RegistratiForm() {
   function afterAuth(isNewUser: boolean) {
     // Un professionista che accede di nuovo (non isNewUser) va dritto in
     // Dashboard come già prima.
-    if (chosenTier) {
-      router.push(`/dashboard/abbonamento?livello=${chosenTier}${chosenInterval ? `&rinnovo=${chosenInterval}` : ""}${isNewUser ? "&nuovo=1" : ""}`);
+    // Un account nuovo va dritto al profilo, che serve prima del piano: la
+    // pagina Abbonamento senza profilo mostrava solo "Completa il tuo
+    // profilo" e il livello scelto si perdeva. Il profilo se lo porta dietro
+    // fino alla scelta del piano (docs/changelog/2026-11-02-registrazione-pro-grafica.md).
+    if (isNewUser) {
+      router.push(chosenTier ? `/dashboard/profilo?livello=${chosenTier}` : "/dashboard/profilo");
       return;
     }
-    // Il tipo è già scelto (§243): un nuovo account va dritto al profilo.
-    router.push(isNewUser ? "/dashboard/profilo" : "/dashboard");
+    if (chosenTier) {
+      router.push(`/dashboard/abbonamento?livello=${chosenTier}${chosenInterval ? `&rinnovo=${chosenInterval}` : ""}`);
+      return;
+    }
+    router.push("/dashboard");
   }
 
   function fieldError(field: "categories" | "email" | "password" | "confirm", message: string) {
@@ -521,6 +635,7 @@ function RegistratiForm() {
         result.data.categorySlugs,
         result.data.entityType,
       );
+      writeSignupDraft(null);
       const me = await login(token);
       if (isNewUser && me && !me.emailVerified) {
         setCodeStep({ token, email: me.email ?? result.data.email, resendIn: me.emailCodeResendInSeconds ?? 60, required: me.emailVerificationRequired });
@@ -543,6 +658,7 @@ function RegistratiForm() {
     setIsSubmitting(true);
     try {
       const { token, isNewUser } = await apiClient.verifyGoogle(idToken, role, undefined, accepted, adult, categorySlugs, entityChoice?.value);
+      writeSignupDraft(null);
       await login(token);
       afterAuth(isNewUser);
     } catch (err) {
@@ -601,7 +717,7 @@ function RegistratiForm() {
 
   if (codeStep) {
     return (
-      <ProfessionalSignupLayout step={4} icon="mail" title="Conferma la tua email" subtitle="" showFooter={false}>
+      <ProfessionalSignupLayout step={3} icon="mail" title="Conferma la tua email" subtitle="" showClientLink={false} showAside={false}>
         <EmailCodeForm
           token={codeStep.token}
           email={codeStep.email}
@@ -622,7 +738,7 @@ function RegistratiForm() {
             avanti e confermare dopo dalla barra in alto. */}
         {!codeStep.required ? (
           <XStack justifyContent="center">
-            <Button variant="ghost" onPress={() => afterAuth(true)}>
+            <Button variant="secondary" onPress={() => afterAuth(true)}>
               Lo faccio dopo
             </Button>
           </XStack>
@@ -635,7 +751,7 @@ function RegistratiForm() {
   // ClientSignup, sopra).
   const formFields = (
     <>
-      <EntityTypeSummary choice={entityChoice} onChange={() => setParam("tipo", null)} />
+      <SignupChoicesSummary choice={entityChoice} onChangeChoice={() => setParam("tipo", null)} chosenTier={chosenTier} />
 
       <div id="categorie">
         <span className="auth-field-label" style={{ display: "block", marginBottom: 8 }}>
@@ -720,6 +836,9 @@ function RegistratiForm() {
             nativeID="email"
             accessibilityLabel="Email"
             error={error && errorField === "email" ? error : undefined}
+            onBlur={() => setEmailChecked(true)}
+            footer={<EmailSuggestion id="email-suggestion" email={email} checked={emailChecked} onApply={setEmail} />}
+            footerId="email-suggestion"
           />
           <AuthField
             label="Password"
@@ -782,10 +901,11 @@ function RegistratiForm() {
             opacity={isSubmitting ? 0.6 : 1}
           >
             <XStack alignItems="center" gap="$2">
+              {isSubmitting ? <span className="button-spinner" aria-hidden="true" /> : null}
               <Text color="white" fontFamily="$body" fontWeight="600">
                 {isSubmitting ? "Creazione account..." : "Registrati"}
               </Text>
-              <ButtonArrow />
+              {isSubmitting ? null : <ButtonArrow />}
             </XStack>
           </Button>
           </MagneticButton>

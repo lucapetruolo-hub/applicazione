@@ -205,6 +205,14 @@ export class JobPaymentsService {
     return this.onlineMoneyService.refundQuoteDeposit(paymentIntentId, reason, stripeAccount, notifyTo);
   }
 
+  /**
+   * Rimborso concordato in chat su una segnalazione (collaudo F-03): parte
+   * dai soldi ancora bloccati del lavoro, il resto segue il suo corso.
+   */
+  refundAgreed(jobPaymentId: string, amountEurCents: number, clientUserId: string): Promise<number> {
+    return this.onlineMoneyService.refundOnline(jobPaymentId, amountEurCents, "Rimborso concordato in chat tra cliente e professionista.", clientUserId);
+  }
+
   /** Gestito dallo stesso webhook Stripe già in uso per BillingService (CLAUDE.md §9). */
   handleManoviaCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
     return this.onlineMoneyService.handleCheckoutCompleted(session);

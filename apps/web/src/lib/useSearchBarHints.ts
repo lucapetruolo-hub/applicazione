@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { FRAZIONI, PROFESSIONAL_CATEGORIES, matchProblem } from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES, matchProblem } from "@professionisti/shared";
 import type { ProfessionalSuggestion } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { cachedPopularOrder, loadPopularOrder } from "@/lib/categoryOrder";
@@ -63,7 +63,7 @@ function locateComune(): Promise<string | null> {
     }
     navigator.geolocation.getCurrentPosition(
       (position) =>
-        loadComuni().then(
+        void loadComuni().then(
           (comuni) => resolve(comuni.nearestComune(position.coords.latitude, position.coords.longitude)?.name ?? null),
           () => resolve(null),
         ),
@@ -99,17 +99,19 @@ function problemSuggestion(query: string): ProfessionalSuggestion | null {
   };
 }
 
+const NO_CITIES: string[] = [];
+const NO_CITIES_ALIASES: { name: string; city: string }[] = [];
+
 export function useSearchBarHints(initialQuery = "") {
+  // Elenco dei comuni scaricato quando si tocca un campo (lib/comuniLazy.ts):
+  // fino ad allora il campo "Città" ha solo i suggerimenti del server.
+  const comuni = useComuni();
   const [query, setQuery] = useState(initialQuery);
   const [order, setOrder] = useState(() => cachedPopularOrder() ?? null);
   const [hints, setHints] = useState<CityHints | null>(null);
   // Non mostrata finché non si apre l'elenco: leggerla subito non cambia la pagina generata dal server.
   const [lastCity] = useState<string | null>(() => (typeof window === "undefined" ? null : readLastCity()));
   const category = categorySlugFor(query);
-  // Elenco dei comuni dopo che la pagina è pronta (src/lib/comuniLazy.ts):
-  // fino ad allora il campo "Città" propone le città più cercate.
-  const comuni = useComuni();
-  const citySuggestions = useMemo(() => comuni?.allItalianCityNames() ?? [], [comuni]);
 
   // La barra in alto resta montata cambiando pagina: si riparte dal lavoro della nuova pagina.
   const [previousInitialQuery, setPreviousInitialQuery] = useState(initialQuery);
@@ -154,8 +156,8 @@ export function useSearchBarHints(initialQuery = "") {
 
   return {
     professionalSuggestions,
-    citySuggestions,
-    cityAliases: FRAZIONI,
+    citySuggestions: comuni?.allItalianCityNames() ?? NO_CITIES,
+    cityAliases: comuni?.FRAZIONI ?? NO_CITIES_ALIASES,
     cityDefaults,
     preferredCities: hints?.covered ?? [],
     onNearMe: locateComune,

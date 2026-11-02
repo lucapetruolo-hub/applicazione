@@ -182,6 +182,8 @@ export type GeneralRequestsAdminOverview = {
 export const closeGeneralRequestsSchema = z.object({
   categorySlug: professionalCategorySlugSchema,
   city: z.string().trim().min(2, "Indica la città.").max(100),
+  /** Motivo nel registro e nella riga della zona (docs/changelog/2026-11-02-admin-protezioni.md). */
+  reason: z.string().trim().min(10, "Scrivi il motivo (almeno 10 caratteri).").max(500),
 });
 export type CloseGeneralRequestsInput = z.infer<typeof closeGeneralRequestsSchema>;
 

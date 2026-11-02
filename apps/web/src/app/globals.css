@@ -64,6 +64,12 @@ span.is_Button._fos-f-size-true {
   }
 }
 
+/* Banner cookie scritto dal server: nascosto subito a chi ha già scelto
+   (lib/cookieChoiceBoot.ts, collaudo N-09). */
+html[data-cookie-choice] .cookie-banner {
+  display: none !important;
+}
+
 /* Skip link (Fase 6, accessibilità): fuori schermo finché non riceve il
    focus da tastiera (Tab), poi torna visibile in alto a sinistra. */
 .skip-link {
@@ -2406,6 +2412,155 @@ button.notif-row-main:hover {
 .profile-visibility-link:hover {
   text-decoration: underline;
 }
+/* Profilo: "Account creato" sopra il titolo del primo profilo e indice dei
+   riquadri (docs/changelog/2026-11-02-registrazione-pro-grafica.md). */
+.profile-welcome-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #dcf3e7;
+  color: #0e7a4c;
+  font-size: 13px;
+  font-weight: 700;
+}
+/* Resta in vista scorrendo, attaccato sotto l'intestazione del sito (e sul
+   telefono sotto la barra dell'area account, 64 + 54 px), su una riga sola
+   che scorre di lato (docs/changelog/2026-11-02-registrazione-pro-migliorie.md). */
+.profile-index {
+  position: sticky;
+  top: 118px;
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 -16px;
+  padding: 8px 16px;
+  background: rgba(253, 239, 225, 0.94);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  -webkit-overflow-scrolling: touch;
+}
+@media (min-width: 760px) {
+  /* Le 7 voci entrano su una riga nella colonna da 760 px, senza scorrere. */
+  .profile-index {
+    top: 64px;
+    gap: 6px;
+    margin: 0;
+    padding: 8px 0;
+  }
+  .profile-index .profile-index-link {
+    padding: 0 13px;
+    font-size: 15px;
+  }
+}
+.profile-index::-webkit-scrollbar {
+  display: none;
+}
+.profile-index-link {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid #f0dcc0;
+  background: #ffffff;
+  color: #2b2420;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  touch-action: manipulation;
+  transition: border-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.profile-index-link:hover {
+  border-color: #189a63;
+}
+.profile-index-link.is-active {
+  border-color: #0e7a4c;
+  background: #dcf3e7;
+  color: #0e7a4c;
+}
+/* Campi che servono per pubblicare il primo profilo, spuntati mentre si
+   compilano (docs/changelog/2026-11-02-registrazione-pro-migliorie.md). */
+.profile-required {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.profile-required-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6e6459;
+}
+.profile-required-count {
+  color: #0e7a4c;
+}
+.profile-required-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.profile-required-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px 0 6px;
+  border-radius: 999px;
+  border: 1px solid #f0dcc0;
+  background: #ffffff;
+  color: #2b2420;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.profile-required-item:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.profile-required-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 2px solid #d9c6ad;
+  box-sizing: border-box;
+}
+.profile-required-item.is-done {
+  border-color: #b7e2cb;
+}
+.profile-required-item.is-done .profile-required-mark {
+  border: none;
+  background: #128552;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .profile-required-mark {
+    transition: background-color 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+.profile-index-link:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.profile-section {
+  scroll-margin-top: 190px;
+}
+@media (min-width: 760px) {
+  .profile-section {
+    scroll-margin-top: 136px;
+  }
+}
 .profile-back-link {
   align-self: flex-start;
   display: inline-flex;
@@ -3261,6 +3416,11 @@ a.admin-kpi:hover {
   font-weight: 700;
   color: #0e7a4c;
 }
+/* "circa 2 minuti" accanto al primo passo, meno in vista del numero. */
+.auth-step-note {
+  font-weight: 600;
+  color: #6e6459;
+}
 .auth-step-bar {
   display: flex;
   gap: 6px;
@@ -3273,6 +3433,100 @@ a.admin-kpi:hover {
 }
 .auth-step-bar span.is-done {
   background: #128552;
+}
+
+/* Iscrizione del professionista (docs/changelog/2026-11-02-registrazione-pro-grafica.md):
+   sul telefono solo la scheda; sul computer foto e vantaggi in una colonna
+   accanto, così si vede tutto senza scorrere. */
+.pro-signup {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.pro-signup-aside {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .pro-signup.has-aside {
+    max-width: 960px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 480px;
+    align-items: start;
+    gap: 48px;
+  }
+  .pro-signup.has-aside .pro-signup-aside {
+    display: block;
+    position: sticky;
+    top: 96px;
+    order: -1;
+    padding-top: 8px;
+  }
+}
+/* Piano scelto su /per-professionisti, sotto il titolo dei passi. */
+.plan-chip {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  gap: 6px;
+  max-width: 100%;
+  margin: 0;
+  padding: 4px 6px 4px 14px;
+  border-radius: 999px;
+  background: #fdefe1;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #2b2420;
+}
+.plan-chip strong {
+  font-weight: 700;
+}
+.plan-chip-detail {
+  color: #6e6459;
+}
+/* Scheda dei passi un po' meno imbottita sul telefono: più spazio alle
+   tessere dei mestieri e ai campi. */
+@media (max-width: 480px) {
+  .pro-signup-card {
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+  }
+}
+.plan-chip-change {
+  flex-shrink: 0;
+  padding: 6px 8px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e7a4c;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.plan-chip-change:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+/* Rotellina dentro i pulsanti mentre si aspetta il server. */
+.button-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #ffffff;
+  animation: button-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .button-spinner {
+    animation-duration: 2.4s;
+  }
 }
 
 /* Tendina "Il mio account" nell'header, a gruppi (docs/CHANGELOG.md §148). */
@@ -5359,6 +5613,12 @@ a.admin-kpi:hover {
   text-underline-offset: 3px;
   cursor: pointer;
 }
+/* Link di riserva accanto a uno principale: stesso tocco, meno peso. */
+.link-button.is-quiet {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6e6459;
+}
 .link-button:focus-visible {
   outline: 2px solid #189a63;
   outline-offset: 2px;
@@ -5576,6 +5836,49 @@ a.admin-kpi:hover {
   align-items: center;
   justify-content: center;
 }
+/* Tessere compatte (scelta dei mestieri del professionista,
+   docs/changelog/2026-11-02-registrazione-pro-grafica.md): sul telefono 3
+   per riga e più basse, i 13 mestieri stanno in una schermata invece di due. */
+@media (max-width: 560px) {
+  .cat-tiles.is-compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .cat-tiles.is-compact .cat-tile {
+    min-height: 82px;
+    gap: 6px;
+    padding: 10px 4px;
+  }
+  .cat-tiles.is-compact .cat-tile.is-on {
+    padding: 9px 3px;
+  }
+  .cat-tiles.is-compact .cat-tile-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+  .cat-tiles.is-compact .cat-tile-label {
+    font-size: 13px;
+    hyphens: auto;
+    overflow-wrap: anywhere;
+  }
+  .cat-tiles.is-compact .cat-tile-label-full {
+    display: none;
+  }
+  .cat-tiles.is-compact .cat-tile-label-short {
+    display: inline;
+  }
+  .cat-tiles.is-compact .cat-tile-check {
+    top: 5px;
+    right: 5px;
+    width: 18px;
+    height: 18px;
+  }
+}
+/* Nome corto solo nelle tessere compatte del telefono (sopra). */
+.cat-tile-label-short {
+  display: none;
+}
 /* Tessere vuote finché non arriva l'ordine dei più cercati (§324): stessa
    misura delle vere, così la pagina non salta; poi compaiono con una
    dissolvenza breve, mai riordinate davanti a chi guarda. */
@@ -5692,6 +5995,31 @@ a.admin-kpi:hover {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* Titolo dei risultati (CategoryContent.tsx, collaudo N-15): visibile da
+   telefono, solo per Google e i lettori di schermo da computer (§271). */
+.results-title {
+  margin: 0 0 12px;
+  font-family: var(--font-display), sans-serif;
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 800;
+  color: #2b2420;
+  text-wrap: balance;
+}
+@media (min-width: 1021px) {
+  .results-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 }
 
 /* Barra della ricerca fatta, da telefono nelle pagine di ricerca
@@ -6092,6 +6420,49 @@ a.admin-kpi:hover {
   font-size: 16px;
   line-height: 22px;
   color: #6e6459;
+}
+/* Testo proprio della città e ultime recensioni (collaudo N-04,
+   docs/changelog/2026-10-30-velocita-telefono.md). */
+.city-facts-intro {
+  margin: 0 0 24px;
+  font-size: 16px;
+  line-height: 24px;
+  color: #2b2420;
+  max-width: 68ch;
+}
+.city-facts-reviews {
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.city-facts-review {
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid #f0dcc0;
+}
+.city-facts-review-text {
+  margin: 0 0 6px;
+  font-size: 16px;
+  line-height: 24px;
+  color: #2b2420;
+}
+.city-facts-review-stars {
+  color: #8a5a00;
+  letter-spacing: 1px;
+}
+.city-facts-review-meta {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: #6e6459;
+}
+.city-facts-review-meta a {
+  color: #0e7a4c;
+  font-weight: 600;
 }
 .city-facts-subtitle {
   margin: 0 0 10px;
@@ -7194,4 +7565,58 @@ a.admin-kpi:hover {
    il solo restringimento su una pillola trasparente quasi non si vedeva. */
 .guided-timing-option:active input:not(:checked) + span {
   background: rgba(18, 133, 82, 0.1);
+}
+
+/* "Forse intendevi …?" sotto l'email (docs/changelog/2026-11-02-registrazione-pro-migliorie.md). */
+.email-suggestion {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: #6e6459;
+  overflow-wrap: anywhere;
+}
+.email-suggestion:empty {
+  display: none;
+}
+.email-suggestion .email-suggestion-apply {
+  font-size: 14px;
+  padding: 4px 2px;
+  margin: -4px -2px;
+}
+
+/* Riepilogo delle scelte in cima al modulo dell'iscrizione: come lavori e
+   piano in un solo riquadro (docs/changelog/2026-11-02-registrazione-pro-migliorie.md). */
+.signup-summary {
+  background: #dcf3e7;
+  border-radius: 10px;
+  padding: 4px 14px;
+}
+.signup-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.signup-summary-row + .signup-summary-row {
+  border-top: 1px solid rgba(14, 122, 76, 0.16);
+}
+.signup-summary-text {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 16px;
+  line-height: 21px;
+  color: #2b2420;
+}
+.signup-summary-label {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+  color: #6e6459;
+}
+.signup-summary-detail {
+  font-weight: 600;
+  color: #4a433b;
 }

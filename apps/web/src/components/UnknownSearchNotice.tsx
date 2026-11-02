@@ -61,9 +61,10 @@ export function UnknownSearchNotice({ pathname, fallback }: { pathname: string; 
   const searchHints = useSearchBarHints(unknown?.query ?? "");
   if (!unknown) return <>{fallback}</>;
 
-  function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
+  async function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
     rememberSearchCity(params.city);
-    void buildSearchDestination(params).then((destination) => navigateWithTransition(() => router.push(destination)));
+    const destination = await buildSearchDestination(params);
+    navigateWithTransition(() => router.push(destination));
   }
 
   return (

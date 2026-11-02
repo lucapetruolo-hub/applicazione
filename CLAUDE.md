@@ -122,11 +122,7 @@ prima discuterne e aggiornare questo file.
   `apps/web/next.config.mjs`, `sideEffects: false`, docs/CHANGELOG.md §345):
   ogni pagina prende solo le parti che usa. Un modulo di `packages/shared`
   non deve contare su effetti al solo import (registrazioni, globali). L'API
-  usa sempre `dist/`. Turbopack però prende un file intero, non la sola
-  funzione: dati grandi e schemi zod stanno in file loro, mai insieme a
-  costanti usate ovunque; l'elenco dei comuni nelle parti comuni a ogni
-  pagina si carica dopo (`apps/web/src/lib/comuniLazy.ts`,
-  docs/changelog/2026-11-02-nextjs-16.md).
+  usa sempre `dist/`.
 - **Config Tamagui**: i valori di default stanno in
   `packages/ui/src/tamaguiDefaults.ts` (generato, §345), non si importa
   `@tamagui/config` nel sito (1408 temi e animazioni di React Native in ogni
@@ -242,7 +238,11 @@ sia UI/routing — la logica va in `apps/api` o `packages/shared`.
    della conversazione (chat) — mai un dato di contatto diretto. Non
    invertire questa regola una quarta volta senza discuterne
    esplicitamente con l'utente: se sembra necessario un'eccezione, è un
-   segnale che va posta la domanda invece di cambiare il codice.
+   segnale che va posta la domanda invece di cambiare il codice. Stessa
+   regola in chat (decisione di Luca del 02/11/2026): prima
+   dell'accettazione un messaggio con telefono, email, link o "WhatsApp" non
+   parte, per nessuno dei due (controllo sul server,
+   docs/changelog/2026-11-02-admin-protezioni.md).
 10. **Regola "zero emoji nell'interfaccia" (§10, Fase 2) abrogata** —
     decisione esplicita dell'utente, in risposta al rilievo F8.1 del
     "Verbale Cognitivo" (che anzi la elogiava com'era: "nessuna azione,

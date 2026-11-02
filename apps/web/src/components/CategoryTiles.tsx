@@ -14,6 +14,16 @@ import { cachedPopularOrder, loadPopularOrder, type PopularOrder } from "@/lib/c
 const POPULAR_ORDER_TIMEOUT_MS = 1200;
 
 /**
+ * Nomi lunghi accorciati solo nelle tessere da 3 per riga del telefono, dove
+ * andavano a capo su tre righe; il nome intero resta per i lettori di schermo
+ * (docs/changelog/2026-11-02-registrazione-pro-migliorie.md).
+ */
+const COMPACT_LABELS: Partial<Record<ProfessionalCategorySlug, string>> = {
+  climatizzazione: "Clima e caldaie",
+  muratore: "Muratore",
+};
+
+/**
  * Tessere delle categorie con l'icona colorata (docs/CHANGELOG.md §279-§280, stile
  * A scelto dall'utente): scelta dei lavori del professionista
  * (`CategoryMultiPicker`) e categorie della richiesta di preventivo.
@@ -35,6 +45,7 @@ export function CategoryTiles({
   city,
   showPrimary = false,
   ariaLabel,
+  compact = false,
 }: {
   value: ProfessionalCategorySlug[];
   onToggle: (slug: ProfessionalCategorySlug) => void;
@@ -44,7 +55,10 @@ export function CategoryTiles({
   /** "Principale" sotto la prima scelta (solo per il professionista). */
   showPrimary?: boolean;
   ariaLabel?: string;
+  /** Sul telefono 3 per riga e più basse (docs/changelog/2026-11-02-registrazione-pro-grafica.md). */
+  compact?: boolean;
 }) {
+  const gridClass = compact ? "cat-tiles is-compact" : "cat-tiles";
   const [initialCity] = useState(city?.trim() || undefined);
   // Ordine già in memoria (seconda apertura): niente attesa.
   const [popularOrder, setPopularOrder] = useState<PopularOrder | undefined>(() => cachedPopularOrder(initialCity));
@@ -70,7 +84,7 @@ export function CategoryTiles({
 
   if (!ready) {
     return (
-      <div className="cat-tiles" role="group" aria-label={ariaLabel} aria-busy="true">
+      <div className={gridClass} role="group" aria-label={ariaLabel} aria-busy="true">
         {PROFESSIONAL_CATEGORIES.map((category) => (
           <div key={category.slug} className="cat-tile cat-tile-placeholder" aria-hidden="true">
             <span className="cat-tile-icon skeleton-shimmer" />
@@ -89,7 +103,7 @@ export function CategoryTiles({
   const isFull = value.length >= max;
 
   return (
-    <div className="cat-tiles cat-tiles-ready" role="group" aria-label={ariaLabel}>
+    <div className={`${gridClass} cat-tiles-ready`} role="group" aria-label={ariaLabel}>
       {categories.map((category) => {
         const active = value.includes(category.slug);
         const isPrimary = showPrimary && value[0] === category.slug;
@@ -106,9 +120,18 @@ export function CategoryTiles({
             aria-label={isPrimary ? `${category.label}, principale` : category.label}
           >
             <span className="cat-tile-icon" style={{ background: accent.bg, color: accent.fg }} aria-hidden="true">
-              <CategoryIcon slug={category.slug} size={26} />
+              <CategoryIcon slug={category.slug} size={compact ? 22 : 26} />
             </span>
-            <span className="cat-tile-label">{category.label}</span>
+            {compact && COMPACT_LABELS[category.slug] ? (
+              <span className="cat-tile-label">
+                <span className="cat-tile-label-full">{category.label}</span>
+                <span className="cat-tile-label-short" aria-hidden="true">
+                  {COMPACT_LABELS[category.slug]}
+                </span>
+              </span>
+            ) : (
+              <span className="cat-tile-label">{category.label}</span>
+            )}
             {isPrimary ? <span className="cat-tile-primary">Principale</span> : null}
             {active ? (
               <span className="cat-tile-check" aria-hidden="true">

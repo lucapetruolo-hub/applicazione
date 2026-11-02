@@ -1,9 +1,7 @@
 import { z } from "zod";
 import "./zod";
 
-// Schemi in un file a parte (docs/changelog/2026-11-02-nextjs-16.md): le
-// costanti di notifications.ts servono in ogni pagina del sito, zod solo dove si valida.
-
+/** Preferenze di notifica salvate (argomenti e canali in `notifications.ts`). */
 // Una vecchia chiave "sms" salvata nelle preferenze si ignora (zod la toglie).
 const channelPrefsSchema = z.object({ inApp: z.boolean(), email: z.boolean() });
 

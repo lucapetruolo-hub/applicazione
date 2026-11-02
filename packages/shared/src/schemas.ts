@@ -1,6 +1,6 @@
 import { z } from "zod";
 import "./zod";
-import { trafficSourceSchema } from "./trafficSourceSchema";
+import { TRAFFIC_SOURCES } from "./trafficSources";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
 import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
 import { quotePaymentOfferSchema } from "./onlinePayments";
@@ -8,6 +8,15 @@ import { contentReportReason, contentReportReasonCodes, moderationGroundCodes } 
 import { newPasswordSchema } from "./password";
 import { REQUEST_TIMINGS } from "./requestTiming";
 import { SERVICE_PRICE_UNITS } from "./professionals";
+
+/**
+ * Da dove arriva chi manda una richiesta di preventivo (docs/CHANGELOG.md
+ * §296, strategia SEO): l'unica prova che Google porta lavoro vero. Solo una
+ * categoria, mai l'indirizzo di provenienza né dati personali. Qui e non in
+ * `trafficSource.ts`, che entra in ogni pagina del sito senza zod (collaudo
+ * N-01, docs/changelog/2026-10-30-velocita-telefono.md).
+ */
+export const trafficSourceSchema = z.enum(TRAFFIC_SOURCES);
 
 const categorySlugs = PROFESSIONAL_CATEGORIES.map((category) => category.slug) as [string, ...string[]];
 
@@ -773,6 +782,16 @@ export const reviewSchema = z.object({
 });
 export type ReviewInput = z.infer<typeof reviewSchema>;
 
+/** Aggiornamento della recensione dopo una segnalazione a lavoro chiuso senza accordo (una volta sola). */
+export const reviewUpdateSchema = reviewSchema.omit({ bookingId: true });
+export type ReviewUpdateInput = z.infer<typeof reviewUpdateSchema>;
+
+/** Risposta pubblica del professionista a una recensione. */
+export const reviewReplySchema = z.object({
+  reply: z.string().trim().min(2, "Scrivi la risposta.").max(1000),
+});
+export type ReviewReplyInput = z.infer<typeof reviewReplySchema>;
+
 /** Prestazione offerta dal professionista: nome + prezzo facoltativo (in centesimi). */
 export const professionalServiceSchema = z
   .object({
@@ -1147,9 +1166,13 @@ export const requestRefundSchema = z.object({
 });
 export type RequestRefundInput = z.infer<typeof requestRefundSchema>;
 
-export const decideRefundSchema = z.object({
-  decision: z.enum(["APPROVED", "REJECTED"]),
-});
+export const decideRefundSchema = z
+  .object({
+    decision: z.enum(["APPROVED", "REJECTED"]),
+    /** Motivo del rifiuto, detto a chi l'ha chiesto (admin-riordino, gruppo 1 del collaudo). */
+    note: z.string().trim().max(1000).optional(),
+  })
+  .refine((data) => data.decision !== "REJECTED" || (data.note ?? "").length >= 5, { message: "Scrivi il motivo del rifiuto.", path: ["note"] });
 export type DecideRefundInput = z.infer<typeof decideRefundSchema>;
 
 export const openDisputeSchema = z.object({
@@ -1179,6 +1202,13 @@ export const setDac7RuleSchema = z.object({
   includeDirectPayments: z.boolean(),
 });
 export type SetDac7RuleInput = z.infer<typeof setDac7RuleSchema>;
+
+/** "Segna come inviato": il protocollo della ricevuta dell'Agenzia delle Entrate, come prova dell'invio (docs/changelog/2026-11-02-admin-protezioni.md). */
+export const DAC7_PROTOCOL_MIN = 5;
+export const dac7SubmittedSchema = z.object({
+  protocol: z.string().trim().min(DAC7_PROTOCOL_MIN, "Scrivi il numero di protocollo della ricevuta.").max(100),
+});
+export type Dac7SubmittedInput = z.infer<typeof dac7SubmittedSchema>;
 
 /**
  * Identità della piattaforma richiesta dal blocco MessageSpec/Platform

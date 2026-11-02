@@ -12,7 +12,7 @@ function eur(cents: number): string {
   return formatEurCents(cents);
 }
 
-const TILES: Array<{ key: keyof Omit<ProfessionalPayoutTotals, "hasFailed">; label: string; icon: IconName; color: string; bg: string }> = [
+const TILES: Array<{ key: keyof Omit<ProfessionalPayoutTotals, "hasFailed" | "disputedEurCents">; label: string; icon: IconName; color: string; bg: string }> = [
   { key: "blockedEurCents", label: "Bloccati", icon: "lock", color: brand.cianografiaScuro, bg: brand.cianografiaVelo },
   { key: "preparingEurCents", label: "Sbloccati", icon: "lock-open", color: brand.cianografiaScuro, bg: brand.cianografiaVelo },
   { key: "sentEurCents", label: "In arrivo in banca", icon: "landmark", color: brand.verificato, bg: "#E6F4EC" },
@@ -37,7 +37,7 @@ export function PayoutSummary() {
       .catch(() => setTotals(null));
   }, [token]);
 
-  if (!totals || TILES.every((tile) => totals[tile.key] <= 0)) return null;
+  if (!totals || (TILES.every((tile) => totals[tile.key] <= 0) && totals.disputedEurCents <= 0)) return null;
 
   return (
     <YStack gap="$2">
@@ -70,6 +70,12 @@ export function PayoutSummary() {
           </YStack>
         ))}
       </XStack>
+      {totals.disputedEurCents > 0 ? (
+        // Fuori da "Bloccati", come nell'estratto del mese: la banca può restituirli al cliente.
+        <Text fontSize={16} color={brand.grafite}>
+          {`Contestati in banca: ${eur(totals.disputedEurCents)}. Restano fermi finché la banca decide.`}
+        </Text>
+      ) : null}
       {totals.hasFailed ? (
         <Text fontSize={16} color={brand.urgenza} role="alert">
           Un bonifico non è arrivato alla tua banca: controlla il conto bancario su Stripe.

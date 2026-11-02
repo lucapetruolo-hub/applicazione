@@ -26,10 +26,9 @@ export function PopularServicesLinks({
   /** Nome del comune già verificato; senza città i link vanno alle pagine nazionali. */
   city?: string;
   /**
-   * Slug del comune, calcolato da chi chiama (lato server): qui niente
-   * `comuneSlug`, che porterebbe l'elenco dei comuni nel JavaScript di ogni
-   * pagina, perché la pagina "non trovata" usa questo componente
-   * (docs/changelog/2026-11-02-nextjs-16.md).
+   * Slug del comune, calcolato da chi chiama: qui niente `comuneSlug`, che
+   * porterebbe l'elenco dei comuni nella pagina "non trovata", caricata su
+   * ogni pagina del sito (docs/changelog/2026-10-30-velocita-telefono.md).
    */
   citySlug?: string;
   order: string[];

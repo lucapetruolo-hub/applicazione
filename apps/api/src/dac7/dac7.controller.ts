@@ -1,9 +1,10 @@
 import { Body, Controller, Get, NotFoundException, Param, ParseIntPipe, Post, Req, UseGuards } from "@nestjs/common";
-import { setDac7RuleSchema, platformDac7SettingsSchema, type SetDac7RuleInput, type PlatformDac7SettingsInput } from "@professionisti/shared";
+import { dac7SubmittedSchema, setDac7RuleSchema, platformDac7SettingsSchema, type Dac7SubmittedInput, type SetDac7RuleInput, type PlatformDac7SettingsInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { Dac7Service } from "./dac7.service";
+import { AuditLogService } from "../audit-log/audit-log.service";
 import { pdfResponse, renderDocumentPdf } from "../accounting/document-pdf";
 import { dac7PdfModel } from "../accounting/document-pdf-models";
 
@@ -11,7 +12,10 @@ import { dac7PdfModel } from "../accounting/document-pdf-models";
 @RequireAdminScope("FINANCE")
 @Controller("admin/dac7")
 export class Dac7Controller {
-  constructor(private readonly dac7Service: Dac7Service) {}
+  constructor(
+    private readonly dac7Service: Dac7Service,
+    private readonly auditLogService: AuditLogService,
+  ) {}
 
   @Get("rule")
   getRule() {
@@ -54,15 +58,20 @@ export class Dac7Controller {
     return this.dac7Service.generateExport(id);
   }
 
+  /** Non si annulla: nel registro azioni con chi l'ha fatto (docs/changelog/2026-11-02-admin-protezioni.md). */
   @Post("periods/:id/mark-submitted")
-  markSubmitted(@Param("id") id: string) {
-    return this.dac7Service.markSubmitted(id);
+  async markSubmitted(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(dac7SubmittedSchema)) body: Dac7SubmittedInput) {
+    const updated = await this.dac7Service.markSubmitted(id, body.protocol);
+    await this.auditLogService.record({ entityType: "Dac7ReportingPeriod", entityId: id, fieldName: "dac7Submitted", newValue: String(updated.year), changedByUserId: req.user.userId, reason: `Protocollo ${body.protocol}` });
+    return updated;
   }
 
   /** Rimanda l'avviso annuale (es. dopo una correzione): normalmente parte da solo con "Segna come inviato". */
   @Post("periods/:id/notify-sellers")
-  notifySellers(@Param("id") id: string) {
-    return this.dac7Service.notifySellers(id, { resend: true });
+  async notifySellers(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    const result = await this.dac7Service.notifySellers(id, { resend: true });
+    await this.auditLogService.record({ entityType: "Dac7ReportingPeriod", entityId: id, fieldName: "dac7SellersNotified", newValue: String(result.sent), changedByUserId: req.user.userId });
+    return result;
   }
 
   @Post("periods/:id/correct")

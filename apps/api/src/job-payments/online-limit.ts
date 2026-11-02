@@ -53,6 +53,15 @@ export async function professionalOnlineLimit(prisma: PrismaClient, professional
   return { ...clean, removedAt, limitEurCents: onlineLimitEurCents({ ...clean, removedByAdmin: !!removedAt, now }) };
 }
 
+/** Soldi online pagati al professionista e non ancora sbloccati (collaudo P-02). */
+export async function professionalHeldEurCents(prisma: PrismaClient, professionalProfileId: string): Promise<number> {
+  const rows = await prisma.jobPayment.findMany({
+    where: { paymentMethod: "MANOVIA", booking: { professionalProfileId }, releasedAt: null, paidEurCents: { gt: 0 } },
+    select: { paidEurCents: true, refundedEurCents: true },
+  });
+  return rows.reduce((sum, row) => sum + Math.max(0, row.paidEurCents - row.refundedEurCents), 0);
+}
+
 /** Campi del tetto nel profilo del professionista (MyProfessionalProfile). */
 export function onlineLimitFields(limit: ProfessionalOnlineLimit) {
   return {

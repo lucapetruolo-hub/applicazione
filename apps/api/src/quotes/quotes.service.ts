@@ -11,6 +11,7 @@ import {
   paymentOfferChanged,
   quoteChangeWhat,
   quotePaymentOffer,
+  onlineDepositTooLowProblem,
   onlineLimitProblem,
   quotePriceTotals,
   scheduleChangeAlternative,
@@ -192,7 +193,9 @@ export class QuotesService {
     if (onlinePaymentsEnabled() && offer.paymentOptions.some(paymentChoiceIsOnline)) {
       const { totalMaxEurCents } = quotePriceTotals(input.items.map((item) => ({ priceMinEurCents: item.priceMinEurCents ?? null, priceMaxEurCents: item.priceMaxEurCents ?? null })));
       const { limitEurCents } = await professionalOnlineLimit(this.prisma, professionalProfile.id);
-      const problem = onlineLimitProblem({ paymentOptions: offer.paymentOptions, depositPercent: offer.depositPercent, totalMaxEurCents, limitEurCents });
+      const problem =
+        onlineLimitProblem({ paymentOptions: offer.paymentOptions, depositPercent: offer.depositPercent, totalMaxEurCents, limitEurCents }) ??
+        onlineDepositTooLowProblem({ paymentOptions: offer.paymentOptions, depositPercent: offer.depositPercent, totalMaxEurCents });
       if (problem) throw new BadRequestException(problem);
     }
 

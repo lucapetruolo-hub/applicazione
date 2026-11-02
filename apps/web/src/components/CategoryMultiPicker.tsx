@@ -49,7 +49,7 @@ export function CategoryMultiPicker({
         </Text>
       </XStack>
 
-      <CategoryTiles value={value} onToggle={toggle} max={MAX_PROFESSIONAL_CATEGORIES} city={city} showPrimary ariaLabel="Che lavori fai?" />
+      <CategoryTiles value={value} onToggle={toggle} max={MAX_PROFESSIONAL_CATEGORIES} city={city} showPrimary compact ariaLabel="Che lavori fai?" />
 
       {value.length > 1 ? (
         <XStack alignItems="center" gap="$2" flexWrap="wrap">

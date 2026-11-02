@@ -2,7 +2,7 @@ import { ACTION_SHORT_LABEL, auditLabel } from "./audit-label";
 import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, type AdminSignupFunnel, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES, ADMIN_BOOKING_STATUS_LABEL, ADMIN_REQUEST_STATUS_LABEL, contentReportReason, type AdminModerateInput, type AdminSignalArchiveReason, type AdminSignalRole, type AdminUserSignal, adviseSuspiciousUser, type ProfessionalStatusKey } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, jobIssueAssisted, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, type AdminSignupFunnel, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES, ADMIN_BOOKING_STATUS_LABEL, ADMIN_REQUEST_STATUS_LABEL, contentReportReason, type AdminModerateInput, type AdminSignalArchiveReason, type AdminSignalRole, type AdminUserSignal, adviseSuspiciousUser, type ProfessionalStatusKey } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { PUBLIC_VISIBILITY_SELECT } from "../professional-fiscal/public-visibility";
 import { bookingSearchWhere, userSearchWhere } from "./admin-search";
@@ -674,7 +674,7 @@ export class AdminService {
    * profilo, altrimenti cliente. Mai togliere l'ultimo super admin né
    * cambiare i propri ruoli (niente blocchi fuori dal pannello).
    */
-  async setAdminRoles(adminUserId: string, userId: string, roles: AdminRoleValue[]) {
+  async setAdminRoles(adminUserId: string, userId: string, roles: AdminRoleValue[], reason: string) {
     if (userId === adminUserId) throw new BadRequestException("Non puoi cambiare il tuo stesso ruolo.");
     const target = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -702,6 +702,7 @@ export class AdminService {
       oldValue,
       newValue: nextRoles.length ? nextRoles.join("+") : data.role,
       changedByUserId: adminUserId,
+      reason,
     });
     // Email a tutti i super admin (§359): un admin nominato da un account rubato si vede subito.
     await this.securityAlerts.adminRolesChanged(adminUserId, userId, nextRoles);
@@ -1545,7 +1546,7 @@ export class AdminService {
             professionalProfile: { select: { id: true, userId: true, businessName: true, demotedUntil: true, requestsBlockedUntil: true } },
             client: { select: { id: true, name: true, surname: true, deletedAt: true } },
             quote: { select: { guidedRequest: { select: { id: true, city: true, description: true, category: { select: { label: true } } } } } },
-            jobPayment: { select: { paymentMethod: true, status: true } },
+            jobPayment: { select: { paymentMethod: true, status: true, paidEurCents: true, refundedEurCents: true } },
             courtesyDocument: { select: { kind: true, number: true, year: true } },
           },
         },
@@ -1559,6 +1560,13 @@ export class AdminService {
     });
     const upheldBy = new Map<string, number>();
     for (const row of upheldCounts) upheldBy.set(row.booking.professionalProfileId, (upheldBy.get(row.booking.professionalProfileId) ?? 0) + 1);
+    // Segnalazioni dopo il termine finite senza accordo: non sono decise da noi, ma dicono qualcosa sull'affidabilità.
+    const lateCounts = await this.prisma.jobIssue.findMany({
+      where: { late: true, status: "UNRESOLVED", resolvedAt: { gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) }, booking: { professionalProfileId: { in: profileIds } } },
+      select: { booking: { select: { professionalProfileId: true } } },
+    });
+    const lateBy = new Map<string, number>();
+    for (const row of lateCounts) lateBy.set(row.booking.professionalProfileId, (lateBy.get(row.booking.professionalProfileId) ?? 0) + 1);
     const chatReplies = await this.jobIssueOutcomeService.proChatReplies(
       issues
         .filter((i) => i.status === "CHAT")
@@ -1566,6 +1574,7 @@ export class AdminService {
           id: i.id,
           createdAt: i.createdAt,
           professionalRespondedAt: i.professionalRespondedAt,
+          refundOfferedAt: i.refundOfferedAt,
           guidedRequestId: i.booking.quote?.guidedRequest.id ?? null,
           professionalProfileId: i.booking.professionalProfileId,
         })),
@@ -1579,7 +1588,7 @@ export class AdminService {
         issue: toJobIssueSummary(issue, {
           proRepliedAt: chatReplies.get(issue.id) ?? null,
           paidOnline: jobPaidOnline(booking.jobPayment),
-          assisted: booking.jobPayment?.paymentMethod !== "DIRECT",
+          assisted: jobIssueAssisted(booking.jobPayment?.paymentMethod, issue.late),
         }) as JobIssueSummary,
         bookingId: booking.id,
         guidedRequestId: request?.id ?? null,
@@ -1593,6 +1602,7 @@ export class AdminService {
           userId: booking.professionalProfile.userId,
           businessName: booking.professionalProfile.businessName,
           upheldLast30Days: upheldBy.get(booking.professionalProfileId) ?? 0,
+          lateUnresolvedLastYear: lateBy.get(booking.professionalProfileId) ?? 0,
           demoted: restrictions.demoted,
           blocked: restrictions.blocked,
         },
@@ -1604,6 +1614,8 @@ export class AdminService {
         // Il ricorso lo decide un admin diverso da chi ha deciso la segnalazione (§167).
         decidedByMe: issue.resolvedByUserId === adminUserId,
         finalAmountEurCents: booking.finalAmountEurCents,
+        // Cifra che un rimborso del 100% restituirebbe ora, per mostrarla in euro prima di decidere.
+        refundableEurCents: booking.jobPayment?.paymentMethod === "MANOVIA" ? Math.max(0, booking.jobPayment.paidEurCents - booking.jobPayment.refundedEurCents) : null,
         professionalCompletedAt: booking.professionalCompletedAt?.toISOString() ?? null,
         clientConfirmedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
         professionalCompletionNote: booking.professionalCompletionNote,
@@ -1937,7 +1949,7 @@ export type AdminJobIssueRow = {
   requestDescription: string | null;
   scheduledAt: string;
   bookingStatus: string;
-  professional: { profileId: string; userId: string; businessName: string; upheldLast30Days: number; demoted: boolean; blocked: boolean };
+  professional: { profileId: string; userId: string; businessName: string; upheldLast30Days: number; lateUnresolvedLastYear: number; demoted: boolean; blocked: boolean };
   client: { userId: string; name: string | null; accountDeleted: boolean };
   decidedByMe: boolean;
   finalAmountEurCents: number | null;

@@ -3,8 +3,8 @@ import { CompletionDeadlineService, completionDeadlineStep } from "./completion-
 
 /**
  * Solo una parte ha cliccato "Lavoro terminato" (docs/CHANGELOG.md §190):
- * promemoria al 3° e al 10° giorno, chiusura d'ufficio al 14°, lo stesso
- * termine entro cui si può segnalare un lavoro fatto male.
+ * promemoria al 3° e al 6° giorno, chiusura d'ufficio al 7°, lo stesso
+ * termine entro cui si può segnalare un lavoro fatto male (collaudo P-04).
  */
 const DAY = 24 * 60 * 60 * 1000;
 const since = new Date("2026-10-01T10:00:00Z");
@@ -14,17 +14,17 @@ describe("completionDeadlineStep", () => {
   it("niente nei primi 3 giorni", () => {
     expect(completionDeadlineStep(since, 0, after(2.9))).toBeNull();
   });
-  it("primo promemoria al 3° giorno, secondo al 10°, una volta sola ciascuno", () => {
+  it("primo promemoria al 3° giorno, secondo al 6°, una volta sola ciascuno", () => {
     expect(completionDeadlineStep(since, 0, after(3))).toBe("REMIND");
     expect(completionDeadlineStep(since, 1, after(5))).toBeNull();
-    expect(completionDeadlineStep(since, 1, after(10))).toBe("REMIND");
-    expect(completionDeadlineStep(since, 2, after(13.9))).toBeNull();
+    expect(completionDeadlineStep(since, 1, after(6))).toBe("REMIND");
+    expect(completionDeadlineStep(since, 2, after(6.9))).toBeNull();
   });
   it("recupera un promemoria saltato (es. servizio fermo)", () => {
-    expect(completionDeadlineStep(since, 0, after(11))).toBe("REMIND");
+    expect(completionDeadlineStep(since, 0, after(4))).toBe("REMIND");
   });
-  it("chiude allo scadere dei 14 giorni", () => {
-    expect(completionDeadlineStep(since, 2, after(14))).toBe("CLOSE");
+  it("chiude allo scadere dei 7 giorni", () => {
+    expect(completionDeadlineStep(since, 2, after(7))).toBe("CLOSE");
     expect(completionDeadlineStep(since, 0, after(20))).toBe("CLOSE");
   });
 });
@@ -45,7 +45,7 @@ function buildService(clientSilent: unknown[], proSilent: unknown[]) {
 }
 
 describe("CompletionDeadlineService.run", () => {
-  it("cliente silenzioso: al 14° giorno il lavoro vale come confermato anche da lui", async () => {
+  it("cliente silenzioso: al 7° giorno il lavoro vale come confermato anche da lui", async () => {
     const booking = { id: "b-1", clientId: "c-1", professionalProfileId: "p-1", professionalCompletedAt: since, completionReminderCount: 2, quote: { guidedRequestId: "gr-1" } };
     const { service, prisma, notifications } = buildService([booking], []);
     const now = after(14);
@@ -70,7 +70,7 @@ describe("CompletionDeadlineService.run", () => {
     const { service, prisma, notifications } = buildService([], [booking]);
     await service.run(after(3));
     expect(prisma.booking.update).toHaveBeenCalledWith({ where: { id: "b-2" }, data: { completionReminderCount: { increment: 1 } } });
-    expect(notifications.notify).toHaveBeenCalledWith("pro-user", "JOB_CLOSE_REMINDER", { bookingId: "b-2", guidedRequestId: null, deadline: after(14).toISOString() });
+    expect(notifications.notify).toHaveBeenCalledWith("pro-user", "JOB_CLOSE_REMINDER", { bookingId: "b-2", guidedRequestId: null, deadline: after(7).toISOString() });
   });
 
   it("professionista silenzioso con soldi online in custodia: avvisa il nostro team, il lavoro resta aperto", async () => {

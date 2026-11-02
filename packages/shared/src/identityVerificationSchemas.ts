@@ -1,8 +1,9 @@
 import { z } from "zod";
 import "./zod";
 
-// Schemi in un file a parte (docs/changelog/2026-11-02-nextjs-16.md): le
-// costanti di identityVerification.ts servono in ogni pagina del sito, zod solo dove si valida.
+// Schema in un file a parte: `identityVerification.ts` entra in ogni pagina
+// del sito (menu del professionista), zod no (collaudo N-01,
+// docs/changelog/2026-10-30-velocita-telefono.md).
 
 export const startIdentityVerificationSchema = z.object({
   biometricConsent: z.literal(true, { message: "Per continuare spunta il consenso al confronto del selfie." }),

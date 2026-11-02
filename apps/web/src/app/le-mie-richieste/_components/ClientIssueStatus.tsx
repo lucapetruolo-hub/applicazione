@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import type { ClientBooking } from "@professionisti/api-client";
-import { jobIssueOutcomeText } from "@professionisti/shared";
+import { formatEurCents, jobIssueOutcomeText } from "@professionisti/shared";
 import { Text, XStack, YStack, brand } from "@professionisti/ui";
 import { CardButton } from "@/components/CardButton";
+import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { formatIssueDeadline } from "@/lib/leadDeadline";
 
 /**
@@ -20,6 +22,7 @@ export function ClientIssueStatus({
   error,
   onOpenChat,
   onCloseChat,
+  onAcceptRefund,
   onRedispatch,
 }: {
   booking: ClientBooking;
@@ -27,8 +30,11 @@ export function ClientIssueStatus({
   error: string | null;
   onOpenChat: (() => void) | null;
   onCloseChat: (outcome: "RESOLVED" | "ESCALATE") => void;
+  /** Accetta il rimborso proposto dal professionista (collaudo F-03). */
+  onAcceptRefund: () => void;
   onRedispatch: () => void;
 }) {
+  const [confirm, setConfirm] = useState<"resolved" | "refund" | null>(null);
   const issue = booking.issue;
   if (!issue) return null;
   const pro = booking.businessName;
@@ -42,19 +48,34 @@ export function ClientIssueStatus({
     return (
       <YStack gap="$2">
         <Text fontSize={13} color={brand.grafite70}>
-          {!issue.assisted
+          {issue.late
+            ? `Scrivi a ${pro} in chat per trovare insieme una soluzione. Sono passati i giorni per un rimborso dal sito, ma per legge ${pro} risponde comunque dei difetti del suo lavoro.`
+            : !issue.assisted
             ? `Hai scelto il pagamento diretto: scrivi a ${pro} in chat per trovare insieme una soluzione. In questo caso non possiamo rimborsarti né decidere noi, ma potrai sempre lasciare la recensione.`
             : issue.proRepliedInChat
             ? `${pro} ti ha risposto in chat. Se non trovate un accordo, chiedi al nostro team di decidere.`
             : `${pro} ha tempo fino a ${formatIssueDeadline(issue.chatReplyDueAt)} per risponderti in chat e proporti una soluzione. Se non risponde, la segnalazione passa da sola al nostro team.`}
         </Text>
+        {issue.refundOfferEurCents !== null ? (
+          <YStack gap="$2" padding="$2" borderRadius="$3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto}>
+            <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+              {pro} ti propone un rimborso di {formatEurCents(issue.refundOfferEurCents)}
+            </Text>
+            <Text fontSize={13} color={brand.grafite70}>
+              Se lo accetti parte subito sulla tua carta e la segnalazione si chiude.
+            </Text>
+            <CardButton tone="primary" alignSelf="flex-start" disabled={busy} onPress={() => setConfirm("refund")}>
+              Accetta il rimborso
+            </CardButton>
+          </YStack>
+        ) : null}
         <XStack gap="$2" flexWrap="wrap">
           {onOpenChat ? (
             <CardButton tone="primary" onPress={onOpenChat}>
               Apri la chat
             </CardButton>
           ) : null}
-          <CardButton disabled={busy} onPress={() => onCloseChat("RESOLVED")}>
+          <CardButton disabled={busy} onPress={() => setConfirm("resolved")}>
             Abbiamo risolto
           </CardButton>
           {issue.canEscalate ? (
@@ -64,6 +85,43 @@ export function ClientIssueStatus({
           ) : null}
         </XStack>
         {errorText}
+        {/* Conferma con cosa succede ai soldi (collaudo F-03). */}
+        {confirm === "refund" && issue.refundOfferEurCents !== null ? (
+          <CancelBookingModal
+            title="Accettare il rimborso?"
+            description={`Ti rimborsiamo ${formatEurCents(issue.refundOfferEurCents)} sulla carta, li rivedi in pochi giorni. La segnalazione si chiude e il resto del pagamento va a ${pro}.`}
+            confirmLabel="Accetta il rimborso"
+            confirmingLabel="Rimborso..."
+            confirmVariant="primary"
+            showNote={false}
+            onClose={() => setConfirm(null)}
+            onCancel={async () => {
+              setConfirm(null);
+              onAcceptRefund();
+            }}
+          />
+        ) : null}
+        {confirm === "resolved" ? (
+          <CancelBookingModal
+            title="Avete risolto?"
+            description={
+              issue.paidOnline
+                ? `La segnalazione si chiude senza rimborso e il pagamento va a ${pro} come previsto.${
+                    issue.refundOfferEurCents !== null ? " Se vi siete accordati sul rimborso proposto, usa invece \"Accetta il rimborso\"." : ""
+                  }`
+                : "La segnalazione si chiude. Potrai comunque lasciare la recensione."
+            }
+            confirmLabel="Sì, abbiamo risolto"
+            confirmingLabel="Chiusura..."
+            confirmVariant="primary"
+            showNote={false}
+            onClose={() => setConfirm(null)}
+            onCancel={async () => {
+              setConfirm(null);
+              onCloseChat("RESOLVED");
+            }}
+          />
+        ) : null}
       </YStack>
     );
   }
@@ -87,7 +145,9 @@ export function ClientIssueStatus({
   if (issue.status === "RESOLVED") {
     return (
       <Text fontSize={13} color={brand.grafite70}>
-        Hai indicato che avete risolto il problema con {pro}.
+        {issue.agreedRefundEurCents !== null
+          ? `Hai accettato il rimborso di ${formatEurCents(issue.agreedRefundEurCents)} da ${pro}: lo rivedi sulla carta in pochi giorni.`
+          : `Hai indicato che avete risolto il problema con ${pro}.`}
       </Text>
     );
   }

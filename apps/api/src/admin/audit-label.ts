@@ -207,6 +207,11 @@ export function auditLabel(row: { entityType: string; fieldName: string | null; 
     return "Verifica in due passaggi attivata";
   }
   if (fieldName === "suspiciousDismissed") return value === "DISMISSED" ? "Account sospetto segnato \"Va bene così\"" : "Tolto il \"Va bene così\" da un account sospetto";
+  // Azioni pericolose di Finanza (docs/changelog/2026-11-02-admin-protezioni.md).
+  if (fieldName === "dac7Submitted") return `DAC7 ${raw ?? ""}: comunicazione segnata come inviata all'Agenzia delle Entrate`;
+  if (fieldName === "dac7SellersNotified") return `DAC7: avviso rimandato a ${raw ?? "0"} professionisti`;
+  if (fieldName === "invoicesIssued") return `Fatture delle trattenute emesse a mano: ${raw ?? "0"}`;
+  if (fieldName === "sdiResent") return `Fattura ${raw ?? ""} rimandata allo SdI`;
   if (fieldName === "onlineLimitRemovedAt") return value === "REMOVED" ? "Tolto il tetto ai pagamenti online" : "Rimesso il tetto ai pagamenti online";
   if (fieldName === "profileInvite") {
     return v.businessName ? `Profilo creato per ${asText(v.businessName)}${v.city ? ` a ${asText(v.city)}` : ""}` : "Profilo creato da un operatore confermato";
