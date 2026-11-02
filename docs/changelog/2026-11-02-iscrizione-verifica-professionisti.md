@@ -42,7 +42,8 @@ difetto è stato ricontrollato sul codice prima di toccarlo.
   della sede o del profilo.
 - **Dati persi ricaricando** (0-04): la parte 1 resta in una bozza nella
   scheda del browser (`sessionStorage`, mai sul disco e mai dopo la chiusura
-  della scheda, perché sono dati fiscali), con "Abbiamo ripreso i dati che
+  della scheda, perché sono dati fiscali; codici fiscali, data e luogo di
+  nascita restano fuori e vanno riscritti, segnalazione di CodeQL), con "Abbiamo ripreso i dati che
   avevi scritto." e "Ricomincia". Si cancella al salvataggio.
 - **Salvataggio lento** (0-06): mentre si controlla, una riga dice "Stiamo
   controllando ...: pochi secondi.".

@@ -36,18 +36,45 @@ const isPersonType = (type: string) => type === "PRIVATE_INDIVIDUAL" || type ===
 /**
  * Dati scritti e non ancora salvati (collaudo 0-04): ricaricando la pagina
  * prima si perdevano senza avviso. Restano solo nella scheda del browser
- * (sessionStorage, si cancella chiudendola) e si tolgono appena si salva.
+ * (sessionStorage, si cancella chiudendola) e si tolgono appena si salva;
+ * codici fiscali e data di nascita no (`draftFields`).
  */
 const FISCAL_DRAFT_KEY = "dati-fiscali-bozza";
 type FiscalDraft = {
   entityType: string;
   fields: Record<string, string>;
-  repFields: { firstName: string; lastName: string; codiceFiscale: string; role: string };
+  repFields: { firstName: string; lastName: string; role: string };
   abroad: boolean;
   chargesVat: boolean | null;
   invoiceRecipient: string;
   formStep: 1 | 2;
 };
+
+/**
+ * Nella bozza mai codici fiscali, data e luogo di nascita né codici fiscali
+ * esteri (CodeQL, dati personali in chiaro nel browser): si riscrivono, il
+ * resto torna. Campi elencati uno per uno, così un campo nuovo resta fuori
+ * finché non lo si aggiunge qui.
+ */
+function draftFields(f: Record<string, string>): Record<string, string> {
+  return {
+    fiscalFirstName: f.fiscalFirstName ?? "",
+    fiscalLastName: f.fiscalLastName ?? "",
+    businessName: f.businessName ?? "",
+    legalForm: f.legalForm ?? "",
+    vatNumber: f.vatNumber ?? "",
+    businessRegistrationNumber: f.businessRegistrationNumber ?? "",
+    leiCode: f.leiCode ?? "",
+    taxResidenceCountry: f.taxResidenceCountry ?? "",
+    fiscalIdIssuingCountry: f.fiscalIdIssuingCountry ?? "",
+    registeredStreet: f.registeredStreet ?? "",
+    registeredHouseNumber: f.registeredHouseNumber ?? "",
+    registeredCity: f.registeredCity ?? "",
+    registeredPostalCode: f.registeredPostalCode ?? "",
+    registeredProvince: f.registeredProvince ?? "",
+    registeredCountry: f.registeredCountry ?? "",
+  };
+}
 
 function readFiscalDraft(userId: string): FiscalDraft | null {
   try {
@@ -243,7 +270,15 @@ function DashboardFiscaleContent() {
   const [draftChecked, setDraftChecked] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
   const [loadedDraft, setLoadedDraft] = useState<string | null>(null);
-  const currentDraft: FiscalDraft = { entityType, fields, repFields, abroad, chargesVat, invoiceRecipient, formStep };
+  const currentDraft: FiscalDraft = {
+    entityType,
+    fields: draftFields(fields),
+    repFields: { firstName: repFields.firstName, lastName: repFields.lastName, role: repFields.role },
+    abroad,
+    chargesVat,
+    invoiceRecipient,
+    formStep,
+  };
   const currentDraftJson = JSON.stringify(currentDraft);
 
   // La città del profilo: i suggerimenti dell'indirizzo partono da lì (collaudo 0-03).
@@ -335,8 +370,8 @@ function DashboardFiscaleContent() {
     const draft = readFiscalDraft(user.id);
     if (draft && JSON.stringify(draft) !== currentDraftJson) {
       setEntityType(isEntityType(draft.entityType) ? draft.entityType : "");
-      setFields(draft.fields);
-      setRepFields(draft.repFields);
+      setFields((current) => ({ ...current, ...draftFields(draft.fields) }));
+      setRepFields((current) => ({ ...current, firstName: draft.repFields.firstName, lastName: draft.repFields.lastName, role: draft.repFields.role }));
       setAbroad(draft.abroad);
       setChargesVat(draft.chargesVat);
       setInvoiceRecipient(draft.invoiceRecipient);
