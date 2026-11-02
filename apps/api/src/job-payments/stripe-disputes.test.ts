@@ -107,7 +107,7 @@ describe("OnlineMoneyService.handleStripeDispute", () => {
       where: { id: "jp-1" },
       data: expect.objectContaining({ stripeDisputeId: "dp_1", stripeDisputeStatus: "needs_response", status: "DISPUTED" }),
     });
-    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith({ where: { id: "jp-1", stripeDisputeId: null }, data: { stripeDisputeId: "dp_1", stripeDisputedAt: expect.any(Date) } });
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith({ where: { id: "jp-1", disputeStatuses: { equals: {} } }, data: { disputeStatuses: { dp_1: "needs_response" }, disputeDetails: { dp_1: { payment: "DEPOSIT", amountEurCents: 8000 } } } });
     expect(notificationsService.notify).toHaveBeenCalledWith("admin-1", "ADMIN_STRIPE_DISPUTE", expect.anything());
     expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "JOB_STRIPE_DISPUTE", expect.anything());
   });
@@ -129,7 +129,7 @@ describe("OnlineMoneyService.handleStripeDispute", () => {
 
     expect(prisma.jobPayment.update).toHaveBeenCalledWith({
       where: { id: "jp-1" },
-      data: expect.objectContaining({ stripeDisputeStatus: "lost", refundedEurCents: 8000, status: "PENDING" }),
+      data: expect.objectContaining({ stripeDisputeStatus: "lost", refundedEurCents: { increment: 8000 }, status: "PENDING" }),
     });
     // Il tetto ai pagamenti online torna, anche se l'admin l'aveva tolto (docs/changelog/2026-10-28-tetto-pagamenti-online.md).
     expect(prisma.professionalProfile.update).toHaveBeenCalledWith({
@@ -156,7 +156,7 @@ describe("OnlineMoneyService.handleStripeDispute", () => {
     expect(proNotices).toHaveLength(1);
     const refundWrites = prisma.jobPayment.update.mock.calls.filter((c) => "refundedEurCents" in c[0].data);
     expect(refundWrites).toHaveLength(1);
-    expect(refundWrites[0]![0].data.refundedEurCents).toBe(8000);
+    expect(refundWrites[0]![0].data.refundedEurCents).toEqual({ increment: 8000 });
   });
 
   it("una notizia in ritardo non riapre una contestazione chiusa", async () => {
@@ -177,8 +177,44 @@ describe("OnlineMoneyService.handleStripeDispute", () => {
 
     expect(prisma.jobPayment.update).toHaveBeenCalledWith({
       where: { id: "jp-1" },
-      data: expect.objectContaining({ status: "REFUNDED", onlineStage: "REFUNDED", refundedEurCents: 8000 }),
+      data: expect.objectContaining({ status: "REFUNDED", onlineStage: "REFUNDED", refundedEurCents: { increment: 8000 } }),
     });
+  });
+
+  it("acconto e saldo contestati: ogni contestazione si chiude da sola (collaudo F-21)", async () => {
+    const { service, prisma, notificationsService } = buildService();
+    const both = { paidEurCents: 8000, stripeDisputeId: "dp_1", stripeDisputeStatus: "needs_response", disputeStatuses: { dp_1: "needs_response", dp_2: "needs_response" } };
+    prisma.jobPayment.findFirst.mockResolvedValue(paidJob(both));
+
+    // Persa la prima (acconto, 40 €): la seconda è ancora aperta, i soldi restano fermi.
+    await service.handleStripeDispute({ ...dispute("lost", 4000) } as never);
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith({
+      where: { id: "jp-1" },
+      data: expect.objectContaining({ stripeDisputeId: "dp_2", stripeDisputeStatus: "needs_response", status: "DISPUTED", refundedEurCents: { increment: 4000 } }),
+    });
+
+    // Persa anche la seconda (saldo, 40 €): si conta anche lei, e il pagamento è tutto rimborsato.
+    prisma.jobPayment.update.mockClear();
+    prisma.jobPayment.findFirst.mockResolvedValue(paidJob({ ...both, refundedEurCents: 4000, stripeDisputeStatus: "lost", disputeStatuses: { dp_1: "lost", dp_2: "needs_response" } }));
+    await service.handleStripeDispute({ ...dispute("lost", 4000), id: "dp_2", payment_intent: "pi_bal" } as never);
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith({
+      where: { id: "jp-1" },
+      data: expect.objectContaining({ stripeDisputeId: "dp_2", status: "REFUNDED", onlineStage: "REFUNDED", refundedEurCents: { increment: 4000 } }),
+    });
+    expect(notificationsService.notify.mock.calls.filter((c) => c[1] === "JOB_STRIPE_DISPUTE")).toHaveLength(2);
+  });
+
+  it("la seconda contestazione aperta avvisa anche lei", async () => {
+    const { service, prisma, notificationsService } = buildService();
+    prisma.jobPayment.findFirst.mockResolvedValue(paidJob({ stripeDisputeId: "dp_1", stripeDisputeStatus: "needs_response", disputeStatuses: { dp_1: "needs_response" } }));
+
+    await service.handleStripeDispute({ ...dispute("needs_response", 4000), id: "dp_2", payment_intent: "pi_bal" } as never);
+
+    expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "JOB_STRIPE_DISPUTE", expect.anything());
+    // Per l'archivio: è il saldo, 40 €.
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ disputeDetails: { dp_2: { payment: "BALANCE", amountEurCents: 4000 } } }) }),
+    );
   });
 
   it("restituisce false se il pagamento contestato non è di un lavoro", async () => {

@@ -100,6 +100,7 @@ describe("BankDisputesService", () => {
       where: { id: "jp-1" },
       data: {
         stripeDisputeStatus: "under_review",
+        disputeStatuses: { du_1: "under_review" },
         disputeEvidence: { productDescription: "Idraulico a domicilio", explanation: "Il cliente ha confermato il lavoro sul sito." },
         disputeEvidenceFileId: "file_1",
         disputeEvidenceSentAt: expect.any(Date),
@@ -121,6 +122,61 @@ describe("BankDisputesService", () => {
     const [row] = await service.listOpen();
     expect(row!.draft).toEqual({ productDescription: "Idraulico a domicilio", explanation: "Il cliente ha confermato il lavoro sul sito." });
     expect(row!.sentExplanation).toBeNull();
+  });
+
+  it("acconto e saldo contestati: una riga per ciascuna, con la somma in testa (collaudo F-21)", async () => {
+    const { service, stripe, prisma } = setup();
+    prisma.jobPayment.findMany.mockResolvedValue([{ ...job, stripePaymentIntentId: "pi_dep", balancePaymentIntentId: "pi_bal", disputeStatuses: { du_1: "needs_response", du_2: "needs_response" } }]);
+    stripe.disputes.retrieve.mockImplementation(async (id: string) => ({
+      id,
+      status: "needs_response",
+      reason: "fraudulent",
+      amount: 4000,
+      payment_intent: id === "du_1" ? "pi_dep" : "pi_bal",
+      evidence_details: { due_by: 1_762_300_800 },
+    }));
+
+    const [row] = await service.listOpen();
+
+    expect(row!.amountEurCents).toBe(8000);
+    expect(row!.parts).toEqual([
+      expect.objectContaining({ disputeId: "du_1", payment: "DEPOSIT", amountEurCents: 4000, status: "needs_response" }),
+      expect.objectContaining({ disputeId: "du_2", payment: "BALANCE", amountEurCents: 4000, status: "needs_response" }),
+    ]);
+  });
+
+  it("archivio: acconto e saldo con la loro cifra, salvati all'arrivo, senza chiedere a Stripe", async () => {
+    const { service, stripe, prisma } = setup();
+    Object.assign(prisma, { auditLog: { findMany: vi.fn().mockResolvedValue([]) }, user: { findMany: vi.fn().mockResolvedValue([]) } });
+    prisma.jobPayment.findMany.mockResolvedValue([
+      {
+        ...job,
+        stripeDisputeStatus: "lost",
+        disputeStatuses: { du_1: "lost", du_2: "won" },
+        disputeDetails: { du_1: { payment: "DEPOSIT", amountEurCents: 4000 }, du_2: { payment: "BALANCE", amountEurCents: 4000 } },
+      },
+    ]);
+
+    const [row] = await service.archive();
+
+    expect(stripe.disputes.retrieve).not.toHaveBeenCalled();
+    expect(row!.parts).toEqual([
+      { disputeId: "du_1", payment: "DEPOSIT", amountEurCents: 4000, status: "lost", dueBy: null },
+      { disputeId: "du_2", payment: "BALANCE", amountEurCents: 4000, status: "won", dueBy: null },
+    ]);
+  });
+
+  it("acconto e saldo contestati: le stesse prove vanno anche alla seconda contestazione aperta (collaudo F-21)", async () => {
+    const { service, stripe, prisma } = setup();
+    prisma.jobPayment.findUnique.mockResolvedValue({ ...job, disputeStatuses: { du_1: "needs_response", du_2: "needs_response", du_0: "won" } });
+
+    await service.saveEvidence("admin-1", "jp-1", input);
+
+    expect(stripe.disputes.update).toHaveBeenCalledWith("du_2", expect.objectContaining({ submit: true }), { stripeAccount: "acct_pro" });
+    expect(stripe.disputes.update).not.toHaveBeenCalledWith("du_0", expect.anything(), expect.anything());
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ disputeStatuses: { du_0: "won", du_1: "under_review", du_2: "under_review" } }) }),
+    );
   });
 
   it("archivio: cerca anche per nome e cognome e per cifra, con chi ha mandato le prove e la cronologia", async () => {

@@ -288,6 +288,9 @@ export function JobPaymentStatus({
       // Trattenuta unica con l'IVA, commissioni Stripe comprese (§378); a parte solo sui pagamenti di prima.
       rows.push({ label: `Trattenuta ${BRAND.name} ${ONLINE_APP_FEE_PERCENT}% + IVA`, value: `−${eur(payment.appFeeEurCents ?? 0)}`, muted: true });
       if ((payment.stripeFeeEurCents ?? 0) > 0) rows.push({ label: "Commissione Stripe per il pagamento", value: `−${eur(payment.stripeFeeEurCents ?? 0)}`, muted: true });
+      // Ogni differenza con la sua riga, così le cifre tornano (collaudo F-21).
+      if ((payment.debtRecoveredEurCents ?? 0) > 0) rows.push({ label: "Ripreso per un rimborso di un lavoro precedente", value: `−${eur(payment.debtRecoveredEurCents ?? 0)}`, muted: true });
+      if ((payment.takenByStripeEurCents ?? 0) > 0) rows.push({ label: "Già preso da Stripe per un altro lavoro (rimborso o contestazione)", value: `−${eur(payment.takenByStripeEurCents ?? 0)}`, muted: true });
       rows.push({ label: stage === "RELEASED" ? "Ti arriva in banca" : held ? "Ti arriverà in banca se si chiude bene" : "Ti arriverà in banca", value: eur(payment.payoutEurCents), strong: true });
     }
   }

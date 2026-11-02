@@ -2275,6 +2275,22 @@ model JobPayment {
   // trasferimento con cui gliela restituiamo se la contestazione è vinta.
   disputeRecoveredEurCents  Int       @default(0)
   disputeReturnTransferId   String?
+  // Una contestazione per ogni addebito (acconto e saldo sono due addebiti,
+  // collaudo F-21): quanto ha preso ciascuna dai soldi di questo lavoro,
+  // { "<id contestazione>": centesimi }, -1 quando è chiusa e già sistemata.
+  // `disputeRecoveredEurCents` resta la somma di quelle ancora aperte.
+  disputeFunds              Json      @default("{}")
+  // Stato di ciascuna contestazione, { "<id>": "needs_response" | "won" | ... }:
+  // `stripeDisputeId`/`stripeDisputeStatus` mostrano quella ancora aperta.
+  disputeStatuses           Json      @default("{}")
+  // Per l'archivio, senza chiedere a Stripe: { "<id>": { payment: "DEPOSIT" | "BALANCE", amountEurCents } }.
+  disputeDetails            Json      @default("{}")
+  // Allo sblocco (collaudo F-21): parte che Stripe aveva già preso dal saldo
+  // del professionista per rimborsi o contestazioni di altri lavori, e debito
+  // di lavori precedenti ripreso prima del bonifico. Ognuna ha la sua riga
+  // nella scheda, così pagato − trattenuta − queste voci = in banca.
+  releaseTakenByStripeEurCents Int    @default(0)
+  releaseDebtRecoveredEurCents Int    @default(0)
   // Quanto il professionista deve ancora alla piattaforma per questo lavoro
   // (rimborso o contestazione persa per colpa sua quando i soldi erano già
   // partiti, trattenuta che resta a suo carico): si riprende dai prossimi
