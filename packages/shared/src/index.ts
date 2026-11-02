@@ -40,6 +40,7 @@ export * from "./appointmentTime";
 export * from "./safeRedirect";
 export * from "./agendaTools";
 export * from "./password";
+export * from "./emailSuggestion";
 export * from "./professionalUrl";
 export * from "./categorySeo";
 export * from "./categoryPrices";

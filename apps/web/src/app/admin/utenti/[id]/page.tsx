@@ -30,6 +30,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { ADVICE_TONE, AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { SuspiciousDismissModal } from "@/components/admin/SuspiciousDismissModal";
+import { AdminConfirmModal } from "@/components/admin/AdminConfirmModal";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
 
 const ROLE_LABEL = { CLIENT: "Cliente", PROFESSIONAL: "Professionista", ADMIN: "Amministratore" } as const;
@@ -1127,14 +1128,18 @@ function AdminRolePanel({ detail, token, onChanged }: { detail: AdminUserDetail;
     setSelected((prev) => (prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]));
   }
 
-  async function save() {
+  const [confirming, setConfirming] = useState(false);
+  const nextRoles: AdminRoleName[] = isSuper ? ["SUPER"] : selected;
+  const nextLabel = nextRoles.length ? nextRoles.map((r) => ADMIN_ROLE_LABEL[r]).join(" + ") : "nessun ruolo di amministratore";
+
+  // Dà o toglie l'accesso al pannello: conferma con il motivo, che va nel registro (docs/changelog/2026-11-02-admin-protezioni.md).
+  async function save(reason: string | undefined) {
     setBusy(true);
     setError(null);
     try {
-      await apiClient.adminSetAdminRoles(token, detail.id, isSuper ? ["SUPER"] : selected);
+      await apiClient.adminSetAdminRoles(token, detail.id, nextRoles, reason ?? "");
+      setConfirming(false);
       onChanged();
-    } catch (err) {
-      setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -1164,10 +1169,21 @@ function AdminRolePanel({ detail, token, onChanged }: { detail: AdminUserDetail;
       </YStack>
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       <XStack>
-        <Button variant="primary" size="$3" disabled={busy || !changed} onPress={save}>
-          {busy ? "…" : "Salva ruoli"}
+        <Button variant="primary" size="$3" disabled={busy || !changed} onPress={() => setConfirming(true)}>
+          Salva ruoli
         </Button>
       </XStack>
+      {confirming ? (
+        <AdminConfirmModal
+          title="Cambia i ruoli di amministratore"
+          description={`Da ora ${detail.name ?? "questa persona"} avrà: ${nextLabel}. ${nextRoles.includes("SUPER") ? "Un super admin vede e cambia tutto, anche i ruoli degli altri. " : ""}Tutti i super admin ricevono un'email.`}
+          confirmLabel="Salva ruoli"
+          reasonLabel="Motivo (va nel registro azioni)"
+          reasonPlaceholder="Es. entra nel gruppo che segue le segnalazioni"
+          onClose={() => setConfirming(false)}
+          onConfirm={save}
+        />
+      ) : null}
     </AdminCard>
   );
 }

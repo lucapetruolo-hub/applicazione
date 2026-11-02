@@ -252,7 +252,7 @@ export class AdminController {
   @RequireAdminScope("SUPER")
   @Patch("users/:id/admin-role")
   setAdminRole(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(adminRoleUpdateSchema)) body: AdminRoleUpdateInput) {
-    return this.adminService.setAdminRoles(req.user.userId, id, body.adminRoles);
+    return this.adminService.setAdminRoles(req.user.userId, id, body.adminRoles, body.reason);
   }
 
   /** Registro delle azioni admin — solo super admin. */

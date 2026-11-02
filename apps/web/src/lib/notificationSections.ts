@@ -134,6 +134,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   if (type === "DAC7_ANNUAL_NOTICE") return "/dashboard/fiscale/dac7";
   if (type === "DAC7_DATA_REMINDER") return "/dashboard/fiscale";
   if (type === "ADMIN_DAC7_NEEDS_CORRECTION") return "/admin/finanza";
+  if (type === "ADMIN_DAC7_DUE") return "/admin/finanza/dac7";
   if (type === "ADMIN_URGENCY_ALERT") return "/admin";
   if (type === "ADMIN_SEARCH_DEMAND_ALERT") return "/admin/numeri-professionisti";
   if (type === "ADMIN_WEEKLY_ADVICE") return "/admin/andamento";

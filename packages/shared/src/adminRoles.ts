@@ -47,3 +47,6 @@ export function adminRolesLabel(roles: readonly AdminRoleValue[] | null | undefi
     .map((role) => ADMIN_ROLE_LABEL[role])
     .join(" + ");
 }
+
+/** Lunghezza minima del motivo delle azioni pericolose dell'admin (docs/changelog/2026-11-02-admin-protezioni.md). */
+export const ADMIN_ACTION_REASON_MIN = 10;
