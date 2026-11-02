@@ -47,3 +47,22 @@ decisione del 30/10 (`2026-10-30-documenti-snelli.md`) sul numero dato da noi.
   prima. Dopo la migrazione lo schema coincide con `schema.prisma`.
 - Controllo dei tipi di sito e API e `pnpm lint` verdi.
 - Test dei permessi in locale (dati di prova con la ricevuta "1/2026"): 341 rotte, nessun problema.
+
+## Migliorie (Luca, 02/11/2026: "effettua le 3 migliorie")
+
+- **Termini, punto 10**: nuovo paragrafo "Documenti ai clienti". La fattura o
+  la ricevuta la emette il professionista, che ne è l'unico responsabile; noi
+  non mandiamo nulla all'Agenzia delle Entrate. Senza partita IVA trova la
+  ricevuta già compilata, che è un documento suo: la controlla, la numera e la
+  firma. Una riga in più nella versione dei Termini del 02/11/2026, e la data
+  in cima alla pagina passa al 2 novembre.
+- **Avviso del 15 dicembre**: una ricevuta senza numero si chiama col lavoro e
+  la data ("Ricevuta per Idraulico del 2 giugno 2026") invece di "Ricevuta
+  senza numero", così il professionista capisce quale.
+- **Pagina della ricevuta vista da telefono e da computer** (sito e API in
+  locale con i dati di prova): campo del numero, aiuto sotto, "Per scaricarlo
+  manca il numero della ricevuta" e anteprima del numero dopo "Salva".
+  Fotografie in `anteprime/ricevuta-modello/` nei file del progetto.
+
+**Verifica**: 1162 prove dell'API verdi (nuova: l'avviso di dicembre con una
+ricevuta senza numero), test dei permessi in locale verde, tipi e lint verdi.

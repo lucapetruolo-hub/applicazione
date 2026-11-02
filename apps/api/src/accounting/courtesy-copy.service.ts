@@ -269,7 +269,15 @@ export class CourtesyCopyService {
         select: {
           ...COURTESY_DOCUMENT_FIELDS,
           professionalProfileId: true,
-          booking: { select: { ...COURTESY_BOOKING_FIELDS, status: true } },
+          booking: {
+            select: {
+              ...COURTESY_BOOKING_FIELDS,
+              status: true,
+              scheduledAt: true,
+              professionalCompletedAt: true,
+              jobPayment: { select: { ...COURTESY_BOOKING_FIELDS.jobPayment.select, balancePaidAt: true, depositPaidAt: true, directReportedAt: true } },
+            },
+          },
         },
       }),
       this.prisma.booking.findMany({
@@ -301,7 +309,9 @@ export class CourtesyCopyService {
           : summary.kind === "RECEIPT" && !summary.pdfDownloadedAt && doc.booking.status === "COMPLETED"
             ? "NOT_DOWNLOADED"
             : null;
-      if (reason) add(doc.professionalProfileId, { label: summary.label, customerName: summary.customerName, reason });
+      // Senza numero il nome del lavoro e la data, come per i lavori senza ricevuta (docs/changelog/2026-11-02-ricevuta-modello.md).
+      const label = doc.receiptNumber ? summary.label : `Ricevuta per ${summary.jobLabel ?? "lavoro"} del ${accountingDateLabel(courtesyDateOf(doc.booking).toISOString())}`;
+      if (reason) add(doc.professionalProfileId, { label, customerName: summary.customerName, reason });
     }
     const missing = withoutReceipt.map((booking) => ({ booking, date: courtesyDateOf(booking) })).filter(({ date }) => yearOf(date) === year);
     for (const { booking, date } of missing.sort((a, b) => a.date.getTime() - b.date.getTime())) {

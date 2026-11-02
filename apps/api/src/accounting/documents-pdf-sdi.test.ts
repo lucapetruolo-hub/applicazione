@@ -502,6 +502,8 @@ describe("documenti da sistemare a dicembre", () => {
     booking: {
       recipientName: null,
       recipientSurname: null,
+      scheduledAt: new Date("2026-06-01T08:00:00Z"),
+      professionalCompletedAt: new Date("2026-06-02T09:00:00Z"),
       jobPayment: grossAmountEurCents !== null ? { paymentMethod: "DIRECT", balanceDirect: false, paidEurCents: 0, refundedEurCents: 0, grossAmountEurCents } : null,
       client: { name: "Anna", surname: "Bianchi", deletedAt: null },
       quote: { invoiceRequest: null, guidedRequest: { category: { label: "Idraulico" } } },
@@ -564,9 +566,10 @@ describe("documenti da sistemare a dicembre", () => {
       quote: { guidedRequest: { category: { label: "Idraulico" } } },
     });
     const notDownloaded = { ...doc("p1", "b6", 6, null, 5000), booking: { ...doc("p1", "b6", 6, null, 5000).booking, status: "COMPLETED" } };
+    const unnumbered = { ...doc("p1", "b11", 0, null, null), receiptNumber: null, booking: { ...doc("p1", "b11", 0, null, null).booking, status: "COMPLETED" } };
     const notFinished = { ...doc("p1", "b7", 7, null, 5000), booking: { ...doc("p1", "b7", 7, null, 5000).booking, status: "CONFIRMED" } };
     const prisma = {
-      courtesyDocument: { findMany: vi.fn().mockResolvedValue([notDownloaded, notFinished]) },
+      courtesyDocument: { findMany: vi.fn().mockResolvedValue([notDownloaded, unnumbered, notFinished]) },
       booking: {
         findMany: vi.fn().mockResolvedValue([
           completed("b8", "2026-11-12T10:00:00Z", "2026-11-12T08:00:00Z"),
@@ -586,6 +589,8 @@ describe("documenti da sistemare a dicembre", () => {
     expect(where.OR[0].professionalCompletedAt).toEqual({ gte: new Date("2025-12-31T23:00:00Z"), lt: new Date("2026-12-31T23:00:00Z") });
     expect(notifications.notify.mock.calls[0]![2].documents).toEqual([
       { label: "Ricevuta n. 6/2026", customerName: "Anna Bianchi", reason: "NOT_DOWNLOADED" },
+      // Senza numero: il lavoro e la data, non "Ricevuta senza numero".
+      { label: "Ricevuta per Idraulico del 2 giugno 2026", customerName: "Anna Bianchi", reason: "MISSING_AMOUNT" },
       { label: "Idraulico del 2 marzo 2026", customerName: "Sara Neri", reason: "NO_RECEIPT" },
       { label: "Idraulico del 12 novembre 2026", customerName: "Sara Neri", reason: "NO_RECEIPT" },
     ]);
