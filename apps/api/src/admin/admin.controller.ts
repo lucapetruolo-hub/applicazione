@@ -207,6 +207,21 @@ export class AdminController {
     return this.suspiciousAccountsService.list();
   }
 
+  /** "Va bene così" con il motivo: esce da "Cosa fare" finché non arriva un segnale nuovo. */
+  @RequireAdminScope("MODERATION")
+  @Post("suspicious-users/:id/dismiss")
+  @HttpCode(204)
+  async dismissSuspiciousUser(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(contentReportDecisionNoteSchema)) body: ContentReportDecisionNoteInput): Promise<void> {
+    await this.suspiciousAccountsService.dismiss(req.user.userId, id, body.note);
+  }
+
+  @RequireAdminScope("MODERATION")
+  @Delete("suspicious-users/:id/dismiss")
+  @HttpCode(204)
+  async undismissSuspiciousUser(@Req() req: AuthenticatedRequest, @Param("id") id: string): Promise<void> {
+    await this.suspiciousAccountsService.undismiss(req.user.userId, id);
+  }
+
   @RequireAdminScope("MODERATION")
   @Post("users/:id/suspend")
   suspendUser(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(contentReportDecisionNoteSchema)) body: ContentReportDecisionNoteInput) {

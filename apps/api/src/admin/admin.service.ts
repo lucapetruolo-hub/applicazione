@@ -393,7 +393,7 @@ export class AdminService {
         ? this.prisma.contentReport.findMany({ where: { targetType: "PROFESSIONAL_PROFILE", targetId: profileId }, orderBy: { createdAt: "desc" }, take: 50 })
         : Promise.resolve([]),
       this.prisma.auditLog.findMany({ where: { entityType: "User", entityId: userId }, orderBy: { createdAt: "desc" }, take: 50 }),
-      this.prisma.suspiciousAccount.findUnique({ where: { userId }, select: { signals: true } }),
+      this.prisma.suspiciousAccount.findUnique({ where: { userId }, select: { signals: true, dismissedAt: true, dismissedNote: true, dismissedById: true } }),
     ]);
 
     // Segnalazioni che riguardano questa persona: decise su un suo contenuto
@@ -527,6 +527,7 @@ export class AdminService {
       },
       signals: (signalRow?.signals as AdminUserSignal[] | undefined) ?? [],
       advice: signalRow ? adviseSuspiciousUser(user.role as AdminSignalRole, signalRow.signals as AdminUserSignal[]) : null,
+      signalsDismissed: signalRow?.dismissedAt ? { at: signalRow.dismissedAt.toISOString(), by: await this.adminName(signalRow.dismissedById), note: signalRow.dismissedNote ?? "" } : null,
       requests: requests.map((r) => ({
         id: r.id,
         categoryLabel: r.category.label,
@@ -1197,6 +1198,12 @@ export class AdminService {
       });
     }
     return { id: report.id, appealRejectedAt: now.toISOString() };
+  }
+
+  private async adminName(id: string | null): Promise<string> {
+    if (!id) return "Admin";
+    const admin = await this.prisma.user.findUnique({ where: { id }, select: { name: true, surname: true, email: true } });
+    return [admin?.name, admin?.surname].filter(Boolean).join(" ") || admin?.email || "Admin";
   }
 
   private async targetExists(targetType: ContentReportTargetType, targetId: string): Promise<boolean> {

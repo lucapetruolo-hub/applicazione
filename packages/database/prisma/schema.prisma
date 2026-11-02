@@ -2890,6 +2890,13 @@ model SuspiciousAccount {
   checkedAt   DateTime
   // Avviso agli admin già mandato per questo account.
   notifiedAt  DateTime?
+  // "Va bene così" di un admin, con il motivo: l'account esce da "Cosa fare"
+  // finché il controllo non trova un segnale nuovo (chiave tipo|dettaglio
+  // fuori da dismissedSignals), allora torna e l'avviso riparte.
+  dismissedAt      DateTime?
+  dismissedById    String?
+  dismissedNote    String?
+  dismissedSignals Json?
 
   @@map("suspicious_accounts")
 }

@@ -123,3 +123,61 @@ settimana prossima. E un difetto vero dell'agenda sul telefono: la domenica,
 aprendo un appuntamento da un link ("Vedi in agenda", `?booking=`), la
 Settimana automatica portava alla settimana dopo, lontano dall'appuntamento;
 ora con un appuntamento aperto dal link non scatta.
+
+## Seguito del 02/11/2026: "Va bene così", coda della Home e controlli in più
+
+**Richiesta** (Luca, 02/11/2026): "effettua le due migliorie e anche altri
+aspetti di controllo automatizzati che farebbe un professionista di alto rango
+in questo settore"; poi, sugli aggiornamenti: "sì, valuta come massimo esperto
+come fare".
+
+**Decisione:**
+
+- **"Va bene così"** (`POST`/`DELETE /admin/suspicious-users/:id/dismiss`, solo
+  moderatori, migrazione `20261102100000_account_sospetti_va_bene`): l'admin
+  scrive perché (almeno 10 caratteri, va nel registro azioni) e l'account esce
+  da "Cosa fare", dalla coda della Home e dagli avvisi. Torna da solo quando il
+  controllo trova un segnale nuovo o un dettaglio cambiato (es. un messaggio in
+  più): si confrontano le chiavi tipo|dettaglio salvate in `dismissedSignals`.
+  Dalla scheda si toglie con "Togli Va bene così".
+- **Coda "Da fare" della Home**: tipo `SUSPICIOUS_ACCOUNT` nel gruppo Persone,
+  solo per "Da fare subito" e "Da guardare", con il consiglio e il link alla
+  scheda giusta, "Prendo io" compreso.
+- **Controlli in più** (`apps/api/src/admin/user-signals.ts`, consigli in
+  `packages/shared/src/adminSignals.ts`), quelli tipici di chi si occupa di
+  frodi in un marketplace:
+  - *Stesso IBAN tra due professionisti* (IBAN decifrato solo nel controllo, mai
+    salvato nei segnali): i soldi vanno alla stessa persona, "Da fare subito".
+  - *Telefono, email, link o "WhatsApp" scritti in chat prima dell'accettazione*
+    (lavoro portato fuori dal sito, e contro il principio dei contatti, CLAUDE.md
+    §5.9): per il professionista "Da guardare", per il cliente nessuna azione. Un
+    numero conta da 9 cifre, così date e prezzi no. Il testo non si salva, solo
+    quanti messaggi e con chi.
+  - *Iscritto con l'email di un account chiuso* (impronta HMAC): se quell'account
+    era sospeso "Da fare subito" (si sta aggirando la sospensione), altrimenti
+    nessuna azione.
+  - *Email usa e getta* (elenco dei domini più usati): per il professionista "Da
+    guardare" (fatture e avvisi non arrivano), per il cliente nessuna azione.
+  - *Ondata di recensioni*: almeno 3 in 7 giorni da clienti iscritti da meno di
+    30 giorni, "Da guardare".
+  - *Problemi sul lavoro*: almeno 2 accolti contro un professionista o 2
+    respinti a un cliente in 6 mesi (chi cerca rimborsi non dovuti), "Da guardare".
+- **Aggiornamenti non coperti** da Dependabot e osv-scanner:
+  `.github/workflows/aggiornamenti.yml` con `scripts/controlla-aggiornamenti.mjs`,
+  il primo del mese: versioni nuove di React, React Native ed Expo (esclusi da
+  Dependabot di proposito) e fine del supporto di Next.js, React, React Native e
+  NestJS (endoflife.date) con 6 mesi di preavviso; ogni avviso apre una
+  segnalazione su GitHub, una per titolo. Il primo giro segnala già Next.js 15,
+  supportato fino al 31/01/2027. PostgreSQL di Render lo controlla l'API il primo
+  del mese (`apps/api/src/admin/database-version.service.ts`): legge la versione
+  dal database e, 6 mesi prima della fine del supporto, manda un'email ai super
+  admin. Stripe è già coperto (nessuna versione dell'API fissata: cambia con il
+  pacchetto `stripe`, che arriva da Dependabot), Google Maps usa "quarterly" che
+  si aggiorna da sola.
+
+**Verifica:** test unitari (IBAN con spazi, contatti sì/no, conteggio dei
+messaggi, ritorno dopo sospensione, usa e getta con sottodominio, ondata 7 contro
+20 giorni, problemi solo negli ultimi 6 mesi, "Va bene così" che si riapre,
+versione di PostgreSQL), prova `admin-persone.spec.ts` su telefono e computer
+("Va bene così" senza motivo: errore; poi fuori da "Cosa fare" e dalla Home,
+"Togli" dalla scheda), `admin-da-fare.spec.ts` verde.

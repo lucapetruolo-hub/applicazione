@@ -1,0 +1,38 @@
+name: Aggiornamenti non coperti
+
+# Quello che Dependabot e osv-scanner non vedono (richiesta di Luca del
+# 02/11/2026, docs/changelog/2026-10-30-admin-persone.md): versioni nuove di
+# React, React Native ed Expo, esclusi da Dependabot perché si aggiornano a
+# mano e insieme, e la fine del supporto di Next.js, React, React Native e
+# NestJS, con 6 mesi di preavviso. Ogni avviso apre una segnalazione (issue),
+# che GitHub manda per email. Node ha il suo controllo (node.yml), PostgreSQL
+# lo controlla l'API (database-version.service.ts).
+on:
+  schedule:
+    - cron: "41 5 1 * *"
+  pull_request:
+    paths:
+      - scripts/controlla-aggiornamenti.mjs
+      - .github/workflows/aggiornamenti.yml
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  controlla:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Confronto con npm ed endoflife.date
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          # Sulle PR solo la prova che lo script funziona, senza segnalazioni.
+          APRI_SEGNALAZIONI: ${{ github.event_name != 'pull_request' }}
+        run: node scripts/controlla-aggiornamenti.mjs

@@ -11,7 +11,16 @@ export type AdminUserSignalKind =
   | "REVIEW_SAME_PERSON"
   | "QUICK_REVIEW"
   | "CLOSED_BEFORE_APPOINTMENT"
-  | "FULL_DEPOSIT_NEW_PRO";
+  | "FULL_DEPOSIT_NEW_PRO"
+  // Controlli in più chiesti da Luca il 02/11/2026 ("quelli che farebbe un professionista di alto rango").
+  | "SAME_IBAN"
+  | "CONTACTS_IN_CHAT"
+  | "RETURNED_AFTER_SUSPENSION"
+  | "RETURNED_AFTER_CLOSE"
+  | "DISPOSABLE_EMAIL"
+  | "REVIEW_BURST"
+  | "MANY_UPHELD_ISSUES"
+  | "MANY_REJECTED_ISSUES";
 
 export const ADMIN_USER_SIGNAL_LABEL: Record<AdminUserSignalKind, string> = {
   SAME_PHONE: "Stesso telefono di un altro account",
@@ -21,12 +30,87 @@ export const ADMIN_USER_SIGNAL_LABEL: Record<AdminUserSignalKind, string> = {
   QUICK_REVIEW: "Recensione scritta poco dopo l'iscrizione",
   CLOSED_BEFORE_APPOINTMENT: "Lavoro chiuso prima dell'appuntamento",
   FULL_DEPOSIT_NEW_PRO: "Acconto del 100% chiesto da un professionista nuovo",
+  SAME_IBAN: "Stesso IBAN di un altro professionista",
+  CONTACTS_IN_CHAT: "Telefono, email o link scritti in chat prima dell'accettazione",
+  RETURNED_AFTER_SUSPENSION: "Iscritto con l'email di un account sospeso e chiuso",
+  RETURNED_AFTER_CLOSE: "Iscritto con l'email di un account chiuso",
+  DISPOSABLE_EMAIL: "Email usa e getta",
+  REVIEW_BURST: "Molte recensioni in pochi giorni da clienti appena iscritti",
+  MANY_UPHELD_ISSUES: "Più problemi sul lavoro accolti contro di lui",
+  MANY_REJECTED_ISSUES: "Più problemi sul lavoro segnalati e respinti",
 };
 
 /** Una recensione entro questo tempo dall'iscrizione di chi la scrive è un segnale. */
 export const QUICK_REVIEW_HOURS = 48;
 /** Un professionista è "nuovo" per i primi giorni dall'iscrizione. */
 export const NEW_PROFESSIONAL_DAYS = 30;
+/** Ondata di recensioni: almeno 3 in 7 giorni da clienti iscritti da meno di 30 giorni. */
+export const REVIEW_BURST_COUNT = 3;
+export const REVIEW_BURST_DAYS = 7;
+export const NEW_CLIENT_DAYS = 30;
+/** Problemi sul lavoro: almeno 2 accolti (professionista) o respinti (cliente) negli ultimi 6 mesi. */
+export const MANY_ISSUES_COUNT = 2;
+export const MANY_ISSUES_DAYS = 180;
+
+/**
+ * Domini di email usa e getta più diffusi (si cancellano da sole dopo poco):
+ * per un professionista vuol dire fatture e avvisi che non arrivano a nessuno.
+ */
+export const DISPOSABLE_EMAIL_DOMAINS: readonly string[] = [
+  "mailinator.com",
+  "yopmail.com",
+  "yopmail.fr",
+  "guerrillamail.com",
+  "guerrillamail.info",
+  "sharklasers.com",
+  "grr.la",
+  "10minutemail.com",
+  "10minutemail.net",
+  "temp-mail.org",
+  "tempmail.com",
+  "tempmail.net",
+  "temp-mail.io",
+  "tempail.com",
+  "trashmail.com",
+  "trashmail.de",
+  "getnada.com",
+  "nada.email",
+  "dispostable.com",
+  "maildrop.cc",
+  "mailnesia.com",
+  "mintemail.com",
+  "throwawaymail.com",
+  "fakeinbox.com",
+  "emailondeck.com",
+  "mohmal.com",
+  "spambox.us",
+  "mytemp.email",
+  "tempr.email",
+  "discard.email",
+  "moakt.com",
+  "burnermail.io",
+  "inboxkitten.com",
+  "mail.tm",
+  "1secmail.com",
+];
+
+export function isDisposableEmail(email: string | null | undefined): boolean {
+  const domain = (email ?? "").trim().toLowerCase().split("@")[1];
+  return Boolean(domain) && DISPOSABLE_EMAIL_DOMAINS.some((d) => domain === d || domain!.endsWith(`.${d}`));
+}
+
+/**
+ * Telefono, email o link in un messaggio, o l'invito a scriversi su WhatsApp.
+ * Un numero conta da 9 cifre in su, così date ("12.11.2026") e prezzi non
+ * contano. Solo per contare i messaggi: il testo non si salva nei segnali.
+ */
+export function messageHasContacts(text: string): boolean {
+  if (/[\w.+-]+@[\w-]+(\.[\w-]+)+/.test(text) || /https?:\/\/\S+|www\.\S+/i.test(text) || /\bwhats\s?app\b/i.test(text)) return true;
+  for (const match of text.match(/\+?\d[\d\s.-]{6,}\d/g) ?? []) {
+    if (match.replace(/\D/g, "").length >= 9) return true;
+  }
+  return false;
+}
 
 export type AdminSignalRole = "CLIENT" | "PROFESSIONAL" | "ADMIN";
 
@@ -65,7 +149,22 @@ export type AdminSuspiciousUser = {
   advice: AdminSignalAdvice;
   /** Prima volta che il controllo l'ha trovato. */
   firstSeenAt: string;
+  /** "Va bene così" di un admin; torna \`null\` quando il controllo trova un segnale nuovo. */
+  dismissed: AdminSignalDismissal | null;
 };
+
+export type AdminSignalDismissal = { at: string; by: string; note: string };
+
+/** Chiave di un segnale per "Va bene così": se cambia il dettaglio (es. un messaggio in più) è un segnale nuovo. */
+export function signalKey(signal: Pick<AdminUserSignal, "kind" | "detail">): string {
+  return `${signal.kind}|${signal.detail}`;
+}
+
+/** Vero se tra i segnali di oggi ce n'è almeno uno che non c'era al "Va bene così". */
+export function hasNewSignals(signals: AdminUserSignal[], dismissedKeys: string[]): boolean {
+  const known = new Set(dismissedKeys);
+  return signals.some((s) => !known.has(signalKey(s)));
+}
 
 export type AdminSuspiciousUsers = {
   /** Ultimo controllo (ogni mattina alle 7 o con "Controlla ora"); `null` se mai fatto. */
@@ -73,7 +172,7 @@ export type AdminSuspiciousUsers = {
   users: AdminSuspiciousUser[];
 };
 
-const SHARED_KINDS: AdminUserSignalKind[] = ["SAME_PHONE", "SAME_ADDRESS", "SAME_TAX_ID"];
+const SHARED_KINDS: AdminUserSignalKind[] = ["SAME_PHONE", "SAME_ADDRESS", "SAME_TAX_ID", "SAME_IBAN"];
 const LEVEL_ORDER: Record<AdminSignalAdviceLevel, number> = { ALTA: 0, MEDIA: 1, BASSA: 2 };
 
 const names = (others: AdminUserSignal["others"]) => others.map((o) => o.label).join(", ");
@@ -123,6 +222,46 @@ export function adviseSuspiciousUser(role: AdminSignalRole, signals: AdminUserSi
         break;
       case "QUICK_REVIEW":
         options.push({ level: "BASSA", text: "Recensione scritta subito dopo l'iscrizione: da sola non vuol dire niente, nessuna azione.", tab: "recensioni" });
+        break;
+      case "SAME_IBAN":
+        options.push(
+          pros.length > 0
+            ? { level: "ALTA", text: `Due profili con lo stesso IBAN (anche ${names(pros)}): i soldi vanno alla stessa persona. Tieni quello vero e togli l'altro dalla ricerca.`, tab: "riepilogo" }
+            : { level: "MEDIA", text: `Stesso IBAN di ${names(others)}: controlla che siano davvero persone diverse.`, tab: "riepilogo" },
+        );
+        break;
+      case "CONTACTS_IN_CHAT":
+        options.push(
+          role === "PROFESSIONAL"
+            ? {
+                level: "MEDIA",
+                text: "Ha scritto telefono, email o link in chat prima che il cliente accettasse: ricordagli che i contatti si scambiano dopo l'accettazione; se continua, avvertilo.",
+                tab: "riepilogo",
+              }
+            : { level: "BASSA", text: "Il cliente ha scritto i suoi contatti in chat prima di accettare: è una sua scelta, nessuna azione.", tab: "riepilogo" },
+        );
+        break;
+      case "RETURNED_AFTER_SUSPENSION":
+        options.push({ level: "ALTA", text: "Si è iscritto di nuovo con l'email di un account sospeso: valuta di sospendere anche questo.", tab: "riepilogo" });
+        break;
+      case "RETURNED_AFTER_CLOSE":
+        options.push({ level: "BASSA", text: "Ha chiuso un account e se ne è fatto un altro con la stessa email: succede, nessuna azione.", tab: "riepilogo" });
+        break;
+      case "DISPOSABLE_EMAIL":
+        options.push(
+          role === "PROFESSIONAL"
+            ? { level: "MEDIA", text: "Professionista con un'email usa e getta: chiedigli un'email vera, servono per fatture e avvisi dei clienti.", tab: "riepilogo" }
+            : { level: "BASSA", text: "Cliente con un'email usa e getta: nessuna azione, ma i nostri avvisi non gli arriveranno a lungo.", tab: "riepilogo" },
+        );
+        break;
+      case "REVIEW_BURST":
+        options.push({ level: "MEDIA", text: `${signal.detail.charAt(0).toUpperCase()}${signal.detail.slice(1)}: leggile, se si somigliano possono essere finte.`, tab: "recensioni" });
+        break;
+      case "MANY_UPHELD_ISSUES":
+        options.push({ level: "MEDIA", text: `${signal.detail.charAt(0).toUpperCase()}${signal.detail.slice(1)}: valuta un avvertimento o di togliere il profilo dalla ricerca.`, tab: "lavori" });
+        break;
+      case "MANY_REJECTED_ISSUES":
+        options.push({ level: "MEDIA", text: `${signal.detail.charAt(0).toUpperCase()}${signal.detail.slice(1)}: guarda se chiede rimborsi che non gli spettano.`, tab: "lavori" });
         break;
     }
   }

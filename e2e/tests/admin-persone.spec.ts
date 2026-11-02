@@ -198,6 +198,33 @@ test("Persone: ricerca, account chiuso, recensione nascosta e rimessa, profilo f
   await show.getByRole("button", { name: "Rimetti nella ricerca" }).click();
   await expect(page.getByText("Nella ricerca").first()).toBeVisible();
 
+  // Gli account da fare sono anche nella coda "Da fare" della Home.
+  await page.goto("/admin");
+  await expect(page.getByText(`Account sospetto: Vera Russo${stamp}`)).toBeVisible();
+
+  // "Va bene così": motivo obbligatorio, esce da "Cosa fare" e dalla Home, resta in tabella.
+  await page.goto("/admin/account-sospetti");
+  const veraItem = page.getByRole("region", { name: "Cosa fare" }).getByRole("listitem").filter({ has: page.getByRole("link", { name: `Vera Russo${stamp}` }) });
+  await veraItem.getByRole("button", { name: `Va bene così: Vera Russo${stamp}` }).click();
+  const okDialog = page.getByRole("dialog", { name: "Va bene così" });
+  await okDialog.getByRole("button", { name: "Va bene così" }).click();
+  await expect(okDialog.getByText(/almeno 10 caratteri/)).toBeVisible();
+  await okDialog.getByLabel("Perché va bene").fill("Prova automatica: controllato a mano, nessun problema.");
+  await okDialog.getByRole("button", { name: "Va bene così" }).click();
+  await expect(okDialog).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Cosa fare" }).getByRole("link", { name: `Vera Russo${stamp}` })).toHaveCount(0);
+  await expect(rows.filter({ hasText: `Vera Russo${stamp}` }).getByText("Va bene così", { exact: true })).toBeVisible();
+  expect((await prisma.suspiciousAccount.findUniqueOrThrow({ where: { userId: ids.client } })).dismissedAt).not.toBeNull();
+  await page.goto("/admin");
+  await expect(page.getByRole("heading").first()).toBeVisible();
+  await expect(page.getByText(`Account sospetto: Vera Russo${stamp}`)).toHaveCount(0);
+  // Dalla scheda si toglie, e torna da fare.
+  await page.goto(`/admin/utenti/${ids.client}`);
+  await expect(page.getByText(/Prova automatica: controllato a mano/)).toBeVisible();
+  await page.getByRole("button", { name: 'Togli "Va bene così"' }).click();
+  await expect(page.getByRole("button", { name: "Va bene così" })).toBeVisible();
+  expect((await prisma.suspiciousAccount.findUniqueOrThrow({ where: { userId: ids.client } })).dismissedAt).toBeNull();
+
   await context.close();
 });
 

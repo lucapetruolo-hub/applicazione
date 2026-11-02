@@ -27,6 +27,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ADVICE_TONE, AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
+import { SuspiciousDismissModal } from "@/components/admin/SuspiciousDismissModal";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
 
 const ROLE_LABEL = { CLIENT: "Cliente", PROFESSIONAL: "Professionista", ADMIN: "Amministratore" } as const;
@@ -70,6 +71,7 @@ function UserDetail() {
   const myRoles = me?.adminRoles ?? [];
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dismissOpen, setDismissOpen] = useState(false);
 
   function reload() {
     if (!token) return;
@@ -180,10 +182,51 @@ function UserDetail() {
               ) : null}
             </XStack>
           ) : null}
+          {detail.signalsDismissed ? (
+            <XStack gap="$2" alignItems="center" flexWrap="wrap">
+              <AdminPill tone="ok">Va bene così</AdminPill>
+              <Text color={brand.grafite} flexShrink={1}>
+                {detail.signalsDismissed.by}, {formatAdminDate(detail.signalsDismissed.at)}: {detail.signalsDismissed.note}
+              </Text>
+              {canModerate && token ? (
+                <button
+                  type="button"
+                  className="admin-chip-button"
+                  onClick={() => {
+                    apiClient
+                      .adminUndismissSuspiciousUser(token, detail.id)
+                      .then(reload)
+                      .catch((err) => setError(errorMessage(err)));
+                  }}
+                >
+                  Togli &quot;Va bene così&quot;
+                </button>
+              ) : null}
+            </XStack>
+          ) : canModerate && detail.advice && detail.advice.level !== "BASSA" ? (
+            <XStack>
+              <button type="button" className="admin-chip-button" onClick={() => setDismissOpen(true)}>
+                Va bene così
+              </button>
+            </XStack>
+          ) : null}
           <Text fontSize={13} color={brand.grafite70}>
             Da soli non provano niente: guardali insieme alle recensioni e ai lavori prima di decidere. Controllo di ogni mattina alle 7.
           </Text>
+          {error ? <Text color={brand.urgenza}>{error}</Text> : null}
         </section>
+      ) : null}
+      {dismissOpen && token ? (
+        <SuspiciousDismissModal
+          userId={detail.id}
+          label={profile?.businessName ?? (fullName || "Questo account")}
+          token={token}
+          onClose={() => setDismissOpen(false)}
+          onDone={() => {
+            setDismissOpen(false);
+            reload();
+          }}
+        />
       ) : null}
 
       <AdminTabs tabs={TABS.map((t) => ({ key: t.key, label: tabCount[t.key] ? `${t.label} (${tabCount[t.key]})` : t.label }))} value={tab} onChange={setTab} />
