@@ -37,6 +37,8 @@ import {
   type ProfessionalCategorySlug,
   type ProfessionalProfileSelfInput,
   type UpdateEngagementRadiusInput,
+  type SetAwayInput,
+  MAX_AWAY_DAYS,
   toJobIssueSummary,
   jobIssueAssisted,
   toJobPaymentSummary,
@@ -138,8 +140,19 @@ function searchableProfileWhere(): Prisma.ProfessionalProfileWhereInput {
     suspendedAt: null,
     pausedAt: null,
     invitePendingAt: null,
-    OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }],
   };
+}
+
+/**
+ * Le condizioni di `searchableProfileWhere` che vanno nell'AND (ognuna è un
+ * OR): bloccato per segnalazioni (§167) o in pausa per scelta sua (collaudo
+ * C-16). Separate perché chi usa la ricerca ha già un suo AND.
+ */
+function searchableProfileConditions(now = new Date()): Prisma.ProfessionalProfileWhereInput[] {
+  return [
+    { OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: now } }] },
+    { OR: [{ awayUntil: null }, { awayUntil: { lte: now } }] },
+  ];
 }
 
 /** La prestazione che corrisponde alla voce cercata, da evidenziare nella scheda (§398). */
@@ -264,6 +277,7 @@ export class ProfessionalsService {
       ...searchableProfileWhere(),
       // Categoria principale o una delle aggiuntive (docs/CHANGELOG.md §217).
       AND: [
+        ...searchableProfileConditions(),
         ...(category ? [{ OR: [{ category: { slug: category } }, { extraCategories: { some: { slug: category } } }] }] : []),
         // Visibile solo con i dati fiscali compilati (docs/CHANGELOG.md §241).
         publicVisibilityWhere(),
@@ -433,7 +447,7 @@ export class ProfessionalsService {
         // Solo chi compare nella ricerca: ogni voce porta all'elenco di chi la
         // offre, e il numero mostrato deve coincidere (docs/CHANGELOG.md §398).
         // Gli account di prova restano nella ricerca ma non nei prezzi (docs/changelog/2026-10-28-quanto-costa-sinonimi.md, decisione di Luca).
-        professionalProfile: { isDemo: false, user: COUNTED_USER, ...searchableProfileWhere(), AND: [publicVisibilityWhere()] },
+        professionalProfile: { isDemo: false, user: COUNTED_USER, ...searchableProfileWhere(), AND: [...searchableProfileConditions(), publicVisibilityWhere()] },
       },
       select: { name: true, professionalProfileId: true, priceMinEurCents: true, priceMaxEurCents: true, priceUnit: true },
     });
@@ -716,6 +730,8 @@ export class ProfessionalsService {
       certifications: profile.certifications,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
       acceptingRequests: !profile.pausedAt && !professionalRestrictions(profile, new Date()).blocked,
+      // Solo la pausa scelta da lui si dice al cliente, mai il motivo delle altre (§162, §167).
+      awayUntil: professionalRestrictions(profile, new Date()).away && profile.awayUntil ? profile.awayUntil.toISOString() : null,
       reviews: reviewed.map(({ review, booking }) => ({
         id: review.id,
         rating: review.rating,
@@ -767,6 +783,7 @@ export class ProfessionalsService {
       profileDeclarationAccepted: profile.profileDeclarationVersion === PROFILE_DECLARATION_VERSION,
       demotedUntil: profile.demotedUntil && profile.demotedUntil > new Date() ? profile.demotedUntil.toISOString() : null,
       requestsBlockedUntil: profile.requestsBlockedUntil && profile.requestsBlockedUntil > new Date() ? profile.requestsBlockedUntil.toISOString() : null,
+      awayUntil: profile.awayUntil && profile.awayUntil > new Date() ? profile.awayUntil.toISOString() : null,
       // Modi di pagamento di serie nei nuovi preventivi (docs/CHANGELOG.md §239).
       defaultPaymentOffer: quotePaymentOffer({ paymentOptions: profile.defaultPaymentOptions, depositPercent: profile.defaultDepositPercent }),
       stripeVerified: stripeVerified(profile.fiscalProfile),
@@ -1064,6 +1081,28 @@ export class ProfessionalsService {
       select: { engagementRadiusKm: true, urgentEngagementRadiusKm: true },
     });
     return updated;
+  }
+
+  /**
+   * "Metti in pausa" fino a un giorno, o "Riprendi ora" con `until: null`
+   * (collaudo C-16). Nella pausa niente richieste, prenotazioni né ricerca;
+   * i lavori già fissati restano (`professionalRestrictions`).
+   */
+  async setAway(userId: string, input: SetAwayInput, now = new Date()): Promise<{ awayUntil: string | null }> {
+    await this.requireMyProfileId(userId);
+    let awayUntil: Date | null = null;
+    if (input.until) {
+      awayUntil = new Date(`${input.until}T00:00:00.000Z`);
+      const today = wallClockToday(now).getTime();
+      if (Number.isNaN(awayUntil.getTime()) || awayUntil.getTime() <= today) {
+        throw new BadRequestException("Scegli un giorno da domani in poi.");
+      }
+      if (awayUntil.getTime() > today + MAX_AWAY_DAYS * 86_400_000) {
+        throw new BadRequestException(`La pausa dura al massimo ${MAX_AWAY_DAYS} giorni.`);
+      }
+    }
+    await this.prisma.professionalProfile.update({ where: { userId }, data: { awayUntil } });
+    return { awayUntil: awayUntil?.toISOString() ?? null };
   }
 
   private async requireMyProfileId(userId: string): Promise<string> {
@@ -1942,12 +1981,12 @@ export class ProfessionalsService {
     // ricevere richieste (decisione dell'utente).
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
-      select: { deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, requestsBlockedUntil: true, ...PUBLIC_VISIBILITY_SELECT },
+      select: { deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, requestsBlockedUntil: true, awayUntil: true, demotedUntil: true, ...PUBLIC_VISIBILITY_SELECT },
     });
     if (!profile || profile.deletedAt || profile.suspendedAt || profile.invitePendingAt || publicVisibilityMissing(profile)) {
       throw new NotFoundException("Professionista non trovato.");
     }
-    if (profile.pausedAt || (profile.requestsBlockedUntil && profile.requestsBlockedUntil > new Date())) return { days: [] };
+    if (profile.pausedAt || professionalRestrictions(profile, new Date()).blocked) return { days: [] };
 
     const startOfToday = wallClockToday();
     const endWindow = new Date(startOfToday);
@@ -2034,7 +2073,7 @@ export class ProfessionalsService {
   async bookAgendaSlot(clientId: string, professionalProfileId: string, input: BookAgendaSlotInput): Promise<{ bookingId: string }> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
-      select: { id: true, deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, jobLimitReachedAt: true, demotedUntil: true, requestsBlockedUntil: true, ...PUBLIC_VISIBILITY_SELECT },
+      select: { id: true, deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, jobLimitReachedAt: true, demotedUntil: true, requestsBlockedUntil: true, awayUntil: true, ...PUBLIC_VISIBILITY_SELECT },
     });
     if (!profile || profile.deletedAt || profile.suspendedAt || profile.invitePendingAt || publicVisibilityMissing(profile)) {
       throw new NotFoundException("Professionista non trovato.");

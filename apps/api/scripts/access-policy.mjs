@@ -191,6 +191,7 @@ const selfProfessional = [
   "GET /professionals/me/verification",
   "POST /professionals/me/verification/identity",
   "POST /professionals/me/verification/representative-link",
+  "PUT /professionals/me/away",
 ];
 
 const booking = (extra = {}) => ({ kind: "owned", owners: BOTH, params: (f) => ({ id: f.bookingA }), ...extra });

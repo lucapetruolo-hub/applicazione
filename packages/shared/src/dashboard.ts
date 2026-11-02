@@ -64,6 +64,8 @@ export type MyProfessionalProfile = {
   /** Misure in corso per segnalazioni accolte (docs/CHANGELOG.md §167): fino a quando. */
   demotedUntil?: string | null;
   requestsBlockedUntil?: string | null;
+  /** Pausa scelta da lui (collaudo C-16): il giorno in cui torna a ricevere richieste. */
+  awayUntil?: string | null;
 };
 
 /** Lead ricevuto da un professionista in seguito a una richiesta guidata. */

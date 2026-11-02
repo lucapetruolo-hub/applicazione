@@ -772,6 +772,17 @@ export const updateEngagementRadiusSchema = z.object({
 });
 export type UpdateEngagementRadiusInput = z.infer<typeof updateEngagementRadiusSchema>;
 
+/**
+ * "Metti in pausa" (collaudo C-16): il giorno in cui si torna a ricevere
+ * richieste (AAAA-MM-GG), o `null` per riprendere subito. Al massimo
+ * `MAX_AWAY_DAYS` giorni: oltre conviene chiudere l'account o l'abbonamento.
+ */
+export const MAX_AWAY_DAYS = 180;
+export const setAwaySchema = z.object({
+  until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Scegli il giorno in cui torni.").nullable(),
+});
+export type SetAwayInput = z.infer<typeof setAwaySchema>;
+
 /** Recensione: consentita solo se legata a una prenotazione confermata (CLAUDE.md §8). */
 export const reviewSchema = z.object({
   bookingId: z.guid(),

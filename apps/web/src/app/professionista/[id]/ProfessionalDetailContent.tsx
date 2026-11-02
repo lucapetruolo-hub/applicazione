@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BRAND, PROFILE_REQUEST_SOURCE_PARAM, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, SERVICE_PRICE_UNIT_LABEL, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, SERVICE_PRICE_UNIT_LABEL, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -917,7 +917,8 @@ export function ProfessionalDetailContent({
         ) : (
           <Surface gap="$2">
             <Text fontWeight="700" color={brand.grafite}>
-              Al momento non accetta nuove richieste
+              {/* Pausa scelta da lui (collaudo C-16): si dice quando torna. */}
+              {professional.awayUntil ? `In pausa: torna ${formatAppointmentDate(professional.awayUntil, { weekday: "long", day: "numeric", month: "long" })}` : "Al momento non accetta nuove richieste"}
             </Text>
             <Text color={brand.grafite70}>Puoi chiedere un preventivo ad altri professionisti della stessa categoria nella tua zona.</Text>
             <Link href={`/cerca/${professional.categorySlug}`} style={{ textDecoration: "none", alignSelf: "flex-start", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>

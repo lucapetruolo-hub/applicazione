@@ -277,3 +277,27 @@ describe("voci di \"Quanto costa in media\" (§398)", () => {
     expect(profileWhere).toMatchObject({ isDemo: false, user: { testAccountAt: null }, deletedAt: null, suspendedAt: null, pausedAt: null, invitePendingAt: null });
   });
 });
+
+describe("Metti in pausa (collaudo C-16)", () => {
+  function build() {
+    const prisma = {
+      professionalProfile: { findUnique: vi.fn().mockResolvedValue({ id: "p-1" }), update: vi.fn().mockResolvedValue({}) },
+    };
+    const service = new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    return { service, prisma };
+  }
+  const now = new Date("2026-11-02T10:00:00.000Z");
+
+  it("salva il giorno di ritorno e riprende con null", async () => {
+    const { service, prisma } = build();
+    await expect(service.setAway("u-1", { until: "2026-11-10" }, now)).resolves.toEqual({ awayUntil: "2026-11-10T00:00:00.000Z" });
+    expect(prisma.professionalProfile.update).toHaveBeenCalledWith({ where: { userId: "u-1" }, data: { awayUntil: new Date("2026-11-10T00:00:00.000Z") } });
+    await expect(service.setAway("u-1", { until: null }, now)).resolves.toEqual({ awayUntil: null });
+  });
+
+  it("non oggi né nel passato, non oltre 180 giorni", async () => {
+    const { service } = build();
+    await expect(service.setAway("u-1", { until: "2026-11-02" }, now)).rejects.toThrow("da domani");
+    await expect(service.setAway("u-1", { until: "2027-06-30" }, now)).rejects.toThrow("180 giorni");
+  });
+});

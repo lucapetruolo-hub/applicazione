@@ -193,6 +193,7 @@ export class GuidedRequestsService {
         pausedAt: true,
         demotedUntil: true,
         requestsBlockedUntil: true,
+        awayUntil: true,
         businessName: true,
         categoryId: true,
         extraCategories: { select: { id: true } },
@@ -250,6 +251,7 @@ export class GuidedRequestsService {
       pausedAt: Date | null;
       demotedUntil: Date | null;
       requestsBlockedUntil: Date | null;
+      awayUntil: Date | null;
       businessName: string;
       category: NonNullable<typeof category>;
       extraCategories: { id: string }[];
@@ -267,6 +269,7 @@ export class GuidedRequestsService {
           pausedAt: true,
           demotedUntil: true,
           requestsBlockedUntil: true,
+          awayUntil: true,
           businessName: true,
           category: true,
           extraCategories: { select: { id: true } },
@@ -1030,16 +1033,21 @@ export class GuidedRequestsService {
     // mai nel fan-out — stesso filtro già applicato a search()/getById().
     const candidates = await this.prisma.professionalProfile.findMany({
       where: {
-        // Categoria principale o una delle aggiuntive (docs/CHANGELOG.md §217).
-        // Solo professionisti verificati su Stripe (docs/CHANGELOG.md §239).
-        AND: [{ OR: [{ categoryId }, { extraCategories: { some: { id: categoryId } } }] }, publicVisibilityWhere()],
         deletedAt: null,
         suspendedAt: null,
         pausedAt: null,
         // Profilo creato da un operatore, non ancora confermato (§170).
         invitePendingAt: null,
-        // Nessuna nuova richiesta per 14 giorni dopo la 3ª segnalazione accolta (§167).
-        OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }],
+        // Nessuna nuova richiesta per 14 giorni dopo la 3ª segnalazione accolta (§167),
+        // né durante la pausa scelta dal professionista (collaudo C-16).
+        AND: [
+          // Categoria principale o una delle aggiuntive (docs/CHANGELOG.md §217).
+          { OR: [{ categoryId }, { extraCategories: { some: { id: categoryId } } }] },
+          // Dati fiscali compilati (docs/CHANGELOG.md §239, §241).
+          publicVisibilityWhere(),
+          { OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }] },
+          { OR: [{ awayUntil: null }, { awayUntil: { lte: new Date() } }] },
+        ],
         ...(excludeProfileId ? { id: { not: excludeProfileId } } : {}),
         // Intervento online: solo chi offre consulenza da remoto (§210).
         ...(remoteOnly ? { remoteAvailable: true } : {}),
@@ -1173,6 +1181,7 @@ export class GuidedRequestsService {
         invitePendingAt: true,
         pausedAt: true,
         requestsBlockedUntil: true,
+        awayUntil: true,
         demotedUntil: true,
         ...PUBLIC_VISIBILITY_SELECT,
       },

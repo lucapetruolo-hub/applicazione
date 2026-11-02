@@ -1637,6 +1637,14 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       }),
 
     /** Raggio di ingaggio (standard/urgente, 1-25 km): salvato a parte dal resto del profilo, vedi EngagementRadiusMap. */
+    /** "Metti in pausa" fino al giorno `until` (AAAA-MM-GG), `null` per riprendere (collaudo C-16). */
+    setAway: (token: string, until: string | null) =>
+      request<{ awayUntil: string | null }>("/professionals/me/away", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ until }),
+      }),
+
     updateEngagementRadius: (token: string, input: UpdateEngagementRadiusInput) =>
       request<{ engagementRadiusKm: number; urgentEngagementRadiusKm: number }>("/professionals/me/engagement-radius", {
         method: "PATCH",
