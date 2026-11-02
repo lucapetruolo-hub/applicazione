@@ -107,7 +107,7 @@ describe("OnlineMoneyService.handleStripeDispute", () => {
       where: { id: "jp-1" },
       data: expect.objectContaining({ stripeDisputeId: "dp_1", stripeDisputeStatus: "needs_response", status: "DISPUTED" }),
     });
-    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith({ where: { id: "jp-1", disputeStatuses: { equals: {} } }, data: { disputeStatuses: { dp_1: "needs_response" } } });
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith({ where: { id: "jp-1", disputeStatuses: { equals: {} } }, data: { disputeStatuses: { dp_1: "needs_response" }, disputeDetails: { dp_1: { payment: "DEPOSIT", amountEurCents: 8000 } } } });
     expect(notificationsService.notify).toHaveBeenCalledWith("admin-1", "ADMIN_STRIPE_DISPUTE", expect.anything());
     expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "JOB_STRIPE_DISPUTE", expect.anything());
   });
@@ -211,6 +211,10 @@ describe("OnlineMoneyService.handleStripeDispute", () => {
     await service.handleStripeDispute({ ...dispute("needs_response", 4000), id: "dp_2", payment_intent: "pi_bal" } as never);
 
     expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "JOB_STRIPE_DISPUTE", expect.anything());
+    // Per l'archivio: è il saldo, 40 €.
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ disputeDetails: { dp_2: { payment: "BALANCE", amountEurCents: 4000 } } }) }),
+    );
   });
 
   it("restituisce false se il pagamento contestato non è di un lavoro", async () => {

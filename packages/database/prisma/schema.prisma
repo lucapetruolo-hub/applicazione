@@ -2271,6 +2271,8 @@ model JobPayment {
   // Stato di ciascuna contestazione, { "<id>": "needs_response" | "won" | ... }:
   // `stripeDisputeId`/`stripeDisputeStatus` mostrano quella ancora aperta.
   disputeStatuses           Json      @default("{}")
+  // Per l'archivio, senza chiedere a Stripe: { "<id>": { payment: "DEPOSIT" | "BALANCE", amountEurCents } }.
+  disputeDetails            Json      @default("{}")
   // Allo sblocco (collaudo F-21): parte che Stripe aveva già preso dal saldo
   // del professionista per rimborsi o contestazioni di altri lavori, e debito
   // di lavori precedenti ripreso prima del bonifico. Ognuna ha la sua riga

@@ -93,3 +93,15 @@ aperte. Le prove restano un solo modulo, che va a tutte (secondo giro).
 
 **Verifica.** Test nuovo in `bank-disputes.test.ts` (due righe, somma 80 €).
 `pnpm --filter @professionisti/api test` verde; typecheck e lint del sito verdi.
+
+## Quarto giro: archivio con Acconto/Saldo e cifra
+
+**Richiesta** di Luca: "effettua miglioria 1".
+
+**Decisione.** `JobPayment.disputeDetails` salva, all'arrivo di ogni
+contestazione, quale pagamento è (acconto o saldo) e la cifra. L'archivio di
+Admin → Contestazioni li mostra in ogni riga senza chiedere a Stripe; la scheda
+da preparare li usa se Stripe non risponde.
+
+**Verifica.** Test nuovi in `bank-disputes.test.ts` (archivio con acconto e
+saldo) e `stripe-disputes.test.ts` (dettagli salvati); API 1149 test verdi.

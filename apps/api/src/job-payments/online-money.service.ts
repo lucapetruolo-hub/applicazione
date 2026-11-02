@@ -105,6 +105,10 @@ function eurAmount(entries: Array<{ amount: number; currency: string }> | undefi
   return (entries ?? []).filter((entry) => entry.currency === "eur").reduce((sum, entry) => sum + entry.amount, 0);
 }
 
+function jsonObject(value: Prisma.JsonValue | undefined): Record<string, Prisma.JsonValue> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, Prisma.JsonValue>) : {};
+}
+
 /** Stato di ogni contestazione del lavoro (collaudo F-21); per i dati di prima quella salvata. */
 function disputeStatusesOf(jp: { disputeStatuses?: Prisma.JsonValue; stripeDisputeId: string | null; stripeDisputeStatus: string | null }): Record<string, string> {
   const out: Record<string, string> = {};
@@ -1380,9 +1384,14 @@ export class OnlineMoneyService {
       if (prev && CLOSED_DISPUTE_STATUSES.includes(prev) && !closed) return true;
       if (prev === dispute.status) break;
       const next = { ...statuses, [dispute.id]: dispute.status };
+      // Quale pagamento e quanto, per l'archivio dell'Admin (senza chiedere a Stripe).
+      const details = {
+        ...jsonObject(current.disputeDetails),
+        [dispute.id]: { payment: paymentIntentId === jp.balancePaymentIntentId ? "BALANCE" : "DEPOSIT", amountEurCents: dispute.amount },
+      };
       const claim = await this.prisma.jobPayment.updateMany({
         where: { id: jp.id, disputeStatuses: { equals: (current.disputeStatuses ?? {}) as Prisma.InputJsonValue } },
-        data: { disputeStatuses: next },
+        data: { disputeStatuses: next, disputeDetails: details },
       });
       if (claim.count === 1) {
         opened = prev === undefined;

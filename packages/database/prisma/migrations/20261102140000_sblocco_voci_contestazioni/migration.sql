@@ -1,6 +1,7 @@
 -- Cifre "Ti arriva in banca" (collaudo F-21, docs/changelog/2026-11-02-cifre-ti-arriva-in-banca.md).
 ALTER TABLE "job_payments" ADD COLUMN "disputeFunds" JSONB NOT NULL DEFAULT '{}';
 ALTER TABLE "job_payments" ADD COLUMN "disputeStatuses" JSONB NOT NULL DEFAULT '{}';
+ALTER TABLE "job_payments" ADD COLUMN "disputeDetails" JSONB NOT NULL DEFAULT '{}';
 ALTER TABLE "job_payments" ADD COLUMN "releaseTakenByStripeEurCents" INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE "job_payments" ADD COLUMN "releaseDebtRecoveredEurCents" INTEGER NOT NULL DEFAULT 0;
 

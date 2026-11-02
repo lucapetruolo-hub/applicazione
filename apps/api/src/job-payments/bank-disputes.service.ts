@@ -242,9 +242,9 @@ export class BankDisputesService {
     const due = dispute?.evidence_details?.due_by;
     return {
       disputeId,
-      payment: intent && intent === job.stripePaymentIntentId ? "DEPOSIT" : intent && intent === job.balancePaymentIntentId ? "BALANCE" : null,
+      payment: intent && intent === job.stripePaymentIntentId ? "DEPOSIT" : intent && intent === job.balancePaymentIntentId ? "BALANCE" : savedDetail(job.disputeDetails, disputeId).payment,
       status: dispute?.status ?? savedStatus ?? "needs_response",
-      amountEurCents: dispute?.amount ?? null,
+      amountEurCents: dispute?.amount ?? savedDetail(job.disputeDetails, disputeId).amountEurCents,
       dueBy: due ? new Date(due * 1000).toISOString() : null,
     };
   }
@@ -301,9 +301,8 @@ export class BankDisputesService {
         .map((l) => ({ at: l.createdAt.toISOString(), text: l.reason!, by: l.changedByUserId ? (userEmail.get(l.changedByUserId) ?? "utente non più presente") : null })),
       parts: Object.entries({ [job.stripeDisputeId!]: job.stripeDisputeStatus ?? "needs_response", ...disputeStatusMap(job.disputeStatuses) }).map(([disputeId, status]) => ({
         disputeId,
-        payment: null,
+        ...savedDetail(job.disputeDetails, disputeId),
         status,
-        amountEurCents: null,
         dueBy: null,
       })),
     }));
@@ -516,4 +515,13 @@ function disputeStatusMap(value: Prisma.JsonValue | undefined): Record<string, s
     for (const [id, status] of Object.entries(value)) if (typeof status === "string") out[id] = status;
   }
   return out;
+}
+
+/** Pagamento e cifra di una contestazione, salvati quando è arrivata (`JobPayment.disputeDetails`). */
+function savedDetail(value: Prisma.JsonValue | undefined, disputeId: string): Pick<BankDisputePart, "payment" | "amountEurCents"> {
+  const all = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  const one = all[disputeId];
+  const detail = one && typeof one === "object" && !Array.isArray(one) ? (one as Record<string, unknown>) : {};
+  const payment = detail.payment === "DEPOSIT" || detail.payment === "BALANCE" ? detail.payment : null;
+  return { payment, amountEurCents: typeof detail.amountEurCents === "number" ? detail.amountEurCents : null };
 }

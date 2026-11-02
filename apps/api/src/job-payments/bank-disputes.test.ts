@@ -145,6 +145,27 @@ describe("BankDisputesService", () => {
     ]);
   });
 
+  it("archivio: acconto e saldo con la loro cifra, salvati all'arrivo, senza chiedere a Stripe", async () => {
+    const { service, stripe, prisma } = setup();
+    Object.assign(prisma, { auditLog: { findMany: vi.fn().mockResolvedValue([]) }, user: { findMany: vi.fn().mockResolvedValue([]) } });
+    prisma.jobPayment.findMany.mockResolvedValue([
+      {
+        ...job,
+        stripeDisputeStatus: "lost",
+        disputeStatuses: { du_1: "lost", du_2: "won" },
+        disputeDetails: { du_1: { payment: "DEPOSIT", amountEurCents: 4000 }, du_2: { payment: "BALANCE", amountEurCents: 4000 } },
+      },
+    ]);
+
+    const [row] = await service.archive();
+
+    expect(stripe.disputes.retrieve).not.toHaveBeenCalled();
+    expect(row!.parts).toEqual([
+      { disputeId: "du_1", payment: "DEPOSIT", amountEurCents: 4000, status: "lost", dueBy: null },
+      { disputeId: "du_2", payment: "BALANCE", amountEurCents: 4000, status: "won", dueBy: null },
+    ]);
+  });
+
   it("acconto e saldo contestati: le stesse prove vanno anche alla seconda contestazione aperta (collaudo F-21)", async () => {
     const { service, stripe, prisma } = setup();
     prisma.jobPayment.findUnique.mockResolvedValue({ ...job, disputeStatuses: { du_1: "needs_response", du_2: "needs_response", du_0: "won" } });
