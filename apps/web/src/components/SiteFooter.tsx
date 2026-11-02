@@ -42,6 +42,9 @@ function FooterLink({ href, children }: { href: string; children: string }) {
 // dell'azienda (ragione sociale, P.IVA, sede) appena disponibili.
 /** Aree riservate (cliente, professionista, admin): piede corto, senza i link di marketing. */
 const RESERVED_AREAS = ["/dashboard", "/admin", "/account", "/chat", "/le-mie-richieste", "/professionisti-salvati", "/le-mie-recensioni", "/segnalazioni"];
+/** Pagine di accesso e iscrizione: stesso piede corto, per non distrarre a metà dei passi
+ * (docs/changelog/2026-11-02-registrazione-pro-grafica.md). */
+const AUTH_PAGES = ["/registrati", "/accedi", "/password-dimenticata", "/reimposta-password", "/conferma-email", "/completa-profilo", "/accesso-google"];
 
 function ShortFooterLink({ href, children }: { href: string; children: string }) {
   return (
@@ -59,7 +62,7 @@ export function SiteFooter() {
   // Dentro le aree riservate il piede completo (quattro colonne, "Iscriviti
   // gratis", "Accedi") non serve a chi è già dentro e su telefono era più
   // lungo della chat (docs/CHANGELOG.md §349): resta una riga sola.
-  if (RESERVED_AREAS.some((area) => pathname === area || pathname.startsWith(`${area}/`))) {
+  if ([...RESERVED_AREAS, ...AUTH_PAGES].some((area) => pathname === area || pathname.startsWith(`${area}/`))) {
     return (
       <YStack width="100%" alignItems="center" paddingVertical="$5" paddingHorizontal="$4">
         <XStack flexWrap="wrap" justifyContent="center" alignItems="center" columnGap="$4" rowGap="$2">
