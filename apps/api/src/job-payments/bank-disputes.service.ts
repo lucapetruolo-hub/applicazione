@@ -374,7 +374,7 @@ export class BankDisputesService {
           { label: "Preventivo accettato e acconto pagato", value: dayTime(job.depositPaidAt ?? b.createdAt) },
           { label: "Appuntamento", value: dayTime(b.scheduledAt) },
           ...(b.professionalCompletedAt ? [{ label: "Lavoro terminato (professionista)", value: dayTime(b.professionalCompletedAt) }] : []),
-          ...(b.clientConfirmedCompletedAt ? [{ label: "Lavoro confermato dal cliente", value: dayTime(b.clientConfirmedCompletedAt) }] : []),
+          ...(b.clientConfirmedCompletedAt ? [{ label: "Lavoro terminato confermato dal cliente", value: dayTime(b.clientConfirmedCompletedAt) }] : []),
           ...(b.completionAutoClosedAt ? [{ label: "Chiuso senza segnalazioni del cliente", value: dayTime(b.completionAutoClosedAt) }] : []),
         ],
       },

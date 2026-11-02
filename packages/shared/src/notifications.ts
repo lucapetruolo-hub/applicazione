@@ -39,7 +39,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
     client: { label: "Le tue richieste", description: "Conferma dell'invio, un professionista trovato più tardi, e se un professionista rifiuta, la richiesta scade o viene inoltrata ad altri." },
     // REQUEST_SENT: solo email, la conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §185).
     // REQUEST_MATCHED_LATER: richiesta senza destinatari arrivata al primo professionista iscritto dopo (§271).
-    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_MATCHED_LATER", "REQUEST_SENT"],
+    // REQUEST_WITHDRAWN: al professionista, il cliente ha ritirato la richiesta (collaudo B-09).
+    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_MATCHED_LATER", "REQUEST_SENT", "REQUEST_WITHDRAWN"],
     activeChannels: ["inApp", "email"],
   },
   preventivi: {
@@ -49,6 +50,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "NEW_QUOTE",
       "QUOTE_ACCEPTED",
       "QUOTE_REJECTED",
+      // Il cliente ha accettato il preventivo di un altro (collaudo F-11).
+      "QUOTE_NOT_CHOSEN",
       "QUOTE_WITHDRAWN",
       "QUOTE_DATE_PROPOSED",
       "QUOTE_DATE_CHANGED",
@@ -234,6 +237,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Carta data: mesi gratis attivi, con fine, importo e come annullare
       // (docs/changelog/2026-10-30-iscrizione-carta-solida.md).
       "SUBSCRIPTION_FREE_MONTHS_STARTED",
+      // Mesi gratis già avuti con un account chiuso con la stessa partita IVA
+      // (docs/changelog/2026-11-02-collaudo-recensioni-abusi.md).
+      "SUBSCRIPTION_FREE_MONTHS_USED",
       "SUBSCRIPTION_TRIAL_ENDING",
       "SUBSCRIPTION_LIMIT_NEAR",
       "SUBSCRIPTION_LIMIT_REACHED",
@@ -287,6 +293,14 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
     professional: { label: "Nuove richieste", description: "Un cliente ti chiede un preventivo." },
   },
   {
+    key: "richieste.ritirate",
+    topic: "richieste",
+    types: ["REQUEST_WITHDRAWN"],
+    // Solo sul sito, nessuna email (docs/CHANGELOG.md §343).
+    channels: ["inApp"],
+    professional: { label: "Richieste ritirate", description: "Il cliente non ha più bisogno del lavoro." },
+  },
+  {
     key: "richieste.inviata",
     topic: "richieste",
     types: ["REQUEST_SENT"],
@@ -309,8 +323,8 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "preventivi.esito",
     topic: "preventivi",
-    types: ["QUOTE_ACCEPTED", "QUOTE_REJECTED"],
-    professional: { label: "Preventivo accettato o rifiutato" },
+    types: ["QUOTE_ACCEPTED", "QUOTE_REJECTED", "QUOTE_NOT_CHOSEN"],
+    professional: { label: "Preventivo accettato o rifiutato", description: "Anche quando il cliente sceglie un altro professionista." },
   },
   {
     key: "preventivi.modifiche",

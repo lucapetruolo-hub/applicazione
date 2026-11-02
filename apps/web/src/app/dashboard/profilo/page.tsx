@@ -1628,7 +1628,7 @@ export default function DashboardProfiloPage() {
           <SectionTitle>Portfolio</SectionTitle>
           <FieldLabel>{`Foto o video dei lavori svolti (fino a ${MAX_PORTFOLIO_PHOTOS}, opzionale)`}</FieldLabel>
           <Text fontSize={13} color={brand.grafite70}>
-            Foto o video reali di lavori completati: aiutano chi apre il tuo profilo a farsi un&apos;idea concreta di
+            Foto o video reali di lavori terminati: aiutano chi apre il tuo profilo a farsi un&apos;idea concreta di
             cosa sai fare.
           </Text>
           <YStack flexDirection="row" flexWrap="wrap" gap="$2">

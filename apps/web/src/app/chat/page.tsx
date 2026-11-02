@@ -45,9 +45,9 @@ function requestDestination(thread: ChatThreadSummary): string {
 function formatThreadTimestamp(iso: string): string {
   const date = new Date(iso);
   const now = new Date();
-  const time = date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  const time = date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
   if (date.toDateString() === now.toDateString()) return time;
-  return `${date.toLocaleDateString("it-IT", { day: "numeric", month: "short" })} · ${time}`;
+  return `${date.toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "Europe/Rome" })} · ${time}`;
 }
 
 /**

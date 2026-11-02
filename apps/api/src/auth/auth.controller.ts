@@ -348,6 +348,13 @@ export class AuthController {
     return this.authService.logoutOtherDevices(req.user.userId);
   }
 
+  /** Cosa resta aperto e cosa si annulla prima di chiudere l'account (collaudo B-01, P-06). */
+  @UseGuards(JwtAuthGuard)
+  @Get("me/closure-check")
+  accountClosureCheck(@Req() req: AuthenticatedRequest) {
+    return this.authService.accountClosureCheck(req.user.userId);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Delete("me")
   async deleteMe(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(churnReasonBodySchema)) body: ChurnReasonBody) {

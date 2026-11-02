@@ -9,14 +9,14 @@ import { GuidedRequestsService, WITHDRAWN_TIMELINE_MESSAGE } from "./guided-requ
  */
 type Request = { id: string; clientId: string; status: string; closedReason: string | null; deletedByClientAt: Date | null; deletedWhileOpen: boolean };
 
-function buildService({ request, bookings = 0, leads = [{ professionalProfileId: "pro-1" }], reported = [] as string[], candidates = [] as string[] }: {
+function buildService({ request, bookings = 0, leads = [{ professionalProfileId: "pro-1", status: "PENDING", professionalProfile: { userId: "user-pro-1" } }], reported = [] as string[], candidates = [] as string[] }: {
   request?: Partial<Request>;
   bookings?: number;
-  leads?: { professionalProfileId: string }[];
+  leads?: { professionalProfileId: string; status?: string; professionalProfile?: { userId: string } }[];
   reported?: string[];
   candidates?: string[];
 } = {}) {
-  const row: Request = { id: "gr-1", clientId: "client-1", status: "OPEN", closedReason: null, deletedByClientAt: null, deletedWhileOpen: false, ...request };
+  const row = { id: "gr-1", clientId: "client-1", status: "OPEN", closedReason: null, deletedByClientAt: null, deletedWhileOpen: false, categoryId: "cat-1", city: "Latina", description: "Perdita sotto il lavandino", ...request };
   const prisma = {
     guidedRequest: {
       findUnique: vi.fn().mockResolvedValue(row),
@@ -26,14 +26,16 @@ function buildService({ request, bookings = 0, leads = [{ professionalProfileId:
     },
     lead: { findMany: vi.fn().mockResolvedValue(leads), updateMany: vi.fn((args: unknown) => args) },
     booking: { count: vi.fn().mockResolvedValue(bookings) },
+    category: { findUnique: vi.fn().mockResolvedValue({ label: "Idraulico" }) },
     notification: { updateMany: vi.fn((args: unknown) => args), deleteMany: vi.fn((args: unknown) => args) },
     conversationEvent: { deleteMany: vi.fn((args: unknown) => args) },
     contentReport: { findMany: vi.fn().mockResolvedValue(reported.map((targetId) => ({ targetId }))) },
     $transaction: vi.fn().mockResolvedValue([]),
   };
   const timeline = { log: vi.fn() };
-  const service = new GuidedRequestsService(prisma as never, {} as never, {} as never, timeline as never, {} as never);
-  return { service, prisma, timeline };
+  const notifications = { notify: vi.fn() };
+  const service = new GuidedRequestsService(prisma as never, notifications as never, {} as never, timeline as never, {} as never);
+  return { service, prisma, timeline, notifications };
 }
 
 describe("GuidedRequestsService.deleteByClient", () => {
@@ -47,6 +49,19 @@ describe("GuidedRequestsService.deleteByClient", () => {
     });
     expect(timeline.log).toHaveBeenCalledWith("gr-1", "pro-1", "CLIENT", WITHDRAWN_TIMELINE_MESSAGE);
     expect(prisma.guidedRequest.delete).not.toHaveBeenCalled();
+  });
+
+  it("avvisa sul sito chi l'aveva ricevuta e spegne il suo \"Nuova richiesta\", non chi l'aveva rifiutata (collaudo B-09)", async () => {
+    const { service, prisma, notifications } = buildService({
+      leads: [
+        { professionalProfileId: "pro-1", status: "PENDING", professionalProfile: { userId: "user-pro-1" } },
+        { professionalProfileId: "pro-2", status: "DECLINED", professionalProfile: { userId: "user-pro-2" } },
+      ],
+    });
+    await service.deleteByClient("client-1", "gr-1", "FOUND_ELSEWHERE");
+    expect(notifications.notify).toHaveBeenCalledTimes(1);
+    expect(notifications.notify).toHaveBeenCalledWith("user-pro-1", "REQUEST_WITHDRAWN", expect.objectContaining({ guidedRequestId: "gr-1", category: "Idraulico", reason: "FOUND_ELSEWHERE" }));
+    expect(prisma.notification.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ userId: "user-pro-1", type: "NEW_LEAD" }) }));
   });
 
   it("una richiesta scaduta si nasconde soltanto, senza cambiarne lo stato", async () => {

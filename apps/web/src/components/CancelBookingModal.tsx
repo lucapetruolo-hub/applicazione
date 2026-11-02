@@ -27,7 +27,7 @@ const textareaStyle = {
 export function CancelBookingModal({
   onClose,
   onCancel,
-  title = "Annulla intervento",
+  title = "Annulla il lavoro",
   description = "Il cliente verrà avvisato dell'annullamento. Puoi lasciare una nota facoltativa per spiegargli il motivo.",
   notePlaceholder = "Es. Imprevisto, ti ricontatterò per riprogrammare.",
   confirmLabel = "Conferma annullamento",

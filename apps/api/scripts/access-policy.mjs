@@ -71,6 +71,7 @@ const publicRoutes = [
   "POST /site/profile-view",
   // Passi dalle voci di "Quanto costa" (§399), senza account.
   "POST /site/price-tool",
+  "GET /professionals/category-counts",
   "GET /professionals/languages/popular",
   // Prezzi aggregati della pagina "Quanto costa", mai sotto le soglie (§296).
   "GET /professionals/prices/:category",
@@ -92,6 +93,7 @@ const selfAny = [
   "GET /auth/me",
   "PATCH /auth/me",
   "PATCH /auth/me/preferences",
+  "GET /auth/me/closure-check",
   "GET /auth/me/export",
   "POST /auth/me/image",
   "POST /auth/verify-email/code",

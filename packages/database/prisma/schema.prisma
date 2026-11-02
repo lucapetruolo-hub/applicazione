@@ -1533,9 +1533,16 @@ model Review {
   // Promemoria al professionista per una recensione da 1-2 stelle ancora
   // senza risposta dopo 3 giorni, uno solo (decisione di Luca del 30/10/2026).
   replyReminderSentAt   DateTime?
+  // In controllo prima della pubblicazione (collaudo P-01,
+  // docs/changelog/2026-11-02-collaudo-recensioni-abusi.md): con un segnale di
+  // recensione finta resta nascosta (hiddenAt) finché un admin non la pubblica
+  // o la nasconde. heldReasons: i segnali (ReviewHoldReason).
+  heldAt                DateTime?
+  heldReasons           String[]  @default([])
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
+  @@index([heldAt])
   @@map("reviews")
 }
 
@@ -1641,6 +1648,9 @@ model ConversationEvent {
   // falso per quelli scritti a mano (addUpdate): la chat mostra i primi
   // centrati e in grigio, non come nuvoletta (docs/CHANGELOG.md §198).
   automatic             Boolean                @default(false)
+  // Nascosto da una segnalazione accolta: in chat resta "Messaggio nascosto",
+  // l'admin vede ancora il testo (docs/changelog/2026-11-02-collaudo-recensioni-abusi.md).
+  hiddenAt              DateTime?
   createdAt             DateTime               @default(now())
 
   guidedRequest       GuidedRequest       @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
@@ -1710,6 +1720,9 @@ enum ContentReportTargetType {
   // Richiesta di un cliente segnalata dal professionista che l'ha ricevuta
   // (CHANGELOG §130) — solo chi ha un Lead su quella richiesta può segnalarla.
   GUIDED_REQUEST
+  // Messaggio scritto a mano in chat, segnalato dall'altra parte
+  // (docs/changelog/2026-11-02-collaudo-recensioni-abusi.md).
+  CHAT_MESSAGE
 }
 
 enum ContentReportStatus {
