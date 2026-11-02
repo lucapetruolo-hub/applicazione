@@ -13,7 +13,7 @@
 // Ogni avviso diventa una segnalazione (issue) su GitHub, una sola per titolo
 // (la apre il workflow aggiornamenti.yml).
 // Uso in locale (solo stampa): `node scripts/controlla-aggiornamenti.mjs`.
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 
 const MESI_PREAVVISO = 6;
 const leggi = (path) => JSON.parse(readFileSync(new URL(`../${path}`, import.meta.url), "utf8"));
@@ -101,6 +101,6 @@ for (const c of calendari) {
 for (const a of avvisi) console.error(`- ${a.titolo}`);
 if (avvisi.length === 0) console.error("Niente da aggiornare.");
 
-// 3. Gli avvisi vanno in un file: le segnalazioni le apre il workflow con `gh`,
-// una per titolo, come in node.yml.
-if (process.env.AVVISI_FILE) writeFileSync(process.env.AVVISI_FILE, JSON.stringify(avvisi));
+// 3. Gli avvisi in JSON sull'uscita standard (i messaggi per chi legge vanno su
+// stderr): le segnalazioni le apre il workflow con `gh`, una per titolo, come in node.yml.
+console.log(JSON.stringify(avvisi));

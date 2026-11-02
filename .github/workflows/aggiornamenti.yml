@@ -31,9 +31,7 @@ jobs:
         with:
           node-version-file: .nvmrc
       - name: Confronto con npm ed endoflife.date
-        env:
-          AVVISI_FILE: ${{ runner.temp }}/avvisi.json
-        run: node scripts/controlla-aggiornamenti.mjs
+        run: node scripts/controlla-aggiornamenti.mjs > "$RUNNER_TEMP/avvisi.json"
 
       # Sulle PR solo la prova che lo script funziona, senza segnalazioni.
       - name: Segnalazioni
