@@ -21,7 +21,8 @@ export type AdminQueueKind =
   | "PROBLEM_TAKEOVER"
   | "CONTACT_MESSAGE"
   | "VERIFICATION"
-  | "CLOSED_ZONE";
+  | "CLOSED_ZONE"
+  | "SUSPICIOUS_ACCOUNT";
 
 /** Gruppo del filtro "Tipo" della coda: gli stessi nomi delle voci del menu. */
 export type AdminQueueGroup = "soldi" | "reclami" | "richieste" | "persone" | "fisco";
@@ -40,6 +41,7 @@ export const ADMIN_QUEUE_KINDS: Record<AdminQueueKind, { label: string; group: A
   CONTACT_MESSAGE: { label: "Messaggio dal sito", group: "richieste", scope: "MODERATION" },
   VERIFICATION: { label: "Verifica del profilo", group: "persone", scope: "MODERATION" },
   CLOSED_ZONE: { label: "Zona con le richieste chiuse", group: "richieste", scope: "MODERATION" },
+  SUSPICIOUS_ACCOUNT: { label: "Account sospetto", group: "persone", scope: "MODERATION" },
 };
 
 export const ADMIN_QUEUE_GROUP_LABEL: Record<AdminQueueGroup, string> = {

@@ -4,7 +4,9 @@ import type { PrismaClient } from "@professionisti/database";
 import {
   ADMIN_QUEUE_KINDS,
   BANK_DISPUTE_OPEN_STATUSES,
+  ADMIN_SIGNAL_ADVICE_LEVEL_LABEL,
   adminCan,
+  adviseSuspiciousUser,
   jobIssueReviewPhase,
   matchProblem,
   sortAdminQueue,
@@ -12,7 +14,10 @@ import {
   type AdminQueueItem,
   type AdminQueueKind,
   type AdminRoleValue,
+  type AdminSignalRole,
+  type AdminUserSignal,
 } from "@professionisti/shared";
+import { personLabel } from "./user-signals";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 
@@ -51,7 +56,7 @@ export class AdminQueueService {
       quote: { select: { guidedRequest: { select: { description: true, category: { select: { label: true } } } } } },
     } as const;
 
-    const [bankDisputes, issues, appeals, refunds, disputes, unpaid, sdi, reports, reportAppeals, takeovers, messages, verifications, zones, chatIssues] = await Promise.all([
+    const [bankDisputes, issues, appeals, refunds, disputes, unpaid, sdi, reports, reportAppeals, takeovers, messages, verifications, zones, chatIssues, suspicious] = await Promise.all([
       can("BANK_DISPUTE")
         ? this.prisma.jobPayment.findMany({ where: { stripeDisputeStatus: { in: [...BANK_DISPUTE_OPEN_STATUSES] } }, include: { booking: { include: bookingInclude } } })
         : [],
@@ -76,7 +81,17 @@ export class AdminQueueService {
         : [],
       can("CLOSED_ZONE") ? this.prisma.generalRequestBlock.findMany({ where: { reopenedAt: null }, include: { category: { select: { label: true } } } }) : [],
       can("JOB_ISSUE") ? this.prisma.jobIssue.findMany({ where: { status: "CHAT" }, include: { booking: { include: bookingInclude } } }) : [],
+      can("SUSPICIOUS_ACCOUNT") ? this.prisma.suspiciousAccount.findMany({ where: { archiveReason: null }, select: { userId: true, signals: true, firstSeenAt: true } }) : [],
     ]);
+    // Account sospetti con qualcosa da fare (non "Nessuna azione" né "Va bene così"), con il consiglio già scritto.
+    const suspiciousUsers = suspicious.length
+      ? await this.prisma.user.findMany({
+          // Una misura già presa (account sospeso, profilo tolto dalla ricerca) toglie il caso dalla coda subito.
+          where: { id: { in: suspicious.map((row) => row.userId) }, deletedAt: null, testAccountAt: null, suspendedAt: null, NOT: { professionalProfile: { suspendedAt: { not: null } } } },
+          select: { id: true, role: true, name: true, surname: true, email: true, professionalProfile: { select: { businessName: true } } },
+        })
+      : [];
+    const suspiciousById = new Map(suspiciousUsers.map((u) => [u.id, u]));
 
     for (const p of bankDisputes) {
       items.push({
@@ -285,6 +300,27 @@ export class AdminQueueService {
         dueNote: z.keepOpenUntil ? "chiusa fino a" : null,
         createdAt: z.closedAt.toISOString(),
         status: "Chiusa",
+        danger: false,
+      });
+    }
+
+    for (const row of suspicious) {
+      const user = suspiciousById.get(row.userId);
+      if (!user) continue;
+      const advice = adviseSuspiciousUser(user.role as AdminSignalRole, row.signals as AdminUserSignal[]);
+      if (advice.level === "BASSA") continue;
+      items.push({
+        key: `SUSPICIOUS_ACCOUNT:${user.id}`,
+        kind: "SUSPICIOUS_ACCOUNT",
+        href: `/admin/utenti/${user.id}?scheda=${advice.tab}`,
+        title: `Account sospetto: ${personLabel(user)}`,
+        detail: short(advice.text, 160),
+        who: null,
+        amountEurCents: null,
+        dueAt: null,
+        dueNote: null,
+        createdAt: row.firstSeenAt.toISOString(),
+        status: ADMIN_SIGNAL_ADVICE_LEVEL_LABEL[advice.level],
         danger: false,
       });
     }

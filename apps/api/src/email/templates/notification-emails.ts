@@ -1408,6 +1408,26 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Apri i tuoi casi", url: `${frontendUrl()}/admin?chi=mie` },
     };
   },
+  // Account sospetti nuovi con il consiglio già scritto (docs/changelog/2026-10-30-admin-persone.md).
+  ADMIN_SUSPICIOUS_ACCOUNTS: (payload) => {
+    const levelLabel: Record<string, string> = { ALTA: "Da fare subito", MEDIA: "Da guardare" };
+    const items = Array.isArray(payload.accounts)
+      ? payload.accounts.flatMap((item) => {
+          if (!item || typeof item !== "object") return [];
+          const a = item as Record<string, unknown>;
+          if (typeof a.label !== "string" || typeof a.text !== "string") return [];
+          const level = typeof a.level === "string" ? levelLabel[a.level] : undefined;
+          return [`${level ? `${level} · ` : ""}**${a.label}**: ${a.text}`];
+        })
+      : [];
+    return {
+      kind: "notification",
+      subject: items.length === 1 ? "Un account sospetto da guardare" : `${items.length} account sospetti da guardare`,
+      title: "Account sospetti",
+      paragraphs: ["Il controllo di stamattina ha trovato questi account, con cosa conviene fare:", ...items],
+      cta: { label: "Apri gli account sospetti", url: `${frontendUrl()}/admin/account-sospetti` },
+    };
+  },
   ADMIN_JOB_BALANCE_UNPAID: () => ({
     kind: "notification",
     tone: "urgent",

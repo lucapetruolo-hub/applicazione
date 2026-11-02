@@ -152,22 +152,10 @@ pagina Recensioni; e un promemoria per le recensioni critiche.
   (`apps/api/src/reviews/review-reply-reminders.service.ts`).
 - Prove in `apps/api/src/reviews/review-reply-reminders.test.ts`.
 
-### Falle nuove di joi, glob e minimatch (1/11)
+### Falle nuove di joi, glob e minimatch e prova "C2" (1/11)
 
-Il 30/10 sono uscite tre segnalazioni su pacchetti usati solo dagli strumenti
-di sviluppo (riga di comando di Expo, React Native e NestJS, ESLint), non da
-sito, app o API. joi passa alla 17.13.9 (stessa versione principale, regola
-in `pnpm-workspace.yaml`). glob e minimatch sono corretti solo nelle versioni
-principali nuove (14 e 11), che cambiano il modo di importarli e
-romperebbero ESLint: decide Luca.
-
-### Prova "C2 chiudo venerdì" con la data vera (1/11)
-
-La prova dei tempi dell'agenda chiudeva venerdì 30 ottobre con l'orologio
-del browser fermo al 26/10, ma il server mostra solo i giorni chiusi da oggi
-in poi con la sua ora vera: dal 31/10 il giorno risultava passato e la prova
-falliva anche sul ramo principale. Ora chiude il venerdì della settimana
-prossima rispetto alla data vera (`e2e/tests/tempi-compiti.spec.ts`).
+Aggiornamenti di joi, glob e minimatch e prova dell'agenda con la data vera
+arrivati con la PR #197 (riordino dell'area Admin): qui solo riallineati.
 
 ### Agenda aperta da un appuntamento, di domenica (1/11)
 

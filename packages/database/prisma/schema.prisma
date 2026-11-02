@@ -84,6 +84,10 @@ model User {
   // FK, il login torna impossibile (email non più corrispondente, password
   // azzerata, googleId azzerato) senza dover cancellare nulla a cascata.
   deletedAt                  DateTime?
+  // Impronta (HMAC) dell'email di un account chiuso, mai l'email: in Admin →
+  // Persone chi scrive l'email esatta ritrova "Account chiuso il …"
+  // (collaudo, gruppo 12, docs/changelog/2026-10-30-admin-persone.md).
+  deletedEmailHash           String?
   // Sospensione decisa da un admin su una segnalazione (docs/CHANGELOG.md
   // §144, DSA art. 17/23): l'account non può più accedere né usare l'API
   // (JwtAuthGuard legge questo campo a ogni richiesta). Revocabile
@@ -212,6 +216,8 @@ model User {
   outboundMessages    OutboundMessage[]
 
   @@map("users")
+
+  @@index([deletedEmailHash])
 }
 
 // Dispositivi da cui un professionista ha già fatto l'accesso
@@ -2887,6 +2893,45 @@ model AdminCaseClaim {
   claimedAt   DateTime @default(now())
 
   @@map("admin_case_claims")
+}
+
+// Account sospetti calcolati dal controllo del mattino
+// (docs/changelog/2026-10-30-admin-persone.md): segnali e consiglio salvati,
+// le pagine admin leggono questi invece di ricalcolare tutto a ogni apertura.
+// Una riga per account con almeno un segnale; sparisce quando non ne ha più.
+model SuspiciousAccount {
+  userId      String    @id
+  // AdminUserSignal[] di packages/shared/src/adminSignals.ts.
+  signals     Json
+  firstSeenAt DateTime  @default(now())
+  checkedAt   DateTime
+  // Avviso agli admin già mandato per questo account.
+  notifiedAt  DateTime?
+  // "Va bene così" di un admin, con il motivo: l'account esce da "Cosa fare"
+  // finché il controllo non trova un segnale nuovo (chiave tipo|dettaglio
+  // fuori da dismissedSignals), allora torna e l'avviso riparte.
+  dismissedAt      DateTime?
+  dismissedById    String?
+  dismissedNote    String?
+  dismissedSignals Json?
+  // Archivio (docs/changelog/2026-10-30-admin-persone.md, 02/11/2026): perché
+  // l'account è in "Archiviati". OK = "Va bene così" di un admin; SUSPENDED e
+  // PROFILE_HIDDEN = gestito con una misura; RESOLVED = i segnali sono spariti
+  // (es. recensione nascosta); EXPIRED = "Nessuna azione" senza novità per 90
+  // giorni. Le righe archiviate si cancellano dopo 2 anni.
+  archiveReason    String?
+  // Ultima volta che i segnali sono cambiati (per i 90 giorni).
+  lastChangedAt    DateTime  @default(now())
+
+  @@map("suspicious_accounts")
+}
+
+// Quando è stato fatto l'ultimo controllo degli account sospetti (una riga sola).
+model SuspiciousAccountsCheck {
+  id        String   @id @default("ultimo")
+  checkedAt DateTime
+
+  @@map("suspicious_accounts_checks")
 }
 
 // ---------------------------------------------------------------------------

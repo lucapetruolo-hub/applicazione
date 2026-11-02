@@ -58,21 +58,16 @@ test("C1 stasera so dove devo andare domani", async ({ page }) => {
   done("C1 Stasera so dove devo andare domani", log);
 });
 
-/**
- * Il lunedì della settimana prossima rispetto all'ora vera: il server mostra
- * solo i giorni chiusi da oggi in poi (ora del server, che le prove non
- * spostano), quindi il venerdì da chiudere deve essere ancora futuro.
- */
-function nextMonday(): Date {
-  const date = new Date();
-  date.setUTCHours(8, 0, 0, 0);
-  date.setUTCDate(date.getUTCDate() + ((8 - date.getUTCDay()) % 7 || 7));
-  return date;
-}
-
 test("C2 chiudo un giorno (venerdì) per un impegno", async ({ page }) => {
-  const monday = nextMonday();
-  const friday = new Date(monday.getTime() + 4 * 24 * 60 * 60_000).getUTCDate();
+  // Il server mostra solo i giorni chiusi da oggi in poi (ora vera, non quella
+  // finta del browser): con una data fissa nel passato la prova falliva dal
+  // giorno dopo quel venerdì. Si usa il lunedì della settimana prossima.
+  const monday = new Date();
+  monday.setUTCHours(8, 0, 0, 0);
+  monday.setUTCDate(monday.getUTCDate() + ((8 - monday.getUTCDay()) % 7 || 7));
+  const friday = new Date(monday);
+  friday.setUTCDate(monday.getUTCDate() + 4);
+  const fridayDay = String(friday.getUTCDate());
   await page.clock.setFixedTime(monday);
   const log: Log = { ops: [], waitMs: 0 };
   await openAgenda(page, log);
@@ -82,13 +77,14 @@ test("C2 chiudo un giorno (venerdì) per un impegno", async ({ page }) => {
   log.ops.push("S", "S", "M");
   const section = page.getByRole("heading", { name: "Giorno per giorno" }).locator("xpath=ancestor::div[2]");
   await section.scrollIntoViewIfNeeded();
-  log.ops.push("T"); // il venerdì nella striscia
-  await section.getByRole("group", { name: "Giorni della settimana" }).getByRole("button", { name: new RegExp(`\\b${friday}\\b`) }).click();
-  await expect(section.getByRole("button", { name: new RegExp(`\\b${friday}\\b`), pressed: true })).toBeVisible();
+  log.ops.push("T"); // venerdì nella striscia
+  const fridayButton = new RegExp(`\\b${fridayDay}\\b`);
+  await section.getByRole("group", { name: "Giorni della settimana" }).getByRole("button", { name: fridayButton }).click();
+  await expect(section.getByRole("button", { name: fridayButton, pressed: true })).toBeVisible();
   log.ops.push("M", "T");
   await timed(log, async () => {
-    await section.getByRole("button", { name: `Chiudi venerdì ${friday}`, exact: true }).click();
-    await expect(section.getByRole("button", { name: `Riapri venerdì ${friday}`, exact: true })).toBeVisible();
+    await section.getByRole("button", { name: `Chiudi venerdì ${fridayDay}`, exact: true }).click();
+    await expect(section.getByRole("button", { name: `Riapri venerdì ${fridayDay}`, exact: true })).toBeVisible();
   });
   done("C2 Chiudo venerdì", log);
 });

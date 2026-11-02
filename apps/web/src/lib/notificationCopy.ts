@@ -124,6 +124,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   ADMIN_JOB_ISSUE_TO_REVIEW: { icon: "⚖️", message: "Una segnalazione su un lavoro è passata al nostro team: apri Problemi segnalati." },
   ADMIN_JOB_ISSUE_APPEAL: { icon: "⚖️", message: "Un professionista ha fatto ricorso su una segnalazione: apri Problemi segnalati." },
   ADMIN_CLAIMED_CASES_DUE: { icon: "⏳", message: "Un caso che hai preso scade entro oggi: aprilo da Da fare." },
+  ADMIN_SUSPICIOUS_ACCOUNTS: { icon: "🚩", message: "Il controllo di stamattina ha trovato account sospetti, con cosa conviene fare." },
   ADMIN_STRIPE_DISPUTE: { icon: "⚠️", message: "Contestazione in banca su un pagamento: rileggi e manda le prove da Pagamenti." },
   JOB_STRIPE_DISPUTE_NOTE_DUE: { icon: "⏳", message: "Contestazione in banca: scrivi come è andato il lavoro, mancano pochi giorni all'invio delle prove." },
   ADMIN_STRIPE_DISPUTE_DUE: { icon: "⏳", message: "Scadenza vicina: le prove di una contestazione in banca non sono ancora partite." },
