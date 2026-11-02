@@ -19,6 +19,8 @@ import {
   scheduleChangeObject,
   type ClientInvoiceRequestInput,
   type JobPaymentChoice,
+  sameTimeBooking,
+  type SameTimeBookingCandidate,
 } from "@professionisti/shared";
 import { PaymentChoice, PaymentOffer, selectablePaymentChoices } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
@@ -81,7 +83,10 @@ export function QuoteCard({
   onDeleteRequest,
   categorySlug,
   invoiceDefaults,
+  sameTradeBookings,
 }: {
+  /** Appuntamenti confermati dello stesso mestiere in altre richieste: avviso sulla stessa ora (collaudo I-11). */
+  sameTradeBookings?: SameTimeBookingCandidate[];
   quote: ClientGuidedRequest["quotes"][number];
   /** Categoria della richiesta: avviso sulle detrazioni per i lavori in casa (docs/CHANGELOG.md §378). */
   categorySlug?: string;
@@ -136,6 +141,7 @@ export function QuoteCard({
     }
   }, [autoOpenTimeline]);
   const priceTotals = useMemo(() => quotePriceTotals(quote.items), [quote.items]);
+  const sameTimeConflict = sameTradeBookings?.length ? sameTimeBooking({ start: quote.estimatedStartDate, end: quote.estimatedEndDate }, sameTradeBookings) : null;
   // Totale prima dell'ultima modifica dei prezzi, se diverso da quello di
   // ora (docs/CHANGELOG.md §196).
   const previousPriceText = useMemo(() => {
@@ -382,6 +388,14 @@ export function QuoteCard({
           </Text>
           <Text color={brand.grafite70} fontSize={16}>
             {quote.notes}
+          </Text>
+        </YStack>
+      ) : null}
+
+      {sameTimeConflict && quote.status === "SENT" && !notChosen ? (
+        <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" borderLeftWidth={3} borderLeftColor={brand.ottone}>
+          <Text fontSize={14} color={brand.grafite}>
+            A quell'ora hai già un appuntamento con <Text fontWeight="700">{sameTimeConflict.businessName}</Text>. Se accetti questo, ricordati di annullare l'altro.
           </Text>
         </YStack>
       ) : null}

@@ -179,6 +179,11 @@ function SentReviewsList({ reviews, error, hasPending }: { reviews: SentReview[]
           {review.professionalReply ? (
             <ReviewReply reviewId={review.id} businessName={review.businessName} reply={review.professionalReply} canEdit={false} token={null} />
           ) : null}
+          {review.held ? (
+            <Text fontSize={13} color={brand.grafite70}>
+              La pubblichiamo dopo un breve controllo, di solito entro 2 giorni.
+            </Text>
+          ) : null}
           {review.hidden ? (
             <Text fontSize={13} color={brand.urgenza}>
               Nascosta dopo una segnalazione: non compare sul profilo del professionista.

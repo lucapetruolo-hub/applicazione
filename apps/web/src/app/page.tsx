@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import { BRAND, type ProfessionalSearchResult } from "@professionisti/shared";
+import { cookies } from "next/headers";
+import { BRAND, type ProfessionalCategorySlug, type ProfessionalSearchResult } from "@professionisti/shared";
 import { apiClient } from "../lib/apiClient";
+import { LAST_SEARCH_CITY_COOKIE } from "../lib/lastSearchCity";
 import { SITE_URL } from "@/lib/siteUrl";
 import { JsonLd } from "@/components/JsonLd";
 import HomeContent from "./HomeContent";
@@ -23,9 +25,32 @@ const siteJsonLd = [
   { "@context": "https://schema.org", "@type": "Organization", name: BRAND.name, url: SITE_URL, logo: `${SITE_URL}/icon-512.png` },
 ];
 
+/**
+ * Ordine delle categorie (docs/changelog/2026-11-02-categorie-telefono.md):
+ * prima quelle con più professionisti vicino all'ultima città cercata su
+ * questo browser, se c'è, altrimenti in tutta Italia. Letto qui dal server,
+ * così le schede arrivano già in ordine. Se l'API non risponde, l'ordine
+ * fisso del catalogo.
+ */
+async function loadCategoryCounts(): Promise<Partial<Record<ProfessionalCategorySlug, number>>> {
+  const raw = (await cookies()).get(LAST_SEARCH_CITY_COOKIE)?.value;
+  let city: string | undefined;
+  try {
+    city = raw ? decodeURIComponent(raw).trim().slice(0, 80) || undefined : undefined;
+  } catch {
+    city = undefined;
+  }
+  try {
+    const { counts } = await apiClient.getCategoryProfessionalCounts(city);
+    return Object.fromEntries(counts.map((item) => [item.slug, item.count]));
+  } catch {
+    return {};
+  }
+}
+
 export default async function HomePage() {
   // Le richieste insieme, non una dopo l'altra (collaudo N-01/N-02).
-  const [professionals, platformStats, priceIndex] = await Promise.all([
+  const [professionals, platformStats, priceIndex, categoryCounts] = await Promise.all([
     // excludeDemo: la home dichiara esplicitamente di mostrare conteggi e
     // professionisti reali (redesign "Scheda Intervento" §4.3/§4.6) — i
     // profili del seed (PLACEHOLDER_PROFESSIONALS) non devono contribuire
@@ -37,6 +62,7 @@ export default async function HomePage() {
     apiClient.platformStats().catch(() => null),
     // Prezzi del "Quanto costa in media" già nella pagina (collaudo N-06).
     apiClient.getServicePriceIndex().catch(() => null),
+    loadCategoryCounts(),
   ]);
 
   return (
@@ -44,7 +70,7 @@ export default async function HomePage() {
       {siteJsonLd.map((data) => (
         <JsonLd key={data["@type"]} data={data} />
       ))}
-      <HomeContent professionals={professionals} platformStats={platformStats} priceIndex={priceIndex} />
+      <HomeContent professionals={professionals} platformStats={platformStats} priceIndex={priceIndex} categoryCounts={categoryCounts} />
     </>
   );
 }

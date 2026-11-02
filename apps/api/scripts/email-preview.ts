@@ -232,6 +232,7 @@ notification("SUBSCRIPTION_RENEWING", "Professionista", "Abbonamento", { tierLab
 notification("SUBSCRIPTION_RENEWED", "Professionista", "Abbonamento", { tierLabel: "Plus", amountEurCents: 5900, date: inThreeDays });
 notification("SUBSCRIPTION_ENDING", "Professionista", "Abbonamento", { tierLabel: "Plus", date: inThreeDays });
 notification("SUBSCRIPTION_PAYMENT_FAILED", "Professionista", "Abbonamento");
+notification("SUBSCRIPTION_FREE_MONTHS_USED", "Professionista", "Abbonamento", { date: inThreeDays, launched: false, card: true, amountEurCents: 1900 });
 notification("SUBSCRIPTION_FREE_MONTHS_STARTED", "Professionista", "Abbonamento", { date: inThreeDays, amountEurCents: 1900 });
 notification("SUBSCRIPTION_RENEWING", "Professionista", "Abbonamento (fine dei mesi gratis)", { tierLabel: "Base", amountEurCents: 1900, interval: "MONTH", date: inThreeDays, freeMonthsEnding: true });
 // Documenti del mese (§378): i mesi gratis a 0 €.

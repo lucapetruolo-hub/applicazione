@@ -1,6 +1,6 @@
 "use client";
 
-import { REQUEST_TIMING_LABEL, type ClientInvoiceRequestInput, type JobPaymentChoice, type RequestWithdrawReason } from "@professionisti/shared";
+import { REQUEST_TIMING_LABEL, type ClientInvoiceRequestInput, type JobPaymentChoice, type RequestWithdrawReason, type SameTimeBookingCandidate } from "@professionisti/shared";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -69,6 +69,7 @@ function keptDeposit(booking: ClientBooking): number {
 export function GuidedRequestCard({
   request,
   booking,
+  sameTradeBookings,
   stage,
   token,
   onChanged,
@@ -93,6 +94,8 @@ export function GuidedRequestCard({
   request: ClientGuidedRequest;
   /** Prenotazione nata dal preventivo accettato di questa richiesta, se esiste. */
   booking: ClientBooking | null;
+  /** Appuntamenti confermati dello stesso mestiere in altre richieste: avviso sulla stessa ora (collaudo I-11). */
+  sameTradeBookings?: SameTimeBookingCandidate[];
   stage: RequestStage;
   token: string;
   onChanged: () => void;
@@ -820,6 +823,7 @@ export function GuidedRequestCard({
       onDeleteRequest={!booking ? () => setShowDeleteModal(true) : undefined}
       categorySlug={request.categorySlug}
       invoiceDefaults={invoiceDefaults}
+      sameTradeBookings={sameTradeBookings}
     />
   );
   const acceptedTotals = acceptedQuote ? quotePriceTotals(acceptedQuote.items) : null;

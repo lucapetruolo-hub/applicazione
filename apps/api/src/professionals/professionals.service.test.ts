@@ -277,3 +277,66 @@ describe("voci di \"Quanto costa in media\" (§398)", () => {
     expect(profileWhere).toMatchObject({ isDemo: false, user: { testAccountAt: null }, deletedAt: null, suspendedAt: null, pausedAt: null, invitePendingAt: null });
   });
 });
+
+describe("getCategoryProfessionalCounts", () => {
+  // Latina (41.47, 12.90), Roma (41.90, 12.50) a ~60 km, Milano lontanissima.
+  const LATINA = { latitude: 41.4676, longitude: 12.9037 };
+  const ROMA = { latitude: 41.9028, longitude: 12.4964 };
+  function build(profiles: unknown[]) {
+    const prisma = { professionalProfile: { findMany: vi.fn().mockResolvedValue(profiles) } };
+    const service = new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    return { prisma, service };
+  }
+
+  it("conta ogni professionista visibile una volta per categoria, i più scelti prima", async () => {
+    const { prisma, service } = build([
+      { ...LATINA, category: { slug: "idraulico" }, extraCategories: [{ slug: "elettricista" }] },
+      { ...LATINA, category: { slug: "elettricista" }, extraCategories: [] },
+      // Una categoria ripetuta tra principale e aggiuntive conta una volta.
+      { ...ROMA, category: { slug: "fabbro" }, extraCategories: [{ slug: "fabbro" }, { slug: "elettricista" }] },
+    ]);
+    await expect(service.getCategoryProfessionalCounts()).resolves.toEqual({
+      scope: "ALL",
+      counts: [
+        { slug: "elettricista", count: 3 },
+        { slug: "idraulico", count: 1 },
+        { slug: "fabbro", count: 1 },
+      ],
+    });
+    // Stessi filtri della ricerca pubblica, senza demo.
+    const where = prisma.professionalProfile.findMany.mock.calls[0]![0].where;
+    expect(where).toMatchObject({ isDemo: false, deletedAt: null, suspendedAt: null, pausedAt: null });
+  });
+
+  it("con una città conta solo chi è nel raggio della ricerca, altrimenti tutta Italia", async () => {
+    const profiles = [
+      { ...LATINA, category: { slug: "idraulico" }, extraCategories: [] },
+      { ...ROMA, category: { slug: "fabbro" }, extraCategories: [] },
+      { ...ROMA, category: { slug: "fabbro" }, extraCategories: [] },
+    ];
+    await expect(build(profiles).service.getCategoryProfessionalCounts("Latina")).resolves.toEqual({
+      scope: "CITY",
+      counts: [{ slug: "idraulico", count: 1 }],
+    });
+    // Nessuno vicino a Milano: si torna a tutta Italia.
+    await expect(build(profiles).service.getCategoryProfessionalCounts("Milano")).resolves.toMatchObject({ scope: "ALL" });
+  });
+
+  it("dal lancio non conta gli account di prova, prima sì", async () => {
+    const previous = process.env.LAUNCH_DATE;
+    try {
+      process.env.LAUNCH_DATE = "2026-01-01";
+      const after = build([]);
+      await after.service.getCategoryProfessionalCounts();
+      expect(after.prisma.professionalProfile.findMany.mock.calls[0]![0].where).toMatchObject({ user: { testAccountAt: null } });
+
+      process.env.LAUNCH_DATE = "2099-01-01";
+      const before = build([]);
+      await before.service.getCategoryProfessionalCounts();
+      expect(before.prisma.professionalProfile.findMany.mock.calls[0]![0].where.user).toBeUndefined();
+    } finally {
+      if (previous === undefined) delete process.env.LAUNCH_DATE;
+      else process.env.LAUNCH_DATE = previous;
+    }
+  });
+});

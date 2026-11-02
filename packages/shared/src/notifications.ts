@@ -237,6 +237,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Carta data: mesi gratis attivi, con fine, importo e come annullare
       // (docs/changelog/2026-10-30-iscrizione-carta-solida.md).
       "SUBSCRIPTION_FREE_MONTHS_STARTED",
+      // Mesi gratis già avuti con un account chiuso con la stessa partita IVA
+      // (docs/changelog/2026-11-02-collaudo-recensioni-abusi.md).
+      "SUBSCRIPTION_FREE_MONTHS_USED",
       "SUBSCRIPTION_TRIAL_ENDING",
       "SUBSCRIPTION_LIMIT_NEAR",
       "SUBSCRIPTION_LIMIT_REACHED",

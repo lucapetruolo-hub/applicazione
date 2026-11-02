@@ -70,6 +70,7 @@ export default function AdminChatDetailPage() {
               return (
                 <YStack
                   key={event.id}
+                  id={`messaggio-${event.id}`}
                   alignSelf={system ? "center" : fromClient ? "flex-start" : "flex-end"}
                   maxWidth={system ? "90%" : "80%"}
                   padding="$3"
@@ -81,6 +82,7 @@ export default function AdminChatDetailPage() {
                 >
                   <Text fontSize={12} fontWeight="700" color={brand.grafite70} textAlign={system ? "center" : "left"}>
                     {system ? "Automatico" : fromClient ? clientName : chat.businessName} · {formatAdminDate(event.createdAt, true)}
+                    {event.hidden ? " · Nascosto dopo una segnalazione" : ""}
                   </Text>
                   {event.message ? (
                     <Text fontSize={14} color={system ? brand.grafite70 : brand.grafite} textAlign={system ? "center" : "left"}>

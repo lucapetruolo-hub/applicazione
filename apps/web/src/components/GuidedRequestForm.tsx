@@ -1660,6 +1660,15 @@ export function GuidedRequestForm({
         {error ? (
           <Text role="alert" color={brand.urgenza} fontSize={16}>
             {error}
+            {/* Richiesta già mandata poco fa (collaudo I-10): un tocco per ritrovarla. */}
+            {error.includes("Le mie richieste") ? (
+              <>
+                {" "}
+                <Link href="/le-mie-richieste" style={{ color: "inherit", fontWeight: 700, textDecoration: "underline" }}>
+                  Apri Le mie richieste
+                </Link>
+              </>
+            ) : null}
           </Text>
         ) : null}
 

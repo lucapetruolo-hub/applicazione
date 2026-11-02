@@ -24,6 +24,7 @@ import { MagneticButton } from "@/components/MagneticButton";
 import { AuthField } from "@/components/AuthField";
 import { EmailCodeForm } from "@/components/EmailCodeForm";
 import { apiClient } from "@/lib/apiClient";
+import { prefetchCategoryOrder } from "@/lib/categoryOrder";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { GoogleConsentModal } from "@/components/GoogleConsentModal";
@@ -446,6 +447,12 @@ function RegistratiForm() {
   const chosenInterval = parseBillingInterval(searchParams.get("rinnovo"));
   const role = isProfessional ? "PROFESSIONAL" : "CLIENT";
   const entityChoice = entityChoiceFromParam(searchParams.get("tipo"));
+  // L'ordine delle tessere "Che lavori fai?" si chiede appena si apre la
+  // pagina: arrivati a quel passo le tessere compaiono subito, senza attesa
+  // (docs/changelog/2026-11-02-categorie-telefono.md).
+  useEffect(() => {
+    if (isProfessional) prefetchCategoryOrder(undefined, "professionals");
+  }, [isProfessional]);
 
   // Tutti gli hook prima del return condizionale sotto (regola degli hook:
   // stesso numero/ordine di hook ad ogni render).
