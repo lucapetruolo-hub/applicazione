@@ -46,6 +46,7 @@ import {
   jobPaidOnline,
   PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
   wallClockToday,
+  slotStillOffered,
   isProfessionalCategorySlug,
   validSubTags,
   type CategoryPriceStats,
@@ -54,6 +55,7 @@ import {
   type ProblemOutOfService,
 } from "@professionisti/shared";
 import { COUNTED_USER, countingFrom, daySinceLaunch } from "../site-counts/counted";
+import { calculateDistanceKm } from "../common/geo.util";
 import { PRISMA } from "../prisma/prisma.module";
 import { invoiceRequestView } from "../client-invoice-requests/client-invoice-requests.service";
 import { COURTESY_DOCUMENT_FIELDS, courtesyDocumentSummary } from "../accounting/courtesy-documents";
@@ -284,6 +286,11 @@ export class ProfessionalsService {
         ...(serviceProfileIds ? [{ id: { in: serviceProfileIds } }] : []),
       ],
       ...(excludeDemo ? { isDemo: false } : {}),
+      // Dal lancio gli account di prova non compaiono nella ricerca, in home
+      // e nell'ordine delle categorie; il loro profilo resta aperto dal link
+      // (docs/changelog/2026-11-02-categorie-telefono.md). Prima del lancio
+      // si vedono, per poter provare le pagine.
+      ...(countingFrom() ? { user: COUNTED_USER } : {}),
     };
   }
 
@@ -525,6 +532,39 @@ export class ProfessionalsService {
   }
 
   /**
+   * Professionisti visibili nella ricerca per ogni categoria (richiesta di
+   * Luca, docs/changelog/2026-11-02-categorie-telefono.md): ordina le
+   * categorie della home e della scelta dei lavori, con le più scelte prima.
+   * Stessi filtri della ricerca pubblica, senza i profili demo; un
+   * professionista conta in ognuna delle sue categorie. Con una città
+   * riconosciuta contano solo quelli entro `SEARCH_RADIUS_KM` dal suo centro
+   * (lo stesso raggio della ricerca); se lì non c'è nessuno, tutta Italia.
+   * Solo numeri, mai chi né dove.
+   */
+  async getCategoryProfessionalCounts(city?: string): Promise<{ scope: "CITY" | "ALL"; counts: { slug: string; count: number }[] }> {
+    const profiles = await this.prisma.professionalProfile.findMany({
+      where: this.publicSearchWhere(undefined, true),
+      select: { latitude: true, longitude: true, category: { select: { slug: true } }, extraCategories: { select: { slug: true } } },
+    });
+    const tally = (list: typeof profiles) => {
+      const counts = new Map<string, number>();
+      for (const profile of list) {
+        const slugs = new Set([profile.category.slug, ...profile.extraCategories.map((c) => c.slug)]);
+        for (const slug of slugs) counts.set(slug, (counts.get(slug) ?? 0) + 1);
+      }
+      return [...counts.entries()].map(([slug, count]) => ({ slug, count })).sort((a, b) => b.count - a.count);
+    };
+    const comune = city?.trim() ? findComuneByName(city.trim()) : undefined;
+    if (comune) {
+      const near = profiles.filter(
+        (p) => (p.latitude !== 0 || p.longitude !== 0) && calculateDistanceKm(comune.lat, comune.lon, p.latitude, p.longitude) <= SEARCH_RADIUS_KM,
+      );
+      if (near.length > 0) return { scope: "CITY", counts: tally(near) };
+    }
+    return { scope: "ALL", counts: tally(profiles) };
+  }
+
+  /**
    * Conteggio reale di quante volte ogni lingua compare già in
    * `ProfessionalProfile.spokenLanguages` su tutta la piattaforma — richiesta
    * esplicita dell'utente: quando si aggiunge una lingua parlata in
@@ -621,7 +661,8 @@ export class ProfessionalsService {
         if (exceptionDates?.has(dateStr)) continue;
 
         const times = profileSlots
-          .filter((slot) => slotAppliesOnDate(slot, date))
+          // Mai una fascia di oggi già finita o quasi (collaudo B-05, D-09).
+          .filter((slot) => slotAppliesOnDate(slot, date) && slotStillOffered(dateStr, slot.endTime))
           .sort((a, b) => a.startTime.localeCompare(b.startTime))
           .map((slot) => {
             // Una fascia resta prenotabile finché ha capienza residua per
@@ -1804,6 +1845,8 @@ export class ProfessionalsService {
 
       const candidateSlots = slots.filter((slot) => slotAppliesOnDate(slot, date)).sort((a, b) => a.startTime.localeCompare(b.startTime));
       for (const slot of candidateSlots) {
+        // Mai una fascia di oggi già finita o quasi (collaudo B-05, D-09).
+        if (!slotStillOffered(dateStr, slot.endTime)) continue;
         const homeAvailable = slot.allowsHome && countBookingsInSlot(bookings, dateStr, slot.startTime, slot.endTime, "HOME") < (slot.homeMaxBookings ?? 1);
         const onlineAvailable =
           slot.allowsOnline && countBookingsInSlot(bookings, dateStr, slot.startTime, slot.endTime, "ONLINE") < (slot.onlineMaxBookings ?? 1);
@@ -2018,7 +2061,8 @@ export class ProfessionalsService {
       const daySlots = exceptionDates.has(dateStr)
         ? []
         : slots
-            .filter((slot) => slotAppliesOnDate(slot, date))
+            // Mai una fascia di oggi già finita o quasi (collaudo B-05, D-09).
+            .filter((slot) => slotAppliesOnDate(slot, date) && slotStillOffered(dateStr, slot.endTime))
             .sort((a, b) => a.startTime.localeCompare(b.startTime))
             .map((slot) => {
               // Sia per le fasce esatte che per quelle generiche, "prenotato"

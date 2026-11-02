@@ -19,6 +19,7 @@ export const MODERATION_ACTIONS_BY_TARGET: Record<ContentReportTargetType, reado
   REVIEW: ["HIDE_CONTENT", "WARN", "SUSPEND_USER"],
   PROFESSIONAL_PROFILE: ["SUSPEND_PROFILE", "REQUEST_CORRECTION", "WARN", "SUSPEND_USER"],
   GUIDED_REQUEST: ["HIDE_CONTENT", "WARN", "SUSPEND_USER"],
+  CHAT_MESSAGE: ["HIDE_CONTENT", "WARN", "SUSPEND_USER"],
 };
 
 /** Etichetta del pulsante nel pannello admin, per tipo di contenuto. */
@@ -29,7 +30,7 @@ export function moderationActionAdminLabel(action: ModerationAction, targetType:
     case "REQUEST_CORRECTION":
       return "Chiedi di correggere il profilo";
     case "HIDE_CONTENT":
-      return targetType === "GUIDED_REQUEST" ? "Chiudi e nascondi la richiesta" : "Nascondi la recensione";
+      return targetType === "GUIDED_REQUEST" ? "Chiudi e nascondi la richiesta" : targetType === "CHAT_MESSAGE" ? "Nascondi il messaggio" : "Nascondi la recensione";
     case "SUSPEND_PROFILE":
       return "Togli il profilo da ricerca e pagina pubblica";
     case "SUSPEND_USER":
@@ -47,12 +48,16 @@ export function moderationActionOwnerText(action: ModerationAction | null, targe
       ? "il tuo profilo"
       : targetType === "GUIDED_REQUEST"
         ? "la tua richiesta"
-        : "la tua recensione";
+        : targetType === "CHAT_MESSAGE"
+          ? "il tuo messaggio in chat"
+          : "la tua recensione";
   switch (action) {
     case "HIDE_CONTENT":
       return targetType === "GUIDED_REQUEST"
         ? "La tua richiesta è stata chiusa e non è più visibile ai professionisti."
-        : "La tua recensione è stata nascosta e non è più visibile sul sito.";
+        : targetType === "CHAT_MESSAGE"
+          ? "Il tuo messaggio in chat è stato nascosto: al suo posto si legge \"Messaggio nascosto\"."
+          : "La tua recensione è stata nascosta e non è più visibile sul sito.";
     case "SUSPEND_PROFILE":
       return "Il tuo profilo è stato tolto dai risultati di ricerca e dalla pagina pubblica. Puoi ancora accedere alla dashboard.";
     case "SUSPEND_USER":
@@ -70,6 +75,7 @@ export const CONTENT_REPORT_TARGET_LABEL: Record<ContentReportTargetType, string
   PROFESSIONAL_PROFILE: "Profilo professionista",
   REVIEW: "Recensione del cliente",
   GUIDED_REQUEST: "Richiesta di un cliente",
+  CHAT_MESSAGE: "Messaggio in chat",
 };
 
 /**

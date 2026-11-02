@@ -3,7 +3,7 @@ import { GeocodingService } from "../geocoding/geocoding.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
-import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_RESTORE_WINDOW_MINUTES, type RequestWithdrawReason, findComuneByName, professionalChargesVat, professionalKindOf, professionalRestrictions, clientPaymentOffer, quotePriceTotals, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestReach, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_RESTORE_WINDOW_MINUTES, type RequestWithdrawReason, findComuneByName, notificationJobLabel, slotStillOffered, professionalChargesVat, professionalKindOf, professionalRestrictions, clientPaymentOffer, quotePriceTotals, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestReach, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { reviewSummariesFor, type ReviewSummary } from "../reviews/review-summary";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
@@ -87,6 +87,38 @@ function joinItalian(items: string[]): string {
   return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}`;
 }
 
+/**
+ * Chi esegue il lavoro, detto al cliente prima di accettare (collaudo M-02,
+ * Codice del consumo artt. 49 e 49-bis): ragione sociale o nome, partita IVA
+ * e città della sede. Mai per chi lavora come privato: non è un
+ * professionista per il Codice del consumo e i suoi dati restano suoi.
+ */
+export function quoteExecutor(
+  fiscal: {
+    entityType: string | null;
+    businessName: string | null;
+    fiscalFirstName: string | null;
+    fiscalLastName: string | null;
+    vatNumber: string | null;
+    registeredCity: string | null;
+    registeredProvince: string | null;
+  } | null,
+): { name: string; vatNumber: string | null; seat: string | null } | null {
+  if (!fiscal || professionalKindOf(fiscal.entityType) === null || professionalKindOf(fiscal.entityType) === "PRIVATE") return null;
+  const name = fiscal.businessName?.trim() || [fiscal.fiscalFirstName, fiscal.fiscalLastName].filter(Boolean).join(" ").trim();
+  if (!name) return null;
+  const city = fiscal.registeredCity?.trim();
+  const seat = city ? `${city}${fiscal.registeredProvince?.trim() ? ` (${fiscal.registeredProvince.trim()})` : ""}` : null;
+  return { name, vatNumber: fiscal.vatNumber?.trim() || null, seat };
+}
+
+/** Finestra in cui la stessa richiesta mandata di nuovo è un doppio invio (collaudo I-10). */
+const DUPLICATE_REQUEST_MINUTES = 30;
+/** Testo confrontato senza maiuscole, spazi doppi e punteggiatura finale. */
+function sameRequestText(text: string | null | undefined): string {
+  return (text ?? "").toLowerCase().replace(/\s+/g, " ").replace(/[\s.!?]+$/u, "").trim();
+}
+
 @Injectable()
 export class GuidedRequestsService {
   private readonly logger = new Logger(GuidedRequestsService.name);
@@ -122,6 +154,7 @@ export class GuidedRequestsService {
     for (const slug of slugs) {
       const category = categories.find((c) => c.slug === slug)!;
       await this.assertGeneralRequestsOpen(category, input.city ?? null, true);
+      await this.assertNotDuplicate(clientId, category.id, input, null);
     }
     await this.assertAddressInCity(input);
     const submissionGroupId = randomUUID();
@@ -146,6 +179,41 @@ export class GuidedRequestsService {
       matchedProfessionals: requests.reduce((sum, r) => sum + r.matchedProfessionals, 0),
       requests,
     };
+  }
+
+  /**
+   * La stessa richiesta mandata di nuovo entro pochi minuti (collaudo I-10):
+   * con "indietro" e "Invia", o ricaricando la pagina, il professionista se ne
+   * trovava due uguali. Stesso testo, stessa categoria e stesso professionista
+   * (o stessa città per una richiesta generale); una richiesta eliminata dal
+   * cliente non conta.
+   */
+  private async assertNotDuplicate(
+    clientId: string,
+    categoryId: string,
+    input: Pick<GuidedRequestInput, "description" | "city">,
+    target: { id: string; businessName: string } | null,
+  ) {
+    const since = new Date(Date.now() - DUPLICATE_REQUEST_MINUTES * 60 * 1000);
+    const recent = await this.prisma.guidedRequest.findMany({
+      where: {
+        clientId,
+        categoryId,
+        createdAt: { gte: since },
+        deletedByClientAt: null,
+        professionalProfileId: target?.id ?? null,
+        ...(target ? {} : { city: { equals: input.city ?? "", mode: "insensitive" as const } }),
+      },
+      select: { description: true },
+    });
+    const text = sameRequestText(input.description);
+    if (recent.some((r) => sameRequestText(r.description) === text)) {
+      throw new ConflictException(
+        target
+          ? `Hai già mandato questa richiesta a ${target.businessName} pochi minuti fa: la trovi in "Le mie richieste".`
+          : `Hai già mandato questa richiesta pochi minuti fa: la trovi in "Le mie richieste".`,
+      );
+    }
   }
 
   /** Indirizzo vero e nel comune indicato (docs/CHANGELOG.md §214). */
@@ -295,6 +363,10 @@ export class GuidedRequestsService {
       if (!ownCategoryIds.includes(category.id)) {
         category = targetProfile.category;
       }
+    }
+
+    if (!opts.excludeProfileId && !opts.checksDone) {
+      await this.assertNotDuplicate(clientId, category.id, input, targetProfile ? { id: targetProfile.id, businessName: targetProfile.businessName } : null);
     }
 
     // Richiesta agganciata a una fascia "generica" dell'agenda pubblica
@@ -511,7 +583,24 @@ export class GuidedRequestsService {
         // di leggere lo stato della prenotazione da qui.
         quotes: {
           include: {
-            professionalProfile: { include: { fiscalProfile: { select: { stripePayoutsEnabled: true, entityType: true, chargesVat: true } } } },
+            professionalProfile: {
+              include: {
+                fiscalProfile: {
+                  select: {
+                    stripePayoutsEnabled: true,
+                    entityType: true,
+                    chargesVat: true,
+                    // Chi esegue il lavoro (collaudo M-02).
+                    businessName: true,
+                    fiscalFirstName: true,
+                    fiscalLastName: true,
+                    vatNumber: true,
+                    registeredCity: true,
+                    registeredProvince: true,
+                  },
+                },
+              },
+            },
             items: true,
             booking: { select: { status: true } },
             // Fattura chiesta al professionista (docs/CHANGELOG.md §378).
@@ -642,6 +731,7 @@ export class GuidedRequestsService {
           reviews: reviewsOf(quote.professionalProfile),
           // Che tipo di lavoratore ha mandato il preventivo (richiesta dell'utente, §338).
           professionalKind: professionalKindOf(quote.professionalProfile.fiscalProfile?.entityType),
+          executor: quoteExecutor(quote.professionalProfile.fiscalProfile),
           // "IVA inclusa" solo per chi la applica, altrimenti "Prezzo finale" (docs/CHANGELOG.md §378).
           chargesVat: professionalChargesVat(quote.professionalProfile.fiscalProfile?.entityType, quote.professionalProfile.fiscalProfile?.chargesVat),
           invoiceRequest: quote.invoiceRequest ? invoiceRequestView(quote.invoiceRequest) : null,
@@ -827,7 +917,10 @@ export class GuidedRequestsService {
       throw new ForbiddenException("Questa richiesta è diventata un lavoro: non si può eliminare, puoi archiviarla.");
     }
     const wasOpen = request.status !== "CLOSED";
-    const leads = wasOpen ? await this.prisma.lead.findMany({ where: { guidedRequestId: id }, select: { professionalProfileId: true } }) : [];
+    const leads = wasOpen
+      ? await this.prisma.lead.findMany({ where: { guidedRequestId: id }, select: { professionalProfileId: true, status: true, professionalProfile: { select: { userId: true } } } })
+      : [];
+    const category = wasOpen ? await this.prisma.category.findUnique({ where: { id: request.categoryId }, select: { label: true } }) : null;
     await this.prisma.$transaction([
       ...(wasOpen ? [this.prisma.lead.updateMany({ where: { guidedRequestId: id, status: "PENDING" }, data: { status: "EXPIRED" } })] : []),
       this.prisma.guidedRequest.update({
@@ -848,6 +941,23 @@ export class GuidedRequestsService {
     await Promise.all(
       leads.map((lead) => this.timelineService.log(id, lead.professionalProfileId, "CLIENT", WITHDRAWN_TIMELINE_MESSAGE)),
     );
+    // Avviso solo sul sito a chi l'aveva ricevuta e non l'aveva rifiutata
+    // (collaudo B-09; niente email, §343), e il "Nuova richiesta" ancora da
+    // leggere si spegne: non c'è più niente da fare.
+    for (const lead of leads.filter((candidate) => candidate.status !== "DECLINED")) {
+      const userId = lead.professionalProfile.userId;
+      await this.prisma.notification.updateMany({
+        where: { userId, readAt: null, type: "NEW_LEAD", payload: { path: ["guidedRequestId"], equals: id } },
+        data: { readAt: new Date() },
+      });
+      await this.notificationsService.notify(userId, "REQUEST_WITHDRAWN", {
+        guidedRequestId: id,
+        category: category?.label ?? null,
+        city: request.city || null,
+        jobLabel: notificationJobLabel(request.description),
+        ...(reason ? { reason } : {}),
+      });
+    }
   }
 
   /**
@@ -886,6 +996,10 @@ export class GuidedRequestsService {
             }),
             this.prisma.conversationEvent.deleteMany({
               where: { guidedRequestId: id, automatic: true, message: WITHDRAWN_TIMELINE_MESSAGE, createdAt: { gte: deletedAt } },
+            }),
+            // Anche l'avviso "ritirata" ai professionisti (collaudo B-09).
+            this.prisma.notification.deleteMany({
+              where: { type: "REQUEST_WITHDRAWN", createdAt: { gte: deletedAt }, payload: { path: ["guidedRequestId"], equals: id } },
             }),
           ]
         : []),
@@ -1586,6 +1700,10 @@ export class GuidedRequestsService {
     ]);
     if (!slot) {
       throw new BadRequestException("Questa fascia oraria non è disponibile per l'invio di una richiesta di preventivo.");
+    }
+    // Fascia di oggi già finita o quasi (collaudo B-05, D-09, I-07).
+    if (endTime && !slotStillOffered(dateStr, endTime)) {
+      throw new BadRequestException("Questo orario è già passato: torna alla scelta della data e scegline un altro, oppure \"Nessuna preferenza\".");
     }
     if (exception) {
       throw new ConflictException("Il professionista non è disponibile in questa data.");

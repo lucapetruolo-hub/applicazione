@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException, Optional } from "@nestjs/common";
 import Stripe from "stripe";
-import type { PrismaClient } from "@professionisti/database";
+import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
   BRAND,
   FISCAL_DECLARATION_VERSION,
@@ -23,6 +23,8 @@ import { stripeAccountPrefill } from "./stripe-account-prefill";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { PayoutAccountService } from "./payout-account.service";
 import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
+import { normalizeTaxId } from "../admin/user-signals";
+import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 
 /** Solo le ultime 4 cifre di un codice fiscale, per il registro delle modifiche. */
 export function maskTaxId(value: unknown): unknown {
@@ -82,6 +84,7 @@ export class ProfessionalFiscalService {
     private readonly notificationsService: NotificationsService,
     private readonly taxIdCheckService: TaxIdCheckService,
     @Optional() private readonly payoutAccountService?: PayoutAccountService,
+    @Optional() private readonly subscriptionsService?: SubscriptionsService,
     @Optional() private readonly guidedRequestsService?: GuidedRequestsService,
   ) {
     this.stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
@@ -124,6 +127,85 @@ export class ProfessionalFiscalService {
     return { businessName: profile.businessName, fiscalProfile, auditLog };
   }
 
+  /**
+   * Codice fiscale o partita IVA già usati da un altro account attivo
+   * (collaudo P-03, docs/changelog/2026-11-02-collaudo-recensioni-abusi.md):
+   * un secondo account con gli stessi dati aveva altri mesi gratis e un altro
+   * posto tra i primi 100. Restano fuori gli account chiusi, dimostrativi e di
+   * prova (che usano gli stessi dati di proposito). Il codice fiscale è
+   * cifrato con un vettore casuale: si confronta dopo averlo letto, come i
+   * segnali in Admin (user-signals.ts).
+   */
+  private async taxIdTakenBy(
+    userId: string,
+    professionalProfileId: string,
+    ids: { codiceFiscale: string | null | undefined; vatNumber: string | null | undefined },
+  ): Promise<"codiceFiscale" | "vatNumber" | null> {
+    return this.sameTaxIdIn(userId, professionalProfileId, ids, {
+      deletedAt: null,
+      isDemo: false,
+      user: { deletedAt: null, testAccountAt: null },
+    });
+  }
+
+  /**
+   * Stessa partita IVA o stesso codice fiscale tra i profili scelti da
+   * `where` (altri account, mai il proprio; nulla per un account di prova).
+   */
+  private async sameTaxIdIn(
+    userId: string,
+    professionalProfileId: string,
+    ids: { codiceFiscale: string | null | undefined; vatNumber: string | null | undefined },
+    where: Prisma.ProfessionalProfileWhereInput,
+  ): Promise<"codiceFiscale" | "vatNumber" | null> {
+    // "IT12345678903" e "12345678903" sono la stessa partita IVA.
+    const norm = (v: string | null | undefined) => normalizeTaxId(v)?.replace(/^IT(?=\d{11}$)/, "") ?? null;
+    const cf = norm(ids.codiceFiscale);
+    const vat = norm(ids.vatNumber);
+    if (!cf && !vat) return null;
+    const me = await this.prisma.user.findUnique({ where: { id: userId }, select: { testAccountAt: true } });
+    if (me?.testAccountAt) return null;
+    const others = await this.prisma.professionalFiscalProfile.findMany({
+      where: {
+        professionalProfileId: { not: professionalProfileId },
+        OR: [{ fiscalCodiceFiscale: { not: null } }, { vatNumber: { not: null } }],
+        professionalProfile: where,
+      },
+      select: { fiscalCodiceFiscale: true, vatNumber: true },
+    });
+    for (const other of others) {
+      const theirs = new Set([norm(other.fiscalCodiceFiscale), norm(other.vatNumber)].filter(Boolean));
+      if (vat && theirs.has(vat)) return "vatNumber";
+      if (cf && theirs.has(cf)) return "codiceFiscale";
+    }
+    return null;
+  }
+
+  /**
+   * Mesi gratis una volta per persona o impresa (richiesta di Luca del
+   * 2/11/2026): se un account chiuso con la stessa partita IVA o lo stesso
+   * codice fiscale li aveva già avuti, a questo si tolgono
+   * (`SubscriptionsService.revokeUsedFreeMonths`, con avviso). Non contano gli
+   * account dimostrativi e di prova.
+   */
+  private async revokeFreeMonthsIfUsed(
+    userId: string,
+    professionalProfileId: string,
+    ids: { codiceFiscale: string | null | undefined; vatNumber: string | null | undefined },
+  ): Promise<void> {
+    if (!this.subscriptionsService) return;
+    const mine = await this.prisma.subscription.findUnique({ where: { professionalProfileId }, select: { freeMonthsGranted: true, freeMonthsWaiting: true } });
+    // Righe di prima dell'offerta: `freeMonthsGranted` vuoto vale 3 mesi.
+    if (!mine || (mine.freeMonthsGranted === 0 && mine.freeMonthsWaiting === 0)) return;
+    const used = await this.sameTaxIdIn(userId, professionalProfileId, ids, {
+      isDemo: false,
+      OR: [{ deletedAt: { not: null } }, { user: { deletedAt: { not: null } } }],
+      user: { testAccountAt: null },
+      subscription: { OR: [{ freeMonthsGranted: null }, { freeMonthsGranted: { gt: 0 } }] },
+    });
+    if (used) await this.subscriptionsService.revokeUsedFreeMonths(professionalProfileId);
+  }
+
   async upsertMine(userId: string, rawInput: ProfessionalFiscalProfileInput) {
     const professionalProfileId = await this.requireMyProfileId(userId);
     const existing = await this.prisma.professionalFiscalProfile.findUnique({
@@ -164,6 +246,17 @@ export class ProfessionalFiscalService {
           "Il nome della tua attività ha la forma di una società (S.R.L., S.N.C., S.p.A.): un privato senza partita IVA non può usarla. Cambia il nome nel profilo, oppure scrivici dalla pagina Contatti se sei un'azienda.",
         );
       }
+    }
+
+    // Un codice fiscale e una partita IVA per un solo account (collaudo P-03).
+    const taken = await this.taxIdTakenBy(userId, professionalProfileId, {
+      codiceFiscale: input.fiscalCodiceFiscale ?? existing?.fiscalCodiceFiscale,
+      vatNumber: input.vatNumber ?? existing?.vatNumber,
+    });
+    if (taken) {
+      throw new BadRequestException(
+        `${taken === "vatNumber" ? "Questa partita IVA è già legata" : "Questo codice fiscale è già legato"} a un altro account: ogni persona o impresa può averne uno solo. Accedi con quello, oppure scrivici da Contatti se pensi che sia un errore.`,
+      );
     }
 
     const data: Record<string, unknown> = {};
@@ -296,6 +389,10 @@ export class ProfessionalFiscalService {
     } catch (err) {
       this.logger.error(`Richieste aperte non inoltrate a ${professionalProfileId}`, err instanceof Error ? err.stack : String(err));
     }
+    await this.revokeFreeMonthsIfUsed(userId, professionalProfileId, {
+      codiceFiscale: fiscalProfile.fiscalCodiceFiscale,
+      vatNumber: fiscalProfile.vatNumber,
+    });
 
     return this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, include: { representative: true, taxIdChecks: true } });
   }

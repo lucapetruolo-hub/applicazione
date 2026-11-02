@@ -141,6 +141,13 @@ export class ProfessionalsController {
     return this.professionalsService.getCityHints(typeof category === "string" && isProfessionalCategorySlug(category) ? category : undefined);
   }
 
+  // Pubblico, solo numeri: professionisti visibili per categoria, per
+  // ordinare la scelta dei lavori (docs/changelog/2026-11-02-categorie-telefono.md).
+  @Get("category-counts")
+  getCategoryProfessionalCounts(@Query("city") city?: string) {
+    return this.professionalsService.getCategoryProfessionalCounts(typeof city === "string" ? city.slice(0, 100) : undefined);
+  }
+
   @Get("languages/popular")
   getLanguagePopularity() {
     return this.professionalsService.getLanguagePopularity();

@@ -27,7 +27,7 @@ export const STAGE_STYLE = REQUEST_STAGE_STYLE;
 
 export function formatDateTime(iso: string): string {
   const d = new Date(iso);
-  return `${d.toLocaleDateString("it-IT", { day: "numeric", month: "short" })} · ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+  return `${d.toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "Europe/Rome" })} · ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })}`;
 }
 
 /**
@@ -99,7 +99,7 @@ export function ClientMiniTimeline({ stage }: { stage: RequestStage }) {
     { key: "preventivo", label: "Preventivo ricevuto" },
   ];
   if (stage === "modifica_richiesta") steps.push({ key: "modifica", label: "Hai proposto un'altra data", extra: true });
-  steps.push({ key: "accettata", label: "Accettata" }, { key: "completata", label: "Completata" });
+  steps.push({ key: "accettata", label: "Fissato" }, { key: "completata", label: "Terminato" });
 
   const reachedIndex: Record<RequestStage, number> = {
     da_quotare: 0,

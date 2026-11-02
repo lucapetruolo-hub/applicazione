@@ -6,13 +6,14 @@ import { AuditLogModule } from "../audit-log/audit-log.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { AdminModule } from "../admin/admin.module";
 import { GuidedRequestsModule } from "../guided-requests/guided-requests.module";
+import { SubscriptionsModule } from "../subscriptions/subscriptions.module";
 import { ProfessionalFiscalController, AdminProfessionalFiscalController, PayoutIbanController } from "./professional-fiscal.controller";
 import { PayoutAccountService } from "./payout-account.service";
 import { FiscalEncryptionMigrationService } from "./fiscal-encryption-migration.service";
 import { ProfessionalFiscalService } from "./professional-fiscal.service";
 
 @Module({
-  imports: [AuthModule, AuditLogModule, NotificationsModule, AdminModule, ProfessionalVerificationModule, TaxIdCheckModule, GuidedRequestsModule],
+  imports: [AuthModule, AuditLogModule, NotificationsModule, AdminModule, ProfessionalVerificationModule, TaxIdCheckModule, GuidedRequestsModule, SubscriptionsModule],
   controllers: [ProfessionalFiscalController, AdminProfessionalFiscalController, PayoutIbanController],
   providers: [ProfessionalFiscalService, PayoutAccountService, FiscalEncryptionMigrationService],
   exports: [ProfessionalFiscalService],

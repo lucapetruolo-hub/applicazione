@@ -22,7 +22,7 @@ export function slotLabel(slot: ProfessionalAvailableSlot): string {
 }
 export function formatDateTime(iso: string): string {
   const d = new Date(iso);
-  return `${d.toLocaleDateString("it-IT", { day: "numeric", month: "short" })} · ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+  return `${d.toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "Europe/Rome" })} · ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })}`;
 }
 export function formatSlotRange(startIso: string, endIso: string | null): string {
   // Lavoro su più giorni (docs/CHANGELOG.md §310).
@@ -160,7 +160,7 @@ export function DeadlinePill({ deadline }: { deadline: { label: string; urgent: 
 export function MiniTimeline({ stage }: { stage: RequestStage }) {
   const steps: { key: string; label: string; extra?: boolean }[] = [{ key: "richiesta", label: "Richiesta" }, { key: "preventivo", label: "Preventivo inviato" }];
   if (stage === "modifica_richiesta") steps.push({ key: "modifica", label: "Modifica richiesta dal cliente", extra: true });
-  steps.push({ key: "accettata", label: "Accettata" }, { key: "completata", label: "Completata" });
+  steps.push({ key: "accettata", label: "Fissato" }, { key: "completata", label: "Terminato" });
 
   const reachedIndex: Record<RequestStage, number> = {
     da_quotare: 0,

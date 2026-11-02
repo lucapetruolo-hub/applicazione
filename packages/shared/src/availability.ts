@@ -4,6 +4,7 @@
  * (0=domenica...6=sabato) per confrontare senza conversioni la disponibilità
  * ricorrente con le prenotazioni reali lato server.
  */
+import { wallClockNow } from "./appointmentTime";
 export const WEEKDAYS: { value: number; label: string }[] = [
   { value: 1, label: "Lunedì" },
   { value: 2, label: "Martedì" },
@@ -136,4 +137,32 @@ export function agendaAttention(slots: { date: Date | string | null }[], now: Da
     upcoming = true;
   }
   return upcoming ? "RUNNING_LOW" : "EMPTY";
+}
+
+/**
+ * Ore che devono restare prima della fine di una fascia di oggi per
+ * proporla (collaudo B-05, D-09): alle 12:19 si proponeva ancora "oggi
+ * 08:00–13:00" a clienti e professionisti.
+ */
+export const SLOT_MIN_HOURS_LEFT = 2;
+
+/** Vero se la fascia (data "AAAA-MM-GG", fine "HH:MM", ora di parete italiana) si può ancora proporre. */
+export function slotStillOffered(date: string, endTime: string, now: Date = new Date()): boolean {
+  const end = new Date(`${date}T${endTime}:00.000Z`).getTime();
+  if (Number.isNaN(end)) return false;
+  return end - wallClockNow(now).getTime() >= SLOT_MIN_HOURS_LEFT * 60 * 60_000;
+}
+
+/**
+ * Fascia arrivata da un link (`?data=…&fasciaOraria=…`) ben scritta e non
+ * passata (collaudo I-07): un 31 febbraio o "25:00-99:00" restavano già
+ * scelti e l'errore arrivava solo all'invio.
+ */
+export function linkSlotUsable(date: string | undefined, timeSlot: string | undefined, now: Date = new Date()): boolean {
+  if (!date || !timeSlot || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  const day = new Date(`${date}T00:00:00.000Z`);
+  if (Number.isNaN(day.getTime()) || day.toISOString().slice(0, 10) !== date) return false;
+  const match = /^([01]\d|2[0-3]):([0-5]\d)-([01]\d|2[0-3]):([0-5]\d)$/.exec(timeSlot);
+  if (!match || `${match[3]}:${match[4]}` <= `${match[1]}:${match[2]}`) return false;
+  return slotStillOffered(date, `${match[3]}:${match[4]}`, now);
 }

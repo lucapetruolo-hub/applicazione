@@ -1,6 +1,6 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ConversationEvent as ConversationEventRow, PrismaClient } from "@professionisti/database";
-import type { ChatThreadSummary, ConversationEvent, RealtimeEvent } from "@professionisti/shared";
+import { chatContactBlockedMessage, chatContactKind, type ChatThreadSummary, type ConversationEvent, type RealtimeEvent } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { RealtimeService } from "../realtime/realtime.service";
@@ -65,6 +65,7 @@ export class TimelineService {
       throw new ForbiddenException("Il cliente ha ritirato questa richiesta: non si possono più inviare messaggi.");
     }
     if (actor === "PROFESSIONAL") await this.assertCanReply(guidedRequestId, professionalProfileId);
+    await this.assertNoContactsBeforeAcceptance(guidedRequestId, professionalProfileId, message);
     const event = await this.prisma.conversationEvent.create({
       data: { guidedRequestId, professionalProfileId, actor, message: message.trim(), mediaUrls },
     });
@@ -80,6 +81,21 @@ export class TimelineService {
     await this.notificationsService.notify(recipientUserId, notificationType, { guidedRequestId, professionalProfileId });
     this.publishChatMessage(guidedRequestId, professionalProfileId, event, { clientUserId, professionalUserId });
     return this.serializeEvent(event);
+  }
+
+  /**
+   * Contatti in chat solo dopo l'accettazione (decisione di Luca del
+   * 02/11/2026, "Bloccare per tutti", docs/changelog/2026-11-02-admin-protezioni.md;
+   * stesso principio di CLAUDE.md §5 punto 9): prima che il cliente accetti un
+   * preventivo di questo professionista, un messaggio con telefono, email, link
+   * o "WhatsApp" non parte, per tutti e due. Anche qui, non solo nel sito, così
+   * non si aggira con l'app o con un altro programma.
+   */
+  private async assertNoContactsBeforeAcceptance(guidedRequestId: string, professionalProfileId: string, message: string): Promise<void> {
+    const kind = chatContactKind(message);
+    if (!kind) return;
+    const booking = await this.prisma.booking.findFirst({ where: { professionalProfileId, guidedRequestId }, select: { id: true } });
+    if (!booking) throw new BadRequestException(chatContactBlockedMessage(kind));
   }
 
   /**
@@ -108,7 +124,8 @@ export class TimelineService {
    */
   async canDownloadAttachment(userId: string, url: string): Promise<boolean> {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
-    const participant = user?.role === "ADMIN" ? {} : { OR: [{ guidedRequest: { clientId: userId } }, { professionalProfile: { userId } }] };
+    // Un allegato di un messaggio nascosto lo apre solo l'admin.
+    const participant = user?.role === "ADMIN" ? {} : { hiddenAt: null, OR: [{ guidedRequest: { clientId: userId } }, { professionalProfile: { userId } }] };
     const event = await this.prisma.conversationEvent.findFirst({ where: { mediaUrls: { has: url }, ...participant }, select: { id: true } });
     return event !== null;
   }
@@ -174,8 +191,8 @@ export class TimelineService {
         otherPartyImageUrl,
         categoryLabel: event.guidedRequest.category.label,
         requestDescription: event.guidedRequest.description,
-        lastMessage: event.message || null,
-        lastMessageHasMedia: event.mediaUrls.length > 0,
+        lastMessage: event.hiddenAt ? "Messaggio nascosto" : event.message || null,
+        lastMessageHasMedia: !event.hiddenAt && event.mediaUrls.length > 0,
         lastMessageAt: event.createdAt.toISOString(),
         // Un messaggio automatico non è "tuo" anche se porta il tuo ruolo
         // ("Tu: Il professionista ha annullato…" non si legge bene).
@@ -204,12 +221,16 @@ export class TimelineService {
   }
 
   private serializeEvent(event: ConversationEventRow): ConversationEvent {
+    // Messaggio nascosto da una segnalazione accolta: né testo né allegati
+    // (docs/changelog/2026-11-02-collaudo-recensioni-abusi.md).
+    const hidden = event.hiddenAt !== null;
     return {
       id: event.id,
       actor: event.actor,
-      message: event.message,
-      mediaUrls: event.mediaUrls,
+      message: hidden ? "" : event.message,
+      mediaUrls: hidden ? [] : event.mediaUrls,
       automatic: event.automatic,
+      ...(hidden ? { hidden: true } : {}),
       createdAt: event.createdAt.toISOString(),
     };
   }

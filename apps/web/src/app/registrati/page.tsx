@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -14,6 +14,7 @@ import {
   passwordContainsEmail,
   passwordProblem,
   registerSchema,
+  subscriptionTierInfo,
   type ProfessionalCategorySlug,
   type ProfessionalEntityTypeValue,
   type SubscriptionTier,
@@ -23,6 +24,7 @@ import { MagneticButton } from "@/components/MagneticButton";
 import { AuthField } from "@/components/AuthField";
 import { EmailCodeForm } from "@/components/EmailCodeForm";
 import { apiClient } from "@/lib/apiClient";
+import { prefetchCategoryOrder } from "@/lib/categoryOrder";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { GoogleConsentModal } from "@/components/GoogleConsentModal";
@@ -34,7 +36,8 @@ import { AuthPageBackground } from "@/components/AuthPageBackground";
 import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
 import { AuthStepHeader } from "@/components/AuthStepHeader";
 import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle";
-import { ChosenPlanChip } from "@/components/ChosenPlanChip";
+import { ChosenPlanChip, useChosenPlanDetail } from "@/components/ChosenPlanChip";
+import { EmailSuggestion } from "@/components/EmailSuggestion";
 
 export default function RegistratiPage() {
   return (
@@ -175,6 +178,41 @@ const ENTITY_CHOICES: {
   { value: "BUSINESS", param: "azienda", icon: "building-2", label: "Azienda", description: "Società con dipendenti o soci: SRL, SNC, SAS, SPA." },
 ];
 
+/**
+ * Bozza dell'iscrizione nella scheda del browser: email e mestieri scelti
+ * restano se si ricarica o si va a cambiare il piano e si torna. Mai la
+ * password. Si cancella a iscrizione fatta
+ * (docs/changelog/2026-11-02-registrazione-pro-migliorie.md).
+ */
+const SIGNUP_DRAFT_KEY = "registrati-professionista-bozza";
+
+function readSignupDraft(): { email: string; categorySlugs: ProfessionalCategorySlug[] } | null {
+  try {
+    const raw = window.sessionStorage.getItem(SIGNUP_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    const { email, categorySlugs } = parsed as { email?: unknown; categorySlugs?: unknown };
+    return {
+      email: typeof email === "string" ? email.slice(0, 254) : "",
+      categorySlugs: Array.isArray(categorySlugs)
+        ? categorySlugs.filter((slug): slug is ProfessionalCategorySlug => typeof slug === "string" && isProfessionalCategorySlug(slug))
+        : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeSignupDraft(draft: { email: string; categorySlugs: ProfessionalCategorySlug[] } | null) {
+  try {
+    if (draft && (draft.email.trim() || draft.categorySlugs.length > 0)) window.sessionStorage.setItem(SIGNUP_DRAFT_KEY, JSON.stringify(draft));
+    else window.sessionStorage.removeItem(SIGNUP_DRAFT_KEY);
+  } catch {
+    // Archivio del browser non disponibile (navigazione privata): niente bozza.
+  }
+}
+
 function entityChoiceFromParam(param: string | null) {
   return ENTITY_CHOICES.find((choice) => choice.param === param) ?? null;
 }
@@ -183,6 +221,7 @@ function EntityTypeScreen({ hrefFor, onBack, chosenTier }: { hrefFor: (param: st
   return (
     <ProfessionalSignupLayout
       step={1}
+      stepNote="circa 2 minuti"
       icon="receipt-text"
       title="Come lavori?"
       subtitle="Così ti chiediamo solo i dati fiscali che servono a te."
@@ -203,30 +242,57 @@ function EntityTypeScreen({ hrefFor, onBack, chosenTier }: { hrefFor: (param: st
   );
 }
 
-/** Riepilogo del tipo scelto in cima al modulo, con "Cambia" per tornare alla scelta. */
-function EntityTypeSummary({ choice, onChange }: { choice: (typeof ENTITY_CHOICES)[number]; onChange: () => void }) {
+/**
+ * Riepilogo delle scelte fatte, in cima al modulo: come lavori e, se arriva
+ * da /per-professionisti, il piano. Un solo riquadro invece di un'etichetta
+ * e un riquadro uno sopra l'altro
+ * (docs/changelog/2026-11-02-registrazione-pro-migliorie.md).
+ */
+function SignupChoicesSummary({
+  choice,
+  onChangeChoice,
+  chosenTier,
+}: {
+  choice: (typeof ENTITY_CHOICES)[number];
+  onChangeChoice: () => void;
+  chosenTier: SubscriptionTier | null;
+}) {
+  const planDetail = useChosenPlanDetail(chosenTier);
   return (
-    <XStack alignItems="center" gap="$3" padding="$3" borderRadius="$4" backgroundColor={brand.cianografiaVelo}>
-      <Icon name={choice.icon} size={18} color={brand.cianografiaScuro} strokeWidth={1.75} />
-      <YStack flex={1} flexBasis={0} minWidth={0}>
-        <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
-          Ti iscrivi come
-        </Text>
-        <Text fontWeight="700" color={brand.grafite}>
-          {choice.label}
-        </Text>
-      </YStack>
-      <button type="button" className="link-button" onClick={onChange} aria-label="Cambia il modo in cui lavori">
-        Cambia
-      </button>
-    </XStack>
+    <div className="signup-summary">
+      <div className="signup-summary-row">
+        <Icon name={choice.icon} size={18} color={brand.cianografiaScuro} strokeWidth={1.75} />
+        <p className="signup-summary-text">
+          <span className="signup-summary-label">Ti iscrivi come</span>
+          <strong>{choice.label}</strong>
+        </p>
+        <button type="button" className="link-button" onClick={onChangeChoice} aria-label="Cambia il modo in cui lavori">
+          Cambia
+        </button>
+      </div>
+      {chosenTier ? (
+        <div className="signup-summary-row">
+          <Icon name="tag" size={18} color={brand.cianografiaScuro} strokeWidth={1.75} />
+          <p className="signup-summary-text">
+            <span className="signup-summary-label">Piano scelto</span>
+            <strong>
+              {subscriptionTierInfo(chosenTier).label}
+              {planDetail ? <span className="signup-summary-detail"> · {planDetail}</span> : null}
+            </strong>
+          </p>
+          <Link href={CHANGE_PLAN_HREF} className="link-button" aria-label="Cambia il piano scelto">
+            Cambia
+          </Link>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
 const SIGNUP_BENEFITS: { icon: IconName; title: string; text: string }[] = [
   { icon: "map-pin", title: "Richieste dalla tua zona", text: "Clienti vicino a te che cercano proprio il tuo mestiere." },
   { icon: "calendar", title: "Agenda e promemoria", text: "Appuntamenti in ordine e meno clienti che non si presentano." },
-  { icon: "star", title: "Recensioni vere", text: "Solo da lavori confermati: la tua reputazione conta di più." },
+  { icon: "star", title: "Recensioni vere", text: "Solo da lavori fatti tramite il sito: la tua reputazione conta di più." },
 ];
 
 /**
@@ -240,6 +306,7 @@ const SIGNUP_BENEFITS: { icon: IconName; title: string; text: string }[] = [
 function ProfessionalSignupLayout({
   children,
   step = 2,
+  stepNote,
   icon = "hard-hat",
   title = "Crea il tuo account",
   subtitle = "Poi completi il profilo e ricevi le richieste.",
@@ -250,6 +317,8 @@ function ProfessionalSignupLayout({
 }: {
   children: ReactNode;
   step?: number;
+  /** Accanto a "Passo N di 3" (sul primo: quanto ci vuole). */
+  stepNote?: string;
   icon?: IconName;
   title?: string;
   subtitle?: string;
@@ -265,7 +334,7 @@ function ProfessionalSignupLayout({
     <AuthPageBackground>
       <div className={`pro-signup${showAside ? " has-aside" : ""}`}>
         <Surface className="auth-card-in pro-signup-card" width="100%" borderRadius={radiusDocLg} padding="$6" gap="$5">
-          <AuthStepHeader icon={icon} title={title} subtitle={subtitle || undefined} step={{ current: step, total: PRO_STEPS }} onBack={onBack} />
+          <AuthStepHeader icon={icon} title={title} subtitle={subtitle || undefined} step={{ current: step, total: PRO_STEPS, note: stepNote }} onBack={onBack} />
           {chosenTier ? <ChosenPlanChip tier={chosenTier} changeHref={CHANGE_PLAN_HREF} /> : null}
           {children}
           {showClientLink ? (
@@ -378,6 +447,12 @@ function RegistratiForm() {
   const chosenInterval = parseBillingInterval(searchParams.get("rinnovo"));
   const role = isProfessional ? "PROFESSIONAL" : "CLIENT";
   const entityChoice = entityChoiceFromParam(searchParams.get("tipo"));
+  // L'ordine delle tessere "Che lavori fai?" si chiede appena si apre la
+  // pagina: arrivati a quel passo le tessere compaiono subito, senza attesa
+  // (docs/changelog/2026-11-02-categorie-telefono.md).
+  useEffect(() => {
+    if (isProfessional) prefetchCategoryOrder(undefined, "professionals");
+  }, [isProfessional]);
 
   // Tutti gli hook prima del return condizionale sotto (regola degli hook:
   // stesso numero/ordine di hook ad ogni render).
@@ -389,6 +464,25 @@ function RegistratiForm() {
     return fromLink && isProfessionalCategorySlug(fromLink) ? [fromLink] : [];
   });
   const [email, setEmail] = useState("");
+  // Uscita dal campo email: da lì in poi "Forse intendevi …?" se il dominio sembra sbagliato.
+  const [emailChecked, setEmailChecked] = useState(false);
+  // Bozza ripresa dopo il primo disegno (sul server non c'è): prima di
+  // allora non si scrive, per non cancellarla con i campi ancora vuoti.
+  const draftLoaded = useRef(false);
+  useEffect(() => {
+    if (!isProfessional || draftLoaded.current) return;
+    draftLoaded.current = true;
+    const draft = readSignupDraft();
+    if (!draft) return;
+    /* eslint-disable react-hooks/set-state-in-effect -- la bozza esiste solo nel browser */
+    if (draft.email) setEmail((current) => current || draft.email);
+    if (draft.categorySlugs.length > 0) setCategorySlugs((current) => (current.length > 0 ? current : draft.categorySlugs));
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [isProfessional]);
+  useEffect(() => {
+    if (!isProfessional || !draftLoaded.current) return;
+    writeSignupDraft({ email, categorySlugs });
+  }, [isProfessional, email, categorySlugs]);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   // Richiesta esplicita dell'utente: campo "Conferma password" oltre a
@@ -548,6 +642,7 @@ function RegistratiForm() {
         result.data.categorySlugs,
         result.data.entityType,
       );
+      writeSignupDraft(null);
       const me = await login(token);
       if (isNewUser && me && !me.emailVerified) {
         setCodeStep({ token, email: me.email ?? result.data.email, resendIn: me.emailCodeResendInSeconds ?? 60, required: me.emailVerificationRequired });
@@ -570,6 +665,7 @@ function RegistratiForm() {
     setIsSubmitting(true);
     try {
       const { token, isNewUser } = await apiClient.verifyGoogle(idToken, role, undefined, accepted, adult, categorySlugs, entityChoice?.value);
+      writeSignupDraft(null);
       await login(token);
       afterAuth(isNewUser);
     } catch (err) {
@@ -662,7 +758,7 @@ function RegistratiForm() {
   // ClientSignup, sopra).
   const formFields = (
     <>
-      <EntityTypeSummary choice={entityChoice} onChange={() => setParam("tipo", null)} />
+      <SignupChoicesSummary choice={entityChoice} onChangeChoice={() => setParam("tipo", null)} chosenTier={chosenTier} />
 
       <div id="categorie">
         <span className="auth-field-label" style={{ display: "block", marginBottom: 8 }}>
@@ -747,6 +843,9 @@ function RegistratiForm() {
             nativeID="email"
             accessibilityLabel="Email"
             error={error && errorField === "email" ? error : undefined}
+            onBlur={() => setEmailChecked(true)}
+            footer={<EmailSuggestion id="email-suggestion" email={email} checked={emailChecked} onApply={setEmail} />}
+            footerId="email-suggestion"
           />
           <AuthField
             label="Password"
@@ -833,7 +932,7 @@ function RegistratiForm() {
 
   return (
     <>
-    <ProfessionalSignupLayout onBack={() => setParam("tipo", null)} chosenTier={chosenTier}>{formFields}</ProfessionalSignupLayout>
+    <ProfessionalSignupLayout onBack={() => setParam("tipo", null)}>{formFields}</ProfessionalSignupLayout>
     {pendingGoogleIdToken ? (
       <GoogleConsentModal
         consent={legalConsent}

@@ -454,7 +454,7 @@ function ProBenefits() {
               ))}
             </XStack>
             <MiniLine strong>«Puntuale e pulito, lo richiamerò.»</MiniLine>
-            <MiniLine>Giulia R. · Lavoro confermato</MiniLine>
+            <MiniLine>Giulia R. · Lavoro fatto tramite il sito</MiniLine>
           </Panel>
         </Cell>
       </Grid>

@@ -16,8 +16,13 @@ import {
   type AdminRoleValue,
   type AdminSignalRole,
   type AdminUserSignal,
+  REVIEW_HOLD_DECISION_HOURS,
+  REVIEW_HOLD_REASON_LABEL,
+  type ReviewHoldReason,
 } from "@professionisti/shared";
 import { personLabel } from "./user-signals";
+import { sdiProviderFromEnv } from "../accounting/sdi-provider";
+import { stuckSdiWhere } from "../accounting/sdi-stuck";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 
@@ -56,7 +61,9 @@ export class AdminQueueService {
       quote: { select: { guidedRequest: { select: { description: true, category: { select: { label: true } } } } } },
     } as const;
 
-    const [bankDisputes, issues, appeals, refunds, disputes, unpaid, sdi, reports, reportAppeals, takeovers, messages, verifications, zones, chatIssues, suspicious] = await Promise.all([
+    const now = new Date();
+    const dac7Year = now.getUTCFullYear() - 1;
+    const [bankDisputes, issues, appeals, refunds, disputes, unpaid, sdi, reports, reportAppeals, takeovers, messages, verifications, zones, chatIssues, suspicious, sdiStuck, dac7Periods, heldReviews] = await Promise.all([
       can("BANK_DISPUTE")
         ? this.prisma.jobPayment.findMany({ where: { stripeDisputeStatus: { in: [...BANK_DISPUTE_OPEN_STATUSES] } }, include: { booking: { include: bookingInclude } } })
         : [],
@@ -82,6 +89,24 @@ export class AdminQueueService {
       can("CLOSED_ZONE") ? this.prisma.generalRequestBlock.findMany({ where: { reopenedAt: null }, include: { category: { select: { label: true } } } }) : [],
       can("JOB_ISSUE") ? this.prisma.jobIssue.findMany({ where: { status: "CHAT" }, include: { booking: { include: bookingInclude } } }) : [],
       can("SUSPICIOUS_ACCOUNT") ? this.prisma.suspiciousAccount.findMany({ where: { archiveReason: null }, select: { userId: true, signals: true, firstSeenAt: true } }) : [],
+      // Solo con l'invio allo SdI acceso: senza, l'XML si manda a mano (docs/changelog/2026-11-02-admin-protezioni.md).
+      can("SDI_STUCK") && sdiProviderFromEnv() ? this.prisma.invoice.findMany({ where: stuckSdiWhere(now), take: 50 }) : [],
+      // L'anno prima da comunicare entro il 31 gennaio, e gli anni da correggere.
+      can("DAC7_DUE")
+        ? this.prisma.dac7ReportingPeriod.findMany({
+            where: {
+              quarter: null,
+              OR: [{ year: dac7Year, status: { notIn: ["SUBMITTED", "CORRECTED"] }, records: { some: { considerationEurCents: { gt: 0 } } } }, { needsCorrectionAt: { not: null } }],
+            },
+            select: { id: true, year: true, status: true, needsCorrectionAt: true, createdAt: true },
+          })
+        : [],
+      can("HELD_REVIEW")
+        ? this.prisma.review.findMany({
+            where: { heldAt: { not: null } },
+            select: { id: true, rating: true, comment: true, heldAt: true, heldReasons: true, booking: { select: { clientId: true, client: { select: { name: true, surname: true } }, professionalProfile: { select: { businessName: true } } } } },
+          })
+        : [],
     ]);
     // Account sospetti con qualcosa da fare (non "Nessuna azione" né "Va bene così"), con il consiglio già scritto.
     const suspiciousUsers = suspicious.length
@@ -206,6 +231,40 @@ export class AdminQueueService {
         danger: false,
       });
     }
+    for (const inv of sdiStuck) {
+      const sent = inv.sdiStatus === "SENT";
+      items.push({
+        key: `SDI_STUCK:${inv.id}`,
+        kind: "SDI_STUCK",
+        href: "/admin/finanza",
+        title: `Fattura ${inv.series ?? ""} ${inv.number ?? ""}/${inv.year ?? ""} ferma allo SdI`.replace(/\s+/g, " "),
+        detail: sent ? "Inviata da più di 5 giorni, nessun esito" : "Non è partita: prova con \"Rimanda\"",
+        who: null,
+        amountEurCents: inv.amountEurCents,
+        dueAt: null,
+        dueNote: null,
+        createdAt: (inv.sdiSentAt ?? inv.issuedAt ?? inv.createdAt).toISOString(),
+        status: sent ? "Senza esito" : "Non partita",
+        danger: false,
+      });
+    }
+    for (const period of dac7Periods) {
+      const correction = period.needsCorrectionAt !== null;
+      items.push({
+        key: `DAC7_DUE:${period.id}`,
+        kind: "DAC7_DUE",
+        href: "/admin/finanza/dac7",
+        title: correction ? `DAC7 ${period.year}: importi cambiati dopo l'invio` : `DAC7 ${period.year} da inviare all'Agenzia delle Entrate`,
+        detail: correction ? "Usa \"Correggi\", poi esporta e invia la correzione" : "Esporta, invia e poi \"Segna come inviato\": parte anche l'avviso ai professionisti",
+        who: null,
+        amountEurCents: null,
+        dueAt: correction ? null : new Date(Date.UTC(period.year + 1, 0, 31, 22, 59)).toISOString(),
+        dueNote: correction ? null : "DAC7: entro il 31 gennaio",
+        createdAt: (period.needsCorrectionAt ?? period.createdAt).toISOString(),
+        status: correction ? "Da correggere" : "Da inviare",
+        danger: false,
+      });
+    }
     for (const r of reports) {
       items.push({
         key: `CONTENT_REPORT:${r.id}`,
@@ -321,6 +380,25 @@ export class AdminQueueService {
         dueNote: null,
         createdAt: row.firstSeenAt.toISOString(),
         status: ADMIN_SIGNAL_ADVICE_LEVEL_LABEL[advice.level],
+        danger: false,
+      });
+    }
+
+    // Recensioni in controllo (collaudo P-01): si decidono dalla scheda di chi le ha scritte.
+    for (const r of heldReviews) {
+      const heldAt = r.heldAt ?? new Date();
+      items.push({
+        key: `HELD_REVIEW:${r.id}`,
+        kind: "HELD_REVIEW",
+        href: `/admin/utenti/${r.booking.clientId}?scheda=recensioni`,
+        title: `Recensione ${r.rating}★ da controllare`,
+        detail: short([r.heldReasons.map((reason) => REVIEW_HOLD_REASON_LABEL[reason as ReviewHoldReason] ?? reason).join("; "), r.comment].filter(Boolean).join(" · "), 160),
+        who: between(r.booking.client, r.booking.professionalProfile.businessName),
+        amountEurCents: null,
+        dueAt: new Date(heldAt.getTime() + REVIEW_HOLD_DECISION_HOURS * 60 * 60 * 1000).toISOString(),
+        dueNote: "il cliente aspetta la pubblicazione",
+        createdAt: heldAt.toISOString(),
+        status: "Da pubblicare o nascondere",
         danger: false,
       });
     }

@@ -463,6 +463,8 @@ export type ConversationEvent = {
   mediaUrls: string[];
   /** Scritto dal sistema a nome di una parte (es. "Il cliente ha accettato il preventivo"), non a mano: mostrato centrato e in grigio. Facoltativo solo per un'API non ancora aggiornata. */
   automatic?: boolean;
+  /** Nascosto da una segnalazione accolta: testo e allegati vuoti, in chat "Messaggio nascosto". */
+  hidden?: boolean;
   createdAt: string;
 };
 

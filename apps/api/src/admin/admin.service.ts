@@ -2,7 +2,7 @@ import { ACTION_SHORT_LABEL, auditLabel } from "./audit-label";
 import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, jobIssueAssisted, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, type AdminSignupFunnel, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES, ADMIN_BOOKING_STATUS_LABEL, ADMIN_REQUEST_STATUS_LABEL, contentReportReason, type AdminModerateInput, type AdminSignalArchiveReason, type AdminSignalRole, type AdminUserSignal, adviseSuspiciousUser, type ProfessionalStatusKey } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, jobIssueAssisted, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, type AdminSignupFunnel, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES, ADMIN_BOOKING_STATUS_LABEL, ADMIN_REQUEST_STATUS_LABEL, contentReportReason, type AdminModerateInput, type AdminSignalArchiveReason, type AdminSignalRole, type AdminUserSignal, adviseSuspiciousUser, type ProfessionalStatusKey, type ReviewHoldReason } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { PUBLIC_VISIBILITY_SELECT } from "../professional-fiscal/public-visibility";
 import { bookingSearchWhere, userSearchWhere } from "./admin-search";
@@ -377,14 +377,14 @@ export class AdminService {
         where: { booking: { clientId: userId } },
         orderBy: { createdAt: "desc" },
         take: 50,
-        select: { id: true, rating: true, comment: true, hiddenAt: true, createdAt: true, booking: { select: { professionalProfile: { select: { businessName: true } } } } },
+        select: { id: true, rating: true, comment: true, hiddenAt: true, heldAt: true, heldReasons: true, createdAt: true, booking: { select: { professionalProfile: { select: { businessName: true } } } } },
       }),
       profileId
         ? this.prisma.review.findMany({
             where: { booking: { professionalProfileId: profileId } },
             orderBy: { createdAt: "desc" },
             take: 50,
-            select: { id: true, rating: true, comment: true, hiddenAt: true, createdAt: true, booking: { select: { client: { select: { name: true, surname: true, email: true } } } } },
+            select: { id: true, rating: true, comment: true, hiddenAt: true, heldAt: true, heldReasons: true, createdAt: true, booking: { select: { client: { select: { name: true, surname: true, email: true } } } } },
           })
         : Promise.resolve([]),
       this.prisma.contentReport.findMany({ where: { reporterId: userId }, orderBy: { createdAt: "desc" }, take: 50 }),
@@ -475,15 +475,18 @@ export class AdminService {
 
     const profile = user.professionalProfile;
     const profileMeasure = profile ? measureFor(profile.id) : null;
-    const reviewRow = (r: { id: string; rating: number; comment: string | null; hiddenAt: Date | null; createdAt: Date }, other: string) => {
-      const measure = r.hiddenAt ? measureFor(r.id) : null;
+    const reviewRow = (r: { id: string; rating: number; comment: string | null; hiddenAt: Date | null; heldAt: Date | null; heldReasons: string[]; createdAt: Date }, other: string) => {
+      const measure = r.hiddenAt && !r.heldAt ? measureFor(r.id) : null;
       return {
         id: r.id,
         rating: r.rating,
         comment: r.comment,
         other,
         createdAt: r.createdAt.toISOString(),
-        hiddenAt: r.hiddenAt?.toISOString() ?? null,
+        // In controllo (collaudo P-01): nascosta finché un admin non decide.
+        heldAt: r.heldAt?.toISOString() ?? null,
+        heldReasons: r.heldReasons as ReviewHoldReason[],
+        hiddenAt: r.heldAt ? null : (r.hiddenAt?.toISOString() ?? null),
         hiddenBy: measure ? { reportId: measure.id, note: measure.resolutionNote } : null,
       };
     };
@@ -522,6 +525,7 @@ export class AdminService {
         reviewsReceived: reviewsReceived.length,
         // Il profilo pubblico conta solo queste: la differenza sono le nascoste.
         reviewsReceivedVisible: reviewsReceived.filter((r) => !r.hiddenAt).length,
+        reviewsHeld: [...reviewsWritten, ...reviewsReceived].filter((r) => r.heldAt).length,
         reportsMade: reportsMade.length,
         reportsReceived: received.length,
       },
@@ -567,11 +571,12 @@ export class AdminService {
     if (input.targetType === "REVIEW") {
       const review = await this.prisma.review.findUnique({
         where: { id: input.targetId },
-        select: { hiddenAt: true, booking: { select: { clientId: true, professionalProfileId: true } } },
+        select: { hiddenAt: true, heldAt: true, booking: { select: { clientId: true, professionalProfileId: true } } },
       });
       const mine = review && (review.booking.clientId === userId || review.booking.professionalProfileId === user.professionalProfile?.id);
       if (!review || !mine) throw new NotFoundException("Recensione non trovata su questa scheda.");
-      if (review.hiddenAt) throw new BadRequestException("La recensione è già nascosta.");
+      // Una recensione in controllo (collaudo P-01) è nascosta ma ancora da decidere.
+      if (review.hiddenAt && !review.heldAt) throw new BadRequestException("La recensione è già nascosta.");
     } else {
       if (user.professionalProfile?.id !== input.targetId) throw new NotFoundException("Profilo non trovato su questa scheda.");
       const profile = await this.prisma.professionalProfile.findUnique({ where: { id: input.targetId }, select: { suspendedAt: true } });
@@ -591,6 +596,40 @@ export class AdminService {
       { status: "RESOLVED", action: input.targetType === "REVIEW" ? "HIDE_CONTENT" : "SUSPEND_PROFILE", resolutionNote: input.note, ground: input.ground },
       adminUserId,
     );
+  }
+
+  /**
+   * Pubblica una recensione in controllo (collaudo P-01,
+   * docs/changelog/2026-11-02-collaudo-recensioni-abusi.md): torna sul profilo
+   * e nella media, e il professionista riceve l'avviso che non aveva avuto.
+   * Per nasconderla si passa dalle segnalazioni (moderateFromUserPage), che
+   * mandano all'autore motivo e come contestare.
+   */
+  async publishHeldReview(adminUserId: string, reviewId: string) {
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+      select: {
+        heldAt: true,
+        rating: true,
+        booking: { select: { id: true, status: true, professionalProfileId: true, professionalProfile: { select: { userId: true } }, quote: { select: { guidedRequestId: true } } } },
+      },
+    });
+    if (!review) throw new NotFoundException("Recensione non trovata.");
+    if (!review.heldAt) throw new BadRequestException("La recensione non è in controllo.");
+    // Due admin insieme: la pubblica uno solo.
+    const updated = await this.prisma.review.updateMany({ where: { id: reviewId, heldAt: { not: null } }, data: { heldAt: null, hiddenAt: null } });
+    if (updated.count === 0) throw new BadRequestException("La recensione è già stata decisa.");
+    await this.auditLogService.record({ entityType: "Review", entityId: reviewId, fieldName: "heldAt", newValue: "PUBLISHED", changedByUserId: adminUserId });
+    await this.professionalMetricsService.recomputeReviews(review.booking.professionalProfileId);
+    await this.notificationsService.notify(review.booking.professionalProfile.userId, "NEW_REVIEW", {
+      bookingId: review.booking.id,
+      reviewId,
+      // Le stelle nel testo dell'avviso (collaudo F-16).
+      rating: review.rating,
+      guidedRequestId: review.booking.quote?.guidedRequestId ?? null,
+      professionalCompleted: review.booking.status === "COMPLETED",
+    });
+    return { id: reviewId };
   }
 
   /**
@@ -674,7 +713,7 @@ export class AdminService {
    * profilo, altrimenti cliente. Mai togliere l'ultimo super admin né
    * cambiare i propri ruoli (niente blocchi fuori dal pannello).
    */
-  async setAdminRoles(adminUserId: string, userId: string, roles: AdminRoleValue[]) {
+  async setAdminRoles(adminUserId: string, userId: string, roles: AdminRoleValue[], reason: string) {
     if (userId === adminUserId) throw new BadRequestException("Non puoi cambiare il tuo stesso ruolo.");
     const target = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -702,6 +741,7 @@ export class AdminService {
       oldValue,
       newValue: nextRoles.length ? nextRoles.join("+") : data.role,
       changedByUserId: adminUserId,
+      reason,
     });
     // Email a tutti i super admin (§359): un admin nominato da un account rubato si vede subito.
     await this.securityAlerts.adminRolesChanged(adminUserId, userId, nextRoles);
@@ -850,6 +890,27 @@ export class AdminService {
         ownerUserId: r.booking.client.id,
       };
     }
+    if (targetType === "CHAT_MESSAGE") {
+      const e = await this.prisma.conversationEvent.findUnique({
+        where: { id: targetId },
+        include: {
+          guidedRequest: { select: { client: { select: { id: true, email: true } }, category: { select: { label: true } } } },
+          professionalProfile: { select: { businessName: true, user: { select: { id: true, email: true } } } },
+        },
+      });
+      if (!e) return { exists: false };
+      const author = e.actor === "CLIENT" ? e.guidedRequest.client : e.professionalProfile.user;
+      return {
+        exists: true,
+        title: `Messaggio in chat · ${e.guidedRequest.category.label} · ${e.professionalProfile.businessName}`,
+        author: author.email,
+        text: e.message,
+        photos: e.mediaUrls,
+        rating: null,
+        state: e.hiddenAt ? "Nascosto" : "Visibile",
+        ownerUserId: author.id,
+      };
+    }
     const g = await this.prisma.guidedRequest.findUnique({ where: { id: targetId }, include: { category: true, client: { select: { id: true, email: true } } } });
     if (!g) return { exists: false };
     return {
@@ -983,7 +1044,7 @@ export class AdminService {
     // profilo su cui vive (serve a costruire il link pubblico
     // `/professionista/{id}#recensione-{reviewId}`).
     const targetInfo = await Promise.all(
-      reports.map(async (report): Promise<{ label: string | null; linkedProfessionalProfileId: string | null; excerpt?: string | null }> => {
+      reports.map(async (report): Promise<{ label: string | null; linkedProfessionalProfileId: string | null; excerpt?: string | null; chatPath?: string | null }> => {
         if (report.targetType === "PROFESSIONAL_PROFILE") {
           const profile = await this.prisma.professionalProfile.findUnique({
             where: { id: report.targetId },
@@ -1000,6 +1061,22 @@ export class AdminService {
             label: review ? `Recensione su ${review.booking.professionalProfile.businessName}` : null,
             linkedProfessionalProfileId: review?.booking.professionalProfile.id ?? null,
             excerpt: review?.comment ?? null,
+          };
+        }
+        if (report.targetType === "CHAT_MESSAGE") {
+          const event = await this.prisma.conversationEvent.findUnique({
+            where: { id: report.targetId },
+            select: { message: true, guidedRequestId: true, professionalProfileId: true, actor: true, professionalProfile: { select: { businessName: true } } },
+          });
+          return {
+            label: event
+              ? event.actor === "CLIENT"
+                ? `Messaggio del cliente a ${event.professionalProfile.businessName}`
+                : `Messaggio di ${event.professionalProfile.businessName} al cliente`
+              : null,
+            linkedProfessionalProfileId: null,
+            excerpt: event?.message ?? null,
+            chatPath: event ? `/admin/chat/${event.guidedRequestId}/${event.professionalProfileId}#messaggio-${report.targetId}` : null,
           };
         }
         const request = await this.prisma.guidedRequest.findUnique({
@@ -1021,6 +1098,7 @@ export class AdminService {
       targetId: report.targetId,
       targetLabel: targetInfo[index]?.label ?? null,
       linkedProfessionalProfileId: targetInfo[index]?.linkedProfessionalProfileId ?? null,
+      linkedChatPath: targetInfo[index]?.chatPath ?? null,
       reason: report.reason,
       details: report.details,
       claimsIllegal: report.claimsIllegal,
@@ -1216,6 +1294,7 @@ export class AdminService {
   private async targetExists(targetType: ContentReportTargetType, targetId: string): Promise<boolean> {
     if (targetType === "PROFESSIONAL_PROFILE") return (await this.prisma.professionalProfile.count({ where: { id: targetId } })) > 0;
     if (targetType === "REVIEW") return (await this.prisma.review.count({ where: { id: targetId } })) > 0;
+    if (targetType === "CHAT_MESSAGE") return (await this.prisma.conversationEvent.count({ where: { id: targetId } })) > 0;
     return (await this.prisma.guidedRequest.count({ where: { id: targetId } })) > 0;
   }
 
@@ -1278,7 +1357,8 @@ export class AdminService {
     if (targetType === "REVIEW") {
       const review = await tx.review.update({
         where: { id: targetId },
-        data: { hiddenAt },
+        // Una decisione (nascondi o rimetti visibile) chiude anche il controllo (collaudo P-01).
+        data: { hiddenAt, heldAt: null },
         select: { booking: { select: { professionalProfileId: true } } },
       });
       return [review.booking.professionalProfileId];
@@ -1289,6 +1369,9 @@ export class AdminService {
       // resta chiusa, torna solo visibile ai professionisti che l'avevano.
       const closeIt = hiddenAt !== null && request?.status === "OPEN";
       await tx.guidedRequest.update({ where: { id: targetId }, data: { hiddenAt, ...(closeIt ? { status: "CLOSED" } : {}) } });
+    }
+    if (targetType === "CHAT_MESSAGE") {
+      await tx.conversationEvent.update({ where: { id: targetId }, data: { hiddenAt } });
     }
     return [];
   }
@@ -1307,6 +1390,14 @@ export class AdminService {
     if (targetType === "REVIEW") {
       const review = await this.prisma.review.findUnique({ where: { id: targetId }, select: { booking: { select: { clientId: true } } } });
       return review?.booking.clientId ?? null;
+    }
+    if (targetType === "CHAT_MESSAGE") {
+      const event = await this.prisma.conversationEvent.findUnique({
+        where: { id: targetId },
+        select: { actor: true, guidedRequest: { select: { clientId: true } }, professionalProfile: { select: { userId: true } } },
+      });
+      if (!event || event.actor === "SYSTEM") return null;
+      return event.actor === "CLIENT" ? event.guidedRequest.clientId : event.professionalProfile.userId;
     }
     const request = await this.prisma.guidedRequest.findUnique({ where: { id: targetId }, select: { clientId: true } });
     return request?.clientId ?? null;
@@ -1748,6 +1839,8 @@ export class AdminService {
         actor: event.actor,
         message: event.message,
         mediaUrls: event.mediaUrls,
+        // L'admin legge anche i messaggi nascosti, segnati come tali.
+        hidden: event.hiddenAt !== null,
         createdAt: event.createdAt.toISOString(),
       })),
     };

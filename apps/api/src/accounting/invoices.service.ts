@@ -50,6 +50,7 @@ import {
   type RecipientSnapshot,
 } from "./invoice-documents";
 import { sdiProviderFromEnv, type SdiProvider } from "./sdi-provider";
+import { stuckSdiWhere } from "./sdi-stuck";
 
 /** Lo SdI accetta una fattura entro 12 giorni dalla sua data: dopo non si riprova da soli. */
 const SDI_RETRY_DAYS = 12;
@@ -58,7 +59,6 @@ const SDI_OUTCOME_DAYS = 30;
 /** Nella prova d'invio, attesa tra una lettura dell'esito simulato e l'altra. */
 const SDI_TEST_WAIT_MS = 1500;
 const DAY_MS = 24 * 60 * 60 * 1000;
-
 type NewInvoice = {
   professionalProfileId: string;
   source: PlatformInvoiceSource;
@@ -467,6 +467,21 @@ export class InvoicesService {
         this.logger.warn(`Esito SdI non letto: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
+  }
+
+  /**
+   * Promemoria del lunedì alla Finanza sulle fatture ferme allo SdI
+   * (docs/changelog/2026-11-02-admin-protezioni.md). Solo con l'invio allo SdI
+   * acceso: senza, l'XML si scarica e si manda a mano.
+   */
+  @Cron("0 8 * * 1", { timeZone: "Europe/Rome" })
+  async remindStuckSdi(now: Date = new Date()): Promise<number> {
+    if (!this.sdi) return 0;
+    const stuck = await this.prisma.invoice.findMany({ where: stuckSdiWhere(now), select: { series: true, year: true, number: true, sdiStatus: true }, orderBy: { issuedAt: "asc" }, take: 20 });
+    if (stuck.length === 0) return 0;
+    const alerts = stuck.map((inv) => `Fattura ${invoiceNumberLabel(inv.series, inv.year, inv.number)}: ${inv.sdiStatus === "SENT" ? "inviata da più di 5 giorni, lo SdI non ha ancora risposto" : "non è partita"}.`);
+    await this.notifyFinanceAdmins("ADMIN_FEE_RECONCILIATION", { kind: "sdi-stuck", month: null, alerts: [...alerts, "Controlla in Finanza e usa \"Rimanda\"; se resta ferma, guarda lo stato su Openapi."] });
+    return stuck.length;
   }
 
   /**
