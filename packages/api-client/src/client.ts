@@ -1028,6 +1028,8 @@ export type Dac7ReportingPeriod = {
   submittedAt: string | null;
   /** Importi cambiati dopo l'invio: da correggere (docs/CHANGELOG.md §247). */
   needsCorrectionAt: string | null;
+  /** Protocollo della ricevuta dell'Agenzia delle Entrate (docs/changelog/2026-11-02-admin-protezioni.md). */
+  submissionProtocol: string | null;
 };
 
 export type Dac7Record = {
@@ -2135,8 +2137,8 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       request<{ id: string }>(`/admin/users/${id}/reactivate`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ note }) }),
 
     /** Ruoli admin combinabili (docs/CHANGELOG.md §146); lista vuota = non più admin. */
-    adminSetAdminRoles: (token: string, id: string, adminRoles: AdminRoleName[]) =>
-      request<{ id: string }>(`/admin/users/${id}/admin-role`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ adminRoles }) }),
+    adminSetAdminRoles: (token: string, id: string, adminRoles: AdminRoleName[], reason: string) =>
+      request<{ id: string }>(`/admin/users/${id}/admin-role`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ adminRoles, reason }) }),
 
     adminAuditLog: (token: string, page = 1, entityType?: string) =>
       request<AdminAuditLogPage>(`/admin/audit-log?page=${page}${entityType ? `&entityType=${encodeURIComponent(entityType)}` : ""}`, {
@@ -2858,8 +2860,8 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     adminExportDac7Period: (token: string, id: string) =>
       request<unknown>(`/admin/dac7/periods/${id}/export`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
-    adminMarkDac7Submitted: (token: string, id: string) =>
-      request<Dac7ReportingPeriod>(`/admin/dac7/periods/${id}/mark-submitted`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+    adminMarkDac7Submitted: (token: string, id: string, protocol: string) =>
+      request<Dac7ReportingPeriod>(`/admin/dac7/periods/${id}/mark-submitted`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ protocol }) }),
 
     adminNotifyDac7Sellers: (token: string, id: string) =>
       request<{ sent: number }>(`/admin/dac7/periods/${id}/notify-sellers`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),

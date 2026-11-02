@@ -2391,6 +2391,9 @@ model Dac7ReportingPeriod {
   // Importi cambiati dopo l'invio (rimborso, lavoro riaperto): da correggere
   // (docs/CHANGELOG.md §247). Si azzera con la correzione.
   needsCorrectionAt DateTime?
+  // Numero di protocollo della ricevuta dell'Agenzia delle Entrate, scritto con
+  // "Segna come inviato" (docs/changelog/2026-11-02-admin-protezioni.md).
+  submissionProtocol String?
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 

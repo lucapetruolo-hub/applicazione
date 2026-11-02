@@ -674,7 +674,7 @@ export class AdminService {
    * profilo, altrimenti cliente. Mai togliere l'ultimo super admin né
    * cambiare i propri ruoli (niente blocchi fuori dal pannello).
    */
-  async setAdminRoles(adminUserId: string, userId: string, roles: AdminRoleValue[]) {
+  async setAdminRoles(adminUserId: string, userId: string, roles: AdminRoleValue[], reason: string) {
     if (userId === adminUserId) throw new BadRequestException("Non puoi cambiare il tuo stesso ruolo.");
     const target = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -702,6 +702,7 @@ export class AdminService {
       oldValue,
       newValue: nextRoles.length ? nextRoles.join("+") : data.role,
       changedByUserId: adminUserId,
+      reason,
     });
     // Email a tutti i super admin (§359): un admin nominato da un account rubato si vede subito.
     await this.securityAlerts.adminRolesChanged(adminUserId, userId, nextRoles);

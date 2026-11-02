@@ -99,19 +99,24 @@ export function isDisposableEmail(email: string | null | undefined): boolean {
   return Boolean(domain) && DISPOSABLE_EMAIL_DOMAINS.some((d) => domain === d || domain!.endsWith(`.${d}`));
 }
 
+/** Cosa c'è di contatto in un messaggio, per dirlo a chi scrive. */
+export type ChatContactKind = "WHATSAPP" | "LINK" | "EMAIL" | "PHONE";
+
 /**
  * Telefono, email o link in un messaggio, o l'invito a scriversi su WhatsApp.
  * Un numero conta da 9 cifre in su, separate al massimo da uno spazio o un
- * trattino: date ("12.11.2026 10.30") e prezzi non contano. Solo per contare i messaggi: il testo non si salva nei segnali.
+ * trattino: date ("12.11.2026 10.30") e prezzi non contano. Usato dai segnali
+ * dell'admin (il testo non si salva) e per bloccare l'invio in chat prima
+ * dell'accettazione (decisione di Luca del 02/11/2026, §5 punto 9 di CLAUDE.md).
  */
-export function messageHasContacts(text: string): boolean {
+export function chatContactKind(text: string): ChatContactKind | null {
   // Parola per parola e cifra per cifra, senza espressioni regolari che su un testo lungo diventano lente.
   const lower = text.toLowerCase();
-  if (lower.includes("whatsapp") || lower.includes("whats app")) return true;
+  if (lower.includes("whatsapp") || lower.includes("whats app")) return "WHATSAPP";
   for (const word of lower.split(/\s+/)) {
-    if (word.startsWith("http://") || word.startsWith("https://") || word.startsWith("www.")) return true;
+    if (word.startsWith("http://") || word.startsWith("https://") || word.startsWith("www.")) return "LINK";
     const at = word.indexOf("@");
-    if (at > 0 && word.indexOf(".", at + 2) > at + 1) return true;
+    if (at > 0 && word.indexOf(".", at + 2) > at + 1) return "EMAIL";
   }
   let digits = 0;
   let separators = 0;
@@ -119,7 +124,7 @@ export function messageHasContacts(text: string): boolean {
     if (char >= "0" && char <= "9") {
       digits += 1;
       separators = 0;
-      if (digits >= 9) return true;
+      if (digits >= 9) return "PHONE";
     } else if ((char === " " || char === "-" || (char === "+" && digits === 0)) && separators === 0) {
       separators += char === "+" ? 0 : 1;
     } else {
@@ -127,7 +132,23 @@ export function messageHasContacts(text: string): boolean {
       separators = 0;
     }
   }
-  return false;
+  return null;
+}
+
+export function messageHasContacts(text: string): boolean {
+  return chatContactKind(text) !== null;
+}
+
+const CHAT_CONTACT_WHAT: Record<ChatContactKind, string> = {
+  WHATSAPP: "il riferimento a WhatsApp",
+  LINK: "il link",
+  EMAIL: "l'indirizzo email",
+  PHONE: "il numero di telefono",
+};
+
+/** Perché il messaggio non parte, in una riga (sito e server dicono la stessa cosa). */
+export function chatContactBlockedMessage(kind: ChatContactKind): string {
+  return `I contatti si scambiano dopo l'accettazione del preventivo: togli ${CHAT_CONTACT_WHAT[kind]} per inviare il messaggio.`;
 }
 
 export type AdminSignalRole = "CLIENT" | "PROFESSIONAL" | "ADMIN";
