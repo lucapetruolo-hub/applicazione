@@ -18,7 +18,7 @@ async function gateValue(entryPath: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const entryPath = process.env.ADMIN_ENTRY_PATH?.trim().replace(/^\/+|\/+$/g, "");
   if (!entryPath) return NextResponse.next();
 

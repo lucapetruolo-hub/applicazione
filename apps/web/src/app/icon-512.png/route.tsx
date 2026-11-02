@@ -1,9 +1,11 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
-
 // Icona PWA 512x512 (manifest.ts, richiesta anche "maskable" da Android per
 // l'icona a schermo intero) — stesso mark di icon-192.png/apple-icon.tsx.
+// Sempre uguale: preparata una volta nella build invece che a ogni richiesta
+// (prima con il runtime "edge", deprecato da Next.js 16).
+export const dynamic = "force-static";
+
 export async function GET() {
   return new ImageResponse(
     (
