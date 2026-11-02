@@ -6,8 +6,8 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    // Stesso ordine di risoluzione del webpack in next.config.mjs
-    // (resolve.extensions con ".web.*" prima): senza questo, tsc
+    // Stesso ordine di risoluzione di Turbopack in next.config.mjs
+    // (turbopack.resolveExtensions con ".web.*" prima): senza questo, tsc
     // risolverebbe "./icons" di packages/ui su icons.tsx (lucide-react-native)
     // invece di icons.web.tsx (lucide-react) durante il typecheck — nessun
     // bug a runtime (il bundle usa comunque il file giusto), ma un

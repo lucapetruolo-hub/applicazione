@@ -42,7 +42,7 @@ Implicazioni tecniche dirette:
 
 | Livello | Scelta | Perché |
 |---|---|---|
-| Web (desktop/mobile browser) | **Next.js 15** (App Router, TypeScript) | SSR/SSG per SEO su pagine categoria/professionista — critico per il ricavo da visibilità |
+| Web (desktop/mobile browser) | **Next.js 16** (App Router, TypeScript, Turbopack) | SSR/SSG per SEO su pagine categoria/professionista — critico per il ricavo da visibilità |
 | App mobile (iOS + Android) | **Expo 58 / React Native 0.88** (TypeScript) | Un'unica codebase per iOS e Android, OTA update, accesso a push notification/fotocamera/geolocalizzazione native |
 | UI condivisa web+mobile | **Tamagui** (o in alternativa NativeWind) | Stessi componenti/design tokens compilati sia per React Native che per web → "stessa interfaccia" richiesta, senza duplicare il design system |
 | Backend API | **NestJS 11** (Node.js, TypeScript, Express 5) | Struttura modulare adatta a un dominio con tanti bounded context (utenti, prenotazioni, pagamenti, ricerca) |
@@ -80,7 +80,13 @@ prima discuterne e aggiornare questo file.
   runtime, a differenza di Next.js (`transpilePackages`) e Metro. `turbo dev`
   dipende da `^build` per garantire che i package siano compilati prima
   dell'avvio dei dev server.
-- **Next.js 15** (docs/CHANGELOG.md §297): nelle pagine server `params` e
+- **Next.js 16** (docs/changelog/2026-11-02-nextjs-16.md, prima Next.js 15
+  §297): le pagine le prepara **Turbopack**, non più webpack; gli alias
+  (`react-native` → `react-native-web`, sorgenti di `packages/shared`) e
+  l'ordine delle estensioni `.web.*` stanno in `turbopack` di
+  `next.config.mjs`. L'ingresso nascosto all'admin è in `src/proxy.ts` (il
+  vecchio `middleware.ts`); niente runtime `edge`, deprecato. `next build`
+  non fa più il lint: lo fa `pnpm lint` in CI. Nelle pagine server `params` e
   `searchParams` (come `cookies()` e `headers()`) sono Promise da attendere;
   il `typecheck` di `apps/web` esegue prima `next typegen`, che genera i tipi
   con cui si controllano le props delle pagine. Sito e app usano la stessa

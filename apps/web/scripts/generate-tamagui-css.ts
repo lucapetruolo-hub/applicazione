@@ -3,7 +3,7 @@
 // lo collega con un <link> e il browser lo tiene in cache, invece di
 // ricevere gli stessi stili dentro ogni pagina HTML. Gira con tsx e
 // scripts/tsconfig.json, che punta "react-native" su "react-native-web"
-// (stesso alias del webpack di next.config.mjs), così packages/ui/src/config.ts
+// (stesso alias di Turbopack in next.config.mjs), così packages/ui/src/config.ts
 // sceglie i font del web come nel sito vero.
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
