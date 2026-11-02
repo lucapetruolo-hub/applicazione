@@ -122,6 +122,8 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
     const contentReportId = getPayloadValue(payload, "contentReportId");
     return contentReportId ? `/segnalazioni#segnalazione-${contentReportId}` : "/segnalazioni";
   }
+  // Pagamento ricevuto: porta dove c'è la fattura (collaudo E-13).
+  if (type === "SUBSCRIPTION_PAID") return "/dashboard/documenti";
   if (type.startsWith("SUBSCRIPTION_")) return "/dashboard/abbonamento";
   if (type === "TERMS_CHANGED") return "/termini#versioni";
   // Decisione su una segnalazione (docs/CHANGELOG.md §164): arriva a

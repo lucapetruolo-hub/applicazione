@@ -1937,12 +1937,34 @@ const BUILDERS: Record<string, Builder> = {
       subject: `Abbonamento ${tier} rinnovato`.replace(/\s+/g, " "),
       greeting: ctx.name,
       title: "Abbonamento rinnovato",
-      paragraphs: [`Abbiamo rinnovato il tuo abbonamento ${tier}. Grazie per continuare con noi!`.replace(/\s+/g, " ")],
+      paragraphs: [
+        `Abbiamo rinnovato il tuo abbonamento ${tier}. Grazie per continuare con noi!`.replace(/\s+/g, " "),
+        ...(payload.invoice === true ? ["La fattura è in Fatture e documenti, nella tua area."] : []),
+      ],
       details: [
         ...(typeof payload.amountEurCents === "number" ? [{ label: "Addebito", value: formatEur(payload.amountEurCents) }] : []),
         ...(str(payload.date) ? [{ label: "Prossimo rinnovo", value: formatDay(str(payload.date)) }] : []),
       ],
       cta: subscriptionPage(),
+    };
+  },
+  // Livello scelto o quota di passaggio pagati (collaudo E-13).
+  SUBSCRIPTION_PAID: (payload, ctx) => {
+    const tier = str(payload.tierLabel) ?? "";
+    const amount = typeof payload.amountEurCents === "number" ? formatEur(payload.amountEurCents) : null;
+    const what = payload.upgradeFee === true ? `il passaggio al livello ${tier}` : `l'abbonamento ${tier}`;
+    return {
+      kind: "account",
+      subject: `Pagamento ricevuto${amount ? `: ${amount}` : ""}`,
+      greeting: ctx.name,
+      title: "Pagamento ricevuto",
+      paragraphs: [
+        `Abbiamo ricevuto il pagamento per ${what}${amount ? `: **${amount}**, IVA compresa` : ""}. Grazie!`.replace(/\s+/g, " "),
+        payload.invoice === true
+          ? "La fattura è già in Fatture e documenti, nella tua area."
+          : "La fattura la trovi in Fatture e documenti, nella tua area, appena è pronta.",
+      ],
+      cta: { label: "Apri Fatture e documenti", url: `${frontendUrl()}/dashboard/documenti` },
     };
   },
   SUBSCRIPTION_ENDING: (payload, ctx) => {

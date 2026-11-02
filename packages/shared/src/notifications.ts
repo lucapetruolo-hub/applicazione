@@ -238,6 +238,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "SUBSCRIPTION_PAUSED",
       "SUBSCRIPTION_RENEWING",
       "SUBSCRIPTION_RENEWED",
+      // Livello scelto o quota di passaggio pagati, con la fattura (collaudo E-13).
+      "SUBSCRIPTION_PAID",
       "SUBSCRIPTION_ENDING",
       "SUBSCRIPTION_PAYMENT_FAILED",
       // Fattura del mese e estratto pronti in "Fatture e documenti" (docs/CHANGELOG.md §378).
@@ -621,6 +623,7 @@ export const NOTIFICATION_DIGEST_TYPES: ReadonlySet<string> = new Set([
   "REQUEST_MATCHED_LATER",
   "REQUEST_FORWARDED",
   "SUBSCRIPTION_RENEWED",
+  "SUBSCRIPTION_PAID",
   "SUBSCRIPTION_BONUS_MONTH",
   "PROFILE_VERIFIED",
   "STRIPE_ACCOUNT_ACTIVE",
