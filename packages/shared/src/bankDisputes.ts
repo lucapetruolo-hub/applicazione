@@ -83,6 +83,20 @@ export type ProfessionalBankDispute = {
   noteAt: string | null;
 };
 
+/**
+ * Una delle contestazioni dello stesso lavoro: acconto e saldo sono due
+ * addebiti e la banca può contestarli tutti e due (collaudo F-21).
+ */
+export type BankDisputePart = {
+  disputeId: string;
+  /** Quale pagamento: null se non si sa (archivio, senza chiedere a Stripe). */
+  payment: "DEPOSIT" | "BALANCE" | null;
+  status: string;
+  /** null nell'archivio, dove non si chiede a Stripe. */
+  amountEurCents: number | null;
+  dueBy: string | null;
+};
+
 export type AdminBankDispute = {
   jobPaymentId: string;
   bookingId: string;
@@ -102,6 +116,8 @@ export type AdminBankDispute = {
   professionalNote: { text: string; photoUrls: string[]; at: string } | null;
   /** Campi già compilati dal sito, da rileggere. */
   draft: Omit<BankDisputeEvidenceInput, "submit">;
+  /** Tutte le contestazioni del lavoro, una riga ciascuna (più di una se acconto e saldo sono contestati). */
+  parts: BankDisputePart[];
 };
 
 /** Prove scritte dall'admin e salvate dal sito, così come sono partite. */
@@ -139,5 +155,7 @@ export type AdminBankDisputeArchiveRow = {
   hasSentPdf: boolean;
   /** Ogni passaggio, dal più vecchio: by è l'email di chi l'ha fatto, null = Stripe o il sito da solo. */
   history: { at: string; text: string; by: string | null }[];
+  /** Tutte le contestazioni del lavoro, con il loro stato. */
+  parts: BankDisputePart[];
 };
 

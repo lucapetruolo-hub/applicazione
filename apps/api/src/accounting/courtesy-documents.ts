@@ -5,7 +5,7 @@ import { courtesyAmountChanged, courtesyDocumentLabel, courtesyTotalEurCents, ty
 export const COURTESY_DOCUMENT_FIELDS = {
   bookingId: true,
   kind: true,
-  number: true,
+  receiptNumber: true,
   year: true,
   pdfDownloadedAt: true,
   pdfTotalEurCents: true,

@@ -542,9 +542,11 @@ export type PlatformInvoiceAdminRow = PlatformInvoiceSummary & {
 };
 
 // --- Ricevuta per prestazione occasionale --------------------------------------
-// Decisione dell'utente del 27/10/2026: la prepariamo noi, il documento valido
-// è quello firmato dal professionista. Non la mandiamo mai all'Agenzia delle
-// Entrate. Dal 30/10/2026 solo per chi lavora senza partita IVA: chi ce l'ha
+// Decisione dell'utente del 27/10/2026: la compiliamo noi coi dati del lavoro,
+// il documento valido è quello firmato dal professionista. Dal 02/11/2026 è un
+// modello che lui controlla, numera e firma come documento suo
+// (docs/changelog/2026-11-02-ricevuta-modello.md). Non la mandiamo mai
+// all'Agenzia delle Entrate. Dal 30/10/2026 solo per chi lavora senza partita IVA: chi ce l'ha
 // fa la fattura elettronica col suo programma, che gli dà già il PDF, e qui
 // trova solo i dati del cliente da copiare
 // (docs/changelog/2026-10-30-documenti-snelli.md).
@@ -576,8 +578,14 @@ export type CourtesyCopyView = {
    * codice fiscale del cliente (C-05, G-07): i valori di partenza sono qui.
    */
   customerFields: { name: string; taxCode: string } | null;
-  /** Il nostro progressivo dell'anno ("4/2026", docs/CHANGELOG.md §379). */
+  /**
+   * Il numero che il professionista ha scritto sulla sua ricevuta: la
+   * ricevuta è un documento suo, noi non diamo numeri
+   * (docs/changelog/2026-11-02-ricevuta-modello.md).
+   */
   number: string | null;
+  /** L'ultimo numero che ha scritto su un'altra ricevuta, per aiutarlo a seguire il filo; null se è la prima. */
+  lastNumber?: string | null;
   /** Cosa manca prima di scaricare il PDF: vuoto se è pronto. */
   missing: string[];
   /** Importo sull'ultimo PDF scaricato, null se non l'ha mai scaricato: se è diverso da oggi va rifatto (§381). */
@@ -587,12 +595,22 @@ export type CourtesyCopyView = {
 /** Ritenuta d'acconto sulle ricevute a una partita IVA (C-04). */
 export const WITHHOLDING_RATE_PERCENT = 20;
 
+/** Lunghezza massima del numero della ricevuta ("12/2026", "2026-12"...). */
+export const RECEIPT_NUMBER_MAX = 20;
+
 /**
  * Cosa il professionista scrive sulla ricevuta prima di scaricarla (collaudo
- * del 29/10/2026): nome e codice fiscale del cliente se non li ha dati lui,
- * ritenuta. Un campo vuoto toglie il valore.
+ * del 29/10/2026): il numero (dal 02/11/2026 lo dà lui,
+ * docs/changelog/2026-11-02-ricevuta-modello.md), nome e codice fiscale del
+ * cliente se non li ha dati lui, ritenuta. Un campo vuoto toglie il valore.
  */
 export const courtesyDetailsSchema = z.object({
+  number: z
+    .string()
+    .trim()
+    .max(RECEIPT_NUMBER_MAX, `Il numero può avere al massimo ${RECEIPT_NUMBER_MAX} caratteri.`)
+    .regex(/^[0-9A-Za-z/\-. ]*$/, "Nel numero usa solo cifre, lettere, barra o trattino.")
+    .optional(),
   customerName: z.string().trim().max(120, "Il nome può avere al massimo 120 caratteri.").optional(),
   customerTaxCode: z
     .string()
@@ -604,14 +622,9 @@ export const courtesyDetailsSchema = z.object({
 });
 export type CourtesyDetailsInput = z.infer<typeof courtesyDetailsSchema>;
 
-/** Numero della ricevuta come si scrive sul documento: "4/2026". */
-export function courtesyReceiptNumber(number: number, year: number): string {
-  return `${number}/${year}`;
-}
-
-/** Come si chiama la ricevuta nelle liste: "Ricevuta n. 4/2026". */
-export function courtesyDocumentLabel(doc: { number: number | null; year: number }): string {
-  return doc.number ? `Ricevuta n. ${courtesyReceiptNumber(doc.number, doc.year)}` : "Ricevuta senza numero";
+/** Come si chiama la ricevuta nelle liste: "Ricevuta n. 4/2026", col numero scritto dal professionista. */
+export function courtesyDocumentLabel(doc: { receiptNumber: string | null }): string {
+  return doc.receiptNumber ? `Ricevuta n. ${doc.receiptNumber}` : "Ricevuta senza numero";
 }
 
 /**

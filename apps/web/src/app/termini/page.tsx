@@ -13,7 +13,7 @@ export default function TerminiPage() {
   return (
     <LegalPage
       title="Termini di Servizio"
-      updatedAt="30 ottobre 2026"
+      updatedAt="2 novembre 2026"
       intro={
         <LegalSummary
           points={[
@@ -82,6 +82,7 @@ export default function TerminiPage() {
               {"TRATTAMENTI DIVERSI: Le regole sono le stesse per tutti i professionisti, con queste differenze: il pacchetto di visibilità (sopra); il numero di lavori compresi nel livello dell'abbonamento (punto 4); il limite di 2.000 € per lavoro chiesti online per chi è nuovo, finché non ha 10 lavori pagati online senza contestazioni e 120 giorni dal primo (punto 5). "}
               {"SOSPENSIONE E CHIUSURA: Se limitiamo o sospendiamo il tuo profilo ti scriviamo per email, al più tardi quando la misura parte, il motivo, i fatti e la regola di questi termini su cui si basa, e come contestarla; la contestazione la esamina una persona del nostro team. Se decidiamo di chiudere definitivamente il tuo account ti avvisiamo per email con il motivo almeno 30 giorni prima, salvo un obbligo di legge, una violazione ripetuta di questi termini o un rischio per la sicurezza dei clienti (per esempio una truffa o dati falsi). "}
               {"DATI: Vedi nella tua area i dati del tuo profilo e della tua attività: richieste ricevute, preventivi, lavori, pagamenti online, documenti, visite al profilo e confronto con la media della zona. I dati di contatto del cliente li ricevi solo quando accetta un tuo preventivo, e li usi solo per quel lavoro. Usiamo i dati dei professionisti per far funzionare la piattaforma, per la sicurezza e, solo in forma di numeri complessivi senza nomi, per migliorarla; non li vendiamo e non li diamo ad altri professionisti. Dopo la chiusura dell'account restano solo i dati che dobbiamo conservare per legge (vedi la Privacy Policy). "}
+              {"DOCUMENTI AI CLIENTI: La fattura o la ricevuta del lavoro la emetti tu e ne sei l'unico responsabile; la piattaforma non la invia all'Agenzia delle Entrate per tuo conto. Se lavori senza partita IVA, a lavoro terminato trovi una ricevuta per prestazione occasionale già compilata con i dati del lavoro: è un documento tuo, che controlli, numeri e firmi prima di darla al cliente. "}
               {"RECLAMI: Per un reclamo sull'uso della piattaforma scrivici dalla pagina Contatti, scegliendo \"Sono un professionista\": ti rispondiamo per email."}
             </>
           ),
