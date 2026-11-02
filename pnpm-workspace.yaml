@@ -8,12 +8,6 @@ allowBuilds:
   '@prisma/engines': true
   esbuild: true
   prisma: true
-peerDependencyRules:
-  ignoreMissing:
-    - "react-native"
-    - "react-native-svg"
-  allowedVersions:
-    react: "19"
 # Una sola versione di React e React Native in tutto il monorepo (sito e app
 # su React 19, docs/CHANGELOG.md §299): senza, i pacchetti condivisi
 # (packages/ui, Tamagui) si portavano dietro copie diverse. Più le versioni
@@ -29,18 +23,26 @@ peerDependencyRules:
 # sviluppo (CLI di React Native ed Expo, ESLint, CLI di Nest). Stessa API,
 # solo versioni nuove.
 overrides:
+  "@react-native/metro-config": "0.88.0"
+  "deepmerge-ts@<8": "^8.0.2"
+  "fast-xml-parser@<5.7.0": "^5.11.2"
+  "glob@>=9 <14.0.2": "^14.0.2"
+  "joi@>=17.1.1 <17.13.9": "^17.13.9"
+  "minimatch@>=10 <11.0.1": "^11.0.1"
+  multer: "^2.3.0"
+  "postcss@<8.5.23": "^8.5.31"
+  proxy-addr: "^2.0.8"
   react: "19.3.0"
   react-dom: "19.3.0"
   react-native: "0.88.0"
   react-native-reanimated: "4.7.1"
   react-native-worklets: "0.13.0"
-  "@react-native/metro-config": "0.88.0"
-  multer: "^2.3.0"
-  proxy-addr: "^2.0.8"
   rxjs: "7.8.2"
-  "postcss@<8.5.23": "^8.5.31"
-  "deepmerge-ts@<8": "^8.0.2"
-  "fast-xml-parser@<5.7.0": "^5.11.2"
-  "joi@>=17.1.1 <17.13.9": "^17.13.9"
-  "glob@>=9 <14.0.2": "^14.0.2"
-  "minimatch@>=10 <11.0.1": "^11.0.1"
+patchedDependencies:
+  '@tamagui/web@3.1.10': patches/@tamagui__web@3.1.10.patch
+peerDependencyRules:
+  allowedVersions:
+    react: "19"
+  ignoreMissing:
+    - "react-native"
+    - "react-native-svg"

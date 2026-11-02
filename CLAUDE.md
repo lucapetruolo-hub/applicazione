@@ -141,7 +141,12 @@ prima discuterne e aggiornare questo file.
   `packages/ui/src/usedThemes.ts`, poi
   `pnpm --filter @professionisti/ui genera-default-tamagui` lo controlla. Non
   si importa `@tamagui/config` nel sito (§345). Sul sito niente animazioni di
-  Tamagui (nessun driver, `animations.web.ts`).
+  Tamagui (nessun driver, `animations.web.ts`). Due comportamenti di
+  Tamagui 1 rimessi sul sito: i riquadri con ruolo button/checkbox/link/
+  radio/textbox/switch raggiungibili col Tab (`focusableRoles.ts`) e il
+  tocco che risale ai contenitori, con una correzione di una riga al
+  pacchetto (`patches/@tamagui__web@3.1.10.patch`, da rifare a ogni
+  aggiornamento di Tamagui).
 - **React Compiler** acceso su tutto il sito (docs/CHANGELOG.md §345), ma
   rompe gli stili `<style jsx>`: ogni componente che li usa deve iniziare
   con la direttiva `"use no memo"` (lo controlla `pnpm lint`,

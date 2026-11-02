@@ -1,4 +1,5 @@
 import { createTamagui, createTokens } from "tamagui";
+import "./focusableRoles";
 import { Platform } from "react-native";
 import { animations } from "./animations";
 import { defaultFonts, defaultMedia, defaultSettings, defaultShorthands, defaultThemes, defaultTokens } from "./tamaguiDefaults";
