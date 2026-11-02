@@ -4,7 +4,9 @@
     // TypeScript 6 non include più da solo tutti i pacchetti @types.
     "types": ["node", "google.maps"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      // Stesso alias di next.config.mjs (src/lib/comuniLazy.ts).
+      "@professionisti/shared/comuni": ["../../packages/shared/src/data/comuni.ts"]
     },
     // Stesso ordine di risoluzione di Turbopack in next.config.mjs
     // (turbopack.resolveExtensions con ".web.*" prima): senza questo, tsc

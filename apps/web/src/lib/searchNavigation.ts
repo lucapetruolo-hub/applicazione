@@ -1,4 +1,5 @@
-import { comuneSlug, findCategoryByQuery, matchProblem } from "@professionisti/shared";
+import { findCategoryByQuery, matchProblem } from "@professionisti/shared";
+import { loadComuni } from "@/lib/comuniLazy";
 import type { ProfessionalSuggestion, SearchMode } from "@professionisti/ui";
 
 /**
@@ -6,14 +7,7 @@ import type { ProfessionalSuggestion, SearchMode } from "@professionisti/ui";
  * header "tutti i professionisti"): stessa logica ovunque, per evitare che i
  * tre punti di ingresso alla ricerca si comportino in modo diverso.
  */
-export function buildSearchDestination({
-  query,
-  city,
-  professional,
-  mode,
-  urgentOnly,
-  service,
-}: {
+type SearchDestinationInput = {
   query: string;
   city: string;
   professional?: ProfessionalSuggestion;
@@ -26,7 +20,19 @@ export function buildSearchDestination({
    * dice ancora la stessa prestazione. Un lavoro nuovo è una ricerca nuova.
    */
   service?: string;
-}): string {
+};
+
+export async function buildSearchDestination(input: SearchDestinationInput): Promise<string> {
+  // Slug della città dall'elenco dei comuni, caricato a parte (src/lib/comuniLazy.ts):
+  // di solito è già arrivato; se la rete lo perde si cerca con `?citta=`.
+  const comuni = input.city.trim() ? await loadComuni().catch(() => null) : null;
+  return searchDestination(input, comuni?.comuneSlug);
+}
+
+function searchDestination(
+  { query, city, professional, mode, urgentOnly, service }: SearchDestinationInput,
+  comuneSlug: ((name: string) => string | undefined) | undefined,
+): string {
   const isOnline = mode === "online";
   const params = new URLSearchParams();
   if (isOnline) params.set("online", "1");
@@ -51,7 +57,7 @@ export function buildSearchDestination({
   if (categorySlug) {
     // Comune reale → pagina indicizzabile /cerca/[categoria]/[citta]
     // (docs/CHANGELOG.md §132); testo libero non riconosciuto resta `?citta=`.
-    const citySlug = city.trim() ? comuneSlug(city) : undefined;
+    const citySlug = city.trim() ? comuneSlug?.(city) : undefined;
     if (city.trim() && !citySlug) params.set("citta", city.trim());
     const qs = params.toString() ? `?${params.toString()}` : "";
     return `/cerca/${categorySlug}${citySlug ? `/${citySlug}` : ""}${qs}`;

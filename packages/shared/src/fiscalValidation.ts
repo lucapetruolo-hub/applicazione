@@ -1,4 +1,4 @@
-import { CODICI_CATASTALI_DATA } from "./data/comuniCompatti";
+import { CODICI_CATASTALI_DATA } from "./data/codiciCatastaliCompatti";
 /**
  * Validazione in tempo reale dei documenti fiscali raccolti in
  * `/dashboard/fiscale` (CLAUDE.md §88/§89 — MANOVIA/DAC7). Funzioni pure,

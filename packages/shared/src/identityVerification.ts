@@ -1,5 +1,3 @@
-import { z } from "zod";
-import "./zod";
 
 /**
  * Verifica fiscale e d'identità del professionista (docs/CHANGELOG.md §253,
@@ -25,10 +23,6 @@ export function biometricConsentText(): string {
   return "Acconsento al confronto del mio volto con la foto del documento, solo per verificare la mia identità.";
 }
 
-export const startIdentityVerificationSchema = z.object({
-  biometricConsent: z.literal(true, { message: "Per continuare spunta il consenso al confronto del selfie." }),
-});
-export type StartIdentityVerificationInput = z.infer<typeof startIdentityVerificationSchema>;
 
 export type TaxIdKind = "CODICE_FISCALE" | "PARTITA_IVA";
 export type TaxIdCheckStatus = "PENDING" | "VALID" | "INVALID" | "REVIEW";

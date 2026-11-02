@@ -1,6 +1,6 @@
 import { z } from "zod";
 import "./zod";
-import { trafficSourceSchema } from "./trafficSource";
+import { trafficSourceSchema } from "./trafficSourceSchema";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
 import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
 import { quotePaymentOfferSchema } from "./onlinePayments";

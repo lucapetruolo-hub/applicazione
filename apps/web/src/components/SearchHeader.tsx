@@ -30,7 +30,6 @@ export function SearchHeader({
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
     rememberSearchCity(params.city);
-    const destination = buildSearchDestination({ ...params, service });
     // Richiesta esplicita dell'utente: cambiare "Online/A domicilio" dalla
     // barra di ricerca di una pagina risultati deve aggiornare SUBITO la
     // lista. Next.js 14 tiene in cache client-side (Router Cache) le pagine
@@ -42,10 +41,12 @@ export function SearchHeader({
     // (in coda al push, cosi' vale sia per la navigazione nuova sia per una
     // eventuale risposta gia' in cache).
     setExpanded(false);
-    navigateWithTransition(() => {
-      router.push(destination);
-      router.refresh();
-    });
+    void buildSearchDestination({ ...params, service }).then((destination) =>
+      navigateWithTransition(() => {
+        router.push(destination);
+        router.refresh();
+      }),
+    );
   }
 
   const what = initialQuery.trim() || "Tutti i professionisti";

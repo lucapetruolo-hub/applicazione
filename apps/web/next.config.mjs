@@ -120,6 +120,8 @@ const nextConfig = {
       // che usa (zod 4, elenco dei comuni...) invece di tutto il pacchetto.
       // docs/CHANGELOG.md §326 e §345. L'API continua a usare dist/.
       "@professionisti/shared": "../../packages/shared/src/index.ts",
+      // Solo l'elenco dei comuni, caricato quando serve (src/lib/comuniLazy.ts).
+      "@professionisti/shared/comuni": "../../packages/shared/src/data/comuni.ts",
     },
     // I file `.web.*` prima degli altri (es. icons.web.tsx con lucide-react
     // invece di icons.tsx con lucide-react-native), come `moduleSuffixes`

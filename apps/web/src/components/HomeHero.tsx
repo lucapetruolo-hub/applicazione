@@ -26,7 +26,7 @@ export function HomeHero() {
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
     rememberSearchCity(params.city);
-    navigateWithTransition(() => router.push(buildSearchDestination(params)));
+    void buildSearchDestination(params).then((destination) => navigateWithTransition(() => router.push(destination)));
   }
 
   return (

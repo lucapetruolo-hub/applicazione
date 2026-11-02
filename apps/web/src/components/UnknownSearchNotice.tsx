@@ -63,8 +63,7 @@ export function UnknownSearchNotice({ pathname, fallback }: { pathname: string; 
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
     rememberSearchCity(params.city);
-    const destination = buildSearchDestination(params);
-    navigateWithTransition(() => router.push(destination));
+    void buildSearchDestination(params).then((destination) => navigateWithTransition(() => router.push(destination)));
   }
 
   return (

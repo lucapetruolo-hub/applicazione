@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PROFESSIONAL_CATEGORIES, comuneSlug, type ProfessionalCategorySlug } from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { CATEGORY_ACCENT, CategoryIcon } from "@/components/icons/CategoryIcons";
 
 /** Quanti servizi mostrare: abbastanza per collegare le pagine vicine, non un elenco infinito. */
@@ -17,6 +17,7 @@ const MAX_LINKS = 8;
 export function PopularServicesLinks({
   currentSlug,
   city,
+  citySlug,
   order,
   available,
 }: {
@@ -24,6 +25,13 @@ export function PopularServicesLinks({
   currentSlug?: ProfessionalCategorySlug;
   /** Nome del comune già verificato; senza città i link vanno alle pagine nazionali. */
   city?: string;
+  /**
+   * Slug del comune, calcolato da chi chiama (lato server): qui niente
+   * `comuneSlug`, che porterebbe l'elenco dei comuni nel JavaScript di ogni
+   * pagina, perché la pagina "non trovata" usa questo componente
+   * (docs/changelog/2026-11-02-nextjs-16.md).
+   */
+  citySlug?: string;
   order: string[];
   /** Con una città: categorie con almeno un professionista lì; `null` se non si sa (nessun link). */
   available?: string[] | null;
@@ -35,7 +43,6 @@ export function PopularServicesLinks({
     .sort((a, b) => (rank.get(a.category.slug) ?? order.length + a.catalogIndex) - (rank.get(b.category.slug) ?? order.length + b.catalogIndex))
     .slice(0, MAX_LINKS)
     .map(({ category }) => category);
-  const citySlug = city ? comuneSlug(city) : null;
   if (categories.length === 0) return null;
 
   return (

@@ -93,8 +93,17 @@ const customTokens = createTokens({
 });
 
 // Temi: solo quelli usati (src/usedThemes.ts, docs/CHANGELOG.md §206 e §345).
+// `outlineColor` non c'è nei temi di default copiati da Tamagui 1, ma il
+// Button di Tamagui lo usa per l'anello del fuoco da tastiera: senza, il
+// colore non si risolveva e `next dev` avvisava "missing token outlineColor"
+// (docs/changelog/2026-11-02-nextjs-16.md). Stesso colore grafite
+// dell'anello di globals.css.
+const themes = Object.fromEntries(
+  Object.entries(defaultThemes).map(([name, theme]) => [name, { ...theme, outlineColor: brand.grafite }]),
+) as { [K in keyof typeof defaultThemes]: (typeof defaultThemes)[K] & { outlineColor: string } };
+
 export const tamaguiConfig = createTamagui({
-  themes: defaultThemes,
+  themes,
   media: defaultMedia,
   shorthands: defaultShorthands,
   settings: defaultSettings,

@@ -39,11 +39,12 @@ export function HeaderSearchBar() {
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
     rememberSearchCity(params.city);
-    const destination = buildSearchDestination({ ...params, service });
-    navigateWithTransition(() => {
-      router.push(destination);
-      router.refresh();
-    });
+    void buildSearchDestination({ ...params, service }).then((destination) =>
+      navigateWithTransition(() => {
+        router.push(destination);
+        router.refresh();
+      }),
+    );
   }
 
   return (

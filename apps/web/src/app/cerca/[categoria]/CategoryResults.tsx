@@ -216,6 +216,7 @@ export async function CategoryResults({
       <PopularServicesLinks
         currentSlug={category.slug}
         city={comune?.name}
+        citySlug={citySlug}
         order={await popularPromise}
         available={await availablePromise}
       />

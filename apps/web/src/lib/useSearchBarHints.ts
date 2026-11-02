@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { FRAZIONI, PROFESSIONAL_CATEGORIES, allItalianCityNames, matchProblem, nearestComune } from "@professionisti/shared";
+import { FRAZIONI, PROFESSIONAL_CATEGORIES, matchProblem } from "@professionisti/shared";
 import type { ProfessionalSuggestion } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { cachedPopularOrder, loadPopularOrder } from "@/lib/categoryOrder";
+import { loadComuni, useComuni } from "@/lib/comuniLazy";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
 import { PROBLEM_SUGGESTION_PREFIX, looksLikeProblem } from "@/lib/searchNavigation";
 
@@ -61,7 +62,11 @@ function locateComune(): Promise<string | null> {
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (position) => resolve(nearestComune(position.coords.latitude, position.coords.longitude)?.name ?? null),
+      (position) =>
+        loadComuni().then(
+          (comuni) => resolve(comuni.nearestComune(position.coords.latitude, position.coords.longitude)?.name ?? null),
+          () => resolve(null),
+        ),
       () => resolve(null),
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 10 * 60_000 },
     );
@@ -101,6 +106,10 @@ export function useSearchBarHints(initialQuery = "") {
   // Non mostrata finché non si apre l'elenco: leggerla subito non cambia la pagina generata dal server.
   const [lastCity] = useState<string | null>(() => (typeof window === "undefined" ? null : readLastCity()));
   const category = categorySlugFor(query);
+  // Elenco dei comuni dopo che la pagina è pronta (src/lib/comuniLazy.ts):
+  // fino ad allora il campo "Città" propone le città più cercate.
+  const comuni = useComuni();
+  const citySuggestions = useMemo(() => comuni?.allItalianCityNames() ?? [], [comuni]);
 
   // La barra in alto resta montata cambiando pagina: si riparte dal lavoro della nuova pagina.
   const [previousInitialQuery, setPreviousInitialQuery] = useState(initialQuery);
@@ -145,7 +154,7 @@ export function useSearchBarHints(initialQuery = "") {
 
   return {
     professionalSuggestions,
-    citySuggestions: allItalianCityNames(),
+    citySuggestions,
     cityAliases: FRAZIONI,
     cityDefaults,
     preferredCities: hints?.covered ?? [],
