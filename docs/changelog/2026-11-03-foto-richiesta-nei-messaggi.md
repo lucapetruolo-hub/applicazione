@@ -11,7 +11,8 @@ grande e in piccolo la foto del profilo; senza foto, solo la foto del profilo.
   lavoro e il cliente (le iniziali finché il preventivo non è accettato, come
   prima, §216).
 - Solo video: il primo fotogramma del primo video di Cloudinary (stesso
-  indirizzo con `.jpg`).
+  indirizzo con `.jpg`, ritagliato da Cloudinary a 112 px).
+- Lo scheletro di caricamento ha la stessa forma quadrata da 56 px.
 - Senza foto: solo la foto dell'altra parte, come prima. Il posto della foto è
   largo uguale nei due casi, così i testi restano allineati.
 

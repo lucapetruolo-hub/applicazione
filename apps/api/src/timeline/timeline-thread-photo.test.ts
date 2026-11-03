@@ -9,7 +9,7 @@ describe("requestThumbnailUrl", () => {
   });
   it("con solo video su Cloudinary usa il primo fotogramma", () => {
     expect(requestThumbnailUrl(["https://res.cloudinary.com/demo/video/upload/v1/r/clip.MOV"])).toBe(
-      "https://res.cloudinary.com/demo/video/upload/v1/r/clip.jpg",
+      "https://res.cloudinary.com/demo/video/upload/so_0,c_fill,w_112,h_112/v1/r/clip.jpg",
     );
   });
   it("senza foto né video di Cloudinary non c'è miniatura", () => {
