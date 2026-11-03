@@ -68,6 +68,17 @@ export type SearchBarProps = {
   onNearMe?: () => Promise<string | null>;
   /** Avvisa quando cambia il testo di "Cosa cerchi" (per chiedere le città adatte a quel lavoro). */
   onQueryChange?: (query: string) => void;
+  /**
+   * Etichetta, pillola ed esempio del primo campo con "A domicilio" (la home
+   * invita a descrivere il problema, docs/changelog/2026-11-03-ricerca-per-problema-home.md).
+   * Con "Online" restano "Cosa ti serve?" e l'esempio della consulenza.
+   */
+  queryField?: { label: string; badge?: string; placeholder: string };
+  /**
+   * Contenuto sotto il riquadro (gli esempi da toccare della home): riceve il
+   * modo scelto e `fillQuery`, che scrive un testo nel campo e ci mette il cursore.
+   */
+  footer?: (api: { mode: SearchMode; fillQuery: (text: string) => void }) => ReactNode;
 };
 
 function useCityField({
@@ -159,6 +170,8 @@ export function SearchBar({
   preferredCities = [],
   onNearMe,
   onQueryChange,
+  queryField,
+  footer,
 }: SearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [city, setCity] = useState(initialCity);
@@ -275,119 +288,131 @@ export function SearchBar({
     setSelectedProfessional(undefined);
   }
 
-  return (
-    <YStack
-      gap="$3"
-      backgroundColor={brand.calce}
-      padding="$3"
-      borderRadius={radiusDoc}
-      shadowColor="rgba(43,32,19,0)"
-      shadowRadius={0}
-      shadowOffset={{ width: 0, height: 0 }}
-      shadowOpacity={1}
-    >
-      {/* Da telefono le due schede occupano tutta la larghezza a metà ciascuna,
-          sotto i 390 px larghe quanto il testo, su una riga: a 320 px "Online" usciva dal riquadro
-          (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md). */}
-      <XStack
-        gap="$2"
-        backgroundColor={brand.gesso}
-        borderRadius="$10"
-        padding="$1"
-        alignSelf="flex-start"
-        $xs={{ alignSelf: "stretch" }}
-        $xxs={{ gap: "$1" }}
-      >
-        {MODE_TABS.map((tab) => {
-          const active = tab.key === mode;
-          return (
-            <XStack
-              key={tab.key}
-              className="press-scale"
-              paddingHorizontal="$3"
-              paddingVertical="$2"
-              borderRadius="$10"
-              backgroundColor={active ? brand.cianografiaPieno : "transparent"}
-              cursor="pointer"
-              alignItems="center"
-              justifyContent="center"
-              $xs={{ flexGrow: 1, flexBasis: 0 }}
-              $xxs={{ flexBasis: "auto", paddingHorizontal: "$2", gap: "$1" }}
-              gap="$2"
-              onPress={() => handleModeChange(tab.key)}
-              accessibilityRole="button"
-              aria-pressed={active}
-              accessibilityLabel={tab.label}
-            >
-              <Icon name={tab.icon} size={15} color={active ? "white" : brand.grafite70} />
-              <Text fontSize={16} $xxs={{ fontSize: 15 }} whiteSpace="nowrap" fontWeight="600" color={active ? "white" : brand.grafite70}>
-                {tab.label}
-              </Text>
-            </XStack>
-          );
-        })}
-      </XStack>
+  function fillQuery(text: string) {
+    handleQueryChange(text);
+    // Il cursore nel campo apre l'elenco con "Ti serve: …": si vede subito chi serve.
+    if (typeof document !== "undefined") document.getElementById(`${fieldId}-cosa`)?.focus();
+  }
 
-      {/* flex-end: con le etichette sopra i campi, "Cerca" resta allineato ai campi e non alle etichette. */}
-      <YStack gap="$3" $gtSm={{ flexDirection: "row", alignItems: "flex-end" }}>
-        <Autocomplete
-          items={professionalSuggestions}
-          getKey={(item) => item.id}
-          getLabel={(item) => item.name}
-          onSelect={handleSelectProfessional}
-          value={query}
-          onChangeText={handleQueryChange}
-          // Etichetta vera sopra il campo ed esempio corto dentro: quello
-          // lungo di prima veniva tagliato ("Es. Idraulico, Elettricis").
-          // L'esempio dice che il campo capisce anche il problema (§392,
-          // docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md); corto
-          // perché stia intero anche su un telefono da 320 px.
-          label="Cosa ti serve?"
-          id={`${fieldId}-cosa`}
-          placeholder={mode === "online" ? "Es. consulenza idraulico" : "Es. idraulico, un guasto"}
-          size="$5"
-          maxResults={professionalSuggestions.length}
-          renderItem={(item) => (
-            <YStack gap="$1">
-              <Text fontWeight="600">{item.title ?? item.name}</Text>
-              <Text fontSize={13} color="$color10">
-                {item.subtitle}
-              </Text>
-            </YStack>
+  const customQueryField = mode === "domicilio" ? queryField : undefined;
+
+  return (
+    <>
+      <YStack
+        gap="$3"
+        backgroundColor={brand.calce}
+        padding="$3"
+        borderRadius={radiusDoc}
+        shadowColor="rgba(43,32,19,0)"
+        shadowRadius={0}
+        shadowOffset={{ width: 0, height: 0 }}
+        shadowOpacity={1}
+      >
+        {/* Da telefono le due schede occupano tutta la larghezza a metà ciascuna,
+            sotto i 390 px larghe quanto il testo, su una riga: a 320 px "Online" usciva dal riquadro
+            (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md). */}
+        <XStack
+          gap="$2"
+          backgroundColor={brand.gesso}
+          borderRadius="$10"
+          padding="$1"
+          alignSelf="flex-start"
+          $xs={{ alignSelf: "stretch" }}
+          $xxs={{ gap: "$1" }}
+        >
+          {MODE_TABS.map((tab) => {
+            const active = tab.key === mode;
+            return (
+              <XStack
+                key={tab.key}
+                className="press-scale"
+                paddingHorizontal="$3"
+                paddingVertical="$2"
+                borderRadius="$10"
+                backgroundColor={active ? brand.cianografiaPieno : "transparent"}
+                cursor="pointer"
+                alignItems="center"
+                justifyContent="center"
+                $xs={{ flexGrow: 1, flexBasis: 0 }}
+                $xxs={{ flexBasis: "auto", paddingHorizontal: "$2", gap: "$1" }}
+                gap="$2"
+                onPress={() => handleModeChange(tab.key)}
+                accessibilityRole="button"
+                aria-pressed={active}
+                accessibilityLabel={tab.label}
+              >
+                <Icon name={tab.icon} size={15} color={active ? "white" : brand.grafite70} />
+                <Text fontSize={16} $xxs={{ fontSize: 15 }} whiteSpace="nowrap" fontWeight="600" color={active ? "white" : brand.grafite70}>
+                  {tab.label}
+                </Text>
+              </XStack>
+            );
+          })}
+        </XStack>
+
+        {/* flex-end: con le etichette sopra i campi, "Cerca" resta allineato ai campi e non alle etichette. */}
+        <YStack gap="$3" $gtSm={{ flexDirection: "row", alignItems: "flex-end" }}>
+          <Autocomplete
+            items={professionalSuggestions}
+            getKey={(item) => item.id}
+            getLabel={(item) => item.name}
+            onSelect={handleSelectProfessional}
+            value={query}
+            onChangeText={handleQueryChange}
+            // Etichetta vera sopra il campo ed esempio corto dentro: quello
+            // lungo di prima veniva tagliato ("Es. Idraulico, Elettricis").
+            // L'esempio dice che il campo capisce anche il problema (§392,
+            // docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md); corto
+            // perché stia intero anche su un telefono da 320 px.
+            label={customQueryField?.label ?? "Cosa ti serve?"}
+            labelBadge={customQueryField?.badge}
+            id={`${fieldId}-cosa`}
+            placeholder={customQueryField?.placeholder ?? (mode === "online" ? "Es. consulenza idraulico" : "Es. idraulico, un guasto")}
+            size="$5"
+            maxResults={professionalSuggestions.length}
+            renderItem={(item) => (
+              <YStack gap="$1">
+                <Text fontWeight="600">{item.title ?? item.name}</Text>
+                <Text fontSize={13} color="$color10">
+                  {item.subtitle}
+                </Text>
+              </YStack>
+            )}
+          />
+          <XStack width={1} height={44} marginBottom={4} backgroundColor={brand.filetto} display="none" $gtSm={{ display: "flex" }} />
+          <Autocomplete
+            {...cityField}
+            value={city}
+            onChangeText={setCity}
+            label={mode === "online" ? "Città (facoltativa)" : "Città"}
+            id={`${fieldId}-citta`}
+            placeholder="Es. Milano"
+            size="$5"
+          />
+          {wrapSearchButton(
+            <Button
+              variant="primary"
+              onPress={() =>
+                onSearch({
+                  query,
+                  city,
+                  mode,
+                  professional: selectedProfessional?.name === query ? selectedProfessional : undefined,
+                })
+              }
+            >
+              Cerca
+            </Button>
           )}
-        />
-        <XStack width={1} height={44} marginBottom={4} backgroundColor={brand.filetto} display="none" $gtSm={{ display: "flex" }} />
-        <Autocomplete
-          {...cityField}
-          value={city}
-          onChangeText={setCity}
-          label={mode === "online" ? "Città (facoltativa)" : "Città"}
-          id={`${fieldId}-citta`}
-          placeholder="Es. Milano"
-          size="$5"
-        />
-        {wrapSearchButton(
-          <Button
-            variant="primary"
-            onPress={() =>
-              onSearch({
-                query,
-                city,
-                mode,
-                professional: selectedProfessional?.name === query ? selectedProfessional : undefined,
-              })
-            }
-          >
-            Cerca
-          </Button>
-        )}
+        </YStack>
+        {mode === "online" ? (
+          <Text fontSize={13} color={brand.grafite70}>
+            Consulenza online: parla con il professionista da remoto, ovunque tu sia. Puoi indicare una città per
+            trovare professionisti online della tua zona.
+          </Text>
+        ) : null}
       </YStack>
-      {mode === "online" ? (
-        <Text fontSize={13} color={brand.grafite70}>
-          Consulenza online: parla con il professionista da remoto, ovunque tu sia. Puoi indicare una città per
-          trovare professionisti online della tua zona.
-        </Text>
-      ) : null}
-    </YStack>
+      {footer?.({ mode, fillQuery })}
+    </>
   );
 }

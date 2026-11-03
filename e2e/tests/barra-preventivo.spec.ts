@@ -113,7 +113,14 @@ test.describe("chi visita il profilo", () => {
     // Tornato in home (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md).
     await page.goto("/");
     // Sotto la ricerca resta solo la richiesta urgente; il campo dice che capisce anche il problema.
-    await expect(page.getByLabel("Cosa ti serve?")).toHaveAttribute("placeholder", "Es. idraulico, un guasto");
+    await expect(page.getByLabel("Cosa è successo?")).toHaveAttribute("placeholder", "Es. scarico intasato");
+    // Un esempio toccato si scrive nel campo e mostra subito il mestiere
+    // (docs/changelog/2026-11-03-ricerca-per-problema-home.md).
+    await page.getByRole("button", { name: "Salta la corrente", exact: true }).click();
+    await expect(page.getByLabel("Cosa è successo?")).toHaveValue("Salta la corrente");
+    await expect(page.getByLabel("Cosa è successo?")).toBeFocused();
+    await expect(page.getByText("Ti serve: Elettricista")).toBeVisible();
+    await page.keyboard.press("Escape");
     await expect(page.locator(".hero-urgent-link")).toHaveAttribute("href", "/urgente");
     await expect(page.locator(".hero-urgent-link")).toHaveAccessibleName("Richiesta urgente");
     await expect(page.getByRole("link", { name: "Richiedi un preventivo", exact: true })).toHaveCount(0);

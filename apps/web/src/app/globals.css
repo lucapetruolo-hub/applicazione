@@ -5983,6 +5983,80 @@ a.admin-kpi:hover {
   }
 }
 
+/* Esempi da toccare sotto la ricerca della home
+   (docs/changelog/2026-11-03-ricerca-per-problema-home.md): stessa pillola
+   chiara sul verde di "Richiesta urgente", più bassa. */
+.hero-examples {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+.hero-examples-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+.hero-examples-label {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 15px;
+  font-weight: 600;
+}
+.hero-example {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.hero-example:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+.hero-example:active {
+  transform: scale(0.98);
+}
+.hero-example:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+/* Da telefono una riga che scorre per gruppo, invece di sei righe di
+   pillole che spingevano "Richiesta urgente" fuori dallo schermo. */
+@media (max-width: 660px) {
+  .hero-examples {
+    align-items: stretch;
+    width: 100%;
+  }
+  .hero-examples-row {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    /* Sfumatura a destra: dice che la riga continua. */
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  }
+  .hero-examples-row::-webkit-scrollbar {
+    display: none;
+  }
+  .hero-examples-label,
+  .hero-example {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}
+
 /* Testo letto da Google e dai lettori di schermo ma non mostrato (es. il
    titolo h1 delle pagine di ricerca, docs/CHANGELOG.md §271). */
 .sr-only {
