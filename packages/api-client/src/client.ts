@@ -2118,6 +2118,12 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       }),
 
     /** Customer Portal di Stripe: carta e fatture di abbonamento e boost. */
+    /** Carta dell'abbonamento: marca, ultime 4 cifre e scadenza (null senza carta). */
+    getSavedCard: (token: string) =>
+      request<{ card: { brand: string; last4: string; expMonth: number; expYear: number; wallet: string | null } | null }>("/billing/card", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
     createBillingPortal: (token: string) =>
       request<{ url: string }>("/billing/portal", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 

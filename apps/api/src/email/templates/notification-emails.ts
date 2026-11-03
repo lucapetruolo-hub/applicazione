@@ -33,7 +33,7 @@ import {
 import { EMAIL_BRAND, frontendUrl } from "../email-brand";
 import type { EmailContent } from "../email-layout";
 import { requestPhotos } from "./job-emails";
-import { descriptionDetail, formatAppointment, formatAppointmentSpan, formatDay, formatDeadline, formatEur } from "../email-format";
+import { descriptionDetail, formatAppointment, formatAppointmentSpan, formatCard, formatDay, formatDeadline, formatEur } from "../email-format";
 
 /**
  * Testi delle email che accompagnano le notifiche del sito
@@ -150,6 +150,66 @@ const DISPUTE_STATUS_LABEL: Record<string, string> = {
 
 const proRequests = (label = "Apri la richiesta") => ({ label, url: `${frontendUrl()}/dashboard/richieste` });
 const subscriptionPage = () => ({ label: "Apri la pagina Abbonamento", url: `${frontendUrl()}/dashboard/abbonamento` });
+
+const clientJobUrl = (payload: Payload) =>
+  `${frontendUrl()}/le-mie-richieste?tab=lavori${str(payload.guidedRequestId) ? `&open=${str(payload.guidedRequestId)}` : ""}`;
+
+/**
+ * Riepilogo di un acconto o saldo pagato online, per il cliente
+ * (docs/changelog/2026-11-03-conferme-pagamento-e-abbonamento.md): come la
+ * ricevuta di un acquisto online, una riga per dato.
+ */
+function paymentDetails(payload: Payload, ctx: NotificationEmailContext, paidLabel: string): { label: string; value: string }[] {
+  const amount = typeof payload.amountEurCents === "number" ? payload.amountEurCents : null;
+  const total = typeof payload.paidTotalEurCents === "number" ? payload.paidTotalEurCents : null;
+  const remaining = typeof payload.remainingEurCents === "number" ? payload.remainingEurCents : null;
+  const card = formatCard(payload.cardBrand, payload.cardLast4, payload.cardWallet);
+  const paidAt = formatDeadline(str(payload.paidAt));
+  let still: string | null = null;
+  if (remaining !== null) still = remaining > 0 ? formatEur(remaining) : null;
+  else if (payload.part === "deposit") still = payload.balanceDirect === true ? "il resto direttamente al professionista" : "il saldo, a lavoro finito";
+  return jobDetails(ctx, [
+    ...(amount !== null ? [{ label: paidLabel, value: formatEur(amount) }] : []),
+    ...(total !== null && amount !== null && total !== amount ? [{ label: "Pagato in tutto", value: formatEur(total) }] : []),
+    ...(still ? [{ label: "Da pagare ancora", value: still }] : []),
+    ...(card ? [{ label: "Metodo di pagamento", value: card }] : []),
+    ...(paidAt ? [{ label: "Data del pagamento", value: paidAt }] : []),
+    ...(str(payload.paymentRef) ? [{ label: "Numero del pagamento", value: str(payload.paymentRef)! }] : []),
+  ]);
+}
+
+/** Il pagamento non è il documento fiscale: quello lo fa il professionista. */
+const NOT_A_RECEIPT = "Questa email conferma il pagamento. La ricevuta o la fattura la fa il professionista: puoi chiedergliela dal menu Documenti del lavoro.";
+
+const documentsLink = () => ({ label: "Apri Fatture e documenti", url: `${frontendUrl()}/dashboard/documenti` });
+
+/**
+ * Riepilogo del pagamento dell'abbonamento, come nelle email di conferma
+ * degli abbonamenti online (docs/changelog/2026-11-03-conferme-pagamento-e-abbonamento.md):
+ * cosa, quanto con l'IVA, carta, data e prossimo addebito.
+ */
+function subscriptionReceiptDetails(payload: Payload, what: string): { label: string; value: string }[] {
+  const amount = typeof payload.amountEurCents === "number" ? payload.amountEurCents : null;
+  const vat = typeof payload.vatEurCents === "number" ? payload.vatEurCents : null;
+  const card = formatCard(payload.cardBrand, payload.cardLast4, payload.cardWallet);
+  const paidAt = formatDeadline(str(payload.paidAt));
+  const next = formatDay(str(payload.nextChargeAt) ?? (payload.endsAt === undefined ? str(payload.date) : null));
+  const ends = formatDay(str(payload.endsAt));
+  return [
+    ...(what ? [{ label: "Abbonamento", value: what }] : []),
+    ...(amount !== null ? [{ label: "Totale pagato", value: vat !== null && vat > 0 ? `${formatEur(amount)} (di cui IVA ${formatEur(vat)})` : formatEur(amount) }] : []),
+    ...(card ? [{ label: "Metodo di pagamento", value: card }] : []),
+    ...(paidAt ? [{ label: "Data del pagamento", value: paidAt }] : []),
+    ...(next ? [{ label: "Prossimo addebito", value: next }] : ends ? [{ label: "Finisce il", value: ends }] : []),
+  ];
+}
+
+/** Come cambiare carta o annullare: sempre in pagina Abbonamento. */
+function subscriptionManageNote(payload: Payload): string[] {
+  return payload.endsAt !== undefined
+    ? ["Hai annullato il rinnovo: puoi riattivarlo quando vuoi dalla pagina Abbonamento."]
+    : ["Puoi cambiare la carta o annullare quando vuoi dalla pagina Abbonamento: resta attivo fino alla scadenza."];
+}
 
 const NOT_BINDING = "La nostra decisione non impedisce di rivolgersi a un organismo di mediazione o al giudice.";
 
@@ -919,18 +979,42 @@ const BUILDERS: Record<string, Builder> = {
     details: typeof payload.amountEurCents === "number" ? [{ label: "Saldo da pagare", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: { label: "Paga il saldo", url: `${frontendUrl()}/le-mie-richieste` },
   }),
+  // Al cliente: acconto o saldo pagato online, con il riepilogo
+  // (docs/changelog/2026-11-03-conferme-pagamento-e-abbonamento.md).
+  JOB_PAYMENT_CONFIRMED: (payload, ctx) => {
+    const balance = payload.part === "balance";
+    const amount = formatEur(payload.amountEurCents);
+    return {
+      kind: "notification",
+      subject: `Pagamento confermato: ${balance ? "saldo" : "acconto"}${amount ? ` di ${amount}` : ""}`,
+      greeting: ctx.name,
+      title: "Pagamento confermato",
+      paragraphs: [
+        `Abbiamo ricevuto il tuo pagamento${amount ? ` di **${amount}**` : ""} per ${balance ? "il saldo" : "l'acconto"} del lavoro con **${pro(ctx)}**.`,
+      ],
+      detailsTitle: "Il tuo pagamento",
+      details: paymentDetails(payload, ctx, balance ? "Saldo pagato" : "Acconto pagato"),
+      cta: { label: "Apri il lavoro", url: clientJobUrl(payload) },
+      after: [
+        `I soldi arrivano al professionista quando confermi che il lavoro è finito, o ${ONLINE_RELEASE_DAYS} giorni dopo la chiusura. Se qualcosa non va, segnalalo dal lavoro prima di confermare.`,
+        NOT_A_RECEIPT,
+      ],
+    };
+  },
   // Saldo addebitato da solo sulla carta dell'acconto (§267).
   JOB_BALANCE_AUTO_CHARGED: (payload, ctx) => ({
     kind: "notification",
-    subject: "Saldo del lavoro pagato",
+    subject: `Saldo del lavoro pagato${formatEur(payload.amountEurCents) ? `: ${formatEur(payload.amountEurCents)}` : ""}`,
     greeting: ctx.name,
     title: "Saldo pagato",
     paragraphs: [
       `**${pro(ctx)}** ha chiuso il lavoro per **${job(ctx)}**: abbiamo addebitato il saldo sulla carta usata per l'acconto.`,
       "Il professionista riceve i soldi quando confermi il lavoro. Se c'è un problema, segnalalo dalla richiesta.",
     ],
-    details: typeof payload.amountEurCents === "number" ? [{ label: "Saldo pagato", value: formatEur(payload.amountEurCents) }] : undefined,
-    cta: { label: "Conferma il lavoro", url: `${frontendUrl()}/le-mie-richieste` },
+    detailsTitle: "Il tuo pagamento",
+    details: paymentDetails(payload, ctx, "Saldo pagato"),
+    cta: { label: "Conferma il lavoro", url: clientJobUrl(payload) },
+    after: [NOT_A_RECEIPT],
   }),
   JOB_BALANCE_UNPAID: (_payload, ctx) => ({
     kind: "notification",
@@ -2029,11 +2113,11 @@ const BUILDERS: Record<string, Builder> = {
         `Abbiamo rinnovato il tuo abbonamento ${tier}. Grazie per continuare con noi!`.replace(/\s+/g, " "),
         ...(payload.invoice === true ? ["La fattura è in Fatture e documenti, nella tua area."] : []),
       ],
-      details: [
-        ...(typeof payload.amountEurCents === "number" ? [{ label: "Addebito", value: formatEur(payload.amountEurCents) }] : []),
-        ...(str(payload.date) ? [{ label: "Prossimo rinnovo", value: formatDay(str(payload.date)) }] : []),
-      ],
+      detailsTitle: "Il tuo pagamento",
+      details: subscriptionReceiptDetails(payload, tier),
       cta: subscriptionPage(),
+      secondaryLink: payload.invoice === true ? documentsLink() : undefined,
+      after: subscriptionManageNote(payload),
     };
   },
   // Livello scelto o quota di passaggio pagati (collaudo E-13).
@@ -2052,7 +2136,11 @@ const BUILDERS: Record<string, Builder> = {
           ? "La fattura è già in Fatture e documenti, nella tua area."
           : "La fattura la trovi in Fatture e documenti, nella tua area, appena è pronta.",
       ],
-      cta: { label: "Apri Fatture e documenti", url: `${frontendUrl()}/dashboard/documenti` },
+      detailsTitle: "Il tuo pagamento",
+      details: subscriptionReceiptDetails(payload, payload.upgradeFee === true ? `Passaggio a ${tier}`.trim() : tier),
+      cta: subscriptionPage(),
+      secondaryLink: documentsLink(),
+      after: subscriptionManageNote(payload),
     };
   },
   SUBSCRIPTION_ENDING: (payload, ctx) => {

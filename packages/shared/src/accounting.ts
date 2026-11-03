@@ -2,6 +2,7 @@ import { isValidCodiceFiscale, isValidPartitaIva } from "./fiscalValidation";
 import type { ProfessionalCategorySlug } from "./categories";
 import { formatEurCents } from "./professionals";
 import { TRIAL_DAYS, subscriptionTierInfo, type MySubscription } from "./plans";
+import { BRAND } from "./brand";
 
 /**
  * Documenti contabili e fiscali (decisioni dell'utente del 26-27/10/2026,
@@ -180,6 +181,20 @@ export const INVOICE_SOURCE_LABEL: Record<PlatformInvoiceSource, string> = {
   SUBSCRIPTION: "Abbonamento",
   UPGRADE_FEE: "Passaggio al livello superiore",
   VISIBILITY_BOOST: "Pacchetto di visibilità",
+};
+
+/**
+ * Seconda riga della causale nell'XML della fattura: che servizio fatturiamo
+ * (docs/changelog/2026-11-03-piattaforma-di-intermediazione.md). Il sito è una
+ * piattaforma di intermediazione con gli strumenti inclusi, mai "software"
+ * da solo; parole da confermare col commercialista (domanda 87). Massimo 200
+ * caratteri (limite dello SdI).
+ */
+export const INVOICE_SERVICE_CAUSALE: Record<PlatformInvoiceSource, string> = {
+  JOB_FEES: `Commissioni del servizio di intermediazione online ${BRAND.name} sui lavori pagati online.`,
+  SUBSCRIPTION: `Abbonamento al servizio di intermediazione online ${BRAND.name}, strumenti per i professionisti inclusi.`,
+  UPGRADE_FEE: `Passaggio di livello dell'abbonamento al servizio di intermediazione online ${BRAND.name}.`,
+  VISIBILITY_BOOST: `Visibilità nei risultati di ricerca del servizio di intermediazione online ${BRAND.name}.`,
 };
 
 export const invoiceSdiStatuses = ["NOT_SENT", "SENT", "DELIVERED", "REJECTED"] as const;

@@ -326,7 +326,7 @@ function TakeoverCard({ description, city, outOfService }: { description: string
       <YStack gap="2" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4" padding="4">
         <Text fontSize={16} color={brand.grafite} role="status">
           {state === "sent"
-            ? "Fatto: ce ne occupiamo noi. Ti scriviamo all'email del tuo account appena troviamo chi può farlo."
+            ? "Fatto: ce ne occupiamo noi. Ti scriviamo all'email del tuo account appena troviamo chi può farlo, e scegli tu a chi chiedere il preventivo."
             : "Va bene. Se ti serve altro, cerca tra tutti i professionisti."}
         </Text>
         <Link href={searchAll} style={{ alignSelf: "flex-start" }}>

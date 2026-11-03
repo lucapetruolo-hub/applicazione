@@ -11,7 +11,7 @@ import {
   type SubscriptionTier,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
-import { SubscriptionsService } from "../subscriptions/subscriptions.service";
+import { SubscriptionsService, type SavedCard, type SubscriptionReceiptExtras } from "../subscriptions/subscriptions.service";
 import { InvoicesService } from "../accounting/invoices.service";
 import { hasLaunched, launchDate, subscriptionState, tierOfPlan, trialDaysOf, trialEndFor } from "../subscriptions/subscription-rules";
 import { BookingsService } from "../bookings/bookings.service";
@@ -194,6 +194,45 @@ export class BillingService implements OnModuleInit {
     return { url: session.url };
   }
 
+  /**
+   * Carta con cui si paga l'abbonamento, per la pagina Abbonamento e le email
+   * (docs/changelog/2026-11-03-conferme-pagamento-e-abbonamento.md): quella
+   * dell'abbonamento, altrimenti quella predefinita del cliente Stripe. Solo
+   * marca, ultime 4 cifre e scadenza: il numero intero non passa mai da noi.
+   */
+  async savedCard(customerId: string | null, stripeSubscriptionId: string | null): Promise<SavedCard | null> {
+    const stripe = this.stripe;
+    if (!stripe || (!customerId && !stripeSubscriptionId)) return null;
+    try {
+      let method: Stripe.PaymentMethod | null = null;
+      if (stripeSubscriptionId) {
+        const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId, { expand: ["default_payment_method"] });
+        if (subscription.default_payment_method && typeof subscription.default_payment_method !== "string") method = subscription.default_payment_method;
+        if (!customerId) customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
+      }
+      if (!method && customerId) {
+        const customer = await stripe.customers.retrieve(customerId, { expand: ["invoice_settings.default_payment_method"] });
+        const fallback = customer.deleted ? null : customer.invoice_settings?.default_payment_method;
+        if (fallback && typeof fallback !== "string") method = fallback;
+      }
+      const card = method?.card;
+      if (!card?.last4) return null;
+      return { brand: card.brand, last4: card.last4, expMonth: card.exp_month, expYear: card.exp_year, wallet: card.wallet?.type ?? null };
+    } catch (err) {
+      this.logger.warn(`Carta dell'abbonamento non letta: ${(err as Error).message}`);
+      return null;
+    }
+  }
+
+  /** Carta salvata del professionista, per la pagina Abbonamento (null senza carta o senza Stripe). */
+  async mySavedCard(userId: string): Promise<{ card: SavedCard | null }> {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true, stripeCustomerId: true } });
+    if (!profile) throw new NotFoundException("Completa prima il tuo profilo professionista.");
+    const sub = await this.prisma.subscription.findUnique({ where: { professionalProfileId: profile.id }, select: { stripeSubscriptionId: true, status: true } });
+    const subscriptionId = sub?.status === "CANCELED" ? null : (sub?.stripeSubscriptionId ?? null);
+    return { card: await this.savedCard(profile.stripeCustomerId, subscriptionId) };
+  }
+
   private cardOnlyPortalId: string | null = null;
 
   /** Configurazione del portale "solo la carta", creata la prima volta e poi ritrovata dai metadati. */
@@ -249,6 +288,17 @@ export class BillingService implements OnModuleInit {
     return [taxRate];
   }
 
+  /** Imponibile, carta e prossimo addebito di una fattura pagata, per le email dell'abbonamento. */
+  private async receiptExtras(invoice: Stripe.Invoice, customerId: string | null, stripeSubscriptionId: string | null): Promise<SubscriptionReceiptExtras> {
+    const periodEnd = stripeSubscriptionId ? invoice.lines?.data?.find((line) => line.amount > 0)?.period?.end : undefined;
+    return {
+      netEurCents: typeof invoice.total_excluding_tax === "number" ? invoice.total_excluding_tax : null,
+      card: await this.savedCard(customerId, stripeSubscriptionId),
+      paidAt: invoice.status_transitions?.paid_at ? new Date(invoice.status_transitions.paid_at * 1000) : new Date(),
+      nextPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,
+    };
+  }
+
   /** Avviso del pagamento di un livello o di una quota di passaggio, con il livello pagato. */
   private async notifySubscriptionPaid(invoice: Stripe.Invoice, stripeSubscriptionId: string | null, invoiceIssued: boolean): Promise<void> {
     const metadata = invoice.metadata ?? {};
@@ -265,6 +315,7 @@ export class BillingService implements OnModuleInit {
       upgradeFee: metadata.kind === "tier_upgrade_fee",
       amountEurCents: invoice.amount_paid ?? 0,
       invoiceIssued,
+      ...(await this.receiptExtras(invoice, customerId, stripeSubscriptionId)),
     });
   }
 
@@ -864,12 +915,15 @@ export class BillingService implements OnModuleInit {
       }
       if (stripeSubscriptionId) {
         const periodEnd = invoice.lines?.data?.[0]?.period?.end;
+        const customerId = typeof invoice.customer === "string" ? invoice.customer : (invoice.customer?.id ?? null);
         await this.subscriptionsService.onInvoice(stripeSubscriptionId, {
           paid: event.type === "invoice.paid",
           renewal,
           amountEurCents: invoice.amount_paid ?? 0,
           nextPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,
           invoiceIssued,
+          // Riepilogo nell'email del rinnovo: si legge da Stripe solo per i rinnovi pagati.
+          ...(renewal && event.type === "invoice.paid" ? await this.receiptExtras(invoice, customerId, stripeSubscriptionId) : {}),
         });
         const subscriptionRow = renewal && event.type === "invoice.paid" && invoice.amount_paid > 0
           ? await this.prisma.subscription.findUnique({ where: { stripeSubscriptionId } })
