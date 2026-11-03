@@ -1,10 +1,23 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Icon, brand } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { notificationDeepLink } from "@/lib/notificationSections";
 import { notificationTopicStyle } from "@/lib/notificationTopicStyle";
+
+/**
+ * Foto del lavoro nel popup di un nuovo messaggio, al posto dell'icona
+ * (docs/changelog/2026-11-03-foto-richiesta-nei-messaggi.md). Solo un
+ * indirizzo di Cloudinary, l'unico da cui il sito carica le foto.
+ */
+function chatToastPhoto(type: string, payload: unknown): string | null {
+  if (type !== "TIMELINE_MESSAGE_FROM_CLIENT" && type !== "TIMELINE_MESSAGE_FROM_PROFESSIONAL") return null;
+  if (!payload || typeof payload !== "object") return null;
+  const url = (payload as Record<string, unknown>).requestPhotoUrl;
+  return typeof url === "string" && url.startsWith("https://res.cloudinary.com/") ? url : null;
+}
 
 function ToastCard({
   id,
@@ -29,6 +42,7 @@ function ToastCard({
   // Titolo, icona e colore dell'argomento (docs/CHANGELOG.md §152).
   const topic = notificationTopicStyle(type, isProfessional);
   const aggregated = id.startsWith("batch-");
+  const photo = aggregated ? null : chatToastPhoto(type, payload);
 
   return (
     <div className="toast-card" role="status" style={{ borderLeftColor: topic.color }}>
@@ -41,9 +55,15 @@ function ToastCard({
         }}
         aria-label={destination ? `${message} — apri` : `${message} — chiudi`}
       >
-        <span className="toast-card-icon" style={{ background: topic.tint }}>
-          <Icon name={aggregated ? "bell-ring" : topic.icon} size={18} color={aggregated ? brand.grafite : topic.color} />
-        </span>
+        {photo ? (
+          <span className="toast-card-icon toast-card-photo">
+            <Image src={photo} alt="" width={36} height={36} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </span>
+        ) : (
+          <span className="toast-card-icon" style={{ background: topic.tint }}>
+            <Icon name={aggregated ? "bell-ring" : topic.icon} size={18} color={aggregated ? brand.grafite : topic.color} />
+          </span>
+        )}
         <span className="toast-card-text">
           <span className="toast-card-title" style={{ color: aggregated ? brand.grafite70 : topic.color }}>
             {aggregated ? "Aggiornamenti" : topic.title}

@@ -14,7 +14,8 @@ function formatThreadTimestamp(iso: string): string {
 
 /** Lato della foto nella riga: uguale con e senza foto della richiesta, così i testi restano allineati. */
 const PICTURE_SIZE = 56;
-const SMALL_AVATAR = 26;
+/** Foto della persona sopra la foto del lavoro: 30 px, abbastanza per riconoscerla anche dal telefono. */
+const SMALL_AVATAR = 30;
 
 /**
  * Foto della riga (docs/changelog/2026-11-03-foto-richiesta-nei-messaggi.md,
@@ -42,7 +43,7 @@ function ThreadPicture({ thread }: { thread: ChatThreadSummary }) {
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
         />
       </YStack>
-      <YStack position="absolute" right={-6} bottom={-6} padding={2} borderRadius={(SMALL_AVATAR + 4) / 2} backgroundColor={brand.calce}>
+      <YStack position="absolute" right={-7} bottom={-7} padding={2} borderRadius={(SMALL_AVATAR + 4) / 2} backgroundColor={brand.calce}>
         <Avatar name={thread.otherPartyName} imageUrl={thread.otherPartyImageUrl} size={SMALL_AVATAR} />
       </YStack>
     </YStack>

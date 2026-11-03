@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundEx
 import type { ConversationEvent as ConversationEventRow, PrismaClient } from "@professionisti/database";
 import { chatContactBlockedMessage, chatContactKind, type ChatThreadSummary, type ConversationEvent, type RealtimeEvent } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { requestThumbnailUrl } from "./request-thumbnail";
 import { NotificationsService } from "../notifications/notifications.service";
 import { RealtimeService } from "../realtime/realtime.service";
 import { clientNameForProfessional } from "../common/client-name.util";
@@ -60,7 +61,7 @@ export class TimelineService {
     );
     // Richiesta eliminata dal cliente (docs/CHANGELOG.md §343): la chat resta
     // da leggere, ma nessuno dei due può più scrivere.
-    const request = await this.prisma.guidedRequest.findUnique({ where: { id: guidedRequestId }, select: { deletedByClientAt: true } });
+    const request = await this.prisma.guidedRequest.findUnique({ where: { id: guidedRequestId }, select: { deletedByClientAt: true, photoUrls: true } });
     if (request?.deletedByClientAt) {
       throw new ForbiddenException("Il cliente ha ritirato questa richiesta: non si possono più inviare messaggi.");
     }
@@ -78,7 +79,14 @@ export class TimelineService {
     // per instradare correttamente il click sul toast (notificationSections.ts).
     const recipientUserId = actor === "CLIENT" ? professionalUserId : clientUserId;
     const notificationType = actor === "CLIENT" ? "TIMELINE_MESSAGE_FROM_CLIENT" : "TIMELINE_MESSAGE_FROM_PROFESSIONAL";
-    await this.notificationsService.notify(recipientUserId, notificationType, { guidedRequestId, professionalProfileId });
+    // Foto del lavoro nel popup del nuovo messaggio
+    // (docs/changelog/2026-11-03-foto-richiesta-nei-messaggi.md): la vedono già tutti e due.
+    const requestPhotoUrl = requestThumbnailUrl(request?.photoUrls ?? []);
+    await this.notificationsService.notify(recipientUserId, notificationType, {
+      guidedRequestId,
+      professionalProfileId,
+      ...(requestPhotoUrl ? { requestPhotoUrl } : {}),
+    });
     this.publishChatMessage(guidedRequestId, professionalProfileId, event, { clientUserId, professionalUserId });
     return this.serializeEvent(event);
   }
@@ -314,23 +322,4 @@ export class TimelineService {
     ]);
     return Boolean(lead || quote || systemEvent);
   }
-}
-
-const VIDEO_EXTENSION = /\.(mp4|webm|mov|m4v|avi|mkv|ogv)$/i;
-
-/**
- * Miniatura della richiesta per la lista delle chat: la prima foto; se ci sono
- * solo video, il primo fotogramma del primo video su Cloudinary (stesso
- * indirizzo con `.jpg`, ritagliato da Cloudinary). Nessuna miniatura per un video
- * altrove (docs/changelog/2026-11-03-foto-richiesta-nei-messaggi.md).
- */
-export function requestThumbnailUrl(photoUrls: string[]): string | null {
-  const isVideo = (url: string) => VIDEO_EXTENSION.test(url.split("?")[0] ?? "");
-  const photo = photoUrls.find((url) => !isVideo(url));
-  if (photo) return photo;
-  const video = photoUrls.find((url) => url.startsWith("https://res.cloudinary.com/") && url.includes("/video/upload/"));
-  if (!video) return null;
-  // Fotogramma iniziale già ritagliato a 112 px (la miniatura è 56 px, doppio
-  // per gli schermi del telefono): non si scarica il fotogramma intero.
-  return (video.split("?")[0] ?? video).replace("/video/upload/", "/video/upload/so_0,c_fill,w_112,h_112/").replace(VIDEO_EXTENSION, ".jpg");
 }

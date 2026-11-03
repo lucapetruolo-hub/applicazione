@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "@professionisti/database";
-import { TimelineService, requestThumbnailUrl } from "./timeline.service";
+import { TimelineService } from "./timeline.service";
+import { requestThumbnailUrl } from "./request-thumbnail";
+import { chatMessageEmail } from "../email/templates/notification-emails";
 
 /** Foto della richiesta nella lista delle chat (docs/changelog/2026-11-03-foto-richiesta-nei-messaggi.md). */
 describe("requestThumbnailUrl", () => {
@@ -51,5 +53,20 @@ describe("listThreadsForUser, foto della richiesta", () => {
   it("sparisce con la richiesta ritirata o l'account del cliente eliminato", async () => {
     expect((await thread({ withdrawn: true }).listThreadsForUser("professionista"))[0]?.requestPhotoUrl).toBeNull();
     expect((await thread({ clientDeleted: true }).listThreadsForUser("professionista"))[0]?.requestPhotoUrl).toBeNull();
+  });
+});
+
+describe("email del nuovo messaggio", () => {
+  const ctx = { name: "Anna", category: "Idraulico", city: "Latina", businessName: "Idraulica Bianchi", when: null, proposedWhen: null };
+  it("mostra la prima foto della richiesta, piccola", () => {
+    const email = chatMessageEmail("TIMELINE_MESSAGE_FROM_PROFESSIONAL", 1, ctx, "https://sito/chat", [
+      "https://res.cloudinary.com/demo/image/upload/v1/r/lavello.jpg",
+      "https://res.cloudinary.com/demo/image/upload/v1/r/altra.jpg",
+    ]);
+    expect(email.detailImages?.images).toHaveLength(1);
+    expect(email.detailImages?.images[0]?.href).toBe("https://res.cloudinary.com/demo/image/upload/v1/r/lavello.jpg");
+  });
+  it("senza foto nessun riquadro di foto", () => {
+    expect(chatMessageEmail("TIMELINE_MESSAGE_FROM_CLIENT", 2, ctx, "https://sito/chat").detailImages).toBeUndefined();
   });
 });

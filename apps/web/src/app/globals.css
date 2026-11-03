@@ -4551,6 +4551,12 @@ a.admin-kpi:hover {
   align-items: center;
   justify-content: center;
 }
+/* Foto del lavoro al posto dell'icona (docs/changelog/2026-11-03-foto-richiesta-nei-messaggi.md). */
+.toast-card-photo {
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fdefe1;
+}
 .toast-card-text {
   display: flex;
   flex-direction: column;

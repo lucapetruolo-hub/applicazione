@@ -19,6 +19,16 @@ grande e in piccolo la foto del profilo; senza foto, solo la foto del profilo.
 - Senza foto: solo la foto dell'altra parte, come prima. Il posto della foto è
   largo uguale nei due casi, così i testi restano allineati.
 
+**Secondo giro (03/11, migliorie scelte da Luca)**:
+- La foto piccola della persona passa da 26 a 30 px, per riconoscerla meglio
+  dal telefono.
+- Popup del nuovo messaggio: la foto del lavoro (36 px, angoli 10 px) al posto
+  dell'icona. L'indirizzo viaggia nella notifica (`requestPhotoUrl`), solo se
+  di Cloudinary.
+- Email "Nuovo messaggio in chat": la prima foto della richiesta piccola nel
+  riquadro, come nell'email della richiesta (`requestPhotos`). Niente foto con
+  la richiesta ritirata o l'account del cliente eliminato.
+
 **Privacy**: le foto della richiesta le vedono già tutti e due (CLAUDE.md §5
 punto 9), quindi non si mostra niente di nuovo. La miniatura non c'è con la
 richiesta ritirata dal cliente o con il suo account eliminato.

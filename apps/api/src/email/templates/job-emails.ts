@@ -135,7 +135,7 @@ function requestPlaceDetail(summary: RequestSummary, city: string | null): { lab
  * Cloudinary a 176×176, per gli schermi ad alta densità. Un indirizzo non di
  * Cloudinary si mostra così com'è, un video non di Cloudinary si salta.
  */
-function requestPhotos(urls: string[] | undefined): { label: string; images: { src: string; href: string }[] } | undefined {
+export function requestPhotos(urls: string[] | undefined): { label: string; images: { src: string; href: string }[] } | undefined {
   const images = (urls ?? []).flatMap((url) => {
     const thumb = cloudinaryThumbnail(url);
     return thumb ? [{ src: thumb, href: url }] : [];

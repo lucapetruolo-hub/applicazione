@@ -384,9 +384,14 @@ export class NotificationsService {
     if (!user?.email || user.deletedAt) return;
     const context = { ...(await this.emailContext({ guidedRequestId: input.guidedRequestId, professionalProfileId: input.professionalProfileId })), name: user.name };
     const emailOff = emailOffFor(userId, input.type, user);
+    // Foto del lavoro, come nella lista dei messaggi (docs/changelog/2026-11-03-foto-richiesta-nei-messaggi.md).
+    const request = await this.prisma.guidedRequest
+      .findUnique({ where: { id: input.guidedRequestId }, select: { photoUrls: true, deletedByClientAt: true, client: { select: { deletedAt: true } } } })
+      .catch(() => null);
+    const photoUrls = request && !request.deletedByClientAt && !request.client.deletedAt ? request.photoUrls : [];
     await this.emailService.send({
       to: user.email,
-      ...renderEmail({ ...chatMessageEmail(input.type, input.count, context, chatUrl(input.type, input)), emailOff }),
+      ...renderEmail({ ...chatMessageEmail(input.type, input.count, context, chatUrl(input.type, input), photoUrls), emailOff }),
       ...unsubscribeHeaders(emailOff),
     });
   }
