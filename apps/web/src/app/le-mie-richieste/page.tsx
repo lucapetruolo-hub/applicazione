@@ -150,16 +150,18 @@ function LeMieRichiesteContent() {
   // pezzi invece che in un blocco unico che su un telefono lento fermava la pagina.
   const reload = useCallback(() => {
     if (!token) return;
-    apiClient
-      .myGuidedRequests(token)
-      .then((loaded) => startTransition(() => setRequests(loaded)))
-      .catch((err) => startTransition(() => setError(err instanceof Error ? err.message : "Errore nel caricamento delle richieste.")));
-    // In errore restano le prenotazioni già caricate (il prossimo giro le
-    // riprova), non una lista vuota che sposterebbe le richieste di fase.
-    apiClient
-      .myClientBookings(token)
-      .then((loaded) => startTransition(() => setBookings(loaded)))
-      .catch(() => startTransition(() => setBookings((prev) => prev ?? [])));
+    // Richieste e lavori arrivano insieme in un solo ridisegno: una lista
+    // mostrata prima dell'altra spostava le schede già sullo schermo (CLS).
+    void Promise.allSettled([apiClient.myGuidedRequests(token), apiClient.myClientBookings(token)]).then(([loadedRequests, loadedBookings]) =>
+      startTransition(() => {
+        if (loadedRequests.status === "fulfilled") setRequests(loadedRequests.value);
+        else setError(loadedRequests.reason instanceof Error ? loadedRequests.reason.message : "Errore nel caricamento delle richieste.");
+        // In errore restano le prenotazioni già caricate (il prossimo giro le
+        // riprova), non una lista vuota che sposterebbe le richieste di fase.
+        if (loadedBookings.status === "fulfilled") setBookings(loadedBookings.value);
+        else setBookings((prev) => prev ?? []);
+      }),
+    );
   }, [token]);
 
   useEffect(reload, [reload]);
@@ -467,7 +469,9 @@ function LeMieRichiesteContent() {
           </Text>
         ) : null}
 
-        {requests !== null && requests.length > 0 && !singleRequest ? (
+        {/* Anche durante il caricamento: le schede arrivano sotto le schede di
+            stadio già al loro posto, invece di essere spinte giù (CLS). */}
+        {requests === null || (requests.length > 0 && !singleRequest) ? (
           <>
             {/* Tab per stadio — stessa riga scorrevole di /dashboard/richieste
                 (frecce riusate da CategoryCarousel), etichette adattate al

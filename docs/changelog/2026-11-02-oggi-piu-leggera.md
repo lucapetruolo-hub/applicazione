@@ -172,3 +172,21 @@ solo quando il dito o il mouse ci passa sopra.
 
 **Verifica**: tutte le prove nel browser del telefono in Italia (136) verdi;
 typecheck e lint del sito verdi.
+
+## Settimo giro: Le mie richieste senza salti
+
+Nella CI, dopo il sesto giro, tutte le pagine sotto il limite (Oggi 145 ms
+contro 549 del ramo principale, Agenda 182, Orari 150), ma "Le mie richieste"
+aveva un CLS di 0,157: le schede comparivano e poi venivano spinte giù.
+
+- Richieste e lavori arrivano insieme in un solo ridisegno
+  (`Promise.allSettled` in `reload`): mostrarne una lista prima dell'altra
+  cambiava le schede già sullo schermo.
+- Le schede di stadio ("Tutte", "In attesa"...) e "Filtri" si vedono già
+  durante il caricamento: prima comparivano solo con i dati e spingevano giù
+  le schede di 146 px sul telefono. Chi ha una sola richiesta le vede sparire
+  all'arrivo dei dati, come prima la lista provvisoria.
+
+**Misura** (telefono rallentato 4x, 3 giri): CLS da 0,157 a 0,001.
+**Verifica**: prove nel browser del telefono in Italia verdi (139; una prova
+admin lenta passata da sola); typecheck e lint verdi.
