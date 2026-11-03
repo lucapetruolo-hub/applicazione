@@ -278,6 +278,9 @@ export function auditLabel(row: { entityType: string; fieldName: string | null; 
     case "SubscriptionOffer":
       if (fieldName === "stoppedAt") return "Offerta dei mesi gratis fermata";
       return `Nuova offerta: ${asText(value)} ${asText(value) === "1" ? "mese" : "mesi"} Base gratis`;
+    // Proposte da approvare in Admin (docs/changelog/2026-11-03-automazioni-admin.md): cosa proponeva è nel motivo.
+    case "AdminProposal":
+      return value === "APPROVED" ? "Proposta approvata" : value === "SNOOZED" ? "Proposta rimandata di 14 giorni" : "Proposta rifiutata per sempre";
     case "ProblemTakeover":
       return value === "DONE" ? "Richiesta da seguire segnata come fatta" : "Richiesta da seguire riaperta";
     default:

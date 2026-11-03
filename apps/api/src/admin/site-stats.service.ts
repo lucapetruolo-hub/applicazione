@@ -471,10 +471,12 @@ export class SiteStatsService {
   async weeklyAdvice(now: Date = new Date()): Promise<AdminSiteStats["advice"] | null> {
     if (!hasLaunched(now, launchDate())) return null;
     const { advice } = await this.getStats(now);
-    if (advice.length === 0) return advice;
-    this.logger.log(`Consigli della settimana: ${advice.map((a) => a.key).join(", ")}`);
+    // Proposte da approvare in Da fare (docs/changelog/2026-11-03-automazioni-admin.md): l'email ne dice il numero.
+    const proposals = await this.prisma.adminProposal.count({ where: { OR: [{ status: "PENDING" }, { status: "SNOOZED", snoozedUntil: { lte: now } }] } });
+    if (advice.length === 0 && proposals === 0) return advice;
+    this.logger.log(`Consigli della settimana: ${advice.map((a) => a.key).join(", ")}; proposte da approvare: ${proposals}`);
     const admins = await this.prisma.user.findMany({ where: { role: "ADMIN", deletedAt: null }, select: { id: true, adminRoles: true } });
-    const payload = { advice: advice.map((a) => ({ level: a.level, title: a.title, todo: a.todo })) };
+    const payload = { advice: advice.map((a) => ({ level: a.level, title: a.title, todo: a.todo })), proposals };
     for (const admin of admins) {
       const roles = admin.adminRoles ?? [];
       if (roles.length === 0 || roles.includes("SUPER")) {

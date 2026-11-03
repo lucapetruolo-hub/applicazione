@@ -189,3 +189,36 @@ export function serviceNameMatches(name: string, query: string): boolean {
 export const ALL_SUGGESTED_SERVICES: readonly string[] = [...new Set(Object.values(POPULAR_SERVICES).flat())].sort((a, b) =>
   a.localeCompare(b, "it"),
 );
+
+/** Lettere da cambiare per passare da una parola all'altra (distanza di Levenshtein). */
+function editDistance(a: string, b: string): number {
+  let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j++) {
+      current[j] = Math.min(previous[j]! + 1, current[j - 1]! + 1, previous[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    previous = current;
+  }
+  return previous[b.length]!;
+}
+
+/**
+ * Due nomi di prestazione quasi uguali, da proporre di unire in Admin
+ * (docs/changelog/2026-11-03-automazioni-admin.md): stesse parole in un
+ * altro ordine ("Caldaia pulizia") o un errore di battitura ("Pulzia
+ * caldaia"). Articoli e plurali li unisce già `serviceNameKey`. Mai due nomi
+ * corti: "Taglio siepi" e "Taglio sieps" sì, "Posa" e "Pose" no.
+ */
+export function nearlySameServiceName(a: string, b: string): boolean {
+  const keyA = serviceNameKey(a);
+  const keyB = serviceNameKey(b);
+  if (!keyA || !keyB || keyA === keyB) return false;
+  const sorted = (key: string) => key.split(" ").sort().join(" ");
+  if (sorted(keyA) === sorted(keyB)) return true;
+  const shorter = Math.min(keyA.length, keyB.length);
+  const allowed = shorter >= 14 ? 2 : shorter >= 8 ? 1 : 0;
+  // Un numero diverso è un'altra prestazione ("Trasloco 2 locali" e "Trasloco 3 locali").
+  if (allowed === 0 || keyA.replace(/\D/g, "") !== keyB.replace(/\D/g, "")) return false;
+  return editDistance(keyA, keyB) <= allowed;
+}

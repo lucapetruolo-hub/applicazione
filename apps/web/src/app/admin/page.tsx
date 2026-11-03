@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useAdminOverview } from "@/components/admin/AdminOverviewContext";
 import { AdminPill, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SiteAdviceList } from "@/components/admin/SiteAdviceList";
+import { AdminProposalsPanel } from "@/components/admin/AdminProposalsPanel";
 import { SkeletonTableRows } from "@/components/Skeleton";
 import type { SiteAdvice } from "@professionisti/shared";
 
@@ -131,6 +132,9 @@ function DaFare() {
       <Text color={brand.grafite70} marginTop={-8}>
         Tutto quello che aspetta una decisione, prima i pericoli e quello che scade prima.
       </Text>
+
+      {/* Modifiche già pronte da approvare con un clic (docs/changelog/2026-11-03-automazioni-admin.md). */}
+      {token ? <AdminProposalsPanel token={token} /> : null}
 
       {isSuper && advice && advice.length > 0 ? (
         <YStack gap="2">

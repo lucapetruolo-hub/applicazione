@@ -31,6 +31,7 @@ import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
   // §88) vivono nei propri moduli ma restano protetti dallo stesso gate
   // amministratori — stessa istanza/dipendenze (PRISMA, globale) di quella
   // già in uso su AdminController.
-  exports: [AdminGuard],
+  // AdminService: le proposte da approvare eliminano gli account di prova con lo stesso servizio del pulsante.
+  exports: [AdminGuard, AdminService],
 })
 export class AdminModule {}

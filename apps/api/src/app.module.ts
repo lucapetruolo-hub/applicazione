@@ -40,6 +40,7 @@ import { IdentityVerificationModule } from "./identity-verification/identity-ver
 import { ProfessionalVerificationModule } from "./professional-verification/professional-verification.module";
 import { ClientInvoiceRequestsModule } from "./client-invoice-requests/client-invoice-requests.module";
 import { AccountingModule } from "./accounting/accounting.module";
+import { AdminProposalsModule } from "./admin-proposals/admin-proposals.module";
 import { GeneralRequestsAdminModule } from "./general-requests/general-requests-admin.module";
 import { WhatsAppModule } from "./whatsapp/whatsapp.module";
 import { UrgencyMetricsModule } from "./urgency-metrics/urgency-metrics.module";
@@ -125,6 +126,7 @@ import { ProblemMatchModule } from "./problem-match/problem-match.module";
     TaxIdCheckModule,
     IdentityVerificationModule,
     GeneralRequestsAdminModule,
+    AdminProposalsModule,
     UrgencyMetricsModule,
     WhatsAppModule,
   ],

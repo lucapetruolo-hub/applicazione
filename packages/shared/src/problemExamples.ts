@@ -112,3 +112,25 @@ export const VISIBLE_PROBLEM_EXAMPLES = 5;
 /** Nel campo vuoto: 2 frasi a rotazione tra le 4 successive. */
 export const FIELD_PROBLEM_EXAMPLES = 2;
 export const FIELD_PROBLEM_EXAMPLES_POOL = 4;
+
+/**
+ * Frasi pronte da proporre in Admin per i mestieri senza una frase d'esempio
+ * (docs/changelog/2026-11-03-automazioni-admin.md): tutte riconosciute con
+ * sicurezza dal dizionario (lo controlla `problemExamples.test.ts`), la prima
+ * libera è quella proposta.
+ */
+export const SUGGESTED_PROBLEM_EXAMPLES: Record<ProfessionalCategorySlug, readonly string[]> = {
+  idraulico: ["Il rubinetto perde", "Scarico intasato", "Lo sciacquone perde acqua"],
+  elettricista: ["Salta la corrente", "Impianto elettrico da rifare"],
+  imbianchino: ["Imbiancare una stanza"],
+  pulizie: ["Pulizia di casa a fondo", "Pulizie dopo i lavori", "Pulizia delle scale del condominio"],
+  giardiniere: ["Prato da tagliare", "Potare la siepe", "Potatura degli alberi"],
+  traslochi: ["Trasloco di un bilocale", "Trasportare un divano"],
+  fabbro: ["Serratura bloccata", "Porta blindata che non si apre", "Cambiare la serratura"],
+  climatizzazione: ["Condizionatore che non raffredda", "Caldaia in blocco", "Installare un condizionatore"],
+  muratore: ["Crepe nel muro", "Rifare il bagno", "Infiltrazioni dal terrazzo"],
+  falegname: ["Armadio in legno su misura"],
+  tuttofare: ["Montare una mensola"],
+  dogsitter: ["Passeggiate per il cane", "Qualcuno che porti fuori il cane", "Tenere il cane nel weekend"],
+  babysitter: ["Babysitter per la sera"],
+};

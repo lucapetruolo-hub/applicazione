@@ -3346,3 +3346,33 @@ model TermsChangeNotice {
 
   @@map("terms_change_notices")
 }
+
+// Proposte da approvare in Admin (richiesta di Luca,
+// docs/changelog/2026-11-03-automazioni-admin.md): ogni notte il sito prepara
+// una modifica già pronta (una frase d'esempio, una parola per il dizionario,
+// un'email…), l'admin la vede in cima a "Da fare" e la approva con un clic.
+// "Approva" esegue lo stesso servizio del pulsante a mano della pagina di
+// sempre, con lo stesso permesso e lo stesso registro azioni. `key` dice
+// cosa propone (es. "EXAMPLE_PHRASE:dogsitter"): "No, mai" la ferma per
+// sempre, "Non ora" per 14 giorni.
+model AdminProposal {
+  id           String    @id @default(uuid())
+  key          String    @unique
+  kind         String
+  // PENDING, APPROVED, SNOOZED, REJECTED.
+  status       String    @default("PENDING")
+  // Dati per eseguirla e per l'anteprima (tipo `AdminProposal` in packages/shared).
+  payload      Json
+  // Più alto = più utile: in cima.
+  score        Int       @default(0)
+  snoozedUntil DateTime?
+  decidedAt    DateTime?
+  decidedById  String?
+  // Cosa è successo approvando (es. "3 email inviate, 1 non partita").
+  result       String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now()) @updatedAt
+
+  @@index([status])
+  @@map("admin_proposals")
+}

@@ -159,7 +159,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
     return Array.isArray(missing) && missing.includes("CARD") ? "/dashboard/abbonamento#livelli" : "/dashboard";
   }
   if (type === "AGENDA_REMINDER") return "/dashboard/agenda?tab=disponibilita";
-  if (type === "AWAY_ENDING") return "/dashboard/agenda?tab=orari";
+  if (type === "AWAY_ENDING" || type === "AWAY_SUGGESTED") return "/dashboard/agenda?tab=orari";
   if (type === "AGENDA_TOMORROW_SUMMARY") return "/dashboard/agenda";
   if (type.startsWith("IDENTITY_VERIFICATION_") || type === "PROFILE_VERIFICATION_REMOVED") return "/dashboard/verifica-identita";
   if (type === "ADMIN_JOB_BALANCE_UNPAID" || type === "ADMIN_JOB_NOT_CLOSED" || type === "ADMIN_STRIPE_DISPUTE" || type === "ADMIN_STRIPE_DISPUTE_DUE" || type === "ADMIN_JOB_PAYMENT_LONG_HOLD" || type === "ADMIN_JOB_REFUND_FAILED" || type === "ADMIN_STRIPE_ACCOUNT_UNREADABLE") return "/admin/pagamenti";
