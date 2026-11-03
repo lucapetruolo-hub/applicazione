@@ -80,7 +80,10 @@ controllo Lighthouse le pagine del cliente, che non erano misurate).
   cliente degli appuntamenti di prova, stesso limite di 500 ms. Se la sessione
   del cliente non si apre la prova si ferma (mai misurare la pagina "Accedi").
   Il cliente di prova ora ha la password (`e2e/fixtures/global-setup.ts`,
-  `clientToken` in `.auth/data.json`).
+  `clientEmail` in `.auth/data.json`) e accede solo dentro la prova
+  Lighthouse: con l'accesso in `global-setup` una metà delle prove nel browser
+  superava il limite di 10 accessi al minuto (D2 delle doppie prenotazioni
+  falliva nella CI).
 - **"Le mie richieste" più leggera**: la prima misura in locale era 700 ms,
   la più pesante di tutte. Stessa cura di Oggi (risposte con
   `startTransition`) e in più all'apertura le richieste e i lavori non

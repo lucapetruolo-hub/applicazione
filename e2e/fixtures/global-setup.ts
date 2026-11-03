@@ -132,19 +132,17 @@ export default async function globalSetup(): Promise<void> {
       },
     });
 
-    const login = async (email: string | null): Promise<string> => {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password: PASSWORD }),
-      });
-      if (!response.ok) throw new Error(`Accesso di prova non riuscito: ${response.status} ${await response.text()}`);
-      return ((await response.json()) as { token: string }).token;
-    };
-    const token = await login(pro.email);
-    const clientToken = await login(client.email);
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: pro.email, password: PASSWORD }),
+    });
+    if (!response.ok) throw new Error(`Accesso di prova non riuscito: ${response.status} ${await response.text()}`);
+    const { token } = (await response.json()) as { token: string };
 
-    const data: E2eData = { token, clientToken, userId: pro.id, bookings, externalJob: { id: externalJob.id, wallClock: "2026-10-26 17:00" }, multiDayBookingId: multiDay.id, publicProfileId: publicProfile.id };
+    // Il cliente entra solo nella prova Lighthouse, non qui: l'accesso ha un
+    // limite di 10 al minuto e le prove ne fanno già molti.
+    const data: E2eData = { token, clientEmail: client.email!, userId: pro.id, bookings, externalJob: { id: externalJob.id, wallClock: "2026-10-26 17:00" }, multiDayBookingId: multiDay.id, publicProfileId: publicProfile.id };
     mkdirSync(dirname(DATA_FILE), { recursive: true });
     writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
     // Sessione già aperta e banner cookie già chiuso, come per un professionista che torna sul sito.

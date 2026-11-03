@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 /** Appuntamenti creati da global-setup, letti dalle prove. */
 export type E2eData = {
   token: string;
-  /** Sessione del cliente degli appuntamenti, per le misure delle sue pagine. */
-  clientToken: string;
+  /** Cliente degli appuntamenti (password come il professionista): la prova Lighthouse misura le sue pagine. */
+  clientEmail: string;
   userId: string;
   /** Ora italiana attesa per ogni appuntamento, "AAAA-MM-GG HH:MM". */
   bookings: { id: string; label: string; wallClock: string }[];

@@ -72,7 +72,15 @@ const RUNS = 3;
 let clientSignedIn = false;
 for (const item of pages) {
   if (item.client && !clientSignedIn) {
-    await signIn(data.clientToken);
+    // Accesso del cliente qui e non in global-setup: l'accesso ha un limite
+    // di 10 al minuto e le prove nel browser ne fanno già molti.
+    const login = await fetch(`${process.env.E2E_API_URL ?? "http://localhost:3001"}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: data.clientEmail, password: "Password123!" }),
+    });
+    if (!login.ok) throw new Error(`Accesso del cliente non riuscito: ${login.status}`);
+    await signIn((await login.json()).token);
     // Anche qui la sessione deve funzionare davvero, non la pagina "Accedi".
     await page.goto(`${WEB_URL}${item.path}`);
     await page.waitForLoadState("networkidle");
