@@ -12,6 +12,7 @@ import { CARD_PHOTO, ProfessionalAvatar } from "@/components/ProfessionalAvatar"
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { useSavedProfessionals } from "@/lib/useSavedProfessionals";
 import { navigateWithTransition } from "@/lib/viewTransition";
+import { CHOICE_PROFILE_PARAM } from "@/lib/chosenProsStore";
 import type { MapBounds } from "./ResultsMap";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
@@ -121,6 +122,9 @@ export function ResultsListWithMap({
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   const router = useRouter();
+  // Con "Scegli" il profilo sa di arrivare da qui: mostra "Torna ai risultati"
+  // e lo stesso "Scegli" (docs/changelog/2026-11-03-scelti-restano.md).
+  const fromChoice: Record<string, string> = selection ? { [CHOICE_PROFILE_PARAM]: "1" } : {};
   const { canSave, savedIds, pendingId, toggleSave } = useSavedProfessionals();
   const fallbackCenter = cityCenter;
   // Nessuno entro il raggio di ricerca: l'API ha allargato fino al
@@ -740,10 +744,10 @@ export function ResultsListWithMap({
               // con l'agenda su quel tab (richiesta esplicita dell'utente) —
               // letto da ProfessionalDetailContent via `?modalita=`, stesso
               // parametro già usato per precompilare /preventivo.
-              href={profileHref(pro, defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {})}
+              href={profileHref(pro, { ...fromChoice, ...(defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {}) })}
               onPress={() =>
                 navigateWithTransition(() =>
-                  router.push(profileHref(pro, defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {})),
+                  router.push(profileHref(pro, { ...fromChoice, ...(defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {}) })),
                 )
               }
               // Click su un orario libero della mini-agenda (o sul bottone
@@ -776,7 +780,7 @@ export function ResultsListWithMap({
               // (richiesta esplicita dell'utente, docs/CHANGELOG.md §206).
               onAgendaPress={(date, mode) =>
                 navigateWithTransition(() =>
-                  router.push(`${profileHref(pro, { data: date, ...(mode === "ONLINE" ? { modalita: "ONLINE" } : {}) })}#agenda`),
+                  router.push(`${profileHref(pro, { ...fromChoice, data: date, ...(mode === "ONLINE" ? { modalita: "ONLINE" } : {}) })}#agenda`),
                 )
               }
               // Cuoricino piccolo nell'angolo della foto (richiesta esplicita
