@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eyebrow, Icon, SearchBar, Text, XStack, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
@@ -23,11 +24,19 @@ import { MagneticButton } from "./MagneticButton";
 export function HomeHero() {
   const router = useRouter();
   const searchHints = useSearchBarHints("");
+  // Attesa della ricerca per problema: il sito chiede al dizionario e, nei
+  // casi dubbi, all'intelligenza artificiale (fino a 3 secondi). Intanto nel
+  // riquadro compaiono le luci, veloci, e "Cerco chi ti serve…"
+  // (docs/changelog/2026-11-03-luci-che-accelerano.md).
+  const [navigating, startNavigation] = useTransition();
+  const [problemSearch, setProblemSearch] = useState(false);
+  const searching = problemSearch && navigating;
 
   async function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
     rememberSearchCity(params.city);
     const destination = await buildSearchDestination(params);
-    navigateWithTransition(() => router.push(destination));
+    setProblemSearch(destination.includes("problema="));
+    navigateWithTransition(() => startNavigation(() => router.push(destination)));
   }
 
   return (
@@ -47,7 +56,7 @@ export function HomeHero() {
             livello a parte con "overflow:hidden" invece che sull'intero
             pannello, che tagliava il menu a discesa di SearchBar (CLAUDE.md
             §10). */}
-        <GlowLights tone="verde-opaco" radius={40} />
+        <GlowLights tone="verde-opaco" radius={40} speed={searching ? 3 : undefined} />
 
         <YStack width="100%" maxWidth={720} alignItems="center" gap="4" position="relative">
           <Eyebrow tone="dark">Non chiamare a caso. Chiamalo giusto.</Eyebrow>
@@ -90,8 +99,8 @@ export function HomeHero() {
               che il sito non fa (nessuno controlla chi è disponibile) ed era il
               secondo controllo "urgente" nello stesso schermo, col link rosso
               "Richiesta urgente" qui sotto, che resta. */}
-          <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.75)" marginTop="2" textAlign="center">
-            Ricerca gratuita · Nessuna registrazione
+          <Text role="status" fontSize={16} fontWeight="600" color="rgba(255,255,255,0.75)" marginTop="2" textAlign="center">
+            {searching ? "Cerco chi ti serve…" : "Ricerca gratuita · Nessuna registrazione"}
           </Text>
 
           {/* Una sola azione principale nel primo schermo, "Cerca" (§271). Il
