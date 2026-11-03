@@ -3,8 +3,8 @@ import { PrismaClient } from "@professionisti/database";
 import { createProfessional } from "../fixtures/preventivi";
 
 /**
- * Professionisti scelti nei risultati dal problema
- * (docs/changelog/2026-11-03-scelti-restano.md): aprendo un profilo e
+ * Professionisti scelti nei risultati, dal problema o dal mestiere
+ * (docs/changelog/2026-11-03-scelti-restano.md, 2026-11-03-scegli-ricerca-mestiere.md): aprendo un profilo e
  * tornando indietro, con il tasto del browser o con "Torna ai risultati",
  * la scelta resta; dal profilo si può scegliere anche quel professionista.
  */
@@ -53,4 +53,31 @@ test("la scelta resta tornando dal profilo, e dal profilo si sceglie", async ({ 
   // Una ricerca diversa riparte da zero.
   await page.goto(`/cerca?problema=${encodeURIComponent("lo scarico del lavandino è intasato")}&citta=Latina`);
   await expect(page.getByRole("button", { name: /^Scelto:/ })).toHaveCount(0);
+});
+
+test("anche cercando il mestiere si scelgono più professionisti", async ({ page }) => {
+  await page.goto("/cerca/idraulico/latina");
+  const [first, second] = names as [string, string, string];
+
+  await page.getByRole("button", { name: `Scegli ${first}` }).click();
+  await page.getByRole("button", { name: `Scegli ${second}` }).click();
+  const bar = page.getByRole("region", { name: "Professionisti scelti" });
+  await expect(bar).toContainText("2 scelti su 5");
+
+  // Il profilo e il ritorno, come dal problema scritto.
+  await page.getByText(first, { exact: true }).first().click();
+  await expect(page.getByRole("link", { name: "Torna ai risultati" })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole("button", { name: `Scelto: ${second}` })).toBeVisible();
+
+  // La richiesta va solo ai scelti; la descrizione si scrive nel modulo.
+  const href = await bar.getByRole("link").getAttribute("href");
+  expect(href).toContain("categoria=idraulico");
+  expect(href).toContain("scelti=");
+  expect(href).not.toContain("descrizione=");
+  // Come un cliente al primo accesso: prima risponde al banner dei cookie, che sta sopra la barra.
+  await page.getByRole("button", { name: "Rifiuta" }).click();
+  await bar.getByRole("link").click();
+  await expect(page).toHaveURL(/\/preventivo\?/);
+  await expect(page.getByText(first).first()).toBeVisible();
 });
