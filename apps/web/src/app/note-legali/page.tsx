@@ -20,11 +20,11 @@ export default function NoteLegaliPage() {
   return (
     <LegalPage
       title="Note legali"
-      updatedAt="30 ottobre 2026"
+      updatedAt="3 novembre 2026"
       sections={[
         {
           heading: "1. Chi gestisce il sito",
-          body: `${BRAND.name} è gestito da:`,
+          body: `${BRAND.name} è una piattaforma di intermediazione online: mette in contatto clienti e professionisti, che concludono tra loro il contratto per il lavoro (Termini di Servizio, punto 1). È gestito da:`,
           after: (
             <LegalList
               items={[

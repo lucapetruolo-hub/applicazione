@@ -17,3 +17,15 @@ email, notifiche, PDF) usa queste parole.
 Restano come decise da Luca: "Elimina richiesta" (§343), "Lavoro occasionale"
 per chi non ha partita IVA, e "Lavoro terminato" (è il nome usato nei Termini,
 dove vale come accettazione del lavoro).
+
+## Che cos'è il sito
+
+Decisione di Luca del 03/11/2026 (docs/changelog/2026-11-03-piattaforma-di-intermediazione.md).
+
+| Per chi | Parola da usare | Da non usare |
+|---|---|---|
+| Clienti | **servizio**, **sito** ("trova un professionista vicino a te") | software, app gestionale |
+| Professionisti | **piattaforma**, con **strumenti inclusi** (agenda, preventivi, promemoria, documenti) | software a pagamento, programma, licenza |
+| Termini, privacy, fatture | **piattaforma di intermediazione online**, **servizio di intermediazione** | software (da solo) |
+| La trattenuta del 7% | **commissione** (Termini e fatture), **trattenuta** (pagine del professionista) | provvigione, finché il commercialista non risponde (domanda 87) |
+| Chi fa il lavoro | **il professionista**, **i professionisti iscritti** | i nostri professionisti, il nostro idraulico |

@@ -397,7 +397,7 @@ function MiniLine({ children, strong }: { children: ReactNode; strong?: boolean 
 function ProBenefits() {
   return (
     <Band>
-      <SectionTitle lead="Un solo posto per trovare lavori, mandare preventivi e tenere in ordine gli appuntamenti.">
+      <SectionTitle lead="Un solo posto per trovare lavori, mandare preventivi e tenere in ordine gli appuntamenti. Tutto compreso nell'abbonamento, senza programmi a parte.">
         Tutto quello che serve al tuo lavoro
       </SectionTitle>
       <Grid>

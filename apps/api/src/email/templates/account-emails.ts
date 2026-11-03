@@ -60,7 +60,7 @@ export function welcomeProfessionalEmail(name: string | null, verify: EmailVerif
     greeting: name,
     title: `Benvenuto su ${EMAIL_BRAND.name}!`,
     paragraphs: [
-      "Grazie per esserti iscritto. Qui i clienti della tua zona ti trovano, ti chiedono un preventivo e ti scelgono anche per le recensioni dei lavori fatti.",
+      "Grazie per esserti iscritto. Qui i clienti della tua zona ti trovano, ti chiedono un preventivo e ti scelgono anche per le recensioni dei lavori fatti. Agenda, preventivi, promemoria e documenti sono compresi, senza programmi a parte.",
       // Con la conferma il pulsante segue subito l'invito; il resto va dopo.
       ...(verify ? ["**Prima di tutto conferma il tuo indirizzo email** con il pulsante qui sotto."] : [COMPLETE_PROFILE_TEXT, STARTER_HOURS_TEXT]),
     ],
