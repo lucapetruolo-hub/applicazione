@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { matchProblem } from "./problemMatch";
+import { DEFAULT_PROBLEM_EXAMPLES, describeProblemExample, orderProblemExamples } from "./problemExamples";
 
 // Banco di prova (analisi/abbinamento-problema/fase1-numeri.md): 769 frasi
 // vere etichettate a mano. Il "mucchio chiuso" non si usa per tarare il
@@ -92,4 +93,25 @@ test("casi tipici", () => {
   assert.equal(matchProblem("la lavatrice non scarica e dà errore E21").outOfService, "elettrodomestici");
   assert.equal(matchProblem("devo installare la lavatrice nuova").outOfService, null);
   assert.equal(matchProblem("macchia di umido sul soffitto del bagno").question?.id, "macchia");
+});
+
+test("frasi d'esempio della home: tutte riconosciute con sicurezza", () => {
+  for (const text of DEFAULT_PROBLEM_EXAMPLES) {
+    assert.notEqual(describeProblemExample(text).categorySlug, null, text);
+  }
+});
+
+test("frasi d'esempio della home: prima una per mestiere, nell'ordine delle ricerche", () => {
+  const { examples, trades } = orderProblemExamples(DEFAULT_PROBLEM_EXAMPLES, ["pulizie", "idraulico"]);
+  assert.equal(examples[0]?.categorySlug, "pulizie");
+  assert.equal(examples[1]?.categorySlug, "idraulico");
+  assert.deepEqual(trades.map((t) => t.slug), ["pulizie", "idraulico", "elettricista"]);
+});
+
+test("frasi d'esempio della home: senza ricerche l'ordine di Google, i mestieri del lancio nelle prime cinque", () => {
+  const { examples } = orderProblemExamples(DEFAULT_PROBLEM_EXAMPLES, []);
+  assert.deepEqual(
+    examples.slice(0, 5).map((e) => e.categorySlug),
+    ["idraulico", "elettricista", "pulizie", "falegname", "climatizzazione"],
+  );
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { PROFESSIONAL_CATEGORIES, matchProblem } from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES, matchProblem, type ProblemExample } from "@professionisti/shared";
 import type { ProfessionalSuggestion } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { cachedPopularOrder, loadPopularOrder } from "@/lib/categoryOrder";
@@ -101,25 +101,19 @@ function problemSuggestion(query: string): ProfessionalSuggestion | null {
 
 /**
  * Frasi d'esempio in cima all'elenco del campo "Cosa è successo?" a campo
- * vuoto (richiesta di Luca, docs/changelog/2026-11-03-luci-che-accelerano.md):
- * scelte tra quelle che il dizionario riconosce con sicurezza, così sotto
- * compare subito "Ti serve: …". Toccandone una va nel campo e "Cerca" porta
- * ai risultati per problema.
+ * vuoto (richiesta di Luca, docs/changelog/2026-11-03-luci-che-accelerano.md),
+ * con "Ti serve: …" sotto. Toccandone una va nel campo e "Cerca" porta ai
+ * risultati per problema.
  */
-export function problemExamples(texts: readonly string[]): ProfessionalSuggestion[] {
-  return texts.map((text) => {
-    const match = matchProblem(text);
-    const first = match.outOfService ? undefined : match.categories[0];
-    const label = first ? PROFESSIONAL_CATEGORIES.find((category) => category.slug === first.slug)?.label : undefined;
-    return {
-      id: `${PROBLEM_SUGGESTION_PREFIX}${first?.slug ?? ""}`,
-      name: text,
-      title: text,
-      subtitle: label && match.confident ? `Ti serve: ${label}` : "Trova chi ti serve",
-      categorySlug: first?.slug ?? "",
-      city: "",
-    };
-  });
+export function problemExampleSuggestions(examples: readonly ProblemExample[]): ProfessionalSuggestion[] {
+  return examples.map((example) => ({
+    id: `${PROBLEM_SUGGESTION_PREFIX}${example.categorySlug ?? ""}`,
+    name: example.text,
+    title: example.text,
+    subtitle: example.categoryLabel ? `Ti serve: ${example.categoryLabel}` : "Trova chi ti serve",
+    categorySlug: example.categorySlug ?? "",
+    city: "",
+  }));
 }
 
 const NO_CITIES: string[] = [];

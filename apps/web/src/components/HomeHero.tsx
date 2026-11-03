@@ -1,11 +1,19 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import {
+  DEFAULT_PROBLEM_EXAMPLES,
+  FIELD_PROBLEM_EXAMPLES,
+  FIELD_PROBLEM_EXAMPLES_POOL,
+  VISIBLE_PROBLEM_EXAMPLES,
+  orderProblemExamples,
+  type ProblemExamplesResponse,
+} from "@professionisti/shared";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eyebrow, Icon, SearchBar, Text, XStack, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
-import { problemExamples, rememberSearchCity, useSearchBarHints } from "@/lib/useSearchBarHints";
+import { problemExampleSuggestions, rememberSearchCity, useSearchBarHints } from "@/lib/useSearchBarHints";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import { GlowLights } from "./GlowLights";
 import { MagneticButton } from "./MagneticButton";
@@ -21,9 +29,10 @@ import { MagneticButton } from "./MagneticButton";
  * (brief "Vicinato", CLAUDE.md §19): la ricerca vive dentro il pannello, non
  * su uno sfondo neutro.
  */
-export function HomeHero() {
+export function HomeHero({ examples }: { examples: ProblemExamplesResponse | null }) {
   const router = useRouter();
   const searchHints = useSearchBarHints("");
+  const heroExamples = useHeroExamples(examples);
   // Attesa della ricerca per problema: il sito chiede al dizionario e, nei
   // casi dubbi, all'intelligenza artificiale (fino a 3 secondi). Intanto nel
   // riquadro compaiono le luci, veloci, e "Cerco chi ti serve…"
@@ -93,9 +102,9 @@ export function HomeHero() {
                 badge: "Novità",
                 placeholder: "Es. scarico intasato",
                 className: "hero-problem-input",
-                examples: FIELD_EXAMPLES,
+                examples: heroExamples.field,
               }}
-              footer={({ mode, fillQuery }) => (mode === "domicilio" ? <HeroExamples onPick={fillQuery} /> : null)}
+              footer={({ mode, fillQuery }) => (mode === "domicilio" ? <HeroExamples problems={heroExamples.visible} trades={heroExamples.trades} onPick={fillQuery} /> : null)}
               {...searchHints}
             />
           </YStack>
@@ -138,27 +147,39 @@ export function HomeHero() {
 }
 
 /**
- * Esempi da toccare sotto la ricerca: tre problemi tra i più cercati su Google
- * (suggerimenti in analisi/seo-dati/suggerimenti-google.json: "scarico
- * intasato", "salta la corrente", "pulizie post ristrutturazione") e tre
- * mestieri, per dire che basta anche solo il nome (richiesta di Luca). Tutti
- * riconosciuti con sicurezza dal dizionario, quindi il tocco mostra subito
- * "Ti serve: …".
+ * Esempi da toccare sotto la ricerca e nel campo vuoto (richieste di Luca,
+ * docs/changelog/2026-11-03-ricerca-per-problema-home.md e
+ * docs/changelog/2026-11-03-luci-che-accelerano.md): frasi scelte in Admin →
+ * Mestieri richiesti (o quelle di partenza), già ordinate dal server per
+ * mestiere più cercato. Sotto il riquadro le prime 5, sempre le stesse
+ * finché l'ordine non cambia; nel campo 2 a caso tra le 4 successive, così a
+ * ogni visita si vede qualcosa di nuovo ma mai un doppione. Più i 3 mestieri
+ * più cercati, per dire che basta anche solo il nome. Se l'API non risponde,
+ * l'elenco di partenza nell'ordine dei volumi di Google.
  */
-const PROBLEM_EXAMPLES = ["Scarico intasato", "Salta la corrente", "Pulizie dopo i lavori"] as const;
-/**
- * Altre frasi, diverse da quelle sotto il riquadro, in cima all'elenco del
- * campo vuoto (richiesta di Luca, docs/changelog/2026-11-03-luci-che-accelerano.md):
- * due sole (scelta di Luca), così si vedono anche le categorie; riconosciute con sicurezza dal dizionario.
- */
-const FIELD_EXAMPLES = problemExamples(["Il rubinetto perde", "Caldaia in blocco"]);
-const TRADE_EXAMPLES = ["Idraulico", "Elettricista", "Babysitter"] as const;
+function useHeroExamples(examples: ProblemExamplesResponse | null) {
+  const ordered = examples ?? FALLBACK_EXAMPLES;
+  const visible = ordered.examples.slice(0, VISIBLE_PROBLEM_EXAMPLES).map((example) => example.text);
+  const pool = ordered.examples.slice(VISIBLE_PROBLEM_EXAMPLES, VISIBLE_PROBLEM_EXAMPLES + FIELD_PROBLEM_EXAMPLES_POOL);
+  // Scelta una volta per visita. L'elenco del campo si vede solo dopo il tocco,
+  // quindi la scelta a caso non cambia la pagina preparata dal server.
+  const [seed] = useState(() => Math.random());
+  const start = pool.length > 0 ? Math.floor(seed * pool.length) : 0;
+  const field = Array.from({ length: Math.min(FIELD_PROBLEM_EXAMPLES, pool.length) }, (_, k) => pool[(start + k) % pool.length]!);
+  return {
+    visible,
+    trades: ordered.trades.map((trade) => trade.name),
+    field: problemExampleSuggestions(field),
+  };
+}
 
-function HeroExamples({ onPick }: { onPick: (text: string) => void }) {
+const FALLBACK_EXAMPLES = orderProblemExamples(DEFAULT_PROBLEM_EXAMPLES, []);
+
+function HeroExamples({ problems, trades, onPick }: { problems: readonly string[]; trades: readonly string[]; onPick: (text: string) => void }) {
   return (
     <div className="hero-examples">
-      <ExampleRow label="Prova:" items={PROBLEM_EXAMPLES} onPick={onPick} />
-      <ExampleRow label="O scrivi solo chi cerchi:" items={TRADE_EXAMPLES} onPick={onPick} />
+      <ExampleRow label="Prova:" items={problems} onPick={onPick} />
+      <ExampleRow label="O scrivi solo chi cerchi:" items={trades} onPick={onPick} />
     </div>
   );
 }

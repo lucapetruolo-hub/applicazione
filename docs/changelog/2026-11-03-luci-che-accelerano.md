@@ -64,3 +64,39 @@ d'esempio, per far capire che si può scrivere il problema.
 **Verifica**: typecheck di `packages/ui` e `apps/web`, lint, build; con
 Playwright da telefono e computer: tocco sulla tessera → campo in vista con
 il cursore e le frasi aperte; tocco su "Caldaia in blocco" → testo nel campo.
+
+## Frasi d'esempio che seguono le ricerche (03/11)
+
+**Richiesta** (Luca): frasi d'esempio che cambiano, ma sempre le più cercate
+e utili; 5 sotto il riquadro (si scorrono da telefono); tutte le migliorie
+proposte (anche i mestieri più cercati e l'elenco modificabile in Admin).
+
+**Decisione**
+- Elenco di frasi (`DEFAULT_PROBLEM_EXAMPLES` in
+  `packages/shared/src/problemExamples.ts`, 14 frasi, almeno una per i
+  mestieri del lancio), tutte riconosciute con sicurezza dal dizionario (una
+  prova automatica lo controlla). Mai frasi scritte dai clienti: possono
+  contenere dati personali.
+- Ordine: prima una frase per mestiere, dal mestiere più cercato, poi le
+  altre. "Più cercato" è lo stesso conteggio che ordina le categorie della
+  richiesta di preventivo (`CategoriesService.getPopularity`: ricerche e
+  richieste dell'ultimo anno, una richiesta vale 3 ricerche); i mestieri mai
+  cercati seguono i volumi di Google (Keyword Planner, §303). Rotta pubblica
+  `GET /problem-match/examples`, ricalcolata al massimo ogni 10 minuti, letta
+  dal server della home (niente salti dopo il caricamento).
+- In home: sotto il riquadro le prime 5 frasi ("Prova:") e i 3 mestieri più
+  cercati ("O scrivi solo chi cerchi:", al posto di Idraulico, Elettricista,
+  Babysitter fissi); nel campo vuoto 2 frasi a caso tra le 4 successive, mai
+  un doppione di quelle sotto.
+- Admin → Mestieri richiesti → "Frasi d'esempio in home": elenco con
+  mestiere riconosciuto e dove compare (sotto la ricerca, nel campo, in
+  riserva), "Aggiungi" e "Togli" (MODERATION, nel registro azioni). Una frase
+  che il dizionario non riconosce con sicurezza viene rifiutata; servono
+  almeno 5 frasi. Tabella `problem_examples` (migrazione
+  `20261103170000_frasi_esempio_problema`): vuota vale l'elenco di partenza,
+  la prima modifica lo copia lì.
+
+**Verifica**: prove di `packages/shared` (36 passate, con le 3 nuove),
+typecheck di API e sito, lint, build; foto da telefono e computer. Test e2e
+`barra-preventivo.spec.ts`: tocca la prima frase, qualunque sia, invece di
+"Salta la corrente".
