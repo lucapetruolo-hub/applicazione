@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState, type ChangeEvent } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { JOB_LIMIT_REACHED_MESSAGE, type ConversationEvent, type MySubscription } from "@professionisti/shared";
@@ -101,6 +102,8 @@ export function ConversationView({
   escapeToBack = false,
   title = "Cronologia della richiesta",
   requestDescription,
+  requestPhotoUrl,
+  onOpenRequest,
 }: {
   token: string;
   guidedRequestId: string;
@@ -140,6 +143,14 @@ export function ConversationView({
   title?: string;
   /** Descrizione del lavoro sotto il nome in intestazione (docs/CHANGELOG.md §198); senza, resta "Cronologia della richiesta". */
   requestDescription?: string | null;
+  /**
+   * Prima foto della richiesta, piccola a destra nell'intestazione: un tocco
+   * apre la richiesta con tutte le foto
+   * (docs/changelog/2026-11-03-foto-richiesta-nei-messaggi.md). Solo nella
+   * pagina /chat: le finestre si aprono dalla richiesta, che le mostra già.
+   */
+  requestPhotoUrl?: string | null;
+  onOpenRequest?: () => void;
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
@@ -647,6 +658,23 @@ export function ConversationView({
               {title}
             </Text>
           )}
+          {requestPhotoUrl && onOpenRequest ? (
+            <XStack
+              width={44}
+              height={44}
+              alignItems="center"
+              justifyContent="center"
+              flexShrink={0}
+              cursor="pointer"
+              onPress={onOpenRequest}
+              accessibilityRole="button"
+              accessibilityLabel="Apri la richiesta con le foto"
+            >
+              <YStack width={40} height={40} borderRadius={10} overflow="hidden" backgroundColor={brand.gesso}>
+                <Image src={requestPhotoUrl} alt="" width={40} height={40} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              </YStack>
+            </XStack>
+          ) : null}
         </XStack>
         {onBack && backIcon === "x" ? (
           // 44x44 attorno alla ✕: prima era grande quanto il segno (collaudo D-07).

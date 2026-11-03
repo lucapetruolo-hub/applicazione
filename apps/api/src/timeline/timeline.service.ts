@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundEx
 import type { ConversationEvent as ConversationEventRow, PrismaClient } from "@professionisti/database";
 import { chatContactBlockedMessage, chatContactKind, type ChatThreadSummary, type ConversationEvent, type RealtimeEvent } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { requestThumbnailUrl } from "./request-thumbnail";
 import { NotificationsService } from "../notifications/notifications.service";
 import { RealtimeService } from "../realtime/realtime.service";
 import { clientNameForProfessional } from "../common/client-name.util";
@@ -60,7 +61,7 @@ export class TimelineService {
     );
     // Richiesta eliminata dal cliente (docs/CHANGELOG.md §343): la chat resta
     // da leggere, ma nessuno dei due può più scrivere.
-    const request = await this.prisma.guidedRequest.findUnique({ where: { id: guidedRequestId }, select: { deletedByClientAt: true } });
+    const request = await this.prisma.guidedRequest.findUnique({ where: { id: guidedRequestId }, select: { deletedByClientAt: true, photoUrls: true } });
     if (request?.deletedByClientAt) {
       throw new ForbiddenException("Il cliente ha ritirato questa richiesta: non si possono più inviare messaggi.");
     }
@@ -78,7 +79,14 @@ export class TimelineService {
     // per instradare correttamente il click sul toast (notificationSections.ts).
     const recipientUserId = actor === "CLIENT" ? professionalUserId : clientUserId;
     const notificationType = actor === "CLIENT" ? "TIMELINE_MESSAGE_FROM_CLIENT" : "TIMELINE_MESSAGE_FROM_PROFESSIONAL";
-    await this.notificationsService.notify(recipientUserId, notificationType, { guidedRequestId, professionalProfileId });
+    // Foto del lavoro nel popup del nuovo messaggio
+    // (docs/changelog/2026-11-03-foto-richiesta-nei-messaggi.md): la vedono già tutti e due.
+    const requestPhotoUrl = requestThumbnailUrl(request?.photoUrls ?? []);
+    await this.notificationsService.notify(recipientUserId, notificationType, {
+      guidedRequestId,
+      professionalProfileId,
+      ...(requestPhotoUrl ? { requestPhotoUrl } : {}),
+    });
     this.publishChatMessage(guidedRequestId, professionalProfileId, event, { clientUserId, professionalUserId });
     return this.serializeEvent(event);
   }
@@ -191,6 +199,8 @@ export class TimelineService {
         otherPartyImageUrl,
         categoryLabel: event.guidedRequest.category.label,
         requestDescription: event.guidedRequest.description,
+        requestPhotoUrl:
+          client.deletedAt || event.guidedRequest.deletedByClientAt ? null : requestThumbnailUrl(event.guidedRequest.photoUrls),
         lastMessage: event.hiddenAt ? "Messaggio nascosto" : event.message || null,
         lastMessageHasMedia: !event.hiddenAt && event.mediaUrls.length > 0,
         lastMessageAt: event.createdAt.toISOString(),

@@ -32,6 +32,7 @@ import {
 } from "@professionisti/shared";
 import { EMAIL_BRAND, frontendUrl } from "../email-brand";
 import type { EmailContent } from "../email-layout";
+import { requestPhotos } from "./job-emails";
 import { descriptionDetail, formatAppointment, formatAppointmentSpan, formatDay, formatDeadline, formatEur } from "../email-format";
 
 /**
@@ -2164,8 +2165,11 @@ export function chatMessageEmail(
   count: number,
   ctx: NotificationEmailContext,
   url: string,
+  /** Foto della richiesta: la prima, piccola nel riquadro (docs/changelog/2026-11-03-foto-richiesta-nei-messaggi.md). */
+  requestPhotoUrls: string[] = [],
 ): EmailContent {
   const fromClient = type === "TIMELINE_MESSAGE_FROM_CLIENT";
+  const firstPhoto = requestPhotos(requestPhotoUrls)?.images[0];
   const who = fromClient ? "Il cliente" : pro(ctx);
   const messages = count > 1 ? `${count} messaggi` : "un messaggio";
   return withDescription(
@@ -2177,6 +2181,7 @@ export function chatMessageEmail(
       paragraphs: [`**${who}** ti ha scritto ${messages} per **${job(ctx)}**.`],
       details: fromClient ? jobDetails({ ...ctx, businessName: null }) : jobDetails(ctx),
       cta: { label: count > 1 ? "Leggi i messaggi" : "Leggi il messaggio", url },
+      ...(firstPhoto ? { detailImages: { label: "Foto", images: [firstPhoto] } } : {}),
     },
     ctx,
   );
