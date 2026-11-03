@@ -157,6 +157,8 @@ const selfProfessional = [
   "GET /documents",
   "PUT /documents/accountant",
   "POST /billing/boost/checkout",
+  // Carta dell'abbonamento (docs/changelog/2026-11-03-conferme-pagamento-e-abbonamento.md).
+  "GET /billing/card",
   "POST /billing/portal",
   "POST /billing/subscription/cancel",
   "POST /billing/subscription/checkout",

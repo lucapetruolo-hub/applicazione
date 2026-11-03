@@ -82,6 +82,8 @@ type ChargeInfo = {
   applicationFeeAmount: number;
   /** Carta salvata per addebitare da sola il saldo (§267), se il cliente l'ha salvata. */
   savedCard: { customerId: string; paymentMethodId: string } | null;
+  /** Carta usata, per la conferma del pagamento al cliente ("Visa •••• 4242"). */
+  card: { brand: string; last4: string; wallet: string | null } | null;
 };
 
 /**
@@ -577,6 +579,7 @@ export class OnlineMoneyService {
     // professionista: gli giriamo subito anche questa parte.
     if (part === "balance" && jp.releasedAt && jp.balanceUnpaidAt) {
       await this.settleLateBalance(jp.id, paymentIntentId, amount, charge);
+      await this.notifyClientPaid(jp.id, part, paymentIntentId, amount, charge, false);
       return;
     }
     const paid = jp.paidEurCents + amount;
@@ -639,6 +642,7 @@ export class OnlineMoneyService {
         amountEurCents: amount,
       });
     }
+    await this.notifyClientPaid(jp.id, part, paymentIntentId, amount, charge, !!opts.autoCharged);
     if (stage === "PAID") await this.releaseIfDue(jp.id);
   }
 
@@ -761,8 +765,56 @@ export class OnlineMoneyService {
    * stima dal listino in base alla carta. Negli altri casi è quello reale
    * della balance transaction (0 se non disponibile).
    */
+  /**
+   * "Pagamento confermato" al cliente per ogni acconto o saldo online
+   * (docs/changelog/2026-11-03-conferme-pagamento-e-abbonamento.md): quanto,
+   * carta, data, numero del pagamento e cosa succede ora. Non è un documento
+   * fiscale (lo fa il professionista): serve come prova del pagamento e a
+   * non far contestare in banca un addebito che il cliente non riconosce.
+   * Il saldo addebitato da solo sulla carta salvata ha il suo testo.
+   */
+  private async notifyClientPaid(
+    jobPaymentId: string,
+    part: "deposit" | "balance",
+    paymentIntentId: string,
+    amount: number,
+    charge: ChargeInfo,
+    autoCharged: boolean,
+  ): Promise<void> {
+    const jp = await this.prisma.jobPayment.findUnique({
+      where: { id: jobPaymentId },
+      select: {
+        paidEurCents: true,
+        refundedEurCents: true,
+        balanceDirect: true,
+        depositEurCents: true,
+        bookingId: true,
+        booking: { select: { clientId: true, finalAmountEurCents: true, quote: { select: { guidedRequestId: true } } } },
+      },
+    });
+    if (!jp) return;
+    const paidTotal = jp.paidEurCents - jp.refundedEurCents;
+    const final = jp.booking.finalAmountEurCents;
+    await this.notificationsService.notify(jp.booking.clientId, autoCharged ? "JOB_BALANCE_AUTO_CHARGED" : "JOB_PAYMENT_CONFIRMED", {
+      bookingId: jp.bookingId,
+      guidedRequestId: jp.booking.quote?.guidedRequestId ?? null,
+      part,
+      amountEurCents: amount,
+      paidTotalEurCents: paidTotal,
+      remainingEurCents: final === null ? null : onlineBalanceDueEurCents(onlineTargetEurCents(final, jp), paidTotal),
+      finalAmountEurCents: final,
+      balanceDirect: jp.balanceDirect,
+      cardBrand: charge.card?.brand ?? null,
+      cardLast4: charge.card?.last4 ?? null,
+      cardWallet: charge.card?.wallet ?? null,
+      paidAt: new Date().toISOString(),
+      paymentRef: paymentIntentId,
+      audience: "CLIENT",
+    });
+  }
+
   private async chargeOf(paymentIntentId: string, stripeAccount: string | null): Promise<ChargeInfo> {
-    const empty: ChargeInfo = { fee: 0, chargeId: null, destination: null, direct: false, applicationFeeAmount: 0, savedCard: null };
+    const empty: ChargeInfo = { fee: 0, chargeId: null, destination: null, direct: false, applicationFeeAmount: 0, savedCard: null, card: null };
     if (!this.stripe) return empty;
     let pi: Stripe.PaymentIntent;
     try {
@@ -786,6 +838,7 @@ export class OnlineMoneyService {
       direct: !!stripeAccount,
       applicationFeeAmount: destination ? (charge?.application_fee_amount ?? pi.application_fee_amount ?? 0) : 0,
       savedCard: pi.setup_future_usage === "off_session" && customerId && paymentMethodId ? { customerId, paymentMethodId } : null,
+      card: card?.last4 ? { brand: card.brand ?? "card", last4: card.last4, wallet: card.wallet?.type ?? null } : null,
     };
   }
 
@@ -941,13 +994,8 @@ export class OnlineMoneyService {
       if (intent.status !== "processing") await this.prisma.jobPayment.update({ where: { id: jp.id }, data: { balanceAutoChargeFailedAt: new Date() } });
       return false;
     }
+    // L'avviso al cliente (JOB_BALANCE_AUTO_CHARGED) lo manda recordPayment, una volta sola anche col webhook.
     await this.recordPayment(jp.id, "balance", intent.id, intent.amount, { notify: true, autoCharged: true, stripeAccount: account });
-    await this.notificationsService.notify(jp.booking.clientId, "JOB_BALANCE_AUTO_CHARGED", {
-      bookingId: jp.bookingId,
-      guidedRequestId: jp.booking.quote?.guidedRequestId ?? null,
-      amountEurCents: intent.amount,
-      audience: "CLIENT",
-    });
     return true;
   }
 

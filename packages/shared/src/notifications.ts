@@ -107,6 +107,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_BALANCE_DUE",
       // Saldo addebitato da solo sulla carta salvata con l'acconto (docs/CHANGELOG.md §267).
       "JOB_BALANCE_AUTO_CHARGED",
+      // Al cliente: acconto o saldo pagato online (docs/changelog/2026-11-03-conferme-pagamento-e-abbonamento.md).
+      "JOB_PAYMENT_CONFIRMED",
       "JOB_BALANCE_UNPAID",
       "JOB_PAYOUT_SENT",
       "JOB_PAYOUT_ACCOUNT_NEEDED",
@@ -387,6 +389,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "JOB_BALANCE_PAID",
       "JOB_BALANCE_DUE",
       "JOB_BALANCE_AUTO_CHARGED",
+      "JOB_PAYMENT_CONFIRMED",
       "JOB_BALANCE_UNPAID",
       "JOB_PAYOUT_SENT",
       "JOB_PAYOUT_ACCOUNT_NEEDED",
@@ -634,7 +637,8 @@ export const NOTIFICATION_DIGEST_TYPES: ReadonlySet<string> = new Set([
   "NEW_REVIEW",
   "JOB_DEPOSIT_PAID",
   "JOB_BALANCE_PAID",
-  "JOB_BALANCE_AUTO_CHARGED",
+  // JOB_BALANCE_AUTO_CHARGED e JOB_PAYMENT_CONFIRMED partono subito: il cliente deve
+  // riconoscere l'addebito (docs/changelog/2026-11-03-conferme-pagamento-e-abbonamento.md).
   "JOB_PAYOUT_SENT",
   "JOB_REFUND_PENDING",
   "JOB_REFUND_COMPLETED",

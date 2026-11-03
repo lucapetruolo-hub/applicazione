@@ -65,6 +65,28 @@ function pausesActive(now: Date): boolean {
   return paymentsActive() && hasLaunched(now, launchDate());
 }
 
+/** Carta salvata: marca, ultime 4 cifre, scadenza, ed eventuale Apple Pay o Google Pay. */
+export type SavedCard = { brand: string; last4: string; expMonth: number; expYear: number; wallet: string | null };
+
+/** Dati in più per le email di pagamento e rinnovo dell'abbonamento. */
+export type SubscriptionReceiptExtras = { netEurCents: number | null; card: SavedCard | null; paidAt: Date; nextPeriodEnd: Date | null };
+
+/**
+ * Riepilogo dell'email di pagamento o rinnovo (docs/changelog/2026-11-03-conferme-pagamento-e-abbonamento.md):
+ * imponibile e IVA, carta, data e prossimo addebito (niente prossimo
+ * addebito se l'abbonamento è annullato e finisce alla scadenza).
+ */
+function receiptPayload(input: Partial<SubscriptionReceiptExtras> & { amountEurCents: number }, cancelAtPeriodEnd: boolean): Record<string, unknown> {
+  const net = typeof input.netEurCents === "number" && input.netEurCents >= 0 && input.netEurCents <= input.amountEurCents ? input.netEurCents : null;
+  return {
+    ...(net !== null ? { netEurCents: net, vatEurCents: input.amountEurCents - net } : {}),
+    ...(input.card ? { cardBrand: input.card.brand, cardLast4: input.card.last4, cardWallet: input.card.wallet } : {}),
+    ...(input.paidAt ? { paidAt: input.paidAt.toISOString() } : {}),
+    ...(input.nextPeriodEnd && !cancelAtPeriodEnd ? { nextChargeAt: input.nextPeriodEnd.toISOString() } : {}),
+    ...(cancelAtPeriodEnd ? { endsAt: input.nextPeriodEnd?.toISOString() ?? null } : {}),
+  };
+}
+
 /**
  * Abbonamento unico a livelli (CLAUDE.md §6, docs/CHANGELOG.md §161):
  * mesi gratis dell'offerta decisa in Admin (docs/changelog/2026-10-29-offerta-mesi-gratis.md),
@@ -548,7 +570,7 @@ export class SubscriptionsService {
   /** Rinnovo pagato o pagamento non riuscito (webhook `invoice.*`). */
   async onInvoice(
     stripeSubscriptionId: string,
-    outcome: { paid: boolean; renewal: boolean; amountEurCents: number; nextPeriodEnd: Date | null; invoiceIssued?: boolean },
+    outcome: { paid: boolean; renewal: boolean; amountEurCents: number; nextPeriodEnd: Date | null; invoiceIssued?: boolean } & Partial<SubscriptionReceiptExtras>,
   ): Promise<void> {
     const row = await this.prisma.subscription.findUnique({
       where: { stripeSubscriptionId },
@@ -566,6 +588,7 @@ export class SubscriptionsService {
         amountEurCents: outcome.amountEurCents,
         date: outcome.nextPeriodEnd?.toISOString() ?? null,
         invoice: Boolean(outcome.invoiceIssued),
+        ...receiptPayload(outcome, row.cancelAtPeriodEnd),
       });
     }
     await this.syncPause(row.professionalProfileId);
@@ -578,15 +601,19 @@ export class SubscriptionsService {
    */
   async notifyPaid(
     professionalProfileId: string,
-    input: { tier: SubscriptionTier | null; upgradeFee: boolean; amountEurCents: number; invoiceIssued: boolean },
+    input: { tier: SubscriptionTier | null; upgradeFee: boolean; amountEurCents: number; invoiceIssued: boolean } & Partial<SubscriptionReceiptExtras>,
   ): Promise<void> {
     const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { userId: true } });
     if (!profile) return;
+    // Quota di passaggio: il prossimo addebito è il rinnovo già fissato dell'abbonamento.
+    const row = await this.prisma.subscription.findUnique({ where: { professionalProfileId }, select: { currentPeriodEnd: true, cancelAtPeriodEnd: true } });
+    const nextPeriodEnd = input.nextPeriodEnd ?? (input.upgradeFee ? (row?.currentPeriodEnd ?? null) : null);
     await this.notificationsService.notify(profile.userId, "SUBSCRIPTION_PAID", {
       tierLabel: input.tier ? subscriptionTierInfo(input.tier).label : "",
       upgradeFee: input.upgradeFee,
       amountEurCents: input.amountEurCents,
       invoice: input.invoiceIssued,
+      ...receiptPayload({ ...input, nextPeriodEnd }, Boolean(row?.cancelAtPeriodEnd)),
     });
   }
 
