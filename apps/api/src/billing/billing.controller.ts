@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Headers, Post, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Headers, Post, Req, UseGuards } from "@nestjs/common";
 import { z } from "zod";
 import type { Request } from "express";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
@@ -47,6 +47,13 @@ export class BillingController {
   @Post("subscription/resume")
   resumeSubscription(@Req() req: AuthenticatedRequest) {
     return this.billingService.setCancelAtPeriodEnd(req.user.userId, false);
+  }
+
+  /** Carta dell'abbonamento (marca, ultime 4 cifre, scadenza) per la pagina Abbonamento. */
+  @UseGuards(JwtAuthGuard)
+  @Get("card")
+  savedCard(@Req() req: AuthenticatedRequest) {
+    return this.billingService.mySavedCard(req.user.userId);
   }
 
   @UseGuards(JwtAuthGuard)

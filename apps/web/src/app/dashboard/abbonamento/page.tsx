@@ -3,9 +3,13 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Check } from "lucide-react";
+import { Check, CreditCard } from "lucide-react";
 import {
   FREE_MONTHS_END_NOTICE_DAYS,
+  INVOICE_SOURCE_LABEL,
+  accountingDateLabel,
+  formatEurCents,
+  type PlatformInvoiceSummary,
   freePeriodSummary,
   SUBSCRIPTION_FEATURES,
   SUBSCRIPTION_TIERS,
@@ -30,6 +34,7 @@ import { ProfileMissingNotice, isProfileMissingError } from "@/components/Profil
 import { SubscriptionPauseBanner, upgradeQuoteOf } from "@/components/SubscriptionPauseBanner";
 import { SkeletonBlock } from "@/components/Skeleton";
 import { JourneyProgress, useSetupJourney } from "@/components/verification/SetupJourney";
+import { downloadBlobFile } from "@/components/admin/adminUi";
 
 /**
  * "Abbonamento" del professionista (docs/CHANGELOG.md §161-§162): stato del
@@ -237,6 +242,125 @@ function FreeMonths({ freeMonths, trialEndsAt }: { freeMonths: NonNullable<MySub
   );
 }
 
+type SavedCardView = { brand: string; last4: string; expMonth: number; expYear: number; wallet: string | null };
+
+/** Ultime fatture dell'abbonamento mostrate qui: le altre in Fatture e documenti. */
+const RECENT_PAYMENTS = 5;
+
+const CARD_BRAND_LABEL: Record<string, string> = {
+  visa: "Visa",
+  mastercard: "Mastercard",
+  amex: "American Express",
+  diners: "Diners",
+  discover: "Discover",
+  jcb: "JCB",
+  unionpay: "UnionPay",
+  cartes_bancaires: "Cartes Bancaires",
+};
+const CARD_WALLET_LABEL: Record<string, string> = { apple_pay: "Apple Pay", google_pay: "Google Pay", link: "Link" };
+
+/** Carta dell'abbonamento con "Cambia la carta" (portale di Stripe solo per la carta, §238). */
+function PaymentCard({ showCard, card, portalPending, onChangeCard }: { showCard: boolean; card: SavedCardView | null; portalPending: boolean; onChangeCard: () => void }) {
+  // Solo a chi ha dato la carta (collaudo C-10: "Cambia la carta" senza carta).
+  if (!showCard) return null;
+  const wallet = card?.wallet ? CARD_WALLET_LABEL[card.wallet] : undefined;
+  return (
+    <Surface borderRadius={radiusDoc} padding="5" gap="3">
+      <Text render="h2" fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
+        Pagamento
+      </Text>
+      <XStack gap="3" alignItems="center" justifyContent="space-between" flexWrap="wrap">
+        <XStack gap="3" alignItems="center" flex={1} minWidth={220}>
+          <YStack width={44} height={44} borderRadius={10} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
+            <CreditCard size={22} strokeWidth={2} color={brand.cianografiaScuro} aria-hidden />
+          </YStack>
+          <YStack flex={1} minWidth={0} gap={2}>
+            <Text fontWeight="700" color={brand.grafite}>
+              {card ? `${CARD_BRAND_LABEL[card.brand] ?? "Carta"} •••• ${card.last4}` : "Carta salvata"}
+            </Text>
+            <Text fontSize={16} color={brand.grafite70}>
+              {card ? `Scade ${String(card.expMonth).padStart(2, "0")}/${card.expYear}${wallet ? ` · con ${wallet}` : ""}` : "L'abbonamento si paga con questa carta."}
+            </Text>
+          </YStack>
+        </XStack>
+        <Button variant="secondary" disabled={portalPending} opacity={portalPending ? 0.6 : 1} onPress={onChangeCard}>
+          {portalPending ? "Apertura..." : "Cambia la carta"}
+        </Button>
+      </XStack>
+    </Surface>
+  );
+}
+
+/** Ultimi pagamenti dell'abbonamento con il PDF della fattura (le nostre fatture ABB, §378). */
+function RecentPayments({ token, invoices, freeMonths }: { token: string | null; invoices: PlatformInvoiceSummary[]; freeMonths: boolean }) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  async function download(invoice: PlatformInvoiceSummary) {
+    if (!token) return;
+    setBusyId(invoice.id);
+    setError(null);
+    try {
+      downloadBlobFile(`fattura-${invoice.number}.pdf`, await apiClient.documentsInvoicePdf(token, invoice.id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Non riusciamo a preparare il PDF: riprova tra poco.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+  const allLink = (
+    <Link href="/dashboard/documenti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
+      Fatture e documenti
+    </Link>
+  );
+  return (
+    <Surface borderRadius={radiusDoc} padding="5" gap="3">
+      <Text render="h2" fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
+        Fatture
+      </Text>
+      {invoices.length === 0 ? (
+        <Text color={brand.grafite70}>
+          {freeMonths ? "Nei mesi gratis non paghi nulla. La fattura di ogni pagamento te la facciamo noi e la trovi qui e in " : "La fattura di ogni pagamento te la facciamo noi: la trovi qui e in "}
+          {allLink}.
+        </Text>
+      ) : (
+        <>
+          <YStack>
+            {invoices.map((invoice, index) => (
+              <XStack key={invoice.id} gap="3" paddingVertical="3" alignItems="center" justifyContent="space-between" flexWrap="wrap" borderTopWidth={index === 0 ? 0 : 1} borderColor={brand.filetto}>
+                <YStack flex={1} minWidth={160} gap={2}>
+                  <Text fontWeight="700" color={brand.grafite}>
+                    {accountingDateLabel(invoice.issuedAt)}
+                  </Text>
+                  <Text fontSize={16} color={brand.grafite70}>
+                    {INVOICE_SOURCE_LABEL[invoice.source]} · Pagata
+                  </Text>
+                </YStack>
+                <XStack gap="4" alignItems="center">
+                  <Text fontWeight="800" color={brand.grafite} fontVariant={["tabular-nums"]}>
+                    {formatEurCents(invoice.totalEurCents)}
+                  </Text>
+                  <button
+                    type="button"
+                    style={{ background: "none", border: 0, padding: "4px 0", cursor: "pointer", font: "inherit", fontSize: 16, fontWeight: 700, color: brand.cianografiaScuro, textDecoration: "underline" }}
+                    disabled={busyId === invoice.id} onClick={() => void download(invoice)} aria-label={`Scarica il PDF della fattura ${invoice.number}`}>
+                    {busyId === invoice.id ? "Preparo…" : "Scarica PDF"}
+                  </button>
+                </XStack>
+              </XStack>
+            ))}
+          </YStack>
+          {error ? (
+            <Text fontSize={16} color={brand.urgenza} role="alert">
+              {error}
+            </Text>
+          ) : null}
+          <Text color={brand.grafite70}>Le trovi tutte, con l&apos;estratto del mese, in {allLink}.</Text>
+        </>
+      )}
+    </Surface>
+  );
+}
+
 export default function AbbonamentoPage() {
   return (
     <Suspense fallback={null}>
@@ -282,6 +406,26 @@ function AbbonamentoContent() {
   useEffect(() => {
     if (user?.isProfessional) load();
   }, [user, load]);
+
+  // Carta salvata e ultime fatture dell'abbonamento (docs/changelog/2026-11-03-conferme-pagamento-e-abbonamento.md):
+  // se non arrivano la pagina resta com'era, con "Cambia la carta" e il link a Fatture e documenti.
+  const [savedCard, setSavedCard] = useState<SavedCardView | null>(null);
+  const [recentInvoices, setRecentInvoices] = useState<PlatformInvoiceSummary[]>([]);
+  useEffect(() => {
+    if (!token || !user?.isProfessional) return;
+    let active = true;
+    apiClient
+      .getSavedCard(token)
+      .then((result) => active && setSavedCard(result.card))
+      .catch(() => undefined);
+    apiClient
+      .documentsOverview(token)
+      .then((overview) => active && setRecentInvoices(overview.invoices.filter((invoice) => invoice.source !== "JOB_FEES").slice(0, RECENT_PAYMENTS)))
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [token, user?.isProfessional]);
 
   const subLoaded = sub !== null;
   useEffect(() => {
@@ -739,6 +883,31 @@ function AbbonamentoContent() {
           </YStack>
         </YStack>
 
+        <Surface borderRadius={radiusDoc} padding="5" gap="2">
+          <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
+            Compreso in ogni livello
+          </Text>
+          {SUBSCRIPTION_FEATURES.map((feature) => (
+            <XStack key={feature} gap="2" alignItems="flex-start">
+              <Check size={16} strokeWidth={2} color={brand.cianografiaScuro} style={{ marginTop: 4, flexShrink: 0 }} />
+              <Text color={brand.grafite70} flex={1}>
+                {feature}
+              </Text>
+            </XStack>
+          ))}
+        </Surface>
+
+        {/* Carta e ultimi pagamenti, come nelle pagine di fatturazione degli abbonamenti online
+            (docs/changelog/2026-11-03-conferme-pagamento-e-abbonamento.md). Le fatture sono le nostre,
+            le stesse di "Fatture e documenti" (§378); da Stripe solo la carta. */}
+        <PaymentCard
+          showCard={Boolean(sub?.checkoutAvailable && paidActive)}
+          card={savedCard}
+          portalPending={portalPending}
+          onChangeCard={openPortal}
+        />
+        <RecentPayments token={token} invoices={recentInvoices} freeMonths={Boolean(inTrial || freeWithCard)} />
+
         {paidActive && sub ? (
           <Surface borderRadius={radiusDoc} padding="5" gap="3">
             <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
@@ -803,39 +972,6 @@ function AbbonamentoContent() {
           </Surface>
         ) : null}
 
-        {/* Le fatture sono le nostre, in "Fatture e documenti" (docs/CHANGELOG.md §378), che ora ha la sua scheda
-            in Fisco e pagamenti: qui basta una riga (docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md). Da Stripe solo la carta. */}
-        <Surface borderRadius={radiusDoc} padding="5">
-          <XStack gap="3" alignItems="center" justifyContent="space-between" flexWrap="wrap">
-            <Text color={brand.grafite70} flex={1} minWidth={220}>
-              {inTrial || freeWithCard ? "Nei mesi gratis non paghi nulla. La fattura di ogni pagamento te la facciamo noi, in " : "La fattura di ogni pagamento te la facciamo noi: la trovi in "}
-              <Link href="/dashboard/documenti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
-                Fatture e documenti
-              </Link>
-              .
-            </Text>
-            {/* Solo a chi ha dato la carta (collaudo C-10: "Cambia la carta" senza carta). */}
-            {sub?.checkoutAvailable && paidActive ? (
-              <Button variant="secondary" disabled={portalPending} opacity={portalPending ? 0.6 : 1} onPress={openPortal}>
-                {portalPending ? "Apertura..." : "Cambia la carta"}
-              </Button>
-            ) : null}
-          </XStack>
-        </Surface>
-
-        <Surface borderRadius={radiusDoc} padding="5" gap="2">
-          <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
-            Compreso in ogni livello
-          </Text>
-          {SUBSCRIPTION_FEATURES.map((feature) => (
-            <XStack key={feature} gap="2" alignItems="flex-start">
-              <Check size={16} strokeWidth={2} color={brand.cianografiaScuro} style={{ marginTop: 4, flexShrink: 0 }} />
-              <Text color={brand.grafite70} flex={1}>
-                {feature}
-              </Text>
-            </XStack>
-          ))}
-        </Surface>
       </YStack>
       <style jsx>{`
         .usage-track {

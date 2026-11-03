@@ -1,4 +1,14 @@
+import { COMPANY, companyDataReady } from "@professionisti/shared";
 import { EMAIL_BRAND, emailLogoUrl, frontendUrl } from "./email-brand";
+
+/**
+ * Chi scrive, in fondo a ogni email (docs/changelog/2026-11-03-conferme-pagamento-e-abbonamento.md):
+ * ragione sociale, sede e P.IVA dagli stessi dati del piede del sito
+ * (`COMPANY`, D.Lgs. 70/2003 art. 7), appena compilati; Termini e Privacy sempre.
+ */
+function companyLine(): string | null {
+  return companyDataReady() ? `${COMPANY.legalName} · ${COMPANY.address} · P.IVA ${COMPANY.vatNumber}` : null;
+}
 
 /**
  * Modello grafico unico di tutte le email (docs/CHANGELOG.md §185): logo e
@@ -85,6 +95,7 @@ export function renderEmail(content: EmailContent): RenderedEmail {
   const urgent = content.tone === "urgent";
   const site = frontendUrl();
   const preheader = plain(content.preheader ?? content.paragraphs[0] ?? content.title);
+  const company = companyLine();
   const greeting = content.greeting === undefined ? null : content.greeting ? `Ciao ${content.greeting},` : "Ciao,";
 
   const p = (text: string, size = 16, color: string = c.text) =>
@@ -185,6 +196,8 @@ export function renderEmail(content: EmailContent): RenderedEmail {
     // Piè di pagina.
     `<tr><td style="padding:18px 16px 0;font-family:${FONT};font-size:12px;line-height:1.5;color:${c.muted};text-align:center;">` +
     `${emailOff}${footerReason}<br>Hai bisogno di aiuto? Scrivi a <a href="mailto:${EMAIL_BRAND.supportEmail}" style="color:${c.muted};">${EMAIL_BRAND.supportEmail}</a>.` +
+    `<br><br>${company ? `${escapeHtml(company)}<br>` : ""}` +
+    `<a href="${site}/termini" style="color:${c.muted};">Termini</a> · <a href="${site}/privacy" style="color:${c.muted};">Privacy</a>` +
     `</td></tr>` +
     `</table></td></tr></table></body></html>`;
 
@@ -215,6 +228,8 @@ export function renderEmail(content: EmailContent): RenderedEmail {
         ? EXTERNAL_FOOTER
         : "Questa è un'email di servizio sul tuo account: arriva anche se hai spento le notifiche.",
     `Aiuto: ${EMAIL_BRAND.supportEmail}`,
+    ...(company ? [company] : []),
+    `Termini: ${site}/termini · Privacy: ${site}/privacy`,
   ];
 
   return { subject: content.subject, html, text: textParts.join("\n\n") };

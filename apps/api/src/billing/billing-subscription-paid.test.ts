@@ -39,7 +39,10 @@ describe("avviso del pagamento dell'abbonamento (E-13)", () => {
 
     await service.handleWebhookEvent(Buffer.from("{}"), "sig");
 
-    expect(subscriptionsService.notifyPaid).toHaveBeenCalledWith("pro-1", { tier: "PLUS", upgradeFee: true, amountEurCents: 17319, invoiceIssued: true });
+    expect(subscriptionsService.notifyPaid).toHaveBeenCalledWith(
+      "pro-1",
+      expect.objectContaining({ tier: "PLUS", upgradeFee: true, amountEurCents: 17319, invoiceIssued: true, card: null }),
+    );
   });
 
   it("rinnovo: niente avviso in più, il rinnovo sa se la fattura c'è", async () => {

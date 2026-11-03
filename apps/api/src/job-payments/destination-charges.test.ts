@@ -166,6 +166,26 @@ describe("OnlineMoneyService.recordCheckoutPayment", () => {
       update: {},
     });
   });
+
+  it("manda al cliente \"Pagamento confermato\" con carta, numero del pagamento e quanto resta (docs/changelog/2026-11-03-conferme-pagamento-e-abbonamento.md)", async () => {
+    const { service, prisma, stripe, notificationsService } = buildService();
+    const job = { id: "jp-1", bookingId: "bk-1", paymentMethod: "MANOVIA", paidEurCents: 0, refundedEurCents: 0, stripeFeeEurCents: 0, applicationFeeEurCents: 0, stripePaymentIntentId: null, balancePaymentIntentId: null, balanceDirect: false, depositEurCents: 10000, releasedAt: null, booking: { clientId: "client-1", finalAmountEurCents: null, professionalProfileId: "pro-1", quoteId: null } };
+    prisma.jobPayment.findUnique.mockResolvedValueOnce(job).mockResolvedValue({ ...job, paidEurCents: 10000 });
+    stripe.paymentIntents.retrieve.mockResolvedValue({
+      transfer_data: { destination: "acct_1" },
+      latest_charge: { id: "ch_1", application_fee_amount: 854, balance_transaction: { fee: 175 }, payment_method_details: { card: { brand: "visa", last4: "4242", wallet: { type: "apple_pay" } } } },
+    });
+
+    await service.recordCheckoutPayment("jp-1", "deposit", { payment_intent: "pi_dep", amount_total: 10000 } as never, { notify: false });
+
+    expect(notificationsService.notify).toHaveBeenCalledWith(
+      "client-1",
+      "JOB_PAYMENT_CONFIRMED",
+      expect.objectContaining({ part: "deposit", amountEurCents: 10000, paidTotalEurCents: 10000, remainingEurCents: null, cardBrand: "visa", cardLast4: "4242", cardWallet: "apple_pay", paymentRef: "pi_dep" }),
+    );
+    // L'acconto che conferma il lavoro non manda l'avviso al professionista (ha già "preventivo accettato").
+    expect(notificationsService.notify).not.toHaveBeenCalledWith(expect.anything(), "JOB_DEPOSIT_PAID", expect.anything());
+  });
 });
 
 describe("OnlineMoneyService.sendPayout", () => {

@@ -186,7 +186,9 @@ notification("BOOKING_REOPENED_BY_CLIENT", "Professionista", "Lavori e appuntame
 // Pagamenti
 notification("JOB_DEPOSIT_PAID", "Professionista", "Pagamenti dei lavori", { amountEurCents: 3600 });
 notification("JOB_BALANCE_DUE", "Cliente", "Pagamenti dei lavori", { amountEurCents: 14400 });
-notification("JOB_BALANCE_AUTO_CHARGED", "Cliente", "Pagamenti dei lavori", { amountEurCents: 14400 });
+notification("JOB_PAYMENT_CONFIRMED", "Cliente", "Pagamenti dei lavori", { part: "deposit", amountEurCents: 3600, paidTotalEurCents: 3600, remainingEurCents: null, balanceDirect: false, cardBrand: "visa", cardLast4: "4242", paidAt: new Date().toISOString(), paymentRef: "pi_3QxYzAbCdEf12345" });
+notification("JOB_PAYMENT_CONFIRMED", "Cliente", "Pagamenti dei lavori", { part: "balance", amountEurCents: 14400, paidTotalEurCents: 18000, remainingEurCents: 0, cardBrand: "visa", cardLast4: "4242", paidAt: new Date().toISOString(), paymentRef: "pi_3QxYzAbCdEf12345" });
+notification("JOB_BALANCE_AUTO_CHARGED", "Cliente", "Pagamenti dei lavori", { part: "balance", amountEurCents: 14400, paidTotalEurCents: 18000, remainingEurCents: 0, cardBrand: "visa", cardLast4: "4242", paidAt: new Date().toISOString(), paymentRef: "pi_3QxYzAbCdEf12345" });
 notification("JOB_BALANCE_PAID", "Professionista", "Pagamenti dei lavori", { amountEurCents: 14400 });
 notification("JOB_BALANCE_UNPAID", "Cliente", "Pagamenti dei lavori");
 notification("JOB_PAYOUT_SENT", "Professionista", "Pagamenti dei lavori", { amountEurCents: 16380 });
@@ -229,10 +231,10 @@ notification("SUBSCRIPTION_LIMIT_REACHED", "Professionista", "Abbonamento");
 notification("SUBSCRIPTION_PAUSED", "Professionista", "Abbonamento", { reason: "TRIAL_ENDED" });
 add("subscription_paused-carta", "Abbonamento", "Professionista", renderEmail(notificationEmail("SUBSCRIPTION_PAUSED", { reason: "CARD_NEEDED" }, forPro)!));
 notification("SUBSCRIPTION_RENEWING", "Professionista", "Abbonamento", { tierLabel: "Plus", amountEurCents: 5900, date: inThreeDays });
-notification("SUBSCRIPTION_RENEWED", "Professionista", "Abbonamento", { tierLabel: "Plus", amountEurCents: 5900, date: inThreeDays });
+notification("SUBSCRIPTION_RENEWED", "Professionista", "Abbonamento", { tierLabel: "Plus", amountEurCents: 7198, netEurCents: 5900, vatEurCents: 1298, cardBrand: "mastercard", cardLast4: "5772", paidAt: new Date().toISOString(), date: inThreeDays, nextChargeAt: inThreeDays, invoice: true });
 notification("SUBSCRIPTION_ENDING", "Professionista", "Abbonamento", { tierLabel: "Plus", date: inThreeDays });
 notification("SUBSCRIPTION_PAYMENT_FAILED", "Professionista", "Abbonamento");
-notification("SUBSCRIPTION_PAID", "Professionista", "Abbonamento", { tierLabel: "Plus", upgradeFee: true, amountEurCents: 17319, invoice: true });
+notification("SUBSCRIPTION_PAID", "Professionista", "Abbonamento", { tierLabel: "Plus", upgradeFee: true, amountEurCents: 17319, netEurCents: 14196, vatEurCents: 3123, cardBrand: "mastercard", cardLast4: "5772", paidAt: new Date().toISOString(), nextChargeAt: inThreeDays, invoice: true });
 notification("SUBSCRIPTION_FREE_MONTHS_USED", "Professionista", "Abbonamento", { date: inThreeDays, launched: false, card: true, amountEurCents: 1900 });
 notification("SUBSCRIPTION_FREE_MONTHS_STARTED", "Professionista", "Abbonamento", { date: inThreeDays, amountEurCents: 1900 });
 notification("SUBSCRIPTION_RENEWING", "Professionista", "Abbonamento (fine dei mesi gratis)", { tierLabel: "Base", amountEurCents: 1900, interval: "MONTH", date: inThreeDays, freeMonthsEnding: true });

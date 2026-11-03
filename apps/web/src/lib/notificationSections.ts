@@ -167,7 +167,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
     const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
     return guidedRequestId ? `/dashboard/richieste?open=${guidedRequestId}` : "/dashboard/richieste";
   }
-  if (type === "JOB_BALANCE_DUE" || type === "JOB_BALANCE_UNPAID" || type === "JOB_BALANCE_AUTO_CHARGED" || type === "JOB_REFUND_PENDING" || type === "JOB_REFUND_COMPLETED") {
+  if (type === "JOB_BALANCE_DUE" || type === "JOB_BALANCE_UNPAID" || type === "JOB_BALANCE_AUTO_CHARGED" || type === "JOB_PAYMENT_CONFIRMED" || type === "JOB_REFUND_PENDING" || type === "JOB_REFUND_COMPLETED") {
     const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
     return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}` : "/le-mie-richieste?tab=lavori";
   }

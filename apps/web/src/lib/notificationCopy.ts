@@ -107,6 +107,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_BALANCE_PAID: { icon: "💳", message: "Il cliente ha pagato il saldo online: riceverai l'accredito alla sua conferma o entro 7 giorni." },
   JOB_BALANCE_DUE: { icon: "💳", message: "Il lavoro è chiuso: paga il saldo online per completare il pagamento." },
   JOB_BALANCE_AUTO_CHARGED: { icon: "💳", message: "Il lavoro è chiuso: il saldo è stato addebitato sulla carta dell'acconto." },
+  JOB_PAYMENT_CONFIRMED: { icon: "💳", message: "Pagamento confermato: ti abbiamo mandato il riepilogo per email." },
   JOB_BALANCE_UNPAID: { icon: "⚠️", message: "Il saldo di un lavoro non risulta pagato: pagalo ora o contattaci." },
   JOB_PAYOUT_SENT: { icon: "✅", message: "Pagamento sbloccato: il bonifico è in arrivo." },
   JOB_PAYOUT_FAILED: { icon: "🏦", message: "Un bonifico non è arrivato alla tua banca: controlla i dati bancari." },
@@ -251,6 +252,9 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   if (type === "NEW_REVIEW" && data.updated !== true && (who || typeof data.rating === "number")) {
     const stars = typeof data.rating === "number" ? ` ${data.rating} ${data.rating === 1 ? "stella" : "stelle"}` : "";
     return { icon: "⭐", message: `${who ?? "Un cliente"} ti ha lasciato una recensione${stars ? ` da${stars}` : ""}${jobSuffix}: è già visibile.` };
+  }
+  if (type === "JOB_PAYMENT_CONFIRMED" && typeof data.amountEurCents === "number") {
+    return { icon: "💳", message: `Pagamento confermato${jobSuffix}: ${data.part === "balance" ? "saldo" : "acconto"} di ${formatEur(data.amountEurCents)}.` };
   }
   if (type === "JOB_BALANCE_AUTO_CHARGED" && typeof data.amountEurCents === "number") {
     return { icon: "💳", message: `Il lavoro è chiuso${jobSuffix}: abbiamo addebitato il saldo di ${formatEur(data.amountEurCents)} sulla carta dell'acconto.` };
