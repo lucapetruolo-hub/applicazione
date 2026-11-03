@@ -99,6 +99,29 @@ function problemSuggestion(query: string): ProfessionalSuggestion | null {
   };
 }
 
+/**
+ * Frasi d'esempio in cima all'elenco del campo "Cosa è successo?" a campo
+ * vuoto (richiesta di Luca, docs/changelog/2026-11-03-luci-che-accelerano.md):
+ * scelte tra quelle che il dizionario riconosce con sicurezza, così sotto
+ * compare subito "Ti serve: …". Toccandone una va nel campo e "Cerca" porta
+ * ai risultati per problema.
+ */
+export function problemExamples(texts: readonly string[]): ProfessionalSuggestion[] {
+  return texts.map((text) => {
+    const match = matchProblem(text);
+    const first = match.outOfService ? undefined : match.categories[0];
+    const label = first ? PROFESSIONAL_CATEGORIES.find((category) => category.slug === first.slug)?.label : undefined;
+    return {
+      id: `${PROBLEM_SUGGESTION_PREFIX}${first?.slug ?? ""}`,
+      name: text,
+      title: text,
+      subtitle: label && match.confident ? `Ti serve: ${label}` : "Trova chi ti serve",
+      categorySlug: first?.slug ?? "",
+      city: "",
+    };
+  });
+}
+
 const NO_CITIES: string[] = [];
 const NO_CITIES_ALIASES: { name: string; city: string }[] = [];
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Label, ScrollView, Text, XStack, YStack, isWeb } from "tamagui";
 import { Input } from "./Input";
 import { buildSearchIndex, rankSearchMatches } from "./searchMatch";
@@ -43,6 +43,12 @@ export type AutocompleteProps<T> = {
   priority?: (item: T) => number;
   /** Elenco mostrato a campo vuoto, al posto dei primi `maxResults` di `items` (es. ultima città usata e più cercate). */
   emptyItems?: T[];
+  /**
+   * Titoletti dentro l'elenco a campo vuoto, prima della voce di `emptyItems`
+   * con quell'indice (es. "Scrivi il problema, per esempio:" sopra le frasi
+   * d'esempio e "Oppure scegli chi cerchi:" sopra i mestieri, in home).
+   */
+  emptyHeadings?: { index: number; label: string }[];
   /** Riga in cima a campo vuoto, prima dell'elenco (es. "Vicino a me"). */
   leadingAction?: {
     label: string;
@@ -88,6 +94,7 @@ export function Autocomplete<T>({
   getSearchText,
   priority,
   emptyItems,
+  emptyHeadings,
   leadingAction,
 }: AutocompleteProps<T>) {
   const [isFocused, setIsFocused] = useState(false);
@@ -316,21 +323,28 @@ export function Autocomplete<T>({
               ) : null}
               {filtered.map((item, i) => {
                 const index = i + (action ? 1 : 0);
+                const heading = trimmedQuery.length === 0 ? emptyHeadings?.find((h) => h.index === i) : undefined;
                 return (
-                  <YStack
-                    key={getKey(item)}
-                    id={optionId(index)}
-                    role="option"
-                    aria-selected={activeIndex === index}
-                    padding="3"
-                    borderBottomWidth={1}
-                    borderBottomColor="borderColor"
-                    cursor="pointer"
-                    backgroundColor={`${activeIndex === index ? "color3" : undefined} hover:color3`}
-                    onPress={() => choose(index)}
-                  >
-                    {renderItem ? renderItem(item) : <Text>{getLabel(item)}</Text>}
-                  </YStack>
+                  <Fragment key={getKey(item)}>
+                    {heading ? (
+                      <Text role="presentation" paddingHorizontal="3" paddingTop="3" paddingBottom="1" fontSize={13} fontWeight="700" color={brand.grafite70}>
+                        {heading.label}
+                      </Text>
+                    ) : null}
+                    <YStack
+                      id={optionId(index)}
+                      role="option"
+                      aria-selected={activeIndex === index}
+                      padding="3"
+                      borderBottomWidth={1}
+                      borderBottomColor="borderColor"
+                      cursor="pointer"
+                      backgroundColor={`${activeIndex === index ? "color3" : undefined} hover:color3`}
+                      onPress={() => choose(index)}
+                    >
+                      {renderItem ? renderItem(item) : <Text>{getLabel(item)}</Text>}
+                    </YStack>
+                  </Fragment>
                 );
               })}
             </YStack>

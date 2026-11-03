@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eyebrow, Icon, SearchBar, Text, XStack, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
-import { rememberSearchCity, useSearchBarHints } from "@/lib/useSearchBarHints";
+import { problemExamples, rememberSearchCity, useSearchBarHints } from "@/lib/useSearchBarHints";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import { GlowLights } from "./GlowLights";
 import { MagneticButton } from "./MagneticButton";
@@ -88,7 +88,13 @@ export function HomeHero() {
             <SearchBar
               wrapSearchButton={(button) => <MagneticButton block>{button}</MagneticButton>}
               onSearch={handleSearch}
-              queryField={{ label: "Cosa è successo?", badge: "Novità", placeholder: "Es. scarico intasato", className: "hero-problem-input" }}
+              queryField={{
+                label: "Cosa è successo?",
+                badge: "Novità",
+                placeholder: "Es. scarico intasato",
+                className: "hero-problem-input",
+                examples: FIELD_EXAMPLES,
+              }}
               footer={({ mode, fillQuery }) => (mode === "domicilio" ? <HeroExamples onPick={fillQuery} /> : null)}
               {...searchHints}
             />
@@ -140,6 +146,12 @@ export function HomeHero() {
  * "Ti serve: …".
  */
 const PROBLEM_EXAMPLES = ["Scarico intasato", "Salta la corrente", "Pulizie dopo i lavori"] as const;
+/**
+ * Altre frasi, diverse da quelle sotto il riquadro, in cima all'elenco del
+ * campo vuoto (richiesta di Luca, docs/changelog/2026-11-03-luci-che-accelerano.md):
+ * tutte riconosciute con sicurezza dal dizionario, mestieri diversi.
+ */
+const FIELD_EXAMPLES = problemExamples(["Il rubinetto perde", "Caldaia in blocco", "Serratura bloccata", "Prato da tagliare"]);
 const TRADE_EXAMPLES = ["Idraulico", "Elettricista", "Babysitter"] as const;
 
 function HeroExamples({ onPick }: { onPick: (text: string) => void }) {

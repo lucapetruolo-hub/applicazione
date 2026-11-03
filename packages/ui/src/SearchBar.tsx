@@ -73,7 +73,18 @@ export type SearchBarProps = {
    * invita a descrivere il problema, docs/changelog/2026-11-03-ricerca-per-problema-home.md).
    * Con "Online" restano "Cosa ti serve?" e l'esempio della consulenza.
    */
-  queryField?: { label: string; badge?: string; placeholder: string; className?: string };
+  queryField?: {
+    label: string;
+    badge?: string;
+    placeholder: string;
+    className?: string;
+    /**
+     * Frasi d'esempio in cima all'elenco a campo vuoto, prima dei mestieri
+     * (home, docs/changelog/2026-11-03-luci-che-accelerano.md): dicono che si
+     * può scrivere il problema con parole proprie.
+     */
+    examples?: ProfessionalSuggestion[];
+  };
   /**
    * Contenuto sotto il riquadro (gli esempi da toccare della home): riceve il
    * modo scelto e `fillQuery`, che scrive un testo nel campo e ci mette il cursore.
@@ -370,7 +381,16 @@ export function SearchBar({
             id={`${fieldId}-cosa`}
             placeholder={customQueryField?.placeholder ?? (mode === "online" ? "Es. consulenza idraulico" : "Es. idraulico, un guasto")}
             size="5"
-            maxResults={professionalSuggestions.length}
+            maxResults={professionalSuggestions.length + (customQueryField?.examples?.length ?? 0)}
+            emptyItems={customQueryField?.examples?.length ? [...customQueryField.examples, ...professionalSuggestions] : undefined}
+            emptyHeadings={
+              customQueryField?.examples?.length
+                ? [
+                    { index: 0, label: "Scrivi il problema, per esempio:" },
+                    { index: customQueryField.examples.length, label: "Oppure scegli chi cerchi:" },
+                  ]
+                : undefined
+            }
             renderItem={(item) => (
               <YStack gap="1">
                 <Text fontWeight="600">{item.title ?? item.name}</Text>

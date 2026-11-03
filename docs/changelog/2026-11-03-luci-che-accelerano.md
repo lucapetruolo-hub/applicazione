@@ -37,3 +37,29 @@ gratis", di nuovo 1 dopo 2,6 secondi; 3 durante l'attesa della ricerca per
 problema; in "Richiesta inviata" da 5 a 1 in circa 2 secondi; ferme ("paused")
 col riquadro fuori dallo schermo. Foto da telefono (390 px) e computer
 (1440 px) in `analisi/luci-che-accelerano/` dei file del progetto.
+
+## Tessera "Non trovi il tuo lavoro?" ed esempi nel campo (03/11)
+
+**Richiesta** (Luca): la tessera in fondo alle categorie non si capiva; e
+toccando "Cosa è successo?" uscivano solo i mestieri: servono anche frasi
+d'esempio, per far capire che si può scrivere il problema.
+
+**Decisione**
+- La tessera diceva "Descrivilo, ci pensiamo noi" ma apriva /preventivo, che
+  chiedeva per prima cosa la categoria non trovata. Ora (proposta A, scelta
+  di Luca) porta al campo "Cosa è successo?" in cima alla home con il cursore
+  dentro: "Non trovi il tuo lavoro? Scrivi il problema, ti diciamo chi
+  chiamare", icona matita. Senza il campo (modalità Online) o senza
+  JavaScript resta il link a /preventivo.
+- A campo vuoto l'elenco mostra prima "Scrivi il problema, per esempio:" con
+  quattro frasi diverse da quelle sotto il riquadro (Il rubinetto perde,
+  Caldaia in blocco, Serratura bloccata, Prato da tagliare), ognuna con
+  "Ti serve: …", poi "Oppure scegli chi cerchi:" con i mestieri. Tutte
+  riconosciute con sicurezza dal dizionario (`matchProblem`). Toccandone una
+  va nel campo e "Cerca" porta ai risultati per problema. Nuove props
+  facoltative `queryField.examples` di `SearchBar` ed `emptyHeadings` di
+  `Autocomplete`: la barra delle altre pagine non cambia.
+
+**Verifica**: typecheck di `packages/ui` e `apps/web`, lint, build; con
+Playwright da telefono e computer: tocco sulla tessera → campo in vista con
+il cursore e le frasi aperte; tocco su "Caldaia in blocco" → testo nel campo.
