@@ -12,6 +12,9 @@ grande e in piccolo la foto del profilo; senza foto, solo la foto del profilo.
   prima, §216).
 - Solo video: il primo fotogramma del primo video di Cloudinary (stesso
   indirizzo con `.jpg`, ritagliato da Cloudinary a 112 px).
+- Nella conversazione aperta da Messaggi la stessa foto, piccola (40 px) a
+  destra dell'intestazione: un tocco apre la richiesta con tutte le foto. Non
+  nelle finestre di chat aperte da una richiesta, che le foto le mostra già.
 - Lo scheletro di caricamento ha la stessa forma quadrata da 56 px.
 - Senza foto: solo la foto dell'altra parte, come prima. Il posto della foto è
   largo uguale nei due casi, così i testi restano allineati.

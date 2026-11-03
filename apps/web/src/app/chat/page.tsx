@@ -201,6 +201,8 @@ export default function ChatPage() {
               otherPartyName={selectedThread.otherPartyName}
               otherPartyImageUrl={selectedThread.otherPartyImageUrl}
               requestDescription={selectedThread.requestDescription}
+              requestPhotoUrl={selectedThread.requestPhotoUrl}
+              onOpenRequest={() => router.push(requestDestination(selectedThread))}
               onBack={() => {
                 setSelectedKey(null);
                 reload();
