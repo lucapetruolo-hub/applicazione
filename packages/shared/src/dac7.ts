@@ -1,5 +1,3 @@
-import { z } from "zod";
-import "./zod";
 
 /**
  * DAC7 lato professionista (docs/CHANGELOG.md §246): dichiarazione a
@@ -103,12 +101,6 @@ export function checkIban(value: string): { ok: true; iban: string } | { ok: fal
   if (mod97(iban) !== 1) return { ok: false, message: "L'IBAN non torna: probabilmente c'è un carattere sbagliato. Copialo di nuovo dal sito o dall'app della banca." };
   return { ok: true, iban };
 }
-
-export const payoutIbanSchema = z.object({
-  iban: z.string().trim().min(1).max(50),
-  holderName: z.string().trim().min(2, "Scrivi il nome del titolare del conto.").max(120),
-});
-export type PayoutIbanInput = z.infer<typeof payoutIbanSchema>;
 
 /**
  * Esito del confronto con il conto indicato a Stripe: Stripe dà solo paese

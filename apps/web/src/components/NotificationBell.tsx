@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/IntentLink";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/apiClient";
 import { notificationMuteTarget, withNotificationMuted, type NotificationMuteTarget } from "@professionisti/shared";

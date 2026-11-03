@@ -37,7 +37,19 @@ export default async function globalSetup(): Promise<void> {
       data: { userId: pro.id, categoryId: category.id, businessName: "Marco Rossi Idraulica", city: "Latina", latitude: 41.4677, longitude: 12.9036 },
     });
     const client = await prisma.user.create({
-      data: { role: "CLIENT", email: `cliente-e2e-${stamp}@test.it`, name: "Giulia", surname: "Bianchi", phone: `+3934${String(stamp).slice(-8)}`, city: "Latina" },
+      // Con la password: Lighthouse misura anche le pagine del cliente
+      // (docs/changelog/2026-11-02-oggi-piu-leggera.md).
+      data: {
+        role: "CLIENT",
+        email: `cliente-e2e-${stamp}@test.it`,
+        passwordHash: await bcrypt.hash(PASSWORD, 10),
+        name: "Giulia",
+        surname: "Bianchi",
+        phone: `+3934${String(stamp).slice(-8)}`,
+        city: "Latina",
+        emailVerifiedAt: new Date(),
+        legalConsentAt: new Date(),
+      },
     });
 
     const bookings: E2eData["bookings"] = [];
@@ -128,7 +140,9 @@ export default async function globalSetup(): Promise<void> {
     if (!response.ok) throw new Error(`Accesso di prova non riuscito: ${response.status} ${await response.text()}`);
     const { token } = (await response.json()) as { token: string };
 
-    const data: E2eData = { token, userId: pro.id, bookings, externalJob: { id: externalJob.id, wallClock: "2026-10-26 17:00" }, multiDayBookingId: multiDay.id, publicProfileId: publicProfile.id };
+    // Il cliente entra solo nella prova Lighthouse, non qui: l'accesso ha un
+    // limite di 10 al minuto e le prove ne fanno già molti.
+    const data: E2eData = { token, clientEmail: client.email!, userId: pro.id, bookings, externalJob: { id: externalJob.id, wallClock: "2026-10-26 17:00" }, multiDayBookingId: multiDay.id, publicProfileId: publicProfile.id };
     mkdirSync(dirname(DATA_FILE), { recursive: true });
     writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
     // Sessione già aperta e banner cookie già chiuso, come per un professionista che torna sul sito.

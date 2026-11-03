@@ -3,7 +3,7 @@ import "./zod";
 import { TRAFFIC_SOURCES } from "./trafficSources";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
 import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
-import { quotePaymentOfferSchema } from "./onlinePayments";
+import { quotePaymentOfferSchema } from "./onlinePaymentsSchemas";
 import { contentReportReason, contentReportReasonCodes, moderationGroundCodes } from "./moderation";
 import { newPasswordSchema } from "./password";
 import { REQUEST_TIMINGS } from "./requestTiming";
@@ -775,9 +775,9 @@ export type UpdateEngagementRadiusInput = z.infer<typeof updateEngagementRadiusS
 /**
  * "Metti in pausa" (collaudo C-16): il giorno in cui si torna a ricevere
  * richieste (AAAA-MM-GG), o `null` per riprendere subito. Al massimo
- * `MAX_AWAY_DAYS` giorni: oltre conviene chiudere l'account o l'abbonamento.
+ * `MAX_AWAY_DAYS` giorni (`./away.ts`): oltre conviene chiudere l'account o
+ * l'abbonamento.
  */
-export const MAX_AWAY_DAYS = 180;
 export const setAwaySchema = z.object({
   until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Scegli il giorno in cui torni.").nullable(),
 });

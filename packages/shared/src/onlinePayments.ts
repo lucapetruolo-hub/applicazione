@@ -1,6 +1,3 @@
-import { z } from "zod";
-import "./zod";
-import { clientInvoiceRequestSchema } from "./accounting";
 import { BANK_DISPUTE_OPEN_STATUSES, BANK_DISPUTE_REVIEW_STATUSES, type ProfessionalBankDispute } from "./bankDisputes";
 
 /**
@@ -371,25 +368,6 @@ export type JobPaymentSummary = {
  * Accettazione di un preventivo con il metodo di pagamento scelto e, se il
  * cliente la chiede, i dati per la fattura del professionista (§378).
  */
-export const acceptQuoteSchema = z.object({
-  paymentMethod: z.enum(jobPaymentChoices).default("DIRECT"),
-  invoiceRequest: clientInvoiceRequestSchema.optional(),
-});
-
-/** Modi di pagamento scelti dal professionista nel preventivo (§237). */
-export const quotePaymentOfferSchema = {
-  paymentOptions: z.array(z.enum(jobPaymentChoices)).min(1, "Scegli almeno un modo di pagamento.").max(jobPaymentChoices.length).optional(),
-  depositPercent: z
-    .number()
-    .int("La percentuale dell'acconto dev'essere un numero intero.")
-    .min(MIN_DEPOSIT_PERCENT, `L'acconto va da ${MIN_DEPOSIT_PERCENT} a ${MAX_DEPOSIT_PERCENT}%.`)
-    .max(MAX_DEPOSIT_PERCENT, `L'acconto va da ${MIN_DEPOSIT_PERCENT} a ${MAX_DEPOSIT_PERCENT}%.`)
-    .optional(),
-  /** Salva questi modi come proposta di serie per i prossimi preventivi (§239). */
-  rememberPaymentOffer: z.boolean().optional(),
-};
-export type AcceptQuoteInput = z.infer<typeof acceptQuoteSchema>;
-
 /** Somma delle commissioni di Stripe salvate per ogni contestazione. */
 function disputeFeesEurCents(value: unknown): number {
   if (!value || typeof value !== "object" || Array.isArray(value)) return 0;
@@ -569,9 +547,6 @@ export function jobPaymentAdminLabel(summary: JobPaymentSummary | null): string 
   }
   return `Online con Stripe: ${online}${stage}`;
 }
-
-/** Chiusura di un saldo scoperto da parte della Finanza, con la motivazione. */
-export const closeUnpaidBalanceSchema = z.object({ note: z.string().trim().min(3, "Scrivi come si è chiuso il saldo.").max(500) });
 
 export type AdminUnpaidBalance = {
   jobPaymentId: string;
