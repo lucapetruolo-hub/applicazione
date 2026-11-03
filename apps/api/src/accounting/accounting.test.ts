@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { freePeriodSummary, invoiceNumberLabel, statementCsv } from "@professionisti/shared";
+import { INVOICE_SERVICE_CAUSALE, freePeriodSummary, invoiceNumberLabel, statementCsv } from "@professionisti/shared";
 import { lastDayOfMonth, previousMonth, romeDayIso, romeMonthOf, romeMonthRange } from "./accounting-dates";
 import { buildFatturaPaXml, latin1, xmlAmount } from "./invoice-xml";
 import { invoiceTotals, monthlyFeeInvoiceDraft, recipientComplete, recipientFromFiscal, sdiProgressive, shareCapitalCents } from "./invoice-documents";
@@ -153,6 +153,13 @@ describe("fattura elettronica", () => {
     expect(buildFatturaPaXml({ ...base, lines: [{ description: "A & B <c>", taxableEurCents: 1400 }] })).toContain("<Descrizione>A &amp; B &lt;c&gt;</Descrizione>");
   });
 
+  it("la causale dice che il servizio fatturato è l'intermediazione, entro i 200 caratteri dello SdI", () => {
+    for (const line of Object.values(INVOICE_SERVICE_CAUSALE)) {
+      expect(line).toContain("servizio di intermediazione online");
+      expect(latin1(line, 200)).toBe(line);
+    }
+  });
+
   it("un nuovo invio dopo uno scarto ha un nome diverso", () => {
     expect(sdiProgressive("ABB", 2026, 3, 1)).toBe("A260000301");
     expect(sdiProgressive("ABB", 2026, 3, 1)).toHaveLength(10);
@@ -209,7 +216,7 @@ describe("InvoicesService.issueMonthlyFeeInvoices", () => {
         ]),
       },
       invoice: {
-        findUnique: vi.fn().mockResolvedValueOnce(null).mockResolvedValue({ id: "inv-1", series: "COM", year: 2026, number: 17, issuer: settings, recipient: null, lines: [], issuedAt: new Date(), createdAt: new Date() }),
+        findUnique: vi.fn().mockResolvedValueOnce(null).mockResolvedValue({ id: "inv-1", source: "JOB_FEES", creditNote: false, series: "COM", year: 2026, number: 17, issuer: settings, recipient: null, lines: [], issuedAt: new Date(), createdAt: new Date() }),
         findFirst: vi.fn(),
         update: vi.fn(),
       },

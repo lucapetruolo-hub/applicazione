@@ -53,6 +53,16 @@ export const TERMS_CHANGES: readonly TermsChange[] = [
     // Prima del lancio: nessun avviso agli account di prova.
     notify: false,
   },
+  {
+    version: "2026-11-03",
+    publishedAt: "2026-11-03",
+    effectiveAt: "2026-11-03",
+    summary: [
+      "Detto in chiaro che la piattaforma è un servizio di intermediazione e che l'abbonamento dei professionisti comprende gli strumenti per richieste, preventivi, agenda, promemoria e documenti.",
+    ],
+    // Prima del lancio: nessun avviso agli account di prova.
+    notify: false,
+  },
 ];
 
 export function findTermsChange(version: string): TermsChange | undefined {

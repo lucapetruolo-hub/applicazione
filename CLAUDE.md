@@ -292,6 +292,16 @@ sia UI/routing — la logica va in `apps/api` o `packages/shared`.
     `daySinceLaunch` in `apps/api/src/site-counts/counted.ts`) e mai gli
     account di prova (`COUNTED_USER`, `User.testAccountAt`); nessun dato si
     cancella al lancio.
+18. **Il sito resta un intermediario** (decisione di Luca del 03/11/2026,
+    docs/changelog/2026-11-03-piattaforma-di-intermediazione.md): è una
+    piattaforma di intermediazione online con gli strumenti per i
+    professionisti inclusi nell'abbonamento, mai "software" da solo nei testi
+    legali e nelle fatture. Il prezzo lo fa sempre il professionista, i
+    lavori non si assegnano d'ufficio, non si dice come eseguirli e mai "i
+    nostri professionisti" o "garantiamo il lavoro": altrimenti si rischia di
+    diventare il fornitore del lavoro (Corte UE, Uber C-434/15) e una
+    piattaforma di lavoro digitale (direttiva UE 2024/2831). Una funzione che
+    va in quella direzione si discute prima con Luca.
 
 ---
 

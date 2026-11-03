@@ -4,6 +4,7 @@ import type Stripe from "stripe";
 import type { Invoice, Prisma, PrismaClient } from "@professionisti/database";
 import {
   INVOICE_SERIES,
+  INVOICE_SERVICE_CAUSALE,
   INVOICE_SOURCE_LABEL,
   PLATFORM_VAT_RATE_BASIS_POINTS,
   accountingMonthLabel,
@@ -272,8 +273,11 @@ export class InvoicesService {
       paymentMethod: invoice.source === "JOB_FEES" ? "MP22" : "MP08",
       related: related?.series && related.year && related.number ? { number: invoiceNumberLabel(related.series, related.year, related.number), date: romeDayIso(related.issuedAt ?? related.createdAt) } : null,
       causale: invoice.source === "JOB_FEES"
-        ? [`${invoice.creditNote ? "Trattenute restituite" : "Trattenute sui pagamenti online"} di ${accountingMonthLabel(invoice.periodMonth ?? date.slice(0, 7))}, già trattenute dagli incassi.`]
-        : [`${INVOICE_SOURCE_LABEL[invoice.source]}, pagato con carta.`],
+        ? [
+            `${invoice.creditNote ? "Trattenute restituite" : "Trattenute sui pagamenti online"} di ${accountingMonthLabel(invoice.periodMonth ?? date.slice(0, 7))}, già trattenute dagli incassi.`,
+            INVOICE_SERVICE_CAUSALE.JOB_FEES,
+          ]
+        : [`${INVOICE_SOURCE_LABEL[invoice.source]}, pagato con carta.`, INVOICE_SERVICE_CAUSALE[invoice.source]],
     });
     await this.prisma.invoice.update({
       where: { id: invoiceId },
