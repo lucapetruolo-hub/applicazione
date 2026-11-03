@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import type { PROFESSIONAL_CATEGORIES, ProfessionalSearchResult } from "@professionisti/shared";
+import { MAX_CHOSEN_PROFESSIONALS, type PROFESSIONAL_CATEGORIES, type ProfessionalSearchResult } from "@professionisti/shared";
 import { YStack } from "@professionisti/ui";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
 import { ResultsListWithMap, type MapPoolQuery } from "@/components/ResultsListWithMap";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
+import { ChosenProsBar, chosenRequestHref } from "@/components/ChosenProsBar";
 import { saveLastSearchCity } from "@/lib/lastSearchCity";
+import { useChosenPros } from "@/lib/useChosenPros";
 
 type Category = (typeof PROFESSIONAL_CATEGORIES)[number];
 
@@ -21,9 +23,12 @@ export function CategoryContent({
   loadFailed,
   initialUrgentOnly,
   footer,
+  subTag,
 }: {
   category: Category;
   city?: string;
+  /** Specializzazione della pagina per servizio: una scelta a parte da quella del solo mestiere. */
+  subTag?: string;
   /** Centro del comune, per la mappa. */
   cityCenter?: [number, number];
   online?: boolean;
@@ -46,6 +51,17 @@ export function CategoryContent({
   useEffect(() => {
     saveLastSearchCity(city);
   }, [city]);
+
+  // "+ Scegli" anche cercando un mestiere, come dal problema scritto
+  // (docs/changelog/2026-11-03-scegli-ricerca-mestiere.md): la descrizione
+  // del lavoro si scrive nel modulo della richiesta.
+  const { chosen, selection } = useChosenPros({
+    category: !loadFailed && professionals.length >= 2 ? category.slug : null,
+    city,
+    description: "",
+    scope: subTag ? `servizio:${subTag}` : "",
+    professionals,
+  });
 
   const title = `${category.label}${online && city ? ` · consulenza online a ${city}` : online ? " · consulenza online" : city ? ` a ${city}` : " vicino a te"}`;
   const header = loadFailed ? (
@@ -82,8 +98,12 @@ export function CategoryContent({
           defaultMode={online ? "ONLINE" : "HOME"}
           initialUrgentOnly={initialUrgentOnly}
           footer={footer}
+          selection={selection}
         />
       </YStack>
+      {chosen.length > 0 ? (
+        <ChosenProsBar chosen={chosen} max={MAX_CHOSEN_PROFESSIONALS} href={chosenRequestHref(chosen, category.slug, "", city)} />
+      ) : null}
     </YStack>
   );
 }
