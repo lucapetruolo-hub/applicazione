@@ -6,6 +6,7 @@ import {
   BANK_DISPUTE_OPEN_STATUSES,
   ADMIN_SIGNAL_ADVICE_LEVEL_LABEL,
   adminCan,
+  adminPersonName,
   adviseSuspiciousUser,
   jobIssueReviewPhase,
   matchProblem,
@@ -28,7 +29,10 @@ import { NotificationsService } from "../notifications/notifications.service";
 
 type Person = { name: string | null; surname: string | null } | null;
 const personName = (p: Person) => [p?.name, p?.surname].filter(Boolean).join(" ") || "Utente";
-const between = (client: Person, business: string | null | undefined) => `${personName(client)} → ${business ?? "professionista"}`;
+type Pro = { businessName: string; user?: Person } | null | undefined;
+// Attività e persona insieme, come in ogni pagina dell'admin (misura "dopo" del riordino).
+const proName = (pro: Pro) => (pro ? adminPersonName({ businessName: pro.businessName, name: pro.user?.name, surname: pro.user?.surname }) : "professionista");
+const between = (client: Person, pro: Pro) => `${personName(client)} → ${proName(pro)}`;
 const short = (text: string | null | undefined, max = 110) => (text ? (text.length > max ? `${text.slice(0, max - 1)}…` : text) : null);
 
 /**
@@ -57,7 +61,7 @@ export class AdminQueueService {
     const items: Omit<AdminQueueItem, "claimedBy">[] = [];
     const bookingInclude = {
       client: { select: { name: true, surname: true } },
-      professionalProfile: { select: { businessName: true } },
+      professionalProfile: { select: { businessName: true, user: { select: { name: true, surname: true } } } },
       quote: { select: { guidedRequest: { select: { description: true, category: { select: { label: true } } } } } },
     } as const;
 
@@ -84,7 +88,7 @@ export class AdminQueueService {
       can("PROBLEM_TAKEOVER") ? this.prisma.problemTakeover.findMany({ where: { status: "OPEN" }, include: { user: { select: { name: true, surname: true } } } }) : [],
       can("CONTACT_MESSAGE") ? this.prisma.contactMessage.findMany({ where: { resolved: false } }) : [],
       can("VERIFICATION")
-        ? this.prisma.professionalProfile.findMany({ where: { verificationRequestedAt: { not: null }, verified: false, deletedAt: null, invitePendingAt: null }, select: { id: true, businessName: true, verificationRequestedAt: true } })
+        ? this.prisma.professionalProfile.findMany({ where: { verificationRequestedAt: { not: null }, verified: false, deletedAt: null, invitePendingAt: null }, select: { id: true, businessName: true, verificationRequestedAt: true, user: { select: { name: true, surname: true } } } })
         : [],
       can("CLOSED_ZONE") ? this.prisma.generalRequestBlock.findMany({ where: { reopenedAt: null }, include: { category: { select: { label: true } } } }) : [],
       can("JOB_ISSUE") ? this.prisma.jobIssue.findMany({ where: { status: "CHAT" }, include: { booking: { include: bookingInclude } } }) : [],
@@ -104,7 +108,7 @@ export class AdminQueueService {
       can("HELD_REVIEW")
         ? this.prisma.review.findMany({
             where: { heldAt: { not: null } },
-            select: { id: true, rating: true, comment: true, heldAt: true, heldReasons: true, booking: { select: { clientId: true, client: { select: { name: true, surname: true } }, professionalProfile: { select: { businessName: true } } } } },
+            select: { id: true, rating: true, comment: true, heldAt: true, heldReasons: true, booking: { select: { clientId: true, client: { select: { name: true, surname: true } }, professionalProfile: { select: { businessName: true, user: { select: { name: true, surname: true } } } } } } },
           })
         : [],
     ]);
@@ -117,6 +121,18 @@ export class AdminQueueService {
         })
       : [];
     const suspiciousById = new Map(suspiciousUsers.map((u) => [u.id, u]));
+    // Chi ha fatto ricorso su una segnalazione: l'autore del contenuto (nessuna relazione nello schema).
+    const ownerIds = [...new Set(reportAppeals.map((r) => r.contentOwnerId).filter((id): id is string => Boolean(id)))];
+    const owners = ownerIds.length
+      ? new Map(
+          (
+            await this.prisma.user.findMany({
+              where: { id: { in: ownerIds } },
+              select: { id: true, name: true, surname: true, email: true, deletedAt: true, professionalProfile: { select: { businessName: true } } },
+            })
+          ).map((u) => [u.id, adminPersonName({ businessName: u.professionalProfile?.businessName, name: u.name, surname: u.surname, email: u.email, deletedAt: u.deletedAt })]),
+        )
+      : new Map<string, string>();
 
     for (const p of bankDisputes) {
       items.push({
@@ -125,7 +141,7 @@ export class AdminQueueService {
         href: "/admin/pagamenti",
         title: "Contestazione in banca",
         detail: p.disputeProNote ? "Il professionista ha scritto la sua spiegazione" : "Il professionista non ha ancora scritto la sua spiegazione",
-        who: between(p.booking.client, p.booking.professionalProfile.businessName),
+        who: between(p.booking.client, p.booking.professionalProfile),
         amountEurCents: p.paidEurCents || p.grossAmountEurCents,
         dueAt: p.stripeDisputeDueBy?.toISOString() ?? null,
         dueNote: "scadenza della banca",
@@ -142,7 +158,7 @@ export class AdminQueueService {
         href: "/admin/problemi",
         title: i.type === "NO_SHOW" ? "Problema sul lavoro: non si è presentato" : "Problema sul lavoro: lavoro fatto male",
         detail: short(i.booking.quote?.guidedRequest.description ?? i.description),
-        who: between(i.booking.client, i.booking.professionalProfile.businessName),
+        who: between(i.booking.client, i.booking.professionalProfile),
         amountEurCents: i.booking.jobPayment?.paidEurCents || null,
         dueAt: phase?.dueAt.toISOString() ?? null,
         dueNote: phase?.phase === "TO_DECIDE" ? "Termini: decisione entro 2 giorni" : phase?.phase === "AWAITING_INFO" ? "risposta alle informazioni" : "versione del professionista",
@@ -158,7 +174,7 @@ export class AdminQueueService {
         href: "/admin/problemi?vista=appeals",
         title: "Ricorso su un problema accolto",
         detail: short(i.appealText),
-        who: i.booking.professionalProfile.businessName,
+        who: proName(i.booking.professionalProfile),
         amountEurCents: null,
         dueAt: null,
         dueNote: null,
@@ -174,7 +190,7 @@ export class AdminQueueService {
         href: "/admin/pagamenti",
         title: "Rimborso",
         detail: short(r.reason),
-        who: between(r.jobPayment.booking.client, r.jobPayment.booking.professionalProfile.businessName),
+        who: between(r.jobPayment.booking.client, r.jobPayment.booking.professionalProfile),
         amountEurCents: r.amountEurCents,
         dueAt: null,
         dueNote: null,
@@ -190,7 +206,7 @@ export class AdminQueueService {
         href: "/admin/pagamenti",
         title: "Contestazione di pagamento",
         detail: short(d.reason),
-        who: between(d.jobPayment.booking.client, d.jobPayment.booking.professionalProfile.businessName),
+        who: between(d.jobPayment.booking.client, d.jobPayment.booking.professionalProfile),
         amountEurCents: d.jobPayment.paidEurCents || d.jobPayment.grossAmountEurCents,
         dueAt: null,
         dueNote: null,
@@ -206,7 +222,7 @@ export class AdminQueueService {
         href: "/admin/pagamenti",
         title: "Saldo non pagato",
         detail: null,
-        who: between(p.booking.client, p.booking.professionalProfile.businessName),
+        who: between(p.booking.client, p.booking.professionalProfile),
         amountEurCents: Math.max(0, p.grossAmountEurCents - p.paidEurCents) || null,
         dueAt: null,
         dueNote: null,
@@ -288,7 +304,7 @@ export class AdminQueueService {
         href: "/admin/segnalazioni?vista=ricorsi",
         title: "Ricorso su una segnalazione",
         detail: short(r.appealText),
-        who: null,
+        who: r.contentOwnerId ? (owners.get(r.contentOwnerId) ?? null) : null,
         amountEurCents: null,
         dueAt: null,
         dueNote: null,
@@ -337,7 +353,7 @@ export class AdminQueueService {
         href: "/admin/verifiche",
         title: "Verifica del profilo chiesta",
         detail: null,
-        who: v.businessName,
+        who: proName(v),
         amountEurCents: null,
         dueAt: null,
         dueNote: null,
@@ -393,7 +409,7 @@ export class AdminQueueService {
         href: `/admin/utenti/${r.booking.clientId}?scheda=recensioni`,
         title: `Recensione ${r.rating}★ da controllare`,
         detail: short([r.heldReasons.map((reason) => REVIEW_HOLD_REASON_LABEL[reason as ReviewHoldReason] ?? reason).join("; "), r.comment].filter(Boolean).join(" · "), 160),
-        who: between(r.booking.client, r.booking.professionalProfile.businessName),
+        who: between(r.booking.client, r.booking.professionalProfile),
         amountEurCents: null,
         dueAt: new Date(heldAt.getTime() + REVIEW_HOLD_DECISION_HOURS * 60 * 60 * 1000).toISOString(),
         dueNote: "il cliente aspetta la pubblicazione",
@@ -422,7 +438,7 @@ export class AdminQueueService {
           key: `JOB_ISSUE:${i.id}`,
           href: "/admin/problemi?vista=chat",
           title: "Problema ancora in chat tra le parti",
-          who: between(i.booking.client, i.booking.professionalProfile.businessName),
+          who: between(i.booking.client, i.booking.professionalProfile),
           since: i.createdAt.toISOString(),
         })),
     };

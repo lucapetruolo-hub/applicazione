@@ -5983,6 +5983,127 @@ a.admin-kpi:hover {
   }
 }
 
+/* Pillola "Novità" accanto a "Cosa è successo?" in home
+   (docs/changelog/2026-11-03-ricerca-per-problema-home.md, idea di Luca):
+   bordo con una luce che gira nei verdi del sito e un filo d'oro. Ferma per
+   chi chiede meno animazioni; senza @property il bordo resta sfumato fermo. */
+@property --badge-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes label-badge-spin {
+  to {
+    --badge-angle: 360deg;
+  }
+}
+.label-badge {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(#128552, #128552) padding-box,
+    conic-gradient(from var(--badge-angle), #128552, #7fd6a4, #f2c14e, #7fd6a4, #128552) border-box !important;
+  box-shadow: 0 0 10px rgba(127, 214, 164, 0.55);
+  /* Due giri all'apertura della pagina, poi ferma (scelta di Luca). */
+  animation: label-badge-spin 3s linear 2;
+}
+/* Stessa luce, più lenta, sul bordo del campo "Cosa è successo?" in home
+   (scelta di Luca: indica proprio dove scrivere). Gira solo per i primi 6
+   secondi, poi resta il bordo sfumato fermo; col cursore nel campo diventa
+   verde pieno, per non distrarre chi scrive. */
+.hero-problem-input {
+  border: 2px solid transparent !important;
+  background:
+    linear-gradient(#f7f7f7, #f7f7f7) padding-box,
+    conic-gradient(from var(--badge-angle), #128552, #7fd6a4, #f2c14e, #7fd6a4, #128552) border-box !important;
+  animation: label-badge-spin 3s linear 2;
+}
+.hero-problem-input:focus {
+  animation: none;
+  background:
+    linear-gradient(#f7f7f7, #f7f7f7) padding-box,
+    linear-gradient(#128552, #128552) border-box !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .label-badge,
+  .hero-problem-input {
+    animation: none;
+  }
+}
+
+/* Esempi da toccare sotto la ricerca della home
+   (docs/changelog/2026-11-03-ricerca-per-problema-home.md): stessa pillola
+   chiara sul verde di "Richiesta urgente", più bassa. */
+.hero-examples {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+.hero-examples-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+.hero-examples-label {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 15px;
+  font-weight: 600;
+}
+.hero-example {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.hero-example:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+.hero-example:active {
+  transform: scale(0.98);
+}
+.hero-example:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+/* Da telefono una riga che scorre per gruppo, invece di sei righe di
+   pillole che spingevano "Richiesta urgente" fuori dallo schermo. */
+@media (max-width: 660px) {
+  .hero-examples {
+    align-items: stretch;
+    width: 100%;
+  }
+  .hero-examples-row {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    /* Sfumatura a destra: dice che la riga continua. */
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  }
+  .hero-examples-row::-webkit-scrollbar {
+    display: none;
+  }
+  .hero-examples-label,
+  .hero-example {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}
+
 /* Testo letto da Google e dai lettori di schermo ma non mostrato (es. il
    titolo h1 delle pagine di ricerca, docs/CHANGELOG.md §271). */
 .sr-only {

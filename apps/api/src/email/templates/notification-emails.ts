@@ -1051,20 +1051,32 @@ const BUILDERS: Record<string, Builder> = {
     paragraphs: [`Il cliente ha confermato un lavoro pagato online, ma il professionista non l'ha chiuso entro ${BAD_WORK_REPORT_DAYS} giorni: i soldi sono ancora bloccati.`],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin` },
   }),
-  JOB_STRIPE_DISPUTE: (payload, ctx) => ({
-    kind: "notification",
-    tone: "urgent",
-    subject: payload.status && ["won", "lost", "warning_closed", "prevented"].includes(String(payload.status)) ? "Contestazione in banca chiusa" : "Un cliente ha contestato un pagamento in banca",
-    greeting: ctx.name,
-    title: "Contestazione in banca",
-    paragraphs: [
-      `Il cliente del lavoro **${job(ctx)}** ha contestato un pagamento online presso la sua banca.`,
-      "Decide la banca: finché la contestazione è aperta la cifra contestata resta sospesa. Il nostro team risponde con le prove (preventivo accettato, chat, foto).",
-      "Aiutaci a vincerla: nella scheda del lavoro, sotto il pagamento, scrivi come è andato e aggiungi le foto che hai. Le mandiamo noi alla banca.",
-      "Se la banca dà ragione a te la cifra torna sul tuo conto; se dà ragione al cliente resta a lui.",
-    ],
-    cta: proRequests("Apri il lavoro"),
-  }),
+  JOB_STRIPE_DISPUTE: (payload, ctx) => {
+    const closed = !!payload.status && ["won", "lost", "warning_closed", "prevented"].includes(String(payload.status));
+    // Commissione di Stripe, sempre a suo carico (docs/changelog/2026-11-03-commissione-contestazioni.md).
+    const fee = typeof payload.feeEurCents === "number" && payload.feeEurCents > 0 ? formatEur(payload.feeEurCents) : "";
+    return {
+      kind: "notification",
+      tone: "urgent",
+      subject: closed ? "Contestazione in banca chiusa" : "Un cliente ha contestato un pagamento in banca",
+      greeting: ctx.name,
+      title: "Contestazione in banca",
+      paragraphs: [
+        `Il cliente del lavoro **${job(ctx)}** ha contestato un pagamento online presso la sua banca.`,
+        "Decide la banca: finché la contestazione è aperta la cifra contestata resta sospesa. Il nostro team risponde con le prove (preventivo accettato, chat, foto).",
+        "Aiutaci a vincerla: nella scheda del lavoro, sotto il pagamento, scrivi come è andato e aggiungi le foto che hai. Le mandiamo noi alla banca.",
+        "Se la banca dà ragione a te la cifra torna sul tuo conto; se dà ragione al cliente resta a lui.",
+        ...(closed
+          ? []
+          : [
+              fee
+                ? `Stripe trattiene anche ${fee} di commissione per la contestazione: non torna, nemmeno se la banca ti dà ragione.`
+                : "Stripe trattiene anche una commissione per la contestazione (di solito 20 €): non torna, nemmeno se la banca ti dà ragione.",
+            ]),
+      ],
+      cta: proRequests("Apri il lavoro"),
+    };
+  },
   // Promemoria 5 giorni prima della scadenza delle prove (docs/changelog/2026-10-28-stripe-prova.md).
   JOB_STRIPE_DISPUTE_NOTE_DUE: (payload, ctx) => {
     const dueBy = str(payload.dueBy);
@@ -2012,12 +2024,34 @@ const BUILDERS: Record<string, Builder> = {
       subject: `Abbonamento ${tier} rinnovato`.replace(/\s+/g, " "),
       greeting: ctx.name,
       title: "Abbonamento rinnovato",
-      paragraphs: [`Abbiamo rinnovato il tuo abbonamento ${tier}. Grazie per continuare con noi!`.replace(/\s+/g, " ")],
+      paragraphs: [
+        `Abbiamo rinnovato il tuo abbonamento ${tier}. Grazie per continuare con noi!`.replace(/\s+/g, " "),
+        ...(payload.invoice === true ? ["La fattura è in Fatture e documenti, nella tua area."] : []),
+      ],
       details: [
         ...(typeof payload.amountEurCents === "number" ? [{ label: "Addebito", value: formatEur(payload.amountEurCents) }] : []),
         ...(str(payload.date) ? [{ label: "Prossimo rinnovo", value: formatDay(str(payload.date)) }] : []),
       ],
       cta: subscriptionPage(),
+    };
+  },
+  // Livello scelto o quota di passaggio pagati (collaudo E-13).
+  SUBSCRIPTION_PAID: (payload, ctx) => {
+    const tier = str(payload.tierLabel) ?? "";
+    const amount = typeof payload.amountEurCents === "number" ? formatEur(payload.amountEurCents) : null;
+    const what = payload.upgradeFee === true ? `il passaggio al livello ${tier}` : `l'abbonamento ${tier}`;
+    return {
+      kind: "account",
+      subject: `Pagamento ricevuto${amount ? `: ${amount}` : ""}`,
+      greeting: ctx.name,
+      title: "Pagamento ricevuto",
+      paragraphs: [
+        `Abbiamo ricevuto il pagamento per ${what}${amount ? `: **${amount}**, IVA compresa` : ""}. Grazie!`.replace(/\s+/g, " "),
+        payload.invoice === true
+          ? "La fattura è già in Fatture e documenti, nella tua area."
+          : "La fattura la trovi in Fatture e documenti, nella tua area, appena è pronta.",
+      ],
+      cta: { label: "Apri Fatture e documenti", url: `${frontendUrl()}/dashboard/documenti` },
     };
   },
   SUBSCRIPTION_ENDING: (payload, ctx) => {

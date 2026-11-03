@@ -112,6 +112,8 @@ test("account di prova eliminato per sempre con le sue richieste", async ({ brow
   const client = await createClient(prisma, "Prova");
   const category = await prisma.category.findFirstOrThrow({ where: { slug: "idraulico" } });
   await prisma.guidedRequest.create({ data: { clientId: client.id, categoryId: category.id, description: "Richiesta di prova del sito.", city: "Latina" } });
+  // Si elimina solo un account già segnato come di prova.
+  await prisma.user.update({ where: { id: client.id }, data: { testAccountAt: new Date() } });
 
   const { context, page } = await adminPage(browser, { width: 390, height: 844, isMobile: true });
   await page.goto(`/admin/utenti/${client.id}`);

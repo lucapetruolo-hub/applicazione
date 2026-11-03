@@ -270,6 +270,11 @@ export type MySubscription = {
    * ripartono i lavori.
    */
   limitReached: boolean;
+  /**
+   * Limite dei lavori attivo: pagamenti accesi e sito lanciato. Prima del
+   * lancio non c'è limite e il sito non mostra "4 su 3" (collaudo C-09).
+   */
+  limitsActive: boolean;
   /** Rinnovo dell'abbonamento pagato; null durante e dopo la prova se non ne è stato scelto uno. */
   billingInterval: BillingInterval | null;
   /**

@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { formatEurCents, ONLINE_APP_FEE_PERCENT, onlineFeeExample } from "@professionisti/shared";
+import {
+  formatEurCents,
+  ONLINE_APP_FEE_PERCENT,
+  ONLINE_HELD_LIMIT_EUR_CENTS,
+  ONLINE_LIMIT_EUR_CENTS,
+  ONLINE_LIMIT_FREE_JOBS,
+  ONLINE_LIMIT_FREE_MONTHS,
+  onlineFeeExample,
+} from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 
@@ -38,9 +46,9 @@ function P({ children }: { children: ReactNode }) {
   );
 }
 
-function Point({ n, title, children, list }: { n: number; title: string; children: ReactNode; list?: string[] }) {
+function Point({ n, title, children, list, id }: { n: number; title: string; children: ReactNode; list?: string[]; id?: string }) {
   return (
-    <YStack gap="$1" paddingLeft="$3" borderLeftWidth={3} borderLeftColor={brand.filetto}>
+    <YStack id={id} gap="$1" paddingLeft="$3" borderLeftWidth={3} borderLeftColor={brand.filetto} style={id ? { scrollMarginTop: 96 } : undefined}>
       <Text fontWeight="700" color={brand.grafite}>
         {n}. {title}
       </Text>
@@ -134,6 +142,13 @@ export function PagamentiContent() {
             {formatEurCents(EXAMPLE.feeEurCents)} ({formatEurCents(EXAMPLE.taxableEurCents)} + {formatEurCents(EXAMPLE.vatEurCents)} di IVA) e
             ti arrivano {formatEurCents(EXAMPLE.netEurCents)}. Ogni mese ti mandiamo la fattura delle trattenute. Su quanto ti paga
             direttamente non c&apos;è commissione. Il cliente non paga costi in più.
+          </Point>
+          {/* Il tetto dei professionisti nuovi, prima solo nei Termini (collaudo D-06). */}
+          <Point n={5} id="limite" title="Limite per i primi lavori">
+            All&apos;inizio online puoi chiedere al massimo {formatEurCents(ONLINE_LIMIT_EUR_CENTS)} a lavoro, e avere al massimo{" "}
+            {formatEurCents(ONLINE_HELD_LIMIT_EUR_CENTS)} bloccati in tutto. Il limite si toglie da solo dopo {ONLINE_LIMIT_FREE_JOBS} lavori
+            pagati online senza contestazioni e {ONLINE_LIMIT_FREE_MONTHS} mesi dal primo: è il tempo in cui un cliente può ancora
+            contestare il pagamento con la sua banca. Il pagamento diretto non ha limiti.
           </Point>
           <P>
             Per offrire l&apos;acconto online attiva i pagamenti in Fisco e pagamenti, nella tua area: Stripe ti chiede i dati e

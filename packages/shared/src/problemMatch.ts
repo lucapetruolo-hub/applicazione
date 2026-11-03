@@ -405,6 +405,12 @@ export type ProblemTakeoverAdmin = {
   description: string;
   city: string | null;
   outOfService: string | null;
+  /** Possibile pericolo nella descrizione (gas, corrente...), come in Da fare. */
+  safety: ProblemSafety | null;
+  /** Mestiere più probabile secondo il dizionario, quando non è un lavoro fuori servizio. */
+  likelyCategory: string | null;
+  /** Chi ha premuto "Prendo io". */
+  claimedBy: { id: string; name: string } | null;
   status: "OPEN" | "DONE";
   createdAt: string;
   handledAt: string | null;

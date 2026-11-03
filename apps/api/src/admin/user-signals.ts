@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@professionisti/database";
 import {
+  adminPersonName,
   MANY_ISSUES_COUNT,
   MANY_ISSUES_DAYS,
   NEW_CLIENT_DAYS,
@@ -199,7 +200,9 @@ export function buildUserSignals(input: SignalInput): Map<string, AdminUserSigna
 }
 
 export function personLabel(user: { name: string | null; surname: string | null; email: string | null; professionalProfile?: { businessName: string } | null }): string {
-  return user.professionalProfile?.businessName || [user.name, user.surname].filter(Boolean).join(" ") || user.email || "Account";
+  // Attività e persona insieme, come nelle altre pagine dell'admin (misura "dopo" del riordino).
+  const label = adminPersonName({ businessName: user.professionalProfile?.businessName, name: user.name, surname: user.surname, email: user.email });
+  return label === "Utente" ? "Account" : label;
 }
 
 const PERSON_SELECT = { id: true, name: true, surname: true, email: true, professionalProfile: { select: { businessName: true } } } as const;

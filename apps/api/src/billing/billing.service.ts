@@ -42,8 +42,26 @@ const TAX_RATE_ENV = "STRIPE_TAX_RATE_IVA";
 // Stripe accetta un `trial_end` solo almeno 48 ore nel futuro.
 const MIN_TRIAL_END_MS = 48 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
+// Metadato della configurazione del Customer Portal che mostra solo la carta (collaudo G-02).
+const CARD_ONLY_PORTAL = "solo-carta-v1";
+// Una fattura immediata va emessa entro 12 giorni dal pagamento (art. 21 DPR 633/1972):
+// oltre, il recupero delle fatture mancate non la fa più da solo.
+const MISSED_INVOICE_WINDOW_MS = 12 * 24 * 60 * 60 * 1000;
 // "Torna a Base" si fa poco prima della scadenza, prima che Stripe rinnovi il livello pagato.
 const RETURN_TO_BASE_LEAD_MS = 20 * 60 * 1000;
+
+/**
+ * Riga sotto il pulsante del Checkout di Stripe (collaudo D-05, E-08, G-02):
+ * Stripe conta i giorni gratis ("89 giorni gratuiti"), il sito parla di mesi
+ * e di una data. Qui la data, cosa succede dopo e dov'è la fattura.
+ */
+export function checkoutMessage(freeUntil: Date | null, plan: SubscriptionTier): string {
+  const invoice = "La fattura te la facciamo noi: la trovi nel sito, in Fatture e documenti.";
+  if (!freeUntil) return invoice;
+  const day = freeUntil.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
+  const price = (subscriptionTierInfo(plan).priceEurCents / 100).toLocaleString("it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  return `Oggi non paghi nulla: è gratis fino al ${day}. Poi ${subscriptionTierInfo(plan).label} a ${price} € + IVA al mese, in automatico; ti avvisiamo una settimana prima e annulli quando vuoi dal sito. ${invoice}`;
+}
 
 function tierRank(tier: SubscriptionTier): number {
   return SUBSCRIPTION_TIERS.findIndex((t) => t.tier === tier);
@@ -156,9 +174,12 @@ export class BillingService implements OnModuleInit {
   }
 
   /**
-   * Customer Portal di Stripe (docs/CHANGELOG.md §238): il professionista
-   * cambia la carta e scarica le fatture di abbonamento e boost. Livelli e
-   * annullamento restano nella pagina Abbonamento del sito.
+   * Customer Portal di Stripe (docs/CHANGELOG.md §238): solo per cambiare la
+   * carta. Livelli e annullamento restano nella pagina Abbonamento del sito,
+   * le fatture in "Fatture e documenti" (§378). Lo storico di Stripe è
+   * spento (collaudo G-02): i suoi PDF si chiamano "Fattura" ma non sono la
+   * fattura elettronica, e avere due "fatture" per lo stesso pagamento fa
+   * rischiare di registrarlo due volte.
    */
   async createBillingPortal(userId: string): Promise<{ url: string }> {
     const stripe = this.requireStripe();
@@ -167,9 +188,39 @@ export class BillingService implements OnModuleInit {
     const session = await stripe.billingPortal.sessions.create({
       customer,
       locale: "it",
+      configuration: await this.cardOnlyPortalConfiguration(stripe),
       return_url: `${this.frontendUrl()}/dashboard/abbonamento`,
     });
     return { url: session.url };
+  }
+
+  private cardOnlyPortalId: string | null = null;
+
+  /** Configurazione del portale "solo la carta", creata la prima volta e poi ritrovata dai metadati. */
+  private async cardOnlyPortalConfiguration(stripe: Stripe): Promise<string> {
+    if (this.cardOnlyPortalId) return this.cardOnlyPortalId;
+    for await (const configuration of stripe.billingPortal.configurations.list({ active: true, limit: 100 })) {
+      if (configuration.metadata?.uso === CARD_ONLY_PORTAL) {
+        this.cardOnlyPortalId = configuration.id;
+        return configuration.id;
+      }
+    }
+    const created = await stripe.billingPortal.configurations.create(
+      {
+        name: "Solo la carta",
+        metadata: { uso: CARD_ONLY_PORTAL },
+        features: {
+          payment_method_update: { enabled: true },
+          invoice_history: { enabled: false },
+          customer_update: { enabled: false },
+          subscription_cancel: { enabled: false },
+          subscription_update: { enabled: false },
+        },
+      },
+      { idempotencyKey: `portal-${CARD_ONLY_PORTAL}` },
+    );
+    this.cardOnlyPortalId = created.id;
+    return created.id;
   }
 
   private priceOf(priceId: string | undefined): { tier: SubscriptionTier; interval: BillingInterval } | null {
@@ -196,6 +247,51 @@ export class BillingService implements OnModuleInit {
     const taxRate = process.env[TAX_RATE_ENV];
     if (!taxRate) throw new BadRequestException(`Aliquota IVA Stripe non configurata (${TAX_RATE_ENV}).`);
     return [taxRate];
+  }
+
+  /** Avviso del pagamento di un livello o di una quota di passaggio, con il livello pagato. */
+  private async notifySubscriptionPaid(invoice: Stripe.Invoice, stripeSubscriptionId: string | null, invoiceIssued: boolean): Promise<void> {
+    const metadata = invoice.metadata ?? {};
+    const customerId = typeof invoice.customer === "string" ? invoice.customer : (invoice.customer?.id ?? null);
+    const professionalProfileId =
+      metadata.professionalProfileId ??
+      (stripeSubscriptionId ? (await this.prisma.subscription.findUnique({ where: { stripeSubscriptionId }, select: { professionalProfileId: true } }))?.professionalProfileId : undefined) ??
+      (customerId ? (await this.prisma.professionalProfile.findFirst({ where: { stripeCustomerId: customerId }, select: { id: true } }))?.id : undefined);
+    if (!professionalProfileId) return;
+    const priceRef = invoice.lines?.data?.find((line) => line.amount > 0)?.pricing?.price_details?.price;
+    const tier = (SUBSCRIPTION_TIERS.find((t) => t.tier === metadata.plan)?.tier ?? this.priceOf(typeof priceRef === "string" ? priceRef : priceRef?.id)?.tier) ?? null;
+    await this.subscriptionsService.notifyPaid(professionalProfileId, {
+      tier,
+      upgradeFee: metadata.kind === "tier_upgrade_fee",
+      amountEurCents: invoice.amount_paid ?? 0,
+      invoiceIssued,
+    });
+  }
+
+  /**
+   * Recupero delle nostre fatture mancate (collaudo D-02, E-02): un webhook
+   * perso o i dati della società inseriti dopo la data di partenza delle
+   * fatture. Ogni mattina rilegge i pagamenti di Stripe degli ultimi 12
+   * giorni e fa la fattura a quelli che non l'hanno (la chiave del
+   * documento evita i doppioni). Prima della data di partenza non fa nulla.
+   */
+  @Cron("15 6 * * *", { timeZone: "Europe/Rome" })
+  async issueMissedInvoices(now = new Date()): Promise<number> {
+    if (!this.stripe) return 0;
+    const since = Math.floor((now.getTime() - MISSED_INVOICE_WINDOW_MS) / 1000);
+    let issued = 0;
+    try {
+      for await (const invoice of this.stripe.invoices.list({ status: "paid", created: { gte: since }, limit: 100 })) {
+        if ((invoice.amount_paid ?? 0) <= 0) continue;
+        const existing = await this.prisma.invoice.findUnique({ where: { dedupeKey: `STRIPE:${invoice.id}` }, select: { id: true } });
+        if (existing) continue;
+        if (await this.invoicesService.issueForStripeInvoice(invoice, (priceId) => this.priceOf(priceId))) issued++;
+      }
+    } catch (error) {
+      this.logger.error("Recupero delle fatture dell'abbonamento non riuscito", error as Error);
+    }
+    if (issued) this.logger.warn(`Fatture dell'abbonamento recuperate: ${issued}`);
+    return issued;
   }
 
   /** Riporta sulla riga locale lo stato di un abbonamento Stripe. */
@@ -278,10 +374,10 @@ export class BillingService implements OnModuleInit {
     const freeRunning = state === "TRIAL" && current?.trialEndsAt && current.trialEndsAt.getTime() > now.getTime();
     const discount = plan !== "BASE" && freeRunning ? [{ coupon: await this.freeBaseMonthCoupon(stripe) }] : [];
 
-    // Nessun `invoice_creation` qui: per le Checkout Session in modalità
-    // `subscription` Stripe genera già da sola una fattura reale a ogni
-    // ciclo di fatturazione. Il professionista la riceve via email Stripe e
-    // la scarica dal Customer Portal.
+    // Per le Checkout Session in modalità `subscription` Stripe crea un suo
+    // documento a ogni addebito: non è la fattura elettronica, che emettiamo
+    // noi a `invoice.paid` (§378) e sta in "Fatture e documenti". Il portale
+    // non lo mostra (collaudo G-02) e sotto il pulsante lo diciamo.
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       ...EUR_ONLY,
@@ -293,6 +389,8 @@ export class BillingService implements OnModuleInit {
         metadata: { professionalProfileId: profile.id },
       },
       customer: await this.ensureCustomer(stripe, profile),
+      // Stripe scrive "89 giorni gratuiti": la data e il dopo detti come sul sito (collaudo D-05, E-08).
+      custom_text: { submit: { message: checkoutMessage(trialEnd ? new Date(trialEnd * 1000) : null, plan) } },
       // Ritorno con il messaggio giusto: carta salvata a 0 € o pagamento fatto; finestra chiusa a metà.
       success_url: `${this.frontendUrl()}/dashboard/abbonamento?attivato=${trialEnd ? "carta" : "1"}`,
       cancel_url: `${this.frontendUrl()}/dashboard/abbonamento?annullato=1#livelli`,
@@ -756,16 +854,22 @@ export class BillingService implements OnModuleInit {
     if (event.type === "invoice.payment_failed" || event.type === "invoice.paid") {
       const invoice = event.data.object as Stripe.Invoice;
       // Abbonamento, rinnovo o quota di passaggio pagati: la nostra fattura (§378).
-      if (event.type === "invoice.paid") await this.invoicesService.issueForStripeInvoice(invoice, (priceId) => this.priceOf(priceId));
+      const invoiceIssued = event.type === "invoice.paid" ? await this.invoicesService.issueForStripeInvoice(invoice, (priceId) => this.priceOf(priceId)) : false;
       const stripeSubscriptionId = invoiceSubscriptionId(invoice);
+      const renewal = invoice.billing_reason === "subscription_cycle";
+      // Pagamento che non è un rinnovo (livello scelto, quota di passaggio): avviso nella
+      // campanella e per email, con dove trovare la fattura (collaudo E-13).
+      if (event.type === "invoice.paid" && !renewal && (invoice.amount_paid ?? 0) > 0) {
+        await this.notifySubscriptionPaid(invoice, stripeSubscriptionId, invoiceIssued);
+      }
       if (stripeSubscriptionId) {
-        const renewal = invoice.billing_reason === "subscription_cycle";
         const periodEnd = invoice.lines?.data?.[0]?.period?.end;
         await this.subscriptionsService.onInvoice(stripeSubscriptionId, {
           paid: event.type === "invoice.paid",
           renewal,
           amountEurCents: invoice.amount_paid ?? 0,
           nextPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,
+          invoiceIssued,
         });
         const subscriptionRow = renewal && event.type === "invoice.paid" && invoice.amount_paid > 0
           ? await this.prisma.subscription.findUnique({ where: { stripeSubscriptionId } })

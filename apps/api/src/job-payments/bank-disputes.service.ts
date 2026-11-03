@@ -4,6 +4,7 @@ import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
   BANK_DISPUTE_OPEN_STATUSES,
   BANK_DISPUTE_REVIEW_STATUSES,
+  adminPersonName,
   formatEur,
   type AdminBankDispute,
   type AdminBankDisputeArchiveRow,
@@ -37,7 +38,7 @@ const JOB_INCLUDE = {
   booking: {
     include: {
       client: { select: { name: true, surname: true, email: true } },
-      professionalProfile: { select: { businessName: true, city: true, userId: true } },
+      professionalProfile: { select: { businessName: true, city: true, userId: true, user: { select: { name: true, surname: true } } } },
       finalItems: true,
       issue: { select: { type: true, status: true, createdAt: true } },
       quote: { include: { items: true, guidedRequest: { select: { id: true, description: true, createdAt: true, category: { select: { label: true } } } } } },
@@ -50,6 +51,8 @@ type Job = Prisma.JobPaymentGetPayload<{ include: typeof JOB_INCLUDE }>;
 const day = (date: Date) => date.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
 const dayTime = (date: Date) => date.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
 const businessName = (job: Job) => job.booking.professionalProfile.businessName ?? "Professionista";
+// Solo per la pagina dell'admin (misura "dopo" del riordino): le prove per la banca usano `businessName`.
+const professionalName = (job: Job) => adminPersonName({ businessName: businessName(job), name: job.booking.professionalProfile.user?.name, surname: job.booking.professionalProfile.user?.surname });
 const clientName = (job: Job) => [job.booking.client.name, job.booking.client.surname].filter(Boolean).join(" ") || job.booking.client.email || "Cliente";
 /**
  * Solo con le chiavi di prova: Stripe chiude la contestazione come vinta o
@@ -219,19 +222,21 @@ export class BankDisputesService {
       bookingId: job.bookingId,
       disputeId: job.stripeDisputeId!,
       businessName: businessName(job),
+      professionalName: professionalName(job),
       clientName: clientName(job),
       // Con più contestazioni la somma di quelle ancora aperte o in mano alla banca.
       amountEurCents:
         parts.length > 1
           ? parts.filter((p) => !CLOSED.includes(p.status)).reduce((sum, p) => sum + (p.amountEurCents ?? 0), 0) || (dispute?.amount ?? job.paidEurCents)
           : (dispute?.amount ?? job.paidEurCents),
-      reason: dispute?.reason ?? null,
+      // Se Stripe non risponde, scadenza e motivo salvati all'arrivo (misura "dopo" del riordino): mai una scheda senza scadenza.
+      reason: dispute?.reason ?? job.stripeDisputeReason ?? null,
       status,
-      dueBy: dueBy ? new Date(dueBy * 1000).toISOString() : null,
+      dueBy: dueBy ? new Date(dueBy * 1000).toISOString() : (job.stripeDisputeDueBy?.toISOString() ?? null),
       submitted,
       sentExplanation: submitted ? (savedEvidence(job)?.explanation ?? dispute?.evidence?.uncategorized_text ?? null) : null,
       professionalNote: job.disputeProNote && job.disputeProNoteAt ? { text: job.disputeProNote, photoUrls: job.disputeProPhotoUrls, at: job.disputeProNoteAt.toISOString() } : null,
-      draft: draftFromSaved(savedEvidence(job)) ?? this.draft(job, dispute?.reason ?? null),
+      draft: draftFromSaved(savedEvidence(job)) ?? this.draft(job, dispute?.reason ?? job.stripeDisputeReason ?? null),
       parts,
     };
   }
@@ -245,6 +250,7 @@ export class BankDisputesService {
       payment: intent && intent === job.stripePaymentIntentId ? "DEPOSIT" : intent && intent === job.balancePaymentIntentId ? "BALANCE" : savedDetail(job.disputeDetails, disputeId).payment,
       status: dispute?.status ?? savedStatus ?? "needs_response",
       amountEurCents: dispute?.amount ?? savedDetail(job.disputeDetails, disputeId).amountEurCents,
+      feeEurCents: dispute ? disputeFee(dispute) : savedFee(job.disputeFees, disputeId),
       dueBy: due ? new Date(due * 1000).toISOString() : null,
     };
   }
@@ -282,6 +288,7 @@ export class BankDisputesService {
       bookingId: job.bookingId,
       disputeId: job.stripeDisputeId!,
       businessName: businessName(job),
+      professionalName: professionalName(job),
       clientName: clientName(job),
       clientEmail: job.booking.client.email ?? null,
       amountEurCents: job.paidEurCents,
@@ -302,6 +309,7 @@ export class BankDisputesService {
       parts: Object.entries({ [job.stripeDisputeId!]: job.stripeDisputeStatus ?? "needs_response", ...disputeStatusMap(job.disputeStatuses) }).map(([disputeId, status]) => ({
         disputeId,
         ...savedDetail(job.disputeDetails, disputeId),
+        feeEurCents: savedFee(job.disputeFees, disputeId),
         status,
         dueBy: null,
       })),
@@ -509,6 +517,18 @@ export class BankDisputesService {
 }
 
 /** Stato di ogni contestazione del lavoro (`JobPayment.disputeStatuses`). */
+/** Commissione di Stripe presa con la contestazione (somma delle commissioni dei suoi movimenti). */
+function disputeFee(dispute: Stripe.Dispute): number {
+  return Math.max(0, (dispute.balance_transactions ?? []).reduce((sum, bt) => sum + bt.fee, 0));
+}
+
+/** Commissione salvata all'arrivo della contestazione (addebito diretto), null se non c'è. */
+function savedFee(value: Prisma.JsonValue | undefined, disputeId: string): number | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const cents = (value as Record<string, unknown>)[disputeId];
+  return typeof cents === "number" ? cents : null;
+}
+
 function disputeStatusMap(value: Prisma.JsonValue | undefined): Record<string, string> {
   const out: Record<string, string> = {};
   if (value && typeof value === "object" && !Array.isArray(value)) {

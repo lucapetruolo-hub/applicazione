@@ -455,7 +455,7 @@ describe("OnlineMoneyService.handleStripeDisputeFunds (§267)", () => {
     );
   });
 
-  it("persa per frode: la commissione di Stripe resta a noi", async () => {
+  it("persa per frode: anche la commissione di Stripe, con l'IVA, è a carico del professionista (decisione di Luca, 3/11)", async () => {
     const { service, prisma } = buildService();
     const job = releasedJob({ payoutPendingEurCents: 0, payoutSentEurCents: 9325, stripeDisputeId: "dp_1", stripeDisputeStatus: "under_review" });
     prisma.jobPayment.findFirst.mockResolvedValue(job);
@@ -463,7 +463,18 @@ describe("OnlineMoneyService.handleStripeDisputeFunds (§267)", () => {
 
     await service.handleStripeDispute(dispute({ status: "lost", reason: "fraudulent", balance_transactions: [{ fee: 2000 }] }));
 
-    expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: { professionalDebtEurCents: { increment: 9325 } } }));
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: { professionalDebtEurCents: { increment: 9325 + 2440 } } }));
+  });
+
+  it("vinta: la commissione di Stripe, che non torna, è comunque a suo carico con l'IVA", async () => {
+    const { service, prisma } = buildService();
+    const job = releasedJob({ stripeDisputeId: "dp_1", stripeDisputeStatus: "under_review" });
+    prisma.jobPayment.findFirst.mockResolvedValue(job);
+    prisma.jobPayment.update.mockResolvedValue(job);
+
+    await service.handleStripeDispute(dispute({ status: "won", reason: "fraudulent", balance_transactions: [{ fee: 2000 }, { fee: 0 }] }));
+
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: { professionalDebtEurCents: { increment: 2440 } } }));
   });
 });
 

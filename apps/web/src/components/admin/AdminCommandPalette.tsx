@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AdminRoleName, AdminSearchResult } from "@professionisti/api-client";
-import { adminCan, CONTENT_REPORT_TARGET_LABEL } from "@professionisti/shared";
+import { adminCan, adminPersonName, CONTENT_REPORT_TARGET_LABEL, isClosedAccountEmail } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { ADMIN_NAV_ITEMS } from "./AdminNav";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
@@ -67,8 +67,11 @@ export function AdminCommandPalette({
       .map((item) => ({ key: `page-${item.href}`, title: item.label, href: item.href, group: "Sezioni" }));
     const users = (results?.users ?? []).map((u) => ({
       key: `user-${u.id}`,
-      title: u.businessName ?? ([u.name, u.surname].filter(Boolean).join(" ") || u.email || "Utente"),
-      subtitle: [u.email, u.suspendedAt ? "sospeso" : u.deletedAt ? "eliminato" : null].filter(Boolean).join(" · "),
+      title: adminPersonName(u),
+      // Mai l'email finta di un account chiuso: si dice quando è stato chiuso.
+      subtitle: [isClosedAccountEmail(u.email) ? null : u.email, u.suspendedAt ? "sospeso" : u.deletedAt ? `account chiuso il ${new Date(u.deletedAt).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", day: "numeric", month: "short", year: "numeric" })}` : null]
+        .filter(Boolean)
+        .join(" · "),
       href: `/admin/utenti/${u.id}`,
       group: "Utenti",
     }));

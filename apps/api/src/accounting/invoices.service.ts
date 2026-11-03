@@ -355,11 +355,11 @@ export class InvoicesService {
    * Abbonamento, rinnovo o quota di passaggio pagati: la fattura di Stripe
    * diventa la nostra fattura elettronica, con le stesse righe.
    */
-  async issueForStripeInvoice(invoice: Stripe.Invoice, tierOfPrice: (priceId: string | undefined) => { tier: SubscriptionTier; interval: BillingInterval } | null): Promise<void> {
-    if (!invoice.id || (invoice.amount_paid ?? 0) <= 0) return;
+  async issueForStripeInvoice(invoice: Stripe.Invoice, tierOfPrice: (priceId: string | undefined) => { tier: SubscriptionTier; interval: BillingInterval } | null): Promise<boolean> {
+    if (!invoice.id || (invoice.amount_paid ?? 0) <= 0) return false;
     const paidAt = invoice.status_transitions?.paid_at ? new Date(invoice.status_transitions.paid_at * 1000) : new Date();
     const issuer = await this.activeIssuer(paidAt);
-    if (!issuer) return;
+    if (!issuer) return false;
     const subscriptionRef = invoice.parent?.subscription_details?.subscription;
     const stripeSubscriptionId = subscriptionRef ? (typeof subscriptionRef === "string" ? subscriptionRef : subscriptionRef.id) : null;
     const customerId = typeof invoice.customer === "string" ? invoice.customer : (invoice.customer?.id ?? null);
@@ -370,7 +370,7 @@ export class InvoicesService {
       (customerId ? (await this.prisma.professionalProfile.findFirst({ where: { stripeCustomerId: customerId }, select: { id: true } }))?.id : undefined);
     if (!professionalProfileId) {
       this.logger.warn(`Fattura Stripe ${invoice.id} pagata senza professionista collegato: nessuna fattura emessa.`);
-      return;
+      return false;
     }
     const source: PlatformInvoiceSource = metadata.kind === "tier_upgrade_fee" ? "UPGRADE_FEE" : metadata.kind === "boost" ? "VISIBILITY_BOOST" : stripeSubscriptionId ? "SUBSCRIPTION" : "UPGRADE_FEE";
     const lines: PlatformInvoiceLine[] = (invoice.lines?.data ?? [])
@@ -388,7 +388,7 @@ export class InvoicesService {
     const linesTotal = lines.reduce((sum, line) => sum + line.taxableEurCents, 0);
     if (taxable !== linesTotal) lines.push({ description: "Sconto", taxableEurCents: taxable - linesTotal });
     try {
-      await this.createInvoice({
+      const created = await this.createInvoice({
         professionalProfileId,
         source,
         creditNote: false,
@@ -401,9 +401,11 @@ export class InvoicesService {
         stripeInvoiceId: invoice.id,
         issuer,
       });
+      return !!created;
     } catch (err) {
       // Mai un errore verso Stripe per la fattura: l'abbonamento è già pagato e attivo.
       this.logger.error(`Fattura per ${invoice.id} non emessa: ${err instanceof Error ? err.message : String(err)}`);
+      return false;
     }
   }
 
