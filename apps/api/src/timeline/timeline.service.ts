@@ -191,6 +191,8 @@ export class TimelineService {
         otherPartyImageUrl,
         categoryLabel: event.guidedRequest.category.label,
         requestDescription: event.guidedRequest.description,
+        requestPhotoUrl:
+          client.deletedAt || event.guidedRequest.deletedByClientAt ? null : requestThumbnailUrl(event.guidedRequest.photoUrls),
         lastMessage: event.hiddenAt ? "Messaggio nascosto" : event.message || null,
         lastMessageHasMedia: !event.hiddenAt && event.mediaUrls.length > 0,
         lastMessageAt: event.createdAt.toISOString(),
@@ -312,4 +314,21 @@ export class TimelineService {
     ]);
     return Boolean(lead || quote || systemEvent);
   }
+}
+
+const VIDEO_EXTENSION = /\.(mp4|webm|mov|m4v|avi|mkv|ogv)$/i;
+
+/**
+ * Miniatura della richiesta per la lista delle chat: la prima foto; se ci sono
+ * solo video, il primo fotogramma del primo video su Cloudinary (stesso
+ * indirizzo con `.jpg`, lo prepara Cloudinary). Nessuna miniatura per un video
+ * altrove (docs/changelog/2026-11-03-foto-richiesta-nei-messaggi.md).
+ */
+export function requestThumbnailUrl(photoUrls: string[]): string | null {
+  const isVideo = (url: string) => VIDEO_EXTENSION.test(url.split("?")[0] ?? "");
+  const photo = photoUrls.find((url) => !isVideo(url));
+  if (photo) return photo;
+  const video = photoUrls.find((url) => url.startsWith("https://res.cloudinary.com/") && url.includes("/video/upload/"));
+  if (!video) return null;
+  return (video.split("?")[0] ?? video).replace(VIDEO_EXTENSION, ".jpg");
 }
