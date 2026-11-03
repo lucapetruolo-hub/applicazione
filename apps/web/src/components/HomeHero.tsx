@@ -80,6 +80,7 @@ export function HomeHero() {
             <SearchBar
               wrapSearchButton={(button) => <MagneticButton block>{button}</MagneticButton>}
               onSearch={handleSearch}
+              cardClassName="hero-search-card"
               queryField={{ label: "Cosa è successo?", badge: "Novità", placeholder: "Es. scarico intasato" }}
               footer={({ mode, fillQuery }) => (mode === "domicilio" ? <HeroExamples onPick={fillQuery} /> : null)}
               {...searchHints}

@@ -74,6 +74,8 @@ export type SearchBarProps = {
    * Con "Online" restano "Cosa ti serve?" e l'esempio della consulenza.
    */
   queryField?: { label: string; badge?: string; placeholder: string };
+  /** Classe del riquadro bianco (in home il bordo con la luce che gira). */
+  cardClassName?: string;
   /**
    * Contenuto sotto il riquadro (gli esempi da toccare della home): riceve il
    * modo scelto e `fillQuery`, che scrive un testo nel campo e ci mette il cursore.
@@ -172,6 +174,7 @@ export function SearchBar({
   onQueryChange,
   queryField,
   footer,
+  cardClassName,
 }: SearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [city, setCity] = useState(initialCity);
@@ -300,6 +303,7 @@ export function SearchBar({
   return (
     <>
       <YStack
+        className={cardClassName}
         gap="$3"
         backgroundColor={brand.calce}
         padding="$3"

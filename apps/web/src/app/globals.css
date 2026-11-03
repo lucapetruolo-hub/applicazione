@@ -5983,6 +5983,45 @@ a.admin-kpi:hover {
   }
 }
 
+/* Pillola "Novità" accanto a "Cosa è successo?" in home
+   (docs/changelog/2026-11-03-ricerca-per-problema-home.md, idea di Luca):
+   bordo con una luce che gira nei verdi del sito e un filo d'oro. Ferma per
+   chi chiede meno animazioni; senza @property il bordo resta sfumato fermo. */
+@property --badge-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes label-badge-spin {
+  to {
+    --badge-angle: 360deg;
+  }
+}
+.label-badge {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(#128552, #128552) padding-box,
+    conic-gradient(from var(--badge-angle), #128552, #7fd6a4, #f2c14e, #7fd6a4, #128552) border-box !important;
+  box-shadow: 0 0 10px rgba(127, 214, 164, 0.55);
+  animation: label-badge-spin 3s linear infinite;
+}
+/* Stessa luce, più lenta e più tenue, sul bordo del riquadro della ricerca
+   in home (richiesta di Luca): attira l'occhio sul campo senza distrarre. */
+.hero-search-card {
+  border: 3px solid transparent;
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    conic-gradient(from var(--badge-angle), #ffffff, #7fd6a4, #f2c14e, #7fd6a4, #ffffff) border-box !important;
+  box-shadow: 0 0 22px rgba(127, 214, 164, 0.45);
+  animation: label-badge-spin 6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .label-badge,
+  .hero-search-card {
+    animation: none;
+  }
+}
+
 /* Esempi da toccare sotto la ricerca della home
    (docs/changelog/2026-11-03-ricerca-per-problema-home.md): stessa pillola
    chiara sul verde di "Richiesta urgente", più bassa. */

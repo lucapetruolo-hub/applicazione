@@ -205,7 +205,7 @@ export function Autocomplete<T>({
             {label}
           </Label>
           {labelBadge ? (
-            <Text fontSize={12} lineHeight={16} fontWeight="700" color="white" backgroundColor={brand.cianografiaPieno} borderRadius={999} paddingHorizontal={8} paddingVertical={2}>
+            <Text className="label-badge" fontSize={12} lineHeight={16} fontWeight="700" color="white" backgroundColor={brand.cianografiaPieno} borderRadius={999} paddingHorizontal={8} paddingVertical={2}>
               {labelBadge}
             </Text>
           ) : null}

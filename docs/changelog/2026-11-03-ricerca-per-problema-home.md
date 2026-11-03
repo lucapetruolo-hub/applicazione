@@ -32,3 +32,12 @@ le parole "Novità" e "intelligenza artificiale".
 telefono (320 e 390 px) e computer (1440 px) prima e dopo il tocco di un
 esempio, test e2e `barra-preventivo.spec.ts` aggiornato (etichetta, esempio,
 tocco su "Salta la corrente" → "Ti serve: Elettricista").
+
+## Luce sul bordo (03/11, idea di Luca da un video)
+
+Pillola "Novità" e riquadro della ricerca in home con una luce che gira sul
+bordo (`conic-gradient` con `@property --badge-angle`), nei verdi del sito e
+un filo d'oro, non arcobaleno: pillola in 3 secondi, riquadro in 6 e più
+tenue. Ferme con "riduci movimento"; nei browser senza `@property` il bordo
+resta sfumato fermo. Classi `.label-badge` e `.hero-search-card` in
+`globals.css`, prop `cardClassName` di `SearchBar`.
