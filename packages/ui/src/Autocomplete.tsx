@@ -26,6 +26,8 @@ export type AutocompleteProps<T> = {
   label?: string;
   /** Pillola corta accanto all'etichetta (es. "Novità" sulla ricerca per problema in home). */
   labelBadge?: string;
+  /** Riceve una funzione che mette il cursore nel campo (gli esempi della home). */
+  focusRef?: { current: (() => void) | null };
   id?: string;
   /** Nome per il lettore di schermo quando l'etichetta visibile non è legata al campo: senza, si legge il segnaposto ("Es. Milano"). */
   accessibilityLabel?: string;
@@ -65,6 +67,7 @@ export function Autocomplete<T>({
   size,
   label,
   labelBadge,
+  focusRef,
   id,
   accessibilityLabel,
   getSearchText,
@@ -78,6 +81,13 @@ export function Autocomplete<T>({
   const listboxId = `${useId().replace(/:/g, "")}-elenco`;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<{ focus?: () => void; blur?: () => void; isFocused?: () => boolean } | null>(null);
+  useEffect(() => {
+    if (!focusRef) return;
+    focusRef.current = () => inputRef.current?.focus?.();
+    return () => {
+      focusRef.current = null;
+    };
+  }, [focusRef]);
 
   // Chiudi il dropdown anche al click/tap fuori dal campo (web): il blur
   // ritardato da solo non basta — con il dropdown aperto a z-index alto il

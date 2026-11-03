@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState, type ReactNode } from "react";
+import { useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Text, XStack, YStack } from "tamagui";
 import { Autocomplete } from "./Autocomplete";
 import { Button } from "./Button";
@@ -178,6 +178,7 @@ export function SearchBar({
   const [mode, setMode] = useState<SearchMode>(initialMode);
   const [selectedProfessional, setSelectedProfessional] = useState<ProfessionalSuggestion | undefined>();
   const fieldId = useId();
+  const queryFocusRef = useRef<(() => void) | null>(null);
   const cityField = useCityField({ citySuggestions, cityAliases, cityDefaults, preferredCities, onNearMe, setCity });
 
   if (compact) {
@@ -291,7 +292,7 @@ export function SearchBar({
   function fillQuery(text: string) {
     handleQueryChange(text);
     // Il cursore nel campo apre l'elenco con "Ti serve: …": si vede subito chi serve.
-    if (typeof document !== "undefined") document.getElementById(`${fieldId}-cosa`)?.focus();
+    queryFocusRef.current?.();
   }
 
   const customQueryField = mode === "domicilio" ? queryField : undefined;
@@ -366,6 +367,7 @@ export function SearchBar({
             // perché stia intero anche su un telefono da 320 px.
             label={customQueryField?.label ?? "Cosa ti serve?"}
             labelBadge={customQueryField?.badge}
+            focusRef={queryFocusRef}
             id={`${fieldId}-cosa`}
             placeholder={customQueryField?.placeholder ?? (mode === "online" ? "Es. consulenza idraulico" : "Es. idraulico, un guasto")}
             size="$5"
