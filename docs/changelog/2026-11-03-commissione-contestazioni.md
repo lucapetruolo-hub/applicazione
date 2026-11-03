@@ -51,3 +51,24 @@ il conto vero del 3/11) e in `online-payments.test.ts` (riepilogo); il test
 della contestazione persa per lavoro non conforme ora controlla che non ci
 sia il secondo addebito. `pnpm --filter @professionisti/api test` 1207 verdi,
 typecheck dell'API verde.
+
+## Secondo giro: Admin e vecchi pagamenti
+
+**Richiesta** di Luca: "effettua le prime due migliorie".
+
+**Decisione.**
+- Admin → Contestazioni (scheda da preparare e archivio): ogni contestazione
+  ha la sua commissione (`BankDisputePart.feeEurCents`, letta da Stripe o,
+  nell'archivio, da `disputeFees`) e sotto il riquadro una riga
+  "Commissione di Stripe 40,00 €, a carico del professionista", anche con una
+  sola contestazione.
+- Vecchi pagamenti con l'addebito a destinazione (prima del 20/10, §268): la
+  commissione l'ha pagata la piattaforma; ora diventa sempre un costo del
+  professionista con l'IVA, recuperato come debito, persa per qualunque
+  motivo o vinta (prima solo persa per lavoro non conforme).
+
+**Verifica.** Test aggiornati in `destination-charges.test.ts` (persa per
+frode con la commissione, vinta con la commissione) e
+`bank-disputes.test.ts` (archivio con la commissione).
+`pnpm --filter @professionisti/api test` 1208 verdi; typecheck e lint del
+sito verdi.

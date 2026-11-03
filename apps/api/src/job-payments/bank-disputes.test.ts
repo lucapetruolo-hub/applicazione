@@ -154,15 +154,17 @@ describe("BankDisputesService", () => {
         stripeDisputeStatus: "lost",
         disputeStatuses: { du_1: "lost", du_2: "won" },
         disputeDetails: { du_1: { payment: "DEPOSIT", amountEurCents: 4000 }, du_2: { payment: "BALANCE", amountEurCents: 4000 } },
+        disputeFees: { du_1: 2000 },
       },
     ]);
 
     const [row] = await service.archive();
 
     expect(stripe.disputes.retrieve).not.toHaveBeenCalled();
+    // Commissione salvata all'arrivo; null se non c'è.
     expect(row!.parts).toEqual([
-      { disputeId: "du_1", payment: "DEPOSIT", amountEurCents: 4000, status: "lost", dueBy: null },
-      { disputeId: "du_2", payment: "BALANCE", amountEurCents: 4000, status: "won", dueBy: null },
+      { disputeId: "du_1", payment: "DEPOSIT", amountEurCents: 4000, feeEurCents: 2000, status: "lost", dueBy: null },
+      { disputeId: "du_2", payment: "BALANCE", amountEurCents: 4000, feeEurCents: null, status: "won", dueBy: null },
     ]);
   });
 

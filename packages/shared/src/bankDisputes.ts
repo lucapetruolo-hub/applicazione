@@ -94,6 +94,8 @@ export type BankDisputePart = {
   status: string;
   /** null nell'archivio, dove non si chiede a Stripe. */
   amountEurCents: number | null;
+  /** Commissione di Stripe della contestazione, sempre a carico del professionista; null se non si sa. */
+  feeEurCents: number | null;
   dueBy: string | null;
 };
 

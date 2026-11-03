@@ -1701,7 +1701,19 @@ export class OnlineMoneyService {
     dispute: Stripe.Dispute,
     lostAmount: number,
   ): Promise<number> {
-    if (dispute.status !== "lost") return 0;
+    if (dispute.status !== "lost") {
+      // Vinta o chiusa: con l'addebito diretto la commissione l'ha già presa
+      // Stripe dal suo saldo (syncDisputeFee). Con l'addebito a destinazione
+      // l'ha pagata la piattaforma: è comunque a suo carico, con l'IVA
+      // (decisione di Luca, docs/changelog/2026-11-03-commissione-contestazioni.md).
+      if (jp.stripeDirectCharge) return 0;
+      const fee = disputeStripeFeeEurCents(dispute);
+      if (fee <= 0) return 0;
+      const feeCosts = fee + vatOnEurCents(fee);
+      await this.chargeCosts(jp.id, feeCosts, "Commissione della contestazione in banca", `COSTS:${dispute.id}`);
+      await this.addProfessionalDebt(jp.id, feeCosts, `Commissione della contestazione in banca (${dispute.id}).`);
+      return feeCosts;
+    }
     // Solo la parte presa da questa contestazione: l'altro addebito può averne una sua ancora aperta.
     const funds = disputeFundsOf(jp.disputeFunds);
     const early = Math.max(0, funds[dispute.id] ?? 0);
@@ -1741,10 +1753,12 @@ export class OnlineMoneyService {
         data: { ...settled, payoutPendingEurCents: { decrement: got }, netAmountEurCents: { decrement: got + early } },
       });
     }
+    // La commissione di Stripe, pagata dalla piattaforma, è sempre a suo carico (decisione di Luca).
+    costs += disputeFeeWithVatEurCents(dispute);
     if (fault) {
       const faultCosts = this.faultCostsEurCents(jp, lostAmount);
       // Dopo lo sblocco è la sua parte della cifra persa, non un costo nuovo.
-      costs += disputeFeeWithVatEurCents(dispute) + (jp.releasedAt ? 0 : faultCosts);
+      costs += jp.releasedAt ? 0 : faultCosts;
       if (jp.releasedAt) debt += faultCosts;
     }
     await this.chargeCosts(jp.id, costs, "Costi della contestazione in banca persa", `COSTS:${dispute.id}`);
