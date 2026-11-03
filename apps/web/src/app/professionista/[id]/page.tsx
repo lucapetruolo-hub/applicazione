@@ -148,7 +148,7 @@ export default async function ProfessionalDetailPage(props: { params: Promise<Pa
         professional={professional}
         initialAgenda={await agendaPromise}
         breadcrumbs={<Breadcrumbs items={breadcrumbItems(professional)} />}
-        query={{ modalita: firstValue(searchParams.modalita), data: firstValue(searchParams.data), salva: firstValue(searchParams.salva), servizio: firstValue(searchParams.servizio) }}
+        query={{ modalita: firstValue(searchParams.modalita), data: firstValue(searchParams.data), salva: firstValue(searchParams.salva), servizio: firstValue(searchParams.servizio), scelta: firstValue(searchParams.scelta) }}
       />
     </>
   );

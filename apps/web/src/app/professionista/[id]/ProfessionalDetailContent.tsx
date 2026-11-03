@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BRAND, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, SERVICE_PRICE_UNIT_LABEL, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, MAX_CHOSEN_PROFESSIONALS, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, SERVICE_PRICE_UNIT_LABEL, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { ProfileQuoteCta } from "@/components/ProfileQuoteCta";
+import { ChosenProsBar, chosenRequestHref } from "@/components/ChosenProsBar";
+import { ProfileChoiceStrip, useProfileChoice } from "@/components/ProfileChoiceStrip";
 import { MediaPreview } from "@/components/MediaPreview";
 import { ReportContentModal } from "@/components/ReportContentModal";
 import { ReviewReply } from "@/components/ReviewReply";
@@ -86,13 +88,17 @@ export function ProfessionalDetailContent({
    * il piè di pagina, che su una rete lenta saliva in cima e poi scendeva
    * (Lighthouse CLS 0,93, docs/CHANGELOG.md §400).
    */
-  query?: { modalita?: string; data?: string; salva?: string; servizio?: string };
+  query?: { modalita?: string; data?: string; salva?: string; servizio?: string; scelta?: string };
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   const { user, token, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const [isSaved, setIsSaved] = useState(false);
+  // Aperto dai risultati con "Scegli": si torna indietro con la scelta
+  // e si può scegliere anche da qui (docs/changelog/2026-11-03-scelti-restano.md).
+  const choicePro = { id: professional.id, businessName: professional.businessName, imageUrl: professional.imageUrl ?? null, categorySlug: professional.categorySlug };
+  const choice = useProfileChoice(!preview && query.scelta === "1", choicePro);
 
   // Visita al profilo (CLAUDE.md §8, dati comparativi in Home "Oggi",
   // docs/CHANGELOG.md §147): una sola per scheda del browser e per profilo.
@@ -327,6 +333,7 @@ export function ProfessionalDetailContent({
       <YStack width="100%" maxWidth={860} paddingHorizontal="4" paddingVertical="6" gap="6">
         {/* Più vicino alla scheda del gap standard: il percorso ne è l'intestazione. */}
         {breadcrumbs ? <YStack style={{ marginTop: -8, marginBottom: -12 }}>{breadcrumbs}</YStack> : null}
+        {choice.search ? <ProfileChoiceStrip search={choice.search} pro={choicePro} onToggle={choice.toggle} /> : null}
         {/* Scheda identità — richiesta esplicita dell'utente ("migliora la
             visualizzazione di un profilo pubblico"): prima nome/badge/
             rating/bio/sottotag/azioni fluttuavano direttamente sullo sfondo
@@ -877,6 +884,14 @@ export function ProfessionalDetailContent({
           </YStack>
         ) : null}
 
+        {/* Con dei professionisti scelti la barra in basso è quella dei risultati. */}
+        {choice.search && choice.search.chosen.length > 0 ? (
+          <ChosenProsBar
+            chosen={choice.search.chosen}
+            max={MAX_CHOSEN_PROFESSIONALS}
+            href={chosenRequestHref(choice.search.chosen, choice.search.category, choice.search.description, choice.search.city)}
+          />
+        ) : null}
         {/* Account in pausa per l'abbonamento (docs/CHANGELOG.md §162): il
             profilo resta visibile dal link, ma senza agenda né richieste. */}
         {professional.acceptingRequests ? (
@@ -884,7 +899,7 @@ export function ProfessionalDetailContent({
             href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}${serviceDescriptionParam}`}
             name={professional.businessName}
             preview={preview}
-            withBar={user?.professionalProfileId !== professional.id}
+            withBar={user?.professionalProfileId !== professional.id && !(choice.search && choice.search.chosen.length > 0)}
             summary={
               <XStack alignItems="center" gap="3" minWidth={0}>
                 <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={40} />
