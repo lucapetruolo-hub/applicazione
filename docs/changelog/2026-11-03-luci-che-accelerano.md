@@ -52,8 +52,9 @@ d'esempio, per far capire che si può scrivere il problema.
   chiamare", icona matita. Senza il campo (modalità Online) o senza
   JavaScript resta il link a /preventivo.
 - A campo vuoto l'elenco mostra prima "Scrivi il problema, per esempio:" con
-  quattro frasi diverse da quelle sotto il riquadro (Il rubinetto perde,
-  Caldaia in blocco, Serratura bloccata, Prato da tagliare), ognuna con
+  due frasi diverse da quelle sotto il riquadro (Il rubinetto perde,
+  Caldaia in blocco; due e non quattro, scelta di Luca, perché si vedano
+  anche le categorie), ognuna con
   "Ti serve: …", poi "Oppure scegli chi cerchi:" con i mestieri. Tutte
   riconosciute con sicurezza dal dizionario (`matchProblem`). Toccandone una
   va nel campo e "Cerca" porta ai risultati per problema. Nuove props

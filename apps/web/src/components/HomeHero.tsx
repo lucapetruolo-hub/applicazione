@@ -149,9 +149,9 @@ const PROBLEM_EXAMPLES = ["Scarico intasato", "Salta la corrente", "Pulizie dopo
 /**
  * Altre frasi, diverse da quelle sotto il riquadro, in cima all'elenco del
  * campo vuoto (richiesta di Luca, docs/changelog/2026-11-03-luci-che-accelerano.md):
- * tutte riconosciute con sicurezza dal dizionario, mestieri diversi.
+ * due sole (scelta di Luca), così si vedono anche le categorie; riconosciute con sicurezza dal dizionario.
  */
-const FIELD_EXAMPLES = problemExamples(["Il rubinetto perde", "Caldaia in blocco", "Serratura bloccata", "Prato da tagliare"]);
+const FIELD_EXAMPLES = problemExamples(["Il rubinetto perde", "Caldaia in blocco"]);
 const TRADE_EXAMPLES = ["Idraulico", "Elettricista", "Babysitter"] as const;
 
 function HeroExamples({ onPick }: { onPick: (text: string) => void }) {
