@@ -1,12 +1,12 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { type MyProfessionalProfile, type MySubscription, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { loadMyProfessionalProfile } from "@/lib/myProfessionalProfile";
+import { loadMyProfessionalProfile, loadMySubscription } from "@/lib/myProfessionalProfile";
 import { useAuth } from "@/lib/AuthContext";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
@@ -187,29 +187,35 @@ function RichiesteContent() {
   // dichiararla tra le dipendenze senza ripartire a ogni render.
   const reloadLeads = useCallback(() => {
     if (!token) return;
-    Promise.all([apiClient.myLeads(token), apiClient.myProfessionalBookings(token)]).then(([l, b]) => {
-      setLeads(l);
-      setBookings(b);
-    });
+    Promise.all([apiClient.myLeads(token), apiClient.myProfessionalBookings(token)]).then(([l, b]) =>
+      startTransition(() => {
+        setLeads(l);
+        setBookings(b);
+      }),
+    );
   }, [token]);
 
   // Abbonamento a parte: se non arriva le richieste si vedono lo stesso, e il
   // server ferma comunque un preventivo oltre il limite (docs/CHANGELOG.md §362).
   const reloadSubscription = useCallback(() => {
     if (!token) return;
-    apiClient
-      .getMySubscription(token)
-      .then(setSubscription)
-      .catch(() => setSubscription(null));
+    loadMySubscription(token)
+      .then((sub) => startTransition(() => setSubscription(sub)))
+      .catch(() => startTransition(() => setSubscription(null)));
   }, [token]);
   useEffect(() => {
     reloadSubscription();
   }, [reloadSubscription, loadAttempt]);
 
+  // Le risposte dell'API aggiornano la pagina con `startTransition`, come
+  // l'agenda e Oggi (docs/CHANGELOG.md §345,
+  // docs/changelog/2026-11-02-oggi-piu-leggera.md): React disegna a piccoli
+  // pezzi invece che in un blocco unico che su un telefono lento fermava la
+  // pagina. Gli stati che vanno insieme restano nella stessa transizione.
   useEffect(() => {
     if (!token) return;
     Promise.all([apiClient.myLeads(token), apiClient.myProfessionalBookings(token), apiClient.myAvailableSlots(token), loadMyProfessionalProfile(token)])
-      .then(([l, b, slots, profile]) => {
+      .then(([l, b, slots, profile]) => startTransition(() => {
         setLeads(l);
         setBookings(b);
         setAvailableSlots(slots);
@@ -221,11 +227,13 @@ function RichiesteContent() {
         setOnlineLimitProgress(profile?.onlineLimitProgress ?? null);
         setIdentityVerificationNeeded(profile?.identityVerificationNeeded ?? false);
         if (!profile) setProfileMissing(true);
-      })
-      .catch((err) => {
-        if (isProfileMissingError(err)) setProfileMissing(true);
-        else setLoadFailed(true);
-      });
+      }))
+      .catch((err) =>
+        startTransition(() => {
+          if (isProfileMissingError(err)) setProfileMissing(true);
+          else setLoadFailed(true);
+        }),
+      );
   }, [token, loadAttempt]);
 
   // Ripetuto ogni UNREAD_BADGE_POLL_MS finché la pagina resta aperta
@@ -243,7 +251,7 @@ function RichiesteContent() {
         .unreadNotifications(token!)
         .then((notifications) => {
           if (cancelled || notifications.length === 0) return notifications;
-          setLeadUnreadCounts((prev) => mergeCounts(prev, unreadGuidedRequestCounts(notifications)));
+          startTransition(() => setLeadUnreadCounts((prev) => mergeCounts(prev, unreadGuidedRequestCounts(notifications))));
           // Stesso bug/fix già applicato in /le-mie-richieste: un evento
           // generato dal cliente (accettazione, proposta data, conferma
           // "lavoro terminato", ecc.) mentre questa pagina resta aperta

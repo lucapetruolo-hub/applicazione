@@ -46,3 +46,26 @@ registrazione del browser i ridisegni delle risposte non compaiono più come
 blocchi lunghi. Prove nel browser di Oggi, menu laterale e primo uso
 dell'agenda (telefono in Italia e computer a Tokyo) verdi, typecheck e lint
 verdi. Il numero vero è quello della CI della PR.
+
+## Secondo giro: Richieste
+
+**Richiesta di Luca** (03/11): "effettua tutte le migliorie e i controlli che
+ritieni".
+
+- **Richieste** (`/dashboard/richieste`): era la seconda pagina più pesante
+  nella CI della PR (473 ms). Stessa cura di Oggi: le risposte dell'API
+  (richieste, appuntamenti, orari liberi, profilo, abbonamento, pallini dei
+  messaggi) arrivano con `startTransition`, gli stati che vanno insieme nella
+  stessa transizione; l'abbonamento passa da `loadMySubscription`. In locale,
+  prima e dopo alternati, 9 giri per parte: TBT mediano da 508 a 415 ms.
+- **Agenda e Orari**: già a pezzi dalla §345. Nella registrazione del browser
+  restano solo l'avvio degli script comuni a tutte le pagine (Tamagui, React)
+  e un blocco breve all'avvio delle richieste: niente di proprio della pagina
+  da togliere. Nessun cambio; il peso comune si misura nella PR di Tamagui 3.
+- **Abbonamento in memoria per tutto il sito: non fatto.** Tenerlo da una
+  pagina all'altra rischierebbe di mostrare un abbonamento vecchio dopo un
+  pagamento; basta che non parta due volte nella stessa pagina (fatto).
+
+**Verifica**: prove nel browser di tastiera, menu laterale, Oggi (telefono in
+Italia e computer a Tokyo) verdi; typecheck e lint verdi; foto della pagina
+Oggi da telefono controllata.
