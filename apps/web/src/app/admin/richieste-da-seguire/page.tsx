@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { OUT_OF_SERVICE_LABELS, type ProblemTakeoverAdmin } from "@professionisti/shared";
-import { Button, Text, YStack, brand } from "@professionisti/ui";
+import { OUT_OF_SERVICE_LABELS, type ProblemSafety, type ProblemTakeoverAdmin } from "@professionisti/shared";
+import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { AdminPageHeader, AdminTabs, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
+import { AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonTableRows } from "@/components/Skeleton";
 
 /**
@@ -14,8 +14,15 @@ import { SkeletonTableRows } from "@/components/Skeleton";
  * premuto "Prendete in carico la richiesta". Nessuna scadenza: restano
  * qui finché non si segnano come fatte.
  */
+const SAFETY_LABEL: Record<ProblemSafety, string> = {
+  gas: "Possibile pericolo: gas",
+  monossido: "Possibile pericolo: monossido",
+  elettrico: "Possibile pericolo: corrente",
+  "acqua-elettrico": "Possibile pericolo: acqua e corrente",
+};
+
 export default function AdminRichiesteDaSeguirePage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [tab, setTab] = useState<"aperte" | "fatte">("aperte");
   const [rows, setRows] = useState<ProblemTakeoverAdmin[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +51,24 @@ export default function AdminRichiesteDaSeguirePage() {
       setBusy(null);
     }
   };
+
+  // "Prendo io" come in Da fare (misura "dopo" del riordino): stessa chiave del caso.
+  const claim = async (id: string, take: boolean) => {
+    if (!token) return;
+    setBusy(id);
+    setError(null);
+    try {
+      await apiClient.adminClaimCase(token, `PROBLEM_TAKEOVER:${id}`, take);
+      load();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // Prima i pericoli, poi la più vecchia (come in Da fare).
+  const sorted = rows && tab === "aperte" ? [...rows].sort((a, b) => Number(Boolean(b.safety)) - Number(Boolean(a.safety))) : rows;
 
   return (
     <YStack>
@@ -83,12 +108,19 @@ export default function AdminRichiesteDaSeguirePage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {(sorted ?? []).map((row) => (
                 <tr key={row.id}>
                   <td>
-                    {row.outOfService
-                      ? (OUT_OF_SERVICE_LABELS[row.outOfService as keyof typeof OUT_OF_SERVICE_LABELS] ?? row.outOfService)
-                      : "—"}
+                    <YStack gap={4} alignItems="flex-start">
+                      {row.safety ? <AdminPill tone="danger">{SAFETY_LABEL[row.safety]}</AdminPill> : null}
+                      <Text fontSize={14}>
+                        {row.outOfService
+                          ? (OUT_OF_SERVICE_LABELS[row.outOfService as keyof typeof OUT_OF_SERVICE_LABELS] ?? row.outOfService)
+                          : row.likelyCategory
+                            ? `Probabile: ${row.likelyCategory}`
+                            : "Mestiere non riconosciuto"}
+                      </Text>
+                    </YStack>
                   </td>
                   <td style={{ maxWidth: 380 }}>{row.description}</td>
                   <td>{row.city ?? "—"}</td>
@@ -121,14 +153,28 @@ export default function AdminRichiesteDaSeguirePage() {
                   </td>
                   <td>{formatAdminDate(row.createdAt, true)}</td>
                   <td>
-                    <Button
-                      size="$2"
-                      variant={tab === "aperte" ? "primary" : "secondary"}
-                      disabled={busy !== null}
-                      onPress={() => void mark(row.id, tab === "aperte")}
-                    >
-                      {tab === "aperte" ? "Fatto" : "Riapri"}
-                    </Button>
+                    <YStack gap={6} alignItems="flex-start">
+                      {tab === "aperte" && row.claimedBy ? (
+                        <Text fontSize={13} color={brand.grafite70}>
+                          {row.claimedBy.id === user?.id ? "Preso da te" : `Preso da ${row.claimedBy.name}`}
+                        </Text>
+                      ) : null}
+                      <XStack gap="$2" flexWrap="wrap">
+                        {tab === "aperte" ? (
+                          <Button size="$2" variant="secondary" disabled={busy !== null} onPress={() => void claim(row.id, row.claimedBy?.id !== user?.id)}>
+                            {row.claimedBy?.id === user?.id ? "Lascia" : "Prendo io"}
+                          </Button>
+                        ) : null}
+                        <Button
+                          size="$2"
+                          variant={tab === "aperte" ? "primary" : "secondary"}
+                          disabled={busy !== null}
+                          onPress={() => void mark(row.id, tab === "aperte")}
+                        >
+                          {tab === "aperte" ? "Fatto" : "Riapri"}
+                        </Button>
+                      </XStack>
+                    </YStack>
                   </td>
                 </tr>
               ))}

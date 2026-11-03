@@ -390,4 +390,11 @@ export class AdminController {
   resolveContactMessage(@Param("id") id: string) {
     return this.adminService.resolveContactMessage(id);
   }
+
+  /** "Annulla" subito dopo "Segna come gestito" e "Riapri" dall'archivio (docs/changelog/2026-11-03-admin-dopo-la-misura.md). */
+  @RequireAdminScope("MODERATION")
+  @Patch("contact-messages/:id/reopen")
+  reopenContactMessage(@Param("id") id: string) {
+    return this.adminService.resolveContactMessage(id, false);
+  }
 }

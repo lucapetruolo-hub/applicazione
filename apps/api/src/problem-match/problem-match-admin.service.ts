@@ -6,6 +6,7 @@ import {
   POPULAR_SERVICES,
   PROFESSIONAL_CATEGORIES,
   isProfessionalCategorySlug,
+  matchProblem,
   normalizeProblemText,
   serviceNameKey,
   type AddStandardServiceInput,
@@ -271,16 +272,35 @@ export class ProblemMatchAdminService {
       take: 200,
       include: { user: { select: { name: true, surname: true, email: true, phone: true } } },
     });
-    return rows.map((row) => ({
-      id: row.id,
-      description: row.description,
-      city: row.city,
-      outOfService: row.outOfService,
-      status: row.status,
-      createdAt: row.createdAt.toISOString(),
-      handledAt: row.handledAt?.toISOString() ?? null,
-      client: { name: [row.user.name, row.user.surname].filter(Boolean).join(" ") || null, email: row.user.email, phone: row.user.phone },
-    }));
+    // "Prendo io" anche qui, come in Da fare (misura "dopo" del riordino): stessa chiave del caso.
+    const claims = rows.length ? await this.prisma.adminCaseClaim.findMany({ where: { caseKey: { in: rows.map((row) => `PROBLEM_TAKEOVER:${row.id}`) } } }) : [];
+    const claimers = claims.length
+      ? new Map(
+          (await this.prisma.user.findMany({ where: { id: { in: [...new Set(claims.map((c) => c.adminUserId))] } }, select: { id: true, name: true, surname: true, email: true } })).map((u) => [
+            u.id,
+            [u.name, u.surname].filter(Boolean).join(" ") || u.email || "Admin",
+          ]),
+        )
+      : new Map<string, string>();
+    const claimByKey = new Map(claims.map((c) => [c.caseKey, { id: c.adminUserId, name: claimers.get(c.adminUserId) ?? "Admin" }]));
+    return rows.map((row) => {
+      const match = matchProblem(row.description);
+      const top = match.categories[0]?.slug;
+      return {
+        id: row.id,
+        description: row.description,
+        city: row.city,
+        outOfService: row.outOfService,
+        // Pericolo e mestiere più probabile, come in Da fare: la pagina non resta con "—".
+        safety: match.safety,
+        likelyCategory: top ? (PROFESSIONAL_CATEGORIES.find((c) => c.slug === top)?.label ?? null) : null,
+        claimedBy: claimByKey.get(`PROBLEM_TAKEOVER:${row.id}`) ?? null,
+        status: row.status,
+        createdAt: row.createdAt.toISOString(),
+        handledAt: row.handledAt?.toISOString() ?? null,
+        client: { name: [row.user.name, row.user.surname].filter(Boolean).join(" ") || null, email: row.user.email, phone: row.user.phone },
+      };
+    });
   }
 
   async markTakeover(adminUserId: string, id: string, status: "OPEN" | "DONE") {

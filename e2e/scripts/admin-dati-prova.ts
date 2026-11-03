@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 // Dati di prova per l'area Admin (riordino dell'Admin, 30/10/2026): un super
 // admin con la verifica in due passaggi attiva e i casi visti nel collaudo del
 // 29/10 (problema senza risposta, rimborso, contestazione in banca, recensione
@@ -181,6 +182,9 @@ async function main() {
     },
   });
 
+  // La misura del ricorso qui sopra: il profilo è davvero fuori dalla ricerca.
+  await prisma.professionalProfile.update({ where: { id: doppio.profile.id }, data: { suspendedAt: hoursAgo(40) } });
+
   await prisma.contactMessage.createMany({
     data: [
       { role: "CLIENT", email: "giulia.m@prova.it", content: "Non riesco a cambiare la data dell'appuntamento.", createdAt: hoursAgo(8) },
@@ -191,7 +195,10 @@ async function main() {
 
   // Account chiuso (collaudo, note del coordinatore): email anonimizzata.
   const chiuso = await user("CLIENT", "Bruno", "Chiuso", { createdAt: hoursAgo(24 * 40) });
-  await prisma.user.update({ where: { id: chiuso.id }, data: { deletedAt: hoursAgo(20), email: `deleted-${chiuso.id}@deleted.invalid`, name: null, surname: null, phone: null } });
+  // Con l'impronta dell'email, come fa il sito alla chiusura (apps/api/src/common/email-fingerprint.ts): l'admin lo ritrova con l'email esatta.
+  const secret = process.env.FISCAL_DATA_KEY?.trim() || process.env.JWT_SECRET || "dev-secret-change-me";
+  const deletedEmailHash = createHmac("sha256", `closed-account-email:${secret}`).update(chiuso.email!.trim().toLowerCase()).digest("hex");
+  await prisma.user.update({ where: { id: chiuso.id }, data: { deletedAt: hoursAgo(20), email: `deleted-${chiuso.id}@deleted.invalid`, deletedEmailHash, name: null, surname: null, phone: null } });
 
   // Qualche azione nel registro.
   await prisma.auditLog.createMany({

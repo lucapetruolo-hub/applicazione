@@ -243,11 +243,12 @@ export function jobIssueRefundPercent(type: JobIssueType, chosen?: number | null
  * Esiti standard: motivazioni già scritte che l'admin sceglie e può
  * ritoccare, così casi uguali ricevono la stessa decisione.
  */
-export const JOB_ISSUE_DECISION_TEMPLATES: Record<JobIssueType, { decision: "UPHELD" | "REJECTED"; label: string; note: string }[]> = {
+export const JOB_ISSUE_DECISION_TEMPLATES: Record<JobIssueType, { decision: "UPHELD" | "REJECTED"; label: string; note: string; noReply?: true }[]> = {
   NO_SHOW: [
     {
       decision: "UPHELD",
       label: "Il professionista non ha risposto",
+      noReply: true,
       note: "Il professionista non ha risposto alla segnalazione né ha dimostrato di essersi presentato. La segnalazione è accolta.",
     },
     {
@@ -275,6 +276,7 @@ export const JOB_ISSUE_DECISION_TEMPLATES: Record<JobIssueType, { decision: "UPH
     {
       decision: "UPHELD",
       label: "Il professionista non ha risposto",
+      noReply: true,
       note: "Il professionista non ha risposto alla segnalazione né ha proposto una soluzione. La segnalazione è accolta.",
     },
     {

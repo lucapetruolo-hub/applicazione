@@ -7,6 +7,7 @@ import {
   JOB_ISSUE_REFUND_LABEL,
   JOB_ISSUE_REFUND_PERCENTS,
   JOB_ISSUE_SANCTION_LABEL,
+  adminPersonName,
   formatEurCents,
   jobIssueSanctionFor,
   type JobIssueRefundPercent,
@@ -83,6 +84,9 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
   const percent = choosesRefund ? refundPercent : 100;
   const refundEur = (p: number) => (row.issue.paidOnline && row.refundableEurCents ? formatEurCents(Math.round((row.refundableEurCents * p) / 100)) : null);
   const client = row.client.name ?? "il cliente";
+  const proName = adminPersonName({ businessName: row.professional.businessName, name: row.professional.personName });
+  // Il professionista ha ancora tempo per la sua versione o per le informazioni chieste.
+  const waitingForPro = (row.issue.reviewPhase === "AWAITING_EVIDENCE" || row.issue.reviewPhase === "AWAITING_INFO") && Boolean(row.issue.phaseDueAt) && !isPastDeadline(row.issue.phaseDueAt);
 
   function askConfirm(decision: "UPHELD" | "REJECTED") {
     setError(null);
@@ -128,8 +132,16 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
       <Text fontSize={13} color={brand.grafite70}>
         Esiti standard: sceglilo e ritocca il testo se serve.
       </Text>
+      {waitingForPro ? (
+        <Text fontSize={13} fontWeight="700" color={brand.grafite}>
+          {`Il professionista ha tempo fino a ${formatIssueDeadline(row.issue.phaseDueAt)} per rispondere: decidi prima solo se le prove sono già chiare.`}
+        </Text>
+      ) : null}
       <XStack gap="$2" flexWrap="wrap">
-        {JOB_ISSUE_DECISION_TEMPLATES[row.issue.type].map((template) => (
+        {JOB_ISSUE_DECISION_TEMPLATES[row.issue.type]
+          // "Non ha risposto" solo quando il suo tempo per rispondere è finito (misura "dopo" del riordino).
+          .filter((template) => !(template.noReply && waitingForPro))
+          .map((template) => (
           <Button key={template.label} variant="secondary" size="$2" height={32} onPress={() => setNote(template.note)}>
             {`${template.decision === "UPHELD" ? "Accolta" : "Respinta"}: ${template.label}`}
           </Button>
@@ -190,10 +202,10 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
           title={confirming === "UPHELD" ? "Accogliere la segnalazione?" : "Respingere la segnalazione?"}
           description={
             confirming === "UPHELD"
-              ? `${row.professional.businessName} riceve la misura «${JOB_ISSUE_SANCTION_LABEL[nextSanction]}».${
+              ? `${proName} riceve la misura «${JOB_ISSUE_SANCTION_LABEL[nextSanction]}».${
                   row.issue.paidOnline ? ` ${client} riceve subito il rimborso del ${percent}%${refundEur(percent) ? `, ${refundEur(percent)},` : ""} preso dal conto del professionista.` : ""
                 } Cliente e professionista leggono la tua motivazione. Non si può annullare: il professionista può solo fare ricorso.`
-              : `Nessuna misura per ${row.professional.businessName} e nessun rimborso a ${client}. Cliente e professionista leggono la tua motivazione.`
+              : `Nessuna misura per ${proName} e nessun rimborso a ${client}. Cliente e professionista leggono la tua motivazione.`
           }
           showNote={false}
           confirmLabel={confirming === "UPHELD" ? (refundEur(percent) ? `Accogli e rimborsa ${refundEur(percent)}` : "Accogli la segnalazione") : "Respingi la segnalazione"}
@@ -227,24 +239,25 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
 /** Ricorso del professionista (§167): lo decide un admin diverso da chi ha deciso la segnalazione. */
 export function AppealForm({ row, token, onDone }: { row: AdminJobIssue; token: string; onDone: () => void }) {
   const [note, setNote] = useState("");
-  const [saving, setSaving] = useState<"ACCEPTED" | "REJECTED" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Decisione in attesa di conferma (misura "dopo" del riordino): come per la segnalazione, non si decide con un solo clic.
+  const [confirming, setConfirming] = useState<"ACCEPTED" | "REJECTED" | null>(null);
+  const proName = adminPersonName({ businessName: row.professional.businessName, name: row.professional.personName });
+  const client = row.client.name ?? "il cliente";
 
-  async function decide(decision: "ACCEPTED" | "REJECTED") {
+  function askConfirm(decision: "ACCEPTED" | "REJECTED") {
     setError(null);
     if (note.trim().length < 3) {
       setError("Scrivi la motivazione.");
       return;
     }
-    setSaving(decision);
-    try {
-      await apiClient.adminDecideJobIssueAppeal(token, row.issue.id, { decision, note: note.trim() });
-      onDone();
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setSaving(null);
-    }
+    setConfirming(decision);
+  }
+
+  async function decide(decision: "ACCEPTED" | "REJECTED") {
+    await apiClient.adminDecideJobIssueAppeal(token, row.issue.id, { decision, note: note.trim() });
+    setConfirming(null);
+    onDone();
   }
 
   if (row.decidedByMe) {
@@ -271,13 +284,31 @@ export function AppealForm({ row, token, onDone }: { row: AdminJobIssue; token: 
       </Text>
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       <XStack gap="$2" flexWrap="wrap">
-        <Button variant="secondary" size="$3" height={40} disabled={saving !== null} opacity={saving ? 0.6 : 1} onPress={() => decide("ACCEPTED")}>
-          {saving === "ACCEPTED" ? "Salvataggio..." : "Accogli il ricorso"}
+        <Button variant="secondary" size="$3" height={40} onPress={() => askConfirm("ACCEPTED")}>
+          Accogli il ricorso
         </Button>
-        <Button variant="ghost" size="$3" height={40} disabled={saving !== null} opacity={saving ? 0.6 : 1} onPress={() => decide("REJECTED")}>
-          {saving === "REJECTED" ? "Salvataggio..." : "Respingi il ricorso"}
+        <Button variant="ghost" size="$3" height={40} onPress={() => askConfirm("REJECTED")}>
+          Respingi il ricorso
         </Button>
       </XStack>
+      {confirming ? (
+        <CancelBookingModal
+          onClose={() => setConfirming(null)}
+          onCancel={() => decide(confirming)}
+          title={confirming === "ACCEPTED" ? "Accogliere il ricorso?" : "Respingere il ricorso?"}
+          description={
+            confirming === "ACCEPTED"
+              ? `La segnalazione di ${client} diventa respinta: ${proName} torna all'affidabilità di prima e la misura presa viene tolta. Cliente e professionista leggono la tua motivazione. Non si può annullare.`
+              : `La segnalazione resta accolta e la misura per ${proName} resta. Il professionista legge la tua motivazione. Non si può annullare.`
+          }
+          showNote={false}
+          confirmLabel={confirming === "ACCEPTED" ? "Accogli il ricorso" : "Respingi il ricorso"}
+          confirmingLabel="Salvataggio..."
+          confirmVariant={confirming === "ACCEPTED" ? "urgent" : "primary"}
+        >
+          <Text fontSize={14} color={brand.grafite}>{`Motivazione: ${note.trim()}`}</Text>
+        </CancelBookingModal>
+      ) : null}
     </YStack>
   );
 }
