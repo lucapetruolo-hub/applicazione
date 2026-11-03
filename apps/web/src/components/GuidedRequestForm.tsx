@@ -461,6 +461,7 @@ export function GuidedRequestForm({
         ? checkedDescription.result
         : problemMatchFromDictionary(matchProblem(typedDescription));
   const suggestedSlugs = suggestion?.categories ?? [];
+  const categoryLabelOf = (slug: ProfessionalCategorySlug) => PROFESSIONAL_CATEGORIES.find((c) => c.slug === slug)?.label ?? slug;
   const autoSlug = suggestedSlugs[0] ?? null;
   const [autoApplied, setAutoApplied] = useState<ProfessionalCategorySlug | null>(null);
   if (suggestionsOn && !categoriesByHand && autoApplied !== autoSlug) {
@@ -477,12 +478,7 @@ export function GuidedRequestForm({
       .then((result) => setCheckedDescription({ text, result }))
       .catch(() => undefined);
   }
-  // Elenco completo chiuso finché non serve: si apre da sé se la descrizione
-  // non fa capire il mestiere o se si va avanti senza categoria.
-  const [allCategoriesOpen, setAllCategoriesOpen] = useState(false);
   const notUnderstood = suggestionsOn && typedDescription.length >= 10 && suggestedSlugs.length === 0;
-  const showAllCategories = allCategoriesOpen || (notUnderstood && categorySlugs.length === 0);
-  const shownTiles = [...categorySlugs, ...suggestedSlugs.filter((slug) => !categorySlugs.includes(slug))];
   // Cambiando città o categoria l'avviso di zona si ricontrolla al passo successivo.
   const [zoneCheckedFor, setZoneCheckedFor] = useState({ city, categorySlugs });
   if (zoneCheckedFor.city !== city || zoneCheckedFor.categorySlugs !== categorySlugs) {
@@ -843,10 +839,7 @@ export function GuidedRequestForm({
   function validateStep(which: 1 | 2): StepProblem | null {
     if (which === 1) {
       if (description.trim().length < 10) return { message: "Descrivi il lavoro con almeno 10 caratteri." };
-      if (!categorySlug) {
-        setAllCategoriesOpen(true);
-        return { message: "Scegli almeno una categoria." };
-      }
+      if (!categorySlug) return { message: "Scegli almeno una categoria." };
       if (!timing) return { message: "Scegli quando ti serve." };
       return null;
     }
@@ -1212,61 +1205,47 @@ export function GuidedRequestForm({
         {suggestionsOn || !selectedCategory ? (
           <YStack gap="2">
             <XStack justifyContent="space-between" alignItems="baseline" gap="2">
-              <FieldLabel>{shownTiles.length > 0 && !showAllCategories ? "Ti serve" : "Categorie"}</FieldLabel>
+              <FieldLabel>Categorie</FieldLabel>
               <Text fontSize={13} color={brand.grafite70} aria-live="polite">
                 {/* "Scegli fino a 3", poi "1 di 3" (docs/CHANGELOG.md §349): "Fino a 3"
                     da solo non diceva che si possono scegliere più tessere. */}
                 {categorySlugs.length > 0 ? `${categorySlugs.length} di ${MAX_REQUEST_CATEGORIES}` : `Scegli fino a ${MAX_REQUEST_CATEGORIES}`}
               </Text>
             </XStack>
-            {showAllCategories ? (
-              <>
-                {notUnderstood && categorySlugs.length === 0 ? (
-                  <Text fontSize={13} color={brand.grafite70}>
-                    {suggestion?.outOfService
-                      ? `${OUT_OF_SERVICE_LABELS[suggestion.outOfService]}. Se pensi che serva uno di questi, sceglilo tu.`
-                      : "Non abbiamo capito chi ti serve: sceglilo tu."}
-                  </Text>
-                ) : null}
-                {/* Più categorie insieme (docs/CHANGELOG.md §259), a tessere come
-                    nella registrazione del professionista (§279), con le più
-                    cercate nella città di partenza prima. */}
-                <CategoryTiles value={categorySlugs} onToggle={toggleCategory} max={MAX_REQUEST_CATEGORIES} city={initialCity} ariaLabel="Categorie" />
-              </>
-            ) : shownTiles.length > 0 ? (
-              <>
-                <CategoryTiles value={categorySlugs} onToggle={toggleCategory} max={MAX_REQUEST_CATEGORIES} only={shownTiles} ariaLabel="Ti serve" />
-                {/* Trasparenza sull'intelligenza artificiale come nella ricerca (AI Act art. 50). */}
+            {/* Tutte le tessere sempre in vista (scelta di Luca); la proposta
+                della descrizione è già scelta e scritta qui, perché la sua
+                tessera può essere più in basso (le tessere non si riordinano, §324). */}
+            {suggestionsOn ? (
+              <Text fontSize={13} color={brand.grafite70} aria-live="polite">
+                {autoSlug && categorySlugs.includes(autoSlug)
+                  ? `Ti suggeriamo ${categoryLabelOf(autoSlug)}: è già scelta, puoi cambiarla o aggiungerne altre.`
+                  : notUnderstood && categorySlugs.length === 0
+                    ? suggestion?.outOfService
+                      ? `${OUT_OF_SERVICE_LABELS[suggestion.outOfService]}. Se pensi che serva una di queste, sceglila tu.`
+                      : "Non abbiamo capito chi ti serve: sceglilo tu."
+                    : categorySlugs.length === 0
+                      ? "Scrivi il lavoro qui sopra e ti suggeriamo la categoria, oppure sceglila tu."
+                      : ""}
                 {suggestion?.source === "ia" && autoSlug && categorySlugs.includes(autoSlug) ? (
-                  <Text fontSize={13} color={brand.grafite70}>
-                    Proposta automatica: controlla che sia il mestiere giusto.{" "}
+                  // Trasparenza sull'intelligenza artificiale come nella ricerca (AI Act art. 50).
+                  <>
+                    {" "}Proposta automatica.{" "}
                     <Link href="/privacy#fornitori" style={{ color: brand.cianografiaScuro }}>
                       Come funziona
                     </Link>
-                  </Text>
+                  </>
                 ) : null}
-              </>
-            ) : (
-              <Text fontSize={13} color={brand.grafite70}>
-                Scrivi il lavoro qui sopra: ti suggeriamo noi chi chiamare.
               </Text>
-            )}
+            ) : null}
+            {/* Più categorie insieme (docs/CHANGELOG.md §259), a tessere come
+                nella registrazione del professionista (§279), con le più
+                cercate nella città di partenza prima. */}
+            <CategoryTiles value={categorySlugs} onToggle={toggleCategory} max={MAX_REQUEST_CATEGORIES} city={initialCity} ariaLabel="Categorie" />
             {categorySlugs.length > 1 ? (
               <Text fontSize={13} color={brand.grafite70}>
                 Riceverai una richiesta separata per ogni categoria.
               </Text>
             ) : null}
-            {showAllCategories && !allCategoriesOpen ? null : (
-              <button
-                type="button"
-                className="guided-categories-toggle"
-                aria-expanded={showAllCategories}
-                onClick={() => setAllCategoriesOpen((open) => !open)}
-              >
-                {showAllCategories ? "Chiudi l'elenco" : shownTiles.length > 0 ? "Cambia o aggiungi una categoria" : "Scegli tu la categoria"}
-                <Icon name={showAllCategories ? "chevron-up" : "chevron-down"} size={16} color={brand.cianografiaScuro} />
-              </button>
-            )}
           </YStack>
         ) : null}
 

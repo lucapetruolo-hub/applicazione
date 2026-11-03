@@ -7782,21 +7782,3 @@ a.admin-kpi:hover {
     animation: none;
   }
 }
-/* "Cambia o aggiungi una categoria": un link, non un altro pulsante pieno. */
-.guided-categories-toggle {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-size: 15px;
-  font-weight: 600;
-  color: #0e7a4c;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
