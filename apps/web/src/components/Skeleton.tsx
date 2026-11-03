@@ -72,7 +72,8 @@ export function SkeletonSummaryRow() {
 export function SkeletonThreadRow({ zebra = false }: { zebra?: boolean }) {
   return (
     <XStack alignItems="center" gap="3" paddingHorizontal="3" paddingVertical="3" backgroundColor={zebra ? brand.gesso : "transparent"}>
-      <SkeletonCircle size={48} />
+      {/* Stessa misura del posto della foto in ChatThreadRow, così la riga non salta quando arriva. */}
+      <SkeletonBlock width={56} height={56} radius={10} />
       <YStack flex={1} minWidth={0} gap="2">
         <SkeletonBlock width="40%" height={13} />
         <SkeletonBlock width="70%" height={12} />

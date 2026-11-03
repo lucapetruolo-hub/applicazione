@@ -35,9 +35,9 @@ export default function FreeMonthPage() {
   const free = sub ? freePeriodSummary(sub, now) : null;
   if (!sub || !free) {
     return (
-      <DocumentPage back={back} title="Mese gratuito">
+      <DocumentPage back={back} title="Mesi gratis">
         <Text fontSize={16} color={brand.grafite70}>
-          Non sei in un mese gratuito: le fatture dell&apos;abbonamento sono in{" "}
+          Non sei nei mesi gratis: le fatture dell&apos;abbonamento sono in{" "}
           <Link href="/dashboard/documenti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
             Fatture e documenti
           </Link>

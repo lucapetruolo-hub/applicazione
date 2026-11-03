@@ -6,6 +6,10 @@ import { statementSuffix } from "../job-payments/online-money.service";
  * Un solo cliente Stripe per professionista (docs/CHANGELOG.md §238):
  * creato una volta, riusato per abbonamento, boost e Customer Portal.
  */
+async function* asyncList<T>(items: T[]): AsyncGenerator<T> {
+  for (const item of items) yield item;
+}
+
 function buildService(profileOverrides: Record<string, unknown> = {}) {
   const profile = { id: "pro-1", businessName: "Idraulica Rossi", stripeCustomerId: null, user: { email: "pro@example.com" }, ...profileOverrides };
   const prisma = {
@@ -15,7 +19,10 @@ function buildService(profileOverrides: Record<string, unknown> = {}) {
   const stripe = {
     customers: { create: vi.fn().mockResolvedValue({ id: "cus_new" }) },
     subscriptions: { retrieve: vi.fn() },
-    billingPortal: { sessions: { create: vi.fn().mockResolvedValue({ url: "https://billing.stripe.com/p/session" }) } },
+    billingPortal: {
+      sessions: { create: vi.fn().mockResolvedValue({ url: "https://billing.stripe.com/p/session" }) },
+      configurations: { list: vi.fn().mockReturnValue(asyncList([])), create: vi.fn().mockResolvedValue({ id: "bpc_solo_carta" }) },
+    },
   };
   const service = new BillingService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never);
   (service as unknown as { stripe: unknown }).stripe = stripe;
@@ -51,6 +58,35 @@ describe("BillingService.createBillingPortal", () => {
 
     expect(stripe.customers.create).not.toHaveBeenCalled();
     expect(prisma.professionalProfile.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { stripeCustomerId: "cus_old" } }));
+  });
+});
+
+describe("Customer Portal solo per la carta (collaudo G-02)", () => {
+  it("crea la configurazione senza storico delle fatture e la riusa", async () => {
+    const { service, stripe } = buildService({ stripeCustomerId: "cus_saved" });
+
+    await service.createBillingPortal("user-1");
+    await service.createBillingPortal("user-1");
+
+    expect(stripe.billingPortal.configurations.create).toHaveBeenCalledTimes(1);
+    expect(stripe.billingPortal.configurations.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: { uso: "solo-carta-v1" },
+        features: expect.objectContaining({ invoice_history: { enabled: false }, payment_method_update: { enabled: true } }),
+      }),
+      expect.anything(),
+    );
+    expect(stripe.billingPortal.sessions.create).toHaveBeenCalledWith(expect.objectContaining({ configuration: "bpc_solo_carta" }));
+  });
+
+  it("ritrova la configurazione già creata su Stripe", async () => {
+    const { service, stripe } = buildService({ stripeCustomerId: "cus_saved" });
+    stripe.billingPortal.configurations.list.mockReturnValue(asyncList([{ id: "bpc_altra", metadata: {} }, { id: "bpc_vecchia", metadata: { uso: "solo-carta-v1" } }]));
+
+    await service.createBillingPortal("user-1");
+
+    expect(stripe.billingPortal.configurations.create).not.toHaveBeenCalled();
+    expect(stripe.billingPortal.sessions.create).toHaveBeenCalledWith(expect.objectContaining({ configuration: "bpc_vecchia" }));
   });
 });
 

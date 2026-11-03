@@ -1,5 +1,3 @@
-import { z } from "zod";
-import "./zod";
 
 /**
  * Contestazioni in banca (chargeback) sui pagamenti online dei lavori:
@@ -10,6 +8,7 @@ import "./zod";
  */
 
 /** Stati di Stripe in cui la contestazione aspetta ancora le prove. */
+import type { BankDisputeEvidenceInput } from "./bankDisputesSchemas";
 export const BANK_DISPUTE_OPEN_STATUSES = ["needs_response", "warning_needs_response"] as const;
 /** Stati in cui la banca sta decidendo. */
 export const BANK_DISPUTE_REVIEW_STATUSES = ["under_review", "warning_under_review"] as const;
@@ -44,33 +43,11 @@ export function bankDisputeStatusLabel(status: string | null | undefined): strin
   return "Chiusa";
 }
 
-/** Campi delle prove che l'admin rilegge prima di mandarle. */
-export const bankDisputeEvidenceSchema = z.object({
-  productDescription: z.string().trim().min(3).max(1500),
-  customerName: z.string().trim().max(200).optional(),
-  customerEmail: z.string().trim().max(200).optional(),
-  serviceDate: z.string().trim().max(60).optional(),
-  explanation: z.string().trim().min(20, "Spiega in qualche riga perché il pagamento è dovuto.").max(10_000),
-  /** true = manda alla banca (non si può più cambiare), false = salva soltanto su Stripe. */
-  submit: z.boolean(),
-});
-export type BankDisputeEvidenceInput = z.infer<typeof bankDisputeEvidenceSchema>;
-
 /** Giorni prima della scadenza delle prove in cui il team riceve l'avviso. */
 export const BANK_DISPUTE_REMINDER_DAYS = 3;
 /** Giorni prima della scadenza in cui il professionista che non ha scritto riceve il promemoria. */
 export const BANK_DISPUTE_PRO_REMINDER_DAYS = 5;
 export const BANK_DISPUTE_PRO_PHOTOS_MAX = 10;
-
-/**
- * Spiegazione e foto del professionista sulla contestazione, dalla sua area:
- * l'admin le rilegge e le manda alla banca con le prove.
- */
-export const bankDisputeProNoteSchema = z.object({
-  note: z.string().trim().min(20, "Racconta in qualche riga come è andato il lavoro.").max(5000),
-  photoUrls: z.array(z.string().url()).max(BANK_DISPUTE_PRO_PHOTOS_MAX).default([]),
-});
-export type BankDisputeProNoteInput = z.infer<typeof bankDisputeProNoteSchema>;
 
 /** Contestazione vista dal professionista nel riepilogo del pagamento. */
 export type ProfessionalBankDispute = {
@@ -94,6 +71,8 @@ export type BankDisputePart = {
   status: string;
   /** null nell'archivio, dove non si chiede a Stripe. */
   amountEurCents: number | null;
+  /** Commissione di Stripe della contestazione, sempre a carico del professionista; null se non si sa. */
+  feeEurCents: number | null;
   dueBy: string | null;
 };
 
@@ -102,6 +81,8 @@ export type AdminBankDispute = {
   bookingId: string;
   disputeId: string;
   businessName: string;
+  /** Attività e persona insieme, solo per la pagina dell'admin (mai nelle prove per la banca). */
+  professionalName: string;
   clientName: string;
   amountEurCents: number;
   reason: string | null;
@@ -136,6 +117,8 @@ export type AdminBankDisputeArchiveRow = {
   bookingId: string;
   disputeId: string;
   businessName: string;
+  /** Attività e persona insieme, solo per la pagina dell'admin (mai nelle prove per la banca). */
+  professionalName: string;
   clientName: string;
   clientEmail: string | null;
   amountEurCents: number;
@@ -158,4 +141,3 @@ export type AdminBankDisputeArchiveRow = {
   /** Tutte le contestazioni del lavoro, con il loro stato. */
   parts: BankDisputePart[];
 };
-

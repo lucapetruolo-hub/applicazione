@@ -271,12 +271,15 @@ CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
     la conservazione); (b) `OPENAPI_TOKEN_SDI` su Render con
     `OPENAPI_SANDBOX=true`, poi in Finanza "Prova l'invio allo SdI" (§379:
     registra la società, manda una fattura da 1 €, simula e legge l'esito)
-    e solo con tutti i passi verdi togliere la sandbox; (c) nella dashboard di Stripe spegnere le email di fatture e
-    ricevute ai clienti (le fatture valide sono le nostre) e lo storico
-    fatture nel portale clienti; (d) far vedere al commercialista una
-    fattura del mese (TD24, data ultimo giorno del mese), una nota di
-    credito e la ricevuta per prestazione occasionale della copia di
-    cortesia (anche in PDF); (e) controllare nei log di Resend che arrivino gli allegati
+    e solo con tutti i passi verdi togliere la sandbox; (c) email di Stripe ai clienti: restano accese sia le ricevute dei
+    pagamenti sia le fatture finalizzate (decisione di Luca del 2/11: il
+    commercialista fa un doppio controllo). Il PDF "fattura" di Stripe ha un
+    numero diverso dalla nostra ABB: far confermare al commercialista che
+    non crea doppie registrazioni (domanda F del pacchetto). Lo storico
+    fatture nel portale clienti è già spento dal codice (portale "Solo la carta");
+    (d) dare al commercialista il pacchetto `analisi/pacchetto-commercialista/`
+    dei file del progetto (PDF di ogni documento, XML, domande A-E; si
+    rigenera con `scripts/pacchetto-commercialista.ts` di `apps/api`); (e) controllare nei log di Resend che arrivino gli allegati
     (file del calendario, PDF e foglio di calcolo al commercialista).
 
 **Claim non veritieri pubblicati dal vivo** (decisione esplicita

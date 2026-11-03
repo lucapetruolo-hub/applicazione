@@ -4,15 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ChatThreadSummary } from "@professionisti/shared";
-import { Avatar, Button, EmptyState, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Button, EmptyState, Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { subscribeRealtimeEvents } from "@/lib/realtimeBus";
 import { SkeletonThreadRow } from "@/components/Skeleton";
 import { ConversationView } from "@/components/ConversationView";
-import { UnreadDot } from "@/components/UnreadDot";
+import { ChatThreadRow } from "@/components/ChatThreadRow";
 import { mergeCounts, unreadThreadCounts } from "@/lib/notificationSections";
-import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 
 // Poll di riserva (richiesta esplicita dell'utente: rete di sicurezza per
 // una disconnessione SSE momentanea, non più la sola fonte — CTO:
@@ -40,14 +39,6 @@ function threadKey(thread: ChatThreadSummary): string {
  */
 function requestDestination(thread: ChatThreadSummary): string {
   return thread.viewerRole === "PROFESSIONAL" ? `/dashboard/richieste?open=${thread.guidedRequestId}` : `/le-mie-richieste?open=${thread.guidedRequestId}`;
-}
-
-function formatThreadTimestamp(iso: string): string {
-  const date = new Date(iso);
-  const now = new Date();
-  const time = date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
-  if (date.toDateString() === now.toDateString()) return time;
-  return `${date.toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "Europe/Rome" })} · ${time}`;
 }
 
 /**
@@ -210,6 +201,8 @@ export default function ChatPage() {
               otherPartyName={selectedThread.otherPartyName}
               otherPartyImageUrl={selectedThread.otherPartyImageUrl}
               requestDescription={selectedThread.requestDescription}
+              requestPhotoUrl={selectedThread.requestPhotoUrl}
+              onOpenRequest={() => router.push(requestDestination(selectedThread))}
               onBack={() => {
                 setSelectedKey(null);
                 reload();
@@ -291,95 +284,5 @@ export default function ChatPage() {
         }
       `}</style>
     </YStack>
-  );
-}
-
-function ChatThreadRow({
-  thread,
-  unreadCount,
-  zebra,
-  active,
-  onOpen,
-  onGoToRequest,
-}: {
-  thread: ChatThreadSummary;
-  unreadCount?: number;
-  zebra: boolean;
-  /** Evidenzia la riga della conversazione aperta (solo rilevante da desktop, dove la lista resta visibile accanto — richiesta implicita dal layout a due colonne: sapere quale chat si sta leggendo). */
-  active: boolean;
-  onOpen: () => void;
-  onGoToRequest: () => void;
-}) {
-  // Il pallino deve sparire non appena si apre la conversazione (richiesta
-  // esplicita dell'utente, stesso principio già in uso ovunque nel
-  // prodotto) — vedi useDismissableUnreadCount.
-  const [effectiveUnreadCount, dismissUnread] = useDismissableUnreadCount(unreadCount);
-  const previewText = thread.lastMessage
-    ? thread.lastMessage
-    : thread.lastMessageHasMedia
-      ? "Foto/video allegati"
-      : "Nessun messaggio ancora";
-
-  return (
-    <XStack
-      alignItems="center"
-      gap="3"
-      paddingHorizontal="3"
-      paddingVertical="3"
-      backgroundColor={active ? brand.cianografiaVelo : zebra ? brand.gesso : "transparent"}
-      cursor="pointer"
-      role="button"
-      onPress={() => {
-            onOpen();
-            dismissUnread();
-          }}
-    >
-      <Avatar name={thread.otherPartyName} imageUrl={thread.otherPartyImageUrl} size={48} />
-      <YStack flex={1} minWidth={0} gap={2}>
-        <Text fontWeight="700" color={brand.grafite} numberOfLines={1}>
-          {thread.otherPartyName}
-        </Text>
-        {/* Il lavoro (docs/CHANGELOG.md §198): due chat con la stessa persona
-            non sembrano più uguali. Solo la descrizione, la categoria se manca
-            (§349): "Idraulico · ..." tagliava proprio la parte che distingue. */}
-        <Text fontSize={13} color={brand.grafite70} numberOfLines={1}>
-          {thread.requestDescription?.trim() || thread.categoryLabel}
-        </Text>
-        <Text fontSize={16} color={brand.grafite70} numberOfLines={1}>
-          {thread.lastMessageIsMine ? "Tu: " : ""}
-          {previewText}
-        </Text>
-      </YStack>
-      <YStack alignItems="flex-end" gap="1" flexShrink={0}>
-        <Text fontSize={13} color={brand.grafite70}>
-          {formatThreadTimestamp(thread.lastMessageAt)}
-        </Text>
-        <UnreadDot count={effectiveUnreadCount} />
-      </YStack>
-      {/* Link separato dall'apertura della chat (richiesta esplicita
-          dell'utente: "dai la possibilità di andare alla pagina del
-          preventivo/informazioni di quella determinata chat") —
-          stopPropagation per non aprire anche la conversazione allo
-          stesso click, stesso pattern già in uso in ProfessionalCard per
-          un controllo annidato dentro un elemento cliccabile più grande. */}
-      <XStack
-        width={32}
-        height={32}
-        alignItems="center"
-        justifyContent="center"
-        borderRadius={10}
-        backgroundColor={brand.gesso}
-        cursor="pointer"
-        flexShrink={0}
-        role="button"
-        aria-label="Vai alla richiesta"
-        onPress={(e: { stopPropagation: () => void }) => {
-          e.stopPropagation();
-          onGoToRequest();
-        }}
-      >
-        <Icon name="file-text" size={15} color={brand.grafite70} strokeWidth={1.5} />
-      </XStack>
-    </XStack>
   );
 }

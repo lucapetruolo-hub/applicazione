@@ -1,5 +1,3 @@
-import { z } from "zod";
-import "./zod";
 import { onlineDepositEurCents, type JobPaymentChoice } from "./onlinePayments";
 import { formatEur } from "./professionals";
 
@@ -16,6 +14,8 @@ import { formatEur } from "./professionals";
 export const ONLINE_LIMIT_EUR_CENTS = 200_000;
 export const ONLINE_LIMIT_FREE_JOBS = 10;
 export const ONLINE_LIMIT_FREE_DAYS = 120;
+/** I 120 giorni detti in mesi, per i testi. */
+export const ONLINE_LIMIT_FREE_MONTHS = 4;
 
 /**
  * Finché vale il tetto, al massimo 3.000 € online fermi in tutto sul conto
@@ -91,18 +91,13 @@ export function onlineLimitHint(input: { limitEurCents: number | null; cleanJobs
   const head = `Online puoi chiedere fino a ${formatEur(input.limitEurCents)} per lavoro.`;
   if (input.cleanJobs >= ONLINE_LIMIT_FREE_JOBS && input.firstCleanJobAt) {
     const day = onlineLimitFreeDaysReachedAt(new Date(input.firstCleanJobAt)).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
-    return `${head} Hai già ${ONLINE_LIMIT_FREE_JOBS} lavori pagati online: il limite sparisce il ${day}.`;
+    return `${head} Hai già ${ONLINE_LIMIT_FREE_JOBS} lavori pagati online: il limite si toglie il ${day}.`;
   }
-  return `${head} Il limite sparisce dopo ${ONLINE_LIMIT_FREE_JOBS} lavori pagati online: ne hai ${input.cleanJobs}.`;
+  // Le due condizioni insieme (collaudo O-08): prima si leggeva solo "dopo 10 lavori".
+  return `${head} Il limite si toglie dopo ${ONLINE_LIMIT_FREE_JOBS} lavori pagati online senza contestazioni e ${ONLINE_LIMIT_FREE_MONTHS} mesi dal primo: ne hai ${input.cleanJobs}.`;
 }
 
 export const ONLINE_LIMIT_REASON_MAX = 300;
-
-/** Admin → Pagamenti: togliere il tetto chiede un motivo, che resta nel registro azioni. */
-export const setOnlineLimitSchema = z
-  .object({ removed: z.boolean(), reason: z.string().trim().max(ONLINE_LIMIT_REASON_MAX).optional() })
-  .refine((v) => !v.removed || (v.reason?.length ?? 0) >= 3, { message: "Scrivi perché togli il tetto.", path: ["reason"] });
-export type SetOnlineLimitInput = z.infer<typeof setOnlineLimitSchema>;
 
 export type AdminOnlineLimitRow = {
   professionalProfileId: string;

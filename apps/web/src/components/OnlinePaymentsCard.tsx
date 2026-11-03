@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { formatEurCents, ONLINE_APP_FEE_PERCENT, onlineFeeExample } from "@professionisti/shared";
+import { formatEurCents, ONLINE_APP_FEE_PERCENT, ONLINE_LIMIT_EUR_CENTS, ONLINE_LIMIT_FREE_JOBS, onlineFeeExample } from "@professionisti/shared";
 import { Badge, Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { PayoutSummary } from "@/components/PayoutSummary";
 
@@ -63,6 +63,14 @@ export function OnlinePaymentsCard({
             <Text fontSize={13} color={brand.grafite70}>
               Costo: {ONLINE_APP_FEE_PERCENT}% + IVA, commissioni Stripe comprese. Su {formatEurCents(EXAMPLE.amountEurCents)} ti arrivano{" "}
               {formatEurCents(EXAMPLE.netEurCents)}.
+            </Text>
+            {/* Il tetto dei professionisti nuovi detto dove si attivano i pagamenti (collaudo D-06). */}
+            <Text fontSize={13} color={brand.grafite70}>
+              All&apos;inizio online chiedi al massimo {formatEurCents(ONLINE_LIMIT_EUR_CENTS)} a lavoro, finché non hai {ONLINE_LIMIT_FREE_JOBS} lavori
+              pagati online.{" "}
+              <Link href="/per-professionisti/pagamenti#limite" style={{ color: brand.cianografiaScuro, fontWeight: 600, whiteSpace: "nowrap" }}>
+                Perché
+              </Link>
             </Text>
             {error ? (
               <Text fontSize={16} color={brand.urgenza} role="alert">

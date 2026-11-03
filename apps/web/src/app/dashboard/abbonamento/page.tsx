@@ -89,6 +89,50 @@ function monthsWord(months: number): string {
   return months === 1 ? "1 mese" : `${months} mesi`;
 }
 
+/**
+ * Le tre caselle sotto i livelli cambiano con lo stato (collaudo O-01, C-10,
+ * O-13): prima dicevano "ogni mese in automatico" e "fine del mese già
+ * pagato" anche a chi aveva annullato o non aveva mai pagato.
+ */
+function rulesText(sub: MySubscription | null, freeWithCard: boolean): { renewal: string; change: string; cancel: string | null } {
+  const base = `${formatEur(subscriptionTierInfo("BASE").priceEurCents)} + IVA al mese`;
+  const paidChange = "Paghi una volta sola la differenza fino al rinnovo, più una piccola quota.";
+  const freeChange = `Nei mesi gratis paghi il primo mese del livello meno i ${formatEur(subscriptionTierInfo("BASE").priceEurCents)} di Base.`;
+  if (sub?.state === "TRIAL") {
+    return {
+      renewal: `Nei mesi gratis non paghi nulla. Con la carta data, dopo parte Base a ${base}, ogni mese in automatico.`,
+      change: freeChange,
+      cancel: "Annulli dal sito quando vuoi, anche nei mesi gratis: non paghi nulla.",
+    };
+  }
+  if (freeWithCard && sub?.trialEndsAt) {
+    return {
+      renewal: `Dal ${formatDate(sub.trialEndsAt)} Base a ${base}, ogni mese in automatico. Ti avvisiamo ${FREE_MONTHS_END_NOTICE_DAYS} giorni prima.`,
+      change: freeChange,
+      cancel: `Se annulli prima del ${formatDate(sub.trialEndsAt)} non paghi nulla.`,
+    };
+  }
+  if ((sub?.state === "ACTIVE" || sub?.state === "PAST_DUE") && sub.cancelAtPeriodEnd) {
+    return {
+      renewal: sub.currentPeriodEnd ? `Spento: il ${formatDate(sub.currentPeriodEnd)} non paghi nulla. Puoi riaccenderlo qui sotto.` : "Spento: puoi riaccenderlo qui sotto.",
+      change: paidChange,
+      cancel: null,
+    };
+  }
+  if (sub?.state === "ACTIVE" || sub?.state === "PAST_DUE") {
+    return {
+      renewal: "Ogni mese in automatico. Ti avvisiamo qualche giorno prima di ogni addebito.",
+      change: paidChange,
+      cancel: sub.currentPeriodEnd ? `Resta attivo fino al ${formatDate(sub.currentPeriodEnd)}, già pagato, poi non paghi più.` : "Resta attivo fino alla fine del mese già pagato.",
+    };
+  }
+  return {
+    renewal: "Ogni mese in automatico dal giorno in cui scegli il livello. Ti avvisiamo prima di ogni addebito.",
+    change: paidChange,
+    cancel: "Resta attivo fino alla fine del mese già pagato, poi non paghi più.",
+  };
+}
+
 function statusText(sub: MySubscription): { title: string; detail: string } {
   const tierLabel = sub.tier ? subscriptionTierInfo(sub.tier).label : null;
   const trialFuture = sub.trialEndsAt && new Date(sub.trialEndsAt).getTime() > Date.now();
@@ -109,7 +153,11 @@ function statusText(sub: MySubscription): { title: string; detail: string } {
       return { title: months ? "Mesi gratis terminati" : "Scegli il tuo livello", detail: "Scegli il livello che fa per te qui sotto." };
     case "ACTIVE":
       if (sub.cancelAtPeriodEnd && sub.currentPeriodEnd) {
-        return { title: `Livello ${tierLabel} · annullato`, detail: `Resta attivo fino al ${formatDate(sub.currentPeriodEnd)}, poi non si rinnova.` };
+        // Una sola storia, con il rinnovo spento (collaudo O-01): fino a quando vale e cosa succede dopo.
+        return {
+          title: `Livello ${tierLabel} fino al ${formatDate(sub.currentPeriodEnd)}`,
+          detail: `Rinnovo spento: dopo quella data non paghi più nulla e il profilo esce dalle ricerche.${sub.freeMonthsWaiting ? ` I tuoi ${monthsWord(sub.freeMonthsWaiting)} gratis restano: li riprendi scegliendo Base.` : ""}`,
+        };
       }
       if (trialFuture && sub.trialEndsAt) {
         return {
@@ -350,6 +398,7 @@ function AbbonamentoContent() {
   const freeWithCard = paidActive && sub?.freeMonths?.currentMonth != null;
   // Solo mensile per ora; chi aveva già l'annuale lo vede com'è.
   const interval: BillingInterval = paidActive ? (sub?.billingInterval ?? "MONTH") : "MONTH";
+  const rules = rulesText(sub, freeWithCard);
 
   const heading = (
     <YStack gap="1">
@@ -427,6 +476,20 @@ function AbbonamentoContent() {
                 Riepilogo del mese: 0 € →
               </Link>
             ) : null}
+            {!sub.limitsActive ? (
+              // Prima del lancio non c'è limite (collaudo C-09: "4 su 3" senza spiegazione).
+              <YStack gap="1">
+                <XStack justifyContent="space-between" flexWrap="wrap" gap="2">
+                  <Text fontWeight="700" color={brand.grafite}>
+                    Lavori accettati finora
+                  </Text>
+                  <Text color={brand.grafite70}>{used}</Text>
+                </XStack>
+                <Text color={brand.grafite70} fontSize={16}>
+                  Fino al lancio non c&apos;è limite. Dal lancio Base comprende {subscriptionTierInfo("BASE").monthlyAcceptedJobs} lavori al mese.
+                </Text>
+              </YStack>
+            ) : (
             <YStack gap="2">
               <XStack justifyContent="space-between" flexWrap="wrap" gap="2">
                 <Text fontWeight="700" color={brand.grafite}>
@@ -450,6 +513,7 @@ function AbbonamentoContent() {
                 </Text>
               ) : null}
             </YStack>
+            )}
           </Surface>
         ) : null}
 
@@ -564,15 +628,28 @@ function AbbonamentoContent() {
                   ) : null}
                   {quote && tier.tier !== "BASE" ? (
                     // Una sola cifra (decisione dell'utente): il calcolo sta in "Cambio di livello" qui sotto.
+                    // Una cifra da pagare una volta, poi il prezzo pieno (collaudo O-13: "fino al 27 gen" sembrava un canone).
                     <YStack backgroundColor={brand.gesso} borderRadius={10} padding="3" gap={2}>
                       <Text fontSize={13} fontWeight="700" letterSpacing={0.6} textTransform="uppercase" color={brand.grafite70}>
-                        Se passi ora
+                        Se passi oggi
                       </Text>
                       <Text color={brand.grafite}>
-                        <Text fontWeight="800" color={brand.grafite}>
-                          {quote.amountEurCents === 0 ? "Nessun costo" : `${formatEur(quote.amountEurCents)} + IVA`}
-                        </Text>
-                        {quote.until ? ` fino al ${shortDate(quote.until)}` : " il primo mese, da oggi"}
+                        {quote.amountEurCents === 0 ? (
+                          <Text fontWeight="800" color={brand.grafite}>
+                            Nessun costo oggi
+                          </Text>
+                        ) : (
+                          <>
+                            Paghi una volta{" "}
+                            <Text fontWeight="800" color={brand.grafite}>
+                              {formatEur(quote.amountEurCents)} + IVA
+                            </Text>{" "}
+                            ({formatEur(withVatEurCents(quote.amountEurCents))} IVA inclusa){quote.until ? "" : " per il primo mese"}.
+                          </>
+                        )}
+                      </Text>
+                      <Text color={brand.grafite70} fontSize={15}>
+                        {quote.until ? `Dal ${shortDate(quote.until)}` : "Poi"} {formatEur(periodPrice)} {perLabel(interval)} + IVA.
                       </Text>
                     </YStack>
                   ) : null}
@@ -627,7 +704,7 @@ function AbbonamentoContent() {
                 Rinnovo
               </Text>
               <Text color={brand.grafite70} fontSize={15} lineHeight="22px">
-                {interval === "YEAR" ? "Ogni anno" : "Ogni mese"} in automatico, anche dopo i mesi gratis. Ti avvisiamo prima di ogni addebito.
+                {rules.renewal}
               </Text>
             </Surface>
             <Surface flex="gtSm:1" flexBasis="gtSm:0px" minWidth="gtSm:0px" borderRadius={radiusDoc} padding="4" gap="1">
@@ -635,7 +712,7 @@ function AbbonamentoContent() {
                 Cambio di livello
               </Text>
               <Text color={brand.grafite70} fontSize={15} lineHeight="22px">
-                Nei mesi gratis: il mese del livello meno 19 €.{" "}
+                {rules.change}{" "}
                 <button type="button" className="fee-more" aria-expanded={feeDetailsOpen} onClick={() => setFeeDetailsOpen((open) => !open)}>
                   {feeDetailsOpen ? "Chiudi" : "Scopri di più"}
                 </button>
@@ -649,14 +726,16 @@ function AbbonamentoContent() {
                 </Text>
               ) : null}
             </Surface>
-            <Surface flex="gtSm:1" flexBasis="gtSm:0px" minWidth="gtSm:0px" borderRadius={radiusDoc} padding="4" gap="1">
-              <Text fontWeight="700" color={brand.grafite}>
-                Annulli quando vuoi
-              </Text>
-              <Text color={brand.grafite70} fontSize={15} lineHeight="22px">
-                Resta attivo fino alla fine {interval === "YEAR" ? "dell'anno" : "del mese"} già pagato.
-              </Text>
-            </Surface>
+            {rules.cancel ? (
+              <Surface flex="gtSm:1" flexBasis="gtSm:0px" minWidth="gtSm:0px" borderRadius={radiusDoc} padding="4" gap="1">
+                <Text fontWeight="700" color={brand.grafite}>
+                  Annulli quando vuoi
+                </Text>
+                <Text color={brand.grafite70} fontSize={15} lineHeight="22px">
+                  {rules.cancel}
+                </Text>
+              </Surface>
+            ) : null}
           </YStack>
         </YStack>
 
@@ -728,14 +807,15 @@ function AbbonamentoContent() {
             in Fisco e pagamenti: qui basta una riga (docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md). Da Stripe solo la carta. */}
         <Surface borderRadius={radiusDoc} padding="5">
           <XStack gap="3" alignItems="center" justifyContent="space-between" flexWrap="wrap">
-            <Text color={brand.grafite70}>
-              Le fatture dell&apos;abbonamento sono in{" "}
+            <Text color={brand.grafite70} flex={1} minWidth={220}>
+              {inTrial || freeWithCard ? "Nei mesi gratis non paghi nulla. La fattura di ogni pagamento te la facciamo noi, in " : "La fattura di ogni pagamento te la facciamo noi: la trovi in "}
               <Link href="/dashboard/documenti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
                 Fatture e documenti
               </Link>
               .
             </Text>
-            {sub?.checkoutAvailable ? (
+            {/* Solo a chi ha dato la carta (collaudo C-10: "Cambia la carta" senza carta). */}
+            {sub?.checkoutAvailable && paidActive ? (
               <Button variant="secondary" disabled={portalPending} opacity={portalPending ? 0.6 : 1} onPress={openPortal}>
                 {portalPending ? "Apertura..." : "Cambia la carta"}
               </Button>

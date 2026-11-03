@@ -148,18 +148,38 @@ export default function AdminPagamentiPage() {
         {refunds && refunds.length === 0 ? (
           <Text color={brand.grafite70}>{refundSearch ? "Nessun rimborso trovato." : "Nessuna richiesta di rimborso."}</Text>
         ) : null}
-        {refunds?.map((refund) => <RefundCard key={refund.id} refund={refund} token={token ?? ""} onChanged={reload} />)}
+        {refunds?.map((refund) => (
+          <RefundCard
+            key={refund.id}
+            refund={refund}
+            token={token ?? ""}
+            onChanged={reload}
+            // Stessa storia aperta due volte (misura "dopo" del riordino): si decidono insieme.
+            alsoOpen={disputes?.some((d) => d.jobPayment.id === refund.jobPayment.id && (d.status === "OPEN" || d.status === "UNDER_REVIEW")) ? "Sullo stesso lavoro c'è anche una contestazione di pagamento aperta, più sotto: decidile insieme." : null}
+          />
+        ))}
       </YStack>
 
       <YStack gap="3">
         <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
-          Contestazioni
+          Contestazioni di pagamento
         </Text>
-        <SearchBox label="Cerca nelle contestazioni" value={disputeQuery} onChange={setDisputeQuery} placeholder="Cliente, professionista, motivo, cifra o codice" />
+        <Text fontSize={13} color={brand.grafite70}>
+          Clienti che hanno contestato dal sito quanto pagato online. Diverse dalle contestazioni in banca, aperte dal cliente con la sua banca.
+        </Text>
+        <SearchBox label="Cerca nelle contestazioni di pagamento" value={disputeQuery} onChange={setDisputeQuery} placeholder="Cliente, professionista, motivo, cifra o codice" />
         {disputes && disputes.length === 0 ? (
-          <Text color={brand.grafite70}>{disputeSearch ? "Nessuna contestazione trovata." : "Nessuna contestazione."}</Text>
+          <Text color={brand.grafite70}>{disputeSearch ? "Nessuna contestazione di pagamento trovata." : "Nessuna contestazione di pagamento."}</Text>
         ) : null}
-        {disputes?.map((dispute) => <DisputeCard key={dispute.id} dispute={dispute} token={token ?? ""} onChanged={reload} />)}
+        {disputes?.map((dispute) => (
+          <DisputeCard
+            key={dispute.id}
+            dispute={dispute}
+            token={token ?? ""}
+            onChanged={reload}
+            alsoOpen={refunds?.some((r) => r.jobPayment.id === dispute.jobPayment.id && r.status === "REQUESTED") ? "Sullo stesso lavoro c'è anche un rimborso da decidere, più sopra: decidili insieme." : null}
+          />
+        ))}
       </YStack>
 
       <YStack gap="3">
@@ -189,7 +209,7 @@ function refundClientName(refund: AdminRefund): string {
  * chi, con la cifra esatta e il nome, e chiede il motivo; il pulsante porta il
  * nome dell'azione (collaudo 29/10 e riordino admin).
  */
-function RefundCard({ refund, token, onChanged }: { refund: AdminRefund; token: string; onChanged: () => void }) {
+function RefundCard({ refund, token, onChanged, alsoOpen }: { refund: AdminRefund; token: string; onChanged: () => void; alsoOpen: string | null }) {
   const [confirming, setConfirming] = useState<"APPROVED" | "REJECTED" | null>(null);
   const status = REFUND_STATUS[refund.status];
   const client = refundClientName(refund);
@@ -215,6 +235,11 @@ function RefundCard({ refund, token, onChanged }: { refund: AdminRefund; token: 
         </Text>
       </XStack>
       {refund.reason ? <Text color={brand.grafite}>Motivo: {refund.reason}</Text> : null}
+      {alsoOpen && refund.status === "REQUESTED" ? (
+        <Text fontSize={13} fontWeight="700" color={brand.urgenza}>
+          {alsoOpen}
+        </Text>
+      ) : null}
       {refund.status === "REQUESTED" ? (
         <XStack gap="2">
           <Button variant="primary" size="3" onPress={() => setConfirming("APPROVED")}>
@@ -247,7 +272,7 @@ function RefundCard({ refund, token, onChanged }: { refund: AdminRefund; token: 
   );
 }
 
-function DisputeCard({ dispute, token, onChanged }: { dispute: AdminDispute; token: string; onChanged: () => void }) {
+function DisputeCard({ dispute, token, onChanged, alsoOpen }: { dispute: AdminDispute; token: string; onChanged: () => void; alsoOpen: string | null }) {
   const [choice, setChoice] = useState<"RESOLVED_CLIENT" | "RESOLVED_PROFESSIONAL" | "CLOSED" | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -277,6 +302,7 @@ function DisputeCard({ dispute, token, onChanged }: { dispute: AdminDispute; tok
           <AdminPill tone={status.tone}>{status.label}</AdminPill>
           <Text fontWeight="700" color={brand.grafite}>
             {dispute.jobPayment.booking.professionalProfile.businessName}
+            {dispute.jobPayment.booking.client ? ` · cliente ${dispute.jobPayment.booking.client.deletedAt ? "(account chiuso)" : [dispute.jobPayment.booking.client.name, dispute.jobPayment.booking.client.surname].filter(Boolean).join(" ") || "cliente"}` : ""}
           </Text>
         </XStack>
         <Text fontSize="2" color={brand.grafite70}>
@@ -284,6 +310,11 @@ function DisputeCard({ dispute, token, onChanged }: { dispute: AdminDispute; tok
         </Text>
       </XStack>
       <Text color={brand.grafite}>Motivo: {dispute.reason}</Text>
+      {alsoOpen && isOpen ? (
+        <Text fontSize={13} fontWeight="700" color={brand.urgenza}>
+          {alsoOpen}
+        </Text>
+      ) : null}
       {dispute.resolutionNote ? <Text color={brand.grafite70}>Esito: {dispute.resolutionNote}</Text> : null}
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {isOpen ? (
@@ -506,7 +537,7 @@ function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; tok
         </Text>
       ) : null}
       <Text fontSize={13} color={brand.grafite70}>
-        {row.businessName} · cliente {row.clientName}
+        {row.professionalName} · cliente {row.clientName}
         {!row.submitted ? (row.professionalNote ? " · il professionista ha scritto la sua spiegazione" : " · il professionista non ha ancora scritto") : ""}
       </Text>
       {row.submitted ? (
@@ -660,7 +691,15 @@ const DISPUTE_PAYMENT_LABEL = { DEPOSIT: "Acconto", BALANCE: "Saldo" } as const;
  * contestazione. Le prove sono le stesse e vanno a tutte e due.
  */
 function DisputeParts({ parts }: { parts: BankDisputePart[] }) {
-  if (parts.length < 2) return null;
+  // Commissione di Stripe, sempre a carico del professionista (docs/changelog/2026-11-03-commissione-contestazioni.md).
+  const fees = parts.reduce((sum, part) => sum + (part.feeEurCents ?? 0), 0);
+  const feeNote =
+    fees > 0 ? (
+      <Text fontSize={13} color={brand.grafite70}>
+        Commissione di Stripe {formatEurCents(fees)}, a carico del professionista.
+      </Text>
+    ) : null;
+  if (parts.length < 2) return feeNote;
   return (
     <YStack gap="1" padding="3" borderRadius="3" backgroundColor={brand.gesso}>
       <Text fontSize={13} color={brand.grafite70}>
@@ -676,6 +715,7 @@ function DisputeParts({ parts }: { parts: BankDisputePart[] }) {
           {part.dueBy ? <Text color={brand.grafite70}>· entro il {formatAdminDate(part.dueBy)}</Text> : null}
         </XStack>
       ))}
+      {feeNote}
     </YStack>
   );
 }
@@ -695,7 +735,7 @@ function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRo
       </XStack>
       <DisputeParts parts={row.parts} />
       <Text fontSize={13} color={brand.grafite70}>
-        {row.businessName} · cliente {row.clientName}
+        {row.professionalName} · cliente {row.clientName}
         {row.openedAt ? ` · aperta il ${formatAdminDate(row.openedAt)}` : ""}
         {row.evidenceSentAt ? ` · prove mandate il ${formatAdminDate(row.evidenceSentAt, true)}${row.evidenceSentBy ? ` da ${row.evidenceSentBy}` : ""}` : ""}
         {row.closedAt ? ` · chiusa il ${formatAdminDate(row.closedAt)}` : ""}

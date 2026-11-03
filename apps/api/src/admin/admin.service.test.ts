@@ -208,7 +208,7 @@ describe("AdminService.deleteTestAccount", () => {
   }
 
   it("elimina l'account e lo scrive nel registro", async () => {
-    const { service, prisma, audit } = build({ id: "u-1", role: "CLIENT", email: "prova@example.com", professionalProfile: null });
+    const { service, prisma, audit } = build({ id: "u-1", role: "CLIENT", email: "prova@example.com", testAccountAt: new Date(), deletedAt: null, professionalProfile: null });
     await expect(service.deleteTestAccount("admin-1", "u-1")).resolves.toEqual({ id: "u-1", deleted: true });
     expect((prisma as unknown as { user: { delete: ReturnType<typeof vi.fn> } }).user.delete).toHaveBeenCalledWith({ where: { id: "u-1" } });
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ fieldName: "testAccount", newValue: "DELETED", changedByUserId: "admin-1" }));
@@ -217,8 +217,16 @@ describe("AdminService.deleteTestAccount", () => {
   it("rifiuta un admin, sé stessi e chi ha pagamenti online veri", async () => {
     await expect(build({ id: "a-2", role: "ADMIN", email: null, professionalProfile: null }).service.deleteTestAccount("admin-1", "a-2")).rejects.toThrow(/amministratore/);
     await expect(build({ id: "admin-1", role: "CLIENT", email: null, professionalProfile: null }).service.deleteTestAccount("admin-1", "admin-1")).rejects.toThrow(/stesso/);
-    const paid = build({ id: "u-2", role: "PROFESSIONAL", email: null, professionalProfile: { id: "p-2" } }, 1);
+    const paid = build({ id: "u-2", role: "PROFESSIONAL", email: null, testAccountAt: new Date(), deletedAt: null, professionalProfile: { id: "p-2" } }, 1);
     await expect(paid.service.deleteTestAccount("admin-1", "u-2")).rejects.toThrow(/pagamenti online/);
     expect((paid.prisma as unknown as { user: { delete: ReturnType<typeof vi.fn> } }).user.delete).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta un account non segnato come di prova o già chiuso", async () => {
+    const real = build({ id: "u-3", role: "CLIENT", email: "vero@example.com", testAccountAt: null, deletedAt: null, professionalProfile: null });
+    await expect(real.service.deleteTestAccount("admin-1", "u-3")).rejects.toThrow(/account di prova/);
+    expect((real.prisma as unknown as { user: { delete: ReturnType<typeof vi.fn> } }).user.delete).not.toHaveBeenCalled();
+    const closed = build({ id: "u-4", role: "CLIENT", email: null, testAccountAt: new Date(), deletedAt: new Date(), professionalProfile: null });
+    await expect(closed.service.deleteTestAccount("admin-1", "u-4")).rejects.toThrow(/account di prova/);
   });
 });

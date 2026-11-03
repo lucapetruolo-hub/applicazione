@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AdminContactMessage } from "@professionisti/api-client";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -32,6 +32,29 @@ export default function AdminMessaggiPage() {
   function reload() {
     setVersion((n) => n + 1);
   }
+  // "Annulla" per qualche secondo dopo "Segna come gestito" (misura "dopo" del riordino).
+  const [undo, setUndo] = useState<AdminContactMessage | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+  }, []);
+  function resolved(message: AdminContactMessage) {
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    setUndo(message);
+    undoTimer.current = setTimeout(() => setUndo(null), 10_000);
+    reload();
+  }
+  async function undoResolve() {
+    if (!undo || !token) return;
+    const message = undo;
+    setUndo(null);
+    try {
+      await apiClient.adminReopenContactMessage(token, message.id);
+      reload();
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
   useEffect(() => {
     if (!token) return;
     apiClient
@@ -57,6 +80,14 @@ export default function AdminMessaggiPage() {
         ]}
       />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+      {undo ? (
+        <XStack role="status" gap="3" alignItems="center" flexWrap="wrap" padding="3" marginBottom="3" borderRadius={10} backgroundColor={brand.gesso}>
+          <Text color={brand.grafite}>{`Messaggio di ${undo.email} spostato nell'archivio.`}</Text>
+          <Button variant="secondary" size="3" onPress={undoResolve}>
+            Annulla
+          </Button>
+        </XStack>
+      ) : null}
       {messages === null && !error ? (
         <YStack backgroundColor={brand.calce} borderRadius={20} overflow="hidden">
           <SkeletonSummaryRow />
@@ -66,14 +97,14 @@ export default function AdminMessaggiPage() {
         <Text color={brand.grafite70}>{view === "aperti" ? "Nessun messaggio da gestire." : "Archivio vuoto."}</Text>
       ) : (
         <YStack gap="3">
-          {messages?.map((message) => <MessageCard key={message.id} message={message} token={token ?? ""} onChanged={reload} />)}
+          {messages?.map((message) => <MessageCard key={message.id} message={message} token={token ?? ""} onResolved={() => resolved(message)} onChanged={reload} />)}
         </YStack>
       )}
     </YStack>
   );
 }
 
-function MessageCard({ message, token, onChanged }: { message: AdminContactMessage; token: string; onChanged: () => void }) {
+function MessageCard({ message, token, onResolved, onChanged }: { message: AdminContactMessage; token: string; onResolved: () => void; onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Segnalazione di contenuto illegale senza account (docs/CHANGELOG.md
@@ -93,6 +124,19 @@ function MessageCard({ message, token, onChanged }: { message: AdminContactMessa
     setError(null);
     try {
       await apiClient.adminResolveContactMessage(token, message.id);
+      onResolved();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function reopen() {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiClient.adminReopenContactMessage(token, message.id);
       onChanged();
     } catch (err) {
       setError(errorMessage(err));
@@ -133,7 +177,11 @@ function MessageCard({ message, token, onChanged }: { message: AdminContactMessa
           <Button variant="primary" size="3" disabled={busy} onPress={resolve}>
             {busy ? "…" : "Segna come gestito"}
           </Button>
-        ) : null}
+        ) : (
+          <Button variant="secondary" size="3" disabled={busy} onPress={reopen}>
+            {busy ? "…" : "Riapri"}
+          </Button>
+        )}
       </XStack>
     </AdminCard>
   );

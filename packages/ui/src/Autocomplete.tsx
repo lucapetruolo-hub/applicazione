@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { Label, ScrollView, Text, YStack, isWeb } from "tamagui";
+import { Label, ScrollView, Text, XStack, YStack, isWeb } from "tamagui";
 import { Input } from "./Input";
 import { buildSearchIndex, rankSearchMatches } from "./searchMatch";
 import { brand } from "./tokens";
@@ -25,6 +25,12 @@ export type AutocompleteProps<T> = {
    * l'etichetta al campo. Senza, il segnaposto fa da nome accessibile.
    */
   label?: string;
+  /** Pillola corta accanto all'etichetta (es. "Novità" sulla ricerca per problema in home). */
+  labelBadge?: string;
+  /** Riceve una funzione che mette il cursore nel campo (gli esempi della home). */
+  focusRef?: { current: (() => void) | null };
+  /** Classe del campo (in home il bordo con la luce che gira). */
+  inputClassName?: string;
   id?: string;
   /** Nome per il lettore di schermo quando l'etichetta visibile non è legata al campo: senza, si legge il segnaposto ("Es. Milano"). */
   "aria-label"?: string;
@@ -74,6 +80,9 @@ export function Autocomplete<T>({
   minChars = 0,
   size,
   label,
+  labelBadge,
+  focusRef,
+  inputClassName,
   id,
   "aria-label": accessibilityLabel,
   getSearchText,
@@ -87,6 +96,13 @@ export function Autocomplete<T>({
   const listboxId = `${useId().replace(/:/g, "")}-elenco`;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<{ focus?: () => void; blur?: () => void; isFocused?: () => boolean } | null>(null);
+  useEffect(() => {
+    if (!focusRef) return;
+    focusRef.current = () => inputRef.current?.focus?.();
+    return () => {
+      focusRef.current = null;
+    };
+  }, [focusRef]);
 
   // Chiudi il dropdown anche al click/tap fuori dal campo (web): il blur
   // ritardato da solo non basta — con il dropdown aperto a z-index alto il
@@ -199,12 +215,20 @@ export function Autocomplete<T>({
   return (
     <YStack position="relative" flex={1} ref={containerRef as never}>
       {label ? (
-        <Label htmlFor={id} fontSize={16} lineHeight="18px" height="auto" fontWeight="600" color={brand.grafite70} paddingLeft="1" paddingBottom={4}>
-          {label}
-        </Label>
+        <XStack alignItems="center" gap="2" paddingBottom={4}>
+          <Label htmlFor={id} fontSize={16} lineHeight="18px" height="auto" fontWeight="600" color={brand.grafite70} paddingLeft="1">
+            {label}
+          </Label>
+          {labelBadge ? (
+            <Text className="label-badge" fontSize={12} lineHeight="16px" fontWeight="700" color="white" backgroundColor={brand.cianografiaPieno} borderRadius={999} paddingHorizontal={8} paddingVertical={2}>
+              {labelBadge}
+            </Text>
+          ) : null}
+        </XStack>
       ) : null}
       <Input
         ref={inputRef as never}
+        className={inputClassName}
         id={id}
         flex={1}
         size={size}

@@ -453,6 +453,7 @@ export class SubscriptionsService {
         countsClientsOnce: countsClientsOnce(sub, now),
       },
       limitReached,
+      limitsActive: pausesActive(now),
       billingInterval: tier && sub ? sub.billingInterval : null,
       upgradeQuotes: upgradeQuotes({
         state,
@@ -547,7 +548,7 @@ export class SubscriptionsService {
   /** Rinnovo pagato o pagamento non riuscito (webhook `invoice.*`). */
   async onInvoice(
     stripeSubscriptionId: string,
-    outcome: { paid: boolean; renewal: boolean; amountEurCents: number; nextPeriodEnd: Date | null },
+    outcome: { paid: boolean; renewal: boolean; amountEurCents: number; nextPeriodEnd: Date | null; invoiceIssued?: boolean },
   ): Promise<void> {
     const row = await this.prisma.subscription.findUnique({
       where: { stripeSubscriptionId },
@@ -564,9 +565,29 @@ export class SubscriptionsService {
         tierLabel: tier ? subscriptionTierInfo(tier).label : "",
         amountEurCents: outcome.amountEurCents,
         date: outcome.nextPeriodEnd?.toISOString() ?? null,
+        invoice: Boolean(outcome.invoiceIssued),
       });
     }
     await this.syncPause(row.professionalProfileId);
+  }
+
+  /**
+   * Livello scelto o quota di passaggio pagati (collaudo E-13: dopo 173 €
+   * pagati la campanella non diceva nulla). `invoiceIssued`: la nostra
+   * fattura è già in "Fatture e documenti".
+   */
+  async notifyPaid(
+    professionalProfileId: string,
+    input: { tier: SubscriptionTier | null; upgradeFee: boolean; amountEurCents: number; invoiceIssued: boolean },
+  ): Promise<void> {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { userId: true } });
+    if (!profile) return;
+    await this.notificationsService.notify(profile.userId, "SUBSCRIPTION_PAID", {
+      tierLabel: input.tier ? subscriptionTierInfo(input.tier).label : "",
+      upgradeFee: input.upgradeFee,
+      amountEurCents: input.amountEurCents,
+      invoice: input.invoiceIssued,
+    });
   }
 
   /**

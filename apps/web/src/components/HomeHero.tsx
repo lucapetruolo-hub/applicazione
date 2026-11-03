@@ -63,17 +63,24 @@ export function HomeHero() {
             textAlign="center"
             color="white"
           >
-            Trova un professionista vicino a te
+            Scrivi il problema. Ti diciamo chi chiamare.
           </Text>
-          <Text fontSize="5" color="rgba(255,255,255,0.88)" textAlign="center" maxWidth={520}>
-            Idraulici, elettricisti, imbianchini e altri professionisti della tua zona. Cerca per zona o scegli una
-            consulenza online.
+          {/* La ricerca per problema in primo piano (scelta di Luca,
+              docs/changelog/2026-11-03-ricerca-per-problema-home.md): prima il
+              titolo diceva "Trova un professionista vicino a te" e nessuno
+              capiva che si può descrivere il guasto. Le parole per Google
+              (idraulici, elettricisti, vicino a te) restano qui sotto. */}
+          <Text fontSize="5" color="rgba(255,255,255,0.88)" textAlign="center" maxWidth={560}>
+            Con parole tue: l&apos;intelligenza artificiale capisce chi ti serve. Idraulici, elettricisti e altri
+            professionisti vicino a te.
           </Text>
 
           <YStack width="100%" marginTop="4">
             <SearchBar
               wrapSearchButton={(button) => <MagneticButton block>{button}</MagneticButton>}
               onSearch={handleSearch}
+              queryField={{ label: "Cosa è successo?", badge: "Novità", placeholder: "Es. scarico intasato", className: "hero-problem-input" }}
+              footer={({ mode, fillQuery }) => (mode === "domicilio" ? <HeroExamples onPick={fillQuery} /> : null)}
               {...searchHints}
             />
           </YStack>
@@ -112,5 +119,38 @@ export function HomeHero() {
       </YStack>
 
     </YStack>
+  );
+}
+
+/**
+ * Esempi da toccare sotto la ricerca: tre problemi tra i più cercati su Google
+ * (suggerimenti in analisi/seo-dati/suggerimenti-google.json: "scarico
+ * intasato", "salta la corrente", "pulizie post ristrutturazione") e tre
+ * mestieri, per dire che basta anche solo il nome (richiesta di Luca). Tutti
+ * riconosciuti con sicurezza dal dizionario, quindi il tocco mostra subito
+ * "Ti serve: …".
+ */
+const PROBLEM_EXAMPLES = ["Scarico intasato", "Salta la corrente", "Pulizie dopo i lavori"] as const;
+const TRADE_EXAMPLES = ["Idraulico", "Elettricista", "Babysitter"] as const;
+
+function HeroExamples({ onPick }: { onPick: (text: string) => void }) {
+  return (
+    <div className="hero-examples">
+      <ExampleRow label="Prova:" items={PROBLEM_EXAMPLES} onPick={onPick} />
+      <ExampleRow label="O scrivi solo chi cerchi:" items={TRADE_EXAMPLES} onPick={onPick} />
+    </div>
+  );
+}
+
+function ExampleRow({ label, items, onPick }: { label: string; items: readonly string[]; onPick: (text: string) => void }) {
+  return (
+    <div className="hero-examples-row" role="group" aria-label={label.replace(":", "")}>
+      <span className="hero-examples-label">{label}</span>
+      {items.map((item) => (
+        <button key={item} type="button" className="hero-example" onClick={() => onPick(item)}>
+          {item}
+        </button>
+      ))}
+    </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import Link from "next/link";
+import Link from "@/components/IntentLink";
 import { usePathname } from "next/navigation";
 import { Avatar, Icon, Text, YStack, brand } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";

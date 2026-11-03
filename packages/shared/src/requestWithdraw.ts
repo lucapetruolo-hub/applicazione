@@ -1,5 +1,3 @@
-import { z } from "zod";
-import "./zod";
 
 /**
  * "Elimina richiesta" del cliente (docs/CHANGELOG.md §343): motivo
@@ -27,6 +25,3 @@ export const CLIENT_DELETED_REQUEST_RETENTION_DAYS = 90;
 
 /** Entro quanto tempo "Annulla" rimette la richiesta com'era. Il sito mostra il pulsante per pochi secondi; il margine copre una rete lenta. */
 export const REQUEST_RESTORE_WINDOW_MINUTES = 10;
-
-export const requestWithdrawSchema = z.object({ reason: z.enum(REQUEST_WITHDRAW_REASONS).optional() });
-export type RequestWithdrawInput = z.infer<typeof requestWithdrawSchema>;

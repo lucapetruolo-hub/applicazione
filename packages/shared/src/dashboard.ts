@@ -493,6 +493,14 @@ export type ChatThreadSummary = {
    * Facoltativa solo per un'API non ancora aggiornata.
    */
   requestDescription?: string;
+  /**
+   * Prima foto della richiesta (o il primo fotogramma di un video), grande
+   * nella riga della chat con la foto dell'altra parte piccola sopra
+   * (docs/changelog/2026-11-03-foto-richiesta-nei-messaggi.md). Le foto della
+   * richiesta le vedono già tutti e due (CLAUDE.md §5.9): non aggiunge nulla.
+   * `null` senza foto, con la richiesta ritirata o l'account eliminato.
+   */
+  requestPhotoUrl?: string | null;
   lastMessage: string | null;
   /** True se l'ultimo evento porta almeno una foto/video allegata (il testo può essere vuoto in quel caso). */
   lastMessageHasMedia: boolean;

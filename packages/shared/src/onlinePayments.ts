@@ -1,6 +1,3 @@
-import { z } from "zod";
-import "./zod";
-import { clientInvoiceRequestSchema } from "./accounting";
 import { BANK_DISPUTE_OPEN_STATUSES, BANK_DISPUTE_REVIEW_STATUSES, type ProfessionalBankDispute } from "./bankDisputes";
 
 /**
@@ -357,6 +354,8 @@ export type JobPaymentSummary = {
    */
   takenByStripeEurCents?: number;
   debtRecoveredEurCents?: number;
+  /** Solo per il professionista: commissione di Stripe delle contestazioni su questo lavoro, sempre a suo carico. */
+  disputeFeeEurCents?: number;
   /** Solo per il professionista: dov'è il bonifico verso la sua banca (null se non c'è nulla da ricevere). */
   payoutStatus?: JobPayoutStatus | null;
   /** Solo per il professionista: motivo del bonifico non riuscito, in parole di Stripe. */
@@ -369,24 +368,11 @@ export type JobPaymentSummary = {
  * Accettazione di un preventivo con il metodo di pagamento scelto e, se il
  * cliente la chiede, i dati per la fattura del professionista (§378).
  */
-export const acceptQuoteSchema = z.object({
-  paymentMethod: z.enum(jobPaymentChoices).default("DIRECT"),
-  invoiceRequest: clientInvoiceRequestSchema.optional(),
-});
-
-/** Modi di pagamento scelti dal professionista nel preventivo (§237). */
-export const quotePaymentOfferSchema = {
-  paymentOptions: z.array(z.enum(jobPaymentChoices)).min(1, "Scegli almeno un modo di pagamento.").max(jobPaymentChoices.length).optional(),
-  depositPercent: z
-    .number()
-    .int("La percentuale dell'acconto dev'essere un numero intero.")
-    .min(MIN_DEPOSIT_PERCENT, `L'acconto va da ${MIN_DEPOSIT_PERCENT} a ${MAX_DEPOSIT_PERCENT}%.`)
-    .max(MAX_DEPOSIT_PERCENT, `L'acconto va da ${MIN_DEPOSIT_PERCENT} a ${MAX_DEPOSIT_PERCENT}%.`)
-    .optional(),
-  /** Salva questi modi come proposta di serie per i prossimi preventivi (§239). */
-  rememberPaymentOffer: z.boolean().optional(),
-};
-export type AcceptQuoteInput = z.infer<typeof acceptQuoteSchema>;
+/** Somma delle commissioni di Stripe salvate per ogni contestazione. */
+function disputeFeesEurCents(value: unknown): number {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return 0;
+  return Object.values(value as Record<string, unknown>).reduce<number>((sum, cents) => sum + (typeof cents === "number" && cents > 0 ? cents : 0), 0);
+}
 
 type JobPaymentRow = {
   paymentMethod: string;
@@ -400,6 +386,9 @@ type JobPaymentRow = {
   netAmountEurCents: number;
   releaseTakenByStripeEurCents?: number;
   releaseDebtRecoveredEurCents?: number;
+  releaseDisputeFeeEurCents?: number;
+  /** { "<id contestazione>": centesimi } della commissione di Stripe. */
+  disputeFees?: unknown;
   releaseDueAt: Date | null;
   releasedAt: Date | null;
   balanceUnpaidAt: Date | null;
@@ -488,7 +477,11 @@ export function toJobPaymentSummary(
       stage === "RELEASED" ? jp.platformFeeEurCents : balanceMissing ? Math.round((fullFee * Math.max(0, collected)) / Math.max(1, target)) : fullFee;
     summary.appFeeEurCents = appFee;
     summary.stripeFeeEurCents = jp.stripeFeeEurCents;
-    summary.payoutEurCents = stage === "RELEASED" ? jp.netAmountEurCents : Math.max(0, base - appFee - jp.stripeFeeEurCents);
+    // Commissioni di Stripe delle contestazioni (collaudo F-21): allo sblocco
+    // la parte tolta dai soldi di questo lavoro, prima tutte quelle prese.
+    const disputeFees = disputeFeesEurCents(jp.disputeFees);
+    summary.disputeFeeEurCents = stage === "RELEASED" ? (jp.releaseDisputeFeeEurCents ?? 0) : disputeFees;
+    summary.payoutEurCents = stage === "RELEASED" ? jp.netAmountEurCents : Math.max(0, base - appFee - jp.stripeFeeEurCents - disputeFees);
     summary.takenByStripeEurCents = stage === "RELEASED" ? (jp.releaseTakenByStripeEurCents ?? 0) : 0;
     summary.debtRecoveredEurCents = stage === "RELEASED" ? (jp.releaseDebtRecoveredEurCents ?? 0) : 0;
     summary.payoutStatus = jobPayoutStatus(jp);
@@ -554,9 +547,6 @@ export function jobPaymentAdminLabel(summary: JobPaymentSummary | null): string 
   }
   return `Online con Stripe: ${online}${stage}`;
 }
-
-/** Chiusura di un saldo scoperto da parte della Finanza, con la motivazione. */
-export const closeUnpaidBalanceSchema = z.object({ note: z.string().trim().min(3, "Scrivi come si è chiuso il saldo.").max(500) });
 
 export type AdminUnpaidBalance = {
   jobPaymentId: string;

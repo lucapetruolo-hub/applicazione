@@ -8,7 +8,7 @@ import {
   CONTENT_REPORT_TARGET_LABEL,
   MODERATION_ACTIONS_BY_TARGET,
   MODERATION_GROUNDS,
-  MODERATION_REASON_TEMPLATES,
+  moderationTemplatesFor,
   moderationGround,
   type ModerationGroundCode,
   moderationActionAdminLabel,
@@ -82,7 +82,7 @@ function SegnalazioniContent() {
         onChange={setView}
         tabs={[
           { key: "da-gestire", label: `Da gestire (${open.length})` },
-          { key: "ricorsi", label: `Contestazioni (${appeals.length})` },
+          { key: "ricorsi", label: `Ricorsi (${appeals.length})` },
           { key: "archivio", label: "Archivio" },
         ]}
       />
@@ -246,12 +246,12 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
           ) : null}
           {report.appealedAt ? (
             <Text fontSize="3" color={brand.grafite}>
-              <Text fontWeight="700">Contestazione dell&apos;autore ({formatAdminDate(report.appealedAt)}): </Text>“{report.appealText}”
+              <Text fontWeight="700">Ricorso dell&apos;autore ({formatAdminDate(report.appealedAt)}): </Text>“{report.appealText}”
             </Text>
           ) : null}
           {report.appealRejectedAt ? (
             <Text fontSize="3" color={brand.grafite70}>
-              Contestazione respinta: {report.appealRejectNote}
+              Ricorso respinto: {report.appealRejectNote}
             </Text>
           ) : null}
           {report.revertedAt ? (
@@ -328,12 +328,12 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
           ) : null}
           {report.status === "RESOLVED" && !report.revertedAt && report.action ? (
             <Button variant="secondary" size="3" onPress={() => start("revert")}>
-              Annulla misura
+              {appealPending ? "Accogli il ricorso" : "Annulla misura"}
             </Button>
           ) : null}
           {appealPending ? (
             <Button variant="secondary" size="3" onPress={() => start("reject-appeal")}>
-              Respingi contestazione
+              Respingi il ricorso
             </Button>
           ) : null}
         </XStack>
@@ -380,7 +380,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
                 Motivazione per l&apos;autore
               </Text>
               <XStack gap="2" flexWrap="wrap">
-                {MODERATION_REASON_TEMPLATES.map((t) => (
+                {moderationTemplatesFor(report.targetType).map((t) => (
                   <XStack
                     key={t.label}
                     paddingHorizontal={10}
@@ -406,8 +406,10 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
                   ? "Non accogliere la segnalazione? Chi ha segnalato riceverà l'esito in una riga, senza la motivazione."
                   : "Non accogliere la segnalazione? Chi ha segnalato non riceve altro: ha già avuto la presa in carico."
                 : mode === "revert"
-                  ? "Annullare la misura? Il contenuto torna com'era e l'autore viene avvisato."
-                  : "Respingere la contestazione? La misura resta e l'autore riceve la motivazione."}
+                  ? appealPending
+                    ? "Accogliere il ricorso? La misura viene annullata, il contenuto torna com'era e l'autore viene avvisato."
+                    : "Annullare la misura? Il contenuto torna com'era e l'autore viene avvisato."
+                  : "Respingere il ricorso? La misura resta e l'autore riceve la motivazione."}
             </Text>
           )}
           <textarea aria-label="Motivazione"
@@ -448,7 +450,17 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
                 })
               }
             >
-              {busy ? "Salvataggio…" : mode === "resolve" ? "Applica misura" : mode === "dismiss" ? "Conferma: non accolta" : "Conferma"}
+              {busy
+                ? "Salvataggio…"
+                : mode === "resolve"
+                  ? "Applica misura"
+                  : mode === "dismiss"
+                    ? "Conferma: non accolta"
+                    : mode === "revert"
+                      ? appealPending
+                        ? "Accogli il ricorso"
+                        : "Annulla la misura"
+                      : "Respingi il ricorso"}
             </Button>
             <Button variant="secondary" size="3" onPress={() => setMode("idle")}>
               Annulla

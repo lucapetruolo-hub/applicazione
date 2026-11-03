@@ -54,6 +54,10 @@ const CONTENT_WIDTH = PAGE.width - MARGIN * 2;
 /** Fin dove si scrive: sotto resta il numero di pagina. */
 const BOTTOM = PAGE.height - 64;
 const GAP = 16;
+/** Spazio tra i blocchi quando con quello normale l'ultima pagina avrebbe solo poche righe. */
+const COMPACT_GAP = 8;
+/** "Poche righe": quanto occupa al massimo l'ultima pagina perché valga la pena stringere. */
+const SHORT_LAST_PAGE = 90;
 
 // Caratteri che i font standard del PDF sanno scrivere (WinAnsi): il resto
 // diventerebbe un simbolo sbagliato, quindi si sostituisce prima.
@@ -79,6 +83,8 @@ class Writer {
   constructor(
     title: string,
     private readonly top: string = EMAIL_BRAND.name,
+    /** Spazio tra un blocco e l'altro. */
+    readonly gap: number = GAP,
   ) {
     this.doc = new PDFDocument({
       size: "A4",
@@ -139,7 +145,7 @@ function titleBlock(w: Writer, model: PdfDocumentModel): void {
   if (model.subtitle) {
     w.y += w.write(model.subtitle, MARGIN, w.y, CONTENT_WIDTH, { size: 11, color: COLORS.muted });
   }
-  w.y += GAP + 4;
+  w.y += w.gap + 4;
 }
 
 /** Titolo di una parte del documento (es. "Ricevute" e "Copie delle fatture" nel riepilogo dell'anno). */
@@ -163,7 +169,7 @@ function highlight(w: Writer, block: Extract<PdfBlock, { type: "highlight" }>): 
   w.write(block.value, MARGIN, w.y, CONTENT_WIDTH, { font: BOLD, size: 28 });
   w.y += 36;
   if (block.detail) w.y += w.write(block.detail, MARGIN, w.y, CONTENT_WIDTH, { size: 10.5, color: COLORS.muted }) + 6;
-  w.y += GAP - 6;
+  w.y += w.gap - 6;
 }
 
 function meta(w: Writer, block: Extract<PdfBlock, { type: "meta" }>): void {
@@ -174,7 +180,7 @@ function meta(w: Writer, block: Extract<PdfBlock, { type: "meta" }>): void {
     w.write(caps(item.label), MARGIN + width * index, w.y, width, { font: BOLD, size: 8.5, color: COLORS.muted, align });
     w.write(item.value, MARGIN + width * index, w.y + 13, width, { font: BOLD, size: 12, align });
   });
-  w.y += 30 + GAP;
+  w.y += 30 + w.gap;
 }
 
 function parties(w: Writer, block: Extract<PdfBlock, { type: "parties" }>): void {
@@ -193,7 +199,7 @@ function parties(w: Writer, block: Extract<PdfBlock, { type: "parties" }>): void
     y += w.write(party.name || "—", x + 10, y, inner, { font: BOLD, size: 11 });
     for (const line of party.lines) y += w.write(line, x + 10, y, inner, { size: 10 });
   });
-  w.y += height + GAP;
+  w.y += height + w.gap;
 }
 
 function tiles(w: Writer, block: Extract<PdfBlock, { type: "tiles" }>): void {
@@ -207,7 +213,7 @@ function tiles(w: Writer, block: Extract<PdfBlock, { type: "tiles" }>): void {
     w.write(tile.label, x + 10, w.y + 9, width - 20, { size: 9, color: COLORS.muted });
     w.write(tile.value, x + 10, w.y + 23, width - 20, { font: BOLD, size: 14 });
   });
-  w.y += height + GAP;
+  w.y += height + w.gap;
 }
 
 /** Una riga con l'importo a destra. */
@@ -248,7 +254,7 @@ function totals(w: Writer, block: Extract<PdfBlock, { type: "totals" }>): void {
   w.y += 4;
   w.line(w.y, COLORS.text, 1.5);
   amountRow(w, block.total, { divider: false, strong: true, large: true });
-  w.y += GAP - 4;
+  w.y += w.gap - 4;
 }
 
 function table(w: Writer, block: Extract<PdfBlock, { type: "table" }>): void {
@@ -279,7 +285,7 @@ function table(w: Writer, block: Extract<PdfBlock, { type: "table" }>): void {
     w.y += height;
     w.line(w.y, COLORS.border);
   }
-  w.y += GAP;
+  w.y += w.gap;
 }
 
 function note(w: Writer, block: Extract<PdfBlock, { type: "note" }>): void {
@@ -293,7 +299,7 @@ function note(w: Writer, block: Extract<PdfBlock, { type: "note" }>): void {
     w.write(line, MARGIN + 12, y, inner, { size: 10.5 });
     y += heights[index]! + 5;
   });
-  w.y += height + GAP;
+  w.y += height + w.gap;
 }
 
 function text(w: Writer, block: Extract<PdfBlock, { type: "text" }>): void {
@@ -302,7 +308,7 @@ function text(w: Writer, block: Extract<PdfBlock, { type: "text" }>): void {
     w.ensure(w.height(line, FONT, size, CONTENT_WIDTH));
     w.y += w.write(line, MARGIN, w.y, CONTENT_WIDTH, { size, color: block.muted ? COLORS.muted : COLORS.text }) + 4;
   }
-  w.y += GAP - 4;
+  w.y += w.gap - 4;
 }
 
 function signature(w: Writer, block: Extract<PdfBlock, { type: "signature" }>): void {
@@ -315,7 +321,7 @@ function signature(w: Writer, block: Extract<PdfBlock, { type: "signature" }>): 
     .lineWidth(0.75)
     .strokeColor(COLORS.text)
     .stroke();
-  w.y += 24 + GAP;
+  w.y += 24 + w.gap;
 }
 
 const IMAGE_HEIGHT = 220;
@@ -340,12 +346,20 @@ function images(w: Writer, block: Extract<PdfBlock, { type: "images" }>): void {
     });
     w.y += IMAGE_HEIGHT + captionHeight + gap;
   }
-  w.y += GAP - gap;
+  w.y += w.gap - gap;
 }
 
 /** Il PDF del documento, pronto da mandare o allegare. */
 export function renderDocumentPdf(model: PdfDocumentModel): Promise<Buffer> {
-  const w = new Writer(model.title, model.issuedBy || EMAIL_BRAND.name);
+  // Se con lo spazio normale l'ultima pagina avrebbe solo qualche riga (per
+  // esempio la nota finale della fattura), si stringono gli spazi tra i blocchi
+  // e si tiene la versione con meno pagine (pacchetto per il commercialista).
+  let w = layout(model, GAP);
+  const pages = w.doc.bufferedPageRange().count;
+  if (pages > 1 && w.y - (MARGIN + 30) <= SHORT_LAST_PAGE) {
+    const compact = layout(model, COMPACT_GAP);
+    if (compact.doc.bufferedPageRange().count < pages) w = compact;
+  }
   const chunks: Buffer[] = [];
   const done = new Promise<Buffer>((resolve, reject) => {
     w.doc.on("data", (chunk: Buffer) => chunks.push(chunk));
@@ -353,6 +367,23 @@ export function renderDocumentPdf(model: PdfDocumentModel): Promise<Buffer> {
     w.doc.on("error", reject);
   });
 
+  // Piede: il sito e, se le pagine sono più di una, "Pagina 1 di 2".
+  const range = w.doc.bufferedPageRange();
+  const url = frontendUrl().replace(/^https?:\/\//, "");
+  const site = model.issuedBy ? `Preparato con ${EMAIL_BRAND.name} (${url})` : url;
+  for (let index = 0; index < range.count; index += 1) {
+    w.doc.switchToPage(range.start + index);
+    const y = PAGE.height - 40;
+    w.write(site, MARGIN, y, CONTENT_WIDTH / 2, { size: 8.5, color: COLORS.muted });
+    if (range.count > 1) w.write(`Pagina ${index + 1} di ${range.count}`, MARGIN + CONTENT_WIDTH / 2, y, CONTENT_WIDTH / 2, { size: 8.5, color: COLORS.muted, align: "right" });
+  }
+  w.doc.end();
+  return done;
+}
+
+/** Impagina tutti i blocchi del documento, senza ancora chiuderlo (esportata per i test). */
+export function layout(model: PdfDocumentModel, gap: number): Writer {
+  const w = new Writer(model.title, model.issuedBy || EMAIL_BRAND.name, gap);
   titleBlock(w, model);
   for (const block of model.blocks) {
     if (block.type === "heading") heading(w, block);
@@ -368,19 +399,7 @@ export function renderDocumentPdf(model: PdfDocumentModel): Promise<Buffer> {
     else if (block.type === "images") images(w, block);
     else signature(w, block);
   }
-
-  // Piede: il sito e, se le pagine sono più di una, "Pagina 1 di 2".
-  const range = w.doc.bufferedPageRange();
-  const url = frontendUrl().replace(/^https?:\/\//, "");
-  const site = model.issuedBy ? `Preparato con ${EMAIL_BRAND.name} (${url})` : url;
-  for (let index = 0; index < range.count; index += 1) {
-    w.doc.switchToPage(range.start + index);
-    const y = PAGE.height - 40;
-    w.write(site, MARGIN, y, CONTENT_WIDTH / 2, { size: 8.5, color: COLORS.muted });
-    if (range.count > 1) w.write(`Pagina ${index + 1} di ${range.count}`, MARGIN + CONTENT_WIDTH / 2, y, CONTENT_WIDTH / 2, { size: 8.5, color: COLORS.muted, align: "right" });
-  }
-  w.doc.end();
-  return done;
+  return w;
 }
 
 /** Il PDF come file da scaricare. */

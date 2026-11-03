@@ -15,7 +15,7 @@ import type { SiteAdvice } from "@professionisti/shared";
 
 const HOUR_MS = 60 * 60 * 1000;
 
-/** "Scaduto da 2 ore", "Oggi alle 18:00", "Lun 2 nov, fra 3 giorni". */
+/** "Scaduto da 2 ore", "Oggi entro le 18:00", "Domani entro le 9:00", "Ven 6 nov, fra 3 giorni". */
 function dueLabel(dueAt: string, now: number): { text: string; late: boolean } {
   const due = new Date(dueAt).getTime();
   const diff = due - now;
@@ -25,9 +25,17 @@ function dueLabel(dueAt: string, now: number): { text: string; late: boolean } {
   }
   const day = new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", weekday: "short", day: "numeric", month: "short" }).format(new Date(due));
   const time = new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit" }).format(new Date(due));
-  const days = Math.floor(diff / (24 * HOUR_MS));
-  if (diff < 24 * HOUR_MS) return { text: `Entro le ${time}`, late: diff < 6 * HOUR_MS };
-  return { text: `${day.charAt(0).toUpperCase()}${day.slice(1)}, fra ${days} ${days === 1 ? "giorno" : "giorni"}`, late: false };
+  // Giorni di calendario a Roma, non blocchi di 24 ore: martedì mattina → venerdì è "fra 3 giorni".
+  const days = romeDayNumber(due) - romeDayNumber(now);
+  if (days === 0) return { text: `Oggi entro le ${time}`, late: diff < 6 * HOUR_MS };
+  if (days === 1) return { text: `Domani entro le ${time}`, late: diff < 6 * HOUR_MS };
+  return { text: `${day.charAt(0).toUpperCase()}${day.slice(1)}, fra ${days} giorni`, late: false };
+}
+
+/** Numero del giorno di calendario a Roma (per contare i giorni tra due date). */
+function romeDayNumber(ms: number): number {
+  const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+  return Math.round(Date.parse(`${ymd}T00:00:00Z`) / (24 * HOUR_MS));
 }
 
 function ageLabel(iso: string, now: number): string {

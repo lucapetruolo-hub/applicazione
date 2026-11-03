@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { AdminJobIssue } from "@professionisti/api-client";
-import { JOB_ISSUE_ESCALATION_LABEL, JOB_ISSUE_LABEL, JOB_ISSUE_SANCTION_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents } from "@professionisti/shared";
+import { JOB_ISSUE_ESCALATION_LABEL, JOB_ISSUE_LABEL, JOB_ISSUE_SANCTION_LABEL, JOB_ISSUE_STATUS_LABEL, adminPersonName, formatEurCents } from "@professionisti/shared";
 import { AppealForm, DecisionForm, PhaseDeadline } from "./JobIssueForms";
 import { Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -146,7 +146,7 @@ function ProblemiContent() {
                     {row.city ? ` · ${row.city}` : ""} · appuntamento del {formatAdminDate(row.scheduledAt, true)}
                   </Text>
                   <Text fontSize={13} color={brand.grafite70}>
-                    <Link href={`/admin/utenti/${row.professional.userId}`}>{row.professional.businessName}</Link>
+                    <Link href={`/admin/utenti/${row.professional.userId}`}>{adminPersonName({ businessName: row.professional.businessName, name: row.professional.personName })}</Link>
                     {" · cliente "}
                     {row.client.accountDeleted ? "account eliminato" : <Link href={`/admin/utenti/${row.client.userId}`}>{row.client.name ?? "cliente"}</Link>}
                   </Text>
@@ -196,7 +196,7 @@ function ProblemiContent() {
                     <Text color={brand.grafite}>“{row.issue.professionalResponse}”</Text>
                   ) : (
                     <Text fontSize={13} color={brand.grafite70}>
-                      Non ha ancora risposto.
+                      {row.issue.appealedAt ? "Non ha mandato la sua versione prima della decisione: la sua risposta è nel ricorso, più sotto." : "Non ha ancora risposto."}
                     </Text>
                   )}
                   {row.issue.infoRequestText ? (

@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, Plus, X } from "lucide-react";
-import { agendaWeekTemplateSchema, type AgendaWeekTemplate, type WeekTemplateSlot } from "@professionisti/shared";
+import type { AgendaWeekTemplate, WeekTemplateSlot } from "@professionisti/shared";
 import { WEEKDAY_FULL_LABELS } from "@/app/dashboard/agenda/_components/agendaHelpers";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 
@@ -268,8 +268,23 @@ export function WeekTemplateEditor({
   const savedKey = JSON.stringify(template);
 
   const next = useMemo(() => templateFromDraft(draft), [draft]);
-  const valid = agendaWeekTemplateSchema.safeParse(next).success && (draft.mode.allowsHome || draft.mode.allowsOnline);
   const dirty = JSON.stringify(next) !== savedKey;
+  // Il controllo (zod) si carica alla prima modifica: la settimana arrivata
+  // dal server è già stata controllata con lo stesso schema. Se non si carica
+  // (senza rete) il salvataggio resta possibile: lo ricontrolla l'API.
+  const [isValidTemplate, setIsValidTemplate] = useState<((template: AgendaWeekTemplate) => boolean) | null>(null);
+  useEffect(() => {
+    if (!dirty || isValidTemplate) return;
+    let alive = true;
+    import("@/lib/weekTemplateCheck").then(
+      (module) => alive && setIsValidTemplate(() => module.isValidWeekTemplate),
+      () => alive && setIsValidTemplate(() => () => true),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [dirty, isValidTemplate]);
+  const valid = (!dirty || (isValidTemplate?.(next) ?? false)) && (draft.mode.allowsHome || draft.mode.allowsOnline);
   const totalMinutes = next.days.flat().reduce((sum, s) => sum + minutes(s.end) - minutes(s.start), 0);
   const hoursText = totalMinutes % 60 ? `${Math.floor(totalMinutes / 60)} ore e ${totalMinutes % 60} minuti` : `${totalMinutes / 60} ore`;
   const activePreset = PRESETS.find((p) => rangesKey(p.ranges) === rangesKey(draft.base))?.id ?? null;
