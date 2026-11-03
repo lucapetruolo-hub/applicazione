@@ -660,7 +660,15 @@ const DISPUTE_PAYMENT_LABEL = { DEPOSIT: "Acconto", BALANCE: "Saldo" } as const;
  * contestazione. Le prove sono le stesse e vanno a tutte e due.
  */
 function DisputeParts({ parts }: { parts: BankDisputePart[] }) {
-  if (parts.length < 2) return null;
+  // Commissione di Stripe, sempre a carico del professionista (docs/changelog/2026-11-03-commissione-contestazioni.md).
+  const fees = parts.reduce((sum, part) => sum + (part.feeEurCents ?? 0), 0);
+  const feeNote =
+    fees > 0 ? (
+      <Text fontSize={13} color={brand.grafite70}>
+        Commissione di Stripe {formatEurCents(fees)}, a carico del professionista.
+      </Text>
+    ) : null;
+  if (parts.length < 2) return feeNote;
   return (
     <YStack gap="$1" padding="$3" borderRadius="$3" backgroundColor={brand.gesso}>
       <Text fontSize={13} color={brand.grafite70}>
@@ -676,6 +684,7 @@ function DisputeParts({ parts }: { parts: BankDisputePart[] }) {
           {part.dueBy ? <Text color={brand.grafite70}>· entro il {formatAdminDate(part.dueBy)}</Text> : null}
         </XStack>
       ))}
+      {feeNote}
     </YStack>
   );
 }

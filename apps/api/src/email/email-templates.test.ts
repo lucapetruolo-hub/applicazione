@@ -47,6 +47,15 @@ describe("email delle notifiche", () => {
     }
   });
 
+  it("contestazione in banca: all'apertura dice la commissione di Stripe, che resta a carico del professionista", () => {
+    const opened = renderEmail(notificationEmail("JOB_STRIPE_DISPUTE", { status: "needs_response", feeEurCents: 2000 }, ctx)!);
+    expect(opened.text).toContain("€20 di commissione per la contestazione: non torna");
+    const unknown = renderEmail(notificationEmail("JOB_STRIPE_DISPUTE", { status: "needs_response" }, ctx)!);
+    expect(unknown.text).toContain("(di solito 20 €)");
+    const closed = renderEmail(notificationEmail("JOB_STRIPE_DISPUTE", { status: "won", feeEurCents: 2000 }, ctx)!);
+    expect(closed.text).not.toContain("commissione");
+  });
+
   it("ogni modello si compone anche con payload e contesto vuoti", () => {
     const empty: NotificationEmailContext = { name: null, category: null, city: null, businessName: null, when: null, proposedWhen: null };
     for (const type of NOTIFICATION_EMAIL_TYPES) {

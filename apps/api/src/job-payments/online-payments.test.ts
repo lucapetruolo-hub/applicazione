@@ -72,6 +72,28 @@ describe("pagamento online: acconto, saldo, accredito (§168)", () => {
     expect(toJobPaymentSummary({ ...jp, platformFeeEurCents: 0 }, 42000, true)!.appFeeEurCents).toBe(3587);
     expect(toJobPaymentSummary(jp, 42000)!.payoutEurCents).toBeUndefined();
   });
+  it("riepilogo: la commissione di Stripe della contestazione ha la sua riga e le cifre tornano", () => {
+    const jp = {
+      paymentMethod: "MANOVIA",
+      onlineStage: "PAID",
+      depositEurCents: 10000,
+      paidEurCents: 42000,
+      refundedEurCents: 0,
+      platformFeeEurCents: 3587,
+      stripeFeeEurCents: 0,
+      netAmountEurCents: 0,
+      releaseDueAt: now,
+      releasedAt: null,
+      balanceUnpaidAt: null, balanceDirect: false,
+      disputeFees: { du_1: 2000 },
+    };
+    const before = toJobPaymentSummary(jp, 42000, true)!;
+    expect(before.disputeFeeEurCents).toBe(2000);
+    expect(before.payoutEurCents).toBe(42000 - 3587 - 2000);
+    const after = toJobPaymentSummary({ ...jp, onlineStage: "RELEASED", releasedAt: now, netAmountEurCents: 36413, releaseDisputeFeeEurCents: 2000 }, 42000, true)!;
+    expect(after.disputeFeeEurCents).toBe(2000);
+    expect(after.paidEurCents - after.appFeeEurCents! - after.disputeFeeEurCents!).toBe(after.payoutEurCents);
+  });
   it("riepilogo: un saldo non ancora pagato non entra in quanto riceve (collaudo F-04)", () => {
     // Lavoro chiuso a 2.000 €, il cliente ha pagato solo l'acconto di 380 €.
     const jp = {

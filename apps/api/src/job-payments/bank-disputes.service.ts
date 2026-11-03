@@ -245,6 +245,7 @@ export class BankDisputesService {
       payment: intent && intent === job.stripePaymentIntentId ? "DEPOSIT" : intent && intent === job.balancePaymentIntentId ? "BALANCE" : savedDetail(job.disputeDetails, disputeId).payment,
       status: dispute?.status ?? savedStatus ?? "needs_response",
       amountEurCents: dispute?.amount ?? savedDetail(job.disputeDetails, disputeId).amountEurCents,
+      feeEurCents: dispute ? disputeFee(dispute) : savedFee(job.disputeFees, disputeId),
       dueBy: due ? new Date(due * 1000).toISOString() : null,
     };
   }
@@ -302,6 +303,7 @@ export class BankDisputesService {
       parts: Object.entries({ [job.stripeDisputeId!]: job.stripeDisputeStatus ?? "needs_response", ...disputeStatusMap(job.disputeStatuses) }).map(([disputeId, status]) => ({
         disputeId,
         ...savedDetail(job.disputeDetails, disputeId),
+        feeEurCents: savedFee(job.disputeFees, disputeId),
         status,
         dueBy: null,
       })),
@@ -509,6 +511,18 @@ export class BankDisputesService {
 }
 
 /** Stato di ogni contestazione del lavoro (`JobPayment.disputeStatuses`). */
+/** Commissione di Stripe presa con la contestazione (somma delle commissioni dei suoi movimenti). */
+function disputeFee(dispute: Stripe.Dispute): number {
+  return Math.max(0, (dispute.balance_transactions ?? []).reduce((sum, bt) => sum + bt.fee, 0));
+}
+
+/** Commissione salvata all'arrivo della contestazione (addebito diretto), null se non c'è. */
+function savedFee(value: Prisma.JsonValue | undefined, disputeId: string): number | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const cents = (value as Record<string, unknown>)[disputeId];
+  return typeof cents === "number" ? cents : null;
+}
+
 function disputeStatusMap(value: Prisma.JsonValue | undefined): Record<string, string> {
   const out: Record<string, string> = {};
   if (value && typeof value === "object" && !Array.isArray(value)) {

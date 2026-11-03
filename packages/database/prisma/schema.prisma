@@ -2298,6 +2298,13 @@ model JobPayment {
   // nella scheda, così pagato − trattenuta − queste voci = in banca.
   releaseTakenByStripeEurCents Int    @default(0)
   releaseDebtRecoveredEurCents Int    @default(0)
+  // Commissione di Stripe di ciascuna contestazione (20 € per riceverla, non
+  // restituita), presa dal saldo del professionista con l'addebito diretto e
+  // sempre a suo carico (decisione di Luca, docs/changelog/2026-11-03-commissione-contestazioni.md):
+  // { "<id contestazione>": centesimi }. Allo sblocco la parte tolta dai soldi
+  // di questo lavoro, con la sua riga nella scheda.
+  disputeFees                  Json   @default("{}")
+  releaseDisputeFeeEurCents    Int    @default(0)
   // Quanto il professionista deve ancora alla piattaforma per questo lavoro
   // (rimborso o contestazione persa per colpa sua quando i soldi erano già
   // partiti, trattenuta che resta a suo carico): si riprende dai prossimi
