@@ -41,3 +41,8 @@ strumenti).
 **Verifica**: test della causale (dice "servizio di intermediazione online",
 entro i 200 caratteri Latin-1 dello SdI), test delle versioni dei Termini,
 typecheck e lint.
+
+**Seguito** (Luca, "Sì entrambe", stesso giorno): la stessa frase nell'email
+di benvenuto del professionista ("Agenda, preventivi, promemoria e documenti
+sono compresi, senza programmi a parte."). Le parole delle fatture si
+rivedono quando risponde il commercialista (domanda 87).
