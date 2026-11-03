@@ -144,10 +144,31 @@ sito verdi.
 - **Cosa resta, scoperto misurando**: aprendo Oggi il sito prepara in anticipo
   14 pagine dei link visibili (menu, piè di pagina) e ne esegue il codice
   mentre Oggi si carica: solo la pagina Profilo costa circa 180 ms sul telefono
-  rallentato, e porta con sé zod. Non cambiato qui: è una scelta tra
-  apertura più leggera e passaggio più veloce tra le pagine, proposta a Luca.
+  rallentato, e porta con sé zod. Vedi il sesto giro.
 
 **Verifica**: test del pacchetto condiviso (29), typecheck di API e sito, lint
 del sito verdi; prove nel browser di settimana tipo, orari, primo uso
 dell'agenda, Oggi e agenda senza rete (telefono in Italia e computer a Tokyo)
 verdi, compresa "orari sbagliati: non si salva".
+
+## Sesto giro: pagine dei link preparate al tocco
+
+**Proposta a Luca** (03/11), opzione consigliata: preparare le pagine dei link
+solo quando il dito o il mouse ci passa sopra.
+
+- **Cosa succedeva**: Next.js prepara in anticipo ogni link visibile e ne
+  esegue il codice. Aprendo Oggi partivano 14 pagine (menu, intestazione,
+  piè di pagina, link della pagina) mentre Oggi si caricava ancora; la sola
+  pagina Profilo costava circa 180 ms sul telefono rallentato.
+- **Cosa è cambiato**: `apps/web/src/components/IntentLink.tsx`, stesso uso di
+  `next/link`, prepara la pagina al tocco del dito, al passaggio del mouse o
+  col tasto Tab. Lo usano intestazione, menu dell'account e area personale,
+  notifiche, piè di pagina, banner dei cookie e della verifica email, menu
+  admin, la pagina Oggi e il percorso "Completa il profilo". Gli altri link del
+  sito restano come prima.
+- **Misura** (registrazione del browser, telefono rallentato 4x, 5 giri
+  alternati, tempo bloccante oltre i 50 ms): Oggi mediana da 375 a 325 ms,
+  Agenda da 533 a 211 ms.
+
+**Verifica**: tutte le prove nel browser del telefono in Italia (136) verdi;
+typecheck e lint del sito verdi.

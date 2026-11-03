@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, startTransition, useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/IntentLink";
 import { Check, Navigation, Phone, Truck } from "lucide-react";
 import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, jobOccurrences, navigateUrl, scheduleChangeBetween, wallClockNow, wallClockToday, type AgendaAttention, type DayAhead, type ExternalJob, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
 import { Badge, Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";

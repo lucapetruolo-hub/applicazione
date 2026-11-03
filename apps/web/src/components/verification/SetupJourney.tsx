@@ -1,7 +1,7 @@
 "use client";
 
 import { startTransition, useEffect, useState, useSyncExternalStore } from "react";
-import Link from "next/link";
+import Link from "@/components/IntentLink";
 import { formatEur, subscriptionTierInfo, taxIdCheckMessage, type MySubscription, type MyVerificationStatus } from "@professionisti/shared";
 import { Button, Icon, Surface, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { loadMyProfessionalProfile, loadMySubscription, loadMyVerificationStatus } from "@/lib/myProfessionalProfile";

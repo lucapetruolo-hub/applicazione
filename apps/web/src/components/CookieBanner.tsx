@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/IntentLink";
 import { COOKIE_CHOICE_ATTRIBUTE } from "@/lib/cookieChoiceBoot";
 import { COOKIE_CONSENT_ACCEPTED_EVENT, COOKIE_CONSENT_CHANGED_EVENT, denyCookieConsent, grantCookieConsent, hasCookieChoice } from "@/lib/cookieConsent";
 
