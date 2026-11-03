@@ -57,3 +57,10 @@ rivedono quando risponde il commercialista (domanda 87).
   professionista) e nella privacy (trasferimenti dei dati): va bene così.
 - **Parole delle fatture**: restano in attesa della risposta del
   commercialista (domanda 87).
+- **Controllo automatico** (Luca, "Effettua le migliorie"):
+  `apps/web/scripts/controlla-frasi-intermediario.mjs`, dentro `pnpm lint`
+  del sito, ferma "i nostri professionisti" (e mestieri simili), "garantiamo
+  il lavoro", "lavoro garantito" e "ti mandiamo un professionista" nelle
+  pagine, in `packages/shared`, `packages/ui` e in email, notifiche e
+  WhatsApp dell'API (test e commenti esclusi). Provato con un file finto:
+  il lint si ferma e indica file e riga.

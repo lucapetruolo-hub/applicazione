@@ -301,7 +301,8 @@ sia UI/routing — la logica va in `apps/api` o `packages/shared`.
     nostri professionisti" o "garantiamo il lavoro": altrimenti si rischia di
     diventare il fornitore del lavoro (Corte UE, Uber C-434/15) e una
     piattaforma di lavoro digitale (direttiva UE 2024/2831). Una funzione che
-    va in quella direzione si discute prima con Luca.
+    va in quella direzione si discute prima con Luca. Le frasi le ferma
+    `pnpm lint` (`apps/web/scripts/controlla-frasi-intermediario.mjs`).
 
 ---
 
