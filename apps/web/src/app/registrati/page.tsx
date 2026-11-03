@@ -52,14 +52,14 @@ export default function RegistratiPage() {
  * ridotta a due voci pertinenti al momento della registrazione. */
 function TrustChips() {
   return (
-    <XStack flexWrap="wrap" gap="$2" justifyContent="center" rowGap="$2">
-      <XStack alignItems="center" gap="$1" backgroundColor={brand.gesso} borderRadius={999} paddingHorizontal="$3" paddingVertical="$1">
+    <XStack flexWrap="wrap" columnGap="2" rowGap="2" justifyContent="center">
+      <XStack alignItems="center" gap="1" backgroundColor={brand.gesso} borderRadius={999} paddingHorizontal="3" paddingVertical="1">
         <Icon name="shield" size={13} color={brand.grafite70} strokeWidth={1.5} />
         <Text fontSize={13} color={brand.grafite70}>
           Dati protetti
         </Text>
       </XStack>
-      <XStack alignItems="center" gap="$1" backgroundColor={brand.gesso} borderRadius={999} paddingHorizontal="$3" paddingVertical="$1">
+      <XStack alignItems="center" gap="1" backgroundColor={brand.gesso} borderRadius={999} paddingHorizontal="3" paddingVertical="1">
         <Icon name="heart-handshake" size={13} color={brand.grafite70} strokeWidth={1.5} />
         <Text fontSize={13} color={brand.grafite70}>
           Gratis, senza carta
@@ -77,17 +77,17 @@ function ChoiceCard({ href, replace, icon, title, text }: { href: string; replac
       <XStack
         className="auth-role-card"
         alignItems="center"
-        gap="$3"
-        padding="$4"
+        gap="3"
+        padding="4"
         backgroundColor={brand.calce}
         borderWidth={1}
         borderColor={brand.filetto}
-        borderRadius="$4"
+        borderRadius="4"
       >
         <XStack width={44} height={44} borderRadius={12} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
           <Icon name={icon} size={20} color={brand.cianografiaScuro} strokeWidth={1.5} />
         </XStack>
-        <YStack flex={1} flexBasis={0} minWidth={0} gap="$1">
+        <YStack flex={1} flexBasis={0} minWidth={0} gap="1">
           <Text fontWeight="700" color={brand.grafite}>
             {title}
           </Text>
@@ -122,18 +122,18 @@ function RoleChoiceScreen({
 }) {
   return (
     <AuthPageBackground>
-      <Surface className="auth-card-in" width="100%" maxWidth={480} borderRadius={radiusDocLg} padding="$6" gap="$5">
+      <Surface className="auth-card-in" width="100%" maxWidth={480} borderRadius={radiusDocLg} padding="6" gap="5">
         <AuthStepHeader icon="user-round" title="Come vuoi registrarti?" />
 
         {noAccountFound ? (
-          <YStack padding="$3" borderRadius="$4" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo}>
+          <YStack padding="3" borderRadius="4" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo}>
             <Text fontSize={16} color={brand.urgenza}>
               Nessun account trovato con questa email. Scegli come registrarti per continuare.
             </Text>
           </YStack>
         ) : null}
 
-        <YStack gap="$3">
+        <YStack gap="3">
           <ChoiceCard href={hrefFor("cliente")} replace icon="search" title="Sono un cliente" text="Cerco un professionista per un lavoro." />
           <ChoiceCard href={hrefFor("professionista")} replace icon="hard-hat" title="Sono un professionista" text="Offro i miei servizi e voglio ricevere richieste." />
         </YStack>
@@ -229,7 +229,7 @@ function EntityTypeScreen({ hrefFor, onBack, chosenTier }: { hrefFor: (param: st
       chosenTier={chosenTier}
       showClientLink={false}
     >
-      <YStack gap="$3">
+      <YStack gap="3">
         {ENTITY_CHOICES.map((choice) => (
           <ChoiceCard key={choice.value} href={hrefFor(choice.param)} icon={choice.icon} title={choice.label} text={choice.description} />
         ))}
@@ -333,7 +333,7 @@ function ProfessionalSignupLayout({
   return (
     <AuthPageBackground>
       <div className={`pro-signup${showAside ? " has-aside" : ""}`}>
-        <Surface className="auth-card-in pro-signup-card" width="100%" borderRadius={radiusDocLg} padding="$6" gap="$5">
+        <Surface className="auth-card-in pro-signup-card" width="100%" borderRadius={radiusDocLg} padding="6" gap="5">
           <AuthStepHeader icon={icon} title={title} subtitle={subtitle || undefined} step={{ current: step, total: PRO_STEPS, note: stepNote }} onBack={onBack} />
           {chosenTier ? <ChosenPlanChip tier={chosenTier} changeHref={CHANGE_PLAN_HREF} /> : null}
           {children}
@@ -351,7 +351,7 @@ function ProfessionalSignupLayout({
 
         {showAside ? (
           <aside className="pro-signup-aside" aria-label="Perché iscriversi">
-            <YStack width="100%" gap="$5">
+            <YStack width="100%" gap="5">
               <div style={{ position: "relative", width: "100%", aspectRatio: "3 / 2", borderRadius: radiusDocLg, overflow: "hidden" }}>
                 <Image
                   src="/page-photos/registrati-elettricista.webp"
@@ -361,13 +361,13 @@ function ProfessionalSignupLayout({
                   style={{ objectFit: "cover" }}
                 />
               </div>
-              <YStack gap="$4">
+              <YStack gap="4">
                 {SIGNUP_BENEFITS.map((benefit) => (
-                  <XStack key={benefit.title} gap="$3" alignItems="flex-start">
+                  <XStack key={benefit.title} gap="3" alignItems="flex-start">
                     <XStack width={40} height={40} borderRadius={12} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
                       <Icon name={benefit.icon} size={19} color={brand.cianografiaScuro} strokeWidth={1.75} />
                     </XStack>
-                    <YStack flex={1} gap="$1">
+                    <YStack flex={1} gap="1">
                       <Text fontWeight="700" color={brand.grafite}>
                         {benefit.title}
                       </Text>
@@ -403,7 +403,7 @@ const CLIENT_ICONS = { email: "mail", new: "lock", password: "lock", google: "ma
 function ClientSignup({ onAuthenticated, onBack }: { onAuthenticated: () => void; onBack: () => void }) {
   return (
     <AuthPageBackground>
-      <Surface className="auth-card-in" width="100%" maxWidth={420} borderRadius={radiusDocLg} padding="$6" gap="$5">
+      <Surface className="auth-card-in" width="100%" maxWidth={420} borderRadius={radiusDocLg} padding="6" gap="5">
         <ClientEmailFirstAuth
           intro="Ritrovi richieste, preventivi e professionisti salvati nel tuo account."
           submitSuffix=""
@@ -775,7 +775,7 @@ function RegistratiForm() {
           }}
         />
         {error && errorField === "categories" ? (
-          <Text role="alert" display="flex" marginTop="$2" fontSize={16} color={brand.urgenza}>
+          <Text role="alert" display="flex" marginTop="2" fontSize={16} color={brand.urgenza}>
             {error}
           </Text>
         ) : null}
@@ -784,9 +784,9 @@ function RegistratiForm() {
       <GoogleSignInButton onCredential={handleGoogleCredential} />
 
       {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
-        <YStack flexDirection="row" alignItems="center" gap="$3">
+        <YStack flexDirection="row" alignItems="center" gap="3">
           <YStack flex={1} height={1} backgroundColor={brand.filetto} />
-          <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite70}>
+          <Text fontFamily="body" fontWeight="700" fontSize={13} color={brand.grafite70}>
             oppure
           </Text>
           <YStack flex={1} height={1} backgroundColor={brand.filetto} />
@@ -831,7 +831,7 @@ function RegistratiForm() {
        * già corretto sopra.
        */}
       <form onSubmit={(e) => e.preventDefault()}>
-        <YStack gap="$4">
+        <YStack gap="4">
           <AuthField
             label="Email"
             value={email}
@@ -841,7 +841,7 @@ function RegistratiForm() {
             autoCapitalize="none"
             autoComplete="username"
             nativeID="email"
-            accessibilityLabel="Email"
+            aria-label="Email"
             error={error && errorField === "email" ? error : undefined}
             onBlur={() => setEmailChecked(true)}
             footer={<EmailSuggestion id="email-suggestion" email={email} checked={emailChecked} onApply={setEmail} />}
@@ -863,7 +863,7 @@ function RegistratiForm() {
             // del telefono chiedeva ripetutamente se salvarla.
             autoComplete="new-password"
             nativeID="new-password"
-            accessibilityLabel="Password"
+            aria-label="Password"
             passwordRules={PASSWORD_RULES_ATTRIBUTE}
             error={error && errorField === "password" ? error : undefined}
             invalid={passwordAttempted && passwordProblem(password, email) !== null}
@@ -881,7 +881,7 @@ function RegistratiForm() {
             secureTextEntry={!showConfirmPassword}
             autoComplete="new-password"
             nativeID="new-password-confirm"
-            accessibilityLabel="Conferma password"
+            aria-label="Conferma password"
             passwordRules={PASSWORD_RULES_ATTRIBUTE}
             error={error && errorField === "confirm" ? error : undefined}
             footer={<PasswordMatchHint password={password} confirmPassword={confirmPassword} />}
@@ -907,9 +907,9 @@ function RegistratiForm() {
             disabled={isSubmitting}
             opacity={isSubmitting ? 0.6 : 1}
           >
-            <XStack alignItems="center" gap="$2">
+            <XStack alignItems="center" gap="2">
               {isSubmitting ? <span className="button-spinner" aria-hidden="true" /> : null}
-              <Text color="white" fontFamily="$body" fontWeight="600">
+              <Text color="white" fontFamily="body" fontWeight="600">
                 {isSubmitting ? "Creazione account..." : "Registrati"}
               </Text>
               {isSubmitting ? null : <ButtonArrow />}

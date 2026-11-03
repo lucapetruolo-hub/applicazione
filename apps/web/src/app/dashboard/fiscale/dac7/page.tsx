@@ -45,7 +45,7 @@ export default function Dac7SummaryPage() {
     // Stampabile come i documenti di "Fatture e documenti" (docs/CHANGELOG.md §378); il PDF lo prepara il server (§379).
     <div className="print-document">
       <FiscoArea tab="dac7" heading="Dati DAC7">
-        <YStack gap="$5">
+        <YStack gap="5">
           <div data-print-hide>
             <LearnMore fontSize={16} summary="I compensi che comunichiamo ogni anno al fisco.">
               <Text fontSize={16} color={brand.grafite70}>
@@ -60,9 +60,9 @@ export default function Dac7SummaryPage() {
           </div>
 
           {isLoading || data === undefined ? (
-            <YStack gap="$3" aria-busy>
-              <YStack height={88} borderRadius="$3" backgroundColor={brand.gesso} />
-              <YStack height={140} borderRadius="$3" backgroundColor={brand.gesso} />
+            <YStack gap="3" aria-busy>
+              <YStack height={88} borderRadius="3" backgroundColor={brand.gesso} />
+              <YStack height={140} borderRadius="3" backgroundColor={brand.gesso} />
             </YStack>
           ) : error ? (
             <Text fontSize={16} color={brand.urgenza} role="alert">
@@ -75,14 +75,14 @@ export default function Dac7SummaryPage() {
               description="Compaiono qui quando chiudi un lavoro."
             />
           ) : (
-            <YStack gap="$4">
+            <YStack gap="4">
               {data.years.length > 1 ? (
                 <div data-print-hide>
-                  <XStack gap="$2" flexWrap="wrap" role="tablist" aria-label="Anno">
+                  <XStack gap="2" flexWrap="wrap" role="tablist" aria-label="Anno">
                     {data.years.map((y) => (
                       <Button
                         key={y.year}
-                        size="$3"
+                        size="3"
                         variant={y.year === selectedYear ? "primary" : "secondary"}
                         onPress={() => setSelectedYear(y.year)}
                         role="tab"
@@ -95,15 +95,15 @@ export default function Dac7SummaryPage() {
                 </div>
               ) : null}
 
-              <Surface padding="$4">
-                <YStack gap="$2">
-                  <XStack justifyContent="space-between" alignItems="center" gap="$3" flexWrap="wrap">
+              <Surface padding="4">
+                <YStack gap="2">
+                  <XStack justifyContent="space-between" alignItems="center" gap="3" flexWrap="wrap">
                     <Text fontSize={16} fontWeight="700" color={brand.grafite70}>
                       Compensi {summary.year}
                     </Text>
                     <Badge variant={dac7YearStatus(summary).variant}>{dac7YearStatus(summary).label}</Badge>
                   </XStack>
-                  <Text fontFamily="$heading" fontSize={32} fontWeight="800" color={brand.grafite}>
+                  <Text fontFamily="heading" fontSize={32} fontWeight="800" color={brand.grafite}>
                     {formatEurCents(summary.totalEurCents)}
                   </Text>
                   <Text fontSize={16} color={brand.grafite70}>
@@ -118,8 +118,8 @@ export default function Dac7SummaryPage() {
                   const quarter = summary.quarters.find((item) => item.quarter === q);
                   const empty = !quarter || quarter.jobs === 0;
                   return (
-                    <Surface key={q} padding="$3" opacity={empty ? 0.6 : 1}>
-                      <YStack gap="$2">
+                    <Surface key={q} padding="3" opacity={empty ? 0.6 : 1}>
+                      <YStack gap="2">
                         <XStack justifyContent="space-between" alignItems="baseline">
                           <Text fontSize={16} fontWeight="800" color={brand.grafite}>
                             {q}° trimestre
@@ -152,7 +152,7 @@ export default function Dac7SummaryPage() {
                     Conto dei pagamenti online: <Text fontVariant={["tabular-nums"]} fontWeight="700" color={brand.grafite}>{data.maskedIban}</Text>
                   </Text>
                 ) : (
-                  <XStack gap="$3" padding="$3" borderRadius="$3" backgroundColor={brand.urgenzaVelo} alignItems="center" justifyContent="space-between" flexWrap="wrap">
+                  <XStack gap="3" padding="3" borderRadius="3" backgroundColor={brand.urgenzaVelo} alignItems="center" justifyContent="space-between" flexWrap="wrap">
                     <Text fontSize={16} fontWeight="700" color={brand.grafite}>
                       Manca l&apos;IBAN dei pagamenti online
                     </Text>
@@ -185,7 +185,7 @@ export default function Dac7SummaryPage() {
 
 function QuarterRow({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
   return (
-    <XStack justifyContent="space-between" gap="$2">
+    <XStack justifyContent="space-between" gap="2">
       <Text fontSize={16} color={brand.grafite70}>
         {label}
       </Text>

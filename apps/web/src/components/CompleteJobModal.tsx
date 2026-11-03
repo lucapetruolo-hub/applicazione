@@ -270,15 +270,15 @@ export function CompleteJobModal({
         width="100%"
         maxWidth={520}
         backgroundColor={brand.calce}
-        borderRadius="$3"
+        borderRadius="3"
         borderWidth={1}
         borderColor={brand.filetto}
-        padding="$5"
-        gap="$4"
-        marginVertical="$6"
+        padding="5"
+        gap="4"
+        marginVertical="6"
       >
-        <YStack gap="$1">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+        <YStack gap="1">
+          <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
             Lavoro terminato
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
@@ -286,17 +286,17 @@ export function CompleteJobModal({
           </Text>
         </YStack>
 
-        <YStack gap="$3">
+        <YStack gap="3">
           {quotedRows.map((row, index) => (
-            <YStack key={index} gap="$1">
+            <YStack key={index} gap="1">
               <Text fontSize={16} fontWeight="600" color={brand.grafite}>
                 {row.name}
               </Text>
-              <XStack alignItems="center" gap="$2" flexWrap="wrap">
+              <XStack alignItems="center" gap="2" flexWrap="wrap">
                 <Text fontSize={13} color={brand.grafite70} flex={1} minWidth={140}>
                   {row.hint}
                 </Text>
-                <XStack alignItems="center" gap="$1">
+                <XStack alignItems="center" gap="1">
                   <Text fontSize={13} color={brand.grafite70}>
                     Importo finale (€) *
                   </Text>
@@ -315,13 +315,13 @@ export function CompleteJobModal({
           ))}
 
           {extraRows.length > 0 ? (
-            <YStack gap="$2">
+            <YStack gap="2">
               <Text fontSize={16} fontWeight="600" color={brand.grafite}>
                 {/* "Altre" solo se ci sono anche le voci del preventivo (T8, §311). */}
                 {quotedRows.length > 0 ? "Altre voci" : "Voci"}
               </Text>
               {extraRows.map((row, index) => (
-                <XStack key={index} gap="$2" alignItems="center" flexWrap="wrap">
+                <XStack key={index} gap="2" alignItems="center" flexWrap="wrap">
                   <input aria-label="Descrizione della voce"
                     id={`complete-x-${index}-name`}
                     aria-invalid={invalidField === `complete-x-${index}-name` || undefined}
@@ -346,11 +346,11 @@ export function CompleteJobModal({
                     justifyContent="center"
                     borderWidth={1}
                     borderColor={brand.filetto}
-                    borderRadius="$2"
+                    borderRadius="2"
                     cursor="pointer"
                     onPress={() => removeExtraRow(index)}
-                    accessibilityRole="button"
-                    accessibilityLabel="Rimuovi voce"
+                    role="button"
+                    aria-label="Rimuovi voce"
                   >
                     <X size={16} strokeWidth={1.5} color={brand.grafite70} />
                   </XStack>
@@ -361,7 +361,7 @@ export function CompleteJobModal({
 
           <Button
             variant="ghost"
-            size="$2"
+            size="2"
             height={36}
             alignSelf="flex-start"
             onPress={() => setExtraRows((prev) => [...prev, { name: "", price: "" }])}
@@ -370,17 +370,17 @@ export function CompleteJobModal({
           </Button>
         </YStack>
 
-        <XStack justifyContent="space-between" alignItems="center" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+        <XStack justifyContent="space-between" alignItems="center" paddingTop="2" borderTopWidth={1} borderTopColor={brand.filetto}>
           <Text fontWeight="700" color={brand.grafite}>
             Totale
           </Text>
-          <Text fontWeight="800" fontSize="$5" color={brand.cianografiaScuro}>
+          <Text fontWeight="800" fontSize="5" color={brand.cianografiaScuro}>
             {formatEurCents(totalEurCents)}
           </Text>
         </XStack>
 
         {needsReason && deviation ? (
-          <YStack gap="$1" padding="$3" borderRadius="$3" backgroundColor={brand.urgenzaVelo}>
+          <YStack gap="1" padding="3" borderRadius="3" backgroundColor={brand.urgenzaVelo}>
             <Text fontSize={16} fontWeight="700" color={brand.grafite}>
               {completionDeviationText(deviation)}: spiega il motivo *
             </Text>
@@ -397,7 +397,7 @@ export function CompleteJobModal({
           </YStack>
         ) : null}
 
-        <YStack gap="$1">
+        <YStack gap="1">
           <Text fontSize={13} color={brand.grafite70}>
             Note sul lavoro svolto (opzionale)
           </Text>
@@ -412,13 +412,13 @@ export function CompleteJobModal({
 
         {/* Foto/video del lavoro terminato (richiesta esplicita
             dell'utente), distinte dalle foto della recensione. */}
-        <YStack gap="$1">
+        <YStack gap="1">
           <Text fontSize={13} color={brand.grafite70}>
             Foto o video del lavoro svolto (opzionale, fino a {MAX_COMPLETION_PHOTOS})
           </Text>
-          <YStack flexDirection="row" flexWrap="wrap" gap="$2">
+          <YStack flexDirection="row" flexWrap="wrap" gap="2">
             {photoUrls.map((url) => (
-              <YStack key={url} width={64} height={64} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+              <YStack key={url} width={64} height={64} borderRadius="3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
                 <MediaPreview url={url} />
                 <YStack
                   position="absolute"
@@ -432,8 +432,8 @@ export function CompleteJobModal({
                   justifyContent="center"
                   cursor="pointer"
                   onPress={() => removePhoto(url)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Rimuovi foto"
+                  role="button"
+                  aria-label="Rimuovi foto"
                 >
                   <X size={11} strokeWidth={2} color="white" />
                 </YStack>
@@ -443,7 +443,7 @@ export function CompleteJobModal({
               <YStack
                 width={64}
                 height={64}
-                borderRadius="$3"
+                borderRadius="3"
                 borderWidth={1}
                 borderColor={brand.filetto}
                 borderStyle="dashed"
@@ -452,13 +452,13 @@ export function CompleteJobModal({
                 cursor="pointer"
                 opacity={isUploadingPhoto ? 0.6 : 1}
                 onPress={() => !isUploadingPhoto && photoInputRef.current?.click()}
-                accessibilityRole="button"
-                accessibilityLabel="Aggiungi foto"
+                role="button"
+                aria-label="Aggiungi foto"
               >
                 {isUploadingPhoto ? (
                   <UploadingDots dotSize={6} />
                 ) : (
-                  <Text fontSize="$6" color={brand.grafite70}>
+                  <Text fontSize="6" color={brand.grafite70}>
                     +
                   </Text>
                 )}
@@ -487,7 +487,7 @@ export function CompleteJobModal({
         {/* Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §247): una
             riga accanto al pulsante, accettata premendo "Conferma" e salvata
             con data e versione; il testo completo dietro "Scopri di più". */}
-        <YStack gap="$2">
+        <YStack gap="2">
           <Text fontSize={13} color={brand.grafite70}>
             Confermando dichiari che il cliente paga {formatEurCents(totalEurCents)} per questo lavoro.
             {paidOnline && totalEurCents > 0
@@ -496,25 +496,25 @@ export function CompleteJobModal({
             <LearnMoreToggle open={declarationOpen} onToggle={() => setDeclarationOpen((v) => !v)} controls="completion-declaration" />
           </Text>
           {declarationOpen ? (
-            <YStack id="completion-declaration" padding="$3" borderRadius="$3" backgroundColor={brand.gesso}>
+            <YStack id="completion-declaration" padding="3" borderRadius="3" backgroundColor={brand.gesso}>
               <Text fontSize={13} color={brand.grafite70}>
                 {declaration ? declaration.text : "Carico il testo..."}
               </Text>
             </YStack>
           ) : null}
         </YStack>
-        <XStack gap="$2" flexWrap="wrap">
+        <XStack gap="2" flexWrap="wrap">
           <Button
             variant="primary"
-            size="$3"
+            size="3"
             height={44}
+            opacity={isSaving || !declaration ? 0.6 : 1}
             onPress={handleSubmit}
             disabled={isSaving || isUploadingPhoto || !declaration}
-            opacity={isSaving || !declaration ? 0.6 : 1}
           >
             {isSaving ? "Salvataggio..." : "Conferma"}
           </Button>
-          <Button variant="ghost" size="$3" height={44} onPress={onClose} disabled={isSaving}>
+          <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSaving}>
             Annulla
           </Button>
         </XStack>

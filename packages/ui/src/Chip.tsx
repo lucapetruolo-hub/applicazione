@@ -12,29 +12,26 @@ export type ChipProps = {
 export function Chip({ children, selected = false, onPress }: ChipProps) {
   return (
     <XStack
-      paddingHorizontal="$3"
-      paddingVertical="$2"
+      paddingHorizontal="3"
+      paddingVertical="2"
       borderRadius={999}
       borderWidth={1}
       borderColor={selected ? brand.cianografia : brand.filetto}
-      backgroundColor={selected ? brand.cianografiaVelo : brand.calce}
+      backgroundColor={`${selected ? brand.cianografiaVelo : brand.calce}${onPress ? ` press:${brand.cianografiaVelo}` : ""}`}
       cursor={onPress ? "pointer" : undefined}
       onPress={onPress}
-      accessibilityRole={onPress ? "button" : undefined}
-      // Sul sito "accessibilityState" finiva nella pagina come attributo
-      // sconosciuto: il lettore di schermo non sapeva se era scelto (§366).
+      role={onPress ? "button" : undefined}
       aria-pressed={onPress ? selected : undefined}
       onKeyDown={
-        onPress
-          ? (event: unknown) => {
-              const keyEvent = event as { key?: string; preventDefault?: () => void };
-              if (keyEvent.key !== " " && keyEvent.key !== "Enter") return;
-              keyEvent.preventDefault?.();
-              onPress();
-            }
-          : undefined
-      }
-      pressStyle={onPress ? { backgroundColor: brand.cianografiaVelo } : undefined}
+            onPress
+              ? (event: unknown) => {
+                  const keyEvent = event as { key?: string; preventDefault?: () => void };
+                  if (keyEvent.key !== " " && keyEvent.key !== "Enter") return;
+                  keyEvent.preventDefault?.();
+                  onPress();
+                }
+              : undefined
+          }
     >
       <Text fontSize={16} fontWeight="600" color={selected ? brand.cianografiaScuro : brand.grafite}>
         {children}

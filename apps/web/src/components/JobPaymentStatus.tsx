@@ -177,7 +177,7 @@ function Steps({ labels, step, error }: { labels: string[]; step: number; error?
         return (
           <YStack key={label} flex={1} gap={4}>
             <YStack height={4} borderRadius={2} backgroundColor={done || current ? color : brand.filetto} opacity={current && !error ? 0.45 : 1} />
-            <Text fontSize={13} lineHeight={14} fontWeight={current ? "700" : "500"} color={done || current ? brand.grafite : brand.grafite70}>
+            <Text fontSize={13} lineHeight="14px" fontWeight={current ? "700" : "500"} color={done || current ? brand.grafite : brand.grafite70}>
               {label}
             </Text>
           </YStack>
@@ -189,7 +189,7 @@ function Steps({ labels, step, error }: { labels: string[]; step: number; error?
 
 function AmountRow({ label, value, strong, muted }: { label: string; value: string; strong?: boolean; muted?: boolean }) {
   return (
-    <XStack justifyContent="space-between" gap="$3" paddingVertical={2}>
+    <XStack justifyContent="space-between" gap="3" paddingVertical={2}>
       <Text fontSize={16} color={muted ? brand.grafite70 : brand.grafite} flexShrink={1}>
         {label}
       </Text>
@@ -302,8 +302,8 @@ export function JobPaymentStatus({
   const canPay = audience === "client" && onPay && (stage === "AWAITING_DEPOSIT" || payment.balanceDueEurCents > 0);
 
   return (
-    <YStack gap="$3" padding="$3" borderRadius="$3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto}>
-      <XStack gap="$3" alignItems="flex-start">
+    <YStack gap="3" padding="3" borderRadius="3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto}>
+      <XStack gap="3" alignItems="flex-start">
         <YStack width={36} height={36} borderRadius={18} backgroundColor={tone.bg} alignItems="center" justifyContent="center" flexShrink={0}>
           <Icon name={view.icon} size={18} strokeWidth={2.2} color={tone.fg} />
         </YStack>
@@ -311,7 +311,7 @@ export function JobPaymentStatus({
           <Text fontSize={13} color={brand.grafite70}>
             {payment.balanceDirect ? "Acconto online con Stripe, saldo diretto" : "Pagamento online con Stripe"}
           </Text>
-          <Text fontSize={16} fontWeight="700" color={view.tone === "danger" ? brand.urgenza : brand.grafite} lineHeight={22}>
+          <Text fontSize={16} fontWeight="700" color={view.tone === "danger" ? brand.urgenza : brand.grafite} lineHeight="22px">
             {view.title}
           </Text>
         </YStack>
@@ -321,7 +321,7 @@ export function JobPaymentStatus({
         <Steps labels={audience === "client" ? CLIENT_STEPS : PROFESSIONAL_STEPS} step={view.step} error={view.stepError} />
       ) : null}
 
-      <Text fontSize={13} color={brand.grafite70} lineHeight={20}>
+      <Text fontSize={13} color={brand.grafite70} lineHeight="20px">
         {view.body}{" "}
         <Link
           href={audience === "client" ? "/termini#pagamenti" : "/per-professionisti/pagamenti"}
@@ -332,7 +332,7 @@ export function JobPaymentStatus({
       </Text>
 
       {rows.length > 0 ? (
-        <YStack borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$2">
+        <YStack borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="2">
           {rows.map((row) => (
             <AmountRow key={row.label} {...row} />
           ))}
@@ -341,13 +341,13 @@ export function JobPaymentStatus({
 
       {/* La ricevuta di Stripe non è un documento fiscale (docs/CHANGELOG.md §378). */}
       {audience === "client" && payment.paidEurCents > 0 ? (
-        <Text fontSize={13} color={brand.grafite70} lineHeight={20}>
+        <Text fontSize={13} color={brand.grafite70} lineHeight="20px">
           La ricevuta del pagamento non è la fattura: il documento del lavoro te lo dà il professionista.
         </Text>
       ) : null}
 
       {canPay ? (
-        <CardButton tone="primary" alignSelf="stretch" $gtXs={{ alignSelf: "flex-start" }} disabled={busy} onPress={() => pay(stage === "AWAITING_DEPOSIT" ? "deposit" : "balance")}>
+        <CardButton tone="primary" alignSelf="stretch gtXs:flex-start" disabled={busy} onPress={() => pay(stage === "AWAITING_DEPOSIT" ? "deposit" : "balance")}>
           {busy
             ? "Apertura del pagamento..."
             : stage === "AWAITING_DEPOSIT"
@@ -356,7 +356,7 @@ export function JobPaymentStatus({
         </CardButton>
       ) : null}
       {audience === "professional" && payment.payoutStatus === "FAILED" ? (
-        <CardButton tone="primary" alignSelf="stretch" $gtXs={{ alignSelf: "flex-start" }} onPress={() => router.push("/dashboard/fiscale")}>
+        <CardButton tone="primary" alignSelf="stretch gtXs:flex-start" onPress={() => router.push("/dashboard/fiscale")}>
           Controlla i dati bancari
         </CardButton>
       ) : null}

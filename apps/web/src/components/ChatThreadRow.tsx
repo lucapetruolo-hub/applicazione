@@ -79,16 +79,16 @@ export function ChatThreadRow({
   return (
     <XStack
       alignItems="center"
-      gap="$3"
-      paddingHorizontal="$3"
-      paddingVertical="$3"
+      gap="3"
+      paddingHorizontal="3"
+      paddingVertical="3"
       backgroundColor={active ? brand.cianografiaVelo : zebra ? brand.gesso : "transparent"}
       cursor="pointer"
-      accessibilityRole="button"
+      role="button"
       onPress={() => {
-        onOpen();
-        dismissUnread();
-      }}
+            onOpen();
+            dismissUnread();
+          }}
     >
       <ThreadPicture thread={thread} />
       <YStack flex={1} minWidth={0} gap={2}>
@@ -106,7 +106,7 @@ export function ChatThreadRow({
           {previewText}
         </Text>
       </YStack>
-      <YStack alignItems="flex-end" gap="$1" flexShrink={0}>
+      <YStack alignItems="flex-end" gap="1" flexShrink={0}>
         <Text fontSize={13} color={brand.grafite70}>
           {formatThreadTimestamp(thread.lastMessageAt)}
         </Text>
@@ -127,8 +127,8 @@ export function ChatThreadRow({
         backgroundColor={brand.gesso}
         cursor="pointer"
         flexShrink={0}
-        accessibilityRole="button"
-        accessibilityLabel="Vai alla richiesta"
+        role="button"
+        aria-label="Vai alla richiesta"
         onPress={(e: { stopPropagation: () => void }) => {
           e.stopPropagation();
           onGoToRequest();

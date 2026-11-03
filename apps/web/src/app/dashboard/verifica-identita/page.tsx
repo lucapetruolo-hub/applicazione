@@ -110,7 +110,7 @@ function VerificaIdentitaContent() {
   if (!status) {
     return (
       <Section title="Verifica identità" maxWidth={760}>
-        <YStack gap="$3">
+        <YStack gap="3">
           <Text color={brand.urgenza}>{loadError}</Text>
           {loadError === "Completa prima il tuo profilo professionista." ? (
             <Link href="/dashboard/profilo" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
@@ -128,7 +128,7 @@ function VerificaIdentitaContent() {
 
   return (
     <Section title="Verifica identità" maxWidth={760}>
-      <YStack gap="$5">
+      <YStack gap="5">
         {subscription !== undefined ? <JourneyProgress steps={setupJourney(status, stripeVerified, subscription)} here="identity" /> : null}
         <ActionPanel
           token={token}
@@ -150,10 +150,10 @@ function VerificaIdentitaContent() {
 function Panel({ icon, tone = "neutral", title, children }: { icon: IconName; tone?: "neutral" | "ok" | "warn" | "error"; title: string; children: React.ReactNode }) {
   const accent = tone === "ok" ? brand.verificato : tone === "warn" ? brand.ottone : tone === "error" ? brand.urgenza : brand.cianografia;
   return (
-    <Surface gap="$3" borderLeftWidth={4} borderLeftColor={accent} role="status">
-      <XStack gap="$3" alignItems="center">
+    <Surface gap="3" borderLeftWidth={4} borderLeftColor={accent} role="status">
+      <XStack gap="3" alignItems="center">
         <Icon name={icon} size={24} color={accent} strokeWidth={1.8} />
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite} flex={1}>
+        <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite} flex={1}>
           {title}
         </Text>
       </XStack>
@@ -164,7 +164,7 @@ function Panel({ icon, tone = "neutral", title, children }: { icon: IconName; to
 
 function Need({ icon, children }: { icon: IconName; children: React.ReactNode }) {
   return (
-    <XStack gap="$3" alignItems="flex-start">
+    <XStack gap="3" alignItems="flex-start">
       <YStack width={32} height={32} borderRadius={999} backgroundColor={brand.gesso} alignItems="center" justifyContent="center" flexShrink={0}>
         <Icon name={icon} size={17} color={brand.cianografiaScuro} strokeWidth={1.8} />
       </YStack>
@@ -218,11 +218,11 @@ function ActionPanel({
             <Button tabIndex={-1} variant="primary">Vai alle richieste</Button>
           </Link>
         ) : (
-          <YStack gap="$2">
+          <YStack gap="2">
             <Text fontWeight="700" color={brand.grafite}>
               Ultimo passo, facoltativo: i pagamenti online.
             </Text>
-            <XStack gap="$3" flexWrap="wrap">
+            <XStack gap="3" flexWrap="wrap">
               <Link href={PAYMENTS_ANCHOR} style={{ textDecoration: "none" }}>
                 <Button tabIndex={-1} variant="primary">Attiva i pagamenti online</Button>
               </Link>
@@ -264,7 +264,7 @@ function ActionPanel({
         <Text color={brand.grafite70}>
           Il servizio di verifica non risponde in questo momento. Non devi fare nulla: ti avvisiamo con una notifica e un&apos;email appena puoi continuare.
         </Text>
-        <YStack gap="$2">
+        <YStack gap="2">
           <Button variant="secondary" alignSelf="flex-start" disabled={starting} onPress={onStart}>
             {starting ? "Riprovo…" : "Riprova adesso"}
           </Button>
@@ -286,7 +286,7 @@ function ActionPanel({
   if (waiting) {
     return (
       <Panel icon="scan-face" title="Stiamo controllando documento e selfie">
-        <XStack gap="$3" alignItems="center">
+        <XStack gap="3" alignItems="center">
           <span className="verifica-spinner" aria-hidden />
           <Text color={brand.grafite70} flex={1}>
             Di solito bastano pochi minuti. Puoi anche chiudere la pagina: ti avvisiamo noi con una notifica e un&apos;email.
@@ -317,7 +317,7 @@ function ActionPanel({
       }
     >
       {retry && identity.reason ? (
-        <YStack gap="$1.5">
+        <YStack gap="1-5">
           <Text color={brand.urgenza}>{identity.reason}</Text>
           {/* Il professionista si corregge da solo, nessun admin in mezzo (§255). */}
           <Link href="/dashboard/fiscale" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 16, textDecoration: "underline", alignSelf: "flex-start" }}>
@@ -332,7 +332,7 @@ function ActionPanel({
             ? "Il documento della tua verifica è scaduto: rifalla con un documento valido per riavere il badge Verificato. Intanto puoi continuare a inviare preventivi."
             : "Serve prima del tuo primo preventivo: così i clienti sanno che dietro il profilo ci sei davvero tu. Ci vogliono circa 2 minuti."}
       </Text>
-      <YStack gap="$2.5">
+      <YStack gap="2-5">
         <Need icon="id-card">
           {representative
             ? `Un documento valido di ${representative}: carta d'identità, patente o passaporto.`
@@ -367,14 +367,14 @@ function ActionPanel({
           aria-invalid={consentMissing || undefined}
           style={{ width: 20, height: 20, marginTop: 1, flexShrink: 0, accentColor: brand.cianografia, cursor: "pointer" }}
         />
-        <Text fontSize={16} color={brand.grafite} lineHeight={19} flex={1}>
+        <Text fontSize={16} color={brand.grafite} lineHeight="19px" flex={1}>
           {representative ? representativeConsentText(representative) : biometricConsentText()}{" "}
           <Link href="/privacy#verifica-identita" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
             Informativa
           </Link>
         </Text>
       </label>
-      <YStack gap="$2">
+      <YStack gap="2">
         <Button
           variant="primary"
           alignSelf="flex-start"
@@ -406,7 +406,7 @@ function ActionPanel({
       </YStack>
       </>
       ) : null}
-      <XStack gap="$2" alignItems="center">
+      <XStack gap="2" alignItems="center">
         <Icon name="lock" size={14} color={brand.grafite70} />
         <Text fontSize={13} color={brand.grafite70} flex={1}>
           La verifica la fa Didit, il nostro fornitore. Foto e selfie restano a Didit: noi teniamo solo l&apos;esito.
@@ -456,8 +456,8 @@ function RepresentativeLink({ token, name, onHere }: { token: string | null; nam
 
   if (!link) {
     return (
-      <YStack gap="$2">
-        <XStack gap="$3" flexWrap="wrap">
+      <YStack gap="2">
+        <XStack gap="3" flexWrap="wrap">
           <Button variant="primary" disabled={creating || !token} onPress={() => void create()}>
             {creating ? "Preparo il link…" : `Manda il link a ${firstName}`}
           </Button>
@@ -476,14 +476,14 @@ function RepresentativeLink({ token, name, onHere }: { token: string | null; nam
 
   const expires = new Date(link.expiresAt).toLocaleDateString("it-IT", { day: "numeric", month: "long" });
   return (
-    <YStack gap="$2.5" padding="$3" borderRadius={20} backgroundColor={brand.gesso} role="status">
+    <YStack gap="2-5" padding="3" borderRadius={20} backgroundColor={brand.gesso} role="status">
       <Text fontSize={16} fontWeight="700" color={brand.grafite}>
         Link pronto: mandalo a {name}
       </Text>
       <Text fontSize={16} color={brand.grafite70} style={{ overflowWrap: "anywhere" }}>
         {link.url}
       </Text>
-      <XStack gap="$3" flexWrap="wrap">
+      <XStack gap="3" flexWrap="wrap">
         <Button variant="primary" onPress={() => void copy()}>
           {copied ? "Copiato" : "Copia il link"}
         </Button>

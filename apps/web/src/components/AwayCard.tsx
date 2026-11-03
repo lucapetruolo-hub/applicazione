@@ -58,16 +58,16 @@ export function AwayCard({
   }
 
   const dateField = (
-    <XStack gap="$2" alignItems="flex-end" flexWrap="wrap">
+    <XStack gap="2" alignItems="flex-end" flexWrap="wrap">
       <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: brand.grafite }}>
         Torno il
         <ItalianDateInput ariaLabel="Torno il" min={tomorrow} max={lastDay} value={until} onChange={setUntil} style={{ minWidth: 150 }} />
       </label>
-      <Button variant="primary" size="$3" disabled={busy || !until || until < tomorrow || until > lastDay} onPress={() => void save(until)}>
+      <Button variant="primary" size="3" disabled={busy || !until || until < tomorrow || until > lastDay} onPress={() => void save(until)}>
         {busy ? "Salvo..." : away ? "Cambia data" : "Metti in pausa"}
       </Button>
       {away ? (
-        <Button variant="secondary" size="$3" onPress={() => setEditing(false)}>
+        <Button variant="secondary" size="3" onPress={() => setEditing(false)}>
           Annulla
         </Button>
       ) : null}
@@ -75,9 +75,9 @@ export function AwayCard({
   );
 
   return (
-    <Surface borderRadius={radiusDoc} padding="$4" gap="$3" borderLeftWidth={away ? 4 : 0} borderLeftColor={brand.ottone} role={away ? "status" : undefined}>
-      <YStack gap="$1">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+    <Surface borderRadius={radiusDoc} padding="4" gap="3" borderLeftWidth={away ? 4 : 0} borderLeftColor={brand.ottone} role={away ? "status" : undefined}>
+      <YStack gap="1">
+        <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
           {awayUntil ? `Sei in pausa: torni ${formatAwayDay(awayUntil)}` : "Metti in pausa"}
         </Text>
         <Text color={brand.grafite70}>
@@ -87,11 +87,11 @@ export function AwayCard({
         </Text>
       </YStack>
       {away && !editing ? (
-        <XStack gap="$2" flexWrap="wrap">
-          <Button variant="primary" size="$3" disabled={busy} onPress={() => void save(null)}>
+        <XStack gap="2" flexWrap="wrap">
+          <Button variant="primary" size="3" disabled={busy} onPress={() => void save(null)}>
             {busy ? "Salvo..." : "Riprendi ora"}
           </Button>
-          <Button variant="secondary" size="$3" onPress={() => setEditing(true)}>
+          <Button variant="secondary" size="3" onPress={() => setEditing(true)}>
             Cambia data
           </Button>
         </XStack>

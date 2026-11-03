@@ -4,7 +4,9 @@
 // ricevere gli stessi stili dentro ogni pagina HTML. Gira con tsx e
 // scripts/tsconfig.json, che punta "react-native" su "react-native-web"
 // (stesso alias di Turbopack in next.config.mjs), così packages/ui/src/config.ts
-// sceglie i font del web come nel sito vero.
+// sceglie i font del web come nel sito vero, e il driver delle animazioni
+// dell'app su scripts/senza-animazioni.ts (Tamagui 3 lo fa partire solo sul
+// telefono).
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

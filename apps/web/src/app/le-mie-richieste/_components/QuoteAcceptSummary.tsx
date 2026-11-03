@@ -45,7 +45,7 @@ export function QuoteAcceptSummary({
   const executor = quote.executor ?? null;
   const isPrivate = quote.professionalKind === "PRIVATE";
   const row = (label: string, value: string) => (
-    <XStack gap="$2" flexWrap="wrap">
+    <XStack gap="2" flexWrap="wrap">
       <Text fontSize={16} color={brand.grafite70} minWidth={90}>
         {label}
       </Text>
@@ -55,8 +55,8 @@ export function QuoteAcceptSummary({
     </XStack>
   );
   return (
-    <YStack gap="$2" backgroundColor={brand.calce} borderRadius="$3" padding="$3" borderWidth={1} borderColor={brand.filetto}>
-      <Text fontFamily="$heading" fontWeight="800" fontSize={18} color={brand.grafite}>
+    <YStack gap="2" backgroundColor={brand.calce} borderRadius="3" padding="3" borderWidth={1} borderColor={brand.filetto}>
+      <Text fontFamily="heading" fontWeight="800" fontSize={18} color={brand.grafite}>
         Prima di accettare
       </Text>
       {row("Con", quote.businessName)}

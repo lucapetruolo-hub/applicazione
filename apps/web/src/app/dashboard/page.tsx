@@ -112,9 +112,9 @@ export default function DashboardTodayPage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi come professionista
           </Text>
           <Link href="/accedi?redirect=/dashboard" style={{ textDecoration: "none" }}>
@@ -127,7 +127,7 @@ export default function DashboardTodayPage() {
 
   if (!user.isProfessional) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
         <Text color={brand.grafite70}>Questa sezione è riservata ai professionisti.</Text>
       </YStack>
     );
@@ -135,9 +135,9 @@ export default function DashboardTodayPage() {
 
   if (profileMissing) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Completa il tuo profilo per iniziare
           </Text>
           <Text color={brand.grafite70} textAlign="center">
@@ -239,10 +239,10 @@ export default function DashboardTodayPage() {
   const showDatesOnTop = !loading && !error && datesToConfirm.length > 0;
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$6" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={1180} gap="$6">
-        <YStack gap="$1">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+    <YStack width="100%" alignItems="center" paddingVertical="6" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={1180} gap="6">
+        <YStack gap="1">
+          <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             Oggi
           </Text>
           <Text color={brand.grafite70}>
@@ -466,13 +466,13 @@ function TodayCounter({ href, icon, value, label, urgent, loading }: { href: str
 
 function TodaySection({ title, subtitle, count, action, children }: { title: string; subtitle?: string; count?: number; action?: { href: string; label: string }; children: React.ReactNode }) {
   return (
-    <YStack gap="$3">
-      <XStack justifyContent="space-between" alignItems="flex-end" gap="$2" flexWrap="wrap">
+    <YStack gap="3">
+      <XStack justifyContent="space-between" alignItems="flex-end" gap="2" flexWrap="wrap">
         {/* flexShrink: senza, il sottotitolo lungo su una riga allargava la
             pagina a 470px su telefono (docs/CHANGELOG.md §349, bug 1). */}
         <YStack flex={1} flexShrink={1} minWidth={0}>
-          <XStack alignItems="center" gap="$2">
-            <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+          <XStack alignItems="center" gap="2">
+            <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
               {title}
             </Text>
             {count ? <span className="today-count">{count}</span> : null}
@@ -566,9 +566,9 @@ function insightsEmpty(insights: ProfessionalInsights): boolean {
 function AgendaNotice({ attention }: { attention: AgendaAttention }) {
   const empty = attention === "EMPTY";
   return (
-    <XStack gap="$3" alignItems="center" padding="$4" borderRadius={16} backgroundColor={brand.cianografiaVelo} flexWrap="wrap" role="status">
+    <XStack gap="3" alignItems="center" padding="4" borderRadius={16} backgroundColor={brand.cianografiaVelo} flexWrap="wrap" role="status">
       {/* Icona e testo restano sulla stessa riga: su telefono va a capo solo il pulsante. */}
-      <XStack flex={1} minWidth={240} gap="$3" alignItems="center">
+      <XStack flex={1} minWidth={240} gap="3" alignItems="center">
         <YStack width={40} height={40} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor="#FFFFFF" flexShrink={0} aria-hidden>
           <Icon name="calendar" size={20} color={brand.cianografiaScuro} />
         </YStack>
@@ -606,7 +606,7 @@ function Suggestion({ insights }: { insights: ProfessionalInsights }) {
   }
   if (!text) return null;
   return (
-    <XStack gap="$3" alignItems="center" padding="$4" borderRadius={20} backgroundColor={brand.cianografiaVelo} flexWrap="wrap">
+    <XStack gap="3" alignItems="center" padding="4" borderRadius={20} backgroundColor={brand.cianografiaVelo} flexWrap="wrap">
       <Icon name="lightbulb" size={20} color={brand.cianografiaScuro} />
       <Text flex={1} minWidth={220} color={brand.grafite}>
         {text}

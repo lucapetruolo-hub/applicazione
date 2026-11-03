@@ -12,17 +12,16 @@ export type CategoryChipsProps = {
 
 export function CategoryChips({ items, onPress }: CategoryChipsProps) {
   return (
-    <XStack flexWrap="wrap" gap="$2" justifyContent="center">
+    <XStack flexWrap="wrap" gap="2" justifyContent="center">
       {items.map((item) => (
         <XStack
           key={item.key}
-          paddingHorizontal="$3"
-          paddingVertical="$2"
-          borderRadius="$10"
+          paddingHorizontal="3"
+          paddingVertical="2"
+          borderRadius="10"
           borderWidth={1}
-          borderColor="$borderColor"
-          backgroundColor="white"
-          pressStyle={{ backgroundColor: "$color3" }}
+          borderColor="borderColor"
+          backgroundColor="white press:color3"
           cursor="pointer"
           onPress={() => onPress?.(item.key)}
         >

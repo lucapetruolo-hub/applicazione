@@ -67,11 +67,11 @@ export function FiscoArea({
 }) {
   return (
     <Section title="Fisco e pagamenti" pageTitle maxWidth={maxWidth}>
-      <YStack gap="$5">
-        <YStack gap="$4">
+      <YStack gap="5">
+        <YStack gap="4">
           <FiscoTabs active={tab} />
-          <XStack alignItems="baseline" gap="$2" flexWrap="wrap">
-            <Text tag="h2" fontFamily="$heading" fontWeight="800" fontSize={24} lineHeight={30} color={brand.grafite} margin={0}>
+          <XStack alignItems="baseline" gap="2" flexWrap="wrap">
+            <Text render="h2" fontFamily="heading" fontWeight="800" fontSize={24} lineHeight="30px" color={brand.grafite} margin={0}>
               {heading}
             </Text>
             {headingExtra}

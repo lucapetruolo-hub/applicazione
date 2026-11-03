@@ -78,7 +78,7 @@ function DocumentiClientiContent() {
         title="Documenti ai clienti"
         description="Ricevute per prestazione occasionale che i professionisti hanno preparato per i clienti. Ogni PDF che apri resta nel registro azioni."
       />
-      <XStack gap="$2" flexWrap="wrap" marginBottom="$3">
+      <XStack gap="2" flexWrap="wrap" marginBottom="3">
         <input
           aria-label="Cerca documenti"
           className="admin-input"
@@ -102,15 +102,15 @@ function DocumentiClientiContent() {
         </select>
       </XStack>
       {query.bookingId ? (
-        <XStack gap="$2" alignItems="center" marginBottom="$3" flexWrap="wrap">
+        <XStack gap="2" alignItems="center" marginBottom="3" flexWrap="wrap">
           <AdminPill>Solo il lavoro scelto</AdminPill>
-          <Text fontSize={14} fontWeight="700" color={brand.cianografiaScuro} cursor="pointer" accessibilityRole="button" onPress={() => setQuery((prev) => ({ ...prev, bookingId: null }))}>
+          <Text fontSize={14} fontWeight="700" color={brand.cianografiaScuro} cursor="pointer" role="button" onPress={() => setQuery((prev) => ({ ...prev, bookingId: null }))}>
             Mostra tutti
           </Text>
         </XStack>
       ) : null}
       {error ? (
-        <Text color={brand.urgenza} role="alert" marginBottom="$3">
+        <Text color={brand.urgenza} marginBottom="3" role="alert">
           {error}
         </Text>
       ) : null}
@@ -177,9 +177,9 @@ function DocumentiClientiContent() {
                       ) : null}
                     </td>
                     <td>
-                      <YStack gap="$2" alignItems="flex-start">
+                      <YStack gap="2" alignItems="flex-start">
                         <small>{row.pdfDownloadedAt ? `Scaricato il ${formatAdminDate(row.pdfDownloadedAt)}` : "Non ancora scaricato"}</small>
-                        <Button size="$3" variant="secondary" disabled={opening === row.bookingId} onPress={() => void openPdf(row)}>
+                        <Button size="3" variant="secondary" disabled={opening === row.bookingId} onPress={() => void openPdf(row)}>
                           {opening === row.bookingId ? "Preparo il PDF…" : "Apri PDF"}
                         </Button>
                       </YStack>

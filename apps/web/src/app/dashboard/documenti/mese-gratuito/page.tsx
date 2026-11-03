@@ -68,7 +68,7 @@ export default function FreeMonthPage() {
               <YStack
                 key={n}
                 alignItems="center"
-                paddingVertical="$2"
+                paddingVertical="2"
                 borderRadius={10}
                 borderWidth={current ? 2 : 1}
                 borderColor={current ? brand.cianografiaScuro : brand.filetto}
@@ -93,10 +93,10 @@ export default function FreeMonthPage() {
           value={eur(free.baseMonthEurCents)}
         />
         <AmountRow label={free.label} detail={free.detail} value={`−${eur(free.baseMonthEurCents)}`} />
-        <YStack paddingTop="$2">
+        <YStack paddingTop="2">
           <AmountRow label="Imponibile" value={eur(0)} divider={false} />
           <AmountRow label="IVA 22%" value={eur(0)} divider={false} />
-          <YStack borderTopWidth={2} borderColor={brand.grafite} marginTop="$2">
+          <YStack borderTopWidth={2} borderColor={brand.grafite} marginTop="2">
             <AmountRow label="Totale" value={eur(0)} strong large divider={false} />
           </YStack>
         </YStack>
@@ -112,7 +112,7 @@ export default function FreeMonthPage() {
       </NoteBox>
 
       <div data-print-hide>
-        <XStack gap="$3" flexWrap="wrap">
+        <XStack gap="3" flexWrap="wrap">
           <Link href="/dashboard/abbonamento#livelli" style={{ textDecoration: "none" }}>
             <Button tabIndex={-1} variant="secondary">Vedi i livelli</Button>
           </Link>

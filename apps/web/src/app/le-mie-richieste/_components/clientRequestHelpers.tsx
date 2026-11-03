@@ -66,9 +66,9 @@ export function clientRequestSearchText(request: ClientGuidedRequest, stage: Req
 export function ClientStagePill({ stage }: { stage: RequestStage }) {
   const s = STAGE_STYLE[stage];
   return (
-    <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={999} backgroundColor={s.bg}>
+    <XStack alignItems="center" gap={6} paddingHorizontal="3" paddingVertical={8} borderRadius={999} backgroundColor={s.bg}>
       <Icon name={s.icon} size={15} strokeWidth={2} color={s.fg} />
-      <Text fontFamily="$body" fontSize={16} fontWeight="700" color={s.fg}>
+      <Text fontFamily="body" fontSize={16} fontWeight="700" color={s.fg}>
         {CLIENT_STAGE_LABEL[stage]}
       </Text>
     </XStack>
@@ -77,9 +77,9 @@ export function ClientStagePill({ stage }: { stage: RequestStage }) {
 
 export function ServiceBadge({ online }: { online: boolean }) {
   return (
-    <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={999} backgroundColor={brand.gesso}>
+    <XStack alignItems="center" gap={6} paddingHorizontal="3" paddingVertical={8} borderRadius={999} backgroundColor={brand.gesso}>
       <Icon name={online ? "video" : "house"} size={15} strokeWidth={2} color={brand.cianografiaScuro} />
-      <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.grafite}>
+      <Text fontFamily="body" fontSize={16} fontWeight="700" color={brand.grafite}>
         {online ? "Consulenza online" : "A domicilio"}
       </Text>
     </XStack>
@@ -130,7 +130,7 @@ export function ClientMiniTimeline({ stage }: { stage: RequestStage }) {
               zIndex={1}
               marginBottom={5}
             />
-            <Text fontFamily="$body" fontSize={10} fontWeight={done ? "700" : "500"} color={done ? (step.extra ? "#8a5a00" : brand.grafite) : brand.grafite70} textAlign="center">
+            <Text fontFamily="body" fontSize={10} fontWeight={done ? "700" : "500"} color={done ? (step.extra ? "#8a5a00" : brand.grafite) : brand.grafite70} textAlign="center">
               {step.label}
             </Text>
           </YStack>

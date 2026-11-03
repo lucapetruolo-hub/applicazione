@@ -94,24 +94,24 @@ export function AccountMenu() {
   const toDo = attention.size > 0;
 
   return (
-    <YStack ref={containerRef} position="relative" onBlur={onContainerBlur}>
+    <YStack ref={containerRef as never} position="relative" onBlur={onContainerBlur}>
       <YStack
-        ref={triggerRef}
+        ref={triggerRef as never}
         flexDirection="row"
         alignItems="center"
-        gap="$1"
+        gap="1"
         cursor="pointer"
         onPress={() => setIsOpen((open) => !open)}
-        accessibilityRole="button"
+        role="button"
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onKeyDown={(event: unknown) => {
-          // L'evento è quello del browser, ma Tamagui lo tipizza come quello di React Native.
-          const keyEvent = event as ReactKeyboardEvent;
-          if (keyEvent.key !== "ArrowDown" || isOpen) return;
-          keyEvent.preventDefault();
-          setIsOpen(true);
-        }}
+                // L'evento è quello del browser, ma Tamagui lo tipizza come quello di React Native.
+                const keyEvent = event as ReactKeyboardEvent;
+                if (keyEvent.key !== "ArrowDown" || isOpen) return;
+                keyEvent.preventDefault();
+                setIsOpen(true);
+              }}
       >
         {/* Niente etichetta separata: il nome letto è il testo visibile, più
             le novità solo per il lettore di schermo (WCAG 2.5.3, docs/CHANGELOG.md §310). */}
@@ -122,7 +122,7 @@ export function AccountMenu() {
             schermo "Richiedi preventivo" (docs/CHANGELOG.md §319). Il nome
             resta per il lettore di schermo. */}
         <span className="acct-trigger-name">
-          <Text fontSize="$3" fontWeight="600" color={brand.grafite} numberOfLines={1}>
+          <Text fontSize="3" fontWeight="600" color={brand.grafite} numberOfLines={1}>
             {displayName ?? "Il mio account"}
           </Text>
         </span>
@@ -138,7 +138,7 @@ export function AccountMenu() {
           <span className="acct-nav-dot" style={{ marginLeft: 2 }} aria-hidden="true" />
         ) : null}
         <span aria-hidden="true">
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize="2" color={brand.grafite70}>
             {isOpen ? "▲" : "▼"}
           </Text>
         </span>

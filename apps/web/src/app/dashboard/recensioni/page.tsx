@@ -15,7 +15,7 @@ function formatDate(iso: string): string {
 
 function Stars({ rating }: { rating: number }) {
   return (
-    <XStack gap={2} accessibilityLabel={`${rating} stelle su 5`}>
+    <XStack gap={2} aria-label={`${rating} stelle su 5`}>
       {[1, 2, 3, 4, 5].map((value) => (
         <Icon key={value} name="star" size={15} strokeWidth={1.5} color={brand.ottone} fill={value <= rating ? brand.ottone : "none"} />
       ))}
@@ -53,9 +53,9 @@ export default function DashboardRecensioniPage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi come professionista
           </Text>
           <Link href="/accedi?redirect=/dashboard/recensioni" style={{ textDecoration: "none" }}>
@@ -68,8 +68,8 @@ export default function DashboardRecensioniPage() {
 
   if (!user.isProfessional) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+        <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
           Questa sezione è per i professionisti
         </Text>
       </YStack>
@@ -84,10 +84,10 @@ export default function DashboardRecensioniPage() {
   const shown = onlyUnanswered ? (reviews ?? []).filter((review) => !review.professionalReply && !review.hidden) : (reviews ?? []);
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={880} gap="$5">
-        <YStack gap="$1">
-          <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" fontSize={30} color={brand.grafite}>
+    <YStack width="100%" alignItems="center" paddingVertical="8" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={880} gap="5">
+        <YStack gap="1">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize={30} color={brand.grafite}>
             Recensioni
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
@@ -108,9 +108,9 @@ export default function DashboardRecensioniPage() {
 
         {reviews && reviews.length > 0 ? (
           <>
-            <XStack gap="$4" flexWrap="wrap" alignItems="center">
+            <XStack gap="4" flexWrap="wrap" alignItems="center">
               {average !== null ? (
-                <XStack alignItems="center" gap="$2">
+                <XStack alignItems="center" gap="2">
                   <Icon name="star" size={20} strokeWidth={1.5} color={brand.ottone} fill={brand.ottone} />
                   <Text fontWeight="800" fontSize={22} color={brand.grafite}>
                     {average.toFixed(1).replace(".", ",")}
@@ -120,7 +120,7 @@ export default function DashboardRecensioniPage() {
                   </Text>
                 </XStack>
               ) : null}
-              <XStack gap="$2" flexWrap="wrap">
+              <XStack gap="2" flexWrap="wrap">
                 <Chip selected={!onlyUnanswered} onPress={() => setOnlyUnanswered(false)}>
                   Tutte
                 </Chip>
@@ -132,7 +132,7 @@ export default function DashboardRecensioniPage() {
 
             {/* Il numero sta qui e non nel menu (decisione di Luca del 30/10/2026): lo vede chi apre la pagina. */}
             {unanswered > 0 && !onlyUnanswered ? (
-              <Surface borderRadius={radiusDoc} padding="$4" gap="$2" backgroundColor={brand.ottoneVelo}>
+              <Surface borderRadius={radiusDoc} padding="4" gap="2" backgroundColor={brand.ottoneVelo}>
                 <Text fontWeight="700" color={brand.grafite}>
                   {unanswered === 1 ? "Hai 1 recensione senza risposta" : `Hai ${unanswered} recensioni senza risposta`}
                 </Text>
@@ -141,7 +141,7 @@ export default function DashboardRecensioniPage() {
                     {unansweredLow === 1 ? "Una ha 1 o 2 stelle" : `${unansweredLow} hanno 1 o 2 stelle`}: comincia da lì, una risposta calma conta molto per chi legge.
                   </Text>
                 ) : null}
-                <Text fontWeight="700" color={brand.cianografiaScuro} cursor="pointer" alignSelf="flex-start" accessibilityRole="button" onPress={() => setOnlyUnanswered(true)}>
+                <Text fontWeight="700" color={brand.cianografiaScuro} cursor="pointer" alignSelf="flex-start" role="button" onPress={() => setOnlyUnanswered(true)}>
                   Mostra solo queste
                 </Text>
               </Surface>
@@ -149,13 +149,13 @@ export default function DashboardRecensioniPage() {
 
             {shown.length === 0 ? <Text color={brand.grafite70}>Hai risposto a tutte le recensioni.</Text> : null}
 
-            <YStack gap="$3">
+            <YStack gap="3">
               {shown.map((review) => (
-                <Surface key={review.id} gap="$2">
+                <Surface key={review.id} gap="2">
                   {/* Ancora per il link dell'avviso "Nuova recensione": un <div> grezzo, come sul profilo pubblico. */}
                   <div id={`recensione-${review.id}`} style={{ scrollMarginTop: 96 }} />
-                  <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">
-                    <XStack alignItems="center" gap="$2" flexWrap="wrap">
+                  <XStack alignItems="center" justifyContent="space-between" gap="2" flexWrap="wrap">
+                    <XStack alignItems="center" gap="2" flexWrap="wrap">
                       <Stars rating={review.rating} />
                       <Text fontWeight="700" color={brand.grafite}>
                         {review.clientName}
@@ -172,9 +172,9 @@ export default function DashboardRecensioniPage() {
                   </XStack>
                   {review.comment ? <Text color={brand.grafite70}>{review.comment}</Text> : null}
                   {review.photoUrls.length > 0 ? (
-                    <XStack gap="$2" flexWrap="wrap">
+                    <XStack gap="2" flexWrap="wrap">
                       {review.photoUrls.map((url) => (
-                        <YStack key={url} width={72} height={72} borderRadius="$2" overflow="hidden" borderWidth={1} borderColor={brand.filetto}>
+                        <YStack key={url} width={72} height={72} borderRadius="2" overflow="hidden" borderWidth={1} borderColor={brand.filetto}>
                           <MediaPreview url={url} />
                         </YStack>
                       ))}

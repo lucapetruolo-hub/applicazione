@@ -193,11 +193,11 @@ function FreeMonths({ freeMonths, trialEndsAt }: { freeMonths: NonNullable<MySub
   const current = freeMonths.currentMonth ?? 0;
   const start = trialEndsAt ? new Date(trialEndsAt).getTime() - freeMonths.months * 30 * DAY_MS : null;
   return (
-    <YStack gap="$2">
+    <YStack gap="2">
       <Text fontWeight="700" color={brand.grafite}>
         {current > 0 ? `Sei nel ${current}° mese gratis su ${freeMonths.months}` : `I tuoi ${monthsWord(freeMonths.months)} gratis partono al lancio`}
       </Text>
-      <XStack gap="$2">
+      <XStack gap="2">
         {Array.from({ length: freeMonths.months }, (_, index) => {
           const month = index + 1;
           const state = month < current ? "Usato" : month === current ? "In corso" : "Da fare";
@@ -209,7 +209,7 @@ function FreeMonths({ freeMonths, trialEndsAt }: { freeMonths: NonNullable<MySub
               flexBasis={0}
               minWidth={0}
               borderRadius={10}
-              padding="$2.5"
+              padding="2-5"
               gap={2}
               borderWidth={active ? 2 : 1}
               borderColor={active ? brand.cianografia : brand.filetto}
@@ -362,8 +362,8 @@ function AbbonamentoContent() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4" gap="$4">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4" gap="4">
+        <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
           Accedi come professionista
         </Text>
         <Link href="/accedi?redirect=/dashboard/abbonamento" style={{ textDecoration: "none" }}>
@@ -375,8 +375,8 @@ function AbbonamentoContent() {
 
   if (!user.isProfessional) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
+        <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
           Questa sezione è per i professionisti
         </Text>
       </YStack>
@@ -401,8 +401,8 @@ function AbbonamentoContent() {
   const rules = rulesText(sub, freeWithCard);
 
   const heading = (
-    <YStack gap="$1">
-      <Text fontFamily="$heading" fontWeight="800" fontSize={30} color={brand.grafite}>
+    <YStack gap="1">
+      <Text fontFamily="heading" fontWeight="800" fontSize={30} color={brand.grafite}>
         Abbonamento
       </Text>
       <Text color={brand.grafite70}>Tutte le funzioni in ogni livello: cambia solo quanti lavori accettati al mese sono compresi.</Text>
@@ -413,8 +413,8 @@ function AbbonamentoContent() {
   // comparivano subito e poi scendevano sotto lo stato (CLS, docs/CHANGELOG.md §334).
   if (!sub && !loadError) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={1000} gap="$5">
+      <YStack width="100%" alignItems="center" paddingVertical="8" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={1000} gap="5">
           {heading}
           <SkeletonBlock height={160} radius={16} />
         </YStack>
@@ -423,13 +423,13 @@ function AbbonamentoContent() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={1000} gap="$5">
+    <YStack width="100%" alignItems="center" paddingVertical="8" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={1000} gap="5">
         {journey && planCurrent ? <JourneyProgress steps={journey} here="plan" /> : null}
         {heading}
 
         {searchParams.get("attivato") ? (
-          <Surface borderRadius={radiusDoc} padding="$4" backgroundColor={brand.cianografiaVelo}>
+          <Surface borderRadius={radiusDoc} padding="4" backgroundColor={brand.cianografiaVelo}>
             <Text color={brand.grafite}>
               {searchParams.get("attivato") === "carta"
                 ? "Fatto: carta salvata e mesi gratis attivi. Oggi non hai pagato nulla; ti avvisiamo una settimana prima del primo addebito."
@@ -439,7 +439,7 @@ function AbbonamentoContent() {
         ) : null}
         {/* Finestra di Stripe chiusa prima della fine (docs/changelog/2026-10-30-iscrizione-carta-solida.md). */}
         {searchParams.get("annullato") && !paidActive ? (
-          <Surface borderRadius={radiusDoc} padding="$4" backgroundColor={brand.ottoneVelo}>
+          <Surface borderRadius={radiusDoc} padding="4" backgroundColor={brand.ottoneVelo}>
             <Text color={brand.grafite}>Non hai finito di aggiungere la carta, quindi non è stato salvato nulla. Puoi riprovare qui sotto quando vuoi.</Text>
           </Surface>
         ) : null}
@@ -454,7 +454,7 @@ function AbbonamentoContent() {
           />
         ) : null}
         {notice ? (
-          <Surface borderRadius={radiusDoc} padding="$4" backgroundColor={brand.cianografiaVelo}>
+          <Surface borderRadius={radiusDoc} padding="4" backgroundColor={brand.cianografiaVelo}>
             <Text color={brand.grafite}>{notice}</Text>
           </Surface>
         ) : null}
@@ -462,9 +462,9 @@ function AbbonamentoContent() {
         {sub ? <SubscriptionPauseBanner sub={sub} showAction={false} /> : null}
 
         {sub && status ? (
-          <Surface borderRadius={radiusDoc} padding="$5" gap="$4">
-            <YStack gap="$1">
-              <Text fontFamily="$heading" fontWeight="700" fontSize="$7" color={brand.grafite}>
+          <Surface borderRadius={radiusDoc} padding="5" gap="4">
+            <YStack gap="1">
+              <Text fontFamily="heading" fontWeight="700" fontSize="7" color={brand.grafite}>
                 {status.title}
               </Text>
               <Text color={brand.grafite70}>{status.detail}</Text>
@@ -478,8 +478,8 @@ function AbbonamentoContent() {
             ) : null}
             {!sub.limitsActive ? (
               // Prima del lancio non c'è limite (collaudo C-09: "4 su 3" senza spiegazione).
-              <YStack gap="$1">
-                <XStack justifyContent="space-between" flexWrap="wrap" gap="$2">
+              <YStack gap="1">
+                <XStack justifyContent="space-between" flexWrap="wrap" gap="2">
                   <Text fontWeight="700" color={brand.grafite}>
                     Lavori accettati finora
                   </Text>
@@ -490,8 +490,8 @@ function AbbonamentoContent() {
                 </Text>
               </YStack>
             ) : (
-            <YStack gap="$2">
-              <XStack justifyContent="space-between" flexWrap="wrap" gap="$2">
+            <YStack gap="2">
+              <XStack justifyContent="space-between" flexWrap="wrap" gap="2">
                 <Text fontWeight="700" color={brand.grafite}>
                   {usagePeriodLabel(sub)}
                 </Text>
@@ -518,14 +518,14 @@ function AbbonamentoContent() {
         ) : null}
 
         <div id="livelli" style={{ scrollMarginTop: 96 }} />
-        <YStack gap="$3">
-          <XStack alignItems="center" justifyContent="space-between" flexWrap="wrap" gap="$3">
-            <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+        <YStack gap="3">
+          <XStack alignItems="center" justifyContent="space-between" flexWrap="wrap" gap="3">
+            <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
               {paidActive ? "Livelli" : "Scegli il tuo livello"}
             </Text>
           </XStack>
           {chosenTier ? (
-            <Surface borderRadius={radiusDoc} padding="$4" gap="$1" backgroundColor={brand.cianografiaVelo}>
+            <Surface borderRadius={radiusDoc} padding="4" gap="1" backgroundColor={brand.cianografiaVelo}>
               <Text color={brand.grafite} fontWeight="700">
                 Hai scelto il livello {subscriptionTierInfo(chosenTier).label}: confermalo qui sotto.
               </Text>
@@ -535,7 +535,7 @@ function AbbonamentoContent() {
             <Text color={brand.grafite70}>I pagamenti online non sono ancora attivi su questo ambiente.</Text>
           ) : null}
           {checkoutError ? <Text color={brand.urgenza}>{checkoutError}</Text> : null}
-          <YStack gap="$3" $gtSm={{ flexDirection: "row" }}>
+          <YStack gap="3" flexDirection="gtSm:row">
             {SUBSCRIPTION_TIERS.map((tier) => {
               // Senza la carta Base non è ancora "il tuo livello": il pulsante attiva i mesi gratis.
               const current = paidActive && sub?.tier === tier.tier;
@@ -558,16 +558,17 @@ function AbbonamentoContent() {
               return (
                 <Surface
                   key={tier.tier}
-                  // Larghezze uguali solo in riga: in colonna (telefono) flexBasis 0 dava altezza 0 e i riquadri si sovrapponevano.
-                  $gtSm={{ flex: 1, flexBasis: 0, minWidth: 0 }}
+                  flex="gtSm:1"
+                  flexBasis="gtSm:0px"
+                  minWidth="gtSm:0px"
                   borderRadius={radiusDoc}
-                  padding="$4"
-                  gap="$3"
+                  padding="4"
+                  gap="3"
                   borderWidth={current || chosenTier === tier.tier ? 2 : 0}
                   borderColor={current ? brand.cianografia : chosenTier === tier.tier ? brand.cianografiaScuro : "transparent"}
                 >
-                  <XStack alignItems="center" justifyContent="space-between" gap="$2">
-                    <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+                  <XStack alignItems="center" justifyContent="space-between" gap="2">
+                    <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
                       {tier.label}
                     </Text>
                     {current ? (
@@ -576,28 +577,28 @@ function AbbonamentoContent() {
                         fontWeight="700"
                         color={brand.cianografiaScuro}
                         backgroundColor={brand.cianografiaVelo}
-                        paddingHorizontal="$2"
+                        paddingHorizontal="2"
                         paddingVertical={2}
-                        borderRadius="$10"
+                        borderRadius="10"
                       >
                         Il tuo livello
                       </Text>
                     ) : null}
                   </XStack>
-                  <YStack gap="$1">
-                    <XStack alignItems="baseline" gap="$2" flexWrap="wrap">
+                  <YStack gap="1">
+                    <XStack alignItems="baseline" gap="2" flexWrap="wrap">
                       {freeNow ? (
                         <>
-                          <Text fontFamily="$heading" fontSize="$6" color={brand.grafite70} textDecorationLine="line-through">
+                          <Text fontFamily="heading" fontSize="6" color={brand.grafite70} textDecorationLine="line-through">
                             {formatEur(shownMonthly)}
                           </Text>
-                          <Text fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.cianografiaScuro}>
+                          <Text fontFamily="heading" fontWeight="800" fontSize="9" color={brand.cianografiaScuro}>
                             Gratis
                           </Text>
                         </>
                       ) : (
                         <>
-                          <Text fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.grafite}>
+                          <Text fontFamily="heading" fontWeight="800" fontSize="9" color={brand.grafite}>
                             {formatEur(shownMonthly)}
                           </Text>
                           <Text color={brand.grafite70}>al mese + IVA</Text>
@@ -610,7 +611,7 @@ function AbbonamentoContent() {
                         : `${interval === "YEAR" ? `${formatEur(periodPrice)} all'anno + IVA · ` : ""}IVA inclusa ${formatEur(withVatEurCents(periodPrice))}`}
                     </Text>
                   </YStack>
-                  <XStack alignItems="center" gap="$2">
+                  <XStack alignItems="center" gap="2">
                     <Check size={18} strokeWidth={2.25} color={brand.cianografiaScuro} />
                     <Text color={brand.cianografiaScuro} fontWeight="700">
                       {tier.monthlyAcceptedJobs === null ? "Lavori senza limite" : `${tier.monthlyAcceptedJobs} lavori al mese`}
@@ -618,7 +619,7 @@ function AbbonamentoContent() {
                   </XStack>
                   {tier.tier === "PLUS" ? (
                     // Su Plus e Pro lo stesso cliente conta una volta (§362); su Pro non c'è limite, quindi si dice solo su Plus.
-                    <XStack alignItems="flex-start" gap="$2">
+                    <XStack alignItems="flex-start" gap="2">
                       <Check size={18} strokeWidth={2.25} color={brand.cianografiaScuro} style={{ flexShrink: 0, marginTop: 3 }} />
                       <Text flex={1} color={brand.cianografiaScuro} fontWeight="700">
                         {SAME_CLIENT_ONCE}
@@ -628,7 +629,7 @@ function AbbonamentoContent() {
                   {quote && tier.tier !== "BASE" ? (
                     // Una sola cifra (decisione dell'utente): il calcolo sta in "Cambio di livello" qui sotto.
                     // Una cifra da pagare una volta, poi il prezzo pieno (collaudo O-13: "fino al 27 gen" sembrava un canone).
-                    <YStack backgroundColor={brand.gesso} borderRadius={10} padding="$3" gap={2}>
+                    <YStack backgroundColor={brand.gesso} borderRadius={10} padding="3" gap={2}>
                       <Text fontSize={13} fontWeight="700" letterSpacing={0.6} textTransform="uppercase" color={brand.grafite70}>
                         Se passi oggi
                       </Text>
@@ -665,13 +666,13 @@ function AbbonamentoContent() {
                   ) : null}
                   <YStack flex={1} />
                   {lower ? null : fromLaunch ? (
-                    <Text color={brand.grafite70} fontSize={16} paddingVertical="$2">
+                    <Text color={brand.grafite70} fontSize={16} paddingVertical="2">
                       Disponibile dal lancio
                     </Text>
                   ) : !current && sub && !sub.checkoutAvailable ? (
                     // Senza Stripe nessun livello si può scegliere: una riga chiara
                     // al posto di un pulsante spento che sembra attivo (§349).
-                    <Text color={brand.grafite70} fontSize={16} paddingVertical="$2">
+                    <Text color={brand.grafite70} fontSize={16} paddingVertical="2">
                       Disponibile dal lancio
                     </Text>
                   ) : (
@@ -684,8 +685,8 @@ function AbbonamentoContent() {
                       {current || disabled ? (
                         label
                       ) : (
-                        <XStack alignItems="center" gap="$2">
-                          <Text color="white" fontFamily="$body" fontWeight="600">
+                        <XStack alignItems="center" gap="2">
+                          <Text color="white" fontFamily="body" fontWeight="600">
                             {label}
                           </Text>
                           <ButtonArrow tone="red" />
@@ -697,27 +698,27 @@ function AbbonamentoContent() {
               );
             })}
           </YStack>
-          <YStack gap="$3" $gtSm={{ flexDirection: "row" }}>
-            <Surface $gtSm={{ flex: 1, flexBasis: 0, minWidth: 0 }} borderRadius={radiusDoc} padding="$4" gap="$1">
+          <YStack gap="3" flexDirection="gtSm:row">
+            <Surface flex="gtSm:1" flexBasis="gtSm:0px" minWidth="gtSm:0px" borderRadius={radiusDoc} padding="4" gap="1">
               <Text fontWeight="700" color={brand.grafite}>
                 Rinnovo
               </Text>
-              <Text color={brand.grafite70} fontSize={15} lineHeight={22}>
+              <Text color={brand.grafite70} fontSize={15} lineHeight="22px">
                 {rules.renewal}
               </Text>
             </Surface>
-            <Surface $gtSm={{ flex: 1, flexBasis: 0, minWidth: 0 }} borderRadius={radiusDoc} padding="$4" gap="$1">
+            <Surface flex="gtSm:1" flexBasis="gtSm:0px" minWidth="gtSm:0px" borderRadius={radiusDoc} padding="4" gap="1">
               <Text fontWeight="700" color={brand.grafite}>
                 Cambio di livello
               </Text>
-              <Text color={brand.grafite70} fontSize={15} lineHeight={22}>
+              <Text color={brand.grafite70} fontSize={15} lineHeight="22px">
                 {rules.change}{" "}
                 <button type="button" className="fee-more" aria-expanded={feeDetailsOpen} onClick={() => setFeeDetailsOpen((open) => !open)}>
                   {feeDetailsOpen ? "Chiudi" : "Scopri di più"}
                 </button>
               </Text>
               {feeDetailsOpen ? (
-                <Text color={brand.grafite70} fontSize={15} lineHeight={22} marginTop="$1">
+                <Text color={brand.grafite70} fontSize={15} lineHeight="22px" marginTop="1">
                   Nei mesi gratis passi a Plus o Pro pagando il primo mese meno il mese Base regalato (Plus 40 € + IVA): da quel giorno parte un mese
                   nuovo con 0 lavori, e i mesi gratis che restano ti aspettano. Li riprendi tornando a Base. Con un livello già pagato paghi 10 € più la
                   differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del 10% (+ IVA): da Base a Plus con 7 giorni rimasti su 30 paghi
@@ -726,11 +727,11 @@ function AbbonamentoContent() {
               ) : null}
             </Surface>
             {rules.cancel ? (
-              <Surface $gtSm={{ flex: 1, flexBasis: 0, minWidth: 0 }} borderRadius={radiusDoc} padding="$4" gap="$1">
+              <Surface flex="gtSm:1" flexBasis="gtSm:0px" minWidth="gtSm:0px" borderRadius={radiusDoc} padding="4" gap="1">
                 <Text fontWeight="700" color={brand.grafite}>
                   Annulli quando vuoi
                 </Text>
-                <Text color={brand.grafite70} fontSize={15} lineHeight={22}>
+                <Text color={brand.grafite70} fontSize={15} lineHeight="22px">
                   {rules.cancel}
                 </Text>
               </Surface>
@@ -739,8 +740,8 @@ function AbbonamentoContent() {
         </YStack>
 
         {paidActive && sub ? (
-          <Surface borderRadius={radiusDoc} padding="$5" gap="$3">
-            <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+          <Surface borderRadius={radiusDoc} padding="5" gap="3">
+            <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
               Rinnovo automatico
             </Text>
             {sub.cancelAtPeriodEnd ? (
@@ -761,7 +762,7 @@ function AbbonamentoContent() {
                   {sub.freeMonthsWaiting ? ` I tuoi ${monthsWord(sub.freeMonthsWaiting)} gratis restano: li riprendi scegliendo Base.` : ""}
                 </Text>
                 <ChurnReasonPicker reasons={PRO_CHURN_REASONS} value={cancelReason} onChange={setCancelReason} />
-                <XStack gap="$2" flexWrap="wrap">
+                <XStack gap="2" flexWrap="wrap">
                   <Button variant="urgent" disabled={renewalPending} opacity={renewalPending ? 0.6 : 1} onPress={() => setRenewal(false)}>
                     {renewalPending ? "Attendi..." : "Sì, annulla l'abbonamento"}
                   </Button>
@@ -782,7 +783,7 @@ function AbbonamentoContent() {
                       : "Si rinnova ogni mese."}{" "}
                   Se annulli, resta attivo fino alla scadenza.
                 </Text>
-                <XStack gap="$2" flexWrap="wrap">
+                <XStack gap="2" flexWrap="wrap">
                   {sub.tier && sub.tier !== "BASE" && !sub.returnToBase ? (
                     <Button variant="secondary" disabled={returnPending} opacity={returnPending ? 0.6 : 1} onPress={() => setReturnToBase(true)}>
                       {returnPending ? "Attendi..." : sub.freeMonthsWaiting ? `Torna a Base con ${monthsWord(sub.freeMonthsWaiting)} gratis` : "Torna a Base alla scadenza"}
@@ -804,8 +805,8 @@ function AbbonamentoContent() {
 
         {/* Le fatture sono le nostre, in "Fatture e documenti" (docs/CHANGELOG.md §378), che ora ha la sua scheda
             in Fisco e pagamenti: qui basta una riga (docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md). Da Stripe solo la carta. */}
-        <Surface borderRadius={radiusDoc} padding="$5">
-          <XStack gap="$3" alignItems="center" justifyContent="space-between" flexWrap="wrap">
+        <Surface borderRadius={radiusDoc} padding="5">
+          <XStack gap="3" alignItems="center" justifyContent="space-between" flexWrap="wrap">
             <Text color={brand.grafite70} flex={1} minWidth={220}>
               {inTrial || freeWithCard ? "Nei mesi gratis non paghi nulla. La fattura di ogni pagamento te la facciamo noi, in " : "La fattura di ogni pagamento te la facciamo noi: la trovi in "}
               <Link href="/dashboard/documenti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
@@ -822,12 +823,12 @@ function AbbonamentoContent() {
           </XStack>
         </Surface>
 
-        <Surface borderRadius={radiusDoc} padding="$5" gap="$2">
-          <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+        <Surface borderRadius={radiusDoc} padding="5" gap="2">
+          <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
             Compreso in ogni livello
           </Text>
           {SUBSCRIPTION_FEATURES.map((feature) => (
-            <XStack key={feature} gap="$2" alignItems="flex-start">
+            <XStack key={feature} gap="2" alignItems="flex-start">
               <Check size={16} strokeWidth={2} color={brand.cianografiaScuro} style={{ marginTop: 4, flexShrink: 0 }} />
               <Text color={brand.grafite70} flex={1}>
                 {feature}

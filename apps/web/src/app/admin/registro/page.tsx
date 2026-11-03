@@ -58,7 +58,7 @@ export default function AdminRegistroPage() {
   return (
     <YStack>
       <AdminPageHeader title="Registro azioni" description="Chi ha fatto cosa e quando nel pannello." />
-      <XStack marginBottom="$3">
+      <XStack marginBottom="3">
         <select aria-label="Tipo di elemento"
           className="admin-input"
           value={entityType}
@@ -116,14 +116,14 @@ export default function AdminRegistroPage() {
         </div>
       ) : null}
       {data && totalPages > 1 ? (
-        <XStack gap="$2" alignItems="center" marginTop="$3">
-          <Button variant="secondary" size="$3" disabled={page <= 1} onPress={() => setPage((p) => p - 1)}>
+        <XStack gap="2" alignItems="center" marginTop="3">
+          <Button variant="secondary" size="3" disabled={page <= 1} onPress={() => setPage((p) => p - 1)}>
             Precedente
           </Button>
           <Text color={brand.grafite70}>
             Pagina {page} di {totalPages}
           </Text>
-          <Button variant="secondary" size="$3" disabled={page >= totalPages} onPress={() => setPage((p) => p + 1)}>
+          <Button variant="secondary" size="3" disabled={page >= totalPages} onPress={() => setPage((p) => p + 1)}>
             Successiva
           </Button>
         </XStack>

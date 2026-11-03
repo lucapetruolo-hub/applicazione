@@ -95,7 +95,7 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
 
   return (
     <Section title="Quanto costa in media?" maxWidth={780}>
-      <YStack width="100%" gap="$3">
+      <YStack width="100%" gap="3">
         <Text fontSize={16} color={brand.grafite70}>
           {/* Nessuna cifra finché nessun lavoro ha 3 prezzi (§398): allora la
               riga non promette "prezzi veri" (collaudo N-06). */}
@@ -129,7 +129,7 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
           </label>
 
           {isEmpty ? (
-            <YStack width="100%" gap="$3" alignItems="flex-start" padding="$4">
+            <YStack width="100%" gap="3" alignItems="flex-start" padding="4">
               <Text fontSize={16} color={brand.grafite70}>
                 I prezzi medi appariranno qui non appena i professionisti inseriranno le loro prestazioni. Nel frattempo
                 puoi chiedere un preventivo gratuito: è il modo più preciso per sapere quanto costa il tuo lavoro.
@@ -153,7 +153,7 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
           ) : entries === null ? (
             <p className="price-message">Caricamento...</p>
           ) : visibleEntries.length === 0 ? (
-            <YStack width="100%" gap="$2" alignItems="flex-start" padding="$4">
+            <YStack width="100%" gap="2" alignItems="flex-start" padding="4">
               <Text fontSize={16} color={brand.grafite70}>
                 Nessun prezzo ancora per {'"'}
                 {query.trim()}
@@ -200,7 +200,7 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
                       </Text>
                     ) : null}
                   </YStack>
-                  <XStack alignItems="center" gap="$2" flexShrink={0}>
+                  <XStack alignItems="center" gap="2" flexShrink={0}>
                     {/* Mediana e intervallo tipico (metà dei professionisti), mai
                         minimo e massimo; sotto i 3 prezzi nessuna cifra (§398). */}
                     {entry.price ? (

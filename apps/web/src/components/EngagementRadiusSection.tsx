@@ -16,7 +16,7 @@ import { MAX_ENGAGEMENT_RADIUS_KM, MAX_URGENT_ENGAGEMENT_RADIUS_KM } from "@prof
 const EngagementRadiusMap = dynamic(() => import("./EngagementRadiusMap").then((mod) => mod.EngagementRadiusMap), {
   ssr: false,
   loading: () => (
-    <YStack height={360} width="100%" borderRadius="$2" backgroundColor={brand.gesso} alignItems="center" justifyContent="center">
+    <YStack height={360} width="100%" borderRadius="2" backgroundColor={brand.gesso} alignItems="center" justifyContent="center">
       <Text color={brand.grafite70}>Caricamento mappa…</Text>
     </YStack>
   ),
@@ -26,7 +26,7 @@ const MIN_RADIUS_KM = 1;
 
 function FieldLabel({ children }: { children: string }) {
   return (
-    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+    <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
       {children}
     </Text>
   );
@@ -69,9 +69,9 @@ export function EngagementRadiusSection({
   }
 
   return (
-    <Surface gap="$4">
-      <YStack gap="$1">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
+    <Surface gap="4">
+      <YStack gap="1">
+        <Text fontFamily="heading" fontWeight="800" fontSize="5" color={brand.grafite}>
           Raggio di ingaggio
         </Text>
         {/* Una riga e "Scopri di più" (docs/CHANGELOG.md §349), prima due paragrafi. */}
@@ -80,7 +80,7 @@ export function EngagementRadiusSection({
         </Text>
         <details className="bio-tips radius-more">
           <summary>Scopri di più</summary>
-          <YStack gap="$1" paddingTop="$1">
+          <YStack gap="1" paddingTop="1">
             <Text fontSize={13} color={brand.grafite70}>
               Di partenza sono 25 km, per le richieste standard puoi arrivare fino a {MAX_ENGAGEMENT_RADIUS_KM} km. Per le richieste
               urgenti puoi scegliere un raggio diverso.
@@ -100,9 +100,9 @@ export function EngagementRadiusSection({
         urgentEngagementRadiusKm={urgentEngagementRadiusKm}
       />
 
-      <YStack gap="$2">
+      <YStack gap="2">
         <XStack justifyContent="space-between" alignItems="center">
-          <XStack alignItems="center" gap="$2">
+          <XStack alignItems="center" gap="2">
             <YStack width={12} height={12} borderRadius={10} backgroundColor={brand.verificato} />
             <FieldLabel>Richieste standard</FieldLabel>
           </XStack>
@@ -127,9 +127,9 @@ export function EngagementRadiusSection({
         />
       </YStack>
 
-      <YStack gap="$2">
+      <YStack gap="2">
         <XStack justifyContent="space-between" alignItems="center">
-          <XStack alignItems="center" gap="$2">
+          <XStack alignItems="center" gap="2">
             <YStack width={12} height={12} borderRadius={10} backgroundColor={brand.ottone} />
             <FieldLabel>Richieste urgenti</FieldLabel>
           </XStack>
@@ -151,7 +151,7 @@ export function EngagementRadiusSection({
       </YStack>
 
       {isEditing ? (
-        <XStack gap="$3" flexWrap="wrap" alignItems="center">
+        <XStack gap="3" flexWrap="wrap" alignItems="center">
           <Button variant="ghost" onPress={handleCancelEditing} alignSelf="flex-start">
             Annulla
           </Button>

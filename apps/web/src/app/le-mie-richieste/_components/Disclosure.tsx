@@ -14,15 +14,15 @@ export function Disclosure({ title, summary, muted, defaultOpen = false, childre
     <YStack borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto} backgroundColor={muted ? "transparent" : brand.calce} overflow="hidden">
       <XStack
         alignItems="center"
-        gap="$2"
-        paddingHorizontal="$4"
-        paddingVertical="$3"
+        gap="2"
+        paddingHorizontal="4"
+        paddingVertical="3"
         minHeight={52}
         cursor="pointer"
+        backgroundColor={`hover:${brand.gesso}`}
         onPress={() => setOpen((value) => !value)}
-        accessibilityRole="button"
+        role="button"
         aria-expanded={open}
-        hoverStyle={{ backgroundColor: brand.gesso }}
       >
         <Text flex={1} minWidth={0} fontSize={16} numberOfLines={open ? undefined : 1}>
           <Text fontSize={16} fontWeight={muted ? "500" : "700"} color={muted ? brand.grafite70 : brand.grafite}>
@@ -37,7 +37,7 @@ export function Disclosure({ title, summary, muted, defaultOpen = false, childre
         <Icon name={open ? "chevron-up" : "chevron-down"} size={20} color={brand.grafite70} />
       </XStack>
       {open ? (
-        <YStack paddingHorizontal="$3" paddingBottom="$3" gap="$2">
+        <YStack paddingHorizontal="3" paddingBottom="3" gap="2">
           {children}
         </YStack>
       ) : null}

@@ -45,12 +45,12 @@ export default function AdminChatDetailPage() {
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {!chat && !error ? <SkeletonTableRows rows={4} cols={2} /> : null}
       {chat ? (
-        <YStack gap="$3">
+        <YStack gap="3">
           <AdminCard>
             <Text fontSize={13} color={brand.grafite70}>
               Richiesta: {chat.requestDescription}
             </Text>
-            <XStack gap="$3" flexWrap="wrap" alignItems="center">
+            <XStack gap="3" flexWrap="wrap" alignItems="center">
               {chat.clientName ? <Link href={`/admin/utenti/${chat.clientUserId}`}>Scheda cliente</Link> : <Text fontSize={13}>Account cliente eliminato</Text>}
               <Link href={`/admin/utenti/${chat.professionalUserId}`}>Scheda professionista</Link>
               {chat.issue ? (
@@ -63,7 +63,7 @@ export default function AdminChatDetailPage() {
             </XStack>
           </AdminCard>
 
-          <YStack gap="$2">
+          <YStack gap="2">
             {chat.events.map((event) => {
               const system = event.actor === "SYSTEM";
               const fromClient = event.actor === "CLIENT";
@@ -73,12 +73,12 @@ export default function AdminChatDetailPage() {
                   id={`messaggio-${event.id}`}
                   alignSelf={system ? "center" : fromClient ? "flex-start" : "flex-end"}
                   maxWidth={system ? "90%" : "80%"}
-                  padding="$3"
+                  padding="3"
                   borderRadius={20}
                   backgroundColor={system ? "transparent" : fromClient ? brand.calce : brand.cianografiaVelo}
                   borderWidth={system ? 0 : 1}
                   borderColor={brand.filetto}
-                  gap="$1"
+                  gap="1"
                 >
                   <Text fontSize={12} fontWeight="700" color={brand.grafite70} textAlign={system ? "center" : "left"}>
                     {system ? "Automatico" : fromClient ? clientName : chat.businessName} · {formatAdminDate(event.createdAt, true)}
@@ -90,7 +90,7 @@ export default function AdminChatDetailPage() {
                     </Text>
                   ) : null}
                   {event.mediaUrls.length > 0 ? (
-                    <XStack gap="$2" flexWrap="wrap">
+                    <XStack gap="2" flexWrap="wrap">
                       {event.mediaUrls.map((url) => (
                         <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 84, height: 84, borderRadius: 10, overflow: "hidden", display: "block" }}>
                           <MediaPreview url={url} />

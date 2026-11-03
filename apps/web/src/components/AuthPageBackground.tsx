@@ -11,7 +11,7 @@ import { Surface, YStack, radiusDocLg } from "@professionisti/ui";
  */
 export function AuthPageBackground({ children }: { children: ReactNode }) {
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4" position="relative">
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4" position="relative">
       <YStack width="100%" alignItems="center" position="relative" zIndex={1}>
         {children}
       </YStack>
@@ -20,9 +20,9 @@ export function AuthPageBackground({ children }: { children: ReactNode }) {
 }
 
 /** Scheda bianca senza ombra (scelta dell'utente, §176) sopra AuthPageBackground. */
-export function AuthCard({ children, maxWidth = 420, gap = "$5" }: { children: ReactNode; maxWidth?: number; gap?: "$3" | "$5" }) {
+export function AuthCard({ children, maxWidth = 420, gap = "5" }: { children: ReactNode; maxWidth?: number; gap?: "3" | "5" }) {
   return (
-    <Surface className="auth-card-in" width="100%" maxWidth={maxWidth} borderRadius={radiusDocLg} padding="$6" gap={gap}>
+    <Surface className="auth-card-in" width="100%" maxWidth={maxWidth} borderRadius={radiusDocLg} padding="6" gap={gap}>
       {children}
     </Surface>
   );

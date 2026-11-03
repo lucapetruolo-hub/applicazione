@@ -63,9 +63,9 @@ function EmailOff() {
     <AuthPageBackground>
       <AuthCard maxWidth={440}>
         {state === "invalid" ? (
-          <YStack gap="$4" alignItems="center">
+          <YStack gap="4" alignItems="center">
             <AuthIconBadge icon="mail" />
-            <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center">
               Questo link non vale
             </Text>
             <Text fontSize={16} color={brand.grafite70} textAlign="center">
@@ -80,9 +80,9 @@ function EmailOff() {
             Un attimo…
           </Text>
         ) : off ? (
-          <YStack gap="$4" alignItems="center">
+          <YStack gap="4" alignItems="center">
             <AuthIconBadge icon="check" />
-            <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center">
               Fatto, niente più email
             </Text>
             <Text fontSize={16} color={brand.grafite70} textAlign="center" role="status">
@@ -96,9 +96,9 @@ function EmailOff() {
             </Link>
           </YStack>
         ) : (
-          <YStack gap="$4" alignItems="center">
+          <YStack gap="4" alignItems="center">
             <AuthIconBadge icon="bell-off" />
-            <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center">
               Basta email di «{label}»?
             </Text>
             <Text fontSize={16} color={brand.grafite70} textAlign="center">

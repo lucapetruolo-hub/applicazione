@@ -159,7 +159,7 @@ export default function AdminProfessionistiPage() {
   }
 
   return (
-    <YStack gap="$4">
+    <YStack gap="4">
       <AdminPageHeader
         title="Profili da confermare"
         description="Crea il profilo di un professionista mentre sei al telefono con lui. Gli arriva un link per scegliere la password e confermare i dati: fino ad allora il profilo non compare nella ricerca."
@@ -179,7 +179,7 @@ export default function AdminProfessionistiPage() {
 
       {link ? (
         <AdminCard highlight>
-          <YStack gap="$2">
+          <YStack gap="2">
             <Text fontWeight="700" color={brand.grafite}>
               Link per {link.businessName}
             </Text>
@@ -191,9 +191,9 @@ export default function AdminProfessionistiPage() {
                   : `L'email non è partita: copia il link e mandalo tu a ${link.email} (per esempio su WhatsApp).`}{" "}
               Vale fino al {formatAdminDate(link.expiresAt)} e si usa una volta sola.
             </Text>
-            <XStack gap="$2" flexWrap="wrap" alignItems="center">
+            <XStack gap="2" flexWrap="wrap" alignItems="center">
               <input aria-label="Link da mandare al professionista" className="admin-input" style={{ flex: 1, minWidth: 260 }} readOnly value={link.inviteUrl} onFocus={(e) => e.target.select()} />
-              <Button size="$3" onPress={copyLink}>
+              <Button size="3" onPress={copyLink}>
                 {copied ? "Copiato" : "Copia link"}
               </Button>
             </XStack>
@@ -207,15 +207,15 @@ export default function AdminProfessionistiPage() {
             creazioni dello stesso profilo (la seconda risponde "Esiste già un
             account"). L'invio passa solo da onPress, come in /registrati. */}
         <form onSubmit={(event: FormEvent) => event.preventDefault()}>
-          <YStack gap="$3">
+          <YStack gap="3">
             <Text fontWeight="700" color={brand.grafite}>
               Nuovo profilo
             </Text>
-            <XStack gap="$2" flexWrap="wrap">
+            <XStack gap="2" flexWrap="wrap">
               <input aria-label="Nome" className="admin-input" style={{ flex: 1, minWidth: 200 }} placeholder="Nome *" value={form.name} onChange={(e) => update("name", e.target.value)} />
               <input aria-label="Cognome" className="admin-input" style={{ flex: 1, minWidth: 200 }} placeholder="Cognome" value={form.surname} onChange={(e) => update("surname", e.target.value)} />
             </XStack>
-            <XStack gap="$2" flexWrap="wrap">
+            <XStack gap="2" flexWrap="wrap">
               <input aria-label="Email"
                 className="admin-input"
                 style={{ flex: 1, minWidth: 200 }}
@@ -233,7 +233,7 @@ export default function AdminProfessionistiPage() {
                 onChange={(e) => update("phone", e.target.value)}
               />
             </XStack>
-            <XStack gap="$2" flexWrap="wrap">
+            <XStack gap="2" flexWrap="wrap">
               <input aria-label="Nome dell'attività"
                 className="admin-input"
                 style={{ flex: 1, minWidth: 200 }}
@@ -242,8 +242,8 @@ export default function AdminProfessionistiPage() {
                 onChange={(e) => update("businessName", e.target.value)}
               />
             </XStack>
-            <YStack gap="$1">
-              <Text fontSize="$2" fontWeight="700" color={brand.grafite70}>
+            <YStack gap="1">
+              <Text fontSize="2" fontWeight="700" color={brand.grafite70}>
                 Categorie * (fino a 3 scelte)
               </Text>
               <CategoryMultiPicker value={categorySlugs} onChange={setCategorySlugs} />
@@ -257,7 +257,7 @@ export default function AdminProfessionistiPage() {
                 value={form.city}
                 onChangeText={(value) => update("city", value)}
                 placeholder="Comune * (scrivi almeno 3 lettere)"
-                size="$4"
+                size="4"
                 minChars={3}
               />
             </YStack>
@@ -270,7 +270,7 @@ export default function AdminProfessionistiPage() {
             />
             {formError ? <Text color={brand.urgenza}>{formError}</Text> : null}
             <XStack>
-              <Button variant="primary" size="$4" disabled={saving} onPress={() => void submit()}>
+              <Button variant="primary" size="4" disabled={saving} onPress={() => void submit()}>
                 {saving ? "Creazione…" : "Crea profilo e link"}
               </Button>
             </XStack>
@@ -278,7 +278,7 @@ export default function AdminProfessionistiPage() {
         </form>
       </AdminCard>
 
-      <YStack gap="$2">
+      <YStack gap="2">
         <Text fontWeight="700" color={brand.grafite}>
           In attesa di conferma
         </Text>
@@ -315,22 +315,22 @@ export default function AdminProfessionistiPage() {
                         : "Scaduto"}
                     </td>
                     <td>
-                      <XStack gap="$2" flexWrap="wrap">
+                      <XStack gap="2" flexWrap="wrap">
                         {confirmDeleteId === row.userId ? (
                           <>
-                            <Button size="$2" disabled={busyId === row.userId} backgroundColor={brand.urgenza} onPress={() => remove(row.userId)}>
+                            <Button size="2" backgroundColor={brand.urgenza} disabled={busyId === row.userId} onPress={() => remove(row.userId)}>
                               {busyId === row.userId ? "…" : "Conferma eliminazione"}
                             </Button>
-                            <Button variant="secondary" size="$2" onPress={() => setConfirmDeleteId(null)}>
+                            <Button variant="secondary" size="2" onPress={() => setConfirmDeleteId(null)}>
                               Annulla
                             </Button>
                           </>
                         ) : (
                           <>
-                            <Button variant="secondary" size="$2" disabled={busyId === row.userId} onPress={() => viewLink(row.userId)}>
+                            <Button variant="secondary" size="2" disabled={busyId === row.userId} onPress={() => viewLink(row.userId)}>
                               {busyId === row.userId ? "…" : "Visualizza link"}
                             </Button>
-                            <Button variant="secondary" size="$2" onPress={() => setConfirmDeleteId(row.userId)}>
+                            <Button variant="secondary" size="2" onPress={() => setConfirmDeleteId(row.userId)}>
                               Elimina
                             </Button>
                           </>
@@ -345,7 +345,7 @@ export default function AdminProfessionistiPage() {
         ) : null}
       </YStack>
 
-      <YStack gap="$2" id="fondatori" style={{ scrollMarginTop: 96 }}>
+      <YStack gap="2" id="fondatori" style={{ scrollMarginTop: 96 }}>
         <Text fontWeight="700" color={brand.grafite}>
           {founders ? `Offerta di lancio: ${founders.taken} posti presi su ${founders.total}` : "Offerta di lancio"}
         </Text>

@@ -269,7 +269,7 @@ export function EmailCodeForm({
 
   if (editingEmail) {
     return (
-      <YStack gap="$4">
+      <YStack gap="4">
         <AuthField
           label="Email corretta"
           value={newEmail}
@@ -330,9 +330,9 @@ export function EmailCodeForm({
   );
 
   return (
-    <YStack gap="$4">
+    <YStack gap="4">
       {linkFirst ? (
-        <YStack gap="$3" alignItems="center">
+        <YStack gap="3" alignItems="center">
           <Text fontSize={16} color={brand.grafite70} textAlign="center">
             {linkIntro}
             <br />
@@ -360,7 +360,7 @@ export function EmailCodeForm({
       )}
 
       {showCode ? (
-        <YStack gap="$2">
+        <YStack gap="2">
           {linkFirst ? (
             <Text fontSize={16} color={brand.grafite70} textAlign="center">
               Scrivi il codice di {EMAIL_CODE_LENGTH} cifre che trovi sotto il pulsante:
@@ -376,7 +376,7 @@ export function EmailCodeForm({
             Controllo il codice...
           </Text>
         ) : state === "done" ? (
-          <XStack gap="$2" alignItems="center" justifyContent="center">
+          <XStack gap="2" alignItems="center" justifyContent="center">
             <Icon name="check" size={18} color={brand.cianografiaScuro} strokeWidth={2.5} />
             <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
               {doneLabel}
@@ -405,7 +405,7 @@ export function EmailCodeForm({
         ) : null}
       </div>
 
-      <YStack gap="$2" alignItems="center">
+      <YStack gap="2" alignItems="center">
         {/* La durata accanto al conto alla rovescia: senza, il minuto di
             attesa per un nuovo invio sembrava la scadenza del codice (§250). */}
         {/* Durata e nuovo invio in una riga sola (docs/CHANGELOG.md §278). */}

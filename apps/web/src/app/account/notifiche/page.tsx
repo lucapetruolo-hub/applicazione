@@ -42,8 +42,8 @@ export default function NotifichePage() {
   if (isLoading) return null;
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4" gap="$4">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4" gap="4">
+        <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
           Accedi per gestire le notifiche
         </Text>
         <Link href="/accedi?redirect=/account/notifiche" style={{ textDecoration: "none" }}>
@@ -84,11 +84,11 @@ export default function NotifichePage() {
   const isAdmin = user.role === "ADMIN";
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
+    <YStack width="100%" alignItems="center" paddingVertical="8" paddingHorizontal="4">
       <div className="nt-page">
         <div className="nt-header">
           <div>
-            <Text fontFamily="$heading" fontWeight="800" fontSize={30} color={brand.grafite}>
+            <Text fontFamily="heading" fontWeight="800" fontSize={30} color={brand.grafite}>
               Notifiche
             </Text>
             <Text fontSize={16} color={brand.grafite70}>

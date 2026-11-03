@@ -233,14 +233,14 @@ export function QuoteCard({
   ) : null;
 
   return (
-    <YStack id={`quote-${quote.id}`} backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
-      <XStack alignItems="center" gap="$2">
+    <YStack id={`quote-${quote.id}`} backgroundColor={brand.gesso} borderRadius="3" padding="3" gap="2">
+      <XStack alignItems="center" gap="2">
         {/* Foto accanto al nome (richiesta esplicita dell'utente), iniziali se manca; stesso link del nome, fuori dal Tab. */}
         <Link href={professionalPath({ id: quote.professionalProfileId, businessName: quote.businessName, city: quote.city })} tabIndex={-1} aria-hidden style={{ textDecoration: "none", alignSelf: "flex-start" }}>
           <Avatar name={quote.businessName} imageUrl={quote.imageUrl} size={40} />
         </Link>
         <YStack flex={1} minWidth={0} gap={2}>
-          <XStack alignItems="center" gap="$2" flexWrap="wrap">
+          <XStack alignItems="center" gap="2" flexWrap="wrap">
             <Link href={professionalPath({ id: quote.professionalProfileId, businessName: quote.businessName, city: quote.city })} style={{ textDecoration: "none" }}>
               <Text fontWeight="600" color={brand.cianografiaScuro}>
                 {quote.businessName}
@@ -318,7 +318,7 @@ export function QuoteCard({
         }
         // Risposte precedenti a questa versione, senza l'appuntamento sostituito.
         return quote.status === "SENT" && quote.professionalCounterNote ? (
-          <YStack gap="$2" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce} borderRadius="$3" padding="$3">
+          <YStack gap="2" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce} borderRadius="3" padding="3">
             <Text fontSize={16} fontWeight="600" color={brand.grafite}>
               Il professionista ha risposto proponendo: {formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
             </Text>
@@ -328,7 +328,7 @@ export function QuoteCard({
           </YStack>
         ) : null;
       })()}
-      <YStack gap="$1">
+      <YStack gap="1">
         {quote.items.map((item) => (
           <Text key={item.id} color={brand.grafite70} fontSize={16}>
             {item.name}: {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
@@ -336,11 +336,11 @@ export function QuoteCard({
         ))}
       </YStack>
       {priceTotals.totalMinEurCents > 0 || priceTotals.totalMaxEurCents > 0 ? (
-        <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$1">
-          <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+        <YStack backgroundColor={brand.gesso} borderRadius="3" padding="3" gap="1">
+          <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
             Totale indicativo
           </Text>
-          <XStack alignItems="baseline" gap="$2" flexWrap="wrap">
+          <XStack alignItems="baseline" gap="2" flexWrap="wrap">
             {/* Prezzo cambiato dal professionista: il vecchio sbarrato accanto
                 al nuovo, per non accettare un aumento senza accorgersene
                 (docs/CHANGELOG.md §196). */}
@@ -349,7 +349,7 @@ export function QuoteCard({
                 {previousPriceText}
               </Text>
             ) : null}
-            <Text fontSize="$6" fontWeight="800" color={brand.grafite}>
+            <Text fontSize="6" fontWeight="800" color={brand.grafite}>
               {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
             </Text>
             {/* "IVA inclusa" solo per chi la applica, altrimenti "Prezzo finale" (docs/CHANGELOG.md §378). */}
@@ -382,8 +382,8 @@ export function QuoteCard({
         </Text>
       ) : null}
       {quote.notes ? (
-        <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$1">
-          <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+        <YStack backgroundColor={brand.gesso} borderRadius="3" padding="3" gap="1">
+          <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
             Messaggio del professionista
           </Text>
           <Text color={brand.grafite70} fontSize={16}>
@@ -393,7 +393,7 @@ export function QuoteCard({
       ) : null}
 
       {sameTimeConflict && quote.status === "SENT" && !notChosen ? (
-        <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" borderLeftWidth={3} borderLeftColor={brand.ottone}>
+        <YStack backgroundColor={brand.gesso} borderRadius="3" padding="3" borderLeftWidth={3} borderLeftColor={brand.ottone}>
           <Text fontSize={14} color={brand.grafite}>
             A quell'ora hai già un appuntamento con <Text fontWeight="700">{sameTimeConflict.businessName}</Text>. Se accetti questo, ricordati di annullare l'altro.
           </Text>
@@ -413,18 +413,18 @@ export function QuoteCard({
               quel passaggio (docs/CHANGELOG.md §225). */}
           {/* Fattura chiesta al professionista, non a noi (richiesta dell'utente del 27/10/2026, §378). */}
           {!isChoosingDate && !confirmingReject ? (
-            <YStack gap="$3" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+            <YStack gap="3" paddingTop="2" borderTopWidth={1} borderTopColor={brand.filetto}>
               <InvoiceRequestToggle professionalName={quote.businessName} checked={invoiceWanted} receipt={quote.professionalKind === "PRIVATE"} onToggle={() => void toggleInvoice()} />
               {invoiceWanted ? <InvoiceRequestFields draft={invoiceDraft} onChange={setInvoiceDraft} errors={invoiceErrors} receipt={quote.professionalKind === "PRIVATE"} /> : null}
             </YStack>
           ) : null}
           {!choosingPayment && !isChoosingDate && !confirmingReject ? (
-            <XStack gap="$2" flexWrap="wrap" alignItems="center" $xs={{ flexDirection: "column-reverse", alignItems: "stretch" }}>
+            <XStack gap="2" flexWrap="wrap" alignItems="center xs:stretch" flexDirection="xs:column-reverse">
               <CardButton
                 tone="primary"
                 arrow={false}
                 disabled={isAccepting || selectablePayments.length === 0}
-                $xs={{ height: 48 }}
+                height="44px xs:48px"
                 onPress={() => {
                   // Sempre il riepilogo prima di accettare, anche con un solo
                   // modo di pagamento (collaudo A-07): un tocco per sbaglio da
@@ -437,18 +437,18 @@ export function QuoteCard({
                 Accetta preventivo
               </CardButton>
               {/* "Proponi un'altra data", non "Modifica": il prezzo non si cambia da qui (collaudo A-05). */}
-              <XStack gap="$2" flexWrap="wrap">
-                <CardButton $xs={{ height: 48, flexGrow: 1, flexBasis: 150, paddingHorizontal: 12 }} onPress={startChoosingDate}>
+              <XStack gap="2" flexWrap="wrap">
+                <CardButton height="44px xs:48px" flexGrow="xs:1" flexBasis="xs:150px" paddingHorizontal="24px xs:12px" onPress={startChoosingDate}>
                   Proponi un&apos;altra data
                 </CardButton>
-                <CardButton tone="danger" $xs={{ height: 48, flexGrow: 1, flexBasis: 100, paddingHorizontal: 12 }} onPress={() => setConfirmingReject(true)}>
+                <CardButton tone="danger" height="44px xs:48px" flexGrow="xs:1" flexBasis="xs:100px" paddingHorizontal="24px xs:12px" onPress={() => setConfirmingReject(true)}>
                   Rifiuta
                 </CardButton>
               </XStack>
             </XStack>
           ) : null}
           {choosingPayment ? (
-            <YStack gap="$3" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+            <YStack gap="3" paddingTop="2" borderTopWidth={1} borderTopColor={brand.filetto}>
               {selectablePayments.length > 1 ? (
                 <PaymentChoice
                   value={paymentMethod}
@@ -474,13 +474,13 @@ export function QuoteCard({
                   {taxBonusOpen ? (
                     TAX_BONUS_PAYMENT_NOTE.more
                   ) : (
-                    <Text fontSize={13} fontWeight="700" color={brand.cianografiaScuro} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={() => setTaxBonusOpen(true)}>
+                    <Text fontSize={13} fontWeight="700" color={brand.cianografiaScuro} textDecorationLine="underline" cursor="pointer" role="button" onPress={() => setTaxBonusOpen(true)}>
                       Scopri di più
                     </Text>
                   )}
                 </Text>
               ) : null}
-              <XStack gap="$2" flexWrap="wrap">
+              <XStack gap="2" flexWrap="wrap">
                 <CardButton
                   tone="primary"
                   arrow
@@ -497,7 +497,7 @@ export function QuoteCard({
             </YStack>
           ) : null}
           {!isChoosingDate && confirmingReject ? (
-            <YStack gap="$2">
+            <YStack gap="2">
               <Text fontSize={13} color={brand.urgenza}>
                 Rifiutare questo preventivo?
               </Text>
@@ -511,7 +511,7 @@ export function QuoteCard({
                 maxLength={1000}
                 style={textareaStyle}
               />
-              <XStack gap="$2" alignItems="center" flexWrap="wrap">
+              <XStack gap="2" alignItems="center" flexWrap="wrap">
                 <CardButton tone="dangerSolid" onPress={handleRejectQuote} disabled={isRejecting}>
                   {isRejecting ? "Rifiuto..." : "Conferma rifiuto"}
                 </CardButton>
@@ -528,7 +528,7 @@ export function QuoteCard({
                     color={brand.urgenza}
                     textDecorationLine="underline"
                     cursor="pointer"
-                    accessibilityRole="button"
+                    role="button"
                     onPress={() => {
                       setConfirmingReject(false);
                       onDeleteRequest();
@@ -543,7 +543,7 @@ export function QuoteCard({
           {dateChooser}
         </>
       ) : quote.status === "MODIFICATION_REQUESTED" ? (
-        <YStack gap="$1">
+        <YStack gap="1">
           <Text fontSize={13} color={brand.ottone} fontWeight="600">
             {/* Stessa data e stesso orario: hai solo aggiunto una nota (docs/CHANGELOG.md §196). */}
             {quote.clientProposedDate &&
@@ -561,7 +561,7 @@ export function QuoteCard({
             </Text>
           ) : null}
           {!isChoosingDate ? (
-            <CardButton alignSelf="flex-start" $xs={{ height: 48 }} onPress={startChoosingDate}>
+            <CardButton alignSelf="flex-start" height="44px xs:48px" onPress={startChoosingDate}>
               Cambia proposta
             </CardButton>
           ) : null}
@@ -573,7 +573,7 @@ export function QuoteCard({
           Accettato
         </Text>
       ) : quote.status === "REJECTED" ? (
-        <YStack gap="$1">
+        <YStack gap="1">
           <Text fontSize={13} color={brand.urgenza} fontWeight="600">
             Hai rifiutato questo preventivo
           </Text>

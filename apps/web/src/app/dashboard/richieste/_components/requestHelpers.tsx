@@ -114,9 +114,9 @@ export function leadSearchText(lead: ProfessionalLead, stage: RequestStage | und
 export function StagePill({ stage, label }: { stage: RequestStage; label?: string }) {
   const s = STAGE_STYLE[stage];
   return (
-    <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={999} backgroundColor={s.bg}>
+    <XStack alignItems="center" gap={6} paddingHorizontal="3" paddingVertical={8} borderRadius={999} backgroundColor={s.bg}>
       <Icon name={s.icon} size={15} strokeWidth={2} color={s.fg} />
-      <Text fontFamily="$body" fontSize={16} fontWeight="700" color={s.fg}>
+      <Text fontFamily="body" fontSize={16} fontWeight="700" color={s.fg}>
         {label ?? s.label}
       </Text>
     </XStack>
@@ -125,9 +125,9 @@ export function StagePill({ stage, label }: { stage: RequestStage; label?: strin
 
 export function ServiceBadge({ online }: { online: boolean }) {
   return (
-    <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={999} backgroundColor={brand.gesso}>
+    <XStack alignItems="center" gap={6} paddingHorizontal="3" paddingVertical={8} borderRadius={999} backgroundColor={brand.gesso}>
       <Icon name={online ? "video" : "house"} size={15} strokeWidth={2} color={brand.cianografiaScuro} />
-      <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.grafite}>
+      <Text fontFamily="body" fontSize={16} fontWeight="700" color={brand.grafite}>
         {online ? "Consulenza online" : "A domicilio"}
       </Text>
     </XStack>
@@ -147,9 +147,9 @@ export function DeadlinePill({ deadline }: { deadline: { label: string; urgent: 
   const bg = deadline.urgent ? "#FBEAEA" : "#FFF3D6";
   return (
     // Può andare a capo da telefono invece di uscire dalla scheda (§349).
-    <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={20} backgroundColor={bg} maxWidth="100%">
+    <XStack alignItems="center" gap={6} paddingHorizontal="3" paddingVertical={8} borderRadius={20} backgroundColor={bg} maxWidth="100%">
       <Icon name="clock" size={15} strokeWidth={2} color={color} />
-      <Text fontFamily="$body" fontSize={16} fontWeight="800" color={color} flexShrink={1}>
+      <Text fontFamily="body" fontSize={16} fontWeight="800" color={color} flexShrink={1}>
         {deadline.label}
       </Text>
     </XStack>
@@ -194,7 +194,7 @@ export function MiniTimeline({ stage }: { stage: RequestStage }) {
               zIndex={1}
               marginBottom={5}
             />
-            <Text fontFamily="$body" fontSize={10} fontWeight={done ? "700" : "500"} color={done ? (step.extra ? "#8a5a00" : brand.grafite) : brand.grafite70} textAlign="center">
+            <Text fontFamily="body" fontSize={10} fontWeight={done ? "700" : "500"} color={done ? (step.extra ? "#8a5a00" : brand.grafite) : brand.grafite70} textAlign="center">
               {step.label}
             </Text>
           </YStack>
@@ -234,7 +234,7 @@ export function BusyTimeNotice({ bookings }: { bookings: readonly ProfessionalBo
     .map((b) => `${formatAppointmentTimeRange(b.scheduledAt, b.scheduledEndAt ?? b.scheduledAt)}${b.clientName ? ` con ${b.clientName}` : ""}`)
     .join(", ");
   return (
-    <XStack gap="$2" alignItems="flex-start" role="status">
+    <XStack gap="2" alignItems="flex-start" role="status">
       <Icon name="clock" size={16} color={brand.grafite} />
       <Text fontSize={14} color={brand.grafite} flex={1}>
         {bookings.length === 1 ? "In quell'orario hai già un lavoro" : `In quell'orario hai già ${bookings.length} lavori`}: {times}. Puoi mandarlo lo stesso.

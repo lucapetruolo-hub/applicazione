@@ -77,7 +77,7 @@ export default function StatementPage() {
     <DocumentPage back={back} title={capitalize(accountingMonthLabel(statement.month))} subtitle="Quanto ti hanno pagato i clienti, quanto abbiamo trattenuto e i bonifici.">
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
         {tiles.map((tile) => (
-          <YStack key={tile.label} backgroundColor={brand.gesso} borderRadius={10} padding="$3" gap={2}>
+          <YStack key={tile.label} backgroundColor={brand.gesso} borderRadius={10} padding="3" gap={2}>
             <Text fontSize={13} color={brand.grafite70}>
               {tile.label}
             </Text>
@@ -95,8 +95,8 @@ export default function StatementPage() {
       ) : (
         <>
           {/* Computer: tabella. Telefono: una scheda per lavoro. */}
-          <YStack display="none" $gtSm={{ display: "flex" }}>
-            <XStack paddingVertical="$2" borderBottomWidth={2} borderColor={brand.filetto} gap="$2">
+          <YStack display="none gtSm:flex">
+            <XStack paddingVertical="2" borderBottomWidth={2} borderColor={brand.filetto} gap="2">
               <HeaderCell width={56}>Data</HeaderCell>
               <HeaderCell flex={1}>Lavoro</HeaderCell>
               <HeaderCell width={90} right>
@@ -113,7 +113,7 @@ export default function StatementPage() {
               </HeaderCell>
             </XStack>
             {statement.rows.map((row) => (
-              <XStack key={row.jobPaymentId ?? "altro"} paddingVertical="$3" borderBottomWidth={1} borderColor={brand.filetto} gap="$2" alignItems="flex-start">
+              <XStack key={row.jobPaymentId ?? "altro"} paddingVertical="3" borderBottomWidth={1} borderColor={brand.filetto} gap="2" alignItems="flex-start">
                 <Text width={56} fontSize={15} color={brand.grafite}>
                   {shortDate(row.date)}
                 </Text>
@@ -139,10 +139,10 @@ export default function StatementPage() {
               </XStack>
             ))}
           </YStack>
-          <YStack $gtSm={{ display: "none" }}>
+          <YStack display="gtSm:none">
             {statement.rows.map((row) => (
-              <YStack key={row.jobPaymentId ?? "altro"} paddingVertical="$3" borderBottomWidth={1} borderColor={brand.filetto} gap="$1">
-                <XStack gap="$2" alignItems="baseline">
+              <YStack key={row.jobPaymentId ?? "altro"} paddingVertical="3" borderBottomWidth={1} borderColor={brand.filetto} gap="1">
+                <XStack gap="2" alignItems="baseline">
                   <Text fontSize={15} color={brand.grafite70}>
                     {shortDate(row.date)}
                   </Text>
@@ -200,8 +200,8 @@ export default function StatementPage() {
       </NoteBox>
 
       <div data-print-hide>
-        <YStack gap="$2">
-          <XStack gap="$3" flexWrap="wrap">
+        <YStack gap="2">
+          <XStack gap="3" flexWrap="wrap">
             <Button variant="primary" onPress={() => void downloadCsv()}>Scarica per il commercialista</Button>
             <PdfButton variant="secondary" load={() => apiClient.documentsStatementPdf(token ?? "", statement.month)} fileName={`estratto-${statement.month}.pdf`} />
           </XStack>

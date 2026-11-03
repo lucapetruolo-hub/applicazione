@@ -176,10 +176,10 @@ export function SetupJourneyView({ steps, title = "Completa il profilo" }: { ste
   usePublishJourney(steps);
   const done = steps.filter((step) => step.state === "done").length;
   return (
-    <Surface gap="$4" role="status" aria-label={title}>
-      <YStack gap="$2">
-        <XStack alignItems="baseline" justifyContent="space-between" gap="$3" flexWrap="wrap">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+    <Surface gap="4" role="status" aria-label={title}>
+      <YStack gap="2">
+        <XStack alignItems="baseline" justifyContent="space-between" gap="3" flexWrap="wrap">
+          <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
             {title}
           </Text>
           <Text fontSize={16} fontWeight="700" color={brand.grafite70}>
@@ -197,8 +197,8 @@ export function SetupJourneyView({ steps, title = "Completa il profilo" }: { ste
           return (
             <li key={step.key} className={`journey-step is-${step.state}`} aria-current={active ? "step" : undefined}>
               <StepMarker step={step} index={index} />
-              <YStack flex={1} minWidth={0} gap="$1" paddingTop={6} paddingBottom={index < steps.length - 1 ? "$3" : 0}>
-                <XStack gap="$2" alignItems="center" flexWrap="wrap">
+              <YStack flex={1} minWidth={0} gap="1" paddingTop={6} paddingBottom={index < steps.length - 1 ? "3" : 0}>
+                <XStack gap="2" alignItems="center" flexWrap="wrap">
                   <Text fontWeight="800" color={step.state === "locked" ? brand.grafite70 : brand.grafite}>
                     {step.title}
                   </Text>
@@ -236,7 +236,7 @@ export function JourneyProgress({ steps, here }: { steps: JourneyStep[]; here: J
   if (index < 0) return null;
   return (
     <nav aria-label="Percorso per completare il profilo">
-      <Text fontSize={16} fontWeight="700" color={brand.grafite70} marginBottom="$2">
+      <Text fontSize={16} fontWeight="700" color={brand.grafite70} marginBottom="2">
         Passo {index + 1} di {steps.length}
       </Text>
       <ol className="journey-bar">
@@ -303,14 +303,14 @@ export function SetupJourneyCard({ steps }: { steps: JourneyStep[] | null }) {
 function SetupJourneyCompact({ steps, step }: { steps: JourneyStep[]; step: JourneyStep }) {
   usePublishJourney(steps);
   return (
-    <XStack gap="$3" alignItems="center" padding="$4" borderRadius={16} backgroundColor="#FFFFFF" flexWrap="wrap" role="status" aria-label="Completa il profilo">
+    <XStack gap="3" alignItems="center" padding="4" borderRadius={16} backgroundColor="#FFFFFF" flexWrap="wrap" role="status" aria-label="Completa il profilo">
       {/* Come l'avviso dell'agenda: icona e testo sulla stessa riga, su telefono va a capo solo il pulsante. */}
-      <XStack flex={1} minWidth={240} gap="$3" alignItems="center">
+      <XStack flex={1} minWidth={240} gap="3" alignItems="center">
         <YStack width={40} height={40} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor={brand.gesso} flexShrink={0} aria-hidden>
           <Icon name={step.icon} size={20} color={brand.grafite70} />
         </YStack>
         <YStack flex={1} minWidth={0} gap={2}>
-          <XStack gap="$2" alignItems="center" flexWrap="wrap">
+          <XStack gap="2" alignItems="center" flexWrap="wrap">
             <Text fontWeight="800" color={brand.grafite}>
               {step.title}
             </Text>

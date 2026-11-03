@@ -15,9 +15,9 @@ export function isProfileMissingError(err: unknown): boolean {
 
 export function ProfileMissingNotice({ text }: { text: string }) {
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-        <Text fontFamily="$heading" fontWeight="700" fontSize="$7" color={brand.grafite} textAlign="center">
+    <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
+        <Text fontFamily="heading" fontWeight="700" fontSize="7" color={brand.grafite} textAlign="center">
           Completa il tuo profilo per iniziare
         </Text>
         <Text color={brand.grafite70} textAlign="center">

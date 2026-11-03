@@ -56,9 +56,9 @@ export default function ProfessionistiSalvatiPage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi per vedere i tuoi professionisti salvati
           </Text>
           <Link href="/accedi?redirect=/professionisti-salvati" style={{ textDecoration: "none" }}>
@@ -70,17 +70,17 @@ export default function ProfessionistiSalvatiPage() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
-      <XStack width="100%" maxWidth={880} gap="$8" alignItems="flex-start" flexWrap="wrap">
-        <YStack flex={1} minWidth={280} gap="$5">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="8" paddingHorizontal="4">
+      <XStack width="100%" maxWidth={880} gap="8" alignItems="flex-start" flexWrap="wrap">
+        <YStack flex={1} minWidth={280} gap="5">
+          <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             Professionisti salvati
           </Text>
 
           {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
           {professionals === null ? (
-            <YStack gap="$3">
+            <YStack gap="3">
               <SkeletonProfessionalCard />
               <SkeletonProfessionalCard />
               <SkeletonProfessionalCard />
@@ -100,7 +100,7 @@ export default function ProfessionistiSalvatiPage() {
               }
             />
           ) : (
-            <YStack gap="$3">
+            <YStack gap="3">
               {professionals.map((pro, index) => {
                 const saved = !unsavedIds.has(pro.id);
                 return (

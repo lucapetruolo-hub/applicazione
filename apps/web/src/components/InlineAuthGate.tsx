@@ -46,7 +46,7 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
       }}
     >
       <div role="dialog" aria-modal="true" aria-label="Accedi o crea un account per inviare la richiesta" style={{ width: "100%", maxWidth: 440 }}>
-        <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5">
+        <YStack width="100%" backgroundColor={brand.calce} borderRadius="5" padding="5">
           <ClientEmailFirstAuth
             intro="Richieste e preventivi saranno collegati a questa email: li ritrovi nel tuo account e ricevi gli aggiornamenti. Quello che hai scritto resta com'è."
             firstTimeNote="Se è la tua prima richiesta, creeremo il tuo account gratuito per seguire preventivi, messaggi e lavori."
@@ -55,7 +55,7 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
             renderHeader={(step, back) => (
               // Stessa intestazione a passi della registrazione (docs/CHANGELOG.md
               // §279): "Indietro" torna al campo email, la ✕ chiude il popup.
-              <YStack gap="$3">
+              <YStack gap="3">
                 <div className="auth-step-top">
                   {back ? (
                     <button type="button" className="auth-back" onClick={back}>
@@ -76,11 +76,11 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
                   <span className="is-done" />
                   <span className={back ? "is-done" : undefined} />
                 </div>
-                <YStack gap="$1">
-                  <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
+                <YStack gap="1">
+                  <Text fontFamily="body" fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
                     {HEADERS[step].eyebrow}
                   </Text>
-                  <Text tag="h2" fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+                  <Text render="h2" fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
                     {HEADERS[step].title}
                   </Text>
                 </YStack>

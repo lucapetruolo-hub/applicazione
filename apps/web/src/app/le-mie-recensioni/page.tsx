@@ -33,9 +33,9 @@ function Stars({ rating }: { rating: number }) {
 function MediaRow({ urls }: { urls: string[] }) {
   if (urls.length === 0) return null;
   return (
-    <XStack gap="$2" flexWrap="wrap">
+    <XStack gap="2" flexWrap="wrap">
       {urls.map((url) => (
-        <YStack key={url} width={72} height={72} borderRadius="$2" overflow="hidden" borderWidth={1} borderColor={brand.filetto}>
+        <YStack key={url} width={72} height={72} borderRadius="2" overflow="hidden" borderWidth={1} borderColor={brand.filetto}>
           <MediaPreview url={url} />
         </YStack>
       ))}
@@ -72,9 +72,9 @@ export default function LeMieRecensioniPage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi per vedere le tue recensioni
           </Text>
           <Link href="/accedi?redirect=/le-mie-recensioni" style={{ textDecoration: "none" }}>
@@ -86,10 +86,10 @@ export default function LeMieRecensioniPage() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={880} gap="$5">
-        <YStack gap="$1">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="8" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={880} gap="5">
+        <YStack gap="1">
+          <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             Le mie recensioni
           </Text>
           <Text color={brand.grafite70}>Le recensioni che hai lasciato ai professionisti dopo un lavoro concluso.</Text>
@@ -104,13 +104,13 @@ export default function LeMieRecensioniPage() {
 
 function PendingReviews({ bookings }: { bookings: ClientBooking[] }) {
   return (
-    <YStack gap="$3">
-      <Text tag="h2" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+    <YStack gap="3">
+      <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
         Lavori che puoi ancora recensire
       </Text>
       {bookings.map((booking) => (
-        <Surface key={booking.id} gap="$3">
-          <XStack alignItems="center" gap="$3" flexWrap="wrap">
+        <Surface key={booking.id} gap="3">
+          <XStack alignItems="center" gap="3" flexWrap="wrap">
             <Avatar name={booking.businessName} imageUrl={booking.professionalImageUrl} size={40} />
             <YStack flex={1} minWidth={180} gap={2}>
               <Text fontWeight="700" color={brand.grafite} numberOfLines={1}>
@@ -145,13 +145,13 @@ function SentReviewsList({ reviews, error, hasPending }: { reviews: SentReview[]
     );
   }
   return (
-    <YStack gap="$3">
+    <YStack gap="3">
       {reviews.map((review) => (
-        <Surface key={review.id} gap="$2">
+        <Surface key={review.id} gap="2">
           {/* Ancora per il link dell'avviso "Il professionista ha risposto": un <div> grezzo, come sul profilo pubblico. */}
           <div id={`recensione-${review.id}`} style={{ scrollMarginTop: 96 }} />
-          <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">
-            <XStack alignItems="center" gap="$2" flexWrap="wrap">
+          <XStack alignItems="center" justifyContent="space-between" gap="2" flexWrap="wrap">
+            <XStack alignItems="center" gap="2" flexWrap="wrap">
               <Stars rating={review.rating} />
               {review.professionalProfileId ? (
                 <Link href={`/professionista/${review.professionalProfileId}`} style={{ textDecoration: "none" }}>

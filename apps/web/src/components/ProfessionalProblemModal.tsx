@@ -111,29 +111,29 @@ export function ProfessionalProblemModal({
         width="100%"
         maxWidth={480}
         backgroundColor={brand.calce}
-        borderRadius="$3"
+        borderRadius="3"
         borderWidth={1.5}
         borderColor={brand.urgenza}
-        padding="$5"
-        gap="$4"
-        marginVertical="$6"
+        padding="5"
+        gap="4"
+        marginVertical="6"
       >
         {sent ? (
-          <YStack gap="$3">
-            <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+          <YStack gap="3">
+            <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
               Segnalazione inviata
             </Text>
             <Text fontSize={16} color={brand.grafite70}>
               L&apos;abbiamo scritta in chat a {clientName} e la verificheremo il prima possibile.
             </Text>
-            <Button variant="secondary" size="$3" onPress={onClose}>
+            <Button variant="secondary" size="3" onPress={onClose}>
               Chiudi
             </Button>
           </YStack>
         ) : (
           <>
-            <YStack gap="$1">
-              <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+            <YStack gap="1">
+              <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
                 Qualcosa è andato male?
               </Text>
               <Text fontSize={16} color={brand.grafite70}>
@@ -141,8 +141,8 @@ export function ProfessionalProblemModal({
               </Text>
             </YStack>
 
-            <YStack gap="$2">
-              <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+            <YStack gap="2">
+              <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Motivo
               </Text>
               <select aria-label="Motivo" value={reason} onChange={(e) => setReason(e.target.value as ProfessionalJobProblemReason)} style={fieldStyle}>
@@ -154,8 +154,8 @@ export function ProfessionalProblemModal({
               </select>
             </YStack>
 
-            <YStack gap="$2">
-              <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+            <YStack gap="2">
+              <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Cosa è successo
               </Text>
               <textarea aria-label="Cosa è successo"
@@ -168,13 +168,13 @@ export function ProfessionalProblemModal({
               />
             </YStack>
 
-            <YStack gap="$1">
+            <YStack gap="1">
               <Text fontSize={13} color={brand.grafite70}>
                 Foto o video (facoltativi, fino a {MAX_PHOTOS})
               </Text>
-              <XStack flexWrap="wrap" gap="$2">
+              <XStack flexWrap="wrap" gap="2">
                 {photoUrls.map((url) => (
-                  <YStack key={url} width={64} height={64} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+                  <YStack key={url} width={64} height={64} borderRadius="3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
                     <MediaPreview url={url} />
                     <YStack
                       position="absolute"
@@ -188,8 +188,8 @@ export function ProfessionalProblemModal({
                       justifyContent="center"
                       cursor="pointer"
                       onPress={() => setPhotoUrls((prev) => prev.filter((u) => u !== url))}
-                      accessibilityRole="button"
-                      accessibilityLabel="Rimuovi foto"
+                      role="button"
+                      aria-label="Rimuovi foto"
                     >
                       <X size={11} strokeWidth={2} color="white" />
                     </YStack>
@@ -197,24 +197,24 @@ export function ProfessionalProblemModal({
                 ))}
                 {photoUrls.length < MAX_PHOTOS ? (
                   <YStack
-                    width={64}
-                    height={64}
-                    borderRadius="$3"
-                    borderWidth={1}
-                    borderColor={brand.filetto}
-                    borderStyle="dashed"
-                    alignItems="center"
-                    justifyContent="center"
-                    cursor="pointer"
-                    opacity={isUploading ? 0.6 : 1}
-                    onPress={() => !isUploading && inputRef.current?.click()}
-                    accessibilityRole="button"
-                    accessibilityLabel="Aggiungi foto"
-                  >
+                      width={64}
+                      height={64}
+                      borderRadius="3"
+                      borderWidth={1}
+                      borderColor={brand.filetto}
+                      borderStyle="dashed"
+                      alignItems="center"
+                      justifyContent="center"
+                      cursor="pointer"
+                      opacity={isUploading ? 0.6 : 1}
+                      onPress={() => !isUploading && inputRef.current?.click()}
+                      role="button"
+                      aria-label="Aggiungi foto"
+                    >
                     {isUploading ? (
                       <UploadingDots dotSize={6} />
                     ) : (
-                      <Text fontSize="$6" color={brand.grafite70}>
+                      <Text fontSize="6" color={brand.grafite70}>
                         +
                       </Text>
                     )}
@@ -230,11 +230,11 @@ export function ProfessionalProblemModal({
               </Text>
             ) : null}
 
-            <XStack gap="$2" flexWrap="wrap">
-              <Button variant="urgent" size="$3" height={44} onPress={handleSubmit} disabled={isSaving || isUploading} opacity={isSaving ? 0.6 : 1}>
+            <XStack gap="2" flexWrap="wrap">
+              <Button variant="urgent" size="3" height={44} opacity={isSaving ? 0.6 : 1} onPress={handleSubmit} disabled={isSaving || isUploading}>
                 {isSaving ? "Invio..." : "Invia segnalazione"}
               </Button>
-              <Button variant="ghost" size="$3" height={44} onPress={onClose} disabled={isSaving}>
+              <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSaving}>
                 Annulla
               </Button>
             </XStack>

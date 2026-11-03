@@ -108,11 +108,11 @@ export default function InvoicePage() {
             ))}
           </YStack>
         ))}
-        <YStack paddingTop="$2">
+        <YStack paddingTop="2">
           <AmountRow label="Imponibile" value={eur(invoice.taxableEurCents)} divider={false} />
           <AmountRow label={`IVA ${invoice.vatRatePercent}%`} value={eur(invoice.vatEurCents)} divider={false} />
           {invoice.roundingEurCents !== 0 ? <AmountRow label="Arrotondamento" value={eur(invoice.roundingEurCents)} divider={false} /> : null}
-          <YStack borderTopWidth={2} borderColor={brand.grafite} marginTop="$2">
+          <YStack borderTopWidth={2} borderColor={brand.grafite} marginTop="2">
             <AmountRow label="Totale" value={eur(invoice.totalEurCents)} strong large divider={false} />
           </YStack>
         </YStack>
@@ -139,7 +139,7 @@ export default function InvoicePage() {
         </NoteBox>
       ) : null}
 
-      <YStack gap="$2" borderTopWidth={1} borderColor={brand.filetto} paddingTop="$3">
+      <YStack gap="2" borderTopWidth={1} borderColor={brand.filetto} paddingTop="3">
         <LearnMore fontSize={16} summary="Dati per il commercialista">
           {platformInvoiceTechnicalNotes(invoice).map((line) => (
             <Text key={line} fontSize={16} color={brand.grafite70}>
@@ -153,8 +153,8 @@ export default function InvoicePage() {
       </YStack>
 
       <div data-print-hide>
-        <YStack gap="$2">
-          <XStack gap="$3" flexWrap="wrap">
+        <YStack gap="2">
+          <XStack gap="3" flexWrap="wrap">
             <PdfButton load={() => apiClient.documentsInvoicePdf(token ?? "", invoice.id)} fileName={`${invoice.creditNote ? "nota-di-credito" : "fattura"}-${invoice.number.replace(/\//g, "-")}.pdf`} />
             <Button variant="secondary" onPress={() => void downloadXml()}>
               Scarica XML

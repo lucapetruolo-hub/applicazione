@@ -19,7 +19,7 @@ export function WhatsAppReminderLink({
   if (!status?.available || status.enabled) return null;
   return (
     <Link href="/account/notifiche#whatsapp" className="whatsapp-reminder-link">
-      <XStack alignItems="flex-start" gap="$2">
+      <XStack alignItems="flex-start" gap="2">
         <span style={{ display: "inline-flex", marginTop: 3, flexShrink: 0 }}>
           <Icon name="message-circle" size={16} color={brand.cianografiaScuro} />
         </span>

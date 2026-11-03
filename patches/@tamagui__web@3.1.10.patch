@@ -1,0 +1,26 @@
+diff --git a/dist/cjs/createComponent.cjs b/dist/cjs/createComponent.cjs
+index 7e370fd4161b8ef1dd9c2e8522a067bf44191983..a1b8c3ff01cdad95513daab27be4ac9f9b8fb0ba 100644
+--- a/dist/cjs/createComponent.cjs
++++ b/dist/cjs/createComponent.cjs
+@@ -820,7 +820,7 @@ ${banner}
+ 			onPress: attachPress ? (e) => {
+ 				unPress();
+ 				onClick?.(e);
+-				if (onPress || onClick) e.stopPropagation();
++				// Come Tamagui 1: il tocco risale ai contenitori (patches/, docs/changelog/2026-11-02-tamagui-3.md).
+ 				onPress?.(e);
+ 				onLongPress?.(e);
+ 			} : void 0,
+diff --git a/dist/esm/createComponent.mjs b/dist/esm/createComponent.mjs
+index 0c4c0c0ba577c18739d7e6ddce3b382fe03f841f..38f60557b72e2ec178692db3e68a54f1b318c9ba 100644
+--- a/dist/esm/createComponent.mjs
++++ b/dist/esm/createComponent.mjs
+@@ -782,7 +782,7 @@ ${banner}
+ 			onPress: attachPress ? (e) => {
+ 				unPress();
+ 				onClick?.(e);
+-				if (onPress || onClick) e.stopPropagation();
++				// Come Tamagui 1: il tocco risale ai contenitori (patches/, docs/changelog/2026-11-02-tamagui-3.md).
+ 				onPress?.(e);
+ 				onLongPress?.(e);
+ 			} : void 0,

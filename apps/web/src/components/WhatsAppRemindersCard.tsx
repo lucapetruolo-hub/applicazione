@@ -147,7 +147,7 @@ export function WhatsAppRemindersCard({
   const details = (
     <details className="bio-tips whatsapp-more">
       <summary>Scopri di più</summary>
-      <YStack gap="$1" paddingTop="$1">
+      <YStack gap="1" paddingTop="1">
         <Text fontSize={13} color={brand.grafite70}>
           Ti scriviamo solo per:
         </Text>

@@ -809,14 +809,14 @@ export function RequestCard({
   }
 
   return (
-    <Surface borderLeftWidth={4} borderLeftColor={s.border} gap="$0" padding={0} overflow="hidden">
+    <Surface borderLeftWidth={4} borderLeftColor={s.border} gap="0" padding={0} overflow="hidden">
       {/* Tutta l'intestazione si apre con un clic; per tastiera e lettore di
           schermo il comando è la freccia in fondo: un pulsante che contiene
           altri pulsanti (il menu delle azioni) non si legge e non si usa
           (docs/changelog/2026-10-30-tastiera.md, collaudo L-01). */}
-      <YStack padding="$4" gap="$2" cursor="pointer" onPress={onToggle}>
-        <XStack justifyContent="space-between" alignItems="flex-start" gap="$2" flexWrap="wrap">
-          <XStack gap="$2" flexWrap="wrap" flexShrink={1} minWidth={0}>
+      <YStack padding="4" gap="2" cursor="pointer" onPress={onToggle}>
+        <XStack justifyContent="space-between" alignItems="flex-start" gap="2" flexWrap="wrap">
+          <XStack gap="2" flexWrap="wrap" flexShrink={1} minWidth={0}>
             {/* Le richieste urgenti (costo lead maggiore, scadenza breve —
                 vedi guided-requests.service) erano indistinguibili dalle
                 normali: il badge rosso è la variante semantica prevista
@@ -837,7 +837,7 @@ export function RequestCard({
           </XStack>
           {/* Da telefono data e prezzo scendono sotto il nome (riga più in
               basso): qui andavano a capo prima del nome (docs/CHANGELOG.md §349). */}
-          <YStack alignItems="flex-end" $xs={{ display: "none" }}>
+          <YStack alignItems="flex-end" display="xs:none">
             <Text fontSize={16} color={brand.grafite70}>
               Ricevuta {formatDateTime(lead.createdAt)}
             </Text>
@@ -847,11 +847,11 @@ export function RequestCard({
                 l'informazione rilevante a lavoro concluso — richiesta
                 esplicita dell'utente. */}
             {stage === "completata" && booking?.finalAmountEurCents != null ? (
-              <Text fontFamily="$body" fontWeight="800" fontSize={18} color={brand.grafite}>
+              <Text fontFamily="body" fontWeight="800" fontSize={18} color={brand.grafite}>
                 {formatEur(booking.finalAmountEurCents)}
               </Text>
             ) : priceRange && (priceRange.totalMinEurCents > 0 || priceRange.totalMaxEurCents > 0) ? (
-              <Text fontFamily="$body" fontWeight="800" fontSize={18} color={brand.grafite}>
+              <Text fontFamily="body" fontWeight="800" fontSize={18} color={brand.grafite}>
                 {formatEurRange(priceRange.totalMinEurCents, priceRange.totalMaxEurCents)}
               </Text>
             ) : null}
@@ -862,24 +862,24 @@ export function RequestCard({
             (richiesta esplicita dell'utente: Urgente + stadio + modalità +
             scadenza vanno a capo e il pulsante finiva in conflitto con
             loro). */}
-        <XStack alignItems="flex-start" justifyContent="space-between" gap="$2">
+        <XStack alignItems="flex-start" justifyContent="space-between" gap="2">
           {/* Foto del cliente accanto al nome (richiesta esplicita
               dell'utente: riconoscere a colpo d'occhio di chi si tratta),
               iniziali se manca; niente per un account eliminato. */}
-          <XStack flex={1} minWidth={0} alignItems="center" gap="$2">
+          <XStack flex={1} minWidth={0} alignItems="center" gap="2">
             {gr.clientAccountDeleted ? null : <Avatar name={clientName} imageUrl={gr.clientImageUrl} size={40} />}
-            <Text flex={1} minWidth={0} fontFamily="$heading" fontWeight="800" fontSize={26} color={brand.grafite}>
+            <Text flex={1} minWidth={0} fontFamily="heading" fontWeight="800" fontSize={26} color={brand.grafite}>
               {clientName}
             </Text>
           </XStack>
-          <CardActionsMenu accessibilityLabel="Azioni sulla richiesta" actions={menuActions} />
+          <CardActionsMenu aria-label="Azioni sulla richiesta" actions={menuActions} />
         </XStack>
-        <XStack $gtXs={{ display: "none" }} alignItems="baseline" gap="$2" flexWrap="wrap">
+        <XStack display="gtXs:none" alignItems="baseline" gap="2" flexWrap="wrap">
           <Text fontSize={16} color={brand.grafite70}>
             Ricevuta {formatDateTime(lead.createdAt)}
           </Text>
           {headerAmount ? (
-            <Text fontFamily="$body" fontWeight="800" fontSize={18} color={brand.grafite}>
+            <Text fontFamily="body" fontWeight="800" fontSize={18} color={brand.grafite}>
               {headerAmount}
             </Text>
           ) : null}
@@ -904,33 +904,33 @@ export function RequestCard({
             prima stava in fondo, appena sopra la freccetta di
             apertura/chiusura scheda. */}
         {collapsedDateTime ? (
-          <XStack alignItems="center" gap="$1">
+          <XStack alignItems="center" gap="1">
             <Icon name="calendar" size={14} color={brand.grafite70} />
             <Text fontSize={16} fontWeight="700" color={brand.grafite}>
               {collapsedDateTime.label}: {collapsedDateTime.text}
             </Text>
           </XStack>
         ) : null}
-        <XStack alignItems="center" gap="$1">
+        <XStack alignItems="center" gap="1">
           <Icon name="wrench" size={15} color={brand.grafite70} />
           <Text fontSize={16} color={brand.grafite70}>
             {gr.categoryLabel} · {gr.city}
           </Text>
         </XStack>
-        <Text fontSize={16} color={brand.grafite} lineHeight={22}>
+        <Text fontSize={16} color={brand.grafite} lineHeight="22px">
           {gr.description}
         </Text>
         {/* Sotto la descrizione con l'icona, non più piccolo in un angolo tra
             i bollini (docs/CHANGELOG.md §349): è ciò che fa rispondere prima. */}
         {stage === "da_quotare" && competitorsLabel ? (
-          <XStack alignItems="center" gap="$1">
+          <XStack alignItems="center" gap="1">
             <Icon name="user-round" size={14} color={brand.grafite70} />
             <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
               {competitorsLabel}
             </Text>
           </XStack>
         ) : null}
-        <XStack alignItems="center" gap="$1">
+        <XStack alignItems="center" gap="1">
           <Icon name="map-pin" size={14} color={brand.grafite70} />
           <Text fontSize={16} color={brand.grafite70}>
             {isOnline ? `Zona: ${gr.city}` : (revealedAddress ?? gr.city)}
@@ -949,8 +949,8 @@ export function RequestCard({
             e.stopPropagation();
             onToggle();
           }}
-          accessibilityRole="button"
-          accessibilityLabel={isOpen ? "Chiudi la richiesta" : "Apri la richiesta"}
+          role="button"
+          aria-label={isOpen ? "Chiudi la richiesta" : "Apri la richiesta"}
           aria-expanded={isOpen}
         >
           <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={18} color={brand.grafite70} />
@@ -959,11 +959,11 @@ export function RequestCard({
       <ArchivedRestoreBar token={token} guidedRequestId={gr.id} myState={lead.myState} onChanged={onChanged} />
 
       {isOpen ? (
-        <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4" borderTopWidth={1} borderTopColor={brand.filetto}>
+        <YStack paddingHorizontal="4" paddingBottom="4" gap="4" borderTopWidth={1} borderTopColor={brand.filetto}>
           {dateChangePending && lead.quote?.clientProposedDate ? (
             proposalChange ? (
               <ScheduleChangeBox
-                marginTop="$3"
+                marginTop="3"
                 title={`Il cliente ha richiesto una modifica ${scheduleChangeOf(proposalChange)}`}
                 beforeLabel="Data originale"
                 beforeText={bookedDateChange && booking ? formatSlotRange(booking.scheduledAt, booking.scheduledEndAt) : formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
@@ -975,7 +975,7 @@ export function RequestCard({
               // Stessa data e stesso orario: il cliente ha solo aggiunto una
               // nota, niente "prima → ora" (docs/CHANGELOG.md §196).
               <ScheduleChangeBox
-                marginTop="$3"
+                marginTop="3"
                 title="Il cliente ha aggiunto una nota (data e orario invariati)"
                 afterLabel="Appuntamento"
                 afterText={formatSlotRange(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate)}
@@ -986,7 +986,7 @@ export function RequestCard({
             // Nota del cliente senza cambio di data: il preventivo resta
             // accettabile, qui la si legge e basta (docs/CHANGELOG.md §196).
             <ScheduleChangeBox
-              marginTop="$3"
+              marginTop="3"
               title="Il cliente ha aggiunto una nota (data e orario invariati)"
               afterLabel="Appuntamento"
               afterText={formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
@@ -995,7 +995,7 @@ export function RequestCard({
           ) : null}
           {myBookedDateChange && booking ? (
             <ScheduleChangeBox
-              marginTop="$3"
+              marginTop="3"
               title="Hai proposto un'altra data: in attesa del cliente"
               beforeLabel="Appuntamento di adesso"
               beforeText={formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}
@@ -1005,7 +1005,7 @@ export function RequestCard({
             />
           ) : null}
 
-          <XStack flexWrap="wrap" gap="$4" paddingTop="$3">
+          <XStack flexWrap="wrap" gap="4" paddingTop="3">
             {/* Sezione 1 — Dettagli cliente. Sfondo colorato (richiesta
                 esplicita dell'utente: "fai visualizzare meglio la sezione
                 dettagli cliente magari colorando lo sfondo") — stesso
@@ -1015,8 +1015,8 @@ export function RequestCard({
             <YStack
               flex={1}
               minWidth={260}
-              gap="$2"
-              padding="$3"
+              gap="2"
+              padding="3"
               borderRadius={radiusDoc}
               backgroundColor={brand.gesso}
               borderWidth={1}
@@ -1045,8 +1045,8 @@ export function RequestCard({
                     gap={4}
                     cursor="pointer"
                     alignSelf="flex-start"
-                    accessibilityRole="button"
-                    accessibilityLabel={`Vedi il profilo di ${clientName}`}
+                    role="button"
+                    aria-label={`Vedi il profilo di ${clientName}`}
                     onPress={() => setShowClientProfile(true)}
                   >
                     <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro} textDecorationLine="underline">
@@ -1105,7 +1105,7 @@ export function RequestCard({
                       di fianco, non più in una riga separata più sotto —
                       richiesta esplicita dell'utente. */}
                   {revealedPhone ? (
-                    <XStack alignItems="center" gap="$2" flexWrap="wrap">
+                    <XStack alignItems="center" gap="2" flexWrap="wrap">
                       <a href={`tel:${revealedPhone}`} style={{ textDecoration: "none" }}>
                         <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro} textDecorationLine="underline">
                           {revealedPhone}
@@ -1114,7 +1114,7 @@ export function RequestCard({
                       {whatsAppLink ? (
                         <a href={whatsAppLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
                           {/* Alto 44 per il dito e verde scuro di WhatsApp: il bianco sul verde chiaro si leggeva a 2:1 (collaudo D-07, L-09). */}
-                          <XStack minHeight={44} alignItems="center" paddingHorizontal="$3" borderRadius={10} backgroundColor="#075E54">
+                          <XStack minHeight={44} alignItems="center" paddingHorizontal="3" borderRadius={10} backgroundColor="#075E54">
                             <Text fontSize={13} fontWeight="700" color="white">
                               WhatsApp
                             </Text>
@@ -1122,7 +1122,7 @@ export function RequestCard({
                         </a>
                       ) : null}
                       <a href={`tel:${revealedPhone}`} style={{ textDecoration: "none" }}>
-                        <XStack minHeight={44} alignItems="center" paddingHorizontal="$3" borderRadius={10} backgroundColor={brand.cianografiaPieno}>
+                        <XStack minHeight={44} alignItems="center" paddingHorizontal="3" borderRadius={10} backgroundColor={brand.cianografiaPieno}>
                           <Text fontSize={13} fontWeight="700" color="white">
                             Chiama
                           </Text>
@@ -1147,8 +1147,8 @@ export function RequestCard({
                       alla scheda non hanno già "Contatta/Cronologia", che apre
                       la stessa conversazione (docs/CHANGELOG.md §228). */}
                   {stage === "scaduta" || stage === "chiusa" ? (
-                    <XStack gap="$2" flexWrap="wrap" paddingTop="$1">
-                      <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={10} backgroundColor={brand.cianografiaVelo} cursor="pointer" onPress={openTimeline} gap="$1" alignItems="center">
+                    <XStack gap="2" flexWrap="wrap" paddingTop="1">
+                      <XStack paddingHorizontal="3" paddingVertical={8} borderRadius={10} backgroundColor={brand.cianografiaVelo} cursor="pointer" gap="1" alignItems="center" onPress={openTimeline}>
                         <Text fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
                           Chat
                         </Text>
@@ -1161,15 +1161,15 @@ export function RequestCard({
             </YStack>
 
             {/* Sezione 2 — Descrizione lavoro */}
-            <YStack flex={1} minWidth={260} gap="$2">
+            <YStack flex={1} minWidth={260} gap="2">
               <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
                 Descrizione lavoro
               </Text>
-              <Text fontSize={16} color={brand.grafite} lineHeight={19}>
+              <Text fontSize={16} color={brand.grafite} lineHeight="19px">
                 {gr.description}
               </Text>
               {gr.photoUrls.length > 0 ? (
-                <XStack gap="$2" className="scroll-fade" style={{ overflowX: "auto" }}>
+                <XStack gap="2" className="scroll-fade" style={{ overflowX: "auto" }}>
                   {gr.photoUrls.map((url, i) => (
                     <YStack
                       key={url}
@@ -1181,8 +1181,8 @@ export function RequestCard({
                       borderColor={brand.filetto}
                       cursor="pointer"
                       onPress={() => setOpenPhotoIndex(i)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Apri foto ${i + 1}`}
+                      role="button"
+                      aria-label={`Apri foto ${i + 1}`}
                     >
                       <MediaPreview url={url} />
                     </YStack>
@@ -1194,7 +1194,7 @@ export function RequestCard({
 
           {/* Sezione 3 — Preventivo */}
           {lead.quote ? (
-            <YStack gap="$2" padding="$3" borderRadius={20} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
+            <YStack gap="2" padding="3" borderRadius={20} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
               <Text fontSize={16} fontWeight="800" color={brand.grafite}>
                 {stage === "accettata" || stage === "completata" || stage === "annullata" ? "Preventivo accettato" : "Il tuo preventivo"}
               </Text>
@@ -1320,7 +1320,7 @@ export function RequestCard({
           ) : null}
 
           {/* Sezione 4 — Note personali */}
-          <YStack gap="$2">
+          <YStack gap="2">
             <Text fontSize={13} fontWeight="700" color={brand.grafite}>
               Note personali (solo per te)
             </Text>
@@ -1345,7 +1345,7 @@ export function RequestCard({
 
           {/* Sezione 5 — Timeline mini */}
           {stage !== "scaduta" && stage !== "chiusa" ? (
-            <YStack gap="$2">
+            <YStack gap="2">
               <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
                 Andamento
               </Text>
@@ -1354,9 +1354,9 @@ export function RequestCard({
           ) : null}
 
           {/* Sezione 6 — Azioni */}
-          <YStack gap="$3" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
+          <YStack gap="3" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="3">
             {stage === "da_quotare" ? (
-              <XStack gap="$2" flexWrap="wrap">
+              <XStack gap="2" flexWrap="wrap">
                 {/* "Prepara il preventivo", e sparisce a modulo aperto: due
                     "Invia preventivo" con esiti diversi (uno apriva, l'altro
                     inviava) erano un errore da un tocco (docs/CHANGELOG.md §349). */}
@@ -1375,7 +1375,7 @@ export function RequestCard({
             ) : null}
 
             {stage === "in_attesa" ? (
-              <XStack gap="$2" flexWrap="wrap" alignItems="center">
+              <XStack gap="2" flexWrap="wrap" alignItems="center">
                 {/* Richiesta esplicita dell'utente: reso "più simile a un
                     pulsante" (prima variant="ghost", quasi solo testo) —
                     ottone/giallo, stesso token semantico già in uso per lo
@@ -1404,7 +1404,7 @@ export function RequestCard({
             ) : null}
 
             {stage === "modifica_richiesta" ? (
-              <XStack gap="$2" flexWrap="wrap">
+              <XStack gap="2" flexWrap="wrap">
                 <CardButton fill={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
                   {isConfirmingDate ? "Conferma..." : proposalChange ? "Accetta nuova data" : "Conferma appuntamento"}
                 </CardButton>
@@ -1426,7 +1426,7 @@ export function RequestCard({
 
             {bookedDateChange ? (
               // Stessi pulsanti della modifica di un preventivo; "Contatta" è già sotto, con il lavoro.
-              <XStack gap="$2" flexWrap="wrap">
+              <XStack gap="2" flexWrap="wrap">
                 <CardButton fill={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
                   {isConfirmingDate ? "Conferma..." : "Accetta nuova data"}
                 </CardButton>
@@ -1440,7 +1440,7 @@ export function RequestCard({
             ) : null}
 
             {stage === "accettata" || stage === "completata" || stage === "annullata" ? (
-              <XStack gap="$2" flexWrap="wrap">
+              <XStack gap="2" flexWrap="wrap">
                 {/* Stessi bottoni già in uso in /dashboard (AcceptedJobCard) —
                     richiesta esplicita dell'utente di implementarli identici
                     qui: "Lavoro terminato"/"Annulla intervento" finché la
@@ -1520,7 +1520,7 @@ export function RequestCard({
                 §188): possibile fino alla scadenza della richiesta, contata
                 dal suo invio, mai dal rifiuto. */}
             {canResendQuote && !showQuoteForm ? (
-              <YStack gap="$2" alignItems="flex-start">
+              <YStack gap="2" alignItems="flex-start">
                 <Text fontSize={13} color={brand.grafite70}>
                   {lead.quote?.resendUntil
                     ? `Puoi inviare un nuovo preventivo fino al ${formatDateTime(lead.quote.resendUntil)}, quando scade la richiesta.`
@@ -1537,7 +1537,7 @@ export function RequestCard({
                   {quoteWithdrawn ? "Elimina preventivo ritirato" : "Elimina richiesta"}
                 </CardButton>
               ) : (
-                <XStack gap="$2" alignItems="center" flexWrap="wrap">
+                <XStack gap="2" alignItems="center" flexWrap="wrap">
                   <Text fontSize={13} color={brand.grafite70}>
                     Confermi l&apos;eliminazione?
                   </Text>
@@ -1554,8 +1554,8 @@ export function RequestCard({
               (docs/CHANGELOG.md §253): al posto del modulo, cosa fare. Un
               preventivo già inviato resta modificabile. */}
           {showQuoteForm && identityBlocked ? (
-            <YStack gap="$2.5" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.ottoneVelo} borderWidth={1} borderColor={brand.ottone}>
-              <XStack gap="$2" alignItems="center">
+            <YStack gap="2-5" padding="3" borderRadius={radiusDoc} backgroundColor={brand.ottoneVelo} borderWidth={1} borderColor={brand.ottone}>
+              <XStack gap="2" alignItems="center">
                 <Icon name="id-card" size={20} color={brand.grafite} strokeWidth={1.8} />
                 <Text fontWeight="700" color={brand.grafite} flex={1}>
                   Verifica la tua identità per inviare il preventivo
@@ -1564,7 +1564,7 @@ export function RequestCard({
               <Text fontSize={16} color={brand.grafite70}>
                 Serve una sola volta: un documento e un selfie, circa 2 minuti. Poi torni qui e invii il preventivo.
               </Text>
-              <XStack gap="$2" flexWrap="wrap">
+              <XStack gap="2" flexWrap="wrap">
                 <CardButton tone="primary" onPress={() => router.push("/dashboard/verifica-identita")}>
                   Verifica ora
                 </CardButton>
@@ -1582,7 +1582,7 @@ export function RequestCard({
           ) : null}
           {/* Form invio/modifica preventivo */}
           {showQuoteForm && !identityBlocked && !limitBlocked ? (
-            <YStack gap="$3" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
+            <YStack gap="3" padding="3" borderRadius={radiusDoc} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
               {/* Etichette scritte (docs/CHANGELOG.md §349): da telefono la voce
                   sta su una riga e "Da" / "A" affiancati sotto, prima "A €"
                   scendeva da solo a capo. */}
@@ -1607,7 +1607,7 @@ export function RequestCard({
                     <input aria-label="Prezzo massimo in euro" value={item.priceMax} onChange={(e) => updateItem(index, "priceMax", e.target.value)} placeholder="€" inputMode="decimal" style={{ ...smallInputStyle, width: "100%" }} />
                   </label>
                   {items.length > 1 ? (
-                    <XStack width={32} height={32} alignItems="center" justifyContent="center" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo} borderRadius={10} cursor="pointer" onPress={() => removeItem(index)} accessibilityRole="button" accessibilityLabel="Togli la voce">
+                    <XStack width={32} height={32} alignItems="center" justifyContent="center" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo} borderRadius={10} cursor="pointer" onPress={() => removeItem(index)} role="button" aria-label="Togli la voce">
                       <Icon name="x" size={14} color={brand.urgenza} />
                     </XStack>
                   ) : null}
@@ -1618,7 +1618,7 @@ export function RequestCard({
               </CardButton>
 
               {modeAvailableSlots.length > 0 && !useManualDateTime ? (
-                <YStack gap="$2">
+                <YStack gap="2">
                   {/* Pillole con i prossimi orari liberi al posto del menu a
                       tendina, che sul telefono apriva la rotella di sistema
                       (docs/CHANGELOG.md §349). */}
@@ -1643,7 +1643,7 @@ export function RequestCard({
                         : `Il cliente aveva chiesto ${requestedSlotText}: non è tra i tuoi orari liberi, scegline uno.`}
                     </Text>
                   ) : null}
-                  <XStack gap="$4" flexWrap="wrap">
+                  <XStack gap="4" flexWrap="wrap">
                     {!showAllSlots && modeAvailableSlots.length > QUOTE_SLOTS_SHOWN ? (
                       <button type="button" className="slot-more" onClick={() => setShowAllSlots(true)}>
                         Altri orari
@@ -1655,8 +1655,8 @@ export function RequestCard({
                   </XStack>
                 </YStack>
               ) : (
-                <YStack gap="$2">
-                  <XStack gap="$2" flexWrap="wrap">
+                <YStack gap="2">
+                  <XStack gap="2" flexWrap="wrap">
                     <ItalianDateInput ariaLabel="Data" value={manualDate} onChange={setManualDate} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} padX={10} />
                     <ItalianTimeInput ariaLabel="Ora di inizio" value={manualStartTime} onChange={setManualStartTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} padX={10} />
                     <ItalianTimeInput ariaLabel="Ora di fine (facoltativa)" value={manualEndTime} onChange={setManualEndTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} padX={10} />
@@ -1677,7 +1677,7 @@ export function RequestCard({
                       fontWeight="600"
                       color={brand.cianografiaScuro}
                       cursor="pointer"
-                      accessibilityRole="button"
+                      role="button"
                       onPress={() => setUseManualDateTime(false)}
                     >
                       Usa un orario dalla mia agenda
@@ -1688,7 +1688,7 @@ export function RequestCard({
               <BusyTimeNotice bookings={quoteBusy} />
 
               {/* Lavoro su più giorni (docs/CHANGELOG.md §310): stesso orario ogni giorno, non blocca altri lavori. */}
-              <YStack gap="$1">
+              <YStack gap="1">
                 {/* Durata a pillole (docs/CHANGELOG.md §349); oltre 5 giorni,
                     caso raro, resta il menu fino al massimo. */}
                 <Text fontSize={13} fontWeight="700" color={brand.grafite} id={`job-days-${gr.id}`}>
@@ -1724,7 +1724,7 @@ export function RequestCard({
               </YStack>
 
               {/* Come vuole essere pagato (docs/CHANGELOG.md §237): uno o più modi, il cliente sceglie tra questi. */}
-              <YStack gap="$2" role="group" aria-label="Come vuoi essere pagato">
+              <YStack gap="2" role="group" aria-label="Come vuoi essere pagato">
                 {/* Senza pagamenti online non c'è niente da scegliere: resta
                     solo la riga (docs/CHANGELOG.md §349). */}
                 {onlinePayments ? (
@@ -1750,7 +1750,7 @@ export function RequestCard({
                       </label>
                     ))}
                     {paymentOptions.some(paymentChoiceIsOnline) ? (
-                      <XStack gap="$2" alignItems="center" flexWrap="wrap">
+                      <XStack gap="2" alignItems="center" flexWrap="wrap">
                         <Text fontSize={16} color={brand.grafite}>
                           Acconto online
                         </Text>
@@ -1800,11 +1800,11 @@ export function RequestCard({
               </YStack>
 
               {/* Preavviso per annullare, scelto a ogni preventivo; di serie lo standard del profilo (docs/CHANGELOG.md §348). */}
-              <YStack gap="$2" role="group" aria-label="Preavviso per annullare">
+              <YStack gap="2" role="group" aria-label="Preavviso per annullare">
                 <Text fontSize={16} fontWeight="700" color={brand.grafite}>
                   Se il cliente deve annullare, quanto prima deve avvisarti?
                 </Text>
-                <XStack gap="$2" flexWrap="wrap">
+                <XStack gap="2" flexWrap="wrap">
                   {CANCELLATION_NOTICE_OPTIONS.map((hours) => (
                     <Chip key={hours} selected={noticeHours === hours} onPress={() => setNoticeHours(hours)}>
                       {cancellationNoticeLabel(hours)}
@@ -1836,7 +1836,7 @@ export function RequestCard({
                 </Text>
               ) : null}
 
-              <XStack gap="$2" flexWrap="wrap">
+              <XStack gap="2" flexWrap="wrap">
                 <CardButton tone="primary" arrow disabled={isSubmittingQuote} onPress={handleSendQuote}>
                   {isSubmittingQuote ? "Invio..." : "Invia preventivo"}
                 </CardButton>
@@ -1847,7 +1847,7 @@ export function RequestCard({
 
           {/* Form "proponi altra data" (contro-proposta) */}
           {showCounterForm ? (
-            <YStack gap="$3" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
+            <YStack gap="3" padding="3" borderRadius={radiusDoc} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
               {/* Lavoro su più giorni (§310): la durata resta quella del preventivo. */}
               {lead.quote && jobDayCount(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate) > 1 ? (
                 <Text fontSize={12} color={brand.grafite70}>
@@ -1855,7 +1855,7 @@ export function RequestCard({
                 </Text>
               ) : null}
               {modeAvailableSlots.length > 0 && !useManualCounterDateTime ? (
-                <YStack gap="$2">
+                <YStack gap="2">
                   <select aria-label="Orario dall'agenda" value={counterSlotKey} onChange={(e) => setCounterSlotKey(e.target.value)} style={smallInputStyle}>
                     {modeAvailableSlots.map((sl) => (
                       <option key={slotKey(sl)} value={slotKey(sl)}>
@@ -1868,15 +1868,15 @@ export function RequestCard({
                     fontWeight="600"
                     color={brand.cianografiaScuro}
                     cursor="pointer"
-                    accessibilityRole="button"
+                    role="button"
                     onPress={() => setUseManualCounterDateTime(true)}
                   >
                     Inserisci data e orario manualmente
                   </Text>
                 </YStack>
               ) : (
-                <YStack gap="$2">
-                  <XStack gap="$2" flexWrap="wrap">
+                <YStack gap="2">
+                  <XStack gap="2" flexWrap="wrap">
                     <ItalianDateInput ariaLabel="Nuova data" value={manualCounterDate} onChange={setManualCounterDate} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} padX={10} />
                     <ItalianTimeInput ariaLabel="Ora di inizio" value={manualCounterStartTime} onChange={setManualCounterStartTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} padX={10} />
                     <ItalianTimeInput ariaLabel="Ora di fine" value={manualCounterEndTime} onChange={setManualCounterEndTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} padX={10} />
@@ -1895,7 +1895,7 @@ export function RequestCard({
                       fontWeight="600"
                       color={brand.cianografiaScuro}
                       cursor="pointer"
-                      accessibilityRole="button"
+                      role="button"
                       onPress={() => setUseManualCounterDateTime(false)}
                     >
                       Usa un orario dalla mia agenda
@@ -1910,7 +1910,7 @@ export function RequestCard({
                   {counterError}
                 </Text>
               ) : null}
-              <XStack gap="$2" flexWrap="wrap">
+              <XStack gap="2" flexWrap="wrap">
                 <CardButton tone="primary" disabled={isCountering} onPress={handleCounterPropose}>
                   {isCountering ? "Invio..." : "Invia nuova proposta"}
                 </CardButton>
@@ -1921,7 +1921,7 @@ export function RequestCard({
 
           {/* Conferma rifiuto lead */}
           {confirmingDecline ? (
-            <YStack gap="$2" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.urgenzaVelo} borderWidth={1} borderColor={brand.urgenza}>
+            <YStack gap="2" padding="3" borderRadius={radiusDoc} backgroundColor={brand.urgenzaVelo} borderWidth={1} borderColor={brand.urgenza}>
               <textarea aria-label="Nota per il cliente"
                 value={declineNoteDraft}
                 onChange={(e) => setDeclineNoteDraft(e.target.value)}
@@ -1929,7 +1929,7 @@ export function RequestCard({
                 rows={2}
                 style={{ ...smallInputStyle, resize: "vertical", backgroundColor: brand.calce }}
               />
-              <XStack gap="$2" flexWrap="wrap">
+              <XStack gap="2" flexWrap="wrap">
                 <CardButton tone="dangerSolid" disabled={isDeclining} onPress={handleDecline}>
                   {isDeclining ? "..." : "Conferma rifiuto"}
                 </CardButton>
@@ -1943,7 +1943,7 @@ export function RequestCard({
               l'intestazione in alto, scomodo su una scheda espansa lunga.
               Stessa icona/interazione di quella in cima (che resta invariata,
               cliccare l'intestazione continua a funzionare). */}
-          <XStack justifyContent="center" paddingTop="$2" cursor="pointer" onPress={onToggle} accessibilityRole="button" accessibilityLabel="Richiudi la scheda">
+          <XStack justifyContent="center" paddingTop="2" cursor="pointer" onPress={onToggle} role="button" aria-label="Richiudi la scheda">
             <Icon name="chevron-up" size={18} color={brand.grafite70} />
           </XStack>
         </YStack>

@@ -22,15 +22,15 @@ export function NotFoundContent() {
       <YStack width={64} height={64} borderRadius={32} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center">
         <Icon name="search" size={28} color={brand.cianografiaScuro} strokeWidth={1.75} />
       </YStack>
-      <YStack gap="$2" alignItems="center">
-        <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.grafite} textAlign="center" style={{ textWrap: "balance" }}>
+      <YStack gap="2" alignItems="center">
+        <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="9" color={brand.grafite} textAlign="center" style={{ textWrap: "balance" }}>
           Pagina non trovata
         </Text>
-        <Text fontSize="$4" lineHeight={26} color={brand.grafite70} textAlign="center" style={{ textWrap: "balance" }}>
+        <Text fontSize="4" lineHeight="26px" color={brand.grafite70} textAlign="center" style={{ textWrap: "balance" }}>
           Il link potrebbe essere sbagliato, oppure la pagina non c&apos;è più.
         </Text>
       </YStack>
-      <XStack gap="$3" flexWrap="wrap" justifyContent="center">
+      <XStack gap="3" flexWrap="wrap" justifyContent="center">
         <Link href="/cerca" style={{ textDecoration: "none" }}>
           <Button tabIndex={-1} variant="primary">Cerca un professionista</Button>
         </Link>
@@ -41,8 +41,8 @@ export function NotFoundContent() {
     </>
   );
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingTop="$9" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={560} alignItems="center" gap="$4">
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingTop="9" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={560} alignItems="center" gap="4">
         {/* Città o servizio sconosciuti in un indirizzo di ricerca: si dice
             cosa non va e la ricerca è già compilata (docs/CHANGELOG.md §349). */}
         {pathname.startsWith("/cerca/") ? <UnknownSearchNotice pathname={pathname} fallback={generic} /> : generic}

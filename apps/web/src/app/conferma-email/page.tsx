@@ -43,14 +43,14 @@ function ConfermaConCodice() {
   return (
     <AuthPageBackground>
       <AuthCard maxWidth={440}>
-        <YStack alignItems="center" gap="$3">
+        <YStack alignItems="center" gap="3">
           <AuthIconBadge icon="mail" />
-          <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+          <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center">
             Conferma la tua email
           </Text>
         </YStack>
         {user.emailVerified ? (
-          <YStack gap="$4" alignItems="center">
+          <YStack gap="4" alignItems="center">
             <Text color={brand.grafite70} textAlign="center">
               L&apos;indirizzo <Text fontWeight="700">{user.email}</Text> è già confermato.
             </Text>
@@ -161,9 +161,9 @@ function ConfermaEmail() {
     <AuthPageBackground>
       <AuthCard maxWidth={440}>
         {state === "done" ? (
-          <YStack gap="$4" alignItems="center">
+          <YStack gap="4" alignItems="center">
             <AuthIconBadge icon="check" />
-            <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center">
               {alreadyVerified ? "Email già confermata" : "Email confermata"}
             </Text>
             <Text fontSize={16} color={brand.grafite70} textAlign="center">
@@ -175,9 +175,9 @@ function ConfermaEmail() {
             </Link>
           </YStack>
         ) : state === "error" ? (
-          <YStack gap="$4" alignItems="center">
+          <YStack gap="4" alignItems="center">
             <AuthIconBadge icon="mail" />
-            <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center">
               {errorKind === "expired" ? "Il link è scaduto" : errorKind === "invalid" ? "Questo link non vale più" : "Conferma non riuscita"}
             </Text>
             <Text fontSize={16} color={brand.grafite70} textAlign="center" role="alert">
@@ -211,9 +211,9 @@ function ConfermaEmail() {
             ) : null}
           </YStack>
         ) : (
-          <YStack gap="$4" alignItems="center">
+          <YStack gap="4" alignItems="center">
             <AuthIconBadge icon="mail" />
-            <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center">
               Conferma la tua email
             </Text>
             <Text fontSize={16} color={brand.grafite70} textAlign="center">
@@ -241,7 +241,7 @@ function ConfermaEmail() {
           }}
         >
           <div role="dialog" aria-modal="true" aria-label="Email verificata con successo" style={{ width: "100%", maxWidth: 380 }}>
-            <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$3" alignItems="center">
+            <YStack width="100%" backgroundColor={brand.calce} borderRadius="5" padding="5" gap="3" alignItems="center">
               <YStack
                 width={56}
                 height={56}
@@ -250,11 +250,11 @@ function ConfermaEmail() {
                 justifyContent="center"
                 backgroundColor={brand.cianografiaPieno}
               >
-                <Text color={brand.calce} fontSize="$7" fontWeight="800">
+                <Text color={brand.calce} fontSize="7" fontWeight="800">
                   ✓
                 </Text>
               </YStack>
-              <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite} textAlign="center">
+              <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite} textAlign="center">
                 Email verificata con successo
               </Text>
               {user ? null : (

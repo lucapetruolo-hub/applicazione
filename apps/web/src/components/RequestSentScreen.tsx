@@ -104,8 +104,8 @@ export function RequestSentScreen({
         : "Ti avvisiamo appena arrivano i preventivi.";
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={560} gap="$6">
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="8" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={560} gap="6">
         <div className="request-sent-hero">
           <div className="request-sent-photo">
             {direct && professionalImageUrl ? (
@@ -139,7 +139,7 @@ export function RequestSentScreen({
           </Text>
         </div>
 
-        <YStack gap="$2">
+        <YStack gap="2">
           <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
             Cosa succede adesso
           </Text>
@@ -179,7 +179,7 @@ export function RequestSentScreen({
           </ol>
         </YStack>
 
-        <YStack alignItems="center" gap="$4">
+        <YStack alignItems="center" gap="4">
           <Link href="/le-mie-richieste" style={{ textDecoration: "none" }}>
             <Button tabIndex={-1} variant="primary">Vai alle mie richieste</Button>
           </Link>

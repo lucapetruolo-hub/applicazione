@@ -150,15 +150,13 @@ export function GoogleSignInButton({ onCredential, disabled }: { onCredential: (
         disabled={disabled}
         opacity={disabled ? 0.5 : 1}
         cursor={disabled ? "not-allowed" : "pointer"}
-        backgroundColor={brand.gesso}
-        hoverStyle={disabled ? {} : { backgroundColor: brand.filetto }}
-        pressStyle={disabled ? {} : { backgroundColor: brand.filetto }}
+        backgroundColor={disabled ? brand.gesso : `${brand.gesso} hover:${brand.filetto} press:${brand.filetto}`}
         color={brand.grafite}
-        size="$5"
+        size="5"
         borderRadius={999}
         width="100%"
       >
-        <XStack alignItems="center" justifyContent="center" gap="$3">
+        <XStack alignItems="center" justifyContent="center" gap="3">
           <GoogleIcon />
           <Text fontSize={16} fontWeight="600" color={brand.grafite}>
             Continua con Google

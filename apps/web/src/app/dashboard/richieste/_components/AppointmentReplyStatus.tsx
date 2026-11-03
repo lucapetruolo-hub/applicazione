@@ -25,13 +25,13 @@ export function AppointmentReplyStatus({ booking }: { booking: ProfessionalBooki
     ? `Promemoria ${reminder.channel === "WHATSAPP" ? `WhatsApp ${REMINDER_LABEL[reminder.status]}` : "mandato per email"} (${formatDateTime(reminder.at)})`
     : null;
   return (
-    <YStack gap="$1.5">
+    <YStack gap="1-5">
       {booking.dateChange ? null : cantCome ? (
         <Text fontSize={13} color={brand.urgenza} fontWeight="600">
           Il cliente ha risposto al promemoria che non può più esserci ({formatDateTime(booking.clientCantComeAt!)}): gli abbiamo chiesto di proporti un&apos;altra data. Puoi anche scrivergli in chat.
         </Text>
       ) : booking.clientConfirmedAt && !cantCome ? (
-        <XStack alignItems="center" gap="$1.5">
+        <XStack alignItems="center" gap="1-5">
           <Icon name="check" size={14} color={brand.cianografiaScuro} strokeWidth={2.5} />
           <Text fontSize={13} color={brand.cianografiaScuro} fontWeight="600">
             Il cliente ha confermato che ci sarà ({formatDateTime(booking.clientConfirmedAt)})

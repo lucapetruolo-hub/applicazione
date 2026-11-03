@@ -192,12 +192,12 @@ export function BookingSection({
   const stripAction = canConfirmDone || canWriteReview;
 
   return (
-    <YStack gap="$3" paddingTop="$3">
+    <YStack gap="3" paddingTop="3">
       {onTheWay ? (
-        <XStack gap="$3" alignItems="center" backgroundColor={brand.cianografiaVelo} borderRadius={radiusDoc} padding="$3">
+        <XStack gap="3" alignItems="center" backgroundColor={brand.cianografiaVelo} borderRadius={radiusDoc} padding="3">
           <Icon name="truck" size={22} color={brand.cianografiaScuro} />
           <YStack flex={1} minWidth={0}>
-            <Text fontFamily="$heading" fontWeight="800" fontSize={18} color={brand.grafite}>
+            <Text fontFamily="heading" fontWeight="800" fontSize={18} color={brand.grafite}>
               {booking.businessName} sta arrivando
             </Text>
             <Text fontSize={14} color={brand.grafite70}>
@@ -208,8 +208,8 @@ export function BookingSection({
       ) : null}
 
       {live && proGone && isUpcoming(moment) ? (
-        <YStack gap="$1" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="$4">
-          <Text fontFamily="$heading" fontWeight="800" fontSize={18} color={brand.grafite}>
+        <YStack gap="1" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="4">
+          <Text fontFamily="heading" fontWeight="800" fontSize={18} color={brand.grafite}>
             Questo appuntamento non si farà
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
@@ -219,8 +219,8 @@ export function BookingSection({
       ) : null}
 
       {booking.status === "NO_SHOW" ? (
-        <YStack gap="$1" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="$4">
-          <Text fontFamily="$heading" fontWeight="800" fontSize={18} color={brand.grafite}>
+        <YStack gap="1" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="4">
+          <Text fontFamily="heading" fontWeight="800" fontSize={18} color={brand.grafite}>
             Appuntamento segnato come mancato
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
@@ -230,28 +230,28 @@ export function BookingSection({
       ) : null}
 
       {canConfirmDone || canWriteReview ? (
-        <YStack gap="$3" backgroundColor={brand.cianografiaVelo} borderRadius={radiusDoc} padding="$4">
+        <YStack gap="3" backgroundColor={brand.cianografiaVelo} borderRadius={radiusDoc} padding="4">
           <YStack gap={2}>
-            <Text fontFamily="$heading" fontWeight="800" fontSize={20} color={brand.grafite}>
+            <Text fontFamily="heading" fontWeight="800" fontSize={20} color={brand.grafite}>
               {canConfirmDone && moment?.kind === "inProgress" ? "Lavoro in corso" : "Com'è andata?"}
             </Text>
             <Text fontSize={16} color={brand.grafite70}>
               {canConfirmDone ? "Quando ha finito, confermalo qui." : "Una recensione aiuta altri clienti a scegliere."}
             </Text>
           </YStack>
-          <XStack gap="$2" flexWrap="wrap">
+          <XStack gap="2" flexWrap="wrap">
             {canConfirmDone ? (
               // Turchese come dal lato del professionista (richiesta esplicita dell'utente).
-              <CardButton fill="#20B2AA" $xs={{ flex: 1 }} onPress={() => setShowClientCompleteModal(true)}>
+              <CardButton fill="#20B2AA" flex="xs:1" onPress={() => setShowClientCompleteModal(true)}>
                 Lavoro terminato
               </CardButton>
             ) : (
-              <CardButton tone="primary" $xs={{ flex: 1 }} onPress={() => setShowReviewModal(true)}>
+              <CardButton tone="primary" flex="xs:1" onPress={() => setShowReviewModal(true)}>
                 Lascia una recensione
               </CardButton>
             )}
             {canConfirmDone && onReportProblem ? (
-              <CardButton $xs={{ flex: 1 }} onPress={onReportProblem}>
+              <CardButton flex="xs:1" onPress={onReportProblem}>
                 C&apos;è un problema
               </CardButton>
             ) : null}
@@ -261,8 +261,8 @@ export function BookingSection({
 
       {/* Chi deve fare ancora cosa (collaudo A-17): prima restava "Accettata" senza spiegazione. */}
       {booking.status === "CONFIRMED" && booking.clientConfirmedCompletedAt ? (
-        <YStack gap="$1" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="$4">
-          <Text fontFamily="$heading" fontWeight="800" fontSize={18} color={brand.grafite}>
+        <YStack gap="1" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="4">
+          <Text fontFamily="heading" fontWeight="800" fontSize={18} color={brand.grafite}>
             Hai confermato che il lavoro è terminato
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
@@ -271,11 +271,11 @@ export function BookingSection({
         </YStack>
       ) : null}
 
-      <XStack gap="$4" flexWrap="wrap" alignItems="flex-start">
-        <YStack flex={1} flexBasis={300} minWidth={0} gap="$3">
+      <XStack gap="4" flexWrap="wrap" alignItems="flex-start">
+        <YStack flex={1} flexBasis={300} minWidth={0} gap="3">
           <AppointmentWhen booking={booking} moment={moment} />
           {address ? (
-            <XStack alignItems="center" gap="$2">
+            <XStack alignItems="center" gap="2">
               <Icon name="map-pin" size={18} color={brand.grafite70} />
               <Text flex={1} fontSize={16} color={brand.grafite}>
                 {address}
@@ -285,9 +285,9 @@ export function BookingSection({
           {booking.meetingLink && booking.status !== "CANCELED" ? (
             <a href={booking.meetingLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
               <CardButton tone={stripAction ? "outline" : "primary"}>
-                <XStack alignItems="center" gap="$2">
+                <XStack alignItems="center" gap="2">
                   <Icon name="video" size={16} color={stripAction ? brand.grafite : "white"} strokeWidth={1.5} />
-                  <Text fontFamily="$body" fontSize={16} color={stripAction ? brand.grafite : "white"} fontWeight="600">
+                  <Text fontFamily="body" fontSize={16} color={stripAction ? brand.grafite : "white"} fontWeight="600">
                     Partecipa alla videochiamata
                   </Text>
                 </XStack>
@@ -299,14 +299,14 @@ export function BookingSection({
         </YStack>
 
         {booking.status !== "CANCELED" ? (
-          <YStack flex={1} flexBasis={300} minWidth={0} gap="$3" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="$4">
-            <XStack gap="$2" flexWrap="wrap">
+          <YStack flex={1} flexBasis={300} minWidth={0} gap="3" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="4">
+            <XStack gap="2" flexWrap="wrap">
               {phone ? (
                 <a href={`tel:${phone.replace(/\s+/g, "")}`} style={{ textDecoration: "none", flex: 1, minWidth: 130, display: "flex" }}>
                   <CardButton tone={stripAction ? "outline" : "primary"} flex={1}>
-                    <XStack alignItems="center" gap="$2">
+                    <XStack alignItems="center" gap="2">
                       <Icon name="phone" size={18} color={stripAction ? brand.grafite : "white"} />
-                      <Text fontFamily="$body" fontWeight="600" fontSize="$3" color={stripAction ? brand.grafite : "white"}>
+                      <Text fontFamily="body" fontWeight="600" fontSize="3" color={stripAction ? brand.grafite : "white"}>
                         Chiama
                       </Text>
                     </XStack>
@@ -322,9 +322,9 @@ export function BookingSection({
                     dismissUnread();
                   }}
                 >
-                  <XStack alignItems="center" gap="$2">
+                  <XStack alignItems="center" gap="2">
                     <Icon name="message-circle" size={18} color={brand.grafite} />
-                    <Text fontFamily="$body" fontWeight="600" fontSize="$3" color={brand.grafite}>
+                    <Text fontFamily="body" fontWeight="600" fontSize="3" color={brand.grafite}>
                       Messaggi
                     </Text>
                     <UnreadDot count={effectiveUnreadCount} />
@@ -334,7 +334,7 @@ export function BookingSection({
             </XStack>
             {priceText || booking.payment ? <YStack height={1} backgroundColor={brand.filetto} /> : null}
             {priceText && booking.status !== "COMPLETED" ? (
-              <XStack justifyContent="space-between" alignItems="baseline" gap="$2" flexWrap="wrap">
+              <XStack justifyContent="space-between" alignItems="baseline" gap="2" flexWrap="wrap">
                 <Text fontSize={16} color={brand.grafite70}>
                   Totale indicativo
                 </Text>
@@ -365,17 +365,17 @@ export function BookingSection({
           Hai chiesto di riaprire l&apos;appuntamento: aspetta la risposta di {booking.businessName}.
         </Text>
       ) : booking.status === "CANCELED" && booking.canceledBy === "CLIENT" ? (
-        <XStack gap="$2" alignItems="center" flexWrap="wrap">
+        <XStack gap="2" alignItems="center" flexWrap="wrap">
           <CardButton onPress={() => setConfirmReopen(true)} disabled={isReopening}>
             {isReopening ? "Invio..." : "Chiedi di riaprire"}
           </CardButton>
         </XStack>
       ) : booking.status === "CANCELED" && booking.reopenRequestedBy === "PROFESSIONAL" ? (
-        <YStack gap="$2">
+        <YStack gap="2">
           <Text fontSize={16} color={brand.grafite}>
             {booking.businessName} chiede di riaprire l&apos;appuntamento annullato. Se accetti torna valido.
           </Text>
-          <XStack gap="$2" alignItems="center" flexWrap="wrap">
+          <XStack gap="2" alignItems="center" flexWrap="wrap">
             <CardButton onPress={() => handleAnswerReopen(true)} disabled={isReopening}>
               Accetta
             </CardButton>
@@ -420,7 +420,7 @@ export function BookingSection({
       ) : null}
 
       {booking.issue ? (
-        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+        <YStack gap="1" paddingTop="1" borderTopWidth={1} borderTopColor={brand.filetto}>
           <Text fontSize={13} fontWeight="600" color={booking.issue.status === "REJECTED" || booking.issue.status === "RESOLVED" ? brand.grafite : brand.urgenza}>
             Hai segnalato: {JOB_ISSUE_LABEL[booking.issue.type].toLowerCase()} · {JOB_ISSUE_STATUS_LABEL[booking.issue.status]}
           </Text>
@@ -435,7 +435,7 @@ export function BookingSection({
           />
         </YStack>
       ) : booking.status === "CONFIRMED" && booking.refundRequested ? (
-        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+        <YStack gap="1" paddingTop="1" borderTopWidth={1} borderTopColor={brand.filetto}>
           <Text fontSize={13} fontWeight="600" color={brand.urgenza}>
             Hai segnalato la mancata presentazione
           </Text>
@@ -444,12 +444,12 @@ export function BookingSection({
 
       {booking.status === "COMPLETED" && booking.finalAmountEurCents !== null ? (
         // A 16 px come il resto della scheda: a 13 era la tabella meno leggibile (docs/CHANGELOG.md §349).
-        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+        <YStack gap="1" paddingTop="1" borderTopWidth={1} borderTopColor={brand.filetto}>
           <Text fontSize={16} fontWeight="600" color={brand.grafite}>
             Importo finale
           </Text>
           {booking.finalItems.map((item) => (
-            <XStack key={item.id} justifyContent="space-between" gap="$2">
+            <XStack key={item.id} justifyContent="space-between" gap="2">
               <Text fontSize={16} color={brand.grafite70}>
                 {item.name}
               </Text>
@@ -458,7 +458,7 @@ export function BookingSection({
               </Text>
             </XStack>
           ))}
-          <XStack justifyContent="space-between" gap="$2">
+          <XStack justifyContent="space-between" gap="2">
             <Text fontSize={16} fontWeight="700" color={brand.grafite}>
               Totale
             </Text>
@@ -475,7 +475,7 @@ export function BookingSection({
       ) : null}
 
       {booking.status === "CANCELED" && booking.cancellationNote ? (
-        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+        <YStack gap="1" paddingTop="1" borderTopWidth={1} borderTopColor={brand.filetto}>
           <Text fontSize={13} fontWeight="600" color={brand.grafite}>
             Nota del professionista
           </Text>
@@ -487,9 +487,9 @@ export function BookingSection({
 
       {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
         booking.hasReview ? (
-          <YStack gap="$2" alignItems="flex-start">
+          <YStack gap="2" alignItems="flex-start">
             {/* Grigio con la spunta: in verde sembrava un link (docs/CHANGELOG.md §349). */}
-            <XStack alignItems="center" gap="$1">
+            <XStack alignItems="center" gap="1">
               <Icon name="check" size={14} color={brand.grafite70} strokeWidth={2} />
               <Text fontSize={13} color={brand.grafite70} fontWeight="600">
                 Recensione inviata
@@ -497,7 +497,7 @@ export function BookingSection({
             </XStack>
             {/* Una volta sola, dopo una segnalazione a lavoro chiuso senza accordo (decisione di Luca del 30/10/2026). */}
             {booking.canUpdateReview ? (
-              <YStack gap="$1" alignItems="flex-start">
+              <YStack gap="1" alignItems="flex-start">
                 <Text fontSize={13} color={brand.grafite70}>
                   Non vi siete accordati sul problema: puoi aggiornare la recensione una volta, perché anche gli altri clienti lo sappiano.
                 </Text>
@@ -524,7 +524,7 @@ export function BookingSection({
 
       {/* Elimina sempre per ultimo (richiesta esplicita dell'utente). */}
       {booking.professionalAccountDeleted ? (
-        <XStack gap="$2" alignItems="center" flexWrap="wrap" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+        <XStack gap="2" alignItems="center" flexWrap="wrap" paddingTop="1" borderTopWidth={1} borderTopColor={brand.filetto}>
           {confirmingDeleteBooking ? (
             <>
               <Text fontSize={13} color={brand.urgenza}>
@@ -599,23 +599,23 @@ export function ChangeLinks({ booking, onReschedule, onMessage, onCancel }: { bo
   const moment = useAppointmentMoment(booking);
   if ((booking.status !== "CONFIRMED" && booking.status !== "PENDING") || booking.professionalAccountDeleted || !isUpcoming(moment)) return null;
   return (
-    <YStack gap="$1" paddingHorizontal="$1" paddingTop="$1">
-    <XStack alignItems="center" gap="$4" flexWrap="wrap">
+    <YStack gap="1" paddingHorizontal="1" paddingTop="1">
+    <XStack alignItems="center" gap="4" flexWrap="wrap">
       <Text fontSize={16} color={brand.grafite70}>
         Serve cambiare?
       </Text>
       {/* "Non posso più" → un'altra data invece di perdere l'appuntamento (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
       {onReschedule && booking.status === "CONFIRMED" ? (
-        <Text fontSize={16} fontWeight="600" color={brand.grafite} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={onReschedule}>
+        <Text fontSize={16} fontWeight="600" color={brand.grafite} textDecorationLine="underline" cursor="pointer" role="button" onPress={onReschedule}>
           Proponi un&apos;altra data
         </Text>
       ) : null}
       {onMessage ? (
-        <Text fontSize={16} fontWeight="600" color={brand.grafite} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={onMessage}>
+        <Text fontSize={16} fontWeight="600" color={brand.grafite} textDecorationLine="underline" cursor="pointer" role="button" onPress={onMessage}>
           Scrivi un messaggio
         </Text>
       ) : null}
-      <Text fontSize={16} fontWeight="600" color={brand.urgenza} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={onCancel}>
+      <Text fontSize={16} fontWeight="600" color={brand.urgenza} textDecorationLine="underline" cursor="pointer" role="button" onPress={onCancel}>
         Annulla il lavoro
       </Text>
     </XStack>

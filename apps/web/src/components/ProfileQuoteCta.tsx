@@ -50,8 +50,8 @@ export function ProfileQuoteCta({
     // Altezza libera: con un nome lungo, su telefono il testo va su due righe
     // invece di essere tagliato.
     <Button variant="primary" width="100%" height="auto" minHeight={BUTTON_HEIGHT} paddingVertical={10} tabIndex={preview ? -1 : undefined}>
-      <XStack alignItems="center" gap="$2" minWidth={0} maxWidth="100%" flexShrink={1}>
-        <Text color="white" fontFamily="$body" fontSize={16} fontWeight="600" textAlign="center" flexShrink={1}>
+      <XStack alignItems="center" gap="2" minWidth={0} maxWidth="100%" flexShrink={1}>
+        <Text color="white" fontFamily="body" fontSize={16} fontWeight="600" textAlign="center" flexShrink={1}>
           {`Richiedi un preventivo a ${name}`}
         </Text>
         <ButtonArrow />
@@ -80,8 +80,8 @@ export function ProfileQuoteCta({
             >
               <MagneticButton block>
                 <Button variant="primary" width="100%" tabIndex={-1}>
-                  <XStack alignItems="center" gap="$2" minWidth={0} maxWidth="100%" flexShrink={1}>
-                    <Text color="white" fontFamily="$body" fontSize={16} fontWeight="600" numberOfLines={1} flexShrink={1}>
+                  <XStack alignItems="center" gap="2" minWidth={0} maxWidth="100%" flexShrink={1}>
+                    <Text color="white" fontFamily="body" fontSize={16} fontWeight="600" numberOfLines={1} flexShrink={1}>
                       Richiedi un preventivo
                     </Text>
                     <ButtonArrow />

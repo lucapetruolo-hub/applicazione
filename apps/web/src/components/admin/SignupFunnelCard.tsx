@@ -49,8 +49,8 @@ export function SignupFunnelCard({ token }: { token: string }) {
 
   return (
     <AdminCard>
-      <YStack gap="$1">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+      <YStack gap="1">
+        <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
           Iscrizione passo per passo
         </Text>
         <Text color={brand.grafite70} fontSize={13}>

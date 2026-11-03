@@ -29,13 +29,13 @@ export function ProfessionalKindBadge({ kind, size = "sm" }: { kind: Professiona
       <XStack
         alignItems="center"
         gap={4}
-        paddingHorizontal={md ? 12 : "$2"}
+        paddingHorizontal={md ? 12 : "2"}
         paddingVertical={md ? 5 : 2}
         borderRadius={999}
         backgroundColor={brand.gesso}
       >
         <Icon name={icon} size={13} color={brand.grafite} strokeWidth={2} />
-        <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
+        <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite}>
           {label}
         </Text>
       </XStack>

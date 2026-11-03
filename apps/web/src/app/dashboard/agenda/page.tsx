@@ -670,9 +670,9 @@ function DashboardAgendaContent() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi come professionista
           </Text>
           <Link href="/accedi?redirect=/dashboard/agenda" style={{ textDecoration: "none" }}>
@@ -685,9 +685,9 @@ function DashboardAgendaContent() {
 
   if (!user.isProfessional) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$3" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="3" alignItems="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Questa sezione è per i professionisti
           </Text>
         </YStack>
@@ -697,9 +697,9 @@ function DashboardAgendaContent() {
 
   if (profileMissing) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Completa il tuo profilo per iniziare
           </Text>
           <Text color={brand.grafite70} textAlign="center">
@@ -1134,19 +1134,19 @@ function DashboardAgendaContent() {
       // ogni occorrenza futura (vedi toggleDaySelection sopra).
       const allDaySelected = daySlots.length > 0 && daySlots.every(({ index }) => selectedSlotKeys.has(slotKey(index, dateStr)));
       return (
-        <YStack gap="$2" minWidth={0}>
+        <YStack gap="2" minWidth={0}>
           {daySlots.length > 0 ? (
             <XStack
               alignItems="center"
               gap={5}
               cursor="pointer"
               onPress={() => toggleDaySelection(date)}
-              accessibilityRole="button"
-              accessibilityLabel={allDaySelected ? "Deseleziona giorno" : "Seleziona giorno"}
+              role="button"
+              aria-label={allDaySelected ? "Deseleziona giorno" : "Seleziona giorno"}
             >
               <SelectionCheckbox checked={allDaySelected} />
               <Text
-                fontFamily="$body"
+                fontFamily="body"
                 fontSize={9}
                 fontWeight="700"
                 letterSpacing={0.2}
@@ -1181,20 +1181,19 @@ function DashboardAgendaContent() {
     }
 
     return (
-      <YStack gap="$2" minWidth={0} opacity={isPast ? 0.55 : 1}>
+      <YStack gap="2" minWidth={0} opacity={isPast ? 0.55 : 1}>
         {!isPast ? (
           <XStack
             alignItems="center"
-            gap="$1"
+            gap="1"
             minWidth={0}
             cursor="pointer"
             opacity={exceptionBusyDate === dateStr ? 0.5 : 1}
             onPress={() => toggleException(dateStr)}
-            accessibilityRole="button"
-            // "Chiudi venerdì 30" invece di sei "Chiudi" uguali per il lettore di schermo (A3, §310).
-            accessibilityLabel={`${isClosed ? "Riapri" : "Chiudi"} ${formatAppointmentDate(date, { weekday: "long", day: "numeric" })}`}
+            role="button"
+            aria-label={`${isClosed ? "Riapri" : "Chiudi"} ${formatAppointmentDate(date, { weekday: "long", day: "numeric" })}`}
           >
-            <Text fontFamily="$body" fontSize={12} fontWeight="600" color={brand.grafite70} textDecorationLine="underline">
+            <Text fontFamily="body" fontSize={12} fontWeight="600" color={brand.grafite70} textDecorationLine="underline">
               {isClosed ? "Riapri" : "Chiudi"}
             </Text>
           </XStack>
@@ -1202,7 +1201,7 @@ function DashboardAgendaContent() {
 
         {isClosed ? (
           <XStack alignSelf="flex-start" borderRadius={999} paddingHorizontal={10} paddingVertical={4} backgroundColor="#ECECE8">
-            <Text fontFamily="$body" fontSize={12} fontWeight="600" color={brand.grafite70}>
+            <Text fontFamily="body" fontSize={12} fontWeight="600" color={brand.grafite70}>
               Chiuso
             </Text>
           </XStack>
@@ -1249,13 +1248,13 @@ function DashboardAgendaContent() {
                 cursor="pointer"
                 backgroundColor={editingKey === `new-${dateStr}` ? brand.cianografiaVelo : undefined}
                 onPress={() => startAddSlot(dayOfWeek, dateStr)}
-                accessibilityRole="button"
-                accessibilityLabel="Aggiungi fascia oraria"
+                role="button"
+                aria-label="Aggiungi fascia oraria"
               >
                 <Icon name="plus" size={16} strokeWidth={2} color={brand.grafite} />
               </XStack>
             ) : daySlots.length === 0 ? (
-              <Text fontFamily="$body" fontSize={11} fontWeight="600" color={brand.grafite70}>
+              <Text fontFamily="body" fontSize={11} fontWeight="600" color={brand.grafite70}>
                 Giorno passato
               </Text>
             ) : null}
@@ -1269,7 +1268,7 @@ function DashboardAgendaContent() {
     const dateStr = toIsoDate(date);
     if (exceptionDates.includes(dateStr)) {
       return (
-        <Text fontFamily="$body" fontSize={11} fontWeight="600" color={brand.urgenza}>
+        <Text fontFamily="body" fontSize={11} fontWeight="600" color={brand.urgenza}>
           Chiuso
         </Text>
       );
@@ -1293,7 +1292,7 @@ function DashboardAgendaContent() {
       return (
         <XStack alignItems="center" gap={4}>
           <SelectionCheckbox checked={allSelected} />
-          <Text fontFamily="$body" fontSize={11} fontWeight="600" color={allSelected ? brand.cianografiaScuro : brand.grafite70}>
+          <Text fontFamily="body" fontSize={11} fontWeight="600" color={allSelected ? brand.cianografiaScuro : brand.grafite70}>
             {daySlotsWithIndex.length}
           </Text>
         </XStack>
@@ -1312,7 +1311,7 @@ function DashboardAgendaContent() {
           <YStack key={i} width={6} height={6} borderRadius={3} backgroundColor={brand.cianografiaPieno} />
         ))}
         {daySlots.length > 4 ? (
-          <Text fontFamily="$body" fontSize={11} color={brand.grafite70}>
+          <Text fontFamily="body" fontSize={11} color={brand.grafite70}>
             +{daySlots.length - 4}
           </Text>
         ) : null}
@@ -1386,7 +1385,7 @@ function DashboardAgendaContent() {
           <YStack key={pending.id} width={6} height={6} borderRadius={3} borderWidth={1} borderColor={PENDING_QUOTE_COLOR} backgroundColor="transparent" />
         ))}
         {totalCount > 4 ? (
-          <Text fontFamily="$body" fontSize={11} color={brand.grafite70}>
+          <Text fontFamily="body" fontSize={11} color={brand.grafite70}>
             +{totalCount - 4}
           </Text>
         ) : null}

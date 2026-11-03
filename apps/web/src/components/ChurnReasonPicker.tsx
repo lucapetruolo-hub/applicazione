@@ -19,11 +19,11 @@ export function ChurnReasonPicker({
   onChange: (reason: ChurnReason | null) => void;
 }) {
   return (
-    <YStack gap="$2">
+    <YStack gap="2">
       <Text fontSize={14} color={brand.grafite70} id="churn-reason-label">
         Perché? Facoltativo, ci aiuta a migliorare.
       </Text>
-      <XStack gap="$2" flexWrap="wrap" role="radiogroup" aria-labelledby="churn-reason-label">
+      <XStack gap="2" flexWrap="wrap" role="radiogroup" aria-labelledby="churn-reason-label">
         {reasons.map((reason) => {
           const selected = value === reason;
           return (

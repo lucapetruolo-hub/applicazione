@@ -14,8 +14,8 @@ export function TrafficSourcesPanel({ data }: { data: AdminTrafficSources }) {
   const rows = data.bySource.filter((row) => row.source !== "unknown" || row.count > 0);
 
   return (
-    <Surface padding="$5" gap="$4">
-      <YStack gap="$1">
+    <Surface padding="5" gap="4">
+      <YStack gap="1">
         <Text fontWeight="700" fontSize={17}>
           Da dove arrivano le richieste
         </Text>
@@ -23,13 +23,13 @@ export function TrafficSourcesPanel({ data }: { data: AdminTrafficSources }) {
           Richieste di preventivo degli ultimi {data.days} giorni: {data.total}. Una richiesta a più categorie conta una volta.
         </Text>
       </YStack>
-      <YStack gap="$3">
+      <YStack gap="3">
         {rows.map((row) => {
           const label = row.source === "unknown" ? "Non registrata" : TRAFFIC_SOURCE_LABELS[row.source];
           const percent = data.total > 0 ? Math.round((row.count / data.total) * 100) : 0;
           return (
             <YStack key={row.source} gap={6}>
-              <XStack justifyContent="space-between" gap="$3">
+              <XStack justifyContent="space-between" gap="3">
                 <Text fontSize={13.5} fontWeight={row.source === "GOOGLE" ? "700" : "500"}>
                   {label}
                 </Text>

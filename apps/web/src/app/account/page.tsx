@@ -91,7 +91,7 @@ function PasswordField({
 // qui allo stesso identico problema, mai risolto in questa pagina finora.
 function SectionTitle({ children }: { children: string }) {
   return (
-    <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
+    <Text fontFamily="heading" fontWeight="800" fontSize="5" color={brand.grafite}>
       {children}
     </Text>
   );
@@ -99,9 +99,9 @@ function SectionTitle({ children }: { children: string }) {
 
 function FieldRow({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
   return (
-    <XStack flexDirection="column" $gtSm={{ flexDirection: "row", alignItems: "center" }} gap="$2">
+    <XStack flexDirection="column gtSm:row" alignItems="gtSm:center" gap="2">
       <YStack width={200} flexShrink={0}>
-        <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+        <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
           {label}
           {required ? " *" : ""}
         </Text>
@@ -279,9 +279,9 @@ export default function AccountPage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi per gestire il tuo account
           </Text>
           <Link href="/accedi?redirect=/account" style={{ textDecoration: "none" }}>
@@ -443,16 +443,16 @@ export default function AccountPage() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="8" paddingHorizontal="4">
       {/* Sidebar "Il tuo account" rimossa da questa e dalle altre pagine
           menu (richiesta esplicita dell'utente: "non far vedere quel menu
           sempre lì fisso, così da avere a schermo intero solo il menu
           aperto") — la navigazione tra le voci resta disponibile dal
           menu a tendina dell'header (AccountMenu), che le elenca già
           tutte. */}
-      <YStack width="100%" maxWidth={880} gap="$5">
-        <YStack gap="$1">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+      <YStack width="100%" maxWidth={880} gap="5">
+        <YStack gap="1">
+          <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             Impostazioni dell&apos;account
           </Text>
           <Text fontSize={13} color={brand.grafite70}>
@@ -466,7 +466,7 @@ export default function AccountPage() {
             nascita: spezzata in blocchi Surface percepibili invece
             dell'unico scroll continuo di prima, stesso principio già
             applicato a /dashboard/profilo. */}
-        <Surface gap="$4">
+        <Surface gap="4">
           <SectionTitle>Profilo</SectionTitle>
 
           {/*
@@ -479,7 +479,7 @@ export default function AccountPage() {
           */}
           {!user.isProfessional ? (
             <FieldRow label="Immagine profilo">
-              <XStack alignItems="center" gap="$3">
+              <XStack alignItems="center" gap="3">
                 <YStack
                   width={72}
                   height={72}
@@ -497,17 +497,17 @@ export default function AccountPage() {
                     <Camera size={28} strokeWidth={1.5} color={brand.grafite70} />
                   )}
                 </YStack>
-                <YStack gap="$1" flex={1} maxWidth={300} alignItems="flex-start">
+                <YStack gap="1" flex={1} maxWidth={300} alignItems="flex-start">
                   <Button
                     variant="secondary"
-                    size="$2"
+                    size="2"
                     height={36}
                     disabled={isUploadingImage}
                     opacity={isUploadingImage ? 0.6 : 1}
                     onPress={() => imageInputRef.current?.click()}
                   >
                     {isUploadingImage ? (
-                      <XStack alignItems="center" gap="$2">
+                      <XStack alignItems="center" gap="2">
                         <Text color={brand.grafite} fontWeight="600">
                           Caricamento
                         </Text>
@@ -550,7 +550,7 @@ export default function AccountPage() {
               professionisti la chiedono i Dati fiscali per la DAC7. */}
         </Surface>
 
-        <Surface gap="$4">
+        <Surface gap="4">
           <SectionTitle>Contatti</SectionTitle>
 
           <FieldRow label="Email" required>
@@ -561,7 +561,7 @@ export default function AccountPage() {
             <PhoneNumberInput value={phone} onChange={setPhone} style={inputStyle} placeholder="Es. 333 1234567" />
             {/* Promemoria su WhatsApp legati al numero confermato (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
             {whatsApp?.verified ? (
-              <Text fontSize={13} color={phone.trim() !== (user?.phone ?? "") ? brand.grafite : brand.grafite70} marginTop="$1">
+              <Text fontSize={13} color={phone.trim() !== (user?.phone ?? "") ? brand.grafite : brand.grafite70} marginTop="1">
                 {phone.trim() !== (user?.phone ?? "")
                   ? "Cambiando numero i promemoria su WhatsApp si fermano: dopo il salvataggio confermi quello nuovo in Notifiche."
                   : "Su questo numero ricevi i promemoria WhatsApp. Se lo cambi, lo confermi di nuovo in Notifiche."}
@@ -570,7 +570,7 @@ export default function AccountPage() {
           </FieldRow>
         </Surface>
 
-        <Surface gap="$4">
+        <Surface gap="4">
           <SectionTitle>Indirizzo predefinito</SectionTitle>
           <Text fontSize={13} color={brand.grafite70} marginTop={-8}>
             Usato solo per pre-compilare i tuoi dati quando richiedi un preventivo — resta comunque modificabile
@@ -594,7 +594,7 @@ export default function AccountPage() {
           </FieldRow>
 
           <FieldRow label="Via">
-            <YStack gap="$1" width="100%">
+            <YStack gap="1" width="100%">
               <AddressAutocompleteInput
                 value={street}
                 onChange={(next) => {
@@ -643,7 +643,7 @@ export default function AccountPage() {
           </FieldRow>
 
           <FieldRow label="CAP">
-            <YStack gap="$1" width="100%">
+            <YStack gap="1" width="100%">
               <input
                 aria-label="CAP"
                 inputMode="numeric"
@@ -669,12 +669,12 @@ export default function AccountPage() {
           </FieldRow>
         </Surface>
 
-        <Surface gap="$4">
+        <Surface gap="4">
           <SectionTitle>Accesso e sicurezza</SectionTitle>
 
           <FieldRow label="Password">
             {isEditingPassword ? (
-              <YStack gap="$2" maxWidth={320}>
+              <YStack gap="2" maxWidth={320}>
                 {user.hasPassword ? (
                   <PasswordField
                     value={currentPassword}
@@ -708,10 +708,10 @@ export default function AccountPage() {
                     {passwordError}
                   </Text>
                 ) : null}
-                <XStack gap="$3" alignItems="center">
+                <XStack gap="3" alignItems="center">
                   <Button
                     variant="secondary"
-                    size="$3"
+                    size="3"
                     height={40}
                     onPress={handleChangePassword}
                     disabled={isSavingPassword}
@@ -723,7 +723,7 @@ export default function AccountPage() {
                     color={brand.grafite70}
                     fontWeight="600"
                     cursor="pointer"
-                    accessibilityRole="button"
+                    role="button"
                     onPress={() => {
                       setIsEditingPassword(false);
                       setPasswordError(null);
@@ -745,7 +745,7 @@ export default function AccountPage() {
                 color={brand.cianografiaScuro}
                 fontWeight="600"
                 cursor="pointer"
-                accessibilityRole="button"
+                role="button"
                 onPress={() => setIsEditingPassword(true)}
               >
                 {user.hasPassword ? "Aggiorna password" : "Impostare la password"}
@@ -760,7 +760,7 @@ export default function AccountPage() {
 
           <FieldRow label="Dispositivi">
             {confirmingLogoutOthers ? (
-              <YStack gap="$2" maxWidth={360}>
+              <YStack gap="2" maxWidth={360}>
                 <Text color={brand.grafite} fontSize={16}>
                   Uscirai da telefoni e computer dove hai fatto l'accesso, tranne questo.
                 </Text>
@@ -769,10 +769,10 @@ export default function AccountPage() {
                     {logoutOthersError}
                   </Text>
                 ) : null}
-                <XStack gap="$3" alignItems="center">
+                <XStack gap="3" alignItems="center">
                   <Button
                     variant="secondary"
-                    size="$3"
+                    size="3"
                     height={40}
                     onPress={handleLogoutOthers}
                     disabled={isLoggingOutOthers}
@@ -784,7 +784,7 @@ export default function AccountPage() {
                     color={brand.grafite70}
                     fontWeight="600"
                     cursor="pointer"
-                    accessibilityRole="button"
+                    role="button"
                     onPress={() => {
                       setConfirmingLogoutOthers(false);
                       setLogoutOthersError(null);
@@ -799,7 +799,7 @@ export default function AccountPage() {
                 color={brand.cianografiaScuro}
                 fontWeight="600"
                 cursor="pointer"
-                accessibilityRole="button"
+                role="button"
                 onPress={() => {
                   setLogoutOthersDone(false);
                   setConfirmingLogoutOthers(true);
@@ -821,10 +821,10 @@ export default function AccountPage() {
             esportazione dati e cancellazione account non sono "impostazioni"
             come le altre, meritano di distinguersi a colpo d'occhio invece
             di stare appese in fondo alla stessa lista di FieldRow. */}
-        <Surface gap="$4" borderColor={brand.filetto}>
+        <Surface gap="4" borderColor={brand.filetto}>
           <SectionTitle>Dati e account</SectionTitle>
 
-          <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
+          <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="3">
             <YStack gap={2} flex={1} minWidth={200}>
               <Text fontWeight="600" color={brand.grafite}>
                 Esporta i tuoi dati
@@ -834,13 +834,13 @@ export default function AccountPage() {
               </Text>
             </YStack>
             <XStack
-              gap="$1"
+              gap="1"
               alignItems="center"
               cursor={isExporting ? "default" : "pointer"}
               opacity={isExporting ? 0.6 : 1}
               onPress={isExporting ? undefined : handleExportData}
-              accessibilityRole="button"
-              accessibilityLabel="Esporta i miei dati"
+              role="button"
+              aria-label="Esporta i miei dati"
             >
               <Download size={15} strokeWidth={1.5} color={brand.grafite70} />
               <Text color={brand.grafite70} fontWeight="600">
@@ -856,7 +856,7 @@ export default function AccountPage() {
 
           <YStack height={1} backgroundColor={brand.filetto} />
 
-          <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
+          <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="3">
             <YStack gap={2} flex={1} minWidth={200}>
               <Text fontWeight="600" color={brand.urgenza}>
                 Elimina il mio account
@@ -867,16 +867,16 @@ export default function AccountPage() {
             </YStack>
             {!isConfirmingDelete ? (
               <XStack
-                gap="$1"
+                gap="1"
                 alignItems="center"
                 cursor="pointer"
                 onPress={() => {
-                  setIsConfirmingDelete(true);
-                  setClosureCheck(null);
-                  apiClient.accountClosureCheck(token as string).then(setClosureCheck).catch(() => setClosureCheck({ blockers: [], jobsToCancel: [] }));
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Elimina il mio account"
+                                setIsConfirmingDelete(true);
+                                setClosureCheck(null);
+                                apiClient.accountClosureCheck(token as string).then(setClosureCheck).catch(() => setClosureCheck({ blockers: [], jobsToCancel: [] }));
+                              }}
+                role="button"
+                aria-label="Elimina il mio account"
               >
                 <Trash2 size={15} strokeWidth={1.5} color={brand.urgenza} />
                 <Text color={brand.urgenza} fontWeight="600">
@@ -892,7 +892,7 @@ export default function AccountPage() {
             </Text>
           ) : null}
           {isConfirmingDelete && closureCheck && closureCheck.blockers.length > 0 ? (
-            <YStack gap="$3" padding="$4" backgroundColor={brand.gesso} borderRadius="$4" borderWidth={1} borderColor={brand.filetto}>
+            <YStack gap="3" padding="4" backgroundColor={brand.gesso} borderRadius="4" borderWidth={1} borderColor={brand.filetto}>
               <Text fontWeight="700" color={brand.grafite} fontSize={16}>
                 Prima di chiudere l&apos;account
               </Text>
@@ -908,7 +908,7 @@ export default function AccountPage() {
                 color={brand.grafite70}
                 fontWeight="600"
                 cursor="pointer"
-                accessibilityRole="button"
+                role="button"
                 onPress={() => setIsConfirmingDelete(false)}
               >
                 Chiudi
@@ -916,9 +916,9 @@ export default function AccountPage() {
             </YStack>
           ) : null}
           {isConfirmingDelete && closureCheck && closureCheck.blockers.length === 0 ? (
-            <YStack gap="$3" padding="$4" backgroundColor="#FBEAE8" borderRadius="$4" borderWidth={1} borderColor={brand.urgenza}>
+            <YStack gap="3" padding="4" backgroundColor="#FBEAE8" borderRadius="4" borderWidth={1} borderColor={brand.urgenza}>
               {closureCheck.jobsToCancel.length > 0 ? (
-                <YStack gap="$1">
+                <YStack gap="1">
                   <Text fontWeight="700" color={brand.grafite} fontSize={16}>
                     {closureCheck.jobsToCancel.length === 1 ? "Hai un appuntamento in programma" : `Hai ${closureCheck.jobsToCancel.length} appuntamenti in programma`}
                   </Text>
@@ -952,10 +952,10 @@ export default function AccountPage() {
                   {deleteError}
                 </Text>
               ) : null}
-              <XStack gap="$3" alignItems="center">
+              <XStack gap="3" alignItems="center">
                 <Button
                   variant="urgent"
-                  size="$3"
+                  size="3"
                   height={40}
                   onPress={handleDeleteAccount}
                   disabled={isDeleting}
@@ -967,7 +967,7 @@ export default function AccountPage() {
                   color={brand.grafite70}
                   fontWeight="600"
                   cursor="pointer"
-                  accessibilityRole="button"
+                  role="button"
                   onPress={() => {
                     setIsConfirmingDelete(false);
                     setDeleteConfirmText("");

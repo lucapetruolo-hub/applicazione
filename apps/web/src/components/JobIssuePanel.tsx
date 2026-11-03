@@ -39,13 +39,13 @@ export function JobIssuePanel({
   onOfferRefund?: (amountEurCents: number) => Promise<void>;
 }) {
   return (
-    <YStack gap="$2" padding="$3" borderRadius="$3" backgroundColor={brand.urgenzaVelo}>
+    <YStack gap="2" padding="3" borderRadius="3" backgroundColor={brand.urgenzaVelo}>
       <Text fontWeight="800" color={brand.grafite}>
         Il cliente ha segnalato: {JOB_ISSUE_LABEL[issue.type].toLowerCase()} · {JOB_ISSUE_STATUS_LABEL[issue.status]}
       </Text>
       <Text color={brand.grafite}>“{issue.description}”</Text>
       {issue.photoUrls.length > 0 ? (
-        <XStack gap="$2" flexWrap="wrap">
+        <XStack gap="2" flexWrap="wrap">
           {issue.photoUrls.map((url) => (
             <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 64, height: 64, borderRadius: 10, overflow: "hidden", display: "block" }}>
               <MediaPreview url={url} />
@@ -59,7 +59,7 @@ export function JobIssuePanel({
       {issue.infoResponse ? <Quoted title="La tua risposta" text={issue.infoResponse} /> : null}
 
       {issue.status === "CHAT" ? (
-        <YStack gap="$2">
+        <YStack gap="2">
           <Text fontSize={13} color={brand.grafite70}>
             {issue.late
               ? "Il cliente ha segnalato il problema dopo i giorni per un rimborso dal sito: rispondigli qui in chat per trovare insieme una soluzione. Per legge rispondi comunque dei difetti del tuo lavoro."
@@ -70,7 +70,7 @@ export function JobIssuePanel({
               : `Rispondi al cliente in chat entro ${formatIssueDeadline(issue.chatReplyDueAt)} e proponi una soluzione. Se non rispondi, la segnalazione passa da sola al nostro team.`}
           </Text>
           {onOpenChat ? (
-            <Button variant="primary" size="$2" height={36} alignSelf="flex-start" onPress={onOpenChat}>
+            <Button variant="primary" size="2" height={36} alignSelf="flex-start" onPress={onOpenChat}>
               Apri la chat col cliente
             </Button>
           ) : null}
@@ -109,7 +109,7 @@ export function JobIssuePanel({
           onSubmit={onRespond}
         />
       ) : issue.resolutionNote ? (
-        <YStack gap="$2">
+        <YStack gap="2">
           <Text fontSize={13} color={brand.grafite}>
             {issue.appealDecision === "ACCEPTED"
               ? `Ricorso accolto: la segnalazione è respinta e la misura presa è stata tolta. Motivazione: ${issue.appealNote}`
@@ -204,7 +204,7 @@ function TextForm({
   }
 
   return (
-    <YStack gap="$2">
+    <YStack gap="2">
       <Text fontSize={13} color={brand.grafite70}>
         {intro}
       </Text>
@@ -232,7 +232,7 @@ function TextForm({
           {error}
         </Text>
       ) : null}
-      <Button variant="secondary" size="$2" height={36} alignSelf="flex-start" onPress={submit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
+      <Button variant="secondary" size="2" height={36} alignSelf="flex-start" opacity={isSaving ? 0.6 : 1} onPress={submit} disabled={isSaving}>
         {isSaving ? "Invio..." : submitLabel}
       </Button>
     </YStack>
@@ -267,13 +267,13 @@ function RefundOfferForm({ current, onSubmit }: { current: number | null; onSubm
   }
 
   return (
-    <YStack gap="$2">
+    <YStack gap="2">
       <Text fontSize={13} color={brand.grafite70}>
         {current !== null
           ? `Hai proposto un rimborso di ${formatEurCents(current)}: se il cliente lo accetta parte subito e la segnalazione si chiude. Puoi cambiarlo.`
           : "Vi siete accordati su un rimborso? Proponilo qui: se il cliente lo accetta parte subito dai soldi del lavoro e la segnalazione si chiude."}
       </Text>
-      <XStack gap="$2" alignItems="center" flexWrap="wrap">
+      <XStack gap="2" alignItems="center" flexWrap="wrap">
         <input
           inputMode="decimal"
           value={draft}
@@ -285,7 +285,7 @@ function RefundOfferForm({ current, onSubmit }: { current: number | null; onSubm
         <Text fontSize={16} color={brand.grafite70}>
           €
         </Text>
-        <Button variant="secondary" size="$2" height={36} onPress={submit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
+        <Button variant="secondary" size="2" height={36} onPress={submit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
           {isSaving ? "Invio..." : current !== null ? "Cambia proposta" : "Proponi rimborso"}
         </Button>
       </XStack>

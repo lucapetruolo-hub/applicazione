@@ -22,7 +22,7 @@ export type EmptyStateProps = {
 /** Icona + titolo + azione — mai testo triste senza via d'uscita (brief §3). */
 export function EmptyState({ icon, title, description, action, illustration }: EmptyStateProps) {
   return (
-    <YStack alignItems="center" gap="$3" paddingVertical="$8" paddingHorizontal="$4">
+    <YStack alignItems="center" gap="3" paddingVertical="8" paddingHorizontal="4">
       <YStack
         width={56}
         height={56}
@@ -33,7 +33,7 @@ export function EmptyState({ icon, title, description, action, illustration }: E
       >
         {illustration ?? <Icon name={icon} size={26} color={brand.cianografiaScuro} strokeWidth={1.5} />}
       </YStack>
-      <Text fontFamily="$heading" fontWeight="700" fontSize="$5" textAlign="center" color={brand.grafite}>
+      <Text fontFamily="heading" fontWeight="700" fontSize="5" textAlign="center" color={brand.grafite}>
         {title}
       </Text>
       {description ? (

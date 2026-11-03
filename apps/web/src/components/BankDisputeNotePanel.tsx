@@ -55,13 +55,13 @@ export function BankDisputeNotePanel({
   const by = writeBy(dispute.dueBy);
 
   return (
-    <YStack gap="$2" padding="$3" borderRadius="$3" backgroundColor={brand.ottoneVelo} borderWidth={1} borderColor={brand.filetto}>
-      <XStack gap="$3" alignItems="flex-start">
+    <YStack gap="2" padding="3" borderRadius="3" backgroundColor={brand.ottoneVelo} borderWidth={1} borderColor={brand.filetto}>
+      <XStack gap="3" alignItems="flex-start">
         <YStack width={36} height={36} borderRadius={18} backgroundColor={brand.calce} alignItems="center" justifyContent="center" flexShrink={0}>
           <Icon name="triangle-alert" size={18} strokeWidth={2.2} color="#8A6418" />
         </YStack>
         <YStack flex={1} gap={2}>
-          <Text fontSize={16} fontWeight="700" color={brand.grafite} lineHeight={22}>
+          <Text fontSize={16} fontWeight="700" color={brand.grafite} lineHeight="22px">
             Contestazione in banca
           </Text>
           {dispute.open ? (
@@ -171,15 +171,15 @@ function BankDisputeNoteModal({
         width="100%"
         maxWidth={480}
         backgroundColor={brand.calce}
-        borderRadius="$3"
+        borderRadius="3"
         borderWidth={1}
         borderColor={brand.filetto}
-        padding="$5"
-        gap="$4"
-        marginVertical="$6"
+        padding="5"
+        gap="4"
+        marginVertical="6"
       >
-        <YStack gap="$1">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+        <YStack gap="1">
+          <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
             La tua spiegazione
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
@@ -187,8 +187,8 @@ function BankDisputeNoteModal({
           </Text>
         </YStack>
 
-        <YStack gap="$2">
-          <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+        <YStack gap="2">
+          <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
             Come è andato
           </Text>
           <textarea
@@ -202,13 +202,13 @@ function BankDisputeNoteModal({
           />
         </YStack>
 
-        <YStack gap="$1">
+        <YStack gap="1">
           <Text fontSize={13} color={brand.grafite70}>
             Foto del lavoro (facoltative, fino a {BANK_DISPUTE_PRO_PHOTOS_MAX})
           </Text>
-          <XStack flexWrap="wrap" gap="$2">
+          <XStack flexWrap="wrap" gap="2">
             {photoUrls.map((url) => (
-              <YStack key={url} width={64} height={64} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+              <YStack key={url} width={64} height={64} borderRadius="3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
                 <MediaPreview url={url} />
                 <YStack
                   position="absolute"
@@ -222,8 +222,8 @@ function BankDisputeNoteModal({
                   justifyContent="center"
                   cursor="pointer"
                   onPress={() => setPhotoUrls((prev) => prev.filter((u) => u !== url))}
-                  accessibilityRole="button"
-                  accessibilityLabel="Rimuovi foto"
+                  role="button"
+                  aria-label="Rimuovi foto"
                 >
                   <X size={11} strokeWidth={2} color="white" />
                 </YStack>
@@ -233,7 +233,7 @@ function BankDisputeNoteModal({
               <YStack
                 width={64}
                 height={64}
-                borderRadius="$3"
+                borderRadius="3"
                 borderWidth={1}
                 borderColor={brand.filetto}
                 borderStyle="dashed"
@@ -242,13 +242,13 @@ function BankDisputeNoteModal({
                 cursor="pointer"
                 opacity={isUploading ? 0.6 : 1}
                 onPress={() => !isUploading && inputRef.current?.click()}
-                accessibilityRole="button"
-                accessibilityLabel="Aggiungi foto"
+                role="button"
+                aria-label="Aggiungi foto"
               >
                 {isUploading ? (
                   <UploadingDots dotSize={6} />
                 ) : (
-                  <Text fontSize="$6" color={brand.grafite70}>
+                  <Text fontSize="6" color={brand.grafite70}>
                     +
                   </Text>
                 )}
@@ -264,11 +264,11 @@ function BankDisputeNoteModal({
           </Text>
         ) : null}
 
-        <XStack gap="$2" flexWrap="wrap">
-          <Button variant="primary" size="$3" height={44} onPress={handleSubmit} disabled={isSaving || isUploading} opacity={isSaving ? 0.6 : 1}>
+        <XStack gap="2" flexWrap="wrap">
+          <Button variant="primary" size="3" height={44} opacity={isSaving ? 0.6 : 1} onPress={handleSubmit} disabled={isSaving || isUploading}>
             {isSaving ? "Invio..." : "Invia la spiegazione"}
           </Button>
-          <Button variant="ghost" size="$3" height={44} onPress={onClose} disabled={isSaving}>
+          <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSaving}>
             Annulla
           </Button>
         </XStack>

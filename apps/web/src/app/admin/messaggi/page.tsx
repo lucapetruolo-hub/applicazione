@@ -81,9 +81,9 @@ export default function AdminMessaggiPage() {
       />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {undo ? (
-        <XStack role="status" gap="$3" alignItems="center" flexWrap="wrap" padding="$3" marginBottom="$3" borderRadius={10} backgroundColor={brand.gesso}>
+        <XStack role="status" gap="3" alignItems="center" flexWrap="wrap" padding="3" marginBottom="3" borderRadius={10} backgroundColor={brand.gesso}>
           <Text color={brand.grafite}>{`Messaggio di ${undo.email} spostato nell'archivio.`}</Text>
-          <Button variant="secondary" size="$3" onPress={undoResolve}>
+          <Button variant="secondary" size="3" onPress={undoResolve}>
             Annulla
           </Button>
         </XStack>
@@ -96,7 +96,7 @@ export default function AdminMessaggiPage() {
       ) : messages && messages.length === 0 ? (
         <Text color={brand.grafite70}>{view === "aperti" ? "Nessun messaggio da gestire." : "Archivio vuoto."}</Text>
       ) : (
-        <YStack gap="$3">
+        <YStack gap="3">
           {messages?.map((message) => <MessageCard key={message.id} message={message} token={token ?? ""} onResolved={() => resolved(message)} onChanged={reload} />)}
         </YStack>
       )}
@@ -147,14 +147,14 @@ function MessageCard({ message, token, onResolved, onChanged }: { message: Admin
 
   return (
     <AdminCard>
-      <XStack justifyContent="space-between" gap="$2" flexWrap="wrap" alignItems="center">
-        <XStack gap="$2" alignItems="center" flexWrap="wrap">
+      <XStack justifyContent="space-between" gap="2" flexWrap="wrap" alignItems="center">
+        <XStack gap="2" alignItems="center" flexWrap="wrap">
           <AdminPill tone={isReport ? "danger" : "neutral"}>{ROLE_LABEL[message.role]}</AdminPill>
           <Text fontWeight="700" color={brand.grafite}>
             {message.email}
           </Text>
         </XStack>
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize="2" color={brand.grafite70}>
           {formatAdminDate(message.createdAt, true)}
         </Text>
       </XStack>
@@ -162,23 +162,23 @@ function MessageCard({ message, token, onResolved, onChanged }: { message: Admin
         {message.content}
       </Text>
       {isReport ? (
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize="2" color={brand.grafite70}>
           Rispondi con l&apos;esito in una riga, senza motivazione: lascia una delle due frasi già scritte.
         </Text>
       ) : null}
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
-      <XStack gap="$2" flexWrap="wrap">
+      <XStack gap="2" flexWrap="wrap">
         <a href={mailto} style={{ textDecoration: "none" }}>
-          <Button tabIndex={-1} variant="secondary" size="$3">
+          <Button tabIndex={-1} variant="secondary" size="3">
             {isReport ? "Invia l'esito via email" : "Rispondi via email"}
           </Button>
         </a>
         {!message.resolved ? (
-          <Button variant="primary" size="$3" disabled={busy} onPress={resolve}>
+          <Button variant="primary" size="3" disabled={busy} onPress={resolve}>
             {busy ? "…" : "Segna come gestito"}
           </Button>
         ) : (
-          <Button variant="secondary" size="$3" disabled={busy} onPress={reopen}>
+          <Button variant="secondary" size="3" disabled={busy} onPress={reopen}>
             {busy ? "…" : "Riapri"}
           </Button>
         )}

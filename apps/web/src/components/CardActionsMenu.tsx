@@ -44,10 +44,10 @@ export type CardAction = {
 };
 
 export function CardActionsMenu({
-  accessibilityLabel,
+  "aria-label": accessibilityLabel,
   actions,
 }: {
-  accessibilityLabel: string;
+  "aria-label": string;
   actions: CardAction[];
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -177,11 +177,7 @@ export function CardActionsMenu({
   return (
     <YStack flexShrink={0}>
       <YStack
-        ref={buttonRef}
-        // Tondo verde chiaro con bordo verde, pieno quando è aperto: prima era
-        // solo un'icona grigia senza sfondo e non si notava (richiesta
-        // esplicita dell'utente, docs/CHANGELOG.md §329). 44px: misura minima
-        // comoda per il dito.
+        ref={buttonRef as never}
         width={44}
         height={44}
         borderRadius={999}
@@ -190,16 +186,14 @@ export function CardActionsMenu({
         cursor="pointer"
         borderWidth={1.5}
         borderColor={brand.cianografia}
-        backgroundColor={isOpen ? brand.cianografia : brand.cianografiaVelo}
-        hoverStyle={{ backgroundColor: isOpen ? brand.cianografia : "#C6EBD7" }}
-        pressStyle={{ backgroundColor: brand.cianografia }}
+        backgroundColor={`${isOpen ? brand.cianografia : brand.cianografiaVelo} hover:${isOpen ? brand.cianografia : "#C6EBD7"} press:${brand.cianografia}`}
         onPress={(e: { stopPropagation: () => void }) => {
-          e.stopPropagation();
-          if (isOpen) close();
-          else open();
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
+                e.stopPropagation();
+                if (isOpen) close();
+                else open();
+              }}
+        role="button"
+        aria-label={accessibilityLabel}
         aria-haspopup="menu"
         aria-expanded={isOpen}
       >
@@ -245,35 +239,35 @@ export function CardActionsMenu({
                 shadowOpacity={1}
               >
                 {confirming?.confirm ? (
-                  <YStack padding="$3" gap="$2">
+                  <YStack padding="3" gap="2">
                     <Text fontSize={13} color={brand.grafite}>
                       {confirming.confirm.question}
                     </Text>
-                    <XStack gap="$2">
+                    <XStack gap="2">
                       <Button
-                        variant="urgent"
-                        size="$2"
-                        height={34}
-                        onPress={(e: { stopPropagation: () => void }) => {
-                          e.stopPropagation();
-                          runConfirmed(confirming);
-                        }}
-                        disabled={isBusy}
-                        opacity={isBusy ? 0.6 : 1}
-                      >
+                      variant="urgent"
+                      size="2"
+                      height={34}
+                      opacity={isBusy ? 0.6 : 1}
+                      onPress={(e: { stopPropagation: () => void }) => {
+                                              e.stopPropagation();
+                                              runConfirmed(confirming);
+                                            }}
+                      disabled={isBusy}
+                    >
                         {isBusy
                           ? confirming.confirm.busyLabel
                           : confirming.confirm.confirmLabel}
                       </Button>
                       <Button
-                        variant="ghost"
-                        size="$2"
-                        height={34}
-                        onPress={(e: { stopPropagation: () => void }) => {
-                          e.stopPropagation();
-                          setConfirming(null);
-                        }}
-                      >
+                      variant="ghost"
+                      size="2"
+                      height={34}
+                      onPress={(e: { stopPropagation: () => void }) => {
+                                              e.stopPropagation();
+                                              setConfirming(null);
+                                            }}
+                    >
                         Indietro
                       </Button>
                     </XStack>
@@ -285,22 +279,21 @@ export function CardActionsMenu({
                     return (
                       <XStack
                         key={action.text}
-                        paddingHorizontal="$4"
-                        paddingVertical="$3"
+                        paddingHorizontal="4"
+                        paddingVertical="3"
                         alignItems="center"
-                        gap="$2"
+                        gap="2"
                         cursor="pointer"
-                        hoverStyle={{ backgroundColor: brand.gesso }}
-                        focusVisibleStyle={{ backgroundColor: brand.gesso }}
+                        backgroundColor={`hover:${brand.gesso} focus-visible:${brand.gesso}`}
                         onPress={(e: { stopPropagation: () => void }) => {
-                          e.stopPropagation();
-                          if (action.confirm) {
-                            setConfirming(action);
-                            return;
-                          }
-                          close();
-                          action.onPress();
-                        }}
+                                                e.stopPropagation();
+                                                if (action.confirm) {
+                                                  setConfirming(action);
+                                                  return;
+                                                }
+                                                close();
+                                                action.onPress();
+                                              }}
                         role="menuitem"
                         tabIndex={-1}
                       >

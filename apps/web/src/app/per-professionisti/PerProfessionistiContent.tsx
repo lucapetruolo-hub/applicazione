@@ -86,7 +86,7 @@ function Band({ children, id, last }: { children: ReactNode; id?: string; last?:
         borderBottom: last ? `1px solid ${LINE}` : undefined,
       }}
     >
-      <YStack width="100%" maxWidth={MAX_WIDTH} borderColor={LINE} $gtSm={{ borderLeftWidth: 1, borderRightWidth: 1 }}>
+      <YStack width="100%" maxWidth={MAX_WIDTH} borderColor={LINE} borderLeftWidth="gtSm:1px" borderRightWidth="gtSm:1px">
         {children}
       </YStack>
     </div>
@@ -96,7 +96,7 @@ function Band({ children, id, last }: { children: ReactNode; id?: string; last?:
 /** Griglia di celle separate da filetti: lo sfondo è la linea, il `gap` di 1px la mostra. */
 function Grid({ children }: { children: ReactNode }) {
   return (
-    <YStack width="100%" gap={1} backgroundColor={LINE} borderTopWidth={1} borderColor={LINE} $gtSm={{ flexDirection: "row" }}>
+    <YStack width="100%" gap={1} backgroundColor={LINE} borderTopWidth={1} borderColor={LINE} flexDirection="gtSm:row">
       {children}
     </YStack>
   );
@@ -104,7 +104,7 @@ function Grid({ children }: { children: ReactNode }) {
 
 function Cell({ children, flex = 1 }: { children: ReactNode; flex?: number }) {
   return (
-    <YStack flex={flex} $gtSm={{ flexBasis: 0 }} backgroundColor={brand.gesso} padding="$5" gap="$2" $gtMd={{ padding: "$6" }}>
+    <YStack flex={flex} flexBasis="gtSm:0px" backgroundColor={brand.gesso} padding="5 gtMd:6" gap="2">
       {children}
     </YStack>
   );
@@ -112,7 +112,7 @@ function Cell({ children, flex = 1 }: { children: ReactNode; flex?: number }) {
 
 function CellTitle({ children }: { children: ReactNode }) {
   return (
-    <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+    <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
       {children}
     </Text>
   );
@@ -120,7 +120,7 @@ function CellTitle({ children }: { children: ReactNode }) {
 
 function CellText({ children }: { children: ReactNode }) {
   return (
-    <Text color={brand.grafite70} lineHeight={22}>
+    <Text color={brand.grafite70} lineHeight="22px">
       {children}
     </Text>
   );
@@ -128,21 +128,20 @@ function CellText({ children }: { children: ReactNode }) {
 
 function SectionTitle({ children, lead }: { children: ReactNode; lead?: string }) {
   return (
-    <YStack paddingHorizontal="$5" paddingVertical="$7" gap="$2" $gtMd={{ paddingHorizontal: "$6", paddingVertical: "$9" }}>
+    <YStack paddingHorizontal="5 gtMd:6" paddingVertical="7 gtMd:9" gap="2">
       <Text
-        tag="h2"
-        fontFamily="$heading"
+        render="h2"
+        fontFamily="heading"
         fontWeight="700"
-        fontSize={34}
-        lineHeight={38}
+        fontSize="34px gtSm:46px"
+        lineHeight="38px gtSm:50px"
         letterSpacing={-0.5}
         color={brand.grafite}
-        $gtSm={{ fontSize: 46, lineHeight: 50 }}
       >
         {children}
       </Text>
       {lead ? (
-        <Text color={brand.grafite70} fontSize="$5" lineHeight={26} maxWidth={620}>
+        <Text color={brand.grafite70} fontSize="5" lineHeight="26px" maxWidth={620}>
           {lead}
         </Text>
       ) : null}
@@ -165,13 +164,13 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
         {/* Sfumatura che la pagina aveva già (scelta dell'utente), ora con le
             luci che si muovono piano come nella home (docs/CHANGELOG.md §306). */}
         <GlowLights tone="chiaro" />
-        <YStack position="relative" width="100%" maxWidth={760} alignItems="center" gap="$4" paddingHorizontal="$4" paddingVertical="$10" $gtMd={{ paddingVertical: 120 }}>
+        <YStack position="relative" width="100%" maxWidth={760} alignItems="center" gap="4" paddingHorizontal="4" paddingVertical="10 gtMd:120px">
           <XStack borderWidth={1} borderColor={LINE} borderRadius={999} backgroundColor={brand.calce} overflow="hidden" alignItems="center">
-            <Text fontSize={13} color={brand.grafite} paddingHorizontal="$3" paddingVertical={6}>
+            <Text fontSize={13} color={brand.grafite} paddingHorizontal="3" paddingVertical={6}>
               Con o senza partita IVA
             </Text>
             <Link href="#prezzi" style={{ textDecoration: "none", borderLeft: `1px solid ${LINE}` }}>
-              <XStack alignItems="center" gap="$1" paddingHorizontal="$3" paddingVertical={6} hoverStyle={{ backgroundColor: brand.cianografiaVelo }}>
+              <XStack alignItems="center" gap="1" paddingHorizontal="3" paddingVertical={6} backgroundColor={`hover:${brand.cianografiaVelo}`}>
                 <Text fontSize={13} color={brand.cianografiaScuro} fontWeight="600">
                   Vedi i prezzi
                 </Text>
@@ -181,24 +180,23 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
           </XStack>
 
           <Text
-            tag="h1"
-            fontFamily="$heading"
+            render="h1"
+            fontFamily="heading"
             fontWeight="700"
-            fontSize={38}
-            lineHeight={42}
+            fontSize="38px gtSm:54px"
+            lineHeight="42px gtSm:56px"
             letterSpacing={-0.8}
             textAlign="center"
             color={brand.grafite}
-            $gtSm={{ fontSize: 54, lineHeight: 56 }}
           >
             Trova nuovi clienti nella tua zona.
           </Text>
 
-          <Text fontSize="$6" lineHeight={28} color={brand.grafite70} textAlign="center" maxWidth={560}>
+          <Text fontSize="6" lineHeight="28px" color={brand.grafite70} textAlign="center" maxWidth={560}>
             Ricevi richieste di lavoro vicino a te, manda preventivi chiari e gestisci appuntamenti e recensioni in un unico posto.
           </Text>
 
-          <XStack gap="$3" flexWrap="wrap" justifyContent="center" marginTop="$2">
+          <XStack gap="3" flexWrap="wrap" justifyContent="center" marginTop="2">
             <Link href="#come-funziona" style={{ textDecoration: "none" }}>
               <Button tabIndex={-1} variant="secondary">Come funziona</Button>
             </Link>
@@ -209,7 +207,7 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
             </Link>
           </XStack>
 
-          <XStack gap="$2" alignItems="center">
+          <XStack gap="2" alignItems="center">
             <Icon name="shield-check" size={16} color={brand.cianografiaScuro} strokeWidth={1.75} />
             <Text fontSize={16} color={brand.grafite70}>
               Iscrizione gratuita, nessuna carta richiesta.
@@ -224,7 +222,7 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
 function ProPhoto() {
   return (
     <Band>
-      <YStack padding="$3" $gtSm={{ padding: "$4" }}>
+      <YStack padding="3 gtSm:4">
         <div
           style={{
             position: "relative",
@@ -268,46 +266,45 @@ function ProOnlinePayment() {
   if (!onlinePayments) return null;
   return (
     <Band>
-      <YStack gap="$6" padding="$5" paddingVertical="$7" $gtSm={{ flexDirection: "row", alignItems: "center" }} $gtMd={{ padding: "$8" }}>
-        <YStack gap="$3" $gtSm={{ flex: 1, flexBasis: 0, minWidth: 0 }}>
+      <YStack gap="6" paddingTop="7 gtMd:8" paddingRight="5 gtMd:8" paddingBottom="7 gtMd:8" paddingLeft="5 gtMd:8" flexDirection="gtSm:row" alignItems="gtSm:center">
+        <YStack gap="3" flex="gtSm:1" flexBasis="gtSm:0px" minWidth="gtSm:0px">
           {/* Verde più scuro: sul pesca della banda il verde scuro di sempre si fermava a 4,3:1 (collaudo L-09). */}
           <Text fontSize={13} fontWeight="700" letterSpacing={0.6} textTransform="uppercase" color="#0A6A41">
             Pagamento online
           </Text>
           <Text
-            tag="h2"
-            fontFamily="$heading"
+            render="h2"
+            fontFamily="heading"
             fontWeight="700"
-            fontSize={30}
-            lineHeight={34}
+            fontSize="30px gtSm:38px"
+            lineHeight="34px gtSm:42px"
             letterSpacing={-0.5}
             color={brand.grafite}
-            $gtSm={{ fontSize: 38, lineHeight: 42 }}
           >
             Il cliente paga l&apos;acconto prima. Tu lavori tranquillo.
           </Text>
-          <Text color={brand.grafite70} fontSize="$5" lineHeight={26}>
+          <Text color={brand.grafite70} fontSize="5" lineHeight="26px">
             Il lavoro è confermato solo quando il cliente ha pagato.
           </Text>
-          <Text color={brand.grafite70} fontSize={15} lineHeight={22}>
+          <Text color={brand.grafite70} fontSize={15} lineHeight="22px">
             {ONLINE_APP_FEE_PERCENT}% + IVA tutto compreso, solo sui pagamenti online. Il pagamento diretto resta gratis.{" "}
             <Link href="/per-professionisti/pagamenti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
               Scopri di più
             </Link>
           </Text>
         </YStack>
-        <YStack tag="ol" margin={0} padding={0} gap="$3" $gtSm={{ flex: 1, flexBasis: 0, minWidth: 0 }}>
+        <YStack render="ol" margin={0} padding={0} gap="3" flex="gtSm:1" flexBasis="gtSm:0px" minWidth="gtSm:0px">
           {PAYMENT_STEPS.map((step, index) => (
             <XStack
-              tag="li"
+              render="li"
               key={step.title}
-              gap="$3"
+              gap="3"
               alignItems="flex-start"
               backgroundColor={brand.calce}
               borderWidth={1}
               borderColor={LINE}
               borderRadius={20}
-              padding="$4"
+              padding="4"
             >
               <XStack width={32} height={32} borderRadius={999} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
                 <Text fontWeight="700" color={brand.cianografiaScuro}>
@@ -318,7 +315,7 @@ function ProOnlinePayment() {
                 <Text fontWeight="700" color={brand.grafite}>
                   {step.title}
                 </Text>
-                <Text color={brand.grafite70} lineHeight={22}>
+                <Text color={brand.grafite70} lineHeight="22px">
                   {step.text}
                 </Text>
               </YStack>
@@ -373,7 +370,7 @@ function ProGallery() {
 /** Riquadro bianco con bordo sottile per le piccole illustrazioni delle celle. */
 function Panel({ children }: { children: ReactNode }) {
   return (
-    <YStack marginTop="$4" backgroundColor={brand.calce} borderWidth={1} borderColor={LINE} borderRadius={20} padding="$3" gap="$2">
+    <YStack marginTop="4" backgroundColor={brand.calce} borderWidth={1} borderColor={LINE} borderRadius={20} padding="3" gap="2">
       {children}
     </YStack>
   );
@@ -391,7 +388,7 @@ const AGENDA_EXAMPLE: { time: string; job: string; note: string; strong: boolean
 
 function MiniLine({ children, strong }: { children: ReactNode; strong?: boolean }) {
   return (
-    <Text fontSize={13} lineHeight={18} color={strong ? brand.grafite : brand.grafite70} fontWeight={strong ? "600" : "400"} numberOfLines={1}>
+    <Text fontSize={13} lineHeight="18px" color={strong ? brand.grafite : brand.grafite70} fontWeight={strong ? "600" : "400"} numberOfLines={1}>
       {children}
     </Text>
   );
@@ -407,13 +404,13 @@ function ProBenefits() {
         <Cell flex={2}>
           <CellTitle>Lavori vicino a te</CellTitle>
           <CellText>Ti arrivano le richieste dei clienti della tua zona, con foto e descrizione del lavoro.</CellText>
-          <XStack marginTop="$4" gap="$2" flexWrap="wrap">
+          <XStack marginTop="4" gap="2" flexWrap="wrap">
             {PROFESSIONAL_CATEGORIES.slice(0, 8).map((category) => (
               <XStack
                 key={category.slug}
                 alignItems="center"
-                gap="$2"
-                paddingHorizontal="$3"
+                gap="2"
+                paddingHorizontal="3"
                 paddingVertical={6}
                 borderRadius={999}
                 borderWidth={1}
@@ -433,7 +430,7 @@ function ProBenefits() {
           <CellText>Gli appuntamenti si prenotano dalla tua agenda e il cliente riceve un promemoria prima.</CellText>
           <Panel>
             {AGENDA_EXAMPLE.map((item) => (
-              <XStack key={item.time} alignItems="center" gap="$2">
+              <XStack key={item.time} alignItems="center" gap="2">
                 <Icon name="clock" size={14} color={item.strong ? brand.cianografiaScuro : brand.grafite70} strokeWidth={1.75} />
                 <YStack flex={1} minWidth={0}>
                   <MiniLine strong={item.strong}>
@@ -448,7 +445,7 @@ function ProBenefits() {
           <CellTitle>Recensioni vere</CellTitle>
           <CellText>Solo chi ha fatto un lavoro con te può recensirti: la tua reputazione vale di più.</CellText>
           <Panel>
-            <XStack gap="$1">
+            <XStack gap="1">
               {[0, 1, 2, 3, 4].map((star) => (
                 <Icon key={star} name="star" size={16} color={brand.ottone} fill={brand.ottone} strokeWidth={1.5} />
               ))}
@@ -480,8 +477,8 @@ function ProSteps() {
       <Grid>
         {STEPS.map((step, index) => (
           <Cell key={step.title}>
-            <XStack alignItems="center" justifyContent="space-between" marginBottom="$3">
-              <Text fontFamily="$heading" fontWeight="700" fontSize="$7" color={brand.cianografiaScuro}>
+            <XStack alignItems="center" justifyContent="space-between" marginBottom="3">
+              <Text fontFamily="heading" fontWeight="700" fontSize="7" color={brand.cianografiaScuro}>
                 {String(index + 1).padStart(2, "0")}
               </Text>
               <XStack
@@ -545,24 +542,23 @@ function FounderBand({ spots, months }: { spots: FounderSpots; months: number })
     <XStack
       width="100%"
       backgroundColor={brand.cianografiaPieno}
-      paddingHorizontal="$5"
-      paddingVertical="$4"
-      gap="$4"
+      paddingHorizontal="5 gtMd:6"
+      paddingVertical="4 gtMd:5"
+      gap="4"
       alignItems="center"
       justifyContent="space-between"
-      $gtMd={{ paddingHorizontal: "$6", paddingVertical: "$5" }}
     >
-      <YStack flex={1} gap="$1">
-        <Text tag="p" margin={0} fontFamily="$heading" fontWeight="800" fontSize={28} lineHeight={32} letterSpacing={-0.5} color="white" $gtSm={{ fontSize: 40, lineHeight: 44 }}>
+      <YStack flex={1} gap="1">
+        <Text render="p" margin={0} fontFamily="heading" fontWeight="800" fontSize="28px gtSm:40px" lineHeight="32px gtSm:44px" letterSpacing={-0.5} color="white">
           {months === 1 ? "GRATIS PER 1 MESE" : `GRATIS PER ${months} MESI`}
         </Text>
-        <Text color="white" fontSize={15} lineHeight={21}>
+        <Text color="white" fontSize={15} lineHeight="21px">
           Per i primi {spots.total} professionisti che si iscrivono. Poi decidi tu se continuare.
         </Text>
       </YStack>
       {/* Riquadro più scuro della banda, non più chiaro: il bianco sopra resta oltre 4,5:1 (collaudo L-09). */}
-      <YStack alignItems="center" backgroundColor="rgba(0,0,0,0.16)" borderRadius={10} paddingHorizontal="$3" paddingVertical="$2" minWidth={88}>
-        <Text fontFamily="$heading" fontWeight="800" fontSize={30} lineHeight={34} color="white">
+      <YStack alignItems="center" backgroundColor="rgba(0,0,0,0.16)" borderRadius={10} paddingHorizontal="3" paddingVertical="2" minWidth={88}>
+        <Text fontFamily="heading" fontWeight="800" fontSize={30} lineHeight="34px" color="white">
           {spots.total}
         </Text>
         <Text color="white" fontSize={13}>
@@ -579,21 +575,20 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
   const offer = founders && founders.left > 0 && offerMonths ? founders : null;
   return (
     <Band id="prezzi">
-      <YStack paddingHorizontal="$5" paddingVertical="$7" gap="$4" $gtMd={{ paddingHorizontal: "$6", paddingVertical: "$9" }}>
-        <YStack gap="$2">
+      <YStack paddingHorizontal="5 gtMd:6" paddingVertical="7 gtMd:9" gap="4">
+        <YStack gap="2">
           <Text
-            tag="h2"
-            fontFamily="$heading"
+            render="h2"
+            fontFamily="heading"
             fontWeight="700"
-            fontSize={34}
-            lineHeight={38}
+            fontSize="34px gtSm:46px"
+            lineHeight="38px gtSm:50px"
             letterSpacing={-0.5}
             color={brand.grafite}
-            $gtSm={{ fontSize: 46, lineHeight: 50 }}
           >
             Un solo abbonamento, tutte le funzioni
           </Text>
-          <Text color={brand.grafite70} fontSize="$5" lineHeight={26} maxWidth={620}>
+          <Text color={brand.grafite70} fontSize="5" lineHeight="26px" maxWidth={620}>
             I livelli cambiano solo per quanti lavori accettati al mese sono compresi.
           </Text>
         </YStack>
@@ -612,17 +607,16 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
             <YStack
               key={tier.tier}
               flex={1}
-              $gtSm={{ flexBasis: 0 }}
+              flexBasis="gtSm:0px"
               backgroundColor={free ? brand.calce : brand.gesso}
               borderTopWidth={3}
               borderTopColor={free ? brand.cianografia : "transparent"}
-              padding="$5"
-              gap="$3"
-              $gtMd={{ padding: "$6" }}
+              padding="5 gtMd:6"
+              gap="3"
             >
               <YStack gap={2}>
-                <XStack alignItems="center" gap="$2" flexWrap="wrap">
-                  <Text tag="h3" margin={0} fontFamily="$heading" fontWeight="700" fontSize="$7" color={brand.grafite}>
+                <XStack alignItems="center" gap="2" flexWrap="wrap">
+                  <Text render="h3" margin={0} fontFamily="heading" fontWeight="700" fontSize="7" color={brand.grafite}>
                     {tier.label}
                   </Text>
                   {free ? (
@@ -632,9 +626,9 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
                       fontWeight="700"
                       color={brand.cianografiaScuro}
                       backgroundColor={brand.cianografiaVelo}
-                      paddingHorizontal="$2"
+                      paddingHorizontal="2"
                       paddingVertical={2}
-                      borderRadius="$10"
+                      borderRadius="10"
                     >
                       {offer ? "Offerta di lancio" : "Offerta di benvenuto"}
                     </Text>
@@ -646,9 +640,9 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
                       fontWeight="700"
                       color="white"
                       backgroundColor={brand.cianografiaPieno}
-                      paddingHorizontal="$2"
+                      paddingHorizontal="2"
                       paddingVertical={2}
-                      borderRadius="$10"
+                      borderRadius="10"
                     >
                       Consigliato
                     </Text>
@@ -659,12 +653,12 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
                 </Text>
               </YStack>
               {free ? (
-                <YStack gap="$1">
-                  <XStack alignItems="baseline" gap="$2" flexWrap="wrap">
-                    <Text fontFamily="$heading" fontSize="$7" color={brand.grafite70} textDecorationLine="line-through">
+                <YStack gap="1">
+                  <XStack alignItems="baseline" gap="2" flexWrap="wrap">
+                    <Text fontFamily="heading" fontSize="7" color={brand.grafite70} textDecorationLine="line-through">
                       {formatEur(monthlyShown)}
                     </Text>
-                    <Text fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.cianografiaScuro}>
+                    <Text fontFamily="heading" fontWeight="800" fontSize="9" color={brand.cianografiaScuro}>
                       Gratis
                     </Text>
                     <Text color={brand.grafite70}>{offerMonths === 1 ? "per 1 mese" : `per ${offerMonths} mesi`}</Text>
@@ -674,9 +668,9 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
                   </Text>
                 </YStack>
               ) : (
-                <YStack gap="$1">
-                  <XStack alignItems="baseline" gap="$2" flexWrap="wrap">
-                    <Text fontFamily="$heading" fontWeight="700" fontSize="$9" color={brand.grafite}>
+                <YStack gap="1">
+                  <XStack alignItems="baseline" gap="2" flexWrap="wrap">
+                    <Text fontFamily="heading" fontWeight="700" fontSize="9" color={brand.grafite}>
                       {formatEur(monthlyShown)}
                     </Text>
                     <Text color={brand.grafite70}>al mese + IVA</Text>
@@ -687,9 +681,9 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
                 </YStack>
               )}
               {/* Cosa dà il livello, con la spunta come "Compreso in ogni livello": su Plus si vede subito cosa c'è in più rispetto a Base. */}
-              <YStack tag="ul" margin={0} padding={0} gap="$2" style={{ listStyle: "none" }}>
+              <YStack render="ul" margin={0} padding={0} gap="2" style={{ listStyle: "none" }}>
                 {tierPerks(tier).map((perk) => (
-                  <XStack key={perk} tag="li" gap="$2" alignItems="flex-start">
+                  <XStack key={perk} render="li" gap="2" alignItems="flex-start">
                     <Check size={18} strokeWidth={2.25} color={brand.cianografiaScuro} aria-hidden style={{ flexShrink: 0, marginTop: 3 }} />
                     <Text flex={1} fontWeight="700" color={brand.cianografiaScuro}>
                       {perk}
@@ -700,8 +694,8 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
               <YStack flex={1} />
               <Link href={href} style={{ textDecoration: "none" }} aria-label={`${label}${isProfessional ? "" : ": iscriviti come professionista"}`}>
                 <Button tabIndex={-1} variant="acquisto" width="100%">
-                  <XStack alignItems="center" gap="$2">
-                    <Text color="white" fontFamily="$body" fontWeight="600">
+                  <XStack alignItems="center" gap="2">
+                    <Text color="white" fontFamily="body" fontWeight="600">
                       {label}
                     </Text>
                     <ButtonArrow tone="red" />
@@ -715,11 +709,11 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
           );
         })}
       </Grid>
-      <YStack borderTopWidth={1} borderColor={LINE} padding="$5" gap="$3" $gtMd={{ padding: "$6" }}>
+      <YStack borderTopWidth={1} borderColor={LINE} padding="5 gtMd:6" gap="3">
         <CellTitle>Compreso in ogni livello</CellTitle>
-        <YStack gap="$2" $gtSm={{ flexDirection: "row", flexWrap: "wrap" }}>
+        <YStack gap="2" flexDirection="gtSm:row" flexWrap="gtSm:wrap">
           {SUBSCRIPTION_FEATURES.map((feature) => (
-            <XStack key={feature} gap="$2" alignItems="flex-start" $gtSm={{ width: "50%" }} paddingRight="$3">
+            <XStack key={feature} gap="2" alignItems="flex-start" width="gtSm:50%" paddingRight="3">
               <Check size={16} strokeWidth={2} color={brand.cianografiaScuro} />
               <Text color={brand.grafite70} flex={1}>
                 {feature}
@@ -728,7 +722,7 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
           ))}
         </YStack>
       </YStack>
-      <YStack borderTopWidth={1} borderColor={LINE} padding="$4" alignItems="center" gap="$1">
+      <YStack borderTopWidth={1} borderColor={LINE} padding="4" alignItems="center" gap="1">
         <Text fontSize={15} color={brand.grafite70} textAlign="center">
           Prezzi IVA esclusa: l&apos;IVA del 22% si aggiunge in fattura.
         </Text>
@@ -782,21 +776,20 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
   "use no memo";
   return (
     <Band>
-      <YStack gap={1} backgroundColor={LINE} $gtSm={{ flexDirection: "row" }}>
-        <YStack backgroundColor={brand.gesso} padding="$5" paddingVertical="$7" gap="$3" $gtSm={{ width: "50%" }} $gtMd={{ padding: "$8" }}>
+      <YStack gap={1} backgroundColor={LINE} flexDirection="gtSm:row">
+        <YStack backgroundColor={brand.gesso} paddingTop="7 gtMd:8" paddingRight="5 gtMd:8" paddingBottom="7 gtMd:8" paddingLeft="5 gtMd:8" gap="3" width="gtSm:50%">
           <Text
-            tag="h2"
-            fontFamily="$heading"
+            render="h2"
+            fontFamily="heading"
             fontWeight="700"
-            fontSize={34}
-            lineHeight={38}
+            fontSize="34px gtSm:46px"
+            lineHeight="38px gtSm:50px"
             letterSpacing={-0.5}
             color={brand.grafite}
-            $gtSm={{ fontSize: 46, lineHeight: 50 }}
           >
             Domande frequenti
           </Text>
-          <Text color={brand.grafite70} fontSize="$5" lineHeight={26}>
+          <Text color={brand.grafite70} fontSize="5" lineHeight="26px">
             Non trovi la risposta?{" "}
             <Link href="/contatti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
               Scrivici
@@ -804,7 +797,7 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
             .
           </Text>
         </YStack>
-        <YStack backgroundColor={brand.gesso} flexGrow={1} $gtSm={{ width: "50%" }}>
+        <YStack backgroundColor={brand.gesso} flexGrow={1} width="gtSm:50%">
           <div className="pro-faq">
             {FAQ.filter((item) => !item.founderOffer || offerMonths).map((item, index) => (
               <details key={item.question} className="pro-faq-item" open={index === 0}>
@@ -873,26 +866,25 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
  */
 function ProFinalCta() {
   return (
-    <YStack width="100%" alignItems="center" paddingBottom="$9">
+    <YStack width="100%" alignItems="center" paddingBottom="9">
       <Band last>
-        <YStack alignItems="center" gap="$4" paddingHorizontal="$4" paddingVertical="$9" $gtMd={{ paddingVertical: "$10" }}>
+        <YStack alignItems="center" gap="4" paddingHorizontal="4" paddingVertical="9 gtMd:10">
           <Text
-            tag="h2"
-            fontFamily="$heading"
+            render="h2"
+            fontFamily="heading"
             fontWeight="700"
-            fontSize={32}
-            lineHeight={38}
+            fontSize="32px gtSm:44px"
+            lineHeight="38px gtSm:50px"
             letterSpacing={-0.5}
             textAlign="center"
             color={brand.grafite}
-            $gtSm={{ fontSize: 44, lineHeight: 50 }}
           >
             Inizia a ricevere richieste
           </Text>
-          <Text fontSize="$5" color={brand.grafite70} textAlign="center" maxWidth={520}>
+          <Text fontSize="5" color={brand.grafite70} textAlign="center" maxWidth={520}>
             Scegli il tuo livello e crea l&apos;account in un minuto, poi completi il profilo con calma.
           </Text>
-          <XStack gap="$3" flexWrap="wrap" justifyContent="center">
+          <XStack gap="3" flexWrap="wrap" justifyContent="center">
             <Link href="/per-professionisti/pagamenti" style={{ textDecoration: "none" }}>
               <Button tabIndex={-1} variant="secondary">Scopri di più</Button>
             </Link>

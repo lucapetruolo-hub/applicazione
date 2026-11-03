@@ -39,7 +39,7 @@ export function AuthField({
   autoCapitalize,
   autoComplete,
   nativeID,
-  accessibilityLabel,
+  "aria-label": accessibilityLabel,
   onSubmitEditing,
   onBlur,
   footer,
@@ -59,7 +59,7 @@ export function AuthField({
   autoCapitalize?: "none" | "sentences";
   autoComplete?: string;
   nativeID?: string;
-  accessibilityLabel?: string;
+  "aria-label"?: string;
   onSubmitEditing?: () => void;
   /** Uscita dal campo (es. il "Forse intendevi" dell'email, a parola finita). */
   onBlur?: () => void;

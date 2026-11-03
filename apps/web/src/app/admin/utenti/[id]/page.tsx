@@ -126,8 +126,8 @@ function UserDetail() {
   };
 
   return (
-    <YStack gap="$4">
-      <YStack gap="$2">
+    <YStack gap="4">
+      <YStack gap="2">
         <Link href="/admin/utenti" style={{ fontSize: 14, color: brand.grafite70 }}>
           ← Persone
         </Link>
@@ -135,7 +135,7 @@ function UserDetail() {
           title={adminPersonName({ businessName: profile?.businessName, name: detail.name, surname: detail.surname, email: detail.email, deletedAt: detail.deletedAt })}
           description={detail.deletedAt ? "Account chiuso: nome, email e telefono sono stati cancellati." : [detail.email, detail.phone].filter(Boolean).join(" · ") || undefined}
         />
-        <XStack gap="$2" flexWrap="wrap" marginTop={-8}>
+        <XStack gap="2" flexWrap="wrap" marginTop={-8}>
           <AdminPill>{detail.role === "ADMIN" ? `Admin · ${adminRolesLabel(detail.adminRoles)}` : ROLE_LABEL[detail.role]}</AdminPill>
           {detail.deletedAt ? <AdminPill>Account chiuso il {formatAdminDate(detail.deletedAt)}</AdminPill> : null}
           {detail.suspendedAt ? <AdminPill tone="danger">Sospeso dal {formatAdminDate(detail.suspendedAt)}</AdminPill> : null}
@@ -174,7 +174,7 @@ function UserDetail() {
             ))}
           </ul>
           {detail.advice ? (
-            <XStack gap="$2" alignItems="center" flexWrap="wrap">
+            <XStack gap="2" alignItems="center" flexWrap="wrap">
               <AdminPill tone={ADVICE_TONE[detail.advice.level]}>{ADMIN_SIGNAL_ADVICE_LEVEL_LABEL[detail.advice.level]}</AdminPill>
               <Text color={brand.grafite} flexShrink={1}>
                 {detail.advice.text}
@@ -187,7 +187,7 @@ function UserDetail() {
             </XStack>
           ) : null}
           {detail.signalsArchived ? (
-            <XStack gap="$2" alignItems="center" flexWrap="wrap">
+            <XStack gap="2" alignItems="center" flexWrap="wrap">
               <AdminPill tone="ok">{ADMIN_SIGNAL_ARCHIVE_LABEL[detail.signalsArchived.reason]}</AdminPill>
               <Text color={brand.grafite} flexShrink={1}>
                 {[detail.signalsArchived.by, formatAdminDate(detail.signalsArchived.at)].filter(Boolean).join(", ")}
@@ -237,7 +237,7 @@ function UserDetail() {
       <AdminTabs tabs={TABS.map((t) => ({ key: t.key, label: tabCount[t.key] ? `${t.label} (${tabCount[t.key]})` : t.label }))} value={tab} onChange={setTab} />
 
       {tab === "riepilogo" ? (
-        <YStack gap="$4">
+        <YStack gap="4">
           {profile ? (
             <ProfilePanel detail={detail} token={token ?? ""} canModerate={canModerate} onChanged={reload} />
           ) : null}
@@ -351,7 +351,7 @@ function UserDetail() {
       ) : null}
 
       {tab === "recensioni" ? (
-        <YStack gap="$4">
+        <YStack gap="4">
           <ReviewsTable
             title={`Scritte da ${detail.role === "PROFESSIONAL" ? "questa persona come cliente" : "questa persona"}`}
             rows={detail.reviewsWritten}
@@ -379,7 +379,7 @@ function UserDetail() {
         detail.jobs.length === 0 ? (
           <EmptyTab text="Nessun lavoro, quindi nessun pagamento." />
         ) : (
-          <YStack gap="$2">
+          <YStack gap="2">
             <div className="admin-table-wrap">
               <table className="admin-table">
                 <thead>
@@ -410,19 +410,19 @@ function UserDetail() {
       ) : null}
 
       {tab === "segnalazioni" ? (
-        <YStack gap="$4">
+        <YStack gap="4">
           {detail.reportsReceived.length === 0 && detail.reportsMade.length === 0 ? <EmptyTab text="Nessuna segnalazione." /> : null}
           {detail.reportsReceived.length > 0 ? (
-            <YStack gap="$2">
-              <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+            <YStack gap="2">
+              <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
                 Segnalazioni che lo riguardano
               </Text>
               <ReportsTable rows={detail.reportsReceived} />
             </YStack>
           ) : null}
           {detail.reportsMade.length > 0 ? (
-            <YStack gap="$2">
-              <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+            <YStack gap="2">
+              <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
                 Segnalazioni fatte
               </Text>
               <ReportsTable rows={detail.reportsMade} />
@@ -472,7 +472,7 @@ function ProfilePanel({ detail, token, canModerate, onChanged }: { detail: Admin
   const [modal, setModal] = useState<"hide" | "show" | null>(null);
   return (
     <AdminCard highlight={profile.searchStatus !== "VISIBLE"}>
-      <XStack gap="$2" alignItems="center" flexWrap="wrap">
+      <XStack gap="2" alignItems="center" flexWrap="wrap">
         <Text fontWeight="700" color={brand.grafite}>
           Profilo professionista
         </Text>
@@ -486,19 +486,19 @@ function ProfilePanel({ detail, token, canModerate, onChanged }: { detail: Admin
           {`Tolto dalla ricerca il ${formatAdminDate(profile.suspendedAt)}${profile.hiddenBy?.note ? `. Motivo: ${profile.hiddenBy.note}` : "."}`}
         </Text>
       ) : null}
-      <XStack gap="$3" flexWrap="wrap" alignItems="center">
+      <XStack gap="3" flexWrap="wrap" alignItems="center">
         {profile.searchStatus === "VISIBLE" && !detail.deletedAt ? (
           <Link href={`/professionista/${profile.id}`} target="_blank" style={{ fontSize: 14 }}>
             Apri il profilo pubblico
           </Link>
         ) : null}
         {canModerate && !profile.suspendedAt ? (
-          <Button variant="secondary" size="$3" onPress={() => setModal("hide")}>
+          <Button variant="secondary" size="3" onPress={() => setModal("hide")}>
             Togli dalla ricerca
           </Button>
         ) : null}
         {canModerate && profile.suspendedAt && profile.hiddenBy && !detail.suspendedAt ? (
-          <Button variant="primary" size="$3" onPress={() => setModal("show")}>
+          <Button variant="primary" size="3" onPress={() => setModal("show")}>
             Rimetti nella ricerca
           </Button>
         ) : null}
@@ -570,8 +570,8 @@ function ReviewsTable({
     }
   }
   return (
-    <YStack gap="$2">
-      <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+    <YStack gap="2">
+      <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
         {title}
       </Text>
       {rows.length === 0 ? (
@@ -733,7 +733,7 @@ function ModerateModal({
       onClose={onClose}
       onCancel={submit}
     >
-      <YStack gap="$3">
+      <YStack gap="3">
         <label className="admin-field">
           <span>Motivo</span>
           <select style={selectStyle} value={reason} onChange={(e) => setReason(e.target.value as ContentReportReasonCode)}>
@@ -760,7 +760,7 @@ function ModerateModal({
           <span>Spiegazione per l&apos;autore</span>
           <textarea className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Cosa non va e perché" />
         </label>
-        <XStack gap="$2" flexWrap="wrap">
+        <XStack gap="2" flexWrap="wrap">
           {moderationTemplatesFor(kind).map((t) => (
             <button key={t.label} type="button" className="admin-chip-button" onClick={() => setNote(t.text)}>
               {t.label}
@@ -846,13 +846,13 @@ function SuspendPanel({ detail, token, onChanged }: { detail: AdminUserDetail; t
         {suspended ? "Account sospeso" : "Sospensione dell'account"}
       </Text>
       {suspended && detail.suspensionNote ? <Text color={brand.grafite70}>Motivazione: {detail.suspensionNote}</Text> : null}
-      <Text fontSize="$3" color={brand.grafite70}>
+      <Text fontSize="3" color={brand.grafite70}>
         {suspended
           ? "Riattivando l'account l'utente può di nuovo accedere e, se professionista, torna visibile in ricerca. Riceve una notifica e un'email."
           : "L'utente non potrà più accedere e, se professionista, sparisce da ricerca e profilo pubblico. Riceve la motivazione per notifica ed email. Per un contenuto segnalato usa invece la pagina Segnalazioni."}
       </Text>
       {open ? (
-        <YStack gap="$2">
+        <YStack gap="2">
           <textarea aria-label="Motivo"
             className="admin-input admin-textarea"
             value={note}
@@ -860,18 +860,18 @@ function SuspendPanel({ detail, token, onChanged }: { detail: AdminUserDetail; t
             placeholder={suspended ? "Motivo della riattivazione (obbligatorio)" : "Motivazione per l'utente (obbligatoria): cosa ha fatto e quale regola ha violato"}
           />
           {error ? <Text color={brand.urgenza}>{error}</Text> : null}
-          <XStack gap="$2">
-            <Button variant="primary" size="$3" disabled={busy || note.trim().length < 3} onPress={confirm}>
+          <XStack gap="2">
+            <Button variant="primary" size="3" disabled={busy || note.trim().length < 3} onPress={confirm}>
               {busy ? "…" : suspended ? "Conferma riattivazione" : "Conferma sospensione"}
             </Button>
-            <Button variant="secondary" size="$3" onPress={() => setOpen(false)}>
+            <Button variant="secondary" size="3" onPress={() => setOpen(false)}>
               Annulla
             </Button>
           </XStack>
         </YStack>
       ) : (
         <XStack>
-          <Button variant={suspended ? "primary" : "secondary"} size="$3" onPress={() => setOpen(true)}>
+          <Button variant={suspended ? "primary" : "secondary"} size="3" onPress={() => setOpen(true)}>
             {suspended ? "Riattiva account" : "Sospendi account"}
           </Button>
         </XStack>
@@ -948,12 +948,12 @@ function TestAccountPanel({ detail, token, onChanged }: { detail: AdminUserDetai
       {/* Si elimina solo un account già segnato come di prova (misura "dopo" del riordino). */}
       {isTest ? (
       <>
-      <Text fontSize="$3" color={brand.grafite70}>
+      <Text fontSize="3" color={brand.grafite70}>
         Non ti serve più? Eliminalo: spariscono per sempre l&apos;account, le richieste, i preventivi, i messaggi e le recensioni che ha creato. Per un
         utente vero usa invece la sospensione.
       </Text>
       {open ? (
-        <YStack gap="$2" padding="$3" borderRadius={10} backgroundColor="#FBEAE8">
+        <YStack gap="2" padding="3" borderRadius={10} backgroundColor="#FBEAE8">
           <Text color={brand.grafite}>
             Non si può annullare. Scrivi <Text fontWeight="800">ELIMINA</Text> per confermare.
           </Text>
@@ -966,13 +966,13 @@ function TestAccountPanel({ detail, token, onChanged }: { detail: AdminUserDetai
             placeholder="ELIMINA"
           />
           {error ? <Text color={brand.urgenza}>{error}</Text> : null}
-          <XStack gap="$2" flexWrap="wrap">
-            <Button variant="urgent" size="$3" disabled={busy || confirmText.trim().toUpperCase() !== "ELIMINA"} opacity={busy ? 0.6 : 1} onPress={remove}>
+          <XStack gap="2" flexWrap="wrap">
+            <Button variant="urgent" size="3" disabled={busy || confirmText.trim().toUpperCase() !== "ELIMINA"} opacity={busy ? 0.6 : 1} onPress={remove}>
               {busy ? "Eliminazione..." : "Elimina per sempre"}
             </Button>
             <Button
               variant="secondary"
-              size="$3"
+              size="3"
               onPress={() => {
                 setOpen(false);
                 setConfirmText("");
@@ -985,7 +985,7 @@ function TestAccountPanel({ detail, token, onChanged }: { detail: AdminUserDetai
         </YStack>
       ) : (
         <XStack>
-          <Button variant="secondary" size="$3" onPress={() => setOpen(true)}>
+          <Button variant="secondary" size="3" onPress={() => setOpen(true)}>
             Elimina account di prova
           </Button>
         </XStack>
@@ -1041,7 +1041,7 @@ function TestTimePanel({ detail, token, onChanged }: { detail: AdminUserDetail; 
       <Text fontWeight="800" color={brand.grafite}>
         Fai passare il tempo
       </Text>
-      <Text fontSize="$3" color={brand.grafite70}>
+      <Text fontSize="3" color={brand.grafite70}>
         Solo per le prove: richieste, lavori e mese gratuito di questo account vanno avanti come se fossero passati i giorni scelti, poi partono
         subito promemoria, chiusure e sblocchi dei soldi. Vale solo dove anche l&apos;altra persona è un account di prova.
       </Text>
@@ -1053,7 +1053,7 @@ function TestTimePanel({ detail, token, onChanged }: { detail: AdminUserDetail; 
         </Text>
       ) : null}
       <XStack>
-        <Button size="$3" disabled={busy} opacity={busy ? 0.6 : 1} onPress={move}>
+        <Button size="3" disabled={busy} opacity={busy ? 0.6 : 1} onPress={move}>
           {busy ? "Un momento..." : `Fai passare ${days === "1" ? "1 giorno" : `${days} giorni`}`}
         </Button>
       </XStack>
@@ -1087,13 +1087,13 @@ function TwoFactorResetPanel({ detail, token, onChanged }: { detail: AdminUserDe
 
   return (
     <AdminCard>
-      <XStack gap="$2" alignItems="center" flexWrap="wrap">
+      <XStack gap="2" alignItems="center" flexWrap="wrap">
         <Text fontWeight="700" color={brand.grafite}>
           Verifica in due passaggi
         </Text>
         <AdminPill tone={detail.adminTwoFactorEnabled ? "ok" : "warn"}>{detail.adminTwoFactorEnabled ? "Attiva" : "Da attivare"}</AdminPill>
       </XStack>
-      <Text fontSize="$3" color={brand.grafite70}>
+      <Text fontSize="3" color={brand.grafite70}>
         {detail.adminTwoFactorEnabled
           ? "Se ha perso il telefono e non riceve l'email con il codice, azzerala: lo faremo uscire da tutti i dispositivi e la riattiverà al prossimo ingresso."
           : "La attiverà da solo la prossima volta che apre l'area admin."}
@@ -1101,17 +1101,17 @@ function TwoFactorResetPanel({ detail, token, onChanged }: { detail: AdminUserDe
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {detail.adminTwoFactorEnabled ? (
         confirming ? (
-          <XStack gap="$2" flexWrap="wrap">
-            <Button variant="primary" size="$3" disabled={busy} onPress={reset}>
+          <XStack gap="2" flexWrap="wrap">
+            <Button variant="primary" size="3" disabled={busy} onPress={reset}>
               {busy ? "…" : "Conferma azzeramento"}
             </Button>
-            <Button variant="secondary" size="$3" onPress={() => setConfirming(false)}>
+            <Button variant="secondary" size="3" onPress={() => setConfirming(false)}>
               Annulla
             </Button>
           </XStack>
         ) : (
           <XStack>
-            <Button variant="secondary" size="$3" onPress={() => setConfirming(true)}>
+            <Button variant="secondary" size="3" onPress={() => setConfirming(true)}>
               Azzera la verifica
             </Button>
           </XStack>
@@ -1169,17 +1169,17 @@ function AdminRolePanel({ detail, token, onChanged }: { detail: AdminUserDetail;
       <Text fontWeight="700" color={brand.grafite}>
         Ruoli di amministratore
       </Text>
-      <Text fontSize="$3" color={brand.grafite70}>
+      <Text fontSize="3" color={brand.grafite70}>
         Puoi spuntarne più di uno. Nessuna casella: {detail.professionalProfile ? "resta professionista" : "resta cliente"}, senza accesso al pannello.
       </Text>
-      <YStack gap="$2">
+      <YStack gap="2">
         {checkbox("MODERATOR", isSuper)}
         {checkbox("FINANCE", isSuper)}
         {checkbox("SUPER")}
       </YStack>
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       <XStack>
-        <Button variant="primary" size="$3" disabled={busy || !changed} onPress={() => setConfirming(true)}>
+        <Button variant="primary" size="3" disabled={busy || !changed} onPress={() => setConfirming(true)}>
           Salva ruoli
         </Button>
       </XStack>

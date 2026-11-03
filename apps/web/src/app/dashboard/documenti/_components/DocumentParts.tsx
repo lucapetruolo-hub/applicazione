@@ -15,16 +15,16 @@ import { downloadBlobFile } from "@/components/admin/adminUi";
  */
 export function DocumentPage({ back, title, subtitle, children }: { back: { href: string; label: string }; title: string; subtitle?: string | null; children: ReactNode }) {
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$6" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={760} gap="$3">
+    <YStack width="100%" alignItems="center" paddingVertical="6" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={760} gap="3">
         <span data-print-hide>
           <Link href={back.href} style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 16, textDecoration: "none" }}>
             ← {back.label}
           </Link>
         </span>
         <div className="print-document">
-          <YStack gap="$1" marginBottom="$4">
-            <Text tag="h1" fontFamily="$heading" fontSize={30} fontWeight="800" color={brand.grafite}>
+          <YStack gap="1" marginBottom="4">
+            <Text render="h1" fontFamily="heading" fontSize={30} fontWeight="800" color={brand.grafite}>
               {title}
             </Text>
             {subtitle ? (
@@ -33,7 +33,7 @@ export function DocumentPage({ back, title, subtitle, children }: { back: { href
               </Text>
             ) : null}
           </YStack>
-          <YStack backgroundColor={brand.calce} borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto} padding="$5" gap="$4">
+          <YStack backgroundColor={brand.calce} borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto} padding="5" gap="4">
             {children}
           </YStack>
         </div>
@@ -49,18 +49,18 @@ export function eur(cents: number): string {
 /** Il totale grande in cima, con l'etichetta e un bollino a destra. */
 export function BigTotal({ label, value, badge, children }: { label: string; value: string; badge?: string | null; children?: ReactNode }) {
   return (
-    <YStack gap="$2">
-      <XStack justifyContent="space-between" alignItems="flex-start" gap="$3" flexWrap="wrap">
+    <YStack gap="2">
+      <XStack justifyContent="space-between" alignItems="flex-start" gap="3" flexWrap="wrap">
         <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase" letterSpacing={0.5}>
           {label}
         </Text>
         {badge ? (
-          <Text fontSize={13} fontWeight="800" color={brand.cianografiaScuro} backgroundColor={brand.cianografiaVelo} paddingHorizontal="$2" paddingVertical={4} borderRadius={10}>
+          <Text fontSize={13} fontWeight="800" color={brand.cianografiaScuro} backgroundColor={brand.cianografiaVelo} paddingHorizontal="2" paddingVertical={4} borderRadius={10}>
             {badge}
           </Text>
         ) : null}
       </XStack>
-      <Text fontFamily="$heading" fontSize={40} fontWeight="800" color={brand.grafite} fontVariant={["tabular-nums"]}>
+      <Text fontFamily="heading" fontSize={40} fontWeight="800" color={brand.grafite} fontVariant={["tabular-nums"]}>
         {value}
       </Text>
       {children}
@@ -76,7 +76,7 @@ export function PartyBoxes({ from, to, fromLabel = "Da", toLabel = "Per" }: { fr
         { label: fromLabel, party: from },
         { label: toLabel, party: to },
       ].map(({ label, party }) => (
-        <YStack key={label} backgroundColor={brand.gesso} borderRadius={10} padding="$3" gap={2}>
+        <YStack key={label} backgroundColor={brand.gesso} borderRadius={10} padding="3" gap={2}>
           <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase" letterSpacing={0.5}>
             {label}
           </Text>
@@ -100,8 +100,8 @@ export function AmountRow({ label, detail, value, strong, large, divider = true 
     <XStack
       justifyContent="space-between"
       alignItems="flex-start"
-      gap="$3"
-      paddingVertical="$2"
+      gap="3"
+      paddingVertical="2"
       borderBottomWidth={divider ? 1 : 0}
       borderColor={brand.filetto}
     >
@@ -125,7 +125,7 @@ export function AmountRow({ label, detail, value, strong, large, divider = true 
 /** Titolo di un gruppo di righe (il lavoro) con un dato a destra. */
 export function GroupHeading({ title, aside }: { title: string; aside?: string | null }) {
   return (
-    <XStack justifyContent="space-between" alignItems="baseline" gap="$3" flexWrap="wrap" paddingTop="$2">
+    <XStack justifyContent="space-between" alignItems="baseline" gap="3" flexWrap="wrap" paddingTop="2">
       <Text fontSize={16} fontWeight="800" color={brand.grafite} flex={1} minWidth={0}>
         {title}
       </Text>
@@ -141,7 +141,7 @@ export function GroupHeading({ title, aside }: { title: string; aside?: string |
 /** Riquadro verde (spiegazione) o sabbia (attenzione). */
 export function NoteBox({ children, tone = "green" }: { children: ReactNode; tone?: "green" | "sand" }) {
   return (
-    <YStack backgroundColor={tone === "green" ? brand.cianografiaVelo : brand.ottoneVelo} borderRadius={10} padding="$3" gap="$2">
+    <YStack backgroundColor={tone === "green" ? brand.cianografiaVelo : brand.ottoneVelo} borderRadius={10} padding="3" gap="2">
       {children}
     </YStack>
   );
@@ -149,9 +149,9 @@ export function NoteBox({ children, tone = "green" }: { children: ReactNode; ton
 
 export function LoadingDocument() {
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$6" paddingHorizontal="$4" aria-busy>
-      <YStack width="100%" maxWidth={760} gap="$3">
-        <YStack height={40} width="60%" borderRadius="$3" backgroundColor={brand.gesso} />
+    <YStack width="100%" alignItems="center" paddingVertical="6" paddingHorizontal="4" aria-busy>
+      <YStack width="100%" maxWidth={760} gap="3">
+        <YStack height={40} width="60%" borderRadius="3" backgroundColor={brand.gesso} />
         <YStack height={320} borderRadius={radiusDoc} backgroundColor={brand.gesso} />
       </YStack>
     </YStack>
@@ -183,7 +183,7 @@ export function PdfButton({ load, fileName, label = "Scarica PDF", variant, befo
   }
 
   return (
-    <YStack gap="$2">
+    <YStack gap="2">
       <Button alignSelf="flex-start" variant={variant ?? "primary"} disabled={busy} onPress={() => void download()}>
         {busy ? "Preparo il PDF…" : label}
       </Button>

@@ -8,10 +8,10 @@ import { Text, XStack, YStack, brand } from "@professionisti/ui";
 
 export function AdminPageHeader({ title, description, right }: { title: string; description?: string; right?: ReactNode }) {
   return (
-    <XStack justifyContent="space-between" alignItems="flex-end" gap="$3" flexWrap="wrap" marginBottom="$4">
-      <YStack gap="$1" flexShrink={1}>
+    <XStack justifyContent="space-between" alignItems="flex-end" gap="3" flexWrap="wrap" marginBottom="4">
+      <YStack gap="1" flexShrink={1}>
         {/* Il titolo della sezione (h1) e le schede stanno sopra, nel guscio (docs/changelog/2026-10-30-admin-riordino.md). */}
-        <Text tag="h2" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
+        <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
           {title}
         </Text>
         {description ? <Text color={brand.grafite70}>{description}</Text> : null}
@@ -23,7 +23,7 @@ export function AdminPageHeader({ title, description, right }: { title: string; 
 
 export function AdminCard({ children, highlight }: { children: ReactNode; highlight?: boolean }) {
   return (
-    <YStack gap="$2" padding="$4" borderRadius={20} backgroundColor={brand.calce} borderWidth={1} borderColor={highlight ? brand.urgenza : brand.filetto}>
+    <YStack gap="2" padding="4" borderRadius={20} backgroundColor={brand.calce} borderWidth={1} borderColor={highlight ? brand.urgenza : brand.filetto}>
       {children}
     </YStack>
   );
@@ -52,13 +52,13 @@ export function AdminPill({ children, tone = "neutral" }: { children: ReactNode;
 /** Tab semplici basate su pulsanti, per le viste "Da gestire / Archivio". */
 export function AdminTabs<T extends string>({ tabs, value, onChange }: { tabs: { key: T; label: string }[]; value: T; onChange: (key: T) => void }) {
   return (
-    <XStack gap="$2" flexWrap="wrap" marginBottom="$3">
+    <XStack gap="2" flexWrap="wrap" marginBottom="3">
       {tabs.map((tab) => {
         const active = tab.key === value;
         return (
           <XStack
             key={tab.key}
-            paddingHorizontal="$3"
+            paddingHorizontal="3"
             paddingVertical={8}
             borderRadius={999}
             backgroundColor={active ? brand.cianografiaPieno : brand.calce}
@@ -66,7 +66,7 @@ export function AdminTabs<T extends string>({ tabs, value, onChange }: { tabs: {
             borderColor={active ? brand.cianografiaPieno : brand.filetto}
             cursor="pointer"
             onPress={() => onChange(tab.key)}
-            accessibilityRole="button"
+            role="button"
             aria-pressed={active}
           >
             {/* Verde pieno: col bianco sopra il verde chiaro si fermava a 3,6:1 (axe, docs/changelog/2026-10-30-admin-riordino.md). */}

@@ -27,9 +27,9 @@ export function EmailVerificationBanner() {
     <XStack
       role="status"
       backgroundColor={brand.cianografiaVelo}
-      paddingVertical="$2"
-      paddingHorizontal="$4"
-      gap="$2"
+      paddingVertical="2"
+      paddingHorizontal="4"
+      gap="2"
       flexWrap="wrap"
       justifyContent="center"
       alignItems="center"

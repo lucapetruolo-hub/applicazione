@@ -97,7 +97,7 @@ function SegnalazioniContent() {
           {view === "da-gestire" ? "Nessuna segnalazione da gestire." : view === "ricorsi" ? "Nessuna contestazione in attesa." : "Archivio vuoto."}
         </Text>
       ) : (
-        <YStack gap="$3">
+        <YStack gap="3">
           {list.map((report) => (
             <ReportCard key={report.id} report={report} token={token ?? ""} onChanged={reload} />
           ))}
@@ -180,8 +180,8 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
 
   return (
     <AdminCard highlight={report.status === "OPEN" || appealPending}>
-      <XStack justifyContent="space-between" gap="$2" flexWrap="wrap" alignItems="center">
-        <XStack gap="$2" alignItems="center" flexWrap="wrap">
+      <XStack justifyContent="space-between" gap="2" flexWrap="wrap" alignItems="center">
+        <XStack gap="2" alignItems="center" flexWrap="wrap">
           <AdminPill>{CONTENT_REPORT_TARGET_LABEL[report.targetType]}</AdminPill>
           {/* DSA art. 16 (docs/CHANGELOG.md §319): solo per un contenuto illegale chi segnala riceve l'esito. */}
           {report.claimsIllegal ? <AdminPill tone="danger">Illegale secondo chi segnala</AdminPill> : null}
@@ -190,7 +190,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
           {report.authoritiesNotifiedAt ? <AdminPill tone="warn">Segnalata alle autorità</AdminPill> : null}
           {appealPending ? <AdminPill tone="warn">Contestata dall&apos;autore</AdminPill> : null}
         </XStack>
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize="2" color={brand.grafite70}>
           Segnalata il {formatAdminDate(report.createdAt, true)}
         </Text>
       </XStack>
@@ -199,22 +199,22 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
         {report.targetLabel ?? "Contenuto non più disponibile"}
       </Text>
       {report.targetExcerpt ? (
-        <YStack padding="$3" borderRadius={10} backgroundColor={brand.gesso}>
-          <Text fontSize="$3" color={brand.grafite} numberOfLines={6}>
+        <YStack padding="3" borderRadius={10} backgroundColor={brand.gesso}>
+          <Text fontSize="3" color={brand.grafite} numberOfLines={6}>
             “{report.targetExcerpt}”
           </Text>
         </YStack>
       ) : null}
-      <Text fontSize="$3" color={brand.grafite}>
+      <Text fontSize="3" color={brand.grafite}>
         <Text fontWeight="700">Motivo: </Text>
         {report.reason}
         {report.details ? ` — ${report.details}` : ""}
       </Text>
       {/* Foto della segnalazione del professionista (§197): anteprime che si aprono in grande. */}
       {report.photoUrls.length > 0 ? (
-        <XStack flexWrap="wrap" gap="$2">
+        <XStack flexWrap="wrap" gap="2">
           {report.photoUrls.map((url, index) => (
-            <YStack key={url} width={72} height={72} borderRadius="$3" overflow="hidden" borderWidth={1} borderColor={brand.filetto} cursor="pointer">
+            <YStack key={url} width={72} height={72} borderRadius="3" overflow="hidden" borderWidth={1} borderColor={brand.filetto} cursor="pointer">
               <MediaPreview url={url} alt={`Foto ${index + 1} della segnalazione`} onClick={() => setOpenPhotoIndex(index)} />
             </YStack>
           ))}
@@ -223,39 +223,39 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
       {openPhotoIndex !== null ? (
         <PhotoLightbox photos={report.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} />
       ) : null}
-      <Text fontSize="$2" color={brand.grafite70}>
+      <Text fontSize="2" color={brand.grafite70}>
         Da {report.reporterName ?? "utente"} {report.reporterEmail ? `(${report.reporterEmail})` : ""}
         {report.goodFaithAt ? " · buona fede confermata" : ""}
       </Text>
 
       {report.status !== "OPEN" ? (
-        <YStack gap="$1" paddingTop="$1">
-          <Text fontSize="$3" color={brand.grafite}>
+        <YStack gap="1" paddingTop="1">
+          <Text fontSize="3" color={brand.grafite}>
             <Text fontWeight="700">Decisione del {formatAdminDate(report.resolvedAt)}: </Text>
             {report.status === "RESOLVED" && report.action ? moderationActionAdminLabel(report.action, report.targetType) : "nessuna misura"}
           </Text>
           {moderationGround(report.ground) ? (
-            <Text fontSize="$3" color={brand.grafite70}>
+            <Text fontSize="3" color={brand.grafite70}>
               Base: {moderationGround(report.ground)?.label}
             </Text>
           ) : null}
           {report.resolutionNote ? (
-            <Text fontSize="$3" color={brand.grafite70}>
+            <Text fontSize="3" color={brand.grafite70}>
               Motivazione: {report.resolutionNote}
             </Text>
           ) : null}
           {report.appealedAt ? (
-            <Text fontSize="$3" color={brand.grafite}>
+            <Text fontSize="3" color={brand.grafite}>
               <Text fontWeight="700">Ricorso dell&apos;autore ({formatAdminDate(report.appealedAt)}): </Text>“{report.appealText}”
             </Text>
           ) : null}
           {report.appealRejectedAt ? (
-            <Text fontSize="$3" color={brand.grafite70}>
+            <Text fontSize="3" color={brand.grafite70}>
               Ricorso respinto: {report.appealRejectNote}
             </Text>
           ) : null}
           {report.revertedAt ? (
-            <Text fontSize="$3" color={brand.grafite70}>
+            <Text fontSize="3" color={brand.grafite70}>
               Misura annullata il {formatAdminDate(report.revertedAt)}: {report.revertNote}
             </Text>
           ) : null}
@@ -263,34 +263,34 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
       ) : null}
 
       {previewOpen ? (
-        <YStack gap="$2" padding="$3" borderRadius={20} borderWidth={1} borderColor={brand.filetto}>
+        <YStack gap="2" padding="3" borderRadius={20} borderWidth={1} borderColor={brand.filetto}>
           {preview === null ? (
             <Text color={brand.grafite70}>Caricamento…</Text>
           ) : !preview.exists ? (
             <Text color={brand.grafite70}>Il contenuto non esiste più (eliminato dall&apos;autore).</Text>
           ) : (
             <>
-              <XStack gap="$2" alignItems="center" flexWrap="wrap">
+              <XStack gap="2" alignItems="center" flexWrap="wrap">
                 <Text fontWeight="700" color={brand.grafite}>
                   {preview.title}
                 </Text>
                 <AdminPill tone={preview.state.startsWith("Visibile") || preview.state === "Aperta" ? "ok" : "warn"}>{preview.state}</AdminPill>
               </XStack>
-              <Text fontSize="$2" color={brand.grafite70}>
+              <Text fontSize="2" color={brand.grafite70}>
                 Autore: <Link href={`/admin/utenti/${preview.ownerUserId}`}>{preview.author ?? "account senza email"}</Link>
                 {preview.rating !== null ? ` · ${preview.rating}★` : ""}
               </Text>
               {preview.text ? (
-                <Text fontSize="$3" color={brand.grafite} style={{ whiteSpace: "pre-wrap" }}>
+                <Text fontSize="3" color={brand.grafite} style={{ whiteSpace: "pre-wrap" }}>
                   {preview.text}
                 </Text>
               ) : (
-                <Text fontSize="$3" color={brand.grafite70}>
+                <Text fontSize="3" color={brand.grafite70}>
                   Nessun testo.
                 </Text>
               )}
               {preview.photos.length > 0 ? (
-                <XStack gap="$2" flexWrap="wrap">
+                <XStack gap="2" flexWrap="wrap">
                   {preview.photos.map((url) => (
                     <a key={url} href={url} target="_blank" rel="noreferrer">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -305,46 +305,46 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
       ) : null}
 
       {mode === "idle" ? (
-        <XStack gap="$2" flexWrap="wrap" paddingTop="$1">
-          <Button variant="secondary" size="$3" onPress={togglePreview}>
+        <XStack gap="2" flexWrap="wrap" paddingTop="1">
+          <Button variant="secondary" size="3" onPress={togglePreview}>
             {previewOpen ? "Nascondi anteprima" : "Anteprima completa"}
           </Button>
           {href ? (
             <Link href={href} target="_blank" style={{ textDecoration: "none" }}>
-              <Button tabIndex={-1} variant="secondary" size="$3">
+              <Button tabIndex={-1} variant="secondary" size="3">
                 {report.targetType === "CHAT_MESSAGE" ? "Apri la chat" : "Pagina pubblica"}
               </Button>
             </Link>
           ) : null}
           {report.status === "OPEN" ? (
             <>
-              <Button variant="primary" size="$3" onPress={() => start("resolve")}>
+              <Button variant="primary" size="3" onPress={() => start("resolve")}>
                 Risolvi
               </Button>
-              <Button variant="secondary" size="$3" onPress={() => start("dismiss")}>
+              <Button variant="secondary" size="3" onPress={() => start("dismiss")}>
                 Ignora
               </Button>
             </>
           ) : null}
           {report.status === "RESOLVED" && !report.revertedAt && report.action ? (
-            <Button variant="secondary" size="$3" onPress={() => start("revert")}>
+            <Button variant="secondary" size="3" onPress={() => start("revert")}>
               {appealPending ? "Accogli il ricorso" : "Annulla misura"}
             </Button>
           ) : null}
           {appealPending ? (
-            <Button variant="secondary" size="$3" onPress={() => start("reject-appeal")}>
+            <Button variant="secondary" size="3" onPress={() => start("reject-appeal")}>
               Respingi il ricorso
             </Button>
           ) : null}
         </XStack>
       ) : (
-        <YStack gap="$3" padding="$3" borderRadius={20} backgroundColor={brand.gesso}>
+        <YStack gap="3" padding="3" borderRadius={20} backgroundColor={brand.gesso}>
           {mode === "resolve" ? (
             <>
               <Text fontWeight="700" color={brand.grafite}>
                 Quale misura prendi?
               </Text>
-              <YStack gap="$2">
+              <YStack gap="2">
                 {allowedActions.map((a) => (
                   <label key={a} style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer", fontSize: 14 }}>
                     <input type="radio" name={`action-${report.id}`} checked={action === a} onChange={() => setAction(a)} />
@@ -352,7 +352,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
                   </label>
                 ))}
               </YStack>
-              <Text fontSize="$2" color={brand.grafite70}>
+              <Text fontSize="2" color={brand.grafite70}>
                 Una recensione negativa ma vera non va nascosta: si nasconde solo se viola le regole (offese, dati personali, falsa).
               </Text>
               <Text fontWeight="700" color={brand.grafite}>
@@ -379,7 +379,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
               <Text fontWeight="700" color={brand.grafite}>
                 Motivazione per l&apos;autore
               </Text>
-              <XStack gap="$2" flexWrap="wrap">
+              <XStack gap="2" flexWrap="wrap">
                 {moderationTemplatesFor(report.targetType).map((t) => (
                   <XStack
                     key={t.label}
@@ -428,10 +428,10 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
             </label>
           ) : null}
           {error ? <Text color={brand.urgenza}>{error}</Text> : null}
-          <XStack gap="$2" flexWrap="wrap">
+          <XStack gap="2" flexWrap="wrap">
             <Button
               variant="primary"
-              size="$3"
+              size="3"
               disabled={busy || !canConfirm}
               onPress={() =>
                 run(() => {
@@ -462,7 +462,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
                         : "Annulla la misura"
                       : "Respingi il ricorso"}
             </Button>
-            <Button variant="secondary" size="$3" onPress={() => setMode("idle")}>
+            <Button variant="secondary" size="3" onPress={() => setMode("idle")}>
               Annulla
             </Button>
           </XStack>

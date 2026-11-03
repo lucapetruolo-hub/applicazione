@@ -35,17 +35,17 @@ export default function AdminPromuoviPage() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={420} gap="$4">
-        <YStack gap="$1">
-          <H1 size="$7">Promuovi ad admin</H1>
+    <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={420} gap="4">
+        <YStack gap="1">
+          <H1 size="7">Promuovi ad admin</H1>
           <Paragraph color={brand.grafite70}>
             Inserisci l&apos;email dell&apos;account da promuovere e il codice configurato in
             <Text fontWeight="600"> ADMIN_BOOTSTRAP_SECRET</Text> sul backend (Render).
           </Paragraph>
         </YStack>
 
-        <YStack gap="$2">
+        <YStack gap="2">
           <Text fontWeight="600">Email</Text>
           <input aria-label="Email"
             value={email}
@@ -62,7 +62,7 @@ export default function AdminPromuoviPage() {
           />
         </YStack>
 
-        <YStack gap="$2">
+        <YStack gap="2">
           <Text fontWeight="600">Codice</Text>
           <input aria-label="Codice"
             value={secret}
@@ -74,17 +74,17 @@ export default function AdminPromuoviPage() {
         </YStack>
 
         {error ? (
-          <Text color={brand.urgenza} fontSize="$3">
+          <Text color={brand.urgenza} fontSize="3">
             {error}
           </Text>
         ) : null}
         {result ? (
-          <Text color={brand.verificato} fontSize="$3">
+          <Text color={brand.verificato} fontSize="3">
             {result.email} è ora {result.role}. Puoi accedere e aprire /admin.
           </Text>
         ) : null}
 
-        <Button variant="primary" size="$5" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+        <Button variant="primary" size="5" opacity={isSubmitting ? 0.6 : 1} onPress={handleSubmit} disabled={isSubmitting}>
           {isSubmitting ? "Attendi..." : "Promuovi"}
         </Button>
       </YStack>

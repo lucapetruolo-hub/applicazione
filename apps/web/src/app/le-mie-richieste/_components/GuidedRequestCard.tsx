@@ -518,32 +518,32 @@ export function GuidedRequestCard({
 
   if (isEditing) {
     return (
-      <Surface gap="$3">
-        <YStack gap="$2">
+      <Surface gap="3">
+        <YStack gap="2">
           {/* Uscita sempre in vista, anche su un modulo lungo dal telefono (§343). */}
           <XStack
             alignSelf="flex-start"
             alignItems="center"
-            gap="$1"
+            gap="1"
             minHeight={44}
             marginLeft={-6}
             paddingHorizontal={6}
-            borderRadius="$3"
+            borderRadius="3"
             cursor="pointer"
-            hoverStyle={{ backgroundColor: brand.filetto }}
+            backgroundColor={`hover:${brand.filetto}`}
             onPress={requestExitEditing}
-            accessibilityRole="button"
+            role="button"
           >
             <Icon name="chevron-left" size={18} color={brand.grafite} />
             <Text fontSize={16} fontWeight="600" color={brand.grafite}>
               Torna alla richiesta
             </Text>
           </XStack>
-          <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
+          <Text fontFamily="heading" fontWeight="700" fontSize="5" color={brand.grafite}>
             Modifica · {request.categoryLabel}
           </Text>
           <textarea aria-label="Descrizione del lavoro" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} style={textareaStyle} />
-          <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
+          <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="4" backgroundColor={brand.calce}>
             <Autocomplete items={allItalianCityNames()} getKey={(item) => item} getLabel={(item) => item} onSelect={changeCity} value={city} onChangeText={changeCity} placeholder="Città" minChars={3} />
           </YStack>
           {request.serviceMode === "ONLINE" ? (
@@ -583,7 +583,7 @@ export function GuidedRequestCard({
             </Text>
           ) : null}
 
-          <XStack gap="$2" flexWrap="wrap">
+          <XStack gap="2" flexWrap="wrap">
             <YStack flex={1} minWidth={160}>
               <input aria-label="Nome" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Nome" style={textareaStyle} />
             </YStack>
@@ -592,7 +592,7 @@ export function GuidedRequestCard({
             </YStack>
           </XStack>
           <PhoneNumberInput value={recipientPhone} onChange={setRecipientPhone} style={textareaStyle} />
-          <XStack gap="$2" flexWrap="wrap">
+          <XStack gap="2" flexWrap="wrap">
             <YStack flex={1} minWidth={120}>
               <input aria-label="Numero civico" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={textareaStyle} />
             </YStack>
@@ -621,13 +621,13 @@ export function GuidedRequestCard({
           ) : null}
           <input aria-label="Scala, piano, interno" value={addressExtra} onChange={(e) => setAddressExtra(e.target.value)} placeholder="Scala, piano, interno (facoltativo)" style={textareaStyle} />
 
-          <YStack gap="$1">
+          <YStack gap="1">
             <Text fontSize={13} color={brand.grafite70}>
               Foto o video (opzionale, fino a {MAX_REQUEST_PHOTOS})
             </Text>
-            <YStack flexDirection="row" flexWrap="wrap" gap="$2">
+            <YStack flexDirection="row" flexWrap="wrap" gap="2">
               {photoUrls.map((url) => (
-                <YStack key={url} width={72} height={72} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+                <YStack key={url} width={72} height={72} borderRadius="3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
                   <MediaPreview url={url} />
                   <YStack
                     position="absolute"
@@ -641,8 +641,8 @@ export function GuidedRequestCard({
                     justifyContent="center"
                     cursor="pointer"
                     onPress={() => removePhoto(url)}
-                    accessibilityRole="button"
-                    accessibilityLabel="Rimuovi foto"
+                    role="button"
+                    aria-label="Rimuovi foto"
                   >
                     <X size={11} strokeWidth={2} color="white" />
                   </YStack>
@@ -652,7 +652,7 @@ export function GuidedRequestCard({
                 <YStack
                   width={72}
                   height={72}
-                  borderRadius="$3"
+                  borderRadius="3"
                   borderWidth={1}
                   borderColor={brand.filetto}
                   borderStyle="dashed"
@@ -661,13 +661,13 @@ export function GuidedRequestCard({
                   cursor="pointer"
                   opacity={isUploadingPhoto ? 0.6 : 1}
                   onPress={() => !isUploadingPhoto && photoInputRef.current?.click()}
-                  accessibilityRole="button"
-                  accessibilityLabel="Aggiungi foto"
+                  role="button"
+                  aria-label="Aggiungi foto"
                 >
                   {isUploadingPhoto ? (
                     <UploadingDots dotSize={6} />
                   ) : (
-                    <Text fontSize="$6" color={brand.grafite70}>
+                    <Text fontSize="6" color={brand.grafite70}>
                       +
                     </Text>
                   )}
@@ -687,7 +687,7 @@ export function GuidedRequestCard({
               {error}
             </Text>
           ) : null}
-          <XStack gap="$2">
+          <XStack gap="2">
             <CardButton tone="primary" onPress={handleSaveEdit} disabled={isSaving || isUploadingPhoto}>
               {isSaving ? "Salvataggio..." : "Salva modifiche"}
             </CardButton>
@@ -696,7 +696,7 @@ export function GuidedRequestCard({
             </CardButton>
           </XStack>
           {/* Staccato dai pulsanti del salvataggio per non premerlo per sbaglio (§343). */}
-          <YStack borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3" marginTop="$2" alignItems="flex-start">
+          <YStack borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="3" marginTop="2" alignItems="flex-start">
             <CardButton tone="danger" onPress={() => setShowDeleteModal(true)} disabled={isSaving}>
               Elimina richiesta
             </CardButton>
@@ -828,7 +828,7 @@ export function GuidedRequestCard({
   );
   const acceptedTotals = acceptedQuote ? quotePriceTotals(acceptedQuote.items) : null;
   const bookingView = booking ? (
-    <YStack gap="$3">
+    <YStack gap="3">
       <BookingSection
         booking={booking}
         token={token}
@@ -855,7 +855,7 @@ export function GuidedRequestCard({
           receipt={acceptedQuote.professionalKind === "PRIVATE"}
         />
       ) : null}
-      <YStack height={1} backgroundColor={brand.filetto} marginVertical="$1" />
+      <YStack height={1} backgroundColor={brand.filetto} marginVertical="1" />
       {acceptedQuote && acceptedTotals ? (
         <Disclosure
           title="Preventivo accettato"
@@ -866,7 +866,7 @@ export function GuidedRequestCard({
       ) : null}
       {request.photoUrls.length > 0 ? (
         <Disclosure title="Foto della richiesta" summary={String(request.photoUrls.length)}>
-          <XStack gap="$2" flexWrap="wrap" paddingHorizontal="$1">
+          <XStack gap="2" flexWrap="wrap" paddingHorizontal="1">
             {request.photoUrls.map((url, index) => (
               <MediaPreview key={url} url={url} onClick={() => setOpenPhotoIndex(index)} style={{ width: 72, height: 72, borderRadius: 10, border: `1px solid ${brand.filetto}`, cursor: "pointer" }} />
             ))}
@@ -891,7 +891,7 @@ export function GuidedRequestCard({
       />
       {/* Altra data per l'appuntamento: la stessa "Proponi un'altra data" del preventivo (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
       {acceptedQuote && booking.dateChange?.proposedBy === "CLIENT" && !showReschedule ? (
-        <Text fontSize={13} color={brand.ottone} fontWeight="600" paddingHorizontal="$1">
+        <Text fontSize={13} color={brand.ottone} fontWeight="600" paddingHorizontal="1">
           In attesa di conferma del professionista per il {formatQuoteDateRange(booking.dateChange.start, booking.dateChange.end)}. Fino ad allora l&apos;appuntamento resta com&apos;è.
         </Text>
       ) : null}
@@ -926,14 +926,14 @@ export function GuidedRequestCard({
     .join(" · ");
 
   return (
-    <Surface borderLeftWidth={4} borderLeftColor={STAGE_STYLE[stage].border} gap="$0" padding={0} overflow="hidden">
+    <Surface borderLeftWidth={4} borderLeftColor={STAGE_STYLE[stage].border} gap="0" padding={0} overflow="hidden">
       {/* Tutta l'intestazione si apre con un clic; per tastiera e lettore di
           schermo il comando è "Vedi dettagli" qui sotto: un pulsante che
           contiene altri pulsanti (il menu delle azioni) non si legge e non
           si usa (docs/changelog/2026-10-30-tastiera.md, collaudo L-01). */}
-      <YStack padding="$4" gap="$2" cursor="pointer" onPress={onToggle}>
-        <XStack justifyContent="space-between" alignItems="flex-start" gap="$2" flexWrap="wrap">
-          <XStack gap="$2" flexWrap="wrap" flexShrink={1} minWidth={0}>
+      <YStack padding="4" gap="2" cursor="pointer" onPress={onToggle}>
+        <XStack justifyContent="space-between" alignItems="flex-start" gap="2" flexWrap="wrap">
+          <XStack gap="2" flexWrap="wrap" flexShrink={1} minWidth={0}>
             {request.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
             <ClientStagePill stage={stage} />
             <ServiceBadge online={isOnline} />
@@ -944,12 +944,12 @@ export function GuidedRequestCard({
               </Text>
             ) : null}
           </XStack>
-          <YStack alignItems="flex-end" gap="$1">
+          <YStack alignItems="flex-end" gap="1">
             <Text fontSize={16} color={brand.grafite70}>
               Inviata {formatDateTime(request.createdAt)}
             </Text>
             {stage === "completata" && booking?.finalAmountEurCents != null ? (
-              <Text fontFamily="$body" fontWeight="800" fontSize={18} color={brand.grafite}>
+              <Text fontFamily="body" fontWeight="800" fontSize={18} color={brand.grafite}>
                 {formatEur(booking.finalAmountEurCents)}
               </Text>
             ) : null}
@@ -961,14 +961,14 @@ export function GuidedRequestCard({
             (richiesta esplicita dell'utente: con Urgente + stadio + modalità
             la riga dei badge va a capo e il pulsante finiva in conflitto con
             loro). */}
-        <XStack alignItems="flex-start" justifyContent="space-between" gap="$2">
+        <XStack alignItems="flex-start" justifyContent="space-between" gap="2">
           {/* Foto del professionista accanto al lavoro quando la richiesta è
               diventata un lavoro (richiesta esplicita dell'utente), iniziali
               se manca. */}
-          <XStack flex={1} minWidth={0} alignItems="center" gap="$3">
+          <XStack flex={1} minWidth={0} alignItems="center" gap="3">
             {booking && !booking.professionalAccountDeleted ? <Avatar name={booking.businessName} imageUrl={booking.professionalImageUrl} size={40} /> : null}
             <YStack flex={1} minWidth={0} gap={2}>
-              <Text fontFamily="$heading" fontWeight="800" fontSize={20} lineHeight={26} color={brand.grafite} numberOfLines={isOpen ? undefined : 1}>
+              <Text fontFamily="heading" fontWeight="800" fontSize={20} lineHeight="26px" color={brand.grafite} numberOfLines={isOpen ? undefined : 1}>
                 {request.description}
               </Text>
               <Text fontSize={16} color={brand.grafite70} numberOfLines={2}>
@@ -976,7 +976,7 @@ export function GuidedRequestCard({
               </Text>
             </YStack>
           </XStack>
-          <CardActionsMenu accessibilityLabel="Azioni sulla richiesta" actions={menuActions} />
+          <CardActionsMenu aria-label="Azioni sulla richiesta" actions={menuActions} />
         </XStack>
         <RequestStateIndicators myState={request.myState} />
         {notice ? (
@@ -991,7 +991,7 @@ export function GuidedRequestCard({
         ) : null}
         {request.sentWith && request.sentWith.length > 0 ? (
           // Richieste nate dallo stesso invio con più categorie (docs/CHANGELOG.md §259).
-          <XStack alignItems="center" gap="$1">
+          <XStack alignItems="center" gap="1">
             <Icon name="send" size={14} color={brand.grafite70} />
             <Text fontSize={16} color={brand.grafite70}>
               Inviata insieme a {new Intl.ListFormat("it-IT", { type: "conjunction" }).format(request.sentWith.map((other) => other.categoryLabel))}
@@ -1009,14 +1009,14 @@ export function GuidedRequestCard({
         <XStack
           alignSelf="flex-end"
           alignItems="center"
-          gap="$1"
-          paddingTop="$1"
+          gap="1"
+          paddingTop="1"
           borderRadius={8}
           onPress={(e: { stopPropagation: () => void }) => {
-            e.stopPropagation();
-            onToggle();
-          }}
-          accessibilityRole="button"
+                    e.stopPropagation();
+                    onToggle();
+                  }}
+          role="button"
           aria-expanded={isOpen}
         >
           <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
@@ -1030,7 +1030,7 @@ export function GuidedRequestCard({
           fuori dall'intestazione cliccabile, che apre la scheda dove si
           compie l'azione. Nascosto a scheda aperta: l'azione è lì sotto. */}
       {nextAction && !isOpen ? (
-        <XStack paddingHorizontal="$4" paddingBottom="$4" marginTop="$-2">
+        <XStack paddingHorizontal="4" paddingBottom="4" marginTop="-2">
           <CardButton tone="primary" onPress={onToggle}>
             {nextAction}
           </CardButton>
@@ -1039,13 +1039,13 @@ export function GuidedRequestCard({
       <ArchivedRestoreBar token={token} guidedRequestId={request.id} myState={request.myState} onChanged={onChanged} />
 
       {isOpen ? (
-        <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4" borderTopWidth={1} borderTopColor={brand.filetto}>
+        <YStack paddingHorizontal="4" paddingBottom="4" gap="4" borderTopWidth={1} borderTopColor={brand.filetto}>
           {/* Con un lavoro la scheda parte dal biglietto dell'appuntamento (§346):
               andamento, riepiloghi e trattativa stanno sotto o spariscono. */}
           {booking ? bookingView : null}
 
           {stage !== "scaduta" && stage !== "chiusa" && !booking ? (
-            <YStack gap="$2" paddingTop="$3">
+            <YStack gap="2" paddingTop="3">
               <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
                 Andamento
               </Text>
@@ -1054,7 +1054,7 @@ export function GuidedRequestCard({
           ) : null}
 
           {statusSummary && !booking ? (
-            <YStack gap="$1" backgroundColor={brand.gesso} borderRadius="$3" padding="$3">
+            <YStack gap="1" backgroundColor={brand.gesso} borderRadius="3" padding="3">
               {statusSummary.statusMessage ? (
                 <Text fontSize={13} color={brand.grafite70}>
                   {statusSummary.statusMessage}
@@ -1075,7 +1075,7 @@ export function GuidedRequestCard({
           ) : null}
 
           {request.openUntil ? (
-            <XStack alignItems="center" gap="$2">
+            <XStack alignItems="center" gap="2">
               <Icon name="clock" size={14} color={brand.grafite70} strokeWidth={1.5} />
               <Text fontSize={16} color={brand.grafite70}>
                 La richiesta resta aperta ai preventivi fino {formatItalianUntil(request.openUntil, { withTime: false })}.
@@ -1084,7 +1084,7 @@ export function GuidedRequestCard({
           ) : null}
 
           {!request.professionalProfileId && priceSpan !== null && !booking ? (
-            <XStack alignItems="center" gap="$2" backgroundColor={brand.cianografiaVelo} borderRadius="$3" padding="$3">
+            <XStack alignItems="center" gap="2" backgroundColor={brand.cianografiaVelo} borderRadius="3" padding="3">
               <Icon name="coins" size={16} color={brand.cianografiaScuro} strokeWidth={1.5} />
               <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
                 {priceSpan.count} preventivi:{" "}
@@ -1096,7 +1096,7 @@ export function GuidedRequestCard({
           ) : null}
 
           {request.address && !booking ? (
-            <XStack alignItems="center" gap="$1">
+            <XStack alignItems="center" gap="1">
               <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
               <Text fontSize={16} color={brand.grafite70}>
                 {request.address}
@@ -1106,7 +1106,7 @@ export function GuidedRequestCard({
           ) : null}
 
           {request.photoUrls.length > 0 && !booking ? (
-            <XStack gap="$2" flexWrap="wrap">
+            <XStack gap="2" flexWrap="wrap">
               {request.photoUrls.map((url, index) => (
                 <MediaPreview key={url} url={url} onClick={() => setOpenPhotoIndex(index)} style={{ width: 72, height: 72, borderRadius: 10, border: `1px solid ${brand.filetto}`, cursor: "pointer" }} />
               ))}
@@ -1121,7 +1121,7 @@ export function GuidedRequestCard({
               prima era solo in fondo a "Modifica" o nel menu ≡; "Ripeti la
               richiesta" solo quando è chiusa. */}
           {booking ? null : (
-            <XStack gap="$2" flexWrap="wrap" alignItems="center">
+            <XStack gap="2" flexWrap="wrap" alignItems="center">
               {canDelete && canEditDetails ? <CardButton onPress={startEditing}>Modifica</CardButton> : null}
               {canDelete ? (
                 <CardButton tone="danger" onPress={() => setShowDeleteModal(true)}>
@@ -1147,17 +1147,17 @@ export function GuidedRequestCard({
 
           {/* Elenco dei destinatari solo per una richiesta diretta: una generale arriva a tutti i professionisti della zona (§211). */}
           {request.professionalProfileId && request.sentTo.length > 0 && !booking ? (
-            <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
-              <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+            <YStack gap="2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="3">
+              <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Inviata a
               </Text>
               {request.sentTo.map((professional) => (
-                <XStack key={professional.id} gap="$3" alignItems="center" backgroundColor={brand.gesso} borderRadius="$3" padding="$3" opacity={professional.declined ? 0.7 : 1}>
+                <XStack key={professional.id} gap="3" alignItems="center" backgroundColor={brand.gesso} borderRadius="3" padding="3" opacity={professional.declined ? 0.7 : 1}>
                   <Link href={`/professionista/${professional.id}`} style={{ textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}>
-                    <XStack gap="$3" alignItems="center">
+                    <XStack gap="3" alignItems="center">
                       <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={44} />
-                      <YStack gap="$1" flex={1} minWidth={0}>
-                        <XStack gap="$2" alignItems="center" flexWrap="wrap">
+                      <YStack gap="1" flex={1} minWidth={0}>
+                        <XStack gap="2" alignItems="center" flexWrap="wrap">
                           <Text fontWeight="600" color={brand.grafite}>
                             {professional.businessName}
                           </Text>
@@ -1167,7 +1167,7 @@ export function GuidedRequestCard({
                             </BadgeInfo>
                           ) : null}
                           {professional.declined ? (
-                            <Text fontFamily="$body" fontSize={10} fontWeight="700" color={brand.urgenza}>
+                            <Text fontFamily="body" fontSize={10} fontWeight="700" color={brand.urgenza}>
                               Ha rifiutato
                             </Text>
                           ) : null}
@@ -1208,8 +1208,8 @@ export function GuidedRequestCard({
           ) : null}
 
           {booking ? null : request.quotes.length > 0 ? (
-            <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
-              <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+            <YStack gap="2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="3">
+              <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Preventivi ricevuti
               </Text>
               {request.quotes.map(quoteCard)}
@@ -1224,7 +1224,7 @@ export function GuidedRequestCard({
           {openPhotoIndex !== null ? <PhotoLightbox photos={request.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} /> : null}
 
 
-          <XStack justifyContent="center" paddingTop="$2" cursor="pointer" onPress={onToggle} accessibilityRole="button" accessibilityLabel="Richiudi la scheda">
+          <XStack justifyContent="center" paddingTop="2" cursor="pointer" onPress={onToggle} role="button" aria-label="Richiudi la scheda">
             <Icon name="chevron-up" size={18} color={brand.grafite70} />
           </XStack>
         </YStack>

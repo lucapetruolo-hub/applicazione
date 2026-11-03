@@ -96,13 +96,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <H1 size="$7" textAlign="center">
+      <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
+          <H1 size="7" textAlign="center">
             Accedi per continuare
           </H1>
           <Link href={`/accedi?redirect=${pathname}`} style={{ textDecoration: "none" }}>
-            <Button tabIndex={-1} size="$5">Accedi</Button>
+            <Button tabIndex={-1} size="5">Accedi</Button>
           </Link>
         </YStack>
       </YStack>
@@ -111,9 +111,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!isAdmin) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$3" alignItems="center">
-          <H1 size="$7" textAlign="center">
+      <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="3" alignItems="center">
+          <H1 size="7" textAlign="center">
             Accesso riservato
           </H1>
           <Paragraph color={brand.grafite70} textAlign="center">
@@ -127,8 +127,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!twoFactor) {
     if (!twoFactorError) return null;
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$3" alignItems="center">
+      <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="3" alignItems="center">
           <Paragraph color={brand.grafite70} textAlign="center">
             Non riusciamo a raggiungere il server. Controlla la connessione e riprova.
           </Paragraph>
@@ -173,7 +173,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {allowed ? (
             children
           ) : (
-            <YStack gap="$2" paddingVertical="$6">
+            <YStack gap="2" paddingVertical="6">
               <Paragraph fontWeight="700">Sezione non disponibile</Paragraph>
               <Paragraph color={brand.grafite70}>Questa sezione non rientra nel tuo ruolo di amministratore.</Paragraph>
             </YStack>

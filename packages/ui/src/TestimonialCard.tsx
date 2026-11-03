@@ -1,4 +1,4 @@
-import { Card, Text, XStack, YStack } from "tamagui";
+import { Text, XStack, YStack } from "tamagui";
 import { Icon } from "./Icon";
 import { brand } from "./tokens";
 
@@ -11,8 +11,8 @@ export type TestimonialCardProps = {
 
 export function TestimonialCard({ authorName, authorRole, text, rating }: TestimonialCardProps) {
   return (
-    <Card bordered padding="$4" backgroundColor="$color2">
-      <YStack gap="$2">
+    <YStack borderWidth={1} borderColor="hsl(0,0%,90.0%)" borderRadius="4" padding="4" backgroundColor="color2">
+      <YStack gap="2">
         <XStack justifyContent="space-between" alignItems="center">
           <Text fontWeight="700">{authorName}</Text>
           {rating !== undefined ? (
@@ -29,15 +29,15 @@ export function TestimonialCard({ authorName, authorRole, text, rating }: Testim
             </XStack>
           ) : null}
         </XStack>
-        <Text color="$color11" fontSize={16}>
+        <Text color="color11" fontSize={16}>
           {text}
         </Text>
         {authorRole ? (
-          <Text color="$color9" fontSize={13} fontStyle="italic">
+          <Text color="color9" fontSize={13} fontStyle="italic">
             {authorRole}
           </Text>
         ) : null}
       </YStack>
-    </Card>
+    </YStack>
   );
 }

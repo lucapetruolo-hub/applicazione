@@ -39,12 +39,12 @@ export function AppointmentWhen({ booking, moment }: { booking: ClientBooking; m
   const canceled = booking.status === "CANCELED";
 
   return (
-    <XStack gap="$3" alignItems="center" opacity={canceled ? 0.6 : 1}>
+    <XStack gap="3" alignItems="center" opacity={canceled ? 0.6 : 1}>
       <YStack width={64} flexShrink={0} borderRadius={radiusSm} overflow="hidden" borderWidth={1} borderColor={brand.filetto} backgroundColor={brand.calce} alignItems="center" aria-hidden>
         <Text alignSelf="stretch" textAlign="center" backgroundColor={canceled ? brand.grafite70 : brand.cianografiaPieno} color="white" fontSize={12} fontWeight="700" paddingVertical={3} textTransform="uppercase">
           {formatAppointmentDate(booking.scheduledAt, { weekday: "short" }).replace(".", "")}
         </Text>
-        <Text fontSize={26} fontWeight="800" color={brand.grafite} lineHeight={32}>
+        <Text fontSize={26} fontWeight="800" color={brand.grafite} lineHeight="32px">
           {formatAppointmentDate(booking.scheduledAt, { day: "numeric" })}
         </Text>
         <Text fontSize={12} color={brand.grafite70} paddingBottom={4}>
@@ -52,7 +52,7 @@ export function AppointmentWhen({ booking, moment }: { booking: ClientBooking; m
         </Text>
       </YStack>
       <YStack flex={1} minWidth={0} gap={2}>
-        <Text fontFamily="$heading" fontWeight="800" fontSize={22} lineHeight={28} color={brand.grafite} textDecorationLine={canceled ? "line-through" : "none"}>
+        <Text fontFamily="heading" fontWeight="800" fontSize={22} lineHeight="28px" color={brand.grafite} textDecorationLine={canceled ? "line-through" : "none"}>
           {title}
         </Text>
         <Text fontSize={18} fontWeight="600" color={brand.grafite}>

@@ -168,7 +168,7 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
           <div className="rr-feature-body">
             <Rating value={review.rating} size={18} />
             <p className="rr-quote">&ldquo;{review.comment ?? ""}&rdquo;</p>
-            <XStack alignItems="center" gap="$2" flexWrap="wrap">
+            <XStack alignItems="center" gap="2" flexWrap="wrap">
               <Text fontSize={16} color={brand.grafite70}>
                 {review.clientName} · {timeAgo(review.createdAt)}
               </Text>
@@ -183,14 +183,14 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
             </XStack>
 
             <div className="rr-feature-foot">
-              <XStack alignItems="center" gap="$3" minWidth={0} flexShrink={1}>
+              <XStack alignItems="center" gap="3" minWidth={0} flexShrink={1}>
                 {!review.professional.imageUrl ? (
                   <span className="rr-initial" style={{ backgroundColor: accent.bg, color: accent.fg }} aria-hidden="true">
                     {review.professional.businessName.trim().charAt(0).toUpperCase()}
                   </span>
                 ) : null}
                 <YStack minWidth={0} flexShrink={1}>
-                  <Text fontFamily="$heading" fontSize={18} fontWeight="700" color={brand.cianografiaScuro} numberOfLines={1}>
+                  <Text fontFamily="heading" fontSize={18} fontWeight="700" color={brand.cianografiaScuro} numberOfLines={1}>
                     {review.professional.businessName}
                   </Text>
                   <Text fontSize={16} color={brand.grafite70} numberOfLines={1}>

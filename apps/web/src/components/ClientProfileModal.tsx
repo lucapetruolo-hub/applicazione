@@ -73,26 +73,26 @@ export function ClientProfileModal({
         maxHeight="85vh"
         overflow="scroll"
         backgroundColor={brand.calce}
-        borderRadius="$3"
+        borderRadius="3"
         borderWidth={1}
         borderColor={brand.filetto}
-        padding="$5"
-        gap="$4"
+        padding="5"
+        gap="4"
         alignItems="center"
       >
         <XStack width="100%" justifyContent="flex-end">
-          <Text fontSize="$5" color={brand.grafite70} cursor="pointer" onPress={onClose} accessibilityRole="button" accessibilityLabel="Chiudi">
+          <Text fontSize="5" color={brand.grafite70} cursor="pointer" onPress={onClose} role="button" aria-label="Chiudi">
             ✕
           </Text>
         </XStack>
 
         <Avatar name={name} imageUrl={imageUrl ?? null} size={72} />
 
-        <YStack gap="$1" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite} textAlign="center">
+        <YStack gap="1" alignItems="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite} textAlign="center">
             {name}
           </Text>
-          <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite70}>
+          <Text fontFamily="body" fontWeight="700" fontSize={13} color={brand.grafite70}>
             Cliente
           </Text>
         </YStack>

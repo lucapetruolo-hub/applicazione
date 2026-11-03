@@ -58,7 +58,7 @@ export function ReviewReply({
 
   if (editing) {
     return (
-      <YStack gap="$2">
+      <YStack gap="2">
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value.slice(0, MAX_REPLY))}
@@ -82,7 +82,7 @@ export function ReviewReply({
             {error}
           </Text>
         ) : null}
-        <XStack gap="$2" flexWrap="wrap">
+        <XStack gap="2" flexWrap="wrap">
           <CardButton tone="primary" disabled={busy} onPress={save}>
             {busy ? "Salvataggio..." : "Pubblica la risposta"}
           </CardButton>
@@ -101,9 +101,9 @@ export function ReviewReply({
   }
 
   return (
-    <YStack gap="$1">
+    <YStack gap="1">
       {reply ? (
-        <YStack gap={2} paddingLeft="$3" borderLeftWidth={2} borderLeftColor={brand.filetto}>
+        <YStack gap={2} paddingLeft="3" borderLeftWidth={2} borderLeftColor={brand.filetto}>
           <Text fontSize={13} fontWeight="700" color={brand.grafite}>
             {title ?? `Risposta di ${businessName}`}
           </Text>
@@ -120,7 +120,7 @@ export function ReviewReply({
           cursor="pointer"
           alignSelf="flex-start"
           onPress={() => setEditing(true)}
-          accessibilityRole="button"
+          role="button"
         >
           {reply ? "Modifica la risposta" : "Rispondi"}
         </Text>

@@ -35,19 +35,19 @@ const COLUMNS = [
  */
 export function ProCtaSection() {
   return (
-    <YStack width="100%" paddingVertical="$8" paddingHorizontal="$4" alignItems="center">
+    <YStack width="100%" paddingVertical="8" paddingHorizontal="4" alignItems="center">
       <div className="pro-cta">
         <GlowLights tone="scuro" />
-        <YStack gap="$6" padding="$6" position="relative" $gtSm={{ padding: "$8" }}>
-          <YStack gap="$3">
-            <Text fontFamily="$heading" fontWeight="600" fontSize="$9" color="white">
+        <YStack gap="6" padding="6 gtSm:8" position="relative">
+          <YStack gap="3">
+            <Text fontFamily="heading" fontWeight="600" fontSize="9" color="white">
               Meno telefonate inutili, più lavoro concluso.
             </Text>
           </YStack>
 
-          <YStack gap="$5">
+          <YStack gap="5">
             {COLUMNS.map((column) => (
-              <XStack key={column.title} gap="$3" alignItems="flex-start">
+              <XStack key={column.title} gap="3" alignItems="flex-start">
                 <YStack
                   width={44}
                   height={44}
@@ -59,8 +59,8 @@ export function ProCtaSection() {
                 >
                   <Icon name={column.icon} size={22} color="white" strokeWidth={1.5} />
                 </YStack>
-                <YStack gap="$1" flex={1} minWidth={0}>
-                  <Text fontFamily="$heading" fontWeight="600" fontSize="$6" color="white">
+                <YStack gap="1" flex={1} minWidth={0}>
+                  <Text fontFamily="heading" fontWeight="600" fontSize="6" color="white">
                     {column.title}
                   </Text>
                   <Text fontSize={16} color="rgba(255,255,255,0.85)">
@@ -71,9 +71,9 @@ export function ProCtaSection() {
             ))}
           </YStack>
 
-          <XStack gap="$3" flexWrap="wrap">
+          <XStack gap="3" flexWrap="wrap">
             <Link href="/registrati?ruolo=professionista" style={{ textDecoration: "none" }}>
-              <XStack backgroundColor="white" paddingHorizontal="$5" height={48} alignItems="center" borderRadius={999} cursor="pointer">
+              <XStack backgroundColor="white" paddingHorizontal="5" height={48} alignItems="center" borderRadius={999} cursor="pointer">
                 <Text color={brand.cianografiaScuro} fontWeight="700">
                   Iscriviti gratis
                 </Text>
@@ -83,7 +83,7 @@ export function ProCtaSection() {
               <XStack
                 borderWidth={1.5}
                 borderColor="rgba(255,255,255,0.6)"
-                paddingHorizontal="$5"
+                paddingHorizontal="5"
                 height={48}
                 alignItems="center"
                 borderRadius={999}

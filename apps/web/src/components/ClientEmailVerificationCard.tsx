@@ -42,9 +42,9 @@ export function ClientEmailVerificationCard() {
   };
 
   return (
-    <Surface gap="$3" borderLeftWidth={4} borderLeftColor={brand.cianografia} role="status">
-      <YStack gap="$1">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+    <Surface gap="3" borderLeftWidth={4} borderLeftColor={brand.cianografia} role="status">
+      <YStack gap="1">
+        <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
           Conferma la tua email
         </Text>
         <Text color={brand.grafite70}>
@@ -63,7 +63,7 @@ export function ClientEmailVerificationCard() {
           onVerified={() => void refreshUser().catch(() => {})}
         />
       ) : (
-        <YStack gap="$2" alignItems="flex-start">
+        <YStack gap="2" alignItems="flex-start">
           <Button variant="primary" onPress={send} disabled={state === "sending"} opacity={state === "sending" ? 0.6 : 1}>
             {state === "sending" ? "Invio..." : "Mandami l'email di conferma"}
           </Button>

@@ -34,7 +34,7 @@ export function WithoutCardCard({ token }: { token: string }) {
 
   return (
     <AdminCard>
-      <YStack gap="$1">
+      <YStack gap="1">
         <Text fontWeight="700" fontSize={18} color={brand.grafite}>
           Senza carta ({rows.length})
         </Text>

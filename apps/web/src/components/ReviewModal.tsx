@@ -120,15 +120,15 @@ export function ReviewModal({
         width="100%"
         maxWidth={480}
         backgroundColor={brand.calce}
-        borderRadius="$3"
+        borderRadius="3"
         borderWidth={1}
         borderColor={brand.filetto}
-        padding="$5"
-        gap="$4"
-        marginVertical="$6"
+        padding="5"
+        gap="4"
+        marginVertical="6"
       >
-        <YStack gap="$1">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+        <YStack gap="1">
+          <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
             {title}
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
@@ -136,9 +136,9 @@ export function ReviewModal({
           </Text>
         </YStack>
 
-        <YStack flexDirection="row" gap="$1">
+        <YStack flexDirection="row" gap="1">
           {[1, 2, 3, 4, 5].map((value) => (
-            <YStack key={value} cursor="pointer" onPress={() => setRating(value)} accessibilityRole="button" accessibilityLabel={`${value} stelle`}>
+            <YStack key={value} cursor="pointer" onPress={() => setRating(value)} role="button" aria-label={`${value} stelle`}>
               <Icon name="star" size={28} strokeWidth={1.5} color={brand.ottone} fill={value <= rating ? brand.ottone : "none"} />
             </YStack>
           ))}
@@ -146,13 +146,13 @@ export function ReviewModal({
 
         <textarea aria-label="Com'è andata?" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Com'è andata? (opzionale)" rows={3} style={textareaStyle} />
 
-        <YStack gap="$1">
+        <YStack gap="1">
           <Text fontSize={13} color={brand.grafite70}>
             Foto o video (opzionale, fino a {MAX_REVIEW_MEDIA})
           </Text>
-          <YStack flexDirection="row" flexWrap="wrap" gap="$2">
+          <YStack flexDirection="row" flexWrap="wrap" gap="2">
             {mediaUrls.map((url) => (
-              <YStack key={url} width={64} height={64} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+              <YStack key={url} width={64} height={64} borderRadius="3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
                 <MediaPreview url={url} />
                 <YStack
                   position="absolute"
@@ -166,8 +166,8 @@ export function ReviewModal({
                   justifyContent="center"
                   cursor="pointer"
                   onPress={() => removeMedia(url)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Rimuovi foto"
+                  role="button"
+                  aria-label="Rimuovi foto"
                 >
                   <X size={11} strokeWidth={2} color="white" />
                 </YStack>
@@ -177,7 +177,7 @@ export function ReviewModal({
               <YStack
                 width={64}
                 height={64}
-                borderRadius="$3"
+                borderRadius="3"
                 borderWidth={1}
                 borderColor={brand.filetto}
                 borderStyle="dashed"
@@ -186,13 +186,13 @@ export function ReviewModal({
                 cursor="pointer"
                 opacity={isUploadingPhoto ? 0.6 : 1}
                 onPress={() => !isUploadingPhoto && photoInputRef.current?.click()}
-                accessibilityRole="button"
-                accessibilityLabel="Aggiungi foto"
+                role="button"
+                aria-label="Aggiungi foto"
               >
                 {isUploadingPhoto ? (
                   <UploadingDots dotSize={6} />
                 ) : (
-                  <Text fontSize="$6" color={brand.grafite70}>
+                  <Text fontSize="6" color={brand.grafite70}>
                     +
                   </Text>
                 )}
@@ -213,11 +213,11 @@ export function ReviewModal({
           </Text>
         ) : null}
 
-        <XStack gap="$2" flexWrap="wrap">
-          <Button variant="primary" size="$3" height={44} onPress={handleSubmit} disabled={isSubmitting || isUploadingPhoto} opacity={isSubmitting ? 0.6 : 1}>
+        <XStack gap="2" flexWrap="wrap">
+          <Button variant="primary" size="3" height={44} onPress={handleSubmit} disabled={isSubmitting || isUploadingPhoto} opacity={isSubmitting ? 0.6 : 1}>
             {isSubmitting ? "Invio..." : submitLabel}
           </Button>
-          <Button variant="ghost" size="$3" height={44} onPress={onClose} disabled={isSubmitting}>
+          <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSubmitting}>
             Più tardi
           </Button>
         </XStack>

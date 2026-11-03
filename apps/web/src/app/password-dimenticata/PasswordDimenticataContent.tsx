@@ -67,7 +67,7 @@ export function PasswordDimenticataContent() {
         />
 
         {sentTo ? (
-          <YStack gap="$4">
+          <YStack gap="4">
             <EmailCodeForm
               token=""
               email={sentTo}
@@ -91,7 +91,7 @@ export function PasswordDimenticataContent() {
             </button>
           </YStack>
         ) : (
-          <YStack gap="$4">
+          <YStack gap="4">
             <Text fontSize={16} color={brand.grafite70} textAlign="center">
               Ti mandiamo un'email per sceglierne una nuova.
             </Text>
@@ -104,7 +104,7 @@ export function PasswordDimenticataContent() {
               autoCapitalize="none"
               autoComplete="username"
               nativeID="email"
-              accessibilityLabel="Email"
+              aria-label="Email"
               error={error && error !== TURNSTILE_PENDING_MESSAGE ? error : undefined}
               onSubmitEditing={handleSubmit}
             />

@@ -115,8 +115,8 @@ export function PayoutIbanCard({
   const working = saving || busy;
 
   return (
-    <YStack gap="$3" {...(isStep ? {} : { paddingTop: "$3", borderTopWidth: 1, borderTopColor: brand.filetto })}>
-      <YStack gap="$1">
+    <YStack gap="3" {...(isStep ? {} : { paddingTop: "3", borderTopWidth: 1, borderTopColor: brand.filetto })}>
+      <YStack gap="1">
         <Text fontSize={16} fontWeight="700">
           {isStep ? "Il conto su cui ricevi i pagamenti" : "IBAN dei pagamenti online"}
         </Text>
@@ -136,10 +136,10 @@ export function PayoutIbanCard({
           Caricamento...
         </Text>
       ) : showForm ? (
-        <YStack gap="$3">
+        <YStack gap="3">
           <Field
             label="IBAN"
-            accessibilityLabel="IBAN"
+            aria-label="IBAN"
             value={iban}
             onChangeText={(v) => {
               setIban(formatIban(v));
@@ -154,7 +154,7 @@ export function PayoutIbanCard({
           />
           <Field
             label="Titolare del conto"
-            accessibilityLabel="Titolare del conto"
+            aria-label="Titolare del conto"
             value={holderName}
             onChangeText={(v) => {
               setHolderName(v);
@@ -172,7 +172,7 @@ export function PayoutIbanCard({
               Non riusciamo a leggere l&apos;IBAN salvato: riprova più tardi.
             </Text>
           ) : null}
-          <XStack gap="$2" alignItems="center" flexWrap={isStep ? "nowrap" : "wrap"}>
+          <XStack gap="2" alignItems="center" flexWrap={isStep ? "nowrap" : "wrap"}>
             <Button variant="primary" onPress={handleSave} disabled={working} opacity={working ? 0.6 : 1}>
               {working ? "Attendere..." : isStep ? "Continua su Stripe" : "Salva IBAN"}
             </Button>
@@ -198,8 +198,8 @@ export function PayoutIbanCard({
           </XStack>
         </YStack>
       ) : saved ? (
-        <YStack gap="$2">
-          <XStack gap="$3" alignItems="center" flexWrap="wrap" justifyContent="space-between">
+        <YStack gap="2">
+          <XStack gap="3" alignItems="center" flexWrap="wrap" justifyContent="space-between">
             <YStack gap={2}>
               <Text fontSize={16} fontWeight="700" fontVariant={["tabular-nums"]} color={brand.grafite}>
                 {saved.maskedIban}
@@ -208,12 +208,12 @@ export function PayoutIbanCard({
                 {saved.holderName}
               </Text>
             </YStack>
-            <Button variant="secondary" size="$3" onPress={() => setEditing(true)}>
+            <Button variant="secondary" size="3" onPress={() => setEditing(true)}>
               Cambia IBAN
             </Button>
           </XStack>
           {saved.stripeCheck ? (
-            <YStack gap="$1">
+            <YStack gap="1">
               <Badge variant={CHECK_LABEL[saved.stripeCheck].variant}>{CHECK_LABEL[saved.stripeCheck].label}</Badge>
               {CHECK_HINT[saved.stripeCheck] ? (
                 <Text fontSize={16} color={saved.stripeCheck === "MISMATCH" ? brand.urgenza : brand.grafite70}>

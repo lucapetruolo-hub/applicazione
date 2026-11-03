@@ -341,7 +341,7 @@ function RichiesteContent() {
 
   if (token && loadFailed) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="8" paddingHorizontal="4">
         <YStack width="100%" maxWidth={800}>
           <LoadErrorNotice
             title="Non riusciamo a caricare le richieste"
@@ -359,8 +359,8 @@ function RichiesteContent() {
     // Stessi margini, larghezza e titolo della pagina caricata: niente salto
     // quando arrivano le richieste (CLS, docs/CHANGELOG.md §334).
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={1180} gap="$5">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="8" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={1180} gap="5">
           <RequestsHeading />
           <SkeletonRequestList count={3} />
         </YStack>
@@ -370,9 +370,9 @@ function RichiesteContent() {
 
   if (!token) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite} textAlign="center">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
+        <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite} textAlign="center">
             Accedi come professionista
           </Text>
           <Link href="/accedi?redirect=/dashboard/richieste">
@@ -388,8 +388,8 @@ function RichiesteContent() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={1180} gap="$5">
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="8" paddingHorizontal="4">
+      <YStack width="100%" maxWidth={1180} gap="5">
         <RequestsHeading />
 
         {/* Tab filtro — riga unica scorrevole orizzontalmente (richiesta
@@ -409,7 +409,7 @@ function RichiesteContent() {
               <XStack key={tab.key} flexShrink={0} position="relative">
                 <XStack
                   alignItems="center"
-                  paddingHorizontal="$3"
+                  paddingHorizontal="3"
                   paddingVertical={9}
                   borderRadius={999}
                   backgroundColor={active ? brand.cianografiaPieno : brand.calce}
@@ -417,14 +417,14 @@ function RichiesteContent() {
                   borderColor={active ? brand.cianografia : brand.filetto}
                   cursor="pointer"
                   onPress={() => setActiveTab(tab.key)}
-                  accessibilityRole="button"
+                  role="button"
                   aria-pressed={active}
                 >
-                  <Text fontFamily="$body" fontSize={16} fontWeight="800" color={active ? "white" : brand.grafite}>
+                  <Text fontFamily="body" fontSize={16} fontWeight="800" color={active ? "white" : brand.grafite}>
                     {tab.label}
                   </Text>
                   {count > 0 && !ACTION_TABS.has(tab.key) ? (
-                    <Text fontFamily="$body" fontSize={14} fontWeight="600" color={active ? "rgba(255,255,255,0.85)" : brand.grafite70} marginLeft={6}>
+                    <Text fontFamily="body" fontSize={14} fontWeight="600" color={active ? "rgba(255,255,255,0.85)" : brand.grafite70} marginLeft={6}>
                       {count}
                     </Text>
                   ) : null}
@@ -467,11 +467,11 @@ function RichiesteContent() {
           style={{ ...filterInputStyle, width: "100%" }}
         />
 
-        <XStack gap="$2" alignItems="center" flexWrap="wrap">
+        <XStack gap="2" alignItems="center" flexWrap="wrap">
           <XStack
             alignItems="center"
             gap={6}
-            paddingHorizontal="$4"
+            paddingHorizontal="4"
             paddingVertical={12}
             borderRadius={radiusDoc}
             backgroundColor={brand.calce}
@@ -479,7 +479,7 @@ function RichiesteContent() {
             borderColor={brand.filetto}
             cursor="pointer"
             onPress={() => setShowFiltersModal(true)}
-            accessibilityRole="button"
+            role="button"
           >
             <Icon name="sliders-horizontal" size={16} color={brand.grafite} />
             <Text fontWeight="700" fontSize={16} color={brand.grafite}>
@@ -501,12 +501,12 @@ function RichiesteContent() {
                   key={opt.key}
                   alignItems="center"
                   gap={6}
-                  paddingHorizontal="$3"
+                  paddingHorizontal="3"
                   paddingVertical={12}
                   backgroundColor={active ? brand.cianografiaPieno : brand.calce}
                   cursor="pointer"
                   onPress={() => setServiceModeFilter(opt.key)}
-                  accessibilityRole="button"
+                  role="button"
                   aria-pressed={active}
                 >
                   {/* Stesse icone già usate su ServiceBadge (house/video) per
@@ -548,21 +548,21 @@ function RichiesteContent() {
               width="100%"
               maxWidth={420}
               backgroundColor={brand.calce}
-              borderRadius="$3"
-              padding="$5"
-              gap="$4"
-              marginVertical="$6"
+              borderRadius="3"
+              padding="5"
+              gap="4"
+              marginVertical="6"
             >
               <XStack justifyContent="space-between" alignItems="center">
-                <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
+                <Text fontFamily="heading" fontWeight="800" fontSize="5" color={brand.grafite}>
                   Filtri
                 </Text>
-                <XStack cursor="pointer" onPress={() => setShowFiltersModal(false)} accessibilityRole="button" accessibilityLabel="Chiudi">
+                <XStack cursor="pointer" onPress={() => setShowFiltersModal(false)} role="button" aria-label="Chiudi">
                   <Icon name="x" size={20} color={brand.grafite70} />
                 </XStack>
               </XStack>
 
-              <YStack gap="$3">
+              <YStack gap="3">
                 <select aria-label="Ordina per" value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} style={{ ...filterInputStyle, width: "100%" }}>
                   <option value="recenti">Data di ricezione più recente</option>
                   <option value="vecchie">Data di ricezione più vecchie</option>
@@ -586,7 +586,7 @@ function RichiesteContent() {
                     setSortMode("recenti");
                     setZoneFilter("tutte");
                   }}
-                  accessibilityRole="button"
+                  role="button"
                 >
                   <Text fontSize={16} fontWeight="700" color={brand.grafite70} textDecorationLine="underline">
                     Reimposta filtri
@@ -612,7 +612,7 @@ function RichiesteContent() {
 
         {/* Elenco */}
         {visibleLeads.length === 0 ? (
-          <YStack gap="$3">
+          <YStack gap="3">
             <Surface>
               <EmptyState icon="search" title="Nessuna richiesta in questa sezione" description="Cambia filtro o attendi nuove richieste dai clienti." />
             </Surface>
@@ -620,13 +620,13 @@ function RichiesteContent() {
                 pre-lancio): senza richieste la pagina non spiegava cosa
                 succede "dopo" — i tre passi sotto danno aspettative
                 concrete invece di lasciare un vuoto muto. */}
-            <Surface gap="$3">
-              <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
+            <Surface gap="3">
+              <Text fontFamily="heading" fontWeight="700" fontSize="5" color={brand.grafite}>
                 Come funziona quando arriva una richiesta
               </Text>
-              <XStack gap="$3" flexWrap="wrap">
-                <YStack flex={1} minWidth={180} gap="$1">
-                  <XStack alignItems="center" gap="$2">
+              <XStack gap="3" flexWrap="wrap">
+                <YStack flex={1} minWidth={180} gap="1">
+                  <XStack alignItems="center" gap="2">
                     <Icon name="bell-ring" size={16} color={brand.cianografiaScuro} strokeWidth={1.5} />
                     <Text fontWeight="700" fontSize={16} color={brand.grafite}>
                       1. Ricevi la richiesta
@@ -636,8 +636,8 @@ function RichiesteContent() {
                     Un cliente della tua zona descrive il lavoro con foto: ti arriva qui e ti avvisiamo.
                   </Text>
                 </YStack>
-                <YStack flex={1} minWidth={180} gap="$1">
-                  <XStack alignItems="center" gap="$2">
+                <YStack flex={1} minWidth={180} gap="1">
+                  <XStack alignItems="center" gap="2">
                     <Icon name="file-text" size={16} color={brand.cianografiaScuro} strokeWidth={1.5} />
                     <Text fontWeight="700" fontSize={16} color={brand.grafite}>
                       2. Invii il preventivo
@@ -647,8 +647,8 @@ function RichiesteContent() {
                     Prezzo e data scelti dalla tua agenda. Solo allora il cliente vede chi sei.
                   </Text>
                 </YStack>
-                <YStack flex={1} minWidth={180} gap="$1">
-                  <XStack alignItems="center" gap="$2">
+                <YStack flex={1} minWidth={180} gap="1">
+                  <XStack alignItems="center" gap="2">
                     <Icon name="calendar" size={16} color={brand.cianografiaScuro} strokeWidth={1.5} />
                     <Text fontWeight="700" fontSize={16} color={brand.grafite}>
                       3. Il lavoro entra in agenda
@@ -662,7 +662,7 @@ function RichiesteContent() {
             </Surface>
           </YStack>
         ) : (
-          <YStack gap="$3">
+          <YStack gap="3">
             {visibleLeads.map((lead) => (
               <div key={lead.id} id={`request-${lead.id}`}>
                 <RequestCard
@@ -713,12 +713,12 @@ function RichiesteContent() {
 
 function RequestsHeading() {
   return (
-    <YStack gap="$1">
+    <YStack gap="1">
       {/* Stesso nome della voce di menu (richiesta dell'utente, docs/CHANGELOG.md §334). */}
-      <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
+      <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
         Richieste e lavori
       </Text>
-      <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+      <Text fontFamily="body" fontSize={16} color={brand.grafite70}>
         Gestisci preventivi, rispondi ai clienti e tieni traccia di ogni lavoro
       </Text>
     </YStack>

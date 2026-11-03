@@ -54,17 +54,17 @@ export function ReimpostaPasswordContent() {
   return (
     <AuthPageBackground>
       <AuthCard>
-        <YStack gap="$2">
-          <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
+        <YStack gap="2">
+          <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
             Password dimenticata
           </Text>
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+          <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             Scegli una nuova password
           </Text>
         </YStack>
 
         {token ? (
-          <YStack gap="$4">
+          <YStack gap="4">
             <AuthField
               label="Nuova password"
               rightElement={
@@ -76,7 +76,7 @@ export function ReimpostaPasswordContent() {
               secureTextEntry={!showPassword}
               autoComplete="new-password"
               nativeID="new-password"
-              accessibilityLabel="Nuova password"
+              aria-label="Nuova password"
               passwordRules={PASSWORD_RULES_ATTRIBUTE}
               error={passwordError ?? undefined}
               invalid={passwordAttempted && passwordProblem(password) !== null}

@@ -44,7 +44,7 @@ Implicazioni tecniche dirette:
 |---|---|---|
 | Web (desktop/mobile browser) | **Next.js 16** (App Router, TypeScript, Turbopack) | SSR/SSG per SEO su pagine categoria/professionista — critico per il ricavo da visibilità |
 | App mobile (iOS + Android) | **Expo 58 / React Native 0.88** (TypeScript) | Un'unica codebase per iOS e Android, OTA update, accesso a push notification/fotocamera/geolocalizzazione native |
-| UI condivisa web+mobile | **Tamagui** (o in alternativa NativeWind) | Stessi componenti/design tokens compilati sia per React Native che per web → "stessa interfaccia" richiesta, senza duplicare il design system |
+| UI condivisa web+mobile | **Tamagui 3** (o in alternativa NativeWind) | Stessi componenti/design tokens compilati sia per React Native che per web → "stessa interfaccia" richiesta, senza duplicare il design system |
 | Backend API | **NestJS 11** (Node.js, TypeScript, Express 5) | Struttura modulare adatta a un dominio con tanti bounded context (utenti, prenotazioni, pagamenti, ricerca) |
 | Database | **PostgreSQL** + **PostGIS** | Ricerca geografica (professionisti vicini) nativa in SQL; PostGIS evita di introdurre subito un motore di ricerca separato |
 | ORM | **Prisma 6** | Type-safety end-to-end condivisa col resto del monorepo TS |
@@ -123,12 +123,30 @@ prima discuterne e aggiornare questo file.
   ogni pagina prende solo le parti che usa. Un modulo di `packages/shared`
   non deve contare su effetti al solo import (registrazioni, globali). L'API
   usa sempre `dist/`.
-- **Config Tamagui**: i valori di default stanno in
-  `packages/ui/src/tamaguiDefaults.ts` (generato, §345), non si importa
-  `@tamagui/config` nel sito (1408 temi e animazioni di React Native in ogni
-  pagina). Un tema nuovo va in `packages/ui/src/usedThemes.ts`, poi
-  `pnpm --filter @professionisti/ui genera-default-tamagui`. Sul sito niente
-  prop `animation` di Tamagui (driver vuoto, `animations.web.ts`).
+- **Tamagui 3** (docs/changelog/2026-11-02-tamagui-3.md, prima Tamagui 1):
+  valori "piatti", token senza `$` e stati nel valore
+  (`backgroundColor="blue10 hover:blue9 press:blue8"`, `fontSize="16px xs:13px"`),
+  niente `hoverStyle`/`pressStyle`/`$xs`; `render` al posto di `tag`, `role` e
+  `aria-label` al posto di `accessibilityRole`/`accessibilityLabel`; un
+  `lineHeight` numerico è un rapporto, i pixel si scrivono `"26px"`.
+  `styleCompat: "legacy"` e `defaultPosition: "relative"` in
+  `packages/ui/src/config.ts` tengono l'impaginazione di prima. `Button` e
+  `Input` sono nostri (`packages/ui/src/Button.tsx`, `Input.tsx`) con le
+  misure "1"…"5" di Tamagui 1: quelli di Tamagui 3 hanno misure "xs…xl".
+  Le classi atomiche di Tamagui 3 valgono quanto una sola classe: una regola
+  di `globals.css` con due classi ora vince sugli stili scritti nel
+  componente (prima no). I valori di base (token, font, temi) di Tamagui 1
+  restano fissati in `packages/ui/src/tamaguiDefaults.ts` (Tamagui 3 non ha
+  più quella config): un tema nuovo si scrive a mano lì e in
+  `packages/ui/src/usedThemes.ts`, poi
+  `pnpm --filter @professionisti/ui genera-default-tamagui` lo controlla. Non
+  si importa `@tamagui/config` nel sito (§345). Sul sito niente animazioni di
+  Tamagui (nessun driver, `animations.web.ts`). Due comportamenti di
+  Tamagui 1 rimessi sul sito: i riquadri con ruolo button/checkbox/link/
+  radio/textbox/switch raggiungibili col Tab (`focusableRoles.ts`) e il
+  tocco che risale ai contenitori, con una correzione di una riga al
+  pacchetto (`patches/@tamagui__web@3.1.10.patch`, da rifare a ogni
+  aggiornamento di Tamagui).
 - **React Compiler** acceso su tutto il sito (docs/CHANGELOG.md §345), ma
   rompe gli stili `<style jsx>`: ogni componente che li usa deve iniziare
   con la direttiva `"use no memo"` (lo controlla `pnpm lint`,

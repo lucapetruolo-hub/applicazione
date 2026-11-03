@@ -62,7 +62,7 @@ export function CategoryContent({
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent">
-      <YStack width="100%" maxWidth={1200} paddingHorizontal="$4" paddingVertical="$6">
+      <YStack width="100%" maxWidth={1200} paddingHorizontal="4" paddingVertical="6">
         {/* Titolo principale (h1): da telefono si vede, in testo semplice sopra
             i filtri, perché chi arriva da Google legga subito "Idraulico a
             Latina" (collaudo N-15, scelto da Luca,

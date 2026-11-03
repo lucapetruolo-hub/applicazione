@@ -97,8 +97,8 @@ function CompletaProfiloForm() {
   return (
     <AuthPageBackground>
       <AuthCard>
-        <YStack gap="$2">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+        <YStack gap="2">
+          <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             Completa il tuo profilo
           </Text>
           {preview ? (
@@ -111,7 +111,7 @@ function CompletaProfiloForm() {
         </YStack>
 
         {loadError ? (
-          <YStack gap="$3">
+          <YStack gap="3">
             <Text color={brand.urgenza}>{loadError}</Text>
             <Link href="/accedi" style={{ color: brand.cianografia }}>
               Vai all&apos;accesso
@@ -119,7 +119,7 @@ function CompletaProfiloForm() {
           </YStack>
         ) : preview ? (
           <form onSubmit={(e) => e.preventDefault()}>
-            <YStack gap="$4">
+            <YStack gap="4">
               <AuthField
                 label="Password"
                 rightElement={
@@ -131,7 +131,7 @@ function CompletaProfiloForm() {
                 secureTextEntry={!showPassword}
                 autoComplete="new-password"
                 nativeID="new-password"
-                accessibilityLabel="Password"
+                aria-label="Password"
                 passwordRules={PASSWORD_RULES_ATTRIBUTE}
                 error={passwordError ?? undefined}
                 invalid={passwordAttempted && passwordProblem(password, preview?.email) !== null}
@@ -146,14 +146,14 @@ function CompletaProfiloForm() {
                 secureTextEntry={!showPassword}
                 autoComplete="new-password"
                 nativeID="new-password-confirm"
-                accessibilityLabel="Conferma password"
+                aria-label="Conferma password"
                 passwordRules={PASSWORD_RULES_ATTRIBUTE}
                 footer={<PasswordMatchHint password={password} confirmPassword={confirmPassword} />}
                 onSubmitEditing={handleSubmit}
               />
               <LegalConsentCheckbox checked={legalConsent} onToggle={() => setLegalConsent((v) => !v)} attempt={consentAttempt} />
               {error ? (
-                <Text color={brand.urgenza} fontSize="$3">
+                <Text color={brand.urgenza} fontSize="3">
                   {error}
                 </Text>
               ) : null}

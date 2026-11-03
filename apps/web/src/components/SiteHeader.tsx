@@ -89,14 +89,13 @@ export function SiteHeader() {
     >
       <div style={{ position: "relative", width: "100%" }}>
       <XStack
-        width="100%"
-        height={64}
-        paddingHorizontal="$4"
-        $gtSm={{ paddingHorizontal: "$5" }}
-        alignItems="center"
-        justifyContent="space-between"
-      >
-        <XStack alignItems="center" gap="$6">
+          width="100%"
+          height={64}
+          paddingHorizontal="4 gtSm:5"
+          alignItems="center"
+          justifyContent="space-between"
+        >
+        <XStack alignItems="center" gap="6">
           <Link href="/" aria-label={`${BRAND.name}, vai alla home`} style={{ textDecoration: "none" }}>
             {/* Solo marchio sotto $xs (≤660px, telefoni): il wordmark
                 "Professionisti" (~120px) più Accedi+bottone CTA a destra
@@ -104,10 +103,10 @@ export function SiteHeader() {
                 (bug reale segnalato dall'utente, scroll orizzontale sulla
                 homepage) — `variant="mark"` esiste già in Logo.web.tsx
                 proprio per questo caso ("per spazi stretti"). */}
-            <XStack display="none" $gtXs={{ display: "flex" }}>
+            <XStack display="none gtXs:flex">
               <Logo name={BRAND.name} size={26} />
             </XStack>
-            <XStack $gtXs={{ display: "none" }}>
+            <XStack display="gtXs:none">
               <Logo name={BRAND.name} size={26} variant="mark" />
             </XStack>
           </Link>
@@ -117,9 +116,9 @@ export function SiteHeader() {
             // nascosto, al suo posto c'è la ricerca compatta al centro.
             <MegaMenu mobileOnly />
           ) : (
-            <XStack alignItems="center" gap="$5">
+            <XStack alignItems="center" gap="5">
               <MegaMenu />
-              <XStack alignItems="center" gap="$5" display="none" $gtMd={{ display: "flex" }}>
+              <XStack alignItems="center" gap="5" display="none gtMd:flex">
                 <Link href="/#come-funziona" style={{ textDecoration: "none" }}>
                   <Text fontSize={16} fontWeight="600" color={brand.grafite}>
                     Come funziona
@@ -149,9 +148,9 @@ export function SiteHeader() {
           )}
         </XStack>
 
-        <XStack alignItems="center" gap="$4" $xs={{ gap: "$3" }}>
+        <XStack alignItems="center" gap="4 xs:3">
           {isLoading ? null : user ? (
-            <XStack alignItems="center" gap="$2">
+            <XStack alignItems="center" gap="2">
               <NotificationBell />
               <AccountMenu />
             </XStack>
@@ -189,13 +188,13 @@ export function SiteHeader() {
                   quindi non ha lo stesso problema di spazio) per restare
                   entro la larghezza del viewport senza nasconderlo del
                   tutto. */}
-              <Button tabIndex={-1} className="site-header-cta" variant="primary" size="$3" height={40} paddingHorizontal="$4" $xs={{ paddingHorizontal: "$3" }}>
+              <Button tabIndex={-1} className="site-header-cta" variant="primary" size="3" height={40} paddingHorizontal="4 xs:3">
                 {user ? (
                   <>
-                    <Text display="none" $gtXs={{ display: "flex" }} color="white" fontWeight="600">
+                    <Text display="none gtXs:flex" color="white" fontWeight="600">
                       Richiedi preventivo
                     </Text>
-                    <Text display="flex" $gtXs={{ display: "none" }} color="white" fontWeight="600">
+                    <Text display="flex gtXs:none" color="white" fontWeight="600">
                       Preventivo
                     </Text>
                   </>
@@ -241,7 +240,7 @@ export function SiteHeader() {
             pointerEvents: "none",
           }}
         >
-          <XStack display="none" $gtMd={{ display: "flex" }} pointerEvents="auto">
+          <XStack display="none gtMd:flex" pointerEvents="auto">
             <Suspense fallback={null}>
               <HeaderSearchBar />
             </Suspense>

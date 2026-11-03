@@ -71,15 +71,15 @@ export function ClientCompleteModal({
         width="100%"
         maxWidth={480}
         backgroundColor={brand.calce}
-        borderRadius="$3"
+        borderRadius="3"
         borderWidth={1}
         borderColor={brand.filetto}
-        padding="$5"
-        gap="$4"
-        marginVertical="$6"
+        padding="5"
+        gap="4"
+        marginVertical="6"
       >
-        <YStack gap="$1">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+        <YStack gap="1">
+          <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
             Confermi che il lavoro è terminato?
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
@@ -94,11 +94,11 @@ export function ClientCompleteModal({
           </Text>
         ) : null}
 
-        <XStack gap="$2" flexWrap="wrap">
-          <Button variant="primary" size="$3" height={44} onPress={handleSubmit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
+        <XStack gap="2" flexWrap="wrap">
+          <Button variant="primary" size="3" height={44} opacity={isSaving ? 0.6 : 1} onPress={handleSubmit} disabled={isSaving}>
             {isSaving ? "Conferma..." : "Conferma lavoro terminato"}
           </Button>
-          <Button variant="ghost" size="$3" height={44} onPress={onClose} disabled={isSaving}>
+          <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSaving}>
             Annulla
           </Button>
         </XStack>

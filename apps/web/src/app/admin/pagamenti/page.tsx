@@ -107,15 +107,15 @@ export default function AdminPagamentiPage() {
   }, [token, disputeSearch, reloads]);
 
   return (
-    <YStack gap="$6">
+    <YStack gap="6">
       <AdminPageHeader
         title="Pagamenti e rimborsi"
         description="Saldi dei pagamenti online non pagati, rimborsi e contestazioni. I rimborsi delle segnalazioni accolte e degli annullamenti partono da soli; qui restano quelli da controllare."
       />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
-      <YStack gap="$3">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+      <YStack gap="3">
+        <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
           Contestazioni in banca
         </Text>
         <Text fontSize={13} color={brand.grafite70}>
@@ -128,8 +128,8 @@ export default function AdminPagamentiPage() {
 
       {token ? <BankDisputeArchive token={token} reloadKey={bankDisputes} /> : null}
 
-      <YStack gap="$3">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+      <YStack gap="3">
+        <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
           Saldi non pagati
         </Text>
         <Text fontSize={13} color={brand.grafite70}>
@@ -140,8 +140,8 @@ export default function AdminPagamentiPage() {
         {unpaid?.map((row) => <UnpaidCard key={row.jobPaymentId} row={row} token={token ?? ""} onChanged={reload} />)}
       </YStack>
 
-      <YStack gap="$3">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+      <YStack gap="3">
+        <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
           Rimborsi
         </Text>
         <SearchBox label="Cerca nei rimborsi" value={refundQuery} onChange={setRefundQuery} placeholder="Cliente, professionista, motivo, cifra o codice" />
@@ -160,8 +160,8 @@ export default function AdminPagamentiPage() {
         ))}
       </YStack>
 
-      <YStack gap="$3">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+      <YStack gap="3">
+        <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
           Contestazioni di pagamento
         </Text>
         <Text fontSize={13} color={brand.grafite70}>
@@ -182,8 +182,8 @@ export default function AdminPagamentiPage() {
         ))}
       </YStack>
 
-      <YStack gap="$3">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+      <YStack gap="3">
+        <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
           Tetto ai pagamenti online
         </Text>
         <Text fontSize={13} color={brand.grafite70}>
@@ -223,14 +223,14 @@ function RefundCard({ refund, token, onChanged, alsoOpen }: { refund: AdminRefun
 
   return (
     <AdminCard highlight={refund.status === "REQUESTED"}>
-      <XStack justifyContent="space-between" gap="$2" flexWrap="wrap" alignItems="center">
-        <XStack gap="$2" alignItems="center">
+      <XStack justifyContent="space-between" gap="2" flexWrap="wrap" alignItems="center">
+        <XStack gap="2" alignItems="center">
           <AdminPill tone={status.tone}>{status.label}</AdminPill>
           <Text fontWeight="700" color={brand.grafite}>
             {euro(refund.amountEurCents)} · {client} · {professional}
           </Text>
         </XStack>
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize="2" color={brand.grafite70}>
           Richiesto il {formatAdminDate(refund.createdAt)}
         </Text>
       </XStack>
@@ -241,11 +241,11 @@ function RefundCard({ refund, token, onChanged, alsoOpen }: { refund: AdminRefun
         </Text>
       ) : null}
       {refund.status === "REQUESTED" ? (
-        <XStack gap="$2">
-          <Button variant="primary" size="$3" onPress={() => setConfirming("APPROVED")}>
+        <XStack gap="2">
+          <Button variant="primary" size="3" onPress={() => setConfirming("APPROVED")}>
             Approva
           </Button>
-          <Button variant="secondary" size="$3" onPress={() => setConfirming("REJECTED")}>
+          <Button variant="secondary" size="3" onPress={() => setConfirming("REJECTED")}>
             Rifiuta
           </Button>
         </XStack>
@@ -297,15 +297,15 @@ function DisputeCard({ dispute, token, onChanged, alsoOpen }: { dispute: AdminDi
 
   return (
     <AdminCard highlight={isOpen}>
-      <XStack justifyContent="space-between" gap="$2" flexWrap="wrap" alignItems="center">
-        <XStack gap="$2" alignItems="center">
+      <XStack justifyContent="space-between" gap="2" flexWrap="wrap" alignItems="center">
+        <XStack gap="2" alignItems="center">
           <AdminPill tone={status.tone}>{status.label}</AdminPill>
           <Text fontWeight="700" color={brand.grafite}>
             {dispute.jobPayment.booking.professionalProfile.businessName}
             {dispute.jobPayment.booking.client ? ` · cliente ${dispute.jobPayment.booking.client.deletedAt ? "(account chiuso)" : [dispute.jobPayment.booking.client.name, dispute.jobPayment.booking.client.surname].filter(Boolean).join(" ") || "cliente"}` : ""}
           </Text>
         </XStack>
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize="2" color={brand.grafite70}>
           Aperta il {formatAdminDate(dispute.createdAt)}
         </Text>
       </XStack>
@@ -318,10 +318,10 @@ function DisputeCard({ dispute, token, onChanged, alsoOpen }: { dispute: AdminDi
       {dispute.resolutionNote ? <Text color={brand.grafite70}>Esito: {dispute.resolutionNote}</Text> : null}
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {isOpen ? (
-        <YStack gap="$2">
-          <XStack gap="$2" flexWrap="wrap">
+        <YStack gap="2">
+          <XStack gap="2" flexWrap="wrap">
             {(["RESOLVED_CLIENT", "RESOLVED_PROFESSIONAL", "CLOSED"] as const).map((value) => (
-              <Button key={value} variant={choice === value ? "primary" : "secondary"} size="$3" onPress={() => setChoice(value)}>
+              <Button key={value} variant={choice === value ? "primary" : "secondary"} size="3" onPress={() => setChoice(value)}>
                 {value === "RESOLVED_CLIENT" ? "A favore del cliente" : value === "RESOLVED_PROFESSIONAL" ? "A favore del professionista" : "Chiudi senza esito"}
               </Button>
             ))}
@@ -329,11 +329,11 @@ function DisputeCard({ dispute, token, onChanged, alsoOpen }: { dispute: AdminDi
           {choice ? (
             <>
               <textarea aria-label="Nota sull'esito" className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nota sull'esito (facoltativa)" />
-              <XStack gap="$2">
-                <Button variant="primary" size="$3" disabled={busy} onPress={resolve}>
+              <XStack gap="2">
+                <Button variant="primary" size="3" disabled={busy} onPress={resolve}>
                   {busy ? "…" : "Conferma esito"}
                 </Button>
-                <Button variant="secondary" size="$3" onPress={() => setChoice(null)}>
+                <Button variant="secondary" size="3" onPress={() => setChoice(null)}>
                   Annulla
                 </Button>
               </XStack>
@@ -382,20 +382,20 @@ function UnpaidCard({ row, token, onChanged }: { row: AdminUnpaidBalance; token:
         <Link href={`/admin/utenti/${row.professional.userId}`}>{row.professional.businessName}</Link>
       </Text>
       {open ? (
-        <YStack gap="$2">
+        <YStack gap="2">
           <textarea aria-label="Come si è chiuso" className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Come si è chiuso (es. pagato al professionista, rinuncia)" />
           {error ? <Text color={brand.urgenza}>{error}</Text> : null}
-          <XStack gap="$2">
-            <Button variant="primary" size="$3" disabled={busy} onPress={close}>
+          <XStack gap="2">
+            <Button variant="primary" size="3" disabled={busy} onPress={close}>
               {busy ? "…" : "Chiudi il saldo"}
             </Button>
-            <Button variant="secondary" size="$3" onPress={() => setOpen(false)}>
+            <Button variant="secondary" size="3" onPress={() => setOpen(false)}>
               Annulla
             </Button>
           </XStack>
         </YStack>
       ) : (
-        <Button variant="secondary" size="$3" alignSelf="flex-start" onPress={() => setOpen(true)}>
+        <Button variant="secondary" size="3" alignSelf="flex-start" onPress={() => setOpen(true)}>
           Chiudi il saldo
         </Button>
       )}
@@ -432,8 +432,8 @@ function OnlineLimitCard({ row, token, onChanged }: { row: AdminOnlineLimitRow; 
 
   return (
     <AdminCard>
-      <XStack justifyContent="space-between" gap="$2" flexWrap="wrap" alignItems="center">
-        <XStack gap="$2" alignItems="center" flexWrap="wrap">
+      <XStack justifyContent="space-between" gap="2" flexWrap="wrap" alignItems="center">
+        <XStack gap="2" alignItems="center" flexWrap="wrap">
           <AdminPill tone={row.limitEurCents === null ? "ok" : "neutral"}>{row.limitEurCents === null ? "Nessun tetto" : `Fino a ${formatEur(row.limitEurCents)}`}</AdminPill>
           <Text fontWeight="700" color={brand.grafite}>
             {row.businessName} · {row.city}
@@ -442,7 +442,7 @@ function OnlineLimitCard({ row, token, onChanged }: { row: AdminOnlineLimitRow; 
         {askReason ? null : (
           <Button
             variant="secondary"
-            size="$3"
+            size="3"
             disabled={busy || (row.limitEurCents === null && !removedByAdmin)}
             onPress={() => (removedByAdmin ? save(false) : setAskReason(true))}
           >
@@ -455,7 +455,7 @@ function OnlineLimitCard({ row, token, onChanged }: { row: AdminOnlineLimitRow; 
         {removedByAdmin ? ` · tetto tolto il ${formatAdminDate(row.removedByAdminAt)}` : ""}
       </Text>
       {askReason ? (
-        <YStack gap="$2">
+        <YStack gap="2">
           <textarea
             aria-label="Perché togli il tetto"
             className="admin-input admin-textarea"
@@ -464,13 +464,13 @@ function OnlineLimitCard({ row, token, onChanged }: { row: AdminOnlineLimitRow; 
             onChange={(e) => setReason(e.target.value)}
             placeholder="Perché togli il tetto (es. professionista conosciuto, lavori grandi già fatti)"
           />
-          <XStack gap="$2">
-            <Button variant="primary" size="$3" disabled={busy} onPress={() => save(true)}>
+          <XStack gap="2">
+            <Button variant="primary" size="3" disabled={busy} onPress={() => save(true)}>
               {busy ? "…" : "Togli il tetto"}
             </Button>
             <Button
               variant="secondary"
-              size="$3"
+              size="3"
               onPress={() => {
                 setAskReason(false);
                 setError(null);
@@ -522,7 +522,7 @@ function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; tok
 
   return (
     <AdminCard>
-      <XStack gap="$2" alignItems="center" flexWrap="wrap">
+      <XStack gap="2" alignItems="center" flexWrap="wrap">
         <AdminPill tone={row.submitted ? "neutral" : "warn"}>{bankDisputeStatusLabel(row.status)}</AdminPill>
         <Text fontWeight="800" color={brand.grafite}>
           {formatEurCents(row.amountEurCents)}
@@ -541,12 +541,12 @@ function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; tok
         {!row.submitted ? (row.professionalNote ? " · il professionista ha scritto la sua spiegazione" : " · il professionista non ha ancora scritto") : ""}
       </Text>
       {row.submitted ? (
-        <YStack gap="$2">
+        <YStack gap="2">
           <Text fontSize={13} color={brand.grafite70}>
             Prove mandate: la banca decide di solito entro 2-3 mesi. L&apos;esito arriva da solo.
           </Text>
           {row.sentExplanation ? (
-            <YStack gap="$1" padding="$3" borderRadius="$3" backgroundColor={brand.gesso}>
+            <YStack gap="1" padding="3" borderRadius="3" backgroundColor={brand.gesso}>
               <Text fontSize={13} color={brand.grafite70}>
                 Spiegazione mandata
               </Text>
@@ -557,9 +557,9 @@ function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; tok
           ) : null}
         </YStack>
       ) : open ? (
-        <YStack gap="$2">
+        <YStack gap="2">
           {row.professionalNote ? (
-            <YStack gap="$1" padding="$3" borderRadius="$3" backgroundColor={brand.gesso}>
+            <YStack gap="1" padding="3" borderRadius="3" backgroundColor={brand.gesso}>
               <Text fontSize={13} color={brand.grafite70}>
                 Spiegazione del professionista, {formatAdminDate(row.professionalNote.at)}
                 {row.professionalNote.photoUrls.length ? ` · ${row.professionalNote.photoUrls.length} foto, già nel PDF` : ""}
@@ -581,7 +581,7 @@ function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; tok
             </Text>
             <input aria-label="Lavoro fatto" className="admin-input" value={draft.productDescription} onChange={set("productDescription")} />
           </label>
-          <XStack gap="$2" flexWrap="wrap">
+          <XStack gap="2" flexWrap="wrap">
             <label style={{ flex: 1, minWidth: 180 }}>
               <Text fontSize={13} color={brand.grafite70}>
                 Cliente
@@ -605,33 +605,33 @@ function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; tok
           {error ? <Text color={brand.urgenza}>{error}</Text> : null}
           {saved ? <Text color={brand.grafite70}>Salvate su Stripe, non ancora mandate alla banca.</Text> : null}
           {confirming ? (
-            <YStack gap="$2">
+            <YStack gap="2">
               <Text color={brand.grafite}>Dopo l&apos;invio le prove non si possono più cambiare.</Text>
-              <XStack gap="$2" flexWrap="wrap">
-                <Button variant="primary" size="$3" disabled={busy} onPress={() => save(true)}>
+              <XStack gap="2" flexWrap="wrap">
+                <Button variant="primary" size="3" disabled={busy} onPress={() => save(true)}>
                   {busy ? "…" : "Conferma l'invio"}
                 </Button>
-                <Button variant="secondary" size="$3" onPress={() => setConfirming(false)}>
+                <Button variant="secondary" size="3" onPress={() => setConfirming(false)}>
                   Annulla
                 </Button>
               </XStack>
             </YStack>
           ) : (
-            <XStack gap="$2" flexWrap="wrap">
-              <Button variant="primary" size="$3" disabled={busy} onPress={() => setConfirming(true)}>
+            <XStack gap="2" flexWrap="wrap">
+              <Button variant="primary" size="3" disabled={busy} onPress={() => setConfirming(true)}>
                 Manda alla banca
               </Button>
-              <Button variant="secondary" size="$3" disabled={busy} onPress={() => save(false)}>
+              <Button variant="secondary" size="3" disabled={busy} onPress={() => save(false)}>
                 {busy ? "…" : "Salva senza mandare"}
               </Button>
-              <Button variant="secondary" size="$3" onPress={() => setOpen(false)}>
+              <Button variant="secondary" size="3" onPress={() => setOpen(false)}>
                 Chiudi
               </Button>
             </XStack>
           )}
         </YStack>
       ) : (
-        <Button variant="primary" size="$3" alignSelf="flex-start" onPress={() => setOpen(true)}>
+        <Button variant="primary" size="3" alignSelf="flex-start" onPress={() => setOpen(true)}>
           Prepara le prove
         </Button>
       )}
@@ -666,8 +666,8 @@ function BankDisputeArchive({ token, reloadKey }: { token: string; reloadKey: un
   }, [token, search, reloadKey]);
 
   return (
-    <YStack gap="$3">
-      <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+    <YStack gap="3">
+      <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
         Archivio delle contestazioni in banca
       </Text>
       <Text fontSize={13} color={brand.grafite70}>
@@ -701,12 +701,12 @@ function DisputeParts({ parts }: { parts: BankDisputePart[] }) {
     ) : null;
   if (parts.length < 2) return feeNote;
   return (
-    <YStack gap="$1" padding="$3" borderRadius="$3" backgroundColor={brand.gesso}>
+    <YStack gap="1" padding="3" borderRadius="3" backgroundColor={brand.gesso}>
       <Text fontSize={13} color={brand.grafite70}>
         {parts.length} contestazioni sullo stesso lavoro: le prove vanno a tutte.
       </Text>
       {parts.map((part, i) => (
-        <XStack key={part.disputeId} gap="$2" alignItems="center" flexWrap="wrap">
+        <XStack key={part.disputeId} gap="2" alignItems="center" flexWrap="wrap">
           <Text fontWeight="700" color={brand.grafite}>
             {part.payment ? DISPUTE_PAYMENT_LABEL[part.payment] : `Contestazione ${i + 1}`}
           </Text>
@@ -726,7 +726,7 @@ function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRo
   const evidence = row.evidence;
   return (
     <AdminCard>
-      <XStack gap="$2" alignItems="center" flexWrap="wrap">
+      <XStack gap="2" alignItems="center" flexWrap="wrap">
         <AdminPill tone={tone}>{bankDisputeStatusLabel(row.status)}</AdminPill>
         <Text fontWeight="800" color={brand.grafite}>
           {formatEurCents(row.amountEurCents)}
@@ -741,7 +741,7 @@ function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRo
         {row.closedAt ? ` · chiusa il ${formatAdminDate(row.closedAt)}` : ""}
       </Text>
       {open ? (
-        <YStack gap="$3">
+        <YStack gap="3">
           <Text fontSize={13} color={brand.grafite70} style={{ wordBreak: "break-all" }}>
             Contestazione {row.disputeId} · lavoro {row.bookingId}
             {row.clientEmail ? ` · ${row.clientEmail}` : ""}
@@ -756,7 +756,7 @@ function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRo
             </Text>
           )}
           {evidence ? (
-            <YStack gap="$2">
+            <YStack gap="2">
               <ArchiveText title={row.evidenceSentAt ? "Spiegazione mandata alla banca" : "Spiegazione salvata, non ancora mandata"} text={evidence.explanation} />
               {evidence.stripeText ? (
                 <Text fontSize={13} color={brand.grafite70}>
@@ -776,7 +776,7 @@ function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRo
             </Text>
           )}
           {row.history.length ? (
-            <YStack gap="$1">
+            <YStack gap="1">
               <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Cronologia
               </Text>
@@ -788,18 +788,18 @@ function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRo
               ))}
             </YStack>
           ) : null}
-          <XStack gap="$2" flexWrap="wrap">
+          <XStack gap="2" flexWrap="wrap">
             {row.hasSentPdf ? (
               <PdfButton load={() => apiClient.adminBankDisputeSentPdf(token, row.jobPaymentId)} fileName="prove-mandate.pdf" label="PDF mandato alla banca" variant="secondary" />
             ) : null}
             <PdfButton load={() => apiClient.adminBankDisputePdf(token, row.jobPaymentId)} fileName="riepilogo-lavoro.pdf" label="Riepilogo del lavoro di oggi" variant="secondary" />
-            <Button variant="secondary" size="$3" onPress={() => setOpen(false)}>
+            <Button variant="secondary" size="3" onPress={() => setOpen(false)}>
               Chiudi
             </Button>
           </XStack>
         </YStack>
       ) : (
-        <Button variant="secondary" size="$3" alignSelf="flex-start" onPress={() => setOpen(true)}>
+        <Button variant="secondary" size="3" alignSelf="flex-start" onPress={() => setOpen(true)}>
           Vedi tutto
         </Button>
       )}
@@ -809,7 +809,7 @@ function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRo
 
 function ArchiveText({ title, text }: { title: string; text: string }) {
   return (
-    <YStack gap="$1" padding="$3" borderRadius="$3" backgroundColor={brand.gesso}>
+    <YStack gap="1" padding="3" borderRadius="3" backgroundColor={brand.gesso}>
       <Text fontSize={13} color={brand.grafite70}>
         {title}
       </Text>

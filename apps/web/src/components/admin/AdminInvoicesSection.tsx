@@ -173,8 +173,8 @@ export function AdminInvoicesSection({ token }: { token: string }) {
   }
 
   return (
-    <YStack gap="$4">
-      <H2 size="$7">Le nostre fatture</H2>
+    <YStack gap="4">
+      <H2 size="7">Le nostre fatture</H2>
       {settings ? (
         <Text color={brand.grafite70}>
           {settings.ready ? "Dati della società completi: le fatture partono." : "Mancano i dati della società: per ora i professionisti vedono solo gli estratti."}{" "}
@@ -186,7 +186,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
         </Text>
       ) : null}
       {settings?.sdiSandbox ? (
-        <YStack gap="$2">
+        <YStack gap="2">
           <Button alignSelf="flex-start" variant="secondary" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => void runSdiTest()}>
             Prova l&apos;invio allo SdI
           </Button>
@@ -210,7 +210,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
           <Field
             key={f.key}
             label={f.label}
-            accessibilityLabel={f.label}
+            aria-label={f.label}
             hint={f.hint}
             value={draft[f.key] ?? ""}
             onChangeText={(value) => setDraft((current) => ({ ...current, [f.key]: value }))}
@@ -221,9 +221,9 @@ export function AdminInvoicesSection({ token }: { token: string }) {
         Salva i dati della società
       </Button>
 
-      <XStack gap="$3" alignItems="flex-end" flexWrap="wrap">
+      <XStack gap="3" alignItems="flex-end" flexWrap="wrap">
         <YStack width={200}>
-          <Field label="Mese (AAAA-MM)" accessibilityLabel="Mese delle trattenute da fatturare" value={month} onChangeText={setMonth} />
+          <Field label="Mese (AAAA-MM)" aria-label="Mese delle trattenute da fatturare" value={month} onChangeText={setMonth} />
         </YStack>
         <Button variant="secondary" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => setConfirm({ kind: "run" })}>
           Emetti le fatture del mese
@@ -269,14 +269,14 @@ export function AdminInvoicesSection({ token }: { token: string }) {
                     {row.sdiMessage ? ` · ${row.sdiMessage}` : ""}
                   </td>
                   <td>
-                    <XStack gap="$2" flexWrap="wrap">
+                    <XStack gap="2" flexWrap="wrap">
                       {row.hasXml ? (
-                        <Button size="$2" variant="secondary" onPress={() => void downloadXml(row.id)}>
+                        <Button size="2" variant="secondary" onPress={() => void downloadXml(row.id)}>
                           XML
                         </Button>
                       ) : null}
                       {row.sdiStatus === "NOT_SENT" || row.sdiStatus === "REJECTED" ? (
-                        <Button size="$2" variant="secondary" onPress={() => setConfirm({ kind: "resend", id: row.id, number: row.number })}>
+                        <Button size="2" variant="secondary" onPress={() => setConfirm({ kind: "resend", id: row.id, number: row.number })}>
                           {settings?.sdiConfigured ? "Rimanda" : "Rigenera"}
                         </Button>
                       ) : null}
@@ -313,7 +313,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
 /** Esito della prova d'invio, passo per passo. */
 function SdiTestBox({ result }: { result: SdiSandboxTestResult }) {
   return (
-    <YStack gap="$2" padding="$3" borderRadius={10} backgroundColor={result.ok ? brand.cianografiaVelo : brand.urgenzaVelo} role="status">
+    <YStack gap="2" padding="3" borderRadius={10} backgroundColor={result.ok ? brand.cianografiaVelo : brand.urgenzaVelo} role="status">
       <Text fontWeight="800" color={brand.grafite}>
         {result.ok ? "La prova è andata a buon fine." : "La prova si è fermata."}
       </Text>
@@ -334,7 +334,7 @@ function ReconciliationBox({ data }: { data: FeeReconciliation }) {
     ["Commissioni Stripe", data.ledger.cardFeesEurCents, data.stripe?.stripeFeesEurCents ?? null],
   ];
   return (
-    <YStack gap="$2" padding="$3" borderRadius={10} borderWidth={1} borderColor={data.alerts.length ? brand.urgenza : brand.filetto}>
+    <YStack gap="2" padding="3" borderRadius={10} borderWidth={1} borderColor={data.alerts.length ? brand.urgenza : brand.filetto}>
       <Text fontWeight="800">Quadratura di {data.month}</Text>
       <div className="admin-table-wrap">
         <table className="admin-table">

@@ -93,7 +93,7 @@ function SuspiciousUsers() {
   const shown = users.filter((u) => u.status === view.status && words.every((w) => `${u.label} ${u.archived?.note ?? ""}`.toLowerCase().includes(w)));
 
   return (
-    <YStack gap="$4">
+    <YStack gap="4">
       <AdminPageHeader
         title="Account sospetti"
         description="Stessi dati di un altro account (telefono, indirizzo, codice fiscale, IBAN), recensioni sospette, contatti scritti in chat prima dell'accettazione, ritorni dopo un account chiuso, email usa e getta, troppi problemi sul lavoro, lavori chiusi prima dell'appuntamento, acconti del 100% da professionisti nuovi. Fuori gli account chiusi e quelli di prova."
@@ -117,13 +117,13 @@ function SuspiciousUsers() {
       {data && view.status === "TODO" ? (
         shown.length > 0 ? (
           <section className="admin-signals" aria-label="Cosa fare">
-            <Text tag="h3" margin={0} fontWeight="800" fontSize="$5" color={brand.grafite}>
+            <Text render="h3" margin={0} fontWeight="800" fontSize="5" color={brand.grafite}>
               Cosa fare
             </Text>
             <ul className="admin-advice-list">
               {shown.map((user) => (
                 <li key={user.id}>
-                  <XStack gap="$2" alignItems="center" flexWrap="wrap">
+                  <XStack gap="2" alignItems="center" flexWrap="wrap">
                     <AdminPill tone={ADVICE_TONE[user.advice.level]}>{ADMIN_SIGNAL_ADVICE_LEVEL_LABEL[user.advice.level]}</AdminPill>
                     <Link href={`/admin/utenti/${user.id}?scheda=${user.advice.tab}`}>{user.label}</Link>
                     <Text fontSize={13} color={brand.grafite70}>

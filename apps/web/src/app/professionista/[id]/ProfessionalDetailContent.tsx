@@ -324,7 +324,7 @@ export function ProfessionalDetailContent({
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent">
-      <YStack width="100%" maxWidth={860} paddingHorizontal="$4" paddingVertical="$6" gap="$6">
+      <YStack width="100%" maxWidth={860} paddingHorizontal="4" paddingVertical="6" gap="6">
         {/* Più vicino alla scheda del gap standard: il percorso ne è l'intestazione. */}
         {breadcrumbs ? <YStack style={{ marginTop: -8, marginBottom: -12 }}>{breadcrumbs}</YStack> : null}
         {/* Scheda identità — richiesta esplicita dell'utente ("migliora la
@@ -334,19 +334,19 @@ export function ProfessionalDetailContent({
             altra sezione sotto (Agenda/Prestazioni/Recensioni) era già
             avvolta in una `Surface` — incoerenza visiva mai risolta prima
             d'ora. Un solo blocco coeso invece di elementi sparsi. */}
-        <Surface gap="$4">
-        <XStack gap="$3" alignItems="flex-start" position="relative">
+        <Surface gap="4">
+        <XStack gap="3" alignItems="flex-start" position="relative">
           {/* Su telefono il nome va sotto la foto: accanto restava una
               colonna stretta, con il nome spezzato su più righe
               (docs/CHANGELOG.md §252). */}
-          <XStack gap="$3" alignItems="flex-start" flex={1} minWidth={0} $xs={{ flexDirection: "column" }}>
+          <XStack gap="3" alignItems="flex-start" flex={1} minWidth={0} flexDirection="xs:column">
             <YStack
               cursor={professional.imageUrl ? "pointer" : undefined}
               onPress={() => {
                 if (professional.imageUrl) setLightbox({ photos: [professional.imageUrl], index: 0 });
               }}
-              accessibilityRole={professional.imageUrl ? "button" : undefined}
-              accessibilityLabel={professional.imageUrl ? "Ingrandisci la foto profilo" : undefined}
+              role={professional.imageUrl ? "button" : undefined}
+              aria-label={professional.imageUrl ? "Ingrandisci la foto profilo" : undefined}
             >
               {/* Foto ingrandita ulteriormente su richiesta esplicita
                   dell'utente (64px iniziali → 104px → 140px): chi apre la
@@ -354,8 +354,8 @@ export function ProfessionalDetailContent({
                   solo intuirne un'icona piccola accanto al nome. */}
               <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={140} />
             </YStack>
-            <YStack gap="$2" flex={1} minWidth={0}>
-              <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} style={{ overflowWrap: "anywhere" }}>
+            <YStack gap="2" flex={1} minWidth={0}>
+              <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} style={{ overflowWrap: "anywhere" }}>
                 {professional.businessName}
               </Text>
               {/* Mestieri come testo sotto il nome (da 1 a 3, docs/CHANGELOG.md
@@ -410,7 +410,7 @@ export function ProfessionalDetailContent({
               </XStack>
               <XStack alignItems="center" gap={4}>
                 <Icon name="map-pin" size={13} color={brand.grafite70} />
-                <Text fontFamily="$body" fontWeight="700" fontSize={16} color={brand.grafite70}>
+                <Text fontFamily="body" fontWeight="700" fontSize={16} color={brand.grafite70}>
                   {professional.city}
                 </Text>
               </XStack>
@@ -457,7 +457,7 @@ export function ProfessionalDetailContent({
               condivisione nativa del dispositivo e ripiega sulla copia del
               link dove l'API non esiste. */}
           {preview ? null : (
-            <XStack gap="$2" alignItems="center" flexShrink={0} $xs={{ flexDirection: "column", position: "absolute", top: 0, right: 0 }}>
+            <XStack gap="2" alignItems="center" flexShrink={0} flexDirection="xs:column" position="xs:absolute" top="xs:0px" right="xs:0px">
               {/* Cuoricino visibile anche a chi non è entrato (docs/CHANGELOG.md
                   §208): al tocco porta all'accesso. Nascosto solo a
                   professionisti e admin, che non salvano profili. */}
@@ -485,7 +485,7 @@ export function ProfessionalDetailContent({
 
 
         {professional.subTags.length > 0 ? (
-          <XStack flexWrap="wrap" gap="$2">
+          <XStack flexWrap="wrap" gap="2">
             {professional.subTags.map((tag) => (
               <Chip key={tag}>{subTagLabel(tag)}</Chip>
             ))}
@@ -500,10 +500,10 @@ export function ProfessionalDetailContent({
             ancora allineata all'ultimo deploy potrebbe non includere ancora
             portfolioUrls sul professionista. */}
         {(professional.portfolioUrls ?? []).length > 0 ? (
-          <YStack gap="$3">
-            <XStack alignItems="center" gap="$2">
+          <YStack gap="3">
+            <XStack alignItems="center" gap="2">
               <Icon name="camera" size={16} strokeWidth={1.5} color={brand.cianografiaScuro} />
-              <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
+              <Text fontFamily="heading" fontWeight="700" fontSize="5" color={brand.grafite}>
                 Lavori svolti
               </Text>
             </XStack>
@@ -515,14 +515,14 @@ export function ProfessionalDetailContent({
                   key={url}
                   width={96}
                   height={96}
-                  borderRadius="$3"
+                  borderRadius="3"
                   overflow="hidden"
                   borderWidth={1}
                   borderColor={brand.filetto}
                   cursor="pointer"
                   onPress={() => setLightbox({ photos: professional.portfolioUrls ?? [], index: photoIndex })}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Ingrandisci foto ${photoIndex + 1} dei lavori svolti`}
+                  role="button"
+                  aria-label={`Ingrandisci foto ${photoIndex + 1} dei lavori svolti`}
                 >
                   <MediaPreview url={url} />
                 </YStack>
@@ -568,9 +568,9 @@ export function ProfessionalDetailContent({
         professional.spokenLanguages.length > 0 ||
         professional.certifications ||
         professional.hasLiabilityInsurance ? (
-          <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+          <YStack gap="2" paddingTop="2" borderTopWidth={1} borderTopColor={brand.filetto}>
             {professional.yearsOfExperience !== null ? (
-              <XStack alignItems="center" gap="$2">
+              <XStack alignItems="center" gap="2">
                 <Icon name="briefcase" size={14} strokeWidth={1.5} color={brand.grafite70} />
                 <Text fontSize={13} color={brand.grafite70}>
                   {professional.yearsOfExperience} {professional.yearsOfExperience === 1 ? "anno" : "anni"} di esperienza
@@ -580,7 +580,7 @@ export function ProfessionalDetailContent({
             {/* Lingue nello stesso elenco di esperienza, patentini e
                 assicurazione (richiesta esplicita dell'utente, §208). */}
             {professional.spokenLanguages.length > 0 ? (
-              <XStack alignItems="center" gap="$2">
+              <XStack alignItems="center" gap="2">
                 <Icon name="message-circle" size={14} strokeWidth={1.5} color={brand.grafite70} />
                 <Text fontSize={13} color={brand.grafite70}>
                   Parla {professional.spokenLanguages.join(", ")}
@@ -588,7 +588,7 @@ export function ProfessionalDetailContent({
               </XStack>
             ) : null}
             {professional.certifications ? (
-              <XStack alignItems="flex-start" gap="$2">
+              <XStack alignItems="flex-start" gap="2">
                 <Icon name="shield" size={14} strokeWidth={1.5} color={brand.grafite70} />
                 <Text fontSize={13} color={brand.grafite70} flex={1}>
                   {professional.certifications}
@@ -596,7 +596,7 @@ export function ProfessionalDetailContent({
               </XStack>
             ) : null}
             {professional.hasLiabilityInsurance ? (
-              <XStack alignItems="center" gap="$2">
+              <XStack alignItems="center" gap="2">
                 <Icon name="shield-check" size={14} strokeWidth={1.5} color={brand.grafite70} />
                 <Text fontSize={13} color={brand.grafite70}>
                   Assicurazione RC professionale
@@ -614,7 +614,7 @@ export function ProfessionalDetailContent({
         </Surface>
 
         {professional.acceptingRequests && agendaPreview?.hasAnySlot ? (
-          <YStack gap="$3">
+          <YStack gap="3">
             {/* Ancora per il click sulle pillole della mini-agenda nei risultati di ricerca
                 (ProfessionalCard): scrollMarginTop compensa l'header sticky. */}
             <div id="agenda" style={{ scrollMarginTop: 96 }} />
@@ -626,10 +626,10 @@ export function ProfessionalDetailContent({
                 "Recensioni" sopra e sotto. Stesso trattamento già in uso per
                 la "Scheda identità" in cima alla pagina: sfondo bianco
                 (brand.calce) + angoli morbidi, nessuna ombra (CLAUDE.md §19). */}
-            <Surface gap="$3">
-            <XStack alignItems="center" gap="$2">
+            <Surface gap="3">
+            <XStack alignItems="center" gap="2">
               <Icon name="calendar" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
-              <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+              <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
                 Agenda
               </Text>
             </XStack>
@@ -644,31 +644,31 @@ export function ProfessionalDetailContent({
                 fascia. Segmentati come nella barra di ricerca, con "Orari
                 per:" davanti, come nella scheda dei risultati
                 (docs/CHANGELOG.md §349). */}
-            <XStack alignItems="center" gap="$2" flexWrap="wrap">
-              <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite70}>
+            <XStack alignItems="center" gap="2" flexWrap="wrap">
+              <Text fontFamily="body" fontSize={13} fontWeight="600" color={brand.grafite70}>
                 Orari per:
               </Text>
-              <XStack gap={2} backgroundColor={brand.gesso} borderRadius="$10" padding={3}>
+              <XStack gap={2} backgroundColor={brand.gesso} borderRadius="10" padding={3}>
                 {(["HOME", "ONLINE"] as const).map((mode) => {
                   const active = agendaMode === mode;
                   return (
                     <XStack
                       key={mode}
-                      tag="button"
-                      paddingHorizontal="$3"
+                      render="button"
+                      paddingHorizontal="3"
                       paddingVertical={6}
                       borderWidth={0}
-                      borderRadius="$10"
+                      borderRadius="10"
                       backgroundColor={active ? brand.cianografia : "transparent"}
                       cursor="pointer"
-                      accessibilityRole="button"
+                      role="button"
                       aria-pressed={active}
                       onPress={() => {
-                        setAgendaMode(mode);
-                        setAgendaWindowOffset(0);
-                      }}
+                                            setAgendaMode(mode);
+                                            setAgendaWindowOffset(0);
+                                          }}
                     >
-                      <Text fontFamily="$body" fontSize={14} fontWeight="700" color={active ? "#FFFFFF" : brand.grafite}>
+                      <Text fontFamily="body" fontSize={14} fontWeight="700" color={active ? "#FFFFFF" : brand.grafite}>
                         {mode === "HOME" ? "A domicilio" : "Online"}
                       </Text>
                     </XStack>
@@ -678,7 +678,7 @@ export function ProfessionalDetailContent({
             </XStack>
 
             {/* Frecce raggruppate a ridosso delle intestazioni giorno
-                (`gap="$1"`, molto meno del `gap="$3"` che separa gli altri
+                (`gap="1"`, molto meno del `gap="3"` che separa gli altri
                 blocchi della sezione) — richiesta esplicita dell'utente:
                 prima le frecce e le intestazioni erano alla stessa
                 distanza reciproca di ogni altro blocco della sezione (tab
@@ -691,7 +691,7 @@ export function ProfessionalDetailContent({
                 docs/CHANGELOG.md §227): su computer le frecce finivano
                 all'estremo destro della scheda, lontane dai giorni; ora
                 stanno sopra l'ultima colonna. */}
-            <YStack gap="$1" width="100%" maxWidth={AGENDA_COLUMN_WIDTH * agendaVisibleDays}>
+            <YStack gap="1" width="100%" maxWidth={AGENDA_COLUMN_WIDTH * agendaVisibleDays}>
               {totalAgendaDays > agendaVisibleDays ? (
                 // Frecce su una riga propria, allineate a destra (richiesta
                 // esplicita dell'utente: prima condividevano la riga con le
@@ -703,7 +703,7 @@ export function ProfessionalDetailContent({
                 // del telefono. Stessa resa già in uso per le frecce del
                 // carosello categorie (CategoryCarousel.tsx: 40×40, cerchio
                 // pieno brand.calce, nessun bordo/ombra).
-                <XStack justifyContent="flex-end" gap="$2" alignItems="center">
+                <XStack justifyContent="flex-end" gap="2" alignItems="center">
                   <XStack
                     width={40}
                     height={40}
@@ -714,10 +714,10 @@ export function ProfessionalDetailContent({
                     opacity={agendaCanGoBack ? 1 : 0.3}
                     cursor={agendaCanGoBack ? "pointer" : undefined}
                     // Sempre un pulsante, spento all'inizio: un riquadro con un nome e senza ruolo non si legge (collaudo L-11).
-                    accessibilityRole="button"
+                    role="button"
                     aria-disabled={!agendaCanGoBack}
                     tabIndex={agendaCanGoBack ? undefined : -1}
-                    accessibilityLabel="Giorni precedenti"
+                    aria-label="Giorni precedenti"
                     onPress={agendaCanGoBack ? () => setAgendaWindowOffset(Math.max(0, agendaOffset - agendaVisibleDays)) : undefined}
                   >
                     <Icon name="chevron-left" size={20} color={brand.grafite} />
@@ -731,8 +731,8 @@ export function ProfessionalDetailContent({
                     justifyContent="center"
                     opacity={agendaCanGoForward ? 1 : 0.3}
                     cursor={agendaCanGoForward ? "pointer" : undefined}
-                    accessibilityRole={agendaCanGoForward ? "button" : undefined}
-                    accessibilityLabel="Giorni successivi"
+                    role={agendaCanGoForward ? "button" : undefined}
+                    aria-label="Giorni successivi"
                     onPress={agendaCanGoForward ? () => setAgendaWindowOffset(agendaOffset + agendaVisibleDays) : undefined}
                   >
                     <Icon name="chevron-right" size={20} color={brand.grafite} />
@@ -743,7 +743,7 @@ export function ProfessionalDetailContent({
               <XStack>
                 {agendaWindowDays.map((day) => (
                   <YStack key={day.date} flex={1} flexBasis={0} minWidth={0} maxWidth={AGENDA_COLUMN_WIDTH} alignItems="center" gap={2}>
-                    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
+                    <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite}>
                       {day.label}
                     </Text>
                     <Text fontVariant={["tabular-nums"]} fontSize={13} color={brand.grafite70}>
@@ -755,7 +755,7 @@ export function ProfessionalDetailContent({
             </YStack>
 
             {agendaTimeRows.length > 0 ? (
-              <YStack gap="$1.5" width="100%" maxWidth={AGENDA_COLUMN_WIDTH * agendaVisibleDays}>
+              <YStack gap="1-5" width="100%" maxWidth={AGENDA_COLUMN_WIDTH * agendaVisibleDays}>
                 {agendaTimeRows.map((time) => (
                   <XStack key={time}>
                     {agendaWindowDays.map((day) => {
@@ -796,13 +796,12 @@ export function ProfessionalDetailContent({
                             {/* Al completo: grigio chiaro, senza barra (docs/CHANGELOG.md §349). */}
                             <Text
                               fontVariant={["tabular-nums"]}
-                              fontSize={10.5}
-                              $xs={{ fontSize: 9.5 }}
+                              fontSize="10.5px xs:9.5px"
                               letterSpacing={-0.3}
                               color={brand.grafite70}
                               opacity={0.55}
                               textAlign="center"
-                              accessibilityLabel={`${range}, al completo`}
+                              aria-label={`${range}, al completo`}
                             >
                               {range}
                             </Text>
@@ -830,8 +829,8 @@ export function ProfessionalDetailContent({
                           paddingVertical={3}
                         >
                           <Link href={href} style={{ textDecoration: "none", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>
-                            <XStack paddingHorizontal={6} $xs={{ paddingHorizontal: 4 }} paddingVertical={4} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
-                              <Text fontVariant={["tabular-nums"]} fontSize={10.5} $xs={{ fontSize: 9.5 }} letterSpacing={-0.3} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
+                            <XStack paddingHorizontal="6px xs:4px" paddingVertical={4} borderRadius="10" backgroundColor={brand.cianografiaVelo}>
+                              <Text fontVariant={["tabular-nums"]} fontSize="10.5px xs:9.5px" letterSpacing={-0.3} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
                                 {range}
                               </Text>
                             </XStack>
@@ -845,7 +844,7 @@ export function ProfessionalDetailContent({
             ) : null}
 
             {agendaHasAvailableInWindow ? null : agendaFirstFree ? (
-              <YStack gap="$2" padding="$4" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto} alignSelf="flex-start">
+              <YStack gap="2" padding="4" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto} alignSelf="flex-start">
                 <YStack gap={2}>
                   <Text fontSize={13} color={brand.grafite70}>
                     Nessun orario libero in questi giorni. Primo orario libero:
@@ -855,19 +854,16 @@ export function ProfessionalDetailContent({
                   </Text>
                 </YStack>
                 <XStack
-                  alignSelf="flex-start"
-                  paddingHorizontal="$4"
-                  paddingVertical="$2"
-                  borderRadius="$10"
-                  backgroundColor={brand.cianografiaPieno}
-                  cursor="pointer"
-                  accessibilityRole="button"
-                  // Porta la griglia sul giorno del primo orario libero, che
-                  // resta cliccabile lì per aprire /preventivo come ogni altra
-                  // fascia — nessuna navigazione diretta da qui.
-                  onPress={() => setAgendaWindowOffset(agendaFirstFree.index)}
-                >
-                  <Text fontFamily="$body" fontSize={16} fontWeight="700" color="#FFFFFF">
+                    alignSelf="flex-start"
+                    paddingHorizontal="4"
+                    paddingVertical="2"
+                    borderRadius="10"
+                    backgroundColor={brand.cianografiaPieno}
+                    cursor="pointer"
+                    role="button"
+                    onPress={() => setAgendaWindowOffset(agendaFirstFree.index)}
+                  >
+                  <Text fontFamily="body" fontSize={16} fontWeight="700" color="#FFFFFF">
                     Mostra orari disponibili →
                   </Text>
                 </XStack>
@@ -890,7 +886,7 @@ export function ProfessionalDetailContent({
             preview={preview}
             withBar={user?.professionalProfileId !== professional.id}
             summary={
-              <XStack alignItems="center" gap="$3" minWidth={0}>
+              <XStack alignItems="center" gap="3" minWidth={0}>
                 <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={40} />
                 {/* Sul telefono resta solo la foto: il nome accanto al pulsante non ci starebbe. */}
                 <div className="profile-cta-bar-text">
@@ -898,7 +894,7 @@ export function ProfessionalDetailContent({
                   <Text fontSize={16} fontWeight="600" color={brand.grafite} numberOfLines={1}>
                     {professional.businessName}
                   </Text>
-                  <XStack alignItems="center" columnGap="$2" flexWrap="wrap">
+                  <XStack alignItems="center" columnGap="2" flexWrap="wrap">
                     {professional.rating !== null ? <Rating value={professional.rating} count={professional.reviewCount} size={13} textSize={13} /> : null}
                     {professional.avgResponseTimeMinutes !== null ? (
                       <Text fontSize={13} color={brand.grafite70}>
@@ -915,7 +911,7 @@ export function ProfessionalDetailContent({
             }
           />
         ) : (
-          <Surface gap="$2">
+          <Surface gap="2">
             <Text fontWeight="700" color={brand.grafite}>
               {/* Pausa scelta da lui (collaudo C-16): si dice quando torna. */}
               {professional.awayUntil ? `In pausa: torna ${formatAppointmentDate(professional.awayUntil, { weekday: "long", day: "numeric", month: "long" })}` : "Al momento non accetta nuove richieste"}
@@ -928,16 +924,16 @@ export function ProfessionalDetailContent({
         )}
 
         {professional.services.length > 0 ? (
-          <YStack gap="$3">
-            <XStack alignItems="center" gap="$2">
+          <YStack gap="3">
+            <XStack alignItems="center" gap="2">
               <Icon name="receipt-text" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
-              <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+              <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
                 Prestazioni
               </Text>
             </XStack>
             <Surface padding={0} overflow="hidden">
               {professional.services.map((service, index) => (
-                <YStack key={service.id} paddingHorizontal="$4" paddingVertical="$3" borderTopWidth={index === 0 ? 0 : 1} borderTopColor={brand.filetto}>
+                <YStack key={service.id} paddingHorizontal="4" paddingVertical="3" borderTopWidth={index === 0 ? 0 : 1} borderTopColor={brand.filetto}>
                   <PriceLine
                     label={service.name}
                     labelColor={brand.grafite}
@@ -952,11 +948,11 @@ export function ProfessionalDetailContent({
 
         {/* Ancora per le stelle accanto al nome nelle schede del cliente (§342), come #agenda. */}
         <div id="recensioni" style={{ scrollMarginTop: 96 }} />
-        <YStack gap="$3">
-          <YStack flexDirection="row" alignItems="center" gap="$3" flexWrap="wrap">
-            <XStack alignItems="center" gap="$2">
+        <YStack gap="3">
+          <YStack flexDirection="row" alignItems="center" gap="3" flexWrap="wrap">
+            <XStack alignItems="center" gap="2">
               <Icon name="star" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
-              <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+              <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
                 Recensioni
               </Text>
             </XStack>
@@ -966,18 +962,18 @@ export function ProfessionalDetailContent({
             <EmptyState icon="star" title="Nessuna recensione ancora" description="Le recensioni arrivano solo da lavori fatti tramite il sito." />
           ) : (
             professional.reviews.map((review) => (
-              <YStack key={review.id} gap="$0">
+              <YStack key={review.id} gap="0">
                 {/* Ancora per il deep-link dalla homepage ("Ultime recensioni",
                     RecentReviews.tsx) — stesso pattern già in uso per #agenda
                     sopra: un <div> grezzo con scrollMarginTop, mai un id
                     passato direttamente a un componente Tamagui (non è
                     garantito che lo inoltri al nodo DOM). */}
                 <div id={`recensione-${review.id}`} style={{ scrollMarginTop: 96 }} />
-                <Surface gap="$2">
-                <XStack alignItems="flex-start" justifyContent="space-between" gap="$2">
+                <Surface gap="2">
+                <XStack alignItems="flex-start" justifyContent="space-between" gap="2">
                   <YStack gap={4} flex={1} minWidth={0}>
-                    <XStack alignItems="center" gap="$2" flexWrap="wrap">
-                      <XStack alignItems="center" gap="$1">
+                    <XStack alignItems="center" gap="2" flexWrap="wrap">
+                      <XStack alignItems="center" gap="1">
                         <Icon name="star" size={15} strokeWidth={1.5} color={brand.ottone} fill={brand.ottone} />
                         <Text fontWeight="600" color={brand.grafite}>
                           {review.rating}/5
@@ -1020,7 +1016,7 @@ export function ProfessionalDetailContent({
                           ? undefined
                           : () => setReportTarget({ targetType: "REVIEW", targetId: review.id, label: "questa recensione" })
                       }
-                      accessibilityRole="button"
+                      role="button"
                     >
                       <Icon name="flag" size={12} strokeWidth={1.5} color={brand.grafite70} />
                       <Text fontSize={13} color={brand.grafite70}>
@@ -1039,20 +1035,20 @@ export function ProfessionalDetailContent({
                 {/* `?? []`: stessa cautela dell'agenda, un'API non ancora allineata all'ultimo deploy
                     potrebbe non includere ancora photoUrls su una recensione. */}
                 {(review.photoUrls ?? []).length > 0 ? (
-                  <XStack gap="$2" flexWrap="wrap">
+                  <XStack gap="2" flexWrap="wrap">
                     {(review.photoUrls ?? []).map((url, photoIndex) => (
                       <YStack
                         key={url}
                         width={72}
                         height={72}
-                        borderRadius="$3"
+                        borderRadius="3"
                         overflow="hidden"
                         borderWidth={1}
                         borderColor={brand.filetto}
                         cursor="pointer"
                         onPress={() => setLightbox({ photos: review.photoUrls ?? [], index: photoIndex })}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Ingrandisci foto ${photoIndex + 1} della recensione`}
+                        role="button"
+                        aria-label={`Ingrandisci foto ${photoIndex + 1} della recensione`}
                       >
                         <MediaPreview url={url} />
                       </YStack>

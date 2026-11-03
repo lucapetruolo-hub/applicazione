@@ -50,9 +50,9 @@ export function AuthStepHeader({
   // A ogni passo nuovo il fuoco va sul titolo (collaudo L-06).
   const titleRef = useStepFocus<HTMLHeadingElement>(title);
   return (
-    <YStack gap="$4">
+    <YStack gap="4">
       {onBack || step ? (
-        <YStack gap="$2">
+        <YStack gap="2">
           <div className="auth-step-top">
             {onBack ? (
               <button type="button" className="auth-back" onClick={onBack}>
@@ -76,10 +76,10 @@ export function AuthStepHeader({
           ) : null}
         </YStack>
       ) : null}
-      <YStack alignItems="center" gap="$3">
+      <YStack alignItems="center" gap="3">
         <AuthIconBadge icon={icon} />
-        <YStack alignItems="center" gap="$1">
-          <Text ref={titleRef} tag="h1" tabIndex={-1} className="step-focus-target" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center" style={{ textWrap: "balance" }}>
+        <YStack alignItems="center" gap="1">
+          <Text ref={titleRef as never} render="h1" tabIndex={-1} className="step-focus-target" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center" style={{ textWrap: "balance" }}>
             {title}
           </Text>
           {subtitle ? (

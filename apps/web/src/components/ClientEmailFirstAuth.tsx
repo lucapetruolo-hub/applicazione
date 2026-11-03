@@ -25,7 +25,7 @@ const linkStyle = { textDecoration: "underline", color: brand.cianografiaScuro }
  */
 function LegalNotice({ action }: { action: string }) {
   return (
-    <Text fontSize={13} lineHeight={18} color={brand.grafite70} textAlign="center">
+    <Text fontSize={13} lineHeight="18px" color={brand.grafite70} textAlign="center">
       {action} accetti i nostri{" "}
       <Link href="/termini" target="_blank" style={linkStyle}>
         Termini di Servizio
@@ -41,11 +41,11 @@ function LegalNotice({ action }: { action: string }) {
 
 function EmailPill({ email, onEdit }: { email: string; onEdit: () => void }) {
   return (
-    <XStack alignItems="center" justifyContent="space-between" gap="$3" backgroundColor={brand.gesso} borderRadius={999} paddingHorizontal="$4" paddingVertical="$2">
+    <XStack alignItems="center" justifyContent="space-between" gap="3" backgroundColor={brand.gesso} borderRadius={999} paddingHorizontal="4" paddingVertical="2">
       <Text fontSize={16} color={brand.grafite} numberOfLines={1} flexShrink={1}>
         {email}
       </Text>
-      <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro} cursor="pointer" onPress={onEdit} accessibilityRole="button">
+      <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro} cursor="pointer" onPress={onEdit} role="button">
         Modifica
       </Text>
     </XStack>
@@ -201,23 +201,23 @@ export function ClientEmailFirstAuth({
 
   if (step === "email") {
     return (
-      <YStack gap="$4">
+      <YStack gap="4">
         {renderHeader(step)}
         <Text fontSize={16} color={brand.grafite70}>
           {intro}
         </Text>
         <GoogleSignInButton onCredential={handleGoogle} disabled={isSubmitting} />
         {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
-          <XStack alignItems="center" gap="$3">
+          <XStack alignItems="center" gap="3">
             <YStack flex={1} height={1} backgroundColor={brand.filetto} />
-            <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="body" fontWeight="700" fontSize={13} color={brand.grafite70}>
               oppure
             </Text>
             <YStack flex={1} height={1} backgroundColor={brand.filetto} />
           </XStack>
         ) : null}
         <form onSubmit={(e) => e.preventDefault()}>
-          <YStack gap="$4">
+          <YStack gap="4">
             <AuthField
               label="Email"
               value={email}
@@ -226,7 +226,7 @@ export function ClientEmailFirstAuth({
               autoCapitalize="none"
               autoComplete="username"
               nativeID="email"
-              accessibilityLabel="Email"
+              aria-label="Email"
               error={errorFor("email")}
               onChangeText={(value) => {
                 setEmail(value);
@@ -245,7 +245,7 @@ export function ClientEmailFirstAuth({
         </form>
         <LegalNotice action="Continuando" />
         {firstTimeNote ? (
-          <Text fontSize={13} lineHeight={18} color={brand.grafite70} textAlign="center">
+          <Text fontSize={13} lineHeight="18px" color={brand.grafite70} textAlign="center">
             {firstTimeNote}
           </Text>
         ) : null}
@@ -255,7 +255,7 @@ export function ClientEmailFirstAuth({
 
   if (step === "google") {
     return (
-      <YStack gap="$4">
+      <YStack gap="4">
         {renderHeader(step, editEmail)}
         <EmailPill email={email} onEdit={editEmail} />
         <Text fontSize={16} color={brand.grafite70}>
@@ -269,7 +269,7 @@ export function ClientEmailFirstAuth({
 
   const isNew = step === "new";
   return (
-    <YStack gap="$4">
+    <YStack gap="4">
       {renderHeader(step, editEmail)}
       <EmailPill email={email} onEdit={editEmail} />
       <Text fontSize={16} color={brand.grafite70}>
@@ -278,7 +278,7 @@ export function ClientEmailFirstAuth({
           : "Hai già un account: inserisci la password."}
       </Text>
       <form onSubmit={(e) => e.preventDefault()}>
-        <YStack gap="$4">
+        <YStack gap="4">
           {/* Email nascosta accanto alla password: i gestori di password la
               salvano insieme (stesso motivo dell'autoComplete in /registrati). */}
           <input type="email" name="email" autoComplete="username" value={email} readOnly hidden />
@@ -291,7 +291,7 @@ export function ClientEmailFirstAuth({
             secureTextEntry={!showPassword}
             autoComplete={isNew ? "new-password" : "current-password"}
             nativeID={isNew ? "new-password" : "current-password"}
-            accessibilityLabel="Password"
+            aria-label="Password"
             error={errorFor("password")}
             passwordRules={isNew ? PASSWORD_RULES_ATTRIBUTE : undefined}
             invalid={isNew && passwordAttempted && passwordProblem(password, email) !== null}
@@ -309,7 +309,7 @@ export function ClientEmailFirstAuth({
               secureTextEntry={!showConfirmPassword}
               autoComplete="new-password"
               nativeID="confirm-password"
-              accessibilityLabel="Conferma password"
+              aria-label="Conferma password"
               passwordRules={PASSWORD_RULES_ATTRIBUTE}
               error={errorFor("confirm")}
               footer={<PasswordMatchHint password={password} confirmPassword={confirmPassword} />}

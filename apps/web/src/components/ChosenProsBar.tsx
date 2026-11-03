@@ -62,8 +62,8 @@ export function ChosenProsBar({ chosen, max, href }: { chosen: ChosenPro[]; max:
         <Link href={href} className="chosen-bar-link" style={{ textDecoration: "none", display: "block" }}>
           <MagneticButton block>
             <Button variant="primary" width="100%" tabIndex={-1}>
-              <XStack alignItems="center" gap="$2" minWidth={0} maxWidth="100%" flexShrink={1}>
-                <Text color="white" fontFamily="$body" fontSize={16} fontWeight="600" numberOfLines={1} flexShrink={1}>
+              <XStack alignItems="center" gap="2" minWidth={0} maxWidth="100%" flexShrink={1}>
+                <Text color="white" fontFamily="body" fontSize={16} fontWeight="600" numberOfLines={1} flexShrink={1}>
                   {chosen.length === 1 ? "Chiedi un preventivo" : `Chiedi preventivo ai ${chosen.length} scelti`}
                 </Text>
                 <ButtonArrow />

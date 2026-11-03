@@ -91,7 +91,7 @@ export default function AdminRichiesteDaSeguirePage() {
       {rows === null && !error ? (
         <SkeletonTableRows rows={4} cols={5} />
       ) : rows && rows.length === 0 ? (
-        <Text color={brand.grafite70} marginTop="$3">
+        <Text color={brand.grafite70} marginTop="3">
           {tab === "aperte" ? "Nessuna richiesta da seguire." : "Nessuna richiesta fatta."}
         </Text>
       ) : rows ? (
@@ -159,14 +159,14 @@ export default function AdminRichiesteDaSeguirePage() {
                           {row.claimedBy.id === user?.id ? "Preso da te" : `Preso da ${row.claimedBy.name}`}
                         </Text>
                       ) : null}
-                      <XStack gap="$2" flexWrap="wrap">
+                      <XStack gap="2" flexWrap="wrap">
                         {tab === "aperte" ? (
-                          <Button size="$2" variant="secondary" disabled={busy !== null} onPress={() => void claim(row.id, row.claimedBy?.id !== user?.id)}>
+                          <Button size="2" variant="secondary" disabled={busy !== null} onPress={() => void claim(row.id, row.claimedBy?.id !== user?.id)}>
                             {row.claimedBy?.id === user?.id ? "Lascia" : "Prendo io"}
                           </Button>
                         ) : null}
                         <Button
-                          size="$2"
+                          size="2"
                           variant={tab === "aperte" ? "primary" : "secondary"}
                           disabled={busy !== null}
                           onPress={() => void mark(row.id, tab === "aperte")}

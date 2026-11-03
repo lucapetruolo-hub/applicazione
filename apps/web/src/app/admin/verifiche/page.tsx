@@ -191,7 +191,7 @@ export default function AdminVerifichePage() {
   }
 
   return (
-    <YStack gap="$4">
+    <YStack gap="4">
       <AdminPageHeader
         title="Verifica profili"
         description="La verifica è tutta automatica: documento e selfie con Didit, codice fiscale e partita IVA con VIES e Openapi. Se qualcosa non torna il professionista riceve il motivo e la rifà da solo. Qui vedi a che punto è ognuno, puoi ricontrollare i dati fiscali o togliere il badge a chi non lo merita più."
@@ -214,19 +214,19 @@ export default function AdminVerifichePage() {
 
       {selected ? (
         <AdminCard highlight>
-          <YStack gap="$3">
+          <YStack gap="3">
             <Text fontWeight="700" color={brand.grafite}>
               {action === "entityType" ? `Cambia il tipo di ${selected.businessName}` : `Togli la verifica a ${selected.businessName}`}
             </Text>
             {action === "entityType" ? (
-              <YStack gap="$2">
+              <YStack gap="2">
                 <Text fontSize={14} color={brand.grafite70}>
                   Oggi: {selected.entityType ? PROFESSIONAL_ENTITY_TYPE_LABEL[selected.entityType] : "non indicato"}. Dopo il cambio completa lui i dati fiscali che
                   servono{selected.verified ? " e rifà la verifica dell'identità" : ""}.
                 </Text>
-                <XStack gap="$2" flexWrap="wrap" role="radiogroup" aria-label="Tipo nuovo">
+                <XStack gap="2" flexWrap="wrap" role="radiogroup" aria-label="Tipo nuovo">
                   {PROFESSIONAL_ENTITY_TYPES.filter((type) => type !== selected.entityType).map((type) => (
-                    <Button key={type} size="$3" variant={newEntityType === type ? "primary" : "secondary"} onPress={() => setNewEntityType(type)} aria-pressed={newEntityType === type}>
+                    <Button key={type} size="3" variant={newEntityType === type ? "primary" : "secondary"} onPress={() => setNewEntityType(type)} aria-pressed={newEntityType === type}>
                       {PROFESSIONAL_ENTITY_TYPE_LABEL[type]}
                     </Button>
                   ))}
@@ -242,11 +242,11 @@ export default function AdminVerifichePage() {
               onChange={(e) => setNote(e.target.value)}
             />
             {actionError ? <Text color={brand.urgenza}>{actionError}</Text> : null}
-            <XStack gap="$2">
-              <Button size="$3" disabled={saving} backgroundColor={action === "entityType" ? undefined : brand.urgenza} onPress={() => void confirm()}>
+            <XStack gap="2">
+              <Button size="3" disabled={saving} backgroundColor={action === "entityType" ? undefined : brand.urgenza} onPress={() => void confirm()}>
                 {saving ? "…" : action === "entityType" ? "Cambia tipo" : "Togli verifica"}
               </Button>
-              <Button variant="secondary" size="$3" onPress={() => setSelected(null)}>
+              <Button variant="secondary" size="3" onPress={() => setSelected(null)}>
                 Annulla
               </Button>
             </XStack>
@@ -339,7 +339,7 @@ export default function AdminVerifichePage() {
                   </td>
                   <td>
                     {row.verified ? (
-                      <Button variant="secondary" size="$2" onPress={() => open(row)}>
+                      <Button variant="secondary" size="2" onPress={() => open(row)}>
                         Togli verifica
                       </Button>
                     ) : null}

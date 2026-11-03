@@ -127,7 +127,7 @@ export function QuoteDateChooser({
   }
 
   return (
-    <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+    <YStack gap="2" paddingTop="2" borderTopWidth={1} borderTopColor={brand.filetto}>
       {freeSlots === null ? (
         error ? null : (
           <Text fontSize={13} color={brand.grafite70}>
@@ -153,8 +153,8 @@ export function QuoteDateChooser({
             <option value={MANUAL_OPTION_VALUE}>Altro (data e orario personalizzati)</option>
           </select>
           {selectedSlotKey === MANUAL_OPTION_VALUE ? (
-            <YStack gap="$2">
-              <XStack gap="$2" flexWrap="wrap">
+            <YStack gap="2">
+              <XStack gap="2" flexWrap="wrap">
                 <ItalianDateInput ariaLabel="Data" value={manualDate} onChange={setManualDate} style={{ ...textareaStyle, flex: 1, minWidth: 130 }} />
                 <ItalianTimeInput ariaLabel="Ora di inizio" value={manualStartTime} onChange={setManualStartTime} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} padX={10} />
                 <ItalianTimeInput ariaLabel="Ora di fine" value={manualEndTime} onChange={setManualEndTime} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} padX={10} />
@@ -171,7 +171,7 @@ export function QuoteDateChooser({
             </Text>
           ) : null}
           <textarea aria-label="Dettagli aggiuntivi" value={proposeNote} onChange={(e) => setProposeNote(e.target.value)} placeholder="Dettagli aggiuntivi (opzionale): es. posso solo dopo le 17" rows={2} style={textareaStyle} />
-          <XStack gap="$2" flexWrap="wrap">
+          <XStack gap="2" flexWrap="wrap">
             <CardButton tone="primary" onPress={handleProposeDate} disabled={isProposing}>
               {isProposing ? "Invio..." : "Invia proposta"}
             </CardButton>

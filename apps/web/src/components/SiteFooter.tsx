@@ -19,7 +19,7 @@ const MAIN_CATEGORIES = [
 
 function FooterColumnTitle({ children }: { children: string }) {
   return (
-    <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.grafite}>
+    <Text fontFamily="body" fontSize={16} fontWeight="700" color={brand.grafite}>
       {children}
     </Text>
   );
@@ -49,7 +49,7 @@ const AUTH_PAGES = ["/registrati", "/accedi", "/password-dimenticata", "/reimpos
 function ShortFooterLink({ href, children }: { href: string; children: string }) {
   return (
     <Link href={href} style={{ textDecoration: "none" }}>
-      <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+      <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
         {children}
       </Text>
     </Link>
@@ -64,9 +64,9 @@ export function SiteFooter() {
   // lungo della chat (docs/CHANGELOG.md §349): resta una riga sola.
   if ([...RESERVED_AREAS, ...AUTH_PAGES].some((area) => pathname === area || pathname.startsWith(`${area}/`))) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$5" paddingHorizontal="$4">
-        <XStack flexWrap="wrap" justifyContent="center" alignItems="center" columnGap="$4" rowGap="$2">
-          <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+      <YStack width="100%" alignItems="center" paddingVertical="5" paddingHorizontal="4">
+        <XStack flexWrap="wrap" justifyContent="center" alignItems="center" columnGap="4" rowGap="2">
+          <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
             © {new Date().getFullYear()} {BRAND.name}
           </Text>
           <ShortFooterLink href="/privacy">Privacy</ShortFooterLink>
@@ -74,7 +74,7 @@ export function SiteFooter() {
           <ShortFooterLink href="/cookie">Cookie</ShortFooterLink>
           {/* Il banner dice di cambiare idea "in fondo alla pagina": serve anche qui (collaudo del 29/10/2026, M-13). */}
           <button type="button" onClick={reopenCookieChoice} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
-            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
               Preferenze cookie
             </Text>
           </button>
@@ -86,10 +86,10 @@ export function SiteFooter() {
   }
   return (
     <YStack width="100%" backgroundColor="transparent" alignItems="center">
-      <YStack width="100%" maxWidth={1200} paddingVertical="$8" paddingHorizontal="$4" gap="$7">
+      <YStack width="100%" maxWidth={1200} paddingVertical="8" paddingHorizontal="4" gap="7">
         {/* Su telefono "Servizi" e "Per i clienti" stanno affiancate (docs/CHANGELOG.md §349). */}
-        <XStack flexWrap="wrap" columnGap="$5" rowGap="$6" justifyContent="space-between">
-          <YStack gap="$3" maxWidth={280} flexBasis="100%" $gtSm={{ flexBasis: "auto" }}>
+        <XStack flexWrap="wrap" columnGap="5" rowGap="6" justifyContent="space-between">
+          <YStack gap="3" maxWidth={280} flexBasis="100% gtSm:auto">
             <Logo name={BRAND.name} size={22} />
             <Text fontSize={16} color={brand.grafite70}>
               Trova e prenota professionisti per la casa e la famiglia: idraulici, elettricisti,
@@ -97,7 +97,7 @@ export function SiteFooter() {
             </Text>
           </YStack>
 
-          <YStack gap="$2" flexBasis={150} flexGrow={1} maxWidth={240}>
+          <YStack gap="2" flexBasis={150} flexGrow={1} maxWidth={240}>
             <FooterColumnTitle>Servizi</FooterColumnTitle>
             {MAIN_CATEGORIES.map((category) => (
               <FooterLink key={category.slug} href={`/cerca/${category.slug}`}>
@@ -113,7 +113,7 @@ export function SiteFooter() {
             <FooterLink href="/contatti">Contatti</FooterLink>
           </YStack>
 
-          <YStack gap="$2" flexBasis={150} flexGrow={1} maxWidth={240}>
+          <YStack gap="2" flexBasis={150} flexGrow={1} maxWidth={240}>
             <FooterColumnTitle>Per i clienti</FooterColumnTitle>
             <FooterLink href="/preventivo">Richiedi preventivo</FooterLink>
             <FooterLink href="/urgente">Richiesta urgente</FooterLink>
@@ -128,7 +128,7 @@ export function SiteFooter() {
             <FooterLink href="/sicurezza">Sicurezza e truffe</FooterLink>
           </YStack>
 
-          <YStack gap="$2" flexBasis={150} flexGrow={1} maxWidth={240}>
+          <YStack gap="2" flexBasis={150} flexGrow={1} maxWidth={240}>
             <FooterColumnTitle>Per i professionisti</FooterColumnTitle>
             <FooterLink href="/registrati?ruolo=professionista">Iscriviti gratis</FooterLink>
             <FooterLink href="/per-professionisti">Piani e prezzi</FooterLink>
@@ -143,20 +143,20 @@ export function SiteFooter() {
             configurato e PayPal mai esistito nel codice) — promesse false
             nel footer distruggono la fiducia invece di costruirla e
             espongono legalmente (pratica commerciale ingannevole). */}
-        <XStack flexWrap="wrap" gap="$4" paddingTop="$5" borderTopWidth={1} borderTopColor={brand.filetto}>
-          <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
+        <XStack flexWrap="wrap" gap="4" paddingTop="5" borderTopWidth={1} borderTopColor={brand.filetto}>
+          <XStack alignItems="center" gap="2" flexShrink={1} minWidth={0}>
             <Icon name="badge-check" size={16} color={brand.grafite70} strokeWidth={1.5} />
             <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
               Badge Verificato: identità controllata con documento e selfie
             </Text>
           </XStack>
-          <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
+          <XStack alignItems="center" gap="2" flexShrink={1} minWidth={0}>
             <Icon name="shield" size={16} color={brand.grafite70} strokeWidth={1.5} />
             <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
               Recensioni solo da lavori fatti tramite il sito
             </Text>
           </XStack>
-          <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
+          <XStack alignItems="center" gap="2" flexShrink={1} minWidth={0}>
             <Icon name="tag" size={16} color={brand.grafite70} strokeWidth={1.5} />
             <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
               Gratis per chi cerca
@@ -164,49 +164,49 @@ export function SiteFooter() {
           </XStack>
         </XStack>
 
-        <XStack flexWrap="wrap" alignItems="center" gap="$4">
-          <XStack alignItems="center" gap="$2">
+        <XStack flexWrap="wrap" alignItems="center" gap="4">
+          <XStack alignItems="center" gap="2">
             <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
               © {new Date().getFullYear()} {BRAND.name} · Tutti i diritti riservati.
               {/* Ragione sociale e P.IVA in ogni pagina (D.Lgs. 70/2003 art. 7, M-01), appena compilate in `COMPANY`. */}
               {companyDataReady() ? ` ${COMPANY.legalName} · P.IVA ${COMPANY.vatNumber}` : null}
             </Text>
           </XStack>
           <Link href="/privacy" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
               Privacy Policy
             </Text>
           </Link>
           <Link href="/termini" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
               Termini di Servizio
             </Text>
           </Link>
           <Link href="/cookie" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
               Cookie Policy
             </Text>
           </Link>
           <button type="button" onClick={reopenCookieChoice} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
-            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
               Preferenze cookie
             </Text>
           </button>
           <Link href="/accessibilita" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
               Accessibilità
             </Text>
           </Link>
           <Link href="/note-legali" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
               Note legali
             </Text>
           </Link>
           {/* Chiunque, anche senza account, può segnalare un contenuto
               illegale (DSA art. 16 c. 1, docs/CHANGELOG.md §319). */}
           <Link href="/contatti?motivo=segnalazione" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
               Segnala un contenuto illegale
             </Text>
           </Link>

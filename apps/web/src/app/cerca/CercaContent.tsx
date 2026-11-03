@@ -148,7 +148,7 @@ export function CercaContent({
   // siti: un link "Mostra tutti" si capiva come "tutti quelli del servizio"
   // (Luca, §398).
   const serviceBar = service ? (
-    <XStack alignItems="center" flexWrap="wrap" gap="$2">
+    <XStack alignItems="center" flexWrap="wrap" gap="2">
       <Text fontSize={15} color={brand.grafite70}>
         Servizio
       </Text>
@@ -283,7 +283,7 @@ export function CercaContent({
       onClearChosen={() => setChosenPros([])}
     />
   ) : serviceBar && notice ? (
-    <YStack gap="$3">
+    <YStack gap="3">
       {serviceBar}
       {notice}
     </YStack>
@@ -293,7 +293,7 @@ export function CercaContent({
     <YStack width="100%" alignItems="center" backgroundColor="transparent">
       {/* Titolo principale (h1), non mostrato (docs/CHANGELOG.md §271). */}
       <h1 className="sr-only">{title}</h1>
-      <YStack width="100%" maxWidth={1200} paddingHorizontal="$4" paddingVertical="$6">
+      <YStack width="100%" maxWidth={1200} paddingHorizontal="4" paddingVertical="6">
         <ResultsListWithMap
           professionals={professionals}
           mapPool={mapPool}

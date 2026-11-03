@@ -46,7 +46,7 @@ export function ClientIssueStatus({
 
   if (issue.status === "CHAT") {
     return (
-      <YStack gap="$2">
+      <YStack gap="2">
         <Text fontSize={13} color={brand.grafite70}>
           {issue.late
             ? `Scrivi a ${pro} in chat per trovare insieme una soluzione. Sono passati i giorni per un rimborso dal sito, ma per legge ${pro} risponde comunque dei difetti del suo lavoro.`
@@ -57,7 +57,7 @@ export function ClientIssueStatus({
             : `${pro} ha tempo fino a ${formatIssueDeadline(issue.chatReplyDueAt)} per risponderti in chat e proporti una soluzione. Se non risponde, la segnalazione passa da sola al nostro team.`}
         </Text>
         {issue.refundOfferEurCents !== null ? (
-          <YStack gap="$2" padding="$2" borderRadius="$3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto}>
+          <YStack gap="2" padding="2" borderRadius="3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto}>
             <Text fontSize={16} fontWeight="700" color={brand.grafite}>
               {pro} ti propone un rimborso di {formatEurCents(issue.refundOfferEurCents)}
             </Text>
@@ -69,7 +69,7 @@ export function ClientIssueStatus({
             </CardButton>
           </YStack>
         ) : null}
-        <XStack gap="$2" flexWrap="wrap">
+        <XStack gap="2" flexWrap="wrap">
           {onOpenChat ? (
             <CardButton tone="primary" onPress={onOpenChat}>
               Apri la chat
@@ -128,7 +128,7 @@ export function ClientIssueStatus({
 
   if (issue.status === "UNRESOLVED") {
     return (
-      <YStack gap="$2">
+      <YStack gap="2">
         <Text fontSize={13} color={brand.grafite70}>
           Non avete trovato un accordo con {pro}. Puoi lasciare la recensione per raccontare com&apos;è andata.
         </Text>
@@ -170,7 +170,7 @@ export function ClientIssueStatus({
   // Decisa (accolta o respinta), eventualmente dopo un ricorso del professionista.
   const appealAccepted = issue.appealDecision === "ACCEPTED";
   return (
-    <YStack gap="$2">
+    <YStack gap="2">
       {issue.resolutionNote && !appealAccepted ? (
         <Text fontSize={13} color={brand.grafite70}>
           {jobIssueOutcomeText({
@@ -189,7 +189,7 @@ export function ClientIssueStatus({
         </Text>
       ) : null}
       {issue.canRedispatch ? (
-        <YStack gap="$1">
+        <YStack gap="1">
           <CardButton tone="primary" alignSelf="flex-start" disabled={busy} onPress={onRedispatch}>
             Invia la richiesta ad altri professionisti
           </CardButton>
@@ -199,7 +199,7 @@ export function ClientIssueStatus({
         </YStack>
       ) : null}
       {issue.redispatchedGuidedRequestId ? (
-        <YStack gap="$2" alignItems="flex-start">
+        <YStack gap="2" alignItems="flex-start">
           <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
             Hai inviato la richiesta ad altri professionisti.
           </Text>
