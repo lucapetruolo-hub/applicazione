@@ -16,6 +16,7 @@ export * from "./adminRoleSchemas";
 export * from "./plans";
 export * from "./professionals";
 export * from "./schemas";
+export * from "./away";
 export * from "./notifications";
 export * from "./notificationSchemas";
 export * from "./completion";

@@ -92,8 +92,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </StyledJsxRegistry>
         {/* Statistiche visite (docs/CHANGELOG.md §132): Vercel Web Analytics,
             senza cookie né dati personali, quindi fuori dal consenso del
-            CookieBanner. Conta solo quando è attivato nella dashboard Vercel. */}
-        <Analytics />
+            CookieBanner. Conta solo quando è attivato nella dashboard Vercel.
+            Solo sul sito pubblicato da Vercel (VERCEL=1 nel build): altrove
+            lo script /_vercel/insights non esiste e il browser segnava due
+            errori in console su ogni pagina (Lighthouse "best-practices" 96,
+            docs/changelog/2026-11-02-oggi-piu-leggera.md). */}
+        {process.env.VERCEL ? <Analytics /> : null}
       </body>
     </html>
   );

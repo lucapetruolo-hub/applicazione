@@ -94,3 +94,33 @@ controllo Lighthouse le pagine del cliente, che non erano misurate).
 **Verifica**: prove nel browser di elimina richiesta, preventivo accettato,
 schede del lavoro, stelle dei preventivi, fumetti dei badge e admin (telefono
 in Italia e computer a Tokyo) verdi; typecheck e lint di sito e prove verdi.
+
+## Quarto giro: best-practices e avvio dell'area professionista
+
+**Richiesta di Luca** (03/11): "effettua le due migliorie".
+
+- **Best-practices 96 su tutte le pagine**: l'unico avviso era "errori in
+  console", due per pagina, dallo script delle statistiche di Vercel
+  (`/_vercel/insights/script.js`), che esiste solo sul sito pubblicato da
+  Vercel. Ora `<Analytics />` si carica solo con `VERCEL` impostata nel build
+  (`apps/web/src/app/layout.tsx`): sul sito vero non cambia nulla, nelle prove
+  e in locale niente più errori. Lighthouse in locale: best-practices 100 su
+  Oggi, Agenda e Orari.
+- **Avvio dell'area professionista**: nella registrazione del browser di
+  Orari, un terzo dell'avvio degli script (71 ms su 183, telefono rallentato)
+  era zod che creava tutti i 217 controlli dei moduli di `schemas.ts`. Li
+  portava il riquadro "Metti in pausa" (`AwayCard`, in Oggi e in Agenda), che
+  usava solo il numero `MAX_AWAY_DAYS`. Il numero ora sta in
+  `packages/shared/src/away.ts`: `schemas.ts` non si carica più in Oggi,
+  Agenda e Orari, e l'avvio degli script di Orari scende da 183 a 138 ms. Nel
+  TBT di Lighthouse in locale la differenza resta nel rumore della macchina
+  (mediana di Orari da 548 a 505 ms). Restano circa 30 ms di zod da altri
+  moduli condivisi (pagamenti online, contabilità, DAC7, ritiro richiesta) che
+  uniscono schemi e funzioni nello stesso file: separarli è un lavoro più
+  ampio, non fatto.
+- Il menu del professionista e il contatore delle notifiche, sospettati
+  all'inizio, nella registrazione pesano pochi millisecondi: nessun cambio.
+
+**Verifica**: tutte le prove nel browser del telefono in Italia (le due metà,
+136 prove) verdi; test del pacchetto condiviso, typecheck dell'API, lint del
+sito verdi.
