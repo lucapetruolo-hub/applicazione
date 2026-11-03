@@ -356,6 +356,25 @@ export type ProblemMatchResult = {
   source: "dizionario" | "parola" | "ia";
 };
 
+/**
+ * La risposta del solo dizionario, nella forma di `POST /problem-match`: la usano
+ * l'API (quando non serve l'intelligenza artificiale), la ricerca se l'API non
+ * risponde e la richiesta di preventivo mentre si scrive.
+ */
+export function problemMatchFromDictionary(dictionary: ProblemMatch): ProblemMatchResult {
+  // Gli altri mestieri solo se quasi forti quanto il primo: "cucina" non deve aggiungere il falegname al rubinetto.
+  const top = dictionary.categories[0]?.score ?? 0;
+  const categories = dictionary.categories.filter((category) => category.score * 2 >= top).slice(0, 3);
+  return {
+    categories: dictionary.outOfService ? [] : categories.map((category) => category.slug),
+    safety: dictionary.safety,
+    outOfService: dictionary.outOfService,
+    question: dictionary.question,
+    reason: null,
+    source: "dizionario",
+  };
+}
+
 export const PROBLEM_DESCRIPTION_MAX = 1000;
 
 /** Pagina admin "Mestieri richiesti". */

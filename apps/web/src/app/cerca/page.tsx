@@ -3,6 +3,7 @@ import {
   findComuneByName,
   isProfessionalCategorySlug,
   matchProblem,
+  problemMatchFromDictionary,
   type ProblemMatchResult,
   type ProfessionalSearchResult,
 } from "@professionisti/shared";
@@ -33,15 +34,7 @@ async function loadProblemMatch(description: string, city: string | undefined): 
   try {
     return await apiClient.matchProblem({ description, city });
   } catch {
-    const match = matchProblem(description);
-    return {
-      categories: match.outOfService ? [] : match.categories.slice(0, 3).map((category) => category.slug),
-      safety: match.safety,
-      outOfService: match.outOfService,
-      question: match.question,
-      reason: null,
-      source: "dizionario",
-    };
+    return problemMatchFromDictionary(matchProblem(description));
   }
 }
 

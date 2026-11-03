@@ -244,7 +244,7 @@ function ChoiceLink({ href, label }: { href: string; label: string }) {
   );
 }
 
-function SafetyNotice({ safety }: { safety: NonNullable<ProblemMatchResult["safety"]> }) {
+export function SafetyNotice({ safety }: { safety: NonNullable<ProblemMatchResult["safety"]> }) {
   const text = PROBLEM_SAFETY_TEXTS[safety];
   return (
     <YStack

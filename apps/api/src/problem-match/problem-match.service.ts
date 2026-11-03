@@ -8,6 +8,7 @@ import {
   OUT_OF_SERVICE_LABELS,
   PROFESSIONAL_CATEGORIES,
   matchProblem,
+  problemMatchFromDictionary,
   normalizeProblemText,
   isProfessionalCategorySlug,
   type ProblemMatch,
@@ -248,17 +249,7 @@ export class ProblemMatchService {
   }
 
   private fromDictionary(dictionary: ProblemMatch): ProblemMatchResult {
-    // Gli altri mestieri solo se quasi forti quanto il primo: "cucina" non deve aggiungere il falegname al rubinetto.
-    const top = dictionary.categories[0]?.score ?? 0;
-    const categories = dictionary.categories.filter((category) => category.score * 2 >= top).slice(0, 3);
-    return {
-      categories: dictionary.outOfService ? [] : categories.map((category) => category.slug),
-      safety: dictionary.safety,
-      outOfService: dictionary.outOfService,
-      question: dictionary.question,
-      reason: null,
-      source: "dizionario",
-    };
+    return problemMatchFromDictionary(dictionary);
   }
 
   /** La sicurezza resta del dizionario; la domanda resta solo se il mestiere scelto è tra le sue risposte. */

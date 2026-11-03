@@ -7757,3 +7757,46 @@ a.admin-kpi:hover {
   font-weight: 600;
   color: #4a433b;
 }
+
+/* "Descrivi il lavoro" per primo nella richiesta di preventivo
+   (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md, scelta di
+   Luca): la stessa luce del campo "Cosa è successo?" della home, due giri
+   all'apertura e poi ferma; verde pieno mentre si scrive. */
+.guided-description-input {
+  border: 2px solid transparent !important;
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    conic-gradient(from var(--badge-angle), #128552, #7fd6a4, #f2c14e, #7fd6a4, #128552) border-box !important;
+  animation: label-badge-spin 3s linear 2;
+}
+.guided-description-input:focus {
+  animation: none;
+  /* Il bordo verde pieno fa da segno del campo attivo (contrasto 5,5:1 sul bianco). */
+  outline: none;
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(#128552, #128552) border-box !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .guided-description-input {
+    animation: none;
+  }
+}
+/* "Cambia o aggiungi una categoria": un link, non un altro pulsante pieno. */
+.guided-categories-toggle {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0e7a4c;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
