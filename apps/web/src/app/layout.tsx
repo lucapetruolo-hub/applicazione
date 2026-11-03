@@ -19,7 +19,10 @@ import { BRAND } from "@professionisti/shared";
 import { ACCOUNT_NAV_BOOT_SCRIPT } from "@/lib/accountNavCollapsed";
 import { COOKIE_CHOICE_BOOT_SCRIPT } from "@/lib/cookieChoiceBoot";
 
-const TAMAGUI_CSS_VERSION = (process.env.VERCEL_GIT_COMMIT_SHA ?? String(Date.now())).slice(0, 13);
+// Calcolata una volta sola in next.config.mjs (env.TAMAGUI_CSS_VERSION): qui
+// con Date.now() Turbopack la ricalcolava per ogni pagina e il browser
+// scaricava tamagui.css più volte (docs/changelog/2026-11-02-nextjs-16.md).
+const TAMAGUI_CSS_VERSION = process.env.TAMAGUI_CSS_VERSION;
 
 // Necessario per l'installabilità PWA (manifest.ts) e per una barra di stato
 // mobile coerente col brand invece del bianco/nero di default del browser.

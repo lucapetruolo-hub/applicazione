@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Put, Query, Req, UseGuards } from "@nestjs/common";
 import { platformInvoiceSettingsSchema, type PlatformInvoiceSettingsInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
+import { AuditLogService } from "../audit-log/audit-log.service";
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { InvoicesService } from "./invoices.service";
 import { FeeReconciliationService } from "./fee-reconciliation.service";
@@ -14,6 +15,7 @@ export class AdminAccountingController {
   constructor(
     private readonly invoicesService: InvoicesService,
     private readonly feeReconciliationService: FeeReconciliationService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   @Get("settings")
@@ -55,12 +57,17 @@ export class AdminAccountingController {
 
   /** Emette le fatture delle trattenute di un mese concluso, se il giro del 1° non è partito. */
   @Post("run/:month")
-  runMonth(@Param("month") month: string) {
-    return this.invoicesService.adminRunMonth(month);
+  async runMonth(@Req() req: AuthenticatedRequest, @Param("month") month: string) {
+    const result = await this.invoicesService.adminRunMonth(month);
+    // Nel registro azioni (docs/changelog/2026-11-02-admin-protezioni.md).
+    await this.auditLogService.record({ entityType: "InvoiceMonth", entityId: month, fieldName: "invoicesIssued", newValue: String(result.issued), changedByUserId: req.user.userId });
+    return result;
   }
 
   @Post(":id/resend")
-  resend(@Param("id") id: string) {
-    return this.invoicesService.adminResend(id);
+  async resend(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    const row = await this.invoicesService.adminResend(id);
+    await this.auditLogService.record({ entityType: "Invoice", entityId: id, fieldName: "sdiResent", newValue: row.number, changedByUserId: req.user.userId });
+    return row;
   }
 }

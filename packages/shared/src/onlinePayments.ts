@@ -350,6 +350,13 @@ export type JobPaymentSummary = {
   /** Costo della carta a suo carico: solo sui pagamenti di prima della trattenuta unica (§378). */
   stripeFeeEurCents?: number;
   payoutEurCents?: number;
+  /**
+   * Solo per il professionista, allo sblocco (collaudo F-21): parte che Stripe
+   * aveva già preso dal suo saldo per rimborsi o contestazioni di altri
+   * lavori, e debito di lavori precedenti ripreso prima del bonifico.
+   */
+  takenByStripeEurCents?: number;
+  debtRecoveredEurCents?: number;
   /** Solo per il professionista: dov'è il bonifico verso la sua banca (null se non c'è nulla da ricevere). */
   payoutStatus?: JobPayoutStatus | null;
   /** Solo per il professionista: motivo del bonifico non riuscito, in parole di Stripe. */
@@ -391,6 +398,8 @@ type JobPaymentRow = {
   platformFeeEurCents: number;
   stripeFeeEurCents: number;
   netAmountEurCents: number;
+  releaseTakenByStripeEurCents?: number;
+  releaseDebtRecoveredEurCents?: number;
   releaseDueAt: Date | null;
   releasedAt: Date | null;
   balanceUnpaidAt: Date | null;
@@ -480,6 +489,8 @@ export function toJobPaymentSummary(
     summary.appFeeEurCents = appFee;
     summary.stripeFeeEurCents = jp.stripeFeeEurCents;
     summary.payoutEurCents = stage === "RELEASED" ? jp.netAmountEurCents : Math.max(0, base - appFee - jp.stripeFeeEurCents);
+    summary.takenByStripeEurCents = stage === "RELEASED" ? (jp.releaseTakenByStripeEurCents ?? 0) : 0;
+    summary.debtRecoveredEurCents = stage === "RELEASED" ? (jp.releaseDebtRecoveredEurCents ?? 0) : 0;
     summary.payoutStatus = jobPayoutStatus(jp);
     summary.payoutFailureMessage = summary.payoutStatus === "FAILED" ? (jp.payoutFailureMessage ?? null) : null;
     summary.bankDispute = professionalBankDispute(jp);

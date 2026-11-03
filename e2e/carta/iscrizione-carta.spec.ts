@@ -66,6 +66,19 @@ async function signedIn(browser: Browser, userId: string): Promise<Page> {
   return context.newPage();
 }
 
+/**
+ * Tornando da Stripe al sito il browser di prova a volte perde le misure del
+ * telefono simulato: la pagina si carica tutta e senza errori, ma la finestra
+ * risulta larga e alta 0 e ogni testo "non visibile" (visto una volta nella
+ * CI, docs/changelog/2026-11-02-nextjs-16.md). Si rimettono le misure del
+ * progetto: se la pagina fosse davvero vuota o nascosta la prova fallisce lo
+ * stesso.
+ */
+async function keepPhoneScreen(page: Page) {
+  const viewport = test.info().project.use.viewport;
+  if (viewport) await page.setViewportSize(viewport);
+}
+
 /** Da "Attiva i mesi gratis" alla pagina della carta di Stripe. */
 async function openCheckout(page: Page) {
   await page.goto("/dashboard/abbonamento#livelli");
@@ -199,6 +212,7 @@ test("pagina della carta chiusa a metà: si torna con il messaggio e si può rip
   // Il link "indietro" di Stripe porta al cancel_url.
   await page.locator('a[href*="annullato=1"]').first().click();
   await page.waitForURL(/\/dashboard\/abbonamento\?annullato=1/);
+  await keepPhoneScreen(page);
   await expect(page.getByText(/Non hai finito di aggiungere la carta/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Attiva i mesi gratis" })).toBeVisible();
   const row = await subscriptionOf(profileId!);

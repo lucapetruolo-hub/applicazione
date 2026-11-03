@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Icon } from "@professionisti/ui";
 import { CATEGORY_ACCENT, CategoryIcon } from "@/components/icons/CategoryIcons";
-import { cachedPopularOrder, loadPopularOrder, type PopularOrder } from "@/lib/categoryOrder";
+import { cachedPopularOrder, loadPopularOrder, type CategoryOrderBy, type PopularOrder } from "@/lib/categoryOrder";
 
 /**
  * Oltre questo tempo si mostrano le tessere nell'ordine del catalogo: meglio
@@ -14,6 +14,16 @@ import { cachedPopularOrder, loadPopularOrder, type PopularOrder } from "@/lib/c
 const POPULAR_ORDER_TIMEOUT_MS = 1200;
 
 /**
+ * Nomi lunghi accorciati solo nelle tessere da 3 per riga del telefono, dove
+ * andavano a capo su tre righe; il nome intero resta per i lettori di schermo
+ * (docs/changelog/2026-11-02-registrazione-pro-migliorie.md).
+ */
+const COMPACT_LABELS: Partial<Record<ProfessionalCategorySlug, string>> = {
+  climatizzazione: "Clima e caldaie",
+  muratore: "Muratore",
+};
+
+/**
  * Tessere delle categorie con l'icona colorata (docs/CHANGELOG.md §279-§280, stile
  * A scelto dall'utente): scelta dei lavori del professionista
  * (`CategoryMultiPicker`) e categorie della richiesta di preventivo.
@@ -21,7 +31,9 @@ const POPULAR_ORDER_TIMEOUT_MS = 1200;
  *
  * Ordine: in cima le categorie già scelte all'apertura (nella richiesta, la
  * categoria cercata, docs/CHANGELOG.md §281), poi le più cercate nella città
- * indicata o in tutta la piattaforma (`GET /categories/popular`). Le tessere
+ * indicata o in tutta la piattaforma (`GET /categories/popular`); con
+ * `orderBy="professionals"` quelle con più professionisti iscritti
+ * (`GET /professionals/category-counts`, scelta dei lavori del professionista). Le tessere
  * compaiono una volta sola, già nell'ordine giusto (richiesta dell'utente,
  * docs/CHANGELOG.md §324: non si deve vedere il riordino): finché l'ordine
  * non arriva si vedono tessere vuote della stessa misura, al massimo per
@@ -35,6 +47,7 @@ export function CategoryTiles({
   city,
   showPrimary = false,
   ariaLabel,
+  orderBy = "searches",
   compact = false,
 }: {
   value: ProfessionalCategorySlug[];
@@ -45,13 +58,15 @@ export function CategoryTiles({
   /** "Principale" sotto la prima scelta (solo per il professionista). */
   showPrimary?: boolean;
   ariaLabel?: string;
+  /** Più cercati (di serie) o con più professionisti iscritti (scelta dei lavori del professionista). */
+  orderBy?: CategoryOrderBy;
   /** Sul telefono 3 per riga e più basse (docs/changelog/2026-11-02-registrazione-pro-grafica.md). */
   compact?: boolean;
 }) {
   const gridClass = compact ? "cat-tiles is-compact" : "cat-tiles";
   const [initialCity] = useState(city?.trim() || undefined);
   // Ordine già in memoria (seconda apertura): niente attesa.
-  const [popularOrder, setPopularOrder] = useState<PopularOrder | undefined>(() => cachedPopularOrder(initialCity));
+  const [popularOrder, setPopularOrder] = useState<PopularOrder | undefined>(() => cachedPopularOrder(initialCity, orderBy));
   const ready = popularOrder !== undefined;
   // Scelte già fatte all'apertura: restano in cima per tutta la visita.
   const [pinned] = useState(value);
@@ -65,12 +80,12 @@ export function CategoryTiles({
       setPopularOrder(order);
     };
     const timer = setTimeout(() => settle(null), POPULAR_ORDER_TIMEOUT_MS);
-    void loadPopularOrder(initialCity).promise.then(settle);
+    void loadPopularOrder(initialCity, orderBy).promise.then(settle);
     return () => {
       settled = true;
       clearTimeout(timer);
     };
-  }, [initialCity, ready]);
+  }, [initialCity, orderBy, ready]);
 
   if (!ready) {
     return (
@@ -112,7 +127,16 @@ export function CategoryTiles({
             <span className="cat-tile-icon" style={{ background: accent.bg, color: accent.fg }} aria-hidden="true">
               <CategoryIcon slug={category.slug} size={compact ? 22 : 26} />
             </span>
-            <span className="cat-tile-label">{category.label}</span>
+            {compact && COMPACT_LABELS[category.slug] ? (
+              <span className="cat-tile-label">
+                <span className="cat-tile-label-full">{category.label}</span>
+                <span className="cat-tile-label-short" aria-hidden="true">
+                  {COMPACT_LABELS[category.slug]}
+                </span>
+              </span>
+            ) : (
+              <span className="cat-tile-label">{category.label}</span>
+            )}
             {isPrimary ? <span className="cat-tile-primary">Principale</span> : null}
             {active ? (
               <span className="cat-tile-check" aria-hidden="true">

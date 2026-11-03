@@ -84,7 +84,7 @@ export const SUBSCRIPTION_FEATURES = [
   "Preventivi e chat con i clienti",
   "Agenda e prenotazioni online",
   "Promemoria email anti no-show",
-  "Recensioni da lavori confermati",
+  "Recensioni da lavori fatti tramite il sito",
   "Statistiche della tua attività",
 ] as const;
 

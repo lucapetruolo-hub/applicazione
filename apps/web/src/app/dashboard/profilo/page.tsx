@@ -124,6 +124,104 @@ const PROFILE_SECTIONS = [
   { id: "profilo-portfolio", label: "Portfolio" },
 ] as const;
 
+/**
+ * Indice che resta in vista scorrendo, con la parte che si sta guardando in
+ * evidenza (docs/changelog/2026-11-02-registrazione-pro-migliorie.md).
+ */
+function ProfileIndex() {
+  const [activeId, setActiveId] = useState<string>(PROFILE_SECTIONS[0].id);
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const sections = PROFILE_SECTIONS.map((section) => document.getElementById(section.id)).filter((el): el is HTMLElement => !!el);
+    if (sections.length === 0 || typeof IntersectionObserver === "undefined") return;
+    const visible = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.add(entry.target.id);
+          else visible.delete(entry.target.id);
+        }
+        // La prima parte (in ordine di pagina) dentro la fascia alta dello schermo.
+        const first = PROFILE_SECTIONS.find((section) => visible.has(section.id));
+        if (first) setActiveId(first.id);
+      },
+      // Fascia sotto l'intestazione e l'indice stesso, fino a metà schermo.
+      { rootMargin: "-190px 0px -50% 0px" },
+    );
+    for (const section of sections) observer.observe(section);
+    // In fondo alla pagina le ultime parti non arrivano mai in alto: vale
+    // l'ultima che si vede.
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        if (window.innerHeight + window.scrollY < document.documentElement.scrollHeight - 4) return;
+        const last = [...sections].reverse().find((el) => el.getBoundingClientRect().top < window.innerHeight);
+        if (last) setActiveId(last.id);
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  // La voce attiva resta visibile nell'indice che scorre di lato (telefono),
+  // senza muovere la pagina.
+  useEffect(() => {
+    const nav = navRef.current;
+    const link = nav?.querySelector<HTMLElement>(`[data-section="${activeId}"]`);
+    if (!nav || !link || nav.scrollWidth <= nav.clientWidth) return;
+    const target = link.offsetLeft - (nav.clientWidth - link.offsetWidth) / 2;
+    nav.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+  }, [activeId]);
+
+  return (
+    <nav ref={navRef} className="profile-index" aria-label="Parti del profilo">
+      {PROFILE_SECTIONS.map((section) => (
+        <a
+          key={section.id}
+          href={`#${section.id}`}
+          data-section={section.id}
+          className={`profile-index-link${activeId === section.id ? " is-active" : ""}`}
+          aria-current={activeId === section.id ? "location" : undefined}
+          onClick={() => setActiveId(section.id)}
+        >
+          {section.label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+/** "Per pubblicarlo: Nome · Mestiere · Città", spuntati mentre si compilano. */
+function RequiredFieldsProgress({ items }: { items: { label: string; done: boolean; sectionId: string }[] }) {
+  const doneCount = items.filter((item) => item.done).length;
+  return (
+    <div className="profile-required">
+      <span className="profile-required-title">
+        Per pubblicarlo <span className="profile-required-count">{doneCount} su {items.length}</span>
+      </span>
+      <ul className="profile-required-list">
+        {items.map((item) => (
+          <li key={item.label}>
+            <a href={`#${item.sectionId}`} className={`profile-required-item${item.done ? " is-done" : ""}`}>
+              <span className="profile-required-mark" aria-hidden="true">
+                {item.done ? <Icon name="check" size={12} strokeWidth={3} color="white" /> : null}
+              </span>
+              {item.label}
+              <span className="sr-only">{item.done ? ", fatto" : ", da compilare"}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function SectionTitle({ children }: { children: string }) {
   return (
     <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
@@ -238,6 +336,8 @@ export default function DashboardProfiloPage() {
   const [engagementLocation, setEngagementLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [engagementRadiusKm, setEngagementRadiusKm] = useState(25);
   const [urgentEngagementRadiusKm, setUrgentEngagementRadiusKm] = useState(25);
+  // I raggi salvati: "Salva profilo" salva anche il raggio se è cambiato (collaudo E-04).
+  const [savedRadius, setSavedRadius] = useState({ engagementRadiusKm: 25, urgentEngagementRadiusKm: 25 });
   // Vero solo se, al primo caricamento, non esisteva ancora alcun profilo:
   // distingue "questo è il primo salvataggio in assoluto" da "una modifica
   // a un profilo già esistente" — serve a decidere se, dopo il salvataggio,
@@ -316,6 +416,7 @@ export default function DashboardProfiloPage() {
     }
     setEngagementRadiusKm(profile.engagementRadiusKm);
     setUrgentEngagementRadiusKm(profile.urgentEngagementRadiusKm);
+    setSavedRadius({ engagementRadiusKm: profile.engagementRadiusKm, urgentEngagementRadiusKm: profile.urgentEngagementRadiusKm });
     setServices(
       profile.services.map((service) => ({
         name: service.name,
@@ -377,8 +478,10 @@ export default function DashboardProfiloPage() {
   // Modifiche non salvate (richiesta esplicita dell'utente, docs/CHANGELOG.md
   // §136): confronto tra i campi del form principale e com'erano all'ultimo
   // caricamento/salvataggio. Fuori dal confronto la foto profilo (salvata
-  // subito dal suo caricamento) e il raggio di ingaggio (proprio "Salva").
+  // subito dal suo caricamento). Il raggio di ingaggio ora è dentro (collaudo E-04).
   const formSnapshot = JSON.stringify({
+    engagementRadiusKm,
+    urgentEngagementRadiusKm,
     businessName,
     categorySlugs,
     subTags,
@@ -530,6 +633,11 @@ export default function DashboardProfiloPage() {
           priceUnit: service.priceUnit,
         })),
       });
+      // Il raggio ha il suo indirizzo nell'API: si salva subito dopo il profilo, solo se è cambiato.
+      if (engagementRadiusKm !== savedRadius.engagementRadiusKm || urgentEngagementRadiusKm !== savedRadius.urgentEngagementRadiusKm) {
+        await apiClient.updateEngagementRadius(token as string, { engagementRadiusKm, urgentEngagementRadiusKm });
+        setSavedRadius({ engagementRadiusKm, urgentEngagementRadiusKm });
+      }
       setSaved(true);
       setSavedRemoteAvailable(remoteAvailable);
       setNeedsConfirmation(false);
@@ -794,7 +902,10 @@ export default function DashboardProfiloPage() {
                 <div className="profile-visibility is-warn">
                   <span className="profile-visibility-dot" aria-hidden="true" />
                   <span className="profile-visibility-text">
-                    {identityStep.state === "waiting" ? "Identità in verifica: presto potrai rispondere ai preventivi" : "Non puoi ancora rispondere alle richieste di preventivo"}
+                    {identityStep.state === "waiting"
+                      ? "Identità in verifica: presto potrai rispondere ai preventivi"
+                      : // Nella ricerca compare dopo chi può già rispondere (collaudo E-09).
+                        "Non puoi ancora rispondere: finché non verifichi l'identità, nella ricerca compari dopo gli altri"}
                   </span>
                 </div>
               ) : null}
@@ -873,6 +984,15 @@ export default function DashboardProfiloPage() {
               ? "Servono nome, mestiere e città: il resto puoi aggiungerlo anche dopo."
               : `Queste informazioni sono visibili pubblicamente su ${BRAND.name} e determinano in quali ricerche compari.`}
           </Text>
+          {isFirstProfileSave ? (
+            <RequiredFieldsProgress
+              items={[
+                { label: "Nome", done: businessName.trim().length >= 2, sectionId: "profilo-identita" },
+                { label: "Mestiere", done: categorySlugs.length > 0, sectionId: "profilo-mestieri" },
+                { label: "Città", done: city.trim().length > 0, sectionId: "profilo-identita" },
+              ]}
+            />
+          ) : null}
           {isFirstProfileSave && chosenTier ? (
             <XStack>
               <ChosenPlanChip tier={chosenTier} />
@@ -882,13 +1002,7 @@ export default function DashboardProfiloPage() {
 
         {/* Indice dei riquadri: la pagina è lunga quasi 9.000 px sul telefono
             (docs/changelog/2026-11-02-registrazione-pro-grafica.md). */}
-        <nav className="profile-index" aria-label="Parti del profilo">
-          {PROFILE_SECTIONS.map((section) => (
-            <a key={section.id} href={`#${section.id}`} className="profile-index-link">
-              {section.label}
-            </a>
-          ))}
-        </nav>
+        <ProfileIndex />
 
         {needsConfirmation ? (
           <Surface gap="$2" borderColor={brand.cianografia} borderWidth={1}>
@@ -1527,7 +1641,7 @@ export default function DashboardProfiloPage() {
           <SectionTitle>Portfolio</SectionTitle>
           <FieldLabel>{`Foto o video dei lavori svolti (fino a ${MAX_PORTFOLIO_PHOTOS}, opzionale)`}</FieldLabel>
           <Text fontSize={13} color={brand.grafite70}>
-            Foto o video reali di lavori completati: aiutano chi apre il tuo profilo a farsi un&apos;idea concreta di
+            Foto o video reali di lavori terminati: aiutano chi apre il tuo profilo a farsi un&apos;idea concreta di
             cosa sai fare.
           </Text>
           <YStack flexDirection="row" flexWrap="wrap" gap="$2">
@@ -1605,11 +1719,16 @@ export default function DashboardProfiloPage() {
             distinte invece di lasciarlo isolato più in basso nella pagina. */}
         {token && engagementLocation ? (
           <EngagementRadiusSection
-            token={token}
             latitude={engagementLocation.latitude}
             longitude={engagementLocation.longitude}
-            initialEngagementRadiusKm={engagementRadiusKm}
-            initialUrgentEngagementRadiusKm={urgentEngagementRadiusKm}
+            engagementRadiusKm={engagementRadiusKm}
+            urgentEngagementRadiusKm={urgentEngagementRadiusKm}
+            onChange={(radius) => {
+              setEngagementRadiusKm(radius.engagementRadiusKm);
+              setUrgentEngagementRadiusKm(radius.urgentEngagementRadiusKm);
+            }}
+            savedEngagementRadiusKm={savedRadius.engagementRadiusKm}
+            savedUrgentEngagementRadiusKm={savedRadius.urgentEngagementRadiusKm}
           />
         ) : null}
 

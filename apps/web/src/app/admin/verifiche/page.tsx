@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { TAX_ID_KIND_LABEL, type ProfessionalVerificationFilter, type ProfessionalVerificationRow } from "@professionisti/shared";
+import {
+  PROFESSIONAL_ENTITY_TYPES,
+  PROFESSIONAL_ENTITY_TYPE_LABEL,
+  TAX_ID_KIND_LABEL,
+  type ProfessionalEntityTypeValue,
+  type ProfessionalVerificationFilter,
+  type ProfessionalVerificationRow,
+} from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -100,6 +107,9 @@ export default function AdminVerifichePage() {
   const [listError, setListError] = useState<string | null>(null);
   // Riga su cui si sta agendo: il pannello di conferma compare sopra l'elenco.
   const [selected, setSelected] = useState<Row | null>(null);
+  // "Togli verifica" o "Cambia tipo" (migliorie del collaudo, gruppo 8).
+  const [action, setAction] = useState<"unverify" | "entityType">("unverify");
+  const [newEntityType, setNewEntityType] = useState<ProfessionalEntityTypeValue | null>(null);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -142,8 +152,10 @@ export default function AdminVerifichePage() {
     }
   }
 
-  function open(row: Row) {
+  function open(row: Row, kind: "unverify" | "entityType" = "unverify") {
     setSelected(row);
+    setAction(kind);
+    setNewEntityType(null);
     setNote("");
     setActionError(null);
     setDone(null);
@@ -158,8 +170,17 @@ export default function AdminVerifichePage() {
         setActionError("Scrivi il motivo: arriva al professionista.");
         return;
       }
-      await apiClient.adminUnverifyProfessional(token, selected.professionalProfileId, note.trim());
-      setDone(`Verifica tolta a ${selected.businessName}.`);
+      if (action === "entityType") {
+        if (!newEntityType) {
+          setActionError("Scegli il tipo nuovo.");
+          return;
+        }
+        await apiClient.adminChangeProfessionalEntityType(token, selected.professionalProfileId, newEntityType, note.trim());
+        setDone(`${selected.businessName} ora è "${PROFESSIONAL_ENTITY_TYPE_LABEL[newEntityType]}": gli abbiamo scritto di completare i dati fiscali.`);
+      } else {
+        await apiClient.adminUnverifyProfessional(token, selected.professionalProfileId, note.trim());
+        setDone(`Verifica tolta a ${selected.businessName}.`);
+      }
       setSelected(null);
       load();
     } catch (err) {
@@ -195,8 +216,23 @@ export default function AdminVerifichePage() {
         <AdminCard highlight>
           <YStack gap="$3">
             <Text fontWeight="700" color={brand.grafite}>
-              Togli la verifica a {selected.businessName}
+              {action === "entityType" ? `Cambia il tipo di ${selected.businessName}` : `Togli la verifica a ${selected.businessName}`}
             </Text>
+            {action === "entityType" ? (
+              <YStack gap="$2">
+                <Text fontSize={14} color={brand.grafite70}>
+                  Oggi: {selected.entityType ? PROFESSIONAL_ENTITY_TYPE_LABEL[selected.entityType] : "non indicato"}. Dopo il cambio completa lui i dati fiscali che
+                  servono{selected.verified ? " e rifà la verifica dell'identità" : ""}.
+                </Text>
+                <XStack gap="$2" flexWrap="wrap" role="radiogroup" aria-label="Tipo nuovo">
+                  {PROFESSIONAL_ENTITY_TYPES.filter((type) => type !== selected.entityType).map((type) => (
+                    <Button key={type} size="$3" variant={newEntityType === type ? "primary" : "secondary"} onPress={() => setNewEntityType(type)} aria-pressed={newEntityType === type}>
+                      {PROFESSIONAL_ENTITY_TYPE_LABEL[type]}
+                    </Button>
+                  ))}
+                </XStack>
+              </YStack>
+            ) : null}
             <textarea
               aria-label="Motivo"
               className="admin-input"
@@ -207,8 +243,8 @@ export default function AdminVerifichePage() {
             />
             {actionError ? <Text color={brand.urgenza}>{actionError}</Text> : null}
             <XStack gap="$2">
-              <Button size="$3" disabled={saving} backgroundColor={brand.urgenza} onPress={() => void confirm()}>
-                {saving ? "…" : "Togli verifica"}
+              <Button size="$3" disabled={saving} backgroundColor={action === "entityType" ? undefined : brand.urgenza} onPress={() => void confirm()}>
+                {saving ? "…" : action === "entityType" ? "Cambia tipo" : "Togli verifica"}
               </Button>
               <Button variant="secondary" size="$3" onPress={() => setSelected(null)}>
                 Annulla
@@ -260,6 +296,18 @@ export default function AdminVerifichePage() {
                     {row.categoryLabel}, {row.city}
                   </td>
                   <td>
+                    <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+                      <span>{row.entityType ? PROFESSIONAL_ENTITY_TYPE_LABEL[row.entityType] : "Tipo non indicato"}</span>
+                      {row.stripeConnected ? null : (
+                        <button
+                          type="button"
+                          onClick={() => open(row, "entityType")}
+                          style={{ background: "none", border: "none", padding: 0, color: brand.cianografiaScuro, fontWeight: 700, fontSize: 13, textDecoration: "underline", cursor: "pointer" }}
+                        >
+                          Cambia tipo
+                        </button>
+                      )}
+                    </div>
                     {row.vatNumber || row.codiceFiscale ? (
                       <>
                         {row.vatNumber ? <div>P.IVA {row.vatNumber}</div> : null}

@@ -41,6 +41,7 @@ export function AuthField({
   nativeID,
   accessibilityLabel,
   onSubmitEditing,
+  onBlur,
   footer,
   footerId,
   invalid,
@@ -60,6 +61,8 @@ export function AuthField({
   nativeID?: string;
   accessibilityLabel?: string;
   onSubmitEditing?: () => void;
+  /** Uscita dal campo (es. il "Forse intendevi" dell'email, a parola finita). */
+  onBlur?: () => void;
   /** Sotto il campo, dopo l'errore o il suggerimento (es. le regole della password, §289). */
   footer?: ReactNode;
   /** `id` del contenuto di `footer`, letto insieme al campo dai lettori di schermo. */
@@ -74,10 +77,12 @@ export function AuthField({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const onChangeRef = useRef(onChangeText);
   const onSubmitRef = useRef(onSubmitEditing);
+  const onBlurRef = useRef(onBlur);
   // Sempre le ultime funzioni del genitore, senza ricreare il campo.
   useEffect(() => {
     onChangeRef.current = onChangeText;
     onSubmitRef.current = onSubmitEditing;
+    onBlurRef.current = onBlur;
   });
 
   // Creazione una sola volta, fuori da React.
@@ -93,6 +98,7 @@ export function AuthField({
         onSubmitRef.current();
       }
     });
+    input.addEventListener("blur", () => onBlurRef.current?.());
     container.appendChild(input);
     inputRef.current = input;
     return () => {

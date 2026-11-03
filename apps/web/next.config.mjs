@@ -1,5 +1,3 @@
-import { fileURLToPath } from "node:url";
-
 /** @type {import('next').NextConfig} */
 // Indirizzo dell'API (fetch e stream in tempo reale): l'unica origine
 // esterna a cui il sito parla oltre a Google e Cloudflare.
@@ -17,8 +15,9 @@ function apiOrigin() {
 // mandare dati a un server qualsiasi. Google Maps con l'elenco ufficiale di
 // Google (developers.google.com/maps/documentation/javascript/content-security-policy),
 // Cloudflare Turnstile, Vercel Analytics. `'unsafe-inline'` resta perché
-// Next.js 14 scrive script in pagina senza nonce; con Next.js 15 e i nonce
-// si potrà togliere. Solo in produzione: `next dev` usa `eval`.
+// Next.js scrive script in pagina senza nonce; con i nonce (che però
+// rendono dinamica ogni pagina) si potrà togliere. Solo in produzione:
+// `next dev` usa `eval`.
 const contentSecurityPolicy = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://*.googleapis.com https://*.gstatic.com *.google.com https://*.ggpht.com *.googleusercontent.com https://challenges.cloudflare.com https://va.vercel-scripts.com",
@@ -53,13 +52,21 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  // Versione di /tamagui.css (`?v=`, layout.tsx): il commit su Vercel,
+  // altrove l'ora della build. Calcolata qui una volta sola e scritta nel
+  // codice di tutte le pagine: con Date.now() nel layout Turbopack la
+  // ricalcolava per ogni pagina e il browser scaricava lo stesso file 4 volte
+  // (docs/changelog/2026-11-02-nextjs-16.md).
+  env: {
+    TAMAGUI_CSS_VERSION: (process.env.VERCEL_GIT_COMMIT_SHA ?? String(Date.now())).slice(0, 13),
+  },
   // Solo nelle build della CI per le prove nel browser e il SEO
-  // (docs/changelog/2026-10-28-controlli-pr-veloci.md): lint e tipi li
-  // controlla già il job typecheck-build-test, rifarli costava ~25 secondi a
-  // job. Vercel e la build di typecheck-build-test li fanno sempre.
-  ...(process.env.CI_BUILD_SENZA_CONTROLLI === "1"
-    ? { eslint: { ignoreDuringBuilds: true }, typescript: { ignoreBuildErrors: true } }
-    : {}),
+  // (docs/changelog/2026-10-28-controlli-pr-veloci.md): i tipi li controlla
+  // già il job typecheck-build-test, rifarli costava tempo a ogni job.
+  // Vercel e la build di typecheck-build-test li controllano sempre. Il lint
+  // da Next.js 16 non è più nella build: lo fa sempre `pnpm lint` in CI
+  // (docs/changelog/2026-11-02-nextjs-16.md).
+  ...(process.env.CI_BUILD_SENZA_CONTROLLI === "1" ? { typescript: { ignoreBuildErrors: true } } : {}),
   // Niente "X-Powered-By: Next.js": non serve dire a chi cerca falle cosa usiamo.
   poweredByHeader: false,
   images: {
@@ -77,15 +84,17 @@ const nextConfig = {
     // Niente cache client-side delle pagine (Router Cache): le pagine
     // risultati devono rileggere i searchParams ad ogni navigazione, anche
     // verso lo stesso percorso con query diverse (cambio Online/Domicilio).
-    staleTimes: { dynamic: 0, static: 0 },
-    // React Compiler (docs/CHANGELOG.md §345): ricorda da solo i valori e i
-    // componenti che non cambiano, così React ridisegna meno a ogni
-    // aggiornamento. Tutto il sito tranne i componenti con `<style jsx>`, che
-    // hanno la direttiva "use no memo": compilati perdono le classi jsx-...
-    // (es. il testo breve del banner cookie compariva insieme a quello lungo).
-    // Un componente nuovo con `<style jsx>` deve avere "use no memo".
-    reactCompiler: true,
+    // Le pagine statiche da Next.js 16 restano almeno 30 secondi (minimo
+    // consentito): non leggono i searchParams e i dati li chiede il browser.
+    staleTimes: { dynamic: 0, static: 30 },
   },
+  // React Compiler (docs/CHANGELOG.md §345): ricorda da solo i valori e i
+  // componenti che non cambiano, così React ridisegna meno a ogni
+  // aggiornamento. Tutto il sito tranne i componenti con `<style jsx>`, che
+  // hanno la direttiva "use no memo": compilati perdono le classi jsx-...
+  // (es. il testo breve del banner cookie compariva insieme a quello lungo).
+  // Un componente nuovo con `<style jsx>` deve avere "use no memo".
+  reactCompiler: true,
   // Sito privato finché NEXT_PUBLIC_SITE_INDEXABLE non vale "true" (vedi
   // src/lib/siteIndexing.ts): l'header copre anche le pagine client e le
   // risorse non HTML, dove il meta robots del layout non arriva.
@@ -105,22 +114,25 @@ const nextConfig = {
   // packages/ui/src/config.ts importa `Platform` da "react-native" per
   // scegliere la famiglia di font per piattaforma (vedi commento lì):
   // Metro (Expo/apps/mobile) risolve "react-native" -> "react-native-web"
-  // in automatico quando builda per il target web, ma il webpack di
-  // Next.js no — serve l'alias esplicito, altrimenti prova a bundlare il
-  // vero pacchetto react-native (sintassi Flow, non parsabile da SWC).
-  // Pattern standard per ogni integrazione Tamagui + Next.js.
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      "react-native$": "react-native-web",
+  // in automatico quando builda per il target web, Next.js no: serve l'alias
+  // esplicito, altrimenti prova a impacchettare il vero react-native
+  // (sintassi Flow). Pattern standard per ogni integrazione Tamagui + Next.js.
+  // Con Next.js 16 le pagine le prepara Turbopack, non più webpack
+  // (docs/changelog/2026-11-02-nextjs-16.md): stessi alias, stesso ordine
+  // delle estensioni.
+  turbopack: {
+    resolveAlias: {
+      "react-native": "react-native-web",
       // Il sito usa i sorgenti di packages/shared (ESM) e non dist/
       // (CommonJS): con `sideEffects: false` ogni pagina prende solo le parti
       // che usa (zod 4, elenco dei comuni...) invece di tutto il pacchetto.
       // docs/CHANGELOG.md §326 e §345. L'API continua a usare dist/.
-      "@professionisti/shared$": fileURLToPath(new URL("../../packages/shared/src/index.ts", import.meta.url)),
-    };
-    config.resolve.extensions = [".web.js", ".web.jsx", ".web.ts", ".web.tsx", ...config.resolve.extensions];
-    return config;
+      "@professionisti/shared": "../../packages/shared/src/index.ts",
+    },
+    // I file `.web.*` prima degli altri (es. icons.web.tsx con lucide-react
+    // invece di icons.tsx con lucide-react-native), come `moduleSuffixes`
+    // in tsconfig.json.
+    resolveExtensions: [".web.tsx", ".web.ts", ".web.jsx", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".mjs", ".json"],
   },
 };
 

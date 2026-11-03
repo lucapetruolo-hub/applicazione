@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, type OnModuleInit, ServiceUnavailableException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
@@ -83,7 +83,7 @@ function invoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
 }
 
 @Injectable()
-export class BillingService {
+export class BillingService implements OnModuleInit {
   private readonly logger = new Logger(BillingService.name);
   private readonly stripe: Stripe | null;
 
@@ -96,6 +96,25 @@ export class BillingService {
     private readonly invoicesService: InvoicesService,
   ) {
     this.stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+  }
+
+  onModuleInit(): void {
+    this.subscriptionsService.setStripeTrialEnder((id, end) => this.endStripeTrial(id, end));
+  }
+
+  /**
+   * Mesi gratis tolti (stessa partita IVA di un account chiuso, docs/changelog/2026-11-02-collaudo-recensioni-abusi.md):
+   * la prova su Stripe finisce alla data data, oppure subito se è già passata.
+   */
+  async endStripeTrial(stripeSubscriptionId: string, end: Date): Promise<void> {
+    if (!this.stripe) return;
+    const subscription = await this.stripe.subscriptions.retrieve(stripeSubscriptionId);
+    if (subscription.status !== "trialing") return;
+    const updated = await this.stripe.subscriptions.update(stripeSubscriptionId, {
+      trial_end: end.getTime() - Date.now() > 60_000 ? Math.floor(end.getTime() / 1000) : "now",
+      proration_behavior: "none",
+    });
+    await this.syncStripeSubscription(updated);
   }
 
   private requireStripe(): Stripe {

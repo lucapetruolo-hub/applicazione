@@ -1239,6 +1239,22 @@ const BUILDERS: Record<string, Builder> = {
     paragraphs: ["Dopo l'invio all'Agenzia delle Entrate alcuni importi sono cambiati (rimborso o lavoro riaperto). Usa \"Correggi\" sull'anno, poi esporta e invia la correzione."],
     cta: { label: "Apri Finanza e DAC7", url: `${frontendUrl()}/admin/finanza` },
   }),
+  // Promemoria di gennaio (docs/changelog/2026-11-02-admin-protezioni.md).
+  ADMIN_DAC7_DUE: (payload) => {
+    const year = typeof payload.year === "number" ? payload.year : "";
+    const days = typeof payload.daysLeft === "number" ? payload.daysLeft : null;
+    return {
+      kind: "notification",
+      tone: "urgent",
+      subject: `DAC7 ${year}: comunicazione da inviare entro il 31 gennaio`,
+      title: "DAC7 da inviare",
+      paragraphs: [
+        `La comunicazione DAC7 del ${year} all'Agenzia delle Entrate non risulta ancora inviata${days !== null ? `: mancano ${days} giorni` : ""}.`,
+        "Esporta l'anno da Finanza → DAC7, invialo e poi usa \"Segna come inviato\": parte anche l'avviso ai professionisti, che va mandato entro la stessa data.",
+      ],
+      cta: { label: "Apri DAC7", url: `${frontendUrl()}/admin/finanza/dac7` },
+    };
+  },
   ADMIN_URGENCY_ALERT: (payload) => ({
     kind: "notification",
     tone: "urgent",
@@ -1284,7 +1300,7 @@ const BUILDERS: Record<string, Builder> = {
           ? `Il cliente ha cambiato i dati per ${what} del lavoro **${job(ctx)}**.`
           : `Il cliente ti chiede ${what} per il lavoro **${job(ctx)}**.`,
         receipt
-          ? "La ricevuta te la prepariamo noi dopo \"Lavoro terminato\": tu la stampi, la firmi e la dai al cliente. Qui sotto i suoi dati."
+          ? "Dopo \"Lavoro terminato\" trovi la ricevuta già compilata: è un documento tuo, la controlli, le dai il tuo numero, la firmi e la dai al cliente. Qui sotto i suoi dati."
           : "La fai tu, col tuo programma delle fatture: qui sotto i dati da copiare.",
       ],
       details: invoiceLines.length > 0 ? [{ label: receipt ? "Ricevuta a" : "Fattura a", value: invoiceLines.join("\n"), long: true }] : undefined,
@@ -1361,12 +1377,14 @@ const BUILDERS: Record<string, Builder> = {
   ADMIN_FEE_RECONCILIATION: (payload) => {
     const alerts = Array.isArray(payload.alerts) ? payload.alerts.filter((a): a is string => typeof a === "string") : [];
     const sdi = payload.kind === "sdi";
+    // Promemoria del lunedì sulle fatture ferme (docs/changelog/2026-11-02-admin-protezioni.md).
+    const stuck = payload.kind === "sdi-stuck";
     return {
       kind: "notification",
       tone: "urgent",
-      subject: sdi ? "Fattura scartata dallo SdI" : `Trattenute di ${str(payload.month) ?? "questo mese"} da controllare`,
-      title: sdi ? "Fattura da correggere" : "Trattenute che non tornano",
-      paragraphs: sdi ? alerts : [...alerts, "Confronta le trattenute del mese con il resoconto di Stripe."],
+      subject: stuck ? "Fatture ferme allo SdI" : sdi ? "Fattura scartata dallo SdI" : `Trattenute di ${str(payload.month) ?? "questo mese"} da controllare`,
+      title: stuck ? "Fatture ferme allo SdI" : sdi ? "Fattura da correggere" : "Trattenute che non tornano",
+      paragraphs: sdi || stuck ? alerts : [...alerts, "Confronta le trattenute del mese con il resoconto di Stripe."],
       cta: { label: "Apri Finanza", url: `${frontendUrl()}/admin/finanza` },
     };
   },
@@ -1628,6 +1646,23 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Rifai la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
     };
   },
+  // Tipo cambiato dall'admin (migliorie del collaudo, gruppo 8).
+  FISCAL_ENTITY_TYPE_CHANGED: (payload, ctx) => {
+    const label = str(payload.label);
+    const note = str(payload.note);
+    return {
+      kind: "account",
+      subject: "Abbiamo cambiato il tipo del tuo account",
+      greeting: ctx.name,
+      title: "Completa i dati fiscali",
+      paragraphs: [
+        label ? `Il tuo account ora è **${label}**.` : "Abbiamo cambiato il tipo del tuo account.",
+        ...(note ? [`**Motivazione:** ${note}`] : []),
+        "Completa i dati fiscali che servono per questo tipo: ci vogliono pochi minuti. Se pensi che sia un errore, scrivici dal modulo Contatti.",
+      ],
+      cta: { label: "Completa i dati fiscali", url: `${frontendUrl()}/dashboard/fiscale` },
+    };
+  },
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
   IDENTITY_VERIFICATION_DECLINED: (payload, ctx) => {
     const reason = str(payload.reason);
@@ -1715,6 +1750,21 @@ const BUILDERS: Record<string, Builder> = {
           : `Nei prossimi ${AGENDA_LOOKAHEAD_DAYS} giorni non hai orari liberi in agenda: aggiungili per farti prenotare.`,
       ],
       cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda?tab=disponibilita` },
+    };
+  },
+  // "Metti in pausa": il giorno prima del ritorno (docs/changelog/2026-11-02-iscrizione-verifica-professionisti.md).
+  AWAY_ENDING: (payload, ctx) => {
+    const day = str(payload.dayLabel);
+    return {
+      kind: "notification",
+      subject: day ? `La tua pausa finisce: torni ${day}` : "La tua pausa finisce domani",
+      greeting: ctx.name,
+      title: "Domani torni nella ricerca",
+      paragraphs: [
+        "Da domani ricompari nella ricerca e ricevi di nuovo richieste e prenotazioni.",
+        "Controlla che gli orari in agenda siano giusti. Se ti serve qualche giorno in più, cambia la data della pausa.",
+      ],
+      cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda?tab=orari` },
     };
   },
   // "Sto arrivando" dall'agenda (§288).
@@ -1896,6 +1946,31 @@ const BUILDERS: Record<string, Builder> = {
         "Ti avvisiamo una settimana prima del primo addebito. Puoi annullare quando vuoi dalla pagina Abbonamento, anche prima della fine dei mesi gratis: non ti addebitiamo nulla.",
       ],
       details: typeof payload.amountEurCents === "number" ? [{ label: "Dopo i mesi gratis", value: `${formatEur(payload.amountEurCents)} al mese + IVA, dal ${date}` }] : undefined,
+      cta: subscriptionPage(),
+    };
+  },
+  // Mesi gratis una volta per persona o impresa (docs/changelog/2026-11-02-collaudo-recensioni-abusi.md).
+  SUBSCRIPTION_FREE_MONTHS_USED: (payload, ctx) => {
+    const until = str(payload.date) ? `Fino al lancio del **${formatDay(str(payload.date))}**` : "Fino al lancio";
+    const launched = payload.launched === true;
+    const card = payload.card === true;
+    const amount = typeof payload.amountEurCents === "number" ? `${formatEur(payload.amountEurCents)} al mese + IVA` : "al prezzo indicato";
+    return {
+      kind: "account",
+      subject: "I mesi gratis li hai già avuti",
+      greeting: ctx.name,
+      title: "Mesi gratis già usati",
+      paragraphs: [
+        "I mesi gratis spettano una volta per persona o impresa. Con questa partita IVA o questo codice fiscale li hai già avuti con un account che hai chiuso, quindi a questo account non si applicano.",
+        card
+          ? launched
+            ? `Da oggi parte Base, ${amount}, sulla carta che hai dato. Se non vuoi continuare puoi annullare dalla pagina Abbonamento.`
+            : `${until} non paghi nulla. Da quel giorno parte Base, ${amount}, sulla carta che hai dato. Puoi annullare prima dalla pagina Abbonamento: non ti addebitiamo nulla.`
+          : launched
+            ? "Per restare visibile nelle ricerche scegli un livello dalla pagina Abbonamento."
+            : `${until} non paghi nulla. Da quel giorno, per restare visibile, scegli un livello dalla pagina Abbonamento.`,
+        "Se pensi che sia un errore, scrivici da Contatti.",
+      ],
       cta: subscriptionPage(),
     };
   },

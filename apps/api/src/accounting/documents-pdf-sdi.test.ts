@@ -142,8 +142,8 @@ describe("impaginazione del PDF", () => {
   });
 });
 
-describe("numero della copia di cortesia", () => {
-  function build(kind: "PRIVATE_INDIVIDUAL" | "SOLE_PROPRIETOR", saved: Record<string, unknown> | null, lastNumber: number | null) {
+describe("ricevuta occasionale, modello numerato dal professionista", () => {
+  function build(kind: "PRIVATE_INDIVIDUAL" | "SOLE_PROPRIETOR", saved: Record<string, unknown> | null, lastNumber: string | null) {
     const prisma = {
       booking: {
         findUnique: vi.fn().mockResolvedValue({
@@ -171,7 +171,7 @@ describe("numero della copia di cortesia", () => {
       },
       courtesyDocument: {
         findUnique: vi.fn().mockResolvedValue(saved),
-        aggregate: vi.fn().mockResolvedValue({ _max: { number: lastNumber } }),
+        findFirst: vi.fn().mockResolvedValue(lastNumber ? { receiptNumber: lastNumber } : null),
         upsert: vi.fn().mockImplementation(({ create }) => Promise.resolve(create)),
         findMany: vi.fn().mockResolvedValue([]),
       },
@@ -181,25 +181,30 @@ describe("numero della copia di cortesia", () => {
     return { service: new CourtesyCopyService(prisma as never, invoices as never, audit as never, {} as never), prisma, audit };
   }
 
-  it("la prima ricevuta dell'anno prende il numero 1, la successiva il 4 dopo il 3", async () => {
+  it("il numero non lo diamo noi: la ricevuta nuova è senza, con l'ultimo usato come aiuto", async () => {
     const first = build("PRIVATE_INDIVIDUAL", null, null);
-    expect((await first.service.forProfessional("u1", "b1")).number).toBe("1/2026");
-    const next = build("PRIVATE_INDIVIDUAL", null, 3);
-    expect((await next.service.forProfessional("u1", "b1")).number).toBe("4/2026");
-    expect(next.prisma.courtesyDocument.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ kind: "RECEIPT", year: 2026, number: 4 }) }));
+    const copy = await first.service.forProfessional("u1", "b1");
+    expect(copy.number).toBeNull();
+    expect(copy.lastNumber).toBeNull();
+    expect(copy.missing).toContain("il numero della ricevuta");
+    expect(first.prisma.courtesyDocument.upsert).not.toHaveBeenCalled();
+    const next = build("PRIVATE_INDIVIDUAL", null, "3/2026");
+    expect((await next.service.forProfessional("u1", "b1")).lastNumber).toBe("3/2026");
   });
 
-  it("riaprendo la stessa ricevuta il numero resta lo stesso", async () => {
-    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { number: 2, year: 2026 }, 9);
-    expect((await service.forProfessional("u1", "b1")).number).toBe("2/2026");
+  it("senza numero il PDF non parte", async () => {
+    const { service, prisma } = build("PRIVATE_INDIVIDUAL", null, null);
+    await expect(service.forProfessionalPdf("u1", "b1")).rejects.toThrow("il numero della ricevuta");
     expect(prisma.courtesyDocument.upsert).not.toHaveBeenCalled();
   });
 
-  it("due copie aperte insieme: chi perde il numero prende il successivo", async () => {
-    const { service, prisma } = build("PRIVATE_INDIVIDUAL", null, 3);
-    prisma.courtesyDocument.aggregate.mockResolvedValueOnce({ _max: { number: 3 } }).mockResolvedValueOnce({ _max: { number: 4 } });
-    prisma.courtesyDocument.upsert.mockRejectedValueOnce(Object.assign(new Error("unique"), { code: "P2002" }));
-    expect((await service.forProfessional("u1", "b1")).number).toBe("5/2026");
+  it("il numero scritto dal professionista resta suo, e due ricevute non possono avere lo stesso", async () => {
+    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { receiptNumber: "7", year: 2026 }, null);
+    expect((await service.forProfessional("u1", "b1")).number).toBe("7");
+    await service.saveDetails("u1", "b1", { number: " 8/2026 " });
+    expect(prisma.courtesyDocument.upsert).toHaveBeenCalledWith(expect.objectContaining({ update: { receiptNumber: "8/2026" } }));
+    prisma.courtesyDocument.findFirst.mockResolvedValue({ id: "other", receiptNumber: "5/2026" });
+    await expect(service.saveDetails("u1", "b1", { number: "5/2026" })).rejects.toThrow("già usato");
   });
 
   it("con la partita IVA niente copia: la fattura la fa il professionista col suo programma", async () => {
@@ -210,7 +215,7 @@ describe("numero della copia di cortesia", () => {
   });
 
   it("scaricando il PDF ci segniamo quando e con che importo", async () => {
-    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { number: 2, year: 2026 }, null);
+    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { receiptNumber: "2/2026", year: 2026 }, null);
     const copy = await service.forProfessionalPdf("u1", "b1");
     // Le righe sono le voci del lavoro terminato (B-03).
     expect(copy.lines).toEqual([
@@ -244,7 +249,7 @@ describe("numero della copia di cortesia", () => {
   });
 
   it("ricevuta a una partita IVA: ritenuta del 20% salvo spunta tolta, niente codice destinatario (C-01, C-04)", async () => {
-    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { number: 3, year: 2026 }, null);
+    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { receiptNumber: "3/2026", year: 2026 }, null);
     const vatRequest = { kind: "VAT", name: "Bar Sport S.r.l.", taxCode: "RSSMRA80A01H501U", vatNumber: "12345678903", sdiRecipientCode: "ABC1234", pecEmail: null, street: "Via Roma", houseNumber: "1", postalCode: "00100", city: "Roma", province: "RM", updatedAt: new Date() };
     prisma.booking.findUnique.mockResolvedValue({ ...(await prisma.booking.findUnique()), quote: { invoiceRequest: vatRequest, guidedRequest: { description: "Babysitter", category: { label: "Babysitter" } } } });
     const copy = await service.forProfessional("u1", "b1");
@@ -255,16 +260,16 @@ describe("numero della copia di cortesia", () => {
     expect(copy.customerFields).toBeNull();
     expect(copy.hints[0]).toContain("Certificazione Unica");
 
-    prisma.courtesyDocument.findUnique.mockResolvedValue({ number: 3, year: 2026, withholding: false });
+    prisma.courtesyDocument.findUnique.mockResolvedValue({ receiptNumber: "3/2026", year: 2026, withholding: false });
     expect((await service.forProfessional("u1", "b1")).withholding).toEqual({ applies: false, amountEurCents: 0, netEurCents: 12000 });
   });
 
-  it("l'admin vede solo i documenti preparati, non dà numeri nuovi e resta nel registro", async () => {
-    const missing = build("PRIVATE_INDIVIDUAL", null, 3);
+  it("l'admin vede solo i documenti preparati e resta nel registro", async () => {
+    const missing = build("PRIVATE_INDIVIDUAL", null, "3");
     await expect(missing.service.forAdmin("b1", "admin-1")).rejects.toThrow("Documento non trovato.");
     expect(missing.prisma.courtesyDocument.upsert).not.toHaveBeenCalled();
 
-    const { service, prisma, audit } = build("PRIVATE_INDIVIDUAL", { id: "d1", kind: "RECEIPT", number: 2, year: 2026 }, 9);
+    const { service, prisma, audit } = build("PRIVATE_INDIVIDUAL", { id: "d1", kind: "RECEIPT", receiptNumber: "2/2026", year: 2026 }, "9");
     expect((await service.forAdmin("b1", "admin-1")).number).toBe("2/2026");
     expect(prisma.courtesyDocument.upsert).not.toHaveBeenCalled();
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ entityType: "CourtesyDocument", entityId: "b1", fieldName: "read", changedByUserId: "admin-1" }));
@@ -275,15 +280,15 @@ describe("numero della copia di cortesia", () => {
     await service.adminList({ q: "4/2026" });
     const where = prisma.courtesyDocument.findMany.mock.calls[0]![0].where;
     expect(where.kind).toBe("RECEIPT");
-    expect(where.OR).toContainEqual({ number: 4, year: 2026 });
+    expect(where.OR).toContainEqual({ receiptNumber: { contains: "4/2026", mode: "insensitive" } });
     await service.adminList({ q: "Rossi", year: 2026 });
     const second = prisma.courtesyDocument.findMany.mock.calls[1]![0].where;
     expect(second).toMatchObject({ kind: "RECEIPT", year: 2026 });
-    expect(second.OR).not.toContainEqual(expect.objectContaining({ number: expect.anything() }));
+    expect(second.OR).not.toContainEqual(expect.objectContaining({ receiptNumber: expect.anything() }));
   });
 
   it("sulla copia c'è l'importo dell'ultimo PDF, e si scrive \"Pagato online\" senza dire con cosa", async () => {
-    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { number: 2, year: 2026, pdfTotalEurCents: 12000 }, null);
+    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { receiptNumber: "2/2026", year: 2026, pdfTotalEurCents: 12000 }, null);
     prisma.booking.findUnique.mockResolvedValueOnce({
       ...(await prisma.booking.findUnique()),
       jobPayment: { paymentMethod: "MANOVIA", balanceDirect: false, paidEurCents: 12000, refundedEurCents: 2000, grossAmountEurCents: 12000, balancePaidAt: null, directReportedAt: null },
@@ -301,7 +306,7 @@ describe("numero della copia di cortesia", () => {
       client: { name: "Anna", surname: "Bianchi", deletedAt: null },
       quote: { invoiceRequest: null, guidedRequest: { category: { label: "Idraulico" } } },
     });
-    const doc = { bookingId: "b1", kind: "RECEIPT", number: 4, year: 2026, customerName: null, pdfDownloadedAt: new Date("2026-10-20T10:00:00Z"), pdfTotalEurCents: 12000 };
+    const doc = { bookingId: "b1", kind: "RECEIPT", receiptNumber: "4/2026", year: 2026, customerName: null, pdfDownloadedAt: new Date("2026-10-20T10:00:00Z"), pdfTotalEurCents: 12000 };
     expect(courtesyDocumentSummary(doc, booking(0))).toMatchObject({ label: "Ricevuta n. 4/2026", customerName: "Anna Bianchi", jobLabel: "Idraulico", totalEurCents: 12000, amountChanged: false });
     expect(courtesyDocumentSummary(doc, booking(2000)).amountChanged).toBe(true);
     // Mai "cambiato" prima del primo PDF.
@@ -318,8 +323,8 @@ describe("numero della copia di cortesia", () => {
   });
 
   it("nome del documento nelle liste", () => {
-    expect(courtesyDocumentLabel({ number: 4, year: 2026 })).toBe("Ricevuta n. 4/2026");
-    expect(courtesyDocumentLabel({ number: null, year: 2026 })).toBe("Ricevuta senza numero");
+    expect(courtesyDocumentLabel({ receiptNumber: "4/2026" })).toBe("Ricevuta n. 4/2026");
+    expect(courtesyDocumentLabel({ receiptNumber: null })).toBe("Ricevuta senza numero");
   });
 });
 
@@ -329,7 +334,7 @@ describe("riepilogo dell'anno per il commercialista", () => {
   const doc = (over: Record<string, unknown>, booking: Record<string, unknown>) => ({
     bookingId: "b",
     kind: "RECEIPT",
-    number: null,
+    receiptNumber: null,
     year: 2026,
     pdfDownloadedAt: null,
     pdfTotalEurCents: null,
@@ -357,11 +362,12 @@ describe("riepilogo dell'anno per il commercialista", () => {
     return { service: new CourtesyCopyService(prisma as never, invoices as never, { record: vi.fn() } as never, {} as never), prisma };
   }
 
-  it("ricevute in ordine di numero, bollo e clienti con partita IVA", async () => {
+  it("ricevute in ordine di data col numero del professionista, bollo e clienti con partita IVA", async () => {
+    const at = (day: string) => ({ ...paid(0), directReportedAt: new Date(`2026-06-${day}T09:00:00Z`) });
     const { service, prisma } = build([
-      doc({ bookingId: "r2", number: 2, pdfTotalEurCents: 10000 }, { jobPayment: paid(10000), quote: { invoiceRequest: vatRequest, guidedRequest: { category: { label: "Elettricista" } } } }),
-      doc({ bookingId: "r3", number: 3, pdfTotalEurCents: 15000 }, { jobPayment: paid(12200) }),
-      doc({ bookingId: "r1", number: 1 }, { jobPayment: paid(5000) }),
+      doc({ bookingId: "r2", receiptNumber: "2/2026", pdfTotalEurCents: 10000 }, { jobPayment: { ...at("02"), grossAmountEurCents: 10000 }, quote: { invoiceRequest: vatRequest, guidedRequest: { category: { label: "Elettricista" } } } }),
+      doc({ bookingId: "r3", receiptNumber: "3/2026", pdfTotalEurCents: 15000 }, { jobPayment: { ...at("03"), grossAmountEurCents: 12200 } }),
+      doc({ bookingId: "r1", receiptNumber: "1/2026" }, { jobPayment: { ...at("01"), grossAmountEurCents: 5000 } }),
     ]);
     const summary = await service.yearSummaryForProfessional("user-1", 2026);
 
@@ -507,7 +513,7 @@ describe("documenti da sistemare a dicembre", () => {
     bookingId,
     professionalProfileId,
     kind: "RECEIPT",
-    number,
+    receiptNumber: `${number}/2026`,
     year: 2026,
     pdfDownloadedAt: pdfTotalEurCents !== null ? new Date("2026-06-02T09:00:00Z") : null,
     pdfTotalEurCents,
@@ -515,6 +521,8 @@ describe("documenti da sistemare a dicembre", () => {
     booking: {
       recipientName: null,
       recipientSurname: null,
+      scheduledAt: new Date("2026-06-01T08:00:00Z"),
+      professionalCompletedAt: new Date("2026-06-02T09:00:00Z"),
       jobPayment: grossAmountEurCents !== null ? { paymentMethod: "DIRECT", balanceDirect: false, paidEurCents: 0, refundedEurCents: 0, grossAmountEurCents } : null,
       client: { name: "Anna", surname: "Bianchi", deletedAt: null },
       quote: { invoiceRequest: null, guidedRequest: { category: { label: "Idraulico" } } },
@@ -577,9 +585,10 @@ describe("documenti da sistemare a dicembre", () => {
       quote: { guidedRequest: { category: { label: "Idraulico" } } },
     });
     const notDownloaded = { ...doc("p1", "b6", 6, null, 5000), booking: { ...doc("p1", "b6", 6, null, 5000).booking, status: "COMPLETED" } };
+    const unnumbered = { ...doc("p1", "b11", 0, null, null), receiptNumber: null, booking: { ...doc("p1", "b11", 0, null, null).booking, status: "COMPLETED" } };
     const notFinished = { ...doc("p1", "b7", 7, null, 5000), booking: { ...doc("p1", "b7", 7, null, 5000).booking, status: "CONFIRMED" } };
     const prisma = {
-      courtesyDocument: { findMany: vi.fn().mockResolvedValue([notDownloaded, notFinished]) },
+      courtesyDocument: { findMany: vi.fn().mockResolvedValue([notDownloaded, unnumbered, notFinished]) },
       booking: {
         findMany: vi.fn().mockResolvedValue([
           completed("b8", "2026-11-12T10:00:00Z", "2026-11-12T08:00:00Z"),
@@ -599,6 +608,8 @@ describe("documenti da sistemare a dicembre", () => {
     expect(where.OR[0].professionalCompletedAt).toEqual({ gte: new Date("2025-12-31T23:00:00Z"), lt: new Date("2026-12-31T23:00:00Z") });
     expect(notifications.notify.mock.calls[0]![2].documents).toEqual([
       { label: "Ricevuta n. 6/2026", customerName: "Anna Bianchi", reason: "NOT_DOWNLOADED" },
+      // Senza numero: il lavoro e la data, non "Ricevuta senza numero".
+      { label: "Ricevuta per Idraulico del 2 giugno 2026", customerName: "Anna Bianchi", reason: "MISSING_AMOUNT" },
       { label: "Idraulico del 2 marzo 2026", customerName: "Sara Neri", reason: "NO_RECEIPT" },
       { label: "Idraulico del 12 novembre 2026", customerName: "Sara Neri", reason: "NO_RECEIPT" },
     ]);

@@ -772,6 +772,17 @@ export const updateEngagementRadiusSchema = z.object({
 });
 export type UpdateEngagementRadiusInput = z.infer<typeof updateEngagementRadiusSchema>;
 
+/**
+ * "Metti in pausa" (collaudo C-16): il giorno in cui si torna a ricevere
+ * richieste (AAAA-MM-GG), o `null` per riprendere subito. Al massimo
+ * `MAX_AWAY_DAYS` giorni: oltre conviene chiudere l'account o l'abbonamento.
+ */
+export const MAX_AWAY_DAYS = 180;
+export const setAwaySchema = z.object({
+  until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Scegli il giorno in cui torni.").nullable(),
+});
+export type SetAwayInput = z.infer<typeof setAwaySchema>;
+
 /** Recensione: consentita solo se legata a una prenotazione confermata (CLAUDE.md §8). */
 export const reviewSchema = z.object({
   bookingId: z.guid(),
@@ -990,7 +1001,9 @@ export type AdminTwoFactorCodeInput = z.infer<typeof adminTwoFactorCodeSchema>;
  */
 // GUIDED_REQUEST: una richiesta ricevuta, segnalata dal professionista che
 // l'ha ricevuta (menu hamburger di /dashboard/richieste, CHANGELOG §130).
-export const contentReportTargetTypes = ["PROFESSIONAL_PROFILE", "REVIEW", "GUIDED_REQUEST"] as const;
+// CHAT_MESSAGE: un messaggio scritto a mano in chat, segnalato dall'altra
+// parte (docs/changelog/2026-11-02-collaudo-recensioni-abusi.md).
+export const contentReportTargetTypes = ["PROFESSIONAL_PROFILE", "REVIEW", "GUIDED_REQUEST", "CHAT_MESSAGE"] as const;
 export type ContentReportTargetType = (typeof contentReportTargetTypes)[number];
 // Motivo scelto da un elenco fisso (docs/CHANGELOG.md §319): dice se il
 // contenuto è segnalato come illegale. In quel caso servono la spiegazione
@@ -1202,6 +1215,13 @@ export const setDac7RuleSchema = z.object({
   includeDirectPayments: z.boolean(),
 });
 export type SetDac7RuleInput = z.infer<typeof setDac7RuleSchema>;
+
+/** "Segna come inviato": il protocollo della ricevuta dell'Agenzia delle Entrate, come prova dell'invio (docs/changelog/2026-11-02-admin-protezioni.md). */
+export const DAC7_PROTOCOL_MIN = 5;
+export const dac7SubmittedSchema = z.object({
+  protocol: z.string().trim().min(DAC7_PROTOCOL_MIN, "Scrivi il numero di protocollo della ricevuta.").max(100),
+});
+export type Dac7SubmittedInput = z.infer<typeof dac7SubmittedSchema>;
 
 /**
  * Identità della piattaforma richiesta dal blocco MessageSpec/Platform

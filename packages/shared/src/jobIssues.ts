@@ -200,14 +200,21 @@ export function jobIssueCanAppeal(
   return now.getTime() <= issue.resolvedAt.getTime() + JOB_ISSUE_APPEAL_DAYS * DAY_MS;
 }
 
-/** Restrizioni in corso su un profilo (misure delle segnalazioni). */
+/**
+ * Restrizioni in corso su un profilo (misure delle segnalazioni). Con
+ * `awayUntil` (pausa scelta dal professionista, collaudo C-16) anche la pausa
+ * conta come "non riceve richieste": `blocked` vale per entrambe, `away` dice
+ * se è la pausa.
+ */
 export function professionalRestrictions(
-  p: { demotedUntil: Date | null; requestsBlockedUntil: Date | null },
+  p: { demotedUntil: Date | null; requestsBlockedUntil: Date | null; awayUntil?: Date | null },
   now: Date,
-): { demoted: boolean; blocked: boolean } {
+): { demoted: boolean; blocked: boolean; away: boolean } {
+  const away = !!p.awayUntil && p.awayUntil.getTime() > now.getTime();
   return {
     demoted: !!p.demotedUntil && p.demotedUntil.getTime() > now.getTime(),
-    blocked: !!p.requestsBlockedUntil && p.requestsBlockedUntil.getTime() > now.getTime(),
+    blocked: away || (!!p.requestsBlockedUntil && p.requestsBlockedUntil.getTime() > now.getTime()),
+    away,
   };
 }
 

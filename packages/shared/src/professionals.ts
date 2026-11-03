@@ -405,6 +405,8 @@ export type ProfessionalDetail = ProfessionalSearchResult & {
    * né prenotazioni. Mai il motivo: è un fatto tra il professionista e noi.
    */
   acceptingRequests: boolean;
+  /** In pausa per scelta sua (collaudo C-16): da questo giorno torna a ricevere richieste. */
+  awayUntil?: string | null;
 };
 
 export const PLACEHOLDER_PROFESSIONALS: PlaceholderProfessional[] = [

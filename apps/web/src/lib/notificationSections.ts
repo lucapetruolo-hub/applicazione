@@ -6,7 +6,7 @@ import type { UnreadNotification } from "./AuthContext";
  * esplicita dell'utente: "indica anche in quale sezione c'è stato
  * l'aggiornamento"), non solo il totale nell'header.
  */
-const PROFESSIONAL_RICHIESTE_TYPES = new Set(["NEW_LEAD", "QUOTE_DATE_PROPOSED", "QUOTE_REJECTED", "TIMELINE_MESSAGE_FROM_CLIENT"]);
+const PROFESSIONAL_RICHIESTE_TYPES = new Set(["NEW_LEAD", "QUOTE_DATE_PROPOSED", "QUOTE_REJECTED", "QUOTE_NOT_CHOSEN", "REQUEST_WITHDRAWN", "TIMELINE_MESSAGE_FROM_CLIENT"]);
 const PROFESSIONAL_LAVORI_TYPES = new Set(["QUOTE_ACCEPTED", "JOB_INVOICE_REQUESTED", "BOOKING_NO_SHOW_REPORTED", "BOOKING_CANCELED_BY_CLIENT", "BOOKING_REOPENED_BY_CLIENT", "BOOKING_CLIENT_CONFIRMED", "BOOKING_CLIENT_CANT_COME", "BOOKING_CLIENT_CANT_COME_UNDONE", "QUOTE_DATE_CONFIRMED_BY_CLIENT", "QUOTE_DATE_REJECTED_BY_CLIENT", "JOB_ISSUE_REPORTED", "JOB_ISSUE_SETTLED", "JOB_ISSUE_ESCALATED", "JOB_ISSUE_AUTO_ESCALATED", "JOB_ISSUE_INFO_REQUESTED", "JOB_ISSUE_UNRESOLVED", "JOB_DEPOSIT_PAID", "JOB_BALANCE_PAID", "JOB_PAYOUT_SENT", "NEW_REVIEW", "JOB_CLOSE_REMINDER", "JOB_CLOSE_EXPIRED"]);
 const CLIENT_RICHIESTE_TYPES = new Set([
   "NEW_QUOTE",
@@ -136,6 +136,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   if (type === "DAC7_ANNUAL_NOTICE") return "/dashboard/fiscale/dac7";
   if (type === "DAC7_DATA_REMINDER") return "/dashboard/fiscale";
   if (type === "ADMIN_DAC7_NEEDS_CORRECTION") return "/admin/finanza";
+  if (type === "ADMIN_DAC7_DUE") return "/admin/finanza/dac7";
   if (type === "ADMIN_URGENCY_ALERT") return "/admin";
   if (type === "ADMIN_SEARCH_DEMAND_ALERT") return "/admin/numeri-professionisti";
   if (type === "ADMIN_WEEKLY_ADVICE") return "/admin/andamento";
@@ -151,13 +152,14 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
     return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}&documenti=1` : "/le-mie-richieste?tab=lavori";
   }
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
-  if (type === "TAX_ID_INVALID") return "/dashboard/fiscale";
+  if (type === "TAX_ID_INVALID" || type === "FISCAL_ENTITY_TYPE_CHANGED") return "/dashboard/fiscale";
   if (type === "PROFILE_SETUP_REMINDER") {
     // Carta per i mesi gratis (docs/changelog/2026-10-30-iscrizione-carta-solida.md): dritti ai livelli.
     const missing = payload && typeof payload === "object" ? (payload as { missing?: unknown }).missing : null;
     return Array.isArray(missing) && missing.includes("CARD") ? "/dashboard/abbonamento#livelli" : "/dashboard";
   }
   if (type === "AGENDA_REMINDER") return "/dashboard/agenda?tab=disponibilita";
+  if (type === "AWAY_ENDING") return "/dashboard/agenda?tab=orari";
   if (type === "AGENDA_TOMORROW_SUMMARY") return "/dashboard/agenda";
   if (type.startsWith("IDENTITY_VERIFICATION_") || type === "PROFILE_VERIFICATION_REMOVED") return "/dashboard/verifica-identita";
   if (type === "ADMIN_JOB_BALANCE_UNPAID" || type === "ADMIN_JOB_NOT_CLOSED" || type === "ADMIN_STRIPE_DISPUTE" || type === "ADMIN_STRIPE_DISPUTE_DUE" || type === "ADMIN_JOB_PAYMENT_LONG_HOLD" || type === "ADMIN_JOB_REFUND_FAILED" || type === "ADMIN_STRIPE_ACCOUNT_UNREADABLE") return "/admin/pagamenti";

@@ -35,6 +35,8 @@ export type ProfessionalStatsRow = {
   pausedAt: Date | null;
   invitePendingAt: Date | null;
   requestsBlockedUntil: Date | null;
+  /** "Metti in pausa" (collaudo C-16): opzionale per le righe che non lo leggono. */
+  awayUntil?: Date | null;
   isDemo: boolean;
   categorySlugs: string[];
   user: { suspendedAt: Date | null };
@@ -46,7 +48,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Un solo stato per professionista: prima quello che lo tiene fuori dalla ricerca per più tempo. */
 export function professionalStatusOf(
-  row: Pick<ProfessionalStatsRow, "suspendedAt" | "requestsBlockedUntil" | "invitePendingAt" | "pausedAt" | "isDemo" | "user"> & Parameters<typeof publicVisibilityMissing>[0],
+  row: Pick<ProfessionalStatsRow, "suspendedAt" | "requestsBlockedUntil" | "invitePendingAt" | "pausedAt" | "awayUntil" | "isDemo" | "user"> & Parameters<typeof publicVisibilityMissing>[0],
   now: Date,
 ): ProfessionalStatusKey {
   if (row.suspendedAt || row.user.suspendedAt) return "SUSPENDED";
@@ -54,6 +56,8 @@ export function professionalStatusOf(
   if (row.invitePendingAt) return "INVITE_PENDING";
   if (row.pausedAt) return "PAUSED";
   if (publicVisibilityMissing(row)) return "FISCAL_MISSING";
+  // Pausa scelta dal professionista: la più breve, quindi l'ultima.
+  if (row.awayUntil && row.awayUntil.getTime() > now.getTime()) return "AWAY";
   return "VISIBLE";
 }
 

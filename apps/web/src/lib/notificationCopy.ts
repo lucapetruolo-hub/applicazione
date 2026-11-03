@@ -22,9 +22,11 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   QUOTE_DATE_CONFIRMED_BY_CLIENT: { icon: "✅", message: "Il cliente ha accettato la nuova data che hai proposto: l'appuntamento è spostato." },
   QUOTE_DATE_REJECTED_BY_CLIENT: { icon: "📅", message: "Il cliente non può nella data che hai proposto: l'appuntamento resta com'era." },
   JOB_COMPLETED: { icon: "✅", message: "Il professionista ha segnalato il lavoro come terminato." },
-  BOOKING_CANCELED_BY_PROFESSIONAL: { icon: "⚠️", message: "Un intervento è stato annullato dal professionista." },
-  BOOKING_CANCELED_BY_CLIENT: { icon: "⚠️", message: "Il cliente ha annullato un intervento." },
+  BOOKING_CANCELED_BY_PROFESSIONAL: { icon: "⚠️", message: "Il professionista ha annullato un lavoro." },
+  BOOKING_CANCELED_BY_CLIENT: { icon: "⚠️", message: "Il cliente ha annullato un lavoro." },
   QUOTE_REJECTED: { icon: "😕", message: "Il cliente ha rifiutato il tuo preventivo." },
+  QUOTE_NOT_CHOSEN: { icon: "🙁", message: "Il cliente ha scelto un altro professionista." },
+  REQUEST_WITHDRAWN: { icon: "↩️", message: "Il cliente ha ritirato una richiesta: non gli serve più." },
   QUOTE_WITHDRAWN: { icon: "↩️", message: "Il professionista ha ritirato il preventivo." },
   QUOTE_DEPOSIT_REFUNDED: { icon: "↩️", message: "Il preventivo non si poteva più confermare: ti abbiamo rimborsato l'acconto." },
   LEAD_DECLINED: { icon: "🙁", message: "Un professionista ha rifiutato la tua richiesta." },
@@ -72,6 +74,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   STRIPE_ACCOUNT_RESTRICTED: { icon: "⚠️", message: "Stripe ha sospeso i pagamenti online sul tuo account: completa i dati in Fisco e pagamenti." },
   PROFILE_VERIFIED: { icon: "✅", message: "Identità verificata: ora mostri il badge Verificato e puoi inviare preventivi." },
   PROFILE_VERIFICATION_REMOVED: { icon: "⚠️", message: "Abbiamo tolto il badge Verificato dal tuo profilo: rifai la verifica dell'identità." },
+  // Tipo cambiato dall'admin (migliorie del collaudo, gruppo 8).
+  FISCAL_ENTITY_TYPE_CHANGED: { icon: "🧾", message: "Abbiamo cambiato il tipo del tuo account: completa i dati fiscali." },
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
   IDENTITY_VERIFICATION_DECLINED: { icon: "🪪", message: "La verifica dell'identità non è andata a buon fine: puoi riprovare subito." },
   // Verifica in attesa ripresa e promemoria (§256).
@@ -82,6 +86,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   PROFILE_SETUP_REMINDER: { icon: "📋", message: "Ti manca poco per completare il profilo: in Oggi trovi il prossimo passo." },
   // Agenda vuota o senza disponibilità nei prossimi giorni (§274): il testo dipende dal payload, vedi sotto.
   AGENDA_REMINDER: { icon: "📅", message: "Non hai ancora orari liberi in agenda: aggiungili per farti prenotare." },
+  AWAY_ENDING: { icon: "📅", message: "La tua pausa finisce domani: controlla gli orari in agenda." },
   // Agenda (§288).
   PROFESSIONAL_ON_THE_WAY: { icon: "🚐", message: "Il professionista sta arrivando." },
   AGENDA_TOMORROW_SUMMARY: { icon: "📅", message: "Ecco i tuoi lavori di domani." },
@@ -118,6 +123,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_PAYMENT_DEBT: { icon: "💳", message: "Hai un importo da restituire su un lavoro: lo tratteniamo dai tuoi prossimi pagamenti online." },
   ADMIN_JOB_PAYMENT_LONG_HOLD: { icon: "⏳", message: "Un pagamento online è bloccato da quasi 90 giorni: decidi se sbloccarlo o rimborsare." },
   ADMIN_DAC7_NEEDS_CORRECTION: { icon: "⚠️", message: "DAC7: importi cambiati dopo l'invio, l'anno va corretto." },
+  ADMIN_DAC7_DUE: { icon: "⏰", message: "DAC7: la comunicazione dell'anno scorso va inviata entro il 31 gennaio." },
   ADMIN_URGENCY_ALERT: { icon: "⚡", message: "Richieste urgenti fuori soglia questa settimana: guarda i numeri nell'area admin." },
   ADMIN_SEARCH_DEMAND_ALERT: { icon: "🔎", message: "Questa settimana alcune ricerche non hanno trovato nessun professionista vicino: guarda dove." },
   ADMIN_WEEKLY_ADVICE: { icon: "💡", message: "Sono pronti i consigli della settimana: cosa fare, già deciso dai numeri." },
@@ -140,6 +146,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   // Abbonamento a livelli (docs/CHANGELOG.md §161).
   SUBSCRIPTION_BONUS_MONTH: { icon: "🎁", message: "Ti regaliamo un altro mese gratis." },
   SUBSCRIPTION_FREE_MONTHS_STARTED: { icon: "✅", message: "Carta salvata: i tuoi mesi gratis sono attivi. Ti avvisiamo una settimana prima del primo addebito." },
+  SUBSCRIPTION_FREE_MONTHS_USED: { icon: "ℹ️", message: "I mesi gratis spettano una volta per persona o impresa: li hai già avuti con un account chiuso. Tocca per i dettagli." },
   SUBSCRIPTION_TRIAL_ENDING: { icon: "⏳", message: "I tuoi mesi gratis stanno per finire: scegli un livello per restare visibile nelle ricerche." },
   SUBSCRIPTION_LIMIT_NEAR: { icon: "📈", message: "Ti stai avvicinando ai lavori compresi nel tuo livello." },
   // Lavori esauriti: il profilo resta nelle ricerche (docs/CHANGELOG.md §362).
@@ -223,6 +230,37 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   if (type === "SUBSCRIPTION_PAUSED" && data.reason === "CARD_NEEDED") {
     return { icon: "💳", message: "Aggiungi la carta per usare i mesi gratis: oggi non paghi nulla e il tuo profilo torna nelle ricerche." };
   }
+  // Lavori: quale e con chi (collaudo F-16); `who` e `jobLabel` li aggiunge il server.
+  const who = text(data.who);
+  if (type === "REQUEST_WITHDRAWN") {
+    return { icon: "↩️", message: `Il cliente ha ritirato la richiesta${jobSuffix}: non gli serve più.` };
+  }
+  if (type === "QUOTE_NOT_CHOSEN") {
+    return { icon: "🙁", message: `Il cliente ha scelto un altro professionista${jobSuffix}.` };
+  }
+  if (type === "BOOKING_CANCELED_BY_CLIENT") {
+    const late = text(data.lateNotice) ? `, con meno di ${text(data.lateNotice)} di preavviso` : "";
+    const kept = typeof data.keptDepositEurCents === "number" && data.keptDepositEurCents > 0 ? `: l'acconto di ${formatEur(data.keptDepositEurCents)} resta a te` : "";
+    if (data.clientAccountClosed === true) return { icon: "⚠️", message: `Il cliente ha chiuso il suo account: l'appuntamento${jobSuffix} è annullato.` };
+    return { icon: "⚠️", message: `${who ?? "Il cliente"} ha annullato l'appuntamento${jobSuffix}${late}${kept}.` };
+  }
+  if (type === "BOOKING_CANCELED_BY_PROFESSIONAL") {
+    if (data.accountClosed === true) return { icon: "⚠️", message: `${who ?? "Il professionista"} ha chiuso il suo account: l'appuntamento${jobSuffix} è annullato.` };
+    return { icon: "⚠️", message: `${who ?? "Il professionista"} ha annullato l'appuntamento${jobSuffix}.` };
+  }
+  if (type === "NEW_REVIEW" && data.updated !== true && (who || typeof data.rating === "number")) {
+    const stars = typeof data.rating === "number" ? ` ${data.rating} ${data.rating === 1 ? "stella" : "stelle"}` : "";
+    return { icon: "⭐", message: `${who ?? "Un cliente"} ti ha lasciato una recensione${stars ? ` da${stars}` : ""}${jobSuffix}: è già visibile.` };
+  }
+  if (type === "JOB_BALANCE_AUTO_CHARGED" && typeof data.amountEurCents === "number") {
+    return { icon: "💳", message: `Il lavoro è chiuso${jobSuffix}: abbiamo addebitato il saldo di ${formatEur(data.amountEurCents)} sulla carta dell'acconto.` };
+  }
+  if (type === "JOB_COMPLETED" && typeof data.finalAmountEurCents === "number" && !(typeof data.changeReason === "string" && data.changeReason.trim())) {
+    return { icon: "✅", message: `${who ?? "Il professionista"} ha segnato il lavoro come terminato${jobSuffix}: importo finale ${formatEur(data.finalAmountEurCents)}.` };
+  }
+  if (type === "JOB_CLOSE_REMINDER" && data.immediate === true) {
+    return { icon: "✅", message: `${who ?? "Il cliente"} ha confermato che il lavoro${jobSuffix} è terminato: segnalalo anche tu con l'importo finale.` };
+  }
   if (type === "NEW_LEAD" && text(data.category)) {
     const where = text(data.city) ? ` a ${text(data.city)}` : "";
     return { icon: data.isUrgent === true ? "⚡" : "🎉", message: `${data.isUrgent === true ? "Richiesta urgente" : "Nuova richiesta"}: ${text(data.category)}${where}` };
@@ -303,5 +341,10 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
     const resend = data.canResend === true ? " Puoi inviargli un nuovo preventivo." : "";
     return { icon: "😕", message: `Il cliente ha rifiutato il tuo preventivo.${note}${resend}` };
   }
-  return NOTIFICATION_COPY[type] ?? DEFAULT_COPY;
+  const base = NOTIFICATION_COPY[type] ?? DEFAULT_COPY;
+  // Ogni altro avviso di un lavoro dice almeno quale (collaudo F-16).
+  if (job && typeof data.bookingId === "string" && NOTIFICATION_COPY[type]) {
+    return { icon: base.icon, message: `${base.message.replace(/\.$/, "")}${jobSuffix}` };
+  }
+  return base;
 }

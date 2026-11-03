@@ -17,6 +17,7 @@ import { CardButton } from "@/components/CardButton";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
 import { SubscriptionPauseBanner } from "@/components/SubscriptionPauseBanner";
 import { IssueSanctionBanner } from "@/components/IssueSanctionBanner";
+import { AwayCard } from "@/components/AwayCard";
 import { BoostSection } from "@/components/BoostSection";
 import { SetupJourneyCard, useSetupJourney } from "@/components/verification/SetupJourney";
 import { WeatherStrip, jobsHeadline, type DayJobRow } from "@/components/DaysAhead";
@@ -40,6 +41,8 @@ export default function DashboardTodayPage() {
   const [daysAhead, setDaysAhead] = useState<DayAhead[] | null | "failed">(null);
   const [insights, setInsights] = useState<ProfessionalInsights | null>(null);
   const [subscription, setSubscription] = useState<MySubscription | null>(null);
+  // Pausa scelta dal professionista (collaudo C-16): in Home solo mentre dura.
+  const [awayUntil, setAwayUntil] = useState<string | null>(null);
   const [restrictions, setRestrictions] = useState<{ demotedUntil?: string | null; requestsBlockedUntil?: string | null } | null>(null);
   const [profileMissing, setProfileMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +69,10 @@ export default function DashboardTodayPage() {
     apiClient.getMyInsights(token).then(setInsights).catch(() => setInsightsFailed(true));
     apiClient.getMySubscription(token).then(setSubscription).catch(() => setSubscription(null));
     loadMyProfessionalProfile(token)
-      .then((p) => setRestrictions(p ? { demotedUntil: p.demotedUntil, requestsBlockedUntil: p.requestsBlockedUntil } : null))
+      .then((p) => {
+        setRestrictions(p ? { demotedUntil: p.demotedUntil, requestsBlockedUntil: p.requestsBlockedUntil } : null);
+        setAwayUntil(p?.awayUntil ?? null);
+      })
       .catch(() => setRestrictions(null));
   }, [token, user?.isProfessional, loadAttempt]);
 
@@ -234,6 +240,7 @@ export default function DashboardTodayPage() {
 
         {subscription ? <SubscriptionPauseBanner sub={subscription} profileStepsElsewhere /> : null}
         {restrictions ? <IssueSanctionBanner {...restrictions} /> : null}
+        {token ? <AwayCard token={token} awayUntil={awayUntil} onChange={setAwayUntil} onlyWhenAway /> : null}
         {/* Preventivi da mandare e date proposte dai clienti in cima a tutto,
             sopra meteo e lavori, a tutta larghezza anche sul computer
             (docs/CHANGELOG.md §403, Luca: "è la cosa più importante"). Senza

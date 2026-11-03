@@ -1,8 +1,72 @@
 import { describe, expect, it, vi } from "vitest";
-import { birthDateFromCodiceFiscale, birthPlaceFromCodiceFiscale, codiceFiscaleMismatches, codiceFiscaleMismatchMessage, fiscalFieldErrors, sexFromCodiceFiscale } from "@professionisti/shared";
+import {
+  birthDateFromCodiceFiscale,
+  birthPlaceFromCodiceFiscale,
+  codiceFiscaleMismatches,
+  codiceFiscaleMismatchMessage,
+  codiceFiscaleProblem,
+  fiscalFieldErrors,
+  isValidPartitaIva,
+  looksLikeCompanyName,
+  publicTraderStatusOf,
+  normalizePartitaIva,
+  normalizeReaNumber,
+  partitaIvaProblem,
+  reaNumberProblem,
+  sexFromCodiceFiscale,
+} from "@professionisti/shared";
 import { nextTaxIdAttempt, wantedTaxIdChecks, MAX_TAX_ID_ATTEMPTS } from "./tax-id-check.service";
-import { partitaIvaOutcome } from "./openapi-tax-id.provider";
+import { OpenapiTaxIdProvider, partitaIvaOutcome } from "./openapi-tax-id.provider";
 import { ViesFirstTaxIdProvider, viesLookup } from "./vies-tax-id.provider";
+
+/** Messaggi chiari su codice fiscale, partita IVA e REA (collaudo C-17, D-12, D-13, E-05, E-07, E-12). */
+describe("messaggi dei dati fiscali", () => {
+  it("codice fiscale: dice quanti caratteri mancano o se c'è un errore di battitura", () => {
+    expect(codiceFiscaleProblem("CLLNNA01H60E47")).toBe("Il codice fiscale ha 16 caratteri: ne mancano 2.");
+    expect(codiceFiscaleProblem("RSSMRA80A01H501UX")).toBe("Il codice fiscale ha 16 caratteri: ne hai scritti 17.");
+    expect(codiceFiscaleProblem("RSSMRA80A01H501X")).toContain("errore di battitura");
+    expect(codiceFiscaleProblem("rssmra80a01h501u")).toBeNull();
+    expect(codiceFiscaleProblem("")).toBeNull();
+  });
+
+  it("partita IVA: toglie IT davanti e dice quante cifre ci sono", () => {
+    expect(normalizePartitaIva("IT 12485671007")).toBe("12485671007");
+    expect(isValidPartitaIva("IT12485671007")).toBe(true);
+    expect(partitaIvaProblem("IT12485671007")).toBeNull();
+    expect(partitaIvaProblem("1248567100")).toBe("La partita IVA ha 11 cifre: ne hai scritte 10.");
+    expect(partitaIvaProblem("12485671008")).toContain("Una cifra è sbagliata");
+    expect(partitaIvaProblem("12A85671007")).toContain("solo numeri");
+  });
+
+  it("frasi corrette sul codice fiscale che non corrisponde", () => {
+    expect(codiceFiscaleMismatchMessage(["cognome"])).toMatch(/^Il codice fiscale non corrisponde al cognome:/);
+    expect(codiceFiscaleMismatchMessage(["nome", "data di nascita"])).toMatch(/^Il codice fiscale non corrisponde al nome e alla data di nascita:/);
+    const rep = fiscalFieldErrors({ entityType: "BUSINESS", representative: { firstName: "Luca", lastName: "Rossi", codiceFiscale: "RSSMRA80A01H501U" } });
+    expect(rep[0]?.message).toContain("non corrisponde al nome del legale rappresentante");
+  });
+
+  it("riconosce il nome di una società e non dice «Privato» al cliente (collaudo A-11, M-03)", () => {
+    for (const name of ["Luca idraulica S.R.L.", "Rossi srl", "Bianchi SRLS", "Verdi S.p.A.", "Neri SPA", "Fratelli Gialli s.n.c.", "Blu S.A.S.", "Edil Società Cooperativa"]) {
+      expect(looksLikeCompanyName(name), name).toBe(true);
+    }
+    for (const name of ["Mario Rossi", "Centro Spa e benessere", "Sasso idraulica", "Srlando Pulizie", "Anna babysitter"]) {
+      expect(looksLikeCompanyName(name), name).toBe(false);
+    }
+    expect(publicTraderStatusOf("PRIVATE_INDIVIDUAL", "Luca idraulica S.R.L.")).toBeNull();
+    expect(publicTraderStatusOf("PRIVATE_INDIVIDUAL", "Mario Rossi")).toBe("PRIVATE");
+    expect(publicTraderStatusOf("BUSINESS", "Luca idraulica S.R.L.")).toBe("TRADER");
+  });
+
+  it("numero REA: sigla della provincia e numero", () => {
+    expect(normalizeReaNumber("lt 123456")).toBe("LT-123456");
+    expect(reaNumberProblem("LT123456")).toBeNull();
+    expect(reaNumberProblem("RM-1234567")).toBeNull();
+    expect(reaNumberProblem("LT 123A56")).toContain("sigla della provincia e il numero");
+    expect(reaNumberProblem("LT-12345678901")).toContain("sigla della provincia e il numero");
+    expect(reaNumberProblem("XX-123456")).toContain("XX non è la sigla");
+    expect(fiscalFieldErrors({ entityType: "BUSINESS", businessRegistrationNumber: "123456" })[0]?.field).toBe("businessRegistrationNumber");
+  });
+});
 
 /** Controlli gratuiti e scelta dei controlli Openapi (docs/CHANGELOG.md §253). */
 describe("coerenza del codice fiscale con nome, cognome e data di nascita", () => {
@@ -122,5 +186,30 @@ describe("VIES prima di Openapi", () => {
     expect(wantedTaxIdChecks({ entityType: "BUSINESS", fiscalIdIssuingCountry: "IT", fiscalCodiceFiscale: null, vatNumber: "12485671007" })).toEqual([
       { kind: "PARTITA_IVA", value: "12485671007" },
     ]);
+  });
+});
+
+describe("Openapi in prova (collaudo 0-02)", () => {
+  const reply = (body: unknown) => vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(body), { status: 200 }));
+
+  it("un \"valido\" di prova non conta come verificato", async () => {
+    const spy = reply({ data: [{ activityStatus: "ATTIVA", companyName: "Finta Srl" }] });
+    const lookup = await new OpenapiTaxIdProvider({ risk: "r", company: "c" }, true).checkPartitaIva("12345678903");
+    expect(lookup).toMatchObject({ outcome: "REVIEW", detail: "PROVA" });
+    spy.mockRestore();
+  });
+
+  it("con le chiavi vere resta valido", async () => {
+    const spy = reply({ data: [{ activityStatus: "ATTIVA", companyName: "Vera Srl" }] });
+    const lookup = await new OpenapiTaxIdProvider({ risk: "r", company: "c" }, false).checkPartitaIva("12345678903");
+    expect(lookup).toMatchObject({ outcome: "VALID", detail: "ATTIVA" });
+    spy.mockRestore();
+  });
+
+  it("un codice fiscale inesistente resta inesistente anche in prova", async () => {
+    const spy = reply({ data: { validita: false } });
+    const lookup = await new OpenapiTaxIdProvider({ risk: "r", company: "c" }, true).checkCodiceFiscale("RSSMRA80A01H501U");
+    expect(lookup).toMatchObject({ outcome: "INVALID" });
+    spy.mockRestore();
   });
 });

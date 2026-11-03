@@ -1,11 +1,13 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
-
 // Icona PWA 192x192 (manifest.ts) — stesso mark di apple-icon.tsx/icon.svg
 // (verde smeraldo + glifo bianco a due tratti), generata al volo invece di
 // un binario committato a mano, coerente con la convenzione già in uso nel
 // resto del sito per le icone di sistema.
+// Sempre uguale: preparata una volta nella build invece che a ogni richiesta
+// (prima con il runtime "edge", deprecato da Next.js 16).
+export const dynamic = "force-static";
+
 export async function GET() {
   return new ImageResponse(
     (

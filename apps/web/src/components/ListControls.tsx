@@ -18,7 +18,7 @@ export type ListSortKey = "createdAt" | "updatedAt" | "scheduledAt";
 export const SORT_LABELS: Record<ListSortKey, string> = {
   createdAt: "Data di ricezione",
   updatedAt: "Ultimo aggiornamento",
-  scheduledAt: "Data di intervento",
+  scheduledAt: "Data dell'appuntamento",
 };
 
 export const PAGE_SIZE_OPTIONS = [5, 10, 20] as const;

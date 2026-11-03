@@ -6,8 +6,9 @@ import {
   notificationChannelEnabled,
   resolveNotificationPreferences,
   wallClockNow,
-  professionalKindOf,
-  traderStatusOf,
+  looksLikeCompanyName,
+  publicProfessionalKindOf,
+  publicTraderStatusOf,
   findComuneByName,
   italianComuni,
   PROFILE_DECLARATION_VERSION,
@@ -36,6 +37,8 @@ import {
   type ProfessionalCategorySlug,
   type ProfessionalProfileSelfInput,
   type UpdateEngagementRadiusInput,
+  type SetAwayInput,
+  MAX_AWAY_DAYS,
   toJobIssueSummary,
   jobIssueAssisted,
   toJobPaymentSummary,
@@ -43,6 +46,7 @@ import {
   jobPaidOnline,
   PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
   wallClockToday,
+  slotStillOffered,
   isProfessionalCategorySlug,
   validSubTags,
   type CategoryPriceStats,
@@ -51,6 +55,7 @@ import {
   type ProblemOutOfService,
 } from "@professionisti/shared";
 import { COUNTED_USER, countingFrom, daySinceLaunch } from "../site-counts/counted";
+import { calculateDistanceKm } from "../common/geo.util";
 import { PRISMA } from "../prisma/prisma.module";
 import { invoiceRequestView } from "../client-invoice-requests/client-invoice-requests.service";
 import { COURTESY_DOCUMENT_FIELDS, courtesyDocumentSummary } from "../accounting/courtesy-documents";
@@ -137,8 +142,19 @@ function searchableProfileWhere(): Prisma.ProfessionalProfileWhereInput {
     suspendedAt: null,
     pausedAt: null,
     invitePendingAt: null,
-    OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }],
   };
+}
+
+/**
+ * Le condizioni di `searchableProfileWhere` che vanno nell'AND (ognuna è un
+ * OR): bloccato per segnalazioni (§167) o in pausa per scelta sua (collaudo
+ * C-16). Separate perché chi usa la ricerca ha già un suo AND.
+ */
+function searchableProfileConditions(now = new Date()): Prisma.ProfessionalProfileWhereInput[] {
+  return [
+    { OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: now } }] },
+    { OR: [{ awayUntil: null }, { awayUntil: { lte: now } }] },
+  ];
 }
 
 /** La prestazione che corrisponde alla voce cercata, da evidenziare nella scheda (§398). */
@@ -263,12 +279,18 @@ export class ProfessionalsService {
       ...searchableProfileWhere(),
       // Categoria principale o una delle aggiuntive (docs/CHANGELOG.md §217).
       AND: [
+        ...searchableProfileConditions(),
         ...(category ? [{ OR: [{ category: { slug: category } }, { extraCategories: { some: { slug: category } } }] }] : []),
         // Visibile solo con i dati fiscali compilati (docs/CHANGELOG.md §241).
         publicVisibilityWhere(),
         ...(serviceProfileIds ? [{ id: { in: serviceProfileIds } }] : []),
       ],
       ...(excludeDemo ? { isDemo: false } : {}),
+      // Dal lancio gli account di prova non compaiono nella ricerca, in home
+      // e nell'ordine delle categorie; il loro profilo resta aperto dal link
+      // (docs/changelog/2026-11-02-categorie-telefono.md). Prima del lancio
+      // si vedono, per poter provare le pagine.
+      ...(countingFrom() ? { user: COUNTED_USER } : {}),
     };
   }
 
@@ -360,7 +382,7 @@ export class ProfessionalsService {
         address: profile.address,
         verified: publicVerified(profile),
         stripeVerified: stripeVerified(profile.fiscalProfile),
-        professionalKind: professionalKindOf(profile.fiscalProfile?.entityType),
+        professionalKind: publicProfessionalKindOf(profile.fiscalProfile?.entityType, profile.businessName),
         rating,
         reviewCount,
         boosted: profile.visibilityBoosts.length > 0,
@@ -388,9 +410,15 @@ export class ProfessionalsService {
     // 14 giorni, anche se ha un boost.
     const now = new Date();
     const demotedIds = new Set(profiles.filter((p) => professionalRestrictions(p, now).demoted).map((p) => p.id));
+    // Chi non ha ancora fatto la verifica dell'identità resta nella ricerca
+    // (decisione §253) ma dopo chi può già mandare un preventivo (collaudo
+    // C-13): un cliente non deve scegliere per primo chi non può rispondergli.
+    const notReadyIds = new Set(profiles.filter((p) => identityVerificationNeeded(p)).map((p) => p.id));
     results.sort((a, b) => {
       const demotedDiff = Number(demotedIds.has(a.id)) - Number(demotedIds.has(b.id));
       if (demotedDiff !== 0) return demotedDiff;
+      const notReadyDiff = Number(notReadyIds.has(a.id)) - Number(notReadyIds.has(b.id));
+      if (notReadyDiff !== 0) return notReadyDiff;
       if (!merit && a.boosted !== b.boosted) return a.boosted ? -1 : 1;
       const ratingDiff = (b.rating ?? 0) - (a.rating ?? 0);
       if (ratingDiff !== 0) return ratingDiff;
@@ -426,7 +454,7 @@ export class ProfessionalsService {
         // Solo chi compare nella ricerca: ogni voce porta all'elenco di chi la
         // offre, e il numero mostrato deve coincidere (docs/CHANGELOG.md §398).
         // Gli account di prova restano nella ricerca ma non nei prezzi (docs/changelog/2026-10-28-quanto-costa-sinonimi.md, decisione di Luca).
-        professionalProfile: { isDemo: false, user: COUNTED_USER, ...searchableProfileWhere(), AND: [publicVisibilityWhere()] },
+        professionalProfile: { isDemo: false, user: COUNTED_USER, ...searchableProfileWhere(), AND: [...searchableProfileConditions(), publicVisibilityWhere()] },
       },
       select: { name: true, professionalProfileId: true, priceMinEurCents: true, priceMaxEurCents: true, priceUnit: true },
     });
@@ -501,6 +529,39 @@ export class ProfessionalsService {
       quotes: acceptedQuoteStats(totals),
       declared: declaredServiceStats(services, canonicalize),
     };
+  }
+
+  /**
+   * Professionisti visibili nella ricerca per ogni categoria (richiesta di
+   * Luca, docs/changelog/2026-11-02-categorie-telefono.md): ordina le
+   * categorie della home e della scelta dei lavori, con le più scelte prima.
+   * Stessi filtri della ricerca pubblica, senza i profili demo; un
+   * professionista conta in ognuna delle sue categorie. Con una città
+   * riconosciuta contano solo quelli entro `SEARCH_RADIUS_KM` dal suo centro
+   * (lo stesso raggio della ricerca); se lì non c'è nessuno, tutta Italia.
+   * Solo numeri, mai chi né dove.
+   */
+  async getCategoryProfessionalCounts(city?: string): Promise<{ scope: "CITY" | "ALL"; counts: { slug: string; count: number }[] }> {
+    const profiles = await this.prisma.professionalProfile.findMany({
+      where: this.publicSearchWhere(undefined, true),
+      select: { latitude: true, longitude: true, category: { select: { slug: true } }, extraCategories: { select: { slug: true } } },
+    });
+    const tally = (list: typeof profiles) => {
+      const counts = new Map<string, number>();
+      for (const profile of list) {
+        const slugs = new Set([profile.category.slug, ...profile.extraCategories.map((c) => c.slug)]);
+        for (const slug of slugs) counts.set(slug, (counts.get(slug) ?? 0) + 1);
+      }
+      return [...counts.entries()].map(([slug, count]) => ({ slug, count })).sort((a, b) => b.count - a.count);
+    };
+    const comune = city?.trim() ? findComuneByName(city.trim()) : undefined;
+    if (comune) {
+      const near = profiles.filter(
+        (p) => (p.latitude !== 0 || p.longitude !== 0) && calculateDistanceKm(comune.lat, comune.lon, p.latitude, p.longitude) <= SEARCH_RADIUS_KM,
+      );
+      if (near.length > 0) return { scope: "CITY", counts: tally(near) };
+    }
+    return { scope: "ALL", counts: tally(profiles) };
   }
 
   /**
@@ -600,7 +661,8 @@ export class ProfessionalsService {
         if (exceptionDates?.has(dateStr)) continue;
 
         const times = profileSlots
-          .filter((slot) => slotAppliesOnDate(slot, date))
+          // Mai una fascia di oggi già finita o quasi (collaudo B-05, D-09).
+          .filter((slot) => slotAppliesOnDate(slot, date) && slotStillOffered(dateStr, slot.endTime))
           .sort((a, b) => a.startTime.localeCompare(b.startTime))
           .map((slot) => {
             // Una fascia resta prenotabile finché ha capienza residua per
@@ -678,8 +740,8 @@ export class ProfessionalsService {
       verified: publicVerified(profile),
       stripeVerified: stripeVerified(profile.fiscalProfile),
       // Privato o professionista, per il cliente (Codice del consumo art. 49-bis, §241).
-      traderStatus: traderStatusOf(profile.fiscalProfile?.entityType),
-      professionalKind: professionalKindOf(profile.fiscalProfile?.entityType),
+      traderStatus: publicTraderStatusOf(profile.fiscalProfile?.entityType, profile.businessName),
+      professionalKind: publicProfessionalKindOf(profile.fiscalProfile?.entityType, profile.businessName),
       rating,
       reviewCount,
       boosted: profile.visibilityBoosts.length > 0,
@@ -709,6 +771,8 @@ export class ProfessionalsService {
       certifications: profile.certifications,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
       acceptingRequests: !profile.pausedAt && !professionalRestrictions(profile, new Date()).blocked,
+      // Solo la pausa scelta da lui si dice al cliente, mai il motivo delle altre (§162, §167).
+      awayUntil: professionalRestrictions(profile, new Date()).away && profile.awayUntil ? profile.awayUntil.toISOString() : null,
       reviews: reviewed.map(({ review, booking }) => ({
         id: review.id,
         rating: review.rating,
@@ -760,6 +824,7 @@ export class ProfessionalsService {
       profileDeclarationAccepted: profile.profileDeclarationVersion === PROFILE_DECLARATION_VERSION,
       demotedUntil: profile.demotedUntil && profile.demotedUntil > new Date() ? profile.demotedUntil.toISOString() : null,
       requestsBlockedUntil: profile.requestsBlockedUntil && profile.requestsBlockedUntil > new Date() ? profile.requestsBlockedUntil.toISOString() : null,
+      awayUntil: profile.awayUntil && profile.awayUntil > new Date() ? profile.awayUntil.toISOString() : null,
       // Modi di pagamento di serie nei nuovi preventivi (docs/CHANGELOG.md §239).
       defaultPaymentOffer: quotePaymentOffer({ paymentOptions: profile.defaultPaymentOptions, depositPercent: profile.defaultDepositPercent }),
       stripeVerified: stripeVerified(profile.fiscalProfile),
@@ -825,6 +890,20 @@ export class ProfessionalsService {
       },
     });
     const isFirstTimeCreation = existingProfile === null;
+    // Un privato senza partita IVA non può avere il nome di una società
+    // (collaudo A-11, M-03): ai clienti comparirebbe "Privato" accanto a "S.R.L.".
+    if (looksLikeCompanyName(input.businessName)) {
+      const declared = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { signupEntityType: true, professionalProfile: { select: { fiscalProfile: { select: { entityType: true } } } } },
+      });
+      const entityType = declared?.professionalProfile?.fiscalProfile?.entityType ?? declared?.signupEntityType ?? null;
+      if (entityType === "PRIVATE_INDIVIDUAL") {
+        throw new BadRequestException(
+          "Ti sei iscritto come privato senza partita IVA: il nome non può avere la forma di una società (S.R.L., S.N.C., S.p.A.). Toglila, oppure scrivici dalla pagina Contatti se sei un'azienda.",
+        );
+      }
+    }
     // Alla creazione senza un'immagine scelta, il profilo pubblico parte
     // dalla foto dell'account (quella di Google, se registrato con Google).
     const accountImageUrl =
@@ -940,7 +1019,10 @@ export class ProfessionalsService {
       // Orari di partenza nell'agenda (docs/CHANGELOG.md §364): non devono
       // mai bloccare il salvataggio del profilo.
       try {
-        await this.agendaService.applyStarterHours(profile.id, profile.remoteAvailable);
+        await this.agendaService.applyStarterHours(profile.id, profile.remoteAvailable, [
+          profile.category.slug,
+          ...profile.extraCategories.map((category) => category.slug),
+        ]);
       } catch (err) {
         this.logger.error(`Orari di partenza non messi per ${profile.id}`, err instanceof Error ? err.stack : String(err));
       }
@@ -1040,6 +1122,31 @@ export class ProfessionalsService {
       select: { engagementRadiusKm: true, urgentEngagementRadiusKm: true },
     });
     return updated;
+  }
+
+  /**
+   * "Metti in pausa" fino a un giorno, o "Riprendi ora" con `until: null`
+   * (collaudo C-16). Nella pausa niente richieste, prenotazioni né ricerca;
+   * i lavori già fissati restano (`professionalRestrictions`).
+   */
+  async setAway(userId: string, input: SetAwayInput, now = new Date()): Promise<{ awayUntil: string | null }> {
+    await this.requireMyProfileId(userId);
+    let awayUntil: Date | null = null;
+    if (input.until) {
+      awayUntil = new Date(`${input.until}T00:00:00.000Z`);
+      const today = wallClockToday(now).getTime();
+      if (Number.isNaN(awayUntil.getTime()) || awayUntil.getTime() <= today) {
+        throw new BadRequestException("Scegli un giorno da domani in poi.");
+      }
+      if (awayUntil.getTime() > today + MAX_AWAY_DAYS * 86_400_000) {
+        throw new BadRequestException(`La pausa dura al massimo ${MAX_AWAY_DAYS} giorni.`);
+      }
+    }
+    // Data nuova: l'avviso del giorno prima torna da mandare.
+    const profile = await this.prisma.professionalProfile.update({ where: { userId }, data: { awayUntil, awayReminderSentAt: null }, select: { id: true } });
+    // "Riprendi ora": subito le richieste ancora aperte della sua zona, come a fine pausa (AwayService).
+    if (!awayUntil) await this.guidedRequestsService.matchWhenVisible(profile.id);
+    return { awayUntil: awayUntil?.toISOString() ?? null };
   }
 
   private async requireMyProfileId(userId: string): Promise<string> {
@@ -1738,6 +1845,8 @@ export class ProfessionalsService {
 
       const candidateSlots = slots.filter((slot) => slotAppliesOnDate(slot, date)).sort((a, b) => a.startTime.localeCompare(b.startTime));
       for (const slot of candidateSlots) {
+        // Mai una fascia di oggi già finita o quasi (collaudo B-05, D-09).
+        if (!slotStillOffered(dateStr, slot.endTime)) continue;
         const homeAvailable = slot.allowsHome && countBookingsInSlot(bookings, dateStr, slot.startTime, slot.endTime, "HOME") < (slot.homeMaxBookings ?? 1);
         const onlineAvailable =
           slot.allowsOnline && countBookingsInSlot(bookings, dateStr, slot.startTime, slot.endTime, "ONLINE") < (slot.onlineMaxBookings ?? 1);
@@ -1918,12 +2027,12 @@ export class ProfessionalsService {
     // ricevere richieste (decisione dell'utente).
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
-      select: { deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, requestsBlockedUntil: true, ...PUBLIC_VISIBILITY_SELECT },
+      select: { deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, requestsBlockedUntil: true, awayUntil: true, demotedUntil: true, ...PUBLIC_VISIBILITY_SELECT },
     });
     if (!profile || profile.deletedAt || profile.suspendedAt || profile.invitePendingAt || publicVisibilityMissing(profile)) {
       throw new NotFoundException("Professionista non trovato.");
     }
-    if (profile.pausedAt || (profile.requestsBlockedUntil && profile.requestsBlockedUntil > new Date())) return { days: [] };
+    if (profile.pausedAt || professionalRestrictions(profile, new Date()).blocked) return { days: [] };
 
     const startOfToday = wallClockToday();
     const endWindow = new Date(startOfToday);
@@ -1952,7 +2061,8 @@ export class ProfessionalsService {
       const daySlots = exceptionDates.has(dateStr)
         ? []
         : slots
-            .filter((slot) => slotAppliesOnDate(slot, date))
+            // Mai una fascia di oggi già finita o quasi (collaudo B-05, D-09).
+            .filter((slot) => slotAppliesOnDate(slot, date) && slotStillOffered(dateStr, slot.endTime))
             .sort((a, b) => a.startTime.localeCompare(b.startTime))
             .map((slot) => {
               // Sia per le fasce esatte che per quelle generiche, "prenotato"
@@ -2010,7 +2120,7 @@ export class ProfessionalsService {
   async bookAgendaSlot(clientId: string, professionalProfileId: string, input: BookAgendaSlotInput): Promise<{ bookingId: string }> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
-      select: { id: true, deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, jobLimitReachedAt: true, demotedUntil: true, requestsBlockedUntil: true, ...PUBLIC_VISIBILITY_SELECT },
+      select: { id: true, deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, jobLimitReachedAt: true, demotedUntil: true, requestsBlockedUntil: true, awayUntil: true, ...PUBLIC_VISIBILITY_SELECT },
     });
     if (!profile || profile.deletedAt || profile.suspendedAt || profile.invitePendingAt || publicVisibilityMissing(profile)) {
       throw new NotFoundException("Professionista non trovato.");

@@ -143,7 +143,7 @@ async function seed() {
   // Con la partita IVA la ricevuta sul sito non c'è (docs/changelog/2026-10-30-documenti-snelli.md).
   await prisma.professionalFiscalProfile.create({ data: { professionalProfileId: profileA.id, entityType: "PRIVATE_INDIVIDUAL" } });
   await prisma.courtesyDocument.create({
-    data: { bookingId: bookingCompleted.id, professionalProfileId: profileA.id, kind: "RECEIPT", year: 2026, number: 1, customerName: "Cliente A", pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000 },
+    data: { bookingId: bookingCompleted.id, professionalProfileId: profileA.id, kind: "RECEIPT", year: 2026, receiptNumber: "1/2026", customerName: "Cliente A", pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000 },
   });
 
   // Fattura delle trattenute di proA (§378).

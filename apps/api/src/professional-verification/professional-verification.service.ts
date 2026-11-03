@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { Prisma, PrismaClient } from "@professionisti/database";
-import type { ProfessionalVerificationFilter, ProfessionalVerificationRow } from "@professionisti/shared";
+import { PROFESSIONAL_ENTITY_TYPE_LABEL, type ProfessionalEntityTypeValue, type ProfessionalVerificationFilter, type ProfessionalVerificationRow } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -47,8 +47,10 @@ export class ProfessionalVerificationService {
       take: 200,
       include: {
         category: { select: { label: true } },
-        user: { select: { id: true, email: true, name: true, surname: true, phone: true } },
-        fiscalProfile: { select: { vatNumber: true, fiscalCodiceFiscale: true, taxIdChecks: { orderBy: { kind: "asc" } } } },
+        user: { select: { id: true, email: true, name: true, surname: true, phone: true, signupEntityType: true } },
+        fiscalProfile: {
+          select: { vatNumber: true, fiscalCodiceFiscale: true, entityType: true, stripeConnectAccountId: true, taxIdChecks: { orderBy: { kind: "asc" } } },
+        },
         identityVerifications: { orderBy: { createdAt: "desc" }, take: 1 },
       },
     });
@@ -71,6 +73,8 @@ export class ProfessionalVerificationService {
       vatNumber: profile.fiscalProfile?.vatNumber ?? null,
       codiceFiscale: profile.fiscalProfile?.fiscalCodiceFiscale ?? null,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
+      entityType: profile.fiscalProfile?.entityType ?? profile.user.signupEntityType ?? null,
+      stripeConnected: !!profile.fiscalProfile?.stripeConnectAccountId,
       verified: profile.verified,
       verificationRequestedAt: profile.verificationRequestedAt?.toISOString() ?? null,
       verifiedAt: profile.verifiedAt?.toISOString() ?? null,
@@ -133,6 +137,56 @@ export class ProfessionalVerificationService {
     });
     await this.notificationsService.notify(profile.userId, "PROFILE_VERIFICATION_REMOVED", { note });
     return { professionalProfileId: profile.id, verified: false, verifiedAt: null };
+  }
+
+  /**
+   * "Cambia tipo" dell'admin (migliorie del collaudo, gruppo 8): il
+   * professionista non può cambiarlo da sé dopo il primo salvataggio dei dati
+   * fiscali. Il tipo nuovo vale da subito; i dati che servono per quel tipo
+   * li completa lui (finché mancano il profilo esce dalla ricerca, come per
+   * chiunque, `publicVisibilityMissing`). Cambia la persona da verificare,
+   * quindi il badge "Verificato" si toglie e documento e selfie vanno rifatti.
+   */
+  async changeEntityType(adminUserId: string, professionalProfileId: string, entityType: ProfessionalEntityTypeValue, note: string) {
+    const profile = await this.findActive(professionalProfileId);
+    const [user, fiscal] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: profile.userId }, select: { signupEntityType: true } }),
+      this.prisma.professionalFiscalProfile.findUnique({
+        where: { professionalProfileId: profile.id },
+        select: { id: true, entityType: true, stripeConnectAccountId: true },
+      }),
+    ]);
+    const current = fiscal?.entityType ?? user?.signupEntityType ?? null;
+    if (current === entityType) throw new BadRequestException(`È già "${PROFESSIONAL_ENTITY_TYPE_LABEL[entityType]}".`);
+    // Su Stripe il conto è aperto come persona o come società e non si cambia:
+    // va chiuso e riaperto, quindi qui non si tocca.
+    if (fiscal?.stripeConnectAccountId) {
+      throw new BadRequestException("Ha già collegato i pagamenti online: su Stripe il tipo non si cambia. Prima va chiuso il collegamento con Stripe.");
+    }
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: profile.userId }, data: { signupEntityType: entityType } }),
+      ...(fiscal
+        ? [
+            this.prisma.professionalFiscalProfile.update({
+              where: { id: fiscal.id },
+              // La dichiarazione valeva per i dati di prima: si riconferma con quelli nuovi.
+              data: { entityType, fiscalDeclarationAcceptedAt: null },
+            }),
+          ]
+        : []),
+    ]);
+    await this.auditLogService.record({
+      entityType: "ProfessionalFiscalProfile",
+      entityId: fiscal?.id ?? profile.id,
+      fieldName: "entityType",
+      oldValue: current,
+      newValue: entityType,
+      changedByUserId: adminUserId,
+      reason: note,
+    });
+    if (profile.verified) await this.revokeAfterOwnChange(profile.id, adminUserId, `Tipo cambiato in "${PROFESSIONAL_ENTITY_TYPE_LABEL[entityType]}": ${note}`);
+    await this.notificationsService.notify(profile.userId, "FISCAL_ENTITY_TYPE_CHANGED", { entityType, label: PROFESSIONAL_ENTITY_TYPE_LABEL[entityType], note });
+    return { professionalProfileId: profile.id, entityType };
   }
 
   /** Richieste di verifica in attesa, per il numero nel menu admin. */

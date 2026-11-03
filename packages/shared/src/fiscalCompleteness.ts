@@ -58,6 +58,39 @@ export function traderStatusOf(entityType: string | null | undefined): Professio
   return null;
 }
 
+/**
+ * Il nome ha la forma di una società ("S.R.L.", "SRLS", "S.p.A.", "S.N.C.",
+ * "S.A.S.", "società cooperativa")? Un privato senza partita IVA non può
+ * presentarsi così (collaudo A-11, M-03: "Luca idraulica S.R.L." compariva
+ * come "Privato", con la frase che toglie al cliente i diritti del consumatore).
+ */
+export function looksLikeCompanyName(name: string | null | undefined): boolean {
+  const text = (name ?? "").trim();
+  if (!text) return false;
+  if (/(^|[\s,.(-])s\.?\s?r\.?\s?l\.?(\s?s\.?)?($|[\s,.)])/i.test(text)) return true;
+  if (/(^|[\s,.(-])s\.?\s?n\.?\s?c\.?($|[\s,.)])/i.test(text)) return true;
+  // "Spa" e "Sas" sono anche parole comuni: solo con i punti o in maiuscolo.
+  if (/(^|[\s,(-])(s\.\s?p\.\s?a\.?|s\.\s?a\.\s?s\.?)($|[\s,)])/i.test(text)) return true;
+  if (/(^|[\s,(-])(SpA|SPA|SAS)($|[\s,.)])/.test(text)) return true;
+  return /\bsociet[aà]\s+(cooperativa|a\s+responsabilit|in\s+nome\s+collettivo|in\s+accomandita|per\s+azioni)/i.test(text) || /\bsoc\.\s?coop/i.test(text);
+}
+
+/**
+ * Lo stato da mostrare al cliente (art. 49-bis Codice del consumo): quello
+ * dichiarato, tranne quando il nome dice il contrario. In quel caso non si
+ * mostra "Privato" né la frase sui diritti del consumatore: nel dubbio mai
+ * togliere al cliente diritti che può avere (collaudo M-03).
+ */
+export function publicTraderStatusOf(entityType: string | null | undefined, businessName: string | null | undefined): ProfessionalTraderStatus | null {
+  const status = traderStatusOf(entityType);
+  return status === "PRIVATE" && looksLikeCompanyName(businessName) ? null : status;
+}
+
+export function publicProfessionalKindOf(entityType: string | null | undefined, businessName: string | null | undefined): ProfessionalKind | null {
+  const kind = professionalKindOf(entityType);
+  return kind === "PRIVATE" && looksLikeCompanyName(businessName) ? null : kind;
+}
+
 /** Come si è iscritto il professionista, mostrato come badge nel profilo e nei risultati (docs/CHANGELOG.md §338). */
 export type ProfessionalKind = "PRIVATE" | "VAT" | "BUSINESS";
 

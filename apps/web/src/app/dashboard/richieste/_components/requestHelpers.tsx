@@ -22,7 +22,7 @@ export function slotLabel(slot: ProfessionalAvailableSlot): string {
 }
 export function formatDateTime(iso: string): string {
   const d = new Date(iso);
-  return `${d.toLocaleDateString("it-IT", { day: "numeric", month: "short" })} · ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+  return `${d.toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "Europe/Rome" })} · ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })}`;
 }
 export function formatSlotRange(startIso: string, endIso: string | null): string {
   // Lavoro su più giorni (docs/CHANGELOG.md §310).
@@ -160,7 +160,7 @@ export function DeadlinePill({ deadline }: { deadline: { label: string; urgent: 
 export function MiniTimeline({ stage }: { stage: RequestStage }) {
   const steps: { key: string; label: string; extra?: boolean }[] = [{ key: "richiesta", label: "Richiesta" }, { key: "preventivo", label: "Preventivo inviato" }];
   if (stage === "modifica_richiesta") steps.push({ key: "modifica", label: "Modifica richiesta dal cliente", extra: true });
-  steps.push({ key: "accettata", label: "Accettata" }, { key: "completata", label: "Completata" });
+  steps.push({ key: "accettata", label: "Fissato" }, { key: "completata", label: "Terminato" });
 
   const reachedIndex: Record<RequestStage, number> = {
     da_quotare: 0,
@@ -200,6 +200,45 @@ export function MiniTimeline({ stage }: { stage: RequestStage }) {
           </YStack>
         );
       })}
+    </XStack>
+  );
+}
+
+/**
+ * Lavori già fissati che si sovrappongono all'orario scelto (collaudo C-15):
+ * la babysitter con due lavori alle 15:00 non riceveva nessun avviso. Le ore
+ * sono "dell'orologio" in UTC, come ovunque nell'agenda. Senza ora di fine
+ * si conta un'ora.
+ */
+export function bookingsOverlapping(
+  bookings: readonly ProfessionalBooking[],
+  chosen: { date: string; start: string; end?: string | null } | null,
+  excludeBookingId?: string | null,
+): ProfessionalBooking[] {
+  if (!chosen || !/^\d{4}-\d{2}-\d{2}$/.test(chosen.date) || !/^\d{2}:\d{2}$/.test(chosen.start)) return [];
+  const from = Date.parse(`${chosen.date}T${chosen.start}:00.000Z`);
+  const to = chosen.end && chosen.end > chosen.start ? Date.parse(`${chosen.date}T${chosen.end}:00.000Z`) : from + 3_600_000;
+  return bookings.filter((b) => {
+    if (b.id === excludeBookingId || (b.status !== "CONFIRMED" && b.status !== "PENDING")) return false;
+    const start = Date.parse(b.scheduledAt);
+    const end = b.scheduledEndAt ? Date.parse(b.scheduledEndAt) : start + 3_600_000;
+    return start < to && end > from;
+  });
+}
+
+/** Una riga sotto l'orario: quali lavori ci sono già, senza bloccare l'invio. */
+export function BusyTimeNotice({ bookings }: { bookings: readonly ProfessionalBooking[] }) {
+  if (bookings.length === 0) return null;
+  const times = bookings
+    .slice(0, 3)
+    .map((b) => `${formatAppointmentTimeRange(b.scheduledAt, b.scheduledEndAt ?? b.scheduledAt)}${b.clientName ? ` con ${b.clientName}` : ""}`)
+    .join(", ");
+  return (
+    <XStack gap="$2" alignItems="flex-start" role="status">
+      <Icon name="clock" size={16} color={brand.grafite} />
+      <Text fontSize={14} color={brand.grafite} flex={1}>
+        {bookings.length === 1 ? "In quell'orario hai già un lavoro" : `In quell'orario hai già ${bookings.length} lavori`}: {times}. Puoi mandarlo lo stesso.
+      </Text>
     </XStack>
   );
 }

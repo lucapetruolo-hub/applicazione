@@ -50,6 +50,9 @@ const publicRoutes = [
   "GET /guided-requests/reach",
   "GET /health",
   "GET /health/features",
+  // Verifica del legale rappresentante di una società: link firmato, senza accedere (docs/changelog/2026-11-02-iscrizione-verifica-professionisti.md).
+  "GET /identity-verification/representative/:token",
+  "POST /identity-verification/representative/:token/start",
   "POST /identity-verification/webhook",
   // Webhook di WhatsApp (Meta): registrazione con il token e firma sul corpo (docs/changelog/2026-10-28-promemoria-whatsapp.md).
   "GET /whatsapp/webhook",
@@ -71,6 +74,7 @@ const publicRoutes = [
   "POST /site/profile-view",
   // Passi dalle voci di "Quanto costa" (§399), senza account.
   "POST /site/price-tool",
+  "GET /professionals/category-counts",
   "GET /professionals/languages/popular",
   // Prezzi aggregati della pagina "Quanto costa", mai sotto le soglie (§296).
   "GET /professionals/prices/:category",
@@ -92,6 +96,7 @@ const selfAny = [
   "GET /auth/me",
   "PATCH /auth/me",
   "PATCH /auth/me/preferences",
+  "GET /auth/me/closure-check",
   "GET /auth/me/export",
   "POST /auth/me/image",
   "POST /auth/verify-email/code",
@@ -187,6 +192,8 @@ const selfProfessional = [
   "GET /professionals/me/subscription",
   "GET /professionals/me/verification",
   "POST /professionals/me/verification/identity",
+  "POST /professionals/me/verification/representative-link",
+  "PUT /professionals/me/away",
 ];
 
 const booking = (extra = {}) => ({ kind: "owned", owners: BOTH, params: (f) => ({ id: f.bookingA }), ...extra });

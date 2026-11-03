@@ -40,6 +40,19 @@ export const TERMS_CHANGES: readonly TermsChange[] = [
     // Prima del lancio: nessun avviso agli account di prova.
     notify: false,
   },
+  {
+    version: "2026-11-02",
+    publishedAt: "2026-11-02",
+    effectiveAt: "2026-11-02",
+    summary: [
+      "Ogni persona o impresa può avere un solo account professionista.",
+      "I mesi gratuiti spettano una sola volta per persona o impresa, anche dopo aver chiuso un account.",
+      "Le recensioni con segnali di possibile falsità le controlla una persona del nostro team prima di pubblicarle.",
+      "La ricevuta del lavoro occasionale è un documento del professionista: la piattaforma la compila con i dati del lavoro, lui la controlla, la numera e la firma.",
+    ],
+    // Prima del lancio: nessun avviso agli account di prova.
+    notify: false,
+  },
 ];
 
 export function findTermsChange(version: string): TermsChange | undefined {
