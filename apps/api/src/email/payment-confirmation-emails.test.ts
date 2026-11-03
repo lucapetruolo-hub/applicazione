@@ -114,3 +114,11 @@ describe("piede delle email", () => {
     expect(email.text).not.toContain("DA COMPILARE");
   });
 });
+
+describe("quando partono le conferme di pagamento", () => {
+  it("non aspettano il riassunto della sera", async () => {
+    const { NOTIFICATION_DIGEST_TYPES } = await import("@professionisti/shared");
+    expect(NOTIFICATION_DIGEST_TYPES.has("JOB_BALANCE_AUTO_CHARGED")).toBe(false);
+    expect(NOTIFICATION_DIGEST_TYPES.has("JOB_PAYMENT_CONFIRMED")).toBe(false);
+  });
+});

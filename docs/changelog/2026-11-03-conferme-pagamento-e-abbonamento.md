@@ -55,3 +55,11 @@ tutte le proposte, dalla 1 alla 6.
   con carta e numero del pagamento.
 - Anteprima delle email (`pnpm --filter @professionisti/api email:preview`) e
   foto della pagina Abbonamento da telefono e computer con dati di prova.
+
+## Seguito: saldo addebitato da solo subito
+
+Decisione di Luca (03/11/2026): l'avviso "Saldo del lavoro pagato" al cliente,
+quando il saldo si addebita da solo sulla carta dell'acconto, non aspetta più
+il riassunto della sera (tolto da `NOTIFICATION_DIGEST_TYPES`). È l'addebito
+che il cliente non si aspetta: saperlo subito evita che lo contesti in banca.
+Di notte (22-7) aspetta comunque il mattino, come tutte le email.

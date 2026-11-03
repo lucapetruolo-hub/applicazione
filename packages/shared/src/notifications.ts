@@ -637,7 +637,8 @@ export const NOTIFICATION_DIGEST_TYPES: ReadonlySet<string> = new Set([
   "NEW_REVIEW",
   "JOB_DEPOSIT_PAID",
   "JOB_BALANCE_PAID",
-  "JOB_BALANCE_AUTO_CHARGED",
+  // JOB_BALANCE_AUTO_CHARGED e JOB_PAYMENT_CONFIRMED partono subito: il cliente deve
+  // riconoscere l'addebito (docs/changelog/2026-11-03-conferme-pagamento-e-abbonamento.md).
   "JOB_PAYOUT_SENT",
   "JOB_REFUND_PENDING",
   "JOB_REFUND_COMPLETED",
