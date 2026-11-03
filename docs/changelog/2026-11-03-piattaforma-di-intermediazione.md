@@ -46,3 +46,14 @@ typecheck e lint.
 di benvenuto del professionista ("Agenda, preventivi, promemoria e documenti
 sono compresi, senza programmi a parte."). Le parole delle fatture si
 rivedono quando risponde il commercialista (domanda 87).
+
+**Migliorie** (Luca, "Effettua tutte le migliorie"):
+- **Note legali**, punto 1: il sito è una piattaforma di intermediazione
+  online e il contratto per il lavoro si conclude tra cliente e
+  professionista, prima dei dati della società.
+- **Controllo dei testi** di email, notifiche e pagine: nessun "i nostri
+  professionisti", "garantiamo il lavoro" o simili. "Garanzia" compare solo
+  nei Termini (garanzie del pagamento online e garanzia di legge del
+  professionista) e nella privacy (trasferimenti dei dati): va bene così.
+- **Parole delle fatture**: restano in attesa della risposta del
+  commercialista (domanda 87).
