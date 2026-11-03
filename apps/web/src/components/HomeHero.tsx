@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   DEFAULT_PROBLEM_EXAMPLES,
   FIELD_PROBLEM_EXAMPLES,
@@ -185,15 +185,145 @@ function HeroExamples({ problems, trades, onPick }: { problems: readonly string[
   );
 }
 
+/** Scorrimento da solo: pixel al secondo, attesa all'apertura e a ogni capo. */
+const AUTO_SCROLL_SPEED = 14;
+const AUTO_SCROLL_START_MS = 2500;
+const AUTO_SCROLL_PAUSE_MS = 2500;
+
+/**
+ * Una riga per elenco, da telefono e da computer, con due freccette piccole
+ * ai lati e i bordi sfumati (richiesta di Luca, docs/changelog/2026-11-03-luci-che-accelerano.md):
+ * prima da computer le frasi andavano su due righe. Le freccette compaiono
+ * solo se c'è altro da vedere da quel lato; si scorre anche col dito. La
+ * riga scorre da sola molto piano finché non la si tocca.
+ */
 function ExampleRow({ label, items, onPick }: { label: string; items: readonly string[]; onPick: (text: string) => void }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ start: false, end: false, fits: true });
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const update = () => {
+      const max = track.scrollWidth - track.clientWidth;
+      setEdges({ start: track.scrollLeft > 1, end: track.scrollLeft < max - 1, fits: max <= 1 });
+    };
+    update();
+    track.addEventListener("scroll", update, { passive: true });
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(update) : null;
+    observer?.observe(track);
+    return () => {
+      track.removeEventListener("scroll", update);
+      observer?.disconnect();
+    };
+  }, [items]);
+
+  // Scorrimento lentissimo da solo (scelta di Luca): avanti e indietro, con
+  // una pausa a ogni capo. Si ferma per sempre al primo tocco, clic,
+  // freccetta o tasto nella riga (da lì decide la persona, WCAG 2.2.2) e
+  // finché il cursore ci sta sopra; fermo fuori dallo schermo e con "riduci
+  // movimento".
+  useEffect(() => {
+    const track = trackRef.current;
+    const row = track?.parentElement;
+    if (!track || !row) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let stopped = false;
+    let hovering = false;
+    let visible = true;
+    let direction = 1;
+    let pauseUntil = performance.now() + AUTO_SCROLL_START_MS;
+    let position = track.scrollLeft;
+    let last = performance.now();
+    let frame = requestAnimationFrame(function step(now) {
+      const elapsed = Math.min(now - last, 100);
+      last = now;
+      const max = track.scrollWidth - track.clientWidth;
+      if (!stopped && !hovering && visible && max > 2 && now >= pauseUntil) {
+        position = Math.min(max, Math.max(0, position + (direction * AUTO_SCROLL_SPEED * elapsed) / 1000));
+        track.scrollLeft = position;
+        if (position >= max || position <= 0) {
+          direction = -direction;
+          pauseUntil = now + AUTO_SCROLL_PAUSE_MS;
+        }
+      } else {
+        position = track.scrollLeft;
+      }
+      if (!stopped) frame = requestAnimationFrame(step);
+    });
+    const stop = () => {
+      stopped = true;
+      cancelAnimationFrame(frame);
+    };
+    const enter = () => (hovering = true);
+    const leave = () => (hovering = false);
+    const observer =
+      typeof IntersectionObserver === "function"
+        ? new IntersectionObserver(([entry]) => (visible = entry?.isIntersecting ?? true))
+        : null;
+    observer?.observe(row);
+    row.addEventListener("pointerdown", stop);
+    row.addEventListener("keydown", stop);
+    row.addEventListener("wheel", stop, { passive: true });
+    row.addEventListener("touchstart", stop, { passive: true });
+    row.addEventListener("focusin", stop);
+    row.addEventListener("mouseenter", enter);
+    row.addEventListener("mouseleave", leave);
+    return () => {
+      stop();
+      observer?.disconnect();
+      row.removeEventListener("pointerdown", stop);
+      row.removeEventListener("keydown", stop);
+      row.removeEventListener("wheel", stop);
+      row.removeEventListener("touchstart", stop);
+      row.removeEventListener("focusin", stop);
+      row.removeEventListener("mouseenter", enter);
+      row.removeEventListener("mouseleave", leave);
+    };
+  }, [items]);
+
+  const scroll = (direction: 1 | -1) => {
+    const track = trackRef.current;
+    if (!track) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    track.scrollBy({ left: direction * Math.max(160, track.clientWidth * 0.7), behavior: reduced ? "auto" : "smooth" });
+  };
+
   return (
-    <div className="hero-examples-row" role="group" aria-label={label.replace(":", "")}>
+    <div
+      className="hero-examples-row"
+      role="group"
+      aria-label={label.replace(":", "")}
+      data-fits={edges.fits}
+    >
       <span className="hero-examples-label">{label}</span>
-      {items.map((item) => (
-        <button key={item} type="button" className="hero-example" onClick={() => onPick(item)}>
-          {item}
-        </button>
-      ))}
+      <button
+        type="button"
+        className="hero-examples-arrow"
+        aria-label="Esempi precedenti"
+        tabIndex={-1}
+        data-hidden={!edges.start}
+        onClick={() => scroll(-1)}
+      >
+        <Icon name="chevron-left" size={16} color="white" strokeWidth={2.25} />
+      </button>
+      <div ref={trackRef} className="hero-examples-track scroll-fade">
+        {items.map((item) => (
+          <button key={item} type="button" className="hero-example" onClick={() => onPick(item)}>
+            {item}
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="hero-examples-arrow"
+        aria-label="Altri esempi"
+        tabIndex={-1}
+        data-hidden={!edges.end}
+        onClick={() => scroll(1)}
+      >
+        <Icon name="chevron-right" size={16} color="white" strokeWidth={2.25} />
+      </button>
     </div>
   );
 }

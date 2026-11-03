@@ -100,3 +100,27 @@ proposte (anche i mestieri più cercati e l'elenco modificabile in Admin).
 typecheck di API e sito, lint, build; foto da telefono e computer. Test e2e
 `barra-preventivo.spec.ts`: tocca la prima frase, qualunque sia, invece di
 "Salta la corrente".
+
+## Frasi d'esempio su una riga che scorre piano
+
+**Richiesta (Luca, 03/11/2026)**: con 5 frasi su computer andavano a capo
+su due righe. "Un elenco che si muove da solo in maniera lenta con delle
+freccette piccole nei lati, in entrambi gli elenchi", "che si fermano col
+puntatore sopra".
+
+**Decisione** (`ExampleRow` in `HomeHero.tsx`, `.hero-examples-*` in
+`globals.css`)
+- Ogni elenco ("Prova:" e "O scrivi solo chi cerchi:") sta su una riga che
+  scorre col dito, la rotella o le frecce.
+- Freccette piccole ai lati solo quando c'è altro da vedere da quella parte;
+  fuori dal Tab (le frasi sono già raggiungibili), con nome per i lettori di
+  schermo.
+- Scorrimento da solo molto lento (14 px al secondo), dopo 2,5 secondi, da un
+  capo all'altro e ritorno con una pausa di 2,5 secondi a ogni capo. Si ferma
+  col puntatore sopra e riparte quando esce; si ferma del tutto al primo
+  tocco, clic, rotella, tasto o Tab dentro la riga (chi la usa decide lui);
+  fermo fuori dallo schermo e con "riduci movimento".
+
+**Verifica**: lint, typecheck, build; Playwright su telefono (390) e computer
+(1440): una riga sola, la riga si sposta da sola, sotto il puntatore resta
+ferma, dopo un tocco non riparte.
