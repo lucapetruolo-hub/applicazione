@@ -69,3 +69,25 @@ ritieni".
 **Verifica**: prove nel browser di tastiera, menu laterale, Oggi (telefono in
 Italia e computer a Tokyo) verdi; typecheck e lint verdi; foto della pagina
 Oggi da telefono controllata.
+
+## Terzo giro: pagine del cliente misurate
+
+**Richiesta di Luca** (03/11): "effettua seconda miglioria" (aggiungere al
+controllo Lighthouse le pagine del cliente, che non erano misurate).
+
+- **Prova Lighthouse** (`e2e/lighthouse/agenda.mjs`): misura anche "Le mie
+  richieste" (`/le-mie-richieste`) e la chat (`/chat`) con la sessione del
+  cliente degli appuntamenti di prova, stesso limite di 500 ms. Se la sessione
+  del cliente non si apre la prova si ferma (mai misurare la pagina "Accedi").
+  Il cliente di prova ora ha la password (`e2e/fixtures/global-setup.ts`,
+  `clientToken` in `.auth/data.json`).
+- **"Le mie richieste" più leggera**: la prima misura in locale era 700 ms,
+  la più pesante di tutte. Stessa cura di Oggi (risposte con
+  `startTransition`) e in più all'apertura le richieste e i lavori non
+  partono due volte: il primo giro dei pallini non le richiede di nuovo,
+  stavano già arrivando. Prima/dopo alternati in locale, 9 giri per parte: TBT
+  mediano da 739 a 477 ms. La chat del cliente era già a 335: nessun cambio.
+
+**Verifica**: prove nel browser di elimina richiesta, preventivo accettato,
+schede del lavoro, stelle dei preventivi, fumetti dei badge e admin (telefono
+in Italia e computer a Tokyo) verdi; typecheck e lint di sito e prove verdi.

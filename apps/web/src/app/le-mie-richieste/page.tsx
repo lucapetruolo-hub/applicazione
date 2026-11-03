@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type ClientInvoiceRequestInput, type JobPaymentChoice, type SameTimeBookingCandidate } from "@professionisti/shared";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -144,15 +144,22 @@ function LeMieRichiesteContent() {
 
   // useCallback: cambia solo col token, così il poll qui sotto può
   // dichiararla tra le dipendenze senza ripartire a ogni render.
+  // Le risposte dell'API aggiornano la pagina con `startTransition`, come
+  // agenda, Oggi e Richieste del professionista (docs/CHANGELOG.md §345,
+  // docs/changelog/2026-11-02-oggi-piu-leggera.md): React disegna a piccoli
+  // pezzi invece che in un blocco unico che su un telefono lento fermava la pagina.
   const reload = useCallback(() => {
     if (!token) return;
     apiClient
       .myGuidedRequests(token)
-      .then(setRequests)
-      .catch((err) => setError(err instanceof Error ? err.message : "Errore nel caricamento delle richieste."));
+      .then((loaded) => startTransition(() => setRequests(loaded)))
+      .catch((err) => startTransition(() => setError(err instanceof Error ? err.message : "Errore nel caricamento delle richieste.")));
     // In errore restano le prenotazioni già caricate (il prossimo giro le
     // riprova), non una lista vuota che sposterebbe le richieste di fase.
-    apiClient.myClientBookings(token).then(setBookings).catch(() => setBookings((prev) => prev ?? []));
+    apiClient
+      .myClientBookings(token)
+      .then((loaded) => startTransition(() => setBookings(loaded)))
+      .catch(() => startTransition(() => setBookings((prev) => prev ?? [])));
   }, [token]);
 
   useEffect(reload, [reload]);
@@ -317,27 +324,31 @@ function LeMieRichiesteContent() {
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
-    function poll() {
+    // `first`: all'apertura le liste stanno già arrivando (effetto sopra),
+    // quindi il primo giro non le richiede una seconda volta.
+    function poll(first = false) {
       apiClient
         .unreadNotifications(token!)
         .then((notifications) => {
           if (cancelled || notifications.length === 0) return notifications;
           const freshRequestIds = unreadGuidedRequestIds(notifications);
-          setNewRequestIds((prev) => mergeIds(prev, freshRequestIds));
-          // Un aggiornamento arrivato dopo "Segna come letta" riaccende il "Nuovo".
-          setDismissedNewIds((prev) => (prev.size === 0 ? prev : new Set([...prev].filter((id) => !freshRequestIds.has(id)))));
-          setNewClientBookingIds((prev) => mergeIds(prev, unreadBookingIds(notifications)));
-          setNewQuoteIds((prev) => mergeIds(prev, unreadQuoteIds(notifications)));
-          setThreadUnreadCounts((prev) => mergeCounts(prev, unreadThreadCounts(notifications)));
-          setQuoteUnreadCounts((prev) => mergeCounts(prev, unreadQuoteCounts(notifications)));
-          setBookingUnreadCounts((prev) => mergeCounts(prev, unreadBookingCounts(notifications)));
-          reload();
+          startTransition(() => {
+            setNewRequestIds((prev) => mergeIds(prev, freshRequestIds));
+            // Un aggiornamento arrivato dopo "Segna come letta" riaccende il "Nuovo".
+            setDismissedNewIds((prev) => (prev.size === 0 ? prev : new Set([...prev].filter((id) => !freshRequestIds.has(id)))));
+            setNewClientBookingIds((prev) => mergeIds(prev, unreadBookingIds(notifications)));
+            setNewQuoteIds((prev) => mergeIds(prev, unreadQuoteIds(notifications)));
+            setThreadUnreadCounts((prev) => mergeCounts(prev, unreadThreadCounts(notifications)));
+            setQuoteUnreadCounts((prev) => mergeCounts(prev, unreadQuoteCounts(notifications)));
+            setBookingUnreadCounts((prev) => mergeCounts(prev, unreadBookingCounts(notifications)));
+          });
+          if (!first) reload();
           return notifications;
         })
         .catch(() => undefined)
         .then((notifications) => markNotificationsRead(notifications));
     }
-    poll();
+    poll(true);
     const interval = setInterval(poll, UNREAD_BADGE_POLL_MS);
     return () => {
       cancelled = true;

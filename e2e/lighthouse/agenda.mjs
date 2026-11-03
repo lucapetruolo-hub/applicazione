@@ -1,5 +1,6 @@
-// Lighthouse dell'agenda, di Oggi, di Richieste, di Fisco e pagamenti e del profilo pubblico con la
-// barra "Richiedi un preventivo" su un telefono lento (docs/CHANGELOG.md §309, §345, §400):
+// Lighthouse dell'agenda, di Oggi, di Richieste, di Fisco e pagamenti, del profilo pubblico con la
+// barra "Richiedi un preventivo" e delle pagine del cliente ("Le mie richieste", chat) su un
+// telefono lento (docs/CHANGELOG.md §309, §345, §400, docs/changelog/2026-11-02-oggi-piu-leggera.md):
 // profilo "mobile" di Lighthouse (Moto G Power, CPU rallentata 4 volte,
 // rete 4G lenta simulata). Blocca sotto i limiti "scarso" di Google
 // (BUDGET) e avvisa sotto quelli "buono" (GOOD), che sono l'obiettivo.
@@ -33,10 +34,14 @@ const context = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir()
 const page = context.pages()[0] ?? (await context.newPage());
 // Sessione già aperta: Lighthouse non deve cancellare i dati del sito (disableStorageReset).
 await page.goto(WEB_URL);
-await page.evaluate((token) => {
-  localStorage.setItem("professionisti_token", token);
-  localStorage.setItem("cookie-consent-v1", "denied");
-}, data.token);
+/** Apre la sessione del professionista o del cliente nel contesto che usa Lighthouse. */
+async function signIn(token) {
+  await page.evaluate((value) => {
+    localStorage.setItem("professionisti_token", value);
+    localStorage.setItem("cookie-consent-v1", "denied");
+  }, token);
+}
+await signIn(data.token);
 // La sessione deve funzionare davvero: altrimenti si misurerebbe la pagina "Accedi".
 await page.goto(`${WEB_URL}/dashboard/agenda`);
 await page.locator(".ag-strip-row, .ag-card").first().waitFor({ state: "attached", timeout: 30000 });
@@ -55,12 +60,25 @@ const pages = [
   { name: "pagamenti-online", path: "/dashboard/fiscale/pagamenti" },
   { name: "documenti", path: "/dashboard/documenti" },
   { name: "dac7", path: "/dashboard/fiscale/dac7" },
+  // Le pagine del cliente aperte più spesso, con la sua sessione: prima non
+  // erano misurate (docs/changelog/2026-11-02-oggi-piu-leggera.md).
+  { name: "mie-richieste", path: "/le-mie-richieste", client: true },
+  { name: "chat-cliente", path: "/chat", client: true },
 ];
 const rows = [];
 let failed = false;
 /** Tre misure per pagina e si tiene quella mediana per il punteggio, come consiglia Lighthouse CI. */
 const RUNS = 3;
+let clientSignedIn = false;
 for (const item of pages) {
+  if (item.client && !clientSignedIn) {
+    await signIn(data.clientToken);
+    // Anche qui la sessione deve funzionare davvero, non la pagina "Accedi".
+    await page.goto(`${WEB_URL}${item.path}`);
+    await page.waitForLoadState("networkidle");
+    if (new URL(page.url()).pathname !== item.path) throw new Error(`Sessione del cliente non aperta: ${page.url()}`);
+    clientSignedIn = true;
+  }
   const runs = [];
   for (let i = 0; i < RUNS; i++) {
     const result = await lighthouse(`${WEB_URL}${item.path}`, {
