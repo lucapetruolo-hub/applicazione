@@ -6,7 +6,7 @@ import {
   type InvoiceParty,
   type PlatformInvoiceLine,
 } from "@professionisti/shared";
-import { buildFatturaPaXml, type FatturaPaIssuer, type FatturaPaParty } from "./invoice-xml";
+import { buildFatturaPaXml, xmlAmount, type FatturaPaIssuer, type FatturaPaParty } from "./invoice-xml";
 import type { SdiCompany } from "./sdi-provider";
 import { romeDayIso } from "./accounting-dates";
 
@@ -157,6 +157,20 @@ function addressLines(p: { street: string | null; houseNumber: string | null; po
   return [street, city].filter(Boolean);
 }
 
+/**
+ * Capitale sociale scritto in Admin → Finanza ("10.000", "10.000,00 €",
+ * "10000.00") in centesimi; null se non si capisce. Lo SdI vuole "10000.00":
+ * scritto all'italiana sarebbe stato scartato (pacchetto per il commercialista).
+ */
+export function shareCapitalCents(value: string | null): number | null {
+  if (!value) return null;
+  let text = value.replace(/€|eur(o)?/gi, "").replace(/[\s\u00a0\u202f']/g, "");
+  if (text.includes(",")) text = text.replace(/\./g, "").replace(",", ".");
+  else if (/^\d{1,3}(\.\d{3})+$/.test(text)) text = text.replace(/\./g, "");
+  if (!/^\d+(\.\d{1,2})?$/.test(text)) return null;
+  return Math.round(Number(text) * 100);
+}
+
 export function issuerParty(i: IssuerSnapshot): InvoiceParty {
   return {
     name: i.companyName,
@@ -165,7 +179,7 @@ export function issuerParty(i: IssuerSnapshot): InvoiceParty {
       i.taxCode && i.taxCode !== i.vatNumber ? `Codice fiscale ${i.taxCode}` : null,
       ...addressLines(i),
       i.reaOffice && i.reaNumber ? `REA ${i.reaOffice} ${i.reaNumber}` : null,
-      i.shareCapital ? `Capitale sociale ${i.shareCapital} €` : null,
+      i.shareCapital ? `Capitale sociale ${shareCapitalCents(i.shareCapital) !== null ? formatEurCents(shareCapitalCents(i.shareCapital)!) : i.shareCapital}` : null,
       i.pecEmail ? `PEC ${i.pecEmail}` : null,
     ].filter((line): line is string => !!line),
   };
@@ -183,6 +197,11 @@ export function recipientParty(r: RecipientSnapshot): InvoiceParty {
   };
 }
 
+function shareCapitalXml(value: string | null): string | null {
+  const cents = shareCapitalCents(value);
+  return cents === null ? null : xmlAmount(cents);
+}
+
 export function fatturaPaIssuer(i: IssuerSnapshot): FatturaPaIssuer {
   return {
     companyName: i.companyName,
@@ -192,7 +211,7 @@ export function fatturaPaIssuer(i: IssuerSnapshot): FatturaPaIssuer {
     taxCode: i.taxCode,
     address: { street: i.street, houseNumber: i.houseNumber, postalCode: i.postalCode, city: i.city, province: i.province, country: i.country },
     taxRegime: i.taxRegime,
-    rea: i.reaOffice && i.reaNumber ? { office: i.reaOffice, number: i.reaNumber, shareCapital: i.shareCapital } : null,
+    rea: i.reaOffice && i.reaNumber ? { office: i.reaOffice, number: i.reaNumber, shareCapital: shareCapitalXml(i.shareCapital) } : null,
   };
 }
 
