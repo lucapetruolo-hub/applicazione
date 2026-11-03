@@ -1507,6 +1507,8 @@ export class OnlineMoneyService {
         status: dispute.status,
         alreadyReleased: !!jp.releasedAt,
         debtEurCents: debtAdded,
+        // Commissione di Stripe, sempre a suo carico: detta nell'email d'apertura.
+        feeEurCents: disputeStripeFeeEurCents(dispute),
       };
       await this.notifyFinanceAdmins("ADMIN_STRIPE_DISPUTE", payload);
       await this.notificationsService.notify(jp.booking.professionalProfile.userId, "JOB_STRIPE_DISPUTE", payload);

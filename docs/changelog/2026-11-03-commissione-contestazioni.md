@@ -72,3 +72,23 @@ frode con la commissione, vinta con la commissione) e
 `bank-disputes.test.ts` (archivio con la commissione).
 `pnpm --filter @professionisti/api test` 1208 verdi; typecheck e lint del
 sito verdi.
+
+## Terzo giro: la commissione detta nell'email
+
+**Richiesta** di Luca: "effettua la prima miglioria" (dire nell'email della
+contestazione che Stripe prende anche la commissione).
+
+**Decisione.** L'avviso `JOB_STRIPE_DISPUTE` porta `feeEurCents`; l'email
+d'apertura aggiunge una riga: "Stripe trattiene anche €20 di commissione per
+la contestazione: non torna, nemmeno se la banca ti dà ragione." Se Stripe
+non l'ha ancora indicata, "(di solito 20 €)". L'email di chiusura non la
+ripete.
+
+**Non fatto, dopo valutazione:** restituire la trattenuta all'apertura della
+contestazione. Se la contestazione si vince, o si perde per lavoro non
+conforme, andrebbe ripresa con un prelievo dal conto del professionista
+(costo Stripe dell'1,4% a suo carico, e un debito se il saldo non basta),
+per anticipargli pochi euro per qualche settimana. Oggi gli torna già da sola
+quando la contestazione si perde per un motivo che non dipende da lui.
+
+**Verifica.** Test nuovo in `email-templates.test.ts`; API 1209 test verdi.
