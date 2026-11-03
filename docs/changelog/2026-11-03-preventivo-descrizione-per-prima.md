@@ -35,3 +35,32 @@ delle tessere, tutte le tessere in vista, proposta già scelta che segue il test
 resta, categoria del link che resta, gas, descrizione non capita), le altre
 prove della richiesta e i test dell'API su `problem-match`. Foto da telefono
 e computer in `preventivo-descrizione/` della cartella del progetto.
+
+## Secondo giro (03/11/2026, richieste di Luca)
+
+- **"A domicilio / Online" è la prima scelta** del modulo, sopra la
+  descrizione: un tocco, già su "A domicilio", e decide il resto.
+- **La tessera suggerita va in cima all'elenco** (`CategoryTiles`, prop
+  `first`): si sposta solo quando cambia il suggerimento, non a ogni tocco.
+- **Due esempi da toccare sotto la casella** ("Il rubinetto perde", "Salta la
+  corrente", riconosciuti con sicurezza dal dizionario): il tocco scrive il
+  testo e lascia il cursore in fondo per continuare. Solo con il campo vuoto e
+  senza una categoria di partenza (con "Imbianchino" già scelto un esempio da
+  idraulico confonderebbe).
+- **Admin "Mestieri richiesti"**: quante richieste di preventivo tengono la
+  categoria proposta e quante la cambiano, con le sostituzioni più frequenti
+  (dicono quale parola insegnare al dizionario). Nuova colonna
+  `GuidedRequest.suggestedCategorySlug` (migrazione
+  `20261103180000_categoria_suggerita`), solo sulla prima richiesta di un
+  invio; conta dal lancio e senza account di prova (§395).
+- **Ricerca per problema: prima chi fa proprio quel lavoro.** Con
+  `?problema=` la ricerca (`GET /professionals/search?problema=`) confronta la
+  descrizione con le prestazioni dei professionisti
+  (`serviceMatchingProblem` in `packages/shared`: almeno una parola non
+  generica in comune, "rubinetto" e "Sostituzione rubinetto"); chi ce l'ha va
+  prima e la scheda la mostra con il suo prezzo, come per "Quanto costa"
+  (`matchedServiceId`). Il boost resta fuori (§392).
+
+**Verifica**: prove nel browser nuove (scelta per prima, esempi, tessera in
+cima, niente esempi con una categoria di partenza), test di
+`serviceMatchingProblem` e `suggestionOutcomes`.

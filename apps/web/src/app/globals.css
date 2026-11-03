@@ -7782,3 +7782,35 @@ a.admin-kpi:hover {
     animation: none;
   }
 }
+/* "Prova:" sotto "Descrivi il lavoro": le pillole della home, su fondo chiaro. */
+.guided-examples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.guided-examples-label {
+  color: #6e6459;
+  font-size: 15px;
+  font-weight: 600;
+}
+.guided-example {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0e7a4c;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #b9dcc8;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.guided-example:hover {
+  background: #eef8f2;
+  border-color: #128552;
+}
+.guided-example:active {
+  transform: scale(0.98);
+}

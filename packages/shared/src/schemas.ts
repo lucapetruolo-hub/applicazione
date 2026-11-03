@@ -398,6 +398,12 @@ export const guidedRequestSchema = z
     preferredTimeSlot: timeRangeSchema.optional(),
     /** Da dove è arrivato il cliente nella visita che porta alla richiesta (docs/CHANGELOG.md §296). */
     trafficSource: trafficSourceSchema.optional(),
+    /**
+     * Categoria proposta dalla descrizione e scelta da sola nel modulo
+     * (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md): serve
+     * solo a contare in admin quante richieste la tengono e quante la cambiano.
+     */
+    suggestedCategorySlug: professionalCategorySlugSchema.optional(),
   })
   .refine((data) => Boolean(data.preferredDate) === Boolean(data.preferredTimeSlot), {
     message: "Data e fascia oraria preferita vanno indicate insieme.",

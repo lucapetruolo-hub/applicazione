@@ -111,6 +111,8 @@ test("la descrizione sceglie la categoria suggerita, con tutte le categorie in v
   await description.fill("Salta la corrente quando accendo il forno");
   await expect(all.getByRole("button", { name: "Elettricista", pressed: true })).toBeVisible();
   await expect(page.getByText("Ti suggeriamo Elettricista: è già scelta")).toBeVisible();
+  // La tessera suggerita va in cima all'elenco.
+  await expect(all.locator(".cat-tile").first()).toHaveAccessibleName("Elettricista");
   await expect(page.getByText("1 di 3")).toBeVisible();
 
   // Scrivendo altro la scelta segue la descrizione, finché non si sceglie a mano.
@@ -144,4 +146,29 @@ test("descrizione che non fa capire il mestiere: si sceglie dall'elenco", async 
   await page.getByLabel("Descrivi il lavoro").fill("Mi serve una mano per una cosa");
   await expect(page.getByText("Non abbiamo capito chi ti serve: sceglilo tu.")).toBeVisible();
   await expect(page.getByRole("group", { name: "Categorie" }).locator(".cat-tile.is-on")).toHaveCount(0);
+});
+
+test("A domicilio o Online per primo, poi gli esempi da toccare sotto la descrizione", async ({ page }) => {
+  await page.goto("/preventivo");
+  const description = page.getByLabel("Descrivi il lavoro");
+  await expect(description).toBeVisible();
+  const order = await page.evaluate(() => {
+    const mode = document.querySelector('[aria-label="A domicilio"]');
+    const field = document.querySelector("textarea");
+    return mode && field ? Boolean(mode.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING) : null;
+  });
+  expect(order).toBe(true);
+
+  await page.getByRole("group", { name: "Esempi" }).getByRole("button", { name: "Il rubinetto perde" }).click();
+  await expect(description).toHaveValue("Il rubinetto perde ");
+  await expect(description).toBeFocused();
+  await expect(page.getByRole("group", { name: "Categorie" }).getByRole("button", { name: "Idraulico", pressed: true })).toBeVisible();
+  // Con il campo scritto gli esempi non servono più.
+  await expect(page.getByRole("group", { name: "Esempi" })).toHaveCount(0);
+});
+
+test("con una categoria di partenza niente esempi di altri mestieri", async ({ page }) => {
+  await page.goto("/preventivo?categoria=imbianchino");
+  await expect(page.getByLabel("Descrivi il lavoro")).toBeVisible();
+  await expect(page.getByRole("group", { name: "Esempi" })).toHaveCount(0);
 });

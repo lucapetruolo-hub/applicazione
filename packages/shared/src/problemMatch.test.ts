@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import { matchProblem } from "./problemMatch";
+import { matchProblem, serviceMatchingProblem } from "./problemMatch";
 
 // Banco di prova (analisi/abbinamento-problema/fase1-numeri.md): 769 frasi
 // vere etichettate a mano. Il "mucchio chiuso" non si usa per tarare il
@@ -92,4 +92,13 @@ test("casi tipici", () => {
   assert.equal(matchProblem("la lavatrice non scarica e dà errore E21").outOfService, "elettrodomestici");
   assert.equal(matchProblem("devo installare la lavatrice nuova").outOfService, null);
   assert.equal(matchProblem("macchia di umido sul soffitto del bagno").question?.id, "macchia");
+});
+
+test("prestazione che corrisponde al problema", () => {
+  const services = [{ name: "Riparazione perdite" }, { name: "Sostituzione rubinetto" }, { name: "Lucidatura parquet" }, { name: "Spurgo scarichi" }];
+  assert.equal(serviceMatchingProblem(services, "Il rubinetto della cucina perde")?.name, "Sostituzione rubinetto");
+  assert.equal(serviceMatchingProblem(services, "Lo scarico del lavandino è intasato")?.name, "Spurgo scarichi");
+  // Parole generiche e parole corte simili non bastano.
+  assert.equal(serviceMatchingProblem(services, "Serve una riparazione, manca la luce"), undefined);
+  assert.equal(serviceMatchingProblem([], "Il rubinetto perde"), undefined);
 });

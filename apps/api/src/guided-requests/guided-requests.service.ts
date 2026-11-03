@@ -160,7 +160,13 @@ export class GuidedRequestsService {
     const submissionGroupId = randomUUID();
     const requests: { guidedRequestId: string; matchedProfessionals: number; categorySlug: string }[] = [];
     for (const slug of slugs) {
-      const created = await this.create(clientId, { ...rest, categorySlug: slug as GuidedRequestInput["categorySlug"] }, { checksDone: true, submissionGroupId });
+      // La categoria proposta si conta una volta sola, sulla prima richiesta.
+      const suggestedCategorySlug = slug === slugs[0] ? rest.suggestedCategorySlug : undefined;
+      const created = await this.create(
+        clientId,
+        { ...rest, categorySlug: slug as GuidedRequestInput["categorySlug"], suggestedCategorySlug },
+        { checksDone: true, submissionGroupId },
+      );
       requests.push({ ...created, categorySlug: slug });
     }
     // Una sola email di conferma per tutto l'invio, non una per categoria.
@@ -444,6 +450,7 @@ export class GuidedRequestsService {
               preferredTimeSlot: resolvedSlot ? input.preferredTimeSlot : undefined,
               submissionGroupId: opts.submissionGroupId,
               trafficSource: input.trafficSource ?? null,
+              suggestedCategorySlug: input.suggestedCategorySlug ?? null,
             },
           });
         },

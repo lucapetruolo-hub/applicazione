@@ -167,7 +167,7 @@ async function ProblemResults({
   if (chosen || offers) {
     const base = { category: chosen ?? undefined, offers, remote: isOnline, merit: true };
     try {
-      professionals = await apiClient.searchProfessionals({ ...base, city, track: Boolean(chosen && city?.trim()) && (await shouldCountVisit()) });
+      professionals = await apiClient.searchProfessionals({ ...base, problem: description, city, track: Boolean(chosen && city?.trim()) && (await shouldCountVisit()) });
     } catch {
       loadFailed = true;
     }
