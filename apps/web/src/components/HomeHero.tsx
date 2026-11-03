@@ -158,7 +158,8 @@ export function HomeHero({ examples }: { examples: ProblemExamplesResponse | nul
  * l'elenco di partenza nell'ordine dei volumi di Google.
  */
 function useHeroExamples(examples: ProblemExamplesResponse | null) {
-  const ordered = examples ?? FALLBACK_EXAMPLES;
+  // Una risposta senza la forma attesa (API vecchia o finta) non deve rompere la home.
+  const ordered = examples && Array.isArray(examples.examples) && Array.isArray(examples.trades) ? examples : FALLBACK_EXAMPLES;
   const visible = ordered.examples.slice(0, VISIBLE_PROBLEM_EXAMPLES).map((example) => example.text);
   const pool = ordered.examples.slice(VISIBLE_PROBLEM_EXAMPLES, VISIBLE_PROBLEM_EXAMPLES + FIELD_PROBLEM_EXAMPLES_POOL);
   // Scelta una volta per visita. L'elenco del campo si vede solo dopo il tocco,
