@@ -1,6 +1,7 @@
 import { z } from "zod";
 import "./zod";
 import { PROBLEM_DESCRIPTION_MAX } from "./problemMatch";
+import { PROBLEM_EXAMPLE_MAX } from "./problemExamples";
 
 /** Corpi delle rotte "dal problema ai mestieri" (docs/CHANGELOG.md §392). */
 
@@ -37,3 +38,9 @@ export const addStandardServiceSchema = z.object({
   categorySlug: z.string().trim().min(1).max(40),
 });
 export type AddStandardServiceInput = z.infer<typeof addStandardServiceSchema>;
+
+/** Frase d'esempio aggiunta dall'admin in "Mestieri richiesti" (docs/changelog/2026-11-03-luci-che-accelerano.md). */
+export const addProblemExampleSchema = z.object({
+  text: z.string().trim().min(3).max(PROBLEM_EXAMPLE_MAX),
+});
+export type AddProblemExampleInput = z.infer<typeof addProblemExampleSchema>;

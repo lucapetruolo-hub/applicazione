@@ -3259,6 +3259,18 @@ model StandardServiceName {
   @@map("standard_service_names")
 }
 
+/// Frase d'esempio della ricerca per problema in home, scelta dall'admin in
+/// "Mestieri richiesti" (docs/changelog/2026-11-03-luci-che-accelerano.md).
+/// Tabella vuota: vale l'elenco di partenza `DEFAULT_PROBLEM_EXAMPLES`.
+model ProblemExample {
+  id          String   @id @default(cuid())
+  text        String   @unique
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@map("problem_examples")
+}
+
 // ---------------------------------------------------------------------------
 // Messaggi sul telefono (WhatsApp con Meta, docs/changelog/2026-10-28-promemoria-whatsapp.md)
 // ---------------------------------------------------------------------------

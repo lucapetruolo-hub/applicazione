@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Text, YStack, brand } from "@professionisti/ui";
 import type { ProfessionalKind } from "@professionisti/shared";
 import { CategoryIconBadge } from "./CategoryIconBadge";
+import { GlowLights } from "./GlowLights";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 
 export type RequestSentScreenProps = {
@@ -32,7 +33,9 @@ export type RequestSentScreenProps = {
  * Pagina "Richiesta inviata" (docs/CHANGELOG.md §341): foto grande del
  * professionista (o icona della categoria) con la spunta, a chi è arrivata
  * la richiesta e cosa succede dopo, in tre passi. Niente coriandoli né
- * emoji: decisione dell'utente.
+ * emoji: decisione dell'utente. Dietro la foto le luci sfumate del sito, che
+ * partono veloci e rallentano: un "fatto" discreto, scelto da Luca il 03/11
+ * (docs/changelog/2026-11-03-luci-che-accelerano.md).
  */
 export function RequestSentScreen({
   professionalName,
@@ -107,6 +110,7 @@ export function RequestSentScreen({
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="8" paddingHorizontal="4">
       <YStack width="100%" maxWidth={560} gap="6">
         <div className="request-sent-hero">
+          <GlowLights tone="chiaro" burst className="glow-lights--sfumato request-sent-lights" />
           <div className="request-sent-photo">
             {direct && professionalImageUrl ? (
               <Image src={professionalImageUrl} alt="" width={136} height={136} priority />

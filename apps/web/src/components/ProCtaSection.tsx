@@ -37,7 +37,7 @@ export function ProCtaSection() {
   return (
     <YStack width="100%" paddingVertical="8" paddingHorizontal="4" alignItems="center">
       <div className="pro-cta">
-        <GlowLights tone="scuro" />
+        <GlowLights tone="scuro" pressBoost />
         <YStack gap="6" padding="6 gtSm:8" position="relative">
           <YStack gap="3">
             <Text fontFamily="heading" fontWeight="600" fontSize="9" color="white">
@@ -72,7 +72,7 @@ export function ProCtaSection() {
           </YStack>
 
           <XStack gap="3" flexWrap="wrap">
-            <Link href="/registrati?ruolo=professionista" style={{ textDecoration: "none" }}>
+            <Link href="/registrati?ruolo=professionista" data-glow-boost style={{ textDecoration: "none" }}>
               <XStack backgroundColor="white" paddingHorizontal="5" height={48} alignItems="center" borderRadius={999} cursor="pointer">
                 <Text color={brand.cianografiaScuro} fontWeight="700">
                   Iscriviti gratis

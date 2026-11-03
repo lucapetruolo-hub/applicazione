@@ -163,7 +163,7 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
       >
         {/* Sfumatura che la pagina aveva già (scelta dell'utente), ora con le
             luci che si muovono piano come nella home (docs/CHANGELOG.md §306). */}
-        <GlowLights tone="chiaro" />
+        <GlowLights tone="chiaro" pressBoost />
         <YStack position="relative" width="100%" maxWidth={760} alignItems="center" gap="4" paddingHorizontal="4" paddingVertical="10 gtMd:120px">
           <XStack borderWidth={1} borderColor={LINE} borderRadius={999} backgroundColor={brand.calce} overflow="hidden" alignItems="center">
             <Text fontSize={13} color={brand.grafite} paddingHorizontal="3" paddingVertical={6}>
@@ -200,7 +200,7 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
             <Link href="#come-funziona" style={{ textDecoration: "none" }}>
               <Button tabIndex={-1} variant="secondary">Come funziona</Button>
             </Link>
-            <Link href={ctaHref} style={{ textDecoration: "none" }}>
+            <Link href={ctaHref} data-glow-boost style={{ textDecoration: "none" }}>
               <MagneticButton>
                 <Button variant="primary">{ctaLabel}</Button>
               </MagneticButton>

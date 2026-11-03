@@ -16,11 +16,11 @@ import {
 import { Text, XStack, YStack, brand } from "@professionisti/ui";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
 import { ResultsListWithMap, type MapPoolQuery } from "@/components/ResultsListWithMap";
-import { AlsoDoThisJob } from "@/components/AlsoDoThisJob";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProblemBand } from "@/components/ProblemBand";
 import { ChosenProsBar, chosenRequestHref, type ChosenPro } from "@/components/ChosenProsBar";
 import { saveLastSearchCity } from "@/lib/lastSearchCity";
+import { chosenSearchKey, readChosenSearch, toggleChosenPro, writeChosenSearch } from "@/lib/chosenProsStore";
 import { useComuni, type ComuniModule } from "@/lib/comuniLazy";
 
 /** Suggerimenti di comuni mentre si scrive: pochi, per non riempire la pagina. */
@@ -98,13 +98,33 @@ export function CercaContent({
   const canChoose = Boolean(problem?.chosen) && professionals.length >= 2;
   const [chosenPros, setChosenPros] = useState<ChosenPro[]>([]);
   const chosenIds = new Set(chosenPros.map((pro) => pro.id));
+  // La scelta resta aprendo un profilo e tornando indietro
+  // (docs/changelog/2026-11-03-scelti-restano.md): si legge dopo il montaggio,
+  // perché nel render del server non c'è, e si salva a ogni cambio.
+  const selectionKey = canChoose && problem?.chosen ? chosenSearchKey(problem.chosen, city, problem.description) : null;
+  const [restoredKey, setRestoredKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (!selectionKey) return;
+    const saved = readChosenSearch();
+    const ids = new Set(professionals.map((pro) => pro.id));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setChosenPros(saved?.key === selectionKey ? saved.chosen.filter((pro) => ids.has(pro.id)) : []);
+    setRestoredKey(selectionKey);
+  }, [selectionKey, professionals]);
+  useEffect(() => {
+    if (!selectionKey || restoredKey !== selectionKey || !problem?.chosen) return;
+    writeChosenSearch({
+      key: selectionKey,
+      url: `${window.location.pathname}${window.location.search}`,
+      category: problem.chosen,
+      description: problem.description,
+      city,
+      chosen: chosenPros,
+    });
+  }, [selectionKey, restoredKey, chosenPros, problem?.chosen, problem?.description, city]);
   function toggleChosen(pro: ProfessionalSearchResult) {
     setChosenPros((current) =>
-      current.some((item) => item.id === pro.id)
-        ? current.filter((item) => item.id !== pro.id)
-        : current.length < MAX_CHOSEN_PROFESSIONALS
-          ? [...current, { id: pro.id, businessName: pro.businessName, imageUrl: pro.imageUrl ?? null, categorySlug: pro.categorySlug }]
-          : current,
+      toggleChosenPro(current, { id: pro.id, businessName: pro.businessName, imageUrl: pro.imageUrl ?? null, categorySlug: pro.categorySlug }),
     );
   }
 
@@ -312,7 +332,15 @@ export function CercaContent({
           initialUrgentOnly={initialUrgentOnly}
           merit={Boolean(problem)}
           reasonFor={problem ? (pro) => problemReason(problem, pro) : undefined}
-          footer={alsoDoThisJob.length > 0 ? <AlsoDoThisJob professionals={alsoDoThisJob} /> : undefined}
+          otherSection={
+            alsoDoThisJob.length > 0
+              ? {
+                  title: "Potrebbero fare anche questo lavoro",
+                  subtitle: "Sono di un altro mestiere, ma tra i loro lavori c'è anche questo.",
+                  professionals: alsoDoThisJob,
+                }
+              : undefined
+          }
           selection={
             canChoose
               ? {

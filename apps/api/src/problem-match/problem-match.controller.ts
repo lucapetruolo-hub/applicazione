@@ -1,11 +1,13 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import {
+  addProblemExampleSchema,
   addStandardServiceSchema,
   mergeServiceNameSchema,
   problemMatchRequestSchema,
   problemTakeoverSchema,
   teachProblemWordSchema,
+  type AddProblemExampleInput,
   type AddStandardServiceInput,
   type MergeServiceNameInput,
   type ProblemMatchRequest,
@@ -17,6 +19,7 @@ import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard"
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { ProblemMatchService } from "./problem-match.service";
 import { ProblemMatchAdminService } from "./problem-match-admin.service";
+import { ProblemExamplesService } from "./problem-examples.service";
 import { ProblemTakeoverService } from "./problem-takeover.service";
 import { ServiceNamesService } from "./service-names.service";
 
@@ -25,7 +28,14 @@ export class ProblemMatchController {
   constructor(
     private readonly problemMatchService: ProblemMatchService,
     private readonly problemTakeoverService: ProblemTakeoverService,
+    private readonly problemExamplesService: ProblemExamplesService,
   ) {}
+
+  /** Frasi d'esempio della home, già nell'ordine delle ricerche (docs/changelog/2026-11-03-luci-che-accelerano.md). */
+  @Get("examples")
+  examples() {
+    return this.problemExamplesService.publicExamples();
+  }
 
   // Pubblico (il cliente descrive il problema prima di accedere); limite più
   // stretto del globale perché un dubbio costa una chiamata a pagamento.
@@ -60,7 +70,29 @@ export class ServiceNamesController {
 @UseGuards(JwtAuthGuard, AdminGuard)
 @Controller("admin/problem-match")
 export class AdminProblemMatchController {
-  constructor(private readonly adminService: ProblemMatchAdminService) {}
+  constructor(
+    private readonly adminService: ProblemMatchAdminService,
+    private readonly problemExamplesService: ProblemExamplesService,
+  ) {}
+
+  @RequireAdminScope("MODERATION")
+  @Get("examples")
+  examples() {
+    return this.problemExamplesService.adminList();
+  }
+
+  @RequireAdminScope("MODERATION")
+  @Post("examples")
+  addExample(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(addProblemExampleSchema)) body: AddProblemExampleInput) {
+    return this.problemExamplesService.add(req.user.userId, body.text);
+  }
+
+  @RequireAdminScope("MODERATION")
+  @Post("examples/remove")
+  @HttpCode(200)
+  removeExample(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(addProblemExampleSchema)) body: AddProblemExampleInput) {
+    return this.problemExamplesService.remove(req.user.userId, body.text);
+  }
 
   @RequireAdminScope("MODERATION")
   @Get()

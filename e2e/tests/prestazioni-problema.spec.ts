@@ -95,6 +95,7 @@ test("prima chi fa quel lavoro, poi gli altri mestieri che potrebbero farlo", as
   const section = page.getByRole("region", { name: "Potrebbero fare anche questo lavoro" });
   await expect(section).toBeVisible();
   await expect(section.getByText(`Tuttofare Rubinetti ${stamp}`)).toBeVisible();
+  // Stessa scheda dei risultati, con la riga "Perché".
   await expect(section.getByText("offre «Sostituzione rubinetto»")).toBeVisible();
   // "cucina" in comune non basta: le pulizie non c'entrano.
   await expect(page.getByText(`Pulizie Cucine ${stamp}`)).toHaveCount(0);

@@ -71,8 +71,9 @@ cima, niente esempi con una categoria di partenza), test di
 prestazione ma è di un'altra categoria, con il titolo al condizionale.
 
 **Decisione** (consiglio approvato da Luca): sezione a parte sotto i
-risultati, "Potrebbero fare anche questo lavoro" (`AlsoDoThisJob`), al massimo
-3 professionisti. La prestazione trovata deve essere, per il dizionario, proprio
+risultati, "Potrebbero fare anche questo lavoro", al massimo 3 professionisti,
+con le **stesse schede dei risultati** (scelta di Luca: `otherSection` di
+`ResultsListWithMap`, senza "Scegli"). La prestazione trovata deve essere, per il dizionario, proprio
 del mestiere scelto ("Sostituzione rubinetto" è da idraulico, "Pulizia cucina"
 no): una parola in comune come "cucina" non basta. Mai con l'avviso di
 sicurezza (impianti solo da imprese abilitate, DM 37/2008). Le richieste a
