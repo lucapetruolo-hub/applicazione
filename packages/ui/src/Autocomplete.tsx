@@ -28,6 +28,8 @@ export type AutocompleteProps<T> = {
   labelBadge?: string;
   /** Riceve una funzione che mette il cursore nel campo (gli esempi della home). */
   focusRef?: { current: (() => void) | null };
+  /** Classe del campo (in home il bordo con la luce che gira). */
+  inputClassName?: string;
   id?: string;
   /** Nome per il lettore di schermo quando l'etichetta visibile non è legata al campo: senza, si legge il segnaposto ("Es. Milano"). */
   accessibilityLabel?: string;
@@ -68,6 +70,7 @@ export function Autocomplete<T>({
   label,
   labelBadge,
   focusRef,
+  inputClassName,
   id,
   accessibilityLabel,
   getSearchText,
@@ -213,6 +216,7 @@ export function Autocomplete<T>({
       ) : null}
       <Input
         ref={inputRef as never}
+        className={inputClassName}
         id={id}
         flex={1}
         size={size}

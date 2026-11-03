@@ -73,9 +73,7 @@ export type SearchBarProps = {
    * invita a descrivere il problema, docs/changelog/2026-11-03-ricerca-per-problema-home.md).
    * Con "Online" restano "Cosa ti serve?" e l'esempio della consulenza.
    */
-  queryField?: { label: string; badge?: string; placeholder: string };
-  /** Classe del riquadro bianco (in home il bordo con la luce che gira). */
-  cardClassName?: string;
+  queryField?: { label: string; badge?: string; placeholder: string; className?: string };
   /**
    * Contenuto sotto il riquadro (gli esempi da toccare della home): riceve il
    * modo scelto e `fillQuery`, che scrive un testo nel campo e ci mette il cursore.
@@ -174,7 +172,6 @@ export function SearchBar({
   onQueryChange,
   queryField,
   footer,
-  cardClassName,
 }: SearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [city, setCity] = useState(initialCity);
@@ -303,7 +300,6 @@ export function SearchBar({
   return (
     <>
       <YStack
-        className={cardClassName}
         gap="$3"
         backgroundColor={brand.calce}
         padding="$3"
@@ -372,6 +368,7 @@ export function SearchBar({
             label={customQueryField?.label ?? "Cosa ti serve?"}
             labelBadge={customQueryField?.badge}
             focusRef={queryFocusRef}
+            inputClassName={customQueryField?.className}
             id={`${fieldId}-cosa`}
             placeholder={customQueryField?.placeholder ?? (mode === "online" ? "Es. consulenza idraulico" : "Es. idraulico, un guasto")}
             size="$5"

@@ -35,9 +35,13 @@ tocco su "Salta la corrente" → "Ti serve: Elettricista").
 
 ## Luce sul bordo (03/11, idea di Luca da un video)
 
-Pillola "Novità" e riquadro della ricerca in home con una luce che gira sul
+Pillola "Novità" e campo "Cosa è successo?" in home con una luce che gira sul
 bordo (`conic-gradient` con `@property --badge-angle`), nei verdi del sito e
-un filo d'oro, non arcobaleno: pillola in 3 secondi, riquadro in 6 e più
-tenue. Ferme con "riduci movimento"; nei browser senza `@property` il bordo
-resta sfumato fermo. Classi `.label-badge` e `.hero-search-card` in
-`globals.css`, prop `cardClassName` di `SearchBar`.
+un filo d'oro, non arcobaleno. Prima provata sul riquadro bianco intero; Luca
+l'ha voluta sul campo, che indica proprio dove scrivere. Due giri da 3
+secondi all'apertura della pagina, poi ferma (miglioria scelta da Luca: un
+movimento continuo stanca); col cursore nel campo il bordo diventa verde
+pieno. Ferma da subito con "riduci movimento"; senza `@property` il bordo
+resta sfumato fermo. Classi `.label-badge` e `.hero-problem-input` in
+`globals.css`, `queryField.className` di `SearchBar` e `inputClassName` di
+`Autocomplete`. axe senza problemi di contrasto (telefono e computer).

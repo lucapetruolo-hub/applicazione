@@ -6003,21 +6003,29 @@ a.admin-kpi:hover {
     linear-gradient(#128552, #128552) padding-box,
     conic-gradient(from var(--badge-angle), #128552, #7fd6a4, #f2c14e, #7fd6a4, #128552) border-box !important;
   box-shadow: 0 0 10px rgba(127, 214, 164, 0.55);
-  animation: label-badge-spin 3s linear infinite;
+  /* Due giri all'apertura della pagina, poi ferma (scelta di Luca). */
+  animation: label-badge-spin 3s linear 2;
 }
-/* Stessa luce, più lenta e più tenue, sul bordo del riquadro della ricerca
-   in home (richiesta di Luca): attira l'occhio sul campo senza distrarre. */
-.hero-search-card {
-  border: 3px solid transparent;
+/* Stessa luce, più lenta, sul bordo del campo "Cosa è successo?" in home
+   (scelta di Luca: indica proprio dove scrivere). Gira solo per i primi 6
+   secondi, poi resta il bordo sfumato fermo; col cursore nel campo diventa
+   verde pieno, per non distrarre chi scrive. */
+.hero-problem-input {
+  border: 2px solid transparent !important;
   background:
-    linear-gradient(#ffffff, #ffffff) padding-box,
-    conic-gradient(from var(--badge-angle), #ffffff, #7fd6a4, #f2c14e, #7fd6a4, #ffffff) border-box !important;
-  box-shadow: 0 0 22px rgba(127, 214, 164, 0.45);
-  animation: label-badge-spin 6s linear infinite;
+    linear-gradient(#f7f7f7, #f7f7f7) padding-box,
+    conic-gradient(from var(--badge-angle), #128552, #7fd6a4, #f2c14e, #7fd6a4, #128552) border-box !important;
+  animation: label-badge-spin 3s linear 2;
+}
+.hero-problem-input:focus {
+  animation: none;
+  background:
+    linear-gradient(#f7f7f7, #f7f7f7) padding-box,
+    linear-gradient(#128552, #128552) border-box !important;
 }
 @media (prefers-reduced-motion: reduce) {
   .label-badge,
-  .hero-search-card {
+  .hero-problem-input {
     animation: none;
   }
 }
