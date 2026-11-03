@@ -357,6 +357,8 @@ export type JobPaymentSummary = {
    */
   takenByStripeEurCents?: number;
   debtRecoveredEurCents?: number;
+  /** Solo per il professionista: commissione di Stripe delle contestazioni su questo lavoro, sempre a suo carico. */
+  disputeFeeEurCents?: number;
   /** Solo per il professionista: dov'è il bonifico verso la sua banca (null se non c'è nulla da ricevere). */
   payoutStatus?: JobPayoutStatus | null;
   /** Solo per il professionista: motivo del bonifico non riuscito, in parole di Stripe. */
@@ -388,6 +390,12 @@ export const quotePaymentOfferSchema = {
 };
 export type AcceptQuoteInput = z.infer<typeof acceptQuoteSchema>;
 
+/** Somma delle commissioni di Stripe salvate per ogni contestazione. */
+function disputeFeesEurCents(value: unknown): number {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return 0;
+  return Object.values(value as Record<string, unknown>).reduce<number>((sum, cents) => sum + (typeof cents === "number" && cents > 0 ? cents : 0), 0);
+}
+
 type JobPaymentRow = {
   paymentMethod: string;
   balanceDirect: boolean;
@@ -400,6 +408,9 @@ type JobPaymentRow = {
   netAmountEurCents: number;
   releaseTakenByStripeEurCents?: number;
   releaseDebtRecoveredEurCents?: number;
+  releaseDisputeFeeEurCents?: number;
+  /** { "<id contestazione>": centesimi } della commissione di Stripe. */
+  disputeFees?: unknown;
   releaseDueAt: Date | null;
   releasedAt: Date | null;
   balanceUnpaidAt: Date | null;
@@ -488,7 +499,11 @@ export function toJobPaymentSummary(
       stage === "RELEASED" ? jp.platformFeeEurCents : balanceMissing ? Math.round((fullFee * Math.max(0, collected)) / Math.max(1, target)) : fullFee;
     summary.appFeeEurCents = appFee;
     summary.stripeFeeEurCents = jp.stripeFeeEurCents;
-    summary.payoutEurCents = stage === "RELEASED" ? jp.netAmountEurCents : Math.max(0, base - appFee - jp.stripeFeeEurCents);
+    // Commissioni di Stripe delle contestazioni (collaudo F-21): allo sblocco
+    // la parte tolta dai soldi di questo lavoro, prima tutte quelle prese.
+    const disputeFees = disputeFeesEurCents(jp.disputeFees);
+    summary.disputeFeeEurCents = stage === "RELEASED" ? (jp.releaseDisputeFeeEurCents ?? 0) : disputeFees;
+    summary.payoutEurCents = stage === "RELEASED" ? jp.netAmountEurCents : Math.max(0, base - appFee - jp.stripeFeeEurCents - disputeFees);
     summary.takenByStripeEurCents = stage === "RELEASED" ? (jp.releaseTakenByStripeEurCents ?? 0) : 0;
     summary.debtRecoveredEurCents = stage === "RELEASED" ? (jp.releaseDebtRecoveredEurCents ?? 0) : 0;
     summary.payoutStatus = jobPayoutStatus(jp);

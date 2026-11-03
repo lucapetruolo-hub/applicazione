@@ -284,10 +284,14 @@ export function JobPaymentStatus({
     if (payment.refundedEurCents > 0) rows.push({ label: "Rimborsato al cliente", value: `−${eur(payment.refundedEurCents)}` });
     if (payment.refundWaitingEurCents > 0) rows.push({ label: "Di cui in attesa di fondi", value: eur(payment.refundWaitingEurCents), muted: true });
     if (payment.balanceDirect && payment.directBalanceEurCents !== null) rows.push({ label: "Saldo che ti paga direttamente", value: eur(payment.directBalanceEurCents), muted: true });
+    // Presa da Stripe dal suo saldo, vinta o persa (docs/changelog/2026-11-03-commissione-contestazioni.md).
+    const disputeFeeRow = { label: "Commissione di Stripe per la contestazione", value: `−${eur(payment.disputeFeeEurCents ?? 0)}`, muted: true };
+    if (stage === "REFUNDED" && (payment.disputeFeeEurCents ?? 0) > 0) rows.push(disputeFeeRow);
     if (stage !== "REFUNDED" && payment.payoutEurCents !== undefined) {
       // Trattenuta unica con l'IVA, commissioni Stripe comprese (§378); a parte solo sui pagamenti di prima.
       rows.push({ label: `Trattenuta ${BRAND.name} ${ONLINE_APP_FEE_PERCENT}% + IVA`, value: `−${eur(payment.appFeeEurCents ?? 0)}`, muted: true });
       if ((payment.stripeFeeEurCents ?? 0) > 0) rows.push({ label: "Commissione Stripe per il pagamento", value: `−${eur(payment.stripeFeeEurCents ?? 0)}`, muted: true });
+      if ((payment.disputeFeeEurCents ?? 0) > 0) rows.push(disputeFeeRow);
       // Ogni differenza con la sua riga, così le cifre tornano (collaudo F-21).
       if ((payment.debtRecoveredEurCents ?? 0) > 0) rows.push({ label: "Ripreso per un rimborso di un lavoro precedente", value: `−${eur(payment.debtRecoveredEurCents ?? 0)}`, muted: true });
       if ((payment.takenByStripeEurCents ?? 0) > 0) rows.push({ label: "Già preso da Stripe per un altro lavoro (rimborso o contestazione)", value: `−${eur(payment.takenByStripeEurCents ?? 0)}`, muted: true });

@@ -349,6 +349,84 @@ describe("conto di Marco nel collaudo del 29/10, al centesimo (F12, F13, F22)", 
       expect.objectContaining({ data: expect.objectContaining({ netAmountEurCents: 34755 - 684, platformFeeEurCents: 3245, releaseTakenByStripeEurCents: 684 }) }),
     );
   });
+
+  it("F13 con il conto vero letto su Stripe il 3/11: anche le due commissioni da 20 € delle contestazioni di F22", async () => {
+    const { service, prisma, stripe } = buildService();
+    const job = toRelease({ id: "jp-f13", onlineStage: "AWAITING_BALANCE", releaseDueAt: new Date("2026-10-10T10:00:00Z"), paidEurCents: 38000, applicationFeeEurCents: 3245, stripeFeeEurCents: 0, platformFeeEurCents: 17080 });
+    job.booking.finalAmountEurCents = 200000;
+    prisma.jobPayment.findUnique.mockResolvedValueOnce(job).mockResolvedValue(null);
+    prisma.jobPayment.findUniqueOrThrow.mockResolvedValue(job);
+    const paolaWithFees = { ...paola, disputeFees: { du_a: 2000, du_b: 2000 } };
+    prisma.jobPayment.findMany.mockImplementation(async (args: { where: Record<string, unknown> }) => ("professionalDebtEurCents" in args.where ? [] : [paolaWithFees, tina]));
+    // Ogni contestazione ha tolto 60 € dal saldo: 40 € contestati più 20 € di commissione.
+    stripe.balance.retrieve.mockResolvedValue({ available: [{ amount: balance - 4000, currency: "eur" }], pending: [] });
+
+    await expect(service.releaseIfDue("jp-f13", new Date("2026-10-15T10:00:00Z"))).resolves.toBe(true);
+
+    // I soldi di F22 non bastano a coprirle: escono dal conto e si vedono nella riga, al centesimo.
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ netAmountEurCents: 34755 - 4684, platformFeeEurCents: 3245, releaseTakenByStripeEurCents: 4684 }) }),
+    );
+  });
+});
+
+describe("commissione di Stripe delle contestazioni, sempre a carico del professionista", () => {
+  function dispute(overrides: Record<string, unknown> = {}) {
+    return { id: "dp_1", payment_intent: "pi_dep", amount: 4000, status: "needs_response", reason: "fraudulent", balance_transactions: [{ amount: -4000, fee: 2000 }], ...overrides } as never;
+  }
+
+  it("all'arrivo della contestazione si salva la commissione presa dal suo saldo", async () => {
+    const { service, prisma } = buildService();
+    const job = directJob({ onlineStage: "PAID", releasedAt: null, payoutPendingEurCents: 0, disputeFees: {} });
+    prisma.jobPayment.findFirst.mockResolvedValue(job);
+    prisma.jobPayment.findUnique.mockResolvedValue(job);
+
+    await service.handleStripeDispute(dispute());
+
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith({ where: { id: "jp-1", disputeFees: { equals: {} } }, data: { disputeFees: { dp_1: 2000 } } });
+  });
+
+  it("la stessa notizia arrivata due volte la conta una volta sola", async () => {
+    const { service, prisma } = buildService();
+    const job = directJob({ onlineStage: "PAID", releasedAt: null, payoutPendingEurCents: 0, disputeFees: { dp_1: 2000 }, disputeStatuses: { dp_1: "needs_response" } });
+    prisma.jobPayment.findFirst.mockResolvedValue(job);
+    prisma.jobPayment.findUnique.mockResolvedValue(job);
+
+    await service.handleStripeDispute(dispute());
+
+    expect(prisma.jobPayment.updateMany).not.toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ disputeFees: expect.anything() }) }));
+  });
+
+  it("dopo lo sblocco esce dal bonifico ancora da fare", async () => {
+    const { service, prisma } = buildService();
+    const job = directJob({ disputeFees: {} });
+    prisma.jobPayment.findFirst.mockResolvedValue(job);
+    prisma.jobPayment.findUnique.mockResolvedValue(job);
+
+    await service.handleStripeDispute(dispute());
+
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith({
+      where: { id: "jp-1", disputeFees: { equals: {} } },
+      data: { disputeFees: { dp_1: 2000 }, payoutPendingEurCents: { increment: -2000 } },
+    });
+  });
+
+  it("allo sblocco esce dai soldi del lavoro con la sua riga, non come presa per un altro lavoro", async () => {
+    const { service, prisma } = buildService();
+    // Contestazione vinta: i 40 € sono tornati, la commissione no.
+    const job = toRelease({ applicationFeeEurCents: 854, stripeFeeEurCents: 0, platformFeeEurCents: 854, disputeFees: { dp_1: 2000 } });
+    prisma.jobPayment.findUnique.mockResolvedValueOnce(job).mockResolvedValue(null);
+    prisma.jobPayment.findUniqueOrThrow.mockResolvedValue(job);
+
+    await expect(service.releaseIfDue("jp-1")).resolves.toBe(true);
+
+    // 100 − 8,54 − 20 = 71,46: le cifre tornano con la riga della commissione.
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ payoutPendingEurCents: 7146, platformFeeEurCents: 854, releaseDisputeFeeEurCents: 2000, releaseTakenByStripeEurCents: 0 }),
+      }),
+    );
+  });
 });
 
 describe("contestazioni in banca con l'addebito diretto", () => {
@@ -433,7 +511,7 @@ describe("contestazioni in banca con l'addebito diretto", () => {
     expect(prisma.jobPayment.update).not.toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ professionalDebtEurCents: expect.anything() }) }));
   });
 
-  it("persa per lavoro non conforme dopo il bonifico: solo la commissione di Stripe, con l'IVA, diventa un suo debito", async () => {
+  it("persa per lavoro non conforme dopo il bonifico: la commissione l'ha già presa Stripe dal suo saldo, nessun debito in più", async () => {
     const { service, prisma, stripe } = buildService();
     const job = directJob({ payoutPendingEurCents: 0, payoutSentEurCents: 9325, stripeDisputeId: "dp_1", stripeDisputeStatus: "under_review" });
     prisma.jobPayment.findFirst.mockResolvedValue(job);
@@ -442,9 +520,9 @@ describe("contestazioni in banca con l'addebito diretto", () => {
     await service.handleStripeDispute(dispute({ status: "lost" }));
 
     expect(stripe.applicationFees.createRefund).not.toHaveBeenCalled();
-    // 20 € + 4,40 € di IVA: un costo ribaddebitato, nella fattura del mese (§378).
-    expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: { professionalDebtEurCents: { increment: 2440 } } }));
-    expect(prisma.platformFeeEntry.upsert).toHaveBeenCalledWith(expect.objectContaining({ where: { dedupeKey: "COSTS:dp_1" }, create: expect.objectContaining({ kind: "COSTS", grossEurCents: 2440 }) }));
+    // Prima si addebitavano anche 20 € + IVA: la commissione la pagava due volte.
+    expect(prisma.jobPayment.update).not.toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ professionalDebtEurCents: expect.anything() }) }));
+    expect(prisma.platformFeeEntry.upsert).not.toHaveBeenCalled();
   });
 });
 

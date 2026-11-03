@@ -47,6 +47,20 @@ function feeReturnLabel(reason: string): string {
   return "Trattenuta restituita";
 }
 
+/**
+ * Commissione di Stripe che la contestazione ha preso dal saldo del conto
+ * dove è nato l'addebito: somma delle commissioni dei suoi movimenti (20 €
+ * per riceverla, mai restituita; quella per rispondere torna se si vince).
+ */
+function disputeStripeFeeEurCents(dispute: Stripe.Dispute): number {
+  return Math.max(0, (dispute.balance_transactions ?? []).reduce((sum, bt) => sum + bt.fee, 0));
+}
+
+/** Somma delle commissioni delle contestazioni salvate in `disputeFees`. */
+function disputeFeesTotal(value: Prisma.JsonValue | undefined): number {
+  return Object.values(disputeFundsOf(value)).reduce((sum, cents) => sum + Math.max(0, cents), 0);
+}
+
 /** Commissione di Stripe sulla contestazione, ribaddebitata con l'IVA (§378). */
 function disputeFeeWithVatEurCents(dispute: Stripe.Dispute): number {
   const fee = (dispute.balance_transactions ?? []).reduce((sum, bt) => sum + Math.max(0, bt.fee), 0) || STRIPE_DISPUTE_FEE_EUR_CENTS;
@@ -1056,6 +1070,8 @@ export class OnlineMoneyService {
       let debtRecovered = 0;
       // Parte già presa da Stripe dal suo saldo per rimborsi o contestazioni di altri lavori (§268).
       let takenByStripe = 0;
+      // Commissioni di Stripe delle contestazioni di questo lavoro, sempre a suo carico.
+      let disputeFee = 0;
       if (destinationModel) {
         // Il professionista ha già tutto sul suo conto meno la trattenuta: la
         // piattaforma tiene la trattenuta unica (§378) e restituisce il resto.
@@ -1073,6 +1089,10 @@ export class OnlineMoneyService {
         // bonifico non supera quanto resta davvero sul conto, tolto ciò che
         // serve agli altri lavori.
         if (fresh.stripeDirectCharge && fresh.stripeDestinationAccountId) {
+          // Stripe le ha già prese dal suo saldo: escono prima dai soldi di
+          // questo lavoro, con la loro riga, e non sembrano prese per altri.
+          disputeFee = Math.min(gross, disputeFeesTotal(fresh.disputeFees));
+          gross -= disputeFee;
           // La trattenuta in più torna sul suo conto qui sotto, dopo questa
           // lettura del saldo: va contata, altrimenti sembrerebbe presa da
           // Stripe e resterebbe ferma sul conto (collaudo F-21, per esempio
@@ -1106,7 +1126,7 @@ export class OnlineMoneyService {
       moneyMoved = true;
       if (debtRecovered > 0) await this.settleDebts(booking.professionalProfile.id, debtRecovered, jp.id);
       const after = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jp.id } });
-      const appFee = Math.max(0, after.paidEurCents - after.refundedEurCents - netPayout - after.stripeFeeEurCents - debtRecovered - takenByStripe);
+      const appFee = Math.max(0, after.paidEurCents - after.refundedEurCents - netPayout - after.stripeFeeEurCents - debtRecovered - takenByStripe - disputeFee);
       await this.prisma.jobPayment.update({
         where: { id: jp.id },
         data: {
@@ -1117,6 +1137,7 @@ export class OnlineMoneyService {
           platformFeeEurCents: appFee,
           releaseTakenByStripeEurCents: takenByStripe,
           releaseDebtRecoveredEurCents: debtRecovered,
+          releaseDisputeFeeEurCents: disputeFee,
           ...(destinationModel ? { payoutPendingEurCents: netPayout } : {}),
           ...(balanceUnpaid ? { balanceUnpaidAt: now } : {}),
         },
@@ -1138,6 +1159,7 @@ export class OnlineMoneyService {
           destination: jp.stripeDestinationAccountId,
           debtRecovered,
           takenByStripe,
+          disputeFee,
         },
         reason: balanceUnpaid
           ? "Saldo non pagato entro 7 giorni: al professionista quanto incassato."
@@ -1248,12 +1270,22 @@ export class OnlineMoneyService {
         id: { not: excludeJobPaymentId },
         OR: [{ releasedAt: null, onlineStage: { notIn: ["REFUNDED", "AWAITING_DEPOSIT"] } }, { payoutPendingEurCents: { gt: 0 } }],
       },
-      select: { releasedAt: true, paidEurCents: true, refundedEurCents: true, applicationFeeEurCents: true, payoutPendingEurCents: true, disputeRecoveredEurCents: true },
+      select: {
+        releasedAt: true,
+        paidEurCents: true,
+        refundedEurCents: true,
+        applicationFeeEurCents: true,
+        payoutPendingEurCents: true,
+        disputeRecoveredEurCents: true,
+        disputeFees: true,
+      },
     });
     const reserved = others.reduce(
       (sum, o) =>
         sum +
-        (o.releasedAt ? o.payoutPendingEurCents : Math.max(0, o.paidEurCents - o.refundedEurCents - o.applicationFeeEurCents - o.disputeRecoveredEurCents)),
+        (o.releasedAt
+          ? o.payoutPendingEurCents
+          : Math.max(0, o.paidEurCents - o.refundedEurCents - o.applicationFeeEurCents - o.disputeRecoveredEurCents - disputeFeesTotal(o.disputeFees))),
       0,
     );
     return { available, free: available + incoming - reserved };
@@ -1438,6 +1470,7 @@ export class OnlineMoneyService {
         ...statusData,
       },
     });
+    if (jp.stripeDirectCharge) await this.syncDisputeFee(jp.id, dispute);
     // Contestazione persa: il tetto ai pagamenti online torna, anche se
     // l'admin l'aveva tolto, e l'email "limite tolto" potrà ripartire
     // (docs/changelog/2026-10-28-tetto-pagamenti-online.md).
@@ -1597,6 +1630,49 @@ export class OnlineMoneyService {
   }
 
   /**
+   * Commissione di Stripe della contestazione (addebito diretto): Stripe la
+   * prende dal saldo del professionista insieme alla cifra contestata ed è
+   * sempre a suo carico, vinta o persa (decisione di Luca,
+   * docs/changelog/2026-11-03-commissione-contestazioni.md). Si salva per
+   * ogni contestazione, così allo sblocco esce dai soldi di questo lavoro con
+   * la sua riga e non abbassa di nascosto i bonifici degli altri. Dopo lo
+   * sblocco esce (o, se Stripe la restituisce, torna) nel bonifico ancora da
+   * fare. La stessa notizia arrivata più volte conta una volta.
+   */
+  private async syncDisputeFee(jobPaymentId: string, dispute: Stripe.Dispute): Promise<void> {
+    const fee = disputeStripeFeeEurCents(dispute);
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const jp = await this.prisma.jobPayment.findUnique({
+        where: { id: jobPaymentId },
+        select: { disputeFees: true, releasedAt: true, payoutPendingEurCents: true },
+      });
+      if (!jp) return;
+      const fees = disputeFundsOf(jp.disputeFees);
+      const before = fees[dispute.id] ?? 0;
+      if (fee === before) return;
+      const delta = fee - before;
+      const pending = jp.releasedAt ? (delta > 0 ? -Math.min(delta, jp.payoutPendingEurCents) : -delta) : 0;
+      const claim = await this.prisma.jobPayment.updateMany({
+        where: { id: jobPaymentId, disputeFees: { equals: (jp.disputeFees ?? {}) as Prisma.InputJsonValue } },
+        data: {
+          disputeFees: { ...fees, [dispute.id]: fee },
+          ...(pending !== 0 ? { payoutPendingEurCents: { increment: pending } } : {}),
+        },
+      });
+      if (claim.count === 0) continue;
+      await this.auditLogService.record({
+        entityType: "JobPayment",
+        entityId: jobPaymentId,
+        fieldName: "disputeFees",
+        oldValue: before,
+        newValue: { disputeId: dispute.id, feeEurCents: fee },
+        reason: "Commissione di Stripe della contestazione, presa dal saldo del professionista.",
+      });
+      return;
+    }
+  }
+
+  /**
    * Contestazione chiusa su un addebito sul conto del professionista.
    * Addebito diretto (§268): persa, Stripe ha già preso la cifra dal suo
    * saldo; prima dello sblocco la trattenuta in più gli torna, dopo gli torna
@@ -1644,7 +1720,7 @@ export class OnlineMoneyService {
         await this.prisma.jobPayment.update({ where: { id: jp.id }, data: { netAmountEurCents: { decrement: proShare } } });
         if (!fault && lostAmount > proShare) await this.returnApplicationFee(jp.id, lostAmount - proShare, `Contestazione in banca persa (${dispute.id}): la nostra parte torna al professionista.`);
       }
-      if (fault) costs += disputeFeeWithVatEurCents(dispute);
+      // La commissione di Stripe l'ha già presa Stripe dal suo saldo (syncDisputeFee): non si addebita una seconda volta.
       await this.chargeCosts(jp.id, costs, "Costi della contestazione in banca persa", `COSTS:${dispute.id}`);
       if (costs > 0) await this.addProfessionalDebt(jp.id, costs, `Contestazione in banca persa (${dispute.id}).`);
       return costs;
