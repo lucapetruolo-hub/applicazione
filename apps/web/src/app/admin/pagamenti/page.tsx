@@ -537,7 +537,7 @@ function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; tok
         </Text>
       ) : null}
       <Text fontSize={13} color={brand.grafite70}>
-        {row.businessName} · cliente {row.clientName}
+        {row.professionalName} · cliente {row.clientName}
         {!row.submitted ? (row.professionalNote ? " · il professionista ha scritto la sua spiegazione" : " · il professionista non ha ancora scritto") : ""}
       </Text>
       {row.submitted ? (
@@ -726,7 +726,7 @@ function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRo
       </XStack>
       <DisputeParts parts={row.parts} />
       <Text fontSize={13} color={brand.grafite70}>
-        {row.businessName} · cliente {row.clientName}
+        {row.professionalName} · cliente {row.clientName}
         {row.openedAt ? ` · aperta il ${formatAdminDate(row.openedAt)}` : ""}
         {row.evidenceSentAt ? ` · prove mandate il ${formatAdminDate(row.evidenceSentAt, true)}${row.evidenceSentBy ? ` da ${row.evidenceSentBy}` : ""}` : ""}
         {row.closedAt ? ` · chiusa il ${formatAdminDate(row.closedAt)}` : ""}

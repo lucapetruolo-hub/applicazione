@@ -1430,12 +1430,12 @@ export class AdminService {
     }));
   }
 
-  async resolveContactMessage(id: string): Promise<{ id: string; resolved: boolean }> {
+  async resolveContactMessage(id: string, resolved = true): Promise<{ id: string; resolved: boolean }> {
     const message = await this.prisma.contactMessage.findUnique({ where: { id } });
     if (!message) {
       throw new NotFoundException("Messaggio non trovato.");
     }
-    const updated = await this.prisma.contactMessage.update({ where: { id }, data: { resolved: true } });
+    const updated = await this.prisma.contactMessage.update({ where: { id }, data: { resolved } });
     return { id: updated.id, resolved: updated.resolved };
   }
 

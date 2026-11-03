@@ -102,6 +102,8 @@ export type AdminBankDispute = {
   bookingId: string;
   disputeId: string;
   businessName: string;
+  /** Attività e persona insieme, solo per la pagina dell'admin (mai nelle prove per la banca). */
+  professionalName: string;
   clientName: string;
   amountEurCents: number;
   reason: string | null;
@@ -136,6 +138,8 @@ export type AdminBankDisputeArchiveRow = {
   bookingId: string;
   disputeId: string;
   businessName: string;
+  /** Attività e persona insieme, solo per la pagina dell'admin (mai nelle prove per la banca). */
+  professionalName: string;
   clientName: string;
   clientEmail: string | null;
   amountEurCents: number;

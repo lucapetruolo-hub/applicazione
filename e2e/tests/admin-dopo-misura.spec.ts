@@ -86,6 +86,7 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
+  await prisma.contactMessage.deleteMany({ where: { content: { contains: String(stamp) } } });
   await prisma.adminCaseClaim.deleteMany({ where: { caseKey: `PROBLEM_TAKEOVER:${ids.takeover}` } });
   await prisma.problemTakeover.deleteMany({ where: { id: ids.takeover } });
   await prisma.$disconnect();
@@ -157,5 +158,32 @@ test("Profilo tolto dalla ricerca: la scheda dice lo stato e offre solo Rimetti"
   await expect(page.getByText(/^Tolto dalla ricerca il .*Motivo: Profilo copiato da un altro professionista\./)).toBeVisible();
   await expect(page.getByRole("button", { name: "Rimetti nella ricerca" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Togli dalla ricerca" })).toHaveCount(0);
+  await context.close();
+});
+
+test("Messaggi dal sito: Annulla subito dopo Segna come gestito, Riapri dall'archivio", async ({ browser, isMobile }) => {
+  const content = `Non riesco a cambiare la data ${stamp} ${isMobile ? "telefono" : "computer"}.`;
+  const message = await prisma.contactMessage.create({ data: { role: "CLIENT", email: `giulia-${stamp}@prova.it`, content } });
+  const { context, page } = await adminPage(browser, isMobile);
+  await page.goto("/admin/messaggi");
+  const card = (button: string) =>
+    page
+      .locator("div")
+      .filter({ hasText: content })
+      .filter({ has: page.getByRole("button", { name: button }) })
+      .last();
+  await card("Segna come gestito").getByRole("button", { name: "Segna come gestito" }).click();
+  const status = page.getByRole("status").filter({ hasText: `giulia-${stamp}@prova.it` });
+  await expect(status).toBeVisible();
+  await expect.poll(async () => (await prisma.contactMessage.findUniqueOrThrow({ where: { id: message.id } })).resolved).toBe(true);
+  await status.getByRole("button", { name: "Annulla" }).click();
+  await expect.poll(async () => (await prisma.contactMessage.findUniqueOrThrow({ where: { id: message.id } })).resolved).toBe(false);
+  await expect(card("Segna come gestito")).toBeVisible();
+
+  // Dall'archivio si riapre in qualunque momento.
+  await prisma.contactMessage.update({ where: { id: message.id }, data: { resolved: true } });
+  await page.getByRole("tab", { name: "Archivio" }).or(page.getByRole("button", { name: "Archivio" })).first().click();
+  await card("Riapri").getByRole("button", { name: "Riapri" }).click();
+  await expect.poll(async () => (await prisma.contactMessage.findUniqueOrThrow({ where: { id: message.id } })).resolved).toBe(false);
   await context.close();
 });

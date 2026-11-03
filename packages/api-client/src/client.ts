@@ -2673,6 +2673,11 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       }),
+    adminReopenContactMessage: (token: string, id: string) =>
+      request<{ id: string; resolved: boolean }>(`/admin/contact-messages/${id}/reopen`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
 
     /** Numeri reali della piattaforma (richiesta esplicita dell'utente, "social proof" in homepage) — mai finti. */
     /** `reviewCount`/`averageRating` facoltativi: un'API non ancora aggiornata non li manda. */

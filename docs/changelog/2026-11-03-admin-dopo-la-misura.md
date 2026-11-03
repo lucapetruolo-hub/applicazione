@@ -44,13 +44,24 @@ aiuto, prima erano 6).
    corrente...) in cima, il mestiere probabile al posto di "—", e "Prendo io" /
    "Lascia" come in Da fare.
 
+**Le due migliorie in più** (Luca: "effettua le due migliorie"):
+
+- **Messaggi dal sito**: dopo "Segna come gestito" compare per 10 secondi
+  "Messaggio di … spostato nell'archivio" con "Annulla"; dall'archivio
+  "Riapri" in qualunque momento (`PATCH /admin/contact-messages/:id/reopen`,
+  stesso ruolo Moderazione).
+- **Contestazioni in banca**: nella scheda e nell'archivio c'è anche il nome
+  della persona (`professionalName`). Le prove che mandiamo alla banca restano
+  con il solo nome dell'attività.
+
 **Dati di prova della misura** (`e2e/scripts/admin-dati-prova.ts`): l'account
 chiuso di Bruno ha l'impronta dell'email, così si ritrova cercandola; il
 profilo doppio è davvero tolto dalla ricerca, come dice la sua segnalazione.
 
 **Verifica:** `e2e/tests/admin-dopo-misura.spec.ts` (ricorso con conferma e
 "Torna indietro" che non decide, nome della persona, pericolo del gas e "Prendo
-io", stato del profilo tolto dalla ricerca) su telefono e computer; passano
+io", stato del profilo tolto dalla ricerca, "Annulla" e "Riapri" dei messaggi)
+su telefono e computer; passano
 anche `admin-da-fare`, `admin-persone`, `admin-protezioni`, `andamento-sito`,
 `segnalazioni`, `admin-due-passaggi`. Test unitari: `adminNames.test.ts`
 (shared) e `admin.service.test.ts` (eliminazione solo di account di prova).
