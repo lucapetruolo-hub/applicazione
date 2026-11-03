@@ -64,3 +64,21 @@ e computer in `preventivo-descrizione/` della cartella del progetto.
 **Verifica**: prove nel browser nuove (scelta per prima, esempi, tessera in
 cima, niente esempi con una categoria di partenza), test di
 `serviceMatchingProblem` e `suggestionOutcomes`.
+
+## Terzo giro: "Potrebbero fare anche questo lavoro" (03/11/2026)
+
+**Richiesta** (Luca): nella ricerca per problema mostrare anche chi fa quella
+prestazione ma è di un'altra categoria, con il titolo al condizionale.
+
+**Decisione** (consiglio approvato da Luca): sezione a parte sotto i
+risultati, "Potrebbero fare anche questo lavoro" (`AlsoDoThisJob`), al massimo
+3 professionisti. La prestazione trovata deve essere, per il dizionario, proprio
+del mestiere scelto ("Sostituzione rubinetto" è da idraulico, "Pulizia cucina"
+no): una parola in comune come "cucina" non basta. Mai con l'avviso di
+sicurezza (impianti solo da imprese abilitate, DM 37/2008). Le richieste a
+tutti restano per categoria: questi si contattano solo dal profilo, che parte
+con la prestazione già scritta. Boost fuori. La riga "Perché" delle schede usa
+la stessa prestazione trovata dalla ricerca.
+
+**Verifica**: `e2e/tests/prestazioni-problema.spec.ts` (ordine, sezione,
+pulizie escluse, niente sezione con il gas, scheda in Admin).

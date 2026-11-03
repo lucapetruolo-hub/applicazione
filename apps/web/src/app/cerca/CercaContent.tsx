@@ -16,6 +16,7 @@ import {
 import { Text, XStack, YStack, brand } from "@professionisti/ui";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
 import { ResultsListWithMap, type MapPoolQuery } from "@/components/ResultsListWithMap";
+import { AlsoDoThisJob } from "@/components/AlsoDoThisJob";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProblemBand } from "@/components/ProblemBand";
 import { ChosenProsBar, chosenRequestHref, type ChosenPro } from "@/components/ChosenProsBar";
@@ -39,6 +40,9 @@ export type ProblemSearch = {
 
 /** "Perché" di una scheda: la prestazione del professionista che somiglia al problema. */
 function problemReason(problem: ProblemSearch, pro: ProfessionalSearchResult): string | null {
+  // La prestazione trovata dalla ricerca, la stessa messa in evidenza nella scheda.
+  const matched = pro.matchedServiceId ? pro.services.find((item) => item.id === pro.matchedServiceId) : undefined;
+  if (matched) return `offre «${matched.name}»`;
   const keywords = problem.result.outOfService
     ? OUT_OF_SERVICE_KEYWORDS[problem.result.outOfService]
     : normalizeProblemText(problem.description)
@@ -64,6 +68,7 @@ export function CercaContent({
   loadFailed,
   initialUrgentOnly,
   problem,
+  alsoDoThisJob = [],
 }: {
   city?: string;
   /** Centro del comune, per la mappa. */
@@ -80,6 +85,8 @@ export function CercaContent({
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage. */
   initialUrgentOnly?: boolean;
   problem?: ProblemSearch;
+  /** Altri mestieri con quel lavoro tra le prestazioni (ricerca per problema). */
+  alsoDoThisJob?: ProfessionalSearchResult[];
 }) {
   // Per le voci di "Quanto costa in media" della home (§398).
   useEffect(() => {
@@ -305,6 +312,7 @@ export function CercaContent({
           initialUrgentOnly={initialUrgentOnly}
           merit={Boolean(problem)}
           reasonFor={problem ? (pro) => problemReason(problem, pro) : undefined}
+          footer={alsoDoThisJob.length > 0 ? <AlsoDoThisJob professionals={alsoDoThisJob} /> : undefined}
           selection={
             canChoose
               ? {

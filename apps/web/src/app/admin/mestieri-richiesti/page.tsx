@@ -570,9 +570,9 @@ function SuggestionOutcomesCard({ outcomes }: { outcomes: ProblemSuggestionOutco
       ) : (
         <>
           <Text color={brand.grafite70} marginTop="1">
-            Tenuta {outcomes.kept} ({percent(outcomes.kept)}%)
-            {outcomes.keptWithOthers > 0 ? `, di cui ${outcomes.keptWithOthers} con altre categorie aggiunte` : ""} · cambiata {outcomes.changed} (
-            {percent(outcomes.changed)}%)
+            {`Tenuta ${outcomes.kept} (${percent(outcomes.kept)}%)${
+              outcomes.keptWithOthers > 0 ? `, di cui ${outcomes.keptWithOthers} con altre categorie aggiunte` : ""
+            } · cambiata ${outcomes.changed} (${percent(outcomes.changed)}%)`}
           </Text>
           {outcomes.changes.length > 0 ? (
             <Text color={brand.grafite} marginTop="1">
