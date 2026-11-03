@@ -5,6 +5,9 @@ import { useSearchParams } from "next/navigation";
 import {
   OUT_OF_SERVICE_LABELS,
   PROFESSIONAL_CATEGORIES,
+  FIELD_PROBLEM_EXAMPLES_POOL,
+  VISIBLE_PROBLEM_EXAMPLES,
+  type ProblemExample,
   type ProblemMatchAdminOverview,
   type ServiceNamesAdminOverview,
 } from "@professionisti/shared";
@@ -14,7 +17,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonTableRows } from "@/components/Skeleton";
 
-type Tab = "descrizioni" | "prestazioni";
+type Tab = "descrizioni" | "prestazioni" | "esempi";
 type Filter = "tutte" | "fuori" | "ia" | "nessuno";
 
 const SAFETY_LABEL: Record<string, string> = {
@@ -46,22 +49,24 @@ export default function AdminMestieriRichiestiPage() {
 function MestieriRichiesti() {
   // "Andamento del sito" porta qui con ?scheda=prestazioni (§388).
   const searchParams = useSearchParams();
-  const [tab, setTab] = useState<Tab>(searchParams.get("scheda") === "prestazioni" ? "prestazioni" : "descrizioni");
+  const scheda = searchParams.get("scheda");
+  const [tab, setTab] = useState<Tab>(scheda === "prestazioni" || scheda === "esempi" ? scheda : "descrizioni");
   return (
     <YStack>
       <AdminPageHeader
         title="Mestieri richiesti"
-        description="Le descrizioni scritte dai clienti nella ricerca (senza contatti, tenute 12 mesi) e i nomi delle prestazioni scritti a mano dai professionisti."
+        description="Le descrizioni scritte dai clienti nella ricerca (senza contatti, tenute 12 mesi), i nomi delle prestazioni scritti a mano dai professionisti e le frasi d'esempio della home."
       />
       <AdminTabs
         tabs={[
           { key: "descrizioni", label: "Descrizioni dei clienti" },
           { key: "prestazioni", label: "Prestazioni per mestiere" },
+          { key: "esempi", label: "Frasi d'esempio in home" },
         ]}
         value={tab}
         onChange={setTab}
       />
-      {tab === "descrizioni" ? <DescriptionsTab /> : <ServiceNamesTab />}
+      {tab === "descrizioni" ? <DescriptionsTab /> : tab === "prestazioni" ? <ServiceNamesTab /> : <ExamplesTab />}
     </YStack>
   );
 }
@@ -546,6 +551,124 @@ function ServiceNamesTab() {
           flex-wrap: wrap;
         }
       `}</style>
+    </YStack>
+  );
+}
+
+/**
+ * Frasi d'esempio della ricerca per problema in home (richiesta di Luca,
+ * docs/changelog/2026-11-03-luci-che-accelerano.md): l'ordine lo danno le
+ * ricerche per mestiere; qui si aggiungono o tolgono le frasi. Solo frasi che
+ * il dizionario riconosce con sicurezza.
+ */
+function ExamplesTab() {
+  const { token } = useAuth();
+  const [data, setData] = useState<{ custom: boolean; examples: ProblemExample[] } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => {
+    if (!token) return;
+    apiClient
+      .adminProblemExamples(token)
+      .then(setData)
+      .catch((err) => setError(errorMessage(err)));
+  }, [token]);
+
+  useEffect(load, [load]);
+
+  const run = async (action: (token: string) => Promise<unknown>, after?: () => void) => {
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await action(token);
+      after?.();
+      load();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const where = (index: number) =>
+    index < VISIBLE_PROBLEM_EXAMPLES
+      ? "Sotto la ricerca"
+      : index < VISIBLE_PROBLEM_EXAMPLES + FIELD_PROBLEM_EXAMPLES_POOL
+        ? "Nel campo, a rotazione"
+        : "In riserva";
+
+  return (
+    <YStack gap="3" marginTop="3">
+      <Text color={brand.grafite70}>
+        Le frasi che il cliente può toccare in home. L&apos;ordine lo decidono le ricerche: prima i mestieri più cercati. Le prime{" "}
+        {VISIBLE_PROBLEM_EXAMPLES} stanno sotto la ricerca, le {FIELD_PROBLEM_EXAMPLES_POOL} dopo ruotano nel campo vuoto (2 per visita). Mai
+        frasi scritte dai clienti: possono contenere dati personali.
+      </Text>
+      {data && !data.custom ? (
+        <Text fontSize={13} color={brand.grafite70}>
+          Ora vale l&apos;elenco di partenza. La prima modifica lo copia qui e da lì si cambia.
+        </Text>
+      ) : null}
+      <XStack gap="2" flexWrap="wrap">
+        <input
+          aria-label="Nuova frase"
+          className="admin-input"
+          style={{ flex: 1, minWidth: 220 }}
+          value={text}
+          maxLength={60}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Es. Il rubinetto perde"
+        />
+        <Button
+          variant="primary"
+          size="3"
+          disabled={busy || text.trim().length < 3}
+          onPress={() => void run((t) => apiClient.adminAddProblemExample(t, text), () => setText(""))}
+        >
+          Aggiungi
+        </Button>
+      </XStack>
+      {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+      {data === null && !error ? <SkeletonTableRows rows={5} cols={3} /> : null}
+      {data ? (
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Frase</th>
+                <th>Ti serve</th>
+                <th>Dove compare</th>
+                <th>
+                  <span className="sr-only">Azioni</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.examples.map((example, index) => (
+                <tr key={example.text}>
+                  <td>{example.text}</td>
+                  <td>{example.categoryLabel ?? "—"}</td>
+                  <td>{where(index)}</td>
+                  <td>
+                    <Button
+                      size="2"
+                      variant="secondary"
+                      disabled={busy}
+                      aria-label={`Togli la frase ${example.text}`}
+                      onPress={() => void run((t) => apiClient.adminRemoveProblemExample(t, example.text))}
+                    >
+                      Togli
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
     </YStack>
   );
 }

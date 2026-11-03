@@ -1,6 +1,6 @@
 "use client";
 
-import type { ProfessionalCategorySlug, ProfessionalSearchResult, ServicePriceIndexEntry } from "@professionisti/shared";
+import type { ProblemExamplesResponse, ProfessionalCategorySlug, ProfessionalSearchResult, ServicePriceIndexEntry } from "@professionisti/shared";
 import { Section, SectionDensityProvider, YStack } from "@professionisti/ui";
 import { CategoryStoryRail, useCategoryStoryRail } from "@/components/CategoryStoryRail";
 import { FadeInSection } from "@/components/FadeInSection";
@@ -19,8 +19,11 @@ export default function HomeContent({
   platformStats,
   priceIndex,
   categoryCounts,
+  problemExamples,
 }: {
   professionals: ProfessionalSearchResult[];
+  /** Frasi d'esempio della ricerca per problema, nell'ordine delle ricerche; `null` se l'API non ha risposto. */
+  problemExamples: ProblemExamplesResponse | null;
   /** Professionisti per categoria, vicino all'ultima città cercata o in tutta Italia (app/page.tsx). */
   categoryCounts: Partial<Record<ProfessionalCategorySlug, number>>;
   /** "Quanto costa in media" già dal server; `null` se l'API non ha risposto. */
@@ -42,7 +45,7 @@ export default function HomeContent({
           nella parte verde in alto. */}
       <YStack width="100%" alignItems="center">
         {/* 1. Parte verde con la ricerca, invariata. */}
-        <HomeHero />
+        <HomeHero examples={problemExamples} />
 
         {platformStats ? <PlatformStats stats={platformStats} /> : null}
 

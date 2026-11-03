@@ -61,6 +61,8 @@ const publicRoutes = [
   "POST /notifications/email-off",
   // Dal problema scritto ai mestieri (§392): dizionario, poi IA nei casi dubbi, con tetto giornaliero.
   "POST /problem-match",
+  // Frasi d'esempio della home (docs/changelog/2026-11-03-luci-che-accelerano.md).
+  "GET /problem-match/examples",
   // Prestazioni standard aggiunte dall'admin (§388), mostrate in iscrizione e nel profilo.
   "GET /service-names/standard",
   "GET /professionals/:id",

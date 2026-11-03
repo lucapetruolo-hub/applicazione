@@ -134,6 +134,8 @@ import type {
   ProfessionalPayoutTotals,
   ProblemMatchRequest,
   ProblemMatchResult,
+  ProblemExample,
+  ProblemExamplesResponse,
   ProblemTakeoverInput,
   ProblemMatchAdminOverview,
   ProblemWordAdmin,
@@ -2313,6 +2315,17 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     /** Dal problema scritto ai mestieri (docs/CHANGELOG.md §392). */
     matchProblem: (input: ProblemMatchRequest) =>
       request<ProblemMatchResult>("/problem-match", { method: "POST", body: JSON.stringify(input), cache: "no-store" }),
+    /** Frasi d'esempio della home (docs/changelog/2026-11-03-luci-che-accelerano.md). */
+    getProblemExamples: () => request<ProblemExamplesResponse>("/problem-match/examples"),
+    adminProblemExamples: (token: string) =>
+      request<{ custom: boolean; examples: ProblemExample[] }>("/admin/problem-match/examples", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+    adminAddProblemExample: (token: string, text: string) =>
+      request<ProblemExample>("/admin/problem-match/examples", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ text }) }),
+    adminRemoveProblemExample: (token: string, text: string) =>
+      request<{ ok: true }>("/admin/problem-match/examples/remove", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ text }) }),
     createProblemTakeover: (token: string, input: ProblemTakeoverInput) =>
       request<{ id: string }>("/problem-match/takeover", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
     adminProblemMatch: (token: string, filter?: string) =>

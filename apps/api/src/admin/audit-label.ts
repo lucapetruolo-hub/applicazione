@@ -270,6 +270,8 @@ export function auditLabel(row: { entityType: string; fieldName: string | null; 
       return v.word ? `Parola insegnata al dizionario: «${asText(v.word)}»` : "Parola tolta dal dizionario";
     case "ServiceNameAlias":
       return v.canonical ? `Prestazione «${asText(v.name)}» unita a «${asText(v.canonical)}»` : "Unione di prestazioni annullata";
+    case "ProblemExample":
+      return v.text ? `Frase d'esempio aggiunta in home: «${asText(v.text)}»` : "Frase d'esempio tolta dalla home";
     case "StandardServiceName":
       return v.name ? `Prestazione «${asText(v.name)}» aggiunta alle standard (${asText(v.categorySlug)})` : "Prestazione tolta dalle standard";
     // Offerta dei mesi gratis (docs/changelog/2026-10-29-offerta-mesi-gratis.md).

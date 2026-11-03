@@ -6033,10 +6033,48 @@ a.admin-kpi:hover {
 }
 .hero-examples-row {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
   align-items: center;
+  gap: 6px;
+  width: 100%;
+  max-width: 760px;
+}
+/* Riga a scorrimento (docs/changelog/2026-11-03-luci-che-accelerano.md): una
+   sola riga anche da computer, freccette ai lati, bordi sfumati (.scroll-fade). */
+.hero-examples-track {
+  display: flex;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* Spazio per il bordo di fuoco (3 px + 2 px), che la riga altrimenti taglia. */
+  padding: 6px 6px;
+  margin: -6px 0;
+}
+.hero-examples-track::-webkit-scrollbar {
+  display: none;
+}
+.hero-examples-arrow {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  transition: opacity 150ms ease, background-color 150ms ease;
+}
+.hero-examples-arrow:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+/* Nascosta ma al suo posto: la riga non salta quando compare. */
+.hero-examples-arrow[data-hidden="true"] {
+  opacity: 0;
+  pointer-events: none;
 }
 .hero-examples-label {
   color: rgba(255, 255, 255, 0.85);
@@ -6067,31 +6105,33 @@ a.admin-kpi:hover {
   outline: 3px solid #fff;
   outline-offset: 2px;
 }
-/* Da telefono una riga che scorre per gruppo, invece di sei righe di
-   pillole che spingevano "Richiesta urgente" fuori dallo schermo. */
+.hero-examples-label,
+.hero-example {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+/* Se le frasi stanno tutte, niente freccette: la riga resta centrata. */
+.hero-examples-row[data-fits="true"] {
+  justify-content: center;
+}
+.hero-examples-row[data-fits="true"] .hero-examples-arrow {
+  display: none;
+}
+.hero-examples-row[data-fits="true"] .hero-examples-track {
+  flex: 0 1 auto;
+}
+/* Da telefono le righe a tutta larghezza, con la scritta sopra la riga. */
 @media (max-width: 660px) {
   .hero-examples {
     align-items: stretch;
     width: 100%;
   }
   .hero-examples-row {
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding: 2px 4px;
-    margin: -2px -4px;
-    /* Sfumatura a destra: dice che la riga continua. */
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
-    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    flex-wrap: wrap;
+    row-gap: 8px;
   }
-  .hero-examples-row::-webkit-scrollbar {
-    display: none;
-  }
-  .hero-examples-label,
-  .hero-example {
-    flex-shrink: 0;
-    white-space: nowrap;
+  .hero-examples-label {
+    flex-basis: 100%;
   }
 }
 
@@ -6431,6 +6471,44 @@ a.admin-kpi:hover {
   .glow-lights__light {
     animation: none;
   }
+}
+/* Telefono: luci più piccole e meno sfocate, metà del lavoro per la scheda
+   grafica e la batteria (docs/changelog/2026-11-03-luci-che-accelerano.md). */
+@media (max-width: 660px) {
+  .glow-lights__light {
+    filter: blur(40px);
+  }
+  .glow-lights__light--one {
+    width: 360px;
+    height: 360px;
+    top: -180px;
+    left: -120px;
+  }
+  .glow-lights__light--two {
+    width: 320px;
+    height: 320px;
+    bottom: -180px;
+    right: -100px;
+  }
+  .glow-lights__light--three {
+    width: 260px;
+    height: 260px;
+    top: -140px;
+  }
+}
+/* Attesa della ricerca per problema nella hero della home: le luci compaiono
+   piano solo mentre il sito cerca, poi la pagina cambia. */
+.glow-lights--attesa {
+  animation: glow-lights-appear 500ms ease both;
+}
+@keyframes glow-lights-appear {
+  from { opacity: 0; }
+}
+/* Luci senza bordo: sfumano verso i lati invece di finire contro il riquadro
+   ("Richiesta inviata", su fondo pesca). */
+.glow-lights--sfumato {
+  -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent);
+  mask-image: radial-gradient(closest-side, #000 55%, transparent);
 }
 
 /* Percorso "Home › Idraulico › Latina › Nome" sopra il profilo pubblico
@@ -7088,11 +7166,42 @@ a.admin-kpi:hover {
 
 /* Pagina "Richiesta inviata" (docs/CHANGELOG.md §341). */
 .request-sent-hero {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   gap: 12px;
+}
+/* Luci che partono veloci e rallentano (docs/changelog/2026-11-03-luci-che-accelerano.md):
+   più larghe del blocco e sfumate ai lati, sotto foto e testi. */
+.request-sent-hero > .request-sent-lights {
+  inset: -48px -32px;
+}
+.request-sent-lights .glow-lights__light--one {
+  width: 300px;
+  height: 300px;
+  top: -20px;
+  left: 6%;
+}
+.request-sent-lights .glow-lights__light--two {
+  width: 280px;
+  height: 280px;
+  top: 40px;
+  bottom: auto;
+  right: 6%;
+}
+.request-sent-lights .glow-lights__light--three {
+  width: 240px;
+  height: 240px;
+  top: auto;
+  bottom: -20px;
+  right: 34%;
+}
+.request-sent-hero > :not(.glow-lights) {
+  position: relative;
+  z-index: 1;
 }
 .request-sent-photo {
   position: relative;
