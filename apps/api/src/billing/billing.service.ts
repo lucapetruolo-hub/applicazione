@@ -227,7 +227,7 @@ export class BillingService implements OnModuleInit {
   /** Carta salvata del professionista, per la pagina Abbonamento (null senza carta o senza Stripe). */
   async mySavedCard(userId: string): Promise<{ card: SavedCard | null }> {
     const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true, stripeCustomerId: true } });
-    if (!profile) return { card: null };
+    if (!profile) throw new NotFoundException("Completa prima il tuo profilo professionista.");
     const sub = await this.prisma.subscription.findUnique({ where: { professionalProfileId: profile.id }, select: { stripeSubscriptionId: true, status: true } });
     const subscriptionId = sub?.status === "CANCELED" ? null : (sub?.stripeSubscriptionId ?? null);
     return { card: await this.savedCard(profile.stripeCustomerId, subscriptionId) };
