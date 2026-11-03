@@ -116,11 +116,38 @@ in Italia e computer a Tokyo) verdi; typecheck e lint di sito e prove verdi.
   TBT di Lighthouse in locale la differenza resta nel rumore della macchina
   (mediana di Orari da 548 a 505 ms). Restano circa 30 ms di zod da altri
   moduli condivisi (pagamenti online, contabilità, DAC7, ritiro richiesta) che
-  uniscono schemi e funzioni nello stesso file: separarli è un lavoro più
-  ampio, non fatto.
+  uniscono schemi e funzioni nello stesso file: separati nel quinto giro.
 - Il menu del professionista e il contatore delle notifiche, sospettati
   all'inizio, nella registrazione pesano pochi millisecondi: nessun cambio.
 
 **Verifica**: tutte le prove nel browser del telefono in Italia (le due metà,
 136 prove) verdi; test del pacchetto condiviso, typecheck dell'API, lint del
 sito verdi.
+
+## Quinto giro: controlli zod separati dalle funzioni
+
+**Richiesta di Luca** (03/11): "effettua le migliorie".
+
+- **Otto moduli condivisi divisi in due** (`accounting`, `agendaTools`,
+  `bankDisputes`, `dac7`, `jobIssues`, `onlineLimit`, `onlinePayments`,
+  `requestWithdraw`): i controlli dei moduli (zod) e i loro tipi stanno ora in
+  `<nome>Schemas.ts` accanto, come già `notificationSchemas.ts`. Le pagine che
+  usano solo le funzioni non creano più quei controlli. L'API e gli import da
+  `@professionisti/shared` non cambiano (`index.ts` esporta anche i nuovi file).
+- **Settimana tipo**: l'editor (`WeekTemplateEditor`, sempre visibile in Agenda)
+  creava all'apertura il controllo zod della settimana solo per abilitare
+  "Salva la settimana". Ora il controllo (`apps/web/src/lib/weekTemplateCheck.ts`,
+  stesso schema dell'API) si carica alla prima modifica: la settimana arrivata
+  dal server è già controllata. Se non si carica (senza rete) il salvataggio
+  resta possibile e lo ricontrolla l'API. Nella registrazione del browser di
+  Agenda (telefono rallentato) zod all'avvio scende da circa 100 a 21 ms.
+- **Cosa resta, scoperto misurando**: aprendo Oggi il sito prepara in anticipo
+  14 pagine dei link visibili (menu, piè di pagina) e ne esegue il codice
+  mentre Oggi si carica: solo la pagina Profilo costa circa 180 ms sul telefono
+  rallentato, e porta con sé zod. Non cambiato qui: è una scelta tra
+  apertura più leggera e passaggio più veloce tra le pagine, proposta a Luca.
+
+**Verifica**: test del pacchetto condiviso (29), typecheck di API e sito, lint
+del sito verdi; prove nel browser di settimana tipo, orari, primo uso
+dell'agenda, Oggi e agenda senza rete (telefono in Italia e computer a Tokyo)
+verdi, compresa "orari sbagliati: non si salva".

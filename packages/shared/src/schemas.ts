@@ -3,7 +3,7 @@ import "./zod";
 import { TRAFFIC_SOURCES } from "./trafficSources";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
 import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
-import { quotePaymentOfferSchema } from "./onlinePayments";
+import { quotePaymentOfferSchema } from "./onlinePaymentsSchemas";
 import { contentReportReason, contentReportReasonCodes, moderationGroundCodes } from "./moderation";
 import { newPasswordSchema } from "./password";
 import { REQUEST_TIMINGS } from "./requestTiming";
