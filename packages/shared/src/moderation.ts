@@ -82,14 +82,20 @@ export const CONTENT_REPORT_TARGET_LABEL: Record<ContentReportTargetType, string
  * Frasi pronte per la motivazione (l'admin può scriverla a mano o partire
  * da una di queste): i fatti e la regola violata, DSA art. 17(3)(b)-(d).
  */
-export const MODERATION_REASON_TEMPLATES: { label: string; text: string }[] = [
+export const MODERATION_REASON_TEMPLATES: { label: string; text: string; onlyFor?: "REVIEW" | "PROFESSIONAL_PROFILE" }[] = [
   { label: "Contenuto offensivo", text: "Il contenuto contiene insulti o linguaggio offensivo, vietati dai Termini di Servizio." },
   { label: "Informazioni false", text: "Il contenuto riporta informazioni non veritiere o ingannevoli per gli utenti, vietate dai Termini di Servizio." },
   { label: "Dati personali", text: "Il contenuto pubblica dati personali di terzi senza il loro consenso (GDPR e Termini di Servizio)." },
   { label: "Spam o pubblicità", text: "Il contenuto è spam o pubblicità non pertinente al servizio, vietata dai Termini di Servizio." },
-  { label: "Recensione non genuina", text: "La recensione non descrive un'esperienza reale con il servizio ricevuto (Codice del Consumo e Termini di Servizio)." },
+  { label: "Recensione non genuina", text: "La recensione non descrive un'esperienza reale con il servizio ricevuto (Codice del Consumo e Termini di Servizio).", onlyFor: "REVIEW" },
+  { label: "Profilo doppio o copiato", text: "Il profilo copia quello di un altro professionista o ne duplica uno già presente, vietato dai Termini di Servizio.", onlyFor: "PROFESSIONAL_PROFILE" },
   { label: "Contenuto illecito", text: "Il contenuto è illecito ai sensi della legge italiana ed è stato rimosso dopo la segnalazione." },
 ];
+
+/** Spiegazioni già scritte adatte al contenuto: niente "Recensione non genuina" per un profilo (misura "dopo" del riordino). */
+export function moderationTemplatesFor(targetType: string) {
+  return MODERATION_REASON_TEMPLATES.filter((t) => !t.onlyFor || t.onlyFor === targetType);
+}
 
 /**
  * Motivi tra cui sceglie chi segnala (docs/CHANGELOG.md §319). `illegal`

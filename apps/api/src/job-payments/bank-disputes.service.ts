@@ -225,13 +225,14 @@ export class BankDisputesService {
         parts.length > 1
           ? parts.filter((p) => !CLOSED.includes(p.status)).reduce((sum, p) => sum + (p.amountEurCents ?? 0), 0) || (dispute?.amount ?? job.paidEurCents)
           : (dispute?.amount ?? job.paidEurCents),
-      reason: dispute?.reason ?? null,
+      // Se Stripe non risponde, scadenza e motivo salvati all'arrivo (misura "dopo" del riordino): mai una scheda senza scadenza.
+      reason: dispute?.reason ?? job.stripeDisputeReason ?? null,
       status,
-      dueBy: dueBy ? new Date(dueBy * 1000).toISOString() : null,
+      dueBy: dueBy ? new Date(dueBy * 1000).toISOString() : (job.stripeDisputeDueBy?.toISOString() ?? null),
       submitted,
       sentExplanation: submitted ? (savedEvidence(job)?.explanation ?? dispute?.evidence?.uncategorized_text ?? null) : null,
       professionalNote: job.disputeProNote && job.disputeProNoteAt ? { text: job.disputeProNote, photoUrls: job.disputeProPhotoUrls, at: job.disputeProNoteAt.toISOString() } : null,
-      draft: draftFromSaved(savedEvidence(job)) ?? this.draft(job, dispute?.reason ?? null),
+      draft: draftFromSaved(savedEvidence(job)) ?? this.draft(job, dispute?.reason ?? job.stripeDisputeReason ?? null),
       parts,
     };
   }

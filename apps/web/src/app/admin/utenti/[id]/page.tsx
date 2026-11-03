@@ -14,7 +14,8 @@ import {
   CONTENT_REPORT_TARGET_LABEL,
   JOB_ISSUE_STATUS_LABEL,
   MODERATION_GROUNDS,
-  MODERATION_REASON_TEMPLATES,
+  moderationTemplatesFor,
+  adminPersonName,
   REVIEW_HOLD_REASON_LABEL,
   PROFESSIONAL_STATUS_ONE_LABEL,
   adminCan,
@@ -131,7 +132,7 @@ function UserDetail() {
           ← Persone
         </Link>
         <AdminPageHeader
-          title={profile?.businessName ?? (fullName || (detail.deletedAt ? "Account chiuso" : detail.email) || "Utente")}
+          title={adminPersonName({ businessName: profile?.businessName, name: detail.name, surname: detail.surname, email: detail.email, deletedAt: detail.deletedAt })}
           description={detail.deletedAt ? "Account chiuso: nome, email e telefono sono stati cancellati." : [detail.email, detail.phone].filter(Boolean).join(" · ") || undefined}
         />
         <XStack gap="$2" flexWrap="wrap" marginTop={-8}>
@@ -270,7 +271,7 @@ function UserDetail() {
             <TwoFactorResetPanel detail={detail} token={token ?? ""} onChanged={reload} />
           ) : null}
 
-          {adminCan(myRoles, "SUPER") && !isSelf && detail.role !== "ADMIN" ? <TestAccountPanel detail={detail} token={token ?? ""} onChanged={reload} /> : null}
+          {adminCan(myRoles, "SUPER") && !isSelf && detail.role !== "ADMIN" && !detail.deletedAt ? <TestAccountPanel detail={detail} token={token ?? ""} onChanged={reload} /> : null}
           {adminCan(myRoles, "SUPER") && detail.testAccountAt && !detail.deletedAt ? <TestTimePanel detail={detail} token={token ?? ""} onChanged={reload} /> : null}
         </YStack>
       ) : null}
@@ -480,7 +481,11 @@ function ProfilePanel({ detail, token, canModerate, onChanged }: { detail: Admin
       <Text color={brand.grafite}>
         {profile.businessName} · {profile.categoryLabel} · {profile.city}
       </Text>
-      {profile.hiddenBy?.note ? <Text color={brand.grafite70}>Motivo: {profile.hiddenBy.note}</Text> : null}
+      {profile.suspendedAt ? (
+        <Text color={brand.grafite70}>
+          {`Tolto dalla ricerca il ${formatAdminDate(profile.suspendedAt)}${profile.hiddenBy?.note ? `. Motivo: ${profile.hiddenBy.note}` : "."}`}
+        </Text>
+      ) : null}
       <XStack gap="$3" flexWrap="wrap" alignItems="center">
         {profile.searchStatus === "VISIBLE" && !detail.deletedAt ? (
           <Link href={`/professionista/${profile.id}`} target="_blank" style={{ fontSize: 14 }}>
@@ -492,7 +497,7 @@ function ProfilePanel({ detail, token, canModerate, onChanged }: { detail: Admin
             Togli dalla ricerca
           </Button>
         ) : null}
-        {canModerate && profile.hiddenBy && !detail.suspendedAt ? (
+        {canModerate && profile.suspendedAt && profile.hiddenBy && !detail.suspendedAt ? (
           <Button variant="primary" size="$3" onPress={() => setModal("show")}>
             Rimetti nella ricerca
           </Button>
@@ -756,7 +761,7 @@ function ModerateModal({
           <textarea className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Cosa non va e perché" />
         </label>
         <XStack gap="$2" flexWrap="wrap">
-          {MODERATION_REASON_TEMPLATES.map((t) => (
+          {moderationTemplatesFor(kind).map((t) => (
             <button key={t.label} type="button" className="admin-chip-button" onClick={() => setNote(t.text)}>
               {t.label}
             </button>
@@ -924,7 +929,7 @@ function TestAccountPanel({ detail, token, onChanged }: { detail: AdminUserDetai
           <small>
             {isTest
               ? `Segnato il ${formatAdminDate(detail.testAccountAt)}: non conta nei numeri e non prende un posto dei primi 100.`
-              : "Acceso: l'account funziona come prima ma non conta mai nei numeri e non prende un posto dei primi 100."}
+              : "Spento: l'account conta nei numeri. Accendilo per un account creato per le prove: funziona come prima ma non conta mai nei numeri e non prende un posto dei primi 100."}
           </small>
         </div>
         <button
@@ -940,6 +945,9 @@ function TestAccountPanel({ detail, token, onChanged }: { detail: AdminUserDetai
         </button>
       </div>
       {error && !open ? <Text color={brand.urgenza}>{error}</Text> : null}
+      {/* Si elimina solo un account già segnato come di prova (misura "dopo" del riordino). */}
+      {isTest ? (
+      <>
       <Text fontSize="$3" color={brand.grafite70}>
         Non ti serve più? Eliminalo: spariscono per sempre l&apos;account, le richieste, i preventivi, i messaggi e le recensioni che ha creato. Per un
         utente vero usa invece la sospensione.
@@ -982,6 +990,8 @@ function TestAccountPanel({ detail, token, onChanged }: { detail: AdminUserDetai
           </Button>
         </XStack>
       )}
+      </>
+      ) : null}
     </AdminCard>
   );
 }

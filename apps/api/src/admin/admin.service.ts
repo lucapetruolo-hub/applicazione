@@ -515,7 +515,8 @@ export class AdminService {
             suspendedAt: profile.suspendedAt?.toISOString() ?? null,
             searchStatus: professionalStatusOf({ ...profile, user: { suspendedAt: user.suspendedAt } }, new Date()),
             // "Rimetti nella ricerca": la decisione che l'ha tolto, se c'è.
-            hiddenBy: profileMeasure ? { reportId: profileMeasure.id, note: profileMeasure.resolutionNote } : null,
+            // Solo se il profilo è davvero fuori: una misura già annullata a mano non mostra "Rimetti" (misura "dopo" del riordino).
+            hiddenBy: profileMeasure && profile.suspendedAt ? { reportId: profileMeasure.id, note: profileMeasure.resolutionNote } : null,
           }
         : null,
       counts: {
@@ -677,11 +678,13 @@ export class AdminService {
   async deleteTestAccount(adminUserId: string, userId: string) {
     const target = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, role: true, email: true, professionalProfile: { select: { id: true } } },
+      select: { id: true, role: true, email: true, testAccountAt: true, deletedAt: true, professionalProfile: { select: { id: true } } },
     });
     if (!target) throw new NotFoundException("Utente non trovato.");
     if (target.id === adminUserId) throw new BadRequestException("Non puoi eliminare il tuo stesso account.");
     if (target.role === "ADMIN") throw new BadRequestException("Togli prima il ruolo di amministratore a questo account.");
+    // Solo un account già segnato come di prova (misura "dopo" del riordino): un utente vero non si elimina da qui per sbaglio.
+    if (!target.testAccountAt || target.deletedAt) throw new BadRequestException("Segna prima l'account come account di prova.");
     const paidOnline = await this.prisma.jobPayment.count({
       where: {
         depositPaidAt: { not: null },
@@ -1633,7 +1636,7 @@ export class AdminService {
       include: {
         booking: {
           include: {
-            professionalProfile: { select: { id: true, userId: true, businessName: true, demotedUntil: true, requestsBlockedUntil: true } },
+            professionalProfile: { select: { id: true, userId: true, businessName: true, demotedUntil: true, requestsBlockedUntil: true, user: { select: { name: true, surname: true } } } },
             client: { select: { id: true, name: true, surname: true, deletedAt: true } },
             quote: { select: { guidedRequest: { select: { id: true, city: true, description: true, category: { select: { label: true } } } } } },
             jobPayment: { select: { paymentMethod: true, status: true, paidEurCents: true, refundedEurCents: true } },
@@ -1691,6 +1694,8 @@ export class AdminService {
           profileId: booking.professionalProfile.id,
           userId: booking.professionalProfile.userId,
           businessName: booking.professionalProfile.businessName,
+          // Nome della persona accanto all'attività (misura "dopo" del riordino).
+          personName: [booking.professionalProfile.user.name, booking.professionalProfile.user.surname].filter(Boolean).join(" ") || null,
           upheldLast30Days: upheldBy.get(booking.professionalProfileId) ?? 0,
           lateUnresolvedLastYear: lateBy.get(booking.professionalProfileId) ?? 0,
           demoted: restrictions.demoted,
@@ -2043,7 +2048,7 @@ export type AdminJobIssueRow = {
   requestDescription: string | null;
   scheduledAt: string;
   bookingStatus: string;
-  professional: { profileId: string; userId: string; businessName: string; upheldLast30Days: number; lateUnresolvedLastYear: number; demoted: boolean; blocked: boolean };
+  professional: { profileId: string; userId: string; businessName: string; personName: string | null; upheldLast30Days: number; lateUnresolvedLastYear: number; demoted: boolean; blocked: boolean };
   client: { userId: string; name: string | null; accountDeleted: boolean };
   decidedByMe: boolean;
   finalAmountEurCents: number | null;

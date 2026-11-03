@@ -62,5 +62,6 @@ export * from "./whatsapp";
 export * from "./appointmentReply";
 export * from "./adminQueue";
 export * from "./adminSignals";
+export * from "./adminNames";
 export * from "./reviewHold";
 export * from "./sameTimeBooking";

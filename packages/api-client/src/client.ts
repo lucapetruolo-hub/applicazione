@@ -777,7 +777,7 @@ export type AdminJobIssue = {
   requestDescription: string | null;
   scheduledAt: string;
   bookingStatus: string;
-  professional: { profileId: string; userId: string; businessName: string; upheldLast30Days: number; lateUnresolvedLastYear: number; demoted: boolean; blocked: boolean };
+  professional: { profileId: string; userId: string; businessName: string; personName: string | null; upheldLast30Days: number; lateUnresolvedLastYear: number; demoted: boolean; blocked: boolean };
   client: { userId: string; name: string | null; accountDeleted: boolean };
   /** L'admin corrente ha deciso la segnalazione: non può decidere il ricorso. */
   decidedByMe: boolean;
