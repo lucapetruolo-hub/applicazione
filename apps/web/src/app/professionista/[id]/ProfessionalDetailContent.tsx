@@ -10,6 +10,7 @@ import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { ProfileQuoteCta } from "@/components/ProfileQuoteCta";
 import { ChosenProsBar, chosenRequestHref } from "@/components/ChosenProsBar";
+import { requestDescriptionParam } from "@/lib/requestDescription";
 import { ProfileChoiceStrip, useProfileChoice } from "@/components/ProfileChoiceStrip";
 import { MediaPreview } from "@/components/MediaPreview";
 import { ReportContentModal } from "@/components/ReportContentModal";
@@ -88,7 +89,7 @@ export function ProfessionalDetailContent({
    * il piè di pagina, che su una rete lenta saliva in cima e poi scendeva
    * (Lighthouse CLS 0,93, docs/CHANGELOG.md §400).
    */
-  query?: { modalita?: string; data?: string; salva?: string; servizio?: string; scelta?: string };
+  query?: { modalita?: string; data?: string; salva?: string; servizio?: string; problema?: string; scelta?: string };
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
@@ -189,9 +190,11 @@ export function ProfessionalDetailContent({
   // dopo il caricamento della pagina e il browser non trova ancora l'ancora.
   const requestedAgendaDate = query.data ?? null;
   // Arrivati da una voce di "Quanto costa in media" (§398): la richiesta parte
-  // con la prestazione già scritta nella descrizione.
+  // con la prestazione già scritta nella descrizione. Arrivati dalla ricerca
+  // per problema, con il problema scritto dal cliente
+  // (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md).
   const requestedService = query.servizio?.trim();
-  const serviceDescriptionParam = requestedService ? `&descrizione=${encodeURIComponent(`${requestedService}. `)}` : "";
+  const serviceDescriptionParam = requestDescriptionParam(query.problema, requestedService);
   // Profilo aperto dall'elenco di una voce (§399): contato solo se la scheda del browser è partita da "Quanto costa".
   useEffect(() => {
     if (requestedService) countPriceToolProfile();

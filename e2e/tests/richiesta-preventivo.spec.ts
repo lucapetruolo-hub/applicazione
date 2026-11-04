@@ -7,7 +7,9 @@ import { API_URL } from "../fixtures/env";
  * cambia il modulo mentre si scrive quando i suggerimenti di Google non
  * funzionano, si usa con un lettore di schermo, e le tessere delle categorie
  * compaiono già in ordine. I servizi di Google sono simulati: la prova
- * controlla cosa vede il cliente in ogni caso.
+ * controlla cosa vede il cliente in ogni caso. Dal 03/11/2026 la descrizione
+ * viene per prima e propone la categoria
+ * (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md).
  */
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -28,8 +30,8 @@ async function mockAddress(page: Page, options: { available: boolean; suggestion
 /** Passo 1 compilato, "A domicilio", poi Avanti fino a "Dove". */
 async function goToAddressStep(page: Page) {
   await page.goto("/preventivo");
-  await page.locator(".cat-tile", { hasText: "Idraulico" }).first().click();
   await page.getByLabel("Descrivi il lavoro").fill("Perdita sotto il lavandino della cucina");
+  await expect(page.getByRole("button", { name: "Idraulico", pressed: true })).toBeVisible();
   const home = page.getByText("A domicilio", { exact: true }).first();
   if (await home.count()) await home.click();
   await page.getByRole("group", { name: "Quando ti serve?" }).getByRole("radio", { name: "Con calma" }).check();
@@ -94,4 +96,79 @@ test("le tessere delle categorie compaiono già in ordine, senza riordinarsi", a
     await page.waitForTimeout(100);
   }
   expect([...seen]).toEqual(["Pulizie,Giardiniere,Idraulico"]);
+});
+
+test("la descrizione sceglie la categoria suggerita, con tutte le categorie in vista", async ({ page }) => {
+  await page.goto("/preventivo");
+  const description = page.getByLabel("Descrivi il lavoro");
+  await expect(description).toBeVisible();
+  // Primo campo del modulo, prima delle categorie.
+  const first = await page.evaluate(() => document.querySelector("textarea, .cat-tile")?.tagName);
+  expect(first).toBe("TEXTAREA");
+  const all = page.getByRole("group", { name: "Categorie" });
+  await expect(all.getByRole("button", { name: "Tutto Fare" })).toBeVisible();
+
+  await description.fill("Salta la corrente quando accendo il forno");
+  await expect(all.getByRole("button", { name: "Elettricista", pressed: true })).toBeVisible();
+  await expect(page.getByText("Ti suggeriamo Elettricista: è già scelta")).toBeVisible();
+  // La tessera suggerita va in cima all'elenco.
+  await expect(all.locator(".cat-tile").first()).toHaveAccessibleName("Elettricista");
+  await expect(page.getByText("1 di 3")).toBeVisible();
+
+  // Scrivendo altro la scelta segue la descrizione, finché non si sceglie a mano.
+  await description.fill("Il rubinetto del bagno gocciola");
+  await expect(all.getByRole("button", { name: "Idraulico", pressed: true })).toBeVisible();
+  await expect(all.getByRole("button", { name: "Elettricista", pressed: false })).toBeVisible();
+
+  await all.getByRole("button", { name: "Pulizie" }).click();
+  await expect(page.getByText("2 di 3")).toBeVisible();
+  await description.fill("Salta la corrente quando accendo il forno");
+  await expect(all.getByRole("button", { name: "Idraulico", pressed: true })).toBeVisible();
+  await expect(all.getByRole("button", { name: "Pulizie", pressed: true })).toBeVisible();
+});
+
+test("la categoria del link resta scelta qualunque cosa si scriva", async ({ page }) => {
+  await page.goto("/preventivo?categoria=imbianchino");
+  await page.getByLabel("Descrivi il lavoro").fill("Il rubinetto del bagno gocciola");
+  const all = page.getByRole("group", { name: "Categorie" });
+  await expect(all.getByRole("button", { name: "Imbianchino", pressed: true })).toBeVisible();
+  await expect(all.getByRole("button", { name: "Idraulico", pressed: false })).toBeVisible();
+});
+
+test("odore di gas: prima di tutto l'avviso di sicurezza", async ({ page }) => {
+  await page.goto("/preventivo");
+  await page.getByLabel("Descrivi il lavoro").fill("Sento odore di gas in cucina");
+  await expect(page.getByRole("note", { name: "Prima di tutto la sicurezza" })).toBeVisible();
+});
+
+test("descrizione che non fa capire il mestiere: si sceglie dall'elenco", async ({ page }) => {
+  await page.goto("/preventivo");
+  await page.getByLabel("Descrivi il lavoro").fill("Mi serve una mano per una cosa");
+  await expect(page.getByText("Non abbiamo capito chi ti serve: sceglilo tu.")).toBeVisible();
+  await expect(page.getByRole("group", { name: "Categorie" }).locator(".cat-tile.is-on")).toHaveCount(0);
+});
+
+test("A domicilio o Online per primo, poi gli esempi da toccare sotto la descrizione", async ({ page }) => {
+  await page.goto("/preventivo");
+  const description = page.getByLabel("Descrivi il lavoro");
+  await expect(description).toBeVisible();
+  const order = await page.evaluate(() => {
+    const mode = document.querySelector('[aria-label="A domicilio"]');
+    const field = document.querySelector("textarea");
+    return mode && field ? Boolean(mode.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING) : null;
+  });
+  expect(order).toBe(true);
+
+  await page.getByRole("group", { name: "Esempi" }).getByRole("button", { name: "Il rubinetto perde" }).click();
+  await expect(description).toHaveValue("Il rubinetto perde ");
+  await expect(description).toBeFocused();
+  await expect(page.getByRole("group", { name: "Categorie" }).getByRole("button", { name: "Idraulico", pressed: true })).toBeVisible();
+  // Con il campo scritto gli esempi non servono più.
+  await expect(page.getByRole("group", { name: "Esempi" })).toHaveCount(0);
+});
+
+test("con una categoria di partenza niente esempi di altri mestieri", async ({ page }) => {
+  await page.goto("/preventivo?categoria=imbianchino");
+  await expect(page.getByLabel("Descrivi il lavoro")).toBeVisible();
+  await expect(page.getByRole("group", { name: "Esempi" })).toHaveCount(0);
 });

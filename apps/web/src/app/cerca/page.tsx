@@ -3,7 +3,9 @@ import {
   findComuneByName,
   isProfessionalCategorySlug,
   matchProblem,
+  problemMatchFromDictionary,
   type ProblemMatchResult,
+  type ProfessionalCategorySlug,
   type ProfessionalSearchResult,
 } from "@professionisti/shared";
 import { apiClient } from "../../lib/apiClient";
@@ -28,20 +30,45 @@ type PageSearchParams = {
   domanda?: string;
 };
 
+/** Quanti professionisti di altri mestieri in "Potrebbero fare anche questo lavoro". */
+const ALSO_DO_THIS_JOB_MAX = 3;
+
+/**
+ * Professionisti di altri mestieri con quel lavoro tra le prestazioni
+ * (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md): la
+ * prestazione trovata deve essere, per il dizionario, proprio del mestiere
+ * scelto ("Sostituzione rubinetto" è da idraulico, "Pulizia cucina" no),
+ * così una parola in comune come "cucina" non basta. Mai con un avviso di
+ * sicurezza (lo controlla chi chiama). Un errore non rompe la pagina.
+ */
+async function loadAlsoDoThisJob(
+  description: string,
+  chosen: ProfessionalCategorySlug,
+  city: string | undefined,
+  isOnline: boolean,
+  shown: ProfessionalSearchResult[],
+): Promise<ProfessionalSearchResult[]> {
+  try {
+    const all = await apiClient.searchProfessionals({ city, remote: isOnline, merit: true, problem: description });
+    const shownIds = new Set(shown.map((pro) => pro.id));
+    return all
+      .filter((pro) => {
+        if (!pro.matchedServiceId || shownIds.has(pro.id) || pro.categories.some((category) => category.slug === chosen)) return false;
+        const service = pro.services.find((item) => item.id === pro.matchedServiceId);
+        return service ? matchProblem(service.name).categories[0]?.slug === chosen : false;
+      })
+      .slice(0, ALSO_DO_THIS_JOB_MAX);
+  } catch {
+    return [];
+  }
+}
+
 /** Se il server non risponde resta il dizionario: la pagina non deve mai fallire. */
 async function loadProblemMatch(description: string, city: string | undefined): Promise<ProblemMatchResult> {
   try {
     return await apiClient.matchProblem({ description, city });
   } catch {
-    const match = matchProblem(description);
-    return {
-      categories: match.outOfService ? [] : match.categories.slice(0, 3).map((category) => category.slug),
-      safety: match.safety,
-      outOfService: match.outOfService,
-      question: match.question,
-      reason: null,
-      source: "dizionario",
-    };
+    return problemMatchFromDictionary(matchProblem(description));
   }
 }
 
@@ -174,13 +201,14 @@ async function ProblemResults({
   if (chosen || offers) {
     const base = { category: chosen ?? undefined, offers, remote: isOnline, merit: true };
     try {
-      professionals = await apiClient.searchProfessionals({ ...base, city, track: Boolean(chosen && city?.trim()) && (await shouldCountVisit()) });
+      professionals = await apiClient.searchProfessionals({ ...base, problem: description, city, track: Boolean(chosen && city?.trim()) && (await shouldCountVisit()) });
     } catch {
       loadFailed = true;
     }
     // Puntini della mappa oltre la città: li chiede il browser (vedi sopra).
     if (city?.trim()) mapPool = base;
   }
+  const alsoDoThisJob = chosen && !result.safety && !loadFailed ? await loadAlsoDoThisJob(description, chosen, city, isOnline, professionals) : [];
   const comune = city ? findComuneByName(city) : undefined;
 
   return (
@@ -196,6 +224,7 @@ async function ProblemResults({
         loadFailed={loadFailed}
         initialUrgentOnly={searchParams.urgente === "1"}
         problem={problem}
+        alsoDoThisJob={alsoDoThisJob}
       />
     </div>
   );

@@ -13,6 +13,7 @@ import { useMediaQuery } from "@/lib/useMediaQuery";
 import { useSavedProfessionals } from "@/lib/useSavedProfessionals";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import { CHOICE_PROFILE_PARAM } from "@/lib/chosenProsStore";
+import { PROBLEM_PROFILE_PARAM, requestDescriptionParam } from "@/lib/requestDescription";
 import type { MapBounds } from "./ResultsMap";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
@@ -35,17 +36,19 @@ function matchedServiceName(pro: ProfessionalSearchResult): string | undefined {
  * con sé la prestazione, così "Richiedi preventivo" sul profilo parte con il
  * lavoro già scritto (§398).
  */
-function profileHref(pro: ProfessionalSearchResult, extra: Record<string, string>): string {
-  const service = matchedServiceName(pro);
-  const params = new URLSearchParams({ ...extra, ...(service ? { servizio: service } : {}) });
+function profileHref(pro: ProfessionalSearchResult, extra: Record<string, string>, problem?: string): string {
+  // Dalla ricerca per problema il profilo riceve il problema scritto, non la
+  // prestazione: la richiesta parte con le parole del cliente e la visita non
+  // si conta come arrivata da "Quanto costa" (§399).
+  const service = problem ? undefined : matchedServiceName(pro);
+  const params = new URLSearchParams({ ...extra, ...(problem ? { [PROBLEM_PROFILE_PARAM]: problem } : service ? { servizio: service } : {}) });
   const query = params.toString();
   return `${professionalPath(pro)}${query ? `?${query}` : ""}`;
 }
 
-/** Descrizione della richiesta già scritta con la prestazione cercata (§398). */
-function serviceDescriptionParam(pro: ProfessionalSearchResult): string {
-  const service = matchedServiceName(pro);
-  return service ? `&descrizione=${encodeURIComponent(`${service}. `)}` : "";
+/** Descrizione della richiesta già scritta: il problema cercato, altrimenti la prestazione cercata (§398). */
+function serviceDescriptionParam(pro: ProfessionalSearchResult, problem?: string): string {
+  return requestDescriptionParam(problem, matchedServiceName(pro));
 }
 
 /**
@@ -74,8 +77,10 @@ export function ResultsListWithMap({
   cityCenter,
   header,
   footer,
+  otherSection,
   defaultMode,
   initialUrgentOnly,
+  problemDescription,
   reasonFor,
   merit = false,
   selection,
@@ -102,10 +107,18 @@ export function ResultsListWithMap({
    * 900 px che sembrava una pagina rotta.
    */
   footer?: ReactNode;
+  /**
+   * Seconda sezione sotto le schede, con le stesse schede: "Potrebbero fare
+   * anche questo lavoro" nella ricerca per problema
+   * (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md).
+   */
+  otherSection?: { title: string; subtitle: string; professionals: ProfessionalSearchResult[] };
   /** Tab di default della mini-agenda di ogni card (richiesta esplicita dell'utente): "a domicilio" se cercato a domicilio, "online" se cercato online. */
   defaultMode?: "HOME" | "ONLINE";
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage — evita di dover ripetere la scelta qui. */
   initialUrgentOnly?: boolean;
+  /** Problema scritto nella ricerca: arriva già scritto nella richiesta, dalla scheda e dal profilo. */
+  problemDescription?: string;
   /** Riga "Perché" di ogni scheda, dalla descrizione del problema (docs/CHANGELOG.md §392). */
   reasonFor?: (pro: ProfessionalSearchResult) => string | null;
   /** Ordine senza i pacchetti di visibilità (dalla descrizione del problema, decisione di Luca, §392). */
@@ -373,6 +386,121 @@ export function ResultsListWithMap({
   function toggleSection(section: "online" | "availability" | "language" | "insurance") {
     setExpandedSection((prev) => (prev === section ? null : section));
   }
+
+  // Una scheda dei risultati: la stessa per la sezione "Potrebbero fare
+  // anche questo lavoro" (scelta di Luca), lì senza "Scegli", perché le
+  // richieste a più professionisti restano del mestiere cercato.
+  const renderCard = (pro: ProfessionalSearchResult, index: number, other = false) => (
+    <ProfessionalCard
+      key={pro.id}
+      // Orari e prezzi aperti solo nella prima scheda (docs/CHANGELOG.md §349).
+      defaultExpanded={!other && index === 0}
+      reason={reasonFor?.(pro)}
+      action={selection && !other ? <ChooseToggle pro={pro} selection={selection} /> : undefined}
+      businessName={pro.businessName}
+      categoryLabel={pro.categoryLabel}
+      otherCategoryLabels={pro.categories?.filter((category) => category.slug !== pro.categorySlug).map((category) => category.label)}
+      city={pro.city}
+      distanceKm={pro.distanceKm}
+      subTags={pro.subTags.map(subTagLabel)}
+      rating={pro.rating ?? undefined}
+      reviewCount={pro.reviewCount}
+      completedThisMonth={pro.completedThisMonth}
+      verified={pro.verified}
+      stripeVerified={pro.stripeVerified}
+      professionalKind={pro.professionalKind}
+      boosted={merit ? false : pro.boosted}
+      isNewProfile={pro.isNewProfile}
+      hasLiabilityInsurance={pro.hasLiabilityInsurance}
+      remoteAvailable={pro.remoteAvailable}
+      services={pro.services}
+      highlightServiceId={pro.matchedServiceId}
+      availabilityPreview={pro.availabilityPreview}
+      availabilityFrom={pro.availabilityFrom}
+      availabilityDays={PUBLIC_AGENDA_DAYS}
+      defaultMode={defaultMode}
+      // Se la ricerca è in modalità "Online", il profilo si apre già
+      // con l'agenda su quel tab (richiesta esplicita dell'utente) —
+      // letto da ProfessionalDetailContent via `?modalita=`, stesso
+      // parametro già usato per precompilare /preventivo.
+      href={profileHref(pro, { ...fromChoice, ...(defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {}) }, problemDescription)}
+      onPress={() =>
+        navigateWithTransition(() =>
+          router.push(profileHref(pro, { ...fromChoice, ...(defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {}) }, problemDescription)),
+        )
+      }
+      // Click su un orario libero della mini-agenda (o sul bottone
+      // "Mostra orari disponibili", che qui atterra sempre su una
+      // fascia reale — vedi ProfessionalCard: quel bottone ora avanza
+      // solo la finestra locale della card, il click successivo sulla
+      // fascia arriva comunque qui) — richiesta esplicita dell'utente:
+      // porta direttamente alla richiesta di preventivo con
+      // data/orario/modalità già precompilati, stesso URL già usato
+      // dall'agenda della pagina profilo pubblica
+      // (ProfessionalDetailContent), non solo un'ancora verso di essa.
+      onSlotPress={(date, time, endTime, mode) =>
+        navigateWithTransition(() =>
+          router.push(
+            // `nomeProfessionista`/`fotoProfessionista` (richiesta
+            // esplicita dell'utente: il cliente deve capire subito
+            // che la richiesta va a QUEL professionista, non "ai
+            // professionisti compatibili nella zona") — già
+            // disponibili qui sui risultati di ricerca, passati via
+            // query string invece di un fetch aggiuntivo in
+            // GuidedRequestForm. Nomi distinti da "nome"/"foto" per
+            // non collidere con il "nome" del CLIENTE (prefill di
+            // "Ripeti la richiesta", stesso form).
+            `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&nomeProfessionista=${encodeURIComponent(pro.businessName)}&fotoProfessionista=${encodeURIComponent(pro.imageUrl ?? "")}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}${serviceDescriptionParam(pro, problemDescription)}&da=${PROFILE_REQUEST_SOURCE_PARAM.RICERCA}`,
+          ),
+        )
+      }
+      // Click sull'agenda fuori da un orario libero: profilo aperto
+      // sull'agenda, già sul giorno scelto e sulla stessa modalità
+      // (richiesta esplicita dell'utente, docs/CHANGELOG.md §206).
+      onAgendaPress={(date, mode) =>
+        navigateWithTransition(() =>
+          router.push(`${profileHref(pro, { ...fromChoice, data: date, ...(mode === "ONLINE" ? { modalita: "ONLINE" } : {}) }, problemDescription)}#agenda`),
+        )
+      }
+      // Cuoricino piccolo nell'angolo della foto (richiesta esplicita
+      // dell'utente, docs/CHANGELOG.md §208): accanto al nome rubava
+      // spazio al nome sui telefoni.
+      icon={
+        <span style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+          <ProfessionalAvatar
+            imageUrl={pro.imageUrl}
+            categorySlug={pro.categorySlug}
+            size={CARD_PHOTO.size}
+            mobileSize={CARD_PHOTO.mobileSize}
+            shape={CARD_PHOTO.shape}
+            priority={index === 0}
+          />
+          {canSave ? (
+            // Il clic sul cuoricino non deve aprire anche il profilo (clic sulla card).
+            // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+            <span style={{ position: "absolute", ...heartOffset }} onClick={(e) => e.stopPropagation()}>
+              <IconActionButton
+                label={savedIds.has(pro.id) ? "Salvato" : "Salva"}
+                active={savedIds.has(pro.id)}
+                disabled={pendingId === pro.id}
+                size={24}
+                celebrate
+                onPress={() => void toggleSave(pro.id)}
+              >
+                <Icon
+                  name="heart"
+                  size={12}
+                  strokeWidth={2}
+                  color={savedIds.has(pro.id) ? "white" : brand.grafite}
+                  fill={savedIds.has(pro.id) ? "white" : "none"}
+                />
+              </IconActionButton>
+            </span>
+          ) : null}
+        </span>
+      }
+    />
+  );
 
   return (
     // Layout con classi CSS grezze (styled-jsx, incluso in Next.js) invece dei
@@ -711,117 +839,20 @@ export function ResultsListWithMap({
               </Text>
             </YStack>
           ) : null}
-          {(showMap ? filteredOrderedVisible : filteredProfessionals).map((pro, index) => (
-            <ProfessionalCard
-              key={pro.id}
-              // Orari e prezzi aperti solo nella prima scheda (docs/CHANGELOG.md §349).
-              defaultExpanded={index === 0}
-              reason={reasonFor?.(pro)}
-              action={selection ? <ChooseToggle pro={pro} selection={selection} /> : undefined}
-              businessName={pro.businessName}
-              categoryLabel={pro.categoryLabel}
-              otherCategoryLabels={pro.categories?.filter((category) => category.slug !== pro.categorySlug).map((category) => category.label)}
-              city={pro.city}
-              distanceKm={pro.distanceKm}
-              subTags={pro.subTags.map(subTagLabel)}
-              rating={pro.rating ?? undefined}
-              reviewCount={pro.reviewCount}
-              completedThisMonth={pro.completedThisMonth}
-              verified={pro.verified}
-              stripeVerified={pro.stripeVerified}
-              professionalKind={pro.professionalKind}
-              boosted={merit ? false : pro.boosted}
-              isNewProfile={pro.isNewProfile}
-              hasLiabilityInsurance={pro.hasLiabilityInsurance}
-              remoteAvailable={pro.remoteAvailable}
-              services={pro.services}
-              highlightServiceId={pro.matchedServiceId}
-              availabilityPreview={pro.availabilityPreview}
-              availabilityFrom={pro.availabilityFrom}
-              availabilityDays={PUBLIC_AGENDA_DAYS}
-              defaultMode={defaultMode}
-              // Se la ricerca è in modalità "Online", il profilo si apre già
-              // con l'agenda su quel tab (richiesta esplicita dell'utente) —
-              // letto da ProfessionalDetailContent via `?modalita=`, stesso
-              // parametro già usato per precompilare /preventivo.
-              href={profileHref(pro, { ...fromChoice, ...(defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {}) })}
-              onPress={() =>
-                navigateWithTransition(() =>
-                  router.push(profileHref(pro, { ...fromChoice, ...(defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {}) })),
-                )
-              }
-              // Click su un orario libero della mini-agenda (o sul bottone
-              // "Mostra orari disponibili", che qui atterra sempre su una
-              // fascia reale — vedi ProfessionalCard: quel bottone ora avanza
-              // solo la finestra locale della card, il click successivo sulla
-              // fascia arriva comunque qui) — richiesta esplicita dell'utente:
-              // porta direttamente alla richiesta di preventivo con
-              // data/orario/modalità già precompilati, stesso URL già usato
-              // dall'agenda della pagina profilo pubblica
-              // (ProfessionalDetailContent), non solo un'ancora verso di essa.
-              onSlotPress={(date, time, endTime, mode) =>
-                navigateWithTransition(() =>
-                  router.push(
-                    // `nomeProfessionista`/`fotoProfessionista` (richiesta
-                    // esplicita dell'utente: il cliente deve capire subito
-                    // che la richiesta va a QUEL professionista, non "ai
-                    // professionisti compatibili nella zona") — già
-                    // disponibili qui sui risultati di ricerca, passati via
-                    // query string invece di un fetch aggiuntivo in
-                    // GuidedRequestForm. Nomi distinti da "nome"/"foto" per
-                    // non collidere con il "nome" del CLIENTE (prefill di
-                    // "Ripeti la richiesta", stesso form).
-                    `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&nomeProfessionista=${encodeURIComponent(pro.businessName)}&fotoProfessionista=${encodeURIComponent(pro.imageUrl ?? "")}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}${serviceDescriptionParam(pro)}&da=${PROFILE_REQUEST_SOURCE_PARAM.RICERCA}`,
-                  ),
-                )
-              }
-              // Click sull'agenda fuori da un orario libero: profilo aperto
-              // sull'agenda, già sul giorno scelto e sulla stessa modalità
-              // (richiesta esplicita dell'utente, docs/CHANGELOG.md §206).
-              onAgendaPress={(date, mode) =>
-                navigateWithTransition(() =>
-                  router.push(`${profileHref(pro, { ...fromChoice, data: date, ...(mode === "ONLINE" ? { modalita: "ONLINE" } : {}) })}#agenda`),
-                )
-              }
-              // Cuoricino piccolo nell'angolo della foto (richiesta esplicita
-              // dell'utente, docs/CHANGELOG.md §208): accanto al nome rubava
-              // spazio al nome sui telefoni.
-              icon={
-                <span style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
-                  <ProfessionalAvatar
-                    imageUrl={pro.imageUrl}
-                    categorySlug={pro.categorySlug}
-                    size={CARD_PHOTO.size}
-                    mobileSize={CARD_PHOTO.mobileSize}
-                    shape={CARD_PHOTO.shape}
-                    priority={index === 0}
-                  />
-                  {canSave ? (
-                    // Il clic sul cuoricino non deve aprire anche il profilo (clic sulla card).
-                    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-                    <span style={{ position: "absolute", ...heartOffset }} onClick={(e) => e.stopPropagation()}>
-                      <IconActionButton
-                        label={savedIds.has(pro.id) ? "Salvato" : "Salva"}
-                        active={savedIds.has(pro.id)}
-                        disabled={pendingId === pro.id}
-                        size={24}
-                        celebrate
-                        onPress={() => void toggleSave(pro.id)}
-                      >
-                        <Icon
-                          name="heart"
-                          size={12}
-                          strokeWidth={2}
-                          color={savedIds.has(pro.id) ? "white" : brand.grafite}
-                          fill={savedIds.has(pro.id) ? "white" : "none"}
-                        />
-                      </IconActionButton>
-                    </span>
-                  ) : null}
-                </span>
-              }
-            />
-          ))}
+          {(showMap ? filteredOrderedVisible : filteredProfessionals).map((pro, index) => renderCard(pro, index))}
+          {otherSection && otherSection.professionals.length > 0 ? (
+            <section aria-labelledby="results-other-section" className="results-other-section">
+              <YStack gap="1" marginBottom="2">
+                <Text id="results-other-section" render="h2" fontFamily="heading" fontWeight="800" fontSize={20} color={brand.grafite}>
+                  {otherSection.title}
+                </Text>
+                <Text fontSize={14} color={brand.grafite70}>
+                  {otherSection.subtitle}
+                </Text>
+              </YStack>
+              <YStack gap="3">{otherSection.professionals.map((pro, index) => renderCard(pro, index, true))}</YStack>
+            </section>
+          ) : null}
           {footer ? <div className="results-list-footer">{footer}</div> : null}
         </YStack>
       </div>

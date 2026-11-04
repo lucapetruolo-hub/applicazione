@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { useDeferredValue, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { X } from "lucide-react";
@@ -13,8 +13,12 @@ import {
   isPlausiblePhoneNumber,
   isProfessionalCategorySlug,
   linkSlotUsable,
+  matchProblem,
+  OUT_OF_SERVICE_LABELS,
+  problemMatchFromDictionary,
   normalizePhoneNumber,
   profileRequestSourceOf,
+  type ProblemMatchResult,
   type ProfessionalAgenda,
   type ProfessionalCategorySlug,
   type ProfessionalDetail,
@@ -37,6 +41,7 @@ import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { RequestSentScreen } from "@/components/RequestSentScreen";
 import { UploadingDots } from "@/components/UploadingDots";
 import { CategoryTiles } from "@/components/CategoryTiles";
+import { SafetyNotice } from "@/components/ProblemBand";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { useComuni } from "@/lib/comuniLazy";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
@@ -44,6 +49,13 @@ import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAdd
 import { cleanPostalCode, postalCodeCityProblem, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
 import { localPreviewUrl } from "@/lib/media";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
+
+/**
+ * Esempi da toccare sotto "Descrivi il lavoro": due dei lavori più cercati dei
+ * mestieri del lancio, gli stessi del campo della home
+ * (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md).
+ */
+const DESCRIPTION_EXAMPLES = ["Il rubinetto perde", "Salta la corrente"] as const;
 
 /** Elenco vuoto stabile mentre i comuni arrivano. */
 const NO_CITIES: string[] = [];
@@ -352,7 +364,11 @@ export function GuidedRequestForm({
     .map((slug) => PROFESSIONAL_CATEGORIES.find((c) => c.slug === slug))
     .filter((c): c is (typeof PROFESSIONAL_CATEGORIES)[number] => Boolean(c));
   const selectedCategory = selectedCategories[0];
+  // Scelte a mano (o arrivate dal link del profilo o del mestiere): da lì in
+  // poi la descrizione suggerisce soltanto, non cambia più la scelta.
+  const [categoriesByHand, setCategoriesByHand] = useState(categorySlugs.length > 0);
   function toggleCategory(slug: ProfessionalCategorySlug) {
+    setCategoriesByHand(true);
     setCategorySlugs((current) =>
       current.includes(slug) ? current.filter((s) => s !== slug) : current.length < MAX_REQUEST_CATEGORIES ? [...current, slug] : current,
     );
@@ -437,6 +453,44 @@ export function GuidedRequestForm({
   // (obbligatorie, e devono essere del problema attuale, non riciclate).
   const [description, setDescription] = useState(searchParams.get("descrizione") ?? "");
   const [city, setCity] = useState(initialCity);
+  // Descrizione per prima e categorie suggerite mentre si scrive
+  // (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md): subito il
+  // dizionario, gratis; uscendo dal campo lo stesso controllo della ricerca
+  // (`POST /problem-match`, con l'intelligenza artificiale nei dubbi). La
+  // prima categoria proposta è già scelta finché il cliente non ne tocca una.
+  const suggestionsOn = !professionalProfileId && !chosenMode;
+  const typedDescription = useDeferredValue(description.trim());
+  const [checkedDescription, setCheckedDescription] = useState<{ text: string; result: ProblemMatchResult } | null>(null);
+  const suggestion: ProblemMatchResult | null =
+    !suggestionsOn || typedDescription.length < 4
+      ? null
+      : checkedDescription?.text === typedDescription
+        ? checkedDescription.result
+        : problemMatchFromDictionary(matchProblem(typedDescription));
+  const suggestedSlugs = suggestion?.categories ?? [];
+  const categoryLabelOf = (slug: ProfessionalCategorySlug) => PROFESSIONAL_CATEGORIES.find((c) => c.slug === slug)?.label ?? slug;
+  const autoSlug = suggestedSlugs[0] ?? null;
+  const [autoApplied, setAutoApplied] = useState<ProfessionalCategorySlug | null>(null);
+  if (suggestionsOn && !categoriesByHand && autoApplied !== autoSlug) {
+    setAutoApplied(autoSlug);
+    setCategorySlugs(autoSlug ? [autoSlug] : []);
+  }
+  const checkingRef = useRef("");
+  function checkDescription() {
+    const text = description.trim();
+    if (!suggestionsOn || text.length < 10 || checkingRef.current === text) return;
+    checkingRef.current = text;
+    apiClient
+      .matchProblem({ description: text, city: city.trim() || undefined })
+      .then((result) => setCheckedDescription({ text, result }))
+      .catch(() => undefined);
+  }
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  // Esempi solo per una richiesta generale senza categoria di partenza: con
+  // "Imbianchino" già scelto un esempio da idraulico confonderebbe.
+  const [startedWithCategory] = useState(categoriesByHand);
+  const showExamples = suggestionsOn && !startedWithCategory && description.trim() === "";
+  const notUnderstood = suggestionsOn && typedDescription.length >= 10 && suggestedSlugs.length === 0;
   // Cambiando città o categoria l'avviso di zona si ricontrolla al passo successivo.
   const [zoneCheckedFor, setZoneCheckedFor] = useState({ city, categorySlugs });
   if (zoneCheckedFor.city !== city || zoneCheckedFor.categorySlugs !== categorySlugs) {
@@ -796,8 +850,8 @@ export function GuidedRequestForm({
   /** Controlli del passo 1 (il lavoro) e del passo 2 (dove): null se tutto a posto. */
   function validateStep(which: 1 | 2): StepProblem | null {
     if (which === 1) {
-      if (!categorySlug) return { message: "Scegli almeno una categoria." };
       if (description.trim().length < 10) return { message: "Descrivi il lavoro con almeno 10 caratteri." };
+      if (!categorySlug) return { message: "Scegli almeno una categoria." };
       if (!timing) return { message: "Scegli quando ti serve." };
       return null;
     }
@@ -925,6 +979,8 @@ export function GuidedRequestForm({
         preferredDate: finalPreferredDate,
         preferredTimeSlot: finalPreferredTimeSlot,
         trafficSource: storedTrafficSource(),
+        // Per contare in admin se la categoria proposta resta (non quando arrivava dal link).
+        suggestedCategorySlug: suggestionsOn && !startedWithCategory ? (autoApplied ?? undefined) : undefined,
       });
       // Solo per un intervento a domicilio: i campi destinatario/indirizzo
       // restano vuoti (mai riempiti) per una richiesta Online, confrontarli
@@ -1137,35 +1193,9 @@ export function GuidedRequestForm({
 
         {step === 1 ? (
           <>
-        {(professionalProfileId || chosenMode) && selectedCategory ? (
-          // Professionista già scelto: nessuna categoria da scegliere
-          // (decisione dell'utente, docs/CHANGELOG.md §217). La richiesta usa
-          // quella del link se è una delle sue, altrimenti la principale.
-          null
-        ) : (
-          <YStack gap="2">
-            <XStack justifyContent="space-between" alignItems="baseline" gap="2">
-              <FieldLabel>Categorie</FieldLabel>
-              <Text fontSize={13} color={brand.grafite70} aria-live="polite">
-                {/* "Scegli fino a 3", poi "1 di 3" (docs/CHANGELOG.md §349): "Fino a 3"
-                    da solo non diceva che si possono scegliere più tessere. */}
-                {categorySlugs.length > 0 ? `${categorySlugs.length} di ${MAX_REQUEST_CATEGORIES}` : `Scegli fino a ${MAX_REQUEST_CATEGORIES}`}
-              </Text>
-            </XStack>
-            {/* Più categorie insieme (docs/CHANGELOG.md §259), a tessere come
-                nella registrazione del professionista (§279), con le più
-                cercate nella città di partenza prima. */}
-            <CategoryTiles value={categorySlugs} onToggle={toggleCategory} max={MAX_REQUEST_CATEGORIES} city={initialCity} ariaLabel="Categorie" />
-            {categorySlugs.length > 1 ? (
-              <Text fontSize={13} color={brand.grafite70}>
-                Riceverai una richiesta separata per ogni categoria.
-              </Text>
-            ) : null}
-          </YStack>
-        )}
-
         <YStack gap="2">
           <FieldLabel>Tipo di intervento</FieldLabel>
+          {/* Prima scelta del modulo (Luca, 03/11/2026): decide il resto, con "Online" l'indirizzo non serve. */}
           {/* Resa a interruttore/toggle (richiesta esplicita dell'utente),
               non più due caselle indipendenti: un'unica pista con le due
               opzioni affiancate, quella attiva evidenziata piena — stesso
@@ -1223,6 +1253,107 @@ export function GuidedRequestForm({
           </XStack>
         </YStack>
 
+        <YStack gap="2">
+          <FieldLabel>Descrivi il lavoro</FieldLabel>
+          {/* Primo campo, con la stessa luce del campo della home: due giri
+              all'apertura, verde pieno mentre si scrive. */}
+          <textarea aria-label="Descrivi il lavoro"
+            ref={descriptionRef}
+            className="guided-description-input"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            onBlur={checkDescription}
+            placeholder={resolvedDescriptionPlaceholder}
+            rows={4}
+            style={{
+              padding: 12,
+              borderRadius: 10,
+              fontSize: 16,
+              fontFamily: "inherit",
+              color: brand.grafite,
+              resize: "vertical",
+            }}
+          />
+          {showExamples ? (
+            // Due esempi da toccare, come in home (scelta di Luca): riconosciuti
+            // con sicurezza dal dizionario, mostrano subito la categoria.
+            <div className="guided-examples" role="group" aria-label="Esempi">
+              <span className="guided-examples-label">Prova:</span>
+              {DESCRIPTION_EXAMPLES.map((example) => (
+                <button
+                  key={example}
+                  type="button"
+                  className="guided-example"
+                  onClick={() => {
+                    setDescription(`${example} `);
+                    const field = descriptionRef.current;
+                    if (field) {
+                      field.focus();
+                      requestAnimationFrame(() => field.setSelectionRange(field.value.length, field.value.length));
+                    }
+                  }}
+                >
+                  {example}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </YStack>
+        {suggestion?.safety ? <SafetyNotice safety={suggestion.safety} /> : null}
+
+        {suggestionsOn || !selectedCategory ? (
+          <YStack gap="2">
+            <XStack justifyContent="space-between" alignItems="baseline" gap="2">
+              <FieldLabel>Categorie</FieldLabel>
+              <Text fontSize={13} color={brand.grafite70} aria-live="polite">
+                {/* "Scegli fino a 3", poi "1 di 3" (docs/CHANGELOG.md §349): "Fino a 3"
+                    da solo non diceva che si possono scegliere più tessere. */}
+                {categorySlugs.length > 0 ? `${categorySlugs.length} di ${MAX_REQUEST_CATEGORIES}` : `Scegli fino a ${MAX_REQUEST_CATEGORIES}`}
+              </Text>
+            </XStack>
+            {/* Tutte le tessere sempre in vista, con quelle suggerite dalla
+                descrizione in cima e la prima già scelta (scelte di Luca). */}
+            {suggestionsOn ? (
+              <Text fontSize={13} color={brand.grafite70} aria-live="polite">
+                {autoSlug && categorySlugs.includes(autoSlug)
+                  ? `Ti suggeriamo ${categoryLabelOf(autoSlug)}: è già scelta, puoi cambiarla o aggiungerne altre.`
+                  : notUnderstood && categorySlugs.length === 0
+                    ? suggestion?.outOfService
+                      ? `${OUT_OF_SERVICE_LABELS[suggestion.outOfService]}. Se pensi che serva una di queste, sceglila tu.`
+                      : "Non abbiamo capito chi ti serve: sceglilo tu."
+                    : categorySlugs.length === 0
+                      ? "Scrivi il lavoro qui sopra e ti suggeriamo la categoria, oppure sceglila tu."
+                      : ""}
+                {suggestion?.source === "ia" && autoSlug && categorySlugs.includes(autoSlug) ? (
+                  // Trasparenza sull'intelligenza artificiale come nella ricerca (AI Act art. 50).
+                  <>
+                    {" "}Proposta automatica.{" "}
+                    <Link href="/privacy#fornitori" style={{ color: brand.cianografiaScuro }}>
+                      Come funziona
+                    </Link>
+                  </>
+                ) : null}
+              </Text>
+            ) : null}
+            {/* Più categorie insieme (docs/CHANGELOG.md §259), a tessere come
+                nella registrazione del professionista (§279), con le più
+                cercate nella città di partenza prima. */}
+            <CategoryTiles
+              value={categorySlugs}
+              onToggle={toggleCategory}
+              max={MAX_REQUEST_CATEGORIES}
+              city={initialCity}
+              ariaLabel="Categorie"
+              first={suggestedSlugs}
+            />
+            {categorySlugs.length > 1 ? (
+              <Text fontSize={13} color={brand.grafite70}>
+                Riceverai una richiesta separata per ogni categoria.
+              </Text>
+            ) : null}
+          </YStack>
+        ) : null}
+
         <div className="guided-options is-urgent-card">
           <UrgencyControl
             idPrefix="guided-urgency-1"
@@ -1256,25 +1387,6 @@ export function GuidedRequestForm({
             />
           </YStack>
         ) : null}
-
-        <YStack gap="2">
-          <FieldLabel>Descrivi il lavoro</FieldLabel>
-          <textarea aria-label="Descrivi il lavoro"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder={resolvedDescriptionPlaceholder}
-            rows={5}
-            style={{
-              padding: 12,
-              borderRadius: 10,
-              border: `1px solid ${brand.bordoCampo}`,
-              fontSize: 16,
-              fontFamily: "inherit",
-              color: brand.grafite,
-              resize: "vertical",
-            }}
-          />
-        </YStack>
 
         <YStack gap="2">
           <FieldLabel>Foto o video (fino a {MAX_PHOTOS})</FieldLabel>

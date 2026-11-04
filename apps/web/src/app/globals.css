@@ -7866,3 +7866,64 @@ a.admin-kpi:hover {
   font-weight: 600;
   color: #4a433b;
 }
+
+/* "Descrivi il lavoro" per primo nella richiesta di preventivo
+   (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md, scelta di
+   Luca): la stessa luce del campo "Cosa è successo?" della home, due giri
+   all'apertura e poi ferma; verde pieno mentre si scrive. */
+.guided-description-input {
+  border: 2px solid transparent !important;
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    conic-gradient(from var(--badge-angle), #128552, #7fd6a4, #f2c14e, #7fd6a4, #128552) border-box !important;
+  animation: label-badge-spin 3s linear 2;
+}
+.guided-description-input:focus {
+  animation: none;
+  /* Il bordo verde pieno fa da segno del campo attivo (contrasto 5,5:1 sul bianco). */
+  outline: none;
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(#128552, #128552) border-box !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .guided-description-input {
+    animation: none;
+  }
+}
+/* "Prova:" sotto "Descrivi il lavoro": le pillole della home, su fondo chiaro. */
+.guided-examples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.guided-examples-label {
+  color: #6e6459;
+  font-size: 15px;
+  font-weight: 600;
+}
+.guided-example {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0e7a4c;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #b9dcc8;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.guided-example:hover {
+  background: #eef8f2;
+  border-color: #128552;
+}
+.guided-example:active {
+  transform: scale(0.98);
+}
+/* "Potrebbero fare anche questo lavoro": stesse schede dei risultati, più staccate. */
+.results-other-section {
+  margin-top: 16px;
+}
