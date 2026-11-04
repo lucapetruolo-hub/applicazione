@@ -1162,16 +1162,22 @@ export function ResultsListWithMap({
                mai nulla), garantisce sempre almeno ~280px di spazio in più
                oltre a quello della mappa perché lo sticky abbia margine di
                manovra anche quando la lista è più corta della mappa. */
-            min-height: calc(100vh - 140px + 280px);
+            min-height: calc(100vh - 96px + 280px);
           }
           .results-map-col.expanded {
             width: 58%;
             max-width: 760px;
           }
+          /* Ferma sotto l'intestazione fissa del sito (64px) con 16px di
+             respiro, e alta quanto tutto lo schermo che resta, con 16px
+             anche in fondo (docs/changelog/2026-11-04-mappa-ricerca-altezza.md):
+             prima "top: 24px" la faceva finire sotto l'intestazione e
+             lasciava ~110px vuoti in basso. */
           .results-map-sticky {
             position: sticky;
-            top: 24px;
-            height: calc(100vh - 140px);
+            top: 80px;
+            height: calc(100vh - 96px);
+            height: calc(100dvh - 96px);
             min-height: 420px;
           }
           .map-expand-toggle {
