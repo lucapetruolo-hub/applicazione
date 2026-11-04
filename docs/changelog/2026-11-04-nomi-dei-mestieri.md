@@ -35,3 +35,22 @@ non trovava "Termoidraulica Rossi"). Luca ha chiesto le due correzioni.
 **Verifica**: banco di prova delle 769 frasi identico a prima (stesso
 mestiere, stessa sicurezza, stessa domanda per ogni frase); test nuovi in
 `problemMatch.test.ts` e `nameSearch.test.ts`; typecheck dell'API.
+
+## Secondo giro: plurali dei mestieri nella barra
+
+**Richiesta** (Luca, 04/11/2026): ignorare la desinenza anche dove conviene,
+punto 1 della proposta: "idraulici", "elettricisti", "muratori" scritti nella
+barra finivano sulla pagina del problema invece che sulla pagina del mestiere
+(indicizzabile, con l'ordine del boost).
+
+**Decisione**: `findCategoryByQuery` prova prima come prima; se non trova
+nulla, toglie la vocale finale (stessa regola di `nameSearchWords`) e
+confronta solo con il nome e lo slug del mestiere, mai con le
+specializzazioni ("porta" non diventa "apertura porte"). Le ricerche in
+Admin, nei documenti e sulle città restano esatte: sono nomi propri.
+
+Scartata dopo valutazione: cercare anche nome e cognome dell'account del
+professionista. Non compaiono sul sito pubblico, e cercarli rivelerebbe chi
+c'è dietro un nome d'attività.
+
+**Verifica**: test in `nameSearch.test.ts`.

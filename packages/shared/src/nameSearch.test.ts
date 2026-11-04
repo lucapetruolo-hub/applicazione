@@ -19,3 +19,20 @@ test("nome dell'attività: parole corte intere, tutte le parole devono esserci",
   assert.ok(!finds("rossi termoidraulico", "Idraulica Rossi"));
   assert.deepEqual(nameSearchWords(""), []);
 });
+
+test("barra di ricerca: i plurali dei mestieri aprono la pagina del mestiere", async () => {
+  const { findCategoryByQuery } = await import("./categories");
+  const cases: [string, string | undefined][] = [
+    ["idraulici", "idraulico"],
+    ["elettricisti", "elettricista"],
+    ["imbianchini", "imbianchino"],
+    ["falegnami", "falegname"],
+    ["giardinieri", "giardiniere"],
+    ["muratori", "muratore"],
+    ["pulizia", "pulizie"],
+    ["idra", "idraulico"],
+    ["porta", undefined],
+    ["termoidraulico", undefined],
+  ];
+  for (const [query, slug] of cases) assert.equal(findCategoryByQuery(query)?.slug, slug, query);
+});
