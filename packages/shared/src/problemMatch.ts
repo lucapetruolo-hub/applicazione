@@ -161,6 +161,29 @@ const RULES: readonly Rule[] = [
   { words: ["figlio", "figlia", "figli"], weights: { babysitter: 2 } },
 ];
 
+/**
+ * Nomi dei mestieri che il sito non usa come categoria ma che la gente
+ * scrive: "termoidraulico" sono due categorie, "stagnino" è l'idraulico
+ * (richiesta di Luca, docs/changelog/2026-11-04-nomi-dei-mestieri.md). Un nome
+ * di mestiere dice già chi serve: niente domanda, niente intelligenza
+ * artificiale, e con più categorie la prima è quella scritta per prima qui.
+ */
+export const TRADE_NAMES: readonly { words: readonly string[]; categories: readonly ProfessionalCategorySlug[] }[] = [
+  { words: ["termoidraulic", "termo idraulic"], categories: ["idraulico", "climatizzazione"] },
+  { words: ["stagnin"], categories: ["idraulico"] },
+  { words: ["caldaist", "frigorist", "condizionatorist", "climatizzatorist", "manutentore caldai", "tecnico caldai"], categories: ["climatizzazione"] },
+  { words: ["impiantist"], categories: ["idraulico", "elettricista", "climatizzazione"] },
+  { words: ["piastrellist", "cartongessist", "capomastro", "pavimentist"], categories: ["muratore"] },
+  { words: ["pittore edile", "tinteggiator", "decorator"], categories: ["imbianchino"] },
+  { words: ["fabbri ", "fabbro ferraio", "carpenteria metallica"], categories: ["fabbro"] },
+  { words: ["ebanist", "serramentist", "mobilier"], categories: ["falegname"] },
+  { words: ["giardinagg", "manutenzione del verde", "manutentore del verde", "vivaist", "potator"], categories: ["giardiniere"] },
+  { words: ["traslocator", "sgomberator"], categories: ["traslochi"] },
+  { words: ["handyman", "factotum", "manutentore", "uomo di fatica"], categories: ["tuttofare"] },
+  { words: ["petsitter", "dog walker", "dogwalker", "dog-sitter"], categories: ["dogsitter"] },
+  { words: ["bambinaia", "baby-sitter"], categories: ["babysitter"] },
+];
+
 type OutRule = { words: readonly string[]; kind: ProblemOutOfService };
 
 // Guasti degli elettrodomestici: solo con un verbo da guasto. Installarli o
@@ -286,6 +309,8 @@ const QUESTIONS: readonly { pairs: readonly Pair[]; question: ProblemQuestion }[
 // sbagliato quando si diceva sicuro (286 su 287); tutto il resto, circa
 // metà delle descrizioni, passa all'intelligenza artificiale.
 const CONFIDENT_MIN = 4;
+/** Punti di un nome di mestiere: abbastanza da restare primo con poche altre parole. */
+const TRADE_POINTS = 8;
 const CONFIDENT_GAP = 5;
 
 function containsWord(text: string, word: string): boolean {
@@ -303,6 +328,10 @@ export function matchProblem(description: string): ProblemMatch {
     if (hits === 0) continue;
     for (const [slug, weight] of Object.entries(rule.weights) as [ProfessionalCategorySlug, number][]) add(slug, weight * Math.min(hits, 2));
   }
+  // Il nome più lungo vince: "manutentore caldaie" è il caldaista, non il Tutto Fare.
+  const trade = TRADE_NAMES.flatMap((entry) => entry.words.filter((word) => containsWord(text, word)).map((word) => ({ word, entry })))
+    .sort((a, b) => b.word.length - a.word.length)[0]?.entry;
+  trade?.categories.forEach((slug, index) => add(slug, TRADE_POINTS - index));
   const safety = SAFETY_RULES.find((rule) => rule.test(text))?.kind ?? null;
   // Un pericolo indica anche chi deve intervenire (DM 37/2008).
   if (safety === "gas") {
@@ -325,7 +354,9 @@ export function matchProblem(description: string): ProblemMatch {
 
   const [first, second] = categories;
   let question: ProblemQuestion | null = null;
-  if (safety === "gas" && first && second && second.score >= first.score / 2) {
+  if (trade) {
+    // Chi scrive il nome del mestiere sa già chi gli serve.
+  } else if (safety === "gas" && first && second && second.score >= first.score / 2) {
     // Con il gas la domanda dell'acqua calda non c'entra: conta dove si sente l'odore.
     question = GAS_QUESTION;
   } else if (first && second && second.score >= first.score / 2) {
@@ -338,7 +369,8 @@ export function matchProblem(description: string): ProblemMatch {
   // Sicuro solo se un mestiere stacca nettamente gli altri e non c'è niente
   // che lo contraddica: ogni altro caso passa all'intelligenza artificiale.
   const confident =
-    first !== undefined && first.score >= CONFIDENT_MIN && (second === undefined || first.score - second.score >= CONFIDENT_GAP) && outOfService === null && question === null;
+    (trade !== undefined && outOfService === null) ||
+    (first !== undefined && first.score >= CONFIDENT_MIN && (second === undefined || first.score - second.score >= CONFIDENT_GAP) && outOfService === null && question === null);
 
   return { categories, safety, outOfService, question, confident };
 }

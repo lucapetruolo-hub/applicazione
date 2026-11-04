@@ -115,3 +115,29 @@ test("frasi d'esempio della home: senza ricerche l'ordine di Google, i mestieri 
     ["idraulico", "elettricista", "pulizie", "falegname", "climatizzazione"],
   );
 });
+
+test("nomi dei mestieri: termoidraulico e simili portano subito alle categorie giuste", () => {
+  const cases: [string, string[]][] = [
+    ["termoidraulico", ["idraulico", "climatizzazione"]],
+    ["Termoidraulica Rossi", ["idraulico", "climatizzazione"]],
+    ["stagnino", ["idraulico"]],
+    ["caldaista", ["climatizzazione"]],
+    ["frigorista", ["climatizzazione"]],
+    ["manutentore caldaie", ["climatizzazione"]],
+    ["impiantista", ["idraulico", "elettricista", "climatizzazione"]],
+    ["piastrellista", ["muratore"]],
+    ["fabbri", ["fabbro"]],
+    ["giardinaggio", ["giardiniere"]],
+    ["petsitter", ["dogsitter"]],
+  ];
+  for (const [text, expected] of cases) {
+    const match = matchProblem(text);
+    assert.deepEqual(match.categories.map((category) => category.slug), expected, text);
+    assert.equal(match.confident, true, text);
+    assert.equal(match.question, null, text);
+  }
+  // La caldaia scritta accanto al nome passa davanti.
+  assert.equal(matchProblem("termoidraulico per la caldaia in blocco").categories[0]?.slug, "climatizzazione");
+  // "fabbricato" non è il fabbro.
+  assert.equal(matchProblem("fabbricato").categories.length, 0);
+});
