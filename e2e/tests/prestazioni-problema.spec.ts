@@ -101,6 +101,19 @@ test("prima chi fa quel lavoro, poi gli altri mestieri che potrebbero farlo", as
   await expect(page.getByText(`Pulizie Cucine ${stamp}`)).toHaveCount(0);
 });
 
+test("dal profilo aperto nei risultati la richiesta parte con il problema scritto", async ({ page }) => {
+  await page.goto(`/cerca?problema=${encodeURIComponent(PROBLEM)}&citta=Latina`);
+  const section = page.getByRole("region", { name: "Potrebbero fare anche questo lavoro" });
+  await section.getByText(`Tuttofare Rubinetti ${stamp}`).click();
+  await expect(page).toHaveURL(/problema=/);
+  await expect(page).not.toHaveURL(/servizio=/);
+  const request = page.locator('a[href*="/preventivo?"][href*="professionista="]').first();
+  const href = await request.getAttribute("href");
+  expect(new URL(href!, "http://x").searchParams.get("descrizione")).toBe(`${PROBLEM}. `);
+  await page.goto(href!);
+  await expect(page.getByLabel("Descrivi il lavoro")).toHaveValue(`${PROBLEM}. `);
+});
+
 test("con l'avviso di sicurezza niente altri mestieri", async ({ page }) => {
   await page.goto(`/cerca?problema=${encodeURIComponent("Sento odore di gas vicino al rubinetto")}&citta=Latina`);
   await expect(page.getByRole("note", { name: "Prima di tutto la sicurezza" })).toBeVisible();

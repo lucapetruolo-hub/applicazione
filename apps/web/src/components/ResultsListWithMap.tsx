@@ -13,6 +13,7 @@ import { useMediaQuery } from "@/lib/useMediaQuery";
 import { useSavedProfessionals } from "@/lib/useSavedProfessionals";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import { CHOICE_PROFILE_PARAM } from "@/lib/chosenProsStore";
+import { PROBLEM_PROFILE_PARAM, requestDescriptionParam } from "@/lib/requestDescription";
 import type { MapBounds } from "./ResultsMap";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
@@ -35,17 +36,19 @@ function matchedServiceName(pro: ProfessionalSearchResult): string | undefined {
  * con sé la prestazione, così "Richiedi preventivo" sul profilo parte con il
  * lavoro già scritto (§398).
  */
-function profileHref(pro: ProfessionalSearchResult, extra: Record<string, string>): string {
-  const service = matchedServiceName(pro);
-  const params = new URLSearchParams({ ...extra, ...(service ? { servizio: service } : {}) });
+function profileHref(pro: ProfessionalSearchResult, extra: Record<string, string>, problem?: string): string {
+  // Dalla ricerca per problema il profilo riceve il problema scritto, non la
+  // prestazione: la richiesta parte con le parole del cliente e la visita non
+  // si conta come arrivata da "Quanto costa" (§399).
+  const service = problem ? undefined : matchedServiceName(pro);
+  const params = new URLSearchParams({ ...extra, ...(problem ? { [PROBLEM_PROFILE_PARAM]: problem } : service ? { servizio: service } : {}) });
   const query = params.toString();
   return `${professionalPath(pro)}${query ? `?${query}` : ""}`;
 }
 
-/** Descrizione della richiesta già scritta con la prestazione cercata (§398). */
-function serviceDescriptionParam(pro: ProfessionalSearchResult): string {
-  const service = matchedServiceName(pro);
-  return service ? `&descrizione=${encodeURIComponent(`${service}. `)}` : "";
+/** Descrizione della richiesta già scritta: il problema cercato, altrimenti la prestazione cercata (§398). */
+function serviceDescriptionParam(pro: ProfessionalSearchResult, problem?: string): string {
+  return requestDescriptionParam(problem, matchedServiceName(pro));
 }
 
 /**
@@ -77,6 +80,7 @@ export function ResultsListWithMap({
   otherSection,
   defaultMode,
   initialUrgentOnly,
+  problemDescription,
   reasonFor,
   merit = false,
   selection,
@@ -113,6 +117,8 @@ export function ResultsListWithMap({
   defaultMode?: "HOME" | "ONLINE";
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage — evita di dover ripetere la scelta qui. */
   initialUrgentOnly?: boolean;
+  /** Problema scritto nella ricerca: arriva già scritto nella richiesta, dalla scheda e dal profilo. */
+  problemDescription?: string;
   /** Riga "Perché" di ogni scheda, dalla descrizione del problema (docs/CHANGELOG.md §392). */
   reasonFor?: (pro: ProfessionalSearchResult) => string | null;
   /** Ordine senza i pacchetti di visibilità (dalla descrizione del problema, decisione di Luca, §392). */
@@ -417,10 +423,10 @@ export function ResultsListWithMap({
       // con l'agenda su quel tab (richiesta esplicita dell'utente) —
       // letto da ProfessionalDetailContent via `?modalita=`, stesso
       // parametro già usato per precompilare /preventivo.
-      href={profileHref(pro, { ...fromChoice, ...(defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {}) })}
+      href={profileHref(pro, { ...fromChoice, ...(defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {}) }, problemDescription)}
       onPress={() =>
         navigateWithTransition(() =>
-          router.push(profileHref(pro, { ...fromChoice, ...(defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {}) })),
+          router.push(profileHref(pro, { ...fromChoice, ...(defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {}) }, problemDescription)),
         )
       }
       // Click su un orario libero della mini-agenda (o sul bottone
@@ -444,7 +450,7 @@ export function ResultsListWithMap({
             // GuidedRequestForm. Nomi distinti da "nome"/"foto" per
             // non collidere con il "nome" del CLIENTE (prefill di
             // "Ripeti la richiesta", stesso form).
-            `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&nomeProfessionista=${encodeURIComponent(pro.businessName)}&fotoProfessionista=${encodeURIComponent(pro.imageUrl ?? "")}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}${serviceDescriptionParam(pro)}&da=${PROFILE_REQUEST_SOURCE_PARAM.RICERCA}`,
+            `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&nomeProfessionista=${encodeURIComponent(pro.businessName)}&fotoProfessionista=${encodeURIComponent(pro.imageUrl ?? "")}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}${serviceDescriptionParam(pro, problemDescription)}&da=${PROFILE_REQUEST_SOURCE_PARAM.RICERCA}`,
           ),
         )
       }
@@ -453,7 +459,7 @@ export function ResultsListWithMap({
       // (richiesta esplicita dell'utente, docs/CHANGELOG.md §206).
       onAgendaPress={(date, mode) =>
         navigateWithTransition(() =>
-          router.push(`${profileHref(pro, { ...fromChoice, data: date, ...(mode === "ONLINE" ? { modalita: "ONLINE" } : {}) })}#agenda`),
+          router.push(`${profileHref(pro, { ...fromChoice, data: date, ...(mode === "ONLINE" ? { modalita: "ONLINE" } : {}) }, problemDescription)}#agenda`),
         )
       }
       // Cuoricino piccolo nell'angolo della foto (richiesta esplicita

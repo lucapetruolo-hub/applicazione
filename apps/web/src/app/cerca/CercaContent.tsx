@@ -331,6 +331,7 @@ export function CercaContent({
           defaultMode={online ? "ONLINE" : "HOME"}
           initialUrgentOnly={initialUrgentOnly}
           merit={Boolean(problem)}
+          problemDescription={problem?.description}
           reasonFor={problem ? (pro) => problemReason(problem, pro) : undefined}
           otherSection={
             alsoDoThisJob.length > 0

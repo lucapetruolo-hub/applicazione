@@ -83,3 +83,19 @@ la stessa prestazione trovata dalla ricerca.
 
 **Verifica**: `e2e/tests/prestazioni-problema.spec.ts` (ordine, sezione,
 pulizie escluse, niente sezione con il gas, scheda in Admin).
+
+## Quarto giro (04/11): il problema arriva fino alla richiesta
+
+Richiesta di Luca: "effettua la prima miglioria", cioè portare la descrizione
+del problema nella richiesta a un solo professionista partita dalla ricerca.
+
+- Dalla ricerca per problema la scheda apre il profilo con `?problema=…`
+  invece di `?servizio=…`, così la visita non si conta come arrivata da
+  "Quanto costa" (§399).
+- Sul profilo "Richiedi preventivo" e gli orari dell'agenda aprono
+  /preventivo con il problema già scritto in "Descrivi il lavoro"; lo stesso
+  vale per gli orari sulla scheda dei risultati. Senza problema resta la
+  prestazione cercata (§398). Un solo punto: `apps/web/src/lib/requestDescription.ts`.
+- La barra "Professionisti scelti" lo faceva già.
+- Prova: `e2e/tests/prestazioni-problema.spec.ts`, "dal profilo aperto nei
+  risultati la richiesta parte con il problema scritto".
