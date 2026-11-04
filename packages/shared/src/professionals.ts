@@ -39,10 +39,22 @@ export const SERVICE_PRICE_UNIT_LABEL: Record<ServicePriceUnit, string> = {
   SQUARE_METER: "al m²",
 };
 
-/** Prezzo con l'unità ("8–15 € al m²"); senza prezzo "Su richiesta", senza unità. */
+/**
+ * Unità da mostrare accanto a un prezzo: nessuna per "a lavoro", che è il
+ * modo normale di leggere un prezzo (richiesta di Luca,
+ * docs/changelog/2026-11-04-prezzi-e-foto-profilo.md); compare solo quando è
+ * diversa (all'ora, al giorno, al m²). L'etichetta completa resta in
+ * SERVICE_PRICE_UNIT_LABEL per la scelta in dashboard.
+ */
+export function shownServicePriceUnit(unit: ServicePriceUnit): string | undefined {
+  return unit === "JOB" ? undefined : SERVICE_PRICE_UNIT_LABEL[unit];
+}
+
+/** Prezzo con l'unità se diversa da "a lavoro" ("8–15 € al m²"); senza prezzo "Su richiesta", senza unità. */
 export function formatServicePrice(priceMinEurCents: number | null, priceMaxEurCents: number | null, unit: ServicePriceUnit): string {
-  if (priceMinEurCents === null && priceMaxEurCents === null) return formatServicePriceRange(null, null);
-  return `${formatServicePriceRange(priceMinEurCents, priceMaxEurCents)}\u00A0${SERVICE_PRICE_UNIT_LABEL[unit]}`;
+  const range = formatServicePriceRange(priceMinEurCents, priceMaxEurCents);
+  const shown = priceMinEurCents === null && priceMaxEurCents === null ? undefined : shownServicePriceUnit(unit);
+  return shown ? `${range}\u00A0${shown}` : range;
 }
 
 /**

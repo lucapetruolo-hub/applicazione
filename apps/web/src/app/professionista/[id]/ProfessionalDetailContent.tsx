@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BRAND, MAX_CHOSEN_PROFESSIONALS, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, SERVICE_PRICE_UNIT_LABEL, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, MAX_CHOSEN_PROFESSIONALS, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, shownServicePriceUnit, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -362,7 +362,7 @@ export function ProfessionalDetailContent({
                   dell'utente (64px iniziali → 104px → 140px): chi apre la
                   pagina pubblica deve riconoscere bene di chi si tratta, non
                   solo intuirne un'icona piccola accanto al nome. */}
-              <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={140} />
+              <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={140} mobileSize={120} shape="portrait" />
             </YStack>
             <YStack gap="2" flex={1} minWidth={0}>
               <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} style={{ overflowWrap: "anywhere" }}>
@@ -956,7 +956,7 @@ export function ProfessionalDetailContent({
                     label={service.name}
                     labelColor={brand.grafite}
                     price={formatServicePriceRange(service.priceMinEurCents, service.priceMaxEurCents)}
-                    unit={service.priceMinEurCents !== null || service.priceMaxEurCents !== null ? SERVICE_PRICE_UNIT_LABEL[service.priceUnit] : undefined}
+                    unit={service.priceMinEurCents !== null || service.priceMaxEurCents !== null ? shownServicePriceUnit(service.priceUnit) : undefined}
                   />
                 </YStack>
               ))}

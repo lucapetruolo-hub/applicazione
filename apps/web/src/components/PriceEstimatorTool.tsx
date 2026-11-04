@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useSyncExternalStore, type FocusEvent, type ReactNode } from "react";
 import Link from "next/link";
-import { SERVICE_PRICE_UNIT_LABEL, formatServicePriceRange, serviceNameMatches, type ServicePriceIndexEntry } from "@professionisti/shared";
+import { formatServicePrice, shownServicePriceUnit, formatServicePriceRange, serviceNameMatches, type ServicePriceIndexEntry } from "@professionisti/shared";
 import { Search } from "lucide-react";
 import { Section, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -181,7 +181,7 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
                   key={entry.name}
                   href={entryHref(entry.name, lastCity)}
                   className="price-row"
-                  aria-label={`${entry.name}, ${entry.price ? `in media ${formatServicePriceRange(entry.price.medianEurCents, null)} ${SERVICE_PRICE_UNIT_LABEL[entry.price.unit]}, di solito ${formatServicePriceRange(entry.price.lowEurCents, entry.price.highEurCents)}` : "prezzo su preventivo"}: vedi chi lo fa`}
+                  aria-label={`${entry.name}, ${entry.price ? `in media ${formatServicePrice(entry.price.medianEurCents, null, entry.price.unit)}, di solito ${formatServicePriceRange(entry.price.lowEurCents, entry.price.highEurCents)}` : "prezzo su preventivo"}: vedi chi lo fa`}
                   // Il clic non toglie il fuoco al campo: l'elenco aperto non si
                   // richiude (e non sposta le voci) tra la pressione e il rilascio.
                   onMouseDown={(event) => event.preventDefault()}
@@ -207,10 +207,12 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
                       <YStack alignItems="flex-end" gap={2}>
                         {/* Unità prima del prezzo (Luca, §399): le cifre restano allineate a destra. */}
                         <Text fontSize={17} fontWeight="700" color={brand.cianografiaScuro}>
-                          <Text fontSize={13} fontWeight="400" color={brand.grafite70}>
-                            {SERVICE_PRICE_UNIT_LABEL[entry.price.unit]}
-                            {"\u00A0\u00A0"}
-                          </Text>
+                          {shownServicePriceUnit(entry.price.unit) ? (
+                            <Text fontSize={13} fontWeight="400" color={brand.grafite70}>
+                              {shownServicePriceUnit(entry.price.unit)}
+                              {"\u00A0\u00A0"}
+                            </Text>
+                          ) : null}
                           {formatServicePriceRange(entry.price.medianEurCents, null)}
                         </Text>
                         {entry.price.highEurCents > entry.price.lowEurCents ? (
