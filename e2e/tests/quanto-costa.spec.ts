@@ -71,7 +71,7 @@ test("dalla voce all'elenco filtrato, alla richiesta con il lavoro scritto, e ri
   await page.goto("/");
   const tool = page.getByLabel("Cerca un lavoro per conoscere il prezzo medio");
   await tool.fill(SERVICE.slice(0, 30));
-  const entry = page.getByRole("link", { name: new RegExp(`^${SERVICE}, in media 10.€ a lavoro, di solito 9–13.€`) });
+  const entry = page.getByRole("link", { name: new RegExp(`^${SERVICE}, in media 10.€, di solito 9–13.€`) });
   await expect(entry).toBeVisible();
   await entry.click();
 
