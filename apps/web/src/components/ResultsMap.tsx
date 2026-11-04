@@ -70,6 +70,7 @@ export function ResultsMap({
   initialProfessionals,
   fallbackCenter,
   onBoundsChange,
+  fullScreen = false,
 }: {
   /** Tutti i professionisti da mostrare come puntini sulla mappa. */
   professionals: ProfessionalSearchResult[];
@@ -79,6 +80,12 @@ export function ResultsMap({
   fallbackCenter?: [number, number];
   /** Notifica i confini visibili della mappa ad ogni pan/zoom, per sincronizzare la lista a sinistra. */
   onBoundsChange?: (bounds: MapBounds) => void;
+  /**
+   * Mappa a schermo intero da telefono
+   * (docs/changelog/2026-11-04-mappa-schermo-intero.md): si sposta con un dito
+   * solo, non c'è una pagina da scorrere sotto.
+   */
+  fullScreen?: boolean;
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
@@ -137,7 +144,7 @@ export function ResultsMap({
           style={{ width: "100%", height: "100%" }}
           // Come prima con Leaflet (scrollWheelZoom disattivato): la rotellina
           // scorre la pagina, lo zoom si fa con Ctrl+rotellina o due dita.
-          gestureHandling="cooperative"
+          gestureHandling={fullScreen ? "greedy" : "cooperative"}
           mapTypeControl={false}
           streetViewControl={false}
           fullscreenControl={false}

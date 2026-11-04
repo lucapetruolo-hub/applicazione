@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, ChevronUp, Info, Map as MapIcon, Maximize2, Minimize2, Plus, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Info, Map as MapIcon, Maximize2, Minimize2, Plus, RotateCw, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
 import { PROFILE_REQUEST_SOURCE_PARAM, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type ProfessionalSearchResult, professionalPath, subTagLabel } from "@professionisti/shared";
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
@@ -49,6 +49,18 @@ function profileHref(pro: ProfessionalSearchResult, extra: Record<string, string
 /** Descrizione della richiesta già scritta: il problema cercato, altrimenti la prestazione cercata (§398). */
 function serviceDescriptionParam(pro: ProfessionalSearchResult, problem?: string): string {
   return requestDescriptionParam(problem, matchedServiceName(pro));
+}
+
+/** Stessa inquadratura, a meno di un soffio (Google la ricalcola riaprendo la mappa). */
+function sameBounds(a: MapBounds | null, b: MapBounds | null): boolean {
+  if (!a || !b) return a === b;
+  const eps = 1e-5;
+  return (
+    Math.abs(a.north - b.north) < eps &&
+    Math.abs(a.south - b.south) < eps &&
+    Math.abs(a.east - b.east) < eps &&
+    Math.abs(a.west - b.west) < eps
+  );
 }
 
 /**
@@ -149,13 +161,22 @@ export function ResultsListWithMap({
     return Math.round(Math.min(...(distances as number[])));
   }, [city, professionals]);
 
-  // Inquadratura della mappa (null finché non c'è): la lista mostra chi ci sta dentro.
-  const [bounds, setBounds] = useState<MapBounds | null>(null);
+  // Inquadratura attuale della mappa (null finché non c'è). Da computer la
+  // lista mostra subito chi ci sta dentro.
+  const [liveBounds, setLiveBounds] = useState<MapBounds | null>(null);
+  // Da telefono la mappa si apre a schermo intero (richiesta di Luca,
+  // riferimento miodottore.it, docs/changelog/2026-11-04-mappa-schermo-intero.md):
+  // spostandola la lista non cambia finché non si tocca "Cerca in quest'area".
+  // `startBounds` è l'inquadratura con cui si apre, `areaBounds` l'ultima
+  // zona cercata: chiudendo la mappa la lista mostra solo chi c'è dentro.
+  const [startBounds, setStartBounds] = useState<MapBounds | null>(null);
+  const [areaBounds, setAreaBounds] = useState<MapBounds | null>(null);
   // Da mobile la mappa parte chiusa: si apre solo toccando il bottone nella
-  // barra in alto, invece di occupare subito spazio verticale sotto la
-  // ricerca. Da desktop ($gtMd) resta sempre visibile a fianco della lista,
+  // barra in alto. Da desktop resta sempre visibile a fianco della lista,
   // indipendentemente da questo stato (vedi regola CSS dedicata sotto).
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
+  const mapToggleRef = useRef<HTMLButtonElement>(null);
+  const mapCloseRef = useRef<HTMLButtonElement>(null);
   // "Espandi mappa" (riferimento miodottore.it): allarga la colonna mappa a
   // scapito della lista, solo da desktop — da mobile la mappa è già a piena
   // larghezza quando aperta, non ha senso "espanderla" ulteriormente.
@@ -230,8 +251,41 @@ export function ResultsListWithMap({
     // (14 professionisti trovati ma lista vuota). Ignoriamo un inquadramento
     // di questo tipo invece di applicarlo.
     if (!(bounds.north > bounds.south) || !(bounds.east > bounds.west)) return;
-    setBounds(bounds);
+    setLiveBounds(bounds);
+    setStartBounds((prev) => prev ?? bounds);
   }
+
+  // Da computer la lista segue la mappa a ogni spostamento; da telefono solo
+  // l'ultima zona cercata con "Cerca in quest'area".
+  const bounds = wideScreen ? liveBounds : areaBounds;
+  const phoneMapOpen = mobileMapOpen && !wideScreen;
+  // "Cerca in quest'area" compare solo dopo aver spostato o zoomato la mappa.
+  const areaMoved = liveBounds !== null && !sameBounds(liveBounds, areaBounds ?? startBounds);
+
+  function closePhoneMap() {
+    setMobileMapOpen(false);
+    // Il fuoco torna al pulsante "Mappa" da cui si era partiti.
+    requestAnimationFrame(() => mapToggleRef.current?.focus());
+  }
+
+  // Mappa a schermo intero: la pagina sotto non scorre, Esc chiude, il
+  // fuoco va sulla X.
+  useEffect(() => {
+    if (!phoneMapOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    mapCloseRef.current?.focus();
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      setMobileMapOpen(false);
+      requestAnimationFrame(() => mapToggleRef.current?.focus());
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [phoneMapOpen]);
 
   // Calcolata dall'inquadratura e non salvata: quando arrivano i puntini
   // oltre la città, la lista si aggiorna senza dover muovere la mappa.
@@ -761,19 +815,51 @@ export function ResultsListWithMap({
       ) : null}
 
       {showMap ? (
-        <div className={`results-map-col${mobileMapOpen ? " mobile-open" : ""}${mapExpanded ? " expanded" : ""}`}>
+        <div
+          className={`results-map-col${mobileMapOpen ? " mobile-open" : ""}${mapExpanded ? " expanded" : ""}`}
+          {...(phoneMapOpen ? { role: "dialog", "aria-modal": true, "aria-label": "Mappa dei professionisti" } : {})}
+        >
           <div className="results-map-sticky">
+            {phoneMapOpen ? (
+              <>
+                <div className="map-top-bar">
+                  {areaMoved ? (
+                    <button type="button" className="map-search-area" onClick={() => setAreaBounds(liveBounds)}>
+                      <RotateCw size={16} strokeWidth={2} aria-hidden />
+                      Cerca in quest&apos;area
+                    </button>
+                  ) : areaBounds ? (
+                    <span className="map-search-area map-area-count" role="status">
+                      {filteredOrderedVisible.length === 0
+                        ? "Nessun professionista qui"
+                        : `${filteredOrderedVisible.length} professionist${filteredOrderedVisible.length === 1 ? "a" : "i"} qui`}
+                    </span>
+                  ) : null}
+                </div>
+                <button type="button" ref={mapCloseRef} className="map-fullscreen-close" onClick={closePhoneMap} aria-label="Chiudi la mappa">
+                  <X size={22} strokeWidth={2} aria-hidden />
+                </button>
+              </>
+            ) : null}
             <button type="button" className="map-expand-toggle" onClick={() => setMapExpanded((v) => !v)}>
               {mapExpanded ? <Minimize2 size={14} strokeWidth={1.5} /> : <Maximize2 size={14} strokeWidth={1.5} />}
               {mapExpanded ? "Riduci mappa" : "Espandi mappa"}
             </button>
-            <YStack width="100%" height="100%" borderRadius="4" overflow="hidden" borderWidth={1} borderColor={brand.filetto}>
+            <YStack
+              width="100%"
+              height="100%"
+              borderRadius={phoneMapOpen ? 0 : "4"}
+              overflow="hidden"
+              borderWidth={phoneMapOpen ? 0 : 1}
+              borderColor={brand.filetto}
+            >
               {shouldMountMap ? (
                 <ResultsMap
                   professionals={filteredPool}
                   initialProfessionals={filteredProfessionals}
                   fallbackCenter={fallbackCenter}
                   onBoundsChange={handleBoundsChange}
+                  fullScreen={!wideScreen}
                 />
               ) : null}
             </YStack>
@@ -809,10 +895,18 @@ export function ResultsListWithMap({
                   stessa classe, la mappa è già sempre visibile a fianco
                   della lista da desktop). Etichetta da chiusa rinominata in
                   "Mappa" (richiesta esplicita), quella da aperta invariata. */}
+              {/* Apre la mappa a schermo intero, che si chiude con la sua X
+                  (docs/changelog/2026-11-04-mappa-schermo-intero.md). */}
               {showMap ? (
-                <button type="button" className="filters-toggle mobile-map-toggle" onClick={() => setMobileMapOpen((v) => !v)}>
-                  {mobileMapOpen ? <X size={16} strokeWidth={1.5} /> : <MapIcon size={16} strokeWidth={1.5} />}
-                  {mobileMapOpen ? "Nascondi mappa" : "Mappa"}
+                <button
+                  type="button"
+                  ref={mapToggleRef}
+                  className="filters-toggle mobile-map-toggle"
+                  aria-haspopup="dialog"
+                  onClick={() => setMobileMapOpen(true)}
+                >
+                  <MapIcon size={16} strokeWidth={1.5} aria-hidden />
+                  Mappa
                 </button>
               ) : null}
             </XStack>
@@ -838,6 +932,20 @@ export function ResultsListWithMap({
                 vicino, a circa {nearestOutsideKm} km.
               </Text>
             </YStack>
+          ) : null}
+          {/* Da telefono, dopo "Cerca in quest'area": la lista mostra solo la
+              zona cercata, e si torna a tutti i risultati con un tocco. */}
+          {showMap && !wideScreen && areaBounds ? (
+            <div className="map-area-notice">
+              <span>
+                {filteredOrderedVisible.length === 0
+                  ? "Nessuno nella zona cercata sulla mappa."
+                  : "Solo la zona cercata sulla mappa."}
+              </span>
+              <button type="button" className="map-area-reset" onClick={() => setAreaBounds(null)}>
+                Mostra tutti
+              </button>
+            </div>
           ) : null}
           {(showMap ? filteredOrderedVisible : filteredProfessionals).map((pro, index) => renderCard(pro, index))}
           {otherSection && otherSection.professionals.length > 0 ? (
@@ -1117,13 +1225,104 @@ export function ResultsListWithMap({
           width: 100%;
           flex-shrink: 0;
         }
+        /* Da telefono la mappa copre tutto lo schermo, sopra l'intestazione
+           del sito e la barra dei professionisti scelti
+           (docs/changelog/2026-11-04-mappa-schermo-intero.md). */
         .results-map-col.mobile-open {
           display: flex;
+          position: fixed;
+          inset: 0;
+          z-index: 1500;
+          background: ${brand.calce};
         }
         .results-map-sticky {
           width: 100%;
-          height: 320px;
+          height: 100vh;
+          height: 100dvh;
           position: relative;
+        }
+        /* Al centro, lasciando a destra lo spazio della X (e altrettanto a
+           sinistra, perché resti centrato come su miodottore.it). */
+        .map-top-bar {
+          position: absolute;
+          top: calc(env(safe-area-inset-top, 0px) + 14px);
+          left: 70px;
+          right: 70px;
+          z-index: 600;
+          display: flex;
+          justify-content: center;
+          pointer-events: none;
+        }
+        .map-search-area {
+          pointer-events: auto;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          min-height: 44px;
+          padding: 10px 20px;
+          border-radius: 999px;
+          border: none;
+          background: ${brand.cianografiaPieno};
+          color: #ffffff;
+          font-size: 15px;
+          font-weight: 700;
+          white-space: nowrap;
+          box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25);
+          cursor: pointer;
+        }
+        .map-search-area.map-area-count {
+          background: ${brand.calce};
+          color: ${brand.grafite};
+          font-weight: 600;
+          cursor: default;
+        }
+        .map-search-area:focus-visible,
+        .map-fullscreen-close:focus-visible,
+        .map-area-reset:focus-visible {
+          outline: 2px solid ${brand.cianografiaScuro};
+          outline-offset: 2px;
+        }
+        .map-fullscreen-close {
+          position: absolute;
+          top: calc(env(safe-area-inset-top, 0px) + 14px);
+          right: 14px;
+          z-index: 600;
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          border: none;
+          background: ${brand.calce};
+          color: ${brand.grafite};
+          box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+        .map-area-notice {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 4px 12px;
+          padding: 10px 14px;
+          border-radius: 10px;
+          border: 1px solid ${brand.filetto};
+          background: ${brand.calce};
+          color: ${brand.grafite};
+          font-size: 15px;
+        }
+        .map-area-reset {
+          min-height: 40px;
+          padding: 0 4px;
+          border: none;
+          background: none;
+          color: ${brand.cianografiaScuro};
+          font-size: 15px;
+          font-weight: 700;
+          text-decoration: underline;
+          text-underline-offset: 3px;
+          cursor: pointer;
         }
         .map-expand-toggle {
           display: none;
@@ -1149,6 +1348,9 @@ export function ResultsListWithMap({
           .results-map-col,
           .results-map-col.mobile-open {
             display: flex;
+            position: static;
+            z-index: auto;
+            background: none;
             width: 40%;
             max-width: 480px;
             min-width: 260px;
