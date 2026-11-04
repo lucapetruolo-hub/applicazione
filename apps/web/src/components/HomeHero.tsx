@@ -104,7 +104,9 @@ export function HomeHero({ examples }: { examples: ProblemExamplesResponse | nul
                 className: "hero-problem-input",
                 examples: heroExamples.field,
               }}
-              footer={({ mode, fillQuery }) => (mode === "domicilio" ? <HeroExamples problems={heroExamples.visible} trades={heroExamples.trades} onPick={fillQuery} /> : null)}
+              // Un tocco su un esempio cerca subito (richiesta di Luca,
+              // docs/changelog/2026-11-04-esempi-cercano-subito.md).
+              footer={({ mode, searchFor }) => (mode === "domicilio" ? <HeroExamples problems={heroExamples.visible} trades={heroExamples.trades} onPick={searchFor} /> : null)}
               {...searchHints}
             />
           </YStack>

@@ -130,6 +130,8 @@ export function ResultsListWithMap({
     canAdd: boolean;
     max: number;
     onToggle: (pro: ProfessionalSearchResult) => void;
+    /** Tocco su "Scegli" oltre il massimo: mostra l'avviso. */
+    onBlocked?: () => void;
   };
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
@@ -1233,7 +1235,8 @@ function ChooseToggle({
         aria-label={selected ? `Scelto: ${pro.businessName}` : `Scegli ${pro.businessName}`}
         title={blocked ? `Puoi sceglierne al massimo ${selection.max}` : undefined}
         onClick={() => {
-          if (!blocked) selection.onToggle(pro);
+          if (blocked) selection.onBlocked?.();
+          else selection.onToggle(pro);
         }}
       >
         {selected ? <Check size={16} strokeWidth={2.5} aria-hidden /> : <Plus size={16} strokeWidth={2.5} aria-hidden />}

@@ -55,7 +55,7 @@ export function CategoryContent({
   // "+ Scegli" anche cercando un mestiere, come dal problema scritto
   // (docs/changelog/2026-11-03-scegli-ricerca-mestiere.md): la descrizione
   // del lavoro si scrive nel modulo della richiesta.
-  const { chosen, selection } = useChosenPros({
+  const { chosen, selection, limitNotice } = useChosenPros({
     category: !loadFailed && professionals.length >= 2 ? category.slug : null,
     city,
     description: "",
@@ -102,7 +102,7 @@ export function CategoryContent({
         />
       </YStack>
       {chosen.length > 0 ? (
-        <ChosenProsBar chosen={chosen} max={MAX_CHOSEN_PROFESSIONALS} href={chosenRequestHref(chosen, category.slug, "", city)} />
+        <ChosenProsBar chosen={chosen} max={MAX_CHOSEN_PROFESSIONALS} href={chosenRequestHref(chosen, category.slug, "", city)} notice={limitNotice} />
       ) : null}
     </YStack>
   );
