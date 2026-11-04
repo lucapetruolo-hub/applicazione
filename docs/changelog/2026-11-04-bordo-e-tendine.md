@@ -29,3 +29,18 @@ solo testo, controllata prima, origine in `ORIGINE.md`). Rivista l'animazione
 con i suoi criteri: filo più rapido (200 ms, è un gesto ripetuto spesso), solo
 con un puntatore preciso (`pointer: fine`, non sui tablet al tocco), menu "…"
 delle schede che si apre dall'angolo del pulsante (`.pop-in-right`).
+
+**Rassegna di tutte le animazioni del sito con la skill (Luca: "effettua la
+miglioria come ritieni"):**
+- Riquadro di accesso e registrazione: compare in 250 ms salendo di 8 px
+  (prima 450 ms e 16 px): si vede a ogni accesso.
+- Freccia dei pulsanti principali: ruota in 200 ms (prima 350 ms), solo con il
+  mouse.
+- Schede "Cliente / Professionista" della registrazione e frecce di "Quanto
+  costa": si sollevano o si spostano solo con il mouse; sul telefono la scheda
+  toccata restava sollevata.
+- Lasciate come sono, già in regola: finestre, tendine, avvisi (sotto i 300 ms,
+  partenza rapida), luci della hero e recensioni che scorrono (pagine
+  pubbliche, lente per scelta), "Richiesta inviata" (si vede di rado).
+- Non toccati perché scelte di Luca: il rimbalzo del pulsante "magnetico" in
+  home (la skill sconsiglia il rimbalzo) e il cuoricino che batte.

@@ -147,7 +147,9 @@ a:focus-visible > button.is_Button {
 
 /* Pulsanti "vivi" (docs/CHANGELOG.md §233): ogni pulsante si schiaccia un
    poco quando lo premi (scale .97, anche su telefono); la freccia delle
-   azioni principali ruota in 350ms al passaggio del mouse. Con "riduci
+   azioni principali ruota in 200 ms al passaggio del mouse (prima 350 ms:
+   gesto ripetuto spesso, skill web-animation-design,
+   docs/changelog/2026-11-04-bordo-e-tendine.md). Con "riduci
    movimento" la regola sopra rende le transizioni istantanee. */
 button.is_Button {
   transition:
@@ -158,9 +160,9 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   transform: scale(0.97);
 }
 .button-arrow {
-  transition: transform 350ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   button.is_Button:hover .button-arrow {
     transform: rotate(-45deg);
   }
@@ -3318,10 +3320,12 @@ a.admin-kpi:hover {
   background: #d9a441;
   opacity: 0.18;
 }
+/* Comparsa del riquadro di accesso e registrazione: 250 ms e 8 px (prima
+   450 ms e 16 px), si vede a ogni accesso (skill web-animation-design). */
 @keyframes auth-card-in {
   from {
     opacity: 0;
-    transform: translateY(16px) scale(0.98);
+    transform: translateY(8px) scale(0.98);
   }
   to {
     opacity: 1;
@@ -3329,7 +3333,7 @@ a.admin-kpi:hover {
   }
 }
 .auth-card-in {
-  animation: auth-card-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: auth-card-in 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 /* Card di scelta ruolo: senza ombra (docs/CHANGELOG.md §176, l'utente non
    vuole ombre), al passaggio del mouse cambiano solo posizione e bordo. */
@@ -3338,9 +3342,12 @@ a.admin-kpi:hover {
     transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
     border-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.auth-role-card:hover {
-  transform: translateY(-2px);
-  border-color: #189a63;
+/* Solo con il mouse: sul telefono la scheda toccata restava sollevata. */
+@media (hover: hover) and (pointer: fine) {
+  .auth-role-card:hover {
+    transform: translateY(-2px);
+    border-color: #189a63;
+  }
 }
 /* Le schede di scelta sono link veri (docs/CHANGELOG.md §278): fuoco da
    tastiera visibile e risposta al tocco. */
