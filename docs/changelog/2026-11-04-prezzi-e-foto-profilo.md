@@ -30,7 +30,10 @@
    diventano 13+7, il margine sotto della scheda 24 (18 sul telefono)
    diventa 18 (13).
 4. Filtri della ricerca: sezione "Pagamento" con "Solo con pagamento online",
-   che tiene chi ha il bollino "Pagamenti online attivi" (`stripeVerified`).
+   che tiene chi ha il bollino "Paga online" (`stripeVerified`). Il bollino,
+   prima "Pagamenti online attivi", si chiama "Paga online" su richiesta di
+   Luca: più corto e dice al cliente cosa può fare (schede, profilo, fumetto,
+   email al professionista).
 5. Agenda della pagina del professionista: le frecce dei giorni sulla riga di
    "Orari per:", a destra, invece che su una riga loro; sul telefono frecce
    da 32px e pillole un po' più piccole perché ci stiano (sotto i 375px vanno

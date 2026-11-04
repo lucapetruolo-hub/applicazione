@@ -463,7 +463,7 @@ export function ProfessionalCard({
                   >
                     <Icon name="credit-card" size={13} color={brand.verificato} strokeWidth={2} />
                     <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.verificato}>
-                      Pagamenti online attivi
+                      Paga online
                     </Text>
                   </XStack>
                 </BadgeInfo>
