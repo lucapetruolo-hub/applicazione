@@ -44,3 +44,9 @@ miglioria come ritieni"):**
   pubbliche, lente per scelta), "Richiesta inviata" (si vede di rado).
 - Non toccati perché scelte di Luca: il rimbalzo del pulsante "magnetico" in
   home (la skill sconsiglia il rimbalzo) e il cuoricino che batte.
+
+**Ultime due (Luca: "entrambe"):**
+- Pulsante "magnetico" della home: torna a posto in 300 ms senza rimbalzo
+  (prima 450 ms con rimbalzo); il magnete resta.
+- Barra "Completa il profilo": scorre con `transform` invece di allargare la
+  larghezza, senza ricalcolare l'impaginazione.

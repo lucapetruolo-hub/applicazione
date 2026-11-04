@@ -172,7 +172,9 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
 .magnet {
   display: inline-flex;
   transform: translate(var(--tx), var(--ty));
-  transition: transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Torna a posto senza rimbalzo, in 300 ms (prima 450 ms con rimbalzo;
+     skill web-animation-design, scelta di Luca del 04/11). */
+  transition: transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .magnet--block {
   display: flex;
@@ -2197,12 +2199,16 @@ button.notif-row-main:hover {
   background: #f0e6da;
   overflow: hidden;
 }
+/* La barra scorre da sinistra invece di allargarsi (transform al posto di
+   width: niente ricalcolo dell'impaginazione, più fluida sui telefoni
+   economici; docs/changelog/2026-11-04-bordo-e-tendine.md). */
 .readiness-bar span {
   display: block;
+  width: 100%;
   height: 100%;
   border-radius: 999px;
   background: #128552;
-  transition: width 0.3s ease;
+  transition: transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 /* Percorso "Completa il profilo" (docs/CHANGELOG.md §261): passi in verticale
    uniti da una linea, e la barra "Passo N di 3" in cima alle pagine dei passi. */
