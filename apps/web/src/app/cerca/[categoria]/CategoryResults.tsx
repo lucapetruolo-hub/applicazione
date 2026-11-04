@@ -235,6 +235,7 @@ export async function CategoryResults({
         loadFailed={loadFailed}
         initialUrgentOnly={searchParams.urgente === "1"}
         footer={cityFacts}
+        subTag={subTag}
       />
       {!city && !loadFailed ? <CategoryCityLinks categorySlug={category.slug} categoryLabel={category.label} professionals={professionals} /> : null}
       <Suspense fallback={null}>
