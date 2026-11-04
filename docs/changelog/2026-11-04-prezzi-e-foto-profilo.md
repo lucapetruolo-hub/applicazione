@@ -36,8 +36,8 @@
    email al professionista).
 5. Agenda della pagina del professionista: le frecce dei giorni sulla riga di
    "Orari per:", a destra, invece che su una riga loro; sul telefono frecce
-   da 32px e pillole un po' più piccole perché ci stiano (sotto i 375px vanno
-   ancora a capo).
+   da 32px (28 fino a 390px) e pulsanti un po' più stretti, così stanno su
+   una riga da 360px in su (a 320px vanno ancora a capo).
 6. Pagina del professionista sul telefono: foto (96px di larghezza) accanto
    al nome come su computer, e Salva/Condividi in colonna a destra del nome,
    non più sopra la foto (prima il nome andava sotto la foto, §252).

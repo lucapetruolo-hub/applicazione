@@ -659,8 +659,10 @@ export function ProfessionalDetailContent({
                   una riga in meno (richiesta di Luca,
                   docs/changelog/2026-11-04-prezzi-e-foto-profilo.md). Se non
                   c'è spazio le frecce vanno a capo, a destra. */}
-              <XStack alignItems="center" gap="2" flexWrap="wrap">
-                <Text fontFamily="body" fontSize={13} fontWeight="600" color={brand.grafite70}>
+              {/* Fino a 390px pulsanti e frecce un po' più stretti, così sui
+                  telefoni da 360px stanno ancora su una riga. */}
+              <XStack alignItems="center" gap="2 xxs:5px" flexWrap="wrap">
+                <Text fontFamily="body" fontSize="13px xxs:12px" fontWeight="600" color={brand.grafite70}>
                   Orari per:
                 </Text>
                 <XStack gap={2} backgroundColor={brand.gesso} borderRadius="10" padding={3}>
@@ -670,7 +672,7 @@ export function ProfessionalDetailContent({
                       <XStack
                         key={mode}
                         render="button"
-                        paddingHorizontal="3"
+                        paddingHorizontal="3 xxs:9px"
                         paddingVertical="6px xs:5px"
                         borderWidth={0}
                         borderRadius="10"
@@ -693,8 +695,8 @@ export function ProfessionalDetailContent({
               {totalAgendaDays > agendaVisibleDays ? (
                   <XStack gap="2 xs:1" alignItems="center" marginLeft="auto">
                     <XStack
-                      width="40px xs:32px"
-                      height="40px xs:32px"
+                      width="40px xs:32px xxs:28px"
+                      height="40px xs:32px xxs:28px"
                       borderRadius={20}
                       backgroundColor={brand.calce}
                       alignItems="center"
@@ -711,8 +713,8 @@ export function ProfessionalDetailContent({
                       <Icon name="chevron-left" size={20} color={brand.grafite} />
                     </XStack>
                     <XStack
-                      width="40px xs:32px"
-                      height="40px xs:32px"
+                      width="40px xs:32px xxs:28px"
+                      height="40px xs:32px xxs:28px"
                       borderRadius={20}
                       backgroundColor={brand.calce}
                       alignItems="center"
