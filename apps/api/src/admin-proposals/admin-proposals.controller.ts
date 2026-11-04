@@ -20,6 +20,21 @@ export class AdminProposalsController {
     return this.adminProposalsService.list(req.user.userId);
   }
 
+  /** Le proposte fermate con "No, mai" (in Andamento). */
+  @RequireAdminScope("ANY")
+  @Get("rejected")
+  listRejected(@Req() req: AuthenticatedRequest) {
+    return this.adminProposalsService.listRejected(req.user.userId);
+  }
+
+  /** "Riproponi": toglie il "No, mai"; torna in Da approvare se vale ancora. */
+  @RequireAdminScope("ANY")
+  @Post(":id/restore")
+  @HttpCode(200)
+  restore(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.adminProposalsService.restore(req.user.userId, id);
+  }
+
   @RequireAdminScope("ANY")
   @Post(":id/decision")
   @HttpCode(200)

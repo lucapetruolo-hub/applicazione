@@ -13,6 +13,8 @@ import {
   type AdminProposalKind,
   type AdminProposalList,
   type AdminProposalPreview,
+  type AdminProposalRestore,
+  type AdminRejectedProposal,
   type AdminRoleValue,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
@@ -47,6 +49,8 @@ import {
 const DAY_MS = 24 * 60 * 60_000;
 /** Una proposta già approvata torna solo se dopo tanti giorni vale di nuovo (es. una frase tolta a mano). */
 const REPROPOSE_AFTER_DAYS = 30;
+/** Proposte con "No, mai" mostrate in Andamento (le più recenti). */
+const REJECTED_SHOWN = 50;
 /** Persone elencate al massimo in una proposta di email (le altre alla prossima). */
 const MAX_RECIPIENTS = 20;
 
@@ -113,6 +117,54 @@ export class AdminProposalsService implements OnApplicationBootstrap {
     });
     const allowed = rows.filter((row) => row.kind in ADMIN_PROPOSAL_KINDS_INFO && adminCan(roles, ADMIN_PROPOSAL_KINDS_INFO[row.kind as AdminProposalKind].scope));
     return { total: allowed.length, items: allowed.slice(0, ADMIN_PROPOSALS_VISIBLE).map(toView) };
+  }
+
+  /** Le proposte fermate con "No, mai" che questo admin può rimettere in Da approvare. */
+  async listRejected(adminUserId: string): Promise<AdminRejectedProposal[]> {
+    const roles = await this.rolesOf(adminUserId);
+    const rows = await this.prisma.adminProposal.findMany({ where: { status: "REJECTED" }, orderBy: { decidedAt: "desc" }, take: REJECTED_SHOWN * 2 });
+    const allowed = rows
+      .filter((row) => row.kind in ADMIN_PROPOSAL_KINDS_INFO && adminCan(roles, ADMIN_PROPOSAL_KINDS_INFO[row.kind as AdminProposalKind].scope))
+      .slice(0, REJECTED_SHOWN);
+    const adminIds = [...new Set(allowed.map((row) => row.decidedById).filter((id): id is string => Boolean(id)))];
+    const admins = adminIds.length ? await this.prisma.user.findMany({ where: { id: { in: adminIds } }, select: { id: true, name: true, surname: true, email: true } }) : [];
+    const nameOf = new Map(admins.map((a) => [a.id, [a.name, a.surname].filter(Boolean).join(" ") || a.email || "Admin"]));
+    return allowed.map((row) => ({
+      id: row.id,
+      kind: row.kind as AdminProposalKind,
+      title: (row.payload as unknown as StoredPayload).title,
+      decidedAt: row.decidedAt?.toISOString() ?? null,
+      decidedBy: row.decidedById ? (nameOf.get(row.decidedById) ?? null) : null,
+    }));
+  }
+
+  /**
+   * "Riproponi" su un "No, mai": il no si toglie e la proposta si ricalcola
+   * come di notte. Torna in Da approvare solo se vale ancora (con i dati di oggi).
+   */
+  async restore(adminUserId: string, id: string, now: Date = new Date()): Promise<AdminProposalRestore> {
+    const row = await this.prisma.adminProposal.findUnique({ where: { id } });
+    if (!row || !(row.kind in ADMIN_PROPOSAL_KINDS_INFO)) throw new NotFoundException("Proposta non trovata.");
+    const kind = row.kind as AdminProposalKind;
+    if (!adminCan(await this.rolesOf(adminUserId), ADMIN_PROPOSAL_KINDS_INFO[kind].scope)) throw new ForbiddenException("Non hai il permesso per questa proposta.");
+    const removed = await this.prisma.adminProposal.deleteMany({ where: { id, status: "REJECTED" } });
+    if (removed.count === 0) throw new ConflictException("Questa proposta è già stata riproposta.");
+    const title = (row.payload as unknown as StoredPayload).title;
+    await this.auditLogService.record({
+      entityType: "AdminProposal",
+      entityId: row.key,
+      fieldName: "status",
+      oldValue: "REJECTED",
+      newValue: "RESTORED",
+      changedByUserId: adminUserId,
+      reason: `Proposta riproposta: ${title}`,
+    });
+    const candidates = await this.candidatesFor(kind, now);
+    await this.save(candidates, now);
+    await this.dropStale(candidates, now, kind);
+    // Per le email il gruppo può essere cambiato: conta che ci sia di nuovo una proposta di quel tipo.
+    const back = candidates.some((c) => c.key === row.key || (c.people && (row.payload as unknown as StoredPayload).people?.some((p) => c.people?.includes(p))));
+    return { back: Boolean(back) };
   }
 
   async decide(adminUserId: string, id: string, action: AdminProposalAction, now: Date = new Date()): Promise<AdminProposalDecision> {
@@ -254,9 +306,25 @@ export class AdminProposalsService implements OnApplicationBootstrap {
       }
     }
     await this.save(candidates, now);
-    // In attesa ma non più valide (es. la frase l'ha aggiunta un altro admin a mano): via.
-    await this.prisma.adminProposal.deleteMany({ where: { status: { in: ["PENDING", "SNOOZED"] }, key: { notIn: candidates.map((c) => c.key) } } });
+    await this.dropStale(candidates, now);
     return candidates.length;
+  }
+
+  /**
+   * In attesa ma non più valide (es. la frase l'ha aggiunta un altro admin a
+   * mano): via. Una proposta a un gruppo di persone rimandata con "Non ora"
+   * resta fino alla scadenza: le sue persone sono escluse dal calcolo, quindi
+   * non è mai tra le calcolate, e toglierla le farebbe tornare la notte dopo.
+   */
+  private async dropStale(candidates: Candidate[], now: Date, kind?: AdminProposalKind): Promise<void> {
+    const stale = await this.prisma.adminProposal.findMany({
+      where: { ...(kind ? { kind } : {}), status: { in: ["PENDING", "SNOOZED"] }, key: { notIn: candidates.map((c) => c.key) } },
+      select: { id: true, status: true, snoozedUntil: true, payload: true },
+    });
+    const ids = stale
+      .filter((row) => !(row.status === "SNOOZED" && row.snoozedUntil && row.snoozedUntil > now && (row.payload as unknown as StoredPayload).people?.length))
+      .map((row) => row.id);
+    if (ids.length) await this.prisma.adminProposal.deleteMany({ where: { id: { in: ids } } });
   }
 
   /** Salva le proposte calcolate: nuove in attesa, aggiornate le altre; "No, mai" non torna. */

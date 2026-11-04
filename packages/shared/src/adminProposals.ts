@@ -123,6 +123,19 @@ export type AdminProposalList = {
   total: number;
 };
 
+/** Una proposta fermata con "No, mai": si può rimettere in Da approvare. */
+export type AdminRejectedProposal = {
+  id: string;
+  kind: AdminProposalKind;
+  title: string;
+  decidedAt: string | null;
+  /** Chi ha detto "No, mai". */
+  decidedBy: string | null;
+};
+
+/** Esito di "Riproponi": torna in Da approvare solo se vale ancora. */
+export type AdminProposalRestore = { back: boolean };
+
 export type AdminProposalAction = "approve" | "snooze" | "never";
 export type AdminProposalDecision = { status: "APPROVED" | "SNOOZED" | "REJECTED"; result: string | null };
 

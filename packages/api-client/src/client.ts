@@ -163,6 +163,8 @@ import type {
   AdminProposalAction,
   AdminProposalDecision,
   AdminProposalList,
+  AdminProposalRestore,
+  AdminRejectedProposal,
   AdminQueue,
 } from "@professionisti/shared";
 
@@ -2147,6 +2149,10 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     adminQueue: (token: string) => request<AdminQueue>("/admin/queue", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     // Proposte da approvare in cima a Da fare (docs/changelog/2026-11-03-automazioni-admin.md).
     adminProposals: (token: string) => request<AdminProposalList>("/admin/proposals", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminRejectedProposals: (token: string) =>
+      request<AdminRejectedProposal[]>("/admin/proposals/rejected", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminRestoreProposal: (token: string, id: string) =>
+      request<AdminProposalRestore>(`/admin/proposals/${encodeURIComponent(id)}/restore`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
     adminDecideProposal: (token: string, id: string, action: AdminProposalAction) =>
       request<AdminProposalDecision>(`/admin/proposals/${encodeURIComponent(id)}/decision`, {
         method: "POST",

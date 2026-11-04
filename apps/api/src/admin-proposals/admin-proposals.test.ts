@@ -155,6 +155,7 @@ describe("decisioni", () => {
         update: vi.fn(),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
         delete: vi.fn(),
+        deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
         create: vi.fn(),
       },
     };
@@ -185,6 +186,44 @@ describe("decisioni", () => {
     await expect(service.decide("admin-1", "p1", "approve", now)).rejects.toThrow("Non serve più");
     expect(examplesService.add).not.toHaveBeenCalled();
     expect(prisma.adminProposal.delete).toHaveBeenCalled();
+  });
+
+  it("Riproponi toglie il No mai e la rimette in attesa se vale ancora", async () => {
+    const { prisma, audit, service } = setup(["MODERATOR"]);
+    prisma.adminProposal.findUnique.mockResolvedValue({ ...row, status: "REJECTED" });
+    const result = await service.restore("admin-1", "p1", now);
+    expect(prisma.adminProposal.deleteMany).toHaveBeenCalledWith({ where: { id: "p1", status: "REJECTED" } });
+    expect(prisma.adminProposal.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ key: "EXAMPLE_PHRASE:dogsitter" }) }));
+    expect(result).toEqual({ back: true });
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ newValue: "RESTORED", reason: expect.stringContaining("riproposta") }));
+  });
+
+  it("Riproponi: se non serve più lo dice, e senza permesso non si tocca", async () => {
+    const done = setup(["SUPER"], [{ text: "Passeggiate per il cane", categorySlug: "dogsitter" }]);
+    done.prisma.adminProposal.findUnique.mockResolvedValue({ ...row, status: "REJECTED" });
+    expect(await done.service.restore("admin-1", "p1", now)).toEqual({ back: false });
+    const finance = setup(["FINANCE"]);
+    finance.prisma.adminProposal.findUnique.mockResolvedValue({ ...row, status: "REJECTED" });
+    await expect(finance.service.restore("admin-1", "p1", now)).rejects.toThrow("permesso");
+    expect(finance.prisma.adminProposal.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("di notte un'email rimandata con Non ora resta fino alla scadenza", async () => {
+    const { prisma, service } = setup(["SUPER"]);
+    const later = new Date("2026-11-10T10:00:00Z");
+    prisma.adminProposal.findMany.mockImplementation(({ where }: { where: { status?: unknown } }) =>
+      Promise.resolve(
+        where.status && typeof where.status === "object" && "in" in (where.status as object)
+          ? [
+              { id: "email-rimandata", status: "SNOOZED", snoozedUntil: later, payload: { people: ["pro-1"] } },
+              { id: "email-scaduta", status: "SNOOZED", snoozedUntil: now, payload: { people: ["pro-2"] } },
+              { id: "frase-vecchia", status: "PENDING", snoozedUntil: null, payload: {} },
+            ]
+          : [],
+      ),
+    );
+    await (service as unknown as { dropStale: (c: unknown[], n: Date) => Promise<void> }).dropStale([], now);
+    expect(prisma.adminProposal.deleteMany).toHaveBeenCalledWith({ where: { id: { in: ["email-scaduta", "frase-vecchia"] } } });
   });
 
   it("Non ora la rimanda di 14 giorni, No mai la ferma", async () => {

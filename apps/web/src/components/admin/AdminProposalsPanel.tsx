@@ -51,7 +51,8 @@ export function AdminProposalsPanel({ token }: { token: string }) {
           : action === "snooze"
             ? `Rimandata di 14 giorni: ${item.title}.`
             : `Non te la riproporremo: ${item.title}.`;
-      setOutcomes((o) => [{ id: item.id, text, undo: action === "approve" ? info.undo : null }, ...o].slice(0, 3));
+      const undo = action === "approve" ? info.undo : action === "never" ? { label: "Cambi idea? Riproponila da Andamento", href: "/admin/andamento#proposte-rifiutate" } : null;
+      setOutcomes((o) => [{ id: item.id, text, undo }, ...o].slice(0, 3));
       setConfirming(null);
       load();
     } catch (err) {
@@ -67,7 +68,7 @@ export function AdminProposalsPanel({ token }: { token: string }) {
   if (items.length === 0 && outcomes.length === 0) return null;
 
   return (
-    <section className="proposals" aria-labelledby="proposals-title">
+    <section id="da-approvare" className="proposals" aria-labelledby="proposals-title">
       <div className="proposals-head">
         <h2 id="proposals-title" className="proposals-title">
           Da approvare
