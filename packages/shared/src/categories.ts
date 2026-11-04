@@ -10,6 +10,8 @@
  * (redesign "Scheda Intervento", Fase 2: CLAUDE.md §10).
  */
 
+import { nameSearchWords } from "./nameSearch";
+
 export const PROFESSIONAL_CATEGORIES = [
   {
     slug: "idraulico",
@@ -398,9 +400,17 @@ export function findCategoryByQuery(query: string) {
   const normalizedQuery = normalize(query);
   if (!normalizedQuery) return undefined;
 
-  return PROFESSIONAL_CATEGORIES.find((category) => {
+  const exact = PROFESSIONAL_CATEGORIES.find((category) => {
     if (normalize(category.slug).includes(normalizedQuery)) return true;
     if (normalize(category.label).includes(normalizedQuery)) return true;
     return category.subTags.some((tag) => normalize(tag).includes(normalizedQuery));
   });
+  if (exact) return exact;
+  // Plurali e desinenze ("idraulici", "elettricisti", "muratori"): la pagina
+  // del mestiere, non quella del problema (richiesta di Luca,
+  // docs/changelog/2026-11-04-nomi-dei-mestieri.md). Solo sul nome del
+  // mestiere, mai sulle specializzazioni: "porta" non è "apertura porte".
+  const stem = nameSearchWords(normalizedQuery).join(" ");
+  if (stem === normalizedQuery || stem.length < 5) return undefined;
+  return PROFESSIONAL_CATEGORIES.find((category) => normalize(category.slug).includes(stem) || normalize(category.label).includes(stem));
 }

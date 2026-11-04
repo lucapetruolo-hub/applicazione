@@ -52,6 +52,7 @@ import {
   type CategoryPriceStats,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
   OUT_OF_SERVICE_KEYWORDS,
+  nameSearchWords,
   type ProblemOutOfService,
   serviceMatchingProblem,
 } from "@professionisti/shared";
@@ -313,7 +314,7 @@ export class ProfessionalsService {
     const serviceProfileIds = serviceKey && canonicalize ? await this.profileIdsWithService(serviceKey, canonicalize) : null;
     const publicWhere = this.publicSearchWhere(category, excludeDemo, serviceProfileIds);
     const offerKeywords = offers ? OUT_OF_SERVICE_KEYWORDS[offers] : [];
-    const baseWhere: Prisma.ProfessionalProfileWhereInput = {
+    const filtersWhere: Prisma.ProfessionalProfileWhereInput = {
       ...publicWhere,
       // Nell'AND: l'OR in cima è già usato da publicSearchWhere.
       ...(offerKeywords.length > 0
@@ -330,9 +331,15 @@ export class ProfessionalsService {
             ],
           }
         : {}),
-      ...(q ? { businessName: { contains: q, mode: "insensitive" } } : {}),
       ...(remote ? { remoteAvailable: true } : {}),
     };
+    // Nome dell'attività senza badare alla desinenza: "termoidraulico" trova
+    // "Termoidraulica Rossi" (docs/changelog/2026-11-04-nomi-dei-mestieri.md).
+    const nameWords = q ? nameSearchWords(q) : [];
+    const baseWhere: Prisma.ProfessionalProfileWhereInput =
+      nameWords.length > 0
+        ? { AND: [filtersWhere, ...nameWords.map((word) => ({ businessName: { contains: word, mode: "insensitive" as const } }))] }
+        : filtersWhere;
 
     // Ricerca per luogo (richiesta esplicita dell'utente): con un comune
     // riconosciuto si cercano i professionisti entro SEARCH_RADIUS_KM dal suo
