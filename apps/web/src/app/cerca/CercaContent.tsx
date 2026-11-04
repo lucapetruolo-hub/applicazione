@@ -100,6 +100,7 @@ export function CercaContent({
     chosen: chosenPros,
     clear: clearChosen,
     selection,
+    limitNotice,
   } = useChosenPros({
     category: canChoose ? (problem?.chosen ?? null) : null,
     city,
@@ -330,6 +331,7 @@ export function CercaContent({
           chosen={chosenPros}
           max={MAX_CHOSEN_PROFESSIONALS}
           href={chosenRequestHref(chosenPros, problem.chosen, problem.description, city)}
+          notice={limitNotice}
         />
       ) : null}
     </YStack>

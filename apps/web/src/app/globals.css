@@ -341,6 +341,25 @@ body:has(.profile-cta-bar) .site-header-cta-link {
   -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 -1px 0 rgba(26, 21, 19, 0.08);
 }
+/* "Puoi sceglierne al massimo 5" sopra la barra, visibile anche da telefono
+   (docs/changelog/2026-11-04-esempi-cercano-subito.md). */
+.chosen-bar-notice {
+  max-width: 1168px;
+  margin: 0 auto;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2b2420;
+}
+.chosen-bar-notice:not([data-visible="true"]) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.chosen-bar-notice[data-visible="true"] {
+  margin-bottom: 8px;
+}
 .chosen-bar-inner {
   display: flex;
   align-items: center;
