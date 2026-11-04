@@ -7813,6 +7813,111 @@ a.admin-kpi:hover {
   background: rgba(18, 133, 82, 0.1);
 }
 
+/* Bordo che si riempie (richiesta di Luca del 04/11, riferimento
+   miodottore.it, docs/changelog/2026-11-04-bordo-e-tendine.md): passando col
+   mouse su un orario libero dell'agenda, sulle voci dei menu e sui pulsanti
+   accanto ai risultati, un filo verde corre lungo il bordo da sinistra a
+   destra. Un solo disegno per tutto il sito:
+   - `.hover-ring` sul pulsante stesso;
+   - `.hover-ring-host` sul riquadro che si clicca e `.hover-ring-target`
+     sulla pillola da contornare (orari: si clicca tutta la cella);
+   - le voci dei menu (`.acct-nav-link`, `.acct-menu-link`, `.mega-item`) lo
+     hanno già qui, senza toccare i componenti.
+   Solo con il mouse (`hover: hover`): sul telefono un tocco non lascia un
+   bordo appeso. Il filo è un `::after` sopra il pulsante, non un bordo vero:
+   niente spostamenti dell'impaginazione. `--hover-ring-inset: -1px` sui
+   pulsanti che hanno già un bordo, così il filo lo copre invece di
+   affiancarlo. Con "riduci movimento" il filo compare subito, senza corsa. */
+.hover-ring,
+.hover-ring-target,
+.acct-nav-link,
+.acct-menu-link,
+.mega-item {
+  position: relative;
+}
+.hover-ring::after,
+.hover-ring-target::after,
+.acct-nav-link::after,
+.acct-menu-link::after,
+.mega-item::after {
+  content: "";
+  position: absolute;
+  inset: var(--hover-ring-inset, 0);
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1.5px var(--hover-ring-color, #128552);
+  clip-path: inset(0 100% 0 0);
+  opacity: 0;
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .hover-ring:hover::after,
+  .hover-ring-host:hover .hover-ring-target::after,
+  .acct-nav-link:hover::after,
+  .acct-menu-link:hover::after,
+  .mega-item:hover::after {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .hover-ring::after,
+  .hover-ring-target::after,
+  .acct-nav-link::after,
+  .acct-menu-link::after,
+  .mega-item::after {
+    transition:
+      clip-path 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      opacity 120ms ease-out;
+  }
+}
+.acct-menu-logout .acct-menu-link {
+  --hover-ring-color: #dc3545;
+}
+.filters-toggle.hover-ring,
+.map-expand-toggle.hover-ring {
+  --hover-ring-inset: -1px;
+}
+
+/* Tendine che si aprono morbide (stessa richiesta): le caselle con i
+   suggerimenti (categoria, città, indirizzo, prefisso del telefono), la
+   tendina "Il mio account", il menu "…" delle schede e il "+" della chat
+   compaiono in 160-200 ms scendendo di 6 px e allargandosi appena dal punto
+   da cui escono, come le finestre (sopra). `.pop-in-up` per quelle che si
+   aprono verso l'alto. Solo CSS con `@starting-style`: nei browser che non lo
+   conoscono la tendina compare subito come prima; si chiude subito, senza
+   attesa. Con "riduci movimento" niente animazione. */
+@media (prefers-reduced-motion: no-preference) {
+  .pop-in,
+  .acct-menu,
+  .address-suggestions,
+  .phone-panel {
+    transform-origin: top center;
+    transition:
+      opacity 160ms ease-out,
+      translate 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      scale 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .acct-menu {
+    transform-origin: top right;
+  }
+  .pop-in.pop-in-up {
+    transform-origin: bottom center;
+  }
+  @starting-style {
+    .pop-in,
+    .acct-menu,
+    .address-suggestions,
+    .phone-panel {
+      opacity: 0;
+      translate: 0 -6px;
+      scale: 0.97;
+    }
+    .pop-in.pop-in-up {
+      translate: 0 6px;
+    }
+  }
+}
+
 /* "Forse intendevi …?" sotto l'email (docs/changelog/2026-11-02-registrazione-pro-migliorie.md). */
 .email-suggestion {
   margin: 6px 0 0;

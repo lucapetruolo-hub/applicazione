@@ -763,7 +763,7 @@ export function ResultsListWithMap({
       {showMap ? (
         <div className={`results-map-col${mobileMapOpen ? " mobile-open" : ""}${mapExpanded ? " expanded" : ""}`}>
           <div className="results-map-sticky">
-            <button type="button" className="map-expand-toggle" onClick={() => setMapExpanded((v) => !v)}>
+            <button type="button" className="map-expand-toggle hover-ring" onClick={() => setMapExpanded((v) => !v)}>
               {mapExpanded ? <Minimize2 size={14} strokeWidth={1.5} /> : <Maximize2 size={14} strokeWidth={1.5} />}
               {mapExpanded ? "Riduci mappa" : "Espandi mappa"}
             </button>
@@ -798,7 +798,7 @@ export function ResultsListWithMap({
           {professionals.length === 0 ? null : (
           <XStack alignItems="center" justifyContent="space-between" flexWrap="wrap" gap="2">
             <XStack alignItems="center" gap="2" flexWrap="wrap">
-              <button type="button" className="filters-toggle" onClick={() => setShowFilters((v) => !v)}>
+              <button type="button" className="filters-toggle hover-ring" onClick={() => setShowFilters((v) => !v)}>
                 <SlidersHorizontal size={16} strokeWidth={1.5} />
                 Filtri{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
               </button>
@@ -810,7 +810,7 @@ export function ResultsListWithMap({
                   della lista da desktop). Etichetta da chiusa rinominata in
                   "Mappa" (richiesta esplicita), quella da aperta invariata. */}
               {showMap ? (
-                <button type="button" className="filters-toggle mobile-map-toggle" onClick={() => setMobileMapOpen((v) => !v)}>
+                <button type="button" className="filters-toggle mobile-map-toggle hover-ring" onClick={() => setMobileMapOpen((v) => !v)}>
                   {mobileMapOpen ? <X size={16} strokeWidth={1.5} /> : <MapIcon size={16} strokeWidth={1.5} />}
                   {mobileMapOpen ? "Nascondi mappa" : "Mappa"}
                 </button>
