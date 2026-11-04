@@ -3031,6 +3031,10 @@ a.admin-kpi:hover {
   color: #1f3d2c;
   font-size: 15px;
 }
+.proposals-outcome.is-error {
+  background: #fbeaea;
+  color: #8a1f2b;
+}
 .proposals-outcome a {
   color: #0e6b42;
   font-weight: 700;

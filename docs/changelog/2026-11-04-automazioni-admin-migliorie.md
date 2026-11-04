@@ -36,3 +36,15 @@ un giorno invece di 14. Ora resta fino alla scadenza (`dropStale`).
 - Prova sul sito in locale: "No, mai" su "Unisci «Sturatira scarichi»", poi
   "Riproponi" in Andamento: torna in Da approvare. Foto in
   `analisi/automazioni-admin/foto/andamento-*.png`.
+
+## Test automatico sul sito (04/11, "miglioria 1 ok")
+
+`e2e/tests/admin-proposte.spec.ts`, su telefono: "Aggiungi la frase" aggiunge
+davvero la frase e la scrive nel registro azioni; "No, mai" la ferma e l'esito
+porta ad Andamento; "Riproponi" la rimette in Da approvare. Controlla anche
+l'accessibilità della scheda e che la pagina non scorra di lato. Alla fine
+toglie la frase dal sito e lascia le frasi com'erano.
+
+Scrivendolo è emerso un difetto: se una proposta non serviva più, l'errore
+stava sulla sua scheda, che però spariva subito ricaricando l'elenco, e non
+si leggeva niente. Ora il motivo resta scritto sopra l'elenco, in rosso.

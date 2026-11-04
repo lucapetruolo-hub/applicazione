@@ -7,7 +7,7 @@ import { apiClient } from "@/lib/apiClient";
 import { errorMessage } from "@/components/admin/adminUi";
 
 /** Dopo una decisione: una riga che dice cosa è successo, al posto della scheda. */
-type Outcome = { id: string; text: string; undo: { label: string; href: string } | null };
+type Outcome = { id: string; text: string; undo: { label: string; href: string } | null; error?: boolean };
 
 /** Destinatari visibili subito; gli altri dietro "Vedi tutti". */
 const RECIPIENTS_SHOWN = 3;
@@ -56,8 +56,11 @@ export function AdminProposalsPanel({ token }: { token: string }) {
       setConfirming(null);
       load();
     } catch (err) {
-      setErrors((e) => ({ ...e, [item.id]: errorMessage(err) }));
-      // Proposta cambiata o tolta da un altro admin: si ricarica l'elenco.
+      const message = errorMessage(err);
+      setErrors((e) => ({ ...e, [item.id]: message }));
+      // Proposta cambiata o tolta da un altro admin: si ricarica l'elenco. Se la
+      // scheda sparisce, il motivo resta scritto sopra l'elenco.
+      setOutcomes((o) => [{ id: item.id, text: `${item.title}: ${message}`, undo: null, error: true }, ...o.filter((x) => x.id !== item.id)].slice(0, 3));
       load();
     } finally {
       setPending(null);
@@ -78,8 +81,9 @@ export function AdminProposalsPanel({ token }: { token: string }) {
       </div>
 
       <div role="status" aria-live="polite" className="proposals-outcomes">
-        {outcomes.map((o) => (
-          <p key={o.id} className="proposals-outcome">
+        {/* Un errore sta sulla sua scheda; qui solo se la scheda non c'è più. */}
+        {outcomes.filter((o) => !o.error || !items.some((i) => i.id === o.id)).map((o) => (
+          <p key={o.id} className={`proposals-outcome${o.error ? " is-error" : ""}`}>
             {o.text}
             {o.undo ? (
               <>
