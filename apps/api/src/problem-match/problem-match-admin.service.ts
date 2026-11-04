@@ -52,6 +52,9 @@ export function suggestionOutcomes(rows: { suggested: string; chosen: string; wi
   };
 }
 
+/** Ricerche non capite mostrate in "Mestieri richiesti". */
+const MISSING_SHOWN = 20;
+
 /**
  * Pagine admin "Mestieri richiesti" e "Richieste da seguire"
  * (docs/CHANGELOG.md §392, richieste di Luca).
@@ -79,7 +82,7 @@ export class ProblemMatchAdminService {
       this.prisma.problemDescription.findMany({ where, orderBy: { createdAt: "desc" }, take: 200 }),
       this.prisma.problemDescription.findMany({
         where: { createdAt: { gte: since } },
-        select: { categories: true, outOfService: true, safety: true, source: true },
+        select: { text: true, categories: true, outOfService: true, safety: true, source: true },
       }),
       this.prisma.problemWord.findMany({ orderBy: { createdAt: "desc" } }),
       // Richieste inviate con la categoria proposta dalla descrizione (dal lancio, senza account di prova, §395).
@@ -94,20 +97,25 @@ export class ProblemMatchAdminService {
     let safety = 0;
     let ai = 0;
     let none = 0;
+    const missing = new Map<string, number>();
     for (const row of lastMonth) {
       const first = row.categories[0];
       if (first) byCategory.set(first, (byCategory.get(first) ?? 0) + 1);
       if (row.outOfService) byOutOfService.set(row.outOfService, (byOutOfService.get(row.outOfService) ?? 0) + 1);
       if (row.safety) safety += 1;
       if (row.source === "ia") ai += 1;
-      if (!first && !row.outOfService) none += 1;
+      if (!first && !row.outOfService) {
+        none += 1;
+        const key = row.text.trim().toLowerCase().replace(/\s+/g, " ");
+        if (key) missing.set(key, (missing.get(key) ?? 0) + 1);
+      }
     }
     const sorted = (map: Map<string, number>) =>
       [...map.entries()].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count);
     const suggestions = suggestionOutcomes(suggested.map((row) => ({ suggested: row.suggestedCategorySlug!, chosen: row.category.slug, withOthers: Boolean(row.submissionGroupId) })));
 
     return {
-      lastMonth: { total: lastMonth.length, safety, ai, none, byCategory: sorted(byCategory), byOutOfService: sorted(byOutOfService), suggestions },
+      lastMonth: { total: lastMonth.length, safety, ai, none, byCategory: sorted(byCategory), byOutOfService: sorted(byOutOfService), missing: sorted(missing).slice(0, MISSING_SHOWN).map(({ key, count }) => ({ text: key, count })), suggestions },
       descriptions: descriptions.map((row) => ({
         id: row.id,
         text: row.text,

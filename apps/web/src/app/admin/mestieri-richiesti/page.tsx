@@ -150,6 +150,36 @@ function DescriptionsTab() {
 
       {month ? <SuggestionOutcomesCard outcomes={month.suggestions} /> : null}
 
+      {month && month.missing.length > 0 ? (
+        // I mestieri che mancano: le ricerche non capite più frequenti (docs/changelog/2026-11-04-avviso-caldaie.md).
+        <AdminCard>
+          <Text fontWeight="700">Cercati ma non capiti, ultimi 30 giorni</Text>
+          <Text color={brand.grafite70} fontSize={13} marginTop="1">
+            Se è un nome diverso di un mestiere che c&apos;è già, insegnalo. Se torna spesso un mestiere che non c&apos;è, è il
+            candidato da aggiungere al sito.
+          </Text>
+          <YStack gap="1" marginTop="2">
+            {month.missing.map((row) => (
+              <XStack key={row.text} gap="3" alignItems="center" justifyContent="space-between" flexWrap="wrap">
+                <Text flex={1} minWidth={160}>
+                  «{row.text}» <Text color={brand.grafite70}>· {row.count} {row.count === 1 ? "volta" : "volte"}</Text>
+                </Text>
+                <Button
+                  variant="ghost"
+                  size="2"
+                  onPress={() => {
+                    setWord(row.text);
+                    document.getElementById("insegna-parola")?.focus();
+                  }}
+                >
+                  Insegna
+                </Button>
+              </XStack>
+            ))}
+          </YStack>
+        </AdminCard>
+      ) : null}
+
       <YStack gap="2">
         <Text fontWeight="700">Insegna una parola al dizionario</Text>
         <Text color={brand.grafite70} fontSize={13}>
@@ -158,6 +188,7 @@ function DescriptionsTab() {
         </Text>
         <XStack gap="2" flexWrap="wrap">
           <input
+            id="insegna-parola"
             aria-label="Parola"
             className="admin-input"
             style={{ flex: 1, minWidth: 180 }}

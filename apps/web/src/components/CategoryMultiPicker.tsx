@@ -1,7 +1,7 @@
 "use client";
 
-import { MAX_PROFESSIONAL_CATEGORIES, PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@professionisti/shared";
-import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { CATEGORY_COMPANIONS, MAX_PROFESSIONAL_CATEGORIES, PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@professionisti/shared";
+import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { CategoryTiles } from "@/components/CategoryTiles";
 import { keyActivate } from "@/lib/keyActivate";
 
@@ -31,6 +31,11 @@ export function CategoryMultiPicker({
   city?: string;
 }) {
   const isFull = value.length >= MAX_PROFESSIONAL_CATEGORIES;
+  // Il primo mestiere scelto con un vicino ancora da aggiungere, se c'è posto.
+  const companion = isFull
+    ? undefined
+    : value.map((slug) => CATEGORY_COMPANIONS[slug]).find((entry) => entry !== undefined && !value.includes(entry.suggest));
+  const companionLabel = companion ? PROFESSIONAL_CATEGORIES.find((category) => category.slug === companion.suggest)?.label : undefined;
 
   function toggle(slug: ProfessionalCategorySlug) {
     if (value.includes(slug)) {
@@ -61,6 +66,33 @@ export function CategoryMultiPicker({
         ariaLabel="Che lavori fai?"
         orderBy="professionals"
       />
+
+      {companion && companionLabel ? (
+        // Mestiere vicino da aggiungere (docs/changelog/2026-11-04-avviso-caldaie.md).
+        <XStack
+          alignItems="center"
+          gap="3"
+          flexWrap="wrap"
+          padding="3"
+          borderRadius={10}
+          borderWidth={1}
+          borderColor={brand.bordoCampo}
+          backgroundColor={brand.cianografiaVelo}
+          aria-live="polite"
+        >
+          <YStack flex={1} minWidth={200} gap="1">
+            <Text fontSize={14} fontWeight="700" color={brand.grafite}>
+              {companion.question}
+            </Text>
+            <Text fontSize={13} color={brand.grafite70}>
+              Aggiungi anche «{companionLabel}»: {companion.reason}
+            </Text>
+          </YStack>
+          <Button variant="secondary" size="3" icon={<Icon name="plus" size={16} color={brand.cianografiaScuro} />} onPress={() => onChange([...value, companion.suggest])}>
+            Aggiungi
+          </Button>
+        </XStack>
+      ) : null}
 
       {value.length > 1 ? (
         <XStack alignItems="center" gap="2" flexWrap="wrap">
