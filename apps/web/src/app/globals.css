@@ -7817,13 +7817,14 @@ a.admin-kpi:hover {
    miodottore.it, docs/changelog/2026-11-04-bordo-e-tendine.md): passando col
    mouse su un orario libero dell'agenda, sulle voci dei menu e sui pulsanti
    accanto ai risultati, un filo verde corre lungo il bordo da sinistra a
-   destra. Un solo disegno per tutto il sito:
+   destra (200 ms: sotto i 300 ms consigliati dalla skill web-animation-design
+   per i gesti ripetuti spesso). Un solo disegno per tutto il sito:
    - `.hover-ring` sul pulsante stesso;
    - `.hover-ring-host` sul riquadro che si clicca e `.hover-ring-target`
      sulla pillola da contornare (orari: si clicca tutta la cella);
    - le voci dei menu (`.acct-nav-link`, `.acct-menu-link`, `.mega-item`) lo
      hanno già qui, senza toccare i componenti.
-   Solo con il mouse (`hover: hover`): sul telefono un tocco non lascia un
+   Solo con il mouse (`hover: hover` e `pointer: fine`): sul telefono un tocco non lascia un
    bordo appeso. Il filo è un `::after` sopra il pulsante, non un bordo vero:
    niente spostamenti dell'impaginazione. `--hover-ring-inset: -1px` sui
    pulsanti che hanno già un bordo, così il filo lo copre invece di
@@ -7849,7 +7850,7 @@ a.admin-kpi:hover {
   opacity: 0;
   pointer-events: none;
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .hover-ring:hover::after,
   .hover-ring-host:hover .hover-ring-target::after,
   .acct-nav-link:hover::after,
@@ -7859,15 +7860,15 @@ a.admin-kpi:hover {
     opacity: 1;
   }
 }
-@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .hover-ring::after,
   .hover-ring-target::after,
   .acct-nav-link::after,
   .acct-menu-link::after,
   .mega-item::after {
     transition:
-      clip-path 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
-      opacity 120ms ease-out;
+      clip-path 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      opacity 100ms ease-out;
   }
 }
 .acct-menu-logout .acct-menu-link {
@@ -7902,6 +7903,13 @@ a.admin-kpi:hover {
   }
   .pop-in.pop-in-up {
     transform-origin: bottom center;
+  }
+  /* Il menu "…" delle schede esce dal pulsante a destra: si allarga da lì. */
+  .pop-in.pop-in-right {
+    transform-origin: top right;
+  }
+  .pop-in.pop-in-up.pop-in-right {
+    transform-origin: bottom right;
   }
   @starting-style {
     .pop-in,

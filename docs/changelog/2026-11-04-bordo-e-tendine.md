@@ -7,11 +7,11 @@ altri menu a comparsa), come su miodottore.it.
 
 **Fatto (solo CSS in `apps/web/src/app/globals.css`, nessun JavaScript in più):**
 - Bordo che si riempie: un filo verde (#128552, 1,5 px) corre lungo il bordo
-  da sinistra a destra in 260 ms. Su orari liberi dell'agenda (risultati e
+  da sinistra a destra in 200 ms. Su orari liberi dell'agenda (risultati e
   profilo), frecce dei giorni, "Filtri", "Mappa", "Espandi mappa", voci del menu
   dell'area account, della tendina "Il mio account" (rosso su "Esci") e del
   menu "Servizi". Classi `.hover-ring` e `.hover-ring-host`/`.hover-ring-target`.
-  Solo con il mouse (`hover: hover`); è un `::after`, nessuno spostamento
+  Solo con il mouse (`hover: hover` e `pointer: fine`); è un `::after`, nessuno spostamento
   dell'impaginazione.
 - Tendine: categoria e città (`Autocomplete`), indirizzo, prefisso del
   telefono, "Il mio account", menu "…" delle schede, "+" della chat compaiono
@@ -22,3 +22,10 @@ altri menu a comparsa), come su miodottore.it.
 
 **Verifica:** fotogrammi prima/dopo (0, 60-80, 120-160, 400 ms) da computer e
 telefono in `anteprime/bordo-e-tendine/` dei file del progetto.
+
+**Seguito (Luca: "effettua la miglioria della skill"):** installata nel repo la
+skill `web-animation-design` di vercel-labs (`.claude/skills/web-animation-design/`,
+solo testo, controllata prima, origine in `ORIGINE.md`). Rivista l'animazione
+con i suoi criteri: filo più rapido (200 ms, è un gesto ripetuto spesso), solo
+con un puntatore preciso (`pointer: fine`, non sui tablet al tocco), menu "…"
+delle schede che si apre dall'angolo del pulsante (`.pop-in-right`).

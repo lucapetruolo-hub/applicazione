@@ -210,7 +210,7 @@ export function CardActionsMenu({
             <div
               ref={dropdownRef}
               // Si apre morbida, verso l'alto quando non c'è posto sotto (globals.css, `.pop-in`).
-              className={anchor.bottom !== undefined ? "pop-in pop-in-up" : "pop-in"}
+              className={anchor.bottom !== undefined ? "pop-in pop-in-up pop-in-right" : "pop-in pop-in-right"}
               role="presentation"
               onClick={(e) => e.stopPropagation()}
               onKeyDown={onMenuKeyDown}
