@@ -18,9 +18,9 @@ import { EmptySearchResults } from "@/components/EmptySearchResults";
 import { ResultsListWithMap, type MapPoolQuery } from "@/components/ResultsListWithMap";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProblemBand } from "@/components/ProblemBand";
-import { ChosenProsBar, chosenRequestHref, type ChosenPro } from "@/components/ChosenProsBar";
+import { ChosenProsBar, chosenRequestHref } from "@/components/ChosenProsBar";
 import { saveLastSearchCity } from "@/lib/lastSearchCity";
-import { chosenSearchKey, readChosenSearch, toggleChosenPro, writeChosenSearch } from "@/lib/chosenProsStore";
+import { useChosenPros } from "@/lib/useChosenPros";
 import { useComuni, type ComuniModule } from "@/lib/comuniLazy";
 
 /** Suggerimenti di comuni mentre si scrive: pochi, per non riempire la pagina. */
@@ -96,37 +96,17 @@ export function CercaContent({
   // "Scegli" sulle schede (docs/CHANGELOG.md §393): solo con un mestiere
   // deciso e almeno due professionisti, altrimenti non c'è niente da scegliere.
   const canChoose = Boolean(problem?.chosen) && professionals.length >= 2;
-  const [chosenPros, setChosenPros] = useState<ChosenPro[]>([]);
-  const chosenIds = new Set(chosenPros.map((pro) => pro.id));
-  // La scelta resta aprendo un profilo e tornando indietro
-  // (docs/changelog/2026-11-03-scelti-restano.md): si legge dopo il montaggio,
-  // perché nel render del server non c'è, e si salva a ogni cambio.
-  const selectionKey = canChoose && problem?.chosen ? chosenSearchKey(problem.chosen, city, problem.description) : null;
-  const [restoredKey, setRestoredKey] = useState<string | null>(null);
-  useEffect(() => {
-    if (!selectionKey) return;
-    const saved = readChosenSearch();
-    const ids = new Set(professionals.map((pro) => pro.id));
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setChosenPros(saved?.key === selectionKey ? saved.chosen.filter((pro) => ids.has(pro.id)) : []);
-    setRestoredKey(selectionKey);
-  }, [selectionKey, professionals]);
-  useEffect(() => {
-    if (!selectionKey || restoredKey !== selectionKey || !problem?.chosen) return;
-    writeChosenSearch({
-      key: selectionKey,
-      url: `${window.location.pathname}${window.location.search}`,
-      category: problem.chosen,
-      description: problem.description,
-      city,
-      chosen: chosenPros,
-    });
-  }, [selectionKey, restoredKey, chosenPros, problem?.chosen, problem?.description, city]);
-  function toggleChosen(pro: ProfessionalSearchResult) {
-    setChosenPros((current) =>
-      toggleChosenPro(current, { id: pro.id, businessName: pro.businessName, imageUrl: pro.imageUrl ?? null, categorySlug: pro.categorySlug }),
-    );
-  }
+  const {
+    chosen: chosenPros,
+    clear: clearChosen,
+    selection,
+  } = useChosenPros({
+    category: canChoose ? (problem?.chosen ?? null) : null,
+    city,
+    description: problem?.description ?? "",
+    scope: problem?.description ?? "",
+    professionals,
+  });
 
   const title = problem
     ? `Chi ti serve per «${problem.description.slice(0, 60)}»`
@@ -307,7 +287,7 @@ export function CercaContent({
       questionDone={problem.questionDone}
       chosenPros={chosenPros}
       maxChosen={canChoose ? MAX_CHOSEN_PROFESSIONALS : undefined}
-      onClearChosen={() => setChosenPros([])}
+      onClearChosen={clearChosen}
     />
   ) : serviceBar && notice ? (
     <YStack gap="3">
@@ -342,16 +322,7 @@ export function CercaContent({
                 }
               : undefined
           }
-          selection={
-            canChoose
-              ? {
-                  selectedIds: chosenIds,
-                  canAdd: chosenPros.length < MAX_CHOSEN_PROFESSIONALS,
-                  max: MAX_CHOSEN_PROFESSIONALS,
-                  onToggle: toggleChosen,
-                }
-              : undefined
-          }
+          selection={selection}
         />
       </YStack>
       {problem?.chosen && chosenPros.length > 0 ? (

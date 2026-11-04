@@ -20,7 +20,9 @@ export function chosenRequestHref(
   description: string,
   city: string | undefined,
 ): string {
-  const params = new URLSearchParams({ categoria: category, descrizione: description });
+  const params = new URLSearchParams({ categoria: category });
+  // Dalla ricerca per mestiere non c'è descrizione: si scrive nel modulo.
+  if (description) params.set("descrizione", description);
   if (city) params.set("citta", city);
   const [first] = chosen;
   if (chosen.length === 1 && first) {
