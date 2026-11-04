@@ -19,15 +19,25 @@
    lavoro salvo indicazione": un prezzo senza unità si legge già così. Nella
    dashboard la scelta dell'unità mostra ancora "a lavoro".
 2. Pagina `/professionista/[id]`: foto verticale 3:4 con angoli di 20px
-   (140px di larghezza, 120 sul telefono), come le schede (§400). La foto
+   (140px di larghezza, 96 sul telefono), come le schede (§400). La foto
    piccola nella barra "Richiedi preventivo" in fondo resta tonda.
-3. `ProfessionalCard`: quando la ricerca ha già scelto "A domicilio" o
-   "Online" la riga "Orari per:" non c'è più (la scheda segue la ricerca; nei
-   Professionisti salvati resta) e le frecce dei giorni stanno ai lati dei
-   giorni: una riga in meno. Fino a 390px di larghezza gli orari non
-   starebbero accanto alle frecce, che restano in una riga loro a destra.
+3. `ProfessionalCard`: le frecce dei giorni stanno ai lati dei giorni, una
+   riga in meno; fino a 390px di larghezza gli orari non ci starebbero e le
+   frecce vanno in fondo alla riga di "Orari per:". La scelta "A domicilio /
+   Online" resta (Luca l'ha voluta tenere dopo una prima versione che la
+   toglieva). A scheda chiusa la riga "Vedi orari e prezzi" ha meno margine
+   sopra e sotto (Luca: "sembra uno spazio bello largo"): 18+13 px sopra
+   diventano 13+7, il margine sotto della scheda 24 (18 sul telefono)
+   diventa 18 (13).
 4. Filtri della ricerca: sezione "Pagamento" con "Solo con pagamento online",
    che tiene chi ha il bollino "Pagamenti online attivi" (`stripeVerified`).
+5. Agenda della pagina del professionista: le frecce dei giorni sulla riga di
+   "Orari per:", a destra, invece che su una riga loro; sul telefono frecce
+   da 32px e pillole un po' più piccole perché ci stiano (sotto i 375px vanno
+   ancora a capo).
+6. Pagina del professionista sul telefono: foto (96px di larghezza) accanto
+   al nome come su computer, e Salva/Condividi in colonna a destra del nome,
+   non più sopra la foto (prima il nome andava sotto la foto, §252).
 
 **Verifica**: typecheck di `web` e `ui`, `pnpm lint` del sito; foto con
 Playwright di `/cerca/idraulico?citta=Roma` a 1440, 412, 390 e 360px e della

@@ -389,6 +389,10 @@ export function ProfessionalCard({
       onPress={onPress}
       cursor={onPress ? "pointer" : undefined}
       padding="5 xs:4"
+      // Con la riga "Vedi orari e prezzi" in fondo meno margine sotto e
+      // sopra la riga (richiesta di Luca: a scheda chiusa sembrava uno
+      // spazio troppo largo, docs/changelog/2026-11-04-prezzi-e-foto-profilo.md).
+      paddingBottom={hasAgenda || hasServices ? "4 xs:3" : undefined}
       {...(onPress ? { borderColor: `${brand.filetto} hover:${brand.cianografia} press:${brand.cianografiaScuro}` } : null)}
       role={onPress && !href ? "button" : undefined}
     >
@@ -543,8 +547,8 @@ export function ProfessionalCard({
 
       {hasAgenda || hasServices ? (
         <YStack
-          marginTop="4"
-          paddingTop="3"
+          marginTop="3"
+          paddingTop="2"
           borderTopWidth={1}
           borderTopColor={brand.filetto}
           gap="3"
@@ -583,16 +587,13 @@ export function ProfessionalCard({
 
           {expanded && hasAgenda ? (
             <YStack gap="2">
-              {/* Con la modalità già scelta nella ricerca (A domicilio/Online)
-                  niente "Orari per:": la scheda segue la ricerca e le frecce
-                  stanno accanto ai giorni, una riga in meno (richiesta di Luca,
-                  docs/changelog/2026-11-04-prezzi-e-foto-profilo.md). */}
-              {/* Segmentato come la barra di ricerca, con "Orari per:"
-                  davanti (docs/CHANGELOG.md §349): le due pillole separate
-                  sembravano un interruttore, e "Online" grigio sembrava
-                  "non offerto". */}
-              {defaultMode ? null : (
+                {/* Segmentato come la barra di ricerca, con "Orari per:"
+                    davanti (docs/CHANGELOG.md §349): le due pillole separate
+                    sembravano un interruttore, e "Online" grigio sembrava
+                    "non offerto". Le frecce dei giorni stanno ai lati dei
+                    giorni (docs/changelog/2026-11-04-prezzi-e-foto-profilo.md). */}
                 <XStack alignItems="center" gap="2">
+                  <XStack alignItems="center" gap="2" flex={1} minWidth={0}>
                   <Text fontFamily="body" fontSize={13} fontWeight="600" color={brand.grafite70}>
                     Orari per:
                   </Text>
@@ -624,20 +625,21 @@ export function ProfessionalCard({
                       );
                     })}
                   </XStack>
+                  </XStack>
+                  {/* Sui telefoni più stretti (fino a 390px) gli orari non
+                      starebbero accanto alle frecce: le frecce vanno qui, in
+                      fondo alla riga di "Orari per:". */}
+                  {pager ? (
+                    <XStack display="none xxs:flex" gap="1">
+                      {dayArrow("back")}
+                      {dayArrow("forward")}
+                    </XStack>
+                  ) : null}
                 </XStack>
-              )}
               {/* flexBasis 0 su intestazioni e celle (bug reale segnalato
                   dall'utente): con flex={1} da solo Tamagui usa flexBasis
                   "auto", ogni colonna prendeva la larghezza del suo contenuto e
                   gli orari non stavano più sotto il loro giorno. */}
-              {/* Sui telefoni più stretti (fino a 390px) gli orari non starebbero
-                  accanto alle frecce: restano in una riga loro, a destra. */}
-              {pager ? (
-                <XStack display="none xxs:flex" justifyContent="flex-end" gap="1">
-                  {dayArrow("back")}
-                  {dayArrow("forward")}
-                </XStack>
-              ) : null}
               <XStack alignItems="center">
                 {pager ? <XStack marginRight="4px xs:2px" display="flex xxs:none">{dayArrow("back")}</XStack> : null}
                 <XStack flex={1} minWidth={0}>
