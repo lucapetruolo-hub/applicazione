@@ -9,7 +9,7 @@ import { keyActivate } from "@/lib/keyActivate";
  * Scelta delle categorie del professionista, da 1 a 3 (docs/CHANGELOG.md
  * §217): usata in registrazione, in /dashboard/profilo e dall'operatore in
  * /admin/professionisti. La prima scelta è la principale, e con più di una
- * si può cambiare quale. Raggiunto il massimo, le altre non si possono
+ * si sceglie l'ordine con cui compaiono sul profilo. Raggiunto il massimo, le altre non si possono
  * toccare finché non se ne toglie una.
  *
  * Tessere con l'icona colorata della categoria, le stesse della home
@@ -95,40 +95,90 @@ export function CategoryMultiPicker({
       ) : null}
 
       {value.length > 1 ? (
-        <XStack alignItems="center" gap="2" flexWrap="wrap">
+        // Ordine dei mestieri sul profilo pubblico: il primo è la principale
+        // (docs/changelog/2026-11-05-registrazione-colonna-unica.md, prima
+        // solo "Cambia la principale").
+        <YStack gap="2">
           <Text fontSize={13} fontWeight="700" color={brand.grafite}>
-            Cambia la principale:
+            Ordine sul tuo profilo
           </Text>
-          {value.map((slug, index) => {
-            const category = PROFESSIONAL_CATEGORIES.find((item) => item.slug === slug);
-            if (!category) return null;
-            const isPrimary = index === 0;
-            return (
-              <XStack
-                key={slug}
-                alignItems="center"
-                gap="1"
-                minHeight={36}
-                paddingHorizontal="3"
-                borderRadius={999}
-                borderWidth={1}
-                borderColor={isPrimary ? brand.ottone : brand.bordoCampo}
-                backgroundColor={isPrimary ? brand.ottoneVelo : brand.calce}
-                cursor={isPrimary ? "default" : "pointer"}
-                onPress={isPrimary ? undefined : () => onChange([slug, ...value.filter((item) => item !== slug)])}
-                onKeyDown={keyActivate(isPrimary ? undefined : () => onChange([slug, ...value.filter((item) => item !== slug)]))}
-                role="radio"
-                aria-checked={isPrimary}
-              >
-                {isPrimary ? <Icon name="star" size={13} color={brand.ottoneScuro} /> : null}
-                <Text fontSize={13} fontWeight="600" color={isPrimary ? brand.ottoneScuro : brand.grafite}>
-                  {category.label}
-                </Text>
-              </XStack>
-            );
-          })}
-        </XStack>
+          <YStack gap="2" role="list" aria-label="Ordine dei lavori sul tuo profilo">
+            {value.map((slug, index) => {
+              const category = PROFESSIONAL_CATEGORIES.find((item) => item.slug === slug);
+              if (!category) return null;
+              const isPrimary = index === 0;
+              return (
+                <XStack
+                  key={slug}
+                  role="listitem"
+                  alignItems="center"
+                  gap="2"
+                  minHeight={44}
+                  paddingLeft="3"
+                  paddingRight="1"
+                  borderRadius={10}
+                  borderWidth={1}
+                  borderColor={isPrimary ? brand.ottone : brand.bordoCampo}
+                  backgroundColor={isPrimary ? brand.ottoneVelo : brand.calce}
+                >
+                  <Text fontSize={13} fontWeight="700" color={brand.grafite70} width={16}>
+                    {index + 1}
+                  </Text>
+                  <Text fontSize={14} fontWeight="600" color={brand.grafite} flex={1}>
+                    {category.label}
+                  </Text>
+                  {isPrimary ? (
+                    <XStack alignItems="center" gap="1">
+                      <Icon name="star" size={13} color={brand.ottoneScuro} />
+                      <Text fontSize={12} fontWeight="700" color={brand.ottoneScuro}>
+                        Principale
+                      </Text>
+                    </XStack>
+                  ) : null}
+                  <XStack>
+                    <OrderButton label={`Sposta ${category.label} su`} icon="chevron-up" disabled={index === 0} onPress={() => onChange(moved(value, index, -1))} />
+                    <OrderButton
+                      label={`Sposta ${category.label} giù`}
+                      icon="chevron-down"
+                      disabled={index === value.length - 1}
+                      onPress={() => onChange(moved(value, index, 1))}
+                    />
+                  </XStack>
+                </XStack>
+              );
+            })}
+          </YStack>
+        </YStack>
       ) : null}
     </YStack>
+  );
+}
+
+function moved(list: ProfessionalCategorySlug[], index: number, step: -1 | 1): ProfessionalCategorySlug[] {
+  const target = index + step;
+  if (target < 0 || target >= list.length) return list;
+  const next = [...list];
+  [next[index], next[target]] = [next[target]!, next[index]!];
+  return next;
+}
+
+function OrderButton({ label, icon, disabled, onPress }: { label: string; icon: "chevron-up" | "chevron-down"; disabled: boolean; onPress: () => void }) {
+  return (
+    <XStack
+      width={40}
+      height={40}
+      alignItems="center"
+      justifyContent="center"
+      borderRadius={999}
+      cursor={disabled ? "default" : "pointer"}
+      opacity={disabled ? 0.3 : 1}
+      role="button"
+      aria-label={label}
+      aria-disabled={disabled}
+      onPress={disabled ? undefined : onPress}
+      onKeyDown={keyActivate(disabled ? undefined : onPress)}
+    >
+      <Icon name={icon} size={18} color={brand.grafite} />
+    </XStack>
   );
 }

@@ -978,6 +978,7 @@ export class ProfessionalsService {
       update: {
         categoryId: primaryCategoryId,
         extraCategories: { set: extraCategoryIds },
+        categoryOrder: categorySlugs,
         subTags,
         businessName: input.businessName,
         city: input.city,
@@ -1002,6 +1003,7 @@ export class ProfessionalsService {
         userId,
         categoryId: primaryCategoryId,
         extraCategories: { connect: extraCategoryIds },
+        categoryOrder: categorySlugs,
         subTags,
         businessName: input.businessName,
         city: input.city,
@@ -1249,6 +1251,7 @@ export class ProfessionalsService {
         city: true,
         category: { select: { id: true, slug: true, label: true } },
         extraCategories: { select: { id: true, slug: true, label: true } },
+        categoryOrder: true,
         metrics: { select: { avgResponseTimeMinutes: true } },
       },
     });

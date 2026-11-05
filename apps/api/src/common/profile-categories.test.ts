@@ -41,4 +41,16 @@ describe("categorie del professionista", () => {
     });
     expect(result.map((category) => category.slug)).toEqual(["fabbro", "idraulico", "pulizie"]);
   });
+
+  it("con l'ordine scelto dal professionista le aggiuntive seguono quello", () => {
+    const result = profileCategories({
+      category: { slug: "fabbro", label: "Fabbro" },
+      extraCategories: [
+        { slug: "idraulico", label: "Idraulico" },
+        { slug: "pulizie", label: "Pulizie" },
+      ],
+      categoryOrder: ["fabbro", "pulizie", "idraulico"],
+    });
+    expect(result.map((category) => category.slug)).toEqual(["fabbro", "pulizie", "idraulico"]);
+  });
 });

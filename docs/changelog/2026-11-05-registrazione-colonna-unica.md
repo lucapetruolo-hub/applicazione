@@ -80,3 +80,16 @@ mestiere. Foto in `anteprime/registrazione-schermata-divisa/dopo/6-profilo-pubbl
    (`categoryServiceCount`) e la scheda (`priceFromFirst` di
    `ProfessionalCard`) calcola il prezzo più basso solo su quelle. Se nessuna
    ha un prezzo, resta il più basso fra tutte.
+
+## Ordine dei mestieri sul profilo (Luca: "effettua anche questo")
+
+9. Prima si sceglieva solo la principale e le altre seguivano l'ordine del
+   sito (la tabella di collegamento non ricorda l'ordine). Ora in
+   registrazione, in Dashboard → Profilo e in Admin (`CategoryMultiPicker`)
+   "Ordine sul tuo profilo" elenca i mestieri numerati con le frecce su e giù
+   (40 px, con nome per i lettori di schermo); il primo è la principale.
+   L'ordine si salva in `ProfessionalProfile.categoryOrder` (migrazione
+   `20261105180000_category_order`) e `profileCategories` lo usa per profilo
+   pubblico, ricerca e salvati; i profili salvati prima restano nell'ordine
+   del sito. Provato in locale: Elettricista, Fabbro, Idraulico salvato e
+   restituito così dal profilo pubblico.
