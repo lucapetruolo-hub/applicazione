@@ -130,6 +130,8 @@ export function ResultsListWithMap({
     canAdd: boolean;
     max: number;
     onToggle: (pro: ProfessionalSearchResult) => void;
+    /** Tocco su "Scegli" oltre il massimo: mostra l'avviso. */
+    onBlocked?: () => void;
   };
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
@@ -763,7 +765,7 @@ export function ResultsListWithMap({
       {showMap ? (
         <div className={`results-map-col${mobileMapOpen ? " mobile-open" : ""}${mapExpanded ? " expanded" : ""}`}>
           <div className="results-map-sticky">
-            <button type="button" className="map-expand-toggle" onClick={() => setMapExpanded((v) => !v)}>
+            <button type="button" className="map-expand-toggle hover-ring" onClick={() => setMapExpanded((v) => !v)}>
               {mapExpanded ? <Minimize2 size={14} strokeWidth={1.5} /> : <Maximize2 size={14} strokeWidth={1.5} />}
               {mapExpanded ? "Riduci mappa" : "Espandi mappa"}
             </button>
@@ -798,7 +800,7 @@ export function ResultsListWithMap({
           {professionals.length === 0 ? null : (
           <XStack alignItems="center" justifyContent="space-between" flexWrap="wrap" gap="2">
             <XStack alignItems="center" gap="2" flexWrap="wrap">
-              <button type="button" className="filters-toggle" onClick={() => setShowFilters((v) => !v)}>
+              <button type="button" className="filters-toggle hover-ring" onClick={() => setShowFilters((v) => !v)}>
                 <SlidersHorizontal size={16} strokeWidth={1.5} />
                 Filtri{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
               </button>
@@ -810,7 +812,7 @@ export function ResultsListWithMap({
                   della lista da desktop). Etichetta da chiusa rinominata in
                   "Mappa" (richiesta esplicita), quella da aperta invariata. */}
               {showMap ? (
-                <button type="button" className="filters-toggle mobile-map-toggle" onClick={() => setMobileMapOpen((v) => !v)}>
+                <button type="button" className="filters-toggle mobile-map-toggle hover-ring" onClick={() => setMobileMapOpen((v) => !v)}>
                   {mobileMapOpen ? <X size={16} strokeWidth={1.5} /> : <MapIcon size={16} strokeWidth={1.5} />}
                   {mobileMapOpen ? "Nascondi mappa" : "Mappa"}
                 </button>
@@ -1162,16 +1164,22 @@ export function ResultsListWithMap({
                mai nulla), garantisce sempre almeno ~280px di spazio in più
                oltre a quello della mappa perché lo sticky abbia margine di
                manovra anche quando la lista è più corta della mappa. */
-            min-height: calc(100vh - 140px + 280px);
+            min-height: calc(100vh - 96px + 280px);
           }
           .results-map-col.expanded {
             width: 58%;
             max-width: 760px;
           }
+          /* Ferma sotto l'intestazione fissa del sito (64px) con 16px di
+             respiro, e alta quanto tutto lo schermo che resta, con 16px
+             anche in fondo (docs/changelog/2026-11-04-mappa-ricerca-altezza.md):
+             prima "top: 24px" la faceva finire sotto l'intestazione e
+             lasciava ~110px vuoti in basso. */
           .results-map-sticky {
             position: sticky;
-            top: 24px;
-            height: calc(100vh - 140px);
+            top: 80px;
+            height: calc(100vh - 96px);
+            height: calc(100dvh - 96px);
             min-height: 420px;
           }
           .map-expand-toggle {
@@ -1227,7 +1235,8 @@ function ChooseToggle({
         aria-label={selected ? `Scelto: ${pro.businessName}` : `Scegli ${pro.businessName}`}
         title={blocked ? `Puoi sceglierne al massimo ${selection.max}` : undefined}
         onClick={() => {
-          if (!blocked) selection.onToggle(pro);
+          if (blocked) selection.onBlocked?.();
+          else selection.onToggle(pro);
         }}
       >
         {selected ? <Check size={16} strokeWidth={2.5} aria-hidden /> : <Plus size={16} strokeWidth={2.5} aria-hidden />}
