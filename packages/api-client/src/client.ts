@@ -1169,7 +1169,9 @@ function extractErrorMessage(body: unknown, fallback: string): string {
  */
 export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, onFailure }: ApiClientConfig) {
   // Senza barra finale: "https://api/" + "/path" darebbe "//path" e 404 (docs/changelog/2026-11-05-render-francoforte.md).
-  const baseUrl = rawBaseUrl.replace(/\/+$/, "");
+  // Ciclo e non una regex: CodeQL segnala /\/+$/ come lenta su tante barre.
+  let baseUrl = rawBaseUrl;
+  while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
   function deviceHeaders(): Record<string, string> {
     const id = deviceId?.();
     return id ? { "X-Device-Id": id } : {};
