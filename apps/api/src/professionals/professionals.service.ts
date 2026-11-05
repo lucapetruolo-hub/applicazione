@@ -403,6 +403,12 @@ export class ProfessionalsService {
       // Cercando "idraulico" la card mostra Idraulico anche se è una
       // categoria aggiuntiva del professionista.
       const shownCategory = categories.find((item) => item.slug === category) ?? categories[0]!;
+      const orderedServices = servicesFirstFor(profile.services, category, categories.map((item) => item.slug));
+      // Il "da … €" della scheda solo sulle prestazioni del mestiere cercato.
+      const categoryServiceCount =
+        category && categories.length > 1
+          ? orderedServices.filter((service) => serviceCategoryOf(service, categories.map((item) => item.slug)) === category).length
+          : undefined;
 
       return {
         id: profile.id,
@@ -424,7 +430,7 @@ export class ProfessionalsService {
         imageUrl: profile.imageUrl,
         // Cercando un mestiere, le sue prestazioni per prime (richiesta di Luca,
         // docs/changelog/2026-11-05-registrazione-colonna-unica.md).
-        services: mapServices(servicesFirstFor(profile.services, category, categories.map((item) => item.slug))),
+        services: mapServices(orderedServices),
         subTags: profile.subTags,
         spokenLanguages: profile.spokenLanguages,
         hasLiabilityInsurance: profile.hasLiabilityInsurance,
@@ -438,6 +444,7 @@ export class ProfessionalsService {
           : problem
             ? problemServiceField(profile.services, problem)
             : {}),
+        ...(categoryServiceCount ? { categoryServiceCount } : {}),
         ...(distanceById?.has(profile.id) ? { distanceKm: Math.round(distanceById.get(profile.id)! * 10) / 10 } : {}),
       } satisfies ProfessionalSearchResult;
     });

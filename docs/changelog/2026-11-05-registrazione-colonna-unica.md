@@ -74,5 +74,9 @@ mestiere. Foto in `anteprime/registrazione-schermata-divisa/dopo/6-profilo-pubbl
 7. Cercando un mestiere, nella scheda del professionista con più mestieri le
    prestazioni di quel mestiere vengono per prime, poi le altre (stesso ordine
    dentro i due gruppi). Lo fa l'API (`servicesFirstFor` in
-   `professionals.service.ts`, con test), così vale per sito e app. Il "da X €"
-   della scheda chiusa resta il prezzo più basso fra tutte le prestazioni.
+   `professionals.service.ts`, con test), così vale per sito e app.
+8. **"da X €" della scheda chiusa sul mestiere cercato** (miglioria scelta da
+   Luca): l'API dice quante prestazioni in cima sono di quel mestiere
+   (`categoryServiceCount`) e la scheda (`priceFromFirst` di
+   `ProfessionalCard`) calcola il prezzo più basso solo su quelle. Se nessuna
+   ha un prezzo, resta il più basso fra tutte.
