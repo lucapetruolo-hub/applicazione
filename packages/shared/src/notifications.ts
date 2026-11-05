@@ -168,6 +168,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "AGENDA_REMINDER",
       // "Metti in pausa": il giorno prima del ritorno (docs/changelog/2026-11-02-iscrizione-verifica-professionisti.md).
       "AWAY_ENDING",
+      // Consiglio di mettersi in pausa a chi non risponde alle richieste, approvato in Admin (docs/changelog/2026-11-03-automazioni-admin.md).
+      "AWAY_SUGGESTED",
       // Agenda (docs/CHANGELOG.md §288): "Sto arrivando" al cliente, riepilogo della sera prima al professionista.
       "PROFESSIONAL_ON_THE_WAY",
       "AGENDA_TOMORROW_SUMMARY",
@@ -373,8 +375,8 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "lavori.promemoria",
     topic: "lavori",
-    types: ["BOOKING_REMINDER", "AGENDA_REMINDER", "AWAY_ENDING", "AGENDA_TOMORROW_SUMMARY", "PROFESSIONAL_ON_THE_WAY"],
-    professional: { label: "Promemoria e agenda", description: "Il giorno prima, il riepilogo della sera, l'agenda senza orari liberi, la fine della pausa." },
+    types: ["BOOKING_REMINDER", "AGENDA_REMINDER", "AWAY_ENDING", "AWAY_SUGGESTED", "AGENDA_TOMORROW_SUMMARY", "PROFESSIONAL_ON_THE_WAY"],
+    professional: { label: "Promemoria e agenda", description: "Il giorno prima, il riepilogo della sera, l'agenda senza orari liberi, la pausa." },
     client: { label: "Promemoria", description: "Il giorno prima e quando il professionista sta arrivando." },
   },
   {

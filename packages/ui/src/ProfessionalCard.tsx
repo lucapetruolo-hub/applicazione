@@ -23,8 +23,11 @@ export type ProfessionalCardPriceUnit = "JOB" | "HOUR" | "DAY" | "SQUARE_METER";
 
 // Stesse parole di SERVICE_PRICE_UNIT_LABEL in packages/shared (duplicate per
 // lo stesso motivo di formatAmount qui sotto).
-const PRICE_UNIT_LABEL: Record<ProfessionalCardPriceUnit, string> = {
-  JOB: "a lavoro",
+// "a lavoro" non si scrive: è il modo normale di leggere un prezzo, l'unità
+// compare solo quando è diversa (shownServicePriceUnit in packages/shared,
+// docs/changelog/2026-11-04-prezzi-e-foto-profilo.md).
+const PRICE_UNIT_LABEL: Record<ProfessionalCardPriceUnit, string | undefined> = {
+  JOB: undefined,
   HOUR: "all'ora",
   DAY: "al giorno",
   SQUARE_METER: "al m²",
@@ -56,6 +59,10 @@ export type ProfessionalCardAvailabilityDay = {
 };
 
 const AGENDA_VISIBLE_DAYS = 4;
+// Frecce dei giorni accanto ai giorni (28px, 24 sul telefono) e lo stesso
+// spazio ai lati degli orari, che così restano sotto il loro giorno.
+const AGENDA_ARROW_SIZE = "28px xs:24px xxs:28px";
+const AGENDA_ARROW_SPACE = "32px xs:26px xxs:0px";
 // Stesso valore di PUBLIC_AGENDA_DAYS in packages/shared (qui duplicato:
 // packages/ui non dipende dal resto del monorepo, vedi formatServicePrice).
 const DEFAULT_AGENDA_DAYS = 63;
@@ -72,7 +79,8 @@ function formatAmount(cents: number): string {
 }
 
 function formatServicePrice(priceMinEurCents: number | null, priceMaxEurCents: number | null, unit?: ProfessionalCardPriceUnit): string {
-  const suffix = unit ? `\u00A0${PRICE_UNIT_LABEL[unit]}` : "";
+  const label = unit ? PRICE_UNIT_LABEL[unit] : undefined;
+  const suffix = label ? `\u00A0${label}` : "";
   if (priceMinEurCents !== null && priceMaxEurCents !== null && priceMaxEurCents > priceMinEurCents) {
     return `${formatAmount(priceMinEurCents)}–${formatAmount(priceMaxEurCents)}\u00A0€${suffix}`;
   }
@@ -86,7 +94,7 @@ function priceUnitLabel(service: ProfessionalCardService): string | undefined {
   return PRICE_UNIT_LABEL[service.priceUnit];
 }
 
-/** Prestazione col prezzo più basso ("da 40 € a lavoro" sulla scheda chiusa), o null se nessuna ha un prezzo. */
+/** Prestazione col prezzo più basso ("da 40 €" sulla scheda chiusa), o null se nessuna ha un prezzo. */
 function lowestServicePrice(services: ProfessionalCardService[]): { cents: number; unit?: ProfessionalCardPriceUnit } | null {
   let lowest: { cents: number; unit?: ProfessionalCardPriceUnit } | null = null;
   for (const service of services) {
@@ -330,6 +338,7 @@ export function ProfessionalCard({
   const canGoForward = offset + AGENDA_VISIBLE_DAYS < totalDays;
 
   const hasAgenda = totalDays > 0;
+  const pager = totalDays > AGENDA_VISIBLE_DAYS;
   const highlighted = services?.find((service) => service.id === highlightServiceId);
   // La prestazione cercata in cima: si vede anche con l'elenco ridotto a 3.
   const serviceList = highlighted ? [highlighted, ...(services ?? []).filter((service) => service !== highlighted)] : (services ?? []);
@@ -338,6 +347,36 @@ export function ProfessionalCard({
   const detailsLabel = [hasAgenda ? "orari" : null, hasServices ? (lowestPrice !== null ? "prezzi" : "prestazioni") : null]
     .filter(Boolean)
     .join(" e ");
+
+  // Freccia per scorrere i giorni della mini-agenda.
+  const dayArrow = (direction: "back" | "forward") => {
+    const enabled = direction === "back" ? canGoBack : canGoForward;
+    return (
+      <XStack
+        width={AGENDA_ARROW_SIZE}
+        height={AGENDA_ARROW_SIZE}
+        borderRadius="10"
+        alignItems="center"
+        justifyContent="center"
+        backgroundColor={brand.gesso}
+        opacity={enabled ? 1 : 0.3}
+        className={enabled ? "hover-ring" : undefined}
+        cursor={enabled ? "pointer" : undefined}
+        role={enabled ? "button" : undefined}
+        aria-label={direction === "back" ? "Giorni precedenti" : "Giorni successivi"}
+        onPress={
+          enabled
+            ? (e: unknown) => {
+                stop(e);
+                setWindowOffset(direction === "back" ? Math.max(0, offset - AGENDA_VISIBLE_DAYS) : offset + AGENDA_VISIBLE_DAYS);
+              }
+            : undefined
+        }
+      >
+        <Icon name={direction === "back" ? "chevron-left" : "chevron-right"} size={16} color={brand.grafite} />
+      </XStack>
+    );
+  };
 
   return (
     // Niente accessibilityLabel personalizzato: la card contiene già come
@@ -351,6 +390,10 @@ export function ProfessionalCard({
       onPress={onPress}
       cursor={onPress ? "pointer" : undefined}
       padding="5 xs:4"
+      // Con la riga "Vedi orari e prezzi" in fondo meno margine sotto e
+      // sopra la riga (richiesta di Luca: a scheda chiusa sembrava uno
+      // spazio troppo largo, docs/changelog/2026-11-04-prezzi-e-foto-profilo.md).
+      paddingBottom={hasAgenda || hasServices ? "4 xs:3" : undefined}
       {...(onPress ? { borderColor: `${brand.filetto} hover:${brand.cianografia} press:${brand.cianografiaScuro}` } : null)}
       role={onPress && !href ? "button" : undefined}
     >
@@ -424,7 +467,7 @@ export function ProfessionalCard({
                   >
                     <Icon name="credit-card" size={13} color={brand.verificato} strokeWidth={2} />
                     <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.verificato}>
-                      Pagamenti online attivi
+                      Paga online
                     </Text>
                   </XStack>
                 </BadgeInfo>
@@ -508,8 +551,8 @@ export function ProfessionalCard({
 
       {hasAgenda || hasServices ? (
         <YStack
-          marginTop="4"
-          paddingTop="3"
+          marginTop="3"
+          paddingTop="2"
           borderTopWidth={1}
           borderTopColor={brand.filetto}
           gap="3"
@@ -548,12 +591,13 @@ export function ProfessionalCard({
 
           {expanded && hasAgenda ? (
             <YStack gap="2">
-              <XStack alignItems="center" justifyContent="space-between" gap="2" flexWrap="wrap">
                 {/* Segmentato come la barra di ricerca, con "Orari per:"
                     davanti (docs/CHANGELOG.md §349): le due pillole separate
                     sembravano un interruttore, e "Online" grigio sembrava
-                    "non offerto". */}
+                    "non offerto". Le frecce dei giorni stanno ai lati dei
+                    giorni (docs/changelog/2026-11-04-prezzi-e-foto-profilo.md). */}
                 <XStack alignItems="center" gap="2">
+                  <XStack alignItems="center" gap="2" flex={1} minWidth={0}>
                   <Text fontFamily="body" fontSize={13} fontWeight="600" color={brand.grafite70}>
                     Orari per:
                   </Text>
@@ -585,87 +629,50 @@ export function ProfessionalCard({
                       );
                     })}
                   </XStack>
-                </XStack>
-                {totalDays > AGENDA_VISIBLE_DAYS ? (
-                  <XStack gap="1" alignItems="center">
-                    <XStack
-                      width={32}
-                      height={32}
-                      borderRadius="10"
-                      alignItems="center"
-                      justifyContent="center"
-                      backgroundColor={brand.gesso}
-                      opacity={canGoBack ? 1 : 0.3}
-                      className={canGoBack ? "hover-ring" : undefined}
-                      cursor={canGoBack ? "pointer" : undefined}
-                      role={canGoBack ? "button" : undefined}
-                      aria-label="Giorni precedenti"
-                      onPress={
-                                            canGoBack
-                                              ? (e: unknown) => {
-                                                  stop(e);
-                                                  setWindowOffset(Math.max(0, offset - AGENDA_VISIBLE_DAYS));
-                                                }
-                                              : undefined
-                                          }
-                    >
-                      <Icon name="chevron-left" size={16} color={brand.grafite} />
-                    </XStack>
-                    <XStack
-                      width={32}
-                      height={32}
-                      borderRadius="10"
-                      alignItems="center"
-                      justifyContent="center"
-                      backgroundColor={brand.gesso}
-                      opacity={canGoForward ? 1 : 0.3}
-                      className={canGoForward ? "hover-ring" : undefined}
-                      cursor={canGoForward ? "pointer" : undefined}
-                      role={canGoForward ? "button" : undefined}
-                      aria-label="Giorni successivi"
-                      onPress={
-                                            canGoForward
-                                              ? (e: unknown) => {
-                                                  stop(e);
-                                                  setWindowOffset(offset + AGENDA_VISIBLE_DAYS);
-                                                }
-                                              : undefined
-                                          }
-                    >
-                      <Icon name="chevron-right" size={16} color={brand.grafite} />
-                    </XStack>
                   </XStack>
-                ) : null}
-              </XStack>
+                  {/* Sui telefoni più stretti (fino a 390px) gli orari non
+                      starebbero accanto alle frecce: le frecce vanno qui, in
+                      fondo alla riga di "Orari per:". */}
+                  {pager ? (
+                    <XStack display="none xxs:flex" gap="1">
+                      {dayArrow("back")}
+                      {dayArrow("forward")}
+                    </XStack>
+                  ) : null}
+                </XStack>
               {/* flexBasis 0 su intestazioni e celle (bug reale segnalato
                   dall'utente): con flex={1} da solo Tamagui usa flexBasis
                   "auto", ogni colonna prendeva la larghezza del suo contenuto e
                   gli orari non stavano più sotto il loro giorno. */}
-              <XStack>
-                {visibleDays.map((day) => (
-                  <YStack
-                    key={day.date}
-                    flex={1}
-                    flexBasis={0}
-                    minWidth={0}
-                    alignItems="center"
-                    gap={2}
-                    cursor={openAgendaAt ? "pointer" : undefined}
-                    role={openAgendaAt ? "button" : undefined}
-                    onPress={openAgendaAt?.(day.date)}
-                  >
-                    <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite}>
-                      {day.label}
-                    </Text>
-                    <Text fontVariant={["tabular-nums"]} fontSize={12} color={brand.grafite70}>
-                      {day.dateLabel}
-                    </Text>
-                  </YStack>
-                ))}
+              <XStack alignItems="center">
+                {pager ? <XStack marginRight="4px xs:2px" display="flex xxs:none">{dayArrow("back")}</XStack> : null}
+                <XStack flex={1} minWidth={0}>
+                  {visibleDays.map((day) => (
+                    <YStack
+                      key={day.date}
+                      flex={1}
+                      flexBasis={0}
+                      minWidth={0}
+                      alignItems="center"
+                      gap={2}
+                      cursor={openAgendaAt ? "pointer" : undefined}
+                      role={openAgendaAt ? "button" : undefined}
+                      onPress={openAgendaAt?.(day.date)}
+                    >
+                      <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite}>
+                        {day.label}
+                      </Text>
+                      <Text fontVariant={["tabular-nums"]} fontSize={12} color={brand.grafite70}>
+                        {day.dateLabel}
+                      </Text>
+                    </YStack>
+                  ))}
+                </XStack>
+                {pager ? <XStack marginLeft="4px xs:2px" display="flex xxs:none">{dayArrow("forward")}</XStack> : null}
               </XStack>
 
               {timeRows.length > 0 ? (
-                <YStack gap="1">
+                <YStack gap="1" paddingHorizontal={pager ? AGENDA_ARROW_SPACE : 0}>
                   {timeRows.map((time) => (
                     <XStack key={time}>
                       {visibleDays.map((day) => {
@@ -704,11 +711,11 @@ export function ProfessionalCard({
                                 : undefined
                             }
                           >
-                            <XStack className="hover-ring-target" paddingHorizontal="6px xs:3px" paddingVertical={4} borderRadius="10" backgroundColor={brand.cianografiaVelo} maxWidth="100%">
+                            <XStack className="hover-ring-target" paddingHorizontal="6px xs:2px xxs:3px" paddingVertical={4} borderRadius="10" backgroundColor={brand.cianografiaVelo} maxWidth="100%">
                               <Text
                                 fontVariant={["tabular-nums"]}
-                                fontSize="12px xs:11px"
-                                letterSpacing="xs:-0.2px"
+                                fontSize="12px xs:10.5px xxs:11px"
+                                letterSpacing="xs:-0.3px xxs:-0.2px"
                                 fontWeight="700"
                                 color={brand.cianografiaScuro}
                                 textAlign="center"

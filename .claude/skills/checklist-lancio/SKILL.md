@@ -557,8 +557,9 @@ Città, pagine vuote fuori da Google.
 40. ~~osv-scanner bloccante~~ — fatto (docs/CHANGELOG.md §335, PR #131):
     blocca la PR su qualunque libreria con vulnerabilità note; quelle usate
     solo per costruire o provare il codice e senza versione corretta vanno
-    in `osv-scanner.toml` con il motivo (oggi zod 3 e node-forge dentro
-    `@expo/cli`).
+    in `osv-scanner.toml` con il motivo (oggi deepmerge 4.3.1 e minimatch 3;
+    zod 3 e node-forge tolti il 05/11/2026,
+    docs/changelog/2026-11-05-avvisi-librerie.md).
 
 
 41. **Segnalazioni dei contenuti (DSA)** (docs/CHANGELOG.md §319): dopo la

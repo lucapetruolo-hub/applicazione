@@ -43,6 +43,7 @@ import {
   formatAdminDate,
 } from "@/components/admin/adminUi";
 import { SiteAdviceList } from "@/components/admin/SiteAdviceList";
+import { AdminProposalsOverview } from "@/components/admin/AdminProposalsOverview";
 import { AdminSummaryNumbers } from "@/components/admin/AdminSummaryNumbers";
 import { StatsBarChart } from "@/components/StatsBarChart";
 import { SkeletonTableRows } from "@/components/Skeleton";
@@ -102,6 +103,7 @@ export default function AdminAndamentoPage() {
       {data ? (
         <>
           <CountingFromNote countingFrom={data.countingFrom} launchDate={data.launchDate} />
+          {token ? <AdminProposalsOverview token={token} /> : null}
           <section aria-labelledby="advice-title">
             <YStack gap="3">
               <Text

@@ -350,7 +350,8 @@ describe("prestazioni più cercate", () => {
     );
     const keys = advice.map((a) => a.key);
     expect(keys).toContain("service-gap:idraulico:sturatura scarichi");
-    expect(keys).toContain("missing-service:tuttofare:montaggio tende");
+    // Diventata una proposta da approvare (docs/changelog/2026-11-03-automazioni-admin.md).
+    expect(keys).not.toContain("missing-service:tuttofare:montaggio tende");
     expect(keys.filter((k) => k.startsWith("service-gap:"))).toHaveLength(1);
   });
 

@@ -362,7 +362,19 @@ export class AdminQueueService {
         danger: false,
       });
     }
+    // Una zona con la proposta di riaprirla in "Da approvare" non compare anche qui: si decide lì, una volta sola.
+    const reopenProposed = zones.length
+      ? new Set(
+          (
+            await this.prisma.adminProposal.findMany({
+              where: { kind: "GENERAL_REQUESTS_REOPEN", OR: [{ status: "PENDING" }, { status: "SNOOZED", snoozedUntil: { lte: now } }] },
+              select: { key: true },
+            })
+          ).map((p) => p.key.split(":")[1]),
+        )
+      : new Set<string>();
     for (const z of zones) {
+      if (reopenProposed.has(z.id)) continue;
       items.push({
         key: `CLOSED_ZONE:${z.id}`,
         kind: "CLOSED_ZONE",

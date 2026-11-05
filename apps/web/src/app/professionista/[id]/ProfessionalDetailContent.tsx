@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BRAND, MAX_CHOSEN_PROFESSIONALS, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, SERVICE_PRICE_UNIT_LABEL, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, MAX_CHOSEN_PROFESSIONALS, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, shownServicePriceUnit, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -346,10 +346,11 @@ export function ProfessionalDetailContent({
             d'ora. Un solo blocco coeso invece di elementi sparsi. */}
         <Surface gap="4">
         <XStack gap="3" alignItems="flex-start" position="relative">
-          {/* Su telefono il nome va sotto la foto: accanto restava una
-              colonna stretta, con il nome spezzato su più righe
-              (docs/CHANGELOG.md §252). */}
-          <XStack gap="3" alignItems="flex-start" flex={1} minWidth={0} flexDirection="xs:column">
+          {/* Foto accanto al nome anche sul telefono, come nelle schede dei
+              risultati (richiesta di Luca,
+              docs/changelog/2026-11-04-prezzi-e-foto-profilo.md; prima il
+              nome andava sotto la foto, docs/CHANGELOG.md §252). */}
+          <XStack gap="3" alignItems="flex-start" flex={1} minWidth={0}>
             <YStack
               cursor={professional.imageUrl ? "pointer" : undefined}
               onPress={() => {
@@ -362,7 +363,7 @@ export function ProfessionalDetailContent({
                   dell'utente (64px iniziali → 104px → 140px): chi apre la
                   pagina pubblica deve riconoscere bene di chi si tratta, non
                   solo intuirne un'icona piccola accanto al nome. */}
-              <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={140} />
+              <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={140} mobileSize={96} shape="portrait" />
             </YStack>
             <YStack gap="2" flex={1} minWidth={0}>
               <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} style={{ overflowWrap: "anywhere" }}>
@@ -462,12 +463,12 @@ export function ProfessionalDetailContent({
               (docs/CHANGELOG.md §349): sotto la foto erano staccati dal nome.
               Solo icone, con la descrizione al passaggio del mouse (richiesta
               esplicita dell'utente, docs/CHANGELOG.md §206). Da telefono in
-              colonna accanto alla foto. Passaparola: per i lavori di casa la
+              colonna a destra del nome, che sta accanto alla foto. Passaparola: per i lavori di casa la
               raccomandazione gira su WhatsApp, quindi il bottone apre la
               condivisione nativa del dispositivo e ripiega sulla copia del
               link dove l'API non esiste. */}
           {preview ? null : (
-            <XStack gap="2" alignItems="center" flexShrink={0} flexDirection="xs:column" position="xs:absolute" top="xs:0px" right="xs:0px">
+            <XStack gap="2" alignItems="center" flexShrink={0} flexDirection="xs:column">
               {/* Cuoricino visibile anche a chi non è entrato (docs/CHANGELOG.md
                   §208): al tocco porta all'accesso. Nascosto solo a
                   professionisti e admin, che non salvano profili. */}
@@ -649,109 +650,89 @@ export function ProfessionalDetailContent({
               Tocca un orario libero per chiedere un preventivo.
             </Text>
 
-            {/* Tab "A domicilio"/"Online" (richiesta esplicita dell'utente):
-                filtrano gli orari sotto in base alla modalità offerta su ogni
-                fascia. Segmentati come nella barra di ricerca, con "Orari
-                per:" davanti, come nella scheda dei risultati
-                (docs/CHANGELOG.md §349). */}
-            <XStack alignItems="center" gap="2" flexWrap="wrap">
-              <Text fontFamily="body" fontSize={13} fontWeight="600" color={brand.grafite70}>
-                Orari per:
-              </Text>
-              <XStack gap={2} backgroundColor={brand.gesso} borderRadius="10" padding={3}>
-                {(["HOME", "ONLINE"] as const).map((mode) => {
-                  const active = agendaMode === mode;
-                  return (
-                    <XStack
-                      key={mode}
-                      render="button"
-                      paddingHorizontal="3"
-                      paddingVertical={6}
-                      borderWidth={0}
-                      borderRadius="10"
-                      backgroundColor={active ? brand.cianografia : "transparent"}
-                      cursor="pointer"
-                      role="button"
-                      aria-pressed={active}
-                      onPress={() => {
-                                            setAgendaMode(mode);
-                                            setAgendaWindowOffset(0);
-                                          }}
-                    >
-                      <Text fontFamily="body" fontSize={14} fontWeight="700" color={active ? "#FFFFFF" : brand.grafite}>
-                        {mode === "HOME" ? "A domicilio" : "Online"}
-                      </Text>
-                    </XStack>
-                  );
-                })}
-              </XStack>
-            </XStack>
-
-            {/* Frecce raggruppate a ridosso delle intestazioni giorno
-                (`gap="1"`, molto meno del `gap="3"` che separa gli altri
-                blocchi della sezione) — richiesta esplicita dell'utente:
-                prima le frecce e le intestazioni erano alla stessa
-                distanza reciproca di ogni altro blocco della sezione (tab
-                A domicilio/Online, griglia orari), senza alcun segnale
-                visivo che le due frecce si riferiscano proprio ai giorni
-                subito sotto e non, ad esempio, ai tab sopra. Restano due
-                righe separate (non un'unica riga con le intestazioni) per
-                lo stesso motivo di prima — vedi bug qui sotto. Larghezza
-                massima pari alla griglia (richiesta esplicita dell'utente,
-                docs/CHANGELOG.md §227): su computer le frecce finivano
-                all'estremo destro della scheda, lontane dai giorni; ora
-                stanno sopra l'ultima colonna. */}
+            {/* Larghezza massima pari alla griglia (docs/CHANGELOG.md §227):
+                le frecce stanno sopra l'ultima colonna, non all'estremo
+                destro della scheda. */}
             <YStack gap="1" width="100%" maxWidth={AGENDA_COLUMN_WIDTH * agendaVisibleDays}>
-              {totalAgendaDays > agendaVisibleDays ? (
-                // Frecce su una riga propria, allineate a destra (richiesta
-                // esplicita dell'utente: prima condividevano la riga con le
-                // intestazioni ed erano soggette allo stesso `flexWrap` di
-                // quel blocco, finendo sotto o troppo vicine al bordo su
-                // schermi stretti). Un blocco fisso di soli ~88px allineato
-                // a destra non compete mai per lo spazio con le 4 colonne
-                // della griglia sottostante, quindi non sfora mai il bordo
-                // del telefono. Stessa resa già in uso per le frecce del
-                // carosello categorie (CategoryCarousel.tsx: 40×40, cerchio
-                // pieno brand.calce, nessun bordo/ombra).
-                <XStack justifyContent="flex-end" gap="2" alignItems="center">
-                  <XStack
-                    width={40}
-                    height={40}
-                    borderRadius={20}
-                    backgroundColor={brand.calce}
-                    alignItems="center"
-                    justifyContent="center"
-                    opacity={agendaCanGoBack ? 1 : 0.3}
-                    // Bordo che si riempie al passaggio del mouse (globals.css, `.hover-ring`).
-                    className={agendaCanGoBack ? "hover-ring" : undefined}
-                    cursor={agendaCanGoBack ? "pointer" : undefined}
-                    // Sempre un pulsante, spento all'inizio: un riquadro con un nome e senza ruolo non si legge (collaudo L-11).
-                    role="button"
-                    aria-disabled={!agendaCanGoBack}
-                    tabIndex={agendaCanGoBack ? undefined : -1}
-                    aria-label="Giorni precedenti"
-                    onPress={agendaCanGoBack ? () => setAgendaWindowOffset(Math.max(0, agendaOffset - agendaVisibleDays)) : undefined}
-                  >
-                    <Icon name="chevron-left" size={20} color={brand.grafite} />
-                  </XStack>
-                  <XStack
-                    width={40}
-                    height={40}
-                    borderRadius={20}
-                    backgroundColor={brand.calce}
-                    alignItems="center"
-                    justifyContent="center"
-                    opacity={agendaCanGoForward ? 1 : 0.3}
-                    className={agendaCanGoForward ? "hover-ring" : undefined}
-                    cursor={agendaCanGoForward ? "pointer" : undefined}
-                    role={agendaCanGoForward ? "button" : undefined}
-                    aria-label="Giorni successivi"
-                    onPress={agendaCanGoForward ? () => setAgendaWindowOffset(agendaOffset + agendaVisibleDays) : undefined}
-                  >
-                    <Icon name="chevron-right" size={20} color={brand.grafite} />
-                  </XStack>
+              {/* Tab "A domicilio"/"Online" (richiesta esplicita dell'utente)
+                  e frecce dei giorni sulla stessa riga, subito sopra i giorni:
+                  una riga in meno (richiesta di Luca,
+                  docs/changelog/2026-11-04-prezzi-e-foto-profilo.md). Se non
+                  c'è spazio le frecce vanno a capo, a destra. */}
+              {/* Fino a 390px pulsanti e frecce un po' più stretti, così sui
+                  telefoni da 360px stanno ancora su una riga. */}
+              <XStack alignItems="center" gap="2 xxs:5px" flexWrap="wrap">
+                <Text fontFamily="body" fontSize="13px xxs:12px" fontWeight="600" color={brand.grafite70}>
+                  Orari per:
+                </Text>
+                <XStack gap={2} backgroundColor={brand.gesso} borderRadius="10" padding={3}>
+                  {(["HOME", "ONLINE"] as const).map((mode) => {
+                    const active = agendaMode === mode;
+                    return (
+                      <XStack
+                        key={mode}
+                        render="button"
+                        paddingHorizontal="3 xxs:9px"
+                        paddingVertical="6px xs:5px"
+                        borderWidth={0}
+                        borderRadius="10"
+                        backgroundColor={active ? brand.cianografia : "transparent"}
+                        cursor="pointer"
+                        role="button"
+                        aria-pressed={active}
+                        onPress={() => {
+                                              setAgendaMode(mode);
+                                              setAgendaWindowOffset(0);
+                                            }}
+                      >
+                        <Text fontFamily="body" fontSize="14px xs:13px" fontWeight="700" color={active ? "#FFFFFF" : brand.grafite}>
+                          {mode === "HOME" ? "A domicilio" : "Online"}
+                        </Text>
+                      </XStack>
+                    );
+                  })}
                 </XStack>
+              {totalAgendaDays > agendaVisibleDays ? (
+                  <XStack gap="2 xs:1" alignItems="center" marginLeft="auto">
+                    <XStack
+                      width="40px xs:32px xxs:28px"
+                      height="40px xs:32px xxs:28px"
+                      borderRadius={20}
+                      backgroundColor={brand.calce}
+                      alignItems="center"
+                      justifyContent="center"
+                      opacity={agendaCanGoBack ? 1 : 0.3}
+                      // Bordo che si riempie al passaggio del mouse (globals.css, `.hover-ring`).
+                      className={agendaCanGoBack ? "hover-ring" : undefined}
+                      cursor={agendaCanGoBack ? "pointer" : undefined}
+                      // Sempre un pulsante, spento all'inizio: un riquadro con un nome e senza ruolo non si legge (collaudo L-11).
+                      role="button"
+                      aria-disabled={!agendaCanGoBack}
+                      tabIndex={agendaCanGoBack ? undefined : -1}
+                      aria-label="Giorni precedenti"
+                      onPress={agendaCanGoBack ? () => setAgendaWindowOffset(Math.max(0, agendaOffset - agendaVisibleDays)) : undefined}
+                    >
+                      <Icon name="chevron-left" size={20} color={brand.grafite} />
+                    </XStack>
+                    <XStack
+                      width="40px xs:32px xxs:28px"
+                      height="40px xs:32px xxs:28px"
+                      borderRadius={20}
+                      backgroundColor={brand.calce}
+                      alignItems="center"
+                      justifyContent="center"
+                      opacity={agendaCanGoForward ? 1 : 0.3}
+                      className={agendaCanGoForward ? "hover-ring" : undefined}
+                      cursor={agendaCanGoForward ? "pointer" : undefined}
+                      role={agendaCanGoForward ? "button" : undefined}
+                      aria-label="Giorni successivi"
+                      onPress={agendaCanGoForward ? () => setAgendaWindowOffset(agendaOffset + agendaVisibleDays) : undefined}
+                    >
+                      <Icon name="chevron-right" size={20} color={brand.grafite} />
+                    </XStack>
+                  </XStack>
               ) : null}
+              </XStack>
 
               <XStack>
                 {agendaWindowDays.map((day) => (
@@ -959,7 +940,7 @@ export function ProfessionalDetailContent({
                     label={service.name}
                     labelColor={brand.grafite}
                     price={formatServicePriceRange(service.priceMinEurCents, service.priceMaxEurCents)}
-                    unit={service.priceMinEurCents !== null || service.priceMaxEurCents !== null ? SERVICE_PRICE_UNIT_LABEL[service.priceUnit] : undefined}
+                    unit={service.priceMinEurCents !== null || service.priceMaxEurCents !== null ? shownServicePriceUnit(service.priceUnit) : undefined}
                   />
                 </YStack>
               ))}

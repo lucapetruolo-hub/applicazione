@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GuidedRequestUserStateService } from "./guided-request-user-state.service";
 import { NotificationsService } from "../notifications/notifications.service";
 
@@ -21,6 +21,16 @@ function buildService(overrides: Record<string, unknown> = {}) {
   const service = new GuidedRequestUserStateService(prisma as never, notifications as never);
   return { service, prisma, notifications };
 }
+
+// Di notte (22-7 in Italia) le email aspettano il mattino (email-hold.ts):
+// l'orologio fermo alle 11 tiene i test uguali a qualunque ora girino.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-05T10:00:00Z"));
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("GuidedRequestUserStateService.update", () => {
   it("rifiuta chi non è né il cliente né un professionista con un lead sulla richiesta", async () => {

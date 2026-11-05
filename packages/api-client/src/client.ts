@@ -160,6 +160,11 @@ import type {
   FeeReconciliation,
   SdiSandboxTestResult,
   AdminCourtesyDocumentRow,
+  AdminProposalAction,
+  AdminProposalDecision,
+  AdminProposalList,
+  AdminProposalRestore,
+  AdminRejectedProposal,
   AdminQueue,
 } from "@professionisti/shared";
 
@@ -2159,6 +2164,18 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     adminOverview: (token: string) => request<AdminOverview>("/admin/overview", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     // Coda "Da fare" (docs/changelog/2026-10-30-admin-riordino.md).
     adminQueue: (token: string) => request<AdminQueue>("/admin/queue", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    // Proposte da approvare in cima a Da fare (docs/changelog/2026-11-03-automazioni-admin.md).
+    adminProposals: (token: string) => request<AdminProposalList>("/admin/proposals", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminRejectedProposals: (token: string) =>
+      request<AdminRejectedProposal[]>("/admin/proposals/rejected", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminRestoreProposal: (token: string, id: string) =>
+      request<AdminProposalRestore>(`/admin/proposals/${encodeURIComponent(id)}/restore`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+    adminDecideProposal: (token: string, id: string, action: AdminProposalAction) =>
+      request<AdminProposalDecision>(`/admin/proposals/${encodeURIComponent(id)}/decision`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action }),
+      }),
     adminClaimCase: (token: string, caseKey: string, claim: boolean) =>
       request<void>(`/admin/queue/${claim ? "claim" : "release"}`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ caseKey }) }),
 

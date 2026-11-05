@@ -92,7 +92,9 @@ jobs:
       - uses: actions/checkout@v7
       - name: Librerie con vulnerabilità note
         run: |
-          curl -sSfL -o osv-scanner https://github.com/google/osv-scanner/releases/download/v2.0.2/osv-scanner_linux_amd64
+          curl -sSfL --retry 4 --retry-all-errors -o osv-scanner https://github.com/google/osv-scanner/releases/download/v2.0.2/osv-scanner_linux_amd64
+          # Impronta dal file ufficiale osv-scanner_SHA256SUMS della versione.
+          echo "3abcfd7126c453a00421487e721b296e0cb68085bd431d6cef60872774170fc8  osv-scanner" | sha256sum -c -
           chmod +x osv-scanner
           ./osv-scanner scan source --lockfile pnpm-lock.yaml --format sarif --output osv.sarif || true
           ./osv-scanner scan source --lockfile pnpm-lock.yaml --format markdown >> "$GITHUB_STEP_SUMMARY" || true
@@ -113,5 +115,8 @@ jobs:
       - name: Chiavi e password nel codice (tutta la cronologia)
         # --redact: il registro del job è pubblico, mai stampare il segreto.
         run: |
-          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz | tar xz gitleaks
+          curl -sSfL --retry 4 --retry-all-errors -o gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz
+          # Impronta dal file ufficiale gitleaks_8.21.2_checksums.txt della versione.
+          echo "5bc41815076e6ed6ef8fbecc9d9b75bcae31f39029ceb55da08086315316e3ba  gitleaks.tar.gz" | sha256sum -c -
+          tar xzf gitleaks.tar.gz gitleaks
           ./gitleaks git --redact --no-banner --verbose .

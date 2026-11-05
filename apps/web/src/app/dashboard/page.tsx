@@ -19,7 +19,7 @@ import { SubscriptionPauseBanner } from "@/components/SubscriptionPauseBanner";
 import { IssueSanctionBanner } from "@/components/IssueSanctionBanner";
 import { AwayCard } from "@/components/AwayCard";
 import { BoostSection } from "@/components/BoostSection";
-import { SetupJourneyCard, useSetupJourney } from "@/components/verification/SetupJourney";
+import { SetupJourneyCard, SetupJourneyHero, journeyNeedsHero, useSetupJourney } from "@/components/verification/SetupJourney";
 import { WeatherStrip, jobsHeadline, type DayJobRow } from "@/components/DaysAhead";
 
 /** Applica una risposta dell'API dentro `startTransition` (vedi sotto, §345). */
@@ -240,6 +240,16 @@ export default function DashboardTodayPage() {
   // momenti diversi si spingevano giù a vicenda (CLS, docs/CHANGELOG.md §334).
   // Un errore si mostra subito.
   const ready = (!loading || Boolean(error)) && journey.settled;
+  // In cima solo senza appuntamenti oggi e domani: il prossimo lavoro deve
+  // restare in vista senza scorrere (T2, docs/CHANGELOG.md §311).
+  const heroJourney = journeyNeedsHero(journey.steps) && !loading && upcoming.length === 0 ? journey.steps : null;
+  // Con un appuntamento lo stesso riquadro va subito sotto "Oggi e domani"
+  // (scelta di Luca del 05/11), non più il riquadro piccolo a destra.
+  const journeyBelowJobs = journeyNeedsHero(journey.steps) && !loading && upcoming.length > 0 ? journey.steps : null;
+  // Appena iscritto, nulla in agenda né da rispondere: una sola riga vuota
+  // invece di tre sezioni vuote, così resta in vista "Completa il profilo"
+  // (docs/changelog/2026-11-05-completa-profilo-in-evidenza.md).
+  const quietStart = Boolean(heroJourney) && !loading && !error && upcoming.length === 0 && toAnswer.length === 0 && unreadMessages === 0;
   const greetingName = user.businessName ?? user.name ?? "";
   const showToAnswerOnTop = !loading && !error && toAnswer.length > 0;
   const showDatesOnTop = !loading && !error && datesToConfirm.length > 0;
@@ -303,6 +313,10 @@ export default function DashboardTodayPage() {
             ))}
           </TodaySection>
         ) : null}
+        {/* Manca un passo obbligatorio del percorso: "Completa il profilo" qui,
+            a tutta larghezza, sotto le sole richieste da rispondere
+            (docs/changelog/2026-11-05-completa-profilo-in-evidenza.md). */}
+        {ready && heroJourney ? <SetupJourneyHero steps={heroJourney} /> : null}
         {/* Due colonne quando c'è spazio (docs/CHANGELOG.md §334): a sinistra il
             lavoro (appuntamenti, richieste, andamento), a destra percorso del
             profilo, avvisi e visibilità. Stretto, `today-col` non conta e `order` rimette tutto
@@ -322,7 +336,7 @@ export default function DashboardTodayPage() {
                 <TodaySection title="Oggi e domani" action={{ href: "/dashboard/agenda", label: "Apri l'agenda" }}>
                   {daysAhead === "failed" ? null : <WeatherStrip days={daysAhead} />}
                   {upcoming.length === 0 ? (
-                    <EmptyLine text="Nessun appuntamento oggi e domani." />
+                    <EmptyLine text={quietStart ? "Nessun appuntamento né richiesta per ora: ti avvisiamo appena ne arriva una." : "Nessun appuntamento oggi e domani."} />
                   ) : (
                     upcoming.map(({ key, href, at, title, sub, navigateTo, onTheWay, phone }, index) => (
                       <Fragment key={key}>
@@ -380,6 +394,7 @@ export default function DashboardTodayPage() {
                   )}
                 </TodaySection>
                 )}
+                {ready && journeyBelowJobs ? <SetupJourneyHero steps={journeyBelowJobs} /> : null}
               </div>
               {!ready ? null : (
                 <>
@@ -412,7 +427,7 @@ export default function DashboardTodayPage() {
                           </div>
                         ) : null}
 
-                        {toAnswer.length === 0 ? (
+                        {toAnswer.length === 0 && !quietStart ? (
                           <TodaySection title="Da rispondere ora" action={{ href: "/dashboard/richieste", label: "Tutte le richieste" }}>
                             <EmptyLine text="Nessuna richiesta in attesa: ti avvisiamo appena ne arriva una nuova." />
                           </TodaySection>
@@ -423,7 +438,7 @@ export default function DashboardTodayPage() {
                 )}
               </div>
               <div className="today-slot" style={{ order: 6 }}>
-                {insightsFailed ? null : (
+                {insightsFailed || (quietStart && (!insights || insightsEmpty(insights))) ? null : (
                   <TodaySection title="Il tuo andamento" subtitle={insights && !insightsEmpty(insights) ? `Rispetto agli altri professionisti di ${insights.areaLabel}` : undefined}>
                     {/* Senza dati una riga, non tre tessere con "0" e "—" (§352). */}
                     {!insights ? <Skeletons /> : insightsEmpty(insights) ? <EmptyLine text="I tuoi numeri compaiono con le prime visite al profilo e le prime risposte." /> : <InsightsGrid insights={insights} />}
@@ -431,7 +446,7 @@ export default function DashboardTodayPage() {
                 )}
 
                 {/* Consigli sulle visite solo a chi compare già nelle ricerche (prova da utente nuovo, 04/11/2026). */}
-                {insights && !profileHidden ? <Suggestion insights={insights} /> : null}
+                {insights && !profileHidden && !quietStart ? <Suggestion insights={insights} /> : null}
               </div>
               </>
               )}
@@ -440,7 +455,7 @@ export default function DashboardTodayPage() {
               {ready ? (
                 <>
                   <div className="today-slot" style={{ order: 3 }}>
-                    <SetupJourneyCard steps={journey.steps} />
+                    {heroJourney || journeyBelowJobs ? null : <SetupJourneyCard steps={journey.steps} />}
                   </div>
                   {user.agendaAttention ? (
                     <div className="today-slot" style={{ order: 5 }}>
