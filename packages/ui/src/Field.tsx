@@ -1,5 +1,6 @@
 import { useId, type ComponentProps, type ReactNode } from "react";
 import { Text, XStack, YStack } from "tamagui";
+import { Icon } from "./Icon";
 import { Input } from "./Input";
 import { brand, radiusDoc } from "./tokens";
 
@@ -7,6 +8,8 @@ export type FieldProps = ComponentProps<typeof Input> & {
   label: string;
   hint?: string;
   error?: string;
+  /** Esito positivo in verde con la spunta (es. "Partita IVA corretta"); l'errore lo sostituisce. */
+  success?: string;
   /** Slot opzionale a destra dentro il campo (es. toggle mostra/nascondi password). */
   rightElement?: ReactNode;
 };
@@ -25,7 +28,7 @@ export type FieldProps = ComponentProps<typeof Input> & {
  * risulta sbagliato (docs/changelog/2026-10-30-tastiera.md, collaudo L-07);
  * l'anello del fuoco sta sul riquadro, così non si sfalsa col bordo rosso.
  */
-export function Field({ label, hint, error, rightElement, ...inputProps }: FieldProps) {
+export function Field({ label, hint, error, success, rightElement, ...inputProps }: FieldProps) {
   const messageId = useId();
   return (
     <YStack gap="2">
@@ -55,7 +58,7 @@ export function Field({ label, hint, error, rightElement, ...inputProps }: Field
           blurOnSubmit={false}
           aria-invalid={error ? true : undefined}
           aria-label={label}
-          aria-describedby={error || hint ? messageId : undefined}
+          aria-describedby={error || success || hint ? messageId : undefined}
         />
         {rightElement}
       </XStack>
@@ -63,6 +66,13 @@ export function Field({ label, hint, error, rightElement, ...inputProps }: Field
         <Text id={messageId} role="alert" fontSize={16} color={brand.urgenza}>
           {error}
         </Text>
+      ) : success ? (
+        <XStack id={messageId} role="status" alignItems="center" gap="2">
+          <Icon name="check" size={18} color={brand.cianografiaScuro} strokeWidth={2.25} />
+          <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro}>
+            {success}
+          </Text>
+        </XStack>
       ) : hint ? (
         <Text id={messageId} fontSize={16} color={brand.grafite70}>
           {hint}

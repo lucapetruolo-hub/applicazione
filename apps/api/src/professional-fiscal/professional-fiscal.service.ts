@@ -223,6 +223,12 @@ export class ProfessionalFiscalService {
         }
       : rawInput;
 
+    // Il tipo lo cambia il professionista da Dati fiscali (docs/changelog/2026-11-05-registrazione-colonna-unica.md),
+    // ma non dopo aver collegato Stripe: il conto Stripe è legato al tipo (come "Cambia tipo" dell'admin).
+    if (existing?.stripeConnectAccountId && rawInput.entityType !== undefined && existing.entityType && rawInput.entityType !== existing.entityType) {
+      throw new BadRequestException("Hai già collegato i pagamenti online: su Stripe il tipo non si cambia. Scrivici dalla pagina Contatti.");
+    }
+
     // Stessi controlli del browser anche qui (docs/CHANGELOG.md §253): forma
     // di codice fiscale e P.IVA e coerenza del codice fiscale con nome,
     // cognome e data di nascita. Prima una chiamata diretta all'API li saltava.

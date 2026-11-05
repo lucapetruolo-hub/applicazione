@@ -22,6 +22,8 @@ export type ProfessionalServiceItem = {
   priceMinEurCents: number | null;
   priceMaxEurCents: number | null;
   priceUnit: ServicePriceUnit;
+  /** Mestiere della prestazione; null per quelle salvate prima del 05/11/2026. */
+  categorySlug?: string | null;
 };
 
 /**

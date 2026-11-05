@@ -123,7 +123,7 @@ export type ProfessionalSearchParams = {
 // esplicita dell'utente: frecce per almeno due mesi, docs/CHANGELOG.md §206).
 
 function mapServices(
-  services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null; priceUnit: ServicePriceUnit }[],
+  services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null; priceUnit: ServicePriceUnit; categorySlug?: string | null }[],
 ): ProfessionalServiceItem[] {
   return services.map((service) => ({
     id: service.id,
@@ -131,6 +131,7 @@ function mapServices(
     priceMinEurCents: service.priceMinEurCents,
     priceMaxEurCents: service.priceMaxEurCents,
     priceUnit: service.priceUnit,
+    categorySlug: service.categorySlug ?? null,
   }));
 }
 
@@ -1015,6 +1016,8 @@ export class ProfessionalsService {
           priceMinEurCents: service.priceMinEurCents ?? null,
           priceMaxEurCents: service.priceMaxEurCents ?? null,
           priceUnit: service.priceUnit ?? "JOB",
+          // Solo un mestiere che il profilo ha davvero.
+          categorySlug: service.categorySlug && input.categorySlugs.includes(service.categorySlug) ? service.categorySlug : null,
         })),
       }),
     ]);

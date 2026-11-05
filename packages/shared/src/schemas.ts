@@ -817,6 +817,8 @@ export const professionalServiceSchema = z
     priceMaxEurCents: z.number().int().nonnegative().optional(),
     /** A cosa si riferisce il prezzo (§398); senza, "a lavoro". */
     priceUnit: z.enum(SERVICE_PRICE_UNITS).optional(),
+    /** Mestiere della prestazione, tra quelli scelti nel profilo (docs/changelog/2026-11-05-registrazione-colonna-unica.md). */
+    categorySlug: professionalCategorySlugSchema.optional(),
   })
   .refine((data) => data.priceMinEurCents === undefined || data.priceMaxEurCents === undefined || data.priceMaxEurCents >= data.priceMinEurCents, {
     message: "Il prezzo massimo deve essere maggiore o uguale al minimo.",
