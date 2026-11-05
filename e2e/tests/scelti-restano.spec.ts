@@ -13,7 +13,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 
 const prisma = new PrismaClient();
 const stamp = Date.now();
-const names = ["Acqua Sicura", "Tubi Bianchi", "Rubinetti Verdi"].map((name) => `${name} ${stamp}`);
+const names = ["Acqua Sicura", "Tubi Bianchi", "Rubinetti Verdi", "Scarichi Liberi", "Caldaie Nord", "Sifoni Sud"].map((name) => `${name} ${stamp}`);
 
 test.beforeAll(async () => {
   for (const name of names) await createProfessional(prisma, name, "idraulico");
@@ -57,7 +57,7 @@ test("la scelta resta tornando dal profilo, e dal profilo si sceglie", async ({ 
 
 test("anche cercando il mestiere si scelgono più professionisti", async ({ page }) => {
   await page.goto("/cerca/idraulico/latina");
-  const [first, second] = names as [string, string, string];
+  const [first, second] = names as [string, string];
 
   await page.getByRole("button", { name: `Scegli ${first}` }).click();
   await page.getByRole("button", { name: `Scegli ${second}` }).click();
@@ -80,4 +80,15 @@ test("anche cercando il mestiere si scelgono più professionisti", async ({ page
   await bar.getByRole("link").click();
   await expect(page).toHaveURL(/\/preventivo\?/);
   await expect(page.getByText(first).first()).toBeVisible();
+});
+
+test("al sesto tocco su «Scegli» compare l'avviso del massimo", async ({ page }) => {
+  await page.goto("/cerca/idraulico/latina");
+  for (const name of names.slice(0, 5)) await page.getByRole("button", { name: `Scegli ${name}` }).click();
+  const bar = page.getByRole("region", { name: "Professionisti scelti" });
+  await expect(bar).toContainText("5 scelti su 5");
+  // Spento ma toccabile: Playwright non clicca un aria-disabled senza force.
+  await page.getByRole("button", { name: `Scegli ${names[5]}` }).click({ force: true });
+  await expect(bar.getByRole("status")).toHaveText("Puoi sceglierne al massimo 5.");
+  await expect(bar).toContainText("5 scelti su 5");
 });

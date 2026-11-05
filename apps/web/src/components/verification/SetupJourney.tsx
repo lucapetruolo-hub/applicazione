@@ -187,7 +187,7 @@ export function SetupJourneyView({ steps, title = "Completa il profilo" }: { ste
           </Text>
         </XStack>
         <div className="readiness-bar" aria-hidden="true">
-          <span style={{ width: `${(done / steps.length) * 100}%` }} />
+          <span style={{ transform: `translateX(${(done / steps.length - 1) * 100}%)` }} />
         </div>
       </YStack>
 

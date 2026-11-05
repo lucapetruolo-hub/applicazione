@@ -87,9 +87,11 @@ export type SearchBarProps = {
   };
   /**
    * Contenuto sotto il riquadro (gli esempi da toccare della home): riceve il
-   * modo scelto e `fillQuery`, che scrive un testo nel campo e ci mette il cursore.
+   * modo scelto, `fillQuery`, che scrive un testo nel campo e ci mette il
+   * cursore, e `searchFor`, che lo scrive e fa subito partire la ricerca
+   * (docs/changelog/2026-11-04-esempi-cercano-subito.md).
    */
-  footer?: (api: { mode: SearchMode; fillQuery: (text: string) => void }) => ReactNode;
+  footer?: (api: { mode: SearchMode; fillQuery: (text: string) => void; searchFor: (text: string) => void }) => ReactNode;
 };
 
 function useCityField({
@@ -306,6 +308,11 @@ export function SearchBar({
     queryFocusRef.current?.();
   }
 
+  function searchFor(text: string) {
+    handleQueryChange(text);
+    onSearch({ query: text, city, mode });
+  }
+
   const customQueryField = mode === "domicilio" ? queryField : undefined;
 
   return (
@@ -433,7 +440,7 @@ export function SearchBar({
           </Text>
         ) : null}
       </YStack>
-      {footer?.({ mode, fillQuery })}
+      {footer?.({ mode, fillQuery, searchFor })}
     </>
   );
 }

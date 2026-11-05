@@ -345,8 +345,10 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
           color: ${brand.cianografiaScuro};
           transition: transform 0.15s ease;
         }
-        .price-row:hover .price-row-chevron {
-          transform: translateX(2px);
+        @media (hover: hover) and (pointer: fine) {
+          .price-row:hover .price-row-chevron {
+            transform: translateX(2px);
+          }
         }
         @media (prefers-reduced-motion: reduce) {
           .price-panel,

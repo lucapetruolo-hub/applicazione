@@ -114,17 +114,12 @@ test.describe("chi visita il profilo", () => {
     await page.goto("/");
     // Sotto la ricerca resta solo la richiesta urgente; il campo dice che capisce anche il problema.
     await expect(page.getByRole("combobox", { name: "Cosa è successo?" })).toHaveAttribute("placeholder", "Es. scarico intasato");
-    // Un esempio toccato si scrive nel campo e mostra subito il mestiere
-    // (docs/changelog/2026-11-03-ricerca-per-problema-home.md).
-    // Le frasi seguono le ricerche (docs/changelog/2026-11-03-luci-che-accelerano.md):
-    // si tocca la prima, qualunque sia.
-    const firstExample = page.getByRole("group", { name: "Prova" }).getByRole("button").first();
-    const exampleText = (await firstExample.textContent())?.trim() ?? "";
-    await firstExample.click();
-    await expect(page.getByRole("combobox", { name: "Cosa è successo?" })).toHaveValue(exampleText);
-    await expect(page.getByRole("combobox", { name: "Cosa è successo?" })).toBeFocused();
-    await expect(page.getByText(/^Ti serve: /).first()).toBeVisible();
-    await page.keyboard.press("Escape");
+    // Un esempio toccato cerca subito (docs/changelog/2026-11-04-esempi-cercano-subito.md,
+    // prima si scriveva solo nel campo). Le frasi seguono le ricerche
+    // (docs/changelog/2026-11-03-luci-che-accelerano.md): si tocca la prima, qualunque sia.
+    await page.getByRole("group", { name: "Prova" }).getByRole("button").first().click();
+    await expect(page).toHaveURL(/\/cerca\?.*problema=/);
+    await page.goto("/");
     await expect(page.locator(".hero-urgent-link")).toHaveAttribute("href", "/urgente");
     await expect(page.locator(".hero-urgent-link")).toHaveAccessibleName("Richiesta urgente");
     await expect(page.getByRole("link", { name: "Richiedi un preventivo", exact: true })).toHaveCount(0);

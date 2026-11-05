@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LIMIT_NOTICE_MS, chosenLimitText } from "@/lib/useChosenPros";
 import Link from "next/link";
 import { ArrowLeft, Check, Plus } from "lucide-react";
 import { MAX_CHOSEN_PROFESSIONALS } from "@professionisti/shared";
@@ -32,6 +33,13 @@ export function useProfileChoice(enabled: boolean, pro: ChosenPro) {
 export function ProfileChoiceStrip({ search, pro, onToggle }: { search: ChosenSearch; pro: ChosenPro; onToggle: () => void }) {
   const selected = search.chosen.some((item) => item.id === pro.id);
   const blocked = !selected && search.chosen.length >= MAX_CHOSEN_PROFESSIONALS;
+  // Avviso al tocco oltre il massimo, visibile anche da telefono.
+  const [limitShown, setLimitShown] = useState(false);
+  useEffect(() => {
+    if (!limitShown) return;
+    const timer = setTimeout(() => setLimitShown(false), LIMIT_NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [limitShown]);
   return (
     <XStack alignItems="center" justifyContent="space-between" gap="3" flexWrap="wrap">
       <Link href={search.url} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, minHeight: 44 }}>
@@ -43,7 +51,7 @@ export function ProfileChoiceStrip({ search, pro, onToggle }: { search: ChosenSe
       <XStack alignItems="center" gap="3">
         {search.chosen.length > 0 ? (
           <Text fontSize={14} color={brand.grafite70} aria-live="polite">
-            {search.chosen.length === 1 ? "1 scelto" : `${search.chosen.length} scelti`} su {MAX_CHOSEN_PROFESSIONALS}
+            {limitShown ? chosenLimitText() : `${search.chosen.length === 1 ? "1 scelto" : `${search.chosen.length} scelti`} su ${MAX_CHOSEN_PROFESSIONALS}`}
           </Text>
         ) : null}
         <button
@@ -55,7 +63,8 @@ export function ProfileChoiceStrip({ search, pro, onToggle }: { search: ChosenSe
           aria-label={selected ? `Scelto: ${pro.businessName}` : `Scegli ${pro.businessName}`}
           title={blocked ? `Puoi sceglierne al massimo ${MAX_CHOSEN_PROFESSIONALS}` : undefined}
           onClick={() => {
-            if (!blocked) onToggle();
+            if (blocked) setLimitShown(true);
+            else onToggle();
           }}
         >
           {selected ? <Check size={16} strokeWidth={2.5} aria-hidden /> : <Plus size={16} strokeWidth={2.5} aria-hidden />}

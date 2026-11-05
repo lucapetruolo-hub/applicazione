@@ -142,6 +142,8 @@ export function ResultsListWithMap({
     canAdd: boolean;
     max: number;
     onToggle: (pro: ProfessionalSearchResult) => void;
+    /** Tocco su "Scegli" oltre il massimo: mostra l'avviso. */
+    onBlocked?: () => void;
   };
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
@@ -441,6 +443,14 @@ export function ResultsListWithMap({
     setExpandedSection((prev) => (prev === section ? null : section));
   }
 
+  // Richiesta di preventivo già con giorno, orario e modalità: dalla scheda
+  // e dall'anteprima sulla mappa (docs/changelog/2026-11-05-anteprima-mappa.md).
+  const slotHref = (pro: ProfessionalSearchResult, date: string, time: string, endTime: string, mode: "HOME" | "ONLINE") =>
+    `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&nomeProfessionista=${encodeURIComponent(pro.businessName)}&fotoProfessionista=${encodeURIComponent(pro.imageUrl ?? "")}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}${serviceDescriptionParam(pro, problemDescription)}&da=${PROFILE_REQUEST_SOURCE_PARAM.RICERCA}`;
+  // Profilo, eventualmente aperto sull'agenda di un giorno (anteprima sulla mappa).
+  const mapProfileHref = (pro: ProfessionalSearchResult, date?: string) =>
+    `${profileHref(pro, { ...fromChoice, ...(date ? { data: date } : {}), ...(defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {}) }, problemDescription)}${date ? "#agenda" : ""}`;
+
   // Una scheda dei risultati: la stessa per la sezione "Potrebbero fare
   // anche questo lavoro" (scelta di Luca), lì senza "Scegli", perché le
   // richieste a più professionisti restano del mestiere cercato.
@@ -504,7 +514,7 @@ export function ResultsListWithMap({
             // GuidedRequestForm. Nomi distinti da "nome"/"foto" per
             // non collidere con il "nome" del CLIENTE (prefill di
             // "Ripeti la richiesta", stesso form).
-            `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&nomeProfessionista=${encodeURIComponent(pro.businessName)}&fotoProfessionista=${encodeURIComponent(pro.imageUrl ?? "")}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}${serviceDescriptionParam(pro, problemDescription)}&da=${PROFILE_REQUEST_SOURCE_PARAM.RICERCA}`,
+            slotHref(pro, date, time, endTime, mode),
           ),
         )
       }
@@ -841,7 +851,7 @@ export function ResultsListWithMap({
                 </button>
               </>
             ) : null}
-            <button type="button" className="map-expand-toggle" onClick={() => setMapExpanded((v) => !v)}>
+            <button type="button" className="map-expand-toggle hover-ring" onClick={() => setMapExpanded((v) => !v)}>
               {mapExpanded ? <Minimize2 size={14} strokeWidth={1.5} /> : <Maximize2 size={14} strokeWidth={1.5} />}
               {mapExpanded ? "Riduci mappa" : "Espandi mappa"}
             </button>
@@ -860,6 +870,9 @@ export function ResultsListWithMap({
                   fallbackCenter={fallbackCenter}
                   onBoundsChange={handleBoundsChange}
                   fullScreen={!wideScreen}
+                  mode={defaultMode ?? "HOME"}
+                  slotHref={slotHref}
+                  profileHref={mapProfileHref}
                 />
               ) : null}
             </YStack>
@@ -884,7 +897,7 @@ export function ResultsListWithMap({
           {professionals.length === 0 ? null : (
           <XStack alignItems="center" justifyContent="space-between" flexWrap="wrap" gap="2">
             <XStack alignItems="center" gap="2" flexWrap="wrap">
-              <button type="button" className="filters-toggle" onClick={() => setShowFilters((v) => !v)}>
+              <button type="button" className="filters-toggle hover-ring" onClick={() => setShowFilters((v) => !v)}>
                 <SlidersHorizontal size={16} strokeWidth={1.5} />
                 Filtri{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
               </button>
@@ -901,7 +914,7 @@ export function ResultsListWithMap({
                 <button
                   type="button"
                   ref={mapToggleRef}
-                  className="filters-toggle mobile-map-toggle"
+                  className="filters-toggle mobile-map-toggle hover-ring"
                   aria-haspopup="dialog"
                   onClick={() => setMobileMapOpen(true)}
                 >
@@ -1435,7 +1448,8 @@ function ChooseToggle({
         aria-label={selected ? `Scelto: ${pro.businessName}` : `Scegli ${pro.businessName}`}
         title={blocked ? `Puoi sceglierne al massimo ${selection.max}` : undefined}
         onClick={() => {
-          if (!blocked) selection.onToggle(pro);
+          if (blocked) selection.onBlocked?.();
+          else selection.onToggle(pro);
         }}
       >
         {selected ? <Check size={16} strokeWidth={2.5} aria-hidden /> : <Plus size={16} strokeWidth={2.5} aria-hidden />}
