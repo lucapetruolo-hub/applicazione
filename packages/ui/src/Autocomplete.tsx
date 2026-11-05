@@ -276,6 +276,8 @@ export function Autocomplete<T>({
       </Text>
       {showDropdown ? (
         <YStack
+          // Si apre morbida (apps/web/src/app/globals.css, `.pop-in`).
+          className="pop-in"
           position="absolute"
           top="100%"
           left={0}

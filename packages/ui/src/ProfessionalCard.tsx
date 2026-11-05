@@ -593,6 +593,7 @@ export function ProfessionalCard({
                       justifyContent="center"
                       backgroundColor={brand.gesso}
                       opacity={canGoBack ? 1 : 0.3}
+                      className={canGoBack ? "hover-ring" : undefined}
                       cursor={canGoBack ? "pointer" : undefined}
                       role={canGoBack ? "button" : undefined}
                       aria-label="Giorni precedenti"
@@ -615,6 +616,7 @@ export function ProfessionalCard({
                       justifyContent="center"
                       backgroundColor={brand.gesso}
                       opacity={canGoForward ? 1 : 0.3}
+                      className={canGoForward ? "hover-ring" : undefined}
                       cursor={canGoForward ? "pointer" : undefined}
                       role={canGoForward ? "button" : undefined}
                       aria-label="Giorni successivi"
@@ -684,6 +686,9 @@ export function ProfessionalCard({
                             alignItems="center"
                             justifyContent="center"
                             paddingVertical={3}
+                            // Bordo che si riempie al passaggio del mouse
+                            // (apps/web/src/app/globals.css, `.hover-ring-host`).
+                            className={onSlotPress ? "hover-ring-host" : undefined}
                             cursor={onSlotPress ? "pointer" : undefined}
                             role={onSlotPress ? "button" : undefined}
                             aria-label={onSlotPress ? `Richiedi un preventivo per ${range} il ${day.label}` : undefined}
@@ -696,7 +701,7 @@ export function ProfessionalCard({
                                 : undefined
                             }
                           >
-                            <XStack paddingHorizontal="6px xs:3px" paddingVertical={4} borderRadius="10" backgroundColor={brand.cianografiaVelo} maxWidth="100%">
+                            <XStack className="hover-ring-target" paddingHorizontal="6px xs:3px" paddingVertical={4} borderRadius="10" backgroundColor={brand.cianografiaVelo} maxWidth="100%">
                               <Text
                                 fontVariant={["tabular-nums"]}
                                 fontSize="12px xs:11px"
