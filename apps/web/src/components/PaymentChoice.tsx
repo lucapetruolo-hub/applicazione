@@ -35,79 +35,96 @@ function eur(cents: number): string {
  */
 
 /**
- * Riquadro "Pagamento" nella scheda del preventivo, prima di accettare
- * (docs/CHANGELOG.md §339): con un solo modo il modo, la spiegazione e
- * l'acconto; con più modi l'elenco, la scelta si fa accettando. Così chi
- * riceve più preventivi li confronta anche su come si paga.
+ * Quanto si paga ora e quanto a lavoro finito con un modo online
+ * (docs/changelog/2026-11-05-scheda-preventivo-semplice.md): il cliente non
+ * capiva che online paga solo l'acconto. null per il pagamento diretto o
+ * senza prezzo. Con una forbice il resto è "fino a".
+ */
+export function paymentSplit(
+  choice: JobPaymentChoice,
+  totals: { totalMinEurCents: number; totalMaxEurCents: number },
+  depositPercent: number,
+): { nowEurCents: number; restMaxEurCents: number; restIsRange: boolean; restOnline: boolean } | null {
+  if (!paymentChoiceIsOnline(choice) || totals.totalMaxEurCents <= 0) return null;
+  const now = onlineDepositEurCents(totals.totalMaxEurCents, depositPercent);
+  return {
+    nowEurCents: now,
+    restMaxEurCents: Math.max(0, totals.totalMaxEurCents - now),
+    restIsRange: totals.totalMinEurCents > 0 && totals.totalMinEurCents < totals.totalMaxEurCents,
+    restOnline: choice === "ONLINE",
+  };
+}
+
+/** "10,00 € ora online, 40,00 € a lavoro finito": il modo in una riga, con le cifre. */
+export function paymentSplitLine(choice: JobPaymentChoice, totals: { totalMinEurCents: number; totalMaxEurCents: number }, depositPercent: number, only: boolean): string {
+  const split = paymentSplit(choice, totals, depositPercent);
+  if (!split) return jobPaymentChoiceCopy(choice, depositPercent, only).title;
+  if (split.restMaxEurCents === 0) return `${eur(split.nowEurCents)} ora online, con carta`;
+  const rest = `${split.restIsRange ? "il resto, fino a " : ""}${eur(split.restMaxEurCents)}`;
+  return `${eur(split.nowEurCents)} ora online, ${rest} a lavoro finito${split.restOnline ? "" : " al professionista"}`;
+}
+
+/**
+ * Riga "Pagamento" nella scheda del preventivo, prima di accettare
+ * (docs/CHANGELOG.md §339, semplificata il 05/11/2026): con un solo modo le
+ * cifre di ora e di dopo; con più modi l'elenco, la scelta si fa accettando.
+ * Così chi riceve più preventivi li confronta anche su come si paga.
  */
 export function PaymentOffer({
-  quoteMaxEurCents,
+  priceTotals,
   onlineAvailable,
   offered,
   depositPercent,
 }: {
-  quoteMaxEurCents: number;
+  priceTotals: { totalMinEurCents: number; totalMaxEurCents: number };
   onlineAvailable: boolean;
   offered: JobPaymentChoice[];
   depositPercent: number;
 }) {
   const options = selectablePaymentChoices(offered, onlineAvailable);
   const onlineHidden = !onlineAvailable && offered.some(paymentChoiceIsOnline);
-  const deposit = quoteMaxEurCents > 0 ? eur(onlineDepositEurCents(quoteMaxEurCents, depositPercent)) : null;
   const only = options.length === 1 ? options[0] : undefined;
-  const onlyCopy = only ? jobPaymentChoiceCopy(only, depositPercent, true) : null;
+  const anyOnline = options.some(paymentChoiceIsOnline);
   return (
-    <YStack backgroundColor={brand.gesso} borderRadius="3" padding="3" gap="1">
-      <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
-        {options.length > 1 ? "Pagamento, a tua scelta" : "Pagamento"}
-      </Text>
+    <YStack gap={2} flex={1} minWidth={0}>
       {options.length === 0 ? (
         <Text fontSize={16} color={brand.urgenza}>
           Il professionista accetta solo il pagamento online, che non è ancora attivo: scrivigli dalla chat per accordarvi.
         </Text>
-      ) : only && onlyCopy ? (
-        <>
-          <Text fontSize={16} fontWeight="700" color={brand.grafite}>
-            {onlyCopy.title}
-          </Text>
-          {onlyCopy.body ? (
-            <Text fontSize={13} color={brand.grafite70}>
-              {onlyCopy.body}
-            </Text>
-          ) : null}
-          {paymentChoiceIsOnline(only) && deposit ? (
-            <Text fontSize={13} fontWeight="700" color={brand.grafite}>
-              {depositPercent >= 100 ? "Da pagare accettando" : `Acconto accettando (${depositPercent}% del massimo)`}: {deposit}
-            </Text>
-          ) : null}
-          {paymentChoiceIsOnline(only) && deposit && depositPercent >= 100 ? (
-            <Text fontSize={13} color={brand.grafite70}>
-              {UPFRONT_PAYMENT_NOTE}
-            </Text>
-          ) : null}
-        </>
+      ) : only ? (
+        <Text fontSize={16} fontWeight="600" color={brand.grafite}>
+          {paymentSplitLine(only, priceTotals, depositPercent, true)}
+        </Text>
       ) : (
-        options.map((option) => (
-          <Text key={option} fontSize={16} fontWeight="700" color={brand.grafite}>
-            {jobPaymentChoiceCopy(option, depositPercent, true).title}
-            {paymentChoiceIsOnline(option) && deposit ? (
-              <Text fontSize={13} fontWeight="400" color={brand.grafite70}>
-                {" "}
-                · {depositPercent >= 100 ? `paghi ${deposit} accettando` : `acconto di ${deposit} accettando`}
-              </Text>
-            ) : null}
+        <>
+          {options.map((option) => (
+            <Text key={option} fontSize={16} fontWeight="600" color={brand.grafite}>
+              {jobPaymentChoiceCopy(option, depositPercent, true).title}
+              {paymentSplit(option, priceTotals, depositPercent) ? (
+                <Text fontSize={13} fontWeight="400" color={brand.grafite70}>
+                  {" "}
+                  · {paymentSplitLine(option, priceTotals, depositPercent, true)}
+                </Text>
+              ) : null}
+            </Text>
+          ))}
+          <Text fontSize={13} color={brand.grafite70}>
+            Scegli accettando.
           </Text>
-        ))
+        </>
       )}
+      {anyOnline ? (
+        <Text fontSize={13} color={brand.grafite70}>
+          {depositPercent >= 100 && only ? UPFRONT_PAYMENT_NOTE : "Con carta, sul sito. Il professionista riceve i soldi quando confermi che il lavoro è fatto."}{" "}
+          <Link href="/termini#pagamenti" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
+            Scopri di più
+          </Link>
+        </Text>
+      ) : null}
       {onlineHidden && options.length > 0 ? (
         <Text fontSize={13} color={brand.grafite70}>
           Il pagamento online con carta sarà disponibile a breve.
         </Text>
-      ) : null}
-      {options.some(paymentChoiceIsOnline) ? (
-        <Link href="/termini#pagamenti" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 600, fontSize: 16 }}>
-          Come funziona il pagamento online
-        </Link>
       ) : null}
     </YStack>
   );
@@ -120,6 +137,7 @@ export function selectablePaymentChoices(offered: JobPaymentChoice[], onlineAvai
 export function PaymentChoice({
   value,
   onChange,
+  quoteMinEurCents,
   quoteMaxEurCents,
   onlineAvailable,
   offered,
@@ -127,6 +145,7 @@ export function PaymentChoice({
 }: {
   value: JobPaymentChoice;
   onChange: (value: JobPaymentChoice) => void;
+  quoteMinEurCents: number;
   quoteMaxEurCents: number;
   onlineAvailable: boolean;
   /** Modi offerti dal professionista nel preventivo. */
@@ -136,19 +155,13 @@ export function PaymentChoice({
 }) {
   const options = selectablePaymentChoices(offered, onlineAvailable);
   const onlineHidden = !onlineAvailable && offered.some(paymentChoiceIsOnline);
+  const totals = { totalMinEurCents: quoteMinEurCents, totalMaxEurCents: quoteMaxEurCents };
+  // Le cifre di ora e di dopo, non la percentuale (05/11/2026).
   const depositLine = (option: JobPaymentChoice) =>
-    paymentChoiceIsOnline(option) && quoteMaxEurCents > 0 ? (
-      <>
-        <Text fontSize={13} fontWeight="700" color={brand.grafite}>
-          {depositPercent >= 100 ? "Da pagare ora (l'intero massimo del preventivo)" : `Acconto ora (${depositPercent}% del massimo del preventivo)`}:{" "}
-          {eur(onlineDepositEurCents(quoteMaxEurCents, depositPercent))}
-        </Text>
-        {depositPercent >= 100 ? (
-          <Text fontSize={13} color={brand.grafite70}>
-            {UPFRONT_PAYMENT_NOTE}
-          </Text>
-        ) : null}
-      </>
+    paymentSplit(option, totals, depositPercent) ? (
+      <Text fontSize={13} fontWeight="700" color={brand.grafite}>
+        {paymentSplitLine(option, totals, depositPercent, false)}
+      </Text>
     ) : null;
   return (
     <YStack gap="2" role="radiogroup" aria-label="Come vuoi pagare">
@@ -206,11 +219,6 @@ export function PaymentChoice({
         <Text fontSize={13} color={brand.grafite70}>
           Il pagamento online con carta sarà disponibile a breve.
         </Text>
-      ) : null}
-      {options.some(paymentChoiceIsOnline) ? (
-        <Link href="/termini#pagamenti" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 600, fontSize: 16 }}>
-          Come funziona il pagamento online
-        </Link>
       ) : null}
     </YStack>
   );
