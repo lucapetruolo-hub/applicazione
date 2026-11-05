@@ -22,6 +22,12 @@ indirizzo del webhook di Meta in `docs/whatsapp-modelli.md`; checklist di
 lancio (punti 4bis e 4ter fatti), skill `deploy-ops` e tabella dello stack in
 `CLAUDE.md`.
 
+**Indirizzo dell'API senza barra finale**: durante la migrazione
+`NEXT_PUBLIC_API_URL` con la "/" in fondo faceva rispondere 404 a ogni
+chiamata, e la ricerca mostrava "nessuno vicino" invece di un errore. Ora il
+sito (`apps/web/src/lib/apiUrl.ts`) e `createApiClient` di
+`packages/api-client` tolgono la barra finale.
+
 **Da finire**: sospendere il vecchio `professionisti-api` (Oregon), eliminare
 il vecchio endpoint Didit e, se il vecchio servizio era collegato a un
 Blueprint, scollegarlo prima che `render.yaml` arrivi sul ramo principale

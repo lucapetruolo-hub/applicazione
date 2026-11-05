@@ -8,6 +8,7 @@ import {
   type SubmitFailureKind,
   type SubmitFormKey,
 } from "@professionisti/shared";
+import { API_URL } from "./apiUrl";
 
 /**
  * Conteggi dell'andamento del sito mandati dal browser (docs/CHANGELOG.md
@@ -17,7 +18,6 @@ import {
  * questo browser" (gli admin lo hanno da soli); i robot li scarta l'API.
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 /** Un anno: chi prova il sito non deve ricordarsi di riattivarlo. */
 const NO_COUNT_MAX_AGE = 365 * 24 * 60 * 60;

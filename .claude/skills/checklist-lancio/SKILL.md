@@ -71,7 +71,13 @@ produzione):
    aggiornato. Da finire: sospendere il vecchio `professionisti-api`
    (Oregon) ed eliminare il vecchio endpoint Didit; il webhook di Meta
    (WhatsApp) andrà messo sul nuovo indirizzo quando si accende. Al
-   lancio i webhook Stripe live vanno creati sul nuovo indirizzo.
+   lancio, sul nuovo indirizzo: i webhook Stripe live (pagamenti e
+   Connect, con `STRIPE_WEBHOOK_SECRET` e `STRIPE_CONNECT_WEBHOOK_SECRET`
+   nuovi su Render) e l'endpoint Didit live (oggi non ce n'è nessuno, con
+   `DIDIT_WEBHOOK_SECRET` nuovo e `DIDIT_SANDBOX` tolto). Controllare in
+   Render che il database sia davvero sul piano a pagamento: un Postgres
+   Free scade dopo 30 giorni e viene cancellato. `NEXT_PUBLIC_API_URL` si
+   scrive senza barra finale (il sito la toglie comunque, `lib/apiUrl.ts`).
 5bis. **Prima di mettere le chiavi Stripe vere: dati fiscali solo dopo la carta**
    (richiesta di Luca del 30/10/2026, docs/changelog/2026-10-30-iscrizione-carta-solida.md).
    Oggi il lucchetto "Dopo il piano" sui dati fiscali c'è solo nel percorso

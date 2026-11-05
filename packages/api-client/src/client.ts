@@ -1162,7 +1162,9 @@ function extractErrorMessage(body: unknown, fallback: string): string {
  * Client tipizzato unico per chiamare apps/api da apps/web e apps/mobile —
  * niente logica di business duplicata nei due frontend (CLAUDE.md §3).
  */
-export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }: ApiClientConfig) {
+export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, onFailure }: ApiClientConfig) {
+  // Senza barra finale: "https://api/" + "/path" darebbe "//path" e 404 (docs/changelog/2026-11-05-render-francoforte.md).
+  const baseUrl = rawBaseUrl.replace(/\/+$/, "");
   function deviceHeaders(): Record<string, string> {
     const id = deviceId?.();
     return id ? { "X-Device-Id": id } : {};
