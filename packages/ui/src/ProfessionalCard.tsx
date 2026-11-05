@@ -360,6 +360,7 @@ export function ProfessionalCard({
         justifyContent="center"
         backgroundColor={brand.gesso}
         opacity={enabled ? 1 : 0.3}
+        className={enabled ? "hover-ring" : undefined}
         cursor={enabled ? "pointer" : undefined}
         role={enabled ? "button" : undefined}
         aria-label={direction === "back" ? "Giorni precedenti" : "Giorni successivi"}
@@ -692,6 +693,9 @@ export function ProfessionalCard({
                             alignItems="center"
                             justifyContent="center"
                             paddingVertical={3}
+                            // Bordo che si riempie al passaggio del mouse
+                            // (apps/web/src/app/globals.css, `.hover-ring-host`).
+                            className={onSlotPress ? "hover-ring-host" : undefined}
                             cursor={onSlotPress ? "pointer" : undefined}
                             role={onSlotPress ? "button" : undefined}
                             aria-label={onSlotPress ? `Richiedi un preventivo per ${range} il ${day.label}` : undefined}
@@ -704,7 +708,7 @@ export function ProfessionalCard({
                                 : undefined
                             }
                           >
-                            <XStack paddingHorizontal="6px xs:2px xxs:3px" paddingVertical={4} borderRadius="10" backgroundColor={brand.cianografiaVelo} maxWidth="100%">
+                            <XStack className="hover-ring-target" paddingHorizontal="6px xs:2px xxs:3px" paddingVertical={4} borderRadius="10" backgroundColor={brand.cianografiaVelo} maxWidth="100%">
                               <Text
                                 fontVariant={["tabular-nums"]}
                                 fontSize="12px xs:10.5px xxs:11px"

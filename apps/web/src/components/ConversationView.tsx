@@ -976,6 +976,8 @@ export function ConversationView({
 
             {isAttachMenuOpen ? (
               <YStack
+                // Si apre morbida verso l'alto (globals.css, `.pop-in-up`).
+                className="pop-in pop-in-up"
                 position="absolute"
                 bottom="100%"
                 left={0}

@@ -702,6 +702,8 @@ export function ProfessionalDetailContent({
                       alignItems="center"
                       justifyContent="center"
                       opacity={agendaCanGoBack ? 1 : 0.3}
+                      // Bordo che si riempie al passaggio del mouse (globals.css, `.hover-ring`).
+                      className={agendaCanGoBack ? "hover-ring" : undefined}
                       cursor={agendaCanGoBack ? "pointer" : undefined}
                       // Sempre un pulsante, spento all'inizio: un riquadro con un nome e senza ruolo non si legge (collaudo L-11).
                       role="button"
@@ -720,6 +722,7 @@ export function ProfessionalDetailContent({
                       alignItems="center"
                       justifyContent="center"
                       opacity={agendaCanGoForward ? 1 : 0.3}
+                      className={agendaCanGoForward ? "hover-ring" : undefined}
                       cursor={agendaCanGoForward ? "pointer" : undefined}
                       role={agendaCanGoForward ? "button" : undefined}
                       aria-label="Giorni successivi"
@@ -819,8 +822,8 @@ export function ProfessionalDetailContent({
                           justifyContent="center"
                           paddingVertical={3}
                         >
-                          <Link href={href} style={{ textDecoration: "none", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>
-                            <XStack paddingHorizontal="6px xs:4px" paddingVertical={4} borderRadius="10" backgroundColor={brand.cianografiaVelo}>
+                          <Link href={href} className="hover-ring-host" style={{ textDecoration: "none", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>
+                            <XStack className="hover-ring-target" paddingHorizontal="6px xs:4px" paddingVertical={4} borderRadius="10" backgroundColor={brand.cianografiaVelo}>
                               <Text fontVariant={["tabular-nums"]} fontSize="10.5px xs:9.5px" letterSpacing={-0.3} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
                                 {range}
                               </Text>
