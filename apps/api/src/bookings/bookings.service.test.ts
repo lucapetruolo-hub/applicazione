@@ -36,6 +36,7 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
     createQuoteDepositCheckout: vi.fn().mockResolvedValue({ url: "https://checkout.stripe.com/c/pay" }),
     recordQuoteDeposit: vi.fn(),
     refundQuoteDeposit: vi.fn().mockResolvedValue({ pending: false }),
+    notifyFinanceAdmins: vi.fn(),
     refundOnCancel: vi.fn(),
     keepDepositOnLateCancel: vi.fn().mockResolvedValue(2400),
   };
@@ -415,6 +416,18 @@ describe("BookingsService.confirmQuoteDeposit — lavoro confermato solo dopo l'
       ...overrides,
     } as never;
   }
+
+  it("non rimborsa un acconto per un preventivo che questo database non conosce: lo dice alla Finanza (prova in CI sullo stesso Stripe)", async () => {
+    const { service, prisma, jobPaymentsService } = buildService();
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+    await service.confirmQuoteDeposit(session({ metadata: { quoteId: "quote-altrove", clientUserId: "client-1", paymentMethod: "ONLINE", stripeAccount: "acct_pro" } }));
+
+    expect(jobPaymentsService.refundQuoteDeposit).not.toHaveBeenCalled();
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+    expect(jobPaymentsService.notifyFinanceAdmins).toHaveBeenCalledWith("ADMIN_STRIPE_UNKNOWN_PAYMENT", { paymentIntentId: "pi_1", amountEurCents: 6000, stripeAccount: "acct_pro" });
+  });
 
   it("crea la prenotazione, sblocca i contatti al professionista e registra l'acconto", async () => {
     const { service, prisma, jobPaymentsService, notificationsService } = buildService();

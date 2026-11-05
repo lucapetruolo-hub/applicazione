@@ -134,6 +134,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Richiesta di rimborso non accolta, col motivo (collaudo, docs/changelog/2026-10-30-collaudo-soldi-online.md).
       "JOB_REFUND_REJECTED",
       "ADMIN_JOB_REFUND_FAILED",
+      // Rimborso fatto fuori dal sito (dalla Dashboard di Stripe) e pagamento per un preventivo sconosciuto (docs/changelog/2026-11-05-pagamenti-di-prova.md).
+      "ADMIN_JOB_REFUND_OUTSIDE",
+      "ADMIN_STRIPE_UNKNOWN_PAYMENT",
       // Stato del conto Stripe di un professionista non riletto (docs/changelog/2026-10-28-stripe-prova.md).
       "ADMIN_STRIPE_ACCOUNT_UNREADABLE",
       // Tetto ai pagamenti online tolto (docs/changelog/2026-10-28-tetto-pagamenti-online.md).
@@ -451,6 +454,8 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "ADMIN_JOB_ISSUE_TO_REVIEW",
       "ADMIN_JOB_ISSUE_APPEAL",
       "ADMIN_JOB_REFUND_FAILED",
+      "ADMIN_JOB_REFUND_OUTSIDE",
+      "ADMIN_STRIPE_UNKNOWN_PAYMENT",
       "ADMIN_STRIPE_ACCOUNT_UNREADABLE",
       "ADMIN_DAC7_NEEDS_CORRECTION",
       "ADMIN_DAC7_DUE",

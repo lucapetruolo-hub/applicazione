@@ -284,6 +284,19 @@ export class BookingsService implements OnModuleInit {
       return;
     }
 
+    // Preventivo che questo database non ha mai avuto: il pagamento è di un
+    // altro ambiente collegato allo stesso Stripe (la prova automatica in CI,
+    // docs/changelog/2026-11-05-pagamenti-di-prova.md). Rimborsarlo da qui
+    // toglierebbe i soldi a un lavoro vero di quell'ambiente: lo vede la Finanza.
+    if (!(await this.prisma.quote.findUnique({ where: { id: quoteId }, select: { id: true } }))) {
+      await this.jobPaymentsService.notifyFinanceAdmins("ADMIN_STRIPE_UNKNOWN_PAYMENT", {
+        paymentIntentId,
+        amountEurCents: session.amount_total ?? 0,
+        stripeAccount: session.metadata?.stripeAccount ?? null,
+      });
+      return;
+    }
+
     let quote: AcceptableQuote | null = null;
     let refundReason: string | null = null;
     try {

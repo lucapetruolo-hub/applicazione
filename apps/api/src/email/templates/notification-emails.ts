@@ -1255,6 +1255,34 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
   }),
+  ADMIN_JOB_REFUND_OUTSIDE: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Lavoro rimborsato fuori dal sito",
+    title: "Rimborso fatto da Stripe",
+    paragraphs: [
+      `Su Stripe è partito un rimborso di ${formatEur(payload.amountEurCents) || "un importo"} che il sito non aveva chiesto, per esempio dalla Dashboard Stripe.`,
+      payload.afterRelease
+        ? "I soldi erano già stati sbloccati al professionista: controlla il suo saldo e se serve una cifra da recuperare."
+        : "L'abbiamo registrato sul lavoro: quella cifra non arriverà al professionista.",
+    ],
+    cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
+  }),
+  ADMIN_STRIPE_UNKNOWN_PAYMENT: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Pagamento per un preventivo sconosciuto",
+    title: "Pagamento da controllare",
+    paragraphs: [
+      `Su Stripe è arrivato un acconto di ${formatEur(payload.amountEurCents) || "un importo"} per un preventivo che il sito non conosce. Non l'abbiamo rimborsato: potrebbe essere di un altro ambiente collegato allo stesso Stripe.`,
+      "Controllalo dalla Dashboard Stripe e, se è di un cliente vero, rimborsalo da lì.",
+    ],
+    details: [
+      ...(typeof payload.paymentIntentId === "string" ? [{ label: "Pagamento", value: payload.paymentIntentId }] : []),
+      ...(typeof payload.stripeAccount === "string" ? [{ label: "Conto", value: payload.stripeAccount }] : []),
+    ],
+    cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
+  }),
   ADMIN_STRIPE_ACCOUNT_UNREADABLE: (payload) => ({
     kind: "notification",
     tone: "urgent",

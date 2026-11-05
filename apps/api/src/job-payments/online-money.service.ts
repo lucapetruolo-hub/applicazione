@@ -537,6 +537,67 @@ export class OnlineMoneyService {
     await this.notifyFinanceAdmins("ADMIN_JOB_REFUND_FAILED", payload);
   }
 
+  /**
+   * Webhook `charge.refunded`: un rimborso partito fuori dal sito (dalla
+   * Dashboard di Stripe, o da un altro ambiente con lo stesso Stripe) non
+   * passava dai nostri conti, e il lavoro restava "pagato"
+   * (docs/changelog/2026-11-05-pagamenti-di-prova.md). I nostri rimborsi
+   * portano `metadata.jobPaymentId` e si saltano; gli altri si registrano una
+   * volta sola (`Refund.stripeRefundId`) e la Finanza viene avvisata.
+   */
+  async handleChargeRefunded(charge: Stripe.Charge, stripeAccount: string | null | undefined): Promise<void> {
+    const paymentIntentId = idOf(charge.payment_intent);
+    if (!paymentIntentId) return;
+    const jp = await this.prisma.jobPayment.findFirst({
+      where: { OR: [{ stripePaymentIntentId: paymentIntentId }, { balancePaymentIntentId: paymentIntentId }] },
+      include: { booking: { select: { id: true, clientId: true, quote: { select: { guidedRequestId: true } } } } },
+    });
+    if (!jp || jp.paymentMethod !== "MANOVIA") return;
+    const refunds = await this.requireStripe().refunds.list({ charge: charge.id, limit: 100 }, onAccount(stripeAccount ?? chargeAccount(jp)));
+    for (const refund of refunds.data) {
+      if (refund.metadata?.jobPaymentId === jp.id) continue;
+      if (refund.status !== "succeeded" && refund.status !== "pending") continue;
+      if (await this.prisma.refund.findFirst({ where: { stripeRefundId: refund.id }, select: { id: true } })) continue;
+      const current = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jp.id } });
+      const amount = Math.min(refund.amount, Math.max(0, current.paidEurCents - current.refundedEurCents));
+      const refundedEurCents = current.refundedEurCents + amount;
+      const fullyRefunded = refundedEurCents >= current.paidEurCents;
+      await this.prisma.$transaction([
+        this.prisma.refund.create({
+          data: {
+            jobPaymentId: jp.id,
+            amountEurCents: refund.amount,
+            reason: "Rimborso fatto fuori dal sito, su Stripe.",
+            status: "PROCESSED",
+            requestedById: jp.booking.clientId,
+            stripeRefundId: refund.id,
+            processedAt: new Date(),
+          },
+        }),
+        this.prisma.jobPayment.update({
+          where: { id: jp.id },
+          data: {
+            refundedEurCents,
+            // Tutto rimborsato: niente più sblocco al professionista, come per i nostri rimborsi.
+            ...(fullyRefunded ? { onlineStage: "REFUNDED", status: "REFUNDED", releasedAt: current.releasedAt ?? new Date() } : {}),
+          },
+        }),
+      ]);
+      await this.auditLogService.record({
+        entityType: "JobPayment",
+        entityId: jp.id,
+        fieldName: "refundedEurCents",
+        oldValue: current.refundedEurCents,
+        newValue: refundedEurCents,
+        changedByUserId: null,
+        reason: `Rimborso ${refund.id} fatto fuori dal sito, su Stripe.`,
+      });
+      const payload = { bookingId: jp.booking.id, guidedRequestId: jp.booking.quote?.guidedRequestId ?? null, amountEurCents: refund.amount };
+      await this.notifyFinanceAdmins("ADMIN_JOB_REFUND_OUTSIDE", { ...payload, afterRelease: !!current.releasedAt });
+      if (refund.status === "succeeded") await this.notificationsService.notify(jp.booking.clientId, "JOB_REFUND_COMPLETED", { ...payload, audience: "CLIENT" });
+    }
+  }
+
   /** Webhook `checkout.session.completed` di un acconto o saldo. Idempotente sul payment intent. */
   async handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
     const jobPaymentId = session.metadata?.jobPaymentId;

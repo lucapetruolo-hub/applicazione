@@ -111,7 +111,9 @@ produzione):
    `checkout.session.async_payment_failed`, `payment_intent.succeeded` e tutti
    i `charge.dispute.*` elencati sopra, più `refund.updated` e
    `refund.failed` (rimborso rimasto in attesa di fondi sul conto del
-   professionista, poi arrivato o non riuscito, §269),
+   professionista, poi arrivato o non riuscito, §269) e `charge.refunded`
+   su **entrambi** gli endpoint (rimborso fatto dalla Dashboard di Stripe,
+   registrato sul lavoro, docs/changelog/2026-11-05-pagamenti-di-prova.md),
    la cui chiave va in `STRIPE_CONNECT_WEBHOOK_SECRET` (docs/CHANGELOG.md §236).
    Se la chiave è limitata (`rk_`) deve avere anche i permessi su
    application fee, bonifici (payouts), saldo e impostazioni del saldo

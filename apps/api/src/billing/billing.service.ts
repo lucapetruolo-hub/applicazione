@@ -889,6 +889,10 @@ export class BillingService implements OnModuleInit {
     if (event.type === "refund.updated" || event.type === "refund.failed") {
       await this.jobPaymentsService.handleRefundUpdated(event.data.object as Stripe.Refund, event.account);
     }
+    // Rimborso fatto fuori dal sito (Dashboard di Stripe): si registra sul lavoro.
+    if (event.type === "charge.refunded") {
+      await this.jobPaymentsService.handleChargeRefunded(event.data.object as Stripe.Charge, event.account);
+    }
     // Saldo addebitato sulla carta salvata con l'acconto (§267).
     if (event.type === "payment_intent.succeeded") {
       await this.jobPaymentsService.handleAutoBalanceSucceeded(event.data.object as Stripe.PaymentIntent);

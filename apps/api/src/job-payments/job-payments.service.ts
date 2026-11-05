@@ -228,6 +228,11 @@ export class JobPaymentsService {
     return this.onlineMoneyService.handleRefundUpdated(refund, stripeAccount);
   }
 
+  /** Rimborso partito fuori dal sito, su Stripe (docs/changelog/2026-11-05-pagamenti-di-prova.md). */
+  handleChargeRefunded(charge: Stripe.Charge, stripeAccount: string | null | undefined): Promise<void> {
+    return this.onlineMoneyService.handleChargeRefunded(charge, stripeAccount);
+  }
+
   handleStripeDisputeFunds(dispute: Stripe.Dispute, kind: "withdrawn" | "reinstated"): Promise<boolean> {
     return this.onlineMoneyService.handleStripeDisputeFunds(dispute, kind);
   }
