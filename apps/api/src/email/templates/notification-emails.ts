@@ -1675,7 +1675,7 @@ const BUILDERS: Record<string, Builder> = {
     greeting: ctx.name,
     title: "Pagamenti online attivi",
     paragraphs: [
-      "Stripe ha completato la verifica della tua identità: ora puoi offrire nei preventivi l'acconto online, e il tuo profilo mostra il badge **Pagamenti online attivi**.",
+      "Stripe ha completato la verifica della tua identità: ora puoi offrire nei preventivi l'acconto online, e il tuo profilo mostra il bollino **Paga online**.",
       "I soldi dei pagamenti online ti arrivano sul conto che hai indicato a Stripe.",
     ],
     cta: { label: "Vai ai pagamenti online", url: `${frontendUrl()}/dashboard/fiscale/pagamenti` },
@@ -1724,7 +1724,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Pagamenti online sospesi",
     paragraphs: [
       "Stripe ci ha comunicato che il tuo account non può più ricevere pagamenti, di solito perché mancano dei dati o un documento da aggiornare.",
-      "Finché non lo sistemi non puoi offrire l'acconto online nei nuovi preventivi e il badge **Pagamenti online attivi** non compare. Il tuo profilo resta visibile e puoi continuare a farti pagare direttamente. I soldi già pagati online restano al sicuro e ti arrivano appena l'account torna attivo.",
+      "Finché non lo sistemi non puoi offrire l'acconto online nei nuovi preventivi e il bollino **Paga online** non compare. Il tuo profilo resta visibile e puoi continuare a farti pagare direttamente. I soldi già pagati online restano al sicuro e ti arrivano appena l'account torna attivo.",
     ],
     cta: { label: "Completa i dati su Stripe", url: `${frontendUrl()}/dashboard/fiscale/pagamenti` },
   }),
