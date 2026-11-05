@@ -8486,3 +8486,46 @@ a.admin-kpi:hover {
     font-size: 22px;
   }
 }
+/* Barra dei passi: il tratto dopo un passo fatto è verde, come nel percorso
+   verticale. In Oggi un passo appena fatto (dall'ultima visita) si accende
+   una volta: il cerchio "salta" e il tratto si riempie da sinistra. Con
+   "riduci movimento" la regola globale in cima lo rende istantaneo. */
+.journey-bar-step.is-done:not(:last-child)::after {
+  background: #b9e6cf;
+  transform-origin: left center;
+}
+.journey-hero .journey-bar-step.is-just-done > :first-child {
+  animation:
+    journey-step-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    journey-step-ring 900ms ease-out 200ms both;
+}
+.journey-hero .journey-bar-step.is-just-done:not(:last-child)::after {
+  animation: journey-line-fill 520ms cubic-bezier(0.2, 0.8, 0.2, 1) 180ms both;
+}
+@keyframes journey-step-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+/* Un cerchio verde che si allarga e sparisce: si nota anche da telefono, dove il tratto è corto. */
+@keyframes journey-step-ring {
+  from {
+    box-shadow: 0 0 0 0 rgba(18, 133, 82, 0.45);
+  }
+  to {
+    box-shadow: 0 0 0 12px rgba(18, 133, 82, 0);
+  }
+}
+@keyframes journey-line-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}

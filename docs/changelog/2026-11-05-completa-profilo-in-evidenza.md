@@ -43,3 +43,14 @@ colonna di destra come prima, perché il prossimo lavoro deve vedersi da
 telefono senza scorrere (T2, docs/CHANGELOG.md §311; lo controlla
 `e2e/tests/agenda-primo-uso.spec.ts`, che la prima versione di questa PR
 faceva fallire).
+
+## Animazione della barra (05/11, scelta di Luca)
+
+Quando dall'ultima visita a Oggi un passo è stato fatto, nella barra del
+riquadro il suo cerchio fa un piccolo salto e lancia un alone verde, e il
+tratto che segue si riempie da sinistra. Succede una volta sola: i passi
+fatti si ricordano nel browser (`percorso-fatti:<id>`, solo comodità, senza
+memoria nessuna animazione). Nella barra, anche nelle pagine del percorso,
+il tratto dopo un passo fatto ora è verde come nel percorso verticale. Con
+"riduci movimento" la regola globale lo rende istantaneo.
+Verifica: fotogrammi in `analisi/completa-profilo-oggi/animazione-barra-telefono.png`.

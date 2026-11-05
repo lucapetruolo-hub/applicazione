@@ -300,6 +300,36 @@ export const journeyNeedsHero = (steps: JourneyStep[] | null): steps is JourneyS
  * appena iscritto non lo notava. Stessa barra dei passi delle pagine del
  * percorso, poi il passo da fare con il suo unico pulsante.
  */
+/**
+ * Passi fatti dall'ultima visita a Oggi, per animarli una volta sola
+ * (docs/changelog/2026-11-05-completa-profilo-in-evidenza.md). Solo una
+ * comodità di questo browser: senza memoria del browser nessuna animazione.
+ */
+function useJustDone(steps: JourneyStep[]): Set<JourneyStepKey> {
+  const { user } = useAuth();
+  const [justDone, setJustDone] = useState<Set<JourneyStepKey>>(() => new Set());
+  const doneKeys = steps
+    .filter((step) => step.state === "done")
+    .map((step) => step.key)
+    .join(",");
+  useEffect(() => {
+    if (!user?.id) return;
+    const storageKey = `percorso-fatti:${user.id}`;
+    let previous: string | null;
+    try {
+      previous = window.localStorage.getItem(storageKey);
+      window.localStorage.setItem(storageKey, doneKeys);
+    } catch {
+      return;
+    }
+    if (previous === null) return;
+    const before = new Set(previous.split(",").filter(Boolean));
+    const fresh = doneKeys.split(",").filter((key): key is JourneyStepKey => Boolean(key) && !before.has(key));
+    if (fresh.length > 0) startTransition(() => setJustDone(new Set(fresh)));
+  }, [user?.id, doneKeys]);
+  return justDone;
+}
+
 export function SetupJourneyHero({ steps }: { steps: JourneyStep[] }) {
   usePublishJourney(steps);
   const done = steps.filter((step) => step.state === "done").length;
@@ -307,6 +337,7 @@ export function SetupJourneyHero({ steps }: { steps: JourneyStep[] }) {
   const current = steps.find((step) => step.state === "current") ?? null;
   const waiting = steps.find((step) => step.state === "waiting") ?? null;
   const focus = current ?? waiting;
+  const justDone = useJustDone(steps);
   return (
     <section className="journey-hero" aria-labelledby="journey-hero-title">
       <div className="journey-hero-head">
@@ -324,7 +355,7 @@ export function SetupJourneyHero({ steps }: { steps: JourneyStep[] }) {
       </div>
       <ol className="journey-bar" aria-label="Passi per completare il profilo">
         {steps.map((step, i) => (
-          <li key={step.key} className={`journey-bar-step is-${step.state}${step === focus ? " is-here" : ""}`} aria-current={step === focus ? "step" : undefined}>
+          <li key={step.key} className={`journey-bar-step is-${step.state}${step === focus ? " is-here" : ""}${justDone.has(step.key) ? " is-just-done" : ""}`} aria-current={step === focus ? "step" : undefined}>
             <StepMarker step={step} index={i} size={28} />
             <span>{step.short}</span>
             <span className="journey-sr">{STATE_LABEL[step.state]}</span>
