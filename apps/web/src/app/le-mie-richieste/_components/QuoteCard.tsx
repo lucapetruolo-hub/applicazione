@@ -25,7 +25,10 @@ import {
 import { PaymentChoice, PaymentOffer, selectablePaymentChoices } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 import { Avatar, Badge, ProfessionalKindBadge, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { ApiError } from "@professionisti/api-client";
 import { apiClient } from "@/lib/apiClient";
+import { useAuth } from "@/lib/AuthContext";
+import { ClientEmailVerificationCard } from "@/components/ClientEmailVerificationCard";
 import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
@@ -117,6 +120,10 @@ export function QuoteCard({
   const [isChoosingDate, setIsChoosingDate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
+  // Email da confermare prima di accettare, quando è obbligatoria
+  // (docs/changelog/2026-11-05-verifica-email-cliente.md).
+  const { user } = useAuth();
+  const [needsEmail, setNeedsEmail] = useState(false);
   // Scelta del metodo di pagamento prima di accettare (§168).
   const [choosingPayment, setChoosingPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<JobPaymentChoice>("DIRECT");
@@ -166,8 +173,13 @@ export function QuoteCard({
     }
   }
 
-  async function handleAccept(method: JobPaymentChoice = paymentMethod) {
+  /** `emailJustVerified`: appena confermata, l'utente in memoria può essere ancora quello di prima (il server controlla comunque). */
+  async function handleAccept(method: JobPaymentChoice = paymentMethod, emailJustVerified = false) {
     setError(null);
+    if (!emailJustVerified && user?.emailVerificationRequired && !user.emailVerified) {
+      setNeedsEmail(true);
+      return;
+    }
     let invoiceRequest: ClientInvoiceRequestInput | undefined;
     if (invoiceWanted) {
       const parsed = parseInvoiceDraft(invoiceDraft, quote.professionalKind === "PRIVATE");
@@ -183,6 +195,10 @@ export function QuoteCard({
     try {
       await onAcceptQuote(quote.id, method, invoiceRequest);
     } catch (err) {
+      if (err instanceof ApiError && err.code === "EMAIL_NOT_VERIFIED") {
+        setNeedsEmail(true);
+        return;
+      }
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
       setIsAccepting(false);
@@ -480,6 +496,19 @@ export function QuoteCard({
                     </Text>
                   )}
                 </Text>
+              ) : null}
+              {needsEmail ? (
+                <ClientEmailVerificationCard
+                  title="Conferma la tua email per fissare l'appuntamento"
+                  text="Ti abbiamo mandato un'email: premi il pulsante e l'accettazione va avanti da sola."
+                  autoSend
+                  allowChangeEmail
+                  onVerified={() => {
+                    setNeedsEmail(false);
+                    // Stessa scelta di pagamento e stessi dati della fattura di prima.
+                    void handleAccept(paymentMethod, true);
+                  }}
+                />
               ) : null}
               <XStack gap="2" flexWrap="wrap">
                 <CardButton

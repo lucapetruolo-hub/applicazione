@@ -359,8 +359,10 @@ prima del lancio"):
     28/10/2026): promemoria WhatsApp anche ai clienti dei lavori esterni
     dell'agenda (non iscritti al sito), mandato per conto del professionista.
     Oggi quei clienti non ricevono nulla.
-23. **Conferma email obbligatoria per i professionisti** (docs/CHANGELOG.md §178, mai per i clienti): già nel
-    codice, ma spenta. Dopo aver verificato il dominio su Resend (punto
+23. **Conferma email obbligatoria** per i professionisti (docs/CHANGELOG.md §178)
+    e, dal 05/11/2026, per il cliente prima di accettare un preventivo
+    (docs/changelog/2026-11-05-verifica-email-cliente.md; la richiesta e la
+    chat restano libere): già nel codice, ma spenta. Dopo aver verificato il dominio su Resend (punto
     5bis) e provato che il link arriva a un indirizzo qualunque, impostare
     `EMAIL_VERIFICATION_REQUIRED=true` su Render. Prima di allora nessuno
     tranne il titolare dell'account Resend riceverebbe il link.

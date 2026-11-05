@@ -366,7 +366,8 @@ export class ProfessionalsController {
     return this.professionalsService.getPublicAgenda(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  // Fissa un appuntamento come l'accettazione di un preventivo: stessa email confermata.
+  @UseGuards(JwtAuthGuard, VerifiedEmailGuard)
   @Post(":id/agenda/book")
   bookAgendaSlot(
     @Req() req: AuthenticatedRequest,
