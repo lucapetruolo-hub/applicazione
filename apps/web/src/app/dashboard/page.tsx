@@ -234,7 +234,10 @@ export default function DashboardTodayPage() {
   // momenti diversi si spingevano giù a vicenda (CLS, docs/CHANGELOG.md §334).
   // Un errore si mostra subito.
   const ready = (!loading || Boolean(error)) && journey.settled;
-  const heroJourney = journeyNeedsHero(journey.steps) ? journey.steps : null;
+  // Solo senza appuntamenti oggi e domani: il prossimo lavoro deve restare in
+  // vista senza scorrere (T2, docs/CHANGELOG.md §311); allora il percorso
+  // resta nella colonna di destra come prima.
+  const heroJourney = journeyNeedsHero(journey.steps) && !loading && upcoming.length === 0 ? journey.steps : null;
   // Appena iscritto, nulla in agenda né da rispondere: una sola riga vuota
   // invece di tre sezioni vuote, così resta in vista "Completa il profilo"
   // (docs/changelog/2026-11-05-completa-profilo-in-evidenza.md).

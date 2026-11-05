@@ -12,7 +12,8 @@ l'unica cosa che poteva fare.
 
 **Decisione** (proposta da esperto UX, scelta da Luca con "Effettua le prime
 sue migliorie"):
-- Finché manca un passo obbligatorio del percorso, "Completa il profilo" va in
+- Finché manca un passo obbligatorio del percorso e non ci sono appuntamenti
+  oggi e domani, "Completa il profilo" va in
   cima a Oggi, a tutta larghezza, con bordo verde (`SetupJourneyHero` in
   `apps/web/src/components/verification/SetupJourney.tsx`). Dentro: "Ancora N
   passi per ricevere i primi lavori", la stessa barra dei passi delle pagine
@@ -36,3 +37,9 @@ solo dove e come si vede in Oggi.
 fotografie prima e dopo da computer (1440 px) e telefono (390 px) in
 `analisi/completa-profilo-oggi/` dei file del progetto; typecheck, lint e
 test di `apps/web`.
+
+**Eccezione**: con un appuntamento oggi o domani il percorso resta nella
+colonna di destra come prima, perché il prossimo lavoro deve vedersi da
+telefono senza scorrere (T2, docs/CHANGELOG.md §311; lo controlla
+`e2e/tests/agenda-primo-uso.spec.ts`, che la prima versione di questa PR
+faceva fallire).
