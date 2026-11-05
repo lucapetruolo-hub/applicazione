@@ -72,6 +72,8 @@ export * from "./problemSafetyTexts";
 export * from "./whatsapp";
 export * from "./appointmentReply";
 export * from "./adminQueue";
+export * from "./adminProposals";
+export * from "./adminProposalsSchemas";
 export * from "./adminSignals";
 export * from "./adminNames";
 export * from "./reviewHold";

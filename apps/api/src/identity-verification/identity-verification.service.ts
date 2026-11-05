@@ -172,6 +172,23 @@ type LoadedProfile = Prisma.ProfessionalProfileGetPayload<{ select: typeof PROFI
  * all'admin, §255). Il confronto è con il codice fiscale e i dati fiscali (per le
  * aziende con il legale rappresentante). Foto e selfie restano al fornitore.
  */
+/** Quello che serve a "Completa il profilo" per dire cosa manca. */
+const SETUP_PROFILE_SELECT = {
+  id: true,
+  userId: true,
+  createdAt: true,
+  isDemo: true,
+  verified: true,
+  identityExpiredAt: true,
+  fiscalProfile: { include: FISCAL_INCLUDE },
+  subscription: { select: { status: true, stripeSubscriptionId: true } },
+} satisfies Prisma.ProfessionalProfileSelect;
+type SetupProfile = Prisma.ProfessionalProfileGetPayload<{ select: typeof SETUP_PROFILE_SELECT }>;
+
+/** Mesi gratis senza la carta, quando si può già dare. */
+const setupCardMissing = (profile: Pick<SetupProfile, "subscription">): boolean =>
+  cardCanBeGiven() && profile.subscription?.status === "TRIALING" && !profile.subscription.stripeSubscriptionId;
+
 @Injectable()
 export class IdentityVerificationService {
   private readonly logger = new Logger(IdentityVerificationService.name);
@@ -550,16 +567,7 @@ export class IdentityVerificationService {
         user: { suspendedAt: null },
         createdAt: { lte: new Date(now.getTime() - SETUP_REMINDER_WINDOWS[0]![0] * DAY_MS), gt: new Date(now.getTime() - SETUP_REMINDER_WINDOWS[SETUP_REMINDER_WINDOWS.length - 1]![1] * DAY_MS) },
       },
-      select: {
-        id: true,
-        userId: true,
-        createdAt: true,
-        isDemo: true,
-        verified: true,
-        identityExpiredAt: true,
-        fiscalProfile: { include: FISCAL_INCLUDE },
-        subscription: { select: { status: true, stripeSubscriptionId: true } },
-      },
+      select: SETUP_PROFILE_SELECT,
       take: 200,
     });
     for (const profile of profiles) {
@@ -568,14 +576,47 @@ export class IdentityVerificationService {
         orderBy: { createdAt: "desc" },
         select: { createdAt: true },
       });
-      // Mesi gratis senza la carta, quando si può già dare: prima di tutto il resto.
-      const cardMissing = cardCanBeGiven() && profile.subscription?.status === "TRIALING" && !profile.subscription.stripeSubscriptionId;
+      const cardMissing = setupCardMissing(profile);
       if (!setupReminderDue({ profileCreatedAt: profile.createdAt, sent: sent.length, lastSentAt: sent[0]?.createdAt ?? null, now, cardMissing })) continue;
-      const status = this.buildStatus(profile, await this.latest(profile.id));
-      const missing: ProfileSetupItem[] = [...(cardMissing ? (["CARD"] as const) : []), ...profileSetupMissing(status, !!profile.fiscalProfile?.stripePayoutsEnabled, onlinePaymentsEnabled())];
+      const missing = await this.missingFor(profile);
       if (missing.length === 0) continue;
       await this.notificationsService.notify(profile.userId, "PROFILE_SETUP_REMINDER", { missing });
     }
+  }
+
+  /** Cosa manca, come nell'email "Completa il profilo": la carta dei mesi gratis prima di tutto il resto. */
+  private async missingFor(profile: SetupProfile): Promise<ProfileSetupItem[]> {
+    const status = this.buildStatus(profile, await this.latest(profile.id));
+    return [...(setupCardMissing(profile) ? (["CARD"] as const) : []), ...profileSetupMissing(status, !!profile.fiscalProfile?.stripePayoutsEnabled, onlinePaymentsEnabled())];
+  }
+
+  /**
+   * Cosa manca ai profili indicati (vuoto: niente). Per la proposta "Profilo
+   * da completare" in Admin (docs/changelog/2026-11-03-automazioni-admin.md).
+   */
+  async setupMissing(profileIds: string[]): Promise<Map<string, ProfileSetupItem[]>> {
+    const result = new Map<string, ProfileSetupItem[]>();
+    if (profileIds.length === 0) return result;
+    const profiles = await this.prisma.professionalProfile.findMany({ where: { id: { in: profileIds } }, select: SETUP_PROFILE_SELECT });
+    for (const profile of profiles) result.set(profile.id, await this.missingFor(profile));
+    return result;
+  }
+
+  /**
+   * La stessa email "Completa il profilo" dell'invio automatico, mandata dopo
+   * l'ok di un admin. Non parte se nel frattempo il profilo è completo o non
+   * c'è più. Restituisce se è partita.
+   */
+  async sendSetupReminder(profileId: string): Promise<boolean> {
+    const profile = await this.prisma.professionalProfile.findFirst({
+      where: { id: profileId, deletedAt: null, suspendedAt: null, invitePendingAt: null, user: { suspendedAt: null, deletedAt: null } },
+      select: SETUP_PROFILE_SELECT,
+    });
+    if (!profile) return false;
+    const missing = await this.missingFor(profile);
+    if (missing.length === 0) return false;
+    await this.notificationsService.notify(profile.userId, "PROFILE_SETUP_REMINDER", { missing });
+    return true;
   }
 
   /** Webhook del fornitore: firma verificata, poi l'esito si rilegge dalla sua API (mai fidarsi del solo contenuto). */
