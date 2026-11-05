@@ -38,11 +38,13 @@ fotografie prima e dopo da computer (1440 px) e telefono (390 px) in
 `analisi/completa-profilo-oggi/` dei file del progetto; typecheck, lint e
 test di `apps/web`.
 
-**Eccezione**: con un appuntamento oggi o domani il percorso resta nella
-colonna di destra come prima, perché il prossimo lavoro deve vedersi da
-telefono senza scorrere (T2, docs/CHANGELOG.md §311; lo controlla
-`e2e/tests/agenda-primo-uso.spec.ts`, che la prima versione di questa PR
-faceva fallire).
+**Con un appuntamento oggi o domani** il riquadro non va in cima, perché il
+prossimo lavoro deve vedersi da telefono senza scorrere (T2,
+docs/CHANGELOG.md §311, controllato da `e2e/tests/agenda-primo-uso.spec.ts`):
+va subito sotto "Oggi e domani", con lo stesso aspetto (scelta di Luca del
+05/11 dopo le foto in `analisi/completa-profilo-oggi/con-appuntamento-*`).
+Sul computer sta nella colonna di sinistra, così "Aumenta la tua visibilità"
+resta in alto a destra.
 
 ## Animazione della barra (05/11, scelta di Luca)
 

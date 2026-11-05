@@ -234,10 +234,12 @@ export default function DashboardTodayPage() {
   // momenti diversi si spingevano giù a vicenda (CLS, docs/CHANGELOG.md §334).
   // Un errore si mostra subito.
   const ready = (!loading || Boolean(error)) && journey.settled;
-  // Solo senza appuntamenti oggi e domani: il prossimo lavoro deve restare in
-  // vista senza scorrere (T2, docs/CHANGELOG.md §311); allora il percorso
-  // resta nella colonna di destra come prima.
+  // In cima solo senza appuntamenti oggi e domani: il prossimo lavoro deve
+  // restare in vista senza scorrere (T2, docs/CHANGELOG.md §311).
   const heroJourney = journeyNeedsHero(journey.steps) && !loading && upcoming.length === 0 ? journey.steps : null;
+  // Con un appuntamento lo stesso riquadro va subito sotto "Oggi e domani"
+  // (scelta di Luca del 05/11), non più il riquadro piccolo a destra.
+  const journeyBelowJobs = journeyNeedsHero(journey.steps) && !loading && upcoming.length > 0 ? journey.steps : null;
   // Appena iscritto, nulla in agenda né da rispondere: una sola riga vuota
   // invece di tre sezioni vuote, così resta in vista "Completa il profilo"
   // (docs/changelog/2026-11-05-completa-profilo-in-evidenza.md).
@@ -386,6 +388,7 @@ export default function DashboardTodayPage() {
                   )}
                 </TodaySection>
                 )}
+                {ready && journeyBelowJobs ? <SetupJourneyHero steps={journeyBelowJobs} /> : null}
               </div>
               {!ready ? null : (
                 <>
@@ -445,7 +448,7 @@ export default function DashboardTodayPage() {
               {ready ? (
                 <>
                   <div className="today-slot" style={{ order: 3 }}>
-                    {heroJourney ? null : <SetupJourneyCard steps={journey.steps} />}
+                    {heroJourney || journeyBelowJobs ? null : <SetupJourneyCard steps={journey.steps} />}
                   </div>
                   {user.agendaAttention ? (
                     <div className="today-slot" style={{ order: 5 }}>
