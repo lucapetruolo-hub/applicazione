@@ -93,6 +93,12 @@ async function pageWithScreen(page: Page): Promise<Page> {
   return fresh;
 }
 
+/** Ritorno da Stripe sul sito (`url`), con la scheda controllata come sopra. */
+async function backOnSite(page: Page, url: RegExp): Promise<Page> {
+  await page.waitForURL(url, { timeout: 90_000 });
+  return pageWithScreen(page);
+}
+
 /**
  * La pagina di Stripe è pronta quando mostra il modulo della carta (o la voce
  * "Carta" da aprire). Prima Stripe sta ancora caricando i suoi riquadri.
@@ -196,7 +202,8 @@ test("profilo, finestra del piano e carta che passa (4242): 0 € oggi, mesi gra
   await page.getByRole("button", { name: "Attiva i mesi gratis" }).click();
   await page.waitForURL(/checkout\.stripe\.com/, { timeout: 60_000 });
   await fillCard(page, "4242424242424242");
-  await expect(page.getByText(/Fatto: carta salvata e mesi gratis attivi/)).toBeVisible({ timeout: 90_000 });
+  const site = await backOnSite(page, /\/dashboard\/abbonamento\?attivato=carta/);
+  await expect(site.getByText(/Fatto: carta salvata e mesi gratis attivi/)).toBeVisible();
 
   const after = await waitForCard(profile.id);
   expect(after.stripeSubscriptionId).toMatch(/^sub_/);
@@ -211,7 +218,8 @@ test("carta con 3D Secure (3155): dopo la conferma della banca è come la 4242",
   await openCheckout(page);
   await fillCard(page, "4000002500003155");
   await complete3DSecure(page);
-  await expect(page.getByText(/Fatto: carta salvata e mesi gratis attivi/)).toBeVisible({ timeout: 90_000 });
+  const site = await backOnSite(page, /\/dashboard\/abbonamento\?attivato=carta/);
+  await expect(site.getByText(/Fatto: carta salvata e mesi gratis attivi/)).toBeVisible();
   const after = await waitForCard(profileId!);
   await expectTrialOnStripe(after.stripeSubscriptionId!, after.trialEndsAt!);
 });
@@ -240,8 +248,7 @@ test("pagina della carta chiusa a metà: si torna con il messaggio e si può rip
   const href = new URL((await back.getAttribute("href"))!);
   expect(`${href.origin}${href.pathname}${href.search}`).toBe(`${new URL(WEB_URL).origin}/dashboard/abbonamento?annullato=1`);
   await back.click();
-  await page.waitForURL(/\/dashboard\/abbonamento\?annullato=1/);
-  const site = await pageWithScreen(page);
+  const site = await backOnSite(page, /\/dashboard\/abbonamento\?annullato=1/);
   await expect(site.getByText(/Non hai finito di aggiungere la carta/)).toBeVisible();
   await expect(site.getByRole("button", { name: "Attiva i mesi gratis" })).toBeVisible();
   const row = await subscriptionOf(profileId!);
@@ -258,7 +265,8 @@ test("primo addebito fallito dopo i mesi gratis (0341, test clock): abbonamento 
   const page = await signedIn(browser, user.id);
   await openCheckout(page);
   await fillCard(page, "4000000000000341");
-  await expect(page.getByText(/Fatto: carta salvata e mesi gratis attivi/)).toBeVisible({ timeout: 90_000 });
+  const site = await backOnSite(page, /\/dashboard\/abbonamento\?attivato=carta/);
+  await expect(site.getByText(/Fatto: carta salvata e mesi gratis attivi/)).toBeVisible();
   const row = await waitForCard(profileId!);
 
   // Tre mesi dopo, più il tempo in cui Stripe tiene la fattura in bozza.
@@ -279,7 +287,7 @@ test("primo addebito fallito dopo i mesi gratis (0341, test clock): abbonamento 
   const subscription = await stripe<{ status: string }>("GET", `subscriptions/${row.stripeSubscriptionId}`);
   expect(subscription.status).toBe("past_due");
 
-  await page.goto("/dashboard/abbonamento");
-  await expect(page.getByText(/pagamento non riuscito/)).toBeVisible();
+  await site.goto("/dashboard/abbonamento");
+  await expect(site.getByText(/pagamento non riuscito/)).toBeVisible();
   await stripe("DELETE", `test_helpers/test_clocks/${clock.id}`).catch(() => undefined);
 });

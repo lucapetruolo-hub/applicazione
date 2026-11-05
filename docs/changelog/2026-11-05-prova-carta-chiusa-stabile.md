@@ -46,3 +46,17 @@ errori: il primo è del browser, il secondo dello scaricamento.
 scheda che dice di essere larga 0 (riaperta, messaggio visibile, annotazione
 scritta) e con una scheda normale (resta la stessa). La prova intera gira solo
 in CI con la chiave Stripe di prova.
+
+## Migliorie (Luca, 05/11: "effettua le migliorie che ritieni")
+
+- **Stessa protezione sulle altre prove che tornano da Stripe** (4242, 3155,
+  0341): `backOnSite` aspetta l'indirizzo di ritorno (`?attivato=carta`) e poi
+  passa da `pageWithScreen`; i controlli (messaggio, database, Stripe) sono
+  gli stessi di prima.
+- **Impronta dei programmi scaricati nei controlli**: Stripe CLI (CI),
+  osv-scanner e gitleaks (Sicurezza) si scaricano in un file e si controllano
+  con `sha256sum -c` contro l'impronta presa dai file ufficiali della versione
+  (`stripe-linux-checksums.txt`, `osv-scanner_SHA256SUMS`,
+  `gitleaks_8.21.2_checksums.txt`): se il file non è quello pubblicato il job
+  si ferma. Cambiando versione si aggiorna anche l'impronta. Anche osv-scanner
+  e gitleaks riprovano fino a 4 volte.
