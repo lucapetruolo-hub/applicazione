@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { PrismaClient } from "@professionisti/database";
 import { testToken } from "../fixtures/preventivi";
 import { WEB_URL } from "../fixtures/env";
@@ -19,6 +19,16 @@ test.skip(!stripeKey(), "Serve E2E_STRIPE_SECRET_KEY (chiave Stripe di prova).")
 
 test.afterAll(async () => {
   await prisma.$disconnect();
+});
+
+/**
+ * Browser aperti da ogni prova (con la pagina di Stripe, captcha compreso):
+ * si chiudono alla fine della prova invece di restare attivi fino alla fine
+ * del giro e rallentare le prove successive.
+ */
+const openContexts: BrowserContext[] = [];
+test.afterEach(async () => {
+  await Promise.all(openContexts.splice(0).map((context) => context.close().catch(() => undefined)));
 });
 
 let counter = 0;
@@ -63,6 +73,7 @@ async function signedIn(browser: Browser, userId: string): Promise<Page> {
       origins: [{ origin: WEB_URL, localStorage: [{ name: "cookie-consent-v1", value: "denied" }, { name: "professionisti_token", value: testToken(userId) }] }],
     },
   });
+  openContexts.push(context);
   return context.newPage();
 }
 

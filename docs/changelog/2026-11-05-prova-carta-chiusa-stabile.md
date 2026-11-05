@@ -60,3 +60,7 @@ in CI con la chiave Stripe di prova.
   `gitleaks_8.21.2_checksums.txt`): se il file non è quello pubblicato il job
   si ferma. Cambiando versione si aggiorna anche l'impronta. Anche osv-scanner
   e gitleaks riprovano fino a 4 volte.
+- **Browser chiusi alla fine di ogni prova** (Luca, 05/11, "effettua"): prima
+  restavano aperti fino alla fine del giro, con le pagine di Stripe e il loro
+  captcha ancora attivi. Ora `afterEach` li chiude (la registrazione della prova
+  fallita si salva comunque).
