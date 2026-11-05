@@ -8529,3 +8529,15 @@ a.admin-kpi:hover {
     transform: scaleX(1);
   }
 }
+/* Da telefono con 4 passi i nomi non ci stanno: resta solo quello del passo
+   da fare, gli altri restano per i lettori di schermo. */
+@container (max-width: 520px) {
+  .journey-hero .journey-bar.is-many .journey-bar-step:not(.is-here) > span:not(.journey-sr) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}

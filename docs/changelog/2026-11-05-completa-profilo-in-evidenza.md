@@ -56,3 +56,13 @@ memoria nessuna animazione). Nella barra, anche nelle pagine del percorso,
 il tratto dopo un passo fatto ora è verde come nel percorso verticale. Con
 "riduci movimento" la regola globale lo rende istantaneo.
 Verifica: fotogrammi in `analisi/completa-profilo-oggi/animazione-barra-telefono.png`.
+
+## Prova con 4 passi (05/11, chiesta da Luca)
+
+In locale Stripe e Didit non sono accesi, quindi le risposte dell'API su
+abbonamento e verifiche sono state simulate: piano da attivare, dati fiscali,
+identità, identità in verifica, da telefono (390 px) e computer (1440 px).
+Difetto trovato: da telefono, con 4 passi, i nomi si accavallavano ("Pian",
+"Dati fisc", "Identi"). Ora, con 4 passi in un riquadro stretto, si vede solo
+il nome del passo da fare; gli altri nomi restano per i lettori di schermo.
+Foto in `analisi/completa-profilo-oggi/quattro-passi-*.png`.

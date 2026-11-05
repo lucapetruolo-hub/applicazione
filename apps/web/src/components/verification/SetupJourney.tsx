@@ -353,7 +353,7 @@ export function SetupJourneyHero({ steps }: { steps: JourneyStep[] }) {
           {done} di {steps.length} fatti
         </span>
       </div>
-      <ol className="journey-bar" aria-label="Passi per completare il profilo">
+      <ol className={steps.length > 3 ? "journey-bar is-many" : "journey-bar"} aria-label="Passi per completare il profilo">
         {steps.map((step, i) => (
           <li key={step.key} className={`journey-bar-step is-${step.state}${step === focus ? " is-here" : ""}${justDone.has(step.key) ? " is-just-done" : ""}`} aria-current={step === focus ? "step" : undefined}>
             <StepMarker step={step} index={i} size={28} />
