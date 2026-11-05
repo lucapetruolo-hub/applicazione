@@ -289,6 +289,73 @@ export function useSetupJourney(
   return { steps: status && stripeVerified !== null && subscription !== undefined ? setupJourney(status, stripeVerified, subscription) : null, status, settled };
 }
 
+/** Restano passi obbligatori: in Oggi il percorso va in cima, a tutta larghezza (hero). */
+export const journeyNeedsHero = (steps: JourneyStep[] | null): steps is JourneyStep[] =>
+  Boolean(steps?.some((step) => step.state !== "done" && !step.optional));
+
+/**
+ * "Completa il profilo" in cima a Oggi finché manca un passo obbligatorio
+ * (docs/changelog/2026-11-05-completa-profilo-in-evidenza.md): prima era un
+ * riquadro nella colonna di destra, sotto sezioni vuote, e un professionista
+ * appena iscritto non lo notava. Stessa barra dei passi delle pagine del
+ * percorso, poi il passo da fare con il suo unico pulsante.
+ */
+export function SetupJourneyHero({ steps }: { steps: JourneyStep[] }) {
+  usePublishJourney(steps);
+  const done = steps.filter((step) => step.state === "done").length;
+  const required = steps.filter((step) => step.state !== "done" && !step.optional).length;
+  const current = steps.find((step) => step.state === "current") ?? null;
+  const waiting = steps.find((step) => step.state === "waiting") ?? null;
+  const focus = current ?? waiting;
+  return (
+    <section className="journey-hero" aria-labelledby="journey-hero-title">
+      <div className="journey-hero-head">
+        <div>
+          <h2 id="journey-hero-title" className="journey-hero-title">
+            Completa il profilo
+          </h2>
+          <p className="journey-hero-sub">
+            {required === 1 ? "Ancora 1 passo" : `Ancora ${required} passi`} per ricevere i primi lavori.
+          </p>
+        </div>
+        <span className="journey-hero-count">
+          {done} di {steps.length} fatti
+        </span>
+      </div>
+      <ol className="journey-bar" aria-label="Passi per completare il profilo">
+        {steps.map((step, i) => (
+          <li key={step.key} className={`journey-bar-step is-${step.state}${step === focus ? " is-here" : ""}`} aria-current={step === focus ? "step" : undefined}>
+            <StepMarker step={step} index={i} size={28} />
+            <span>{step.short}</span>
+            <span className="journey-sr">{STATE_LABEL[step.state]}</span>
+          </li>
+        ))}
+      </ol>
+      {focus ? (
+        <div className={`journey-hero-now is-${focus.state}`}>
+          <span className="journey-hero-icon" aria-hidden>
+            <Icon name={focus.icon} size={26} color={focus.state === "current" ? "#FFFFFF" : brand.ottoneScuro} />
+          </span>
+          <div className="journey-hero-now-text">
+            <span className="journey-hero-eyebrow">
+              {focus.state === "current" ? "Da fare adesso" : "In verifica"}
+            </span>
+            <strong>{focus.title}</strong>
+            <span className={focus.action?.label.startsWith("Rifai") ? "journey-hero-text is-error" : "journey-hero-text"}>{focus.text}</span>
+          </div>
+          {focus.state === "current" && focus.action ? (
+            <Link href={focus.action.href} className="journey-hero-cta">
+              <Button tabIndex={-1} variant="primary" size="4">
+                {focus.action.label}
+              </Button>
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 /** "Completa il profilo" in Oggi: sparisce quando è tutto fatto. */
 export function SetupJourneyCard({ steps }: { steps: JourneyStep[] | null }) {
   if (!steps || journeyDone(steps)) return null;
