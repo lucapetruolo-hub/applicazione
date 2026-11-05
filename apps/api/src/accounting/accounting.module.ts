@@ -10,6 +10,7 @@ import { AdminCourtesyDocumentsController } from "./admin-courtesy-documents.con
 import { CourtesyCopyService } from "./courtesy-copy.service";
 import { FeeReconciliationService } from "./fee-reconciliation.service";
 import { InvoicesService } from "./invoices.service";
+import { QuotePdfService } from "./quote-pdf.service";
 import { JobDocumentsService } from "./job-documents.service";
 import { StatementsService } from "./statements.service";
 
@@ -17,7 +18,7 @@ import { StatementsService } from "./statements.service";
 @Module({
   imports: [AuthModule, AdminModule, AuditLogModule, EmailModule, NotificationsModule],
   controllers: [AccountingController, AdminAccountingController, AdminCourtesyDocumentsController],
-  providers: [InvoicesService, StatementsService, CourtesyCopyService, FeeReconciliationService, JobDocumentsService],
+  providers: [InvoicesService, StatementsService, CourtesyCopyService, FeeReconciliationService, JobDocumentsService, QuotePdfService],
   exports: [InvoicesService],
 })
 export class AccountingModule {}

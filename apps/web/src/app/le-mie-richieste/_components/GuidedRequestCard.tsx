@@ -750,8 +750,9 @@ export function GuidedRequestCard({
   if (canEditDetails) menuActions.push({ icon: "pencil", text: "Modifica richiesta", onPress: startEditing });
   menuActions.push({ icon: "send", text: "Ripeti la richiesta", onPress: () => router.push(repeatHref) });
   menuActions.push({ icon: "share-2", text: "Condividi riepilogo", onPress: handleShare });
-  // Documenti contabili del lavoro: pagamenti e copia della ricevuta o fattura (docs/CHANGELOG.md §386).
-  if (booking) menuActions.push({ icon: "file-text", text: "Documenti", onPress: () => setShowDocuments(true) });
+  // Documenti: i preventivi in PDF appena ne arriva uno (05/11/2026), poi
+  // quelli del lavoro: pagamenti e copia della ricevuta (docs/CHANGELOG.md §386).
+  if (booking || hasQuote) menuActions.push({ icon: "file-text", text: "Documenti", onPress: () => setShowDocuments(true) });
   menuActions.push(
     ...buildPersonalStateActions({
       token,
@@ -1232,7 +1233,19 @@ export function GuidedRequestCard({
 
       {/* Fuori dal blocco espanso: "Segnala un problema" e "Annulla
           prenotazione" si aprono anche dal menu hamburger di una scheda chiusa. */}
-      {showDocuments && booking ? <JobDocumentsModal token={token} bookingId={booking.id} onClose={() => setShowDocuments(false)} /> : null}
+      {showDocuments ? (
+        <JobDocumentsModal
+          token={token}
+          bookingId={booking?.id ?? null}
+          // Con un lavoro accettato conta il suo preventivo; prima tutti quelli ricevuti.
+          quotes={(acceptedQuote ? [acceptedQuote] : request.quotes.filter((quote) => quote.status !== "WITHDRAWN")).map((quote) => ({
+            id: quote.id,
+            businessName: quote.businessName,
+            label: `Preventivo per ${formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate).split(" · ")[0]}`,
+          }))}
+          onClose={() => setShowDocuments(false)}
+        />
+      ) : null}
       {showReportModal && booking ? (
         <ReportIssueModal
           businessName={booking.businessName}

@@ -40,3 +40,36 @@ l'acconto (10 €) e il resto a lavoro finito. Deve essere semplice e utile.
 `preventivo-accettato`, `schede-lavoro` e `tastiera`; foto della scheda e del
 passo "Prima di accettare" da telefono e da computer in
 `analisi/scheda-preventivo/` dei file del progetto.
+
+## Documenti: il preventivo in PDF e tutto scaricabile
+
+**Richiesta** (Luca, 05/11/2026): un documento con il riassunto del
+preventivo che il cliente può scaricare, dalla voce "Documenti" del menu
+della richiesta; e "i documenti attualmente presenti in quel menu non sono
+scaricabili, risolvi".
+
+**Decisione**:
+- "Documenti" nel menu della richiesta compare appena arriva un preventivo
+  (prima solo con il lavoro accettato), per il cliente e per il
+  professionista che l'ha mandato. Nessun menu nuovo nella scheda: si
+  riusa la voce che c'era (regola delle procedure standard).
+- In cima alla finestra la parte **Preventivo**: il PDF di ogni preventivo
+  ricevuto (dopo l'accettazione solo quello accettato). Lo prepara il
+  server con pdfkit come le fatture (`apps/api/src/accounting/quote-pdf.service.ts`,
+  `GET /documents/quotes/:quoteId/pdf`): stato, data di invio, chi esegue il
+  lavoro, la richiesta, quando, le voci e il totale, il pagamento con le
+  cifre di ora e di dopo, il preavviso e il messaggio del professionista.
+  Nessun contatto del cliente (CLAUDE.md §5 punto 9).
+- Ogni documento della finestra si scarica con un tocco: fatture ed
+  estratti del professionista (prima erano link a pagine), e per il
+  cliente il **Riepilogo dei pagamenti** in PDF
+  (`GET /documents/jobs/:bookingId/payments/pdf`), con scritto che non è
+  una fattura né una ricevuta.
+- Le cifre di ora e di dopo sono in `packages/shared`
+  (`quotePaymentSplit`), usate dalla scheda e dal PDF.
+
+**Verifica**: prova in locale del PDF del preventivo per cliente e
+professionista (un altro utente riceve 404) e dello scaricamento dalla
+finestra; prove nel browser `preventivo-accettato`, `schede-lavoro`,
+`tastiera`, `elimina-richiesta`, `fisco-schede`, `stelle-preventivi`: 63
+passate; `packages/shared/src/quotePaymentSplit.test.ts`.

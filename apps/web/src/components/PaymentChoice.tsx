@@ -2,19 +2,14 @@
 
 import {
   jobPaymentChoiceCopy,
-  onlineDepositEurCents,
   paymentChoiceIsOnline,
+  quotePaymentSplit,
+  quotePaymentSplitLine,
   type JobPaymentChoice,
-  formatEurCents,
   UPFRONT_PAYMENT_NOTE,
 } from "@professionisti/shared";
 import Link from "next/link";
 import { Text, YStack, brand } from "@professionisti/ui";
-
-/** Importo esatto di un pagamento, stesso formato di tutto il sito (§349). */
-function eur(cents: number): string {
-  return formatEurCents(cents);
-}
 
 /**
  * Scelta del metodo di pagamento accettando un preventivo
@@ -34,35 +29,9 @@ function eur(cents: number): string {
  * con la sua percentuale di acconto (docs/CHANGELOG.md §237).
  */
 
-/**
- * Quanto si paga ora e quanto a lavoro finito con un modo online
- * (docs/changelog/2026-11-05-scheda-preventivo-semplice.md): il cliente non
- * capiva che online paga solo l'acconto. null per il pagamento diretto o
- * senza prezzo. Con una forbice il resto è "fino a".
- */
-export function paymentSplit(
-  choice: JobPaymentChoice,
-  totals: { totalMinEurCents: number; totalMaxEurCents: number },
-  depositPercent: number,
-): { nowEurCents: number; restMaxEurCents: number; restIsRange: boolean; restOnline: boolean } | null {
-  if (!paymentChoiceIsOnline(choice) || totals.totalMaxEurCents <= 0) return null;
-  const now = onlineDepositEurCents(totals.totalMaxEurCents, depositPercent);
-  return {
-    nowEurCents: now,
-    restMaxEurCents: Math.max(0, totals.totalMaxEurCents - now),
-    restIsRange: totals.totalMinEurCents > 0 && totals.totalMinEurCents < totals.totalMaxEurCents,
-    restOnline: choice === "ONLINE",
-  };
-}
-
-/** "10,00 € ora online, 40,00 € a lavoro finito": il modo in una riga, con le cifre. */
-export function paymentSplitLine(choice: JobPaymentChoice, totals: { totalMinEurCents: number; totalMaxEurCents: number }, depositPercent: number, only: boolean): string {
-  const split = paymentSplit(choice, totals, depositPercent);
-  if (!split) return jobPaymentChoiceCopy(choice, depositPercent, only).title;
-  if (split.restMaxEurCents === 0) return `${eur(split.nowEurCents)} ora online, con carta`;
-  const rest = `${split.restIsRange ? "il resto, fino a " : ""}${eur(split.restMaxEurCents)}`;
-  return `${eur(split.nowEurCents)} ora online, ${rest} a lavoro finito${split.restOnline ? "" : " al professionista"}`;
-}
+/** Le cifre di ora e di dopo: un solo conto in `packages/shared` (anche per il PDF del preventivo). */
+export const paymentSplit = quotePaymentSplit;
+export const paymentSplitLine = quotePaymentSplitLine;
 
 /**
  * Riga "Pagamento" nella scheda del preventivo, prima di accettare

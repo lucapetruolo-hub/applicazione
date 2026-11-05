@@ -1819,6 +1819,10 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       request<JobDocumentsView>(`/documents/jobs/${encodeURIComponent(bookingId)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     /** La copia del documento del professionista, per il cliente (§386). */
     jobDocumentCopyPdf: (token: string, bookingId: string) => downloadFile(`/documents/jobs/${encodeURIComponent(bookingId)}/copy/pdf`, token),
+    /** Riepilogo dei pagamenti del lavoro, per il cliente (docs/changelog/2026-11-05-scheda-preventivo-semplice.md). */
+    jobPaymentsPdf: (token: string, bookingId: string) => downloadFile(`/documents/jobs/${encodeURIComponent(bookingId)}/payments/pdf`, token),
+    /** Il preventivo in PDF, per il cliente e per il professionista che l'ha mandato. */
+    quotePdf: (token: string, quoteId: string) => downloadFile(`/documents/quotes/${encodeURIComponent(quoteId)}/pdf`, token),
 
     // --- Admin → Finanza: le nostre fatture ---
     adminInvoiceSettings: (token: string) =>
