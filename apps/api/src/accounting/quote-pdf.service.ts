@@ -180,7 +180,7 @@ export class QuotePdfService {
    */
   async paymentsForClient(userId: string, bookingId: string): Promise<{ model: PdfDocumentModel; fileName: string }> {
     const view = await this.jobDocuments.forUser(userId, bookingId);
-    if (view.audience !== "CLIENT" || view.movements.length === 0) throw new NotFoundException("Nessun pagamento su questo lavoro.");
+    if (view.audience !== "CLIENT") throw new NotFoundException("Lavoro non trovato.");
     const booking = await this.prisma.booking.findUniqueOrThrow({ where: { id: bookingId }, select: { professionalProfile: { select: { businessName: true } } } });
     const businessName = booking.professionalProfile.businessName;
     // Per il cliente i pagamenti sono in negativo e i rimborsi in positivo.
@@ -189,7 +189,9 @@ export class QuotePdfService {
       title: "Riepilogo dei pagamenti",
       subtitle: businessName,
       blocks: [
-        { type: "rows", rows: view.movements.map((m) => ({ label: m.label, detail: accountingDateLabel(m.date), value: formatEurCents(Math.abs(m.amountEurCents)) })) },
+        view.movements.length > 0
+          ? { type: "rows", rows: view.movements.map((m) => ({ label: m.label, detail: accountingDateLabel(m.date), value: formatEurCents(Math.abs(m.amountEurCents)) })) }
+          : { type: "text", lines: ["Ancora nessun pagamento su questo lavoro."] },
         { type: "totals", rows: [], total: { label: "Totale pagato", value: formatEurCents(paid) } },
         {
           type: "text",
