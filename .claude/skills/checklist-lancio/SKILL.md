@@ -56,41 +56,22 @@ produzione):
      (accesso con Google, §265);
    - impostare un budget/avviso di spesa su Google Cloud.
    Le variabili `NEXT_PUBLIC_*` richiedono un nuovo deploy su Vercel.
-4bis. **Postgres free (Render) scade ogni 30 giorni** — non risolto
-   tecnicamente, richiede un piano a pagamento (decisione di budget non
-   presa autonomamente): promemoria operativo ricorrente, non ipotetico,
-   non un rischio ipotetico da monitorare "quando capita". Alla scadenza
-   va creato un nuovo DB free e aggiornato `DATABASE_URL` su Render (le
-   migrazioni si applicano da sole al primo avvio sul DB vuoto, le
-   categorie si ripopolano via `CategoriesSeedService`).
-   **Scadenza in corso (docs/CHANGELOG.md §169):** il DB del 6 ottobre
-   2026 è il secondo ed è anch'esso gratuito, quindi scade intorno al
-   **5 novembre 2026** (data esatta nella dashboard Render). Il primo è
-   scaduto il 3 ottobre; i dati di prova sono andati persi. Prima di
-   quella data: passare a pagamento DB e servizio API (consigliato, tiene i
-   dati e fa girare i job orari), oppure ripetere la procedura con un nuovo
-   DB gratuito. **Prima del lancio il DB deve essere a pagamento**: con
-   pagamenti e recensioni reali una scadenza vorrebbe dire perdere dati.
-   Il vecchio `professionisti-db` non si cancella a mano perché è legato al
-   Blueprint (`render.yaml`): si cancella da solo. Finché il Blueprint
-   punta ancora a lui, non modificare `render.yaml` (una risincronizzazione
-   potrebbe rimettere `DATABASE_URL` sul database vecchio).
-4ter. **Quando si passa Render a pagamento: spostare API e database a
-   Francoforte** (decisione dell'utente del 26/10/2026: si fa insieme
-   all'acquisto degli abbonamenti, non prima). Oggi l'API gira in Oregon
-   (`gcp-us-west1`) e le pagine del sito a Washington (`iad1`): ogni
-   pagina aperta in Italia attraversa l'oceano due volte, e i dati
-   personali stanno negli Stati Uniti. Render non cambia zona a un
-   servizio esistente: nuovo Postgres Basic-256mb e nuova API Starter
-   (`professionisti-api-eu`) a Frankfurt, `NEXT_PUBLIC_API_URL` e Function
-   Region `fra1` su Vercel, webhook Stripe (`/billing/webhook`) e Didit
-   (`/identity-verification/webhook`), variabile `API_HEALTH_URL` di
-   GitHub Actions. Dopo: aggiornare `render.yaml` (nome, `region:
-   frankfurt`, `plan: starter`). Guida passo passo in
-   `/mnt/project-files/analisi/spostamento-render-francoforte.md`. Valutati
-   e scartati Neon gratis (un cron gira ogni minuto: supererebbe le 100 ore
-   di calcolo del piano gratuito), Cloudflare, Clerk e R2
-   (`/mnt/project-files/analisi/servizi-gratuiti-valutazione.md`).
+4bis. ~~**Postgres free (Render) scade ogni 30 giorni**~~ **Fatto il
+   05/11/2026** (docs/changelog/2026-11-05-render-francoforte.md): il
+   database gratuito è scaduto quel giorno e Luca ha spostato tutto a
+   Francoforte, a pagamento (punto 4ter). Il nuovo database
+   `professionisti-db-eu` (Basic-256mb) non scade. È partito vuoto: account
+   di prova e accesso admin vanno rifatti (bootstrap e verifica in due
+   passaggi).
+4ter. ~~**Spostare API e database a Francoforte**~~ **Fatto il 05/11/2026**:
+   API `professionisti-api-eu` (Starter, `https://professionisti-api-eu.onrender.com`)
+   e Postgres Basic-256mb a Frankfurt, `NEXT_PUBLIC_API_URL` e Function
+   Region `fra1` su Vercel, webhook Stripe di prova e Didit di prova
+   spostati, `API_HEALTH_URL` di GitHub aggiornata, `render.yaml`
+   aggiornato. Da finire: sospendere il vecchio `professionisti-api`
+   (Oregon) ed eliminare il vecchio endpoint Didit; il webhook di Meta
+   (WhatsApp) andrà messo sul nuovo indirizzo quando si accende. Al
+   lancio i webhook Stripe live vanno creati sul nuovo indirizzo.
 5bis. **Prima di mettere le chiavi Stripe vere: dati fiscali solo dopo la carta**
    (richiesta di Luca del 30/10/2026, docs/changelog/2026-10-30-iscrizione-carta-solida.md).
    Oggi il lucchetto "Dopo il piano" sui dati fiscali c'è solo nel percorso

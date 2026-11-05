@@ -1,8 +1,8 @@
 ---
 name: deploy-ops
 description: >-
-  Deploy e operatività di Manovia: API e Postgres su Render (render.yaml, variabili d'ambiente, limiti free
-  tier, scadenza DB 30 giorni, migrazioni e baseline P3005), sito su Vercel (push che non attivano una build,
+  Deploy e operatività di Manovia: API e Postgres su Render (render.yaml, variabili d'ambiente, piani a
+  Francoforte, migrazioni e baseline P3005), sito su Vercel (push che non attivano una build,
   build saltate di proposito, Deploy Hook, origini OAuth Google). Usala per qualunque domanda o problema su
   deploy, produzione, "il sito non si aggiorna", variabili d'ambiente o database di produzione.
 ---
@@ -76,17 +76,15 @@ migrazioni restano anche in `CLAUDE.md`.
   (`sync: false`), così un database scaduto non resta collegato per nome e
   una sincronizzazione non ne ricrea uno vuoto. Le variabili segrete marcate
   `sync: false` vanno valorizzate una sola volta dalla dashboard.
-  **Limiti free tier Render da ricordare**: il web service va in sleep dopo
-  15 min di inattività (cold start ~1 min alla prima richiesta — le
-  funzioni schedulate con `@nestjs/schedule` non girano mentre dorme);
-  il Postgres free (1 GB) scade dopo 30 giorni → alla scadenza creare un
-  nuovo DB free, aggiornare `DATABASE_URL` e rieseguire il seed
-  (lo script `start` di `apps/api` applica già da solo le migrazioni ad
-  ogni avvio, vedi sopra in questa sezione; le
-  categorie si ripopolano da sole via `CategoriesSeedService` — nessun
-  comando manuale necessario per quelle. Il seed dei dati demo, se
+  **Piani Render** (dal 05/11/2026, docs/changelog/2026-11-05-render-francoforte.md):
+  API `professionisti-api-eu` su Starter (sempre acceso, i cron di
+  `@nestjs/schedule` girano davvero) e Postgres `professionisti-db-eu`
+  Basic-256mb, entrambi a Frankfurt; il database a pagamento non scade e si
+  alza di piano senza perdere dati. Su un database nuovo e vuoto lo script
+  `start` di `apps/api` applica da solo le migrazioni e le categorie si
+  ripopolano via `CategoriesSeedService`; il seed dei dati demo, se
   servisse, si rilancia a mano puntando `DATABASE_URL` locale
-  sull'External Connection String di Render con `?sslmode=require`).
+  sull'External Connection String di Render con `?sslmode=require`.
   `GENERAL_REQUESTS_ENABLED=false` sul servizio API spegne le richieste
   di preventivo generali in tutto il sito (restano quelle a un
   professionista scelto; docs/CHANGELOG.md §211). Senza la variabile sono
