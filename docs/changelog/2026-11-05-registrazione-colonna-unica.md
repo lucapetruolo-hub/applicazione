@@ -68,3 +68,11 @@ tipo. Foto a 1440 px e iPhone 13 in `anteprime/registrazione-schermata-divisa/do
 "Con Partita IVA" a "Privato" con Partita IVA e IVA salvate (tornano vuote) e
 anteprima del profilo pubblico con due mestieri e prestazioni vecchie senza
 mestiere. Foto in `anteprime/registrazione-schermata-divisa/dopo/6-profilo-pubblico-*.png`.
+
+## Risultati di ricerca (Luca: "mostrarle per prime nei risultati di ricerca")
+
+7. Cercando un mestiere, nella scheda del professionista con più mestieri le
+   prestazioni di quel mestiere vengono per prime, poi le altre (stesso ordine
+   dentro i due gruppi). Lo fa l'API (`servicesFirstFor` in
+   `professionals.service.ts`, con test), così vale per sito e app. Il "da X €"
+   della scheda chiusa resta il prezzo più basso fra tutte le prestazioni.

@@ -48,6 +48,7 @@ import {
   wallClockToday,
   slotStillOffered,
   isProfessionalCategorySlug,
+  serviceCategoryOf,
   validSubTags,
   type CategoryPriceStats,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
@@ -121,6 +122,17 @@ export type ProfessionalSearchParams = {
 // finestre da 4 colonne con le frecce sui dati già scaricati, e cerca lì
 // stessa il primo orario libero per "Mostra orari disponibili" (richiesta
 // esplicita dell'utente: frecce per almeno due mesi, docs/CHANGELOG.md §206).
+
+/** Le prestazioni del mestiere cercato prima delle altre, senza cambiare l'ordine dentro i due gruppi. */
+export function servicesFirstFor<T extends { name: string; categorySlug?: string | null }>(
+  services: T[],
+  searchedCategory: string | undefined,
+  categorySlugs: ProfessionalCategorySlug[],
+): T[] {
+  if (!searchedCategory || categorySlugs.length < 2) return services;
+  const ofSearched = (service: T) => serviceCategoryOf(service, categorySlugs) === searchedCategory;
+  return [...services.filter(ofSearched), ...services.filter((service) => !ofSearched(service))];
+}
 
 function mapServices(
   services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null; priceUnit: ServicePriceUnit; categorySlug?: string | null }[],
@@ -410,7 +422,9 @@ export class ProfessionalsService {
         latitude: profile.latitude,
         longitude: profile.longitude,
         imageUrl: profile.imageUrl,
-        services: mapServices(profile.services),
+        // Cercando un mestiere, le sue prestazioni per prime (richiesta di Luca,
+        // docs/changelog/2026-11-05-registrazione-colonna-unica.md).
+        services: mapServices(servicesFirstFor(profile.services, category, categories.map((item) => item.slug))),
         subTags: profile.subTags,
         spokenLanguages: profile.spokenLanguages,
         hasLiabilityInsurance: profile.hasLiabilityInsurance,
