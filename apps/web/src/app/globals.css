@@ -8377,3 +8377,181 @@ a.admin-kpi:hover {
     padding-right: 6px !important;
   }
 }
+
+/* "Completa il profilo" in cima a Oggi finché manca un passo obbligatorio
+   (docs/changelog/2026-11-05-completa-profilo-in-evidenza.md). */
+.journey-hero {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 2px solid #128552;
+  box-shadow: 0 10px 30px rgba(18, 133, 82, 0.12);
+}
+.journey-hero-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.journey-hero-title {
+  margin: 0;
+  font-family: var(--font-display), sans-serif;
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: #2b2420;
+}
+.journey-hero-sub {
+  margin: 4px 0 0;
+  font-size: 17px;
+  color: #5c5249;
+}
+.journey-hero-count {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0e7a4c;
+  background: #dcf3e7;
+  border-radius: 999px;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+.journey-hero-now {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 16px;
+  background: #dcf3e7;
+}
+.journey-hero-now.is-waiting {
+  background: #f6ecd9;
+}
+.journey-hero-icon {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #128552;
+}
+.journey-hero-now.is-waiting .journey-hero-icon {
+  background: #ffffff;
+}
+.journey-hero-now-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 16px;
+  color: #2b2420;
+}
+.journey-hero-now-text strong {
+  font-size: 19px;
+  font-weight: 800;
+}
+.journey-hero-eyebrow {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e7a4c;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.journey-hero-now.is-waiting .journey-hero-eyebrow {
+  color: #8a5a00;
+}
+.journey-hero-text {
+  color: #4a413a;
+}
+.journey-hero-text.is-error {
+  color: #c8362b;
+}
+.journey-hero-cta {
+  flex: 0 0 auto;
+  text-decoration: none;
+}
+/* Da telefono il pulsante va sotto, a tutta larghezza: più facile col pollice. */
+@container (max-width: 599px) {
+  .journey-hero-now {
+    flex-wrap: wrap;
+  }
+  .journey-hero-now-text {
+    flex-basis: calc(100% - 68px);
+  }
+  .journey-hero-cta {
+    flex-basis: 100%;
+  }
+  .journey-hero-cta > * {
+    width: 100%;
+  }
+}
+@media (max-width: 599px) {
+  .journey-hero {
+    padding: 18px;
+  }
+  .journey-hero-title {
+    font-size: 22px;
+  }
+}
+/* Barra dei passi: il tratto dopo un passo fatto è verde, come nel percorso
+   verticale. In Oggi un passo appena fatto (dall'ultima visita) si accende
+   una volta: il cerchio "salta" e il tratto si riempie da sinistra. Con
+   "riduci movimento" la regola globale in cima lo rende istantaneo. */
+.journey-bar-step.is-done:not(:last-child)::after {
+  background: #b9e6cf;
+  transform-origin: left center;
+}
+.journey-hero .journey-bar-step.is-just-done > :first-child {
+  animation:
+    journey-step-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    journey-step-ring 900ms ease-out 200ms both;
+}
+.journey-hero .journey-bar-step.is-just-done:not(:last-child)::after {
+  animation: journey-line-fill 520ms cubic-bezier(0.2, 0.8, 0.2, 1) 180ms both;
+}
+@keyframes journey-step-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+/* Un cerchio verde che si allarga e sparisce: si nota anche da telefono, dove il tratto è corto. */
+@keyframes journey-step-ring {
+  from {
+    box-shadow: 0 0 0 0 rgba(18, 133, 82, 0.45);
+  }
+  to {
+    box-shadow: 0 0 0 12px rgba(18, 133, 82, 0);
+  }
+}
+@keyframes journey-line-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+/* Da telefono con 4 passi i nomi non ci stanno: resta solo quello del passo
+   da fare, gli altri restano per i lettori di schermo. */
+@container (max-width: 520px) {
+  .journey-hero .journey-bar.is-many .journey-bar-step:not(.is-here) > span:not(.journey-sr) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
