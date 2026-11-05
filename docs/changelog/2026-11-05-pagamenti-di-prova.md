@@ -17,3 +17,7 @@ Gli acconti di quattro lavori di prova (600 €, 20 €, 20 €, 18 €) sono st
 - `bookings.service.test.ts`: preventivo sconosciuto, nessun rimborso e avviso alla Finanza.
 - `charge-refunded.test.ts`: rimborso dalla Dashboard registrato, nostri e già visti saltati, parziale che non chiude il lavoro, pagamento che non è di un lavoro.
 - Checklist di lancio: `charge.refunded` sugli endpoint live.
+
+## Segnalazione aperta un'ora in ritardo (trovato provando la segnalazione alle 22)
+
+Gli orari degli appuntamenti sono salvati come ora italiana scritta in UTC (`wallClockNow()` in `packages/shared/src/appointmentTime.ts`). La segnalazione ("Il lavoro non è andato bene" e "Non si è presentato") confrontava invece l'orario con `new Date()`. Così si apriva un'ora dopo l'inizio dell'appuntamento, due d'estate: alle 22:12 un appuntamento delle 22:00 risultava "non ancora iniziato". Ora `reportIssue` e la scheda del lavoro (`issueTypesAllowed`, `issueLate`) usano `wallClockNow()`, come l'annullamento e lo spostamento. Prova in `bookings.service.test.ts`: alle 22:05 italiane si segnala, alle 21:55 no.

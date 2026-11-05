@@ -1294,9 +1294,13 @@ export class BookingsService implements OnModuleInit {
     if (booking.issue) {
       throw new ConflictException("Hai già segnalato un problema su questo lavoro.");
     }
-    const allowed = jobIssueTypesAllowed({ ...booking, hasIssue: false }, new Date());
+    // Orari degli appuntamenti in ora italiana scritta come UTC: si confrontano con
+    // wallClockNow(), non con new Date(), altrimenti la segnalazione si apriva un'ora
+    // dopo l'inizio (due d'estate) (docs/changelog/2026-11-05-pagamenti-di-prova.md).
+    const issueNow = wallClockNow();
+    const allowed = jobIssueTypesAllowed({ ...booking, hasIssue: false }, issueNow);
     // Passato il termine resta la segnalazione senza rimborso (decisione di Luca del 30/10/2026).
-    const late = !allowed.includes(input.type) && input.type === "BAD_WORK" && jobIssueLateAllowed({ ...booking, hasIssue: false }, new Date());
+    const late = !allowed.includes(input.type) && input.type === "BAD_WORK" && jobIssueLateAllowed({ ...booking, hasIssue: false }, issueNow);
     if (!allowed.includes(input.type) && !late) {
       throw new BadRequestException(
         input.type === "NO_SHOW"
@@ -1620,11 +1624,11 @@ export class BookingsService implements OnModuleInit {
       }),
       // Pagamento del lavoro (§168): metodo scelto, acconto, saldo, rimborsi.
       payment: toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents),
-      issueTypesAllowed: jobIssueLateAllowed({ ...booking, hasIssue: booking.issue !== null }, now)
+      issueTypesAllowed: jobIssueLateAllowed({ ...booking, hasIssue: booking.issue !== null }, wallClockNow(now))
         ? ["BAD_WORK" as const]
-        : jobIssueTypesAllowed({ ...booking, hasIssue: booking.issue !== null }, now),
+        : jobIssueTypesAllowed({ ...booking, hasIssue: booking.issue !== null }, wallClockNow(now)),
       // Dopo il termine si segnala ancora un lavoro non andato bene, senza rimborso.
-      issueLate: jobIssueLateAllowed({ ...booking, hasIssue: booking.issue !== null }, now),
+      issueLate: jobIssueLateAllowed({ ...booking, hasIssue: booking.issue !== null }, wallClockNow(now)),
       canReview: clientCanReview({
         status: booking.status,
         clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt,

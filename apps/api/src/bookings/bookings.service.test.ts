@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { BookingsService } from "./bookings.service";
 import { wallClockNow } from "@professionisti/shared";
@@ -554,5 +554,42 @@ describe("BookingsService.cancelFutureJobsOfClosedAccount — account chiuso (§
     expect(prisma.booking.update).toHaveBeenCalledWith({ where: { id: "b-1" }, data: expect.objectContaining({ status: "CANCELED", canceledBy: "PROFESSIONAL" }) });
     expect(jobPaymentsService.refundOnCancel).toHaveBeenCalledWith("b-1", "pro-user-1");
     expect(notificationsService.notify).toHaveBeenCalledWith("client-1", "BOOKING_CANCELED_BY_PROFESSIONAL", expect.objectContaining({ accountClosed: true }));
+  });
+});
+
+describe("BookingsService.reportIssue — orario dell'appuntamento in ora italiana", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("alle 22:05 italiane si può già segnalare un lavoro iniziato alle 22:00 (prima si apriva un'ora dopo)", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-05T21:05:00Z"));
+    const { service, prisma } = buildService();
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "b-1",
+      clientId: "client-1",
+      status: "COMPLETED",
+      scheduledAt: new Date("2026-11-05T22:00:00Z"),
+      scheduledEndAt: new Date("2026-11-05T22:30:00Z"),
+      clientConfirmedCompletedAt: null,
+      professionalCompletedAt: null,
+      professionalProfile: { userId: "pro-user-1" },
+      quote: { guidedRequestId: "gr-1" },
+      issue: null,
+      jobPayment: null,
+    });
+
+    // Oltre il controllo dell'orario il servizio va avanti (qui senza tutti i finti): conta solo che non si fermi lì.
+    const error = await service
+      .reportIssue("client-1", "b-1", { type: "BAD_WORK", description: "Lavoro fatto male, prova.", photoUrls: ["https://example.com/a.jpg"] })
+      .then(() => null, (e: unknown) => e);
+    expect(error instanceof Error ? error.message : "").not.toMatch(/si può segnalare/);
+
+    vi.setSystemTime(new Date("2026-11-05T20:55:00Z"));
+    const early = await service
+      .reportIssue("client-1", "b-1", { type: "BAD_WORK", description: "Lavoro fatto male, prova.", photoUrls: ["https://example.com/a.jpg"] })
+      .then(() => null, (e: unknown) => e);
+    expect(early instanceof Error ? early.message : "").toMatch(/si può segnalare dall'inizio/);
   });
 });
