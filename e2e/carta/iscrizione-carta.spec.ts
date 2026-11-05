@@ -67,16 +67,40 @@ async function signedIn(browser: Browser, userId: string): Promise<Page> {
 }
 
 /**
- * Tornando da Stripe al sito il browser di prova a volte perde le misure del
- * telefono simulato: la pagina si carica tutta e senza errori, ma la finestra
- * risulta larga e alta 0 e ogni testo "non visibile" (visto una volta nella
- * CI, docs/changelog/2026-11-02-nextjs-16.md). Si rimettono le misure del
- * progetto: se la pagina fosse davvero vuota o nascosta la prova fallisce lo
- * stesso.
+ * Tornando da Stripe al sito il browser di prova (Chrome senza finestra della
+ * CI) a volte apre il nostro sito in una scheda larga e alta 0 che non disegna
+ * nulla: la pagina c'è tutta, con il messaggio giusto, ma ogni testo risulta
+ * "non visibile". La registrazione del 05/11 lo mostra al ritorno dal link
+ * "indietro" di Stripe, due tentativi su due; rimettere le misure con
+ * setViewportSize non basta (la scheda resta 0x0). Non è una pagina del sito:
+ * un browser vero ha sempre una finestra. Allora si apre lo stesso indirizzo
+ * in una scheda nuova, con lo stesso accesso, e lì si fanno gli stessi
+ * controlli; la prova lo annota nel resoconto, così si vede quante volte
+ * capita.
  */
-async function keepPhoneScreen(page: Page) {
-  const viewport = test.info().project.use.viewport;
-  if (viewport) await page.setViewportSize(viewport);
+async function pageWithScreen(page: Page): Promise<Page> {
+  const width = () => page.evaluate(() => window.innerWidth).catch(() => 0);
+  const ok = await expect
+    .poll(width, { timeout: 5_000 })
+    .toBeGreaterThan(0)
+    .then(() => true)
+    .catch(() => false);
+  if (ok) return page;
+  test.info().annotations.push({ type: "browser", description: `scheda 0x0 al ritorno su ${page.url()}: riaperta` });
+  const fresh = await page.context().newPage();
+  await fresh.goto(page.url());
+  await expect.poll(() => fresh.evaluate(() => window.innerWidth)).toBeGreaterThan(0);
+  return fresh;
+}
+
+/**
+ * La pagina di Stripe è pronta quando mostra il modulo della carta (o la voce
+ * "Carta" da aprire). Prima Stripe sta ancora caricando i suoi riquadri.
+ */
+async function waitCheckoutReady(page: Page) {
+  const cardNumber = page.locator("#cardNumber");
+  const payWithCard = page.getByTestId("card-accordion-item-button");
+  await expect.poll(async () => (await cardNumber.isVisible()) || (await payWithCard.count()) > 0, { timeout: 30_000 }).toBe(true);
 }
 
 /** Da "Attiva i mesi gratis" alla pagina della carta di Stripe. */
@@ -92,7 +116,7 @@ async function fillCard(page: Page, number: string) {
   // con un evento di clic invece del clic del mouse.
   const cardNumber = page.locator("#cardNumber");
   const payWithCard = page.getByTestId("card-accordion-item-button");
-  await expect.poll(async () => (await cardNumber.isVisible()) || (await payWithCard.count()) > 0, { timeout: 30_000 }).toBe(true);
+  await waitCheckoutReady(page);
   if (!(await cardNumber.isVisible())) await payWithCard.dispatchEvent("click");
   await expect(cardNumber).toBeVisible();
   await cardNumber.fill(number);
@@ -209,12 +233,17 @@ test("pagina della carta chiusa a metà: si torna con il messaggio e si può rip
   const { user, profileId } = await newProfessional({ withProfile: true });
   const page = await signedIn(browser, user.id);
   await openCheckout(page);
+  // Come una persona: si torna indietro con la pagina di Stripe già pronta.
+  await waitCheckoutReady(page);
   // Il link "indietro" di Stripe porta al cancel_url.
-  await page.locator('a[href*="annullato=1"]').first().click();
+  const back = page.locator('a[href*="annullato=1"]').first();
+  const href = new URL((await back.getAttribute("href"))!);
+  expect(`${href.origin}${href.pathname}${href.search}`).toBe(`${new URL(WEB_URL).origin}/dashboard/abbonamento?annullato=1`);
+  await back.click();
   await page.waitForURL(/\/dashboard\/abbonamento\?annullato=1/);
-  await keepPhoneScreen(page);
-  await expect(page.getByText(/Non hai finito di aggiungere la carta/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Attiva i mesi gratis" })).toBeVisible();
+  const site = await pageWithScreen(page);
+  await expect(site.getByText(/Non hai finito di aggiungere la carta/)).toBeVisible();
+  await expect(site.getByRole("button", { name: "Attiva i mesi gratis" })).toBeVisible();
   const row = await subscriptionOf(profileId!);
   expect(row.stripeSubscriptionId).toBeNull();
   expect(row.cardAddedAt).toBeNull();
