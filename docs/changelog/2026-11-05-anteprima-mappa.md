@@ -23,3 +23,20 @@ telefono e computer:
 (Playwright, iPhone 13 e 1280×800): anteprima con foto, spunta, stelle, orari
 di oggi e di domani; il tocco su "09:00" apre
 `/preventivo?…&data=…&fasciaOraria=09:00-10:00&modalita=HOME…`.
+
+## Le tre migliorie (Luca, 05/11/2026: "effettua le 3 migliorie")
+
+- **Segnaposto evidenziato**: il segnaposto dell'anteprima aperta diventa
+  pieno di verde, un po' più grande, con un alone, e sta sopra gli altri.
+- **Cuoricino "Salva" sulla foto**, lo stesso delle schede della lista
+  (`renderSave`; per chi non è entrato porta all'accesso come nelle schede).
+- **Scorrere da un professionista all'altro**: col dito verso sinistra o
+  destra sull'anteprima (da telefono), con le frecce accanto a "2 di 6" sui
+  computer col mouse. Si scorre solo tra chi si vede nella mappa, nell'ordine
+  della lista; l'anteprima entra dal lato giusto (niente movimento con "riduci
+  movimento" attivo).
+
+**Verifica**: stessa prova con Playwright: segnaposto evidenziato (1),
+scorrimento col dito da "Rossi Impianti 1 di 8" a "Idraulica Bianchi 2 di 8"
+senza aprire il profilo, freccia su computer da "Termo Verdi" ad "Acqua Sicura
+4 di 9", cuoricino che porta all'accesso con `salva=` come nelle schede.

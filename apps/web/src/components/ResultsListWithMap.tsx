@@ -451,6 +451,27 @@ export function ResultsListWithMap({
   const mapProfileHref = (pro: ProfessionalSearchResult, date?: string) =>
     `${profileHref(pro, { ...fromChoice, ...(date ? { data: date } : {}), ...(defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {}) }, problemDescription)}${date ? "#agenda" : ""}`;
 
+  // Cuoricino "Salva" sulla foto dell'anteprima della mappa, come nelle schede.
+  const renderMapSave = (pro: ProfessionalSearchResult) =>
+    canSave ? (
+      <IconActionButton
+        label={savedIds.has(pro.id) ? "Salvato" : "Salva"}
+        active={savedIds.has(pro.id)}
+        disabled={pendingId === pro.id}
+        size={24}
+        celebrate
+        onPress={() => void toggleSave(pro.id)}
+      >
+        <Icon
+          name="heart"
+          size={12}
+          strokeWidth={2}
+          color={savedIds.has(pro.id) ? "white" : brand.grafite}
+          fill={savedIds.has(pro.id) ? "white" : "none"}
+        />
+      </IconActionButton>
+    ) : null;
+
   // Una scheda dei risultati: la stessa per la sezione "Potrebbero fare
   // anche questo lavoro" (scelta di Luca), lì senza "Scegli", perché le
   // richieste a più professionisti restano del mestiere cercato.
@@ -873,6 +894,7 @@ export function ResultsListWithMap({
                   mode={defaultMode ?? "HOME"}
                   slotHref={slotHref}
                   profileHref={mapProfileHref}
+                  renderSave={renderMapSave}
                 />
               ) : null}
             </YStack>

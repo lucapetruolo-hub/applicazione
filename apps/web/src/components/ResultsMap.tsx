@@ -1,10 +1,10 @@
 "use client";
 
 import { formatRating, professionalPath } from "@professionisti/shared";
-import { useState } from "react";
+import { useState, type ReactNode, type TouchEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AdvancedMarker, Map as GoogleMap } from "@vis.gl/react-google-maps";
-import { BadgeCheck, CalendarDays, ChevronRight, Star, X } from "lucide-react";
+import { BadgeCheck, CalendarDays, ChevronLeft, ChevronRight, Star, X } from "lucide-react";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { BadgeInfo, brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -100,6 +100,7 @@ export function ResultsMap({
   mode = "HOME",
   slotHref,
   profileHref = (pro) => professionalPath(pro),
+  renderSave,
 }: {
   /** Tutti i professionisti da mostrare come puntini sulla mappa. */
   professionals: ProfessionalSearchResult[];
@@ -121,10 +122,14 @@ export function ResultsMap({
   slotHref?: (pro: ProfessionalSearchResult, date: string, time: string, endTime: string, mode: "HOME" | "ONLINE") => string;
   /** Profilo del professionista, con `date` aperto sull'agenda di quel giorno. */
   profileHref?: (pro: ProfessionalSearchResult, date?: string) => string;
+  /** Cuoricino "Salva" sulla foto dell'anteprima, come nelle schede della lista. */
+  renderSave?: (pro: ProfessionalSearchResult) => ReactNode;
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   const router = useRouter();
+  // Inquadratura attuale: l'anteprima scorre solo tra chi si vede sulla mappa.
+  const [viewBounds, setViewBounds] = useState<MapBounds | null>(null);
   // Professionista selezionato cliccando un puntino: mostrato come banner in
   // basso SOPRA la mappa (che resta aperta), invece di navigare subito al
   // profilo — l'utente vede un'anteprima e decide se aprirlo.
@@ -170,6 +175,22 @@ export function ResultsMap({
         ? { markers: staticMarkers }
         : { markers: staticMarkers, center, zoom: initialZoom };
 
+  // Professionisti tra cui scorrere l'anteprima (docs/changelog/2026-11-05-anteprima-mappa.md):
+  // quelli visibili sulla mappa, nell'ordine della lista.
+  const inView = (pro: ProfessionalSearchResult) => {
+    if (!viewBounds) return true;
+    const [lat, lng] = markerPositions.get(pro.id) ?? [pro.latitude, pro.longitude];
+    return lat <= viewBounds.north && lat >= viewBounds.south && lng <= viewBounds.east && lng >= viewBounds.west;
+  };
+  const carousel = selected ? withCoords.filter((pro) => pro.id === selected.id || inView(pro)) : [];
+  const selectedIndex = selected ? carousel.findIndex((pro) => pro.id === selected.id) : -1;
+  const [direction, setDirection] = useState<"next" | "prev" | null>(null);
+  const step = (delta: 1 | -1) => {
+    if (carousel.length < 2 || selectedIndex < 0) return;
+    setDirection(delta === 1 ? "next" : "prev");
+    setSelected(carousel[(selectedIndex + delta + carousel.length) % carousel.length]!);
+  };
+
   return (
     <div className="results-map-container">
       <GoogleMapGate staticMap={staticMap}>
@@ -192,7 +213,9 @@ export function ResultsMap({
             if (!b) return;
             const ne = b.getNorthEast();
             const sw = b.getSouthWest();
-            onBoundsChange?.({ north: ne.lat(), south: sw.lat(), east: ne.lng(), west: sw.lng() });
+            const next = { north: ne.lat(), south: sw.lat(), east: ne.lng(), west: sw.lng() };
+            setViewBounds(next);
+            onBoundsChange?.(next);
           }}
         >
           {/* Segnaposto avanzati con la foto (o l'icona di categoria) del
@@ -203,9 +226,14 @@ export function ResultsMap({
               key={pro.id}
               position={toLatLng(markerPositions.get(pro.id) ?? [pro.latitude, pro.longitude])}
               title={pro.businessName}
-              onClick={() => setSelected(pro)}
+              // Il segnaposto dell'anteprima aperta sta sopra gli altri.
+              zIndex={selected?.id === pro.id ? 1000 : undefined}
+              onClick={() => {
+                setDirection(null);
+                setSelected(pro);
+              }}
             >
-              <div className="advanced-pin">
+              <div className={`advanced-pin${selected?.id === pro.id ? " selected" : ""}`}>
                 <ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={36} />
               </div>
             </AdvancedMarker>
@@ -213,7 +241,22 @@ export function ResultsMap({
         </GoogleMap>
       </GoogleMapGate>
 
-      {selected ? <MapPreview pro={selected} mode={mode} slotHref={slotHref} profileHref={profileHref} onClose={() => setSelected(null)} onOpen={(href) => router.push(href)} /> : null}
+      {selected ? (
+        <MapPreview
+          key={selected.id}
+          pro={selected}
+          mode={mode}
+          slotHref={slotHref}
+          profileHref={profileHref}
+          save={renderSave?.(selected)}
+          position={carousel.length > 1 ? { index: selectedIndex, total: carousel.length } : null}
+          direction={direction}
+          onPrev={() => step(-1)}
+          onNext={() => step(1)}
+          onClose={() => setSelected(null)}
+          onOpen={(href) => router.push(href)}
+        />
+      ) : null}
 
       <style jsx>{`
         .results-map-container {
@@ -240,6 +283,23 @@ export function ResultsMap({
           border-right: 7px solid transparent;
           border-top: 8px solid #189a63;
         }
+        /* Segnaposto dell'anteprima aperta: più grande e pieno di verde,
+           per capire subito a chi si riferisce. */
+        .results-map-container :global(.advanced-pin.selected) {
+          background: ${brand.cianografiaPieno};
+          border-color: ${brand.cianografiaPieno};
+          transform: scale(1.2);
+          transform-origin: 50% calc(100% + 8px);
+          box-shadow: 0 0 0 4px rgba(18, 133, 82, 0.25), 0 4px 12px rgba(15, 23, 42, 0.3);
+        }
+        .results-map-container :global(.advanced-pin.selected)::after {
+          border-top-color: ${brand.cianografiaPieno};
+        }
+        @media (prefers-reduced-motion: no-preference) {
+          .results-map-container :global(.advanced-pin) {
+            transition: transform 160ms ease-out;
+          }
+        }
       `}</style>
     </div>
   );
@@ -258,10 +318,22 @@ function MapPreview({
   mode,
   slotHref,
   profileHref,
+  save,
+  position,
+  direction,
+  onPrev,
+  onNext,
   onClose,
   onOpen,
 }: {
   pro: ProfessionalSearchResult;
+  save?: ReactNode;
+  /** Posizione tra i professionisti visibili sulla mappa (null se è l'unico). */
+  position: { index: number; total: number } | null;
+  /** Da che parte arriva l'anteprima (scorrimento), null al tocco sul segnaposto. */
+  direction: "next" | "prev" | null;
+  onPrev: () => void;
+  onNext: () => void;
   mode: "HOME" | "ONLINE";
   slotHref?: (pro: ProfessionalSearchResult, date: string, time: string, endTime: string, mode: "HOME" | "ONLINE") => string;
   profileHref: (pro: ProfessionalSearchResult, date?: string) => string;
@@ -277,13 +349,43 @@ function MapPreview({
   const profile = profileHref(pro);
   // Il tocco su un pulsante o su un link non apre anche il profilo.
   const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
+  // Scorrere col dito a sinistra o a destra passa al professionista
+  // successivo o precedente, come su Airbnb.
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const onTouchStart = (e: TouchEvent) => {
+    const t = e.touches[0];
+    if (t) setTouchStart({ x: t.clientX, y: t.clientY });
+  };
+  const onTouchEnd = (e: TouchEvent) => {
+    const t = e.changedTouches[0];
+    if (!touchStart || !t || !position) return;
+    const dx = t.clientX - touchStart.x;
+    const dy = t.clientY - touchStart.y;
+    setTouchStart(null);
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx < 0) onNext();
+    else onPrev();
+  };
 
   return (
     // Tutta l'anteprima porta al profilo col dito; da tastiera ci si arriva dal nome (link vero).
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-    <div className="map-preview" onClick={() => onOpen(profile)}>
-      <div className="map-preview-head">
-        <ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={64} shape="portrait" />
+    <div
+      className={`map-preview${direction ? ` from-${direction}` : ""}`}
+      onClick={() => onOpen(profile)}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
+      <div className={`map-preview-head${position ? " with-pager" : ""}`}>
+        <span className="map-preview-photo">
+          <ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={64} shape="portrait" />
+          {save ? (
+            // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+            <span className="map-preview-save" onClick={stop}>
+              {save}
+            </span>
+          ) : null}
+        </span>
         <div className="map-preview-info">
           <div className="map-preview-name-row">
             <a
@@ -372,6 +474,36 @@ function MapPreview({
         )
       ) : null}
 
+      {position ? (
+        <div className="map-preview-pager">
+          <button
+            type="button"
+            className="map-preview-nav"
+            aria-label="Professionista precedente"
+            onClick={(e) => {
+              stop(e);
+              onPrev();
+            }}
+          >
+            <ChevronLeft size={18} strokeWidth={2} aria-hidden />
+          </button>
+          <span className="map-preview-count" aria-live="polite">
+            {position.index + 1} di {position.total}
+          </span>
+          <button
+            type="button"
+            className="map-preview-nav"
+            aria-label="Professionista successivo"
+            onClick={(e) => {
+              stop(e);
+              onNext();
+            }}
+          >
+            <ChevronRight size={18} strokeWidth={2} aria-hidden />
+          </button>
+        </div>
+      ) : null}
+
       <button
         type="button"
         className="map-preview-close"
@@ -402,11 +534,86 @@ function MapPreview({
           padding: 16px;
           cursor: pointer;
         }
+        @media (prefers-reduced-motion: no-preference) {
+          .map-preview.from-next {
+            animation: preview-from-right 180ms ease-out;
+          }
+          .map-preview.from-prev {
+            animation: preview-from-left 180ms ease-out;
+          }
+        }
+        @keyframes preview-from-right {
+          from {
+            opacity: 0.4;
+            transform: translateX(28px);
+          }
+        }
+        @keyframes preview-from-left {
+          from {
+            opacity: 0.4;
+            transform: translateX(-28px);
+          }
+        }
         .map-preview-head {
           display: flex;
           gap: 14px;
           align-items: flex-start;
+        }
+        /* Solo la riga del nome lascia spazio alla X (e a "2 di 6"): le righe
+           sotto stanno già più in basso dei pulsanti. */
+        .map-preview-name-row {
           padding-right: 28px;
+        }
+        .map-preview-photo {
+          position: relative;
+          display: inline-flex;
+          flex-shrink: 0;
+        }
+        .map-preview-save {
+          position: absolute;
+          right: 4px;
+          bottom: 4px;
+        }
+        /* "2 di 6" e le frecce accanto alla X. Da telefono solo il numero:
+           si scorre col dito. */
+        .map-preview-pager {
+          position: absolute;
+          top: 10px;
+          right: 48px;
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          height: 32px;
+        }
+        .map-preview-count {
+          font-size: 13px;
+          font-weight: 600;
+          color: ${brand.grafite70};
+          padding: 0 4px;
+          white-space: nowrap;
+        }
+        .map-preview-nav {
+          display: none;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          border: none;
+          background: ${brand.gesso};
+          color: ${brand.grafite};
+          cursor: pointer;
+          align-items: center;
+          justify-content: center;
+        }
+        .map-preview-head.with-pager .map-preview-name-row {
+          padding-right: 76px;
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .map-preview-nav {
+            display: flex;
+          }
+          .map-preview-head.with-pager .map-preview-name-row {
+            padding-right: 140px;
+          }
         }
         .map-preview-info {
           flex: 1;
@@ -450,6 +657,7 @@ function MapPreview({
           gap: 6px;
           font-size: 14px;
           color: ${brand.grafite70};
+          white-space: nowrap;
         }
         .map-preview-rating strong {
           color: ${brand.grafite};
@@ -499,6 +707,7 @@ function MapPreview({
           padding: 0 12px 0 18px;
         }
         .map-preview-slot:focus-visible,
+        .map-preview-nav:focus-visible,
         .map-preview-close:focus-visible,
         .map-preview-name:focus-visible {
           outline: 2px solid ${brand.cianografiaScuro};
