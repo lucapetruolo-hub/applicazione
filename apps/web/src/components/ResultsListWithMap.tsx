@@ -166,6 +166,9 @@ export function ResultsListWithMap({
   // Inquadratura attuale della mappa (null finché non c'è). Da computer la
   // lista mostra subito chi ci sta dentro.
   const [liveBounds, setLiveBounds] = useState<MapBounds | null>(null);
+  // Professionista aperto nell'anteprima della mappa: da computer la sua
+  // scheda in lista ha un bordo verde sottile (docs/changelog/2026-11-05-anteprima-mappa.md).
+  const [mapSelectedId, setMapSelectedId] = useState<string | null>(null);
   // Da telefono la mappa si apre a schermo intero (richiesta di Luca,
   // riferimento miodottore.it, docs/changelog/2026-11-04-mappa-schermo-intero.md):
   // spostandola la lista non cambia finché non si tocca "Cerca in quest'area".
@@ -895,6 +898,7 @@ export function ResultsListWithMap({
                   slotHref={slotHref}
                   profileHref={mapProfileHref}
                   renderSave={renderMapSave}
+                  onSelectedChange={setMapSelectedId}
                 />
               ) : null}
             </YStack>
@@ -982,7 +986,11 @@ export function ResultsListWithMap({
               </button>
             </div>
           ) : null}
-          {(showMap ? filteredOrderedVisible : filteredProfessionals).map((pro, index) => renderCard(pro, index))}
+          {(showMap ? filteredOrderedVisible : filteredProfessionals).map((pro, index) => (
+            <div key={pro.id} className={`results-card${wideScreen && mapSelectedId === pro.id ? " map-selected" : ""}`}>
+              {renderCard(pro, index)}
+            </div>
+          ))}
           {otherSection && otherSection.professionals.length > 0 ? (
             <section aria-labelledby="results-other-section" className="results-other-section">
               <YStack gap="1" marginBottom="2">
@@ -1254,6 +1262,20 @@ export function ResultsListWithMap({
         .filters-empty {
           font-size: 13px;
           color: ${brand.grafite70};
+        }
+        /* Scheda del professionista aperto sulla mappa: solo un bordo verde
+           sottile, la pagina non si sposta (richiesta di Luca: "in modo leggero"). */
+        .results-card {
+          border-radius: 20px;
+          transition: box-shadow 160ms ease-out;
+        }
+        .results-card.map-selected {
+          box-shadow: 0 0 0 2px ${brand.cianografia};
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .results-card {
+            transition: none;
+          }
         }
         .results-map-col {
           display: none;

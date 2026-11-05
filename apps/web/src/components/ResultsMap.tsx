@@ -101,6 +101,7 @@ export function ResultsMap({
   slotHref,
   profileHref = (pro) => professionalPath(pro),
   renderSave,
+  onSelectedChange,
 }: {
   /** Tutti i professionisti da mostrare come puntini sulla mappa. */
   professionals: ProfessionalSearchResult[];
@@ -124,6 +125,8 @@ export function ResultsMap({
   profileHref?: (pro: ProfessionalSearchResult, date?: string) => string;
   /** Cuoricino "Salva" sulla foto dell'anteprima, come nelle schede della lista. */
   renderSave?: (pro: ProfessionalSearchResult) => ReactNode;
+  /** Professionista dell'anteprima aperta (null quando si chiude): la lista lo segna. */
+  onSelectedChange?: (id: string | null) => void;
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
@@ -133,7 +136,11 @@ export function ResultsMap({
   // Professionista selezionato cliccando un puntino: mostrato come banner in
   // basso SOPRA la mappa (che resta aperta), invece di navigare subito al
   // profilo — l'utente vede un'anteprima e decide se aprirlo.
-  const [selected, setSelected] = useState<ProfessionalSearchResult | null>(null);
+  const [selected, setSelectedState] = useState<ProfessionalSearchResult | null>(null);
+  const setSelected = (pro: ProfessionalSearchResult | null) => {
+    setSelectedState(pro);
+    onSelectedChange?.(pro?.id ?? null);
+  };
 
   // Coordinate 0,0 = professionista senza comune geocodificato ancora: non ha senso metterlo sull'oceano davanti all'Africa.
   const withCoords = professionals.filter((p) => p.latitude !== 0 || p.longitude !== 0);

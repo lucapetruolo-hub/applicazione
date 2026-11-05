@@ -40,3 +40,14 @@ di oggi e di domani; il tocco su "09:00" apre
 scorrimento col dito da "Rossi Impianti 1 di 8" a "Idraulica Bianchi 2 di 8"
 senza aprire il profilo, freccia su computer da "Termo Verdi" ad "Acqua Sicura
 4 di 9", cuoricino che porta all'accesso con `salva=` come nelle schede.
+
+## Scheda segnata in lista (Luca, 05/11/2026: "miglioria due sì, ma in modo leggero")
+
+Da computer, con l'anteprima aperta sulla mappa, la scheda dello stesso
+professionista nella lista ha un bordo verde sottile (2px, `.results-card.map-selected`
+in `ResultsListWithMap.tsx`). La pagina non scorre da sola; il bordo sparisce
+quando si chiude l'anteprima e segue lo scorrimento tra i professionisti.
+Da telefono la lista è sotto la mappa a schermo intero, quindi niente.
+
+**Verifica**: Playwright a 1280×800: una scheda segnata al tocco sul
+segnaposto, pagina ferma alla stessa altezza, nessuna scheda segnata dopo la X.
