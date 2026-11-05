@@ -97,6 +97,20 @@ export const PROFESSIONAL_CATEGORIES = [
 
 export type ProfessionalCategorySlug = (typeof PROFESSIONAL_CATEGORIES)[number]["slug"];
 
+/**
+ * Mestiere vicino da suggerire a chi sceglie una categoria (richiesta di
+ * Luca, docs/changelog/2026-11-04-avviso-caldaie.md): le richieste sulle
+ * caldaie arrivano a "Climatizzazione e caldaie", non all'idraulico, e un
+ * termoidraulico che sceglie solo Idraulico non le vedrebbe.
+ */
+export const CATEGORY_COMPANIONS: Partial<Record<ProfessionalCategorySlug, { suggest: ProfessionalCategorySlug; question: string; reason: string }>> = {
+  idraulico: {
+    suggest: "climatizzazione",
+    question: "Lavori anche su caldaie e riscaldamento?",
+    reason: "le richieste sulle caldaie arrivano lì.",
+  },
+};
+
 export function isProfessionalCategorySlug(value: string): value is ProfessionalCategorySlug {
   return PROFESSIONAL_CATEGORIES.some((category) => category.slug === value);
 }

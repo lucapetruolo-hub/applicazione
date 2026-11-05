@@ -143,6 +143,15 @@ export default async function CercaPage(props: { searchParams: Promise<PageSearc
   // /cerca/[categoria]. Li chiede il browser quando apre la mappa (collaudo
   // N-02, docs/changelog/2026-10-30-velocita-telefono.md); senza città la
   // ricerca è già quella.
+  // Una parola che non è il nome di nessuna attività (per esempio un mestiere
+  // che il sito non ha ancora): la pagina "Che lavoro ti serve?" invece di
+  // una lista vuota, e la ricerca finisce in Admin → Mestieri richiesti
+  // (docs/changelog/2026-11-04-avviso-caldaie.md).
+  const word = searchParams.q?.trim();
+  if (word && !service && !loadFailed && professionals.length === 0) {
+    return <ProblemResults description={word.slice(0, 1000)} searchParams={searchParams} isOnline={isOnline} city={city} />;
+  }
+
   const comune = city ? findComuneByName(city) : undefined;
   const mapPool: MapPoolQuery | undefined = city?.trim() ? { q: searchParams.q, remote: isOnline, service } : undefined;
 
