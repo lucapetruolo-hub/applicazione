@@ -88,6 +88,9 @@ test("Chat: il numero di telefono non parte prima dell'accettazione, dopo sì", 
   // Senza contatti parte.
   await box.fill("A che ora passa domani?");
   await page.getByRole("button", { name: "Invia" }).click();
+  // Prima il campo si svuota, poi il messaggio: finché il testo è ancora nel
+  // campo, getByText trova due elementi (campo e messaggio).
+  await expect(box).toHaveValue("");
   await expect(page.getByText("A che ora passa domani?")).toBeVisible();
 
   // Preventivo accettato: ora il numero si può scrivere.
@@ -97,8 +100,8 @@ test("Chat: il numero di telefono non parte prima dell'accettazione, dopo sì", 
   });
   await box.fill("Mi chiami al 333 123 4567");
   await page.getByRole("button", { name: "Invia" }).click();
-  await expect(page.getByText("Mi chiami al 333 123 4567").last()).toBeVisible();
   await expect(box).toHaveValue("");
+  await expect(page.getByText("Mi chiami al 333 123 4567")).toBeVisible();
   await expect.poll(() => prisma.conversationEvent.count({ where: { guidedRequestId: ids.request, message: { contains: "333 123 4567" } } })).toBe(1);
   // Per il giro successivo (telefono/computer) si riparte senza accettazione.
   await prisma.booking.deleteMany({ where: { quoteId: quote.id } });
