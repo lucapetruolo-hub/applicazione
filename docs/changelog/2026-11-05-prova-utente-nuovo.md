@@ -66,6 +66,17 @@ Sul 10 ("Nuovo profilo" accanto a lavori già terminati) Luca ha scelto "Lascia 
     aggiornamento): le letture si riprovano da sole due volte, dopo 1,5 e 3
     secondi (`request` in `packages/api-client`); mai le scritture.
 
+## Terzo giro (stesso giorno): cosa chiede ancora Stripe
+
+Segnalato da Luca attivando i pagamenti online del professionista di prova:
+"Completa l'attivazione dei pagamenti online" mostrava i nomi dei campi di
+Stripe ("identity.individual.address.city, …"). Ora `describeStripeRequirements`
+(`apps/api/src/professional-fiscal/stripe-connect-status.ts`) li dice in parole
+semplici e senza doppioni: "indirizzo, data di nascita, nome e cognome,
+telefono"; un campo sconosciuto diventa "altri dati", in fondo. Il testo
+salvato si aggiorna alla prossima lettura dello stato da Stripe (ritorno dalla
+verifica o webhook). Prova in `stripe-connect-status.test.ts`.
+
 **Verifica**: typecheck, lint e test di web, shared, ui, api-client e api;
 pagina costruita in locale contro l'API in linea: modulo del preventivo con
 appuntamento entro 24 ore (riga grigia) e oltre (rosso con 48 ore), Oggi del
