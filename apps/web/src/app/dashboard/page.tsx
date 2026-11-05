@@ -59,7 +59,12 @@ export default function DashboardTodayPage() {
   // "Sto arrivando" in corso o non riuscito, per appuntamento (§353).
   const [onTheWaySending, setOnTheWaySending] = useState<string | null>(null);
   const [onTheWayError, setOnTheWayError] = useState<string | null>(null);
-  const journey = useSetupJourney(user?.isProfessional ? token : null);
+  // Professionista senza profilo (appena iscritto): nessuna chiamata che risponderebbe 404,
+  // solo "Completa il tuo profilo" (prova da utente nuovo, docs/changelog/2026-11-05-prova-utente-nuovo.md).
+  const noProfileYet = user?.professionalProfileId === null;
+  const journey = useSetupJourney(user?.isProfessional && !noProfileYet ? token : null);
+  // Profilo non ancora nelle ricerche (dati fiscali mancanti, profilo da confermare...).
+  const profileHidden = journey.status?.publicVisible === false;
 
   // Le risposte dell'API aggiornano la pagina con `startTransition`, come
   // l'agenda (docs/CHANGELOG.md §345): sono una decina, e ognuna ridisegnava
@@ -70,6 +75,7 @@ export default function DashboardTodayPage() {
   // cambiano. Le azioni del professionista ("Sto arrivando") restano immediate.
   useEffect(() => {
     if (!token || !user?.isProfessional) return;
+    if (noProfileYet) return;
     const onError = later((err: unknown) => {
       if (err instanceof Error && err.message.includes("profilo")) setProfileMissing(true);
       else setError(err instanceof Error ? err.message : "Errore nel caricamento.");
@@ -88,7 +94,7 @@ export default function DashboardTodayPage() {
         }),
       )
       .catch(later(() => setRestrictions(null)));
-  }, [token, user?.isProfessional, loadAttempt]);
+  }, [token, user?.isProfessional, noProfileYet, loadAttempt]);
 
   // Aggiornamento in background (nuova richiesta, preventivo accettato, ecc.):
   // solo le liste che cambiano con una notifica, senza scheletri né messaggi
@@ -100,7 +106,7 @@ export default function DashboardTodayPage() {
     apiClient.myExternalJobs(token).then(later(setExternalJobs)).catch(() => {});
     apiClient.agendaDaysAhead(token).then(later(setDaysAhead)).catch(() => {});
   }, [token]);
-  useLiveRefresh(refreshInBackground, Boolean(token && user?.isProfessional));
+  useLiveRefresh(refreshInBackground, Boolean(token && user?.isProfessional && !noProfileYet));
 
   // I conti alla rovescia si aggiornano da soli ogni minuto.
   useEffect(() => {
@@ -133,7 +139,7 @@ export default function DashboardTodayPage() {
     );
   }
 
-  if (profileMissing) {
+  if (profileMissing || noProfileYet) {
     return (
       <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
@@ -424,7 +430,8 @@ export default function DashboardTodayPage() {
                   </TodaySection>
                 )}
 
-                {insights ? <Suggestion insights={insights} /> : null}
+                {/* Consigli sulle visite solo a chi compare già nelle ricerche (prova da utente nuovo, 04/11/2026). */}
+                {insights && !profileHidden ? <Suggestion insights={insights} /> : null}
               </div>
               </>
               )}
@@ -440,10 +447,13 @@ export default function DashboardTodayPage() {
                       <AgendaNotice attention={user.agendaAttention} />
                     </div>
                   ) : null}
-                  <div className="today-slot" style={{ order: 7 }}>
-                    {/* Pacchetti di visibilità in fondo alla pagina (docs/CHANGELOG.md §252). */}
-                    <BoostSection />
-                  </div>
+                  {/* Pacchetti di visibilità in fondo alla pagina (docs/CHANGELOG.md §252), non a chi
+                      non compare ancora nelle ricerche: prima i passi di "Per ricevere lavori". */}
+                  {profileHidden ? null : (
+                    <div className="today-slot" style={{ order: 7 }}>
+                      <BoostSection />
+                    </div>
+                  )}
                 </>
               ) : null}
             </div>

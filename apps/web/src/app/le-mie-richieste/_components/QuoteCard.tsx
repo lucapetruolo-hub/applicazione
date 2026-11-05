@@ -338,7 +338,8 @@ export function QuoteCard({
       {priceTotals.totalMinEurCents > 0 || priceTotals.totalMaxEurCents > 0 ? (
         <YStack backgroundColor={brand.gesso} borderRadius="3" padding="3" gap="1">
           <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
-            Totale indicativo
+            {/* "Stimato" solo per un prezzo "da… a…" (prova da utente nuovo, 04/11/2026). */}
+            {priceTotals.totalMinEurCents === priceTotals.totalMaxEurCents ? "Totale" : "Totale stimato"}
           </Text>
           <XStack alignItems="baseline" gap="2" flexWrap="wrap">
             {/* Prezzo cambiato dal professionista: il vecchio sbarrato accanto
@@ -352,7 +353,7 @@ export function QuoteCard({
             <Text fontSize="6" fontWeight="800" color={brand.grafite}>
               {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
             </Text>
-            {/* "IVA inclusa" solo per chi la applica, altrimenti "Prezzo finale" (docs/CHANGELOG.md §378). */}
+            {/* "IVA inclusa" solo per chi la applica, altrimenti "Tutto compreso" (docs/CHANGELOG.md §378). */}
             <Text fontSize={13} color={brand.grafite70}>
               {quotePriceTaxNote(quote.chargesVat ?? null)}
             </Text>

@@ -360,7 +360,10 @@ export function ProfessionalCard({
       <XStack gap="4 xs:3" alignItems="flex-start">
         {icon}
         <YStack gap="2" flex={1} minWidth={0}>
-          <XStack alignItems="flex-start" gap="2">
+          {/* Sotto i 660px "Scegli" va sotto nome e bollini: accanto al nome lo
+              mandava su tre righe e metteva i bollini uno per riga (prova da
+              utente nuovo, docs/changelog/2026-11-05-prova-utente-nuovo.md). */}
+          <XStack alignItems="flex-start" gap="2" flexDirection="xs:column">
             {/* Nome e bollini sulla stessa riga, che va a capo quando non
                 c'è spazio (docs/CHANGELOG.md §349): prima, nella colonna
                 stretta, i bollini finivano uno sotto l'altro. */}

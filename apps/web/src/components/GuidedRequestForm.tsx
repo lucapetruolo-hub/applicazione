@@ -27,6 +27,7 @@ import {
   type RequestStepKey,
   REQUEST_TIMINGS,
   REQUEST_TIMING_LABEL,
+  timingForPreferredDate,
 } from "@professionisti/shared";
 import { Autocomplete, Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { MagneticButton } from "./MagneticButton";
@@ -852,7 +853,8 @@ export function GuidedRequestForm({
     if (which === 1) {
       if (description.trim().length < 10) return { message: "Descrivi il lavoro con almeno 10 caratteri." };
       if (!categorySlug) return { message: "Scegli almeno una categoria." };
-      if (!timing) return { message: "Scegli quando ti serve." };
+      // Con un orario scelto in agenda la risposta si ricava dal giorno (vedi goToStep).
+      if (!timing && !finalPreferredDate) return { message: "Scegli quando ti serve." };
       return null;
     }
     // Città obbligatoria anche online se la richiesta è generale: decide a
@@ -885,6 +887,7 @@ export function GuidedRequestForm({
         if (validateStep(1)) setStep(1);
         return;
       }
+      if (!timing && finalPreferredDate) chooseTiming(timingForPreferredDate(finalPreferredDate));
     }
     // CAP scritto a mano: se è di un'altra città lo si dice subito (§357).
     // Nel dubbio o senza risposta si va avanti.
@@ -970,7 +973,7 @@ export function GuidedRequestForm({
         postalCode: postalCode.trim() || undefined,
         province: province.trim() || undefined,
         isUrgent,
-        timing: timing ?? undefined,
+        timing: timing ?? (finalPreferredDate ? timingForPreferredDate(finalPreferredDate) : undefined),
         serviceMode,
         photoUrls: uploadedUrls,
         professionalProfileId,
@@ -1481,7 +1484,7 @@ export function GuidedRequestForm({
           <YStack gap="3">
             <YStack gap="1">
               <Text fontSize={13} color={brand.grafite70}>
-                I dati di seguito rimarranno nascosti al professionista finché non accetterai un preventivo.
+                Questi dati il professionista li vede solo quando accetti un preventivo.
               </Text>
             </YStack>
 
@@ -1986,7 +1989,7 @@ function RequestSummary({
               La richiesta arriva solo a {professionalName}
               {isUrgent ? " (segnata come urgente)" : ""}, che può risponderti con un preventivo senza scadenza.
             </li>
-            <li>Finché non accetti un preventivo vede solo nome, città e lavoro: telefono e via restano nascosti.</li>
+            <li>Finché non accetti un preventivo vede solo il tuo nome, la città e il lavoro: cognome, telefono e via restano nascosti.</li>
           </ul>
         ) : (
           <ul>

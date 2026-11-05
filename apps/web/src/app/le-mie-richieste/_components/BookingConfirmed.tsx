@@ -65,7 +65,7 @@ export function BookingConfirmed({ booking, address, token, onDone }: { booking:
         {priceText ? (
           <XStack justifyContent="space-between" alignItems="baseline" gap="2" flexWrap="wrap">
             <Text fontSize={16} color={brand.grafite70}>
-              Totale indicativo
+              {totals.totalMinEurCents === totals.totalMaxEurCents ? "Totale" : "Totale stimato"}
             </Text>
             <Text fontSize={18} fontWeight="800" color={brand.grafite}>
               {priceText}

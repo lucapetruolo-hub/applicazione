@@ -197,13 +197,14 @@ function ProfileIndex() {
   );
 }
 
-/** "Per pubblicarlo: Nome · Mestiere · Città", spuntati mentre si compilano. */
+/** "Per salvarlo: Nome · Mestiere · Città", spuntati mentre si compilano. Non "Per pubblicarlo":
+ * per comparire nelle ricerche servono poi i dati fiscali (prova da utente nuovo, 04/11/2026). */
 function RequiredFieldsProgress({ items }: { items: { label: string; done: boolean; sectionId: string }[] }) {
   const doneCount = items.filter((item) => item.done).length;
   return (
     <div className="profile-required">
       <span className="profile-required-title">
-        Per pubblicarlo <span className="profile-required-count">{doneCount} su {items.length}</span>
+        Per salvarlo <span className="profile-required-count">{doneCount} su {items.length}</span>
       </span>
       <ul className="profile-required-list">
         {items.map((item) => (
@@ -434,7 +435,9 @@ export default function DashboardProfiloPage() {
 
   useEffect(() => {
     if (!token) return;
-    loadPreview();
+    // Senza profilo non c'è niente da vedere in anteprima: niente chiamate che rispondono 404
+    // (docs/changelog/2026-11-05-prova-utente-nuovo.md). Dopo il primo salvataggio la chiama handleSubmit.
+    if (user?.professionalProfileId !== null) loadPreview();
     apiClient
       .getMyProfessionalProfile(token)
       .then((profile) => {
@@ -981,7 +984,7 @@ export default function DashboardProfiloPage() {
           </Text>
           <Text color={brand.grafite70}>
             {isFirstProfileSave
-              ? "Servono nome, mestiere e città: il resto puoi aggiungerlo anche dopo."
+              ? "Per salvarlo servono nome, mestiere e città, il resto puoi aggiungerlo dopo. Per comparire nelle ricerche ti chiediamo poi i dati fiscali."
               : `Queste informazioni sono visibili pubblicamente su ${BRAND.name} e determinano in quali ricerche compari.`}
           </Text>
           {isFirstProfileSave ? (
@@ -1117,6 +1120,7 @@ export default function DashboardProfiloPage() {
           <YStack gap="2">
             <FieldLabel>Indirizzo preciso (opzionale)</FieldLabel>
             <AddressAutocompleteInput
+              ariaLabel="Indirizzo preciso (opzionale)"
               value={address}
               onChange={(value) => {
                 setAddress(value);
@@ -1925,6 +1929,11 @@ export default function DashboardProfiloPage() {
                   Nella tua agenda ci sono già degli orari di partenza: dal lunedì al sabato, 8–13 e 14–20. I clienti li
                   vedono sul tuo profilo. Vuoi controllarli adesso?
                 </Text>
+                {preview?.visibility === "FISCAL_DATA_MISSING" ? (
+                  <Text fontSize={16} color={brand.grafite70}>
+                    Per comparire nelle ricerche manca un passo: i dati fiscali, circa 2 minuti. Li trovi in Oggi.
+                  </Text>
+                ) : null}
               </YStack>
               <XStack gap="3" flexWrap="wrap">
                 <Button variant="primary" onPress={() => router.push("/dashboard/agenda?tab=orari")}>

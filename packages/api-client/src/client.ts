@@ -339,7 +339,7 @@ export type ClientGuidedRequest = {
      * per chi lavora come privato o senza dati fiscali.
      */
     executor?: { name: string; vatNumber: string | null; seat: string | null } | null;
-    /** Applica l'IVA: "IVA inclusa" accanto al totale, altrimenti "Prezzo finale" (docs/CHANGELOG.md §378). */
+    /** Applica l'IVA: "IVA inclusa" accanto al totale, altrimenti "Tutto compreso" (docs/CHANGELOG.md §378). */
     chargesVat?: boolean | null;
     /** Fattura chiesta a questo professionista (docs/CHANGELOG.md §378). */
     invoiceRequest?: ClientInvoiceRequestView | null;
@@ -1177,18 +1177,30 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
   }
 
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
+    // Le letture (GET) si riprovano da sole due volte, dopo 1,5 e 3 secondi, se l'API non
+    // risponde o risponde 502/503/504: succede per pochi secondi quando Render riavvia il
+    // servizio dopo un aggiornamento, e prima compariva "Non riusciamo a caricare le richieste"
+    // (prova da utente nuovo, docs/changelog/2026-11-05-prova-utente-nuovo.md). Mai le scritture:
+    // non si sa se la prima è arrivata.
+    const canRetry = (init?.method ?? "GET").toUpperCase() === "GET";
     let response: Response;
-    try {
-      response = await fetch(`${baseUrl}${path}`, {
-        ...init,
-        headers: {
-          "Content-Type": "application/json",
-          ...init?.headers,
-        },
-      });
-    } catch (err) {
-      reportFailure(init, path, null);
-      throw err;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        response = await fetch(`${baseUrl}${path}`, {
+          ...init,
+          headers: {
+            "Content-Type": "application/json",
+            ...init?.headers,
+          },
+        });
+        if (!(canRetry && attempt < 2 && [502, 503, 504].includes(response.status))) break;
+      } catch (err) {
+        if (!(canRetry && attempt < 2) || init?.signal?.aborted) {
+          reportFailure(init, path, null);
+          throw err;
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
     }
 
     const body = await response.json().catch(() => null);
