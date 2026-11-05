@@ -161,6 +161,29 @@ const RULES: readonly Rule[] = [
   { words: ["figlio", "figlia", "figli"], weights: { babysitter: 2 } },
 ];
 
+/**
+ * Nomi dei mestieri che il sito non usa come categoria ma che la gente
+ * scrive: "termoidraulico" sono due categorie, "stagnino" è l'idraulico
+ * (richiesta di Luca, docs/changelog/2026-11-04-nomi-dei-mestieri.md). Un nome
+ * di mestiere dice già chi serve: niente domanda, niente intelligenza
+ * artificiale, e con più categorie la prima è quella scritta per prima qui.
+ */
+export const TRADE_NAMES: readonly { words: readonly string[]; categories: readonly ProfessionalCategorySlug[] }[] = [
+  { words: ["termoidraulic", "termo idraulic"], categories: ["idraulico", "climatizzazione"] },
+  { words: ["stagnin"], categories: ["idraulico"] },
+  { words: ["caldaist", "frigorist", "condizionatorist", "climatizzatorist", "manutentore caldai", "tecnico caldai"], categories: ["climatizzazione"] },
+  { words: ["impiantist"], categories: ["idraulico", "elettricista", "climatizzazione"] },
+  { words: ["piastrellist", "cartongessist", "capomastro", "pavimentist"], categories: ["muratore"] },
+  { words: ["pittore edile", "tinteggiator", "decorator"], categories: ["imbianchino"] },
+  { words: ["fabbri ", "fabbro ferraio", "carpenteria metallica"], categories: ["fabbro"] },
+  { words: ["ebanist", "serramentist", "mobilier"], categories: ["falegname"] },
+  { words: ["giardinagg", "manutenzione del verde", "manutentore del verde", "vivaist", "potator"], categories: ["giardiniere"] },
+  { words: ["traslocator", "sgomberator"], categories: ["traslochi"] },
+  { words: ["handyman", "factotum", "manutentore", "uomo di fatica"], categories: ["tuttofare"] },
+  { words: ["petsitter", "dog walker", "dogwalker", "dog-sitter"], categories: ["dogsitter"] },
+  { words: ["bambinaia", "baby-sitter"], categories: ["babysitter"] },
+];
+
 type OutRule = { words: readonly string[]; kind: ProblemOutOfService };
 
 // Guasti degli elettrodomestici: solo con un verbo da guasto. Installarli o
@@ -286,6 +309,8 @@ const QUESTIONS: readonly { pairs: readonly Pair[]; question: ProblemQuestion }[
 // sbagliato quando si diceva sicuro (286 su 287); tutto il resto, circa
 // metà delle descrizioni, passa all'intelligenza artificiale.
 const CONFIDENT_MIN = 4;
+/** Punti di un nome di mestiere: abbastanza da restare primo con poche altre parole. */
+const TRADE_POINTS = 8;
 const CONFIDENT_GAP = 5;
 
 function containsWord(text: string, word: string): boolean {
@@ -303,6 +328,10 @@ export function matchProblem(description: string): ProblemMatch {
     if (hits === 0) continue;
     for (const [slug, weight] of Object.entries(rule.weights) as [ProfessionalCategorySlug, number][]) add(slug, weight * Math.min(hits, 2));
   }
+  // Il nome più lungo vince: "manutentore caldaie" è il caldaista, non il Tutto Fare.
+  const trade = TRADE_NAMES.flatMap((entry) => entry.words.filter((word) => containsWord(text, word)).map((word) => ({ word, entry })))
+    .sort((a, b) => b.word.length - a.word.length)[0]?.entry;
+  trade?.categories.forEach((slug, index) => add(slug, TRADE_POINTS - index));
   const safety = SAFETY_RULES.find((rule) => rule.test(text))?.kind ?? null;
   // Un pericolo indica anche chi deve intervenire (DM 37/2008).
   if (safety === "gas") {
@@ -325,7 +354,9 @@ export function matchProblem(description: string): ProblemMatch {
 
   const [first, second] = categories;
   let question: ProblemQuestion | null = null;
-  if (safety === "gas" && first && second && second.score >= first.score / 2) {
+  if (trade) {
+    // Chi scrive il nome del mestiere sa già chi gli serve.
+  } else if (safety === "gas" && first && second && second.score >= first.score / 2) {
     // Con il gas la domanda dell'acqua calda non c'entra: conta dove si sente l'odore.
     question = GAS_QUESTION;
   } else if (first && second && second.score >= first.score / 2) {
@@ -338,7 +369,8 @@ export function matchProblem(description: string): ProblemMatch {
   // Sicuro solo se un mestiere stacca nettamente gli altri e non c'è niente
   // che lo contraddica: ogni altro caso passa all'intelligenza artificiale.
   const confident =
-    first !== undefined && first.score >= CONFIDENT_MIN && (second === undefined || first.score - second.score >= CONFIDENT_GAP) && outOfService === null && question === null;
+    (trade !== undefined && outOfService === null) ||
+    (first !== undefined && first.score >= CONFIDENT_MIN && (second === undefined || first.score - second.score >= CONFIDENT_GAP) && outOfService === null && question === null);
 
   return { categories, safety, outOfService, question, confident };
 }
@@ -356,10 +388,85 @@ export type ProblemMatchResult = {
   source: "dizionario" | "parola" | "ia";
 };
 
+/**
+ * La risposta del solo dizionario, nella forma di `POST /problem-match`: la usano
+ * l'API (quando non serve l'intelligenza artificiale), la ricerca se l'API non
+ * risponde e la richiesta di preventivo mentre si scrive.
+ */
+export function problemMatchFromDictionary(dictionary: ProblemMatch): ProblemMatchResult {
+  // Gli altri mestieri solo se quasi forti quanto il primo: "cucina" non deve aggiungere il falegname al rubinetto.
+  const top = dictionary.categories[0]?.score ?? 0;
+  const categories = dictionary.categories.filter((category) => category.score * 2 >= top).slice(0, 3);
+  return {
+    categories: dictionary.outOfService ? [] : categories.map((category) => category.slug),
+    safety: dictionary.safety,
+    outOfService: dictionary.outOfService,
+    question: dictionary.question,
+    reason: null,
+    source: "dizionario",
+  };
+}
+
+/**
+ * Parole delle prestazioni troppo generiche per dire che il lavoro è proprio
+ * quello: "riparazione" c'è in metà delle prestazioni.
+ */
+const GENERIC_SERVICE_WORDS = new Set([
+  "riparazione", "riparazioni", "sostituzione", "sostituzioni", "installazione", "installazioni", "manutenzione",
+  "intervento", "interventi", "lavori", "lavoro", "servizio", "servizi", "pronto", "urgente", "urgenze", "casa",
+  "domicilio", "montaggio", "smontaggio", "pulizia", "pulizie", "controllo", "verifica", "nuovo", "nuova",
+  "completo", "completa", "piccoli", "piccole", "ordinaria", "straordinaria", "impianto", "impianti",
+]);
+
+function significantWords(text: string): string[] {
+  return normalizeProblemText(text)
+    .trim()
+    .split(" ")
+    .filter((word) => word.length >= 4);
+}
+
+/** Stessa parola anche al plurale o con un'altra desinenza: "rubinetto" e "rubinetti", "scarico" e "scarichi". */
+function sameWord(a: string, b: string): boolean {
+  const stem = Math.min(a.length, b.length, 7) - 1;
+  if (stem >= 5) return a.slice(0, stem) === b.slice(0, stem);
+  // Parole corte: cambia solo l'ultima lettera ("luce" e "luci", non "lucidatura").
+  return a.length === b.length && a.slice(0, -1) === b.slice(0, -1);
+}
+
+/**
+ * La prestazione del professionista che corrisponde alla descrizione del
+ * problema, da mettere in evidenza nei risultati e per mettere prima chi la
+ * fa (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md): almeno
+ * una parola non generica in comune ("Il rubinetto perde" e "Sostituzione
+ * rubinetto"). A parità vince quella con più parole in comune.
+ */
+export function serviceMatchingProblem<T extends { name: string }>(services: readonly T[], description: string): T | undefined {
+  const words = significantWords(description);
+  if (words.length === 0) return undefined;
+  let best: { service: T; score: number } | undefined;
+  for (const service of services) {
+    const own = significantWords(service.name).filter((word) => !GENERIC_SERVICE_WORDS.has(word));
+    const score = own.filter((word) => words.some((other) => sameWord(word, other))).length;
+    if (score > 0 && (!best || score > best.score)) best = { service, score };
+  }
+  return best?.service;
+}
+
 export const PROBLEM_DESCRIPTION_MAX = 1000;
 
 /** Pagina admin "Mestieri richiesti". */
 export type ProblemWordAdmin = { id: string; word: string; categorySlug: string | null; outOfService: string | null };
+/** Richieste di preventivo con la categoria proposta dalla descrizione: tenuta o cambiata. */
+export type ProblemSuggestionOutcomes = {
+  total: number;
+  kept: number;
+  /** Tenuta, ma con altre categorie aggiunte. */
+  keptWithOthers: number;
+  changed: number;
+  /** Le sostituzioni più frequenti: proposta → scelta. */
+  changes: { from: string; to: string; count: number }[];
+};
+
 export type ProblemMatchAdminOverview = {
   /** Ultimi 30 giorni; i mestieri contano il primo proposto. */
   lastMonth: {
@@ -369,6 +476,7 @@ export type ProblemMatchAdminOverview = {
     none: number;
     byCategory: { key: string; count: number }[];
     byOutOfService: { key: string; count: number }[];
+    suggestions: ProblemSuggestionOutcomes;
   };
   descriptions: {
     id: string;

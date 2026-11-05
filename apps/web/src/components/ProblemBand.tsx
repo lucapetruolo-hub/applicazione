@@ -194,11 +194,12 @@ export function ProblemBand({
         <YStack gap="2">
           <XStack gap="3" alignItems="center" flexWrap="wrap" justifyContent="space-between">
             <Text fontSize={16} color={brand.grafite}>
+              {/* Il numero della ricerca, non quello della lista: spostando la
+                  mappa la lista cambia, la richiesta no
+                  (docs/changelog/2026-11-04-esempi-cercano-subito.md). */}
               {count === 0
                 ? "Per ora nessuno vicino: invia lo stesso la richiesta, ti avvisiamo appena c'è qualcuno."
-                : count === 1
-                  ? "1 professionista qui sotto."
-                  : `${count} professionisti qui sotto.`}
+                : `${count === 1 ? "1 professionista" : `${count} professionisti`} ${city ? `a ${city}` : "trovati"}. La richiesta arriva a tutti quelli che lavorano nella tua zona.`}
             </Text>
             <Link href={quoteHref} style={{ textDecoration: "none" }}>
               <Button tabIndex={-1} variant="primary">{count > 1 ? "Chiedi preventivo a tutti" : "Chiedi un preventivo"}</Button>
@@ -244,7 +245,7 @@ function ChoiceLink({ href, label }: { href: string; label: string }) {
   );
 }
 
-function SafetyNotice({ safety }: { safety: NonNullable<ProblemMatchResult["safety"]> }) {
+export function SafetyNotice({ safety }: { safety: NonNullable<ProblemMatchResult["safety"]> }) {
   const text = PROBLEM_SAFETY_TEXTS[safety];
   return (
     <YStack

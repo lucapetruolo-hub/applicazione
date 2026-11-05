@@ -896,6 +896,11 @@ model GuidedRequest {
   // Stesso valore per le richieste nate da un unico invio con più categorie
   // (docs/CHANGELOG.md §259): il cliente le vede "inviate insieme".
   submissionGroupId     String?
+  // Categoria proposta dalla descrizione e già scelta nel modulo (solo sulla
+  // prima richiesta di un invio): in admin "Mestieri richiesti" quante
+  // richieste la tengono e quante la cambiano
+  // (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md).
+  suggestedCategorySlug String?
   // Scadenza della richiesta nel suo complesso (non del singolo Lead, vedi
   // Lead.expiresAt sotto) — oltre questa data, se ancora OPEN/MATCHED senza
   // esito, il job schedulato la chiude (closedReason EXPIRED). Nullable:

@@ -5,6 +5,13 @@ import { MAX_CHOSEN_PROFESSIONALS, type ProfessionalCategorySlug, type Professio
 import type { ChosenPro } from "@/components/ChosenProsBar";
 import { chosenSearchKey, readChosenSearch, toggleChosenPro, writeChosenSearch } from "@/lib/chosenProsStore";
 
+/** Quanto resta visibile "Puoi sceglierne al massimo 5". */
+export const LIMIT_NOTICE_MS = 4000;
+
+export function chosenLimitText(): string {
+  return `Puoi sceglierne al massimo ${MAX_CHOSEN_PROFESSIONALS}.`;
+}
+
 /**
  * "Scegli" sulle schede dei risultati, uguale nella ricerca per problema
  * (docs/CHANGELOG.md §393) e in quella per mestiere
@@ -33,6 +40,14 @@ export function useChosenPros({
   professionals: ProfessionalSearchResult[];
 }) {
   const [chosen, setChosen] = useState<ChosenPro[]>([]);
+  // Tocco su "Scegli" oltre il massimo: un avviso visibile per qualche
+  // secondo, anche da telefono (docs/changelog/2026-11-04-esempi-cercano-subito.md).
+  const [limitAt, setLimitAt] = useState<number | null>(null);
+  useEffect(() => {
+    if (limitAt === null) return;
+    const timer = setTimeout(() => setLimitAt(null), LIMIT_NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [limitAt]);
   const key = category ? chosenSearchKey(category, city, scope) : null;
   const [restoredKey, setRestoredKey] = useState<string | null>(null);
   useEffect(() => {
@@ -60,7 +75,8 @@ export function useChosenPros({
         canAdd: chosen.length < MAX_CHOSEN_PROFESSIONALS,
         max: MAX_CHOSEN_PROFESSIONALS,
         onToggle: toggle,
+        onBlocked: () => setLimitAt(Date.now()),
       }
     : undefined;
-  return { chosen, clear: () => setChosen([]), selection };
+  return { chosen, clear: () => setChosen([]), selection, limitNotice: limitAt !== null ? chosenLimitText() : null };
 }

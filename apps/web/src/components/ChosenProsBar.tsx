@@ -39,10 +39,14 @@ export function chosenRequestHref(
  * Barra fissa in basso con i professionisti scelti, come quella del profilo
  * (§385): resta a portata di mano mentre si scorrono le schede.
  */
-export function ChosenProsBar({ chosen, max, href }: { chosen: ChosenPro[]; max: number; href: string }) {
+export function ChosenProsBar({ chosen, max, href, notice }: { chosen: ChosenPro[]; max: number; href: string; notice?: string | null }) {
   if (chosen.length === 0) return null;
   return (
     <div className="chosen-bar" role="region" aria-label="Professionisti scelti">
+      {/* Sempre nella pagina, così i lettori di schermo leggono l'avviso quando compare. */}
+      <p className="chosen-bar-notice" role="status" data-visible={notice ? "true" : undefined}>
+        {notice ?? ""}
+      </p>
       <div className="chosen-bar-inner">
         <div className="chosen-bar-people">
           <div className="chosen-bar-faces" aria-hidden>

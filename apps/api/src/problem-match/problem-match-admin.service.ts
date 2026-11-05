@@ -10,16 +10,47 @@ import {
   normalizeProblemText,
   serviceNameKey,
   type AddStandardServiceInput,
+  type ProblemSuggestionOutcomes,
   type ServiceNamesAdminOverview,
   type TeachProblemWordInput,
 } from "@professionisti/shared";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { PRISMA } from "../prisma/prisma.module";
+import { COUNTED_USER, countingFrom, sinceLaunch } from "../site-counts/counted";
 import { ProblemMatchService } from "./problem-match.service";
 import { ServiceNamesService } from "./service-names.service";
 
 /** Un nome scritto a mano da almeno tanti professionisti si propone da unire. */
 export const HANDWRITTEN_SUGGEST_MIN = 3;
+
+/**
+ * Quante richieste tengono la categoria proposta dalla descrizione e quante la
+ * cambiano (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md):
+ * misura il dizionario sulle scelte vere dei clienti.
+ */
+export function suggestionOutcomes(rows: { suggested: string; chosen: string; withOthers: boolean }[]): ProblemSuggestionOutcomes {
+  let kept = 0;
+  let keptWithOthers = 0;
+  const changes = new Map<string, { from: string; to: string; count: number }>();
+  for (const row of rows) {
+    if (row.suggested === row.chosen) {
+      kept += 1;
+      if (row.withOthers) keptWithOthers += 1;
+      continue;
+    }
+    const key = `${row.suggested}>${row.chosen}`;
+    const change = changes.get(key) ?? { from: row.suggested, to: row.chosen, count: 0 };
+    change.count += 1;
+    changes.set(key, change);
+  }
+  return {
+    total: rows.length,
+    kept,
+    keptWithOthers,
+    changed: rows.length - kept,
+    changes: [...changes.values()].sort((a, b) => b.count - a.count).slice(0, 10),
+  };
+}
 
 /**
  * Pagine admin "Mestieri richiesti" e "Richieste da seguire"
@@ -44,13 +75,18 @@ export class ProblemMatchAdminService {
           : filter === "nessuno"
             ? { categories: { isEmpty: true }, outOfService: null }
             : {};
-    const [descriptions, lastMonth, words] = await Promise.all([
+    const [descriptions, lastMonth, words, suggested] = await Promise.all([
       this.prisma.problemDescription.findMany({ where, orderBy: { createdAt: "desc" }, take: 200 }),
       this.prisma.problemDescription.findMany({
         where: { createdAt: { gte: since } },
         select: { categories: true, outOfService: true, safety: true, source: true },
       }),
       this.prisma.problemWord.findMany({ orderBy: { createdAt: "desc" } }),
+      // Richieste inviate con la categoria proposta dalla descrizione (dal lancio, senza account di prova, §395).
+      this.prisma.guidedRequest.findMany({
+        where: { createdAt: { gte: sinceLaunch(since, countingFrom()) }, suggestedCategorySlug: { not: null }, client: COUNTED_USER },
+        select: { suggestedCategorySlug: true, submissionGroupId: true, category: { select: { slug: true } } },
+      }),
     ]);
 
     const byCategory = new Map<string, number>();
@@ -68,9 +104,10 @@ export class ProblemMatchAdminService {
     }
     const sorted = (map: Map<string, number>) =>
       [...map.entries()].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count);
+    const suggestions = suggestionOutcomes(suggested.map((row) => ({ suggested: row.suggestedCategorySlug!, chosen: row.category.slug, withOthers: Boolean(row.submissionGroupId) })));
 
     return {
-      lastMonth: { total: lastMonth.length, safety, ai, none, byCategory: sorted(byCategory), byOutOfService: sorted(byOutOfService) },
+      lastMonth: { total: lastMonth.length, safety, ai, none, byCategory: sorted(byCategory), byOutOfService: sorted(byOutOfService), suggestions },
       descriptions: descriptions.map((row) => ({
         id: row.id,
         text: row.text,

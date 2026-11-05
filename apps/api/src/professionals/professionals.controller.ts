@@ -40,6 +40,7 @@ import {
   isBotUserAgent,
   OUT_OF_SERVICE_LABELS,
   type ProblemOutOfService,
+  PROBLEM_DESCRIPTION_MAX,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
@@ -80,6 +81,7 @@ export class ProfessionalsController {
     // e per un lavoro fuori dalle categorie chi lo dichiara.
     @Query("merito") merito?: string,
     @Query("offre") offre?: string,
+    @Query("problema") problema?: string,
   ) {
     const results = await this.professionalsService.search({
       category,
@@ -90,6 +92,7 @@ export class ProfessionalsController {
       excludeDemo: excludeDemo === "1" || excludeDemo === "true",
       merit: merito === "1",
       offers: typeof offre === "string" && offre in OUT_OF_SERVICE_LABELS ? (offre as ProblemOutOfService) : undefined,
+      problem: typeof problema === "string" && problema.trim() ? problema.slice(0, PROBLEM_DESCRIPTION_MAX) : undefined,
     });
     // La pagina dei risultati chiede di contare la ricerca una volta sola
     // (`track=1`, docs/CHANGELOG.md §281): serve a mettere prima i lavori più

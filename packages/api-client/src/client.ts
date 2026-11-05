@@ -1439,11 +1439,14 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         merit?: boolean;
         /** Lavoro fuori dalle categorie: chi lo dichiara. */
         offers?: string;
+        /** Descrizione del problema: prima chi ha quella prestazione. */
+        problem?: string;
       } = {},
     ) => {
       const query = new URLSearchParams();
       if (params.merit) query.set("merito", "1");
       if (params.offers) query.set("offre", params.offers);
+      if (params.problem) query.set("problema", params.problem);
       if (params.category) query.set("category", params.category);
       if (params.city) query.set("city", params.city);
       if (params.q) query.set("q", params.q);

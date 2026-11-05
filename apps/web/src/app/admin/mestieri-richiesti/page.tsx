@@ -10,6 +10,7 @@ import {
   type ProblemExample,
   type ProblemMatchAdminOverview,
   type ServiceNamesAdminOverview,
+  type ProblemSuggestionOutcomes,
 } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -146,6 +147,8 @@ function DescriptionsTab() {
           ) : null}
         </AdminCard>
       ) : null}
+
+      {month ? <SuggestionOutcomesCard outcomes={month.suggestions} /> : null}
 
       <YStack gap="2">
         <Text fontWeight="700">Insegna una parola al dizionario</Text>
@@ -552,6 +555,39 @@ function ServiceNamesTab() {
         }
       `}</style>
     </YStack>
+  );
+}
+
+/**
+ * Richiedi preventivo: la categoria proposta dalla descrizione resta o il
+ * cliente la cambia (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md).
+ * Le sostituzioni frequenti dicono quale parola insegnare al dizionario.
+ */
+function SuggestionOutcomesCard({ outcomes }: { outcomes: ProblemSuggestionOutcomes }) {
+  const percent = (count: number) => (outcomes.total > 0 ? Math.round((count / outcomes.total) * 100) : 0);
+  return (
+    <AdminCard>
+      <Text fontWeight="700">Richieste di preventivo con la categoria proposta: {outcomes.total}</Text>
+      {outcomes.total === 0 ? (
+        <Text color={brand.grafite70} marginTop="1">
+          Ancora nessuna negli ultimi 30 giorni.
+        </Text>
+      ) : (
+        <>
+          <Text color={brand.grafite70} marginTop="1">
+            {`Tenuta ${outcomes.kept} (${percent(outcomes.kept)}%)${
+              outcomes.keptWithOthers > 0 ? `, di cui ${outcomes.keptWithOthers} con altre categorie aggiunte` : ""
+            } · cambiata ${outcomes.changed} (${percent(outcomes.changed)}%)`}
+          </Text>
+          {outcomes.changes.length > 0 ? (
+            <Text color={brand.grafite} marginTop="1">
+              Cambiate più spesso:{" "}
+              {outcomes.changes.map((change) => `${targetLabel(change.from, null)} → ${targetLabel(change.to, null)} ${change.count}`).join(" · ")}
+            </Text>
+          ) : null}
+        </>
+      )}
+    </AdminCard>
   );
 }
 

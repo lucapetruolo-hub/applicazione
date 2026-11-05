@@ -10,6 +10,7 @@ import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { ProfileQuoteCta } from "@/components/ProfileQuoteCta";
 import { ChosenProsBar, chosenRequestHref } from "@/components/ChosenProsBar";
+import { requestDescriptionParam } from "@/lib/requestDescription";
 import { ProfileChoiceStrip, useProfileChoice } from "@/components/ProfileChoiceStrip";
 import { MediaPreview } from "@/components/MediaPreview";
 import { ReportContentModal } from "@/components/ReportContentModal";
@@ -88,7 +89,7 @@ export function ProfessionalDetailContent({
    * il piè di pagina, che su una rete lenta saliva in cima e poi scendeva
    * (Lighthouse CLS 0,93, docs/CHANGELOG.md §400).
    */
-  query?: { modalita?: string; data?: string; salva?: string; servizio?: string; scelta?: string };
+  query?: { modalita?: string; data?: string; salva?: string; servizio?: string; problema?: string; scelta?: string };
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
@@ -189,9 +190,11 @@ export function ProfessionalDetailContent({
   // dopo il caricamento della pagina e il browser non trova ancora l'ancora.
   const requestedAgendaDate = query.data ?? null;
   // Arrivati da una voce di "Quanto costa in media" (§398): la richiesta parte
-  // con la prestazione già scritta nella descrizione.
+  // con la prestazione già scritta nella descrizione. Arrivati dalla ricerca
+  // per problema, con il problema scritto dal cliente
+  // (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md).
   const requestedService = query.servizio?.trim();
-  const serviceDescriptionParam = requestedService ? `&descrizione=${encodeURIComponent(`${requestedService}. `)}` : "";
+  const serviceDescriptionParam = requestDescriptionParam(query.problema, requestedService);
   // Profilo aperto dall'elenco di una voce (§399): contato solo se la scheda del browser è partita da "Quanto costa".
   useEffect(() => {
     if (requestedService) countPriceToolProfile();
@@ -719,6 +722,8 @@ export function ProfessionalDetailContent({
                     alignItems="center"
                     justifyContent="center"
                     opacity={agendaCanGoBack ? 1 : 0.3}
+                    // Bordo che si riempie al passaggio del mouse (globals.css, `.hover-ring`).
+                    className={agendaCanGoBack ? "hover-ring" : undefined}
                     cursor={agendaCanGoBack ? "pointer" : undefined}
                     // Sempre un pulsante, spento all'inizio: un riquadro con un nome e senza ruolo non si legge (collaudo L-11).
                     role="button"
@@ -737,6 +742,7 @@ export function ProfessionalDetailContent({
                     alignItems="center"
                     justifyContent="center"
                     opacity={agendaCanGoForward ? 1 : 0.3}
+                    className={agendaCanGoForward ? "hover-ring" : undefined}
                     cursor={agendaCanGoForward ? "pointer" : undefined}
                     role={agendaCanGoForward ? "button" : undefined}
                     aria-label="Giorni successivi"
@@ -835,8 +841,8 @@ export function ProfessionalDetailContent({
                           justifyContent="center"
                           paddingVertical={3}
                         >
-                          <Link href={href} style={{ textDecoration: "none", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>
-                            <XStack paddingHorizontal="6px xs:4px" paddingVertical={4} borderRadius="10" backgroundColor={brand.cianografiaVelo}>
+                          <Link href={href} className="hover-ring-host" style={{ textDecoration: "none", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>
+                            <XStack className="hover-ring-target" paddingHorizontal="6px xs:4px" paddingVertical={4} borderRadius="10" backgroundColor={brand.cianografiaVelo}>
                               <Text fontVariant={["tabular-nums"]} fontSize="10.5px xs:9.5px" letterSpacing={-0.3} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
                                 {range}
                               </Text>

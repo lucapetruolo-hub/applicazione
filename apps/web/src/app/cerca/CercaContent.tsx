@@ -40,6 +40,9 @@ export type ProblemSearch = {
 
 /** "Perché" di una scheda: la prestazione del professionista che somiglia al problema. */
 function problemReason(problem: ProblemSearch, pro: ProfessionalSearchResult): string | null {
+  // La prestazione trovata dalla ricerca, la stessa messa in evidenza nella scheda.
+  const matched = pro.matchedServiceId ? pro.services.find((item) => item.id === pro.matchedServiceId) : undefined;
+  if (matched) return `offre «${matched.name}»`;
   const keywords = problem.result.outOfService
     ? OUT_OF_SERVICE_KEYWORDS[problem.result.outOfService]
     : normalizeProblemText(problem.description)
@@ -65,6 +68,7 @@ export function CercaContent({
   loadFailed,
   initialUrgentOnly,
   problem,
+  alsoDoThisJob = [],
 }: {
   city?: string;
   /** Centro del comune, per la mappa. */
@@ -81,6 +85,8 @@ export function CercaContent({
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage. */
   initialUrgentOnly?: boolean;
   problem?: ProblemSearch;
+  /** Altri mestieri con quel lavoro tra le prestazioni (ricerca per problema). */
+  alsoDoThisJob?: ProfessionalSearchResult[];
 }) {
   // Per le voci di "Quanto costa in media" della home (§398).
   useEffect(() => {
@@ -94,6 +100,7 @@ export function CercaContent({
     chosen: chosenPros,
     clear: clearChosen,
     selection,
+    limitNotice,
   } = useChosenPros({
     category: canChoose ? (problem?.chosen ?? null) : null,
     city,
@@ -305,7 +312,17 @@ export function CercaContent({
           defaultMode={online ? "ONLINE" : "HOME"}
           initialUrgentOnly={initialUrgentOnly}
           merit={Boolean(problem)}
+          problemDescription={problem?.description}
           reasonFor={problem ? (pro) => problemReason(problem, pro) : undefined}
+          otherSection={
+            alsoDoThisJob.length > 0
+              ? {
+                  title: "Potrebbero fare anche questo lavoro",
+                  subtitle: "Sono di un altro mestiere, ma tra i loro lavori c'è anche questo.",
+                  professionals: alsoDoThisJob,
+                }
+              : undefined
+          }
           selection={selection}
         />
       </YStack>
@@ -314,6 +331,7 @@ export function CercaContent({
           chosen={chosenPros}
           max={MAX_CHOSEN_PROFESSIONALS}
           href={chosenRequestHref(chosenPros, problem.chosen, problem.description, city)}
+          notice={limitNotice}
         />
       ) : null}
     </YStack>

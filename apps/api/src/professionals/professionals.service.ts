@@ -52,7 +52,9 @@ import {
   type CategoryPriceStats,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
   OUT_OF_SERVICE_KEYWORDS,
+  nameSearchWords,
   type ProblemOutOfService,
+  serviceMatchingProblem,
 } from "@professionisti/shared";
 import { COUNTED_USER, countingFrom, daySinceLaunch } from "../site-counts/counted";
 import { calculateDistanceKm } from "../common/geo.util";
@@ -106,6 +108,11 @@ export type ProfessionalSearchParams = {
   merit?: boolean;
   /** Lavoro fuori dalle categorie: chi lo dichiara nelle prestazioni, nei patentini o nella descrizione. */
   offers?: ProblemOutOfService;
+  /**
+   * Descrizione del problema (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md):
+   * prima chi ha tra le prestazioni proprio quel lavoro, in evidenza nella scheda.
+   */
+  problem?: string;
 };
 
 // Giorni della griglia mostrata in card: colonne giorno consecutive (un
@@ -164,6 +171,12 @@ function matchedServiceField(
   canonicalize: ServiceCanonicalizer,
 ): { matchedServiceId?: string } {
   const match = services.find((item) => serviceGroupKey(item.name, canonicalize) === serviceKey);
+  return match ? { matchedServiceId: match.id } : {};
+}
+
+/** La prestazione che corrisponde alla descrizione del problema, se c'è. */
+function problemServiceField(services: { id: string; name: string }[], problem: string): { matchedServiceId?: string } {
+  const match = serviceMatchingProblem(services, problem);
   return match ? { matchedServiceId: match.id } : {};
 }
 
@@ -294,14 +307,14 @@ export class ProfessionalsService {
     };
   }
 
-  async search({ category, city, q, remote, service, excludeDemo, merit, offers }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
+  async search({ category, city, q, remote, service, excludeDemo, merit, offers, problem }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
     // Sinonimi compresi (docs/changelog/2026-10-28-quanto-costa-sinonimi.md): "perdite" trova chi ha scritto "Riparazione perdita d'acqua".
     const canonicalize = service ? await this.serviceNamesService.canonicalizer() : null;
     const serviceKey = service && canonicalize ? serviceGroupKey(service, canonicalize) : "";
     const serviceProfileIds = serviceKey && canonicalize ? await this.profileIdsWithService(serviceKey, canonicalize) : null;
     const publicWhere = this.publicSearchWhere(category, excludeDemo, serviceProfileIds);
     const offerKeywords = offers ? OUT_OF_SERVICE_KEYWORDS[offers] : [];
-    const baseWhere: Prisma.ProfessionalProfileWhereInput = {
+    const filtersWhere: Prisma.ProfessionalProfileWhereInput = {
       ...publicWhere,
       // Nell'AND: l'OR in cima è già usato da publicSearchWhere.
       ...(offerKeywords.length > 0
@@ -318,9 +331,15 @@ export class ProfessionalsService {
             ],
           }
         : {}),
-      ...(q ? { businessName: { contains: q, mode: "insensitive" } } : {}),
       ...(remote ? { remoteAvailable: true } : {}),
     };
+    // Nome dell'attività senza badare alla desinenza: "termoidraulico" trova
+    // "Termoidraulica Rossi" (docs/changelog/2026-11-04-nomi-dei-mestieri.md).
+    const nameWords = q ? nameSearchWords(q) : [];
+    const baseWhere: Prisma.ProfessionalProfileWhereInput =
+      nameWords.length > 0
+        ? { AND: [filtersWhere, ...nameWords.map((word) => ({ businessName: { contains: word, mode: "insensitive" as const } }))] }
+        : filtersWhere;
 
     // Ricerca per luogo (richiesta esplicita dell'utente): con un comune
     // riconosciuto si cercano i professionisti entro SEARCH_RADIUS_KM dal suo
@@ -399,7 +418,11 @@ export class ProfessionalsService {
         createdAt: profile.createdAt.toISOString(),
         completedThisMonth: countCompletedThisMonth(profile.bookings),
         isNewProfile: computeIsNewProfile(profile.createdAt),
-        ...(serviceKey && canonicalize ? matchedServiceField(profile.services, serviceKey, canonicalize) : {}),
+        ...(serviceKey && canonicalize
+          ? matchedServiceField(profile.services, serviceKey, canonicalize)
+          : problem
+            ? problemServiceField(profile.services, problem)
+            : {}),
         ...(distanceById?.has(profile.id) ? { distanceKm: Math.round(distanceById.get(profile.id)! * 10) / 10 } : {}),
       } satisfies ProfessionalSearchResult;
     });
@@ -419,6 +442,8 @@ export class ProfessionalsService {
       if (demotedDiff !== 0) return demotedDiff;
       const notReadyDiff = Number(notReadyIds.has(a.id)) - Number(notReadyIds.has(b.id));
       if (notReadyDiff !== 0) return notReadyDiff;
+      // Dalla descrizione del problema, prima chi fa proprio quel lavoro.
+      if (problem && Boolean(a.matchedServiceId) !== Boolean(b.matchedServiceId)) return a.matchedServiceId ? -1 : 1;
       if (!merit && a.boosted !== b.boosted) return a.boosted ? -1 : 1;
       const ratingDiff = (b.rating ?? 0) - (a.rating ?? 0);
       if (ratingDiff !== 0) return ratingDiff;

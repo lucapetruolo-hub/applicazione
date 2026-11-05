@@ -49,6 +49,7 @@ export function CategoryTiles({
   ariaLabel,
   orderBy = "searches",
   compact = false,
+  first = [],
 }: {
   value: ProfessionalCategorySlug[];
   onToggle: (slug: ProfessionalCategorySlug) => void;
@@ -62,6 +63,13 @@ export function CategoryTiles({
   orderBy?: CategoryOrderBy;
   /** Sul telefono 3 per riga e più basse (docs/changelog/2026-11-02-registrazione-pro-grafica.md). */
   compact?: boolean;
+  /**
+   * Tessere da mettere in cima, prima di tutte: le categorie suggerite dalla
+   * descrizione nella richiesta di preventivo (scelta di Luca,
+   * docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md). Si spostano
+   * solo quando cambia il suggerimento, non a ogni tocco.
+   */
+  first?: ProfessionalCategorySlug[];
 }) {
   const gridClass = compact ? "cat-tiles is-compact" : "cat-tiles";
   const [initialCity] = useState(city?.trim() || undefined);
@@ -101,7 +109,8 @@ export function CategoryTiles({
   }
 
   const baseOrder = popularOrder ?? PROFESSIONAL_CATEGORIES.map((category) => category.slug);
-  const order = [...pinned.filter((slug) => baseOrder.includes(slug)), ...baseOrder.filter((slug) => !pinned.includes(slug))];
+  const pinnedOrder = [...pinned.filter((slug) => baseOrder.includes(slug)), ...baseOrder.filter((slug) => !pinned.includes(slug))];
+  const order = [...first.filter((slug) => baseOrder.includes(slug)), ...pinnedOrder.filter((slug) => !first.includes(slug))];
   const categories = order
     .map((slug) => PROFESSIONAL_CATEGORIES.find((category) => category.slug === slug))
     .filter((c): c is (typeof PROFESSIONAL_CATEGORIES)[number] => Boolean(c));

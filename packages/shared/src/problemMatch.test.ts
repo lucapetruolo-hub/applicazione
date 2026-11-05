@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import { matchProblem } from "./problemMatch";
+import { matchProblem, serviceMatchingProblem } from "./problemMatch";
 import { DEFAULT_PROBLEM_EXAMPLES, describeProblemExample, orderProblemExamples } from "./problemExamples";
 
 // Banco di prova (analisi/abbinamento-problema/fase1-numeri.md): 769 frasi
@@ -95,6 +95,15 @@ test("casi tipici", () => {
   assert.equal(matchProblem("macchia di umido sul soffitto del bagno").question?.id, "macchia");
 });
 
+test("prestazione che corrisponde al problema", () => {
+  const services = [{ name: "Riparazione perdite" }, { name: "Sostituzione rubinetto" }, { name: "Lucidatura parquet" }, { name: "Spurgo scarichi" }];
+  assert.equal(serviceMatchingProblem(services, "Il rubinetto della cucina perde")?.name, "Sostituzione rubinetto");
+  assert.equal(serviceMatchingProblem(services, "Lo scarico del lavandino è intasato")?.name, "Spurgo scarichi");
+  // Parole generiche e parole corte simili non bastano.
+  assert.equal(serviceMatchingProblem(services, "Serve una riparazione, manca la luce"), undefined);
+  assert.equal(serviceMatchingProblem([], "Il rubinetto perde"), undefined);
+});
+
 test("frasi d'esempio della home: tutte riconosciute con sicurezza", () => {
   for (const text of DEFAULT_PROBLEM_EXAMPLES) {
     assert.notEqual(describeProblemExample(text).categorySlug, null, text);
@@ -114,4 +123,30 @@ test("frasi d'esempio della home: senza ricerche l'ordine di Google, i mestieri 
     examples.slice(0, 5).map((e) => e.categorySlug),
     ["idraulico", "elettricista", "pulizie", "falegname", "climatizzazione"],
   );
+});
+
+test("nomi dei mestieri: termoidraulico e simili portano subito alle categorie giuste", () => {
+  const cases: [string, string[]][] = [
+    ["termoidraulico", ["idraulico", "climatizzazione"]],
+    ["Termoidraulica Rossi", ["idraulico", "climatizzazione"]],
+    ["stagnino", ["idraulico"]],
+    ["caldaista", ["climatizzazione"]],
+    ["frigorista", ["climatizzazione"]],
+    ["manutentore caldaie", ["climatizzazione"]],
+    ["impiantista", ["idraulico", "elettricista", "climatizzazione"]],
+    ["piastrellista", ["muratore"]],
+    ["fabbri", ["fabbro"]],
+    ["giardinaggio", ["giardiniere"]],
+    ["petsitter", ["dogsitter"]],
+  ];
+  for (const [text, expected] of cases) {
+    const match = matchProblem(text);
+    assert.deepEqual(match.categories.map((category) => category.slug), expected, text);
+    assert.equal(match.confident, true, text);
+    assert.equal(match.question, null, text);
+  }
+  // La caldaia scritta accanto al nome passa davanti.
+  assert.equal(matchProblem("termoidraulico per la caldaia in blocco").categories[0]?.slug, "climatizzazione");
+  // "fabbricato" non è il fabbro.
+  assert.equal(matchProblem("fabbricato").categories.length, 0);
 });
