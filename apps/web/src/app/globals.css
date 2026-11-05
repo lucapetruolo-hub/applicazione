@@ -538,6 +538,69 @@ body:has(.chosen-bar) {
   border-radius: 50%;
   animation: uploading-dot-bounce 1.1s ease-in-out infinite;
 }
+
+/* Barra di attesa "sta cercando" (docs/changelog/2026-11-05-barra-di-attesa.md):
+   sottile, verdi del sito che scorrono in loop, bordi sfumati. Solo verdi:
+   i colori dell'esempio (blu, viola, rosso, giallo) danno l'aspetto "fatto
+   con l'IA". Con le animazioni ridotte resta ferma (regola globale sopra):
+   la frase sotto dice comunque che si sta aspettando. */
+@keyframes flow-bar {
+  to {
+    background-position: -300% 0;
+  }
+}
+.flow-bar {
+  height: 4px;
+  border-radius: 2px;
+  background-image: linear-gradient(90deg, #128552, #189a63, #7fd3a8, #189a63, #128552);
+  background-size: 300% 100%;
+  background-position: 0 0;
+  animation: flow-bar 2s linear infinite;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+}
+/* In cima allo schermo, sopra la barra fissa del sito (NavigationProgress). */
+.nav-progress {
+  position: fixed;
+  top: env(safe-area-inset-top, 0px);
+  left: 0;
+  right: 0;
+  z-index: 2100;
+  pointer-events: none;
+  animation: nav-progress-in 200ms ease-out;
+}
+.nav-progress .flow-bar {
+  height: 3px;
+  border-radius: 0;
+}
+@keyframes nav-progress-in {
+  from {
+    opacity: 0;
+  }
+}
+/* Frase sotto la barra (ricerca dal problema, uscita verso Stripe/Didit). */
+.nav-progress-label {
+  position: fixed;
+  /* Sotto la barra fissa del sito, come i messaggi (.toast-stack). */
+  top: calc(env(safe-area-inset-top, 0px) + 76px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2100;
+  pointer-events: none;
+  max-width: calc(100vw - 32px);
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #2b2420;
+  border: 1px solid #f0dcc0;
+  box-shadow: 0 4px 14px rgba(43, 32, 19, 0.12);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: nav-progress-in 200ms ease-out;
+}
 .uploading-dot:nth-child(1) {
   animation-delay: 0ms;
 }

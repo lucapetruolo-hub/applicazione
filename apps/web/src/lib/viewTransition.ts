@@ -16,7 +16,14 @@
  * altrove in questo progetto ("non un giro esaustivo, priorità ai punti
  * più critici").
  */
-export function navigateWithTransition(navigate: () => void) {
+import { startNavigationProgress } from "./navigationProgress";
+
+/**
+ * `href`: la pagina di arrivo, per accendere la barra di attesa in cima
+ * (docs/changelog/2026-11-05-barra-di-attesa.md) se ci mette più di 300 ms.
+ */
+export function navigateWithTransition(navigate: () => void, href?: string) {
+  if (href) startNavigationProgress(href);
   const startViewTransition =
     typeof document !== "undefined"
       ? (document as Document & { startViewTransition?: (cb: () => void) => void }).startViewTransition

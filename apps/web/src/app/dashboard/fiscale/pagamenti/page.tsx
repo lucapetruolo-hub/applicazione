@@ -14,6 +14,7 @@ import { OnlinePaymentsCard } from "@/components/OnlinePaymentsCard";
 import { PayoutIbanCard } from "@/components/PayoutIbanCard";
 import { ProfileMissingNotice, isProfileMissingError } from "@/components/ProfileMissingNotice";
 import { JourneyProgress, journeyCurrent, setupJourney, useJourneySubscription } from "@/components/verification/SetupJourney";
+import { startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
 
 /**
  * Scheda "Pagamenti online" dell'area Fisco e pagamenti
@@ -77,10 +78,12 @@ function OnlinePaymentsContent() {
     if (!token) return;
     setStripeLoading(true);
     setStripeError(null);
+    startExternalRedirectProgress();
     try {
       const { url } = await apiClient.createStripeConnectLink(token);
       window.location.href = url;
     } catch (e) {
+      stopProgress();
       setStripeError(e instanceof Error ? e.message : "Impossibile avviare l'attivazione dei pagamenti.");
     } finally {
       setStripeLoading(false);
@@ -98,10 +101,12 @@ function OnlinePaymentsContent() {
     if (!token) return;
     setStripeLoading(true);
     setStripeError(null);
+    startExternalRedirectProgress();
     try {
       const { url } = await apiClient.createStripeDashboardLink(token);
       window.location.href = url;
     } catch (e) {
+      stopProgress();
       setStripeError(e instanceof Error ? e.message : "Impossibile aprire il tuo conto Stripe.");
       setStripeLoading(false);
     }

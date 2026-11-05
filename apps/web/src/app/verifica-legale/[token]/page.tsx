@@ -8,6 +8,7 @@ import { Button, Text, YStack, brand } from "@professionisti/ui";
 import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
 import { AuthIconBadge } from "@/components/AuthStepHeader";
 import { apiClient } from "@/lib/apiClient";
+import { startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
 
 /** Di ritorno dalla verifica la pagina aspetta l'esito, per al massimo 3 minuti. */
 const POLL_MS = 4000;
@@ -67,14 +68,17 @@ function VerificaLegale({ token }: { token: string }) {
     }
     setStarting(true);
     setError(null);
+    startExternalRedirectProgress();
     try {
       const { url } = await apiClient.startRepresentativeVerification(token);
       if (url) {
         window.location.href = url;
         return;
       }
+      stopProgress();
       load();
     } catch (err) {
+      stopProgress();
       setError(err instanceof Error ? err.message : "Non siamo riusciti ad avviare la verifica. Riprova.");
     }
     setStarting(false);

@@ -50,7 +50,7 @@ export function HeaderSearchBar() {
     navigateWithTransition(() => {
       router.push(destination);
       router.refresh();
-    });
+    }, destination);
   }
 
   return (

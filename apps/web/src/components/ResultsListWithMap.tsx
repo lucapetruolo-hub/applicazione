@@ -518,11 +518,10 @@ export function ResultsListWithMap({
       // letto da ProfessionalDetailContent via `?modalita=`, stesso
       // parametro già usato per precompilare /preventivo.
       href={profileHref(pro, { ...fromChoice, ...(defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {}) }, problemDescription)}
-      onPress={() =>
-        navigateWithTransition(() =>
-          router.push(profileHref(pro, { ...fromChoice, ...(defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {}) }, problemDescription)),
-        )
-      }
+      onPress={() => {
+        const href = profileHref(pro, { ...fromChoice, ...(defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {}) }, problemDescription);
+        navigateWithTransition(() => router.push(href), href);
+      }}
       // Click su un orario libero della mini-agenda (o sul bottone
       // "Mostra orari disponibili", che qui atterra sempre su una
       // fascia reale — vedi ProfessionalCard: quel bottone ora avanza
@@ -546,16 +545,16 @@ export function ResultsListWithMap({
             // "Ripeti la richiesta", stesso form).
             slotHref(pro, date, time, endTime, mode),
           ),
+          slotHref(pro, date, time, endTime, mode),
         )
       }
       // Click sull'agenda fuori da un orario libero: profilo aperto
       // sull'agenda, già sul giorno scelto e sulla stessa modalità
       // (richiesta esplicita dell'utente, docs/CHANGELOG.md §206).
-      onAgendaPress={(date, mode) =>
-        navigateWithTransition(() =>
-          router.push(`${profileHref(pro, { ...fromChoice, data: date, ...(mode === "ONLINE" ? { modalita: "ONLINE" } : {}) }, problemDescription)}#agenda`),
-        )
-      }
+      onAgendaPress={(date, mode) => {
+        const href = `${profileHref(pro, { ...fromChoice, data: date, ...(mode === "ONLINE" ? { modalita: "ONLINE" } : {}) }, problemDescription)}#agenda`;
+        navigateWithTransition(() => router.push(href), href);
+      }}
       // Cuoricino piccolo nell'angolo della foto (richiesta esplicita
       // dell'utente, docs/CHANGELOG.md §208): accanto al nome rubava
       // spazio al nome sui telefoni.

@@ -21,6 +21,7 @@ import { GuidedRequestCard } from "./_components/GuidedRequestCard";
 import { clientRequestSearchText, filterInputStyle, requestJobAddress } from "./_components/clientRequestHelpers";
 import { BookingConfirmed } from "./_components/BookingConfirmed";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
+import { PAYMENT_PAGE_LABEL, startExternalRedirectProgress } from "@/lib/navigationProgress";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
 const UNREAD_BADGE_POLL_MS = 15000;
@@ -394,6 +395,7 @@ function LeMieRichiesteContent() {
     if (!token) throw new Error("Devi accedere per accettare un preventivo.");
     const { checkoutUrl, bookingId } = await apiClient.acceptQuote(token, quoteId, paymentMethod, invoiceRequest);
     if (checkoutUrl) {
+      startExternalRedirectProgress(PAYMENT_PAGE_LABEL);
       window.location.href = checkoutUrl;
       return;
     }

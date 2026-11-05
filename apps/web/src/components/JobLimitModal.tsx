@@ -7,6 +7,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 import { nextTierOf, upgradeQuoteOf } from "@/components/SubscriptionPauseBanner";
+import { PAYMENT_PAGE_LABEL, startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
 
 function dayMonth(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", timeZone: "Europe/Rome" });
@@ -58,14 +59,17 @@ export function JobLimitModal({
     if (!token || !next) return;
     setError(null);
     setPending(true);
+    startExternalRedirectProgress(PAYMENT_PAGE_LABEL);
     try {
       const { url } = await apiClient.createSubscriptionCheckout(token, next, interval);
       if (url) {
         window.location.assign(url);
         return;
       }
+      stopProgress();
       onUpgraded();
     } catch (err) {
+      stopProgress();
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
       setPending(false);
     }
