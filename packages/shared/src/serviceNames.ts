@@ -222,3 +222,22 @@ export function nearlySameServiceName(a: string, b: string): boolean {
   if (allowed === 0 || keyA.replace(/\D/g, "") !== keyB.replace(/\D/g, "")) return false;
   return editDistance(keyA, keyB) <= allowed;
 }
+
+/**
+ * Mestiere di una prestazione, per mostrarle divise per mestiere
+ * (docs/changelog/2026-11-05-registrazione-colonna-unica.md): quello salvato
+ * se è ancora tra i mestieri del profilo; per le prestazioni di prima (senza
+ * mestiere) quello che la suggerisce, altrimenti il principale.
+ * `suggestedFor` di serie usa POPULAR_SERVICES; il profilo aggiunge le
+ * prestazioni standard dell'admin.
+ */
+export function serviceCategoryOf<Slug extends keyof typeof POPULAR_SERVICES>(
+  service: { name: string; categorySlug?: string | null },
+  categorySlugs: readonly Slug[],
+  suggestedFor: (slug: Slug) => readonly string[] = (slug) => POPULAR_SERVICES[slug],
+): Slug | undefined {
+  const saved = categorySlugs.find((slug) => slug === service.categorySlug);
+  if (saved) return saved;
+  const name = canonicalServiceName(service.name);
+  return categorySlugs.find((slug) => suggestedFor(slug).includes(name)) ?? categorySlugs[0];
+}

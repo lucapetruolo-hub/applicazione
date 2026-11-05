@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BRAND, MAX_CHOSEN_PROFESSIONALS, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, shownServicePriceUnit, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, MAX_CHOSEN_PROFESSIONALS, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, shownServicePriceUnit, formatServicePriceRange, serviceCategoryOf, subTagLabel, type ProfessionalAgenda, type ProfessionalCategorySlug, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
+import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { ProfileQuoteCta } from "@/components/ProfileQuoteCta";
@@ -95,6 +96,19 @@ export function ProfessionalDetailContent({
   "use no memo";
   const { user, token, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
+  const serviceCategories = professional.categories?.length ? professional.categories : [{ slug: professional.categorySlug, label: professional.categoryLabel }];
+  const serviceGroups: { slug: ProfessionalCategorySlug | null; label: string; services: ProfessionalDetail["services"] }[] =
+    serviceCategories.length > 1
+      ? serviceCategories
+          .map((category) => ({
+            slug: category.slug,
+            label: category.label,
+            services: professional.services.filter(
+              (service) => serviceCategoryOf(service, serviceCategories.map((c) => c.slug)) === category.slug,
+            ),
+          }))
+          .filter((group) => group.services.length > 0)
+      : [{ slug: null, label: "", services: professional.services }];
   const [isSaved, setIsSaved] = useState(false);
   // Aperto dai risultati con "Scegli": si torna indietro con la scelta
   // e si può scegliere anche da qui (docs/changelog/2026-11-03-scelti-restano.md).
@@ -933,18 +947,32 @@ export function ProfessionalDetailContent({
                 Prestazioni
               </Text>
             </XStack>
-            <Surface padding={0} overflow="hidden">
-              {professional.services.map((service, index) => (
-                <YStack key={service.id} paddingHorizontal="4" paddingVertical="3" borderTopWidth={index === 0 ? 0 : 1} borderTopColor={brand.filetto}>
-                  <PriceLine
-                    label={service.name}
-                    labelColor={brand.grafite}
-                    price={formatServicePriceRange(service.priceMinEurCents, service.priceMaxEurCents)}
-                    unit={service.priceMinEurCents !== null || service.priceMaxEurCents !== null ? shownServicePriceUnit(service.priceUnit) : undefined}
-                  />
-                </YStack>
-              ))}
-            </Surface>
+            {/* Divise per mestiere quando sono più d'uno (miglioria scelta da Luca,
+                docs/changelog/2026-11-05-registrazione-colonna-unica.md). */}
+            {serviceGroups.map((group) => (
+              <YStack key={group.slug ?? "tutte"} gap="2">
+                {serviceGroups.length > 1 && group.slug ? (
+                  <XStack alignItems="center" gap="2">
+                    <CategoryIconBadge slug={group.slug} size={28} />
+                    <Text fontWeight="700" color={brand.grafite}>
+                      {group.label}
+                    </Text>
+                  </XStack>
+                ) : null}
+                <Surface padding={0} overflow="hidden">
+                  {group.services.map((service, index) => (
+                    <YStack key={service.id} paddingHorizontal="4" paddingVertical="3" borderTopWidth={index === 0 ? 0 : 1} borderTopColor={brand.filetto}>
+                      <PriceLine
+                        label={service.name}
+                        labelColor={brand.grafite}
+                        price={formatServicePriceRange(service.priceMinEurCents, service.priceMaxEurCents)}
+                        unit={service.priceMinEurCents !== null || service.priceMaxEurCents !== null ? shownServicePriceUnit(service.priceUnit) : undefined}
+                      />
+                    </YStack>
+                  ))}
+                </Surface>
+              </YStack>
+            ))}
           </YStack>
         ) : null}
 

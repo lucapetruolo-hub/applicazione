@@ -49,3 +49,22 @@ API in locale con un database vuoto: iscrizione con due mestieri, prestazioni
 aggiunte nei due riquadri, salvataggio con il mestiere (un mestiere non del
 profilo torna `null`), Partita IVA a metà, sbagliata e giusta, "Cambia" del
 tipo. Foto a 1440 px e iPhone 13 in `anteprime/registrazione-schermata-divisa/dopo/`.
+
+## Migliorie 2 e 3 (scelte da Luca lo stesso giorno)
+
+5. **Passando a "Privato" si cancellano i dati della ditta**: Partita IVA,
+   numero REA e "IVA nelle fatture" del tipo di prima diventano vuoti nel
+   database e non entrano nei controlli (formato, Partita IVA già usata da un
+   altro account). Lo fa il server, qualunque cosa mandi il sito (test in
+   `entity-type-change.test.ts`).
+6. **Profilo pubblico con le prestazioni divise per mestiere** quando i
+   mestieri sono più d'uno: sopra ogni gruppo l'icona e il nome del mestiere.
+   Il mestiere di una prestazione lo decide `serviceCategoryOf` in
+   `packages/shared/src/serviceNames.ts`, lo stesso usato nel profilo in
+   dashboard (le prestazioni salvate prima vanno nel mestiere che le
+   suggerisce, altrimenti nel principale).
+
+**Verifica**: test dell'API, typecheck e lint del sito; in locale passaggio da
+"Con Partita IVA" a "Privato" con Partita IVA e IVA salvate (tornano vuote) e
+anteprima del profilo pubblico con due mestieri e prestazioni vecchie senza
+mestiere. Foto in `anteprime/registrazione-schermata-divisa/dopo/6-profilo-pubblico-*.png`.

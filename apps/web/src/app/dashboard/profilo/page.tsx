@@ -17,6 +17,7 @@ import {
   POPULAR_SERVICES,
   ALL_SUGGESTED_SERVICES,
   canonicalServiceName,
+  serviceCategoryOf,
   isProfessionalCategorySlug,
   PROFESSIONAL_CATEGORIES,
   categorySubTags,
@@ -773,10 +774,7 @@ export default function DashboardProfiloPage() {
   // Mestiere di una prestazione: quello salvato; per le prestazioni di prima
   // (senza mestiere) quello che la suggerisce, altrimenti il principale.
   function serviceCategory(service: { name: string; categorySlug: string | null }): ProfessionalCategorySlug | undefined {
-    const saved = categorySlugs.find((slug) => slug === service.categorySlug);
-    if (saved) return saved;
-    const name = canonicalServiceName(service.name);
-    return categorySlugs.find((slug) => suggestedFor(slug).includes(name)) ?? categorySlugs[0];
+    return serviceCategoryOf(service, categorySlugs, suggestedFor);
   }
   const addedServiceNames = new Set(services.map((service) => canonicalServiceName(service.name)));
   const indexedServices = services.map((service, index) => ({ service, index }));

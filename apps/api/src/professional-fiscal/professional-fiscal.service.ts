@@ -215,13 +215,21 @@ export class ProfessionalFiscalService {
     // Partita IVA senza "IT" davanti e numero REA nella forma "LT-123456"
     // (collaudo D-12, E-05, E-07), solo per i dati italiani.
     const italianIds = (rawInput.fiscalIdIssuingCountry ?? existing?.fiscalIdIssuingCountry ?? "IT").trim().toUpperCase() === "IT";
-    const input: ProfessionalFiscalProfileInput = italianIds
+    const normalizedInput: ProfessionalFiscalProfileInput = italianIds
       ? {
           ...rawInput,
           ...(rawInput.vatNumber !== undefined ? { vatNumber: normalizePartitaIva(rawInput.vatNumber) } : {}),
           ...(rawInput.businessRegistrationNumber !== undefined ? { businessRegistrationNumber: normalizeReaNumber(rawInput.businessRegistrationNumber) } : {}),
         }
       : rawInput;
+    // Privato senza Partita IVA: Partita IVA, REA e "IVA nelle fatture" del
+    // tipo di prima non restano salvati né entrano nei controlli (miglioria
+    // scelta da Luca, docs/changelog/2026-11-05-registrazione-colonna-unica.md).
+    const becomesPrivate = (normalizedInput.entityType ?? existing?.entityType) === "PRIVATE_INDIVIDUAL";
+    const input: ProfessionalFiscalProfileInput = becomesPrivate
+      ? { ...normalizedInput, vatNumber: undefined, businessRegistrationNumber: undefined, chargesVat: undefined }
+      : normalizedInput;
+    const existingVat = becomesPrivate ? null : existing?.vatNumber;
 
     // Il tipo lo cambia il professionista da Dati fiscali (docs/changelog/2026-11-05-registrazione-colonna-unica.md),
     // ma non dopo aver collegato Stripe: il conto Stripe è legato al tipo (come "Cambia tipo" dell'admin).
@@ -239,8 +247,8 @@ export class ProfessionalFiscalService {
       fiscalLastName: input.fiscalLastName ?? existing?.fiscalLastName,
       fiscalCodiceFiscale: input.fiscalCodiceFiscale ?? existing?.fiscalCodiceFiscale,
       dateOfBirth: input.dateOfBirth ?? existing?.dateOfBirth,
-      vatNumber: input.vatNumber ?? existing?.vatNumber,
-      businessRegistrationNumber: input.businessRegistrationNumber ?? existing?.businessRegistrationNumber,
+      vatNumber: input.vatNumber ?? existingVat,
+      businessRegistrationNumber: input.businessRegistrationNumber ?? (becomesPrivate ? null : existing?.businessRegistrationNumber),
       representative: input.representative ?? existing?.representative,
     });
     if (fieldErrors.length > 0) throw new BadRequestException(fieldErrors[0]?.message);
@@ -257,7 +265,7 @@ export class ProfessionalFiscalService {
     // Un codice fiscale e una partita IVA per un solo account (collaudo P-03).
     const taken = await this.taxIdTakenBy(userId, professionalProfileId, {
       codiceFiscale: input.fiscalCodiceFiscale ?? existing?.fiscalCodiceFiscale,
-      vatNumber: input.vatNumber ?? existing?.vatNumber,
+      vatNumber: input.vatNumber ?? existingVat,
     });
     if (taken) {
       throw new BadRequestException(
@@ -270,6 +278,10 @@ export class ProfessionalFiscalService {
       const value = input[field];
       if (value === undefined) continue;
       data[field] = field === "dateOfBirth" ? (value ? new Date(value as string) : null) : value || null;
+    }
+    if (becomesPrivate) {
+      if (existing?.vatNumber) data.vatNumber = null;
+      if (existing?.businessRegistrationNumber) data.businessRegistrationNumber = null;
     }
     // Un cambio ai dati fiscali riporta lo stato di verifica a UNVERIFIED —
     // un admin aveva verificato il dato PRECEDENTE, non quello nuovo (mai
@@ -292,6 +304,7 @@ export class ProfessionalFiscalService {
     // IVA nelle sue fatture e codice destinatario o PEC (docs/CHANGELOG.md
     // §378): servono ai documenti, non cambiano la persona né la verifica.
     if (input.chargesVat !== undefined) data.chargesVat = input.chargesVat;
+    if (becomesPrivate && existing?.chargesVat != null) data.chargesVat = null;
     if (input.invoiceRecipient !== undefined) {
       const recipient = parseInvoiceRecipient(input.invoiceRecipient);
       if (!recipient.ok) throw new BadRequestException(recipient.error);

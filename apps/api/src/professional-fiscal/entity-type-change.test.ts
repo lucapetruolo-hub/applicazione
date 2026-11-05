@@ -29,3 +29,31 @@ describe("ProfessionalFiscalService.upsertMine — cambio del tipo", () => {
     await expect(service.upsertMine("user-1", { entityType: "PRIVATE_INDIVIDUAL" } as never)).rejects.not.toThrow("su Stripe il tipo non si cambia");
   });
 });
+
+describe("ProfessionalFiscalService.upsertMine — passaggio a Privato", () => {
+  it("cancella Partita IVA, REA e IVA nelle fatture del tipo di prima", async () => {
+    const existing = {
+      id: "fp-1",
+      representative: null,
+      entityType: "SOLE_PROPRIETOR",
+      stripeConnectAccountId: null,
+      vatNumber: "12345678903",
+      businessRegistrationNumber: "LT-123456",
+      chargesVat: true,
+    };
+    const prisma = {
+      professionalProfile: { findUnique: vi.fn().mockResolvedValue({ id: "pro-1", businessName: "Mario Rossi" }) },
+      professionalFiscalProfile: {
+        findUnique: vi.fn().mockResolvedValue(existing),
+        findMany: vi.fn().mockResolvedValue([]),
+        create: vi.fn(),
+        update: vi.fn().mockRejectedValue(new Error("fermato dopo il salvataggio")),
+      },
+      user: { findUnique: vi.fn().mockResolvedValue({ testAccountAt: null }) },
+    };
+    const service = new ProfessionalFiscalService(prisma as never, { record: vi.fn() } as never, {} as never, {} as never, {} as never);
+    await service.upsertMine("user-1", { entityType: "PRIVATE_INDIVIDUAL", vatNumber: "12345678903" } as never).catch(() => undefined);
+    const data = prisma.professionalFiscalProfile.update.mock.calls[0]?.[0].data;
+    expect(data).toMatchObject({ entityType: "PRIVATE_INDIVIDUAL", vatNumber: null, businessRegistrationNumber: null, chargesVat: null });
+  });
+});
