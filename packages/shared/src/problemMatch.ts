@@ -476,6 +476,11 @@ export type ProblemMatchAdminOverview = {
     none: number;
     byCategory: { key: string; count: number }[];
     byOutOfService: { key: string; count: number }[];
+    /**
+     * Ricerche non capite raggruppate per testo, le più frequenti prima: i
+     * mestieri che mancano al sito (docs/changelog/2026-11-04-avviso-caldaie.md).
+     */
+    missing: { text: string; count: number }[];
     suggestions: ProblemSuggestionOutcomes;
   };
   descriptions: {

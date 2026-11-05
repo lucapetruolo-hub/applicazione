@@ -573,16 +573,8 @@ export function buildSiteAdvice(input: SiteAdviceInput): SiteAdvice[] {
       link: toCall.length > SERVICE_GAP_MAX_CONTACTS ? { label: `Tutti i professionisti di ${gap.categoryLabel} (${toCall.length})`, href: `/admin/utenti?categoria=${gap.categorySlug}` } : toCall.length === 0 ? RECRUIT_LINK : undefined,
     });
   }
-  for (const missing of input.missingServices.slice(0, 2)) {
-    advice.push({
-      key: `missing-service:${missing.categorySlug}:${normalizeServiceName(missing.name)}`,
-      level: "TIP",
-      title: `Aggiungi «${missing.name}» alle prestazioni suggerite di ${missing.categoryLabel}`,
-      why: `L'hanno scritta a mano ${missing.professionals} professionisti, ma non è tra quelle che il sito propone.`,
-      todo: "Aggiungila con + in «Prestazioni per mestiere»: chi si iscrive la sceglie con un clic e i prezzi medi di «Quanto costa» si sommano bene.",
-      link: { label: "Prestazioni per mestiere", href: "/admin/mestieri-richiesti?scheda=prestazioni" },
-    });
-  }
+  // Le prestazioni scritte a mano da aggiungere alle suggerite non sono più un consiglio: sono una
+  // proposta da approvare con un clic in Da fare (docs/changelog/2026-11-03-automazioni-admin.md).
 
   // Avvisi che in tanti spengono: forse arrivano troppo spesso o non servono.
   const optOuts = (input.notificationOptOuts ?? []).flatMap((group) =>

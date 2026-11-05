@@ -14,6 +14,7 @@ import { ServiceNamesModule } from "./service-names.module";
   imports: [AuthModule, AdminModule, AuditLogModule, CategoriesModule, ServiceNamesModule],
   controllers: [ProblemMatchController, ServiceNamesController, AdminProblemMatchController],
   providers: [ProblemMatchService, ProblemMatchAdminService, ProblemTakeoverService, ProblemExamplesService],
-  exports: [ServiceNamesModule],
+  // Le proposte da approvare in Admin usano gli stessi servizi dei pulsanti di "Mestieri richiesti".
+  exports: [ServiceNamesModule, ProblemExamplesService, ProblemMatchAdminService],
 })
 export class ProblemMatchModule {}

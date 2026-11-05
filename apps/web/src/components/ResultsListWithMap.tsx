@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, ChevronUp, Info, Map as MapIcon, Maximize2, Minimize2, Plus, RotateCw, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, CreditCard, Info, Map as MapIcon, Maximize2, Minimize2, Plus, RotateCw, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
 import { PROFILE_REQUEST_SOURCE_PARAM, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type ProfessionalSearchResult, professionalPath, subTagLabel } from "@professionisti/shared";
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
@@ -335,7 +335,7 @@ export function ResultsListWithMap({
   // "Intervento urgente?" preselezionato dalla homepage (per rendere subito
   // visibile che il filtro è attivo), altrimenti "Consulenza online" come
   // prima.
-  const [expandedSection, setExpandedSection] = useState<"online" | "availability" | "language" | "insurance" | null>(
+  const [expandedSection, setExpandedSection] = useState<"online" | "availability" | "language" | "insurance" | "payment" | null>(
     initialUrgentOnly ? "availability" : "online",
   );
 
@@ -351,6 +351,10 @@ export function ResultsListWithMap({
   // Solo profili con assicurazione RC professionale dichiarata
   // (docs/CHANGELOG.md §157, richiesta esplicita dell'utente).
   const [filterInsuredOnly, setFilterInsuredOnly] = useState(false);
+
+  // Solo chi può farsi pagare online, cioè con il bollino "Pagamenti online
+  // attivi" (richiesta di Luca, docs/changelog/2026-11-04-prezzi-e-foto-profilo.md).
+  const [filterOnlinePaymentOnly, setFilterOnlinePaymentOnly] = useState(false);
 
   // Popup centrato (richiesta esplicita dell'utente), stesso pattern
   // overlay già in uso altrove nel prodotto (BookingDetailPanel,
@@ -423,13 +427,15 @@ export function ResultsListWithMap({
     if (filterAvailability === "3days" && !hasAvailabilityWithinDays(pro, 2)) return false;
     if (selectedLanguage && !pro.spokenLanguages.includes(selectedLanguage)) return false;
     if (filterInsuredOnly && !pro.hasLiabilityInsurance) return false;
+    if (filterOnlinePaymentOnly && !pro.stripeVerified) return false;
     return true;
   }
 
   const activeFilterCount =
     (filterUrgentOnly ? 1 : 0) + (filterOnlineOnly ? 1 : 0) + (filterAvailability !== "any" ? 1 : 0) +
     (selectedLanguage ? 1 : 0) +
-    (filterInsuredOnly ? 1 : 0);
+    (filterInsuredOnly ? 1 : 0) +
+    (filterOnlinePaymentOnly ? 1 : 0);
 
   // Pool gia' filtrato dai filtri attivi: lista E mappa leggono da qui, cosi'
   // i puntini sulla mappa corrispondono sempre alle schede visibili (bug
@@ -442,7 +448,7 @@ export function ResultsListWithMap({
   // (richiesta esplicita dell'utente, riferimento miodottore.it).
   const filteredResultsCount = (showMap ? filteredOrderedVisible : filteredProfessionals).length;
 
-  function toggleSection(section: "online" | "availability" | "language" | "insurance") {
+  function toggleSection(section: "online" | "availability" | "language" | "insurance" | "payment") {
     setExpandedSection((prev) => (prev === section ? null : section));
   }
 
@@ -740,6 +746,40 @@ export function ResultsListWithMap({
               </div>
 
               <div className="filters-section">
+                <button type="button" className="filters-section-header" onClick={() => toggleSection("payment")}>
+                  <span className="filters-section-title">Pagamento</span>
+                  {expandedSection === "payment" ? <ChevronUp size={18} strokeWidth={1.5} /> : <ChevronDown size={18} strokeWidth={1.5} />}
+                </button>
+                {expandedSection === "payment" ? (
+                  <div className="filters-section-content">
+                    <div className="filters-toggle-row">
+                      <span id="filter-online-payment-label">
+                        <CreditCard size={14} strokeWidth={1.5} style={{ verticalAlign: "-2px", marginRight: 6 }} />
+                        Solo con pagamento online
+                      </span>
+                      <span
+                        className={`filters-switch${filterOnlinePaymentOnly ? " on" : ""}`}
+                        onClick={() => setFilterOnlinePaymentOnly((v) => !v)}
+                        role="switch"
+                        aria-labelledby="filter-online-payment-label"
+                        aria-checked={filterOnlinePaymentOnly}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setFilterOnlinePaymentOnly((v) => !v);
+                          }
+                        }}
+                      >
+                        <span className="filters-switch-knob" />
+                      </span>
+                    </div>
+                    <span className="filters-empty">Paghi con carta sul sito: se qualcosa va storto ti assistiamo noi.</span>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="filters-section">
                 <button type="button" className="filters-section-header" onClick={() => toggleSection("language")}>
                   <span className="filters-section-title">Lingua parlata</span>
                   {expandedSection === "language" ? <ChevronUp size={18} strokeWidth={1.5} /> : <ChevronDown size={18} strokeWidth={1.5} />}
@@ -786,6 +826,7 @@ export function ResultsListWithMap({
                     setLanguageQuery("");
                     setSelectedLanguage(null);
                     setFilterInsuredOnly(false);
+                    setFilterOnlinePaymentOnly(false);
                   }}
                 >
                   Reimposta filtri

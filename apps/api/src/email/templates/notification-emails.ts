@@ -1496,11 +1496,25 @@ const BUILDERS: Record<string, Builder> = {
           return [`${level ? `${level} · ` : ""}**${a.title}**. ${a.todo}`];
         })
       : [];
+    // Proposte già pronte da approvare con un clic (docs/changelog/2026-11-03-automazioni-admin.md).
+    const proposals = typeof payload.proposals === "number" && payload.proposals > 0 ? payload.proposals : 0;
+    const proposalsLine = proposals
+      ? `**${proposals === 1 ? "Una proposta da approvare" : `${proposals} proposte da approvare`}** in Da fare: sono già pronte, basta un clic.`
+      : null;
+    if (items.length === 0) {
+      return {
+        kind: "notification",
+        subject: proposals === 1 ? "Una proposta da approvare" : `${proposals} proposte da approvare`,
+        title: "Da approvare",
+        paragraphs: [proposalsLine ?? "Niente da approvare."],
+        cta: { label: "Apri Da fare", url: `${frontendUrl()}/admin` },
+      };
+    }
     return {
       kind: "notification",
       subject: items.length === 1 ? "Una cosa da fare questa settimana" : `${items.length} cose da fare questa settimana`,
       title: "Cosa fare questa settimana",
-      paragraphs: ["Dai numeri del sito, ecco cosa conviene fare:", ...items],
+      paragraphs: ["Dai numeri del sito, ecco cosa conviene fare:", ...items, ...(proposalsLine ? [proposalsLine] : [])],
       cta: { label: "Vedi i consigli", url: `${frontendUrl()}/admin/andamento` },
     };
   },
@@ -1675,7 +1689,7 @@ const BUILDERS: Record<string, Builder> = {
     greeting: ctx.name,
     title: "Pagamenti online attivi",
     paragraphs: [
-      "Stripe ha completato la verifica della tua identità: ora puoi offrire nei preventivi l'acconto online, e il tuo profilo mostra il badge **Pagamenti online attivi**.",
+      "Stripe ha completato la verifica della tua identità: ora puoi offrire nei preventivi l'acconto online, e il tuo profilo mostra il bollino **Paga online**.",
       "I soldi dei pagamenti online ti arrivano sul conto che hai indicato a Stripe.",
     ],
     cta: { label: "Vai ai pagamenti online", url: `${frontendUrl()}/dashboard/fiscale/pagamenti` },
@@ -1724,7 +1738,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Pagamenti online sospesi",
     paragraphs: [
       "Stripe ci ha comunicato che il tuo account non può più ricevere pagamenti, di solito perché mancano dei dati o un documento da aggiornare.",
-      "Finché non lo sistemi non puoi offrire l'acconto online nei nuovi preventivi e il badge **Pagamenti online attivi** non compare. Il tuo profilo resta visibile e puoi continuare a farti pagare direttamente. I soldi già pagati online restano al sicuro e ti arrivano appena l'account torna attivo.",
+      "Finché non lo sistemi non puoi offrire l'acconto online nei nuovi preventivi e il bollino **Paga online** non compare. Il tuo profilo resta visibile e puoi continuare a farti pagare direttamente. I soldi già pagati online restano al sicuro e ti arrivano appena l'account torna attivo.",
     ],
     cta: { label: "Completa i dati su Stripe", url: `${frontendUrl()}/dashboard/fiscale/pagamenti` },
   }),
@@ -1862,6 +1876,24 @@ const BUILDERS: Record<string, Builder> = {
         "Controlla che gli orari in agenda siano giusti. Se ti serve qualche giorno in più, cambia la data della pausa.",
       ],
       cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda?tab=orari` },
+    };
+  },
+  // Consiglio di mettersi in pausa a chi non risponde alle richieste, solo dopo l'ok di un admin (docs/changelog/2026-11-03-automazioni-admin.md).
+  AWAY_SUGGESTED: (payload, ctx) => {
+    const requests = typeof payload.requests === "number" && payload.requests > 0 ? payload.requests : null;
+    return {
+      kind: "notification",
+      subject: "Hai poco tempo per le richieste?",
+      greeting: ctx.name,
+      title: "Puoi metterti in pausa",
+      paragraphs: [
+        requests
+          ? `Nelle ultime due settimane ti sono arrivate ${requests} richieste di preventivo e sono ancora senza risposta.`
+          : "Nelle ultime due settimane ti sono arrivate richieste di preventivo che sono ancora senza risposta.",
+        "Se hai troppo lavoro o sei via, **mettiti in pausa** fino al giorno che scegli: non ricevi nuove richieste, i lavori già fissati restano e torni nella ricerca da solo.",
+        "Se invece le richieste ti interessano, rispondi o rifiuta con un clic: il cliente sa subito se può contare su di te.",
+      ],
+      cta: { label: "Metti in pausa", url: `${frontendUrl()}/dashboard/agenda?tab=orari` },
     };
   },
   // "Sto arrivando" dall'agenda (§288).

@@ -87,6 +87,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   // Agenda vuota o senza disponibilità nei prossimi giorni (§274): il testo dipende dal payload, vedi sotto.
   AGENDA_REMINDER: { icon: "📅", message: "Non hai ancora orari liberi in agenda: aggiungili per farti prenotare." },
   AWAY_ENDING: { icon: "📅", message: "La tua pausa finisce domani: controlla gli orari in agenda." },
+  AWAY_SUGGESTED: { icon: "📅", message: "Hai richieste ancora senza risposta: se hai poco tempo puoi metterti in pausa dall'agenda." },
   // Agenda (§288).
   PROFESSIONAL_ON_THE_WAY: { icon: "🚐", message: "Il professionista sta arrivando." },
   AGENDA_TOMORROW_SUMMARY: { icon: "📅", message: "Ecco i tuoi lavori di domani." },
