@@ -102,6 +102,10 @@ const RULES: readonly Rule[] = [
   { words: ["fotocellul", "automazion", "cancello elettric", "cancello automatic", "motore", "motorizzat", "motorino", "telecomando", "elettric"], weights: { elettricista: 2 } },
   { words: ["ventilatore da soffitto", "ventilatore a soffitto", "ventilator", "fotocellul", "cancello elettric", "cancello automatic", "impianto allagato", "gruppo di continuita", "gruppo continuita", "elettroserratur"], weights: { elettricista: 5 } },
   { words: ["scossa", "scintill", "bruciat"], weights: { elettricista: 3 } },
+  // Fotovoltaico, accumulo e ricarica dell'auto: impianti elettrici (lettera a),
+  // nessun mestiere a sé (richiesta di Luca, docs/changelog/2026-11-06-fotovoltaico.md).
+  // Niente "inverter" da solo: lo sono anche i condizionatori.
+  { words: ["fotovoltaic", "pannelli solari", "pannello solare", "pannelli solare", "impianto solare", "batteria di accumulo", "batterie di accumulo", "batteria d accumulo", "sistema di accumulo", "wallbox", "wall box", "colonnina di ricarica", "colonnina per la ricarica", "colonnina ricarica", "ricarica auto elettric", "ricarica dell auto", "ricaricare l auto", "ricaricare la macchina", "auto elettrica"], weights: { elettricista: 6 } },
 
   // Climatizzazione e caldaie (lettere c, e)
   { words: ["caldai", "bruciator", "riscaldament", "termostat", "cronotermostat", "valvola di zona", "fan coil", "pompa di calore", "canna fumaria"], weights: { climatizzazione: 4 } },
@@ -111,6 +115,8 @@ const RULES: readonly Rule[] = [
   { words: ["termosifon", "radiator", "calorifer", "scaldasalviett", "valvole termostatich"], weights: { climatizzazione: 2, idraulico: 2 } },
   { words: ["acqua calda", "scaldabagn", "scaldin", "boiler", "boilerin", "scaldaacqua", "accumulo"], weights: { climatizzazione: 3, idraulico: 2 } },
   { words: ["gas", "gpl", "metano", "fornell", "piano cottura", "fiamma"], weights: { climatizzazione: 2, idraulico: 2 } },
+  // Solare termico: scalda l'acqua, non fa corrente. Vince sui "pannelli solari" dell'elettricista.
+  { words: ["solare termico", "pannelli solari termici", "pannello solare termico", "pannelli solari per l acqua calda", "pannelli solari per acqua calda", "collettori solari", "collettore solare"], weights: { climatizzazione: 10, idraulico: 8 } },
 
   // Muratore e ristrutturazioni
   { words: ["murator", "impresa edile", "ditta edile", "ristruttur", "rifare il bagno", "rifacimento", "demoli", "opere murarie"], weights: { muratore: 5 } },
@@ -125,6 +131,8 @@ const RULES: readonly Rule[] = [
 
   // Pulizie
   { words: ["pulizi", "pulire", "pulisca", "pulit", "puluzie", "sporc", "spolver", "sanificaz", "igienizz", "donna delle pulizie", "signora delle pulizie", "colf", "domestica", "stirar", "stiro", "aspirapolver", "lavare", "lavaggio", "smacchi", "aloni", "guano", "calcare", "fine cantiere", "fine lavori", "post ristrutturazione", "termine della ristrutturazione", "terminato la ristrutturazione", "dopo la ristrutturazione", "impresa di pulizie"], weights: { pulizie: 4 } },
+  // Pulire i pannelli solari è delle pulizie, non dell'elettricista.
+  { words: ["pulizia pannell", "pulizia dei pannell", "pulizia del pannell", "pulizia impianto fotovoltaic", "pulizia dell impianto fotovoltaic", "pulire i pannell", "pulire pannell", "lavaggio pannell", "lavaggio dei pannell", "lavare i pannell"], weights: { pulizie: 10 } },
   { words: ["pulizia completa", "pulizia accurata", "pulizia approfondita", "pulizia dettagliata", "pulizia a fondo", "pulire a fondo", "sporcata", "squadra di pulizie"], weights: { pulizie: 6 } },
 
   // Giardiniere
@@ -171,6 +179,7 @@ const RULES: readonly Rule[] = [
 export const TRADE_NAMES: readonly { words: readonly string[]; categories: readonly ProfessionalCategorySlug[] }[] = [
   { words: ["termoidraulic", "termo idraulic"], categories: ["idraulico", "climatizzazione"] },
   { words: ["stagnin"], categories: ["idraulico"] },
+  { words: ["installatore fotovoltaic", "installatori fotovoltaic", "installatore di fotovoltaic", "installatore di impianti fotovoltaic", "installatore impianti fotovoltaic", "installatore di pannelli solari", "installatore pannelli solari", "installatori di pannelli solari", "installatore di pannelli fotovoltaic", "installatore pannelli fotovoltaic", "fotovoltaicist", "installatore wallbox", "installatore di wallbox"], categories: ["elettricista"] },
   { words: ["caldaist", "frigorist", "condizionatorist", "climatizzatorist", "manutentore caldai", "tecnico caldai"], categories: ["climatizzazione"] },
   { words: ["impiantist"], categories: ["idraulico", "elettricista", "climatizzazione"] },
   { words: ["piastrellist", "cartongessist", "capomastro", "pavimentist"], categories: ["muratore"] },
