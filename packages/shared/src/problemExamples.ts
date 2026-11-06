@@ -131,6 +131,8 @@ export const SUGGESTED_PROBLEM_EXAMPLES: Record<ProfessionalCategorySlug, readon
   muratore: ["Crepe nel muro", "Rifare il bagno", "Infiltrazioni dal terrazzo"],
   falegname: ["Armadio in legno su misura"],
   tuttofare: ["Montare una mensola"],
+  elettrodomestici: ["La lavatrice non scarica", "Il frigorifero non raffredda", "La lavastoviglie non lava bene"],
+  "tende-da-sole": ["Montare una tenda da sole", "Tenda da sole bloccata", "Telo della tenda da sole strappato"],
   dogsitter: ["Passeggiate per il cane", "Qualcuno che porti fuori il cane", "Tenere il cane nel weekend"],
   babysitter: ["Babysitter per la sera"],
 };

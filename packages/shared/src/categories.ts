@@ -79,6 +79,23 @@ export const PROFESSIONAL_CATEGORIES = [
     icon: "drill",
     subTags: ["piccole-riparazioni", "montaggio-mobili", "manutenzione-generale"],
   },
+  // Riparazione elettrodomestici (richiesta di Luca del 06/11/2026,
+  // docs/changelog/2026-11-06-mestiere-elettrodomestici.md): prima era un
+  // lavoro "fuori servizio" del dizionario.
+  {
+    slug: "elettrodomestici",
+    label: "Elettrodomestici",
+    icon: "washing-machine",
+    subTags: ["lavatrici-e-lavastoviglie", "frigoriferi", "forni-e-piani-cottura"],
+  },
+  // Tende da sole e zanzariere (richiesta di Luca del 06/11/2026, stesso
+  // file di changelog): a Latina si cerca quanto l'idraulico (Keyword Planner).
+  {
+    slug: "tende-da-sole",
+    label: "Tende da sole e zanzariere",
+    icon: "blinds",
+    subTags: ["installazione-tende", "riparazione-tende", "zanzariere"],
+  },
   // Dogsitter e Babysitter al posto di OSS e Badanti (docs/CHANGELOG.md
   // §217, richiesta dell'utente).
   {
@@ -154,6 +171,12 @@ export const SUB_TAG_LABELS: Record<(typeof PROFESSIONAL_CATEGORIES)[number]["su
   "piccole-riparazioni": "Piccole riparazioni",
   "montaggio-mobili": "Montaggio mobili",
   "manutenzione-generale": "Manutenzione generale",
+  "lavatrici-e-lavastoviglie": "Lavatrici e lavastoviglie",
+  frigoriferi: "Frigoriferi e congelatori",
+  "forni-e-piani-cottura": "Forni e piani cottura",
+  "installazione-tende": "Installazione tende da sole",
+  "riparazione-tende": "Riparazione tende da sole",
+  zanzariere: "Zanzariere",
   passeggiate: "Passeggiate",
   "visite-a-domicilio": "Visite a domicilio",
   "pensione-cani": "Pensione per cani",
@@ -313,6 +336,25 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
     "Fissaggio a muro (mensole, quadri, TV)",
     "Riparazione elettrodomestici",
   ],
+  elettrodomestici: [
+    "Riparazione lavatrice",
+    "Riparazione lavastoviglie",
+    "Riparazione frigorifero",
+    "Riparazione forno",
+    "Riparazione asciugatrice",
+    "Riparazione piano cottura a induzione",
+    "Riparazione microonde",
+    "Riparazione cappa aspirante",
+  ],
+  "tende-da-sole": [
+    "Installazione tende da sole",
+    "Riparazione tende da sole",
+    "Sostituzione telo tenda da sole",
+    "Installazione pergotenda",
+    "Installazione zanzariere",
+    "Riparazione zanzariere",
+    "Tende da sole su misura",
+  ],
   dogsitter: [
     "Passeggiata con il cane",
     "Visita a domicilio",
@@ -364,6 +406,10 @@ export const CATEGORY_DESCRIPTION_EXAMPLES: Record<ProfessionalCategorySlug, str
     "Es. Armadio su misura per una camera mansardata con soffitto inclinato, larghezza circa 2,5 metri. Vorrei anche sistemare un cassetto rotto di un altro mobile mentre siete qui.",
   tuttofare:
     "Es. Montaggio di un armadio e di una libreria appena acquistati, più il fissaggio di due mensole in bagno. Piccoli lavori da completare in una mattina.",
+  elettrodomestici:
+    "Es. La lavatrice non scarica l'acqua e sul display compare l'errore E21: è una Candy di circa 6 anni. Vorrei sapere se conviene ripararla e quanto costa.",
+  "tende-da-sole":
+    "Es. Vorrei una tenda da sole a bracci per il balcone, circa 3 metri di larghezza, con il telo chiaro. Vorrei anche le zanzariere su due finestre della stessa stanza.",
   dogsitter:
     "Es. Cerco qualcuno che porti fuori il mio cane, un labrador di 4 anni, due volte al giorno dal lunedì al venerdì mentre sono al lavoro. È socievole e abituato al guinzaglio.",
   babysitter:
@@ -398,6 +444,10 @@ export const CATEGORY_URGENT_DESCRIPTION_EXAMPLES: Record<ProfessionalCategorySl
     "Es. La porta d'ingresso si è scardinata dai cardini e non chiude più, la casa resta di fatto senza protezione: serve una riparazione urgente.",
   tuttofare:
     "Es. Una tapparella è rimasta bloccata a metà e non riesco a chiuderla né alzarla, è previsto forte vento nelle prossime ore: serve un intervento rapido.",
+  elettrodomestici:
+    "Es. Il frigorifero si è spento stanotte e non raffredda più, dentro c'è la spesa della settimana: serve un tecnico oggi per capire se si può riparare.",
+  "tende-da-sole":
+    "Es. Il vento ha strappato il telo della tenda da sole e un braccio è piegato, la tenda resta mezza aperta e non si chiude: serve un intervento prima del prossimo temporale.",
   dogsitter:
     "Es. Devo partire stasera per un'emergenza familiare e non so a chi lasciare il mio cane: cerco qualcuno che lo tenga o passi da casa per i prossimi 3 giorni.",
   babysitter:
