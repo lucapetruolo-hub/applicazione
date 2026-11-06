@@ -56,3 +56,9 @@ SE: niente più sporge dalla scheda; computer uguale a prima.
 `conteggi`, `scelti-restano`, `prestazioni-problema` verdi. `tastiera` riga
 99 rossa in locale anche senza queste modifiche (sito avviato in modalità
 sviluppo), la decide la CI.
+
+**Sesto giro** (Luca): sul telefono il cuore dei "Professionisti salvati" e
+"Scegli" della ricerca stanno in alto a destra accanto al nome (prima in
+mezzo, tra bollini e mestiere); il cuore è più piccolo (32px, icona 14, sopra
+il minimo di 24px per il tocco). Sul computer restano dove erano. Prove
+`scelti-restano`, `bollini-telefono`, `prestazioni-problema` verdi in locale.

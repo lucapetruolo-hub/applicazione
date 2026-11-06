@@ -447,9 +447,15 @@ export function ProfessionalCard({
       {/* Sotto i 660px meno spazio tra foto e nome: sui telefoni da 360px la
           colonna del nome restava stretta e i bollini (Verificato, Nuovo
           profilo...) e le recensioni toccavano il bordo. */}
-      <YStack display="none xs:flex" marginBottom="3">
-        {renderName("flex")}
-      </YStack>
+      {/* Sul telefono anche il cuore dei salvati e "Scegli" stanno qui, in
+          alto a destra accanto al nome (Luca,
+          docs/changelog/2026-11-06-filtro-pagamenti-online.md). */}
+      <XStack display="none xs:flex" alignItems="flex-start" gap="2" marginBottom="3">
+        <YStack flex={1} minWidth={0}>
+          {renderName("flex")}
+        </YStack>
+        {action ? <XStack flexShrink={0}>{action}</XStack> : null}
+      </XStack>
       <XStack gap="4 xs:3" alignItems="flex-start">
         {icon}
         <YStack gap="2" flex={1} minWidth={0}>
@@ -563,7 +569,7 @@ export function ProfessionalCard({
                 </XStack>
               ) : null}
             </XStack>
-            {action}
+            {action ? <XStack display="flex xs:none">{action}</XStack> : null}
           </XStack>
           <Text fontSize={16} lineHeight="22px" color={brand.grafite70} numberOfLines={2}>
             <Text fontFamily="body" fontSize={16} fontWeight="700" color={brand.grafite}>
