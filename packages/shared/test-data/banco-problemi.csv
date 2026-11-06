@@ -109,15 +109,15 @@ G107;Eliminare intonaco residuo da muretto con mattoni a vista;muratore;;no;;;la
 G108;Come pitturare pannello in Osb;imbianchino;;no;;;chiuso
 G109;Fissaggio Tv su parete ricostruita;tuttofare;;no;;;lavoro
 G110;Piastrellare casa;muratore;;no;;;lavoro
-G111;Asciugatrice electrolux fa scattare il salvavita;;;no;elettrodomestici;;lavoro
+G111;Asciugatrice electrolux fa scattare il salvavita;elettrodomestici;;no;;;lavoro
 G112;Scaldabagno Comfee', pannello di controllo spento;idraulico;elettricista;no;;;lavoro
-G113;Asciugatrice Whirlpool - rumore;;;no;elettrodomestici;;chiuso
-G114;frigo indesit e temperature più alte?;;;no;elettrodomestici;;lavoro
-G115;Lavastoviglie TEKA DW7 60 FI errore codice E8 e poi E6;;;no;elettrodomestici;;lavoro
-G116;Problema scarico Lavastoviglie Bosch SMV50M40 - Errore E24;;;no;elettrodomestici;;lavoro
-G117;Lavatrice Samsung WF80F5E0W2W/ET - Il lavaggio si blocca dopo circa un minuto;;;no;elettrodomestici;;lavoro
-G118;Piastra induzione che non parte la ventola;;;no;elettrodomestici;;chiuso
-G119;Congelatore a pozzetto non congela;;;no;elettrodomestici;;lavoro
+G113;Asciugatrice Whirlpool - rumore;elettrodomestici;;no;;;chiuso
+G114;frigo indesit e temperature più alte?;elettrodomestici;;no;;;lavoro
+G115;Lavastoviglie TEKA DW7 60 FI errore codice E8 e poi E6;elettrodomestici;;no;;;lavoro
+G116;Problema scarico Lavastoviglie Bosch SMV50M40 - Errore E24;elettrodomestici;;no;;;lavoro
+G117;Lavatrice Samsung WF80F5E0W2W/ET - Il lavaggio si blocca dopo circa un minuto;elettrodomestici;;no;;;lavoro
+G118;Piastra induzione che non parte la ventola;elettrodomestici;;no;;;chiuso
+G119;Congelatore a pozzetto non congela;elettrodomestici;;no;;;lavoro
 G120;Recinzione;giardiniere;fabbro;no;;;lavoro
 G121;Insetti su pianta di Ibiscus, Cosa sono ?;giardiniere;;no;;;lavoro
 G122;recinzione in salita;giardiniere;fabbro;no;;;lavoro
@@ -313,9 +313,9 @@ G311;Quanto costa disinfestare un appartamento dalle blatte?;;;no;disinfestazion
 G312;Come si chiama quello che ripara le finestre?;falegname;;no;;;lavoro
 G313;Quando si rompe un vetro, cosa fare?;;;no;vetraio;;lavoro
 G314;È possibile riparare un vetro rotto?;;;no;vetraio;;chiuso
-G315;Cosa bisogna fare quando la lavatrice non scarica l'acqua?;;;no;elettrodomestici;;lavoro
-G316;Perché la mia lavatrice non scarica l'acqua?;;;no;elettrodomestici;;lavoro
-G317;Come sbloccare la pompa scarico della lavatrice?;;;no;elettrodomestici;;lavoro
+G315;Cosa bisogna fare quando la lavatrice non scarica l'acqua?;elettrodomestici;;no;;;lavoro
+G316;Perché la mia lavatrice non scarica l'acqua?;elettrodomestici;;no;;;lavoro
+G317;Come sbloccare la pompa scarico della lavatrice?;elettrodomestici;;no;;;lavoro
 G318;Togliere piastrelle da un muro senza romperle;muratore;;no;;;chiuso
 G319;Vernice non uniforme;imbianchino;;no;;;chiuso
 G320;Ditta ristrutturazione roma;muratore;;no;;;lavoro
@@ -400,9 +400,9 @@ G398;Perché il camino fa fumo in casa?;;;no;spazzacamino;;chiuso
 G399;Perché il mio camino fa fumo anche se ho la finestra chiusa?;;;no;spazzacamino;;lavoro
 G400;Come capire se ci sono topi nel sottotetto?;;;no;disinfestazione;;lavoro
 G401;Come si possono eliminare i topi del sottotetto?;;;no;disinfestazione;;lavoro
-G402;Cosa posso fare se il mio frigorifero non raffredda più?;;;no;elettrodomestici;;chiuso
-G403;Quanto costa riparare un frigo che non raffredda?;;;no;elettrodomestici;;chiuso
-G404;Il compressore del mio frigorifero funziona, ma non raffredda. Cosa posso fare?;;;no;elettrodomestici;;lavoro
+G402;Cosa posso fare se il mio frigorifero non raffredda più?;elettrodomestici;;no;;;chiuso
+G403;Quanto costa riparare un frigo che non raffredda?;elettrodomestici;;no;;;chiuso
+G404;Il compressore del mio frigorifero funziona, ma non raffredda. Cosa posso fare?;elettrodomestici;;no;;;lavoro
 G405;Perché il mio cavo elettrico si scalda?;elettricista;;elettrico;;;chiuso
 G406;Quali sono le cause più comuni di un cavo elettrico bruciato?;elettricista;;elettrico;;;chiuso
 G407;Quanto prende un imbianchino per pitturare una stanza?;imbianchino;;no;;;lavoro
@@ -468,8 +468,8 @@ G466;Controsoffitti e travi a vista. HELP!;muratore;;no;;;lavoro
 G467;Sostituzione cilindro serratura di una persiana;fabbro;;no;;;lavoro
 G468;Dubbio su tipologia zanzariera;tuttofare;;no;;;lavoro
 G469;Consiglio zanzariere;tuttofare;;no;;;lavoro
-G470;Lavastoviglie lava male: possibili cause?;;;no;elettrodomestici;;lavoro
-G471;Instabilità pannello lavastoviglie a scorrimento (sliding);;;no;elettrodomestici;;lavoro
+G470;Lavastoviglie lava male: possibili cause?;elettrodomestici;;no;;;lavoro
+G471;Instabilità pannello lavastoviglie a scorrimento (sliding);elettrodomestici;;no;;;lavoro
 G472;Lavastoviglie NEFF: come spegnerla?;;;no;;sì;lavoro
 G473;lumache;giardiniere;;no;;;lavoro
 G474;tende da sole;;;no;tende da sole;;lavoro
@@ -647,7 +647,7 @@ S145;Buongiorno abbiamo avuto un’infiltrazione di acqua nel muro comunicante c
 S146;1) lo scarico dei doppi lavelli rigurgita dall'uno all'altro o spesso risulta lentissimo. 2) un pannello del box doccia si è scollato...;idraulico;tuttofare;no;;;lavoro
 S147;A causa di lavori condominiali eseguiti negligentemente, ho subito i seguenti danni: 1- Non ho acqua scarico wc e erogazione debile dell'acqua...;idraulico;;no;;;lavoro
 S148;L'impianto ha circa 4-5 anni. E' stato realizzato dal precedente proprietario dell'appartamento. La temperatura non riesce ad aumentare con il termostato...;climatizzazione;idraulico;no;;;lavoro
-S149;Non mi scarica la lavapiatti forse perche e bloccato il rubinettino della stessa si puo cambiarlo il blocco grohe del rubinetto ha fatto marcire il pi...;idraulico;;no;elettrodomestici;;lavoro
+S149;Non mi scarica la lavapiatti forse perche e bloccato il rubinettino della stessa si puo cambiarlo il blocco grohe del rubinetto ha fatto marcire il pi...;idraulico;elettrodomestici;no;;;lavoro
 S150;In uno dei water della casa, lo scarico perde acqua. Sicuramente ci sarà qualche problema col galleggiante o con la guarnizione...;idraulico;;no;;;lavoro
 S151;Buongiorno ho necessità urgente di cambiare il box doccia perché questa notte l'ho trovato frantumato all'interno del box...;idraulico;tuttofare;no;;;chiuso
 S152;Il problema per cui contatto riguarda la vaschetta del wc che è un modello vecchio di ideal standard. Quando tiro l'acqua non si tira più...;idraulico;;no;;;lavoro
@@ -656,7 +656,7 @@ S154;Buonasera, Il pulsante di scarico del mio wc non funziona più. È un wc co
 S155;Buongiorno, In seguito a rifacimento cucina avrei bisogno di un aiuto per allacciamento gas dello scaldabagno nuovo...;climatizzazione;idraulico;no;;;lavoro
 S156;Avrei bisogno di un idraulico in grado di montarmi il mio box doccia (quello vecchio e' stato già smaltito)...;idraulico;tuttofare;no;;;lavoro
 S157;Da un paio di mesi mi sono accorta che il contatore dell'acqua calda che è condominiale continua a girare anche se la manopola dell'acqua calda viene chiusa...;idraulico;;no;;;lavoro
-S158;La lavastoviglie non aspira l'acqua che utilizza lei stessa per lavare. I tubi sotto il lavandino della cucina perdono acqua...;idraulico;;no;elettrodomestici;;lavoro
+S158;La lavastoviglie non aspira l'acqua che utilizza lei stessa per lavare. I tubi sotto il lavandino della cucina perdono acqua...;idraulico;elettrodomestici;no;;;lavoro
 S159;La terrazza non ha corrente attualmente. Vorrei creare un sistema con un filo volante che entri nel mio appartamento...;elettricista;;no;;;lavoro
 S160;Salve, io ho bisogno di montare 6 lampadari, allacciare forn0 e interruttore gas, aggiungere due pulsanti...;elettricista;;no;;;chiuso
 S161;Salve, ho bisogno di un elettricista che sistemi un problema del quadro elettrico. Nello specifico, il contatore salta in continuazione, anche con l'u...;elettricista;;no;;;chiuso
@@ -734,12 +734,12 @@ S232;Ciao a tutti,avrei bisogno del vostro aiuto.Sto sostituendo la vasca con la
 S233;Buongiorno a tutti, è il mio primo post in questo forum, spero di essere nella sezione giusta.Chiedo aiuto per un problema ad una persiana in alluminio.Nello specifico, u...;fabbro;tuttofare;no;;;chiuso
 S234;Buongiorno, avrei bisogno di un consiglio per un problema abbastanza fastidioso. Ho una casa a 2 piani e 3 bambini che salgono la scala interna poggiando continuamente le mani...;imbianchino;;no;;;lavoro
 S235;Salve, ho delle efflorescenze sul cappotto termico... da cosa può dipendere ?...;muratore;;no;;;chiuso
-S236;Buonasera chiedo ai più esperti. L' ultimo cassetto del congelatore mi si ghiaccia di continuo non permettendomi di aprirlo. Ho effettuato ispezione alle guarnizioni,...;;;no;elettrodomestici;;lavoro
+S236;Buonasera chiedo ai più esperti. L' ultimo cassetto del congelatore mi si ghiaccia di continuo non permettendomi di aprirlo. Ho effettuato ispezione alle guarnizioni,...;elettrodomestici;;no;;;lavoro
 S237;Buonasera, ho un problema con la ditta che mi ha sostituito la caldaia. Il preventivo aveva la dicitura...;climatizzazione;;no;;;lavoro
 S238;Buongiorno, poco fa ho preso la scossa toccando il lavello in alluminio della cucina. Il tutto è durato circa 1 - 1,5s e poi è saltato il salvavita.;elettricista;;acqua-elettrico;;;chiuso
 S239;Buonasera, vorrei un vostro parere su quanto successo ad una mia amica: aveva il telefonino sotto carica, l'ha toccato e ha preso una scossa. Il salvavita non è saltato.;elettricista;;elettrico;;;chiuso
-S240;Salve a tutti, il microonde ha iniziato a fare puzza di bruciato e fumo, ho trovato un buco sulla porta nella parte bassa(allego foto) vorrei capire se è un guasto riparabile.;;;elettrico;elettrodomestici;;lavoro
-S241;Ciao a tutti ho acquistato questa stufetta prima di natale: ...dopo averla accesa per mezz'ora,continua a fare puzza...una puzza tra plastica bruciata(ma non...;;;elettrico;elettrodomestici;;chiuso
+S240;Salve a tutti, il microonde ha iniziato a fare puzza di bruciato e fumo, ho trovato un buco sulla porta nella parte bassa(allego foto) vorrei capire se è un guasto riparabile.;elettrodomestici;;elettrico;;;lavoro
+S241;Ciao a tutti ho acquistato questa stufetta prima di natale: ...dopo averla accesa per mezz'ora,continua a fare puzza...una puzza tra plastica bruciata(ma non...;elettrodomestici;;elettrico;;;chiuso
 S242;ho smontato il vecchio rilevatore di gas (Guardiagas by ecotronic system) che mi sembra che non rilevi più quasi niente.;climatizzazione;elettricista;no;;;lavoro
 S243;Buonasera, spero che qualcuno mi sappia dire qualcosa: ho chiuso il rubinetto centrale del gas, quello posto sul contatore, perchè ero in partenza. Torno a casa, faccio per rigirare la manopola...;idraulico;climatizzazione;no;;;chiuso
 S244;Buongiorno ho questo scaldino a gas chaffoteaux 11lt a gas, è stato fermo un paio di anni, non mi parte la fiamma. Scintilla cè, ugelli puliti.;climatizzazione;idraulico;no;;;lavoro
@@ -754,7 +754,7 @@ S252;Ciao vi allego foto tubazioni e kit acquaio cucina. Come vedete c'e' una pe
 S253;Qualche settimana fa ho chiuso il rubinetto generale del gas ed è stata una cosa semplicissima. Adesso non riesco a riportare la manovella nella posizione iniziale. Come devo fare?;idraulico;climatizzazione;no;;;lavoro
 S254;Ciao a tutti! Nel condominio dove abito (nuova abitazione di circa 2 anni) lamentiamo il fatto che l'acqua calda, dopo l'apertura di qualunque miscelatore, arriva solo dopo 45-60 secondi.;idraulico;climatizzazione;no;;;lavoro
 S255;Buongiorno , sto impazzendo con una caldaia green evo ar therm, nuova di 6 mesi , ha cominciato a non funzionare acqua calda sanitario, ho notato piccole perdite...;climatizzazione;;no;;;chiuso
-S256;Il fornello piccolo della mia cucina a gas SMEG all'improvviso produce una fiamma molto debole. Non è stato un fenomeno graduale...;idraulico;climatizzazione;no;elettrodomestici;;chiuso
+S256;Il fornello piccolo della mia cucina a gas SMEG all'improvviso produce una fiamma molto debole. Non è stato un fenomeno graduale...;idraulico;climatizzazione;no;;;chiuso
 S257;Salve, ho uno scaldabagno Ariston modello FAST R X ONM 11-14 che non produce acqua calda. Stando al manuale ho cambiato le batterie, ma il problema persiste. Cosa devo controllare? Grazie!!!;climatizzazione;idraulico;no;;;lavoro
 S258;Salve, Ho la canna fumaria del caminetto della mia vecchia casa che passa dietro al muro di camera dove dormo.Da quel muro, che ho in camera, esce un cattivo odore (fuliggine)non molto forte;;;monossido;spazzacamino;;lavoro
 S259;Salve, scusatemi ma sono disperato. Non so come mai tutti i giorni, più o meno alla solita ora, scatta il salvavita del mio impianto elettrico. Per risolvere il problema ho chiamato un professionista...;elettricista;;no;;;lavoro

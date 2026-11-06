@@ -5,14 +5,15 @@ export type MegaMenuGroup = {
   slugs: ProfessionalCategorySlug[];
 };
 
-// Raggruppamento dei 13 mestieri in 3 colonne tematiche per il mega-menu
+// Raggruppamento dei 14 mestieri in 3 colonne tematiche per il mega-menu
 // "Servizi" dell'header (brief redesign §4.1) — unica fonte di verità,
 // letta anche dal drawer mobile così i due non divergono. Colonne
 // ribilanciate (5/4/4) quando Dogsitter e Babysitter hanno preso il posto
-// di OSS e Badanti (docs/CHANGELOG.md §217).
+// di OSS e Badanti (docs/CHANGELOG.md §217). Elettrodomestici in
+// "Lavori e manutenzione" (5/5/4, docs/changelog/2026-11-06-mestiere-elettrodomestici.md).
 export const MEGA_MENU_GROUPS: MegaMenuGroup[] = [
   { title: "Casa e impianti", slugs: ["idraulico", "elettricista", "climatizzazione", "fabbro", "falegname"] },
-  { title: "Lavori e manutenzione", slugs: ["imbianchino", "muratore", "giardiniere", "tuttofare"] },
+  { title: "Lavori e manutenzione", slugs: ["imbianchino", "muratore", "giardiniere", "tuttofare", "elettrodomestici"] },
   { title: "Casa e famiglia", slugs: ["pulizie", "traslochi", "babysitter", "dogsitter"] },
 ];
 
@@ -28,6 +29,7 @@ export const MEGA_MENU_MICRO_DESCRIPTION: Record<ProfessionalCategorySlug, strin
   muratore: "Ristrutturazioni e opere murarie",
   falegname: "Mobili su misura, infissi",
   tuttofare: "Piccole riparazioni e montaggi",
+  elettrodomestici: "Lavatrici, frigoriferi, forni",
   dogsitter: "Passeggiate e cura del tuo cane",
   babysitter: "Bambini a casa, serate e dopo scuola",
 };

@@ -26,6 +26,7 @@ export const CATEGORY_SEO_NOUN: Record<ProfessionalCategorySlug, { costQuestion:
   muratore: { costQuestion: "Quanto costa un muratore", findQuestion: "un muratore", workTitle: "Lavoro per muratori" },
   falegname: { costQuestion: "Quanto costa un falegname", findQuestion: "un falegname", workTitle: "Lavoro per falegnami" },
   tuttofare: { costQuestion: "Quanto costa un tuttofare", findQuestion: "un tuttofare", workTitle: "Lavoro come tuttofare" },
+  elettrodomestici: { costQuestion: "Quanto costa riparare un elettrodomestico", findQuestion: "un tecnico per elettrodomestici", workTitle: "Lavoro per tecnici di elettrodomestici" },
   dogsitter: { costQuestion: "Quanto costa un dogsitter", findQuestion: "un dogsitter", workTitle: "Lavoro come dogsitter" },
   babysitter: { costQuestion: "Quanto costa una babysitter", findQuestion: "una babysitter", workTitle: "Lavoro come babysitter" },
 };

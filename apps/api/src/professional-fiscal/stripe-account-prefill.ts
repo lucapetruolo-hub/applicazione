@@ -17,6 +17,7 @@ const CATEGORY_MCC: Record<string, string> = {
   imbianchino: "1799", // altri lavori specializzati (tinteggiatura)
   fabbro: "7699", // riparazioni varie (serrature)
   tuttofare: "7699",
+  elettrodomestici: "7629", // riparazione di elettrodomestici e piccoli apparecchi elettrici
   pulizie: "7349", // pulizia e manutenzione
   giardiniere: "0780", // giardinaggio e paesaggistica
   traslochi: "4214", // trasporti e traslochi

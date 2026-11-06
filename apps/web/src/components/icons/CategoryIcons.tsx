@@ -152,6 +152,18 @@ function Babysitter(props: IconProps) {
   );
 }
 
+function Elettrodomestici(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="4" y="2.5" width="16" height="19" rx="2.5" />
+      <path d="M4 7h16" />
+      <path d="M7.5 4.75h.01M10.5 4.75h.01" strokeWidth={2.4} />
+      <circle cx="12" cy="14" r="4.5" />
+      <path d="M9.5 14.5c1-.8 2-.8 2.5 0s1.5.8 2.5 0" />
+    </svg>
+  );
+}
+
 const CATEGORY_ICONS: Record<ProfessionalCategorySlug, (props: IconProps) => JSX.Element> = {
   idraulico: Idraulico,
   elettricista: Elettricista,
@@ -164,6 +176,7 @@ const CATEGORY_ICONS: Record<ProfessionalCategorySlug, (props: IconProps) => JSX
   muratore: Muratore,
   falegname: Falegname,
   tuttofare: TuttoFare,
+  elettrodomestici: Elettrodomestici,
   dogsitter: Dogsitter,
   babysitter: Babysitter,
 };
@@ -184,6 +197,8 @@ export const CATEGORY_ACCENT: Record<ProfessionalCategorySlug, { bg: string; fg:
   muratore: { bg: "#F2D9CF", fg: "#943823" },
   falegname: { bg: "#EEDFCB", fg: "#74471F" },
   tuttofare: { bg: "#E0E0EA", fg: "#474A72" },
+  // Acciaio smaltato degli elettrodomestici.
+  elettrodomestici: { bg: "#DDE3EC", fg: "#34496B" },
   dogsitter: { bg: "#F2DEDA", fg: "#8A4640" },
   babysitter: { bg: "#E6E0EE", fg: "#5E4A80" },
 };

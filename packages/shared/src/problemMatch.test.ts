@@ -90,9 +90,45 @@ test("casi tipici", () => {
   assert.equal(matchProblem("sento puzza di gas in cucina").safety, "gas");
   assert.equal(matchProblem("la presa fa scintille").safety, "elettrico");
   assert.equal(matchProblem("sento un rumore strano nel muro quando piove e c'è una macchia scura vicino alla presa").safety, "acqua-elettrico");
-  assert.equal(matchProblem("la lavatrice non scarica e dà errore E21").outOfService, "elettrodomestici");
   assert.equal(matchProblem("devo installare la lavatrice nuova").outOfService, null);
   assert.equal(matchProblem("macchia di umido sul soffitto del bagno").question?.id, "macchia");
+});
+
+test("guasti degli elettrodomestici al mestiere Elettrodomestici", () => {
+  // Prima erano "fuori servizio" (docs/changelog/2026-11-06-mestiere-elettrodomestici.md).
+  for (const text of [
+    "la lavatrice non scarica e dà errore E21",
+    "il frigorifero non raffredda più",
+    "la lavastoviglie non lava bene i piatti",
+    "il forno non scalda",
+    "lavatrice Candy rotta",
+    "riparazione elettrodomestici",
+    "cerco un tecnico per la lavatrice",
+    "il microonde non si accende",
+  ]) {
+    const match = matchProblem(text);
+    assert.equal(match.categories[0]?.slug, "elettrodomestici", text);
+    assert.equal(match.outOfService, null, text);
+  }
+  // Installarli o collegarli resta agli altri mestieri.
+  assert.notEqual(matchProblem("devo installare la lavatrice nuova").categories[0]?.slug, "elettrodomestici");
+  assert.notEqual(matchProblem("collegare lo scarico della lavastoviglie").categories[0]?.slug, "elettrodomestici");
+  // Il pericolo resta del dizionario.
+  assert.equal(matchProblem("il microonde fa fumo e puzza di bruciato").safety, "elettrico");
+  // La prestazione di Elettricista e Tutto Fare porta al mestiere nuovo: così
+  // compaiono in "Potrebbero fare anche questo lavoro".
+  assert.equal(matchProblem("Riparazione elettrodomestici").categories[0]?.slug, "elettrodomestici");
+  assert.equal(serviceMatchingProblem([{ name: "Riparazione elettrodomestici" }, { name: "Impianto elettrico civile" }], "la lavatrice non scarica")?.name, "Riparazione elettrodomestici");
+});
+
+test("ricerche frequenti su Google che il dizionario prima non capiva", () => {
+  // analisi/servizi-piu-cercati.md (06/11/2026).
+  assert.equal(matchProblem("rifare il tetto").categories[0]?.slug, "muratore");
+  assert.equal(matchProblem("tegole rotte sul tetto").categories[0]?.slug, "muratore");
+  assert.equal(matchProblem("svuota cantine").categories[0]?.slug, "traslochi");
+  assert.equal(matchProblem("stiratura a domicilio").categories[0]?.slug, "pulizie");
+  assert.equal(matchProblem("cerco un montatore di mobili").categories[0]?.slug, "tuttofare");
+  assert.equal(matchProblem("lattoniere per le grondaie").categories[0]?.slug, "muratore");
 });
 
 test("prestazione che corrisponde al problema", () => {

@@ -41,6 +41,7 @@ const WHO: Record<ProfessionalCategorySlug, string> = {
   muratore: "un muratore",
   falegname: "un falegname",
   tuttofare: "un tuttofare",
+  elettrodomestici: "un tecnico di elettrodomestici",
   dogsitter: "un dogsitter",
   babysitter: "una babysitter",
 };

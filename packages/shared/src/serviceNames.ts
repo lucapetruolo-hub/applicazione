@@ -58,7 +58,12 @@ const SYNONYMS: Record<string, string> = Object.fromEntries(
       ["Montaggio mobili", ["montaggio mobile", "assemblaggio mobili", "montaggio arredi"]],
       ["Montaggio zanzariere", ["zanzariere", "installazione zanzariere", "sostituzione zanzariere", "riparazione zanzariere"]],
       ["Riparazione tapparelle", ["tapparelle", "riparazione tapparella", "cambio cinghia tapparella", "sostituzione cinghia tapparella"]],
-      ["Riparazione elettrodomestici", ["riparazione lavatrice", "riparazione lavastoviglie", "riparazione frigorifero", "elettrodomestici", "assistenza elettrodomestici"]],
+      // Lavatrice, frigo e lavastoviglie hanno ora una prestazione loro nel mestiere Elettrodomestici.
+      ["Riparazione elettrodomestici", ["elettrodomestici", "assistenza elettrodomestici", "riparazione elettrodomestico"]],
+      ["Riparazione lavatrice", ["riparazione lavatrici", "lavatrice guasta", "tecnico lavatrice", "assistenza lavatrice"]],
+      ["Riparazione lavastoviglie", ["lavastoviglie guasta", "tecnico lavastoviglie", "assistenza lavastoviglie"]],
+      ["Riparazione frigorifero", ["riparazione frigo", "riparazione frigoriferi", "frigo guasto", "riparazione congelatore"]],
+      ["Riparazione forno", ["riparazione forni", "forno guasto", "riparazione forno elettrico"]],
       ["Pulizie di casa", ["pulizia casa", "pulizie domestiche", "pulizie appartamento", "pulizia appartamento"]],
       ["Sgombero cantine e appartamenti", ["sgombero", "sgomberi", "sgombero cantina", "svuota cantine"]],
       ["Posa piastrelle", ["piastrellista", "posa pavimenti", "posa rivestimenti"]],
