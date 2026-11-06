@@ -77,7 +77,8 @@ centrata sul balcone giallo. Elettrodomestici con la foto Pexels 34734504
 (tecnico che ripara una lavastoviglie) in verticale: il primo taglio
 orizzontale sul solo tecnico a Luca non andava ("voglio si veda
 l'elettrodomestico"); ora si vedono persona e lavastoviglie, senza il
-cartello in cirillico e senza le scritte di tuta ed etichetta. Scartate tre foto di Pixabay: TinEye le trova in
+cartello in cirillico e senza le scritte di tuta ed etichetta, tagliata sotto
+il volto ("fai in modo che non si vede il volto"). Scartate tre foto di Pixabay: TinEye le trova in
 vendita dal 2018 su Shutterstock e Adobe Stock, caricate su Pixabay da altri.
 Il loader delle immagini e `scripts/riduci-foto-mestieri.mjs` accettano ora
 anche nomi con il trattino (`tende-da-sole`), prima solo lettere.

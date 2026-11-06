@@ -29,7 +29,7 @@
  * - tuttofare: pexels.com/photo/5691544
  * - dogsitter: pexels.com/photo/7210537
  * - babysitter: pexels.com/photo/6986430
- * - elettrodomestici: Bulat843, pexels.com/photo/34734504 (verticale, senza il
+ * - elettrodomestici: Bulat843, pexels.com/photo/34734504 (tagliata sotto il volto, senza il
  *   cartello in alto e senza le scritte di tuta ed etichetta; controllata con
  *   TinEye)
  * - tende-da-sole: Ian MacKay, pexels.com/photo/18348172 (scelta di Luca del
@@ -68,9 +68,9 @@ export const CATEGORY_PHOTOS: Partial<Record<string, string>> = {
 export const CATEGORY_PHOTO_FOCUS: Partial<Record<string, string>> = {
   climatizzazione: "30% 50%",
   babysitter: "40% 50%",
-  // Foto verticale: spostata a destra perché si veda la lavastoviglie, non
+  // Spostata a destra perché si vedano le mani e la lavastoviglie, non
   // solo il tecnico (richiesta di Luca del 06/11/2026).
-  elettrodomestici: "75% 50%",
+  elettrodomestici: "70% 50%",
   // Il balcone giallo con la tenda a righe, non il pluviale al centro.
   "tende-da-sole": "22% 50%",
 };
