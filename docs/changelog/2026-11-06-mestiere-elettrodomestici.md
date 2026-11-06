@@ -21,7 +21,7 @@ servizio" e vedeva solo chi aveva scritto la prestazione.
   icona (lavatrice), colore acciaio smaltato (contrasto 7:1), menu "Lavori e
   manutenzione", testi delle pagine, frasi d'esempio, codice Stripe 7629.
   La categoria entra nel database da sola all'avvio (`CategoriesSeedService`).
-  Foto della scheda in home: da scegliere con Luca, intanto l'icona.
+  Foto della scheda in home: vedi "Foto delle schede" sotto.
 - "Riparazione elettrodomestici" resta anche tra le prestazioni di
   Elettricista e Tutto Fare, per chi fa anche quel lavoro.
 - Dizionario (`problemMatch.ts`): un guasto con un elettrodomestico nominato
@@ -66,6 +66,20 @@ l'idraulico; in Italia 10.000-100.000 (Keyword Planner del 06/11/2026).
 - Pagina Elettrodomestici di ogni città: domanda frequente "Su quali marche
   intervengono i tecnici?" con le marche più cercate
   (`APPLIANCE_BRANDS_SEARCHED`), senza dire che siamo partner di nessuna.
+
+## Foto delle schede in home
+
+**Richiesta di Luca**: "1 e tende-1" tra le foto proposte, con le migliorie
+"ritagliarla sul tecnico" e "cancellare le foto non sicure".
+
+**Decisione**: Elettrodomestici con la foto Pexels 34734504 (tecnico che
+ripara una lavastoviglie), ritagliata in orizzontale senza il cartello in
+cirillico, con le scritte della toppa sulla tuta e l'etichetta del marchio
+tolte; Tende da sole con la foto Pexels 18348172 (balconi con tende a righe),
+centrata sul balcone giallo. Scartate tre foto di Pixabay: TinEye le trova in
+vendita dal 2018 su Shutterstock e Adobe Stock, caricate su Pixabay da altri.
+Il loader delle immagini e `scripts/riduci-foto-mestieri.mjs` accettano ora
+anche nomi con il trattino (`tende-da-sole`), prima solo lettere.
 
 Coordinata con `2026-11-06-fotovoltaico.md` (PR #250, stessi file): questa
 parte dal suo ramo e non tocca fotovoltaico, accumulo e wallbox.

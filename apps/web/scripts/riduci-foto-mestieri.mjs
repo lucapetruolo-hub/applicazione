@@ -10,7 +10,7 @@ import sharp from "sharp";
 export const CATEGORY_PHOTO_WIDTHS = [480, 768, 1024];
 const dir = fileURLToPath(new URL("../public/category-photos/", import.meta.url));
 
-for (const file of readdirSync(dir).filter((name) => /^[a-z]+\.webp$/.test(name))) {
+for (const file of readdirSync(dir).filter((name) => /^[a-z-]+\.webp$/.test(name))) {
   for (const width of CATEGORY_PHOTO_WIDTHS) {
     const out = `${dir}${file.replace(".webp", `-${width}.webp`)}`;
     const info = await sharp(`${dir}${file}`).resize({ width, withoutEnlargement: true }).webp({ quality: 72 }).toFile(out);

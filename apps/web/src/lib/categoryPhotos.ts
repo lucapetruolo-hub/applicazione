@@ -29,6 +29,12 @@
  * - tuttofare: pexels.com/photo/5691544
  * - dogsitter: pexels.com/photo/7210537
  * - babysitter: pexels.com/photo/6986430
+ * - elettrodomestici: Bulat843, pexels.com/photo/34734504 (ritagliata in
+ *   orizzontale, senza il cartello e con le scritte della tuta e del marchio
+ *   tolte; scelta di Luca del 06/11/2026, controllata con TinEye: nessuna
+ *   copia a pagamento altrove)
+ * - tende-da-sole: Ian MacKay, pexels.com/photo/18348172 (stessa scelta e
+ *   stesso controllo, docs/changelog/2026-11-06-mestiere-elettrodomestici.md)
  *
  * - per-professionisti (pagina): pexels.com/photo/4792521, galleria 6195125, 6231851, 7464702, 5463575
  *
@@ -50,6 +56,8 @@ export const CATEGORY_PHOTOS: Partial<Record<string, string>> = {
   tuttofare: "/category-photos/tuttofare.webp",
   dogsitter: "/category-photos/dogsitter.webp",
   babysitter: "/category-photos/babysitter.webp",
+  elettrodomestici: "/category-photos/elettrodomestici.webp",
+  "tende-da-sole": "/category-photos/tende-da-sole.webp",
 };
 
 /**
@@ -60,4 +68,7 @@ export const CATEGORY_PHOTOS: Partial<Record<string, string>> = {
 export const CATEGORY_PHOTO_FOCUS: Partial<Record<string, string>> = {
   climatizzazione: "30% 50%",
   babysitter: "40% 50%",
+  elettrodomestici: "40% 50%",
+  // Il balcone giallo con la tenda a righe, non il pluviale al centro.
+  "tende-da-sole": "22% 50%",
 };
