@@ -17,6 +17,7 @@ import {
   POPULAR_SERVICES,
   ALL_SUGGESTED_SERVICES,
   canonicalServiceName,
+  serviceCategoryOf,
   isProfessionalCategorySlug,
   PROFESSIONAL_CATEGORIES,
   categorySubTags,
@@ -48,10 +49,12 @@ import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 import { localPreviewUrl } from "@/lib/media";
 import { keyActivate } from "@/lib/keyActivate";
 import { ChosenPlanChip } from "@/components/ChosenPlanChip";
+import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
-/** Prestazioni suggerite visibili prima di "Altre". */
+/** Prestazioni suggerite visibili prima di "Altre" (con un solo mestiere, e per mestiere quando sono più d'uno). */
 const SUGGESTED_IDLE_COUNT = 8;
+const SUGGESTED_IDLE_COUNT_GROUPED = 4;
 
 // Elenco di candidati per il selettore "Lingue parlate" (richiesta esplicita
 // dell'utente: mostrare già un elenco selezionabile invece del solo campo
@@ -281,12 +284,12 @@ export default function DashboardProfiloPage() {
   const [bio, setBio] = useState("");
   const [remoteAvailable, setRemoteAvailable] = useState(false);
   // Le prestazioni suggerite sono fino a 10 per categoria: a riposo le prime 8.
-  const [showAllSuggested, setShowAllSuggested] = useState(false);
+  const [showAllSuggested, setShowAllSuggested] = useState<Record<string, boolean>>({});
   // Prestazioni aggiunte dall'admin tra le standard (docs/CHANGELOG.md §388).
   const [standardServices, setStandardServices] = useState<StandardServicesByCategory>({});
   // Preavviso per annullare chiesto al cliente (docs/CHANGELOG.md §347).
   const [cancellationNoticeHours, setCancellationNoticeHours] = useState<CancellationNoticeHours>(DEFAULT_CANCELLATION_NOTICE_HOURS);
-  const [services, setServices] = useState<{ name: string; priceMin: string; priceMax: string; priceUnit: ServicePriceUnit }[]>([]);
+  const [services, setServices] = useState<{ name: string; priceMin: string; priceMax: string; priceUnit: ServicePriceUnit; categorySlug: string | null }[]>([]);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   // Foto reali di lavori svolti (fino a MAX_PORTFOLIO_PHOTOS), mostrate in
   // una galleria sul profilo pubblico — richiesta esplicita dell'utente:
@@ -424,6 +427,7 @@ export default function DashboardProfiloPage() {
         priceMin: service.priceMinEurCents !== null ? eurInputValue(service.priceMinEurCents) : "",
         priceMax: service.priceMaxEurCents !== null ? eurInputValue(service.priceMaxEurCents) : "",
         priceUnit: service.priceUnit,
+        categorySlug: service.categorySlug ?? null,
       })),
     );
   }
@@ -580,7 +584,13 @@ export default function DashboardProfiloPage() {
     }
 
     const cleanedServices = services
-      .map((service) => ({ name: service.name.trim(), priceMin: service.priceMin.trim(), priceMax: service.priceMax.trim(), priceUnit: service.priceUnit }))
+      .map((service) => ({
+        name: service.name.trim(),
+        priceMin: service.priceMin.trim(),
+        priceMax: service.priceMax.trim(),
+        priceUnit: service.priceUnit,
+        categorySlug: serviceCategory(service),
+      }))
       .filter((service) => service.name.length > 0);
     for (const service of cleanedServices) {
       if (service.priceMin && Number.isNaN(Number(service.priceMin.replace(",", ".")))) {
@@ -634,6 +644,7 @@ export default function DashboardProfiloPage() {
           priceMinEurCents: service.priceMin ? Math.round(Number(service.priceMin.replace(",", ".")) * 100) : undefined,
           priceMaxEurCents: service.priceMax ? Math.round(Number(service.priceMax.replace(",", ".")) * 100) : undefined,
           priceUnit: service.priceUnit,
+          categorySlug: service.categorySlug,
         })),
       });
       // Il raggio ha il suo indirizzo nell'API: si salva subito dopo il profilo, solo se è cambiato.
@@ -743,8 +754,8 @@ export default function DashboardProfiloPage() {
     setServices((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function addSuggestedService(name: string) {
-    setServices((prev) => [...prev, { name, priceMin: "", priceMax: "", priceUnit: "JOB" }]);
+  function addService(name: string, categorySlug: ProfessionalCategorySlug | null) {
+    setServices((prev) => [...prev, { name, priceMin: "", priceMax: "", priceUnit: "JOB", categorySlug }]);
   }
 
   // Scorciatoia per aggiungere una prestazione senza doverne scrivere il nome
@@ -755,14 +766,31 @@ export default function DashboardProfiloPage() {
   // esplicita dell'utente: la spunta da sola attiva il filtro "Online" in
   // ricerca, ma non proponeva ancora la voce corrispondente tra le
   // prestazioni cliccabili.
-  // Suggerite di tutte le categorie scelte (docs/CHANGELOG.md §217), senza doppioni.
-  const suggestedServices = [
-    ...new Set([
-      ...categorySlugs.flatMap((slug) => [...POPULAR_SERVICES[slug], ...(standardServices[slug] ?? [])]),
-      ...(remoteAvailable ? ["Consulenza online"] : []),
-    ]),
-  ].filter((name) => !services.some((service) => canonicalServiceName(service.name) === name));
-  const visibleSuggestedServices = showAllSuggested ? suggestedServices : suggestedServices.slice(0, SUGGESTED_IDLE_COUNT);
+  // Suggerite per ciascun mestiere scelto (docs/CHANGELOG.md §217), divise
+  // per mestiere (richiesta di Luca, docs/changelog/2026-11-05-registrazione-colonna-unica.md).
+  // "Consulenza online" va col mestiere principale.
+  function suggestedFor(slug: ProfessionalCategorySlug): string[] {
+    return [
+      ...new Set([...POPULAR_SERVICES[slug], ...(standardServices[slug] ?? []), ...(remoteAvailable && slug === categorySlugs[0] ? ["Consulenza online"] : [])]),
+    ];
+  }
+  // Mestiere di una prestazione: quello salvato; per le prestazioni di prima
+  // (senza mestiere) quello che la suggerisce, altrimenti il principale.
+  function serviceCategory(service: { name: string; categorySlug: string | null }): ProfessionalCategorySlug | undefined {
+    return serviceCategoryOf(service, categorySlugs, suggestedFor);
+  }
+  const addedServiceNames = new Set(services.map((service) => canonicalServiceName(service.name)));
+  const indexedServices = services.map((service, index) => ({ service, index }));
+  const serviceGroups: { key: string; slug: ProfessionalCategorySlug | null; label: string | null; rows: typeof indexedServices; suggested: string[] }[] =
+    categorySlugs.length > 0
+      ? categorySlugs.map((slug) => ({
+          key: slug,
+          slug,
+          label: PROFESSIONAL_CATEGORIES.find((category) => category.slug === slug)?.label ?? null,
+          rows: indexedServices.filter(({ service }) => serviceCategory(service) === slug),
+          suggested: suggestedFor(slug).filter((name) => !addedServiceNames.has(name)),
+        }))
+      : [{ key: "tutte", slug: null, label: null, rows: indexedServices, suggested: [] }];
 
   function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -1392,51 +1420,6 @@ export default function DashboardProfiloPage() {
             costo varia da caso a caso) e se è a lavoro, all&apos;ora, al giorno o al m²: comparirà nella tua card nei risultati di ricerca.
           </Text>
 
-          {suggestedServices.length > 0 ? (
-            <YStack gap="1">
-              <Text fontSize={13} color={brand.grafite70}>
-                {categorySlugs.length > 1 ? "Le più richieste per le tue categorie:" : "Le più richieste per questa categoria:"}
-              </Text>
-              <YStack flexDirection="row" flexWrap="wrap" gap="2">
-                {visibleSuggestedServices.map((name) => (
-                  <XStack
-                    key={name}
-                    paddingHorizontal="3"
-                    paddingVertical="2"
-                    borderRadius={999}
-                    borderWidth={1}
-                    borderColor={brand.cianografia}
-                    backgroundColor={brand.cianografiaVelo}
-                    cursor="pointer"
-                    onPress={() => addSuggestedService(name)}
-                    role="button"
-                  >
-                    <Text color={brand.cianografiaScuro} fontWeight="600" fontSize={16}>
-                      + {name}
-                    </Text>
-                  </XStack>
-                ))}
-                {suggestedServices.length > SUGGESTED_IDLE_COUNT ? (
-                  <XStack
-                        paddingHorizontal="3"
-                        paddingVertical="2"
-                        borderRadius={999}
-                        borderWidth={1}
-                        borderColor={brand.bordoCampo}
-                        cursor="pointer"
-                        onPress={() => setShowAllSuggested((value) => !value)}
-                        role="button"
-                        aria-expanded={showAllSuggested}
-                      >
-                    <Text color={brand.grafite} fontWeight="600" fontSize={16}>
-                      {showAllSuggested ? "Mostra meno" : `Altre ${suggestedServices.length - SUGGESTED_IDLE_COUNT}`}
-                    </Text>
-                  </XStack>
-                ) : null}
-              </YStack>
-            </YStack>
-          ) : null}
-
           {/* Mentre scrive, il professionista vede i nomi già usati: scegliendone
               uno, la sua prestazione si somma alle altre uguali nella ricerca e
               nei prezzi medi (docs/CHANGELOG.md §392). */}
@@ -1446,80 +1429,158 @@ export default function DashboardProfiloPage() {
             ))}
           </datalist>
 
-          <YStack gap="2">
-            {services.map((service, index) => (
-              <YStack key={index} flexDirection="row" gap="2" alignItems="center" flexWrap="wrap">
-                <input aria-label="Nome della prestazione"
-                  list="prestazioni-suggerite"
-                  value={service.name}
-                  onChange={(e) => updateService(index, "name", e.target.value)}
-                  placeholder="Es. Sostituzione caldaia"
-                  style={{ ...smallInputStyle, flex: 1, minWidth: 160 }}
-                />
-                {/* Prezzo e tasto rimuovi raggruppati in un unico blocco senza
-                    wrap interno: su schermo stretto (cellulare) l'intero
-                    gruppo va a capo insieme sotto al nome, invece di spezzarsi
-                    lasciando la "X" isolata su una riga a parte, lontana dalla
-                    voce a cui appartiene — bug reale segnalato dall'utente. */}
-                <XStack gap="2" alignItems="center" flexWrap="wrap">
-                  {/* Unità prima del prezzo, nello stesso ordine in cui la
-                      vedono i clienti (Luca, docs/CHANGELOG.md §399). */}
-                  <select
-                    aria-label="Il prezzo è"
-                    value={service.priceUnit}
-                    onChange={(e) => updateServiceUnit(index, e.target.value as ServicePriceUnit)}
-                    style={{ ...smallInputStyle, width: 120 }}
-                  >
-                    {SERVICE_PRICE_UNITS.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {SERVICE_PRICE_UNIT_LABEL[unit]}
-                      </option>
+          {/* Un riquadro per mestiere quando ce n'è più di uno (richiesta di Luca,
+              docs/changelog/2026-11-05-registrazione-colonna-unica.md). */}
+          {serviceGroups.map((group) => {
+            const boxed = serviceGroups.length > 1;
+            const idleCount = boxed ? SUGGESTED_IDLE_COUNT_GROUPED : SUGGESTED_IDLE_COUNT;
+            const visibleSuggested = showAllSuggested[group.key] ? group.suggested : group.suggested.slice(0, idleCount);
+            return (
+              <YStack
+                key={group.key}
+                role={boxed ? "group" : undefined}
+                aria-label={boxed && group.label ? `Prestazioni da ${group.label}` : undefined}
+                gap="3"
+                {...(boxed ? { padding: "4", borderRadius: 20, borderWidth: 1, borderColor: brand.filetto } : {})}
+              >
+                {boxed && group.slug ? (
+                  <XStack gap="3" alignItems="center">
+                    <CategoryIconBadge slug={group.slug} size={36} />
+                    <Text flex={1} fontSize={17} fontWeight="700" color={brand.grafite}>
+                      {group.label}
+                    </Text>
+                    <Text fontSize={13} color={brand.grafite70}>
+                      {group.rows.length === 0 ? "Nessuna ancora" : group.rows.length === 1 ? "1 aggiunta" : `${group.rows.length} aggiunte`}
+                    </Text>
+                  </XStack>
+                ) : null}
+
+                {group.rows.length > 0 ? (
+                  <YStack gap="2">
+                    {group.rows.map(({ service, index }) => (
+                      <YStack key={index} className="service-row" flexDirection="row" gap="2" alignItems="center" flexWrap="wrap">
+                        <input aria-label="Nome della prestazione"
+                          list="prestazioni-suggerite"
+                          value={service.name}
+                          onChange={(e) => updateService(index, "name", e.target.value)}
+                          placeholder="Es. Sostituzione caldaia"
+                          className="service-name"
+                          style={{ ...smallInputStyle, flex: 1, minWidth: 160 }}
+                        />
+                        {/* Unità, prezzo e "X" insieme: sul telefono stanno su una
+                            riga sola sotto al nome, mai la "X" isolata lontana dalla
+                            sua voce (bug reale segnalato dall'utente). */}
+                        <XStack className="service-price-group" gap="2" alignItems="center" flexWrap="wrap">
+                          {/* Unità prima del prezzo, nello stesso ordine in cui la
+                              vedono i clienti (Luca, docs/CHANGELOG.md §399). */}
+                          <select
+                            aria-label="Il prezzo è"
+                            value={service.priceUnit}
+                            onChange={(e) => updateServiceUnit(index, e.target.value as ServicePriceUnit)}
+                            className="service-unit"
+                            style={smallInputStyle}
+                          >
+                            {SERVICE_PRICE_UNITS.map((unit) => (
+                              <option key={unit} value={unit}>
+                                {SERVICE_PRICE_UNIT_LABEL[unit]}
+                              </option>
+                            ))}
+                          </select>
+                          <XStack gap="2" alignItems="center" flexWrap="nowrap">
+                            <input aria-label="Prezzo minimo in euro"
+                              value={service.priceMin}
+                              onChange={(e) => updateService(index, "priceMin", e.target.value)}
+                              placeholder="Da €"
+                              inputMode="decimal"
+                              className="service-price"
+                              style={smallInputStyle}
+                            />
+                            <Text fontSize={13} color={brand.grafite70}>
+                              a
+                            </Text>
+                            <input aria-label="Prezzo massimo in euro"
+                              value={service.priceMax}
+                              onChange={(e) => updateService(index, "priceMax", e.target.value)}
+                              placeholder="A €"
+                              inputMode="decimal"
+                              className="service-price"
+                              style={smallInputStyle}
+                            />
+                            <XStack
+                              width={36}
+                              height={36}
+                              flexShrink={0}
+                              borderRadius="2"
+                              borderWidth={1}
+                              borderColor={brand.urgenza}
+                              backgroundColor={brand.urgenzaVelo}
+                              alignItems="center"
+                              justifyContent="center"
+                              cursor="pointer"
+                              onPress={() => removeService(index)}
+                              role="button"
+                              aria-label={service.name.trim() ? `Rimuovi ${service.name.trim()}` : "Rimuovi prestazione"}
+                            >
+                              <X size={16} strokeWidth={2} color={brand.urgenza} />
+                            </XStack>
+                          </XStack>
+                        </XStack>
+                      </YStack>
                     ))}
-                  </select>
-                  {/* Prezzo e "X" sempre insieme: sul telefono vanno a capo uniti. */}
-                  <XStack gap="2" alignItems="center" flexWrap="nowrap">
-                  <input aria-label="Prezzo minimo in euro"
-                    value={service.priceMin}
-                    onChange={(e) => updateService(index, "priceMin", e.target.value)}
-                    placeholder="Da €"
-                    inputMode="decimal"
-                    style={{ ...smallInputStyle, width: 90 }}
-                  />
-                  <Text fontSize={13} color={brand.grafite70}>
-                    a
-                  </Text>
-                  <input aria-label="Prezzo massimo in euro"
-                    value={service.priceMax}
-                    onChange={(e) => updateService(index, "priceMax", e.target.value)}
-                    placeholder="A €"
-                    inputMode="decimal"
-                    style={{ ...smallInputStyle, width: 90 }}
-                  />
-                  <XStack
-                      width={36}
-                      height={36}
-                      flexShrink={0}
-                      borderRadius="2"
-                      borderWidth={1}
-                      borderColor={brand.urgenza}
-                      backgroundColor={brand.urgenzaVelo}
-                      alignItems="center"
-                      justifyContent="center"
-                      cursor="pointer"
-                      onPress={() => removeService(index)}
-                      role="button"
-                      aria-label="Rimuovi prestazione"
-                    >
-                    <X size={16} strokeWidth={2} color={brand.urgenza} />
-                  </XStack>
-                  </XStack>
-                </XStack>
+                  </YStack>
+                ) : null}
+
+                {group.suggested.length > 0 ? (
+                  <YStack gap="1">
+                    <Text fontSize={13} color={brand.grafite70}>
+                      Le più richieste:
+                    </Text>
+                    <YStack flexDirection="row" flexWrap="wrap" gap="2">
+                      {visibleSuggested.map((name) => (
+                        <XStack
+                          key={name}
+                          paddingHorizontal="3"
+                          paddingVertical="2"
+                          borderRadius={999}
+                          borderWidth={1}
+                          borderColor={brand.cianografia}
+                          backgroundColor={brand.cianografiaVelo}
+                          cursor="pointer"
+                          onPress={() => addService(name, group.slug)}
+                          role="button"
+                        >
+                          <Text color={brand.cianografiaScuro} fontWeight="600" fontSize={16}>
+                            + {name}
+                          </Text>
+                        </XStack>
+                      ))}
+                      {group.suggested.length > idleCount ? (
+                        <XStack
+                          paddingHorizontal="3"
+                          paddingVertical="2"
+                          borderRadius={999}
+                          borderWidth={1}
+                          borderColor={brand.bordoCampo}
+                          cursor="pointer"
+                          onPress={() => setShowAllSuggested((prev) => ({ ...prev, [group.key]: !prev[group.key] }))}
+                          role="button"
+                          aria-expanded={!!showAllSuggested[group.key]}
+                        >
+                          <Text color={brand.grafite} fontWeight="600" fontSize={16}>
+                            {showAllSuggested[group.key] ? "Mostra meno" : `Altre ${group.suggested.length - idleCount}`}
+                          </Text>
+                        </XStack>
+                      ) : null}
+                    </YStack>
+                  </YStack>
+                ) : null}
+
+                <Button variant="ghost" size="3" height={40} alignSelf="flex-start" onPress={() => addService("", group.slug)}>
+                  {group.rows.length > 0 || group.suggested.length > 0 ? "+ Scrivi un'altra prestazione" : "+ Aggiungi prestazione"}
+                </Button>
               </YStack>
-            ))}
-          </YStack>
-          <Button variant="ghost" size="3" height={40} alignSelf="flex-start" onPress={() => setServices((prev) => [...prev, { name: "", priceMin: "", priceMax: "", priceUnit: "JOB" }])}>
-            + Aggiungi prestazione
-          </Button>
+            );
+          })}
         </Surface>
 
         <Surface gap="3" id="profilo-lingue" className="profile-section">

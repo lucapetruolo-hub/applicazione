@@ -438,6 +438,10 @@ model ProfessionalProfile {
   // principale (docs/CHANGELOG.md §217).
   category        Category   @relation("ProfessionalPrimaryCategory", fields: [categoryId], references: [id])
   extraCategories Category[] @relation("ProfessionalExtraCategories")
+  // Ordine dei mestieri scelto dal professionista (slug, la principale per
+  // prima): la tabella di collegamento non lo ricorda. Vuoto = ordine del sito
+  // (docs/changelog/2026-11-05-registrazione-colonna-unica.md).
+  categoryOrder   String[]   @default([])
 
   subscription           Subscription?
   visibilityBoosts       VisibilityBoost[]
@@ -557,6 +561,12 @@ model ProfessionalService {
   // A cosa si riferisce il prezzo (docs/CHANGELOG.md §398, richiesta di
   // Luca): "10 €" per una tinteggiatura può essere al m² o a lavoro.
   priceUnit             ServicePriceUnit @default(JOB)
+  // Mestiere a cui appartiene (slug di PROFESSIONAL_CATEGORIES), così nel
+  // profilo le prestazioni stanno divise per mestiere
+  // (docs/changelog/2026-11-05-registrazione-colonna-unica.md). Null per le
+  // prestazioni salvate prima: il sito le mette nel mestiere che le suggerisce,
+  // altrimenti nel principale.
+  categorySlug          String?
   createdAt             DateTime @default(now())
 
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)

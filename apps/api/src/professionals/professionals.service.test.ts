@@ -1,6 +1,6 @@
 import { canonicalServiceName } from "@professionisti/shared";
 import { describe, expect, it, vi } from "vitest";
-import { ProfessionalsService } from "./professionals.service";
+import { ProfessionalsService, servicesFirstFor } from "./professionals.service";
 
 /**
  * Flusso critico (CEO, tattico — "gate contatti cliente"): principio fisso
@@ -370,5 +370,26 @@ describe("getCategoryProfessionalCounts", () => {
       if (previous === undefined) delete process.env.LAUNCH_DATE;
       else process.env.LAUNCH_DATE = previous;
     }
+  });
+});
+
+describe("servicesFirstFor — prestazioni del mestiere cercato per prime", () => {
+  const services = [
+    { name: "Installazione punti luce", categorySlug: "elettricista" },
+    { name: "Sturatura scarichi", categorySlug: null },
+    { name: "Pulizia filtri addolcitore", categorySlug: "idraulico" },
+    { name: "Certificazione impianto", categorySlug: null },
+  ];
+  it("cercando idraulico mette prima le sue, anche quelle salvate senza mestiere", () => {
+    expect(servicesFirstFor(services, "idraulico", ["elettricista", "idraulico"]).map((s) => s.name)).toEqual([
+      "Sturatura scarichi",
+      "Pulizia filtri addolcitore",
+      "Installazione punti luce",
+      "Certificazione impianto",
+    ]);
+  });
+  it("senza mestiere cercato o con un solo mestiere non cambia l'ordine", () => {
+    expect(servicesFirstFor(services, undefined, ["elettricista", "idraulico"])).toBe(services);
+    expect(servicesFirstFor(services, "idraulico", ["idraulico"])).toBe(services);
   });
 });

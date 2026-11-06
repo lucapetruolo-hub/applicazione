@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Button, Field, Icon, Surface, Text, XStack, YStack, brand, Badge, radiusDoc } from "@professionisti/ui";
+import { Button, Field, Icon, Surface, Text, XStack, YStack, brand, Badge, radiusDoc, type IconName } from "@professionisti/ui";
 import type { ProfessionalFiscalProfile, FiscalVerificationStatus } from "@professionisti/api-client";
 import {
   birthDateFromCodiceFiscale,
@@ -12,6 +12,7 @@ import {
   findComuneByName,
   invoiceRecipientText,
   isValidCodiceFiscale,
+  normalizePartitaIva,
   fiscalFieldErrors,
   parseInvoiceRecipient,
   professionalFiscalProfileSchema,
@@ -118,6 +119,7 @@ const VERIFICATION_LABEL: Record<FiscalVerificationStatus, { label: string; vari
 
 type EntityType = "PRIVATE_INDIVIDUAL" | "SOLE_PROPRIETOR" | "BUSINESS";
 
+const ENTITY_TYPE_ICONS: Record<EntityType, IconName> = { PRIVATE_INDIVIDUAL: "user-round", SOLE_PROPRIETOR: "briefcase", BUSINESS: "building-2" };
 // Stesse parole della registrazione.
 const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
   PRIVATE_INDIVIDUAL: "Privato, senza Partita IVA",
@@ -244,6 +246,8 @@ function DashboardFiscaleContent() {
   const [chargesVat, setChargesVat] = useState<boolean | null>(null);
   const [invoiceRecipient, setInvoiceRecipient] = useState("");
   const [vatSaving, setVatSaving] = useState(false);
+  const [vatBlurred, setVatBlurred] = useState(false);
+  const [changingType, setChangingType] = useState(false);
   const [additionalEuStatesText, setAdditionalEuStatesText] = useState("");
   const [repFields, setRepFields] = useState<{ firstName: string; lastName: string; codiceFiscale: string; role: string }>({
     firstName: "",
@@ -609,9 +613,15 @@ function DashboardFiscaleContent() {
   };
   const cfOfficial = officialCheck("CODICE_FISCALE", fields.fiscalCodiceFiscale);
   const vatOfficial = officialCheck("PARTITA_IVA", fields.vatNumber);
+  // Partita IVA: niente indicazioni mentre si scrive, solo "corretta" o "non
+  // corretta" (richiesta di Luca, docs/changelog/2026-11-05-registrazione-colonna-unica.md).
+  // Il giudizio arriva a 11 cifre o quando si esce dal campo.
+  const vatNormalized = normalizePartitaIva(fields.vatNumber ?? "");
+  const vatJudged = vatNormalized.length > 0 && (vatBlurred || vatNormalized.length >= 11);
+  const vatWrong = !!pivaCheck.message;
   const recipientCheck = parseInvoiceRecipient(invoiceRecipient);
   const recipientError = recipientCheck.ok ? undefined : recipientCheck.error;
-  const hasLiveErrors = liveErrors.length > 0 || !!cfCheck.message || !!pivaCheck.message;
+  const hasLiveErrors = liveErrors.length > 0 || !!cfCheck.message || (vatWrong && vatJudged);
 
   // Solo i dati che servono davvero (richiesta dell'utente, docs/CHANGELOG.md
   // §262): quelli per la verifica di codice fiscale, P.IVA e identità e quelli
@@ -625,11 +635,11 @@ function DashboardFiscaleContent() {
     if (!filled("fiscalLastName")) step1Missing.push("Cognome");
     if (!filled("fiscalCodiceFiscale") && !(abroad && filled("foreignTin"))) step1Missing.push("Codice fiscale");
     if (askBirthDate && !/^\d{4}-\d{2}-\d{2}$/.test(fields.dateOfBirth ?? "")) step1Missing.push("Data di nascita");
-    if (entityType === "SOLE_PROPRIETOR" && !filled("vatNumber")) step1Missing.push("Partita IVA");
+    if (entityType === "SOLE_PROPRIETOR" && (!filled("vatNumber") || (vatWrong && !vatJudged))) step1Missing.push("Partita IVA");
     if (entityType === "SOLE_PROPRIETOR" && chargesVat === null) step1Missing.push("IVA nelle fatture");
   } else if (entityType === "BUSINESS") {
     if (!filled("businessName")) step1Missing.push("Ragione sociale");
-    if (!filled("vatNumber")) step1Missing.push("Partita IVA");
+    if (!filled("vatNumber") || (vatWrong && !vatJudged)) step1Missing.push("Partita IVA");
     if (!filled("businessRegistrationNumber")) step1Missing.push("Numero REA");
     if (!repFields.firstName.trim() || !repFields.lastName.trim()) step1Missing.push("Legale rappresentante");
   } else {
@@ -665,9 +675,11 @@ function DashboardFiscaleContent() {
       aria-label="Partita IVA"
       value={fields.vatNumber ?? ""}
       onChangeText={(v) => setField("vatNumber", v)}
+      onBlur={() => setVatBlurred(true)}
       inputMode="numeric"
-      error={pivaCheck.message ?? vatOfficial.error}
-      hint={vatOfficial.hint}
+      error={vatJudged && vatWrong ? "La partita IVA non è corretta." : vatOfficial.error}
+      success={vatJudged && !vatWrong && !vatOfficial.error && !vatOfficial.hint ? "Partita IVA corretta" : undefined}
+      hint={vatJudged && !vatWrong ? vatOfficial.hint : undefined}
     />
   );
 
@@ -757,14 +769,21 @@ function DashboardFiscaleContent() {
 
             {formStep === 1 ? (
               <YStack gap="3">
-                {/* Tipo già scelto alla registrazione (o salvato): si mostra e
-                    basta. La scelta resta solo per gli account senza un tipo. */}
-                {lockedEntityType ? (
+                {/* Tipo già scelto alla registrazione (o salvato): si mostra con
+                    "Cambia" (richiesta di Luca, docs/changelog/2026-11-05-registrazione-colonna-unica.md),
+                    tranne con Stripe già collegato, dove il tipo non si cambia. */}
+                {lockedEntityType && !changingType ? (
                   <XStack alignSelf="flex-start" gap="2" alignItems="center" paddingHorizontal="3" paddingVertical="1-5" borderRadius={999} backgroundColor={brand.gesso}>
-                    <Icon name={lockedEntityType === "BUSINESS" ? "briefcase" : "user-round"} size={15} strokeWidth={2} color={brand.grafite70} />
+                    {/* Stesse icone della registrazione. */}
+                    <Icon name={ENTITY_TYPE_ICONS[isEntityType(entityType) ? entityType : lockedEntityType]} size={15} strokeWidth={2} color={brand.grafite70} />
                     <Text fontSize={16} fontWeight="700" color={brand.grafite}>
-                      {ENTITY_TYPE_LABELS[lockedEntityType]}
+                      {ENTITY_TYPE_LABELS[isEntityType(entityType) ? entityType : lockedEntityType]}
                     </Text>
+                    {!profile?.stripeConnectAccountId ? (
+                      <button type="button" className="plan-chip-change" onClick={() => setChangingType(true)}>
+                        Cambia
+                      </button>
+                    ) : null}
                   </XStack>
                 ) : (
                   <YStack gap="2">
@@ -773,7 +792,10 @@ function DashboardFiscaleContent() {
                     </Text>
                     <XStack gap="2" flexWrap="wrap">
                       {(Object.keys(ENTITY_TYPE_LABELS) as EntityType[]).map((type) => (
-                        <Button key={type} variant={entityType === type ? "primary" : "secondary"} onPress={() => setEntityType(type)}>
+                        <Button key={type} variant={entityType === type ? "primary" : "secondary"} aria-pressed={entityType === type} onPress={() => {
+                          setEntityType(type);
+                          setChangingType(false);
+                        }}>
                           {ENTITY_TYPE_LABELS[type]}
                         </Button>
                       ))}

@@ -49,7 +49,7 @@ export type MyProfessionalProfile = {
   imageUrl: string | null;
   /** Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul profilo pubblico. */
   portfolioUrls: string[];
-  services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null; priceUnit: ServicePriceUnit }[];
+  services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null; priceUnit: ServicePriceUnit; categorySlug?: string | null }[];
   /** Raggio (km: 1-35 standard, 1-25 urgenti) entro cui arrivano rispettivamente le richieste standard e quelle urgenti — vedi updateEngagementRadiusSchema. */
   engagementRadiusKm: number;
   urgentEngagementRadiusKm: number;

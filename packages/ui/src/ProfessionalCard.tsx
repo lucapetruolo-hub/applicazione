@@ -213,6 +213,11 @@ export type ProfessionalCardProps = {
    * "da … €" sulla scheda chiusa.
    */
   highlightServiceId?: string;
+  /**
+   * Quante prestazioni in cima a `services` sono del mestiere cercato: il
+   * "da … €" usa solo quelle (se sono almeno una con un prezzo).
+   */
+  priceFromFirst?: number;
   /** Slot opzionale per un'icona/badge categoria (passato da chi consuma il componente, così l'icona custom resta web-only senza sporcare packages/ui). */
   icon?: ReactNode;
   /**
@@ -243,6 +248,7 @@ export function ProfessionalCard({
   hasLiabilityInsurance,
   remoteAvailable,
   services,
+  priceFromFirst,
   availabilityPreview,
   availabilityFrom,
   availabilityDays = DEFAULT_AGENDA_DAYS,
@@ -343,7 +349,9 @@ export function ProfessionalCard({
   // La prestazione cercata in cima: si vede anche con l'elenco ridotto a 3.
   const serviceList = highlighted ? [highlighted, ...(services ?? []).filter((service) => service !== highlighted)] : (services ?? []);
   const hasServices = serviceList.length > 0;
-  const lowestPrice = hasServices ? lowestServicePrice(serviceList) : null;
+  const lowestPrice = hasServices
+    ? ((priceFromFirst ? lowestServicePrice((services ?? []).slice(0, priceFromFirst)) : null) ?? lowestServicePrice(serviceList))
+    : null;
   const detailsLabel = [hasAgenda ? "orari" : null, hasServices ? (lowestPrice !== null ? "prezzi" : "prestazioni") : null]
     .filter(Boolean)
     .join(" e ");

@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
-import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -289,19 +288,13 @@ function SignupChoicesSummary({
   );
 }
 
-const SIGNUP_BENEFITS: { icon: IconName; title: string; text: string }[] = [
-  { icon: "map-pin", title: "Richieste dalla tua zona", text: "Clienti vicino a te che cercano proprio il tuo mestiere." },
-  { icon: "calendar", title: "Agenda e promemoria", text: "Appuntamenti in ordine e meno clienti che non si presentano." },
-  { icon: "star", title: "Recensioni vere", text: "Solo da lavori fatti tramite il sito: la tua reputazione conta di più." },
-];
 
 /**
  * Registrazione del professionista nella stessa scheda della scelta del
- * ruolo (stessa larghezza, docs/CHANGELOG.md §181). Foto e vantaggi
- * (§173) sul computer stanno in una colonna accanto alla scheda, sul
- * telefono non ci sono: allungavano la pagina a metà iscrizione
- * (docs/changelog/2026-11-02-registrazione-pro-grafica.md). La
- * presentazione completa è in /per-professionisti.
+ * ruolo (docs/CHANGELOG.md §181). Una colonna sola anche sul computer, senza
+ * foto e vantaggi accanto (scelta di Luca,
+ * docs/changelog/2026-11-05-registrazione-colonna-unica.md): la scheda è più
+ * larga e i mestieri respirano. La presentazione completa è in /per-professionisti.
  */
 function ProfessionalSignupLayout({
   children,
@@ -311,7 +304,6 @@ function ProfessionalSignupLayout({
   title = "Crea il tuo account",
   subtitle = "Poi completi il profilo e ricevi le richieste.",
   showClientLink = true,
-  showAside = true,
   chosenTier = null,
   onBack,
 }: {
@@ -325,14 +317,12 @@ function ProfessionalSignupLayout({
   onBack?: () => void;
   /** "Cerchi un professionista? Registrati come cliente" in fondo alla scheda. */
   showClientLink?: boolean;
-  /** Foto e vantaggi accanto alla scheda (solo computer): non nella schermata dell'email. */
-  showAside?: boolean;
   /** Piano toccato su /per-professionisti, ricordato sotto il titolo. */
   chosenTier?: SubscriptionTier | null;
 }) {
   return (
     <AuthPageBackground>
-      <div className={`pro-signup${showAside ? " has-aside" : ""}`}>
+      <div className="pro-signup">
         <Surface className="auth-card-in pro-signup-card" width="100%" borderRadius={radiusDocLg} padding="6" gap="5">
           <AuthStepHeader icon={icon} title={title} subtitle={subtitle || undefined} step={{ current: step, total: PRO_STEPS, note: stepNote }} onBack={onBack} />
           {chosenTier ? <ChosenPlanChip tier={chosenTier} changeHref={CHANGE_PLAN_HREF} /> : null}
@@ -349,43 +339,6 @@ function ProfessionalSignupLayout({
           ) : null}
         </Surface>
 
-        {showAside ? (
-          <aside className="pro-signup-aside" aria-label="Perché iscriversi">
-            <YStack width="100%" gap="5">
-              <div style={{ position: "relative", width: "100%", aspectRatio: "3 / 2", borderRadius: radiusDocLg, overflow: "hidden" }}>
-                <Image
-                  src="/page-photos/registrati-elettricista.webp"
-                  alt="Un elettricista sorride mentre lavora a un quadro elettrico"
-                  fill
-                  sizes="420px"
-                  style={{ objectFit: "cover" }}
-                />
-              </div>
-              <YStack gap="4">
-                {SIGNUP_BENEFITS.map((benefit) => (
-                  <XStack key={benefit.title} gap="3" alignItems="flex-start">
-                    <XStack width={40} height={40} borderRadius={12} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
-                      <Icon name={benefit.icon} size={19} color={brand.cianografiaScuro} strokeWidth={1.75} />
-                    </XStack>
-                    <YStack flex={1} gap="1">
-                      <Text fontWeight="700" color={brand.grafite}>
-                        {benefit.title}
-                      </Text>
-                      <Text fontSize={16} color={brand.grafite70}>
-                        {benefit.text}
-                      </Text>
-                    </YStack>
-                  </XStack>
-                ))}
-              </YStack>
-              <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
-                <Text color={brand.cianografiaScuro} fontWeight="600">
-                  Scopri come funziona e quanto costa
-                </Text>
-              </Link>
-            </YStack>
-          </aside>
-        ) : null}
       </div>
     </AuthPageBackground>
   );
@@ -724,7 +677,7 @@ function RegistratiForm() {
 
   if (codeStep) {
     return (
-      <ProfessionalSignupLayout step={3} icon="mail" title="Conferma la tua email" subtitle="" showClientLink={false} showAside={false}>
+      <ProfessionalSignupLayout step={3} icon="mail" title="Conferma la tua email" subtitle="" showClientLink={false}>
         <EmailCodeForm
           token={codeStep.token}
           email={codeStep.email}

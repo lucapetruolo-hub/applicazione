@@ -22,6 +22,8 @@ export type ProfessionalServiceItem = {
   priceMinEurCents: number | null;
   priceMaxEurCents: number | null;
   priceUnit: ServicePriceUnit;
+  /** Mestiere della prestazione; null per quelle salvate prima del 05/11/2026. */
+  categorySlug?: string | null;
 };
 
 /**
@@ -340,6 +342,12 @@ export type ProfessionalSearchResult = {
    * corrisponde, da mettere in evidenza nella scheda.
    */
   matchedServiceId?: string;
+  /**
+   * Cercando un mestiere, quante prestazioni in cima a `services` sono di quel
+   * mestiere: il "da … €" della scheda chiusa si calcola solo su quelle
+   * (docs/changelog/2026-11-05-registrazione-colonna-unica.md).
+   */
+  categoryServiceCount?: number;
   distanceKm?: number;
 };
 

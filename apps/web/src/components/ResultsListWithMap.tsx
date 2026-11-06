@@ -509,6 +509,7 @@ export function ResultsListWithMap({
       remoteAvailable={pro.remoteAvailable}
       services={pro.services}
       highlightServiceId={pro.matchedServiceId}
+      priceFromFirst={pro.categoryServiceCount}
       availabilityPreview={pro.availabilityPreview}
       availabilityFrom={pro.availabilityFrom}
       availabilityDays={PUBLIC_AGENDA_DAYS}

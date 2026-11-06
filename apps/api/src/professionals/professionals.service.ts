@@ -48,6 +48,7 @@ import {
   wallClockToday,
   slotStillOffered,
   isProfessionalCategorySlug,
+  serviceCategoryOf,
   validSubTags,
   type CategoryPriceStats,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
@@ -122,8 +123,19 @@ export type ProfessionalSearchParams = {
 // stessa il primo orario libero per "Mostra orari disponibili" (richiesta
 // esplicita dell'utente: frecce per almeno due mesi, docs/CHANGELOG.md §206).
 
+/** Le prestazioni del mestiere cercato prima delle altre, senza cambiare l'ordine dentro i due gruppi. */
+export function servicesFirstFor<T extends { name: string; categorySlug?: string | null }>(
+  services: T[],
+  searchedCategory: string | undefined,
+  categorySlugs: ProfessionalCategorySlug[],
+): T[] {
+  if (!searchedCategory || categorySlugs.length < 2) return services;
+  const ofSearched = (service: T) => serviceCategoryOf(service, categorySlugs) === searchedCategory;
+  return [...services.filter(ofSearched), ...services.filter((service) => !ofSearched(service))];
+}
+
 function mapServices(
-  services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null; priceUnit: ServicePriceUnit }[],
+  services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null; priceUnit: ServicePriceUnit; categorySlug?: string | null }[],
 ): ProfessionalServiceItem[] {
   return services.map((service) => ({
     id: service.id,
@@ -131,6 +143,7 @@ function mapServices(
     priceMinEurCents: service.priceMinEurCents,
     priceMaxEurCents: service.priceMaxEurCents,
     priceUnit: service.priceUnit,
+    categorySlug: service.categorySlug ?? null,
   }));
 }
 
@@ -390,6 +403,12 @@ export class ProfessionalsService {
       // Cercando "idraulico" la card mostra Idraulico anche se è una
       // categoria aggiuntiva del professionista.
       const shownCategory = categories.find((item) => item.slug === category) ?? categories[0]!;
+      const orderedServices = servicesFirstFor(profile.services, category, categories.map((item) => item.slug));
+      // Il "da … €" della scheda solo sulle prestazioni del mestiere cercato.
+      const categoryServiceCount =
+        category && categories.length > 1
+          ? orderedServices.filter((service) => serviceCategoryOf(service, categories.map((item) => item.slug)) === category).length
+          : undefined;
 
       return {
         id: profile.id,
@@ -409,7 +428,9 @@ export class ProfessionalsService {
         latitude: profile.latitude,
         longitude: profile.longitude,
         imageUrl: profile.imageUrl,
-        services: mapServices(profile.services),
+        // Cercando un mestiere, le sue prestazioni per prime (richiesta di Luca,
+        // docs/changelog/2026-11-05-registrazione-colonna-unica.md).
+        services: mapServices(orderedServices),
         subTags: profile.subTags,
         spokenLanguages: profile.spokenLanguages,
         hasLiabilityInsurance: profile.hasLiabilityInsurance,
@@ -423,6 +444,7 @@ export class ProfessionalsService {
           : problem
             ? problemServiceField(profile.services, problem)
             : {}),
+        ...(categoryServiceCount ? { categoryServiceCount } : {}),
         ...(distanceById?.has(profile.id) ? { distanceKm: Math.round(distanceById.get(profile.id)! * 10) / 10 } : {}),
       } satisfies ProfessionalSearchResult;
     });
@@ -956,6 +978,7 @@ export class ProfessionalsService {
       update: {
         categoryId: primaryCategoryId,
         extraCategories: { set: extraCategoryIds },
+        categoryOrder: categorySlugs,
         subTags,
         businessName: input.businessName,
         city: input.city,
@@ -980,6 +1003,7 @@ export class ProfessionalsService {
         userId,
         categoryId: primaryCategoryId,
         extraCategories: { connect: extraCategoryIds },
+        categoryOrder: categorySlugs,
         subTags,
         businessName: input.businessName,
         city: input.city,
@@ -1015,6 +1039,8 @@ export class ProfessionalsService {
           priceMinEurCents: service.priceMinEurCents ?? null,
           priceMaxEurCents: service.priceMaxEurCents ?? null,
           priceUnit: service.priceUnit ?? "JOB",
+          // Solo un mestiere che il profilo ha davvero.
+          categorySlug: service.categorySlug && input.categorySlugs.includes(service.categorySlug) ? service.categorySlug : null,
         })),
       }),
     ]);
@@ -1225,6 +1251,7 @@ export class ProfessionalsService {
         city: true,
         category: { select: { id: true, slug: true, label: true } },
         extraCategories: { select: { id: true, slug: true, label: true } },
+        categoryOrder: true,
         metrics: { select: { avgResponseTimeMinutes: true } },
       },
     });
