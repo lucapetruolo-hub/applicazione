@@ -335,10 +335,13 @@ falegname. Ogni categoria ha sotto-tag di specializzazione (es. Elettricista
 → impianti civili, domotica, certificazioni), usati sia per il matching in
 ricerca sia per differenziare i piani a pagamento.
 
-Espansa oltre il set iniziale di mestieri artigianali con tre categorie,
+Espansa oltre il set iniziale di mestieri artigianali con cinque categorie,
 su richiesta esplicita dell'utente: **Tutto Fare** (piccole riparazioni
 generiche), **Dogsitter** e **Babysitter** (queste due al posto di OSS e
-Badanti, tolte su decisione dell'utente, docs/CHANGELOG.md §217). Ogni
+Badanti, tolte su decisione dell'utente, docs/CHANGELOG.md §217),
+**Elettrodomestici** (riparazione) e **Tende da sole e zanzariere**
+(richiesta di Luca del 06/11/2026, docs/changelog/2026-11-06-mestiere-elettrodomestici.md:
+prima erano lavori "fuori servizio" del dizionario). Ogni
 professionista sceglie da 1 a 3 categorie (`MAX_PROFESSIONAL_CATEGORIES`). Fonte di verità unica in
 `packages/shared/src/categories.ts` (`PROFESSIONAL_CATEGORIES`): icone SVG
 e colori accento in `apps/web/src/components/icons/CategoryIcons.tsx`
