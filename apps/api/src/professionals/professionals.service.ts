@@ -58,6 +58,7 @@ import {
   serviceMatchingProblem,
 } from "@professionisti/shared";
 import { COUNTED_USER, countingFrom, daySinceLaunch } from "../site-counts/counted";
+import { searchableProfileConditions, searchableProfileWhere } from "./searchable-profiles";
 import { calculateDistanceKm } from "../common/geo.util";
 import { PRISMA } from "../prisma/prisma.module";
 import { invoiceRequestView } from "../client-invoice-requests/client-invoice-requests.service";
@@ -114,6 +115,12 @@ export type ProfessionalSearchParams = {
    * prima chi ha tra le prestazioni proprio quel lavoro, in evidenza nella scheda.
    */
   problem?: string;
+  /**
+   * Prestazione del catalogo scelta dall'intelligenza artificiale per quel
+   * problema (docs/changelog/2026-11-06-ia-conosce-i-servizi.md): vale come
+   * le parole uguali, contando le unioni fatte in Admin.
+   */
+  problemService?: string;
 };
 
 // Giorni della griglia mostrata in card: colonne giorno consecutive (un
@@ -147,36 +154,6 @@ function mapServices(
   }));
 }
 
-/**
- * Professionisti che possono comparire nella ricerca. Un professionista che
- * ha eliminato l'account non deve mai ricomparire (soft-delete, vedi
- * AuthService.deleteAccount), né uno sospeso da un admin (docs/CHANGELOG.md
- * §144), né uno in pausa per l'abbonamento (§162), né uno creato da un
- * operatore e non ancora confermato (§170), né uno bloccato per la 3ª
- * segnalazione accolta in 30 giorni (§167). Va insieme a
- * `publicVisibilityWhere()` (dati fiscali, §241).
- */
-function searchableProfileWhere(): Prisma.ProfessionalProfileWhereInput {
-  return {
-    deletedAt: null,
-    suspendedAt: null,
-    pausedAt: null,
-    invitePendingAt: null,
-  };
-}
-
-/**
- * Le condizioni di `searchableProfileWhere` che vanno nell'AND (ognuna è un
- * OR): bloccato per segnalazioni (§167) o in pausa per scelta sua (collaudo
- * C-16). Separate perché chi usa la ricerca ha già un suo AND.
- */
-function searchableProfileConditions(now = new Date()): Prisma.ProfessionalProfileWhereInput[] {
-  return [
-    { OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: now } }] },
-    { OR: [{ awayUntil: null }, { awayUntil: { lte: now } }] },
-  ];
-}
-
 /** La prestazione che corrisponde alla voce cercata, da evidenziare nella scheda (§398). */
 function matchedServiceField(
   services: { id: string; name: string }[],
@@ -187,8 +164,17 @@ function matchedServiceField(
   return match ? { matchedServiceId: match.id } : {};
 }
 
-/** La prestazione che corrisponde alla descrizione del problema, se c'è. */
-function problemServiceField(services: { id: string; name: string }[], problem: string): { matchedServiceId?: string } {
+/**
+ * La prestazione che corrisponde alla descrizione del problema, se c'è: prima
+ * quella scelta dall'intelligenza artificiale dal catalogo, poi le parole uguali.
+ */
+export function problemServiceField(
+  services: { id: string; name: string }[],
+  problem: string,
+  chosen: { key: string; canonicalize: ServiceCanonicalizer } | null,
+): { matchedServiceId?: string } {
+  const fromAi = chosen ? matchedServiceField(services, chosen.key, chosen.canonicalize) : {};
+  if (fromAi.matchedServiceId) return fromAi;
   const match = serviceMatchingProblem(services, problem);
   return match ? { matchedServiceId: match.id } : {};
 }
@@ -320,9 +306,10 @@ export class ProfessionalsService {
     };
   }
 
-  async search({ category, city, q, remote, service, excludeDemo, merit, offers, problem }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
+  async search({ category, city, q, remote, service, excludeDemo, merit, offers, problem, problemService }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
     // Sinonimi compresi (docs/changelog/2026-10-28-quanto-costa-sinonimi.md): "perdite" trova chi ha scritto "Riparazione perdita d'acqua".
-    const canonicalize = service ? await this.serviceNamesService.canonicalizer() : null;
+    const canonicalize = service || (problem && problemService) ? await this.serviceNamesService.canonicalizer() : null;
+    const problemServiceKey = problem && problemService && canonicalize ? serviceGroupKey(problemService, canonicalize) : "";
     const serviceKey = service && canonicalize ? serviceGroupKey(service, canonicalize) : "";
     const serviceProfileIds = serviceKey && canonicalize ? await this.profileIdsWithService(serviceKey, canonicalize) : null;
     const publicWhere = this.publicSearchWhere(category, excludeDemo, serviceProfileIds);
@@ -442,7 +429,7 @@ export class ProfessionalsService {
         ...(serviceKey && canonicalize
           ? matchedServiceField(profile.services, serviceKey, canonicalize)
           : problem
-            ? problemServiceField(profile.services, problem)
+            ? problemServiceField(profile.services, problem, problemServiceKey && canonicalize ? { key: problemServiceKey, canonicalize } : null)
             : {}),
         ...(categoryServiceCount ? { categoryServiceCount } : {}),
         ...(distanceById?.has(profile.id) ? { distanceKm: Math.round(distanceById.get(profile.id)! * 10) / 10 } : {}),

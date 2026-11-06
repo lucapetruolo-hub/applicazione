@@ -1459,12 +1459,15 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         offers?: string;
         /** Descrizione del problema: prima chi ha quella prestazione. */
         problem?: string;
+        /** Prestazione scelta dall'IA per quel problema (docs/changelog/2026-11-06-ia-conosce-i-servizi.md). */
+        problemService?: string;
       } = {},
     ) => {
       const query = new URLSearchParams();
       if (params.merit) query.set("merito", "1");
       if (params.offers) query.set("offre", params.offers);
       if (params.problem) query.set("problema", params.problem);
+      if (params.problem && params.problemService) query.set("prestazione", params.problemService);
       if (params.category) query.set("category", params.category);
       if (params.city) query.set("city", params.city);
       if (params.q) query.set("q", params.q);
