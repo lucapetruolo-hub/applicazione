@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import type { ApiClient } from "@professionisti/api-client";
 import Link from "next/link";
 import {
+  APPLIANCE_BRANDS_SEARCHED,
   CATEGORY_SEO_NOUN,
   MIN_PROFESSIONALS_TO_INDEX_CITY,
   categorySubTags,
@@ -117,6 +118,19 @@ export function CityFacts({
         </>
       ),
     },
+    ...(categorySlug === "elettrodomestici"
+      ? [
+          {
+            question: "Su quali marche intervengono i tecnici?",
+            answer: (
+              <>
+                Ogni tecnico sceglie le marche su cui lavora: scrivi marca e modello nella richiesta. Le più cercate:{" "}
+                {APPLIANCE_BRANDS_SEARCHED.join(", ")}.
+              </>
+            ),
+          },
+        ]
+      : []),
     {
       question: "Come scelgo a chi affidare il lavoro?",
       answer: <>Confronta i preventivi e guarda le recensioni: arrivano solo da lavori fatti tramite il sito. Il badge Verificato vuol dire identità controllata con documento e selfie.</>,

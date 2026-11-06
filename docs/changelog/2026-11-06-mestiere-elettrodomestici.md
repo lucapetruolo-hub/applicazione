@@ -1,4 +1,4 @@
-# Mestiere "Elettrodomestici" e dizionario addestrato sulle ricerche più frequenti
+# Mestieri "Elettrodomestici" e "Tende da sole e zanzariere", dizionario addestrato sulle ricerche più frequenti
 
 **Richiesta di Luca (06/11/2026)**, thread "Trovare i servizi più cercati che
 mancano" (analisi in `/mnt/project-files/analisi/servizi-piu-cercati.md`):
@@ -40,6 +40,32 @@ servizio" e vedeva solo chi aveva scritto la prestazione.
   professionisti di altri mestieri che offrono quel lavoro, nell'ordine della
   ricerca, non più al massimo 3. `serviceMatchingProblem` riconosce
   "Riparazione elettrodomestici" quando il cliente nomina un elettrodomestico.
+
+## Secondo giro (stesso giorno): tende da sole e marche
+
+**Richiesta di Luca**: "si" alle migliorie proposte dopo la PR: categoria
+"Tende da sole e zanzariere", marche più cercate per gli elettrodomestici, foto
+della scheda, le altre prestazioni del documento (queste in una PR dopo).
+
+**Perché**: "tende da sole latina" ha 100-1.000 ricerche al mese, come
+l'idraulico; in Italia 10.000-100.000 (Keyword Planner del 06/11/2026).
+
+**Decisione**:
+- Mestiere `tende-da-sole` ("Tende da sole e zanzariere"): specializzazioni
+  installazione, riparazione, zanzariere; 7 prestazioni (tende, telo,
+  pergotenda, zanzariere) con varianti; icona, colore sabbia (contrasto 6:1),
+  menu "Casa e famiglia", testi, frasi d'esempio, codice Stripe 1799. Niente
+  motorizzazione tra le prestazioni: collegare un motore è dell'elettricista
+  (DM 37/2008).
+- Dizionario: tende da sole, pergotende, tende a bracci/caduta, telo della
+  tenda, tendista → mestiere nuovo (non più "fuori servizio"); "zanzariere"
+  va prima al mestiere nuovo, il Tutto Fare resta tra i possibili e compare in
+  "Potrebbero fare anche questo lavoro" con "Montaggio zanzariere". Banco di
+  prova: le 7 frasi "tende da sole" e le 8 frasi sulle sole zanzariere ora
+  hanno il mestiere nuovo (le zanzariere con Tutto Fare come secondo).
+- Pagina Elettrodomestici di ogni città: domanda frequente "Su quali marche
+  intervengono i tecnici?" con le marche più cercate
+  (`APPLIANCE_BRANDS_SEARCHED`), senza dire che siamo partner di nessuna.
 
 Coordinata con `2026-11-06-fotovoltaico.md` (PR #250, stessi file): questa
 parte dal suo ramo e non tocca fotovoltaico, accumulo e wallbox.

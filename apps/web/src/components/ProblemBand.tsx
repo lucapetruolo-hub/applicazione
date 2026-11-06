@@ -42,6 +42,7 @@ const WHO: Record<ProfessionalCategorySlug, string> = {
   falegname: "un falegname",
   tuttofare: "un tuttofare",
   elettrodomestici: "un tecnico di elettrodomestici",
+  "tende-da-sole": "chi installa tende da sole e zanzariere",
   dogsitter: "un dogsitter",
   babysitter: "una babysitter",
 };

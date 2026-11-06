@@ -16,7 +16,6 @@ export type ProblemSafety = "gas" | "elettrico" | "acqua-elettrico" | "monossido
 /** Lavori che nessuna nostra categoria copre: prima si cercano i professionisti che li dichiarano, poi "Ce ne occupiamo noi". */
 export type ProblemOutOfService =
   | "antennista"
-  | "tende-da-sole"
   | "disinfestazione"
   | "spurghi"
   | "spazzacamino"
@@ -27,7 +26,6 @@ export type ProblemOutOfService =
 
 export const OUT_OF_SERVICE_LABELS: Record<ProblemOutOfService, string> = {
   antennista: "Antennista",
-  "tende-da-sole": "Tende da sole",
   disinfestazione: "Disinfestazione",
   spurghi: "Spurghi",
   spazzacamino: "Spazzacamino",
@@ -40,7 +38,6 @@ export const OUT_OF_SERVICE_LABELS: Record<ProblemOutOfService, string> = {
 /** Parole da cercare nei servizi, nei patentini e nella descrizione dei professionisti prima di dire "fuori servizio". */
 export const OUT_OF_SERVICE_KEYWORDS: Record<ProblemOutOfService, readonly string[]> = {
   antennista: ["antenn", "parabol", "digitale terrestre"],
-  "tende-da-sole": ["tende da sole", "tenda da sole", "pergotend", "tendaggi"],
   disinfestazione: ["disinfest", "derattizz", "blatte"],
   spurghi: ["spurg", "pozzo nero", "fossa biologica"],
   spazzacamino: ["spazzacamin", "canna fumaria", "canne fumarie"],
@@ -167,6 +164,11 @@ const RULES: readonly Rule[] = [
   // `matchProblem` (richiesta di Luca, docs/changelog/2026-11-06-mestiere-elettrodomestici.md).
   { words: ["elettrodomestic"], weights: { elettrodomestici: 4 } },
 
+  // Tende da sole e zanzariere (prima "fuori servizio"). Le zanzariere le
+  // monta anche il Tutto Fare: con poche parole vince chi lo fa di mestiere.
+  { words: ["tende da sole", "tenda da sole", "pergotend", "tende a bracci", "tenda a bracci", "tende da balcone", "tenda da balcone", "tende da esterno", "tenda da esterno", "tenda a caduta", "tende a caduta", "cappottina", "telo della tenda", "telo tenda", "tendalin"], weights: { "tende-da-sole": 12 } },
+  { words: ["zanzarier"], weights: { "tende-da-sole": 8 } },
+
   // Babysitter
   { words: ["baby sitter", "babysitter", "babysitting", "tata", "neonat", "asilo", "uscita da scuola", "uscita dalla scuola", "prendere a scuola", "prenderli a scuola", "compiti", "ragazza alla pari", "tagesmutter"], weights: { babysitter: 5 } },
   { words: ["bambin", "bimb", "nonni"], weights: { babysitter: 3 } },
@@ -195,6 +197,7 @@ export const TRADE_NAMES: readonly { words: readonly string[]; categories: reado
   { words: ["handyman", "factotum", "manutentore", "uomo di fatica", "montator"], categories: ["tuttofare"] },
   { words: ["petsitter", "dog walker", "dogwalker", "dog-sitter"], categories: ["dogsitter"] },
   { words: ["bambinaia", "baby-sitter"], categories: ["babysitter"] },
+  { words: ["tendist", "tendaggi", "installatore di tende", "installatore tende", "montatore di tende da sole"], categories: ["tende-da-sole"] },
   { words: ["tecnico elettrodomestic", "tecnico di elettrodomestic", "tecnico per elettrodomestic", "tecnico lavatric", "tecnico della lavatric", "tecnico frigorifer", "tecnico del frigorifer", "tecnico lavastovigli", "tecnico della lavastovigli", "riparatore", "riparatori", "tecnico per la lavatric", "tecnico per il frigo", "tecnico per la lavastovigli", "tecnico per l asciugatric", "tecnico per il forno", "assistenza elettrodomestic", "centro assistenza", "assistenza tecnica"], categories: ["elettrodomestici"] },
 ];
 
@@ -212,7 +215,6 @@ const APPLIANCE_FAULT_POINTS = 10;
 
 const OUT_RULES: readonly OutRule[] = [
   { words: ["antenn", "parabol", "canali tv", "non prende i canali", "non prende tutti i canali", "segnale dall antenna", "decoder"], kind: "antennista" },
-  { words: ["tende da sole", "tenda da sole", "pergotend", "tende a bracci", "tenda a bracci"], kind: "tende-da-sole" },
   { words: ["blatte", "scarafagg", "topi", "ratti", "disinfest", "derattizz", "tarme", "termiti", "vespe", "calabroni", "cimici"], kind: "disinfestazione" },
   { words: ["pozzo nero", "spurg", "fossa biologica", "fossa settica", "autospurgo"], kind: "spurghi" },
   { words: ["spazzacamin", "camino fa fumo", "camino che fa fumo", "fuliggine"], kind: "spazzacamino" },

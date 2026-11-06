@@ -27,6 +27,17 @@ export const CATEGORY_SEO_NOUN: Record<ProfessionalCategorySlug, { costQuestion:
   falegname: { costQuestion: "Quanto costa un falegname", findQuestion: "un falegname", workTitle: "Lavoro per falegnami" },
   tuttofare: { costQuestion: "Quanto costa un tuttofare", findQuestion: "un tuttofare", workTitle: "Lavoro come tuttofare" },
   elettrodomestici: { costQuestion: "Quanto costa riparare un elettrodomestico", findQuestion: "un tecnico per elettrodomestici", workTitle: "Lavoro per tecnici di elettrodomestici" },
+  "tende-da-sole": { costQuestion: "Quanto costa una tenda da sole", findQuestion: "chi installa tende da sole e zanzariere", workTitle: "Lavoro come installatore di tende da sole" },
   dogsitter: { costQuestion: "Quanto costa un dogsitter", findQuestion: "un dogsitter", workTitle: "Lavoro come dogsitter" },
   babysitter: { costQuestion: "Quanto costa una babysitter", findQuestion: "una babysitter", workTitle: "Lavoro come babysitter" },
 };
+
+/**
+ * Marche più cercate con "assistenza + marca" (Keyword Planner del
+ * 06/11/2026, docs/changelog/2026-11-06-mestiere-elettrodomestici.md): nella
+ * domanda frequente della pagina Elettrodomestici, così chi cerca la sua
+ * marca trova la pagina. Nessuna di queste è un nostro partner.
+ */
+export const APPLIANCE_BRANDS_SEARCHED: readonly string[] = [
+  "Candy", "Hoover", "Whirlpool", "Indesit", "Hotpoint", "Electrolux", "AEG", "Bosch", "Siemens", "Samsung", "LG", "Smeg", "Beko", "Miele",
+];

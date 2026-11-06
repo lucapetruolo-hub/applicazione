@@ -41,7 +41,7 @@ G039;Infiltrazioni da terrazzo in zona pluviale;muratore;;no;;;chiuso
 G040;Problema bocche di lupo piene di terra e umidità in cantina/box;muratore;;no;;;lavoro
 G041;Impermeabilizzazione terrazzo con umidita in risalita con piastrelle klinker;muratore;;no;;;lavoro
 G042;Cambio infissi con vecchio telaio;falegname;fabbro;no;;;lavoro
-G043;Zanzariera difettosa;tuttofare;;no;;;lavoro
+G043;Zanzariera difettosa;tende-da-sole;tuttofare;no;;;lavoro
 G044;Smontaggio cassonetto per sostituzione elemento;tuttofare;falegname;no;;;lavoro
 G045;Creazione armadietto in balcone;falegname;;no;;;lavoro
 G046;Dubbi su gas gpl domestico;idraulico;climatizzazione;no;;;chiuso
@@ -132,7 +132,7 @@ G130;Cerniere ammortizzanti anta mobile;tuttofare;falegname;no;;;chiuso
 G131;come ovviare a una fessura tra due mobili base cucina;tuttofare;falegname;no;;;chiuso
 G132;Smontare vecchio cardine;fabbro;falegname;no;;;lavoro
 G133;Finestra vasistas;falegname;fabbro;no;;;lavoro
-G134;Zanzariera;tuttofare;;no;;;lavoro
+G134;Zanzariera;tende-da-sole;tuttofare;no;;;lavoro
 G135;casetta in legno ad incastro da sistemare;falegname;;no;;;chiuso
 G136;Perché il salvavita scatta senza un motivo apparente?;elettricista;;no;;;lavoro
 G137;Come risolvere il problema del salvavita che scatta?;elettricista;;no;;;lavoro
@@ -299,8 +299,8 @@ G297;Impianto allagato;elettricista;;acqua-elettrico;;;lavoro
 G298;Problema con il fumo caldaia;climatizzazione;;monossido;;;lavoro
 G299;Odore Scatola Presa Di Corrente;elettricista;;elettrico;;;lavoro
 G300;La presa di corrente puzza di plastica bruciata, anche se ...;elettricista;;elettrico;;;lavoro
-G301;Come sbloccare il motore della tenda da sole?;;;no;tende da sole;;chiuso
-G302;Cosa posso fare se il telecomando della mia tenda da sole non funziona?;;;no;tende da sole;;lavoro
+G301;Come sbloccare il motore della tenda da sole?;tende-da-sole;;no;;;chiuso
+G302;Cosa posso fare se il telecomando della mia tenda da sole non funziona?;tende-da-sole;;no;;;lavoro
 G303;Cosa fare se l'antenna non prende tutti i canali?;;;no;antennista;;lavoro
 G304;Cosa fare quando la TV non prende i canali?;;;no;antennista;;lavoro
 G305;Come mai il mio televisore non riceve il segnale dall'antenna?;;;no;antennista;;chiuso
@@ -370,7 +370,7 @@ G368;Riparazioni da infiltrazioni zoccolino del balcone;muratore;;no;;;lavoro
 G369;Ripristino bucciato;imbianchino;;no;;;chiuso
 G370;Parere problema infissi pvc;falegname;;no;;;lavoro
 G371;Problema ristrutturazione;muratore;;no;;;lavoro
-G372;Installazione pergotenda su balcone;;;no;tende da sole;;lavoro
+G372;Installazione pergotenda su balcone;tende-da-sole;;no;;;lavoro
 G373;Problemi di infiltrazione acqua dopo sostituzione piatto doccia;idraulico;muratore;no;;;lavoro
 G374;Climatizzatore mansarda;climatizzazione;;no;;;lavoro
 G375;Ripresentazione delle crepe nei muri dopo iniezione di resine;muratore;;no;;;lavoro
@@ -390,9 +390,9 @@ G388;Quanto si prende un giardiniere per potare una siepe?;giardiniere;;no;;;chi
 G389;Cosa devo fare se il citofono non suona?;elettricista;;no;;;lavoro
 G390;Perché il mio citofono non squilla?;elettricista;;no;;;lavoro
 G391;Perché il videocitofono non suona?;elettricista;;no;;;lavoro
-G392;Come posso riparare una zanzariera rotta?;tuttofare;;no;;;lavoro
-G393;Come posso riparare una zanzariera con la molla rotta?;tuttofare;;no;;;lavoro
-G394;Come riparare una zanzariera scorrevole rotta?;tuttofare;;no;;;lavoro
+G392;Come posso riparare una zanzariera rotta?;tende-da-sole;tuttofare;no;;;lavoro
+G393;Come posso riparare una zanzariera con la molla rotta?;tende-da-sole;tuttofare;no;;;lavoro
+G394;Come riparare una zanzariera scorrevole rotta?;tende-da-sole;tuttofare;no;;;lavoro
 G395;È possibile lasciare un cane da solo tutto il giorno?;dogsitter;;no;;;lavoro
 G396;Quanto viene pagata una dog sitter al giorno?;dogsitter;;no;;;lavoro
 G397;È possibile lasciare un cane da solo per 8 ore al giorno?;dogsitter;;no;;;lavoro
@@ -466,19 +466,19 @@ G464;chiusura fessura tra parquet e battiscopa;tuttofare;falegname;no;;;lavoro
 G465;Come sigillare box doccia;idraulico;tuttofare;no;;;lavoro
 G466;Controsoffitti e travi a vista. HELP!;muratore;;no;;;lavoro
 G467;Sostituzione cilindro serratura di una persiana;fabbro;;no;;;lavoro
-G468;Dubbio su tipologia zanzariera;tuttofare;;no;;;lavoro
-G469;Consiglio zanzariere;tuttofare;;no;;;lavoro
+G468;Dubbio su tipologia zanzariera;tende-da-sole;tuttofare;no;;;lavoro
+G469;Consiglio zanzariere;tende-da-sole;tuttofare;no;;;lavoro
 G470;Lavastoviglie lava male: possibili cause?;elettrodomestici;;no;;;lavoro
 G471;Instabilità pannello lavastoviglie a scorrimento (sliding);elettrodomestici;;no;;;lavoro
 G472;Lavastoviglie NEFF: come spegnerla?;;;no;;sì;lavoro
 G473;lumache;giardiniere;;no;;;lavoro
-G474;tende da sole;;;no;tende da sole;;lavoro
-G475;Smontaggio rullo tenda da sole... Help Me!!!;;;no;tende da sole;;lavoro
+G474;tende da sole;tende-da-sole;;no;;;lavoro
+G475;Smontaggio rullo tenda da sole... Help Me!!!;tende-da-sole;;no;;;lavoro
 G476;Fioriera sopra unità esterna pompa di calore/condizionatore;climatizzazione;giardiniere;no;;;lavoro
 G477;Piante per giardino secco;giardiniere;;no;;;lavoro
 G478;suggerimento piante resistenti in balcone e schermanti;giardiniere;;no;;;lavoro
-G479;Consiglio su pergotenda;;;no;tende da sole;;lavoro
-G480;Pergola + tende a bracci;;;no;tende da sole;;chiuso
+G479;Consiglio su pergotenda;tende-da-sole;;no;;;lavoro
+G480;Pergola + tende a bracci;tende-da-sole;;no;;;chiuso
 G481;Copertura per scaldabagno elettrico installato all'esterno;idraulico;;no;;;chiuso
 G482;Rubinetto;idraulico;;no;;;lavoro
 G483;Doccia 70x70 tra 3 pareti;idraulico;muratore;no;;;lavoro
@@ -488,7 +488,7 @@ G486;Pensili e cappa senza forare le piastrelle;tuttofare;;no;;;chiuso
 G487;Sifone visibile bidet sospeso?;idraulico;;no;;;lavoro
 G488;Lucernario;falegname;muratore;no;;;lavoro
 G489;Seduta divano elettrico bloccata;;;no;riparazione divani;;chiuso
-G490;Installazione zanzariera su misura scorrevole;tuttofare;;no;;;lavoro
+G490;Installazione zanzariera su misura scorrevole;tende-da-sole;tuttofare;no;;;lavoro
 G491;Pavimento in gres lucido graffiato;muratore;pulizie;no;;;lavoro
 G492;Consumo anomalo condizionatore;climatizzazione;;no;;;chiuso
 G493;Pulizia dei fori di drenaggio degli infissi in pvc;pulizie;;no;;;lavoro

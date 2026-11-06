@@ -164,6 +164,17 @@ function Elettrodomestici(props: IconProps) {
   );
 }
 
+function TendeDaSole(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M3 4h18" />
+      <path d="M4 4v16M20 4v16" />
+      <path d="M4 7l2 7h12l2-7" />
+      <path d="M6 14c1 1.5 2 1.5 3 0 1 1.5 2 1.5 3 0 1 1.5 2 1.5 3 0 1 1.5 2 1.5 3 0" />
+    </svg>
+  );
+}
+
 const CATEGORY_ICONS: Record<ProfessionalCategorySlug, (props: IconProps) => JSX.Element> = {
   idraulico: Idraulico,
   elettricista: Elettricista,
@@ -177,6 +188,7 @@ const CATEGORY_ICONS: Record<ProfessionalCategorySlug, (props: IconProps) => JSX
   falegname: Falegname,
   tuttofare: TuttoFare,
   elettrodomestici: Elettrodomestici,
+  "tende-da-sole": TendeDaSole,
   dogsitter: Dogsitter,
   babysitter: Babysitter,
 };
@@ -199,6 +211,8 @@ export const CATEGORY_ACCENT: Record<ProfessionalCategorySlug, { bg: string; fg:
   tuttofare: { bg: "#E0E0EA", fg: "#474A72" },
   // Acciaio smaltato degli elettrodomestici.
   elettrodomestici: { bg: "#DDE3EC", fg: "#34496B" },
+  // Tela da tenda color sabbia.
+  "tende-da-sole": { bg: "#F1E3C8", fg: "#6E4E14" },
   dogsitter: { bg: "#F2DEDA", fg: "#8A4640" },
   babysitter: { bg: "#E6E0EE", fg: "#5E4A80" },
 };

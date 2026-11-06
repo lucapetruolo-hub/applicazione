@@ -56,7 +56,14 @@ const SYNONYMS: Record<string, string> = Object.fromEntries(
       ["Potatura siepi", ["potatura", "taglio siepi", "taglio siepe", "potatura siepe"]],
       ["Taglio erba", ["taglio prato", "rasatura prato", "taglio erba prato"]],
       ["Montaggio mobili", ["montaggio mobile", "assemblaggio mobili", "montaggio arredi"]],
-      ["Montaggio zanzariere", ["zanzariere", "installazione zanzariere", "sostituzione zanzariere", "riparazione zanzariere"]],
+      ["Montaggio zanzariere", ["montaggio zanzariera"]],
+      // Tende da sole e zanzariere, mestiere a sé dal 06/11/2026.
+      ["Installazione zanzariere", ["zanzariere", "installazione zanzariera", "sostituzione zanzariere", "zanzariere su misura"]],
+      ["Riparazione zanzariere", ["riparazione zanzariera", "zanzariera rotta"]],
+      ["Installazione tende da sole", ["tende da sole", "montaggio tende da sole", "montaggio tenda da sole", "tenda da sole", "installazione tenda da sole"]],
+      ["Riparazione tende da sole", ["riparazione tenda da sole", "tenda da sole bloccata", "sistemazione tende da sole"]],
+      ["Sostituzione telo tenda da sole", ["cambio telo tenda", "telo tenda da sole", "sostituzione tela tenda"]],
+      ["Installazione pergotenda", ["pergotenda", "pergotende", "montaggio pergotenda"]],
       ["Riparazione tapparelle", ["tapparelle", "riparazione tapparella", "cambio cinghia tapparella", "sostituzione cinghia tapparella"]],
       // Lavatrice, frigo e lavastoviglie hanno ora una prestazione loro nel mestiere Elettrodomestici.
       ["Riparazione elettrodomestici", ["elettrodomestici", "assistenza elettrodomestici", "riparazione elettrodomestico"]],

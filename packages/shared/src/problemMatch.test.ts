@@ -121,6 +121,17 @@ test("guasti degli elettrodomestici al mestiere Elettrodomestici", () => {
   assert.equal(serviceMatchingProblem([{ name: "Riparazione elettrodomestici" }, { name: "Impianto elettrico civile" }], "la lavatrice non scarica")?.name, "Riparazione elettrodomestici");
 });
 
+test("tende da sole e zanzariere al loro mestiere", () => {
+  // Prima "fuori servizio" (docs/changelog/2026-11-06-mestiere-elettrodomestici.md).
+  for (const text of ["tende da sole", "il motore della tenda da sole non va", "installazione pergotenda su balcone", "il vento ha strappato il telo della tenda", "cerco un tendista", "zanzariere su misura per tre finestre"]) {
+    const match = matchProblem(text);
+    assert.equal(match.categories[0]?.slug, "tende-da-sole", text);
+    assert.equal(match.outOfService, null, text);
+  }
+  // Il Tutto Fare resta tra i possibili per le zanzariere.
+  assert.ok(matchProblem("montare le zanzariere").categories.some((c) => c.slug === "tuttofare"));
+});
+
 test("ricerche frequenti su Google che il dizionario prima non capiva", () => {
   // analisi/servizi-piu-cercati.md (06/11/2026).
   assert.equal(matchProblem("rifare il tetto").categories[0]?.slug, "muratore");
