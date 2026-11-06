@@ -2,7 +2,7 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { type ProgressState, getProgress, getServerProgress, startNavigationProgress, stopProgress, subscribeProgress } from "@/lib/navigationProgress";
+import { type ProgressState, getProgress, getServerProgress, pageKey, startHistoryProgress, startNavigationProgress, stopProgress, subscribeProgress } from "@/lib/navigationProgress";
 
 /** Sulle pagine veloci la barra non deve lampeggiare. */
 const SHOW_AFTER_MS = 300;
@@ -21,10 +21,11 @@ export function NavigationProgress() {
   const searchParams = useSearchParams();
   // L'attesa (stato) per cui sono passati i 300 ms: un'attesa nuova riparte da zero.
   const [shownFor, setShownFor] = useState<ProgressState | null>(null);
-  const visible = progress.active && shownFor === progress;
-
-  // Pagina nuova arrivata: si spegne.
-  const currentUrl = `${pathname}?${searchParams.toString()}`;
+  // Pagina nuova arrivata: si spegne. Il confronto con l'indirizzo atteso
+  // copre anche il caso in cui la pagina arriva prima che la barra si accenda.
+  const currentUrl = pageKey(pathname, new URLSearchParams(searchParams.toString()));
+  const arrived = progress.href !== undefined && progress.href === currentUrl;
+  const visible = progress.active && !arrived && shownFor === progress;
   useEffect(() => {
     stopProgress();
   }, [currentUrl]);
@@ -55,9 +56,11 @@ export function NavigationProgress() {
     }
     document.addEventListener("click", onClick, true);
     window.addEventListener("pageshow", onPageShow);
+    window.addEventListener("popstate", startHistoryProgress);
     return () => {
       document.removeEventListener("click", onClick, true);
       window.removeEventListener("pageshow", onPageShow);
+      window.removeEventListener("popstate", startHistoryProgress);
     };
   }, []);
 

@@ -29,6 +29,18 @@ ritieni".
      professionista e del legale rappresentante): "Ti portiamo al pagamento
      sicuro…" o "Ti portiamo alla pagina sicura…". Se la chiamata fallisce la
      barra si spegne e resta il messaggio d'errore di sempre.
+- Secondo giro (Luca, 06/11: "sì entrambe" alle migliorie proposte):
+  - "Cerca in quest'area" sulla mappa a schermo intero del telefono: una sola
+    passata della barra in cima alla mappa (`.flow-bar-once`, 0,9 s, poi
+    sparisce). La lista si aggiorna subito: la barra conferma che la ricerca
+    è partita, non aggiunge attese.
+  - Invio della richiesta di preventivo (anche urgente): nel pulsante la barra
+    bianca (`.flow-bar--light`) al posto della scritta "Invio in corso...",
+    che resta per il lettore di schermo. Contro il consiglio iniziale
+    (c'era già la scritta), scelta di Luca.
+  - Tasto Indietro/Avanti del browser: la barra si accende anche lì
+    (`startHistoryProgress`); se la pagina è già in memoria arriva prima dei
+    300 ms e la barra non compare.
 - Dove no: invio delle foto (tre pallini), liste che si caricano (scheletro
   grigio), pulsanti piccoli (rotellina). Due segnali per la stessa cosa
   confondono.
@@ -38,4 +50,7 @@ ritieni".
 **Verifica**: `pnpm typecheck` e `pnpm lint` di `apps/web` verdi. Prova nel
 browser con le risposte rallentate di 8 s: barra e "Cerco chi ti serve…"
 dopo la ricerca dal problema (computer), barra in cima su un link (telefono);
-foto in `anteprime/barra-di-attesa/` nei file del progetto.
+foto in `anteprime/barra-di-attesa/` nei file del progetto. Secondo giro:
+pulsante verde e rosso con la barra bianca fotografati; Indietro su una pagina
+già in memoria senza barra, come previsto; la passata sulla mappa non si può
+provare in locale senza la chiave di Google Maps.

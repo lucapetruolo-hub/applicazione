@@ -46,6 +46,11 @@ function sameUrl(a: URL, b: URL) {
   return a.pathname === b.pathname && a.search === b.search;
 }
 
+/** Percorso e parametri scritti sempre allo stesso modo, per riconoscere la pagina arrivata. */
+export function pageKey(pathname: string, search: URLSearchParams) {
+  return `${pathname}?${search.toString()}`;
+}
+
 /**
  * Accende la barra per una pagina interna. Non fa nulla se l'indirizzo è
  * quello già aperto (cambia solo il #) o porta fuori dal sito.
@@ -61,7 +66,18 @@ export function startNavigationProgress(href: string) {
   if (target.origin !== window.location.origin) return;
   if (sameUrl(target, new URL(window.location.href))) return;
   const label = target.pathname === "/cerca" && target.searchParams.get("problema") ? PROBLEM_SEARCH_LABEL : undefined;
-  emit({ active: true, label, href: target.pathname + target.search });
+  emit({ active: true, label, href: pageKey(target.pathname, target.searchParams) });
+}
+
+/**
+ * Tasto Indietro/Avanti del browser: l'indirizzo è già quello nuovo, la
+ * pagina può non esserlo ancora. Se è già in memoria arriva subito e la
+ * barra non compare (300 ms).
+ */
+export function startHistoryProgress() {
+  if (typeof window === "undefined") return;
+  const here = new URL(window.location.href);
+  emit({ active: true, href: pageKey(here.pathname, here.searchParams) });
 }
 
 /** Accende la barra prima di lasciare il sito per Stripe o Didit. */

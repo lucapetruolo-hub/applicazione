@@ -176,6 +176,10 @@ export function ResultsListWithMap({
   // zona cercata: chiudendo la mappa la lista mostra solo chi c'è dentro.
   const [startBounds, setStartBounds] = useState<MapBounds | null>(null);
   const [areaBounds, setAreaBounds] = useState<MapBounds | null>(null);
+  // Una passata della barra di attesa in cima alla mappa a ogni "Cerca in
+  // quest'area" (docs/changelog/2026-11-05-barra-di-attesa.md): la lista si
+  // aggiorna subito, la barra dice che la ricerca è partita.
+  const [areaSweep, setAreaSweep] = useState(0);
   // Da mobile la mappa parte chiusa: si apre solo toccando il bottone nella
   // barra in alto. Da desktop resta sempre visibile a fianco della lista,
   // indipendentemente da questo stato (vedi regola CSS dedicata sotto).
@@ -898,7 +902,14 @@ export function ResultsListWithMap({
               <>
                 <div className="map-top-bar">
                   {areaMoved ? (
-                    <button type="button" className="map-search-area" onClick={() => setAreaBounds(liveBounds)}>
+                    <button
+                      type="button"
+                      className="map-search-area"
+                      onClick={() => {
+                        setAreaBounds(liveBounds);
+                        setAreaSweep((n) => n + 1);
+                      }}
+                    >
                       <RotateCw size={16} strokeWidth={2} aria-hidden />
                       Cerca in quest&apos;area
                     </button>
@@ -910,6 +921,7 @@ export function ResultsListWithMap({
                     </span>
                   ) : null}
                 </div>
+                {areaSweep > 0 ? <div key={areaSweep} className="flow-bar flow-bar-once map-area-sweep" aria-hidden="true" /> : null}
                 <button type="button" ref={mapCloseRef} className="map-fullscreen-close" onClick={closePhoneMap} aria-label="Chiudi la mappa">
                   <X size={22} strokeWidth={2} aria-hidden />
                 </button>
@@ -1348,6 +1360,16 @@ export function ResultsListWithMap({
           z-index: 600;
           display: flex;
           justify-content: center;
+          pointer-events: none;
+        }
+        .map-area-sweep {
+          position: absolute;
+          top: env(safe-area-inset-top, 0px);
+          left: 0;
+          right: 0;
+          z-index: 601;
+          height: 3px;
+          border-radius: 0;
           pointer-events: none;
         }
         .map-search-area {

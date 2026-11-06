@@ -550,6 +550,7 @@ body:has(.chosen-bar) {
   }
 }
 .flow-bar {
+  display: block;
   height: 4px;
   border-radius: 2px;
   background-image: linear-gradient(90deg, #128552, #189a63, #7fd3a8, #189a63, #128552);
@@ -558,6 +559,33 @@ body:has(.chosen-bar) {
   animation: flow-bar 2s linear infinite;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
   mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+}
+/* Una sola passata che poi sparisce ("Cerca in quest'area" sulla mappa del
+   telefono): la lista si aggiorna subito, la barra conferma la ricerca. */
+.flow-bar-once {
+  animation:
+    flow-bar 0.9s linear 1,
+    flow-bar-out 0.9s ease-in forwards;
+}
+@keyframes flow-bar-out {
+  70% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+/* Dentro un pulsante verde o rosso (invio della richiesta): bianchi al posto dei verdi. */
+.flow-bar--light {
+  width: 120px;
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.45),
+    rgba(255, 255, 255, 0.75),
+    #ffffff,
+    rgba(255, 255, 255, 0.75),
+    rgba(255, 255, 255, 0.45)
+  );
 }
 /* In cima allo schermo, sopra la barra fissa del sito (NavigationProgress). */
 .nav-progress {
