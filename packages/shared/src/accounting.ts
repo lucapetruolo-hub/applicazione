@@ -54,7 +54,9 @@ export function professionalChargesVat(entityType: string | null | undefined, ch
  * solo per chi la applica: per forfettari e privati sarebbe falso.
  */
 export function quotePriceTaxNote(chargesVat: boolean | null): string {
-  return chargesVat ? "IVA inclusa" : "Prezzo finale";
+  // "Tutto compreso", non "Prezzo finale": accanto a un totale "da… a…" sembrava una
+  // contraddizione (prova da utente nuovo, 04/11/2026).
+  return chargesVat ? "IVA inclusa" : "Tutto compreso";
 }
 
 /** Aiuto nel modulo del preventivo: il prezzo che il professionista scrive è quello finale. */

@@ -20,7 +20,7 @@ rifiuta l'invio. Cambiare un testo vuol dire farlo approvare di nuovo.
 6. Variabili su Render: `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
    `WHATSAPP_APP_SECRET` (App → Impostazioni → Di base),
    `WHATSAPP_WEBHOOK_VERIFY_TOKEN` (una stringa a caso scelta da noi).
-7. Webhook nell'app di Meta: URL `https://professionisti-api.onrender.com/whatsapp/webhook`
+7. Webhook nell'app di Meta: URL `https://professionisti-api-eu.onrender.com/whatsapp/webhook`
    (o il dominio vero dell'API), stesso token del punto 6, campo
    `messages` sottoscritto.
 8. Prova: in Notifiche "Mandami il codice" con un numero vero, poi

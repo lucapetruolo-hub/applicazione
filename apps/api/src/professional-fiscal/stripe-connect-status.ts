@@ -36,5 +36,36 @@ export async function readStripeConnectStatus(stripe: Stripe, accountId: string)
   const due = (withRequirements.requirements?.entries ?? [])
     .filter((entry) => entry.awaiting_action_from === "user" && entry.minimum_deadline?.status !== "eventually_due")
     .map((entry) => entry.description);
-  return { cardPaymentsActive, transfersActive, requirements: due.length ? due.join(", ").slice(0, 1000) : null };
+  return { cardPaymentsActive, transfersActive, requirements: describeStripeRequirements(due) };
+}
+
+/**
+ * I requisiti di Stripe arrivano come nomi di campo
+ * ("identity.individual.address.city"): al professionista si mostrano in
+ * parole sue, senza doppioni ("indirizzo, data di nascita, nome e cognome"),
+ * docs/changelog/2026-11-05-prova-utente-nuovo.md.
+ */
+const REQUIREMENT_LABELS: [RegExp, string][] = [
+  [/given_name|surname|first_name|last_name|full_name/, "nome e cognome"],
+  [/date_of_birth|dob/, "data di nascita"],
+  [/address/, "indirizzo"],
+  [/phone/, "telefono"],
+  [/email/, "email"],
+  [/id_number|tax_id|ssn/, "codice fiscale"],
+  [/verification|document/, "documento d'identità"],
+  [/external_account|bank_account|payout/, "conto per i bonifici (IBAN)"],
+  [/business_profile|product_description|mcc|url/, "descrizione della tua attività"],
+  [/tos_acceptance|terms_of_service|acceptance/, "accettazione delle condizioni di Stripe"],
+];
+
+export function describeStripeRequirements(fields: string[]): string | null {
+  if (!fields.length) return null;
+  const labels: string[] = [];
+  for (const field of fields) {
+    const label = REQUIREMENT_LABELS.find(([pattern]) => pattern.test(field))?.[1] ?? "altri dati";
+    if (!labels.includes(label)) labels.push(label);
+  }
+  // "altri dati" sempre in fondo.
+  labels.sort((a, b) => Number(a === "altri dati") - Number(b === "altri dati"));
+  return labels.join(", ");
 }

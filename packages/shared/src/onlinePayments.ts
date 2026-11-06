@@ -281,7 +281,13 @@ export function onlineTargetEurCents(finalAmountEurCents: number, jp: { balanceD
   return jp.balanceDirect ? Math.min(finalAmountEurCents, jp.depositEurCents ?? 0) : finalAmountEurCents;
 }
 
-/** Quanto resta da pagare a lavoro chiuso (0 se l'acconto copre già l'importo finale). */
+/**
+ * Quanto resta da pagare a lavoro chiuso (0 se l'acconto copre già l'importo
+ * finale). `paidEurCents` è quanto il cliente ha pagato, **senza togliere i
+ * rimborsi**: un rimborso concordato o una contestazione persa abbassano il
+ * prezzo, non riaprono il saldo. Prima, dopo un rimborso di 30 € il cliente
+ * si vedeva chiedere di nuovo 30 € (docs/changelog/2026-11-05-pagamenti-di-prova.md).
+ */
 export function onlineBalanceDueEurCents(finalAmountEurCents: number, paidEurCents: number): number {
   return Math.max(0, finalAmountEurCents - paidEurCents);
 }
@@ -457,7 +463,7 @@ export function toJobPaymentSummary(
     finalAmountEurCents,
     balanceDueEurCents:
       method === "ONLINE" && onlineTarget !== null && stage !== "REFUNDED" && (stage !== "RELEASED" || !!jp.balanceUnpaidAt)
-        ? onlineBalanceDueEurCents(onlineTarget, collected)
+        ? onlineBalanceDueEurCents(onlineTarget, jp.paidEurCents)
         : 0,
     releaseDueAt: jp.releaseDueAt?.toISOString() ?? null,
     releasedAt: jp.releasedAt?.toISOString() ?? null,

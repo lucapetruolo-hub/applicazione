@@ -27,6 +27,7 @@ import { googleNameFields, googleNameRepair } from "./google-name";
 import { assertPasswordWithoutEmail } from "./password-checks";
 import { loginDeviceHash, loginDeviceLabel, type LoginDeviceInfo } from "./login-device";
 import { emailFingerprint } from "../common/email-fingerprint";
+import { isEmailVerificationRequired } from "./verified-email.guard";
 import { professionalHeldEurCents } from "../job-payments/online-limit";
 
 const BCRYPT_SALT_ROUNDS = 10;
@@ -440,7 +441,9 @@ export class AuthService {
         ...(emailChanged ? { emailVerifiedAt: null, emailTokenHash: null, emailTokenExpiresAt: null, emailCodeHash: null } : {}),
       },
     });
-    if (emailChanged && updated.email && updated.role !== "CLIENT") {
+    // Il cliente la conferma prima di accettare un preventivo quando è obbligatoria
+    // (docs/changelog/2026-11-05-verifica-email-cliente.md): l'email nuova gli serve subito.
+    if (emailChanged && updated.email && (updated.role !== "CLIENT" || isEmailVerificationRequired())) {
       await this.sendVerificationEmail(updated.id, updated.email, updated.name, "verify");
     }
     return updated;

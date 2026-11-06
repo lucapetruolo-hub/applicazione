@@ -120,6 +120,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_REFUND_REJECTED: { icon: "↩️", message: "La richiesta di rimborso non è stata accolta: trovi il motivo nell'email." },
   JOB_REFUND_WAITING_FUNDS: { icon: "💳", message: "Un rimborso al cliente aspetta fondi sul tuo conto Stripe: parte appena arrivano." },
   ADMIN_JOB_REFUND_FAILED: { icon: "⚠️", message: "Un rimborso al cliente non è riuscito: controllalo dalla Dashboard Stripe." },
+  ADMIN_JOB_REFUND_OUTSIDE: { icon: "↩️", message: "Un lavoro è stato rimborsato fuori dal sito, dalla Dashboard Stripe: l'abbiamo registrato, controllalo." },
+  ADMIN_STRIPE_UNKNOWN_PAYMENT: { icon: "⚠️", message: "Su Stripe è arrivato un pagamento per un preventivo che il sito non conosce: non l'abbiamo rimborsato, controllalo." },
   ONLINE_LIMIT_LIFTED: { icon: "✅", message: "Limite tolto: nei preventivi puoi chiedere online qualsiasi importo." },
   ADMIN_STRIPE_ACCOUNT_UNREADABLE: { icon: "⚠️", message: "Il sito non riesce a leggere su Stripe lo stato del conto di un professionista." },
   JOB_PAYMENT_DEBT: { icon: "💳", message: "Hai un importo da restituire su un lavoro: lo tratteniamo dai tuoi prossimi pagamenti online." },

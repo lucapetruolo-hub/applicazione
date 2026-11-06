@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { FounderSpots } from "@professionisti/shared";
 import { PerProfessionistiContent } from "./PerProfessionistiContent";
+import { API_URL } from "@/lib/apiUrl";
 
 export const metadata: Metadata = {
   title: "Per i professionisti",
@@ -14,7 +15,7 @@ export const revalidate = 600;
 
 async function loadFounderSpots(): Promise<FounderSpots | null> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/subscriptions/founders`, {
+    const res = await fetch(`${API_URL}/subscriptions/founders`, {
       next: { revalidate },
       signal: AbortSignal.timeout(3000),
     });

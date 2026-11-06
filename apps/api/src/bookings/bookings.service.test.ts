@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { BookingsService } from "./bookings.service";
 import { wallClockNow } from "@professionisti/shared";
@@ -36,6 +36,7 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
     createQuoteDepositCheckout: vi.fn().mockResolvedValue({ url: "https://checkout.stripe.com/c/pay" }),
     recordQuoteDeposit: vi.fn(),
     refundQuoteDeposit: vi.fn().mockResolvedValue({ pending: false }),
+    notifyFinanceAdmins: vi.fn(),
     refundOnCancel: vi.fn(),
     keepDepositOnLateCancel: vi.fn().mockResolvedValue(2400),
   };
@@ -416,6 +417,18 @@ describe("BookingsService.confirmQuoteDeposit — lavoro confermato solo dopo l'
     } as never;
   }
 
+  it("non rimborsa un acconto per un preventivo che questo database non conosce: lo dice alla Finanza (prova in CI sullo stesso Stripe)", async () => {
+    const { service, prisma, jobPaymentsService } = buildService();
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+    await service.confirmQuoteDeposit(session({ metadata: { quoteId: "quote-altrove", clientUserId: "client-1", paymentMethod: "ONLINE", stripeAccount: "acct_pro" } }));
+
+    expect(jobPaymentsService.refundQuoteDeposit).not.toHaveBeenCalled();
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+    expect(jobPaymentsService.notifyFinanceAdmins).toHaveBeenCalledWith("ADMIN_STRIPE_UNKNOWN_PAYMENT", { paymentIntentId: "pi_1", amountEurCents: 6000, stripeAccount: "acct_pro" });
+  });
+
   it("crea la prenotazione, sblocca i contatti al professionista e registra l'acconto", async () => {
     const { service, prisma, jobPaymentsService, notificationsService } = buildService();
     (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
@@ -541,5 +554,42 @@ describe("BookingsService.cancelFutureJobsOfClosedAccount — account chiuso (§
     expect(prisma.booking.update).toHaveBeenCalledWith({ where: { id: "b-1" }, data: expect.objectContaining({ status: "CANCELED", canceledBy: "PROFESSIONAL" }) });
     expect(jobPaymentsService.refundOnCancel).toHaveBeenCalledWith("b-1", "pro-user-1");
     expect(notificationsService.notify).toHaveBeenCalledWith("client-1", "BOOKING_CANCELED_BY_PROFESSIONAL", expect.objectContaining({ accountClosed: true }));
+  });
+});
+
+describe("BookingsService.reportIssue — orario dell'appuntamento in ora italiana", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("alle 22:05 italiane si può già segnalare un lavoro iniziato alle 22:00 (prima si apriva un'ora dopo)", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-05T21:05:00Z"));
+    const { service, prisma } = buildService();
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "b-1",
+      clientId: "client-1",
+      status: "COMPLETED",
+      scheduledAt: new Date("2026-11-05T22:00:00Z"),
+      scheduledEndAt: new Date("2026-11-05T22:30:00Z"),
+      clientConfirmedCompletedAt: null,
+      professionalCompletedAt: null,
+      professionalProfile: { userId: "pro-user-1" },
+      quote: { guidedRequestId: "gr-1" },
+      issue: null,
+      jobPayment: null,
+    });
+
+    // Oltre il controllo dell'orario il servizio va avanti (qui senza tutti i finti): conta solo che non si fermi lì.
+    const error = await service
+      .reportIssue("client-1", "b-1", { type: "BAD_WORK", description: "Lavoro fatto male, prova.", photoUrls: ["https://example.com/a.jpg"] })
+      .then(() => null, (e: unknown) => e);
+    expect(error instanceof Error ? error.message : "").not.toMatch(/si può segnalare/);
+
+    vi.setSystemTime(new Date("2026-11-05T20:55:00Z"));
+    const early = await service
+      .reportIssue("client-1", "b-1", { type: "BAD_WORK", description: "Lavoro fatto male, prova.", photoUrls: ["https://example.com/a.jpg"] })
+      .then(() => null, (e: unknown) => e);
+    expect(early instanceof Error ? early.message : "").toMatch(/si può segnalare dall'inizio/);
   });
 });

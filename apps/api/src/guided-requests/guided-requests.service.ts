@@ -739,7 +739,7 @@ export class GuidedRequestsService {
           // Che tipo di lavoratore ha mandato il preventivo (richiesta dell'utente, §338).
           professionalKind: professionalKindOf(quote.professionalProfile.fiscalProfile?.entityType),
           executor: quoteExecutor(quote.professionalProfile.fiscalProfile),
-          // "IVA inclusa" solo per chi la applica, altrimenti "Prezzo finale" (docs/CHANGELOG.md §378).
+          // "IVA inclusa" solo per chi la applica, altrimenti "Tutto compreso" (docs/CHANGELOG.md §378).
           chargesVat: professionalChargesVat(quote.professionalProfile.fiscalProfile?.entityType, quote.professionalProfile.fiscalProfile?.chargesVat),
           invoiceRequest: quote.invoiceRequest ? invoiceRequestView(quote.invoiceRequest) : null,
           items: quote.items.map((item) => ({
