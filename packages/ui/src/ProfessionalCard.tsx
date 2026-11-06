@@ -422,7 +422,10 @@ export function ProfessionalCard({
           {/* Sotto i 660px "Scegli" va sotto nome e bollini: accanto al nome lo
               mandava su tre righe e metteva i bollini uno per riga (prova da
               utente nuovo, docs/changelog/2026-11-05-prova-utente-nuovo.md). */}
-          <XStack alignItems="flex-start" gap="2" flexDirection="xs:column">
+          {/* Sul telefono la colonna prende tutta la larghezza (stretch): con
+              "flex-start" nome e bollini si allargavano oltre la scheda sui
+              telefoni stretti (iPhone SE, docs/changelog/2026-11-06-filtro-pagamenti-online.md). */}
+          <XStack alignItems="flex-start xs:stretch" gap="2" flexDirection="xs:column">
             {/* Nome e bollini sulla stessa riga, che va a capo quando non
                 c'è spazio (docs/CHANGELOG.md §349): prima, nella colonna
                 stretta, i bollini finivano uno sotto l'altro. */}
@@ -499,7 +502,7 @@ export function ProfessionalCard({
                 </BadgeInfo>
               ) : null}
               {isNewProfile ? (
-                <XStack display={extraBadgeDisplay}>
+                <XStack display={extraBadgeDisplay} maxWidth="100%">
                 <BadgeInfo info="newProfile">
                   <XStack alignItems="center" gap={4} paddingHorizontal="2" paddingVertical={2} borderRadius="10" backgroundColor={brand.cianografiaVelo}>
                     <Icon name="sprout" size={13} color={brand.cianografiaScuro} strokeWidth={2} />
@@ -511,9 +514,9 @@ export function ProfessionalCard({
                 </XStack>
               ) : null}
               {hasLiabilityInsurance ? (
-                <XStack display={extraBadgeDisplay}>
+                <XStack display={extraBadgeDisplay} maxWidth="100%">
                 <BadgeInfo info="liabilityInsurance">
-                  <XStack alignItems="center" gap={4} paddingHorizontal="2" paddingVertical={2} borderRadius="10" backgroundColor={brand.gesso}>
+                  <XStack alignItems="center" columnGap={4} flexWrap="wrap" flexShrink={1} minWidth={0} paddingHorizontal="2" paddingVertical={2} borderRadius="10" backgroundColor={brand.gesso}>
                     <Icon name="shield-check" size={13} color={brand.grafite} strokeWidth={2} />
                     <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite}>
                       Assicurazione RC

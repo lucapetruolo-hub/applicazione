@@ -32,3 +32,10 @@ che li mostra al tocco senza aprire il profilo. Sul computer tutto come prima.
 (`analisi/bollino-pagamenti-online/` nella cartella del progetto): "+2"
 visibile solo sul telefono, il tocco mostra gli altri bollini, la pagina non
 cambia e nessun fumetto si apre da solo.
+
+**Quarto giro** (Luca, "effettua prima miglioria"): sui telefoni stretti
+(iPhone SE) nome e bollino "Assicurazione RC" uscivano dal bordo della
+scheda. Sul telefono la colonna di nome e bollini ora prende tutta la
+larghezza (`xs:stretch`), il bollino non supera mai la riga (`max-width:100%`
+in `BadgeInfo.web.tsx`) e "dichiarata" va a capo se serve. Misurato su iPhone
+SE: niente più sporge dalla scheda; computer uguale a prima.
