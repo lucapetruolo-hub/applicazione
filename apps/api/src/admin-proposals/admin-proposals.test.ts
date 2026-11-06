@@ -34,31 +34,26 @@ describe("frase d'esempio", () => {
 describe("parola per il dizionario", () => {
   const ia = (text: string, slug = "muratore") => ({ text, categories: [slug], source: "ia", outOfService: null });
 
-  it("propone la parola che l'IA ha capito 5 volte allo stesso modo, con la radice", () => {
-    const rows = [
-      ia("scrostamento intonaco"),
-      ia("scrostamento del soffitto"),
-      ia("forte scrostamento"),
-      ia("scrostamento in sala"),
-      ia("scrostamento esterno"),
-    ];
+  it("propone la parola che l'IA ha capito 10 volte allo stesso modo, con la radice", () => {
+    const places = ["intonaco", "del soffitto", "forte", "in sala", "esterno", "in cucina", "della scala", "in bagno", "sul balcone", "in garage"];
+    const rows = places.map((place) => ia(`scrostamento ${place}`));
     const list = dictionaryWordCandidates(rows, []);
     expect(list.map((w) => w.example)).toContain("scrostamento");
-    expect(list.find((w) => w.example === "scrostamento")).toMatchObject({ stem: "scrostament", categorySlug: "muratore", aiAnswers: 5 });
+    expect(list.find((w) => w.example === "scrostamento")).toMatchObject({ stem: "scrostament", categorySlug: "muratore", aiAnswers: 10 });
   });
 
-  it("niente con 4 risposte, con mestieri diversi, se già insegnata o se generica", () => {
-    const four = Array.from({ length: 4 }, () => ia("scrostamento"));
-    expect(dictionaryWordCandidates(four, [])).toEqual([]);
-    const mixed = [...Array.from({ length: 5 }, () => ia("scrostamento")), ...Array.from({ length: 3 }, () => ia("scrostamento", "imbianchino"))];
+  it("niente con 9 risposte, con meno di 9 su 10 uguali, se già insegnata o se generica", () => {
+    const nine = Array.from({ length: 9 }, () => ia("scrostamento"));
+    expect(dictionaryWordCandidates(nine, [])).toEqual([]);
+    const mixed = [...Array.from({ length: 10 }, () => ia("scrostamento")), ...Array.from({ length: 2 }, () => ia("scrostamento", "imbianchino"))];
     expect(dictionaryWordCandidates(mixed, [])).toEqual([]);
-    expect(dictionaryWordCandidates(Array.from({ length: 6 }, () => ia("scrostamento")), ["scrost"])).toEqual([]);
-    expect(dictionaryWordCandidates(Array.from({ length: 6 }, () => ia("bagno")), [])).toEqual([]);
+    expect(dictionaryWordCandidates(Array.from({ length: 12 }, () => ia("scrostamento")), ["scrost"])).toEqual([]);
+    expect(dictionaryWordCandidates(Array.from({ length: 12 }, () => ia("bagno")), [])).toEqual([]);
   });
 
   it("mai numeri o parole che il dizionario conosce già", () => {
-    expect(dictionaryWordCandidates(Array.from({ length: 6 }, () => ia("3331234567", "idraulico")), [])).toEqual([]);
-    expect(dictionaryWordCandidates(Array.from({ length: 6 }, () => ia("rubinetto", "idraulico")), [])).toEqual([]);
+    expect(dictionaryWordCandidates(Array.from({ length: 12 }, () => ia("3331234567", "idraulico")), [])).toEqual([]);
+    expect(dictionaryWordCandidates(Array.from({ length: 12 }, () => ia("rubinetto", "idraulico")), [])).toEqual([]);
   });
 
   it("singolare e plurale insieme", () => {
