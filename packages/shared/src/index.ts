@@ -67,6 +67,7 @@ export * from "./problemMatch";
 export * from "./nameSearch";
 export * from "./problemExamples";
 export * from "./serviceNames";
+export * from "./serviceCatalog";
 export * from "./problemMatchSchemas";
 export * from "./problemSafetyTexts";
 export * from "./whatsapp";

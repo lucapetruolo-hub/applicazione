@@ -385,6 +385,12 @@ export type ProblemMatchResult = {
   question: ProblemQuestion | null;
   /** Riga "Perché" breve, solo quando risponde l'intelligenza artificiale. */
   reason: string | null;
+  /**
+   * Prestazione del catalogo scelta dall'intelligenza artificiale per il primo
+   * mestiere (docs/changelog/2026-11-06-ia-conosce-i-servizi.md): nei
+   * risultati prima chi la offre. Null dal dizionario.
+   */
+  service: string | null;
   source: "dizionario" | "parola" | "ia";
 };
 
@@ -403,6 +409,7 @@ export function problemMatchFromDictionary(dictionary: ProblemMatch): ProblemMat
     outOfService: dictionary.outOfService,
     question: dictionary.question,
     reason: null,
+    service: null,
     source: "dizionario",
   };
 }

@@ -210,7 +210,15 @@ async function ProblemResults({
   if (chosen || offers) {
     const base = { category: chosen ?? undefined, offers, remote: isOnline, merit: true };
     try {
-      professionals = await apiClient.searchProfessionals({ ...base, problem: description, city, track: Boolean(chosen && city?.trim()) && (await shouldCountVisit()) });
+      // La prestazione scelta dall'IA vale solo per il suo mestiere (docs/changelog/2026-11-06-ia-conosce-i-servizi.md).
+      const problemService = chosen && chosen === result.categories[0] ? (result.service ?? undefined) : undefined;
+      professionals = await apiClient.searchProfessionals({
+        ...base,
+        problem: description,
+        problemService,
+        city,
+        track: Boolean(chosen && city?.trim()) && (await shouldCountVisit()),
+      });
     } catch {
       loadFailed = true;
     }
