@@ -57,7 +57,7 @@ describe("ProblemMatchService", () => {
   it("l'avviso di sicurezza viene sempre dal dizionario e non sparisce con un fuori servizio", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "test");
     const service = newService();
-    service.askAi = vi.fn().mockResolvedValue(aiAnswer({ categories: [], outOfService: "elettrodomestici" }));
+    service.askAi = vi.fn().mockResolvedValue(aiAnswer({ categories: [], outOfService: "antennista" }));
     const result = await service.match("sento puzza di gas vicino al forno e non so cosa sia");
     expect(result.safety).toBe("gas");
     expect(result.categories.length).toBeGreaterThan(0);
@@ -93,7 +93,10 @@ describe("ProblemMatchService", () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "test");
     const service = newService([{ word: "zanzarier", categorySlug: "tuttofare", outOfService: null }]);
     service.askAi = vi.fn();
-    expect(await service.match("la zanzariera della camera è rotta")).toMatchObject({ categories: ["tuttofare"], source: "parola" });
+    // Dal 06/11/2026 il dizionario aggiunge dopo anche "Tende da sole e zanzariere".
+    const result = await service.match("la zanzariera della camera è rotta");
+    expect(result).toMatchObject({ source: "parola" });
+    expect(result.categories[0]).toBe("tuttofare");
     expect(service.askAi).not.toHaveBeenCalled();
   });
 

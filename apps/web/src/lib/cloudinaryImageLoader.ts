@@ -1,5 +1,5 @@
 /** Copie ridotte delle foto dei mestieri (scripts/riduci-foto-mestieri.mjs). */
-const CATEGORY_PHOTO = /^\/category-photos\/([a-z]+)\.webp$/;
+const CATEGORY_PHOTO = /^\/category-photos\/([a-z-]+)\.webp$/;
 
 /**
  * Loader globale di `next/image` (next.config.mjs → images.loaderFile),

@@ -111,9 +111,9 @@ ${serviceCatalogText(catalog)}
 Se una regola qui sotto e il catalogo non concordano, vale la regola.
 
 Confini di legge (DM 37/2008): impianti elettrici, automazione di cancelli, porte e tapparelle motorizzate = elettricista; riscaldamento, caldaie, condizionatori, scaldabagno a gas, canne fumarie della caldaia = climatizzazione; impianti idrici e sanitari = idraulico; tubi del gas e piano cottura = idraulico, la caldaia a gas = climatizzazione. Il tuttofare non mette mano agli impianti.
-Casi frequenti: macchia di umido o infiltrazione = idraulico, poi muratore; muffa sulle pareti = imbianchino, poi muratore; acqua calda che non arriva = climatizzazione, poi idraulico; porta di legno che gratta = falegname, serratura = fabbro; tapparella manuale bloccata = tuttofare, poi falegname; montare mobili = tuttofare, poi falegname; zanzariere = tuttofare; sgombero o trasporto di mobili = traslochi.
+Casi frequenti: macchia di umido o infiltrazione = idraulico, poi muratore; muffa sulle pareti = imbianchino, poi muratore; acqua calda che non arriva = climatizzazione, poi idraulico; porta di legno che gratta = falegname, serratura = fabbro; tapparella manuale bloccata = tuttofare, poi falegname; montare mobili = tuttofare, poi falegname; tende da sole, pergotende e zanzariere = tende-da-sole, poi tuttofare per le zanzariere; sgombero o trasporto di mobili = traslochi; lavatrice, frigorifero, lavastoviglie, forno o altro elettrodomestico guasto = elettrodomestici (installarli invece è idraulico o elettricista).
 
-Nessun mestiere del sito copre (outOfService): riparazione di elettrodomestici guasti (elettrodomestici; installarli invece è idraulico o elettricista), antenne e parabole (antennista), tende da sole (tende-da-sole), insetti e topi (disinfestazione), pozzi neri e fosse biologiche (spurghi), pulizia della canna fumaria del camino (spazzacamino), vetri da tagliare (vetraio), allarmi (antifurto), ascensori, assistenza ad anziani (badante). In quel caso categories vuoto.
+Nessun mestiere del sito copre (outOfService): antenne e parabole (antennista), insetti e topi (disinfestazione), pozzi neri e fosse biologiche (spurghi), pulizia della canna fumaria del camino (spazzacamino), vetri da tagliare (vetraio), allarmi (antifurto), ascensori, assistenza ad anziani (badante). In quel caso categories vuoto.
 
 Rispondi con:
 - categories: da 1 a 3 codici in ordine, dal più adatto; il secondo e il terzo solo se davvero possibili. Vuoto se è fuori servizio o se il testo non è una richiesta di lavoro.
@@ -237,7 +237,9 @@ export class ProblemMatchService {
     const hit = words.filter((entry) => normalized.includes(` ${entry.word}`)).sort((a, b) => b.word.length - a.word.length)[0];
     if (!hit) return null;
     const outOfService = hit.outOfService && hit.outOfService in OUT_OF_SERVICE_LABELS ? (hit.outOfService as ProblemOutOfService) : null;
-    const category = hit.categorySlug && isProfessionalCategorySlug(hit.categorySlug) ? hit.categorySlug : null;
+    // Parole insegnate quando elettrodomestici e tende da sole erano "fuori servizio": ora c'è il mestiere.
+    const legacyCategory = hit.outOfService === "elettrodomestici" || hit.outOfService === "tende-da-sole" ? hit.outOfService : null;
+    const category = hit.categorySlug && isProfessionalCategorySlug(hit.categorySlug) ? hit.categorySlug : legacyCategory;
     if (!outOfService && !category) return null;
     const others = dictionary.categories.map((entry) => entry.slug).filter((slug) => slug !== category);
     // La prestazione della parola insegnata, altrimenti quella del dizionario se è dello stesso mestiere.

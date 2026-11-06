@@ -16,9 +16,7 @@ export type ProblemSafety = "gas" | "elettrico" | "acqua-elettrico" | "monossido
 
 /** Lavori che nessuna nostra categoria copre: prima si cercano i professionisti che li dichiarano, poi "Ce ne occupiamo noi". */
 export type ProblemOutOfService =
-  | "elettrodomestici"
   | "antennista"
-  | "tende-da-sole"
   | "disinfestazione"
   | "spurghi"
   | "spazzacamino"
@@ -28,9 +26,7 @@ export type ProblemOutOfService =
   | "badante";
 
 export const OUT_OF_SERVICE_LABELS: Record<ProblemOutOfService, string> = {
-  elettrodomestici: "Riparazione elettrodomestici",
   antennista: "Antennista",
-  "tende-da-sole": "Tende da sole",
   disinfestazione: "Disinfestazione",
   spurghi: "Spurghi",
   spazzacamino: "Spazzacamino",
@@ -42,9 +38,7 @@ export const OUT_OF_SERVICE_LABELS: Record<ProblemOutOfService, string> = {
 
 /** Parole da cercare nei servizi, nei patentini e nella descrizione dei professionisti prima di dire "fuori servizio". */
 export const OUT_OF_SERVICE_KEYWORDS: Record<ProblemOutOfService, readonly string[]> = {
-  elettrodomestici: ["elettrodomestic", "lavatric", "lavastovigli", "frigorifer", "asciugatric"],
   antennista: ["antenn", "parabol", "digitale terrestre"],
-  "tende-da-sole": ["tende da sole", "tenda da sole", "pergotend", "tendaggi"],
   disinfestazione: ["disinfest", "derattizz", "blatte"],
   spurghi: ["spurg", "pozzo nero", "fossa biologica"],
   spazzacamino: ["spazzacamin", "canna fumaria", "canne fumarie"],
@@ -128,6 +122,8 @@ const RULES: readonly Rule[] = [
   { words: ["murator", "impresa edile", "ditta edile", "ristruttur", "rifare il bagno", "rifacimento", "demoli", "opere murarie"], weights: { muratore: 5 } },
   { words: ["crepa", "crepe", "cavillatur", "intonac", "piastrell", "mattonell", "fughe", "massetto", "sottofondo", "solaio", "tramezz", "cartongesso", "controsoffitt", "muretto", "muro di cinta", "facciata", "cappotto", "efflorescenz", "vespaio", "foratoni", "laterizi", "cemento", "calcestruzz", "gres", "klinker", "vetrocemento", "nicchia", "tracce", "traccia", "rasare", "rasatura"], weights: { muratore: 3 } },
   { words: ["infiltraz", "infiltazion", "impermeabilizz", "impermebilizz", "lastrico", "terrazz", "balcon", "poggiolo", "guaina", "comignolo", "grondai", "pluvial", "umidita", "risalita", "bocche di lupo", "sgretol"], weights: { muratore: 3 } },
+  // Tetti (tra le ricerche più frequenti su Google, analisi/servizi-piu-cercati.md).
+  { words: ["tetto", "tetti", "tegol", "coppi", "copertura del tetto", "rifare il tetto", "rifacimento del tetto", "lucernai", "abbaino"], weights: { muratore: 4 } },
   { words: ["muro", "muri", "parete", "pareti", "soffitto", "pavimento", "pavimentaz", "marciapied", "camino", "colonne", "buco nel muro", "foro nel muro"], weights: { muratore: 2 } },
 
   // Imbianchino
@@ -136,7 +132,7 @@ const RULES: readonly Rule[] = [
   { words: ["macchia", "macchie"], weights: { imbianchino: 1 } },
 
   // Pulizie
-  { words: ["pulizi", "pulire", "pulisca", "pulit", "puluzie", "sporc", "spolver", "sanificaz", "igienizz", "donna delle pulizie", "signora delle pulizie", "colf", "domestica", "stirar", "stiro", "aspirapolver", "lavare", "lavaggio", "smacchi", "aloni", "guano", "calcare", "fine cantiere", "fine lavori", "post ristrutturazione", "termine della ristrutturazione", "terminato la ristrutturazione", "dopo la ristrutturazione", "impresa di pulizie"], weights: { pulizie: 4 } },
+  { words: ["pulizi", "pulire", "pulisca", "pulit", "puluzie", "sporc", "spolver", "sanificaz", "igienizz", "donna delle pulizie", "signora delle pulizie", "colf", "domestica", "stirar", "stiro", "stiratur", "aspirapolver", "lavare", "lavaggio", "smacchi", "aloni", "guano", "calcare", "fine cantiere", "fine lavori", "post ristrutturazione", "termine della ristrutturazione", "terminato la ristrutturazione", "dopo la ristrutturazione", "impresa di pulizie"], weights: { pulizie: 4 } },
   // Pulire i pannelli solari è delle pulizie, non dell'elettricista.
   { words: ["pulizia pannell", "pulizia dei pannell", "pulizia del pannell", "pulizia impianto fotovoltaic", "pulizia dell impianto fotovoltaic", "pulire i pannell", "pulire pannell", "lavaggio pannell", "lavaggio dei pannell", "lavare i pannell"], weights: { pulizie: 10 } },
   { words: ["pulizia completa", "pulizia accurata", "pulizia approfondita", "pulizia dettagliata", "pulizia a fondo", "pulire a fondo", "sporcata", "squadra di pulizie"], weights: { pulizie: 6 } },
@@ -147,7 +143,7 @@ const RULES: readonly Rule[] = [
 
   // Traslochi
   { words: ["trasloc", "traslocar", "traslochi", "trasferiment", "trasferisc", "trasferend"], weights: { traslochi: 5 } },
-  { words: ["trasport", "furgon", "facchin", "scatol", "imball", "autoscala", "montacarichi", "stoccar", "deposito", "carico", "scaricare", "portare al", "piano senza ascensore", "senza ascensore", "con ascensore", "sgomber", "svuotar"], weights: { traslochi: 3 } },
+  { words: ["trasport", "furgon", "facchin", "scatol", "imball", "autoscala", "montacarichi", "stoccar", "deposito", "carico", "scaricare", "portare al", "piano senza ascensore", "senza ascensore", "con ascensore", "sgomber", "svuotar", "svuota cantin", "svuotacantin", "svuota appartament", "svuota casa", "svuota soffitt"], weights: { traslochi: 3 } },
   { words: ["spostare", "portare", "ritirare", "consegnat"], weights: { traslochi: 1 } },
   { words: ["scarico della merce", "per lo scarico", "carico e scarico", "carico e lo scarico", "lo scarico ci", "scarico dal furgone"], weights: { traslochi: 6 } },
   { words: ["materass", "letto matrimoniale", "divano", "divani", "madia", "madie", "piano terra", "piano rialzato", "trasportabil", "parcheggio", "settimo piano", "nono piano", "terzo piano"], weights: { traslochi: 2 } },
@@ -169,6 +165,16 @@ const RULES: readonly Rule[] = [
   // Dogsitter
   { words: ["dog sitter", "dogsitter", "pet sitter", "cane", "cani", "cagnolin", "cagnetta", "cucciol", "bassott", "maltes", "barboncin", "meticcio", "pastore tedesco", "jack russell", "segugio", "staffordshire", "stafforshire", "passeggiat", "portare a spasso", "portare fuori", "far uscire il cane", "far scendere", "pensione per cani", "stallo", "gatto", "gatti", "croccantini"], weights: { dogsitter: 5 } },
 
+  // Elettrodomestici: i guasti (installarli resta a idraulico, elettricista e
+  // Tutto Fare). Il guasto con l'elettrodomestico nominato lo aggiunge sotto
+  // `matchProblem` (richiesta di Luca, docs/changelog/2026-11-06-mestiere-elettrodomestici.md).
+  { words: ["elettrodomestic"], weights: { elettrodomestici: 4 } },
+
+  // Tende da sole e zanzariere (prima "fuori servizio"). Le zanzariere le
+  // monta anche il Tutto Fare: con poche parole vince chi lo fa di mestiere.
+  { words: ["tende da sole", "tenda da sole", "pergotend", "tende a bracci", "tenda a bracci", "tende da balcone", "tenda da balcone", "tende da esterno", "tenda da esterno", "tenda a caduta", "tende a caduta", "cappottina", "telo della tenda", "telo tenda", "tendalin"], weights: { "tende-da-sole": 12 } },
+  { words: ["zanzarier"], weights: { "tende-da-sole": 8 } },
+
   // Babysitter
   { words: ["baby sitter", "babysitter", "babysitting", "tata", "neonat", "asilo", "uscita da scuola", "uscita dalla scuola", "prendere a scuola", "prenderli a scuola", "compiti", "ragazza alla pari", "tagesmutter"], weights: { babysitter: 5 } },
   { words: ["bambin", "bimb", "nonni"], weights: { babysitter: 3 } },
@@ -188,27 +194,33 @@ export const TRADE_NAMES: readonly { words: readonly string[]; categories: reado
   { words: ["installatore fotovoltaic", "installatori fotovoltaic", "installatore di fotovoltaic", "installatore di impianti fotovoltaic", "installatore impianti fotovoltaic", "installatore di pannelli solari", "installatore pannelli solari", "installatori di pannelli solari", "installatore di pannelli fotovoltaic", "installatore pannelli fotovoltaic", "fotovoltaicist", "installatore wallbox", "installatore di wallbox"], categories: ["elettricista"] },
   { words: ["caldaist", "frigorist", "condizionatorist", "climatizzatorist", "manutentore caldai", "tecnico caldai"], categories: ["climatizzazione"] },
   { words: ["impiantist"], categories: ["idraulico", "elettricista", "climatizzazione"] },
-  { words: ["piastrellist", "cartongessist", "capomastro", "pavimentist"], categories: ["muratore"] },
+  { words: ["piastrellist", "cartongessist", "capomastro", "pavimentist", "lattonier"], categories: ["muratore"] },
   { words: ["pittore edile", "tinteggiator", "decorator"], categories: ["imbianchino"] },
   { words: ["fabbri ", "fabbro ferraio", "carpenteria metallica"], categories: ["fabbro"] },
   { words: ["ebanist", "serramentist", "mobilier"], categories: ["falegname"] },
   { words: ["giardinagg", "manutenzione del verde", "manutentore del verde", "vivaist", "potator"], categories: ["giardiniere"] },
   { words: ["traslocator", "sgomberator"], categories: ["traslochi"] },
-  { words: ["handyman", "factotum", "manutentore", "uomo di fatica"], categories: ["tuttofare"] },
+  { words: ["handyman", "factotum", "manutentore", "uomo di fatica", "montator"], categories: ["tuttofare"] },
   { words: ["petsitter", "dog walker", "dogwalker", "dog-sitter"], categories: ["dogsitter"] },
   { words: ["bambinaia", "baby-sitter"], categories: ["babysitter"] },
+  { words: ["tendist", "tendaggi", "installatore di tende", "installatore tende", "montatore di tende da sole"], categories: ["tende-da-sole"] },
+  { words: ["tecnico elettrodomestic", "tecnico di elettrodomestic", "tecnico per elettrodomestic", "tecnico lavatric", "tecnico della lavatric", "tecnico frigorifer", "tecnico del frigorifer", "tecnico lavastovigli", "tecnico della lavastovigli", "riparatore", "riparatori", "tecnico per la lavatric", "tecnico per il frigo", "tecnico per la lavastovigli", "tecnico per l asciugatric", "tecnico per il forno", "assistenza elettrodomestic", "centro assistenza", "assistenza tecnica"], categories: ["elettrodomestici"] },
 ];
 
 type OutRule = { words: readonly string[]; kind: ProblemOutOfService };
 
-// Guasti degli elettrodomestici: solo con un verbo da guasto. Installarli o
-// collegarli resta all'idraulico, all'elettricista o al Tutto Fare.
-const APPLIANCES = ["lavatric", "lavastovigli", "lavapiatti", "frigo", "frigorifer", "congelator", "asciugatric", "microonde", "forno", "piano a induzione", "piastra induzione", "piano induzione", "purificator", "aspirapolvere", "elettrodomestic", "cappa aspirante"];
-const APPLIANCE_FAULT = ["non scarica", "non parte", "non si accende", "non funziona", "non lava", "non raffredda", "non congela", "non asciuga", "non scalda", "si blocca", "errore", "codice", "rumor", "fa scattare", "fumo", "ghiacci", "spegnerla", "lava male", "pompa", "ventola", "temperatur", "instabilit", "non mi scarica", "non aspira", "non carica", "non si apre"];
+// Guasti degli elettrodomestici: solo con un verbo da guasto o di riparazione,
+// e vanno al mestiere Elettrodomestici (prima erano "fuori servizio").
+// Installarli o collegarli resta all'idraulico, all'elettricista o al Tutto Fare.
+// Marche solo se non fanno anche caldaie (niente Ariston, Bosch, Vaillant).
+const APPLIANCE_BRANDS = ["candy", "whirlpool", "hotpoint", "indesit", "electrolux", "smeg", "beko", "miele", "zoppas", "hoover", "aeg"];
+const APPLIANCES = [...APPLIANCE_BRANDS, "lavatric", "lavastovigli", "lavapiatti", "frigo", "frigorifer", "congelator", "asciugatric", "microonde", "forno", "piano a induzione", "piastra induzione", "piano induzione", "purificator", "aspirapolvere", "elettrodomestic", "cappa aspirante"];
+const APPLIANCE_FAULT = ["non scarica", "non parte", "non si accende", "non funziona", "non lava", "non raffredda", "non congela", "non asciuga", "non scalda", "si blocca", "errore", "codice", "rumor", "fa scattare", "fumo", "ghiacci", "spegnerla", "lava male", "pompa", "ventola", "temperatur", "instabilit", "non mi scarica", "non aspira", "non carica", "non si apre", "ripar", "aggiust", "guast", "rotto", "rotta", "si e rott", "assistenza", "non va", "perde acqua", "si spegne", "non centrifuga", "oblo", "guarnizion", "resistenz", "scheda elettronica"];
+/** Punti di un guasto con l'elettrodomestico nominato: vince su "scarico" o "perde" dell'idraulico. */
+const APPLIANCE_FAULT_POINTS = 10;
 
 const OUT_RULES: readonly OutRule[] = [
   { words: ["antenn", "parabol", "canali tv", "non prende i canali", "non prende tutti i canali", "segnale dall antenna", "decoder"], kind: "antennista" },
-  { words: ["tende da sole", "tenda da sole", "pergotend", "tende a bracci", "tenda a bracci"], kind: "tende-da-sole" },
   { words: ["blatte", "scarafagg", "topi", "ratti", "disinfest", "derattizz", "tarme", "termiti", "vespe", "calabroni", "cimici"], kind: "disinfestazione" },
   { words: ["pozzo nero", "spurg", "fossa biologica", "fossa settica", "autospurgo"], kind: "spurghi" },
   { words: ["spazzacamin", "camino fa fumo", "camino che fa fumo", "fuliggine"], kind: "spazzacamino" },
@@ -347,6 +359,9 @@ export function matchProblem(description: string): ProblemMatch {
   const trade = TRADE_NAMES.flatMap((entry) => entry.words.filter((word) => containsWord(text, word)).map((word) => ({ word, entry })))
     .sort((a, b) => b.word.length - a.word.length)[0]?.entry;
   trade?.categories.forEach((slug, index) => add(slug, TRADE_POINTS - index));
+  const applianceFault =
+    APPLIANCES.some((word) => containsWord(text, word)) && APPLIANCE_FAULT.some((word) => containsWord(text, word));
+  if (applianceFault) add("elettrodomestici", APPLIANCE_FAULT_POINTS);
   const safety = SAFETY_RULES.find((rule) => rule.test(text))?.kind ?? null;
   // Un pericolo indica anche chi deve intervenire (DM 37/2008).
   if (safety === "gas") {
@@ -361,11 +376,7 @@ export function matchProblem(description: string): ProblemMatch {
     .map(([slug, score]) => ({ slug, score }))
     .sort((a, b) => b.score - a.score);
 
-  const applianceFault =
-    APPLIANCES.some((word) => containsWord(text, word)) && APPLIANCE_FAULT.some((word) => containsWord(text, word));
-  const outOfService: ProblemOutOfService | null = applianceFault
-    ? "elettrodomestici"
-    : (OUT_RULES.find((rule) => rule.words.some((word) => containsWord(text, word)))?.kind ?? null);
+  const outOfService: ProblemOutOfService | null = OUT_RULES.find((rule) => rule.words.some((word) => containsWord(text, word)))?.kind ?? null;
 
   const [first, second] = categories;
   let question: ProblemQuestion | null = null;
@@ -466,6 +477,9 @@ function sameWord(a: string, b: string): boolean {
  */
 export function serviceMatchingProblem<T extends { name: string }>(services: readonly T[], description: string): T | undefined {
   const words = significantWords(description);
+  // "La lavatrice non scarica" è lavoro per chi offre "Riparazione elettrodomestici".
+  const text = normalizeProblemText(description);
+  if (APPLIANCES.some((word) => containsWord(text, word))) words.push("elettrodomestici");
   if (words.length === 0) return undefined;
   let best: { service: T; score: number } | undefined;
   for (const service of services) {
