@@ -123,11 +123,11 @@ test("guasto della lavatrice: il mestiere Elettrodomestici e sotto tutti quelli 
   // docs/changelog/2026-11-06-mestiere-elettrodomestici.md: prima era "fuori servizio";
   // nella sezione tutti i professionisti di altri mestieri, non più al massimo 3.
   await page.goto(`/cerca?problema=${encodeURIComponent("La lavatrice non scarica")}&citta=Latina`);
-  await expect(page.getByText(`Tecnico Lavatrici ${stamp}`).first()).toBeVisible();
+  await expect(page.getByText(`Tecnico Lavatrici ${stamp}`).filter({ visible: true }).first()).toBeVisible();
   const section = page.getByRole("region", { name: "Potrebbero fare anche questo lavoro" });
   for (const n of [1, 2]) {
-    await expect(section.getByText(`Elettricista Elettrodomestici ${n} ${stamp}`)).toBeVisible();
-    await expect(section.getByText(`Tuttofare Elettrodomestici ${n} ${stamp}`)).toBeVisible();
+    await expect(section.getByText(`Elettricista Elettrodomestici ${n} ${stamp}`).filter({ visible: true })).toBeVisible();
+    await expect(section.getByText(`Tuttofare Elettrodomestici ${n} ${stamp}`).filter({ visible: true })).toBeVisible();
   }
 });
 
