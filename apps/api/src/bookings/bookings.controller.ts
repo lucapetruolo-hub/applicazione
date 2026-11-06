@@ -27,6 +27,7 @@ import {
   type UpdateBookingNoteInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { VerifiedEmailGuard } from "../auth/verified-email.guard";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
@@ -75,7 +76,9 @@ export class BookingsController {
     return { imageUrl };
   }
 
-  @UseGuards(JwtAuthGuard)
+  // Email confermata prima di fissare l'appuntamento (docs/changelog/2026-11-05-verifica-email-cliente.md):
+  // vale anche per l'acconto online, che parte da qui.
+  @UseGuards(JwtAuthGuard, VerifiedEmailGuard)
   @Post("from-quote/:quoteId")
   createFromQuote(@Req() req: AuthenticatedRequest, @Param("quoteId") quoteId: string, @Body(new ZodValidationPipe(acceptQuoteSchema)) body: AcceptQuoteInput) {
     return this.bookingsService.createFromQuote(req.user.userId, quoteId, body.paymentMethod, body.invoiceRequest);

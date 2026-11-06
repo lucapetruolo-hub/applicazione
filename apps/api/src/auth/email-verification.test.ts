@@ -106,6 +106,19 @@ describe("conferma email", () => {
     );
   });
 
+  it("al cliente che cambia l'email manda il link solo quando la conferma è richiesta (accettazione del preventivo)", async () => {
+    const { service, prisma, emailService } = buildService();
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.update.mockResolvedValue({ id: "u-1", email: "nuova@example.it", name: "Anna", role: "CLIENT" });
+
+    await service.updateAccount("u-1", { email: "nuova@example.it" } as never);
+    expect(emailService.send).not.toHaveBeenCalled();
+
+    process.env.EMAIL_VERIFICATION_REQUIRED = "true";
+    await service.updateAccount("u-1", { email: "nuova@example.it" } as never);
+    expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: "nuova@example.it" }));
+  });
+
   it("non rispedisce il link a chi ha già confermato", async () => {
     const { service, prisma, emailService } = buildService();
     prisma.user.findUnique.mockResolvedValue({ id: "u-1", email: "mario@example.it", deletedAt: null, emailVerifiedAt: new Date() });
@@ -123,6 +136,8 @@ describe("conferma email", () => {
 
     process.env.EMAIL_VERIFICATION_REQUIRED = "true";
     await expect(guard.canActivate(context)).rejects.toBeInstanceOf(ForbiddenException);
+    // Il sito lo riconosce dal codice e apre la conferma dove si trova; il messaggio parla del pulsante, non più del codice.
+    await expect(guard.canActivate(context)).rejects.toMatchObject({ response: { code: "EMAIL_NOT_VERIFIED", message: expect.stringContaining("premi il pulsante") } });
 
     prisma.user.findUnique.mockResolvedValue({ emailVerifiedAt: new Date() });
     await expect(guard.canActivate(context)).resolves.toBe(true);

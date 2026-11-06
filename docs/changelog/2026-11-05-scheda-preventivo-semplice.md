@@ -18,7 +18,7 @@ l'acconto (10 €) e il resto a lavoro finito. Deve essere semplice e utile.
 **Decisione** (proposta prima/dopo approvata da Luca):
 - Scheda: il messaggio del professionista subito sotto il nome; poi un solo
   riquadro bianco con quattro righe, **Quando**, **Prezzo** (totale grande con
-  "Prezzo finale"/"IVA inclusa"; le voci solo se sono più di una, scelta di
+  "Tutto compreso"/"IVA inclusa"; le voci solo se sono più di una, scelta di
   Luca), **Pagamento** ("10,00 € ora online, 40,00 € a lavoro finito", con
   "al professionista" se il saldo è diretto e "il resto, fino a" con una
   forbice; "Scopri di più" piccolo al posto di "Come funziona il pagamento
@@ -73,3 +73,12 @@ professionista (un altro utente riceve 404) e dello scaricamento dalla
 finestra; prove nel browser `preventivo-accettato`, `schede-lavoro`,
 `tastiera`, `elimina-richiesta`, `fisco-schede`, `stelle-preventivi`: 63
 passate; `packages/shared/src/quotePaymentSplit.test.ts`.
+
+## Bollino "Verificato" nel preventivo (06/11/2026)
+
+**Richiesta** (Luca): il bollino "Verificato" c'era nella scheda in alto ma
+non nel preventivo, dove il cliente decide: sembrava un professionista
+diverso. **Decisione**: `verified` (stessa regola `publicVerified` della
+scheda) nei preventivi della richiesta del cliente e bollino accanto al
+nome, con il suo fumetto. Scartata da Luca la riga "Non ti va bene? Proponi
+un'altra data" sotto la data: il pulsante c'è già.

@@ -1,30 +1,30 @@
 # Blueprint Render — deploy dell'API
 # (Dashboard → New → Blueprint → seleziona questo repo).
 #
-# Il database NON è dichiarato qui (docs/CHANGELOG.md §229): il Postgres free
-# scade dopo 30 giorni e va ricreato con un nome nuovo (oggi
-# professionisti-db-2), quindi un nome fisso nel Blueprint finiva per puntare
-# a un database scaduto, e a ogni sincronizzazione Render avrebbe potuto
-# ricrearne uno vuoto con quel nome e collegarci l'API. DATABASE_URL si
-# imposta a mano dalla dashboard (Internal Database URL del database in uso).
+# Dal 05/11/2026 API e database stanno a Francoforte, a pagamento
+# (docs/changelog/2026-11-05-render-francoforte.md): servizio
+# professionisti-api-eu (Starter, sempre acceso, così promemoria e attività a
+# orario girano davvero) e Postgres professionisti-db-eu (Basic-256mb, non
+# scade). Il vecchio professionisti-api in Oregon, con il database gratuito
+# scaduto il 05/11, è da sospendere.
 #
-# Sostituisce l'hosting Railway (piano free scaduto). Note sul free tier Render:
-# - Il web service free va in sleep dopo 15 min di inattività (~1 min di
-#   cold start alla prima richiesta successiva). 750 ore/mese incluse.
-# - Il Postgres free ha 1 GB e SCADE DOPO 30 GIORNI: alla scadenza va creato
-#   un nuovo database free, copiata la sua Internal Database URL in
-#   DATABASE_URL del servizio API (le migrazioni partono da sole all'avvio).
-# - Render inietta automaticamente PORT: l'API la legge già da process.env.PORT
-#   e ascolta su 0.0.0.0 (apps/api/src/main.ts), quindi nessuna config extra.
+# Il database NON è dichiarato qui (docs/CHANGELOG.md §229): DATABASE_URL si
+# imposta a mano dalla dashboard (Internal Database URL del database in uso),
+# così una sincronizzazione del Blueprint non può mai collegare l'API a un
+# database diverso o crearne uno vuoto.
+#
+# Render inietta automaticamente PORT: l'API la legge già da process.env.PORT
+# e ascolta su 0.0.0.0 (apps/api/src/main.ts), quindi nessuna config extra.
 
 services:
   - type: web
-    name: professionisti-api
+    name: professionisti-api-eu
+    region: frankfurt
     runtime: node
     # Versione di Node: quella esatta di .nvmrc (docs/CHANGELOG.md §373).
     # Non impostare NODE_VERSION nella dashboard: avrebbe la precedenza su
     # .nvmrc e l'API resterebbe su una versione vecchia.
-    plan: free
+    plan: starter
     branch: claude/professionisti-platform-architecture-xr9gmn
     healthCheckPath: /health
     # Monorepo pnpm: root directory = radice del repo (workspace manifest,

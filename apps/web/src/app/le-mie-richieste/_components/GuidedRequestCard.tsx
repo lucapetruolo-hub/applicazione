@@ -19,6 +19,7 @@ import {
   isPlausiblePhoneNumber,
   quotePriceTotals,
   wallClockNow,
+  formatAppointmentDate,
   type GuidedRequestStatusSummary,
 } from "@professionisti/shared";
 import { Autocomplete, Avatar, Badge, BadgeInfo, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -1096,11 +1097,25 @@ export function GuidedRequestCard({
             </XStack>
           ) : null}
 
+          {/* Giorno e orario scelti in agenda, finché non c'è l'appuntamento: prima comparivano
+              solo nel preventivo (prova da utente nuovo, docs/changelog/2026-11-05-prova-utente-nuovo.md). */}
+          {request.preferredDate && request.preferredTimeSlot && !booking ? (
+            <XStack alignItems="center" gap="1">
+              <Icon name="calendar" size={14} color={brand.grafite70} strokeWidth={1.5} />
+              <Text fontSize={16} color={brand.grafite70}>
+                Orario chiesto: {formatAppointmentDate(`${request.preferredDate}T00:00:00.000Z`, { weekday: "long", day: "numeric", month: "long" })} ·{" "}
+                {request.preferredTimeSlot.replace("-", "–")}
+              </Text>
+            </XStack>
+          ) : null}
+
           {request.address && !booking ? (
             <XStack alignItems="center" gap="1">
               <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
               <Text fontSize={16} color={brand.grafite70}>
                 {request.address}
+                {/* Con il numero civico, che è in un campo a parte. */}
+                {request.houseNumber && !request.address.includes(request.houseNumber) ? ` ${request.houseNumber}` : ""}
                 {request.city ? `, ${request.city}` : ""}
               </Text>
             </XStack>

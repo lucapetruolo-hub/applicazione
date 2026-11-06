@@ -1459,7 +1459,14 @@ export class ProfessionalsService {
           // Solo il nome finché il preventivo non è accettato, il cognome
           // si sblocca con la Booking come telefono e indirizzo
           // (docs/CHANGELOG.md §216).
-          clientName: clientNameForProfessional(lead.guidedRequest.client, quote?.booking != null),
+          // Dopo l'accettazione, per un account senza nome, quello scritto nella richiesta:
+          // prima il titolo restava "Cliente" con il nome nei dettagli (prova da utente nuovo,
+          // docs/changelog/2026-11-05-prova-utente-nuovo.md). Prima dell'accettazione mai.
+          clientName:
+            clientNameForProfessional(lead.guidedRequest.client, quote?.booking != null) ??
+            (quote?.booking != null
+              ? clientNameForProfessional({ name: lead.guidedRequest.recipientName, surname: lead.guidedRequest.recipientSurname }, true)
+              : null),
           // Data di nascita ed età non esposte al professionista, né prima
           // né dopo l'accettazione (decisione dell'utente, §216).
           clientDetailsUnlocked: quote?.booking != null,
@@ -1746,7 +1753,8 @@ export class ProfessionalsService {
       // battesimo), non sufficiente per un professionista che deve
       // presentarsi al lavoro sapendo con chi ha a che fare — richiesta
       // esplicita dell'utente ("nome e cognome").
-      clientName: [booking.client.name, booking.client.surname].filter(Boolean).join(" ") || null,
+      // Account senza nome: quello scritto nella richiesta (docs/changelog/2026-11-05-prova-utente-nuovo.md).
+      clientName: [booking.client.name, booking.client.surname].filter(Boolean).join(" ") || [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || null,
       clientImageUrl: booking.client.deletedAt ? null : booking.client.imageUrl,
       clientPhone: booking.client.phone,
       // Mai l'email anonimizzata sintetica — stesso motivo di getMyLeads sopra.

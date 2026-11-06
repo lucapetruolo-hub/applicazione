@@ -56,41 +56,28 @@ produzione):
      (accesso con Google, §265);
    - impostare un budget/avviso di spesa su Google Cloud.
    Le variabili `NEXT_PUBLIC_*` richiedono un nuovo deploy su Vercel.
-4bis. **Postgres free (Render) scade ogni 30 giorni** — non risolto
-   tecnicamente, richiede un piano a pagamento (decisione di budget non
-   presa autonomamente): promemoria operativo ricorrente, non ipotetico,
-   non un rischio ipotetico da monitorare "quando capita". Alla scadenza
-   va creato un nuovo DB free e aggiornato `DATABASE_URL` su Render (le
-   migrazioni si applicano da sole al primo avvio sul DB vuoto, le
-   categorie si ripopolano via `CategoriesSeedService`).
-   **Scadenza in corso (docs/CHANGELOG.md §169):** il DB del 6 ottobre
-   2026 è il secondo ed è anch'esso gratuito, quindi scade intorno al
-   **5 novembre 2026** (data esatta nella dashboard Render). Il primo è
-   scaduto il 3 ottobre; i dati di prova sono andati persi. Prima di
-   quella data: passare a pagamento DB e servizio API (consigliato, tiene i
-   dati e fa girare i job orari), oppure ripetere la procedura con un nuovo
-   DB gratuito. **Prima del lancio il DB deve essere a pagamento**: con
-   pagamenti e recensioni reali una scadenza vorrebbe dire perdere dati.
-   Il vecchio `professionisti-db` non si cancella a mano perché è legato al
-   Blueprint (`render.yaml`): si cancella da solo. Finché il Blueprint
-   punta ancora a lui, non modificare `render.yaml` (una risincronizzazione
-   potrebbe rimettere `DATABASE_URL` sul database vecchio).
-4ter. **Quando si passa Render a pagamento: spostare API e database a
-   Francoforte** (decisione dell'utente del 26/10/2026: si fa insieme
-   all'acquisto degli abbonamenti, non prima). Oggi l'API gira in Oregon
-   (`gcp-us-west1`) e le pagine del sito a Washington (`iad1`): ogni
-   pagina aperta in Italia attraversa l'oceano due volte, e i dati
-   personali stanno negli Stati Uniti. Render non cambia zona a un
-   servizio esistente: nuovo Postgres Basic-256mb e nuova API Starter
-   (`professionisti-api-eu`) a Frankfurt, `NEXT_PUBLIC_API_URL` e Function
-   Region `fra1` su Vercel, webhook Stripe (`/billing/webhook`) e Didit
-   (`/identity-verification/webhook`), variabile `API_HEALTH_URL` di
-   GitHub Actions. Dopo: aggiornare `render.yaml` (nome, `region:
-   frankfurt`, `plan: starter`). Guida passo passo in
-   `/mnt/project-files/analisi/spostamento-render-francoforte.md`. Valutati
-   e scartati Neon gratis (un cron gira ogni minuto: supererebbe le 100 ore
-   di calcolo del piano gratuito), Cloudflare, Clerk e R2
-   (`/mnt/project-files/analisi/servizi-gratuiti-valutazione.md`).
+4bis. ~~**Postgres free (Render) scade ogni 30 giorni**~~ **Fatto il
+   05/11/2026** (docs/changelog/2026-11-05-render-francoforte.md): il
+   database gratuito è scaduto quel giorno e Luca ha spostato tutto a
+   Francoforte, a pagamento (punto 4ter). Il nuovo database
+   `professionisti-db-eu` (Basic-256mb) non scade. È partito vuoto: account
+   di prova e accesso admin vanno rifatti (bootstrap e verifica in due
+   passaggi).
+4ter. ~~**Spostare API e database a Francoforte**~~ **Fatto il 05/11/2026**:
+   API `professionisti-api-eu` (Starter, `https://professionisti-api-eu.onrender.com`)
+   e Postgres Basic-256mb a Frankfurt, `NEXT_PUBLIC_API_URL` e Function
+   Region `fra1` su Vercel, webhook Stripe di prova e Didit di prova
+   spostati, `API_HEALTH_URL` di GitHub aggiornata, `render.yaml`
+   aggiornato. Da finire: sospendere il vecchio `professionisti-api`
+   (Oregon) ed eliminare il vecchio endpoint Didit; il webhook di Meta
+   (WhatsApp) andrà messo sul nuovo indirizzo quando si accende. Al
+   lancio, sul nuovo indirizzo: i webhook Stripe live (pagamenti e
+   Connect, con `STRIPE_WEBHOOK_SECRET` e `STRIPE_CONNECT_WEBHOOK_SECRET`
+   nuovi su Render) e l'endpoint Didit live (oggi non ce n'è nessuno, con
+   `DIDIT_WEBHOOK_SECRET` nuovo e `DIDIT_SANDBOX` tolto). Controllare in
+   Render che il database sia davvero sul piano a pagamento: un Postgres
+   Free scade dopo 30 giorni e viene cancellato. `NEXT_PUBLIC_API_URL` si
+   scrive senza barra finale (il sito la toglie comunque, `lib/apiUrl.ts`).
 5bis. **Prima di mettere le chiavi Stripe vere: dati fiscali solo dopo la carta**
    (richiesta di Luca del 30/10/2026, docs/changelog/2026-10-30-iscrizione-carta-solida.md).
    Oggi il lucchetto "Dopo il piano" sui dati fiscali c'è solo nel percorso
@@ -124,7 +111,9 @@ produzione):
    `checkout.session.async_payment_failed`, `payment_intent.succeeded` e tutti
    i `charge.dispute.*` elencati sopra, più `refund.updated` e
    `refund.failed` (rimborso rimasto in attesa di fondi sul conto del
-   professionista, poi arrivato o non riuscito, §269),
+   professionista, poi arrivato o non riuscito, §269) e `charge.refunded`
+   su **entrambi** gli endpoint (rimborso fatto dalla Dashboard di Stripe,
+   registrato sul lavoro, docs/changelog/2026-11-05-pagamenti-di-prova.md),
    la cui chiave va in `STRIPE_CONNECT_WEBHOOK_SECRET` (docs/CHANGELOG.md §236).
    Se la chiave è limitata (`rk_`) deve avere anche i permessi su
    application fee, bonifici (payouts), saldo e impostazioni del saldo
@@ -370,8 +359,10 @@ prima del lancio"):
     28/10/2026): promemoria WhatsApp anche ai clienti dei lavori esterni
     dell'agenda (non iscritti al sito), mandato per conto del professionista.
     Oggi quei clienti non ricevono nulla.
-23. **Conferma email obbligatoria per i professionisti** (docs/CHANGELOG.md §178, mai per i clienti): già nel
-    codice, ma spenta. Dopo aver verificato il dominio su Resend (punto
+23. **Conferma email obbligatoria** per i professionisti (docs/CHANGELOG.md §178)
+    e, dal 05/11/2026, per il cliente prima di accettare un preventivo
+    (docs/changelog/2026-11-05-verifica-email-cliente.md; la richiesta e la
+    chat restano libere): già nel codice, ma spenta. Dopo aver verificato il dominio su Resend (punto
     5bis) e provato che il link arriva a un indirizzo qualunque, impostare
     `EMAIL_VERIFICATION_REQUIRED=true` su Render. Prima di allora nessuno
     tranne il titolare dell'account Resend riceverebbe il link.
@@ -566,8 +557,9 @@ Città, pagine vuote fuori da Google.
 40. ~~osv-scanner bloccante~~ — fatto (docs/CHANGELOG.md §335, PR #131):
     blocca la PR su qualunque libreria con vulnerabilità note; quelle usate
     solo per costruire o provare il codice e senza versione corretta vanno
-    in `osv-scanner.toml` con il motivo (oggi zod 3 e node-forge dentro
-    `@expo/cli`).
+    in `osv-scanner.toml` con il motivo (oggi deepmerge 4.3.1 e minimatch 3;
+    zod 3 e node-forge tolti il 05/11/2026,
+    docs/changelog/2026-11-05-avvisi-librerie.md).
 
 
 41. **Segnalazioni dei contenuti (DSA)** (docs/CHANGELOG.md §319): dopo la

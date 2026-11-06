@@ -1818,10 +1818,22 @@ export function RequestCard({
                   </label>
                 ) : null}
                 {/* Preavviso più lungo del tempo che manca (collaudo C-08). */}
+                {/* Con un preavviso più breve che va ancora bene: avviso da correggere. Se nemmeno
+                    il più breve basta (appuntamento entro 24 ore) non c'è niente da sbagliare: solo
+                    un'informazione, senza rosso (prova da utente nuovo del 04/11/2026). */}
                 {chosenQuoteStart && isLateCancellation(chosenQuoteStart, noticeHours) ? (
-                  <Text fontSize={13} fontWeight="600" color={brand.urgenza}>
-                    Mancano meno di {cancellationNoticeLabel(noticeHours)} all&apos;appuntamento: il cliente sarebbe già oltre il preavviso. Scegli un preavviso più breve o un&apos;altra data.
-                  </Text>
+                  CANCELLATION_NOTICE_OPTIONS.some((hours) => hours < noticeHours && !isLateCancellation(chosenQuoteStart, hours)) ? (
+                    <Text fontSize={13} fontWeight="600" color={brand.urgenza}>
+                      Mancano meno di {cancellationNoticeLabel(noticeHours)} all&apos;appuntamento: il cliente sarebbe già oltre il preavviso. Scegli un preavviso più breve o un&apos;altra data.
+                    </Text>
+                  ) : (
+                    <Text fontSize={13} color={brand.grafite70}>
+                      L&apos;appuntamento è tra meno di {cancellationNoticeLabel(CANCELLATION_NOTICE_OPTIONS[0])}: il preavviso per questo lavoro è già passato.
+                      {onlinePayments && paymentOptions.some(paymentChoiceIsOnline) && keepDeposit
+                        ? " Se il cliente annulla, l'acconto online resta a te: glielo diciamo prima che accetti."
+                        : " Se il cliente annulla non paga niente: glielo diciamo prima che accetti."}
+                    </Text>
+                  )
                 ) : null}
                 <Text fontSize={13} color={brand.grafite70}>
                   Il cliente lo legge prima di accettare. Lo standard lo cambi nel Profilo.
