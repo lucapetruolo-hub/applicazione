@@ -270,6 +270,14 @@ export function ProfessionalCard({
   // Richiesta esplicita dell'utente: "dai la possibilità tramite freccetta
   // di far vedere tutte le prestazioni... ora se ne vedono solo 3".
   const [showAllServices, setShowAllServices] = useState(false);
+  // Sul telefono (sotto i 660px) "Nuovo profilo" e "Assicurazione RC" stanno
+  // dietro un "+N": con tutti i bollini la scheda ne metteva 6 in colonna.
+  // Restano sempre in vista Verificato, Privato/Partita IVA, Pagamenti online
+  // e Sponsorizzato, che la legge vuole riconoscibile (Luca,
+  // docs/changelog/2026-11-06-filtro-pagamenti-online.md).
+  const [showAllBadges, setShowAllBadges] = useState(false);
+  const extraBadges = (isNewProfile ? 1 : 0) + (hasLiabilityInsurance ? 1 : 0);
+  const extraBadgeDisplay = showAllBadges ? "flex" : "flex xs:none";
   // Orari e prezzi sotto il blocco del nome, a tutta larghezza, chiusi tranne
   // che nella prima scheda della lista (docs/CHANGELOG.md §349): prima la
   // mini-agenda stava a destra e schiacciava nome, mestiere e voto in una
@@ -491,6 +499,7 @@ export function ProfessionalCard({
                 </BadgeInfo>
               ) : null}
               {isNewProfile ? (
+                <XStack display={extraBadgeDisplay}>
                 <BadgeInfo info="newProfile">
                   <XStack alignItems="center" gap={4} paddingHorizontal="2" paddingVertical={2} borderRadius="10" backgroundColor={brand.cianografiaVelo}>
                     <Icon name="sprout" size={13} color={brand.cianografiaScuro} strokeWidth={2} />
@@ -499,8 +508,10 @@ export function ProfessionalCard({
                     </Text>
                   </XStack>
                 </BadgeInfo>
+                </XStack>
               ) : null}
               {hasLiabilityInsurance ? (
+                <XStack display={extraBadgeDisplay}>
                 <BadgeInfo info="liabilityInsurance">
                   <XStack alignItems="center" gap={4} paddingHorizontal="2" paddingVertical={2} borderRadius="10" backgroundColor={brand.gesso}>
                     <Icon name="shield-check" size={13} color={brand.grafite} strokeWidth={2} />
@@ -512,6 +523,29 @@ export function ProfessionalCard({
                     </Text>
                   </XStack>
                 </BadgeInfo>
+                </XStack>
+              ) : null}
+              {extraBadges > 0 && !showAllBadges ? (
+                <XStack
+                  display="none xs:flex"
+                  alignItems="center"
+                  paddingHorizontal="2"
+                  paddingVertical={2}
+                  borderRadius="10"
+                  backgroundColor={brand.gesso}
+                  cursor="pointer"
+                  role="button"
+                  aria-label={extraBadges === 1 ? "Mostra un altro bollino" : `Mostra altri ${extraBadges} bollini`}
+                  onPress={(e: unknown) => {
+                    stop(e);
+                    (e as { preventDefault?: () => void } | undefined)?.preventDefault?.();
+                    setShowAllBadges(true);
+                  }}
+                >
+                  <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite}>
+                    +{extraBadges}
+                  </Text>
+                </XStack>
               ) : null}
             </XStack>
             {action}

@@ -20,3 +20,15 @@ diretto (il modo lo sceglie il professionista in ogni preventivo).
   "Pagamento" è già aperta.
 
 **Verifica**: typecheck e lint di `apps/web`.
+
+**Terzo giro** (Luca, stesso giorno, scelta "3 bollini più +3"): sul telefono
+(sotto i 660px) una scheda con tutti i bollini ne metteva 6 in colonna. Ora
+restano sempre in vista Verificato, Privato/Partita IVA, Pagamenti online e
+Sponsorizzato (la pubblicità deve restare riconoscibile, quindi non va mai
+dietro il "+"); "Nuovo profilo" e "Assicurazione RC" stanno dietro un "+N"
+che li mostra al tocco senza aprire il profilo. Sul computer tutto come prima.
+
+**Verifica**: foto su iPhone SE, Pixel 7 e computer
+(`analisi/bollino-pagamenti-online/` nella cartella del progetto): "+2"
+visibile solo sul telefono, il tocco mostra gli altri bollini, la pagina non
+cambia e nessun fumetto si apre da solo.
