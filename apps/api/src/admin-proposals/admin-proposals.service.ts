@@ -485,7 +485,9 @@ export class AdminProposalsService implements OnApplicationBootstrap {
         kind: "MERGE_SERVICE_NAME",
         score: 200 + Math.min(m.professionals, 99),
         title: `Unisci «${m.name}» a «${m.canonical}»`,
-        why: `Sono quasi lo stesso nome (${categoryLabel(m.categorySlug)}): separati, i prezzi medi di «Quanto costa» si dividono.`,
+        why: m.byWords
+          ? `Parole diverse, stesso lavoro (${categoryLabel(m.categorySlug)}): unite, chi l'ha scritta va in cima quando un cliente cerca «${m.canonical}».`
+          : `Sono quasi lo stesso nome (${categoryLabel(m.categorySlug)}): separati, i prezzi medi di «Quanto costa» si dividono.`,
         preview: { type: "lines", lines: [`«${m.name}» (${plural(m.professionals, "professionista", "professionisti")}) diventa «${m.canonical}».`, "Il nome scritto dai professionisti nel loro profilo non cambia."] },
         data: { name: m.name, canonical: m.canonical },
       }));

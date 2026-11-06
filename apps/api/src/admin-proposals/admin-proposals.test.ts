@@ -94,9 +94,21 @@ describe("prestazioni", () => {
       { name: "Lavaggio split", professionalCount: 1 },
     ]));
     expect(list).toEqual([
-      { categorySlug: "climatizzazione", name: "Manutenzone caldaia", canonical: "Manutenzione caldaia", professionals: 4 },
-      { categorySlug: "climatizzazione", name: "Lavaggio split", canonical: "Split lavaggio", professionals: 1 },
+      { categorySlug: "climatizzazione", name: "Manutenzone caldaia", canonical: "Manutenzione caldaia", professionals: 4, byWords: false },
+      { categorySlug: "climatizzazione", name: "Lavaggio split", canonical: "Split lavaggio", professionals: 1, byWords: false },
     ]);
+  });
+
+  it("stesso lavoro con altre parole: da unire solo con almeno 3 professionisti, e non da aggiungere", () => {
+    const standard = ["Manutenzione caldaia", "Sostituzione termostato"];
+    const list = mergeCandidates(overview([
+      { name: "Cambio cronotermostato", professionalCount: 3 },
+      { name: "Montaggio termostato wifi", professionalCount: 2 },
+      { name: "Posa pavimenti", professionalCount: 5 },
+    ], standard));
+    expect(list).toEqual([{ categorySlug: "climatizzazione", name: "Cambio cronotermostato", canonical: "Sostituzione termostato", professionals: 3, byWords: true }]);
+    const added = standardServiceCandidates(overview([{ name: "Cambio cronotermostato", professionalCount: 3 }, { name: "Posa pavimenti", professionalCount: 5 }], standard));
+    expect(added.map((s) => s.name)).toEqual(["Posa pavimenti"]);
   });
 });
 

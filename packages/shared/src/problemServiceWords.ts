@@ -32,7 +32,7 @@ export const SERVICE_WORDS: readonly { category: ProfessionalCategorySlug; servi
   { category: "elettricista", service: "Motorizzazione tapparelle", words: ["tapparella elettric", "tapparelle elettric", "motorizzare le tapparell", "motore della tapparell", "motore tapparell"] },
   // Imbianchino
   { category: "imbianchino", service: "Trattamento antimuffa", words: ["muffa", "antimuffa"] },
-  { category: "imbianchino", service: "Tinteggiatura esterni", words: ["facciata", "esterno della casa", "pareti esterne", "muri esterni"] },
+  { category: "imbianchino", service: "Tinteggiatura esterni", words: ["facciata", "esterni", "esterne", "esterno della casa", "pareti esterne", "muri esterni"] },
   { category: "imbianchino", service: "Tinteggiatura soffitti", words: ["soffitto", "soffitti"] },
   { category: "imbianchino", service: "Stuccatura crepe", words: ["crepa", "crepe", "stuccat", "buchi nel muro", "fori nel muro"] },
   { category: "imbianchino", service: "Verniciatura infissi", words: ["verniciare gli infissi", "verniciare le persiane", "verniciare le finestre", "riverniciare gli infissi", "riverniciare le persiane", "infissi", "persiane"] },
@@ -93,7 +93,7 @@ export const SERVICE_WORDS: readonly { category: ProfessionalCategorySlug; servi
   // Falegname
   { category: "falegname", service: "Mobili su misura", words: ["su misura", "cabina armadio"] },
   { category: "falegname", service: "Posa e riparazione parquet", words: ["parquet"] },
-  { category: "falegname", service: "Sostituzione infissi", words: ["sostituire gli infissi", "sostituire le finestre", "nuovi infissi", "nuove finestre", "cambiare le finestre", "cambiare gli infissi"] },
+  { category: "falegname", service: "Sostituzione infissi", words: ["sostituire gli infissi", "sostituire le finestre", "sostituzione infissi", "sostituzione finestre", "nuovi infissi", "nuove finestre", "cambiare le finestre", "cambiare gli infissi"] },
   { category: "falegname", service: "Riparazione finestre e persiane in legno", words: ["finestra", "finestre", "persiana", "persiane", "scuri", "infissi", "infisso"] },
   { category: "falegname", service: "Riparazione porte in legno", words: ["porta", "porte", "scrigno", "porta scorrevole", "cerniere"] },
   { category: "falegname", service: "Restauro mobili", words: ["restaur", "antico", "antica"] },

@@ -8,6 +8,7 @@ import {
   nearlySameServiceName,
   normalizeProblemText,
   serviceNameKey,
+  serviceFromWords,
   type ProfessionalCategorySlug,
   type ServiceNamesAdminOverview,
 } from "@professionisti/shared";
@@ -204,6 +205,8 @@ export function standardServiceCandidates(overview: ServiceNamesAdminOverview): 
     for (const row of category.handwritten) {
       if (row.professionalCount < overview.minProfessionals) continue;
       if (category.standard.some((s) => nearlySameServiceName(s.name, row.name))) continue;
+      // Stesso lavoro di una standard con altre parole: si propone di unirlo, non di aggiungerlo.
+      if (sameJobStandardName(category, row.name)) continue;
       const key = serviceNameKey(row.name);
       const current = best.get(key);
       if (!current || row.professionalCount > current.professionals) best.set(key, { categorySlug: category.slug, name: row.name, professionals: row.professionalCount });
@@ -213,14 +216,32 @@ export function standardServiceCandidates(overview: ServiceNamesAdminOverview): 
 }
 
 /**
+ * Prestazione suggerita dello stesso lavoro scritto con altre parole
+ * ("Spurgo tubi intasati" → "Sturatura scarichi"), dalle parole delle
+ * prestazioni del dizionario (docs/changelog/2026-11-06-dizionario-prestazioni.md).
+ * Solo verso una prestazione standard del mestiere, mai verso sé stessa.
+ */
+export function sameJobStandardName(category: ServiceNamesAdminOverview["categories"][number], name: string): string | null {
+  if (!isProfessionalCategorySlug(category.slug)) return null;
+  const service = serviceFromWords(normalizeProblemText(name), category.slug);
+  if (!service || serviceNameKey(service) === serviceNameKey(name)) return null;
+  return category.standard.find((s) => serviceNameKey(s.name) === serviceNameKey(service))?.name ?? null;
+}
+
+export type MergeCandidate = { categorySlug: ProfessionalCategorySlug; name: string; canonical: string; professionals: number; byWords: boolean };
+
+/**
  * Nomi scritti a mano quasi uguali a un altro dello stesso mestiere: prima
  * a una prestazione standard, poi a un nome scritto da più professionisti.
- * Si unisce sempre il nome meno usato a quello più usato.
+ * Si unisce sempre il nome meno usato a quello più usato. Con parole diverse
+ * ma lo stesso lavoro (`sameJobStandardName`) solo se lo scrivono almeno
+ * `minProfessionals` professionisti: è meno sicuro, e Luca vuole proposte
+ * solo con dati.
  */
-export function mergeCandidates(overview: ServiceNamesAdminOverview): { categorySlug: ProfessionalCategorySlug; name: string; canonical: string; professionals: number }[] {
+export function mergeCandidates(overview: ServiceNamesAdminOverview): MergeCandidate[] {
   const aliased = new Set(overview.aliases.map((a) => a.key));
   const seen = new Set<string>();
-  const result: { categorySlug: ProfessionalCategorySlug; name: string; canonical: string; professionals: number }[] = [];
+  const result: MergeCandidate[] = [];
   for (const category of overview.categories) {
     if (!isProfessionalCategorySlug(category.slug)) continue;
     for (const row of category.handwritten) {
@@ -232,10 +253,11 @@ export function mergeCandidates(overview: ServiceNamesAdminOverview): { category
         : category.handwritten.find(
             (o) => o !== row && nearlySameServiceName(o.name, row.name) && (o.professionalCount > row.professionalCount || (o.professionalCount === row.professionalCount && o.name.localeCompare(row.name, "it") < 0)),
           );
-      const canonical = standard?.name ?? other?.name;
+      const sameJob = standard || other || row.professionalCount < overview.minProfessionals ? null : sameJobStandardName(category, row.name);
+      const canonical = standard?.name ?? other?.name ?? sameJob;
       if (!canonical) continue;
       seen.add(key);
-      result.push({ categorySlug: category.slug, name: row.name, canonical, professionals: row.professionalCount });
+      result.push({ categorySlug: category.slug, name: row.name, canonical, professionals: row.professionalCount, byWords: canonical === sameJob });
     }
   }
   return result.sort((a, b) => b.professionals - a.professionals || a.name.localeCompare(b.name, "it"));
