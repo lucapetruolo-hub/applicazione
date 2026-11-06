@@ -394,6 +394,37 @@ export function ProfessionalCard({
     );
   };
 
+  // Nome del professionista. Sul telefono (sotto i 660px) va sopra, a tutta
+  // larghezza, e la foto sta accanto ai bollini: nella colonna stretta accanto
+  // alla foto un nome lungo prendeva 4 righe (Luca,
+  // docs/changelog/2026-11-06-filtro-pagamenti-online.md). Uno solo dei due è
+  // visibile, l'altro è nascosto anche al lettore di schermo.
+  const renderName = (display: string) => (
+    <Text
+      display={display}
+      fontFamily="heading"
+      fontWeight="800"
+      fontSize={22}
+      lineHeight="26px"
+      color={brand.grafite}
+      {...(href
+                      ? {
+                          render: "a",
+                          href,
+                          textDecorationLine: "none hover:underline",
+                          // Clic normale: niente ricarica della pagina, apre il
+                          // profilo `onPress` della card. Con Ctrl/Cmd/Maiusc il
+                          // browser apre un'altra scheda e la card non naviga.
+                          onPress: (e: { metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean; preventDefault?: () => void; stopPropagation?: () => void }) => {
+                            if (e.metaKey || e.ctrlKey || e.shiftKey) e.stopPropagation?.();
+                            else e.preventDefault?.();
+                          },
+                        }
+                      : null)}
+    >
+      {businessName}
+    </Text>  );
+
   return (
     // Niente accessibilityLabel personalizzato: la card contiene già come
     // testo visibile nome/categoria/città/rating, un'etichetta diversa da
@@ -416,6 +447,9 @@ export function ProfessionalCard({
       {/* Sotto i 660px meno spazio tra foto e nome: sui telefoni da 360px la
           colonna del nome restava stretta e i bollini (Verificato, Nuovo
           profilo...) e le recensioni toccavano il bordo. */}
+      <YStack display="none xs:flex" marginBottom="3">
+        {renderName("flex")}
+      </YStack>
       <XStack gap="4 xs:3" alignItems="flex-start">
         {icon}
         <YStack gap="2" flex={1} minWidth={0}>
@@ -430,29 +464,7 @@ export function ProfessionalCard({
                 c'è spazio (docs/CHANGELOG.md §349): prima, nella colonna
                 stretta, i bollini finivano uno sotto l'altro. */}
             <XStack flex={1} minWidth={0} alignItems="center" columnGap="2" rowGap={6} flexWrap="wrap">
-              <Text
-                fontFamily="heading"
-                fontWeight="800"
-                fontSize={22}
-                lineHeight="26px"
-                color={brand.grafite}
-                {...(href
-                                ? {
-                                    render: "a",
-                                    href,
-                                    textDecorationLine: "none hover:underline",
-                                    // Clic normale: niente ricarica della pagina, apre il
-                                    // profilo `onPress` della card. Con Ctrl/Cmd/Maiusc il
-                                    // browser apre un'altra scheda e la card non naviga.
-                                    onPress: (e: { metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean; preventDefault?: () => void; stopPropagation?: () => void }) => {
-                                      if (e.metaKey || e.ctrlKey || e.shiftKey) e.stopPropagation?.();
-                                      else e.preventDefault?.();
-                                    },
-                                  }
-                                : null)}
-              >
-                {businessName}
-              </Text>
+              {renderName("flex xs:none")}
               {verified ? (
                 // Pillola "Verificato" esplicita accanto al nome: la sola
                 // icona non comunica il significato a chi non conosce la

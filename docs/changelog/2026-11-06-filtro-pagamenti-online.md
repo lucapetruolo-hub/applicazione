@@ -39,3 +39,20 @@ scheda. Sul telefono la colonna di nome e bollini ora prende tutta la
 larghezza (`xs:stretch`), il bollino non supera mai la riga (`max-width:100%`
 in `BadgeInfo.web.tsx`) e "dichiarata" va a capo se serve. Misurato su iPhone
 SE: niente più sporge dalla scheda; computer uguale a prima.
+
+**Quinto giro** (Luca, "sì" a due migliorie):
+- prova nel browser `e2e/tests/bollini-telefono.spec.ts`: su un telefono da
+  320px "+2" visibile, "Sponsorizzato" in vista, il tocco mostra gli altri
+  bollini senza aprire il profilo, e niente esce dalla scheda né fa scorrere
+  la pagina di lato; sul computer nessun "+N". Controllata togliendo la
+  correzione: la prova diventa rossa.
+- sul telefono il nome va sopra a tutta larghezza e la foto sta accanto ai
+  bollini (prima un nome lungo prendeva 4 righe). Il nome è scritto due volte
+  nella scheda e se ne vede uno solo (l'altro è nascosto anche al lettore di
+  schermo): nelle prove cercare il nome con `.filter({ visible: true })`
+  (sistemate `prestazioni-problema` e `scelti-restano`).
+
+**Verifica**: in locale `bollini-telefono`, `badge-fumetto`, `quanto-costa`,
+`conteggi`, `scelti-restano`, `prestazioni-problema` verdi. `tastiera` riga
+99 rossa in locale anche senza queste modifiche (sito avviato in modalità
+sviluppo), la decide la CI.

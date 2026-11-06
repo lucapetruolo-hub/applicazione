@@ -82,7 +82,7 @@ test.afterAll(() => prisma.$disconnect());
 
 test("prima chi fa quel lavoro, poi gli altri mestieri che potrebbero farlo", async ({ page }) => {
   await page.goto(`/cerca?problema=${encodeURIComponent(PROBLEM)}&citta=Latina`);
-  await expect(page.getByText(`Idraulico Rubinetti ${stamp}`).first()).toBeVisible();
+  await expect(page.getByText(`Idraulico Rubinetti ${stamp}`).filter({ visible: true }).first()).toBeVisible();
   const order = await page.evaluate(
     ([withService, without]) => {
       const text = document.body.innerText;
@@ -94,7 +94,7 @@ test("prima chi fa quel lavoro, poi gli altri mestieri che potrebbero farlo", as
 
   const section = page.getByRole("region", { name: "Potrebbero fare anche questo lavoro" });
   await expect(section).toBeVisible();
-  await expect(section.getByText(`Tuttofare Rubinetti ${stamp}`)).toBeVisible();
+  await expect(section.getByText(`Tuttofare Rubinetti ${stamp}`).filter({ visible: true })).toBeVisible();
   // Stessa scheda dei risultati, con la riga "Perché".
   await expect(section.getByText("offre «Sostituzione rubinetto»")).toBeVisible();
   // "cucina" in comune non basta: le pulizie non c'entrano.
@@ -104,7 +104,7 @@ test("prima chi fa quel lavoro, poi gli altri mestieri che potrebbero farlo", as
 test("dal profilo aperto nei risultati la richiesta parte con il problema scritto", async ({ page }) => {
   await page.goto(`/cerca?problema=${encodeURIComponent(PROBLEM)}&citta=Latina`);
   const section = page.getByRole("region", { name: "Potrebbero fare anche questo lavoro" });
-  await section.getByText(`Tuttofare Rubinetti ${stamp}`).click();
+  await section.getByText(`Tuttofare Rubinetti ${stamp}`).filter({ visible: true }).click();
   await expect(page).toHaveURL(/problema=/);
   await expect(page).not.toHaveURL(/servizio=/);
   const request = page.locator('a[href*="/preventivo?"][href*="professionista="]').first();

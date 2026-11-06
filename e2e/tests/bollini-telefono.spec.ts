@@ -57,9 +57,9 @@ test("sul telefono i bollini secondari stanno dietro il +N e niente esce dalla s
   // iPhone SE: il telefono più stretto ancora in uso.
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto(SEARCH);
-  const name = page.getByText(NAME, { exact: true });
+  const name = page.getByText(NAME, { exact: true }).filter({ visible: true });
   await expect(name).toBeVisible();
-  // La riga di nome e bollini di questa scheda (contiene il suo "Sponsorizzato").
+  // La scheda (il primo contenitore del nome con il suo "Sponsorizzato").
   const card = name.locator("xpath=ancestor::*[.//button[starts-with(normalize-space(.), 'Sponsorizzato')]][1]");
   const more = card.getByRole("button", { name: "Mostra altri 2 bollini" });
   await expect(more).toBeVisible();
@@ -91,7 +91,7 @@ test("sul telefono i bollini secondari stanno dietro il +N e niente esce dalla s
 test("sul computer tutti i bollini sono in vista, senza +N", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "computer-tokyo", "Solo sul computer.");
   await page.goto(SEARCH);
-  await expect(page.getByText(NAME, { exact: true })).toBeVisible();
+  await expect(page.getByText(NAME, { exact: true }).filter({ visible: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /Mostra (altri|un altro)/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Assicurazione RC dichiarata", exact: true }).first()).toBeVisible();
 });
