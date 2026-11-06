@@ -23,6 +23,8 @@ export const teachProblemWordSchema = z.object({
   word: z.string().trim().min(3).max(60),
   categorySlug: z.string().trim().max(40).optional(),
   outOfService: z.string().trim().max(40).optional(),
+  /** Prestazione del catalogo del mestiere a cui porta anche la parola (docs/changelog/2026-11-06-dizionario-prestazioni.md). */
+  serviceName: z.string().trim().max(120).optional(),
 });
 export type TeachProblemWordInput = z.infer<typeof teachProblemWordSchema>;
 

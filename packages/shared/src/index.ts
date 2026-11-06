@@ -64,6 +64,7 @@ export * from "./siteStats";
 export * from "./siteCounting";
 export * from "./serviceSearch";
 export * from "./problemMatch";
+export * from "./problemServiceWords";
 export * from "./nameSearch";
 export * from "./problemExamples";
 export * from "./serviceNames";

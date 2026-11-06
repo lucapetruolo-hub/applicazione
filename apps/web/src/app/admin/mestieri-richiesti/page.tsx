@@ -233,6 +233,7 @@ function DescriptionsTab() {
               >
                 <Text fontSize={13}>
                   «{entry.word}» → {targetLabel(entry.categorySlug, entry.outOfService)}
+                  {entry.serviceName ? `, ${entry.serviceName}` : ""}
                 </Text>
                 <Button size="2" variant="secondary" onPress={() => void forget(entry.id)} aria-label={`Togli la parola ${entry.word}`}>
                   Togli

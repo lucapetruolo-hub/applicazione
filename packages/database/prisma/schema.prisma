@@ -3201,6 +3201,8 @@ model ProblemDescription {
   outOfService String?
   /// "dizionario", "parola" (insegnata in admin) o "ia".
   source       String
+  /// Prestazione indicata per il primo mestiere (docs/changelog/2026-11-06-dizionario-prestazioni.md).
+  service      String?
   createdAt    DateTime @default(now())
 
   @@index([createdAt])
@@ -3215,6 +3217,8 @@ model ProblemWord {
   word         String   @unique
   categorySlug String?
   outOfService String?
+  /// Prestazione a cui porta anche la parola, scritta come nel catalogo (docs/changelog/2026-11-06-dizionario-prestazioni.md).
+  serviceName  String?
   createdById  String?
   createdAt    DateTime @default(now())
 

@@ -5,6 +5,7 @@ import {
   OUT_OF_SERVICE_LABELS,
   POPULAR_SERVICES,
   PROFESSIONAL_CATEGORIES,
+  catalogServiceFor,
   isProfessionalCategorySlug,
   matchProblem,
   normalizeProblemText,
@@ -19,6 +20,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { COUNTED_USER, countingFrom, sinceLaunch } from "../site-counts/counted";
 import { ProblemMatchService } from "./problem-match.service";
 import { ServiceNamesService } from "./service-names.service";
+import { ServiceCatalogService } from "./service-catalog.service";
 
 /** Un nome scritto a mano da almeno tanti professionisti si propone da unire. */
 export const HANDWRITTEN_SUGGEST_MIN = 3;
@@ -66,6 +68,7 @@ export class ProblemMatchAdminService {
     private readonly auditLogService: AuditLogService,
     private readonly problemMatchService: ProblemMatchService,
     private readonly serviceNamesService: ServiceNamesService,
+    private readonly serviceCatalog: ServiceCatalogService,
   ) {}
 
   async overview(filter: "tutte" | "fuori" | "ia" | "nessuno") {
@@ -126,7 +129,7 @@ export class ProblemMatchAdminService {
         source: row.source,
         createdAt: row.createdAt.toISOString(),
       })),
-      words: words.map((row) => ({ id: row.id, word: row.word, categorySlug: row.categorySlug, outOfService: row.outOfService })),
+      words: words.map((row) => ({ id: row.id, word: row.word, categorySlug: row.categorySlug, outOfService: row.outOfService, serviceName: row.serviceName })),
     };
   }
 
@@ -137,20 +140,26 @@ export class ProblemMatchAdminService {
     const outOfService = input.outOfService && input.outOfService in OUT_OF_SERVICE_LABELS ? input.outOfService : null;
     if (Boolean(categorySlug) === Boolean(outOfService))
       throw new BadRequestException("Scegli un mestiere oppure un lavoro fuori servizio.");
+    // La prestazione solo se è nel catalogo di quel mestiere (docs/changelog/2026-11-06-dizionario-prestazioni.md).
+    let serviceName: string | null = null;
+    if (input.serviceName?.trim()) {
+      serviceName = categorySlug ? catalogServiceFor(await this.serviceCatalog.catalog(), [categorySlug], input.serviceName) : null;
+      if (!serviceName) throw new BadRequestException("La prestazione non è tra quelle di questo mestiere.");
+    }
     const saved = await this.prisma.problemWord.upsert({
       where: { word },
-      create: { word, categorySlug, outOfService, createdById: adminUserId },
-      update: { categorySlug, outOfService, createdById: adminUserId },
+      create: { word, categorySlug, outOfService, serviceName, createdById: adminUserId },
+      update: { categorySlug, outOfService, serviceName, createdById: adminUserId },
     });
     await this.auditLogService.record({
       entityType: "ProblemWord",
       entityId: saved.id,
       fieldName: "word",
-      newValue: { word, categorySlug, outOfService },
+      newValue: { word, categorySlug, outOfService, serviceName },
       changedByUserId: adminUserId,
     });
     this.problemMatchService.forgetTaughtWords();
-    return { id: saved.id, word, categorySlug, outOfService };
+    return { id: saved.id, word, categorySlug, outOfService, serviceName };
   }
 
   async forgetWord(adminUserId: string, id: string) {

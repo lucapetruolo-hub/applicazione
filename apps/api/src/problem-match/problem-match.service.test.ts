@@ -97,6 +97,20 @@ describe("ProblemMatchService", () => {
     expect(service.askAi).not.toHaveBeenCalled();
   });
 
+  // docs/changelog/2026-11-06-dizionario-prestazioni.md
+  it("quando il dizionario è sicuro dà anche la prestazione, senza chiamare l'IA", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "test");
+    const service = newService();
+    service.askAi = vi.fn();
+    expect(await service.match("lo scarico del lavandino è intasato")).toMatchObject({ categories: ["idraulico"], service: "Sturatura scarichi", source: "dizionario" });
+    expect(service.askAi).not.toHaveBeenCalled();
+  });
+
+  it("una parola insegnata con la sua prestazione la porta nei risultati", async () => {
+    const service = newService([{ word: "allag", categorySlug: "idraulico", outOfService: null, serviceName: "Ricerca perdite e infiltrazioni" } as never]);
+    expect(await service.match("il bagno allaga il vicino")).toMatchObject({ categories: ["idraulico"], service: "Ricerca perdite e infiltrazioni", source: "parola" });
+  });
+
   // docs/changelog/2026-11-06-ia-conosce-i-servizi.md
   it("tiene la prestazione scelta solo se è nel catalogo del primo mestiere, scritta come lì", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "test");

@@ -54,7 +54,7 @@ const WORDS_TTL_MS = 60_000;
 /** Le descrizioni salvate per "Mestieri richiesti" restano un anno. */
 const DESCRIPTION_RETENTION_DAYS = 365;
 
-type TaughtWord = { word: string; categorySlug: string | null; outOfService: string | null };
+type TaughtWord = { word: string; categorySlug: string | null; outOfService: string | null; serviceName: string | null };
 
 const SLUGS = PROFESSIONAL_CATEGORIES.map((category) => category.slug) as [ProfessionalCategorySlug, ...ProfessionalCategorySlug[]];
 const OUT_KINDS = Object.keys(OUT_OF_SERVICE_LABELS) as [ProblemOutOfService, ...ProblemOutOfService[]];
@@ -199,6 +199,7 @@ export class ProblemMatchService {
           categories: result.categories,
           safety: result.safety,
           outOfService: result.outOfService,
+          service: result.service,
           source: result.source,
         },
       })
@@ -239,13 +240,15 @@ export class ProblemMatchService {
     const category = hit.categorySlug && isProfessionalCategorySlug(hit.categorySlug) ? hit.categorySlug : null;
     if (!outOfService && !category) return null;
     const others = dictionary.categories.map((entry) => entry.slug).filter((slug) => slug !== category);
+    // La prestazione della parola insegnata, altrimenti quella del dizionario se è dello stesso mestiere.
+    const service = outOfService ? null : (hit.serviceName ?? (dictionary.categories[0]?.slug === category ? dictionary.service : null));
     return {
       categories: outOfService ? [] : [category!, ...others].slice(0, 3),
       safety: dictionary.safety,
       outOfService,
       question: null,
       reason: null,
-      service: null,
+      service,
       source: "parola",
     };
   }
@@ -253,7 +256,7 @@ export class ProblemMatchService {
   private async taughtWords(): Promise<TaughtWord[]> {
     if (this.words && Date.now() - this.words.loadedAt < WORDS_TTL_MS) return this.words.list;
     try {
-      const list = await this.prisma.problemWord.findMany({ select: { word: true, categorySlug: true, outOfService: true } });
+      const list = await this.prisma.problemWord.findMany({ select: { word: true, categorySlug: true, outOfService: true, serviceName: true } });
       this.words = { list, loadedAt: Date.now() };
       return list;
     } catch (error) {
@@ -295,8 +298,11 @@ export class ProblemMatchService {
       outOfService: answer.notAJob ? null : (answer.outOfService ?? null),
       question,
       reason: categories.length > 0 && reason ? reason : null,
-      // Solo una prestazione che c'è davvero nel catalogo del primo mestiere.
-      service: first ? catalogServiceFor(catalog, [first], answer.service) : null,
+      // Solo una prestazione che c'è davvero nel catalogo del primo mestiere;
+      // senza, quella del dizionario se ha lo stesso primo mestiere.
+      service: first
+        ? (catalogServiceFor(catalog, [first], answer.service) ?? (dictionary.categories[0]?.slug === first ? dictionary.service : null))
+        : null,
       source: "ia",
     };
   }

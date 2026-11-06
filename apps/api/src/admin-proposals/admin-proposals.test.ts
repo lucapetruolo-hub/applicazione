@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ServiceNamesAdminOverview } from "@professionisti/shared";
 import {
   dictionaryWordCandidates,
+  serviceWordCandidates,
   groupKey,
   mergeCandidates,
   missingExamplePhrases,
@@ -229,5 +230,34 @@ describe("decisioni", () => {
     );
     await service.decide("admin-1", "p1", "never", now);
     expect(prisma.adminProposal.update).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "REJECTED", snoozedUntil: null }) }));
+  });
+});
+
+// docs/changelog/2026-11-06-dizionario-prestazioni.md
+describe("serviceWordCandidates", () => {
+  const iaService = (text: string, slug: string, service: string) => ({ text, categories: [slug], source: "ia", outOfService: null, service });
+
+  it("propone di legare a una prestazione una parola che il dizionario porta già al mestiere", () => {
+    const rows = Array.from({ length: 10 }, (_, i) => iaService(`il tubo gorgoglia ${i}`, "idraulico", "Sturatura scarichi"));
+    expect(serviceWordCandidates(rows, [])).toEqual([
+      expect.objectContaining({ example: "gorgoglia", categorySlug: "idraulico", service: "Sturatura scarichi", aiAnswers: 10 }),
+    ]);
+  });
+
+  it("niente con 9 risposte, con prestazioni diverse, se già insegnata o se il dizionario la sa già", () => {
+    const nine = Array.from({ length: 9 }, () => iaService("il tubo gorgoglia", "idraulico", "Sturatura scarichi"));
+    expect(serviceWordCandidates(nine, [])).toEqual([]);
+    const mixed = [...nine, iaService("il tubo gorgoglia", "idraulico", "Sostituzione sifone"), iaService("il tubo gorgoglia", "idraulico", "Sostituzione sifone")];
+    expect(serviceWordCandidates(mixed, []).find((w) => w.example === "gorgoglia")).toBeUndefined();
+    const ten = Array.from({ length: 10 }, () => iaService("il tubo gorgoglia", "idraulico", "Sturatura scarichi"));
+    expect(serviceWordCandidates(ten, [{ word: "gorgogli", serviceName: "Sturatura scarichi" }]).find((w) => w.example === "gorgoglia")).toBeUndefined();
+    const known = Array.from({ length: 10 }, () => iaService("scarico intasato", "idraulico", "Sturatura scarichi"));
+    expect(serviceWordCandidates(known, []).find((w) => w.example === "intasato")).toBeUndefined();
+  });
+
+  it("le parole nuove portano anche la prestazione, se l'IA ha dato sempre la stessa", () => {
+    const places = ["intonaco", "del soffitto", "forte", "in sala", "esterno", "in cucina", "della scala", "in bagno", "sul balcone", "in garage"];
+    const rows = places.map((place) => ({ ...iaService(`scrostamento ${place}`, "muratore", "Riparazione crepe nei muri") }));
+    expect(dictionaryWordCandidates(rows, []).find((w) => w.example === "scrostamento")).toMatchObject({ service: "Riparazione crepe nei muri" });
   });
 });

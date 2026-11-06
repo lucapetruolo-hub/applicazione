@@ -1,4 +1,5 @@
 import type { ProfessionalCategorySlug } from "./categories";
+import { serviceFromWords } from "./problemServiceWords";
 
 /**
  * Dal problema descritto al mestiere ("Cosa è successo?", docs/CHANGELOG.md
@@ -68,6 +69,11 @@ export type ProblemMatch = {
   question: ProblemQuestion | null;
   /** `false` appena c'è un dubbio: il server chiede all'intelligenza artificiale. */
   confident: boolean;
+  /**
+   * Prestazione suggerita del primo mestiere a cui portano le parole del testo
+   * (`SERVICE_WORDS`, docs/changelog/2026-11-06-dizionario-prestazioni.md), o null.
+   */
+  service: string | null;
 };
 
 export function normalizeProblemText(text: string): string {
@@ -381,7 +387,9 @@ export function matchProblem(description: string): ProblemMatch {
     (trade !== undefined && outOfService === null) ||
     (first !== undefined && first.score >= CONFIDENT_MIN && (second === undefined || first.score - second.score >= CONFIDENT_GAP) && outOfService === null && question === null);
 
-  return { categories, safety, outOfService, question, confident };
+  const service = first && outOfService === null ? serviceFromWords(text, first.slug) : null;
+
+  return { categories, safety, outOfService, question, confident, service };
 }
 
 /** Risposta di `POST /problem-match`: il dizionario, corretto dall'intelligenza artificiale quando ha un dubbio. */
@@ -418,7 +426,7 @@ export function problemMatchFromDictionary(dictionary: ProblemMatch): ProblemMat
     outOfService: dictionary.outOfService,
     question: dictionary.question,
     reason: null,
-    service: null,
+    service: dictionary.outOfService ? null : dictionary.service,
     source: "dizionario",
   };
 }
@@ -471,7 +479,7 @@ export function serviceMatchingProblem<T extends { name: string }>(services: rea
 export const PROBLEM_DESCRIPTION_MAX = 1000;
 
 /** Pagina admin "Mestieri richiesti". */
-export type ProblemWordAdmin = { id: string; word: string; categorySlug: string | null; outOfService: string | null };
+export type ProblemWordAdmin = { id: string; word: string; categorySlug: string | null; outOfService: string | null; serviceName: string | null };
 /** Richieste di preventivo con la categoria proposta dalla descrizione: tenuta o cambiata. */
 export type ProblemSuggestionOutcomes = {
   total: number;
