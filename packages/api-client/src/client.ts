@@ -338,6 +338,8 @@ export type ClientGuidedRequest = {
     reviews: ProfessionalReviewSummary | null;
     /** Privato, partita IVA o azienda, badge accanto al nome (docs/CHANGELOG.md §338); null se non ancora indicato. */
     professionalKind: ProfessionalKind | null;
+    /** Identità verificata (documento e selfie): bollino "Verificato" accanto al nome (06/11/2026). */
+    verified?: boolean;
     /**
      * Chi esegue il lavoro, detto prima di accettare (collaudo M-02, Codice
      * del consumo art. 49): ragione sociale o nome, partita IVA e sede. null
@@ -1835,6 +1837,10 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<JobDocumentsView>(`/documents/jobs/${encodeURIComponent(bookingId)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     /** La copia del documento del professionista, per il cliente (§386). */
     jobDocumentCopyPdf: (token: string, bookingId: string) => downloadFile(`/documents/jobs/${encodeURIComponent(bookingId)}/copy/pdf`, token),
+    /** Riepilogo dei pagamenti del lavoro, per il cliente (docs/changelog/2026-11-05-scheda-preventivo-semplice.md). */
+    jobPaymentsPdf: (token: string, bookingId: string) => downloadFile(`/documents/jobs/${encodeURIComponent(bookingId)}/payments/pdf`, token),
+    /** Il preventivo in PDF, per il cliente e per il professionista che l'ha mandato. */
+    quotePdf: (token: string, quoteId: string) => downloadFile(`/documents/quotes/${encodeURIComponent(quoteId)}/pdf`, token),
 
     // --- Admin → Finanza: le nostre fatture ---
     adminInvoiceSettings: (token: string) =>

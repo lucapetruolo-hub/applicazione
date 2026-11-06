@@ -738,6 +738,8 @@ export class GuidedRequestsService {
           reviews: reviewsOf(quote.professionalProfile),
           // Che tipo di lavoratore ha mandato il preventivo (richiesta dell'utente, §338).
           professionalKind: professionalKindOf(quote.professionalProfile.fiscalProfile?.entityType),
+          // Bollino "Verificato" anche nel preventivo, dove il cliente decide (Luca, 06/11/2026).
+          verified: publicVerified(quote.professionalProfile),
           executor: quoteExecutor(quote.professionalProfile.fiscalProfile),
           // "IVA inclusa" solo per chi la applica, altrimenti "Tutto compreso" (docs/CHANGELOG.md §378).
           chargesVat: professionalChargesVat(quote.professionalProfile.fiscalProfile?.entityType, quote.professionalProfile.fiscalProfile?.chargesVat),

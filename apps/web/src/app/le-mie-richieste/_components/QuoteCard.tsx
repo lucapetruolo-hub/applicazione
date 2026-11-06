@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ProfessionalReviewsLink } from "@/components/ProfessionalReviewsLink";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
@@ -9,6 +9,7 @@ import {
   cancellationNoticeLabel,
   categoryMayHaveTaxBonus,
   formatAppointmentTimeRange,
+  formatEurCents,
   formatJobDays,
   formatServicePriceRange,
   paymentChoiceIsOnline,
@@ -22,9 +23,9 @@ import {
   sameTimeBooking,
   type SameTimeBookingCandidate,
 } from "@professionisti/shared";
-import { PaymentChoice, PaymentOffer, selectablePaymentChoices } from "@/components/PaymentChoice";
+import { PaymentChoice, PaymentOffer, paymentSplit, selectablePaymentChoices } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
-import { Avatar, Badge, ProfessionalKindBadge, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Avatar, Badge, BadgeInfo, ProfessionalKindBadge, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { ApiError } from "@professionisti/api-client";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -161,6 +162,14 @@ export function QuoteCard({
   // senza il passaggio della scelta (docs/CHANGELOG.md §339).
   const selectablePayments = selectablePaymentChoices(quote.paymentOptions, onlinePayments);
   const onlyPayment = selectablePayments.length === 1 ? selectablePayments[0] : undefined;
+  const hasPrice = priceTotals.totalMinEurCents > 0 || priceTotals.totalMaxEurCents > 0;
+  // Il pulsante dice la cifra che si paga ora (05/11/2026).
+  const acceptSplit = paymentSplit(paymentMethod, priceTotals, quote.depositPercent);
+  const acceptLabel = acceptSplit
+    ? `Accetta e paga ${formatEurCents(acceptSplit.nowEurCents)}`
+    : paymentChoiceIsOnline(paymentMethod)
+      ? "Accetta e paga l'acconto"
+      : "Accetta con obbligo di pagare";
 
   async function toggleInvoice() {
     const next = !invoiceWanted;
@@ -263,6 +272,12 @@ export function QuoteCard({
               </Text>
             </Link>
             {/* Che tipo di lavoratore ha mandato il preventivo, dove il cliente decide (richiesta dell'utente, §338). */}
+            {/* "Verificato" come nella scheda in alto: senza, nel preventivo sembrava un altro professionista (Luca, 06/11/2026). */}
+            {quote.verified ? (
+              <BadgeInfo info="verified">
+                <Badge variant="verificato">Verificato</Badge>
+              </BadgeInfo>
+            ) : null}
             {quote.professionalKind ? <ProfessionalKindBadge kind={quote.professionalKind} /> : null}
             {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§228). */}
             {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Nuovo</Badge> : null}
@@ -282,12 +297,20 @@ export function QuoteCard({
           />
         )}
       </XStack>
-      <Text fontSize={16} color={brand.grafite70}>
-        Data proposta: {formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
-      </Text>
       <Text fontSize={13} color={brand.grafite70}>
         {quote.resentAt ? `Nuovo preventivo inviato il ${formatSentAt(quote.resentAt)}, dopo il tuo rifiuto` : `Inviato il ${formatSentAt(quote.sentAt)}`}
       </Text>
+      {/* Il messaggio del professionista subito sotto il nome: spesso dice cosa è compreso (05/11/2026). */}
+      {quote.notes ? (
+        <YStack backgroundColor={brand.calce} borderRadius="3" paddingVertical="2" paddingHorizontal="3" gap={2} borderLeftWidth={3} borderLeftColor={brand.filetto}>
+          <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+            Messaggio del professionista
+          </Text>
+          <Text color={brand.grafite} fontSize={16}>
+            {quote.notes}
+          </Text>
+        </YStack>
+      ) : null}
       {(() => {
         // Stesso "prima → ora" che vede il professionista quando il cliente
         // propone un'altra data (docs/CHANGELOG.md §186).
@@ -344,70 +367,72 @@ export function QuoteCard({
           </YStack>
         ) : null;
       })()}
-      <YStack gap="1">
-        {quote.items.map((item) => (
-          <Text key={item.id} color={brand.grafite70} fontSize={16}>
-            {item.name}: {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
+      {/* Un solo riquadro con quando, prezzo, pagamento e annullamento
+          (docs/changelog/2026-11-05-scheda-preventivo-semplice.md): prima
+          il prezzo compariva due volte e l'acconto era in un paragrafo. */}
+      <YStack backgroundColor={brand.calce} borderRadius="3" paddingHorizontal="3" data-testid="quote-facts">
+        <QuoteFact label="Quando" first>
+          <Text fontSize={16} fontWeight="600" color={brand.grafite}>
+            {formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
           </Text>
-        ))}
-      </YStack>
-      {priceTotals.totalMinEurCents > 0 || priceTotals.totalMaxEurCents > 0 ? (
-        <YStack backgroundColor={brand.gesso} borderRadius="3" padding="3" gap="1">
-          <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
-            {/* "Stimato" solo per un prezzo "da… a…" (prova da utente nuovo, 04/11/2026). */}
-            {priceTotals.totalMinEurCents === priceTotals.totalMaxEurCents ? "Totale" : "Totale stimato"}
-          </Text>
-          <XStack alignItems="baseline" gap="2" flexWrap="wrap">
-            {/* Prezzo cambiato dal professionista: il vecchio sbarrato accanto
-                al nuovo, per non accettare un aumento senza accorgersene
-                (docs/CHANGELOG.md §196). */}
+        </QuoteFact>
+        {hasPrice ? (
+          <QuoteFact label="Prezzo">
+            <XStack alignItems="baseline" gap="2" flexWrap="wrap">
+              {/* Prezzo cambiato dal professionista: il vecchio sbarrato accanto
+                  al nuovo, per non accettare un aumento senza accorgersene
+                  (docs/CHANGELOG.md §196). */}
+              {previousPriceText ? (
+                <Text fontSize={16} color={brand.grafite70} textDecorationLine="line-through">
+                  {previousPriceText}
+                </Text>
+              ) : null}
+              <Text fontSize={22} fontWeight="800" color={brand.grafite}>
+                {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
+              </Text>
+              {/* "IVA inclusa" solo per chi la applica, altrimenti "Tutto compreso" (docs/CHANGELOG.md §378). */}
+              <Text fontSize={13} color={brand.grafite70}>
+                {quotePriceTaxNote(quote.chargesVat ?? null)}
+              </Text>
+            </XStack>
             {previousPriceText ? (
-              <Text fontSize={16} color={brand.grafite70} textDecorationLine="line-through">
-                {previousPriceText}
+              <Text fontSize={13} color={brand.ottoneScuro} fontWeight="600">
+                Il professionista ha cambiato il prezzo
               </Text>
             ) : null}
-            <Text fontSize="6" fontWeight="800" color={brand.grafite}>
-              {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
+            {/* Le voci solo se sono più di una: con una sola ripetevano il totale (scelta di Luca, 05/11/2026). */}
+            {quote.items.length > 1 ? (
+              <Text fontSize={13} color={brand.grafite70}>
+                {quote.items.map((item) => `${item.name} ${formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}`).join(" · ")}
+              </Text>
+            ) : null}
+          </QuoteFact>
+        ) : quote.items.length > 0 ? (
+          <QuoteFact label="Lavori">
+            <Text fontSize={16} color={brand.grafite}>
+              {quote.items.map((item) => item.name).join(" · ")}
             </Text>
-            {/* "IVA inclusa" solo per chi la applica, altrimenti "Tutto compreso" (docs/CHANGELOG.md §378). */}
-            <Text fontSize={13} color={brand.grafite70}>
-              {quotePriceTaxNote(quote.chargesVat ?? null)}
+          </QuoteFact>
+        ) : null}
+        {quote.status === "SENT" && !notChosen ? (
+          <QuoteFact label="Pagamento">
+            <PaymentOffer priceTotals={priceTotals} onlineAvailable={onlinePayments} offered={quote.paymentOptions} depositPercent={quote.depositPercent} />
+          </QuoteFact>
+        ) : null}
+        {/* Preavviso scelto dal professionista nel preventivo, detto prima di Accetta (docs/CHANGELOG.md §347, §348). */}
+        {(quote.status === "SENT" || quote.status === "MODIFICATION_REQUESTED") && !notChosen ? (
+          <QuoteFact label="Annullare">
+            <Text fontSize={16} color={brand.grafite}>
+              Avvisa almeno {cancellationNoticeLabel(quote.cancellationNoticeHours)} prima
             </Text>
-          </XStack>
-          {previousPriceText ? (
-            <Text fontSize={13} color={brand.ottone} fontWeight="600">
-              Il professionista ha cambiato il prezzo
-            </Text>
-          ) : null}
-        </YStack>
-      ) : null}
-      {quote.status === "SENT" && !notChosen ? (
-        <PaymentOffer
-          quoteMaxEurCents={priceTotals.totalMaxEurCents}
-          onlineAvailable={onlinePayments}
-          offered={quote.paymentOptions}
-          depositPercent={quote.depositPercent}
-        />
-      ) : null}
-      {/* Preavviso scelto dal professionista nel preventivo, detto prima di Accetta (docs/CHANGELOG.md §347, §348). */}
-      {(quote.status === "SENT" || quote.status === "MODIFICATION_REQUESTED") && !notChosen ? (
-        <Text fontSize={13} color={brand.grafite70}>
-          Se poi devi annullare, avvisa almeno {cancellationNoticeLabel(quote.cancellationNoticeHours)} prima.
-          {quote.lateCancelKeepsDeposit && onlinePayments && quote.paymentOptions.some(paymentChoiceIsOnline)
-            ? " Se annulli più tardi e paghi l'acconto online, l'acconto resta al professionista."
-            : ""}
-        </Text>
-      ) : null}
-      {quote.notes ? (
-        <YStack backgroundColor={brand.gesso} borderRadius="3" padding="3" gap="1">
-          <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
-            Messaggio del professionista
-          </Text>
-          <Text color={brand.grafite70} fontSize={16}>
-            {quote.notes}
-          </Text>
-        </YStack>
-      ) : null}
+            {quote.lateCancelKeepsDeposit && onlinePayments && quote.paymentOptions.some(paymentChoiceIsOnline) ? (
+              <Text fontSize={13} color={brand.grafite70}>
+                Se annulli più tardi e hai pagato l&apos;acconto online, l&apos;acconto resta al professionista.
+              </Text>
+            ) : null}
+          </QuoteFact>
+        ) : null}
+      </YStack>
 
       {sameTimeConflict && quote.status === "SENT" && !notChosen ? (
         <YStack backgroundColor={brand.gesso} borderRadius="3" padding="3" borderLeftWidth={3} borderLeftColor={brand.ottone}>
@@ -428,13 +453,6 @@ export function QuoteCard({
               computer tutti in riga (richiesta dell'utente, §338). Durante
               accettazione, modifica o rifiuto restano solo i pulsanti di
               quel passaggio (docs/CHANGELOG.md §225). */}
-          {/* Fattura chiesta al professionista, non a noi (richiesta dell'utente del 27/10/2026, §378). */}
-          {!isChoosingDate && !confirmingReject ? (
-            <YStack gap="3" paddingTop="2" borderTopWidth={1} borderTopColor={brand.filetto}>
-              <InvoiceRequestToggle professionalName={quote.businessName} checked={invoiceWanted} receipt={quote.professionalKind === "PRIVATE"} onToggle={() => void toggleInvoice()} />
-              {invoiceWanted ? <InvoiceRequestFields draft={invoiceDraft} onChange={setInvoiceDraft} errors={invoiceErrors} receipt={quote.professionalKind === "PRIVATE"} /> : null}
-            </YStack>
-          ) : null}
           {!choosingPayment && !isChoosingDate && !confirmingReject ? (
             <XStack gap="2" flexWrap="wrap" alignItems="center xs:stretch" flexDirection="xs:column-reverse">
               <CardButton
@@ -470,6 +488,7 @@ export function QuoteCard({
                 <PaymentChoice
                   value={paymentMethod}
                   onChange={setPaymentMethod}
+                  quoteMinEurCents={priceTotals.totalMinEurCents}
                   quoteMaxEurCents={priceTotals.totalMaxEurCents}
                   onlineAvailable={onlinePayments}
                   offered={quote.paymentOptions}
@@ -481,9 +500,14 @@ export function QuoteCard({
                 dateText={formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
                 priceTotals={priceTotals}
                 payment={paymentMethod}
-                showPaymentLine={selectablePayments.length <= 1}
                 onlinePayments={onlinePayments}
-              />
+              >
+                {/* Fattura chiesta al professionista, non a noi (§378): qui, quando si è deciso (05/11/2026). */}
+                <YStack gap="3">
+                  <InvoiceRequestToggle professionalName={quote.businessName} checked={invoiceWanted} receipt={quote.professionalKind === "PRIVATE"} onToggle={() => void toggleInvoice()} />
+                  {invoiceWanted ? <InvoiceRequestFields draft={invoiceDraft} onChange={setInvoiceDraft} errors={invoiceErrors} receipt={quote.professionalKind === "PRIVATE"} /> : null}
+                </YStack>
+              </QuoteAcceptSummary>
               {/* Detrazioni per i lavori in casa (domanda 28 al commercialista): di solito serve il bonifico parlante (§378). */}
               {categoryMayHaveTaxBonus(categorySlug) && selectablePayments.some(paymentChoiceIsOnline) ? (
                 <Text fontSize={13} color={brand.grafite70}>
@@ -518,7 +542,7 @@ export function QuoteCard({
                   disabled={isAccepting || !selectablePayments.includes(paymentMethod)}
                 >
                   {/* Il pulsante dice che nasce l'obbligo di pagare (collaudo A-07, Codice del consumo art. 51 c. 2). */}
-                  {isAccepting ? "Accettazione..." : paymentChoiceIsOnline(paymentMethod) ? "Accetta e paga l'acconto" : "Accetta con obbligo di pagare"}
+                  {isAccepting ? "Accettazione..." : acceptLabel}
                 </CardButton>
                 <CardButton onPress={() => setChoosingPayment(false)} disabled={isAccepting}>
                   Annulla
@@ -634,5 +658,19 @@ export function QuoteCard({
         <TimelineModal token={token} guidedRequestId={guidedRequestId} professionalProfileId={quote.professionalProfileId} viewerRole="CLIENT" otherPartyName={quote.businessName} otherPartyImageUrl={quote.imageUrl} onClose={() => setShowTimeline(false)} />
       ) : null}
     </YStack>
+  );
+}
+
+/** Una riga del riquadro della scheda: etichetta a sinistra e valore a destra; da telefono l'etichetta sta sopra. */
+function QuoteFact({ label, first, children }: { label: string; first?: boolean; children: ReactNode }) {
+  return (
+    <XStack gap="12px xs:2px" paddingVertical="2" borderTopWidth={first ? 0 : 1} borderTopColor={brand.filetto} flexDirection="row xs:column" alignItems="baseline xs:stretch">
+      <Text fontSize={14} color={brand.grafite70} width="92px xs:auto" flexShrink={0}>
+        {label}
+      </Text>
+      <YStack flex={1} minWidth={0} gap={2}>
+        {children}
+      </YStack>
+    </XStack>
   );
 }

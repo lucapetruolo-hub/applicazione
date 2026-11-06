@@ -6,6 +6,7 @@ import { InvoicesService } from "./invoices.service";
 import { StatementsService } from "./statements.service";
 import { CourtesyCopyService } from "./courtesy-copy.service";
 import { JobDocumentsService } from "./job-documents.service";
+import { QuotePdfService } from "./quote-pdf.service";
 import { pdfResponse, renderDocumentPdf } from "./document-pdf";
 import { courtesyPdfBaseName, courtesyPdfModel, courtesyYearPdfModel, invoicePdfModel, pdfFileName } from "./document-pdf-models";
 
@@ -18,7 +19,22 @@ export class AccountingController {
     private readonly statementsService: StatementsService,
     private readonly courtesyCopyService: CourtesyCopyService,
     private readonly jobDocumentsService: JobDocumentsService,
+    private readonly quotePdfService: QuotePdfService,
   ) {}
+
+  /** Il preventivo in PDF, per il cliente della richiesta e per chi l'ha mandato (05/11/2026). */
+  @Get("quotes/:quoteId/pdf")
+  async quotePdf(@Req() req: AuthenticatedRequest, @Param("quoteId") quoteId: string) {
+    const { model, fileName } = await this.quotePdfService.forUser(req.user.userId, quoteId);
+    return pdfResponse(await renderDocumentPdf(model), pdfFileName(fileName));
+  }
+
+  /** Riepilogo dei pagamenti del lavoro, per il cliente (05/11/2026). */
+  @Get("jobs/:bookingId/payments/pdf")
+  async jobPaymentsPdf(@Req() req: AuthenticatedRequest, @Param("bookingId") bookingId: string) {
+    const { model, fileName } = await this.quotePdfService.paymentsForClient(req.user.userId, bookingId);
+    return pdfResponse(await renderDocumentPdf(model), pdfFileName(fileName));
+  }
 
   /** I documenti di un lavoro, dal menu della richiesta: del professionista o del cliente (§386). */
   @Get("jobs/:bookingId")

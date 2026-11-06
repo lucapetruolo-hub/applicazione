@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
-import { Button, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Button, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { accountingDateLabel, formatEurCents, type JobDocumentsView } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
@@ -16,11 +16,26 @@ import { downloadBlobFile } from "@/components/admin/adminUi";
  * che le contengono e gli estratti dei mesi; il cliente la copia solo dopo
  * che il professionista l'ha scaricata (lo decide il server).
  */
-export function JobDocumentsModal({ token, bookingId, onClose }: { token: string; bookingId: string; onClose: () => void }) {
+export type DocumentsQuote = { id: string; businessName: string; label: string };
+
+export function JobDocumentsModal({
+  token,
+  bookingId,
+  quotes = [],
+  onClose,
+}: {
+  token: string;
+  /** Lavoro accettato: i suoi documenti. Senza, solo i preventivi. */
+  bookingId?: string | null;
+  /** Preventivi della richiesta da scaricare in PDF (05/11/2026). */
+  quotes?: DocumentsQuote[];
+  onClose: () => void;
+}) {
   const [view, setView] = useState<JobDocumentsView | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!bookingId) return;
     let active = true;
     apiClient
       .jobDocuments(token, bookingId)
@@ -61,7 +76,7 @@ export function JobDocumentsModal({ token, bookingId, onClose }: { token: string
       <YStack
         role="dialog"
         aria-modal
-        aria-label="Documenti del lavoro"
+        aria-label={bookingId ? "Documenti del lavoro" : "Documenti"}
         width="100%"
         maxWidth={520}
         maxHeight="85vh"
@@ -75,14 +90,27 @@ export function JobDocumentsModal({ token, bookingId, onClose }: { token: string
       >
         <XStack justifyContent="space-between" alignItems="center" gap="3">
           <Text render="h2" fontFamily="heading" fontSize={22} fontWeight="800" color={brand.grafite}>
-            Documenti del lavoro
+            {bookingId ? "Documenti del lavoro" : "Documenti"}
           </Text>
           <Text fontSize="5" color={brand.grafite70} cursor="pointer" onPress={onClose} role="button" aria-label="Chiudi">
             ✕
           </Text>
         </XStack>
 
-        {error ? (
+        {quotes.length > 0 ? (
+          <Part title={quotes.length > 1 ? "Preventivi" : "Preventivo"}>
+            {quotes.map((quote) => (
+              <PdfButton
+                key={quote.id}
+                label={quote.businessName ? `${quote.businessName}: ${quote.label}` : quote.label}
+                fileName={`preventivo-${quote.businessName}`}
+                load={() => apiClient.quotePdf(token, quote.id)}
+              />
+            ))}
+          </Part>
+        ) : null}
+
+        {!bookingId ? null : error ? (
           <Text fontSize={16} color={brand.urgenza} role="alert">
             {error}
           </Text>
@@ -91,7 +119,7 @@ export function JobDocumentsModal({ token, bookingId, onClose }: { token: string
             Carico i documenti…
           </Text>
         ) : view.audience === "PROFESSIONAL" ? (
-          <ProfessionalDocuments view={view} />
+          <ProfessionalDocuments token={token} view={view} />
         ) : (
           <ClientDocuments token={token} view={view} />
         )}
@@ -100,7 +128,7 @@ export function JobDocumentsModal({ token, bookingId, onClose }: { token: string
   );
 }
 
-function ProfessionalDocuments({ view }: { view: JobDocumentsView }) {
+function ProfessionalDocuments({ token, view }: { token: string; view: JobDocumentsView }) {
   const copyHref = `/dashboard/documenti/cortesia/${view.bookingId}`;
   return (
     <>
@@ -125,15 +153,13 @@ function ProfessionalDocuments({ view }: { view: JobDocumentsView }) {
       </Part>
 
       <Part title="Movimenti">
-        <Movements view={view} />
+        <Movements token={token} view={view} />
       </Part>
 
       <Part title="Estratti del mese">
         {view.statementMonths.length > 0 ? (
           view.statementMonths.map((m) => (
-            <DocLink key={m.month} href={`/dashboard/documenti/estratto/${m.month}`}>
-              Estratto di {m.label}
-            </DocLink>
+            <PdfButton key={m.month} label={`Estratto di ${m.label}`} fileName={`estratto-${m.month}`} load={() => apiClient.documentsStatementPdf(token, m.month)} />
           ))
         ) : (
           <Muted>Quando il lavoro avrà dei movimenti, qui trovi l&apos;estratto del mese.</Muted>
@@ -191,14 +217,17 @@ function ClientDocuments({ token, view }: { token: string; view: JobDocumentsVie
       </Part>
 
       <Part title="Pagamenti">
-        <Movements view={view} />
+        <Movements token={token} view={view} />
+        {view.movements.length > 0 ? (
+          <PdfButton label="Riepilogo dei pagamenti" fileName="riepilogo-pagamenti" load={() => apiClient.jobPaymentsPdf(token, view.bookingId)} />
+        ) : null}
       </Part>
     </>
   );
 }
 
 /** Movimenti del lavoro: per il professionista col segno, per il cliente solo l'importo. */
-function Movements({ view }: { view: JobDocumentsView }) {
+function Movements({ token, view }: { token: string; view: JobDocumentsView }) {
   const pro = view.audience === "PROFESSIONAL";
   if (view.movements.length === 0) return <Muted>{pro ? "Ancora nessun movimento su questo lavoro." : "Ancora nessun pagamento su questo lavoro."}</Muted>;
   return (
@@ -212,7 +241,14 @@ function Movements({ view }: { view: JobDocumentsView }) {
             <Text fontSize={13} color={brand.grafite70}>
               {accountingDateLabel(m.date)}
             </Text>
-            {m.invoice ? <DocLink href={`/dashboard/documenti/fattura/${m.invoice.id}`}>Fattura {m.invoice.number}</DocLink> : null}
+            {m.invoice ? (
+              <PdfButton
+                compact
+                label={`Fattura ${m.invoice.number}`}
+                fileName={`fattura-${m.invoice.number}`}
+                load={() => apiClient.documentsInvoicePdf(token, m.invoice!.id)}
+              />
+            ) : null}
           </YStack>
           <Text fontSize={16} fontWeight="800" color={brand.grafite} fontVariant={["tabular-nums"]}>
             {pro ? (m.amountEurCents < 0 ? "−" : "+") : ""}
@@ -248,5 +284,57 @@ function Muted({ children }: { children: ReactNode }) {
     <Text fontSize={16} color={brand.grafite70}>
       {children}
     </Text>
+  );
+}
+
+/**
+ * Un documento da scaricare con un tocco (05/11/2026): prima i link
+ * portavano a pagine da cui scaricare, e dalla finestra non si scaricava
+ * niente. Stesso scaricamento delle altre pagine dei documenti.
+ */
+function PdfButton({ label, fileName, load, compact }: { label: string; fileName: string; load: () => Promise<Blob>; compact?: boolean }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function download() {
+    setBusy(true);
+    setError(null);
+    try {
+      downloadBlobFile(`${fileName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}.pdf`, await load());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Non riusciamo a preparare il PDF: riprova tra poco.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <YStack gap={2}>
+      <XStack
+        alignItems="center"
+        gap="2"
+        alignSelf="flex-start"
+        cursor={busy ? "progress" : "pointer"}
+        role="button"
+        tabIndex={0}
+        aria-label={`Scarica il PDF: ${label}`}
+        onPress={() => (busy ? undefined : void download())}
+        onKeyDown={(e: { key: string; preventDefault: () => void }) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            if (!busy) void download();
+          }
+        }}
+        paddingVertical={compact ? 2 : 6}
+      >
+        <Icon name="download" size={compact ? 14 : 18} color={brand.cianografiaScuro} />
+        <Text fontSize={compact ? 14 : 16} fontWeight="700" color={brand.cianografiaScuro} textDecorationLine="underline">
+          {busy ? "Preparo il PDF…" : label}
+        </Text>
+      </XStack>
+      {error ? (
+        <Text fontSize={13} color={brand.urgenza} role="alert">
+          {error}
+        </Text>
+      ) : null}
+    </YStack>
   );
 }

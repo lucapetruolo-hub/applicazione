@@ -772,9 +772,9 @@ export function RequestCard({
   }
   if (booking) {
     menuActions.push({ icon: "calendar", text: "Vedi in agenda", onPress: () => router.push(`/dashboard/agenda?booking=${booking.id}`) });
-    // Documenti contabili del lavoro (docs/CHANGELOG.md §386).
-    menuActions.push({ icon: "file-text", text: "Documenti", onPress: () => setShowDocuments(true) });
   }
+  // Documenti: il preventivo mandato in PDF (05/11/2026) e quelli del lavoro (docs/CHANGELOG.md §386).
+  if (booking || lead.quote) menuActions.push({ icon: "file-text", text: "Documenti", onPress: () => setShowDocuments(true) });
   if (canDelete) {
     menuActions.push({
       icon: "trash-2",
@@ -1985,7 +1985,14 @@ export function RequestCard({
           onCancel={handleCancelBooking}
         />
       ) : null}
-      {showDocuments && booking ? <JobDocumentsModal token={token} bookingId={booking.id} onClose={() => setShowDocuments(false)} /> : null}
+      {showDocuments ? (
+        <JobDocumentsModal
+          token={token}
+          bookingId={booking?.id ?? null}
+          quotes={lead.quote ? [{ id: lead.quote.id, businessName: "", label: "Il tuo preventivo" }] : []}
+          onClose={() => setShowDocuments(false)}
+        />
+      ) : null}
       {showReportModal ? (
         <ReportContentModal
           targetType="GUIDED_REQUEST"

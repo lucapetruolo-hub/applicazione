@@ -1,3 +1,4 @@
+import { formatEurCents } from "./professionals";
 import { BANK_DISPUTE_OPEN_STATUSES, BANK_DISPUTE_REVIEW_STATUSES, type ProfessionalBankDispute } from "./bankDisputes";
 
 /**
@@ -256,6 +257,37 @@ export const JOB_PAYMENT_STAGE_LABEL: Record<JobPaymentOnlineStage, string> = {
 /** Acconto sull'importo massimo del preventivo, arrotondato al centesimo. */
 export function onlineDepositEurCents(quoteMaxEurCents: number, depositPercent: number = ONLINE_DEPOSIT_PERCENT): number {
   return Math.round((quoteMaxEurCents * depositPercent) / 100);
+}
+
+/**
+ * Quanto si paga ora e quanto a lavoro finito con un modo online
+ * (docs/changelog/2026-11-05-scheda-preventivo-semplice.md): il cliente non
+ * capiva che online paga solo l'acconto. null per il pagamento diretto o
+ * senza prezzo. Con una forbice il resto è "fino a". Stesso conto nella
+ * scheda del preventivo e nel PDF.
+ */
+export function quotePaymentSplit(
+  choice: JobPaymentChoice,
+  totals: { totalMinEurCents: number; totalMaxEurCents: number },
+  depositPercent: number,
+): { nowEurCents: number; restMaxEurCents: number; restIsRange: boolean; restOnline: boolean } | null {
+  if (!paymentChoiceIsOnline(choice) || totals.totalMaxEurCents <= 0) return null;
+  const now = onlineDepositEurCents(totals.totalMaxEurCents, depositPercent);
+  return {
+    nowEurCents: now,
+    restMaxEurCents: Math.max(0, totals.totalMaxEurCents - now),
+    restIsRange: totals.totalMinEurCents > 0 && totals.totalMinEurCents < totals.totalMaxEurCents,
+    restOnline: choice === "ONLINE",
+  };
+}
+
+/** "10,00 € ora online, 40,00 € a lavoro finito": il modo di pagamento in una riga, con le cifre. */
+export function quotePaymentSplitLine(choice: JobPaymentChoice, totals: { totalMinEurCents: number; totalMaxEurCents: number }, depositPercent: number, only: boolean): string {
+  const split = quotePaymentSplit(choice, totals, depositPercent);
+  if (!split) return jobPaymentChoiceCopy(choice, depositPercent, only).title;
+  if (split.restMaxEurCents === 0) return `${formatEurCents(split.nowEurCents)} ora online, con carta`;
+  const rest = `${split.restIsRange ? "il resto, fino a " : ""}${formatEurCents(split.restMaxEurCents)}`;
+  return `${formatEurCents(split.nowEurCents)} ora online, ${rest} a lavoro finito${split.restOnline ? "" : " al professionista"}`;
 }
 
 /** Minimo che Stripe accetta per un pagamento con carta in euro (collaudo I-01). */

@@ -128,7 +128,7 @@ test("preavviso per annullare scelto dal professionista: detto prima di Accetta,
   const page = await pageAsClient(browser, client.id, PHONE);
   await page.goto(`/le-mie-richieste?open=${request.id}`);
   const card = page.locator(`#request-${request.id}`);
-  await expect(card.locator(`#quote-${quotes[0].id}`).getByText("Se poi devi annullare, avvisa almeno 48 ore prima.")).toBeVisible();
+  await expect(card.locator(`#quote-${quotes[0].id}`).getByText("Avvisa almeno 48 ore prima", { exact: true })).toBeVisible();
   await card.locator(`#quote-${quotes[0].id}`).getByText("Accetta preventivo", { exact: true }).click();
   // Già dentro il preavviso: lo dice il riepilogo prima di accettare (collaudo A-06).
   await expect(card.getByText(/già dentro il preavviso|meno di 48 ore/).first()).toBeVisible();

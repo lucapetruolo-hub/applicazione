@@ -6,6 +6,7 @@
 import {
   Search,
   Zap,
+  Download,
   FileText,
   MapPin,
   Star,
@@ -86,6 +87,7 @@ import {
 export const ICONS = {
   search: Search,
   zap: Zap,
+  download: Download,
   "file-text": FileText,
   "map-pin": MapPin,
   star: Star,
