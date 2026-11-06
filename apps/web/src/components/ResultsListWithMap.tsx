@@ -356,8 +356,11 @@ export function ResultsListWithMap({
   // (docs/CHANGELOG.md §157, richiesta esplicita dell'utente).
   const [filterInsuredOnly, setFilterInsuredOnly] = useState(false);
 
-  // Solo chi può farsi pagare online, cioè con il bollino "Pagamenti online
-  // attivi" (richiesta di Luca, docs/changelog/2026-11-04-prezzi-e-foto-profilo.md).
+  // Solo chi può farsi pagare online, cioè con il bollino "Paga online"
+  // (richiesta di Luca, docs/changelog/2026-11-04-prezzi-e-foto-profilo.md).
+  // Tiene chi accetta ANCHE i pagamenti online, non chi accetta solo quelli:
+  // per questo la scritta è "Accetta pagamenti online" e non "Solo con
+  // pagamento online" (docs/changelog/2026-11-06-filtro-pagamenti-online.md).
   const [filterOnlinePaymentOnly, setFilterOnlinePaymentOnly] = useState(false);
 
   // Popup centrato (richiesta esplicita dell'utente), stesso pattern
@@ -759,7 +762,7 @@ export function ResultsListWithMap({
                     <div className="filters-toggle-row">
                       <span id="filter-online-payment-label">
                         <CreditCard size={14} strokeWidth={1.5} style={{ verticalAlign: "-2px", marginRight: 6 }} />
-                        Solo con pagamento online
+                        Accetta pagamenti online
                       </span>
                       <span
                         className={`filters-switch${filterOnlinePaymentOnly ? " on" : ""}`}
