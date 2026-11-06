@@ -10,7 +10,13 @@ lettore di schermo legge la stessa scritta (`aria-labelledby`).
 
 **Logica invariata**: il filtro tiene i profili con `stripeVerified`, cioè chi
 può ricevere pagamenti online; non esclude chi accetta anche il pagamento
-diretto (il modo lo sceglie il professionista in ogni preventivo). Il
-bollino "Paga online" sulle schede resta com'è.
+diretto (il modo lo sceglie il professionista in ogni preventivo).
+
+**Secondo giro** (Luca, stesso giorno, "sì" alle due migliorie proposte):
+- il bollino "Paga online" (schede della ricerca, profilo, fumetto, email di
+  Stripe verificato/da sistemare) diventa "Pagamenti online", per lo stesso
+  dubbio "si paga solo online";
+- riaprendo i filtri con "Accetta pagamenti online" acceso, la sezione
+  "Pagamento" è già aperta.
 
 **Verifica**: typecheck e lint di `apps/web`.
