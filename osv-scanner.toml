@@ -1,26 +1,5 @@
 # Eccezioni di osv-scanner (docs/CHANGELOG.md §314). Ognuna con il motivo.
 
-# zod 3 resta solo dentro @expo/cli, lo strumento di sviluppo dell'app: legge
-# i file di configurazione di Expo, non finisce nell'app, nel sito o nell'API
-# (sito e API sono su zod 4, PR #108). Forzarlo alla 4 rischia di rompere Expo.
-[[PackageOverrides]]
-name = "zod"
-version = "3.25.76"
-ecosystem = "npm"
-vulnerability.ignore = true
-reason = "Solo in @expo/cli, strumento di sviluppo; sito e API su zod 4 (PR #108)"
-
-# node-forge non ha ancora una versione corretta (docs/CHANGELOG.md §335).
-# Lo usa solo @expo/cli per leggere il certificato di firma quando si
-# prova l'app su un iPhone dal computer: non finisce nell'app, nel sito o
-# nell'API.
-[[PackageOverrides]]
-name = "node-forge"
-version = "1.4.0"
-ecosystem = "npm"
-vulnerability.ignore = true
-reason = "Solo in @expo/cli, strumento di sviluppo; nessuna versione corretta disponibile"
-
 # deepmerge non ha una versione corretta (GHSA-gcqx-w48m-w2h4, docs/CHANGELOG.md
 # §384, eccezione approvata da Luca il 27/10/2026). Il difetto scatta solo
 # unendo un oggetto scritto da chi attacca. Nell'API lo usa html-to-text (via
