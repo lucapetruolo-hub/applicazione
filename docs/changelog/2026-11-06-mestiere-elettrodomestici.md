@@ -72,11 +72,10 @@ l'idraulico; in Italia 10.000-100.000 (Keyword Planner del 06/11/2026).
 **Richiesta di Luca**: "1 e tende-1" tra le foto proposte, con le migliorie
 "ritagliarla sul tecnico" e "cancellare le foto non sicure".
 
-**Decisione**: Elettrodomestici con la foto Pexels 34734504 (tecnico che
-ripara una lavastoviglie), ritagliata in orizzontale senza il cartello in
-cirillico, con le scritte della toppa sulla tuta e l'etichetta del marchio
-tolte; Tende da sole con la foto Pexels 18348172 (balconi con tende a righe),
-centrata sul balcone giallo. Scartate tre foto di Pixabay: TinEye le trova in
+**Decisione**: Tende da sole con la foto Pexels 18348172 (balconi con tende a righe),
+centrata sul balcone giallo. Elettrodomestici resta sull'icona: la foto
+Pexels 34734504 (tecnico con una lavastoviglie), provata, a Luca non andava
+bene. Scartate tre foto di Pixabay: TinEye le trova in
 vendita dal 2018 su Shutterstock e Adobe Stock, caricate su Pixabay da altri.
 Il loader delle immagini e `scripts/riduci-foto-mestieri.mjs` accettano ora
 anche nomi con il trattino (`tende-da-sole`), prima solo lettere.
