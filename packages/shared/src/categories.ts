@@ -212,6 +212,9 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
     "Automazione cancelli",
     "Motorizzazione tapparelle",
     "Riparazione elettrodomestici",
+    "Installazione impianto fotovoltaico",
+    "Batteria di accumulo",
+    "Installazione wallbox",
   ],
   imbianchino: [
     "Tinteggiatura interni",

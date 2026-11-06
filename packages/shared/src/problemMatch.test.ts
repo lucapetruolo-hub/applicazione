@@ -138,6 +138,8 @@ test("nomi dei mestieri: termoidraulico e simili portano subito alle categorie g
     ["fabbri", ["fabbro"]],
     ["giardinaggio", ["giardiniere"]],
     ["petsitter", ["dogsitter"]],
+    ["installatore fotovoltaico", ["elettricista"]],
+    ["installatore di pannelli solari", ["elettricista"]],
   ];
   for (const [text, expected] of cases) {
     const match = matchProblem(text);
@@ -149,4 +151,23 @@ test("nomi dei mestieri: termoidraulico e simili portano subito alle categorie g
   assert.equal(matchProblem("termoidraulico per la caldaia in blocco").categories[0]?.slug, "climatizzazione");
   // "fabbricato" non è il fabbro.
   assert.equal(matchProblem("fabbricato").categories.length, 0);
+});
+
+test("fotovoltaico: impianto, accumulo e wallbox all'elettricista, pulizia alle pulizie, solare termico a caldaie e idraulico", () => {
+  const cases: [string, string][] = [
+    ["vorrei installare i pannelli fotovoltaici sul tetto", "elettricista"],
+    ["fotovoltaico", "elettricista"],
+    ["preventivo per pannelli solari da 6 kW", "elettricista"],
+    ["aggiungere una batteria di accumulo all'impianto", "elettricista"],
+    ["installare una wallbox in garage per l'auto elettrica", "elettricista"],
+    ["l'inverter del fotovoltaico segna errore", "elettricista"],
+    ["pulizia dei pannelli solari sul tetto", "pulizie"],
+    ["pannelli solari termici per l'acqua calda", "climatizzazione"],
+    ["il solare termico non scalda più l'acqua", "climatizzazione"],
+  ];
+  for (const [text, expected] of cases) {
+    assert.equal(matchProblem(text).categories[0]?.slug, expected, text);
+  }
+  // "Inverter" da solo è anche il condizionatore.
+  assert.equal(matchProblem("il condizionatore inverter non raffredda").categories[0]?.slug, "climatizzazione");
 });
