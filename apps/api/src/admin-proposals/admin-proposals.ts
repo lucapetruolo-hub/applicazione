@@ -52,10 +52,14 @@ export function missingExamplePhrases(
 // 2. Parola nuova per il dizionario
 // ---------------------------------------------------------------------------
 
-/** Volte in cui l'IA ha indicato lo stesso mestiere per la parola. */
-export const WORD_MIN_AI_ANSWERS = 5;
+/**
+ * Volte in cui l'IA ha indicato lo stesso mestiere per la parola. Regole
+ * severe da subito, sempre con l'approvazione di Luca, mai insegnate da sole
+ * (decisione del 06/11/2026, docs/changelog/2026-11-06-ia-conosce-i-servizi.md).
+ */
+export const WORD_MIN_AI_ANSWERS = 10;
 /** Quota delle descrizioni con la parola che finiscono su quel mestiere: una parola insegnata vince su tutto. */
-export const WORD_MIN_SHARE = 0.8;
+export const WORD_MIN_SHARE = 0.9;
 /** Parole troppo generiche per portare a un solo mestiere, anche se l'IA lo ha fatto. */
 const GENERIC_WORDS = new Set(
   (

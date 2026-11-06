@@ -46,15 +46,20 @@ async function professional(slug: string, businessName: string, services: string
 }
 
 test.beforeAll(async () => {
-  // I profili di un giro precedente (prova ripetuta, database locale) toglierebbero posto ai 3 della sezione.
+  // I profili di un giro precedente (prova ripetuta, database locale) confonderebbero i conti.
   await prisma.professionalProfile.updateMany({
-    where: { OR: ["Idraulico Caldaie ", "Idraulico Rubinetti ", "Tuttofare Rubinetti ", "Pulizie Cucine "].map((name) => ({ businessName: { startsWith: name } })), deletedAt: null },
+    where: { OR: ["Idraulico Caldaie ", "Idraulico Rubinetti ", "Tuttofare Rubinetti ", "Pulizie Cucine ", "Tecnico Lavatrici ", "Elettricista Elettrodomestici ", "Tuttofare Elettrodomestici "].map((name) => ({ businessName: { startsWith: name } })), deletedAt: null },
     data: { deletedAt: new Date() },
   });
   await professional("idraulico", `Idraulico Caldaie ${stamp}`, ["Controllo caldaia"]);
   await professional("idraulico", `Idraulico Rubinetti ${stamp}`, ["Sostituzione rubinetto"]);
   await professional("tuttofare", `Tuttofare Rubinetti ${stamp}`, ["Sostituzione rubinetto"]);
   await professional("pulizie", `Pulizie Cucine ${stamp}`, ["Pulizia cucina"]);
+  await professional("elettrodomestici", `Tecnico Lavatrici ${stamp}`, ["Riparazione lavatrice"]);
+  for (const n of [1, 2]) {
+    await professional("elettricista", `Elettricista Elettrodomestici ${n} ${stamp}`, ["Riparazione elettrodomestici"]);
+    await professional("tuttofare", `Tuttofare Elettrodomestici ${n} ${stamp}`, ["Riparazione elettrodomestici"]);
+  }
 
   const admin = await prisma.user.create({
     data: {
@@ -112,6 +117,18 @@ test("dal profilo aperto nei risultati la richiesta parte con il problema scritt
   expect(new URL(href!, "http://x").searchParams.get("descrizione")).toBe(`${PROBLEM}. `);
   await page.goto(href!);
   await expect(page.getByLabel("Descrivi il lavoro")).toHaveValue(`${PROBLEM}. `);
+});
+
+test("guasto della lavatrice: il mestiere Elettrodomestici e sotto tutti quelli che lo fanno", async ({ page }) => {
+  // docs/changelog/2026-11-06-mestiere-elettrodomestici.md: prima era "fuori servizio";
+  // nella sezione tutti i professionisti di altri mestieri, non più al massimo 3.
+  await page.goto(`/cerca?problema=${encodeURIComponent("La lavatrice non scarica")}&citta=Latina`);
+  await expect(page.getByText(`Tecnico Lavatrici ${stamp}`).first()).toBeVisible();
+  const section = page.getByRole("region", { name: "Potrebbero fare anche questo lavoro" });
+  for (const n of [1, 2]) {
+    await expect(section.getByText(`Elettricista Elettrodomestici ${n} ${stamp}`)).toBeVisible();
+    await expect(section.getByText(`Tuttofare Elettrodomestici ${n} ${stamp}`)).toBeVisible();
+  }
 });
 
 test("con l'avviso di sicurezza niente altri mestieri", async ({ page }) => {

@@ -30,9 +30,6 @@ type PageSearchParams = {
   domanda?: string;
 };
 
-/** Quanti professionisti di altri mestieri in "Potrebbero fare anche questo lavoro". */
-const ALSO_DO_THIS_JOB_MAX = 3;
-
 /**
  * Professionisti di altri mestieri con quel lavoro tra le prestazioni
  * (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md): la
@@ -40,6 +37,8 @@ const ALSO_DO_THIS_JOB_MAX = 3;
  * scelto ("Sostituzione rubinetto" è da idraulico, "Pulizia cucina" no),
  * così una parola in comune come "cucina" non basta. Mai con un avviso di
  * sicurezza (lo controlla chi chiama). Un errore non rompe la pagina.
+ * Tutti, nello stesso ordine della ricerca, senza un massimo (richiesta di
+ * Luca, docs/changelog/2026-11-06-mestiere-elettrodomestici.md).
  */
 async function loadAlsoDoThisJob(
   description: string,
@@ -56,8 +55,7 @@ async function loadAlsoDoThisJob(
         if (!pro.matchedServiceId || shownIds.has(pro.id) || pro.categories.some((category) => category.slug === chosen)) return false;
         const service = pro.services.find((item) => item.id === pro.matchedServiceId);
         return service ? matchProblem(service.name).categories[0]?.slug === chosen : false;
-      })
-      .slice(0, ALSO_DO_THIS_JOB_MAX);
+      });
   } catch {
     return [];
   }
@@ -210,7 +208,15 @@ async function ProblemResults({
   if (chosen || offers) {
     const base = { category: chosen ?? undefined, offers, remote: isOnline, merit: true };
     try {
-      professionals = await apiClient.searchProfessionals({ ...base, problem: description, city, track: Boolean(chosen && city?.trim()) && (await shouldCountVisit()) });
+      // La prestazione scelta dall'IA vale solo per il suo mestiere (docs/changelog/2026-11-06-ia-conosce-i-servizi.md).
+      const problemService = chosen && chosen === result.categories[0] ? (result.service ?? undefined) : undefined;
+      professionals = await apiClient.searchProfessionals({
+        ...base,
+        problem: description,
+        problemService,
+        city,
+        track: Boolean(chosen && city?.trim()) && (await shouldCountVisit()),
+      });
     } catch {
       loadFailed = true;
     }

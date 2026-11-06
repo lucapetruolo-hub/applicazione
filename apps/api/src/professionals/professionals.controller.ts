@@ -82,6 +82,7 @@ export class ProfessionalsController {
     @Query("merito") merito?: string,
     @Query("offre") offre?: string,
     @Query("problema") problema?: string,
+    @Query("prestazione") prestazione?: string,
   ) {
     const results = await this.professionalsService.search({
       category,
@@ -93,6 +94,7 @@ export class ProfessionalsController {
       merit: merito === "1",
       offers: typeof offre === "string" && offre in OUT_OF_SERVICE_LABELS ? (offre as ProblemOutOfService) : undefined,
       problem: typeof problema === "string" && problema.trim() ? problema.slice(0, PROBLEM_DESCRIPTION_MAX) : undefined,
+      problemService: typeof prestazione === "string" && prestazione.trim() ? prestazione.slice(0, 120) : undefined,
     });
     // La pagina dei risultati chiede di contare la ricerca una volta sola
     // (`track=1`, docs/CHANGELOG.md §281): serve a mettere prima i lavori più
