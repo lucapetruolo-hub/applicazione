@@ -18,6 +18,7 @@ import { ReviewModal } from "@/components/ReviewModal";
 import { CardButton } from "@/components/CardButton";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
+import { PAYMENT_PAGE_LABEL, startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
 
 /**
  * Il lavoro nato dal preventivo accettato, in cima alla scheda come un
@@ -350,8 +351,15 @@ export function BookingSection({
                 audience="client"
                 issueOpen={issueOpen}
                 onPay={async (part) => {
-                  const { url } = await apiClient.jobPaymentCheckout(token, booking.id, part);
-                  if (url) window.location.href = url;
+                  startExternalRedirectProgress(PAYMENT_PAGE_LABEL);
+                  try {
+                    const { url } = await apiClient.jobPaymentCheckout(token, booking.id, part);
+                    if (url) window.location.href = url;
+                    else stopProgress();
+                  } catch (err) {
+                    stopProgress();
+                    throw err;
+                  }
                 }}
               />
             ) : null}

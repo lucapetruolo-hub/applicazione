@@ -8,6 +8,7 @@ import { Button, Icon, Section, Surface, Text, XStack, YStack, brand, type IconN
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { JourneyProgress, PAYMENTS_ANCHOR, setupJourney, useJourneySubscription } from "@/components/verification/SetupJourney";
+import { startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
 
 /** Mentre si aspetta l'esito la pagina si aggiorna da sola, per al massimo 3 minuti. */
 const POLL_MS = 4000;
@@ -84,16 +85,19 @@ function VerificaIdentitaContent() {
     if (!token || (!consent && !standby)) return;
     setStarting(true);
     setStartError(null);
+    startExternalRedirectProgress();
     try {
       const { url } = await apiClient.startIdentityVerification(token);
       if (url) {
         window.location.href = url;
         return;
       }
+      stopProgress();
       // Il servizio non risponde: la richiesta resta in attesa (§256).
       setRetrying(standby);
       load();
     } catch (err) {
+      stopProgress();
       setStartError(err instanceof Error ? err.message : "Non siamo riusciti ad avviare la verifica. Riprova.");
     }
     setStarting(false);

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { Providers } from "./providers";
 import { StyledJsxRegistry } from "./StyledJsxRegistry";
@@ -11,6 +11,7 @@ import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { TrafficSourceTracker } from "@/components/TrafficSourceTracker";
 import { KeyboardActivation } from "@/components/KeyboardActivation";
+import { NavigationProgress } from "@/components/NavigationProgress";
 import { SITE_URL } from "@/lib/siteUrl";
 import { SITE_INDEXABLE } from "@/lib/siteIndexing";
 import { display, body, mono } from "./fonts";
@@ -75,6 +76,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <ServiceWorkerRegistration />
             <TrafficSourceTracker />
             <KeyboardActivation />
+            {/* Barra di attesa in cima (docs/changelog/2026-11-05-barra-di-attesa.md). */}
+            <Suspense fallback={null}>
+              <NavigationProgress />
+            </Suspense>
             {/* Skip link (Fase 6, accessibilità): invisibile finché non riceve il
                 focus da tastiera, permette di saltare header+mega-menu e arrivare
                 dritti al contenuto — senza, un utente da tastiera/screen reader

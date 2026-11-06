@@ -1803,16 +1803,28 @@ export function GuidedRequestForm({
               variant={isUrgent ? "urgent" : "primary"}
               onPress={() => handleSubmit()}
               disabled={isSubmitting || isUploadingPhoto}
-              opacity={isSubmitting || isUploadingPhoto ? 0.6 : 1}
+              opacity={isUploadingPhoto && !isSubmitting ? 0.6 : 1}
               flexGrow={2}
               flexBasis={200}
             >
-              <XStack alignItems="center" gap="2">
-                <Text color="white" fontFamily="body" fontWeight="600">
-                  {isSubmitting ? submittingLabel : shownSubmitLabel}
-                </Text>
-                <ButtonArrow />
-              </XStack>
+              {isSubmitting ? (
+                // Barra di attesa al posto della scritta (decisione di Luca,
+                // docs/changelog/2026-11-05-barra-di-attesa.md): stessa altezza
+                // della riga, la frase resta per il lettore di schermo.
+                <XStack alignItems="center" justifyContent="center" height={20}>
+                  <span className="flow-bar flow-bar--light" aria-hidden="true" />
+                  <span className="sr-only" role="status">
+                    {submittingLabel}
+                  </span>
+                </XStack>
+              ) : (
+                <XStack alignItems="center" gap="2">
+                  <Text color="white" fontFamily="body" fontWeight="600">
+                    {shownSubmitLabel}
+                  </Text>
+                  <ButtonArrow />
+                </XStack>
+              )}
             </Button>
             </MagneticButton>
           )}

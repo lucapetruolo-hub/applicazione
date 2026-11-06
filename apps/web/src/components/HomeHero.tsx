@@ -44,8 +44,10 @@ export function HomeHero({ examples }: { examples: ProblemExamplesResponse | nul
   async function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
     rememberSearchCity(params.city);
     const destination = await buildSearchDestination(params);
-    setProblemSearch(destination.includes("problema="));
-    navigateWithTransition(() => startNavigation(() => router.push(destination)));
+    const problem = destination.includes("problema=");
+    setProblemSearch(problem);
+    // La ricerca dal problema qui ha già le luci e "Cerco chi ti serve…": niente barra in più.
+    navigateWithTransition(() => startNavigation(() => router.push(destination)), problem ? undefined : destination);
   }
 
   return (

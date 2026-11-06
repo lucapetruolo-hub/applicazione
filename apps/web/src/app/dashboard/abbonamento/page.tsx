@@ -35,6 +35,7 @@ import { SubscriptionPauseBanner, upgradeQuoteOf } from "@/components/Subscripti
 import { SkeletonBlock } from "@/components/Skeleton";
 import { JourneyProgress, useSetupJourney } from "@/components/verification/SetupJourney";
 import { downloadBlobFile } from "@/components/admin/adminUi";
+import { PAYMENT_PAGE_LABEL, startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
 
 /**
  * "Abbonamento" del professionista (docs/CHANGELOG.md §161-§162): stato del
@@ -437,6 +438,7 @@ function AbbonamentoContent() {
     setCheckoutError(null);
     setNotice(null);
     setPendingTier(tier);
+    startExternalRedirectProgress(PAYMENT_PAGE_LABEL);
     try {
       // Per ora solo mensile (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
       const { url } = await apiClient.createSubscriptionCheckout(token, tier, "MONTH");
@@ -444,10 +446,12 @@ function AbbonamentoContent() {
         window.location.assign(url);
         return;
       }
+      stopProgress();
       // Passaggio fatto subito, con la quota addebitata sulla carta salvata.
       setNotice(`Fatto: ora sei al livello ${subscriptionTierInfo(tier).label}.`);
       load();
     } catch (err) {
+      stopProgress();
       setCheckoutError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
       setPendingTier(null);
@@ -460,10 +464,12 @@ function AbbonamentoContent() {
     if (!token) return;
     setCheckoutError(null);
     setPortalPending(true);
+    startExternalRedirectProgress();
     try {
       const { url } = await apiClient.createBillingPortal(token);
       window.location.href = url;
     } catch (err) {
+      stopProgress();
       setCheckoutError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
       setPortalPending(false);
     }

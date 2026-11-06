@@ -45,7 +45,7 @@ export function SearchHeader({
     navigateWithTransition(() => {
       router.push(destination);
       router.refresh();
-    });
+    }, destination);
   }
 
   const what = initialQuery.trim() || "Tutti i professionisti";
