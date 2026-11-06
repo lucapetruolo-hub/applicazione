@@ -15,3 +15,9 @@ Migrazione `20261106160000_prestazione_dal_problema`: due colonne facoltative, n
 - Banco delle 769 frasi: con un mestiere il dizionario dà ora una prestazione in 413 casi su 705 (247 su 393 quando è sicuro). Controllo a campione di 40: gli errori erano su parole troppo generiche (vetri in una pulizia di cucina, divano in un trasloco intero, vernice su un termosifone), corretti mettendo prima le voci precise e togliendo le parole generiche.
 - `problem-match.service.test.ts`: prestazione dal dizionario sicuro senza IA; parola insegnata con prestazione.
 - `admin-proposals.test.ts`: proposta con 10 risposte uguali; nessuna con 9, con prestazioni diverse, già insegnata o già nota al dizionario; parola nuova con la prestazione.
+
+## Misura con le prestazioni giuste e riga "Perché" (seguito, sì di Luca)
+
+- **100 frasi del mucchio chiuso controllate a mano** (`packages/shared/test-data/banco-prestazioni.csv`: la prestazione giusta, `-` se nessuna va bene, `|` se più d'una è giusta). Su 75 frasi con una prestazione adatta il dizionario dà quella giusta in 56, una sbagliata in 4, nessuna in 15; sulle 25 senza prestazione adatta ne propone una in 4. Le parole non sono state ritoccate su queste frasi, così la misura resta onesta. La prova in `problemServiceWords.test.ts` ferma la CI se si scende sotto 72% giuste o si supera 8% sbagliate.
+- **Riga "Perché" dei risultati**: quando la prestazione è del mestiere scelto e almeno un professionista in lista la offre, dopo il motivo compare "In cima chi fa «…»." (`ProblemBand`, calcolata in `CercaContent`).
+- Da fare dopo l'unione delle due PR: rifare la misura dell'IA sulle stesse 91 frasi dubbie del mucchio chiuso, a parte dalla misura serale.

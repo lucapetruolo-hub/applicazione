@@ -12,6 +12,7 @@ import {
   type ProblemMatchResult,
   type ProfessionalCategorySlug,
   type ProfessionalSearchResult,
+  serviceNameKey,
 } from "@professionisti/shared";
 import { Text, XStack, YStack, brand } from "@professionisti/ui";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
@@ -278,8 +279,20 @@ export function CercaContent({
       `}</style>
     </XStack>
   ) : null;
+  // La prestazione scelta per il problema, solo se qualcuno nei risultati la offre davvero
+  // (docs/changelog/2026-11-06-dizionario-prestazioni.md).
+  const topService =
+    problem?.result.service && problem.chosen === problem.result.categories[0]
+      ? professionals.some((pro) => {
+          const matched = pro.matchedServiceId ? pro.services.find((item) => item.id === pro.matchedServiceId) : undefined;
+          return matched ? serviceNameKey(matched.name) === serviceNameKey(problem.result.service!) : false;
+        })
+        ? problem.result.service
+        : null
+      : null;
   const header = problem ? (
     <ProblemBand
+      topService={topService}
       description={problem.description}
       city={city}
       result={problem.result}

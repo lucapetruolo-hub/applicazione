@@ -62,6 +62,7 @@ export function ProblemBand({
   chosenPros = [],
   maxChosen,
   onClearChosen,
+  topService = null,
 }: {
   description: string;
   city?: string;
@@ -76,6 +77,8 @@ export function ProblemBand({
   /** Assente quando nei risultati non si può scegliere (meno di 2 schede). */
   maxChosen?: number;
   onClearChosen?: () => void;
+  /** Prestazione proposta per il problema, offerta da chi è in cima ai risultati. */
+  topService?: string | null;
 }) {
   const others = result.categories.filter((slug) => slug !== chosen);
   const quoteParams = new URLSearchParams({ descrizione: description });
@@ -99,6 +102,7 @@ export function ProblemBand({
             </Text>
             <Text fontSize={16} color={brand.grafite70}>
               {result.reason && chosen === result.categories[0] ? result.reason : `Di solito lo fa ${WHO[chosen]}.`}
+              {topService ? ` In cima chi fa «${topService}».` : ""}
             </Text>
             {/* Trasparenza sull'intelligenza artificiale (AI Act art. 50, domanda 77 per
                 l'avvocato; collaudo del 29/10/2026, M-11): solo quando la proposta non
