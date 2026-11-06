@@ -26,3 +26,11 @@ Scartati: ricerca "per significato" (embedding, inutile con circa 150 voci), man
 - `problem-match.service.test.ts`: prestazione tenuta solo se nel catalogo del primo mestiere; il catalogo arriva nelle istruzioni.
 - `problem-service-field.test.ts`: la prestazione dell'IA mette in evidenza il professionista anche senza parole in comune; senza, restano le parole uguali.
 - Da fare: misura prima/dopo sulle stesse 91 frasi dubbie (`analisi/abbinamento-problema/misura-ia/`), separata dai giri serali in corso.
+
+## Parole proposte al dizionario: regole severe, sempre con l'approvazione di Luca
+
+**Richiesta di Luca:** "rimaniamo già rigidi da subito", "senza apprendimento automatico", "ma con la mia approvazione", "che mi compare come suggerimento solo quando c'è certezza e dati".
+
+**Decisione:** l'IA non scrive mai da sola nel dizionario. In Admin → "Da approvare" una parola nuova compare solo se l'IA ha indicato lo stesso mestiere almeno **10 volte** (prima 5) e in almeno **9 casi su 10** (prima 8) delle descrizioni con quella parola (`WORD_MIN_AI_ANSWERS`, `WORD_MIN_SHARE` in `apps/api/src/admin-proposals/admin-proposals.ts`). Mai per i lavori che non copriamo né per numeri o parole già conosciute. Si insegna solo con "Insegna la parola".
+
+**Verifica:** `admin-proposals.test.ts`: proposta con 10 risposte uguali; nessuna con 9, o con meno di 9 su 10 uguali.
