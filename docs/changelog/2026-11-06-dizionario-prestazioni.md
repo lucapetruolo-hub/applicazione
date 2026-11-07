@@ -27,3 +27,7 @@ Migrazione `20261106160000_prestazione_dal_problema`: due colonne facoltative, n
 Domanda di Luca: il dizionario capisce prestazioni simili a quelle scritte? Oggi in produzione c'è un solo profilo visibile e senza prestazioni scritte a mano, quindi non c'era niente da contare: il controllo è diventato automatico. "Nomi da unire" in "Da approvare" proponeva solo nomi quasi uguali ("Manutenzone caldaia"). Ora propone anche un nome scritto a mano da almeno 3 professionisti le cui parole portano a una prestazione standard dello stesso mestiere ("Cambio cronotermostato" → "Sostituzione termostato", `sameJobStandardName`), e quel nome non viene più proposto come prestazione nuova da suggerire. Si unisce solo con "Approva", come sempre.
 
 Verifica: applicate ai nomi delle 109 prestazioni suggerite, le parole riportano allo stesso nome in 86 casi e a un altro in 1 ("Piccoli traslochi" → "Trasloco locale"); "esterni" e "sostituzione infissi" aggiunti per due casi sbagliati. Prova in `admin-proposals.test.ts`.
+
+## Prestazioni nuove della #254 (07/11/2026, miglioria scelta da Luca)
+
+Nomi allineati alla #254 ("…condizionatore", "Installazione caldaia") e parole per le prestazioni nuove: "Trasformazione vasca in doccia" (Idraulico e Muratore, tolte da "Ristrutturazione bagno"), "Installazione pompa di calore" e "Installazione caldaia" (Climatizzazione e Idraulico: caldaia nuova, sostituire la caldaia). Sui nomi delle prestazioni suggerite le parole riportano ora allo stesso nome in 91 casi e a un altro in 1.

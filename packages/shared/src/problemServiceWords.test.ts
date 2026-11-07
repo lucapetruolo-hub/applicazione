@@ -20,6 +20,10 @@ test("dal problema alla prestazione, senza intelligenza artificiale", () => {
     ["siepe da potare in giardino", "giardiniere", "Potatura siepi"],
     ["montare un armadio pax di ikea", "tuttofare", "Montaggio mobili IKEA"],
     ["l'idraulico deve sostituire il box doccia che perde", "idraulico", "Sostituzione box doccia"],
+    ["vorrei trasformare la vasca in doccia", "idraulico", "Trasformazione vasca in doccia"],
+    ["installare una pompa di calore in casa", "climatizzazione", "Installazione pompa di calore"],
+    ["la caldaia è vecchia, va sostituita con una caldaia nuova", "climatizzazione", "Installazione caldaia"],
+    ["il condizionatore non raffredda", "climatizzazione", "Ricarica gas condizionatore"],
   ];
   for (const [text, category, service] of cases) {
     const result = problemMatchFromDictionary(matchProblem(text));
