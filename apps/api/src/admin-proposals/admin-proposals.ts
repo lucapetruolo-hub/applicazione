@@ -8,6 +8,7 @@ import {
   nearlySameServiceName,
   normalizeProblemText,
   serviceNameKey,
+  serviceFromWords,
   type ProfessionalCategorySlug,
   type ServiceNamesAdminOverview,
 } from "@professionisti/shared";
@@ -77,48 +78,112 @@ export function wordStem(word: string): string {
   return word.length >= 6 ? word.replace(/[aeiou]$/, "") : word;
 }
 
-export type DescriptionRow = { text: string; categories: string[]; source: string; outOfService: string | null };
+export type DescriptionRow = { text: string; categories: string[]; source: string; outOfService: string | null; service?: string | null };
 
-/**
- * Parole che i clienti scrivono, che il dizionario non conosce, e per cui
- * l'IA ha indicato lo stesso mestiere almeno WORD_MIN_AI_ANSWERS volte.
- * Solo parole di lettere (mai numeri: niente indirizzi o telefoni), lunghe
- * almeno 5, non generiche. Le descrizioni sono già senza contatti.
- */
-export function dictionaryWordCandidates(
-  rows: DescriptionRow[],
-  taughtWords: string[],
-): { stem: string; example: string; categorySlug: ProfessionalCategorySlug; aiAnswers: number; total: number }[] {
-  type Stat = { total: number; byCategory: Map<string, number>; aiByCategory: Map<string, number>; variants: Map<string, number> };
-  const stats = new Map<string, Stat>();
+type WordStat = {
+  total: number;
+  byCategory: Map<string, number>;
+  aiByCategory: Map<string, number>;
+  /** Risposte dell'IA per mestiere e prestazione: "idraulico|Sturatura scarichi". */
+  aiByService: Map<string, number>;
+  variants: Map<string, number>;
+};
+
+/** Per ogni radice di parola: quante descrizioni, con quale mestiere e quale prestazione dell'IA. */
+function wordStats(rows: DescriptionRow[]): Map<string, WordStat> {
+  const stats = new Map<string, WordStat>();
   for (const row of rows) {
     const words = new Set(normalizeProblemText(row.text).trim().split(" ").filter((w) => /^[a-z]{5,30}$/.test(w) && !GENERIC_WORDS.has(w)));
     const stems = new Map<string, string>();
     for (const w of words) stems.set(wordStem(w), w);
     const first = row.outOfService ? null : row.categories[0] ?? null;
     for (const [stem, variant] of stems) {
-      const stat = stats.get(stem) ?? { total: 0, byCategory: new Map(), aiByCategory: new Map(), variants: new Map() };
+      const stat = stats.get(stem) ?? { total: 0, byCategory: new Map(), aiByCategory: new Map(), aiByService: new Map(), variants: new Map() };
       stat.total += 1;
       stat.variants.set(variant, (stat.variants.get(variant) ?? 0) + 1);
       if (first) {
         stat.byCategory.set(first, (stat.byCategory.get(first) ?? 0) + 1);
-        if (row.source === "ia") stat.aiByCategory.set(first, (stat.aiByCategory.get(first) ?? 0) + 1);
+        if (row.source === "ia") {
+          stat.aiByCategory.set(first, (stat.aiByCategory.get(first) ?? 0) + 1);
+          if (row.service) stat.aiByService.set(`${first}|${row.service}`, (stat.aiByService.get(`${first}|${row.service}`) ?? 0) + 1);
+        }
       }
       stats.set(stem, stat);
     }
   }
+  return stats;
+}
+
+const mostUsedVariant = (stat: WordStat): string =>
+  [...stat.variants.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]![0];
+
+/**
+ * La prestazione che l'IA ha dato per la parola e quel mestiere, con le
+ * stesse regole severe del mestiere: almeno WORD_MIN_AI_ANSWERS volte e
+ * almeno WORD_MIN_SHARE delle sue risposte con quel mestiere.
+ */
+function steadyAiService(stat: WordStat, categorySlug: string): { service: string; answers: number } | null {
+  const aiAnswers = stat.aiByCategory.get(categorySlug) ?? 0;
+  const best = [...stat.aiByService.entries()].filter(([key]) => key.startsWith(`${categorySlug}|`)).sort((a, b) => b[1] - a[1])[0];
+  if (!best || best[1] < WORD_MIN_AI_ANSWERS || best[1] / aiAnswers < WORD_MIN_SHARE) return null;
+  return { service: best[0].slice(categorySlug.length + 1), answers: best[1] };
+}
+
+/**
+ * Parole che i clienti scrivono, che il dizionario non conosce, e per cui
+ * l'IA ha indicato lo stesso mestiere almeno WORD_MIN_AI_ANSWERS volte.
+ * Solo parole di lettere (mai numeri: niente indirizzi o telefoni), lunghe
+ * almeno 5, non generiche. Le descrizioni sono già senza contatti. Con la
+ * prestazione, se l'IA ha dato sempre la stessa
+ * (docs/changelog/2026-11-06-dizionario-prestazioni.md).
+ */
+export function dictionaryWordCandidates(
+  rows: DescriptionRow[],
+  taughtWords: string[],
+): { stem: string; example: string; categorySlug: ProfessionalCategorySlug; aiAnswers: number; total: number; service: string | null }[] {
   const taught = taughtWords.map((w) => w.trim()).filter(Boolean);
-  const result: { stem: string; example: string; categorySlug: ProfessionalCategorySlug; aiAnswers: number; total: number }[] = [];
-  for (const [stem, stat] of stats) {
+  const result: { stem: string; example: string; categorySlug: ProfessionalCategorySlug; aiAnswers: number; total: number; service: string | null }[] = [];
+  for (const [stem, stat] of wordStats(rows)) {
     const best = [...stat.aiByCategory.entries()].sort((a, b) => b[1] - a[1])[0];
     if (!best || best[1] < WORD_MIN_AI_ANSWERS || !isProfessionalCategorySlug(best[0])) continue;
     if ((stat.byCategory.get(best[0]) ?? 0) / stat.total < WORD_MIN_SHARE) continue;
     // Già insegnata (le parole insegnate valgono come inizio di parola).
     if (taught.some((t) => stem.startsWith(t) || t.startsWith(stem))) continue;
-    const example = [...stat.variants.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]![0];
+    const example = mostUsedVariant(stat);
     // Il dizionario la conosce già: nessun bisogno di insegnarla.
     if (matchProblem(example).categories.length > 0) continue;
-    result.push({ stem, example, categorySlug: best[0], aiAnswers: best[1], total: stat.total });
+    result.push({ stem, example, categorySlug: best[0], aiAnswers: best[1], total: stat.total, service: steadyAiService(stat, best[0])?.service ?? null });
+  }
+  return result.sort((a, b) => b.aiAnswers - a.aiAnswers || a.stem.localeCompare(b.stem));
+}
+
+/**
+ * Parole che il dizionario porta già al mestiere giusto ma non a una
+ * prestazione, per cui l'IA ha dato sempre la stessa prestazione
+ * (docs/changelog/2026-11-06-dizionario-prestazioni.md, richiesta di Luca):
+ * stesse regole severe delle parole nuove, sempre da approvare. Mai una
+ * parola che porterebbe a un altro mestiere né una già insegnata con la
+ * sua prestazione.
+ */
+export function serviceWordCandidates(
+  rows: DescriptionRow[],
+  taught: { word: string; serviceName: string | null }[],
+): { stem: string; example: string; categorySlug: ProfessionalCategorySlug; service: string; aiAnswers: number }[] {
+  const withService = taught.filter((t) => t.serviceName).map((t) => t.word.trim()).filter(Boolean);
+  const result: { stem: string; example: string; categorySlug: ProfessionalCategorySlug; service: string; aiAnswers: number }[] = [];
+  for (const [stem, stat] of wordStats(rows)) {
+    const best = [...stat.aiByCategory.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (!best || !isProfessionalCategorySlug(best[0])) continue;
+    if ((stat.byCategory.get(best[0]) ?? 0) / stat.total < WORD_MIN_SHARE) continue;
+    const steady = steadyAiService(stat, best[0]);
+    if (!steady) continue;
+    if (withService.some((t) => stem.startsWith(t) || t.startsWith(stem))) continue;
+    const example = mostUsedVariant(stat);
+    const known = matchProblem(example);
+    // Solo parole che il dizionario porta già a questo mestiere (le altre sono "Parola per il dizionario").
+    if (known.categories[0]?.slug !== best[0]) continue;
+    if (known.service === steady.service) continue;
+    result.push({ stem, example, categorySlug: best[0], service: steady.service, aiAnswers: steady.answers });
   }
   return result.sort((a, b) => b.aiAnswers - a.aiAnswers || a.stem.localeCompare(b.stem));
 }
@@ -140,6 +205,8 @@ export function standardServiceCandidates(overview: ServiceNamesAdminOverview): 
     for (const row of category.handwritten) {
       if (row.professionalCount < overview.minProfessionals) continue;
       if (category.standard.some((s) => nearlySameServiceName(s.name, row.name))) continue;
+      // Stesso lavoro di una standard con altre parole: si propone di unirlo, non di aggiungerlo.
+      if (sameJobStandardName(category, row.name)) continue;
       const key = serviceNameKey(row.name);
       const current = best.get(key);
       if (!current || row.professionalCount > current.professionals) best.set(key, { categorySlug: category.slug, name: row.name, professionals: row.professionalCount });
@@ -149,14 +216,32 @@ export function standardServiceCandidates(overview: ServiceNamesAdminOverview): 
 }
 
 /**
+ * Prestazione suggerita dello stesso lavoro scritto con altre parole
+ * ("Spurgo tubi intasati" → "Sturatura scarichi"), dalle parole delle
+ * prestazioni del dizionario (docs/changelog/2026-11-06-dizionario-prestazioni.md).
+ * Solo verso una prestazione standard del mestiere, mai verso sé stessa.
+ */
+export function sameJobStandardName(category: ServiceNamesAdminOverview["categories"][number], name: string): string | null {
+  if (!isProfessionalCategorySlug(category.slug)) return null;
+  const service = serviceFromWords(normalizeProblemText(name), category.slug);
+  if (!service || serviceNameKey(service) === serviceNameKey(name)) return null;
+  return category.standard.find((s) => serviceNameKey(s.name) === serviceNameKey(service))?.name ?? null;
+}
+
+export type MergeCandidate = { categorySlug: ProfessionalCategorySlug; name: string; canonical: string; professionals: number; byWords: boolean };
+
+/**
  * Nomi scritti a mano quasi uguali a un altro dello stesso mestiere: prima
  * a una prestazione standard, poi a un nome scritto da più professionisti.
- * Si unisce sempre il nome meno usato a quello più usato.
+ * Si unisce sempre il nome meno usato a quello più usato. Con parole diverse
+ * ma lo stesso lavoro (`sameJobStandardName`) solo se lo scrivono almeno
+ * `minProfessionals` professionisti: è meno sicuro, e Luca vuole proposte
+ * solo con dati.
  */
-export function mergeCandidates(overview: ServiceNamesAdminOverview): { categorySlug: ProfessionalCategorySlug; name: string; canonical: string; professionals: number }[] {
+export function mergeCandidates(overview: ServiceNamesAdminOverview): MergeCandidate[] {
   const aliased = new Set(overview.aliases.map((a) => a.key));
   const seen = new Set<string>();
-  const result: { categorySlug: ProfessionalCategorySlug; name: string; canonical: string; professionals: number }[] = [];
+  const result: MergeCandidate[] = [];
   for (const category of overview.categories) {
     if (!isProfessionalCategorySlug(category.slug)) continue;
     for (const row of category.handwritten) {
@@ -168,10 +253,11 @@ export function mergeCandidates(overview: ServiceNamesAdminOverview): { category
         : category.handwritten.find(
             (o) => o !== row && nearlySameServiceName(o.name, row.name) && (o.professionalCount > row.professionalCount || (o.professionalCount === row.professionalCount && o.name.localeCompare(row.name, "it") < 0)),
           );
-      const canonical = standard?.name ?? other?.name;
+      const sameJob = standard || other || row.professionalCount < overview.minProfessionals ? null : sameJobStandardName(category, row.name);
+      const canonical = standard?.name ?? other?.name ?? sameJob;
       if (!canonical) continue;
       seen.add(key);
-      result.push({ categorySlug: category.slug, name: row.name, canonical, professionals: row.professionalCount });
+      result.push({ categorySlug: category.slug, name: row.name, canonical, professionals: row.professionalCount, byWords: canonical === sameJob });
     }
   }
   return result.sort((a, b) => b.professionals - a.professionals || a.name.localeCompare(b.name, "it"));

@@ -37,6 +37,7 @@ import {
   PROFILE_REMINDER_MIN_DAYS,
   categoryLabel,
   dictionaryWordCandidates,
+  serviceWordCandidates,
   groupKey,
   mergeCandidates,
   missingExamplePhrases,
@@ -240,7 +241,12 @@ export class AdminProposalsService implements OnApplicationBootstrap {
         await this.problemExamplesService.add(adminUserId, String(d.text));
         return null;
       case "DICTIONARY_WORD":
-        await this.problemMatchAdminService.teachWord(adminUserId, { word: String(d.word), categorySlug: String(d.categorySlug) });
+      case "DICTIONARY_SERVICE_WORD":
+        await this.problemMatchAdminService.teachWord(adminUserId, {
+          word: String(d.word),
+          categorySlug: String(d.categorySlug),
+          ...(d.serviceName ? { serviceName: String(d.serviceName) } : {}),
+        });
         return null;
       case "STANDARD_SERVICE":
         await this.problemMatchAdminService.addStandardService(adminUserId, { categorySlug: String(d.categorySlug), name: String(d.name) });
@@ -359,6 +365,8 @@ export class AdminProposalsService implements OnApplicationBootstrap {
         return this.examplePhrases();
       case "DICTIONARY_WORD":
         return this.dictionaryWords();
+      case "DICTIONARY_SERVICE_WORD":
+        return this.serviceWords();
       case "STANDARD_SERVICE":
         return this.standardServices();
       case "MERGE_SERVICE_NAME":
@@ -397,7 +405,7 @@ export class AdminProposalsService implements OnApplicationBootstrap {
 
   private async dictionaryWords(): Promise<Candidate[]> {
     const [rows, taught] = await Promise.all([
-      this.prisma.problemDescription.findMany({ select: { text: true, categories: true, source: true, outOfService: true } }),
+      this.prisma.problemDescription.findMany({ select: { text: true, categories: true, source: true, outOfService: true, service: true } }),
       this.prisma.problemWord.findMany({ select: { word: true } }),
     ]);
     return dictionaryWordCandidates(rows, taught.map((t) => t.word))
@@ -412,9 +420,40 @@ export class AdminProposalsService implements OnApplicationBootstrap {
           why: `Il dizionario non conosce questa parola: l'intelligenza artificiale l'ha capita ${plural(w.aiAnswers, "volta", "volte")}, sempre come ${label}. Insegnandola, la risposta arriva subito e senza chiamare l'IA.`,
           preview: {
             type: "lines",
-            lines: [`Chi scrive «${w.example}» (o una parola che inizia con «${w.stem}») trova subito: ${label}`, "Gli avvisi di sicurezza (gas, corrente) restano quelli del dizionario."],
+            lines: [
+              `Chi scrive «${w.example}» (o una parola che inizia con «${w.stem}») trova subito: ${label}${w.service ? `, prima chi fa «${w.service}»` : ""}`,
+              "Gli avvisi di sicurezza (gas, corrente) restano quelli del dizionario.",
+            ],
           },
-          data: { word: wordStem(w.stem), categorySlug: w.categorySlug },
+          data: { word: wordStem(w.stem), categorySlug: w.categorySlug, ...(w.service ? { serviceName: w.service } : {}) },
+        };
+      });
+  }
+
+  /** Parole che il dizionario già capisce, da legare a una prestazione (docs/changelog/2026-11-06-dizionario-prestazioni.md). */
+  private async serviceWords(): Promise<Candidate[]> {
+    const [rows, taught] = await Promise.all([
+      this.prisma.problemDescription.findMany({
+        where: { source: "ia", service: { not: null } },
+        select: { text: true, categories: true, source: true, outOfService: true, service: true },
+      }),
+      this.prisma.problemWord.findMany({ select: { word: true, serviceName: true } }),
+    ]);
+    return serviceWordCandidates(rows, taught)
+      .slice(0, 5)
+      .map((w) => {
+        const label = categoryLabel(w.categorySlug);
+        return {
+          key: `DICTIONARY_SERVICE_WORD:${w.stem}`,
+          kind: "DICTIONARY_SERVICE_WORD",
+          score: 480 + Math.min(w.aiAnswers, 99),
+          title: `Lega «${w.example}» a «${w.service}»`,
+          why: `Il dizionario porta già questa parola a ${label}. L'intelligenza artificiale l'ha legata ${plural(w.aiAnswers, "volta", "volte")} sempre alla stessa prestazione. Insegnandola, i professionisti che la offrono vanno per primi senza chiamare l'IA.`,
+          preview: {
+            type: "lines",
+            lines: [`Chi scrive «${w.example}» (o una parola che inizia con «${w.stem}») trova ${label}, prima chi fa «${w.service}»`, "Gli avvisi di sicurezza (gas, corrente) restano quelli del dizionario."],
+          },
+          data: { word: wordStem(w.stem), categorySlug: w.categorySlug, serviceName: w.service },
         };
       });
   }
@@ -446,7 +485,9 @@ export class AdminProposalsService implements OnApplicationBootstrap {
         kind: "MERGE_SERVICE_NAME",
         score: 200 + Math.min(m.professionals, 99),
         title: `Unisci «${m.name}» a «${m.canonical}»`,
-        why: `Sono quasi lo stesso nome (${categoryLabel(m.categorySlug)}): separati, i prezzi medi di «Quanto costa» si dividono.`,
+        why: m.byWords
+          ? `Parole diverse, stesso lavoro (${categoryLabel(m.categorySlug)}): unite, chi l'ha scritta va in cima quando un cliente cerca «${m.canonical}».`
+          : `Sono quasi lo stesso nome (${categoryLabel(m.categorySlug)}): separati, i prezzi medi di «Quanto costa» si dividono.`,
         preview: { type: "lines", lines: [`«${m.name}» (${plural(m.professionals, "professionista", "professionisti")}) diventa «${m.canonical}».`, "Il nome scritto dai professionisti nel loro profilo non cambia."] },
         data: { name: m.name, canonical: m.canonical },
       }));
