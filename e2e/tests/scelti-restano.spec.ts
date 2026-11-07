@@ -31,7 +31,7 @@ test("la scelta resta tornando dal profilo, e dal profilo si sceglie", async ({ 
   await expect(bar).toContainText("2 scelti su 5");
 
   // Profilo aperto dalla scheda, poi il tasto indietro del browser.
-  await page.getByText(third, { exact: true }).first().click();
+  await page.getByText(third, { exact: true }).filter({ visible: true }).first().click();
   await expect(page).toHaveURL(/\/professionista\/.*scelta=1/);
   await expect(page.getByRole("link", { name: "Torna ai risultati" })).toBeVisible();
   await expect(bar).toContainText("2 scelti su 5");
@@ -41,7 +41,7 @@ test("la scelta resta tornando dal profilo, e dal profilo si sceglie", async ({ 
   await expect(bar).toContainText("2 scelti su 5");
 
   // Di nuovo nel profilo: lo si sceglie da lì e si torna con il link.
-  await page.getByText(third, { exact: true }).first().click();
+  await page.getByText(third, { exact: true }).filter({ visible: true }).first().click();
   await page.getByRole("button", { name: `Scegli ${third}` }).click();
   await expect(bar).toContainText("3 scelti su 5");
   await page.getByRole("link", { name: "Torna ai risultati" }).click();
@@ -65,7 +65,7 @@ test("anche cercando il mestiere si scelgono più professionisti", async ({ page
   await expect(bar).toContainText("2 scelti su 5");
 
   // Il profilo e il ritorno, come dal problema scritto.
-  await page.getByText(first, { exact: true }).first().click();
+  await page.getByText(first, { exact: true }).filter({ visible: true }).first().click();
   await expect(page.getByRole("link", { name: "Torna ai risultati" })).toBeVisible();
   await page.goBack();
   await expect(page.getByRole("button", { name: `Scelto: ${second}` })).toBeVisible();
@@ -79,7 +79,7 @@ test("anche cercando il mestiere si scelgono più professionisti", async ({ page
   await page.getByRole("button", { name: "Rifiuta" }).click();
   await bar.getByRole("link").click();
   await expect(page).toHaveURL(/\/preventivo\?/);
-  await expect(page.getByText(first).first()).toBeVisible();
+  await expect(page.getByText(first).filter({ visible: true }).first()).toBeVisible();
 });
 
 test("al sesto tocco su «Scegli» compare l'avviso del massimo", async ({ page }) => {

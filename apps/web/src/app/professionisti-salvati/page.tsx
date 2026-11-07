@@ -143,11 +143,13 @@ export default function ProfessionistiSalvatiPage() {
                           label={saved ? "Salvato" : "Salva"}
                           active={saved}
                           disabled={pendingId === pro.id}
-                          size={36}
+                          // Più piccolo, accanto al nome (Luca, docs/changelog/2026-11-06-filtro-pagamenti-online.md):
+                          // 32px resta sopra il minimo di 24px per il tocco (WCAG 2.5.8).
+                          size={32}
                           celebrate
                           onPress={() => void handleToggle(pro.id)}
                         >
-                          <Icon name="heart" size={16} strokeWidth={2} color={saved ? "white" : brand.grafite} fill={saved ? "white" : "none"} />
+                          <Icon name="heart" size={14} strokeWidth={2} color={saved ? "white" : brand.grafite} fill={saved ? "white" : "none"} />
                         </IconActionButton>
                       </span>
                     }
