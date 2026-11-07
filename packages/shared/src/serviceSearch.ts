@@ -27,11 +27,19 @@ function meaningfulWords(text: string): string[] {
     .filter((w) => w.length >= 3 && !STOP_WORDS.has(w));
 }
 
-/** "sifone" ~ "sifone", "perdite" ~ "perdita", "rubinet" ~ "rubinetteria". */
-function sameWord(searched: string, word: string): boolean {
+/**
+ * "sifone" ~ "sifone", "perdite" ~ "perdita", "rubinet" ~ "rubinetteria".
+ * Due parole intere sono la stessa solo se la più corta cambia al massimo
+ * nell'ultima lettera ("rubinetto" ~ "rubinetteria"): prima bastavano le
+ * prime cinque, e "serramenti" trovava
+ * "serratura", "elettrodomestici" trovava "elettrico"
+ * (docs/changelog/2026-11-06-prestazioni-piu-cercate.md).
+ */
+export function sameServiceWord(searched: string, word: string): boolean {
   if (searched === word) return true;
   if (searched.length >= 4 && word.startsWith(searched)) return true;
-  return searched.length >= 5 && word.length >= 5 && searched.slice(0, 5) === word.slice(0, 5);
+  const needed = Math.min(searched.length, word.length) - 1;
+  return needed >= 5 && searched.slice(0, needed) === word.slice(0, needed);
 }
 
 /**
@@ -48,7 +56,7 @@ export function matchPopularServices(query: string, categorySlug?: string): { ca
   for (const slug of slugs) {
     for (const service of POPULAR_SERVICES[slug]) {
       const words = meaningfulWords(service);
-      if (searched.every((s) => words.some((w) => sameWord(s, w)))) matches.push({ categorySlug: slug, service });
+      if (searched.every((s) => words.some((w) => sameServiceWord(s, w)))) matches.push({ categorySlug: slug, service });
     }
   }
   return matches.length > SERVICE_SEARCH_MAX_MATCHES ? [] : matches;
@@ -64,5 +72,5 @@ export function isPopularService(name: string, categorySlug: ProfessionalCategor
 export function offersPopularService(name: string, service: string): boolean {
   const words = meaningfulWords(name);
   const needed = meaningfulWords(service);
-  return needed.length > 0 && needed.every((n) => words.some((w) => sameWord(n, w)));
+  return needed.length > 0 && needed.every((n) => words.some((w) => sameServiceWord(n, w)));
 }
