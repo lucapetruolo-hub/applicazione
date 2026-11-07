@@ -45,7 +45,7 @@ test("la casella di \"Quanto costa\" trova le voci con le parole di chi scrive",
   assert.ok(serviceNameMatches("Risanamento umidità e infiltrazioni", "umidita"));
   assert.ok(serviceNameMatches("Tinteggiatura interni", "imbiancatura"));
   assert.ok(serviceNameMatches("Tinteggiatura interni", "pittura"));
-  assert.ok(serviceNameMatches("Installazione climatizzatore", "condizionatore"));
+  assert.ok(serviceNameMatches("Installazione condizionatore", "climatizzatore"));
   assert.ok(serviceNameMatches("Sostituzione caldaia", "Caldaia"));
   assert.ok(!serviceNameMatches("Sostituzione caldaia", "perdite"));
   assert.ok(!serviceNameMatches("Trasloco locale", "zzz"));

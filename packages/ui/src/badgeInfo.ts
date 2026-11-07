@@ -26,8 +26,10 @@ export const BADGE_INFO: Record<BadgeInfoKey, { title: string; text: string; not
     // Prima "Identità verificata da Stripe": sembrava una garanzia di Stripe
     // per il cliente (collaudo del 29/10/2026, M-14; scelta di Luca il 30/10).
     // Poi "Pagamenti online attivi", accorciato in "Paga online" (Luca,
-    // docs/changelog/2026-11-04-prezzi-e-foto-profilo.md).
-    title: "Paga online",
+    // docs/changelog/2026-11-04-prezzi-e-foto-profilo.md). Poi "Pagamenti
+    // online": "Paga online" sembrava "si paga solo online" (Luca,
+    // docs/changelog/2026-11-06-filtro-pagamenti-online.md).
+    title: "Pagamenti online",
     text: "Puoi pagare online con carta: Stripe, il servizio dei pagamenti, ha controllato i dati del professionista per farlo incassare.",
     note: "Non è una garanzia sulla qualità del lavoro.",
   },

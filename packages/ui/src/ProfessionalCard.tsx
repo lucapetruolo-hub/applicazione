@@ -270,6 +270,14 @@ export function ProfessionalCard({
   // Richiesta esplicita dell'utente: "dai la possibilità tramite freccetta
   // di far vedere tutte le prestazioni... ora se ne vedono solo 3".
   const [showAllServices, setShowAllServices] = useState(false);
+  // Sul telefono (sotto i 660px) "Nuovo profilo" e "Assicurazione RC" stanno
+  // dietro un "+N": con tutti i bollini la scheda ne metteva 6 in colonna.
+  // Restano sempre in vista Verificato, Privato/Partita IVA, Pagamenti online
+  // e Sponsorizzato, che la legge vuole riconoscibile (Luca,
+  // docs/changelog/2026-11-06-filtro-pagamenti-online.md).
+  const [showAllBadges, setShowAllBadges] = useState(false);
+  const extraBadges = (isNewProfile ? 1 : 0) + (hasLiabilityInsurance ? 1 : 0);
+  const extraBadgeDisplay = showAllBadges ? "flex" : "flex xs:none";
   // Orari e prezzi sotto il blocco del nome, a tutta larghezza, chiusi tranne
   // che nella prima scheda della lista (docs/CHANGELOG.md §349): prima la
   // mini-agenda stava a destra e schiacciava nome, mestiere e voto in una
@@ -386,6 +394,37 @@ export function ProfessionalCard({
     );
   };
 
+  // Nome del professionista. Sul telefono (sotto i 660px) va sopra, a tutta
+  // larghezza, e la foto sta accanto ai bollini: nella colonna stretta accanto
+  // alla foto un nome lungo prendeva 4 righe (Luca,
+  // docs/changelog/2026-11-06-filtro-pagamenti-online.md). Uno solo dei due è
+  // visibile, l'altro è nascosto anche al lettore di schermo.
+  const renderName = (display: string) => (
+    <Text
+      display={display}
+      fontFamily="heading"
+      fontWeight="800"
+      fontSize={22}
+      lineHeight="26px"
+      color={brand.grafite}
+      {...(href
+                      ? {
+                          render: "a",
+                          href,
+                          textDecorationLine: "none hover:underline",
+                          // Clic normale: niente ricarica della pagina, apre il
+                          // profilo `onPress` della card. Con Ctrl/Cmd/Maiusc il
+                          // browser apre un'altra scheda e la card non naviga.
+                          onPress: (e: { metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean; preventDefault?: () => void; stopPropagation?: () => void }) => {
+                            if (e.metaKey || e.ctrlKey || e.shiftKey) e.stopPropagation?.();
+                            else e.preventDefault?.();
+                          },
+                        }
+                      : null)}
+    >
+      {businessName}
+    </Text>  );
+
   return (
     // Niente accessibilityLabel personalizzato: la card contiene già come
     // testo visibile nome/categoria/città/rating, un'etichetta diversa da
@@ -408,40 +447,30 @@ export function ProfessionalCard({
       {/* Sotto i 660px meno spazio tra foto e nome: sui telefoni da 360px la
           colonna del nome restava stretta e i bollini (Verificato, Nuovo
           profilo...) e le recensioni toccavano il bordo. */}
+      {/* Sul telefono anche il cuore dei salvati e "Scegli" stanno qui, in
+          alto a destra accanto al nome (Luca,
+          docs/changelog/2026-11-06-filtro-pagamenti-online.md). */}
+      <XStack display="none xs:flex" alignItems="flex-start" gap="2" marginBottom="3">
+        <YStack flex={1} minWidth={0}>
+          {renderName("flex")}
+        </YStack>
+        {action ? <XStack flexShrink={0}>{action}</XStack> : null}
+      </XStack>
       <XStack gap="4 xs:3" alignItems="flex-start">
         {icon}
         <YStack gap="2" flex={1} minWidth={0}>
           {/* Sotto i 660px "Scegli" va sotto nome e bollini: accanto al nome lo
               mandava su tre righe e metteva i bollini uno per riga (prova da
               utente nuovo, docs/changelog/2026-11-05-prova-utente-nuovo.md). */}
-          <XStack alignItems="flex-start" gap="2" flexDirection="xs:column">
+          {/* Sul telefono la colonna prende tutta la larghezza (stretch): con
+              "flex-start" nome e bollini si allargavano oltre la scheda sui
+              telefoni stretti (iPhone SE, docs/changelog/2026-11-06-filtro-pagamenti-online.md). */}
+          <XStack alignItems="flex-start xs:stretch" gap="2" flexDirection="xs:column">
             {/* Nome e bollini sulla stessa riga, che va a capo quando non
                 c'è spazio (docs/CHANGELOG.md §349): prima, nella colonna
                 stretta, i bollini finivano uno sotto l'altro. */}
             <XStack flex={1} minWidth={0} alignItems="center" columnGap="2" rowGap={6} flexWrap="wrap">
-              <Text
-                fontFamily="heading"
-                fontWeight="800"
-                fontSize={22}
-                lineHeight="26px"
-                color={brand.grafite}
-                {...(href
-                                ? {
-                                    render: "a",
-                                    href,
-                                    textDecorationLine: "none hover:underline",
-                                    // Clic normale: niente ricarica della pagina, apre il
-                                    // profilo `onPress` della card. Con Ctrl/Cmd/Maiusc il
-                                    // browser apre un'altra scheda e la card non naviga.
-                                    onPress: (e: { metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean; preventDefault?: () => void; stopPropagation?: () => void }) => {
-                                      if (e.metaKey || e.ctrlKey || e.shiftKey) e.stopPropagation?.();
-                                      else e.preventDefault?.();
-                                    },
-                                  }
-                                : null)}
-              >
-                {businessName}
-              </Text>
+              {renderName("flex xs:none")}
               {verified ? (
                 // Pillola "Verificato" esplicita accanto al nome: la sola
                 // icona non comunica il significato a chi non conosce la
@@ -475,7 +504,7 @@ export function ProfessionalCard({
                   >
                     <Icon name="credit-card" size={13} color={brand.verificato} strokeWidth={2} />
                     <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.verificato}>
-                      Paga online
+                      Pagamenti online
                     </Text>
                   </XStack>
                 </BadgeInfo>
@@ -491,6 +520,7 @@ export function ProfessionalCard({
                 </BadgeInfo>
               ) : null}
               {isNewProfile ? (
+                <XStack display={extraBadgeDisplay} maxWidth="100%">
                 <BadgeInfo info="newProfile">
                   <XStack alignItems="center" gap={4} paddingHorizontal="2" paddingVertical={2} borderRadius="10" backgroundColor={brand.cianografiaVelo}>
                     <Icon name="sprout" size={13} color={brand.cianografiaScuro} strokeWidth={2} />
@@ -499,10 +529,12 @@ export function ProfessionalCard({
                     </Text>
                   </XStack>
                 </BadgeInfo>
+                </XStack>
               ) : null}
               {hasLiabilityInsurance ? (
+                <XStack display={extraBadgeDisplay} maxWidth="100%">
                 <BadgeInfo info="liabilityInsurance">
-                  <XStack alignItems="center" gap={4} paddingHorizontal="2" paddingVertical={2} borderRadius="10" backgroundColor={brand.gesso}>
+                  <XStack alignItems="center" columnGap={4} flexWrap="wrap" flexShrink={1} minWidth={0} paddingHorizontal="2" paddingVertical={2} borderRadius="10" backgroundColor={brand.gesso}>
                     <Icon name="shield-check" size={13} color={brand.grafite} strokeWidth={2} />
                     <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite}>
                       Assicurazione RC
@@ -512,9 +544,32 @@ export function ProfessionalCard({
                     </Text>
                   </XStack>
                 </BadgeInfo>
+                </XStack>
+              ) : null}
+              {extraBadges > 0 && !showAllBadges ? (
+                <XStack
+                  display="none xs:flex"
+                  alignItems="center"
+                  paddingHorizontal="2"
+                  paddingVertical={2}
+                  borderRadius="10"
+                  backgroundColor={brand.gesso}
+                  cursor="pointer"
+                  role="button"
+                  aria-label={extraBadges === 1 ? "Mostra un altro bollino" : `Mostra altri ${extraBadges} bollini`}
+                  onPress={(e: unknown) => {
+                    stop(e);
+                    (e as { preventDefault?: () => void } | undefined)?.preventDefault?.();
+                    setShowAllBadges(true);
+                  }}
+                >
+                  <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite}>
+                    +{extraBadges}
+                  </Text>
+                </XStack>
               ) : null}
             </XStack>
-            {action}
+            {action ? <XStack display="flex xs:none">{action}</XStack> : null}
           </XStack>
           <Text fontSize={16} lineHeight="22px" color={brand.grafite70} numberOfLines={2}>
             <Text fontFamily="body" fontSize={16} fontWeight="700" color={brand.grafite}>

@@ -356,8 +356,11 @@ export function ResultsListWithMap({
   // (docs/CHANGELOG.md §157, richiesta esplicita dell'utente).
   const [filterInsuredOnly, setFilterInsuredOnly] = useState(false);
 
-  // Solo chi può farsi pagare online, cioè con il bollino "Pagamenti online
-  // attivi" (richiesta di Luca, docs/changelog/2026-11-04-prezzi-e-foto-profilo.md).
+  // Solo chi può farsi pagare online, cioè con il bollino "Pagamenti online"
+  // (richiesta di Luca, docs/changelog/2026-11-04-prezzi-e-foto-profilo.md).
+  // Tiene chi accetta ANCHE i pagamenti online, non chi accetta solo quelli:
+  // per questo la scritta è "Accetta pagamenti online" e non "Solo con
+  // pagamento online" (docs/changelog/2026-11-06-filtro-pagamenti-online.md).
   const [filterOnlinePaymentOnly, setFilterOnlinePaymentOnly] = useState(false);
 
   // Popup centrato (richiesta esplicita dell'utente), stesso pattern
@@ -451,6 +454,14 @@ export function ResultsListWithMap({
   // Conteggio live per il bottone "Mostra N risultati" in fondo al pop-up
   // (richiesta esplicita dell'utente, riferimento miodottore.it).
   const filteredResultsCount = (showMap ? filteredOrderedVisible : filteredProfessionals).length;
+
+  // Riaprendo i filtri con "Accetta pagamenti online" acceso, la sezione
+  // "Pagamento" è già aperta: si vede subito che il filtro è attivo (Luca,
+  // docs/changelog/2026-11-06-filtro-pagamenti-online.md).
+  function toggleFilters() {
+    if (!showFilters && filterOnlinePaymentOnly) setExpandedSection("payment");
+    setShowFilters((v) => !v);
+  }
 
   function toggleSection(section: "online" | "availability" | "language" | "insurance" | "payment") {
     setExpandedSection((prev) => (prev === section ? null : section));
@@ -759,7 +770,7 @@ export function ResultsListWithMap({
                     <div className="filters-toggle-row">
                       <span id="filter-online-payment-label">
                         <CreditCard size={14} strokeWidth={1.5} style={{ verticalAlign: "-2px", marginRight: 6 }} />
-                        Solo con pagamento online
+                        Accetta pagamenti online
                       </span>
                       <span
                         className={`filters-switch${filterOnlinePaymentOnly ? " on" : ""}`}
@@ -976,7 +987,7 @@ export function ResultsListWithMap({
           {professionals.length === 0 ? null : (
           <XStack alignItems="center" justifyContent="space-between" flexWrap="wrap" gap="2">
             <XStack alignItems="center" gap="2" flexWrap="wrap">
-              <button type="button" className="filters-toggle hover-ring" onClick={() => setShowFilters((v) => !v)}>
+              <button type="button" className="filters-toggle hover-ring" onClick={toggleFilters}>
                 <SlidersHorizontal size={16} strokeWidth={1.5} />
                 Filtri{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
               </button>

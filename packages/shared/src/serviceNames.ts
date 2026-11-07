@@ -45,9 +45,10 @@ const SYNONYMS: Record<string, string> = Object.fromEntries(
       ["Installazione scaldabagno", ["sostituzione scaldabagno", "montaggio scaldabagno", "scaldabagno"]],
       ["Ricerca guasti (salvavita che scatta)", ["ricerca guasti", "ricerca guasto", "salvavita", "guasti elettrici"]],
       ["Installazione punti luce", ["punti luce", "installazione lampadari", "montaggio lampadari", "lampadari"]],
-      ["Installazione climatizzatore", ["installazione condizionatore", "montaggio condizionatore", "installazione aria condizionata", "montaggio climatizzatore"]],
+      // "Condizionatore" è la parola che si cerca di più (Keyword Planner del 06/11/2026); i vecchi nomi restano varianti.
+      ["Installazione condizionatore", ["installazione climatizzatore", "montaggio condizionatore", "installazione aria condizionata", "montaggio climatizzatore", "installazione condizionatori", "installazione climatizzatori"]],
       ["Manutenzione caldaia", ["revisione caldaia", "pulizia caldaia", "tagliando caldaia", "manutenzione ordinaria caldaia"]],
-      ["Pulizia filtri climatizzatore", ["pulizia condizionatore", "sanificazione condizionatore", "pulizia climatizzatore"]],
+      ["Pulizia filtri condizionatore", ["pulizia filtri climatizzatore", "pulizia condizionatore", "sanificazione condizionatore", "pulizia climatizzatore"]],
       ["Tinteggiatura interni", ["tinteggiatura", "imbiancatura", "imbiancatura interni", "pittura pareti", "tinteggiatura pareti"]],
       ["Trattamento antimuffa", ["antimuffa", "rimozione muffa", "trattamento muffa"]],
       ["Apertura porte bloccate", ["apertura porte", "apertura porta", "apertura porta bloccata", "porta bloccata"]],
@@ -78,7 +79,7 @@ const SYNONYMS: Record<string, string> = Object.fromEntries(
       // Allargata il 28/10/2026 (docs/changelog/2026-10-28-quanto-costa-sinonimi.md, richiesta di Luca): almeno qualche
       // variante comune per ogni prestazione suggerita, mai una parola che
       // può voler dire due lavori diversi (es. "caldaia" da sola).
-      ["Sostituzione caldaia", ["cambio caldaia", "installazione caldaia", "nuova caldaia", "montaggio caldaia"]],
+      ["Installazione caldaia", ["sostituzione caldaia", "cambio caldaia", "nuova caldaia", "montaggio caldaia"]],
       ["Sostituzione sifone", ["cambio sifone", "sifone", "riparazione sifone"]],
       ["Sostituzione box doccia", ["cambio box doccia", "installazione box doccia", "montaggio box doccia", "box doccia"]],
       ["Installazione lavatrice e lavastoviglie", ["installazione lavatrice", "installazione lavastoviglie", "allaccio lavatrice", "allacciamento lavatrice", "allaccio lavastoviglie"]],
@@ -123,7 +124,9 @@ const SYNONYMS: Record<string, string> = Object.fromEntries(
       ["Duplicazione chiavi", ["copia chiavi", "duplicato chiavi", "duplicazione chiave"]],
       ["Riparazione porte blindate", ["porta blindata", "porte blindate", "riparazione porta blindata"]],
       ["Riparazione persiane in ferro", ["persiane in ferro", "riparazione persiane ferro"]],
-      ["Ricarica gas climatizzatore", ["ricarica gas", "ricarica gas condizionatore", "ricarica condizionatore"]],
+      ["Ricarica gas condizionatore", ["ricarica gas climatizzatore", "ricarica gas", "ricarica condizionatore"]],
+      ["Installazione pompa di calore", ["pompa di calore", "pompe di calore", "installazione pompe di calore", "montaggio pompa di calore", "sostituzione pompa di calore"]],
+      ["Trasformazione vasca in doccia", ["vasca in doccia", "da vasca a doccia", "sostituzione vasca con doccia", "trasformazione vasca doccia", "cambio vasca con doccia"]],
       ["Assistenza guasti", ["riparazione condizionatore", "riparazione climatizzatore", "condizionatore guasto", "climatizzatore guasto"]],
       ["Riparazione caldaia", ["caldaia guasta", "assistenza caldaia", "riparazione caldaie"]],
       ["Riparazione scaldabagno", ["scaldabagno guasto", "assistenza scaldabagno", "riparazione boiler"]],

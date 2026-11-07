@@ -22,7 +22,7 @@ type Place = { left: number; top: number; arrowLeft: number; below: boolean };
 // Stile del fumetto e del contorno da tastiera: un solo blocco, aggiunto da
 // React nel <head> una volta sola anche con molti badge nella pagina.
 const CSS = `
-.badge-info{all:unset;display:inline-flex;cursor:help;border-radius:999px;-webkit-tap-highlight-color:transparent}
+.badge-info{all:unset;display:inline-flex;max-width:100%;cursor:help;border-radius:999px;-webkit-tap-highlight-color:transparent}
 .badge-info:focus-visible{outline:2px solid ${brand.cianografiaScuro};outline-offset:2px}
 .badge-info-pop{position:fixed;z-index:1100;box-sizing:border-box;padding:12px 14px;border-radius:16px;background:${brand.calce};color:${brand.grafite};box-shadow:0 10px 30px rgba(43,32,19,.16),0 1px 3px rgba(43,32,19,.10);font-size:14px;line-height:1.45;text-align:left;animation:badge-info-in ${motionFast} ${motionEasing}}
 .badge-info-pop strong{display:block;font-weight:700;margin-bottom:2px}
