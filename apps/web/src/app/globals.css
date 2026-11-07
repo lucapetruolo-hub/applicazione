@@ -6757,6 +6757,38 @@ a.admin-kpi:hover {
   border-radius: 999px;
   flex-shrink: 0;
 }
+/* "Lavori più cercati" in home, sotto le categorie (components/PopularJobs.tsx). */
+.popular-jobs {
+  width: 100%;
+  margin-top: 28px;
+}
+.popular-jobs-title {
+  margin: 0 0 14px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #2b2420;
+}
+/* Da telefono tre righe da scorrere di lato invece di otto righe una sotto
+   l'altra: l'elenco è largo il doppio dello schermo e va a capo da solo. */
+@media (max-width: 660px) {
+  .popular-jobs-scroll {
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0 -16px;
+    padding: 2px 16px 4px;
+  }
+  .popular-jobs-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .popular-jobs .popular-services-list {
+    width: 860px;
+    gap: 8px;
+  }
+  .popular-jobs .popular-services-link {
+    white-space: nowrap;
+    font-size: 15px;
+  }
+}
 @media (min-width: 661px) {
   .popular-services {
     padding: 8px 24px 64px;

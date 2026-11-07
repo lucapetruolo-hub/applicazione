@@ -1,6 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
+import { orderPopularJobs, type PopularJobsResponse } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { countingFrom, daySinceLaunch } from "../site-counts/counted";
 
 /** Richieste e ricerche dell'ultimo anno: abbastanza per un ordine stabile, non vecchie di anni. */
 const POPULARITY_WINDOW_DAYS = 365;
@@ -12,6 +14,10 @@ const POPULARITY_WINDOW_DAYS = 365;
 export const REQUEST_WEIGHT = 3;
 /** Sotto questo punteggio in città (5 richieste, o 15 ricerche) l'ordine della sola città non dice nulla: si usa tutta Italia. */
 export const MIN_CITY_SCORE = 5 * REQUEST_WEIGHT;
+
+/** "Lavori più cercati" in home: le ricerche degli ultimi 90 giorni, ricalcolate al massimo ogni 10 minuti. */
+const POPULAR_JOBS_WINDOW_DAYS = 90;
+const POPULAR_JOBS_CACHE_MS = 10 * 60_000;
 
 export type CategoryPopularity = {
   /** "CITY" se i conteggi sono della città chiesta, "ALL" se di tutta la piattaforma. */
@@ -26,7 +32,29 @@ function normalizeCity(city?: string): string {
 
 @Injectable()
 export class CategoriesService {
+  private popularJobsCache: { at: number; value: PopularJobsResponse } | null = null;
+
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+
+  /**
+   * "Lavori più cercati" in home (docs/changelog/2026-11-07-lavori-piu-cercati-home.md):
+   * le prestazioni dell'elenco suggerito più cercate sul sito negli ultimi 90
+   * giorni, dal lancio (`ServiceSearchDay`, solo contatori per giorno). Con
+   * poche ricerche, l'elenco di partenza (`orderPopularJobs`).
+   */
+  async getPopularJobs(now: Date = new Date()): Promise<PopularJobsResponse> {
+    if (this.popularJobsCache && now.getTime() - this.popularJobsCache.at < POPULAR_JOBS_CACHE_MS) return this.popularJobsCache.value;
+    const since = new Date(now.getTime() - POPULAR_JOBS_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+    since.setUTCHours(0, 0, 0, 0);
+    const rows = await this.prisma.serviceSearchDay.groupBy({
+      by: ["categorySlug", "service"],
+      where: { day: { gte: daySinceLaunch(since, countingFrom(now)) } },
+      _sum: { count: true },
+    });
+    const value = orderPopularJobs(rows.map((row) => ({ categorySlug: row.categorySlug, service: row.service, searches: row._sum.count ?? 0 })));
+    this.popularJobsCache = { at: now.getTime(), value };
+    return value;
+  }
 
   /**
    * Una ricerca per categoria (docs/CHANGELOG.md §281): contatore per giorno

@@ -11,6 +11,12 @@ export class CategoriesController {
     return PROFESSIONAL_CATEGORIES;
   }
 
+  // Pubblico: solo nomi dell'elenco suggerito, nessun conteggio ("Lavori più cercati" in home).
+  @Get("popular-jobs")
+  getPopularJobs() {
+    return this.categoriesService.getPopularJobs();
+  }
+
   // Pubblico, solo conteggi aggregati: ordina la scelta dei lavori con i più
   // cercati prima (docs/CHANGELOG.md §280-§281).
   @Get("popular")

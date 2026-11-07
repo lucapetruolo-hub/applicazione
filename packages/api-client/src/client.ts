@@ -136,6 +136,7 @@ import type {
   ProblemMatchResult,
   ProblemExample,
   ProblemExamplesResponse,
+  PopularJobsResponse,
   ProblemTakeoverInput,
   ProblemMatchAdminOverview,
   ProblemWordAdmin,
@@ -1266,6 +1267,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     getFeatures: () => request<{ onlinePayments: boolean }>("/health/features"),
     getCategories: () => request<typeof PROFESSIONAL_CATEGORIES>("/categories"),
     /** Richieste per categoria, per mettere prima i lavori più cercati (docs/CHANGELOG.md §280). */
+    /** "Lavori più cercati" in home: nomi dell'elenco suggerito, già in ordine. */
+    getPopularJobs: () => request<PopularJobsResponse>("/categories/popular-jobs"),
+
     getCategoryPopularity: (city?: string) =>
       request<{ scope: "CITY" | "ALL"; counts: { slug: string; count: number }[] }>(
         `/categories/popular${city ? `?city=${encodeURIComponent(city)}` : ""}`,
