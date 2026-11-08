@@ -96,9 +96,6 @@ export function AccountMenu() {
   const menuUnreadCounts = accountMenuUnreadCounts(user.isProfessional, unreadNotifications);
   // Qualcosa da fare (agenda, percorso del profilo): pallino anche accanto al nome.
   const toDo = attention.size > 0;
-  const triggerLabel = `${displayName ? `${displayName}, il mio account` : "Il mio account"}${
-    unreadCount > 0 ? `, ${unreadCount} novità da visualizzare` : toDo ? ", qualcosa da completare" : ""
-  }`;
 
   return (
     <YStack ref={containerRef as never} position="relative" onBlur={onContainerBlur}>
@@ -110,10 +107,6 @@ export function AccountMenu() {
         cursor="pointer"
         onPress={() => setIsOpen((open) => !open)}
         role="button"
-        // Un solo nome, che comincia col testo visibile (WCAG 2.5.3): prima
-        // il lettore di schermo diceva iniziali e nome due volte (E7-14 del
-        // controllo dell'8/11).
-        aria-label={triggerLabel}
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onKeyDown={(event: unknown) => {
@@ -124,16 +117,23 @@ export function AccountMenu() {
                 setIsOpen(true);
               }}
       >
+        {/* Niente etichetta separata: il nome letto è il testo visibile, più
+            le novità solo per il lettore di schermo (WCAG 2.5.3, docs/CHANGELOG.md §310). */}
         <span aria-hidden="true" style={{ display: "flex" }}>
           <Avatar name={avatarName ?? "?"} imageUrl={displayImageUrl} size={24} />
         </span>
         {/* Da telefono resta solo la foto: un nome lungo spingeva fuori
             schermo "Richiedi preventivo" (docs/CHANGELOG.md §319). Il nome
             resta per il lettore di schermo. */}
-        <span className="acct-trigger-name" aria-hidden="true">
+        <span className="acct-trigger-name">
           <Text fontSize="3" fontWeight="600" color={brand.grafite} numberOfLines={1}>
             {displayName ?? "Il mio account"}
           </Text>
+        </span>
+        <span className="sr-only acct-trigger-name-sr">{displayName ?? "Il mio account"}</span>
+        <span className="sr-only">
+          {displayName ? ", il mio account" : ""}
+          {unreadCount > 0 ? `, ${unreadCount} novità da visualizzare` : toDo ? ", qualcosa da completare" : ""}
         </span>
         {/* Il numero delle novità sta solo sulla campanella accanto (§349):
             due "9+" uno vicino all'altro dicevano la stessa cosa. */}

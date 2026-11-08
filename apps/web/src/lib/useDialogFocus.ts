@@ -46,12 +46,12 @@ export function useDialogFocus(ref: RefObject<HTMLElement | null>, onClose: () =
         return;
       }
       const list = focusableIn(node);
-      if (list.length === 0) {
+      const head = list[0];
+      const tail = list[list.length - 1];
+      if (!head || !tail) {
         event.preventDefault();
         return;
       }
-      const head = list[0];
-      const tail = list[list.length - 1];
       if (event.shiftKey && (!inside || active === head || active === node)) {
         event.preventDefault();
         tail.focus();

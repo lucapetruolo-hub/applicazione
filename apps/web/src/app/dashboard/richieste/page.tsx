@@ -20,7 +20,6 @@ import { CategoryCarousel } from "@/components/CategoryCarousel";
 import { RestoreAllArchivedBar, RestoredNotice } from "@/components/RequestCardPersonalActions";
 import { RequestCard } from "./_components/RequestCard";
 import { filterInputStyle, leadSearchText } from "./_components/requestHelpers";
-import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
 const UNREAD_BADGE_POLL_MS = 15000;

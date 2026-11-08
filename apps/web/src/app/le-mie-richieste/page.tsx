@@ -21,7 +21,6 @@ import { RequestDeletedNotice } from "./_components/RequestDeletedNotice";
 import { GuidedRequestCard } from "./_components/GuidedRequestCard";
 import { clientRequestSearchText, filterInputStyle, requestJobAddress } from "./_components/clientRequestHelpers";
 import { BookingConfirmed } from "./_components/BookingConfirmed";
-import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 import { PAYMENT_PAGE_LABEL, startExternalRedirectProgress } from "@/lib/navigationProgress";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.

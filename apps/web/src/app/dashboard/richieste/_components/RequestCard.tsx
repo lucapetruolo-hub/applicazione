@@ -663,17 +663,15 @@ export function RequestCard({
   // Aprendo il modulo del preventivo il fuoco va sul suo titolo (E7-08 del
   // controllo dell'8/11): prima restava sul corpo della pagina.
   const quoteFormTitleRef = useRef<HTMLElement>(null);
-  const focusQuoteFormRef = useRef(false);
+  const [quoteFormOpenings, setQuoteFormOpenings] = useState(0);
   useEffect(() => {
-    if (!showQuoteForm || !focusQuoteFormRef.current) return;
-    focusQuoteFormRef.current = false;
-    quoteFormTitleRef.current?.focus();
-  }, [showQuoteForm]);
+    if (quoteFormOpenings > 0) quoteFormTitleRef.current?.focus();
+  }, [quoteFormOpenings]);
 
   /** Nuovo preventivo: l'orario del cliente già scelto, se è libero; altrimenti nessuno. */
   function openNewQuoteForm() {
     setSelectedSlotKey(requestedSlot ? slotKey(requestedSlot) : "");
-    focusQuoteFormRef.current = true;
+    setQuoteFormOpenings((n) => n + 1);
     setShowQuoteForm(true);
   }
 
@@ -692,7 +690,7 @@ export function RequestCard({
     setDepositPercentDraft(String(lead.quote.depositPercent));
     setNoticeHours(isCancellationNoticeHours(lead.quote.cancellationNoticeHours) ? lead.quote.cancellationNoticeHours : standardNotice);
     setKeepDeposit(lead.quote.lateCancelKeepsDeposit);
-    focusQuoteFormRef.current = true;
+    setQuoteFormOpenings((n) => n + 1);
     setShowQuoteForm(true);
   }
 
