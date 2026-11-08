@@ -79,6 +79,8 @@ const QUOTE_SLOTS_SHOWN = 6;
 /** Durate a pillola; oltre resta un menu (docs/CHANGELOG.md §349). */
 const JOB_DAY_PILLS = [1, 2, 3, 4, 5];
 
+const QUOTE_CHECKBOX_STYLE = { accentColor: brand.verificato, width: 22, height: 22, flexShrink: 0, margin: 0 } as const;
+
 export function RequestCard({
   lead,
   stage,
@@ -298,7 +300,16 @@ export function RequestCard({
   // "Nuovo": aggiornamenti non letti arrivati in questa pagina, o scheda
   // segnata a mano "da leggere" dal menu (docs/CHANGELOG.md §130).
   // Mai su una richiesta ritirata dal cliente: non c'è più niente da fare (collaudo B-09).
-  const isNew = !lead.guidedRequest.withdrawnByClient && (Boolean(lead.myState.markedUnreadAt) || (unreadCount ?? 0) > 0);
+  // Nemmeno su un lavoro annullato, terminato, scaduto o chiuso: "Nuovo" lì
+  // sembrava un lavoro nuovo (prova con persone simulate, punto 13,
+  // docs/changelog/2026-11-08-prova-persone-simulate.md).
+  const isNew =
+    !lead.guidedRequest.withdrawnByClient &&
+    stage !== "annullata" &&
+    stage !== "completata" &&
+    stage !== "scaduta" &&
+    stage !== "chiusa" &&
+    (Boolean(lead.myState.markedUnreadAt) || (unreadCount ?? 0) > 0);
   const [showTimeline, setShowTimeline] = useState(false);
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
   // Il pallino "Contatta/Cronologia" deve sparire non appena si apre la
@@ -1220,7 +1231,7 @@ export function RequestCard({
               ) : priceRange && (priceRange.totalMinEurCents > 0 || priceRange.totalMaxEurCents > 0) ? (
                 <XStack justifyContent="space-between" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop={6} marginTop={2}>
                   <Text fontSize={16} fontWeight="800" color={brand.grafite}>
-                    Totale stimato
+                    Prezzo
                   </Text>
                   <Text fontSize={16} fontWeight="800" color={brand.grafite}>
                     {formatEurRange(priceRange.totalMinEurCents, priceRange.totalMaxEurCents)}
@@ -1744,7 +1755,8 @@ export function RequestCard({
                               e.target.checked ? jobPaymentChoices.filter((c) => c === choice || prev.includes(c)) : prev.filter((c) => c !== choice),
                             )
                           }
-                          style={{ accentColor: brand.verificato }}
+                          // Quadratino più grande, per chi scrive coi guanti (punto 22, docs/changelog/2026-11-08-prova-persone-simulate.md).
+                          style={QUOTE_CHECKBOX_STYLE}
                         />
                         {QUOTE_PAYMENT_OPTION_LABEL[choice]}
                       </label>
@@ -1793,7 +1805,7 @@ export function RequestCard({
                 )}
                 {onlinePayments ? (
                   <label style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer", fontSize: 16, color: brand.grafite70 }}>
-                    <input type="checkbox" checked={rememberPaymentOffer} onChange={(e) => setRememberPaymentOffer(e.target.checked)} style={{ accentColor: brand.verificato }} />
+                    <input type="checkbox" checked={rememberPaymentOffer} onChange={(e) => setRememberPaymentOffer(e.target.checked)} style={QUOTE_CHECKBOX_STYLE} />
                     Proponi questi modi anche nei prossimi preventivi
                   </label>
                 ) : null}
@@ -1813,7 +1825,7 @@ export function RequestCard({
                 </XStack>
                 {onlinePayments && paymentOptions.some(paymentChoiceIsOnline) ? (
                   <label style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer", fontSize: 16, color: brand.grafite }}>
-                    <input type="checkbox" checked={keepDeposit} onChange={(e) => setKeepDeposit(e.target.checked)} style={{ accentColor: brand.verificato }} />
+                    <input type="checkbox" checked={keepDeposit} onChange={(e) => setKeepDeposit(e.target.checked)} style={QUOTE_CHECKBOX_STYLE} />
                     Se annulla più tardi, l&apos;acconto online resta a me
                   </label>
                 ) : null}
@@ -1836,7 +1848,7 @@ export function RequestCard({
                   )
                 ) : null}
                 <Text fontSize={13} color={brand.grafite70}>
-                  Il cliente lo legge prima di accettare. Lo standard lo cambi nel Profilo.
+                  Il cliente lo legge prima di accettare. Quello di partenza lo cambi nel Profilo.
                 </Text>
               </YStack>
 

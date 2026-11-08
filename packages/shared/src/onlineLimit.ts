@@ -94,7 +94,8 @@ export function onlineLimitHint(input: { limitEurCents: number | null; cleanJobs
     return `${head} Hai già ${ONLINE_LIMIT_FREE_JOBS} lavori pagati online: il limite si toglie il ${day}.`;
   }
   // Le due condizioni insieme (collaudo O-08): prima si leggeva solo "dopo 10 lavori".
-  return `${head} Il limite si toglie dopo ${ONLINE_LIMIT_FREE_JOBS} lavori pagati online senza contestazioni e ${ONLINE_LIMIT_FREE_MONTHS} mesi dal primo: ne hai ${input.cleanJobs}.`;
+  // "Finora: 1 lavoro pagato online", non "ne hai 1" (docs/changelog/2026-11-08-prova-persone-simulate.md).
+  return `${head} Il limite si toglie dopo ${ONLINE_LIMIT_FREE_JOBS} lavori pagati online senza contestazioni e ${ONLINE_LIMIT_FREE_MONTHS} mesi dal primo. Finora: ${input.cleanJobs === 1 ? "1 lavoro pagato online" : `${input.cleanJobs} lavori pagati online`}.`;
 }
 
 export const ONLINE_LIMIT_REASON_MAX = 300;

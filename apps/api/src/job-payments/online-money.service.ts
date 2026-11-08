@@ -96,7 +96,7 @@ function saveCardForBalance(enabled: boolean) {
   return {
     session: {
       customer_creation: "always" as const,
-      custom_text: { submit: { message: "Il saldo verrà addebitato su questa carta quando il professionista chiude il lavoro, entro l'importo massimo del preventivo." } },
+      custom_text: { submit: { message: "Il resto del prezzo lo paghi con questa carta, in automatico, quando il professionista chiude il lavoro. Mai più del prezzo massimo del preventivo." } },
     },
     intent: { setup_future_usage: "off_session" as const },
   };
@@ -201,6 +201,14 @@ export function statementSuffix(businessName: string): string | null {
  */
 export const EUR_ONLY = { adaptive_pricing: { enabled: false } } as const;
 
+/**
+ * Solo carta (con Apple Pay e Google Pay, che sono carte), come per
+ * l'abbonamento: Stripe proponeva anche Revolut Pay, iDEAL e Bancontact, che
+ * confondono e non tengono la carta per il saldo
+ * (docs/changelog/2026-11-08-prova-persone-simulate.md).
+ */
+export const CARD_ONLY: { payment_method_types: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] } = { payment_method_types: ["card"] };
+
 @Injectable()
 export class OnlineMoneyService {
   private readonly logger = new Logger(OnlineMoneyService.name);
@@ -269,6 +277,7 @@ export class OnlineMoneyService {
       mode: "payment",
       ...saveCard.session,
       ...EUR_ONLY,
+      ...CARD_ONLY,
       line_items: [
         {
           price_data: {
@@ -324,6 +333,7 @@ export class OnlineMoneyService {
       mode: "payment",
       ...saveCard.session,
       ...EUR_ONLY,
+      ...CARD_ONLY,
       expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
       line_items: [
         {

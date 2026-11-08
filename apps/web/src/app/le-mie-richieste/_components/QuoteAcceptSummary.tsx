@@ -11,6 +11,7 @@ import {
   formatServicePriceRange,
   isLateCancellation,
   jobPaymentChoiceCopy,
+  quotePaymentRestText,
   paymentChoiceIsOnline,
   quotePriceTaxNote,
   UPFRONT_PAYMENT_NOTE,
@@ -89,9 +90,10 @@ export function QuoteAcceptSummary({
               {line("Paghi ora, online", split.restMaxEurCents > 0 ? "Acconto con carta" : "Tutto il prezzo, con carta", formatEurCents(split.nowEurCents), true)}
               {split.restMaxEurCents > 0
                 ? line(
-                    split.restOnline ? "A lavoro finito, online" : "A lavoro finito, al professionista",
-                    split.restOnline ? "Il resto del prezzo" : "Il resto, direttamente a lui",
-                    `${split.restIsRange ? "fino a " : ""}${formatEurCents(split.restMaxEurCents)}`,
+                    split.restOnline ? "A lavoro finito, con la stessa carta" : "A lavoro finito, al professionista",
+                    // Il saldo online parte da solo: prima lo diceva solo la pagina di Stripe (docs/changelog/2026-11-08-prova-persone-simulate.md).
+                    split.restOnline ? "Il resto, in automatico quando il professionista chiude il lavoro" : "Il resto, direttamente a lui",
+                    quotePaymentRestText(split),
                   )
                 : null}
             </>
@@ -102,7 +104,7 @@ export function QuoteAcceptSummary({
           )}
           <XStack justifyContent="space-between" alignItems="baseline" gap="3" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="2">
             <Text fontSize={16} color={brand.grafite}>
-              Totale <Text fontSize={13} color={brand.grafite70}>· {taxNote}</Text>
+              Prezzo <Text fontSize={13} color={brand.grafite70}>· {taxNote}</Text>
             </Text>
             <Text fontSize={16} fontWeight="800" color={brand.grafite} whiteSpace="nowrap">
               {priceText}

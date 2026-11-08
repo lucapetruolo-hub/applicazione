@@ -79,6 +79,10 @@ export function AccountMenu() {
   // finché non lo fa, invece di mostrare un'etichetta vuota. `isProfessional`
   // (non `role`) regge anche un admin promosso che aveva già un profilo.
   const displayName = user.isProfessional ? user.businessName ?? user.name ?? user.email : user.name ?? user.phone ?? user.email;
+  // Senza nome nella foto va solo la prima lettera dell'email: "PR" preso da
+  // "prova.persone…" sembravano iniziali vere (punto 24,
+  // docs/changelog/2026-11-08-prova-persone-simulate.md).
+  const avatarName = (user.isProfessional ? user.businessName ?? user.name : user.name) ?? (user.email ? user.email.charAt(0) : displayName);
   // Richiesta esplicita dell'utente: l'icona in alto a destra mostra
   // l'immagine profilo pubblica del professionista (ProfessionalProfile.
   // imageUrl) quando disponibile, non le sole iniziali — `user.imageUrl`
@@ -116,7 +120,7 @@ export function AccountMenu() {
         {/* Niente etichetta separata: il nome letto è il testo visibile, più
             le novità solo per il lettore di schermo (WCAG 2.5.3, docs/CHANGELOG.md §310). */}
         <span aria-hidden="true" style={{ display: "flex" }}>
-          <Avatar name={displayName ?? "?"} imageUrl={displayImageUrl} size={24} />
+          <Avatar name={avatarName ?? "?"} imageUrl={displayImageUrl} size={24} />
         </span>
         {/* Da telefono resta solo la foto: un nome lungo spingeva fuori
             schermo "Richiedi preventivo" (docs/CHANGELOG.md §319). Il nome
@@ -149,7 +153,7 @@ export function AccountMenu() {
         // intestazione con chi sei, poi le sezioni, "Esci" in fondo.
         <div ref={menuRef} className="acct-menu" role="menu" aria-label="Il mio account" tabIndex={-1} onKeyDown={onMenuKeyDown}>
           <div className="acct-menu-head">
-            <Avatar name={displayName ?? "?"} imageUrl={displayImageUrl} size={36} />
+            <Avatar name={avatarName ?? "?"} imageUrl={displayImageUrl} size={36} />
             <div className="acct-menu-head-text">
               <strong>{displayName}</strong>
               <span>{user.isProfessional ? "Account professionista" : user.email ?? "Il tuo account"}</span>

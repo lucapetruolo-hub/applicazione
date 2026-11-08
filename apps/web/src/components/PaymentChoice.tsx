@@ -9,7 +9,7 @@ import {
   UPFRONT_PAYMENT_NOTE,
 } from "@professionisti/shared";
 import Link from "next/link";
-import { Text, YStack, brand } from "@professionisti/ui";
+import { Text, XStack, YStack, brand } from "@professionisti/ui";
 
 /**
  * Scelta del metodo di pagamento accettando un preventivo
@@ -28,6 +28,13 @@ import { Text, YStack, brand } from "@professionisti/ui";
  * Il cliente vede solo i modi offerti dal professionista nel preventivo,
  * con la sua percentuale di acconto (docs/CHANGELOG.md §237).
  */
+
+/** Nomi dei modi nell'elenco della scheda del preventivo, prima di accettare. */
+const OFFER_TITLE: Record<JobPaymentChoice, string> = {
+  ONLINE: "Con la carta, sul sito",
+  MIXED: "Acconto con la carta, il resto direttamente a lui",
+  DIRECT: "Direttamente al professionista, in contanti o con bonifico",
+};
 
 /** Le cifre di ora e di dopo: un solo conto in `packages/shared` (anche per il PDF del preventivo). */
 export const paymentSplit = quotePaymentSplit;
@@ -66,25 +73,44 @@ export function PaymentOffer({
         </Text>
       ) : (
         <>
-          {options.map((option) => (
-            <Text key={option} fontSize={16} fontWeight="600" color={brand.grafite}>
-              {jobPaymentChoiceCopy(option, depositPercent, true).title}
-              {paymentSplit(option, priceTotals, depositPercent) ? (
-                <Text fontSize={13} fontWeight="400" color={brand.grafite70}>
-                  {" "}
-                  · {paymentSplitLine(option, priceTotals, depositPercent, true)}
+          {/* Più modi: un elenco numerato con "Puoi pagare in N modi", non
+              titoli in fila. Prima la spiegazione della carta finiva sotto
+              "Direttamente al professionista" e chi legge con fatica capiva il
+              contrario (docs/changelog/2026-11-08-prova-persone-simulate.md). */}
+          <Text fontSize={16} fontWeight="600" color={brand.grafite}>
+            Puoi pagare in {options.length === 2 ? "due" : "tre"} modi:
+          </Text>
+          {options.map((option, index) => (
+            <XStack key={option} gap={8} alignItems="flex-start">
+              <Text fontSize={16} fontWeight="700" color={brand.verificato} aria-hidden>
+                {index + 1}.
+              </Text>
+              <YStack flex={1} minWidth={0} gap={2}>
+                <Text fontSize={16} fontWeight="600" color={brand.grafite}>
+                  {OFFER_TITLE[option]}
                 </Text>
-              ) : null}
-            </Text>
+                {paymentSplit(option, priceTotals, depositPercent) ? (
+                  <Text fontSize={14} color={brand.grafite70}>
+                    {paymentSplitLine(option, priceTotals, depositPercent, true)}.
+                  </Text>
+                ) : null}
+              </YStack>
+            </XStack>
           ))}
           <Text fontSize={13} color={brand.grafite70}>
-            Scegli accettando.
+            Scegli quando accetti.
+            {anyOnline ? " Con la carta il professionista riceve i soldi quando confermi che il lavoro è fatto. " : " "}
+            {anyOnline ? (
+              <Link href="/termini#pagamenti" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
+                Scopri di più
+              </Link>
+            ) : null}
           </Text>
         </>
       )}
-      {anyOnline ? (
+      {anyOnline && only ? (
         <Text fontSize={13} color={brand.grafite70}>
-          {depositPercent >= 100 && only ? UPFRONT_PAYMENT_NOTE : "Con carta, sul sito. Il professionista riceve i soldi quando confermi che il lavoro è fatto."}{" "}
+          {depositPercent >= 100 ? UPFRONT_PAYMENT_NOTE : "Con la carta, sul sito. Il professionista riceve i soldi quando confermi che il lavoro è fatto."}{" "}
           <Link href="/termini#pagamenti" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
             Scopri di più
           </Link>
@@ -112,7 +138,7 @@ export function PaymentChoice({
   offered,
   depositPercent,
 }: {
-  value: JobPaymentChoice;
+  value: JobPaymentChoice | null;
   onChange: (value: JobPaymentChoice) => void;
   quoteMinEurCents: number;
   quoteMaxEurCents: number;

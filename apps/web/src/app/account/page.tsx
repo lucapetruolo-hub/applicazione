@@ -588,6 +588,8 @@ export default function AccountPage() {
                 value={addressCity}
                 onChangeText={changeCity}
                 placeholder="Es. Roma"
+                // Il lettore di schermo legge "Città", non l'esempio (punto 21, docs/changelog/2026-11-08-prova-persone-simulate.md).
+                aria-label="Città"
                 minChars={3}
               />
             </YStack>
@@ -827,7 +829,7 @@ export default function AccountPage() {
           <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="3">
             <YStack gap={2} flex={1} minWidth={200}>
               <Text fontWeight="600" color={brand.grafite}>
-                Esporta i tuoi dati
+                Scarica i tuoi dati
               </Text>
               <Text fontSize={13} color={brand.grafite70}>
                 Scarica un file con tutte le informazioni collegate al tuo account.
@@ -840,11 +842,11 @@ export default function AccountPage() {
               opacity={isExporting ? 0.6 : 1}
               onPress={isExporting ? undefined : handleExportData}
               role="button"
-              aria-label="Esporta i miei dati"
+              aria-label="Scarica i miei dati"
             >
               <Download size={15} strokeWidth={1.5} color={brand.grafite70} />
               <Text color={brand.grafite70} fontWeight="600">
-                {isExporting ? "Esportazione..." : "Esporta"}
+                {isExporting ? "Preparo il file..." : "Scarica"}
               </Text>
             </XStack>
           </XStack>

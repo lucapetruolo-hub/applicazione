@@ -99,7 +99,9 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
         <Text fontSize={16} color={brand.grafite70}>
           {/* Nessuna cifra finché nessun lavoro ha 3 prezzi (§398): allora la
               riga non promette "prezzi veri" (collaudo N-06). */}
-          {entries && entries.length > 0 && !entries.some((entry) => entry.price)
+          {isEmpty
+            ? "Prezzi veri dei professionisti del sito, mai cifre inventate."
+            : entries && entries.length > 0 && !entries.some((entry) => entry.price)
             ? "I lavori offerti dai professionisti del sito: il prezzo medio compare quando almeno 3 lo indicano. Tocca un lavoro per vedere chi lo fa."
             : "Prezzi veri dei professionisti del sito. Tocca un lavoro per vedere chi lo fa."}
         </Text>
@@ -131,8 +133,14 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
           {isEmpty ? (
             <YStack width="100%" gap="3" alignItems="flex-start" padding="4">
               <Text fontSize={16} color={brand.grafite70}>
-                I prezzi medi appariranno qui non appena i professionisti inseriranno le loro prestazioni. Nel frattempo
-                puoi chiedere un preventivo gratuito: è il modo più preciso per sapere quanto costa il tuo lavoro.
+                {/* Mai nascosta (Luca, 07/11/2026): la sezione dice che i prezzi
+                    veri arrivano. Compaiono da soli quando almeno
+                    MIN_PROFESSIONALS_FOR_SERVICE_PRICE professionisti veri li
+                    indicano (account di prova esclusi), docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md. */}
+                <Text fontFamily="body" fontWeight="700" color={brand.grafite}>
+                  Stiamo raccogliendo i prezzi veri dei professionisti.
+                </Text>{" "}
+                Li pubblichiamo a breve. Intanto un preventivo gratuito ti dice quanto costa il tuo lavoro.
               </Text>
               <a
                 href="/preventivo"

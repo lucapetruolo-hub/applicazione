@@ -173,19 +173,20 @@ export function SiteFooter() {
               {companyDataReady() ? ` ${COMPANY.legalName} · P.IVA ${COMPANY.vatNumber}` : null}
             </Text>
           </XStack>
+          {/* Nomi corti come nell'area account (prova con persone simulate, docs/changelog/2026-11-08-prova-persone-simulate.md). */}
           <Link href="/privacy" style={{ textDecoration: "none" }}>
             <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
-              Privacy Policy
+              Privacy
             </Text>
           </Link>
           <Link href="/termini" style={{ textDecoration: "none" }}>
             <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
-              Termini di Servizio
+              Termini
             </Text>
           </Link>
           <Link href="/cookie" style={{ textDecoration: "none" }}>
             <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
-              Cookie Policy
+              Cookie
             </Text>
           </Link>
           <button type="button" onClick={reopenCookieChoice} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>

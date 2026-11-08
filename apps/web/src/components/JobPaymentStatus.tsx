@@ -40,7 +40,8 @@ type View = {
   stepError?: boolean;
 };
 
-const CLIENT_STEPS = ["Pagato", "Bloccato", "Al professionista"];
+// "In attesa della tua conferma", non "Bloccato": il cliente pensava che fossero bloccati la carta o i suoi soldi (docs/changelog/2026-11-08-prova-persone-simulate.md).
+const CLIENT_STEPS = ["Pagato", "In attesa della tua conferma", "Al professionista"];
 const PROFESSIONAL_STEPS = ["Pagato", "Bloccato", "Sbloccato", "In banca"];
 
 function clientView(payment: JobPaymentSummary): View {

@@ -174,7 +174,6 @@ const STATE_LABEL: Record<JourneyStepState, string> = { done: "Fatto", waiting: 
 /** Il percorso completo, con l'unico pulsante sul passo da fare adesso (Oggi). */
 export function SetupJourneyView({ steps, title = "Completa il profilo" }: { steps: JourneyStep[]; title?: string }) {
   usePublishJourney(steps);
-  const done = steps.filter((step) => step.state === "done").length;
   return (
     <Surface gap="4" role="status" aria-label={title}>
       <YStack gap="2">
@@ -183,11 +182,11 @@ export function SetupJourneyView({ steps, title = "Completa il profilo" }: { ste
             {title}
           </Text>
           <Text fontSize={16} fontWeight="700" color={brand.grafite70}>
-            {done} di {steps.length} fatti
+            {requiredDoneCount(steps)} di {requiredCount(steps)} fatti
           </Text>
         </XStack>
         <div className="readiness-bar" aria-hidden="true">
-          <span style={{ transform: `translateX(${(done / steps.length - 1) * 100}%)` }} />
+          <span style={{ transform: `translateX(${(requiredDoneCount(steps) / Math.max(1, requiredCount(steps)) - 1) * 100}%)` }} />
         </div>
       </YStack>
 
@@ -232,8 +231,13 @@ export function SetupJourneyView({ steps, title = "Completa il profilo" }: { ste
  */
 export function JourneyProgress({ steps, here }: { steps: JourneyStep[]; here: JourneyStepKey }) {
   usePublishJourney(steps);
-  const index = steps.findIndex((step) => step.key === here);
-  if (index < 0) return null;
+  const pageIndex = steps.findIndex((step) => step.key === here);
+  if (pageIndex < 0) return null;
+  // Il passo di questa pagina è fatto: si conta quello da fare adesso. Prima,
+  // salvati i dati fiscali, restava "Passo 1 di 3" con l'Identità già da fare
+  // (docs/changelog/2026-11-08-prova-persone-simulate.md).
+  const nowIndex = steps[pageIndex]!.state === "done" ? steps.findIndex((step) => step.state === "current") : -1;
+  const index = nowIndex >= 0 ? nowIndex : pageIndex;
   return (
     <nav aria-label="Percorso per completare il profilo">
       <Text fontSize={16} fontWeight="700" color={brand.grafite70} marginBottom="2">
@@ -289,6 +293,14 @@ export function useSetupJourney(
   return { steps: status && stripeVerified !== null && subscription !== undefined ? setupJourney(status, stripeVerified, subscription) : null, status, settled };
 }
 
+/**
+ * Il conteggio "N di M fatti" conta solo i passi obbligatori, come "Ancora N
+ * passi": prima "Ancora 2 passi" stava accanto a "0 di 3 fatti" (i pagamenti
+ * online sono facoltativi; docs/changelog/2026-11-08-prova-persone-simulate.md).
+ */
+const requiredCount = (steps: JourneyStep[]) => steps.filter((step) => !step.optional).length;
+const requiredDoneCount = (steps: JourneyStep[]) => steps.filter((step) => !step.optional && step.state === "done").length;
+
 /** Restano passi obbligatori: in Oggi il percorso va in cima, a tutta larghezza (hero). */
 export const journeyNeedsHero = (steps: JourneyStep[] | null): steps is JourneyStep[] =>
   Boolean(steps?.some((step) => step.state !== "done" && !step.optional));
@@ -332,7 +344,6 @@ function useJustDone(steps: JourneyStep[]): Set<JourneyStepKey> {
 
 export function SetupJourneyHero({ steps }: { steps: JourneyStep[] }) {
   usePublishJourney(steps);
-  const done = steps.filter((step) => step.state === "done").length;
   const required = steps.filter((step) => step.state !== "done" && !step.optional).length;
   const current = steps.find((step) => step.state === "current") ?? null;
   const waiting = steps.find((step) => step.state === "waiting") ?? null;
@@ -350,7 +361,7 @@ export function SetupJourneyHero({ steps }: { steps: JourneyStep[] }) {
           </p>
         </div>
         <span className="journey-hero-count">
-          {done} di {steps.length} fatti
+          {requiredDoneCount(steps)} di {requiredCount(steps)} fatti
         </span>
       </div>
       <ol className={steps.length > 3 ? "journey-bar is-many" : "journey-bar"} aria-label="Passi per completare il profilo">

@@ -117,7 +117,7 @@ export default function NotifichePage() {
               <div className="nt-tiles">
                 <SiteTile
                   icon="bell"
-                  label="Popup a comparsa"
+                  label="Avviso sullo schermo"
                   description="Un avviso in alto quando arriva una notifica. La campanella resta comunque."
                   checked={notificationPrefs.popups}
                   onChange={() => void save({ ...notificationPrefs, popups: !notificationPrefs.popups })}

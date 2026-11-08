@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
 import type { PopularJobsResponse, ProblemExamplesResponse, ProfessionalCategorySlug, ProfessionalSearchResult, ServicePriceIndexEntry } from "@professionisti/shared";
 import { Section, SectionDensityProvider, YStack } from "@professionisti/ui";
 import { CategoryStoryRail, useCategoryStoryRail } from "@/components/CategoryStoryRail";
@@ -36,6 +38,11 @@ export default function HomeContent({
 }) {
   // L'ordine di "Di cosa hai bisogno?": prima le categorie con più professionisti.
   const categoryRail = useCategoryStoryRail(categoryCounts);
+  // Finché non ci sono recensioni la sezione mostra solo i profili nuovi:
+  // il titolo dice "Nuovi professionisti", non "Cosa dicono i clienti"
+  // (docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md).
+  const [reviewCount, setReviewCount] = useState<number | null>(null);
+  const hasReviews = reviewCount !== null && reviewCount > 0;
 
   return (
     // Spazi tra le sezioni più stretti che nel resto del sito: la home ha
@@ -77,15 +84,24 @@ export default function HomeContent({
           <FadeInSection>
             {/* "Cosa dicono i clienti" (docs/CHANGELOG.md §349): il titolo
                 diceva professionisti e il contenuto erano recensioni. */}
-            <Section title="Cosa dicono i clienti" maxWidth={1080}>
+            <Section
+              title={hasReviews ? "Cosa dicono i clienti" : "Nuovi professionisti"}
+              titleAction={
+                <Link href="/cerca" className="home-section-action">
+                  Vedi tutti
+                </Link>
+              }
+              maxWidth={1080}
+            >
               <RecentReviews
                 summary={
                   platformStats?.reviewCount !== undefined && platformStats.averageRating != null
                     ? { count: platformStats.reviewCount, average: platformStats.averageRating }
                     : null
                 }
+                onCount={setReviewCount}
               />
-              <NewProfilesCarousel professionals={professionals} />
+              <NewProfilesCarousel professionals={professionals} showTitle={hasReviews} />
             </Section>
           </FadeInSection>
         ) : null}

@@ -418,7 +418,7 @@ export function ProfessionalDetailContent({
                 ) : null}
                 {professional.isNewProfile ? (
                   <BadgeInfo info="newProfile">
-                    <Badge variant="nuovo">Nuovo profilo</Badge>
+                    <Badge variant="nuovo">Iscritto da poco</Badge>
                   </BadgeInfo>
                 ) : null}
                 {professional.hasLiabilityInsurance ? (
@@ -661,7 +661,7 @@ export function ProfessionalDetailContent({
             {/* Una riga sola (docs/CHANGELOG.md §349): gli orari al completo
                 sono grigi, non serve spiegarli. */}
             <Text fontSize={13} color={brand.grafite70}>
-              Tocca un orario libero per chiedere un preventivo.
+              Scegli un orario libero per chiedere un preventivo.
             </Text>
 
             {/* Larghezza massima pari alla griglia (docs/CHANGELOG.md §227):
@@ -738,7 +738,9 @@ export function ProfessionalDetailContent({
                       opacity={agendaCanGoForward ? 1 : 0.3}
                       className={agendaCanGoForward ? "hover-ring" : undefined}
                       cursor={agendaCanGoForward ? "pointer" : undefined}
-                      role={agendaCanGoForward ? "button" : undefined}
+                      role="button"
+                      aria-disabled={!agendaCanGoForward}
+                      tabIndex={agendaCanGoForward ? undefined : -1}
                       aria-label="Giorni successivi"
                       onPress={agendaCanGoForward ? () => setAgendaWindowOffset(agendaOffset + agendaVisibleDays) : undefined}
                     >
@@ -804,14 +806,13 @@ export function ProfessionalDetailContent({
                             {/* Al completo: grigio chiaro, senza barra (docs/CHANGELOG.md §349). */}
                             <Text
                               fontVariant={["tabular-nums"]}
-                              fontSize="10.5px xs:9.5px"
-                              letterSpacing={-0.3}
+                              fontSize={14}
                               color={brand.grafite70}
                               opacity={0.55}
                               textAlign="center"
                               aria-label={`${range}, al completo`}
                             >
-                              {range}
+                              {range.replace("–", "–\u200B")}
                             </Text>
                           </XStack>
                         );
@@ -837,9 +838,11 @@ export function ProfessionalDetailContent({
                           paddingVertical={3}
                         >
                           <Link href={href} className="hover-ring-host" style={{ textDecoration: "none", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>
+                            {/* Orari a 14px (prima 10,5 e 9,5): se la fascia non sta su una riga va a capo dopo il trattino
+                                (prova con persone simulate, punto 22, docs/changelog/2026-11-08-prova-persone-simulate.md). */}
                             <XStack className="hover-ring-target" paddingHorizontal="6px xs:4px" paddingVertical={4} borderRadius="10" backgroundColor={brand.cianografiaVelo}>
-                              <Text fontVariant={["tabular-nums"]} fontSize="10.5px xs:9.5px" letterSpacing={-0.3} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
-                                {range}
+                              <Text fontVariant={["tabular-nums"]} fontSize={14} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
+                                {range.replace("–", "–\u200B")}
                               </Text>
                             </XStack>
                           </Link>
