@@ -11,7 +11,7 @@ import {
 } from "@professionisti/shared";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eyebrow, Icon, SearchBar, Text, XStack, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
+import { Icon, SearchBar, Text, XStack, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { problemExampleSuggestions, rememberSearchCity, useSearchBarHints } from "@/lib/useSearchBarHints";
 import { navigateWithTransition } from "@/lib/viewTransition";
@@ -70,7 +70,10 @@ export function HomeHero({ examples }: { examples: ProblemExamplesResponse | nul
         <GlowLights tone="verde-opaco" radius={40} speed={searching ? 3 : undefined} />
 
         <YStack width="100%" maxWidth={720} alignItems="center" gap="4" position="relative">
-          <Eyebrow tone="dark">Non chiamare a caso. Chiamalo giusto.</Eyebrow>
+          {/* Tolta la frase "Non chiamare a caso. Chiamalo giusto." sopra il
+              titolo: un elemento in meno nel primo schermo, che resta titolo,
+              ricerca ed esempi (spunti da miodottore,
+              docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md). */}
           {/* Titolo principale della pagina (h1) per Google e i lettori di schermo. */}
           <Text
             render="h1"
@@ -119,7 +122,7 @@ export function HomeHero({ examples }: { examples: ProblemExamplesResponse | nul
               secondo controllo "urgente" nello stesso schermo, col link rosso
               "Richiesta urgente" qui sotto, che resta. */}
           <Text role="status" fontSize={16} fontWeight="600" color="rgba(255,255,255,0.75)" marginTop="2" textAlign="center">
-            {searching ? "Cerco chi ti serve…" : "Ricerca gratuita · Nessuna registrazione"}
+            {searching ? "Cerco chi ti serve…" : "Ricerca gratuita, senza registrazione · Preventivi voce per voce"}
           </Text>
 
           {/* Una sola azione principale nel primo schermo, "Cerca" (§271). Il

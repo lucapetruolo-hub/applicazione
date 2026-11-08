@@ -56,14 +56,17 @@ const COMPANY_ROWS: { icon: "file-text" | "map-pin" | "mail"; label: string; val
  * /admin. I dati aziendali restano segnaposto finché l'utente non
  * fornisce quelli reali — stessa convenzione già in uso per /privacy.
  */
-export default function ContattiContent({ initialReport = false }: { initialReport?: boolean }) {
-  const [role, setRole] = useState<ContactMessageInput["role"]>(initialReport ? "REPORT_ILLEGAL" : "CLIENT");
+/** Messaggio già avviato per chi chiede aiuto a creare il profilo, da completare col numero. */
+const PROFILE_HELP_MESSAGE = "Vorrei aiuto per creare il mio profilo. Il mio mestiere è: \nMi potete chiamare al numero: ";
+
+export default function ContattiContent({ initialReport = false, initialProfileHelp = false }: { initialReport?: boolean; initialProfileHelp?: boolean }) {
+  const [role, setRole] = useState<ContactMessageInput["role"]>(initialReport ? "REPORT_ILLEGAL" : initialProfileHelp ? "PROFESSIONAL" : "CLIENT");
   const [email, setEmail] = useState("");
   // Segnalazione di un contenuto illegale: nome e indirizzo della pagina in
   // campi a sé (DSA art. 16 c. 2 lett. b-c; collaudo del 29/10/2026, M-09).
   const [reporterName, setReporterName] = useState("");
   const [contentUrl, setContentUrl] = useState("");
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState(initialProfileHelp ? PROFILE_HELP_MESSAGE : "");
   const [website, setWebsite] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("Inserisci un'email valida e un messaggio.");

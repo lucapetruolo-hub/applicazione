@@ -59,7 +59,14 @@ function timeAgo(iso: string): string {
  * ricomincia da capo i 6 secondi della recensione mostrata (`cycle`), così
  * la barra di avanzamento e il timer restano allineati.
  */
-export function RecentReviews({ summary }: { summary: { count: number; average: number } | null }) {
+export function RecentReviews({
+  summary,
+  onCount,
+}: {
+  summary: { count: number; average: number } | null;
+  /** Quante recensioni sono arrivate: la home cambia il titolo della sezione (docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md). */
+  onCount?: (count: number) => void;
+}) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   const [reviews, setReviews] = useState<RecentReview[] | null>(null);
@@ -74,8 +81,17 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
     apiClient
       .getRecentReviews()
       // Anche il server le esclude: qui resta solo il controllo sugli spazi.
-      .then((items) => setReviews(items.filter((item) => item.comment?.trim())))
-      .catch(() => setReviews([]));
+      .then((items) => {
+        const withText = items.filter((item) => item.comment?.trim());
+        setReviews(withText);
+        onCount?.(withText.length);
+      })
+      .catch(() => {
+        setReviews([]);
+        onCount?.(0);
+      });
+    // Solo al primo caricamento: onCount non deve rifare la richiesta.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const count = reviews?.length ?? 0;

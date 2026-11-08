@@ -414,53 +414,6 @@ body:has(.chosen-bar) {
   }
 }
 
-/* Foto dei mestieri in /per-professionisti (ProGallery): 2 colonne su
-   telefono, 4 da tablet in su. */
-.pro-gallery {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  padding: 0 16px 24px;
-}
-@media (min-width: 768px) {
-  .pro-gallery {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 16px;
-    padding: 0 24px 32px;
-  }
-}
-.pro-gallery {
-  list-style: none;
-  margin: 0;
-}
-.pro-gallery-item {
-  position: relative;
-  display: block;
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
-  color: #fff;
-  text-decoration: none;
-}
-/* Nome del mestiere sulla foto, su una sfumatura scura per leggerlo su
-   qualsiasi immagine (docs/CHANGELOG.md §349). */
-.pro-gallery-caption {
-  position: absolute;
-  inset: auto 0 0 0;
-  padding: 28px 12px 10px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0));
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-.pro-gallery-item:hover .pro-gallery-caption {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.pro-gallery-item:focus-visible {
-  outline: 2px solid #189a63;
-  outline-offset: 2px;
-}
-
 /* Stato di caricamento (fase "motion"): un pulsare lento e simmetrico,
    `ease-in-out` invece della curva direzionale `motionEasing` (pensata per
    una transizione che parte e arriva a riposo una sola volta, non per un
@@ -6368,6 +6321,59 @@ a.admin-kpi:hover {
   .hero-urgent-link {
     width: 100%;
   }
+}
+
+/* Schermata dell'agenda su /per-professionisti, in un riquadro verde
+   (docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md). */
+.pro-product {
+  overflow: hidden;
+  padding: 40px 48px 0;
+}
+.pro-product-shot {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  border-radius: 14px 14px 0 0;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+}
+@media (max-width: 660px) {
+  .pro-product {
+    padding: 20px 16px 0;
+  }
+  .pro-product-shot {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+/* "Vedi tutti" accanto al titolo di una sezione della home
+   (docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md). */
+.home-section-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  color: #0e7a4c; /* brand.cianografiaScuro */
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.home-section-action::after {
+  content: "→";
+  transition: transform 0.15s ease;
+}
+.home-section-action:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.home-section-action:hover::after {
+  transform: translateX(2px);
+}
+.home-section-action:focus-visible {
+  outline: 3px solid #0e7a4c;
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 /* Pillola "Novità" accanto a "Cosa è successo?" in home

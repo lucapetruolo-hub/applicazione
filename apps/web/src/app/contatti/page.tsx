@@ -19,8 +19,12 @@ export const metadata: Metadata = {
  *
  * `?motivo=segnalazione` (link "Segnala un contenuto illegale" del footer,
  * docs/CHANGELOG.md §319) apre il modulo già sulla segnalazione.
+ * `?motivo=aiuto-profilo` ("Preferisci farti aiutare al telefono?" su
+ * /per-professionisti) lo apre come professionista con il messaggio già
+ * avviato: lo stesso modulo, nessuna strada a parte
+ * (docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md).
  */
 export default async function ContattiPage({ searchParams }: { searchParams: Promise<{ motivo?: string | string[] }> }) {
   const { motivo } = await searchParams;
-  return <ContattiContent initialReport={motivo === "segnalazione"} />;
+  return <ContattiContent initialReport={motivo === "segnalazione"} initialProfileHelp={motivo === "aiuto-profilo"} />;
 }

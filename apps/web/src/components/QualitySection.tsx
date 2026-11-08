@@ -1,35 +1,36 @@
 "use client";
 
+import Link from "next/link";
 import { Icon, Section, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 
 const POINTS: { title: string; text: string; online?: boolean }[] = [
   {
     title: "Preventivo strutturato",
-    text: "Manodopera, materiali e tempi sempre separati: mai una cifra unica senza dettaglio.",
+    text: "Manodopera, materiali e tempi separati.",
   },
   {
     title: "Recensioni solo da lavori fatti tramite il sito",
-    text: "Nessuna recensione libera: solo chi ha prenotato il lavoro sul sito può lasciarne una.",
+    text: "Le lascia solo chi ha prenotato sul sito.",
   },
   {
     title: "Contatti privati",
-    text: "Telefono e indirizzo restano nascosti finché non decidi tu di accettare un preventivo.",
+    text: "Telefono e indirizzo solo se accetti un preventivo.",
   },
   {
     // Documento e selfie con Didit (docs/CHANGELOG.md §253), non
     // l'assicurazione RC (resta "dichiarata" sul profilo).
     title: "Badge Verificato",
-    text: "Abbiamo controllato l'identità del professionista con documento e selfie.",
+    text: "Identità controllata con documento e selfie.",
   },
   {
     title: "Pagamento online protetto",
-    text: "Acconto subito e saldo a lavoro finito: i soldi restano bloccati fino alla tua conferma o per 7 giorni dalla fine del lavoro.",
+    text: "I soldi restano bloccati fino alla tua conferma.",
     online: true,
   },
   {
     title: "Assistenza e rimborso",
-    text: "Con il pagamento online, se qualcosa va storto ti assistiamo e, se la segnalazione è accolta, ti rimborsiamo.",
+    text: "Con il pagamento online, se qualcosa va storto ti aiutiamo.",
     online: true,
   },
 ];
@@ -49,7 +50,9 @@ const POINTS: { title: string; text: string; online?: boolean }[] = [
  * Prima era l'unico blocco scuro della pagina; dal 08/11/2026 è chiaro, in un
  * riquadro bianco come le altre schede, per una home più pulita e ordinata
  * (spunti da miodottore, scelta di Luca,
- * docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md).
+ * docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md). Una riga
+ * per punto; i dettagli (7 giorni, rimborso sulle segnalazioni accolte) stanno
+ * in /problemi-e-rimborsi, dietro "Scopri di più".
  */
 export function QualitySection() {
   const onlinePayments = useOnlinePayments();
@@ -84,6 +87,9 @@ export function QualitySection() {
           </XStack>
         ))}
       </YStack>
+      <Link href="/problemi-e-rimborsi" className="home-section-action">
+        Scopri di più
+      </Link>
     </Section>
   );
 }

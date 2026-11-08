@@ -40,8 +40,11 @@ const FALLBACK_ACCENT = { bg: "#E4E2DE", fg: "#45423D" };
  */
 export function NewProfilesCarousel({
   professionals,
+  showTitle = true,
 }: {
   professionals: ProfessionalSearchResult[];
+  /** Senza titolo quando la sezione della home si chiama già "Nuovi professionisti". */
+  showTitle?: boolean;
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
@@ -81,7 +84,7 @@ export function NewProfilesCarousel({
   const atEnd = progress.start + progress.size >= 0.999;
 
   return (
-    <Section title={`Appena arrivati su ${BRAND.name}`} maxWidth={1160}>
+    <Section title={showTitle ? `Appena arrivati su ${BRAND.name}` : undefined} maxWidth={1160}>
       <div className="npc-root">
         <div
           ref={trackRef}
