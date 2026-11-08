@@ -5,7 +5,7 @@ import { PrismaClient } from "@professionisti/database";
 /**
  * Bollini delle schede della ricerca sul telefono
  * (docs/changelog/2026-11-06-filtro-pagamenti-online.md): sotto i 660px
- * "Nuovo profilo" e "Assicurazione RC" stanno dietro un "+N", che li mostra
+ * "Iscritto da poco" e "Assicurazione RC" stanno dietro un "+N", che li mostra
  * al tocco senza aprire il profilo; "Sponsorizzato" resta sempre in vista.
  * Su un telefono stretto come l'iPhone SE (320px) nome e bollini non escono
  * dalla scheda. Sul computer nessun "+N".
@@ -65,7 +65,7 @@ test("sul telefono i bollini secondari stanno dietro il +N e niente esce dalla s
   await expect(more).toBeVisible();
   await expect(card.getByRole("button", { name: "Sponsorizzato", exact: true })).toBeVisible();
   await expect(card.getByRole("button", { name: "Assicurazione RC dichiarata", exact: true })).toBeHidden();
-  await expect(card.getByRole("button", { name: "Nuovo profilo", exact: true })).toBeHidden();
+  await expect(card.getByRole("button", { name: "Iscritto da poco", exact: true })).toBeHidden();
 
   // Niente sporge oltre il bordo destro della scheda, né la pagina scorre di lato.
   const overflow = () =>
@@ -83,7 +83,7 @@ test("sul telefono i bollini secondari stanno dietro il +N e niente esce dalla s
   await more.tap();
   await expect(page).toHaveURL(/\/cerca/);
   await expect(card.getByRole("button", { name: "Assicurazione RC dichiarata", exact: true })).toBeVisible();
-  await expect(card.getByRole("button", { name: "Nuovo profilo", exact: true })).toBeVisible();
+  await expect(card.getByRole("button", { name: "Iscritto da poco", exact: true })).toBeVisible();
   await expect(more).toHaveCount(0);
   expect(await overflow()).toEqual({ out: [], pageScroll: false });
 });

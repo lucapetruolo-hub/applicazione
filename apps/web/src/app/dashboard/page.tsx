@@ -550,11 +550,15 @@ function LeadToAnswerRow({ lead, extra = false }: { lead: ProfessionalLead; extr
 
 function InsightsGrid({ insights }: { insights: ProfessionalInsights }) {
   const cells: { label: string; value: string; compare: string | null; isText?: boolean }[] = [
-    {
-      label: "Visite al profilo (30 giorni)",
-      value: String(insights.profileViews30d),
-      compare: insights.areaAvgProfileViews30d !== null ? `Media della zona: ${insights.areaAvgProfileViews30d}` : null,
-    },
+    // Niente "0" e "Media della zona: 0" finché nessuno ha visite: si legge "Nessuna ancora"
+    // (docs/changelog/2026-11-08-prova-persone-simulate.md).
+    insights.profileViews30d === 0 && !insights.areaAvgProfileViews30d
+      ? { label: "Visite al profilo (30 giorni)", value: "Nessuna ancora", compare: null, isText: true }
+      : {
+          label: "Visite al profilo (30 giorni)",
+          value: String(insights.profileViews30d),
+          compare: insights.areaAvgProfileViews30d ? `Media della zona: ${insights.areaAvgProfileViews30d}` : null,
+        },
     {
       label: "Tempo medio di risposta",
       value: insights.avgResponseTimeMinutes !== null ? formatMinutes(insights.avgResponseTimeMinutes) : "—",
@@ -627,7 +631,7 @@ function Suggestion({ insights }: { insights: ProfessionalInsights }) {
   } else if (insights.reviewCount === 0) {
     text = "Non hai ancora recensioni: a fine lavoro ricorda al cliente di lasciarne una, il profilo diventa più credibile.";
     href = "/dashboard/richieste?stage=completata";
-    cta = "Lavori completati";
+    cta = "Vedi i lavori terminati";
   }
   if (!text) return null;
   return (
@@ -661,6 +665,8 @@ function truncate(text: string, max: number): string {
 }
 
 function formatMinutes(minutes: number): string {
+  // "Meno di 1 min", non "0 min" (docs/changelog/2026-11-08-prova-persone-simulate.md).
+  if (minutes < 1) return "meno di 1 min";
   if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;

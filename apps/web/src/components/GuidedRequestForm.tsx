@@ -118,7 +118,27 @@ function pickableSlotLabel(slot: PickableAgendaSlot): string {
 
 /** Campi del passo "Dove" che possono avere un errore sotto (docs/CHANGELOG.md §349). */
 type StepField = "citta" | "indirizzo" | "nome" | "telefono" | "civico" | "cap" | "provincia";
-type StepProblem = { message: string; field?: StepField };
+/**
+ * `focus`: dove portare il cursore per un problema del passo 1 senza un campo
+ * con l'errore sotto (prova con persone simulate, punto 23,
+ * docs/changelog/2026-11-08-prova-persone-simulate.md: il fuoco restava su "Avanti").
+ */
+type StepProblem = { message: string; field?: StepField; focus?: "descrizione" | "categorie" | "quando" };
+
+/** Porta il cursore sul primo elemento del gruppo indicato (passo 1). */
+function focusStepOneTarget(target: NonNullable<StepProblem["focus"]>): void {
+  if (typeof document === "undefined") return;
+  const selector =
+    target === "descrizione"
+      ? "textarea.guided-description-input"
+      : target === "categorie"
+        ? '#guided-field-categorie input, #guided-field-categorie [role="checkbox"], #guided-field-categorie button'
+        : 'input[name="guided-urgency-1"]';
+  const element = document.querySelector<HTMLElement>(selector);
+  if (!element) return;
+  element.scrollIntoView({ behavior: "smooth", block: "center" });
+  element.focus({ preventScroll: true });
+}
 
 /** Porta il campo sbagliato al centro dello schermo e ci mette il cursore. */
 /** Porta al campo; false se il campo non è sulla pagina. */
@@ -823,6 +843,8 @@ export function GuidedRequestForm({
   function showProblem(problem: StepProblem) {
     if (!problem.field) {
       setError(problem.message);
+      const target = problem.focus;
+      if (target) setTimeout(() => focusStepOneTarget(target), 50);
       return;
     }
     const field = problem.field;
@@ -851,10 +873,10 @@ export function GuidedRequestForm({
   /** Controlli del passo 1 (il lavoro) e del passo 2 (dove): null se tutto a posto. */
   function validateStep(which: 1 | 2): StepProblem | null {
     if (which === 1) {
-      if (description.trim().length < 10) return { message: "Descrivi il lavoro con almeno 10 caratteri." };
-      if (!categorySlug) return { message: "Scegli almeno una categoria." };
+      if (description.trim().length < 10) return { message: "Descrivi il lavoro con almeno 10 caratteri.", focus: "descrizione" };
+      if (!categorySlug) return { message: "Scegli almeno una categoria.", focus: "categorie" };
       // Con un orario scelto in agenda la risposta si ricava dal giorno (vedi goToStep).
-      if (!timing && !finalPreferredDate) return { message: "Scegli quando ti serve." };
+      if (!timing && !finalPreferredDate) return { message: "Scegli quando ti serve.", focus: "quando" };
       return null;
     }
     // Città obbligatoria anche online se la richiesta è generale: decide a
@@ -887,7 +909,8 @@ export function GuidedRequestForm({
         if (validateStep(1)) setStep(1);
         return;
       }
-      if (!timing && finalPreferredDate) chooseTiming(timingForPreferredDate(finalPreferredDate));
+      // Con un orario scelto il "quando" lo dice il giorno, anche se prima si era toccata un'altra risposta.
+      if (finalPreferredDate && timingForPreferredDate(finalPreferredDate) !== timing) chooseTiming(timingForPreferredDate(finalPreferredDate));
     }
     // CAP scritto a mano: se è di un'altra città lo si dice subito (§357).
     // Nel dubbio o senza risposta si va avanti.
@@ -1305,7 +1328,7 @@ export function GuidedRequestForm({
         {suggestion?.safety ? <SafetyNotice safety={suggestion.safety} /> : null}
 
         {suggestionsOn || !selectedCategory ? (
-          <YStack gap="2">
+          <YStack gap="2" id="guided-field-categorie">
             <XStack justifyContent="space-between" alignItems="baseline" gap="2">
               <FieldLabel>Categorie</FieldLabel>
               <Text fontSize={13} color={brand.grafite70} aria-live="polite">
@@ -1357,15 +1380,6 @@ export function GuidedRequestForm({
           </YStack>
         ) : null}
 
-        <div className="guided-options is-urgent-card">
-          <UrgencyControl
-            idPrefix="guided-urgency-1"
-            timing={timing}
-            onChoose={chooseTiming}
-            description={urgencyDescription}
-          />
-        </div>
-
         {professionalProfileId && displaySlots.length > 0 ? (
           <YStack gap="2">
             <FieldLabel>Data e orario dell&apos;appuntamento (facoltativo)</FieldLabel>
@@ -1389,6 +1403,21 @@ export function GuidedRequestForm({
               onShowMoreDays={() => setSlotDaysShown((shown) => shown + SLOT_DAYS_PAGE)}
             />
           </YStack>
+        ) : null}
+
+        {/* "Quando ti serve?" una volta sola (prova con persone simulate,
+            docs/changelog/2026-11-08-prova-persone-simulate.md): dopo gli
+            orari e solo se non se n'è scelto uno, perché il giorno scelto dice
+            già quando serve; su /urgente è già "Oggi" e non si chiede. */}
+        {!isUrgentInitial && !finalPreferredDate ? (
+          <div className="guided-options is-urgent-card">
+            <UrgencyControl
+              idPrefix="guided-urgency-1"
+              timing={timing}
+              onChoose={chooseTiming}
+              description={urgencyDescription}
+            />
+          </div>
         ) : null}
 
         <YStack gap="2">
@@ -1484,7 +1513,7 @@ export function GuidedRequestForm({
           <YStack gap="3">
             <YStack gap="1">
               <Text fontSize={13} color={brand.grafite70}>
-                Questi dati il professionista li vede solo quando accetti un preventivo.
+                Il professionista vede subito solo il tuo nome. Cognome, telefono e via li vede quando accetti un preventivo.
               </Text>
             </YStack>
 
@@ -1755,14 +1784,8 @@ export function GuidedRequestForm({
             onToggleForward={() => setForwardIfNoReply((v) => !v)}
             reach={reach}
             timing={timing}
-            urgencyControl={
-              <UrgencyControl
-                idPrefix="guided-urgency-3"
-                timing={timing}
-                onChoose={chooseTiming}
-                description={urgencyDescription}
-              />
-            }
+            // Nel riepilogo non si richiede "Quando ti serve?": si legge nella riga del lavoro e si cambia con "Modifica".
+            urgencyControl={null}
             onEdit={goToStep}
           />
         ) : null}

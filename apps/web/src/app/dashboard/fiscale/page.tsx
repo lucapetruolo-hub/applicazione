@@ -719,9 +719,7 @@ function DashboardFiscaleContent() {
         {showForm ? (
           <Surface gap="4">
             <YStack gap="1">
-              <Text fontSize={16} fontWeight="700" color={brand.grafite70}>
-                Parte {formStep} di 2
-              </Text>
+              {/* Niente "Parte N di 2" sotto "Passo N di 3": due contatori uno dentro l'altro confondevano (docs/changelog/2026-11-08-prova-persone-simulate.md). */}
               <Text ref={formStepTitleRef as never} render="h2" tabIndex={-1} className="step-focus-target" margin={0} fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
                 {formStep === 1 ? (entityType === "BUSINESS" ? "Dati dell'azienda" : "I tuoi dati") : entityType === "BUSINESS" ? "Sede legale" : "Indirizzo di residenza"}
               </Text>

@@ -192,6 +192,7 @@ export function SearchBar({
   const [selectedProfessional, setSelectedProfessional] = useState<ProfessionalSuggestion | undefined>();
   const fieldId = useId();
   const queryFocusRef = useRef<(() => void) | null>(null);
+  const cityFocusRef = useRef<(() => void) | null>(null);
   const cityField = useCityField({ citySuggestions, cityAliases, cityDefaults, preferredCities, onNearMe, setCity });
 
   if (compact) {
@@ -294,6 +295,10 @@ export function SearchBar({
       setCity(professional.city);
     }
     setSelectedProfessional(professional);
+    // Scelto "Ti serve: …" senza città, il cursore passa a Città: su telefono
+    // la lista copriva il campo e non si capiva come andare avanti (prova con
+    // persone simulate, punto 11, docs/changelog/2026-11-08-prova-persone-simulate.md).
+    if (!professional.city && !city.trim()) cityFocusRef.current?.();
   }
 
   function handleQueryChange(text: string) {
@@ -413,6 +418,7 @@ export function SearchBar({
             value={city}
             onChangeText={setCity}
             label={mode === "online" ? "Città (facoltativa)" : "Città"}
+            focusRef={cityFocusRef}
             id={`${fieldId}-citta`}
             placeholder="Es. Milano"
             size="5"

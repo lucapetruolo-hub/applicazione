@@ -863,7 +863,7 @@ export function ResultsListWithMap({
         >
           <div className="sort-info-modal" role="dialog" aria-modal="true" aria-label="Come sono ordinati i risultati">
             <div className="filters-modal-header">
-              <span className="filters-modal-title">Ordinato per pertinenza</span>
+              <span className="filters-modal-title">Come è ordinato l&apos;elenco</span>
               <button type="button" className="filters-modal-close" onClick={() => setShowSortInfo(false)} aria-label="Chiudi">
                 <X size={18} strokeWidth={1.5} />
               </button>
@@ -1022,7 +1022,8 @@ export function ResultsListWithMap({
                 lo faceva sembrare un link spento (docs/CHANGELOG.md §349): apre
                 la spiegazione dell'ordine, non un elenco di ordinamenti. */}
             <button type="button" className="sort-info-trigger" onClick={() => setShowSortInfo(true)}>
-              Ordinato per pertinenza
+              {/* Prima "Ordinato per pertinenza": parola difficile (prova con persone simulate, docs/changelog/2026-11-08-prova-persone-simulate.md). */}
+              Come è ordinato l&apos;elenco
               <Info size={15} strokeWidth={1.75} aria-hidden />
             </button>
           </XStack>

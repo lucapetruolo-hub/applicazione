@@ -5337,6 +5337,18 @@ a.admin-kpi:hover {
   line-height: 1.5;
   color: #6e6459;
 }
+.profile-declaration-note p {
+  margin: 0;
+}
+.profile-declaration-note summary {
+  cursor: pointer;
+  text-decoration: underline;
+  width: fit-content;
+  padding: 4px 0;
+}
+.profile-declaration-note details p {
+  margin-top: 4px;
+}
 .profile-declaration-note a {
   color: inherit;
   text-decoration: underline;

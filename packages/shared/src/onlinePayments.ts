@@ -225,7 +225,7 @@ export function jobPaymentChoiceCopy(
       body:
         depositPercent >= 100
           ? "Paghi tutto ora. Il professionista riceve i soldi quando confermi il lavoro; se qualcosa va storto ti assistiamo noi."
-          : `Paghi ora un acconto del ${depositPercent}% e il saldo a lavoro finito. Il professionista riceve i soldi quando confermi il lavoro; se qualcosa va storto ti assistiamo noi.`,
+          : `Paghi ora un acconto del ${depositPercent}%. Il resto lo paghi a lavoro finito, in automatico con la stessa carta. Il professionista riceve i soldi quando confermi il lavoro; se qualcosa va storto ti assistiamo noi.`,
     };
   }
   if (choice === "MIXED") {
@@ -270,24 +270,41 @@ export function quotePaymentSplit(
   choice: JobPaymentChoice,
   totals: { totalMinEurCents: number; totalMaxEurCents: number },
   depositPercent: number,
-): { nowEurCents: number; restMaxEurCents: number; restIsRange: boolean; restOnline: boolean } | null {
+): { nowEurCents: number; restMinEurCents: number; restMaxEurCents: number; restIsRange: boolean; restOnline: boolean } | null {
   if (!paymentChoiceIsOnline(choice) || totals.totalMaxEurCents <= 0) return null;
   const now = onlineDepositEurCents(totals.totalMaxEurCents, depositPercent);
   return {
     nowEurCents: now,
+    restMinEurCents: Math.max(0, totals.totalMinEurCents - now),
     restMaxEurCents: Math.max(0, totals.totalMaxEurCents - now),
     restIsRange: totals.totalMinEurCents > 0 && totals.totalMinEurCents < totals.totalMaxEurCents,
     restOnline: choice === "ONLINE",
   };
 }
 
-/** "10,00 € ora online, 40,00 € a lavoro finito": il modo di pagamento in una riga, con le cifre. */
+/**
+ * Il resto da pagare a lavoro finito: "da 56,00 € a 96,00 €" con la forbice,
+ * "96,00 €" con un prezzo solo. Prima era "il resto, fino a 96,00 €" e chi
+ * legge con fatica non capiva quanto avrebbe pagato
+ * (docs/changelog/2026-11-08-prova-persone-simulate.md).
+ */
+export function quotePaymentRestText(split: { restMinEurCents: number; restMaxEurCents: number; restIsRange: boolean }): string {
+  return split.restIsRange && split.restMinEurCents < split.restMaxEurCents
+    ? `da ${formatEurCents(split.restMinEurCents)} a ${formatEurCents(split.restMaxEurCents)}`
+    : formatEurCents(split.restMaxEurCents);
+}
+
+/**
+ * "10,00 € adesso, il resto (40,00 €) a lavoro finito con la stessa carta": il
+ * modo di pagamento in una riga, con le cifre. Col saldo online si dice che
+ * parte da solo sulla stessa carta: prima lo diceva solo la pagina di Stripe
+ * (docs/changelog/2026-11-08-prova-persone-simulate.md).
+ */
 export function quotePaymentSplitLine(choice: JobPaymentChoice, totals: { totalMinEurCents: number; totalMaxEurCents: number }, depositPercent: number, only: boolean): string {
   const split = quotePaymentSplit(choice, totals, depositPercent);
   if (!split) return jobPaymentChoiceCopy(choice, depositPercent, only).title;
-  if (split.restMaxEurCents === 0) return `${formatEurCents(split.nowEurCents)} ora online, con carta`;
-  const rest = `${split.restIsRange ? "il resto, fino a " : ""}${formatEurCents(split.restMaxEurCents)}`;
-  return `${formatEurCents(split.nowEurCents)} ora online, ${rest} a lavoro finito${split.restOnline ? "" : " al professionista"}`;
+  if (split.restMaxEurCents === 0) return `${formatEurCents(split.nowEurCents)} adesso con la carta, tutto il prezzo`;
+  return `${formatEurCents(split.nowEurCents)} adesso con la carta, il resto (${quotePaymentRestText(split)}) a lavoro finito ${split.restOnline ? "con la stessa carta" : "direttamente al professionista"}`;
 }
 
 /** Minimo che Stripe accetta per un pagamento con carta in euro (collaudo I-01). */
