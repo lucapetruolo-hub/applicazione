@@ -68,6 +68,7 @@ export * from "./problemServiceWords";
 export * from "./nameSearch";
 export * from "./problemExamples";
 export * from "./popularJobs";
+export * from "./popularJobsSchemas";
 export * from "./serviceNames";
 export * from "./serviceCatalog";
 export * from "./problemMatchSchemas";

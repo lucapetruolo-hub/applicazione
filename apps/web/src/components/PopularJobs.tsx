@@ -12,11 +12,14 @@ const subscribeNothing = () => () => undefined;
 /**
  * "Lavori più cercati" sotto le categorie della home
  * (docs/changelog/2026-11-07-lavori-piu-cercati-home.md): pillole con le
- * prestazioni più cercate sul sito, o l'elenco di partenza finché le ricerche
- * sono poche, così la sezione non è mai vuota. Ogni pillola apre l'elenco di
+ * prestazioni scelte in Admin (o l'elenco di partenza), prima le più cercate
+ * sul sito quando le ricerche bastano; mai vuota. Ogni pillola apre l'elenco di
  * chi offre quel lavoro, nella città dell'ultima ricerca se c'è (come
- * "Quanto costa in media"). Stesso aspetto dei "Servizi più richiesti" in
- * fondo ai risultati (`PopularServicesLinks`).
+ * "Quanto costa in media"). `/cerca?servizio=` non si conta tra le ricerche
+ * dei lavori (si conta solo la parola scritta, `q`): un lavoro non resta primo
+ * solo perché sta in alto. L'elenco si sceglie in Admin → Mestieri richiesti.
+ * Stesso aspetto dei "Servizi più richiesti" in fondo ai risultati
+ * (`PopularServicesLinks`).
  */
 export function PopularJobs({ data }: { data: PopularJobsResponse | null }) {
   const city = useSyncExternalStore(subscribeNothing, readLastSearchCity, () => null);

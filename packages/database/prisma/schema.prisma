@@ -3285,6 +3285,20 @@ model ProblemExample {
   @@map("problem_examples")
 }
 
+// "Lavori più cercati" in home scelti in Admin (docs/changelog/2026-11-07-lavori-piu-cercati-home.md).
+// Vuota: vale l'elenco di partenza (DEFAULT_POPULAR_JOBS). Solo nomi dell'elenco suggerito.
+model PopularJob {
+  id           String   @id @default(cuid())
+  service      String   @unique
+  categorySlug String
+  position     Int
+  createdById  String?
+  createdAt    DateTime @default(now())
+
+  @@index([position])
+  @@map("popular_jobs")
+}
+
 // ---------------------------------------------------------------------------
 // Messaggi sul telefono (WhatsApp con Meta, docs/changelog/2026-10-28-promemoria-whatsapp.md)
 // ---------------------------------------------------------------------------

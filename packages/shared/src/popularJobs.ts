@@ -1,28 +1,32 @@
-import { POPULAR_SERVICES, type ProfessionalCategorySlug } from "./categories";
+import { POPULAR_SERVICES, PROFESSIONAL_CATEGORIES, isProfessionalCategorySlug, type ProfessionalCategorySlug } from "./categories";
 
 /** Un lavoro della sezione "Lavori più cercati" in home: nome dell'elenco suggerito e il suo mestiere. */
 export type PopularJob = { service: string; categorySlug: ProfessionalCategorySlug };
 
 export type PopularJobsResponse = {
   jobs: PopularJob[];
-  /** "searches": l'ordine viene dalle ricerche sul sito; "default": elenco di partenza. */
-  source: "searches" | "default";
+  /** "searches": in ordine di ricerche sul sito; "list": nell'ordine dell'elenco. */
+  source: "searches" | "list";
 };
 
-/** Quanti lavori in home: due righe su computer, una manciata da telefono. */
+/** Quanti lavori in home: due righe su computer, tre righe da scorrere da telefono. */
 export const POPULAR_JOBS_COUNT = 8;
+/** L'elenco in Admin non scende sotto i lavori mostrati in home, così la sezione è sempre piena. */
+export const POPULAR_JOBS_MIN = POPULAR_JOBS_COUNT;
+/** Né diventa infinito: quelli oltre l'ottavo sono di riserva, salgono se più cercati. */
+export const POPULAR_JOBS_MAX = 16;
 
 /**
  * Sotto questa soglia di ricerche (ultimi 90 giorni, dal lancio) l'ordine
- * delle ricerche non dice ancora nulla: si usa l'elenco di partenza.
+ * delle ricerche non dice ancora nulla: vale l'ordine dell'elenco.
  */
 export const POPULAR_JOBS_MIN_SEARCHES = 50;
 
 /**
- * Elenco di partenza, finché il sito non ha ricerche sufficienti: i lavori più
- * cercati su Google (Keyword Planner del 06/11/2026) e nelle 769 frasi dei
- * clienti (docs/CHANGELOG.md §392). Ogni nome è nell'elenco suggerito del suo
- * mestiere (`POPULAR_SERVICES`), così la ricerca trova chi lo offre.
+ * Elenco di partenza, finché in Admin nessuno lo cambia: i lavori più cercati
+ * su Google (Keyword Planner del 06/11/2026) e nelle 769 frasi dei clienti
+ * (docs/CHANGELOG.md §392). Ogni nome è nell'elenco suggerito del suo mestiere
+ * (`POPULAR_SERVICES`), così la ricerca trova chi lo offre e le ricerche si contano.
  */
 export const DEFAULT_POPULAR_JOBS: readonly PopularJob[] = [
   { service: "Installazione caldaia", categorySlug: "climatizzazione" },
@@ -37,31 +41,80 @@ export const DEFAULT_POPULAR_JOBS: readonly PopularJob[] = [
   { service: "Installazione pompa di calore", categorySlug: "climatizzazione" },
 ];
 
-const isListed = (job: PopularJob) => (POPULAR_SERVICES[job.categorySlug] ?? []).includes(job.service);
+/** Il nome è tra le prestazioni suggerite di quel mestiere: solo così si può mettere in home. */
+export function isListedPopularJob(job: { service: string; categorySlug: string }): job is PopularJob {
+  return isProfessionalCategorySlug(job.categorySlug) && POPULAR_SERVICES[job.categorySlug].includes(job.service);
+}
+
+/** Le ricerche di un lavoro, sommate tra i mestieri (lo stesso nome può stare in due, es. vasca in doccia). */
+export function popularJobSearches(service: string, searches: { service: string; searches: number }[]): number {
+  return searches.filter((row) => row.service === service).reduce((sum, row) => sum + Math.max(0, row.searches), 0);
+}
 
 /**
- * I lavori da mostrare: prima i più cercati sul sito (se le ricerche bastano),
- * poi l'elenco di partenza fino a POPULAR_JOBS_COUNT, così la sezione non resta
- * mai mezza vuota. Lo stesso nome compare una volta sola, anche se è in due mestieri.
+ * I lavori da mostrare in home (docs/changelog/2026-11-07-lavori-piu-cercati-home.md):
+ * l'elenco scelto in Admin (o quello di partenza); con abbastanza ricerche,
+ * prima i più cercati, a parità l'ordine dell'elenco. Solo i primi POPULAR_JOBS_COUNT.
  */
-export function orderPopularJobs(searches: { categorySlug: string; service: string; searches: number }[]): PopularJobsResponse {
+export function orderPopularJobs(
+  list: readonly PopularJob[],
+  searches: { categorySlug: string; service: string; searches: number }[],
+): PopularJobsResponse {
   const total = searches.reduce((sum, row) => sum + Math.max(0, row.searches), 0);
-  const fromSearches =
-    total >= POPULAR_JOBS_MIN_SEARCHES
-      ? [...searches]
-          .filter((row) => row.searches > 0)
-          .sort((a, b) => b.searches - a.searches || a.service.localeCompare(b.service, "it"))
-          .map((row) => ({ service: row.service, categorySlug: row.categorySlug as ProfessionalCategorySlug }))
-          .filter(isListed)
-      : [];
   const seen = new Set<string>();
-  const jobs: PopularJob[] = [];
-  for (const job of [...fromSearches, ...DEFAULT_POPULAR_JOBS]) {
+  const unique = list.filter((job) => {
     const key = job.service.toLocaleLowerCase("it");
-    if (seen.has(key)) continue;
+    if (seen.has(key)) return false;
     seen.add(key);
-    jobs.push(job);
-    if (jobs.length >= POPULAR_JOBS_COUNT) break;
+    return true;
+  });
+  if (total < POPULAR_JOBS_MIN_SEARCHES) return { jobs: unique.slice(0, POPULAR_JOBS_COUNT), source: "list" };
+  // sort è stabile: a parità di ricerche resta l'ordine dell'elenco.
+  const ordered = [...unique].sort((a, b) => popularJobSearches(b.service, searches) - popularJobSearches(a.service, searches));
+  return { jobs: ordered.slice(0, POPULAR_JOBS_COUNT), source: "searches" };
+}
+
+/** Per Admin → Mestieri richiesti → "Lavori più cercati in home". */
+export type PopularJobsAdminView = {
+  /** false: vale ancora l'elenco di partenza (la prima modifica lo copia). */
+  custom: boolean;
+  /** Ricerche di lavori dell'elenco suggerito negli ultimi 90 giorni (dal lancio). */
+  totalSearches: number;
+  source: PopularJobsResponse["source"];
+  /** L'elenco nell'ordine scelto, con le ricerche e se oggi compare in home. */
+  jobs: (PopularJob & { categoryLabel: string; searches: number; shown: boolean; /** Posto in home (1 = primo), `null` se di riserva. */ homePosition: number | null })[];
+  /** Lavori cercati sul sito che non sono nell'elenco, i più cercati prima. */
+  missing: (PopularJob & { categoryLabel: string; searches: number })[];
+};
+
+const categoryLabel = (slug: string) => PROFESSIONAL_CATEGORIES.find((c) => c.slug === slug)?.label ?? slug;
+
+/** Quanti "cercati ma non in elenco" proporre in Admin. */
+const POPULAR_JOBS_MISSING_SHOWN = 6;
+
+export function buildPopularJobsAdminView(
+  list: readonly PopularJob[],
+  custom: boolean,
+  searches: { categorySlug: string; service: string; searches: number }[],
+): PopularJobsAdminView {
+  const ordered = orderPopularJobs(list, searches);
+  const position = new Map(ordered.jobs.map((job, index) => [job.service, index + 1]));
+  const inList = new Set(list.map((job) => job.service));
+  const missing = new Map<string, PopularJob & { categoryLabel: string; searches: number }>();
+  for (const row of searches) {
+    if (row.searches <= 0 || inList.has(row.service) || !isListedPopularJob(row)) continue;
+    const previous = missing.get(row.service);
+    if (previous) previous.searches += row.searches;
+    else missing.set(row.service, { service: row.service, categorySlug: row.categorySlug, categoryLabel: categoryLabel(row.categorySlug), searches: row.searches });
   }
-  return { jobs, source: fromSearches.length > 0 ? "searches" : "default" };
+  return {
+    custom,
+    totalSearches: searches.reduce((sum, row) => sum + Math.max(0, row.searches), 0),
+    source: ordered.source,
+    jobs: list.map((job) => ({ ...job, categoryLabel: categoryLabel(job.categorySlug), searches: popularJobSearches(job.service, searches),
+      shown: position.has(job.service),
+      homePosition: position.get(job.service) ?? null,
+    })),
+    missing: [...missing.values()].sort((a, b) => b.searches - a.searches || a.service.localeCompare(b.service, "it")).slice(0, POPULAR_JOBS_MISSING_SHOWN),
+  };
 }
