@@ -161,10 +161,23 @@ prima discuterne e aggiornare questo file.
   `apps/api` esegue `packages/database/scripts/migrate-deploy.mjs`
   (`prisma migrate deploy`, con baseline automatica solo sull'errore `P3005`).
   `20260921212750_baseline` deve restare lo schema realmente presente in
-  produzione al passaggio (commit `034f1a5`), mai lo schema corrente: ogni
+  produzione al passaggio, mai lo schema corrente: ogni
   modifica allo schema va in una nuova migrazione (`prisma migrate dev --name
-  <nome>` in locale), **mai modificare una migrazione già committata**. Le
+  <nome>` in locale), **mai modificare una migrazione già unita** (la CI lo
+  blocca). Migrazioni **solo additive** (nuove colonne e tabelle): un `DROP`
+  o un `RENAME` va in una PR a parte, almeno un deploy dopo il codice che
+  non usa più quella colonna, così il rollback dell'API resta possibile
+  (`docs/ops/rollback.md`). Le
   categorie si sincronizzano a ogni avvio via `CategoriesSeedService`.
+- **Operazioni** (docs/changelog/2026-11-08-infrastruttura-lancio.md):
+  rollback, ripristino del database, attività a orario, avvisi, variabili e
+  cambio di dominio in `docs/ops/`. Ogni variabile letta dall'API va in
+  `render.yaml` (la CI lo controlla, `apps/api/scripts/check-render-env.mjs`).
+  Le attività a orario si scrivono con `@ScheduledJob` di
+  `apps/api/src/common/scheduled-job.ts`, mai con `@Cron`: ora italiana,
+  nessun giro accavallato e un solo giro anche con due API accese durante
+  un deploy (tabella `cron_runs`). `/health` è il controllo leggero di
+  Render, `/health/db` (usato dall'uptime) controlla anche il database.
 - L'API ascolta su `app.listen(port, "0.0.0.0")` e legge sempre
   `process.env.PORT` (fallback 3001): senza host esplicito il proxy IPv4 della
   piattaforma non la raggiunge; non hardcodare la porta.

@@ -1,5 +1,4 @@
 import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import type { Invoice, PrismaClient } from "@professionisti/database";
 import {
   INVOICE_SOURCE_LABEL,
@@ -34,6 +33,7 @@ import { renderDocumentPdf } from "./document-pdf";
 import { courtesyYearPdfModel, invoicePdfModel, pdfFileName, statementPdfModel } from "./document-pdf-models";
 import { CourtesyCopyService } from "./courtesy-copy.service";
 import { professionalFiscalName } from "./invoice-documents";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const BOOKING_SELECT = {
   scheduledAt: true,
@@ -385,7 +385,7 @@ export class StatementsService {
    * anche il riepilogo dell'anno prima dei documenti dati ai clienti (§390),
    * pure senza movimenti a dicembre.
    */
-  @Cron("0 8 1 * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 8 1 * *", { timeZone: "Europe/Rome" })
   async sendAccountantStatements(now: Date = new Date()): Promise<number> {
     const month = previousMonth(romeMonthOf(now));
     const closedYear = month.endsWith("-12") ? Number(month.slice(0, 4)) : null;

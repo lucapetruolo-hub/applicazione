@@ -1,9 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import { wallClockNow } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
+import { ScheduledJob } from "../common/scheduled-job";
 
 /** Ore senza risposta prima del promemoria. */
 export const DATE_CHANGE_REMINDER_HOURS = 12;
@@ -21,7 +22,7 @@ export class DateChangeRemindersService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  @Cron(CronExpression.EVERY_HOUR)
+  @ScheduledJob(CronExpression.EVERY_HOUR)
   async remindUnanswered(now: Date = new Date()): Promise<number> {
     const wall = wallClockNow(now);
     const hour = wall.getUTCHours();

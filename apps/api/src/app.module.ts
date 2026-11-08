@@ -3,6 +3,7 @@ import { APP_FILTER, APP_GUARD, Reflector } from "@nestjs/core";
 import { SentryGlobalFilter, SentryModule } from "@sentry/nestjs/setup";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { ScheduleModule } from "@nestjs/schedule";
+import { CronRunsService } from "./health/cron-runs.service";
 import { HealthController } from "./health/health.controller";
 import { CategoriesModule } from "./categories/categories.module";
 import { PhoneNumbersModule } from "./phone-numbers/phone-numbers.module";
@@ -146,6 +147,7 @@ import { PopularJobsModule } from "./popular-jobs/popular-jobs.module";
     // Invia a Sentry le eccezioni non gestite (i 4xx voluti no), poi
     // risponde come il filtro di default di Nest.
     { provide: APP_FILTER, useClass: SentryGlobalFilter },
+    CronRunsService,
   ],
 })
 export class AppModule {}

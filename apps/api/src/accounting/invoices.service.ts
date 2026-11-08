@@ -1,5 +1,4 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import type Stripe from "stripe";
 import type { Invoice, Prisma, PrismaClient } from "@professionisti/database";
 import {
@@ -52,6 +51,7 @@ import {
 } from "./invoice-documents";
 import { sdiProviderFromEnv, type SdiProvider } from "./sdi-provider";
 import { stuckSdiWhere } from "./sdi-stuck";
+import { ScheduledJob } from "../common/scheduled-job";
 
 /** Lo SdI accetta una fattura entro 12 giorni dalla sua data: dopo non si riprova da soli. */
 const SDI_RETRY_DAYS = 12;
@@ -443,7 +443,7 @@ export class InvoicesService {
   // --- SdI ------------------------------------------------------------------
 
   /** Ogni ora: riprova gli invii non riusciti (entro i 12 giorni) e legge gli esiti. */
-  @Cron("20 * * * *")
+  @ScheduledJob("20 * * * *")
   async syncSdi(now: Date = new Date()): Promise<void> {
     if (!this.sdi) return;
     const pending = await this.prisma.invoice.findMany({
@@ -480,7 +480,7 @@ export class InvoicesService {
    * (docs/changelog/2026-11-02-admin-protezioni.md). Solo con l'invio allo SdI
    * acceso: senza, l'XML si scarica e si manda a mano.
    */
-  @Cron("0 8 * * 1", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 8 * * 1", { timeZone: "Europe/Rome" })
   async remindStuckSdi(now: Date = new Date()): Promise<number> {
     if (!this.sdi) return 0;
     const stuck = await this.prisma.invoice.findMany({ where: stuckSdiWhere(now), select: { series: true, year: true, number: true, sdiStatus: true }, orderBy: { issuedAt: "asc" }, take: 20 });
@@ -547,7 +547,7 @@ export class InvoicesService {
   // --- Giro del mese ---------------------------------------------------------
 
   /** Il 1° del mese alle 7: fatture delle trattenute del mese prima e riepilogo ai professionisti. */
-  @Cron("0 7 1 * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 7 1 * *", { timeZone: "Europe/Rome" })
   async runMonthly(now: Date = new Date()): Promise<void> {
     const month = previousMonth(romeMonthOf(now));
     const issued = await this.issueMonthlyFeeInvoices(month);
@@ -590,6 +590,13 @@ export class InvoicesService {
     for (const [professionalProfileId, own] of lines) {
       const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { userId: true, user: { select: { deletedAt: true } } } });
       if (!profile || profile.user.deletedAt) continue;
+      // Una volta sola per mese, anche se il giro ripartisse
+      // (docs/changelog/2026-11-08-infrastruttura-lancio.md).
+      const already = await this.prisma.notification.findFirst({
+        where: { userId: profile.userId, type: "MONTHLY_DOCUMENTS_READY", payload: { path: ["month"], equals: month } },
+        select: { id: true },
+      });
+      if (already) continue;
       await this.notificationsService.notify(profile.userId, "MONTHLY_DOCUMENTS_READY", {
         month,
         monthLabel: accountingMonthLabel(month),
