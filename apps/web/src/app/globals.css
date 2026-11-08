@@ -8835,3 +8835,15 @@ a.admin-kpi:hover {
     white-space: nowrap;
   }
 }
+
+/* Rubrica "I miei clienti" (docs/changelog/2026-11-08-rubrica-clienti.md). */
+.client-job-link {
+  color: #0e7a4c; /* brand.cianografiaScuro */
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+  padding: 6px 4px;
+}
+.client-job-link:hover {
+  text-decoration: underline;
+}

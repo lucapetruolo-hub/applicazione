@@ -1,4 +1,5 @@
 import type {
+  ProfessionalClient,
   ReviewHoldReason,
   AgendaAttention,
   AppointmentReplyAction,
@@ -1768,6 +1769,18 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<void>(`/external-jobs/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    /** Rubrica "I miei clienti": clienti del sito e dei lavori aggiunti in agenda, con storico e nota. */
+    myClients: (token: string) =>
+      request<ProfessionalClient[]>("/professional-clients/me", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Nota privata su un cliente della rubrica; vuota la toglie. */
+    setClientNote: (token: string, clientKey: string, note: string) =>
+      request<{ note: string | null }>("/professional-clients/me/note", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ clientKey, note }),
       }),
 
     myAvailableSlots: (token: string) =>

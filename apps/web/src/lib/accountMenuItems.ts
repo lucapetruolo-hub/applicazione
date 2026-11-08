@@ -34,6 +34,8 @@ export const PROFESSIONAL_NAV: AccountNavGroup[] = [
       { href: "/dashboard/agenda", label: "Agenda", icon: "calendar" },
       { href: "/dashboard/richieste", label: "Richieste e lavori", shortLabel: "Richieste", icon: "file-text" },
       { href: "/chat", label: "Messaggi", icon: "message-circle" },
+      // Rubrica dei clienti del sito e dei lavori aggiunti in agenda (docs/changelog/2026-11-08-rubrica-clienti.md).
+      { href: "/dashboard/clienti", label: "I miei clienti", shortLabel: "Clienti", icon: "users" },
     ],
   },
   {

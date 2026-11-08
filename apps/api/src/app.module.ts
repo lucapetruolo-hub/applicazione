@@ -23,6 +23,7 @@ import { WaitlistModule } from "./waitlist/waitlist.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { StatsModule } from "./stats/stats.module";
 import { ExternalJobsModule } from "./external-jobs/external-jobs.module";
+import { ProfessionalClientsModule } from "./professional-clients/professional-clients.module";
 import { ContentReportsModule } from "./content-reports/content-reports.module";
 import { ContactModule } from "./contact/contact.module";
 import { AuditLogModule } from "./audit-log/audit-log.module";
@@ -92,6 +93,7 @@ import { PopularJobsModule } from "./popular-jobs/popular-jobs.module";
     NotificationsModule,
     StatsModule,
     ExternalJobsModule,
+    ProfessionalClientsModule,
     ContentReportsModule,
     ContactModule,
     // MANOVIA — fiscale, pagamenti, DAC7 (CLAUDE.md §88).
