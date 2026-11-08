@@ -1,0 +1,2 @@
+# Chiave di idempotenza finta in un test (ramo della PR #264), non un segreto.
+2ddd67fdeb1d8c8c26cffedb3f5b2c74989d0913:apps/api/src/billing/billing-safety.test.ts:generic-api-key:171
