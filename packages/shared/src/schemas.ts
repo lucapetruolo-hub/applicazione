@@ -796,11 +796,17 @@ export const reviewSchema = z.object({
   comment: z.string().max(2000).optional(),
   /** Foto o video del lavoro svolto, opzionali (fino a 5): mostrati poi nella sezione recensioni del professionista. */
   photoUrls: z.array(z.string().url()).max(5).default([]),
+  /** Ok a mostrare le foto di fine lavoro del professionista in "Lavori fatti" sul suo profilo (docs/changelog/2026-11-08-lavori-fatti.md). */
+  showcase: z.boolean().default(false),
 });
 export type ReviewInput = z.infer<typeof reviewSchema>;
 
 /** Aggiornamento della recensione dopo una segnalazione a lavoro chiuso senza accordo (una volta sola). */
-export const reviewUpdateSchema = reviewSchema.omit({ bookingId: true });
+export const reviewUpdateSchema = reviewSchema.omit({ bookingId: true, showcase: true });
+
+/** Il cliente toglie (o rimette) le foto del lavoro da "Lavori fatti". */
+export const reviewShowcaseSchema = z.object({ showcase: z.boolean() });
+export type ReviewShowcaseInput = z.infer<typeof reviewShowcaseSchema>;
 export type ReviewUpdateInput = z.infer<typeof reviewUpdateSchema>;
 
 /** Risposta pubblica del professionista a una recensione. */

@@ -1560,6 +1560,11 @@ model Review {
   // o la nasconde. heldReasons: i segnali (ReviewHoldReason).
   heldAt                DateTime?
   heldReasons           String[]  @default([])
+  // "Lavori fatti" sul profilo (docs/changelog/2026-11-08-lavori-fatti.md):
+  // il cliente acconsente, recensendo, a mostrare le foto di fine lavoro del
+  // professionista nel suo profilo pubblico. Null = mai mostrate (anche dopo
+  // averlo tolto).
+  showcaseConsentAt     DateTime?
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 

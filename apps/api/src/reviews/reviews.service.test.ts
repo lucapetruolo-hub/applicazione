@@ -51,7 +51,7 @@ function buildService(booking: Record<string, unknown>, holdData: Record<string,
   return { service, prisma, notifications, metrics };
 }
 
-const input = { bookingId: "b-1", rating: 4, comment: "Bene", photoUrls: [] };
+const input = { bookingId: "b-1", rating: 4, comment: "Bene", photoUrls: [], showcase: false };
 
 describe("ReviewsService.create — recensione subito dopo \"Lavoro terminato\"", () => {
   it("il cliente recensisce anche se il professionista non ha ancora chiuso il lavoro", async () => {
@@ -73,6 +73,49 @@ describe("ReviewsService.create — recensione subito dopo \"Lavoro terminato\""
     const { service, prisma } = buildService({ status: "COMPLETED", clientConfirmedCompletedAt: null });
     await expect(service.create("client-1", input)).rejects.toThrow("Conferma prima");
     expect(prisma.review.create).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * "Lavori fatti" (docs/changelog/2026-11-08-lavori-fatti.md): le foto di fine
+ * lavoro del professionista vanno sul suo profilo solo con l'ok del cliente,
+ * che lo ritira quando vuole.
+ */
+describe("ReviewsService — ok a \"Lavori fatti\"", () => {
+  const done = { status: "COMPLETED", clientConfirmedCompletedAt: new Date() };
+
+  it("recensendo con l'ok e le foto del professionista segna il consenso", async () => {
+    const { service, prisma } = buildService({ ...done, professionalCompletionPhotoUrls: ["https://res.cloudinary.com/x/a.jpg"] });
+    await service.create("client-1", { ...input, showcase: true });
+    expect(prisma.review.create).toHaveBeenCalledWith({ data: expect.objectContaining({ showcaseConsentAt: expect.any(Date) }) });
+  });
+
+  it("senza foto del professionista l'ok non vale", async () => {
+    const { service, prisma } = buildService({ ...done, professionalCompletionPhotoUrls: [] });
+    await service.create("client-1", { ...input, showcase: true });
+    expect(prisma.review.create.mock.calls[0]?.[0].data).not.toHaveProperty("showcaseConsentAt");
+  });
+
+  function showcaseService(review: unknown) {
+    const prisma = { review: { findUnique: vi.fn().mockResolvedValue(review), update: vi.fn().mockResolvedValue({}) } };
+    return { service: new ReviewsService(prisma as never, {} as never, {} as never), prisma };
+  }
+
+  it("il cliente toglie le foto da \"Lavori fatti\"", async () => {
+    const { service, prisma } = showcaseService({ booking: { clientId: "client-1", professionalCompletionPhotoUrls: ["https://res.cloudinary.com/x/a.jpg"] } });
+    await expect(service.setShowcase("client-1", "r-1", false)).resolves.toEqual({ showcase: false });
+    expect(prisma.review.update).toHaveBeenCalledWith({ where: { id: "r-1" }, data: { showcaseConsentAt: null } });
+  });
+
+  it("solo chi ha scritto la recensione", async () => {
+    const { service, prisma } = showcaseService({ booking: { clientId: "altro", professionalCompletionPhotoUrls: ["https://res.cloudinary.com/x/a.jpg"] } });
+    await expect(service.setShowcase("client-1", "r-1", true)).rejects.toThrow("non è tua");
+    expect(prisma.review.update).not.toHaveBeenCalled();
+  });
+
+  it("non si rimette senza foto del professionista", async () => {
+    const { service } = showcaseService({ booking: { clientId: "client-1", professionalCompletionPhotoUrls: [] } });
+    await expect(service.setShowcase("client-1", "r-1", true)).rejects.toThrow("non ha foto");
   });
 });
 

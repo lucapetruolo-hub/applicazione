@@ -195,13 +195,16 @@ const PROFESSIONAL_DETAIL_INCLUDE = {
     include: {
       review: true,
       client: { select: { name: true, surname: true } },
-      quote: { select: { guidedRequest: { select: { category: { select: { label: true } } } } } },
+      quote: { select: { items: { select: { name: true }, orderBy: { id: "asc" }, take: 1 }, guidedRequest: { select: { city: true, category: { select: { label: true } } } } } },
     },
   },
   visibilityBoosts: { where: { status: "ACTIVE" } },
   services: true,
   metrics: true,
 } satisfies Prisma.ProfessionalProfileInclude;
+
+/** Quanti "Lavori fatti" mostrare sul profilo: gli ultimi, gli altri restano nelle recensioni. */
+const FINISHED_JOBS_SHOWN = 12;
 
 /** Risposte misurate prima di mostrare "Risponde subito" o "Risponde entro…" sul profilo. */
 const MIN_RESPONSES_FOR_PUBLIC_TIME = 3;
@@ -807,6 +810,19 @@ export class ProfessionalsService {
       acceptingRequests: !profile.pausedAt && !professionalRestrictions(profile, new Date()).blocked,
       // Solo la pausa scelta da lui si dice al cliente, mai il motivo delle altre (§162, §167).
       awayUntil: professionalRestrictions(profile, new Date()).away && profile.awayUntil ? profile.awayUntil.toISOString() : null,
+      // "Lavori fatti" (docs/changelog/2026-11-08-lavori-fatti.md): foto di fine
+      // lavoro del professionista con l'ok del cliente, recensione visibile.
+      finishedJobs: reviewed
+        .filter(({ review, booking }) => review.showcaseConsentAt !== null && booking.status === "COMPLETED" && booking.professionalCompletionPhotoUrls.length > 0)
+        .slice(0, FINISHED_JOBS_SHOWN)
+        .map(({ review, booking }) => ({
+          id: review.id,
+          photoUrls: booking.professionalCompletionPhotoUrls,
+          label: booking.quote?.items[0]?.name ?? booking.quote?.guidedRequest.category.label ?? profile.category.label,
+          city: booking.quote?.guidedRequest.city ?? null,
+          doneAt: booking.scheduledAt.toISOString(),
+          rating: review.rating,
+        })),
       reviews: reviewed.map(({ review, booking }) => ({
         id: review.id,
         rating: review.rating,
