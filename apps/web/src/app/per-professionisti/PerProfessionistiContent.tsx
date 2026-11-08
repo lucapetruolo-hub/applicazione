@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { getImageProps } from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Check } from "lucide-react";
@@ -13,7 +13,6 @@ import {
   withVatEurCents,
   ONLINE_APP_FEE_PERCENT,
   type FounderSpots,
-  type ProfessionalCategorySlug,
   type SubscriptionTier,
 } from "@professionisti/shared";
 import { Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc, type IconName } from "@professionisti/ui";
@@ -60,7 +59,6 @@ export function PerProfessionistiContent({ founders = null }: { founders?: Found
       <ProPhoto />
       <ProOnlinePayment />
       <ProBenefits />
-      <ProGallery />
       <ProSteps />
       <ProPricing isProfessional={Boolean(user?.isProfessional)} founders={founders} />
       <ProFaq offerMonths={founders?.offerMonths ?? null} />
@@ -210,7 +208,7 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
           <XStack gap="2" alignItems="center">
             <Icon name="shield-check" size={16} color={brand.cianografiaScuro} strokeWidth={1.75} />
             <Text fontSize={16} color={brand.grafite70}>
-              Iscrizione gratuita, nessuna carta richiesta.
+              Iscrizione gratuita. La carta serve solo per attivare i mesi gratis.
             </Text>
           </XStack>
         </YStack>
@@ -219,30 +217,45 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
   );
 }
 
+/**
+ * Una schermata vera dell'agenda al posto della foto del lampadario
+ * (spunti da miodottore, scelta di Luca,
+ * docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md): chi
+ * valuta l'abbonamento vede subito lo strumento che usa ogni giorno. Nomi e
+ * appuntamenti sono d'esempio.
+ */
+const AGENDA_ALT = "L'agenda del professionista: gli appuntamenti del giorno e le ore libere";
+const { props: AGENDA_DESKTOP } = getImageProps({
+  src: "/page-photos/per-professionisti-agenda.webp",
+  alt: AGENDA_ALT,
+  width: 1600,
+  height: 1168,
+  priority: true,
+  sizes: "(max-width: 1200px) 100vw, 1100px",
+});
+const {
+  props: { srcSet: agendaPhoneSrcSet },
+} = getImageProps({
+  src: "/page-photos/per-professionisti-agenda-telefono.webp",
+  alt: AGENDA_ALT,
+  width: 780,
+  height: 975,
+  sizes: "100vw",
+});
+const AGENDA_PHONE = { srcSet: agendaPhoneSrcSet };
+
 function ProPhoto() {
   return (
     <Band>
       <YStack padding="3 gtSm:4">
-        <div
-          style={{
-            position: "relative",
-            width: "100%",
-            aspectRatio: "21 / 9",
-            minHeight: 220,
-            borderRadius: radiusDoc,
-            overflow: "hidden",
-            border: `1px solid ${LINE}`,
-          }}
-        >
-          <Image
-            // Foto Pexels (pexels.com/photo/4792521), docs/CHANGELOG.md §233.
-            src="/page-photos/per-professionisti-elettricista.webp"
-            alt="Un elettricista monta una lampada al soffitto"
-            fill
-            priority
-            sizes="(max-width: 1200px) 100vw, 1160px"
-            style={{ objectFit: "cover", objectPosition: "50% 25%" }}
-          />
+        <div className="pro-product" style={{ borderRadius: radiusDoc, backgroundColor: brand.cianografia }}>
+          {/* Due schermate: la settimana sul computer, la giornata sul telefono
+              (docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md). */}
+          <picture className="pro-product-shot">
+            <source media="(max-width: 660px)" srcSet={AGENDA_PHONE.srcSet} />
+            {/* eslint-disable-next-line jsx-a11y/alt-text -- props (alt compreso) da getImageProps */}
+            <img {...AGENDA_DESKTOP} />
+          </picture>
         </div>
       </YStack>
     </Band>
@@ -324,46 +337,6 @@ function ProOnlinePayment() {
           ))}
         </YStack>
       </YStack>
-    </Band>
-  );
-}
-
-/** Foto Pexels dei lavori scelte dall'utente (docs/CHANGELOG.md §233): 6195125, 6231851, 7464702, 5463575. */
-const GALLERY: { src: string; alt: string; position: string; slug: ProfessionalCategorySlug }[] = [
-  { src: "/page-photos/per-professionisti-galleria-pulizie.webp", alt: "Una squadra delle pulizie in un soggiorno", position: "40% 50%", slug: "pulizie" },
-  { src: "/page-photos/per-professionisti-galleria-giardiniere.webp", alt: "Una giardiniera pota le rose", position: "60% 40%", slug: "giardiniere" },
-  { src: "/page-photos/per-professionisti-galleria-traslochi.webp", alt: "Un traslocatore sorride porgendo uno scatolone", position: "45% 40%", slug: "traslochi" },
-  { src: "/page-photos/per-professionisti-galleria-climatizzazione.webp", alt: "Un tecnico controlla un condizionatore sul tetto", position: "40% 50%", slug: "climatizzazione" },
-];
-
-/**
- * Più foto nella pagina (richiesta dell'utente): una fila di mestieri diversi.
- * Ogni foto ha il nome del mestiere e porta alla sua pagina "Lavora con noi"
- * (docs/CHANGELOG.md §349): senza didascalia erano solo decorazione.
- */
-function ProGallery() {
-  return (
-    <Band>
-      <SectionTitle lead="Idraulici, elettricisti, pulizie, traslochi, giardinieri e molti altri mestieri.">Per ogni tipo di lavoro</SectionTitle>
-      <ul className="pro-gallery">
-        {GALLERY.map((photo) => {
-          const label = PROFESSIONAL_CATEGORIES.find((category) => category.slug === photo.slug)?.label ?? photo.slug;
-          return (
-            <li key={photo.src}>
-              <Link href={`/lavora-con-noi/${photo.slug}`} className="pro-gallery-item" style={{ border: `1px solid ${LINE}`, borderRadius: radiusDoc }}>
-                <Image
-                  src={photo.src}
-                  alt={photo.alt}
-                  fill
-                  sizes="(max-width: 768px) 50vw, 290px"
-                  style={{ objectFit: "cover", objectPosition: photo.position }}
-                />
-                <span className="pro-gallery-caption">{label}</span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
     </Band>
   );
 }
@@ -893,6 +866,15 @@ function ProFinalCta() {
               <Button tabIndex={-1} variant="primary">Scegli il tuo livello</Button>
             </Link>
           </XStack>
+          {/* Per chi non è a suo agio col computer: un operatore crea il
+              profilo al telefono (CLAUDE.md §8). Porta al modulo Contatti già
+              avviato, la stessa strada di sempre (docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md). */}
+          <Text fontSize={16} color={brand.grafite70} textAlign="center">
+            Preferisci farti aiutare al telefono?{" "}
+            <Link href="/contatti?motivo=aiuto-profilo" style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>
+              Lasciaci il numero, ti richiamiamo
+            </Link>
+          </Text>
           {/* Una pagina per lavoro, per chi cerca "lavoro pulizie" su Google (docs/CHANGELOG.md §296). */}
           <nav className="work-links" aria-label="Lavora con noi">
             <span>Lavora con noi come:</span>
