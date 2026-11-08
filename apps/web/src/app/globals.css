@@ -8354,6 +8354,77 @@ a.admin-kpi:hover {
   }
 }
 
+/* Liste dei suggerimenti (Autocomplete, packages/ui/src/AutocompleteList.web.tsx,
+   docs/changelog/2026-11-07-liste-suggerimenti.md): chi non usa la rotellina
+   deve vedere che la lista continua. Barra di scorrimento sottile e sempre
+   visibile, anche su Mac dove di serie compare solo scorrendo: Chrome, Edge e
+   Safari la disegnano con le regole -webkit- (che la rendono fissa), Firefox
+   con scrollbar-width/color. */
+.autocomplete-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.autocomplete-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.autocomplete-scroll::-webkit-scrollbar-thumb {
+  background: #9cc9b2;
+  border: 3px solid #fff;
+  border-radius: 999px;
+}
+.autocomplete-scroll::-webkit-scrollbar-thumb:hover {
+  background: #128552;
+}
+@supports (-moz-appearance: none) {
+  .autocomplete-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #9cc9b2 transparent;
+  }
+}
+/* In fondo alla lista: sfumatura bianca con "Altre N". La sfumatura lascia
+   passare i clic alle voci sotto, solo il pulsante li prende. */
+.autocomplete-more {
+  position: absolute;
+  left: 0;
+  right: 10px;
+  bottom: 0;
+  height: 48px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff 70%);
+  pointer-events: none;
+}
+.autocomplete-more button {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 4px 12px;
+  border: 1px solid #d4e8dc;
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(43, 36, 30, 0.08);
+}
+@media (pointer: coarse) {
+  .autocomplete-more button {
+    min-height: 36px;
+    padding: 6px 16px;
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .autocomplete-more button:hover {
+    background: #eef7f1;
+    border-color: #128552;
+  }
+}
+
 /* "Forse intendevi …?" sotto l'email (docs/changelog/2026-11-02-registrazione-pro-migliorie.md). */
 .email-suggestion {
   margin: 6px 0 0;

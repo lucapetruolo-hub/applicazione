@@ -1,7 +1,8 @@
 "use client";
 
 import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { Label, ScrollView, Text, XStack, YStack, isWeb } from "tamagui";
+import { Label, Text, XStack, YStack, isWeb } from "tamagui";
+import { AutocompleteList, revealFieldForList } from "./AutocompleteList";
 import { Input } from "./Input";
 import { buildSearchIndex, rankSearchMatches } from "./searchMatch";
 import { brand } from "./tokens";
@@ -251,7 +252,10 @@ export function Autocomplete<T>({
         autoComplete="off"
         // Invio senza suggerimento scelto non toglie il fuoco dal campo (collaudo L-08).
         blurOnSubmit={false}
-        onFocus={() => setIsFocused(true)}
+        onFocus={() => {
+          setIsFocused(true);
+          revealFieldForList(containerRef.current);
+        }}
         onBlur={() =>
           setTimeout(() => {
             if (!inputHasFocus(inputRef.current)) setIsFocused(false);
@@ -293,13 +297,10 @@ export function Autocomplete<T>({
           shadowRadius={12}
           shadowOpacity={0.15}
         >
-          {/* Altezza fissa + scroll: con centinaia di risultati (es. i comuni
-              italiani) serve poter scorrere con la rotellina, non solo vedere
-              i primi N tagliati senza modo di vedere gli altri. */}
-          {/* Fuori dal Tab: l'elenco si usa con le frecce dal campo, e il
-              browser rendeva il riquadro scorrevole una fermata in più
-              (docs/changelog/2026-10-30-tastiera.md, collaudo L-12). */}
-          <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator {...({ tabIndex: -1 } as Record<string, unknown>)}>
+          {/* Altezza secondo lo spazio libero, sfumatura con "Altre N", barra
+              sempre visibile e frecce che fanno scorrere la lista
+              (AutocompleteList.web.tsx). */}
+          <AutocompleteList activeOptionId={activeIndex >= 0 ? optionId(activeIndex) : undefined}>
             <YStack id={listboxId} {...({ role: "listbox", "aria-label": label ?? accessibilityLabel ?? placeholder } as Record<string, unknown>)}>
               {action ? (
                 <YStack
@@ -350,7 +351,7 @@ export function Autocomplete<T>({
                 );
               })}
             </YStack>
-          </ScrollView>
+          </AutocompleteList>
         </YStack>
       ) : null}
     </YStack>
