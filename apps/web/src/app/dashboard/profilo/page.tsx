@@ -537,7 +537,7 @@ export default function DashboardProfiloPage() {
     return (
       <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
-          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi come professionista
           </Text>
           <Link href="/accedi?redirect=/dashboard/profilo" style={{ textDecoration: "none" }}>
@@ -552,7 +552,7 @@ export default function DashboardProfiloPage() {
     return (
       <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="3" alignItems="center">
-          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Questa sezione è per i professionisti
           </Text>
           <Text color={brand.grafite70} textAlign="center">
@@ -878,7 +878,7 @@ export default function DashboardProfiloPage() {
         <YStack width="100%" maxWidth={920} gap="5">
           <XStack justifyContent="space-between" alignItems="flex-end" gap="3" flexWrap="wrap">
             <YStack gap="1" flex={1} minWidth={220}>
-              <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
+              <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
                 Profilo pubblico
               </Text>
               <Text color={brand.grafite70}>Così ti vedono i clienti su {BRAND.name}.</Text>
@@ -1007,7 +1007,7 @@ export default function DashboardProfiloPage() {
               Account creato
             </span>
           ) : null}
-          <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             {isFirstProfileSave ? "Ora il tuo profilo pubblico" : "Modifica profilo"}
           </Text>
           <Text color={brand.grafite70}>

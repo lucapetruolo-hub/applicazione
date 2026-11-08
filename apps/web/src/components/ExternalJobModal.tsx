@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import type { ExternalJob, ExternalJobInput } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 
 const inputStyle = { padding: 10, borderRadius: 10, border: `1px solid ${brand.bordoCampo}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
 
@@ -92,13 +93,9 @@ export function ExternalJobModal({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  // Fuoco dentro, Tab chiuso nella finestra, Esc chiude (E7-03 del controllo dell'8/11).
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onClose);
 
   async function handleSubmit() {
     setError(null);
@@ -196,6 +193,7 @@ export function ExternalJobModal({
       }}
     >
       <YStack
+        ref={dialogRef as never}
         role="dialog"
         aria-modal
         aria-label={job ? "Modifica il lavoro" : "Aggiungi un tuo lavoro"}
@@ -224,7 +222,7 @@ export function ExternalJobModal({
               </Text>
             )}
           </YStack>
-          <Text fontSize="5" color={brand.grafite70} cursor="pointer" onPress={onClose} role="button" aria-label="Chiudi">
+          <Text fontSize="5" color={brand.grafite70} cursor="pointer" onPress={onClose} role="button" aria-label="Chiudi" data-dialog-close>
             ✕
           </Text>
         </XStack>

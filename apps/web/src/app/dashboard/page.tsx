@@ -120,7 +120,7 @@ export default function DashboardTodayPage() {
     return (
       <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
-          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi come professionista
           </Text>
           <Link href="/accedi?redirect=/dashboard" style={{ textDecoration: "none" }}>
@@ -143,7 +143,7 @@ export default function DashboardTodayPage() {
     return (
       <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
-          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Completa il tuo profilo per iniziare
           </Text>
           <Text color={brand.grafite70} textAlign="center">
@@ -258,7 +258,7 @@ export default function DashboardTodayPage() {
     <YStack width="100%" alignItems="center" paddingVertical="6" paddingHorizontal="4">
       <YStack width="100%" maxWidth={1180} gap="6">
         <YStack gap="1">
-          <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             Oggi
           </Text>
           <Text color={brand.grafite70}>

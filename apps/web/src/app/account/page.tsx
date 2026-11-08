@@ -281,7 +281,7 @@ export default function AccountPage() {
     return (
       <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
-          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi per gestire il tuo account
           </Text>
           <Link href="/accedi?redirect=/account" style={{ textDecoration: "none" }}>
@@ -452,7 +452,7 @@ export default function AccountPage() {
           tutte. */}
       <YStack width="100%" maxWidth={880} gap="5">
         <YStack gap="1">
-          <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             Impostazioni dell&apos;account
           </Text>
           <Text fontSize={13} color={brand.grafite70}>

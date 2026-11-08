@@ -25,9 +25,12 @@ function FooterColumnTitle({ children }: { children: string }) {
   );
 }
 
+/** Link e pulsanti del piè di pagina alti almeno 24 px, da toccare col dito (WCAG 2.5.8, E7-11 del controllo dell'8/11). */
+const FOOTER_TARGET_STYLE = { textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 24, padding: 0 } as const;
+
 function FooterLink({ href, children }: { href: string; children: string }) {
   return (
-    <Link href={href} style={{ textDecoration: "none" }}>
+    <Link href={href} style={FOOTER_TARGET_STYLE}>
       <Text fontSize={16} color={brand.grafite}>
         {children}
       </Text>
@@ -48,7 +51,7 @@ const AUTH_PAGES = ["/registrati", "/accedi", "/password-dimenticata", "/reimpos
 
 function ShortFooterLink({ href, children }: { href: string; children: string }) {
   return (
-    <Link href={href} style={{ textDecoration: "none" }}>
+    <Link href={href} style={FOOTER_TARGET_STYLE}>
       <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
         {children}
       </Text>
@@ -73,7 +76,7 @@ export function SiteFooter() {
           <ShortFooterLink href="/termini">Termini</ShortFooterLink>
           <ShortFooterLink href="/cookie">Cookie</ShortFooterLink>
           {/* Il banner dice di cambiare idea "in fondo alla pagina": serve anche qui (collaudo del 29/10/2026, M-13). */}
-          <button type="button" onClick={reopenCookieChoice} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+          <button type="button" onClick={reopenCookieChoice} style={{ ...FOOTER_TARGET_STYLE, background: "none", border: "none", cursor: "pointer" }}>
             <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
               Preferenze cookie
             </Text>
@@ -174,39 +177,39 @@ export function SiteFooter() {
             </Text>
           </XStack>
           {/* Nomi corti come nell'area account (prova con persone simulate, docs/changelog/2026-11-08-prova-persone-simulate.md). */}
-          <Link href="/privacy" style={{ textDecoration: "none" }}>
+          <Link href="/privacy" style={FOOTER_TARGET_STYLE}>
             <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
               Privacy
             </Text>
           </Link>
-          <Link href="/termini" style={{ textDecoration: "none" }}>
+          <Link href="/termini" style={FOOTER_TARGET_STYLE}>
             <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
               Termini
             </Text>
           </Link>
-          <Link href="/cookie" style={{ textDecoration: "none" }}>
+          <Link href="/cookie" style={FOOTER_TARGET_STYLE}>
             <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
               Cookie
             </Text>
           </Link>
-          <button type="button" onClick={reopenCookieChoice} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+          <button type="button" onClick={reopenCookieChoice} style={{ ...FOOTER_TARGET_STYLE, background: "none", border: "none", cursor: "pointer" }}>
             <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
               Preferenze cookie
             </Text>
           </button>
-          <Link href="/accessibilita" style={{ textDecoration: "none" }}>
+          <Link href="/accessibilita" style={FOOTER_TARGET_STYLE}>
             <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
               Accessibilità
             </Text>
           </Link>
-          <Link href="/note-legali" style={{ textDecoration: "none" }}>
+          <Link href="/note-legali" style={FOOTER_TARGET_STYLE}>
             <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
               Note legali
             </Text>
           </Link>
           {/* Chiunque, anche senza account, può segnalare un contenuto
               illegale (DSA art. 16 c. 1, docs/CHANGELOG.md §319). */}
-          <Link href="/contatti?motivo=segnalazione" style={{ textDecoration: "none" }}>
+          <Link href="/contatti?motivo=segnalazione" style={FOOTER_TARGET_STYLE}>
             <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
               Segnala un contenuto illegale
             </Text>

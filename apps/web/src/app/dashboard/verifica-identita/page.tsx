@@ -105,7 +105,7 @@ function VerificaIdentitaContent() {
 
   if (isLoading || (!status && !loadError)) {
     return (
-      <Section title="Verifica identità" maxWidth={760}>
+      <Section title="Verifica identità" pageTitle maxWidth={760}>
         <Text color={brand.grafite70}>Caricamento…</Text>
       </Section>
     );
@@ -113,7 +113,7 @@ function VerificaIdentitaContent() {
 
   if (!status) {
     return (
-      <Section title="Verifica identità" maxWidth={760}>
+      <Section title="Verifica identità" pageTitle maxWidth={760}>
         <YStack gap="3">
           <Text color={brand.urgenza}>{loadError}</Text>
           {loadError === "Completa prima il tuo profilo professionista." ? (
@@ -131,7 +131,7 @@ function VerificaIdentitaContent() {
   }
 
   return (
-    <Section title="Verifica identità" maxWidth={760}>
+    <Section title="Verifica identità" pageTitle maxWidth={760}>
       <YStack gap="5">
         {subscription !== undefined ? <JourneyProgress steps={setupJourney(status, stripeVerified, subscription)} here="identity" /> : null}
         <ActionPanel

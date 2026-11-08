@@ -1,5 +1,6 @@
 "use client";
 
+import { ModalDialog } from "@/components/ModalDialog";
 import { Suspense, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -523,30 +524,9 @@ function RichiesteContent() {
         </XStack>
 
         {showFiltersModal ? (
-          <div
-            role="presentation"
-            onClick={closeOnBackdrop(() => setShowFiltersModal(false))}
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(20,24,30,0.55)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-              padding: 16,
-              overflowY: "auto",
-            }}
-          >
+          <ModalDialog label="Filtri" onClose={() => setShowFiltersModal(false)}>
             <YStack
-              role="dialog"
-              aria-modal
-              aria-label="Filtri"
               width="100%"
-              maxWidth={420}
               backgroundColor={brand.calce}
               borderRadius="3"
               padding="5"
@@ -557,7 +537,7 @@ function RichiesteContent() {
                 <Text fontFamily="heading" fontWeight="800" fontSize="5" color={brand.grafite}>
                   Filtri
                 </Text>
-                <XStack cursor="pointer" onPress={() => setShowFiltersModal(false)} role="button" aria-label="Chiudi">
+                <XStack cursor="pointer" onPress={() => setShowFiltersModal(false)} role="button" aria-label="Chiudi" data-dialog-close>
                   <Icon name="x" size={20} color={brand.grafite70} />
                 </XStack>
               </XStack>
@@ -598,7 +578,7 @@ function RichiesteContent() {
                 {`Mostra ${visibleLeads.length} ${visibleLeads.length === 1 ? "richiesta" : "richieste"}`}
               </Button>
             </YStack>
-          </div>
+          </ModalDialog>
         ) : null}
 
         <RestoredNotice />
@@ -715,7 +695,7 @@ function RequestsHeading() {
   return (
     <YStack gap="1">
       {/* Stesso nome della voce di menu (richiesta dell'utente, docs/CHANGELOG.md §334). */}
-      <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
+      <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
         Richieste e lavori
       </Text>
       <Text fontFamily="body" fontSize={16} color={brand.grafite70}>

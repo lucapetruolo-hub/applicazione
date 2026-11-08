@@ -75,16 +75,35 @@ export function ChatThreadRow({
     : thread.lastMessageHasMedia
       ? "Foto/video allegati"
       : "Nessun messaggio ancora";
+  const rowLabel = [
+    `Conversazione con ${thread.otherPartyName}`,
+    effectiveUnreadCount ? `${effectiveUnreadCount} ${effectiveUnreadCount === 1 ? "messaggio non letto" : "messaggi non letti"}` : null,
+    `${thread.lastMessageIsMine ? "tu: " : "ultimo messaggio: "}${previewText}`,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   return (
+    // Due comandi uno accanto all'altro, mai uno dentro l'altro (E7-04 del
+    // controllo dell'8/11): la conversazione, con un nome breve per il
+    // lettore di schermo, e "Vai alla richiesta".
     <XStack
       alignItems="center"
       gap="3"
-      paddingHorizontal="3"
-      paddingVertical="3"
+      paddingRight="3"
       backgroundColor={active ? brand.cianografiaVelo : zebra ? brand.gesso : "transparent"}
+    >
+     <XStack
+      flex={1}
+      minWidth={0}
+      alignItems="center"
+      gap="3"
+      paddingLeft="3"
+      paddingVertical="3"
       cursor="pointer"
       role="button"
+      aria-label={rowLabel}
+      aria-current={active ? "true" : undefined}
       onPress={() => {
             onOpen();
             dismissUnread();
@@ -112,12 +131,11 @@ export function ChatThreadRow({
         </Text>
         <UnreadDot count={effectiveUnreadCount} />
       </YStack>
+     </XStack>
       {/* Link separato dall'apertura della chat (richiesta esplicita
           dell'utente: "dai la possibilità di andare alla pagina del
-          preventivo/informazioni di quella determinata chat") —
-          stopPropagation per non aprire anche la conversazione allo
-          stesso click, stesso pattern già in uso in ProfessionalCard per
-          un controllo annidato dentro un elemento cliccabile più grande. */}
+          preventivo/informazioni di quella determinata chat"), accanto alla
+          riga e non dentro (E7-04). */}
       <XStack
         width={32}
         height={32}
@@ -128,11 +146,8 @@ export function ChatThreadRow({
         cursor="pointer"
         flexShrink={0}
         role="button"
-        aria-label="Vai alla richiesta"
-        onPress={(e: { stopPropagation: () => void }) => {
-          e.stopPropagation();
-          onGoToRequest();
-        }}
+        aria-label={`Vai alla richiesta: ${thread.requestDescription?.trim() || thread.categoryLabel}`}
+        onPress={() => onGoToRequest()}
       >
         <Icon name="file-text" size={15} color={brand.grafite70} strokeWidth={1.5} />
       </XStack>
