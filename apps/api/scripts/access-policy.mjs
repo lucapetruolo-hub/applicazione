@@ -102,6 +102,7 @@ const selfAny = [
   "PATCH /auth/me/preferences",
   "GET /auth/me/closure-check",
   "GET /auth/me/export",
+  "GET /auth/me/export/pdf",
   "POST /auth/me/image",
   "POST /auth/verify-email/code",
   "POST /auth/verify-email/resend",
