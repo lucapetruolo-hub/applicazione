@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 /**
  * `nonce` dell'accesso con Google emesso dal server (controllo pre-lancio
@@ -22,7 +22,7 @@ export const GOOGLE_NONCE_TTL_MS = 30 * 60_000;
 const used = new Map<string, number>();
 
 function key(): Buffer {
-  return createHmac("sha256", "google-nonce").update(process.env.JWT_SECRET ?? "dev-secret-change-me").digest();
+  return createHash("sha256").update(`google-nonce:${process.env.JWT_SECRET ?? "dev-secret-change-me"}`).digest();
 }
 
 function sign(body: string): string {
