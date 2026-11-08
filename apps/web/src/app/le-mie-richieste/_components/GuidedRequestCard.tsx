@@ -838,6 +838,7 @@ export function GuidedRequestCard({
         address={requestJobAddress(request)}
         onReportProblem={booking.issueTypesAllowed.length > 0 ? () => setShowReportModal(true) : null}
         rebookHref={rebookHref}
+        rebookReminder={{ guidedRequestId: request.id, remindAt: request.myState.rebookRemindAt ?? null, categorySlug: request.categorySlug }}
         unreadCount={combineUnreadCounts(
           bookingUnreadCounts?.get(booking.id),
           threadUnreadCounts?.get(`${request.id}:${booking.professionalProfileId}`),

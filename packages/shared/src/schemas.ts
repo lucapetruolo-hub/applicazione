@@ -8,6 +8,7 @@ import { contentReportReason, contentReportReasonCodes, moderationGroundCodes } 
 import { newPasswordSchema } from "./password";
 import { REQUEST_TIMINGS } from "./requestTiming";
 import { SERVICE_PRICE_UNITS } from "./professionals";
+import { REBOOK_REMINDER_OPTIONS, type RebookReminderKey } from "./rebookReminder";
 
 /**
  * Da dove arriva chi manda una richiesta di preventivo (docs/CHANGELOG.md
@@ -1264,6 +1265,8 @@ export const guidedRequestUserStateSchema = z
     markedUnread: z.boolean().optional(),
     /** ISO datetime futuro (entro 60 giorni) per programmare il promemoria, `null` per annullarlo. */
     remindAt: z.string().datetime({ offset: true }).nullable().optional(),
+    /** "Ricordamelo tra…" a lavoro terminato, solo il cliente (docs/changelog/2026-11-08-promemoria-manutenzione.md); `null` lo toglie. */
+    rebookReminder: z.enum(REBOOK_REMINDER_OPTIONS.map((o) => o.key) as [RebookReminderKey, ...RebookReminderKey[]]).nullable().optional(),
   })
   .refine((value) => Object.values(value).some((v) => v !== undefined), { message: "Nessuna modifica indicata." });
 export type GuidedRequestUserStateInput = z.infer<typeof guidedRequestUserStateSchema>;

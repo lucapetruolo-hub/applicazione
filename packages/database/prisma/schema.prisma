@@ -990,6 +990,10 @@ model GuidedRequestUserState {
   // Promemoria programmato: il job RequestRemindersService crea una
   // notifica REQUEST_REMINDER a quest'ora e azzera il campo.
   remindAt        DateTime?
+  // "Ricordamelo tra…" del cliente a lavoro terminato, per rifarlo con lo
+  // stesso professionista (docs/changelog/2026-11-08-promemoria-manutenzione.md):
+  // a quest'ora parte REBOOK_REMINDER (sito ed email) e il campo si azzera.
+  rebookRemindAt  DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @default(now()) @updatedAt
 
@@ -998,6 +1002,7 @@ model GuidedRequestUserState {
 
   @@unique([userId, guidedRequestId])
   @@index([remindAt])
+  @@index([rebookRemindAt])
   @@map("guided_request_user_states")
 }
 

@@ -131,8 +131,8 @@ export class NotificationsService {
     // Richiesta silenziata dall'utente (menu hamburger della scheda,
     // docs/CHANGELOG.md §130): la notifica resta nella cronologia della
     // campanella ma nasce già letta, niente badge/toast/push SSE. Mai per
-    // un promemoria, che l'utente stesso ha chiesto.
-    const guidedRequestId = type !== "REQUEST_REMINDER" ? payloadGuidedRequestId(payload) : null;
+    // un promemoria, che l'utente stesso ha chiesto (anche "Ricordamelo tra…").
+    const guidedRequestId = type !== "REQUEST_REMINDER" && type !== "REBOOK_REMINDER" ? payloadGuidedRequestId(payload) : null;
     const muted = guidedRequestId
       ? await this.prisma.guidedRequestUserState.findFirst({ where: { userId, guidedRequestId, mutedAt: { not: null } }, select: { id: true } })
       : null;

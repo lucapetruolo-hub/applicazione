@@ -59,6 +59,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   CONTENT_REPORT_DECISION: { icon: "🚩", message: "Abbiamo esaminato la tua segnalazione: trovi l'esito nell'email." },
   // Promemoria programmato dall'utente dal menu della scheda (docs/CHANGELOG.md §130).
   REQUEST_REMINDER: { icon: "⏰", message: "Promemoria: hai chiesto di ricordarti questa richiesta." },
+  // "Ricordamelo tra…" a lavoro terminato (docs/changelog/2026-11-08-promemoria-manutenzione.md).
+  REBOOK_REMINDER: { icon: "⏰", message: "È il momento che avevi scelto: puoi prenotare di nuovo lo stesso professionista." },
   CONTENT_REPORT_UPHELD: { icon: "⚠️", message: "Abbiamo preso una decisione su un tuo contenuto segnalato: tocca per leggere la motivazione." },
   // Esito della contestazione (docs/CHANGELOG.md §144).
   CONTENT_REPORT_REVERTED: { icon: "✅", message: "La misura su un tuo contenuto è stata annullata." },

@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
-import type { GuidedRequestMyState, GuidedRequestUserStateInput } from "@professionisti/shared";
+import { rebookReminderDate, type GuidedRequestMyState, type GuidedRequestUserStateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 
@@ -9,7 +9,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 // un'intenzione reale ("ricordamelo domani", non "tra un anno").
 const MAX_REMINDER_DAYS_AHEAD = 60;
 
-type StateRow = { archivedAt: Date | null; mutedAt: Date | null; markedUnreadAt: Date | null; remindAt: Date | null };
+type StateRow = { archivedAt: Date | null; mutedAt: Date | null; markedUnreadAt: Date | null; remindAt: Date | null; rebookRemindAt?: Date | null };
 
 /** Forma pubblica dello stato personale (vedi `GuidedRequestMyState`), `null` ovunque se la riga non esiste ancora. */
 export function toMyState(row: StateRow | undefined | null): GuidedRequestMyState {
@@ -18,6 +18,7 @@ export function toMyState(row: StateRow | undefined | null): GuidedRequestMyStat
     mutedAt: row?.mutedAt?.toISOString() ?? null,
     markedUnreadAt: row?.markedUnreadAt?.toISOString() ?? null,
     remindAt: row?.remindAt?.toISOString() ?? null,
+    rebookRemindAt: row?.rebookRemindAt?.toISOString() ?? null,
   };
 }
 
@@ -52,8 +53,26 @@ export class GuidedRequestUserStateService {
   }
 
   async update(userId: string, guidedRequestId: string, input: GuidedRequestUserStateInput): Promise<GuidedRequestMyState> {
-    await this.requireParticipant(userId, guidedRequestId);
+    const { audience } = await this.requireParticipant(userId, guidedRequestId);
     const now = new Date();
+
+    // "Ricordamelo tra…" (docs/changelog/2026-11-08-promemoria-manutenzione.md):
+    // solo il cliente, solo con un lavoro terminato su questa richiesta, con
+    // un professionista ancora sul sito. La data la calcola il server.
+    let rebookRemindAt: Date | null | undefined;
+    if (input.rebookReminder !== undefined) {
+      if (audience !== "CLIENT") throw new ForbiddenException("Questo promemoria è solo per il cliente.");
+      if (input.rebookReminder === null) {
+        rebookRemindAt = null;
+      } else {
+        const done = await this.prisma.booking.findFirst({
+          where: { guidedRequestId, clientId: userId, status: "COMPLETED", professionalProfile: { user: { deletedAt: null } } },
+          select: { id: true },
+        });
+        if (!done) throw new BadRequestException("Il promemoria si imposta a lavoro terminato.");
+        rebookRemindAt = rebookReminderDate(input.rebookReminder, now);
+      }
+    }
 
     let remindAt: Date | null | undefined;
     if (input.remindAt !== undefined) {
@@ -71,6 +90,7 @@ export class GuidedRequestUserStateService {
       ...(input.muted !== undefined ? { mutedAt: input.muted ? now : null } : {}),
       ...(input.markedUnread !== undefined ? { markedUnreadAt: input.markedUnread ? now : null } : {}),
       ...(remindAt !== undefined ? { remindAt } : {}),
+      ...(rebookRemindAt !== undefined ? { rebookRemindAt } : {}),
     };
     const row = await this.prisma.guidedRequestUserState.upsert({
       where: { userId_guidedRequestId: { userId, guidedRequestId } },
@@ -119,5 +139,37 @@ export class GuidedRequestUserStateService {
     if (due.length > 0) {
       this.logger.log(`Inviati ${due.length} promemoria su richieste.`);
     }
+  }
+
+  /**
+   * "Ricordamelo tra…" arrivati alla data (docs/changelog/2026-11-08-promemoria-manutenzione.md):
+   * notifica REBOOK_REMINDER, che parte anche via email con "Prenota di
+   * nuovo" se il cliente non l'ha spenta. Il campo si azzera prima, come
+   * sopra: mai due avvisi. Se nel frattempo il professionista ha chiuso
+   * l'account o il cliente ha eliminato il suo, non parte nulla.
+   */
+  @Cron(CronExpression.EVERY_30_MINUTES)
+  async runDueRebookReminders(): Promise<void> {
+    const due = await this.prisma.guidedRequestUserState.findMany({
+      where: { rebookRemindAt: { lte: new Date() } },
+      select: { id: true, userId: true, guidedRequestId: true, rebookRemindAt: true, user: { select: { deletedAt: true } } },
+    });
+    let sent = 0;
+    for (const state of due) {
+      const cleared = await this.prisma.guidedRequestUserState.updateMany({
+        where: { id: state.id, rebookRemindAt: state.rebookRemindAt },
+        data: { rebookRemindAt: null },
+      });
+      if (cleared.count === 0 || state.user.deletedAt) continue;
+      const booking = await this.prisma.booking.findFirst({
+        where: { guidedRequestId: state.guidedRequestId, clientId: state.userId, status: "COMPLETED", professionalProfile: { user: { deletedAt: null } } },
+        orderBy: { scheduledAt: "desc" },
+        select: { id: true },
+      });
+      if (!booking) continue;
+      await this.notificationsService.notify(state.userId, "REBOOK_REMINDER", { guidedRequestId: state.guidedRequestId, bookingId: booking.id });
+      sent++;
+    }
+    if (sent > 0) this.logger.log(`Inviati ${sent} promemoria per rifare un lavoro.`);
   }
 }

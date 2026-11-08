@@ -199,9 +199,12 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
   },
   promemoria: {
     professional: { label: "Promemoria che imposti tu", description: "Il \"ricordamelo\" scelto dal menu di una richiesta." },
-    client: { label: "Promemoria che imposti tu", description: "Il \"ricordamelo\" scelto dal menu di una richiesta." },
-    types: ["REQUEST_REMINDER"],
-    activeChannels: ["inApp"],
+    client: { label: "Promemoria che imposti tu", description: "Il \"ricordamelo\" scelto dal menu di una richiesta e quello per rifare un lavoro terminato." },
+    // REBOOK_REMINDER: "Ricordamelo tra…" a lavoro terminato, anche via email
+    // con "Prenota di nuovo" (docs/changelog/2026-11-08-promemoria-manutenzione.md).
+    // REQUEST_REMINDER resta solo sul sito: nessuna email per lui.
+    types: ["REQUEST_REMINDER", "REBOOK_REMINDER"],
+    activeChannels: ["inApp", "email"],
   },
   account: {
     professional: { label: "Account e sicurezza", description: "Decisioni su segnalazioni e sul tuo account, scadenze e limiti dell'abbonamento." },

@@ -61,6 +61,55 @@ describe("GuidedRequestUserStateService.update", () => {
   });
 });
 
+describe("Ricordamelo tra… a lavoro terminato (docs/changelog/2026-11-08-promemoria-manutenzione.md)", () => {
+  it("il cliente con un lavoro terminato lo imposta: la data la calcola il server, alle 9 italiane", async () => {
+    const booking = { findFirst: vi.fn().mockResolvedValue({ id: "b-1" }) };
+    const { service, prisma } = buildService({ booking });
+    const state = await service.update("client-1", "gr-1", { rebookReminder: "1y" });
+    expect(state.rebookRemindAt).toBe("2027-11-05T08:00:00.000Z");
+    expect(booking.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ guidedRequestId: "gr-1", clientId: "client-1", status: "COMPLETED" }) }));
+    expect(prisma.guidedRequestUserState.upsert).toHaveBeenCalledWith(expect.objectContaining({ update: { rebookRemindAt: new Date("2027-11-05T08:00:00.000Z") } }));
+  });
+
+  it("senza un lavoro terminato si rifiuta, e il professionista non può impostarlo", async () => {
+    const { service } = buildService({ booking: { findFirst: vi.fn().mockResolvedValue(null) } });
+    await expect(service.update("client-1", "gr-1", { rebookReminder: "1m" })).rejects.toThrow("a lavoro terminato");
+    const pro = buildService({ lead: { findFirst: vi.fn().mockResolvedValue({ id: "lead-1" }) } });
+    await expect(pro.service.update("pro-user", "gr-1", { rebookReminder: "1m" })).rejects.toThrow("solo per il cliente");
+  });
+
+  it("si toglie con null, senza controllare il lavoro", async () => {
+    const booking = { findFirst: vi.fn() };
+    const { service } = buildService({ booking });
+    const state = await service.update("client-1", "gr-1", { rebookReminder: null });
+    expect(state.rebookRemindAt).toBeNull();
+    expect(booking.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("alla data parte un avviso solo, e nulla se il cliente ha eliminato l'account o il lavoro non c'è più", async () => {
+    const at = new Date("2026-11-05T08:00:00Z");
+    const prisma = {
+      guidedRequestUserState: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: "s-1", userId: "client-1", guidedRequestId: "gr-1", rebookRemindAt: at, user: { deletedAt: null } },
+          { id: "s-2", userId: "client-2", guidedRequestId: "gr-2", rebookRemindAt: at, user: { deletedAt: new Date() } },
+          { id: "s-3", userId: "client-3", guidedRequestId: "gr-3", rebookRemindAt: at, user: { deletedAt: null } },
+          // Già preso da un altro giro del controllo.
+          { id: "s-4", userId: "client-4", guidedRequestId: "gr-4", rebookRemindAt: at, user: { deletedAt: null } },
+        ]),
+        updateMany: vi.fn().mockImplementation(({ where }) => Promise.resolve({ count: where.id === "s-4" ? 0 : 1 })),
+      },
+      booking: { findFirst: vi.fn().mockImplementation(({ where }) => Promise.resolve(where.guidedRequestId === "gr-1" ? { id: "b-1" } : null)) },
+    };
+    const notifications = { notify: vi.fn() };
+    const service = new GuidedRequestUserStateService(prisma as never, notifications as never);
+    await service.runDueRebookReminders();
+    expect(prisma.guidedRequestUserState.updateMany).toHaveBeenCalledTimes(4);
+    expect(notifications.notify).toHaveBeenCalledTimes(1);
+    expect(notifications.notify).toHaveBeenCalledWith("client-1", "REBOOK_REMINDER", { guidedRequestId: "gr-1", bookingId: "b-1" });
+  });
+});
+
 describe("NotificationsService.notify su richiesta silenziata", () => {
   function buildNotifications(muted: boolean) {
     const prisma = {
