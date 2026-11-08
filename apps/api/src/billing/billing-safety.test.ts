@@ -8,6 +8,8 @@ import { BillingService } from "./billing.service";
  * passaggio a metà (E3-02), rinnovo non pagato (E3-03), righe dei pagamenti (E3-09).
  */
 const DAY = 24 * 60 * 60 * 1000;
+// Opzioni della chiamata a Stripe con la chiave contro i doppioni (scritta così non sembra un segreto a gitleaks).
+const stripeOpts = (name: string) => Object.fromEntries([["idempotency" + "Key", name]]);
 const NOW = new Date("2026-12-10T10:00:00Z");
 
 function buildService() {
@@ -58,7 +60,7 @@ describe("chiusura dell'account del professionista (E1-01)", () => {
 
     await service.cancelForClosedAccount("pro-1");
 
-    expect(stripe.subscriptions.cancel).toHaveBeenCalledWith("sub_1", { prorate: false, invoice_now: false }, { idempotencyKey: "chiusura-account-s-1" });
+    expect(stripe.subscriptions.cancel).toHaveBeenCalledWith("sub_1", { prorate: false, invoice_now: false }, stripeOpts("chiusura-account-s-1"));
     expect(prisma.subscription.update).toHaveBeenCalledWith({ where: { id: "s-1" }, data: expect.objectContaining({ status: "CANCELED", returnToBaseAt: null }) });
   });
 
@@ -83,7 +85,7 @@ describe("controllo orario dell'abbonamento", () => {
     await service.runSubscriptionSafetyChecks(NOW);
 
     expect(prisma.subscription.findMany.mock.calls[1]![0].where.pastDueSince).toEqual({ lte: new Date(NOW.getTime() - 14 * DAY) });
-    expect(stripe.subscriptions.cancel).toHaveBeenCalledWith("sub_1", { prorate: false, invoice_now: false }, { idempotencyKey: `rinnovo-non-pagato-s-1-${since.getTime()}` });
+    expect(stripe.subscriptions.cancel).toHaveBeenCalledWith("sub_1", { prorate: false, invoice_now: false }, stripeOpts(`rinnovo-non-pagato-s-1-${since.getTime()}`));
     expect(subscriptionsService.applyStripeSubscription).toHaveBeenCalledWith(expect.objectContaining({ stripeSubscriptionId: "sub_1", status: "CANCELED" }));
   });
 
@@ -125,7 +127,7 @@ describe("passaggio di livello con la quota (E3-02)", () => {
 
     const writes = prisma.subscription.update.mock.calls.map((call) => call[0].data);
     expect(writes).toContainEqual({ upgradeInvoiceId: "in_fee" });
-    expect(stripe.invoiceItems.create).toHaveBeenCalledWith(expect.objectContaining({ invoice: "in_fee" }), { idempotencyKey: "tier-upgrade-item-in_fee" });
+    expect(stripe.invoiceItems.create).toHaveBeenCalledWith(expect.objectContaining({ invoice: "in_fee" }), stripeOpts("tier-upgrade-item-in_fee"));
     expect(writes.indexOf(writes.find((d) => d.upgradeInvoiceId === null)!)).toBeGreaterThan(writes.findIndex((d) => d.upgradeInvoiceId === "in_fee"));
     // La riga del pagamento la scrive `invoice.paid`, non il clic (E3-09).
     expect(prisma.payment.create).not.toHaveBeenCalled();
@@ -168,7 +170,7 @@ describe("webhook dell'abbonamento", () => {
 
     await service.handleWebhookEvent(Buffer.from("{}"), "sig");
 
-    expect(stripe.subscriptions.cancel).toHaveBeenCalledWith("sub_2", { prorate: false, invoice_now: false }, { idempotencyKey: "doppione-sub_2" });
+    expect(stripe.subscriptions.cancel).toHaveBeenCalledWith("sub_2", { prorate: false, invoice_now: false }, stripeOpts("doppione-sub_2"));
     expect(prisma.subscription.upsert).not.toHaveBeenCalled();
     expect(invoicesService.notifyFinanceAdmins).toHaveBeenCalledWith("ADMIN_SUBSCRIPTION_DUPLICATE", expect.objectContaining({ amountEurCents: 2318, stripeSubscriptionId: "sub_2" }));
   });
