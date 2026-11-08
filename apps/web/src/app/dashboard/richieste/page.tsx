@@ -3,7 +3,7 @@
 import { Suspense, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { type MyProfessionalProfile, type MySubscription, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import { lastSimilarQuote, type MyProfessionalProfile, type MySubscription, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { loadMyProfessionalProfile, loadMySubscription } from "@/lib/myProfessionalProfile";
@@ -78,6 +78,7 @@ function RichiesteContent() {
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
   const [availableSlots, setAvailableSlots] = useState<ProfessionalAvailableSlot[]>([]);
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
+  const [myServices, setMyServices] = useState<MyProfessionalProfile["services"]>([]);
   // Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §239).
   const [defaultPaymentOffer, setDefaultPaymentOffer] = useState<MyProfessionalProfile["defaultPaymentOffer"] | null>(null);
   const [defaultCancellationNoticeHours, setDefaultCancellationNoticeHours] = useState<number | null>(null);
@@ -220,6 +221,7 @@ function RichiesteContent() {
         setBookings(b);
         setAvailableSlots(slots);
         setMyProfileId(profile?.id ?? null);
+        setMyServices(profile?.services ?? []);
         setDefaultPaymentOffer(profile?.defaultPaymentOffer ?? null);
         setDefaultCancellationNoticeHours(profile?.cancellationNoticeHours ?? null);
         setStripeVerified(profile?.stripeVerified ?? true);
@@ -691,6 +693,8 @@ function RichiesteContent() {
                     }
                   }}
                   onChanged={reloadLeads}
+                  myServices={myServices}
+                  similarQuote={leads ? lastSimilarQuote(leads, lead) : null}
                   unreadCount={leadUnreadCounts.get(lead.guidedRequest.id)}
                   onMarkedRead={() =>
                     setLeadUnreadCounts((prev) => {

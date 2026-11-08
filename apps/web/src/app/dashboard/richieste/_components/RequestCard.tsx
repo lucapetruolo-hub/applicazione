@@ -42,6 +42,8 @@ import {
   type MySubscription,
   type MyProfessionalProfile,
   wallClockToday,
+  type QuickQuoteService,
+  type SimilarQuote,
 } from "@professionisti/shared";
 import { Avatar, Badge, Chip, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -69,6 +71,7 @@ import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { ProfessionalInvoiceRequestBox } from "@/components/ProfessionalInvoiceRequestBox";
 import { JobDocumentsModal } from "@/components/JobDocumentsModal";
 import { AppointmentReplyStatus } from "./AppointmentReplyStatus";
+import { QuoteQuickFill } from "./QuoteQuickFill";
 import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle, bookingsOverlapping, BusyTimeNotice } from "./requestHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
@@ -104,6 +107,8 @@ export function RequestCard({
   autoOpenChat,
   onChatAutoOpenHandled,
   onMarkedRead,
+  myServices = [],
+  similarQuote = null,
 }: {
   lead: ProfessionalLead;
   stage: RequestStage;
@@ -141,6 +146,10 @@ export function RequestCard({
   onChatAutoOpenHandled?: () => void;
   /** "Segna come letta" dal menu: azzera subito i pallini locali del genitore. */
   onMarkedRead: () => void;
+  /** Prestazioni del profilo, da aggiungere al preventivo con un tocco (docs/changelog/2026-11-08-preventivo-in-30-secondi.md). */
+  myServices?: readonly QuickQuoteService[];
+  /** Ultimo preventivo mandato per lo stesso mestiere su un'altra richiesta, da usare come modello. */
+  similarQuote?: SimilarQuote | null;
 }) {
   const gr = lead.guidedRequest;
   const isOnline = gr.serviceMode === "ONLINE";
@@ -1606,6 +1615,15 @@ export function RequestCard({
                   {quotePriceHelp(null)}
                 </Text>
               </YStack>
+              <QuoteQuickFill
+                services={myServices}
+                request={{ categoryLabel: gr.categoryLabel, description: gr.description }}
+                similarQuote={similarQuote}
+                items={items}
+                setItems={setItems}
+                notes={quoteNotes}
+                setNotes={setQuoteNotes}
+              />
               {items.map((item, index) => (
                 <div key={index} className="quote-item-row">
                   <input aria-label="Voce del preventivo" className="quote-item-name" value={item.name} onChange={(e) => updateItem(index, "name", e.target.value)} placeholder="Es. Manodopera" style={smallInputStyle} />
