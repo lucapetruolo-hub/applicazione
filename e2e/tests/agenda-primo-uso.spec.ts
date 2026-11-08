@@ -43,14 +43,14 @@ test("T1: chiudere un giorno sta in cima a Orari di lavoro e basta la data", asy
   await expect(page.getByRole("region", { name: "La tua settimana" }).getByRole("button", { name: "Venerdì" })).toHaveAttribute("aria-pressed", /true|false/);
 });
 
-test("T9 e T11: il tasto per aggiungere un lavoro ha la scritta; Lavoro completato solo dal giorno del lavoro", async ({ page }) => {
+test("T9 e T11: il tasto per aggiungere un lavoro ha la scritta; Lavoro terminato solo dal giorno del lavoro", async ({ page }) => {
   await page.clock.setFixedTime(new Date("2026-10-25T18:00:00Z"));
   await page.goto("/dashboard/agenda");
   await expect(page.getByRole("button", { name: "Aggiungi lavoro" })).toContainText("Aggiungi lavoro");
   await page.getByRole("button", { name: /Giulia Bianchi ?, 09:00–10:30/ }).first().click();
   const dialog = page.getByRole("dialog", { name: /Appuntamento con/ });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "Lavoro completato" })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "Lavoro terminato" })).toHaveCount(0);
 });
 
 test("frecce della striscia: giorno prima e dopo anche in Giorno per giorno (§320)", async ({ page }) => {

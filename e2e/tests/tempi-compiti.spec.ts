@@ -113,7 +113,7 @@ test("C4 segno il lavoro completato", async ({ page }) => {
   log.ops.push("M", "T");
   await page.getByRole("button", { name: /09:00–10:30/ }).first().click();
   log.ops.push("M", "T");
-  await page.getByRole("button", { name: "Lavoro completato" }).click();
+  await page.getByRole("button", { name: "Lavoro terminato" }).click();
   const modal = page.getByRole("dialog", { name: "Segnala lavoro terminato" });
   await expect(modal).toBeVisible();
   const amount = modal.getByRole("textbox", { name: /Importo/ }).first();

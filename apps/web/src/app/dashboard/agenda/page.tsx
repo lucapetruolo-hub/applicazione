@@ -635,7 +635,7 @@ function DashboardAgendaContent() {
   }
 
   /**
-   * "Lavoro completato" dall'agenda con la stessa finestra di "Richieste e
+   * "Lavoro terminato" dall'agenda con la stessa finestra di "Richieste e
    * lavori" (importo finale, foto, dichiarazione): prima l'agenda segnava
    * solo lo stato, senza importo né pagamento del lavoro (docs/CHANGELOG.md §288).
    */
