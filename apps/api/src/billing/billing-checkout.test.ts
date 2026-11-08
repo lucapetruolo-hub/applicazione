@@ -14,6 +14,7 @@ function buildService(subscription: Record<string, unknown>) {
   const profile = { id: "pro-1", businessName: "Idraulica Rossi", stripeCustomerId: "cus_1", user: { email: "pro@example.com" } };
   const prisma = {
     professionalProfile: { findUnique: vi.fn().mockResolvedValue(profile) },
+    professionalFiscalProfile: { findUnique: vi.fn().mockResolvedValue(null) },
     subscription: { findUnique: vi.fn().mockResolvedValue(subscription) },
   };
   const stripe = {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   INVOICE_SOURCE_LABEL,
   formatEurCents,
+  monthlyInvoiceLate,
   platformInvoiceSettingsSchema,
   type FeeReconciliation,
   type InvoiceSdiStatusValue,
@@ -122,8 +123,9 @@ export function AdminInvoicesSection({ token }: { token: string }) {
     setPending(true);
     setError(null);
     try {
-      const { issued } = await apiClient.adminRunInvoiceMonth(token, month);
-      setMessage(issued === 0 ? "Nessuna fattura nuova per quel mese." : `${issued} fatture emesse.`);
+      const { issued, abroad } = await apiClient.adminRunInvoiceMonth(token, month);
+      const abroadNote = abroad > 0 ? ` ${abroad === 1 ? "Un professionista ha" : `${abroad} professionisti hanno`} la residenza fiscale all'estero: la fattura va fatta a mano.` : "";
+      setMessage(`${issued === 0 ? "Nessuna fattura nuova per quel mese." : issued === 1 ? "1 fattura emessa." : `${issued} fatture emesse.`}${abroadNote}`);
       setConfirm(null);
       load();
     } finally {
@@ -220,6 +222,12 @@ export function AdminInvoicesSection({ token }: { token: string }) {
       <Button variant="primary" alignSelf="flex-start" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => void saveSettings()}>
         Salva i dati della società
       </Button>
+      {settings && settings.testFeeEntriesAfterFrom > 0 ? (
+        // Collaudo dell'08/11/2026, E5-05: le prove non fanno mai fatture.
+        <Text fontSize={13} color={brand.grafite70}>
+          Dopo &quot;Fatture da&quot; ci sono {settings.testFeeEntriesAfterFrom === 1 ? "1 movimento" : `${settings.testFeeEntriesAfterFrom} movimenti`} di account di prova: non diventano fatture.
+        </Text>
+      ) : null}
 
       <XStack gap="3" alignItems="flex-end" flexWrap="wrap">
         <YStack width={200}>
@@ -233,7 +241,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
         </Button>
       </XStack>
       <Text fontSize={13} color={brand.grafite70}>
-        Il giro parte da solo il 1° del mese alle 7. Rilanciarlo non crea fatture doppie. La quadratura arriva anche in notifica il 1° del mese.
+        Il giro parte da solo il 1° del mese alle 7; dal 2 al 15 ogni mattina recupera le fatture mancate e il 10 avvisa se ne manca ancora qualcuna. Rilanciarlo non crea fatture doppie. La quadratura arriva anche in notifica il 1° del mese.
       </Text>
       {reconciliation ? <ReconciliationBox data={reconciliation} /> : null}
 
@@ -293,7 +301,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
           title={confirm.kind === "run" ? "Emetti le fatture del mese" : settings?.sdiConfigured ? "Rimanda allo SdI" : "Rigenera la fattura"}
           description={
             confirm.kind === "run"
-              ? `Emette le fatture delle trattenute di ${month} a tutti i professionisti${settings?.sdiConfigured ? " e le manda allo SdI" : ""}. Una fattura emessa non si cancella: si corregge solo con una nota di credito. Non crea doppioni.`
+              ? `${monthlyInvoiceLate(month) ? `Attenzione: la fattura di ${month} andava emessa entro il 15 del mese dopo. Uscirà con la data dell'ultimo giorno di ${month} e un numero successivo alle fatture già emesse: sentite prima il commercialista. ` : ""}Emette le fatture delle trattenute di ${month} a tutti i professionisti${settings?.sdiConfigured ? " e le manda allo SdI" : ""}. Una fattura emessa non si cancella: si corregge solo con una nota di credito. Non crea doppioni.`
               : `${settings?.sdiConfigured ? "Manda di nuovo allo SdI la fattura" : "Rifà l'XML della fattura"} ${confirm.number} con i dati fiscali di oggi del professionista.`
           }
           confirmLabel={confirm.kind === "run" ? "Emetti le fatture" : settings?.sdiConfigured ? "Rimanda" : "Rigenera"}

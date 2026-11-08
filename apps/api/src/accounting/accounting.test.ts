@@ -220,7 +220,7 @@ describe("InvoicesService.issueMonthlyFeeInvoices", () => {
         findFirst: vi.fn(),
         update: vi.fn(),
       },
-      professionalProfile: { findUnique: vi.fn().mockResolvedValue({ businessName: "Idraulica Rossi", fiscalProfile: fiscal }) },
+      professionalProfile: { findUnique: vi.fn().mockResolvedValue({ businessName: "Idraulica Rossi", isDemo: false, user: { testAccountAt: null }, fiscalProfile: fiscal }), findMany: vi.fn().mockResolvedValue([]) },
       $transaction: vi.fn().mockImplementation((fn: (t: typeof tx) => unknown) => fn(tx)),
     };
     const service = new InvoicesService(prisma as never, { notify: vi.fn() } as never);

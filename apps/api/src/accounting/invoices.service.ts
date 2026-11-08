@@ -8,9 +8,11 @@ import {
   INVOICE_SOURCE_LABEL,
   PLATFORM_VAT_RATE_BASIS_POINTS,
   accountingMonthLabel,
+  fiscalResidenceAbroad,
   freePeriodSummary,
   invoiceNumberLabel,
   isAccountingMonth,
+  monthlyInvoiceLate,
   notificationJobLabel,
   subscriptionTierInfo,
   type BillingInterval,
@@ -52,6 +54,7 @@ import {
 } from "./invoice-documents";
 import { sdiProviderFromEnv, type SdiProvider } from "./sdi-provider";
 import { stuckSdiWhere } from "./sdi-stuck";
+import { COUNTED_USER } from "../site-counts/counted";
 
 /** Lo SdI accetta una fattura entro 12 giorni dalla sua data: dopo non si riprova da soli. */
 const SDI_RETRY_DAYS = 12;
@@ -60,6 +63,22 @@ const SDI_OUTCOME_DAYS = 30;
 /** Nella prova d'invio, attesa tra una lettura dell'esito simulato e l'altra. */
 const SDI_TEST_WAIT_MS = 1500;
 const DAY_MS = 24 * 60 * 60 * 1000;
+/**
+ * Professionisti che non ricevono fatture automatiche (collaudo dell'08/11/2026):
+ * gli account di prova e i dati di esempio (E5-05: mai un numero della serie
+ * bruciato su un soggetto inventato), e chi ha la residenza fiscale all'estero
+ * (E5-04: l'XML e l'IVA sono fatti per l'Italia, la fattura la fa la Finanza a mano).
+ */
+const TEST_PROFILE: Prisma.ProfessionalProfileWhereInput = { OR: [{ isDemo: true }, { user: { NOT: COUNTED_USER } }] };
+
+type MonthlyRun = {
+  issued: number;
+  /** Professionisti a cui è partita una fattura (o nota di credito) in questo giro. */
+  issuedFor: string[];
+  /** Professionisti con residenza estera e trattenute del mese: fattura a mano. */
+  abroad: string[];
+};
+
 type NewInvoice = {
   professionalProfileId: string;
   source: PlatformInvoiceSource;
@@ -144,6 +163,9 @@ export class InvoicesService {
       pecEmail: row?.pecEmail ?? null,
       invoicesFrom: row?.invoicesFrom ? romeDayIso(row.invoicesFrom) : null,
       ready: !!issuerSnapshot(row),
+      testFeeEntriesAfterFrom: row?.invoicesFrom
+        ? await this.prisma.platformFeeEntry.count({ where: { occurredAt: { gte: row.invoicesFrom }, professionalProfileId: { in: await this.testProfileIds() } } })
+        : 0,
       sdiConfigured: !!this.sdi,
       sdiSandbox: !!this.sdi?.sandbox,
     };
@@ -177,6 +199,22 @@ export class InvoicesService {
     const issuer = issuerSnapshot(row);
     if (!issuer || (row?.invoicesFrom && row.invoicesFrom.getTime() > at.getTime())) return null;
     return issuer;
+  }
+
+  /** Profili di prova o di esempio: mai fatture (E5-05). */
+  private async testProfileIds(): Promise<string[]> {
+    return (await this.prisma.professionalProfile.findMany({ where: TEST_PROFILE, select: { id: true } })).map((p) => p.id);
+  }
+
+  /** Perché a questo professionista non va una fattura automatica, o null. */
+  private async invoiceSkipReason(professionalProfileId: string): Promise<"TEST" | "ABROAD" | null> {
+    const profile = await this.prisma.professionalProfile.findUnique({
+      where: { id: professionalProfileId },
+      select: { isDemo: true, user: { select: { testAccountAt: true } }, fiscalProfile: { select: { taxResidenceCountry: true, registeredCountry: true } } },
+    });
+    if (!profile) return null;
+    if (profile.isDemo || profile.user?.testAccountAt) return "TEST";
+    return fiscalResidenceAbroad(profile.fiscalProfile) ? "ABROAD" : null;
   }
 
   private async recipientOf(professionalProfileId: string): Promise<RecipientSnapshot> {
@@ -277,7 +315,10 @@ export class InvoicesService {
             `${invoice.creditNote ? "Trattenute restituite" : "Trattenute sui pagamenti online"} di ${accountingMonthLabel(invoice.periodMonth ?? date.slice(0, 7))}, già trattenute dagli incassi.`,
             INVOICE_SERVICE_CAUSALE.JOB_FEES,
           ]
-        : [`${INVOICE_SOURCE_LABEL[invoice.source]}, pagato con carta.`, INVOICE_SERVICE_CAUSALE[invoice.source]],
+        : [
+            invoice.creditNote ? `Rimborso: ${INVOICE_SOURCE_LABEL[invoice.source].toLowerCase()}, restituito sulla carta.` : `${INVOICE_SOURCE_LABEL[invoice.source]}, pagato con carta.`,
+            INVOICE_SERVICE_CAUSALE[invoice.source],
+          ],
     });
     await this.prisma.invoice.update({
       where: { id: invoiceId },
@@ -301,20 +342,31 @@ export class InvoicesService {
    * fatture sono attive) non ancora fatturati.
    */
   async issueMonthlyFeeInvoices(month: string): Promise<number> {
+    return (await this.runMonthlyFeeInvoices(month)).issued;
+  }
+
+  private async runMonthlyFeeInvoices(month: string): Promise<MonthlyRun> {
+    const result: MonthlyRun = { issued: 0, issuedFor: [], abroad: [] };
     const { start, end } = romeMonthRange(month);
     const issuer = await this.activeIssuer(new Date(end.getTime() - 1));
-    if (!issuer) return 0;
+    if (!issuer) return result;
     const settings = await this.prisma.platformInvoiceSettings.findUnique({ where: { id: "default" }, select: { invoicesFrom: true } });
     const from = settings?.invoicesFrom && settings.invoicesFrom < start ? settings.invoicesFrom : start;
+    const testIds = await this.testProfileIds();
     const entries = await this.prisma.platformFeeEntry.findMany({
-      where: { invoiceId: null, occurredAt: { gte: from, lt: end } },
+      where: { invoiceId: null, occurredAt: { gte: from, lt: end }, ...(testIds.length ? { professionalProfileId: { notIn: testIds } } : {}) },
       orderBy: { occurredAt: "asc" },
       include: { jobPayment: { select: { booking: { select: { scheduledAt: true, quote: { select: { guidedRequest: { select: { description: true, category: { select: { label: true } } } } } } } } } } },
     });
     const byProfessional = new Map<string, typeof entries>();
     for (const entry of entries) byProfessional.set(entry.professionalProfileId, [...(byProfessional.get(entry.professionalProfileId) ?? []), entry]);
-    let issued = 0;
     for (const [professionalProfileId, own] of byProfessional) {
+      // Fattura del mese già emessa: i movimenti arrivati dopo vanno nel mese successivo.
+      if (await this.prisma.invoice.findFirst({ where: { dedupeKey: `JOB_FEES:${professionalProfileId}:${month}` }, select: { id: true } })) continue;
+      if ((await this.invoiceSkipReason(professionalProfileId)) === "ABROAD") {
+        result.abroad.push(professionalProfileId);
+        continue;
+      }
       const draft = monthlyFeeInvoiceDraft(
         own.map((e) => {
           const booking = e.jobPayment?.booking;
@@ -347,19 +399,26 @@ export class InvoicesService {
           feeEntryIds: own.map((e) => e.id),
           issuer,
         });
-        if (invoice) issued += 1;
+        if (invoice) {
+          result.issued += 1;
+          result.issuedFor.push(professionalProfileId);
+        }
       } catch (err) {
         this.logger.error(`Fattura delle trattenute di ${month} non emessa (${professionalProfileId}): ${err instanceof Error ? err.message : String(err)}`);
       }
     }
-    return issued;
+    return result;
   }
 
   /**
    * Abbonamento, rinnovo o quota di passaggio pagati: la fattura di Stripe
    * diventa la nostra fattura elettronica, con le stesse righe.
    */
-  async issueForStripeInvoice(invoice: Stripe.Invoice, tierOfPrice: (priceId: string | undefined) => { tier: SubscriptionTier; interval: BillingInterval } | null): Promise<boolean> {
+  async issueForStripeInvoice(
+    invoice: Stripe.Invoice,
+    tierOfPrice: (priceId: string | undefined) => { tier: SubscriptionTier; interval: BillingInterval } | null,
+    options: { alertSkipped?: boolean } = { alertSkipped: true },
+  ): Promise<boolean> {
     if (!invoice.id || (invoice.amount_paid ?? 0) <= 0) return false;
     const paidAt = invoice.status_transitions?.paid_at ? new Date(invoice.status_transitions.paid_at * 1000) : new Date();
     const issuer = await this.activeIssuer(paidAt);
@@ -374,6 +433,18 @@ export class InvoicesService {
       (customerId ? (await this.prisma.professionalProfile.findFirst({ where: { stripeCustomerId: customerId }, select: { id: true } }))?.id : undefined);
     if (!professionalProfileId) {
       this.logger.warn(`Fattura Stripe ${invoice.id} pagata senza professionista collegato: nessuna fattura emessa.`);
+      return false;
+    }
+    const skip = await this.invoiceSkipReason(professionalProfileId);
+    if (skip === "TEST") return false;
+    if (skip === "ABROAD") {
+      if (options.alertSkipped) {
+        await this.notifyFinanceAdmins("ADMIN_FEE_RECONCILIATION", {
+          kind: "abroad",
+          month: null,
+          alerts: [`Pagamento Stripe ${invoice.id} di un professionista con residenza fiscale all'estero: nessuna fattura automatica, va fatta a mano.`],
+        });
+      }
       return false;
     }
     const source: PlatformInvoiceSource = metadata.kind === "tier_upgrade_fee" ? "UPGRADE_FEE" : metadata.kind === "boost" ? "VISIBILITY_BOOST" : stripeSubscriptionId ? "SUBSCRIPTION" : "UPGRADE_FEE";
@@ -419,6 +490,12 @@ export class InvoicesService {
     if (gross <= 0) return;
     const issuer = await this.activeIssuer(new Date());
     if (!issuer) return;
+    const skip = await this.invoiceSkipReason(professionalProfileId);
+    if (skip === "TEST") return;
+    if (skip === "ABROAD") {
+      await this.notifyFinanceAdmins("ADMIN_FEE_RECONCILIATION", { kind: "abroad", month: null, alerts: [`${label} pagato da un professionista con residenza fiscale all'estero: nessuna fattura automatica, va fatta a mano.`] });
+      return;
+    }
     const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent?.id ?? session.id);
     const taxable = Math.round((gross * 10_000) / (10_000 + PLATFORM_VAT_RATE_BASIS_POINTS));
     try {
@@ -437,6 +514,61 @@ export class InvoicesService {
       });
     } catch (err) {
       this.logger.error(`Fattura del pacchetto di visibilità non emessa: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  /**
+   * Rimborso di un abbonamento, di una quota di passaggio o di un pacchetto
+   * (collaudo dell'08/11/2026, E5-06): nota di credito TD04 della serie ABB
+   * collegata alla fattura del pagamento, per la parte rimborsata (art. 26 DPR
+   * 633/72). Rimborsi a più riprese: ogni volta solo la parte nuova.
+   * `refundedEurCents` è il totale rimborsato su quel pagamento.
+   */
+  async issueRefundCreditNote(input: { chargeId: string; paymentIntentId: string | null; stripeInvoiceId: string | null; refundedEurCents: number }, now: Date = new Date()): Promise<boolean> {
+    const keys = [
+      ...(input.stripeInvoiceId ? [{ stripeInvoiceId: input.stripeInvoiceId }] : []),
+      ...(input.paymentIntentId ? [{ stripePaymentIntentId: input.paymentIntentId }] : []),
+    ];
+    if (keys.length === 0 || input.refundedEurCents <= 0) return false;
+    const original = await this.prisma.invoice.findFirst({
+      where: { type: "MANOVIA_TO_PROFESSIONAL", source: { not: "JOB_FEES" }, creditNote: false, status: "ISSUED", OR: keys },
+    });
+    // Nessuna fattura per quel pagamento (prima di "Fatture da", prove): niente da stornare.
+    if (!original) return false;
+    const credited = await this.prisma.invoice.aggregate({ where: { relatedInvoiceId: original.id, creditNote: true }, _sum: { amountEurCents: true } });
+    const gross = Math.min(input.refundedEurCents, original.amountEurCents) - (credited._sum.amountEurCents ?? 0);
+    if (gross <= 0) return false;
+    const number = invoiceNumberLabel(original.series, original.year, original.number);
+    const issuer = await this.activeIssuer(now);
+    if (!issuer) {
+      await this.notifyFinanceAdmins("ADMIN_FEE_RECONCILIATION", { kind: "sdi", month: null, alerts: [`Rimborso sul pagamento della fattura ${number}: la nota di credito non è partita perché mancano i dati della società. Va fatta a mano.`] });
+      return false;
+    }
+    const full = gross === original.amountEurCents;
+    const originalLines = readLines(original.lines);
+    const lines: PlatformInvoiceLine[] = full
+      ? originalLines
+      : [{ description: `Rimborso parziale: ${originalLines[0]?.description ?? INVOICE_SOURCE_LABEL[original.source]}`, taxableEurCents: Math.round((gross * 10_000) / (10_000 + original.vatRateBasisPoints)) }];
+    try {
+      const created = await this.createInvoice({
+        professionalProfileId: original.professionalProfileId,
+        source: original.source,
+        creditNote: true,
+        relatedInvoiceId: original.id,
+        periodMonth: null,
+        date: romeDayIso(now),
+        lines,
+        grossEurCents: gross,
+        dedupeKey: `REFUND:${input.chargeId}:${input.refundedEurCents}`,
+        stripeInvoiceId: original.stripeInvoiceId,
+        stripePaymentIntentId: input.paymentIntentId,
+        issuer,
+      });
+      return !!created;
+    } catch (err) {
+      this.logger.error(`Nota di credito per il rimborso della fattura ${number} non emessa: ${err instanceof Error ? err.message : String(err)}`);
+      await this.notifyFinanceAdmins("ADMIN_FEE_RECONCILIATION", { kind: "sdi", month: null, alerts: [`Rimborso sul pagamento della fattura ${number}: la nota di credito non è partita. Controlla in Finanza.`] });
+      return false;
     }
   }
 
@@ -550,9 +682,68 @@ export class InvoicesService {
   @Cron("0 7 1 * *", { timeZone: "Europe/Rome" })
   async runMonthly(now: Date = new Date()): Promise<void> {
     const month = previousMonth(romeMonthOf(now));
-    const issued = await this.issueMonthlyFeeInvoices(month);
+    const run = await this.runMonthlyFeeInvoices(month);
     const notified = await this.sendMonthlyDocuments(month);
-    this.logger.log(`Documenti di ${month}: ${issued} fatture delle trattenute, ${notified} riepiloghi mandati.`);
+    await this.alertAbroad(month, run.abroad);
+    this.logger.log(`Documenti di ${month}: ${run.issued} fatture delle trattenute, ${notified} riepiloghi mandati.`);
+  }
+
+  /**
+   * Recupero del giro del 1° (collaudo dell'08/11/2026, E5-02): dal 2 al 15
+   * del mese, ogni mattina, emette le fatture del mese prima che mancano (un
+   * riavvio alle 7 del 1°, un errore su un professionista) e manda il
+   * riepilogo a chi le riceve ora. La fattura differita va emessa entro il 15
+   * (art. 21 c. 4 DPR 633/72). Il 10, se ne manca ancora qualcuna, avvisa la
+   * Finanza. Non crea doppioni: la chiave del documento è per mese.
+   */
+  @Cron("30 7 2-15 * *", { timeZone: "Europe/Rome" })
+  async recoverMonthly(now: Date = new Date()): Promise<number> {
+    const month = previousMonth(romeMonthOf(now));
+    const run = await this.runMonthlyFeeInvoices(month);
+    if (run.issued > 0) {
+      await this.sendMonthlyDocuments(month, new Set(run.issuedFor));
+      this.logger.warn(`Fatture delle trattenute di ${month} recuperate: ${run.issued}`);
+    }
+    if (romeDayIso(now).slice(8, 10) === "10") await this.alertUnbilled(month);
+    return run.issued;
+  }
+
+  /** Il 10 del mese: trattenute del mese prima ancora senza fattura (escluse le prove). */
+  private async alertUnbilled(month: string): Promise<void> {
+    const { start, end } = romeMonthRange(month);
+    if (!(await this.activeIssuer(new Date(end.getTime() - 1)))) return;
+    const testIds = await this.testProfileIds();
+    const unbilled = await this.prisma.platformFeeEntry.groupBy({
+      by: ["professionalProfileId"],
+      where: { invoiceId: null, occurredAt: { gte: start, lt: end }, ...(testIds.length ? { professionalProfileId: { notIn: testIds } } : {}) },
+      _count: { _all: true },
+    });
+    if (unbilled.length === 0) return;
+    const names = await this.professionalNames(unbilled.map((row) => row.professionalProfileId));
+    await this.notifyFinanceAdmins("ADMIN_FEE_RECONCILIATION", {
+      kind: "unbilled",
+      month,
+      alerts: [
+        `Ci sono ancora trattenute di ${accountingMonthLabel(month)} senza fattura: ${names.join(", ")}.`,
+        "La fattura del mese va emessa entro il 15: controlla i dati fiscali di questi professionisti e usa \"Emetti le fatture del mese\" in Finanza.",
+      ],
+    });
+  }
+
+  /** Professionisti con residenza estera e trattenute del mese: la fattura la fa la Finanza a mano (E5-04). */
+  private async alertAbroad(month: string, ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    const names = await this.professionalNames(ids);
+    await this.notifyFinanceAdmins("ADMIN_FEE_RECONCILIATION", {
+      kind: "abroad",
+      month,
+      alerts: [`Trattenute di ${accountingMonthLabel(month)} di professionisti con residenza fiscale all'estero, senza fattura automatica: ${names.join(", ")}. Va fatta a mano, sentito il commercialista.`],
+    });
+  }
+
+  private async professionalNames(ids: string[]): Promise<string[]> {
+    const rows = await this.prisma.professionalProfile.findMany({ where: { id: { in: ids } }, select: { id: true, businessName: true } });
+    return ids.map((id) => rows.find((row) => row.id === id)?.businessName || id);
   }
 
   /**
@@ -560,7 +751,7 @@ export class InvoicesService {
    * fatture dell'abbonamento e i mesi gratuiti a 0 € (decisione dell'utente
    * del 27/10/2026: non è una fattura, solo un riepilogo).
    */
-  async sendMonthlyDocuments(month: string): Promise<number> {
+  async sendMonthlyDocuments(month: string, onlyFor?: Set<string>): Promise<number> {
     const { start, end } = romeMonthRange(month);
     if (!(await this.activeIssuer(new Date(end.getTime() - 1)))) return 0;
     const invoices = await this.prisma.invoice.findMany({
@@ -588,6 +779,7 @@ export class InvoicesService {
     }
     let sent = 0;
     for (const [professionalProfileId, own] of lines) {
+      if (onlyFor && !onlyFor.has(professionalProfileId)) continue;
       const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { userId: true, user: { select: { deletedAt: true } } } });
       if (!profile || profile.user.deletedAt) continue;
       await this.notificationsService.notify(profile.userId, "MONTHLY_DOCUMENTS_READY", {
@@ -722,9 +914,11 @@ export class InvoicesService {
   }
 
   /** Emette a mano le fatture di un mese (se il giro del 1° non è partito). Mai doppie. */
-  async adminRunMonth(month: string): Promise<{ issued: number }> {
-    if (!isAccountingMonth(month) || month >= romeMonthOf(new Date())) throw new BadRequestException("Scegli un mese già concluso.");
-    return { issued: await this.issueMonthlyFeeInvoices(month) };
+  async adminRunMonth(month: string, now: Date = new Date()): Promise<{ issued: number; late: boolean; abroad: number }> {
+    if (!isAccountingMonth(month) || month >= romeMonthOf(now)) throw new BadRequestException("Scegli un mese già concluso.");
+    const run = await this.runMonthlyFeeInvoices(month);
+    if (run.issued > 0) await this.sendMonthlyDocuments(month, new Set(run.issuedFor));
+    return { issued: run.issued, late: monthlyInvoiceLate(month, now), abroad: run.abroad.length };
   }
 
   /**

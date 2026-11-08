@@ -202,7 +202,7 @@ describe("ricevuta occasionale, modello numerato dal professionista", () => {
     const { service, prisma } = build("PRIVATE_INDIVIDUAL", { receiptNumber: "7", year: 2026 }, null);
     expect((await service.forProfessional("u1", "b1")).number).toBe("7");
     await service.saveDetails("u1", "b1", { number: " 8/2026 " });
-    expect(prisma.courtesyDocument.upsert).toHaveBeenCalledWith(expect.objectContaining({ update: { receiptNumber: "8/2026" } }));
+    expect(prisma.courtesyDocument.upsert).toHaveBeenCalledWith(expect.objectContaining({ update: { receiptNumber: "8/2026", year: 2026 } }));
     prisma.courtesyDocument.findFirst.mockResolvedValue({ id: "other", receiptNumber: "5/2026" });
     await expect(service.saveDetails("u1", "b1", { number: "5/2026" })).rejects.toThrow("già usato");
   });
@@ -227,7 +227,7 @@ describe("ricevuta occasionale, modello numerato dal professionista", () => {
     expect(prisma.courtesyDocument.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({ kind: "RECEIPT", year: 2026, pdfTotalEurCents: 12000, pdfDownloadedAt: expect.any(Date) }),
-        update: { pdfDownloadedAt: expect.any(Date), pdfTotalEurCents: 12000 },
+        update: { pdfDownloadedAt: expect.any(Date), pdfTotalEurCents: 12000, year: 2026 },
       }),
     );
   });

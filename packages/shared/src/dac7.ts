@@ -178,9 +178,14 @@ export function dac7Entries(jp: Dac7PaymentInput, includeDirectPayments: boolean
   return entries;
 }
 
-/** Trimestre solare (1-4) di una data, in UTC come il resto della DAC7. */
+const ROME_MONTH = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Rome", month: "numeric" });
+
+/**
+ * Trimestre solare (1-4) di una data, all'ora di Roma come estratti e
+ * fatture (collaudo dell'08/11/2026, E5-09).
+ */
 export function dac7Quarter(date: Date): 1 | 2 | 3 | 4 {
-  return (Math.floor(date.getUTCMonth() / 3) + 1) as 1 | 2 | 3 | 4;
+  return (Math.floor((Number(ROME_MONTH.format(date)) - 1) / 3) + 1) as 1 | 2 | 3 | 4;
 }
 
 /** Riepilogo DAC7 di un anno mostrato al professionista (`/dashboard/fiscale/dac7`). */

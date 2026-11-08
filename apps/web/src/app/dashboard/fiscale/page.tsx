@@ -20,6 +20,7 @@ import {
   taxIdCheckMessage,
   type MyVerificationStatus,
   type TaxIdKind,
+  FISCAL_RESIDENCE_ABROAD_MESSAGE,
 } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
@@ -927,6 +928,10 @@ function DashboardFiscaleContent() {
                       {isPerson && !filled("fiscalCodiceFiscale") ? (
                         <Field label="Luogo di nascita" aria-label="Luogo di nascita" value={fields.placeOfBirth ?? ""} onChangeText={(v) => setField("placeOfBirth", v)} />
                       ) : null}
+                      {/* Collaudo dell'08/11/2026, E5-04: detto qui, prima di provare ad attivarli. */}
+                      <Text fontSize={15} color={brand.grafite70}>
+                        {FISCAL_RESIDENCE_ABROAD_MESSAGE}
+                      </Text>
                       <button type="button" className="fiscal-link-button" onClick={() => setAbroad(false)}>
                         Sono in Italia
                       </button>
