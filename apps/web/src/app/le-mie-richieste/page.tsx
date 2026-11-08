@@ -502,7 +502,7 @@ function LeMieRichiesteContent() {
                         {tab.label}
                       </Text>
                       {count > 0 && !ACTION_TABS.has(tab.key) ? (
-                        <Text fontFamily="body" fontSize={14} fontWeight="600" color={active ? "rgba(255,255,255,0.85)" : brand.grafite70} marginLeft={6}>
+                        <Text fontFamily="body" fontSize={14} fontWeight="600" color={active ? "white" : brand.grafite70} marginLeft={6}>
                           {count}
                         </Text>
                       ) : null}

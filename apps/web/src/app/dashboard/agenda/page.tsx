@@ -1181,7 +1181,7 @@ function DashboardAgendaContent() {
     }
 
     return (
-      <YStack gap="2" minWidth={0} opacity={isPast ? 0.55 : 1}>
+      <YStack gap="2" minWidth={0}>
         {!isPast ? (
           <XStack
             alignItems="center"
@@ -1254,7 +1254,7 @@ function DashboardAgendaContent() {
                 <Icon name="plus" size={16} strokeWidth={2} color={brand.grafite} />
               </XStack>
             ) : daySlots.length === 0 ? (
-              <Text fontFamily="body" fontSize={11} fontWeight="600" color={brand.grafite70}>
+              <Text fontFamily="body" fontSize={13} fontWeight="600" color={brand.grafite70}>
                 Giorno passato
               </Text>
             ) : null}

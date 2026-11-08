@@ -143,7 +143,8 @@ export function ServiceBadge({ online }: { online: boolean }) {
  * nel prodotto.
  */
 export function DeadlinePill({ deadline }: { deadline: { label: string; urgent: boolean } }) {
-  const color = deadline.urgent ? brand.urgenza : "#B8860B";
+  // Ocra scuro (5,4:1 sul fondo chiaro), prima #B8860B a 2,95:1 (E7-05 del controllo dell'8/11).
+  const color = deadline.urgent ? brand.urgenza : brand.ottoneScuro;
   const bg = deadline.urgent ? "#FBEAEA" : "#FFF3D6";
   return (
     // Può andare a capo da telefono invece di uscire dalla scheda (§349).

@@ -690,7 +690,7 @@ export function ProfessionalDetailContent({
                         paddingVertical="6px xs:5px"
                         borderWidth={0}
                         borderRadius="10"
-                        backgroundColor={active ? brand.cianografia : "transparent"}
+                        backgroundColor={active ? brand.cianografiaPieno : "transparent"}
                         cursor="pointer"
                         role="button"
                         aria-pressed={active}

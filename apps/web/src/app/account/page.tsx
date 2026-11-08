@@ -158,6 +158,10 @@ export default function AccountPage() {
     if (comune) setProvince(comune.province);
   }
   const [profileError, setProfileError] = useState<string | null>(null);
+  // Campo sbagliato segnato e con il fuoco sopra (E7-07 del controllo dell'8/11).
+  const [profileErrorField, setProfileErrorField] = useState<"name" | "email" | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
   const [profileSaved, setProfileSaved] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
@@ -294,13 +298,18 @@ export default function AccountPage() {
 
   async function handleSaveProfile() {
     setProfileError(null);
+    setProfileErrorField(null);
     setProfileSaved(false);
     if (name.trim().length < 2) {
       setProfileError("Il nome deve avere almeno 2 caratteri.");
+      setProfileErrorField("name");
+      nameInputRef.current?.focus();
       return;
     }
     if (!email.trim()) {
       setProfileError("L'email è obbligatoria.");
+      setProfileErrorField("email");
+      emailInputRef.current?.focus();
       return;
     }
     if (phone.trim() && !isPlausiblePhoneNumber(phone)) {
@@ -538,11 +547,20 @@ export default function AccountPage() {
           ) : null}
 
           <FieldRow label="Nome" required>
-            <input aria-label="Nome" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
+            <input
+              aria-label="Nome"
+              ref={nameInputRef}
+              autoComplete="given-name"
+              aria-invalid={profileErrorField === "name" || undefined}
+              aria-describedby={profileErrorField === "name" ? "account-profile-error" : undefined}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={inputStyle}
+            />
           </FieldRow>
 
           <FieldRow label="Cognome">
-            <input aria-label="Cognome" value={surname} onChange={(e) => setSurname(e.target.value)} style={inputStyle} />
+            <input aria-label="Cognome" autoComplete="family-name" value={surname} onChange={(e) => setSurname(e.target.value)} style={inputStyle} />
           </FieldRow>
 
           {/* Niente più data di nascita: non la usava nessuno (minimizzazione, GDPR
@@ -554,7 +572,17 @@ export default function AccountPage() {
           <SectionTitle>Contatti</SectionTitle>
 
           <FieldRow label="Email" required>
-            <input aria-label="Email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
+            <input
+              aria-label="Email"
+              ref={emailInputRef}
+              type="email"
+              autoComplete="email"
+              aria-invalid={profileErrorField === "email" || undefined}
+              aria-describedby={profileErrorField === "email" ? "account-profile-error" : undefined}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              style={inputStyle}
+            />
           </FieldRow>
 
           <FieldRow label="Telefono">
@@ -637,6 +665,7 @@ export default function AccountPage() {
 
           <FieldRow label="Scala, piano, interno">
             <input aria-label="Scala, piano, interno"
+              autoComplete="address-line2"
               value={addressExtra}
               onChange={(e) => setAddressExtra(e.target.value)}
               placeholder="Es. Scala B, piano 3, interno 12"
@@ -667,7 +696,7 @@ export default function AccountPage() {
           </FieldRow>
 
           <FieldRow label="Provincia">
-            <input aria-label="Provincia" value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Es. Milano" style={{ ...inputStyle, maxWidth: 200 }} />
+            <input aria-label="Provincia" autoComplete="address-level1" value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Es. Milano" style={{ ...inputStyle, maxWidth: 200 }} />
           </FieldRow>
         </Surface>
 
@@ -991,16 +1020,21 @@ export default function AccountPage() {
             contenuto della pagina che restava sotto di loro. La password e
             l'eliminazione account hanno già le proprie azioni indipendenti
             più in alto, non toccate da questo spostamento. */}
-        {profileError ? (
-          <Text color={brand.urgenza} fontSize={16}>
-            {profileError}
-          </Text>
-        ) : null}
-        {profileSaved ? (
-          <Text color={brand.verificato} fontSize={16}>
-            Dati salvati!
-          </Text>
-        ) : null}
+        {/* Sempre presenti: il lettore di schermo annuncia l'errore e il salvataggio (E7-07). */}
+        <div id="account-profile-error" role="alert">
+          {profileError ? (
+            <Text color={brand.urgenza} fontSize={16}>
+              {profileError}
+            </Text>
+          ) : null}
+        </div>
+        <div role="status">
+          {profileSaved ? (
+            <Text color={brand.verificato} fontSize={16}>
+              Dati salvati!
+            </Text>
+          ) : null}
+        </div>
 
         <SaveBar dirty={profileDirty} saving={isSavingProfile} onSave={handleSaveProfile} onCancel={handleCancelProfile} />
       </YStack>

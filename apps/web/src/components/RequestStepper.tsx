@@ -33,8 +33,10 @@ export function RequestStepper({ stage }: { stage: number }) {
               >
                 {done ? <Icon name="check" size={12} strokeWidth={3} color="white" /> : null}
               </YStack>
+              {/* 12 px, prima 10 (E6-14 del controllo dell'8/11). */}
               <Text
-                fontSize={10}
+                fontSize={12}
+                lineHeight="15px"
                 fontWeight={done ? "700" : "600"}
                 color={done ? brand.cianografiaScuro : brand.grafite70}
                 textAlign="center"
