@@ -29,6 +29,7 @@ const publicRoutes = [
   "GET /address/suggestions",
   "POST /admin/bootstrap",
   "POST /auth/email-status",
+  "POST /auth/google/nonce",
   "POST /auth/google/verify",
   "GET /auth/invite/:token",
   "POST /auth/invite/accept",

@@ -1334,6 +1334,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         body: JSON.stringify({ email, password }),
       }),
 
+    /** `nonce` firmato dal server per la pagina di accesso di Google: vale 30 minuti e una volta sola. */
+    googleNonce: () => request<{ nonce: string }>("/auth/google/nonce", { method: "POST" }),
+
     /**
      * `createIfMissing` (default true): /accedi lo passa esplicitamente a
      * `false` per non iscrivere silenziosamente un account nuovo su

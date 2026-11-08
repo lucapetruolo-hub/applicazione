@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, HttpExcepti
 import { JwtService } from "@nestjs/jwt";
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import * as bcrypt from "bcryptjs";
+import { redeemGoogleNonce } from "./google-nonce";
 import { OAuth2Client } from "google-auth-library";
 import { EMAIL_CODE_LENGTH, LEGAL_CONSENT_VERSION, NO_CATEGORY_MESSAGE, NO_ENTITY_TYPE_MESSAGE, formatEurCents, wallClockNow, type AccountClosureCheck, type ChurnReason, type EmailStatus, type ProfessionalEntityTypeValue, type TrafficSource } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
@@ -290,7 +291,9 @@ export class AuthService {
       throw new BadRequestException("Login con Google non configurato su questo ambiente.");
     }
 
-    let payload: { sub?: string; email?: string; name?: string; given_name?: string; family_name?: string; picture?: string } | undefined;
+    let payload:
+      | { sub?: string; email?: string; email_verified?: boolean; nonce?: string; name?: string; given_name?: string; family_name?: string; picture?: string }
+      | undefined;
     try {
       const ticket = await this.googleClient.verifyIdToken({
         idToken,
@@ -300,8 +303,16 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException("Token Google non valido o scaduto.");
     }
-    if (!payload?.sub || !payload.email) {
+    // Solo un'email che Google ha verificato può entrare in un account con la
+    // stessa email (E2-01 del controllo dell'08/11): altrimenti chi ottiene da
+    // Google un token con l'email di un nostro utente entrerebbe nel suo account.
+    if (!payload?.sub || !payload.email || payload.email_verified !== true) {
       throw new UnauthorizedException("Token Google non valido.");
+    }
+    // Il `nonce` deve essere uno dei nostri e mai usato (google-nonce.ts):
+    // un token rubato e portato qui direttamente non entra.
+    if (!redeemGoogleNonce(payload.nonce)) {
+      throw new UnauthorizedException("Accesso con Google scaduto. Riprova.");
     }
     // Email in minuscolo come nei moduli del sito (§330).
     const googleEmail = payload.email.trim().toLowerCase();

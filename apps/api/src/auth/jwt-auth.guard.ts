@@ -69,10 +69,12 @@ export class JwtAuthGuard implements CanActivate {
     // sospenderebbe nulla. Stesso principio di AdminGuard (ruolo riletto).
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { suspendedAt: true, sessionVersion: true } });
     // Password cambiata o reimpostata dopo l'emissione: l'accesso è chiuso.
-    if (user && isRevokedSession(payload, user.sessionVersion)) {
+    // Anche per un account che non esiste più (E2-04 del controllo
+    // dell'08/11): prima la richiesta proseguiva e finiva in 404 o 500.
+    if (!user || isRevokedSession(payload, user.sessionVersion)) {
       throw new UnauthorizedException("Token non valido o scaduto.");
     }
-    if (user?.suspendedAt) {
+    if (user.suspendedAt) {
       throw new ForbiddenException(SUSPENDED_ACCOUNT_MESSAGE);
     }
 

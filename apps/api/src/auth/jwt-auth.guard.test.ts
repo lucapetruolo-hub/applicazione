@@ -49,3 +49,13 @@ describe("JwtAuthGuard — sessioni chiuse al cambio password (docs/CHANGELOG.md
     await expect(guard.canActivate(contextWith("Bearer token").context)).resolves.toBe(true);
   });
 });
+
+describe("JwtAuthGuard — account che non esiste più (controllo dell'08/11, E2-04)", () => {
+  it("risponde 401 invece di lasciar passare", async () => {
+    const prisma = { user: { findUnique: vi.fn().mockResolvedValue(null) } };
+    const guard = new JwtAuthGuard({ verify: vi.fn().mockReturnValue({ sub: "user-gone", sv: 0 }) } as never, prisma as never);
+    const { request, context } = contextWith("Bearer token");
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(request.user).toBeUndefined();
+  });
+});
