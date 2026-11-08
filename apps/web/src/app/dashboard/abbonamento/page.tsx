@@ -36,6 +36,7 @@ import { SkeletonBlock } from "@/components/Skeleton";
 import { JourneyProgress, useSetupJourney } from "@/components/verification/SetupJourney";
 import { downloadBlobFile } from "@/components/admin/adminUi";
 import { PAYMENT_PAGE_LABEL, startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
+import { PageLoading } from "@/components/PageLoading";
 
 /**
  * "Abbonamento" del professionista (docs/CHANGELOG.md §161-§162): stato del
@@ -364,7 +365,7 @@ function RecentPayments({ token, invoices, freeMonths }: { token: string | null;
 
 export default function AbbonamentoPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading />}>
       <AbbonamentoContent />
     </Suspense>
   );
@@ -508,7 +509,7 @@ function AbbonamentoContent() {
     }
   }
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoading />;
 
   if (!user || !token) {
     return (

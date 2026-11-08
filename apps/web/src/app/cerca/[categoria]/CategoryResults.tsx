@@ -22,6 +22,7 @@ import { CityFacts, type CityReview } from "@/components/CityFacts";
 import { SearchHeader } from "@/components/SearchHeader";
 import type { MapPoolQuery } from "@/components/ResultsListWithMap";
 import { CategoryContent } from "./CategoryContent";
+import { openGraphFor } from "@/lib/openGraph";
 
 type Category = (typeof PROFESSIONAL_CATEGORIES)[number];
 export type CategorySearchParams = { citta?: string; online?: string; urgente?: string };
@@ -111,6 +112,7 @@ export async function categoryMetadata(category: Category, city?: string, subTag
       title: `${category.label} a ${comune.name}: ${service.toLowerCase()}`,
       description: `${category.label} a ${comune.name} per ${service.toLowerCase()}: confronta profili, prezzi e recensioni e chiedi un preventivo gratis.`,
       alternates: { canonical: `/cerca/${category.slug}/${comuneSlug(comune.name)}/${subTag}` },
+      openGraph: openGraphFor(`/cerca/${category.slug}/${comuneSlug(comune.name)}/${subTag}`),
     };
   }
   if (comune) {
@@ -120,6 +122,7 @@ export async function categoryMetadata(category: Category, city?: string, subTag
       // Con l'articolo ("un idraulico"), collaudo N-11.
       description: `Trova e contatta ${CATEGORY_SEO_NOUN[category.slug].findQuestion} a ${comune.name}: confronta profili, prezzi e recensioni e chiedi un preventivo gratis.`,
       alternates: { canonical: `/cerca/${category.slug}/${comuneSlug(comune.name)}` },
+      openGraph: openGraphFor(`/cerca/${category.slug}/${comuneSlug(comune.name)}`),
     };
   }
   return {
@@ -127,6 +130,7 @@ export async function categoryMetadata(category: Category, city?: string, subTag
     title: `${category.label} vicino a te`,
     description: `Trova e contatta ${CATEGORY_SEO_NOUN[category.slug].findQuestion} nella tua zona: confronta profili, prezzi e recensioni e chiedi un preventivo gratis.`,
     alternates: { canonical: `/cerca/${category.slug}` },
+    openGraph: openGraphFor(`/cerca/${category.slug}`),
   };
 }
 

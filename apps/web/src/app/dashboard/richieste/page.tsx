@@ -20,6 +20,7 @@ import { RestoreAllArchivedBar, RestoredNotice } from "@/components/RequestCardP
 import { RequestCard } from "./_components/RequestCard";
 import { filterInputStyle, leadSearchText } from "./_components/requestHelpers";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
+import { PageLoading } from "@/components/PageLoading";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
 const UNREAD_BADGE_POLL_MS = 15000;
@@ -65,7 +66,7 @@ type SortMode = "recenti" | "vecchie" | "aggiornamento";
 
 export default function RichiestePage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading />}>
       <RichiesteContent />
     </Suspense>
   );

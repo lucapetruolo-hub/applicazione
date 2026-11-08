@@ -20,6 +20,7 @@ import { SaveBar } from "@/components/SaveBar";
 import { ClientEmailVerificationCard } from "@/components/ClientEmailVerificationCard";
 import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/components/PasswordRules";
 import { localPreviewUrl } from "@/lib/media";
+import { PageLoading } from "@/components/PageLoading";
 
 const inputStyle = {
   padding: "10px 12px",
@@ -275,7 +276,7 @@ export default function AccountPage() {
     syncFieldsFromUser();
   }
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoading />;
 
   if (!user || !token) {
     return (

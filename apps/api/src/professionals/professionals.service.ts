@@ -201,6 +201,8 @@ const PROFESSIONAL_DETAIL_INCLUDE = {
   visibilityBoosts: { where: { status: "ACTIVE" } },
   services: true,
   metrics: true,
+  // Account di prova: profilo fuori da Google (collaudo 08/11 E8-04).
+  user: { select: { testAccountAt: true } },
 } satisfies Prisma.ProfessionalProfileInclude;
 
 /** Risposte misurate prima di mostrare "Risponde subito" o "Risponde entro…" sul profilo. */
@@ -775,6 +777,8 @@ export class ProfessionalsService {
       stripeVerified: stripeVerified(profile.fiscalProfile),
       // Privato o professionista, per il cliente (Codice del consumo art. 49-bis, §241).
       traderStatus: publicTraderStatusOf(profile.fiscalProfile?.entityType, profile.businessName),
+      // Profili di prova e d'esempio apribili dal link, ma mai in Google (collaudo 08/11 E8-04).
+      indexable: !profile.isDemo && profile.user.testAccountAt === null,
       professionalKind: publicProfessionalKindOf(profile.fiscalProfile?.entityType, profile.businessName),
       rating,
       reviewCount,

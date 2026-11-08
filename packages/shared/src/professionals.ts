@@ -372,6 +372,12 @@ export const SEARCH_FALLBACK_MAX_KM = 100;
 export type ProfessionalDetail = ProfessionalSearchResult & {
   /** Privato senza P.IVA o professionista/azienda (Codice del consumo art. 49-bis, §241); null se non ancora indicato. */
   traderStatus: ProfessionalTraderStatus | null;
+  /**
+   * Falso per un account di prova o un profilo d'esempio: la pagina resta
+   * apribile dal link ma ha `noindex` e niente dati strutturati (collaudo
+   * 08/11 E8-04). Facoltativo: un'API non ancora aggiornata non lo manda.
+   */
+  indexable?: boolean;
   bio: string | null;
   reviews: {
     id: string;

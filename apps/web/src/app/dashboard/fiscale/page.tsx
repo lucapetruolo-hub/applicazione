@@ -31,6 +31,7 @@ import { FiscoArea } from "@/components/fisco/FiscoArea";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { FiscalWhyModal } from "@/components/verification/FiscalWhyModal";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
+import { PageLoading } from "@/components/PageLoading";
 
 const isPersonType = (type: string) => type === "PRIVATE_INDIVIDUAL" || type === "SOLE_PROPRIETOR";
 
@@ -200,7 +201,7 @@ function fiscalFieldLabel(path: readonly PropertyKey[]): string {
  */
 export default function DashboardFiscalePage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading />}>
       <DashboardFiscaleContent />
     </Suspense>
   );

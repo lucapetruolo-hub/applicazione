@@ -5,10 +5,11 @@
 // Per ogni tipo di pagina: un solo H1, canonical assoluto giusto, titolo di
 // lunghezza sensata, nessun noindex per sbaglio, dati strutturati leggibili;
 // in più redirect dei link vecchi del profilo, 404 vero e sitemap.
-import { PROFESSIONALS } from "./fixture-data.mjs";
+import { PROFESSIONALS, TEST_PROFESSIONAL } from "./fixture-data.mjs";
 
 const BASE = process.env.SEO_CHECK_BASE_URL ?? "http://127.0.0.1:3100";
-const SITE_URL = "https://applicazione-web.vercel.app";
+// Stesso dominio del sito (src/lib/siteUrl.ts): NEXT_PUBLIC_SITE_URL o Vercel.
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "").trim().replace(/\/+$/, "") || "https://applicazione-web.vercel.app";
 const mode = process.argv[2];
 if (mode !== "public" && mode !== "private") {
   console.error("Uso: node check.mjs public|private");
@@ -122,6 +123,35 @@ if (mode === "public") {
   await checkNoindex("/prezzi/pulizie", 404);
   await checkNoindex("/prezzi/idraulico/roma", 404); // nessun prezzo in provincia di Roma // prezzi sotto soglia: la pagina non esiste
   await checkNoindex("/professionista/nessuno-latina-00000000-0000-4000-8000-000000000000", 404);
+
+  // Profilo di un account di prova: apribile, ma noindex e senza dati da attività vera (E8-04).
+  const testPath = `/professionista/prova-idraulico-latina-${TEST_PROFESSIONAL.id}`;
+  await checkNoindex(testPath);
+  if (/"@type":"Plumber"/.test((await get(testPath)).html)) fail(testPath, "dati strutturati da attività vera su un profilo di prova");
+
+  // Titolo della pagina per servizio con la specializzazione (E8-05).
+  const servicePage = (await get("/cerca/idraulico/latina/caldaie")).html;
+  if (!/<h1[^>]*>Idraulico a Latina: caldaie</.test(servicePage)) fail("/cerca/idraulico/latina/caldaie", "H1 senza la specializzazione");
+
+  // Anteprima dei link (E8-06): nome del sito, indirizzo e immagine.
+  for (const [path, canonical] of [["/cerca/idraulico/latina", "/cerca/idraulico/latina"], [proPath, proPath], ["/", "/"]]) {
+    const html = (await get(path)).html;
+    const og = (name) => decode(attr(new RegExp(`<meta[^>]+property="og:${name}"[^>]*>`, "i").exec(html)?.[0] ?? "", "content") ?? "");
+    if (!og("site_name")) fail(path, "manca og:site_name");
+    if (og("locale") !== "it_IT") fail(path, "manca og:locale it_IT");
+    const expected = canonical === "/" ? SITE_URL : `${SITE_URL}${canonical}`;
+    if (og("url") !== expected) fail(path, `og:url "${og("url")}", atteso "${expected}"`);
+    if (!og("image").startsWith(SITE_URL)) fail(path, "manca og:image");
+  }
+  const image = await fetch(`${BASE}${proPath}/opengraph-image`);
+  if (image.status !== 200 || !(image.headers.get("content-type") ?? "").startsWith("image/png")) fail(`${proPath}/opengraph-image`, `stato ${image.status}, attesa un'immagine`);
+
+  // Pagine personali e aperte dalle email: titolo loro e noindex anche col sito aperto (E8-07).
+  for (const [path, title] of [["/le-mie-richieste", "Le mie richieste"], ["/chat", "Messaggi"], ["/dashboard", "Area professionista"], ["/promemoria/prova", "Promemoria"], ["/conferma-email", "Conferma l'email"]]) {
+    const { res, html } = await get(path);
+    if (!isNoindex(res, html)) fail(path, "manca noindex");
+    if (!decode(/<title>([^<]*)<\/title>/i.exec(html)?.[1] ?? "").startsWith(title)) fail(path, `titolo diverso da "${title}"`);
+  }
 
   const sitemap = await (await fetch(`${BASE}/sitemap.xml`)).text();
   for (const path of ["/cerca/idraulico", "/cerca/idraulico/latina", "/cerca/idraulico/latina/caldaie", "/prezzi/idraulico", "/prezzi/idraulico/latina", "/lavora-con-noi/pulizie", proPath]) {

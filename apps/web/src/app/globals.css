@@ -8589,6 +8589,15 @@ a.admin-kpi:hover {
     animation: none;
   }
 }
+/* Sagoma di un modulo o di una pagina mentre arriva (collaudo 08/11 E8-02,
+   PageLoading.tsx): una riga che dice che sta arrivando, letta anche dal
+   lettore di schermo. */
+.page-loading-note {
+  margin: 0;
+  text-align: center;
+  font-size: 15px;
+  color: #6e6459;
+}
 /* "Prova:" sotto "Descrivi il lavoro": le pillole della home, su fondo chiaro. */
 .guided-examples {
   display: flex;

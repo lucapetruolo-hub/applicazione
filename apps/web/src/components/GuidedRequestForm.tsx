@@ -41,6 +41,7 @@ import { InlineAuthGate } from "@/components/InlineAuthGate";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { RequestSentScreen } from "@/components/RequestSentScreen";
 import { UploadingDots } from "@/components/UploadingDots";
+import { SkeletonBlock, SkeletonCircle } from "@/components/Skeleton";
 import { CategoryTiles } from "@/components/CategoryTiles";
 import { SafetyNotice } from "@/components/ProblemBand";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
@@ -183,10 +184,13 @@ export type GuidedRequestFormProps = {
 };
 
 /**
- * Titolo e sottotitolo del modulo, mostrati da soli finché il modulo non è
- * pronto (accesso in caricamento, o `Suspense` della pagina): così la pagina
- * arriva a Google e al browser già col suo titolo, non vuota
- * (docs/CHANGELOG.md §296). Stessa misura del modulo completo, niente salti.
+ * Titolo e sottotitolo del modulo, con la sagoma del modulo sotto finché il
+ * modulo non è pronto (accesso in caricamento, o `Suspense` della pagina):
+ * la pagina arriva a Google e al browser già col suo titolo, non vuota
+ * (docs/CHANGELOG.md §296), e su rete lenta chi aspetta vede subito che il
+ * modulo sta arrivando invece di un grande vuoto (collaudo 08/11 E8-02,
+ * docs/changelog/2026-11-08-seo-e-velocita.md). La sagoma è nell'HTML che
+ * manda il server, quindi compare prima che il JavaScript sia scaricato.
  */
 export function GuidedRequestHeading({ title, subtitle }: { title: string; subtitle: string }) {
   return (
@@ -198,7 +202,35 @@ export function GuidedRequestHeading({ title, subtitle }: { title: string; subti
           </Text>
           <Text color={brand.grafite70}>{subtitle}</Text>
         </YStack>
+        <GuidedRequestSkeleton />
       </YStack>
+    </YStack>
+  );
+}
+
+/** Sagoma dei primi campi del modulo (passi, tipo di intervento, descrizione, pulsante). */
+function GuidedRequestSkeleton() {
+  return (
+    <YStack gap="5" aria-busy>
+      <XStack gap="3" alignItems="center">
+        <SkeletonCircle size={28} />
+        <SkeletonBlock width={70} height={12} />
+        <SkeletonCircle size={28} />
+        <SkeletonBlock width={70} height={12} />
+        <SkeletonCircle size={28} />
+      </XStack>
+      <YStack gap="2">
+        <SkeletonBlock width={140} height={14} />
+        <SkeletonBlock width={230} height={44} radius={10} />
+      </YStack>
+      <YStack gap="2">
+        <SkeletonBlock width={150} height={14} />
+        <SkeletonBlock width="100%" height={116} radius={10} />
+      </YStack>
+      <SkeletonBlock width="100%" height={48} radius={24} />
+      <p role="status" className="page-loading-note">
+        Stiamo preparando il modulo…
+      </p>
     </YStack>
   );
 }
