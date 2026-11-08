@@ -34,6 +34,8 @@ import {
   type SiteNoteInput,
   type SubmitFailureKind,
   type SubmitFormKey,
+  buildPopularJobsAdminView,
+  popularJobsFromRows,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -315,6 +317,13 @@ export class SiteStatsService {
     const standardByCategory: Record<string, string[]> = {};
     for (const row of standardRows) (standardByCategory[row.categorySlug] ??= []).push(row.name);
     const missingServices = buildMissingServices(serviceList, standardByCategory);
+    const popularJobRows = await this.prisma.popularJob.findMany({ orderBy: [{ position: "asc" }, { createdAt: "asc" }], select: { service: true, categorySlug: true } });
+    const popularJobList = popularJobsFromRows(popularJobRows);
+    const popularJobs = buildPopularJobsAdminView(
+      popularJobList.jobs,
+      popularJobList.custom,
+      serviceSearches.map((r) => ({ categorySlug: r.categorySlug, service: r.service, searches: r._sum.count ?? 0 })),
+    );
     const sources = new Map<SignupSourceKey, number>();
     for (const u of signups) {
       const key: SignupSourceKey = u._count.profileInvites > 0 ? "INVITE" : (u.signupSource ?? "unknown");
@@ -379,6 +388,7 @@ export class SiteStatsService {
       failures: sumFailures(since7Day),
       unknownJobs,
       popularServices,
+      popularJobs,
       missingServices,
       contacts: visible.map((p) => ({ id: p.id, name: proName(p), city: p.city, href: userHref(p), categorySlugs: p.categorySlugs })),
       services: serviceList,

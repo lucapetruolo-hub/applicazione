@@ -21,6 +21,7 @@ import {
   ratioLabel,
   romeWeekStart,
   type AdminSiteStats,
+  type PopularJobsAdminView,
   type ChurnKind,
   type ChurnReason,
   type GuideCellStatus,
@@ -263,6 +264,8 @@ export type SiteAdviceInput = {
   unknownJobs: AdminSiteStats["unknownJobs"];
   popularServices: AdminSiteStats["popularServices"];
   missingServices: AdminSiteStats["missingServices"];
+  /** "Lavori più cercati" della home, con le ricerche (docs/changelog/2026-11-07-lavori-piu-cercati-home.md). */
+  popularJobs?: PopularJobsAdminView;
   /** Professionisti visibili e le loro prestazioni: chi chiamare quando una prestazione cercata la offrono in pochi. */
   contacts: ContactProfessional[];
   services: SiteServiceRow[];
@@ -572,6 +575,23 @@ export function buildSiteAdvice(input: SiteAdviceInput): SiteAdvice[] {
       items: toCall.length > 0 ? toCall.slice(0, SERVICE_GAP_MAX_CONTACTS).map((p) => ({ label: p.name, detail: p.city, href: p.href })) : undefined,
       link: toCall.length > SERVICE_GAP_MAX_CONTACTS ? { label: `Tutti i professionisti di ${gap.categoryLabel} (${toCall.length})`, href: `/admin/utenti?categoria=${gap.categorySlug}` } : toCall.length === 0 ? RECRUIT_LINK : undefined,
     });
+  }
+  // Un lavoro cercato più di quelli in home ma fuori dall'elenco dei "Lavori più cercati"
+  // (docs/changelog/2026-11-07-lavori-piu-cercati-home.md): si aggiunge con un clic in Mestieri richiesti.
+  if (input.popularJobs) {
+    const shown = input.popularJobs.jobs.filter((job) => job.shown);
+    const lowest = shown.length > 0 ? Math.min(...shown.map((job) => job.searches)) : 0;
+    const job = input.popularJobs.missing.find((m) => m.searches >= SERVICE_GAP_MIN_SEARCHES && m.searches > lowest);
+    if (job) {
+      advice.push({
+        key: `popular-job-missing:${normalizeServiceName(job.service)}`,
+        level: "TIP",
+        title: `«${job.service}» è cercato più dei lavori in home`,
+        why: `Cercato ${plural(job.searches, "volta", "volte")} negli ultimi 90 giorni; il lavoro meno cercato tra quelli in home ne ha ${lowest}.`,
+        todo: "Aggiungilo ai «Lavori più cercati»: entra in home al posto del meno cercato.",
+        link: { label: "Lavori più cercati in home", href: "/admin/mestieri-richiesti?scheda=lavori" },
+      });
+    }
   }
   // Le prestazioni scritte a mano da aggiungere alle suggerite non sono più un consiglio: sono una
   // proposta da approvare con un clic in Da fare (docs/changelog/2026-11-03-automazioni-admin.md).

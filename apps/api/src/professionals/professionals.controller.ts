@@ -114,6 +114,10 @@ export class ProfessionalsController {
         void this.siteCounts.recordUnknownJobSearch(q).catch(() => undefined);
       }
       // Prestazioni più cercate (§384): solo il nome preso dal nostro elenco.
+      // Solo la parola scritta (`q`), mai `service`: le pillole "Lavori più
+      // cercati" della home aprono `?servizio=` e non devono contarsi, o i
+      // primi resterebbero primi solo perché stanno in alto
+      // (docs/changelog/2026-11-07-lavori-piu-cercati-home.md).
       if (typeof q === "string" && q.trim()) {
         void this.siteCounts.recordServiceSearch(q, typeof category === "string" ? category : undefined).catch(() => undefined);
       }

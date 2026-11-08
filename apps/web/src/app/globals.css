@@ -3577,6 +3577,37 @@ a.admin-kpi:hover {
   border-bottom: 1px solid #f0dcc0;
   white-space: nowrap;
 }
+/* Pulsanti a icona nelle tabelle admin (Lavori più cercati in home). */
+.admin-icon-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+.admin-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid #d9c4a8;
+  background: #fff;
+  color: #2b2420;
+  cursor: pointer;
+  transition: border-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.admin-icon-button:hover:not(:disabled) {
+  border-color: #189a63;
+  background: #f2fbf6;
+}
+.admin-icon-button:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: 2px;
+}
+.admin-icon-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 .admin-table td {
   padding: 10px 12px;
   border-bottom: 1px solid #f0dcc0;
@@ -6784,6 +6815,38 @@ a.admin-kpi:hover {
   border-radius: 999px;
   flex-shrink: 0;
 }
+/* "Lavori più cercati" in home, sotto le categorie (components/PopularJobs.tsx). */
+.popular-jobs {
+  width: 100%;
+  margin-top: 28px;
+}
+.popular-jobs-title {
+  margin: 0 0 14px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #2b2420;
+}
+/* Da telefono tre righe da scorrere di lato invece di otto righe una sotto
+   l'altra: l'elenco è largo il doppio dello schermo e va a capo da solo. */
+@media (max-width: 660px) {
+  .popular-jobs-scroll {
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0 -16px;
+    padding: 2px 16px 4px;
+  }
+  .popular-jobs-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .popular-jobs .popular-services-list {
+    width: 860px;
+    gap: 8px;
+  }
+  .popular-jobs .popular-services-link {
+    white-space: nowrap;
+    font-size: 15px;
+  }
+}
 @media (min-width: 661px) {
   .popular-services {
     padding: 8px 24px 64px;
@@ -7992,6 +8055,11 @@ a.admin-kpi:hover {
   }
   .admin-table-numbers tr {
     column-gap: 16px;
+  }
+  /* Pulsanti a icona su una riga loro, uguale in ogni scheda. */
+  .admin-table td.admin-cell-actions {
+    flex-basis: 100%;
+    margin-top: 4px;
   }
   .admin-table tr:not(:has(.admin-cell-main)) td:first-child,
   .admin-table tr:nth-child(n) td.admin-cell-main {

@@ -63,6 +63,8 @@ const publicRoutes = [
   "POST /problem-match",
   // Frasi d'esempio della home (docs/changelog/2026-11-03-luci-che-accelerano.md).
   "GET /problem-match/examples",
+  // "Lavori più cercati" della home (docs/changelog/2026-11-07-lavori-piu-cercati-home.md).
+  "GET /popular-jobs",
   // Prestazioni standard aggiunte dall'admin (§388), mostrate in iscrizione e nel profilo.
   "GET /service-names/standard",
   "GET /professionals/:id",

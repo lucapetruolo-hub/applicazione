@@ -136,6 +136,10 @@ import type {
   ProblemMatchResult,
   ProblemExample,
   ProblemExamplesResponse,
+  PopularJobsResponse,
+  PopularJobsAdminView,
+  PopularJobInput,
+  MovePopularJobInput,
   ProblemTakeoverInput,
   ProblemMatchAdminOverview,
   ProblemWordAdmin,
@@ -1266,6 +1270,17 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     getFeatures: () => request<{ onlinePayments: boolean }>("/health/features"),
     getCategories: () => request<typeof PROFESSIONAL_CATEGORIES>("/categories"),
     /** Richieste per categoria, per mettere prima i lavori più cercati (docs/CHANGELOG.md §280). */
+    /** "Lavori più cercati" in home: nomi dell'elenco suggerito, già in ordine. */
+    getPopularJobs: () => request<PopularJobsResponse>("/popular-jobs"),
+    adminPopularJobs: (token: string) =>
+      request<PopularJobsAdminView>("/admin/popular-jobs", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminAddPopularJob: (token: string, input: PopularJobInput) =>
+      request<PopularJobsAdminView>("/admin/popular-jobs", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    adminRemovePopularJob: (token: string, service: string) =>
+      request<PopularJobsAdminView>("/admin/popular-jobs/remove", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ service }) }),
+    adminMovePopularJob: (token: string, input: MovePopularJobInput) =>
+      request<PopularJobsAdminView>("/admin/popular-jobs/move", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
     getCategoryPopularity: (city?: string) =>
       request<{ scope: "CITY" | "ALL"; counts: { slug: string; count: number }[] }>(
         `/categories/popular${city ? `?city=${encodeURIComponent(city)}` : ""}`,
