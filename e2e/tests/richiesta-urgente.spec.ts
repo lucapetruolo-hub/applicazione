@@ -64,7 +64,8 @@ test("si sceglie al primo passo, il riepilogo segue la scelta senza richiederla"
   await backToFirstStep(page);
   await expect(timing(page, "Oggi")).toBeChecked();
   await timing(page, "Con calma").check();
-  await expect(page.getByRole("status").filter({ hasText: "Quando: Con calma." })).toContainText("6 ore");
+  // L'inoltro si spiega una volta sola, al riepilogo (E6-11): qui solo la scelta.
+  await expect(page.getByRole("status").filter({ hasText: "Quando: Con calma." })).toBeVisible();
   await goToSummary(page);
   await expect(forward).toContainText(clock);
   await expect(forward).not.toHaveText(urgentText ?? "");
