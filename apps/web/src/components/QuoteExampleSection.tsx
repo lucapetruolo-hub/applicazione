@@ -21,7 +21,8 @@ const STEPS = [
   { title: "Ricevi preventivi chiari", text: "Manodopera, materiali e tempi separati. Confronta prima di dire sì." },
   {
     title: "Scegli e prenota",
-    text: "Conferma in piattaforma. Promemoria via email e SMS prima dell'appuntamento.",
+    // Niente "SMS": non esistono e Luca li ha esclusi (docs/changelog/2026-10-28-promemoria-whatsapp.md; collaudo dell'08/11/2026, E6-10).
+    text: "Conferma sul sito. Promemoria via email prima dell'appuntamento.",
   },
 ];
 
