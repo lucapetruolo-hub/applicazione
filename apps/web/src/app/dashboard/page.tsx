@@ -509,7 +509,7 @@ function TodaySection({ title, subtitle, count, action, children }: { title: str
           ) : null}
         </YStack>
         {action ? (
-          <Link href={action.href} style={{ color: brand.cianografiaScuro, fontWeight: 600, fontSize: 16, textDecoration: "none" }}>
+          <Link href={action.href} style={{ color: brand.cianografiaScuro, fontWeight: 600, fontSize: 16, textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 44 }}>
             {action.label} →
           </Link>
         ) : null}
@@ -611,7 +611,7 @@ function AgendaNotice({ attention }: { attention: AgendaAttention }) {
         </YStack>
       </XStack>
       <Link href="/dashboard/agenda?tab=disponibilita" style={{ textDecoration: "none" }}>
-        <CardButton>Apri l'agenda</CardButton>
+        <CardButton tabIndex={-1}>Apri l'agenda</CardButton>
       </Link>
     </XStack>
   );
@@ -641,7 +641,8 @@ function Suggestion({ insights }: { insights: ProfessionalInsights }) {
         {text}
       </Text>
       <Link href={href} style={{ textDecoration: "none" }}>
-        <CardButton>{cta}</CardButton>
+        {/* Una sola fermata del Tab, il link (E7-13 del controllo dell'8/11). */}
+        <CardButton tabIndex={-1}>{cta}</CardButton>
       </Link>
     </XStack>
   );

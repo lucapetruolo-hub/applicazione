@@ -581,6 +581,10 @@ function RichiesteContent() {
           </ModalDialog>
         ) : null}
 
+        {/* Quante richieste si vedono, detto al lettore di schermo quando cambia scheda o filtro. */}
+        <p className="sr-only" role="status">
+          {leads ? `${visibleLeads.length} ${visibleLeads.length === 1 ? "richiesta mostrata" : "richieste mostrate"}` : ""}
+        </p>
         <RestoredNotice />
         {activeTab === "archiviate" ? (
           <RestoreAllArchivedBar

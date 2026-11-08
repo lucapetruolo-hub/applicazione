@@ -382,7 +382,7 @@
   font: 500 12px var(--font-body), system-ui, sans-serif;
   color: var(--ag-ink);
   cursor: pointer;
-  min-height: 30px;
+  min-height: 32px;
 }
 .ag-mini-grid button:hover {
   background: #f6f1ec;

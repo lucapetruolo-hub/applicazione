@@ -54,6 +54,15 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
         ]
       : getAccountMenuGroups(user.isProfessional);
 
+  // Esc chiude e riporta il fuoco sul pulsante che ha aperto il menu (E7-15
+  // del controllo dell'8/11): prima finiva sul corpo della pagina.
+  const desktopTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileTriggerRef = useRef<HTMLButtonElement>(null);
+  const openRef = useRef({ desktop: false, mobile: false });
+  useEffect(() => {
+    openRef.current = { desktop: desktopOpen, mobile: mobileOpen };
+  }, [desktopOpen, mobileOpen]);
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -62,8 +71,11 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
     }
     function handleEscape(e: KeyboardEvent) {
       if (e.key === "Escape") {
+        const { desktop, mobile } = openRef.current;
         setDesktopOpen(false);
         setMobileOpen(false);
+        if (desktop) desktopTriggerRef.current?.focus();
+        else if (mobile) mobileTriggerRef.current?.focus();
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -86,6 +98,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
       {/* Desktop */}
       <div className="mega-desktop" ref={containerRef} style={mobileOnly ? { display: "none" } : undefined}>
         <button
+          ref={desktopTriggerRef}
           type="button"
           className="mega-trigger"
           aria-expanded={desktopOpen}
@@ -128,7 +141,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
       </div>
 
       {/* Mobile trigger */}
-      <button type="button" className="mega-mobile-trigger" aria-label="Apri menu" onClick={() => setMobileOpen(true)}>
+      <button ref={mobileTriggerRef} type="button" className="mega-mobile-trigger" aria-label="Apri menu" onClick={() => setMobileOpen(true)}>
         <span className="mega-burger" aria-hidden>
           <span />
           <span />

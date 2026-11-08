@@ -1012,7 +1012,9 @@ export function GuidedRequestCard({
           alignSelf="flex-end"
           alignItems="center"
           gap="1"
-          paddingTop="1"
+          paddingHorizontal="1"
+          // 44 px di altezza, da toccare col dito (E7-11 del controllo dell'8/11).
+          minHeight={44}
           borderRadius={8}
           onPress={(e: { stopPropagation: () => void }) => {
                     e.stopPropagation();

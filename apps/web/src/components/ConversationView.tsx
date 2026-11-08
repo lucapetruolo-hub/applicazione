@@ -718,6 +718,9 @@ export function ConversationView({
           lunga. */}
       <div
         ref={scrollContainerRef}
+        // I messaggi nuovi vengono letti dal lettore di schermo appena arrivano (migliorie del controllo dell'8/11).
+        role="log"
+        aria-label="Messaggi"
         onScroll={() => {
           shouldAutoScrollRef.current = isNearBottom();
         }}

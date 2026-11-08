@@ -369,6 +369,19 @@ export default function DashboardProfiloPage() {
   // richiesta dell'utente): si apre sull'anteprima, il modulo solo con
   // "Modifica profilo". Senza profilo, o da confermare, si parte dal modulo.
   const [mode, setMode] = useState<"preview" | "edit">("edit");
+  // Aprendo "Modifica profilo" il fuoco va sul titolo del modulo (E7-08 del
+  // controllo dell'8/11): prima restava sul corpo della pagina.
+  const editTitleRef = useRef<HTMLHeadingElement>(null);
+  const focusEditTitleRef = useRef(false);
+  useEffect(() => {
+    if (mode !== "edit" || !focusEditTitleRef.current) return;
+    focusEditTitleRef.current = false;
+    editTitleRef.current?.focus();
+  }, [mode]);
+  const openEdit = () => {
+    focusEditTitleRef.current = true;
+    setMode("edit");
+  };
   const [preview, setPreview] = useState<MyProfilePreview | null>(null);
   // Cosa manca per comparire nelle ricerche e inviare preventivi (richiesta
   // dell'utente, docs/CHANGELOG.md §260): i tre passi finché non sono fatti.
@@ -888,7 +901,7 @@ export default function DashboardProfiloPage() {
               icon={<Icon name="pencil" size={16} strokeWidth={2} color="#FFFFFF" />}
               onPress={() => {
                 setSaved(false);
-                setMode("edit");
+                openEdit();
                 window.scrollTo({ top: 0 });
               }}
             >
@@ -922,7 +935,7 @@ export default function DashboardProfiloPage() {
                     Apri la pagina pubblica ↗
                   </Link>
                 ) : preview.visibility === "NOT_CONFIRMED" ? (
-                  <button type="button" className="profile-visibility-link" onClick={() => setMode("edit")}>
+                  <button type="button" className="profile-visibility-link" onClick={openEdit}>
                     Controlla e salva →
                   </button>
                 ) : null}
@@ -1007,7 +1020,7 @@ export default function DashboardProfiloPage() {
               Account creato
             </span>
           ) : null}
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
+          <Text ref={editTitleRef as never} tabIndex={-1} className="step-focus-target" render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             {isFirstProfileSave ? "Ora il tuo profilo pubblico" : "Modifica profilo"}
           </Text>
           <Text color={brand.grafite70}>

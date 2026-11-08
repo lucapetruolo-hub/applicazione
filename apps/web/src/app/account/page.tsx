@@ -777,6 +777,9 @@ export default function AccountPage() {
                 fontWeight="600"
                 cursor="pointer"
                 role="button"
+                // Almeno 24 px di altezza da toccare (E7-11 del controllo dell'8/11).
+                paddingVertical={4}
+                alignSelf="flex-start"
                 onPress={() => setIsEditingPassword(true)}
               >
                 {user.hasPassword ? "Aggiorna password" : "Impostare la password"}
@@ -831,6 +834,8 @@ export default function AccountPage() {
                 fontWeight="600"
                 cursor="pointer"
                 role="button"
+                paddingVertical={4}
+                alignSelf="flex-start"
                 onPress={() => {
                   setLogoutOthersDone(false);
                   setConfirmingLogoutOthers(true);
@@ -867,6 +872,7 @@ export default function AccountPage() {
             <XStack
               gap="1"
               alignItems="center"
+              minHeight={44}
               cursor={isExporting ? "default" : "pointer"}
               opacity={isExporting ? 0.6 : 1}
               onPress={isExporting ? undefined : handleExportData}
@@ -900,6 +906,7 @@ export default function AccountPage() {
               <XStack
                 gap="1"
                 alignItems="center"
+                minHeight={44}
                 cursor="pointer"
                 onPress={() => {
                                 setIsConfirmingDelete(true);

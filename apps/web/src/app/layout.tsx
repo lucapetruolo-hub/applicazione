@@ -90,7 +90,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <ToastStack />
             <SiteHeader />
             <EmailVerificationBanner />
-            <main id="main-content">{children}</main>
+            {/* tabIndex -1: dopo "Vai al contenuto" anche Safari e VoiceOver ripartono da qui (E7-17 del controllo dell'8/11). */}
+            <main id="main-content" tabIndex={-1} style={{ outline: "none" }}>
+              {children}
+            </main>
             <SiteFooter />
             <CookieBanner />
           </Providers>

@@ -704,6 +704,10 @@ function LeMieRichiesteContent() {
         ) : null}
 
         <YStack ref={listTopRef as never} gap="4">
+          {/* Quante richieste si vedono, detto al lettore di schermo quando cambia scheda o filtro. */}
+          <p className="sr-only" role="status">
+            {requests ? `${filteredSortedRequests.length} ${filteredSortedRequests.length === 1 ? "richiesta mostrata" : "richieste mostrate"}` : ""}
+          </p>
           <RestoredNotice />
           <RequestDeletedNotice
             onUndo={async (guidedRequestId) => {
