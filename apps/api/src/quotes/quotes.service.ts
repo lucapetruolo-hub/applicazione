@@ -752,7 +752,7 @@ export class QuotesService {
         quote.guidedRequestId,
         professionalProfile.id,
         "PROFESSIONAL",
-        "Il professionista ha confermato la data proposta: prenotazione creata.",
+        "Il professionista ha confermato la data proposta: il lavoro è fissato.",
       );
       return { bookingId: booking.id };
     } catch (err) {

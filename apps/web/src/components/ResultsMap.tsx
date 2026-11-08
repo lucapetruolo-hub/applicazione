@@ -81,6 +81,35 @@ function offsetOverlappingPositions(items: ProfessionalSearchResult[]): Map<stri
   return positions;
 }
 
+// Segnaposto vicini raggruppati in uno solo con il numero (collaudo dell'8/11,
+// E6-08): a zoom di città due professionisti a 100 m l'uno dall'altro si
+// coprivano e se ne vedeva uno solo. Il raggruppamento dipende dallo zoom:
+// due segnaposto più vicini di PIN_GROUP_PX pixel finiscono insieme; toccando
+// il numero si apre l'anteprima del primo, con le frecce per gli altri.
+const PIN_GROUP_PX = 44;
+
+type PinGroup = { position: [number, number]; members: ProfessionalSearchResult[] };
+
+export function groupNearbyPins(items: ProfessionalSearchResult[], positions: Map<string, [number, number]>, zoom: number | null): PinGroup[] {
+  const groups: PinGroup[] = [];
+  // Gradi di longitudine per pixel a questo zoom (proiezione di Google: 256 px per 360° a zoom 0).
+  const degPerPx = zoom === null ? 0 : 360 / (256 * 2 ** zoom);
+  for (const item of items) {
+    const position = positions.get(item.id) ?? [item.latitude, item.longitude];
+    const cosLat = Math.cos((position[0] * Math.PI) / 180) || 1;
+    const near = degPerPx
+      ? groups.find(
+          (group) =>
+            Math.abs(group.position[1] - position[1]) / degPerPx < PIN_GROUP_PX &&
+            Math.abs(group.position[0] - position[0]) / (degPerPx * cosLat) < PIN_GROUP_PX,
+        )
+      : undefined;
+    if (near) near.members.push(item);
+    else groups.push({ position, members: [item] });
+  }
+  return groups;
+}
+
 // Mezza ampiezza minima dell'inquadratura attorno al luogo cercato (~5 km):
 // con i risultati tutti nel centro del comune la mappa non zooma su un punto.
 const MIN_HALF_SPAN_DEG = 0.045;
@@ -133,6 +162,8 @@ export function ResultsMap({
   const router = useRouter();
   // Inquadratura attuale: l'anteprima scorre solo tra chi si vede sulla mappa.
   const [viewBounds, setViewBounds] = useState<MapBounds | null>(null);
+  // Zoom attuale, per raggruppare i segnaposto vicini (null prima della prima inquadratura).
+  const [zoom, setZoom] = useState<number | null>(null);
   // Professionista selezionato cliccando un puntino: mostrato come banner in
   // basso SOPRA la mappa (che resta aperta), invece di navigare subito al
   // profilo — l'utente vede un'anteprima e decide se aprirlo.
@@ -222,29 +253,40 @@ export function ResultsMap({
             const sw = b.getSouthWest();
             const next = { north: ne.lat(), south: sw.lat(), east: ne.lng(), west: sw.lng() };
             setViewBounds(next);
+            setZoom(event.map.getZoom() ?? null);
             onBoundsChange?.(next);
           }}
         >
           {/* Segnaposto avanzati con la foto (o l'icona di categoria) del
               professionista: scelti dall'utente dopo il confronto con i
               classici (docs/CHANGELOG.md §140). */}
-          {withCoords.map((pro) => (
-            <AdvancedMarker
-              key={pro.id}
-              position={toLatLng(markerPositions.get(pro.id) ?? [pro.latitude, pro.longitude])}
-              title={pro.businessName}
-              // Il segnaposto dell'anteprima aperta sta sopra gli altri.
-              zIndex={selected?.id === pro.id ? 1000 : undefined}
-              onClick={() => {
-                setDirection(null);
-                setSelected(pro);
-              }}
-            >
-              <div className={`advanced-pin${selected?.id === pro.id ? " selected" : ""}`}>
-                <ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={36} />
-              </div>
-            </AdvancedMarker>
-          ))}
+          {groupNearbyPins(withCoords, markerPositions, zoom).map(({ position, members }) => {
+            const first = members[0]!;
+            const isSelected = members.some((pro) => pro.id === selected?.id);
+            const shown = isSelected ? selected! : first;
+            return (
+              <AdvancedMarker
+                key={first.id}
+                position={toLatLng(position)}
+                title={members.length > 1 ? `${members.length} professionisti: ${members.map((pro) => pro.businessName).join(", ")}` : first.businessName}
+                // Il segnaposto dell'anteprima aperta sta sopra gli altri.
+                zIndex={isSelected ? 1000 : undefined}
+                onClick={() => {
+                  setDirection(null);
+                  setSelected(isSelected ? shown : first);
+                }}
+              >
+                <div className={`advanced-pin${isSelected ? " selected" : ""}`}>
+                  <ProfessionalAvatar imageUrl={shown.imageUrl} categorySlug={shown.categorySlug} size={36} />
+                  {members.length > 1 ? (
+                    <span className="advanced-pin-count" aria-hidden="true">
+                      {members.length}
+                    </span>
+                  ) : null}
+                </div>
+              </AdvancedMarker>
+            );
+          })}
         </GoogleMap>
       </GoogleMapGate>
 
@@ -289,6 +331,23 @@ export function ResultsMap({
           border-left: 7px solid transparent;
           border-right: 7px solid transparent;
           border-top: 8px solid #189a63;
+        }
+        .results-map-container :global(.advanced-pin-count) {
+          position: absolute;
+          top: -8px;
+          right: -10px;
+          min-width: 22px;
+          height: 22px;
+          padding: 0 5px;
+          box-sizing: border-box;
+          border-radius: 11px;
+          background: ${brand.grafite};
+          color: #ffffff;
+          border: 2px solid #ffffff;
+          font-size: 12px;
+          font-weight: 800;
+          line-height: 18px;
+          text-align: center;
         }
         /* Segnaposto dell'anteprima aperta: più grande e pieno di verde,
            per capire subito a chi si riferisce. */

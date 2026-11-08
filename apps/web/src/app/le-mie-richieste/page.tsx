@@ -58,17 +58,27 @@ const UNREAD_BADGE_POLL_MS = 15000;
 // altri tab.
 type ClientTabKey = "tutte" | RequestStage | "archiviate";
 
+// Cinque schede in vista, con le parole del glossario, e le altre nei Filtri
+// (collaudo dell'8/11, E6-17: nove schede in una riga, sul telefono se ne
+// vedevano due e mezza). "Da rispondere" raccoglie anche le modifiche chieste.
 const CLIENT_TABS: { key: ClientTabKey; label: string }[] = [
   { key: "tutte", label: "Tutte" },
-  { key: "da_quotare", label: "In attesa" },
   { key: "in_attesa", label: "Da rispondere" },
-  { key: "modifica_richiesta", label: "Modifiche" },
+  { key: "da_quotare", label: "In attesa" },
   { key: "accettata", label: "Fissati" },
   { key: "completata", label: "Terminati" },
+];
+const MORE_CLIENT_TABS: { key: ClientTabKey; label: string }[] = [
   { key: "annullata", label: "Annullate" },
-  { key: "scaduta", label: "Scadute" },
+  // "Chiuse" come dal lato del professionista (collaudo dell'8/11, E6-17).
+  { key: "scaduta", label: "Chiuse" },
   { key: "archiviate", label: "Archiviate" },
 ];
+/** Stadi raccolti da una scheda, quando non è uno solo. */
+const TAB_STAGES: Partial<Record<ClientTabKey, readonly RequestStage[]>> = { in_attesa: ["in_attesa", "modifica_richiesta"] };
+function tabOfStage(stage: RequestStage): ClientTabKey {
+  return stage === "modifica_richiesta" ? "in_attesa" : stage;
+}
 /** Numero rosso solo dove tocca al cliente, cioè sui preventivi da rispondere (§349). */
 const ACTION_TABS: ReadonlySet<ClientTabKey> = new Set<ClientTabKey>(["in_attesa"]);
 
@@ -210,8 +220,8 @@ function LeMieRichiesteContent() {
         return;
       }
       counts.tutte = (counts.tutte ?? 0) + 1;
-      const stage = stageByRequestId.get(r.id)!;
-      counts[stage] = (counts[stage] ?? 0) + 1;
+      const tab = tabOfStage(stageByRequestId.get(r.id)!);
+      counts[tab] = (counts[tab] ?? 0) + 1;
     });
     return counts;
   }, [requests, stageByRequestId]);
@@ -223,7 +233,10 @@ function LeMieRichiesteContent() {
     if (activeStageTab === "archiviate") list = list.filter((r) => r.myState.archivedAt);
     else {
       list = list.filter((r) => !r.myState.archivedAt);
-      if (activeStageTab !== "tutte") list = list.filter((r) => stageByRequestId.get(r.id) === activeStageTab);
+      if (activeStageTab !== "tutte") {
+        const stages = TAB_STAGES[activeStageTab] ?? [activeStageTab];
+        list = list.filter((r) => (stages as readonly string[]).includes(stageByRequestId.get(r.id) ?? ""));
+      }
     }
     if (zoneFilter !== "tutte") list = list.filter((r) => r.city === zoneFilter);
     if (serviceModeFilter !== "tutte") list = list.filter((r) => r.serviceMode === serviceModeFilter);
@@ -479,7 +492,7 @@ function LeMieRichiesteContent() {
                 (frecce riusate da CategoryCarousel), etichette adattate al
                 punto di vista del cliente. */}
             <CategoryCarousel>
-              {CLIENT_TABS.map((tab) => {
+              {[...CLIENT_TABS, ...MORE_CLIENT_TABS.filter((tab) => tab.key === activeStageTab)].map((tab) => {
                 const active = activeStageTab === tab.key;
                 const count = tabCounts[tab.key] ?? 0;
                 return (
@@ -668,6 +681,19 @@ function LeMieRichiesteContent() {
                         <option value="ONLINE">Solo online</option>
                       </select>
                     </YStack>
+                    <select
+                      aria-label="Altre richieste"
+                      value={MORE_CLIENT_TABS.some((tab) => tab.key === activeStageTab) ? activeStageTab : ""}
+                      onChange={(e) => updateStageTab((e.target.value || "tutte") as ClientTabKey)}
+                      style={{ ...filterInputStyle, width: "100%" }}
+                    >
+                      <option value="">Richieste in corso e terminate</option>
+                      {MORE_CLIENT_TABS.map((tab) => (
+                        <option key={tab.key} value={tab.key}>
+                          {`${tab.label} (${tabCounts[tab.key] ?? 0})`}
+                        </option>
+                      ))}
+                    </select>
                     <select aria-label="Ordina per"
                       value={sortMode}
                       onChange={(e) => {

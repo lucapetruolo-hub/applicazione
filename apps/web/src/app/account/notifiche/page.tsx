@@ -137,8 +137,6 @@ export default function NotifichePage() {
               </div>
             </section>
 
-            <WhatsAppRemindersCard token={token} role={role} digestHour={notificationDigestHour(notificationPrefs)} />
-
             <section aria-labelledby="nt-topics-title" className="nt-section">
               <h2 id="nt-topics-title">Cosa ti avvisiamo</h2>
               <div className="nt-topics">
@@ -179,9 +177,9 @@ export default function NotifichePage() {
                           </span>
                         ) : (
                           <div className="nt-channels" role="group" aria-label={`${copy.label}: dove avvisarti`}>
-                            {CHANNELS.map((channel) => {
+                            {/* Solo i canali che funzionano già: "presto" prometteva cose che non ci sono (collaudo dell'8/11, E6-24). */}
+                            {CHANNELS.filter((channel) => info.activeChannels.includes(channel.key)).map((channel) => {
                               const on = prefs[channel.key];
-                              const upcoming = !info.activeChannels.includes(channel.key);
                               return (
                                 <button
                                   key={channel.key}
@@ -194,7 +192,6 @@ export default function NotifichePage() {
                                     {on ? <Icon name="check" size={14} color="#ffffff" strokeWidth={3} /> : null}
                                   </span>
                                   {channel.label}
-                                  {upcoming ? <small>presto</small> : null}
                                 </button>
                               );
                             })}
@@ -211,7 +208,7 @@ export default function NotifichePage() {
                             onClick={() => setOpenTopics((prev) => (isOpen ? prev.filter((t) => t !== topic) : [...prev, topic]))}
                           >
                             <span>
-                              Singoli avvisi
+                              Singoli avvisi{" "}
                               <small>
                                 {activeItems === items.length ? `tutti e ${items.length} attivi` : `${activeItems} su ${items.length} attivi`}
                               </small>
@@ -323,6 +320,9 @@ export default function NotifichePage() {
                 />
               </div>
             </section>
+
+            {/* WhatsApp in fondo finché non è acceso (collaudo dell'8/11, E6-24). */}
+            <WhatsAppRemindersCard token={token} role={role} digestHour={notificationDigestHour(notificationPrefs)} />
           </>
         )}
       </div>

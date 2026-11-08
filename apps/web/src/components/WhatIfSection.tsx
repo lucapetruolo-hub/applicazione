@@ -38,6 +38,6 @@ export const WHAT_IF_ITEMS: { question: string; answer: string; answerWithoutOnl
   },
   {
     question: "Posso cambiare professionista dopo aver ricevuto il preventivo?",
-    answer: "Sì, senza costi né obblighi. Fino alla conferma della prenotazione sei libero.",
+    answer: "Sì, senza costi né obblighi. Finché non accetti un preventivo sei libero.",
   },
 ];

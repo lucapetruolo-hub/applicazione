@@ -27,9 +27,9 @@ const METRICS: { key: MetricKey; label: string; icon: "eye" | "file-text" | "sen
   { key: "views", label: "Visite al profilo", icon: "eye", hint: "Quante volte è stato aperto il tuo profilo pubblico" },
   { key: "requests", label: "Richieste ricevute", icon: "file-text", hint: "Richieste di preventivo arrivate a te" },
   { key: "quotes", label: "Preventivi inviati", icon: "send", hint: "Preventivi che hai mandato" },
-  { key: "won", label: "Lavori fissati", icon: "badge-check", hint: "Preventivi accettati e prenotazioni dirette" },
-  { key: "completed", label: "Lavori completati", icon: "check", hint: "Confermati come terminati da te e dal cliente" },
-  { key: "revenueEurCents", label: "Entrate", icon: "coins", hint: "Importi finali dei lavori terminati. I soldi incassati, anche senza la conferma del cliente, sono nell'estratto del mese" },
+  { key: "won", label: "Lavori fissati nel periodo", icon: "badge-check", hint: "Preventivi accettati e appuntamenti diretti in questi giorni, anche se poi terminati o annullati" },
+  { key: "completed", label: "Lavori terminati", icon: "check", hint: "Lavori che hai segnato come terminati in questi giorni" },
+  { key: "revenueEurCents", label: "Entrate", icon: "coins", hint: "Importi finali dei lavori terminati in questi giorni, pagati online o direttamente. I soldi passati dal sito sono in Pagamenti online e nell'estratto del mese" },
 ];
 
 type PresetKey = "7d" | "30d" | "90d" | "365d" | "year" | "custom";
@@ -349,7 +349,7 @@ function RatiosSection({ totals, previous }: { totals: ProfessionalStatsTotals; 
     {
       label: "Preventivi accettati",
       value: percent(totals.won, totals.quotes),
-      detail: `${totals.won} lavori ottenuti su ${totals.quotes} preventivi`,
+      detail: `${totals.won} lavori fissati su ${totals.quotes} preventivi`,
       before: percent(previous.won, previous.quotes),
     },
     {
@@ -370,7 +370,7 @@ function RatiosSection({ totals, previous }: { totals: ProfessionalStatsTotals; 
       <div className="pstats-card-head">
         <div>
           <h2 id="pstats-ratios-title">Come stai lavorando</h2>
-          <p>Rispondere a più richieste e con preventivi chiari è ciò che fa crescere i lavori ottenuti.</p>
+          <p>Rispondere a più richieste e con preventivi chiari è ciò che fa crescere i lavori fissati.</p>
         </div>
       </div>
       <div className="pstats-ratios">

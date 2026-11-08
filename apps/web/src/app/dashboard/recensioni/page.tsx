@@ -102,7 +102,7 @@ export default function DashboardRecensioniPage() {
           <EmptyState
             icon="star"
             title="Nessuna recensione ancora"
-            description="Le recensioni arrivano dai clienti dopo un lavoro confermato. A fine lavoro ricorda al cliente di lasciarne una."
+            description="Le recensioni arrivano dai clienti dopo un lavoro terminato. A fine lavoro ricorda al cliente di lasciarne una."
           />
         ) : null}
 

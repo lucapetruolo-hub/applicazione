@@ -91,10 +91,31 @@ export function invoiceFromProfessionalNote(receipt = false): string {
   return receipt ? "Lavora senza partita IVA: ti dà una ricevuta, non una fattura. Noi gli passiamo i tuoi dati." : "La fattura la fa il professionista. Noi gli passiamo i tuoi dati.";
 }
 
+/**
+ * La riga sotto la casella, prima di spuntarla (collaudo dell'8/11, E6-12):
+ * una frase sola che dice cosa succede e quali dati passano. Sostituisce
+ * anche la riga "La ricevuta del pagamento non è la fattura" sopra.
+ */
+function invoiceToggleNote(receipt: boolean): string {
+  return receipt
+    ? "Lavora senza partita IVA: la ricevuta la fa lui. Spunta qui e gli passiamo nome, codice fiscale e indirizzo."
+    : "La fa il professionista: spunta qui e gli passiamo nome, codice fiscale e indirizzo. La conferma del pagamento online non vale come fattura.";
+}
+
 /** Casella "Chiedi la fattura a …" (o "la ricevuta"), chiusa finché non si spunta. */
 export function InvoiceRequestToggle({ professionalName, checked, onToggle, receipt = false }: { professionalName: string; checked: boolean; onToggle: () => void; receipt?: boolean }) {
   return (
-    <XStack alignItems="flex-start" gap="2" cursor="pointer" onPress={onToggle} onKeyDown={keyActivate(onToggle)} role="checkbox" aria-checked={checked} tabIndex={0}>
+    <XStack
+      alignItems="flex-start"
+      gap="2"
+      cursor="pointer"
+      onPress={onToggle}
+      onKeyDown={keyActivate(onToggle)}
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={`${receipt ? "Chiedi la ricevuta" : "Chiedi la fattura"} a ${professionalName}`}
+      tabIndex={0}
+    >
       <YStack
         width={20}
         height={20}
@@ -111,10 +132,10 @@ export function InvoiceRequestToggle({ professionalName, checked, onToggle, rece
       </YStack>
       <YStack flex={1} gap={2}>
         <Text fontSize={16} fontWeight="700" color={brand.grafite}>
-          {receipt ? "Chiedi la ricevuta a" : "Chiedi la fattura a"} {professionalName}
+          {receipt ? "Ti serve la ricevuta?" : "Ti serve la fattura?"}
         </Text>
         <Text fontSize={13} color={brand.grafite70}>
-          {invoiceFromProfessionalNote(receipt)}
+          {invoiceToggleNote(receipt)}
         </Text>
       </YStack>
     </XStack>

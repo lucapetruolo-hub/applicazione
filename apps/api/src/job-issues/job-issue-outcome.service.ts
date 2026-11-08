@@ -280,7 +280,7 @@ export class JobIssueOutcomeService {
   /** Il professionista risponde alla richiesta di informazioni. */
   async answerInfo(professionalUserId: string, bookingId: string, response: string): Promise<{ bookingId: string }> {
     const issue = await this.prisma.jobIssue.findUnique({ where: { bookingId }, include: issueInclude });
-    if (!issue || issue.booking.professionalProfile.userId !== professionalUserId) throw new ForbiddenException("Questa prenotazione non è tua.");
+    if (!issue || issue.booking.professionalProfile.userId !== professionalUserId) throw new ForbiddenException("Questo lavoro non è tuo.");
     if (issue.status !== "OPEN" || !issue.infoRequestedAt) throw new BadRequestException("Non ci sono informazioni da inviare.");
     await this.prisma.jobIssue.update({ where: { id: issue.id }, data: { infoResponse: response, infoRespondedAt: new Date() } });
     return { bookingId };
@@ -289,7 +289,7 @@ export class JobIssueOutcomeService {
   /** Ricorso del professionista entro 30 giorni da una decisione accolta. */
   async appeal(professionalUserId: string, bookingId: string, text: string): Promise<{ bookingId: string }> {
     const issue = await this.prisma.jobIssue.findUnique({ where: { bookingId }, include: issueInclude });
-    if (!issue || issue.booking.professionalProfile.userId !== professionalUserId) throw new ForbiddenException("Questa prenotazione non è tua.");
+    if (!issue || issue.booking.professionalProfile.userId !== professionalUserId) throw new ForbiddenException("Questo lavoro non è tuo.");
     if (!jobIssueCanAppeal(issue, new Date())) {
       throw new BadRequestException("Il ricorso si può presentare una volta sola, entro 30 giorni da una decisione accolta.");
     }
@@ -372,7 +372,7 @@ export class JobIssueOutcomeService {
         },
       },
     });
-    if (!issue || issue.booking.clientId !== clientId) throw new ForbiddenException("Questa prenotazione non è tua.");
+    if (!issue || issue.booking.clientId !== clientId) throw new ForbiddenException("Questo lavoro non è tuo.");
     if (issue.type !== "NO_SHOW" || issue.status !== "UPHELD") {
       throw new BadRequestException("Puoi inviare la richiesta ad altri solo dopo una mancata presentazione accolta.");
     }

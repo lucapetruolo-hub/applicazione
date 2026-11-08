@@ -242,9 +242,9 @@ export function bookingReminderProfessionalEmail(input: {
 }): RenderedEmail {
   return renderEmail({
     kind: "notification",
-    subject: `Promemoria: domani hai un intervento${input.category ? ` (${input.category})` : ""}`,
+    subject: `Promemoria: domani hai un appuntamento${input.category ? ` (${input.category})` : ""}`,
     greeting: input.name,
-    title: "Domani hai un intervento",
+    title: "Domani hai un appuntamento",
     paragraphs: [input.clientName ? `Ti ricordiamo l'appuntamento con **${input.clientName}**.` : "Ti ricordiamo l'appuntamento con il cliente."],
     details: [
       ...appointmentDetails(input.scheduledAt, input.scheduledEndAt),

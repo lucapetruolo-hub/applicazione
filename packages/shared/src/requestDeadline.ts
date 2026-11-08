@@ -16,3 +16,17 @@ export function formatItalianUntil(value: Date | string, options: { withTime?: b
   const timeArticle = time.startsWith("01:") ? "all'" : "alle ";
   return `${dayArticle}${day} ${timeArticle}${time}`;
 }
+
+/**
+ * Ora di una scadenza vicina, detta come la si dice a voce (collaudo dell'8/11,
+ * E6-11): "le 18:05" oggi, "domani alle 9:30", "il 12 novembre alle 9:30".
+ * Ora italiana.
+ */
+export function formatClockDeadline(value: Date | string, now: Date = new Date()): string {
+  const date = value instanceof Date ? value : new Date(value);
+  const dayKey = (d: Date) => d.toLocaleDateString("it-IT", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Europe/Rome" });
+  const time = date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
+  if (dayKey(date) === dayKey(now)) return `le ${time}`;
+  if (dayKey(date) === dayKey(new Date(now.getTime() + 24 * 60 * 60 * 1000))) return `domani alle ${time}`;
+  return `${formatItalianUntil(date).replace(/^al(l')? ?/, (m) => (m === "all'" ? "l'" : "il "))}`;
+}

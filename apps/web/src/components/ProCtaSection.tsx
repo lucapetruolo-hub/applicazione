@@ -41,7 +41,7 @@ export function ProCtaSection() {
         <YStack gap="6" padding="6 gtSm:8" position="relative">
           <YStack gap="3">
             <Text fontFamily="heading" fontWeight="600" fontSize="9" color="white">
-              Meno telefonate inutili, più lavoro concluso.
+              Meno telefonate inutili, più lavori fatti.
             </Text>
           </YStack>
 

@@ -7,7 +7,7 @@
     "build": "pnpm css:tamagui && next build",
     "css:tamagui": "TSX_TSCONFIG_PATH=scripts/tsconfig.json tsx scripts/generate-tamagui-css.ts",
     "start": "next start",
-    "lint": "eslint src && node scripts/controlla-style-jsx.mjs && node scripts/controlla-frasi-intermediario.mjs",
+    "lint": "eslint src && node scripts/controlla-style-jsx.mjs && node scripts/controlla-frasi-intermediario.mjs && node scripts/controlla-glossario.mjs",
     "typecheck": "next typegen && tsc --noEmit",
     "confronto-pagine": "node scripts/confronto-pagine.mjs"
   },

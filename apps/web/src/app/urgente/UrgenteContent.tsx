@@ -37,7 +37,7 @@ export function UrgenteContent() {
           onUrgentChange={setIsUrgent}
           submitLabel="Invia richiesta urgente"
           submittingLabel="Invio in corso..."
-          descriptionPlaceholder="Es. Allagamento in cucina, serve un intervento immediato."
+          descriptionPlaceholder="Es. Allagamento in cucina, serve qualcuno subito."
         />
       </Suspense>
     </YStack>

@@ -110,8 +110,8 @@ export function bookingCalendar(booking: BookingForCalendar, role: "client" | "p
     uid: `booking-${booking.id}@professionisti`,
     title:
       role === "client"
-        ? `${people.category ?? "Intervento"} con ${people.professionalFullName ?? people.businessName}`
-        : `${people.category ?? "Intervento"}${people.clientName ? ` da ${people.clientName}` : ""}`,
+        ? `${people.category ?? "Appuntamento"} con ${people.professionalFullName ?? people.businessName}`
+        : `${people.category ?? "Appuntamento"}${people.clientName ? ` da ${people.clientName}` : ""}`,
     start: booking.scheduledAt,
     end: booking.scheduledEndAt,
     location: people.address ?? people.city,

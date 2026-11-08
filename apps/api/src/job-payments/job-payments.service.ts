@@ -146,7 +146,7 @@ export class JobPaymentsService {
       select: { clientId: true, professionalProfile: { select: { userId: true } } },
     });
     if (!booking || (booking.clientId !== userId && booking.professionalProfile.userId !== userId)) {
-      throw new ForbiddenException("Questa prenotazione non è tua.");
+      throw new ForbiddenException("Questo lavoro non è tuo.");
     }
     return this.prisma.jobPayment.findUnique({ where: { bookingId } });
   }

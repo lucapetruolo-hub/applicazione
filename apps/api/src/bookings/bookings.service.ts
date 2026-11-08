@@ -513,10 +513,10 @@ export class BookingsService implements OnModuleInit {
 
     const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: true } });
     if (!booking || booking.professionalProfileId !== professionalProfile.id) {
-      throw new ForbiddenException("Questa prenotazione non è tua.");
+      throw new ForbiddenException("Questo lavoro non è tuo.");
     }
     if (booking.status === "COMPLETED" || booking.status === "CANCELED") {
-      throw new ForbiddenException("Questa prenotazione è già conclusa.");
+      throw new ForbiddenException("Questo lavoro è già chiuso.");
     }
 
     await this.prisma.booking.update({
@@ -557,10 +557,10 @@ export class BookingsService implements OnModuleInit {
 
     if (booking.quote) {
       const statusMessage: Record<typeof status, string> = {
-        CONFIRMED: "Il professionista ha confermato la prenotazione.",
-        COMPLETED: "Il professionista ha segnato il lavoro come completato.",
-        CANCELED: "Il professionista ha annullato la prenotazione.",
-        NO_SHOW: "Il professionista ha segnato la prenotazione come non presentato.",
+        CONFIRMED: "Il professionista ha confermato il lavoro.",
+        COMPLETED: "Il professionista ha segnato il lavoro come terminato.",
+        CANCELED: "Il professionista ha annullato il lavoro.",
+        NO_SHOW: "Il professionista ha segnato che il cliente non si è presentato.",
       };
       await this.timelineService.log(booking.quote.guidedRequestId, professionalProfile.id, "PROFESSIONAL", statusMessage[status]);
     }
@@ -601,7 +601,7 @@ export class BookingsService implements OnModuleInit {
       include: { quote: { select: { guidedRequestId: true } } },
     });
     if (!booking || booking.professionalProfileId !== professionalProfile.id) {
-      throw new ForbiddenException("Questa prenotazione non è tua.");
+      throw new ForbiddenException("Questo lavoro non è tuo.");
     }
 
     const trimmed = note.trim();
@@ -636,10 +636,10 @@ export class BookingsService implements OnModuleInit {
     }
     const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: { select: { guidedRequestId: true } } } });
     if (!booking || booking.professionalProfileId !== professionalProfile.id) {
-      throw new ForbiddenException("Questa prenotazione non è tua.");
+      throw new ForbiddenException("Questo lavoro non è tuo.");
     }
     if (booking.status !== "CONFIRMED") {
-      throw new BadRequestException("Puoi avvisare il cliente solo per un lavoro confermato.");
+      throw new BadRequestException("Puoi avvisare il cliente solo per un lavoro fissato.");
     }
     if (booking.scheduledAt.toISOString().slice(0, 10) !== wallClockToday(now).toISOString().slice(0, 10)) {
       throw new BadRequestException("Puoi avvisare il cliente solo il giorno dell'appuntamento.");
@@ -675,7 +675,7 @@ export class BookingsService implements OnModuleInit {
 
     const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
     if (!booking || booking.professionalProfileId !== professionalProfile.id) {
-      throw new ForbiddenException("Questa prenotazione non è tua.");
+      throw new ForbiddenException("Questo lavoro non è tuo.");
     }
 
     const trimmed = meetingLink.trim();
@@ -701,10 +701,10 @@ export class BookingsService implements OnModuleInit {
 
     const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: { include: { items: true } } } });
     if (!booking || booking.professionalProfileId !== professionalProfile.id) {
-      throw new ForbiddenException("Questa prenotazione non è tua.");
+      throw new ForbiddenException("Questo lavoro non è tuo.");
     }
     if (booking.status !== "CONFIRMED") {
-      throw new BadRequestException("Solo un lavoro confermato può essere segnalato come terminato.");
+      throw new BadRequestException("Solo un lavoro fissato può essere segnato come terminato.");
     }
     // Mai prima del giorno dell'appuntamento, come il pulsante in Agenda
     // (§311, collaudo F-01): il saldo si addebiterebbe al cliente prima del lavoro.
@@ -834,10 +834,10 @@ export class BookingsService implements OnModuleInit {
   async clientConfirmComplete(clientId: string, bookingId: string, input: ClientConfirmCompleteInput) {
     const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: true } });
     if (!booking || booking.clientId !== clientId) {
-      throw new ForbiddenException("Questa prenotazione non è tua.");
+      throw new ForbiddenException("Questo lavoro non è tuo.");
     }
     if (booking.status !== "CONFIRMED" && booking.status !== "COMPLETED") {
-      throw new BadRequestException("Puoi segnalare come terminato solo un lavoro confermato.");
+      throw new BadRequestException("Puoi segnare come terminato solo un lavoro fissato.");
     }
     if (booking.clientConfirmedCompletedAt) {
       throw new ForbiddenException("Hai già confermato il completamento di questo lavoro.");
@@ -898,10 +898,10 @@ export class BookingsService implements OnModuleInit {
 
     const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: true } });
     if (!booking || booking.professionalProfileId !== professionalProfile.id) {
-      throw new ForbiddenException("Questa prenotazione non è tua.");
+      throw new ForbiddenException("Questo lavoro non è tuo.");
     }
     if (booking.status === "COMPLETED" || booking.status === "CANCELED") {
-      throw new ForbiddenException("Questa prenotazione è già conclusa.");
+      throw new ForbiddenException("Questo lavoro è già chiuso.");
     }
 
     const cancellationNote = input.note?.trim() || null;
@@ -928,7 +928,7 @@ export class BookingsService implements OnModuleInit {
         booking.quote.guidedRequestId,
         professionalProfile.id,
         "PROFESSIONAL",
-        `Il professionista ha annullato l'intervento.${cancellationNote ? ` Nota: "${cancellationNote}"` : ""}`,
+        `Il professionista ha annullato il lavoro.${cancellationNote ? ` Nota: "${cancellationNote}"` : ""}`,
       );
     }
 
@@ -944,10 +944,10 @@ export class BookingsService implements OnModuleInit {
   async cancelForClient(clientId: string, bookingId: string, opts: { accountClosed?: boolean } = {}) {
     const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: true } });
     if (!booking || booking.clientId !== clientId) {
-      throw new ForbiddenException("Questa prenotazione non è tua.");
+      throw new ForbiddenException("Questo lavoro non è tuo.");
     }
     if (booking.status !== "PENDING" && booking.status !== "CONFIRMED") {
-      throw new ForbiddenException("Questa prenotazione non può più essere annullata.");
+      throw new ForbiddenException("Questo lavoro non si può più annullare.");
     }
     // Cominciato l'appuntamento non si annulla più (§346): prima si poteva
     // anche a lavoro fatto, e con l'acconto online tornavano i soldi.
@@ -992,7 +992,7 @@ export class BookingsService implements OnModuleInit {
       const note = late
         ? ` con meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)} di preavviso${keptEurCents > 0 ? `: l'acconto di ${formatEurCents(keptEurCents)} resta al professionista` : ""}`
         : "";
-      await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, "CLIENT", `Il cliente ha annullato la prenotazione${note}.`);
+      await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, "CLIENT", `Il cliente ha annullato il lavoro${note}.`);
     }
     return { bookingId, status: "CANCELED" as const, keptDepositEurCents: keptEurCents };
   }
@@ -1000,8 +1000,8 @@ export class BookingsService implements OnModuleInit {
   /** Evento del calendario per il cliente: link di Google Calendar e file .ics, con lo stesso UID delle email. */
   async calendarForClient(clientUserId: string, bookingId: string): Promise<{ googleUrl: string | null; ics: string }> {
     const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: BOOKING_CALENDAR_INCLUDE });
-    if (!booking) throw new NotFoundException("Prenotazione non trovata.");
-    if (booking.clientId !== clientUserId) throw new ForbiddenException("Questa prenotazione non è tua.");
+    if (!booking) throw new NotFoundException("Lavoro non trovato.");
+    if (booking.clientId !== clientUserId) throw new ForbiddenException("Questo lavoro non è tuo.");
     if (booking.status === "CANCELED") throw new BadRequestException("Questo appuntamento è stato annullato.");
     const calendar = bookingCalendar(booking, "client");
     return { googleUrl: calendar.calendarUrl, ics: calendar.attachment.content };
@@ -1118,15 +1118,15 @@ export class BookingsService implements OnModuleInit {
       include: { quote: true, professionalProfile: true },
     });
     if (!booking) {
-      throw new NotFoundException("Prenotazione non trovata.");
+      throw new NotFoundException("Lavoro non trovato.");
     }
     const isClient = booking.clientId === userId;
     const isProfessional = booking.professionalProfile.userId === userId;
     if (!isClient && !isProfessional) {
-      throw new ForbiddenException("Questa prenotazione non è tua.");
+      throw new ForbiddenException("Questo lavoro non è tuo.");
     }
     if (booking.status !== "CANCELED") {
-      throw new ForbiddenException("Questa prenotazione non è annullata.");
+      throw new ForbiddenException("Questo lavoro non è annullato.");
     }
     if (action === "answer") {
       const by = booking.reopenRequestedBy;
@@ -1140,10 +1140,10 @@ export class BookingsService implements OnModuleInit {
     // (precedenti a canceledBy) non si riaprono da nessun lato. Il cliente può
     // sempre inviare una richiesta nuova.
     if (isClient && booking.canceledBy !== "CLIENT") {
-      throw new ForbiddenException("Il professionista ha annullato questo intervento: non puoi riaprirlo. Puoi inviare una nuova richiesta.");
+      throw new ForbiddenException("Il professionista ha annullato questo lavoro: non puoi riaprirlo. Puoi inviare una nuova richiesta.");
     }
     if (!isClient && booking.canceledBy !== "PROFESSIONAL") {
-      throw new ForbiddenException("Il cliente ha annullato questo intervento: solo lui può riaprirlo.");
+      throw new ForbiddenException("Il cliente ha annullato questo lavoro: solo lui può riaprirlo.");
     }
     return { booking, requester: isClient ? ("CLIENT" as const) : ("PROFESSIONAL" as const) };
   }
@@ -1233,16 +1233,16 @@ export class BookingsService implements OnModuleInit {
       },
     });
     if (!booking) {
-      throw new NotFoundException("Prenotazione non trovata.");
+      throw new NotFoundException("Lavoro non trovato.");
     }
     if (booking.professionalProfile.userId !== userId) {
-      throw new ForbiddenException("Questa prenotazione non è tua.");
+      throw new ForbiddenException("Questo lavoro non è tuo.");
     }
     if (!booking.quote) {
       throw new BadRequestException("Puoi segnalare un problema solo su un lavoro nato da una richiesta.");
     }
     if (booking.status === "PENDING") {
-      throw new BadRequestException("Puoi segnalare un problema solo su un intervento confermato.");
+      throw new BadRequestException("Puoi segnalare un problema solo su un lavoro fissato.");
     }
     const guidedRequestId = booking.quote.guidedRequestId;
     const reasonLabel = PROFESSIONAL_JOB_PROBLEM_REASONS.find((r) => r.value === input.reason)?.label ?? input.reason;
@@ -1267,7 +1267,7 @@ export class BookingsService implements OnModuleInit {
       guidedRequestId,
       booking.professionalProfileId,
       "PROFESSIONAL",
-      `Il professionista ha segnalato un problema sull'intervento: ${reasonLabel.toLowerCase()}. «${description}» Scrivetevi qui in chat per chiarire; la segnalazione arriva anche al nostro team.`,
+      `Il professionista ha segnalato un problema sul lavoro: ${reasonLabel.toLowerCase()}. «${description}» Scrivetevi qui in chat per chiarire; la segnalazione arriva anche al nostro team.`,
       photoUrls,
     );
     await this.notificationsService.notify(booking.clientId, "TIMELINE_MESSAGE_FROM_PROFESSIONAL", {
@@ -1289,7 +1289,7 @@ export class BookingsService implements OnModuleInit {
       },
     });
     if (!booking || booking.clientId !== clientId) {
-      throw new ForbiddenException("Questa prenotazione non è tua.");
+      throw new ForbiddenException("Questo lavoro non è tuo.");
     }
     if (booking.issue) {
       throw new ConflictException("Hai già segnalato un problema su questo lavoro.");
@@ -1369,7 +1369,7 @@ export class BookingsService implements OnModuleInit {
         jobPayment: { select: { paymentMethod: true } },
       },
     });
-    if (!booking || booking.clientId !== clientId) throw new ForbiddenException("Questa prenotazione non è tua.");
+    if (!booking || booking.clientId !== clientId) throw new ForbiddenException("Questo lavoro non è tuo.");
     if (!booking.issue) throw new NotFoundException("Nessuna segnalazione su questo lavoro.");
     if (booking.issue.status !== "CHAT") throw new BadRequestException("La segnalazione non è più in chat.");
     const now = new Date();
@@ -1457,7 +1457,7 @@ export class BookingsService implements OnModuleInit {
       where: { id: bookingId },
       include: { professionalProfile: { select: { userId: true } }, issue: true, quote: { select: { guidedRequestId: true } }, jobPayment: true },
     });
-    if (!booking || booking.professionalProfile.userId !== professionalUserId) throw new ForbiddenException("Questa prenotazione non è tua.");
+    if (!booking || booking.professionalProfile.userId !== professionalUserId) throw new ForbiddenException("Questo lavoro non è tuo.");
     if (!booking.issue) throw new NotFoundException("Nessuna segnalazione su questo lavoro.");
     if (booking.issue.status !== "CHAT") throw new BadRequestException("La segnalazione non è più in chat: ora decide il nostro team.");
     const jp = booking.jobPayment;
@@ -1492,7 +1492,7 @@ export class BookingsService implements OnModuleInit {
       where: { id: bookingId },
       include: { professionalProfile: { select: { userId: true } }, issue: true, quote: { select: { guidedRequestId: true } }, jobPayment: { select: { id: true } } },
     });
-    if (!booking || booking.clientId !== clientId) throw new ForbiddenException("Questa prenotazione non è tua.");
+    if (!booking || booking.clientId !== clientId) throw new ForbiddenException("Questo lavoro non è tuo.");
     const issue = booking.issue;
     const amount = issue?.refundOfferEurCents ?? 0;
     if (!issue || issue.status !== "CHAT" || amount <= 0 || !booking.jobPayment) throw new BadRequestException("Non c'è nessun rimborso da accettare.");
@@ -1535,7 +1535,7 @@ export class BookingsService implements OnModuleInit {
       include: { professionalProfile: { select: { userId: true } }, issue: true, quote: { select: { guidedRequestId: true } } },
     });
     if (!booking || booking.professionalProfile.userId !== professionalUserId) {
-      throw new ForbiddenException("Questa prenotazione non è tua.");
+      throw new ForbiddenException("Questo lavoro non è tuo.");
     }
     if (!booking.issue) throw new NotFoundException("Nessuna segnalazione su questo lavoro.");
     if (booking.issue.status !== "OPEN" && booking.issue.status !== "CHAT") throw new BadRequestException("La segnalazione è già chiusa.");
@@ -1569,10 +1569,10 @@ export class BookingsService implements OnModuleInit {
       include: { professionalProfile: true },
     });
     if (!booking || booking.clientId !== clientId) {
-      throw new ForbiddenException("Questa prenotazione non è tua.");
+      throw new ForbiddenException("Questo lavoro non è tuo.");
     }
     if (booking.professionalProfile.deletedAt === null) {
-      throw new ForbiddenException("Puoi eliminare una prenotazione solo se l'account del professionista è stato eliminato.");
+      throw new ForbiddenException("Puoi eliminare un lavoro solo se l'account del professionista è stato eliminato.");
     }
 
     await this.prisma.booking.delete({ where: { id: bookingId } });

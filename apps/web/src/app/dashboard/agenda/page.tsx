@@ -507,7 +507,7 @@ function DashboardAgendaContent() {
             setOfflineSavedAt(copy.savedAt);
             return;
           }
-          const message = err instanceof Error ? err.message : "Errore nel caricamento delle prenotazioni.";
+          const message = err instanceof Error ? err.message : "Errore nel caricamento degli appuntamenti.";
           setBookingsError(message);
         });
       });
@@ -1414,7 +1414,7 @@ function DashboardAgendaContent() {
         date: new Date(b.scheduledAt),
         timeLabel: formatAgendaTimeRange(b.scheduledAt, b.scheduledEndAt),
         title: clientName,
-        subtitle: b.categoryLabel ?? "Prenotazione",
+        subtitle: b.categoryLabel ?? "Appuntamento",
         statusLabel: AGENDA_BOOKING_STATUS_LABEL[b.status],
         statusColor: BOOKING_STATUS_COLOR[b.status],
         dashed: false,
@@ -1507,7 +1507,7 @@ function DashboardAgendaContent() {
   function renderBookingYearList() {
     const year = bookingCurrentDate.getUTCFullYear();
     const items = buildAgendaListItems().filter((item) => item.date.getUTCFullYear() === year);
-    return <AgendaEventsList items={items} groupByMonth emptyLabel={`Nessuna prenotazione nel ${year}.`} />;
+    return <AgendaEventsList items={items} groupByMonth emptyLabel={`Nessun appuntamento nel ${year}.`} />;
   }
 
   // ——— Nuova agenda (docs/CHANGELOG.md §288) ———
@@ -1971,7 +1971,7 @@ function DashboardAgendaContent() {
                 {(
                   [
                     { value: "conf", label: "Appuntamenti", swatch: "ag-swatch-conf" },
-                    { value: "done", label: "Completati", swatch: "ag-swatch-done" },
+                    { value: "done", label: "Terminati", swatch: "ag-swatch-done" },
                     { value: "wait", label: "Preventivi in attesa", swatch: "ag-swatch-wait" },
                     { value: "ext", label: "Lavori esterni", swatch: "ag-swatch-ext" },
                     { value: "free", label: "Orari liberi", swatch: "ag-swatch-free" },

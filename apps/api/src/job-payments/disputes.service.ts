@@ -17,9 +17,9 @@ export class DisputesService {
       where: { id: bookingId },
       include: { professionalProfile: true, jobPayment: true },
     });
-    if (!booking) throw new NotFoundException("Prenotazione non trovata.");
+    if (!booking) throw new NotFoundException("Lavoro non trovato.");
     if (booking.clientId !== userId && booking.professionalProfile.userId !== userId) {
-      throw new ForbiddenException("Non hai accesso a questa prenotazione.");
+      throw new ForbiddenException("Non hai accesso a questo lavoro.");
     }
     if (!booking.jobPayment) {
       throw new BadRequestException("Nessun pagamento associato a questo lavoro.");

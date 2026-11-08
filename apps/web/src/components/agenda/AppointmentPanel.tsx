@@ -20,7 +20,7 @@ import { agendaPaymentLine } from "@/lib/agendaPayment";
 const STATUS_PILL: Record<ProfessionalBooking["status"], { label: string; tone: string }> = {
   PENDING: { label: "Da confermare", tone: "brass" },
   CONFIRMED: { label: "Confermato", tone: "green" },
-  COMPLETED: { label: "Completato", tone: "teal" },
+  COMPLETED: { label: "Terminato", tone: "teal" },
   CANCELED: { label: "Annullato", tone: "red" },
   NO_SHOW: { label: "Cliente assente", tone: "red" },
 };
@@ -87,7 +87,7 @@ export function AppointmentPanel({
   const online = booking.serviceMode === "ONLINE";
   const isOpen = booking.status === "PENDING" || booking.status === "CONFIRMED";
   // Anche un giorno in mezzo a un lavoro su più giorni (§310).
-  // "Lavoro completato" dal giorno del lavoro in poi (T11, docs/CHANGELOG.md §311).
+  // "Lavoro terminato" dal giorno del lavoro in poi (T11, docs/CHANGELOG.md §311).
   const startsLater = new Date(booking.scheduledAt).toISOString().slice(0, 10) > wallClockToday().toISOString().slice(0, 10);
   const isToday = jobOccurrenceOn(booking.scheduledAt, booking.scheduledEndAt, wallClockToday().toISOString().slice(0, 10)) !== null;
   const pill = STATUS_PILL[booking.status];
@@ -254,7 +254,7 @@ export function AppointmentPanel({
               </button>
             ) : startsLater ? null : (
               <button type="button" className="ag-btn primary" disabled={isBusy} onClick={onComplete}>
-                Lavoro completato
+                Lavoro terminato
               </button>
             )}
             <button type="button" className="ag-btn danger" disabled={isBusy} onClick={onCancel}>

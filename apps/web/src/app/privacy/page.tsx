@@ -31,7 +31,7 @@ export default function PrivacyPage() {
         },
         {
           heading: "2. Dati che raccogliamo",
-          body: "Raccogliamo i dati che ci fornisci direttamente: nome, indirizzo email, numero di telefono (se lo inserisci), città e indirizzo dell'intervento, descrizione del lavoro richiesto, eventuali foto o video caricati, i messaggi della chat, e — per i professionisti — i dati del profilo pubblico (nome attività, categoria, zona, servizi e prezzi) e i dati fiscali (codice fiscale, partita IVA, indirizzo, IBAN per la DAC7). Nella descrizione del lavoro e nelle foto scrivi e mostra solo quello che serve: in particolare, per le richieste di Babysitter, non caricare foto di bambini e non scrivere dati sulla loro salute. Raccogliamo inoltre dati tecnici di navigazione (log, indirizzo IP, tipo di browser) necessari al funzionamento e alla sicurezza del servizio.",
+          body: "Raccogliamo i dati che ci fornisci direttamente: nome, indirizzo email, numero di telefono (se lo inserisci), città e indirizzo del lavoro, descrizione del lavoro richiesto, eventuali foto o video caricati, i messaggi della chat, e — per i professionisti — i dati del profilo pubblico (nome attività, categoria, zona, servizi e prezzi) e i dati fiscali (codice fiscale, partita IVA, indirizzo, IBAN per la DAC7). Nella descrizione del lavoro e nelle foto scrivi e mostra solo quello che serve: in particolare, per le richieste di Babysitter, non caricare foto di bambini e non scrivere dati sulla loro salute. Raccogliamo inoltre dati tecnici di navigazione (log, indirizzo IP, tipo di browser) necessari al funzionamento e alla sicurezza del servizio.",
         },
         {
           heading: "3. Perché trattiamo i tuoi dati (finalità e base giuridica)",

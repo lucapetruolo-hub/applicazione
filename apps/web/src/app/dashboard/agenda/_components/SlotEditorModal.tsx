@@ -456,7 +456,7 @@ export function SlotEditorModal({
                   >
                     <Icon name="bell-ring" size={14} color={brand.urgenza} />
                     <Text color={brand.urgenza} fontSize="3" fontWeight="600" flex={1}>
-                      Questa fascia ha una prenotazione futura. Eliminarla comunque?
+                      Questa fascia ha un appuntamento futuro. Eliminarla comunque?
                     </Text>
                   </XStack>
                 ) : (

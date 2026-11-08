@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ConversationEvent as ConversationEventRow, PrismaClient } from "@professionisti/database";
-import { chatContactBlockedMessage, chatContactKind, type ChatThreadSummary, type ConversationEvent, type RealtimeEvent } from "@professionisti/shared";
+import { chatContactBlockedMessage, chatContactKind, personalizeEventMessage, type ChatThreadSummary, type ConversationEvent, type RealtimeEvent } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { requestThumbnailUrl } from "./request-thumbnail";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -201,7 +201,12 @@ export class TimelineService {
         requestDescription: event.guidedRequest.description,
         requestPhotoUrl:
           client.deletedAt || event.guidedRequest.deletedByClientAt ? null : requestThumbnailUrl(event.guidedRequest.photoUrls),
-        lastMessage: event.hiddenAt ? "Messaggio nascosto" : event.message || null,
+        // I messaggi automatici in seconda persona per chi li ha fatti, come
+        // dentro la chat (collaudo dell'8/11, E6-06: il cliente leggeva "Il
+        // cliente ha inviato una richiesta… direttamente a te").
+        lastMessage: event.hiddenAt
+          ? "Messaggio nascosto"
+          : (event.automatic && event.message ? personalizeEventMessage(event.message, event.actor, viewerRole) : event.message) || null,
         lastMessageHasMedia: !event.hiddenAt && event.mediaUrls.length > 0,
         lastMessageAt: event.createdAt.toISOString(),
         // Un messaggio automatico non è "tuo" anche se porta il tuo ruolo

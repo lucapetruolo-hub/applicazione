@@ -935,7 +935,7 @@ export default function AccountPage() {
                 </YStack>
               ) : null}
               <Text color={brand.grafite} fontSize={16}>
-                Questa azione è definitiva: verranno eliminati il tuo profilo, le richieste, le prenotazioni e le
+                Questa azione è definitiva: verranno eliminati il tuo profilo, le richieste, i lavori e le
                 recensioni collegate al tuo account. Scrivi <Text fontWeight="800">ELIMINA</Text> per confermare.
               </Text>
               <ChurnReasonPicker

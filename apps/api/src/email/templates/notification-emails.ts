@@ -333,7 +333,7 @@ const BUILDERS: Record<string, Builder> = {
         `Ottima notizia: il cliente ha accettato il tuo preventivo per **${job(ctx)}**.`,
         clientName || clientPhone || clientAddress
           ? "Qui sotto trovi i dati del cliente e dell'appuntamento, già nella tua agenda."
-          : "Nella richiesta ora trovi i suoi contatti e l'indirizzo dell'intervento. L'appuntamento è già nella tua agenda.",
+          : "Nella richiesta ora trovi i suoi contatti e l'indirizzo del lavoro. L'appuntamento è già nella tua agenda.",
         ...(payload.invoiceRequested === true
           ? [`**Il cliente ti chiede ${payload.receipt === true ? "la ricevuta" : "la fattura"}.** I dati sono qui sotto e nella scheda del lavoro.`]
           : []),
@@ -620,10 +620,10 @@ const BUILDERS: Record<string, Builder> = {
     return {
       kind: "notification",
       tone: "urgent",
-      subject: `${pro(ctx)} ha annullato l'intervento`,
+      subject: `${pro(ctx)} ha annullato il lavoro`,
       greeting: ctx.name,
-      title: "Intervento annullato",
-      paragraphs: [`Ci dispiace: **${pro(ctx)}** ha annullato l'intervento per **${job(ctx)}**.`],
+      title: "Lavoro annullato",
+      paragraphs: [`Ci dispiace: **${pro(ctx)}** ha annullato il lavoro per **${job(ctx)}**.`],
       details: jobDetails(ctx, note ? [{ label: "Motivo", value: note }] : []),
       cta: { label: "Chiedi un nuovo preventivo", url: `${frontendUrl()}/preventivo` },
       // Account chiuso (docs/CHANGELOG.md §348): non c'è più nessuno a cui scrivere.
@@ -638,11 +638,11 @@ const BUILDERS: Record<string, Builder> = {
   BOOKING_CANCELED_BY_CLIENT: (payload, ctx) => ({
     kind: "notification",
     tone: "urgent",
-    subject: "Il cliente ha annullato l'intervento",
+    subject: "Il cliente ha annullato il lavoro",
     greeting: ctx.name,
-    title: "Intervento annullato",
+    title: "Lavoro annullato",
     paragraphs: [
-      `Il cliente ha annullato l'intervento per **${job(ctx)}**: l'appuntamento non è più nella tua agenda.`,
+      `Il cliente ha annullato il lavoro per **${job(ctx)}**: l'appuntamento non è più nella tua agenda.`,
       // Dentro il preavviso scelto dal professionista (docs/CHANGELOG.md §347).
       ...(typeof payload.lateNotice === "string" ? [`Ha annullato con meno di ${payload.lateNotice} di preavviso.`] : []),
       // Acconto trattenuto come scritto nel preventivo (docs/CHANGELOG.md §348).
@@ -681,10 +681,10 @@ const BUILDERS: Record<string, Builder> = {
   }),
   BOOKING_REOPENED_BY_PROFESSIONAL: (_payload, ctx) => ({
     kind: "notification",
-    subject: `${pro(ctx)} ha riaperto la prenotazione`,
+    subject: `${pro(ctx)} ha rimesso in agenda il lavoro`,
     greeting: ctx.name,
-    title: "Prenotazione riaperta",
-    paragraphs: [`**${pro(ctx)}** ha riaperto la prenotazione annullata per **${job(ctx)}**: l'appuntamento torna valido.`],
+    title: "Lavoro di nuovo fissato",
+    paragraphs: [`**${pro(ctx)}** ha rimesso in agenda il lavoro annullato per **${job(ctx)}**: l'appuntamento torna valido.`],
     details: jobDetails(ctx),
     cta: clientRequests(),
   }),
@@ -717,10 +717,10 @@ const BUILDERS: Record<string, Builder> = {
   }),
   BOOKING_REOPENED_BY_CLIENT: (_payload, ctx) => ({
     kind: "notification",
-    subject: "Il cliente ha riaperto una prenotazione",
+    subject: "Il cliente ha rimesso in agenda un lavoro",
     greeting: ctx.name,
-    title: "Prenotazione riaperta",
-    paragraphs: [`Il cliente ha riaperto la prenotazione annullata per **${job(ctx)}**: l'appuntamento torna nella tua agenda.`],
+    title: "Lavoro di nuovo fissato",
+    paragraphs: [`Il cliente ha rimesso in agenda il lavoro annullato per **${job(ctx)}**: l'appuntamento torna nella tua agenda.`],
     details: proJobDetails(ctx),
     cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
   }),
@@ -1900,7 +1900,7 @@ const BUILDERS: Record<string, Builder> = {
       greeting: ctx.name,
       title: "Domani torni nella ricerca",
       paragraphs: [
-        "Da domani ricompari nella ricerca e ricevi di nuovo richieste e prenotazioni.",
+        "Da domani ricompari nella ricerca e ricevi di nuovo richieste e appuntamenti.",
         "Controlla che gli orari in agenda siano giusti. Se ti serve qualche giorno in più, cambia la data della pausa.",
       ],
       cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda?tab=orari` },

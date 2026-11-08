@@ -364,7 +364,7 @@ export function ProfessionalDetailContent({
               risultati (richiesta di Luca,
               docs/changelog/2026-11-04-prezzi-e-foto-profilo.md; prima il
               nome andava sotto la foto, docs/CHANGELOG.md §252). */}
-          <XStack gap="3" alignItems="flex-start" flex={1} minWidth={0}>
+          <XStack className="profile-identity" gap="3" alignItems="flex-start" flex={1} minWidth={0}>
             <YStack
               cursor={professional.imageUrl ? "pointer" : undefined}
               onPress={() => {
