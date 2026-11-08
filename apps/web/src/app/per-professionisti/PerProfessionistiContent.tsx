@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { getImageProps } from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Check } from "lucide-react";
@@ -224,21 +224,38 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
  * valuta l'abbonamento vede subito lo strumento che usa ogni giorno. Nomi e
  * appuntamenti sono d'esempio.
  */
+const AGENDA_ALT = "L'agenda del professionista: gli appuntamenti del giorno e le ore libere";
+const { props: AGENDA_DESKTOP } = getImageProps({
+  src: "/page-photos/per-professionisti-agenda.webp",
+  alt: AGENDA_ALT,
+  width: 1600,
+  height: 1168,
+  priority: true,
+  sizes: "(max-width: 1200px) 100vw, 1100px",
+});
+const {
+  props: { srcSet: agendaPhoneSrcSet },
+} = getImageProps({
+  src: "/page-photos/per-professionisti-agenda-telefono.webp",
+  alt: AGENDA_ALT,
+  width: 780,
+  height: 975,
+  sizes: "100vw",
+});
+const AGENDA_PHONE = { srcSet: agendaPhoneSrcSet };
+
 function ProPhoto() {
   return (
     <Band>
       <YStack padding="3 gtSm:4">
         <div className="pro-product" style={{ borderRadius: radiusDoc, backgroundColor: brand.cianografia }}>
-          <div className="pro-product-shot">
-            <Image
-              src="/page-photos/per-professionisti-agenda.webp"
-              alt="L'agenda del professionista: la settimana con gli appuntamenti e le ore libere"
-              fill
-              priority
-              sizes="(max-width: 1200px) 100vw, 1100px"
-              style={{ objectFit: "cover", objectPosition: "0 0" }}
-            />
-          </div>
+          {/* Due schermate: la settimana sul computer, la giornata sul telefono
+              (docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md). */}
+          <picture className="pro-product-shot">
+            <source media="(max-width: 660px)" srcSet={AGENDA_PHONE.srcSet} />
+            {/* eslint-disable-next-line jsx-a11y/alt-text -- props (alt compreso) da getImageProps */}
+            <img {...AGENDA_DESKTOP} />
+          </picture>
         </div>
       </YStack>
     </Band>

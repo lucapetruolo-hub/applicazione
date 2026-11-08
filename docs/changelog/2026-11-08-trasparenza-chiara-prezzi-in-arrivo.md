@@ -46,6 +46,20 @@ arriverà a breve". L'08/11 ha detto "Fai le prime due migliorie".
 - Le frasi sull'acconto e "anti no-show" le corregge il thread "Provare il
   sito con persone simulate".
 
+## Terzo giro (08/11/2026): "Effettua le 2 migliorie"
+
+- /per-professionisti: sul telefono la schermata dell'agenda è quella della
+  giornata pensata per il telefono (`per-professionisti-agenda-telefono.webp`,
+  `<picture>` con `getImageProps`), non più la settimana del computer
+  rimpicciolita.
+- Ragione sociale e P.IVA in fondo a ogni pagina: già nel codice
+  (`SiteFooter.tsx`, `companyDataReady()`), compaiono da sole appena si
+  compilano i dati in `COMPANY` (`packages/shared/src/brand.ts`). Nessuna
+  modifica.
+- "Lavora con noi come:" (richiesta di Luca: "rendili più pillole con
+  trasparenza"): i mestieri sono pillole semitrasparenti con bordo sottile,
+  verdi al passaggio del mouse, al posto dei link sottolineati.
+
 **Verifica**: typecheck e lint di `apps/web`; build di produzione in locale
 e foto di home e /per-professionisti su computer e telefono (nessuno
 scorrimento orizzontale a 390 px); /contatti?motivo=aiuto-profilo apre il
