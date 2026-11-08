@@ -1234,7 +1234,7 @@ export default function DashboardProfiloPage() {
           ) : null}
 
           <YStack gap="2">
-            <FieldLabel>Bio</FieldLabel>
+            <FieldLabel>Presentazione</FieldLabel>
             <YStack gap="2" padding="3" backgroundColor={brand.gesso} borderRadius="4">
               {/* Chiusi di serie (docs/CHANGELOG.md §349): sei righe sempre
                   aperte prima del campo. */}
@@ -1416,8 +1416,7 @@ export default function DashboardProfiloPage() {
         <Surface gap="3" id="profilo-prestazioni" className="profile-section">
           <SectionTitle>Prestazioni offerte</SectionTitle>
           <Text fontSize={13} color={brand.grafite70}>
-            Aggiungi i servizi che offri, con un range di prezzo se vuoi indicarlo (es. da 50€ a 100€, utile quando il
-            costo varia da caso a caso) e se è a lavoro, all&apos;ora, al giorno o al m²: comparirà nella tua card nei risultati di ricerca.
+            Scrivi i lavori che fai e, se vuoi, il prezzo. Per esempio: da 50 a 100 € a lavoro. I clienti lo vedono nella ricerca.
           </Text>
 
           {/* Mentre scrive, il professionista vede i nomi già usati: scegliendone
@@ -1809,12 +1808,22 @@ export default function DashboardProfiloPage() {
           </Text>
         ) : null}
 
-        <p className="profile-declaration-note">
-          Cliccando &quot;Salva profilo&quot; accetti questa dichiarazione: &laquo;{PROFILE_DECLARATION_TEXT}&raquo;{" "}
-          <Link href="/termini" target="_blank">
-            Leggi i Termini
-          </Link>
-        </p>
+        {/* Una frase corta e il testo intero a un tocco: le 70 parole in un blocco
+            non le leggeva nessuno (prova con persone simulate,
+            docs/changelog/2026-11-08-prova-persone-simulate.md). Si accetta
+            sempre lo stesso testo, PROFILE_DECLARATION_TEXT. */}
+        <div className="profile-declaration-note">
+          <p>Con &quot;Salva profilo&quot; confermi che i dati sono veri e che puoi fare questi lavori.</p>
+          <details>
+            <summary>Leggi tutto</summary>
+            <p>
+              &laquo;{PROFILE_DECLARATION_TEXT}&raquo;{" "}
+              <Link href="/termini" target="_blank">
+                Leggi i Termini
+              </Link>
+            </p>
+          </details>
+        </div>
 
         {/* Con modifiche non salvate "Salva profilo" resta in fondo allo
             schermo (SaveBar, docs/CHANGELOG.md §349): la pagina è lunga 2.600 px. */}

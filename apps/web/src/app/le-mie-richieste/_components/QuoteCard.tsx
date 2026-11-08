@@ -127,7 +127,9 @@ export function QuoteCard({
   const [needsEmail, setNeedsEmail] = useState(false);
   // Scelta del metodo di pagamento prima di accettare (§168).
   const [choosingPayment, setChoosingPayment] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<JobPaymentChoice>("DIRECT");
+  // Con più modi nessuno è scelto di serie: decide il cliente (regole sulle
+  // scelte guidate, DSA art. 25; docs/changelog/2026-11-08-prova-persone-simulate.md).
+  const [paymentMethod, setPaymentMethod] = useState<JobPaymentChoice | null>(null);
   // Senza Stripe attivo si offre solo il pagamento diretto (docs/CHANGELOG.md §170).
   const onlinePayments = useOnlinePayments();
   const [confirmingReject, setConfirmingReject] = useState(false);
@@ -164,8 +166,10 @@ export function QuoteCard({
   const onlyPayment = selectablePayments.length === 1 ? selectablePayments[0] : undefined;
   const hasPrice = priceTotals.totalMinEurCents > 0 || priceTotals.totalMaxEurCents > 0;
   // Il pulsante dice la cifra che si paga ora (05/11/2026).
-  const acceptSplit = paymentSplit(paymentMethod, priceTotals, quote.depositPercent);
-  const acceptLabel = acceptSplit
+  const acceptSplit = paymentMethod ? paymentSplit(paymentMethod, priceTotals, quote.depositPercent) : null;
+  const acceptLabel = !paymentMethod
+    ? "Scegli come pagare"
+    : acceptSplit
     ? `Accetta e paga ${formatEurCents(acceptSplit.nowEurCents)}`
     : paymentChoiceIsOnline(paymentMethod)
       ? "Accetta e paga l'acconto"
@@ -183,8 +187,9 @@ export function QuoteCard({
   }
 
   /** `emailJustVerified`: appena confermata, l'utente in memoria può essere ancora quello di prima (il server controlla comunque). */
-  async function handleAccept(method: JobPaymentChoice = paymentMethod, emailJustVerified = false) {
+  async function handleAccept(method: JobPaymentChoice | null = paymentMethod, emailJustVerified = false) {
     setError(null);
+    if (!method) return;
     if (!emailJustVerified && user?.emailVerificationRequired && !user.emailVerified) {
       setNeedsEmail(true);
       return;
@@ -280,7 +285,8 @@ export function QuoteCard({
             ) : null}
             {quote.professionalKind ? <ProfessionalKindBadge kind={quote.professionalKind} /> : null}
             {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§228). */}
-            {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Nuovo</Badge> : null}
+            {/* "Da leggere", non "Nuovo": accanto a "Partita IVA" sembrava un professionista nuovo (punto 13, docs/changelog/2026-11-08-prova-persone-simulate.md). */}
+            {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Da leggere</Badge> : null}
           </XStack>
           {/* Stelle e numero di recensioni per scegliere tra più preventivi (richiesta dell'utente, §342). */}
           <ProfessionalReviewsLink professional={{ id: quote.professionalProfileId, businessName: quote.businessName, city: quote.city }} reviews={quote.reviews} />
@@ -464,8 +470,8 @@ export function QuoteCard({
                   // Sempre il riepilogo prima di accettare, anche con un solo
                   // modo di pagamento (collaudo A-07): un tocco per sbaglio da
                   // telefono fissava il lavoro e passava i contatti.
-                  // Preselezionato il primo modo offerto dal professionista (online per primo, se c'è).
-                  setPaymentMethod(onlyPayment ?? selectablePayments[0] ?? "DIRECT");
+                  // Con un solo modo è già scelto; con più modi sceglie il cliente.
+                  setPaymentMethod(onlyPayment ?? null);
                   setChoosingPayment(true);
                 }}
               >
@@ -495,6 +501,7 @@ export function QuoteCard({
                   depositPercent={quote.depositPercent}
                 />
               ) : null}
+              {paymentMethod ? (
               <QuoteAcceptSummary
                 quote={quote}
                 dateText={formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
@@ -508,6 +515,7 @@ export function QuoteCard({
                   {invoiceWanted ? <InvoiceRequestFields draft={invoiceDraft} onChange={setInvoiceDraft} errors={invoiceErrors} receipt={quote.professionalKind === "PRIVATE"} /> : null}
                 </YStack>
               </QuoteAcceptSummary>
+              ) : null}
               {/* Detrazioni per i lavori in casa (domanda 28 al commercialista): di solito serve il bonifico parlante (§378). */}
               {categoryMayHaveTaxBonus(categorySlug) && selectablePayments.some(paymentChoiceIsOnline) ? (
                 <Text fontSize={13} color={brand.grafite70}>
@@ -539,7 +547,7 @@ export function QuoteCard({
                   tone="primary"
                   arrow
                   onPress={() => void handleAccept()}
-                  disabled={isAccepting || !selectablePayments.includes(paymentMethod)}
+                  disabled={isAccepting || !paymentMethod || !selectablePayments.includes(paymentMethod)}
                 >
                   {/* Il pulsante dice che nasce l'obbligo di pagare (collaudo A-07, Codice del consumo art. 51 c. 2). */}
                   {isAccepting ? "Accettazione..." : acceptLabel}

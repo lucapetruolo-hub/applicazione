@@ -5,7 +5,8 @@ import { ClientEmailFirstAuth } from "@/components/ClientEmailFirstAuth";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 const HEADERS = {
-  email: { eyebrow: "Un ultimo passo", title: "Continua con l'email" },
+  // "Quasi fatto", non "Un ultimo passo" accanto a "Passo 1 di 2" (docs/changelog/2026-11-08-prova-persone-simulate.md).
+  email: { eyebrow: "Quasi fatto", title: "La tua email" },
   new: { eyebrow: "Email nuova", title: "Crea il tuo account gratuito" },
   password: { eyebrow: "Hai già un account", title: "Inserisci la password" },
   google: { eyebrow: "Hai già un account", title: "Accedi con Google" },

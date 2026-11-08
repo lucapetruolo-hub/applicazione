@@ -38,7 +38,9 @@ export const BADGE_INFO: Record<BadgeInfoKey, { title: string; text: string; not
     text: "Pacchetto di visibilità a pagamento.",
   },
   newProfile: {
-    title: "Nuovo profilo",
+    // Prima "Nuovo profilo": accanto a "3 lavori terminati" non tornava (punto 13,
+    // docs/changelog/2026-11-08-prova-persone-simulate.md).
+    title: "Iscritto da poco",
     text: "Iscritto da meno di 30 giorni.",
   },
   liabilityInsurance: {
@@ -56,7 +58,9 @@ export const BADGE_INFO: Record<BadgeInfoKey, { title: string; text: string; not
   },
   kindVat: {
     title: "Partita IVA",
-    text: "Lavora in proprio con partita IVA.",
+    // Detto con quello che conta per il cliente (punto 12,
+    // docs/changelog/2026-11-08-prova-persone-simulate.md).
+    text: "Può farti la fattura: lavora in proprio con partita IVA.",
   },
   kindBusiness: {
     title: "Azienda",

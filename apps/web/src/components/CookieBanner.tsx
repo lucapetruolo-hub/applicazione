@@ -140,8 +140,9 @@ export function CookieBanner() {
           Solo cookie tecnici e, se accetti, la mappa di Google. Niente pubblicità. Puoi cambiare idea
           in fondo alla pagina.
         </span>{" "}
+        {/* "Scopri di più" al posto di "Cookie Policy" (prova con persone simulate, docs/changelog/2026-11-08-prova-persone-simulate.md). */}
         <Link href="/cookie" style={{ color: "#0e7a4c", fontWeight: 600 }}>
-          Cookie Policy
+          Scopri di più
         </Link>
         .
       </p>

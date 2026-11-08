@@ -68,7 +68,7 @@ export default function PrivacyPage() {
         },
         {
           heading: "6. I tuoi diritti",
-          body: `Hai diritto di accedere ai tuoi dati, rettificarli, cancellarli, limitarne o opporti al trattamento, e alla portabilità. Puoi esercitarli scrivendo a ${COMPANY.privacyEmail}; scarichi una copia dei tuoi dati anche da Impostazioni con "Esporta i tuoi dati". Ti rispondiamo entro un mese. Hai inoltre diritto di reclamo al Garante per la protezione dei dati personali (www.garanteprivacy.it).`,
+          body: `Hai diritto di accedere ai tuoi dati, rettificarli, cancellarli, limitarne o opporti al trattamento, e alla portabilità. Puoi esercitarli scrivendo a ${COMPANY.privacyEmail}; scarichi una copia dei tuoi dati anche da Impostazioni con "Scarica i tuoi dati". Ti rispondiamo entro un mese. Hai inoltre diritto di reclamo al Garante per la protezione dei dati personali (www.garanteprivacy.it).`,
         },
         {
           heading: "7. Trasferimenti extra-UE",

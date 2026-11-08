@@ -378,7 +378,12 @@ export function ProfessionalCard({
         opacity={enabled ? 1 : 0.3}
         className={enabled ? "hover-ring" : undefined}
         cursor={enabled ? "pointer" : undefined}
-        role={enabled ? "button" : undefined}
+        // Sempre un pulsante, spento quando non si può andare oltre: un riquadro
+        // con un nome e senza ruolo non è permesso (axe, punto 21,
+        // docs/changelog/2026-11-08-prova-persone-simulate.md).
+        role="button"
+        aria-disabled={!enabled}
+        tabIndex={enabled ? undefined : -1}
         aria-label={direction === "back" ? "Giorni precedenti" : "Giorni successivi"}
         onPress={
           enabled
@@ -525,7 +530,7 @@ export function ProfessionalCard({
                   <XStack alignItems="center" gap={4} paddingHorizontal="2" paddingVertical={2} borderRadius="10" backgroundColor={brand.cianografiaVelo}>
                     <Icon name="sprout" size={13} color={brand.cianografiaScuro} strokeWidth={2} />
                     <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
-                      Nuovo profilo
+                      Iscritto da poco
                     </Text>
                   </XStack>
                 </BadgeInfo>
@@ -675,7 +680,8 @@ export function ProfessionalCard({
                           paddingVertical={5}
                           borderWidth={0}
                           borderRadius="10"
-                          backgroundColor={active ? brand.cianografia : "transparent"}
+                          // Verde pieno col testo bianco, come gli altri pulsanti: sul verde chiaro il contrasto era 3,6 (axe, punto 21).
+                          backgroundColor={active ? brand.cianografiaPieno : "transparent"}
                           cursor="pointer"
                           role="button"
                           aria-pressed={active}
@@ -777,13 +783,14 @@ export function ProfessionalCard({
                             <XStack className="hover-ring-target" paddingHorizontal="6px xs:2px xxs:3px" paddingVertical={4} borderRadius="10" backgroundColor={brand.cianografiaVelo} maxWidth="100%">
                               <Text
                                 fontVariant={["tabular-nums"]}
-                                fontSize="12px xs:10.5px xxs:11px"
-                                letterSpacing="xs:-0.3px xxs:-0.2px"
+                                // 14px (prima 12, 10,5 sul telefono): se la fascia non sta su una riga va a capo
+                                // dopo il trattino (punto 22, docs/changelog/2026-11-08-prova-persone-simulate.md).
+                                fontSize={14}
                                 fontWeight="700"
                                 color={brand.cianografiaScuro}
                                 textAlign="center"
                               >
-                                {range}
+                                {range.replace("–", "–\u200B")}
                               </Text>
                             </XStack>
                           </XStack>

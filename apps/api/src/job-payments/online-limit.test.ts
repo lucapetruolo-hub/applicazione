@@ -96,7 +96,7 @@ describe("testi del tetto", () => {
   it("riga del modulo con i lavori fatti o il giorno in cui il limite sparisce", () => {
     expect(onlineLimitHint({ limitEurCents: null, cleanJobs: 0, firstCleanJobAt: null })).toBeNull();
     expect(onlineLimitHint({ limitEurCents: 200_000, cleanJobs: 3, firstCleanJobAt: daysAgo(30).toISOString() })).toBe(
-      "Online puoi chiedere fino a 2.000\u00A0€ per lavoro. Il limite si toglie dopo 10 lavori pagati online senza contestazioni e 4 mesi dal primo: ne hai 3.",
+      "Online puoi chiedere fino a 2.000\u00A0€ per lavoro. Il limite si toglie dopo 10 lavori pagati online senza contestazioni e 4 mesi dal primo. Finora: 3 lavori pagati online.",
     );
     // 10 lavori, il primo 100 giorni fa: mancano 20 giorni (17 novembre).
     expect(onlineLimitHint({ limitEurCents: 200_000, cleanJobs: 10, firstCleanJobAt: daysAgo(100).toISOString() })).toMatch(

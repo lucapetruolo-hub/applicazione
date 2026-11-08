@@ -337,7 +337,7 @@ export function BookingSection({
             {priceText && booking.status !== "COMPLETED" ? (
               <XStack justifyContent="space-between" alignItems="baseline" gap="2" flexWrap="wrap">
                 <Text fontSize={16} color={brand.grafite70}>
-                  {totals.totalMinEurCents === totals.totalMaxEurCents ? "Totale" : "Totale stimato"}
+                  Prezzo
                 </Text>
                 <Text fontSize={18} fontWeight="800" color={brand.grafite}>
                   {priceText}

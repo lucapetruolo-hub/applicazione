@@ -251,7 +251,8 @@ function ProPhoto() {
 
 const PAYMENT_STEPS: { title: string; text: string }[] = [
   { title: "Scegli tu quanto in anticipo", text: "Dall'1 al 100% del preventivo." },
-  { title: "Il lavoro si conferma solo a pagamento", text: "Il cliente paga con carta quando accetta il preventivo." },
+  // "Con l'acconto online": senza, con il pagamento diretto, il lavoro si fissa all'accettazione (docs/changelog/2026-11-08-prova-persone-simulate.md).
+  { title: "Con l'acconto, il lavoro si fissa quando paga", text: "Il cliente paga con carta quando accetta il preventivo." },
   { title: "Il bonifico parte alla conferma", text: "Quando il cliente conferma il lavoro, o 7 giorni dopo la fine." },
 ];
 
@@ -284,7 +285,7 @@ function ProOnlinePayment() {
             Il cliente paga l&apos;acconto prima. Tu lavori tranquillo.
           </Text>
           <Text color={brand.grafite70} fontSize="5" lineHeight="26px">
-            Il lavoro è confermato solo quando il cliente ha pagato.
+            Se chiedi l&apos;acconto online, il lavoro è fissato solo dopo che il cliente ha pagato.
           </Text>
           <Text color={brand.grafite70} fontSize={15} lineHeight="22px">
             {ONLINE_APP_FEE_PERCENT}% + IVA tutto compreso, solo sui pagamenti online. Il pagamento diretto resta gratis.{" "}
