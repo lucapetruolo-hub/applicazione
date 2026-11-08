@@ -2,6 +2,8 @@ import { Body, Controller, Delete, Get, Header, HttpCode, Param, Patch, Post, Qu
 import {
   adminRoleUpdateSchema,
   contentReportDecisionNoteSchema,
+  adminAccountMeasureSchema,
+  type AdminAccountMeasureInput,
   type AdminRoleUpdateInput,
   resolveContentReportSchema,
   siteNoteSchema,
@@ -231,8 +233,8 @@ export class AdminController {
 
   @RequireAdminScope("MODERATION")
   @Post("users/:id/suspend")
-  suspendUser(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(contentReportDecisionNoteSchema)) body: ContentReportDecisionNoteInput) {
-    return this.adminService.suspendUser(req.user.userId, id, body.note);
+  suspendUser(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(adminAccountMeasureSchema)) body: AdminAccountMeasureInput) {
+    return this.adminService.suspendUser(req.user.userId, id, body);
   }
 
   @RequireAdminScope("MODERATION")

@@ -43,6 +43,8 @@ import { JwtAuthGuard, type AuthenticatedRequest } from "./jwt-auth.guard";
 import { verifyEmailPerMinute } from "./link-rate-limit";
 import { isEmailVerificationRequired } from "./verified-email.guard";
 import { assertTurnstile } from "./turnstile";
+import { pdfResponse, renderDocumentPdf } from "../accounting/document-pdf";
+import { dataExportPdfModel } from "./data-export-pdf";
 import type { LoginDeviceInfo } from "./login-device";
 
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
@@ -370,5 +372,15 @@ export class AuthController {
   @Get("me/export")
   async exportMe(@Req() req: AuthenticatedRequest) {
     return this.authService.exportMyData(req.user.userId);
+  }
+
+  /** Gli stessi dati in un PDF leggibile (GDPR art. 15 c. 3, controllo pre-lancio 08/11, E4-09). */
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(JwtAuthGuard)
+  @Get("me/export/pdf")
+  async exportMePdf(@Req() req: AuthenticatedRequest) {
+    const data = await this.authService.exportMyData(req.user.userId);
+    const day = new Date().toISOString().slice(0, 10);
+    return pdfResponse(await renderDocumentPdf(dataExportPdfModel(data as Record<string, unknown>)), `i-miei-dati-${day}.pdf`);
   }
 }

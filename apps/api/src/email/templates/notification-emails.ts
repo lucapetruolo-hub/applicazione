@@ -19,6 +19,7 @@ import {
   formatItalianUntil,
   moderationActionOwnerText,
   moderationGround,
+  ACCOUNT_CLOSURE_NOTICE_DAYS,
   quoteChangeWhat,
   scheduleChangeAlternative,
   scheduleChangeObject,
@@ -31,7 +32,7 @@ import {
   formatTermsDate,
 } from "@professionisti/shared";
 import { EMAIL_BRAND, frontendUrl } from "../email-brand";
-import type { EmailContent } from "../email-layout";
+import type { EmailContent, EmailDetail } from "../email-layout";
 import { requestPhotos } from "./job-emails";
 import { descriptionDetail, formatAppointment, formatAppointmentSpan, formatCard, formatDay, formatDeadline, formatEur } from "../email-format";
 
@@ -99,7 +100,28 @@ function job(ctx: NotificationEmailContext): string {
   return ctx.category ? `${ctx.category}${ctx.city ? ` a ${ctx.city}` : ""}` : "il tuo lavoro";
 }
 
-function jobDetails(ctx: NotificationEmailContext, extra: { label: string; value: string }[] = []): { label: string; value: string }[] {
+/** Fatti e regola violata di una misura sull'account (E4-03). */
+function accountMeasureReasons(payload: Record<string, unknown>, note: string | null): string[] {
+  const ground = moderationGround(str(payload.ground));
+  return [
+    ...(note ? [`**Cosa è successo:** ${note}`] : []),
+    ...(ground ? [`**${ground.kind === "law" ? "Legge violata" : "Regola violata"}:** ${ground.label}`] : []),
+  ];
+}
+
+function accountMeasureAfter(): string[] {
+  return [
+    "Se ritieni che sia un errore, rispondi a questa email o scrivici dal modulo Contatti: una persona del nostro team rivede la decisione e ti risponde per email.",
+    "Puoi anche rivolgerti a un organismo di risoluzione extragiudiziale delle controversie o all'autorità giudiziaria.",
+  ];
+}
+
+/** "8 dicembre 2026". */
+function formatLongDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
+}
+
+function jobDetails(ctx: NotificationEmailContext, extra: EmailDetail[] = []): EmailDetail[] {
   return [
     ...(ctx.category ? [{ label: "Lavoro", value: ctx.city ? `${ctx.category}, ${ctx.city}` : ctx.category }] : []),
     ...(ctx.businessName ? [{ label: "Professionista", value: ctx.businessName }] : []),
@@ -1156,7 +1178,7 @@ const BUILDERS: Record<string, Builder> = {
           : [
               fee
                 ? `Stripe trattiene anche ${fee} di commissione per la contestazione: non torna, nemmeno se la banca ti dà ragione.`
-                : "Stripe trattiene anche una commissione per la contestazione (di solito 20 €): non torna, nemmeno se la banca ti dà ragione.",
+                : "Stripe trattiene anche la sua commissione per la contestazione, con l'importo del suo listino: non torna, nemmeno se la banca ti dà ragione.",
             ]),
       ],
       cta: proRequests("Apri il lavoro"),
@@ -1654,6 +1676,9 @@ const BUILDERS: Record<string, Builder> = {
       ],
     };
   },
+  // Sospensione e chiusura dalla scheda utente in Admin: fatti, regola o legge
+  // violata e come contestare (controllo pre-lancio 08/11, E4-03; Reg. UE
+  // 2019/1150 art. 4, DSA art. 17 c. 3; Termini punto 10).
   ACCOUNT_SUSPENDED: (payload, ctx) => {
     const note = str(payload.note);
     return {
@@ -1663,15 +1688,47 @@ const BUILDERS: Record<string, Builder> = {
       greeting: ctx.name,
       title: "Account sospeso",
       paragraphs: [
-        "Il tuo account è stato sospeso: non puoi accedere finché la decisione non viene annullata.",
-        ...(note ? [`**Motivazione:** ${note}`] : []),
+        "Il tuo account è stato sospeso: non puoi accedere e, se sei un professionista, il tuo profilo non compare nella ricerca finché la decisione non viene rivista.",
+        ...accountMeasureReasons(payload, note),
         "La decisione è stata presa da una persona del nostro team, non da un sistema automatico.",
       ],
-      cta: { label: "Scrivici dal modulo Contatti", url: `${frontendUrl()}/contatti` },
-      after: [
-        "Se ritieni che sia un errore, rispondi a questa email o scrivici dal modulo Contatti.",
-        "Puoi anche rivolgerti a un organismo di risoluzione extragiudiziale delle controversie o all'autorità giudiziaria.",
+      cta: { label: "Contesta la decisione", url: `${frontendUrl()}/contatti` },
+      after: accountMeasureAfter(),
+    };
+  },
+  ACCOUNT_CLOSURE_SCHEDULED: (payload, ctx) => {
+    const note = str(payload.note);
+    const closureAt = str(payload.closureAt);
+    const day = closureAt ? formatLongDate(closureAt) : `tra ${ACCOUNT_CLOSURE_NOTICE_DAYS} giorni`;
+    return {
+      kind: "account",
+      tone: "urgent",
+      subject: `Il tuo account verrà chiuso il ${day}`,
+      greeting: ctx.name,
+      title: "Chiusura dell'account",
+      paragraphs: [
+        `Abbiamo deciso di chiudere il tuo account: la chiusura avverrà il **${day}**. Fino ad allora l'account funziona come sempre e puoi finire i lavori in corso.`,
+        ...accountMeasureReasons(payload, note),
+        "La decisione è stata presa da una persona del nostro team, non da un sistema automatico. Se ci scrivi prima di quella data, la rivediamo.",
       ],
+      cta: { label: "Contesta la decisione", url: `${frontendUrl()}/contatti` },
+      after: accountMeasureAfter(),
+    };
+  },
+  ACCOUNT_CLOSED: (payload, ctx) => {
+    const note = str(payload.note);
+    return {
+      kind: "account",
+      tone: "urgent",
+      subject: "Il tuo account è stato chiuso",
+      greeting: ctx.name,
+      title: "Account chiuso",
+      paragraphs: [
+        `Come ti avevamo scritto ${ACCOUNT_CLOSURE_NOTICE_DAYS} giorni fa, il tuo account è stato chiuso: non puoi più accedere e, se sei un professionista, il tuo profilo non compare più sul sito.`,
+        ...accountMeasureReasons(payload, note),
+      ],
+      cta: { label: "Scrivici dal modulo Contatti", url: `${frontendUrl()}/contatti` },
+      after: accountMeasureAfter(),
     };
   },
   // Cambio dei Termini annunciato a tutti (punto 12 dei Termini, TermsNoticeService).
@@ -1696,7 +1753,10 @@ const BUILDERS: Record<string, Builder> = {
       subject: "Il tuo account è di nuovo attivo",
       greeting: ctx.name,
       title: "Account di nuovo attivo",
-      paragraphs: ["La sospensione del tuo account è stata annullata: puoi di nuovo accedere.", ...(note ? [`**Motivazione:** ${note}`] : [])],
+      paragraphs: [
+        payload.closureCanceled === true ? "La chiusura del tuo account è stata annullata: l'account resta attivo." : "La sospensione del tuo account è stata annullata: puoi di nuovo accedere.",
+        ...(note ? [`**Motivazione:** ${note}`] : []),
+      ],
       cta: { label: "Accedi", url: `${frontendUrl()}/accedi` },
     };
   },
@@ -1928,19 +1988,42 @@ const BUILDERS: Record<string, Builder> = {
   // Conferma al cliente appena accetta (docs/CHANGELOG.md §346): prima col
   // pagamento diretto non riceveva nulla, e il calendario arrivava solo col
   // promemoria del giorno prima.
-  BOOKING_CONFIRMED: (payload, ctx) => ({
-    kind: "notification",
-    subject: `Appuntamento prenotato con ${pro(ctx)}`,
-    greeting: ctx.name,
-    title: "Appuntamento prenotato",
-    paragraphs: [
-      `Hai scelto **${pro(ctx)}** per **${job(ctx)}**: ha già ricevuto la conferma e i tuoi contatti.`,
-      "Ti ricordiamo l'appuntamento anche il giorno prima.",
-    ],
-    details: jobDetails(ctx),
-    cta: { label: "Apri l'appuntamento", url: `${frontendUrl()}/le-mie-richieste${str(payload.guidedRequestId) ? `?open=${str(payload.guidedRequestId)}` : ""}` },
-    after: ["Serve cambiare? Scrivi al professionista dalla richiesta, oppure annulla l'appuntamento prima dell'orario."],
-  }),
+  // Dal controllo pre-lancio dell'08/11 (E4-04) è anche la conferma del
+  // contratto su supporto durevole (Codice del consumo art. 51 c. 7): prezzo,
+  // pagamento, chi esegue il lavoro, preavviso e recesso, come nel riquadro
+  // "Prima di accettare". I dati li prepara BookingsService.bookingContractSummary.
+  BOOKING_CONFIRMED: (payload, ctx) => {
+    // "account": non si spegne dalle preferenze (voce "lavori.conferma", sempre attiva).
+    const price = str(payload.price);
+    const priceNote = str(payload.priceNote);
+    const payment = str(payload.payment);
+    const executor = str(payload.executor);
+    const notice = str(payload.notice);
+    const site = frontendUrl();
+    return {
+      kind: "account",
+      subject: `Appuntamento prenotato con ${pro(ctx)}`,
+      greeting: ctx.name,
+      title: "Appuntamento prenotato",
+      paragraphs: [
+        `Hai scelto **${pro(ctx)}** per **${job(ctx)}**: ha già ricevuto la conferma e i tuoi contatti.`,
+        "Ti ricordiamo l'appuntamento anche il giorno prima.",
+      ],
+      detailsTitle: "Il tuo accordo",
+      details: jobDetails(ctx, [
+        ...(price ? [{ label: "Prezzo", value: priceNote ? `${price}, ${priceNote.replace(/^Tutto/, "tutto")}` : price }] : []),
+        ...(payment ? [{ label: "Pagamento", value: payment }] : []),
+        ...(executor ? [{ label: "Esegue il lavoro", value: executor }] : []),
+        ...(notice ? [{ label: "Per annullare senza costi", value: `almeno ${notice} prima` }] : []),
+        { label: "Recesso e annullamento", value: "Termini, punto 11", url: `${site}/termini#recesso` },
+      ]),
+      cta: { label: "Apri l'appuntamento", url: `${site}/le-mie-richieste${str(payload.guidedRequestId) ? `?open=${str(payload.guidedRequestId)}` : ""}` },
+      after: [
+        "Serve cambiare? Scrivi al professionista dalla richiesta, oppure annulla l'appuntamento prima dell'orario.",
+        "Conserva questa email: è la conferma del tuo accordo con il professionista, che esegue il lavoro e ne risponde.",
+      ],
+    };
+  },
   PROFESSIONAL_ON_THE_WAY: (_payload, ctx) => ({
     kind: "notification",
     subject: `${pro(ctx)} sta arrivando`,

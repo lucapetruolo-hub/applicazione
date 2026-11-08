@@ -167,7 +167,9 @@ export default function NotifichePage() {
                           <p>
                             {topicOff
                               ? items.some((item) => item.locked)
-                                ? "Spento: ti avvisiamo solo dei problemi sul lavoro, che hanno delle scadenze."
+                                ? role === "client" && topic === "lavori"
+                                  ? "Spento: ricevi solo la conferma degli appuntamenti e gli avvisi sui problemi del lavoro, che hanno delle scadenze."
+                                  : "Spento: ti avvisiamo solo dei problemi sul lavoro, che hanno delle scadenze."
                                 : "Spento: nessun avviso, le novità restano nella campanella."
                               : copy.description}
                           </p>

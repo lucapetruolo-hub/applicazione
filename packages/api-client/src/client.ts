@@ -170,6 +170,8 @@ import type {
   AdminProposalRestore,
   AdminRejectedProposal,
   AdminQueue,
+  AccountMeasure,
+  ModerationGroundCode,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
@@ -459,6 +461,10 @@ export type AdminUserDetail = {
   deletedAt: string | null;
   suspendedAt: string | null;
   suspensionNote: string | null;
+  /** Regola o legge violata della sospensione o della chiusura (codice di MODERATION_GROUNDS, E4-03). */
+  suspensionGround: string | null;
+  /** Chiusura con preavviso fissata (o già fatta, se c'è anche `suspendedAt`): E4-03. */
+  closureScheduledAt: string | null;
   /** Segnato "Account di prova": fuori dai numeri (docs/CHANGELOG.md §395). */
   testAccountAt: string | null;
   /** Verifica in due passaggi attiva (solo per gli admin, docs/CHANGELOG.md §359). */
@@ -1437,6 +1443,8 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
      */
     exportMyData: (token: string) =>
       request<Record<string, unknown>>("/auth/me/export", { headers: { Authorization: `Bearer ${token}` } }),
+    /** Gli stessi dati in PDF leggibile (controllo pre-lancio 08/11, E4-09). */
+    exportMyDataPdf: (token: string) => downloadFile("/auth/me/export/pdf", token),
 
     /** Immagine profilo dell'account (cliente o professionista) — indipendente da uploadMyProfessionalImage. */
     uploadMyAccountImage: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/auth/me/image", token, file, "image"),
@@ -2218,8 +2226,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     adminGetUser: (token: string, id: string) => request<AdminUserDetail>(`/admin/users/${id}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
-    adminSuspendUser: (token: string, id: string, note: string) =>
-      request<{ id: string }>(`/admin/users/${id}/suspend`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ note }) }),
+    /** Sospensione subito o chiusura con 30 giorni di preavviso, con fatti e regola violata (controllo pre-lancio 08/11, E4-03). */
+    adminSuspendUser: (token: string, id: string, input: { measure: AccountMeasure; ground: ModerationGroundCode; note: string }) =>
+      request<{ id: string }>(`/admin/users/${id}/suspend`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
 
     /** "Nascondi la recensione" / "Togli dalla ricerca" dalla scheda (docs/changelog/2026-10-30-admin-persone.md). */
     adminModerateFromUser: (token: string, id: string, input: AdminModerateInput) =>

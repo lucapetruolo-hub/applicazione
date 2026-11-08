@@ -142,7 +142,12 @@ describe("BookingsService.createFromQuote", () => {
     });
     expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "QUOTE_ACCEPTED", expect.any(Object));
     // Il cliente riceve la conferma con il calendario, solo per email (§346).
-    expect(notificationsService.emailOnly).toHaveBeenCalledWith("client-1", "BOOKING_CONFIRMED", { bookingId: expect.any(String), guidedRequestId: "gr-1" });
+    // Con il riepilogo del contratto (controllo pre-lancio 08/11, E4-04).
+    expect(notificationsService.emailOnly).toHaveBeenCalledWith(
+      "client-1",
+      "BOOKING_CONFIRMED",
+      expect.objectContaining({ bookingId: expect.any(String), guidedRequestId: "gr-1", payment: expect.any(String), notice: expect.any(String), priceNote: expect.any(String) }),
+    );
     expect(professionalMetricsService.recordJobAccepted).toHaveBeenCalledWith("pro-1");
     expect(timelineService.log).toHaveBeenCalled();
   });

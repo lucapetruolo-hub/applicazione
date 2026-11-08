@@ -155,7 +155,13 @@ produzione):
    (Impostazioni → Pagamenti → Adaptive Pricing): il codice lo spegne già in
    ogni Checkout (`EUR_ONLY`), questa è la seconda sicurezza perché clienti
    e contestazioni restino sempre in euro (docs/changelog/2026-10-28-stripe-prova.md).
-   Usare una chiave limitata (`rk_`) al posto di quella segreta. E Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
+   Usare una chiave limitata (`rk_`) al posto di quella segreta. Dopo il
+   primo pagamento vero, controllare nel listino dell'account la commissione
+   per contestazione: il codice la legge da Stripe e ripiega su 20 €
+   (`STRIPE_DISPUTE_FEE_EUR_CENTS`), i testi non la citano in cifra (E3-12,
+   docs/changelog/2026-11-08-legale-nel-codice.md). Nel pannello di Didit
+   impostare la conservazione delle immagini del workflow e scriverne i
+   giorni nella Privacy, punto 8 (domanda L7 per l'avvocato). E Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
    `CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`).
 5bis. **Resend reali** (`RESEND_API_KEY`, dominio verificato su Resend +
    `RESEND_FROM_EMAIL` corrispondente) — senza queste variabili i

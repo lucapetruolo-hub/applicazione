@@ -213,6 +213,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "CONTENT_REPORT_REVERTED",
       "CONTENT_REPORT_APPEAL_REJECTED",
       "ACCOUNT_SUSPENDED",
+      // Chiusura dell'account con 30 giorni di preavviso e chiusura fatta (controllo pre-lancio 08/11, E4-03).
+      "ACCOUNT_CLOSURE_SCHEDULED",
+      "ACCOUNT_CLOSED",
       // Misura per segnalazioni accolte (§167): non si spegne, come la sospensione.
       "JOB_ISSUE_SANCTION",
       "ACCOUNT_REACTIVATED",
@@ -353,10 +356,20 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
     client: { label: "Data confermata o cambiata" },
   },
   {
+    // Conferma dell'appuntamento al cliente: è la conferma del contratto su
+    // supporto durevole (Codice del consumo art. 51 c. 7, controllo pre-lancio
+    // 08/11, E4-04), quindi non si spegne.
+    key: "lavori.conferma",
+    topic: "lavori",
+    types: ["BOOKING_CONFIRMED"],
+    channels: ["email"],
+    locked: true,
+    client: { label: "Conferma dell'appuntamento", description: "L'email con il riepilogo dell'accordo con il professionista: da conservare." },
+  },
+  {
     key: "lavori.appuntamenti",
     topic: "lavori",
     types: [
-      "BOOKING_CONFIRMED",
       "BOOKING_CANCELED_BY_PROFESSIONAL",
       "BOOKING_CANCELED_BY_CLIENT",
       "BOOKING_REOPENED_BY_CLIENT",
@@ -370,7 +383,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "BOOKING_CLIENT_CANT_COME_UNDONE",
     ],
     professional: { label: "Appuntamenti", description: "Annullati o riaperti dal cliente, e le sue risposte ai promemoria." },
-    client: { label: "Appuntamenti", description: "Prenotati, annullati o riaperti." },
+    client: { label: "Appuntamenti", description: "Annullati o riaperti." },
   },
   {
     key: "lavori.promemoria",

@@ -98,6 +98,15 @@ model User {
   // arriva via notifica/email. `null` per le sospensioni da segnalazione (la
   // motivazione sta su ContentReport).
   suspensionNote             String?
+  // Regola dei Termini o legge violata (codice di MODERATION_GROUNDS) della
+  // sospensione o della chiusura decisa dalla scheda utente (controllo
+  // pre-lancio 08/11, E4-03): arriva alla persona nell'email.
+  suspensionGround           String?
+  // Chiusura dell'account con preavviso (Termini punto 10, P2B art. 4 c. 2):
+  // l'account resta attivo fino a questa data, poi AccountClosuresService lo
+  // chiude (suspendedAt). Con suspendedAt valorizzato e questa data passata
+  // l'account è "chiuso", non solo sospeso.
+  closureScheduledAt         DateTime?
   // Aree di competenza di un ADMIN, combinabili (docs/CHANGELOG.md §145-§146):
   // SUPER vede e fa tutto (e assegna i ruoli), MODERATOR segnalazioni/
   // messaggi/utenti, FINANCE finanza/rimborsi/DAC7/statistiche — es.
@@ -218,6 +227,7 @@ model User {
   @@map("users")
 
   @@index([deletedEmailHash])
+  @@index([closureScheduledAt])
 }
 
 // Dispositivi da cui un professionista ha già fatto l'accesso
