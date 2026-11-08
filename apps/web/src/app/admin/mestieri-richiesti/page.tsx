@@ -17,7 +17,7 @@ import {
   type ServiceNamesAdminOverview,
   type ProblemSuggestionOutcomes,
 } from "@professionisti/shared";
-import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
@@ -854,7 +854,7 @@ function PopularJobsTab() {
       {data === null && !error ? <SkeletonTableRows rows={8} cols={4} /> : null}
       {data ? (
         <div className="admin-table-wrap">
-          <table className="admin-table">
+          <table className="admin-table admin-table-numbers">
             <thead>
               <tr>
                 <th>Lavoro</th>
@@ -871,38 +871,43 @@ function PopularJobsTab() {
                 <tr key={job.service}>
                   <td>{job.service}</td>
                   <td>{job.categoryLabel}</td>
-                  <td>{job.searches}</td>
+                  <td data-label="Ricerche">{job.searches}</td>
                   <td>{job.homePosition ? <AdminPill tone="ok">{`${job.homePosition}°`}</AdminPill> : <AdminPill>Riserva</AdminPill>}</td>
-                  <td>
-                    <XStack gap="2" flexWrap="wrap">
-                      <Button
-                        size="2"
-                        variant="secondary"
+                  <td className="admin-cell-actions">
+                    {/* Pulsanti piccoli, a icona: da telefono tre pulsanti larghi
+                        occupavano una riga intera per ogni lavoro. */}
+                    <div className="admin-icon-actions">
+                      <button
+                        type="button"
+                        className="admin-icon-button"
                         disabled={busy || index === 0}
                         aria-label={`Sposta su ${job.service}`}
-                        onPress={() => void run((t) => apiClient.adminMovePopularJob(t, { service: job.service, direction: "up" }))}
+                        title="Sposta su"
+                        onClick={() => void run((t) => apiClient.adminMovePopularJob(t, { service: job.service, direction: "up" }))}
                       >
-                        Su
-                      </Button>
-                      <Button
-                        size="2"
-                        variant="secondary"
+                        <Icon name="chevron-up" size={18} color="currentColor" strokeWidth={2} />
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-icon-button"
                         disabled={busy || index === data.jobs.length - 1}
                         aria-label={`Sposta giù ${job.service}`}
-                        onPress={() => void run((t) => apiClient.adminMovePopularJob(t, { service: job.service, direction: "down" }))}
+                        title="Sposta giù"
+                        onClick={() => void run((t) => apiClient.adminMovePopularJob(t, { service: job.service, direction: "down" }))}
                       >
-                        Giù
-                      </Button>
-                      <Button
-                        size="2"
-                        variant="secondary"
+                        <Icon name="chevron-down" size={18} color="currentColor" strokeWidth={2} />
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-icon-button"
                         disabled={busy}
                         aria-label={`Togli ${job.service}`}
-                        onPress={() => void run((t) => apiClient.adminRemovePopularJob(t, job.service))}
+                        title="Togli"
+                        onClick={() => void run((t) => apiClient.adminRemovePopularJob(t, job.service))}
                       >
-                        Togli
-                      </Button>
-                    </XStack>
+                        <Icon name="trash-2" size={17} color="currentColor" strokeWidth={1.8} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

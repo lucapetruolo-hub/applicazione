@@ -46,6 +46,15 @@ export function isListedPopularJob(job: { service: string; categorySlug: string 
   return isProfessionalCategorySlug(job.categorySlug) && POPULAR_SERVICES[job.categorySlug].includes(job.service);
 }
 
+/**
+ * L'elenco valido dalle righe salvate in Admin (`popular_jobs`, già in ordine):
+ * vuote, o con soli nomi tolti dalle prestazioni suggerite, l'elenco di partenza.
+ */
+export function popularJobsFromRows(rows: { service: string; categorySlug: string }[]): { jobs: PopularJob[]; custom: boolean } {
+  const jobs = rows.filter(isListedPopularJob).map((row) => ({ service: row.service, categorySlug: row.categorySlug }));
+  return jobs.length > 0 ? { jobs, custom: true } : { jobs: [...DEFAULT_POPULAR_JOBS], custom: false };
+}
+
 /** Le ricerche di un lavoro, sommate tra i mestieri (lo stesso nome può stare in due, es. vasca in doccia). */
 export function popularJobSearches(service: string, searches: { service: string; searches: number }[]): number {
   return searches.filter((row) => row.service === service).reduce((sum, row) => sum + Math.max(0, row.searches), 0);

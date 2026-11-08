@@ -1,12 +1,12 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import {
-  DEFAULT_POPULAR_JOBS,
   POPULAR_JOBS_MAX,
   POPULAR_JOBS_MIN,
   buildPopularJobsAdminView,
   isListedPopularJob,
   orderPopularJobs,
+  popularJobsFromRows,
   type PopularJob,
   type PopularJobsAdminView,
   type PopularJobsResponse,
@@ -38,9 +38,7 @@ export class PopularJobsService {
 
   private async list(): Promise<{ jobs: PopularJob[]; custom: boolean }> {
     const rows = await this.prisma.popularJob.findMany({ orderBy: [{ position: "asc" }, { createdAt: "asc" }], select: { service: true, categorySlug: true } });
-    const jobs = rows.filter(isListedPopularJob);
-    // Un nome tolto dall'elenco suggerito non deve svuotare la home.
-    return rows.length > 0 && jobs.length > 0 ? { jobs, custom: true } : { jobs: [...DEFAULT_POPULAR_JOBS], custom: false };
+    return popularJobsFromRows(rows);
   }
 
   private async searches(now: Date) {
