@@ -63,6 +63,16 @@ export const TERMS_CHANGES: readonly TermsChange[] = [
     // Prima del lancio: nessun avviso agli account di prova.
     notify: false,
   },
+  {
+    version: "2026-11-08",
+    publishedAt: "2026-11-08",
+    effectiveAt: "2026-11-08",
+    summary: [
+      "Per i professionisti: i lavori dei clienti arrivati dal link personale non contano nei lavori compresi nell'abbonamento.",
+    ],
+    // Modifica solo a favore dei professionisti, e prima del lancio: nessun avviso.
+    notify: false,
+  },
 ];
 
 export function findTermsChange(version: string): TermsChange | undefined {

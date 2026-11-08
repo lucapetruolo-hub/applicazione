@@ -5,7 +5,7 @@ import { SITE_URL } from "@/lib/siteUrl";
 import { type BreadcrumbItem } from "@/lib/jsonLd";
 import { JsonLd } from "@/components/JsonLd";
 import { ApiError } from "@professionisti/api-client";
-import { BRAND, comuneSlug, formatRating, professionalIdFromSlug, professionalPath, professionalSlug, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, PERSONAL_LINK_PARAM, comuneSlug, formatRating, professionalIdFromSlug, professionalPath, professionalSlug, type ProfessionalDetail } from "@professionisti/shared";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProfessionalDetailContent } from "./ProfessionalDetailContent";
@@ -148,7 +148,7 @@ export default async function ProfessionalDetailPage(props: { params: Promise<Pa
         professional={professional}
         initialAgenda={await agendaPromise}
         breadcrumbs={<Breadcrumbs items={breadcrumbItems(professional)} />}
-        query={{ modalita: firstValue(searchParams.modalita), data: firstValue(searchParams.data), salva: firstValue(searchParams.salva), servizio: firstValue(searchParams.servizio), problema: firstValue(searchParams.problema), scelta: firstValue(searchParams.scelta) }}
+        query={{ modalita: firstValue(searchParams.modalita), data: firstValue(searchParams.data), salva: firstValue(searchParams.salva), servizio: firstValue(searchParams.servizio), problema: firstValue(searchParams.problema), scelta: firstValue(searchParams.scelta), link: firstValue(searchParams[PERSONAL_LINK_PARAM]) }}
       />
     </>
   );

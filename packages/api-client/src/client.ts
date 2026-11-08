@@ -8,6 +8,7 @@ import type {
   EmailStatus,
   ProfessionalEntityTypeValue,
   MySubscription,
+  MyPersonalLink,
   SubscriptionTier,
   BillingInterval,
   PROFESSIONAL_CATEGORIES,
@@ -560,6 +561,8 @@ export type AdminTrafficSources = {
   days: number;
   total: number;
   bySource: { source: TrafficSource | "unknown"; count: number }[];
+  /** Richieste partite dal link personale di un professionista (docs/changelog/2026-11-08-canale-del-professionista.md). */
+  fromProfessionalLink: number;
 };
 
 /** Quante persone spengono ogni avviso (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). */
@@ -2134,6 +2137,14 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     /** Recensioni ricevute dal professionista, per rispondere. */
     receivedReviews: (token: string) =>
       request<ReceivedReview[]>("/reviews/received", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** "Il tuo link": link personale, QR e clienti arrivati da lì (docs/changelog/2026-11-08-canale-del-professionista.md). */
+    getMyPersonalLink: (token: string) =>
+      request<MyPersonalLink>("/professionals/me/personal-link", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Dal codice di `/p/<codice>` al profilo da aprire. */
+    resolvePersonalLink: (code: string) =>
+      request<{ id: string; businessName: string; city: string | null }>(`/professionals/link/${encodeURIComponent(code)}`, { cache: "no-store" }),
 
     getMySubscription: (token: string) =>
       request<MySubscription>("/professionals/me/subscription", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

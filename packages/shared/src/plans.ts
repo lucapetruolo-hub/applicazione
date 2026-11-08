@@ -86,6 +86,8 @@ export const SUBSCRIPTION_FEATURES = [
   "Promemoria via email, così il cliente non si dimentica",
   "Recensioni da lavori fatti tramite il sito",
   "Statistiche della tua attività",
+  // Canale del professionista (docs/changelog/2026-11-08-canale-del-professionista.md).
+  "Il tuo link personale: i clienti che ti scrivono da lì non contano nei lavori",
 ] as const;
 
 /**
@@ -262,6 +264,8 @@ export type MySubscription = {
     /** Inizio del periodo successivo: i lavori ripartono qui. */
     periodEnd: string;
     countsClientsOnce: boolean;
+    /** Lavori dei clienti arrivati dal tuo link nel periodo: non contano in `used` (docs/changelog/2026-11-08-canale-del-professionista.md). */
+    ownClientJobs: number;
   };
   /**
    * Lavori del periodo esauriti (§362): il profilo resta nella ricerca e

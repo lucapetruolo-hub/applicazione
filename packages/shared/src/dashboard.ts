@@ -240,6 +240,8 @@ export type ProfessionalLead = {
     /** Valorizzati solo se la richiesta è nata da una fascia generica dell'agenda (vedi packages/shared/src/availability.ts). */
     preferredDate: string | null;
     preferredTimeSlot: string | null;
+    /** Cliente arrivato dal tuo link personale: il lavoro non conta nei lavori del mese (docs/changelog/2026-11-08-canale-del-professionista.md). */
+    fromProfessionalLink: boolean;
     /**
      * Il cliente ha tolto la richiesta (docs/CHANGELOG.md §343): mostrata
      * come "Ritirata dal cliente", con il motivo se l'ha dato, al posto di

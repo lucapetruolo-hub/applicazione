@@ -40,6 +40,8 @@ export const PROFESSIONAL_NAV: AccountNavGroup[] = [
     title: "La tua attività",
     items: [
       { href: "/dashboard/profilo", label: "Profilo pubblico", shortLabel: "Profilo", icon: "user-round" },
+      // Link personale, QR e "Invita un tuo cliente" (docs/changelog/2026-11-08-canale-del-professionista.md).
+      { href: "/dashboard/il-tuo-link", label: "Il tuo link", icon: "share-2" },
       // Dati fiscali controllati, documento e selfie (docs/CHANGELOG.md §253).
       { href: "/dashboard/verifica-identita", label: "Verifica identità", shortLabel: "Verifica", icon: "badge-check" },
       { href: "/dashboard/statistiche", label: "Statistiche", icon: "trending-up" },

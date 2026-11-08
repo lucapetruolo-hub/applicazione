@@ -21,6 +21,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { hasRecentlyReported, markReported } from "@/lib/reportedContent";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 import { useMediaQuery } from "@/lib/useMediaQuery";
+import { rememberPersonalLink } from "@/lib/personalLink";
 import { countPriceToolProfile, countProfileView, isCountingDisabled } from "@/lib/siteCounts";
 
 // Colonne fisse Oggi + 3 giorni (stessa griglia della mini-agenda di ricerca,
@@ -90,7 +91,7 @@ export function ProfessionalDetailContent({
    * il piè di pagina, che su una rete lenta saliva in cima e poi scendeva
    * (Lighthouse CLS 0,93, docs/CHANGELOG.md §400).
    */
-  query?: { modalita?: string; data?: string; salva?: string; servizio?: string; problema?: string; scelta?: string };
+  query?: { modalita?: string; data?: string; salva?: string; servizio?: string; problema?: string; scelta?: string; link?: string };
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
@@ -262,6 +263,14 @@ export function ProfessionalDetailContent({
   // `?salva=1`: il visitatore ha toccato il cuoricino senza essere entrato
   // ed è tornato qui dopo l'accesso, quindi il profilo si salva da solo
   // (docs/CHANGELOG.md §208).
+  // Arrivato dal link personale del professionista (`/p/<codice>`): la
+  // richiesta che parte da qui sarà di un cliente suo
+  // (docs/changelog/2026-11-08-canale-del-professionista.md).
+  const fromPersonalLink = !preview && query.link === "1";
+  useEffect(() => {
+    if (fromPersonalLink) rememberPersonalLink(professional.id);
+  }, [fromPersonalLink, professional.id]);
+
   const saveAfterLogin = query.salva === "1";
   useEffect(() => {
     if (!token || user?.role !== "CLIENT") return;

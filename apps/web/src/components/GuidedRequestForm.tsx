@@ -32,6 +32,7 @@ import {
 import { Autocomplete, Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { MagneticButton } from "./MagneticButton";
 import { apiClient } from "@/lib/apiClient";
+import { cameFromPersonalLink } from "@/lib/personalLink";
 import { useAuth } from "@/lib/AuthContext";
 import { useStepFocus } from "@/lib/useStepFocus";
 import { MediaPreview } from "@/components/MediaPreview";
@@ -243,6 +244,18 @@ export function GuidedRequestForm({
   const initialCategory = searchParams.get("categoria");
   const initialCity = searchParams.get("citta") ?? "";
   const professionalProfileId = searchParams.get("professionista") ?? undefined;
+  // Arrivato dal link personale del professionista: un cliente suo, e la
+  // casella d'inoltro parte spenta (decisione di Luca dell'8/11, gruppo 11:
+  // eccezione al "acceso di serie" del §209 solo per questo caso,
+  // docs/changelog/2026-11-08-canale-del-professionista.md).
+  const [viaPersonalLink, setViaPersonalLink] = useState(false);
+  useEffect(() => {
+    if (!professionalProfileId || !cameFromPersonalLink(professionalProfileId)) return;
+    // sessionStorage esiste solo nel browser: letto dopo il primo disegno, come il resto del modulo.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setViaPersonalLink(true);
+    setForwardIfNoReply(false);
+  }, [professionalProfileId]);
   // Nome/foto del professionista scelto (richiesta esplicita dell'utente:
   // "il cliente deve capire" che la richiesta va a quello specifico
   // professionista, non genericamente "ai professionisti compatibili nella
@@ -1002,6 +1015,7 @@ export function GuidedRequestForm({
         professionalProfileId,
         professionalProfileIds: chosenMode ? chosenIds : undefined,
         forwardIfNoReply: professionalProfileId ? forwardIfNoReply : false,
+        viaProfessionalLink: professionalProfileId && viaPersonalLink ? true : undefined,
         preferredDate: finalPreferredDate,
         preferredTimeSlot: finalPreferredTimeSlot,
         trafficSource: storedTrafficSource(),

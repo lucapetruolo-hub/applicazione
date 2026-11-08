@@ -422,6 +422,13 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
   `pausedAt`); i preventivi già mandati restano validi. Finestra "Hai
   esaurito l'abbonamento Base" con la richiesta, il livello sopra e una
   sola cifra (`JobLimitModal`).
+- **Clienti dal link personale** (decisione di Luca del 26/10, fatta l'8/11,
+  docs/changelog/2026-11-08-canale-del-professionista.md): le richieste
+  partite da `/p/<codice>` del professionista sono clienti suoi
+  (`GuidedRequest.fromProfessionalLink`, solo se il sito non glieli aveva già
+  portati): **non contano nei lavori**, gli si risponde anche al limite e la
+  casella "Inoltra se non risponde" parte spenta. Pagina "Il tuo link" con QR
+  e "Invita un tuo cliente" (il messaggio lo manda lui, mai noi).
 - **Rinnovo automatico** mensile o annuale con avviso 3 giorni prima (sito + email);
   annullabile da `/dashboard/abbonamento`, resta attivo fino alla scadenza.
   Passare a un livello inferiore non è ancora previsto.

@@ -376,7 +376,8 @@ export function RequestCard({
   // (§253) o per i lavori esauriti (§362); quello già inviato resta modificabile.
   const newQuote = !lead.quote || canResendQuote;
   const identityBlocked = identityVerificationNeeded && newQuote;
-  const limitBlocked = !identityBlocked && !!subscription?.limitReached && newQuote;
+  // Un cliente del tuo link non conta nei lavori: a lui rispondi sempre.
+  const limitBlocked = !identityBlocked && !!subscription?.limitReached && newQuote && !gr.fromProfessionalLink;
   // "Elimina" su ogni richiesta scaduta o chiusa (docs/CHANGELOG.md §143):
   // la nasconde solo al professionista, resta visibile agli admin.
   const canDelete = stage === "scaduta" || stage === "chiusa";
@@ -833,6 +834,9 @@ export function RequestCard({
                 normali: il badge rosso è la variante semantica prevista
                 dal design system proprio per questo flusso. */}
             {gr.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
+            {/* Cliente arrivato dal tuo link personale: non conta nei lavori del mese
+                (docs/changelog/2026-11-08-canale-del-professionista.md). */}
+            {gr.fromProfessionalLink ? <Badge variant="verificato">Dal tuo link</Badge> : null}
             {/* Ordine invertito su richiesta esplicita dell'utente: lo stato
                 della richiesta (StagePill) precede il badge di modalità
                 (ServiceBadge, "A domicilio"/"Consulenza online"). */}

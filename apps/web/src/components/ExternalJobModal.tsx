@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { ExternalJob, ExternalJobInput } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -354,6 +355,20 @@ export function ExternalJobModal({
                   Riapri
                 </Button>
               ) : null}
+            </XStack>
+
+            {/* La prossima volta ti scrive dal tuo link e il lavoro non conta nel tuo abbonamento
+                (docs/changelog/2026-11-08-canale-del-professionista.md). */}
+            <XStack gap="2" alignItems="center" flexWrap="wrap" padding="3" borderRadius={10} backgroundColor={brand.cianografiaVelo}>
+              <Text flex={1} minWidth={200} fontSize={14} color={brand.grafite}>
+                La prossima volta può scriverti dal tuo link: il lavoro non conta nel tuo abbonamento.
+              </Text>
+              <Link
+                href={`/dashboard/il-tuo-link?nome=${encodeURIComponent(job.clientName.trim().split(/\s+/)[0] ?? "")}`}
+                style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 14 }}
+              >
+                Invita questo cliente
+              </Link>
             </XStack>
 
             {confirmingDelete ? (

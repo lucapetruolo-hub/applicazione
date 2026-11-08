@@ -47,6 +47,11 @@ export function TrafficSourcesPanel({ data }: { data: AdminTrafficSources }) {
           );
         })}
       </YStack>
+      {/* Il canale del professionista (docs/changelog/2026-11-08-canale-del-professionista.md): una riga a parte, perché vale per ogni provenienza. */}
+      <Text fontSize={13.5} color={brand.grafite70}>
+        Dal link personale di un professionista: {data.fromProfessionalLink ?? 0}
+        {data.total > 0 ? ` · ${Math.round(((data.fromProfessionalLink ?? 0) / data.total) * 100)}%` : ""}
+      </Text>
     </Surface>
   );
 }

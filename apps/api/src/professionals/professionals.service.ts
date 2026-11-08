@@ -31,6 +31,7 @@ import {
   type ProfessionalDetail,
   type ProfessionalInsights,
   type ProfessionalLead,
+  ownClientRequest,
   type ProfessionalSearchResult,
   type ProfessionalServiceItem,
   type ServicePriceUnit,
@@ -1507,6 +1508,9 @@ export class ProfessionalsService {
           // deve vedere subito per quale orario è stata richiesta.
           preferredDate: lead.guidedRequest.preferredDate?.toISOString().slice(0, 10) ?? null,
           preferredTimeSlot: lead.guidedRequest.preferredTimeSlot,
+          // Cliente arrivato dal tuo link personale: non conta nei lavori
+          // (docs/changelog/2026-11-08-canale-del-professionista.md).
+          fromProfessionalLink: ownClientRequest(lead.guidedRequest, professionalProfileId),
           // Eliminata (o annullata prima del §343) dal cliente: "Ritirata dal cliente", non "Scaduta".
           withdrawnByClient:
             lead.guidedRequest.closedReason === "CANCELED_BY_CLIENT"

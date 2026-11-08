@@ -387,6 +387,12 @@ export const guidedRequestSchema = z
      */
     forwardIfNoReply: z.boolean().default(false),
     /**
+     * Richiesta diretta partita dal link personale di quel professionista
+     * (docs/changelog/2026-11-08-canale-del-professionista.md): il server la
+     * segna "cliente suo" solo se il cliente non era già arrivato a lui dal sito.
+     */
+    viaProfessionalLink: z.boolean().optional(),
+    /**
      * Data+fascia oraria preferita: valorizzate solo quando la richiesta
      * parte da una fascia "generica" dell'agenda pubblica di un
      * professionista (AvailabilitySlot.maxBookings > 1) — vedi

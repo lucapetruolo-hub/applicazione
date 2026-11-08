@@ -297,6 +297,22 @@ export class GuidedRequestsService {
    * controllati da createForCategories, che manda anche una sola email di
    * conferma per tutto l'invio (`submissionGroupId` valorizzato).
    */
+  /**
+   * Cliente del link personale (docs/changelog/2026-11-08-canale-del-professionista.md):
+   * vale solo se il sito non gli aveva già portato questo cliente, cioè se
+   * il cliente non gli ha mai mandato una richiesta (o non l'ha ricevuta
+   * dallo smistamento) se non dal suo link. Così un cliente trovato con la
+   * ricerca non diventa "suo" facendogli riscrivere la richiesta dal link.
+   */
+  private async isOwnClient(clientId: string, professionalProfileId: string): Promise<boolean> {
+    const fromSite = await this.prisma.lead.findFirst({
+      // Una richiesta dal link di un altro professionista, inoltrata a questo, l'ha portata il sito.
+      where: { professionalProfileId, guidedRequest: { clientId, OR: [{ fromProfessionalLink: false }, { professionalProfileId: { not: professionalProfileId } }] } },
+      select: { id: true },
+    });
+    return fromSite === null;
+  }
+
   async create(
     clientId: string,
     input: Omit<GuidedRequestInput, "extraCategorySlugs">,
@@ -394,6 +410,8 @@ export class GuidedRequestsService {
       );
     }
 
+    const fromProfessionalLink = targetProfile && input.viaProfessionalLink ? await this.isOwnClient(clientId, targetProfile.id) : false;
+
     let guidedRequest;
     try {
       guidedRequest = await this.prisma.$transaction(
@@ -446,6 +464,7 @@ export class GuidedRequestsService {
               forwardIfNoReply: !!targetProfile && input.forwardIfNoReply,
               forwardAt: targetProfile && input.forwardIfNoReply ? computeDirectForwardAt(input.isUrgent) : null,
               chosenProfileIds: chosenProfiles.map((profile) => profile.id),
+              fromProfessionalLink,
               preferredDate: resolvedSlot?.date,
               preferredTimeSlot: resolvedSlot ? input.preferredTimeSlot : undefined,
               submissionGroupId: opts.submissionGroupId,

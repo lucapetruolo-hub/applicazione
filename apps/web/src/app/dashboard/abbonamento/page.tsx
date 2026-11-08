@@ -662,6 +662,15 @@ function AbbonamentoContent() {
                   Più lavori allo stesso cliente in questo periodo contano come uno.
                 </Text>
               ) : null}
+              {/* Canale del professionista (docs/changelog/2026-11-08-canale-del-professionista.md). */}
+              <Text color={brand.grafite70} fontSize={16}>
+                {sub.usage.ownClientJobs > 0
+                  ? `In più ${sub.usage.ownClientJobs === 1 ? "1 lavoro" : `${sub.usage.ownClientJobs} lavori`} dal tuo link, che non ${sub.usage.ownClientJobs === 1 ? "conta" : "contano"}. `
+                  : "I clienti che ti scrivono dal tuo link non contano. "}
+                <Link href="/dashboard/il-tuo-link" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
+                  Il tuo link
+                </Link>
+              </Text>
             </YStack>
             )}
           </Surface>
