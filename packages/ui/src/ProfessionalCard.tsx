@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { Text, XStack, YStack } from "tamagui";
+import { Text, XStack, YStack, useMedia } from "tamagui";
 import { BadgeInfo } from "./BadgeInfo";
 import { ProfessionalKindBadge, type ProfessionalKindValue } from "./ProfessionalKindBadge";
 import { Icon } from "./Icon";
@@ -59,6 +59,12 @@ export type ProfessionalCardAvailabilityDay = {
 };
 
 const AGENDA_VISIBLE_DAYS = 4;
+/**
+ * Sul telefono (fino a 660px) 3 giorni: con gli orari a 14px le fasce andavano
+ * su due righe e la scheda diventava alta (Luca, 08/11/2026,
+ * docs/changelog/2026-11-08-prova-persone-simulate.md).
+ */
+const AGENDA_VISIBLE_DAYS_PHONE = 3;
 // Frecce dei giorni accanto ai giorni (28px, 24 sul telefono) e lo stesso
 // spazio ai lati degli orari, che così restano sotto il loro giorno.
 const AGENDA_ARROW_SIZE = "28px xs:24px xxs:28px";
@@ -296,6 +302,8 @@ export function ProfessionalCard({
   // — richiesta esplicita dell'utente di poter navigare anche ai giorni
   // successivi senza una richiesta di rete per pagina.
   const [windowOffset, setWindowOffset] = useState(0);
+  const media = useMedia();
+  const visibleCount = media.xs ? AGENDA_VISIBLE_DAYS_PHONE : AGENDA_VISIBLE_DAYS;
   // Colonne giorno consecutive da `availabilityFrom`, con "-" dove il
   // professionista non ha fasce (riferimento miodottore.it).
   const allDays = useMemo(() => {
@@ -315,11 +323,11 @@ export function ProfessionalCard({
     });
   }, [availabilityPreview, availabilityFrom, availabilityDays]);
   const totalDays = allDays.length;
-  const maxOffset = Math.max(0, totalDays - AGENDA_VISIBLE_DAYS);
+  const maxOffset = Math.max(0, totalDays - visibleCount);
   const offset = Math.min(windowOffset, maxOffset);
   const allowsKey = activeMode === "HOME" ? ("allowsHome" as const) : ("allowsOnline" as const);
   const availableKey = activeMode === "HOME" ? ("homeAvailable" as const) : ("onlineAvailable" as const);
-  const visibleDaysRaw = allDays.slice(offset, offset + AGENDA_VISIBLE_DAYS);
+  const visibleDaysRaw = allDays.slice(offset, offset + visibleCount);
   // Solo gli orari liberi della modalità scelta (docs/CHANGELOG.md §349): in
   // una lista serve sapere quando il professionista è libero, gli orari al
   // completo (prima barrati) restano nell'agenda della pagina profilo.
@@ -338,7 +346,7 @@ export function ProfessionalCard({
     }
     return null;
   };
-  const firstFree = hasAvailableInWindow ? null : (findFirstFree(offset + AGENDA_VISIBLE_DAYS) ?? findFirstFree(0));
+  const firstFree = hasAvailableInWindow ? null : (findFirstFree(offset + visibleCount) ?? findFirstFree(0));
   // Unione degli orari liberi dei giorni visibili, ordinata: righe della
   // griglia. Un giorno senza quell'orario libero mostra "-".
   const timeRows = Array.from(new Set(visibleDays.flatMap((day) => day.times.map((slot) => slot.time)))).sort();
@@ -349,10 +357,10 @@ export function ProfessionalCard({
       }
     : undefined;
   const canGoBack = offset > 0;
-  const canGoForward = offset + AGENDA_VISIBLE_DAYS < totalDays;
+  const canGoForward = offset + visibleCount < totalDays;
 
   const hasAgenda = totalDays > 0;
-  const pager = totalDays > AGENDA_VISIBLE_DAYS;
+  const pager = totalDays > visibleCount;
   const highlighted = services?.find((service) => service.id === highlightServiceId);
   // La prestazione cercata in cima: si vede anche con l'elenco ridotto a 3.
   const serviceList = highlighted ? [highlighted, ...(services ?? []).filter((service) => service !== highlighted)] : (services ?? []);
@@ -389,7 +397,7 @@ export function ProfessionalCard({
           enabled
             ? (e: unknown) => {
                 stop(e);
-                setWindowOffset(direction === "back" ? Math.max(0, offset - AGENDA_VISIBLE_DAYS) : offset + AGENDA_VISIBLE_DAYS);
+                setWindowOffset(direction === "back" ? Math.max(0, offset - visibleCount) : offset + visibleCount);
               }
             : undefined
         }
@@ -716,9 +724,11 @@ export function ProfessionalCard({
               <XStack alignItems="center">
                 {pager ? <XStack marginRight="4px xs:2px" display="flex xxs:none">{dayArrow("back")}</XStack> : null}
                 <XStack flex={1} minWidth={0}>
-                  {visibleDays.map((day) => (
+                  {visibleDays.map((day, index) => (
                     <YStack
                       key={day.date}
+                      // La quarta colonna resta nascosta sul telefono anche prima che la pagina sappia la larghezza.
+                      display={index >= AGENDA_VISIBLE_DAYS_PHONE ? "xs:none" : undefined}
                       flex={1}
                       flexBasis={0}
                       minWidth={0}
@@ -744,11 +754,12 @@ export function ProfessionalCard({
                 <YStack gap="1" paddingHorizontal={pager ? AGENDA_ARROW_SPACE : 0}>
                   {timeRows.map((time) => (
                     <XStack key={time}>
-                      {visibleDays.map((day) => {
+                      {visibleDays.map((day, index) => {
                         const slot = day.times.find((s) => s.time === time);
+                        const phoneHidden = index >= AGENDA_VISIBLE_DAYS_PHONE ? "xs:none" : undefined;
                         if (!slot) {
                           return (
-                            <XStack key={day.date} flex={1} flexBasis={0} minWidth={0} alignItems="center" justifyContent="center" paddingVertical={4} onPress={openAgendaAt?.(day.date)}>
+                            <XStack key={day.date} display={phoneHidden} flex={1} flexBasis={0} minWidth={0} alignItems="center" justifyContent="center" paddingVertical={4} onPress={openAgendaAt?.(day.date)}>
                               <Text fontSize={13} color={brand.filetto}>
                                 -
                               </Text>
@@ -759,6 +770,7 @@ export function ProfessionalCard({
                         return (
                           <XStack
                             key={day.date}
+                            display={phoneHidden}
                             flex={1}
                             flexBasis={0}
                             minWidth={0}

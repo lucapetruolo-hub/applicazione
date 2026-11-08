@@ -85,6 +85,9 @@ alla home.
   col bianco passa da 3,6 a 4,7.
 - Orari dell'agenda a 14 px (prima 12 e 10,5 sulla scheda, 10,5 e 9,5 sul
   profilo): se la fascia non sta su una riga va a capo dopo il trattino.
+  Sulle schede della ricerca, sul telefono (fino a 660 px), 3 giorni invece
+  di 4 (miglioria scelta da Luca lo stesso giorno): la fascia sta su una riga
+  dai telefoni da 375 px, va a capo solo su quelli da 320.
   Caselle del modo di pagamento nel preventivo del professionista a 22 px.
 - Per un professionista senza profilo salvato abbonamento e verifiche non
   si chiedono più al server (prima due "non trovato" a ogni pagina,
