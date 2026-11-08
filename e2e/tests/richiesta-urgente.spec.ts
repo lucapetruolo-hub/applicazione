@@ -54,7 +54,10 @@ test("si sceglie al primo passo, il riepilogo segue la scelta senza richiederla"
   const forward = page.getByRole("switch", { name: "Inoltra se non risponde" });
   await expect(page.getByRole("group", { name: "Quando ti serve?" })).toHaveCount(0);
   await expect(page.locator(".guided-recap")).toContainText("Oggi");
-  await expect(forward).toContainText("entro 60 minuti");
+  // L'ora precisa dell'inoltro (E6-11): 60 minuti con "Oggi", 6 ore con calma.
+  const clock = /entro (le|domani alle|il .+ alle) \d{2}:\d{2}/;
+  await expect(forward).toContainText(clock);
+  const urgentText = await forward.textContent();
   await expect(forward).toContainText("altri 4 professionisti");
   await expect(page.getByRole("button", { name: /Invia richiesta urgente/ })).toBeVisible();
 
@@ -63,7 +66,8 @@ test("si sceglie al primo passo, il riepilogo segue la scelta senza richiederla"
   await timing(page, "Con calma").check();
   await expect(page.getByRole("status").filter({ hasText: "Quando: Con calma." })).toContainText("6 ore");
   await goToSummary(page);
-  await expect(forward).toContainText("entro 6 ore");
+  await expect(forward).toContainText(clock);
+  await expect(forward).not.toHaveText(urgentText ?? "");
   await expect(forward).toContainText("altri 8 professionisti");
   await expect(page.getByRole("button", { name: /Invia richiesta urgente/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Invia richiesta/ })).toBeVisible();
