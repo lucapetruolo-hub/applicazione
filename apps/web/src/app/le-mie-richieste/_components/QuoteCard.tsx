@@ -318,6 +318,17 @@ export function QuoteCard({
         </YStack>
       ) : null}
       {(() => {
+        // Il professionista ha accettato la tua data (collaudo 08/11, E1-02):
+        // l'appuntamento si fissa accettando il preventivo, col pagamento.
+        if (quote.status === "SENT" && quote.proposedDateAccepted) {
+          return (
+            <ScheduleChangeBox
+              title="Il professionista ha accettato la data che hai proposto: accetta il preventivo per fissare l'appuntamento"
+              afterLabel="Appuntamento"
+              afterText={formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
+            />
+          );
+        }
         // Stesso "prima → ora" che vede il professionista quando il cliente
         // propone un'altra data (docs/CHANGELOG.md §186).
         const change =
