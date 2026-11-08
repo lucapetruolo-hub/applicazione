@@ -17,6 +17,10 @@ prezzo delle schede) è nel gruppo 1.
   nell'HTML del server: su 3G lento (50 KB/s, CPU ×4) a 5 secondi si vede già,
   prima si vedeva un vuoto fino a 10-20 secondi. La barra in cima non si
   accende all'apertura diretta: è JavaScript, arriverebbe dopo la sagoma.
+  Sagome in HTML semplice e ferme (classi `.page-loading` di globals.css): la
+  prima versione con i componenti Tamagui e la luce che scorre portava la
+  prova Lighthouse di "Le mie richieste" in CI a TBT 529 ms (limite 500); in
+  locale, 5 misure: 430-610 ms (mediana 460), come senza sagoma (460-550).
 - **E8-03, velocità da telefono.** La schermata dell'agenda di
   `/per-professionisti` (l'elemento più grande, LCP) ha `fetchpriority="high"`
   e un `preload` in testa alla pagina, per telefono e computer: con Next.js 16

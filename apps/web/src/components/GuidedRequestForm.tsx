@@ -41,7 +41,7 @@ import { InlineAuthGate } from "@/components/InlineAuthGate";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { RequestSentScreen } from "@/components/RequestSentScreen";
 import { UploadingDots } from "@/components/UploadingDots";
-import { SkeletonBlock, SkeletonCircle } from "@/components/Skeleton";
+import { GuidedRequestSkeleton } from "@/components/PageLoading";
 import { CategoryTiles } from "@/components/CategoryTiles";
 import { SafetyNotice } from "@/components/ProblemBand";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
@@ -204,33 +204,6 @@ export function GuidedRequestHeading({ title, subtitle }: { title: string; subti
         </YStack>
         <GuidedRequestSkeleton />
       </YStack>
-    </YStack>
-  );
-}
-
-/** Sagoma dei primi campi del modulo (passi, tipo di intervento, descrizione, pulsante). */
-function GuidedRequestSkeleton() {
-  return (
-    <YStack gap="5" aria-busy>
-      <XStack gap="3" alignItems="center">
-        <SkeletonCircle size={28} />
-        <SkeletonBlock width={70} height={12} />
-        <SkeletonCircle size={28} />
-        <SkeletonBlock width={70} height={12} />
-        <SkeletonCircle size={28} />
-      </XStack>
-      <YStack gap="2">
-        <SkeletonBlock width={140} height={14} />
-        <SkeletonBlock width={230} height={44} radius={10} />
-      </YStack>
-      <YStack gap="2">
-        <SkeletonBlock width={150} height={14} />
-        <SkeletonBlock width="100%" height={116} radius={10} />
-      </YStack>
-      <SkeletonBlock width="100%" height={48} radius={24} />
-      <p role="status" className="page-loading-note">
-        Stiamo preparando il modulo…
-      </p>
     </YStack>
   );
 }
