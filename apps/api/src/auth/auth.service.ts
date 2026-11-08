@@ -714,7 +714,8 @@ export class AuthService {
    */
   /**
    * Chi deve sapere che un professionista ha chiuso l'account: BookingsService
-   * si registra qui (importa già AuthModule, il contrario sarebbe circolare).
+   * e BillingService si registrano qui (importano già AuthModule, il
+   * contrario sarebbe circolare).
    */
   private readonly professionalClosedHandlers: ((professionalProfileId: string, userId: string) => Promise<void>)[] = [];
   onProfessionalAccountClosed(handler: (professionalProfileId: string, userId: string) => Promise<void>): void {
@@ -767,8 +768,12 @@ export class AuthService {
       },
       orderBy: { scheduledAt: "asc" },
     });
+    const subscription = profile
+      ? await this.prisma.subscription.findUnique({ where: { professionalProfileId: profile.id }, select: { stripeSubscriptionId: true, status: true } })
+      : null;
     return {
       blockers,
+      subscriptionEndsNow: Boolean(subscription?.stripeSubscriptionId && subscription.status !== "CANCELED"),
       jobsToCancel: jobs.map((job) => ({
         id: job.id,
         withName: profile ? (job.recipientName ?? job.client.name ?? "un cliente") : job.professionalProfile.businessName,
@@ -791,7 +796,8 @@ export class AuthService {
     }
     if (professionalProfile) {
       await this.prisma.professionalProfile.update({ where: { id: professionalProfile.id }, data: { deletedAt: new Date() } });
-      // I lavori futuri si annullano da soli e i clienti lo sanno subito (docs/CHANGELOG.md §348).
+      // I lavori futuri si annullano da soli e i clienti lo sanno subito (docs/CHANGELOG.md §348);
+      // l'abbonamento di Stripe si annulla subito (collaudo dell'8/11/2026, E1-01).
       for (const handler of this.professionalClosedHandlers) {
         await handler(professionalProfile.id, userId).catch((err: unknown) =>
           this.logger.error(`Lavori del professionista ${professionalProfile.id} non annullati: ${(err as Error).message}`),

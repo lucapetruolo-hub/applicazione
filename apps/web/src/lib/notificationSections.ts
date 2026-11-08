@@ -144,7 +144,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   if (type === "ADMIN_SUSPICIOUS_ACCOUNTS") return "/admin/account-sospetti";
   // Documenti contabili (docs/CHANGELOG.md §378).
   if (type === "MONTHLY_DOCUMENTS_READY" || type === "CLIENT_DOCUMENTS_TO_FIX") return "/dashboard/documenti";
-  if (type === "ADMIN_FEE_RECONCILIATION") return "/admin/finanza";
+  if (type === "ADMIN_FEE_RECONCILIATION" || type === "ADMIN_SUBSCRIPTION_DUPLICATE") return "/admin/finanza";
   if (type === "ADMIN_JOB_ISSUE_TO_REVIEW" || type === "ADMIN_JOB_ISSUE_APPEAL") return "/admin/problemi";
   // Copia del documento per il cliente (§387): apre subito i documenti della richiesta.
   if (type === "JOB_DOCUMENT_READY") {

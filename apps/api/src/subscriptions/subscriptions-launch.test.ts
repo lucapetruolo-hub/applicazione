@@ -363,3 +363,41 @@ describe("SubscriptionsService e primi 100 professionisti", () => {
     expect(list.rows[0]).toMatchObject({ number: 1, businessName: "Rossi Idraulica", freeUntil: null, tier: "PLUS", deleted: false });
   });
 });
+
+describe("rinnovo non pagato e account chiuso (controllo dell'8/11/2026, E1-01, E3-03)", () => {
+  const now = new Date("2026-11-20T10:00:00Z");
+
+  it("segna da quando il rinnovo non è pagato, senza spostarlo ai tentativi dopo, e lo toglie al pagamento", async () => {
+    vi.useFakeTimers({ now, toFake: ["Date"] });
+    const { service, prisma } = buildService();
+    prisma.professionalProfile.findUnique.mockResolvedValue(null);
+    const row = { id: "s-1", plan: "BASE", status: "ACTIVE", professionalProfileId: "pro-1", pastDueSince: null, cancelAtPeriodEnd: false, professionalProfile: { userId: "u-1", deletedAt: null } };
+    prisma.subscription.findUnique.mockResolvedValueOnce(row);
+    await service.onInvoice("sub_1", { paid: false, renewal: true, amountEurCents: 0, nextPeriodEnd: null });
+    expect(prisma.subscription.update.mock.calls[0]![0].data).toEqual({ status: "PAST_DUE", pastDueSince: now });
+
+    const earlier = new Date("2026-11-15T10:00:00Z");
+    prisma.subscription.findUnique.mockResolvedValueOnce({ ...row, status: "PAST_DUE", pastDueSince: earlier });
+    await service.onInvoice("sub_1", { paid: false, renewal: true, amountEurCents: 0, nextPeriodEnd: null });
+    expect(prisma.subscription.update.mock.calls[1]![0].data).toEqual({ status: "PAST_DUE", pastDueSince: earlier });
+
+    prisma.subscription.findUnique.mockResolvedValueOnce({ ...row, status: "PAST_DUE", pastDueSince: earlier });
+    await service.onInvoice("sub_1", { paid: true, renewal: true, amountEurCents: 2318, nextPeriodEnd: null });
+    expect(prisma.subscription.update.mock.calls[2]![0].data).toEqual({ status: "ACTIVE", pastDueSince: null });
+    vi.useRealTimers();
+  });
+
+  it("account chiuso: nessun avviso del rinnovo e nessuna riattivazione da Stripe", async () => {
+    const { service, prisma, notificationsService } = buildService();
+    const closed = { id: "s-1", plan: "BASE", status: "ACTIVE", professionalProfileId: "pro-1", stripeSubscriptionId: "sub_1", trialEndsAt: null, freeMonthsWaiting: 0, professionalProfile: { userId: "u-1", deletedAt: now } };
+    prisma.subscription.findUnique.mockResolvedValue(closed);
+
+    await service.onInvoice("sub_1", { paid: true, renewal: true, amountEurCents: 2318, nextPeriodEnd: null });
+    await service.applyStripeSubscription({ stripeSubscriptionId: "sub_1", status: "ACTIVE", tier: "BASE", interval: "MONTH", cancelAtPeriodEnd: false, currentPeriodEnd: null });
+    expect(prisma.subscription.update).not.toHaveBeenCalled();
+    expect(notificationsService.notify).not.toHaveBeenCalled();
+
+    await service.applyStripeSubscription({ stripeSubscriptionId: "sub_1", status: "CANCELED", tier: "BASE", interval: "MONTH", cancelAtPeriodEnd: false, currentPeriodEnd: null });
+    expect(prisma.subscription.update.mock.calls[0]![0].data).toMatchObject({ status: "CANCELED", pastDueSince: null });
+  });
+});

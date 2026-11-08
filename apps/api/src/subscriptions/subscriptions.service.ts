@@ -517,11 +517,15 @@ export class SubscriptionsService {
     /** Fine della prova di Stripe se è ancora in prova, altrimenti null. */
     stripeTrialEnd?: Date | null;
   }): Promise<void> {
+    const deletedSelect = { professionalProfile: { select: { deletedAt: true } } } as const;
     const row =
-      (await this.prisma.subscription.findUnique({ where: { stripeSubscriptionId: input.stripeSubscriptionId } })) ??
-      (input.professionalProfileId ? await this.prisma.subscription.findUnique({ where: { professionalProfileId: input.professionalProfileId } }) : null);
+      (await this.prisma.subscription.findUnique({ where: { stripeSubscriptionId: input.stripeSubscriptionId }, include: deletedSelect })) ??
+      (input.professionalProfileId ? await this.prisma.subscription.findUnique({ where: { professionalProfileId: input.professionalProfileId }, include: deletedSelect }) : null);
     if (!row) return;
     if (row.stripeSubscriptionId && row.stripeSubscriptionId !== input.stripeSubscriptionId && row.status !== "CANCELED") return;
+    // Account chiuso (collaudo dell'8/11/2026, E1-01): l'abbonamento si annulla
+    // alla chiusura; da Stripe si accetta solo la fine, mai una riattivazione.
+    if (row.professionalProfile?.deletedAt && input.status !== "CANCELED") return;
     const now = new Date();
     const freeRunning = row.trialEndsAt !== null && row.trialEndsAt.getTime() > now.getTime();
     let freeMonths: { trialEndsAt?: Date; freeMonthsWaiting?: number; freeMonthsGranted?: number } = {};
@@ -548,6 +552,8 @@ export class SubscriptionsService {
         ...freeMonths,
         // Abbonamento concluso: niente ritorno a Base in sospeso.
         ...(input.status === "CANCELED" ? { returnToBaseAt: null } : {}),
+        // Rinnovo non pagato: da quando (E3-03), per chiuderlo dopo 14 giorni.
+        ...(input.status === "PAST_DUE" ? (row.pastDueSince ? {} : { pastDueSince: now }) : input.status ? { pastDueSince: null } : {}),
         // Prima carta data (imbuto dell'iscrizione, docs/changelog/2026-10-30-iscrizione-carta-solida.md).
         ...(!row.cardAddedAt && input.status === "ACTIVE" ? { cardAddedAt: now } : {}),
       },
@@ -574,10 +580,14 @@ export class SubscriptionsService {
   ): Promise<void> {
     const row = await this.prisma.subscription.findUnique({
       where: { stripeSubscriptionId },
-      include: { professionalProfile: { select: { userId: true } } },
+      include: { professionalProfile: { select: { userId: true, deletedAt: true } } },
     });
-    if (!row || row.status === "CANCELED") return;
-    await this.prisma.subscription.update({ where: { id: row.id }, data: { status: outcome.paid ? "ACTIVE" : "PAST_DUE" } });
+    // Account chiuso: nessun avviso né cambio di stato (E1-01).
+    if (!row || row.status === "CANCELED" || row.professionalProfile?.deletedAt) return;
+    await this.prisma.subscription.update({
+      where: { id: row.id },
+      data: { status: outcome.paid ? "ACTIVE" : "PAST_DUE", pastDueSince: outcome.paid ? null : (row.pastDueSince ?? new Date()) },
+    });
     const tier = tierOfPlan(row.plan);
     const userId = row.professionalProfile.userId;
     if (!outcome.paid) {

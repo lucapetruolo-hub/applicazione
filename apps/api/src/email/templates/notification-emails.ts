@@ -1,4 +1,5 @@
 import {
+  PAST_DUE_GRACE_DAYS,
   AGENDA_LOOKAHEAD_DAYS,
   CONTENT_REPORT_TARGET_LABEL,
   JOB_ISSUE_APPEAL_DAYS,
@@ -1268,6 +1269,19 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
   }),
+  // Secondo abbonamento dello stesso professionista (due schede): annullato, addebito da rimborsare (E3-01).
+  ADMIN_SUBSCRIPTION_DUPLICATE: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Abbonamento pagato due volte",
+    title: "Abbonamento doppio da rimborsare",
+    paragraphs: [
+      `Un professionista ha attivato l'abbonamento due volte. Il secondo l'abbiamo già annullato, ma ha pagato ${formatEur(payload.amountEurCents) || "un importo"}.`,
+      "Rimborsalo dalla Dashboard di Stripe e prepara la nota di credito della fattura dell'abbonamento.",
+    ],
+    details: [...(typeof payload.stripeSubscriptionId === "string" ? [{ label: "Abbonamento", value: payload.stripeSubscriptionId }] : [])],
+    cta: { label: "Apri Finanza", url: `${frontendUrl()}/admin/finanza` },
+  }),
   ADMIN_STRIPE_UNKNOWN_PAYMENT: (payload) => ({
     kind: "notification",
     tone: "urgent",
@@ -2226,7 +2240,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Pagamento non riuscito",
     paragraphs: [
       "Non siamo riusciti ad addebitare l'abbonamento sulla tua carta. Riproveremo nei prossimi giorni.",
-      "Controlla la carta o cambiala dalla pagina Abbonamento, con \"Cambia la carta\": se il pagamento non riesce l'abbonamento si chiude e il profilo va in pausa.",
+      `Controlla la carta o cambiala dalla pagina Abbonamento, con "Cambia la carta": se entro ${PAST_DUE_GRACE_DAYS} giorni il pagamento non riesce, l'abbonamento si chiude e il profilo va in pausa.`,
     ],
     cta: subscriptionPage(),
   }),

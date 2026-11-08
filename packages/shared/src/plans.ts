@@ -96,6 +96,13 @@ export const SAME_CLIENT_ONCE = "Più lavori allo stesso cliente nello stesso me
 
 /** Un mese gratis dura 30 giorni e vale come il livello Base (stesso limite di lavori). */
 export const TRIAL_DAYS = 30;
+
+/**
+ * Giorni di rinnovo non pagato dopo cui l'abbonamento si chiude e il profilo
+ * va in pausa (collaudo dell'8/11/2026, E3-03), anche se la Dashboard di
+ * Stripe lasciasse l'abbonamento sospeso invece di annullarlo.
+ */
+export const PAST_DUE_GRACE_DAYS = 14;
 /** Avviso di fine mesi gratis questi giorni prima. */
 export const TRIAL_ENDING_NOTICE_DAYS = 3;
 

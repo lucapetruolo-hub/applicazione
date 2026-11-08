@@ -744,6 +744,13 @@ model Subscription {
   // Carta data per l'abbonamento: primo abbonamento di Stripe attivo o in
   // prova (imbuto dell'iscrizione, docs/changelog/2026-10-30-iscrizione-carta-solida.md).
   cardAddedAt           DateTime?
+  // Rinnovo non pagato dal… (collaudo dell'8/11/2026, E3-03): dopo 14 giorni
+  // l'abbonamento si chiude anche se la Dashboard di Stripe lo lascia sospeso.
+  pastDueSince          DateTime?
+  // Quota di passaggio in corso (E3-02): fattura Stripe della quota (pagata o
+  // no) e inizio del passaggio, contro i doppi clic da due schede.
+  upgradeInvoiceId      String?
+  upgradeStartedAt      DateTime?
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 

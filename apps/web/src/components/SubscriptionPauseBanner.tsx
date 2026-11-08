@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { formatEur as formatEurShared, subscriptionTierInfo, tierPeriodPriceEurCents, type MySubscription, type SubscriptionTier } from "@professionisti/shared";
+import { PAST_DUE_GRACE_DAYS, formatEur as formatEurShared, subscriptionTierInfo, tierPeriodPriceEurCents, type MySubscription, type SubscriptionTier } from "@professionisti/shared";
 import { Button, Surface, Text, YStack, brand, radiusDoc } from "@professionisti/ui";
 
 /**
@@ -95,7 +95,7 @@ export function SubscriptionPauseBanner({ sub, showAction = true, profileStepsEl
   } else if (sub.state === "PAST_DUE") {
     tone = "warn";
     title = "Pagamento dell'abbonamento non riuscito";
-    body = "Riproveremo nei prossimi giorni. Controlla il metodo di pagamento: se il pagamento non va a buon fine l'abbonamento si chiude e il profilo va in pausa.";
+    body = `Riproviamo nei prossimi giorni. Controlla la carta o cambiala: se entro ${PAST_DUE_GRACE_DAYS} giorni il pagamento non riesce, l'abbonamento si chiude e il profilo va in pausa.`;
     action = "Vai all'abbonamento";
   } else {
     return null;

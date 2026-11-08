@@ -1,8 +1,9 @@
-import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, type OnModuleInit, ServiceUnavailableException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, type OnModuleInit, Optional, ServiceUnavailableException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import {
+  PAST_DUE_GRACE_DAYS,
   SUBSCRIPTION_TIERS,
   TRIAL_DAYS,
   subscriptionTierInfo,
@@ -16,7 +17,8 @@ import { InvoicesService } from "../accounting/invoices.service";
 import { hasLaunched, launchDate, subscriptionState, tierOfPlan, trialDaysOf, trialEndFor } from "../subscriptions/subscription-rules";
 import { BookingsService } from "../bookings/bookings.service";
 import { JobPaymentsService } from "../job-payments/job-payments.service";
-import { EUR_ONLY } from "../job-payments/online-money.service";
+import { CARD_ONLY, EUR_ONLY } from "../job-payments/online-money.service";
+import { AuthService } from "../auth/auth.service";
 import { ProfessionalFiscalService } from "../professional-fiscal/professional-fiscal.service";
 
 // Prezzi dei pacchetti di visibilità (CLAUDE.md §6): boost locale a canone,
@@ -49,6 +51,10 @@ const CARD_ONLY_PORTAL = "solo-carta-v1";
 const MISSED_INVOICE_WINDOW_MS = 12 * 24 * 60 * 60 * 1000;
 // "Torna a Base" si fa poco prima della scadenza, prima che Stripe rinnovi il livello pagato.
 const RETURN_TO_BASE_LEAD_MS = 20 * 60 * 1000;
+// Un passaggio di livello fermo da più di 2 minuti (richiesta caduta) non blocca il successivo.
+const UPGRADE_LOCK_MS = 2 * 60 * 1000;
+// Pagine di pagamento dell'abbonamento cercate per riusarle (Stripe le tiene aperte 24 ore).
+const CHECKOUT_LOOKBACK_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Riga sotto il pulsante del Checkout di Stripe (collaudo D-05, E-08, G-02):
@@ -75,6 +81,16 @@ function localStatus(status: Stripe.Subscription.Status): "ACTIVE" | "PAST_DUE" 
   return null;
 }
 
+/** Abbonamento Stripe ancora vivo: in prova, attivo o con un rinnovo da pagare. */
+function liveOnStripe(status: Stripe.Subscription.Status): boolean {
+  return status === "trialing" || status === "active" || status === "past_due" || status === "unpaid";
+}
+
+function stripeId(ref: string | { id: string } | null | undefined): string | null {
+  if (!ref) return null;
+  return typeof ref === "string" ? ref : ref.id;
+}
+
 /** Id dell'abbonamento di una fattura (API Stripe recente: `parent.subscription_details`). */
 function invoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
   const ref = invoice.parent?.subscription_details?.subscription;
@@ -94,12 +110,93 @@ export class BillingService implements OnModuleInit {
     private readonly professionalFiscalService: ProfessionalFiscalService,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly invoicesService: InvoicesService,
+    // Facoltativo solo per i test che costruiscono il servizio a mano.
+    @Optional() private readonly authService?: AuthService,
   ) {
     this.stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
   }
 
   onModuleInit(): void {
     this.subscriptionsService.setStripeTrialEnder((id, end) => this.endStripeTrial(id, end));
+    // Account chiuso: l'abbonamento si annulla subito (collaudo dell'8/11/2026, E1-01).
+    this.authService?.onProfessionalAccountClosed((professionalProfileId) => this.cancelForClosedAccount(professionalProfileId));
+  }
+
+  /**
+   * Chiusura dell'account del professionista (collaudo dell'8/11/2026,
+   * E1-01): l'abbonamento di Stripe si annulla subito, senza conguagli, così
+   * la carta non viene più addebitata e non partono fatture a un account
+   * chiuso. Stripe smette anche di riscuotere le fatture aperte. Se Stripe
+   * non risponde, ci riprova il controllo orario (`runSubscriptionSafetyChecks`).
+   */
+  async cancelForClosedAccount(professionalProfileId: string): Promise<void> {
+    const row = await this.prisma.subscription.findUnique({ where: { professionalProfileId } });
+    if (!row || row.status === "CANCELED") return;
+    if (row.stripeSubscriptionId && this.stripe) await this.cancelOnStripe(this.stripe, row.stripeSubscriptionId, `chiusura-account-${row.id}`);
+    await this.prisma.subscription.update({
+      where: { id: row.id },
+      data: { status: "CANCELED", cancelAtPeriodEnd: false, returnToBaseAt: null, pastDueSince: null },
+    });
+  }
+
+  /** Annulla subito un abbonamento Stripe; già annullato o sparito va bene così. */
+  private async cancelOnStripe(stripe: Stripe, stripeSubscriptionId: string, idempotencyKey: string): Promise<void> {
+    try {
+      await stripe.subscriptions.cancel(stripeSubscriptionId, { prorate: false, invoice_now: false }, { idempotencyKey });
+    } catch (error) {
+      if (error instanceof Stripe.errors.StripeInvalidRequestError && (error.code === "resource_missing" || /canceled/i.test(error.message))) return;
+      throw error;
+    }
+  }
+
+  /**
+   * Ogni ora, reti di sicurezza dell'abbonamento (collaudo dell'8/11/2026):
+   * - account chiusi con un abbonamento ancora vivo su Stripe (E1-01, se alla
+   *   chiusura Stripe non aveva risposto): si annulla;
+   * - rinnovo non pagato da più di 14 giorni (E3-03): si annulla, così il
+   *   profilo va in pausa anche se la Dashboard di Stripe lascia
+   *   l'abbonamento sospeso invece di chiuderlo;
+   * - quota di passaggio pagata ma livello non cambiato (E3-02): si finisce.
+   */
+  @Cron(CronExpression.EVERY_HOUR)
+  async runSubscriptionSafetyChecks(now = new Date()): Promise<void> {
+    const stripe = this.stripe;
+    if (!stripe) return;
+    const closed = await this.prisma.subscription.findMany({
+      where: { status: { not: "CANCELED" }, stripeSubscriptionId: { not: null }, professionalProfile: { deletedAt: { not: null } } },
+      select: { professionalProfileId: true },
+    });
+    for (const row of closed) {
+      await this.cancelForClosedAccount(row.professionalProfileId).catch((error: unknown) =>
+        this.logger.error(`Abbonamento di un account chiuso non annullato (${row.professionalProfileId})`, error as Error),
+      );
+    }
+    const unpaid = await this.prisma.subscription.findMany({
+      where: { status: "PAST_DUE", stripeSubscriptionId: { not: null }, pastDueSince: { lte: new Date(now.getTime() - PAST_DUE_GRACE_DAYS * DAY_MS) } },
+    });
+    for (const row of unpaid) {
+      try {
+        await this.cancelOnStripe(stripe, row.stripeSubscriptionId!, `rinnovo-non-pagato-${row.id}-${row.pastDueSince!.getTime()}`);
+        await this.syncStripeSubscription(await stripe.subscriptions.retrieve(row.stripeSubscriptionId!));
+        this.logger.warn(`Abbonamento ${row.id} chiuso dopo ${PAST_DUE_GRACE_DAYS} giorni di rinnovo non pagato.`);
+      } catch (error) {
+        this.logger.error(`Abbonamento non pagato non chiuso (${row.id})`, error as Error);
+      }
+    }
+    const upgrades = await this.prisma.subscription.findMany({
+      where: {
+        upgradeInvoiceId: { not: null },
+        stripeSubscriptionId: { not: null },
+        OR: [{ upgradeStartedAt: null }, { upgradeStartedAt: { lt: new Date(now.getTime() - UPGRADE_LOCK_MS) } }],
+      },
+    });
+    for (const row of upgrades) {
+      try {
+        await this.withUpgradeLock(row.id, () => this.finishPendingUpgrade(stripe, row.id, row.stripeSubscriptionId!));
+      } catch (error) {
+        this.logger.error(`Passaggio di livello in sospeso non chiuso (${row.id})`, error as Error);
+      }
+    }
   }
 
   /**
@@ -299,14 +396,57 @@ export class BillingService implements OnModuleInit {
     };
   }
 
+  /** Professionista di una fattura di Stripe: dai metadati, dall'abbonamento o dal cliente Stripe. */
+  private async profileIdOfInvoice(invoice: Stripe.Invoice, stripeSubscriptionId: string | null): Promise<string | null> {
+    const customerId = typeof invoice.customer === "string" ? invoice.customer : (invoice.customer?.id ?? null);
+    return (
+      invoice.metadata?.professionalProfileId ??
+      (stripeSubscriptionId ? (await this.prisma.subscription.findUnique({ where: { stripeSubscriptionId }, select: { professionalProfileId: true } }))?.professionalProfileId : undefined) ??
+      (customerId ? (await this.prisma.professionalProfile.findFirst({ where: { stripeCustomerId: customerId }, select: { id: true } }))?.id : undefined) ??
+      null
+    );
+  }
+
+  /**
+   * Secondo abbonamento Stripe dello stesso professionista (collaudo
+   * dell'8/11/2026, E3-01): il sito ne segue già un altro ancora vivo.
+   */
+  private async isDuplicateSubscription(stripeSubscriptionId: string): Promise<boolean> {
+    const known = await this.prisma.subscription.findUnique({ where: { stripeSubscriptionId }, select: { id: true } });
+    if (known) return false;
+    const subscription = await this.stripe?.subscriptions.retrieve(stripeSubscriptionId).catch(() => null);
+    const profileId = subscription?.metadata?.professionalProfileId;
+    if (!profileId) return false;
+    const row = await this.prisma.subscription.findUnique({ where: { professionalProfileId: profileId }, select: { stripeSubscriptionId: true, status: true } });
+    return Boolean(row?.stripeSubscriptionId && row.stripeSubscriptionId !== stripeSubscriptionId && row.status !== "CANCELED");
+  }
+
+  /**
+   * Pagina dell'abbonamento completata mentre il professionista ne ha già un
+   * altro vivo su Stripe (due schede, E3-01): il nuovo si annulla subito,
+   * così non si rinnova mai, e se c'è stato un addebito la Finanza lo
+   * rimborsa con la nota di credito. Restituisce true se era un doppione.
+   */
+  private async cancelIfDuplicate(stripe: Stripe, session: Stripe.Checkout.Session, professionalProfileId: string): Promise<boolean> {
+    const newId = stripeId(session.subscription);
+    if (!newId) return false;
+    const row = await this.prisma.subscription.findUnique({ where: { professionalProfileId }, select: { stripeSubscriptionId: true } });
+    if (!row?.stripeSubscriptionId || row.stripeSubscriptionId === newId) return false;
+    const existing = await stripe.subscriptions.retrieve(row.stripeSubscriptionId).catch(() => null);
+    if (!existing || !liveOnStripe(existing.status)) return false;
+    await this.cancelOnStripe(stripe, newId, `doppione-${newId}`);
+    this.logger.error(`Secondo abbonamento ${newId} annullato per ${professionalProfileId}: ne aveva già uno attivo.`);
+    if ((session.amount_total ?? 0) > 0) {
+      await this.invoicesService.notifyFinanceAdmins("ADMIN_SUBSCRIPTION_DUPLICATE", { amountEurCents: session.amount_total, stripeSubscriptionId: newId, professionalProfileId });
+    }
+    return true;
+  }
+
   /** Avviso del pagamento di un livello o di una quota di passaggio, con il livello pagato. */
   private async notifySubscriptionPaid(invoice: Stripe.Invoice, stripeSubscriptionId: string | null, invoiceIssued: boolean): Promise<void> {
     const metadata = invoice.metadata ?? {};
     const customerId = typeof invoice.customer === "string" ? invoice.customer : (invoice.customer?.id ?? null);
-    const professionalProfileId =
-      metadata.professionalProfileId ??
-      (stripeSubscriptionId ? (await this.prisma.subscription.findUnique({ where: { stripeSubscriptionId }, select: { professionalProfileId: true } }))?.professionalProfileId : undefined) ??
-      (customerId ? (await this.prisma.professionalProfile.findFirst({ where: { stripeCustomerId: customerId }, select: { id: true } }))?.id : undefined);
+    const professionalProfileId = await this.profileIdOfInvoice(invoice, stripeSubscriptionId);
     if (!professionalProfileId) return;
     const priceRef = invoice.lines?.data?.find((line) => line.amount > 0)?.pricing?.price_details?.price;
     const tier = (SUBSCRIPTION_TIERS.find((t) => t.tier === metadata.plan)?.tier ?? this.priceOf(typeof priceRef === "string" ? priceRef : priceRef?.id)?.tier) ?? null;
@@ -420,10 +560,22 @@ export class BillingService implements OnModuleInit {
     if (preLaunchTrial && !launch) {
       throw new BadRequestException("La data del lancio non è ancora fissata: potrai attivare i mesi gratis appena lo sarà.");
     }
-    const trialEnd = freeEnd && freeEnd.getTime() - now.getTime() > MIN_TRIAL_END_MS ? Math.floor(freeEnd.getTime() / 1000) : undefined;
+    // Stripe vuole almeno 48 ore di prova: negli ultimi 2 giorni dei mesi
+    // gratis la prova si allunga a 48 ore invece di far pagare subito chi dà
+    // la carta (collaudo dell'8/11/2026, E3-08). La data detta sotto il
+    // pulsante e nel sito è quella vera di Stripe.
+    const trialEnd =
+      freeEnd && freeEnd.getTime() > now.getTime()
+        ? Math.floor(Math.max(freeEnd.getTime(), now.getTime() + MIN_TRIAL_END_MS + 5 * 60 * 1000) / 1000)
+        : undefined;
     // Plus o Pro mentre scorrono i mesi gratis: il mese Base regalato si toglie dal primo mese.
     const freeRunning = state === "TRIAL" && current?.trialEndsAt && current.trialEndsAt.getTime() > now.getTime();
     const discount = plan !== "BASE" && freeRunning ? [{ coupon: await this.freeBaseMonthCoupon(stripe) }] : [];
+
+    const customer = await this.ensureCustomer(stripe, profile);
+    // Una sola pagina di pagamento aperta e un solo abbonamento (collaudo dell'8/11/2026, E3-01).
+    const reused = await this.reuseSubscriptionCheckout(stripe, customer, plan, current?.stripeSubscriptionId ?? null);
+    if (reused) return { url: reused };
 
     // Per le Checkout Session in modalità `subscription` Stripe crea un suo
     // documento a ogni addebito: non è la fattura elettronica, che emettiamo
@@ -432,6 +584,9 @@ export class BillingService implements OnModuleInit {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       ...EUR_ONLY,
+      // Solo carta (con Apple Pay e Google Pay), come il portale e i testi
+      // ("Aggiungi la carta"), qualunque metodo sia acceso in Dashboard (E3-07).
+      ...CARD_ONLY,
       line_items: [{ price: priceId, quantity: 1 }],
       ...(discount.length ? { discounts: discount } : {}),
       subscription_data: {
@@ -439,7 +594,7 @@ export class BillingService implements OnModuleInit {
         default_tax_rates: taxRates,
         metadata: { professionalProfileId: profile.id },
       },
-      customer: await this.ensureCustomer(stripe, profile),
+      customer,
       // Stripe scrive "89 giorni gratuiti": la data e il dopo detti come sul sito (collaudo D-05, E-08).
       custom_text: { submit: { message: checkoutMessage(trialEnd ? new Date(trialEnd * 1000) : null, plan) } },
       // Ritorno con il messaggio giusto: carta salvata a 0 € o pagamento fatto; finestra chiusa a metà.
@@ -449,6 +604,35 @@ export class BillingService implements OnModuleInit {
     });
 
     return { url: session.url };
+  }
+
+  /**
+   * Pagina dell'abbonamento già aperta nelle ultime 24 ore (collaudo
+   * dell'8/11/2026, E3-01): da una seconda scheda si riapre quella, perché
+   * due pagine pagate farebbero due abbonamenti. Se un'altra pagina è appena
+   * stata completata e l'abbonamento non è ancora arrivato al sito, lo
+   * diciamo invece di aprirne una nuova. Una pagina per un altro livello si
+   * chiude.
+   */
+  private async reuseSubscriptionCheckout(stripe: Stripe, customer: string, plan: SubscriptionTier, knownSubscriptionId: string | null): Promise<string | null> {
+    const since = Math.floor((Date.now() - CHECKOUT_LOOKBACK_MS) / 1000);
+    const sessions = await stripe.checkout.sessions.list({ customer, created: { gte: since }, limit: 20 });
+    for (const session of sessions.data) {
+      if (session.mode !== "subscription" || session.metadata?.kind !== "subscription") continue;
+      if (session.status === "complete") {
+        const subscriptionId = stripeId(session.subscription);
+        if (!subscriptionId || subscriptionId === knownSubscriptionId) continue;
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId).catch(() => null);
+        if (subscription && liveOnStripe(subscription.status)) {
+          throw new BadRequestException("Hai appena attivato l'abbonamento: la pagina si aggiorna tra pochi secondi. Ricaricala.");
+        }
+        continue;
+      }
+      if (session.status !== "open") continue;
+      if (session.metadata?.plan === plan && session.url) return session.url;
+      await stripe.checkout.sessions.expire(session.id).catch(() => undefined);
+    }
+    return null;
   }
 
   /**
@@ -468,6 +652,56 @@ export class BillingService implements OnModuleInit {
     return id;
   }
 
+  /**
+   * Un passaggio di livello alla volta per abbonamento (collaudo
+   * dell'8/11/2026, E3-02): due schede che cliccano insieme non pagano due
+   * volte la quota. Un passaggio rimasto a metà da più di 2 minuti non blocca.
+   */
+  private async withUpgradeLock<T>(subscriptionRowId: string, run: () => Promise<T>): Promise<T> {
+    const now = new Date();
+    const claimed = await this.prisma.subscription.updateMany({
+      where: { id: subscriptionRowId, OR: [{ upgradeStartedAt: null }, { upgradeStartedAt: { lt: new Date(now.getTime() - UPGRADE_LOCK_MS) } }] },
+      data: { upgradeStartedAt: now },
+    });
+    if (claimed.count === 0) throw new ConflictException("Il passaggio di livello è già in corso: aspetta qualche secondo e ricarica la pagina.");
+    try {
+      return await run();
+    } finally {
+      await this.prisma.subscription.update({ where: { id: subscriptionRowId }, data: { upgradeStartedAt: null } }).catch(() => undefined);
+    }
+  }
+
+  /**
+   * Quota di passaggio rimasta a metà (E3-02). Pagata: si dà il livello
+   * pagato e basta, senza farla pagare di nuovo. Non pagata (bozza, aperta):
+   * si annulla. Restituisce il livello dato, o null se non c'era nulla da finire.
+   */
+  private async finishPendingUpgrade(stripe: Stripe, subscriptionRowId: string, stripeSubscriptionId: string): Promise<SubscriptionTier | null> {
+    const row = await this.prisma.subscription.findUnique({ where: { id: subscriptionRowId }, select: { upgradeInvoiceId: true } });
+    if (!row?.upgradeInvoiceId) return null;
+    const invoice = await stripe.invoices.retrieve(row.upgradeInvoiceId).catch((error: unknown) => {
+      if (error instanceof Stripe.errors.StripeInvalidRequestError && error.code === "resource_missing") return null;
+      throw error;
+    });
+    const paidPlan = SUBSCRIPTION_TIERS.find((t) => t.tier === invoice?.metadata?.plan)?.tier ?? null;
+    let given: SubscriptionTier | null = null;
+    if (invoice?.status === "paid" && paidPlan && invoice.metadata?.stripeSubscriptionId === stripeSubscriptionId) {
+      const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+      const item = subscription.items.data[0];
+      const current = this.priceOf(item?.price?.id);
+      if (item && liveOnStripe(subscription.status) && current?.tier !== paidPlan) {
+        await this.switchPrice(stripe, subscription.id, item.id, this.requirePrice(paidPlan, current?.interval ?? "MONTH"));
+      }
+      given = paidPlan;
+    } else if (invoice?.status === "draft") {
+      await stripe.invoices.del(invoice.id!).catch(() => undefined);
+    } else if (invoice?.status === "open") {
+      await stripe.invoices.voidInvoice(invoice.id!).catch(() => undefined);
+    }
+    await this.prisma.subscription.update({ where: { id: subscriptionRowId }, data: { upgradeInvoiceId: null } });
+    return given;
+  }
+
   private async upgradeTier(
     stripe: Stripe,
     professionalProfileId: string,
@@ -476,10 +710,30 @@ export class BillingService implements OnModuleInit {
     plan: SubscriptionTier,
     launched: boolean,
   ): Promise<{ url: string | null }> {
-    if (currentTier === plan) throw new BadRequestException("È già il tuo livello.");
-    if (currentTier && tierRank(plan) < tierRank(currentTier)) {
-      throw new BadRequestException("Per tornare a Base usa \"Torna a Base\": vale dalla scadenza del mese pagato.");
-    }
+    const row = await this.prisma.subscription.findUnique({ where: { professionalProfileId }, select: { id: true } });
+    if (!row) throw new BadRequestException("Abbonamento non trovato: ricarica la pagina.");
+    return this.withUpgradeLock(row.id, async () => {
+      // Quota già pagata in un tentativo di prima: si finisce quello.
+      const finished = await this.finishPendingUpgrade(stripe, row.id, stripeSubscriptionId);
+      if (finished && tierRank(finished) >= tierRank(plan)) return { url: null };
+      const tier = finished ?? currentTier;
+      if (tier === plan) throw new BadRequestException("È già il tuo livello.");
+      if (tier && tierRank(plan) < tierRank(tier)) {
+        throw new BadRequestException("Per tornare a Base usa \"Torna a Base\": vale dalla scadenza del mese pagato.");
+      }
+      return this.upgradeLocked(stripe, row.id, professionalProfileId, stripeSubscriptionId, tier, plan, launched);
+    });
+  }
+
+  private async upgradeLocked(
+    stripe: Stripe,
+    subscriptionRowId: string,
+    professionalProfileId: string,
+    stripeSubscriptionId: string,
+    currentTier: SubscriptionTier | null,
+    plan: SubscriptionTier,
+    launched: boolean,
+  ): Promise<{ url: string | null }> {
     const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
     const item = subscription.items.data[0];
     if (!item) throw new BadRequestException("Abbonamento Stripe senza voci: contattaci.");
@@ -515,45 +769,51 @@ export class BillingService implements OnModuleInit {
 
     // Abbonamento pagato: quota di passaggio su una fattura a parte, pagata
     // subito con la carta dell'abbonamento; solo a pagamento riuscito si
-    // cambia livello, senza altri conguagli di Stripe.
+    // cambia livello, senza altri conguagli di Stripe. La fattura si ricorda
+    // prima di pagarla (E3-02): se poi il cambio di livello non riesce, il
+    // tentativo dopo (o il controllo orario) dà il livello senza far pagare
+    // di nuovo.
     const periodEnd = item.current_period_end * 1000;
     const periodStart = item.current_period_start * 1000;
     const fee = upgradeFeeEurCents({ from: currentTier ?? "BASE", to: plan, interval, remainingMs: periodEnd - now.getTime(), periodMs: periodEnd - periodStart });
     if (fee > 0) {
-      const invoice = await stripe.invoices.create(
-        {
-          customer,
-          collection_method: "charge_automatically",
-          auto_advance: false,
-          pending_invoice_items_behavior: "exclude",
-          default_tax_rates: taxRates,
-          description: `Passaggio al livello ${subscriptionTierInfo(plan).label} fino al rinnovo`,
-          metadata: { kind: "tier_upgrade_fee", professionalProfileId, stripeSubscriptionId, plan },
-        },
-        { idempotencyKey: `tier-upgrade-${stripeSubscriptionId}-${plan}-${item.current_period_end}` },
-      );
-      await stripe.invoiceItems.create({
+      const label = `Passaggio al livello ${subscriptionTierInfo(plan).label} fino al rinnovo`;
+      const invoice = await stripe.invoices.create({
         customer,
-        invoice: invoice.id,
-        amount: fee,
-        currency: "eur",
-        description: `Passaggio al livello ${subscriptionTierInfo(plan).label} fino al rinnovo`,
+        collection_method: "charge_automatically",
+        auto_advance: false,
+        pending_invoice_items_behavior: "exclude",
+        default_tax_rates: taxRates,
+        description: label,
+        metadata: { kind: "tier_upgrade_fee", professionalProfileId, stripeSubscriptionId, plan },
       });
+      await this.prisma.subscription.update({ where: { id: subscriptionRowId }, data: { upgradeInvoiceId: invoice.id } });
+      await stripe.invoiceItems.create(
+        { customer, invoice: invoice.id, amount: fee, currency: "eur", description: label },
+        { idempotencyKey: `tier-upgrade-item-${invoice.id}` },
+      );
       const paymentMethod = typeof subscription.default_payment_method === "string" ? subscription.default_payment_method : subscription.default_payment_method?.id;
       try {
-        const paid = await stripe.invoices.pay(invoice.id!, { off_session: true, ...(paymentMethod ? { payment_method: paymentMethod } : {}) });
-        await this.prisma.payment.create({
-          data: { professionalProfileId, type: "SUBSCRIPTION", amountEurCents: paid.amount_paid, status: "SUCCEEDED" },
-        });
+        await stripe.invoices.pay(invoice.id!, { off_session: true, ...(paymentMethod ? { payment_method: paymentMethod } : {}) });
       } catch (error) {
-        await stripe.invoices.voidInvoice(invoice.id!).catch(() => undefined);
         if (error instanceof Stripe.errors.StripeCardError || error instanceof Stripe.errors.StripeInvalidRequestError) {
+          await stripe.invoices.voidInvoice(invoice.id!).catch(() => undefined);
+          await this.prisma.subscription.update({ where: { id: subscriptionRowId }, data: { upgradeInvoiceId: null } });
           throw new BadRequestException("Il pagamento della quota di passaggio non è andato a buon fine: controlla la carta e riprova.");
         }
+        // Risposta di Stripe persa: la fattura resta ricordata e il tentativo dopo vede se è pagata.
         throw error;
       }
     }
-    return this.switchPrice(stripe, subscription.id, item.id, priceId);
+    try {
+      await this.switchPrice(stripe, subscription.id, item.id, priceId);
+    } catch (error) {
+      if (fee <= 0) throw error;
+      this.logger.error(`Quota pagata ma livello non ancora cambiato (${subscriptionRowId})`, error as Error);
+      throw new ServiceUnavailableException("Quota pagata: il nuovo livello si attiva entro un'ora, senza pagare di nuovo.");
+    }
+    await this.prisma.subscription.update({ where: { id: subscriptionRowId }, data: { upgradeInvoiceId: null } });
+    return { url: null };
   }
 
   /** Nuovo livello sull'abbonamento Stripe, senza conguagli (la quota è già pagata). */
@@ -750,7 +1010,7 @@ export class BillingService implements OnModuleInit {
       if (session.payment_status === "unpaid") return;
       const metadata = session.metadata ?? {};
 
-      if (metadata.kind === "subscription" && metadata.professionalProfileId && metadata.plan) {
+      if (metadata.kind === "subscription" && metadata.professionalProfileId && metadata.plan && !(await this.cancelIfDuplicate(stripe, session, metadata.professionalProfileId))) {
         const billingInterval = metadata.interval === "YEAR" ? "YEAR" : "MONTH";
         await this.prisma.subscription.upsert({
           where: { professionalProfileId: metadata.professionalProfileId },
@@ -771,15 +1031,7 @@ export class BillingService implements OnModuleInit {
         if (typeof session.subscription === "string") {
           await this.syncStripeSubscription(await stripe.subscriptions.retrieve(session.subscription));
         }
-        await this.prisma.payment.create({
-          data: {
-            professionalProfileId: metadata.professionalProfileId,
-            type: "SUBSCRIPTION",
-            amountEurCents: session.amount_total ?? 0,
-            status: "SUCCEEDED",
-            stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : undefined,
-          },
-        });
+        // La riga del pagamento la scrive `invoice.paid`, solo se c'è un addebito (E3-09).
       }
 
       // Quota pagata per un livello superiore durante il periodo gratuito
@@ -914,8 +1166,19 @@ export class BillingService implements OnModuleInit {
       const renewal = invoice.billing_reason === "subscription_cycle";
       // Pagamento che non è un rinnovo (livello scelto, quota di passaggio): avviso nella
       // campanella e per email, con dove trovare la fattura (collaudo E-13).
-      if (event.type === "invoice.paid" && !renewal && (invoice.amount_paid ?? 0) > 0) {
+      const duplicate = stripeSubscriptionId ? await this.isDuplicateSubscription(stripeSubscriptionId) : false;
+      if (event.type === "invoice.paid" && !renewal && (invoice.amount_paid ?? 0) > 0 && !duplicate) {
         await this.notifySubscriptionPaid(invoice, stripeSubscriptionId, invoiceIssued);
+      }
+      // Una riga per ogni addebito riuscito dell'abbonamento (collaudo dell'8/11/2026, E3-09):
+      // livello scelto, rinnovo, Plus o Pro nei mesi gratis, quota di passaggio. Mai le carte date a 0 €.
+      if (event.type === "invoice.paid" && (invoice.amount_paid ?? 0) > 0 && (stripeSubscriptionId || invoice.metadata?.kind === "tier_upgrade_fee")) {
+        const professionalProfileId = await this.profileIdOfInvoice(invoice, stripeSubscriptionId);
+        if (professionalProfileId) {
+          await this.prisma.payment.create({
+            data: { professionalProfileId, type: "SUBSCRIPTION", amountEurCents: invoice.amount_paid, status: "SUCCEEDED" },
+          });
+        }
       }
       if (stripeSubscriptionId) {
         const periodEnd = invoice.lines?.data?.[0]?.period?.end;
@@ -929,19 +1192,6 @@ export class BillingService implements OnModuleInit {
           // Riepilogo nell'email del rinnovo: si legge da Stripe solo per i rinnovi pagati.
           ...(renewal && event.type === "invoice.paid" ? await this.receiptExtras(invoice, customerId, stripeSubscriptionId) : {}),
         });
-        const subscriptionRow = renewal && event.type === "invoice.paid" && invoice.amount_paid > 0
-          ? await this.prisma.subscription.findUnique({ where: { stripeSubscriptionId } })
-          : null;
-        if (subscriptionRow) {
-          await this.prisma.payment.create({
-            data: {
-              professionalProfileId: subscriptionRow.professionalProfileId,
-              type: "SUBSCRIPTION",
-              amountEurCents: invoice.amount_paid,
-              status: "SUCCEEDED",
-            },
-          });
-        }
       }
     }
     if (
