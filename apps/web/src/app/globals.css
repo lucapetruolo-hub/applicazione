@@ -1507,11 +1507,13 @@ button.notif-row-main:hover {
   }
 }
 
-/* Menu dell'account aperto (AccountMenu): la barra in basso del profilo non
+/* Menu dell'account aperto (AccountMenu) e menu con le tre righe
+   (MegaMenu, docs/changelog/2026-11-09-menu-tre-righe.md): la barra in basso del profilo non
    lo copre, arrivati in fondo al menu non scorre la pagina sotto e, da
    telefono, la pagina resta ferma (Safari iOS 16+ rispetta overflow
    sull'html). */
-html.acct-menu-open .profile-cta-bar {
+html.acct-menu-open .profile-cta-bar,
+html.site-menu-open .profile-cta-bar {
   display: none;
 }
 .acct-menu {
@@ -1522,7 +1524,8 @@ html.acct-menu-open .profile-cta-bar {
 }
 @media (max-width: 860px) {
   /* Solo sull'html: anche sul body la barra in alto (sticky) usciva di vista. */
-  html.acct-menu-open {
+  html.acct-menu-open,
+  html.site-menu-open {
     overflow: hidden;
   }
 }
