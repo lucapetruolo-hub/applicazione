@@ -4,6 +4,7 @@
 // icons.web.tsx per la controparte web e la spiegazione della risoluzione.
 import {
   Search,
+  Users,
   Zap,
   Download,
   FileText,
@@ -94,6 +95,7 @@ export const ICONS = {
   star: Star,
   video: Video,
   phone: Phone,
+  users: Users,
   mail: Mail,
   house: House,
   wrench: Wrench,

@@ -60,6 +60,7 @@ export function ExternalJobModal({
   defaultDate,
   defaultStartTime,
   defaultDurationMinutes = 60,
+  prefill,
   onClose,
   onSaved,
   onDeleted,
@@ -73,13 +74,15 @@ export function ExternalJobModal({
   defaultStartTime?: string;
   /** Con `defaultStartTime`: la fine precompilata è questi minuti dopo (la durata dei lavori più frequenti). */
   defaultDurationMinutes?: number;
+  /** Cliente già noto, da "Proponi una data" della rubrica "I miei clienti" (docs/changelog/2026-11-08-rubrica-clienti.md). */
+  prefill?: { clientName: string; clientPhone: string | null; address: string | null };
   onClose: () => void;
   onSaved: (job: ExternalJob) => void;
   onDeleted?: (id: string) => void;
 }) {
-  const [clientName, setClientName] = useState(job?.clientName ?? "");
-  const [clientPhone, setClientPhone] = useState(job?.clientPhone ?? "");
-  const [address, setAddress] = useState(job?.address ?? "");
+  const [clientName, setClientName] = useState(job?.clientName ?? prefill?.clientName ?? "");
+  const [clientPhone, setClientPhone] = useState(job?.clientPhone ?? prefill?.clientPhone ?? "");
+  const [address, setAddress] = useState(job?.address ?? prefill?.address ?? "");
   const [description, setDescription] = useState(job?.description ?? "");
   const [dateStr, setDateStr] = useState(job ? job.scheduledAt.slice(0, 10) : defaultDate ? toIsoDateLocal(defaultDate) : "");
   const [startTime, setStartTime] = useState(job ? job.scheduledAt.slice(11, 16) : (defaultStartTime ?? ""));

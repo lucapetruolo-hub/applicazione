@@ -111,6 +111,9 @@ test("tablet in verticale: colonna con icona e nome breve", async ({ page }) => 
   await expect(nav(page).getByText("Richieste", { exact: true })).toBeVisible();
   await expect(nav(page).getByRole("link", { name: "Richieste e lavori" })).toBeVisible();
   await expect(nav(page).getByRole("button", { name: /menu/ })).toBeHidden();
+  // "I miei clienti" al posto di "Abbonamento", che resta nella tendina (scelta di Luca del 09/11).
+  await expect(nav(page).getByRole("link", { name: "I miei clienti" })).toBeVisible();
+  await expect(nav(page).getByRole("link", { name: "Abbonamento" })).toHaveCount(0);
 });
 
 for (const [name, width, height, collapsed] of [

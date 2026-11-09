@@ -1450,6 +1450,18 @@ button.notif-row-main:hover {
 }
 /* Pallino "da fare" senza numero (es. agenda senza disponibilità). */
 /* Nome accanto alla foto nell'intestazione (AccountMenu, docs/CHANGELOG.md §319). */
+/* Posto della campanella e della foto dell'account mentre il loro codice
+   arriva (SiteHeader, docs/changelog/2026-11-09-meno-javascript-comune.md). */
+.hdr-slot-bell {
+  display: inline-block;
+  width: 44px;
+  height: 44px;
+}
+.hdr-slot-account {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+}
 .acct-trigger-name {
   display: flex;
   min-width: 0;
@@ -9347,4 +9359,20 @@ a.admin-kpi:hover {
 .rebook-keep:focus-visible {
   outline: 2px solid #189a63;
   outline-offset: 2px;
+}
+
+
+
+
+
+/* Rubrica "I miei clienti" (docs/changelog/2026-11-08-rubrica-clienti.md). */
+.client-job-link {
+  color: #0e7a4c; /* brand.cianografiaScuro */
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+  padding: 6px 4px;
+}
+.client-job-link:hover {
+  text-decoration: underline;
 }
