@@ -14,7 +14,8 @@ import {
   type ProfessionalSearchResult,
   serviceNameKey,
 } from "@professionisti/shared";
-import { Text, XStack, YStack, brand } from "@professionisti/ui";
+import { brand } from "@professionisti/ui";
+import styles from "./ResultsPage.module.css";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
 import { ResultsListWithMap, type MapPoolQuery } from "@/components/ResultsListWithMap";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
@@ -159,10 +160,8 @@ export function CercaContent({
   // siti: un link "Mostra tutti" si capiva come "tutti quelli del servizio"
   // (Luca, §398).
   const serviceBar = service ? (
-    <XStack alignItems="center" flexWrap="wrap" gap="2">
-      <Text fontSize={15} color={brand.grafite70}>
-        Servizio
-      </Text>
+    <div className={`is_View ${styles.serviceBar}`}>
+      <span className={`is_Text ${styles.serviceLabel}`}>Servizio</span>
       <Link href={allHref} className="service-chip" aria-label={`Togli il filtro ${service}`}>
         <span className="service-chip-label">{service}</span>
         <span className="service-chip-x" aria-hidden="true">
@@ -279,7 +278,7 @@ export function CercaContent({
           }
         }
       `}</style>
-    </XStack>
+    </div>
   ) : null;
   // La prestazione scelta per il problema, solo se qualcuno nei risultati la offre davvero
   // (docs/changelog/2026-11-06-dizionario-prestazioni.md).
@@ -308,17 +307,19 @@ export function CercaContent({
       onClearChosen={clearChosen}
     />
   ) : serviceBar && notice ? (
-    <YStack gap="3">
+    <div className={`is_View ${styles.stack}`}>
       {serviceBar}
       {notice}
-    </YStack>
+    </div>
   ) : (serviceBar ?? notice);
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent">
+    // HTML semplice, senza il calcolo degli stili di Tamagui
+    // (docs/changelog/2026-11-09-barra-in-alto-senza-tamagui.md).
+    <div className={`is_View ${styles.page}`}>
       {/* Titolo principale (h1), non mostrato (docs/CHANGELOG.md §271). */}
       <h1 className="sr-only">{title}</h1>
-      <YStack width="100%" maxWidth={1200} paddingHorizontal="4" paddingVertical="6">
+      <div className={`is_View ${styles.container}`}>
         <ResultsListWithMap
           professionals={professionals}
           mapPool={mapPool}
@@ -342,7 +343,7 @@ export function CercaContent({
           }
           selection={selection}
         />
-      </YStack>
+      </div>
       {problem?.chosen && chosenPros.length > 0 ? (
         <ChosenProsBar
           chosen={chosenPros}
@@ -351,6 +352,6 @@ export function CercaContent({
           notice={limitNotice}
         />
       ) : null}
-    </YStack>
+    </div>
   );
 }

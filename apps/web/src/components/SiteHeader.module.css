@@ -1,0 +1,142 @@
+/*
+ * Barra in alto in HTML semplice (docs/changelog/2026-11-09-barra-in-alto-senza-tamagui.md):
+ * stessi valori che Tamagui scriveva per XStack/Text, così il disegno resta
+ * identico ma il telefono non calcola più gli stili all'apertura. Le classi
+ * globali `is_View` e `is_Text` (public/tamagui.css) danno la base; qui solo
+ * le proprietà in più, con le variabili di Tamagui. Soglie come Tamagui:
+ * 660 px (xs), 661 px (gtXs), 801 px (gtSm), 1021 px (gtMd).
+ */
+
+.bar {
+  position: relative;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 64px;
+  padding-inline: var(--t-space-4);
+}
+
+@media (min-width: 801px) {
+  .bar {
+    padding-inline: var(--t-space-5);
+  }
+}
+
+.left {
+  position: relative;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--t-space-6);
+}
+
+.row {
+  position: relative;
+  flex-direction: row;
+}
+
+/* Logo intero da 661 px, solo il quadrato sotto. */
+.logoFull {
+  display: none;
+}
+
+@media (min-width: 661px) {
+  .logoFull {
+    display: flex;
+  }
+
+  .logoMark {
+    display: none;
+  }
+}
+
+.nav {
+  position: relative;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--t-space-5);
+}
+
+/* Come funziona, Quanto costa, Offri i tuoi servizi: da 1021 px. */
+.navLinks {
+  display: none;
+}
+
+@media (min-width: 1021px) {
+  .navLinks {
+    display: flex;
+  }
+}
+
+.navText {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--c-grafite);
+}
+
+.right {
+  position: relative;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--t-space-4);
+}
+
+@media (max-width: 660px) {
+  .right {
+    gap: var(--t-space-3);
+  }
+}
+
+.loginText {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--c-cianografiaScuro);
+}
+
+.account {
+  position: relative;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--t-space-2);
+}
+
+/* Ricerca compatta al centro, nelle pagine dei risultati: da 1021 px. */
+.search {
+  display: none;
+  pointer-events: auto;
+}
+
+@media (min-width: 1021px) {
+  .search {
+    display: flex;
+  }
+}
+
+/* Scritte di "Richiedi preventivo" (il pulsante resta quello comune). */
+.ctaText {
+  font-weight: 600;
+  color: white;
+}
+
+.ctaText16 {
+  font-size: 16px;
+}
+
+/* Con l'accesso fatto, sotto 661 px solo "Preventivo" (c'è anche la campanella). */
+.ctaLong {
+  display: none;
+}
+
+.ctaShort {
+  display: flex;
+}
+
+@media (min-width: 661px) {
+  .ctaLong {
+    display: flex;
+  }
+
+  .ctaShort {
+    display: none;
+  }
+}

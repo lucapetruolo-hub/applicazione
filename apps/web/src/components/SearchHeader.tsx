@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Icon, SearchBar, Text, XStack, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
+import { Icon, SearchBar, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
+import styles from "./SearchHeader.module.css";
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { rememberSearchCity, useSearchBarHints } from "@/lib/useSearchBarHints";
 import { navigateWithTransition } from "@/lib/viewTransition";
@@ -59,25 +60,20 @@ export function SearchHeader({
     // desktop la ricerca vive ora nell'header fisso (SiteHeader.tsx +
     // HeaderSearchBar.tsx), questo banner resta solo su schermi stretti
     // dove la versione condensata nell'header non ha spazio a sufficienza.
-    <YStack
-      width="100%"
-      backgroundColor={brand.calce}
-      paddingVertical={`${expanded ? "5" : "3"}`}
-      paddingHorizontal="4"
-      alignItems="center"
-      display="gtMd:none"
-    >
-      <YStack width="100%" maxWidth={680}>
+    // HTML semplice, senza il calcolo degli stili di Tamagui
+    // (docs/changelog/2026-11-09-barra-in-alto-senza-tamagui.md).
+    <div className={`is_View ${styles.root}${expanded ? ` ${styles.rootExpanded}` : ""}`}>
+      <div className={`is_View ${styles.inner}`}>
         {expanded ? (
-          <YStack gap="2">
+          <div className={`is_View ${styles.expanded}`}>
             {/* "Chiudi" per tornare ai risultati senza cercare, e "Cerca"
                 largo quanto i campi come in home (docs/CHANGELOG.md §349). */}
-            <XStack justifyContent="flex-end">
+            <div className={`is_View ${styles.closeRow}`}>
               <button type="button" className="search-close" onClick={() => setExpanded(false)}>
                 <Icon name="x" size={16} color={brand.grafite} />
                 Chiudi
               </button>
-            </XStack>
+            </div>
             <SearchBar
               wrapSearchButton={(button) => <MagneticButton block>{button}</MagneticButton>}
               onSearch={handleSearch}
@@ -87,7 +83,7 @@ export function SearchHeader({
               {...searchHints}
               searchOnModeChange
             />
-          </YStack>
+          </div>
         ) : (
           <button type="button" className="search-summary" onClick={() => setExpanded(true)} aria-label={`Modifica la ricerca: ${what}, ${where}`}>
             {/* Come la pillola della barra su computer: il modo a sinistra, la
@@ -95,20 +91,16 @@ export function SearchHeader({
             <span className="search-summary-mode" aria-hidden="true">
               <Icon name={initialMode === "online" ? "video" : "house"} size={16} color={brand.cianografiaPieno} />
             </span>
-            <YStack flex={1} minWidth={0} alignItems="flex-start">
-              <Text fontWeight="700" fontSize={16} color={brand.grafite} numberOfLines={1}>
-                {what}
-              </Text>
-              <Text fontSize={16} color={brand.grafite70} numberOfLines={1}>
-                {where}
-              </Text>
-            </YStack>
+            <span className={`is_View ${styles.summaryText}`}>
+              <span className={`is_Text ${styles.what}`}>{what}</span>
+              <span className={`is_Text ${styles.where}`}>{where}</span>
+            </span>
             <span className="search-summary-go" aria-hidden="true">
               <Icon name="search" size={17} color="white" />
             </span>
           </button>
         )}
-      </YStack>
-    </YStack>
+      </div>
+    </div>
   );
 }
