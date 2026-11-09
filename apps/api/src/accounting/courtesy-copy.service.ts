@@ -1,5 +1,4 @@
 import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
   STAMP_DUTY_THRESHOLD_EUR_CENTS,
@@ -26,6 +25,7 @@ import { InvoicesService } from "./invoices.service";
 import { professionalFiscalName, recipientFromFiscal, recipientParty } from "./invoice-documents";
 import { romeMonthOf, romeMonthRange } from "./accounting-dates";
 import { COURTESY_BOOKING_FIELDS, COURTESY_DOCUMENT_FIELDS, courtesyCustomerName, courtesyDocumentSummary } from "./courtesy-documents";
+import { ScheduledJob } from "../common/scheduled-job";
 
 /**
  * Ricevuta per prestazione occasionale che il professionista senza partita
@@ -258,7 +258,7 @@ export class CourtesyCopyService {
    * le ricevute anche i lavori terminati senza ricevuta o con la ricevuta
    * mai scaricata (§387): nel riepilogo mancherebbero o il cliente non l'ha.
    */
-  @Cron("0 9 15 12 *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 9 15 12 *", { timeZone: "Europe/Rome" })
   async remindDocumentsToFix(now: Date = new Date()): Promise<number> {
     const year = Number(romeMonthOf(now).slice(0, 4));
     const range = { gte: romeMonthRange(`${year}-01`).start, lt: romeMonthRange(`${year}-12`).end };

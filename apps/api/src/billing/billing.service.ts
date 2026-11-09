@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, type OnModuleInit, ServiceUnavailableException } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import {
@@ -18,6 +18,7 @@ import { BookingsService } from "../bookings/bookings.service";
 import { JobPaymentsService } from "../job-payments/job-payments.service";
 import { EUR_ONLY } from "../job-payments/online-money.service";
 import { ProfessionalFiscalService } from "../professional-fiscal/professional-fiscal.service";
+import { ScheduledJob } from "../common/scheduled-job";
 
 // Prezzi dei pacchetti di visibilità (CLAUDE.md §6): boost locale a canone,
 // badge reputazione e storia di successo come acquisto singolo. Validità 30
@@ -326,7 +327,7 @@ export class BillingService implements OnModuleInit {
    * giorni e fa la fattura a quelli che non l'hanno (la chiave del
    * documento evita i doppioni). Prima della data di partenza non fa nulla.
    */
-  @Cron("15 6 * * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("15 6 * * *", { timeZone: "Europe/Rome" })
   async issueMissedInvoices(now = new Date()): Promise<number> {
     if (!this.stripe) return 0;
     const since = Math.floor((now.getTime() - MISSED_INVOICE_WINDOW_MS) / 1000);
@@ -609,7 +610,7 @@ export class BillingService implements OnModuleInit {
    * mesi gratis in attesa Base parte con quei mesi di prova da adesso (e il
    * periodo dei lavori riparte da 0), altrimenti al rinnovo paga Base.
    */
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  @ScheduledJob(CronExpression.EVERY_10_MINUTES)
   async runReturnToBase(now = new Date()): Promise<void> {
     if (!this.stripe) return;
     const rows = await this.prisma.subscription.findMany({

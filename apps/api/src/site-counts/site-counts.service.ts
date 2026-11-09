@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import {
   SITE_ADVICE_DONE_DAYS,
@@ -20,6 +19,7 @@ import {
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { hasLaunched, launchDate } from "../subscriptions/subscription-rules";
+import { ScheduledJob } from "../common/scheduled-job";
 
 /** Giorni diversi in cui una parola va cercata prima di mostrarla agli admin. */
 export const UNKNOWN_JOB_MIN_DAYS = 3;
@@ -165,7 +165,7 @@ export class SiteCountsService {
    * mesi si cancellano (§372, scritto nell'informativa privacy), e con loro le
    * parole che non hanno più nessun giorno.
    */
-  @Cron("0 3 * * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 3 * * *", { timeZone: "Europe/Rome" })
   async deleteOldCounters(now: Date = new Date()): Promise<number> {
     const before = { day: { lt: retentionCutoff(now) } };
     const results = await Promise.all([
