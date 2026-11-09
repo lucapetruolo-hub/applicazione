@@ -1,11 +1,11 @@
 import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import { formatEurCents, isAccountingMonth, type FeeReconciliation } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { previousMonth, romeMonthOf, romeMonthRange } from "./accounting-dates";
 import { InvoicesService } from "./invoices.service";
+import { ScheduledJob } from "../common/scheduled-job";
 
 /** Differenza oltre la quale l'admin riceve l'avviso: 1 €. */
 const TOLERANCE_EUR_CENTS = 100;
@@ -76,7 +76,7 @@ export class FeeReconciliationService {
   }
 
   /** Il 1° del mese alle 7:30, dopo le fatture: avviso se il mese prima non torna. */
-  @Cron("30 7 1 * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("30 7 1 * *", { timeZone: "Europe/Rome" })
   async runMonthly(now: Date = new Date()): Promise<void> {
     const month = previousMonth(romeMonthOf(now));
     try {

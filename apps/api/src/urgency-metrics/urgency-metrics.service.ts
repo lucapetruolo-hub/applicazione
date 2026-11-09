@@ -1,5 +1,4 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import { URGENCY_METRICS_WINDOW_DAYS, type UrgencyMetrics } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
@@ -7,6 +6,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { hasLaunched, launchDate } from "../subscriptions/subscription-rules";
 import { computeUrgencyMetrics } from "./urgency-metrics";
 import { COUNTED_USER, countingFrom, sinceLaunch } from "../site-counts/counted";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -45,7 +45,7 @@ export class UrgencyMetricsService {
   }
 
   /** Lunedì alle 9: solo dopo il lancio (`LAUNCH_DATE`), prima i numeri sono di prova. */
-  @Cron("0 9 * * 1", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 9 * * 1", { timeZone: "Europe/Rome" })
   async weeklyCheck(now: Date = new Date()): Promise<UrgencyMetrics | null> {
     if (!hasLaunched(now, launchDate())) return null;
     const metrics = await this.compute(now);

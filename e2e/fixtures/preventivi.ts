@@ -62,7 +62,7 @@ export async function createRequestWithQuotes(
   prisma: PrismaClient,
   clientId: string,
   professionalProfileIds: string[],
-  options: { start: Date; end?: Date; serviceMode?: "HOME" | "ONLINE"; description?: string } = { start: wallDay(3, "10:00") },
+  options: { start: Date; end?: Date; serviceMode?: "HOME" | "ONLINE"; description?: string; paymentOptions?: ("ONLINE" | "MIXED" | "DIRECT")[] } = { start: wallDay(3, "10:00") },
 ) {
   const category = await prisma.category.findFirstOrThrow({ where: { slug: "idraulico" } });
   const online = options.serviceMode === "ONLINE";
@@ -89,7 +89,7 @@ export async function createRequestWithQuotes(
           estimatedStartDate: options.start,
           estimatedEndDate: options.end ?? new Date(options.start.getTime() + 2 * 60 * 60_000),
           status: "SENT",
-          paymentOptions: ["DIRECT"],
+          paymentOptions: options.paymentOptions ?? ["DIRECT"],
           items: { create: [{ name: "Sostituzione sifone", priceMinEurCents: 8000 + index * 1000, priceMaxEurCents: 12000 + index * 1000 }] },
         },
       }),

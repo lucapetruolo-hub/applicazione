@@ -22,6 +22,11 @@ async function bootstrap() {
   // (CLAUDE.md §2 — Stripe è già nello stack approvato).
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
   configureApp(app);
+  // Chiusura ordinata a ogni deploy (docs/changelog/2026-11-08-infrastruttura-lancio.md):
+  // Render manda SIGTERM e concede 30 secondi; così le attività a orario si
+  // fermano e il collegamento al database si chiude (CronRunsService) invece
+  // di tagliare tutto di colpo.
+  app.enableShutdownHooks();
   const port = process.env.PORT ? Number(process.env.PORT) : 3001;
   // "0.0.0.0" esplicito: su alcune piattaforme cloud (Render inclusa)
   // app.listen(port) senza host può legarsi solo a IPv6, irraggiungibile
