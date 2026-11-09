@@ -413,6 +413,12 @@ export type StatementCsvRow = {
   taxableEurCents: number | null;
   vatEurCents: number | null;
   document: string;
+  /**
+   * Codice del movimento su Stripe (pagamento, rimborso, contestazione,
+   * bonifico o fattura), per ritrovarlo nella Dashboard di Stripe e fare la
+   * quadratura (docs/changelog/2026-11-08-fatture-e-fisco-collaudo.md).
+   */
+  stripeRef?: string;
 };
 
 /** Centesimi all'italiana per il foglio di calcolo: "1234,50". */
@@ -429,9 +435,9 @@ function csvCell(value: string): string {
 
 /** Foglio di calcolo (CSV con il punto e virgola, come lo apre Excel in italiano). */
 export function statementCsv(rows: StatementCsvRow[]): string {
-  const header = ["Data", "Movimento", "Lavoro", "Cliente", "Importo", "Imponibile", "IVA", "Documento"];
+  const header = ["Data", "Movimento", "Lavoro", "Cliente", "Importo", "Imponibile", "IVA", "Documento", "Codice Stripe"];
   const body = rows.map((r) =>
-    [r.date, r.kind, r.job, r.client, csvAmount(r.amountEurCents), csvAmount(r.taxableEurCents), csvAmount(r.vatEurCents), r.document].map(csvCell).join(";"),
+    [r.date, r.kind, r.job, r.client, csvAmount(r.amountEurCents), csvAmount(r.taxableEurCents), csvAmount(r.vatEurCents), r.document, r.stripeRef ?? ""].map(csvCell).join(";"),
   );
   return `﻿${[header.join(";"), ...body].join("\r\n")}\r\n`;
 }

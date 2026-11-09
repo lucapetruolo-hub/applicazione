@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { INVOICE_SERVICE_CAUSALE, freePeriodSummary, invoiceNumberLabel, statementCsv } from "@professionisti/shared";
+import { stripeRefOfEntry } from "./statements.service";
 import { lastDayOfMonth, previousMonth, romeDayIso, romeMonthOf, romeMonthRange } from "./accounting-dates";
 import { buildFatturaPaXml, latin1, xmlAmount } from "./invoice-xml";
 import { invoiceTotals, monthlyFeeInvoiceDraft, recipientComplete, recipientFromFiscal, sdiProgressive, shareCapitalCents } from "./invoice-documents";
@@ -177,7 +178,16 @@ describe("estratto per il commercialista", () => {
   it("CSV col punto e virgola e i decimali con la virgola", () => {
     const csv = statementCsv([{ date: "2026-10-12", kind: "Trattenuta", job: "Idraulico; perdita", client: "Anna", amountEurCents: -854, taxableEurCents: -700, vatEurCents: -154, document: "Fattura COM/2026/0017" }]);
     expect(csv.startsWith("﻿Data;Movimento;")).toBe(true);
-    expect(csv).toContain('2026-10-12;Trattenuta;"Idraulico; perdita";Anna;-8,54;-7,00;-1,54;Fattura COM/2026/0017');
+    expect(csv).toContain('2026-10-12;Trattenuta;"Idraulico; perdita";Anna;-8,54;-7,00;-1,54;Fattura COM/2026/0017;\r\n');
+    expect(statementCsv([{ date: "2026-10-12", kind: "Trattenuta", job: "", client: "", amountEurCents: -854, taxableEurCents: null, vatEurCents: null, document: "", stripeRef: "pi_123" }])).toContain(";pi_123\r\n");
+  });
+
+  it("codice Stripe del movimento dalla sua chiave, altrimenti il pagamento del lavoro", () => {
+    expect(stripeRefOfEntry("HOLD:pi_3Abc", "pi_altro")).toBe("pi_3Abc");
+    expect(stripeRefOfEntry("COSTS:du_1Xyz", null)).toBe("du_1Xyz");
+    expect(stripeRefOfEntry("RETURN:fee_1Q-500-200", null)).toBe("fee_1Q");
+    expect(stripeRefOfEntry("RELEASE:4b1c-uuid", "pi_lavoro")).toBe("pi_lavoro");
+    expect(stripeRefOfEntry("COSTS:refund-4b1c-1000", null)).toBe("");
   });
 });
 

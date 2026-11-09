@@ -79,3 +79,10 @@ typecheck e lint di api e web.
   giri; "Rifai il giro del mese" restituisce anche ritardo ed estero. Il
   blocco della residenza estera vale per un abbonamento nuovo, non per il
   cambio di livello di chi è già abbonato.
+- **Codice Stripe nel foglio dell'estratto** (sì di Luca del 09/11): ultima
+  colonna "Codice Stripe" in `statementCsv`, così il commercialista ritrova
+  ogni movimento nella Dashboard di Stripe. Pagamento online e trattenuta: il
+  pagamento (`pi_…`, dalla chiave del movimento `HOLD:`); bonifico in banca:
+  il bonifico (`po_…`); rimborso: il pagamento rimborsato; contestazione: il
+  suo codice; fatture ABB: la fattura o il pagamento di Stripe; pagamento
+  diretto: vuoto. Le colonne di prima restano al loro posto.
