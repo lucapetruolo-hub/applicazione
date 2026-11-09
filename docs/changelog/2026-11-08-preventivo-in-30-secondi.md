@@ -35,3 +35,15 @@ stili `.quick-*` in `globals.css`.
 massimo 8, prezzo solo "a lavoro", ultimo preventivo dello stesso mestiere);
 prova nel browser `e2e/tests/preventivo-veloce.spec.ts` su telefono e
 computer (tocco, voce al m² senza cifre, togliere, copiare e annullare, axe).
+
+## Migliorie approvate da Luca (09/11)
+
+- La riga "Manodopera" con cui si apre il modulo parte dal prezzo della
+  "Manodopera" dell'ultimo preventivo mandato (qualsiasi mestiere), con la
+  frase "La manodopera parte dal prezzo del tuo ultimo preventivo: cambialo
+  se serve." (`lastLaborPrice` in `packages/shared/src/quoteQuickFill.ts`).
+- Nel profilo, in "Prestazioni offerte", chi non ne ha legge "Aggiungi le
+  prestazioni per rispondere più in fretta: nel preventivo le inserisci con un
+  tocco."
+- Il pulsante "Lavoro terminato" (cliente e professionista) passa da #20B2AA
+  (contrasto 2,6 col bianco) a #0E7F7A (4,8, WCAG AA), sempre turchese.

@@ -3,7 +3,7 @@
 import { Suspense, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { lastSimilarQuote, type MyProfessionalProfile, type MySubscription, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import { lastLaborPrice, lastSimilarQuote, type MyProfessionalProfile, type MySubscription, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { loadMyProfessionalProfile, loadMySubscription } from "@/lib/myProfessionalProfile";
@@ -695,6 +695,7 @@ function RichiesteContent() {
                   onChanged={reloadLeads}
                   myServices={myServices}
                   similarQuote={leads ? lastSimilarQuote(leads, lead) : null}
+                  laborPrice={leads ? lastLaborPrice(leads) : null}
                   unreadCount={leadUnreadCounts.get(lead.guidedRequest.id)}
                   onMarkedRead={() =>
                     setLeadUnreadCounts((prev) => {

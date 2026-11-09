@@ -25,9 +25,15 @@ function draftFromItem(item: { name: string; priceMinEurCents: number | null; pr
   return { name: item.name, priceMin: centsToField(item.priceMinEurCents), priceMax: centsToField(item.priceMaxEurCents) };
 }
 
-/** La riga vuota con cui si apre il modulo ("Manodopera" senza prezzi): si sostituisce invece di restare in coda. */
-function isUntouched(items: readonly QuoteItemDraft[]): boolean {
-  return items.length === 1 && !items[0]!.priceMin.trim() && !items[0]!.priceMax.trim() && ["", "manodopera"].includes(items[0]!.name.trim().toLowerCase());
+/**
+ * La riga con cui si apre il modulo ("Manodopera", vuota o col prezzo
+ * dell'ultimo preventivo) ancora com'era: si sostituisce invece di restare in coda.
+ */
+function isUntouched(items: readonly QuoteItemDraft[], start: QuoteItemDraft): boolean {
+  if (items.length !== 1) return false;
+  const only = items[0]!;
+  const empty = !only.priceMin.trim() && !only.priceMax.trim() && ["", "manodopera"].includes(only.name.trim().toLowerCase());
+  return empty || (only.name === start.name && only.priceMin === start.priceMin && only.priceMax === start.priceMax);
 }
 
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -55,6 +61,7 @@ export function QuoteQuickFill({
   setItems,
   notes,
   setNotes,
+  startingItem = { name: "Manodopera", priceMin: "", priceMax: "" },
 }: {
   services: readonly QuickQuoteService[];
   request: { categoryLabel: string; description: string };
@@ -63,6 +70,8 @@ export function QuoteQuickFill({
   setItems: (next: QuoteItemDraft[]) => void;
   notes: string;
   setNotes: (next: string) => void;
+  /** Riga con cui si apre il modulo (vedi RequestCard): torna questa togliendo l'ultima pillola. */
+  startingItem?: QuoteItemDraft;
 }) {
   const shown = quickQuoteServices(services, request);
   // Voci e nota di prima, per "Annulla" dopo aver copiato un preventivo.
@@ -74,11 +83,11 @@ export function QuoteQuickFill({
     const present = items.findIndex((it) => sameName(it.name, service.name));
     if (present >= 0) {
       const rest = items.filter((_, i) => i !== present);
-      setItems(rest.length > 0 ? rest : [{ name: "Manodopera", priceMin: "", priceMax: "" }]);
+      setItems(rest.length > 0 ? rest : [startingItem]);
       return;
     }
     const draft = draftFromItem(quoteItemFromService(service));
-    setItems(isUntouched(items) ? [draft] : [...items, draft]);
+    setItems(isUntouched(items, startingItem) ? [draft] : [...items, draft]);
   }
 
   function copySimilar() {
@@ -98,14 +107,25 @@ export function QuoteQuickFill({
     setCopied(false);
   }
 
+  // La riga "Manodopera" è partita dal prezzo dell'ultimo preventivo: lo diciamo, così non sorprende.
+  const laborHint =
+    (startingItem.priceMin || startingItem.priceMax) && items.length === 1 && items[0]!.name === startingItem.name && items[0]!.priceMin === startingItem.priceMin && items[0]!.priceMax === startingItem.priceMax ? (
+      <Text fontSize={13} color={brand.grafite70} className="quick-labor-hint">
+        La manodopera parte dal prezzo del tuo ultimo preventivo: cambialo se serve.
+      </Text>
+    ) : null;
+
   if (shown.length === 0 && !similarQuote) {
     return (
+      <YStack gap="2">
+      {laborHint}
       <Text fontSize={13} color={brand.grafite70}>
         Con le prestazioni nel profilo le aggiungi qui con un tocco.{" "}
         <Link href="/dashboard/profilo#profilo-prestazioni" style={{ color: brand.cianografiaScuro, fontWeight: 700, textDecoration: "underline" }}>
           Aggiungile
         </Link>
       </Text>
+      </YStack>
     );
   }
 
@@ -160,6 +180,7 @@ export function QuoteQuickFill({
           </div>
         </YStack>
       ) : null}
+      {laborHint}
     </YStack>
   );
 }

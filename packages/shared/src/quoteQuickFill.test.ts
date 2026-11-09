@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { ProfessionalLead } from "./dashboard";
-import { QUICK_QUOTE_SERVICES_SHOWN, lastSimilarQuote, quickQuoteServices, quoteItemFromService, type QuickQuoteService } from "./quoteQuickFill";
+import { QUICK_QUOTE_SERVICES_SHOWN, lastLaborPrice, lastSimilarQuote, quickQuoteServices, quoteItemFromService, type QuickQuoteService } from "./quoteQuickFill";
 
 const service = (id: string, name: string, extra: Partial<QuickQuoteService> = {}): QuickQuoteService => ({
   id,
@@ -55,4 +55,14 @@ test("l'ultimo preventivo dello stesso mestiere su un'altra richiesta", () => {
   assert.equal(similar?.guidedRequestId, "b");
   assert.equal(similar?.items[0]?.name, "Recente");
   assert.equal(lastSimilarQuote([current], current), null);
+});
+
+test("il prezzo della manodopera dell'ultimo preventivo, di qualsiasi mestiere", () => {
+  const leads = [
+    lead("a", "Idraulico", { sentAt: "2026-11-01T10:00:00.000Z", name: "Manodopera" }),
+    lead("b", "Elettricista", { sentAt: "2026-11-05T10:00:00.000Z", name: " manodopera " }),
+    lead("c", "Idraulico", { sentAt: "2026-11-07T10:00:00.000Z", name: "Sifone" }),
+  ];
+  assert.deepEqual(lastLaborPrice(leads), { priceMinEurCents: 1000, priceMaxEurCents: null });
+  assert.equal(lastLaborPrice([lead("c", "Idraulico", { sentAt: "2026-11-07T10:00:00.000Z", name: "Sifone" })]), null);
 });

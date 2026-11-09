@@ -84,3 +84,20 @@ export function lastSimilarQuote(leads: readonly ProfessionalLead[], current: Pr
   }
   return best;
 }
+
+/**
+ * Prezzo della "Manodopera" dell'ultimo preventivo mandato (qualsiasi
+ * mestiere), per aprire il modulo con quella riga già compilata: il
+ * professionista di solito chiede la stessa cifra. `null` se non l'ha mai
+ * scritta con un prezzo.
+ */
+export function lastLaborPrice(leads: readonly ProfessionalLead[]): { priceMinEurCents: number | null; priceMaxEurCents: number | null } | null {
+  let best: { sentAt: string; priceMinEurCents: number | null; priceMaxEurCents: number | null } | null = null;
+  for (const lead of leads) {
+    const quote = lead.quote;
+    if (!quote || (best && quote.sentAt <= best.sentAt)) continue;
+    const labor = quote.items.find((it) => it.name.trim().toLowerCase() === "manodopera" && (it.priceMinEurCents != null || it.priceMaxEurCents != null));
+    if (labor) best = { sentAt: quote.sentAt, priceMinEurCents: labor.priceMinEurCents, priceMaxEurCents: labor.priceMaxEurCents };
+  }
+  return best ? { priceMinEurCents: best.priceMinEurCents, priceMaxEurCents: best.priceMaxEurCents } : null;
+}

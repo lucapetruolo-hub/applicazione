@@ -99,3 +99,34 @@ for (const [device, size] of [["telefono", PHONE], ["computer", COMPUTER]] as co
     await page.context().close();
   });
 }
+
+test("la manodopera parte dal prezzo dell'ultimo preventivo, e il profilo invita ad aggiungere le prestazioni", async ({ browser }) => {
+  const pro = await createProfessional(prisma, "Manodopera Ricordata");
+  const client = await createClient(prisma);
+  const old = await createRequestWithQuotes(prisma, client.id, [pro.id], { start: wallDay(2, "09:00"), description: "Scarico della doccia lento." });
+  await prisma.quoteItem.updateMany({ where: { quoteId: old.quotes[0]!.id }, data: { name: "Manodopera", priceMinEurCents: 4000, priceMaxEurCents: 6000 } });
+  const category = await prisma.category.findFirstOrThrow({ where: { slug: "idraulico" } });
+  const request = await prisma.guidedRequest.create({
+    data: { clientId: client.id, categoryId: category.id, description: "Il rubinetto della cucina perde di continuo.", city: "Latina", serviceMode: "HOME" },
+  });
+  await prisma.lead.create({ data: { guidedRequestId: request.id, professionalProfileId: pro.id, priceEurCents: 0 } });
+  const owner = await prisma.professionalProfile.findUniqueOrThrow({ where: { id: pro.id } });
+  const page = await pageAsClient(browser, owner.userId, COMPUTER);
+
+  await page.goto("/dashboard/richieste");
+  await page.getByText("Il rubinetto della cucina perde", { exact: false }).first().click();
+  await page.getByRole("button", { name: "Prepara il preventivo" }).first().click();
+  await expect(names(page).first()).toHaveValue("Manodopera");
+  await expect(page.getByRole("textbox", { name: "Prezzo minimo in euro" }).first()).toHaveValue("40");
+  await expect(page.getByRole("textbox", { name: "Prezzo massimo in euro" }).first()).toHaveValue("60");
+  await expect(page.getByText("La manodopera parte dal prezzo del tuo ultimo preventivo: cambialo se serve.")).toBeVisible();
+
+  await page.goto("/dashboard/profilo#profilo-prestazioni");
+  const hint = page.locator(".services-hint");
+  await expect(hint).toContainText("Aggiungi le prestazioni per rispondere più in fretta");
+  await hint.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: "test-results/preventivo-veloce-profilo-suggerimento.png" });
+  const axe = await new AxeBuilder({ page }).include(".services-hint").analyze();
+  expect(axe.violations.filter((v) => v.impact === "critical" || v.impact === "serious")).toEqual([]);
+  await page.context().close();
+});

@@ -109,6 +109,7 @@ export function RequestCard({
   onMarkedRead,
   myServices = [],
   similarQuote = null,
+  laborPrice = null,
 }: {
   lead: ProfessionalLead;
   stage: RequestStage;
@@ -150,6 +151,8 @@ export function RequestCard({
   myServices?: readonly QuickQuoteService[];
   /** Ultimo preventivo mandato per lo stesso mestiere su un'altra richiesta, da usare come modello. */
   similarQuote?: SimilarQuote | null;
+  /** Prezzo della "Manodopera" dell'ultimo preventivo: la riga con cui si apre il modulo parte da lì. */
+  laborPrice?: { priceMinEurCents: number | null; priceMaxEurCents: number | null } | null;
 }) {
   const gr = lead.guidedRequest;
   const isOnline = gr.serviceMode === "ONLINE";
@@ -169,7 +172,12 @@ export function RequestCard({
   const limitHint = onlineLimitHint({ limitEurCents: onlineLimitEurCents, cleanJobs: onlineLimitProgress?.cleanJobs ?? 0, firstCleanJobAt: onlineLimitProgress?.firstCleanJobAt ?? null });
 
   const [showQuoteForm, setShowQuoteForm] = useState(false);
-  const [items, setItems] = useState<QuoteItemDraft[]>([{ name: "Manodopera", priceMin: "", priceMax: "" }]);
+  const startingItem: QuoteItemDraft = {
+    name: "Manodopera",
+    priceMin: laborPrice?.priceMinEurCents != null ? (laborPrice.priceMinEurCents / 100).toString() : "",
+    priceMax: laborPrice?.priceMaxEurCents != null ? (laborPrice.priceMaxEurCents / 100).toString() : "",
+  };
+  const [items, setItems] = useState<QuoteItemDraft[]>([startingItem]);
   const modeAvailableSlots = availableSlots.filter((sl) => (isOnline ? sl.onlineAvailable : sl.homeAvailable));
   // Orario chiesto dal cliente, già scelto aprendo il preventivo (collaudo
   // C-07, 0-07): prima era già scelto il primo libero, spesso oggi, e il
@@ -1471,7 +1479,7 @@ export function RequestCard({
                         già in uso per lo stato "Completata" in STAGE_STYLE
                         sopra, coerenza cromatica tra il bottone che porta a
                         quello stato e lo stato stesso. */}
-                    <CardButton compactOnPhone fill="#20B2AA" onPress={() => setShowCompleteModal(true)}>
+                    <CardButton compactOnPhone fill="#0E7F7A" onPress={() => setShowCompleteModal(true)}>
                       Lavoro terminato
                     </CardButton>
                   </>
@@ -1619,6 +1627,7 @@ export function RequestCard({
                 services={myServices}
                 request={{ categoryLabel: gr.categoryLabel, description: gr.description }}
                 similarQuote={similarQuote}
+                startingItem={startingItem}
                 items={items}
                 setItems={setItems}
                 notes={quoteNotes}
