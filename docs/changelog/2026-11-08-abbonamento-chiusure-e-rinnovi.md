@@ -87,5 +87,5 @@ rinnovo non pagato, righe dei pagamenti), nuovi casi in
 pagata) e `subscriptions-launch.test.ts` (data del non pagato, account
 chiuso, ultimo avviso), `subscription-rules.test.ts` (pausa dopo 24 ore),
 rimborso, 3D Secure e carta cambiata in `billing-safety.test.ts`. API: 1310 test verdi, typecheck e lint di tutto il monorepo verdi.
-Migrazione `20261108200000_abbonamento_rinnovo_e_passaggio` (quattro colonne nuove,
+Migrazione `20261109120000_abbonamento_rinnovo_e_passaggio` (quattro colonne nuove,
 nessun dato toccato).

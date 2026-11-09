@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import {
   DEFAULT_FREE_MONTHS,
@@ -48,6 +48,7 @@ import {
   usagePeriodKey,
   type SubscriptionRow,
 } from "./subscription-rules";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -656,7 +657,7 @@ export class SubscriptionsService {
    * toglie il limite a chi riparte col periodo nuovo (al rinnovo, §362). Scrive solo quando lo stato cambia;
    * i profili sono pochi alla scala di lancio (CLAUDE.md §7).
    */
-  @Cron(CronExpression.EVERY_HOUR)
+  @ScheduledJob(CronExpression.EVERY_HOUR)
   async runPauseSweep(now = new Date()): Promise<void> {
     await this.alignTrialsToLaunch(now);
     const profiles = await this.prisma.professionalProfile.findMany({
@@ -695,7 +696,7 @@ export class SubscriptionsService {
   }
 
   /** Ogni giorno: avviso pochi giorni prima del rinnovo automatico, o della fine se annullato. */
-  @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  @ScheduledJob(CronExpression.EVERY_DAY_AT_9AM)
   async runPeriodNotices(now = new Date()): Promise<void> {
     const subs = await this.prisma.subscription.findMany({
       where: {
@@ -733,7 +734,7 @@ export class SubscriptionsService {
    * mese regalato a sorpresa non c'è più: i mesi gratis li decide l'offerta
    * (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
    */
-  @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  @ScheduledJob(CronExpression.EVERY_DAY_AT_9AM)
   async runTrialCheck(now = new Date()): Promise<void> {
     // Prima del lancio i mesi gratis non scorrono: nessun avviso.
     if (!hasLaunched(now, launchDate())) return;
