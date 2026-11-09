@@ -92,7 +92,8 @@ export class CourtesyCopyService {
     const saved = await this.prisma.courtesyDocument.upsert({
       where: { bookingId },
       create: { bookingId, professionalProfileId, kind: copy.kind, year: yearOf(copy.date), ...downloaded },
-      update: downloaded,
+      // L'anno segue la data del documento, che col saldo online arriva dopo (collaudo dell'08/11/2026, E5-07).
+      update: { ...downloaded, year: yearOf(copy.date) },
       select: { receiptNumber: true },
     });
     const updated = !!previous?.pdfDownloadedAt;
@@ -548,7 +549,7 @@ export class CourtesyCopyService {
     await this.prisma.courtesyDocument.upsert({
       where: { bookingId },
       create: { bookingId, professionalProfileId, kind: copy.kind, year: yearOf(copy.date), ...data },
-      update: data,
+      update: { ...data, year: yearOf(copy.date) },
     });
     return this.forProfessional(userId, bookingId);
   }

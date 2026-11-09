@@ -224,6 +224,18 @@ export function accountingDateLabel(iso: string): string {
 }
 
 /** Mese valido nell'indirizzo (AAAA-MM). */
+/**
+ * La fattura differita del mese va emessa entro il 15 del mese dopo (art. 21
+ * c. 4 DPR 633/72): dopo, "Emetti le fatture del mese" lo dice prima di
+ * partire (collaudo dell'08/11/2026, E5-02).
+ */
+export function monthlyInvoiceLate(month: string, now: Date = new Date()): boolean {
+  const [year, mon] = month.split("-").map(Number);
+  if (!year || !mon) return false;
+  const deadline = new Date(Date.UTC(mon === 12 ? year + 1 : year, mon === 12 ? 0 : mon, 16, 0, 0, 0) - 60 * 60 * 1000);
+  return now.getTime() >= deadline.getTime();
+}
+
 export function isAccountingMonth(value: string): boolean {
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
 }
@@ -260,13 +272,43 @@ export type PlatformInvoiceView = PlatformInvoiceSummary & {
   onlinePaidEurCents: number | null;
 };
 
+/**
+ * Residenza fiscale fuori dall'Italia (collaudo dell'08/11/2026, E5-04): le
+ * nostre fatture elettroniche e l'IVA dell'abbonamento sono fatte per chi è in
+ * Italia. Finché il commercialista non risponde (domanda 55) chi è all'estero
+ * non attiva abbonamento né pagamenti online e non riceve fatture automatiche.
+ */
+export function fiscalResidenceAbroad(fiscal: { taxResidenceCountry?: string | null; registeredCountry?: string | null } | null | undefined): boolean {
+  const abroad = (country: string | null | undefined) => !!country && country.trim().toUpperCase() !== "IT";
+  return abroad(fiscal?.taxResidenceCountry) || abroad(fiscal?.registeredCountry);
+}
+
+export const FISCAL_RESIDENCE_ABROAD_MESSAGE =
+  "Con la residenza fiscale fuori dall'Italia per ora non puoi attivare l'abbonamento né i pagamenti online: scrivici dalla pagina Contatti e ti aiutiamo.";
+
 /** Spiegazione sotto il totale di una nostra fattura, in parole semplici. */
 export function platformInvoiceNote(invoice: Pick<PlatformInvoiceView, "source" | "creditNote" | "vatRecoverable">): string {
+  if (invoice.creditNote && invoice.source !== "JOB_FEES") return "Nota di credito: ti abbiamo rimborsato questo importo sulla carta. Non devi fare nulla.";
   if (invoice.creditNote) return "Nota di credito: una trattenuta ti è stata restituita. Non devi fare nulla.";
   const paid = invoice.source === "JOB_FEES" ? "È già stata trattenuta dai pagamenti online: non devi pagare nulla." : "È già stata pagata con la carta.";
   if (invoice.vatRecoverable === false) return `${paid} Senza partita IVA, o nel regime forfettario, l'IVA è un costo: non si recupera.`;
   if (invoice.vatRecoverable === true) return `${paid} L'IVA la recuperi nella tua dichiarazione IVA.`;
   return paid;
+}
+
+/**
+ * Riga sull'IVA nel riquadro della fattura. Per una nota di credito l'IVA non
+ * si recupera ma si storna: dirlo come per una fattura sarebbe sbagliato.
+ */
+export function platformInvoiceVatNote(invoice: Pick<PlatformInvoiceView, "creditNote" | "vatRecoverable" | "relatedNumber">): string | null {
+  if (invoice.creditNote) {
+    return invoice.vatRecoverable === true
+      ? `Nella dichiarazione IVA questa nota riduce l'IVA recuperata${invoice.relatedNumber ? ` con la fattura ${invoice.relatedNumber}` : ""}.`
+      : null;
+  }
+  if (invoice.vatRecoverable === false) return "Senza partita IVA, o nel regime forfettario, l'IVA è un costo: non si recupera.";
+  if (invoice.vatRecoverable === true) return "L'IVA la recuperi nella tua dichiarazione IVA.";
+  return null;
 }
 
 /** Riga sotto il titolo di una nostra fattura: di cosa è e di quando. */
@@ -275,6 +317,7 @@ export function platformInvoiceSubtitle(invoice: Pick<PlatformInvoiceView, "sour
     const month = invoice.periodMonth ? accountingMonthLabel(invoice.periodMonth) : "";
     return invoice.creditNote ? `Trattenute restituite di ${month}.` : `Trattenute sui pagamenti online di ${month}.`;
   }
+  if (invoice.creditNote) return `Rimborso: ${INVOICE_SOURCE_LABEL[invoice.source].toLowerCase()}, del ${accountingDateLabel(invoice.issuedAt)}.`;
   return `${INVOICE_SOURCE_LABEL[invoice.source]}, del ${accountingDateLabel(invoice.issuedAt)}.`;
 }
 
@@ -371,6 +414,12 @@ export type StatementCsvRow = {
   taxableEurCents: number | null;
   vatEurCents: number | null;
   document: string;
+  /**
+   * Codice del movimento su Stripe (pagamento, rimborso, contestazione,
+   * bonifico o fattura), per ritrovarlo nella Dashboard di Stripe e fare la
+   * quadratura (docs/changelog/2026-11-08-fatture-e-fisco-collaudo.md).
+   */
+  stripeRef?: string;
 };
 
 /** Centesimi all'italiana per il foglio di calcolo: "1234,50". */
@@ -383,9 +432,9 @@ function csvAmount(cents: number | null): string {
 
 /** Foglio di calcolo (CSV con il punto e virgola, come lo apre Excel in italiano). */
 export function statementCsv(rows: StatementCsvRow[]): string {
-  const header = ["Data", "Movimento", "Lavoro", "Cliente", "Importo", "Imponibile", "IVA", "Documento"];
+  const header = ["Data", "Movimento", "Lavoro", "Cliente", "Importo", "Imponibile", "IVA", "Documento", "Codice Stripe"];
   const body = rows.map((r) =>
-    [r.date, r.kind, r.job, r.client, csvAmount(r.amountEurCents), csvAmount(r.taxableEurCents), csvAmount(r.vatEurCents), r.document].map(csvCell).join(";"),
+    [r.date, r.kind, r.job, r.client, csvAmount(r.amountEurCents), csvAmount(r.taxableEurCents), csvAmount(r.vatEurCents), r.document, r.stripeRef ?? ""].map(csvCell).join(";"),
   );
   return `﻿${[header.join(";"), ...body].join("\r\n")}\r\n`;
 }
@@ -421,6 +470,11 @@ export type DocumentsOverview = {
 
 export type PlatformInvoiceSettingsView = Partial<Record<keyof PlatformInvoiceSettingsInput, string | null>> & {
   ready: boolean;
+  /**
+   * Movimenti della trattenuta di account di prova da "Fatture da" in poi:
+   * non diventano mai fatture (collaudo dell'08/11/2026, E5-05).
+   */
+  testFeeEntriesAfterFrom: number;
   sdiConfigured: boolean;
   /** Openapi nell'ambiente di prova (`OPENAPI_SANDBOX=true`): si può fare la prova d'invio (§379). */
   sdiSandbox: boolean;
@@ -621,6 +675,25 @@ export function courtesyYearTotals(documents: CourtesyDocumentSummary[]): { year
     totals.set(doc.year, row);
   }
   return [...totals.values()].sort((a, b) => b.year - a.year);
+}
+
+/**
+ * Lavoro occasionale: sopra 5.000 € di compensi nell'anno si pagano i
+ * contributi INPS (Gestione Separata) sulla parte in più (art. 44 c. 2 D.L.
+ * 269/2003). Avviso dall'80% (collaudo dell'08/11/2026, miglioria del
+ * commercialista).
+ */
+export const OCCASIONAL_INPS_THRESHOLD_EUR_CENTS = 500_000;
+
+/** Avviso sotto il totale delle ricevute dell'anno in corso, o null. */
+export function occasionalIncomeNotice(totalEurCents: number): string | null {
+  if (totalEurCents >= OCCASIONAL_INPS_THRESHOLD_EUR_CENTS) {
+    return "Quest'anno le tue ricevute superano 5.000 €: sulla parte in più si pagano i contributi INPS. Parlane con il tuo commercialista.";
+  }
+  if (totalEurCents >= OCCASIONAL_INPS_THRESHOLD_EUR_CENTS * 0.8) {
+    return "Quest'anno le tue ricevute si avvicinano a 5.000 €: oltre questa cifra si pagano i contributi INPS sulla parte in più. Parlane con il tuo commercialista.";
+  }
+  return null;
 }
 
 /** Sopra questa cifra, senza IVA, serve la marca da bollo da 2 €. */

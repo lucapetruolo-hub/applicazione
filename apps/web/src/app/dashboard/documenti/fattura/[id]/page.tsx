@@ -9,6 +9,7 @@ import {
   platformInvoiceOriginalNote,
   platformInvoiceSubtitle,
   platformInvoiceTechnicalNotes,
+  platformInvoiceVatNote,
   type PlatformInvoiceLine,
   type PlatformInvoiceView,
 } from "@professionisti/shared";
@@ -118,14 +119,10 @@ export default function InvoicePage() {
         </YStack>
       </YStack>
 
-      {invoice.vatRecoverable !== null || jobFees ? (
+      {platformInvoiceVatNote(invoice) || jobFees ? (
         <NoteBox>
           <Text fontSize={16} color={brand.grafite}>
-            {invoice.vatRecoverable === false
-              ? "Senza partita IVA, o nel regime forfettario, l'IVA è un costo: non si recupera. "
-              : invoice.vatRecoverable === true
-                ? "L'IVA la recuperi nella tua dichiarazione IVA. "
-                : ""}
+            {platformInvoiceVatNote(invoice) ? `${platformInvoiceVatNote(invoice)} ` : ""}
             {jobFees && invoice.periodMonth ? (
               <>
                 Le stesse cifre le trovi, lavoro per lavoro, nell&apos;

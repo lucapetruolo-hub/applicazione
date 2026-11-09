@@ -12,6 +12,8 @@ import {
   parseInvoiceRecipient,
   type ProfessionalFiscalProfileInput,
   type SetFiscalVerificationInput,
+  FISCAL_RESIDENCE_ABROAD_MESSAGE,
+  fiscalResidenceAbroad,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
@@ -487,6 +489,8 @@ export class ProfessionalFiscalService {
     // iniziati prosegue.
     if (!stripeAccountId) {
       if (fiscalDataMissing(fiscalProfile).length > 0) throw new BadRequestException("Completa prima i dati fiscali.");
+      // Residenza fiscale all'estero: per ora niente pagamenti online (collaudo dell'08/11/2026, E5-04).
+      if (fiscalResidenceAbroad(fiscalProfile)) throw new BadRequestException(FISCAL_RESIDENCE_ABROAD_MESSAGE);
       if (profile && identityVerificationNeeded(profile)) throw new BadRequestException("Prima verifica la tua identità, poi puoi attivare i pagamenti online.");
     }
     if (!stripeAccountId) {

@@ -284,7 +284,10 @@ CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
 14. **Fatture della piattaforma** (fatto il codice, docs/CHANGELOG.md §378):
     prima del lancio (a) compilare i dati della società e "Fatture da" in
     Admin → Finanza → "Le nostre fatture", PEC compresa (Openapi la usa per
-    la conservazione); (b) `OPENAPI_TOKEN_SDI` su Render con
+    la conservazione); "Fatture da" = giorno del lancio, mai prima
+    dell'ultima prova (gli account di prova sono comunque esclusi, e la riga
+    sotto i dati dice quanti movimenti di prova ci sono,
+    docs/changelog/2026-11-08-fatture-e-fisco-collaudo.md); (b) `OPENAPI_TOKEN_SDI` su Render con
     `OPENAPI_SANDBOX=true`, poi in Finanza "Prova l'invio allo SdI" (§379:
     registra la società, manda una fattura da 1 €, simula e legge l'esito)
     e solo con tutti i passi verdi togliere la sandbox; (c) email di Stripe ai clienti: restano accese sia le ricevute dei
@@ -538,18 +541,24 @@ Luca ha scelto di farle poco prima del lancio, quando nome e sito sono
 definitivi. Già fatte (docs/CHANGELOG.md §295): H1, canonical, indirizzo
 leggibile del profilo, pagina "non trovata", percorso Home › Categoria ›
 Città, pagine vuote fuori da Google.
-30. **Dominio vero nel sito**: non solo `SITE_URL` in
-    `apps/web/src/lib/siteUrl.ts` e il redirect su Vercel: vanno cambiati
-    **dieci posti** (anche `FRONTEND_URL` su Render, senza il quale il sito
-    resta vuoto, Google OAuth, Turnstile, Resend, uptime, Stripe). Elenco e
-    prova finale in `docs/ops/cambio-dominio.md` (controllo dell'08/11/2026,
-    E9-09).
+30. **Dominio vero nel sito**: vanno cambiati **dieci posti** (anche
+    `FRONTEND_URL` su Render, senza il quale il sito resta vuoto, Google
+    OAuth, Turnstile, Resend, uptime, Stripe). Elenco e prova finale in
+    `docs/ops/cambio-dominio.md` (controllo dell'08/11/2026, E9-09). Per il
+    sito basta la variabile `NEXT_PUBLIC_SITE_URL` su Vercel col dominio nuovo
+    (es. `https://www.nome.it`, senza barra finale) e un nuovo deploy, nessuna
+    modifica al codice (`apps/web/src/lib/siteUrl.ts` la legge: canonical,
+    sitemap, dati strutturati e anteprime, E8-09); poi il redirect permanente
+    da `applicazione-web.vercel.app`. Controllare con `curl` il canonical di
+    home, una pagina città e un profilo.
 31. **Google Search Console**: verificare il dominio (record DNS) e inviare
     `/sitemap.xml` (punto 0). Controllare dopo qualche giorno "Pagine" e
     "Esperienza".
-32. **Anteprima dei link (WhatsApp, Facebook)**: immagine con foto e nome
-    del professionista per ogni profilo (oggi è la stessa per tutto il sito)
-    e immagine generale col marchio definitivo (`opengraph-image.tsx`).
+32. **Anteprima dei link (WhatsApp, Facebook)**: l'immagine del profilo con
+    foto (o iniziali), nome e mestiere c'è già
+    (`professionista/[id]/opengraph-image.tsx`, collaudo 08/11 E8-06); resta
+    l'immagine generale col marchio definitivo (`app/opengraph-image.tsx`) e
+    una prova del link di un profilo su WhatsApp dal dominio vero.
 33. **Titoli e descrizioni**: nome del marchio nel titolo della home,
     "Trova e contatta un idraulico" (con l'articolo) nelle categorie, testo
     meno generico per `/cerca`; dati strutturati `Organization` + `WebSite`

@@ -76,7 +76,7 @@ describe("recupero delle fatture mancate (D-02, E-02)", () => {
     await expect(service.issueMissedInvoices(new Date("2026-11-20T06:15:00Z"))).resolves.toBe(1);
 
     expect(invoicesService.issueForStripeInvoice).toHaveBeenCalledTimes(1);
-    expect(invoicesService.issueForStripeInvoice).toHaveBeenCalledWith(expect.objectContaining({ id: "in_mancante" }), expect.any(Function));
+    expect(invoicesService.issueForStripeInvoice).toHaveBeenCalledWith(expect.objectContaining({ id: "in_mancante" }), expect.any(Function), { alertSkipped: false });
     // Solo gli ultimi 12 giorni: la fattura immediata va fatta entro 12 giorni dal pagamento.
     expect(stripe.invoices.list).toHaveBeenCalledWith(expect.objectContaining({ status: "paid", created: { gte: Math.floor(new Date("2026-11-08T06:15:00Z").getTime() / 1000) } }));
   });
