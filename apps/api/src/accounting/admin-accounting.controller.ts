@@ -6,6 +6,7 @@ import { AuditLogService } from "../audit-log/audit-log.service";
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { InvoicesService } from "./invoices.service";
 import { FeeReconciliationService } from "./fee-reconciliation.service";
+import { StatementsService } from "./statements.service";
 
 /** Admin → Finanza: dati della nostra società e le fatture emesse (docs/CHANGELOG.md §378). */
 @UseGuards(JwtAuthGuard, AdminGuard)
@@ -15,6 +16,7 @@ export class AdminAccountingController {
   constructor(
     private readonly invoicesService: InvoicesService,
     private readonly feeReconciliationService: FeeReconciliationService,
+    private readonly statementsService: StatementsService,
     private readonly auditLogService: AuditLogService,
   ) {}
 
@@ -55,13 +57,24 @@ export class AdminAccountingController {
     return this.invoicesService.adminXml(id);
   }
 
-  /** Emette le fatture delle trattenute di un mese concluso, se il giro del 1° non è partito. */
+  /**
+   * Rifà il giro del 1° di un mese concluso, se è saltato: fatture delle
+   * trattenute, riepilogo ai professionisti ed estratti ai commercialisti
+   * (docs/changelog/2026-11-08-infrastruttura-lancio.md). Niente di doppio.
+   */
   @Post("run/:month")
   async runMonth(@Req() req: AuthenticatedRequest, @Param("month") month: string) {
-    const result = await this.invoicesService.adminRunMonth(month);
+    const { issued, notified } = await this.invoicesService.adminRunMonth(month);
+    const statements = await this.statementsService.sendAccountantStatementsFor(month);
     // Nel registro azioni (docs/changelog/2026-11-02-admin-protezioni.md).
-    await this.auditLogService.record({ entityType: "InvoiceMonth", entityId: month, fieldName: "invoicesIssued", newValue: String(result.issued), changedByUserId: req.user.userId });
-    return result;
+    await this.auditLogService.record({
+      entityType: "InvoiceMonth",
+      entityId: month,
+      fieldName: "monthRerun",
+      newValue: `${issued} fatture, ${notified} riepiloghi, ${statements} estratti`,
+      changedByUserId: req.user.userId,
+    });
+    return { issued, notified, statements };
   }
 
   @Post(":id/resend")

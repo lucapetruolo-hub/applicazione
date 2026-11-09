@@ -1,8 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const DAY_MS = 24 * 60 * 60_000;
 /** Dopo quanti giorni senza risposta parte il promemoria. */
@@ -45,7 +45,7 @@ export class ReviewReplyRemindersService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  @Cron("0 10 * * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 10 * * *", { timeZone: "Europe/Rome" })
   async remindReplies(now: Date = new Date()): Promise<void> {
     const latest = new Date(now.getTime() - REVIEW_REPLY_REMINDER_AFTER_DAYS * DAY_MS);
     const earliest = new Date(now.getTime() - REVIEW_REPLY_REMINDER_MAX_DAYS * DAY_MS);
