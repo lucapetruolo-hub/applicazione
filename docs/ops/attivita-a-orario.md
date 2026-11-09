@@ -43,8 +43,8 @@ data fissa:
 
 | Attività | Quando | Se salta | Come si rimedia |
 |---|---|---|---|
-| `InvoicesService.runMonthly` | 1° del mese, 7:00 | Fatture delle trattenute del mese prima e riepilogo ai professionisti non partono | Admin → Finanza → emetti il mese (fatture, mai doppie); il riepilogo al professionista non ha ancora un pulsante: chiedere a un thread |
-| `StatementsService.sendAccountantStatements` | 1° del mese, 8:00 | Estratti ai commercialisti non partono | Nessun pulsante: chiedere a un thread di lanciarlo per il mese |
+| `InvoicesService.runMonthly` | 1° del mese, 7:00 | Fatture delle trattenute del mese prima e riepilogo ai professionisti non partono | Admin → Finanza → mese → **Rifai il giro del mese** |
+| `StatementsService.sendAccountantStatements` | 1° del mese, 8:00 | Estratti ai commercialisti non partono | Lo stesso pulsante: fa fatture, riepiloghi ed estratti che mancano, mai doppi (`accountant_statement_sends`) |
 | `FeeReconciliationService.runMonthly` | 1° del mese, 7:30 | Quadratura con Stripe del mese non fatta | Admin → Finanza (quadratura) |
 | `DatabaseVersionService.monthlyCheck` | 1° del mese, 9:00 | Nessun avviso sulla versione di PostgreSQL per un mese | Nessuno, riprova il mese dopo |
 | `Dac7Service.sendYearEndReminders` | 1° novembre, 9:00 | Promemoria DAC7 di fine anno | Chiedere a un thread |

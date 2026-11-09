@@ -728,10 +728,18 @@ export class InvoicesService {
     return this.invoiceView(invoice);
   }
 
-  /** Emette a mano le fatture di un mese (se il giro del 1° non è partito). Mai doppie. */
-  async adminRunMonth(month: string): Promise<{ issued: number }> {
+  /**
+   * Rifà a mano il giro del 1° di un mese concluso, se è saltato: fatture delle
+   * trattenute e riepilogo ai professionisti. Mai doppi: le fatture hanno la
+   * loro chiave, il riepilogo si manda una volta per mese
+   * (docs/changelog/2026-11-08-infrastruttura-lancio.md). Gli estratti ai
+   * commercialisti li aggiunge il controller (StatementsService).
+   */
+  async adminRunMonth(month: string): Promise<{ issued: number; notified: number }> {
     if (!isAccountingMonth(month) || month >= romeMonthOf(new Date())) throw new BadRequestException("Scegli un mese già concluso.");
-    return { issued: await this.issueMonthlyFeeInvoices(month) };
+    const issued = await this.issueMonthlyFeeInvoices(month);
+    const notified = await this.sendMonthlyDocuments(month);
+    return { issued, notified };
   }
 
   /**

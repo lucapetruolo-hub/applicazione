@@ -3429,3 +3429,16 @@ model CronRun {
   @@index([startedAt])
   @@map("cron_runs")
 }
+
+// Estratto del mese mandato al commercialista (docs/changelog/2026-11-08-infrastruttura-lancio.md):
+// una riga per professionista e mese, scritta prima di mandare l'email. Così
+// il giro del 1° e il pulsante di Admin → Finanza non lo mandano mai due volte.
+model AccountantStatementSend {
+  professionalProfileId String
+  // AAAA-MM del mese dell'estratto.
+  month                 String
+  sentAt                DateTime @default(now())
+
+  @@id([professionalProfileId, month])
+  @@map("accountant_statement_sends")
+}

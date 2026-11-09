@@ -67,13 +67,26 @@ Render, Vercel Pro, Resend Pro, variabili sulla dashboard) restano a Luca.
   `cron_runs`, avvisi, variabili, cambio di dominio (dieci posti, prima
   la checklist ne citava due).
 
+## Seguito del 09/11 (ok di Luca alle migliorie)
+
+- **"Rifai il giro del mese"** in Admin → Finanza (prima "Emetti le fatture
+  del mese", che faceva solo le fatture): se il giro del 1° salta, rifà
+  fatture delle trattenute, riepilogo ai professionisti ed estratti ai
+  commercialisti, solo quello che manca. Gli estratti si segnano per
+  professionista e mese in `accountant_statement_sends` (nuova migrazione
+  additiva) prima di mandare l'email, e la riga si toglie se l'invio non
+  riesce, così si può riprovare. Messaggio d'esito in una riga ("Era già
+  tutto fatto" se non manca nulla); nel registro azioni "Giro del mese rifatto
+  a mano".
+- **Uptime con avviso sul telefono**: UptimeRobot (piano gratuito) su
+  `/health/db` e sulla homepage, aggiunto alla tabella dello stack in
+  CLAUDE.md; l'account lo crea Luca (passi in `docs/ops/avvisi.md`).
+
 ## Non fatto qui
 
 - E9-07 (b, c): download di CodeQL/osv/gitleaks resi "neutri" se GitHub non
   risponde e soglia Lighthouse più larga: indeboliscono controlli, contro la
   regola "sicurezza prima della velocità". Da decidere con Luca.
-- Uptime esterno con avviso sul telefono (UptimeRobot/Better Stack): servizio
-  nuovo, da decidere con Luca prima.
 
 ## Verifica
 
