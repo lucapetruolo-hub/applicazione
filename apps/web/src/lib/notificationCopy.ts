@@ -121,6 +121,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_REFUND_WAITING_FUNDS: { icon: "💳", message: "Un rimborso al cliente aspetta fondi sul tuo conto Stripe: parte appena arrivano." },
   ADMIN_JOB_REFUND_FAILED: { icon: "⚠️", message: "Un rimborso al cliente non è riuscito: controllalo dalla Dashboard Stripe." },
   ADMIN_JOB_REFUND_OUTSIDE: { icon: "↩️", message: "Un lavoro è stato rimborsato fuori dal sito, dalla Dashboard Stripe: l'abbiamo registrato, controllalo." },
+  ADMIN_SUBSCRIPTION_DUPLICATE: { icon: "⚠️", message: "Un professionista ha pagato l'abbonamento due volte: il secondo è annullato. Controlla in Finanza rimborso e nota di credito." },
   ADMIN_STRIPE_UNKNOWN_PAYMENT: { icon: "⚠️", message: "Su Stripe è arrivato un pagamento per un preventivo che il sito non conosce: non l'abbiamo rimborsato, controllalo." },
   ONLINE_LIMIT_LIFTED: { icon: "✅", message: "Limite tolto: nei preventivi puoi chiedere online qualsiasi importo." },
   ADMIN_STRIPE_ACCOUNT_UNREADABLE: { icon: "⚠️", message: "Il sito non riesce a leggere su Stripe lo stato del conto di un professionista." },
@@ -229,6 +230,14 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   // Promemoria della carta (docs/changelog/2026-10-30-iscrizione-carta-solida.md).
   if (type === "PROFILE_SETUP_REMINDER" && Array.isArray(data.missing) && data.missing.includes("CARD")) {
     return { icon: "💳", message: "Aggiungi la carta per attivare i mesi gratis: oggi non paghi nulla." };
+  }
+  // Ultimo avviso prima della chiusura per rinnovo non pagato (docs/changelog/2026-11-08-abbonamento-chiusure-e-rinnovi.md).
+  if (type === "SUBSCRIPTION_PAYMENT_FAILED" && typeof data.closesOn === "string") {
+    const day = new Date(data.closesOn).toLocaleDateString("it-IT", { day: "numeric", month: "long", timeZone: "Europe/Rome" });
+    return { icon: "⏳", message: `Ultimo avviso: se entro il ${day} il rinnovo non è pagato, l'abbonamento si chiude. Cambia la carta dalla pagina Abbonamento.` };
+  }
+  if (type === "SUBSCRIPTION_PAUSED" && data.reason === "PAYMENT_FAILED") {
+    return { icon: "💳", message: "Rinnovo non pagato: il profilo è in pausa finché il pagamento non passa. Cambia la carta dalla pagina Abbonamento." };
   }
   // Mesi gratis senza la carta (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
   if (type === "SUBSCRIPTION_PAUSED" && data.reason === "CARD_NEEDED") {

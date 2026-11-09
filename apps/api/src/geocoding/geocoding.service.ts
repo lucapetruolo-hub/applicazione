@@ -39,7 +39,7 @@ export function normalizePlaceName(name: string): string {
 const DIGITS = "0123456789";
 
 /** Tetto giornaliero di CAP controllati dal modulo di richiesta (rotte aperte a tutti, §293). */
-const POSTAL_CODE_DAILY_LIMIT = 2000;
+const POSTAL_CODE_DAILY_LIMIT = 500;
 
 @Injectable()
 export class GeocodingService {

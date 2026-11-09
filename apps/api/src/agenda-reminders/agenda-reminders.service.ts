@@ -1,9 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import { agendaAttention, type AgendaAttention } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const DAY_MS = 24 * 60 * 60_000;
 /** Il primo avviso "agenda vuota" dopo 3 giorni dalla creazione del profilo, al massimo due, a una settimana di distanza. */
@@ -42,7 +42,7 @@ export class AgendaRemindersService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  @Cron("0 10 * * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 10 * * *", { timeZone: "Europe/Rome" })
   async remindAgenda(now: Date = new Date()): Promise<void> {
     const startOfToday = new Date(now);
     startOfToday.setUTCHours(0, 0, 0, 0);

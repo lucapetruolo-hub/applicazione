@@ -1,10 +1,11 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import { notificationChannelEnabled } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { isQuietHour } from "./email-hold";
 import { NotificationsService } from "./notifications.service";
+import { ScheduledJob } from "../common/scheduled-job";
 
 /** Minuti dopo i quali un messaggio non letto sul sito arriva anche per email. */
 export const CHAT_EMAIL_AFTER_MINUTES = 10;
@@ -90,7 +91,7 @@ export class ChatMessageEmailsService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  @ScheduledJob(CronExpression.EVERY_MINUTE)
   async sendDue(now: Date = new Date()): Promise<void> {
     const unread = { type: { in: [...CHAT_TYPES] }, readAt: null, createdAt: { gte: new Date(now.getTime() - CHAT_EMAIL_MAX_AGE_HOURS * 60 * 60_000) } };
     const select = { id: true, userId: true, type: true, payload: true, createdAt: true } as const;

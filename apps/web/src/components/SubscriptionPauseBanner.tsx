@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { formatEur as formatEurShared, subscriptionTierInfo, tierPeriodPriceEurCents, type MySubscription, type SubscriptionTier } from "@professionisti/shared";
+import { PAST_DUE_GRACE_DAYS, formatEur as formatEurShared, subscriptionTierInfo, tierPeriodPriceEurCents, type MySubscription, type SubscriptionTier } from "@professionisti/shared";
 import { Button, Surface, Text, YStack, brand, radiusDoc } from "@professionisti/ui";
 
 /**
@@ -72,6 +72,12 @@ export function SubscriptionPauseBanner({ sub, showAction = true, profileStepsEl
     title = sub.freeMonths ? "I tuoi mesi gratis sono finiti" : "Scegli il tuo livello";
     body = "Il tuo account è in pausa: il profilo non compare nelle ricerche e non ricevi nuove richieste. Scegli un livello per renderlo di nuovo visibile e operativo.";
     action = "Riattiva il tuo account";
+  } else if (sub.pausedReason === "PAYMENT_FAILED") {
+    // Rinnovo non pagato da più di un giorno (decisione di Luca del 9/11/2026).
+    title = "Rinnovo non pagato: account in pausa";
+    body = `Il tuo profilo non compare nelle ricerche e non ricevi nuove richieste finché il pagamento non passa. Cambia la carta dalla pagina Abbonamento: appena l'addebito riesce torni visibile. Dopo ${PAST_DUE_GRACE_DAYS} giorni senza pagamento l'abbonamento si chiude.`;
+    action = "Cambia la carta";
+    href = "/dashboard/abbonamento";
   } else if (sub.pausedReason === "SUBSCRIPTION_ENDED") {
     title = "Abbonamento concluso";
     body = "Rendi di nuovo visibile e operativo il tuo account: finché non scegli un livello il profilo non compare nelle ricerche e non ricevi nuove richieste.";
@@ -95,7 +101,7 @@ export function SubscriptionPauseBanner({ sub, showAction = true, profileStepsEl
   } else if (sub.state === "PAST_DUE") {
     tone = "warn";
     title = "Pagamento dell'abbonamento non riuscito";
-    body = "Riproveremo nei prossimi giorni. Controlla il metodo di pagamento: se il pagamento non va a buon fine l'abbonamento si chiude e il profilo va in pausa.";
+    body = "Riproviamo nei prossimi giorni. Controlla la carta o cambiala: se entro domani il pagamento non riesce, il profilo va in pausa finché non passa.";
     action = "Vai all'abbonamento";
   } else {
     return null;

@@ -43,7 +43,7 @@ migrazioni restano anche in `CLAUDE.md`.
   la scadenza 30gg) non dà `P3005` e riceve tutte le migrazioni da zero.
   **Regola per la baseline**: `20260921212750_baseline` deve restare lo
   schema **realmente presente** in produzione al momento del passaggio
-  (ultimo `db push`, commit `034f1a5`), mai lo schema corrente — ogni
+  (ultimo `db push` prima del passaggio), mai lo schema corrente — ogni
   cambiamento successivo va in una migrazione a parte (es.
   `20260923080000_booking_reminder_sent_at`, `Booking.reminderSentAt`, che
   in origine era finito per errore dentro la baseline e non sarebbe mai

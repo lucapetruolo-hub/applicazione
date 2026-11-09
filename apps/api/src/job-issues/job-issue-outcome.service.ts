@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import {
   JOB_ISSUE_AUTO_DECISION_NOTE,
@@ -23,6 +23,7 @@ import { AuditLogService } from "../audit-log/audit-log.service";
 import { TimelineService } from "../timeline/timeline.service";
 import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
 import { OnlineMoneyService } from "../job-payments/online-money.service";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -413,7 +414,7 @@ export class JobIssueOutcomeService {
    * versione del professionista entro 72 ore (o senza le informazioni
    * richieste entro 72 ore) è accolta automaticamente.
    */
-  @Cron(CronExpression.EVERY_HOUR)
+  @ScheduledJob(CronExpression.EVERY_HOUR)
   async runDeadlines(now: Date = new Date()): Promise<{ escalated: number; decided: number }> {
     let escalated = 0;
     let decided = 0;
