@@ -490,7 +490,6 @@ export function serviceMatchingProblem<T extends { name: string }>(services: rea
   return best?.service;
 }
 
-export const PROBLEM_DESCRIPTION_MAX = 1000;
 
 /** Pagina admin "Mestieri richiesti". */
 export type ProblemWordAdmin = { id: string; word: string; categorySlug: string | null; outOfService: string | null; serviceName: string | null };
