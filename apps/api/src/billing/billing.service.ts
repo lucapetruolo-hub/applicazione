@@ -586,10 +586,11 @@ export class BillingService implements OnModuleInit {
     const launch = launchDate();
     const launched = hasLaunched(now, launch);
 
-    await this.refuseAbroad(profile.id);
     if (current?.stripeSubscriptionId && (state === "ACTIVE" || state === "PAST_DUE")) {
       return this.upgradeTier(stripe, profile.id, current.stripeSubscriptionId, tierOfPlan(current.plan), plan, launched);
     }
+    // Un abbonamento nuovo, non il cambio di livello di chi è già abbonato (E5-04).
+    await this.refuseAbroad(profile.id);
     // Prima del lancio non c'è limite di lavori: si dà solo la carta per i mesi gratis.
     if (!launched && plan !== "BASE") {
       throw new BadRequestException("Plus e Pro si scelgono dal giorno del lancio: fino ad allora non c'è limite di lavori.");

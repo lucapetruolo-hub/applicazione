@@ -295,6 +295,21 @@ export function platformInvoiceNote(invoice: Pick<PlatformInvoiceView, "source" 
   return paid;
 }
 
+/**
+ * Riga sull'IVA nel riquadro della fattura. Per una nota di credito l'IVA non
+ * si recupera ma si storna: dirlo come per una fattura sarebbe sbagliato.
+ */
+export function platformInvoiceVatNote(invoice: Pick<PlatformInvoiceView, "creditNote" | "vatRecoverable" | "relatedNumber">): string | null {
+  if (invoice.creditNote) {
+    return invoice.vatRecoverable === true
+      ? `Nella dichiarazione IVA questa nota riduce l'IVA recuperata${invoice.relatedNumber ? ` con la fattura ${invoice.relatedNumber}` : ""}.`
+      : null;
+  }
+  if (invoice.vatRecoverable === false) return "Senza partita IVA, o nel regime forfettario, l'IVA è un costo: non si recupera.";
+  if (invoice.vatRecoverable === true) return "L'IVA la recuperi nella tua dichiarazione IVA.";
+  return null;
+}
+
 /** Riga sotto il titolo di una nostra fattura: di cosa è e di quando. */
 export function platformInvoiceSubtitle(invoice: Pick<PlatformInvoiceView, "source" | "creditNote" | "periodMonth" | "issuedAt">): string {
   if (invoice.source === "JOB_FEES") {

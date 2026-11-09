@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { dac7Quarter, fiscalResidenceAbroad, monthlyInvoiceLate, occasionalIncomeNotice, platformInvoiceNote, platformInvoiceSubtitle } from "@professionisti/shared";
+import { dac7Quarter, dac7YearStatus, fiscalResidenceAbroad, monthlyInvoiceLate, occasionalIncomeNotice, platformInvoiceNote, platformInvoiceSubtitle, platformInvoiceVatNote } from "@professionisti/shared";
 import { InvoicesService } from "./invoices.service";
 
 /** Collaudo dell'08/11/2026, gruppo 5 (fatture e fisco): E5-02, E5-04, E5-05, E5-06, E5-09. */
@@ -202,6 +202,18 @@ describe("E5-09 e miglioria 5.000 €", () => {
     // 1° aprile alle 00:30 a Roma = 31 marzo alle 22:30 UTC.
     expect(dac7Quarter(new Date("2026-03-31T22:30:00Z"))).toBe(2);
     expect(dac7Quarter(new Date("2026-03-31T21:30:00Z"))).toBe(1);
+  });
+
+  it("riepilogo DAC7 con data e protocollo dell'invio", () => {
+    const status = dac7YearStatus({ year: 2026, submittedAt: "2027-01-28T10:00:00Z", submissionProtocol: "26012810000012345" });
+    expect(status.detail).toBe("Comunicato all'Agenzia delle Entrate il 28 gennaio 2027 con protocollo 26012810000012345.");
+    expect(dac7YearStatus({ year: 2026, submittedAt: "2027-01-28T10:00:00Z", submissionProtocol: null }).detail).toBe("Comunicato all'Agenzia delle Entrate il 28 gennaio 2027.");
+  });
+
+  it("nota di credito: l'IVA si storna, non si recupera", () => {
+    expect(platformInvoiceVatNote({ creditNote: true, vatRecoverable: true, relatedNumber: "ABB/2026/0001" })).toBe("Nella dichiarazione IVA questa nota riduce l'IVA recuperata con la fattura ABB/2026/0001.");
+    expect(platformInvoiceVatNote({ creditNote: true, vatRecoverable: false, relatedNumber: null })).toBeNull();
+    expect(platformInvoiceVatNote({ creditNote: false, vatRecoverable: true, relatedNumber: null })).toBe("L'IVA la recuperi nella tua dichiarazione IVA.");
   });
 
   it("avviso ricevute dell'anno da 4.000 €", () => {

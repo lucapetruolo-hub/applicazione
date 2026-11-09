@@ -57,3 +57,25 @@ estero, recupero e avviso del 10, ritardo dopo il 15, note di credito
 intere e in due volte, testi, trimestre DAC7 a mezzanotte di Roma, avviso
 dei 5.000 €); tutte le prove di `apps/api` (1300) e di `packages/shared`,
 typecheck e lint di api e web.
+
+## Seguito del 09/11/2026 (migliorie approvate da Luca)
+
+- **Riepilogo DAC7**: dopo l'invio dice "Comunicato all'Agenzia delle
+  Entrate il … con protocollo …" (il protocollo segnato in Admin, già in
+  `submissionProtocol`), nella pagina e nel PDF.
+- **Pacchetto per il commercialista** rigenerato con la nota di credito
+  dell'abbonamento (`05-nota-di-credito-abbonamento-ABB`, TD04 collegata ad
+  ABB/2026/0001) e il riepilogo DAC7 già comunicato; i cinque XML passano lo
+  schema ufficiale FatturaPA 1.2.2 (controllato con `xmllint`).
+- Guardando il PDF della nota di credito: diceva "L'IVA la recuperi nella tua
+  dichiarazione IVA", sbagliato per una nota di credito. Ora
+  (`platformInvoiceVatNote`, pagina e PDF): "Nella dichiarazione IVA questa
+  nota riduce l'IVA recuperata con la fattura …"; senza IVA da recuperare
+  nessuna frase. Vale anche per le note di credito COM.
+- Allineato col ramo principale dopo #264 e #266: il riepilogo del mese ora
+  parte una volta sola per mese, quindi il recupero dal 2 al 15 lo manda a
+  tutti quelli che non l'hanno ancora avuto (anche se il giro del 1° non è
+  partito per niente); `recoverMonthly` usa `@ScheduledJob` come gli altri
+  giri; "Rifai il giro del mese" restituisce anche ritardo ed estero. Il
+  blocco della residenza estera vale per un abbonamento nuovo, non per il
+  cambio di livello di chi è già abbonato.

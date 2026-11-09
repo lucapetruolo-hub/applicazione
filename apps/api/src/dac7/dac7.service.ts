@@ -567,6 +567,7 @@ export class Dac7Service implements OnModuleInit {
       const summary = yearOf(period.year);
       if (period.quarter === null) {
         summary.submittedAt = period.status === "SUBMITTED" || period.status === "CORRECTED" ? (period.submittedAt?.toISOString() ?? null) : null;
+        summary.submissionProtocol = summary.submittedAt ? (period.submissionProtocol ?? null) : null;
         summary.notifiedAt = record.sellerNotifiedAt?.toISOString() ?? null;
       } else {
         summary.quarters.push({
