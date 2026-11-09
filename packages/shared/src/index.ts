@@ -56,6 +56,7 @@ export * from "./categoryPrices";
 export * from "./trafficSource";
 export * from "./trafficSources";
 export * from "./requestWithdraw";
+export * from "./accountRetention";
 export * from "./requestWithdrawSchemas";
 export * from "./cancellationNotice";
 export * from "./professionalStats";

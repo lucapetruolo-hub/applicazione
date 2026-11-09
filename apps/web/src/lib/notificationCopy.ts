@@ -67,6 +67,9 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   // Sospensione/riattivazione decise dalla scheda utente admin (docs/CHANGELOG.md §145).
   ACCOUNT_SUSPENDED: { icon: "⛔", message: "Il tuo account è stato sospeso: controlla la tua email per la motivazione." },
   ACCOUNT_REACTIVATED: { icon: "✅", message: "Il tuo account è di nuovo attivo." },
+  // Chiusura con preavviso (controllo pre-lancio 08/11, E4-03).
+  ACCOUNT_CLOSURE_SCHEDULED: { icon: "⛔", message: "Il tuo account verrà chiuso tra 30 giorni: controlla la tua email per motivo e data." },
+  ACCOUNT_CLOSED: { icon: "⛔", message: "Il tuo account è stato chiuso: controlla la tua email per la motivazione." },
   TERMS_CHANGED: { icon: "📄", message: "Cambiano i Termini di Servizio: tocca per leggere cosa cambia." },
   // Verifica manuale del profilo (docs/CHANGELOG.md §200).
   STRIPE_ACCOUNT_ACTIVE: { icon: "✅", message: "Stripe ha verificato la tua identità: ora puoi offrire l'acconto online nei preventivi." },

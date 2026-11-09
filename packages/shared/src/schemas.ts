@@ -5,7 +5,7 @@ import { TRAFFIC_SOURCES } from "./trafficSources";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
 import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
 import { quotePaymentOfferSchema } from "./onlinePaymentsSchemas";
-import { contentReportReason, contentReportReasonCodes, moderationGroundCodes } from "./moderation";
+import { accountMeasures, contentReportReason, contentReportReasonCodes, moderationGroundCodes } from "./moderation";
 import { newPasswordSchema } from "./password";
 import { REQUEST_TIMINGS } from "./requestTiming";
 import { SERVICE_PRICE_UNITS } from "./professionals";
@@ -1094,6 +1094,18 @@ export const contentReportDecisionNoteSchema = z.object({
   note: z.string().trim().min(3, "Scrivi la motivazione.").max(2000),
 });
 export type ContentReportDecisionNoteInput = z.infer<typeof contentReportDecisionNoteSchema>;
+
+/**
+ * Sospensione o chiusura dell'account dalla scheda in Admin (controllo
+ * pre-lancio 08/11, E4-03): i fatti, la regola o la legge violata e la misura,
+ * tutto obbligatorio e tutto nell'email alla persona (P2B art. 4, DSA art. 17).
+ */
+export const adminAccountMeasureSchema = z.object({
+  measure: z.enum(accountMeasures),
+  ground: z.enum(moderationGroundCodes, { message: "Scegli la regola o la legge violata." }),
+  note: z.string().trim().min(10, "Scrivi i fatti: cosa è successo, in almeno una frase.").max(2000),
+});
+export type AdminAccountMeasureInput = z.infer<typeof adminAccountMeasureSchema>;
 
 /** Contestazione dell'autore del contenuto (reclamo interno, DSA art. 20). */
 export const contentReportAppealSchema = z.object({

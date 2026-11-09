@@ -67,6 +67,7 @@ Ogni giorno a ora fissa (ora italiana):
 | 3:50 | `CronRunsService.deleteOld` | Cancella le righe di `cron_runs` oltre 40 giorni |
 | 4:00 | `GuidedRequestsService.purgeClientDeletedRequests` | Cancella le richieste eliminate dal cliente |
 | 4:20 | `AdminProposalsService.nightly` | Prepara le proposte "Da approvare" in Admin |
+| 5:30 | `AccountClosuresService.nightly` | Chiude gli account con la chiusura fissata da Admin e cancella le impronte email oltre 10 anni |
 | 6:15 | `BillingService.issueMissedInvoices` | Fatture dei pagamenti Stripe rimaste senza (mai doppie) |
 | 7:00 | `SuspiciousAccountsService.morningCheck` | Account sospetti all'admin |
 | 8:00 | `AdminQueueService.morningClaimedDue` | Casi presi in carico e scaduti all'admin |

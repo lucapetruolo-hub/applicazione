@@ -41,7 +41,13 @@ import {
   cancellationNoticeLabel,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
   isLateCancellation,
-  type ClientInvoiceRequestInput } from "@professionisti/shared";
+  type ClientInvoiceRequestInput,
+  formatServicePriceRange,
+  quotePriceTaxNote,
+  professionalChargesVat,
+  quotePaymentSplitLine,
+  TRADER_STATUS_COPY,
+  professionalKindOf } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { BOOKING_CALENDAR_INCLUDE, bookingCalendar } from "../email/booking-calendar";
 import { cancellationNoticeFor, hasOtherJob, isOtherJobViolation, lockGuidedRequest } from "./one-job-per-request";
@@ -57,6 +63,7 @@ import { PROFESSIONAL_BUSY_MESSAGE, capacityAt, countOverlapping, loadCommitment
 import { AuthService } from "../auth/auth.service";
 import { ClientInvoiceRequestsService } from "../client-invoice-requests/client-invoice-requests.service";
 import { bookingDateChange } from "../quotes/booked-date-change";
+import { quoteExecutor } from "../guided-requests/guided-requests.service";
 
 /** Il cliente ha già un lavoro per questa richiesta (docs/CHANGELOG.md §346). */
 const CLIENT_CANCEL_TOO_LATE = "L'appuntamento è già cominciato e non si può più annullare. Se qualcosa non va, usa \"C'è un problema\".";
@@ -444,6 +451,39 @@ export class BookingsService implements OnModuleInit {
     }
   }
 
+  /**
+   * Riepilogo del contratto per l'email "Appuntamento prenotato" (E4-04):
+   * prezzo con la nota IVA, quanto si paga ora e dopo e come, chi esegue il
+   * lavoro (P.IVA e sede) e il preavviso per annullare. Stessi testi della
+   * scheda (`QuoteAcceptSummary`) e del PDF del preventivo.
+   */
+  private async bookingContractSummary(
+    quote: AcceptableQuote,
+    paymentMethod: JobPaymentChoice,
+    depositPercent: number,
+    cancellationNoticeHours: number | null,
+  ): Promise<{ price: string | null; priceNote: string; payment: string; executor: string | null; notice: string }> {
+    const fiscal = await this.prisma.professionalFiscalProfile.findUnique({
+      where: { professionalProfileId: quote.professionalProfileId },
+      select: { entityType: true, businessName: true, fiscalFirstName: true, fiscalLastName: true, vatNumber: true, registeredCity: true, registeredProvince: true, chargesVat: true },
+    });
+    const totals = quotePriceTotals(quote.items);
+    const hasPrice = totals.totalMinEurCents > 0 || totals.totalMaxEurCents > 0;
+    const executor = quoteExecutor(fiscal);
+    const executorText = executor
+      ? [executor.name, executor.vatNumber ? `P.IVA ${executor.vatNumber}` : null, executor.seat ? `sede a ${executor.seat}` : null].filter(Boolean).join(" · ")
+      : professionalKindOf(fiscal?.entityType) === "PRIVATE"
+        ? TRADER_STATUS_COPY.PRIVATE.note
+        : null;
+    return {
+      price: hasPrice ? formatServicePriceRange(totals.totalMinEurCents, totals.totalMaxEurCents) : null,
+      priceNote: quotePriceTaxNote(professionalChargesVat(fiscal?.entityType, fiscal?.chargesVat)),
+      payment: quotePaymentSplitLine(paymentMethod, totals, depositPercent, true),
+      executor: executorText,
+      notice: cancellationNoticeLabel(cancellationNoticeHours),
+    };
+  }
+
   /** Crea la prenotazione dal preventivo accettato: da qui il professionista vede i contatti del cliente (CLAUDE.md §5 punto 9). */
   private async confirmAcceptedQuote(quote: AcceptableQuote, clientId: string, paymentMethod: JobPaymentChoice): Promise<string> {
     const offer = quotePaymentOffer(quote);
@@ -542,7 +582,11 @@ export class BookingsService implements OnModuleInit {
       });
     }
     // Conferma al cliente con il calendario (§346), solo email: sul sito ha appena visto "Appuntamento prenotato".
-    this.notificationsService.emailOnly(clientId, "BOOKING_CONFIRMED", { bookingId: booking.id, guidedRequestId: quote.guidedRequestId });
+    // Con le stesse righe del riquadro "Prima di accettare": è la conferma del
+    // contratto su supporto durevole (Codice del consumo art. 51 c. 7,
+    // controllo pre-lancio 08/11, E4-04).
+    const contract = await this.bookingContractSummary(quote, paymentMethod, offer.depositPercent, booking.cancellationNoticeHours);
+    this.notificationsService.emailOnly(clientId, "BOOKING_CONFIRMED", { bookingId: booking.id, guidedRequestId: quote.guidedRequestId, ...contract });
 
     // Metriche di affidabilità (CLAUDE.md §15, evento 3): il preventivo è
     // diventato una prenotazione reale ("accettato" in questo dominio).
