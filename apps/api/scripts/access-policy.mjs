@@ -82,6 +82,8 @@ const publicRoutes = [
   // Passi dalle voci di "Quanto costa" (§399), senza account.
   "POST /site/price-tool",
   "GET /professionals/category-counts",
+  // Link personale /p/<codice> del professionista: porta solo al profilo pubblico (docs/changelog/2026-11-08-canale-del-professionista.md).
+  "GET /professionals/link/:code",
   "GET /professionals/languages/popular",
   // Prezzi aggregati della pagina "Quanto costa", mai sotto le soglie (§296).
   "GET /professionals/prices/:category",
@@ -196,6 +198,7 @@ const selfProfessional = [
   "POST /professionals/me/image",
   "GET /professionals/me/insights",
   "GET /professionals/me/leads",
+  "GET /professionals/me/personal-link",
   "GET /professionals/me/online-payments/summary",
   "GET /professionals/me/payout-iban",
   "PUT /professionals/me/payout-iban",

@@ -300,6 +300,10 @@ model ProfessionalProfile {
   // collegare a Google/iPhone (null = collegamento spento) e settimana tipo
   // usata da "Orari di lavoro" per riempire un mese in un colpo.
   calendarFeedToken            String?   @unique
+  // Link personale del professionista (docs/changelog/2026-11-08-canale-del-professionista.md):
+  // codice corto di /p/<codice>, creato alla prima apertura di "Il tuo link".
+  // Le richieste partite da lì sono "clienti suoi" (GuidedRequest.fromProfessionalLink).
+  personalLinkCode             String?   @unique
   agendaWeekTemplate           Json?
   // Settimana tipo che vale per tutte le settimane (docs/CHANGELOG.md
   // §323): ultimo giorno già riempito dalla settimana tipo (null = mai
@@ -973,6 +977,11 @@ model GuidedRequest {
   // §393): la richiesta arriva solo a loro, mai a chi si iscrive dopo né ad
   // altri. Vuoto per le richieste generali e per quelle a un solo professionista.
   chosenProfileIds      String[]                     @default([])
+  // Richiesta diretta partita dal link personale del professionista
+  // (docs/changelog/2026-11-08-canale-del-professionista.md): è un cliente
+  // suo, il lavoro non conta nei lavori del mese e si può rispondere anche
+  // con i lavori esauriti. Falsa se il cliente era già arrivato a lui dal sito.
+  fromProfessionalLink  Boolean                      @default(false)
 
   client              User                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
   category            Category             @relation(fields: [categoryId], references: [id])

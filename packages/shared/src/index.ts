@@ -14,6 +14,7 @@ export * from "./moderation";
 export * from "./adminRoles";
 export * from "./adminRoleSchemas";
 export * from "./plans";
+export * from "./personalLink";
 export * from "./professionals";
 export * from "./limits";
 export * from "./schemas";

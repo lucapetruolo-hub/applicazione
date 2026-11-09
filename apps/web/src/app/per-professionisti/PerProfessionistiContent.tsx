@@ -735,6 +735,11 @@ const FAQ: { question: string; answer: string; paymentsLink?: boolean; founderOf
       "Ti avvisiamo prima. Resti nelle ricerche e ricevi le richieste, ma per mandare preventivi nuovi passi al livello sopra: paghi 10 € più la differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del 10% (+ IVA). Altrimenti aspetti il rinnovo, quando i lavori ripartono. I preventivi già mandati restano validi. Su Plus e Pro più lavori allo stesso cliente nello stesso mese contano come uno.",
   },
   {
+    question: "I miei clienti di sempre contano nei lavori del mese?",
+    answer:
+      "No, se ti scrivono dal tuo link personale. Lo trovi nella tua area, con il codice QR da stampare e un messaggio pronto da mandare su WhatsApp. La richiesta arriva solo a te e il lavoro non conta, anche quando hai finito i lavori del mese. Vale per i clienti nuovi sul sito: chi ti aveva già trovato con la ricerca resta un cliente arrivato dal sito.",
+  },
+  {
     question: "I prezzi comprendono l'IVA?",
     answer: "No: sono IVA esclusa e l'IVA del 22% si aggiunge in fattura. Sotto ogni prezzo trovi anche il totale con l'IVA.",
   },

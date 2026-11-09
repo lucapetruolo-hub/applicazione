@@ -90,6 +90,15 @@ function receiptPayload(input: Partial<SubscriptionReceiptExtras> & { amountEurC
 }
 
 /**
+ * Lavoro nato da una richiesta partita dal link personale del professionista
+ * (docs/changelog/2026-11-08-canale-del-professionista.md): è un cliente suo,
+ * non conta nei lavori del mese.
+ */
+const OWN_CLIENT_BOOKING = { quote: { is: { guidedRequest: { fromProfessionalLink: true } } } } as const;
+/** Il contrario, scritto senza NOT: un NOT su una relazione facoltativa scarterebbe anche i lavori senza preventivo. */
+const COUNTED_BOOKING_ORIGIN = { OR: [{ quoteId: null }, { quote: { is: { guidedRequest: { fromProfessionalLink: false } } } }] };
+
+/**
  * Abbonamento unico a livelli (CLAUDE.md §6, docs/CHANGELOG.md §161):
  * mesi gratis dell'offerta decisa in Admin (docs/changelog/2026-10-29-offerta-mesi-gratis.md),
  * conteggio dei lavori accettati del periodo (dal
@@ -359,7 +368,9 @@ export class SubscriptionsService {
    * Lavori accettati nel periodo in corso (dal rinnovo, docs/CHANGELOG.md
    * §362): prenotazioni nate nel periodo, tranne quelle annullate dal
    * cliente (il professionista non ne ha colpa). Su Plus e Pro lo stesso
-   * cliente conta una volta.
+   * cliente conta una volta. Non contano i lavori dei clienti arrivati dal
+   * link personale del professionista
+   * (docs/changelog/2026-11-08-canale-del-professionista.md).
    */
   async countUsedJobs(professionalProfileId: string, row: SubscriptionRow | null, now = new Date()): Promise<number> {
     const period = usagePeriod(row, now);
@@ -367,12 +378,31 @@ export class SubscriptionsService {
       professionalProfileId,
       createdAt: { gte: period.start, lt: period.end },
       NOT: { status: "CANCELED" as const, canceledBy: "CLIENT" as const },
+      ...COUNTED_BOOKING_ORIGIN,
       // Lavoro ricorrente: conta una volta, con la prima visita (docs/changelog/2026-11-09-lavori-ricorrenti.md).
-      OR: [{ recurringNumber: null }, { recurringNumber: 1 }],
+      AND: [{ OR: [{ recurringNumber: null }, { recurringNumber: 1 }] }],
     };
     if (!countsClientsOnce(row, now)) return this.prisma.booking.count({ where });
     const clients = await this.prisma.booking.findMany({ where, select: { clientId: true }, distinct: ["clientId"] });
     return clients.length;
+  }
+
+  /**
+   * Richieste e lavori arrivati dal link personale nel periodo dei lavori in
+   * corso, per la pagina "Il tuo link" e Abbonamento: i lavori qui non
+   * contano nel limite.
+   */
+  async personalLinkUsage(professionalProfileId: string, now = new Date()): Promise<{ requests: number; jobs: number }> {
+    const row = await this.prisma.subscription.findUnique({ where: { professionalProfileId } });
+    const period = usagePeriod(row, now);
+    const createdAt = { gte: period.start, lt: period.end };
+    const [requests, jobs] = await Promise.all([
+      this.prisma.guidedRequest.count({ where: { professionalProfileId, fromProfessionalLink: true, createdAt } }),
+      this.prisma.booking.count({
+        where: { professionalProfileId, createdAt, ...OWN_CLIENT_BOOKING, NOT: { status: "CANCELED", canceledBy: "CLIENT" } },
+      }),
+    ]);
+    return { requests, jobs };
   }
 
   /** Dopo ogni nuovo lavoro accettato: avviso vicino o al limite, una volta al mese. Mai un errore verso chi chiama. */
@@ -449,7 +479,7 @@ export class SubscriptionsService {
     if (!profile) throw new NotFoundException("Profilo professionista non trovato. Completa prima il tuo profilo.");
     const now = new Date();
     const sub = await this.prisma.subscription.findUnique({ where: { professionalProfileId: profile.id } });
-    const used = await this.countUsedJobs(profile.id, sub, now);
+    const [used, ownClients] = await Promise.all([this.countUsedJobs(profile.id, sub, now), this.personalLinkUsage(profile.id, now)]);
     const { reason: pausedReason, limitReached } = await this.syncPause(profile.id, now, used);
     const period = usagePeriod(sub, now);
     const launch = launchDate();
@@ -477,6 +507,7 @@ export class SubscriptionsService {
         periodStart: period.start.toISOString(),
         periodEnd: period.end.toISOString(),
         countsClientsOnce: countsClientsOnce(sub, now),
+        ownClientJobs: ownClients.jobs,
       },
       limitReached,
       limitsActive: pausesActive(now),

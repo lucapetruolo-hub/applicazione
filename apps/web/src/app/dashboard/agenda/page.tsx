@@ -29,6 +29,7 @@ import { apiClient } from "@/lib/apiClient";
 import { loadMyProfessionalProfile } from "@/lib/myProfessionalProfile";
 import { AwayCard } from "@/components/AwayCard";
 import { useAuth } from "@/lib/AuthContext";
+import { personalLinkNudgeAfterJob } from "@/components/PersonalLinkNudge";
 import { useKeepInPlace } from "@/lib/useKeepInPlace";
 import { CalendarShell, MonthGrid, type CalendarView } from "@/components/calendar/CalendarShell";
 import { SkeletonBlock } from "@/components/Skeleton";
@@ -644,6 +645,7 @@ function DashboardAgendaContent() {
     patchBooking(completingBooking.id, { status: "COMPLETED", finalAmountEurCents: result.finalAmountEurCents });
     setCompletingBooking(null);
     setSelectedBooking(null);
+    personalLinkNudgeAfterJob(myProfileId);
   }
 
   /** Annulla con una nota per il cliente, come da "Richieste e lavori". */

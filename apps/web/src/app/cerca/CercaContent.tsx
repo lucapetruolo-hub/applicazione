@@ -302,6 +302,7 @@ export function CercaContent({
       count={professionals.length}
       questionDone={problem.questionDone}
       categoryCounts={problem.categoryCounts}
+      otherTradesCount={alsoDoThisJob.length}
       chosenPros={chosenPros}
       maxChosen={canChoose ? MAX_CHOSEN_PROFESSIONALS : undefined}
       onClearChosen={clearChosen}

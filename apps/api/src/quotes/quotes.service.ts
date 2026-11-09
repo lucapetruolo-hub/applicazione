@@ -2,6 +2,7 @@ import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import {
+  ownClientRequest,
   formatServicePriceRange,
   describePaymentOffer,
   IDENTITY_REQUIRED_FOR_QUOTES_MESSAGE,
@@ -165,7 +166,9 @@ export class QuotesService {
     // Lavori del periodo esauriti (decisione dell'utente, docs/CHANGELOG.md
     // §362): niente preventivi nuovi finché non passa al livello superiore o
     // non ripartono i lavori. Un preventivo già mandato resta modificabile.
-    if ((!existingQuote || isResend) && professionalProfile.jobLimitReachedAt) {
+    // Un cliente arrivato dal suo link personale non conta nei lavori: a lui
+    // si risponde sempre (docs/changelog/2026-11-08-canale-del-professionista.md).
+    if ((!existingQuote || isResend) && professionalProfile.jobLimitReachedAt && !ownClientRequest(lead.guidedRequest, professionalProfile.id)) {
       throw new ForbiddenException(JOB_LIMIT_REACHED_MESSAGE);
     }
 
