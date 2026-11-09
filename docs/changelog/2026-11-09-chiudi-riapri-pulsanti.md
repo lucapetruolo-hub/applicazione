@@ -36,3 +36,9 @@
 `/mnt/project-files/agenda/giorno-per-giorno-fermo/chiudi-*.png`; prova e2e
 nuova in `agenda-primo-uso.spec.ts` (conferma con un appuntamento, Annulla
 lascia il giorno aperto); `agenda-accessibilita.spec.ts` verde.
+
+**Intestazione del Calendario** (Luca, dall'iPhone: "Dom 15 allinealo agli
+altri giorni"): un giorno senza fasce non aveva la riga delle ore libere
+("11h") e il suo numero scendeva più in basso degli altri. Ora quella riga
+c'è sempre (vuota e nascosta al lettore di schermo), così tutti i giorni
+della settimana stanno alla stessa altezza.
