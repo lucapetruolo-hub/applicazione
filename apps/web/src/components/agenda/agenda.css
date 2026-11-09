@@ -903,6 +903,61 @@
     display: flex !important;
   }
 }
+/* "Chiudi"/"Riapri" un giorno come pulsanti veri (docs/changelog/2026-11-09-chiudi-riapri-pulsanti.md). */
+.ag-day-btn {
+  align-self: flex-start;
+  height: 32px;
+  padding: 0 12px;
+  gap: 6px;
+  font-size: 12.5px;
+  border-width: 1px;
+  border-color: #8c8279;
+  color: var(--ag-ink);
+  max-width: 100%;
+}
+.ag-day-btn.reopen {
+  border-color: var(--ag-green-fill);
+  color: var(--ag-green-dark);
+}
+.ag-day-btn.reopen:hover {
+  background: #edf8f2;
+}
+@media (max-width: 1000px) {
+  /* Settimana stretta: solo l'icona, il nome resta per il lettore di schermo. */
+  .ag-day-btn:not(:has(> span:not(.ag-ecc-wide))) {
+    width: 32px;
+    padding: 0;
+  }
+}
+.ag-day-closed {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #ecece8;
+}
+.ag-day-closed.week {
+  padding: 4px 8px;
+  border-radius: 999px;
+  align-self: flex-start;
+}
+.ag-day-closed-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ag-ink);
+}
+.ag-day-closed.week .ag-day-closed-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ag-muted);
+}
+.ag-day-closed-note {
+  font-size: 12.5px;
+}
 /* Settimana tipo in tre passi (docs/CHANGELOG.md §323). */
 .ag-wt {
   padding: 20px;

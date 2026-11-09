@@ -3,7 +3,7 @@
 import { Suspense, startTransition, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, ChevronLeft, ChevronRight, Navigation, PanelLeftClose, PanelLeftOpen, Phone, Plus, Search, Truck, X } from "lucide-react";
+import { CalendarCheck, CalendarDays, CalendarX, ChevronLeft, ChevronRight, Navigation, PanelLeftClose, PanelLeftOpen, Phone, Plus, Search, Truck, X } from "lucide-react";
 import {
   agendaAttention,
   formatAppointmentDate,
@@ -1180,30 +1180,41 @@ function DashboardAgendaContent() {
 
     return (
       <YStack gap="2" minWidth={0} opacity={isPast ? 0.55 : 1}>
+        {/*
+          Pulsanti veri al posto della parola sottolineata (richiesta di Luca,
+          docs/changelog/2026-11-09-chiudi-riapri-pulsanti.md): "Chiudi" da solo
+          sembrava chiudere il riquadro. Nella Settimana stretta resta l'icona,
+          con il nome completo per il lettore di schermo.
+        */}
+        {isClosed ? (
+          <div className={view === "day" ? "ag-day-closed" : "ag-day-closed week"}>
+            <span className="ag-day-closed-label">
+              <CalendarX size={14} aria-hidden />
+              {view === "day" ? "Giorno chiuso" : <span className="ag-ecc-wide">Chiuso</span>}
+              {view === "day" ? null : <span className="sr-only ag-ecc-narrow">Chiuso</span>}
+            </span>
+            {view === "day" ? <span className="ag-muted ag-day-closed-note">Nessuno può prenotare in questo giorno.</span> : null}
+          </div>
+        ) : null}
         {!isPast ? (
-          <XStack
-            alignItems="center"
-            gap="1"
-            minWidth={0}
-            cursor="pointer"
-            opacity={exceptionBusyDate === dateStr ? 0.5 : 1}
-            onPress={() => toggleException(dateStr)}
-            role="button"
+          <button
+            type="button"
+            className={`ag-btn sm ag-day-btn${isClosed ? " reopen" : ""}`}
+            disabled={exceptionBusyDate === dateStr}
+            onClick={() => void toggleException(dateStr)}
             aria-label={`${isClosed ? "Riapri" : "Chiudi"} ${formatAppointmentDate(date, { weekday: "long", day: "numeric" })}`}
+            title={isClosed ? "Riapri il giorno" : "Chiudi il giorno: nessuno potrà prenotare"}
           >
-            <Text fontFamily="body" fontSize={12} fontWeight="600" color={brand.grafite70} textDecorationLine="underline">
-              {isClosed ? "Riapri" : "Chiudi"}
-            </Text>
-          </XStack>
+            {isClosed ? <CalendarCheck size={15} aria-hidden /> : <CalendarX size={15} aria-hidden />}
+            {view === "day" ? (
+              <span>{exceptionBusyDate === dateStr ? "Salvo..." : isClosed ? "Riapri il giorno" : "Chiudi il giorno"}</span>
+            ) : (
+              <span className="ag-ecc-wide">{isClosed ? "Riapri" : "Chiudi"}</span>
+            )}
+          </button>
         ) : null}
 
-        {isClosed ? (
-          <XStack alignSelf="flex-start" borderRadius={999} paddingHorizontal={10} paddingVertical={4} backgroundColor="#ECECE8">
-            <Text fontFamily="body" fontSize={12} fontWeight="600" color={brand.grafite70}>
-              Chiuso
-            </Text>
-          </XStack>
-        ) : (
+        {isClosed ? null : (
           <>
             {isTemplateException ? (
               view === "day" ? (
