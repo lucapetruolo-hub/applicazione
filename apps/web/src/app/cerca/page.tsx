@@ -14,6 +14,7 @@ import { SearchHeader } from "@/components/SearchHeader";
 import { shouldCountVisit } from "@/lib/serverCounting";
 import type { MapPoolQuery } from "@/components/ResultsListWithMap";
 import { CercaContent, type ProblemSearch } from "./CercaContent";
+import { problemCategoryChoices } from "@/lib/problemChoices";
 
 type PageSearchParams = {
   citta?: string;
@@ -40,24 +41,25 @@ type PageSearchParams = {
  * Tutti, nello stesso ordine della ricerca, senza un massimo (richiesta di
  * Luca, docs/changelog/2026-11-06-mestiere-elettrodomestici.md).
  */
-async function loadAlsoDoThisJob(
-  description: string,
+function alsoDoThisJob(
+  all: ProfessionalSearchResult[],
   chosen: ProfessionalCategorySlug,
-  city: string | undefined,
-  isOnline: boolean,
   shown: ProfessionalSearchResult[],
-): Promise<ProfessionalSearchResult[]> {
+): ProfessionalSearchResult[] {
+  const shownIds = new Set(shown.map((pro) => pro.id));
+  return all.filter((pro) => {
+    if (!pro.matchedServiceId || shownIds.has(pro.id) || pro.categories.some((category) => category.slug === chosen)) return false;
+    const service = pro.services.find((item) => item.id === pro.matchedServiceId);
+    return service ? matchProblem(service.name).categories[0]?.slug === chosen : false;
+  });
+}
+
+/** Tutti i professionisti della zona, di ogni mestiere: un errore non rompe la pagina. */
+async function loadAllNearby(description: string, city: string | undefined, isOnline: boolean): Promise<ProfessionalSearchResult[] | null> {
   try {
-    const all = await apiClient.searchProfessionals({ city, remote: isOnline, merit: true, problem: description });
-    const shownIds = new Set(shown.map((pro) => pro.id));
-    return all
-      .filter((pro) => {
-        if (!pro.matchedServiceId || shownIds.has(pro.id) || pro.categories.some((category) => category.slug === chosen)) return false;
-        const service = pro.services.find((item) => item.id === pro.matchedServiceId);
-        return service ? matchProblem(service.name).categories[0]?.slug === chosen : false;
-      });
+    return await apiClient.searchProfessionals({ city, remote: isOnline, merit: true, problem: description });
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -223,7 +225,21 @@ async function ProblemResults({
     // Puntini della mappa oltre la città: li chiede il browser (vedi sopra).
     if (city?.trim()) mapPool = base;
   }
-  const alsoDoThisJob = chosen && !result.safety && !loadFailed ? await loadAlsoDoThisJob(description, chosen, city, isOnline, professionals) : [];
+  // Una sola ricerca per i mestieri proposti con quanti professionisti
+  // (docs/changelog/2026-11-09-mestieri-proposti-pulsanti.md) e per
+  // "Potrebbero fare anche questo lavoro".
+  const choices = problemCategoryChoices(result, chosen);
+  const needAll = choices.length > 1 || Boolean(chosen && !result.safety && !loadFailed);
+  const all = needAll ? await loadAllNearby(description, city, isOnline) : null;
+  const alsoDo = chosen && !result.safety && !loadFailed && all ? alsoDoThisJob(all, chosen, professionals) : [];
+  if (choices.length > 1 && all) {
+    problem.categoryCounts = Object.fromEntries(
+      choices.map((slug) => [
+        slug,
+        slug === chosen && !loadFailed ? professionals.length : all.filter((pro) => pro.categories.some((category) => category.slug === slug)).length,
+      ]),
+    );
+  }
   const comune = city ? findComuneByName(city) : undefined;
 
   return (
@@ -239,7 +255,7 @@ async function ProblemResults({
         loadFailed={loadFailed}
         initialUrgentOnly={searchParams.urgente === "1"}
         problem={problem}
-        alsoDoThisJob={alsoDoThisJob}
+        alsoDoThisJob={alsoDo}
       />
     </div>
   );

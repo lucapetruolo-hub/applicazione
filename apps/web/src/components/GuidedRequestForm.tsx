@@ -491,6 +491,7 @@ export function GuidedRequestForm({
   const suggestedSlugs = suggestion?.categories ?? [];
   const categoryLabelOf = (slug: ProfessionalCategorySlug) => PROFESSIONAL_CATEGORIES.find((c) => c.slug === slug)?.label ?? slug;
   const autoSlug = suggestedSlugs[0] ?? null;
+  const alsoSuggested = suggestedSlugs.filter((slug) => !categorySlugs.includes(slug));
   const [autoApplied, setAutoApplied] = useState<ProfessionalCategorySlug | null>(null);
   if (suggestionsOn && !categoriesByHand && autoApplied !== autoSlug) {
     setAutoApplied(autoSlug);
@@ -1350,6 +1351,12 @@ export function GuidedRequestForm({
                     : categorySlugs.length === 0
                       ? "Scrivi il lavoro qui sopra e ti suggeriamo la categoria, oppure sceglila tu."
                       : ""}
+                {/* Anche gli altri mestieri proposti, non solo il primo
+                    (docs/changelog/2026-11-09-mestieri-proposti-pulsanti.md):
+                    non si scelgono da soli, perché ognuno è una richiesta in più. */}
+                {categorySlugs.length > 0 && alsoSuggested.length > 0 && categorySlugs.length < MAX_REQUEST_CATEGORIES
+                  ? ` Può servire anche ${alsoSuggested.map(categoryLabelOf).join(" o ")}: ${alsoSuggested.length === 1 ? "toccala" : "toccane una"} per aggiungerla.`
+                  : ""}
                 {suggestion?.source === "ia" && autoSlug && categorySlugs.includes(autoSlug) ? (
                   // Trasparenza sull'intelligenza artificiale come nella ricerca (AI Act art. 50).
                   <>
