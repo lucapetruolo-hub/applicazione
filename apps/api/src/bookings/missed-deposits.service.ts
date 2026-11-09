@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
+import { ScheduledJob } from "../common/scheduled-job";
 import { opsAlert } from "../common/ops-alert";
 import { BookingsService } from "./bookings.service";
 
@@ -16,7 +17,8 @@ export class MissedDepositsService {
 
   constructor(private readonly bookingsService: BookingsService) {}
 
-  @Cron(CronExpression.EVERY_HOUR)
+  // Un solo giro anche con due API accese durante un deploy (CLAUDE.md, attività a orario).
+  @ScheduledJob(CronExpression.EVERY_HOUR)
   async run(): Promise<void> {
     const confirmed = await this.bookingsService.confirmMissedQuoteDeposits();
     // Se succede, l'avviso di Stripe non arriva: va controllato l'endpoint Connect.
