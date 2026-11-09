@@ -1,7 +1,8 @@
 import { Module } from "@nestjs/common";
 import { APP_FILTER, APP_GUARD, Reflector } from "@nestjs/core";
 import { SentryGlobalFilter, SentryModule } from "@sentry/nestjs/setup";
-import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { ThrottlerModule } from "@nestjs/throttler";
+import { ClientIpThrottlerGuard } from "./common/client-ip";
 import { ScheduleModule } from "@nestjs/schedule";
 import { CronRunsService } from "./health/cron-runs.service";
 import { HealthController } from "./health/health.controller";
@@ -145,7 +146,7 @@ import { PopularJobsModule } from "./popular-jobs/popular-jobs.module";
   // Workaround noto per questa combinazione @nestjs/throttler + build tsc.
   providers: [
     Reflector,
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: ClientIpThrottlerGuard },
     // Invia a Sentry le eccezioni non gestite (i 4xx voluti no), poi
     // risponde come il filtro di default di Nest.
     { provide: APP_FILTER, useClass: SentryGlobalFilter },

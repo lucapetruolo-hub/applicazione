@@ -3118,6 +3118,19 @@ model StripeWebhookEvent {
   @@map("stripe_webhook_events")
 }
 
+// Accessi chiusi con "Esci" (controllo pre-lancio dell'08/11,
+// docs/changelog/2026-11-08-sicurezza-controllo-lancio.md): il codice del
+// token (`jti`) resta qui fino alla sua scadenza, poi si cancella. Così
+// "Esci" su un computer condiviso chiude davvero quell'accesso, senza far
+// uscire gli altri dispositivi.
+model RevokedSession {
+  jti       String   @id
+  expiresAt DateTime
+
+  @@index([expiresAt])
+  @@map("revoked_sessions")
+}
+
 // Link d'invito per un profilo creato da un operatore (docs/CHANGELOG.md
 // §170): il professionista lo apre, sceglie la password ed entra. Si salva
 // solo l'impronta SHA-256 del codice, mai il codice stesso.
