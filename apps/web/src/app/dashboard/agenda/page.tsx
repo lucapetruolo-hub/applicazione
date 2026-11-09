@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarDays, ChevronLeft, ChevronRight, Navigation, PanelLeftClose, PanelLeftOpen, Phone, Plus, Search, Truck, X } from "lucide-react";
 import {
+  RECURRING_FREQUENCY_LABELS,
   agendaAttention,
   formatAppointmentDate,
   formatAppointmentTimeRange,
@@ -1412,7 +1413,7 @@ function DashboardAgendaContent() {
         date: new Date(b.scheduledAt),
         timeLabel: formatAgendaTimeRange(b.scheduledAt, b.scheduledEndAt),
         title: clientName,
-        subtitle: b.categoryLabel ?? "Prenotazione",
+        subtitle: [b.categoryLabel ?? "Prenotazione", b.recurring ? RECURRING_FREQUENCY_LABELS[b.recurring.frequency] : null].filter(Boolean).join(" · "),
         statusLabel: AGENDA_BOOKING_STATUS_LABEL[b.status],
         statusColor: BOOKING_STATUS_COLOR[b.status],
         dashed: false,
@@ -1428,6 +1429,7 @@ function DashboardAgendaContent() {
           b.professionalNote,
           b.cancellationNote,
           AGENDA_BOOKING_STATUS_LABEL[b.status],
+          b.recurring ? `ricorrente ${RECURRING_FREQUENCY_LABELS[b.recurring.frequency]}` : null,
           ...b.items.map((i) => i.name),
           ...b.finalItems.map((i) => i.name),
         ]
@@ -1594,6 +1596,7 @@ function DashboardAgendaContent() {
               detail: [day.dayOf, b.categoryLabel, b.serviceMode === "ONLINE" ? "online" : b.city].filter(Boolean).join(" · "),
               kind: bookingKind(b),
               label: AGENDA_BOOKING_STATUS_LABEL[b.status],
+              recurring: Boolean(b.recurring),
               onPress: () => setSelectedBooking(b),
             })),
           )
@@ -2347,7 +2350,16 @@ function DashboardAgendaContent() {
       {cancelingBooking ? (
         <CancelBookingModal
           // Che fine fa l'acconto pagato online (collaudo F-02).
-          description="Il cliente verrà avvisato dell'annullamento e, se ha pagato online, gli restituiamo tutto sulla carta. Puoi lasciare una nota facoltativa per spiegargli il motivo."
+          {...(cancelingBooking.recurring && !cancelingBooking.recurring.stoppedAt
+            ? {
+                title: "Salta questa volta",
+                confirmLabel: "Sì, salta questa visita",
+                confirmingLabel: "Un attimo...",
+                description: "Il cliente verrà avvisato che questa visita salta: le altre restano. Puoi lasciare una nota facoltativa per spiegargli il motivo.",
+              }
+            : {
+                description: "Il cliente verrà avvisato dell'annullamento e, se ha pagato online, gli restituiamo tutto sulla carta. Puoi lasciare una nota facoltativa per spiegargli il motivo.",
+              })}
           onClose={() => setCancelingBooking(null)}
           onCancel={handleCancelWithNote}
         />

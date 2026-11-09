@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { CloudFog, CloudLightning, CloudRain, Snowflake, Wind } from "lucide-react";
+import { CloudFog, CloudLightning, CloudRain, Repeat, Snowflake, Wind } from "lucide-react";
 import { WEATHER_ALERT_LABEL, type WeatherAlertKind } from "@professionisti/shared";
 import { isSameDateUtc, toIsoDate, weekdayShortLabel } from "@/lib/calendarDates";
 
@@ -17,6 +17,8 @@ export type AgendaGridEvent = {
   detail: string;
   kind: AgendaEventKind;
   label: string;
+  /** Visita di un lavoro ricorrente: piccola icona nel riquadro (docs/changelog/2026-11-09-lavori-ricorrenti.md). */
+  recurring?: boolean;
   onPress: () => void;
 };
 
@@ -249,12 +251,18 @@ export function AgendaTimeGrid({
                             <span className="sr-only">
                               {event.title}, {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
                             </span>
-                            <b aria-hidden="true">{minutesToLabel(event.start)}</b>
+                            <b aria-hidden="true">
+                              {event.recurring ? <Repeat className="ag-ev-repeat" size={10} strokeWidth={2.5} /> : null}
+                              {minutesToLabel(event.start)}
+                            </b>
                           </>
                         ) : (
                           <>
                             {/* Il nome letto dal lettore di schermo parte dal testo visibile (WCAG 2.5.3, A3 di §309). */}
-                            <b>{event.title}</b>
+                            <b>
+                              {event.recurring ? <Repeat className="ag-ev-repeat" size={11} strokeWidth={2.5} aria-hidden /> : null}
+                              {event.title}
+                            </b>
                             {blockHeight >= 40 ? (
                               <span>
                                 <span className="sr-only">, </span>
@@ -268,7 +276,10 @@ export function AgendaTimeGrid({
                             )}
                           </>
                         )}
-                        <span className="sr-only">, {event.label}</span>
+                        <span className="sr-only">
+                          , {event.label}
+                          {event.recurring ? ", lavoro ricorrente" : ""}
+                        </span>
                       </button>
                     );
                   })}

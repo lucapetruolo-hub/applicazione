@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Navigation, Phone, Truck, Video, X } from "lucide-react";
+import { Check, Navigation, Phone, Repeat, Truck, Video, X } from "lucide-react";
 import {
+  RECURRING_FREQUENCY_LABELS,
   formatAppointmentDate,
   formatAppointmentTime,
   formatAppointmentTimeRange,
@@ -115,6 +116,13 @@ export function AppointmentPanel({
         <div className="ag-sheet-top">
           <span className={`ag-pill ${pill.tone}`}>{pill.label}</span>
           {kindLabel ? <span className="ag-pill">{kindLabel}</span> : null}
+          {booking.recurring ? (
+            // Lavoro ricorrente (docs/changelog/2026-11-09-lavori-ricorrenti.md).
+            <span className="ag-pill">
+              <Repeat size={13} aria-hidden />
+              {RECURRING_FREQUENCY_LABELS[booking.recurring.frequency]}
+            </span>
+          ) : null}
           <button ref={closeRef} type="button" className="ag-icon-btn" onClick={onClose} aria-label="Chiudi">
             <X size={18} aria-hidden />
           </button>
@@ -258,7 +266,7 @@ export function AppointmentPanel({
               </button>
             )}
             <button type="button" className="ag-btn danger" disabled={isBusy} onClick={onCancel}>
-              Annulla
+              {booking.recurring && !booking.recurring.stoppedAt ? "Salta questa volta" : "Annulla"}
             </button>
           </div>
         ) : null}

@@ -31,6 +31,9 @@ una richiesta, un preventivo e un'accettazione nuovi.
   future e avvisa l'altro. Dopo l'interruzione la visita rimasta torna un
   lavoro normale ("Annulla il lavoro"). Spostare la data resta solo sulla
   prima visita.
+- In Agenda (sì di Luca del 09/11) le visite si riconoscono a colpo d'occhio:
+  icona "ripeti" nel riquadro, "Ogni settimana" (o la frequenza) nel dettaglio
+  e nell'elenco, "Salta questa volta" al posto di "Annulla".
 - Una chiusura dell'account interrompe le serie di chi chiude.
 - Conteggio dell'abbonamento: la serie conta **un** lavoro accettato, non uno
   a visita. Recensione: una per serie.
@@ -53,5 +56,6 @@ lavoro terminato), nessuna strada parallela.
   dell'API passano (1403).
 - `e2e/tests/lavori-ricorrenti.spec.ts` (telefono e computer, axe): visite
   create all'accettazione, "Salta questa volta", "Interrompi" dal
-  professionista con avviso al cliente, "Ogni quanto?" nel preventivo.
+  professionista con avviso al cliente, "Ogni quanto?" nel preventivo,
+  bollino in Agenda.
 - `apps/api/scripts/access-matrix.mjs`: nessun problema.

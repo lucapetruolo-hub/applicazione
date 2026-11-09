@@ -73,6 +73,16 @@ test("il professionista propone ogni quanto e interrompe il lavoro ricorrente", 
   const series = await prisma.recurringJob.findUniqueOrThrow({ where: { quoteId: quote.id } });
 
   const page = await pageAsClient(browser, pro.userId, COMPUTER);
+  // In Agenda le visite si riconoscono: icona nel riquadro e "Ogni settimana" nel dettaglio.
+  const second = await prisma.booking.findFirstOrThrow({ where: { recurringJobId: series.id, recurringNumber: 2 } });
+  await page.goto(`/dashboard/agenda?booking=${second.id}`);
+  const sheet = page.getByRole("dialog", { name: /^Appuntamento con/ });
+  await expect(sheet.locator(".ag-pill", { hasText: "Ogni settimana" })).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "Salta questa volta" })).toBeVisible();
+  await expect(page.locator(".ag-ev .ag-ev-repeat").first()).toBeAttached();
+  await page.screenshot({ path: "test-results/lavori-ricorrenti-agenda.png" });
+  expect(serious((await new AxeBuilder({ page }).include(".ag-sheet").analyze()).violations)).toEqual([]);
+
   await page.goto("/dashboard/richieste");
   await page.getByText("Pulizie di casa ogni settimana", { exact: false }).first().click();
   const box = page.getByRole("region", { name: "Lavoro ricorrente" });
