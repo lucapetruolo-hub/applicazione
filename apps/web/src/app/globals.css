@@ -266,6 +266,11 @@ html:has(.profile-cta-bar[data-visible="true"]) {
 body:has(.profile-cta-bar) .site-header-cta-link {
   display: none;
 }
+/* Ricerca senza risultati: c'è già "Invia la richiesta" nella pagina, che fa
+   la stessa cosa (docs/changelog/2026-11-09-barra-in-alto-semplice.md). */
+body:has(.empty-search-results) .site-header-cta-link {
+  display: none;
+}
 /* Telefono in orizzontale e finestre basse: barra più sottile (§400). */
 @media (max-height: 500px) {
   .profile-cta-bar {
@@ -1449,22 +1454,48 @@ button.notif-row-main:hover {
   justify-content: center;
 }
 /* Pallino "da fare" senza numero (es. agenda senza disponibilità). */
-/* Nome accanto alla foto nell'intestazione (AccountMenu, docs/CHANGELOG.md §319). */
-.acct-trigger-name {
-  display: flex;
-  min-width: 0;
-  max-width: 180px;
+/* Account nell'intestazione: solo la foto o l'iniziale con la freccina, in un
+   piccolo riquadro tondo. Il nome resta per il lettore di schermo e dentro la
+   tendina (docs/changelog/2026-11-09-barra-in-alto-semplice.md, prima §319). */
+.acct-trigger {
+  height: 40px;
+  padding: 0 8px 0 3px;
+  border: 1px solid #eadfd3;
+  border-radius: 999px;
+  background: #fff;
+  transition: box-shadow 160ms ease;
 }
-.acct-trigger-name-sr {
+.acct-trigger:hover {
+  box-shadow: 0 2px 8px rgba(43, 32, 19, 0.1);
+}
+.acct-trigger-name {
   display: none;
 }
+.acct-trigger-name-sr {
+  display: block;
+}
+/* Da telefono solo il tondino, senza riquadro né freccina: a 320 px la riga
+   non ci stava. */
 @media (max-width: 520px) {
-  .acct-trigger-name {
+  .acct-trigger {
+    height: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .acct-trigger-chevron {
     display: none;
   }
-  .acct-trigger-name-sr {
-    display: block;
-  }
+}
+
+/* Ricerca a pillola nell'intestazione (SearchBar compatta): campi senza
+   sfondo né bordo, la pillola fa da riquadro. */
+.search-pill .search-pill-input {
+  background-color: transparent;
+  border-width: 0;
+}
+.search-pill:focus-within {
+  box-shadow: 0 2px 12px rgba(43, 32, 19, 0.1);
 }
 
 .acct-nav-dot {
