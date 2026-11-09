@@ -775,7 +775,11 @@ export class GuidedRequestsService {
           // altrimenti l'orario che il cliente aveva chiesto quando la
           // richiesta è nata da una fascia dell'agenda pubblica e il
           // preventivo non lo rispetta (docs/CHANGELOG.md §180).
-          previousSchedule: quote.previousStartDate
+          // Data del cliente accettata dal professionista (E1-02): nessun "prima → ora".
+          proposedDateAccepted: quote.proposedDateAcceptedAt !== null && quote.status === "SENT",
+          previousSchedule: quote.proposedDateAcceptedAt
+            ? null
+            : quote.previousStartDate
             ? { start: quote.previousStartDate.toISOString(), end: quote.previousEndDate?.toISOString() ?? null }
             : requestedStart && scheduleChangeBetween({ start: requestedStart }, { start: quote.estimatedStartDate })
               ? { start: requestedStart.toISOString(), end: requestedEnd?.toISOString() ?? null }
@@ -1162,6 +1166,8 @@ export class GuidedRequestsService {
         pausedAt: null,
         // Profilo creato da un operatore, non ancora confermato (§170).
         invitePendingAt: null,
+        // Mai una richiesta vera a un profilo dimostrativo (collaudo 08/11, miglioria E1).
+        isDemo: false,
         // Nessuna nuova richiesta per 14 giorni dopo la 3ª segnalazione accolta (§167),
         // né durante la pausa scelta dal professionista (collaudo C-16).
         AND: [

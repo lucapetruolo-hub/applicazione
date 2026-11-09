@@ -252,6 +252,7 @@ const owned = {
   "PATCH /bookings/:id/report-no-show": booking(),
   "PATCH /bookings/:id/status": booking({ body: () => ({ status: "CANCELED" }) }),
   "POST /bookings/from-quote/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteA }) },
+  "POST /bookings/from-quote/:quoteId/verify-deposit": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteA }) },
 
   // Fattura chiesta dal cliente al professionista, sul lavoro accettato (§378).
   "PUT /client-invoice-requests/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteDone }) },

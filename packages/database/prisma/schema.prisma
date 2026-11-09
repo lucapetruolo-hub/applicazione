@@ -1164,6 +1164,11 @@ model Quote {
   // (docs/CHANGELOG.md §186). Azzerato quando il cliente propone una data.
   previousStartDate        DateTime?
   previousEndDate          DateTime?
+  // Il professionista ha accettato la data proposta dal cliente prima
+  // dell'accettazione (collaudo 08/11, E1-02): il preventivo torna "inviato"
+  // con quella data e il cliente lo accetta come sempre, scegliendo il
+  // pagamento. Azzerato a ogni nuova proposta o modifica della data.
+  proposedDateAcceptedAt   DateTime?
   notes                    String?
   status                   QuoteStatus @default(SENT)
   createdAt                DateTime    @default(now())
