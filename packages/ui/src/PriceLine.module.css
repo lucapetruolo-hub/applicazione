@@ -1,0 +1,46 @@
+/* PriceLine per il sito (PriceLine.web.tsx): stessi valori dell'XStack/Text di PriceLine.tsx. */
+.line {
+  position: relative;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--t-space-3);
+  padding-block: 3px;
+}
+
+.label {
+  font-size: 16px;
+  flex-shrink: 1;
+}
+
+.spacer {
+  position: relative;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 12px;
+}
+
+/* numberOfLines={1} di Tamagui */
+.unit,
+.price {
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unit {
+  font-size: 13px;
+  color: var(--c-grafite70);
+  margin-top: 2px;
+}
+
+.price {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--c-grafite);
+}
+
+.amount {
+  font-variant: tabular-nums;
+}
