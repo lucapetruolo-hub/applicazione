@@ -38,3 +38,8 @@ sovrapposizione tra pillola, campanella e account.
 
 Verifica: foto a 320, 390, 1024 e 1440 px, con la tendina aperta; nessuno
 scorrimento orizzontale.
+
+## Terzo giro
+
+- Campanella accanto al tondino (richiesta di Luca): l'ordine a destra è
+  "Richiedi preventivo", campanella, tondino dell'account.
