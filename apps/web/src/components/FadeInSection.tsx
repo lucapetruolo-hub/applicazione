@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { motionEasing } from "@professionisti/ui";
 
 // Più lenta e con uno spostamento più ampio della transizione standard
@@ -50,7 +50,12 @@ export function FadeInSection({ children, delay = 0 }: { children: ReactNode; de
         transition: `opacity ${REVEAL_DURATION} ${motionEasing} ${delay}ms, transform ${REVEAL_DURATION} ${motionEasing} ${delay}ms`,
       }}
     >
-      {children}
+      {/* Confine di Suspense: React prepara (idrata) ogni sezione in un
+          compito a parte e tra l'una e l'altra lascia rispondere la pagina,
+          invece di un unico blocco lungo per tutta la home
+          (docs/changelog/2026-11-09-meno-javascript-comune.md). Il contenuto
+          arriva già pronto dal server: il fallback non si vede mai. */}
+      <Suspense fallback={null}>{children}</Suspense>
     </div>
   );
 }

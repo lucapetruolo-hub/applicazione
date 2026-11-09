@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import type { PopularJobsResponse, ProblemExamplesResponse, ProfessionalCategorySlug, ProfessionalSearchResult, ServicePriceIndexEntry } from "@professionisti/shared";
+import type { PopularJobsResponse, ProblemExamplesResponse, ProfessionalCategorySlug, ServicePriceIndexEntry } from "@professionisti/shared";
+import type { NewProfileSummary } from "@/lib/newProfiles";
 import { Section, SectionDensityProvider, YStack } from "@professionisti/ui";
 import { CategoryStoryRail, useCategoryStoryRail } from "@/components/CategoryStoryRail";
 import { FadeInSection } from "@/components/FadeInSection";
@@ -27,7 +28,7 @@ export default function HomeContent({
 }: {
   /** "Lavori più cercati" già in ordine; `null` se l'API non ha risposto (resta l'elenco di partenza). */
   popularJobs: PopularJobsResponse | null;
-  professionals: ProfessionalSearchResult[];
+  professionals: NewProfileSummary[];
   /** Frasi d'esempio della ricerca per problema, nell'ordine delle ricerche; `null` se l'API non ha risposto. */
   problemExamples: ProblemExamplesResponse | null;
   /** Professionisti per categoria, vicino all'ultima città cercata o in tutta Italia (app/page.tsx). */
@@ -58,7 +59,11 @@ export default function HomeContent({
         {/* 1. Parte verde con la ricerca, invariata. */}
         <HomeHero examples={problemExamples} />
 
-        {platformStats ? <PlatformStats stats={platformStats} /> : null}
+        {platformStats ? (
+          <Suspense fallback={null}>
+            <PlatformStats stats={platformStats} />
+          </Suspense>
+        ) : null}
 
         {/* 2. Categorie. */}
         <FadeInSection>
@@ -123,7 +128,9 @@ export default function HomeContent({
         </FadeInSection>
 
         {/* 7. Per chi offre servizi. */}
-        <ProCtaSection />
+        <Suspense fallback={null}>
+          <ProCtaSection />
+        </Suspense>
       </YStack>
     </SectionDensityProvider>
   );
