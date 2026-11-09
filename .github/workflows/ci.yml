@@ -126,6 +126,11 @@ jobs:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
         run: pnpm turbo run build
 
+      - name: Codice delle pagine pubbliche
+        # Home, mestieri, città, profilo: niente zod né elenco dei comuni
+        # all'apertura (docs/changelog/2026-11-09-meno-javascript-comune.md).
+        run: node apps/web/scripts/controlla-js-pagine-pubbliche.mjs
+
       - name: Test
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
