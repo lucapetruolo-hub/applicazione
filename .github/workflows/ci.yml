@@ -126,6 +126,11 @@ jobs:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
         run: pnpm turbo run build
 
+      - name: Codice delle pagine pubbliche
+        # Home, mestieri, città, profilo: niente zod né elenco dei comuni
+        # all'apertura (docs/changelog/2026-11-09-meno-javascript-comune.md).
+        run: node apps/web/scripts/controlla-js-pagine-pubbliche.mjs
+
       - name: Test
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
@@ -215,6 +220,11 @@ jobs:
           - nome: misure-lighthouse
             progetti: --project=misure --no-deps
             lighthouse: true
+          # Motore di Safari (WebKit) su un iPhone: campi ora e data
+          # (docs/changelog/2026-11-09-orari-doppi-iphone.md).
+          - nome: iphone-safari
+            progetti: --project=iphone-safari
+            browser: webkit
     services:
       postgres:
         image: postgres:16
@@ -268,7 +278,7 @@ jobs:
         run: pnpm --filter @professionisti/database exec prisma migrate deploy
 
       - name: Browser per le prove
-        run: pnpm --filter @professionisti/e2e exec playwright install --with-deps chromium
+        run: pnpm --filter @professionisti/e2e exec playwright install --with-deps ${{ matrix.browser || 'chromium' }}
 
       - name: Prove nel browser
         env:
