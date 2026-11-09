@@ -197,17 +197,19 @@ export function SearchBar({
   // Elenco "A domicilio / Online" della pillola compatta: si chiude con un
   // clic fuori o con Esc (solo sul sito, dove la pillola si usa).
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
-  const modeMenuRef = useRef<HTMLElement | null>(null);
+  const modeMenuRef = useRef<{ contains: (node: unknown) => boolean } | null>(null);
   useEffect(() => {
     if (!modeMenuOpen) return;
-    const doc = (globalThis as { document?: Document }).document;
+    // Tipi scritti a mano: il pacchetto si compila anche per l'app, senza il DOM.
+    type Listener = (event: { target?: unknown; key?: string }) => void;
+    const doc = (globalThis as { document?: { addEventListener: (type: string, fn: Listener) => void; removeEventListener: (type: string, fn: Listener) => void } }).document;
     if (!doc) return;
-    function onPointer(event: MouseEvent) {
-      if (modeMenuRef.current && !modeMenuRef.current.contains(event.target as Node)) setModeMenuOpen(false);
-    }
-    function onKey(event: KeyboardEvent) {
+    const onPointer: Listener = (event) => {
+      if (modeMenuRef.current && !modeMenuRef.current.contains(event.target)) setModeMenuOpen(false);
+    };
+    const onKey: Listener = (event) => {
       if (event.key === "Escape") setModeMenuOpen(false);
-    }
+    };
     doc.addEventListener("mousedown", onPointer);
     doc.addEventListener("keydown", onKey);
     return () => {
