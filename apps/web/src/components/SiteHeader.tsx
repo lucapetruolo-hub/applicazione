@@ -169,12 +169,10 @@ export function SiteHeader() {
         </XStack>
 
         <XStack alignItems="center" gap="4 xs:3">
-          {isLoading ? null : user ? (
-            <XStack alignItems="center" gap="2">
-              <NotificationBell />
-              <AccountMenu />
-            </XStack>
-          ) : (
+          {/* "Richiedi preventivo", poi campanella e tondino dell'account
+              insieme in fondo a destra (richieste di Luca,
+              docs/changelog/2026-11-09-barra-in-alto-semplice.md). */}
+          {isLoading || user ? null : (
             <Link href="/accedi" style={{ textDecoration: "none" }}>
               {/* brand.cianografia invece di $blue10 stock (Fase 6): 3.84:1 di
                   contrasto su bianco a questa dimensione, sotto la soglia
@@ -232,6 +230,12 @@ export function SiteHeader() {
                 )}
               </Button>
             </Link>
+          ) : null}
+          {!isLoading && user ? (
+            <XStack alignItems="center" gap="2">
+              <NotificationBell />
+              <AccountMenu />
+            </XStack>
           ) : null}
         </XStack>
       </XStack>
