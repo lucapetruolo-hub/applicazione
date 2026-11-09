@@ -1,6 +1,6 @@
 import { z } from "zod";
 import "./zod";
-import { PROBLEM_DESCRIPTION_MAX } from "./problemMatch";
+import { PROBLEM_DESCRIPTION_MAX } from "./limits";
 import { PROBLEM_EXAMPLE_MAX } from "./problemExamples";
 
 /** Corpi delle rotte "dal problema ai mestieri" (docs/CHANGELOG.md §392). */

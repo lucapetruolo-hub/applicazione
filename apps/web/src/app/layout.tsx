@@ -5,7 +5,7 @@ import { Providers } from "./providers";
 import { StyledJsxRegistry } from "./StyledJsxRegistry";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { ToastStack } from "@/components/ToastStack";
+import { ToastStackLazy } from "@/components/ToastStackLazy";
 import { CookieBanner } from "@/components/CookieBanner";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
@@ -90,11 +90,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <a href="#main-content" className="skip-link">
               Vai al contenuto
             </a>
-            <ToastStack />
+            <ToastStackLazy />
             <SiteHeader />
             <EmailVerificationBanner />
             <main id="main-content">{children}</main>
-            <SiteFooter />
+            {/* Idratato a parte (Suspense), come le sezioni della home:
+                docs/changelog/2026-11-09-meno-javascript-comune.md. */}
+            <Suspense fallback={null}>
+              <SiteFooter />
+            </Suspense>
             <CookieBanner />
           </Providers>
         </StyledJsxRegistry>

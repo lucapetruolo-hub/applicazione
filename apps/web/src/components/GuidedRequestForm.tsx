@@ -32,6 +32,7 @@ import {
 import { Autocomplete, Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { MagneticButton } from "./MagneticButton";
 import { apiClient } from "@/lib/apiClient";
+import { cameFromPersonalLink } from "@/lib/personalLink";
 import { useAuth } from "@/lib/AuthContext";
 import { useStepFocus } from "@/lib/useStepFocus";
 import { MediaPreview } from "@/components/MediaPreview";
@@ -248,6 +249,18 @@ export function GuidedRequestForm({
   const initialCategory = searchParams.get("categoria");
   const initialCity = searchParams.get("citta") ?? "";
   const professionalProfileId = searchParams.get("professionista") ?? undefined;
+  // Arrivato dal link personale del professionista: un cliente suo, e la
+  // casella d'inoltro parte spenta (decisione di Luca dell'8/11, gruppo 11:
+  // eccezione al "acceso di serie" del §209 solo per questo caso,
+  // docs/changelog/2026-11-08-canale-del-professionista.md).
+  const [viaPersonalLink, setViaPersonalLink] = useState(false);
+  useEffect(() => {
+    if (!professionalProfileId || !cameFromPersonalLink(professionalProfileId)) return;
+    // sessionStorage esiste solo nel browser: letto dopo il primo disegno, come il resto del modulo.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setViaPersonalLink(true);
+    setForwardIfNoReply(false);
+  }, [professionalProfileId]);
   // Nome/foto del professionista scelto (richiesta esplicita dell'utente:
   // "il cliente deve capire" che la richiesta va a quello specifico
   // professionista, non genericamente "ai professionisti compatibili nella
@@ -496,6 +509,7 @@ export function GuidedRequestForm({
   const suggestedSlugs = suggestion?.categories ?? [];
   const categoryLabelOf = (slug: ProfessionalCategorySlug) => PROFESSIONAL_CATEGORIES.find((c) => c.slug === slug)?.label ?? slug;
   const autoSlug = suggestedSlugs[0] ?? null;
+  const alsoSuggested = suggestedSlugs.filter((slug) => !categorySlugs.includes(slug));
   const [autoApplied, setAutoApplied] = useState<ProfessionalCategorySlug | null>(null);
   if (suggestionsOn && !categoriesByHand && autoApplied !== autoSlug) {
     setAutoApplied(autoSlug);
@@ -1007,6 +1021,7 @@ export function GuidedRequestForm({
         professionalProfileId,
         professionalProfileIds: chosenMode ? chosenIds : undefined,
         forwardIfNoReply: professionalProfileId ? forwardIfNoReply : false,
+        viaProfessionalLink: professionalProfileId && viaPersonalLink ? true : undefined,
         preferredDate: finalPreferredDate,
         preferredTimeSlot: finalPreferredTimeSlot,
         trafficSource: storedTrafficSource(),
@@ -1355,6 +1370,12 @@ export function GuidedRequestForm({
                     : categorySlugs.length === 0
                       ? "Scrivi il lavoro qui sopra e ti suggeriamo la categoria, oppure sceglila tu."
                       : ""}
+                {/* Anche gli altri mestieri proposti, non solo il primo
+                    (docs/changelog/2026-11-09-mestieri-proposti-pulsanti.md):
+                    non si scelgono da soli, perché ognuno è una richiesta in più. */}
+                {categorySlugs.length > 0 && alsoSuggested.length > 0 && categorySlugs.length < MAX_REQUEST_CATEGORIES
+                  ? ` Può servire anche ${alsoSuggested.map(categoryLabelOf).join(" o ")}: ${alsoSuggested.length === 1 ? "toccala" : "toccane una"} per aggiungerla.`
+                  : ""}
                 {suggestion?.source === "ia" && autoSlug && categorySlugs.includes(autoSlug) ? (
                   // Trasparenza sull'intelligenza artificiale come nella ricerca (AI Act art. 50).
                   <>

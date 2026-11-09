@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import type { ProfessionalSearchResult } from "@professionisti/shared";
+import type { NewProfileSummary } from "@/lib/newProfiles";
 import { Avatar, BadgeInfo, Icon, Rating, Section, Text, XStack, brand } from "@professionisti/ui";
 import { BRAND, professionalPath } from "@professionisti/shared";
 import { CategoryIcon, CATEGORY_ACCENT } from "./icons/CategoryIcons";
@@ -42,7 +42,7 @@ export function NewProfilesCarousel({
   professionals,
   showTitle = true,
 }: {
-  professionals: ProfessionalSearchResult[];
+  professionals: NewProfileSummary[];
   /** Senza titolo quando la sezione della home si chiama già "Nuovi professionisti". */
   showTitle?: boolean;
 }) {
@@ -298,7 +298,7 @@ export function NewProfilesCarousel({
   );
 }
 
-function NewProfileCard({ pro, delayMs }: { pro: ProfessionalSearchResult; delayMs: number }) {
+function NewProfileCard({ pro, delayMs }: { pro: NewProfileSummary; delayMs: number }) {
   const { ref, style } = useRevealOnScroll(delayMs);
   const accent = CATEGORY_ACCENT[pro.categorySlug] ?? FALLBACK_ACCENT;
 

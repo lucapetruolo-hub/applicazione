@@ -5,6 +5,7 @@ import { apiClient } from "../lib/apiClient";
 import { LAST_SEARCH_CITY_COOKIE } from "../lib/lastSearchCity";
 import { SITE_URL } from "@/lib/siteUrl";
 import { JsonLd } from "@/components/JsonLd";
+import { newestProfiles } from "@/lib/newProfiles";
 import HomeContent from "./HomeContent";
 import { openGraphFor } from "@/lib/openGraph";
 
@@ -76,7 +77,7 @@ export default async function HomePage() {
       {siteJsonLd.map((data) => (
         <JsonLd key={data["@type"]} data={data} />
       ))}
-      <HomeContent professionals={professionals} platformStats={platformStats} priceIndex={priceIndex} categoryCounts={categoryCounts} problemExamples={problemExamples} popularJobs={popularJobs} />
+      <HomeContent professionals={newestProfiles(professionals)} platformStats={platformStats} priceIndex={priceIndex} categoryCounts={categoryCounts} problemExamples={problemExamples} popularJobs={popularJobs} />
     </>
   );
 }

@@ -148,6 +148,12 @@ function createLightsControl(root: HTMLElement): LightsControl {
   const easeTo = (target: number, duration: number) => {
     cancelAnimationFrame(frame);
     const from = current;
+    // Già a quella velocità: niente da fare. Prima all'apertura di ogni
+    // pagina girava lo stesso per 1,8 secondi, e ogni fotogramma chiedeva
+    // al browser le animazioni (getAnimations), costringendolo a ricalcolare
+    // gli stili di tutta la pagina mentre si stava ancora caricando
+    // (docs/changelog/2026-11-09-meno-javascript-comune.md).
+    if (Math.abs(target - from) < 0.001) return;
     const start = performance.now();
     const step = (now: number) => {
       const t = Math.min(1, (now - start) / duration);
