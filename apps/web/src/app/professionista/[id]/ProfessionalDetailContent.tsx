@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BRAND, MAX_CHOSEN_PROFESSIONALS, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, shownServicePriceUnit, formatServicePriceRange, serviceCategoryOf, subTagLabel, type ProfessionalAgenda, type ProfessionalCategorySlug, type ProfessionalDetail } from "@professionisti/shared";
-import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -23,6 +23,7 @@ import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { rememberPersonalLink } from "@/lib/personalLink";
 import { countPriceToolProfile, countProfileView, isCountingDisabled } from "@/lib/siteCounts";
+import styles from "./ProfessionalDetailContent.module.css";
 
 // Colonne fisse Oggi + 3 giorni (stessa griglia della mini-agenda di ricerca,
 // vedi ProfessionalCard in packages/ui) — qui costruita a partire dai giorni
@@ -355,558 +356,426 @@ export function ProfessionalDetailContent({
     }
   }
 
+  // HTML semplice con ProfessionalDetailContent.module.css, non le primitive
+  // Tamagui: il telefono non calcola gli stili all'apertura del profilo
+  // (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md).
+  const savedKey = `PROFESSIONAL_PROFILE:${professional.id}`;
+  const agendaGridStyle = { maxWidth: AGENDA_COLUMN_WIDTH * agendaVisibleDays };
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent">
-      <YStack width="100%" maxWidth={860} paddingHorizontal="4" paddingVertical="6" gap="6">
+    <div className={`is_View ${styles.page}`}>
+      <div className={`is_View ${styles.column}`}>
         {/* Più vicino alla scheda del gap standard: il percorso ne è l'intestazione. */}
-        {breadcrumbs ? <YStack style={{ marginTop: -8, marginBottom: -12 }}>{breadcrumbs}</YStack> : null}
+        {breadcrumbs ? (
+          <div className={`is_View ${styles.stack}`} style={{ marginTop: -8, marginBottom: -12 }}>
+            {breadcrumbs}
+          </div>
+        ) : null}
         {choice.search ? <ProfileChoiceStrip search={choice.search} pro={choicePro} onToggle={choice.toggle} /> : null}
         {/* Arrivato dal link personale: chi lo ha mandato è lui, il cliente
             deve capire subito di essere nel posto giusto
             (docs/changelog/2026-11-08-canale-del-professionista.md). */}
         {fromPersonalLink ? (
-          <XStack gap="2" alignItems="center" backgroundColor={brand.cianografiaVelo} paddingVertical="3" paddingHorizontal="4" style={{ borderRadius: 10 }}>
+          <div className={`is_View ${styles.personalLink}`} style={{ borderRadius: 10 }}>
             <Icon name="badge-check" size={20} color={brand.cianografiaScuro} />
-            <Text color={brand.grafite} fontWeight="600" flex={1}>
-              Sei sul profilo di {professional.businessName}: scrivigli da qui.
-            </Text>
-          </XStack>
+            <span className={`is_Text ${styles.personalLinkText}`}>Sei sul profilo di {professional.businessName}: scrivigli da qui.</span>
+          </div>
         ) : null}
-        {/* Scheda identità — richiesta esplicita dell'utente ("migliora la
-            visualizzazione di un profilo pubblico"): prima nome/badge/
-            rating/bio/sottotag/azioni fluttuavano direttamente sullo sfondo
-            pesca della pagina, senza alcun trattamento a card, mentre ogni
-            altra sezione sotto (Agenda/Prestazioni/Recensioni) era già
-            avvolta in una `Surface` — incoerenza visiva mai risolta prima
-            d'ora. Un solo blocco coeso invece di elementi sparsi. */}
-        <Surface gap="4">
-        <XStack gap="3" alignItems="flex-start" position="relative">
-          {/* Foto accanto al nome anche sul telefono, come nelle schede dei
-              risultati (richiesta di Luca,
-              docs/changelog/2026-11-04-prezzi-e-foto-profilo.md; prima il
-              nome andava sotto la foto, docs/CHANGELOG.md §252). */}
-          <XStack gap="3" alignItems="flex-start" flex={1} minWidth={0}>
-            <YStack
-              cursor={professional.imageUrl ? "pointer" : undefined}
-              onPress={() => {
-                if (professional.imageUrl) setLightbox({ photos: [professional.imageUrl], index: 0 });
-              }}
-              role={professional.imageUrl ? "button" : undefined}
-              aria-label={professional.imageUrl ? "Ingrandisci la foto profilo" : undefined}
-            >
-              {/* Foto ingrandita ulteriormente su richiesta esplicita
-                  dell'utente (64px iniziali → 104px → 140px): chi apre la
-                  pagina pubblica deve riconoscere bene di chi si tratta, non
-                  solo intuirne un'icona piccola accanto al nome. */}
-              <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={140} mobileSize={96} shape="portrait" />
-            </YStack>
-            <YStack gap="2" flex={1} minWidth={0}>
-              <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} style={{ overflowWrap: "anywhere" }}>
-                {professional.businessName}
-              </Text>
-              {/* Mestieri come testo sotto il nome (da 1 a 3, docs/CHANGELOG.md
-                  §217), non più pillole verdi con l'icona: nell'intestazione
-                  restano due soli stili di pillola, i bollini piccoli pieni e
-                  le specializzazioni con il bordo (docs/CHANGELOG.md §349). */}
-              <Text fontSize={16} fontWeight="600" color={brand.grafite}>
-                {(professional.categories?.length
-                  ? professional.categories
-                  : [{ slug: professional.categorySlug, label: professional.categoryLabel }]
-                )
-                  .map((category) => category.label)
-                  .join(" · ")}
-              </Text>
-              {/* Bollini in una riga che va a capo (docs/CHANGELOG.md §349): da
-                  telefono prima ne stava uno per riga. Il significato di ogni
-                  bollino è in un fumetto (docs/CHANGELOG.md §338). */}
-              <XStack alignItems="center" gap={6} flexWrap="wrap">
-                {professional.verified ? (
-                  <BadgeInfo info="verified">
-                    <Badge variant="verificato">Verificato</Badge>
-                  </BadgeInfo>
-                ) : null}
-                {professional.professionalKind ? <ProfessionalKindBadge kind={professional.professionalKind} size="md" /> : null}
-                {/* Verifica di identità di Stripe, distinta dal "Verificato" del nostro team (docs/CHANGELOG.md §241). */}
-                {professional.stripeVerified ? (
-                  <BadgeInfo info="stripeVerified">
-                    <Badge variant="verificato">{STRIPE_VERIFIED_BADGE.label}</Badge>
-                  </BadgeInfo>
-                ) : null}
-                {professional.boosted ? (
-                  <BadgeInfo info="boosted">
-                    <Badge variant="pro">Sponsorizzato</Badge>
-                  </BadgeInfo>
-                ) : null}
-                {professional.isNewProfile ? (
-                  <BadgeInfo info="newProfile">
-                    <Badge variant="nuovo">Iscritto da poco</Badge>
-                  </BadgeInfo>
-                ) : null}
-                {professional.hasLiabilityInsurance ? (
-                  <BadgeInfo info="liabilityInsurance">
-                    <span className="rc-badge">
-                      <span>
-                        <Icon name="shield-check" size={13} strokeWidth={2} color={brand.grafite} />
-                        Assicurazione RC
-                      </span>
-                      <small>dichiarata</small>
-                    </span>
-                  </BadgeInfo>
-                ) : null}
-              </XStack>
-              <XStack alignItems="center" gap={4}>
-                <Icon name="map-pin" size={13} color={brand.grafite70} />
-                <Text fontFamily="body" fontWeight="700" fontSize={16} color={brand.grafite70}>
-                  {professional.city}
-                </Text>
-              </XStack>
-              {/* Privato o professionista (Codice del consumo art. 49-bis, docs/CHANGELOG.md §241): il tipo è
-                  nel badge accanto al nome (§338); per un privato l'avviso sui diritti del consumatore resta
-                  sempre scritto, non solo nel fumetto. */}
-              {professional.traderStatus === "PRIVATE" ? (
-                <Text fontSize={13} color={brand.grafite70}>
-                  {TRADER_STATUS_COPY.PRIVATE.note}
-                </Text>
-              ) : null}
-              {professional.rating !== null ? (
-                <Rating value={professional.rating} count={professional.reviewCount} size={16} />
-              ) : (
-                <Text color={brand.grafite70}>Nessuna recensione ancora</Text>
-              )}
-              {/* Una riga sola, in grigio (docs/CHANGELOG.md §349): prima "Ha
-                  completato 1 intervento questo mese" in verde e "1 lavoro
-                  completato in totale" una sotto l'altra. Il totale non è mai
-                  meno dei lavori del mese (i due numeri arrivano da conti
-                  diversi). Mai uno zero: senza dati la riga non compare. */}
-              {completedTotal > 0 || professional.avgResponseTimeMinutes !== null ? (
-                <Text fontSize={16} color={brand.grafite70}>
-                  {[
-                    completedTotal > 0 ? `${completedTotal} ${completedTotal === 1 ? "lavoro terminato" : "lavori terminati"}` : null,
-                    professional.avgResponseTimeMinutes !== null
-                      ? respondsRightAway(professional.avgResponseTimeMinutes)
-                        ? "Risponde subito"
-                        : `Risponde entro ${formatResponseTime(professional.avgResponseTimeMinutes)}`
-                      : null,
-                  ]
-                    .filter(Boolean)
+        {/* Scheda identità: un solo blocco coeso (nome, bollini, voto, bio,
+            specializzazioni, azioni) su una superficie bianca come le sezioni
+            sotto. */}
+        <div className={`is_View ${styles.surface} ${styles.gap4}`}>
+          <div className={`is_View ${styles.identity}`}>
+            {/* Foto accanto al nome anche sul telefono, come nelle schede dei
+                risultati (docs/changelog/2026-11-04-prezzi-e-foto-profilo.md). */}
+            <div className={`is_View ${styles.identityMain}`}>
+              {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events -- Invio e Spazio arrivano da KeyboardActivation, come per i riquadri Tamagui di prima */}
+              <div
+                className={`is_View ${styles.stack}${professional.imageUrl ? ` ${styles.pointer}` : ""}`}
+                onClick={() => {
+                  if (professional.imageUrl) setLightbox({ photos: [professional.imageUrl], index: 0 });
+                }}
+                role={professional.imageUrl ? "button" : undefined}
+                tabIndex={professional.imageUrl ? 0 : undefined}
+                aria-label={professional.imageUrl ? "Ingrandisci la foto profilo" : undefined}
+              >
+                {/* Foto grande (140px, richiesta esplicita dell'utente): chi apre
+                    la pagina deve riconoscere bene di chi si tratta. */}
+                <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={140} mobileSize={96} shape="portrait" />
+              </div>
+              <div className={`is_View ${styles.identityText}`}>
+                <h1 className={`is_Text font_heading ${styles.name}`} style={{ overflowWrap: "anywhere" }}>
+                  {professional.businessName}
+                </h1>
+                {/* Mestieri come testo sotto il nome (da 1 a 3, docs/CHANGELOG.md §217). */}
+                <span className={`is_Text ${styles.categories}`}>
+                  {(professional.categories?.length
+                    ? professional.categories
+                    : [{ slug: professional.categorySlug, label: professional.categoryLabel }]
+                  )
+                    .map((category) => category.label)
                     .join(" · ")}
-                </Text>
-              ) : null}
-            </YStack>
-          </XStack>
-          {/* Salva, condividi e segnala in alto a destra della scheda
-              (docs/CHANGELOG.md §349): sotto la foto erano staccati dal nome.
-              Solo icone, con la descrizione al passaggio del mouse (richiesta
-              esplicita dell'utente, docs/CHANGELOG.md §206). Da telefono in
-              colonna a destra del nome, che sta accanto alla foto. Passaparola: per i lavori di casa la
-              raccomandazione gira su WhatsApp, quindi il bottone apre la
-              condivisione nativa del dispositivo e ripiega sulla copia del
-              link dove l'API non esiste. */}
-          {preview ? null : (
-            <XStack gap="2" alignItems="center" flexShrink={0} flexDirection="xs:column">
-              {/* Cuoricino visibile anche a chi non è entrato (docs/CHANGELOG.md
-                  §208): al tocco porta all'accesso. Nascosto solo a
-                  professionisti e admin, che non salvano profili. */}
-              {!user || user.role === "CLIENT" ? (
-                <IconActionButton label={isSaved ? "Salvato" : "Salva"} active={isSaved} disabled={isSaving} celebrate onPress={handleToggleSave} tooltipAlign="end">
-                  <Icon name="heart" size={17} strokeWidth={1.5} color={isSaved ? "white" : brand.grafite} fill={isSaved ? "white" : "none"} />
+                </span>
+                {/* Bollini in una riga che va a capo (docs/CHANGELOG.md §349); il
+                    significato di ognuno in un fumetto (§338). */}
+                <div className={`is_View ${styles.badges}`}>
+                  {professional.verified ? (
+                    <BadgeInfo info="verified">
+                      <Badge variant="verificato">Verificato</Badge>
+                    </BadgeInfo>
+                  ) : null}
+                  {professional.professionalKind ? <ProfessionalKindBadge kind={professional.professionalKind} size="md" /> : null}
+                  {/* Verifica di identità di Stripe, distinta dal "Verificato" del nostro team (docs/CHANGELOG.md §241). */}
+                  {professional.stripeVerified ? (
+                    <BadgeInfo info="stripeVerified">
+                      <Badge variant="verificato">{STRIPE_VERIFIED_BADGE.label}</Badge>
+                    </BadgeInfo>
+                  ) : null}
+                  {professional.boosted ? (
+                    <BadgeInfo info="boosted">
+                      <Badge variant="pro">Sponsorizzato</Badge>
+                    </BadgeInfo>
+                  ) : null}
+                  {professional.isNewProfile ? (
+                    <BadgeInfo info="newProfile">
+                      <Badge variant="nuovo">Iscritto da poco</Badge>
+                    </BadgeInfo>
+                  ) : null}
+                  {professional.hasLiabilityInsurance ? (
+                    <BadgeInfo info="liabilityInsurance">
+                      <span className="rc-badge">
+                        <span>
+                          <Icon name="shield-check" size={13} strokeWidth={2} color={brand.grafite} />
+                          Assicurazione RC
+                        </span>
+                        <small>dichiarata</small>
+                      </span>
+                    </BadgeInfo>
+                  ) : null}
+                </div>
+                <div className={`is_View ${styles.cityLine}`}>
+                  <Icon name="map-pin" size={13} color={brand.grafite70} />
+                  <span className={`is_Text font_body ${styles.city}`}>{professional.city}</span>
+                </div>
+                {/* Privato o professionista (Codice del consumo art. 49-bis, docs/CHANGELOG.md §241): per un privato
+                    l'avviso sui diritti del consumatore resta sempre scritto, non solo nel fumetto. */}
+                {professional.traderStatus === "PRIVATE" ? (
+                  <span className={`is_Text ${styles.small}`}>{TRADER_STATUS_COPY.PRIVATE.note}</span>
+                ) : null}
+                {professional.rating !== null ? (
+                  <Rating value={professional.rating} count={professional.reviewCount} size={16} />
+                ) : (
+                  <span className={`is_Text ${styles.muted}`}>Nessuna recensione ancora</span>
+                )}
+                {/* Una riga sola, in grigio (docs/CHANGELOG.md §349). Il totale non
+                    è mai meno dei lavori del mese; mai uno zero. */}
+                {completedTotal > 0 || professional.avgResponseTimeMinutes !== null ? (
+                  <span className={`is_Text ${styles.mutedLarge}`}>
+                    {[
+                      completedTotal > 0 ? `${completedTotal} ${completedTotal === 1 ? "lavoro terminato" : "lavori terminati"}` : null,
+                      professional.avgResponseTimeMinutes !== null
+                        ? respondsRightAway(professional.avgResponseTimeMinutes)
+                          ? "Risponde subito"
+                          : `Risponde entro ${formatResponseTime(professional.avgResponseTimeMinutes)}`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            {/* Salva, condividi e segnala in alto a destra della scheda
+                (docs/CHANGELOG.md §349), solo icone con la descrizione al
+                passaggio del mouse (§206). Da telefono in colonna a destra del
+                nome. Condividi apre la condivisione del dispositivo e ripiega
+                sulla copia del link. */}
+            {preview ? null : (
+              <div className={`is_View ${styles.actions}`}>
+                {/* Cuoricino visibile anche a chi non è entrato (docs/CHANGELOG.md
+                    §208): al tocco porta all'accesso. Nascosto solo a
+                    professionisti e admin, che non salvano profili. */}
+                {!user || user.role === "CLIENT" ? (
+                  <IconActionButton label={isSaved ? "Salvato" : "Salva"} active={isSaved} disabled={isSaving} celebrate onPress={handleToggleSave} tooltipAlign="end">
+                    <Icon name="heart" size={17} strokeWidth={1.5} color={isSaved ? "white" : brand.grafite} fill={isSaved ? "white" : "none"} />
+                  </IconActionButton>
+                ) : null}
+                <IconActionButton label={shareFeedback ?? "Condividi il profilo"} forceTooltip={shareFeedback !== null} onPress={handleShare} tooltipAlign="end">
+                  <Icon name="share-2" size={17} strokeWidth={1.5} color={brand.cianografiaScuro} />
                 </IconActionButton>
-              ) : null}
-              <IconActionButton label={shareFeedback ?? "Condividi il profilo"} forceTooltip={shareFeedback !== null} onPress={handleShare} tooltipAlign="end">
-                <Icon name="share-2" size={17} strokeWidth={1.5} color={brand.cianografiaScuro} />
-              </IconActionButton>
-              {user ? (
-                <IconActionButton
-                  label={reportedKeys.has(`PROFESSIONAL_PROFILE:${professional.id}`) ? "Già segnalato" : "Segnala"}
-                  disabled={reportedKeys.has(`PROFESSIONAL_PROFILE:${professional.id}`)}
-                  onPress={() => setReportTarget({ targetType: "PROFESSIONAL_PROFILE", targetId: professional.id, label: `il profilo di ${professional.businessName}` })}
-                  tooltipAlign="end"
-                >
-                  <Icon name="flag" size={17} strokeWidth={1.5} color={brand.grafite70} />
-                </IconActionButton>
-              ) : null}
-            </XStack>
-          )}
-        </XStack>
+                {user ? (
+                  <IconActionButton
+                    label={reportedKeys.has(savedKey) ? "Già segnalato" : "Segnala"}
+                    disabled={reportedKeys.has(savedKey)}
+                    onPress={() => setReportTarget({ targetType: "PROFESSIONAL_PROFILE", targetId: professional.id, label: `il profilo di ${professional.businessName}` })}
+                    tooltipAlign="end"
+                  >
+                    <Icon name="flag" size={17} strokeWidth={1.5} color={brand.grafite70} />
+                  </IconActionButton>
+                ) : null}
+              </div>
+            )}
+          </div>
 
-
-        {professional.subTags.length > 0 ? (
-          <XStack flexWrap="wrap" gap="2">
-            {professional.subTags.map((tag) => (
-              <Chip key={tag}>{subTagLabel(tag)}</Chip>
-            ))}
-          </XStack>
-        ) : null}
-
-        {professional.bio ? <Text color={brand.grafite70}>{professional.bio}</Text> : null}
-
-        {/* Lavori svolti subito sotto la descrizione, dentro la scheda
-            identità (richiesta esplicita dell'utente, docs/CHANGELOG.md §208).
-            `?? []`: stessa cautela dell'agenda/recensioni sopra — un'API non
-            ancora allineata all'ultimo deploy potrebbe non includere ancora
-            portfolioUrls sul professionista. */}
-        {(professional.portfolioUrls ?? []).length > 0 ? (
-          <YStack gap="3">
-            <XStack alignItems="center" gap="2">
-              <Icon name="camera" size={16} strokeWidth={1.5} color={brand.cianografiaScuro} />
-              <Text fontFamily="heading" fontWeight="700" fontSize="5" color={brand.grafite}>
-                Lavori svolti
-              </Text>
-            </XStack>
-            {/* Su telefono le foto scorrono in una riga sola invece di andare
-                a capo (richiesta esplicita dell'utente, §208). */}
-            <div className="portfolio-row scroll-fade">
-              {(professional.portfolioUrls ?? []).map((url, photoIndex) => (
-                <YStack
-                  key={url}
-                  width={96}
-                  height={96}
-                  borderRadius="3"
-                  overflow="hidden"
-                  borderWidth={1}
-                  borderColor={brand.filetto}
-                  cursor="pointer"
-                  onPress={() => setLightbox({ photos: professional.portfolioUrls ?? [], index: photoIndex })}
-                  role="button"
-                  aria-label={`Ingrandisci foto ${photoIndex + 1} dei lavori svolti`}
-                >
-                  <MediaPreview url={url} />
-                </YStack>
+          {professional.subTags.length > 0 ? (
+            <div className={`is_View ${styles.chips}`}>
+              {professional.subTags.map((tag) => (
+                <Chip key={tag}>{subTagLabel(tag)}</Chip>
               ))}
             </div>
-            <style jsx>{`
-              .portfolio-row {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 8px;
-              }
-              @media (max-width: 660px) {
-                .portfolio-row {
-                  flex-wrap: nowrap;
-                  overflow-x: auto;
-                  scroll-snap-type: x mandatory;
-                  padding-bottom: 4px;
-                }
-                .portfolio-row > :global(*) {
-                  flex-shrink: 0;
-                  scroll-snap-align: start;
-                }
-              }
-              /* Da computer le foto vanno a capo: niente sfumatura, che
-                 taglierebbe anche il contorno del focus. */
-              @media (min-width: 661px) {
-                .portfolio-row {
-                  -webkit-mask-image: none;
-                  mask-image: none;
-                  animation: none;
-                }
-              }
-            `}</style>
-          </YStack>
-        ) : null}
+          ) : null}
 
-        {/* Segnali di fiducia dichiarati (CEO, consiglio esperti — CPO),
-            mai verificati documentalmente: etichetta "Dichiarato dal
-            professionista" invece di un'icona di spunta, per non
-            confonderli con `verified` (quello richiederebbe una verifica
-            reale, oggi inesistente, CLAUDE.md §10 checklist punto 15). */}
-        {professional.yearsOfExperience !== null ||
-        professional.spokenLanguages.length > 0 ||
-        professional.certifications ||
-        professional.hasLiabilityInsurance ? (
-          <YStack gap="2" paddingTop="2" borderTopWidth={1} borderTopColor={brand.filetto}>
-            {professional.yearsOfExperience !== null ? (
-              <XStack alignItems="center" gap="2">
-                <Icon name="briefcase" size={14} strokeWidth={1.5} color={brand.grafite70} />
-                <Text fontSize={13} color={brand.grafite70}>
-                  {professional.yearsOfExperience} {professional.yearsOfExperience === 1 ? "anno" : "anni"} di esperienza
-                </Text>
-              </XStack>
-            ) : null}
-            {/* Lingue nello stesso elenco di esperienza, patentini e
-                assicurazione (richiesta esplicita dell'utente, §208). */}
-            {professional.spokenLanguages.length > 0 ? (
-              <XStack alignItems="center" gap="2">
-                <Icon name="message-circle" size={14} strokeWidth={1.5} color={brand.grafite70} />
-                <Text fontSize={13} color={brand.grafite70}>
-                  Parla {professional.spokenLanguages.join(", ")}
-                </Text>
-              </XStack>
-            ) : null}
-            {professional.certifications ? (
-              <XStack alignItems="flex-start" gap="2">
-                <Icon name="shield" size={14} strokeWidth={1.5} color={brand.grafite70} />
-                <Text fontSize={13} color={brand.grafite70} flex={1}>
-                  {professional.certifications}
-                </Text>
-              </XStack>
-            ) : null}
-            {professional.hasLiabilityInsurance ? (
-              <XStack alignItems="center" gap="2">
-                <Icon name="shield-check" size={14} strokeWidth={1.5} color={brand.grafite70} />
-                <Text fontSize={13} color={brand.grafite70}>
-                  Assicurazione RC professionale
-                </Text>
-              </XStack>
-            ) : null}
-            {/* Cosa abbiamo controllato e cosa no, senza contraddire "Verificato" (collaudo B-11, E-10). */}
-            <Text fontSize={13} color={brand.grafite70} fontStyle="italic">
-              {professional.verified
-                ? "Abbiamo verificato l'identità. Esperienza, lingue, qualifiche e assicurazione le scrive il professionista."
-                : "Esperienza, lingue, qualifiche e assicurazione le scrive il professionista."}
-            </Text>
-          </YStack>
-        ) : null}
-        </Surface>
+          {professional.bio ? <span className={`is_Text ${styles.muted}`}>{professional.bio}</span> : null}
+
+          {/* Lavori svolti subito sotto la descrizione, dentro la scheda
+              identità (docs/CHANGELOG.md §208). `?? []`: un'API non ancora
+              allineata all'ultimo deploy potrebbe non mandare portfolioUrls. */}
+          {(professional.portfolioUrls ?? []).length > 0 ? (
+            <div className={`is_View ${styles.stack} ${styles.gap3}`}>
+              <div className={`is_View ${styles.titleRow}`}>
+                <Icon name="camera" size={16} strokeWidth={1.5} color={brand.cianografiaScuro} />
+                <span className={`is_Text font_heading ${styles.subTitle}`}>Lavori svolti</span>
+              </div>
+              {/* Su telefono le foto scorrono in una riga sola invece di andare a capo (§208). */}
+              <div className="portfolio-row scroll-fade">
+                {(professional.portfolioUrls ?? []).map((url, photoIndex) => (
+                  // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- Invio e Spazio arrivano da KeyboardActivation, come per i riquadri Tamagui di prima
+                  <div
+                    key={url}
+                    className={`is_View ${styles.photo} ${styles.photo96}`}
+                    onClick={() => setLightbox({ photos: professional.portfolioUrls ?? [], index: photoIndex })}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Ingrandisci foto ${photoIndex + 1} dei lavori svolti`}
+                  >
+                    <MediaPreview url={url} />
+                  </div>
+                ))}
+              </div>
+              <style jsx>{`
+                .portfolio-row {
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 8px;
+                }
+                @media (max-width: 660px) {
+                  .portfolio-row {
+                    flex-wrap: nowrap;
+                    overflow-x: auto;
+                    scroll-snap-type: x mandatory;
+                    padding-bottom: 4px;
+                  }
+                  .portfolio-row > :global(*) {
+                    flex-shrink: 0;
+                    scroll-snap-align: start;
+                  }
+                }
+                /* Da computer le foto vanno a capo: niente sfumatura, che
+                   taglierebbe anche il contorno del focus. */
+                @media (min-width: 661px) {
+                  .portfolio-row {
+                    -webkit-mask-image: none;
+                    mask-image: none;
+                    animation: none;
+                  }
+                }
+              `}</style>
+            </div>
+          ) : null}
+
+          {/* Segnali di fiducia dichiarati, mai verificati documentalmente: si
+              dice che li scrive il professionista, per non confonderli con
+              `verified`. */}
+          {professional.yearsOfExperience !== null ||
+          professional.spokenLanguages.length > 0 ||
+          professional.certifications ||
+          professional.hasLiabilityInsurance ? (
+            <div className={`is_View ${styles.facts}`}>
+              {professional.yearsOfExperience !== null ? (
+                <div className={`is_View ${styles.fact}`}>
+                  <Icon name="briefcase" size={14} strokeWidth={1.5} color={brand.grafite70} />
+                  <span className={`is_Text ${styles.small}`}>
+                    {professional.yearsOfExperience} {professional.yearsOfExperience === 1 ? "anno" : "anni"} di esperienza
+                  </span>
+                </div>
+              ) : null}
+              {/* Lingue nello stesso elenco di esperienza, patentini e assicurazione (§208). */}
+              {professional.spokenLanguages.length > 0 ? (
+                <div className={`is_View ${styles.fact}`}>
+                  <Icon name="message-circle" size={14} strokeWidth={1.5} color={brand.grafite70} />
+                  <span className={`is_Text ${styles.small}`}>Parla {professional.spokenLanguages.join(", ")}</span>
+                </div>
+              ) : null}
+              {professional.certifications ? (
+                <div className={`is_View ${styles.fact} ${styles.factTop}`}>
+                  <Icon name="shield" size={14} strokeWidth={1.5} color={brand.grafite70} />
+                  <span className={`is_Text ${styles.small} ${styles.grow}`}>{professional.certifications}</span>
+                </div>
+              ) : null}
+              {professional.hasLiabilityInsurance ? (
+                <div className={`is_View ${styles.fact}`}>
+                  <Icon name="shield-check" size={14} strokeWidth={1.5} color={brand.grafite70} />
+                  <span className={`is_Text ${styles.small}`}>Assicurazione RC professionale</span>
+                </div>
+              ) : null}
+              {/* Cosa abbiamo controllato e cosa no, senza contraddire "Verificato" (collaudo B-11, E-10). */}
+              <span className={`is_Text ${styles.small} ${styles.italic}`}>
+                {professional.verified
+                  ? "Abbiamo verificato l'identità. Esperienza, lingue, qualifiche e assicurazione le scrive il professionista."
+                  : "Esperienza, lingue, qualifiche e assicurazione le scrive il professionista."}
+              </span>
+            </div>
+          ) : null}
+        </div>
 
         {professional.acceptingRequests && agendaPreview?.hasAnySlot ? (
-          <YStack gap="3">
-            {/* Ancora per il click sulle pillole della mini-agenda nei risultati di ricerca
-                (ProfessionalCard): scrollMarginTop compensa l'header sticky. */}
+          <div className={`is_View ${styles.stack} ${styles.gap3}`}>
+            {/* Ancora per il click sulle pillole della mini-agenda nei risultati
+                di ricerca: scrollMarginTop compensa l'intestazione fissa. */}
             <div id="agenda" style={{ scrollMarginTop: 96 }} />
-            {/* Sezione avvolta in una Surface propria (richiesta esplicita
-                dell'utente: "separa meglio la sezione agenda... per farla
-                visualizzare meglio rispetto al resto del contesto") — prima
-                era un semplice YStack direttamente sullo sfondo pesca della
-                pagina, indistinguibile da "Lavori svolti"/eyebrow di
-                "Recensioni" sopra e sotto. Stesso trattamento già in uso per
-                la "Scheda identità" in cima alla pagina: sfondo bianco
-                (brand.calce) + angoli morbidi, nessuna ombra (CLAUDE.md §19). */}
-            <Surface gap="3">
-            <XStack alignItems="center" gap="2">
-              <Icon name="calendar" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
-              <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
-                Agenda
-              </Text>
-            </XStack>
-            {/* Una riga sola (docs/CHANGELOG.md §349): gli orari al completo
-                sono grigi, non serve spiegarli. */}
-            <Text fontSize={13} color={brand.grafite70}>
-              Scegli un orario libero per chiedere un preventivo.
-            </Text>
+            {/* Agenda su una superficie sua (richiesta esplicita dell'utente),
+                come la scheda identità in cima. */}
+            <div className={`is_View ${styles.surface} ${styles.gap3}`}>
+              <div className={`is_View ${styles.titleRow}`}>
+                <Icon name="calendar" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
+                <span className={`is_Text font_heading ${styles.sectionTitle}`}>Agenda</span>
+              </div>
+              {/* Una riga sola (docs/CHANGELOG.md §349): gli orari al completo sono grigi. */}
+              <span className={`is_Text ${styles.small}`}>Scegli un orario libero per chiedere un preventivo.</span>
 
-            {/* Larghezza massima pari alla griglia (docs/CHANGELOG.md §227):
-                le frecce stanno sopra l'ultima colonna, non all'estremo
-                destro della scheda. */}
-            <YStack gap="1" width="100%" maxWidth={AGENDA_COLUMN_WIDTH * agendaVisibleDays}>
-              {/* Tab "A domicilio"/"Online" (richiesta esplicita dell'utente)
-                  e frecce dei giorni sulla stessa riga, subito sopra i giorni:
-                  una riga in meno (richiesta di Luca,
-                  docs/changelog/2026-11-04-prezzi-e-foto-profilo.md). Se non
-                  c'è spazio le frecce vanno a capo, a destra. */}
-              {/* Fino a 390px pulsanti e frecce un po' più stretti, così sui
-                  telefoni da 360px stanno ancora su una riga. */}
-              <XStack alignItems="center" gap="2 xxs:5px" flexWrap="wrap">
-                <Text fontFamily="body" fontSize="13px xxs:12px" fontWeight="600" color={brand.grafite70}>
-                  Orari per:
-                </Text>
-                <XStack gap={2} backgroundColor={brand.gesso} borderRadius="10" padding={3}>
-                  {(["HOME", "ONLINE"] as const).map((mode) => {
-                    const active = agendaMode === mode;
-                    return (
-                      <XStack
-                        key={mode}
-                        render="button"
-                        paddingHorizontal="3 xxs:9px"
-                        paddingVertical="6px xs:5px"
-                        borderWidth={0}
-                        borderRadius="10"
-                        backgroundColor={active ? brand.cianografia : "transparent"}
-                        cursor="pointer"
-                        role="button"
-                        aria-pressed={active}
-                        onPress={() => {
-                                              setAgendaMode(mode);
-                                              setAgendaWindowOffset(0);
-                                            }}
-                      >
-                        <Text fontFamily="body" fontSize="14px xs:13px" fontWeight="700" color={active ? "#FFFFFF" : brand.grafite}>
-                          {mode === "HOME" ? "A domicilio" : "Online"}
-                        </Text>
-                      </XStack>
-                    );
-                  })}
-                </XStack>
-              {totalAgendaDays > agendaVisibleDays ? (
-                  <XStack gap="2 xs:1" alignItems="center" marginLeft="auto">
-                    <XStack
-                      width="40px xs:32px xxs:28px"
-                      height="40px xs:32px xxs:28px"
-                      borderRadius={20}
-                      backgroundColor={brand.calce}
-                      alignItems="center"
-                      justifyContent="center"
-                      opacity={agendaCanGoBack ? 1 : 0.3}
-                      // Bordo che si riempie al passaggio del mouse (globals.css, `.hover-ring`).
-                      className={agendaCanGoBack ? "hover-ring" : undefined}
-                      cursor={agendaCanGoBack ? "pointer" : undefined}
-                      // Sempre un pulsante, spento all'inizio: un riquadro con un nome e senza ruolo non si legge (collaudo L-11).
-                      role="button"
-                      aria-disabled={!agendaCanGoBack}
-                      tabIndex={agendaCanGoBack ? undefined : -1}
-                      aria-label="Giorni precedenti"
-                      onPress={agendaCanGoBack ? () => setAgendaWindowOffset(Math.max(0, agendaOffset - agendaVisibleDays)) : undefined}
-                    >
-                      <Icon name="chevron-left" size={20} color={brand.grafite} />
-                    </XStack>
-                    <XStack
-                      width="40px xs:32px xxs:28px"
-                      height="40px xs:32px xxs:28px"
-                      borderRadius={20}
-                      backgroundColor={brand.calce}
-                      alignItems="center"
-                      justifyContent="center"
-                      opacity={agendaCanGoForward ? 1 : 0.3}
-                      className={agendaCanGoForward ? "hover-ring" : undefined}
-                      cursor={agendaCanGoForward ? "pointer" : undefined}
-                      role="button"
-                      aria-disabled={!agendaCanGoForward}
-                      tabIndex={agendaCanGoForward ? undefined : -1}
-                      aria-label="Giorni successivi"
-                      onPress={agendaCanGoForward ? () => setAgendaWindowOffset(agendaOffset + agendaVisibleDays) : undefined}
-                    >
-                      <Icon name="chevron-right" size={20} color={brand.grafite} />
-                    </XStack>
-                  </XStack>
-              ) : null}
-              </XStack>
-
-              <XStack>
-                {agendaWindowDays.map((day) => (
-                  <YStack key={day.date} flex={1} flexBasis={0} minWidth={0} maxWidth={AGENDA_COLUMN_WIDTH} alignItems="center" gap={2}>
-                    <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite}>
-                      {day.label}
-                    </Text>
-                    <Text fontVariant={["tabular-nums"]} fontSize={13} color={brand.grafite70}>
-                      {day.dateLabel}
-                    </Text>
-                  </YStack>
-                ))}
-              </XStack>
-            </YStack>
-
-            {agendaTimeRows.length > 0 ? (
-              <YStack gap="1-5" width="100%" maxWidth={AGENDA_COLUMN_WIDTH * agendaVisibleDays}>
-                {agendaTimeRows.map((time) => (
-                  <XStack key={time}>
-                    {agendaWindowDays.map((day) => {
-                      const slot = day.slots.find((s) => s.startTime === time);
-                      if (!slot) {
-                        return (
-                          <XStack
-                            key={day.date}
-                            flex={1}
-                            flexBasis={0}
-                            minWidth={0}
-                            maxWidth={AGENDA_COLUMN_WIDTH}
-                            alignItems="center"
-                            justifyContent="center"
-                            paddingVertical={4}
-                          >
-                            <Text fontSize={16} color={brand.filetto}>
-                              -
-                            </Text>
-                          </XStack>
-                        );
-                      }
-                      const range = `${slot.startTime}–${slot.endTime}`;
-                      const modeInfo = agendaMode === "HOME" ? slot.home : slot.online;
-                      const isFull = !modeInfo || modeInfo.bookedCount >= modeInfo.maxBookings;
-                      if (isFull) {
-                        return (
-                          <XStack
-                            key={day.date}
-                            flex={1}
-                            flexBasis={0}
-                            minWidth={0}
-                            maxWidth={AGENDA_COLUMN_WIDTH}
-                            alignItems="center"
-                            justifyContent="center"
-                            paddingVertical={4}
-                          >
-                            {/* Al completo: grigio chiaro, senza barra (docs/CHANGELOG.md §349). */}
-                            <Text
-                              fontVariant={["tabular-nums"]}
-                              fontSize={14}
-                              color={brand.grafite70}
-                              opacity={0.55}
-                              textAlign="center"
-                              aria-label={`${range}, al completo`}
-                            >
-                              {range.replace("–", "–\u200B")}
-                            </Text>
-                          </XStack>
-                        );
-                      }
-                      // `nomeProfessionista`/`fotoProfessionista`: il
-                      // cliente deve capire subito che la richiesta va a
-                      // QUESTO professionista, non "ai professionisti
-                      // compatibili nella zona" — richiesta esplicita
-                      // dell'utente, GuidedRequestForm li usa per mostrare
-                      // un riquadro con foto+nome invece del sottotitolo
-                      // generico. Nomi distinti da "nome"/"foto" per non
-                      // collidere col "nome" del CLIENTE nello stesso form.
-                      const href = `/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}&data=${day.date}&fasciaOraria=${slot.startTime}-${slot.endTime}&modalita=${agendaMode}${serviceDescriptionParam}&da=${PROFILE_REQUEST_SOURCE_PARAM.AGENDA}`;
+              {/* Larghezza massima pari alla griglia (docs/CHANGELOG.md §227):
+                  le frecce stanno sopra l'ultima colonna. */}
+              <div className={`is_View ${styles.agendaHead}`} style={agendaGridStyle}>
+                {/* Tab "A domicilio"/"Online" e frecce dei giorni sulla stessa
+                    riga, subito sopra i giorni (docs/changelog/2026-11-04-prezzi-e-foto-profilo.md);
+                    fino a 390px pulsanti e frecce un po' più stretti. */}
+                <div className={`is_View ${styles.modeRow}`}>
+                  <span className={`is_Text font_body ${styles.modeLabel}`}>Orari per:</span>
+                  <div className={`is_View ${styles.segmented}`}>
+                    {(["HOME", "ONLINE"] as const).map((mode) => {
+                      const active = agendaMode === mode;
                       return (
-                        <XStack
-                          key={day.date}
-                          flex={1}
-                          flexBasis={0}
-                          minWidth={0}
-                          maxWidth={AGENDA_COLUMN_WIDTH}
-                          alignItems="center"
-                          justifyContent="center"
-                          paddingVertical={3}
+                        <button
+                          key={mode}
+                          className={`is_View ${styles.modeButton}${active ? ` ${styles.modeButtonActive}` : ""}`}
+                          aria-pressed={active}
+                          onClick={() => {
+                            setAgendaMode(mode);
+                            setAgendaWindowOffset(0);
+                          }}
                         >
-                          <Link href={href} className="hover-ring-host" style={{ textDecoration: "none", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>
-                            {/* Orari a 14px (prima 10,5 e 9,5): se la fascia non sta su una riga va a capo dopo il trattino
-                                (prova con persone simulate, punto 22, docs/changelog/2026-11-08-prova-persone-simulate.md). */}
-                            <XStack className="hover-ring-target" paddingHorizontal="6px xs:4px" paddingVertical={4} borderRadius="10" backgroundColor={brand.cianografiaVelo}>
-                              <Text fontVariant={["tabular-nums"]} fontSize={14} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
-                                {range.replace("–", "–\u200B")}
-                              </Text>
-                            </XStack>
-                          </Link>
-                        </XStack>
+                          <span className={`is_Text font_body ${styles.modeText}${active ? ` ${styles.white}` : ""}`}>
+                            {mode === "HOME" ? "A domicilio" : "Online"}
+                          </span>
+                        </button>
                       );
                     })}
-                  </XStack>
-                ))}
-              </YStack>
-            ) : null}
+                  </div>
+                  {totalAgendaDays > agendaVisibleDays ? (
+                    <div className={`is_View ${styles.arrows}`}>
+                      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events -- Invio e Spazio arrivano da KeyboardActivation, come per i riquadri Tamagui di prima */}
+                      <div
+                        className={`is_View ${styles.arrow} ${agendaCanGoBack ? `hover-ring ${styles.arrowOn}` : styles.arrowOff}`}
+                        // Sempre un pulsante, spento all'inizio: un riquadro con un nome e senza ruolo non si legge (collaudo L-11).
+                        role="button"
+                        aria-disabled={!agendaCanGoBack}
+                        tabIndex={agendaCanGoBack ? 0 : -1}
+                        aria-label="Giorni precedenti"
+                        onClick={agendaCanGoBack ? () => setAgendaWindowOffset(Math.max(0, agendaOffset - agendaVisibleDays)) : undefined}
+                      >
+                        <Icon name="chevron-left" size={20} color={brand.grafite} />
+                      </div>
+                      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events -- Invio e Spazio arrivano da KeyboardActivation, come per i riquadri Tamagui di prima */}
+                      <div
+                        className={`is_View ${styles.arrow} ${agendaCanGoForward ? `hover-ring ${styles.arrowOn}` : styles.arrowOff}`}
+                        role="button"
+                        aria-disabled={!agendaCanGoForward}
+                        tabIndex={agendaCanGoForward ? 0 : -1}
+                        aria-label="Giorni successivi"
+                        onClick={agendaCanGoForward ? () => setAgendaWindowOffset(agendaOffset + agendaVisibleDays) : undefined}
+                      >
+                        <Icon name="chevron-right" size={20} color={brand.grafite} />
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
 
-            {agendaHasAvailableInWindow ? null : agendaFirstFree ? (
-              <YStack gap="2" padding="4" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto} alignSelf="flex-start">
-                <YStack gap={2}>
-                  <Text fontSize={13} color={brand.grafite70}>
-                    Nessun orario libero in questi giorni. Primo orario libero:
-                  </Text>
-                  <Text fontSize={16} fontWeight="700" color={brand.grafite}>
-                    {agendaFirstFree.day.dateLabel}, {agendaFirstFree.slot.startTime}–{agendaFirstFree.slot.endTime}
-                  </Text>
-                </YStack>
-                <XStack
-                    alignSelf="flex-start"
-                    paddingHorizontal="4"
-                    paddingVertical="2"
-                    borderRadius="10"
-                    backgroundColor={brand.cianografiaPieno}
-                    cursor="pointer"
-                    role="button"
-                    onPress={() => setAgendaWindowOffset(agendaFirstFree.index)}
-                  >
-                  <Text fontFamily="body" fontSize={16} fontWeight="700" color="#FFFFFF">
-                    Mostra orari disponibili →
-                  </Text>
-                </XStack>
-              </YStack>
-            ) : (
-              <Text fontSize={13} color={brand.grafite70}>
-                Nessun orario libero nei prossimi due mesi.
-              </Text>
-            )}
-            </Surface>
-          </YStack>
+                <div className={`is_View ${styles.row}`}>
+                  {agendaWindowDays.map((day) => (
+                    <div key={day.date} className={`is_View ${styles.dayHead}`}>
+                      <span className={`is_Text font_body ${styles.dayLabel}`}>{day.label}</span>
+                      <span className={`is_Text ${styles.dayDate}`}>{day.dateLabel}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {agendaTimeRows.length > 0 ? (
+                <div className={`is_View ${styles.times}`} style={agendaGridStyle}>
+                  {agendaTimeRows.map((time) => (
+                    <div key={time} className={`is_View ${styles.row}`}>
+                      {agendaWindowDays.map((day) => {
+                        const slot = day.slots.find((s) => s.startTime === time);
+                        if (!slot) {
+                          return (
+                            <div key={day.date} className={`is_View ${styles.cell} ${styles.cellPadded}`}>
+                              <span className={`is_Text ${styles.dash}`}>-</span>
+                            </div>
+                          );
+                        }
+                        const range = `${slot.startTime}–${slot.endTime}`;
+                        const modeInfo = agendaMode === "HOME" ? slot.home : slot.online;
+                        const isFull = !modeInfo || modeInfo.bookedCount >= modeInfo.maxBookings;
+                        if (isFull) {
+                          return (
+                            <div key={day.date} className={`is_View ${styles.cell} ${styles.cellPadded}`}>
+                              {/* Al completo: grigio chiaro, senza barra (docs/CHANGELOG.md §349). */}
+                              <span className={`is_Text ${styles.full}`} aria-label={`${range}, al completo`}>
+                                {range.replace("–", "–​")}
+                              </span>
+                            </div>
+                          );
+                        }
+                        // `nomeProfessionista`/`fotoProfessionista`: il cliente
+                        // deve capire subito che la richiesta va a QUESTO
+                        // professionista (richiesta esplicita dell'utente). Nomi
+                        // distinti da "nome"/"foto" per non collidere col "nome"
+                        // del CLIENTE nello stesso modulo.
+                        const href = `/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}&data=${day.date}&fasciaOraria=${slot.startTime}-${slot.endTime}&modalita=${agendaMode}${serviceDescriptionParam}&da=${PROFILE_REQUEST_SOURCE_PARAM.AGENDA}`;
+                        return (
+                          <div key={day.date} className={`is_View ${styles.cell} ${styles.cellSlot}`}>
+                            <Link href={href} className="hover-ring-host" style={{ textDecoration: "none", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>
+                              {/* Orari a 14px: se la fascia non sta su una riga va a capo dopo il trattino
+                                  (punto 22, docs/changelog/2026-11-08-prova-persone-simulate.md). */}
+                              <div className={`is_View hover-ring-target ${styles.slot}`}>
+                                <span className={`is_Text ${styles.slotText}`}>{range.replace("–", "–​")}</span>
+                              </div>
+                            </Link>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {agendaHasAvailableInWindow ? null : agendaFirstFree ? (
+                <div className={`is_View ${styles.firstFree}`}>
+                  <div className={`is_View ${styles.firstFreeText}`}>
+                    <span className={`is_Text ${styles.small}`}>Nessun orario libero in questi giorni. Primo orario libero:</span>
+                    <span className={`is_Text ${styles.firstFreeWhen}`}>
+                      {agendaFirstFree.day.dateLabel}, {agendaFirstFree.slot.startTime}–{agendaFirstFree.slot.endTime}
+                    </span>
+                  </div>
+                  {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events -- Invio e Spazio arrivano da KeyboardActivation, come per i riquadri Tamagui di prima */}
+                  <div className={`is_View ${styles.firstFreeButton}`} role="button" tabIndex={0} onClick={() => setAgendaWindowOffset(agendaFirstFree.index)}>
+                    <span className={`is_Text font_body ${styles.firstFreeButtonText}`}>Mostra orari disponibili →</span>
+                  </div>
+                </div>
+              ) : (
+                <span className={`is_Text ${styles.small}`}>Nessun orario libero nei prossimi due mesi.</span>
+              )}
+            </div>
+          </div>
         ) : null}
 
         {/* Con dei professionisti scelti la barra in basso è quella dei risultati. */}
@@ -926,256 +795,210 @@ export function ProfessionalDetailContent({
             preview={preview}
             withBar={user?.professionalProfileId !== professional.id && !(choice.search && choice.search.chosen.length > 0)}
             summary={
-              <XStack alignItems="center" gap="3" minWidth={0}>
+              <div className={`is_View ${styles.barSummary}`}>
                 <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={40} />
                 {/* Sul telefono resta solo la foto: il nome accanto al pulsante non ci starebbe. */}
                 <div className="profile-cta-bar-text">
-                <YStack gap={2} minWidth={0} flexShrink={1}>
-                  <Text fontSize={16} fontWeight="600" color={brand.grafite} numberOfLines={1}>
-                    {professional.businessName}
-                  </Text>
-                  <XStack alignItems="center" columnGap="2" flexWrap="wrap">
-                    {professional.rating !== null ? <Rating value={professional.rating} count={professional.reviewCount} size={13} textSize={13} /> : null}
-                    {professional.avgResponseTimeMinutes !== null ? (
-                      <Text fontSize={13} color={brand.grafite70}>
-                        {professional.rating !== null ? "· " : ""}
-                        {respondsRightAway(professional.avgResponseTimeMinutes)
-                          ? "Risponde subito"
-                          : `Risponde entro ${formatResponseTime(professional.avgResponseTimeMinutes)}`}
-                      </Text>
-                    ) : null}
-                  </XStack>
-                </YStack>
+                  <div className={`is_View ${styles.barText}`}>
+                    <span className={`is_Text ${styles.barName}`}>{professional.businessName}</span>
+                    <div className={`is_View ${styles.barMeta}`}>
+                      {professional.rating !== null ? <Rating value={professional.rating} count={professional.reviewCount} size={13} textSize={13} /> : null}
+                      {professional.avgResponseTimeMinutes !== null ? (
+                        <span className={`is_Text ${styles.small}`}>
+                          {professional.rating !== null ? "· " : ""}
+                          {respondsRightAway(professional.avgResponseTimeMinutes)
+                            ? "Risponde subito"
+                            : `Risponde entro ${formatResponseTime(professional.avgResponseTimeMinutes)}`}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
-              </XStack>
+              </div>
             }
           />
         ) : (
-          <Surface gap="2">
-            <Text fontWeight="700" color={brand.grafite}>
+          <div className={`is_View ${styles.surface} ${styles.gap2}`}>
+            <span className={`is_Text ${styles.strong}`}>
               {/* Pausa scelta da lui (collaudo C-16): si dice quando torna. */}
               {professional.awayUntil ? `In pausa: torna ${formatAppointmentDate(professional.awayUntil, { weekday: "long", day: "numeric", month: "long" })}` : "Al momento non accetta nuove richieste"}
-            </Text>
-            <Text color={brand.grafite70}>Puoi chiedere un preventivo ad altri professionisti della stessa categoria nella tua zona.</Text>
+            </span>
+            <span className={`is_Text ${styles.muted}`}>Puoi chiedere un preventivo ad altri professionisti della stessa categoria nella tua zona.</span>
             <Link href={`/cerca/${professional.categorySlug}`} style={{ textDecoration: "none", alignSelf: "flex-start", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>
               <Button tabIndex={-1} variant="secondary">{`Cerca altri: ${professional.categoryLabel}`}</Button>
             </Link>
-          </Surface>
+          </div>
         )}
 
         {professional.services.length > 0 ? (
-          <YStack gap="3">
-            <XStack alignItems="center" gap="2">
+          <div className={`is_View ${styles.stack} ${styles.gap3}`}>
+            <div className={`is_View ${styles.titleRow}`}>
               <Icon name="receipt-text" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
-              <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
-                Prestazioni
-              </Text>
-            </XStack>
-            {/* Divise per mestiere quando sono più d'uno (miglioria scelta da Luca,
-                docs/changelog/2026-11-05-registrazione-colonna-unica.md). */}
+              <span className={`is_Text font_heading ${styles.sectionTitle}`}>Prestazioni</span>
+            </div>
+            {/* Divise per mestiere quando sono più d'uno (docs/changelog/2026-11-05-registrazione-colonna-unica.md). */}
             {serviceGroups.map((group) => (
-              <YStack key={group.slug ?? "tutte"} gap="2">
+              <div key={group.slug ?? "tutte"} className={`is_View ${styles.stack} ${styles.gap2}`}>
                 {serviceGroups.length > 1 && group.slug ? (
-                  <XStack alignItems="center" gap="2">
+                  <div className={`is_View ${styles.titleRow}`}>
                     <CategoryIconBadge slug={group.slug} size={28} />
-                    <Text fontWeight="700" color={brand.grafite}>
-                      {group.label}
-                    </Text>
-                  </XStack>
+                    <span className={`is_Text ${styles.strong}`}>{group.label}</span>
+                  </div>
                 ) : null}
-                <Surface padding={0} overflow="hidden">
+                <div className={`is_View ${styles.surface} ${styles.servicesList}`}>
                   {group.services.map((service, index) => (
-                    <YStack key={service.id} paddingHorizontal="4" paddingVertical="3" borderTopWidth={index === 0 ? 0 : 1} borderTopColor={brand.filetto}>
+                    <div key={service.id} className={`is_View ${styles.serviceRow}${index === 0 ? ` ${styles.serviceFirst}` : ""}`}>
                       <PriceLine
                         label={service.name}
                         labelColor={brand.grafite}
                         price={formatServicePriceRange(service.priceMinEurCents, service.priceMaxEurCents)}
                         unit={service.priceMinEurCents !== null || service.priceMaxEurCents !== null ? shownServicePriceUnit(service.priceUnit) : undefined}
                       />
-                    </YStack>
+                    </div>
                   ))}
-                </Surface>
-              </YStack>
+                </div>
+              </div>
             ))}
-          </YStack>
+          </div>
         ) : null}
 
         {/* "Lavori fatti" (docs/changelog/2026-11-08-lavori-fatti.md): foto di
-            fine lavoro del professionista, solo con l'ok del cliente dato
-            recensendo. Diverse da "Lavori svolti" (caricate da lui): queste
-            vengono da lavori chiusi sul sito, con le stelle di quel lavoro. */}
+            fine lavoro, solo con l'ok del cliente dato recensendo, con le
+            stelle di quel lavoro. */}
         {(professional.finishedJobs ?? []).length > 0 ? (
-          <YStack gap="3">
-            <XStack alignItems="center" gap="2">
+          <div className={`is_View ${styles.stack} ${styles.gap3}`}>
+            <div className={`is_View ${styles.titleRow}`}>
               <Icon name="badge-check" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
-              <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
-                Lavori fatti tramite il sito
-              </Text>
-            </XStack>
+              <span className={`is_Text font_heading ${styles.sectionTitle}`}>Lavori fatti tramite il sito</span>
+            </div>
             <div className="finished-jobs-row scroll-fade" role="list">
               {(professional.finishedJobs ?? []).map((job) => (
                 <div key={job.id} role="listitem" className="finished-job">
-                  <YStack
-                    width="100%"
-                    height={120}
-                    borderRadius="3"
-                    overflow="hidden"
-                    borderWidth={1}
-                    borderColor={brand.filetto}
-                    cursor="pointer"
-                    position="relative"
-                    onPress={() => setLightbox({ photos: job.photoUrls, index: 0 })}
+                  {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events -- Invio e Spazio arrivano da KeyboardActivation, come per i riquadri Tamagui di prima */}
+                  <div
+                    className={`is_View ${styles.photo} ${styles.jobPhoto}`}
+                    onClick={() => setLightbox({ photos: job.photoUrls, index: 0 })}
                     role="button"
+                    tabIndex={0}
                     aria-label={`Ingrandisci le foto del lavoro: ${job.label}`}
                   >
                     <MediaPreview url={job.photoUrls[0] ?? ""} />
                     {job.photoUrls.length > 1 ? (
-                      <YStack position="absolute" bottom={6} right={6} paddingHorizontal={6} paddingVertical={2} borderRadius={10} backgroundColor="rgba(20,24,30,0.7)">
-                        <Text fontSize={12} fontWeight="700" color="white">
-                          {job.photoUrls.length} foto
-                        </Text>
-                      </YStack>
+                      <div className={`is_View ${styles.photoCount}`}>
+                        <span className={`is_Text ${styles.photoCountText}`}>{job.photoUrls.length} foto</span>
+                      </div>
                     ) : null}
-                  </YStack>
-                  <YStack gap={2} paddingTop="2">
-                    <Text fontSize={14} fontWeight="700" color={brand.grafite} numberOfLines={2}>
-                      {job.label}
-                    </Text>
-                    <XStack alignItems="center" gap="1" flexWrap="wrap">
+                  </div>
+                  <div className={`is_View ${styles.jobText}`}>
+                    <span className={`is_Text ${styles.jobLabel}`}>{job.label}</span>
+                    <div className={`is_View ${styles.jobMeta}`}>
                       <Icon name="star" size={13} strokeWidth={1.5} color={brand.ottone} fill={brand.ottone} />
-                      <Text fontSize={13} color={brand.grafite70}>
+                      <span className={`is_Text ${styles.small}`}>
                         {job.rating}/5 · {[job.city, new Date(job.doneAt).toLocaleDateString("it-IT", { month: "long", year: "numeric", timeZone: "Europe/Rome" })].filter(Boolean).join(", ")}
-                      </Text>
-                    </XStack>
-                  </YStack>
+                      </span>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
-          </YStack>
+          </div>
         ) : null}
 
         {/* Ancora per le stelle accanto al nome nelle schede del cliente (§342), come #agenda. */}
         <div id="recensioni" style={{ scrollMarginTop: 96 }} />
-        <YStack gap="3">
-          <YStack flexDirection="row" alignItems="center" gap="3" flexWrap="wrap">
-            <XStack alignItems="center" gap="2">
+        <div className={`is_View ${styles.stack} ${styles.gap3}`}>
+          <div className={`is_View ${styles.reviewsHead}`}>
+            <div className={`is_View ${styles.titleRow}`}>
               <Icon name="star" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
-              <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
-                Recensioni
-              </Text>
-            </XStack>
+              <span className={`is_Text font_heading ${styles.sectionTitle}`}>Recensioni</span>
+            </div>
             {professional.rating !== null ? <Rating value={professional.rating} count={professional.reviewCount} /> : null}
-          </YStack>
+          </div>
           {professional.reviews.length === 0 ? (
             <EmptyState icon="star" title="Nessuna recensione ancora" description="Le recensioni arrivano solo da lavori fatti tramite il sito." />
           ) : (
             professional.reviews.map((review) => (
-              <YStack key={review.id} gap="0">
-                {/* Ancora per il deep-link dalla homepage ("Ultime recensioni",
-                    RecentReviews.tsx) — stesso pattern già in uso per #agenda
-                    sopra: un <div> grezzo con scrollMarginTop, mai un id
-                    passato direttamente a un componente Tamagui (non è
-                    garantito che lo inoltri al nodo DOM). */}
+              <div key={review.id} className={`is_View ${styles.stack} ${styles.gap0}`}>
+                {/* Ancora per il link dalla home ("Ultime recensioni", RecentReviews.tsx), come #agenda sopra. */}
                 <div id={`recensione-${review.id}`} style={{ scrollMarginTop: 96 }} />
-                <Surface gap="2">
-                <XStack alignItems="flex-start" justifyContent="space-between" gap="2">
-                  <YStack gap={4} flex={1} minWidth={0}>
-                    <XStack alignItems="center" gap="2" flexWrap="wrap">
-                      <XStack alignItems="center" gap="1">
-                        <Icon name="star" size={15} strokeWidth={1.5} color={brand.ottone} fill={brand.ottone} />
-                        <Text fontWeight="600" color={brand.grafite}>
-                          {review.rating}/5
-                        </Text>
-                      </XStack>
-                      {/* Stesso segnale di fiducia già usato per le recensioni
-                          in homepage ("Lavoro confermato", RecentReviews.tsx) —
-                          qui era assente, ora coerente su entrambe le
-                          superfici: ogni recensione nasce comunque solo da una
-                          prenotazione confermata (regola di prodotto
-                          invariata), mancava solo di dirlo esplicitamente. */}
-                      <BadgeInfo info="confirmedJob">
-                        <XStack alignItems="center" gap={4}>
-                          <Icon name="badge-check" size={13} strokeWidth={2} color={brand.verificato} />
-                          <Text fontSize={13} fontWeight="700" color={brand.verificato}>
-                            Lavoro fatto tramite il sito
-                          </Text>
-                        </XStack>
-                      </BadgeInfo>
-                    </XStack>
-                    {/* Chi l'ha scritta e per quale lavoro (docs/CHANGELOG.md §349):
-                        nome e iniziale del cognome come nelle recensioni in
-                        home; il servizio solo se il professionista ne fa più
-                        d'uno, altrimenti ripeterebbe sempre lo stesso. */}
-                    <Text fontSize={13} color={brand.grafite70}>
-                      <Text fontSize={13} fontWeight="700" color={brand.grafite}>
-                        {review.clientName ?? "Cliente"}
-                      </Text>
-                      {review.jobLabel && (professional.categories?.length ?? 1) > 1 ? ` · ${review.jobLabel}` : ""} · {reviewTimeAgo(review.createdAt)}
-                    </Text>
-                  </YStack>
-                  {user && !preview ? (
-                    <XStack
-                      alignItems="center"
-                      gap={4}
-                      cursor={reportedKeys.has(`REVIEW:${review.id}`) ? "default" : "pointer"}
-                      opacity={reportedKeys.has(`REVIEW:${review.id}`) ? 0.5 : 1}
-                      onPress={
-                        reportedKeys.has(`REVIEW:${review.id}`)
-                          ? undefined
-                          : () => setReportTarget({ targetType: "REVIEW", targetId: review.id, label: "questa recensione" })
-                      }
-                      role="button"
-                    >
-                      <Icon name="flag" size={12} strokeWidth={1.5} color={brand.grafite70} />
-                      <Text fontSize={13} color={brand.grafite70}>
-                        {reportedKeys.has(`REVIEW:${review.id}`) ? "Già segnalato" : "Segnala"}
-                      </Text>
-                    </XStack>
-                  ) : null}
-                </XStack>
-                {review.comment ? <Text color={brand.grafite70}>{review.comment}</Text> : null}
-                {review.updatedAfterIssueAt ? (
-                  <Text fontSize={13} color={brand.grafite70}>
-                    Aggiornata il {new Date(review.updatedAfterIssueAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })} dopo una
-                    segnalazione a lavoro chiuso
-                  </Text>
-                ) : null}
-                {/* `?? []`: stessa cautela dell'agenda, un'API non ancora allineata all'ultimo deploy
-                    potrebbe non includere ancora photoUrls su una recensione. */}
-                {(review.photoUrls ?? []).length > 0 ? (
-                  <XStack gap="2" flexWrap="wrap">
-                    {(review.photoUrls ?? []).map((url, photoIndex) => (
-                      <YStack
-                        key={url}
-                        width={72}
-                        height={72}
-                        borderRadius="3"
-                        overflow="hidden"
-                        borderWidth={1}
-                        borderColor={brand.filetto}
-                        cursor="pointer"
-                        onPress={() => setLightbox({ photos: review.photoUrls ?? [], index: photoIndex })}
+                <div className={`is_View ${styles.surface} ${styles.gap2}`}>
+                  <div className={`is_View ${styles.reviewTop}`}>
+                    <div className={`is_View ${styles.reviewInfo}`}>
+                      <div className={`is_View ${styles.reviewLine}`}>
+                        <div className={`is_View ${styles.reviewStars}`}>
+                          <Icon name="star" size={15} strokeWidth={1.5} color={brand.ottone} fill={brand.ottone} />
+                          <span className={`is_Text ${styles.reviewRating}`}>{review.rating}/5</span>
+                        </div>
+                        {/* Ogni recensione nasce solo da un lavoro confermato sul sito: lo si dice (come in home). */}
+                        <BadgeInfo info="confirmedJob">
+                          <div className={`is_View ${styles.confirmed}`}>
+                            <Icon name="badge-check" size={13} strokeWidth={2} color={brand.verificato} />
+                            <span className={`is_Text ${styles.confirmedText}`}>Lavoro fatto tramite il sito</span>
+                          </div>
+                        </BadgeInfo>
+                      </div>
+                      {/* Chi l'ha scritta e per quale lavoro (docs/CHANGELOG.md §349):
+                          il servizio solo se il professionista fa più mestieri. */}
+                      <span className={`is_Text ${styles.small}`}>
+                        <span className={`is_Text ${styles.reviewAuthor}`}>{review.clientName ?? "Cliente"}</span>
+                        {review.jobLabel && (professional.categories?.length ?? 1) > 1 ? ` · ${review.jobLabel}` : ""} · {reviewTimeAgo(review.createdAt)}
+                      </span>
+                    </div>
+                    {user && !preview ? (
+                      // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- Invio e Spazio arrivano da KeyboardActivation, come per i riquadri Tamagui di prima
+                      <div
+                        className={`is_View ${styles.reportReview}${reportedKeys.has(`REVIEW:${review.id}`) ? ` ${styles.reportReviewDone}` : ""}`}
+                        onClick={
+                          reportedKeys.has(`REVIEW:${review.id}`)
+                            ? undefined
+                            : () => setReportTarget({ targetType: "REVIEW", targetId: review.id, label: "questa recensione" })
+                        }
                         role="button"
-                        aria-label={`Ingrandisci foto ${photoIndex + 1} della recensione`}
+                        tabIndex={0}
                       >
-                        <MediaPreview url={url} />
-                      </YStack>
-                    ))}
-                  </XStack>
-                ) : null}
-                <ReviewReply
-                  reviewId={review.id}
-                  businessName={professional.businessName}
-                  reply={review.professionalReply ?? null}
-                  canEdit={!preview && !!token && user?.professionalProfileId === professional.id}
-                  token={token}
-                />
-              </Surface>
-              </YStack>
+                        <Icon name="flag" size={12} strokeWidth={1.5} color={brand.grafite70} />
+                        <span className={`is_Text ${styles.small}`}>{reportedKeys.has(`REVIEW:${review.id}`) ? "Già segnalato" : "Segnala"}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                  {review.comment ? <span className={`is_Text ${styles.muted}`}>{review.comment}</span> : null}
+                  {review.updatedAfterIssueAt ? (
+                    <span className={`is_Text ${styles.small}`}>
+                      Aggiornata il {new Date(review.updatedAfterIssueAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })} dopo una
+                      segnalazione a lavoro chiuso
+                    </span>
+                  ) : null}
+                  {/* `?? []`: un'API non ancora allineata all'ultimo deploy potrebbe non mandare photoUrls. */}
+                  {(review.photoUrls ?? []).length > 0 ? (
+                    <div className={`is_View ${styles.chips}`}>
+                      {(review.photoUrls ?? []).map((url, photoIndex) => (
+                        // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- Invio e Spazio arrivano da KeyboardActivation, come per i riquadri Tamagui di prima
+                        <div
+                          key={url}
+                          className={`is_View ${styles.photo} ${styles.photo72}`}
+                          onClick={() => setLightbox({ photos: review.photoUrls ?? [], index: photoIndex })}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Ingrandisci foto ${photoIndex + 1} della recensione`}
+                        >
+                          <MediaPreview url={url} />
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  <ReviewReply
+                    reviewId={review.id}
+                    businessName={professional.businessName}
+                    reply={review.professionalReply ?? null}
+                    canEdit={!preview && !!token && user?.professionalProfileId === professional.id}
+                    token={token}
+                  />
+                </div>
+              </div>
             ))
           )}
-        </YStack>
-      </YStack>
+        </div>
+      </div>
 
       {lightbox ? (
         <PhotoLightbox photos={lightbox.photos} initialIndex={lightbox.index} onClose={() => setLightbox(null)} />
@@ -1196,6 +1019,6 @@ export function ProfessionalDetailContent({
           }}
         />
       ) : null}
-    </YStack>
+    </div>
   );
 }

@@ -4,8 +4,9 @@ import type { BadgeInfoKey } from "./badgeInfo";
 import { Icon, type IconName } from "./Icon";
 import { brand } from "./tokens";
 
-// Duplicato di `ProfessionalKind` (packages/shared): packages/ui non dipende da shared.
-export type ProfessionalKindValue = "PRIVATE" | "VAT" | "BUSINESS";
+import type { ProfessionalKindValue } from "./professionalKind";
+
+export type { ProfessionalKindValue } from "./professionalKind";
 
 const KIND: Record<ProfessionalKindValue, { label: string; icon: IconName; info: BadgeInfoKey }> = {
   PRIVATE: { label: "Privato", icon: "user-round", info: "kindPrivate" },
