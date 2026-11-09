@@ -127,8 +127,8 @@ importers:
         specifier: 7.8.2
         version: 7.8.2
       stripe:
-        specifier: ^22.3.2
-        version: 22.3.2(@types/node@24.19.2)
+        specifier: ^23.1.0
+        version: 23.1.0(@types/node@24.19.2)
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -6714,11 +6714,11 @@ packages:
     resolution: {integrity: sha512-BrpvfNAE3dcvq7ll3xVumzjKjZQ5tI1sEUIKr3Uoks0XUl45St3FlatVqef9prk4jRDzhW6WZg+3bk93y6pLjA==}
     engines: {node: '>=6'}
 
-  stripe@22.3.2:
-    resolution: {integrity: sha512-O13QOvgEIQvDlTy6Ubb5kB980wpbhmoZNsgCXKILjCMZS67f+bW+6w99k3gnSi/N1lkryoj1WYdpGT5Wc5edjg==}
-    engines: {node: '>=18'}
+  stripe@23.1.0:
+    resolution: {integrity: sha512-fVUfMSfTPoukfoV//MUKAx2+YxyKmYaYtnAL9VkfnHfaPNQylFdWZMD+zgUFerI8rjbaiER8Vzj2XEUQ2AhAsQ==}
+    engines: {node: '>=20'}
     peerDependencies:
-      '@types/node': '>=18'
+      '@types/node': '>=20'
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -16009,7 +16009,7 @@ snapshots:
   strip-final-newline@2.0.0:
     optional: true
 
-  stripe@22.3.2(@types/node@24.19.2):
+  stripe@23.1.0(@types/node@24.19.2):
     optionalDependencies:
       '@types/node': 24.19.2
 
