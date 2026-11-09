@@ -87,6 +87,8 @@ function offsetOverlappingPositions(items: ProfessionalSearchResult[]): Map<stri
 // due segnaposto più vicini di PIN_GROUP_PX pixel finiscono insieme; toccando
 // il numero si apre l'anteprima del primo, con le frecce per gli altri.
 const PIN_GROUP_PX = 44;
+/** Schede nell'elenco scorrevole sotto la mappa da telefono. */
+const STRIP_MAX = 30;
 
 type PinGroup = { position: [number, number]; members: ProfessionalSearchResult[] };
 
@@ -221,6 +223,8 @@ export function ResultsMap({
     return lat <= viewBounds.north && lat >= viewBounds.south && lng <= viewBounds.east && lng >= viewBounds.west;
   };
   const carousel = selected ? withCoords.filter((pro) => pro.id === selected.id || inView(pro)) : [];
+  // Schede dell'elenco sotto la mappa da telefono: al massimo STRIP_MAX.
+  const stripPros = fullScreen ? withCoords.filter(inView).slice(0, STRIP_MAX) : [];
   const selectedIndex = selected ? carousel.findIndex((pro) => pro.id === selected.id) : -1;
   const [direction, setDirection] = useState<"next" | "prev" | null>(null);
   const step = (delta: 1 | -1) => {
@@ -230,7 +234,7 @@ export function ResultsMap({
   };
 
   return (
-    <div className="results-map-container">
+    <div className={`results-map-container${fullScreen && !selected && stripPros.length > 0 ? " has-strip" : ""}`}>
       <GoogleMapGate staticMap={staticMap}>
         <GoogleMap
           mapId={GOOGLE_MAPS_MAP_ID}
@@ -289,6 +293,41 @@ export function ResultsMap({
           })}
         </GoogleMap>
       </GoogleMapGate>
+
+      {/* Elenco scorrevole delle schede sotto la mappa da telefono (collaudo
+          08/11, migliorie approvate da Luca il 09/11): chi si vede sulla
+          mappa, nell'ordine della lista; toccando una scheda si apre la
+          sua anteprima, con le frecce per gli altri. */}
+      {fullScreen && !selected && stripPros.length > 0 ? (
+        <ul className="map-strip" aria-label="Professionisti sulla mappa">
+          {stripPros.map((pro) => (
+            <li key={pro.id}>
+              <button
+                type="button"
+                className="map-strip-card"
+                onClick={() => {
+                  setDirection(null);
+                  setSelected(pro);
+                }}
+              >
+                <ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={44} />
+                <span className="map-strip-text">
+                  <span className="map-strip-name">{pro.businessName}</span>
+                  <span className="map-strip-sub">
+                    {pro.rating !== null && pro.reviewCount > 0 ? (
+                      <>
+                        <Star size={13} strokeWidth={1.5} color={brand.ottone} fill={brand.ottone} aria-hidden />
+                        <span className="sr-only">Valutazione</span> {formatRating(pro.rating)} ({pro.reviewCount}) ·{" "}
+                      </>
+                    ) : null}
+                    {pro.categoryLabel}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       {selected ? (
         <MapPreview
@@ -365,6 +404,78 @@ export function ResultsMap({
           .results-map-container :global(.advanced-pin) {
             transition: transform 160ms ease-out;
           }
+        }
+        /* "Usa la mappa interattiva" dell'immagine fissa sale sopra l'elenco. */
+        .results-map-container.has-strip :global(.static-map-button) {
+          bottom: calc(env(safe-area-inset-bottom, 0px) + 100px);
+        }
+        .map-strip {
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+          z-index: 1000;
+          display: flex;
+          gap: 10px;
+          margin: 0;
+          padding: 4px 12px;
+          list-style: none;
+          overflow-x: auto;
+          scroll-snap-type: x mandatory;
+          scroll-padding: 0 12px;
+          scrollbar-width: none;
+          overscroll-behavior-x: contain;
+        }
+        .map-strip::-webkit-scrollbar {
+          display: none;
+        }
+        .map-strip li {
+          flex: 0 0 auto;
+          scroll-snap-align: start;
+        }
+        .map-strip-card {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          width: min(260px, calc(100vw - 72px));
+          min-height: 64px;
+          padding: 10px 12px;
+          box-sizing: border-box;
+          background: ${brand.calce};
+          border: 1px solid ${brand.filetto};
+          border-radius: 20px;
+          box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
+          text-align: left;
+          font: inherit;
+          color: ${brand.grafite};
+          cursor: pointer;
+        }
+        .map-strip-card:focus-visible {
+          outline: 3px solid ${brand.cianografiaPieno};
+          outline-offset: 2px;
+        }
+        .map-strip-text {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+        }
+        .map-strip-name {
+          font-weight: 700;
+          font-size: 15px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .map-strip-sub {
+          display: flex;
+          align-items: center;
+          gap: 3px;
+          font-size: 13px;
+          color: ${brand.grafite70};
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
       `}</style>
     </div>

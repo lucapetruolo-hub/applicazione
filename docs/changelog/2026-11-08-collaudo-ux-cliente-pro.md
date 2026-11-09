@@ -82,6 +82,14 @@ testi rotti) ed E6-14 (gruppo 8, accessibilità).
   uno solo con il numero, come sulla mappa interattiva
   (`groupStaticMarkers` in `static-map.service.ts`, zoom stimato come Google).
 
+- Mappa a schermo intero da telefono: in fondo un elenco scorrevole delle
+  schede di chi si vede sulla mappa (nome, stelle, mestiere); toccandone una
+  si apre la sua anteprima con le frecce. "Usa la mappa interattiva"
+  dell'immagine fissa sale sopra l'elenco.
+- Frase della privacy "indirizzo del lavoro" confermata da Luca.
+- Il controllo del glossario legge tutta l'API, comprese le email che
+  partono da un'azione in Admin; restano fuori solo le pagine admin del sito.
+
 ## Non cambiato, e perché
 
 - E6-13 (una casella del pagamento non spuntata): le caselle sono già

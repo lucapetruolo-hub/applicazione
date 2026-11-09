@@ -1,13 +1,16 @@
 // Una parola per ogni momento del lavoro (docs/glossario.md, collaudo del
 // 29/10 O-03 e dell'8/11 E6-09): nei testi per clienti e professionisti mai
 // "intervento", "prenotazione", "Da quotare", "lavoro completato/ottenuto".
-// Controlla le pagine del sito, i testi condivisi e le email, notifiche e
-// messaggi WhatsApp dell'API; salta test, commenti e l'area admin.
+// Controlla le pagine del sito, i testi condivisi e tutta l'API (email,
+// notifiche, WhatsApp, errori, e anche le email che partono da un'azione in
+// Admin: le leggono clienti e professionisti); salta test, commenti e le
+// pagine admin del sito, che legge solo chi gestisce.
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const repo = new URL("../../..", import.meta.url).pathname;
-const roots = ["apps/web/src", "packages/shared/src", "packages/ui/src", "apps/api/src/email", "apps/api/src/notifications", "apps/api/src/whatsapp"];
+const roots = ["apps/web/src", "packages/shared/src", "packages/ui/src", "apps/api/src"];
+const webAdmin = new Set(["apps/web/src/app/admin", "apps/web/src/components/admin"].map((dir) => join(repo, dir)));
 const PHRASES = [
   [/\b(l'|un |dell'|sull'|all'|nell'|quest'|questo |ogni |nuovo )intervent[oi]\b/i, "lavoro o appuntamento"],
   [/\b(la|una|della|alla|nella|le|delle|nuova|nuove|questa|tua|tue) prenotazion[ei]\b/i, "lavoro o appuntamento"],
@@ -20,7 +23,7 @@ for (const root of roots) (function walk(dir) {
   for (const name of readdirSync(dir)) {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) {
-      if (name !== "node_modules" && name !== "dist" && name !== "admin") walk(path);
+      if (name !== "node_modules" && name !== "dist" && !webAdmin.has(path)) walk(path);
     } else if (/\.(tsx?|mjs)$/.test(name) && !/\.(test|spec)\./.test(name)) files.push(path);
   }
 })(join(repo, root));
