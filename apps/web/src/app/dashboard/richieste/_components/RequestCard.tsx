@@ -291,6 +291,7 @@ export function RequestCard({
   const [counterError, setCounterError] = useState<string | null>(null);
   const [isCountering, setIsCountering] = useState(false);
   const [isConfirmingDate, setIsConfirmingDate] = useState(false);
+  const [dateAnswerError, setDateAnswerError] = useState<string | null>(null);
   const [isRejectingDate, setIsRejectingDate] = useState(false);
 
   const [confirmingDecline, setConfirmingDecline] = useState(false);
@@ -516,9 +517,13 @@ export function RequestCard({
   async function handleConfirmDate() {
     if (!lead.quote) return;
     setIsConfirmingDate(true);
+    setDateAnswerError(null);
     try {
       await apiClient.confirmProposedQuoteDate(token, lead.quote.id);
       onChanged();
+    } catch (err) {
+      // Per esempio la fascia intanto si è occupata: prima l'errore si perdeva.
+      setDateAnswerError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
       setIsConfirmingDate(false);
     }
@@ -779,7 +784,7 @@ export function RequestCard({
     });
   }
   if (dateChangePending) {
-    menuActions.push({ icon: "check", text: proposalChange ? "Accetta nuova data" : "Conferma appuntamento", onPress: handleConfirmDate });
+    menuActions.push({ icon: "check", text: proposalChange ? "Accetta nuova data" : "Accetta la data", onPress: handleConfirmDate });
   }
   // "Lavoro terminato" dal giorno dell'appuntamento, come in Agenda (§311, collaudo F-01).
   const canComplete = booking?.status === "CONFIRMED" && new Date(booking.scheduledAt).toISOString().slice(0, 10) <= wallClockToday().toISOString().slice(0, 10);
@@ -1434,7 +1439,7 @@ export function RequestCard({
             {stage === "modifica_richiesta" ? (
               <XStack gap="2" flexWrap="wrap">
                 <CardButton fill={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
-                  {isConfirmingDate ? "Conferma..." : proposalChange ? "Accetta nuova data" : "Conferma appuntamento"}
+                  {isConfirmingDate ? "Conferma..." : proposalChange ? "Accetta nuova data" : "Accetta la data"}
                 </CardButton>
                 {/* "Modifica" con sfondo, come "Modifica preventivo" e come
                     il cliente (richiesta esplicita dell'utente, prima
@@ -1450,6 +1455,16 @@ export function RequestCard({
                   {isRejectingDate ? "..." : "Rifiuta la proposta"}
                 </CardButton>
               </XStack>
+            ) : null}
+            {stage === "modifica_richiesta" && !dateAnswerError ? (
+              <Text fontSize={13} color={brand.grafite70}>
+                Poi il cliente accetta il preventivo con quella data.
+              </Text>
+            ) : null}
+            {(stage === "modifica_richiesta" || bookedDateChange) && dateAnswerError ? (
+              <Text role="alert" color={brand.urgenza} fontSize={16}>
+                {dateAnswerError}
+              </Text>
             ) : null}
 
             {bookedDateChange ? (

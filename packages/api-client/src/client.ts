@@ -203,7 +203,7 @@ export type ClientBooking = {
   hasReview: boolean;
   /** Recensione aggiornabile una volta, dopo una segnalazione a lavoro chiuso senza accordo. */
   canUpdateReview: boolean;
-  myReview: { id: string; rating: number; comment: string | null; photoUrls: string[] } | null;
+  myReview: { id: string; rating: number; comment: string | null; photoUrls: string[]; /** Foto di fine lavoro in "Lavori fatti" sul profilo, con il suo ok. */ showcase: boolean } | null;
   /**
    * Conferma del cliente che il lavoro è davvero terminato dal suo lato
    * (richiesta esplicita dell'utente: "servono i completed da entrambi") —
@@ -370,6 +370,8 @@ export type ClientGuidedRequest = {
     clientNote: string | null;
     /** Totale indicativo prima dell'ultima modifica dei prezzi del professionista, null se mai cambiato (docs/CHANGELOG.md §196). */
     previousPrice: { minEurCents: number | null; maxEurCents: number | null } | null;
+    /** Il professionista ha accettato la data proposta dal cliente: ora il cliente accetta il preventivo (collaudo 08/11, E1-02). */
+    proposedDateAccepted: boolean;
     /** Appuntamento sostituito da quello attuale (ultima modifica del professionista, o l'orario richiesto dal cliente se il preventivo non lo rispetta), per il "prima → ora" in UI. null se nulla è cambiato. */
     previousSchedule: { start: string; end: string | null } | null;
     /** Nota lasciata dal professionista quando modifica direttamente l'orario proposto dal cliente durante la trattativa ("Modifica"), invece di limitarsi a confermarlo/rifiutarlo. */
@@ -1924,9 +1926,13 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         body: JSON.stringify(input),
       }),
 
-    /** Il professionista conferma la data proposta dal cliente: crea direttamente la prenotazione. */
+    /**
+     * Il professionista accetta la data proposta dal cliente. Su un appuntamento
+     * già fissato lo sposta; prima dell'accettazione il preventivo torna da
+     * accettare con quella data (`bookingId` null, collaudo 08/11, E1-02).
+     */
     confirmProposedQuoteDate: (token: string, quoteId: string) =>
-      request<{ bookingId: string }>(`/quotes/${quoteId}/confirm-proposed-date`, {
+      request<{ bookingId: string | null }>(`/quotes/${quoteId}/confirm-proposed-date`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
@@ -1984,7 +1990,15 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         body: JSON.stringify({ note }),
       }),
 
-    updateBookingStatus: (token: string, bookingId: string, status: "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW") =>
+    /** Ritorno dalla pagina dell'acconto: se Stripe dice pagato, il lavoro nasce subito senza aspettare il webhook (collaudo 08/11, E3-06). */
+    verifyQuoteDeposit: (token: string, quoteId: string) =>
+      request<{ bookingId: string | null }>(`/bookings/from-quote/${encodeURIComponent(quoteId)}/verify-deposit`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    /** Solo conferma o annullamento: il lavoro si chiude con `completeBooking` (collaudo 08/11, E1-03). */
+    updateBookingStatus: (token: string, bookingId: string, status: "CONFIRMED" | "CANCELED") =>
       request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/status`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
@@ -2111,7 +2125,8 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     uploadBookingCompletionPhoto: (token: string, file: Blob) =>
       uploadFile<{ imageUrl: string }>("/bookings/completion-photos", token, file, "image"),
 
-    createReview: (token: string, input: ReviewInput) =>
+    /** `showcase`: ok a mostrare le foto di fine lavoro in "Lavori fatti" (spento se non indicato). */
+    createReview: (token: string, input: Omit<ReviewInput, "showcase"> & { showcase?: boolean }) =>
       request<{ id: string; held?: boolean }>("/reviews", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
@@ -2124,6 +2139,14 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
+      }),
+
+    /** Il cliente toglie o rimette le foto del lavoro da "Lavori fatti" sul profilo del professionista. */
+    setReviewShowcase: (token: string, reviewId: string, showcase: boolean) =>
+      request<{ showcase: boolean }>(`/reviews/${reviewId}/showcase`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ showcase }),
       }),
 
     /** Risposta pubblica del professionista a una recensione, scritta o modificata. */
@@ -2892,7 +2915,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<ProfessionalPayoutTotals>("/professionals/me/online-payments/summary", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     bookingJobPayment: (token: string, bookingId: string) =>
-      request<JobPayment | null>(`/bookings/${bookingId}/job-payment`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+      request<JobPaymentSummary | null>(`/bookings/${bookingId}/job-payment`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
 
 
