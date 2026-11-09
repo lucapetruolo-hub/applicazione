@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import type { ClientBooking } from "@professionisti/api-client";
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -13,12 +14,14 @@ import { UnreadDot } from "@/components/UnreadDot";
 import { ClientIssueStatus } from "./ClientIssueStatus";
 import { JobPaymentStatus } from "@/components/JobPaymentStatus";
 import { TimelineModal } from "@/components/TimelineModal";
-import { ClientCompleteModal } from "@/components/ClientCompleteModal";
-import { ReviewModal } from "@/components/ReviewModal";
 import { CardButton } from "@/components/CardButton";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { PAYMENT_PAGE_LABEL, startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
+
+// Finestre aperte solo con un tocco: si caricano allora e "Le mie richieste" parte più leggera (docs/changelog/2026-11-09-le-mie-richieste-leggera.md).
+const ClientCompleteModal = dynamic(() => import("@/components/ClientCompleteModal").then((module) => module.ClientCompleteModal));
+const ReviewModal = dynamic(() => import("@/components/ReviewModal").then((module) => module.ReviewModal));
 
 /**
  * Il lavoro nato dal preventivo accettato, in cima alla scheda come un

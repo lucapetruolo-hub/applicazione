@@ -1,6 +1,7 @@
 import { isValidCodiceFiscale, isValidPartitaIva } from "./fiscalValidation";
 import type { ProfessionalCategorySlug } from "./categories";
 import { formatEurCents } from "./professionals";
+import { csvCell } from "./csv";
 import { TRIAL_DAYS, subscriptionTierInfo, type MySubscription } from "./plans";
 import { BRAND } from "./brand";
 
@@ -378,10 +379,6 @@ function csvAmount(cents: number | null): string {
   const sign = cents < 0 ? "-" : "";
   const abs = Math.abs(cents);
   return `${sign}${Math.floor(abs / 100)},${String(abs % 100).padStart(2, "0")}`;
-}
-
-function csvCell(value: string): string {
-  return /[";\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
 /** Foglio di calcolo (CSV con il punto e virgola, come lo apre Excel in italiano). */
