@@ -149,11 +149,11 @@ export function SiteHeader() {
         </XStack>
 
         <XStack alignItems="center" gap="4 xs:3">
+          {/* Campanella, poi "Richiedi preventivo", e il tondino dell'account
+              per ultimo in fondo a destra (richiesta di Luca,
+              docs/changelog/2026-11-09-barra-in-alto-semplice.md). */}
           {isLoading ? null : user ? (
-            <XStack alignItems="center" gap="2">
-              <NotificationBell />
-              <AccountMenu />
-            </XStack>
+            <NotificationBell />
           ) : (
             <Link href="/accedi" style={{ textDecoration: "none" }}>
               {/* brand.cianografia invece di $blue10 stock (Fase 6): 3.84:1 di
@@ -213,6 +213,7 @@ export function SiteHeader() {
               </Button>
             </Link>
           ) : null}
+          {!isLoading && user ? <AccountMenu /> : null}
         </XStack>
       </XStack>
       {isSearchResultsPage ? (

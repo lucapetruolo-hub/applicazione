@@ -61,7 +61,7 @@ export function SearchHeader({
     // dove la versione condensata nell'header non ha spazio a sufficienza.
     <YStack
       width="100%"
-      backgroundColor={brand.cianografiaVelo}
+      backgroundColor={brand.calce}
       paddingVertical={`${expanded ? "5" : "3"}`}
       paddingHorizontal="4"
       alignItems="center"
@@ -90,7 +90,11 @@ export function SearchHeader({
           </YStack>
         ) : (
           <button type="button" className="search-summary" onClick={() => setExpanded(true)} aria-label={`Modifica la ricerca: ${what}, ${where}`}>
-            <Icon name="search" size={18} color={brand.cianografiaScuro} />
+            {/* Come la pillola della barra su computer: il modo a sinistra, la
+                lente verde a destra (docs/changelog/2026-11-09-barra-in-alto-semplice.md). */}
+            <span className="search-summary-mode" aria-hidden="true">
+              <Icon name={initialMode === "online" ? "video" : "house"} size={16} color={brand.cianografiaPieno} />
+            </span>
             <YStack flex={1} minWidth={0} alignItems="flex-start">
               <Text fontWeight="700" fontSize={16} color={brand.grafite} numberOfLines={1}>
                 {what}
@@ -99,11 +103,9 @@ export function SearchHeader({
                 {where}
               </Text>
             </YStack>
-            <XStack flexShrink={0}>
-              <Text fontWeight="700" fontSize={16} color={brand.cianografiaScuro}>
-                Modifica
-              </Text>
-            </XStack>
+            <span className="search-summary-go" aria-hidden="true">
+              <Icon name="search" size={17} color="white" />
+            </span>
           </button>
         )}
       </YStack>

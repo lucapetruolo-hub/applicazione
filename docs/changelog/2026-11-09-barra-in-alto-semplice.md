@@ -24,3 +24,17 @@ tutti in fila, con due pulsanti verdi uno accanto all'altro).
 **Verifica:** foto a 320, 375, 390, 1024, 1280 e 1440 px, con e senza
 accesso, con e senza risultati: nessuno scorrimento orizzontale, nessuna
 sovrapposizione tra pillola, campanella e account.
+
+## Secondo giro (stesso giorno, richieste di Luca)
+
+- Il tondino dell'account va **per ultimo in fondo a destra**, dopo
+  "Richiedi preventivo", ed è più grande (38 px, riquadro da 46 px): lo
+  schema di Airbnb, la tendina si apre sotto il bordo destro.
+- "Servizi" nel menu della home con la stessa freccina sottile della barra e
+  alla stessa misura delle altre voci (prima 14 px contro 16 px).
+- Da telefono, nella pagina dei risultati, la casella "Tutti i professionisti"
+  diventa la stessa pillola: icona del modo a sinistra, lente verde a destra
+  al posto della scritta "Modifica", su fondo bianco come la barra.
+
+Verifica: foto a 320, 390, 1024 e 1440 px, con la tendina aperta; nessuno
+scorrimento orizzontale.

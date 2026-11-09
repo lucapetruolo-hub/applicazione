@@ -121,7 +121,7 @@ export function AccountMenu() {
         {/* Niente etichetta separata: il nome letto è il testo visibile, più
             le novità solo per il lettore di schermo (WCAG 2.5.3, docs/CHANGELOG.md §310). */}
         <span aria-hidden="true" style={{ display: "flex" }}>
-          <Avatar name={avatarName ?? "?"} imageUrl={displayImageUrl} size={32} />
+          <Avatar name={avatarName ?? "?"} imageUrl={displayImageUrl} size={38} />
         </span>
         {/* Solo la foto, da telefono e da computer: un nome lungo spingeva fuori
             schermo "Richiedi preventivo" (§319) e su computer affollava la

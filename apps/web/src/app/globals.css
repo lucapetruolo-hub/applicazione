@@ -1458,8 +1458,8 @@ button.notif-row-main:hover {
    piccolo riquadro tondo. Il nome resta per il lettore di schermo e dentro la
    tendina (docs/changelog/2026-11-09-barra-in-alto-semplice.md, prima §319). */
 .acct-trigger {
-  height: 40px;
-  padding: 0 8px 0 3px;
+  height: 46px;
+  padding: 0 10px 0 3px;
   border: 1px solid #eadfd3;
   border-radius: 999px;
   background: #fff;
@@ -6667,7 +6667,7 @@ a.admin-kpi:hover {
   gap: 12px;
   width: 100%;
   min-height: 56px;
-  padding: 8px 18px;
+  padding: 8px 8px;
   border: 1px solid #eadfd3;
   border-radius: 999px;
   background: #fff;
@@ -6675,6 +6675,20 @@ a.admin-kpi:hover {
   text-align: left;
   font: inherit;
   touch-action: manipulation;
+}
+.search-summary-mode,
+.search-summary-go {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: #eef6f1;
+}
+.search-summary-go {
+  background: #128552;
 }
 .search-summary:active {
   background: #faf6f0;
