@@ -2,7 +2,7 @@ import { ACTION_SHORT_LABEL, auditLabel } from "./audit-label";
 import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, jobIssueAssisted, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, type AdminSignupFunnel, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES, ADMIN_BOOKING_STATUS_LABEL, ADMIN_REQUEST_STATUS_LABEL, contentReportReason, type AdminModerateInput, type AdminSignalArchiveReason, type AdminSignalRole, type AdminUserSignal, adviseSuspiciousUser, type ProfessionalStatusKey, type ReviewHoldReason } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, jobIssueAssisted, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, type AdminSignupFunnel, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES, ADMIN_BOOKING_STATUS_LABEL, ADMIN_REQUEST_STATUS_LABEL, contentReportReason, type AdminModerateInput, type AdminSignalArchiveReason, type AdminSignalRole, type AdminUserSignal, adviseSuspiciousUser, type ProfessionalStatusKey, type ReviewHoldReason, csvCell } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { PUBLIC_VISIBILITY_SELECT } from "../professional-fiscal/public-visibility";
 import { bookingSearchWhere, userSearchWhere } from "./admin-search";
@@ -1999,10 +1999,9 @@ function toUserRow(u: Prisma.UserGetPayload<{ select: typeof USER_ROW_SELECT }>)
   };
 }
 
-/** CSV con separatore ";" (Excel in italiano) e BOM per gli accenti. */
+/** CSV con separatore ";" (Excel in italiano) e BOM per gli accenti; celle protette dalle formule (`csvCell`, E2-06). */
 function toCsv(header: string[], rows: string[][]): string {
-  const cell = (value: string) => (/[";\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
-  return "\uFEFF" + [header, ...rows].map((row) => row.map(cell).join(";")).join("\r\n") + "\r\n";
+  return "\uFEFF" + [header, ...rows].map((row) => row.map(csvCell).join(";")).join("\r\n") + "\r\n";
 }
 
 function startOfIsoWeek(date: Date): Date {

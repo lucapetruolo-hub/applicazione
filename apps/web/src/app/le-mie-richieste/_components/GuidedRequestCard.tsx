@@ -7,13 +7,11 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
 import {
-  allItalianCityNames,
   quotesPriceSpan,
   formatEur,
   formatEurCents,
   cancellationNoticeLabel,
   isLateCancellation,
-  findComuneByName,
   formatItalianUntil,
   formatServicePriceRange,
   isPlausiblePhoneNumber,
@@ -24,6 +22,7 @@ import {
 } from "@professionisti/shared";
 import { Autocomplete, Avatar, Badge, BadgeInfo, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { useComuni } from "@/lib/comuniLazy";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { ProfessionalReviewsSummary } from "@/components/ProfessionalReviewsLink";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -60,6 +59,9 @@ import { ClientMiniTimeline, ClientStagePill, MAX_REQUEST_PHOTOS, STAGE_STYLE, S
 
 /** Acconto online che resta al professionista se il cliente annulla ora, dentro il preavviso (docs/CHANGELOG.md §348). */
 /** Pagato online e non ancora rimborsato (collaudo F-02). */
+/** Elenco vuoto stabile mentre i comuni arrivano. */
+const NO_CITIES: string[] = [];
+
 function paidOnline(booking: ClientBooking | null | undefined): number {
   if (booking?.payment?.method !== "ONLINE") return 0;
   return Math.max(0, booking.payment.paidEurCents - booking.payment.refundedEurCents);
@@ -192,7 +194,10 @@ export function GuidedRequestCard({
     city,
     setPostalCode,
   });
-  const cityComune = findComuneByName(city);
+  // Elenco dei comuni scaricato solo quando si apre "Modifica", non con la pagina
+  // (collaudo N-01, docs/changelog/2026-11-09-le-mie-richieste-leggera.md).
+  const comuni = useComuni(isEditing);
+  const cityComune = comuni?.findComuneByName(city);
   function changeCity(next: string) {
     const changed = next.trim().toLowerCase() !== city.trim().toLowerCase();
     setCity(next);
@@ -203,7 +208,7 @@ export function GuidedRequestCard({
       setPostalCode("");
     }
     chosenAddress.setChosen(false);
-    const comune = findComuneByName(next);
+    const comune = comuni?.findComuneByName(next);
     if (comune) setProvince(comune.province);
   }
   const [photoUrls, setPhotoUrls] = useState<string[]>(request.photoUrls);
@@ -426,7 +431,7 @@ export function GuidedRequestCard({
       setError("Indica la città.");
       return;
     }
-    if (city.trim() && !cityComune) {
+    if (city.trim() && comuni && !cityComune) {
       setError("Scegli la città dall'elenco dei comuni.");
       return;
     }
@@ -551,7 +556,7 @@ export function GuidedRequestCard({
           </Text>
           <textarea aria-label="Descrizione del lavoro" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} style={textareaStyle} />
           <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="4" backgroundColor={brand.calce}>
-            <Autocomplete items={allItalianCityNames()} getKey={(item) => item} getLabel={(item) => item} onSelect={changeCity} value={city} onChangeText={changeCity} placeholder="Città" minChars={3} />
+            <Autocomplete items={comuni?.allItalianCityNames() ?? NO_CITIES} getKey={(item) => item} getLabel={(item) => item} onSelect={changeCity} value={city} onChangeText={changeCity} placeholder="Città" minChars={3} />
           </YStack>
           {request.serviceMode === "ONLINE" ? (
             <Text fontSize={13} color={brand.grafite70}>
@@ -567,7 +572,7 @@ export function GuidedRequestCard({
             onSelect={(selected) => {
               // Suggerimenti di Google: compila anche gli altri campi (docs/CHANGELOG.md §141, §214),
               // città compresa: via e città si scrivono insieme (§264).
-              const comune = selected.locality ? findComuneByName(selected.locality) : undefined;
+              const comune = selected.locality ? comuni?.findComuneByName(selected.locality) : undefined;
               if (comune || selected.locality) setCity(comune?.name ?? selected.locality ?? "");
               setAddress(selected.street ?? selected.address);
               setHouseNumber(selected.houseNumber ?? "");

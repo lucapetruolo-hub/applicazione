@@ -2,7 +2,10 @@ import { BadRequestException, ConflictException, ForbiddenException, HttpExcepti
 import { JwtService } from "@nestjs/jwt";
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import * as bcrypt from "bcryptjs";
+import { redeemGoogleNonce } from "./google-nonce";
 import { OAuth2Client } from "google-auth-library";
+import { CronExpression } from "@nestjs/schedule";
+import { ScheduledJob } from "../common/scheduled-job";
 import { EMAIL_CODE_LENGTH, LEGAL_CONSENT_VERSION, NO_CATEGORY_MESSAGE, NO_ENTITY_TYPE_MESSAGE, formatEurCents, wallClockNow, type AccountClosureCheck, type ChurnReason, type EmailStatus, type ProfessionalEntityTypeValue, type TrafficSource } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
@@ -290,7 +293,9 @@ export class AuthService {
       throw new BadRequestException("Login con Google non configurato su questo ambiente.");
     }
 
-    let payload: { sub?: string; email?: string; name?: string; given_name?: string; family_name?: string; picture?: string } | undefined;
+    let payload:
+      | { sub?: string; email?: string; email_verified?: boolean; nonce?: string; name?: string; given_name?: string; family_name?: string; picture?: string }
+      | undefined;
     try {
       const ticket = await this.googleClient.verifyIdToken({
         idToken,
@@ -300,8 +305,16 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException("Token Google non valido o scaduto.");
     }
-    if (!payload?.sub || !payload.email) {
+    // Solo un'email che Google ha verificato può entrare in un account con la
+    // stessa email (E2-01 del controllo dell'08/11): altrimenti chi ottiene da
+    // Google un token con l'email di un nostro utente entrerebbe nel suo account.
+    if (!payload?.sub || !payload.email || payload.email_verified !== true) {
       throw new UnauthorizedException("Token Google non valido.");
+    }
+    // Il `nonce` deve essere uno dei nostri e mai usato (google-nonce.ts):
+    // un token rubato e portato qui direttamente non entra.
+    if (!redeemGoogleNonce(payload.nonce)) {
+      throw new UnauthorizedException("Accesso con Google scaduto. Riprova.");
     }
     // Email in minuscolo come nei moduli del sito (§330).
     const googleEmail = payload.email.trim().toLowerCase();
@@ -581,6 +594,32 @@ export class AuthService {
     const updated = await this.prisma.user.update({ where: { id: userId }, data: { passwordHash, sessionVersion: { increment: 1 } } });
     if (user.email) await this.emailService.send({ to: user.email, ...passwordChangedEmail(user.name) });
     return { token: this.issueToken(updated) };
+  }
+
+  /**
+   * "Esci" (controllo pre-lancio dell'08/11): chiude davvero questo accesso
+   * sul server, non solo nel browser, così su un computer condiviso il token
+   * rimasto non vale più. Gli altri dispositivi restano dentro. Un token di
+   * prima, senza codice, non si può chiudere da solo: si chiudono tutti gli
+   * accessi dell'account.
+   */
+  async logout(userId: string, session: { jti?: string; exp?: number } | undefined): Promise<void> {
+    if (session?.jti) {
+      const expiresAt = new Date((session.exp ?? Math.floor(Date.now() / 1000) + 30 * 86_400) * 1000);
+      await this.prisma.revokedSession.upsert({ where: { jti: session.jti }, create: { jti: session.jti, expiresAt }, update: {} });
+      return;
+    }
+    await this.prisma.user.update({ where: { id: userId }, data: { sessionVersion: { increment: 1 } } });
+  }
+
+  /** Gli accessi chiusi scaduti non servono più: il token è comunque scaduto. */
+  @ScheduledJob(CronExpression.EVERY_DAY_AT_4AM)
+  async purgeRevokedSessions(): Promise<void> {
+    try {
+      await this.prisma.revokedSession.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+    } catch (error) {
+      this.logger.warn(`Pulizia degli accessi chiusi non riuscita: ${error instanceof Error ? error.message : error}`);
+    }
   }
 
   /** "Esci dagli altri dispositivi" (§294): come dopo un cambio password, questo resta dentro col token nuovo. */

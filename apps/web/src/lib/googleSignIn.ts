@@ -47,18 +47,19 @@ export function parseGoogleState(raw: string): { state: string; mode: "popup" | 
 }
 
 /**
- * Il `nonce` scritto da Google nel token: deve essere quello generato al
- * tocco del pulsante, così un token non chiesto da questa pagina viene
- * scartato. Firma, scadenza e destinatario li controlla il server.
+ * Il `nonce` scritto da Google nel token e se Google ha verificato l'email.
+ * Il `nonce` deve essere quello chiesto al server al tocco del pulsante, così
+ * un token non chiesto da questa pagina viene scartato subito. Firma,
+ * scadenza, destinatario, `nonce` ed email verificata li ricontrolla il server.
  */
-export function idTokenNonce(idToken: string): string | null {
+export function idTokenClaims(idToken: string): { nonce: string | null; emailVerified: boolean } {
   try {
     const part = idToken.split(".")[1];
-    if (!part) return null;
+    if (!part) return { nonce: null, emailVerified: false };
     const json = atob(part.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(part.length / 4) * 4, "="));
-    const payload = JSON.parse(json) as { nonce?: unknown };
-    return typeof payload.nonce === "string" ? payload.nonce : null;
+    const payload = JSON.parse(json) as { nonce?: unknown; email_verified?: unknown };
+    return { nonce: typeof payload.nonce === "string" ? payload.nonce : null, emailVerified: payload.email_verified === true };
   } catch {
-    return null;
+    return { nonce: null, emailVerified: false };
   }
 }
