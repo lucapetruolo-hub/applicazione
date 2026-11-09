@@ -80,3 +80,21 @@ il client dell'API per pagina (46 KB non compressi su ogni pagina).
   7 con 12-46 pixel diversi (bordo di un pulsante, testo durante il caricamento),
   nessuna differenza visibile; la home identica.
 - `pnpm lint`, `typecheck`, prove di `packages/shared`.
+
+## Secondo giro: controlli perché non ritorni (stesso giorno, migliorie approvate da Luca)
+
+- `apps/web/scripts/controlla-js-pagine-pubbliche.mjs`, nel job
+  typecheck-build-test dopo la build: per home, `/cerca`, mestieri, città,
+  servizio, profilo, per-professionisti, prezzi e domande frequenti legge dai
+  manifest di Next.js i file caricati all'apertura e blocca la PR se dentro
+  c'è zod o l'elenco di tutti i comuni. Stampa anche il peso compresso di
+  ogni pagina.
+- Al primo giro ha trovato zod su `/cerca`: veniva dall'accesso e
+  registrazione di "Prendete in carico la richiesta" (`InlineAuthGate` in
+  `ProblemBand`), ora caricato solo al tocco. `/cerca` scende di circa 55 KB
+  compressi (337 KB in tutto).
+- Lighthouse della CI (`e2e/lighthouse/agenda.mjs`) misura anche home e
+  pagina città (`/cerca/idraulico/latina`) da visitatore senza account. La
+  home ha un limite di TBT di 700 ms invece di 500 finché il thread
+  "Alleggerire l'apertura delle pagine pubbliche" non toglie il lavoro di
+  Tamagui; la città ha i limiti di sempre.

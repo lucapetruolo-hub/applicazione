@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   OUT_OF_SERVICE_LABELS,
@@ -13,8 +14,13 @@ import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import type { ChosenPro } from "./ChosenProsBar";
-import { InlineAuthGate } from "./InlineAuthGate";
 import { problemCategoryChoices } from "@/lib/problemChoices";
+
+// Accesso e registrazione (con i loro controlli dei campi) caricati solo
+// quando servono, al tocco di "Prendete in carico la richiesta": prima
+// stavano nel JavaScript di /cerca per tutti
+// (docs/changelog/2026-11-09-meno-javascript-comune.md).
+const InlineAuthGate = dynamic(() => import("./InlineAuthGate").then((module) => module.InlineAuthGate), { ssr: false });
 
 /**
  * Banda in cima ai risultati quando il cliente descrive il problema invece
