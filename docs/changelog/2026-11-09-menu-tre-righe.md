@@ -38,3 +38,12 @@ visitatore, cliente e professionista: pagina scorsa a 300 px, menu aperto,
 rotella senza effetto (la pagina resta a 300 px), 30 Tab senza mai uscire
 dal menu, Esc riporta il fuoco sulle tre righe. In `/dashboard` le tre righe
 non ci sono. Nessuno scorrimento orizzontale a 320 px.
+
+## Secondo giro
+
+- Nel menu è evidenziato il mestiere della pagina in cui sei (anche con la
+  città, `/cerca/idraulico/roma`), con lo stesso fondo e lo stesso verde
+  della voce attiva del menu dell'account e `aria-current="page"` per il
+  lettore di schermo (richiesta di Luca).
+
+Verifica: `/cerca/idraulico` a 390 px, menu aperto: "Idraulico" evidenziato.

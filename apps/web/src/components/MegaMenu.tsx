@@ -202,16 +202,25 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
               </div>
               <div className="mega-section-label" id="mega-mestieri">Cerca per mestiere</div>
               <ul className="mega-categories" aria-labelledby="mega-mestieri">
-                {MOBILE_CATEGORIES.map((category) => (
+                {MOBILE_CATEGORIES.map((category) => {
+                  // Il mestiere della pagina in cui sei, anche con la città (/cerca/idraulico/roma).
+                  const active = pathname === `/cerca/${category.slug}` || pathname.startsWith(`/cerca/${category.slug}/`);
+                  return (
                   <li key={category.slug}>
-                    <Link href={`/cerca/${category.slug}`} className="mega-category" onClick={() => setMobileOpen(false)}>
+                    <Link
+                      href={`/cerca/${category.slug}`}
+                      className={`mega-category${active ? " is-active" : ""}`}
+                      aria-current={active ? "page" : undefined}
+                      onClick={() => setMobileOpen(false)}
+                    >
                       <span className="mega-category-icon" aria-hidden>
                         <Icon name={category.icon} size={18} strokeWidth={1.5} />
                       </span>
                       {category.label}
                     </Link>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </div>
             {/* Azione da cliente: come nell'header, non per un professionista. */}
@@ -462,6 +471,10 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
         }
         :global(.mega-category:hover) {
           background: #efe9e2;
+        }
+        :global(.mega-category.is-active) {
+          background: #efe9e2;
+          color: #0e7a4c;
         }
         .mega-category-icon {
           display: inline-flex;
