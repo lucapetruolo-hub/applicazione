@@ -1,5 +1,4 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import {
   formatAppointmentTimeRange,
@@ -12,6 +11,7 @@ import {
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { touchingWindow } from "../agenda/commitments";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const DAY_MS = 24 * 60 * 60_000;
 
@@ -64,7 +64,7 @@ export class AgendaTomorrowSummaryService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  @Cron("0 18-21 * * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 18-21 * * *", { timeZone: "Europe/Rome" })
   async sendTomorrowSummaries(now: Date = new Date()): Promise<void> {
     const hour = wallClockNow(now).getUTCHours();
     const tomorrow = new Date(wallClockToday(now).getTime() + DAY_MS);

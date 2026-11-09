@@ -1,10 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import { formatAppointmentDate, wallClockToday } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const DAY_MS = 86_400_000;
 
@@ -23,7 +24,7 @@ export class AwayService {
     private readonly guidedRequestsService: GuidedRequestsService,
   ) {}
 
-  @Cron("0 10 * * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 10 * * *", { timeZone: "Europe/Rome" })
   async remindEnding(now: Date = new Date()): Promise<void> {
     // `awayUntil` è la mezzanotte del giorno di ritorno nell'ora "dell'orologio".
     const tomorrow = new Date(wallClockToday(now).getTime() + DAY_MS);
@@ -52,7 +53,7 @@ export class AwayService {
   }
 
   /** Pause finite: il campo si azzera e arrivano le richieste aperte della zona. */
-  @Cron(CronExpression.EVERY_HOUR)
+  @ScheduledJob(CronExpression.EVERY_HOUR)
   async endPauses(now: Date = new Date()): Promise<void> {
     const ended = await this.prisma.professionalProfile.findMany({
       where: { awayUntil: { lte: now } },

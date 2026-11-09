@@ -10,7 +10,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { SkeletonBlock, SkeletonTableRows } from "@/components/Skeleton";
 import { AdminInvoicesSection } from "@/components/admin/AdminInvoicesSection";
-import { BRAND, formatEurCents } from "@professionisti/shared";
+import { BRAND, ONLINE_APP_FEE_PERCENT, formatEurCents } from "@professionisti/shared";
 
 /**
  * Fisco e fatture → Le nostre fatture (CLAUDE.md §88, docs/CHANGELOG.md §378):
@@ -142,6 +142,11 @@ export default function AdminFinanzaPage() {
             qui senza deploy.
           </Text>
         </XStack>
+        {/* Collaudo dell'8/11/2026, E3-10: sui pagamenti online la trattenuta si tiene all'addebito. */}
+        <Text fontSize={14} color={brand.grafite70}>
+          Sui pagamenti online all&apos;addebito si tiene al massimo il {ONLINE_APP_FEE_PERCENT}% + IVA: una regola più alta conta solo
+          fino a lì, la differenza non si incassa.
+        </Text>
         {feeRules === null ? (
           <SkeletonTableRows rows={3} cols={7} />
         ) : (
@@ -162,7 +167,12 @@ export default function AdminFinanzaPage() {
                 {feeRules.map((rule) => (
                   <tr key={rule.id}>
                     <td>{rule.name}</td>
-                    <td>{(rule.percentageBasisPoints / 100).toFixed(2)}%</td>
+                    <td>
+                      {(rule.percentageBasisPoints / 100).toFixed(2)}%
+                      {rule.percentageBasisPoints > ONLINE_APP_FEE_PERCENT * 100 || rule.fixedFeeEurCents > 0 || (rule.minFeeEurCents ?? 0) > 0 ? (
+                        <Text fontSize={13} color={brand.urgenza}> (online al massimo {ONLINE_APP_FEE_PERCENT}%)</Text>
+                      ) : null}
+                    </td>
                     <td>{formatEurCents(rule.fixedFeeEurCents)}</td>
                     <td>
                       {rule.minFeeEurCents !== null

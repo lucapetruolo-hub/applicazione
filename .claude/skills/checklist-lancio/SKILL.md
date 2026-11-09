@@ -88,6 +88,18 @@ produzione):
    si può dare (Stripe acceso e `LAUNCH_DATE` fissata), e la pagina lo dice
    con il pulsante "Attiva i mesi gratis". Dopo il lancio la pausa
    `CARD_NEEDED` copre già il caso.
+5ter. **Dashboard Stripe dell'abbonamento** (controllo dell'8/11/2026,
+   docs/changelog/2026-11-08-abbonamento-chiusure-e-rinnovi.md):
+   Impostazioni → Fatturazione → Abbonamenti ed email → "Gestisci pagamenti
+   non riusciti": Smart Retries accesi, entro 2 settimane, e alla fine
+   "Annulla l'abbonamento"; email di Stripe per il pagamento non riuscito
+   accese. Il sito chiude comunque l'abbonamento dopo 14 giorni di rinnovo
+   non pagato, ma è meglio che lo faccia Stripe. Metodi di pagamento: solo
+   carta (il Checkout dell'abbonamento chiede già solo la carta). Webhook
+   creati con la versione API più recente. Sul primo endpoint anche
+   l'evento `customer.updated`: con una carta cambiata il rinnovo non pagato
+   si riprova subito (chi non paga è in pausa dal giorno dopo, decisione di
+   Luca del 9/11/2026).
 5. Chiavi Stripe Checkout reali (già segnalate in §9 sopra:
    `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PRICE_BASE`/
    `STRIPE_PRICE_PLUS`/`STRIPE_PRICE_PRO`, con gli eventi webhook
@@ -350,11 +362,11 @@ prima del lancio"):
     variabili su Render (`WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
     `WHATSAPP_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`), webhook
     registrato, prova con un numero vero. Accettare i termini e i Data
-    Processing Terms di Meta (domanda 69 per l'avvocato). Appena acceso:
-    cambiare "email e SMS" in "email e WhatsApp" in "Come funziona"
-    (`QuoteExampleSection.tsx`) e aggiungere in `/sicurezza` che il codice
-    WhatsApp si scrive solo sul sito (riproporlo a Luca). Se al lancio non
-    è acceso, togliere "e SMS" dalla frase.
+    Processing Terms di Meta (domanda 69 per l'avvocato). "Come funziona"
+    in home dice già "email e WhatsApp" (Luca, 09/11/2026, PR #260): se al
+    lancio il canale non è acceso, togliere "e WhatsApp" dalla frase
+    (`QuoteExampleSection.tsx`). Appena acceso, aggiungere in `/sicurezza`
+    che il codice WhatsApp si scrive solo sul sito (riproporlo a Luca).
     Da riprendere quando l'avvocato risponde alla domanda 70 (Luca,
     28/10/2026): promemoria WhatsApp anche ai clienti dei lavori esterni
     dell'agenda (non iscritti al sito), mandato per conto del professionista.
@@ -462,11 +474,24 @@ aperti solo:
       Google Cloud → API e servizi → ogni API → Quote, un limite al giorno
       per Places API (New), Maps Static e Geocoding, più un avviso di budget
       in Fatturazione → Budget e avvisi. L'API ha già un suo tetto
-      giornaliero sulle rotte aperte a tutti (suggerimenti 5000, dettagli
-      indirizzo 2000, mappe fisse 2000); `GOOGLE_PUBLIC_DAILY_LIMIT` su
-      Render lo cambia per tutte.
+      giornaliero sulle rotte aperte a tutti (dall'08/11/2026 suggerimenti
+      1000, dettagli indirizzo e CAP 500, mappe fisse 500, vicino alla quota
+      gratuita); `GOOGLE_PUBLIC_DAILY_LIMIT` su Render lo cambia per tutte.
+      Budget con avviso a 20 €.
     - **Sentry attivo**: `SENTRY_DSN` impostata su Render e avvisi email
       accesi in Sentry (Alerts), con una prova.
+    - **Variabili del servizio EU** (controllo 08/11/2026, E9-03): su
+      `professionisti-api-eu` controllare che ci siano `FISCAL_DATA_KEY`
+      (se manca, impostarla subito e non cambiarla più), `SENTRY_DSN`,
+      `STRIPE_TAX_RATE_IVA`, `LAUNCH_DATE`. Elenco completo in
+      `docs/ops/variabili.md`.
+    - **Avvisi**: notifiche di GitHub Actions alla casella letta, segreti
+      `UPTIME_EMAIL`/`UPTIME_PASSWORD` rifatti con un account di prova del
+      database nuovo, `E2E_STRIPE_SECRET_KEY` presente (senza, ora i
+      controlli falliscono apposta): `docs/ops/avvisi.md`.
+    - **Prova di ripristino del database** e rollback: passi in
+      `docs/ops/ripristino.md` e `docs/ops/rollback.md`, da provare una
+      volta su un database di prova e correggere dove non tornano.
     - **Verifica in due passaggi** su GitHub, Render, Vercel, Stripe,
       Cloudinary, Resend, Google Cloud, Didit, Openapi e sull'email usata
       per questi account.
@@ -498,10 +523,12 @@ Luca ha scelto di farle poco prima del lancio, quando nome e sito sono
 definitivi. Già fatte (docs/CHANGELOG.md §295): H1, canonical, indirizzo
 leggibile del profilo, pagina "non trovata", percorso Home › Categoria ›
 Città, pagine vuote fuori da Google.
-30. **Dominio vero nel sito**: cambiare `SITE_URL` in
-    `apps/web/src/lib/siteUrl.ts` (canonical, sitemap, dati strutturati e
-    anteprime lo prendono tutti da lì) e mettere su Vercel il redirect
-    permanente da `applicazione-web.vercel.app` al dominio nuovo.
+30. **Dominio vero nel sito**: non solo `SITE_URL` in
+    `apps/web/src/lib/siteUrl.ts` e il redirect su Vercel: vanno cambiati
+    **dieci posti** (anche `FRONTEND_URL` su Render, senza il quale il sito
+    resta vuoto, Google OAuth, Turnstile, Resend, uptime, Stripe). Elenco e
+    prova finale in `docs/ops/cambio-dominio.md` (controllo dell'08/11/2026,
+    E9-09).
 31. **Google Search Console**: verificare il dominio (record DNS) e inviare
     `/sitemap.xml` (punto 0). Controllare dopo qualche giorno "Pagine" e
     "Esperienza".
