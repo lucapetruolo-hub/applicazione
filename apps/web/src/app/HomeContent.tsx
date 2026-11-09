@@ -4,7 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import type { PopularJobsResponse, ProblemExamplesResponse, ProfessionalCategorySlug, ServicePriceIndexEntry } from "@professionisti/shared";
 import type { NewProfileSummary } from "@/lib/newProfiles";
-import { Section, SectionDensityProvider, YStack } from "@professionisti/ui";
+import { Section, SectionDensityProvider } from "@professionisti/ui";
 import { CategoryStoryRail, useCategoryStoryRail } from "@/components/CategoryStoryRail";
 import { FadeInSection } from "@/components/FadeInSection";
 import { HomeFaq } from "@/components/HomeFaq";
@@ -17,6 +17,7 @@ import { QualitySection } from "@/components/QualitySection";
 import { QuoteExampleSection } from "@/components/QuoteExampleSection";
 import { RecentReviews } from "@/components/RecentReviews";
 import { ProCtaSection } from "@/components/ProCtaSection";
+import styles from "./HomeContent.module.css";
 
 export default function HomeContent({
   professionals,
@@ -55,7 +56,7 @@ export default function HomeContent({
           sottosezione (packages/ui/src/Section.tsx). Il link "Hai
           un'emergenza?" in fondo è stato tolto: la richiesta urgente è già
           nella parte verde in alto. */}
-      <YStack width="100%" alignItems="center">
+      <div className={`is_View ${styles.page}`}>
         {/* 1. Parte verde con la ricerca, invariata. */}
         <HomeHero examples={problemExamples} />
 
@@ -131,7 +132,7 @@ export default function HomeContent({
         <Suspense fallback={null}>
           <ProCtaSection />
         </Suspense>
-      </YStack>
+      </div>
     </SectionDensityProvider>
   );
 }

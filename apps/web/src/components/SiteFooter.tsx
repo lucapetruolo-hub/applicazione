@@ -1,11 +1,18 @@
-"use client";
-
+import type { ReactNode } from "react";
+import { BadgeCheck, MapPin, Shield, Tag, type LucideIcon } from "lucide-react";
 import Link from "@/components/IntentLink";
-import { usePathname } from "next/navigation";
 import { BRAND, COMPANY, PROFESSIONAL_CATEGORIES, companyDataReady } from "@professionisti/shared";
-import { Icon, Logo, Text, XStack, YStack, brand } from "@professionisti/ui";
-import { reopenCookieChoice } from "@/lib/cookieConsent";
-import { useAuth } from "@/lib/AuthContext";
+import { LogoPlain } from "@/components/LogoPlain";
+import { CookiePreferencesButton, FooterByPath, FooterLoginLink } from "./SiteFooterParts";
+import styles from "./SiteFooter.module.css";
+
+// Componente del server in HTML semplice, non più Tamagui
+// (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md): il piede è
+// su ogni pagina e il telefono calcolava gli stili di una sessantina di
+// elementi a ogni apertura. Disegno identico (confronto pixel per pixel);
+// le sole parti che servono al browser sono in SiteFooterParts.tsx.
+// Colore delle icone: brand.grafite70 (packages/ui/src/tokens.ts).
+const ICON_COLOR = "#6E6459";
 
 // Prima i quattro mestieri del lancio (CLAUDE.md §7), poi gli altri fino a
 // otto: Falegname restava fuori (collaudo N-13,
@@ -18,20 +25,32 @@ const MAIN_CATEGORIES = [
 ].slice(0, 8);
 
 function FooterColumnTitle({ children }: { children: string }) {
-  return (
-    <Text fontFamily="body" fontSize={16} fontWeight="700" color={brand.grafite}>
-      {children}
-    </Text>
-  );
+  return <span className={`is_Text font_body ${styles.columnTitle}`}>{children}</span>;
 }
 
 function FooterLink({ href, children }: { href: string; children: string }) {
   return (
-    <Link href={href} style={{ textDecoration: "none" }}>
-      <Text fontSize={16} color={brand.grafite}>
-        {children}
-      </Text>
+    <Link href={href} className={styles.link}>
+      <span className={`is_Text ${styles.linkText}`}>{children}</span>
     </Link>
+  );
+}
+
+/** Link piccoli della riga in fondo (piede completo e piede corto). */
+function SmallLink({ href, children }: { href: string; children: string }) {
+  return (
+    <Link href={href} className={styles.link}>
+      <span className={`is_Text font_body ${styles.small}`}>{children}</span>
+    </Link>
+  );
+}
+
+function TrustBadge({ icon: IconComponent, children }: { icon: LucideIcon; children: ReactNode }) {
+  return (
+    <div className={`is_View ${styles.badge}`}>
+      <IconComponent size={16} color={ICON_COLOR} strokeWidth={1.5} fill="none" />
+      <span className={`is_Text ${styles.badgeText}`}>{children}</span>
+    </div>
   );
 }
 
@@ -40,64 +59,39 @@ function FooterLink({ href, children }: { href: string; children: string }) {
 // verificare a un legale prima del lancio definitivo — il titolare del
 // trattamento è indicato con segnaposto da compilare con i dati reali
 // dell'azienda (ragione sociale, P.IVA, sede) appena disponibili.
-/** Aree riservate (cliente, professionista, admin): piede corto, senza i link di marketing. */
-const RESERVED_AREAS = ["/dashboard", "/admin", "/account", "/chat", "/le-mie-richieste", "/professionisti-salvati", "/le-mie-recensioni", "/segnalazioni"];
-/** Pagine di accesso e iscrizione: stesso piede corto, per non distrarre a metà dei passi
- * (docs/changelog/2026-11-02-registrazione-pro-grafica.md). */
-const AUTH_PAGES = ["/registrati", "/accedi", "/password-dimenticata", "/reimposta-password", "/conferma-email", "/completa-profilo", "/accesso-google"];
-
-function ShortFooterLink({ href, children }: { href: string; children: string }) {
+function ShortFooter() {
   return (
-    <Link href={href} style={{ textDecoration: "none" }}>
-      <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
-        {children}
-      </Text>
-    </Link>
+    <div className={`is_View ${styles.short}`}>
+      <div className={`is_View ${styles.shortRow}`}>
+        <span className={`is_Text font_body ${styles.small}`}>
+          © {new Date().getFullYear()} {BRAND.name}
+        </span>
+        <SmallLink href="/privacy">Privacy</SmallLink>
+        <SmallLink href="/termini">Termini</SmallLink>
+        <SmallLink href="/cookie">Cookie</SmallLink>
+        <CookiePreferencesButton />
+        <SmallLink href="/note-legali">Note legali</SmallLink>
+        <SmallLink href="/contatti">Aiuto</SmallLink>
+      </div>
+    </div>
   );
 }
 
-export function SiteFooter() {
-  const pathname = usePathname();
-  const { user } = useAuth();
-  // Dentro le aree riservate il piede completo (quattro colonne, "Iscriviti
-  // gratis", "Accedi") non serve a chi è già dentro e su telefono era più
-  // lungo della chat (docs/CHANGELOG.md §349): resta una riga sola.
-  if ([...RESERVED_AREAS, ...AUTH_PAGES].some((area) => pathname === area || pathname.startsWith(`${area}/`))) {
-    return (
-      <YStack width="100%" alignItems="center" paddingVertical="5" paddingHorizontal="4">
-        <XStack flexWrap="wrap" justifyContent="center" alignItems="center" columnGap="4" rowGap="2">
-          <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
-            © {new Date().getFullYear()} {BRAND.name}
-          </Text>
-          <ShortFooterLink href="/privacy">Privacy</ShortFooterLink>
-          <ShortFooterLink href="/termini">Termini</ShortFooterLink>
-          <ShortFooterLink href="/cookie">Cookie</ShortFooterLink>
-          {/* Il banner dice di cambiare idea "in fondo alla pagina": serve anche qui (collaudo del 29/10/2026, M-13). */}
-          <button type="button" onClick={reopenCookieChoice} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
-            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
-              Preferenze cookie
-            </Text>
-          </button>
-          <ShortFooterLink href="/note-legali">Note legali</ShortFooterLink>
-          <ShortFooterLink href="/contatti">Aiuto</ShortFooterLink>
-        </XStack>
-      </YStack>
-    );
-  }
+function FullFooter() {
   return (
-    <YStack width="100%" backgroundColor="transparent" alignItems="center">
-      <YStack width="100%" maxWidth={1200} paddingVertical="8" paddingHorizontal="4" gap="7">
+    <div className={`is_View ${styles.root}`}>
+      <div className={`is_View ${styles.inner}`}>
         {/* Su telefono "Servizi" e "Per i clienti" stanno affiancate (docs/CHANGELOG.md §349). */}
-        <XStack flexWrap="wrap" columnGap="5" rowGap="6" justifyContent="space-between">
-          <YStack gap="3" maxWidth={280} flexBasis="100% gtSm:auto">
-            <Logo name={BRAND.name} size={22} />
-            <Text fontSize={16} color={brand.grafite70}>
+        <div className={`is_View ${styles.columns}`}>
+          <div className={`is_View ${styles.intro}`}>
+            <LogoPlain name={BRAND.name} size={22} />
+            <span className={`is_Text ${styles.introText}`}>
               Trova e prenota professionisti per la casa e la famiglia: idraulici, elettricisti,
               imbianchini, babysitter, dogsitter e altro, vicino a te.
-            </Text>
-          </YStack>
+            </span>
+          </div>
 
-          <YStack gap="2" flexBasis={150} flexGrow={1} maxWidth={240}>
+          <div className={`is_View ${styles.column}`}>
             <FooterColumnTitle>Servizi</FooterColumnTitle>
             {MAIN_CATEGORIES.map((category) => (
               <FooterLink key={category.slug} href={`/cerca/${category.slug}`}>
@@ -106,14 +100,11 @@ export function SiteFooter() {
             ))}
             <FooterLink href="/cerca">Tutti i servizi</FooterLink>
             {/* "Contatti" dentro la colonna "Servizi" (richiesta esplicita
-                dell'utente, corretta rispetto a un giro precedente che
-                aveva sostituito l'intera colonna con un form inline) —
-                apre una pagina dedicata in stile MioDottore (screenshot
-                fornito), non più un form compatto nel footer stesso. */}
+                dell'utente): apre una pagina dedicata in stile MioDottore. */}
             <FooterLink href="/contatti">Contatti</FooterLink>
-          </YStack>
+          </div>
 
-          <YStack gap="2" flexBasis={150} flexGrow={1} maxWidth={240}>
+          <div className={`is_View ${styles.column}`}>
             <FooterColumnTitle>Per i clienti</FooterColumnTitle>
             <FooterLink href="/preventivo">Richiedi preventivo</FooterLink>
             <FooterLink href="/urgente">Richiesta urgente</FooterLink>
@@ -121,98 +112,54 @@ export function SiteFooter() {
             <FooterLink href="/#quanto-costa">Quanto costa</FooterLink>
             {/* Pagine dei prezzi per mestiere (collaudo N-05). */}
             <FooterLink href="/prezzi">Prezzi per mestiere</FooterLink>
-            {/* Chi è già dentro non deve vedere "Accedi" (collaudo L, migliorie). */}
-            {user ? null : <FooterLink href="/accedi">Accedi</FooterLink>}
+            <FooterLoginLink />
             <FooterLink href="/faq">Domande frequenti</FooterLink>
             <FooterLink href="/problemi-e-rimborsi">Problemi e rimborsi</FooterLink>
             <FooterLink href="/sicurezza">Sicurezza e truffe</FooterLink>
-          </YStack>
+          </div>
 
-          <YStack gap="2" flexBasis={150} flexGrow={1} maxWidth={240}>
+          <div className={`is_View ${styles.column}`}>
             <FooterColumnTitle>Per i professionisti</FooterColumnTitle>
             <FooterLink href="/registrati?ruolo=professionista">Iscriviti gratis</FooterLink>
             <FooterLink href="/per-professionisti">Piani e prezzi</FooterLink>
-          </YStack>
-        </XStack>
+          </div>
+        </div>
 
-        {/* Badge di fiducia: solo claim veri e verificabili oggi. Rimossi
-            "Professionisti con assicurazione RC", "Aderente ad associazione
-            di categoria" e "Pagamenti sicuri (Stripe · PayPal)" dalla
-            versione precedente: non corrispondono a nulla di implementato
-            (nessuna verifica RC, nessuna associazione, Stripe non
-            configurato e PayPal mai esistito nel codice) — promesse false
-            nel footer distruggono la fiducia invece di costruirla e
-            espongono legalmente (pratica commerciale ingannevole). */}
-        <XStack flexWrap="wrap" gap="4" paddingTop="5" borderTopWidth={1} borderTopColor={brand.filetto}>
-          <XStack alignItems="center" gap="2" flexShrink={1} minWidth={0}>
-            <Icon name="badge-check" size={16} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
-              Badge Verificato: identità controllata con documento e selfie
-            </Text>
-          </XStack>
-          <XStack alignItems="center" gap="2" flexShrink={1} minWidth={0}>
-            <Icon name="shield" size={16} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
-              Recensioni solo da lavori fatti tramite il sito
-            </Text>
-          </XStack>
-          <XStack alignItems="center" gap="2" flexShrink={1} minWidth={0}>
-            <Icon name="tag" size={16} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
-              Gratis per chi cerca
-            </Text>
-          </XStack>
-        </XStack>
+        {/* Badge di fiducia: solo claim veri e verificabili oggi (niente
+            assicurazione RC, associazioni o metodi di pagamento non
+            attivi: promesse false nel piede sarebbero pratica commerciale
+            ingannevole). */}
+        <div className={`is_View ${styles.badges}`}>
+          <TrustBadge icon={BadgeCheck}>Badge Verificato: identità controllata con documento e selfie</TrustBadge>
+          <TrustBadge icon={Shield}>Recensioni solo da lavori fatti tramite il sito</TrustBadge>
+          <TrustBadge icon={Tag}>Gratis per chi cerca</TrustBadge>
+        </div>
 
-        <XStack flexWrap="wrap" alignItems="center" gap="4">
-          <XStack alignItems="center" gap="2">
-            <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
+        <div className={`is_View ${styles.legal}`}>
+          <div className={`is_View ${styles.copyright}`}>
+            <MapPin size={14} color={ICON_COLOR} strokeWidth={1.5} fill="none" />
+            <span className={`is_Text font_body ${styles.small}`}>
               © {new Date().getFullYear()} {BRAND.name} · Tutti i diritti riservati.
               {/* Ragione sociale e P.IVA in ogni pagina (D.Lgs. 70/2003 art. 7, M-01), appena compilate in `COMPANY`. */}
               {companyDataReady() ? ` ${COMPANY.legalName} · P.IVA ${COMPANY.vatNumber}` : null}
-            </Text>
-          </XStack>
+            </span>
+          </div>
           {/* Nomi corti come nell'area account (prova con persone simulate, docs/changelog/2026-11-08-prova-persone-simulate.md). */}
-          <Link href="/privacy" style={{ textDecoration: "none" }}>
-            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
-              Privacy
-            </Text>
-          </Link>
-          <Link href="/termini" style={{ textDecoration: "none" }}>
-            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
-              Termini
-            </Text>
-          </Link>
-          <Link href="/cookie" style={{ textDecoration: "none" }}>
-            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
-              Cookie
-            </Text>
-          </Link>
-          <button type="button" onClick={reopenCookieChoice} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
-            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
-              Preferenze cookie
-            </Text>
-          </button>
-          <Link href="/accessibilita" style={{ textDecoration: "none" }}>
-            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
-              Accessibilità
-            </Text>
-          </Link>
-          <Link href="/note-legali" style={{ textDecoration: "none" }}>
-            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
-              Note legali
-            </Text>
-          </Link>
+          <SmallLink href="/privacy">Privacy</SmallLink>
+          <SmallLink href="/termini">Termini</SmallLink>
+          <SmallLink href="/cookie">Cookie</SmallLink>
+          <CookiePreferencesButton />
+          <SmallLink href="/accessibilita">Accessibilità</SmallLink>
+          <SmallLink href="/note-legali">Note legali</SmallLink>
           {/* Chiunque, anche senza account, può segnalare un contenuto
               illegale (DSA art. 16 c. 1, docs/CHANGELOG.md §319). */}
-          <Link href="/contatti?motivo=segnalazione" style={{ textDecoration: "none" }}>
-            <Text fontFamily="body" fontSize={13} color={brand.grafite70}>
-              Segnala un contenuto illegale
-            </Text>
-          </Link>
-        </XStack>
-      </YStack>
-    </YStack>
+          <SmallLink href="/contatti?motivo=segnalazione">Segnala un contenuto illegale</SmallLink>
+        </div>
+      </div>
+    </div>
   );
+}
+
+export function SiteFooter() {
+  return <FooterByPath full={<FullFooter />} short={<ShortFooter />} />;
 }

@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Icon, brand } from "@professionisti/ui";
 import { GlowLights } from "./GlowLights";
+import styles from "./ProCtaSection.module.css";
 
 // Solo cose che il sito fa già (docs/CHANGELOG.md §307): "Richieste
 // filtrate dall'IA · In arrivo" è stata tolta su scelta dell'utente perché
@@ -35,67 +36,41 @@ const COLUMNS = [
  */
 export function ProCtaSection() {
   return (
-    <YStack width="100%" paddingVertical="8" paddingHorizontal="4" alignItems="center">
+    <div className={`is_View ${styles.wrap}`}>
       <div className="pro-cta">
         <GlowLights tone="scuro" pressBoost />
-        <YStack gap="6" padding="6 gtSm:8" position="relative">
-          <YStack gap="3">
-            <Text fontFamily="heading" fontWeight="600" fontSize="9" color="white">
-              Meno telefonate inutili, più lavoro concluso.
-            </Text>
-          </YStack>
+        <div className={`is_View ${styles.content}`}>
+          <div className={`is_View ${styles.titleBox}`}>
+            <span className={`is_Text font_heading ${styles.title}`}>Meno telefonate inutili, più lavoro concluso.</span>
+          </div>
 
-          <YStack gap="5">
+          <div className={`is_View ${styles.columns}`}>
             {COLUMNS.map((column) => (
-              <XStack key={column.title} gap="3" alignItems="flex-start">
-                <YStack
-                  width={44}
-                  height={44}
-                  borderRadius={12}
-                  backgroundColor="rgba(255,255,255,0.12)"
-                  alignItems="center"
-                  justifyContent="center"
-                  flexShrink={0}
-                >
+              <div key={column.title} className={`is_View ${styles.column}`}>
+                <div className={`is_View ${styles.iconBox}`}>
                   <Icon name={column.icon} size={22} color="white" strokeWidth={1.5} />
-                </YStack>
-                <YStack gap="1" flex={1} minWidth={0}>
-                  <Text fontFamily="heading" fontWeight="600" fontSize="6" color="white">
-                    {column.title}
-                  </Text>
-                  <Text fontSize={16} color="rgba(255,255,255,0.85)">
-                    {column.text}
-                  </Text>
-                </YStack>
-              </XStack>
+                </div>
+                <div className={`is_View ${styles.columnText}`}>
+                  <span className={`is_Text font_heading ${styles.columnTitle}`}>{column.title}</span>
+                  <span className={`is_Text ${styles.columnBody}`}>{column.text}</span>
+                </div>
+              </div>
             ))}
-          </YStack>
+          </div>
 
-          <XStack gap="3" flexWrap="wrap">
+          <div className={`is_View ${styles.buttons}`}>
             <Link href="/registrati?ruolo=professionista" data-glow-boost style={{ textDecoration: "none" }}>
-              <XStack backgroundColor="white" paddingHorizontal="5" height={48} alignItems="center" borderRadius={999} cursor="pointer">
-                <Text color={brand.cianografiaScuro} fontWeight="700">
-                  Iscriviti gratis
-                </Text>
-              </XStack>
+              <div className={`is_View ${styles.button} ${styles.buttonSolid}`}>
+                <span className={`is_Text ${styles.buttonSolidLabel}`}>Iscriviti gratis</span>
+              </div>
             </Link>
             <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
-              <XStack
-                borderWidth={1.5}
-                borderColor="rgba(255,255,255,0.6)"
-                paddingHorizontal="5"
-                height={48}
-                alignItems="center"
-                borderRadius={999}
-                cursor="pointer"
-              >
-                <Text color="white" fontWeight="700">
-                  Vedi i piani
-                </Text>
-              </XStack>
+              <div className={`is_View ${styles.button} ${styles.buttonOutline}`}>
+                <span className={`is_Text ${styles.buttonOutlineLabel}`}>Vedi i piani</span>
+              </div>
             </Link>
-          </XStack>
-        </YStack>
+          </div>
+        </div>
         <div className="pro-cta-photo">
           <Image
             src="/home-photos/professionista-al-lavoro.webp"
@@ -124,6 +99,6 @@ export function ProCtaSection() {
           </div>
         </div>
       </div>
-    </YStack>
+    </div>
   );
 }
