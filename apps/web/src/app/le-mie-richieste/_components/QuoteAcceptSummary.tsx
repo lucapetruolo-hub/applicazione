@@ -54,10 +54,13 @@ export function QuoteAcceptSummary({
   const isPrivate = quote.professionalKind === "PRIVATE";
   const split = paymentSplit(payment, priceTotals, quote.depositPercent);
   const taxNote = quotePriceTaxNote(quote.chargesVat ?? null);
-  // Una riga del riquadro: a sinistra cosa e quando, a destra la cifra.
+  // Una riga del riquadro: a sinistra cosa e quando, a destra la cifra. Se
+  // lo spazio non basta (telefono stretto) la cifra scende sotto, a destra:
+  // prima la colonna del testo si stringeva fino a una lettera per riga
+  // (collaudo dell'08/11/2026, E6-01).
   const line = (label: string, hint: string | null, amount: string, strong = false) => (
-    <XStack justifyContent="space-between" alignItems="baseline" gap="3">
-      <YStack flex={1} minWidth={0}>
+    <XStack justifyContent="space-between" alignItems="baseline" gap="3" flexWrap="wrap">
+      <YStack flex={1} minWidth={200}>
         <Text fontSize={16} fontWeight={strong ? "700" : "400"} color={brand.grafite}>
           {label}
         </Text>
@@ -67,7 +70,7 @@ export function QuoteAcceptSummary({
           </Text>
         ) : null}
       </YStack>
-      <Text fontSize={strong ? 24 : 18} fontWeight="800" color={strong ? brand.cianografiaScuro : brand.grafite} whiteSpace="nowrap">
+      <Text fontSize={strong ? 24 : 18} fontWeight="800" color={strong ? brand.cianografiaScuro : brand.grafite} whiteSpace="nowrap" marginLeft="auto">
         {amount}
       </Text>
     </XStack>

@@ -137,6 +137,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Rimborso fatto fuori dal sito (dalla Dashboard di Stripe) e pagamento per un preventivo sconosciuto (docs/changelog/2026-11-05-pagamenti-di-prova.md).
       "ADMIN_JOB_REFUND_OUTSIDE",
       "ADMIN_STRIPE_UNKNOWN_PAYMENT",
+      // Secondo abbonamento dello stesso professionista annullato, con un addebito da rimborsare (collaudo dell'8/11/2026, E3-01).
+      "ADMIN_SUBSCRIPTION_DUPLICATE",
       // Stato del conto Stripe di un professionista non riletto (docs/changelog/2026-10-28-stripe-prova.md).
       "ADMIN_STRIPE_ACCOUNT_UNREADABLE",
       // Tetto ai pagamenti online tolto (docs/changelog/2026-10-28-tetto-pagamenti-online.md).
@@ -471,6 +473,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "ADMIN_JOB_REFUND_FAILED",
       "ADMIN_JOB_REFUND_OUTSIDE",
       "ADMIN_STRIPE_UNKNOWN_PAYMENT",
+      "ADMIN_SUBSCRIPTION_DUPLICATE",
       "ADMIN_STRIPE_ACCOUNT_UNREADABLE",
       "ADMIN_DAC7_NEEDS_CORRECTION",
       "ADMIN_DAC7_DUE",

@@ -1,9 +1,10 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import { TERMS_CHANGES, termsChangeToAnnounce, type TermsChange } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
+import { ScheduledJob } from "../common/scheduled-job";
 
 /** Account per giro: con la pausa tra uno e l'altro un giro dura circa 3 minuti. */
 const BATCH = 300;
@@ -32,7 +33,7 @@ export class TermsNoticeService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  @ScheduledJob(CronExpression.EVERY_10_MINUTES)
   async run(now: Date = new Date(), changes: readonly TermsChange[] = TERMS_CHANGES): Promise<number> {
     const change = termsChangeToAnnounce(now.toISOString().slice(0, 10), changes);
     if (!change || this.running) return 0;

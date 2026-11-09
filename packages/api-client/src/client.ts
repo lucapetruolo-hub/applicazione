@@ -8,6 +8,7 @@ import type {
   EmailStatus,
   ProfessionalEntityTypeValue,
   MySubscription,
+  SubscriptionCheckoutResult,
   SubscriptionTier,
   BillingInterval,
   PROFESSIONAL_CATEGORIES,
@@ -1340,6 +1341,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         body: JSON.stringify({ email, password }),
       }),
 
+    /** `nonce` firmato dal server per la pagina di accesso di Google: vale 30 minuti e una volta sola. */
+    googleNonce: () => request<{ nonce: string }>("/auth/google/nonce", { method: "POST" }),
+
     /**
      * `createIfMissing` (default true): /accedi lo passa esplicitamente a
      * `false` per non iscrivere silenziosamente un account nuovo su
@@ -1420,6 +1424,10 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       }),
 
     // Gli altri dispositivi escono; `token` è il nuovo accesso per questo (docs/CHANGELOG.md §294).
+    /** "Esci": chiude questo accesso anche sul server (controllo dell'08/11). `keepalive` perché la pagina può cambiare subito dopo. */
+    logout: (token: string) =>
+      request<{ success: boolean }>("/auth/logout", { method: "POST", keepalive: true, headers: { Authorization: `Bearer ${token}` } }),
+
     logoutOtherDevices: (token: string) =>
       request<{ token: string }>("/auth/logout-others", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
@@ -1885,7 +1893,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<{ fileName: string; xml: string }>(`/admin/invoices/${encodeURIComponent(id)}/xml`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminRunInvoiceMonth: (token: string, month: string) =>
-      request<{ issued: number }>(`/admin/invoices/run/${encodeURIComponent(month)}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+      request<{ issued: number; notified: number; statements: number }>(`/admin/invoices/run/${encodeURIComponent(month)}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     adminFeeReconciliation: (token: string, month: string) =>
       request<FeeReconciliation>(`/admin/invoices/reconciliation/${encodeURIComponent(month)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
@@ -2148,7 +2156,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     /** Scelta o passaggio di livello; `interval` conta solo per un abbonamento nuovo (il passaggio tiene il rinnovo scelto). */
     createSubscriptionCheckout: (token: string, plan: SubscriptionTier, interval?: BillingInterval) =>
-      request<{ url: string | null }>("/billing/subscription/checkout", {
+      request<SubscriptionCheckoutResult>("/billing/subscription/checkout", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ plan, interval }),

@@ -1,16 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Text, XStack, brand } from "@professionisti/ui";
 import {
   GOOGLE_SIGNIN_CHANNEL,
   GOOGLE_SIGNIN_PENDING_KEY,
   GOOGLE_SIGNIN_RESULT_KEY,
   googleSignInUrl,
-  idTokenNonce,
+  idTokenClaims,
   type GoogleSignInMessage,
   type GoogleSignInPending,
 } from "@/lib/googleSignIn";
+import { apiClient } from "@/lib/apiClient";
+
+/** Il server fa valere un `nonce` 30 minuti: se ne chiede uno nuovo ogni 20. */
+const NONCE_REFRESH_MS = 20 * 60_000;
 
 // Icona ufficiale "G" multicolore di Google (la stessa dei pulsanti "Sign in
 // with Google" del brand kit ufficiale).
@@ -59,6 +63,26 @@ export function GoogleSignInButton({ onCredential, disabled }: { onCredential: (
   });
   const pendingRef = useRef<GoogleSignInPending | null>(null);
   const [notice, setNotice] = useState<"waiting" | "error" | null>(null);
+  // `nonce` chiesto al server prima del tocco (controllo dell'08/11): chiederlo
+  // al tocco e aspettare la risposta farebbe perdere al browser il permesso
+  // di aprire la finestra.
+  const nonceRef = useRef<{ value: string; at: number } | null>(null);
+  const fetchNonce = useCallback(async (): Promise<string | null> => {
+    nonceRef.current = null;
+    try {
+      const { nonce } = await apiClient.googleNonce();
+      nonceRef.current = { value: nonce, at: Date.now() };
+      return nonce;
+    } catch {
+      return null;
+    }
+  }, []);
+  useEffect(() => {
+    if (!clientId) return;
+    void fetchNonce();
+    const timer = window.setInterval(() => void fetchNonce(), NONCE_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [clientId, fetchNonce]);
 
   useEffect(() => {
     function deliver(message: GoogleSignInMessage) {
@@ -69,7 +93,8 @@ export function GoogleSignInButton({ onCredential, disabled }: { onCredential: (
         setNotice(message.error === "access_denied" ? null : "error");
         return;
       }
-      if (idTokenNonce(message.idToken) !== pending.nonce) {
+      const claims = idTokenClaims(message.idToken);
+      if (claims.nonce !== pending.nonce || !claims.emailVerified) {
         setNotice("error");
         return;
       }
@@ -115,12 +140,24 @@ export function GoogleSignInButton({ onCredential, disabled }: { onCredential: (
     return null;
   }
 
-  function handlePress() {
+  async function handlePress() {
     if (disabled || !clientId) return;
+    // Già pronto quasi sempre: allora la finestra si apre subito. Se manca o
+    // è vecchio (scheda rimasta ferma) si aspetta il server; il browser
+    // potrebbe bloccare la finestra e si va da Google con questa pagina,
+    // come già previsto.
+    const ready = nonceRef.current;
+    const nonce = ready && Date.now() - ready.at < NONCE_REFRESH_MS ? ready.value : await fetchNonce();
+    // Ogni `nonce` vale una volta sola: il prossimo tocco ne usa uno nuovo.
+    void fetchNonce();
+    if (!nonce) {
+      setNotice("error");
+      return;
+    }
     const random = () => crypto.randomUUID().replace(/-/g, "");
     const pending: GoogleSignInPending = {
       state: random(),
-      nonce: random(),
+      nonce,
       returnTo: window.location.pathname + window.location.search,
     };
     pendingRef.current = pending;
@@ -146,7 +183,7 @@ export function GoogleSignInButton({ onCredential, disabled }: { onCredential: (
   return (
     <>
       <Button
-        onPress={handlePress}
+        onPress={() => void handlePress()}
         disabled={disabled}
         opacity={disabled ? 0.5 : 1}
         cursor={disabled ? "not-allowed" : "pointer"}

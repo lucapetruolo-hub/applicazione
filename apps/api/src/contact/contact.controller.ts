@@ -5,6 +5,7 @@ import { contactMessageSchema, type ContactMessageInput } from "@professionisti/
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { assertTurnstile } from "../auth/turnstile";
 import { ContactService } from "./contact.service";
+import { clientIp } from "../common/client-ip";
 
 @Controller("contact")
 export class ContactController {
@@ -19,7 +20,7 @@ export class ContactController {
     if (body.website) {
       return { ok: true as const };
     }
-    await assertTurnstile(body.turnstileToken, req.ip);
+    await assertTurnstile(body.turnstileToken, clientIp(req));
     return this.contactService.send(body);
   }
 }
