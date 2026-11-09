@@ -1,24 +1,8 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext } from "react";
 import { H2, H3, Paragraph, XStack, YStack } from "tamagui";
 
-export type SectionTone = "light" | "dark" | "blueprint";
-
-// Niente etichetta sopra il titolo né parole colorate dentro il titolo: sono
-// tra i segni tipici dei siti fatti con l'IA (docs/CHANGELOG.md §304).
-export type SectionProps = {
-  title?: string;
-  lead?: string;
-  /** Comando accanto al titolo, allineato a destra (es. "Mostra tutte"). */
-  titleAction?: ReactNode;
-  tone?: SectionTone;
-  maxWidth?: number;
-  /**
-   * Il titolo è il titolo della pagina: esce come `<h1>` (uno per pagina,
-   * per Google e per i lettori di schermo), con lo stesso aspetto dell'H2.
-   */
-  pageTitle?: boolean;
-  children?: ReactNode;
-};
+export type { SectionDensity, SectionProps, SectionTone } from "./sectionProps";
+import type { SectionDensity, SectionProps, SectionTone } from "./sectionProps";
 
 const TONE_BACKGROUND: Record<SectionTone, string> = {
   light: "gesso",
@@ -47,7 +31,6 @@ const TONE_BACKGROUND: Record<SectionTone, string> = {
  * docs/CHANGELOG.md §219). Si attiva avvolgendo la pagina in
  * `<SectionDensityProvider value="compact">`; senza, resta il ritmo pieno.
  */
-export type SectionDensity = "comfortable" | "compact";
 
 const SectionDensityContext = createContext<SectionDensity>("comfortable");
 
