@@ -85,5 +85,6 @@ export * from "./adminNames";
 export * from "./reviewHold";
 export * from "./sameTimeBooking";
 export * from "./professionalClients";
+export * from "./rebookReminder";
 export * from "./quoteQuickFill";
 export * from "./quoteComparison";

@@ -9322,6 +9322,37 @@ a.admin-kpi:hover {
 
 
 
+/* "Ti servirà di nuovo?" a lavoro terminato (docs/changelog/2026-11-08-promemoria-manutenzione.md). */
+.rebook-pill.is-suggested {
+  border-color: #189a63;
+  border-width: 2px;
+}
+.rebook-pill:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.rebook-keep {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: #0e7a4c;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.rebook-keep:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+
+
+
+
+
 /* Rubrica "I miei clienti" (docs/changelog/2026-11-08-rubrica-clienti.md). */
 .client-job-link {
   color: #0e7a4c; /* brand.cianografiaScuro */

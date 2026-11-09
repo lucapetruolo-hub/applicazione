@@ -782,6 +782,20 @@ const BUILDERS: Record<string, Builder> = {
   },
 
   // Al cliente: risposta del professionista alla sua recensione (docs/changelog/2026-10-30-collaudo-soldi-online.md).
+  // "Ricordamelo tra…" scelto dal cliente a lavoro terminato (docs/changelog/2026-11-08-promemoria-manutenzione.md).
+  // Il cliente l'ha chiesto lui: niente promozione, solo il lavoro di allora e "Prenota di nuovo".
+  REBOOK_REMINDER: (payload, ctx) => ({
+    kind: "notification",
+    subject: `Il promemoria che avevi chiesto: ${ctx.category ?? "il lavoro"} con ${pro(ctx)}`,
+    greeting: ctx.name,
+    title: "È il momento che avevi scelto",
+    paragraphs: [
+      `Avevi chiesto di ricordarti il lavoro fatto da **${pro(ctx)}**. Se ti serve di nuovo, prenoti dallo stesso professionista con indirizzo e dati già scritti.`,
+    ],
+    details: jobDetails({ ...ctx, when: null }),
+    cta: { label: "Prenota di nuovo", url: clientJobUrl(payload) },
+  }),
+
   REVIEW_REPLIED: (payload, ctx) => ({
     kind: "notification",
     subject: `${pro(ctx)} ha risposto alla tua recensione`,
