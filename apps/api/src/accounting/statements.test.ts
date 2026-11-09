@@ -59,6 +59,7 @@ const hold = (jobPayment: ReturnType<typeof payment>, paid: number, fee: number,
   vatEurCents: fee - Math.round(fee / 1.22),
   paymentEurCents: paid,
   description: "Acconto online",
+  dedupeKey: `HOLD:pi_${jobPayment.id}`,
   occurredAt: at,
   invoice: null,
 });
@@ -101,6 +102,12 @@ describe("estratto del mese: rimborsi, contestazioni e soldi bloccati", () => {
     // G-15: la contestazione aperta è scritta e resta fuori da "Pagato online" e dai bloccati.
     expect(row("f22")).toMatchObject({ disputed: true, payoutNote: "Contestato in banca: può tornare al cliente" });
     expect(csv).toContain("Contestazione in banca aperta: il pagamento può tornare al cliente");
+
+    // Codice Stripe di ogni movimento, per la quadratura del commercialista.
+    expect(csv.split("\r\n")[0]).toMatch(/;Documento;Codice Stripe$/);
+    expect(csvRows.find((r) => r.kind === "Pagamento online del cliente" && r.client === "Ugo")?.stripeRef).toBe("pi_f15");
+    expect(csvRows.find((r) => r.kind === "Trattenuta" && r.client === "Ugo")?.stripeRef).toBe("pi_f15");
+    expect(csvRows.find((r) => r.kind.startsWith("Contestazione in banca aperta"))?.stripeRef).toBe("dp_1");
     expect(statement.totals).toMatchObject({ onlineEurCents: 38000, refundsEurCents: 9000, disputedEurCents: 8000 });
     expect(statementOnlineNote(statement)).toContain("senza i rimborsi ai clienti");
 

@@ -278,7 +278,10 @@ CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
 14. **Fatture della piattaforma** (fatto il codice, docs/CHANGELOG.md §378):
     prima del lancio (a) compilare i dati della società e "Fatture da" in
     Admin → Finanza → "Le nostre fatture", PEC compresa (Openapi la usa per
-    la conservazione); (b) `OPENAPI_TOKEN_SDI` su Render con
+    la conservazione); "Fatture da" = giorno del lancio, mai prima
+    dell'ultima prova (gli account di prova sono comunque esclusi, e la riga
+    sotto i dati dice quanti movimenti di prova ci sono,
+    docs/changelog/2026-11-08-fatture-e-fisco-collaudo.md); (b) `OPENAPI_TOKEN_SDI` su Render con
     `OPENAPI_SANDBOX=true`, poi in Finanza "Prova l'invio allo SdI" (§379:
     registra la società, manda una fattura da 1 €, simula e legge l'esito)
     e solo con tutti i passi verdi togliere la sandbox; (c) email di Stripe ai clienti: restano accese sia le ricevute dei

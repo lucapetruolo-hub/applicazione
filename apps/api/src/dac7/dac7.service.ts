@@ -6,6 +6,19 @@ import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { decryptFiscal } from "../common/fiscal-crypto";
 import { professionalFiscalName } from "../accounting/invoice-documents";
+import { romeMonthOf, romeMonthRange } from "../accounting/accounting-dates";
+
+/**
+ * Anno e trimestre all'ora di Roma, come estratti e fatture (collaudo
+ * dell'08/11/2026, E5-09): un pagamento del 1° aprile alle 00:30 è del
+ * secondo trimestre anche se in UTC è ancora il 31 marzo.
+ */
+function romeYearQuarter(date: Date): { year: number; quarter: number } {
+  const [year, month] = romeMonthOf(date).split("-").map(Number) as [number, number];
+  return { year, quarter: Math.floor((month - 1) / 3) + 1 };
+}
+
+const monthIso = (year: number, month: number) => `${year}-${String(month).padStart(2, "0")}`;
 
 type Dac7Aggregate = {
   considerationEurCents: number;
@@ -117,12 +130,12 @@ export class Dac7Service implements OnModuleInit {
   }
 
   private quarterRange(year: number, quarter: number): { start: Date; end: Date } {
-    const startMonth = (quarter - 1) * 3;
-    return { start: new Date(Date.UTC(year, startMonth, 1)), end: new Date(Date.UTC(year, startMonth + 3, 1)) };
+    const startMonth = (quarter - 1) * 3 + 1;
+    return { start: romeMonthRange(monthIso(year, startMonth)).start, end: romeMonthRange(monthIso(year, startMonth + 2)).end };
   }
 
   private yearRange(year: number): { start: Date; end: Date } {
-    return { start: new Date(Date.UTC(year, 0, 1)), end: new Date(Date.UTC(year + 1, 0, 1)) };
+    return { start: romeMonthRange(monthIso(year, 1)).start, end: romeMonthRange(monthIso(year, 12)).end };
   }
 
   /**
@@ -226,8 +239,7 @@ export class Dac7Service implements OnModuleInit {
    * minuti. Uno solo alla volta; un errore lascia i dati di prima.
    */
   private async refreshIfStale(now: Date = new Date()): Promise<void> {
-    const year = now.getUTCFullYear();
-    const quarter = Math.floor(now.getUTCMonth() / 3) + 1;
+    const { year, quarter } = romeYearQuarter(now);
     const period = await this.prisma.dac7ReportingPeriod.findUnique({ where: { year_quarter: { year, quarter } }, select: { updatedAt: true } });
     if (period && now.getTime() - period.updatedAt.getTime() < DAC7_FRESH_MS) return;
     this.refreshing ??= this.runDailyAggregation().finally(() => {
@@ -244,8 +256,7 @@ export class Dac7Service implements OnModuleInit {
   @ScheduledJob(CronExpression.EVERY_DAY_AT_1AM)
   async runDailyAggregation() {
     const now = new Date();
-    const year = now.getUTCFullYear();
-    const quarter = Math.floor(now.getUTCMonth() / 3) + 1;
+    const { year, quarter } = romeYearQuarter(now);
     const quarterPeriod = await this.aggregateQuarter(year, quarter);
     const yearPeriod = await this.aggregateYear(year);
     this.logger.log(`Aggregazione DAC7 aggiornata per ${year} Q${quarter} e anno ${year}.`);
@@ -307,7 +318,7 @@ export class Dac7Service implements OnModuleInit {
     const sentQuarters = new Set(sent.map((p) => p.quarter));
     for (const quarter of [1, 2, 3, 4]) {
       if (sentQuarters.has(quarter)) continue;
-      if (new Date(Date.UTC(year, (quarter - 1) * 3, 1)) > new Date()) continue;
+      if (this.quarterRange(year, quarter).start > new Date()) continue;
       await this.aggregateQuarter(year, quarter);
     }
   }
@@ -556,6 +567,7 @@ export class Dac7Service implements OnModuleInit {
       const summary = yearOf(period.year);
       if (period.quarter === null) {
         summary.submittedAt = period.status === "SUBMITTED" || period.status === "CORRECTED" ? (period.submittedAt?.toISOString() ?? null) : null;
+        summary.submissionProtocol = summary.submittedAt ? (period.submissionProtocol ?? null) : null;
         summary.notifiedAt = record.sellerNotifiedAt?.toISOString() ?? null;
       } else {
         summary.quarters.push({
@@ -676,7 +688,7 @@ export class Dac7Service implements OnModuleInit {
    */
   @ScheduledJob("0 9 1 11 *")
   async sendYearEndReminders(now: Date = new Date()): Promise<number> {
-    const year = now.getUTCFullYear();
+    const { year } = romeYearQuarter(now);
     const period = await this.aggregateYear(year);
     const records = await this.prisma.dac7Record.findMany({
       where: { reportingPeriodId: period.id, considerationEurCents: { gt: 0 } },
@@ -705,7 +717,7 @@ export class Dac7Service implements OnModuleInit {
    */
   @ScheduledJob("0 9 10,20,27,30 1 *", { timeZone: "Europe/Rome" })
   async remindAnnualDeadline(now: Date = new Date()): Promise<boolean> {
-    const year = now.getUTCFullYear() - 1;
+    const year = romeYearQuarter(now).year - 1;
     const period = await this.prisma.dac7ReportingPeriod.findFirst({ where: { year, quarter: null }, select: { id: true, status: true } });
     if (period && (period.status === "SUBMITTED" || period.status === "CORRECTED")) return false;
     const reportable = period ? await this.prisma.dac7Record.count({ where: { reportingPeriodId: period.id, considerationEurCents: { gt: 0 } } }) : 0;

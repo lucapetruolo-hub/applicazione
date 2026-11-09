@@ -1532,12 +1532,24 @@ const BUILDERS: Record<string, Builder> = {
     const sdi = payload.kind === "sdi";
     // Promemoria del lunedì sulle fatture ferme (docs/changelog/2026-11-02-admin-protezioni.md).
     const stuck = payload.kind === "sdi-stuck";
+    // Fatture del mese ancora mancanti il 10 e professionisti all'estero (collaudo dell'08/11/2026, E5-02/E5-04).
+    const unbilled = payload.kind === "unbilled";
+    const abroad = payload.kind === "abroad";
+    const plain = sdi || stuck || unbilled || abroad;
     return {
       kind: "notification",
       tone: "urgent",
-      subject: stuck ? "Fatture ferme allo SdI" : sdi ? "Fattura scartata dallo SdI" : `Trattenute di ${str(payload.month) ?? "questo mese"} da controllare`,
-      title: stuck ? "Fatture ferme allo SdI" : sdi ? "Fattura da correggere" : "Trattenute che non tornano",
-      paragraphs: sdi || stuck ? alerts : [...alerts, "Confronta le trattenute del mese con il resoconto di Stripe."],
+      subject: stuck
+        ? "Fatture ferme allo SdI"
+        : sdi
+          ? "Fattura scartata dallo SdI"
+          : unbilled
+            ? "Fatture del mese ancora da emettere"
+            : abroad
+              ? "Fattura da fare a mano"
+              : `Trattenute di ${str(payload.month) ?? "questo mese"} da controllare`,
+      title: stuck ? "Fatture ferme allo SdI" : sdi ? "Fattura da correggere" : unbilled ? "Fatture del mese da emettere" : abroad ? "Residenza fiscale all'estero" : "Trattenute che non tornano",
+      paragraphs: plain ? alerts : [...alerts, "Confronta le trattenute del mese con il resoconto di Stripe."],
       cta: { label: "Apri Finanza", url: `${frontendUrl()}/admin/finanza` },
     };
   },

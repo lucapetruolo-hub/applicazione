@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   INVOICE_SOURCE_LABEL,
   formatEurCents,
+  monthlyInvoiceLate,
   platformInvoiceSettingsSchema,
   type FeeReconciliation,
   type InvoiceSdiStatusValue,
@@ -122,8 +123,9 @@ export function AdminInvoicesSection({ token }: { token: string }) {
     setPending(true);
     setError(null);
     try {
-      const { issued, notified, statements } = await apiClient.adminRunInvoiceMonth(token, month);
-      setMessage(monthRerunMessage(issued, notified, statements));
+      const { issued, notified, statements, abroad } = await apiClient.adminRunInvoiceMonth(token, month);
+      const abroadNote = abroad > 0 ? ` ${abroad === 1 ? "Un professionista ha" : `${abroad} professionisti hanno`} la residenza fiscale all'estero: la fattura va fatta a mano.` : "";
+      setMessage(`${monthRerunMessage(issued, notified, statements)}${abroadNote}`);
       setConfirm(null);
       load();
     } finally {
@@ -220,6 +222,12 @@ export function AdminInvoicesSection({ token }: { token: string }) {
       <Button variant="primary" alignSelf="flex-start" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => void saveSettings()}>
         Salva i dati della società
       </Button>
+      {settings && settings.testFeeEntriesAfterFrom > 0 ? (
+        // Collaudo dell'08/11/2026, E5-05: le prove non fanno mai fatture.
+        <Text fontSize={13} color={brand.grafite70}>
+          Dopo &quot;Fatture da&quot; ci sono {settings.testFeeEntriesAfterFrom === 1 ? "1 movimento" : `${settings.testFeeEntriesAfterFrom} movimenti`} di account di prova: non diventano fatture.
+        </Text>
+      ) : null}
 
       <XStack gap="3" alignItems="flex-end" flexWrap="wrap">
         <YStack width={200}>
@@ -233,7 +241,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
         </Button>
       </XStack>
       <Text fontSize={13} color={brand.grafite70}>
-        Il giro parte da solo il 1° del mese: fatture delle trattenute e riepilogo ai professionisti alle 7, estratti ai commercialisti alle 8. Se è saltato, rifallo da qui: quello già fatto non riparte. La quadratura arriva anche in notifica il 1° del mese.
+        Il giro parte da solo il 1° del mese: fatture delle trattenute e riepilogo ai professionisti alle 7, estratti ai commercialisti alle 8. Dal 2 al 15 ogni mattina recupera le fatture mancate e il 10 avvisa se ne manca ancora qualcuna. Se è saltato, rifallo da qui: quello già fatto non riparte. La quadratura arriva anche in notifica il 1° del mese.
       </Text>
       {reconciliation ? <ReconciliationBox data={reconciliation} /> : null}
 
@@ -293,7 +301,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
           title={confirm.kind === "run" ? "Rifai il giro del mese" : settings?.sdiConfigured ? "Rimanda allo SdI" : "Rigenera la fattura"}
           description={
             confirm.kind === "run"
-              ? `Per ${month}: emette le fatture delle trattenute${settings?.sdiConfigured ? " e le manda allo SdI" : ""}, manda il riepilogo ai professionisti e l'estratto ai commercialisti di chi l'ha chiesto. Solo quello che manca: niente parte due volte. Una fattura emessa non si cancella, si corregge con una nota di credito.`
+              ? `${monthlyInvoiceLate(month) ? `Attenzione: la fattura di ${month} andava emessa entro il 15 del mese dopo. Uscirà con la data dell'ultimo giorno di ${month} e un numero successivo alle fatture già emesse: sentite prima il commercialista. ` : ""}Per ${month}: emette le fatture delle trattenute${settings?.sdiConfigured ? " e le manda allo SdI" : ""}, manda il riepilogo ai professionisti e l'estratto ai commercialisti di chi l'ha chiesto. Solo quello che manca: niente parte due volte. Una fattura emessa non si cancella, si corregge con una nota di credito.`
               : `${settings?.sdiConfigured ? "Manda di nuovo allo SdI la fattura" : "Rifà l'XML della fattura"} ${confirm.number} con i dati fiscali di oggi del professionista.`
           }
           confirmLabel={confirm.kind === "run" ? "Rifai il giro" : settings?.sdiConfigured ? "Rimanda" : "Rigenera"}
