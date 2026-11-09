@@ -109,6 +109,14 @@ function jobDetails(ctx: NotificationEmailContext, extra: { label: string; value
   ];
 }
 
+/** Totale del preventivo nel riquadro: "120 €" o "da 100 € a 150 €"; niente se tutte le voci sono "Su richiesta" (miglioria del collaudo 08/11). */
+function quoteTotalDetail(payload: Record<string, unknown>): { label: string; value: string }[] {
+  const min = typeof payload.totalMinEurCents === "number" ? payload.totalMinEurCents : 0;
+  const max = typeof payload.totalMaxEurCents === "number" ? payload.totalMaxEurCents : 0;
+  if (min <= 0 && max <= 0) return [];
+  return [{ label: "Totale", value: min === max ? formatEur(min) : `da ${formatEur(min)} a ${formatEur(max)}` }];
+}
+
 /** Il professionista non vede il proprio nome nel riquadro. */
 function proJobDetails(ctx: NotificationEmailContext, extra: { label: string; value: string }[] = []) {
   return jobDetails({ ...ctx, businessName: null }, extra);
@@ -304,7 +312,7 @@ const BUILDERS: Record<string, Builder> = {
           : `**${pro(ctx)}** ti ha inviato un preventivo per ${ctx.category ? `la tua richiesta di **${job(ctx)}**` : "la tua richiesta"}.`,
         "Aprilo per vedere le voci, il prezzo e la data proposta. Puoi accettarlo, proporre un'altra data o scrivere al professionista in chat prima di decidere.",
       ],
-      details: jobDetails(ctx),
+      details: jobDetails(ctx, quoteTotalDetail(payload)),
       cta: { label: "Vedi il preventivo", url: `${frontendUrl()}/le-mie-richieste` },
     };
   },
@@ -534,10 +542,11 @@ const BUILDERS: Record<string, Builder> = {
     }
     return {
       kind: "notification",
-      subject: `${pro(ctx)} ha confermato la data che hai proposto`,
+      subject: `${pro(ctx)} ha accettato la data che hai proposto`,
       greeting: ctx.name,
-      title: "Data confermata",
-      paragraphs: [`**${pro(ctx)}** ha confermato la data che avevi proposto per **${job(ctx)}**.`],
+      title: "Data accettata",
+      // Il lavoro si fissa accettando il preventivo, col pagamento (collaudo 08/11, E1-02).
+      paragraphs: [`**${pro(ctx)}** ha accettato la data che avevi proposto per **${job(ctx)}**.`, "Accetta il preventivo per fissare l'appuntamento."],
       details: jobDetails(ctx),
       cta: clientRequests(),
     };

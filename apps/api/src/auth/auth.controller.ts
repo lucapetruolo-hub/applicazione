@@ -43,7 +43,9 @@ import { JwtAuthGuard, type AuthenticatedRequest } from "./jwt-auth.guard";
 import { verifyEmailPerMinute } from "./link-rate-limit";
 import { isEmailVerificationRequired } from "./verified-email.guard";
 import { assertTurnstile } from "./turnstile";
+import { issueGoogleNonce } from "./google-nonce";
 import type { LoginDeviceInfo } from "./login-device";
+import { clientIp } from "../common/client-ip";
 
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 
@@ -66,7 +68,7 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post("register")
   async register(@Body(new ZodValidationPipe(registerSchema)) body: RegisterInput, @Req() req: Request) {
-    await assertTurnstile(body.turnstileToken, req.ip);
+    await assertTurnstile(body.turnstileToken, clientIp(req));
     // `acceptedLegalTerms`/`declaredAdult` sono già garantite `=== true` da
     // `registerSchema` stesso (Zod `.refine`) prima di arrivare qui —
     // `register()` registra sempre il consenso, nessun controllo aggiuntivo.
@@ -87,6 +89,14 @@ export class AuthController {
     return this.authService.login(body.email, body.password, loginDevice(req));
   }
 
+  // `nonce` per la pagina di accesso di Google, controllato poi in
+  // `verifyGoogleToken` (google-nonce.ts): firmato, 30 minuti, una volta sola.
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Post("google/nonce")
+  googleNonce() {
+    return { nonce: issueGoogleNonce() };
+  }
+
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("google/verify")
   async verifyGoogle(@Body(new ZodValidationPipe(googleVerifySchema)) body: GoogleVerifyInput, @Req() req: Request) {
@@ -102,7 +112,7 @@ export class AuthController {
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post("password-reset/request")
   async requestPasswordReset(@Body(new ZodValidationPipe(passwordResetRequestSchema)) body: PasswordResetRequestInput, @Req() req: Request) {
-    await assertTurnstile(body.turnstileToken, req.ip);
+    await assertTurnstile(body.turnstileToken, clientIp(req));
     await this.authService.requestPasswordReset(body.email);
     return { success: true };
   }
@@ -339,6 +349,14 @@ export class AuthController {
     // Token nuovo per questo dispositivo: quelli vecchi non valgono più (§292).
     const { token } = await this.authService.changePassword(req.user.userId, body.currentPassword, body.newPassword);
     return { success: true, token };
+  }
+
+  // "Esci" che chiude davvero questo accesso sul server (controllo dell'08/11).
+  @UseGuards(JwtAuthGuard)
+  @Post("logout")
+  async logout(@Req() req: AuthenticatedRequest) {
+    await this.authService.logout(req.user.userId, req.user.session);
+    return { success: true };
   }
 
   @UseGuards(JwtAuthGuard)

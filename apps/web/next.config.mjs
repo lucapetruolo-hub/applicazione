@@ -16,11 +16,14 @@ function apiOrigin() {
 // Google (developers.google.com/maps/documentation/javascript/content-security-policy),
 // Cloudflare Turnstile, Vercel Analytics. `'unsafe-inline'` resta perché
 // Next.js scrive script in pagina senza nonce; con i nonce (che però
-// rendono dinamica ogni pagina) si potrà togliere. Solo in produzione:
-// `next dev` usa `eval`.
+// rendono dinamica ogni pagina) si potrà togliere (scelta di Luca del 2/11:
+// niente nonce). `'unsafe-eval'` tolto nel controllo pre-lancio dell'08/11
+// (E2-03): nessuno script del sito lo usa (zod nel browser è `jitless`,
+// packages/shared/src/zod.ts), e senza uno script iniettato non può usare
+// `eval`. Solo in produzione: `next dev` usa `eval`.
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://*.googleapis.com https://*.gstatic.com *.google.com https://*.ggpht.com *.googleusercontent.com https://challenges.cloudflare.com https://va.vercel-scripts.com",
+  "script-src 'self' 'unsafe-inline' blob: https://*.googleapis.com https://*.gstatic.com *.google.com https://*.ggpht.com *.googleusercontent.com https://challenges.cloudflare.com https://va.vercel-scripts.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",

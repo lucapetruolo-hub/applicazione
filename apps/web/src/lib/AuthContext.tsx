@@ -178,6 +178,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
+    // Chiude l'accesso anche sul server (controllo pre-lancio dell'08/11): su
+    // un computer condiviso il token copiato prima non vale più. Non si
+    // aspetta la risposta: l'uscita nel browser è immediata comunque.
+    const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (storedToken) void apiClient.logout(storedToken).catch(() => undefined);
     window.localStorage.removeItem(TOKEN_STORAGE_KEY);
     // Copia dell'agenda senza rete (docs/CHANGELOG.md §288): non resta sul telefono dopo l'uscita.
     clearAgendaOffline();

@@ -34,7 +34,7 @@ import { professionalOnlineLimit } from "../job-payments/online-limit";
 import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { countBookingsInSlot, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
-import { hasOtherJob, isOtherJobViolation, lockGuidedRequest } from "../bookings/one-job-per-request";
+import { hasOtherJob } from "../bookings/one-job-per-request";
 import { JOB_LIMIT_REACHED_MESSAGE } from "../subscriptions/subscription-rules";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
 
@@ -64,7 +64,7 @@ type BookedDateChange = {
 };
 
 /** Nessuna proposta di data in sospeso, sul preventivo e sul lavoro. */
-const NO_PROPOSAL = { clientProposedDate: null, clientProposedEndDate: null, clientProposedNote: null, professionalCounterNote: null } as const;
+const NO_PROPOSAL = { clientProposedDate: null, clientProposedEndDate: null, clientProposedNote: null, professionalCounterNote: null, proposedDateAcceptedAt: null } as const;
 const NO_DATE_CHANGE = { rescheduleRequestedAt: null, rescheduleProposedBy: null, rescheduleReminderAt: null } as const;
 
 const OTHER_PROFESSIONAL_CHOSEN = "Il cliente ha già scelto un altro professionista per questa richiesta.";
@@ -279,9 +279,10 @@ export class QuotesService {
           where: { id: existingQuote.id },
           // Il cliente vede "prima → ora" come lo vede il professionista
           // (docs/CHANGELOG.md §186): si ricorda l'appuntamento sostituito.
+          // Data cambiata: non è più quella del cliente accettata (E1-02).
           data: scheduleChange
-            ? { ...data, ...priceData, previousStartDate: existingQuote.estimatedStartDate, previousEndDate: existingQuote.estimatedEndDate }
-            : { ...data, ...priceData },
+            ? { ...data, ...priceData, previousStartDate: existingQuote.estimatedStartDate, previousEndDate: existingQuote.estimatedEndDate, proposedDateAcceptedAt: null }
+            : { ...data, ...priceData, ...(isResend ? { proposedDateAcceptedAt: null } : {}) },
         })
       : await this.prisma.quote.create({
           data: {
@@ -322,6 +323,9 @@ export class QuotesService {
         category: lead.guidedRequest.category.label,
         jobLabel: notificationJobLabel(lead.guidedRequest.description),
         resent: true,
+        // Totale nell'email (miglioria del collaudo 08/11).
+        totalMinEurCents: totalsAfter.totalMinEurCents,
+        totalMaxEurCents: totalsAfter.totalMaxEurCents,
       });
       await this.timelineService.log(
         lead.guidedRequestId,
@@ -337,6 +341,8 @@ export class QuotesService {
         // Chi e quale lavoro nel testo della notifica (docs/CHANGELOG.md §349).
         category: lead.guidedRequest.category.label,
         jobLabel: notificationJobLabel(lead.guidedRequest.description),
+        totalMinEurCents: totalsAfter.totalMinEurCents,
+        totalMaxEurCents: totalsAfter.totalMaxEurCents,
       });
       // Metriche di affidabilità (CLAUDE.md §15, evento 2): prima risposta
       // del professionista a QUESTO lead — minuti da quando gli è arrivato
@@ -582,7 +588,7 @@ export class QuotesService {
       }
       const updated = await this.prisma.quote.update({
         where: { id: quote.id },
-        data: { clientNote: note, status: "SENT", clientProposedDate: null, clientProposedEndDate: null, clientProposedNote: null },
+        data: { clientNote: note, status: "SENT", clientProposedDate: null, clientProposedEndDate: null, clientProposedNote: null, proposedDateAcceptedAt: null },
       });
       await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_DATE_PROPOSED", {
         guidedRequestId: quote.guidedRequestId,
@@ -623,6 +629,7 @@ export class QuotesService {
         previousStartDate: null,
         previousEndDate: null,
         clientNote: null,
+        proposedDateAcceptedAt: null,
       },
     });
     await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_DATE_PROPOSED", {
@@ -649,13 +656,15 @@ export class QuotesService {
   }
 
   /**
-   * Il professionista conferma la data proposta dal cliente: crea
-   * direttamente la prenotazione (stesso esito finale di
-   * BookingsService.createFromQuote, ma innescato da questo lato) dopo
-   * aver rivalidato che la fascia sia ancora libera — stessa transazione
-   * Serializable anti race-condition già in uso per bookAgendaSlot.
+   * Il professionista accetta la data proposta dal cliente prima
+   * dell'accettazione del preventivo. Il preventivo torna "inviato" con
+   * quella data e il cliente lo accetta come sempre, scegliendo il modo di
+   * pagare (acconto online compreso) e la fattura (collaudo 08/11, E1-02):
+   * prima qui nasceva direttamente il lavoro, senza pagamento registrato né
+   * acconto, e la trattenuta non si applicava. La fascia si ricontrolla
+   * all'accettazione del cliente, come per ogni preventivo.
    */
-  async confirmProposedDate(professionalUserId: string, quoteId: string) {
+  async confirmProposedDate(professionalUserId: string, quoteId: string): Promise<{ bookingId: string | null }> {
     // Appuntamento già fissato con un'altra data proposta: si sposta. Accetta
     // chi non l'ha proposta, cliente o professionista.
     const pending = await this.bookedDateChangeToAnswer(professionalUserId, quoteId);
@@ -680,88 +689,51 @@ export class QuotesService {
     if (quote.booking) {
       throw new ForbiddenException("Questo preventivo è già stato accettato.");
     }
+    if (await hasOtherJob(this.prisma, quote.guidedRequestId)) throw new ConflictException(OTHER_PROFESSIONAL_CHOSEN);
 
     const scheduledAt = quote.clientProposedDate;
+    if (scheduledAt.getTime() <= wallClockNow().getTime()) {
+      throw new BadRequestException("La data proposta è già passata: proponine un'altra con \"Modifica\".");
+    }
+    // La fascia è ancora libera adesso: meglio dirlo al professionista subito
+    // che al cliente quando accetta.
     const { dayStart, dayEnd } = utcDay(scheduledAt);
     const requestServiceMode = quote.guidedRequest.serviceMode;
     const maxBookings = await this.proposedSlotCapacity(professionalProfile.id, scheduledAt, requestServiceMode);
-
-
-    try {
-      const booking = await this.prisma.$transaction(
-        async (tx) => {
-          // Un lavoro già preso che si sovrappone (anche un lavoro esterno
-          // o uno lungo iniziato prima) occupa la fascia (docs/CHANGELOG.md §310).
-          await lockProfessionalAgenda(tx, professionalProfile.id);
-          // Nel frattempo il cliente ha accettato il preventivo di un altro professionista (§346).
-          await lockGuidedRequest(tx, quote.guidedRequestId);
-          if (await hasOtherJob(tx, quote.guidedRequestId)) throw new ConflictException(OTHER_PROFESSIONAL_CHOSEN);
-          const commitments =
-            (await loadCommitments(tx, [professionalProfile.id], dayStart, quote.clientProposedEndDate ?? dayEnd)).get(professionalProfile.id) ?? [];
-          if (countOverlapping(commitments, scheduledAt, quote.clientProposedEndDate, requestServiceMode) >= maxBookings) {
-            throw new ConflictException("Questa fascia non è più libera.");
-          }
-          const created = await tx.booking.create({
-            data: {
-              quoteId: quote.id,
-              clientId: quote.guidedRequest.clientId,
-              professionalProfileId: professionalProfile.id,
-              scheduledAt,
-              cancellationNoticeHours: quote.cancellationNoticeHours ?? professionalProfile.cancellationNoticeHours,
-              scheduledEndAt: quote.clientProposedEndDate,
-              serviceMode: requestServiceMode,
-              status: "CONFIRMED",
-              // Bug reale segnalato dall'utente: questo secondo percorso di
-              // creazione della prenotazione (accettazione dopo una
-              // trattativa sulla data, distinto da
-              // BookingsService.createFromQuote) non copiava affatto
-              // destinatario/indirizzo dalla GuidedRequest — il
-              // professionista restava senza indirizzo preciso e telefono
-              // per andare a svolgere il lavoro.
-              recipientName: quote.guidedRequest.recipientName,
-              recipientSurname: quote.guidedRequest.recipientSurname,
-              recipientPhone: quote.guidedRequest.recipientPhone,
-              street: quote.guidedRequest.address,
-              houseNumber: quote.guidedRequest.houseNumber,
-              addressExtra: quote.guidedRequest.addressExtra,
-              postalCode: quote.guidedRequest.postalCode,
-              city: quote.guidedRequest.city,
-              province: quote.guidedRequest.province,
-            },
-          });
-          await tx.quote.update({
-            where: { id: quote.id },
-            data: { status: "ACCEPTED", estimatedStartDate: scheduledAt, estimatedEndDate: quote.clientProposedEndDate },
-          });
-          await tx.guidedRequest.update({ where: { id: quote.guidedRequestId }, data: { status: "CLOSED", closedReason: "COMPLETED" } });
-          return created;
-        },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-      );
-      await this.notificationsService.notify(quote.guidedRequest.clientId, "QUOTE_DATE_CONFIRMED", {
-        guidedRequestId: quote.guidedRequestId,
-        quoteId: quote.id,
-        // Con il calendario nell'email, come quando accetta il cliente (§346).
-        bookingId: booking.id,
-      });
-      // Metriche di affidabilità (CLAUDE.md §15, evento 3): il preventivo è
-      // diventato una prenotazione reale ("accettato" in questo dominio).
-      await this.professionalMetricsService.recordJobAccepted(professionalProfile.id);
-      await this.subscriptionsService.afterJobAccepted(professionalProfile.id);
-      await this.timelineService.log(
-        quote.guidedRequestId,
-        professionalProfile.id,
-        "PROFESSIONAL",
-        "Il professionista ha confermato la data proposta: prenotazione creata.",
-      );
-      return { bookingId: booking.id };
-    } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
-        throw new ConflictException("Questa fascia non è più libera.");
-      }
-      if (isOtherJobViolation(err)) throw new ConflictException(OTHER_PROFESSIONAL_CHOSEN);
-      throw err;
+    const commitments =
+      (await loadCommitments(this.prisma, [professionalProfile.id], dayStart, quote.clientProposedEndDate ?? dayEnd)).get(professionalProfile.id) ?? [];
+    if (countOverlapping(commitments, scheduledAt, quote.clientProposedEndDate, requestServiceMode) >= maxBookings) {
+      throw new ConflictException("Questa fascia non è più libera.");
     }
+
+    const updated = await this.prisma.quote.updateMany({
+      where: { id: quote.id, status: "MODIFICATION_REQUESTED", clientProposedDate: scheduledAt },
+      data: {
+        status: "SENT",
+        estimatedStartDate: scheduledAt,
+        estimatedEndDate: quote.clientProposedEndDate,
+        ...NO_PROPOSAL,
+        previousStartDate: null,
+        previousEndDate: null,
+        clientNote: null,
+        proposedDateAcceptedAt: new Date(),
+      },
+    });
+    if (updated.count === 0) throw new ConflictException("La proposta è cambiata: ricarica la pagina.");
+
+    await this.notificationsService.notify(quote.guidedRequest.clientId, "QUOTE_DATE_CONFIRMED", {
+      guidedRequestId: quote.guidedRequestId,
+      quoteId: quote.id,
+      to: slotPayload(scheduledAt, quote.clientProposedEndDate),
+    });
+    await this.professionalMetricsService.touchActivity(professionalProfile.id);
+    await this.timelineService.log(
+      quote.guidedRequestId,
+      professionalProfile.id,
+      "PROFESSIONAL",
+      `Il professionista ha accettato la data proposta (${formatSlotForTimeline(scheduledAt, quote.clientProposedEndDate)}): ora il cliente può accettare il preventivo.`,
+    );
+    return { bookingId: null };
   }
 
   /** Quanti lavori può avere la fascia della data proposta, nella modalità della richiesta. */
@@ -1117,6 +1089,7 @@ export class QuotesService {
         clientProposedNote: null,
         professionalCounterNote: input.note?.trim() || null,
         clientNote: null,
+        proposedDateAcceptedAt: null,
       },
     });
     // Confronto con la proposta del cliente a cui il professionista risponde

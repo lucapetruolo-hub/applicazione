@@ -1,19 +1,17 @@
 "use client";
 
-import { REQUEST_TIMING_LABEL, type ClientInvoiceRequestInput, type JobPaymentChoice, type RequestWithdrawReason, type SameTimeBookingCandidate } from "@professionisti/shared";
+import { QUOTE_COMPARE_MIN, REQUEST_TIMING_LABEL, comparableQuotes, type ClientInvoiceRequestInput, type JobPaymentChoice, type RequestWithdrawReason, type SameTimeBookingCandidate } from "@professionisti/shared";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
 import {
-  allItalianCityNames,
   quotesPriceSpan,
   formatEur,
   formatEurCents,
   cancellationNoticeLabel,
   isLateCancellation,
-  findComuneByName,
   formatItalianUntil,
   formatServicePriceRange,
   isPlausiblePhoneNumber,
@@ -24,6 +22,7 @@ import {
 } from "@professionisti/shared";
 import { Autocomplete, Avatar, Badge, BadgeInfo, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { useComuni } from "@/lib/comuniLazy";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { ProfessionalReviewsSummary } from "@/components/ProfessionalReviewsLink";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -51,12 +50,18 @@ import { QuoteCard, formatQuoteDateRange } from "./QuoteCard";
 import { ClientInvoiceRequestPanel } from "@/components/ClientInvoiceRequestForm";
 import { JobDocumentsModal } from "@/components/JobDocumentsModal";
 import { Disclosure } from "./Disclosure";
+import { QuoteCompareModal } from "./QuoteCompareModal";
+import { useOnlinePayments } from "@/lib/onlinePayments";
+import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 import { DeleteRequestModal } from "./DeleteRequestModal";
 import { announceRequestDeleted } from "./RequestDeletedNotice";
 import { ClientMiniTimeline, ClientStagePill, MAX_REQUEST_PHOTOS, STAGE_STYLE, ServiceBadge, formatDateTime, requestJobAddress, textareaStyle } from "./clientRequestHelpers";
 
 /** Acconto online che resta al professionista se il cliente annulla ora, dentro il preavviso (docs/CHANGELOG.md §348). */
 /** Pagato online e non ancora rimborsato (collaudo F-02). */
+/** Elenco vuoto stabile mentre i comuni arrivano. */
+const NO_CITIES: string[] = [];
+
 function paidOnline(booking: ClientBooking | null | undefined): number {
   if (booking?.payment?.method !== "ONLINE") return 0;
   return Math.max(0, booking.payment.paidEurCents - booking.payment.refundedEurCents);
@@ -164,6 +169,9 @@ export function GuidedRequestCard({
 
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  // Confronto dei preventivi fianco a fianco (docs/changelog/2026-11-08-confronto-preventivi.md).
+  const [showCompare, setShowCompare] = useState(false);
+  const onlineAvailable = useOnlinePayments();
   const [description, setDescription] = useState(request.description);
   const [city, setCity] = useState(request.city);
   const [address, setAddress] = useState(request.address ?? "");
@@ -186,7 +194,10 @@ export function GuidedRequestCard({
     city,
     setPostalCode,
   });
-  const cityComune = findComuneByName(city);
+  // Elenco dei comuni scaricato solo quando si apre "Modifica", non con la pagina
+  // (collaudo N-01, docs/changelog/2026-11-09-le-mie-richieste-leggera.md).
+  const comuni = useComuni(isEditing);
+  const cityComune = comuni?.findComuneByName(city);
   function changeCity(next: string) {
     const changed = next.trim().toLowerCase() !== city.trim().toLowerCase();
     setCity(next);
@@ -197,7 +208,7 @@ export function GuidedRequestCard({
       setPostalCode("");
     }
     chosenAddress.setChosen(false);
-    const comune = findComuneByName(next);
+    const comune = comuni?.findComuneByName(next);
     if (comune) setProvince(comune.province);
   }
   const [photoUrls, setPhotoUrls] = useState<string[]>(request.photoUrls);
@@ -420,7 +431,7 @@ export function GuidedRequestCard({
       setError("Indica la città.");
       return;
     }
-    if (city.trim() && !cityComune) {
+    if (city.trim() && comuni && !cityComune) {
       setError("Scegli la città dall'elenco dei comuni.");
       return;
     }
@@ -545,7 +556,7 @@ export function GuidedRequestCard({
           </Text>
           <textarea aria-label="Descrizione del lavoro" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} style={textareaStyle} />
           <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="4" backgroundColor={brand.calce}>
-            <Autocomplete items={allItalianCityNames()} getKey={(item) => item} getLabel={(item) => item} onSelect={changeCity} value={city} onChangeText={changeCity} placeholder="Città" minChars={3} />
+            <Autocomplete items={comuni?.allItalianCityNames() ?? NO_CITIES} getKey={(item) => item} getLabel={(item) => item} onSelect={changeCity} value={city} onChangeText={changeCity} placeholder="Città" minChars={3} />
           </YStack>
           {request.serviceMode === "ONLINE" ? (
             <Text fontSize={13} color={brand.grafite70}>
@@ -561,7 +572,7 @@ export function GuidedRequestCard({
             onSelect={(selected) => {
               // Suggerimenti di Google: compila anche gli altri campi (docs/CHANGELOG.md §141, §214),
               // città compresa: via e città si scrivono insieme (§264).
-              const comune = selected.locality ? findComuneByName(selected.locality) : undefined;
+              const comune = selected.locality ? comuni?.findComuneByName(selected.locality) : undefined;
               if (comune || selected.locality) setCity(comune?.name ?? selected.locality ?? "");
               setAddress(selected.street ?? selected.address);
               setHouseNumber(selected.houseNumber ?? "");
@@ -798,6 +809,7 @@ export function GuidedRequestCard({
   // Biglietto dell'appuntamento e, sotto, la trattativa chiusa (docs/CHANGELOG.md §346).
   const jobChosen = Boolean(booking && booking.status !== "CANCELED");
   const otherQuotes = request.quotes.filter((quote) => quote.id !== acceptedQuote?.id);
+  const comparable = booking ? [] : comparableQuotes(request.quotes);
   // Nome e indirizzo della richiesta per precompilare la fattura (docs/CHANGELOG.md §378).
   const invoiceDefaults = {
     name: [request.recipientName, request.recipientSurname].filter(Boolean).join(" "),
@@ -1228,7 +1240,17 @@ export function GuidedRequestCard({
               <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Preventivi ricevuti
               </Text>
-              {request.quotes.map(quoteCard)}
+              {comparable.length >= QUOTE_COMPARE_MIN ? (
+                <button type="button" className="quote-compare-open" onClick={() => setShowCompare(true)}>
+                  <Icon name="sliders-horizontal" size={18} color={brand.verificato} />
+                  Confronta i {comparable.length} preventivi
+                </button>
+              ) : null}
+              {request.quotes.map((quote) => (
+                <div key={quote.id} id={`preventivo-${quote.id}`} className="quote-anchor" tabIndex={-1}>
+                  {quoteCard(quote)}
+                </div>
+              ))}
             </YStack>
           ) : statusSummary ? null : (
             // Con il riepilogo qui sopra la frase c'era due volte (docs/CHANGELOG.md §349).
@@ -1236,6 +1258,26 @@ export function GuidedRequestCard({
               Nessun preventivo ricevuto ancora.
             </Text>
           )}
+
+          {showCompare ? (
+            <QuoteCompareModal
+              quotes={comparable}
+              sentTo={request.sentTo}
+              onlineAvailable={onlineAvailable}
+              onClose={() => setShowCompare(false)}
+              onPick={(quoteId) => {
+                setShowCompare(false);
+                // Dopo la chiusura: il preventivo scelto in vista, evidenziato, e il focus lì.
+                window.requestAnimationFrame(() => {
+                  const target = document.getElementById(`preventivo-${quoteId}`);
+                  if (!target) return;
+                  target.scrollIntoView({ behavior: "smooth", block: "start" });
+                  target.focus({ preventScroll: true });
+                  highlightDeepLinkTarget(`preventivo-${quoteId}`);
+                });
+              }}
+            />
+          ) : null}
 
           {openPhotoIndex !== null ? <PhotoLightbox photos={request.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} /> : null}
 
