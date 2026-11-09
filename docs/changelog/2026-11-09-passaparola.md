@@ -61,6 +61,16 @@ Seguito di `2026-11-08-canale-del-professionista.md`.
 - **Privacy** (punto 9): una frase sull'invito, l'unico dato legato alla
   persona (chi ti ha invitato), con il legittimo interesse e senza premi.
 
+**Seguito, stesso giorno** (Luca: "si alle migliorie 1 e 3"):
+- **Scheda da stampare per i partner**: in "Link dei partner" il pulsante
+  "Scheda PDF" scarica un foglio A4 con il nome del partner, cosa trova un
+  professionista sul sito, il prezzo di partenza (senza offerte a tempo, che
+  cambiano: stanno sulla pagina per i professionisti) e il QR del suo link.
+  Nuovo blocco `qr` nei PDF del server (`document-pdf.ts`), QR vettoriale.
+- **Bollino scuro** per i siti a sfondo scuro: `?tema=scuro` sull'indirizzo
+  del bollino, scelta "Per sfondi chiari / Per sfondi scuri" in "Il tuo
+  link", che cambia l'anteprima e il codice da incollare.
+
 Migrazione `20261109160000_passaparola` (solo colonne e tabelle nuove).
 
 **Verifica**: typecheck di API e sito, lint, 1413 prove dell'API (nuove:

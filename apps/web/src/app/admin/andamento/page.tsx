@@ -42,6 +42,7 @@ import {
   AdminCard,
   AdminPageHeader,
   CountingFromNote,
+  downloadBlobFile,
   errorMessage,
   formatAdminDate,
 } from "@/components/admin/adminUi";
@@ -1202,6 +1203,15 @@ function PartnerLinksCard({ token, isSuper }: { token: string | null; isSuper: b
     }
   }
 
+  async function sheet(partner: AdminInvitePartner) {
+    if (!token) return;
+    try {
+      downloadBlobFile(`scheda-${partner.name.replace(/[^\w.-]+/g, "-")}.pdf`, await apiClient.adminInvitePartnerSheetPdf(token, partner.id));
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
   async function copy(partner: AdminInvitePartner) {
     try {
       await navigator.clipboard.writeText(`${SITE_URL}${inviteLinkPath(partner.code)}`);
@@ -1216,7 +1226,7 @@ function PartnerLinksCard({ token, isSuper }: { token: string | null; isSuper: b
     <AdminCard>
       <CardTitle
         title="Link dei partner"
-        note="Un link per ogni commercialista o associazione che presenta il sito ai suoi artigiani: porta alla pagina per i professionisti e conta chi si iscrive da lì. Nessun compenso."
+        note="Un link per ogni commercialista o associazione che presenta il sito ai suoi artigiani: porta alla pagina per i professionisti e conta chi si iscrive da lì. Nessun compenso. La scheda PDF ha il link e il QR, da stampare o mandare."
       />
       {partners === null && !error ? <Text color={brand.grafite70}>Caricamento...</Text> : null}
       {partners && partners.length === 0 ? <Text color={brand.grafite70}>Nessun link creato.</Text> : null}
@@ -1231,6 +1241,9 @@ function PartnerLinksCard({ token, isSuper }: { token: string | null; isSuper: b
               </span>
               <button type="button" className="notif-link" onClick={() => void copy(partner)}>
                 {copied === partner.id ? "Copiato" : "Copia"}
+              </button>
+              <button type="button" className="notif-link" onClick={() => void sheet(partner)} aria-label={`Scheda in PDF per ${partner.name}`}>
+                Scheda PDF
               </button>
               {isSuper ? (
                 <button type="button" className="notif-link site-note-delete" onClick={() => void archive(partner)} aria-label={`Togli il link di ${partner.name}`}>

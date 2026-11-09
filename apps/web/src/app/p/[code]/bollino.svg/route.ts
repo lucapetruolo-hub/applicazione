@@ -1,5 +1,5 @@
 import { ApiError } from "@professionisti/api-client";
-import { BRAND, personalLinkBadgeSvg } from "@professionisti/shared";
+import { BRAND, personalLinkBadgeSvg, personalLinkBadgeTheme } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 
 /**
@@ -13,7 +13,7 @@ import { apiClient } from "@/lib/apiClient";
 // Sempre dal server, il CDN di Vercel lo tiene un'ora (Cache-Control qui sotto).
 export const dynamic = "force-dynamic";
 
-export async function GET(_request: Request, context: { params: Promise<{ code: string }> }) {
+export async function GET(request: Request, context: { params: Promise<{ code: string }> }) {
   const { code } = await context.params;
   let pro: { rating: number | null; reviewCount: number };
   try {
@@ -22,7 +22,9 @@ export async function GET(_request: Request, context: { params: Promise<{ code: 
     const status = err instanceof ApiError && (err.status === 404 || err.status === 400) ? 404 : 503;
     return new Response(null, { status, headers: { "Cache-Control": "public, max-age=300" } });
   }
-  return new Response(personalLinkBadgeSvg({ rating: pro.rating, reviewCount: pro.reviewCount, siteName: BRAND.name }), {
+  // `?tema=scuro` per i siti a sfondo scuro; ogni altro valore dà il bollino chiaro.
+  const theme = personalLinkBadgeTheme(new URL(request.url).searchParams.get("tema"));
+  return new Response(personalLinkBadgeSvg({ rating: pro.rating, reviewCount: pro.reviewCount, siteName: BRAND.name, theme }), {
     headers: {
       "Content-Type": "image/svg+xml; charset=utf-8",
       // Un'ora sul CDN e nel browser: il voto cambia solo con una recensione nuova.

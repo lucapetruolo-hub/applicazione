@@ -13,6 +13,7 @@ import {
   personalLinkBadgePath,
   personalLinkButtonHtml,
   type MyPersonalLink,
+  type PersonalLinkBadgeTheme,
 } from "@professionisti/shared";
 import { Button, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -116,7 +117,8 @@ function PersonalLinkContent() {
   );
   const buttonHtml = url ? personalLinkButtonHtml(url) : "";
   // Bollino con le stelle e "Porta un collega" (docs/changelog/2026-11-09-passaparola.md).
-  const badgeUrl = link ? `${SITE_URL}${personalLinkBadgePath(link.code)}` : "";
+  const [badgeTheme, setBadgeTheme] = useState<PersonalLinkBadgeTheme>("light");
+  const badgeUrl = link ? `${SITE_URL}${personalLinkBadgePath(link.code, badgeTheme)}` : "";
   const badgeAlt = link ? personalLinkBadgeLabel({ rating: link.rating, reviewCount: link.reviewCount, siteName: BRAND.name }) : "";
   const badgeHtml = link ? personalLinkBadgeHtml(url, badgeUrl, badgeAlt) : "";
   const colleagueUrl = link ? `${SITE_URL}${inviteLinkPath(link.code)}` : "";
@@ -373,10 +375,53 @@ function PersonalLinkContent() {
                   ? "Un bollino con il tuo voto e il numero delle recensioni, sempre aggiornato. Chi lo tocca arriva al tuo profilo."
                   : "Un bollino che si aggiorna da solo: oggi invita a chiederti un preventivo, con le prime recensioni mostra il tuo voto."}
               </Text>
-              <a href={url} target="_blank" rel="noopener" style={{ alignSelf: "flex-start", lineHeight: 0 }}>
-                {/* eslint-disable-next-line @next/next/no-img-element -- lo stesso SVG che vedrà chi visita il sito del professionista */}
-                <img src={personalLinkBadgePath(link.code)} alt={badgeAlt} width={220} height={64} />
-              </a>
+              <div role="group" aria-label="Colore del bollino" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {(
+                  [
+                    ["light", "Per sfondi chiari"],
+                    ["dark", "Per sfondi scuri"],
+                  ] as const
+                ).map(([theme, label]) => {
+                  const active = badgeTheme === theme;
+                  return (
+                    <button
+                      key={theme}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setBadgeTheme(theme)}
+                      style={{
+                        minHeight: 44,
+                        padding: "0 16px",
+                        borderRadius: 999,
+                        border: `1px solid ${active ? brand.cianografiaPieno : brand.bordoCampo}`,
+                        background: active ? brand.cianografiaPieno : brand.calce,
+                        color: active ? "#FFFFFF" : brand.grafite,
+                        fontSize: 15,
+                        fontWeight: 600,
+                        fontFamily: "inherit",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div
+                style={{
+                  alignSelf: "flex-start",
+                  padding: 12,
+                  borderRadius: 10,
+                  background: badgeTheme === "dark" ? brand.grafite : brand.calce,
+                  border: `1px solid ${brand.bordoCampo}`,
+                  lineHeight: 0,
+                }}
+              >
+                <a href={url} target="_blank" rel="noopener" style={{ display: "inline-block", lineHeight: 0 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- lo stesso SVG che vedrà chi visita il sito del professionista */}
+                  <img src={personalLinkBadgePath(link.code, badgeTheme)} alt={badgeAlt} width={220} height={64} />
+                </a>
+              </div>
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 14, color: brand.grafite70 }}>Codice del bollino</span>
                 <textarea

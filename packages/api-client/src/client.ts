@@ -2363,6 +2363,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     adminCreateInvitePartner: (token: string, input: InvitePartnerCreateInput) =>
       request<AdminInvitePartner>("/admin/invite-partners", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
 
+    /** Scheda in PDF da stampare o mandare al partner, con il suo link e il QR. */
+    adminInvitePartnerSheetPdf: (token: string, id: string) => downloadFile(`/admin/invite-partners/${encodeURIComponent(id)}/sheet.pdf`, token),
+
     adminArchiveInvitePartner: (token: string, id: string) =>
       request<void>(`/admin/invite-partners/${encodeURIComponent(id)}/archive`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 

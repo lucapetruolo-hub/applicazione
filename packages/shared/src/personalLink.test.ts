@@ -7,7 +7,9 @@ import {
   isInvitePartnerCode,
   isPersonalLinkCode,
   personalLinkBadgeHtml,
+  personalLinkBadgePath,
   personalLinkBadgeSvg,
+  personalLinkBadgeTheme,
   personalLinkButtonHtml,
   personalLinkNudgeDue,
 } from "./personalLink";
@@ -77,6 +79,18 @@ describe("passaparola (docs/changelog/2026-11-09-passaparola.md)", () => {
     const empty = personalLinkBadgeSvg({ rating: null, reviewCount: 0, siteName: "A&B" });
     assert.ok(empty.includes("Chiedi un preventivo"));
     assert.ok(empty.includes("A&amp;B"));
+  });
+
+  it("il bollino scuro per i siti a sfondo scuro", () => {
+    assert.equal(personalLinkBadgePath("k7m2qa"), "/p/k7m2qa/bollino.svg");
+    assert.equal(personalLinkBadgePath("k7m2qa", "dark"), "/p/k7m2qa/bollino.svg?tema=scuro");
+    assert.equal(personalLinkBadgeTheme("scuro"), "dark");
+    assert.equal(personalLinkBadgeTheme("<x>"), "light");
+    assert.equal(personalLinkBadgeTheme(null), "light");
+    const dark = personalLinkBadgeSvg({ rating: 4.2, reviewCount: 3, siteName: "P", theme: "dark" });
+    assert.ok(dark.includes('fill="#1F1A17"'));
+    assert.ok(!dark.includes('fill="#FFFFFF" stroke'));
+    assert.ok(personalLinkBadgeSvg({ rating: 4.2, reviewCount: 3, siteName: "P" }).includes('fill="#FFFFFF" stroke'));
   });
 
   it("il codice del bollino è un'immagine dentro un link", () => {

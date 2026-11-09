@@ -36,6 +36,8 @@ import { AdminQueueService } from "./admin-queue.service";
 import { SuspiciousAccountsService } from "./suspicious-accounts.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 import { InvitePartnersService } from "./invite-partners.service";
+import { pdfResponse, renderDocumentPdf } from "../accounting/document-pdf";
+import { pdfFileName } from "../accounting/document-pdf-models";
 import { AuditLogService } from "../audit-log/audit-log.service";
 
 @UseGuards(JwtAuthGuard, AdminGuard)
@@ -64,6 +66,14 @@ export class AdminController {
     const partner = await this.invitePartners.create(body);
     await this.auditLogService.record({ entityType: "InvitePartner", entityId: partner.id, fieldName: "create", newValue: { name: partner.name, code: partner.code }, changedByUserId: req.user.userId });
     return partner;
+  }
+
+  /** Scheda in PDF da stampare o mandare al partner, con il suo link e il QR. */
+  @RequireAdminScope("ANY")
+  @Get("invite-partners/:id/sheet.pdf")
+  async invitePartnerSheet(@Param("id") id: string) {
+    const { model, fileName } = await this.invitePartners.sheet(id);
+    return pdfResponse(await renderDocumentPdf(model), pdfFileName(fileName));
   }
 
   @RequireAdminScope("SUPER")

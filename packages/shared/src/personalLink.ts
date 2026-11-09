@@ -138,9 +138,22 @@ export function colleagueInviteMessage(input: { businessName: string; siteName: 
 }
 
 /** Bollino con le stelle per il sito del professionista: immagine del nostro sito, sotto il suo link. */
-export function personalLinkBadgePath(code: string): string {
-  return `/p/${code}/bollino.svg`;
+export function personalLinkBadgePath(code: string, theme: PersonalLinkBadgeTheme = "light"): string {
+  return theme === "dark" ? `/p/${code}/bollino.svg?tema=scuro` : `/p/${code}/bollino.svg`;
 }
+
+/** Chiaro per i siti a sfondo chiaro, scuro per quelli a sfondo scuro. */
+export type PersonalLinkBadgeTheme = "light" | "dark";
+
+/** Il tema dall'indirizzo del bollino (`?tema=scuro`): ogni altro valore è chiaro. */
+export function personalLinkBadgeTheme(value: string | null | undefined): PersonalLinkBadgeTheme {
+  return value === "scuro" ? "dark" : "light";
+}
+
+const BADGE_COLORS: Record<PersonalLinkBadgeTheme, { background: string; border: string; text: string; muted: string; emptyStar: string; star: string }> = {
+  light: { background: "#FFFFFF", border: "#128552", text: "#2B2420", muted: "#5C5249", emptyStar: "#E8DCCB", star: "#E0A100" },
+  dark: { background: "#1F1A17", border: "#4FC08D", text: "#FFFFFF", muted: "#D9CFC4", emptyStar: "#4A403A", star: "#F5B820" },
+};
 
 const BADGE_WIDTH = 220;
 const BADGE_HEIGHT = 64;
@@ -171,7 +184,8 @@ export function personalLinkBadgeLabel(input: { rating: number | null; reviewCou
  * numero delle recensioni, o "Chiedi un preventivo" se non ce ne sono
  * ancora. Colori del marchio, testo di sistema: nessun font da scaricare.
  */
-export function personalLinkBadgeSvg(input: { rating: number | null; reviewCount: number; siteName: string }): string {
+export function personalLinkBadgeSvg(input: { rating: number | null; reviewCount: number; siteName: string; theme?: PersonalLinkBadgeTheme }): string {
+  const c = BADGE_COLORS[input.theme ?? "light"];
   const site = escapeXml(input.siteName);
   const label = escapeXml(personalLinkBadgeLabel(input));
   const font = "system-ui,-apple-system,'Segoe UI',Roboto,sans-serif";
@@ -186,25 +200,25 @@ export function personalLinkBadgeSvg(input: { rating: number | null; reviewCount
       const id = `s${i}`;
       stars.push(
         `<clipPath id="${id}"><rect x="${cx - 9}" y="12" width="${(18 * fill).toFixed(2)}" height="18"/></clipPath>` +
-          `<path d="${starPath(cx, 21, 8.5)}" fill="#E8DCCB"/>` +
-          `<path d="${starPath(cx, 21, 8.5)}" fill="#E0A100" clip-path="url(#${id})"/>`,
+          `<path d="${starPath(cx, 21, 8.5)}" fill="${c.emptyStar}"/>` +
+          `<path d="${starPath(cx, 21, 8.5)}" fill="${c.star}" clip-path="url(#${id})"/>`,
       );
     }
     const ratingText = rating.toFixed(1).replace(".", ",");
     const count = `${input.reviewCount} ${input.reviewCount === 1 ? "recensione" : "recensioni"}`;
     body =
       stars.join("") +
-      `<text x="116" y="27" font-family="${font}" font-size="16" font-weight="700" fill="#2B2420">${ratingText}</text>` +
-      `<text x="14" y="50" font-family="${font}" font-size="12" fill="#5C5249">${escapeXml(count)} su ${site}</text>`;
+      `<text x="116" y="27" font-family="${font}" font-size="16" font-weight="700" fill="${c.text}">${ratingText}</text>` +
+      `<text x="14" y="50" font-family="${font}" font-size="12" fill="${c.muted}">${escapeXml(count)} su ${site}</text>`;
   } else {
     body =
-      `<text x="14" y="28" font-family="${font}" font-size="15" font-weight="700" fill="#2B2420">Chiedi un preventivo</text>` +
-      `<text x="14" y="49" font-family="${font}" font-size="12" fill="#5C5249">su ${site}</text>`;
+      `<text x="14" y="28" font-family="${font}" font-size="15" font-weight="700" fill="${c.text}">Chiedi un preventivo</text>` +
+      `<text x="14" y="49" font-family="${font}" font-size="12" fill="${c.muted}">su ${site}</text>`;
   }
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${BADGE_WIDTH}" height="${BADGE_HEIGHT}" viewBox="0 0 ${BADGE_WIDTH} ${BADGE_HEIGHT}" role="img" aria-label="${label}">` +
     `<title>${label}</title>` +
-    `<rect x="0.5" y="0.5" width="${BADGE_WIDTH - 1}" height="${BADGE_HEIGHT - 1}" rx="10" fill="#FFFFFF" stroke="#128552"/>` +
+    `<rect x="0.5" y="0.5" width="${BADGE_WIDTH - 1}" height="${BADGE_HEIGHT - 1}" rx="10" fill="${c.background}" stroke="${c.border}"/>` +
     body +
     `</svg>`
   );
