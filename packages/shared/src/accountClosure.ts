@@ -8,6 +8,8 @@
 export type AccountClosureCheck = {
   blockers: string[];
   jobsToCancel: { id: string; withName: string; scheduledAt: string }[];
+  /** Professionista con un abbonamento in corso: si annulla subito, senza altri addebiti (collaudo dell'8/11/2026, E1-01). */
+  subscriptionEndsNow?: boolean;
 };
 
 /** Nota sul lavoro annullato perché il cliente ha chiuso l'account. */

@@ -1,6 +1,19 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Resend } from "resend";
 import { EMAIL_BRAND } from "./email-brand";
+import { opsAlert } from "../common/ops-alert";
+import { emailFingerprint } from "../common/email-fingerprint";
+
+/**
+ * Destinatario come compare nel log (E2-05/E1-04 del controllo dell'08/11):
+ * mai l'email in chiaro (minimizzazione, art. 5 GDPR), solo il dominio, utile
+ * a capire un rifiuto del fornitore, e l'inizio dell'impronta, che in Admin
+ * si può confrontare scrivendo l'email esatta.
+ */
+export function recipientForLog(to: string): string {
+  const domain = to.includes("@") ? to.slice(to.lastIndexOf("@")) : "";
+  return `destinatario ${emailFingerprint(to).slice(0, 12)} (${domain || "senza dominio"})`;
+}
 
 /**
  * Invio email transazionali (Resend) — CEO, tattico: "promemoria automatici
@@ -49,7 +62,7 @@ export class EmailService {
     headers?: Record<string, string>;
   }): Promise<boolean> {
     if (!this.resend) {
-      this.logger.warn(`RESEND_API_KEY non configurata: email "${params.subject}" a ${params.to} non inviata.`);
+      this.logger.warn(`RESEND_API_KEY non configurata: email "${params.subject}" a ${recipientForLog(params.to)} non inviata.`);
       return false;
     }
     try {
@@ -66,13 +79,32 @@ export class EmailService {
           : {}),
       });
       if (result.error) {
-        this.logger.error(`Invio email fallito a ${params.to}: ${result.error.message}`);
+        resendProblemAlert(result.error.name);
+        this.logger.error(`Invio email fallito a ${recipientForLog(params.to)}: ${result.error.message}`);
         return false;
       }
       return true;
     } catch (err) {
-      this.logger.error(`Invio email fallito a ${params.to}: ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.error(`Invio email fallito a ${recipientForLog(params.to)}: ${err instanceof Error ? err.message : String(err)}`);
       return false;
     }
   }
+}
+
+/**
+ * Avviso a chi gestisce il sito quando Resend rifiuta per un limite o per un
+ * suo guasto (docs/changelog/2026-11-08-infrastruttura-lancio.md): sul piano
+ * gratuito dopo 100 email al giorno non parte più nulla, nemmeno la conferma
+ * dell'email, e prima lo diceva solo il log. Al massimo un avviso l'ora per
+ * tipo (`opsAlert`); un indirizzo sbagliato non avvisa.
+ */
+export function resendProblemAlert(errorName: string | undefined): boolean {
+  const name = errorName ?? "";
+  if (/quota|rate_limit/.test(name)) {
+    return opsAlert("resend-limite", `Resend rifiuta le email per un limite (${name}): controlla il piano e la quota su resend.com.`);
+  }
+  if (name === "application_error" || name === "internal_server_error" || name === "missing_api_key" || name === "invalid_api_Key") {
+    return opsAlert("resend-guasto", `Resend non manda le email (${name}): controlla la chiave RESEND_API_KEY e lo stato di Resend.`);
+  }
+  return false;
 }

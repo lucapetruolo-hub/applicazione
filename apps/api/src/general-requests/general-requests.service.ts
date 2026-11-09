@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import {
   DEFAULT_GENERAL_REQUEST_THRESHOLDS,
@@ -21,6 +21,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { EmailService } from "../email/email.service";
 import { adminGeneralRequestsClosedEmail } from "../email/templates/job-emails";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const DAY_MS = 86_400_000;
 const MEASURE_AFTER_MS = 2 * DAY_MS;
@@ -159,7 +160,7 @@ export class GeneralRequestsService {
   }
 
   /** Ogni ora: chiude le categorie nelle città dove il carico supera le soglie. Non riapre mai da solo. */
-  @Cron(CronExpression.EVERY_HOUR)
+  @ScheduledJob(CronExpression.EVERY_HOUR)
   async runAutoCheck(now: Date = new Date()): Promise<number> {
     const thresholds = await this.thresholds();
     if (!thresholds.autoCloseEnabled) return 0;

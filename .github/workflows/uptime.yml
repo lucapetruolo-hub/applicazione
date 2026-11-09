@@ -1,12 +1,13 @@
 # Controllo "il sito è su?" (CEO, tattico — docs/CHANGELOG.md §132): ogni 10
-# minuti interroga /health dell'API e la homepage. Se uno dei due non
-# risponde il workflow fallisce e GitHub manda un'email di avviso.
+# minuti interroga l'API e la homepage. Se uno dei due non risponde il
+# workflow fallisce e GitHub manda un'email di avviso (una sola, al primo
+# giro rosso; poi di nuovo solo dopo che è tornato verde).
 #
-# Effetto collaterale voluto: sul piano free di Render l'API va in sleep dopo
-# 15 minuti senza richieste, e mentre dorme i job @Cron (promemoria anti
-# no-show, scadenza lead) non girano. Il ping la tiene sveglia — nei limiti
-# della puntualità dei cron di GitHub, che possono ritardare di diversi
-# minuti: non sostituisce un piano Render a pagamento.
+# Dall'08/11/2026 (docs/changelog/2026-11-08-infrastruttura-lancio.md) chiede
+# /health/db, che risponde solo se anche il database risponde: il 05/11 il
+# database era scaduto e /health restava verde mentre ogni pagina dava errore.
+# L'API su Render Starter è sempre accesa: il ping non serve più a tenerla
+# sveglia.
 #
 # Configurazione: GitHub → Settings → Secrets and variables → Actions →
 # Variables: API_HEALTH_URL (es. https://<nome>.onrender.com/health) e
@@ -31,15 +32,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: API /health
+      - name: API e database
         if: ${{ vars.API_HEALTH_URL != '' }}
+        env:
+          API_HEALTH_URL: ${{ vars.API_HEALTH_URL }}
         # --retry: il primo tentativo dopo uno sleep può superare il minuto
         # (cold start di Render), non è un sito giù. Si riprova per circa due
         # minuti: il 25/10/2026 Render ha risposto "troppe richieste" (429)
         # per una ventina di secondi e il controllo è diventato rosso senza
         # che il sito fosse giù (docs/changelog/2026-10-28-prove-ripetute.md).
         # Un sito davvero giù fallisce lo stesso a ogni tentativo.
-        run: curl --fail --silent --show-error --max-time 90 --retry 5 --retry-delay 15 --retry-max-time 120 "${{ vars.API_HEALTH_URL }}"
+        # --retry-all-errors: anche un 503 (database lento per un attimo) si
+        # riprova; un database davvero giù resta rosso a ogni tentativo.
+        run: curl --fail --silent --show-error --max-time 90 --retry 5 --retry-all-errors --retry-delay 15 --retry-max-time 120 "${API_HEALTH_URL%/health}/health/db"
       - name: Sito web
         if: ${{ vars.SITE_URL != '' }}
         run: curl --fail --silent --show-error --output /dev/null --max-time 30 --retry 5 --retry-delay 15 --retry-max-time 120 "${{ vars.SITE_URL }}"
@@ -66,7 +71,10 @@ jobs:
           UPTIME_EMAIL: ${{ secrets.UPTIME_EMAIL }}
           UPTIME_PASSWORD: ${{ secrets.UPTIME_PASSWORD }}
         run: |
-          if [ -z "$UPTIME_EMAIL" ] || [ -z "$UPTIME_PASSWORD" ]; then echo "Secret UPTIME_EMAIL/UPTIME_PASSWORD mancanti: controllo saltato."; exit 0; fi
+          # Senza segreti il controllo non si salta più in silenzio (E9-16,
+          # docs/changelog/2026-11-08-infrastruttura-lancio.md): fallisce e
+          # GitHub manda l'email, così ci si ricorda di rifare l'account.
+          if [ -z "$UPTIME_EMAIL" ] || [ -z "$UPTIME_PASSWORD" ]; then echo "::error::Secret UPTIME_EMAIL/UPTIME_PASSWORD mancanti: crea un account di prova e aggiungili (docs/ops/avvisi.md)."; exit 1; fi
           api="${API_HEALTH_URL%/health}"
           body=$(jq -n --arg email "$UPTIME_EMAIL" --arg password "$UPTIME_PASSWORD" '{email: $email, password: $password}')
           token=$(curl --fail --silent --show-error --max-time 90 --retry 2 --retry-delay 10 -H 'content-type: application/json' -d "$body" "$api/auth/login" | jq -r .token)

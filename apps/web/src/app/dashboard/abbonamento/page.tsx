@@ -25,6 +25,7 @@ import {
   PRO_CHURN_REASONS,
   type ChurnReason,
 } from "@professionisti/shared";
+import { BankConfirmStep } from "@/components/BankConfirmStep";
 import { ChurnReasonPicker } from "@/components/ChurnReasonPicker";
 import { Button, ButtonArrow, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -382,6 +383,8 @@ function AbbonamentoContent() {
   const [pendingTier, setPendingTier] = useState<SubscriptionTier | null>(null);
 
   const [notice, setNotice] = useState<string | null>(null);
+  // Quota o primo mese in attesa della conferma della banca (3D Secure).
+  const [bankConfirm, setBankConfirm] = useState<{ url: string; tier: SubscriptionTier } | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState<ChurnReason | null>(null);
   const [renewalPending, setRenewalPending] = useState(false);
@@ -441,12 +444,18 @@ function AbbonamentoContent() {
     startExternalRedirectProgress(PAYMENT_PAGE_LABEL);
     try {
       // Per ora solo mensile (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
-      const { url } = await apiClient.createSubscriptionCheckout(token, tier, "MONTH");
+      const { url, bankConfirmUrl } = await apiClient.createSubscriptionCheckout(token, tier, "MONTH");
       if (url) {
         window.location.assign(url);
         return;
       }
       stopProgress();
+      if (bankConfirmUrl) {
+        // La banca chiede la conferma: la pagina di Stripe in una scheda nuova, qui si aspetta il livello.
+        setBankConfirm({ url: bankConfirmUrl, tier });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
       // Passaggio fatto subito, con la quota addebitata sulla carta salvata.
       setNotice(`Fatto: ora sei al livello ${subscriptionTierInfo(tier).label}.`);
       load();
@@ -602,6 +611,20 @@ function AbbonamentoContent() {
               load();
             }}
           />
+        ) : null}
+        {bankConfirm && token ? (
+          <Surface borderRadius={radiusDoc} padding="4" backgroundColor={brand.cianografiaVelo}>
+            <BankConfirmStep
+              url={bankConfirm.url}
+              tier={bankConfirm.tier}
+              token={token}
+              onDone={() => {
+                setBankConfirm(null);
+                setNotice(`Fatto: ora sei al livello ${subscriptionTierInfo(bankConfirm.tier).label}.`);
+                load();
+              }}
+            />
+          </Surface>
         ) : null}
         {notice ? (
           <Surface borderRadius={radiusDoc} padding="4" backgroundColor={brand.cianografiaVelo}>

@@ -970,6 +970,11 @@ export default function AccountPage() {
                   </Text>
                 </YStack>
               ) : null}
+              {closureCheck.subscriptionEndsNow ? (
+                <Text color={brand.grafite} fontSize={16}>
+                  Il tuo abbonamento si annulla subito: niente altri addebiti sulla carta.
+                </Text>
+              ) : null}
               <Text color={brand.grafite} fontSize={16}>
                 Questa azione è definitiva: verranno eliminati il tuo profilo, le richieste, le prenotazioni e le
                 recensioni collegate al tuo account. Scrivi <Text fontWeight="800">ELIMINA</Text> per confermare.

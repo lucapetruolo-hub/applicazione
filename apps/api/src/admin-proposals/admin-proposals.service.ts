@@ -1,5 +1,4 @@
 import { ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, type OnApplicationBootstrap } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
   ADMIN_PROPOSAL_KINDS_INFO,
@@ -46,6 +45,7 @@ import {
   testAccountsProposalDue,
   wordStem,
 } from "./admin-proposals";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const DAY_MS = 24 * 60 * 60_000;
 /** Una proposta già approvata torna solo se dopo tanti giorni vale di nuovo (es. una frase tolta a mano). */
@@ -295,7 +295,7 @@ export class AdminProposalsService implements OnApplicationBootstrap {
   // -------------------------------------------------------------------------
 
   /** Ogni notte alle 4:20, dopo gli altri controlli notturni. */
-  @Cron("20 4 * * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("20 4 * * *", { timeZone: "Europe/Rome" })
   async nightly(): Promise<void> {
     await this.refresh();
   }

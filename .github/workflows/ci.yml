@@ -49,6 +49,21 @@ jobs:
             echo "::warning file=docs/CHANGELOG.md::Voce nuova in fondo a docs/CHANGELOG.md: spostala in un file suo in docs/changelog/ (docs/changelog/README.md), così le PR non vanno in conflitto tra loro."
           fi
           echo "Changelog in ordine"
+      # Migrazioni solo in avanti (docs/changelog/2026-11-08-infrastruttura-lancio.md,
+      # CLAUDE.md §2): una migrazione già unita è già girata sul database vero,
+      # cambiarla non cambia nulla in produzione e rompe chi riparte da zero.
+      # Si aggiunge una migrazione nuova.
+      - name: Migrazioni già unite non toccate
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          changed=$(git diff --name-only --diff-filter=MDR "$BASE"...HEAD -- packages/database/prisma/migrations \
+            | grep -v '^packages/database/prisma/migrations/migration_lock.toml$' || true)
+          if [ -n "$changed" ]; then
+            echo "::error::Migrazioni già unite modificate o cancellate (fanne una nuova con prisma migrate dev): $changed"
+            exit 1
+          fi
+          echo "Migrazioni in ordine"
 
   typecheck-build-test:
     runs-on: ubuntu-latest
@@ -66,6 +81,17 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # Ogni variabile letta dall'API sta in render.yaml (E9-03) e le attività
+      # a orario usano @ScheduledJob, non @Cron di Nest: ora italiana e mai
+      # doppie (docs/changelog/2026-11-08-infrastruttura-lancio.md).
+      - name: Variabili di Render e attività a orario
+        run: |
+          node apps/api/scripts/check-render-env.mjs
+          if grep -rn --include=*.ts '@Cron(' apps/api/src | grep -v 'apps/api/src/common/scheduled-job'; then
+            echo "::error::Usa @ScheduledJob di apps/api/src/common/scheduled-job.ts al posto di @Cron (docs/ops/attivita-a-orario.md)."
+            exit 1
+          fi
 
       - name: Cache di Next.js
         uses: actions/cache@v5
@@ -273,7 +299,8 @@ jobs:
   # Iscrizione con la carta, Checkout di Stripe di prova compreso
   # (docs/changelog/2026-10-30-iscrizione-carta-solida.md). Gira solo con il
   # segreto E2E_STRIPE_SECRET_KEY (chiave sk_test_ di Stripe di prova); senza,
-  # lo dice e passa. Stripe CLI inoltra i webhook all'API sulla macchina.
+  # lo dice e passa sulle PR, fallisce sul ramo principale. Stripe CLI inoltra
+  # i webhook all'API sulla macchina.
   iscrizione-carta:
     runs-on: ubuntu-latest
     services:
@@ -299,6 +326,13 @@ jobs:
         id: chiave
         run: |
           if [ -z "$E2E_STRIPE_SECRET_KEY" ]; then
+            # Sul ramo principale la prova non si salta in silenzio
+            # (docs/changelog/2026-11-08-infrastruttura-lancio.md, E9-16): le
+            # PR di Dependabot non hanno il segreto e lì si salta.
+            if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+              echo "::error::Manca il segreto E2E_STRIPE_SECRET_KEY: la prova della carta non gira (GitHub → Settings → Secrets → Actions)."
+              exit 1
+            fi
             echo "::notice::Prova della carta saltata: manca il segreto E2E_STRIPE_SECRET_KEY."
             echo "presente=false" >> "$GITHUB_OUTPUT"
           else
