@@ -60,3 +60,5 @@ preventivo in basso, e scorrendo per arrivare a Esci si scorre la pagina sotto."
 Verifica: telefono simulato (iPhone 13), pagina scorsa a 300 px, menu aperto:
 barra nascosta, rotella senza effetto sulla pagina, chiuso con Esc la pagina
 resta a 300 px e la barra torna.
+- `overflow: hidden` solo sull'html, non sul body: sul body la barra in alto
+  (sticky) usciva di vista. Altezza del menu con `100dvh` (Safari iOS).

@@ -1516,10 +1516,13 @@ html.acct-menu-open .profile-cta-bar {
 }
 .acct-menu {
   overscroll-behavior: contain;
+  /* Altezza visibile vera su Safari iOS (100vh conta anche la barra
+     dell'indirizzo): "Esci" resta raggiungibile. */
+  max-height: calc(100dvh - 88px);
 }
 @media (max-width: 860px) {
-  html.acct-menu-open,
-  html.acct-menu-open body {
+  /* Solo sull'html: anche sul body la barra in alto (sticky) usciva di vista. */
+  html.acct-menu-open {
     overflow: hidden;
   }
 }
