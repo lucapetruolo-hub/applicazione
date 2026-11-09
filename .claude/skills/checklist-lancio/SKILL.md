@@ -96,7 +96,10 @@ produzione):
    accese. Il sito chiude comunque l'abbonamento dopo 14 giorni di rinnovo
    non pagato, ma è meglio che lo faccia Stripe. Metodi di pagamento: solo
    carta (il Checkout dell'abbonamento chiede già solo la carta). Webhook
-   creati con la versione API più recente.
+   creati con la versione API più recente. Sul primo endpoint anche
+   l'evento `customer.updated`: con una carta cambiata il rinnovo non pagato
+   si riprova subito (chi non paga è in pausa dal giorno dopo, decisione di
+   Luca del 9/11/2026).
 5. Chiavi Stripe Checkout reali (già segnalate in §9 sopra:
    `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PRICE_BASE`/
    `STRIPE_PRICE_PLUS`/`STRIPE_PRICE_PRO`, con gli eventi webhook

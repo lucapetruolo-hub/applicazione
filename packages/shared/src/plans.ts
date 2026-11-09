@@ -103,6 +103,13 @@ export const TRIAL_DAYS = 30;
  * Stripe lasciasse l'abbonamento sospeso invece di annullarlo.
  */
 export const PAST_DUE_GRACE_DAYS = 14;
+
+/**
+ * Giorni in cui chi non ha pagato il rinnovo resta visibile e riceve
+ * richieste (decisione di Luca del 9/11/2026): dopo, profilo in pausa finché
+ * il pagamento non passa, senza chiudere l'abbonamento.
+ */
+export const PAST_DUE_VISIBLE_DAYS = 1;
 /** Avviso di fine mesi gratis questi giorni prima. */
 export const TRIAL_ENDING_NOTICE_DAYS = 3;
 
@@ -201,7 +208,9 @@ export const FREE_MONTHS_END_NOTICE_DAYS = 7;
  * vedi `MySubscription.limitReached`. `CARD_NEEDED`: dal lancio i mesi gratis
  * valgono solo con la carta data (decisione di Luca del 29/10/2026).
  */
-export type PauseReason = "TRIAL_ENDED" | "SUBSCRIPTION_ENDED" | "CARD_NEEDED";
+// `PAYMENT_FAILED`: rinnovo non pagato da più di un giorno (decisione di Luca del 9/11/2026):
+// fuori dalla ricerca finché non paga, poi l'abbonamento si chiude dopo 14 giorni.
+export type PauseReason = "TRIAL_ENDED" | "SUBSCRIPTION_ENDED" | "CARD_NEEDED" | "PAYMENT_FAILED";
 
 /**
  * Errore dell'API per chi prova a mandare un preventivo o a rispondere per

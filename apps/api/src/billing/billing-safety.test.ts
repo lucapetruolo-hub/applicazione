@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConflictException } from "@nestjs/common";
+import Stripe from "stripe";
 import { BillingService } from "./billing.service";
 
 /**
@@ -19,13 +20,15 @@ function buildService() {
     subscription: { findUnique: vi.fn(), findMany: vi.fn().mockResolvedValue([]), update: vi.fn().mockResolvedValue({}), updateMany: vi.fn().mockResolvedValue({ count: 1 }), upsert: vi.fn() },
     professionalProfile: { findUnique: vi.fn(), findFirst: vi.fn().mockResolvedValue(null) },
   };
-  const subscriptionsService = { applyStripeSubscription: vi.fn(), onInvoice: vi.fn(), notifyPaid: vi.fn() };
+  const subscriptionsService = { applyStripeSubscription: vi.fn(), onInvoice: vi.fn(), notifyPaid: vi.fn(), warnUnpaidBeforeClosure: vi.fn().mockResolvedValue(0) };
   const invoicesService = { issueForStripeInvoice: vi.fn().mockResolvedValue(true), notifyFinanceAdmins: vi.fn() };
   const stripe = {
     webhooks: { constructEvent: vi.fn() },
     subscriptions: { cancel: vi.fn().mockResolvedValue({}), retrieve: vi.fn(), update: vi.fn() },
-    invoices: { retrieve: vi.fn(), create: vi.fn(), pay: vi.fn(), voidInvoice: vi.fn(), del: vi.fn() },
+    invoices: { retrieve: vi.fn(), create: vi.fn(), pay: vi.fn(), voidInvoice: vi.fn(), del: vi.fn(), list: vi.fn().mockResolvedValue({ data: [] }) },
     invoiceItems: { create: vi.fn() },
+    invoicePayments: { list: vi.fn().mockResolvedValue({ data: [] }) },
+    refunds: { create: vi.fn().mockResolvedValue({ id: "re_1" }) },
   };
   const service = new BillingService(prisma as never, {} as never, {} as never, {} as never, subscriptionsService as never, invoicesService as never);
   (service as unknown as { stripe: unknown }).stripe = stripe;
@@ -157,22 +160,101 @@ describe("passaggio di livello con la quota (E3-02)", () => {
   });
 });
 
+describe("passaggio di livello con la conferma della banca (3D Secure)", () => {
+  function paidBase(prisma: ReturnType<typeof buildService>["prisma"], upgradeInvoiceId: string | null = null) {
+    process.env.LAUNCH_DATE = "2026-11-02";
+    prisma.professionalProfile.findUnique.mockResolvedValue({ id: "pro-1", businessName: "Idraulica Rossi", stripeCustomerId: "cus_1", user: { email: "pro@example.com" } });
+    prisma.subscription.findUnique.mockImplementation(({ select }: { select?: Record<string, boolean> }) => {
+      if (select?.upgradeInvoiceId && !select.id) return Promise.resolve({ upgradeInvoiceId });
+      if (select?.upgradeInvoiceId) return Promise.resolve({ id: "s-1", upgradeInvoiceId });
+      return Promise.resolve({ id: "s-1", plan: "BASE", status: "ACTIVE", stripeSubscriptionId: "sub_1", trialEndsAt: null, currentPeriodEnd: new Date(NOW.getTime() + 20 * DAY) });
+    });
+  }
+  const authRequired = () => Object.assign(Object.create(Stripe.errors.StripeCardError.prototype), { code: "authentication_required", message: "Authentication required" });
+
+  it("la banca chiede la conferma: si apre la pagina di Stripe della quota, il livello non cambia ancora", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    const { service, prisma, stripe } = buildService();
+    paidBase(prisma);
+    stripe.subscriptions.retrieve.mockResolvedValue(stripeSubscription("price_base_m"));
+    stripe.invoices.create.mockResolvedValue({ id: "in_fee" });
+    stripe.invoices.pay.mockRejectedValue(authRequired());
+    stripe.invoices.retrieve.mockResolvedValue({ id: "in_fee", status: "open", hosted_invoice_url: "https://invoice.stripe.com/i/in_fee" });
+
+    await expect(service.createSubscriptionCheckout("user-1", "PLUS")).resolves.toEqual({ url: "https://invoice.stripe.com/i/in_fee" });
+    expect(stripe.invoices.voidInvoice).not.toHaveBeenCalled();
+    expect(stripe.subscriptions.update).not.toHaveBeenCalled();
+  });
+
+  it("secondo clic mentre aspetta la conferma: riapre la stessa pagina, nessuna quota nuova", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    const { service, prisma, stripe } = buildService();
+    paidBase(prisma, "in_fee");
+    stripe.invoices.retrieve.mockResolvedValue({ id: "in_fee", status: "open", created: (NOW.getTime() - 60_000) / 1000, hosted_invoice_url: "https://invoice.stripe.com/i/in_fee", metadata: { plan: "PLUS", stripeSubscriptionId: "sub_1" } });
+
+    await expect(service.createSubscriptionCheckout("user-1", "PLUS")).resolves.toEqual({ url: "https://invoice.stripe.com/i/in_fee" });
+    expect(stripe.invoices.create).not.toHaveBeenCalled();
+  });
+
+  it("quota pagata sulla pagina di Stripe: il livello cambia all'arrivo di invoice.paid", async () => {
+    const { service, prisma, stripe } = buildService();
+    paidBase(prisma, "in_fee");
+    stripe.webhooks.constructEvent.mockReturnValue({
+      id: "evt_fee",
+      type: "invoice.paid",
+      data: { object: { id: "in_fee", amount_paid: 3500, billing_reason: "manual", lines: { data: [] }, metadata: { kind: "tier_upgrade_fee", plan: "PLUS", stripeSubscriptionId: "sub_1", professionalProfileId: "pro-1" } } },
+    });
+    stripe.invoices.retrieve.mockResolvedValue({ id: "in_fee", status: "paid", metadata: { plan: "PLUS", stripeSubscriptionId: "sub_1" } });
+    stripe.subscriptions.retrieve.mockResolvedValue(stripeSubscription("price_base_m"));
+    stripe.subscriptions.update.mockResolvedValue(stripeSubscription("price_plus_m"));
+
+    await service.handleWebhookEvent(Buffer.from("{}"), "sig");
+
+    expect(stripe.subscriptions.update).toHaveBeenCalledWith("sub_1", expect.objectContaining({ items: [{ id: "si_1", price: "price_plus_m" }] }));
+  });
+});
+
 describe("webhook dell'abbonamento", () => {
   it("secondo abbonamento da una seconda scheda: annullato, la riga resta sul primo, la Finanza rimborsa (E3-01)", async () => {
     const { service, prisma, stripe, invoicesService } = buildService();
     stripe.webhooks.constructEvent.mockReturnValue({
       id: "evt_1",
       type: "checkout.session.completed",
-      data: { object: { payment_status: "paid", subscription: "sub_2", amount_total: 2318, metadata: { kind: "subscription", professionalProfileId: "pro-1", plan: "BASE" } } },
+      data: { object: { payment_status: "paid", subscription: "sub_2", invoice: "in_dup", amount_total: 2318, metadata: { kind: "subscription", professionalProfileId: "pro-1", plan: "BASE" } } },
     });
     prisma.subscription.findUnique.mockResolvedValue({ stripeSubscriptionId: "sub_1" });
     stripe.subscriptions.retrieve.mockResolvedValue(stripeSubscription("price_base_m", "active"));
+    stripe.invoicePayments.list.mockResolvedValue({ data: [{ payment: { type: "payment_intent", payment_intent: "pi_dup" } }] });
 
     await service.handleWebhookEvent(Buffer.from("{}"), "sig");
 
     expect(stripe.subscriptions.cancel).toHaveBeenCalledWith("sub_2", { prorate: false, invoice_now: false }, stripeOpts("doppione-sub_2"));
     expect(prisma.subscription.upsert).not.toHaveBeenCalled();
-    expect(invoicesService.notifyFinanceAdmins).toHaveBeenCalledWith("ADMIN_SUBSCRIPTION_DUPLICATE", expect.objectContaining({ amountEurCents: 2318, stripeSubscriptionId: "sub_2" }));
+    // Rimborsato subito; la Finanza lo sa (nota di credito dal rimborso).
+    expect(stripe.invoicePayments.list).toHaveBeenCalledWith({ invoice: "in_dup", status: "paid", limit: 10 });
+    expect(stripe.refunds.create).toHaveBeenCalledWith(expect.objectContaining({ payment_intent: "pi_dup", reason: "duplicate" }), stripeOpts("rimborso-doppione-pi_dup"));
+    expect(invoicesService.notifyFinanceAdmins).toHaveBeenCalledWith("ADMIN_SUBSCRIPTION_DUPLICATE", expect.objectContaining({ amountEurCents: 2318, stripeSubscriptionId: "sub_2", refunded: true }));
+  });
+
+  it("carta cambiata con il rinnovo non pagato: si riprova subito con la carta nuova (decisione di Luca del 09/11/2026)", async () => {
+    const { service, prisma, stripe } = buildService();
+    const cardChanged = (previous: object) => ({
+      id: `evt_cus_${Object.keys(previous).join()}`,
+      type: "customer.updated",
+      data: { object: { id: "cus_1", invoice_settings: { default_payment_method: "pm_new" } }, previous_attributes: previous },
+    });
+    prisma.professionalProfile.findFirst.mockResolvedValue({ id: "pro-1" });
+    prisma.subscription.findUnique.mockResolvedValue({ status: "PAST_DUE", stripeSubscriptionId: "sub_1" });
+    stripe.invoices.list.mockResolvedValue({ data: [{ id: "in_renewal" }] });
+    stripe.webhooks.constructEvent.mockReturnValueOnce(cardChanged({ email: "vecchia@example.com" })).mockReturnValueOnce(cardChanged({ invoice_settings: { default_payment_method: "pm_old" } }));
+
+    // Cambiata solo l'email: nessun tentativo.
+    await service.handleWebhookEvent(Buffer.from("{}"), "sig");
+    expect(stripe.invoices.pay).not.toHaveBeenCalled();
+
+    await service.handleWebhookEvent(Buffer.from("{}"), "sig");
+    expect(stripe.invoices.list).toHaveBeenCalledWith({ customer: "cus_1", subscription: "sub_1", status: "open", limit: 3 });
+    expect(stripe.invoices.pay).toHaveBeenCalledWith("in_renewal", { payment_method: "pm_new", off_session: true });
   });
 
   it("una riga di pagamento per ogni addebito dell'abbonamento, mai per la carta a 0 € (E3-09)", async () => {

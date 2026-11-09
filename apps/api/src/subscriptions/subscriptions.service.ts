@@ -5,6 +5,7 @@ import {
   DEFAULT_FREE_MONTHS,
   FOUNDER_SPOTS,
   MAX_OFFER_FREE_MONTHS,
+  PAST_DUE_GRACE_DAYS,
   RENEWAL_NOTICE_DAYS,
   TRIAL_DAYS,
   TRIAL_ENDING_NOTICE_DAYS,
@@ -553,7 +554,7 @@ export class SubscriptionsService {
         // Abbonamento concluso: niente ritorno a Base in sospeso.
         ...(input.status === "CANCELED" ? { returnToBaseAt: null } : {}),
         // Rinnovo non pagato: da quando (E3-03), per chiuderlo dopo 14 giorni.
-        ...(input.status === "PAST_DUE" ? (row.pastDueSince ? {} : { pastDueSince: now }) : input.status ? { pastDueSince: null } : {}),
+        ...(input.status === "PAST_DUE" ? (row.pastDueSince ? {} : { pastDueSince: now }) : input.status ? { pastDueSince: null, pastDueWarnedAt: null } : {}),
         // Prima carta data (imbuto dell'iscrizione, docs/changelog/2026-10-30-iscrizione-carta-solida.md).
         ...(!row.cardAddedAt && input.status === "ACTIVE" ? { cardAddedAt: now } : {}),
       },
@@ -586,7 +587,7 @@ export class SubscriptionsService {
     if (!row || row.status === "CANCELED" || row.professionalProfile?.deletedAt) return;
     await this.prisma.subscription.update({
       where: { id: row.id },
-      data: { status: outcome.paid ? "ACTIVE" : "PAST_DUE", pastDueSince: outcome.paid ? null : (row.pastDueSince ?? new Date()) },
+      data: outcome.paid ? { status: "ACTIVE", pastDueSince: null, pastDueWarnedAt: null } : { status: "PAST_DUE", pastDueSince: row.pastDueSince ?? new Date() },
     });
     const tier = tierOfPlan(row.plan);
     const userId = row.professionalProfile.userId;
@@ -602,6 +603,29 @@ export class SubscriptionsService {
       });
     }
     await this.syncPause(row.professionalProfileId);
+  }
+
+  /**
+   * Ultimo avviso 3 giorni prima che un rinnovo non pagato chiuda
+   * l'abbonamento (docs/changelog/2026-11-08-abbonamento-chiusure-e-rinnovi.md):
+   * una volta sola per rinnovo non pagato, con il giorno della chiusura.
+   * Lo chiama il controllo orario dell'abbonamento in BillingService.
+   */
+  async warnUnpaidBeforeClosure(now = new Date()): Promise<number> {
+    const rows = await this.prisma.subscription.findMany({
+      where: { status: "PAST_DUE", pastDueWarnedAt: null, pastDueSince: { lte: new Date(now.getTime() - (PAST_DUE_GRACE_DAYS - 3) * DAY_MS) } },
+      include: { professionalProfile: { select: { userId: true, deletedAt: true } } },
+    });
+    let sent = 0;
+    for (const row of rows) {
+      if (!row.pastDueSince || row.professionalProfile.deletedAt) continue;
+      const claimed = await this.prisma.subscription.updateMany({ where: { id: row.id, pastDueWarnedAt: null }, data: { pastDueWarnedAt: now } });
+      if (claimed.count === 0) continue;
+      const closesOn = new Date(row.pastDueSince.getTime() + PAST_DUE_GRACE_DAYS * DAY_MS);
+      await this.notificationsService.notify(row.professionalProfile.userId, "SUBSCRIPTION_PAYMENT_FAILED", { closesOn: closesOn.toISOString() });
+      sent++;
+    }
+    return sent;
   }
 
   /**

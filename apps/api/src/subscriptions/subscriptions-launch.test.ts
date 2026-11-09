@@ -383,7 +383,7 @@ describe("rinnovo non pagato e account chiuso (controllo dell'8/11/2026, E1-01, 
 
     prisma.subscription.findUnique.mockResolvedValueOnce({ ...row, status: "PAST_DUE", pastDueSince: earlier });
     await service.onInvoice("sub_1", { paid: true, renewal: true, amountEurCents: 2318, nextPeriodEnd: null });
-    expect(prisma.subscription.update.mock.calls[2]![0].data).toEqual({ status: "ACTIVE", pastDueSince: null });
+    expect(prisma.subscription.update.mock.calls[2]![0].data).toEqual({ status: "ACTIVE", pastDueSince: null, pastDueWarnedAt: null });
     vi.useRealTimers();
   });
 
@@ -399,5 +399,22 @@ describe("rinnovo non pagato e account chiuso (controllo dell'8/11/2026, E1-01, 
 
     await service.applyStripeSubscription({ stripeSubscriptionId: "sub_1", status: "CANCELED", tier: "BASE", interval: "MONTH", cancelAtPeriodEnd: false, currentPeriodEnd: null });
     expect(prisma.subscription.update.mock.calls[0]![0].data).toMatchObject({ status: "CANCELED", pastDueSince: null });
+  });
+});
+
+describe("ultimo avviso prima della chiusura per rinnovo non pagato", () => {
+  it("11 giorni dopo il rinnovo non pagato: un avviso con il giorno della chiusura, una volta sola", async () => {
+    const now = new Date("2026-11-20T10:00:00Z");
+    const since = new Date("2026-11-09T10:00:00Z");
+    const { service, prisma, notificationsService } = buildService();
+    prisma.subscription.findMany.mockResolvedValue([{ id: "s-1", pastDueSince: since, professionalProfile: { userId: "u-1", deletedAt: null } }]);
+    prisma.subscription.updateMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
+
+    await expect(service.warnUnpaidBeforeClosure(now)).resolves.toBe(1);
+    expect(prisma.subscription.findMany.mock.calls[0]![0].where).toMatchObject({ status: "PAST_DUE", pastDueWarnedAt: null, pastDueSince: { lte: new Date(now.getTime() - 11 * DAY) } });
+    expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "SUBSCRIPTION_PAYMENT_FAILED", { closesOn: new Date(since.getTime() + 14 * DAY).toISOString() });
+
+    await expect(service.warnUnpaidBeforeClosure(now)).resolves.toBe(0);
+    expect(notificationsService.notify).toHaveBeenCalledTimes(1);
   });
 });

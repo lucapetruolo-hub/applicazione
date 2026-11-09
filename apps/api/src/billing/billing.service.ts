@@ -171,6 +171,8 @@ export class BillingService implements OnModuleInit {
         this.logger.error(`Abbonamento di un account chiuso non annullato (${row.professionalProfileId})`, error as Error),
       );
     }
+    // Ultimo avviso 3 giorni prima della chiusura per rinnovo non pagato.
+    await this.subscriptionsService.warnUnpaidBeforeClosure(now).catch((error: unknown) => this.logger.error("Ultimo avviso del rinnovo non pagato non mandato", error as Error));
     const unpaid = await this.prisma.subscription.findMany({
       where: { status: "PAST_DUE", stripeSubscriptionId: { not: null }, pastDueSince: { lte: new Date(now.getTime() - PAST_DUE_GRACE_DAYS * DAY_MS) } },
     });
@@ -437,9 +439,32 @@ export class BillingService implements OnModuleInit {
     await this.cancelOnStripe(stripe, newId, `doppione-${newId}`);
     this.logger.error(`Secondo abbonamento ${newId} annullato per ${professionalProfileId}: ne aveva già uno attivo.`);
     if ((session.amount_total ?? 0) > 0) {
-      await this.invoicesService.notifyFinanceAdmins("ADMIN_SUBSCRIPTION_DUPLICATE", { amountEurCents: session.amount_total, stripeSubscriptionId: newId, professionalProfileId });
+      // Rimborso subito dell'addebito del doppione; la nota di credito della
+      // fattura ABB nasce dal rimborso (E5-06). Se Stripe non risponde, lo fa la Finanza.
+      const refunded = await this.refundDuplicateInvoice(stripe, stripeId(session.invoice)).catch((error: unknown) => {
+        this.logger.error(`Rimborso del secondo abbonamento ${newId} non riuscito`, error as Error);
+        return false;
+      });
+      await this.invoicesService.notifyFinanceAdmins("ADMIN_SUBSCRIPTION_DUPLICATE", { amountEurCents: session.amount_total, stripeSubscriptionId: newId, professionalProfileId, refunded });
     }
     return true;
+  }
+
+  /** Rimborsa per intero i pagamenti di una fattura del doppione. True se c'era qualcosa da rimborsare ed è partito. */
+  private async refundDuplicateInvoice(stripe: Stripe, invoiceId: string | null): Promise<boolean> {
+    if (!invoiceId) return false;
+    const payments = await stripe.invoicePayments.list({ invoice: invoiceId, status: "paid", limit: 10 });
+    let refunded = false;
+    for (const payment of payments.data) {
+      const paymentIntent = stripeId(payment.payment?.payment_intent);
+      if (!paymentIntent) continue;
+      await stripe.refunds.create(
+        { payment_intent: paymentIntent, reason: "duplicate", metadata: { kind: "subscription_duplicate", invoiceId } },
+        { idempotencyKey: `rimborso-doppione-${paymentIntent}` },
+      );
+      refunded = true;
+    }
+    return refunded;
   }
 
   /** Avviso del pagamento di un livello o di una quota di passaggio, con il livello pagato. */
@@ -676,9 +701,16 @@ export class BillingService implements OnModuleInit {
    * pagato e basta, senza farla pagare di nuovo. Non pagata (bozza, aperta):
    * si annulla. Restituisce il livello dato, o null se non c'era nulla da finire.
    */
-  private async finishPendingUpgrade(stripe: Stripe, subscriptionRowId: string, stripeSubscriptionId: string): Promise<SubscriptionTier | null> {
+  private async finishPendingUpgrade(
+    stripe: Stripe,
+    subscriptionRowId: string,
+    stripeSubscriptionId: string,
+    // Quota in attesa della conferma della banca da meno di un giorno: si tiene aperta
+    // (per qualunque livello, o solo per quello scelto adesso) e se ne restituisce la pagina.
+    keepOpenFor: SubscriptionTier | "ANY" | null = "ANY",
+  ): Promise<{ given: SubscriptionTier | null; openUrl: string | null }> {
     const row = await this.prisma.subscription.findUnique({ where: { id: subscriptionRowId }, select: { upgradeInvoiceId: true } });
-    if (!row?.upgradeInvoiceId) return null;
+    if (!row?.upgradeInvoiceId) return { given: null, openUrl: null };
     const invoice = await stripe.invoices.retrieve(row.upgradeInvoiceId).catch((error: unknown) => {
       if (error instanceof Stripe.errors.StripeInvalidRequestError && error.code === "resource_missing") return null;
       throw error;
@@ -696,10 +728,47 @@ export class BillingService implements OnModuleInit {
     } else if (invoice?.status === "draft") {
       await stripe.invoices.del(invoice.id!).catch(() => undefined);
     } else if (invoice?.status === "open") {
+      const young = invoice.created * 1000 > Date.now() - DAY_MS;
+      if (young && invoice.hosted_invoice_url && (keepOpenFor === "ANY" || keepOpenFor === paidPlan)) {
+        return { given: null, openUrl: invoice.hosted_invoice_url };
+      }
       await stripe.invoices.voidInvoice(invoice.id!).catch(() => undefined);
     }
     await this.prisma.subscription.update({ where: { id: subscriptionRowId }, data: { upgradeInvoiceId: null } });
-    return given;
+    return { given, openUrl: null };
+  }
+
+  /**
+   * Rinnovo non pagato riprovato con la carta nuova (decisione di Luca del
+   * 9/11/2026: dopo un giorno il profilo è in pausa finché non paga). Se
+   * passa, `invoice.paid` toglie la pausa; se no, resta tutto com'è e Stripe
+   * continua i suoi tentativi.
+   */
+  private async retryUnpaidRenewal(stripe: Stripe, customerId: string, paymentMethod: string): Promise<void> {
+    const profile = await this.prisma.professionalProfile.findFirst({ where: { stripeCustomerId: customerId }, select: { id: true } });
+    if (!profile) return;
+    const row = await this.prisma.subscription.findUnique({ where: { professionalProfileId: profile.id }, select: { status: true, stripeSubscriptionId: true } });
+    if (row?.status !== "PAST_DUE" || !row.stripeSubscriptionId) return;
+    const open = await stripe.invoices.list({ customer: customerId, subscription: row.stripeSubscriptionId, status: "open", limit: 3 });
+    for (const invoice of open.data) {
+      try {
+        await stripe.invoices.pay(invoice.id!, { payment_method: paymentMethod, off_session: true });
+      } catch (error) {
+        this.logger.warn(`Rinnovo ${invoice.id} non pagato neanche con la carta nuova: ${(error as Error).message}`);
+      }
+    }
+  }
+
+  /** Livello della quota pagata sulla pagina di Stripe (3D Secure), se è ancora quella in sospeso. */
+  private async finishUpgradeAfterPayment(stripe: Stripe, stripeSubscriptionId: string, invoiceId: string): Promise<void> {
+    const row = await this.prisma.subscription.findUnique({ where: { stripeSubscriptionId }, select: { id: true, upgradeInvoiceId: true } });
+    if (!row || row.upgradeInvoiceId !== invoiceId) return;
+    try {
+      await this.withUpgradeLock(row.id, () => this.finishPendingUpgrade(stripe, row.id, stripeSubscriptionId));
+    } catch (error) {
+      // Passaggio in corso in questo momento o Stripe lento: lo finisce il controllo orario.
+      this.logger.warn(`Livello della quota ${invoiceId} non ancora dato: ${(error as Error).message}`);
+    }
   }
 
   private async upgradeTier(
@@ -713,8 +782,10 @@ export class BillingService implements OnModuleInit {
     const row = await this.prisma.subscription.findUnique({ where: { professionalProfileId }, select: { id: true } });
     if (!row) throw new BadRequestException("Abbonamento non trovato: ricarica la pagina.");
     return this.withUpgradeLock(row.id, async () => {
-      // Quota già pagata in un tentativo di prima: si finisce quello.
-      const finished = await this.finishPendingUpgrade(stripe, row.id, stripeSubscriptionId);
+      // Quota già pagata in un tentativo di prima: si finisce quello. In attesa
+      // della conferma della banca per lo stesso livello: si riapre quella pagina.
+      const { given: finished, openUrl } = await this.finishPendingUpgrade(stripe, row.id, stripeSubscriptionId, plan);
+      if (openUrl) return { url: openUrl };
       if (finished && tierRank(finished) >= tierRank(plan)) return { url: null };
       const tier = finished ?? currentTier;
       if (tier === plan) throw new BadRequestException("È già il tuo livello.");
@@ -796,6 +867,13 @@ export class BillingService implements OnModuleInit {
       try {
         await stripe.invoices.pay(invoice.id!, { off_session: true, ...(paymentMethod ? { payment_method: paymentMethod } : {}) });
       } catch (error) {
+        // La banca chiede di confermare il pagamento (3D Secure): la quota si
+        // paga sulla pagina di Stripe e il livello cambia appena è pagata
+        // (`invoice.paid`), senza far ripartire il passaggio.
+        if (error instanceof Stripe.errors.StripeCardError && error.code === "authentication_required") {
+          const open = await stripe.invoices.retrieve(invoice.id!);
+          if (open.hosted_invoice_url) return { url: open.hosted_invoice_url };
+        }
         if (error instanceof Stripe.errors.StripeCardError || error instanceof Stripe.errors.StripeInvalidRequestError) {
           await stripe.invoices.voidInvoice(invoice.id!).catch(() => undefined);
           await this.prisma.subscription.update({ where: { id: subscriptionRowId }, data: { upgradeInvoiceId: null } });
@@ -1154,6 +1232,22 @@ export class BillingService implements OnModuleInit {
     if (event.type === "charge.dispute.funds_withdrawn" || event.type === "charge.dispute.funds_reinstated") {
       const handled = await this.jobPaymentsService.handleStripeDisputeFunds(event.data.object as Stripe.Dispute, event.type === "charge.dispute.funds_withdrawn" ? "withdrawn" : "reinstated");
       if (!handled && event.account) throw new ServiceUnavailableException("Contestazione su un pagamento non ancora registrato: riprovare più tardi.");
+    }
+
+    // Carta cambiata dal portale con un rinnovo non pagato: si riprova subito,
+    // così chi è in pausa per il rinnovo torna visibile senza aspettare Stripe.
+    if (event.type === "customer.updated") {
+      const customer = event.data.object as Stripe.Customer;
+      const previous = (event.data.previous_attributes ?? {}) as { invoice_settings?: unknown };
+      const method = stripeId(customer.invoice_settings?.default_payment_method);
+      if (previous.invoice_settings !== undefined && method) await this.retryUnpaidRenewal(stripe, customer.id, method);
+    }
+
+    // Quota di passaggio pagata dopo la conferma della banca (3D Secure): il livello cambia adesso.
+    if (event.type === "invoice.paid") {
+      const invoice = event.data.object as Stripe.Invoice;
+      const upgradeOf = invoice.metadata?.kind === "tier_upgrade_fee" ? invoice.metadata.stripeSubscriptionId : undefined;
+      if (upgradeOf) await this.finishUpgradeAfterPayment(stripe, upgradeOf, invoice.id!);
     }
 
     // Ciclo di vita dell'abbonamento (docs/CHANGELOG.md §161-§162): rinnovo

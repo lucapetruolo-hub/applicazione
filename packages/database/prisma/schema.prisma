@@ -747,6 +747,8 @@ model Subscription {
   // Rinnovo non pagato dal… (collaudo dell'8/11/2026, E3-03): dopo 14 giorni
   // l'abbonamento si chiude anche se la Dashboard di Stripe lo lascia sospeso.
   pastDueSince          DateTime?
+  // Ultimo avviso mandato 3 giorni prima della chiusura per rinnovo non pagato.
+  pastDueWarnedAt       DateTime?
   // Quota di passaggio in corso (E3-02): fattura Stripe della quota (pagata o
   // no) e inizio del passaggio, contro i doppi clic da due schede.
   upgradeInvoiceId      String?

@@ -47,10 +47,36 @@ non pagato).
 - **E3-11**: `paidEurCents` e `applicationFeeEurCents` sommati sul database
   (`increment`), non sul valore letto prima.
 
+## Seguito del 09/11/2026: tre migliorie e pausa dopo 1 giorno
+
+Richieste di Luca: "Effettua le 3 migliorie" e, sul rinnovo non pagato, "1
+giorno, poi pausa, sempre rimanendo i 15 giorni che hai descritto".
+
+- **Doppio abbonamento rimborsato da solo**: il secondo abbonamento annullato
+  viene anche rimborsato subito (`refunds.create`, motivo `duplicate`); la
+  Finanza riceve l'avviso con "già rimborsato" e la nota di credito arriva dal
+  rimborso (gruppo 5).
+- **Ultimo avviso 3 giorni prima della chiusura** di un rinnovo non pagato
+  (`pastDueWarnedAt`, una volta sola), nella campanella e per email.
+- **Quota di passaggio con la conferma della banca (3D Secure)**: se la banca
+  chiede la conferma, il sito apre la pagina di pagamento di Stripe e il
+  livello cambia all'arrivo di `invoice.paid`; il controllo orario lascia
+  aperta per un po' quella fattura invece di annullarla. Nei mesi gratis
+  (Plus o Pro) resta come prima: una carta che chiede la conferma è rifiutata.
+- **Rinnovo non pagato**: il primo giorno il profilo resta visibile, poi va in
+  pausa ("Rinnovo non pagato", `PAYMENT_FAILED`, `PAST_DUE_VISIBLE_DAYS = 1`,
+  esce dalla ricerca e non riceve richieste) finché il pagamento non passa;
+  Stripe riprova e dopo 14 giorni l'abbonamento si chiude come prima. Banner,
+  email e campanella lo dicono con "Cambia la carta". Cambiando la carta dal
+  portale (`customer.updated`, da aggiungere agli eventi del webhook: checklist
+  5ter) il sito riprova subito le fatture aperte, così la pausa finisce senza
+  aspettare il tentativo di Stripe.
+
 **Verifica**: `billing-safety.test.ts` (chiusura, doppione, quota a metà,
 rinnovo non pagato, righe dei pagamenti), nuovi casi in
 `billing-checkout.test.ts` (solo carta, 48 ore, pagina riaperta, pagina appena
 pagata) e `subscriptions-launch.test.ts` (data del non pagato, account
-chiuso). API: 1301 test verdi, typecheck e lint di tutto il monorepo verdi.
-Migrazione `20261108200000_abbonamento_rinnovo_e_passaggio` (tre colonne nuove,
+chiuso, ultimo avviso), `subscription-rules.test.ts` (pausa dopo 24 ore),
+rimborso, 3D Secure e carta cambiata in `billing-safety.test.ts`. API: 1306 test verdi, typecheck e lint di tutto il monorepo verdi.
+Migrazione `20261108200000_abbonamento_rinnovo_e_passaggio` (quattro colonne nuove,
 nessun dato toccato).
