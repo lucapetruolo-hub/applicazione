@@ -14,6 +14,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import type { ChosenPro } from "./ChosenProsBar";
 import { InlineAuthGate } from "./InlineAuthGate";
+import { problemCategoryChoices } from "@/lib/problemChoices";
 
 /**
  * Banda in cima ai risultati quando il cliente descrive il problema invece
@@ -65,6 +66,7 @@ export function ProblemBand({
   maxChosen,
   onClearChosen,
   topService = null,
+  categoryCounts,
 }: {
   description: string;
   city?: string;
@@ -81,8 +83,10 @@ export function ProblemBand({
   onClearChosen?: () => void;
   /** Prestazione proposta per il problema, offerta da chi è in cima ai risultati. */
   topService?: string | null;
+  /** Quanti professionisti per ogni mestiere proposto (pulsanti in cima). */
+  categoryCounts?: Partial<Record<ProfessionalCategorySlug, number>>;
 }) {
-  const others = result.categories.filter((slug) => slug !== chosen);
+  const choices = problemCategoryChoices(result, chosen);
   const quoteParams = new URLSearchParams({ descrizione: description });
   if (chosen) quoteParams.set("categoria", chosen);
   if (city) quoteParams.set("citta", city);
@@ -97,6 +101,24 @@ export function ProblemBand({
         <Text fontSize={13} color={brand.grafite70}>
           Per «{shortText}»
         </Text>
+        {/* Più mestieri adatti: un pulsante ciascuno con quanti professionisti,
+            il primo già scelto (docs/changelog/2026-11-09-mestieri-proposti-pulsanti.md).
+            Prima gli altri erano solo nella riga piccola "Oppure:". */}
+        {choices.length > 1 ? (
+          <nav aria-label="Mestieri adatti al problema">
+            <XStack gap="2" flexWrap="wrap">
+              {choices.map((slug) => (
+                <CategoryChoice
+                  key={slug}
+                  href={problemResultsHref(description, city, { mestiere: slug })}
+                  label={categoryLabel(slug)}
+                  count={categoryCounts?.[slug]}
+                  selected={slug === chosen}
+                />
+              ))}
+            </XStack>
+          </nav>
+        ) : null}
         {chosen ? (
           <YStack gap="2">
             <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
@@ -127,17 +149,6 @@ export function ProblemBand({
             Che lavoro ti serve?
           </Text>
         )}
-
-        {chosen && others.length > 0 ? (
-          <XStack gap="2" flexWrap="wrap" alignItems="center">
-            <Text fontSize={16} color={brand.grafite70}>
-              Oppure:
-            </Text>
-            {others.map((slug) => (
-              <ChoiceLink key={slug} href={problemResultsHref(description, city, { mestiere: slug })} label={categoryLabel(slug)} />
-            ))}
-          </XStack>
-        ) : null}
 
         {!chosen && !result.outOfService ? (
           <YStack gap="2">
@@ -229,6 +240,41 @@ export function ProblemBand({
         )
       ) : null}
     </YStack>
+  );
+}
+
+/** Pulsante di un mestiere proposto: pieno quando è quello dei risultati. */
+function CategoryChoice({ href, label, count, selected }: { href: string; label: string; count?: number; selected: boolean }) {
+  const countText = count === undefined ? "" : count === 1 ? "1 professionista" : `${count} professionisti`;
+  return (
+    <Link
+      href={href}
+      style={{ textDecoration: "none" }}
+      scroll={false}
+      aria-current={selected ? "true" : undefined}
+      aria-label={countText ? `${label}, ${countText}` : label}
+    >
+      <XStack
+        gap="2"
+        alignItems="center"
+        paddingHorizontal="4"
+        paddingVertical="2"
+        minHeight={44}
+        borderRadius={999}
+        borderWidth={1}
+        borderColor={selected ? brand.cianografiaPieno : brand.cianografia}
+        backgroundColor={selected ? brand.cianografiaPieno : `${brand.calce} hover:${brand.cianografiaVelo}`}
+      >
+        <Text color={selected ? "white" : brand.cianografiaScuro} fontWeight="700" fontSize={16}>
+          {label}
+        </Text>
+        {count !== undefined ? (
+          <Text color={selected ? "white" : brand.grafite70} fontSize={14} aria-hidden>
+            {count}
+          </Text>
+        ) : null}
+      </XStack>
+    </Link>
   );
 }
 

@@ -5,6 +5,7 @@
 // viene usato "./icons.tsx", la variante lucide-react-native — vedi lì).
 import {
   Search,
+  Users,
   Zap,
   Download,
   FileText,
@@ -95,6 +96,7 @@ export const ICONS = {
   star: Star,
   video: Video,
   phone: Phone,
+  users: Users,
   mail: Mail,
   house: House,
   wrench: Wrench,

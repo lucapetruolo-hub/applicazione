@@ -1,7 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  DEFAULT_NOTIFICATION_PREFERENCES,
   NOTIFICATION_ITEMS,
   NOTIFICATION_TOPIC_INFO,
   notificationChannelEnabled,
@@ -11,6 +10,7 @@ import {
   withNotificationItemChannel,
   withNotificationMuted,
 } from "./notifications";
+import { DEFAULT_NOTIFICATION_PREFERENCES } from "./notificationDefaults";
 
 test("ogni tipo di richieste, preventivi e lavori sta in un solo avviso del suo argomento", () => {
   for (const topic of ["richieste", "preventivi", "lavori"] as const) {
