@@ -82,3 +82,16 @@ elementi Tamagui, nel piè di pagina (su ogni pagina) ~60.
     della pagina. Il processore rallentato davvero è più vicino a un telefono
     vero.
 - `pnpm lint`, `pnpm typecheck` (sito, app e API), prove di `packages/ui`.
+
+## Correzione della CI trovata strada facendo
+
+Il controllo `seo-sito-aperto` era rosso anche sul ramo principale da #288
+("manca /prezzi/idraulico" nella sitemap), senza che nessuna PR toccasse la
+sitemap. Causa: la cache di Next.js salvata tra una prova e l'altra conteneva
+anche i dati (`.next/cache/fetch-cache`, dove `unstable_cache` tiene la
+sitemap per un'ora): una sitemap fatta una volta senza prezzi veniva riletta
+dalle prove successive. Riprodotto in locale (API finta senza prezzi, poi di
+nuovo con i prezzi: la sitemap resta senza). In `ci.yml` le tre cache di
+Next.js ora escludono `fetch-cache`: si riusa solo la compilazione, mai i dati
+di una prova precedente (il cambio di percorso cambia anche la chiave, quindi
+le cache vecchie non si ripristinano più).

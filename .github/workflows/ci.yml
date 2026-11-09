@@ -96,7 +96,12 @@ jobs:
       - name: Cache di Next.js
         uses: actions/cache@v5
         with:
-          path: apps/web/.next/cache
+          # Solo la cache di compilazione: i dati salvati da una prova (sitemap,
+          # unstable_cache) non devono passare alla prova dopo
+          # (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md).
+          path: |
+            apps/web/.next/cache
+            !apps/web/.next/cache/fetch-cache
           key: next-build-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: |
             next-build-${{ hashFiles('pnpm-lock.yaml') }}-
@@ -180,7 +185,12 @@ jobs:
       - name: Cache di Next.js
         uses: actions/cache@v5
         with:
-          path: apps/web/.next/cache
+          # Solo la cache di compilazione: i dati salvati da una prova (sitemap,
+          # unstable_cache) non devono passare alla prova dopo
+          # (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md).
+          path: |
+            apps/web/.next/cache
+            !apps/web/.next/cache/fetch-cache
           key: next-seo-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: |
             next-seo-${{ hashFiles('pnpm-lock.yaml') }}-
@@ -260,7 +270,12 @@ jobs:
       - name: Cache di Next.js
         uses: actions/cache@v5
         with:
-          path: apps/web/.next/cache
+          # Solo la cache di compilazione: i dati salvati da una prova (sitemap,
+          # unstable_cache) non devono passare alla prova dopo
+          # (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md).
+          path: |
+            apps/web/.next/cache
+            !apps/web/.next/cache/fetch-cache
           key: next-agenda-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: |
             next-agenda-${{ hashFiles('pnpm-lock.yaml') }}-
