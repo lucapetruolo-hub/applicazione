@@ -121,6 +121,8 @@ const selfAny = [
   "POST /guided-requests",
   "GET /guided-requests/chat-threads",
   "GET /guided-requests/me",
+  // Indirizzo dell'ultima richiesta del cliente stesso, per precompilare.
+  "GET /guided-requests/me/last-address",
   "POST /guided-requests/photos",
   "POST /guided-requests/timeline-photos",
   "DELETE /notifications",

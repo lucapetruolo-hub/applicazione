@@ -49,6 +49,21 @@ textarea {
   }
 }
 
+/* Pulsanti piccoli con un bersaglio del tocco di almeno 44×44 (collaudo
+   dell'8/11, E6-19): l'area in più è invisibile. */
+.hit-44 {
+  position: relative;
+}
+.hit-44::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
 /* Banner cookie scritto dal server: nascosto subito a chi ha già scelto
    (lib/cookieChoiceBoot.ts, collaudo N-09). */
 html[data-cookie-choice] .cookie-banner {
@@ -1507,11 +1522,13 @@ button.notif-row-main:hover {
   }
 }
 
-/* Menu dell'account aperto (AccountMenu): la barra in basso del profilo non
+/* Menu dell'account aperto (AccountMenu) e menu con le tre righe
+   (MegaMenu, docs/changelog/2026-11-09-menu-tre-righe.md): la barra in basso del profilo non
    lo copre, arrivati in fondo al menu non scorre la pagina sotto e, da
    telefono, la pagina resta ferma (Safari iOS 16+ rispetta overflow
    sull'html). */
-html.acct-menu-open .profile-cta-bar {
+html.acct-menu-open .profile-cta-bar,
+html.site-menu-open .profile-cta-bar {
   display: none;
 }
 .acct-menu {
@@ -1522,7 +1539,8 @@ html.acct-menu-open .profile-cta-bar {
 }
 @media (max-width: 860px) {
   /* Solo sull'html: anche sul body la barra in alto (sticky) usciva di vista. */
-  html.acct-menu-open {
+  html.acct-menu-open,
+  html.site-menu-open {
     overflow: hidden;
   }
 }
@@ -8086,6 +8104,18 @@ a.admin-kpi:hover {
   appearance: none;
   -webkit-appearance: none;
   padding-right: 14px;
+}
+/* Durata oltre 5 giorni: numero da scrivere dentro la pillola (collaudo dell'8/11, E6-23). */
+.slot-pill-number {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: text;
+}
+.slot-pill-number input:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 /* "Consigli per una bio" in Modifica profilo, chiusi di serie (§349). */

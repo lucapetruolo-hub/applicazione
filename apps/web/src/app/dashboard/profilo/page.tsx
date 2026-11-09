@@ -260,7 +260,7 @@ const VISIBILITY_STATUS: Record<MyProfilePreview["visibility"], { label: string;
 };
 
 const BIO_EXAMPLE =
-  "Lavoro in questo settore da oltre 10 anni, con esperienza in interventi di manutenzione, riparazione e lavori su misura. Offro un preventivo gratuito dopo un sopralluogo rapido e garantisco una risposta entro 24 ore. Uso solo materiali di qualità e rilascio garanzia scritta su ogni intervento.";
+  "Lavoro in questo settore da oltre 10 anni, con esperienza in manutenzione, riparazione e lavori su misura. Offro un preventivo gratuito dopo un sopralluogo rapido e garantisco una risposta entro 24 ore. Uso solo materiali di qualità e rilascio garanzia scritta su ogni lavoro.";
 
 export default function DashboardProfiloPage() {
   const router = useRouter();

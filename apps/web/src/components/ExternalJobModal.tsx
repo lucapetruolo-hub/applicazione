@@ -32,7 +32,7 @@ function parseEuroToCents(value: string): number | null {
 
 const STATUS_LABEL: Record<ExternalJob["status"], string> = {
   SCHEDULED: "Programmato",
-  COMPLETED: "Completato",
+  COMPLETED: "Terminato",
   CANCELED: "Annullato",
 };
 const STATUS_COLOR: Record<ExternalJob["status"], string> = {
@@ -252,7 +252,7 @@ export function ExternalJobModal({
             <Text fontFamily="body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               Indirizzo
             </Text>
-            <input aria-label="Indirizzo" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Dove si svolge l'intervento" style={inputStyle} />
+            <input aria-label="Indirizzo" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Dove si fa il lavoro" style={inputStyle} />
           </YStack>
 
           <YStack gap="1">

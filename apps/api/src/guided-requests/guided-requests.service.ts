@@ -595,6 +595,29 @@ export class GuidedRequestsService {
     };
   }
 
+  /**
+   * Indirizzo dell'ultima richiesta a domicilio con la via, del cliente
+   * stesso (mai di altri): serve solo a precompilare la richiesta nuova.
+   */
+  async lastAddressForClient(clientId: string) {
+    const last = await this.prisma.guidedRequest.findFirst({
+      where: { clientId, address: { not: null }, serviceMode: "HOME" },
+      orderBy: { createdAt: "desc" },
+      select: { address: true, houseNumber: true, addressExtra: true, postalCode: true, city: true, province: true },
+    });
+    if (!last?.address?.trim()) return { address: null };
+    return {
+      address: {
+        street: last.address,
+        houseNumber: last.houseNumber,
+        addressExtra: last.addressExtra,
+        postalCode: last.postalCode,
+        city: last.city,
+        province: last.province,
+      },
+    };
+  }
+
   /** Richieste (con relativi lead) inviate dal cliente autenticato. */
   async listForClient(clientId: string) {
     const requests = await this.prisma.guidedRequest.findMany({

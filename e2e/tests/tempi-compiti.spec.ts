@@ -83,8 +83,8 @@ test("C2 chiudo un giorno (venerdì) per un impegno", async ({ page }) => {
   await expect(section.getByRole("button", { name: fridayButton, pressed: true })).toBeVisible();
   log.ops.push("M", "T");
   await timed(log, async () => {
-    await section.getByRole("button", { name: `Chiudi venerdì ${fridayDay}`, exact: true }).click();
-    await expect(section.getByRole("button", { name: `Riapri venerdì ${fridayDay}`, exact: true })).toBeVisible();
+    await section.getByRole("button", { name: `Chiudi il giorno venerdì ${fridayDay}`, exact: true }).click();
+    await expect(section.getByRole("button", { name: `Riapri il giorno venerdì ${fridayDay}`, exact: true })).toBeVisible();
   });
   done("C2 Chiudo venerdì", log);
 });
@@ -113,7 +113,7 @@ test("C4 segno il lavoro completato", async ({ page }) => {
   log.ops.push("M", "T");
   await page.getByRole("button", { name: /09:00–10:30/ }).first().click();
   log.ops.push("M", "T");
-  await page.getByRole("button", { name: "Lavoro completato" }).click();
+  await page.getByRole("button", { name: "Lavoro terminato" }).click();
   const modal = page.getByRole("dialog", { name: "Segnala lavoro terminato" });
   await expect(modal).toBeVisible();
   const amount = modal.getByRole("textbox", { name: /Importo/ }).first();

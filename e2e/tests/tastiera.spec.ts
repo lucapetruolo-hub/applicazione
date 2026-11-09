@@ -117,8 +117,17 @@ test("il cliente apre la scheda e arriva ad Accetta preventivo con la sola tasti
   // Il menu delle azioni si apre, le frecce si muovono, Esc torna al pulsante.
   await page.keyboard.press("Shift+Tab");
   await tabTo(page, (name) => name === "Azioni sulla richiesta");
-  await page.keyboard.press("Enter");
-  await expect.poll(() => focusedRole(page)).toBe("menuitem");
+  // Come per il menu dell'account: se la lista si ridisegna (arrivano le
+  // notifiche dei preventivi) il menu appena aperto si chiude; si rimette il
+  // fuoco sul pulsante e si riprova con Invio.
+  const actions = page.getByRole("button", { name: "Azioni sulla richiesta" }).first();
+  await expect(async () => {
+    if ((await focusedRole(page)) === "menuitem") return;
+    const onActions = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") === "Azioni sulla richiesta");
+    if (!onActions) await actions.focus();
+    await page.keyboard.press("Enter");
+    await expect.poll(() => focusedRole(page), { timeout: 2_000 }).toBe("menuitem");
+  }).toPass({ timeout: 15_000 });
   await page.keyboard.press("Escape");
   await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe("Azioni sulla richiesta");
 

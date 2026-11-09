@@ -47,6 +47,10 @@ export function IconActionButton({ label, onPress, children, active, disabled, f
     if (active !== undefined && !disabled) pressedRef.current = false;
   }, [active, celebrate, disabled]);
   const classes = [active ? "active" : "", pop ? "icon-action-pop" : ""].filter(Boolean).join(" ");
+  // Bersaglio del tocco di almeno 44×44 anche per i pulsanti piccoli (il
+  // cuore delle schede è 24 px, collaudo dell'8/11 E6-19): l'area in più è
+  // invisibile e non sposta nulla.
+  const hitInset = size < 44 ? -(44 - size) / 2 : 0;
   return (
     <span className="icon-action">
       <button
@@ -86,6 +90,12 @@ export function IconActionButton({ label, onPress, children, active, disabled, f
           cursor: pointer;
           padding: 0;
           position: relative;
+        }
+        button::before {
+          content: "";
+          position: absolute;
+          inset: ${hitInset}px;
+          border-radius: 50%;
         }
         button:hover:not(:disabled) {
           border-color: ${brand.cianografia};

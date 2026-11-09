@@ -2252,7 +2252,7 @@ export class ProfessionalsService {
     // > 1 su uno qualunque dei due tipi resta comunque "fascia generica",
     // riservata al percorso richiesta di preventivo.
     if ((matchingSlot.homeMaxBookings ?? 1) > 1 || (matchingSlot.onlineMaxBookings ?? 1) > 1) {
-      throw new ForbiddenException("Questa fascia richiede l'invio di una richiesta di preventivo, non una prenotazione diretta.");
+      throw new ForbiddenException("Questa fascia richiede l'invio di una richiesta di preventivo, non un appuntamento diretto.");
     }
     if (exception) {
       throw new ConflictException("Il professionista non è disponibile in questa data.");

@@ -34,6 +34,20 @@ const ReviewModal = dynamic(() => import("@/components/ReviewModal").then((modul
  * giorno, domani, sta arrivando, com'è andata). La trattativa (richiesta,
  * preventivi) resta sotto, chiusa, in `GuidedRequestCard`.
  */
+function reviewAskedInUrl(booking: ClientBooking): boolean {
+  if (typeof window === "undefined") return false;
+  if (new URLSearchParams(window.location.search).get("recensione") !== booking.id) return false;
+  return (booking.status === "CONFIRMED" || booking.status === "COMPLETED") && booking.canReview && !booking.hasReview;
+}
+
+function forgetReviewInUrl(): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has("recensione")) return;
+  url.searchParams.delete("recensione");
+  window.history.replaceState(window.history.state, "", url.toString());
+}
+
 export function BookingSection({
   booking,
   token,
@@ -58,7 +72,9 @@ export function BookingSection({
   rebookReminder?: { guidedRequestId: string; remindAt: string | null; categorySlug: string };
 }) {
   const [showClientCompleteModal, setShowClientCompleteModal] = useState(false);
-  const [showReviewModal, setShowReviewModal] = useState(false);
+  // Da "Le mie recensioni" si arriva con ?recensione=<id>: la finestra si apre
+  // subito, senza un secondo "Lascia una recensione" (collaudo dell'8/11, E6-16).
+  const [showReviewModal, setShowReviewModal] = useState(() => reviewAskedInUrl(booking));
   const [showUpdateReviewModal, setShowUpdateReviewModal] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
   const [confirmReopen, setConfirmReopen] = useState(false);
@@ -127,6 +143,7 @@ export function BookingSection({
   async function handleSubmitReview(input: { rating: number; comment?: string; mediaUrls: string[]; showcase: boolean }) {
     await apiClient.createReview(token, { bookingId: booking.id, rating: input.rating, comment: input.comment, photoUrls: input.mediaUrls, showcase: input.showcase });
     setShowReviewModal(false);
+    forgetReviewInUrl();
     onChanged();
   }
 
@@ -139,6 +156,7 @@ export function BookingSection({
 
   function closeReviewModal() {
     setShowReviewModal(false);
+    forgetReviewInUrl();
     onChanged();
   }
 
@@ -224,7 +242,7 @@ export function BookingSection({
             Questo appuntamento non si farà
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
-            Il professionista ha chiuso il suo account. Puoi eliminare la prenotazione e ripetere la richiesta.
+            Il professionista ha chiuso il suo account. Puoi eliminare il lavoro e ripetere la richiesta.
           </Text>
         </YStack>
       ) : null}
@@ -566,7 +584,7 @@ export function BookingSection({
           {confirmingDeleteBooking ? (
             <>
               <Text fontSize={13} color={brand.urgenza}>
-                Eliminare questa prenotazione dalla lista?
+                Eliminare questo lavoro dalla lista?
               </Text>
               <CardButton tone="dangerSolid" onPress={handleDeleteBooking} disabled={isDeletingBooking}>
                 {isDeletingBooking ? "Eliminazione..." : "Conferma"}

@@ -368,7 +368,7 @@ export const guidedRequestSchema = z
      * professionista già sa se può trattarsi di un intervento a domicilio o
      * online"), obbligatorio come gli altri campi della richiesta.
      */
-    serviceMode: z.enum(["HOME", "ONLINE"], { message: "Indica se l'intervento è a domicilio o online." }),
+    serviceMode: z.enum(["HOME", "ONLINE"], { message: "Indica se il lavoro è a domicilio o online." }),
     /** Se presente, la richiesta va solo a questo professionista (partita dal suo profilo pubblico), non in fan-out. */
     professionalProfileId: z.guid().optional(),
     /**

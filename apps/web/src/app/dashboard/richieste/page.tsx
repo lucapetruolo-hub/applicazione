@@ -47,18 +47,26 @@ const UNREAD_BADGE_POLL_MS = 15000;
 // (menu hamburger, docs/CHANGELOG.md §130), escluse da tutti gli altri tab.
 type ProTabKey = "tutte" | RequestStage | "archiviate";
 
+// Cinque schede in vista e le altre nei Filtri, con le stesse parole del
+// cliente (collaudo dell'8/11, E6-17). "Da rispondere" raccoglie anche le
+// modifiche chieste dal cliente: in tutte e due tocca al professionista.
 const TABS: { key: ProTabKey; label: string }[] = [
   { key: "tutte", label: "Tutte" },
-  { key: "da_quotare", label: "Da quotare" },
+  { key: "da_quotare", label: "Da rispondere" },
   { key: "in_attesa", label: "In attesa" },
-  { key: "modifica_richiesta", label: "Modifiche" },
   { key: "accettata", label: "Fissati" },
   { key: "completata", label: "Terminati" },
+];
+const MORE_TABS: { key: ProTabKey; label: string }[] = [
   { key: "annullata", label: "Annullate" },
   // Scadute e chiuse per un rifiuto o un preventivo ritirato (collaudo F-10).
   { key: "scaduta", label: "Chiuse" },
   { key: "archiviate", label: "Archiviate" },
 ];
+function proTabOf(lead: ProfessionalLead, stage: RequestStage): ProTabKey {
+  const bucket = leadTabBucket(lead, stage);
+  return bucket === "modifica_richiesta" ? "da_quotare" : bucket;
+}
 /** Numero rosso solo dove tocca al professionista (§349); altrove il numero sta nella pillola, in grigio. */
 const ACTION_TABS: ReadonlySet<ProTabKey> = new Set<ProTabKey>(["da_quotare", "modifica_richiesta"]);
 
@@ -107,8 +115,8 @@ function RichiesteContent() {
   // di `?open=` sotto non serve aspettare i lead (il tab è impostabile
   // subito, nessun dato da cui dipende).
   const [activeTab, setActiveTab] = useState<ProTabKey>(() => {
-    const stageParam = searchParams.get("stage");
-    return stageParam && TABS.some((t) => t.key === stageParam) ? (stageParam as ProTabKey) : "tutte";
+    const stageParam = searchParams.get("stage") === "modifica_richiesta" ? "da_quotare" : searchParams.get("stage");
+    return stageParam && [...TABS, ...MORE_TABS].some((t) => t.key === stageParam) ? (stageParam as ProTabKey) : "tutte";
   });
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("recenti");
@@ -308,7 +316,7 @@ function RichiesteContent() {
       }
       counts.tutte = (counts.tutte ?? 0) + 1;
       const stage = stageByLeadId.get(l.id)!;
-      const bucket = leadTabBucket(l, stage);
+      const bucket = proTabOf(l, stage);
       counts[bucket] = (counts[bucket] ?? 0) + 1;
     });
     return counts;
@@ -321,7 +329,7 @@ function RichiesteContent() {
     if (activeTab !== "tutte" && activeTab !== "archiviate") {
       list = list.filter((l) => {
         const stage = stageByLeadId.get(l.id);
-        return stage !== undefined && leadTabBucket(l, stage) === activeTab;
+        return stage !== undefined && proTabOf(l, stage) === activeTab;
       });
     }
     if (zoneFilter !== "tutte") list = list.filter((l) => l.guidedRequest.city === zoneFilter);
@@ -400,7 +408,7 @@ function RichiesteContent() {
             alcun indizio visivo (l'ultima, "Scadute", appariva tagliata),
             lo scroll da solo era già possibile ma invisibile. */}
         <CategoryCarousel>
-          {TABS.map((tab) => {
+          {[...TABS, ...MORE_TABS.filter((tab) => tab.key === activeTab)].map((tab) => {
             const active = activeTab === tab.key;
             const count = tabCounts[tab.key] ?? 0;
             return (
@@ -561,6 +569,19 @@ function RichiesteContent() {
               </XStack>
 
               <YStack gap="3">
+                <select
+                  aria-label="Altre richieste"
+                  value={MORE_TABS.some((tab) => tab.key === activeTab) ? activeTab : ""}
+                  onChange={(e) => setActiveTab((e.target.value || "tutte") as ProTabKey)}
+                  style={{ ...filterInputStyle, width: "100%" }}
+                >
+                  <option value="">Richieste in corso e terminate</option>
+                  {MORE_TABS.map((tab) => (
+                    <option key={tab.key} value={tab.key}>
+                      {`${tab.label} (${tabCounts[tab.key] ?? 0})`}
+                    </option>
+                  ))}
+                </select>
                 <select aria-label="Ordina per" value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} style={{ ...filterInputStyle, width: "100%" }}>
                   <option value="recenti">Data di ricezione più recente</option>
                   <option value="vecchie">Data di ricezione più vecchie</option>

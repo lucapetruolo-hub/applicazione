@@ -160,6 +160,11 @@ export function AgendaTimeGrid({
                   {narrowWeek && note?.tone === "free" ? <span className="sr-only"> libere</span> : null}
                   {alert ? <WeatherIcon kind={alert} size={13} /> : null}
                 </span>
+              ) : days.length > 1 ? (
+                // Riga vuota della stessa altezza: un giorno senza fasce resta allineato agli altri (richiesta di Luca, docs/changelog/2026-11-09-chiudi-riapri-pulsanti.md).
+                <span className={`ag-day-note${narrowWeek ? " narrow" : ""}`} aria-hidden>
+                  {"\u00a0"}
+                </span>
               ) : null}
             </>
           );

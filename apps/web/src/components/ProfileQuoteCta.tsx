@@ -41,7 +41,10 @@ export function ProfileQuoteCta({
     if (!el || preview || !withBar || typeof IntersectionObserver === "undefined") return;
     // La barra compare solo dopo che il pulsante è uscito dallo schermo verso
     // l'alto o prima di arrivarci: mai insieme al pulsante visibile.
-    const observer = new IntersectionObserver(([entry]) => setShowBar(entry ? !entry.isIntersecting : false), { threshold: 0 });
+    // Margine in basso più alto della barra: la barra sparisce prima che il
+    // pulsante entri nello schermo, così non lo copre mentre si scorre
+    // (collaudo dell'8/11, E6-18: due "Richiedi un preventivo" uno sopra l'altro).
+    const observer = new IntersectionObserver(([entry]) => setShowBar(entry ? !entry.isIntersecting : false), { threshold: 0, rootMargin: "0px 0px 140px 0px" });
     observer.observe(el);
     return () => observer.disconnect();
   }, [preview, withBar]);

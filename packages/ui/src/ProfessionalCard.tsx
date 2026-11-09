@@ -283,6 +283,8 @@ export function ProfessionalCard(props: ProfessionalCardProps) {
               ) : null}
               {extraBadges > 0 && !showAllBadges ? (
                 <XStack
+                  // Bersaglio di 44×44 senza ingrandire il bollino (collaudo dell'8/11, E6-19; .hit-44 in globals.css del sito).
+                  className="hit-44"
                   display="none xs:flex"
                   alignItems="center"
                   paddingHorizontal="2"

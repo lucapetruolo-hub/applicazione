@@ -389,13 +389,13 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
  */
 export const CATEGORY_DESCRIPTION_EXAMPLES: Record<ProfessionalCategorySlug, string> = {
   idraulico:
-    "Es. Perdita d'acqua sotto il lavandino della cucina: si forma una pozzanghera ogni volta che apro il rubinetto, penso sia il sifone da sostituire. Nessuna urgenza immediata, ma vorrei un intervento nei prossimi giorni.",
+    "Es. Perdita d'acqua sotto il lavandino della cucina: si forma una pozzanghera ogni volta che apro il rubinetto, penso sia il sifone da sostituire. Nessuna urgenza immediata, ma vorrei sistemarlo nei prossimi giorni.",
   elettricista:
     "Es. Il differenziale scatta ogni volta che accendo forno e lavatrice insieme, l'impianto ha più di 20 anni e non è mai stato revisionato. Vorrei anche un preventivo per aggiungere qualche presa in soggiorno.",
   imbianchino:
     "Es. Tinteggiatura di due camere da letto (circa 30 mq totali), le pareti hanno alcune crepe da stuccare prima di dipingere. Colore chiaro, vorrei iniziare entro il mese.",
   pulizie:
-    "Es. Pulizie di fine cantiere in un appartamento di 80 mq appena ristrutturato: polvere ovunque, vetri e pavimenti da sgrassare prima di trasferirci. Serve un intervento entro la settimana.",
+    "Es. Pulizie di fine cantiere in un appartamento di 80 mq appena ristrutturato: polvere ovunque, vetri e pavimenti da sgrassare prima di trasferirci. Serve qualcuno entro la settimana.",
   giardiniere:
     "Es. Siepe di circa 15 metri da potare e prato di 200 mq da tagliare, non viene curato da qualche mese. Vorrei anche un consiglio su come sistemare un'aiuola secca vicino all'ingresso.",
   traslochi:
@@ -427,11 +427,11 @@ export const CATEGORY_DESCRIPTION_EXAMPLES: Record<ProfessionalCategorySlug, str
  */
 export const CATEGORY_URGENT_DESCRIPTION_EXAMPLES: Record<ProfessionalCategorySlug, string> = {
   idraulico:
-    "Es. Tubo rotto sotto il lavello della cucina, l'acqua continua a uscire nonostante abbia chiuso il rubinetto generale: rischio di allagare anche il vicino di sotto, serve un intervento immediato.",
+    "Es. Tubo rotto sotto il lavello della cucina, l'acqua continua a uscire nonostante abbia chiuso il rubinetto generale: rischio di allagare anche il vicino di sotto, serve qualcuno subito.",
   elettricista:
-    "Es. Metà casa è rimasta senza corrente dopo un blackout localizzato e sento un leggero odore di bruciato vicino al contatore: per sicurezza serve un intervento immediato.",
+    "Es. Metà casa è rimasta senza corrente dopo un blackout localizzato e sento un leggero odore di bruciato vicino al contatore: per sicurezza serve qualcuno subito.",
   imbianchino:
-    "Es. Infiltrazione d'acqua dal soffitto ha lasciato una macchia scura che si sta allargando, temo si formi muffa: vorrei un intervento rapido per trattarla e ridipingere prima che peggiori.",
+    "Es. Infiltrazione d'acqua dal soffitto ha lasciato una macchia scura che si sta allargando, temo si formi muffa: vorrei qualcuno a breve per trattarla e ridipingere prima che peggiori.",
   pulizie:
     "Es. Una perdita ha allagato parte del salotto, serve un'asciugatura e sanificazione urgente prima che si formi muffa sul pavimento.",
   giardiniere:
@@ -439,19 +439,19 @@ export const CATEGORY_URGENT_DESCRIPTION_EXAMPLES: Record<ProfessionalCategorySl
   traslochi:
     "Es. Devo lasciare l'appartamento entro domani per un problema con il proprietario e non ho ancora imballato nulla: cerco un trasloco lampo, anche solo per salvare i mobili principali.",
   fabbro:
-    "Es. Sono rimasto chiuso fuori casa, la porta blindata si è chiusa da sola e le chiavi sono rimaste dentro: serve un intervento immediato per l'apertura.",
+    "Es. Sono rimasto chiuso fuori casa, la porta blindata si è chiusa da sola e le chiavi sono rimaste dentro: serve qualcuno subito per l'apertura.",
   climatizzazione:
-    "Es. La caldaia si è spenta e non riparte, in casa ci sono bambini piccoli e fa freddo: serve un intervento immediato per riaccenderla o capire il guasto.",
+    "Es. La caldaia si è spenta e non riparte, in casa ci sono bambini piccoli e fa freddo: serve qualcuno subito per riaccenderla o capire il guasto.",
   muratore:
     "Es. Una crepa nel muro del garage si è allargata visibilmente dopo un piccolo smottamento del terreno: vorrei un sopralluogo urgente per capire se è pericolosa.",
   falegname:
     "Es. La porta d'ingresso si è scardinata dai cardini e non chiude più, la casa resta di fatto senza protezione: serve una riparazione urgente.",
   tuttofare:
-    "Es. Una tapparella è rimasta bloccata a metà e non riesco a chiuderla né alzarla, è previsto forte vento nelle prossime ore: serve un intervento rapido.",
+    "Es. Una tapparella è rimasta bloccata a metà e non riesco a chiuderla né alzarla, è previsto forte vento nelle prossime ore: serve qualcuno a breve.",
   elettrodomestici:
     "Es. Il frigorifero si è spento stanotte e non raffredda più, dentro c'è la spesa della settimana: serve un tecnico oggi per capire se si può riparare.",
   "tende-da-sole":
-    "Es. Il vento ha strappato il telo della tenda da sole e un braccio è piegato, la tenda resta mezza aperta e non si chiude: serve un intervento prima del prossimo temporale.",
+    "Es. Il vento ha strappato il telo della tenda da sole e un braccio è piegato, la tenda resta mezza aperta e non si chiude: serve qualcuno prima del prossimo temporale.",
   dogsitter:
     "Es. Devo partire stasera per un'emergenza familiare e non so a chi lasciare il mio cane: cerco qualcuno che lo tenga o passi da casa per i prossimi 3 giorni.",
   babysitter:

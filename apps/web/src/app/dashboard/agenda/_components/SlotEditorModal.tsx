@@ -32,12 +32,26 @@ export function SelectionCheckbox({ checked }: { checked: boolean }) {
   );
 }
 
+/** "08:00" → "8", "14:30" → "14" con "30" piccolo in alto: l'ora d'inizio nel minor spazio possibile. */
+function startHourLabel(start: string) {
+  const [h, m] = start.split(":");
+  const hour = String(Number(h));
+  if (!m || m === "00") return hour;
+  return (
+    <>
+      {hour}
+      <span style={{ fontSize: "0.7em", verticalAlign: "text-top" }}>{m}</span>
+    </>
+  );
+}
+
 export function SlotChip({
   slot,
   isConflicting,
   isEditing,
   isSelected,
   onEdit,
+  short,
 }: {
   slot: SlotDraft;
   /** True se la fascia in modifica altrove nello stesso giorno si sovrappone a questa — colorata di rosso anche lei, non solo il riquadro in modifica (richiesta esplicita dell'utente). */
@@ -47,6 +61,8 @@ export function SlotChip({
   /** True in modalità selezione (tasto "Modifica") quando questa fascia è tra quelle scelte per l'eliminazione in blocco. */
   isSelected?: boolean;
   onEdit: () => void;
+  /** Settimana: sul telefono solo l'ora d'inizio ("8", "14"), come nel Calendario (docs/changelog/2026-11-09-chiudi-riapri-pulsanti.md). */
+  short?: boolean;
 }) {
   // Solo l'orario, in piccolo, per restare dentro la colonna anche nella
   // vista Settimana (richiesta esplicita dell'utente): tutto il resto
@@ -63,7 +79,7 @@ export function SlotChip({
       borderWidth={1}
       borderColor={isConflicting ? brand.urgenza : highlighted ? brand.cianografiaScuro : brand.cianografia}
       borderRadius={999}
-      paddingHorizontal={6}
+      paddingHorizontal={short ? 2 : 6}
       paddingVertical={5}
       alignItems="center"
       justifyContent="center"
@@ -81,7 +97,16 @@ export function SlotChip({
         <Icon name="bell-ring" size={10} color={brand.urgenza} />
       ) : null}
       <Text fontFamily="body" fontSize={11.5} fontWeight="600" color={isConflicting ? brand.urgenza : brand.cianografiaScuro} numberOfLines={1}>
-        {slot.start}–{slot.end}
+        {short ? (
+          <>
+            <span className="ag-ecc-wide">
+              {slot.start}–{slot.end}
+            </span>
+            <span className="ag-ecc-narrow">{startHourLabel(slot.start)}</span>
+          </>
+        ) : (
+          `${slot.start}–${slot.end}`
+        )}
       </Text>
       {/* Simbolo "online" in piccolo sulla fascia (richiesta esplicita
           dell'utente) quando è stata spuntata la modalità online. */}
@@ -456,7 +481,7 @@ export function SlotEditorModal({
                   >
                     <Icon name="bell-ring" size={14} color={brand.urgenza} />
                     <Text color={brand.urgenza} fontSize="3" fontWeight="600" flex={1}>
-                      Questa fascia ha una prenotazione futura. Eliminarla comunque?
+                      Questa fascia ha un appuntamento futuro. Eliminarla comunque?
                     </Text>
                   </XStack>
                 ) : (

@@ -14,6 +14,8 @@ import {
   isProfessionalCategorySlug,
   linkSlotUsable,
   matchProblem,
+  computeDirectForwardAt,
+  formatClockDeadline,
   OUT_OF_SERVICE_LABELS,
   problemMatchFromDictionary,
   normalizePhoneNumber,
@@ -31,6 +33,7 @@ import {
 } from "@professionisti/shared";
 import { Autocomplete, Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { MagneticButton } from "./MagneticButton";
+import type { LastRequestAddress } from "@professionisti/api-client";
 import { CATEGORY_WHO, joinWithOr } from "@/lib/problemChoices";
 import { apiClient } from "@/lib/apiClient";
 import { cameFromPersonalLink } from "@/lib/personalLink";
@@ -471,7 +474,8 @@ export function GuidedRequestForm({
     const head = `Quando: ${REQUEST_TIMING_LABEL[next]}${nextUrgent ? ", urgente" : ""}.`;
     if (chosenMode) return `${head} Arriva solo ai ${chosenIds.length} professionisti che hai scelto.`;
     if (professionalProfileId) {
-      return forwardIfNoReply ? `${head} Se non risponde, la inoltriamo dopo ${nextUrgent ? "60 minuti" : "6 ore"}.` : head;
+      // L'inoltro si spiega una volta sola, al passo 3 con l'ora precisa (collaudo dell'8/11, E6-11).
+      return head;
     }
     if (!reach) return head;
     const count = nextUrgent ? reach.urgent : reach.standard;
@@ -723,6 +727,43 @@ export function GuidedRequestForm({
     setProvince((prev) => prev || user.province || "");
     setCity((prev) => prev || user.city || "");
   }
+  // Senza un indirizzo nell'account si propone quello dell'ultima richiesta
+  // a domicilio (collaudo 08/11, gruppo 7): riempie solo i campi ancora
+  // vuoti, e l'indirizzo vale come già scelto, come quello dell'account.
+  const lastAddressAskedRef = useRef(false);
+  const [lastAddress, setLastAddress] = useState<LastRequestAddress | null>(null);
+  useEffect(() => {
+    if (!user || !token || user.street || searchParams.get("via") || lastAddressAskedRef.current) return;
+    lastAddressAskedRef.current = true;
+    let cancelled = false;
+    apiClient
+      .lastGuidedRequestAddress(token)
+      .then(({ address }) => {
+        if (!cancelled && address) setLastAddress(address);
+      })
+      // Solo un aiuto: se non arriva, il modulo resta com'è.
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user, token, searchParams]);
+  // Applicato durante il render, come il prefill dall'account qui sopra.
+  const [lastAddressApplied, setLastAddressApplied] = useState(false);
+  if (lastAddress && !lastAddressApplied) {
+    setLastAddressApplied(true);
+    if (!street.trim()) {
+      setStreet(lastAddress.street);
+      setAddressVerified(true);
+      const line = [lastAddress.street, lastAddress.houseNumber].filter(Boolean).join(" ");
+      const place = [lastAddress.postalCode, lastAddress.city].filter(Boolean).join(" ");
+      setAddressText((prev) => prev || [line, place].filter(Boolean).join(", "));
+      setHouseNumber((prev) => prev || lastAddress.houseNumber || "");
+      setAddressExtra((prev) => prev || lastAddress.addressExtra || "");
+      setPostalCode((prev) => prev || lastAddress.postalCode || "");
+      setProvince((prev) => prev || lastAddress.province || "");
+      setCity((prev) => prev || lastAddress.city || "");
+    }
+  }
   // Istantanea dei valori REALI dell'account (non del form, che può
   // ricadere su valori arrivati dall'URL) — confrontata al momento
   // dell'invio per rilevare sia campi mancanti sia campi modificati.
@@ -919,7 +960,7 @@ export function GuidedRequestForm({
     // consulenza online restano facoltativi (richiesta esplicita dell'utente).
     if (serviceMode === "HOME") {
       if (chosenAddress.missing) return { message: addressText.trim() ? ADDRESS_NOT_CHOSEN_MESSAGE : "Indica l'indirizzo.", field: "indirizzo" };
-      if (!city.trim()) return { message: "Indica la città in cui serve l'intervento.", field: "citta" };
+      if (!city.trim()) return { message: "Indica la città in cui serve il lavoro.", field: "citta" };
       if (!street.trim()) return { message: "Indica l'indirizzo.", field: "indirizzo" };
       if (!recipientName.trim() || !recipientSurname.trim()) return { message: "Indica nome e cognome di chi riceverà il professionista.", field: "nome" };
       if (!recipientPhone.trim()) return { message: "Indica un numero di telefono.", field: "telefono" };
@@ -1153,8 +1194,8 @@ export function GuidedRequestForm({
         // sia perché può comunque avere senso compilarlo.
         <Text fontSize={13} color={brand.grafite70}>
           Per una consulenza online non è obbligatorio indicare la città. Se pensi che in un secondo momento possa
-          servire anche un intervento sul posto, indicala comunque: potrai usarla per iniziare la ricerca nella
-          zona dell&apos;intervento.
+          servire anche un lavoro sul posto, indicala comunque: potrai usarla per iniziare la ricerca nella
+          zona del lavoro.
         </Text>
       ) : null}
     </YStack>
@@ -1252,7 +1293,7 @@ export function GuidedRequestForm({
         {step === 1 ? (
           <>
         <YStack gap="2">
-          <FieldLabel>Tipo di intervento</FieldLabel>
+          <FieldLabel>Dove si fa il lavoro</FieldLabel>
           {/* Prima scelta del modulo (Luca, 03/11/2026): decide il resto, con "Online" l'indirizzo non serve. */}
           {/* Resa a interruttore/toggle (richiesta esplicita dell'utente),
               non più due caselle indipendenti: un'unica pista con le due
@@ -1443,6 +1484,9 @@ export function GuidedRequestForm({
               city={initialCity}
               ariaLabel="Categorie"
               first={suggestedSlugs}
+              // Richiesta urgente: tessere piccole a tre per riga sul telefono, tutte
+              // ancora in vista ma "Avanti" molto più in alto (collaudo dell'8/11, E6-25).
+              compact={isUrgentInitial}
             />
             {categorySlugs.length > 1 ? (
               <Text fontSize={13} color={brand.grafite70}>
@@ -1465,7 +1509,7 @@ export function GuidedRequestForm({
               </Text>
             ) : null}
             <Text fontSize={13} color={brand.grafite70}>
-              Scegli un orario libero o lascia senza preferenza: non è ancora una prenotazione.
+              Scegli un orario libero o lascia senza preferenza: non è ancora un appuntamento.
             </Text>
             <SlotPills
               slots={displaySlots}
@@ -2060,7 +2104,8 @@ function RequestSummary({
 }) {
   // Richiesta diretta: il professionista scelto non ha scadenza, l'inoltro
   // ad altri parte dopo questo tempo (docs/CHANGELOG.md §209).
-  const forwardTime = isUrgent ? "60 minuti" : "6 ore (contate dalle 8 alle 21)";
+  // L'ora precisa, non "6 ore (contate dalle 8 alle 21)" (collaudo dell'8/11, E6-11).
+  const forwardTime = formatClockDeadline(computeDirectForwardAt(isUrgent));
   const forwardZone = city.trim() ? "della tua zona" : `della zona di ${professionalName}`;
   const categoriesText = new Intl.ListFormat("it-IT", { type: "conjunction" }).format(categoryLabels);
   const multiple = categoryLabels.length > 1;
@@ -2094,7 +2139,7 @@ function RequestSummary({
           <ul>
             <li>
               La richiesta arriva solo a {professionalName}
-              {isUrgent ? " (segnata come urgente)" : ""}, che può risponderti con un preventivo senza scadenza.
+              {isUrgent ? " (segnata come urgente)" : ""}, che ti risponde con un preventivo.
             </li>
             <li>Finché non accetti un preventivo vede solo il tuo nome, la città e il lavoro: cognome, telefono e via restano nascosti.</li>
           </ul>
@@ -2134,7 +2179,7 @@ function RequestSummary({
             checked={forwardIfNoReply}
             onToggle={onToggleForward}
             title="Inoltra se non risponde"
-            description={`Se ${professionalName} non risponde entro ${forwardTime}, la mandiamo ${forwardTargets}. Potrà comunque risponderti.`}
+            description={`Se non risponde entro ${forwardTime}, la mandiamo ${forwardTargets}. ${professionalName} potrà comunque risponderti.`}
           />
         ) : null}
       </div>

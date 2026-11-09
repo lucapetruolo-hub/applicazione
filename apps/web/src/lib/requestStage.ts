@@ -54,7 +54,7 @@ export function classifyLeadStage(lead: ProfessionalLead): RequestStage {
 // Testi scuriti fino ad almeno 4,5:1 sul loro sfondo, bordi invariati
 // (docs/changelog/2026-10-30-tastiera.md, collaudo L-09).
 export const REQUEST_STAGE_STYLE: Record<RequestStage, { label: string; icon: IconName; fg: string; bg: string; border: string }> = {
-  da_quotare: { label: "Da quotare", icon: "zap", fg: "#0A58CA", bg: "#E7F1FF", border: "#0D6EFD" },
+  da_quotare: { label: "Da rispondere", icon: "zap", fg: "#0A58CA", bg: "#E7F1FF", border: "#0D6EFD" },
   // "In attesa" da solo era ambiguo sulla singola card (segnalato in
   // revisione UX: "il pro ha già inviato il preventivo, in attesa di
   // chi?") — la pillola sulla card ora lo dice esplicitamente, il tab

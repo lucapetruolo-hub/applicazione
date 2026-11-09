@@ -247,7 +247,7 @@ export class OnlineMoneyService {
       where: { id: bookingId },
       include: { jobPayment: true, quote: { select: { guidedRequestId: true } }, professionalProfile: { select: { businessName: true } } },
     });
-    if (!booking || booking.clientId !== clientUserId) throw new ForbiddenException("Questa prenotazione non è tua.");
+    if (!booking || booking.clientId !== clientUserId) throw new ForbiddenException("Questo lavoro non è tuo.");
     const jp = booking.jobPayment;
     if (!jp || jp.paymentMethod !== "MANOVIA") throw new BadRequestException("Per questo lavoro hai scelto il pagamento diretto al professionista.");
     if (booking.status === "CANCELED") throw new BadRequestException("Il lavoro è stato annullato.");

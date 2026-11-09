@@ -186,17 +186,17 @@ export class ReviewsService {
       },
     });
     if (!booking) {
-      throw new NotFoundException("Prenotazione non trovata.");
+      throw new NotFoundException("Lavoro non trovato.");
     }
     if (booking.clientId !== clientId) {
-      throw new ForbiddenException("Questa prenotazione non è tua.");
+      throw new ForbiddenException("Questo lavoro non è tuo.");
     }
     // Recensione solo da prenotazione confermata/completata (CLAUDE.md §8),
     // dopo la conferma del cliente ("servono i completed da entrambi"),
     // oppure dopo la decisione dell'admin su una segnalazione del cliente
     // (docs/CHANGELOG.md §164). Mai mentre la segnalazione è in esame.
     if (booking.review) {
-      throw new ConflictException("Hai già recensito questa prenotazione.");
+      throw new ConflictException("Hai già recensito questo lavoro.");
     }
     // Lavoro ricorrente: una recensione per tutta la serie, non una a visita
     // (docs/changelog/2026-11-09-lavori-ricorrenti.md).
@@ -214,7 +214,7 @@ export class ReviewsService {
         throw new ForbiddenException("Potrai recensire quando la tua segnalazione sarà chiusa.");
       }
       if (!booking.clientConfirmedCompletedAt) throw new ForbiddenException("Conferma prima che il lavoro è terminato dal tuo lato.");
-      throw new ForbiddenException("Puoi recensire solo un lavoro completato.");
+      throw new ForbiddenException("Puoi recensire solo un lavoro terminato.");
     }
 
     // Con un segnale di recensione finta resta in controllo, nascosta, finché

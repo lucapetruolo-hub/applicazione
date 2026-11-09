@@ -71,8 +71,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
     activeChannels: ["inApp", "email"],
   },
   lavori: {
-    professional: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, riepilogo della sera, nuove recensioni, pagamenti, prenotazioni annullate o riaperte, segnalazioni." },
-    client: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, professionista in arrivo, lavoro terminato, saldo da pagare, copia della ricevuta, intervento annullato." },
+    professional: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, riepilogo della sera, nuove recensioni, pagamenti, lavori annullati o rimessi in agenda, segnalazioni." },
+    client: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, professionista in arrivo, lavoro terminato, saldo da pagare, copia della ricevuta, lavoro annullato." },
     types: [
       // Solo email al cliente: appuntamento prenotato, con il calendario (docs/CHANGELOG.md §346).
       "BOOKING_CONFIRMED",

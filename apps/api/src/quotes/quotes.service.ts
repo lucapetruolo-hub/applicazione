@@ -290,6 +290,23 @@ export class QuotesService {
       !!totalsBefore &&
       !isResend &&
       (totalsBefore.totalMinEurCents !== totalsAfter.totalMinEurCents || totalsBefore.totalMaxEurCents !== totalsAfter.totalMaxEurCents);
+    // Cifre nuove nell'email del preventivo modificato (collaudo 08/11,
+    // gruppo 7): voce per voce e totale, prima e dopo.
+    const priceFigures =
+      priceChanged && totalsBefore
+        ? {
+            priceBefore: formatServicePriceRange(totalsBefore.totalMinEurCents, totalsBefore.totalMaxEurCents),
+            priceAfter: formatServicePriceRange(totalsAfter.totalMinEurCents, totalsAfter.totalMaxEurCents),
+          }
+        : {};
+    const itemFigures = itemsChanged
+      ? {
+          items: input.items.map((item) => ({
+            name: item.name.trim(),
+            price: formatServicePriceRange(item.priceMinEurCents ?? null, item.priceMaxEurCents ?? null),
+          })),
+        }
+      : {};
     const priceData = isResend
       ? { previousPriceMinEurCents: null, previousPriceMaxEurCents: null }
       : priceChanged && totalsBefore
@@ -388,6 +405,9 @@ export class QuotesService {
         guidedRequestId: lead.guidedRequestId,
         quoteId: quote.id,
         businessName: professionalProfile.businessName,
+        // Se cambiano anche le cifre, l'email le dice insieme alla data.
+        ...priceFigures,
+        ...itemFigures,
         change: scheduleChange,
         // Prima e dopo nell'email (docs/CHANGELOG.md §228).
         from: slotPayload(existingQuote!.estimatedStartDate, existingQuote!.estimatedEndDate),
@@ -418,12 +438,8 @@ export class QuotesService {
           ...(notesChanged && notes ? { note: notes } : {}),
           // Note di prima nell'email (docs/CHANGELOG.md §228).
           ...(notesChanged && existingQuote.notes?.trim() ? { previousNote: existingQuote.notes.trim() } : {}),
-          ...(priceChanged && totalsBefore
-            ? {
-                priceBefore: formatServicePriceRange(totalsBefore.totalMinEurCents, totalsBefore.totalMaxEurCents),
-                priceAfter: formatServicePriceRange(totalsAfter.totalMinEurCents, totalsAfter.totalMaxEurCents),
-              }
-            : {}),
+          ...priceFigures,
+          ...itemFigures,
         });
       }
       const priceText =
