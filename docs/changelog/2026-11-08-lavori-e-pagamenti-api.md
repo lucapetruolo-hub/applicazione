@@ -13,7 +13,7 @@ la scelta del pagamento, senza acconto online, senza la riga del pagamento
 
 **Decisione**: "Accetta nuova data" ora rimette il preventivo "inviato" con
 la data del cliente (`Quote.proposedDateAcceptedAt`, migrazione
-`20261108200000_data_proposta_accettata`). Il cliente vede "Il professionista
+`20261109140000_data_proposta_accettata`). Il cliente vede "Il professionista
 ha accettato la data che hai proposto: accetta il preventivo per fissare
 l'appuntamento" e accetta come sempre, scegliendo come pagare. Una sola
 strada per far nascere un lavoro, quella normale. La fascia si controlla
