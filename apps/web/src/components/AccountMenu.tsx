@@ -29,17 +29,27 @@ export function AccountMenu() {
     function onKey(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
       setIsOpen(false);
-      triggerRef.current?.focus();
+      triggerRef.current?.focus({ preventScroll: true });
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
+  }, [isOpen]);
+
+  // Menu aperto: da telefono la pagina sotto non scorre e la barra in basso
+  // "Richiedi un preventivo" non lo copre (classe sull'<html>, regole in
+  // globals.css; segnalazione di Luca, docs/changelog/2026-11-09-barra-in-alto-semplice.md).
+  useEffect(() => {
+    if (!isOpen) return;
+    const root = document.documentElement;
+    root.classList.add("acct-menu-open");
+    return () => root.classList.remove("acct-menu-open");
   }, [isOpen]);
 
   // Da tastiera (docs/changelog/2026-10-30-tastiera.md, collaudo L-03): il
   // fuoco va sulla prima voce, le frecce si muovono tra le voci, uscire
   // col Tab chiude il menu.
   useEffect(() => {
-    if (isOpen) menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    if (isOpen) menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus({ preventScroll: true });
   }, [isOpen]);
 
   function onMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {

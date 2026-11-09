@@ -144,6 +144,7 @@ add(
 notification("NEW_QUOTE", "Cliente", "Preventivi e date");
 add("new_quote_nuovo_dopo_rifiuto", "Preventivi e date", "Cliente", renderEmail(notificationEmail("NEW_QUOTE", { resent: true }, forClient)!));
 notification("QUOTE_ACCEPTED", "Professionista", "Preventivi e date");
+notification("BOOKING_CONFIRMED", "Cliente", "Preventivi e date", { guidedRequestId: "esempio", price: "da 80,00 € a 120,00 €", priceNote: "IVA inclusa", payment: "24,00 € adesso con la carta, il resto (da 56,00 € a 96,00 €) a lavoro finito con la stessa carta", executor: "Idraulica Rossi Srl · P.IVA 01234567890 · sede a Milano (MI)", notice: "24 ore" });
 // Fattura chiesta dal cliente accettando (§378).
 add("quote_accepted_con_fattura", "Preventivi e date", "Professionista", renderEmail(notificationEmail("QUOTE_ACCEPTED", { clientName: "Giulia Bianchi", invoiceRequested: true, invoiceLines: ["Studio Bianchi Srl", "P.IVA 01234567890", "Via Roma 10, 20100 Milano (MI)", "Codice destinatario M5UXCR1"] }, forPro)!));
 notification("JOB_INVOICE_REQUESTED", "Professionista", "Lavori e appuntamenti", { invoiceLines: ["Giulia Bianchi", "Codice fiscale BNCGLI85M41F205X", "Via Roma 10, 20100 Milano (MI)"] });
@@ -256,7 +257,9 @@ notification("CONTENT_REPORT_DECISION", "Cliente", "Segnalazioni e moderazione",
 notification("CONTENT_REPORT_UPHELD", "Professionista", "Segnalazioni e moderazione", { targetType: "REVIEW", action: "HIDE_CONTENT", ground: "legge-diffamazione", note: "La recensione attribuisce al professionista un furto senza alcun riscontro." });
 notification("CONTENT_REPORT_REVERTED", "Professionista", "Segnalazioni e moderazione", { targetType: "REVIEW", note: "Rivista la decisione dopo la contestazione." });
 notification("CONTENT_REPORT_APPEAL_REJECTED", "Professionista", "Segnalazioni e moderazione", { note: "La decisione resta valida." });
-notification("ACCOUNT_SUSPENDED", "Tutti", "Segnalazioni e moderazione", { note: "Violazioni ripetute dei Termini di servizio." });
+notification("ACCOUNT_SUSPENDED", "Tutti", "Segnalazioni e moderazione", { note: "Tre clienti hanno segnalato che non hai pagato il saldo dei lavori del 2, 9 e 16 novembre.", ground: "termini-pagamenti" });
+notification("ACCOUNT_CLOSURE_SCHEDULED", "Tutti", "Segnalazioni e moderazione", { note: "Hai usato due account professionista con la stessa partita IVA.", ground: "termini-account", closureAt: "2026-12-08T10:00:00.000Z" });
+notification("ACCOUNT_CLOSED", "Tutti", "Segnalazioni e moderazione", { note: "Hai usato due account professionista con la stessa partita IVA.", ground: "termini-account" });
 notification("ACCOUNT_REACTIVATED", "Tutti", "Segnalazioni e moderazione", { note: "Sospensione annullata dopo verifica." });
 notification("TERMS_CHANGED", "Tutti", "Account e sicurezza", { version: "2026-10-30" });
 add("admin-nuova-segnalazione", "Segnalazioni e moderazione", "Admin", adminNewReportEmail({ what: "Recensione", reason: "Contiene insulti" }));

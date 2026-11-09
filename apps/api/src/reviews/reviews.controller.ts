@@ -1,7 +1,7 @@
 import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Put, Query, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
-import { isProfessionalCategorySlug, reviewReplySchema, reviewSchema, reviewUpdateSchema, type ReviewInput, type ReviewReplyInput, type ReviewUpdateInput } from "@professionisti/shared";
+import { isProfessionalCategorySlug, reviewReplySchema, reviewSchema, reviewShowcaseSchema, reviewUpdateSchema, type ReviewInput, type ReviewReplyInput, type ReviewShowcaseInput, type ReviewUpdateInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
@@ -61,6 +61,14 @@ export class ReviewsController {
   @Patch(":id")
   update(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(reviewUpdateSchema)) body: ReviewUpdateInput) {
     return this.reviewsService.update(req.user.userId, id, body);
+  }
+
+  /** Il cliente toglie o rimette le foto del lavoro da "Lavori fatti" (docs/changelog/2026-11-08-lavori-fatti.md). */
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @UseGuards(JwtAuthGuard)
+  @Put(":id/showcase")
+  setShowcase(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(reviewShowcaseSchema)) body: ReviewShowcaseInput) {
+    return this.reviewsService.setShowcase(req.user.userId, id, body.showcase);
   }
 
   /** Risposta pubblica del professionista, scritta o modificata. */

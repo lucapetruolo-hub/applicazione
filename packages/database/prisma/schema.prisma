@@ -98,6 +98,15 @@ model User {
   // arriva via notifica/email. `null` per le sospensioni da segnalazione (la
   // motivazione sta su ContentReport).
   suspensionNote             String?
+  // Regola dei Termini o legge violata (codice di MODERATION_GROUNDS) della
+  // sospensione o della chiusura decisa dalla scheda utente (controllo
+  // pre-lancio 08/11, E4-03): arriva alla persona nell'email.
+  suspensionGround           String?
+  // Chiusura dell'account con preavviso (Termini punto 10, P2B art. 4 c. 2):
+  // l'account resta attivo fino a questa data, poi AccountClosuresService lo
+  // chiude (suspendedAt). Con suspendedAt valorizzato e questa data passata
+  // l'account è "chiuso", non solo sospeso.
+  closureScheduledAt         DateTime?
   // Aree di competenza di un ADMIN, combinabili (docs/CHANGELOG.md §145-§146):
   // SUPER vede e fa tutto (e assegna i ruoli), MODERATOR segnalazioni/
   // messaggi/utenti, FINANCE finanza/rimborsi/DAC7/statistiche — es.
@@ -218,6 +227,7 @@ model User {
   @@map("users")
 
   @@index([deletedEmailHash])
+  @@index([closureScheduledAt])
 }
 
 // Dispositivi da cui un professionista ha già fatto l'accesso
@@ -291,6 +301,10 @@ model ProfessionalProfile {
   // collegare a Google/iPhone (null = collegamento spento) e settimana tipo
   // usata da "Orari di lavoro" per riempire un mese in un colpo.
   calendarFeedToken            String?   @unique
+  // Link personale del professionista (docs/changelog/2026-11-08-canale-del-professionista.md):
+  // codice corto di /p/<codice>, creato alla prima apertura di "Il tuo link".
+  // Le richieste partite da lì sono "clienti suoi" (GuidedRequest.fromProfessionalLink).
+  personalLinkCode             String?   @unique
   agendaWeekTemplate           Json?
   // Settimana tipo che vale per tutte le settimane (docs/CHANGELOG.md
   // §323): ultimo giorno già riempito dalla settimana tipo (null = mai
@@ -458,6 +472,7 @@ model ProfessionalProfile {
   profileViews           ProfileViewDay[]
   timelineEvents         ConversationEvent[]
   externalJobs           ExternalJob[]
+  clientNotes            ProfessionalClientNote[]
   // Dati fiscali/pagamenti — vedi la sezione dedicata in fondo a questo
   // file ("MANOVIA — fiscale, pagamenti, DAC7"). Modello separato,
   // deliberatamente MAI incluso in ProfessionalSearchResult/ProfessionalDetail
@@ -963,6 +978,11 @@ model GuidedRequest {
   // §393): la richiesta arriva solo a loro, mai a chi si iscrive dopo né ad
   // altri. Vuoto per le richieste generali e per quelle a un solo professionista.
   chosenProfileIds      String[]                     @default([])
+  // Richiesta diretta partita dal link personale del professionista
+  // (docs/changelog/2026-11-08-canale-del-professionista.md): è un cliente
+  // suo, il lavoro non conta nei lavori del mese e si può rispondere anche
+  // con i lavori esauriti. Falsa se il cliente era già arrivato a lui dal sito.
+  fromProfessionalLink  Boolean                      @default(false)
 
   client              User                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
   category            Category             @relation(fields: [categoryId], references: [id])
@@ -999,6 +1019,10 @@ model GuidedRequestUserState {
   // Promemoria programmato: il job RequestRemindersService crea una
   // notifica REQUEST_REMINDER a quest'ora e azzera il campo.
   remindAt        DateTime?
+  // "Ricordamelo tra…" del cliente a lavoro terminato, per rifarlo con lo
+  // stesso professionista (docs/changelog/2026-11-08-promemoria-manutenzione.md):
+  // a quest'ora parte REBOOK_REMINDER (sito ed email) e il campo si azzera.
+  rebookRemindAt  DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @default(now()) @updatedAt
 
@@ -1007,6 +1031,7 @@ model GuidedRequestUserState {
 
   @@unique([userId, guidedRequestId])
   @@index([remindAt])
+  @@index([rebookRemindAt])
   @@map("guided_request_user_states")
 }
 
@@ -1545,6 +1570,23 @@ model ExternalJob {
   @@map("external_jobs")
 }
 
+// Rubrica "I miei clienti" (docs/changelog/2026-11-08-rubrica-clienti.md):
+// nota privata del professionista su un cliente, mai vista da altri.
+// clientKey: "u:<id dell'account>" per i clienti del sito, "e:<telefono o
+// nome>" per quelli dei lavori esterni (stesso raggruppamento della rubrica).
+model ProfessionalClientNote {
+  id                    String   @id @default(uuid())
+  professionalProfileId String
+  clientKey             String
+  note                  String
+  updatedAt             DateTime @updatedAt
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalProfileId, clientKey])
+  @@map("professional_client_notes")
+}
+
 model Review {
   id        String    @id @default(uuid())
   bookingId String    @unique
@@ -1574,6 +1616,11 @@ model Review {
   // o la nasconde. heldReasons: i segnali (ReviewHoldReason).
   heldAt                DateTime?
   heldReasons           String[]  @default([])
+  // "Lavori fatti" sul profilo (docs/changelog/2026-11-08-lavori-fatti.md):
+  // il cliente acconsente, recensendo, a mostrare le foto di fine lavoro del
+  // professionista nel suo profilo pubblico. Null = mai mostrate (anche dopo
+  // averlo tolto).
+  showcaseConsentAt     DateTime?
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 

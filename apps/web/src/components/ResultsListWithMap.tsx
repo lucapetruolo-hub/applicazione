@@ -870,7 +870,8 @@ export function ResultsListWithMap({
             </div>
             <div className="sort-info-body">
               {/* Testo allineato all'ordinamento reale di ProfessionalsService.search
-                  (docs/CHANGELOG.md §170): i parametri principali e il peso
+                  (docs/CHANGELOG.md §170; verifica dell'identità e prestazione dal
+                  problema aggiunte dal controllo pre-lancio 08/11, E4-02): i parametri principali e il peso
                   dei pagamenti vanno dichiarati (Codice del Consumo art. 22,
                   Reg. UE 2019/1150 art. 5). Se cambia l'ordinamento, cambia
                   anche questo testo. */}
@@ -881,7 +882,10 @@ export function ResultsListWithMap({
               </p>
               <ol>
                 {merit ? (
-                  <li>prima la valutazione media più alta;</li>
+                  <>
+                    <li>prima chi indica tra i suoi servizi proprio il lavoro che serve per il tuo problema;</li>
+                    <li>poi la valutazione media più alta;</li>
+                  </>
                 ) : (
                   <>
                     <li>
@@ -895,8 +899,9 @@ export function ResultsListWithMap({
                 <li>se hai cercato un luogo, a parità di tutto il più vicino.</li>
               </ol>
               <p>
-                Un professionista con più segnalazioni accolte in 30 giorni scende in fondo all&apos;elenco per 14 giorni,
-                anche se ha pagato per essere in evidenza. Valutazioni e recensioni non si possono comprare: arrivano solo da
+                Chi non ha ancora completato la verifica dell&apos;identità compare dopo chi l&apos;ha completata, perché non può ancora
+                mandarti un preventivo. Un professionista con più segnalazioni accolte in 30 giorni scende in fondo all&apos;elenco per 14
+                giorni, anche se ha pagato per essere in evidenza. Valutazioni e recensioni non si possono comprare: arrivano solo da
                 lavori prenotati sul sito.
               </p>
             </div>
@@ -1057,7 +1062,7 @@ export function ResultsListWithMap({
             </div>
           ))}
           {otherSection && otherSection.professionals.length > 0 ? (
-            <section aria-labelledby="results-other-section" className="results-other-section">
+            <section id="anche-questo-lavoro" aria-labelledby="results-other-section" className="results-other-section">
               <YStack gap="1" marginBottom="2">
                 <Text id="results-other-section" render="h2" fontFamily="heading" fontWeight="800" fontSize={20} color={brand.grafite}>
                   {otherSection.title}

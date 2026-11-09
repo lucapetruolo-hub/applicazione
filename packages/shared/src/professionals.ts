@@ -314,6 +314,12 @@ export type ProfessionalSearchResult = {
    */
   createdAt: string;
   /**
+   * Ultima modifica visibile del profilo (dati del profilo, prestazione
+   * aggiunta, recensione nuova): `lastModified` della sitemap (collaudo 08/11
+   * E8-10). Solo nei risultati di ricerca.
+   */
+  updatedAt?: string;
+  /**
    * "Ha completato N interventi questo mese" (richiesta esplicita
    * dell'utente): conteggio reale di `Booking` con stato `COMPLETED`
    * aggiornate nel mese di calendario corrente — mostrato sia sulla card
@@ -372,6 +378,12 @@ export const SEARCH_FALLBACK_MAX_KM = 100;
 export type ProfessionalDetail = ProfessionalSearchResult & {
   /** Privato senza P.IVA o professionista/azienda (Codice del consumo art. 49-bis, §241); null se non ancora indicato. */
   traderStatus: ProfessionalTraderStatus | null;
+  /**
+   * Falso per un account di prova o un profilo d'esempio: la pagina resta
+   * apribile dal link ma ha `noindex` e niente dati strutturati (collaudo
+   * 08/11 E8-04). Facoltativo: un'API non ancora aggiornata non lo manda.
+   */
+  indexable?: boolean;
   bio: string | null;
   reviews: {
     id: string;
@@ -427,6 +439,13 @@ export type ProfessionalDetail = ProfessionalSearchResult & {
   acceptingRequests: boolean;
   /** In pausa per scelta sua (collaudo C-16): da questo giorno torna a ricevere richieste. */
   awayUntil?: string | null;
+  /**
+   * "Lavori fatti" (docs/changelog/2026-11-08-lavori-fatti.md): foto di fine
+   * lavoro del professionista, mostrate solo con l'ok del cliente dato
+   * recensendo. Mai il nome del cliente né l'indirizzo: la prestazione
+   * scritta nel preventivo, la città, il mese e le stelle della recensione.
+   */
+  finishedJobs?: { id: string; photoUrls: string[]; label: string; city: string | null; doneAt: string; rating: number }[];
 };
 
 export const PLACEHOLDER_PROFESSIONALS: PlaceholderProfessional[] = [

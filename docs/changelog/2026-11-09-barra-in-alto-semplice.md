@@ -43,3 +43,20 @@ scorrimento orizzontale.
 
 - Campanella accanto al tondino (richiesta di Luca): l'ordine a destra è
   "Richiedi preventivo", campanella, tondino dell'account.
+
+## Menu dell'account da telefono (segnalazione di Luca)
+
+"Quando apro il menu del profilo va in contrasto col tasto Richiedi un
+preventivo in basso, e scorrendo per arrivare a Esci si scorre la pagina sotto."
+
+- Col menu aperto la barra in basso del profilo (`.profile-cta-bar`) non si
+  vede (`html.acct-menu-open`, classe messa da `AccountMenu`).
+- Il menu ha `overscroll-behavior: contain` (arrivati in fondo non trascina la
+  pagina) e fino a 860 px la pagina sotto resta ferma (`overflow: hidden`
+  sull'html, rispettato da Safari iOS 16+).
+- Il fuoco sulla prima voce e il ritorno sul tondino con Esc usano
+  `preventScroll`: con la pagina bloccata il browser la riportava in cima.
+
+Verifica: telefono simulato (iPhone 13), pagina scorsa a 300 px, menu aperto:
+barra nascosta, rotella senza effetto sulla pagina, chiuso con Esc la pagina
+resta a 300 px e la barra torna.

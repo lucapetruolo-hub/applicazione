@@ -82,6 +82,8 @@ const publicRoutes = [
   // Passi dalle voci di "Quanto costa" (§399), senza account.
   "POST /site/price-tool",
   "GET /professionals/category-counts",
+  // Link personale /p/<codice> del professionista: porta solo al profilo pubblico (docs/changelog/2026-11-08-canale-del-professionista.md).
+  "GET /professionals/link/:code",
   "GET /professionals/languages/popular",
   // Prezzi aggregati della pagina "Quanto costa", mai sotto le soglie (§296).
   "GET /professionals/prices/:category",
@@ -106,6 +108,7 @@ const selfAny = [
   "PATCH /auth/me/preferences",
   "GET /auth/me/closure-check",
   "GET /auth/me/export",
+  "GET /auth/me/export/pdf",
   "POST /auth/me/image",
   "POST /auth/verify-email/code",
   "POST /auth/verify-email/resend",
@@ -145,6 +148,9 @@ const selfAny = [
 ];
 
 const selfProfessional = [
+  // Rubrica "I miei clienti": solo i clienti di chi chiama (docs/changelog/2026-11-08-rubrica-clienti.md).
+  "GET /professional-clients/me",
+  "PUT /professional-clients/me/note",
   // Recensioni ricevute, per rispondere (docs/changelog/2026-10-30-collaudo-soldi-online.md).
   "GET /reviews/received",
   "DELETE /agenda/calendar-feed",
@@ -192,6 +198,7 @@ const selfProfessional = [
   "POST /professionals/me/image",
   "GET /professionals/me/insights",
   "GET /professionals/me/leads",
+  "GET /professionals/me/personal-link",
   "GET /professionals/me/online-payments/summary",
   "GET /professionals/me/payout-iban",
   "PUT /professionals/me/payout-iban",
@@ -321,6 +328,8 @@ const owned = {
   },
   "POST /reviews": { kind: "owned", owners: ["clientA"], body: (f) => ({ bookingId: f.bookingA, rating: 5, comment: "Recensione di un estraneo" }) },
   "PATCH /reviews/:id": { kind: "owned", owners: ["clientA"], params: (f) => ({ id: f.reviewA }), body: () => ({ rating: 1, comment: "Aggiornata da un estraneo" }) },
+  // Consenso a mostrare il lavoro nel profilo (docs/changelog/2026-11-08-lavori-fatti.md).
+  "PUT /reviews/:id/showcase": { kind: "owned", owners: ["clientA"], params: (f) => ({ id: f.reviewA }), body: () => ({ showcase: true }) },
   "PUT /reviews/:id/reply": { kind: "owned", owners: ["proA"], params: (f) => ({ id: f.reviewA }), body: () => ({ reply: "Risposta di un estraneo" }) },
 };
 

@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ConversationEvent as ConversationEventRow, PrismaClient } from "@professionisti/database";
-import { chatContactBlockedMessage, chatContactKind, type ChatThreadSummary, type ConversationEvent, type RealtimeEvent } from "@professionisti/shared";
+import { chatContactBlockedMessage, ownClientRequest, chatContactKind, type ChatThreadSummary, type ConversationEvent, type RealtimeEvent } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { requestThumbnailUrl } from "./request-thumbnail";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -115,6 +115,10 @@ export class TimelineService {
   private async assertCanReply(guidedRequestId: string, professionalProfileId: string): Promise<void> {
     const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { jobLimitReachedAt: true } });
     if (!profile?.jobLimitReachedAt) return;
+    // Cliente arrivato dal suo link personale: non conta nei lavori
+    // (docs/changelog/2026-11-08-canale-del-professionista.md).
+    const request = await this.prisma.guidedRequest.findUnique({ where: { id: guidedRequestId }, select: { fromProfessionalLink: true, professionalProfileId: true } });
+    if (request && ownClientRequest(request, professionalProfileId)) return;
     const pair = { guidedRequestId, professionalProfileId };
     const [ownMessage, quote] = await Promise.all([
       this.prisma.conversationEvent.findFirst({ where: { ...pair, actor: "PROFESSIONAL", automatic: false }, select: { id: true } }),

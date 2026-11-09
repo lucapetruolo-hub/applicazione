@@ -67,6 +67,7 @@ Ogni giorno a ora fissa (ora italiana):
 | 3:50 | `CronRunsService.deleteOld` | Cancella le righe di `cron_runs` oltre 40 giorni |
 | 4:00 | `GuidedRequestsService.purgeClientDeletedRequests` | Cancella le richieste eliminate dal cliente |
 | 4:20 | `AdminProposalsService.nightly` | Prepara le proposte "Da approvare" in Admin |
+| 5:30 | `AccountClosuresService.nightly` | Chiude gli account con la chiusura fissata da Admin e cancella le impronte email oltre 10 anni |
 | 6:15 | `BillingService.issueMissedInvoices` | Fatture dei pagamenti Stripe rimaste senza (mai doppie) |
 | 7:00 | `SuspiciousAccountsService.morningCheck` | Account sospetti all'admin |
 | 8:00 | `AdminQueueService.morningClaimedDue` | Casi presi in carico e scaduti all'admin |
@@ -87,7 +88,7 @@ Di continuo:
 | minuto | `ChatMessageEmailsService.sendDue` (email dei messaggi in chat) |
 | 5 minuti | `HeldEmailsService.sendDue` (email rimandate), `GuidedRequestUserStateService.runDueReminders` (promemoria delle richieste), `GuidedRequestsService.runExpiryCheck` (richieste scadute), `WhatsAppService.dispatchDue` (coda WhatsApp) |
 | 10 minuti | `BillingService.runReturnToBase`, `TermsNoticeService.run` (avviso dei Termini cambiati), `IdentityVerificationService.followUp` (esiti Didit) |
-| 30 minuti | `BookingRemindersService.sendUpcomingReminders` e `sendDepositReminders` (promemoria del giorno prima e dell'acconto), `WhatsAppService.depositReminders`, `TaxIdCheckService.retryPending` (controlli CF/P.IVA in attesa) |
+| 30 minuti | `BookingRemindersService.sendUpcomingReminders` e `sendDepositReminders` (promemoria del giorno prima e dell'acconto), `WhatsAppService.depositReminders`, `TaxIdCheckService.retryPending` (controlli CF/P.IVA in attesa), `GuidedRequestUserStateService.runDueRebookReminders` ("Ricordamelo tra…" della manutenzione) |
 | ora | `SubscriptionsService.runPauseSweep`, `BillingService.runSubscriptionSafetyChecks` (abbonamenti di account chiusi, rinnovi non pagati, passaggi a metà), `AwayService.endPauses`, `DateChangeRemindersService.remindUnanswered`, `JobIssueOutcomeService.runDeadlines`, `GeneralRequestsService.runAutoCheck`, `CompletionDeadlineService.run`, `OnlineMoneyService.runReleases` (bonifici ai professionisti), `InvoicesService.syncSdi` (ai :20) |
 
 I promemoria del giorno prima e dell'acconto si segnano sulla prenotazione

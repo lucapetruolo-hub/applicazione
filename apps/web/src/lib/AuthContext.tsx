@@ -5,13 +5,12 @@ import { ApiError, type CurrentUser } from "@professionisti/api-client";
 import { DEFAULT_NOTIFICATION_PREFERENCES, type NotificationPreferences, type RealtimeEvent } from "@professionisti/shared";
 import { apiClient } from "./apiClient";
 import { clearAgendaOffline, clearOfflineUser, readOfflineUser, saveOfflineUser } from "./agendaOffline";
-import { notificationCopy } from "./notificationCopy";
 import { emitRealtimeEvent } from "./realtimeBus";
 import { installNotificationSoundUnlock, playNotificationSound } from "./notificationSound";
 import { isConversationOnScreen } from "./openConversations";
 import { isCountingDisabled, setCountingDisabled } from "./siteCounts";
 
-const TOKEN_STORAGE_KEY = "professionisti_token";
+export const TOKEN_STORAGE_KEY = "professionisti_token";
 
 /** `type` porta la notifica di origine — usato da ToastStack per sapere dove navigare al click (richiesta esplicita dell'utente). */
 export type NotificationToast = { id: string; icon: string; message: string; type: string; payload: unknown };
@@ -248,8 +247,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (toAnnounce.length === 1) {
       // Caso comune: un solo evento in questo giro di poll, stesso
       // messaggio simpatico specifico di sempre.
-      const { icon, message } = notificationCopy(toAnnounce[0]!.type, toAnnounce[0]!.payload);
-      setToasts((prev) => [...prev, { id: toAnnounce[0]!.id, icon, message, type: toAnnounce[0]!.type, payload: toAnnounce[0]!.payload }]);
+      // I testi di tutte le notifiche si caricano solo qui, al primo
+      // popup: prima stavano nel JavaScript di ogni pagina, anche per chi
+      // visita senza account (docs/changelog/2026-11-09-meno-javascript-comune.md).
+      const fresh = toAnnounce[0]!;
+      void import("./notificationCopy").then(({ notificationCopy }) => {
+        const { icon, message } = notificationCopy(fresh.type, fresh.payload);
+        setToasts((prev) => [...prev, { id: fresh.id, icon, message, type: fresh.type, payload: fresh.payload }]);
+      });
     } else if (toAnnounce.length > 1) {
       // Più eventi arrivati nello stesso giro (48s): un toast per
       // ciascuno si impilerebbe a schermo — richiedendo una chiusura per

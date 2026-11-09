@@ -5,6 +5,7 @@ import { apiClient } from "@/lib/apiClient";
 import { breadcrumbJsonLd } from "@/lib/jsonLd";
 import { JsonLd } from "@/components/JsonLd";
 import { CATEGORY_ACCENT, CategoryIcon } from "@/components/icons/CategoryIcons";
+import { openGraphFor } from "@/lib/openGraph";
 
 // Si aggiorna con i prezzi: una pagina mestiere compare appena supera le
 // soglie (docs/CHANGELOG.md §296).
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
   title: "Quanto costa? Prezzi veri per mestiere",
   description: "Quanto costa un idraulico, un elettricista, le pulizie e gli altri lavori di casa: prezzi veri dai preventivi accettati e dai professionisti del sito.",
   alternates: { canonical: "/prezzi" },
+  openGraph: openGraphFor("/prezzi"),
 };
 
 /**

@@ -37,10 +37,11 @@ import { AuthStepHeader } from "@/components/AuthStepHeader";
 import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle";
 import { ChosenPlanChip, useChosenPlanDetail } from "@/components/ChosenPlanChip";
 import { EmailSuggestion } from "@/components/EmailSuggestion";
+import { PageLoading } from "@/components/PageLoading";
 
 export default function RegistratiPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading variant="form" />}>
       <RegistratiForm />
     </Suspense>
   );

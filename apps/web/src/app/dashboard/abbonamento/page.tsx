@@ -37,6 +37,7 @@ import { SkeletonBlock } from "@/components/Skeleton";
 import { JourneyProgress, useSetupJourney } from "@/components/verification/SetupJourney";
 import { downloadBlobFile } from "@/components/admin/adminUi";
 import { PAYMENT_PAGE_LABEL, startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
+import { PageLoading } from "@/components/PageLoading";
 
 /**
  * "Abbonamento" del professionista (docs/CHANGELOG.md §161-§162): stato del
@@ -365,7 +366,7 @@ function RecentPayments({ token, invoices, freeMonths }: { token: string | null;
 
 export default function AbbonamentoPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading />}>
       <AbbonamentoContent />
     </Suspense>
   );
@@ -517,7 +518,7 @@ function AbbonamentoContent() {
     }
   }
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoading />;
 
   if (!user || !token) {
     return (
@@ -685,6 +686,15 @@ function AbbonamentoContent() {
                   Più lavori allo stesso cliente in questo periodo contano come uno.
                 </Text>
               ) : null}
+              {/* Canale del professionista (docs/changelog/2026-11-08-canale-del-professionista.md). */}
+              <Text color={brand.grafite70} fontSize={16}>
+                {sub.usage.ownClientJobs > 0
+                  ? `In più ${sub.usage.ownClientJobs === 1 ? "1 lavoro" : `${sub.usage.ownClientJobs} lavori`} dal tuo link, che non ${sub.usage.ownClientJobs === 1 ? "conta" : "contano"}. `
+                  : "I clienti che ti scrivono dal tuo link non contano. "}
+                <Link href="/dashboard/il-tuo-link" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
+                  Il tuo link
+                </Link>
+              </Text>
             </YStack>
             )}
           </Surface>

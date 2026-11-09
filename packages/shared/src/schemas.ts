@@ -5,10 +5,12 @@ import { TRAFFIC_SOURCES } from "./trafficSources";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
 import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
 import { quotePaymentOfferSchema } from "./onlinePaymentsSchemas";
-import { contentReportReason, contentReportReasonCodes, moderationGroundCodes } from "./moderation";
+import { accountMeasures, contentReportReason, contentReportReasonCodes, moderationGroundCodes } from "./moderation";
 import { newPasswordSchema } from "./password";
 import { REQUEST_TIMINGS } from "./requestTiming";
+import { MAX_CHOSEN_PROFESSIONALS, MAX_PROFESSIONAL_CATEGORIES, MAX_REQUEST_CATEGORIES } from "./limits";
 import { SERVICE_PRICE_UNITS } from "./professionals";
+import { REBOOK_REMINDER_OPTIONS, type RebookReminderKey } from "./rebookReminder";
 
 /**
  * Da dove arriva chi manda una richiesta di preventivo (docs/CHANGELOG.md
@@ -33,12 +35,6 @@ export const accountEmailSchema = z.string().trim().toLowerCase().email("Email n
 
 export const professionalCategorySlugSchema = z.enum(categorySlugs);
 
-/**
- * Categorie di un professionista (docs/CHANGELOG.md §217, richiesta
- * dell'utente): da 1 a 3, scelte in registrazione e modificabili dal
- * profilo. La prima è la principale.
- */
-export const MAX_PROFESSIONAL_CATEGORIES = 3;
 const tooManyCategoriesMessage = `Puoi scegliere al massimo ${MAX_PROFESSIONAL_CATEGORIES} categorie.`;
 export const NO_CATEGORY_MESSAGE = "Scegli almeno una categoria.";
 export const NO_ENTITY_TYPE_MESSAGE = "Scegli se lavori come privato, con Partita IVA o come azienda.";
@@ -299,11 +295,7 @@ export const passwordResetCodeSchema = verifyEmailCodeSchema.extend({
 });
 export type PasswordResetCodeInput = z.infer<typeof passwordResetCodeSchema>;
 
-/** Categorie scelte insieme in una richiesta di preventivo generale (docs/CHANGELOG.md §259). */
-export const MAX_REQUEST_CATEGORIES = 3;
 const tooManyRequestCategoriesMessage = `Puoi scegliere al massimo ${MAX_REQUEST_CATEGORIES} categorie.`;
-/** Professionisti scelti dai risultati per una sola richiesta (docs/CHANGELOG.md §393, decisione di Luca: fino a 5). */
-export const MAX_CHOSEN_PROFESSIONALS = 5;
 
 /** Richiesta guidata cliente: foto + poche domande → categoria/prezzo stimato (CLAUDE.md §8). */
 export const guidedRequestSchema = z
@@ -383,6 +375,12 @@ export const guidedRequestSchema = z
      * può toglierla). Ignorata per le richieste generiche.
      */
     forwardIfNoReply: z.boolean().default(false),
+    /**
+     * Richiesta diretta partita dal link personale di quel professionista
+     * (docs/changelog/2026-11-08-canale-del-professionista.md): il server la
+     * segna "cliente suo" solo se il cliente non era già arrivato a lui dal sito.
+     */
+    viaProfessionalLink: z.boolean().optional(),
     /**
      * Data+fascia oraria preferita: valorizzate solo quando la richiesta
      * parte da una fascia "generica" dell'agenda pubblica di un
@@ -793,11 +791,17 @@ export const reviewSchema = z.object({
   comment: z.string().max(2000).optional(),
   /** Foto o video del lavoro svolto, opzionali (fino a 5): mostrati poi nella sezione recensioni del professionista. */
   photoUrls: z.array(z.string().url()).max(5).default([]),
+  /** Ok a mostrare le foto di fine lavoro del professionista in "Lavori fatti" sul suo profilo (docs/changelog/2026-11-08-lavori-fatti.md). */
+  showcase: z.boolean().default(false),
 });
 export type ReviewInput = z.infer<typeof reviewSchema>;
 
 /** Aggiornamento della recensione dopo una segnalazione a lavoro chiuso senza accordo (una volta sola). */
-export const reviewUpdateSchema = reviewSchema.omit({ bookingId: true });
+export const reviewUpdateSchema = reviewSchema.omit({ bookingId: true, showcase: true });
+
+/** Il cliente toglie (o rimette) le foto del lavoro da "Lavori fatti". */
+export const reviewShowcaseSchema = z.object({ showcase: z.boolean() });
+export type ReviewShowcaseInput = z.infer<typeof reviewShowcaseSchema>;
 export type ReviewUpdateInput = z.infer<typeof reviewUpdateSchema>;
 
 /** Risposta pubblica del professionista a una recensione. */
@@ -1088,6 +1092,18 @@ export const contentReportDecisionNoteSchema = z.object({
 });
 export type ContentReportDecisionNoteInput = z.infer<typeof contentReportDecisionNoteSchema>;
 
+/**
+ * Sospensione o chiusura dell'account dalla scheda in Admin (controllo
+ * pre-lancio 08/11, E4-03): i fatti, la regola o la legge violata e la misura,
+ * tutto obbligatorio e tutto nell'email alla persona (P2B art. 4, DSA art. 17).
+ */
+export const adminAccountMeasureSchema = z.object({
+  measure: z.enum(accountMeasures),
+  ground: z.enum(moderationGroundCodes, { message: "Scegli la regola o la legge violata." }),
+  note: z.string().trim().min(10, "Scrivi i fatti: cosa è successo, in almeno una frase.").max(2000),
+});
+export type AdminAccountMeasureInput = z.infer<typeof adminAccountMeasureSchema>;
+
 /** Contestazione dell'autore del contenuto (reclamo interno, DSA art. 20). */
 export const contentReportAppealSchema = z.object({
   text: z.string().trim().min(10, "Spiega in almeno 10 caratteri perché contesti la decisione.").max(2000),
@@ -1261,6 +1277,8 @@ export const guidedRequestUserStateSchema = z
     markedUnread: z.boolean().optional(),
     /** ISO datetime futuro (entro 60 giorni) per programmare il promemoria, `null` per annullarlo. */
     remindAt: z.string().datetime({ offset: true }).nullable().optional(),
+    /** "Ricordamelo tra…" a lavoro terminato, solo il cliente (docs/changelog/2026-11-08-promemoria-manutenzione.md); `null` lo toglie. */
+    rebookReminder: z.enum(REBOOK_REMINDER_OPTIONS.map((o) => o.key) as [RebookReminderKey, ...RebookReminderKey[]]).nullable().optional(),
   })
   .refine((value) => Object.values(value).some((v) => v !== undefined), { message: "Nessuna modifica indicata." });
 export type GuidedRequestUserStateInput = z.infer<typeof guidedRequestUserStateSchema>;

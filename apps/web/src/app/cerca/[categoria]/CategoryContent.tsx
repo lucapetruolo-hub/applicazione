@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { MAX_CHOSEN_PROFESSIONALS, type PROFESSIONAL_CATEGORIES, type ProfessionalSearchResult } from "@professionisti/shared";
+import { MAX_CHOSEN_PROFESSIONALS, subTagLabel, type PROFESSIONAL_CATEGORIES, type ProfessionalSearchResult } from "@professionisti/shared";
 import { YStack } from "@professionisti/ui";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
@@ -63,7 +63,10 @@ export function CategoryContent({
     professionals,
   });
 
-  const title = `${category.label}${online && city ? ` · consulenza online a ${city}` : online ? " · consulenza online" : city ? ` a ${city}` : " vicino a te"}`;
+  // Pagina per servizio: la specializzazione anche nel titolo visibile, come
+  // nel titolo della pagina, altrimenti H1 uguale alla pagina città (collaudo 08/11 E8-05).
+  const service = subTag ? `: ${subTagLabel(subTag).toLowerCase()}` : "";
+  const title = `${category.label}${online && city ? ` · consulenza online a ${city}` : online ? " · consulenza online" : city ? ` a ${city}` : " vicino a te"}${service}`;
   const header = loadFailed ? (
     <LoadErrorNotice title="Non riusciamo a caricare i professionisti" />
   ) : professionals.length > 0 ? null : (

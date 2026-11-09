@@ -12,7 +12,7 @@ export default function CookiePage() {
   return (
     <LegalPage
       title="Cookie Policy"
-      updatedAt="30 ottobre 2026"
+      updatedAt="8 novembre 2026"
       sections={[
         {
           heading: "1. Cosa sono i cookie",
@@ -40,6 +40,8 @@ export default function CookiePage() {
                   ],
                 },
                 { title: "Agenda senza rete", rows: [["Nome", "agenda-offline-v1, agenda-offline-user-v1"], ["Scopo", "mostrare ai professionisti gli appuntamenti anche senza connessione"], ["Durata", "al massimo 7 giorni, cancellata all'uscita dall'account"]] },
+                { title: "Link del professionista", rows: [["Nome", "link-personale:…"], ["Scopo", "ricordare che sei arrivato dal link personale di un professionista, così la tua richiesta arriva solo a lui"], ["Durata", "fino alla chiusura della scheda"]] },
+                { title: "Invito a mandare il tuo link", rows: [["Nome", "invito-link-dopo-lavoro:…"], ["Scopo", "per i professionisti: non mostrare l'invito dopo \"Lavoro terminato\" più di una volta al mese"], ["Durata", "finché non la cancelli dal browser"]] },
                 { title: "Segnalazioni già inviate", rows: [["Nome", "reportedContent:…"], ["Scopo", "non far segnalare due volte lo stesso contenuto"], ["Durata", "24 ore"]] },
                 {
                   title: "Conteggi per migliorare il sito",
@@ -56,7 +58,7 @@ export default function CookiePage() {
         },
         {
           heading: "3. Cookie di terze parti",
-          body: "La mappa interattiva dei risultati (Google Maps) può impostare cookie di Google e ricevere dati tecnici di navigazione (es. indirizzo IP). La carichiamo solo dopo il tuo consenso, dato con il pulsante \"Accetta\" del banner cookie o con \"Usa la mappa interattiva\"; senza consenso vedi un'immagine fissa della mappa preparata dal nostro server. L'accesso con Google si fa sulla pagina di Google, che si apre a parte: sul nostro sito non carichiamo nulla di Google. Per i dettagli vedi l'informativa privacy di Google (policies.google.com/privacy). Non usiamo cookie pubblicitari né di profilazione di terze parti.",
+          body: "La mappa interattiva dei risultati (Google Maps) può impostare cookie di Google e ricevere dati tecnici di navigazione (es. indirizzo IP). La carichiamo solo dopo il tuo consenso, dato con il pulsante \"Accetta\" del banner cookie o con \"Usa la mappa interattiva\"; senza consenso vedi un'immagine fissa della mappa preparata dal nostro server. L'accesso con Google si fa sulla pagina di Google, che si apre a parte: sul nostro sito non carichiamo nulla di Google. Per i dettagli vedi l'informativa privacy di Google (policies.google.com/privacy). Il controllo anti-robot di Cloudflare (Turnstile) si carica solo sui moduli di registrazione con email e password, di recupero della password e della pagina Contatti, anche prima della scelta nel banner: è una misura di sicurezza strettamente necessaria, senza profilazione (cloudflare.com/privacypolicy). Non usiamo cookie pubblicitari né di profilazione di terze parti.",
         },
         {
           heading: "4. Gestione delle preferenze",

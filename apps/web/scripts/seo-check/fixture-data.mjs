@@ -27,6 +27,7 @@ function professional(n, businessName) {
     availabilityPreview: [],
     availabilityFrom: today,
     createdAt: "2026-09-01T10:00:00.000Z",
+    updatedAt: "2026-10-15T09:30:00.000Z",
     completedThisMonth: 0,
     isNewProfile: false,
   };
@@ -38,9 +39,13 @@ export const PROFESSIONALS = [
   professional(3, "Verdi Termoidraulica"),
 ];
 
+/** Account di prova: si apre dal link ma non compare in ricerca e resta fuori da Google (collaudo 08/11 E8-04). */
+export const TEST_PROFESSIONAL = professional(9, "Prova Idraulico");
+
 export function detail(pro) {
   return {
     ...pro,
+    indexable: pro.id !== TEST_PROFESSIONAL.id,
     traderStatus: "TRADER",
     bio: "Impianti idraulici e riparazioni a Latina e dintorni.",
     reviews: [{ id: "r1", rating: 5, comment: "Puntuale e preciso.", photoUrls: [], createdAt: "2026-10-01T10:00:00.000Z" }],
