@@ -33,6 +33,7 @@ import {
 } from "@professionisti/shared";
 import { Autocomplete, Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { MagneticButton } from "./MagneticButton";
+import type { LastRequestAddress } from "@professionisti/api-client";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { useStepFocus } from "@/lib/useStepFocus";
@@ -694,6 +695,43 @@ export function GuidedRequestForm({
     setPostalCode((prev) => prev || user.postalCode || "");
     setProvince((prev) => prev || user.province || "");
     setCity((prev) => prev || user.city || "");
+  }
+  // Senza un indirizzo nell'account si propone quello dell'ultima richiesta
+  // a domicilio (collaudo 08/11, gruppo 7): riempie solo i campi ancora
+  // vuoti, e l'indirizzo vale come già scelto, come quello dell'account.
+  const lastAddressAskedRef = useRef(false);
+  const [lastAddress, setLastAddress] = useState<LastRequestAddress | null>(null);
+  useEffect(() => {
+    if (!user || !token || user.street || searchParams.get("via") || lastAddressAskedRef.current) return;
+    lastAddressAskedRef.current = true;
+    let cancelled = false;
+    apiClient
+      .lastGuidedRequestAddress(token)
+      .then(({ address }) => {
+        if (!cancelled && address) setLastAddress(address);
+      })
+      // Solo un aiuto: se non arriva, il modulo resta com'è.
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user, token, searchParams]);
+  // Applicato durante il render, come il prefill dall'account qui sopra.
+  const [lastAddressApplied, setLastAddressApplied] = useState(false);
+  if (lastAddress && !lastAddressApplied) {
+    setLastAddressApplied(true);
+    if (!street.trim()) {
+      setStreet(lastAddress.street);
+      setAddressVerified(true);
+      const line = [lastAddress.street, lastAddress.houseNumber].filter(Boolean).join(" ");
+      const place = [lastAddress.postalCode, lastAddress.city].filter(Boolean).join(" ");
+      setAddressText((prev) => prev || [line, place].filter(Boolean).join(", "));
+      setHouseNumber((prev) => prev || lastAddress.houseNumber || "");
+      setAddressExtra((prev) => prev || lastAddress.addressExtra || "");
+      setPostalCode((prev) => prev || lastAddress.postalCode || "");
+      setProvince((prev) => prev || lastAddress.province || "");
+      setCity((prev) => prev || lastAddress.city || "");
+    }
   }
   // Istantanea dei valori REALI dell'account (non del form, che può
   // ricadere su valori arrivati dall'URL) — confrontata al momento

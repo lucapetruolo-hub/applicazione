@@ -124,6 +124,30 @@ function slotText(value: unknown): string | null {
 }
 
 /** Lavoro, descrizione e appuntamento prima → dopo, per le email di modifica (richiesta esplicita dell'utente, §228). */
+/**
+ * Cifre nuove del preventivo modificato (collaudo 08/11, gruppo 7): voce per
+ * voce e totale, per decidere dall'email senza aprire il sito.
+ */
+function quoteFigureRows(payload: Payload): { label: string; value: string }[] {
+  const items = Array.isArray(payload.items)
+    ? payload.items.filter(
+        (item): item is { name: string; price: string } =>
+          typeof item === "object" && item !== null && typeof (item as { name?: unknown }).name === "string" && typeof (item as { price?: unknown }).price === "string",
+      )
+    : [];
+  return [
+    ...items.map((item) => ({ label: item.name, value: item.price })),
+    ...(typeof payload.priceAfter === "string" ? [{ label: "Totale indicativo", value: payload.priceAfter }] : []),
+  ];
+}
+
+/** "Il totale indicativo passa da … a …", solo se il totale cambia. */
+function priceChangeLine(payload: Payload): string[] {
+  return typeof payload.priceBefore === "string" && typeof payload.priceAfter === "string"
+    ? [`Il totale indicativo passa da ${payload.priceBefore} a **${payload.priceAfter}**.`]
+    : [];
+}
+
 function changeDetails(ctx: NotificationEmailContext, payload: Payload, fromLabel: string, toLabel: string, withPro: boolean) {
   const from = slotText(payload.from);
   const to = slotText(payload.to);
@@ -489,8 +513,12 @@ const BUILDERS: Record<string, Builder> = {
       subject: `${pro(ctx)} ha modificato ${scheduleChangeObject(change)} dell'appuntamento`,
       greeting: ctx.name,
       title: `Cambia ${scheduleChangeObject(change)} dell'appuntamento`,
-      paragraphs: [`**${pro(ctx)}** ha modificato ${scheduleChangeObject(change)} del preventivo per **${job(ctx)}**. Ecco come è ora:`, ...quotedNote(payload)],
-      details: slotText(payload.to) ? changeDetails(ctx, payload, "Prima", "Nuova proposta", true) : jobDetails(ctx),
+      paragraphs: [
+        `**${pro(ctx)}** ha modificato ${scheduleChangeObject(change)} del preventivo per **${job(ctx)}**. Ecco come è ora:`,
+        ...priceChangeLine(payload),
+        ...quotedNote(payload),
+      ],
+      details: [...(slotText(payload.to) ? changeDetails(ctx, payload, "Prima", "Nuova proposta", true) : jobDetails(ctx)), ...quoteFigureRows(payload)],
       cta: clientRequests(),
       after: ["Se non ti va bene puoi proporre un'altra data o scrivere al professionista in chat."],
     };
@@ -507,15 +535,13 @@ const BUILDERS: Record<string, Builder> = {
       title: "Preventivo aggiornato",
       paragraphs: [
         `**${pro(ctx)}** ha aggiornato ${what} del preventivo per **${job(ctx)}**, senza cambiare data e orario.`,
-        ...(typeof payload.priceBefore === "string" && typeof payload.priceAfter === "string"
-          ? [`Il totale indicativo passa da ${payload.priceBefore} a **${payload.priceAfter}**.`]
-          : []),
+        ...priceChangeLine(payload),
         // Modi di pagamento offerti (docs/CHANGELOG.md §239).
         ...(typeof payload.paymentOffer === "string" ? [`Come puoi pagare: ${payload.paymentOffer}.`] : []),
         ...noteChange(payload, "Note di prima", "Note nuove"),
         "Rileggilo prima di accettarlo.",
       ],
-      details: jobDetails(ctx),
+      details: jobDetails(ctx, quoteFigureRows(payload)),
       cta: clientRequests(),
     };
   },

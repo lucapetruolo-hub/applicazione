@@ -34,6 +34,7 @@ export type {
   AuthResult,
   ClientBooking,
   ClientGuidedRequest,
+  LastRequestAddress,
   ProfessionalReviewSummary,
   CurrentUser,
   // MANOVIA — fiscale, pagamenti, DAC7 (CLAUDE.md §88).

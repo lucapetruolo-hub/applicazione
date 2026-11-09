@@ -70,6 +70,18 @@ testi rotti) ed E6-14 (gruppo 8, accessibilità).
   lettore di schermo; tolte le caselle "presto" dei canali che non funzionano;
   la scheda WhatsApp ("In arrivo") in fondo alla pagina.
 
+**Migliorie approvate da Luca il 09/11**
+- Richiesta: senza un indirizzo salvato nell'account si precompila quello
+  dell'ultima richiesta a domicilio (`GET /guided-requests/me/last-address`,
+  solo del cliente stesso); riempie solo i campi vuoti e vale come già scelto.
+  L'indirizzo dell'account resta il primo.
+- Email del preventivo modificato: voce per voce con le cifre nuove e il
+  totale ("Totale indicativo"), anche quando cambia insieme la data
+  (`QUOTE_UPDATED` e `QUOTE_DATE_CHANGED`).
+- Immagine fissa della mappa (senza consenso ai cookie): segnaposto vicini in
+  uno solo con il numero, come sulla mappa interattiva
+  (`groupStaticMarkers` in `static-map.service.ts`, zoom stimato come Google).
+
 ## Non cambiato, e perché
 
 - E6-13 (una casella del pagamento non spuntata): le caselle sono già
