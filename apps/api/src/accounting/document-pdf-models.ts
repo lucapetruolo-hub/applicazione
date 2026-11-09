@@ -4,6 +4,7 @@ import {
   accountingMonthLabel,
   courtesyYearPart,
   dac7YearStatus,
+  platformInvoiceVatNote,
   formatEurCents,
   platformInvoiceNote,
   platformInvoiceOriginalNote,
@@ -42,12 +43,7 @@ export function invoicePdfModel(invoice: PlatformInvoiceView): PdfDocumentModel 
     rows.push({ label: line.description, detail: line.detail, value: eur(line.taxableEurCents) });
   }
 
-  const recoverable =
-    invoice.vatRecoverable === false
-      ? "Senza partita IVA, o nel regime forfettario, l'IVA è un costo: non si recupera."
-      : invoice.vatRecoverable === true
-        ? "L'IVA la recuperi nella tua dichiarazione IVA."
-        : null;
+  const recoverable = platformInvoiceVatNote(invoice);
   const noteLines = [
     recoverable,
     jobFees && invoice.periodMonth ? `Le stesse cifre le trovi, lavoro per lavoro, nell'estratto di ${accountingMonthLabel(invoice.periodMonth)}.` : null,

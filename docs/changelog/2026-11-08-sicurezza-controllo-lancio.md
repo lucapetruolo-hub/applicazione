@@ -30,7 +30,11 @@
   (`apps/api/src/common/client-ip.ts`, `ClientIpThrottlerGuard`). Lo stesso
   indirizzo va a Turnstile. A ogni avvio il log di Render dice una volta se
   l'intestazione arriva, senza indirizzi: se scrive "ASSENTE" la lettura va
-  rivista.
+  rivista. Correzione del 09/11: la prima riga nel log (vista da Luca) diceva
+  "ASSENTE, X-Forwarded-For con 0 indirizzi" perché descriveva il controllo
+  `/health` di Render, che parte dall'interno senza intestazioni. Ora il log
+  descrive la prima richiesta arrivata da fuori e dice anche se ci sono
+  `True-Client-IP` e `X-Real-IP`.
 - **E2-03, CSP**: tolto `'unsafe-eval'` dalla CSP di produzione
   (`apps/web/next.config.mjs`). Nel browser zod è `jitless`
   (`packages/shared/src/zod.ts`): senza, zod proverebbe `new Function` e la

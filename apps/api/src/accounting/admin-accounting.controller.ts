@@ -64,7 +64,7 @@ export class AdminAccountingController {
    */
   @Post("run/:month")
   async runMonth(@Req() req: AuthenticatedRequest, @Param("month") month: string) {
-    const { issued, notified } = await this.invoicesService.adminRunMonth(month);
+    const { issued, notified, late, abroad } = await this.invoicesService.adminRunMonth(month);
     const statements = await this.statementsService.sendAccountantStatementsFor(month);
     // Nel registro azioni (docs/changelog/2026-11-02-admin-protezioni.md).
     await this.auditLogService.record({
@@ -74,7 +74,7 @@ export class AdminAccountingController {
       newValue: `${issued} fatture, ${notified} riepiloghi, ${statements} estratti`,
       changedByUserId: req.user.userId,
     });
-    return { issued, notified, statements };
+    return { issued, notified, statements, late, abroad };
   }
 
   @Post(":id/resend")

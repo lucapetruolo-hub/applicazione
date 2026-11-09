@@ -1887,7 +1887,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<{ fileName: string; xml: string }>(`/admin/invoices/${encodeURIComponent(id)}/xml`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminRunInvoiceMonth: (token: string, month: string) =>
-      request<{ issued: number; notified: number; statements: number }>(`/admin/invoices/run/${encodeURIComponent(month)}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+      request<{ issued: number; notified: number; statements: number; late: boolean; abroad: number }>(`/admin/invoices/run/${encodeURIComponent(month)}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     adminFeeReconciliation: (token: string, month: string) =>
       request<FeeReconciliation>(`/admin/invoices/reconciliation/${encodeURIComponent(month)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

@@ -11,10 +11,11 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { EmailCodeForm } from "@/components/EmailCodeForm";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
+import { PageLoading } from "@/components/PageLoading";
 
 export default function ConfermaEmailPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading variant="form" />}>
       <ConfermaEmailRouter />
     </Suspense>
   );

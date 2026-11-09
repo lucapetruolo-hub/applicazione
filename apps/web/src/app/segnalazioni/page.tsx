@@ -7,6 +7,7 @@ import { CONTENT_REPORT_TARGET_LABEL, moderationActionOwnerText, moderationGroun
 import { Button, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { PageLoading } from "@/components/PageLoading";
 
 /**
  * Decisioni sui contenuti dell'utente (docs/CHANGELOG.md §144, §319): misura
@@ -34,7 +35,7 @@ export default function SegnalazioniPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoading />;
 
   if (!user || !token) {
     return (
