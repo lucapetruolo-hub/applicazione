@@ -693,6 +693,10 @@
   gap: 4px;
   margin-bottom: 12px;
 }
+/* Dentro il calendario lo spazio sotto lo dà già il calendario. */
+.ag-strip-row.in-shell {
+  margin-bottom: 0;
+}
 .ag-strip {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
