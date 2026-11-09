@@ -27,6 +27,7 @@ function professional(n, businessName) {
     availabilityPreview: [],
     availabilityFrom: today,
     createdAt: "2026-09-01T10:00:00.000Z",
+    updatedAt: "2026-10-15T09:30:00.000Z",
     completedThisMonth: 0,
     isNewProfile: false,
   };

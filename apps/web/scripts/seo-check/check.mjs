@@ -157,6 +157,8 @@ if (mode === "public") {
   for (const path of ["/cerca/idraulico", "/cerca/idraulico/latina", "/cerca/idraulico/latina/caldaie", "/prezzi/idraulico", "/prezzi/idraulico/latina", "/lavora-con-noi/pulizie", proPath]) {
     if (!sitemap.includes(`<loc>${SITE_URL}${path}</loc>`)) fail("/sitemap.xml", `manca ${path}`);
   }
+  // Data di modifica del profilo (E8-10).
+  if (!new RegExp(`<loc>${SITE_URL}${proPath}</loc>\\s*<lastmod>2026-10-15T09:30:00.000Z</lastmod>`).test(sitemap)) fail("/sitemap.xml", "manca lastmod sul profilo");
   for (const path of ["/cerca/pulizie/latina", "/cerca/pulizie<", "/prezzi/pulizie", "/cerca/idraulico/latina/impianti-sanitari"]) {
     if (sitemap.includes(`${SITE_URL}${path}`)) fail("/sitemap.xml", `contiene la pagina vuota ${path.replace("<", "")}`);
   }

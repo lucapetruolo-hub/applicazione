@@ -60,8 +60,10 @@ prezzo delle schede) è nel gruppo 1.
 - **E8-10, sitemap.** La parte che chiede all'API (una ventina di chiamate)
   resta in memoria un'ora (`unstable_cache`); la sitemap si fa sempre alla
   richiesta, mai nella build (lì l'API può non rispondere). Se la ricerca non
-  risponde non si tiene nulla. `lastModified` non c'è: la ricerca non manda
-  la data di modifica del profilo.
+  risponde non si tiene nulla. Ogni profilo ha `lastModified` (sì di Luca
+  del 09/11): la ricerca dell'API manda `updatedAt`, l'ultima modifica che si
+  vede sulla pagina (dati del profilo, prestazione aggiunta, recensione nuova,
+  `last-visible-change.ts`).
 - **E8-11.** Il profilo chiedeva lo stesso professionista due volte all'API
   (metadati e pagina): ora una (`React.cache`). La pagina città fa due
   ricerche diverse (una senza i profili d'esempio, solo col sito aperto):
@@ -76,7 +78,8 @@ prezzo delle schede) è nel gruppo 1.
   privato verdi, con controlli nuovi: profilo di prova in `noindex` senza
   dati strutturati, H1 della pagina per servizio, `og:site_name`/`og:locale`/
   `og:url`/`og:image` su città, profilo e home, immagine del profilo,
-  titolo e `noindex` delle pagine private.
+  titolo e `noindex` delle pagine private, `lastmod` del profilo nella
+  sitemap.
 - Playwright su 3G lento a 390×844: foto a 5 secondi di `/preventivo` e
   `/le-mie-richieste` con la sagoma e la scritta.
 - Lighthouse telefono su `/per-professionisti` e home (build locale, API

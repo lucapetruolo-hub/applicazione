@@ -80,6 +80,7 @@ import { countBookingsInSlot, loadCommitments, lockProfessionalAgenda, type Comm
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
 import { profileCategories } from "../common/profile-categories.util";
 import { computeIsNewProfile } from "../common/new-profile.util";
+import { lastVisibleChange } from "./last-visible-change";
 import { NotificationsService } from "../notifications/notifications.service";
 import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
 import { toMyState } from "../guided-requests/guided-request-user-state.service";
@@ -426,6 +427,7 @@ export class ProfessionalsService {
         availabilityPreview: preview?.days ?? [],
         availabilityFrom: new Date().toISOString().slice(0, 10),
         createdAt: profile.createdAt.toISOString(),
+        updatedAt: lastVisibleChange(profile.updatedAt, profile.services, reviews).toISOString(),
         completedThisMonth: countCompletedThisMonth(profile.bookings),
         isNewProfile: computeIsNewProfile(profile.createdAt),
         ...(serviceKey && canonicalize

@@ -61,6 +61,8 @@ async function dynamicEntries(): Promise<MetadataRoute.Sitemap> {
   const professionals = await apiClient.searchProfessionals({ excludeDemo: true });
   const professionalEntries: MetadataRoute.Sitemap = professionals.map((pro) => ({
     url: `${SITE_URL}${professionalPath(pro)}`,
+    // Ultima modifica visibile del profilo, mandata dall'API (E8-10).
+    ...(pro.updatedAt ? { lastModified: pro.updatedAt } : {}),
     changeFrequency: "weekly",
     priority: 0.6,
   }));

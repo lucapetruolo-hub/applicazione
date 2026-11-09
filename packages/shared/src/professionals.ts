@@ -314,6 +314,12 @@ export type ProfessionalSearchResult = {
    */
   createdAt: string;
   /**
+   * Ultima modifica visibile del profilo (dati del profilo, prestazione
+   * aggiunta, recensione nuova): `lastModified` della sitemap (collaudo 08/11
+   * E8-10). Solo nei risultati di ricerca.
+   */
+  updatedAt?: string;
+  /**
    * "Ha completato N interventi questo mese" (richiesta esplicita
    * dell'utente): conteggio reale di `Booking` con stato `COMPLETED`
    * aggiornate nel mese di calendario corrente — mostrato sia sulla card
