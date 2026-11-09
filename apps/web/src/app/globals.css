@@ -9233,3 +9233,88 @@ a.admin-kpi:hover {
     animation: none;
   }
 }
+
+
+
+/* Preventivo in 30 secondi (docs/changelog/2026-11-08-preventivo-in-30-secondi.md):
+   prestazioni del profilo come pillole e "Usa il preventivo del …". */
+.quick-service-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: 44px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  text-align: left;
+  line-height: 1.25;
+}
+.quick-service-pill.is-suggested {
+  border-color: #189a63;
+  border-width: 2px;
+}
+.quick-service-price {
+  font-weight: 500;
+  color: #5c534d;
+}
+.quick-service-pill.is-on .quick-service-price {
+  color: #fff;
+}
+.quick-service-tag {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0e7a4c;
+}
+.quick-last-quote {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 1px dashed #189a63;
+  border-radius: 10px;
+  background: #fff;
+  color: #2b2420;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.quick-last-quote:hover {
+  background: #f1faf5;
+}
+.quick-last-quote:focus-visible,
+.quick-undo:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.quick-last-quote-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.quick-last-quote-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+.quick-last-quote-sub {
+  font-size: 13px;
+  color: #5c534d;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.quick-undo {
+  min-height: 44px;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: #0e7a4c;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
