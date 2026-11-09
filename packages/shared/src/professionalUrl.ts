@@ -19,7 +19,10 @@ function slugPart(text: string): string {
     // "S.R.L." → "srl", non "s-r-l".
     .replace(/\./g, "")
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    // Dopo la riga sopra i "-" non sono mai ripetuti: basta toglierne uno
+    // per lato. Con "-+$" CodeQL segnalava un'espressione lenta su testi
+    // pieni di "-" (js/polynomial-redos, docs/changelog/2026-11-08-infrastruttura-lancio.md).
+    .replace(/^-|-$/g, "");
 }
 
 /** Parte con nome e città, senza id ("luca-idraulica-srl-latina"). */
@@ -29,7 +32,10 @@ function nameSlug(businessName: string, city?: string | null): string {
   // La città non si ripete se il nome la contiene già ("Idraulica Latina").
   const full = citySlug && !`-${name}-`.includes(`-${citySlug}-`) ? `${name}-${citySlug}` : name;
   if (full.length <= MAX_NAME_SLUG_LENGTH) return full;
-  return full.slice(0, MAX_NAME_SLUG_LENGTH).replace(/-[^-]*$/, "").replace(/-+$/, "");
+  const cut = full.slice(0, MAX_NAME_SLUG_LENGTH);
+  // Si taglia all'ultimo "-" intero, senza espressioni che tornano indietro.
+  const lastDash = cut.lastIndexOf("-");
+  return lastDash > 0 ? cut.slice(0, lastDash) : cut.replace(/-$/, "");
 }
 
 /** Segmento finale dell'indirizzo: "luca-idraulica-srl-latina-<id>". */
