@@ -6,14 +6,12 @@ import {
   CLIENT_INVOICE_KIND_LABEL,
   clientInvoiceKinds,
   clientInvoiceLines,
-  clientInvoiceRequestSchema,
-  findComuneByName,
   invoiceRecipientText,
   type ClientInvoiceKind,
-  type ClientInvoiceRequestInput,
   type ClientInvoiceRequestView,
 } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
+import { useComuni } from "@/lib/comuniLazy";
 import { keyActivate } from "@/lib/keyActivate";
 
 /**
@@ -52,34 +50,6 @@ export function invoiceDraftFromView(view: ClientInvoiceRequestView): InvoiceDra
     city: view.city,
     province: view.province ?? "",
   };
-}
-
-/** Dati pronti per l'API, o il primo errore per campo. */
-export function parseInvoiceDraft(
-  draft: InvoiceDraft,
-  receipt = false,
-): { ok: true; data: ClientInvoiceRequestInput } | { ok: false; errors: Partial<Record<keyof InvoiceDraft, string>> } {
-  const parsed = clientInvoiceRequestSchema.safeParse({
-    kind: draft.kind,
-    name: draft.name,
-    // A una partita IVA mai il codice fiscale di una persona, rimasto dalla scelta "A nome mio" (collaudo G-06).
-    taxCode: draft.kind === "PERSON" ? draft.taxCode.trim() || undefined : undefined,
-    vatNumber: draft.kind === "VAT" ? draft.vatNumber.trim() || undefined : undefined,
-    // Codice destinatario e PEC servono solo alla fattura elettronica, non alla ricevuta (C-01).
-    recipient: draft.kind === "VAT" && !receipt ? draft.recipient.trim() || undefined : undefined,
-    street: draft.street,
-    houseNumber: draft.houseNumber.trim() || undefined,
-    postalCode: draft.postalCode,
-    city: draft.city,
-    province: draft.province.trim() || undefined,
-  });
-  if (parsed.success) return { ok: true, data: parsed.data };
-  const errors: Partial<Record<keyof InvoiceDraft, string>> = {};
-  for (const issue of parsed.error.issues) {
-    const field = issue.path[0] as keyof InvoiceDraft | undefined;
-    if (field && !errors[field]) errors[field] = issue.message;
-  }
-  return { ok: false, errors };
 }
 
 /**
@@ -154,6 +124,8 @@ export function InvoiceRequestFields({
   errors?: Partial<Record<keyof InvoiceDraft, string>>;
   receipt?: boolean;
 }) {
+  // Comuni scaricati al primo tocco su un campo, non con la pagina (docs/changelog/2026-11-09-le-mie-richieste-leggera.md).
+  const comuni = useComuni();
   const set = (key: keyof InvoiceDraft, value: string) => onChange({ ...draft, [key]: value });
   const vat = draft.kind === "VAT";
   return (
@@ -215,7 +187,7 @@ export function InvoiceRequestFields({
             aria-label="Comune per la fattura"
             value={draft.city}
             onChangeText={(v) => {
-              const comune = findComuneByName(v);
+              const comune = comuni?.findComuneByName(v);
               onChange({ ...draft, city: v, ...(comune ? { province: comune.province } : {}) });
             }}
             error={errors?.city}
@@ -277,6 +249,7 @@ export function ClientInvoiceRequestPanel({
   }
 
   async function save() {
+    const { parseInvoiceDraft } = await import("./clientInvoiceDraftParse");
     const parsed = parseInvoiceDraft(draft, receipt);
     if (!parsed.ok) {
       setErrors(parsed.errors);

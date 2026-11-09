@@ -143,12 +143,15 @@ export class JobPaymentsService {
   async getForBooking(userId: string, bookingId: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-      select: { clientId: true, professionalProfile: { select: { userId: true } } },
+      select: { clientId: true, finalAmountEurCents: true, professionalProfile: { select: { userId: true } }, jobPayment: true },
     });
     if (!booking || (booking.clientId !== userId && booking.professionalProfile.userId !== userId)) {
       throw new ForbiddenException("Questo lavoro non è tuo.");
     }
-    return this.prisma.jobPayment.findUnique({ where: { bookingId } });
+    // Lo stesso riepilogo delle schede, mai la riga intera (collaudo 08/11,
+    // E3-04): la riga ha gli id Stripe di entrambi e la difesa del
+    // professionista nella contestazione aperta dal cliente.
+    return toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents, booking.professionalProfile.userId === userId);
   }
 
   /**
@@ -189,6 +192,11 @@ export class JobPaymentsService {
   /** Checkout dell'acconto che conferma il lavoro all'accettazione del preventivo (§240). */
   createQuoteDepositCheckout(params: Parameters<OnlineMoneyService["createQuoteDepositCheckout"]>[0]) {
     return this.onlineMoneyService.createQuoteDepositCheckout(params);
+  }
+
+  /** Pagina dell'acconto del preventivo pagata e non rimborsata (E3-06), letta da Stripe. */
+  paidQuoteDepositSession(quoteId: string): Promise<Stripe.Checkout.Session | null> {
+    return this.onlineMoneyService.paidQuoteDepositSession(quoteId);
   }
 
   /** Acconto del preventivo pagato: lo registra sul pagamento del lavoro appena creato, senza un secondo avviso. */

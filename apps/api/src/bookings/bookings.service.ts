@@ -330,6 +330,21 @@ export class BookingsService implements OnModuleInit {
       }
     }
     if (!quote || refundReason || !bookingId) {
+      // Webhook e ritorno dal pagamento arrivano quasi insieme (collaudo
+      // 08/11, E3-06): se intanto lo stesso pagamento ha fatto nascere il
+      // lavoro online di questo cliente, si registra lì e non si rimborsa
+      // mai. Lavoro appena creato e pagamento non ancora pronto: si riprova.
+      const job = await this.prisma.booking.findUnique({
+        where: { quoteId },
+        select: { clientId: true, status: true, jobPayment: { select: { id: true, paymentMethod: true } } },
+      });
+      if (job && job.clientId === clientUserId && job.status !== "CANCELED") {
+        if (!job.jobPayment) throw new ConflictException("Il lavoro si sta creando: riprova tra poco.");
+        if (job.jobPayment.paymentMethod === "MANOVIA") {
+          await this.jobPaymentsService.recordQuoteDeposit(job.jobPayment.id, session);
+          return;
+        }
+      }
       const info = await this.prisma.quote.findUnique({ where: { id: quoteId }, select: { guidedRequestId: true, professionalProfileId: true } });
       const { pending } = await this.jobPaymentsService.refundQuoteDeposit(paymentIntentId, refundReason ?? "Preventivo non più disponibile.", session.metadata?.stripeAccount ?? null, {
         clientUserId,
@@ -350,6 +365,59 @@ export class BookingsService implements OnModuleInit {
 
     const jobPayment = await this.prisma.jobPayment.findUniqueOrThrow({ where: { bookingId } });
     await this.jobPaymentsService.recordQuoteDeposit(jobPayment.id, session);
+  }
+
+  /**
+   * Il cliente torna dalla pagina di pagamento dell'acconto (collaudo 08/11,
+   * E3-06): si chiede a Stripe se è pagato e, se sì, il lavoro nasce subito,
+   * come col webhook (stessa `confirmQuoteDeposit`, che non fa nulla due
+   * volte). Prima il lavoro dipendeva solo dal webhook del conto del
+   * professionista: se non arrivava il cliente aveva pagato senza lavoro.
+   */
+  async verifyQuoteDeposit(clientId: string, quoteId: string): Promise<{ bookingId: string | null }> {
+    const quote = await this.prisma.quote.findUnique({
+      where: { id: quoteId },
+      select: { guidedRequest: { select: { clientId: true } }, booking: { select: { id: true, clientId: true } } },
+    });
+    if (!quote || quote.guidedRequest.clientId !== clientId) throw new ForbiddenException("Questo preventivo non è associato a una tua richiesta.");
+    if (quote.booking?.clientId === clientId) return { bookingId: quote.booking.id };
+    const session = await this.jobPaymentsService.paidQuoteDepositSession(quoteId);
+    if (!session || session.metadata?.clientUserId !== clientId) return { bookingId: null };
+    try {
+      await this.confirmQuoteDeposit(session);
+    } catch (err) {
+      // Lo sta già facendo il webhook: il sito ricarica tra poco.
+      if (!(err instanceof ConflictException)) throw err;
+    }
+    const booking = await this.prisma.booking.findUnique({ where: { quoteId }, select: { id: true, clientId: true } });
+    return { bookingId: booking?.clientId === clientId ? booking.id : null };
+  }
+
+  /**
+   * Rete di sicurezza ogni ora (E3-06): acconti pagati negli ultimi 3 giorni
+   * il cui lavoro non è nato, perché il webhook non è arrivato e il cliente
+   * non è tornato sul sito. Le pagine scadono dopo un'ora, quindi bastano i
+   * preventivi toccati di recente.
+   */
+  async confirmMissedQuoteDeposits(now: Date = new Date()): Promise<number> {
+    const quotes = await this.prisma.quote.findMany({
+      where: { depositCheckoutSessionId: { not: null }, booking: { is: null }, updatedAt: { gte: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000) } },
+      select: { id: true },
+      take: 200,
+    });
+    let confirmed = 0;
+    for (const { id } of quotes) {
+      try {
+        const session = await this.jobPaymentsService.paidQuoteDepositSession(id);
+        // Pagamenti di questi minuti: il webhook è in arrivo.
+        if (!session || session.created * 1000 > now.getTime() - 10 * 60 * 1000) continue;
+        await this.confirmQuoteDeposit(session);
+        if (await this.prisma.booking.findUnique({ where: { quoteId: id }, select: { id: true } })) confirmed++;
+      } catch (err) {
+        this.logger.warn(`Acconto del preventivo ${id} non confermato: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    return confirmed;
   }
 
   /**
@@ -505,7 +573,12 @@ export class BookingsService implements OnModuleInit {
    * dashboard mostrava il bottone "Segna come completato" solo per lo stato
    * CONFIRMED.
    */
-  async updateStatus(professionalUserId: string, bookingId: string, status: "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW") {
+  async updateStatus(professionalUserId: string, bookingId: string, status: "CONFIRMED" | "CANCELED") {
+    // Anche qui, non solo nel controllo dell'indirizzo (collaudo 08/11, E1-03):
+    // chiudere il lavoro passa solo da completeWithFinalAmount.
+    if (status !== "CONFIRMED" && status !== "CANCELED") {
+      throw new BadRequestException("Per chiudere il lavoro usa \"Lavoro terminato\".");
+    }
     const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId } });
     if (!professionalProfile) {
       throw new NotFoundException("Profilo professionista non trovato.");
@@ -527,8 +600,6 @@ export class BookingsService implements OnModuleInit {
       data: {
         status,
         ...(status === "CANCELED" ? { canceledBy: "PROFESSIONAL" as const } : {}),
-        // Fa partire l'attesa delle recensioni automatiche (§189).
-        ...(status === "COMPLETED" ? { professionalCompletedAt: new Date() } : {}),
       },
     });
     if (status === "CANCELED") {
@@ -542,25 +613,14 @@ export class BookingsService implements OnModuleInit {
       });
     }
 
-    // Metriche di affidabilità (CLAUDE.md §15): evento 4 (lavoro completato)
-    // ed evento 6 (appuntamento onorato/mancato) — CANCELED non conta come
-    // nessuno dei due (richiesta esplicita dell'utente), CONFIRMED è solo
-    // "attività" del professionista senza statistiche da aggiornare.
-    if (status === "COMPLETED") {
-      await this.professionalMetricsService.recordJobCompleted(professionalProfile.id);
-      await this.professionalMetricsService.recordAppointmentOutcome(professionalProfile.id, true);
-    } else if (status === "NO_SHOW") {
-      await this.professionalMetricsService.recordAppointmentOutcome(professionalProfile.id, false);
-    } else {
-      await this.professionalMetricsService.touchActivity(professionalProfile.id);
-    }
+    // CONFIRMED e CANCELED non contano come appuntamento onorato o mancato
+    // (CLAUDE.md §15): solo "attività" del professionista.
+    await this.professionalMetricsService.touchActivity(professionalProfile.id);
 
     if (booking.quote) {
       const statusMessage: Record<typeof status, string> = {
         CONFIRMED: "Il professionista ha confermato il lavoro.",
-        COMPLETED: "Il professionista ha segnato il lavoro come terminato.",
         CANCELED: "Il professionista ha annullato il lavoro.",
-        NO_SHOW: "Il professionista ha segnato che il cliente non si è presentato.",
       };
       await this.timelineService.log(booking.quote.guidedRequestId, professionalProfile.id, "PROFESSIONAL", statusMessage[status]);
     }
