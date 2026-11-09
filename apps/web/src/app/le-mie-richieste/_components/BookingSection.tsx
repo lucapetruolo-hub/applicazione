@@ -247,7 +247,7 @@ export function BookingSection({
           <XStack gap="2" flexWrap="wrap">
             {canConfirmDone ? (
               // Turchese come dal lato del professionista (richiesta esplicita dell'utente).
-              <CardButton fill="#20B2AA" flex="xs:1" onPress={() => setShowClientCompleteModal(true)}>
+              <CardButton fill="#0E7F7A" flex="xs:1" onPress={() => setShowClientCompleteModal(true)}>
                 Lavoro terminato
               </CardButton>
             ) : (

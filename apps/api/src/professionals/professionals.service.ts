@@ -80,6 +80,7 @@ import { countBookingsInSlot, loadCommitments, lockProfessionalAgenda, type Comm
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
 import { profileCategories } from "../common/profile-categories.util";
 import { computeIsNewProfile } from "../common/new-profile.util";
+import { lastVisibleChange } from "./last-visible-change";
 import { NotificationsService } from "../notifications/notifications.service";
 import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
 import { toMyState } from "../guided-requests/guided-request-user-state.service";
@@ -201,6 +202,8 @@ const PROFESSIONAL_DETAIL_INCLUDE = {
   visibilityBoosts: { where: { status: "ACTIVE" } },
   services: true,
   metrics: true,
+  // Account di prova: profilo fuori da Google (collaudo 08/11 E8-04).
+  user: { select: { testAccountAt: true } },
 } satisfies Prisma.ProfessionalProfileInclude;
 
 /** Quanti "Lavori fatti" mostrare sul profilo: gli ultimi, gli altri restano nelle recensioni. */
@@ -427,6 +430,7 @@ export class ProfessionalsService {
         availabilityPreview: preview?.days ?? [],
         availabilityFrom: new Date().toISOString().slice(0, 10),
         createdAt: profile.createdAt.toISOString(),
+        updatedAt: lastVisibleChange(profile.updatedAt, profile.services, reviews).toISOString(),
         completedThisMonth: countCompletedThisMonth(profile.bookings),
         isNewProfile: computeIsNewProfile(profile.createdAt),
         ...(serviceKey && canonicalize
@@ -778,6 +782,8 @@ export class ProfessionalsService {
       stripeVerified: stripeVerified(profile.fiscalProfile),
       // Privato o professionista, per il cliente (Codice del consumo art. 49-bis, §241).
       traderStatus: publicTraderStatusOf(profile.fiscalProfile?.entityType, profile.businessName),
+      // Profili di prova e d'esempio apribili dal link, ma mai in Google (collaudo 08/11 E8-04).
+      indexable: !profile.isDemo && profile.user.testAccountAt === null,
       professionalKind: publicProfessionalKindOf(profile.fiscalProfile?.entityType, profile.businessName),
       rating,
       reviewCount,

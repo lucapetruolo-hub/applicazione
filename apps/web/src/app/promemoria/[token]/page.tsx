@@ -8,6 +8,7 @@ import { Button, Text, YStack, brand } from "@professionisti/ui";
 import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
 import { AuthIconBadge } from "@/components/AuthStepHeader";
 import { apiClient } from "@/lib/apiClient";
+import { PageLoading } from "@/components/PageLoading";
 
 /** "martedì 14 ottobre alle 09:00": l'ora dell'appuntamento è scritta in UTC (docs/CHANGELOG.md §287). */
 function dayAtTime(iso: string): string {
@@ -25,7 +26,7 @@ function requestHref(state: AppointmentReplyState, changeDate = false): string {
 export default function PromemoriaPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading variant="form" />}>
       <Promemoria token={token} />
     </Suspense>
   );

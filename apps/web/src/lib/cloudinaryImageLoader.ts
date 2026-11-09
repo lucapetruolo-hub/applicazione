@@ -19,9 +19,11 @@ export default function cloudinaryImageLoader({ src, width, quality }: { src: st
   // Foto dei mestieri della home: la copia più vicina alla larghezza chiesta,
   // non sempre l'originale da 1536 px (collaudo N-08,
   // docs/changelog/2026-10-30-velocita-telefono.md). `?w=` resta per Next.js.
+  // La copia da 600 è per i telefoni (scheda di 300 px, 640 nel srcset):
+  // prima arrivava quella da 768 (collaudo 08/11 E8-03).
   const category = CATEGORY_PHOTO.exec(src);
   if (category) {
-    const copy = width <= 480 ? 480 : width <= 828 ? 768 : 1024;
+    const copy = width <= 480 ? 480 : width <= 640 ? 600 : width <= 828 ? 768 : 1024;
     return `/category-photos/${category[1]}-${copy}.webp?w=${width}`;
   }
   const marker = "/image/upload/";

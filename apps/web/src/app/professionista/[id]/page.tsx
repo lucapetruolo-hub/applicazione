@@ -1,7 +1,9 @@
+import { cache } from "react";
 import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { apiClient } from "../../../lib/apiClient";
 import { SITE_URL } from "@/lib/siteUrl";
+import { openGraphFor } from "@/lib/openGraph";
 import { type BreadcrumbItem } from "@/lib/jsonLd";
 import { JsonLd } from "@/components/JsonLd";
 import { ApiError } from "@professionisti/api-client";
@@ -54,6 +56,13 @@ const SCHEMA_BUSINESS_TYPE: Partial<Record<string, string>> = {
   tuttofare: "HomeAndConstructionBusiness",
 };
 
+/**
+ * Una sola chiamata all'API per richiesta: `generateMetadata` e la pagina
+ * chiedevano lo stesso profilo due volte (collaudo 08/11 E8-11, stesso
+ * principio della pagina città).
+ */
+const loadProfessional = cache((id: string) => apiClient.getProfessional(id));
+
 // Pagina profilo pubblico: SEO-critica (CLAUDE.md §5.4), SSR ad ogni richiesta
 // (nessun generateStaticParams: gli id sono dinamici e crescono nel tempo).
 export const dynamic = "force-dynamic";
@@ -61,7 +70,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(props: { params: Promise<PageParams> }): Promise<Metadata> {
   const params = await props.params;
   try {
-    const professional = await apiClient.getProfessional(professionalIdFromSlug(params.id));
+    const professional = await loadProfessional(professionalIdFromSlug(params.id));
     return {
       // Una sola pagina per profilo per Google, anche con ?modalita= o ?data=.
       alternates: { canonical: professionalPath(professional) },
@@ -71,8 +80,12 @@ export async function generateMetadata(props: { params: Promise<PageParams> }): 
           ? `Identità verificata su ${BRAND.name}.`
           : `Profilo su ${BRAND.name}.`
       }`,
-      // Condividendo il profilo (WhatsApp, Facebook) la sua foto, non l'immagine del sito (collaudo N-11).
-      ...(professional.imageUrl ? { openGraph: { images: [{ url: professional.imageUrl, alt: professional.businessName }] } } : {}),
+      // Anteprima con foto (o iniziali), nome e mestiere: opengraph-image.tsx
+      // di questa cartella (collaudo N-11 e 08/11 E8-06).
+      openGraph: openGraphFor(professionalPath(professional)),
+      // Account di prova o profilo d'esempio: apribile dal link, mai in
+      // Google (collaudo 08/11 E8-04).
+      ...(professional.indexable === false ? { robots: { index: false, follow: false } } : {}),
     };
   } catch {
     // Profilo inesistente (404) o API ferma ("Riprova"): mai in Google.
@@ -92,7 +105,7 @@ export default async function ProfessionalDetailPage(props: { params: Promise<Pa
   );
   let professional: ProfessionalDetail;
   try {
-    professional = await apiClient.getProfessional(professionalId);
+    professional = await loadProfessional(professionalId);
   } catch (err) {
     // "Non trovata" solo se l'API dice che il profilo non c'è. Se l'API non
     // risponde: "Riprova", non un falso 404 (docs/CHANGELOG.md §284).
@@ -139,7 +152,8 @@ export default async function ProfessionalDetailPage(props: { params: Promise<Pa
 
   return (
     <>
-      <JsonLd data={jsonLd} />
+      {/* Niente dati da attività vera per un profilo di prova (E8-04). */}
+      {professional.indexable === false ? null : <JsonLd data={jsonLd} />}
       {/* `?modalita=` (tab dell'agenda arrivando da una ricerca "Online"),
           `?data=` e `?salva=` passati dal server: senza useSearchParams non
           serve un <Suspense> e il profilo arriva nell'ordine della pagina,

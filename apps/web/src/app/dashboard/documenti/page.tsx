@@ -7,6 +7,7 @@ import {
   accountantSettingsSchema,
   accountingMonthLabel,
   courtesyYearTotals,
+  occasionalIncomeNotice,
   formatEurCents,
   freePeriodSummary,
   type CourtesyDocumentSummary,
@@ -213,6 +214,8 @@ function MissingDocuments({ rows }: { rows: MissingClientDocument[] }) {
 function ClientDocuments({ token, documents }: { token: string; documents: CourtesyDocumentSummary[] }) {
   const totals = courtesyYearTotals(documents);
   const years = [...new Set(totals.map((row) => row.year))];
+  const currentYearTotal = totals.find((row) => row.year === new Date().getFullYear());
+  const incomeNotice = currentYearTotal ? occasionalIncomeNotice(currentYearTotal.totalEurCents) : null;
   return (
     <YStack gap="3">
       <Text render="h2" fontFamily="heading" fontSize={22} fontWeight="800" color={brand.grafite}>
@@ -240,6 +243,14 @@ function ClientDocuments({ token, documents }: { token: string; documents: Court
               </Surface>
             ))}
           </XStack>
+          {/* Vicino o oltre 5.000 € nell'anno in corso: contributi INPS (collaudo dell'08/11/2026, miglioria del commercialista). */}
+          {incomeNotice ? (
+            <Surface borderRadius={radiusDoc} padding="4" backgroundColor={brand.gesso}>
+              <Text fontSize={16} color={brand.grafite}>
+                {incomeNotice}
+              </Text>
+            </Surface>
+          ) : null}
           {totals.length > 0 ? (
             <Text fontSize={16} color={brand.grafite70}>
               Il totale delle ricevute dell&apos;anno va nella dichiarazione dei redditi: scarica il riepilogo per il tuo commercialista, oppure scrivi qui sotto la sua email e spunta &quot;Mandagli l&apos;estratto&quot;: a gennaio gli arriva anche il riepilogo.
