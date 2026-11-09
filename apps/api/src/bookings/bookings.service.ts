@@ -64,6 +64,8 @@ import { AuthService } from "../auth/auth.service";
 import { ClientInvoiceRequestsService } from "../client-invoice-requests/client-invoice-requests.service";
 import { bookingDateChange } from "../quotes/booked-date-change";
 import { quoteExecutor } from "../guided-requests/guided-requests.service";
+import { RecurringJobsService, recurringVisitInfo } from "./recurring-jobs.service";
+import { formatSlotForTimeline } from "../common/format-date.util";
 
 /** Il cliente ha già un lavoro per questa richiesta (docs/CHANGELOG.md §346). */
 const CLIENT_CANCEL_TOO_LATE = "L'appuntamento è già cominciato e non si può più annullare. Se qualcosa non va, usa \"C'è un problema\".";
@@ -94,6 +96,7 @@ export class BookingsService implements OnModuleInit {
     // Facoltativo solo per i test che costruiscono il servizio a mano.
     @Optional() private readonly authService?: AuthService,
     @Optional() private readonly clientInvoiceRequestsService?: ClientInvoiceRequestsService,
+    @Optional() private readonly recurringJobsService?: RecurringJobsService,
   ) {}
 
   onModuleInit(): void {
@@ -113,6 +116,8 @@ export class BookingsService implements OnModuleInit {
    * l'indirizzo, e il professionista rischiava di andarci.
    */
   async cancelFutureJobsOfClosedClient(clientId: string): Promise<number> {
+    // Lavori ricorrenti: niente più visite (le prossime si tolgono senza un avviso ciascuna).
+    await this.recurringJobsService?.stopAllFor({ clientId });
     const jobs = await this.prisma.booking.findMany({
       where: { clientId, status: { in: ["PENDING", "CONFIRMED"] }, scheduledAt: { gt: wallClockNow() } },
       select: { id: true },
@@ -132,6 +137,7 @@ export class BookingsService implements OnModuleInit {
    * solo "Questo appuntamento non si farà".
    */
   async cancelFutureJobsOfClosedAccount(professionalProfileId: string, professionalUserId: string): Promise<number> {
+    await this.recurringJobsService?.stopAllFor({ professionalProfileId });
     const jobs = await this.prisma.booking.findMany({
       where: { professionalProfileId, status: { in: ["PENDING", "CONFIRMED"] }, scheduledAt: { gt: wallClockNow() } },
       include: { quote: { select: { guidedRequestId: true } } },
@@ -205,6 +211,7 @@ export class BookingsService implements OnModuleInit {
         amountEurCents: this.quoteDepositEurCents(quote),
         businessName: quote.professionalProfile.businessName,
         professionalProfileId: quote.professionalProfileId,
+        recurring: !!quote.repeatEvery,
       });
       if (!url) throw new BadRequestException("Il pagamento online non è partito: riprova tra poco.");
       return { bookingId: null, paymentMethod, checkoutUrl: url };
@@ -540,6 +547,8 @@ export class BookingsService implements OnModuleInit {
       quoteMaxEurCents: quotePriceTotals(quote.items).totalMaxEurCents,
       clientUserId: clientId,
     });
+    // Lavoro ricorrente (docs/changelog/2026-11-09-lavori-ricorrenti.md): nasce la serie e le prossime visite entrano in agenda.
+    await this.recurringJobsService?.startFromAcceptedQuote({ quoteId: quote.id, bookingId: booking.id, paymentChoice: paymentMethod });
 
     await this.prisma.quote.update({ where: { id: quote.id }, data: { status: "ACCEPTED" } });
     await this.prisma.guidedRequest.update({ where: { id: quote.guidedRequestId }, data: { status: "CLOSED", closedReason: "COMPLETED" } });
@@ -803,10 +812,15 @@ export class BookingsService implements OnModuleInit {
       throw new NotFoundException("Profilo professionista non trovato.");
     }
 
-    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: { include: { items: true } } } });
-    if (!booking || booking.professionalProfileId !== professionalProfile.id) {
+    const job = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { quote: { include: { items: true } }, recurringJob: { select: { quote: { include: { items: true } } } } },
+    });
+    if (!job || job.professionalProfileId !== professionalProfile.id) {
       throw new ForbiddenException("Questa prenotazione non è tua.");
     }
+    // Visita di un lavoro ricorrente: voci e prezzo sono quelli del preventivo accettato per la serie.
+    const booking = { ...job, quote: job.quote ?? job.recurringJob?.quote ?? null };
     if (booking.status !== "CONFIRMED") {
       throw new BadRequestException("Solo un lavoro confermato può essere segnalato come terminato.");
     }
@@ -1000,18 +1014,22 @@ export class BookingsService implements OnModuleInit {
       throw new NotFoundException("Profilo professionista non trovato.");
     }
 
-    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: true } });
-    if (!booking || booking.professionalProfileId !== professionalProfile.id) {
+    const job = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: true, recurringJob: { select: { quote: true, stoppedAt: true } } } });
+    if (!job || job.professionalProfileId !== professionalProfile.id) {
       throw new ForbiddenException("Questa prenotazione non è tua.");
     }
+    const booking = { ...job, quote: job.quote ?? job.recurringJob?.quote ?? null };
     if (booking.status === "COMPLETED" || booking.status === "CANCELED") {
       throw new ForbiddenException("Questa prenotazione è già conclusa.");
     }
 
     const cancellationNote = input.note?.trim() || null;
+    // Visita di un lavoro ricorrente: "Salta questa volta", la serie continua
+    // (docs/changelog/2026-11-09-lavori-ricorrenti.md).
+    const recurringSkip = job.recurringJobId !== null && !job.recurringJob?.stoppedAt;
     await this.prisma.booking.update({
       where: { id: bookingId },
-      data: { status: "CANCELED", cancellationNote, canceledBy: "PROFESSIONAL" },
+      data: { status: "CANCELED", cancellationNote, canceledBy: "PROFESSIONAL", ...(recurringSkip ? { skippedAt: new Date() } : {}) },
     });
     // Lavoro pagato online (§168): l'acconto torna al cliente.
     await this.jobPaymentsService.refundOnCancel(bookingId, professionalUserId);
@@ -1020,6 +1038,7 @@ export class BookingsService implements OnModuleInit {
       bookingId,
       cancellationNote,
       guidedRequestId: booking.quote?.guidedRequestId,
+      ...(recurringSkip ? { recurringSkip: true, scheduledAt: booking.scheduledAt.toISOString() } : {}),
     });
 
     // Metriche di affidabilità (CLAUDE.md §15, evento 7): azione del
@@ -1032,7 +1051,7 @@ export class BookingsService implements OnModuleInit {
         booking.quote.guidedRequestId,
         professionalProfile.id,
         "PROFESSIONAL",
-        `Il professionista ha annullato l'intervento.${cancellationNote ? ` Nota: "${cancellationNote}"` : ""}`,
+        `${recurringSkip ? `Il professionista ha saltato la visita del ${formatSlotForTimeline(booking.scheduledAt, booking.scheduledEndAt)}: le altre restano.` : "Il professionista ha annullato l'intervento."}${cancellationNote ? ` Nota: "${cancellationNote}"` : ""}`,
       );
     }
 
@@ -1046,10 +1065,13 @@ export class BookingsService implements OnModuleInit {
    * alcun modo di disdire — solo il professionista poteva farlo.
    */
   async cancelForClient(clientId: string, bookingId: string, opts: { accountClosed?: boolean } = {}) {
-    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: true } });
-    if (!booking || booking.clientId !== clientId) {
+    const job = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: true, recurringJob: { select: { quote: true, stoppedAt: true } } } });
+    if (!job || job.clientId !== clientId) {
       throw new ForbiddenException("Questa prenotazione non è tua.");
     }
+    // Visita di un lavoro ricorrente dopo la prima: niente preventivo suo, vale quello della serie.
+    const booking = { ...job, quote: job.quote ?? job.recurringJob?.quote ?? null };
+    const recurringSkip = job.recurringJobId !== null && !job.recurringJob?.stoppedAt && !opts.accountClosed;
     if (booking.status !== "PENDING" && booking.status !== "CONFIRMED") {
       throw new ForbiddenException("Questa prenotazione non può più essere annullata.");
     }
@@ -1069,13 +1091,14 @@ export class BookingsService implements OnModuleInit {
         status: "CANCELED",
         canceledBy: "CLIENT",
         canceledLate: late,
+        ...(recurringSkip ? { skippedAt: new Date() } : {}),
         // Account chiuso: niente più indirizzo né telefono per il professionista (collaudo B-01).
         ...(opts.accountClosed
           ? { cancellationNote: CLIENT_ACCOUNT_CLOSED_NOTE, street: null, houseNumber: null, addressExtra: null, recipientPhone: null }
           : {}),
       },
     });
-    const keptEurCents = late && booking.quote?.lateCancelKeepsDeposit ? await this.jobPaymentsService.keepDepositOnLateCancel(bookingId) : 0;
+    const keptEurCents = late && job.quote?.lateCancelKeepsDeposit ? await this.jobPaymentsService.keepDepositOnLateCancel(bookingId) : 0;
     // Lavoro pagato online (§168): altrimenti l'acconto torna al cliente.
     if (keptEurCents === 0) await this.jobPaymentsService.refundOnCancel(bookingId, clientId);
     // Prima il professionista non veniva avvisato; l'email toglie anche
@@ -1088,6 +1111,7 @@ export class BookingsService implements OnModuleInit {
         ...(late ? { lateNotice: cancellationNoticeLabel(booking.cancellationNoticeHours) } : {}),
         ...(keptEurCents > 0 ? { keptDepositEurCents: keptEurCents } : {}),
         ...(opts.accountClosed ? { clientAccountClosed: true } : {}),
+        ...(recurringSkip ? { recurringSkip: true, scheduledAt: booking.scheduledAt.toISOString() } : {}),
       });
     }
     if (booking.quote && opts.accountClosed) {
@@ -1096,7 +1120,12 @@ export class BookingsService implements OnModuleInit {
       const note = late
         ? ` con meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)} di preavviso${keptEurCents > 0 ? `: l'acconto di ${formatEurCents(keptEurCents)} resta al professionista` : ""}`
         : "";
-      await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, "CLIENT", `Il cliente ha annullato la prenotazione${note}.`);
+      await this.timelineService.log(
+        booking.quote.guidedRequestId,
+        booking.professionalProfileId,
+        "CLIENT",
+        recurringSkip ? `Il cliente ha saltato la visita del ${formatSlotForTimeline(booking.scheduledAt, booking.scheduledEndAt)}${note}: le altre restano.` : `Il cliente ha annullato la prenotazione${note}.`,
+      );
     }
     return { bookingId, status: "CANCELED" as const, keptDepositEurCents: keptEurCents };
   }
@@ -1684,7 +1713,7 @@ export class BookingsService implements OnModuleInit {
 
   /** Prenotazioni del cliente autenticato, per proporre la recensione a lavoro completato. */
   async listForClient(clientId: string) {
-    const bookings = await this.prisma.booking.findMany({
+    const rows = await this.prisma.booking.findMany({
       where: { clientId },
       include: {
         professionalProfile: { include: { user: true } },
@@ -1699,9 +1728,15 @@ export class BookingsService implements OnModuleInit {
         // dirette da agenda pubblica (bookAgendaSlot), che non hanno una
         // Quote/GuidedRequest collegata.
         quote: { include: { items: true, guidedRequest: { include: { category: true } } } },
+        // Visite di un lavoro ricorrente dopo la prima: preventivo e richiesta della serie
+        // (docs/changelog/2026-11-09-lavori-ricorrenti.md).
+        recurringJob: { include: { quote: { include: { items: true, guidedRequest: { include: { category: true } } } } } },
       },
       orderBy: { scheduledAt: "desc" },
     });
+    const bookings = rows.map((row) => ({ ...row, ownQuote: row.quote, quote: row.quote ?? row.recurringJob?.quote ?? null }));
+    // Lavoro ricorrente: una recensione per tutta la serie (docs/changelog/2026-11-09-lavori-ricorrenti.md).
+    const reviewedSeries = new Set(bookings.filter((b) => b.recurringJobId && b.review).map((b) => b.recurringJobId));
 
     const now = new Date();
     const chatReplies = await this.jobIssueOutcomeService.proChatReplies(
@@ -1733,12 +1768,14 @@ export class BookingsService implements OnModuleInit {
         : jobIssueTypesAllowed({ ...booking, hasIssue: booking.issue !== null }, wallClockNow(now)),
       // Dopo il termine si segnala ancora un lavoro non andato bene, senza rimborso.
       issueLate: jobIssueLateAllowed({ ...booking, hasIssue: booking.issue !== null }, wallClockNow(now)),
-      canReview: clientCanReview({
-        status: booking.status,
-        clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt,
-        hasReview: booking.review !== null,
-        issueStatus: booking.issue?.status ?? null,
-      }),
+      canReview:
+        !(booking.recurringJobId && reviewedSeries.has(booking.recurringJobId) && !booking.review) &&
+        clientCanReview({
+          status: booking.status,
+          clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt,
+          hasReview: booking.review !== null,
+          issueStatus: booking.issue?.status ?? null,
+        }),
       // Fine della fascia (richiesta esplicita dell'utente: mostrare tutta
       // la fascia oraria, non solo l'inizio) — null per prenotazioni senza
       // una fascia con fine nota (data indicata a mano, o create prima di
@@ -1820,11 +1857,13 @@ export class BookingsService implements OnModuleInit {
       onTheWayAt: booking.onTheWayAt?.toISOString() ?? null,
       // Preavviso per annullare valido per questo lavoro (docs/CHANGELOG.md §347): 24 ore per i lavori di prima.
       cancellationNoticeHours: booking.cancellationNoticeHours ?? DEFAULT_CANCELLATION_NOTICE_HOURS,
-      lateCancelKeepsDeposit: booking.quote?.lateCancelKeepsDeposit ?? false,
+      // Solo la prima visita di un lavoro ricorrente ha un acconto e una data da cambiare sul preventivo.
+      lateCancelKeepsDeposit: booking.ownQuote?.lateCancelKeepsDeposit ?? false,
       // Altra data proposta sul preventivo accettato, in attesa del professionista.
-      dateChange: bookingDateChange(booking, booking.quote),
+      dateChange: bookingDateChange(booking, booking.ownQuote),
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
+      recurring: recurringVisitInfo(booking),
     }));
   }
 }

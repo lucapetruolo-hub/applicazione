@@ -42,6 +42,11 @@ import {
   type MySubscription,
   type MyProfessionalProfile,
   wallClockToday,
+  RECURRING_FREQUENCIES,
+  RECURRING_FREQUENCY_LABELS,
+  recurringAllowedForCategory,
+  recurringSummary,
+  type RecurringFrequency,
   type QuickQuoteService,
   type SimilarQuote,
 } from "@professionisti/shared";
@@ -66,6 +71,7 @@ import { ArchivedRestoreBar, buildPersonalStateActions, RequestStateIndicators }
 import { ReportContentModal } from "@/components/ReportContentModal";
 import { ProfessionalProblemModal } from "@/components/ProfessionalProblemModal";
 import { CardButton } from "@/components/CardButton";
+import { RecurringVisitsBox } from "@/components/RecurringVisitsBox";
 import { ContactButton } from "@/components/ContactButton";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { ProfessionalInvoiceRequestBox } from "@/components/ProfessionalInvoiceRequestBox";
@@ -155,6 +161,7 @@ export function RequestCard({
   laborPrice?: { priceMinEurCents: number | null; priceMaxEurCents: number | null } | null;
 }) {
   const gr = lead.guidedRequest;
+  const canRepeat = recurringAllowedForCategory(gr.categorySlug);
   const isOnline = gr.serviceMode === "ONLINE";
   const router = useRouter();
   const s = STAGE_STYLE[stage];
@@ -226,6 +233,9 @@ export function RequestCard({
   const standardNotice = isCancellationNoticeHours(defaultCancellationNoticeHours) ? defaultCancellationNoticeHours : DEFAULT_CANCELLATION_NOTICE_HOURS;
   const [noticeHours, setNoticeHours] = useState<CancellationNoticeHours>(standardNotice);
   const [keepDeposit, setKeepDeposit] = useState(false);
+  // Lavoro ricorrente, prezzo a visita (docs/changelog/2026-11-09-lavori-ricorrenti.md).
+  const [repeatEvery, setRepeatEvery] = useState<RecurringFrequency | null>(null);
+  const repeatChosen = canRepeat && repeatEvery !== null;
   const [appliedNotice, setAppliedNotice] = useState(standardNotice);
   if (standardNotice !== appliedNotice) {
     setAppliedNotice(standardNotice);
@@ -475,7 +485,8 @@ export function RequestCard({
     }
 
     // Senza pagamenti online attivi resta solo il diretto (le altre caselle non si vedono).
-    const offered = onlinePayments ? paymentOptions : (["DIRECT"] as JobPaymentChoice[]);
+    // Lavoro ricorrente: niente "acconto online e saldo diretto", ogni visita si paga come la prima.
+    const offered = (onlinePayments ? paymentOptions : (["DIRECT"] as JobPaymentChoice[])).filter((choice) => !(repeatChosen && choice === "MIXED"));
     if (offered.length === 0) return setQuoteError("Scegli almeno un modo di pagamento.");
     const depositPercent = Number(depositPercentDraft.trim());
     if (offered.some(paymentChoiceIsOnline) && (!Number.isInteger(depositPercent) || depositPercent < MIN_DEPOSIT_PERCENT || depositPercent > MAX_DEPOSIT_PERCENT)) {
@@ -503,6 +514,7 @@ export function RequestCard({
         ...(rememberPaymentOffer ? { rememberPaymentOffer: true } : {}),
         cancellationNoticeHours: noticeHours,
         lateCancelKeepsDeposit: offered.some(paymentChoiceIsOnline) && keepDeposit,
+        ...(canRepeat ? { repeatEvery } : {}),
       });
       setRememberPaymentOffer(false);
       setShowQuoteForm(false);
@@ -703,6 +715,7 @@ export function RequestCard({
     setDepositPercentDraft(String(lead.quote.depositPercent));
     setNoticeHours(isCancellationNoticeHours(lead.quote.cancellationNoticeHours) ? lead.quote.cancellationNoticeHours : standardNotice);
     setKeepDeposit(lead.quote.lateCancelKeepsDeposit);
+    setRepeatEvery(lead.quote.repeatEvery);
     setShowQuoteForm(true);
   }
 
@@ -792,7 +805,7 @@ export function RequestCard({
     menuActions.push({ icon: "check", text: "Lavoro terminato", onPress: () => setShowCompleteModal(true) });
   }
   if (booking?.status === "CONFIRMED") {
-    menuActions.push({ icon: "x", text: "Annulla il lavoro", tone: "danger", onPress: () => setShowCancelModal(true) });
+    menuActions.push({ icon: "x", text: booking.recurring && !booking.recurring.stoppedAt ? "Salta questa volta" : "Annulla il lavoro", tone: "danger", onPress: () => setShowCancelModal(true) });
   }
   // Regola simmetrica (§197): ognuno riapre solo ciò che ha annullato lui.
   if (booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL" && !booking.reopenRequestedBy) {
@@ -1271,6 +1284,11 @@ export function RequestCard({
                   {lead.quote.lateCancelKeepsDeposit ? ", poi l'acconto resta a te" : ""}
                 </Text>
               ) : null}
+              {lead.quote.repeatEvery ? (
+                <Text fontSize={13} fontWeight="700" color={brand.verificato}>
+                  {recurringSummary(lead.quote.repeatEvery)}
+                </Text>
+              ) : null}
             </YStack>
           ) : null}
 
@@ -1530,10 +1548,20 @@ export function RequestCard({
                     "Lavoro terminato" (collaudo D-07). */}
                 {booking?.status === "CONFIRMED" && !canComplete ? (
                   <CardButton compactOnPhone tone="danger" onPress={() => setShowCancelModal(true)}>
-                    Annulla il lavoro
+                    {booking.recurring && !booking.recurring.stoppedAt ? "Salta questa volta" : "Annulla il lavoro"}
                   </CardButton>
                 ) : null}
               </XStack>
+            ) : null}
+            {/* Lavoro ricorrente: prossime visite, "Salta questa volta" e
+                "Interrompi" (docs/changelog/2026-11-09-lavori-ricorrenti.md). */}
+            {booking?.recurring ? (
+              <RecurringVisitsBox
+                side="PROFESSIONAL"
+                visits={bookings.filter((visit) => visit.recurring?.seriesId === booking.recurring?.seriesId)}
+                token={token}
+                onChanged={onChanged}
+              />
             ) : null}
             {/* Chi deve fare ancora cosa (collaudo A-17). */}
             {booking?.status === "CONFIRMED" && booking.clientConfirmedCompletedAt ? (
@@ -1777,6 +1805,29 @@ export function RequestCard({
               </YStack>
 
               {/* Come vuole essere pagato (docs/CHANGELOG.md §237): uno o più modi, il cliente sceglie tra questi. */}
+              {canRepeat ? (
+                <YStack gap="2" role="group" aria-label="Ogni quanto">
+                  <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+                    Ogni quanto?
+                  </Text>
+                  <XStack gap="2" flexWrap="wrap">
+                    <Chip selected={repeatEvery === null} onPress={() => setRepeatEvery(null)}>
+                      Una volta
+                    </Chip>
+                    {RECURRING_FREQUENCIES.map((frequency) => (
+                      <Chip key={frequency} selected={repeatEvery === frequency} onPress={() => setRepeatEvery(frequency)}>
+                        {RECURRING_FREQUENCY_LABELS[frequency]}
+                      </Chip>
+                    ))}
+                  </XStack>
+                  {repeatEvery ? (
+                    <Text fontSize={13} color={brand.grafite70}>
+                      I prezzi sono a visita. Il cliente accetta una volta e le visite entrano da sole nella tua agenda, alla stessa ora; ognuno può saltarne una o interrompere.
+                    </Text>
+                  ) : null}
+                </YStack>
+              ) : null}
+
               <YStack gap="2" role="group" aria-label="Come vuoi essere pagato">
                 {/* Senza pagamenti online non c'è niente da scegliere: resta
                     solo la riga (docs/CHANGELOG.md §349). */}
@@ -1787,7 +1838,7 @@ export function RequestCard({
                 ) : null}
                 {onlinePayments ? (
                   <>
-                    {jobPaymentChoices.map((choice) => (
+                    {jobPaymentChoices.filter((choice) => !(repeatChosen && choice === "MIXED")).map((choice) => (
                       <label key={choice} style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer", fontSize: 16 }}>
                         <input
                           type="checkbox"
@@ -2029,8 +2080,11 @@ export function RequestCard({
       ) : null}
       {showCancelModal && booking ? (
         <CancelBookingModal
+          {...(booking.recurring && !booking.recurring.stoppedAt
+            ? { title: "Salta questa volta", confirmLabel: "Sì, salta questa visita", confirmingLabel: "Un attimo..." }
+            : {})}
           // Che fine fa l'acconto pagato online (collaudo F-02).
-          description={`Il cliente verrà avvisato dell'annullamento${
+          description={`Il cliente verrà avvisato ${booking.recurring && !booking.recurring.stoppedAt ? "che questa visita salta (le altre restano)" : "dell'annullamento"}${
             booking.payment?.method === "ONLINE" && booking.payment.paidEurCents - booking.payment.refundedEurCents > 0
               ? ` e gli restituiamo sulla carta i ${formatEurCents(booking.payment.paidEurCents - booking.payment.refundedEurCents)} che ha pagato online`
               : ""

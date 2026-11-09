@@ -83,6 +83,41 @@ export class JobPaymentsService {
   }
 
   /**
+   * Visita di un lavoro ricorrente dopo la prima
+   * (docs/changelog/2026-11-09-lavori-ricorrenti.md): stesso modo di
+   * pagamento della prima (decisione di Luca del 09/11). Online senza acconto:
+   * tutto a lavoro terminato, addebitato sulla carta salvata con l'acconto
+   * della prima visita (o con il link, se la banca lo rifiuta); diretto resta
+   * diretto.
+   */
+  async createForRecurringVisit(params: { bookingId: string; choice: JobPaymentChoice; quoteMaxEurCents: number; clientUserId: string }): Promise<void> {
+    const existing = await this.prisma.jobPayment.findUnique({ where: { bookingId: params.bookingId } });
+    if (existing) return;
+    const online = paymentChoiceIsOnline(params.choice) && params.choice !== "MIXED";
+    const jobPayment = await this.prisma.jobPayment.create({
+      data: {
+        bookingId: params.bookingId,
+        paymentMethod: online ? "MANOVIA" : "DIRECT",
+        status: "PENDING",
+        grossAmountEurCents: params.quoteMaxEurCents,
+        platformFeeEurCents: 0,
+        netAmountEurCents: params.quoteMaxEurCents,
+        ...(online ? { onlineStage: "DEPOSIT_PAID", depositEurCents: 0, balanceDirect: false } : {}),
+      },
+    });
+    if (online) await this.onlineMoneyService.adoptRecurringCard(jobPayment.id);
+    await this.auditLogService.record({
+      entityType: "JobPayment",
+      entityId: jobPayment.id,
+      newValue: { paymentMethod: jobPayment.paymentMethod, recurring: true },
+      changedByUserId: params.clientUserId,
+      reason: online
+        ? "Visita di un lavoro ricorrente: pagamento online a lavoro terminato con la carta della prima visita."
+        : "Visita di un lavoro ricorrente: pagamento diretto al professionista, come la prima visita.",
+    });
+  }
+
+  /**
    * Chiusura del lavoro con l'importo finale (BookingsService.
    * completeWithFinalAmount). Online: commissione sull'importo finale,
    * saldo da pagare e data di accredito al professionista. Diretto (o

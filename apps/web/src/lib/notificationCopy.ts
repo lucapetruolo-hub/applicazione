@@ -60,6 +60,9 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   // Promemoria programmato dall'utente dal menu della scheda (docs/CHANGELOG.md §130).
   REQUEST_REMINDER: { icon: "⏰", message: "Promemoria: hai chiesto di ricordarti questa richiesta." },
   // "Ricordamelo tra…" a lavoro terminato (docs/changelog/2026-11-08-promemoria-manutenzione.md).
+  // Lavori ricorrenti (docs/changelog/2026-11-09-lavori-ricorrenti.md).
+  RECURRING_VISIT_SKIPPED: { icon: "⏭️", message: "Una visita del lavoro ricorrente salta: l'ora era già occupata. Le altre restano." },
+  RECURRING_JOB_STOPPED: { icon: "⏹️", message: "Un lavoro ricorrente è stato interrotto: niente più visite." },
   REBOOK_REMINDER: { icon: "⏰", message: "È il momento che avevi scelto: puoi prenotare di nuovo lo stesso professionista." },
   CONTENT_REPORT_UPHELD: { icon: "⚠️", message: "Abbiamo preso una decisione su un tuo contenuto segnalato: tocca per leggere la motivazione." },
   // Esito della contestazione (docs/CHANGELOG.md §144).
@@ -255,6 +258,14 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   }
   if (type === "QUOTE_NOT_CHOSEN") {
     return { icon: "🙁", message: `Il cliente ha scelto un altro professionista${jobSuffix}.` };
+  }
+  // Visita di un lavoro ricorrente saltata: le altre restano.
+  if ((type === "BOOKING_CANCELED_BY_CLIENT" || type === "BOOKING_CANCELED_BY_PROFESSIONAL") && data.recurringSkip === true) {
+    const by = type === "BOOKING_CANCELED_BY_CLIENT" ? (who ?? "Il cliente") : (who ?? "Il professionista");
+    return { icon: "⏭️", message: `${by} salta una visita${jobSuffix}: le altre restano in programma.` };
+  }
+  if (type === "RECURRING_JOB_STOPPED") {
+    return { icon: "⏹️", message: `${data.stoppedBy === "CLIENT" ? "Il cliente" : (who ?? "Il professionista")} ha interrotto il lavoro ricorrente${jobSuffix}: niente più visite.` };
   }
   if (type === "BOOKING_CANCELED_BY_CLIENT") {
     const late = text(data.lateNotice) ? `, con meno di ${text(data.lateNotice)} di preavviso` : "";

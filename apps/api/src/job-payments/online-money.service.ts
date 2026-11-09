@@ -92,12 +92,19 @@ type ChargeInfo = {
  * chiusura del lavoro (decisione dell'utente, §267). Solo quando anche il
  * saldo si paga online.
  */
-function saveCardForBalance(enabled: boolean) {
+function saveCardForBalance(enabled: boolean, recurring = false) {
   if (!enabled) return { session: {}, intent: {} };
   return {
     session: {
       customer_creation: "always" as const,
-      custom_text: { submit: { message: "Il resto del prezzo lo paghi con questa carta, in automatico, quando il professionista chiude il lavoro. Mai più del prezzo massimo del preventivo." } },
+      // Lavoro ricorrente (docs/changelog/2026-11-09-lavori-ricorrenti.md): la stessa carta paga anche le visite dopo.
+      custom_text: {
+        submit: {
+          message: recurring
+            ? "Il resto del prezzo e ogni visita dopo la prima li paghi con questa carta, in automatico, quando il professionista chiude la visita. Mai più del prezzo massimo del preventivo a visita."
+            : "Il resto del prezzo lo paghi con questa carta, in automatico, quando il professionista chiude il lavoro. Mai più del prezzo massimo del preventivo.",
+        },
+      },
     },
     intent: { setup_future_usage: "off_session" as const },
   };
@@ -320,6 +327,8 @@ export class OnlineMoneyService {
     amountEurCents: number;
     businessName: string;
     professionalProfileId: string;
+    /** Preventivo di un lavoro ricorrente: la carta paga anche le visite dopo. */
+    recurring?: boolean;
   }): Promise<{ url: string | null }> {
     const back = `${this.frontendUrl()}/le-mie-richieste?open=${params.guidedRequestId}`;
     const suffix = statementSuffix(params.businessName);
@@ -329,7 +338,7 @@ export class OnlineMoneyService {
     if (reused) return { url: reused };
     await this.assertHeldLimit(params.professionalProfileId, params.amountEurCents);
     // Col saldo online la carta resta salvata per il saldo (§267); col saldo diretto (MIXED) no.
-    const saveCard = saveCardForBalance(params.paymentMethod === "ONLINE");
+    const saveCard = saveCardForBalance(params.paymentMethod === "ONLINE", params.recurring);
     const session = await this.requireStripe().checkout.sessions.create({
       mode: "payment",
       ...saveCard.session,
@@ -1063,12 +1072,42 @@ export class OnlineMoneyService {
   }
 
   /**
+   * Visita di un lavoro ricorrente (docs/changelog/2026-11-09-lavori-ricorrenti.md):
+   * prende cliente, carta e conto del professionista salvati con l'acconto
+   * della prima visita, se la visita non li ha ancora. Il cliente l'ha
+   * accettato con la scritta sulla pagina dell'acconto.
+   */
+  async adoptRecurringCard(jobPaymentId: string): Promise<void> {
+    const jp = await this.prisma.jobPayment.findUnique({
+      where: { id: jobPaymentId },
+      select: { id: true, paymentMethod: true, savedPaymentMethodId: true, booking: { select: { recurringJobId: true, recurringNumber: true } } },
+    });
+    if (!jp || jp.paymentMethod !== "MANOVIA" || jp.savedPaymentMethodId || !jp.booking.recurringJobId || (jp.booking.recurringNumber ?? 1) <= 1) return;
+    const first = await this.prisma.jobPayment.findFirst({
+      where: { booking: { recurringJobId: jp.booking.recurringJobId, recurringNumber: 1 }, savedPaymentMethodId: { not: null } },
+      select: { clientStripeCustomerId: true, savedPaymentMethodId: true, stripeDestinationAccountId: true, stripeDirectCharge: true },
+    });
+    if (!first?.clientStripeCustomerId || !first.savedPaymentMethodId || !first.stripeDestinationAccountId) return;
+    await this.prisma.jobPayment.update({
+      where: { id: jp.id },
+      data: {
+        clientStripeCustomerId: first.clientStripeCustomerId,
+        savedPaymentMethodId: first.savedPaymentMethodId,
+        stripeDestinationAccountId: first.stripeDestinationAccountId,
+        stripeDirectCharge: first.stripeDirectCharge,
+      },
+    });
+  }
+
+  /**
    * Addebito del saldo sulla carta salvata con l'acconto, senza il cliente
    * presente (off-session). Se la banca lo rifiuta o chiede di confermare,
    * il cliente paga con il link come prima. Restituisce true se è riuscito.
    */
   private async chargeSavedCard(jobPaymentId: string, amount: number): Promise<boolean> {
     if (!this.stripe) return false;
+    // Visita di un lavoro ricorrente: la carta è quella della prima visita.
+    await this.adoptRecurringCard(jobPaymentId);
     const jp = await this.prisma.jobPayment.findUniqueOrThrow({
       where: { id: jobPaymentId },
       include: { booking: { select: { clientId: true, professionalProfile: { select: { businessName: true } }, quote: { select: { guidedRequestId: true } } } } },

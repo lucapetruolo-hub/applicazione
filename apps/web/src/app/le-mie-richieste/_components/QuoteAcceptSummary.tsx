@@ -14,6 +14,7 @@ import {
   quotePaymentRestText,
   paymentChoiceIsOnline,
   quotePriceTaxNote,
+  recurringSummary,
   UPFRONT_PAYMENT_NOTE,
   type JobPaymentChoice,
 } from "@professionisti/shared";
@@ -133,6 +134,16 @@ export function QuoteAcceptSummary({
           {keepsDeposit
             ? "Se poi annulli, l'acconto resta al professionista."
             : "Se poi annulli non paghi niente, ma il professionista vede che hai annullato all'ultimo."}
+        </Text>
+      ) : null}
+      {/* Lavoro ricorrente: le visite dopo la prima si pagano come questa (decisione di Luca del 09/11, docs/changelog/2026-11-09-lavori-ricorrenti.md). */}
+      {quote.repeatEvery ? (
+        <Text fontSize={16} color={brand.grafite} data-testid="quote-accept-recurring">
+          <Text fontWeight="700">{recurringSummary(quote.repeatEvery)}.</Text>{" "}
+          {paymentChoiceIsOnline(payment)
+            ? "Le visite dopo la prima le paghi a visita terminata, con la stessa carta, in automatico."
+            : "Le visite dopo la prima le paghi a visita terminata, direttamente al professionista."}{" "}
+          Puoi saltarne una o interrompere quando vuoi.
         </Text>
       ) : null}
       <Text fontSize={16} color={brand.grafite}>

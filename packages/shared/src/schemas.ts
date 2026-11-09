@@ -8,6 +8,7 @@ import { quotePaymentOfferSchema } from "./onlinePaymentsSchemas";
 import { accountMeasures, contentReportReason, contentReportReasonCodes, moderationGroundCodes } from "./moderation";
 import { newPasswordSchema } from "./password";
 import { REQUEST_TIMINGS } from "./requestTiming";
+import { RECURRING_FREQUENCIES } from "./recurringJobs";
 import { SERVICE_PRICE_UNITS } from "./professionals";
 import { REBOOK_REMINDER_OPTIONS, type RebookReminderKey } from "./rebookReminder";
 
@@ -547,6 +548,8 @@ export const quoteSchema = z.object({
   cancellationNoticeHours: z.union([z.literal(24), z.literal(48), z.literal(72)]).optional(),
   /** Annullando dentro il preavviso l'acconto online resta al professionista; vale solo con l'acconto online. */
   lateCancelKeepsDeposit: z.boolean().optional(),
+  /** Lavoro ricorrente, prezzo a visita (docs/changelog/2026-11-09-lavori-ricorrenti.md); null = una volta sola, assente = come prima. */
+  repeatEvery: z.enum(RECURRING_FREQUENCIES).nullable().optional(),
 });
 export type QuoteInput = z.infer<typeof quoteSchema>;
 

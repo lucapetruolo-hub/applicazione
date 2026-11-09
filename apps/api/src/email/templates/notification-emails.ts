@@ -649,6 +649,18 @@ const BUILDERS: Record<string, Builder> = {
   },
   BOOKING_CANCELED_BY_PROFESSIONAL: (payload, ctx) => {
     const note = str(payload.cancellationNote);
+    // Visita di un lavoro ricorrente saltata: le altre restano (docs/changelog/2026-11-09-lavori-ricorrenti.md).
+    if (payload.recurringSkip) {
+      return {
+        kind: "notification",
+        subject: `${pro(ctx)} salta una visita`,
+        greeting: ctx.name,
+        title: "Questa volta la visita salta",
+        paragraphs: [`**${pro(ctx)}** salta la visita per **${job(ctx)}**. Le altre visite restano in programma.`],
+        details: jobDetails(ctx, note ? [{ label: "Motivo", value: note }] : []),
+        cta: { label: "Vedi le visite", url: clientJobUrl(payload) },
+      };
+    }
     return {
       kind: "notification",
       tone: "urgent",
@@ -667,7 +679,21 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
   // Il cliente annulla (docs/CHANGELOG.md §235): solo lui può riaprirla.
-  BOOKING_CANCELED_BY_CLIENT: (payload, ctx) => ({
+  BOOKING_CANCELED_BY_CLIENT: (payload, ctx) =>
+    payload.recurringSkip
+      ? {
+          kind: "notification",
+          subject: "Il cliente salta una visita",
+          greeting: ctx.name,
+          title: "Questa volta la visita salta",
+          paragraphs: [
+            `Il cliente salta la visita per **${job(ctx)}**: è tolta dalla tua agenda. Le altre visite restano in programma.`,
+            ...(typeof payload.lateNotice === "string" ? [`L'ha saltata con meno di ${payload.lateNotice} di preavviso.`] : []),
+          ],
+          details: proJobDetails(ctx),
+          cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
+        }
+      : ({
     kind: "notification",
     tone: "urgent",
     subject: "Il cliente ha annullato l'intervento",
@@ -685,6 +711,32 @@ const BUILDERS: Record<string, Builder> = {
     details: proJobDetails(ctx),
     cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
     after: ["Se il cliente la riapre ti avvisiamo noi."],
+  }),
+  // Lavori ricorrenti (docs/changelog/2026-11-09-lavori-ricorrenti.md): visita saltata da sola perché l'ora era già occupata.
+  RECURRING_VISIT_SKIPPED: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Una visita del lavoro ricorrente salta",
+    greeting: ctx.name,
+    title: "Questa volta la visita salta",
+    paragraphs: [
+      payload.audience === "PROFESSIONAL"
+        ? `La visita per **${job(ctx)}** salta: a quell'ora hai già un altro lavoro. Le altre visite restano in programma; se serve, scrivi al cliente in chat.`
+        : `La visita per **${job(ctx)}** salta: a quell'ora il professionista ha già un altro lavoro. Le altre visite restano in programma; se ti serve, scrivigli in chat.`,
+    ],
+    details: payload.audience === "PROFESSIONAL" ? proJobDetails(ctx) : jobDetails(ctx),
+    cta: payload.audience === "PROFESSIONAL" ? proRequests("Apri il lavoro") : { label: "Vedi le visite", url: clientJobUrl(payload) },
+  }),
+  // "Interrompi": niente più visite. Lo riceve l'altra parte.
+  RECURRING_JOB_STOPPED: (payload, ctx) => ({
+    kind: "notification",
+    subject: `Lavoro ricorrente interrotto: ${job(ctx)}`,
+    greeting: ctx.name,
+    title: "Niente più visite",
+    paragraphs: [
+      `${payload.stoppedBy === "CLIENT" ? "Il cliente" : `**${pro(ctx)}**`} ha interrotto il lavoro ricorrente per **${job(ctx)}**: non ci sono più visite in programma.`,
+      "Le visite già fatte restano, con i loro pagamenti.",
+    ],
+    cta: payload.audience === "PROFESSIONAL" ? proRequests("Apri il lavoro") : { label: "Vedi le visite", url: clientJobUrl(payload) },
   }),
   // "Non posso più" sotto il promemoria WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md):
   // l'appuntamento resta finché il cliente non lo annulla o non cambiate data.

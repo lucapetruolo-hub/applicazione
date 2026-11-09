@@ -224,6 +224,7 @@ const courtesy = { kind: "owned", owners: ["proA"], strangers: ["clientA", "clie
 const owned = {
   "DELETE /bookings/:id": booking(),
   "PATCH /bookings/:id/cancel": booking(),
+  "POST /bookings/recurring/:id/stop": { kind: "owned", owners: BOTH, params: (f) => ({ id: f.recurringA }) },
   "PATCH /bookings/:id/cancel-by-professional": booking({ body: () => ({ reason: "Imprevisto improvviso" }) }),
   "PATCH /bookings/:id/client-confirm-complete": booking(),
   "PATCH /bookings/:id/complete": booking(),

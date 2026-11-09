@@ -199,14 +199,17 @@ export class NotificationsService {
           client: { select: { name: true, deletedAt: true } },
           professionalProfile: { select: { businessName: true } },
           quote: { select: { guidedRequest: { select: { description: true, category: { select: { label: true } } } } } },
+          // Visita di un lavoro ricorrente: il lavoro è quello del preventivo della serie.
+          recurringJob: { select: { quote: { select: { guidedRequest: { select: { description: true, category: { select: { label: true } } } } } } } },
         },
       })
       .catch(() => null);
     if (!booking) return payload;
+    const bookingQuote = booking.quote ?? booking.recurringJob?.quote ?? null;
     const forClient = booking.clientId === userId;
     const clientName = booking.client.deletedAt ? null : (booking.recipientName ?? booking.client.name)?.trim() || null;
     const who = forClient ? booking.professionalProfile.businessName : clientName;
-    const jobLabel = notificationJobLabel(booking.quote?.guidedRequest.description) ?? booking.quote?.guidedRequest.category.label ?? null;
+    const jobLabel = notificationJobLabel(bookingQuote?.guidedRequest.description) ?? bookingQuote?.guidedRequest.category.label ?? null;
     return { ...data, ...(data.jobLabel ? {} : { jobLabel }), ...(data.who || !who ? {} : { who }) } as Prisma.InputJsonValue;
   }
 
@@ -322,15 +325,21 @@ export class NotificationsService {
     if (bookingId) {
       const booking = await this.prisma.booking.findUnique({
         where: { id: bookingId },
-        select: { scheduledAt: true, professionalProfile: { select: { businessName: true } }, quote: { select: { guidedRequest: request } } },
+        select: {
+          scheduledAt: true,
+          professionalProfile: { select: { businessName: true } },
+          quote: { select: { guidedRequest: request } },
+          recurringJob: { select: { quote: { select: { guidedRequest: request } } } },
+        },
       });
       if (booking) {
+        const bookingQuote = booking.quote ?? booking.recurringJob?.quote ?? null;
         return {
           ...EMPTY_EMAIL_CONTEXT,
-          category: booking.quote?.guidedRequest.category.label ?? null,
-          city: booking.quote?.guidedRequest.city ?? null,
+          category: bookingQuote?.guidedRequest.category.label ?? null,
+          city: bookingQuote?.guidedRequest.city ?? null,
           businessName: booking.professionalProfile.businessName,
-          description: booking.quote?.guidedRequest.description ?? null,
+          description: bookingQuote?.guidedRequest.description ?? null,
           when: booking.scheduledAt,
         };
       }
