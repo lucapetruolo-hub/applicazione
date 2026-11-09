@@ -57,6 +57,12 @@ export type AutocompleteProps<T> = {
     /** Se restituisce una Promise, l'elenco resta aperto finché non risponde `true` (es. posizione trovata). */
     onPress: () => void | Promise<boolean>;
   };
+  /**
+   * Sotto gli 800 px, mentre si scrive, l'elenco sta nella pagina e spinge
+   * giù i campi sotto invece di coprirli (collaudo dell'8/11, E6-04: in home
+   * il suggerimento del problema nascondeva "Città").
+   */
+  listInFlowOnPhone?: boolean;
 };
 
 /**
@@ -97,6 +103,7 @@ export function Autocomplete<T>({
   emptyItems,
   emptyHeadings,
   leadingAction,
+  listInFlowOnPhone = false,
 }: AutocompleteProps<T>) {
   const [isFocused, setIsFocused] = useState(false);
   // Opzione evidenziata con le frecce (-1 nessuna). 0 è la riga in cima se c'è.
@@ -161,6 +168,7 @@ export function Autocomplete<T>({
   const optionCount = filtered.length + (action ? 1 : 0);
 
   const showDropdown = isFocused && optionCount > 0;
+  const listInFlow = listInFlowOnPhone && trimmedQuery.length > 0;
   const activeIndex = showDropdown && highlighted >= 0 && highlighted < optionCount ? highlighted : -1;
 
   function choose(index: number) {
@@ -282,8 +290,8 @@ export function Autocomplete<T>({
         <YStack
           // Si apre morbida (apps/web/src/app/globals.css, `.pop-in`).
           className="pop-in"
-          position="absolute"
-          top="100%"
+          position={listInFlow ? "absolute sm:relative" : "absolute"}
+          top={listInFlow ? "100% sm:auto" : "100%"}
           left={0}
           right={0}
           marginTop="2"

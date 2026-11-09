@@ -688,3 +688,16 @@
   cursor: default;
   opacity: 0.5;
 }
+
+/* Sotto i 360 px (o testo ingrandito): foto sopra e nome sotto a tutta
+   larghezza, invece di "Idraulic-a Pagam-enti" su cinque righe (collaudo
+   dell'8/11, E6-05). */
+@media (max-width: 359px) {
+  .identityMain {
+    flex-direction: column;
+  }
+  .identityMain > .identityText {
+    align-self: stretch;
+    width: 100%;
+  }
+}

@@ -123,6 +123,10 @@ export function CategoryTiles({
         const isPrimary = showPrimary && value[0] === category.slug;
         const disabled = !active && isFull;
         const accent = CATEGORY_ACCENT[category.slug];
+        // Con il nome corto il nome letto viene dal testo in vista (quello
+        // nascosto con display:none non conta), così chi usa la voce dice
+        // ciò che vede (WCAG 2.5.3).
+        const shortLabel = compact ? COMPACT_LABELS[category.slug] : undefined;
         return (
           <button
             key={category.slug}
@@ -131,16 +135,16 @@ export function CategoryTiles({
             onClick={() => onToggle(category.slug)}
             aria-pressed={active}
             disabled={disabled}
-            aria-label={isPrimary ? `${category.label}, principale` : category.label}
+            aria-label={shortLabel ? undefined : isPrimary ? `${category.label}, principale` : category.label}
           >
             <span className="cat-tile-icon" style={{ background: accent.bg, color: accent.fg }} aria-hidden="true">
               <CategoryIcon slug={category.slug} size={compact ? 22 : 26} />
             </span>
-            {compact && COMPACT_LABELS[category.slug] ? (
+            {shortLabel ? (
               <span className="cat-tile-label">
                 <span className="cat-tile-label-full">{category.label}</span>
-                <span className="cat-tile-label-short" aria-hidden="true">
-                  {COMPACT_LABELS[category.slug]}
+                <span className="cat-tile-label-short">
+                  {shortLabel}
                 </span>
               </span>
             ) : (

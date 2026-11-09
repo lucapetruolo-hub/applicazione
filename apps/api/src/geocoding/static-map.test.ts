@@ -11,6 +11,21 @@ describe("immagine fissa della mappa (§265)", () => {
     expect(params.get("zoom")).toBeNull();
   });
 
+  it("raggruppa i segnaposto che si coprirebbero, con il numero (collaudo 08/11, E6-08)", () => {
+    // Tre professionisti a 100 m l'uno dall'altro e uno a 5 km, zoom di città.
+    const params = staticMapGoogleParams(
+      parseStaticMapQuery({ size: "600x400", m: "41.9,12.5;41.9008,12.5008;41.9,12.5012;41.945,12.5", c: "41.92,12.5", z: "12" }),
+    );
+    const markers = params.getAll("markers");
+    expect(markers).toHaveLength(2);
+    expect(markers).toContainEqual(expect.stringContaining("41.945,12.5"));
+    expect(markers).toContainEqual(expect.stringMatching(/size:normal\|color:0x189A63\|label:3\|41\.9,12\.5$/));
+    // Molto lontani tra loro restano separati anche senza zoom chiesto.
+    const apart = staticMapGoogleParams(parseStaticMapQuery({ size: "600x400", m: "41.9,12.5;45.46,9.19" }));
+    expect(apart.getAll("markers")).toHaveLength(1);
+    expect(apart.get("markers")).toContain("41.9,12.5|45.46,9.19");
+  });
+
   it("disegna i due raggi come cerchi attorno al centro", () => {
     const params = staticMapGoogleParams(parseStaticMapQuery({ size: "400x360", m: "41.9,12.5", c: "41.9,12.5", z: "9", r: "10,20" }));
     expect(params.getAll("path")).toHaveLength(2);

@@ -340,12 +340,8 @@ export function JobPaymentStatus({
         </YStack>
       ) : null}
 
-      {/* La ricevuta di Stripe non è un documento fiscale (docs/CHANGELOG.md §378). */}
-      {audience === "client" && payment.paidEurCents > 0 ? (
-        <Text fontSize={13} color={brand.grafite70} lineHeight="20px">
-          La ricevuta del pagamento non è la fattura: il documento del lavoro te lo dà il professionista.
-        </Text>
-      ) : null}
+      {/* La ricevuta di Stripe non è un documento fiscale (docs/CHANGELOG.md §378): lo dice
+          la casella "Ti serve la fattura?" sotto, in una frase sola (collaudo dell'8/11, E6-12). */}
 
       {canPay ? (
         <CardButton tone="primary" alignSelf="stretch gtXs:flex-start" disabled={busy} onPress={() => pay(stage === "AWAITING_DEPOSIT" ? "deposit" : "balance")}>

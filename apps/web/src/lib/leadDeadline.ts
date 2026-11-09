@@ -1,4 +1,4 @@
-import { formatItalianUntil } from "@professionisti/shared";
+import { formatClockDeadline, formatItalianUntil } from "@professionisti/shared";
 
 /**
  * "Rispondi entro …" per un lead (CLAUDE.md §14): condiviso da Richieste e
@@ -29,11 +29,12 @@ export function formatLeadDeadline(expiresAt: string | null): { label: string; u
  */
 export function formatForwardDeadline(forwardAt: string | null): { label: string; urgent: boolean } | null {
   const deadline = formatLeadDeadline(forwardAt);
-  if (!deadline) return null;
+  if (!deadline || !forwardAt) return null;
   // Il conto alla rovescia dice anche cosa succede dopo (richiesta
-  // dell'utente, docs/CHANGELOG.md §353): "Solo tua ancora per 6 ore" non
-  // faceva capire che poi la richiesta va anche ad altri.
-  return { label: `${deadline.label}, poi va anche ad altri professionisti`, urgent: deadline.urgent };
+  // dell'utente, docs/CHANGELOG.md §353). L'ora precisa e non "entro 2 ore"
+  // (collaudo dell'8/11, E6-11): il numero di ore, letto più tardi, non
+  // tornava, e il professionista credeva di avere sempre 2 ore.
+  return { label: `Rispondi entro ${formatClockDeadline(forwardAt)}: poi va anche ad altri, ma puoi rispondere lo stesso`, urgent: deadline.urgent };
 }
 
 /**

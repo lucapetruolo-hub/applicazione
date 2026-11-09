@@ -82,7 +82,7 @@ export function AwayCard({
         </Text>
         <Text color={brand.grafite70}>
           {away
-            ? "Non ricevi nuove richieste né prenotazioni e non compari nella ricerca. I lavori già fissati restano."
+            ? "Non ricevi nuove richieste né appuntamenti e non compari nella ricerca. I lavori già fissati restano."
             : "Non lavori per qualche giorno? Fino al giorno che scegli non ricevi nuove richieste e non compari nella ricerca. I lavori già fissati restano."}
         </Text>
       </YStack>

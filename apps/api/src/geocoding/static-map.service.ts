@@ -67,10 +67,60 @@ export function circlePath([lat, lng]: [number, number], radiusKm: number): stri
   return points.join("|");
 }
 
+/** Pixel sotto i quali due segnaposto "mid" si coprirebbero nell'immagine. */
+const PIN_GROUP_PX = 28;
+const mercatorY = (lat: number) => (Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) * 180) / Math.PI;
+
+/**
+ * Zoom dell'immagine: quello chiesto, oppure quello con cui Google inquadra
+ * tutti i punti (`visible`), stimato con la stessa proiezione (256 px per
+ * 360° a zoom 0). Null se c'è un punto solo.
+ */
+export function staticMapZoom(input: StaticMapInput): number | null {
+  if (input.zoom !== undefined) return input.zoom;
+  const points = input.center ? [input.center, ...input.markers] : input.markers;
+  if (points.length < 2) return null;
+  const lngSpan = Math.max(...points.map(([, lng]) => lng)) - Math.min(...points.map(([, lng]) => lng));
+  const ys = points.map(([lat]) => mercatorY(lat));
+  const latSpan = Math.max(...ys) - Math.min(...ys);
+  const fit = (px: number, span: number) => (span > 0 ? Math.log2((px * 360) / (256 * span)) : 18);
+  return Math.max(3, Math.min(18, Math.floor(Math.min(fit(input.width, lngSpan), fit(input.height, latSpan)))));
+}
+
+/**
+ * Segnaposto vicini in uno solo con il numero, come sulla mappa interattiva
+ * (collaudo 08/11, E6-08): allo zoom dell'immagine due punti più vicini di
+ * PIN_GROUP_PX pixel finiscono insieme.
+ */
+export function groupStaticMarkers(markers: [number, number][], zoom: number | null): { position: [number, number]; count: number }[] {
+  const groups: { position: [number, number]; count: number }[] = [];
+  const degPerPx = zoom === null ? 0 : 360 / (256 * 2 ** zoom);
+  for (const position of markers) {
+    const near = degPerPx
+      ? groups.find(
+          (group) =>
+            Math.abs(group.position[1] - position[1]) / degPerPx < PIN_GROUP_PX &&
+            Math.abs(mercatorY(group.position[0]) - mercatorY(position[0])) / degPerPx < PIN_GROUP_PX,
+        )
+      : undefined;
+    if (near) near.count += 1;
+    else groups.push({ position, count: 1 });
+  }
+  return groups;
+}
+
 /** Indirizzo di Google Maps Static API, senza la chiave. */
 export function staticMapGoogleParams(input: StaticMapInput): URLSearchParams {
   const params = new URLSearchParams({ size: `${input.width}x${input.height}`, scale: "2", language: "it", region: "IT", maptype: "roadmap" });
-  if (input.markers.length > 0) params.append("markers", `size:mid|color:${PIN_COLOR}|${input.markers.map(point).join("|")}`);
+  const groups = groupStaticMarkers(input.markers, staticMapZoom(input));
+  const singles = groups.filter((group) => group.count === 1);
+  if (singles.length > 0) params.append("markers", `size:mid|color:${PIN_COLOR}|${singles.map((group) => point(group.position)).join("|")}`);
+  // Un gruppo è un segnaposto più grande con il numero (Google ne scrive una
+  // sola cifra: da 10 in su resta il segnaposto grande senza numero).
+  for (const group of groups.filter((g) => g.count > 1)) {
+    const label = group.count <= 9 ? `|label:${group.count}` : "";
+    params.append("markers", `size:normal|color:${PIN_COLOR}${label}|${point(group.position)}`);
+  }
   input.radiiKm.forEach((km, index) => params.append("path", `${CIRCLE_STYLES[index]}|${circlePath(input.center!, km)}`));
   if (input.center && input.zoom !== undefined) {
     params.set("center", point(input.center));

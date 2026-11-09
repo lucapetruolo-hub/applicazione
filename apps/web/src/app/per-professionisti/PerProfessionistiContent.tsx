@@ -367,7 +367,7 @@ function Panel({ children }: { children: ReactNode }) {
 const AGENDA_EXAMPLE: { time: string; job: string; note: string; strong: boolean }[] = [
   { time: "Gio 9:00", job: "Rubinetto cucina", note: "promemoria inviato", strong: true },
   { time: "Gio 14:30", job: "Scarico doccia", note: "a domicilio", strong: false },
-  { time: "Ven 10:00", job: "Caldaia", note: "nuova prenotazione", strong: false },
+  { time: "Ven 10:00", job: "Caldaia", note: "nuovo appuntamento", strong: false },
 ];
 
 function MiniLine({ children, strong }: { children: ReactNode; strong?: boolean }) {

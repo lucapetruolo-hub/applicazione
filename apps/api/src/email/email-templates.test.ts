@@ -190,6 +190,22 @@ describe("email delle notifiche", () => {
     const repriced = renderEmail(notificationEmail("QUOTE_UPDATED", { itemsChanged: true, priceBefore: "100.00 €", priceAfter: "150.00 €" }, ctx)!);
     expect(repriced.text).toContain("passa da 100.00 € a 150.00 €");
   });
+
+  it("preventivo modificato: le cifre nuove voce per voce, anche con la data cambiata (collaudo 08/11)", () => {
+    const items = [
+      { name: "Sostituzione rubinetto", price: "80 €" },
+      { name: "Materiali", price: "30-50 €" },
+    ];
+    const updated = renderEmail(notificationEmail("QUOTE_UPDATED", { itemsChanged: true, items, priceBefore: "100 €", priceAfter: "110-130 €" }, ctx)!).text;
+    expect(updated).toContain("Sostituzione rubinetto");
+    expect(updated).toContain("30-50 €");
+    expect(updated).toContain("Totale indicativo");
+    const moved = renderEmail(
+      notificationEmail("QUOTE_DATE_CHANGED", { change: "date", items, priceBefore: "100 €", priceAfter: "110-130 €" }, ctx)!,
+    ).text;
+    expect(moved).toContain("passa da 100 € a");
+    expect(moved).toContain("Materiali");
+  });
 });
 
 

@@ -146,7 +146,7 @@ export class JobPaymentsService {
       select: { clientId: true, finalAmountEurCents: true, professionalProfile: { select: { userId: true } }, jobPayment: true },
     });
     if (!booking || (booking.clientId !== userId && booking.professionalProfile.userId !== userId)) {
-      throw new ForbiddenException("Questa prenotazione non è tua.");
+      throw new ForbiddenException("Questo lavoro non è tuo.");
     }
     // Lo stesso riepilogo delle schede, mai la riga intera (collaudo 08/11,
     // E3-04): la riga ha gli id Stripe di entrambi e la difesa del

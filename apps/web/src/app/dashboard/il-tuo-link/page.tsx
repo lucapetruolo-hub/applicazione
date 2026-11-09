@@ -331,7 +331,7 @@ function PersonalLinkContent() {
                 Mettilo dove ti cercano
               </Text>
               <Text color={brand.grafite70}>
-                Nella tua scheda Google (Google Business Profile) incollalo come link per le prenotazioni, e aggiungilo alla pagina Facebook e allo stato di WhatsApp.
+                Nella tua scheda Google (Google Business Profile) incollalo come link per gli appuntamenti, e aggiungilo alla pagina Facebook e allo stato di WhatsApp.
               </Text>
             </Surface>
 

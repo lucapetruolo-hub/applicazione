@@ -81,7 +81,7 @@ export const AGENDA_BOOKING_STATUS_LABEL: Record<ProfessionalBooking["status"], 
 };
 export const AGENDA_EXTERNAL_JOB_STATUS_LABEL: Record<ExternalJob["status"], string> = {
   SCHEDULED: "Programmato",
-  COMPLETED: "Completato",
+  COMPLETED: "Terminato",
   CANCELED: "Annullato",
 };
 
