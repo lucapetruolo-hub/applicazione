@@ -46,12 +46,22 @@
   per l'estratto mensile e il riepilogo delle ricevute del professionista, che
   contengono nomi dei clienti e descrizioni dei lavori scritti da altri.
 
+- **"Esci" che chiude davvero l'accesso** (miglioria facoltativa, scelta da
+  Luca il 09/11): prima "Esci" cancellava solo il token nel browser, che
+  restava valido 30 giorni (su un computer condiviso bastava averlo copiato).
+  Ogni token nuovo ha un codice suo (`jti`); "Esci" chiama `POST /auth/logout`,
+  che lo mette nella tabella `revoked_sessions` fino alla scadenza del token
+  (pulita ogni notte). Gli altri dispositivi restano dentro. Il controllo è
+  in `JwtAuthGuard` e nello stream in tempo reale (chiuso entro 25 secondi).
+  Un token emesso prima di questa versione non ha il codice: "Esci" con quel
+  token chiude tutti gli accessi dell'account, una volta sola.
+
 **Non fatto (non scelto o fuori tema)**: token in cookie `httpOnly` (decisione
 §292/§359, dopo il lancio); E2-07 `deepmerge` (già in eccezione, nessuna
 correzione pubblicata).
 
 **Verifica**: test nuovi `google-nonce.test.ts`, `google-name.test.ts`
 (email non verificata, nonce mancante o falso, stesso token due volte),
-`jwt-auth.guard.test.ts`, `client-ip.test.ts`, `email-log.test.ts`,
+`jwt-auth.guard.test.ts`, `logout.test.ts`, `client-ip.test.ts`, `email-log.test.ts`,
 `csv.test.ts`; build del sito controllata senza `eval`/`new Function` negli
 script inviati al browser; test, typecheck e lint di tutto il monorepo.

@@ -351,6 +351,14 @@ export class AuthController {
     return { success: true, token };
   }
 
+  // "Esci" che chiude davvero questo accesso sul server (controllo dell'08/11).
+  @UseGuards(JwtAuthGuard)
+  @Post("logout")
+  async logout(@Req() req: AuthenticatedRequest) {
+    await this.authService.logout(req.user.userId, req.user.session);
+    return { success: true };
+  }
+
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post("logout-others")

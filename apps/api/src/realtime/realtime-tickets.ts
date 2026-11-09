@@ -4,7 +4,8 @@ import { randomBytes } from "node:crypto";
 /** Quanto vale un biglietto appena emesso. */
 export const TICKET_TTL_MS = 60_000;
 
-export type RealtimeTicket = { userId: string; sessionVersion: number };
+/** `jti`: l'accesso da cui è nato il biglietto, per chiudere lo stream dopo "Esci". */
+export type RealtimeTicket = { userId: string; sessionVersion: number; jti?: string };
 
 /**
  * Biglietti monouso per aprire lo stream in tempo reale (docs/CHANGELOG.md
@@ -31,7 +32,7 @@ export class RealtimeTickets {
     if (!ticket) return null;
     this.tickets.delete(code);
     if (ticket.expiresAt <= now) return null;
-    return { userId: ticket.userId, sessionVersion: ticket.sessionVersion };
+    return { userId: ticket.userId, sessionVersion: ticket.sessionVersion, ...(ticket.jti ? { jti: ticket.jti } : {}) };
   }
 
   private sweep(now: number): void {

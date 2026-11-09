@@ -1417,6 +1417,10 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       }),
 
     // Gli altri dispositivi escono; `token` è il nuovo accesso per questo (docs/CHANGELOG.md §294).
+    /** "Esci": chiude questo accesso anche sul server (controllo dell'08/11). `keepalive` perché la pagina può cambiare subito dopo. */
+    logout: (token: string) =>
+      request<{ success: boolean }>("/auth/logout", { method: "POST", keepalive: true, headers: { Authorization: `Bearer ${token}` } }),
+
     logoutOtherDevices: (token: string) =>
       request<{ token: string }>("/auth/logout-others", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 

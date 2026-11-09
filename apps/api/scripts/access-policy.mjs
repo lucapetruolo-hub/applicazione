@@ -96,6 +96,7 @@ const selfAny = [
   // "Ce ne occupiamo noi" (§392): la richiesta di chi chiama.
   "POST /problem-match/takeover",
   "POST /auth/change-password",
+  "POST /auth/logout",
   "POST /auth/logout-others",
   "DELETE /auth/me",
   "GET /auth/me",
