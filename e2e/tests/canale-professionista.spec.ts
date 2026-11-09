@@ -25,6 +25,8 @@ test("il professionista trova il suo link, il cliente che lo apre arriva al prof
   const client = await visitor.newPage();
   await client.goto(path);
   await expect(client).toHaveURL(/\/professionista\/[^?]+\?link=1$/);
+  // Chi arriva dal link sa di essere nel posto giusto.
+  await expect(client.getByText("Sei sul profilo di Marco Rossi Idraulica: scrivigli da qui.")).toBeVisible();
   // La pagina se lo ricorda nella scheda appena è pronta.
   const storedProfileId = () => client.evaluate(() => Object.keys(sessionStorage).find((key) => key.startsWith("link-personale:"))?.slice("link-personale:".length) ?? null);
   await expect.poll(storedProfileId).not.toBeNull();

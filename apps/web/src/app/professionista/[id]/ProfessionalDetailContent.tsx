@@ -360,6 +360,17 @@ export function ProfessionalDetailContent({
         {/* Più vicino alla scheda del gap standard: il percorso ne è l'intestazione. */}
         {breadcrumbs ? <YStack style={{ marginTop: -8, marginBottom: -12 }}>{breadcrumbs}</YStack> : null}
         {choice.search ? <ProfileChoiceStrip search={choice.search} pro={choicePro} onToggle={choice.toggle} /> : null}
+        {/* Arrivato dal link personale: chi lo ha mandato è lui, il cliente
+            deve capire subito di essere nel posto giusto
+            (docs/changelog/2026-11-08-canale-del-professionista.md). */}
+        {fromPersonalLink ? (
+          <XStack gap="2" alignItems="center" backgroundColor={brand.cianografiaVelo} paddingVertical="3" paddingHorizontal="4" style={{ borderRadius: 10 }}>
+            <Icon name="badge-check" size={20} color={brand.cianografiaScuro} />
+            <Text color={brand.grafite} fontWeight="600" flex={1}>
+              Sei sul profilo di {professional.businessName}: scrivigli da qui.
+            </Text>
+          </XStack>
+        ) : null}
         {/* Scheda identità — richiesta esplicita dell'utente ("migliora la
             visualizzazione di un profilo pubblico"): prima nome/badge/
             rating/bio/sottotag/azioni fluttuavano direttamente sullo sfondo

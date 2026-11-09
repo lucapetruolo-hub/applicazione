@@ -65,6 +65,17 @@ lavori del mese, altrimenti nessun professionista manda i suoi clienti sul sito.
 - **Skill `referrals`** (passaparola) controllata e installata in
   `.claude/skills/referrals/` con l'ok di Luca (fonte in `FONTE.md`).
 
+- **Tre migliorie del passaparola** (09/11, sì di Luca, trovate con la skill):
+  - sul profilo aperto dal link la riga "Sei sul profilo di X: scrivigli da
+    qui";
+  - dopo "Lavoro terminato" (Agenda e Richieste e lavori) l'invito "Lavoro
+    chiuso. Hai altri clienti?" con il pulsante "Il tuo link", **al massimo una
+    volta ogni 30 giorni** (Luca: "non farlo sempre altrimenti diventa
+    noioso"; `personalLinkNudgeDue`, memoria del browser elencata nella pagina
+    Cookie);
+  - in Admin → Da dove arrivano le richieste, quanti professionisti hanno
+    portato almeno un cliente col link negli ultimi 30 giorni.
+
 Migrazione `20261108200000_canale_del_professionista`.
 
 **Verifica**: lint, typecheck di web e api, 1299 prove dell'API (nuove su

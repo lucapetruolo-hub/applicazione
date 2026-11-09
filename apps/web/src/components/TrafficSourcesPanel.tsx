@@ -52,6 +52,9 @@ export function TrafficSourcesPanel({ data }: { data: AdminTrafficSources }) {
         Dal link personale di un professionista: {data.fromProfessionalLink ?? 0}
         {data.total > 0 ? ` · ${Math.round(((data.fromProfessionalLink ?? 0) / data.total) * 100)}%` : ""}
       </Text>
+      <Text fontSize={13.5} color={brand.grafite70}>
+        Professionisti che hanno portato almeno un cliente col loro link: {data.professionalsUsingLink ?? 0}
+      </Text>
     </Surface>
   );
 }

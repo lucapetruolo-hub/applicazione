@@ -566,6 +566,8 @@ export type AdminTrafficSources = {
   bySource: { source: TrafficSource | "unknown"; count: number }[];
   /** Richieste partite dal link personale di un professionista (docs/changelog/2026-11-08-canale-del-professionista.md). */
   fromProfessionalLink: number;
+  /** Professionisti che negli stessi giorni hanno portato almeno un cliente col loro link. */
+  professionalsUsingLink: number;
 };
 
 /** Quante persone spengono ogni avviso (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). */

@@ -52,6 +52,7 @@ import { TimelineModal } from "@/components/TimelineModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { CompleteJobModal } from "@/components/CompleteJobModal";
+import { personalLinkNudgeAfterJob } from "@/components/PersonalLinkNudge";
 import { JobIssuePanel } from "@/components/JobIssuePanel";
 import { JobPaymentStatus } from "@/components/JobPaymentStatus";
 import { BankDisputeNotePanel } from "@/components/BankDisputeNotePanel";
@@ -589,6 +590,7 @@ export function RequestCard({
     if (!booking) return;
     await apiClient.completeBooking(token, booking.id, input);
     setShowCompleteModal(false);
+    personalLinkNudgeAfterJob(myProfileId);
     onChanged();
   }
 

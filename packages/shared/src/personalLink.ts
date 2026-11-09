@@ -56,6 +56,17 @@ export function personalLinkButtonHtml(url: string): string {
   );
 }
 
+/**
+ * Invito "Hai altri clienti?" dopo "Lavoro terminato": al massimo una volta
+ * ogni 30 giorni, mai a ogni lavoro (decisione di Luca del 09/11/2026).
+ */
+export const PERSONAL_LINK_NUDGE_EVERY_DAYS = 30;
+
+export function personalLinkNudgeDue(lastShownAtMs: number | null, nowMs: number): boolean {
+  if (lastShownAtMs === null || !Number.isFinite(lastShownAtMs) || lastShownAtMs > nowMs) return true;
+  return nowMs - lastShownAtMs >= PERSONAL_LINK_NUDGE_EVERY_DAYS * 24 * 60 * 60 * 1000;
+}
+
 /** Dati della pagina "Il tuo link" (`GET /professionals/me/personal-link`). */
 export type MyPersonalLink = {
   code: string;

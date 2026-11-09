@@ -87,23 +87,28 @@ export class AdminService {
    * Le richieste senza provenienza (prima di questa funzione, o browser che
    * non la dà) finiscono in "unknown".
    */
-  async getTrafficSources(): Promise<{ days: number; total: number; bySource: { source: TrafficSource | "unknown"; count: number }[]; fromProfessionalLink: number }> {
+  async getTrafficSources(): Promise<{ days: number; total: number; bySource: { source: TrafficSource | "unknown"; count: number }[]; fromProfessionalLink: number; professionalsUsingLink: number }> {
     const days = 30;
     // Dal lancio e senza account di prova (docs/CHANGELOG.md §395).
     const since = sinceLaunch(new Date(Date.now() - days * 24 * 60 * 60 * 1000), countingFrom());
     const rows = await this.prisma.guidedRequest.findMany({
       where: { createdAt: { gte: since }, client: COUNTED_USER },
-      select: { id: true, submissionGroupId: true, trafficSource: true, fromProfessionalLink: true },
+      select: { id: true, submissionGroupId: true, trafficSource: true, fromProfessionalLink: true, professionalProfileId: true },
     });
     const seen = new Set<string>();
     // Clienti portati dai professionisti col loro link (docs/changelog/2026-11-08-canale-del-professionista.md).
     let fromProfessionalLink = 0;
+    // Professionisti che in questi giorni hanno portato almeno un cliente: dice se la funzione viene usata davvero.
+    const professionalsUsingLink = new Set<string>();
     const counts = new Map<TrafficSource | "unknown", number>();
     for (const row of rows) {
       const key = row.submissionGroupId ?? row.id;
       if (seen.has(key)) continue;
       seen.add(key);
-      if (row.fromProfessionalLink) fromProfessionalLink += 1;
+      if (row.fromProfessionalLink) {
+        fromProfessionalLink += 1;
+        if (row.professionalProfileId) professionalsUsingLink.add(row.professionalProfileId);
+      }
       const source = row.trafficSource ?? "unknown";
       counts.set(source, (counts.get(source) ?? 0) + 1);
     }
@@ -114,6 +119,7 @@ export class AdminService {
       total: seen.size,
       bySource: order.map((source) => ({ source, count: counts.get(source) ?? 0 })),
       fromProfessionalLink,
+      professionalsUsingLink: professionalsUsingLink.size,
     };
   }
 

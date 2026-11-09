@@ -41,6 +41,7 @@ export default function CookiePage() {
                 },
                 { title: "Agenda senza rete", rows: [["Nome", "agenda-offline-v1, agenda-offline-user-v1"], ["Scopo", "mostrare ai professionisti gli appuntamenti anche senza connessione"], ["Durata", "al massimo 7 giorni, cancellata all'uscita dall'account"]] },
                 { title: "Link del professionista", rows: [["Nome", "link-personale:…"], ["Scopo", "ricordare che sei arrivato dal link personale di un professionista, così la tua richiesta arriva solo a lui"], ["Durata", "fino alla chiusura della scheda"]] },
+                { title: "Invito a mandare il tuo link", rows: [["Nome", "invito-link-dopo-lavoro:…"], ["Scopo", "per i professionisti: non mostrare l'invito dopo \"Lavoro terminato\" più di una volta al mese"], ["Durata", "finché non la cancelli dal browser"]] },
                 { title: "Segnalazioni già inviate", rows: [["Nome", "reportedContent:…"], ["Scopo", "non far segnalare due volte lo stesso contenuto"], ["Durata", "24 ore"]] },
                 {
                   title: "Conteggi per migliorare il sito",
