@@ -215,6 +215,11 @@ jobs:
           - nome: misure-lighthouse
             progetti: --project=misure --no-deps
             lighthouse: true
+          # Motore di Safari (WebKit) su un iPhone: campi ora e data
+          # (docs/changelog/2026-11-09-orari-doppi-iphone.md).
+          - nome: iphone-safari
+            progetti: --project=iphone-safari
+            browser: webkit
     services:
       postgres:
         image: postgres:16
@@ -268,7 +273,7 @@ jobs:
         run: pnpm --filter @professionisti/database exec prisma migrate deploy
 
       - name: Browser per le prove
-        run: pnpm --filter @professionisti/e2e exec playwright install --with-deps chromium
+        run: pnpm --filter @professionisti/e2e exec playwright install --with-deps ${{ matrix.browser || 'chromium' }}
 
       - name: Prove nel browser
         env:
