@@ -16,3 +16,14 @@ mouse. Il link del piano non cambia.
 
 **Verifica**: pagina di prova con lo stesso CSS a 600 e 390 px di larghezza:
 le due pillole mostrano "Cambia" identico, senza fondo né bordo.
+
+## Migliorie approvate da Luca (09/11/2026)
+
+- **Area da toccare di 44 px**: un riquadro invisibile (`::after`) attorno a
+  "Cambia" lo rende comodo col dito senza ingrandire la pillola. Vale anche
+  per "Cambia" nella pillola del piano.
+- **"Cambia" a 16 px in Dati fiscali** (`.plan-chip-change.is-large`), come il
+  testo della pillola; nella pillola del piano resta a 13 px come il suo testo.
+
+**Verifica**: nella pagina di prova il riquadro è alto 44 px e largo almeno
+44; un tocco 6 px sopra la scritta prende ancora "Cambia".

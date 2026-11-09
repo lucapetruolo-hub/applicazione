@@ -3879,6 +3879,24 @@ a.admin-kpi:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+/* Area da toccare di almeno 44 px senza ingrandire la pillola: un riquadro
+   invisibile attorno alla scritta. */
+.plan-chip-change {
+  position: relative;
+}
+.plan-chip-change::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+/* Nella pillola di Dati fiscali il testo è a 16 px: "Cambia" si allinea. */
+.plan-chip-change.is-large {
+  font-size: 16px;
+}
 .plan-chip-change:hover {
   color: #0b6b42;
   text-decoration-thickness: 2px;

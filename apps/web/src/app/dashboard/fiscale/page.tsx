@@ -778,7 +778,7 @@ function DashboardFiscaleContent() {
                       {ENTITY_TYPE_LABELS[isEntityType(entityType) ? entityType : lockedEntityType]}
                     </Text>
                     {!profile?.stripeConnectAccountId ? (
-                      <button type="button" className="plan-chip-change" onClick={() => setChangingType(true)}>
+                      <button type="button" className="plan-chip-change is-large" onClick={() => setChangingType(true)}>
                         Cambia
                       </button>
                     ) : null}
