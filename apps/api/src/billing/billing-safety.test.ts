@@ -28,6 +28,8 @@ function buildService() {
     invoices: { retrieve: vi.fn(), create: vi.fn(), pay: vi.fn(), voidInvoice: vi.fn(), del: vi.fn(), list: vi.fn().mockResolvedValue({ data: [] }) },
     invoiceItems: { create: vi.fn() },
     invoicePayments: { list: vi.fn().mockResolvedValue({ data: [] }) },
+    paymentIntents: { retrieve: vi.fn() },
+    coupons: { retrieve: vi.fn().mockResolvedValue({}) },
     refunds: { create: vi.fn().mockResolvedValue({ id: "re_1" }) },
   };
   const service = new BillingService(prisma as never, {} as never, {} as never, {} as never, subscriptionsService as never, invoicesService as never);
@@ -181,7 +183,7 @@ describe("passaggio di livello con la conferma della banca (3D Secure)", () => {
     stripe.invoices.pay.mockRejectedValue(authRequired());
     stripe.invoices.retrieve.mockResolvedValue({ id: "in_fee", status: "open", hosted_invoice_url: "https://invoice.stripe.com/i/in_fee" });
 
-    await expect(service.createSubscriptionCheckout("user-1", "PLUS")).resolves.toEqual({ url: "https://invoice.stripe.com/i/in_fee" });
+    await expect(service.createSubscriptionCheckout("user-1", "PLUS")).resolves.toEqual({ url: null, bankConfirmUrl: "https://invoice.stripe.com/i/in_fee" });
     expect(stripe.invoices.voidInvoice).not.toHaveBeenCalled();
     expect(stripe.subscriptions.update).not.toHaveBeenCalled();
   });
@@ -192,8 +194,65 @@ describe("passaggio di livello con la conferma della banca (3D Secure)", () => {
     paidBase(prisma, "in_fee");
     stripe.invoices.retrieve.mockResolvedValue({ id: "in_fee", status: "open", created: (NOW.getTime() - 60_000) / 1000, hosted_invoice_url: "https://invoice.stripe.com/i/in_fee", metadata: { plan: "PLUS", stripeSubscriptionId: "sub_1" } });
 
-    await expect(service.createSubscriptionCheckout("user-1", "PLUS")).resolves.toEqual({ url: "https://invoice.stripe.com/i/in_fee" });
+    await expect(service.createSubscriptionCheckout("user-1", "PLUS")).resolves.toEqual({ url: null, bankConfirmUrl: "https://invoice.stripe.com/i/in_fee" });
     expect(stripe.invoices.create).not.toHaveBeenCalled();
+  });
+
+  describe("Plus o Pro nei mesi gratis", () => {
+    const trialSub = (extra: object = {}) => ({ ...stripeSubscription("price_base_m", "trialing"), latest_invoice: null, pending_update: null, ...extra });
+    function trialBase(stripe: ReturnType<typeof buildService>["stripe"], prisma: ReturnType<typeof buildService>["prisma"]) {
+      paidBase(prisma);
+      stripe.subscriptions.retrieve.mockResolvedValue(trialSub());
+    }
+
+    it("carta che passa: il cambio si applica subito", async () => {
+      vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+      const { service, prisma, stripe } = buildService();
+      trialBase(stripe, prisma);
+      stripe.subscriptions.update.mockResolvedValue(stripeSubscription("price_plus_m"));
+
+      await expect(service.createSubscriptionCheckout("user-1", "PLUS")).resolves.toEqual({ url: null });
+      expect(stripe.subscriptions.update).toHaveBeenCalledWith("sub_1", expect.objectContaining({ trial_end: "now", payment_behavior: "pending_if_incomplete", discounts: [{ coupon: "mese-base-gratis-1900" }] }));
+    });
+
+    it("la banca chiede la conferma: pagina di Stripe, il cambio resta in sospeso", async () => {
+      vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+      const { service, prisma, stripe } = buildService();
+      trialBase(stripe, prisma);
+      stripe.subscriptions.update.mockResolvedValue(trialSub({ latest_invoice: "in_plus", pending_update: { subscription_items: [{ price: { id: "price_plus_m" } }] } }));
+      stripe.invoices.retrieve.mockResolvedValue({ id: "in_plus", status: "open", hosted_invoice_url: "https://invoice.stripe.com/i/in_plus" });
+      stripe.invoicePayments.list.mockResolvedValue({ data: [{ payment: { type: "payment_intent", payment_intent: "pi_plus" } }] });
+      stripe.paymentIntents.retrieve.mockResolvedValue({ status: "requires_action" });
+
+      await expect(service.createSubscriptionCheckout("user-1", "PLUS")).resolves.toEqual({ url: null, bankConfirmUrl: "https://invoice.stripe.com/i/in_plus" });
+      expect(stripe.subscriptions.update).toHaveBeenCalledTimes(1);
+    });
+
+    it("carta rifiutata: il cambio in sospeso si scarta e resta Base nei mesi gratis", async () => {
+      vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+      const { service, prisma, stripe } = buildService();
+      trialBase(stripe, prisma);
+      stripe.subscriptions.update.mockResolvedValueOnce(trialSub({ latest_invoice: "in_plus", pending_update: { subscription_items: [{ price: { id: "price_plus_m" } }] } })).mockResolvedValueOnce(trialSub());
+      stripe.invoices.retrieve.mockResolvedValue({ id: "in_plus", status: "open", hosted_invoice_url: "https://invoice.stripe.com/i/in_plus" });
+      stripe.invoicePayments.list.mockResolvedValue({ data: [{ payment: { type: "payment_intent", payment_intent: "pi_plus" } }] });
+      stripe.paymentIntents.retrieve.mockResolvedValue({ status: "requires_payment_method" });
+
+      await expect(service.createSubscriptionCheckout("user-1", "PLUS")).rejects.toThrow("controlla la carta");
+      expect(stripe.subscriptions.update).toHaveBeenLastCalledWith("sub_1", { items: [{ id: "si_1", price: "price_base_m" }], proration_behavior: "none" });
+    });
+
+    it("secondo clic mentre aspetta la banca: riapre la stessa pagina senza un nuovo tentativo", async () => {
+      vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+      const { service, prisma, stripe } = buildService();
+      paidBase(prisma);
+      stripe.subscriptions.retrieve.mockResolvedValue(trialSub({ latest_invoice: "in_plus", pending_update: { subscription_items: [{ price: { id: "price_plus_m" } }] } }));
+      stripe.invoices.retrieve.mockResolvedValue({ id: "in_plus", status: "open", hosted_invoice_url: "https://invoice.stripe.com/i/in_plus" });
+      stripe.invoicePayments.list.mockResolvedValue({ data: [{ payment: { type: "payment_intent", payment_intent: "pi_plus" } }] });
+      stripe.paymentIntents.retrieve.mockResolvedValue({ status: "requires_action" });
+
+      await expect(service.createSubscriptionCheckout("user-1", "PLUS")).resolves.toEqual({ url: null, bankConfirmUrl: "https://invoice.stripe.com/i/in_plus" });
+      expect(stripe.subscriptions.update).not.toHaveBeenCalled();
+    });
   });
 
   it("quota pagata sulla pagina di Stripe: il livello cambia all'arrivo di invoice.paid", async () => {

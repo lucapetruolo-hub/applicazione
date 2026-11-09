@@ -308,3 +308,14 @@ export type MySubscription = {
   /** Deve verificare l'identità prima di inviare preventivi (docs/CHANGELOG.md §253). */
   identityVerificationNeeded: boolean;
 };
+
+/**
+ * Risposta alla scelta di un livello: `url` è la pagina di pagamento di Stripe
+ * (abbonamento nuovo), `bankConfirmUrl` la pagina dove confermare con la banca
+ * (3D Secure) una quota già addebitata: il sito la apre in una scheda nuova e
+ * resta in attesa del nuovo livello.
+ */
+export interface SubscriptionCheckoutResult {
+  url: string | null;
+  bankConfirmUrl?: string;
+}

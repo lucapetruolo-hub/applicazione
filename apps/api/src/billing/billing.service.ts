@@ -9,6 +9,7 @@ import {
   subscriptionTierInfo,
   upgradeFeeEurCents,
   type BillingInterval,
+  type SubscriptionCheckoutResult,
   type SubscriptionTier,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
@@ -546,7 +547,7 @@ export class BillingService implements OnModuleInit {
    *   addebitata subito, poi il nuovo livello fino al rinnovo e oltre.
    * - Livello inferiore: "Torna a Base" alla scadenza (`setReturnToBase`).
    */
-  async createSubscriptionCheckout(userId: string, plan: SubscriptionTier): Promise<{ url: string | null }> {
+  async createSubscriptionCheckout(userId: string, plan: SubscriptionTier): Promise<SubscriptionCheckoutResult> {
     const interval: BillingInterval = "MONTH";
     const stripe = this.requireStripe();
     const profile = await this.requireMyProfile(userId);
@@ -778,14 +779,14 @@ export class BillingService implements OnModuleInit {
     currentTier: SubscriptionTier | null,
     plan: SubscriptionTier,
     launched: boolean,
-  ): Promise<{ url: string | null }> {
+  ): Promise<SubscriptionCheckoutResult> {
     const row = await this.prisma.subscription.findUnique({ where: { professionalProfileId }, select: { id: true } });
     if (!row) throw new BadRequestException("Abbonamento non trovato: ricarica la pagina.");
     return this.withUpgradeLock(row.id, async () => {
       // Quota già pagata in un tentativo di prima: si finisce quello. In attesa
       // della conferma della banca per lo stesso livello: si riapre quella pagina.
       const { given: finished, openUrl } = await this.finishPendingUpgrade(stripe, row.id, stripeSubscriptionId, plan);
-      if (openUrl) return { url: openUrl };
+      if (openUrl) return { url: null, bankConfirmUrl: openUrl };
       if (finished && tierRank(finished) >= tierRank(plan)) return { url: null };
       const tier = finished ?? currentTier;
       if (tier === plan) throw new BadRequestException("È già il tuo livello.");
@@ -804,7 +805,7 @@ export class BillingService implements OnModuleInit {
     currentTier: SubscriptionTier | null,
     plan: SubscriptionTier,
     launched: boolean,
-  ): Promise<{ url: string | null }> {
+  ): Promise<SubscriptionCheckoutResult> {
     const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
     const item = subscription.items.data[0];
     if (!item) throw new BadRequestException("Abbonamento Stripe senza voci: contattaci.");
@@ -819,23 +820,7 @@ export class BillingService implements OnModuleInit {
     // Se la carta non passa non cambia niente.
     if (subscription.status === "trialing") {
       if (!launched) throw new BadRequestException("Plus e Pro si scelgono dal giorno del lancio: fino ad allora non c'è limite di lavori.");
-      try {
-        const updated = await stripe.subscriptions.update(subscription.id, {
-          items: [{ id: item.id, price: priceId }],
-          trial_end: "now",
-          proration_behavior: "none",
-          discounts: [{ coupon: await this.freeBaseMonthCoupon(stripe) }],
-          payment_behavior: "error_if_incomplete",
-          cancel_at_period_end: false,
-        });
-        await this.syncStripeSubscription(updated);
-      } catch (error) {
-        if (error instanceof Stripe.errors.StripeCardError) {
-          throw new BadRequestException("Il pagamento non è andato a buon fine: controlla la carta e riprova.");
-        }
-        throw error;
-      }
-      return { url: null };
+      return this.upgradeDuringFreeMonths(stripe, subscription, item, priceId);
     }
 
     // Abbonamento pagato: quota di passaggio su una fattura a parte, pagata
@@ -872,7 +857,7 @@ export class BillingService implements OnModuleInit {
         // (`invoice.paid`), senza far ripartire il passaggio.
         if (error instanceof Stripe.errors.StripeCardError && error.code === "authentication_required") {
           const open = await stripe.invoices.retrieve(invoice.id!);
-          if (open.hosted_invoice_url) return { url: open.hosted_invoice_url };
+          if (open.hosted_invoice_url) return { url: null, bankConfirmUrl: open.hosted_invoice_url };
         }
         if (error instanceof Stripe.errors.StripeCardError || error instanceof Stripe.errors.StripeInvalidRequestError) {
           await stripe.invoices.voidInvoice(invoice.id!).catch(() => undefined);
@@ -892,6 +877,75 @@ export class BillingService implements OnModuleInit {
     }
     await this.prisma.subscription.update({ where: { id: subscriptionRowId }, data: { upgradeInvoiceId: null } });
     return { url: null };
+  }
+
+  /**
+   * Plus o Pro nei mesi gratis: la prova di Stripe finisce adesso e si paga
+   * subito il mese del nuovo livello meno il mese Base regalato. Il cambio
+   * resta "in sospeso" su Stripe finché il pagamento non passa
+   * (`pending_if_incomplete`): con una carta rifiutata non cambia niente; se la
+   * banca chiede la conferma (3D Secure) il professionista conferma sulla
+   * pagina di Stripe e il cambio si applica da solo al pagamento
+   * (`customer.subscription.updated`). Senza conferma Stripe lo scarta dopo 23 ore.
+   */
+  private async upgradeDuringFreeMonths(
+    stripe: Stripe,
+    subscription: Stripe.Subscription,
+    item: Stripe.SubscriptionItem,
+    priceId: string,
+  ): Promise<SubscriptionCheckoutResult> {
+    // Stessa scelta ancora in attesa della banca (seconda scheda, doppio tocco): si riapre quella pagina.
+    if (subscription.pending_update?.subscription_items?.some((i) => i.price?.id === priceId)) {
+      const waiting = await this.bankConfirmationOf(stripe, subscription.latest_invoice);
+      if (waiting) return { url: null, bankConfirmUrl: waiting };
+    }
+    // Il rinnovo annullato non può stare in un cambio in sospeso: si riaccende prima.
+    if (subscription.cancel_at_period_end) {
+      await stripe.subscriptions.update(subscription.id, { cancel_at_period_end: false });
+    }
+    let updated: Stripe.Subscription;
+    try {
+      updated = await stripe.subscriptions.update(subscription.id, {
+        items: [{ id: item.id, price: priceId }],
+        trial_end: "now",
+        proration_behavior: "none",
+        discounts: [{ coupon: await this.freeBaseMonthCoupon(stripe) }],
+        payment_behavior: "pending_if_incomplete",
+      });
+    } catch (error) {
+      if (error instanceof Stripe.errors.StripeCardError) {
+        throw new BadRequestException("Il pagamento non è andato a buon fine: controlla la carta e riprova.");
+      }
+      throw error;
+    }
+    if (!updated.pending_update) {
+      await this.syncStripeSubscription(updated);
+      return { url: null };
+    }
+    const confirmUrl = await this.bankConfirmationOf(stripe, updated.latest_invoice);
+    if (confirmUrl) return { url: null, bankConfirmUrl: confirmUrl };
+    // Carta rifiutata: si scarta il cambio in sospeso rimettendo il livello di prima
+    // (un aggiornamento con le voci lo toglie e annulla la sua fattura).
+    await stripe.subscriptions
+      .update(subscription.id, { items: [{ id: item.id, price: item.price.id }], proration_behavior: "none" })
+      .catch((error: unknown) => this.logger.warn(`Cambio in sospeso non scartato (${subscription.id}): ${(error as Error).message}`));
+    throw new BadRequestException("Il pagamento non è andato a buon fine: controlla la carta e riprova.");
+  }
+
+  /** Pagina di Stripe per confermare con la banca, se la fattura aspetta proprio quella conferma. */
+  private async bankConfirmationOf(stripe: Stripe, latestInvoice: string | Stripe.Invoice | null): Promise<string | null> {
+    const invoiceId = stripeId(latestInvoice);
+    if (!invoiceId) return null;
+    const invoice = await stripe.invoices.retrieve(invoiceId);
+    if (invoice.status !== "open" || !invoice.hosted_invoice_url) return null;
+    const payments = await stripe.invoicePayments.list({ invoice: invoiceId, limit: 3 });
+    for (const row of payments.data) {
+      const intentId = row.payment?.type === "payment_intent" ? stripeId(row.payment.payment_intent) : null;
+      if (!intentId) continue;
+      const intent = await stripe.paymentIntents.retrieve(intentId);
+      if (intent.status === "requires_action") return invoice.hosted_invoice_url;
+    }
+    return null;
   }
 
   /** Nuovo livello sull'abbonamento Stripe, senza conguagli (la quota è già pagata). */

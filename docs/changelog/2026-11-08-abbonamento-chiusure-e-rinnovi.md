@@ -61,8 +61,17 @@ giorno, poi pausa, sempre rimanendo i 15 giorni che hai descritto".
 - **Quota di passaggio con la conferma della banca (3D Secure)**: se la banca
   chiede la conferma, il sito apre la pagina di pagamento di Stripe e il
   livello cambia all'arrivo di `invoice.paid`; il controllo orario lascia
-  aperta per un po' quella fattura invece di annullarla. Nei mesi gratis
-  (Plus o Pro) resta come prima: una carta che chiede la conferma è rifiutata.
+  aperta per un po' quella fattura invece di annullarla. Anche per Plus o Pro
+  nei mesi gratis (secondo "si" di Luca): il cambio resta in sospeso su Stripe
+  (`pending_if_incomplete`, con lo sconto del mese Base, possibile dalla
+  versione API 2026-05-27) finché la banca non conferma; con una carta
+  rifiutata il cambio si scarta e resta Base nei mesi gratis.
+- **Ritorno al sito**: la pagina della banca si apre in una scheda nuova
+  (`BankConfirmStep`, nella finestra "Hai esaurito l'abbonamento" e in
+  Abbonamento) e il sito resta aperto: controlla ogni 4 secondi e, appena il
+  livello è cambiato, dice "Fatto: ora sei al livello …". La pagina di Stripe
+  non ha un ritorno al sito, così chi chiude quella scheda trova già tutto
+  aggiornato.
 - **Rinnovo non pagato**: il primo giorno il profilo resta visibile, poi va in
   pausa ("Rinnovo non pagato", `PAYMENT_FAILED`, `PAST_DUE_VISIBLE_DAYS = 1`,
   esce dalla ricerca e non riceve richieste) finché il pagamento non passa;
@@ -77,6 +86,6 @@ rinnovo non pagato, righe dei pagamenti), nuovi casi in
 `billing-checkout.test.ts` (solo carta, 48 ore, pagina riaperta, pagina appena
 pagata) e `subscriptions-launch.test.ts` (data del non pagato, account
 chiuso, ultimo avviso), `subscription-rules.test.ts` (pausa dopo 24 ore),
-rimborso, 3D Secure e carta cambiata in `billing-safety.test.ts`. API: 1306 test verdi, typecheck e lint di tutto il monorepo verdi.
+rimborso, 3D Secure e carta cambiata in `billing-safety.test.ts`. API: 1310 test verdi, typecheck e lint di tutto il monorepo verdi.
 Migrazione `20261108200000_abbonamento_rinnovo_e_passaggio` (quattro colonne nuove,
 nessun dato toccato).
