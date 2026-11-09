@@ -142,6 +142,15 @@ produzione):
    non esistono e bloccherebbero i pagamenti; nel profilo della piattaforma
    Connect correggere la motivazione scritta durante le prove ("addebiti
    indiretti": sono addebiti diretti sul conto del professionista).
+   Subito dopo aver creato i due webhook veri: dalla Dashboard mandare un
+   evento di prova `checkout.session.completed` **dall'endpoint Connect** e
+   controllare che compaia una riga in `stripe_webhook_events` (decisione di
+   Luca del 09/11, collaudo E3-06): l'acconto nasce sul conto del
+   professionista e il suo avviso arriva solo lì. Creare i webhook con la
+   versione API più recente (`invoiceSubscriptionId` legge il formato
+   nuovo delle fatture). Se l'avviso manca, il lavoro nasce lo stesso al
+   ritorno del cliente o nel giro orario, con un avviso su Sentry
+   (docs/changelog/2026-11-08-lavori-e-pagamenti-api.md).
    Il prelievo dal conto del professionista (account debit, 1,4%) richiede
    il suo consenso esplicito: è nei Termini, da far confermare all'avvocato. Attivare Smart Disputes (Impostazioni →
    Contestazioni): Stripe risponde da solo alle contestazioni con le prove,
