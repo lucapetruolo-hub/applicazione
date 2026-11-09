@@ -40,3 +40,10 @@ chiusi esclusi, stesso numero = stesso cliente, ordine),
 telefono e computer (cliente non accettato escluso, ordine, ricerca, storico,
 nota salvata, messaggio pronto in chat, modulo dell'Agenda compilato), axe
 senza errori gravi.
+
+## Menu laterale (09/11)
+
+Scelta di Luca: "I miei clienti" entra nella colonna di sinistra del
+professionista al posto di "Abbonamento", che resta nella tendina "Il mio
+account" (le voci restano 7, più "Da completare" quando serve). Gli avvisi
+sull'abbonamento restano nel banner fisso di Oggi.

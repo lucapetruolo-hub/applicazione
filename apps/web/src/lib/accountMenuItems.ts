@@ -79,9 +79,10 @@ export const PROFESSIONAL_NAV: AccountNavGroup[] = [
  * di tutti i giorni; impostazioni, dati fiscali e pagine da cliente vivono
  * nella tendina "Il mio account" (`PROFESSIONAL_NAV`). In più una voce
  * "Da completare" solo finché c'è un passo del percorso profilo da fare
- * (`journeyNavItem`).
+ * (`journeyNavItem`). "I miei clienti" al posto di "Abbonamento", che resta
+ * nella tendina (scelta di Luca del 09/11/2026, docs/changelog/2026-11-08-rubrica-clienti.md).
  */
-const SIDEBAR_HREFS = new Set(["/dashboard", "/dashboard/agenda", "/dashboard/richieste", "/chat", "/dashboard/profilo", "/dashboard/statistiche", "/dashboard/abbonamento"]);
+const SIDEBAR_HREFS = new Set(["/dashboard", "/dashboard/agenda", "/dashboard/richieste", "/chat", "/dashboard/profilo", "/dashboard/statistiche", "/dashboard/clienti"]);
 export const PROFESSIONAL_SIDEBAR: AccountNavGroup[] = PROFESSIONAL_NAV.map((group) => ({
   ...group,
   items: group.items.filter((item) => SIDEBAR_HREFS.has(item.href)),
