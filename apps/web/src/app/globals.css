@@ -8622,6 +8622,122 @@ a.admin-kpi:hover {
     animation: none;
   }
 }
+/* Sagoma di una pagina o del modulo di richiesta mentre arriva (collaudo
+   08/11 E8-02, components/PageLoading.tsx): HTML semplice e sagome ferme,
+   stessa tinta delle altre sagome (.skeleton-shimmer). La riga in fondo dice
+   che sta arrivando ed è letta dal lettore di schermo. */
+.page-loading {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-height: 70vh;
+  padding: 28px 16px;
+  box-sizing: border-box;
+}
+.page-loading-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 960px;
+}
+.page-loading--form .page-loading-inner {
+  max-width: 480px;
+}
+.page-loading-bar {
+  display: block;
+  background: rgba(43, 32, 19, 0.08);
+  border-radius: 6px;
+}
+.page-loading-title {
+  width: 45%;
+  height: 30px;
+  border-radius: 8px;
+}
+.page-loading--form .page-loading-title {
+  width: 70%;
+}
+.page-loading-line {
+  width: 80%;
+  height: 14px;
+}
+.page-loading-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: #ffffff;
+  border-radius: 20px;
+}
+.page-loading-pill {
+  width: 92px;
+  height: 22px;
+  border-radius: 11px;
+}
+.page-loading-card-title {
+  width: 50%;
+  height: 17px;
+}
+.page-loading-card-line {
+  width: 85%;
+  height: 12px;
+}
+.page-loading-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.page-loading-label {
+  width: 140px;
+  height: 14px;
+}
+.page-loading-input {
+  width: 100%;
+  height: 46px;
+  border-radius: 10px;
+}
+.page-loading-button {
+  width: 100%;
+  height: 48px;
+  border-radius: 24px;
+}
+.page-loading-form-shape {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.page-loading-steps {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.page-loading-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  flex-shrink: 0;
+}
+.page-loading-step {
+  width: 70px;
+  height: 12px;
+}
+.page-loading-toggle {
+  width: 230px;
+  max-width: 100%;
+  height: 44px;
+  border-radius: 10px;
+}
+.page-loading-textarea {
+  width: 100%;
+  height: 116px;
+  border-radius: 10px;
+}
+.page-loading-note {
+  margin: 0;
+  text-align: center;
+  font-size: 15px;
+  color: #6e6459;
+}
 /* "Prova:" sotto "Descrivi il lavoro": le pillole della home, su fondo chiaro. */
 .guided-examples {
   display: flex;
