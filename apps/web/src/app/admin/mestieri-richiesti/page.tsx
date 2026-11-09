@@ -6,19 +6,24 @@ import {
   OUT_OF_SERVICE_LABELS,
   PROFESSIONAL_CATEGORIES,
   FIELD_PROBLEM_EXAMPLES_POOL,
+  POPULAR_JOBS_COUNT,
+  POPULAR_JOBS_MIN_SEARCHES,
+  POPULAR_SERVICES,
+  type PopularJobsAdminView,
+  type ProfessionalCategorySlug,
   VISIBLE_PROBLEM_EXAMPLES,
   type ProblemExample,
   type ProblemMatchAdminOverview,
   type ServiceNamesAdminOverview,
   type ProblemSuggestionOutcomes,
 } from "@professionisti/shared";
-import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonTableRows } from "@/components/Skeleton";
 
-type Tab = "descrizioni" | "prestazioni" | "esempi";
+type Tab = "descrizioni" | "prestazioni" | "esempi" | "lavori";
 type Filter = "tutte" | "fuori" | "ia" | "nessuno";
 
 const SAFETY_LABEL: Record<string, string> = {
@@ -51,23 +56,32 @@ function MestieriRichiesti() {
   // "Andamento del sito" porta qui con ?scheda=prestazioni (§388).
   const searchParams = useSearchParams();
   const scheda = searchParams.get("scheda");
-  const [tab, setTab] = useState<Tab>(scheda === "prestazioni" || scheda === "esempi" ? scheda : "descrizioni");
+  const [tab, setTab] = useState<Tab>(scheda === "prestazioni" || scheda === "esempi" || scheda === "lavori" ? scheda : "descrizioni");
   return (
     <YStack>
       <AdminPageHeader
         title="Mestieri richiesti"
-        description="Le descrizioni scritte dai clienti nella ricerca (senza contatti, tenute 12 mesi), i nomi delle prestazioni scritti a mano dai professionisti e le frasi d'esempio della home."
+        description="Le descrizioni scritte dai clienti nella ricerca (senza contatti, tenute 12 mesi), i nomi delle prestazioni scritti a mano dai professionisti, le frasi d'esempio e i lavori più cercati della home."
       />
       <AdminTabs
         tabs={[
           { key: "descrizioni", label: "Descrizioni dei clienti" },
           { key: "prestazioni", label: "Prestazioni per mestiere" },
           { key: "esempi", label: "Frasi d'esempio in home" },
+          { key: "lavori", label: "Lavori più cercati in home" },
         ]}
         value={tab}
         onChange={setTab}
       />
-      {tab === "descrizioni" ? <DescriptionsTab /> : tab === "prestazioni" ? <ServiceNamesTab /> : <ExamplesTab />}
+      {tab === "descrizioni" ? (
+        <DescriptionsTab />
+      ) : tab === "prestazioni" ? (
+        <ServiceNamesTab />
+      ) : tab === "esempi" ? (
+        <ExamplesTab />
+      ) : (
+        <PopularJobsTab />
+      )}
     </YStack>
   );
 }
@@ -736,6 +750,193 @@ function ExamplesTab() {
             </tbody>
           </table>
         </div>
+      ) : null}
+    </YStack>
+  );
+}
+
+/**
+ * "Lavori più cercati" della home (docs/changelog/2026-11-07-lavori-piu-cercati-home.md,
+ * richiesta di Luca): qui si sceglie l'elenco, l'ordine lo danno le ricerche
+ * sul sito quando sono abbastanza. Solo prestazioni dell'elenco suggerito dei
+ * mestieri, così la ricerca trova chi le offre.
+ */
+function PopularJobsTab() {
+  const { token } = useAuth();
+  const [data, setData] = useState<PopularJobsAdminView | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [category, setCategory] = useState<ProfessionalCategorySlug | "">("");
+  const [service, setService] = useState("");
+
+  useEffect(() => {
+    if (!token) return;
+    apiClient
+      .adminPopularJobs(token)
+      .then(setData)
+      .catch((err) => setError(errorMessage(err)));
+  }, [token]);
+
+  const run = async (action: (token: string) => Promise<PopularJobsAdminView>, after?: () => void) => {
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setData(await action(token));
+      after?.();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const inList = new Set(data?.jobs.map((job) => job.service) ?? []);
+  const choices = category ? POPULAR_SERVICES[category].filter((name) => !inList.has(name)) : [];
+  const ordered = data?.source === "searches";
+
+  return (
+    <YStack gap="3" marginTop="3">
+      <Text color={brand.grafite70}>
+        Le pillole sotto le categorie in home: ne compaiono {POPULAR_JOBS_COUNT}, le altre restano di riserva.{" "}
+        {ordered
+          ? "Ora le mette in ordine il sito: prima i lavori più cercati negli ultimi 90 giorni, a parità di ricerche vale l'ordine qui sotto."
+          : `Finché le ricerche sono meno di ${POPULAR_JOBS_MIN_SEARCHES} vale l'ordine qui sotto; dopo, prima i lavori più cercati.`}{" "}
+        Toccare una pillola non conta come ricerca.
+      </Text>
+      {data && !data.custom ? (
+        <Text fontSize={13} color={brand.grafite70}>
+          Ora vale l&apos;elenco di partenza. La prima modifica lo copia qui e da lì si cambia.
+        </Text>
+      ) : null}
+      <XStack gap="2" flexWrap="wrap">
+        <select
+          className="admin-input"
+          aria-label="Mestiere"
+          value={category}
+          onChange={(e) => {
+            setCategory(e.target.value as ProfessionalCategorySlug | "");
+            setService("");
+          }}
+        >
+          <option value="">Mestiere…</option>
+          {PROFESSIONAL_CATEGORIES.map((c) => (
+            <option key={c.slug} value={c.slug}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+        <select
+          className="admin-input"
+          aria-label="Lavoro"
+          style={{ flex: 1, minWidth: 220 }}
+          value={service}
+          disabled={!category}
+          onChange={(e) => setService(e.target.value)}
+        >
+          <option value="">{category ? "Lavoro…" : "Scegli prima il mestiere"}</option>
+          {choices.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+        <Button
+          variant="primary"
+          size="3"
+          disabled={busy || !category || !service}
+          onPress={() => void run((t) => apiClient.adminAddPopularJob(t, { service, categorySlug: category }), () => setService(""))}
+        >
+          Aggiungi
+        </Button>
+      </XStack>
+      {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+      {data === null && !error ? <SkeletonTableRows rows={8} cols={4} /> : null}
+      {data ? (
+        <div className="admin-table-wrap">
+          <table className="admin-table admin-table-numbers">
+            <thead>
+              <tr>
+                <th>Lavoro</th>
+                <th>Mestiere</th>
+                <th>Ricerche (90 giorni)</th>
+                <th>Posto in home</th>
+                <th>
+                  <span className="sr-only">Azioni</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.jobs.map((job, index) => (
+                <tr key={job.service}>
+                  <td>{job.service}</td>
+                  <td>{job.categoryLabel}</td>
+                  <td data-label="Ricerche">{job.searches}</td>
+                  <td>{job.homePosition ? <AdminPill tone="ok">{`${job.homePosition}°`}</AdminPill> : <AdminPill>Riserva</AdminPill>}</td>
+                  <td className="admin-cell-actions">
+                    {/* Pulsanti piccoli, a icona: da telefono tre pulsanti larghi
+                        occupavano una riga intera per ogni lavoro. */}
+                    <div className="admin-icon-actions">
+                      <button
+                        type="button"
+                        className="admin-icon-button"
+                        disabled={busy || index === 0}
+                        aria-label={`Sposta su ${job.service}`}
+                        title="Sposta su"
+                        onClick={() => void run((t) => apiClient.adminMovePopularJob(t, { service: job.service, direction: "up" }))}
+                      >
+                        <Icon name="chevron-up" size={18} color="currentColor" strokeWidth={2} />
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-icon-button"
+                        disabled={busy || index === data.jobs.length - 1}
+                        aria-label={`Sposta giù ${job.service}`}
+                        title="Sposta giù"
+                        onClick={() => void run((t) => apiClient.adminMovePopularJob(t, { service: job.service, direction: "down" }))}
+                      >
+                        <Icon name="chevron-down" size={18} color="currentColor" strokeWidth={2} />
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-icon-button"
+                        disabled={busy}
+                        aria-label={`Togli ${job.service}`}
+                        title="Togli"
+                        onClick={() => void run((t) => apiClient.adminRemovePopularJob(t, job.service))}
+                      >
+                        <Icon name="trash-2" size={17} color="currentColor" strokeWidth={1.8} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      {data && data.missing.length > 0 ? (
+        <AdminCard>
+          <Text fontWeight="700">Cercati sul sito ma non nell&apos;elenco</Text>
+          <YStack gap="2" marginTop="2">
+            {data.missing.map((job) => (
+              <XStack key={job.service} gap="3" alignItems="center" flexWrap="wrap">
+                <Text flex={1} minWidth={200}>
+                  {job.service} <Text color={brand.grafite70}>· {job.categoryLabel} · {job.searches} ricerche</Text>
+                </Text>
+                <Button
+                  size="2"
+                  variant="secondary"
+                  disabled={busy}
+                  aria-label={`Aggiungi ${job.service}`}
+                  onPress={() => void run((t) => apiClient.adminAddPopularJob(t, { service: job.service, categorySlug: job.categorySlug }))}
+                >
+                  Aggiungi
+                </Button>
+              </XStack>
+            ))}
+          </YStack>
+        </AdminCard>
       ) : null}
     </YStack>
   );

@@ -49,6 +49,8 @@ const publicRoutes = [
   "GET /general-requests/availability",
   "GET /guided-requests/reach",
   "GET /health",
+  // Il database risponde? Per l'uptime (docs/changelog/2026-11-08-infrastruttura-lancio.md).
+  "GET /health/db",
   "GET /health/features",
   // Verifica del legale rappresentante di una società: link firmato, senza accedere (docs/changelog/2026-11-02-iscrizione-verifica-professionisti.md).
   "GET /identity-verification/representative/:token",
@@ -63,6 +65,8 @@ const publicRoutes = [
   "POST /problem-match",
   // Frasi d'esempio della home (docs/changelog/2026-11-03-luci-che-accelerano.md).
   "GET /problem-match/examples",
+  // "Lavori più cercati" della home (docs/changelog/2026-11-07-lavori-piu-cercati-home.md).
+  "GET /popular-jobs",
   // Prestazioni standard aggiunte dall'admin (§388), mostrate in iscrizione e nel profilo.
   "GET /service-names/standard",
   "GET /professionals/:id",

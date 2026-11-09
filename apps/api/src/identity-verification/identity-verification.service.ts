@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException, UnauthorizedException } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import type { IdentityVerification, Prisma, PrismaClient, TaxIdCheck } from "@professionisti/database";
 import {
   BIOMETRIC_CONSENT_VERSION,
@@ -22,6 +22,7 @@ import { matchDocumentToFiscal, type ExpectedPerson } from "./identity-match";
 import { verificationValidUntil } from "./validity";
 import { parseRepresentativeLinkToken, representativeLinkToken, representativeLinkValid } from "./representative-link-token";
 import { cardCanBeGiven } from "../subscriptions/subscription-rules";
+import { ScheduledJob } from "../common/scheduled-job";
 
 export { VERIFICATION_VALID_YEARS, verificationValidUntil } from "./validity";
 
@@ -451,7 +452,7 @@ export class IdentityVerificationService {
    * verifiche finite il cui webhook non è arrivato (l'esito, positivo o no,
    * arriva comunque con una notifica e un'email).
    */
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  @ScheduledJob(CronExpression.EVERY_10_MINUTES)
   async followUp(now: Date = new Date()): Promise<void> {
     if (!this.provider) return;
     const since = new Date(now.getTime() - FOLLOW_UP_DAYS * DAY_MS);
@@ -488,7 +489,7 @@ export class IdentityVerificationService {
   }
 
   /** Promemoria a chi non ha ancora fatto la verifica (§256): notifica ed email, al massimo due. */
-  @Cron("0 10 * * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 10 * * *", { timeZone: "Europe/Rome" })
   async remindUnverified(now: Date = new Date()): Promise<void> {
     if (!this.provider) return;
     const profiles = await this.prisma.professionalProfile.findMany({
@@ -524,7 +525,7 @@ export class IdentityVerificationService {
    * Badge nel tempo (§338), ogni mattina e solo con le chiavi vere del
    * fornitore: in prova le verifiche sono tutte di prova e il badge resta.
    */
-  @Cron("0 9 * * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 9 * * *", { timeZone: "Europe/Rome" })
   async checkBadgesOverTime(now: Date = new Date()): Promise<void> {
     if (!this.provider || this.provider.sandbox) return;
     const profiles = await this.prisma.professionalProfile.findMany({
@@ -556,7 +557,7 @@ export class IdentityVerificationService {
    * dell'utente, docs/CHANGELOG.md §261-§262) e di nuovo dopo una settimana,
    * solo se manca ancora qualcosa.
    */
-  @Cron("0 11 * * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 11 * * *", { timeZone: "Europe/Rome" })
   async remindProfileSetup(now: Date = new Date()): Promise<void> {
     const profiles = await this.prisma.professionalProfile.findMany({
       where: {

@@ -3,6 +3,7 @@ import { APP_FILTER, APP_GUARD, Reflector } from "@nestjs/core";
 import { SentryGlobalFilter, SentryModule } from "@sentry/nestjs/setup";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { ScheduleModule } from "@nestjs/schedule";
+import { CronRunsService } from "./health/cron-runs.service";
 import { HealthController } from "./health/health.controller";
 import { CategoriesModule } from "./categories/categories.module";
 import { PhoneNumbersModule } from "./phone-numbers/phone-numbers.module";
@@ -49,6 +50,7 @@ import { TermsNoticeModule } from "./terms-notice/terms-notice.module";
 import { AgendaRemindersModule } from "./agenda-reminders/agenda-reminders.module";
 import { AgendaModule } from "./agenda/agenda.module";
 import { ProblemMatchModule } from "./problem-match/problem-match.module";
+import { PopularJobsModule } from "./popular-jobs/popular-jobs.module";
 
 @Module({
   imports: [
@@ -114,6 +116,7 @@ import { ProblemMatchModule } from "./problem-match/problem-match.module";
     AgendaRemindersModule,
     AgendaModule,
     ProblemMatchModule,
+    PopularJobsModule,
     SubscriptionsModule,
     // Profili creati al telefono da un operatore (docs/CHANGELOG.md §170).
     ProfileInvitesModule,
@@ -144,6 +147,7 @@ import { ProblemMatchModule } from "./problem-match/problem-match.module";
     // Invia a Sentry le eccezioni non gestite (i 4xx voluti no), poi
     // risponde come il filtro di default di Nest.
     { provide: APP_FILTER, useClass: SentryGlobalFilter },
+    CronRunsService,
   ],
 })
 export class AppModule {}

@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { ProblemExamplesResponse, ProfessionalCategorySlug, ProfessionalSearchResult, ServicePriceIndexEntry } from "@professionisti/shared";
+import type { PopularJobsResponse, ProblemExamplesResponse, ProfessionalCategorySlug, ProfessionalSearchResult, ServicePriceIndexEntry } from "@professionisti/shared";
 import { Section, SectionDensityProvider, YStack } from "@professionisti/ui";
 import { CategoryStoryRail, useCategoryStoryRail } from "@/components/CategoryStoryRail";
 import { FadeInSection } from "@/components/FadeInSection";
 import { HomeFaq } from "@/components/HomeFaq";
 import { HomeHero } from "@/components/HomeHero";
 import { NewProfilesCarousel } from "@/components/NewProfilesCarousel";
+import { PopularJobs } from "@/components/PopularJobs";
 import { PlatformStats } from "@/components/PlatformStats";
 import { PriceEstimatorTool } from "@/components/PriceEstimatorTool";
 import { QualitySection } from "@/components/QualitySection";
@@ -22,7 +23,10 @@ export default function HomeContent({
   priceIndex,
   categoryCounts,
   problemExamples,
+  popularJobs,
 }: {
+  /** "Lavori più cercati" già in ordine; `null` se l'API non ha risposto (resta l'elenco di partenza). */
+  popularJobs: PopularJobsResponse | null;
   professionals: ProfessionalSearchResult[];
   /** Frasi d'esempio della ricerca per problema, nell'ordine delle ricerche; `null` se l'API non ha risposto. */
   problemExamples: ProblemExamplesResponse | null;
@@ -60,6 +64,7 @@ export default function HomeContent({
         <FadeInSection>
           <Section title="Di cosa hai bisogno?" maxWidth={1080}>
             <CategoryStoryRail state={categoryRail} />
+            <PopularJobs data={popularJobs} />
           </Section>
         </FadeInSection>
 

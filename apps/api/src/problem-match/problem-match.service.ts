@@ -1,5 +1,4 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
@@ -23,6 +22,7 @@ import { DailyBudget } from "../common/daily-budget";
 import { opsAlert } from "../common/ops-alert";
 import { PRISMA } from "../prisma/prisma.module";
 import { ServiceCatalogService } from "./service-catalog.service";
+import { ScheduledJob } from "../common/scheduled-job";
 
 /**
  * Dal problema scritto dal cliente ai mestieri adatti (docs/CHANGELOG.md
@@ -288,7 +288,7 @@ export class ProblemMatchService {
     this.cache.clear();
   }
 
-  @Cron("40 3 * * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("40 3 * * *", { timeZone: "Europe/Rome" })
   async removeOldDescriptions() {
     const before = new Date(Date.now() - DESCRIPTION_RETENTION_DAYS * 24 * 60 * 60_000);
     await this.prisma.problemDescription.deleteMany({ where: { createdAt: { lt: before } } });

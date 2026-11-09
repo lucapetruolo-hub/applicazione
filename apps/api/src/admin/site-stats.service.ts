@@ -1,6 +1,5 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { loadNotificationOptOuts } from "../notifications/opt-outs";
-import { Cron } from "@nestjs/schedule";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
   CHURN_KINDS,
@@ -34,6 +33,8 @@ import {
   type SiteNoteInput,
   type SubmitFailureKind,
   type SubmitFormKey,
+  buildPopularJobsAdminView,
+  popularJobsFromRows,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -60,6 +61,7 @@ import {
   type SiteServiceRow,
   type StalledProfessional,
 } from "./site-stats";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Giorni del confronto tra richieste contate dal browser e richieste salvate. */
@@ -315,6 +317,13 @@ export class SiteStatsService {
     const standardByCategory: Record<string, string[]> = {};
     for (const row of standardRows) (standardByCategory[row.categorySlug] ??= []).push(row.name);
     const missingServices = buildMissingServices(serviceList, standardByCategory);
+    const popularJobRows = await this.prisma.popularJob.findMany({ orderBy: [{ position: "asc" }, { createdAt: "asc" }], select: { service: true, categorySlug: true } });
+    const popularJobList = popularJobsFromRows(popularJobRows);
+    const popularJobs = buildPopularJobsAdminView(
+      popularJobList.jobs,
+      popularJobList.custom,
+      serviceSearches.map((r) => ({ categorySlug: r.categorySlug, service: r.service, searches: r._sum.count ?? 0 })),
+    );
     const sources = new Map<SignupSourceKey, number>();
     for (const u of signups) {
       const key: SignupSourceKey = u._count.profileInvites > 0 ? "INVITE" : (u.signupSource ?? "unknown");
@@ -379,6 +388,7 @@ export class SiteStatsService {
       failures: sumFailures(since7Day),
       unknownJobs,
       popularServices,
+      popularJobs,
       missingServices,
       contacts: visible.map((p) => ({ id: p.id, name: proName(p), city: p.city, href: userHref(p), categorySlugs: p.categorySlugs })),
       services: serviceList,
@@ -467,7 +477,7 @@ export class SiteStatsService {
    * non c'è niente da fare. Prende il posto dell'avviso sulle ricerche senza
    * professionisti (§371), che ora è uno dei consigli.
    */
-  @Cron("0 9 * * 1", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 9 * * 1", { timeZone: "Europe/Rome" })
   async weeklyAdvice(now: Date = new Date()): Promise<AdminSiteStats["advice"] | null> {
     if (!hasLaunched(now, launchDate())) return null;
     const { advice } = await this.getStats(now);

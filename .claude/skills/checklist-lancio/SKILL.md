@@ -462,11 +462,24 @@ aperti solo:
       Google Cloud → API e servizi → ogni API → Quote, un limite al giorno
       per Places API (New), Maps Static e Geocoding, più un avviso di budget
       in Fatturazione → Budget e avvisi. L'API ha già un suo tetto
-      giornaliero sulle rotte aperte a tutti (suggerimenti 5000, dettagli
-      indirizzo 2000, mappe fisse 2000); `GOOGLE_PUBLIC_DAILY_LIMIT` su
-      Render lo cambia per tutte.
+      giornaliero sulle rotte aperte a tutti (dall'08/11/2026 suggerimenti
+      1000, dettagli indirizzo e CAP 500, mappe fisse 500, vicino alla quota
+      gratuita); `GOOGLE_PUBLIC_DAILY_LIMIT` su Render lo cambia per tutte.
+      Budget con avviso a 20 €.
     - **Sentry attivo**: `SENTRY_DSN` impostata su Render e avvisi email
       accesi in Sentry (Alerts), con una prova.
+    - **Variabili del servizio EU** (controllo 08/11/2026, E9-03): su
+      `professionisti-api-eu` controllare che ci siano `FISCAL_DATA_KEY`
+      (se manca, impostarla subito e non cambiarla più), `SENTRY_DSN`,
+      `STRIPE_TAX_RATE_IVA`, `LAUNCH_DATE`. Elenco completo in
+      `docs/ops/variabili.md`.
+    - **Avvisi**: notifiche di GitHub Actions alla casella letta, segreti
+      `UPTIME_EMAIL`/`UPTIME_PASSWORD` rifatti con un account di prova del
+      database nuovo, `E2E_STRIPE_SECRET_KEY` presente (senza, ora i
+      controlli falliscono apposta): `docs/ops/avvisi.md`.
+    - **Prova di ripristino del database** e rollback: passi in
+      `docs/ops/ripristino.md` e `docs/ops/rollback.md`, da provare una
+      volta su un database di prova e correggere dove non tornano.
     - **Verifica in due passaggi** su GitHub, Render, Vercel, Stripe,
       Cloudinary, Resend, Google Cloud, Didit, Openapi e sull'email usata
       per questi account.
@@ -498,10 +511,12 @@ Luca ha scelto di farle poco prima del lancio, quando nome e sito sono
 definitivi. Già fatte (docs/CHANGELOG.md §295): H1, canonical, indirizzo
 leggibile del profilo, pagina "non trovata", percorso Home › Categoria ›
 Città, pagine vuote fuori da Google.
-30. **Dominio vero nel sito**: cambiare `SITE_URL` in
-    `apps/web/src/lib/siteUrl.ts` (canonical, sitemap, dati strutturati e
-    anteprime lo prendono tutti da lì) e mettere su Vercel il redirect
-    permanente da `applicazione-web.vercel.app` al dominio nuovo.
+30. **Dominio vero nel sito**: non solo `SITE_URL` in
+    `apps/web/src/lib/siteUrl.ts` e il redirect su Vercel: vanno cambiati
+    **dieci posti** (anche `FRONTEND_URL` su Render, senza il quale il sito
+    resta vuoto, Google OAuth, Turnstile, Resend, uptime, Stripe). Elenco e
+    prova finale in `docs/ops/cambio-dominio.md` (controllo dell'08/11/2026,
+    E9-09).
 31. **Google Search Console**: verificare il dominio (record DNS) e inviare
     `/sitemap.xml` (punto 0). Controllare dopo qualche giorno "Pagine" e
     "Esperienza".

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isBotUserAgent, matchPopularServices, normalizeJobTerm, offersPopularService, ratioLabel, romeWeekStart } from "@professionisti/shared";
+import { DEFAULT_POPULAR_JOBS, buildPopularJobsAdminView, isBotUserAgent, matchPopularServices, normalizeJobTerm, offersPopularService, ratioLabel, romeWeekStart } from "@professionisti/shared";
 import {
   buildClientCohorts,
   buildGuideCells,
@@ -154,6 +154,24 @@ describe("consigli", () => {
     ]);
     expect(buildSiteAdvice(baseInput({ notificationOptOuts: group(15) }))).toEqual([]);
     expect(buildSiteAdvice(baseInput({ notificationOptOuts: group(40) }))).toEqual([]);
+  });
+
+  it("un lavoro cercato più di quelli in home ma fuori elenco: aggiungerlo ai Lavori più cercati", () => {
+    const view = (taglioErba: number, caldaia: number) =>
+      buildPopularJobsAdminView(DEFAULT_POPULAR_JOBS, false, [
+        ...DEFAULT_POPULAR_JOBS.map((job) => ({ categorySlug: job.categorySlug, service: job.service, searches: caldaia })),
+        { categorySlug: "giardiniere", service: "Taglio erba", searches: taglioErba },
+      ]);
+    expect(buildSiteAdvice(baseInput({ popularJobs: view(12, 8) }))).toEqual([
+      expect.objectContaining({
+        key: "popular-job-missing:taglio erba",
+        title: "«Taglio erba» è cercato più dei lavori in home",
+        link: { label: "Lavori più cercati in home", href: "/admin/mestieri-richiesti?scheda=lavori" },
+      }),
+    ]);
+    // Sotto la soglia minima, o non più cercato del meno cercato in home: nessun consiglio.
+    expect(buildSiteAdvice(baseInput({ popularJobs: view(9, 1) }))).toEqual([]);
+    expect(buildSiteAdvice(baseInput({ popularJobs: view(12, 12) }))).toEqual([]);
   });
 
   it("niente da fare: nessun consiglio", () => {
