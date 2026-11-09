@@ -468,6 +468,7 @@ model ProfessionalProfile {
   profileViews           ProfileViewDay[]
   timelineEvents         ConversationEvent[]
   externalJobs           ExternalJob[]
+  clientNotes            ProfessionalClientNote[]
   // Dati fiscali/pagamenti — vedi la sezione dedicata in fondo a questo
   // file ("MANOVIA — fiscale, pagamenti, DAC7"). Modello separato,
   // deliberatamente MAI incluso in ProfessionalSearchResult/ProfessionalDetail
@@ -1558,6 +1559,23 @@ model ExternalJob {
 
   @@index([professionalProfileId, scheduledAt])
   @@map("external_jobs")
+}
+
+// Rubrica "I miei clienti" (docs/changelog/2026-11-08-rubrica-clienti.md):
+// nota privata del professionista su un cliente, mai vista da altri.
+// clientKey: "u:<id dell'account>" per i clienti del sito, "e:<telefono o
+// nome>" per quelli dei lavori esterni (stesso raggruppamento della rubrica).
+model ProfessionalClientNote {
+  id                    String   @id @default(uuid())
+  professionalProfileId String
+  clientKey             String
+  note                  String
+  updatedAt             DateTime @updatedAt
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalProfileId, clientKey])
+  @@map("professional_client_notes")
 }
 
 model Review {
