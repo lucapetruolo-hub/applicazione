@@ -4,7 +4,8 @@ import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto
 import * as bcrypt from "bcryptjs";
 import { redeemGoogleNonce } from "./google-nonce";
 import { OAuth2Client } from "google-auth-library";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
+import { ScheduledJob } from "../common/scheduled-job";
 import { EMAIL_CODE_LENGTH, LEGAL_CONSENT_VERSION, NO_CATEGORY_MESSAGE, NO_ENTITY_TYPE_MESSAGE, formatEurCents, wallClockNow, type AccountClosureCheck, type ChurnReason, type EmailStatus, type ProfessionalEntityTypeValue, type TrafficSource } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
@@ -612,7 +613,7 @@ export class AuthService {
   }
 
   /** Gli accessi chiusi scaduti non servono più: il token è comunque scaduto. */
-  @Cron(CronExpression.EVERY_DAY_AT_4AM, { timeZone: "Europe/Rome" })
+  @ScheduledJob(CronExpression.EVERY_DAY_AT_4AM)
   async purgeRevokedSessions(): Promise<void> {
     try {
       await this.prisma.revokedSession.deleteMany({ where: { expiresAt: { lt: new Date() } } });
