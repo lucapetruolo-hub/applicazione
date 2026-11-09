@@ -2,6 +2,7 @@ import { z } from "zod";
 import "./zod";
 import { EMAIL_CODE_LENGTH } from "./emailCode";
 import { TRAFFIC_SOURCES } from "./trafficSources";
+import { isInviteCode } from "./personalLink";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
 import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
 import { quotePaymentOfferSchema } from "./onlinePaymentsSchemas";
@@ -20,6 +21,13 @@ import { REBOOK_REMINDER_OPTIONS, type RebookReminderKey } from "./rebookReminde
  * N-01, docs/changelog/2026-10-30-velocita-telefono.md).
  */
 export const trafficSourceSchema = z.enum(TRAFFIC_SOURCES);
+
+/** Codice d'invito di un collega o di un partner: un codice sbagliato si ignora, non blocca l'iscrizione. */
+export const inviteCodeSchema = z
+  .string()
+  .max(20)
+  .transform((value) => value.trim().toLowerCase())
+  .transform((value) => (isInviteCode(value) ? value : undefined));
 
 const categorySlugs = PROFESSIONAL_CATEGORIES.map((category) => category.slug) as [string, ...string[]];
 
@@ -89,6 +97,8 @@ export const googleVerifySchema = z.object({
   entityType: z.enum(["PRIVATE_INDIVIDUAL", "SOLE_PROPRIETOR", "BUSINESS"]).optional(),
   // Da dove arrivava la visita, se la chiamata crea un account (docs/CHANGELOG.md §372).
   signupSource: trafficSourceSchema.optional(),
+  // Link d'invito aperto prima di iscriversi (docs/changelog/2026-11-09-passaparola.md).
+  inviteCode: inviteCodeSchema.optional(),
 });
 export type GoogleVerifyInput = z.infer<typeof googleVerifySchema>;
 
@@ -207,6 +217,8 @@ export const registerSchema = emailPasswordSchema.extend({
   entityType: z.enum(["PRIVATE_INDIVIDUAL", "SOLE_PROPRIETOR", "BUSINESS"]).optional(),
   // Da dove arrivava la visita (Google, social...), docs/CHANGELOG.md §372.
   signupSource: trafficSourceSchema.optional(),
+  // Link d'invito di un collega o di un partner (docs/changelog/2026-11-09-passaparola.md).
+  inviteCode: inviteCodeSchema.optional(),
 }).superRefine((data, ctx) => {
   if (data.role === "PROFESSIONAL" && !data.entityType) {
     ctx.addIssue({ code: "custom", message: NO_ENTITY_TYPE_MESSAGE, path: ["entityType"] });
@@ -1291,3 +1303,9 @@ export const professionalStatsQuerySchema = z
   })
   .refine((q) => q.from <= q.to, { message: "La data di inizio deve precedere quella di fine.", path: ["from"] });
 export type ProfessionalStatsQuery = z.infer<typeof professionalStatsQuerySchema>;
+
+/** Nuovo link d'invito di un partner, da Admin (docs/changelog/2026-11-09-passaparola.md). */
+export const invitePartnerCreateSchema = z.object({
+  name: z.string().trim().min(2, "Scrivi il nome del partner.").max(80, "Al massimo 80 caratteri."),
+});
+export type InvitePartnerCreateInput = z.infer<typeof invitePartnerCreateSchema>;

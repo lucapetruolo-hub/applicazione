@@ -129,10 +129,11 @@ export function ProfessionalDetailContent({
     } catch {
       // sessionStorage non disponibile: si conta comunque una volta per montaggio.
     }
-    apiClient.recordProfileView(professional.id, token ?? undefined).catch(() => undefined);
+    // Dal link personale /p/<codice>: conta anche tra le aperture del link (docs/changelog/2026-11-09-passaparola.md).
+    apiClient.recordProfileView(professional.id, token ?? undefined, query.link === "1").catch(() => undefined);
     // Andamento del sito: visite per dispositivo, accanto alle richieste per pulsante (§402).
     if (user?.professionalProfileId !== professional.id) countProfileView();
-  }, [isAuthLoading, preview, professional.id, token, user?.professionalProfileId]);
+  }, [isAuthLoading, preview, professional.id, token, user?.professionalProfileId, query.link]);
   const [isSaving, setIsSaving] = useState(false);
   const [agenda, setAgenda] = useState<ProfessionalAgenda | null>(initialAgenda);
   const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);

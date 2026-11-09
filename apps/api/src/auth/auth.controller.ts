@@ -74,7 +74,7 @@ export class AuthController {
     // `acceptedLegalTerms`/`declaredAdult` sono già garantite `=== true` da
     // `registerSchema` stesso (Zod `.refine`) prima di arrivare qui —
     // `register()` registra sempre il consenso, nessun controllo aggiuntivo.
-    return this.authService.register(body.email, body.password, body.name, body.role, body.categorySlugs, body.entityType, loginDevice(req), body.signupSource);
+    return this.authService.register(body.email, body.password, body.name, body.role, body.categorySlugs, body.entityType, loginDevice(req), body.signupSource, body.inviteCode);
   }
 
   // Rivela se un'email è registrata (docs/CHANGELOG.md §176): limite stretto
@@ -105,7 +105,7 @@ export class AuthController {
     return this.authService.verifyGoogleToken(body.idToken, body.role, body.createIfMissing, {
       acceptedLegalTerms: body.acceptedLegalTerms === true,
       declaredAdult: body.declaredAdult === true,
-    }, body.categorySlugs, body.entityType, loginDevice(req), body.signupSource);
+    }, body.categorySlugs, body.entityType, loginDevice(req), body.signupSource, body.inviteCode);
   }
 
   // Recupero password (docs/CHANGELOG.md §185): stessa risposta che

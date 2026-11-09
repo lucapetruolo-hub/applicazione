@@ -10,6 +10,9 @@ import type {
   ProfessionalEntityTypeValue,
   MySubscription,
   MyPersonalLink,
+  InviteSender,
+  AdminInvitePartner,
+  InvitePartnerCreateInput,
   SubscriptionCheckoutResult,
   SubscriptionTier,
   BillingInterval,
@@ -413,6 +416,8 @@ export type ApiClientConfig = {
    * registrazione: dice da dove arrivano i professionisti (docs/CHANGELOG.md §372).
    */
   trafficSource?: () => TrafficSource | undefined;
+  /** Codice del link d'invito aperto prima di iscriversi (docs/changelog/2026-11-09-passaparola.md). */
+  inviteCode?: () => string | undefined;
   /**
    * Chiamata quando una richiesta all'API non riesce (rete assente o
    * risposta d'errore): il sito conta gli invii falliti per modulo, mai chi
@@ -1188,7 +1193,7 @@ function extractErrorMessage(body: unknown, fallback: string): string {
  * Client tipizzato unico per chiamare apps/api da apps/web e apps/mobile —
  * niente logica di business duplicata nei due frontend (CLAUDE.md §3).
  */
-export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, onFailure }: ApiClientConfig) {
+export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, inviteCode, onFailure }: ApiClientConfig) {
   // Senza barra finale: "https://api/" + "/path" darebbe "//path" e 404 (docs/changelog/2026-11-05-render-francoforte.md).
   // Ciclo e non una regex: CodeQL segnala /\/+$/ come lenta su tante barre.
   let baseUrl = rawBaseUrl;
@@ -1333,7 +1338,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<AuthResult>("/auth/register", {
         method: "POST",
         headers: deviceHeaders(),
-        body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult, turnstileToken, categorySlugs, entityType, signupSource: trafficSource?.() }),
+        body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult, turnstileToken, categorySlugs, entityType, signupSource: trafficSource?.(), inviteCode: inviteCode?.() }),
       }),
 
     emailStatus: (email: string) =>
@@ -1369,7 +1374,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<AuthResult>("/auth/google/verify", {
         method: "POST",
         headers: deviceHeaders(),
-        body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult, categorySlugs, entityType, signupSource: trafficSource?.() }),
+        body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult, categorySlugs, entityType, signupSource: trafficSource?.(), inviteCode: inviteCode?.() }),
       }),
 
     /** Recupero password (docs/CHANGELOG.md §185): risponde sempre `success`, che l'account esista o no. */
@@ -1562,10 +1567,12 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     getProfessional: (id: string) => request<ProfessionalDetail>(`/professionals/${id}`, { cache: "no-store" }),
 
     /** Conta una visita al profilo pubblico (docs/CHANGELOG.md §147); il token serve solo a non contare il proprietario. */
-    recordProfileView: (id: string, token?: string | null) =>
+    recordProfileView: (id: string, token?: string | null, fromLink = false) =>
       request<{ ok: true }>(`/professionals/${id}/views`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
+        // Arrivato dal link personale: "N persone hanno aperto il tuo link" (docs/changelog/2026-11-09-passaparola.md).
+        ...(fromLink ? { body: JSON.stringify({ fromLink: true }) } : {}),
       }),
 
     /** Numeri della Home "Oggi" del professionista (docs/CHANGELOG.md §147). */
@@ -2198,7 +2205,10 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     /** Dal codice di `/p/<codice>` al profilo da aprire. */
     resolvePersonalLink: (code: string) =>
-      request<{ id: string; businessName: string; city: string | null }>(`/professionals/link/${encodeURIComponent(code)}`, { cache: "no-store" }),
+      request<{ id: string; businessName: string; city: string | null; rating: number | null; reviewCount: number }>(`/professionals/link/${encodeURIComponent(code)}`, { cache: "no-store" }),
+
+    /** Chi ha mandato un invito "Porta un collega" o di un partner (docs/changelog/2026-11-09-passaparola.md). */
+    resolveInvite: (code: string) => request<InviteSender>(`/professionals/invite/${encodeURIComponent(code)}`, { cache: "no-store" }),
 
     getMySubscription: (token: string) =>
       request<MySubscription>("/professionals/me/subscription", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
@@ -2346,6 +2356,18 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     /** Andamento del sito e consigli della settimana (docs/CHANGELOG.md §372). */
     adminSiteStats: (token: string) => request<AdminSiteStats>("/admin/site-stats", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Link d'invito dei partner (docs/changelog/2026-11-09-passaparola.md). */
+    adminInvitePartners: (token: string) => request<AdminInvitePartner[]>("/admin/invite-partners", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminCreateInvitePartner: (token: string, input: InvitePartnerCreateInput) =>
+      request<AdminInvitePartner>("/admin/invite-partners", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    /** Scheda in PDF da stampare o mandare al partner, con il suo link e il QR. */
+    adminInvitePartnerSheetPdf: (token: string, id: string) => downloadFile(`/admin/invite-partners/${encodeURIComponent(id)}/sheet.pdf`, token),
+
+    adminArchiveInvitePartner: (token: string, id: string) =>
+      request<void>(`/admin/invite-partners/${encodeURIComponent(id)}/archive`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     adminAddSiteNote: (token: string, input: SiteNoteInput) =>
       request<{ id: string }>("/admin/site-notes", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
