@@ -1,0 +1,7 @@
+# Segnalazioni di gitleaks da ignorare, una per riga (impronta commit:file:regola:riga).
+# gitleaks legge tutta la cronologia di tutti i rami: una stringa "sospetta" in un
+# commit già fatto resta anche dopo averla cambiata, e si ignora solo da qui.
+
+# Chiave di idempotenza finta in un test ("doppione-sub_2"), ramo del gruppo 2 del
+# collaudo (abbonamento). Non è una chiave vera.
+2ddd67fdeb1d8c8c26cffedb3f5b2c74989d0913:apps/api/src/billing/billing-safety.test.ts:generic-api-key:171
