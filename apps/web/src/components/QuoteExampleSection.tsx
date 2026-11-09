@@ -21,7 +21,10 @@ const STEPS = [
   { title: "Ricevi preventivi chiari", text: "Manodopera, materiali e tempi separati. Confronta prima di dire sì." },
   {
     title: "Scegli e prenota",
-    text: "Conferma in piattaforma. Promemoria via email e SMS prima dell'appuntamento.",
+    // Niente "SMS": non esistono e Luca li ha esclusi (docs/changelog/2026-10-28-promemoria-whatsapp.md;
+    // collaudo dell'08/11/2026, E6-10). "WhatsApp" scritto già ora per scelta di Luca del 09/11/2026:
+    // il canale si accende al lancio con la società verificata da Meta.
+    text: "Conferma sul sito. Promemoria via email e WhatsApp prima dell'appuntamento.",
   },
 ];
 

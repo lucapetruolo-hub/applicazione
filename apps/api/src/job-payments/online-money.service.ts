@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import Stripe from "stripe";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
@@ -26,6 +26,7 @@ import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { readStripeConnectStatus } from "../professional-fiscal/stripe-connect-status";
 import { professionalHeldEurCents, professionalOnlineLimit } from "./online-limit";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OPEN_ISSUE_STATUSES = ["CHAT", "OPEN"];
@@ -702,7 +703,8 @@ export class OnlineMoneyService {
     const claimed = await this.prisma.jobPayment.updateMany({
       where: { id: jp.id, ...(part === "deposit" ? { stripePaymentIntentId: null } : { balancePaymentIntentId: null }) },
       data: {
-        paidEurCents: paid,
+        // Somma sul database, non sul valore letto prima (collaudo dell'8/11/2026, E3-11).
+        paidEurCents: { increment: amount },
         // Il costo della carta è nostro, dentro la trattenuta unica (§378).
         cardFeeEurCents: { increment: charge.fee },
         onlineStage: stage,
@@ -710,7 +712,7 @@ export class OnlineMoneyService {
         ...(charge.destination
           ? {
               stripeDestinationAccountId: charge.destination,
-              applicationFeeEurCents: jp.applicationFeeEurCents + charge.applicationFeeAmount,
+              applicationFeeEurCents: { increment: charge.applicationFeeAmount },
               ...(charge.direct ? { stripeDirectCharge: true } : {}),
             }
           : {}),
@@ -2012,7 +2014,7 @@ export class OnlineMoneyService {
   }
 
   /** Ogni ora: i pagamenti online arrivati al momento dello sblocco, poi i bonifici in attesa. */
-  @Cron(CronExpression.EVERY_HOUR)
+  @ScheduledJob(CronExpression.EVERY_HOUR)
   async runReleases(now: Date = new Date()): Promise<number> {
     const due = await this.prisma.jobPayment.findMany({
       where: { paymentMethod: "MANOVIA", releasedAt: null, onlineStage: { in: ["PAID", "AWAITING_BALANCE"] }, releaseDueAt: { lte: now } },

@@ -14,6 +14,16 @@ const PHRASES = [
   /\blavor[oi] garantit/i,
   /\bti mandiamo (un|il) professionista/i,
 ];
+// Canali che il sito non ha: i promemoria e gli avvisi arrivano per email e
+// su WhatsApp, mai per SMS (decisione di Luca del 28/10/2026,
+// docs/changelog/2026-10-28-promemoria-whatsapp.md; in home diceva ancora
+// "email e SMS", collaudo dell'08/11/2026 E6-10). Gli avvisi sulle truffe
+// ("codici ricevuti via SMS" in /sicurezza) non promettono nulla e passano.
+const CHANNELS = [
+  /\b(promemoria|avvis[oi]|notific[ahe]|conferm[ae]|aggiornament[oi])\b[^.\n]{0,40}\b(via|per|con|tramite|e|o|,) SMS\b/i,
+  /\bSMS\b[^.\n]{0,30}\b(di promemoria|di conferma|prima dell'appuntamento)/i,
+  /\bti (mandiamo|inviamo|scriviamo|arriva|arriver\u00e0)[^.\n]{0,30}\bSMS\b/i,
+];
 
 const files = [];
 for (const root of roots) (function walk(dir) {
@@ -26,6 +36,7 @@ for (const root of roots) (function walk(dir) {
 })(join(repo, root));
 
 const errors = [];
+const channelErrors = [];
 for (const file of files) {
   readFileSync(file, "utf8").split("\n").forEach((line, index) => {
     const code = line.trim();
@@ -33,9 +44,15 @@ for (const file of files) {
     for (const phrase of PHRASES) {
       if (phrase.test(line)) errors.push(`${relative(repo, file)}:${index + 1}: "${line.match(phrase)[0]}"`);
     }
+    for (const phrase of CHANNELS) {
+      if (phrase.test(line)) channelErrors.push(`${relative(repo, file)}:${index + 1}: "${line.match(phrase)[0]}"`);
+    }
   });
 }
 if (errors.length > 0) {
   console.error("Frasi che fanno sembrare la piattaforma il fornitore del lavoro (CLAUDE.md §5 punto 18):\n" + errors.join("\n"));
-  process.exit(1);
 }
+if (channelErrors.length > 0) {
+  console.error("Promesse di SMS: il sito manda promemoria e avvisi per email e su WhatsApp, mai per SMS (docs/changelog/2026-10-28-promemoria-whatsapp.md):\n" + channelErrors.join("\n"));
+}
+if (errors.length > 0 || channelErrors.length > 0) process.exit(1);
