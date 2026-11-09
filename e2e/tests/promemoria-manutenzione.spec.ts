@@ -59,3 +59,19 @@ for (const [device, size] of [["telefono", PHONE], ["computer", COMPUTER]] as co
     await page.context().close();
   });
 }
+
+test("al professionista i promemoria si scelgono solo sul sito, al cliente anche per email", async ({ browser }) => {
+  const pro = await createProfessional(prisma, "Promemoria Solo Sito");
+  const proPage = await pageAsClient(browser, pro.userId, COMPUTER);
+  await proPage.goto("/account/notifiche");
+  const proGroup = proPage.getByRole("group", { name: "Promemoria che imposti tu: dove avvisarti" });
+  await expect(proGroup.getByRole("button")).toHaveCount(1);
+  await expect(proGroup.getByRole("button", { name: /Email/ })).toHaveCount(0);
+  await proPage.context().close();
+
+  const client = await createClient(prisma);
+  const clientPage = await pageAsClient(browser, client.id, COMPUTER);
+  await clientPage.goto("/account/notifiche");
+  await expect(clientPage.getByRole("group", { name: "Promemoria che imposti tu: dove avvisarti" }).getByRole("button")).toHaveCount(2);
+  await clientPage.context().close();
+});

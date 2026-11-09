@@ -39,3 +39,7 @@ data alle 9, solo cliente, solo a lavoro terminato, togliere, un avviso
 solo e nulla con account chiuso); prova nel browser
 `e2e/tests/promemoria-manutenzione.spec.ts` su telefono e computer (scelta
 tipica in evidenza, impostare, data nel database, togliere, axe sul riquadro).
+
+**Miglioria approvata da Luca (09/11)**: al professionista, in Notifiche,
+"Promemoria che imposti tu" mostra solo "Sito" (`professionalChannels` in
+`NOTIFICATION_TOPIC_INFO`): l'email per i promemoria parte solo al cliente.

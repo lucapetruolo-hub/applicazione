@@ -153,7 +153,8 @@ export default function NotifichePage() {
                       item.locked ||
                       (item.channels ?? (["inApp", "email"] as const)).some((c) => prefs[c] && notificationItemChannelOn(notificationPrefs, item.key, c)),
                   ).length;
-                  const topicOff = !info.locked && !prefs.inApp && !prefs.email;
+                  const shownChannels = CHANNELS.filter((channel) => role !== "professional" || !info.professionalChannels || info.professionalChannels.includes(channel.key));
+                  const topicOff = !info.locked && shownChannels.every((channel) => !prefs[channel.key]);
                   const isOpen = openTopics.includes(topic);
                   const panelId = `nt-items-${topic}`;
                   return (
@@ -179,7 +180,7 @@ export default function NotifichePage() {
                           </span>
                         ) : (
                           <div className="nt-channels" role="group" aria-label={`${copy.label}: dove avvisarti`}>
-                            {CHANNELS.map((channel) => {
+                            {shownChannels.map((channel) => {
                               const on = prefs[channel.key];
                               const upcoming = !info.activeChannels.includes(channel.key);
                               return (

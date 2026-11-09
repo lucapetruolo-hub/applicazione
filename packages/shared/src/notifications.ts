@@ -31,6 +31,8 @@ export type NotificationTopicInfo = {
   locked?: boolean;
   /** Canali per cui oggi parte davvero un invio: gli altri sono salvati per quando arriveranno. */
   activeChannels: NotificationChannelKey[];
+  /** Canali mostrati al professionista, se diversi: quelli che per lui non partono mai non si vedono. */
+  professionalChannels?: NotificationChannelKey[];
 };
 
 export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopicInfo> = {
@@ -205,6 +207,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
     // REQUEST_REMINDER resta solo sul sito: nessuna email per lui.
     types: ["REQUEST_REMINDER", "REBOOK_REMINDER"],
     activeChannels: ["inApp", "email"],
+    // Al professionista arriva solo il "ricordamelo" sul sito: niente scelta "Email" (decisione di Luca del 09/11).
+    professionalChannels: ["inApp"],
   },
   account: {
     professional: { label: "Account e sicurezza", description: "Decisioni su segnalazioni e sul tuo account, scadenze e limiti dell'abbonamento." },
