@@ -49,3 +49,31 @@ describe("JwtAuthGuard — sessioni chiuse al cambio password (docs/CHANGELOG.md
     await expect(guard.canActivate(contextWith("Bearer token").context)).resolves.toBe(true);
   });
 });
+
+describe("JwtAuthGuard — account che non esiste più (controllo dell'08/11, E2-04)", () => {
+  it("risponde 401 invece di lasciar passare", async () => {
+    const prisma = { user: { findUnique: vi.fn().mockResolvedValue(null) } };
+    const guard = new JwtAuthGuard({ verify: vi.fn().mockReturnValue({ sub: "user-gone", sv: 0 }) } as never, prisma as never);
+    const { request, context } = contextWith("Bearer token");
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(request.user).toBeUndefined();
+  });
+});
+
+describe("JwtAuthGuard — accesso chiuso con \"Esci\" (controllo dell'08/11)", () => {
+  const user = { suspendedAt: null, sessionVersion: 0 };
+
+  it("rifiuta il token il cui codice è tra gli accessi chiusi", async () => {
+    const prisma = { user: { findUnique: vi.fn().mockResolvedValue(user) }, revokedSession: { findUnique: vi.fn().mockResolvedValue({ jti: "a" }) } };
+    const guard = new JwtAuthGuard({ verify: vi.fn().mockReturnValue({ sub: "user-1", sv: 0, jti: "a" }) } as never, prisma as never);
+    await expect(guard.canActivate(contextWith("Bearer token").context)).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it("lascia passare un altro accesso dello stesso account e passa codice e scadenza alla rotta", async () => {
+    const prisma = { user: { findUnique: vi.fn().mockResolvedValue(user) }, revokedSession: { findUnique: vi.fn().mockResolvedValue(null) } };
+    const guard = new JwtAuthGuard({ verify: vi.fn().mockReturnValue({ sub: "user-1", sv: 0, jti: "b", exp: 123 }) } as never, prisma as never);
+    const { request, context } = contextWith("Bearer token");
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(request.user).toEqual({ userId: "user-1", session: { jti: "b", exp: 123 } });
+  });
+});

@@ -17,10 +17,13 @@ const HEARTBEAT_MS = 25_000;
 
 type TicketRequest = Request & { realtimeTicket?: RealtimeTicket };
 
-/** Account sospeso, eliminato o password cambiata dopo l'emissione del biglietto (§292). */
+/** Account sospeso, eliminato, password cambiata o "Esci" dopo l'emissione del biglietto (§292, controllo dell'08/11). */
 async function sessionClosed(prisma: PrismaClient, ticket: RealtimeTicket): Promise<boolean> {
-  const user = await prisma.user.findUnique({ where: { id: ticket.userId }, select: { suspendedAt: true, sessionVersion: true } });
-  return !user || user.suspendedAt !== null || isRevokedSession({ sub: ticket.userId, sv: ticket.sessionVersion }, user.sessionVersion);
+  const [user, closed] = await Promise.all([
+    prisma.user.findUnique({ where: { id: ticket.userId }, select: { suspendedAt: true, sessionVersion: true } }),
+    ticket.jti ? prisma.revokedSession.findUnique({ where: { jti: ticket.jti }, select: { jti: true } }) : null,
+  ]);
+  return !user || !!closed || user.suspendedAt !== null || isRevokedSession({ sub: ticket.userId, sv: ticket.sessionVersion }, user.sessionVersion);
 }
 
 /**
@@ -65,7 +68,8 @@ export class RealtimeController {
   async ticket(@Req() req: AuthenticatedRequest): Promise<{ ticket: string }> {
     const user = await this.prisma.user.findUnique({ where: { id: req.user.userId }, select: { sessionVersion: true } });
     if (!user) throw new UnauthorizedException("Accesso non valido.");
-    return { ticket: this.tickets.issue({ userId: req.user.userId, sessionVersion: user.sessionVersion }) };
+    const jti = req.user.session?.jti;
+    return { ticket: this.tickets.issue({ userId: req.user.userId, sessionVersion: user.sessionVersion, ...(jti ? { jti } : {}) }) };
   }
 
   /**
