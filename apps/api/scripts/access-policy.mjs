@@ -141,6 +141,9 @@ const selfAny = [
 ];
 
 const selfProfessional = [
+  // Rubrica "I miei clienti": solo i clienti di chi chiama (docs/changelog/2026-11-08-rubrica-clienti.md).
+  "GET /professional-clients/me",
+  "PUT /professional-clients/me/note",
   // Recensioni ricevute, per rispondere (docs/changelog/2026-10-30-collaudo-soldi-online.md).
   "GET /reviews/received",
   "DELETE /agenda/calendar-feed",
