@@ -19,6 +19,7 @@ import { CardButton } from "@/components/CardButton";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { PAYMENT_PAGE_LABEL, startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
+import { RebookReminderBox } from "./RebookReminderBox";
 
 // Finestre aperte solo con un tocco: si caricano allora e "Le mie richieste" parte più leggera (docs/changelog/2026-11-09-le-mie-richieste-leggera.md).
 const ClientCompleteModal = dynamic(() => import("@/components/ClientCompleteModal").then((module) => module.ClientCompleteModal));
@@ -40,6 +41,7 @@ export function BookingSection({
   address,
   onReportProblem,
   rebookHref,
+  rebookReminder,
 }: {
   booking: ClientBooking;
   token: string;
@@ -51,6 +53,8 @@ export function BookingSection({
   onReportProblem: (() => void) | null;
   /** "Prenota di nuovo": nuova richiesta allo stesso professionista con indirizzo e contatti già scritti (docs/CHANGELOG.md §348). */
   rebookHref?: string;
+  /** "Ti servirà di nuovo?" a lavoro terminato (docs/changelog/2026-11-08-promemoria-manutenzione.md). */
+  rebookReminder?: { guidedRequestId: string; remindAt: string | null; categorySlug: string };
 }) {
   const [showClientCompleteModal, setShowClientCompleteModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -536,6 +540,18 @@ export function BookingSection({
             Potrai lasciare la recensione quando la segnalazione sarà chiusa.
           </Text>
         ) : null
+      ) : null}
+
+      {rebookReminder && booking.status === "COMPLETED" && !booking.professionalAccountDeleted ? (
+        <RebookReminderBox
+          token={token}
+          guidedRequestId={rebookReminder.guidedRequestId}
+          remindAt={rebookReminder.remindAt}
+          categorySlug={rebookReminder.categorySlug}
+          businessName={booking.businessName}
+          rebookHref={!booking.hasReview && rebookHref ? rebookHref : null}
+          onChanged={onChanged}
+        />
       ) : null}
 
       {/* Elimina sempre per ultimo (richiesta esplicita dell'utente). */}

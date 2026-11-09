@@ -87,7 +87,7 @@ Di continuo:
 | minuto | `ChatMessageEmailsService.sendDue` (email dei messaggi in chat) |
 | 5 minuti | `HeldEmailsService.sendDue` (email rimandate), `GuidedRequestUserStateService.runDueReminders` (promemoria delle richieste), `GuidedRequestsService.runExpiryCheck` (richieste scadute), `WhatsAppService.dispatchDue` (coda WhatsApp) |
 | 10 minuti | `BillingService.runReturnToBase`, `TermsNoticeService.run` (avviso dei Termini cambiati), `IdentityVerificationService.followUp` (esiti Didit) |
-| 30 minuti | `BookingRemindersService.sendUpcomingReminders` e `sendDepositReminders` (promemoria del giorno prima e dell'acconto), `WhatsAppService.depositReminders`, `TaxIdCheckService.retryPending` (controlli CF/P.IVA in attesa) |
+| 30 minuti | `BookingRemindersService.sendUpcomingReminders` e `sendDepositReminders` (promemoria del giorno prima e dell'acconto), `WhatsAppService.depositReminders`, `TaxIdCheckService.retryPending` (controlli CF/P.IVA in attesa), `GuidedRequestUserStateService.runDueRebookReminders` ("Ricordamelo tra…" della manutenzione) |
 | ora | `SubscriptionsService.runPauseSweep`, `BillingService.runSubscriptionSafetyChecks` (abbonamenti di account chiusi, rinnovi non pagati, passaggi a metà), `AwayService.endPauses`, `DateChangeRemindersService.remindUnanswered`, `JobIssueOutcomeService.runDeadlines`, `GeneralRequestsService.runAutoCheck`, `CompletionDeadlineService.run`, `OnlineMoneyService.runReleases` (bonifici ai professionisti), `InvoicesService.syncSdi` (ai :20) |
 
 I promemoria del giorno prima e dell'acconto si segnano sulla prenotazione

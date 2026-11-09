@@ -113,6 +113,10 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
       ? `/dashboard/richieste?open=${guidedRequestId}`
       : `/le-mie-richieste?tab=richieste&open=${guidedRequestId}`;
   }
+  if (type === "REBOOK_REMINDER") {
+    const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
+    return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}` : "/le-mie-richieste?tab=lavori";
+  }
   // Chi segnala non ha una pagina (docs/CHANGELOG.md §319): presa in carico
   // ed esito stanno nella notifica e nell'email.
   if (type === "CONTENT_REPORT_RECEIVED" || type === "CONTENT_REPORT_DECISION") return null;
