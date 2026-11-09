@@ -147,7 +147,8 @@ if (mode === "public") {
   if (image.status !== 200 || !(image.headers.get("content-type") ?? "").startsWith("image/png")) fail(`${proPath}/opengraph-image`, `stato ${image.status}, attesa un'immagine`);
 
   // Pagine personali e aperte dalle email: titolo loro e noindex anche col sito aperto (E8-07).
-  for (const [path, title] of [["/le-mie-richieste", "Le mie richieste"], ["/chat", "Messaggi"], ["/dashboard", "Area professionista"], ["/promemoria/prova", "Promemoria"], ["/conferma-email", "Conferma l'email"]]) {
+  // "/dashboard" si chiama come la sua voce di menu, "Oggi" (E7-01).
+  for (const [path, title] of [["/le-mie-richieste", "Le mie richieste"], ["/chat", "Messaggi"], ["/dashboard", "Oggi"], ["/promemoria/prova", "Promemoria"], ["/conferma-email", "Conferma l'email"]]) {
     const { res, html } = await get(path);
     if (!isNoindex(res, html)) fail(path, "manca noindex");
     if (!decode(/<title>([^<]*)<\/title>/i.exec(html)?.[1] ?? "").startsWith(title)) fail(path, `titolo diverso da "${title}"`);
