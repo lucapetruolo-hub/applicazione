@@ -1,10 +1,10 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import { DELETED_EMAIL_HASH_RETENTION_YEARS } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
+import { ScheduledJob } from "../common/scheduled-job";
 
 /**
  * Lavori notturni sugli account (controllo pre-lancio dell'08/11/2026):
@@ -24,7 +24,7 @@ export class AccountClosuresService {
     private readonly auditLogService: AuditLogService,
   ) {}
 
-  @Cron("30 5 * * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("30 5 * * *")
   async nightly(now: Date = new Date()): Promise<{ closed: number; hashesCleared: number }> {
     const closed = await this.closeDue(now);
     const hashesCleared = await this.clearOldEmailHashes(now);
