@@ -45,7 +45,6 @@
   negativi restano numeri. Vale per gli export dell'admin e, già che c'era,
   per l'estratto mensile e il riepilogo delle ricevute del professionista, che
   contengono nomi dei clienti e descrizioni dei lavori scritti da altri.
-
 - **"Esci" che chiude davvero l'accesso** (miglioria facoltativa, scelta da
   Luca il 09/11): prima "Esci" cancellava solo il token nel browser, che
   restava valido 30 giorni (su un computer condiviso bastava averlo copiato).
