@@ -16,6 +16,23 @@
   compare passando sopra col mouse.
 - Mentre si salva il pulsante è spento e nella vista Giorno dice "Salvo...".
 
+- Pulsante più piccolo (richiesta di Luca): alto 28 px, testo 12 px, icona
+  13 px (sul telefono resta sopra i 24 px chiesti da WCAG 2.5.8).
+- Nella vista Giorno il nome per il lettore di schermo contiene la scritta
+  visibile ("Chiudi il giorno venerdì 13", WCAG 2.5.3): il controllo di
+  accessibilità della CI lo chiedeva.
+
+**Migliorie approvate da Luca**:
+- Settimana sul telefono: nelle fasce solo l'ora d'inizio ("8", "14" con
+  "30" piccolo in alto per le mezz'ore), come nel Calendario; prima si
+  leggeva "0…" o "1…". Sul computer resta "08:00–12:00".
+- Chiudere un giorno con appuntamenti chiede conferma ("Chiudere lunedì 26
+  ottobre?") e dice che gli appuntamenti restano validi e non vengono
+  annullati (richiesta di Luca). Contano i lavori presi sul sito ancora da
+  fare e i lavori esterni in programma. Riusa la finestra di conferma di
+  "Annulla il lavoro" (`CancelBookingModal`), senza nota.
+
 **Verifica**: foto su computer e telefono in
-`/mnt/project-files/agenda/giorno-per-giorno-fermo/chiudi-*.png`; nomi dei
-pulsanti per il lettore di schermo invariati (le prove e2e li usano).
+`/mnt/project-files/agenda/giorno-per-giorno-fermo/chiudi-*.png`; prova e2e
+nuova in `agenda-primo-uso.spec.ts` (conferma con un appuntamento, Annulla
+lascia il giorno aperto); `agenda-accessibilita.spec.ts` verde.

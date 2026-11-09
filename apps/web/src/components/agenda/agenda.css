@@ -904,12 +904,12 @@
   }
 }
 /* "Chiudi"/"Riapri" un giorno come pulsanti veri (docs/changelog/2026-11-09-chiudi-riapri-pulsanti.md). */
-.ag-day-btn {
+.ag-btn.ag-day-btn {
   align-self: flex-start;
-  height: 32px;
-  padding: 0 12px;
-  gap: 6px;
-  font-size: 12.5px;
+  height: 28px;
+  padding: 0 10px;
+  gap: 5px;
+  font-size: 12px;
   border-width: 1px;
   border-color: #8c8279;
   color: var(--ag-ink);
@@ -924,8 +924,8 @@
 }
 @media (max-width: 1000px) {
   /* Settimana stretta: solo l'icona, il nome resta per il lettore di schermo. */
-  .ag-day-btn:not(:has(> span:not(.ag-ecc-wide))) {
-    width: 32px;
+  .ag-btn.ag-day-btn:not(:has(> span:not(.ag-ecc-wide))) {
+    width: 28px;
     padding: 0;
   }
 }
