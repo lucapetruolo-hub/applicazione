@@ -350,11 +350,11 @@ prima del lancio"):
     variabili su Render (`WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
     `WHATSAPP_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`), webhook
     registrato, prova con un numero vero. Accettare i termini e i Data
-    Processing Terms di Meta (domanda 69 per l'avvocato). Appena acceso:
-    cambiare "email e SMS" in "email e WhatsApp" in "Come funziona"
-    (`QuoteExampleSection.tsx`) e aggiungere in `/sicurezza` che il codice
-    WhatsApp si scrive solo sul sito (riproporlo a Luca). Se al lancio non
-    è acceso, togliere "e SMS" dalla frase.
+    Processing Terms di Meta (domanda 69 per l'avvocato). "Come funziona"
+    in home dice già "email e WhatsApp" (Luca, 09/11/2026, PR #260): se al
+    lancio il canale non è acceso, togliere "e WhatsApp" dalla frase
+    (`QuoteExampleSection.tsx`). Appena acceso, aggiungere in `/sicurezza`
+    che il codice WhatsApp si scrive solo sul sito (riproporlo a Luca).
     Da riprendere quando l'avvocato risponde alla domanda 70 (Luca,
     28/10/2026): promemoria WhatsApp anche ai clienti dei lavori esterni
     dell'agenda (non iscritti al sito), mandato per conto del professionista.
