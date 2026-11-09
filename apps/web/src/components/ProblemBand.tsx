@@ -54,6 +54,11 @@ const WHO: Record<ProfessionalCategorySlug, string> = {
   babysitter: "una babysitter",
 };
 
+/** "un muratore o un imbianchino", "a, b o c". */
+function joinWithOr(items: string[]): string {
+  return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} o ${items[items.length - 1]}`;
+}
+
 export function problemResultsHref(description: string, city: string | undefined, extra: Record<string, string> = {}): string {
   const params = new URLSearchParams({ problema: description });
   if (city) params.set("citta", city);
@@ -73,6 +78,7 @@ export function ProblemBand({
   onClearChosen,
   topService = null,
   categoryCounts,
+  otherTradesCount = 0,
 }: {
   description: string;
   city?: string;
@@ -91,6 +97,8 @@ export function ProblemBand({
   topService?: string | null;
   /** Quanti professionisti per ogni mestiere proposto (pulsanti in cima). */
   categoryCounts?: Partial<Record<ProfessionalCategorySlug, number>>;
+  /** Professionisti di altri mestieri che offrono questo lavoro ("Potrebbero fare anche questo lavoro"). */
+  otherTradesCount?: number;
 }) {
   const choices = problemCategoryChoices(result, chosen);
   const quoteParams = new URLSearchParams({ descrizione: description });
@@ -98,6 +106,19 @@ export function ProblemBand({
   if (city) quoteParams.set("citta", city);
   const quoteHref = `/preventivo?${quoteParams.toString()}`;
   const shortText = description.length > 90 ? `${description.slice(0, 90)}…` : description;
+  // Più mestieri e nessuna scelta del cliente: il titolo li nomina tutti, senza
+  // dare per sicuro il primo (docs/changelog/2026-11-09-banda-mestieri-chiara.md).
+  const undecided = choices.length > 1 && !questionDone;
+  const title = undecided ? `Può servirti ${joinWithOr(choices.map((slug) => WHO[slug]))}` : chosen ? `Ti serve ${WHO[chosen]}` : null;
+  const reason = result.reason && chosen === result.categories[0] ? result.reason : null;
+  const reasonLine = [reason, topService ? `In cima chi fa «${topService}».` : null].filter(Boolean).join(" ");
+  // Il primo mestiere senza nessuno vicino: si dice dove ce n'è, senza
+  // cambiare l'ordine (un mestiere con più professionisti può essere meno adatto, Luca 9/11).
+  const nearbyElsewhere =
+    chosen && categoryCounts?.[chosen] === 0
+      ? choices.filter((slug) => slug !== chosen && (categoryCounts?.[slug] ?? 0) > 0)
+      : [];
+  const showQuestion = Boolean(result.question && !questionDone);
 
   return (
     <YStack gap="3" width="100%" marginBottom="4">
@@ -128,12 +149,28 @@ export function ProblemBand({
         {chosen ? (
           <YStack gap="2">
             <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
-              Ti serve {WHO[chosen]}
+              {title}
             </Text>
-            <Text fontSize={16} color={brand.grafite70}>
-              {result.reason && chosen === result.categories[0] ? result.reason : `Di solito lo fa ${WHO[chosen]}.`}
-              {topService ? ` In cima chi fa «${topService}».` : ""}
-            </Text>
+            {/* Niente "Di solito lo fa…": ripeteva il titolo. Resta solo un motivo vero. */}
+            {reasonLine ? (
+              <Text fontSize={16} color={brand.grafite70}>
+                {reasonLine}
+              </Text>
+            ) : null}
+            {nearbyElsewhere.length > 0 ? (
+              <Text fontSize={16} color={brand.grafite}>
+                Per ora nessuno vicino per {categoryLabel(chosen)}.{" "}
+                {nearbyElsewhere.map((slug, index) => (
+                  <span key={slug}>
+                    {index > 0 ? " " : ""}
+                    <Link href={problemResultsHref(description, city, { mestiere: slug })} scroll={false} style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>
+                      {categoryLabel(slug)}
+                    </Link>
+                    : {categoryCounts?.[slug] === 1 ? "1 vicino" : `${categoryCounts?.[slug]} vicini`}.
+                  </span>
+                ))}
+              </Text>
+            ) : null}
             {/* Trasparenza sull'intelligenza artificiale (AI Act art. 50, domanda 77 per
                 l'avvocato; collaudo del 29/10/2026, M-11): solo quando la proposta non
                 viene dal dizionario. */}
@@ -143,6 +180,16 @@ export function ProblemBand({
                 <Link href="/privacy#fornitori" style={{ color: brand.cianografiaScuro }}>
                   Come funziona
                 </Link>
+              </Text>
+            ) : null}
+            {/* Non solo i mestieri proposti: anche chi, di un altro mestiere (es. un
+                tuttofare), ha questo lavoro tra le prestazioni (richiesta di Luca, 9/11). */}
+            {otherTradesCount > 0 ? (
+              <Text fontSize={16} color={brand.grafite}>
+                <a href="#anche-questo-lavoro" style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>
+                  {otherTradesCount === 1 ? "Più sotto anche 1 professionista" : `Più sotto anche ${otherTradesCount} professionisti`}
+                </a>{" "}
+                di altri mestieri che offre{otherTradesCount === 1 ? "" : "no"} questo lavoro.
               </Text>
             ) : null}
           </YStack>
@@ -155,6 +202,33 @@ export function ProblemBand({
             Che lavoro ti serve?
           </Text>
         )}
+
+        {/* La domanda nello stesso riquadro, subito sotto il titolo: la
+            risposta sceglie il mestiere (docs/changelog/2026-11-09-banda-mestieri-chiara.md). */}
+        {showQuestion && result.question ? (
+          <YStack gap="2" borderTopWidth={1} borderColor={brand.filetto} paddingTop="3">
+            <YStack gap="1">
+              <Text fontWeight="700" fontSize={16} color={brand.grafite}>
+                {result.question.text}
+              </Text>
+              <Text fontSize={16} color={brand.grafite70}>
+                Rispondi e ti mostriamo chi serve.
+              </Text>
+            </YStack>
+            <XStack gap="2" flexWrap="wrap">
+              {result.question.answers.map((answer) => (
+                <ChoiceLink
+                  key={answer.label}
+                  href={problemResultsHref(description, city, {
+                    mestiere: answer.category,
+                  })}
+                  label={answer.label}
+                />
+              ))}
+              <ChoiceLink href={problemResultsHref(description, city, { domanda: "no" })} label="Non lo so" />
+            </XStack>
+          </YStack>
+        ) : null}
 
         {!chosen && !result.outOfService ? (
           <YStack gap="2">
@@ -175,31 +249,6 @@ export function ProblemBand({
           </YStack>
         ) : null}
       </YStack>
-
-      {result.question && !questionDone ? (
-        <YStack gap="3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4" padding="4">
-          <YStack gap="1">
-            <Text fontWeight="700" fontSize={16} color={brand.grafite}>
-              Una domanda per mandarti la persona giusta
-            </Text>
-            <Text fontSize={16} color={brand.grafite70}>
-              {result.question.text}
-            </Text>
-          </YStack>
-          <XStack gap="2" flexWrap="wrap">
-            {result.question.answers.map((answer) => (
-              <ChoiceLink
-                key={answer.label}
-                href={problemResultsHref(description, city, {
-                  mestiere: answer.category,
-                })}
-                label={answer.label}
-              />
-            ))}
-            <ChoiceLink href={problemResultsHref(description, city, { domanda: "no" })} label="Non lo so" />
-          </XStack>
-        </YStack>
-      ) : null}
 
       {/* Dopo la domanda: prima si sceglie la persona giusta, poi si chiede il preventivo. */}
       {chosen && chosenPros.length > 0 ? (
