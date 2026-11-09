@@ -9058,6 +9058,35 @@ a.admin-kpi:hover {
 }
 
 
+/* "Lavori fatti tramite il sito" sul profilo (docs/changelog/2026-11-08-lavori-fatti.md):
+   schede che vanno a capo da computer e scorrono in una riga su telefono, come "Lavori svolti". */
+.finished-jobs-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+}
+@media (max-width: 660px) {
+  .finished-jobs-row {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 4px;
+  }
+  .finished-jobs-row > .finished-job {
+    flex: 0 0 168px;
+    scroll-snap-align: start;
+  }
+}
+@media (min-width: 661px) {
+  .finished-jobs-row {
+    -webkit-mask-image: none;
+    mask-image: none;
+    animation: none;
+  }
+}
+
+
+
 /* "Ti servirà di nuovo?" a lavoro terminato (docs/changelog/2026-11-08-promemoria-manutenzione.md). */
 .rebook-pill.is-suggested {
   border-color: #189a63;

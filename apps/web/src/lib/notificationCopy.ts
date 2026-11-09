@@ -17,7 +17,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   QUOTE_DATE_PROPOSED: { icon: "🗓️", message: "Il cliente ha proposto un'altra data per il preventivo." },
   QUOTE_DATE_CHANGED: { icon: "🗓️", message: "Il professionista ha modificato la data del tuo preventivo." },
   QUOTE_UPDATED: { icon: "📝", message: "Il professionista ha aggiornato il tuo preventivo (voci, note o modi di pagamento), senza cambiare data e orario." },
-  QUOTE_DATE_CONFIRMED: { icon: "✅", message: "Il professionista ha confermato la data che hai proposto." },
+  QUOTE_DATE_CONFIRMED: { icon: "✅", message: "Il professionista ha accettato la data che hai proposto: accetta il preventivo per fissare l'appuntamento." },
   QUOTE_DATE_REJECTED: { icon: "📅", message: "Il professionista non è disponibile in quella data." },
   QUOTE_DATE_CONFIRMED_BY_CLIENT: { icon: "✅", message: "Il cliente ha accettato la nuova data che hai proposto: l'appuntamento è spostato." },
   QUOTE_DATE_REJECTED_BY_CLIENT: { icon: "📅", message: "Il cliente non può nella data che hai proposto: l'appuntamento resta com'era." },
