@@ -1,8 +1,10 @@
 "use client";
 
+import { useRef } from "react";
 import { YStack, brand } from "@professionisti/ui";
 import { ConversationView } from "@/components/ConversationView";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 
 /**
  * Cronologia completa cliente↔professionista di una richiesta guidata
@@ -40,6 +42,9 @@ export function TimelineModal({
   onOpenClientProfile?: () => void;
   onClose: () => void;
 }) {
+  // Fuoco dentro e Tab chiuso nella finestra; Esc lo gestisce la chat (escapeToBack).
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onClose, { escape: false });
   return (
     <div
       role="presentation"
@@ -59,6 +64,7 @@ export function TimelineModal({
       }}
     >
       <YStack
+        ref={dialogRef as never}
         role="dialog"
         aria-modal
         aria-label="Cronologia della richiesta"

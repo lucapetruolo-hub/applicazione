@@ -45,6 +45,17 @@ ed `esperto-E6-ux.md` della cartella del progetto), con le migliorie "sì" del t
   rendeva instabile la prova della tastiera.
 - **E6-14** Ore dell'agenda a 13 px (erano 11), ore libere e testi degli
   appuntamenti a 12-12,5 px, barra "Andamento" delle schede a 12 px.
+- **Tutte le altre finestre** (seconda richiesta di Luca, 09/11) con lo
+  stesso comportamento (`useDialogFocus`): Annulla lavoro, Recensione,
+  Segnala (lavoro, contenuto, problema del professionista), Lavoro terminato
+  (professionista e cliente), Documenti del lavoro, Profilo del cliente, Nota
+  sulla contestazione, Calendario collegato, Orari dell'agenda, Consenso
+  Google, Lavori esauriti, "Perché chiediamo questi dati", scheda
+  dell'appuntamento, ritaglio della foto, foto a schermo intero, accesso
+  dentro la pagina, popup di "Conferma email" e cronologia della chat (qui
+  con `escape: false`: Esc chiude prima la fotocamera).
+- **E4-10** Pagina `/accessibilita`: "Ultima verifica completa: 8 novembre
+  2026", punto 3 con le correzioni fatte, limiti noti aggiornati.
 - Migliorie "sì": numero di richieste mostrate annunciato al cambio di scheda
   o filtro; chat con `role="log"` (i messaggi nuovi si leggono da soli); un
   solo ocra e un solo grigio per i testi, scritto in `packages/ui/src/tokens.ts`.
@@ -56,8 +67,11 @@ ed `esperto-E6-ux.md` della cartella del progetto), con le migliorie "sì" del t
   calcolato dal browser è "Nome, il mio account" sia da computer sia da
   telefono; la nuova prova lo controlla. Un `aria-label` sul pulsante faceva
   segnalare ad axe "etichetta diversa dal testo visibile", quindi resta com'era.
-- Bollini dei risultati (20 px): restano, sono suggerimenti e non comandi
-  principali.
+- Bollini dei risultati (20 px): restano più bassi, scelta di Luca del
+  09/11 (sono etichette, non comandi).
+- Restano con la loro gestione: agenda a schermo intero, ricerca rapida
+  dell'admin, campanella, menu "Servizi", mappa dei risultati, fotocamera
+  della chat, banner dei cookie.
 
 **Verifica**: lint e typecheck di `apps/web` verdi; prove nel browser del
 progetto `telefono-italia` (161) verdi in locale con Postgres; prove nuove in

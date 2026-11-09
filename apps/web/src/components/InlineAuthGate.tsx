@@ -1,8 +1,10 @@
 "use client";
 
+import { useRef } from "react";
 import { Icon, Text, YStack, brand } from "@professionisti/ui";
 import { ClientEmailFirstAuth } from "@/components/ClientEmailFirstAuth";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 
 const HEADERS = {
   // "Quasi fatto", non "Un ultimo passo" accanto a "Passo 1 di 2" (docs/changelog/2026-11-08-prova-persone-simulate.md).
@@ -30,6 +32,9 @@ const HEADERS = {
  * docs/CHANGELOG.md §176).
  */
 export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: () => void; onClose: () => void }) {
+  // Fuoco dentro, Tab chiuso nella finestra, Esc chiude, fuoco restituito alla chiusura (lib/useDialogFocus.ts).
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onClose);
   return (
     <div
       role="presentation"
@@ -46,7 +51,7 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
         overflowY: "auto",
       }}
     >
-      <div role="dialog" aria-modal="true" aria-label="Accedi o crea un account per inviare la richiesta" style={{ width: "100%", maxWidth: 440 }}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Accedi o crea un account per inviare la richiesta" style={{ width: "100%", maxWidth: 440 }}>
         <YStack width="100%" backgroundColor={brand.calce} borderRadius="5" padding="5">
           <ClientEmailFirstAuth
             intro="Richieste e preventivi saranno collegati a questa email: li ritrovi nel tuo account e ricevi gli aggiornamenti. Quello che hai scritto resta com'è."

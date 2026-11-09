@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useRef } from "react";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { SlotDraft } from "./agendaHelpers";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
@@ -191,13 +192,9 @@ export function SlotEditorModal({
     else setOnlineError(true);
   }
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onCancel();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onCancel]);
+  // Fuoco dentro, Tab chiuso nella finestra, Esc chiude, fuoco restituito alla chiusura (lib/useDialogFocus.ts).
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onCancel);
 
   return (
     <div
@@ -218,7 +215,7 @@ export function SlotEditorModal({
       }}
     >
       <YStack
-        role="dialog"
+        ref={dialogRef as never} role="dialog"
         aria-modal
         aria-label="Imposta fascia oraria"
         width="100%"

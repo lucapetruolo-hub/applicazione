@@ -11,7 +11,7 @@ import { useEffect, useRef, type RefObject } from "react";
  * non c'è, sulla finestra stessa. La finestra va montata solo da aperta
  * (`{open ? <… ref={ref} /> : null}`): il fuoco si sposta al montaggio.
  */
-export function useDialogFocus(ref: RefObject<HTMLElement | null>, onClose: () => void) {
+export function useDialogFocus(ref: RefObject<HTMLElement | null>, onClose: () => void, { escape = true }: { escape?: boolean } = {}) {
   const onCloseRef = useRef(onClose);
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -42,7 +42,8 @@ export function useDialogFocus(ref: RefObject<HTMLElement | null>, onClose: () =
       // Con una seconda finestra aperta sopra questa, decide quella.
       if (!inside && active instanceof Element && active.closest('[role="dialog"], [role="alertdialog"]')) return;
       if (event.key === "Escape") {
-        onCloseRef.current();
+        // Senza `escape` Esc lo gestisce il contenuto (la chat della cronologia chiude prima la fotocamera).
+        if (escape) onCloseRef.current();
         return;
       }
       const list = focusableIn(node);
@@ -65,7 +66,7 @@ export function useDialogFocus(ref: RefObject<HTMLElement | null>, onClose: () =
       document.removeEventListener("keydown", onKeyDown);
       if (previous && previous.isConnected) previous.focus();
     };
-  }, [ref]);
+  }, [ref, escape]);
 }
 
 const FOCUSABLE =

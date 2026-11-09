@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 import { X } from "lucide-react";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MediaPreview } from "@/components/MediaPreview";
@@ -53,13 +54,9 @@ export function ReviewModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  // Fuoco dentro, Tab chiuso nella finestra, Esc chiude, fuoco restituito alla chiusura (lib/useDialogFocus.ts).
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onClose);
 
   async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -114,7 +111,7 @@ export function ReviewModal({
       }}
     >
       <YStack
-        role="dialog"
+        ref={dialogRef as never} role="dialog"
         aria-modal
         aria-label={title}
         width="100%"

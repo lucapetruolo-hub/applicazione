@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode, useRef } from "react";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
@@ -65,13 +66,9 @@ export function CancelBookingModal({
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  // Fuoco dentro, Tab chiuso nella finestra, Esc chiude, fuoco restituito alla chiusura (lib/useDialogFocus.ts).
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onClose);
 
   async function handleSubmit() {
     setError(null);
@@ -109,7 +106,7 @@ export function CancelBookingModal({
       }}
     >
       <YStack
-        role="dialog"
+        ref={dialogRef as never} role="dialog"
         aria-modal
         aria-label={title}
         width="100%"

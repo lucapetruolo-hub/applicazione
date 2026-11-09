@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 import { ZoomIn } from "lucide-react";
 import { brand } from "@professionisti/ui";
 
@@ -58,14 +59,8 @@ export function ImageCropModal({
   // Finestra vera anche per tastiera e lettore di schermo (collaudo C-23,
   // docs/changelog/2026-10-30-tastiera.md): il fuoco entra nel riquadro
   // della foto, Esc annulla.
-  useEffect(() => {
-    stageRef.current?.focus();
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onCancel();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onCancel]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onCancel);
 
   // Le frecce spostano la foto come il trascinamento (10 px, 40 con Maiusc).
   function handleStageKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
@@ -172,6 +167,7 @@ export function ImageCropModal({
       }}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -197,7 +193,7 @@ export function ImageCropModal({
         {/* Riquadro in cui si sposta la foto con trascinamento o frecce:
             non esiste un elemento HTML "vero" per un movimento in due direzioni. */}
         {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex, jsx-a11y/no-noninteractive-element-interactions */}
-        <div ref={stageRef} tabIndex={0}
+        <div ref={stageRef} tabIndex={0} data-autofocus
           role="application"
           aria-roledescription="riquadro della foto"
           aria-label="Foto da posizionare: usa le frecce per spostarla"

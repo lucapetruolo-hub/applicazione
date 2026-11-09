@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useRef } from "react";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 import Link from "next/link";
 import { CONTENT_REPORT_REASONS, contentReportReason, type ContentReportReasonCode, type ContentReportTargetType } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -63,13 +64,9 @@ export function ReportContentModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  // Fuoco dentro, Tab chiuso nella finestra, Esc chiude, fuoco restituito alla chiusura (lib/useDialogFocus.ts).
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onClose);
 
   async function handleSubmit() {
     setError(null);
@@ -108,7 +105,7 @@ export function ReportContentModal({
       }}
     >
       <YStack
-        role="dialog"
+        ref={dialogRef as never} role="dialog"
         aria-modal
         aria-label="Segnala contenuto"
         width="100%"

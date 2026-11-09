@@ -29,16 +29,17 @@ export default function AccessibilitaPage() {
           // Niente più "100/100": il collaudo del 29/10/2026 (M-12, L-01…L-14)
           // ha trovato problemi con la tastiera che quel punteggio non vedeva.
           heading: "2. Come lo verifichiamo",
-          body: "Controlliamo le pagine principali (home, ricerca, profilo del professionista, richiesta di preventivo) con strumenti automatici (Lighthouse, axe e test con Playwright) a ogni modifica del sito, e con prove a mano da telefono e computer, anche usando solo la tastiera. Ultima verifica completa: 29 ottobre 2026. Il sito ha un collegamento \"Vai al contenuto\" per saltare l'intestazione, etichette leggibili dai lettori di schermo su pulsanti e campi, contrasti di colore conformi sui testi principali e rispetta l'impostazione \"riduci le animazioni\" del dispositivo.",
+          body: "Controlliamo le pagine principali (home, ricerca, profilo del professionista, richiesta di preventivo) e le aree personali di clienti e professionisti con strumenti automatici (Lighthouse, axe e test con Playwright) a ogni modifica del sito, e con prove a mano da telefono e computer, anche usando solo la tastiera, con lo zoom al 200% e il testo ingrandito. Ultima verifica completa: 8 novembre 2026. Il sito ha un collegamento \"Vai al contenuto\" per saltare l'intestazione, etichette leggibili dai lettori di schermo su pulsanti e campi, contrasti di colore conformi sui testi principali e rispetta l'impostazione \"riduci le animazioni\" del dispositivo.",
         },
         {
-          // Aggiornato col gruppo 6 del collaudo (docs/changelog/2026-10-30-tastiera.md).
+          // Aggiornato col gruppo 6 del collaudo (docs/changelog/2026-10-30-tastiera.md)
+          // e col controllo dell'8/11 (docs/changelog/2026-11-08-accessibilita.md).
           heading: "3. Tastiera e lettore di schermo",
-          body: "Dopo la verifica del 29 ottobre 2026 abbiamo corretto i problemi trovati con la sola tastiera: ogni comando si apre con Invio o Spazio, il comando su cui ti trovi ha un bordo scuro ben visibile, i menu si usano con le frecce e si chiudono con Esc, gli errori dei moduli vengono letti dai lettori di schermo e i pulsanti da telefono sono grandi almeno 44 pixel. Queste prove, con la tastiera e con axe, girano in automatico a ogni modifica del sito.",
+          body: "Dopo le verifiche del 29 ottobre e dell'8 novembre 2026 abbiamo corretto i problemi trovati: ogni comando si apre con Invio o Spazio, il comando su cui ti trovi ha un bordo scuro ben visibile, i menu si usano con le frecce e si chiudono con Esc, le finestre portano dentro il cursore della tastiera e lo restituiscono quando si chiudono, ogni pagina dell'area personale ha un titolo suo, gli errori dei moduli vengono letti dai lettori di schermo, i testi piccoli hanno un contrasto sufficiente e i comandi da telefono sono grandi almeno 24 pixel (44 quelli principali). Queste prove, con la tastiera e con axe, girano in automatico a ogni modifica del sito.",
         },
         {
           heading: "4. Limiti noti",
-          body: "L'agenda del professionista e la mappa dei risultati (Google Maps) non sono ancora state verificate con lo stesso dettaglio: i risultati della ricerca sono sempre disponibili anche come elenco, senza la mappa.",
+          body: "La mappa dei risultati (Google Maps) non è ancora stata verificata con lo stesso dettaglio: i risultati della ricerca sono sempre disponibili anche come elenco, senza la mappa. Le prove con un lettore di schermo vero (VoiceOver, TalkBack) su telefono sono ancora da completare.",
         },
         {
           heading: "5. Segnala un problema di accessibilità",
