@@ -207,20 +207,35 @@ const AUTO_SCROLL_PAUSE_MS = 2500;
 function ExampleRow({ label, items, onPick }: { label: string; items: readonly string[]; onPick: (text: string) => void }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ start: false, end: false, fits: true });
+  // Quanto si può scorrere, misurato solo quando la riga cambia misura: prima
+  // si rileggeva a ogni fotogramma e a ogni scorrimento, e il browser
+  // doveva ricalcolare l'impaginazione di tutta la pagina ogni volta
+  // (docs/changelog/2026-11-09-meno-javascript-comune.md).
+  const maxScrollRef = useRef(0);
+  // Fa ripartire lo scorrimento automatico quando la riga torna scorrevole.
+  const resumeRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
-    const update = () => {
-      const max = track.scrollWidth - track.clientWidth;
-      setEdges({ start: track.scrollLeft > 1, end: track.scrollLeft < max - 1, fits: max <= 1 });
+    // Le freccette cambiano solo ai capi: stesso stato, nessun nuovo disegno.
+    const updateEdges = () => {
+      const max = maxScrollRef.current;
+      const left = track.scrollLeft;
+      const next = { start: left > 1, end: left < max - 1, fits: max <= 1 };
+      setEdges((prev) => (prev.start === next.start && prev.end === next.end && prev.fits === next.fits ? prev : next));
     };
-    update();
-    track.addEventListener("scroll", update, { passive: true });
-    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(update) : null;
+    const measure = () => {
+      maxScrollRef.current = track.scrollWidth - track.clientWidth;
+      updateEdges();
+      resumeRef.current();
+    };
+    measure();
+    track.addEventListener("scroll", updateEdges, { passive: true });
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null;
     observer?.observe(track);
     return () => {
-      track.removeEventListener("scroll", update);
+      track.removeEventListener("scroll", updateEdges);
       observer?.disconnect();
     };
   }, [items]);
@@ -229,7 +244,8 @@ function ExampleRow({ label, items, onPick }: { label: string; items: readonly s
   // una pausa a ogni capo. Si ferma per sempre al primo tocco, clic,
   // freccetta o tasto nella riga (da lì decide la persona, WCAG 2.2.2) e
   // finché il cursore ci sta sopra; fermo fuori dallo schermo e con "riduci
-  // movimento".
+  // movimento". Gira un fotogramma alla volta solo mentre scorre davvero:
+  // durante le pause e da fermo non lavora.
   useEffect(() => {
     const track = trackRef.current;
     const row = track?.parentElement;
@@ -239,34 +255,61 @@ function ExampleRow({ label, items, onPick }: { label: string; items: readonly s
     let hovering = false;
     let visible = true;
     let direction = 1;
-    let pauseUntil = performance.now() + AUTO_SCROLL_START_MS;
-    let position = track.scrollLeft;
-    let last = performance.now();
-    let frame = requestAnimationFrame(function step(now) {
+    let position = 0;
+    let last = 0;
+    let frame = 0;
+    let pauseTimer: number | undefined;
+    const canRun = () => !stopped && !hovering && visible && pauseTimer === undefined && maxScrollRef.current > 2;
+    const step = (now: number) => {
+      frame = 0;
+      if (!canRun()) return;
+      const max = maxScrollRef.current;
       const elapsed = Math.min(now - last, 100);
       last = now;
-      const max = track.scrollWidth - track.clientWidth;
-      if (!stopped && !hovering && visible && max > 2 && now >= pauseUntil) {
-        position = Math.min(max, Math.max(0, position + (direction * AUTO_SCROLL_SPEED * elapsed) / 1000));
-        track.scrollLeft = position;
-        if (position >= max || position <= 0) {
-          direction = -direction;
-          pauseUntil = now + AUTO_SCROLL_PAUSE_MS;
-        }
-      } else {
-        position = track.scrollLeft;
+      position = Math.min(max, Math.max(0, position + (direction * AUTO_SCROLL_SPEED * elapsed) / 1000));
+      track.scrollLeft = position;
+      if (position >= max || position <= 0) {
+        direction = -direction;
+        pauseFor(AUTO_SCROLL_PAUSE_MS);
+        return;
       }
-      if (!stopped) frame = requestAnimationFrame(step);
-    });
+      frame = requestAnimationFrame(step);
+    };
+    const resume = () => {
+      if (frame || !canRun()) return;
+      // La persona può aver scorso a mano mentre era fermo.
+      position = track.scrollLeft;
+      last = performance.now();
+      frame = requestAnimationFrame(step);
+    };
+    function pauseFor(ms: number) {
+      window.clearTimeout(pauseTimer);
+      pauseTimer = window.setTimeout(() => {
+        pauseTimer = undefined;
+        resume();
+      }, ms);
+    }
+    resumeRef.current = resume;
+    pauseFor(AUTO_SCROLL_START_MS);
     const stop = () => {
       stopped = true;
       cancelAnimationFrame(frame);
+      frame = 0;
+      window.clearTimeout(pauseTimer);
     };
-    const enter = () => (hovering = true);
-    const leave = () => (hovering = false);
+    const enter = () => {
+      hovering = true;
+    };
+    const leave = () => {
+      hovering = false;
+      resume();
+    };
     const observer =
       typeof IntersectionObserver === "function"
-        ? new IntersectionObserver(([entry]) => (visible = entry?.isIntersecting ?? true))
+        ? new IntersectionObserver(([entry]) => {
+            visible = entry?.isIntersecting ?? true;
+            resume();
+          })
         : null;
     observer?.observe(row);
     row.addEventListener("pointerdown", stop);
@@ -278,6 +321,7 @@ function ExampleRow({ label, items, onPick }: { label: string; items: readonly s
     row.addEventListener("mouseleave", leave);
     return () => {
       stop();
+      resumeRef.current = () => {};
       observer?.disconnect();
       row.removeEventListener("pointerdown", stop);
       row.removeEventListener("keydown", stop);

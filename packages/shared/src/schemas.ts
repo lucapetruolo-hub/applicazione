@@ -8,6 +8,7 @@ import { quotePaymentOfferSchema } from "./onlinePaymentsSchemas";
 import { accountMeasures, contentReportReason, contentReportReasonCodes, moderationGroundCodes } from "./moderation";
 import { newPasswordSchema } from "./password";
 import { REQUEST_TIMINGS } from "./requestTiming";
+import { MAX_CHOSEN_PROFESSIONALS, MAX_PROFESSIONAL_CATEGORIES, MAX_REQUEST_CATEGORIES } from "./limits";
 import { SERVICE_PRICE_UNITS } from "./professionals";
 import { REBOOK_REMINDER_OPTIONS, type RebookReminderKey } from "./rebookReminder";
 
@@ -34,12 +35,6 @@ export const accountEmailSchema = z.string().trim().toLowerCase().email("Email n
 
 export const professionalCategorySlugSchema = z.enum(categorySlugs);
 
-/**
- * Categorie di un professionista (docs/CHANGELOG.md §217, richiesta
- * dell'utente): da 1 a 3, scelte in registrazione e modificabili dal
- * profilo. La prima è la principale.
- */
-export const MAX_PROFESSIONAL_CATEGORIES = 3;
 const tooManyCategoriesMessage = `Puoi scegliere al massimo ${MAX_PROFESSIONAL_CATEGORIES} categorie.`;
 export const NO_CATEGORY_MESSAGE = "Scegli almeno una categoria.";
 export const NO_ENTITY_TYPE_MESSAGE = "Scegli se lavori come privato, con Partita IVA o come azienda.";
@@ -300,11 +295,7 @@ export const passwordResetCodeSchema = verifyEmailCodeSchema.extend({
 });
 export type PasswordResetCodeInput = z.infer<typeof passwordResetCodeSchema>;
 
-/** Categorie scelte insieme in una richiesta di preventivo generale (docs/CHANGELOG.md §259). */
-export const MAX_REQUEST_CATEGORIES = 3;
 const tooManyRequestCategoriesMessage = `Puoi scegliere al massimo ${MAX_REQUEST_CATEGORIES} categorie.`;
-/** Professionisti scelti dai risultati per una sola richiesta (docs/CHANGELOG.md §393, decisione di Luca: fino a 5). */
-export const MAX_CHOSEN_PROFESSIONALS = 5;
 
 /** Richiesta guidata cliente: foto + poche domande → categoria/prezzo stimato (CLAUDE.md §8). */
 export const guidedRequestSchema = z

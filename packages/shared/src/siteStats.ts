@@ -1,5 +1,3 @@
-import { z } from "zod";
-import "./zod";
 import type { TrafficSource } from "./trafficSources";
 
 /**
@@ -101,7 +99,6 @@ export const CLIENT_CHURN_REASONS = ["FOUND_WHAT_NEEDED", "NO_PROFESSIONALS", "T
 export const PRO_CHURN_REASONS = ["FEW_REQUESTS", "TOO_EXPENSIVE", "HARD_TO_USE", "NOT_WORKING_NOW", "OTHER_SITE", "OTHER"] as const;
 export const CHURN_REASONS = ["FOUND_WHAT_NEEDED", "NO_PROFESSIONALS", "TOO_EXPENSIVE", "HARD_TO_USE", "TOO_MANY_EMAILS", "FEW_REQUESTS", "NOT_WORKING_NOW", "OTHER_SITE", "OTHER"] as const;
 export type ChurnReason = (typeof CHURN_REASONS)[number];
-export const churnReasonSchema = z.enum(CHURN_REASONS);
 
 /** Testo che vede chi se ne va (scelta facoltativa) e che legge l'admin. */
 export const CHURN_REASON_LABEL: Record<ChurnReason, string> = {
@@ -115,10 +112,6 @@ export const CHURN_REASON_LABEL: Record<ChurnReason, string> = {
   OTHER_SITE: "Uso un altro sito",
   OTHER: "Altro",
 };
-
-/** Motivo facoltativo quando si elimina l'account o si annulla l'abbonamento (§372). */
-export const churnReasonBodySchema = z.object({ reason: churnReasonSchema.optional() }).default({});
-export type ChurnReasonBody = z.infer<typeof churnReasonBodySchema>;
 
 /** Da dove arrivano i professionisti: le provenienze delle richieste più l'invito al telefono. */
 export type SignupSourceKey = TrafficSource | "INVITE" | "unknown";
@@ -167,16 +160,6 @@ export const DEVICE_KIND_LABEL: Record<DeviceKind, string> = { COMPUTER: "Comput
 export const PROFILE_REQUEST_EVENTS = ["VISITA", "INIZIATA", "INVIATA"] as const;
 export type ProfileRequestEvent = (typeof PROFILE_REQUEST_EVENTS)[number];
 
-export const siteStepEventSchema = z.object({
-  step: z.enum(REQUEST_STEP_KEYS),
-  categorySlug: z.string().max(60).optional(),
-  origin: z.enum(REQUEST_ORIGINS).optional(),
-  /** Solo con origin PROFILE (§402). */
-  source: z.enum(PROFILE_REQUEST_SOURCES).optional(),
-  device: z.enum(DEVICE_KINDS).optional(),
-});
-export type SiteStepEvent = z.infer<typeof siteStepEventSchema>;
-
 /**
  * Passi di chi usa le voci di "Quanto costa" (docs/CHANGELOG.md §399,
  * richiesta di Luca): voce toccata, profilo aperto da quell'elenco,
@@ -190,25 +173,6 @@ export const PRICE_TOOL_STEP_LABEL: Record<PriceToolStepKey, string> = {
   PROFILO: "Aperto un profilo dall'elenco",
   RICHIESTA: "Richiesta inviata",
 };
-
-export const priceToolStepEventSchema = z.object({ step: z.enum(PRICE_TOOL_STEP_KEYS) });
-export type PriceToolStepEvent = z.infer<typeof priceToolStepEventSchema>;
-
-export const siteFailureEventSchema = z.object({
-  form: z.enum(SUBMIT_FORM_KEYS),
-  kind: z.enum(SUBMIT_FAILURE_KINDS),
-});
-export type SiteFailureEvent = z.infer<typeof siteFailureEventSchema>;
-
-/** Profilo pubblico aperto, solo il dispositivo (§402). */
-export const siteProfileViewEventSchema = z.object({ device: z.enum(DEVICE_KINDS) });
-export type SiteProfileViewEvent = z.infer<typeof siteProfileViewEventSchema>;
-
-export const siteNoteSchema = z.object({
-  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data non valida."),
-  text: z.string().trim().min(2, "Scrivi la nota.").max(140, "Al massimo 140 caratteri."),
-});
-export type SiteNoteInput = z.infer<typeof siteNoteSchema>;
 
 /**
  * Cose successe che cambiano i numeri, segnate da sole sul grafico (§372).
@@ -255,14 +219,6 @@ export const MISSING_SERVICE_MIN_PROFESSIONALS = 3;
 export const SERVICE_GAP_MIN_SEARCHES = 10;
 /** Sotto questi professionisti una prestazione cercata è "offerta da pochi". */
 export const SERVICE_GAP_MAX_OFFERED = 2;
-
-export const siteAdviceDoneSchema = z.object({
-  key: z.string().trim().min(1).max(200),
-  title: z.string().trim().min(1).max(300),
-});
-export type SiteAdviceDoneInput = z.infer<typeof siteAdviceDoneSchema>;
-export const siteAdviceUndoSchema = z.object({ key: z.string().trim().min(1).max(200) });
-export type SiteAdviceUndoInput = z.infer<typeof siteAdviceUndoSchema>;
 
 /** Stato di una casella lavoro × città per il numero guida. */
 export type GuideCellStatus = "GREEN" | "YELLOW" | "RED" | "NO_PROFESSIONALS";
