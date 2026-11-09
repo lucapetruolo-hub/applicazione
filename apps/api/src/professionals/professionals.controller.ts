@@ -50,6 +50,7 @@ import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { CategoriesService } from "../categories/categories.service";
 import { SiteCountsService } from "../site-counts/site-counts.service";
 import { ProfessionalsService } from "./professionals.service";
+import { PersonalLinkService } from "./personal-link.service";
 import { hasNearbyResult } from "./search-area";
 
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
@@ -66,6 +67,7 @@ export class ProfessionalsController {
     private readonly jwtService: JwtService,
     private readonly categoriesService: CategoriesService,
     private readonly siteCounts: SiteCountsService,
+    private readonly personalLink: PersonalLinkService,
   ) {}
 
   @Get("search")
@@ -261,6 +263,20 @@ export class ProfessionalsController {
   @Get("me/insights")
   getMyInsights(@Req() req: AuthenticatedRequest) {
     return this.professionalsService.getMyInsights(req.user.userId);
+  }
+
+  /** "Il tuo link": link personale, QR e quanti clienti sono arrivati da lì (docs/changelog/2026-11-08-canale-del-professionista.md). */
+  @UseGuards(JwtAuthGuard)
+  @Get("me/personal-link")
+  getMyPersonalLink(@Req() req: AuthenticatedRequest) {
+    return this.personalLink.getMine(req.user.userId);
+  }
+
+  /** Dal codice di `/p/<codice>` al profilo. Pubblico, limitato per non farsi provare tutti i codici. */
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Get("link/:code")
+  resolvePersonalLink(@Param("code") code: string) {
+    return this.personalLink.resolve(code);
   }
 
   @UseGuards(JwtAuthGuard)

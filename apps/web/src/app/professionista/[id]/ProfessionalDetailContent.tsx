@@ -21,6 +21,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { hasRecentlyReported, markReported } from "@/lib/reportedContent";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 import { useMediaQuery } from "@/lib/useMediaQuery";
+import { rememberPersonalLink } from "@/lib/personalLink";
 import { countPriceToolProfile, countProfileView, isCountingDisabled } from "@/lib/siteCounts";
 
 // Colonne fisse Oggi + 3 giorni (stessa griglia della mini-agenda di ricerca,
@@ -90,7 +91,7 @@ export function ProfessionalDetailContent({
    * il piè di pagina, che su una rete lenta saliva in cima e poi scendeva
    * (Lighthouse CLS 0,93, docs/CHANGELOG.md §400).
    */
-  query?: { modalita?: string; data?: string; salva?: string; servizio?: string; problema?: string; scelta?: string };
+  query?: { modalita?: string; data?: string; salva?: string; servizio?: string; problema?: string; scelta?: string; link?: string };
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
@@ -262,6 +263,14 @@ export function ProfessionalDetailContent({
   // `?salva=1`: il visitatore ha toccato il cuoricino senza essere entrato
   // ed è tornato qui dopo l'accesso, quindi il profilo si salva da solo
   // (docs/CHANGELOG.md §208).
+  // Arrivato dal link personale del professionista (`/p/<codice>`): la
+  // richiesta che parte da qui sarà di un cliente suo
+  // (docs/changelog/2026-11-08-canale-del-professionista.md).
+  const fromPersonalLink = !preview && query.link === "1";
+  useEffect(() => {
+    if (fromPersonalLink) rememberPersonalLink(professional.id);
+  }, [fromPersonalLink, professional.id]);
+
   const saveAfterLogin = query.salva === "1";
   useEffect(() => {
     if (!token || user?.role !== "CLIENT") return;
@@ -351,6 +360,17 @@ export function ProfessionalDetailContent({
         {/* Più vicino alla scheda del gap standard: il percorso ne è l'intestazione. */}
         {breadcrumbs ? <YStack style={{ marginTop: -8, marginBottom: -12 }}>{breadcrumbs}</YStack> : null}
         {choice.search ? <ProfileChoiceStrip search={choice.search} pro={choicePro} onToggle={choice.toggle} /> : null}
+        {/* Arrivato dal link personale: chi lo ha mandato è lui, il cliente
+            deve capire subito di essere nel posto giusto
+            (docs/changelog/2026-11-08-canale-del-professionista.md). */}
+        {fromPersonalLink ? (
+          <XStack gap="2" alignItems="center" backgroundColor={brand.cianografiaVelo} paddingVertical="3" paddingHorizontal="4" style={{ borderRadius: 10 }}>
+            <Icon name="badge-check" size={20} color={brand.cianografiaScuro} />
+            <Text color={brand.grafite} fontWeight="600" flex={1}>
+              Sei sul profilo di {professional.businessName}: scrivigli da qui.
+            </Text>
+          </XStack>
+        ) : null}
         {/* Scheda identità — richiesta esplicita dell'utente ("migliora la
             visualizzazione di un profilo pubblico"): prima nome/badge/
             rating/bio/sottotag/azioni fluttuavano direttamente sullo sfondo
