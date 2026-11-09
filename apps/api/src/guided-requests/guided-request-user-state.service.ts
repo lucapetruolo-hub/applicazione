@@ -1,9 +1,10 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import type { GuidedRequestMyState, GuidedRequestUserStateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
+import { ScheduledJob } from "../common/scheduled-job";
 
 // Un promemoria oltre questo orizzonte è più probabilmente un errore che
 // un'intenzione reale ("ricordamelo domani", non "tra un anno").
@@ -98,7 +99,7 @@ export class GuidedRequestUserStateService {
    * Il campo è azzerato prima di notificare: mai due notifiche per lo
    * stesso promemoria anche se la notify fallisse.
    */
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @ScheduledJob(CronExpression.EVERY_5_MINUTES)
   async runDueReminders(): Promise<void> {
     const due = await this.prisma.guidedRequestUserState.findMany({
       where: { remindAt: { lte: new Date() } },

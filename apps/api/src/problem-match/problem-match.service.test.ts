@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildServiceCatalog } from "@professionisti/shared";
-import { ProblemMatchService, anonymizeProblemText, openRouterBody } from "./problem-match.service";
+import { ProblemMatchService, anonymizeProblemText, cleanReason, openRouterBody } from "./problem-match.service";
 
 function fakePrisma(words: { word: string; categorySlug: string | null; outOfService: string | null }[] = []) {
   return {
@@ -133,6 +133,22 @@ describe("ProblemMatchService", () => {
     expect(prisma.problemDescription.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ text: "perdita dal rubinetto, chiamate [numero]", city: "Latina", categories: ["idraulico"] }),
     });
+  });
+});
+
+describe("cleanReason", () => {
+  it("scarta la frase con il codice del mestiere al posto del nome (E6-03)", () => {
+    expect(cleanReason("Lo scaldabagno guasto lo ripara il climatizzazione.")).toBeNull();
+    expect(cleanReason("La casa la pulisce la pulizie.")).toBeNull();
+    expect(cleanReason("Lo fa chi si occupa di tende-da-sole.")).toBeNull();
+    expect(cleanReason("Ci pensa l'elettrodomestici.")).toBeNull();
+  });
+  it("tiene le frasi scritte per le persone", () => {
+    expect(cleanReason("Lo scaldabagno guasto lo ripara il tecnico di caldaie.")).toBe("Lo scaldabagno guasto lo ripara il tecnico di caldaie.");
+    expect(cleanReason("Il rubinetto che gocciola lo sistema l'idraulico.")).toBe("Il rubinetto che gocciola lo sistema l'idraulico.");
+    expect(cleanReason("Le pulizie di casa le fa un'impresa di pulizie.")).toBe("Le pulizie di casa le fa un'impresa di pulizie.");
+    expect(cleanReason("Per i traslochi serve una ditta di traslochi.")).toBe("Per i traslochi serve una ditta di traslochi.");
+    expect(cleanReason("   ")).toBeNull();
   });
 });
 
