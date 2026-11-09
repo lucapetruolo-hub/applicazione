@@ -1,5 +1,4 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import {
   adminCan,
@@ -19,6 +18,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { loadUserSignals, personLabel } from "./user-signals";
 import { planSuspicious } from "./suspicious-archive";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const CHECK_ID = "ultimo";
 /** Stessa chiave della coda "Da fare" (admin-queue.service.ts). */
@@ -141,7 +141,7 @@ export class SuspiciousAccountsService {
     return { accounts: signals.size, notified };
   }
 
-  @Cron("0 7 * * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 7 * * *", { timeZone: "Europe/Rome" })
   async morningCheck(now: Date = new Date()): Promise<{ accounts: number; notified: number }> {
     return this.check({ notify: true }, now);
   }

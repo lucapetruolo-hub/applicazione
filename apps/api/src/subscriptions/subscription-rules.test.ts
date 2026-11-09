@@ -82,8 +82,12 @@ describe("account in pausa", () => {
     expect(pauseReason({ plan: "FREE", status: "TRIALING", trialEndsAt: future }, NOW)).toBe("CARD_NEEDED");
     expect(pauseReason({ plan: "BASE", status: "ACTIVE", trialEndsAt: future }, NOW)).toBeNull();
   });
-  it("i lavori esauriti e un pagamento non riuscito non mettono in pausa", () => {
+  it("rinnovo non pagato: visibile il primo giorno, poi in pausa (decisione di Luca del 09/11/2026)", () => {
     expect(pauseReason({ plan: "PLUS", status: "PAST_DUE", trialEndsAt: null }, NOW)).toBeNull();
+    const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 60 * 60 * 1000);
+    expect(pauseReason({ plan: "PLUS", status: "PAST_DUE", trialEndsAt: null, pastDueSince: hoursAgo(23) }, NOW)).toBeNull();
+    expect(pauseReason({ plan: "PLUS", status: "PAST_DUE", trialEndsAt: null, pastDueSince: hoursAgo(24) }, NOW)).toBe("PAYMENT_FAILED");
+    expect(pauseReason({ plan: "PLUS", status: "ACTIVE", trialEndsAt: null, pastDueSince: hoursAgo(48) }, NOW)).toBeNull();
   });
 });
 

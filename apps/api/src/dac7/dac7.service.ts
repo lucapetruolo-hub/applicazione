@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException, type OnModuleInit } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import { dac7AnnualDeadline, dac7Entries, maskIban, type Dac7YearSummary, type PlatformDac7SettingsInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
@@ -39,6 +39,7 @@ function emptyAggregate(): Dac7Aggregate {
   return { considerationEurCents: 0, directConsiderationEurCents: 0, onlineConsiderationEurCents: 0, numberOfTransactions: 0, feesWithheldEurCents: 0 };
 }
 import { buildDac7Xml, type Dac7XmlPayload, type Dac7XmlQuarterAmounts, type Dac7XmlSeller } from "./dac7-xml.util";
+import { ScheduledJob } from "../common/scheduled-job";
 
 /**
  * DAC7 — rendicontazione fiscale UE per piattaforme digitali che facilitano
@@ -252,7 +253,7 @@ export class Dac7Service implements OnModuleInit {
   }
 
   /** Tiene aggiornato il trimestre e l'anno correnti — mai i periodi passati (quelli si aggiornano solo per correzione esplicita, vedi correctPeriod). */
-  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  @ScheduledJob(CronExpression.EVERY_DAY_AT_1AM)
   async runDailyAggregation() {
     const now = new Date();
     const { year, quarter } = romeYearQuarter(now);
@@ -648,7 +649,7 @@ export class Dac7Service implements OnModuleInit {
    * avvisa la Finanza una volta; la correzione resta un'azione dell'admin
    * (docs/CHANGELOG.md §247).
    */
-  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  @ScheduledJob(CronExpression.EVERY_DAY_AT_2AM)
   async checkSubmittedYears(): Promise<number[]> {
     const rule = await this.getRule();
     const periods = await this.prisma.dac7ReportingPeriod.findMany({
@@ -684,7 +685,7 @@ export class Dac7Service implements OnModuleInit {
    * nell'anno ma non ha ancora i dati fiscali o l'IBAN dei pagamenti online,
    * così li sistema prima della comunicazione di gennaio.
    */
-  @Cron("0 9 1 11 *")
+  @ScheduledJob("0 9 1 11 *")
   async sendYearEndReminders(now: Date = new Date()): Promise<number> {
     const { year } = romeYearQuarter(now);
     const period = await this.aggregateYear(year);
@@ -713,7 +714,7 @@ export class Dac7Service implements OnModuleInit {
    * ancora segnata come inviata e c'è almeno un professionista con compensi.
    * Scadenza: 31 gennaio, per la comunicazione e per l'avviso ai professionisti.
    */
-  @Cron("0 9 10,20,27,30 1 *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 9 10,20,27,30 1 *", { timeZone: "Europe/Rome" })
   async remindAnnualDeadline(now: Date = new Date()): Promise<boolean> {
     const year = romeYearQuarter(now).year - 1;
     const period = await this.prisma.dac7ReportingPeriod.findFirst({ where: { year, quarter: null }, select: { id: true, status: true } });

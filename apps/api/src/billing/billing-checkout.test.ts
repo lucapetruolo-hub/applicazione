@@ -18,7 +18,8 @@ function buildService(subscription: Record<string, unknown>) {
     subscription: { findUnique: vi.fn().mockResolvedValue(subscription) },
   };
   const stripe = {
-    checkout: { sessions: { create: vi.fn().mockResolvedValue({ url: "https://checkout.stripe.com/s" }) } },
+    checkout: { sessions: { create: vi.fn().mockResolvedValue({ url: "https://checkout.stripe.com/s" }), list: vi.fn().mockResolvedValue({ data: [] }), expire: vi.fn().mockResolvedValue({}) } },
+    subscriptions: { retrieve: vi.fn() },
     coupons: { retrieve: vi.fn().mockResolvedValue({ id: "mese-base-gratis-1900" }), create: vi.fn() },
   };
   const service = new BillingService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never);
@@ -93,5 +94,58 @@ describe("BillingService.createSubscriptionCheckout e mesi gratis", () => {
     const params = stripe.checkout.sessions.create.mock.calls[0]![0];
     expect(params.subscription_data.trial_end).toBe(Math.floor((NOW.getTime() + 60 * DAY) / 1000));
     expect(params.discounts).toBeUndefined();
+  });
+
+  it("solo carta, qualunque metodo sia acceso nella Dashboard di Stripe (E3-07)", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    process.env.LAUNCH_DATE = "2026-11-02";
+    setup();
+    const { service, stripe } = buildService(trialing(new Date(NOW.getTime() + 50 * DAY)));
+
+    await service.createSubscriptionCheckout("user-1", "BASE");
+
+    expect(stripe.checkout.sessions.create.mock.calls[0]![0].payment_method_types).toEqual(["card"]);
+  });
+
+  it("ultimo giorno dei mesi gratis: la prova dura 48 ore invece di far pagare subito (E3-08)", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    process.env.LAUNCH_DATE = "2026-11-02";
+    setup();
+    const { service, stripe } = buildService(trialing(new Date(NOW.getTime() + 20 * 60 * 60 * 1000)));
+
+    await service.createSubscriptionCheckout("user-1", "BASE");
+
+    const params = stripe.checkout.sessions.create.mock.calls[0]![0];
+    expect(params.subscription_data.trial_end).toBe(Math.floor((NOW.getTime() + 48 * 60 * 60 * 1000 + 5 * 60 * 1000) / 1000));
+    expect(params.custom_text.submit.message).toContain("Oggi non paghi nulla");
+  });
+
+  it("da una seconda scheda riapre la pagina già aperta per lo stesso livello (E3-01)", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    process.env.LAUNCH_DATE = "2026-11-02";
+    setup();
+    const { service, stripe } = buildService(trialing(new Date(NOW.getTime() + 50 * DAY)));
+    stripe.checkout.sessions.list.mockResolvedValue({
+      data: [
+        { id: "cs_plus", mode: "subscription", status: "open", url: "https://checkout.stripe.com/plus", metadata: { kind: "subscription", plan: "PLUS" } },
+        { id: "cs_base", mode: "subscription", status: "open", url: "https://checkout.stripe.com/base", metadata: { kind: "subscription", plan: "BASE" } },
+      ],
+    });
+
+    await expect(service.createSubscriptionCheckout("user-1", "BASE")).resolves.toEqual({ url: "https://checkout.stripe.com/base" });
+    expect(stripe.checkout.sessions.expire).toHaveBeenCalledWith("cs_plus");
+    expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+  });
+
+  it("pagina appena completata e abbonamento non ancora arrivato: nessuna pagina nuova (E3-01)", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    process.env.LAUNCH_DATE = "2026-11-02";
+    setup();
+    const { service, stripe } = buildService(trialing(new Date(NOW.getTime() + 50 * DAY)));
+    stripe.checkout.sessions.list.mockResolvedValue({ data: [{ id: "cs_1", mode: "subscription", status: "complete", subscription: "sub_new", metadata: { kind: "subscription", plan: "BASE" } }] });
+    stripe.subscriptions.retrieve.mockResolvedValue({ id: "sub_new", status: "trialing" });
+
+    await expect(service.createSubscriptionCheckout("user-1", "BASE")).rejects.toThrow("appena attivato");
+    expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
   });
 });

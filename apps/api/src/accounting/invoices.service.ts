@@ -1,5 +1,4 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import type Stripe from "stripe";
 import type { Invoice, Prisma, PrismaClient } from "@professionisti/database";
 import {
@@ -55,6 +54,7 @@ import {
 import { sdiProviderFromEnv, type SdiProvider } from "./sdi-provider";
 import { stuckSdiWhere } from "./sdi-stuck";
 import { COUNTED_USER } from "../site-counts/counted";
+import { ScheduledJob } from "../common/scheduled-job";
 
 /** Lo SdI accetta una fattura entro 12 giorni dalla sua data: dopo non si riprova da soli. */
 const SDI_RETRY_DAYS = 12;
@@ -73,8 +73,6 @@ const TEST_PROFILE: Prisma.ProfessionalProfileWhereInput = { OR: [{ isDemo: true
 
 type MonthlyRun = {
   issued: number;
-  /** Professionisti a cui è partita una fattura (o nota di credito) in questo giro. */
-  issuedFor: string[];
   /** Professionisti con residenza estera e trattenute del mese: fattura a mano. */
   abroad: string[];
 };
@@ -346,7 +344,7 @@ export class InvoicesService {
   }
 
   private async runMonthlyFeeInvoices(month: string): Promise<MonthlyRun> {
-    const result: MonthlyRun = { issued: 0, issuedFor: [], abroad: [] };
+    const result: MonthlyRun = { issued: 0, abroad: [] };
     const { start, end } = romeMonthRange(month);
     const issuer = await this.activeIssuer(new Date(end.getTime() - 1));
     if (!issuer) return result;
@@ -401,7 +399,6 @@ export class InvoicesService {
         });
         if (invoice) {
           result.issued += 1;
-          result.issuedFor.push(professionalProfileId);
         }
       } catch (err) {
         this.logger.error(`Fattura delle trattenute di ${month} non emessa (${professionalProfileId}): ${err instanceof Error ? err.message : String(err)}`);
@@ -575,7 +572,7 @@ export class InvoicesService {
   // --- SdI ------------------------------------------------------------------
 
   /** Ogni ora: riprova gli invii non riusciti (entro i 12 giorni) e legge gli esiti. */
-  @Cron("20 * * * *")
+  @ScheduledJob("20 * * * *")
   async syncSdi(now: Date = new Date()): Promise<void> {
     if (!this.sdi) return;
     const pending = await this.prisma.invoice.findMany({
@@ -612,7 +609,7 @@ export class InvoicesService {
    * (docs/changelog/2026-11-02-admin-protezioni.md). Solo con l'invio allo SdI
    * acceso: senza, l'XML si scarica e si manda a mano.
    */
-  @Cron("0 8 * * 1", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 8 * * 1", { timeZone: "Europe/Rome" })
   async remindStuckSdi(now: Date = new Date()): Promise<number> {
     if (!this.sdi) return 0;
     const stuck = await this.prisma.invoice.findMany({ where: stuckSdiWhere(now), select: { series: true, year: true, number: true, sdiStatus: true }, orderBy: { issuedAt: "asc" }, take: 20 });
@@ -679,7 +676,7 @@ export class InvoicesService {
   // --- Giro del mese ---------------------------------------------------------
 
   /** Il 1° del mese alle 7: fatture delle trattenute del mese prima e riepilogo ai professionisti. */
-  @Cron("0 7 1 * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 7 1 * *", { timeZone: "Europe/Rome" })
   async runMonthly(now: Date = new Date()): Promise<void> {
     const month = previousMonth(romeMonthOf(now));
     const run = await this.runMonthlyFeeInvoices(month);
@@ -692,16 +689,17 @@ export class InvoicesService {
    * Recupero del giro del 1° (collaudo dell'08/11/2026, E5-02): dal 2 al 15
    * del mese, ogni mattina, emette le fatture del mese prima che mancano (un
    * riavvio alle 7 del 1°, un errore su un professionista) e manda il
-   * riepilogo a chi le riceve ora. La fattura differita va emessa entro il 15
-   * (art. 21 c. 4 DPR 633/72). Il 10, se ne manca ancora qualcuna, avvisa la
+   * riepilogo del mese (una volta sola per mese, anche se il giro del 1° non
+   * è partito per niente). La fattura differita va emessa entro il 15 (art.
+   * 21 c. 4 DPR 633/72). Il 10, se ne manca ancora qualcuna, avvisa la
    * Finanza. Non crea doppioni: la chiave del documento è per mese.
    */
-  @Cron("30 7 2-15 * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("30 7 2-15 * *", { timeZone: "Europe/Rome" })
   async recoverMonthly(now: Date = new Date()): Promise<number> {
     const month = previousMonth(romeMonthOf(now));
     const run = await this.runMonthlyFeeInvoices(month);
     if (run.issued > 0) {
-      await this.sendMonthlyDocuments(month, new Set(run.issuedFor));
+      await this.sendMonthlyDocuments(month);
       this.logger.warn(`Fatture delle trattenute di ${month} recuperate: ${run.issued}`);
     }
     if (romeDayIso(now).slice(8, 10) === "10") await this.alertUnbilled(month);
@@ -751,7 +749,7 @@ export class InvoicesService {
    * fatture dell'abbonamento e i mesi gratuiti a 0 € (decisione dell'utente
    * del 27/10/2026: non è una fattura, solo un riepilogo).
    */
-  async sendMonthlyDocuments(month: string, onlyFor?: Set<string>): Promise<number> {
+  async sendMonthlyDocuments(month: string): Promise<number> {
     const { start, end } = romeMonthRange(month);
     if (!(await this.activeIssuer(new Date(end.getTime() - 1)))) return 0;
     const invoices = await this.prisma.invoice.findMany({
@@ -779,9 +777,15 @@ export class InvoicesService {
     }
     let sent = 0;
     for (const [professionalProfileId, own] of lines) {
-      if (onlyFor && !onlyFor.has(professionalProfileId)) continue;
       const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { userId: true, user: { select: { deletedAt: true } } } });
       if (!profile || profile.user.deletedAt) continue;
+      // Una volta sola per mese, anche se il giro ripartisse
+      // (docs/changelog/2026-11-08-infrastruttura-lancio.md).
+      const already = await this.prisma.notification.findFirst({
+        where: { userId: profile.userId, type: "MONTHLY_DOCUMENTS_READY", payload: { path: ["month"], equals: month } },
+        select: { id: true },
+      });
+      if (already) continue;
       await this.notificationsService.notify(profile.userId, "MONTHLY_DOCUMENTS_READY", {
         month,
         monthLabel: accountingMonthLabel(month),
@@ -913,12 +917,19 @@ export class InvoicesService {
     return this.invoiceView(invoice);
   }
 
-  /** Emette a mano le fatture di un mese (se il giro del 1° non è partito). Mai doppie. */
-  async adminRunMonth(month: string, now: Date = new Date()): Promise<{ issued: number; late: boolean; abroad: number }> {
+  /**
+   * Rifà a mano il giro del 1° di un mese concluso, se è saltato: fatture delle
+   * trattenute e riepilogo ai professionisti. Mai doppi: le fatture hanno la
+   * loro chiave, il riepilogo si manda una volta per mese
+   * (docs/changelog/2026-11-08-infrastruttura-lancio.md). Gli estratti ai
+   * commercialisti li aggiunge il controller (StatementsService).
+   */
+  async adminRunMonth(month: string, now: Date = new Date()): Promise<{ issued: number; notified: number; late: boolean; abroad: number }> {
     if (!isAccountingMonth(month) || month >= romeMonthOf(now)) throw new BadRequestException("Scegli un mese già concluso.");
     const run = await this.runMonthlyFeeInvoices(month);
-    if (run.issued > 0) await this.sendMonthlyDocuments(month, new Set(run.issuedFor));
-    return { issued: run.issued, late: monthlyInvoiceLate(month, now), abroad: run.abroad.length };
+    const notified = await this.sendMonthlyDocuments(month);
+    // Oltre il 15 del mese dopo la fattura è in ritardo (E5-02); all'estero va fatta a mano (E5-04).
+    return { issued: run.issued, notified, late: monthlyInvoiceLate(month, now), abroad: run.abroad.length };
   }
 
   /**

@@ -123,9 +123,9 @@ export function AdminInvoicesSection({ token }: { token: string }) {
     setPending(true);
     setError(null);
     try {
-      const { issued, abroad } = await apiClient.adminRunInvoiceMonth(token, month);
+      const { issued, notified, statements, abroad } = await apiClient.adminRunInvoiceMonth(token, month);
       const abroadNote = abroad > 0 ? ` ${abroad === 1 ? "Un professionista ha" : `${abroad} professionisti hanno`} la residenza fiscale all'estero: la fattura va fatta a mano.` : "";
-      setMessage(`${issued === 0 ? "Nessuna fattura nuova per quel mese." : issued === 1 ? "1 fattura emessa." : `${issued} fatture emesse.`}${abroadNote}`);
+      setMessage(`${monthRerunMessage(issued, notified, statements)}${abroadNote}`);
       setConfirm(null);
       load();
     } finally {
@@ -231,17 +231,17 @@ export function AdminInvoicesSection({ token }: { token: string }) {
 
       <XStack gap="3" alignItems="flex-end" flexWrap="wrap">
         <YStack width={200}>
-          <Field label="Mese (AAAA-MM)" aria-label="Mese delle trattenute da fatturare" value={month} onChangeText={setMonth} />
+          <Field label="Mese (AAAA-MM)" aria-label="Mese del giro da rifare" value={month} onChangeText={setMonth} />
         </YStack>
         <Button variant="secondary" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => setConfirm({ kind: "run" })}>
-          Emetti le fatture del mese
+          Rifai il giro del mese
         </Button>
         <Button variant="secondary" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => void checkReconciliation()}>
           Controlla la quadratura
         </Button>
       </XStack>
       <Text fontSize={13} color={brand.grafite70}>
-        Il giro parte da solo il 1° del mese alle 7; dal 2 al 15 ogni mattina recupera le fatture mancate e il 10 avvisa se ne manca ancora qualcuna. Rilanciarlo non crea fatture doppie. La quadratura arriva anche in notifica il 1° del mese.
+        Il giro parte da solo il 1° del mese: fatture delle trattenute e riepilogo ai professionisti alle 7, estratti ai commercialisti alle 8. Dal 2 al 15 ogni mattina recupera le fatture mancate e il 10 avvisa se ne manca ancora qualcuna. Se è saltato, rifallo da qui: quello già fatto non riparte. La quadratura arriva anche in notifica il 1° del mese.
       </Text>
       {reconciliation ? <ReconciliationBox data={reconciliation} /> : null}
 
@@ -298,13 +298,13 @@ export function AdminInvoicesSection({ token }: { token: string }) {
       )}
       {confirm ? (
         <AdminConfirmModal
-          title={confirm.kind === "run" ? "Emetti le fatture del mese" : settings?.sdiConfigured ? "Rimanda allo SdI" : "Rigenera la fattura"}
+          title={confirm.kind === "run" ? "Rifai il giro del mese" : settings?.sdiConfigured ? "Rimanda allo SdI" : "Rigenera la fattura"}
           description={
             confirm.kind === "run"
-              ? `${monthlyInvoiceLate(month) ? `Attenzione: la fattura di ${month} andava emessa entro il 15 del mese dopo. Uscirà con la data dell'ultimo giorno di ${month} e un numero successivo alle fatture già emesse: sentite prima il commercialista. ` : ""}Emette le fatture delle trattenute di ${month} a tutti i professionisti${settings?.sdiConfigured ? " e le manda allo SdI" : ""}. Una fattura emessa non si cancella: si corregge solo con una nota di credito. Non crea doppioni.`
+              ? `${monthlyInvoiceLate(month) ? `Attenzione: la fattura di ${month} andava emessa entro il 15 del mese dopo. Uscirà con la data dell'ultimo giorno di ${month} e un numero successivo alle fatture già emesse: sentite prima il commercialista. ` : ""}Per ${month}: emette le fatture delle trattenute${settings?.sdiConfigured ? " e le manda allo SdI" : ""}, manda il riepilogo ai professionisti e l'estratto ai commercialisti di chi l'ha chiesto. Solo quello che manca: niente parte due volte. Una fattura emessa non si cancella, si corregge con una nota di credito.`
               : `${settings?.sdiConfigured ? "Manda di nuovo allo SdI la fattura" : "Rifà l'XML della fattura"} ${confirm.number} con i dati fiscali di oggi del professionista.`
           }
-          confirmLabel={confirm.kind === "run" ? "Emetti le fatture" : settings?.sdiConfigured ? "Rimanda" : "Rigenera"}
+          confirmLabel={confirm.kind === "run" ? "Rifai il giro" : settings?.sdiConfigured ? "Rimanda" : "Rigenera"}
           onClose={() => setConfirm(null)}
           onConfirm={() => (confirm.kind === "run" ? runMonth() : resend(confirm.id))}
         />
@@ -379,4 +379,15 @@ function ReconciliationBox({ data }: { data: FeeReconciliation }) {
       )}
     </YStack>
   );
+}
+
+/** Esito di "Rifai il giro del mese" in una riga. */
+function monthRerunMessage(issued: number, notified: number, statements: number): string {
+  if (issued + notified + statements === 0) return "Era già tutto fatto: niente di nuovo per quel mese.";
+  const parts = [
+    issued > 0 ? `${issued} ${issued === 1 ? "fattura emessa" : "fatture emesse"}` : null,
+    notified > 0 ? `${notified} ${notified === 1 ? "riepilogo mandato" : "riepiloghi mandati"}` : null,
+    statements > 0 ? `${statements} ${statements === 1 ? "estratto mandato" : "estratti mandati"} ai commercialisti` : null,
+  ].filter(Boolean);
+  return `${parts.join(", ")}.`;
 }
