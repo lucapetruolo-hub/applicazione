@@ -88,6 +88,18 @@ produzione):
    si può dare (Stripe acceso e `LAUNCH_DATE` fissata), e la pagina lo dice
    con il pulsante "Attiva i mesi gratis". Dopo il lancio la pausa
    `CARD_NEEDED` copre già il caso.
+5ter. **Dashboard Stripe dell'abbonamento** (controllo dell'8/11/2026,
+   docs/changelog/2026-11-08-abbonamento-chiusure-e-rinnovi.md):
+   Impostazioni → Fatturazione → Abbonamenti ed email → "Gestisci pagamenti
+   non riusciti": Smart Retries accesi, entro 2 settimane, e alla fine
+   "Annulla l'abbonamento"; email di Stripe per il pagamento non riuscito
+   accese. Il sito chiude comunque l'abbonamento dopo 14 giorni di rinnovo
+   non pagato, ma è meglio che lo faccia Stripe. Metodi di pagamento: solo
+   carta (il Checkout dell'abbonamento chiede già solo la carta). Webhook
+   creati con la versione API più recente. Sul primo endpoint anche
+   l'evento `customer.updated`: con una carta cambiata il rinnovo non pagato
+   si riprova subito (chi non paga è in pausa dal giorno dopo, decisione di
+   Luca del 9/11/2026).
 5. Chiavi Stripe Checkout reali (già segnalate in §9 sopra:
    `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PRICE_BASE`/
    `STRIPE_PRICE_PLUS`/`STRIPE_PRICE_PRO`, con gli eventi webhook

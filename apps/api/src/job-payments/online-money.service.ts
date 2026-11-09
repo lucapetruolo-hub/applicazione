@@ -666,7 +666,8 @@ export class OnlineMoneyService {
     const claimed = await this.prisma.jobPayment.updateMany({
       where: { id: jp.id, ...(part === "deposit" ? { stripePaymentIntentId: null } : { balancePaymentIntentId: null }) },
       data: {
-        paidEurCents: paid,
+        // Somma sul database, non sul valore letto prima (collaudo dell'8/11/2026, E3-11).
+        paidEurCents: { increment: amount },
         // Il costo della carta è nostro, dentro la trattenuta unica (§378).
         cardFeeEurCents: { increment: charge.fee },
         onlineStage: stage,
@@ -674,7 +675,7 @@ export class OnlineMoneyService {
         ...(charge.destination
           ? {
               stripeDestinationAccountId: charge.destination,
-              applicationFeeEurCents: jp.applicationFeeEurCents + charge.applicationFeeAmount,
+              applicationFeeEurCents: { increment: charge.applicationFeeAmount },
               ...(charge.direct ? { stripeDirectCharge: true } : {}),
             }
           : {}),

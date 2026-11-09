@@ -159,7 +159,7 @@ describe("pagamenti sul conto del professionista", () => {
     expect(stripe.paymentIntents.retrieve).toHaveBeenCalledWith("pi_dep", { expand: ["latest_charge.balance_transaction"] }, { stripeAccount: "acct_1" });
     // Carta europea: 1,5% + 0,25 € = 1,75 €, pagati da noi.
     expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ stripeDestinationAccountId: "acct_1", stripeDirectCharge: true, applicationFeeEurCents: 854, cardFeeEurCents: { increment: 175 } }) }),
+      expect.objectContaining({ data: expect.objectContaining({ stripeDestinationAccountId: "acct_1", stripeDirectCharge: true, applicationFeeEurCents: { increment: 854 }, cardFeeEurCents: { increment: 175 } }) }),
     );
     expect(stripe.applicationFees.createRefund).not.toHaveBeenCalled();
     expect(prisma.platformFeeEntry.upsert).toHaveBeenCalledWith(expect.objectContaining({ where: { dedupeKey: "HOLD:pi_dep" }, create: expect.objectContaining({ grossEurCents: 854 }) }));
