@@ -24,6 +24,8 @@ import {
   type AdminQueueClaimInput,
   adminModerateSchema,
   type AdminModerateInput,
+  invitePartnerCreateSchema,
+  type InvitePartnerCreateInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
@@ -33,6 +35,10 @@ import { SiteStatsService } from "./site-stats.service";
 import { AdminQueueService } from "./admin-queue.service";
 import { SuspiciousAccountsService } from "./suspicious-accounts.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
+import { InvitePartnersService } from "./invite-partners.service";
+import { pdfResponse, renderDocumentPdf } from "../accounting/document-pdf";
+import { pdfFileName } from "../accounting/document-pdf-models";
+import { AuditLogService } from "../audit-log/audit-log.service";
 
 @UseGuards(JwtAuthGuard, AdminGuard)
 @Controller("admin")
@@ -43,7 +49,40 @@ export class AdminController {
     private readonly siteStatsService: SiteStatsService,
     private readonly suspiciousAccountsService: SuspiciousAccountsService,
     private readonly adminQueueService: AdminQueueService,
+    private readonly invitePartners: InvitePartnersService,
+    private readonly auditLogService: AuditLogService,
   ) {}
+
+  /** Link d'invito dei partner, con gli iscritti arrivati da ciascuno (docs/changelog/2026-11-09-passaparola.md). */
+  @RequireAdminScope("ANY")
+  @Get("invite-partners")
+  invitePartnerList() {
+    return this.invitePartners.list();
+  }
+
+  @RequireAdminScope("SUPER")
+  @Post("invite-partners")
+  async createInvitePartner(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(invitePartnerCreateSchema)) body: InvitePartnerCreateInput) {
+    const partner = await this.invitePartners.create(body);
+    await this.auditLogService.record({ entityType: "InvitePartner", entityId: partner.id, fieldName: "create", newValue: { name: partner.name, code: partner.code }, changedByUserId: req.user.userId });
+    return partner;
+  }
+
+  /** Scheda in PDF da stampare o mandare al partner, con il suo link e il QR. */
+  @RequireAdminScope("ANY")
+  @Get("invite-partners/:id/sheet.pdf")
+  async invitePartnerSheet(@Param("id") id: string) {
+    const { model, fileName } = await this.invitePartners.sheet(id);
+    return pdfResponse(await renderDocumentPdf(model), pdfFileName(fileName));
+  }
+
+  @RequireAdminScope("SUPER")
+  @Post("invite-partners/:id/archive")
+  @HttpCode(204)
+  async archiveInvitePartner(@Req() req: AuthenticatedRequest, @Param("id") id: string): Promise<void> {
+    await this.invitePartners.archive(id);
+    await this.auditLogService.record({ entityType: "InvitePartner", entityId: id, fieldName: "archivedAt", newValue: true, changedByUserId: req.user.userId });
+  }
 
   /** Coda "Da fare": ogni tipo di caso solo a chi ha il ruolo per deciderlo (docs/changelog/2026-10-30-admin-riordino.md). */
   @RequireAdminScope("ANY")

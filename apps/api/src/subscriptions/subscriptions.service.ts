@@ -390,7 +390,7 @@ export class SubscriptionsService {
    * corso, per la pagina "Il tuo link" e Abbonamento: i lavori qui non
    * contano nel limite.
    */
-  async personalLinkUsage(professionalProfileId: string, now = new Date()): Promise<{ requests: number; jobs: number }> {
+  async personalLinkUsage(professionalProfileId: string, now = new Date()): Promise<{ requests: number; jobs: number; period: { start: Date; end: Date } }> {
     const row = await this.prisma.subscription.findUnique({ where: { professionalProfileId } });
     const period = usagePeriod(row, now);
     const createdAt = { gte: period.start, lt: period.end };
@@ -400,7 +400,7 @@ export class SubscriptionsService {
         where: { professionalProfileId, createdAt, ...OWN_CLIENT_BOOKING, NOT: { status: "CANCELED", canceledBy: "CLIENT" } },
       }),
     ]);
-    return { requests, jobs };
+    return { requests, jobs, period: { start: period.start, end: period.end } };
   }
 
   /** Dopo ogni nuovo lavoro accettato: avviso vicino o al limite, una volta al mese. Mai un errore verso chi chiama. */

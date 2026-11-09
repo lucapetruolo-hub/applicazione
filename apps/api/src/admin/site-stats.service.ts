@@ -136,7 +136,7 @@ export class SiteStatsService {
       this.prisma.unknownJobSearchDay.groupBy({ by: ["termHash"], where: { day: { gte: dayFromLaunch(dayStart(since90)) } }, _count: { _all: true }, _sum: { count: true } }),
       this.prisma.user.findMany({
         where: { role: "PROFESSIONAL", deletedAt: null, createdAt: { gte: signupsSince90 }, ...COUNTED_USER },
-        select: { signupSource: true, _count: { select: { profileInvites: true } } },
+        select: { signupSource: true, invitedByProfessionalId: true, invitedByPartnerId: true, _count: { select: { profileInvites: true } } },
       }),
       this.prisma.churnReasonDay.groupBy({ by: ["kind", "reason"], where: { day: { gte: dayFromLaunch(dayStart(since90)) } }, _sum: { count: true } }),
       this.prisma.siteNote.findMany({ where: { day: { gte: dayStart(weeksStart) } }, orderBy: { day: "asc" } }),
@@ -326,10 +326,12 @@ export class SiteStatsService {
     );
     const sources = new Map<SignupSourceKey, number>();
     for (const u of signups) {
-      const key: SignupSourceKey = u._count.profileInvites > 0 ? "INVITE" : (u.signupSource ?? "unknown");
+      // Un invito (operatore, collega, partner) dice di più della provenienza della visita.
+      const key: SignupSourceKey =
+        u._count.profileInvites > 0 ? "INVITE" : u.invitedByPartnerId ? "PARTNER" : u.invitedByProfessionalId ? "COLLEAGUE" : (u.signupSource ?? "unknown");
       sources.set(key, (sources.get(key) ?? 0) + 1);
     }
-    const signupSources = (["INVITE", ...TRAFFIC_SOURCES, "unknown"] as SignupSourceKey[]).map((source) => ({ source, count: sources.get(source) ?? 0 }));
+    const signupSources = (["INVITE", "COLLEAGUE", "PARTNER", ...TRAFFIC_SOURCES, "unknown"] as SignupSourceKey[]).map((source) => ({ source, count: sources.get(source) ?? 0 }));
     const churnReasons = churnDays
       .filter((c) => (CHURN_KINDS as readonly string[]).includes(c.kind) && (CHURN_REASONS as readonly string[]).includes(c.reason))
       .map((c) => ({ kind: c.kind as ChurnKind, reason: c.reason as ChurnReason, count: c._sum.count ?? 0 }))

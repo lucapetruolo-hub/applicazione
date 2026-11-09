@@ -1,0 +1,108 @@
+/*
+ * Parte verde della home in HTML semplice, stessi valori che Tamagui scriveva
+ * (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md). La barra di
+ * ricerca (SearchBar di packages/ui) resta com'è.
+ */
+.wrap {
+  position: relative;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding-top: var(--t-space-6);
+  padding-bottom: var(--t-space-5);
+  padding-inline: var(--t-space-4);
+  background-color: transparent;
+}
+
+.panel {
+  position: relative;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 1160px;
+  padding-block: var(--t-space-8);
+  padding-inline: var(--t-space-5);
+  border-radius: 40px;
+  background-color: var(--c-cianografia);
+}
+
+.content {
+  position: relative;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 720px;
+  gap: var(--t-space-4);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--f-family);
+  font-size: 38px;
+  line-height: 42px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  text-align: center;
+  color: white;
+}
+
+@media (min-width: 801px) {
+  .title {
+    font-size: 54px;
+    line-height: 56px;
+  }
+}
+
+.lead {
+  max-width: 560px;
+  font-size: var(--f-size-5);
+  text-align: center;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.search {
+  position: relative;
+  flex-direction: column;
+  width: 100%;
+  margin-top: var(--t-space-4);
+}
+
+.status {
+  margin-top: var(--t-space-2);
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.urgent {
+  position: relative;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 560px;
+  gap: var(--t-space-3);
+  margin-top: var(--t-space-3);
+}
+
+.urgentRow {
+  position: relative;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  gap: var(--t-space-3);
+}
+
+.rule {
+  position: relative;
+  flex-direction: column;
+  flex: 1 1 auto;
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.urgentLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+}

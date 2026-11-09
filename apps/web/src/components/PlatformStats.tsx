@@ -1,7 +1,7 @@
 "use client";
 
-import { Text, XStack, YStack, brand } from "@professionisti/ui";
 import { useCountUp } from "./useCountUp";
+import styles from "./PlatformStats.module.css";
 
 /**
  * "Social proof" richiesta esplicitamente dall'utente ("Utenti entrati
@@ -26,25 +26,17 @@ export function PlatformStats({ stats }: { stats: { totalUsers: number; totalPro
   if (stats.totalUsers < 10) return null;
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="5" paddingHorizontal="4">
-      <XStack gap="7" flexWrap="wrap" justifyContent="center" alignItems="center">
-        <YStack ref={attachUsers} alignItems="center" gap={2}>
-          <Text fontFamily="heading" fontWeight="700" fontSize={28} color={brand.grafite} style={{ fontVariantNumeric: "tabular-nums" }}>
-            {usersValue.toLocaleString("it-IT")}
-          </Text>
-          <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
-            Utenti entrati nella piattaforma
-          </Text>
-        </YStack>
-        <YStack ref={attachProfessionals} alignItems="center" gap={2}>
-          <Text fontFamily="heading" fontWeight="700" fontSize={28} color={brand.grafite} style={{ fontVariantNumeric: "tabular-nums" }}>
-            {professionalsValue.toLocaleString("it-IT")}
-          </Text>
-          <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
-            Professionisti entrati nella piattaforma
-          </Text>
-        </YStack>
-      </XStack>
-    </YStack>
+    <div className={`is_View ${styles.wrap}`}>
+      <div className={`is_View ${styles.row}`}>
+        <div ref={attachUsers} className={`is_View ${styles.stat}`}>
+          <span className={`is_Text font_heading ${styles.number}`}>{usersValue.toLocaleString("it-IT")}</span>
+          <span className={`is_Text ${styles.label}`}>Utenti entrati nella piattaforma</span>
+        </div>
+        <div ref={attachProfessionals} className={`is_View ${styles.stat}`}>
+          <span className={`is_Text font_heading ${styles.number}`}>{professionalsValue.toLocaleString("it-IT")}</span>
+          <span className={`is_Text ${styles.label}`}>Professionisti entrati nella piattaforma</span>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -1,0 +1,7 @@
+/* Contenitore della home in HTML semplice (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md). */
+.page {
+  position: relative;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}

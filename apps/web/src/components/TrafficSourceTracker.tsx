@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { trafficSourceFromReferrer } from "@professionisti/shared";
+import { INVITE_PARAM, isInviteCode, trafficSourceFromReferrer } from "@professionisti/shared";
 import { TRAFFIC_SOURCE_STORAGE_KEY } from "@/lib/storedTrafficSource";
+import { INVITE_CODE_STORAGE_KEY } from "@/lib/storedInviteCode";
 
 export { TRAFFIC_SOURCE_STORAGE_KEY };
 
@@ -14,6 +15,14 @@ export { TRAFFIC_SOURCE_STORAGE_KEY };
  */
 export function TrafficSourceTracker() {
   useEffect(() => {
+    // Link d'invito di un collega o di un partner (docs/changelog/2026-11-09-passaparola.md):
+    // vale l'ultimo aperto, fino alla chiusura della scheda.
+    try {
+      const invite = new URLSearchParams(window.location.search).get(INVITE_PARAM)?.trim().toLowerCase();
+      if (invite && isInviteCode(invite)) window.sessionStorage.setItem(INVITE_CODE_STORAGE_KEY, invite);
+    } catch {
+      // sessionStorage non disponibile: l'iscrizione parte senza invito.
+    }
     try {
       if (window.sessionStorage.getItem(TRAFFIC_SOURCE_STORAGE_KEY)) return;
       window.sessionStorage.setItem(

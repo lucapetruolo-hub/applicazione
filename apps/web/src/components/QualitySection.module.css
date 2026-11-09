@@ -1,0 +1,63 @@
+/*
+ * "La trasparenza che non trovi in giro" in HTML semplice, stessi valori che
+ * Tamagui scriveva (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md).
+ * Da 1021 px (gtMd di Tamagui) i punti stanno su due colonne.
+ */
+.panel {
+  position: relative;
+  flex-direction: column;
+  width: 100%;
+  gap: var(--t-space-4);
+  padding: 20px;
+  border: 1px solid var(--c-filetto);
+  border-radius: 20px;
+  background-color: var(--c-calce);
+  box-shadow: 0 6px 24px rgba(43, 32, 19, 0.06);
+}
+
+.point {
+  position: relative;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--t-space-3);
+}
+
+.check {
+  position: relative;
+  flex-direction: column;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-top: 1px;
+  border-radius: 13px;
+  background-color: var(--c-cianografiaVelo);
+}
+
+.text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--c-grafite70);
+}
+
+.title {
+  font-family: var(--f-family);
+  font-weight: 700;
+  color: var(--c-grafite);
+}
+
+@media (min-width: 1021px) {
+  .panel {
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 32px;
+  }
+
+  .point {
+    flex-basis: 48%;
+    flex-grow: 0;
+  }
+}

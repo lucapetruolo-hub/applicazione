@@ -22,9 +22,14 @@ import {
 import { PRISMA } from "../prisma/prisma.module";
 import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { quoteExecutor } from "../guided-requests/guided-requests.service";
-import { EMAIL_BRAND } from "../email/email-brand";
+import { EMAIL_BRAND, frontendUrl } from "../email/email-brand";
 import type { PdfBlock, PdfDocumentModel } from "./document-pdf";
 import { JobDocumentsService } from "./job-documents.service";
+
+/** Indirizzo del sito senza "https://", leggibile anche stampato. */
+function siteHost(): string {
+  return frontendUrl().replace(/^https?:\/\//, "");
+}
 
 const STATUS_LABEL: Record<string, string> = {
   SENT: "Da accettare",
@@ -163,7 +168,8 @@ export class QuotePdfService {
     blocks.push({
       type: "text",
       muted: true,
-      lines: [`Preventivo di ${pro.businessName}, inviato tramite ${EMAIL_BRAND.name}. Recesso e annullamento: pagina Termini del sito.`],
+      // Con l'indirizzo del sito: un preventivo girato a un parente porta al sito (docs/changelog/2026-11-09-passaparola.md).
+      lines: [`Preventivo di ${pro.businessName}, inviato tramite ${EMAIL_BRAND.name} (${siteHost()}). Recesso e annullamento: pagina Termini del sito.`],
     });
 
     const base = `preventivo-${pro.businessName}-${quote.estimatedStartDate.toISOString().slice(0, 10)}`;

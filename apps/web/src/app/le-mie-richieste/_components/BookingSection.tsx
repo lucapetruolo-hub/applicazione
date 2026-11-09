@@ -20,6 +20,7 @@ import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { PAYMENT_PAGE_LABEL, startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
 import { RebookReminderBox } from "./RebookReminderBox";
+import { RecommendProfessional } from "./RecommendProfessional";
 
 // Finestre aperte solo con un tocco: si caricano allora e "Le mie richieste" parte più leggera (docs/changelog/2026-11-09-le-mie-richieste-leggera.md).
 const ClientCompleteModal = dynamic(() => import("@/components/ClientCompleteModal").then((module) => module.ClientCompleteModal));
@@ -525,6 +526,10 @@ export function BookingSection({
                   Aggiorna la recensione
                 </CardButton>
               </YStack>
+            ) : null}
+            {/* Recensione da 4-5 stelle: "Consiglialo a un amico" (docs/changelog/2026-11-09-passaparola.md). */}
+            {booking.myReview && booking.myReview.rating >= 4 && !booking.professionalAccountDeleted ? (
+              <RecommendProfessional professionalProfileId={booking.professionalProfileId} businessName={booking.businessName} />
             ) : null}
             {/* Il prossimo lavoro con lo stesso professionista passa dal sito (docs/CHANGELOG.md §348). */}
             {rebookHref && booking.status === "COMPLETED" && !booking.professionalAccountDeleted ? (
