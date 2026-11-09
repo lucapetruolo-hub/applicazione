@@ -1720,7 +1720,7 @@ export class BookingsService implements OnModuleInit {
         issue: booking.issue,
       }),
       myReview: booking.review
-        ? { id: booking.review.id, rating: booking.review.rating, comment: booking.review.comment, photoUrls: booking.review.photoUrls }
+        ? { id: booking.review.id, rating: booking.review.rating, comment: booking.review.comment, photoUrls: booking.review.photoUrls, showcase: booking.review.showcaseConsentAt !== null }
         : null,
       // Titolo/categoria, descrizione e foto della richiesta guidata
       // originale — richiesta esplicita dell'utente ("i dati del

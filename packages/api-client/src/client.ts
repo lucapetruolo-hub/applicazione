@@ -203,7 +203,7 @@ export type ClientBooking = {
   hasReview: boolean;
   /** Recensione aggiornabile una volta, dopo una segnalazione a lavoro chiuso senza accordo. */
   canUpdateReview: boolean;
-  myReview: { id: string; rating: number; comment: string | null; photoUrls: string[] } | null;
+  myReview: { id: string; rating: number; comment: string | null; photoUrls: string[]; /** Foto di fine lavoro in "Lavori fatti" sul profilo, con il suo ok. */ showcase: boolean } | null;
   /**
    * Conferma del cliente che il lavoro è davvero terminato dal suo lato
    * (richiesta esplicita dell'utente: "servono i completed da entrambi") —
@@ -2125,7 +2125,8 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     uploadBookingCompletionPhoto: (token: string, file: Blob) =>
       uploadFile<{ imageUrl: string }>("/bookings/completion-photos", token, file, "image"),
 
-    createReview: (token: string, input: ReviewInput) =>
+    /** `showcase`: ok a mostrare le foto di fine lavoro in "Lavori fatti" (spento se non indicato). */
+    createReview: (token: string, input: Omit<ReviewInput, "showcase"> & { showcase?: boolean }) =>
       request<{ id: string; held?: boolean }>("/reviews", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
@@ -2138,6 +2139,14 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
+      }),
+
+    /** Il cliente toglie o rimette le foto del lavoro da "Lavori fatti" sul profilo del professionista. */
+    setReviewShowcase: (token: string, reviewId: string, showcase: boolean) =>
+      request<{ showcase: boolean }>(`/reviews/${reviewId}/showcase`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ showcase }),
       }),
 
     /** Risposta pubblica del professionista a una recensione, scritta o modificata. */
