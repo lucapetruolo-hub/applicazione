@@ -2,11 +2,8 @@ import { Image } from "react-native";
 import { Text, YStack } from "tamagui";
 import { brand } from "./tokens";
 
-export type AvatarProps = {
-  name: string;
-  imageUrl?: string | null;
-  size?: number;
-};
+export type { AvatarProps } from "./avatarProps";
+import type { AvatarProps } from "./avatarProps";
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);

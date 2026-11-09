@@ -1,0 +1,96 @@
+/* "Quanto costa in media?" in HTML semplice, stessi valori che Tamagui scriveva (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md). */
+.body {
+  position: relative;
+  flex-direction: column;
+  width: 100%;
+  gap: var(--t-space-3);
+}
+
+.muted {
+  font-size: 16px;
+  color: var(--c-grafite70);
+}
+
+.strong {
+  font-family: var(--f-family);
+  font-weight: 700;
+  color: var(--c-grafite);
+}
+
+.message {
+  position: relative;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  gap: var(--t-space-2);
+  padding: var(--t-space-4);
+}
+
+.messageWide {
+  gap: var(--t-space-3);
+}
+
+.list {
+  position: relative;
+  flex-direction: column;
+  width: 100%;
+  gap: 0;
+  overflow: visible;
+}
+
+/* Aperto (a fuoco o con testo scritto): elenco completo scorribile. */
+.listOpen {
+  max-height: 420px;
+  overflow: scroll;
+}
+
+.rowText {
+  position: relative;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 2px;
+}
+
+.rowName {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--c-grafite);
+}
+
+.small {
+  font-size: 13px;
+  color: var(--c-grafite70);
+}
+
+.rowPrice {
+  position: relative;
+  flex-direction: row;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--t-space-2);
+}
+
+.priceBox {
+  position: relative;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.price {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--c-cianografiaScuro);
+}
+
+.priceUnit {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--c-grafite70);
+}
+
+.onRequest {
+  font-size: 14px;
+  color: var(--c-grafite70);
+}
