@@ -8854,6 +8854,24 @@ a.admin-kpi:hover {
 .guided-example:active {
   transform: scale(0.98);
 }
+/* Domanda nella richiesta di preventivo (docs/changelog/2026-11-09-domande-preventivo.md). */
+.guided-question {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid #f0dcc0;
+  border-radius: 10px;
+  background: #ffffff;
+}
+.guided-question .guided-examples {
+  margin-top: 4px;
+}
+.guided-example[aria-pressed="true"] {
+  background: #128552;
+  border-color: #128552;
+  color: #ffffff;
+}
 /* "Potrebbero fare anche questo lavoro": stesse schede dei risultati, più staccate. */
 .results-other-section {
   margin-top: 16px;

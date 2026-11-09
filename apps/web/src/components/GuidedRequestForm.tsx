@@ -31,6 +31,7 @@ import {
 } from "@professionisti/shared";
 import { Autocomplete, Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { MagneticButton } from "./MagneticButton";
+import { CATEGORY_WHO, joinWithOr } from "@/lib/problemChoices";
 import { apiClient } from "@/lib/apiClient";
 import { cameFromPersonalLink } from "@/lib/personalLink";
 import { useAuth } from "@/lib/AuthContext";
@@ -510,10 +511,21 @@ export function GuidedRequestForm({
   const categoryLabelOf = (slug: ProfessionalCategorySlug) => PROFESSIONAL_CATEGORIES.find((c) => c.slug === slug)?.label ?? slug;
   const autoSlug = suggestedSlugs[0] ?? null;
   const alsoSuggested = suggestedSlugs.filter((slug) => !categorySlugs.includes(slug));
+  // Con una domanda aperta (es. "Da dove arriva l'umidità?") nessun mestiere
+  // si sceglie da solo: lo sceglie la risposta, come nella ricerca
+  // (docs/changelog/2026-11-09-domande-preventivo.md).
+  const openQuestion = suggestionsOn ? (suggestion?.question ?? null) : null;
+  const autoTarget = openQuestion ? null : autoSlug;
   const [autoApplied, setAutoApplied] = useState<ProfessionalCategorySlug | null>(null);
-  if (suggestionsOn && !categoriesByHand && autoApplied !== autoSlug) {
-    setAutoApplied(autoSlug);
-    setCategorySlugs(autoSlug ? [autoSlug] : []);
+  if (suggestionsOn && !categoriesByHand && autoApplied !== autoTarget) {
+    setAutoApplied(autoTarget);
+    setCategorySlugs(autoTarget ? [autoTarget] : []);
+  }
+  const [questionAnswer, setQuestionAnswer] = useState<{ text: string; label: string } | null>(null);
+  function answerQuestion(label: string, slugs: ProfessionalCategorySlug[]) {
+    setCategoriesByHand(true);
+    setQuestionAnswer({ text: typedDescription, label });
+    setCategorySlugs(slugs.slice(0, MAX_REQUEST_CATEGORIES));
   }
   const checkingRef = useRef("");
   function checkDescription() {
@@ -893,7 +905,7 @@ export function GuidedRequestForm({
   function validateStep(which: 1 | 2): StepProblem | null {
     if (which === 1) {
       if (description.trim().length < 10) return { message: "Descrivi il lavoro con almeno 10 caratteri.", focus: "descrizione" };
-      if (!categorySlug) return { message: "Scegli almeno una categoria.", focus: "categorie" };
+      if (!categorySlug) return { message: openQuestion ? "Rispondi alla domanda o scegli una categoria." : "Scegli almeno una categoria.", focus: "categorie" };
       // Con un orario scelto in agenda la risposta si ricava dal giorno (vedi goToStep).
       if (!timing && !finalPreferredDate) return { message: "Scegli quando ti serve.", focus: "quando" };
       return null;
@@ -1346,6 +1358,38 @@ export function GuidedRequestForm({
           ) : null}
         </YStack>
         {suggestion?.safety ? <SafetyNotice safety={suggestion.safety} /> : null}
+        {openQuestion ? (
+          <div className="guided-question" role="group" aria-label={openQuestion.text}>
+            <Text fontWeight="700" fontSize={16} color={brand.grafite}>
+              {openQuestion.text}
+            </Text>
+            <Text fontSize={13} color={brand.grafite70}>
+              Rispondi e scegliamo la categoria giusta.
+            </Text>
+            <div className="guided-examples">
+              {openQuestion.answers.map((answer) => (
+                <button
+                  key={answer.label}
+                  type="button"
+                  className="guided-example"
+                  aria-pressed={questionAnswer?.label === answer.label && questionAnswer.text === typedDescription}
+                  onClick={() => answerQuestion(answer.label, [answer.category])}
+                >
+                  {answer.label}
+                </button>
+              ))}
+              {/* "Non lo so": tutti i mestieri proposti, una richiesta ciascuno, e il cliente sceglie tra i preventivi. */}
+              <button
+                type="button"
+                className="guided-example"
+                aria-pressed={questionAnswer?.label === "" && questionAnswer.text === typedDescription}
+                onClick={() => answerQuestion("", suggestedSlugs)}
+              >
+                Non lo so
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {suggestionsOn || !selectedCategory ? (
           <YStack gap="2" id="guided-field-categorie">
@@ -1361,7 +1405,9 @@ export function GuidedRequestForm({
                 descrizione in cima e la prima già scelta (scelte di Luca). */}
             {suggestionsOn ? (
               <Text fontSize={13} color={brand.grafite70} aria-live="polite">
-                {autoSlug && categorySlugs.includes(autoSlug)
+                {openQuestion && categorySlugs.length === 0
+                  ? `Può servirti ${joinWithOr(suggestedSlugs.map((slug) => CATEGORY_WHO[slug]))}: rispondi alla domanda qui sopra o scegli tu.`
+                  : autoSlug && categorySlugs.includes(autoSlug) && !openQuestion
                   ? `Ti suggeriamo ${categoryLabelOf(autoSlug)}: è già scelta, puoi cambiarla o aggiungerne altre.`
                   : notUnderstood && categorySlugs.length === 0
                     ? suggestion?.outOfService
