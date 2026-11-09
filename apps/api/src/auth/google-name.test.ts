@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuthService } from "./auth.service";
 import { googleNameFields, googleNameRepair } from "./google-name";
+import { issueGoogleNonce } from "./google-nonce";
 
 const mario = { name: "Mario De Luca", given_name: "Mario", family_name: "De Luca" };
 
@@ -48,7 +49,7 @@ describe("AuthService.verifyGoogleToken — campi del nuovo account", () => {
     delete process.env.GOOGLE_CLIENT_ID;
   });
 
-  function setup(existingUser: Record<string, unknown> | null) {
+  function setup(existingUser: Record<string, unknown> | null, payload: Record<string, unknown> = {}) {
     process.env.GOOGLE_CLIENT_ID = "client-id";
     const prisma = {
       user: {
@@ -64,7 +65,15 @@ describe("AuthService.verifyGoogleToken — campi del nuovo account", () => {
     const service = new AuthService(prisma as never, jwt as never, {} as never, emailService as never, cloudinary as never);
     const googleClient = (service as unknown as { googleClient: { verifyIdToken: unknown } }).googleClient;
     googleClient.verifyIdToken = vi.fn().mockResolvedValue({
-      getPayload: () => ({ sub: "g-1", email: "mario@esempio.it", picture: "https://lh3.googleusercontent.com/a/foto", ...mario }),
+      getPayload: () => ({
+        sub: "g-1",
+        email: "mario@esempio.it",
+        email_verified: true,
+        nonce: issueGoogleNonce(),
+        picture: "https://lh3.googleusercontent.com/a/foto",
+        ...mario,
+        ...payload,
+      }),
     });
     return { service, prisma, cloudinary, emailService };
   }
@@ -140,5 +149,27 @@ describe("AuthService.verifyGoogleToken — campi del nuovo account", () => {
     cloudinary.uploadImageFromUrl.mockResolvedValue(null);
     await service.verifyGoogleToken("token", "CLIENT", true, { acceptedLegalTerms: true, declaredAdult: true });
     expect(prisma.user.create.mock.calls[0]?.[0].data.imageUrl).toBeNull();
+  });
+
+  // Controllo pre-lancio dell'08/11, E2-01 e nonce controllato dal server.
+  it("rifiuta un'email che Google non ha verificato, senza entrare nell'account con la stessa email", async () => {
+    const { service, prisma } = setup({ id: "u-9", email: "mario@esempio.it", role: "CLIENT", googleId: null }, { email_verified: false });
+    await expect(service.verifyGoogleToken("token", undefined, false)).rejects.toThrow("Token Google non valido.");
+    expect(prisma.user.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta un token senza nonce o con un nonce non nostro", async () => {
+    for (const nonce of [undefined, "abc", "x.y.z"]) {
+      const { service, prisma } = setup({ id: "u-9", email: "mario@esempio.it", role: "CLIENT", googleId: "g-1" }, { nonce });
+      await expect(service.verifyGoogleToken("token", undefined, false)).rejects.toThrow("Accesso con Google scaduto. Riprova.");
+      expect(prisma.user.findFirst).not.toHaveBeenCalled();
+    }
+  });
+
+  it("lo stesso token non entra due volte", async () => {
+    const nonce = issueGoogleNonce();
+    const { service } = setup({ id: "u-9", email: "mario@esempio.it", role: "CLIENT", googleId: "g-1" }, { nonce });
+    await service.verifyGoogleToken("token", undefined, false);
+    await expect(service.verifyGoogleToken("token", undefined, false)).rejects.toThrow("Accesso con Google scaduto. Riprova.");
   });
 });

@@ -1337,6 +1337,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         body: JSON.stringify({ email, password }),
       }),
 
+    /** `nonce` firmato dal server per la pagina di accesso di Google: vale 30 minuti e una volta sola. */
+    googleNonce: () => request<{ nonce: string }>("/auth/google/nonce", { method: "POST" }),
+
     /**
      * `createIfMissing` (default true): /accedi lo passa esplicitamente a
      * `false` per non iscrivere silenziosamente un account nuovo su
@@ -1417,6 +1420,10 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       }),
 
     // Gli altri dispositivi escono; `token` è il nuovo accesso per questo (docs/CHANGELOG.md §294).
+    /** "Esci": chiude questo accesso anche sul server (controllo dell'08/11). `keepalive` perché la pagina può cambiare subito dopo. */
+    logout: (token: string) =>
+      request<{ success: boolean }>("/auth/logout", { method: "POST", keepalive: true, headers: { Authorization: `Bearer ${token}` } }),
+
     logoutOtherDevices: (token: string) =>
       request<{ token: string }>("/auth/logout-others", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
