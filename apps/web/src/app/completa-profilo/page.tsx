@@ -12,10 +12,11 @@ import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/co
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle";
+import { PageLoading } from "@/components/PageLoading";
 
 export default function CompletaProfiloPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading variant="form" />}>
       <CompletaProfiloForm />
     </Suspense>
   );

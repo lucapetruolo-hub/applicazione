@@ -7,7 +7,7 @@ import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 
-export const CATEGORY_PHOTO_WIDTHS = [480, 768, 1024];
+export const CATEGORY_PHOTO_WIDTHS = [480, 600, 768, 1024];
 const dir = fileURLToPath(new URL("../public/category-photos/", import.meta.url));
 
 for (const file of readdirSync(dir).filter((name) => /^[a-z-]+\.webp$/.test(name))) {

@@ -1418,6 +1418,16 @@ export default function DashboardProfiloPage() {
           <Text fontSize={13} color={brand.grafite70}>
             Scrivi i lavori che fai e, se vuoi, il prezzo. Per esempio: da 50 a 100 € a lavoro. I clienti lo vedono nella ricerca.
           </Text>
+          {/* Chi non ha prestazioni non ha le pillole "Dalle tue prestazioni" nel
+              preventivo (docs/changelog/2026-11-08-preventivo-in-30-secondi.md). */}
+          {services.every((service) => !service.name.trim()) ? (
+            <XStack className="services-hint" gap="2" alignItems="flex-start" padding="3" borderRadius="3" backgroundColor={brand.ottoneVelo}>
+              <Icon name="zap" size={16} strokeWidth={2} color={brand.grafite} />
+              <Text flex={1} fontSize={14} color={brand.grafite}>
+                Aggiungi le prestazioni per rispondere più in fretta: nel preventivo le inserisci con un tocco.
+              </Text>
+            </XStack>
+          ) : null}
 
           {/* Mentre scrive, il professionista vede i nomi già usati: scegliendone
               uno, la sua prestazione si somma alle altre uguali nella ricerca e

@@ -323,6 +323,8 @@ const owned = {
   },
   "POST /reviews": { kind: "owned", owners: ["clientA"], body: (f) => ({ bookingId: f.bookingA, rating: 5, comment: "Recensione di un estraneo" }) },
   "PATCH /reviews/:id": { kind: "owned", owners: ["clientA"], params: (f) => ({ id: f.reviewA }), body: () => ({ rating: 1, comment: "Aggiornata da un estraneo" }) },
+  // Consenso a mostrare il lavoro nel profilo (docs/changelog/2026-11-08-lavori-fatti.md).
+  "PUT /reviews/:id/showcase": { kind: "owned", owners: ["clientA"], params: (f) => ({ id: f.reviewA }), body: () => ({ showcase: true }) },
   "PUT /reviews/:id/reply": { kind: "owned", owners: ["proA"], params: (f) => ({ id: f.reviewA }), body: () => ({ reply: "Risposta di un estraneo" }) },
 };
 

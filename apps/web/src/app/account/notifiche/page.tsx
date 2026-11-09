@@ -19,6 +19,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { playNotificationSound } from "@/lib/notificationSound";
 import { NOTIFICATION_TOPIC_STYLE } from "@/lib/notificationTopicStyle";
 import { WhatsAppRemindersCard } from "@/components/WhatsAppRemindersCard";
+import { PageLoading } from "@/components/PageLoading";
 
 /**
  * Impostazioni delle notifiche (docs/CHANGELOG.md §152; nuova veste in
@@ -39,7 +40,7 @@ export default function NotifichePage() {
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [openTopics, setOpenTopics] = useState<NotificationTopic[]>([]);
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoading />;
   if (!user || !token) {
     return (
       <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4" gap="4">

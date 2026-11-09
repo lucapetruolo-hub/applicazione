@@ -8,7 +8,7 @@ rompe in un modo diverso per ognuna. Prima si fa tutto con il sito ancora
 | # | Dove | Cosa | Se si dimentica |
 |---|---|---|---|
 | 1 | Vercel → Domains | Aggiungere il dominio, DNS dal registrar, redirect permanente da `applicazione-web.vercel.app` | Il dominio non apre |
-| 2 | Codice: `apps/web/src/lib/siteUrl.ts` (PR) | `SITE_URL` | Canonical, sitemap e anteprime puntano al vecchio |
+| 2 | Vercel → Environment Variables (nessuna modifica al codice) | `NEXT_PUBLIC_SITE_URL` (es. `https://www.nome.it`, senza barra finale), poi un deploy | Canonical, sitemap e anteprime puntano al vecchio |
 | 3 | Render → Environment (e `render.yaml`, PR) | `FRONTEND_URL` | **Dal dominio nuovo nessuna chiamata all'API passa** (CORS): sito vuoto. Anche i link nelle email e i ritorni da Stripe vanno al vecchio |
 | 4 | Google Cloud → Credenziali → Client OAuth | Origini JavaScript e URI `https://<dominio>/accesso-google` | "Accedi con Google" non funziona |
 | 5 | Google Cloud → Credenziali → chiave del browser | Siti autorizzati `https://<dominio>/*` | Mappa non disponibile |

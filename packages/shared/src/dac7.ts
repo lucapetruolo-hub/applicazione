@@ -178,9 +178,14 @@ export function dac7Entries(jp: Dac7PaymentInput, includeDirectPayments: boolean
   return entries;
 }
 
-/** Trimestre solare (1-4) di una data, in UTC come il resto della DAC7. */
+const ROME_MONTH = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Rome", month: "numeric" });
+
+/**
+ * Trimestre solare (1-4) di una data, all'ora di Roma come estratti e
+ * fatture (collaudo dell'08/11/2026, E5-09).
+ */
 export function dac7Quarter(date: Date): 1 | 2 | 3 | 4 {
-  return (Math.floor(date.getUTCMonth() / 3) + 1) as 1 | 2 | 3 | 4;
+  return (Math.floor((Number(ROME_MONTH.format(date)) - 1) / 3) + 1) as 1 | 2 | 3 | 4;
 }
 
 /** Riepilogo DAC7 di un anno mostrato al professionista (`/dashboard/fiscale/dac7`). */
@@ -198,6 +203,8 @@ export type Dac7YearSummary = {
   totalEurCents: number;
   /** Data in cui i dati sono stati comunicati all'Agenzia delle Entrate, null se non ancora. */
   submittedAt: string | null;
+  /** Protocollo della ricevuta dell'Agenzia, se l'abbiamo segnato (collaudo dell'08/11/2026, miglioria del commercialista). */
+  submissionProtocol?: string | null;
   /** Avviso annuale inviato al professionista. */
   notifiedAt: string | null;
 };
@@ -214,8 +221,15 @@ function dac7DateLabel(iso: string): string {
 }
 
 /** A che punto è l'anno: comunicato, in corso o in preparazione (pagina e PDF del riepilogo). */
-export function dac7YearStatus(summary: Pick<Dac7YearSummary, "year" | "submittedAt">, now: Date = new Date()): { variant: "verificato" | "nuovo"; label: string; detail: string } {
-  if (summary.submittedAt) return { variant: "verificato", label: "Comunicato al fisco", detail: `Inviato il ${dac7DateLabel(summary.submittedAt)}.` };
+export function dac7YearStatus(summary: Pick<Dac7YearSummary, "year" | "submittedAt" | "submissionProtocol">, now: Date = new Date()): { variant: "verificato" | "nuovo"; label: string; detail: string } {
+  if (summary.submittedAt) {
+    const protocol = summary.submissionProtocol?.trim();
+    return {
+      variant: "verificato",
+      label: "Comunicato al fisco",
+      detail: `Comunicato all'Agenzia delle Entrate il ${dac7DateLabel(summary.submittedAt)}${protocol ? ` con protocollo ${protocol}` : ""}.`,
+    };
+  }
   if (summary.year >= now.getFullYear()) return { variant: "nuovo", label: "Anno in corso", detail: "Si aggiorna ogni notte." };
   return { variant: "nuovo", label: "In preparazione", detail: `Da comunicare entro il ${dac7DateLabel(dac7AnnualDeadline(summary.year))}.` };
 }

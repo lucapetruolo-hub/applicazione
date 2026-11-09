@@ -223,6 +223,8 @@ export class ReviewsService {
         rating: input.rating,
         comment: input.comment,
         photoUrls: input.photoUrls,
+        // "Lavori fatti": l'ok vale solo se ci sono foto di fine lavoro del professionista.
+        ...(input.showcase && booking.professionalCompletionPhotoUrls.length > 0 ? { showcaseConsentAt: now } : {}),
         ...(held ? { hiddenAt: now, heldAt: now, heldReasons } : {}),
       },
     });
@@ -260,6 +262,22 @@ export class ReviewsService {
     });
   }
 
+  /**
+   * Il cliente toglie (o rimette) le foto del lavoro da "Lavori fatti" sul
+   * profilo del professionista (docs/changelog/2026-11-08-lavori-fatti.md):
+   * un consenso si ritira quando si vuole, con lo stesso tocco.
+   */
+  async setShowcase(clientId: string, reviewId: string, showcase: boolean): Promise<{ showcase: boolean }> {
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+      select: { booking: { select: { clientId: true, professionalCompletionPhotoUrls: true } } },
+    });
+    if (!review) throw new NotFoundException("Recensione non trovata.");
+    if (review.booking.clientId !== clientId) throw new ForbiddenException("Questa recensione non è tua.");
+    if (showcase && review.booking.professionalCompletionPhotoUrls.length === 0) throw new BadRequestException("Il professionista non ha foto di questo lavoro.");
+    await this.prisma.review.update({ where: { id: reviewId }, data: { showcaseConsentAt: showcase ? new Date() : null } });
+    return { showcase };
+  }
 
   /**
    * Aggiornamento della recensione, una volta sola, dopo una segnalazione a

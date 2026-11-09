@@ -12,10 +12,11 @@ import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
 import { AuthStepHeader } from "@/components/AuthStepHeader";
 import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle";
+import { PageLoading } from "@/components/PageLoading";
 
 export default function AccediPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading variant="form" />}>
       <AccediForm />
     </Suspense>
   );

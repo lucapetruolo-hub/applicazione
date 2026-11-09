@@ -12,6 +12,7 @@ import { SkeletonThreadRow } from "@/components/Skeleton";
 import { ConversationView } from "@/components/ConversationView";
 import { ChatThreadRow } from "@/components/ChatThreadRow";
 import { mergeCounts, unreadThreadCounts } from "@/lib/notificationSections";
+import { PageLoading } from "@/components/PageLoading";
 
 // Poll di riserva (richiesta esplicita dell'utente: rete di sicurezza per
 // una disconnessione SSE momentanea, non più la sola fonte — CTO:
@@ -131,7 +132,7 @@ export default function ChatPage() {
   }, [token, markNotificationsRead]);
 
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoading />;
 
   if (!user || !token) {
     return (

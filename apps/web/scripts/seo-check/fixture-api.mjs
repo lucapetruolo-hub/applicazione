@@ -4,7 +4,7 @@
 // (noindex). Risponde a tutto il resto con un elenco vuoto, così una pagina
 // che chiede altro non si rompe.
 import { createServer } from "node:http";
-import { PROFESSIONALS, detail, prices } from "./fixture-data.mjs";
+import { PROFESSIONALS, TEST_PROFESSIONAL, detail, prices } from "./fixture-data.mjs";
 
 const PORT = Number(process.env.FIXTURE_API_PORT ?? 3001);
 function send(res, status, body) {
@@ -24,7 +24,7 @@ createServer((req, res) => {
   if (priceMatch) return send(res, 200, prices(priceMatch[1], url.searchParams.get("city")));
   const profile = /^\/professionals\/([^/]+)$/.exec(url.pathname);
   if (profile && req.method === "GET") {
-    const pro = PROFESSIONALS.find((p) => p.id === profile[1]);
+    const pro = [...PROFESSIONALS, TEST_PROFESSIONAL].find((p) => p.id === profile[1]);
     return pro ? send(res, 200, detail(pro)) : send(res, 404, { message: "Not Found", statusCode: 404 });
   }
   if (url.pathname === "/stats/platform") {

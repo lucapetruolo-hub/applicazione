@@ -34,15 +34,21 @@ let described = false;
 /**
  * Una volta per avvio scrive nel log di Render quali intestazioni arrivano,
  * senza indirizzi (dato personale): serve a confermare che la lettura sopra
- * è quella giusta, e ad accorgersi se Render cambiasse qualcosa.
+ * è quella giusta, e ad accorgersi se Render cambiasse qualcosa. Guarda la
+ * prima richiesta arrivata da fuori (con `X-Forwarded-For`): il controllo
+ * `/health` di Render parte dall'interno, senza intestazioni, e la prima
+ * versione del log scriveva "ASSENTE" proprio per quello (09/11).
  */
 function describeOnce(req: { headers?: Record<string, string | string[] | undefined> }): void {
   if (described || process.env.RENDER !== "true") return;
-  described = true;
   const forwarded = req.headers?.["x-forwarded-for"];
-  const hops = typeof forwarded === "string" ? forwarded.split(",").length : 0;
-  const hasCf = typeof req.headers?.["cf-connecting-ip"] === "string";
-  logger.log(`Indirizzo del cliente: CF-Connecting-IP ${hasCf ? "presente" : "ASSENTE (si usa req.ip)"}, X-Forwarded-For con ${hops} indirizzi.`);
+  if (typeof forwarded !== "string" || !forwarded.trim()) return;
+  described = true;
+  const hops = forwarded.split(",").length;
+  const has = (name: string) => (typeof req.headers?.[name] === "string" ? "sì" : "no");
+  logger.log(
+    `Indirizzo del cliente (prima richiesta da fuori): CF-Connecting-IP ${has("cf-connecting-ip") === "sì" ? "presente" : "ASSENTE (si usa req.ip)"}, X-Forwarded-For con ${hops} indirizzi, True-Client-IP ${has("true-client-ip")}, X-Real-IP ${has("x-real-ip")}.`,
+  );
 }
 
 /** Limite al minuto contato sull'indirizzo vero del cliente (`clientIp`). */

@@ -3,6 +3,7 @@
 import { getImageProps } from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { preload } from "react-dom";
 import { Check } from "lucide-react";
 import {
   PROFESSIONAL_CATEGORIES,
@@ -245,6 +246,10 @@ const {
 const AGENDA_PHONE = { srcSet: agendaPhoneSrcSet };
 
 function ProPhoto() {
+  // Richiesta subito in testa alla pagina, prima del JavaScript: la schermata
+  // giusta per telefono o computer (collaudo 08/11 E8-03).
+  preload(AGENDA_DESKTOP.src, { as: "image", imageSrcSet: AGENDA_PHONE.srcSet, imageSizes: "100vw", fetchPriority: "high", media: "(max-width: 660px)" });
+  preload(AGENDA_DESKTOP.src, { as: "image", imageSrcSet: AGENDA_DESKTOP.srcSet, imageSizes: AGENDA_DESKTOP.sizes, fetchPriority: "high", media: "(min-width: 661px)" });
   return (
     <Band>
       <YStack padding="3 gtSm:4">
@@ -253,8 +258,11 @@ function ProPhoto() {
               (docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md). */}
           <picture className="pro-product-shot">
             <source media="(max-width: 660px)" srcSet={AGENDA_PHONE.srcSet} />
+            {/* È l'elemento più grande del primo schermo (LCP): `priority` di
+                getImageProps non scrive fetchpriority, qui lo si chiede a mano
+                (collaudo 08/11 E8-03). */}
             {/* eslint-disable-next-line jsx-a11y/alt-text -- props (alt compreso) da getImageProps */}
-            <img {...AGENDA_DESKTOP} />
+            <img {...AGENDA_DESKTOP} fetchPriority="high" loading="eager" />
           </picture>
         </div>
       </YStack>
