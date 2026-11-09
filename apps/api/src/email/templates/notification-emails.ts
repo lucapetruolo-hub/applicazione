@@ -1203,6 +1203,20 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Lascia una recensione", url: `${frontendUrl()}/le-mie-richieste` },
   }),
+  // Un solo promemoria, uguale per tutti, a chi ha confermato il lavoro senza
+  // recensire (docs/changelog/2026-11-09-passaparola.md): mai premi, mai
+  // "lascia 5 stelle" (regole di Google e Trustpilot, skill referrals).
+  REVIEW_REMINDER: (_payload, ctx) => ({
+    kind: "notification",
+    subject: ctx.businessName ? `Com'è andata con ${ctx.businessName}?` : "Com'è andato il lavoro?",
+    greeting: ctx.name,
+    title: "Com'è andata?",
+    paragraphs: [
+      `Qualche giorno fa hai confermato il lavoro per **${job(ctx)}** con **${pro(ctx)}**.`,
+      "Se vuoi, racconta com'è andata: bastano un voto e due righe, positive o negative. Aiuta gli altri clienti a scegliere. Non te lo chiederemo di nuovo.",
+    ],
+    cta: { label: "Lascia una recensione", url: `${frontendUrl()}/le-mie-richieste` },
+  }),
   JOB_CLOSE_REMINDER: (payload, ctx) => ({
     kind: "notification",
     subject: "Il cliente ha confermato il lavoro terminato",

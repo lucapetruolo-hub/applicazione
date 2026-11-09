@@ -1,0 +1,25 @@
+/* ProfessionalKindBadge per il sito (ProfessionalKindBadge.web.tsx): stessi valori dell'XStack/Text di ProfessionalKindBadge.tsx. */
+.badge {
+  position: relative;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  background-color: var(--c-gesso);
+}
+
+.sm {
+  padding-inline: var(--t-space-2);
+  padding-block: 2px;
+}
+
+.md {
+  padding-inline: 12px;
+  padding-block: 5px;
+}
+
+.text {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-grafite);
+}

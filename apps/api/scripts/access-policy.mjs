@@ -84,6 +84,8 @@ const publicRoutes = [
   "GET /professionals/category-counts",
   // Link personale /p/<codice> del professionista: porta solo al profilo pubblico (docs/changelog/2026-11-08-canale-del-professionista.md).
   "GET /professionals/link/:code",
+  // Chi ha mandato un invito "Porta un collega" o di un partner: solo il nome già pubblico (docs/changelog/2026-11-09-passaparola.md).
+  "GET /professionals/invite/:code",
   "GET /professionals/languages/popular",
   // Prezzi aggregati della pagina "Quanto costa", mai sotto le soglie (§296).
   "GET /professionals/prices/:category",

@@ -1,0 +1,14 @@
+/* Stessi valori di `Logo` (packages/ui/src/Logo.web.tsx): XStack centrato, gap "2", nome in font_heading 800. */
+.logo {
+  position: relative;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--t-space-2);
+}
+
+.name {
+  font-family: var(--f-family);
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--c-grafite);
+}

@@ -1,0 +1,51 @@
+/*
+ * Badge per il sito (Badge.web.tsx): stessi valori dell'XStack/Text di
+ * Badge.tsx. Colori delle varianti come VARIANT_STYLE di Badge.tsx
+ * (verificato = brand.verificato, pro = brand.ottone, urgente = brand.urgenza:
+ * senza una variabile di Tamagui).
+ */
+.badge {
+  position: relative;
+  flex-direction: row;
+  align-self: flex-start;
+  padding-inline: var(--t-space-3);
+  padding-block: 5px;
+  border-radius: 999px;
+}
+
+.text {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.verificato {
+  background-color: #e6f4ec;
+}
+
+.pro {
+  background-color: #f5eee0;
+}
+
+.urgente {
+  background-color: #fbeae8;
+}
+
+.nuovo {
+  background-color: var(--c-cianografiaVelo);
+}
+
+.verificato .text {
+  color: #3d6b3e;
+}
+
+.pro .text {
+  color: #d9a441;
+}
+
+.urgente .text {
+  color: #c8362b;
+}
+
+.nuovo .text {
+  color: var(--c-cianografiaScuro);
+}

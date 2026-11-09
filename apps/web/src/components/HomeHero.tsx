@@ -11,12 +11,13 @@ import {
 } from "@professionisti/shared";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Icon, SearchBar, Text, XStack, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
+import { Icon, SearchBar, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { problemExampleSuggestions, rememberSearchCity, useSearchBarHints } from "@/lib/useSearchBarHints";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import { GlowLights } from "./GlowLights";
 import { MagneticButton } from "./MagneticButton";
+import styles from "./HomeHero.module.css";
 
 /**
  * Hero della homepage: la ricerca professionisti (A domicilio/Online + città
@@ -51,54 +52,32 @@ export function HomeHero({ examples }: { examples: ProblemExamplesResponse | nul
   }
 
   return (
-    <YStack width="100%" backgroundColor="transparent" paddingTop="6" paddingBottom="5" paddingHorizontal="4" alignItems="center">
-      <YStack
-        width="100%"
-        maxWidth={1160}
-        backgroundColor={brand.cianografia}
-        borderRadius={40}
-        paddingVertical="8"
-        paddingHorizontal="5"
-        alignItems="center"
-        position="relative"
-        className="home-hero-panel"
-      >
+    <div className={`is_View ${styles.wrap}`}>
+      <div className={`is_View home-hero-panel ${styles.panel}`}>
         {/* Luci sfumate (scelta dell'utente, docs/CHANGELOG.md §305): in un
             livello a parte con "overflow:hidden" invece che sull'intero
             pannello, che tagliava il menu a discesa di SearchBar (CLAUDE.md
             §10). */}
         <GlowLights tone="verde-opaco" radius={40} speed={searching ? 3 : undefined} />
 
-        <YStack width="100%" maxWidth={720} alignItems="center" gap="4" position="relative">
+        <div className={`is_View ${styles.content}`}>
           {/* Tolta la frase "Non chiamare a caso. Chiamalo giusto." sopra il
               titolo: un elemento in meno nel primo schermo, che resta titolo,
               ricerca ed esempi (spunti da miodottore,
               docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md). */}
           {/* Titolo principale della pagina (h1) per Google e i lettori di schermo. */}
-          <Text
-            render="h1"
-            margin={0}
-            fontFamily="heading"
-            fontWeight="600"
-            fontSize="38px gtSm:54px"
-            lineHeight="42px gtSm:56px"
-            letterSpacing={-0.5}
-            textAlign="center"
-            color="white"
-          >
-            Scrivi il problema. Ti diciamo chi chiamare.
-          </Text>
+          <h1 className={`is_Text font_heading ${styles.title}`}>Scrivi il problema. Ti diciamo chi chiamare.</h1>
           {/* La ricerca per problema in primo piano (scelta di Luca,
               docs/changelog/2026-11-03-ricerca-per-problema-home.md): prima il
               titolo diceva "Trova un professionista vicino a te" e nessuno
               capiva che si può descrivere il guasto. Le parole per Google
               (idraulici, elettricisti, vicino a te) restano qui sotto. */}
-          <Text fontSize="5" color="rgba(255,255,255,0.88)" textAlign="center" maxWidth={560}>
+          <span className={`is_Text ${styles.lead}`}>
             Con parole tue: l&apos;intelligenza artificiale capisce chi ti serve. Idraulici, elettricisti e altri
             professionisti vicino a te.
-          </Text>
+          </span>
 
-          <YStack width="100%" marginTop="4">
+          <div className={`is_View ${styles.search}`}>
             <SearchBar
               wrapSearchButton={(button) => <MagneticButton block>{button}</MagneticButton>}
               onSearch={handleSearch}
@@ -114,16 +93,16 @@ export function HomeHero({ examples }: { examples: ProblemExamplesResponse | nul
               footer={({ mode, searchFor }) => (mode === "domicilio" ? <HeroExamples problems={heroExamples.visible} trades={heroExamples.trades} onPick={searchFor} /> : null)}
               {...searchHints}
             />
-          </YStack>
+          </div>
 
           {/* L'interruttore "Intervento urgente? Solo disponibili nelle prossime
               24h" è stato tolto (docs/CHANGELOG.md §349): prometteva un filtro
               che il sito non fa (nessuno controlla chi è disponibile) ed era il
               secondo controllo "urgente" nello stesso schermo, col link rosso
               "Richiesta urgente" qui sotto, che resta. */}
-          <Text role="status" fontSize={16} fontWeight="600" color="rgba(255,255,255,0.75)" marginTop="2" textAlign="center">
+          <span role="status" className={`is_Text ${styles.status}`}>
             {searching ? "Cerco chi ti serve…" : "Ricerca gratuita, senza registrazione · Preventivi voce per voce"}
-          </Text>
+          </span>
 
           {/* Una sola azione principale nel primo schermo, "Cerca" (§271). Il
               campo capisce anche il problema ("perde il rubinetto"), quindi il
@@ -131,25 +110,22 @@ export function HomeHero({ examples }: { examples: ProblemExamplesResponse | nul
               è in alto a destra. Resta la richiesta urgente, una strada
               diversa, come pillola dentro il riquadro (scelta di Luca,
               docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md). */}
-          <YStack width="100%" maxWidth={560} alignItems="center" gap="3" marginTop="3">
-            <XStack width="100%" alignItems="center" gap="3">
-              <YStack flex={1} height={1} backgroundColor="rgba(255,255,255,0.3)" aria-hidden />
-              <Text fontSize={14} fontWeight="600" color="rgba(255,255,255,0.8)">
-                Un guasto da sistemare oggi?
-              </Text>
-              <YStack flex={1} height={1} backgroundColor="rgba(255,255,255,0.3)" aria-hidden />
-            </XStack>
+          <div className={`is_View ${styles.urgent}`}>
+            <div className={`is_View ${styles.urgentRow}`}>
+              <div aria-hidden="true" className={`is_View ${styles.rule}`} />
+              <span className={`is_Text ${styles.urgentLabel}`}>Un guasto da sistemare oggi?</span>
+              <div aria-hidden="true" className={`is_View ${styles.rule}`} />
+            </div>
             <Link href="/urgente" className="hero-urgent-link">
               <span className="hero-urgent-icon" aria-hidden>
                 <Icon name="zap" size={14} color="white" fill="white" strokeWidth={2} />
               </span>
               Richiesta urgente
             </Link>
-          </YStack>
-        </YStack>
-      </YStack>
-
-    </YStack>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

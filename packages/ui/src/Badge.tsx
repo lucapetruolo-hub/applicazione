@@ -1,8 +1,8 @@
-import type { ReactNode } from "react";
 import { Text, XStack } from "tamagui";
+import type { BadgeProps, BadgeVariant } from "./badgeProps";
 import { brand } from "./tokens";
 
-export type BadgeVariant = "verificato" | "pro" | "urgente" | "nuovo";
+export type { BadgeProps, BadgeVariant } from "./badgeProps";
 
 const VARIANT_STYLE: Record<BadgeVariant, { bg: string; fg: string }> = {
   // Colori semantici: verde solo su verificato/conferma, ottone solo su
@@ -13,16 +13,12 @@ const VARIANT_STYLE: Record<BadgeVariant, { bg: string; fg: string }> = {
   nuovo: { bg: brand.cianografiaVelo, fg: brand.cianografiaScuro },
 };
 
-export type BadgeProps = {
-  variant: BadgeVariant;
-  children: ReactNode;
-};
-
 /**
  * Etichetta di stato — quattro varianti fisse, nessun colore libero. Pillola
  * piena (non più mono maiuscolo hairline, brief "Vicinato" CLAUDE.md §19):
  * il mono resta solo per cifre tabulari altrove, qui basta il colore
- * semantico a dare peso.
+ * semantico a dare peso. Il sito usa Badge.web.tsx (HTML semplice): se cambia
+ * qui, va cambiato anche lì.
  */
 export function Badge({ variant, children }: BadgeProps) {
   const { bg, fg } = VARIANT_STYLE[variant];

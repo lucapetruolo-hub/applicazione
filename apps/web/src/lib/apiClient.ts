@@ -1,6 +1,7 @@
 import { createApiClient } from "@professionisti/api-client";
 import { countSubmitFailure } from "./siteCounts";
 import { storedTrafficSource } from "./storedTrafficSource";
+import { storedInviteCode } from "./storedInviteCode";
 import { API_URL } from "./apiUrl";
 
 const DEVICE_ID_KEY = "login-device-id";
@@ -30,6 +31,7 @@ export const apiClient = createApiClient({
   deviceId,
   // Andamento del sito (docs/CHANGELOG.md §372): provenienza delle iscrizioni e invii non riusciti.
   trafficSource: storedTrafficSource,
+  inviteCode: storedInviteCode,
   onFailure: (failure) => {
     if (typeof window !== "undefined") countSubmitFailure(failure);
   },

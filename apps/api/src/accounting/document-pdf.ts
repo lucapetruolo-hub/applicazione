@@ -1,5 +1,6 @@
 import { StreamableFile } from "@nestjs/common";
 import PDFDocument from "pdfkit";
+import qrcode from "qrcode-generator";
 import { EMAIL_BRAND, frontendUrl } from "../email/email-brand";
 
 /**
@@ -27,7 +28,9 @@ export type PdfBlock =
   | { type: "text"; lines: string[]; muted?: boolean }
   | { type: "signature"; label: string }
   /** Foto (JPEG o PNG già scaricate), due per riga con la didascalia sotto. */
-  | { type: "images"; images: { data: Buffer; caption?: string | null }[] };
+  | { type: "images"; images: { data: Buffer; caption?: string | null }[] }
+  /** Codice QR di un indirizzo, disegnato a vettori, con l'indirizzo scritto accanto (scheda per i partner). */
+  | { type: "qr"; url: string; label: string; caption?: string | null };
 
 /**
  * `issuedBy`: il documento lo emette il professionista (ricevuta, copia della
@@ -325,6 +328,32 @@ function signature(w: Writer, block: Extract<PdfBlock, { type: "signature" }>): 
 }
 
 const IMAGE_HEIGHT = 220;
+const QR_SIZE = 130;
+
+/** QR a vettori (quadratini pieni), nitido anche stampato in grande. */
+function qr(w: Writer, block: Extract<PdfBlock, { type: "qr" }>): void {
+  const code = qrcode(0, "M");
+  code.addData(block.url);
+  code.make();
+  const count = code.getModuleCount();
+  const quiet = 4;
+  const cell = QR_SIZE / (count + quiet * 2);
+  const textX = MARGIN + QR_SIZE + 20;
+  const textWidth = CONTENT_WIDTH - QR_SIZE - 20;
+  w.ensure(QR_SIZE);
+  const top = w.y;
+  w.doc.rect(MARGIN, top, QR_SIZE, QR_SIZE).fill("#FFFFFF");
+  for (let row = 0; row < count; row += 1) {
+    for (let col = 0; col < count; col += 1) {
+      if (code.isDark(row, col)) w.doc.rect(MARGIN + (col + quiet) * cell, top + (row + quiet) * cell, cell, cell).fill(COLORS.text);
+    }
+  }
+  let y = top + 18;
+  y += w.write(block.label, textX, y, textWidth, { font: BOLD, size: 11 }) + 6;
+  y += w.write(block.url.replace(/^https?:\/\//, ""), textX, y, textWidth, { font: BOLD, size: 13, color: COLORS.green }) + 8;
+  if (block.caption) w.write(block.caption, textX, y, textWidth, { size: 9.5, color: COLORS.muted });
+  w.y = top + QR_SIZE + w.gap;
+}
 
 function images(w: Writer, block: Extract<PdfBlock, { type: "images" }>): void {
   const gap = 12;
@@ -397,6 +426,7 @@ export function layout(model: PdfDocumentModel, gap: number): Writer {
     else if (block.type === "note") note(w, block);
     else if (block.type === "text") text(w, block);
     else if (block.type === "images") images(w, block);
+    else if (block.type === "qr") qr(w, block);
     else signature(w, block);
   }
   return w;

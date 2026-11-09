@@ -114,7 +114,7 @@ export const CHURN_REASON_LABEL: Record<ChurnReason, string> = {
 };
 
 /** Da dove arrivano i professionisti: le provenienze delle richieste più l'invito al telefono. */
-export type SignupSourceKey = TrafficSource | "INVITE" | "unknown";
+export type SignupSourceKey = TrafficSource | "INVITE" | "COLLEAGUE" | "PARTNER" | "unknown";
 
 /** Da dove parte una richiesta: a tutti i professionisti della zona o dalla pagina di uno di loro. */
 export const REQUEST_ORIGINS = ["GENERAL", "PROFILE"] as const;

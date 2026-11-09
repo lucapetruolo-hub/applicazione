@@ -1,0 +1,22 @@
+/* Avatar per il sito (Avatar.web.tsx): stessi valori del YStack/Text di Avatar.tsx. */
+.photo {
+  position: relative;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.initials {
+  position: relative;
+  flex-direction: column;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--c-cianografiaVelo);
+}
+
+.letters {
+  font-family: var(--f-family);
+  font-weight: 700;
+  color: var(--c-cianografiaScuro);
+}

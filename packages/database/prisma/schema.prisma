@@ -147,6 +147,14 @@ model User {
   // diretto..., docs/CHANGELOG.md §372): stessa categoria delle richieste
   // (§296), mai l'indirizzo di provenienza. Dice dove reclutare.
   signupSource               TrafficSource?
+  // "Porta un collega" e link dei partner (docs/changelog/2026-11-09-passaparola.md):
+  // chi ha portato questo professionista, dal link d'invito aperto prima di
+  // iscriversi. Nessun premio a nessuno (decisione di Luca: ci sono già i
+  // mesi gratis), serve solo a sapere da dove arrivano gli iscritti.
+  invitedByProfessionalId    String?
+  invitedByProfessional      ProfessionalProfile?    @relation("ColleagueInvites", fields: [invitedByProfessionalId], references: [id], onDelete: SetNull)
+  invitedByPartnerId         String?
+  invitedByPartner           InvitePartner?          @relation(fields: [invitedByPartnerId], references: [id], onDelete: SetNull)
   // Account di prova segnato da un super admin (docs/CHANGELOG.md §395):
   // fuori per sempre da statistiche, consigli, numeri pubblici e dai posti
   // dell'offerta "primi 100". Resta un account normale per tutto il resto.
@@ -224,9 +232,12 @@ model User {
   problemTakeovers    ProblemTakeover[]
   outboundMessages    OutboundMessage[]
 
+  @@map("users")
+
   @@index([deletedEmailHash])
   @@index([closureScheduledAt])
-  @@map("users")
+  @@index([invitedByProfessionalId])
+  @@index([invitedByPartnerId])
 }
 
 // Dispositivi da cui un professionista ha già fatto l'accesso
@@ -483,9 +494,28 @@ model ProfessionalProfile {
   dac7Records            Dac7Record[]
   // Verifica di documento e selfie (Didit, docs/CHANGELOG.md §253): un tentativo per riga.
   identityVerifications  IdentityVerification[]
+  // Colleghi iscritti dal suo link d'invito (docs/changelog/2026-11-09-passaparola.md).
+  invitedColleagues      User[]                  @relation("ColleagueInvites")
 
   @@index([categoryId, city])
   @@map("professional_profiles")
+}
+
+// Link d'invito dei partner (commercialisti, associazioni di artigiani,
+// docs/changelog/2026-11-09-passaparola.md): creati in Admin, portano a
+// /per-professionisti con il codice. Codice di 7 caratteri, così non si
+// confonde mai con il link personale di un professionista (6). Nessuna
+// commissione: conta solo quanti professionisti si iscrivono.
+model InvitePartner {
+  id         String    @id @default(uuid())
+  name       String
+  code       String    @unique
+  createdAt  DateTime  @default(now())
+  archivedAt DateTime?
+
+  invitedUsers User[]
+
+  @@map("invite_partners")
 }
 
 // Metriche di affidabilità (CLAUDE.md §15) — tabella collegata 1:1,
@@ -1406,6 +1436,9 @@ model Booking {
   // chiuso d'ufficio allo scadere del termine per segnalare un problema.
   completionReminderCount         Int       @default(0)
   completionAutoClosedAt          DateTime?
+  // Un solo promemoria della recensione a chi ha chiuso il lavoro senza
+  // recensire (docs/changelog/2026-11-09-passaparola.md), uguale per tutti.
+  reviewReminderSentAt            DateTime?
 
   // Nota per il cliente quando il professionista annulla un intervento già
   // confermato (richiesta esplicita dell'utente) — facoltativa, distinta
@@ -2849,6 +2882,9 @@ model ProfileViewDay {
   professionalProfileId String
   day                   DateTime @db.Date
   count                 Int      @default(0)
+  // Di queste, quelle arrivate dal link personale /p/<codice>
+  // (docs/changelog/2026-11-09-passaparola.md): "12 persone hanno aperto il tuo link".
+  linkCount             Int      @default(0)
 
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
 
