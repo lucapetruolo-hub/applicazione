@@ -12,6 +12,8 @@ test("il professionista trova il suo link, il cliente che lo apre arriva al prof
   const linkText = page.getByText(/^[^ ]+\/p\/[a-z2-9]{6}$/);
   await expect(linkText).toBeVisible();
   await expect(page.getByRole("img", { name: /Codice QR del link/ })).toBeVisible();
+  // Pulsante per il sito del professionista: il codice porta al suo link.
+  await expect(page.getByLabel("Codice del pulsante")).toHaveValue(/^<a href="[^"]+\/p\/[a-z2-9]{6}" target="_blank" rel="noopener"/);
   // Il messaggio dell'invito prende il nome scritto.
   await page.getByLabel("Nome del cliente (facoltativo)").fill("Anna");
   await expect(page.getByLabel("Messaggio")).toHaveValue(/^Ciao Anna, sono Marco Rossi Idraulica\./);

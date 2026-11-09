@@ -55,6 +55,16 @@ lavori del mese, altrimenti nessun professionista manda i suoi clienti sul sito.
 - **Admin → Da dove arrivano le richieste**: riga "Dal link personale di un
   professionista".
 
+- **Pulsante per il tuo sito** (09/11, sì di Luca): in "Il tuo link" il codice
+  di un pulsante "Chiedi un preventivo" da incollare sul sito del
+  professionista, con l'anteprima. Solo un link con lo stile scritto dentro
+  (`personalLinkButtonHtml` in `packages/shared/src/personalLink.ts`): nessuno
+  script e nessun cookie sul sito del professionista.
+- **Dominio vero prima di stampare i QR**: punto nella checklist di lancio (sì
+  di Luca, prima del lancio).
+- **Skill `referrals`** (passaparola) controllata e installata in
+  `.claude/skills/referrals/` con l'ok di Luca (fonte in `FONTE.md`).
+
 Migrazione `20261108200000_canale_del_professionista`.
 
 **Verifica**: lint, typecheck di web e api, 1299 prove dell'API (nuove su

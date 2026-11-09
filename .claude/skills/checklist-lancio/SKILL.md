@@ -179,6 +179,14 @@ produzione):
    anche questo: oltre ai record SPF/DKIM chiesti da Resend, aggiungere un
    record DMARC (`_dmarc`, es. `v=DMARC1; p=none;`) e provare l'invio su
    Gmail/Outlook prima di reclutare i professionisti.
+5ter. **Dominio vero prima di stampare i QR** (docs/changelog/2026-11-08-canale-del-professionista.md):
+   il QR del link personale `/p/<codice>` prende l'indirizzo da
+   `FRONTEND_URL` (Render), il link mostrato, il messaggio di invito e il
+   pulsante per il sito da `SITE_URL` (`apps/web/src/lib/siteUrl.ts`).
+   Cambiarli insieme sul dominio definitivo **prima** di dare ai
+   professionisti la pagina "Il tuo link": un QR stampato con
+   `applicazione-web.vercel.app` non si aggiorna. Al cambio di dominio il
+   vecchio indirizzo deve rimandare al nuovo.
 6. Credenziali Stripe **Connect** reali per i pagamenti MANOVIA (distinte
    dalle chiavi Stripe Checkout del punto 5 — abilitano i pagamenti
    professionista↔piattaforma, non solo abbonamenti/boost/lead).

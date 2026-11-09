@@ -41,6 +41,21 @@ export function personalInviteMessage(input: { clientName?: string | null; busin
   return `${hello} sono ${input.businessName}. Per preventivi e appuntamenti adesso uso ${input.siteName}: da qui mi scrivi, scegli l'orario e ricevi il promemoria. ${input.url}`;
 }
 
+/**
+ * Codice da incollare sul sito del professionista: un pulsante "Chiedi un
+ * preventivo" che porta al suo link personale. Solo un link con lo stile
+ * scritto dentro: nessuno script, nessun cookie, funziona in ogni programma
+ * per fare siti. Verde pieno del marchio con testo bianco (contrasto AA).
+ */
+export function personalLinkButtonHtml(url: string): string {
+  const safeUrl = url.replace(/[&"<>]/g, (c) => ({ "&": "&amp;", '"': "&quot;", "<": "&lt;", ">": "&gt;" })[c]!);
+  return (
+    `<a href="${safeUrl}" target="_blank" rel="noopener" ` +
+    `style="display:inline-block;padding:12px 22px;border-radius:999px;background:#128552;color:#ffffff;` +
+    `font:600 16px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none">Chiedi un preventivo</a>`
+  );
+}
+
 /** Dati della pagina "Il tuo link" (`GET /professionals/me/personal-link`). */
 export type MyPersonalLink = {
   code: string;
