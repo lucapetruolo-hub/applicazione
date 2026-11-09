@@ -3,7 +3,7 @@
 import { Suspense, startTransition, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, ChevronLeft, ChevronRight, Navigation, PanelLeftClose, PanelLeftOpen, Phone, Plus, Search, Truck, X } from "lucide-react";
+import { CalendarCheck, CalendarDays, CalendarX, ChevronLeft, ChevronRight, Navigation, PanelLeftClose, PanelLeftOpen, Phone, Plus, Search, Truck, X } from "lucide-react";
 import {
   agendaAttention,
   formatAppointmentDate,
@@ -203,6 +203,8 @@ function DashboardAgendaContent() {
   // rende ogni occorrenza renderizzata indipendente dalle altre.
   const [selectedSlotKeys, setSelectedSlotKeys] = useState<Set<string>>(new Set());
   const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
+  // Giorno con appuntamenti da chiudere: prima si chiede conferma (docs/changelog/2026-11-09-chiudi-riapri-pulsanti.md).
+  const [confirmCloseDate, setConfirmCloseDate] = useState<Date | null>(null);
 
   // Secondo calendario, indipendente dal primo (vista/data di navigazione
   // separate): mostra gli eventi reali invece delle regole di disponibilità
@@ -1174,6 +1176,7 @@ function DashboardAgendaContent() {
               // ricorrente), non di questa selezione.
               isSelected={selectedSlotKeys.has(slotKey(index, dateStr))}
               onEdit={() => toggleSlotSelection(index, dateStr)}
+              short={view === "week"}
             />
           ))}
         </YStack>
@@ -1182,30 +1185,44 @@ function DashboardAgendaContent() {
 
     return (
       <YStack gap="2" minWidth={0} opacity={isPast ? 0.55 : 1}>
+        {/*
+          Pulsanti veri al posto della parola sottolineata (richiesta di Luca,
+          docs/changelog/2026-11-09-chiudi-riapri-pulsanti.md): "Chiudi" da solo
+          sembrava chiudere il riquadro. Nella Settimana stretta resta l'icona,
+          con il nome completo per il lettore di schermo.
+        */}
+        {isClosed ? (
+          <div className={view === "day" ? "ag-day-closed" : "ag-day-closed week"}>
+            <span className="ag-day-closed-label">
+              <CalendarX size={14} aria-hidden />
+              {view === "day" ? "Giorno chiuso" : <span className="ag-ecc-wide">Chiuso</span>}
+              {view === "day" ? null : <span className="sr-only ag-ecc-narrow">Chiuso</span>}
+            </span>
+            {view === "day" ? <span className="ag-muted ag-day-closed-note">Nessuno può prenotare in questo giorno.</span> : null}
+          </div>
+        ) : null}
         {!isPast ? (
-          <XStack
-            alignItems="center"
-            gap="1"
-            minWidth={0}
-            cursor="pointer"
-            opacity={exceptionBusyDate === dateStr ? 0.5 : 1}
-            onPress={() => toggleException(dateStr)}
-            role="button"
-            aria-label={`${isClosed ? "Riapri" : "Chiudi"} ${formatAppointmentDate(date, { weekday: "long", day: "numeric" })}`}
+          <button
+            type="button"
+            className={`ag-btn sm ag-day-btn${isClosed ? " reopen" : ""}`}
+            disabled={exceptionBusyDate === dateStr}
+            onClick={() => {
+              if (!isClosed && appointmentsOnDate(date) > 0) setConfirmCloseDate(date);
+              else void toggleException(dateStr);
+            }}
+            aria-label={`${isClosed ? "Riapri" : "Chiudi"}${view === "day" ? " il giorno" : ""} ${formatAppointmentDate(date, { weekday: "long", day: "numeric" })}`}
+            title={isClosed ? "Riapri il giorno" : "Chiudi il giorno: nessuno potrà prenotare"}
           >
-            <Text fontFamily="body" fontSize={12} fontWeight="600" color={brand.grafite70} textDecorationLine="underline">
-              {isClosed ? "Riapri" : "Chiudi"}
-            </Text>
-          </XStack>
+            {isClosed ? <CalendarCheck size={13} aria-hidden /> : <CalendarX size={13} aria-hidden />}
+            {view === "day" ? (
+              <span>{exceptionBusyDate === dateStr ? "Salvo..." : isClosed ? "Riapri il giorno" : "Chiudi il giorno"}</span>
+            ) : (
+              <span className="ag-ecc-wide">{isClosed ? "Riapri" : "Chiudi"}</span>
+            )}
+          </button>
         ) : null}
 
-        {isClosed ? (
-          <XStack alignSelf="flex-start" borderRadius={999} paddingHorizontal={10} paddingVertical={4} backgroundColor="#ECECE8">
-            <Text fontFamily="body" fontSize={12} fontWeight="600" color={brand.grafite70}>
-              Chiuso
-            </Text>
-          </XStack>
-        ) : (
+        {isClosed ? null : (
           <>
             {isTemplateException ? (
               view === "day" ? (
@@ -1224,6 +1241,7 @@ function DashboardAgendaContent() {
                 isConflicting={conflicts.has(index)}
                 isEditing={editingKey === `edit-${index}`}
                 onEdit={() => startEditSlot(index)}
+                short={view === "week"}
               />
             ))}
             {/*
@@ -1324,6 +1342,13 @@ function DashboardAgendaContent() {
     return (bookings ?? [])
       .filter((b) => jobOccurrenceOn(b.scheduledAt, b.scheduledEndAt, dateStr) !== null)
       .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+  }
+
+  /** Appuntamenti ancora validi in quel giorno: lavori presi sul sito e lavori esterni. */
+  function appointmentsOnDate(date: Date): number {
+    const booked = bookingsOnDate(date).filter((b) => b.status === "PENDING" || b.status === "CONFIRMED").length;
+    const external = externalJobsOnDate(date).filter((j) => j.status === "SCHEDULED").length;
+    return booked + external;
   }
 
   function externalJobsOnDate(date: Date): ExternalJob[] {
@@ -2352,6 +2377,23 @@ function DashboardAgendaContent() {
           description="Il cliente verrà avvisato dell'annullamento e, se ha pagato online, gli restituiamo tutto sulla carta. Puoi lasciare una nota facoltativa per spiegargli il motivo."
           onClose={() => setCancelingBooking(null)}
           onCancel={handleCancelWithNote}
+        />
+      ) : null}
+
+      {confirmCloseDate ? (
+        <CancelBookingModal
+          title={`Chiudere ${formatAppointmentDate(confirmCloseDate, { weekday: "long", day: "numeric", month: "long" })}?`}
+          description={`${appointmentsOnDate(confirmCloseDate) === 1 ? "C'è già un appuntamento" : `Ci sono già ${appointmentsOnDate(confirmCloseDate)} appuntamenti`} in questo giorno: restano validi, chiudendo il giorno non vengono annullati. Nessuno potrà prenotarne altri.`}
+          showNote={false}
+          confirmVariant="primary"
+          confirmLabel="Chiudi il giorno"
+          confirmingLabel="Salvo..."
+          backLabel="Annulla"
+          onClose={() => setConfirmCloseDate(null)}
+          onCancel={async () => {
+            await toggleException(toIsoDate(confirmCloseDate));
+            setConfirmCloseDate(null);
+          }}
         />
       ) : null}
 

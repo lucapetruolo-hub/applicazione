@@ -83,8 +83,8 @@ test("C2 chiudo un giorno (venerdì) per un impegno", async ({ page }) => {
   await expect(section.getByRole("button", { name: fridayButton, pressed: true })).toBeVisible();
   log.ops.push("M", "T");
   await timed(log, async () => {
-    await section.getByRole("button", { name: `Chiudi venerdì ${fridayDay}`, exact: true }).click();
-    await expect(section.getByRole("button", { name: `Riapri venerdì ${fridayDay}`, exact: true })).toBeVisible();
+    await section.getByRole("button", { name: `Chiudi il giorno venerdì ${fridayDay}`, exact: true }).click();
+    await expect(section.getByRole("button", { name: `Riapri il giorno venerdì ${fridayDay}`, exact: true })).toBeVisible();
   });
   done("C2 Chiudo venerdì", log);
 });

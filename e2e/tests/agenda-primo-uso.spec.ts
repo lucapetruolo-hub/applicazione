@@ -67,3 +67,19 @@ test("frecce della striscia: giorno prima e dopo anche in Giorno per giorno (§3
   await section.getByRole("button", { name: "Giorno precedente" }).click();
   await expect(strip.getByRole("button", { pressed: true })).toContainText("30");
 });
+
+// Chiudere un giorno con appuntamenti chiede conferma e dice che restano validi
+// (docs/changelog/2026-11-09-chiudi-riapri-pulsanti.md).
+test("chiudere un giorno con un appuntamento chiede conferma: l'appuntamento resta", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-10-26T07:00:00Z"));
+  await page.goto("/dashboard/agenda?tab=orari");
+  const section = page.getByRole("heading", { name: "Giorno per giorno" }).locator("xpath=ancestor::div[2]");
+  await section.getByRole("button", { name: "Giorno", exact: true }).click();
+  await section.getByRole("button", { name: "Chiudi il giorno lunedì 26", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Chiudere lunedì 26 ottobre?" });
+  await expect(dialog).toContainText("non vengono annullati");
+  await dialog.getByRole("button", { name: "Annulla" }).click();
+  await expect(dialog).toHaveCount(0);
+  // Annullando il giorno resta aperto.
+  await expect(section.getByRole("button", { name: "Chiudi il giorno lunedì 26", exact: true })).toBeVisible();
+});
