@@ -392,7 +392,8 @@ function WeekOrDayGrid({
                 </XStack>
               </YStack>
             )}
-            <YStack padding="2" gap="2" minHeight={220} minWidth={0} overflow="hidden">
+            {/* Nella vista Giorno con la striscia sopra il riquadro è alto quanto le fasce, senza vuoto sotto (docs/changelog/2026-11-09-giorno-per-giorno-fermo.md). */}
+            <YStack padding="2" gap="2" minHeight={hideHeader ? undefined : 220} minWidth={0} overflow="hidden">
               {renderDayColumn(date)}
             </YStack>
           </YStack>

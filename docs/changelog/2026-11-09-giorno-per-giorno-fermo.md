@@ -34,3 +34,16 @@ Settimana, Mese, Giorno, Chiudi, Riapri, Elimina più fasce, Annulla) a metà e
 in fondo alla pagina, su computer (1400×800) e telefono (iPhone 13), con e
 senza il comportamento di Safari: 0 px di spostamento ovunque (prima fino a
 84 px). Anche "+" con chiusura della finestra: nessuno spostamento.
+
+## Migliorie approvate da Luca (stesso giorno)
+
+- **Calendario**: misurato come sopra. Sul telefono, in fondo alla pagina, la
+  vista saltava fino a 171 px (tocco su "oggi" nella striscia, dove le ore
+  passate si raccolgono e la giornata si accorcia, frecce, passaggio a Mese).
+  Stessa protezione (`useKeepInPlace`) sulla colonna del calendario, anche per
+  la tendina della vista sul telefono (`onChangeCapture`). Dopo: 0 px su
+  computer e telefono, con e senza il comportamento di Safari.
+- **Riquadro della vista Giorno più basso**: in "Giorno per giorno" la
+  colonna del giorno non ha più l'altezza minima di 220 px (resta in
+  Settimana): è alta quanto le fasce.
+- Prova su un iPhone vero con Safari: da fare sul sito pubblicato.

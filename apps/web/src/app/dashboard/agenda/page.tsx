@@ -154,6 +154,7 @@ function DashboardAgendaContent() {
   const [saved, setSaved] = useState(false);
   // "Giorno per giorno" resta fermo sullo schermo mentre si tocca (docs/changelog/2026-11-09-giorno-per-giorno-fermo.md).
   const { anchorRef: dayByDayRef, spacerRef: dayByDaySpacerRef, remember: rememberDayByDay } = useKeepInPlace<HTMLDivElement>();
+  const { anchorRef: calendarRef, spacerRef: calendarSpacerRef, remember: rememberCalendar } = useKeepInPlace<HTMLDivElement>();
 
   // Stesso criterio del calendario Prenotazioni sotto: su mobile il
   // default è "Giorno" perché la griglia settimanale non ci sta.
@@ -2012,7 +2013,16 @@ function DashboardAgendaContent() {
             </aside>
             )}
 
-            <div style={{ minWidth: 0 }}>
+            <div
+              ref={calendarRef}
+              style={{ minWidth: 0 }}
+              // Fermo sullo schermo mentre lo si usa, anche dalla tendina della vista (docs/changelog/2026-11-09-giorno-per-giorno-fermo.md).
+              onPointerDownCapture={rememberCalendar}
+              onChangeCapture={rememberCalendar}
+              onKeyDownCapture={(e) => {
+                if (e.key === "Enter" || e.key === " ") rememberCalendar();
+              }}
+            >
               <div className="ag-toolbar">
                 <button
                   type="button"
@@ -2156,6 +2166,7 @@ function DashboardAgendaContent() {
                   {bookingsError}
                 </div>
               ) : null}
+              <div ref={calendarSpacerRef} aria-hidden />
             </div>
           </div>
         ) : activeTab === "orari" ? (
