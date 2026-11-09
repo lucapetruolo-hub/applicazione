@@ -69,7 +69,7 @@ const pages = [
   // limite di TBT più largo: il lavoro che resta è Tamagui che prepara la
   // pagina, si abbassa con il thread "Alleggerire l'apertura delle pagine
   // pubbliche".
-  { name: "home", path: "/", visitor: true, budget: { tbtMs: 700 } },
+  { name: "home", path: "/", visitor: true },
   { name: "citta", path: "/cerca/idraulico/latina", visitor: true },
 ];
 const rows = [];
@@ -130,7 +130,7 @@ for (const item of pages) {
     if (row.cls > limits.cls) out.push(`CLS ${row.cls} > ${limits.cls}`);
     return out;
   };
-  const problems = check({ ...BUDGET, ...item.budget });
+  const problems = check(BUDGET);
   // Il profilo si apre all'indirizzo con il nome (/professionista/<nome>-<città>-<id>).
   const finalPath = new URL(row.finalUrl).pathname;
   const expectedPath = new URL(item.path, WEB_URL).pathname;
