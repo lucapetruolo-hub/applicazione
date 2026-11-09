@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import Stripe from "stripe";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
@@ -26,6 +26,7 @@ import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { readStripeConnectStatus } from "../professional-fiscal/stripe-connect-status";
 import { professionalHeldEurCents, professionalOnlineLimit } from "./online-limit";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OPEN_ISSUE_STATUSES = ["CHAT", "OPEN"];
@@ -351,7 +352,9 @@ export class OnlineMoneyService {
         ...(suffix ? { statement_descriptor_suffix: suffix } : {}),
         metadata,
       },
-      success_url: `${back}&pagamento=completato`,
+      // Il preventivo nell'indirizzo di ritorno: il sito chiede subito a
+      // Stripe se è pagato, senza aspettare il webhook (collaudo 08/11, E3-06).
+      success_url: `${back}&pagamento=completato&preventivo=${encodeURIComponent(params.quoteId)}`,
       cancel_url: back,
       metadata,
     }, onAccount(account));
@@ -399,6 +402,41 @@ export class OnlineMoneyService {
     // Se intanto viene pagata, il pagamento doppio torna da solo al cliente.
     await stripe.checkout.sessions.expire(previous.id, {}, onAccount(account)).catch(() => undefined);
     return null;
+  }
+
+  /**
+   * Pagina dell'acconto del preventivo pagata e non rimborsata, letta da
+   * Stripe sul conto del professionista (collaudo 08/11, E3-06): serve a far
+   * nascere il lavoro anche se l'avviso di Stripe (webhook Connect) non
+   * arriva. `null` se non c'è, non è pagata, è stata rimborsata o Stripe
+   * non risponde.
+   */
+  async paidQuoteDepositSession(quoteId: string): Promise<Stripe.Checkout.Session | null> {
+    if (!this.stripe) return null;
+    const quote = await this.prisma.quote.findUnique({
+      where: { id: quoteId },
+      select: { depositCheckoutSessionId: true, professionalProfileId: true },
+    });
+    if (!quote?.depositCheckoutSessionId) return null;
+    const fiscal = await this.prisma.professionalFiscalProfile.findUnique({
+      where: { professionalProfileId: quote.professionalProfileId },
+      select: { stripeConnectAccountId: true },
+    });
+    const session = await this.stripe.checkout.sessions
+      .retrieve(quote.depositCheckoutSessionId, { expand: ["payment_intent.latest_charge"] }, onAccount(fiscal?.stripeConnectAccountId ?? null))
+      .catch(() => null);
+    if (!session || session.status !== "complete" || session.payment_status !== "paid") return null;
+    if (session.metadata?.kind !== "quote_deposit" || session.metadata?.quoteId !== quoteId) return null;
+    const charge = typeof session.payment_intent === "object" ? (session.payment_intent?.latest_charge as Stripe.Charge | null) : null;
+    if (charge?.amount_refunded) return null;
+    // Anche un rimborso ancora in attesa di fondi (§269): l'acconto è già stato restituito.
+    const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+    if (!paymentIntentId) return null;
+    const refunds = await this.stripe.refunds
+      .list({ payment_intent: paymentIntentId, limit: 1 }, onAccount(fiscal?.stripeConnectAccountId ?? null))
+      .catch(() => null);
+    if (!refunds || refunds.data.length > 0) return null;
+    return session;
   }
 
   /**
@@ -665,7 +703,8 @@ export class OnlineMoneyService {
     const claimed = await this.prisma.jobPayment.updateMany({
       where: { id: jp.id, ...(part === "deposit" ? { stripePaymentIntentId: null } : { balancePaymentIntentId: null }) },
       data: {
-        paidEurCents: paid,
+        // Somma sul database, non sul valore letto prima (collaudo dell'8/11/2026, E3-11).
+        paidEurCents: { increment: amount },
         // Il costo della carta è nostro, dentro la trattenuta unica (§378).
         cardFeeEurCents: { increment: charge.fee },
         onlineStage: stage,
@@ -673,7 +712,7 @@ export class OnlineMoneyService {
         ...(charge.destination
           ? {
               stripeDestinationAccountId: charge.destination,
-              applicationFeeEurCents: jp.applicationFeeEurCents + charge.applicationFeeAmount,
+              applicationFeeEurCents: { increment: charge.applicationFeeAmount },
               ...(charge.direct ? { stripeDirectCharge: true } : {}),
             }
           : {}),
@@ -1975,7 +2014,7 @@ export class OnlineMoneyService {
   }
 
   /** Ogni ora: i pagamenti online arrivati al momento dello sblocco, poi i bonifici in attesa. */
-  @Cron(CronExpression.EVERY_HOUR)
+  @ScheduledJob(CronExpression.EVERY_HOUR)
   async runReleases(now: Date = new Date()): Promise<number> {
     const due = await this.prisma.jobPayment.findMany({
       where: { paymentMethod: "MANOVIA", releasedAt: null, onlineStage: { in: ["PAID", "AWAITING_BALANCE"] }, releaseDueAt: { lte: now } },

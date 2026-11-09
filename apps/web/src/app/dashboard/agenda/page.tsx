@@ -587,19 +587,12 @@ function DashboardAgendaContent() {
     setError(dayOfWeek === null ? null : slotEditorLiveError(dayOfWeek, editIndex));
   }
 
-  async function handleBookingAction(status: "CONFIRMED" | "COMPLETED" | "CANCELED") {
+  // Solo conferma o annullamento: il lavoro si chiude con "Lavoro terminato" (collaudo 08/11, E1-03).
+  async function handleBookingAction(status: "CONFIRMED" | "CANCELED") {
     if (!token || !selectedBooking) return;
     setIsBookingActionPending(true);
     try {
-      if (status === "CANCELED") {
-        // Riusa lo stesso endpoint di updateStatus (lato professionista è
-        // sempre concesso annullare/completare/confermare una propria
-        // prenotazione, a differenza del cliente che può solo annullare la
-        // propria — vedi BookingsService.updateStatus vs cancelForClient).
-        await apiClient.updateBookingStatus(token, selectedBooking.id, "CANCELED");
-      } else {
-        await apiClient.updateBookingStatus(token, selectedBooking.id, status);
-      }
+      await apiClient.updateBookingStatus(token, selectedBooking.id, status);
       setBookings((prev) => (prev ? prev.map((b) => (b.id === selectedBooking.id ? { ...b, status } : b)) : prev));
       setSelectedBooking(null);
     } catch (err) {

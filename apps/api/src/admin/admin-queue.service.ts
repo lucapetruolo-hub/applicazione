@@ -1,5 +1,4 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import {
   ADMIN_QUEUE_KINDS,
@@ -26,6 +25,7 @@ import { sdiProviderFromEnv } from "../accounting/sdi-provider";
 import { stuckSdiWhere } from "../accounting/sdi-stuck";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
+import { ScheduledJob } from "../common/scheduled-job";
 
 type Person = { name: string | null; surname: string | null } | null;
 const personName = (p: Person) => [p?.name, p?.surname].filter(Boolean).join(" ") || "Utente";
@@ -475,7 +475,7 @@ export class AdminQueueService {
    * (proposta accolta da Luca il 30/10/2026). Toglie anche i "presi" dei casi
    * già chiusi, che non compaiono più in coda.
    */
-  @Cron("0 8 * * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 8 * * *", { timeZone: "Europe/Rome" })
   async morningClaimedDue(now: Date = new Date()): Promise<number> {
     const claims = await this.prisma.adminCaseClaim.findMany({ select: { caseKey: true, adminUserId: true } });
     const admins = [...new Set(claims.map((c) => c.adminUserId))];

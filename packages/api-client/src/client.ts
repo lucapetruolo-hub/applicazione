@@ -8,6 +8,7 @@ import type {
   EmailStatus,
   ProfessionalEntityTypeValue,
   MySubscription,
+  SubscriptionCheckoutResult,
   SubscriptionTier,
   BillingInterval,
   PROFESSIONAL_CATEGORIES,
@@ -369,6 +370,8 @@ export type ClientGuidedRequest = {
     clientNote: string | null;
     /** Totale indicativo prima dell'ultima modifica dei prezzi del professionista, null se mai cambiato (docs/CHANGELOG.md §196). */
     previousPrice: { minEurCents: number | null; maxEurCents: number | null } | null;
+    /** Il professionista ha accettato la data proposta dal cliente: ora il cliente accetta il preventivo (collaudo 08/11, E1-02). */
+    proposedDateAccepted: boolean;
     /** Appuntamento sostituito da quello attuale (ultima modifica del professionista, o l'orario richiesto dal cliente se il preventivo non lo rispetta), per il "prima → ora" in UI. null se nulla è cambiato. */
     previousSchedule: { start: string; end: string | null } | null;
     /** Nota lasciata dal professionista quando modifica direttamente l'orario proposto dal cliente durante la trattativa ("Modifica"), invece di limitarsi a confermarlo/rifiutarlo. */
@@ -1334,6 +1337,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         body: JSON.stringify({ email, password }),
       }),
 
+    /** `nonce` firmato dal server per la pagina di accesso di Google: vale 30 minuti e una volta sola. */
+    googleNonce: () => request<{ nonce: string }>("/auth/google/nonce", { method: "POST" }),
+
     /**
      * `createIfMissing` (default true): /accedi lo passa esplicitamente a
      * `false` per non iscrivere silenziosamente un account nuovo su
@@ -1414,6 +1420,10 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       }),
 
     // Gli altri dispositivi escono; `token` è il nuovo accesso per questo (docs/CHANGELOG.md §294).
+    /** "Esci": chiude questo accesso anche sul server (controllo dell'08/11). `keepalive` perché la pagina può cambiare subito dopo. */
+    logout: (token: string) =>
+      request<{ success: boolean }>("/auth/logout", { method: "POST", keepalive: true, headers: { Authorization: `Bearer ${token}` } }),
+
     logoutOtherDevices: (token: string) =>
       request<{ token: string }>("/auth/logout-others", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
@@ -1877,7 +1887,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<{ fileName: string; xml: string }>(`/admin/invoices/${encodeURIComponent(id)}/xml`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminRunInvoiceMonth: (token: string, month: string) =>
-      request<{ issued: number }>(`/admin/invoices/run/${encodeURIComponent(month)}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+      request<{ issued: number; notified: number; statements: number }>(`/admin/invoices/run/${encodeURIComponent(month)}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     adminFeeReconciliation: (token: string, month: string) =>
       request<FeeReconciliation>(`/admin/invoices/reconciliation/${encodeURIComponent(month)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
@@ -1916,9 +1926,13 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         body: JSON.stringify(input),
       }),
 
-    /** Il professionista conferma la data proposta dal cliente: crea direttamente la prenotazione. */
+    /**
+     * Il professionista accetta la data proposta dal cliente. Su un appuntamento
+     * già fissato lo sposta; prima dell'accettazione il preventivo torna da
+     * accettare con quella data (`bookingId` null, collaudo 08/11, E1-02).
+     */
     confirmProposedQuoteDate: (token: string, quoteId: string) =>
-      request<{ bookingId: string }>(`/quotes/${quoteId}/confirm-proposed-date`, {
+      request<{ bookingId: string | null }>(`/quotes/${quoteId}/confirm-proposed-date`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
@@ -1976,7 +1990,15 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         body: JSON.stringify({ note }),
       }),
 
-    updateBookingStatus: (token: string, bookingId: string, status: "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW") =>
+    /** Ritorno dalla pagina dell'acconto: se Stripe dice pagato, il lavoro nasce subito senza aspettare il webhook (collaudo 08/11, E3-06). */
+    verifyQuoteDeposit: (token: string, quoteId: string) =>
+      request<{ bookingId: string | null }>(`/bookings/from-quote/${encodeURIComponent(quoteId)}/verify-deposit`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    /** Solo conferma o annullamento: il lavoro si chiude con `completeBooking` (collaudo 08/11, E1-03). */
+    updateBookingStatus: (token: string, bookingId: string, status: "CONFIRMED" | "CANCELED") =>
       request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/status`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
@@ -2140,7 +2162,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     /** Scelta o passaggio di livello; `interval` conta solo per un abbonamento nuovo (il passaggio tiene il rinnovo scelto). */
     createSubscriptionCheckout: (token: string, plan: SubscriptionTier, interval?: BillingInterval) =>
-      request<{ url: string | null }>("/billing/subscription/checkout", {
+      request<SubscriptionCheckoutResult>("/billing/subscription/checkout", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ plan, interval }),
@@ -2884,7 +2906,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<ProfessionalPayoutTotals>("/professionals/me/online-payments/summary", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     bookingJobPayment: (token: string, bookingId: string) =>
-      request<JobPayment | null>(`/bookings/${bookingId}/job-payment`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+      request<JobPaymentSummary | null>(`/bookings/${bookingId}/job-payment`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
 
 

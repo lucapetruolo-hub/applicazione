@@ -1,9 +1,10 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { heldEmailGroups } from "./email-hold";
 import { NotificationsService } from "./notifications.service";
+import { ScheduledJob } from "../common/scheduled-job";
 
 /**
  * Manda le email rimandate (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md):
@@ -20,7 +21,7 @@ export class HeldEmailsService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @ScheduledJob(CronExpression.EVERY_5_MINUTES)
   async sendDue(now: Date = new Date()): Promise<void> {
     const rows = await this.prisma.notification.findMany({
       where: { emailHoldUntil: { lte: now } },

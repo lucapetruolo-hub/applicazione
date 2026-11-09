@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, Optional } from "@nestjs/common";
 import { GeocodingService } from "../geocoding/geocoding.service";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
 import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_RESTORE_WINDOW_MINUTES, type RequestWithdrawReason, findComuneByName, notificationJobLabel, slotStillOffered, professionalChargesVat, professionalKindOf, professionalRestrictions, clientPaymentOffer, quotePriceTotals, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestReach, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
@@ -17,6 +17,7 @@ import { toMyState } from "./guided-request-user-state.service";
 import { computeDirectForwardAt } from "./lead-routing";
 import type { RequestSummary } from "../email/templates/job-emails";
 import { invoiceRequestView } from "../client-invoice-requests/client-invoice-requests.service";
+import { ScheduledJob } from "../common/scheduled-job";
 
 /** Riga nella chat dei professionisti quando il cliente elimina una richiesta aperta (§343). */
 export const WITHDRAWN_TIMELINE_MESSAGE = "Il cliente ha ritirato la richiesta.";
@@ -774,7 +775,11 @@ export class GuidedRequestsService {
           // altrimenti l'orario che il cliente aveva chiesto quando la
           // richiesta è nata da una fascia dell'agenda pubblica e il
           // preventivo non lo rispetta (docs/CHANGELOG.md §180).
-          previousSchedule: quote.previousStartDate
+          // Data del cliente accettata dal professionista (E1-02): nessun "prima → ora".
+          proposedDateAccepted: quote.proposedDateAcceptedAt !== null && quote.status === "SENT",
+          previousSchedule: quote.proposedDateAcceptedAt
+            ? null
+            : quote.previousStartDate
             ? { start: quote.previousStartDate.toISOString(), end: quote.previousEndDate?.toISOString() ?? null }
             : requestedStart && scheduleChangeBetween({ start: requestedStart }, { start: quote.estimatedStartDate })
               ? { start: requestedStart.toISOString(), end: requestedEnd?.toISOString() ?? null }
@@ -1022,7 +1027,7 @@ export class GuidedRequestsService {
    * segnalata (prove per la moderazione e le sue conseguenze, decisione
    * dell'utente) né se ha un lavoro (non si può eliminare comunque).
    */
-  @Cron(CronExpression.EVERY_DAY_AT_4AM)
+  @ScheduledJob(CronExpression.EVERY_DAY_AT_4AM)
   async purgeClientDeletedRequests(now = new Date()): Promise<number> {
     const cutoff = new Date(now.getTime() - CLIENT_DELETED_REQUEST_RETENTION_DAYS * 24 * 60 * 60_000);
     const candidates = await this.prisma.guidedRequest.findMany({
@@ -1161,6 +1166,8 @@ export class GuidedRequestsService {
         pausedAt: null,
         // Profilo creato da un operatore, non ancora confermato (§170).
         invitePendingAt: null,
+        // Mai una richiesta vera a un profilo dimostrativo (collaudo 08/11, miglioria E1).
+        isDemo: false,
         // Nessuna nuova richiesta per 14 giorni dopo la 3ª segnalazione accolta (§167),
         // né durante la pausa scelta dal professionista (collaudo C-16).
         AND: [
@@ -1569,7 +1576,7 @@ export class GuidedRequestsService {
    *    la richiesta stessa sta chiudendo), la richiesta passa a CLOSED con
    *    closedReason EXPIRED, il cliente viene notificato.
    */
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @ScheduledJob(CronExpression.EVERY_5_MINUTES)
   async runExpiryCheck(): Promise<void> {
     const now = new Date();
 

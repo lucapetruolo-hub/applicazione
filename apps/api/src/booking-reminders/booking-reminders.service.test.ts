@@ -85,6 +85,20 @@ function setup(rows: ReturnType<typeof booking>[]) {
   return { service, send, prisma };
 }
 
+describe("Promemoria del giorno prima", () => {
+  it("segnato prima di mandare: un secondo giro sulle stesse righe non manda doppioni", async () => {
+    vi.useFakeTimers({ now: new Date("2027-01-15T09:30:00Z") });
+    try {
+      const { service, send } = setup([booking()]);
+      await Promise.all([service.sendUpcomingReminders(), service.sendUpcomingReminders()]);
+      // Una al cliente e una al professionista, non quattro.
+      expect(send).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("Email del promemoria con l'acconto", () => {
   it("parte 6 ore prima del preavviso, una volta sola, con la scadenza e i pulsanti", async () => {
     // Sabato 16 alle 10:30 con 24 ore: si annulla entro venerdì 15 alle 10:30, l'email parte da giovedì 14 alle 20 (non alle 4:30 di notte).
