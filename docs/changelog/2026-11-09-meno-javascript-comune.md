@@ -94,7 +94,7 @@ il client dell'API per pagina (46 KB non compressi su ogni pagina).
   `ProblemBand`), ora caricato solo al tocco. `/cerca` scende di circa 55 KB
   compressi (337 KB in tutto).
 - Lighthouse della CI (`e2e/lighthouse/agenda.mjs`) misura anche home e
-  pagina città (`/cerca/idraulico/latina`) da visitatore senza account. La
-  home ha un limite di TBT di 700 ms invece di 500 finché il thread
-  "Alleggerire l'apertura delle pagine pubbliche" non toglie il lavoro di
-  Tamagui; la città ha i limiti di sempre.
+  pagina città (`/cerca/idraulico/latina`) da visitatore senza account, con
+  i limiti di sempre (TBT 500 ms). Al primo giro in CI la home ha dato 207 ms
+  e la città 124 ms: tolto il limite più largo (700 ms) pensato per la home
+  (ok di Luca), così anche un peggioramento della home blocca la PR.
