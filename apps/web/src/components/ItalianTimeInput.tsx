@@ -35,6 +35,10 @@ export function ItalianTimeInput({
   "use no memo";
   const shown = /^\d{2}:\d{2}/.test(value) ? value.slice(0, 5) : "--:--";
   const { flex, minWidth, width, ...inputStyle } = style ?? {};
+  // Il colore va solo sul testo scritto sopra: dato al campo nativo, su
+  // Safari per iPhone il suo testo restava visibile e l'ora si leggeva
+  // due volte ("08:0008:00", docs/changelog/2026-11-09-orari-doppi-iphone.md).
+  const { color, ...nativeStyle } = inputStyle;
 
   return (
     <span className={wrapperClassName ? `it-time ${wrapperClassName}` : "it-time"} style={{ flex, minWidth, width }}>
@@ -53,9 +57,9 @@ export function ItalianTimeInput({
             // Browser senza showPicker: si apre col tocco sull'icona.
           }
         }}
-        style={{ ...inputStyle, width: "100%" }}
+        style={{ ...nativeStyle, width: "100%" }}
       />
-      <span aria-hidden className={value ? "it-time-text" : "it-time-text empty"} style={{ paddingLeft: padX + 1, fontSize: inputStyle.fontSize, color: inputStyle.color }}>
+      <span aria-hidden className={value ? "it-time-text" : "it-time-text empty"} style={{ paddingLeft: padX + 1, fontSize: inputStyle.fontSize, color }}>
         {shown}
       </span>
       <style jsx global>{`
@@ -64,11 +68,26 @@ export function ItalianTimeInput({
           display: inline-block;
           min-width: 0;
         }
+        /* Su Safari per iPhone il campo nativo ha un aspetto suo (grigio, come
+           spento, e più largo della misura data) e scrive il valore in
+           ::-webkit-date-and-time-value, non in ::-webkit-datetime-edit:
+           senza aspetto nativo e con il testo trasparente si vede solo
+           quello scritto sopra. */
         .it-time input {
+          -webkit-appearance: none;
+          appearance: none;
           color: transparent;
+          -webkit-text-fill-color: transparent;
+          margin: 0;
         }
         .it-time input::-webkit-datetime-edit {
           opacity: 0;
+        }
+        .it-time input::-webkit-date-and-time-value {
+          opacity: 0;
+          text-align: left;
+          /* Senza aspetto nativo, vuoto, il campo si schiaccerebbe. */
+          min-height: 1.2em;
         }
         .it-time-text {
           position: absolute;
