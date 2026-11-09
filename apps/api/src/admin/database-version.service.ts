@@ -1,9 +1,9 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { EmailService } from "../email/email.service";
 import { adminMaintenanceEmail } from "../email/templates/account-emails";
+import { ScheduledJob } from "../common/scheduled-job";
 
 /** Avviso 6 mesi prima della fine del supporto, come per Node (scripts/controlla-node.mjs). */
 const NOTICE_MONTHS = 6;
@@ -47,7 +47,7 @@ export class DatabaseVersionService {
     private readonly emailService: EmailService,
   ) {}
 
-  @Cron("0 9 1 * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 9 1 * *", { timeZone: "Europe/Rome" })
   async monthlyCheck(now: Date = new Date()): Promise<boolean> {
     try {
       const [row] = await this.prisma.$queryRaw<{ server_version_num: string }[]>`SELECT current_setting('server_version_num') AS server_version_num`;

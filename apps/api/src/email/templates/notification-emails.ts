@@ -1,4 +1,5 @@
 import {
+  PAST_DUE_GRACE_DAYS,
   AGENDA_LOOKAHEAD_DAYS,
   CONTENT_REPORT_TARGET_LABEL,
   JOB_ISSUE_APPEAL_DAYS,
@@ -1282,6 +1283,24 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
   }),
+  // Secondo abbonamento dello stesso professionista (due schede): annullato, addebito da rimborsare (E3-01).
+  ADMIN_SUBSCRIPTION_DUPLICATE: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Abbonamento pagato due volte",
+    title: payload.refunded ? "Abbonamento doppio rimborsato" : "Abbonamento doppio da rimborsare",
+    paragraphs: payload.refunded
+      ? [
+          `Un professionista ha attivato l'abbonamento due volte. Il secondo l'abbiamo annullato e i ${formatEur(payload.amountEurCents) || "soldi"} pagati sono già stati rimborsati.`,
+          "Controlla in Finanza che la nota di credito della fattura dell'abbonamento ci sia.",
+        ]
+      : [
+          `Un professionista ha attivato l'abbonamento due volte. Il secondo l'abbiamo già annullato, ma ha pagato ${formatEur(payload.amountEurCents) || "un importo"} e il rimborso automatico non è partito.`,
+          "Rimborsalo dalla Dashboard di Stripe: la nota di credito della fattura dell'abbonamento nasce dal rimborso.",
+        ],
+    details: [...(typeof payload.stripeSubscriptionId === "string" ? [{ label: "Abbonamento", value: payload.stripeSubscriptionId }] : [])],
+    cta: { label: "Apri Finanza", url: `${frontendUrl()}/admin/finanza` },
+  }),
   ADMIN_STRIPE_UNKNOWN_PAYMENT: (payload) => ({
     kind: "notification",
     tone: "urgent",
@@ -2092,7 +2111,12 @@ const BUILDERS: Record<string, Builder> = {
     title: "Account in pausa",
     paragraphs:
       // Mesi gratis senza la carta (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
-      payload.reason === "CARD_NEEDED"
+      payload.reason === "PAYMENT_FAILED"
+        ? [
+            "Il rinnovo del tuo abbonamento non è stato pagato: finché il pagamento non passa il tuo profilo non compare nelle ricerche e non ricevi nuove richieste.",
+            "Cambia la carta dalla pagina Abbonamento, con \"Cambia la carta\": appena l'addebito riesce torni visibile.",
+          ]
+        : payload.reason === "CARD_NEEDED"
         ? [
             "Per usare i mesi gratis serve la carta: finché non la aggiungi il tuo profilo non compare nelle ricerche e non ricevi nuove richieste.",
             "Oggi non paghi nulla. Alla fine dei mesi gratis parte Base a 19 € + IVA al mese, e puoi annullare quando vuoi.",
@@ -2103,7 +2127,12 @@ const BUILDERS: Record<string, Builder> = {
               : "I tuoi mesi gratis sono finiti: il tuo profilo non compare più nelle ricerche e non ricevi nuove richieste.",
             "Scegli un livello per renderlo di nuovo visibile e operativo.",
           ],
-    cta: payload.reason === "CARD_NEEDED" ? { label: "Attiva i mesi gratis", url: `${frontendUrl()}/dashboard/abbonamento` } : { label: "Scegli un livello", url: `${frontendUrl()}/dashboard/abbonamento` },
+    cta:
+      payload.reason === "CARD_NEEDED"
+        ? { label: "Attiva i mesi gratis", url: `${frontendUrl()}/dashboard/abbonamento` }
+        : payload.reason === "PAYMENT_FAILED"
+          ? { label: "Cambia la carta", url: `${frontendUrl()}/dashboard/abbonamento` }
+          : { label: "Scegli un livello", url: `${frontendUrl()}/dashboard/abbonamento` },
   }),
   SUBSCRIPTION_FREE_MONTHS_STARTED: (payload, ctx) => {
     const date = formatDay(str(payload.date));
@@ -2232,7 +2261,24 @@ const BUILDERS: Record<string, Builder> = {
       cta: subscriptionPage(),
     };
   },
-  SUBSCRIPTION_PAYMENT_FAILED: (_payload, ctx) => ({
+  SUBSCRIPTION_PAYMENT_FAILED: (payload, ctx) => {
+    // Ultimo avviso, 3 giorni prima della chiusura (docs/changelog/2026-11-08-abbonamento-chiusure-e-rinnovi.md).
+    const closesOn = str(payload.closesOn);
+    if (closesOn) {
+      return {
+        kind: "account",
+        tone: "urgent",
+        subject: "Ultimo avviso: il tuo abbonamento sta per chiudersi",
+        greeting: ctx.name,
+        title: "Rinnovo ancora da pagare",
+        paragraphs: [
+          `Non siamo ancora riusciti ad addebitare il rinnovo e il tuo profilo è in pausa. Se entro il ${formatDay(closesOn)} il pagamento non riesce, l'abbonamento si chiude e per tornare visibile dovrai sceglierne uno nuovo.`,
+          "Cambia la carta dalla pagina Abbonamento, con \"Cambia la carta\": il prossimo tentativo userà quella nuova.",
+        ],
+        cta: subscriptionPage(),
+      };
+    }
+    return {
     kind: "account",
     tone: "urgent",
     subject: "Pagamento dell'abbonamento non riuscito",
@@ -2240,10 +2286,11 @@ const BUILDERS: Record<string, Builder> = {
     title: "Pagamento non riuscito",
     paragraphs: [
       "Non siamo riusciti ad addebitare l'abbonamento sulla tua carta. Riproveremo nei prossimi giorni.",
-      "Controlla la carta o cambiala dalla pagina Abbonamento, con \"Cambia la carta\": se il pagamento non riesce l'abbonamento si chiude e il profilo va in pausa.",
+      `Controlla la carta o cambiala dalla pagina Abbonamento, con "Cambia la carta": se entro domani il pagamento non riesce, il profilo va in pausa finché non passa, e dopo ${PAST_DUE_GRACE_DAYS} giorni l'abbonamento si chiude.`,
     ],
     cta: subscriptionPage(),
-  }),
+    };
+  },
   // Documenti del mese (docs/CHANGELOG.md §378): stesso riepilogo della
   // pagina, col totale in cima. I mesi gratis compaiono a 0 €.
   MONTHLY_DOCUMENTS_READY: (payload, ctx) => {

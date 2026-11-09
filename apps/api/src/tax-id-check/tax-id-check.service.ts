@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import type { PrismaClient, TaxIdCheck } from "@professionisti/database";
 import { isValidCodiceFiscale, isValidPartitaIva, type TaxIdCheckView, type TaxIdKind } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
@@ -7,6 +7,7 @@ import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { taxIdProviderFromEnv } from "./openapi-tax-id.provider";
 import { TaxIdProviderUnavailableError, type TaxIdProvider } from "./tax-id-provider";
+import { ScheduledJob } from "../common/scheduled-job";
 
 /** Dopo questi tentativi falliti per servizio irraggiungibile si smette: il dato resta "in controllo", senza bloccare. */
 export const MAX_TAX_ID_ATTEMPTS = 8;
@@ -134,7 +135,7 @@ export class TaxIdCheckService {
   }
 
   /** Nuovo tentativo per i controlli rimasti in sospeso (servizio irraggiungibile o chiavi aggiunte dopo). */
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  @ScheduledJob(CronExpression.EVERY_30_MINUTES)
   async retryPending(): Promise<void> {
     if (!this.provider) return;
     const now = new Date();

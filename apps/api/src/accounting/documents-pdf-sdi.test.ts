@@ -450,7 +450,23 @@ describe("riepilogo dell'anno al commercialista a gennaio", () => {
 
   function build(movementsByProfile: Record<string, number>, yearlyByProfile: Record<string, CourtesyYearSummary>, invoicesByProfile: Record<string, number> = {}) {
     const recipient = (id: string) => ({ professionalProfileId: id, accountantEmail: `studio-${id}@esempio.it`, fiscalFirstName: "Mario", fiscalLastName: "Rossi", businessName: null, professionalProfile: { businessName: null } });
-    const prisma = { professionalFiscalProfile: { findMany: vi.fn().mockResolvedValue(Object.keys(movementsByProfile).map(recipient)) } };
+    const sends = new Set<string>();
+    const prisma = {
+      professionalFiscalProfile: { findMany: vi.fn().mockResolvedValue(Object.keys(movementsByProfile).map(recipient)) },
+      accountantStatementSend: {
+        findMany: vi.fn(({ where }: { where: { month: string } }) =>
+          Promise.resolve([...sends].filter((k) => k.endsWith(`@${where.month}`)).map((k) => ({ professionalProfileId: k.split("@")[0] }))),
+        ),
+        create: vi.fn(({ data }: { data: { professionalProfileId: string; month: string } }) => {
+          sends.add(`${data.professionalProfileId}@${data.month}`);
+          return Promise.resolve(data);
+        }),
+        deleteMany: vi.fn(({ where }: { where: { professionalProfileId: string; month: string } }) => {
+          sends.delete(`${where.professionalProfileId}@${where.month}`);
+          return Promise.resolve({ count: 1 });
+        }),
+      },
+    };
     const email = { send: vi.fn().mockResolvedValue(true) };
     const courtesy = { yearSummaryForProfile: vi.fn((id: string) => Promise.resolve(yearlyByProfile[id] ?? yearly([]))) };
     const invoices = { invoiceView: vi.fn().mockResolvedValue(invoiceView) };
@@ -494,6 +510,16 @@ describe("riepilogo dell'anno al commercialista a gennaio", () => {
     const sent = email.send.mock.calls[0]![0];
     expect(sent.attachments.map((a: { filename: string }) => a.filename)).toEqual(["estratto-2027-01.pdf", "estratto-2027-01.csv", "fattura-COM-2026-0012.pdf"]);
     expect(sent.text).toContain("In allegato anche la nostra fattura del mese in PDF.");
+  });
+
+  it("rilanciato da Admin, l'estratto già mandato non riparte; quello non riuscito sì", async () => {
+    const { service, email } = build({ a: 2, b: 1 }, {});
+    email.send.mockImplementation((p: { to: string }) => Promise.resolve(p.to !== "studio-b@esempio.it"));
+    expect(await service.sendAccountantStatements(new Date("2027-02-01T07:00:00Z"))).toBe(1);
+    email.send.mockClear();
+    email.send.mockResolvedValue(true);
+    expect(await service.sendAccountantStatementsFor("2027-01")).toBe(1);
+    expect(email.send.mock.calls.map(([p]) => p.to)).toEqual(["studio-b@esempio.it"]);
   });
 
   it("testo dell'email con e senza estratto", () => {
