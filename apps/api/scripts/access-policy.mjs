@@ -82,6 +82,10 @@ const publicRoutes = [
   // Passi dalle voci di "Quanto costa" (§399), senza account.
   "POST /site/price-tool",
   "GET /professionals/category-counts",
+  // Link personale /p/<codice> del professionista: porta solo al profilo pubblico (docs/changelog/2026-11-08-canale-del-professionista.md).
+  "GET /professionals/link/:code",
+  // Chi ha mandato un invito "Porta un collega" o di un partner: solo il nome già pubblico (docs/changelog/2026-11-09-passaparola.md).
+  "GET /professionals/invite/:code",
   "GET /professionals/languages/popular",
   // Prezzi aggregati della pagina "Quanto costa", mai sotto le soglie (§296).
   "GET /professionals/prices/:category",
@@ -106,6 +110,7 @@ const selfAny = [
   "PATCH /auth/me/preferences",
   "GET /auth/me/closure-check",
   "GET /auth/me/export",
+  "GET /auth/me/export/pdf",
   "POST /auth/me/image",
   "POST /auth/verify-email/code",
   "POST /auth/verify-email/resend",
@@ -145,6 +150,9 @@ const selfAny = [
 ];
 
 const selfProfessional = [
+  // Rubrica "I miei clienti": solo i clienti di chi chiama (docs/changelog/2026-11-08-rubrica-clienti.md).
+  "GET /professional-clients/me",
+  "PUT /professional-clients/me/note",
   // Recensioni ricevute, per rispondere (docs/changelog/2026-10-30-collaudo-soldi-online.md).
   "GET /reviews/received",
   "DELETE /agenda/calendar-feed",
@@ -192,6 +200,7 @@ const selfProfessional = [
   "POST /professionals/me/image",
   "GET /professionals/me/insights",
   "GET /professionals/me/leads",
+  "GET /professionals/me/personal-link",
   "GET /professionals/me/online-payments/summary",
   "GET /professionals/me/payout-iban",
   "PUT /professionals/me/payout-iban",

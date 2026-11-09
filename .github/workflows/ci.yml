@@ -96,7 +96,12 @@ jobs:
       - name: Cache di Next.js
         uses: actions/cache@v5
         with:
-          path: apps/web/.next/cache
+          # Solo la cache di compilazione: i dati salvati da una prova (sitemap,
+          # unstable_cache) non devono passare alla prova dopo
+          # (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md).
+          path: |
+            apps/web/.next/cache
+            !apps/web/.next/cache/fetch-cache
           key: next-build-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: |
             next-build-${{ hashFiles('pnpm-lock.yaml') }}-
@@ -125,6 +130,11 @@ jobs:
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
         run: pnpm turbo run build
+
+      - name: Codice delle pagine pubbliche
+        # Home, mestieri, città, profilo: niente zod né elenco dei comuni
+        # all'apertura (docs/changelog/2026-11-09-meno-javascript-comune.md).
+        run: node apps/web/scripts/controlla-js-pagine-pubbliche.mjs
 
       - name: Test
         env:
@@ -175,7 +185,12 @@ jobs:
       - name: Cache di Next.js
         uses: actions/cache@v5
         with:
-          path: apps/web/.next/cache
+          # Solo la cache di compilazione: i dati salvati da una prova (sitemap,
+          # unstable_cache) non devono passare alla prova dopo
+          # (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md).
+          path: |
+            apps/web/.next/cache
+            !apps/web/.next/cache/fetch-cache
           key: next-seo-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: |
             next-seo-${{ hashFiles('pnpm-lock.yaml') }}-
@@ -215,6 +230,11 @@ jobs:
           - nome: misure-lighthouse
             progetti: --project=misure --no-deps
             lighthouse: true
+          # Motore di Safari (WebKit) su un iPhone: campi ora e data
+          # (docs/changelog/2026-11-09-orari-doppi-iphone.md).
+          - nome: iphone-safari
+            progetti: --project=iphone-safari
+            browser: webkit
     services:
       postgres:
         image: postgres:16
@@ -250,7 +270,12 @@ jobs:
       - name: Cache di Next.js
         uses: actions/cache@v5
         with:
-          path: apps/web/.next/cache
+          # Solo la cache di compilazione: i dati salvati da una prova (sitemap,
+          # unstable_cache) non devono passare alla prova dopo
+          # (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md).
+          path: |
+            apps/web/.next/cache
+            !apps/web/.next/cache/fetch-cache
           key: next-agenda-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: |
             next-agenda-${{ hashFiles('pnpm-lock.yaml') }}-
@@ -268,7 +293,7 @@ jobs:
         run: pnpm --filter @professionisti/database exec prisma migrate deploy
 
       - name: Browser per le prove
-        run: pnpm --filter @professionisti/e2e exec playwright install --with-deps chromium
+        run: pnpm --filter @professionisti/e2e exec playwright install --with-deps ${{ matrix.browser || 'chromium' }}
 
       - name: Prove nel browser
         env:

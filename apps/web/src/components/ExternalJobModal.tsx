@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import type { ExternalJob, ExternalJobInput } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -60,6 +61,7 @@ export function ExternalJobModal({
   defaultDate,
   defaultStartTime,
   defaultDurationMinutes = 60,
+  prefill,
   onClose,
   onSaved,
   onDeleted,
@@ -73,13 +75,15 @@ export function ExternalJobModal({
   defaultStartTime?: string;
   /** Con `defaultStartTime`: la fine precompilata è questi minuti dopo (la durata dei lavori più frequenti). */
   defaultDurationMinutes?: number;
+  /** Cliente già noto, da "Proponi una data" della rubrica "I miei clienti" (docs/changelog/2026-11-08-rubrica-clienti.md). */
+  prefill?: { clientName: string; clientPhone: string | null; address: string | null };
   onClose: () => void;
   onSaved: (job: ExternalJob) => void;
   onDeleted?: (id: string) => void;
 }) {
-  const [clientName, setClientName] = useState(job?.clientName ?? "");
-  const [clientPhone, setClientPhone] = useState(job?.clientPhone ?? "");
-  const [address, setAddress] = useState(job?.address ?? "");
+  const [clientName, setClientName] = useState(job?.clientName ?? prefill?.clientName ?? "");
+  const [clientPhone, setClientPhone] = useState(job?.clientPhone ?? prefill?.clientPhone ?? "");
+  const [address, setAddress] = useState(job?.address ?? prefill?.address ?? "");
   const [description, setDescription] = useState(job?.description ?? "");
   const [dateStr, setDateStr] = useState(job ? job.scheduledAt.slice(0, 10) : defaultDate ? toIsoDateLocal(defaultDate) : "");
   const [startTime, setStartTime] = useState(job ? job.scheduledAt.slice(11, 16) : (defaultStartTime ?? ""));
@@ -352,6 +356,20 @@ export function ExternalJobModal({
                   Riapri
                 </Button>
               ) : null}
+            </XStack>
+
+            {/* La prossima volta ti scrive dal tuo link e il lavoro non conta nel tuo abbonamento
+                (docs/changelog/2026-11-08-canale-del-professionista.md). */}
+            <XStack gap="2" alignItems="center" flexWrap="wrap" padding="3" borderRadius={10} backgroundColor={brand.cianografiaVelo}>
+              <Text flex={1} minWidth={200} fontSize={14} color={brand.grafite}>
+                La prossima volta può scriverti dal tuo link: il lavoro non conta nel tuo abbonamento.
+              </Text>
+              <Link
+                href={`/dashboard/il-tuo-link?nome=${encodeURIComponent(job.clientName.trim().split(/\s+/)[0] ?? "")}`}
+                style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 14 }}
+              >
+                Invita questo cliente
+              </Link>
             </XStack>
 
             {confirmingDelete ? (

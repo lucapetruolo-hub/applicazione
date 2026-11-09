@@ -21,6 +21,7 @@ import { AwayCard } from "@/components/AwayCard";
 import { BoostSection } from "@/components/BoostSection";
 import { SetupJourneyCard, SetupJourneyHero, journeyNeedsHero, useSetupJourney } from "@/components/verification/SetupJourney";
 import { WeatherStrip, jobsHeadline, type DayJobRow } from "@/components/DaysAhead";
+import { PageLoading } from "@/components/PageLoading";
 
 /** Applica una risposta dell'API dentro `startTransition` (vedi sotto, §345). */
 function later<T>(apply: (value: T) => void): (value: T) => void {
@@ -114,7 +115,7 @@ export default function DashboardTodayPage() {
     return () => clearInterval(id);
   }, []);
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoading />;
 
   if (!user || !token) {
     return (
@@ -462,6 +463,13 @@ export default function DashboardTodayPage() {
                       <AgendaNotice attention={user.agendaAttention} />
                     </div>
                   ) : null}
+                  {/* Il canale del professionista (docs/changelog/2026-11-08-canale-del-professionista.md):
+                      sempre in vista a chi compare già nelle ricerche, perché i suoi clienti sono la prima domanda al lancio. */}
+                  {profileHidden ? null : (
+                    <div className="today-slot" style={{ order: 6 }}>
+                      <PersonalLinkNotice />
+                    </div>
+                  )}
                   {/* Pacchetti di visibilità in fondo alla pagina (docs/CHANGELOG.md §252), non a chi
                       non compare ancora nelle ricerche: prima i passi di "Per ricevere lavori". */}
                   {profileHidden ? null : (
@@ -612,6 +620,30 @@ function AgendaNotice({ attention }: { attention: AgendaAttention }) {
       </XStack>
       <Link href="/dashboard/agenda?tab=disponibilita" style={{ textDecoration: "none" }}>
         <CardButton tabIndex={-1}>Apri l'agenda</CardButton>
+      </Link>
+    </XStack>
+  );
+}
+
+/** "Il tuo link": i clienti tuoi che passano dal sito non contano nei lavori del mese. */
+function PersonalLinkNotice() {
+  return (
+    <XStack gap="3" alignItems="center" padding="4" borderRadius={16} backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} flexWrap="wrap">
+      <XStack flex={1} minWidth={240} gap="3" alignItems="center">
+        <YStack width={40} height={40} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor={brand.cianografiaVelo} flexShrink={0} aria-hidden>
+          <Icon name="share-2" size={20} color={brand.cianografiaScuro} />
+        </YStack>
+        <YStack flex={1} minWidth={0} gap={2}>
+          <Text fontWeight="800" color={brand.grafite}>
+            Porta i tuoi clienti
+          </Text>
+          <Text fontSize={16} color={brand.grafite70}>
+            Chi ti scrive dal tuo link non conta nei lavori del mese.
+          </Text>
+        </YStack>
+      </XStack>
+      <Link href="/dashboard/il-tuo-link" style={{ textDecoration: "none" }}>
+        <CardButton>Il tuo link</CardButton>
       </Link>
     </XStack>
   );

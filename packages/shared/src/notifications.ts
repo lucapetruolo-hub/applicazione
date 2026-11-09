@@ -1,6 +1,7 @@
 // Schema delle preferenze in un file a parte: questo file entra in ogni
 // pagina del sito (campanella), zod no (collaudo N-01,
 // docs/changelog/2026-10-30-velocita-telefono.md).
+import { DEFAULT_NOTIFICATION_PREFERENCES } from "./notificationDefaults";
 import type { NotificationPreferences } from "./notificationSchemas";
 
 /**
@@ -31,6 +32,8 @@ export type NotificationTopicInfo = {
   locked?: boolean;
   /** Canali per cui oggi parte davvero un invio: gli altri sono salvati per quando arriveranno. */
   activeChannels: NotificationChannelKey[];
+  /** Canali mostrati al professionista, se diversi: quelli che per lui non partono mai non si vedono. */
+  professionalChannels?: NotificationChannelKey[];
 };
 
 export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopicInfo> = {
@@ -162,6 +165,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_AUTO_CONFIRMED",
       "JOB_CLOSE_REMINDER",
       "JOB_CLOSE_EXPIRED",
+      // Un solo promemoria della recensione a chi ha confermato il lavoro senza recensire (docs/changelog/2026-11-09-passaparola.md).
+      "REVIEW_REMINDER",
       "ADMIN_JOB_NOT_CLOSED",
       // Soldi bloccati da più di 80 giorni, Stripe li paga comunque dopo 90 (docs/CHANGELOG.md §249).
       "ADMIN_JOB_PAYMENT_LONG_HOLD",
@@ -201,9 +206,14 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
   },
   promemoria: {
     professional: { label: "Promemoria che imposti tu", description: "Il \"ricordamelo\" scelto dal menu di una richiesta." },
-    client: { label: "Promemoria che imposti tu", description: "Il \"ricordamelo\" scelto dal menu di una richiesta." },
-    types: ["REQUEST_REMINDER"],
-    activeChannels: ["inApp"],
+    client: { label: "Promemoria che imposti tu", description: "Il \"ricordamelo\" scelto dal menu di una richiesta e quello per rifare un lavoro terminato." },
+    // REBOOK_REMINDER: "Ricordamelo tra…" a lavoro terminato, anche via email
+    // con "Prenota di nuovo" (docs/changelog/2026-11-08-promemoria-manutenzione.md).
+    // REQUEST_REMINDER resta solo sul sito: nessuna email per lui.
+    types: ["REQUEST_REMINDER", "REBOOK_REMINDER"],
+    activeChannels: ["inApp", "email"],
+    // Al professionista arriva solo il "ricordamelo" sul sito: niente scelta "Email" (decisione di Luca del 09/11).
+    professionalChannels: ["inApp"],
   },
   account: {
     professional: { label: "Account e sicurezza", description: "Decisioni su segnalazioni e sul tuo account, scadenze e limiti dell'abbonamento." },
@@ -215,6 +225,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "CONTENT_REPORT_REVERTED",
       "CONTENT_REPORT_APPEAL_REJECTED",
       "ACCOUNT_SUSPENDED",
+      // Chiusura dell'account con 30 giorni di preavviso e chiusura fatta (controllo pre-lancio 08/11, E4-03).
+      "ACCOUNT_CLOSURE_SCHEDULED",
+      "ACCOUNT_CLOSED",
       // Misura per segnalazioni accolte (§167): non si spegne, come la sospensione.
       "JOB_ISSUE_SANCTION",
       "ACCOUNT_REACTIVATED",
@@ -355,10 +368,20 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
     client: { label: "Data confermata o cambiata" },
   },
   {
+    // Conferma dell'appuntamento al cliente: è la conferma del contratto su
+    // supporto durevole (Codice del consumo art. 51 c. 7, controllo pre-lancio
+    // 08/11, E4-04), quindi non si spegne.
+    key: "lavori.conferma",
+    topic: "lavori",
+    types: ["BOOKING_CONFIRMED"],
+    channels: ["email"],
+    locked: true,
+    client: { label: "Conferma dell'appuntamento", description: "L'email con il riepilogo dell'accordo con il professionista: da conservare." },
+  },
+  {
     key: "lavori.appuntamenti",
     topic: "lavori",
     types: [
-      "BOOKING_CONFIRMED",
       "BOOKING_CANCELED_BY_PROFESSIONAL",
       "BOOKING_CANCELED_BY_CLIENT",
       "BOOKING_REOPENED_BY_CLIENT",
@@ -372,7 +395,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "BOOKING_CLIENT_CANT_COME_UNDONE",
     ],
     professional: { label: "Appuntamenti", description: "Annullati o riaperti dal cliente, e le sue risposte ai promemoria." },
-    client: { label: "Appuntamenti", description: "Prenotati, annullati o riaperti." },
+    client: { label: "Appuntamenti", description: "Annullati o riaperti." },
   },
   {
     key: "lavori.promemoria",
@@ -384,7 +407,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "lavori.chiusura",
     topic: "lavori",
-    types: ["JOB_COMPLETED", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "JOB_CLOSE_REMINDER", "JOB_CLOSE_EXPIRED"],
+    types: ["JOB_COMPLETED", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "JOB_CLOSE_REMINDER", "JOB_CLOSE_EXPIRED", "REVIEW_REMINDER"],
     professional: { label: "Lavoro terminato", description: "La conferma del cliente e la chiusura del lavoro." },
     client: { label: "Lavoro terminato", description: "Quando il professionista lo segna come finito." },
   },
@@ -499,26 +522,6 @@ export function notificationTopicOf(type: string): NotificationTopic | null {
 }
 
 
-/** Tutto acceso. */
-export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
-  topics: {
-    richieste: { inApp: true, email: true },
-    preventivi: { inApp: true, email: true },
-    lavori: { inApp: true, email: true },
-    messaggi: { inApp: true, email: true },
-    promemoria: { inApp: true, email: true },
-    account: { inApp: true, email: true },
-  },
-  popups: true,
-  sound: true,
-  // Impostazioni leggere fin dal primo giorno (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md):
-  // le recensioni si vedono sul sito e nel profilo, l'email non serve a fare nulla.
-  items: { "lavori.recensioni": { inApp: true, email: false } },
-  digest: true,
-  quietNight: true,
-  quietNightUrgent: true,
-  digestHour: 19,
-};
 
 /**
  * Preferenze salvate (anche parziali o di una versione precedente) unite ai
@@ -653,6 +656,7 @@ export const NOTIFICATION_DIGEST_TYPES: ReadonlySet<string> = new Set([
   "JOB_REFUND_PENDING",
   "JOB_REFUND_COMPLETED",
   "JOB_AUTO_CONFIRMED",
+  "REVIEW_REMINDER",
   "JOB_DOCUMENT_READY",
   "ONLINE_LIMIT_LIFTED",
   "REQUEST_MATCHED_LATER",

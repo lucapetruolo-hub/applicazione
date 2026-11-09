@@ -64,6 +64,13 @@ const pages = [
   // erano misurate (docs/changelog/2026-11-02-oggi-piu-leggera.md).
   { name: "mie-richieste", path: "/le-mie-richieste", client: true },
   { name: "chat-cliente", path: "/chat", client: true },
+  // Le pagine pubbliche più aperte, da visitatore senza account
+  // (docs/changelog/2026-11-09-meno-javascript-comune.md). La home ha un
+  // limite di TBT più largo: il lavoro che resta è Tamagui che prepara la
+  // pagina, si abbassa con il thread "Alleggerire l'apertura delle pagine
+  // pubbliche".
+  { name: "home", path: "/", visitor: true },
+  { name: "citta", path: "/cerca/idraulico/latina", visitor: true },
 ];
 const rows = [];
 let failed = false;
@@ -86,6 +93,10 @@ for (const item of pages) {
     await page.waitForLoadState("networkidle");
     if (new URL(page.url()).pathname !== item.path) throw new Error(`Sessione del cliente non aperta: ${page.url()}`);
     clientSignedIn = true;
+  }
+  if (item.visitor) {
+    // Visitatore: nessuna sessione nel browser.
+    await page.evaluate(() => localStorage.removeItem("professionisti_token"));
   }
   const runs = [];
   for (let i = 0; i < RUNS; i++) {

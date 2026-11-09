@@ -35,6 +35,16 @@ import { CourtesyCopyService } from "./courtesy-copy.service";
 import { professionalFiscalName } from "./invoice-documents";
 import { ScheduledJob } from "../common/scheduled-job";
 
+/**
+ * Codice Stripe di un movimento della trattenuta: quello scritto nella sua
+ * chiave contro i doppioni ("HOLD:pi_…", "COSTS:du_…", "RETURN:fee_…-…"),
+ * altrimenti il pagamento del lavoro.
+ */
+export function stripeRefOfEntry(dedupeKey: string | null, paymentIntentId: string | null | undefined): string {
+  const fromKey = dedupeKey?.match(/(?:^|[:-])((?:pi|ch|py|du|dp|fee|fr|re|tr|po)_[A-Za-z0-9]+)/)?.[1];
+  return fromKey ?? paymentIntentId ?? "";
+}
+
 const BOOKING_SELECT = {
   scheduledAt: true,
   recipientName: true,
@@ -186,7 +196,7 @@ export class StatementsService {
   ): Promise<{ statement: MonthlyStatement; csvRows: StatementCsvRow[]; movements: number; invoices: Invoice[] }> {
     const { start, end } = romeMonthRange(month);
     const inMonth = { gte: start, lt: end };
-    const paymentSelect = { id: true, paymentMethod: true, payoutSentAt: true, payoutPaidAt: true, booking: { select: BOOKING_SELECT } } as const;
+    const paymentSelect = { id: true, paymentMethod: true, payoutSentAt: true, payoutPaidAt: true, stripePaymentIntentId: true, stripePayoutId: true, booking: { select: BOOKING_SELECT } } as const;
     const [entries, direct, payouts, otherInvoices, feeInvoice, fiscal, online, issuer] = await Promise.all([
       this.prisma.platformFeeEntry.findMany({
         where: { professionalProfileId, occurredAt: inMonth },
@@ -265,9 +275,10 @@ export class StatementsService {
       const row = rowFor(e.jobPaymentId, booking, e.occurredAt);
       row.feesEurCents += e.grossEurCents;
       const date = romeDayIso(e.occurredAt);
+      const stripeRef = stripeRefOfEntry(e.dedupeKey, e.jobPayment?.stripePaymentIntentId);
       if (e.kind === "HOLD" && e.paymentEurCents > 0) {
         row.onlineEurCents += e.paymentEurCents;
-        csvRows.push({ date, kind: "Pagamento online del cliente", job: row.job, client: row.client ?? "", amountEurCents: e.paymentEurCents, taxableEurCents: null, vatEurCents: null, document: clientDocumentOf(booking, receipts) });
+        csvRows.push({ date, kind: "Pagamento online del cliente", job: row.job, client: row.client ?? "", amountEurCents: e.paymentEurCents, taxableEurCents: null, vatEurCents: null, document: clientDocumentOf(booking, receipts), stripeRef });
       }
       csvRows.push({
         date,
@@ -278,6 +289,7 @@ export class StatementsService {
         taxableEurCents: -e.taxableEurCents,
         vatEurCents: -e.vatEurCents,
         document: feeDocument(e.invoice),
+        stripeRef,
       });
     }
     for (const jp of direct) {
@@ -289,7 +301,7 @@ export class StatementsService {
     for (const jp of payouts) {
       const row = rowFor(jp.id, jp.booking, jp.payoutPaidAt ?? start);
       row.payoutEurCents = (row.payoutEurCents ?? 0) + jp.payoutSentEurCents;
-      csvRows.push({ date: romeDayIso(jp.payoutPaidAt ?? start), kind: "Bonifico arrivato in banca", job: row.job, client: row.client ?? "", amountEurCents: jp.payoutSentEurCents, taxableEurCents: null, vatEurCents: null, document: "" });
+      csvRows.push({ date: romeDayIso(jp.payoutPaidAt ?? start), kind: "Bonifico arrivato in banca", job: row.job, client: row.client ?? "", amountEurCents: jp.payoutSentEurCents, taxableEurCents: null, vatEurCents: null, document: "", stripeRef: jp.stripePayoutId ?? "" });
     }
     const summaries = new Map<string, JobPaymentSummary | null>();
     const inThisMonth = (at: Date | null): at is Date => !!at && at >= start && at < end;
@@ -299,7 +311,7 @@ export class StatementsService {
         if (amountEurCents <= 0) return;
         const row = rowFor(jp.id, jp.booking, at);
         row.refundsEurCents += amountEurCents;
-        csvRows.push({ date: romeDayIso(at), kind, job: row.job, client: row.client ?? "", amountEurCents: -amountEurCents, taxableEurCents: null, vatEurCents: null, document: clientDocumentOf(jp.booking, receipts) });
+        csvRows.push({ date: romeDayIso(at), kind, job: row.job, client: row.client ?? "", amountEurCents: -amountEurCents, taxableEurCents: null, vatEurCents: null, document: clientDocumentOf(jp.booking, receipts), stripeRef: jp.stripePaymentIntentId ?? "" });
       };
       let logged = 0;
       for (const log of refundLogs) {
@@ -329,6 +341,7 @@ export class StatementsService {
           taxableEurCents: null,
           vatEurCents: null,
           document: "",
+          stripeRef: jp.stripeDisputeId ?? "",
         });
       }
     }
@@ -342,6 +355,7 @@ export class StatementsService {
         taxableEurCents: -invoice.taxableEurCents,
         vatEurCents: -(invoice.vatEurCents + invoice.roundingEurCents),
         document: `Fattura ${invoiceNumberLabel(invoice.series, invoice.year, invoice.number)}`,
+        stripeRef: invoice.stripeInvoiceId ?? invoice.stripePaymentIntentId ?? "",
       });
     }
     csvRows.sort((a, b) => a.date.localeCompare(b.date));

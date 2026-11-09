@@ -1,0 +1,35 @@
+/* Chip per il sito (Chip.web.tsx): stessi valori dell'XStack/Text di Chip.tsx. */
+.chip {
+  position: relative;
+  flex-direction: row;
+  padding-inline: var(--t-space-3);
+  padding-block: var(--t-space-2);
+  border-style: solid;
+  border-width: 1px;
+  border-color: var(--c-filetto);
+  border-radius: 999px;
+  background-color: var(--c-calce);
+}
+
+.text {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--c-grafite);
+}
+
+.selected {
+  border-color: var(--c-cianografia);
+  background-color: var(--c-cianografiaVelo);
+}
+
+.selected .text {
+  color: var(--c-cianografiaScuro);
+}
+
+.pressable {
+  cursor: pointer;
+}
+
+.pressable:active {
+  background-color: var(--c-cianografiaVelo);
+}

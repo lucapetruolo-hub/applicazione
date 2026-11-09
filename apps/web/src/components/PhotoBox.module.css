@@ -1,0 +1,32 @@
+/*
+ * Riquadro della foto e dell'icona del mestiere (ProfessionalAvatar,
+ * CategoryIconBadge) in HTML semplice
+ * (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md): misure in
+ * variabili scritte dal componente, più piccole sotto i 660px quando c'è
+ * `mobileSize` (stessi valori che scriveva Tamagui).
+ */
+.box {
+  position: relative;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: var(--box-w);
+  height: var(--box-h);
+  border-radius: var(--box-r);
+}
+
+@media (max-width: 660px) {
+  .phone {
+    width: var(--box-phone-w);
+    height: var(--box-phone-h);
+    border-radius: var(--box-phone-r);
+  }
+}
+
+.centered {
+  align-items: center;
+  justify-content: center;
+}
+
+.clip {
+  overflow: hidden;
+}

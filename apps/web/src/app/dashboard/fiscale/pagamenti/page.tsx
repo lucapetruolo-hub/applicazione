@@ -15,6 +15,7 @@ import { PayoutIbanCard } from "@/components/PayoutIbanCard";
 import { ProfileMissingNotice, isProfileMissingError } from "@/components/ProfileMissingNotice";
 import { JourneyProgress, journeyCurrent, setupJourney, useJourneySubscription } from "@/components/verification/SetupJourney";
 import { startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
+import { PageLoading } from "@/components/PageLoading";
 
 /**
  * Scheda "Pagamenti online" dell'area Fisco e pagamenti
@@ -26,7 +27,7 @@ import { startExternalRedirectProgress, stopProgress } from "@/lib/navigationPro
  */
 export default function OnlinePaymentsPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading />}>
       <OnlinePaymentsContent />
     </Suspense>
   );

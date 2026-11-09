@@ -22,6 +22,7 @@ import { GuidedRequestCard } from "./_components/GuidedRequestCard";
 import { clientRequestSearchText, filterInputStyle, requestJobAddress } from "./_components/clientRequestHelpers";
 import { BookingConfirmed } from "./_components/BookingConfirmed";
 import { PAYMENT_PAGE_LABEL, startExternalRedirectProgress } from "@/lib/navigationProgress";
+import { PageLoading } from "@/components/PageLoading";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
 const UNREAD_BADGE_POLL_MS = 15000;
@@ -76,7 +77,7 @@ type SortMode = "recenti" | "vecchie" | "aggiornamento";
 
 export default function LeMieRichiestePage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading />}>
       <LeMieRichiesteContent />
     </Suspense>
   );
@@ -440,7 +441,7 @@ function LeMieRichiesteContent() {
     }
   }
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoading />;
 
   if (!user || !token) {
     return (

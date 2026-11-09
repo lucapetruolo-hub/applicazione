@@ -19,6 +19,8 @@ import { CardButton } from "@/components/CardButton";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { PAYMENT_PAGE_LABEL, startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
+import { RebookReminderBox } from "./RebookReminderBox";
+import { RecommendProfessional } from "./RecommendProfessional";
 
 // Finestre aperte solo con un tocco: si caricano allora e "Le mie richieste" parte più leggera (docs/changelog/2026-11-09-le-mie-richieste-leggera.md).
 const ClientCompleteModal = dynamic(() => import("@/components/ClientCompleteModal").then((module) => module.ClientCompleteModal));
@@ -40,6 +42,7 @@ export function BookingSection({
   address,
   onReportProblem,
   rebookHref,
+  rebookReminder,
 }: {
   booking: ClientBooking;
   token: string;
@@ -51,6 +54,8 @@ export function BookingSection({
   onReportProblem: (() => void) | null;
   /** "Prenota di nuovo": nuova richiesta allo stesso professionista con indirizzo e contatti già scritti (docs/CHANGELOG.md §348). */
   rebookHref?: string;
+  /** "Ti servirà di nuovo?" a lavoro terminato (docs/changelog/2026-11-08-promemoria-manutenzione.md). */
+  rebookReminder?: { guidedRequestId: string; remindAt: string | null; categorySlug: string };
 }) {
   const [showClientCompleteModal, setShowClientCompleteModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -247,7 +252,7 @@ export function BookingSection({
           <XStack gap="2" flexWrap="wrap">
             {canConfirmDone ? (
               // Turchese come dal lato del professionista (richiesta esplicita dell'utente).
-              <CardButton fill="#20B2AA" flex="xs:1" onPress={() => setShowClientCompleteModal(true)}>
+              <CardButton fill="#0E7F7A" flex="xs:1" onPress={() => setShowClientCompleteModal(true)}>
                 Lavoro terminato
               </CardButton>
             ) : (
@@ -522,6 +527,10 @@ export function BookingSection({
                 </CardButton>
               </YStack>
             ) : null}
+            {/* Recensione da 4-5 stelle: "Consiglialo a un amico" (docs/changelog/2026-11-09-passaparola.md). */}
+            {booking.myReview && booking.myReview.rating >= 4 && !booking.professionalAccountDeleted ? (
+              <RecommendProfessional professionalProfileId={booking.professionalProfileId} businessName={booking.businessName} />
+            ) : null}
             {/* Il prossimo lavoro con lo stesso professionista passa dal sito (docs/CHANGELOG.md §348). */}
             {rebookHref && booking.status === "COMPLETED" && !booking.professionalAccountDeleted ? (
               <Link href={rebookHref} style={{ textDecoration: "none" }}>
@@ -536,6 +545,18 @@ export function BookingSection({
             Potrai lasciare la recensione quando la segnalazione sarà chiusa.
           </Text>
         ) : null
+      ) : null}
+
+      {rebookReminder && booking.status === "COMPLETED" && !booking.professionalAccountDeleted ? (
+        <RebookReminderBox
+          token={token}
+          guidedRequestId={rebookReminder.guidedRequestId}
+          remindAt={rebookReminder.remindAt}
+          categorySlug={rebookReminder.categorySlug}
+          businessName={booking.businessName}
+          rebookHref={!booking.hasReview && rebookHref ? rebookHref : null}
+          onChanged={onChanged}
+        />
       ) : null}
 
       {/* Elimina sempre per ultimo (richiesta esplicita dell'utente). */}

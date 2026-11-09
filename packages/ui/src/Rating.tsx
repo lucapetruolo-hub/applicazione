@@ -2,13 +2,8 @@ import { Text, XStack } from "tamagui";
 import { Icon } from "./Icon";
 import { brand } from "./tokens";
 
-export type RatingProps = {
-  value: number;
-  count?: number;
-  size?: number;
-  /** Testo di voto e conteggio: più piccolo dove le stelle stanno sotto un nome (docs/CHANGELOG.md §342). */
-  textSize?: number;
-};
+export type { RatingProps } from "./ratingProps";
+import type { RatingProps } from "./ratingProps";
 
 /**
  * Stelle proporzionali al voto medio (arrotondate alla stella più vicina —

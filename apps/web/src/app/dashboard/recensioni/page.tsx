@@ -8,6 +8,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
 import { ReviewReply } from "@/components/ReviewReply";
+import { PageLoading } from "@/components/PageLoading";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
@@ -49,7 +50,7 @@ export default function DashboardRecensioniPage() {
     document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ block: "start" });
   }, [reviews]);
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoading />;
 
   if (!user || !token) {
     return (

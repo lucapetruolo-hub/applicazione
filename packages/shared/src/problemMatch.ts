@@ -319,6 +319,42 @@ const QUESTIONS: readonly { pairs: readonly Pair[]; question: ProblemQuestion }[
       ],
     },
   },
+  // Le tre qui sotto: coppie dubbie del banco di prova ancora senza domanda
+  // (docs/changelog/2026-11-09-domande-preventivo.md).
+  {
+    pairs: [["climatizzazione", "elettricista"]],
+    question: {
+      id: "caldaia-corrente",
+      text: "Che cosa non funziona?",
+      answers: [
+        { label: "La caldaia, il climatizzatore o la pompa di calore", category: "climatizzazione" },
+        { label: "Lo scaldabagno o lo scaldasalviette elettrico", category: "idraulico" },
+        { label: "Prese, luci, quadro o corrente", category: "elettricista" },
+      ],
+    },
+  },
+  {
+    pairs: [["idraulico", "tuttofare"]],
+    question: {
+      id: "perde-acqua",
+      text: "Perde acqua o vanno collegati dei tubi?",
+      answers: [
+        { label: "Sì, perde o vanno collegati i tubi", category: "idraulico" },
+        { label: "No, va solo montato o sigillato", category: "tuttofare" },
+      ],
+    },
+  },
+  {
+    pairs: [["fabbro", "giardiniere"]],
+    question: {
+      id: "recinzione",
+      text: "Di che recinzione si tratta?",
+      answers: [
+        { label: "In ferro o metallo, o un cancello", category: "fabbro" },
+        { label: "Rete, legno o siepe", category: "giardiniere" },
+      ],
+    },
+  },
   {
     pairs: [["traslochi", "tuttofare"]],
     question: {
@@ -490,7 +526,6 @@ export function serviceMatchingProblem<T extends { name: string }>(services: rea
   return best?.service;
 }
 
-export const PROBLEM_DESCRIPTION_MAX = 1000;
 
 /** Pagina admin "Mestieri richiesti". */
 export type ProblemWordAdmin = { id: string; word: string; categorySlug: string | null; outOfService: string | null; serviceName: string | null };

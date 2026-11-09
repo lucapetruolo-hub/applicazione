@@ -5,7 +5,9 @@ import { apiClient } from "../lib/apiClient";
 import { LAST_SEARCH_CITY_COOKIE } from "../lib/lastSearchCity";
 import { SITE_URL } from "@/lib/siteUrl";
 import { JsonLd } from "@/components/JsonLd";
+import { newestProfiles } from "@/lib/newProfiles";
 import HomeContent from "./HomeContent";
+import { openGraphFor } from "@/lib/openGraph";
 
 // Server-rendered ad ogni richiesta: stesso motivo di /cerca/[categoria],
 // niente finestra di cache in cui un professionista eliminato resterebbe
@@ -14,6 +16,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
+  openGraph: openGraphFor("/"),
   // Con il nome del sito, come le altre pagine (collaudo N-11).
   title: { absolute: `${BRAND.tagline} | ${BRAND.name}` },
 };
@@ -74,7 +77,7 @@ export default async function HomePage() {
       {siteJsonLd.map((data) => (
         <JsonLd key={data["@type"]} data={data} />
       ))}
-      <HomeContent professionals={professionals} platformStats={platformStats} priceIndex={priceIndex} categoryCounts={categoryCounts} problemExamples={problemExamples} popularJobs={popularJobs} />
+      <HomeContent professionals={newestProfiles(professionals)} platformStats={platformStats} priceIndex={priceIndex} categoryCounts={categoryCounts} problemExamples={problemExamples} popularJobs={popularJobs} />
     </>
   );
 }

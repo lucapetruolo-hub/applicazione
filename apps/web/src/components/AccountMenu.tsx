@@ -29,17 +29,27 @@ export function AccountMenu() {
     function onKey(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
       setIsOpen(false);
-      triggerRef.current?.focus();
+      triggerRef.current?.focus({ preventScroll: true });
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
+  }, [isOpen]);
+
+  // Menu aperto: da telefono la pagina sotto non scorre e la barra in basso
+  // "Richiedi un preventivo" non lo copre (classe sull'<html>, regole in
+  // globals.css; segnalazione di Luca, docs/changelog/2026-11-09-barra-in-alto-semplice.md).
+  useEffect(() => {
+    if (!isOpen) return;
+    const root = document.documentElement;
+    root.classList.add("acct-menu-open");
+    return () => root.classList.remove("acct-menu-open");
   }, [isOpen]);
 
   // Da tastiera (docs/changelog/2026-10-30-tastiera.md, collaudo L-03): il
   // fuoco va sulla prima voce, le frecce si muovono tra le voci, uscire
   // col Tab chiude il menu.
   useEffect(() => {
-    if (isOpen) menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    if (isOpen) menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus({ preventScroll: true });
   }, [isOpen]);
 
   function onMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
@@ -101,6 +111,7 @@ export function AccountMenu() {
     <YStack ref={containerRef as never} position="relative" onBlur={onContainerBlur}>
       <YStack
         ref={triggerRef as never}
+        className="acct-trigger"
         flexDirection="row"
         alignItems="center"
         gap="1"
@@ -120,11 +131,12 @@ export function AccountMenu() {
         {/* Niente etichetta separata: il nome letto è il testo visibile, più
             le novità solo per il lettore di schermo (WCAG 2.5.3, docs/CHANGELOG.md §310). */}
         <span aria-hidden="true" style={{ display: "flex" }}>
-          <Avatar name={avatarName ?? "?"} imageUrl={displayImageUrl} size={24} />
+          <Avatar name={avatarName ?? "?"} imageUrl={displayImageUrl} size={38} />
         </span>
-        {/* Da telefono resta solo la foto: un nome lungo spingeva fuori
-            schermo "Richiedi preventivo" (docs/CHANGELOG.md §319). Il nome
-            resta per il lettore di schermo. */}
+        {/* Solo la foto, da telefono e da computer: un nome lungo spingeva fuori
+            schermo "Richiedi preventivo" (§319) e su computer affollava la
+            barra (docs/changelog/2026-11-09-barra-in-alto-semplice.md). Il
+            nome resta per il lettore di schermo e nella tendina. */}
         <span className="acct-trigger-name">
           <Text fontSize="3" fontWeight="600" color={brand.grafite} numberOfLines={1}>
             {displayName ?? "Il mio account"}
@@ -141,10 +153,8 @@ export function AccountMenu() {
           // Stesso pallino delle voci del menu: da telefono restano fuori schermo nella barra.
           <span className="acct-nav-dot" style={{ marginLeft: 2 }} aria-hidden="true" />
         ) : null}
-        <span aria-hidden="true">
-          <Text fontSize="2" color={brand.grafite70}>
-            {isOpen ? "▲" : "▼"}
-          </Text>
+        <span aria-hidden="true" className="acct-trigger-chevron">
+          <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={14} color={brand.grafite70} />
         </span>
       </YStack>
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { YStack } from "@professionisti/ui";
 import { CategoryIcon, CATEGORY_ACCENT } from "./icons/CategoryIcons";
+import { photoBox, photoBoxStyles } from "./photoBoxStyle";
 
 export type CategoryIconBadgeProps = {
   slug: string;
@@ -18,17 +18,15 @@ export function CategoryIconBadge({ slug, size = 48, mobileSize, iconSize, shape
   const accent = CATEGORY_ACCENT[slug as keyof typeof CATEGORY_ACCENT] ?? { bg: "#E4E2DE", fg: "#45423D" };
   const portrait = shape === "portrait";
   const heightFor = (width: number) => (portrait ? Math.round((width * 4) / 3) : width);
+  // HTML semplice, non Tamagui: compare in ogni scheda delle pagine città
+  // (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md).
+  const box = photoBox(
+    { width: size, height: heightFor(size), radius: portrait ? 20 : size },
+    mobileSize ? { width: mobileSize, height: heightFor(mobileSize), radius: portrait ? 20 : mobileSize } : undefined,
+  );
   return (
-    <YStack
-      width={mobileSize ? `${size}px xs:${mobileSize}px` : size}
-      height={mobileSize ? `${heightFor(size)}px xs:${heightFor(mobileSize)}px` : heightFor(size)}
-      borderRadius={mobileSize ? `${portrait ? 20 : size}px xs:${portrait ? 20 : mobileSize}px` : portrait ? 20 : size}
-      backgroundColor={accent.bg}
-      alignItems="center"
-      justifyContent="center"
-      flexShrink={0}
-    >
+    <div className={`${box.className} ${photoBoxStyles.centered}`} style={{ ...box.style, backgroundColor: accent.bg }}>
       <CategoryIcon slug={slug} size={iconSize ?? Math.round((mobileSize ? Math.min(size, mobileSize) : size) * 0.5)} color={accent.fg} />
-    </YStack>
+    </div>
   );
 }

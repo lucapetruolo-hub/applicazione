@@ -28,6 +28,10 @@ export default function robots(): MetadataRoute.Robots {
         "/chat",
         "/dashboard",
         "/dashboard/*",
+        // Le pagine aperte dai link nelle email (/promemoria, /conferma-email,
+        // /verifica-legale…) NON vanno qui: hanno il `noindex` nel loro
+        // layout, e un divieto di scansione impedirebbe a Google di leggerlo
+        // (collaudo 08/11 E8-07).
         // L'area admin non si nomina qui: robots.txt è pubblico e lo
         // leggerebbe anche chi la cerca (controllo sicurezza, docs/CHANGELOG.md
         // §292). Senza il link d'ingresso risponde "pagina non trovata".

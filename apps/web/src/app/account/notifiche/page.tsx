@@ -19,6 +19,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { playNotificationSound } from "@/lib/notificationSound";
 import { NOTIFICATION_TOPIC_STYLE } from "@/lib/notificationTopicStyle";
 import { WhatsAppRemindersCard } from "@/components/WhatsAppRemindersCard";
+import { PageLoading } from "@/components/PageLoading";
 
 /**
  * Impostazioni delle notifiche (docs/CHANGELOG.md §152; nuova veste in
@@ -39,7 +40,7 @@ export default function NotifichePage() {
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [openTopics, setOpenTopics] = useState<NotificationTopic[]>([]);
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoading />;
   if (!user || !token) {
     return (
       <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4" gap="4">
@@ -153,7 +154,8 @@ export default function NotifichePage() {
                       item.locked ||
                       (item.channels ?? (["inApp", "email"] as const)).some((c) => prefs[c] && notificationItemChannelOn(notificationPrefs, item.key, c)),
                   ).length;
-                  const topicOff = !info.locked && !prefs.inApp && !prefs.email;
+                  const shownChannels = CHANNELS.filter((channel) => role !== "professional" || !info.professionalChannels || info.professionalChannels.includes(channel.key));
+                  const topicOff = !info.locked && shownChannels.every((channel) => !prefs[channel.key]);
                   const isOpen = openTopics.includes(topic);
                   const panelId = `nt-items-${topic}`;
                   return (
@@ -167,7 +169,9 @@ export default function NotifichePage() {
                           <p>
                             {topicOff
                               ? items.some((item) => item.locked)
-                                ? "Spento: ti avvisiamo solo dei problemi sul lavoro, che hanno delle scadenze."
+                                ? role === "client" && topic === "lavori"
+                                  ? "Spento: ricevi solo la conferma degli appuntamenti e gli avvisi sui problemi del lavoro, che hanno delle scadenze."
+                                  : "Spento: ti avvisiamo solo dei problemi sul lavoro, che hanno delle scadenze."
                                 : "Spento: nessun avviso, le novità restano nella campanella."
                               : copy.description}
                           </p>
@@ -179,7 +183,7 @@ export default function NotifichePage() {
                           </span>
                         ) : (
                           <div className="nt-channels" role="group" aria-label={`${copy.label}: dove avvisarti`}>
-                            {CHANNELS.map((channel) => {
+                            {shownChannels.map((channel) => {
                               const on = prefs[channel.key];
                               const upcoming = !info.activeChannels.includes(channel.key);
                               return (

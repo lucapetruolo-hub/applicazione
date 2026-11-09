@@ -31,6 +31,7 @@ export function TimelineModal({
   otherPartyImageUrl,
   onOpenClientProfile,
   onClose,
+  initialMessage,
 }: {
   token: string;
   guidedRequestId: string;
@@ -41,6 +42,8 @@ export function TimelineModal({
   otherPartyImageUrl?: string | null;
   onOpenClientProfile?: () => void;
   onClose: () => void;
+  /** Messaggio già scritto nella casella (rubrica "I miei clienti"). */
+  initialMessage?: string;
 }) {
   // Fuoco dentro e Tab chiuso nella finestra; Esc lo gestisce la chat (escapeToBack).
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -86,6 +89,7 @@ export function TimelineModal({
           onBack={onClose}
           backIcon="x"
           escapeToBack
+          initialMessage={initialMessage}
         />
       </YStack>
     </div>

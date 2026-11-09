@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { SkeletonRevenuePanel } from "@/components/Skeleton";
 import { StatsBarChart } from "@/components/StatsBarChart";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
+import { PageLoading } from "@/components/PageLoading";
 
 /**
  * "Statistiche" del professionista (docs/CHANGELOG.md §149, richiesta
@@ -140,7 +141,7 @@ export default function DashboardStatistichePage() {
     [data, metric],
   );
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoading />;
 
   if (!user || !token) {
     return (

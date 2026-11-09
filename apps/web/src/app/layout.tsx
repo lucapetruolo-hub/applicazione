@@ -6,7 +6,7 @@ import { Providers } from "./providers";
 import { StyledJsxRegistry } from "./StyledJsxRegistry";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { ToastStack } from "@/components/ToastStack";
+import { ToastStackLazy } from "@/components/ToastStackLazy";
 import { CookieBanner } from "@/components/CookieBanner";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
@@ -14,6 +14,7 @@ import { TrafficSourceTracker } from "@/components/TrafficSourceTracker";
 import { KeyboardActivation } from "@/components/KeyboardActivation";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { SITE_URL } from "@/lib/siteUrl";
+import { BASE_OPEN_GRAPH } from "@/lib/openGraph";
 import { SITE_INDEXABLE } from "@/lib/siteIndexing";
 import { display, body, mono } from "./fonts";
 import "./globals.css";
@@ -45,6 +46,8 @@ export const metadata: Metadata = {
   },
   description:
     "Cerca imbianchini, elettricisti, idraulici e altri professionisti vicino a te.",
+  // Nome del sito, lingua e tipo nell'anteprima dei link (collaudo 08/11 E8-06).
+  openGraph: BASE_OPEN_GRAPH,
   // Sito non ancora ufficiale: fuori dai motori di ricerca finché
   // NEXT_PUBLIC_SITE_INDEXABLE non vale "true" (vedi lib/siteIndexing.ts).
   ...(SITE_INDEXABLE ? {} : { robots: { index: false, follow: false } }),
@@ -86,11 +89,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 dritti al contenuto — senza, un utente da tastiera/screen reader
                 deve attraversare tutta la navigazione a ogni cambio pagina. */}
             <SkipLink />
-            <ToastStack />
+            <ToastStackLazy />
             <SiteHeader />
             <EmailVerificationBanner />
             <main id="main-content" style={{ outline: "none" }}>{children}</main>
-            <SiteFooter />
+            {/* Idratato a parte (Suspense), come le sezioni della home:
+                docs/changelog/2026-11-09-meno-javascript-comune.md. */}
+            <Suspense fallback={null}>
+              <SiteFooter />
+            </Suspense>
             <CookieBanner />
           </Providers>
         </StyledJsxRegistry>

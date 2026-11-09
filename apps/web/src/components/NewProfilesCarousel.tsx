@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import type { ProfessionalSearchResult } from "@professionisti/shared";
-import { Avatar, BadgeInfo, Icon, Rating, Section, Text, XStack, brand } from "@professionisti/ui";
+import type { NewProfileSummary } from "@/lib/newProfiles";
+import { Avatar, BadgeInfo, Icon, Rating, Section, brand } from "@professionisti/ui";
 import { BRAND, professionalPath } from "@professionisti/shared";
 import { CategoryIcon, CATEGORY_ACCENT } from "./icons/CategoryIcons";
 import { useRevealOnScroll } from "./useRevealOnScroll";
+import text from "./NewProfilesCarousel.module.css";
 
 // "Ultimi iscritti" (richiesta esplicita dell'utente): 21 profili, non una
 // vetrina curata — nessuna soglia minima come la vecchia lista d'attesa (quella
@@ -42,7 +43,7 @@ export function NewProfilesCarousel({
   professionals,
   showTitle = true,
 }: {
-  professionals: ProfessionalSearchResult[];
+  professionals: NewProfileSummary[];
   /** Senza titolo quando la sezione della home si chiama già "Nuovi professionisti". */
   showTitle?: boolean;
 }) {
@@ -298,7 +299,7 @@ export function NewProfilesCarousel({
   );
 }
 
-function NewProfileCard({ pro, delayMs }: { pro: ProfessionalSearchResult; delayMs: number }) {
+function NewProfileCard({ pro, delayMs }: { pro: NewProfileSummary; delayMs: number }) {
   const { ref, style } = useRevealOnScroll(delayMs);
   const accent = CATEGORY_ACCENT[pro.categorySlug] ?? FALLBACK_ACCENT;
 
@@ -308,15 +309,13 @@ function NewProfileCard({ pro, delayMs }: { pro: ProfessionalSearchResult; delay
         <div className="npc-band" style={{ backgroundColor: accent.bg }}>
           <span className="npc-chip">
             <CategoryIcon slug={pro.categorySlug} size={14} color={accent.fg} />
-            <Text fontSize={13} lineHeight="16px" fontWeight="700" color={accent.fg} numberOfLines={1}>
+            <span className={`is_Text ${text.chipLabel} ${text.oneLine}`} style={{ color: accent.fg }}>
               {pro.categoryLabel}
-            </Text>
+            </span>
           </span>
           {isNewProfile(pro.createdAt) ? (
             <span className="npc-new">
-              <Text fontSize={13} lineHeight="16px" fontWeight="700" color={brand.calce}>
-                Nuovo
-              </Text>
+              <span className={`is_Text ${text.newLabel}`}>Nuovo</span>
             </span>
           ) : null}
           <span className="npc-photo" style={{ boxShadow: `0 0 0 3px ${accent.bg}` }}>
@@ -325,35 +324,27 @@ function NewProfileCard({ pro, delayMs }: { pro: ProfessionalSearchResult; delay
         </div>
 
         <div className="npc-body">
-          <Text fontFamily="heading" fontWeight="700" fontSize={18} color={brand.grafite} numberOfLines={1}>
-            {pro.businessName}
-          </Text>
-          <Text fontSize={16} color={brand.grafite70} numberOfLines={1}>
+          <span className={`is_Text font_heading ${text.name} ${text.oneLine}`}>{pro.businessName}</span>
+          <span className={`is_Text ${text.muted} ${text.oneLine}`}>
             {pro.city} · iscritto {joinedAgo(pro.createdAt)}
-          </Text>
-          <XStack alignItems="center" justifyContent="center" gap="2" flexWrap="wrap" minHeight={22} marginBottom="3">
+          </span>
+          <div className={`is_View ${text.meta}`}>
             {pro.rating !== null ? (
               <Rating value={pro.rating} size={13} />
             ) : (
-              <Text fontSize={16} color={brand.grafite70}>
-                Ancora nessuna recensione
-              </Text>
+              <span className={`is_Text ${text.muted}`}>Ancora nessuna recensione</span>
             )}
             {pro.verified ? (
               <BadgeInfo info="verified">
-                <XStack alignItems="center" gap={3}>
+                <div className={`is_View ${text.verified}`}>
                   <Icon name="badge-check" size={13} color={brand.verificato} strokeWidth={2} />
-                  <Text fontSize={13} fontWeight="700" color={brand.verificato}>
-                    Verificato
-                  </Text>
-                </XStack>
+                  <span className={`is_Text ${text.verifiedLabel}`}>Verificato</span>
+                </div>
               </BadgeInfo>
             ) : null}
-          </XStack>
+          </div>
           <span className="npc-cta">
-            <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
-              Mostra profilo
-            </Text>
+            <span className={`is_Text ${text.cta}`}>Mostra profilo</span>
           </span>
         </div>
       </Link>

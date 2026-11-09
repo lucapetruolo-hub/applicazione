@@ -241,11 +241,11 @@ export function SlotEditorModal({
             Orario
           </Text>
           <XStack gap="2" alignItems="center" flexWrap="wrap">
-            <ItalianTimeInput ariaLabel="Ora di inizio" value={start} onChange={onStartChange} style={modalTimeInputStyle} />
+            <ItalianTimeInput ariaLabel="Ora di inizio" value={start} onChange={onStartChange} style={modalTimeInputStyle} step={900} />
             <Text fontSize="3" color={brand.grafite70}>
               –
             </Text>
-            <ItalianTimeInput ariaLabel="Ora di fine" value={end} onChange={onEndChange} style={modalTimeInputStyle} />
+            <ItalianTimeInput ariaLabel="Ora di fine" value={end} onChange={onEndChange} style={modalTimeInputStyle} step={900} />
           </XStack>
         </YStack>
 

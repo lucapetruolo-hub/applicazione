@@ -20,6 +20,8 @@ import { SaveBar } from "@/components/SaveBar";
 import { ClientEmailVerificationCard } from "@/components/ClientEmailVerificationCard";
 import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/components/PasswordRules";
 import { localPreviewUrl } from "@/lib/media";
+import { downloadBlobFile } from "@/components/admin/adminUi";
+import { PageLoading } from "@/components/PageLoading";
 
 const inputStyle = {
   padding: "10px 12px",
@@ -158,10 +160,6 @@ export default function AccountPage() {
     if (comune) setProvince(comune.province);
   }
   const [profileError, setProfileError] = useState<string | null>(null);
-  // Campo sbagliato segnato e con il fuoco sopra (E7-07 del controllo dell'8/11).
-  const [profileErrorField, setProfileErrorField] = useState<"name" | "email" | null>(null);
-  const nameInputRef = useRef<HTMLInputElement>(null);
-  const emailInputRef = useRef<HTMLInputElement>(null);
   const [profileSaved, setProfileSaved] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
@@ -192,7 +190,7 @@ export default function AccountPage() {
   const [closureCheck, setClosureCheck] = useState<AccountClosureCheck | null>(null);
   // Esportazione dati personali (richiesta esplicita dell'utente, "Verbale
   // di Conformità" — diritto alla portabilità, art. 20 GDPR).
-  const [isExporting, setIsExporting] = useState(false);
+  const [isExporting, setIsExporting] = useState<"pdf" | "json" | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
 
   // Immagine profilo dell'account (richiesta esplicita dell'utente: prima
@@ -279,13 +277,13 @@ export default function AccountPage() {
     syncFieldsFromUser();
   }
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoading />;
 
   if (!user || !token) {
     return (
       <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
+          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi per gestire il tuo account
           </Text>
           <Link href="/accedi?redirect=/account" style={{ textDecoration: "none" }}>
@@ -298,18 +296,13 @@ export default function AccountPage() {
 
   async function handleSaveProfile() {
     setProfileError(null);
-    setProfileErrorField(null);
     setProfileSaved(false);
     if (name.trim().length < 2) {
       setProfileError("Il nome deve avere almeno 2 caratteri.");
-      setProfileErrorField("name");
-      nameInputRef.current?.focus();
       return;
     }
     if (!email.trim()) {
       setProfileError("L'email è obbligatoria.");
-      setProfileErrorField("email");
-      emailInputRef.current?.focus();
       return;
     }
     if (phone.trim() && !isPlausiblePhoneNumber(phone)) {
@@ -428,26 +421,23 @@ export default function AccountPage() {
     }
   }
 
-  async function handleExportData() {
+  // Due formati (controllo pre-lancio 08/11, E4-09): il PDF da leggere
+  // (GDPR art. 15) e il file JSON per portare i dati altrove (art. 20).
+  async function handleExportData(format: "pdf" | "json") {
     setExportError(null);
-    setIsExporting(true);
+    setIsExporting(format);
+    const day = new Date().toISOString().slice(0, 10);
     try {
-      const data = await apiClient.exportMyData(token as string);
-      // Download del file direttamente dal browser (questa è l'app reale,
-      // non un Artifact: nessuna restrizione sui download avviati da qui).
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `professionisti-dati-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      if (format === "pdf") {
+        downloadBlobFile(`i-miei-dati-${day}.pdf`, await apiClient.exportMyDataPdf(token as string));
+      } else {
+        const data = await apiClient.exportMyData(token as string);
+        downloadBlobFile(`i-miei-dati-${day}.json`, new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      }
     } catch (err) {
       setExportError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
-      setIsExporting(false);
+      setIsExporting(null);
     }
   }
 
@@ -461,7 +451,7 @@ export default function AccountPage() {
           tutte. */}
       <YStack width="100%" maxWidth={880} gap="5">
         <YStack gap="1">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
+          <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             Impostazioni dell&apos;account
           </Text>
           <Text fontSize={13} color={brand.grafite70}>
@@ -547,20 +537,11 @@ export default function AccountPage() {
           ) : null}
 
           <FieldRow label="Nome" required>
-            <input
-              aria-label="Nome"
-              ref={nameInputRef}
-              autoComplete="given-name"
-              aria-invalid={profileErrorField === "name" || undefined}
-              aria-describedby={profileErrorField === "name" ? "account-profile-error" : undefined}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              style={inputStyle}
-            />
+            <input aria-label="Nome" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
           </FieldRow>
 
           <FieldRow label="Cognome">
-            <input aria-label="Cognome" autoComplete="family-name" value={surname} onChange={(e) => setSurname(e.target.value)} style={inputStyle} />
+            <input aria-label="Cognome" value={surname} onChange={(e) => setSurname(e.target.value)} style={inputStyle} />
           </FieldRow>
 
           {/* Niente più data di nascita: non la usava nessuno (minimizzazione, GDPR
@@ -572,17 +553,7 @@ export default function AccountPage() {
           <SectionTitle>Contatti</SectionTitle>
 
           <FieldRow label="Email" required>
-            <input
-              aria-label="Email"
-              ref={emailInputRef}
-              type="email"
-              autoComplete="email"
-              aria-invalid={profileErrorField === "email" || undefined}
-              aria-describedby={profileErrorField === "email" ? "account-profile-error" : undefined}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={inputStyle}
-            />
+            <input aria-label="Email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
           </FieldRow>
 
           <FieldRow label="Telefono">
@@ -665,7 +636,6 @@ export default function AccountPage() {
 
           <FieldRow label="Scala, piano, interno">
             <input aria-label="Scala, piano, interno"
-              autoComplete="address-line2"
               value={addressExtra}
               onChange={(e) => setAddressExtra(e.target.value)}
               placeholder="Es. Scala B, piano 3, interno 12"
@@ -696,7 +666,7 @@ export default function AccountPage() {
           </FieldRow>
 
           <FieldRow label="Provincia">
-            <input aria-label="Provincia" autoComplete="address-level1" value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Es. Milano" style={{ ...inputStyle, maxWidth: 200 }} />
+            <input aria-label="Provincia" value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Es. Milano" style={{ ...inputStyle, maxWidth: 200 }} />
           </FieldRow>
         </Surface>
 
@@ -777,9 +747,6 @@ export default function AccountPage() {
                 fontWeight="600"
                 cursor="pointer"
                 role="button"
-                // Almeno 24 px di altezza da toccare (E7-11 del controllo dell'8/11).
-                paddingVertical={4}
-                alignSelf="flex-start"
                 onPress={() => setIsEditingPassword(true)}
               >
                 {user.hasPassword ? "Aggiorna password" : "Impostare la password"}
@@ -834,8 +801,6 @@ export default function AccountPage() {
                 fontWeight="600"
                 cursor="pointer"
                 role="button"
-                paddingVertical={4}
-                alignSelf="flex-start"
                 onPress={() => {
                   setLogoutOthersDone(false);
                   setConfirmingLogoutOthers(true);
@@ -866,23 +831,34 @@ export default function AccountPage() {
                 Scarica i tuoi dati
               </Text>
               <Text fontSize={13} color={brand.grafite70}>
-                Scarica un file con tutte le informazioni collegate al tuo account.
+                Tutte le informazioni collegate al tuo account: in PDF da leggere, o come file per portarle su un altro servizio.
               </Text>
             </YStack>
-            <XStack
-              gap="1"
-              alignItems="center"
-              minHeight={44}
-              cursor={isExporting ? "default" : "pointer"}
-              opacity={isExporting ? 0.6 : 1}
-              onPress={isExporting ? undefined : handleExportData}
-              role="button"
-              aria-label="Scarica i miei dati"
-            >
-              <Download size={15} strokeWidth={1.5} color={brand.grafite70} />
-              <Text color={brand.grafite70} fontWeight="600">
-                {isExporting ? "Preparo il file..." : "Scarica"}
-              </Text>
+            <XStack gap="4" flexWrap="wrap">
+              {(
+                [
+                  { format: "pdf", label: "PDF", aria: "Scarica i miei dati in PDF" },
+                  { format: "json", label: "File JSON", aria: "Scarica i miei dati come file JSON" },
+                ] as const
+              ).map((option) => (
+                <XStack
+                  key={option.format}
+                  gap="1"
+                  alignItems="center"
+                  minHeight={44}
+                  cursor={isExporting ? "default" : "pointer"}
+                  opacity={isExporting && isExporting !== option.format ? 0.6 : 1}
+                  onPress={isExporting ? undefined : () => handleExportData(option.format)}
+                  role="button"
+                  aria-label={option.aria}
+                  aria-disabled={Boolean(isExporting)}
+                >
+                  <Download size={15} strokeWidth={1.5} color={brand.grafite70} />
+                  <Text color={brand.grafite70} fontWeight="600">
+                    {isExporting === option.format ? "Preparo il file..." : option.label}
+                  </Text>
+                </XStack>
+              ))}
             </XStack>
           </XStack>
           {exportError ? (
@@ -906,7 +882,6 @@ export default function AccountPage() {
               <XStack
                 gap="1"
                 alignItems="center"
-                minHeight={44}
                 cursor="pointer"
                 onPress={() => {
                                 setIsConfirmingDelete(true);
@@ -1032,21 +1007,16 @@ export default function AccountPage() {
             contenuto della pagina che restava sotto di loro. La password e
             l'eliminazione account hanno già le proprie azioni indipendenti
             più in alto, non toccate da questo spostamento. */}
-        {/* Sempre presenti: il lettore di schermo annuncia l'errore e il salvataggio (E7-07). */}
-        <div id="account-profile-error" role="alert">
-          {profileError ? (
-            <Text color={brand.urgenza} fontSize={16}>
-              {profileError}
-            </Text>
-          ) : null}
-        </div>
-        <div role="status">
-          {profileSaved ? (
-            <Text color={brand.verificato} fontSize={16}>
-              Dati salvati!
-            </Text>
-          ) : null}
-        </div>
+        {profileError ? (
+          <Text color={brand.urgenza} fontSize={16}>
+            {profileError}
+          </Text>
+        ) : null}
+        {profileSaved ? (
+          <Text color={brand.verificato} fontSize={16}>
+            Dati salvati!
+          </Text>
+        ) : null}
 
         <SaveBar dirty={profileDirty} saving={isSavingProfile} onSave={handleSaveProfile} onCancel={handleCancelProfile} />
       </YStack>

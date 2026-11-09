@@ -43,6 +43,8 @@ import { JwtAuthGuard, type AuthenticatedRequest } from "./jwt-auth.guard";
 import { verifyEmailPerMinute } from "./link-rate-limit";
 import { isEmailVerificationRequired } from "./verified-email.guard";
 import { assertTurnstile } from "./turnstile";
+import { pdfResponse, renderDocumentPdf } from "../accounting/document-pdf";
+import { dataExportPdfModel } from "./data-export-pdf";
 import { issueGoogleNonce } from "./google-nonce";
 import type { LoginDeviceInfo } from "./login-device";
 import { clientIp } from "../common/client-ip";
@@ -72,7 +74,7 @@ export class AuthController {
     // `acceptedLegalTerms`/`declaredAdult` sono già garantite `=== true` da
     // `registerSchema` stesso (Zod `.refine`) prima di arrivare qui —
     // `register()` registra sempre il consenso, nessun controllo aggiuntivo.
-    return this.authService.register(body.email, body.password, body.name, body.role, body.categorySlugs, body.entityType, loginDevice(req), body.signupSource);
+    return this.authService.register(body.email, body.password, body.name, body.role, body.categorySlugs, body.entityType, loginDevice(req), body.signupSource, body.inviteCode);
   }
 
   // Rivela se un'email è registrata (docs/CHANGELOG.md §176): limite stretto
@@ -103,7 +105,7 @@ export class AuthController {
     return this.authService.verifyGoogleToken(body.idToken, body.role, body.createIfMissing, {
       acceptedLegalTerms: body.acceptedLegalTerms === true,
       declaredAdult: body.declaredAdult === true,
-    }, body.categorySlugs, body.entityType, loginDevice(req), body.signupSource);
+    }, body.categorySlugs, body.entityType, loginDevice(req), body.signupSource, body.inviteCode);
   }
 
   // Recupero password (docs/CHANGELOG.md §185): stessa risposta che
@@ -388,5 +390,15 @@ export class AuthController {
   @Get("me/export")
   async exportMe(@Req() req: AuthenticatedRequest) {
     return this.authService.exportMyData(req.user.userId);
+  }
+
+  /** Gli stessi dati in un PDF leggibile (GDPR art. 15 c. 3, controllo pre-lancio 08/11, E4-09). */
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(JwtAuthGuard)
+  @Get("me/export/pdf")
+  async exportMePdf(@Req() req: AuthenticatedRequest) {
+    const data = await this.authService.exportMyData(req.user.userId);
+    const day = new Date().toISOString().slice(0, 10);
+    return pdfResponse(await renderDocumentPdf(dataExportPdfModel(data as Record<string, unknown>)), `i-miei-dati-${day}.pdf`);
   }
 }

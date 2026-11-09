@@ -104,6 +104,7 @@ export function ConversationView({
   requestDescription,
   requestPhotoUrl,
   onOpenRequest,
+  initialMessage,
 }: {
   token: string;
   guidedRequestId: string;
@@ -151,6 +152,8 @@ export function ConversationView({
    */
   requestPhotoUrl?: string | null;
   onOpenRequest?: () => void;
+  /** Messaggio già scritto nella casella, da controllare e mandare (rubrica "I miei clienti", "Proponi una data"). */
+  initialMessage?: string;
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
@@ -210,7 +213,7 @@ export function ConversationView({
 
   const [events, setEvents] = useState<ConversationEvent[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(initialMessage ?? "");
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);

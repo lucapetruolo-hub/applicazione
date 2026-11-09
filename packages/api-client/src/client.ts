@@ -1,4 +1,5 @@
 import type {
+  ProfessionalClient,
   ReviewHoldReason,
   AgendaAttention,
   AppointmentReplyAction,
@@ -8,6 +9,10 @@ import type {
   EmailStatus,
   ProfessionalEntityTypeValue,
   MySubscription,
+  MyPersonalLink,
+  InviteSender,
+  AdminInvitePartner,
+  InvitePartnerCreateInput,
   SubscriptionCheckoutResult,
   SubscriptionTier,
   BillingInterval,
@@ -171,6 +176,8 @@ import type {
   AdminProposalRestore,
   AdminRejectedProposal,
   AdminQueue,
+  AccountMeasure,
+  ModerationGroundCode,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
@@ -409,6 +416,8 @@ export type ApiClientConfig = {
    * registrazione: dice da dove arrivano i professionisti (docs/CHANGELOG.md §372).
    */
   trafficSource?: () => TrafficSource | undefined;
+  /** Codice del link d'invito aperto prima di iscriversi (docs/changelog/2026-11-09-passaparola.md). */
+  inviteCode?: () => string | undefined;
   /**
    * Chiamata quando una richiesta all'API non riesce (rete assente o
    * risposta d'errore): il sito conta gli invii falliti per modulo, mai chi
@@ -462,6 +471,10 @@ export type AdminUserDetail = {
   deletedAt: string | null;
   suspendedAt: string | null;
   suspensionNote: string | null;
+  /** Regola o legge violata della sospensione o della chiusura (codice di MODERATION_GROUNDS, E4-03). */
+  suspensionGround: string | null;
+  /** Chiusura con preavviso fissata (o già fatta, se c'è anche `suspendedAt`): E4-03. */
+  closureScheduledAt: string | null;
   /** Segnato "Account di prova": fuori dai numeri (docs/CHANGELOG.md §395). */
   testAccountAt: string | null;
   /** Verifica in due passaggi attiva (solo per gli admin, docs/CHANGELOG.md §359). */
@@ -563,6 +576,10 @@ export type AdminTrafficSources = {
   days: number;
   total: number;
   bySource: { source: TrafficSource | "unknown"; count: number }[];
+  /** Richieste partite dal link personale di un professionista (docs/changelog/2026-11-08-canale-del-professionista.md). */
+  fromProfessionalLink: number;
+  /** Professionisti che negli stessi giorni hanno portato almeno un cliente col loro link. */
+  professionalsUsingLink: number;
 };
 
 /** Quante persone spengono ogni avviso (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). */
@@ -1176,7 +1193,7 @@ function extractErrorMessage(body: unknown, fallback: string): string {
  * Client tipizzato unico per chiamare apps/api da apps/web e apps/mobile —
  * niente logica di business duplicata nei due frontend (CLAUDE.md §3).
  */
-export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, onFailure }: ApiClientConfig) {
+export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, inviteCode, onFailure }: ApiClientConfig) {
   // Senza barra finale: "https://api/" + "/path" darebbe "//path" e 404 (docs/changelog/2026-11-05-render-francoforte.md).
   // Ciclo e non una regex: CodeQL segnala /\/+$/ come lenta su tante barre.
   let baseUrl = rawBaseUrl;
@@ -1321,7 +1338,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<AuthResult>("/auth/register", {
         method: "POST",
         headers: deviceHeaders(),
-        body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult, turnstileToken, categorySlugs, entityType, signupSource: trafficSource?.() }),
+        body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult, turnstileToken, categorySlugs, entityType, signupSource: trafficSource?.(), inviteCode: inviteCode?.() }),
       }),
 
     emailStatus: (email: string) =>
@@ -1357,7 +1374,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<AuthResult>("/auth/google/verify", {
         method: "POST",
         headers: deviceHeaders(),
-        body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult, categorySlugs, entityType, signupSource: trafficSource?.() }),
+        body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult, categorySlugs, entityType, signupSource: trafficSource?.(), inviteCode: inviteCode?.() }),
       }),
 
     /** Recupero password (docs/CHANGELOG.md §185): risponde sempre `success`, che l'account esista o no. */
@@ -1447,6 +1464,8 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
      */
     exportMyData: (token: string) =>
       request<Record<string, unknown>>("/auth/me/export", { headers: { Authorization: `Bearer ${token}` } }),
+    /** Gli stessi dati in PDF leggibile (controllo pre-lancio 08/11, E4-09). */
+    exportMyDataPdf: (token: string) => downloadFile("/auth/me/export/pdf", token),
 
     /** Immagine profilo dell'account (cliente o professionista) — indipendente da uploadMyProfessionalImage. */
     uploadMyAccountImage: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/auth/me/image", token, file, "image"),
@@ -1548,10 +1567,12 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     getProfessional: (id: string) => request<ProfessionalDetail>(`/professionals/${id}`, { cache: "no-store" }),
 
     /** Conta una visita al profilo pubblico (docs/CHANGELOG.md §147); il token serve solo a non contare il proprietario. */
-    recordProfileView: (id: string, token?: string | null) =>
+    recordProfileView: (id: string, token?: string | null, fromLink = false) =>
       request<{ ok: true }>(`/professionals/${id}/views`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
+        // Arrivato dal link personale: "N persone hanno aperto il tuo link" (docs/changelog/2026-11-09-passaparola.md).
+        ...(fromLink ? { body: JSON.stringify({ fromLink: true }) } : {}),
       }),
 
     /** Numeri della Home "Oggi" del professionista (docs/CHANGELOG.md §147). */
@@ -1780,6 +1801,18 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         headers: { Authorization: `Bearer ${token}` },
       }),
 
+    /** Rubrica "I miei clienti": clienti del sito e dei lavori aggiunti in agenda, con storico e nota. */
+    myClients: (token: string) =>
+      request<ProfessionalClient[]>("/professional-clients/me", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Nota privata su un cliente della rubrica; vuota la toglie. */
+    setClientNote: (token: string, clientKey: string, note: string) =>
+      request<{ note: string | null }>("/professional-clients/me/note", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ clientKey, note }),
+      }),
+
     myAvailableSlots: (token: string) =>
       request<ProfessionalAvailableSlot[]>("/professionals/me/available-slots", { headers: { Authorization: `Bearer ${token}` } }),
 
@@ -1887,7 +1920,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<{ fileName: string; xml: string }>(`/admin/invoices/${encodeURIComponent(id)}/xml`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminRunInvoiceMonth: (token: string, month: string) =>
-      request<{ issued: number; notified: number; statements: number }>(`/admin/invoices/run/${encodeURIComponent(month)}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+      request<{ issued: number; notified: number; statements: number; late: boolean; abroad: number }>(`/admin/invoices/run/${encodeURIComponent(month)}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     adminFeeReconciliation: (token: string, month: string) =>
       request<FeeReconciliation>(`/admin/invoices/reconciliation/${encodeURIComponent(month)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
@@ -2166,6 +2199,17 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     receivedReviews: (token: string) =>
       request<ReceivedReview[]>("/reviews/received", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
+    /** "Il tuo link": link personale, QR e clienti arrivati da lì (docs/changelog/2026-11-08-canale-del-professionista.md). */
+    getMyPersonalLink: (token: string) =>
+      request<MyPersonalLink>("/professionals/me/personal-link", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Dal codice di `/p/<codice>` al profilo da aprire. */
+    resolvePersonalLink: (code: string) =>
+      request<{ id: string; businessName: string; city: string | null; rating: number | null; reviewCount: number }>(`/professionals/link/${encodeURIComponent(code)}`, { cache: "no-store" }),
+
+    /** Chi ha mandato un invito "Porta un collega" o di un partner (docs/changelog/2026-11-09-passaparola.md). */
+    resolveInvite: (code: string) => request<InviteSender>(`/professionals/invite/${encodeURIComponent(code)}`, { cache: "no-store" }),
+
     getMySubscription: (token: string) =>
       request<MySubscription>("/professionals/me/subscription", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
@@ -2249,8 +2293,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     adminGetUser: (token: string, id: string) => request<AdminUserDetail>(`/admin/users/${id}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
-    adminSuspendUser: (token: string, id: string, note: string) =>
-      request<{ id: string }>(`/admin/users/${id}/suspend`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ note }) }),
+    /** Sospensione subito o chiusura con 30 giorni di preavviso, con fatti e regola violata (controllo pre-lancio 08/11, E4-03). */
+    adminSuspendUser: (token: string, id: string, input: { measure: AccountMeasure; ground: ModerationGroundCode; note: string }) =>
+      request<{ id: string }>(`/admin/users/${id}/suspend`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
 
     /** "Nascondi la recensione" / "Togli dalla ricerca" dalla scheda (docs/changelog/2026-10-30-admin-persone.md). */
     adminModerateFromUser: (token: string, id: string, input: AdminModerateInput) =>
@@ -2311,6 +2356,18 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     /** Andamento del sito e consigli della settimana (docs/CHANGELOG.md §372). */
     adminSiteStats: (token: string) => request<AdminSiteStats>("/admin/site-stats", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Link d'invito dei partner (docs/changelog/2026-11-09-passaparola.md). */
+    adminInvitePartners: (token: string) => request<AdminInvitePartner[]>("/admin/invite-partners", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminCreateInvitePartner: (token: string, input: InvitePartnerCreateInput) =>
+      request<AdminInvitePartner>("/admin/invite-partners", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    /** Scheda in PDF da stampare o mandare al partner, con il suo link e il QR. */
+    adminInvitePartnerSheetPdf: (token: string, id: string) => downloadFile(`/admin/invite-partners/${encodeURIComponent(id)}/sheet.pdf`, token),
+
+    adminArchiveInvitePartner: (token: string, id: string) =>
+      request<void>(`/admin/invite-partners/${encodeURIComponent(id)}/archive`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     adminAddSiteNote: (token: string, input: SiteNoteInput) =>
       request<{ id: string }>("/admin/site-notes", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),

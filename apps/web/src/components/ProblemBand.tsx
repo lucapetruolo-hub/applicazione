@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   OUT_OF_SERVICE_LABELS,
@@ -13,7 +14,13 @@ import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import type { ChosenPro } from "./ChosenProsBar";
-import { InlineAuthGate } from "./InlineAuthGate";
+import { CATEGORY_WHO as WHO, joinWithOr, problemCategoryChoices } from "@/lib/problemChoices";
+
+// Accesso e registrazione (con i loro controlli dei campi) caricati solo
+// quando servono, al tocco di "Prendete in carico la richiesta": prima
+// stavano nel JavaScript di /cerca per tutti
+// (docs/changelog/2026-11-09-meno-javascript-comune.md).
+const InlineAuthGate = dynamic(() => import("./InlineAuthGate").then((module) => module.InlineAuthGate), { ssr: false });
 
 /**
  * Banda in cima ai risultati quando il cliente descrive il problema invece
@@ -28,24 +35,6 @@ function categoryLabel(slug: string): string {
   return PROFESSIONAL_CATEGORIES.find((category) => category.slug === slug)?.label ?? slug;
 }
 
-/** "Ti serve …" e "Di solito lo fa …": il nome della categoria non sempre regge la frase ("un Pulizie"). */
-const WHO: Record<ProfessionalCategorySlug, string> = {
-  idraulico: "un idraulico",
-  elettricista: "un elettricista",
-  imbianchino: "un imbianchino",
-  pulizie: "un'impresa di pulizie",
-  giardiniere: "un giardiniere",
-  traslochi: "chi fa traslochi",
-  fabbro: "un fabbro",
-  climatizzazione: "un tecnico di caldaie e climatizzatori",
-  muratore: "un muratore",
-  falegname: "un falegname",
-  tuttofare: "un tuttofare",
-  elettrodomestici: "un tecnico di elettrodomestici",
-  "tende-da-sole": "chi installa tende da sole e zanzariere",
-  dogsitter: "un dogsitter",
-  babysitter: "una babysitter",
-};
 
 export function problemResultsHref(description: string, city: string | undefined, extra: Record<string, string> = {}): string {
   const params = new URLSearchParams({ problema: description });
@@ -65,6 +54,8 @@ export function ProblemBand({
   maxChosen,
   onClearChosen,
   topService = null,
+  categoryCounts,
+  otherTradesCount = 0,
 }: {
   description: string;
   city?: string;
@@ -81,13 +72,30 @@ export function ProblemBand({
   onClearChosen?: () => void;
   /** Prestazione proposta per il problema, offerta da chi è in cima ai risultati. */
   topService?: string | null;
+  /** Quanti professionisti per ogni mestiere proposto (pulsanti in cima). */
+  categoryCounts?: Partial<Record<ProfessionalCategorySlug, number>>;
+  /** Professionisti di altri mestieri che offrono questo lavoro ("Potrebbero fare anche questo lavoro"). */
+  otherTradesCount?: number;
 }) {
-  const others = result.categories.filter((slug) => slug !== chosen);
+  const choices = problemCategoryChoices(result, chosen);
   const quoteParams = new URLSearchParams({ descrizione: description });
   if (chosen) quoteParams.set("categoria", chosen);
   if (city) quoteParams.set("citta", city);
   const quoteHref = `/preventivo?${quoteParams.toString()}`;
   const shortText = description.length > 90 ? `${description.slice(0, 90)}…` : description;
+  // Più mestieri e nessuna scelta del cliente: il titolo li nomina tutti, senza
+  // dare per sicuro il primo (docs/changelog/2026-11-09-banda-mestieri-chiara.md).
+  const undecided = choices.length > 1 && !questionDone;
+  const title = undecided ? `Può servirti ${joinWithOr(choices.map((slug) => WHO[slug]))}` : chosen ? `Ti serve ${WHO[chosen]}` : null;
+  const reason = result.reason && chosen === result.categories[0] ? result.reason : null;
+  const reasonLine = [reason, topService ? `In cima chi fa «${topService}».` : null].filter(Boolean).join(" ");
+  // Il primo mestiere senza nessuno vicino: si dice dove ce n'è, senza
+  // cambiare l'ordine (un mestiere con più professionisti può essere meno adatto, Luca 9/11).
+  const nearbyElsewhere =
+    chosen && categoryCounts?.[chosen] === 0
+      ? choices.filter((slug) => slug !== chosen && (categoryCounts?.[slug] ?? 0) > 0)
+      : [];
+  const showQuestion = Boolean(result.question && !questionDone);
 
   return (
     <YStack gap="3" width="100%" marginBottom="4">
@@ -97,15 +105,49 @@ export function ProblemBand({
         <Text fontSize={13} color={brand.grafite70}>
           Per «{shortText}»
         </Text>
+        {/* Più mestieri adatti: un pulsante ciascuno con quanti professionisti,
+            il primo già scelto (docs/changelog/2026-11-09-mestieri-proposti-pulsanti.md).
+            Prima gli altri erano solo nella riga piccola "Oppure:". */}
+        {choices.length > 1 ? (
+          <nav aria-label="Mestieri adatti al problema">
+            <XStack gap="2" flexWrap="wrap">
+              {choices.map((slug) => (
+                <CategoryChoice
+                  key={slug}
+                  href={problemResultsHref(description, city, { mestiere: slug })}
+                  label={categoryLabel(slug)}
+                  count={categoryCounts?.[slug]}
+                  selected={slug === chosen}
+                />
+              ))}
+            </XStack>
+          </nav>
+        ) : null}
         {chosen ? (
           <YStack gap="2">
             <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
-              Ti serve {WHO[chosen]}
+              {title}
             </Text>
-            <Text fontSize={16} color={brand.grafite70}>
-              {result.reason && chosen === result.categories[0] ? result.reason : `Di solito lo fa ${WHO[chosen]}.`}
-              {topService ? ` In cima chi fa «${topService}».` : ""}
-            </Text>
+            {/* Niente "Di solito lo fa…": ripeteva il titolo. Resta solo un motivo vero. */}
+            {reasonLine ? (
+              <Text fontSize={16} color={brand.grafite70}>
+                {reasonLine}
+              </Text>
+            ) : null}
+            {nearbyElsewhere.length > 0 ? (
+              <Text fontSize={16} color={brand.grafite}>
+                Per ora nessuno vicino per {categoryLabel(chosen)}.{" "}
+                {nearbyElsewhere.map((slug, index) => (
+                  <span key={slug}>
+                    {index > 0 ? " " : ""}
+                    <Link href={problemResultsHref(description, city, { mestiere: slug })} scroll={false} style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>
+                      {categoryLabel(slug)}
+                    </Link>
+                    : {categoryCounts?.[slug] === 1 ? "1 vicino" : `${categoryCounts?.[slug]} vicini`}.
+                  </span>
+                ))}
+              </Text>
+            ) : null}
             {/* Trasparenza sull'intelligenza artificiale (AI Act art. 50, domanda 77 per
                 l'avvocato; collaudo del 29/10/2026, M-11): solo quando la proposta non
                 viene dal dizionario. */}
@@ -115,6 +157,16 @@ export function ProblemBand({
                 <Link href="/privacy#fornitori" style={{ color: brand.cianografiaScuro }}>
                   Come funziona
                 </Link>
+              </Text>
+            ) : null}
+            {/* Non solo i mestieri proposti: anche chi, di un altro mestiere (es. un
+                tuttofare), ha questo lavoro tra le prestazioni (richiesta di Luca, 9/11). */}
+            {otherTradesCount > 0 ? (
+              <Text fontSize={16} color={brand.grafite}>
+                <a href="#anche-questo-lavoro" style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>
+                  {otherTradesCount === 1 ? "Più sotto anche 1 professionista" : `Più sotto anche ${otherTradesCount} professionisti`}
+                </a>{" "}
+                di altri mestieri che offre{otherTradesCount === 1 ? "" : "no"} questo lavoro.
               </Text>
             ) : null}
           </YStack>
@@ -128,15 +180,31 @@ export function ProblemBand({
           </Text>
         )}
 
-        {chosen && others.length > 0 ? (
-          <XStack gap="2" flexWrap="wrap" alignItems="center">
-            <Text fontSize={16} color={brand.grafite70}>
-              Oppure:
-            </Text>
-            {others.map((slug) => (
-              <ChoiceLink key={slug} href={problemResultsHref(description, city, { mestiere: slug })} label={categoryLabel(slug)} />
-            ))}
-          </XStack>
+        {/* La domanda nello stesso riquadro, subito sotto il titolo: la
+            risposta sceglie il mestiere (docs/changelog/2026-11-09-banda-mestieri-chiara.md). */}
+        {showQuestion && result.question ? (
+          <YStack gap="2" borderTopWidth={1} borderColor={brand.filetto} paddingTop="3">
+            <YStack gap="1">
+              <Text fontWeight="700" fontSize={16} color={brand.grafite}>
+                {result.question.text}
+              </Text>
+              <Text fontSize={16} color={brand.grafite70}>
+                Rispondi e ti mostriamo chi serve.
+              </Text>
+            </YStack>
+            <XStack gap="2" flexWrap="wrap">
+              {result.question.answers.map((answer) => (
+                <ChoiceLink
+                  key={answer.label}
+                  href={problemResultsHref(description, city, {
+                    mestiere: answer.category,
+                  })}
+                  label={answer.label}
+                />
+              ))}
+              <ChoiceLink href={problemResultsHref(description, city, { domanda: "no" })} label="Non lo so" />
+            </XStack>
+          </YStack>
         ) : null}
 
         {!chosen && !result.outOfService ? (
@@ -158,31 +226,6 @@ export function ProblemBand({
           </YStack>
         ) : null}
       </YStack>
-
-      {result.question && !questionDone ? (
-        <YStack gap="3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4" padding="4">
-          <YStack gap="1">
-            <Text fontWeight="700" fontSize={16} color={brand.grafite}>
-              Una domanda per mandarti la persona giusta
-            </Text>
-            <Text fontSize={16} color={brand.grafite70}>
-              {result.question.text}
-            </Text>
-          </YStack>
-          <XStack gap="2" flexWrap="wrap">
-            {result.question.answers.map((answer) => (
-              <ChoiceLink
-                key={answer.label}
-                href={problemResultsHref(description, city, {
-                  mestiere: answer.category,
-                })}
-                label={answer.label}
-              />
-            ))}
-            <ChoiceLink href={problemResultsHref(description, city, { domanda: "no" })} label="Non lo so" />
-          </XStack>
-        </YStack>
-      ) : null}
 
       {/* Dopo la domanda: prima si sceglie la persona giusta, poi si chiede il preventivo. */}
       {chosen && chosenPros.length > 0 ? (
@@ -229,6 +272,41 @@ export function ProblemBand({
         )
       ) : null}
     </YStack>
+  );
+}
+
+/** Pulsante di un mestiere proposto: pieno quando è quello dei risultati. */
+function CategoryChoice({ href, label, count, selected }: { href: string; label: string; count?: number; selected: boolean }) {
+  const countText = count === undefined ? "" : count === 1 ? "1 professionista" : `${count} professionisti`;
+  return (
+    <Link
+      href={href}
+      style={{ textDecoration: "none" }}
+      scroll={false}
+      aria-current={selected ? "true" : undefined}
+      aria-label={countText ? `${label}, ${countText}` : label}
+    >
+      <XStack
+        gap="2"
+        alignItems="center"
+        paddingHorizontal="4"
+        paddingVertical="2"
+        minHeight={44}
+        borderRadius={999}
+        borderWidth={1}
+        borderColor={selected ? brand.cianografiaPieno : brand.cianografia}
+        backgroundColor={selected ? brand.cianografiaPieno : `${brand.calce} hover:${brand.cianografiaVelo}`}
+      >
+        <Text color={selected ? "white" : brand.cianografiaScuro} fontWeight="700" fontSize={16}>
+          {label}
+        </Text>
+        {count !== undefined ? (
+          <Text color={selected ? "white" : brand.grafite70} fontSize={14} aria-hidden>
+            {count}
+          </Text>
+        ) : null}
+      </XStack>
+    </Link>
   );
 }
 

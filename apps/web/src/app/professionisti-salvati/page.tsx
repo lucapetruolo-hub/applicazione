@@ -12,6 +12,7 @@ import { IconActionButton } from "@/components/IconActionButton";
 import { CARD_PHOTO, ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { SkeletonProfessionalCard } from "@/components/Skeleton";
 import { EmptySavedIllustration } from "@/components/icons/EmptyStateIllustrations";
+import { PageLoading } from "@/components/PageLoading";
 
 export default function ProfessionistiSalvatiPage() {
   const router = useRouter();
@@ -52,7 +53,7 @@ export default function ProfessionistiSalvatiPage() {
     }
   }
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoading />;
 
   if (!user || !token) {
     return (

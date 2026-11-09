@@ -63,6 +63,19 @@ export const TERMS_CHANGES: readonly TermsChange[] = [
     // Prima del lancio: nessun avviso agli account di prova.
     notify: false,
   },
+  {
+    // Controllo pre-lancio dell'08/11/2026 (E4-02, E3-05, E4-03) e canale del professionista.
+    version: "2026-11-08",
+    publishedAt: "2026-11-08",
+    effectiveAt: "2026-11-08",
+    summary: [
+      "Ordine dei risultati: chi non ha ancora completato la verifica dell'identità compare dopo chi l'ha completata; partendo dal problema, prima chi indica proprio quel lavoro tra i suoi servizi.",
+      "La commissione di Stripe su una contestazione bancaria è a carico del professionista anche quando la banca gli dà ragione.",
+      "Per i professionisti: i lavori dei clienti arrivati dal link personale non contano nei lavori compresi nell'abbonamento.",
+    ],
+    // Prima del lancio: nessun avviso agli account di prova.
+    notify: false,
+  },
 ];
 
 export function findTermsChange(version: string): TermsChange | undefined {

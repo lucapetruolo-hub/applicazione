@@ -9,6 +9,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { JourneyProgress, PAYMENTS_ANCHOR, setupJourney, useJourneySubscription } from "@/components/verification/SetupJourney";
 import { startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
+import { PageLoading } from "@/components/PageLoading";
 
 /** Mentre si aspetta l'esito la pagina si aggiorna da sola, per al massimo 3 minuti. */
 const POLL_MS = 4000;
@@ -22,7 +23,7 @@ const POLL_LIMIT_MS = 3 * 60_000;
  */
 export default function VerificaIdentitaPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading />}>
       <VerificaIdentitaContent />
     </Suspense>
   );

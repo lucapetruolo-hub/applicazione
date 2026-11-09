@@ -106,8 +106,9 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
           onClick={() => setDesktopOpen((v) => !v)}
         >
           Servizi
+          {/* Stessa freccina sottile della barra in alto (docs/changelog/2026-11-09-barra-in-alto-semplice.md). */}
           <span className={`mega-chevron ${desktopOpen ? "open" : ""}`} aria-hidden>
-            ▾
+            <Icon name="chevron-down" size={14} color="currentColor" />
           </span>
         </button>
         {desktopOpen ? (
@@ -245,14 +246,14 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
           background: none;
           border: none;
           cursor: pointer;
-          font-size: 14px;
+          font-size: 16px;
           font-weight: 600;
           font-family: var(--font-body), sans-serif;
           color: #2b2420;
           padding: 8px 0;
         }
         .mega-chevron {
-          font-size: 10px;
+          display: inline-flex;
           transition: transform ${motionFast} ${motionEasing};
         }
         .mega-chevron.open {

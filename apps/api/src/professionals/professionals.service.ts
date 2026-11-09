@@ -31,6 +31,7 @@ import {
   type ProfessionalDetail,
   type ProfessionalInsights,
   type ProfessionalLead,
+  ownClientRequest,
   type ProfessionalSearchResult,
   type ProfessionalServiceItem,
   type ServicePriceUnit,
@@ -80,6 +81,7 @@ import { countBookingsInSlot, loadCommitments, lockProfessionalAgenda, type Comm
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
 import { profileCategories } from "../common/profile-categories.util";
 import { computeIsNewProfile } from "../common/new-profile.util";
+import { lastVisibleChange } from "./last-visible-change";
 import { NotificationsService } from "../notifications/notifications.service";
 import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
 import { toMyState } from "../guided-requests/guided-request-user-state.service";
@@ -201,6 +203,8 @@ const PROFESSIONAL_DETAIL_INCLUDE = {
   visibilityBoosts: { where: { status: "ACTIVE" } },
   services: true,
   metrics: true,
+  // Account di prova: profilo fuori da Google (collaudo 08/11 E8-04).
+  user: { select: { testAccountAt: true } },
 } satisfies Prisma.ProfessionalProfileInclude;
 
 /** Quanti "Lavori fatti" mostrare sul profilo: gli ultimi, gli altri restano nelle recensioni. */
@@ -427,6 +431,7 @@ export class ProfessionalsService {
         availabilityPreview: preview?.days ?? [],
         availabilityFrom: new Date().toISOString().slice(0, 10),
         createdAt: profile.createdAt.toISOString(),
+        updatedAt: lastVisibleChange(profile.updatedAt, profile.services, reviews).toISOString(),
         completedThisMonth: countCompletedThisMonth(profile.bookings),
         isNewProfile: computeIsNewProfile(profile.createdAt),
         ...(serviceKey && canonicalize
@@ -778,6 +783,8 @@ export class ProfessionalsService {
       stripeVerified: stripeVerified(profile.fiscalProfile),
       // Privato o professionista, per il cliente (Codice del consumo art. 49-bis, §241).
       traderStatus: publicTraderStatusOf(profile.fiscalProfile?.entityType, profile.businessName),
+      // Profili di prova e d'esempio apribili dal link, ma mai in Google (collaudo 08/11 E8-04).
+      indexable: !profile.isDemo && profile.user.testAccountAt === null,
       professionalKind: publicProfessionalKindOf(profile.fiscalProfile?.entityType, profile.businessName),
       rating,
       reviewCount,
@@ -1218,7 +1225,7 @@ export class ProfessionalsService {
    * un account di prova che guarda, né il profilo di un account di prova
    * (docs/CHANGELOG.md §395).
    */
-  async recordProfileView(professionalProfileId: string, viewerUserId: string | null): Promise<void> {
+  async recordProfileView(professionalProfileId: string, viewerUserId: string | null, fromLink = false): Promise<void> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
       select: { userId: true, deletedAt: true, suspendedAt: true, isDemo: true, user: { select: { testAccountAt: true } } },
@@ -1233,8 +1240,8 @@ export class ProfessionalsService {
     day.setUTCHours(0, 0, 0, 0);
     await this.prisma.profileViewDay.upsert({
       where: { professionalProfileId_day: { professionalProfileId, day } },
-      create: { professionalProfileId, day, count: 1 },
-      update: { count: { increment: 1 } },
+      create: { professionalProfileId, day, count: 1, linkCount: fromLink ? 1 : 0 },
+      update: { count: { increment: 1 }, ...(fromLink ? { linkCount: { increment: 1 } } : {}) },
     });
   }
 
@@ -1523,6 +1530,9 @@ export class ProfessionalsService {
           // deve vedere subito per quale orario è stata richiesta.
           preferredDate: lead.guidedRequest.preferredDate?.toISOString().slice(0, 10) ?? null,
           preferredTimeSlot: lead.guidedRequest.preferredTimeSlot,
+          // Cliente arrivato dal tuo link personale: non conta nei lavori
+          // (docs/changelog/2026-11-08-canale-del-professionista.md).
+          fromProfessionalLink: ownClientRequest(lead.guidedRequest, professionalProfileId),
           // Eliminata (o annullata prima del §343) dal cliente: "Ritirata dal cliente", non "Scaduta".
           withdrawnByClient:
             lead.guidedRequest.closedReason === "CANCELED_BY_CLIENT"

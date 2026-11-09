@@ -59,12 +59,17 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   CONTENT_REPORT_DECISION: { icon: "🚩", message: "Abbiamo esaminato la tua segnalazione: trovi l'esito nell'email." },
   // Promemoria programmato dall'utente dal menu della scheda (docs/CHANGELOG.md §130).
   REQUEST_REMINDER: { icon: "⏰", message: "Promemoria: hai chiesto di ricordarti questa richiesta." },
+  // "Ricordamelo tra…" a lavoro terminato (docs/changelog/2026-11-08-promemoria-manutenzione.md).
+  REBOOK_REMINDER: { icon: "⏰", message: "È il momento che avevi scelto: puoi prenotare di nuovo lo stesso professionista." },
   CONTENT_REPORT_UPHELD: { icon: "⚠️", message: "Abbiamo preso una decisione su un tuo contenuto segnalato: tocca per leggere la motivazione." },
   // Esito della contestazione (docs/CHANGELOG.md §144).
   CONTENT_REPORT_REVERTED: { icon: "✅", message: "La misura su un tuo contenuto è stata annullata." },
   // Sospensione/riattivazione decise dalla scheda utente admin (docs/CHANGELOG.md §145).
   ACCOUNT_SUSPENDED: { icon: "⛔", message: "Il tuo account è stato sospeso: controlla la tua email per la motivazione." },
   ACCOUNT_REACTIVATED: { icon: "✅", message: "Il tuo account è di nuovo attivo." },
+  // Chiusura con preavviso (controllo pre-lancio 08/11, E4-03).
+  ACCOUNT_CLOSURE_SCHEDULED: { icon: "⛔", message: "Il tuo account verrà chiuso tra 30 giorni: controlla la tua email per motivo e data." },
+  ACCOUNT_CLOSED: { icon: "⛔", message: "Il tuo account è stato chiuso: controlla la tua email per la motivazione." },
   TERMS_CHANGED: { icon: "📄", message: "Cambiano i Termini di Servizio: tocca per leggere cosa cambia." },
   // Verifica manuale del profilo (docs/CHANGELOG.md §200).
   STRIPE_ACCOUNT_ACTIVE: { icon: "✅", message: "Stripe ha verificato la tua identità: ora puoi offrire l'acconto online nei preventivi." },
@@ -143,6 +148,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
   JOB_CONFIRM_REMINDER: { icon: "⏳", message: "Il professionista ha terminato un lavoro: confermalo o segnala un problema." },
   JOB_AUTO_CONFIRMED: { icon: "✅", message: "Un lavoro è stato considerato terminato: non ci hai segnalato problemi in tempo." },
+  REVIEW_REMINDER: { icon: "⭐", message: "Com'è andato il lavoro? Se vuoi, lascia una recensione: bastano un voto e due righe." },
   JOB_CLOSE_REMINDER: { icon: "⏳", message: "Il cliente ha confermato un lavoro terminato: segnalalo anche tu con l'importo finale." },
   JOB_CLOSE_EXPIRED: { icon: "⚠️", message: "Non hai segnato come terminato in tempo un lavoro confermato dal cliente." },
   ADMIN_JOB_NOT_CLOSED: { icon: "⚠️", message: "Un professionista non ha chiuso un lavoro pagato online: soldi ancora bloccati." },

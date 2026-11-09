@@ -11,10 +11,11 @@ import { AuthIconBadge } from "@/components/AuthStepHeader";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { EmailCodeForm } from "@/components/EmailCodeForm";
+import { PageLoading } from "@/components/PageLoading";
 
 export default function ConfermaEmailPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading variant="form" />}>
       <ConfermaEmailRouter />
     </Suspense>
   );

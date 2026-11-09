@@ -5,10 +5,11 @@ import { useEffect, useState, useSyncExternalStore, type FocusEvent, type ReactN
 import Link from "next/link";
 import { formatServicePrice, shownServicePriceUnit, formatServicePriceRange, serviceNameMatches, type ServicePriceIndexEntry } from "@professionisti/shared";
 import { Search } from "lucide-react";
-import { Section, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Section, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { readLastSearchCity } from "@/lib/lastSearchCity";
 import { countPriceToolEntry } from "@/lib/siteCounts";
+import styles from "./PriceEstimatorTool.module.css";
 
 type PriceEntry = ServicePriceIndexEntry;
 
@@ -95,8 +96,8 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
 
   return (
     <Section title="Quanto costa in media?" maxWidth={780}>
-      <YStack width="100%" gap="3">
-        <Text fontSize={16} color={brand.grafite70}>
+      <div className={`is_View ${styles.body}`}>
+        <span className={`is_Text ${styles.muted}`}>
           {/* Nessuna cifra finché nessun lavoro ha 3 prezzi (§398): allora la
               riga non promette "prezzi veri" (collaudo N-06). */}
           {isEmpty
@@ -104,7 +105,7 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
             : entries && entries.length > 0 && !entries.some((entry) => entry.price)
             ? "I lavori offerti dai professionisti del sito: il prezzo medio compare quando almeno 3 lo indicano. Tocca un lavoro per vedere chi lo fa."
             : "Prezzi veri dei professionisti del sito. Tocca un lavoro per vedere chi lo fa."}
-        </Text>
+        </span>
         {/* Campo e voci in un unico riquadro bianco (Luca: "quella finestra
             non mi convince", §398): si legge come una finestra sola, il campo
             non ha più il bordo nero del fuoco ma un anello verde sul riquadro. */}
@@ -131,17 +132,15 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
           </label>
 
           {isEmpty ? (
-            <YStack width="100%" gap="3" alignItems="flex-start" padding="4">
-              <Text fontSize={16} color={brand.grafite70}>
+            <div className={`is_View ${styles.message} ${styles.messageWide}`}>
+              <span className={`is_Text ${styles.muted}`}>
                 {/* Mai nascosta (Luca, 07/11/2026): la sezione dice che i prezzi
                     veri arrivano. Compaiono da soli quando almeno
                     MIN_PROFESSIONALS_FOR_SERVICE_PRICE professionisti veri li
                     indicano (account di prova esclusi), docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md. */}
-                <Text fontFamily="body" fontWeight="700" color={brand.grafite}>
-                  Stiamo raccogliendo i prezzi veri dei professionisti.
-                </Text>{" "}
+                <span className={`is_Text font_body ${styles.strong}`}>Stiamo raccogliendo i prezzi veri dei professionisti.</span>{" "}
                 Li pubblichiamo a breve. Intanto un preventivo gratuito ti dice quanto costa il tuo lavoro.
-              </Text>
+              </span>
               <a
                 href="/preventivo"
                 style={{
@@ -157,31 +156,26 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
               >
                 Richiedi un preventivo gratuito
               </a>
-            </YStack>
+            </div>
           ) : entries === null ? (
             <p className="price-message">Caricamento...</p>
           ) : visibleEntries.length === 0 ? (
-            <YStack width="100%" gap="2" alignItems="flex-start" padding="4">
-              <Text fontSize={16} color={brand.grafite70}>
+            <div className={`is_View ${styles.message}`}>
+              <span className={`is_Text ${styles.muted}`}>
                 Nessun prezzo ancora per {'"'}
                 {query.trim()}
                 {'"'}.
-              </Text>
+              </span>
               {/* Mai un vicolo cieco (docs/changelog/2026-10-28-quanto-costa-sinonimi.md): il preventivo dice il prezzo vero. */}
               <a href={`/preventivo?descrizione=${encodeURIComponent(`${query.trim()}. `)}`} className="price-empty-link">
                 Chiedi un preventivo gratuito
               </a>
-            </YStack>
+            </div>
           ) : (
-            <YStack
-              width="100%"
-              gap={0}
-              // Elenco completo scorribile solo da aperto (a fuoco/con testo
-              // scritto) — richiesta esplicita dell'utente. A riposo (soli
-              // primi 10) non serve scroll, l'elenco è già corto.
-              maxHeight={showFullList ? 420 : undefined}
-              overflow={showFullList ? "scroll" : "visible"}
-            >
+            // Elenco completo scorribile solo da aperto (a fuoco/con testo
+            // scritto) — richiesta esplicita dell'utente. A riposo (soli
+            // primi 10) non serve scroll, l'elenco è già corto.
+            <div className={`is_View ${styles.list} ${showFullList ? styles.listOpen : ""}`}>
               {visibleEntries.map((entry) => (
                 // Ogni voce apre i professionisti che offrono quella prestazione
                 // (richiesta di Luca, docs/CHANGELOG.md §398).
@@ -196,43 +190,37 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
                   // Conteggio anonimo della voce toccata (§399), per l'Andamento del sito.
                   onClick={countPriceToolEntry}
                 >
-                  <YStack gap={2} flex={1} minWidth={0}>
-                    <Text fontSize={16} fontWeight="600" color={brand.grafite}>
-                      {entry.name}
-                    </Text>
+                  <div className={`is_View ${styles.rowText}`}>
+                    <span className={`is_Text ${styles.rowName}`}>{entry.name}</span>
                     {/* Sotto i 3 professionisti il numero dice solo quanto è piccola
                       l'offerta: resta la forbice, che è l'informazione utile (§349). */}
                     {entry.professionalCount >= 3 ? (
-                      <Text fontSize={13} color={brand.grafite70}>
-                        {entry.professionalCount} professionisti
-                      </Text>
+                      <span className={`is_Text ${styles.small}`}>{entry.professionalCount} professionisti</span>
                     ) : null}
-                  </YStack>
-                  <XStack alignItems="center" gap="2" flexShrink={0}>
+                  </div>
+                  <div className={`is_View ${styles.rowPrice}`}>
                     {/* Mediana e intervallo tipico (metà dei professionisti), mai
                         minimo e massimo; sotto i 3 prezzi nessuna cifra (§398). */}
                     {entry.price ? (
-                      <YStack alignItems="flex-end" gap={2}>
+                      <div className={`is_View ${styles.priceBox}`}>
                         {/* Unità prima del prezzo (Luca, §399): le cifre restano allineate a destra. */}
-                        <Text fontSize={17} fontWeight="700" color={brand.cianografiaScuro}>
+                        <span className={`is_Text ${styles.price}`}>
                           {shownServicePriceUnit(entry.price.unit) ? (
-                            <Text fontSize={13} fontWeight="400" color={brand.grafite70}>
+                            <span className={`is_Text ${styles.priceUnit}`}>
                               {shownServicePriceUnit(entry.price.unit)}
                               {"\u00A0\u00A0"}
-                            </Text>
+                            </span>
                           ) : null}
                           {formatServicePriceRange(entry.price.medianEurCents, null)}
-                        </Text>
+                        </span>
                         {entry.price.highEurCents > entry.price.lowEurCents ? (
-                          <Text fontSize={13} color={brand.grafite70}>
+                          <span className={`is_Text ${styles.small}`}>
                             di solito {formatServicePriceRange(entry.price.lowEurCents, entry.price.highEurCents)}
-                          </Text>
+                          </span>
                         ) : null}
-                      </YStack>
+                      </div>
                     ) : (
-                      <Text fontSize={14} color={brand.grafite70}>
-                        Su preventivo
-                      </Text>
+                      <span className={`is_Text ${styles.onRequest}`}>Su preventivo</span>
                     )}
                     <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" className="price-row-chevron">
                       <path
@@ -244,10 +232,10 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
                         strokeLinejoin="round"
                       />
                     </svg>
-                  </XStack>
+                  </div>
                 </a>
               ))}
-            </YStack>
+            </div>
           )}
         </div>
         {/* Le pagine dei prezzi per mestiere (collaudo N-05,
@@ -255,7 +243,7 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
         <span className="price-index">
           <Link href="/prezzi">Prezzi per mestiere</Link>
         </span>
-      </YStack>
+      </div>
       {children}
       <style jsx>{`
         .price-panel {

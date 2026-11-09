@@ -20,6 +20,7 @@ import {
   taxIdCheckMessage,
   type MyVerificationStatus,
   type TaxIdKind,
+  FISCAL_RESIDENCE_ABROAD_MESSAGE,
 } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
@@ -31,6 +32,7 @@ import { FiscoArea } from "@/components/fisco/FiscoArea";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { FiscalWhyModal } from "@/components/verification/FiscalWhyModal";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
+import { PageLoading } from "@/components/PageLoading";
 
 const isPersonType = (type: string) => type === "PRIVATE_INDIVIDUAL" || type === "SOLE_PROPRIETOR";
 
@@ -200,7 +202,7 @@ function fiscalFieldLabel(path: readonly PropertyKey[]): string {
  */
 export default function DashboardFiscalePage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading />}>
       <DashboardFiscaleContent />
     </Suspense>
   );
@@ -778,7 +780,7 @@ function DashboardFiscaleContent() {
                       {ENTITY_TYPE_LABELS[isEntityType(entityType) ? entityType : lockedEntityType]}
                     </Text>
                     {!profile?.stripeConnectAccountId ? (
-                      <button type="button" className="plan-chip-change" onClick={() => setChangingType(true)}>
+                      <button type="button" className="plan-chip-change is-large" onClick={() => setChangingType(true)}>
                         Cambia
                       </button>
                     ) : null}
@@ -927,6 +929,10 @@ function DashboardFiscaleContent() {
                       {isPerson && !filled("fiscalCodiceFiscale") ? (
                         <Field label="Luogo di nascita" aria-label="Luogo di nascita" value={fields.placeOfBirth ?? ""} onChangeText={(v) => setField("placeOfBirth", v)} />
                       ) : null}
+                      {/* Collaudo dell'08/11/2026, E5-04: detto qui, prima di provare ad attivarli. */}
+                      <Text fontSize={15} color={brand.grafite70}>
+                        {FISCAL_RESIDENCE_ABROAD_MESSAGE}
+                      </Text>
                       <button type="button" className="fiscal-link-button" onClick={() => setAbroad(false)}>
                         Sono in Italia
                       </button>

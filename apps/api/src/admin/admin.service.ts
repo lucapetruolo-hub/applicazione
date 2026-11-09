@@ -2,7 +2,7 @@ import { ACTION_SHORT_LABEL, auditLabel } from "./audit-label";
 import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, jobIssueAssisted, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, type AdminSignupFunnel, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES, ADMIN_BOOKING_STATUS_LABEL, ADMIN_REQUEST_STATUS_LABEL, contentReportReason, type AdminModerateInput, type AdminSignalArchiveReason, type AdminSignalRole, type AdminUserSignal, adviseSuspiciousUser, type ProfessionalStatusKey, type ReviewHoldReason, csvCell } from "@professionisti/shared";
+import { ACCOUNT_CLOSURE_NOTICE_DAYS, type AccountMeasure, type ModerationGroundCode, CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, jobIssueAssisted, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, type AdminSignupFunnel, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES, ADMIN_BOOKING_STATUS_LABEL, ADMIN_REQUEST_STATUS_LABEL, contentReportReason, type AdminModerateInput, type AdminSignalArchiveReason, type AdminSignalRole, type AdminUserSignal, adviseSuspiciousUser, type ProfessionalStatusKey, type ReviewHoldReason, csvCell } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { PUBLIC_VISIBILITY_SELECT } from "../professional-fiscal/public-visibility";
 import { bookingSearchWhere, userSearchWhere } from "./admin-search";
@@ -87,20 +87,28 @@ export class AdminService {
    * Le richieste senza provenienza (prima di questa funzione, o browser che
    * non la dà) finiscono in "unknown".
    */
-  async getTrafficSources(): Promise<{ days: number; total: number; bySource: { source: TrafficSource | "unknown"; count: number }[] }> {
+  async getTrafficSources(): Promise<{ days: number; total: number; bySource: { source: TrafficSource | "unknown"; count: number }[]; fromProfessionalLink: number; professionalsUsingLink: number }> {
     const days = 30;
     // Dal lancio e senza account di prova (docs/CHANGELOG.md §395).
     const since = sinceLaunch(new Date(Date.now() - days * 24 * 60 * 60 * 1000), countingFrom());
     const rows = await this.prisma.guidedRequest.findMany({
       where: { createdAt: { gte: since }, client: COUNTED_USER },
-      select: { id: true, submissionGroupId: true, trafficSource: true },
+      select: { id: true, submissionGroupId: true, trafficSource: true, fromProfessionalLink: true, professionalProfileId: true },
     });
     const seen = new Set<string>();
+    // Clienti portati dai professionisti col loro link (docs/changelog/2026-11-08-canale-del-professionista.md).
+    let fromProfessionalLink = 0;
+    // Professionisti che in questi giorni hanno portato almeno un cliente: dice se la funzione viene usata davvero.
+    const professionalsUsingLink = new Set<string>();
     const counts = new Map<TrafficSource | "unknown", number>();
     for (const row of rows) {
       const key = row.submissionGroupId ?? row.id;
       if (seen.has(key)) continue;
       seen.add(key);
+      if (row.fromProfessionalLink) {
+        fromProfessionalLink += 1;
+        if (row.professionalProfileId) professionalsUsingLink.add(row.professionalProfileId);
+      }
       const source = row.trafficSource ?? "unknown";
       counts.set(source, (counts.get(source) ?? 0) + 1);
     }
@@ -110,6 +118,8 @@ export class AdminService {
       days,
       total: seen.size,
       bySource: order.map((source) => ({ source, count: counts.get(source) ?? 0 })),
+      fromProfessionalLink,
+      professionalsUsingLink: professionalsUsingLink.size,
     };
   }
 
@@ -503,6 +513,8 @@ export class AdminService {
       deletedAt: user.deletedAt?.toISOString() ?? null,
       suspendedAt: user.suspendedAt?.toISOString() ?? null,
       suspensionNote: user.suspensionNote,
+      suspensionGround: user.suspensionGround,
+      closureScheduledAt: user.closureScheduledAt?.toISOString() ?? null,
       testAccountAt: user.testAccountAt?.toISOString() ?? null,
       // Solo se è attiva, mai la chiave (docs/CHANGELOG.md §359).
       adminTwoFactorEnabled: user.role === "ADMIN" && Boolean(user.adminTotpEnabledAt),
@@ -634,37 +646,55 @@ export class AdminService {
   }
 
   /**
-   * Sospende un account dalla scheda utente, senza una segnalazione (decisione
-   * esplicita dell'utente, docs/CHANGELOG.md §145): per un caso arrivato via
-   * email o telefono. Motivazione obbligatoria, comunicata all'utente
-   * (notifica + email) e registrata nel registro delle azioni admin.
+   * Sospende o chiude un account dalla scheda utente, senza una segnalazione
+   * (decisione esplicita dell'utente, docs/CHANGELOG.md §145): per un caso
+   * arrivato via email o telefono. Fatti, regola o legge violata e misura
+   * sono obbligatori e arrivano alla persona per email (controllo pre-lancio
+   * 08/11, E4-03; Reg. UE 2019/1150 art. 4, DSA art. 17 c. 3), e restano nel
+   * registro delle azioni admin.
+   * - "SUSPEND": blocca subito l'account finché la decisione non è rivista.
+   * - "CLOSE_WITH_NOTICE": l'account resta attivo e si chiude dopo
+   *   ACCOUNT_CLOSURE_NOTICE_DAYS giorni (Termini punto 10, P2B art. 4 c. 2);
+   *   lo chiude AccountClosuresService.
    */
-  async suspendUser(adminUserId: string, userId: string, note: string) {
-    const target = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true, suspendedAt: true } });
-    if (!target) throw new NotFoundException("Utente non trovato.");
+  async suspendUser(adminUserId: string, userId: string, input: { measure: AccountMeasure; ground: ModerationGroundCode; note: string }) {
+    const target = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true, suspendedAt: true, closureScheduledAt: true, deletedAt: true } });
+    if (!target || target.deletedAt) throw new NotFoundException("Utente non trovato.");
     if (target.id === adminUserId) throw new BadRequestException("Non puoi sospendere il tuo stesso account.");
     if (target.role === "ADMIN") throw new BadRequestException("Togli prima il ruolo di amministratore a questo account.");
     if (target.suspendedAt) throw new BadRequestException("L'account è già sospeso.");
+    const note = input.note.trim();
     const now = new Date();
+    if (input.measure === "CLOSE_WITH_NOTICE") {
+      if (target.closureScheduledAt) throw new BadRequestException("La chiusura di questo account è già fissata.");
+      const closureAt = new Date(now.getTime() + ACCOUNT_CLOSURE_NOTICE_DAYS * 24 * 60 * 60 * 1000);
+      await this.prisma.user.update({ where: { id: userId }, data: { closureScheduledAt: closureAt, suspensionNote: note, suspensionGround: input.ground } });
+      await this.auditLogService.record({ entityType: "User", entityId: userId, fieldName: "closureScheduledAt", newValue: closureAt.toISOString(), changedByUserId: adminUserId, reason: `${input.ground}: ${note}` });
+      await this.notificationsService.notify(userId, "ACCOUNT_CLOSURE_SCHEDULED", { note, ground: input.ground, closureAt: closureAt.toISOString() });
+      return { id: userId, suspendedAt: null, closureScheduledAt: closureAt.toISOString() };
+    }
     await this.prisma.$transaction([
-      this.prisma.user.update({ where: { id: userId }, data: { suspendedAt: now, suspensionNote: note.trim() } }),
+      // Una chiusura già fissata resta: la sospensione la anticipa, "Riattiva" le toglie entrambe.
+      this.prisma.user.update({ where: { id: userId }, data: { suspendedAt: now, suspensionNote: note, suspensionGround: input.ground } }),
       this.prisma.professionalProfile.updateMany({ where: { userId, suspendedAt: null }, data: { suspendedAt: now } }),
     ]);
-    await this.auditLogService.record({ entityType: "User", entityId: userId, fieldName: "suspendedAt", newValue: "SUSPENDED", changedByUserId: adminUserId, reason: note.trim() });
-    await this.notificationsService.notify(userId, "ACCOUNT_SUSPENDED", { note: note.trim() });
-    return { id: userId, suspendedAt: now.toISOString() };
+    await this.auditLogService.record({ entityType: "User", entityId: userId, fieldName: "suspendedAt", newValue: "SUSPENDED", changedByUserId: adminUserId, reason: `${input.ground}: ${note}` });
+    await this.notificationsService.notify(userId, "ACCOUNT_SUSPENDED", { note, ground: input.ground });
+    return { id: userId, suspendedAt: now.toISOString(), closureScheduledAt: target.closureScheduledAt?.toISOString() ?? null };
   }
 
+  /** Riattiva un account sospeso o chiuso, o annulla una chiusura fissata: motivo obbligatorio, arriva alla persona. */
   async reactivateUser(adminUserId: string, userId: string, note: string) {
-    const target = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, suspendedAt: true } });
+    const target = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, suspendedAt: true, closureScheduledAt: true } });
     if (!target) throw new NotFoundException("Utente non trovato.");
-    if (!target.suspendedAt) throw new BadRequestException("L'account non è sospeso.");
+    if (!target.suspendedAt && !target.closureScheduledAt) throw new BadRequestException("L'account non è sospeso.");
     await this.prisma.$transaction([
-      this.prisma.user.update({ where: { id: userId }, data: { suspendedAt: null, suspensionNote: null } }),
-      this.prisma.professionalProfile.updateMany({ where: { userId }, data: { suspendedAt: null } }),
+      this.prisma.user.update({ where: { id: userId }, data: { suspendedAt: null, suspensionNote: null, suspensionGround: null, closureScheduledAt: null } }),
+      ...(target.suspendedAt ? [this.prisma.professionalProfile.updateMany({ where: { userId }, data: { suspendedAt: null } })] : []),
     ]);
-    await this.auditLogService.record({ entityType: "User", entityId: userId, fieldName: "suspendedAt", oldValue: "SUSPENDED", newValue: "ACTIVE", changedByUserId: adminUserId, reason: note.trim() });
-    await this.notificationsService.notify(userId, "ACCOUNT_REACTIVATED", { note: note.trim() });
+    const oldValue = target.suspendedAt ? "SUSPENDED" : "CLOSURE_SCHEDULED";
+    await this.auditLogService.record({ entityType: "User", entityId: userId, fieldName: "suspendedAt", oldValue, newValue: "ACTIVE", changedByUserId: adminUserId, reason: note.trim() });
+    await this.notificationsService.notify(userId, "ACCOUNT_REACTIVATED", { note: note.trim(), ...(target.suspendedAt ? {} : { closureCanceled: true }) });
     return { id: userId, suspendedAt: null };
   }
 

@@ -42,6 +42,8 @@ import {
   type MySubscription,
   type MyProfessionalProfile,
   wallClockToday,
+  type QuickQuoteService,
+  type SimilarQuote,
 } from "@professionisti/shared";
 import { Avatar, Badge, Chip, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -52,6 +54,7 @@ import { TimelineModal } from "@/components/TimelineModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { CompleteJobModal } from "@/components/CompleteJobModal";
+import { personalLinkNudgeAfterJob } from "@/components/PersonalLinkNudge";
 import { JobIssuePanel } from "@/components/JobIssuePanel";
 import { JobPaymentStatus } from "@/components/JobPaymentStatus";
 import { BankDisputeNotePanel } from "@/components/BankDisputeNotePanel";
@@ -69,6 +72,7 @@ import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { ProfessionalInvoiceRequestBox } from "@/components/ProfessionalInvoiceRequestBox";
 import { JobDocumentsModal } from "@/components/JobDocumentsModal";
 import { AppointmentReplyStatus } from "./AppointmentReplyStatus";
+import { QuoteQuickFill } from "./QuoteQuickFill";
 import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle, bookingsOverlapping, BusyTimeNotice } from "./requestHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
@@ -104,6 +108,9 @@ export function RequestCard({
   autoOpenChat,
   onChatAutoOpenHandled,
   onMarkedRead,
+  myServices = [],
+  similarQuote = null,
+  laborPrice = null,
 }: {
   lead: ProfessionalLead;
   stage: RequestStage;
@@ -141,6 +148,12 @@ export function RequestCard({
   onChatAutoOpenHandled?: () => void;
   /** "Segna come letta" dal menu: azzera subito i pallini locali del genitore. */
   onMarkedRead: () => void;
+  /** Prestazioni del profilo, da aggiungere al preventivo con un tocco (docs/changelog/2026-11-08-preventivo-in-30-secondi.md). */
+  myServices?: readonly QuickQuoteService[];
+  /** Ultimo preventivo mandato per lo stesso mestiere su un'altra richiesta, da usare come modello. */
+  similarQuote?: SimilarQuote | null;
+  /** Prezzo della "Manodopera" dell'ultimo preventivo: la riga con cui si apre il modulo parte da lì. */
+  laborPrice?: { priceMinEurCents: number | null; priceMaxEurCents: number | null } | null;
 }) {
   const gr = lead.guidedRequest;
   const isOnline = gr.serviceMode === "ONLINE";
@@ -160,7 +173,12 @@ export function RequestCard({
   const limitHint = onlineLimitHint({ limitEurCents: onlineLimitEurCents, cleanJobs: onlineLimitProgress?.cleanJobs ?? 0, firstCleanJobAt: onlineLimitProgress?.firstCleanJobAt ?? null });
 
   const [showQuoteForm, setShowQuoteForm] = useState(false);
-  const [items, setItems] = useState<QuoteItemDraft[]>([{ name: "Manodopera", priceMin: "", priceMax: "" }]);
+  const startingItem: QuoteItemDraft = {
+    name: "Manodopera",
+    priceMin: laborPrice?.priceMinEurCents != null ? (laborPrice.priceMinEurCents / 100).toString() : "",
+    priceMax: laborPrice?.priceMaxEurCents != null ? (laborPrice.priceMaxEurCents / 100).toString() : "",
+  };
+  const [items, setItems] = useState<QuoteItemDraft[]>([startingItem]);
   const modeAvailableSlots = availableSlots.filter((sl) => (isOnline ? sl.onlineAvailable : sl.homeAvailable));
   // Orario chiesto dal cliente, già scelto aprendo il preventivo (collaudo
   // C-07, 0-07): prima era già scelto il primo libero, spesso oggi, e il
@@ -377,7 +395,8 @@ export function RequestCard({
   // (§253) o per i lavori esauriti (§362); quello già inviato resta modificabile.
   const newQuote = !lead.quote || canResendQuote;
   const identityBlocked = identityVerificationNeeded && newQuote;
-  const limitBlocked = !identityBlocked && !!subscription?.limitReached && newQuote;
+  // Un cliente del tuo link non conta nei lavori: a lui rispondi sempre.
+  const limitBlocked = !identityBlocked && !!subscription?.limitReached && newQuote && !gr.fromProfessionalLink;
   // "Elimina" su ogni richiesta scaduta o chiusa (docs/CHANGELOG.md §143):
   // la nasconde solo al professionista, resta visibile agli admin.
   const canDelete = stage === "scaduta" || stage === "chiusa";
@@ -588,6 +607,7 @@ export function RequestCard({
     if (!booking) return;
     await apiClient.completeBooking(token, booking.id, input);
     setShowCompleteModal(false);
+    personalLinkNudgeAfterJob(myProfileId);
     onChanged();
   }
 
@@ -848,6 +868,9 @@ export function RequestCard({
                 normali: il badge rosso è la variante semantica prevista
                 dal design system proprio per questo flusso. */}
             {gr.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
+            {/* Cliente arrivato dal tuo link personale: non conta nei lavori del mese
+                (docs/changelog/2026-11-08-canale-del-professionista.md). */}
+            {gr.fromProfessionalLink ? <Badge variant="verificato">Dal tuo link</Badge> : null}
             {/* Ordine invertito su richiesta esplicita dell'utente: lo stato
                 della richiesta (StagePill) precede il badge di modalità
                 (ServiceBadge, "A domicilio"/"Consulenza online"). */}
@@ -1487,7 +1510,7 @@ export function RequestCard({
                         già in uso per lo stato "Completata" in STAGE_STYLE
                         sopra, coerenza cromatica tra il bottone che porta a
                         quello stato e lo stato stesso. */}
-                    <CardButton compactOnPhone fill="#20B2AA" onPress={() => setShowCompleteModal(true)}>
+                    <CardButton compactOnPhone fill="#0E7F7A" onPress={() => setShowCompleteModal(true)}>
                       Lavoro terminato
                     </CardButton>
                   </>
@@ -1631,6 +1654,16 @@ export function RequestCard({
                   {quotePriceHelp(null)}
                 </Text>
               </YStack>
+              <QuoteQuickFill
+                services={myServices}
+                request={{ categoryLabel: gr.categoryLabel, description: gr.description }}
+                similarQuote={similarQuote}
+                startingItem={startingItem}
+                items={items}
+                setItems={setItems}
+                notes={quoteNotes}
+                setNotes={setQuoteNotes}
+              />
               {items.map((item, index) => (
                 <div key={index} className="quote-item-row">
                   <input aria-label="Voce del preventivo" className="quote-item-name" value={item.name} onChange={(e) => updateItem(index, "name", e.target.value)} placeholder="Es. Manodopera" style={smallInputStyle} />
