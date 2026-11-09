@@ -1225,7 +1225,7 @@ export class ProfessionalsService {
    * un account di prova che guarda, né il profilo di un account di prova
    * (docs/CHANGELOG.md §395).
    */
-  async recordProfileView(professionalProfileId: string, viewerUserId: string | null): Promise<void> {
+  async recordProfileView(professionalProfileId: string, viewerUserId: string | null, fromLink = false): Promise<void> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
       select: { userId: true, deletedAt: true, suspendedAt: true, isDemo: true, user: { select: { testAccountAt: true } } },
@@ -1240,8 +1240,8 @@ export class ProfessionalsService {
     day.setUTCHours(0, 0, 0, 0);
     await this.prisma.profileViewDay.upsert({
       where: { professionalProfileId_day: { professionalProfileId, day } },
-      create: { professionalProfileId, day, count: 1 },
-      update: { count: { increment: 1 } },
+      create: { professionalProfileId, day, count: 1, linkCount: fromLink ? 1 : 0 },
+      update: { count: { increment: 1 }, ...(fromLink ? { linkCount: { increment: 1 } } : {}) },
     });
   }
 

@@ -27,8 +27,14 @@ function buildService(profile: Record<string, unknown> | null) {
       findUnique: vi.fn().mockResolvedValue(profile),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
+    profileViewDay: { aggregate: vi.fn().mockResolvedValue({ _sum: { linkCount: 7 } }) },
+    user: { count: vi.fn().mockResolvedValue(2) },
+    review: { aggregate: vi.fn().mockResolvedValue({ _avg: { rating: 4.66 }, _count: { _all: 3 } }) },
+    invitePartner: { findUnique: vi.fn().mockResolvedValue(null) },
   };
-  const subscriptions = { personalLinkUsage: vi.fn().mockResolvedValue({ requests: 2, jobs: 1 }) };
+  const subscriptions = {
+    personalLinkUsage: vi.fn().mockResolvedValue({ requests: 2, jobs: 1, period: { start: new Date("2026-11-01T09:00:00Z"), end: new Date("2026-12-01T09:00:00Z") } }),
+  };
   return { service: new PersonalLinkService(prisma as never, subscriptions as never), prisma };
 }
 
@@ -39,7 +45,10 @@ describe("PersonalLinkService", () => {
     expect(isPersonalLinkCode(link.code)).toBe(true);
     expect(link.path).toBe(`/p/${link.code}`);
     expect(prisma.professionalProfile.updateMany.mock.calls[0]![0].where).toEqual({ id: "pro-1", personalLinkCode: null });
-    expect(link).toMatchObject({ requestsThisPeriod: 2, jobsThisPeriod: 1, businessName: "Idraulica Rossi" });
+    expect(link).toMatchObject({ requestsThisPeriod: 2, jobsThisPeriod: 1, businessName: "Idraulica Rossi", opensThisPeriod: 7, colleaguesInvited: 2, rating: 4.7, reviewCount: 3 });
+    // Aperture contate dal giorno d'inizio del periodo; colleghi senza account di prova.
+    expect(prisma.profileViewDay.aggregate.mock.calls[0]![0].where.day.gte).toEqual(new Date("2026-11-01T00:00:00Z"));
+    expect(prisma.user.count.mock.calls[0]![0].where).toMatchObject({ invitedByProfessionalId: "pro-1", deletedAt: null, testAccountAt: null });
 
     const again = buildService({ id: "pro-1", businessName: "Idraulica Rossi", personalLinkCode: "k7m2qa", deletedAt: null });
     expect((await again.service.getMine("user-1")).code).toBe("k7m2qa");
@@ -58,10 +67,22 @@ describe("PersonalLinkService", () => {
 
   it("dal codice al profilo; un profilo sospeso o un codice strano non si trovano", async () => {
     const { service } = buildService({ id: "pro-1", businessName: "Rossi", city: "Latina", deletedAt: null, suspendedAt: null, invitePendingAt: null });
-    await expect(service.resolve("K7M2QA")).resolves.toEqual({ id: "pro-1", businessName: "Rossi", city: "Latina" });
+    await expect(service.resolve("K7M2QA")).resolves.toEqual({ id: "pro-1", businessName: "Rossi", city: "Latina", rating: 4.7, reviewCount: 3 });
     await expect(service.resolve("../x")).rejects.toThrow("Link non trovato");
     const suspended = buildService({ id: "pro-1", businessName: "Rossi", city: "Latina", deletedAt: null, suspendedAt: new Date(), invitePendingAt: null });
     await expect(suspended.service.resolve("k7m2qa")).rejects.toThrow("Link non trovato");
+  });
+});
+
+describe("inviti: Porta un collega e link dei partner (docs/changelog/2026-11-09-passaparola.md)", () => {
+  it("il codice di 6 caratteri è il collega, quello di 7 il partner", async () => {
+    const { service, prisma } = buildService({ id: "pro-1", businessName: "Idraulica Rossi", city: "Roma", deletedAt: null, suspendedAt: null, invitePendingAt: null });
+    await expect(service.resolveInvite("k7m2qa")).resolves.toEqual({ kind: "PROFESSIONAL", name: "Idraulica Rossi" });
+    prisma.invitePartner.findUnique.mockResolvedValueOnce({ name: "Studio Bianchi", archivedAt: null });
+    await expect(service.resolveInvite("k7m2qab")).resolves.toEqual({ kind: "PARTNER", name: "Studio Bianchi" });
+    prisma.invitePartner.findUnique.mockResolvedValueOnce({ name: "Studio Bianchi", archivedAt: new Date() });
+    await expect(service.resolveInvite("k7m2qab")).rejects.toThrow("Invito non trovato");
+    await expect(service.resolveInvite("x")).rejects.toThrow("Invito non trovato");
   });
 });
 

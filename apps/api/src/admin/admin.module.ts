@@ -12,6 +12,7 @@ import { JobIssuesModule } from "../job-issues/job-issues.module";
 import { AdminController } from "./admin.controller";
 import { AdminBootstrapController } from "./admin-bootstrap.controller";
 import { AdminService } from "./admin.service";
+import { InvitePartnersService } from "./invite-partners.service";
 import { AdminGuard } from "./admin.guard";
 import { EmailModule } from "../email/email.module";
 import { AdminTwoFactorController } from "./admin-two-factor.controller";
@@ -27,7 +28,7 @@ import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
   // GuidedRequestsModule/BookingsModule verso lo stesso servizio).
   imports: [AuthModule, EmailModule, NotificationsModule, ProfessionalMetricsModule, AuditLogModule, JobIssuesModule],
   controllers: [AdminController, AdminBootstrapController, AdminTwoFactorController],
-  providers: [AdminService, AdminGuard, AdminTwoFactorService, AdminSecurityAlertsService, SiteStatsService, AdminQueueService, SuspiciousAccountsService, DatabaseVersionService, AccountClosuresService],
+  providers: [InvitePartnersService, AdminService, AdminGuard, AdminTwoFactorService, AdminSecurityAlertsService, SiteStatsService, AdminQueueService, SuspiciousAccountsService, DatabaseVersionService, AccountClosuresService],
   // AdminGuard esportata: i nuovi controller finanza/fiscale/DAC7 (CLAUDE.md
   // §88) vivono nei propri moduli ma restano protetti dallo stesso gate
   // amministratori — stessa istanza/dipendenze (PRISMA, globale) di quella

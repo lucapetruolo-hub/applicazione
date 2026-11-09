@@ -4,10 +4,11 @@ import { professionalPath } from "@professionisti/shared";
 import { useEffect, useRef, useState, type TouchEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Avatar, BadgeInfo, Icon, Rating, Section, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Avatar, BadgeInfo, Icon, Rating, Section, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { usePrefersReducedMotion } from "@/lib/useMediaQuery";
 import { CategoryIcon, CATEGORY_ACCENT } from "./icons/CategoryIcons";
+import text from "./RecentReviews.module.css";
 
 type RecentReview = {
   id: string;
@@ -184,36 +185,32 @@ export function RecentReviews({
           <div className="rr-feature-body">
             <Rating value={review.rating} size={18} />
             <p className="rr-quote">&ldquo;{review.comment ?? ""}&rdquo;</p>
-            <XStack alignItems="center" gap="2" flexWrap="wrap">
-              <Text fontSize={16} color={brand.grafite70}>
+            <div className={`is_View ${text.byline}`}>
+              <span className={`is_Text ${text.muted}`}>
                 {review.clientName} · {timeAgo(review.createdAt)}
-              </Text>
+              </span>
               <BadgeInfo info="confirmedJob">
-                <XStack alignItems="center" gap={3}>
+                <div className={`is_View ${text.confirmed}`}>
                   <Icon name="badge-check" size={13} color={brand.verificato} strokeWidth={2} />
-                  <Text fontSize={13} fontWeight="700" color={brand.verificato}>
-                    Lavoro fatto tramite il sito
-                  </Text>
-                </XStack>
+                  <span className={`is_Text ${text.confirmedLabel}`}>Lavoro fatto tramite il sito</span>
+                </div>
               </BadgeInfo>
-            </XStack>
+            </div>
 
             <div className="rr-feature-foot">
-              <XStack alignItems="center" gap="3" minWidth={0} flexShrink={1}>
+              <div className={`is_View ${text.pro}`}>
                 {!review.professional.imageUrl ? (
                   <span className="rr-initial" style={{ backgroundColor: accent.bg, color: accent.fg }} aria-hidden="true">
                     {review.professional.businessName.trim().charAt(0).toUpperCase()}
                   </span>
                 ) : null}
-                <YStack minWidth={0} flexShrink={1}>
-                  <Text fontFamily="heading" fontSize={18} fontWeight="700" color={brand.cianografiaScuro} numberOfLines={1}>
-                    {review.professional.businessName}
-                  </Text>
-                  <Text fontSize={16} color={brand.grafite70} numberOfLines={1}>
+                <div className={`is_View ${text.proText}`}>
+                  <span className={`is_Text font_heading ${text.proName} ${text.oneLine}`}>{review.professional.businessName}</span>
+                  <span className={`is_Text ${text.muted} ${text.oneLine}`}>
                     {review.professional.categoryLabel} · {review.professional.city}
-                  </Text>
-                </YStack>
-              </XStack>
+                  </span>
+                </div>
+              </div>
               <Link href={profileHref} className="rr-cta">
                 Vedi profilo
               </Link>
@@ -240,12 +237,8 @@ export function RecentReviews({
                   >
                     <ReviewAvatar review={item} />
                     <span className="rr-item-text">
-                      <Text fontSize={16} fontWeight="700" color={brand.grafite} numberOfLines={1}>
-                        {item.professional.businessName}
-                      </Text>
-                      <Text fontSize={13} color={brand.grafite70} numberOfLines={1}>
-                        &ldquo;{item.comment ?? ""}&rdquo;
-                      </Text>
+                      <span className={`is_Text ${text.itemName} ${text.oneLine}`}>{item.professional.businessName}</span>
+                      <span className={`is_Text ${text.itemQuote} ${text.oneLine}`}>&ldquo;{item.comment ?? ""}&rdquo;</span>
                     </span>
                   </button>
                 </li>
@@ -484,8 +477,8 @@ function ReviewAvatar({ review }: { review: RecentReview }) {
   }
   const accent = accentFor(review.professional.categorySlug);
   return (
-    <YStack width={40} height={40} borderRadius={20} flexShrink={0} alignItems="center" justifyContent="center" backgroundColor={accent.bg}>
+    <div className={`is_View ${text.categoryAvatar}`} style={{ backgroundColor: accent.bg }}>
       <CategoryIcon slug={review.professional.categorySlug} size={20} color={accent.fg} />
-    </YStack>
+    </div>
   );
 }

@@ -1,0 +1,154 @@
+/*
+ * Piè di pagina in HTML semplice (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md):
+ * stessi valori che Tamagui scriveva per YStack/XStack/Text, così il disegno
+ * resta identico ma il telefono non calcola più gli stili all'apertura.
+ * Le classi globali `is_View`, `is_Text`, `font_body` e `font_heading`
+ * (public/tamagui.css) danno la base di ogni riquadro e testo; qui solo le
+ * proprietà in più. Spazi e colori con le variabili di Tamagui
+ * (--t-space-N, --c-nome), mai numeri ricopiati.
+ */
+
+.root {
+  position: relative;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  background-color: transparent;
+}
+
+.inner {
+  position: relative;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1200px;
+  padding-block: var(--t-space-8);
+  padding-inline: var(--t-space-4);
+  gap: var(--t-space-7);
+}
+
+.columns {
+  position: relative;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  column-gap: var(--t-space-5);
+  row-gap: var(--t-space-6);
+}
+
+/* Su telefono la presentazione occupa tutta la riga, "Servizi" e "Per i clienti" affiancate sotto (docs/CHANGELOG.md §349). */
+.intro {
+  position: relative;
+  flex-direction: column;
+  flex-basis: 100%;
+  gap: var(--t-space-3);
+  max-width: 280px;
+}
+
+@media (min-width: 801px) {
+  .intro {
+    flex-basis: auto;
+  }
+}
+
+.column {
+  position: relative;
+  flex-direction: column;
+  flex-basis: 150px;
+  flex-grow: 1;
+  gap: var(--t-space-2);
+  max-width: 240px;
+}
+
+.introText {
+  font-size: 16px;
+  color: var(--c-grafite70);
+}
+
+.columnTitle {
+  font-family: var(--f-family);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--c-grafite);
+}
+
+.link {
+  text-decoration: none;
+}
+
+.linkText {
+  font-size: 16px;
+  color: var(--c-grafite);
+}
+
+.badges {
+  position: relative;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--t-space-4);
+  padding-top: var(--t-space-5);
+  border-top: 1px solid var(--c-filetto);
+}
+
+.badge {
+  position: relative;
+  flex-direction: row;
+  flex-shrink: 1;
+  align-items: center;
+  gap: var(--t-space-2);
+  min-width: 0;
+}
+
+.badgeText {
+  flex-shrink: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-grafite70);
+}
+
+.legal {
+  position: relative;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--t-space-4);
+}
+
+.copyright {
+  position: relative;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--t-space-2);
+}
+
+.small {
+  font-family: var(--f-family);
+  font-size: 13px;
+  color: var(--c-grafite70);
+}
+
+.textButton {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Piede corto delle aree riservate e delle pagine di accesso. */
+.short {
+  position: relative;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding-block: var(--t-space-5);
+  padding-inline: var(--t-space-4);
+}
+
+.shortRow {
+  position: relative;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  column-gap: var(--t-space-4);
+  row-gap: var(--t-space-2);
+}

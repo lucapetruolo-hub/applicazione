@@ -165,6 +165,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_AUTO_CONFIRMED",
       "JOB_CLOSE_REMINDER",
       "JOB_CLOSE_EXPIRED",
+      // Un solo promemoria della recensione a chi ha confermato il lavoro senza recensire (docs/changelog/2026-11-09-passaparola.md).
+      "REVIEW_REMINDER",
       "ADMIN_JOB_NOT_CLOSED",
       // Soldi bloccati da più di 80 giorni, Stripe li paga comunque dopo 90 (docs/CHANGELOG.md §249).
       "ADMIN_JOB_PAYMENT_LONG_HOLD",
@@ -405,7 +407,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "lavori.chiusura",
     topic: "lavori",
-    types: ["JOB_COMPLETED", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "JOB_CLOSE_REMINDER", "JOB_CLOSE_EXPIRED"],
+    types: ["JOB_COMPLETED", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "JOB_CLOSE_REMINDER", "JOB_CLOSE_EXPIRED", "REVIEW_REMINDER"],
     professional: { label: "Lavoro terminato", description: "La conferma del cliente e la chiusura del lavoro." },
     client: { label: "Lavoro terminato", description: "Quando il professionista lo segna come finito." },
   },
@@ -654,6 +656,7 @@ export const NOTIFICATION_DIGEST_TYPES: ReadonlySet<string> = new Set([
   "JOB_REFUND_PENDING",
   "JOB_REFUND_COMPLETED",
   "JOB_AUTO_CONFIRMED",
+  "REVIEW_REMINDER",
   "JOB_DOCUMENT_READY",
   "ONLINE_LIMIT_LIFTED",
   "REQUEST_MATCHED_LATER",

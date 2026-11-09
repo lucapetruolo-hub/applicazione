@@ -14,7 +14,7 @@ import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import type { ChosenPro } from "./ChosenProsBar";
-import { problemCategoryChoices } from "@/lib/problemChoices";
+import { CATEGORY_WHO as WHO, joinWithOr, problemCategoryChoices } from "@/lib/problemChoices";
 
 // Accesso e registrazione (con i loro controlli dei campi) caricati solo
 // quando servono, al tocco di "Prendete in carico la richiesta": prima
@@ -35,29 +35,6 @@ function categoryLabel(slug: string): string {
   return PROFESSIONAL_CATEGORIES.find((category) => category.slug === slug)?.label ?? slug;
 }
 
-/** "Ti serve …" e "Di solito lo fa …": il nome della categoria non sempre regge la frase ("un Pulizie"). */
-const WHO: Record<ProfessionalCategorySlug, string> = {
-  idraulico: "un idraulico",
-  elettricista: "un elettricista",
-  imbianchino: "un imbianchino",
-  pulizie: "un'impresa di pulizie",
-  giardiniere: "un giardiniere",
-  traslochi: "chi fa traslochi",
-  fabbro: "un fabbro",
-  climatizzazione: "un tecnico di caldaie e climatizzatori",
-  muratore: "un muratore",
-  falegname: "un falegname",
-  tuttofare: "un tuttofare",
-  elettrodomestici: "un tecnico di elettrodomestici",
-  "tende-da-sole": "chi installa tende da sole e zanzariere",
-  dogsitter: "un dogsitter",
-  babysitter: "una babysitter",
-};
-
-/** "un muratore o un imbianchino", "a, b o c". */
-function joinWithOr(items: string[]): string {
-  return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} o ${items[items.length - 1]}`;
-}
 
 export function problemResultsHref(description: string, city: string | undefined, extra: Record<string, string> = {}): string {
   const params = new URLSearchParams({ problema: description });

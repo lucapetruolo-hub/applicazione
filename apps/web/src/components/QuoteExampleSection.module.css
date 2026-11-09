@@ -1,0 +1,19 @@
+/* Testi dei tre passi di "Come funziona" in HTML semplice, stessi valori che Tamagui scriveva (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md). */
+.step {
+  position: relative;
+  flex-direction: column;
+  flex: 1 1 auto;
+  gap: var(--t-space-1);
+}
+
+.stepTitle {
+  font-family: var(--f-family);
+  font-size: var(--f-size-5);
+  font-weight: 600;
+  color: var(--c-grafite);
+}
+
+.muted {
+  font-size: 16px;
+  color: var(--c-grafite70);
+}

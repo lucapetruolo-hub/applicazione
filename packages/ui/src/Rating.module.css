@@ -1,0 +1,26 @@
+/* Rating per il sito (Rating.web.tsx): stessi valori degli XStack/Text di Rating.tsx. */
+.row {
+  position: relative;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--t-space-2);
+  row-gap: 2px;
+  max-width: 100%;
+}
+
+.stars {
+  position: relative;
+  flex-direction: row;
+  gap: 2px;
+}
+
+.value {
+  font-variant: tabular-nums;
+  font-weight: 600;
+  color: var(--c-grafite);
+}
+
+.count {
+  color: var(--c-grafite70);
+}

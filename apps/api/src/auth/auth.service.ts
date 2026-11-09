@@ -6,7 +6,7 @@ import { redeemGoogleNonce } from "./google-nonce";
 import { OAuth2Client } from "google-auth-library";
 import { CronExpression } from "@nestjs/schedule";
 import { ScheduledJob } from "../common/scheduled-job";
-import { EMAIL_CODE_LENGTH, LEGAL_CONSENT_VERSION, NO_CATEGORY_MESSAGE, NO_ENTITY_TYPE_MESSAGE, formatEurCents, wallClockNow, type AccountClosureCheck, type ChurnReason, type EmailStatus, type ProfessionalEntityTypeValue, type TrafficSource } from "@professionisti/shared";
+import { EMAIL_CODE_LENGTH, LEGAL_CONSENT_VERSION, NO_CATEGORY_MESSAGE, NO_ENTITY_TYPE_MESSAGE, formatEurCents, isInvitePartnerCode, isPersonalLinkCode, wallClockNow, type AccountClosureCheck, type ChurnReason, type EmailStatus, type ProfessionalEntityTypeValue, type TrafficSource } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -148,6 +148,25 @@ export class AuthService {
     return "password";
   }
 
+  /**
+   * Chi ha portato un nuovo professionista (docs/changelog/2026-11-09-passaparola.md):
+   * il link personale di un collega (6 caratteri) o il link di un partner (7).
+   * Un codice sconosciuto, di un profilo eliminato o di un partner archiviato
+   * si ignora: l'iscrizione non si blocca mai per un invito.
+   */
+  private async inviteFields(inviteCode?: string): Promise<{ invitedByProfessionalId?: string; invitedByPartnerId?: string }> {
+    if (!inviteCode) return {};
+    if (isInvitePartnerCode(inviteCode)) {
+      const partner = await this.prisma.invitePartner.findUnique({ where: { code: inviteCode }, select: { id: true, archivedAt: true } });
+      return partner && !partner.archivedAt ? { invitedByPartnerId: partner.id } : {};
+    }
+    if (isPersonalLinkCode(inviteCode)) {
+      const pro = await this.prisma.professionalProfile.findUnique({ where: { personalLinkCode: inviteCode }, select: { id: true, deletedAt: true } });
+      return pro && !pro.deletedAt ? { invitedByProfessionalId: pro.id } : {};
+    }
+    return {};
+  }
+
   async register(
     email: string,
     password: string,
@@ -157,6 +176,7 @@ export class AuthService {
     entityType?: ProfessionalEntityTypeValue,
     device?: LoginDeviceInfo,
     signupSource?: TrafficSource,
+    inviteCode?: string,
   ): Promise<AuthResult> {
     const existingUser = await this.prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -185,6 +205,7 @@ export class AuthService {
         signupEntityType: role === "PROFESSIONAL" ? (entityType ?? null) : null,
         // Da dove arrivava la visita (docs/CHANGELOG.md §372): dice dove reclutare.
         signupSource: signupSource ?? null,
+        ...(role === "PROFESSIONAL" ? await this.inviteFields(inviteCode) : {}),
       },
     });
     // Benvenuto (docs/CHANGELOG.md §185). Al professionista contiene anche
@@ -288,6 +309,7 @@ export class AuthService {
     entityType?: ProfessionalEntityTypeValue,
     device?: LoginDeviceInfo,
     signupSource?: TrafficSource,
+    inviteCode?: string,
   ): Promise<AuthResult> {
     if (!this.googleClient) {
       throw new BadRequestException("Login con Google non configurato su questo ambiente.");
@@ -363,6 +385,7 @@ export class AuthService {
           signupCategorySlugs: role === "PROFESSIONAL" ? [...new Set(categorySlugs)] : [],
           signupEntityType: role === "PROFESSIONAL" ? (entityType ?? null) : null,
           signupSource: signupSource ?? null,
+          ...(role === "PROFESSIONAL" ? await this.inviteFields(inviteCode) : {}),
           legalConsentAt: new Date(),
           legalConsentVersion: LEGAL_CONSENT_VERSION,
           // Google ha già verificato l'indirizzo: nessun link da confermare.

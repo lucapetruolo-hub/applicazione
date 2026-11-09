@@ -1,14 +1,10 @@
-import type { ReactNode } from "react";
 import { Text, XStack } from "tamagui";
+import type { ChipProps } from "./chipProps";
 import { brand } from "./tokens";
 
-export type ChipProps = {
-  children: ReactNode;
-  selected?: boolean;
-  onPress?: () => void;
-};
+export type { ChipProps } from "./chipProps";
 
-/** Pill per categorie/keyword filtranti, con stato selected — brief §3. */
+/** Pill per categorie/keyword filtranti, con stato selected — brief §3. Il sito usa Chip.web.tsx (HTML semplice): se cambia qui, va cambiato anche lì. */
 export function Chip({ children, selected = false, onPress }: ChipProps) {
   return (
     <XStack

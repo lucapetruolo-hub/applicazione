@@ -213,7 +213,10 @@ produzione):
    Cambiarli insieme sul dominio definitivo **prima** di dare ai
    professionisti la pagina "Il tuo link": un QR stampato con
    `applicazione-web.vercel.app` non si aggiorna. Al cambio di dominio il
-   vecchio indirizzo deve rimandare al nuovo.
+   vecchio indirizzo deve rimandare al nuovo. Lo stesso vale per il bollino
+   con le stelle (`/p/<codice>/bollino.svg`, incollato sui siti dei
+   professionisti), l'invito "Porta un collega" e i link dei partner
+   (docs/changelog/2026-11-09-passaparola.md).
 6. Credenziali Stripe **Connect** reali per i pagamenti MANOVIA (distinte
    dalle chiavi Stripe Checkout del punto 5 — abilitano i pagamenti
    professionista↔piattaforma, non solo abbonamenti/boost/lead).

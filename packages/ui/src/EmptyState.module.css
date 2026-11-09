@@ -1,0 +1,41 @@
+/* EmptyState per il sito (EmptyState.web.tsx): stessi valori di YStack/Text/Paragraph di EmptyState.tsx. */
+.root {
+  position: relative;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--t-space-3);
+  padding-block: var(--t-space-8);
+  padding-inline: var(--t-space-4);
+}
+
+.circle {
+  position: relative;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 28px;
+  background-color: var(--c-cianografiaVelo);
+}
+
+.title {
+  font-family: var(--f-family);
+  font-weight: 700;
+  font-size: var(--f-size-5);
+  text-align: center;
+  color: var(--c-grafite);
+}
+
+.description {
+  user-select: auto;
+  white-space: normal;
+  font-family: var(--f-family);
+  font-size: var(--f-size-4);
+  line-height: var(--f-lineHeight-4);
+  font-weight: var(--f-weight-4);
+  letter-spacing: var(--f-letterSpacing-4);
+  text-align: center;
+  color: var(--c-grafite70);
+  max-width: 360px;
+}

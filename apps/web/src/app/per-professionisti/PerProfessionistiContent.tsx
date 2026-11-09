@@ -18,6 +18,7 @@ import {
 } from "@professionisti/shared";
 import { Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc, type IconName } from "@professionisti/ui";
 import { MagneticButton } from "@/components/MagneticButton";
+import { InviteWelcome } from "@/components/InviteWelcome";
 import { GlowLights } from "@/components/GlowLights";
 import { useAuth } from "@/lib/AuthContext";
 import { useOnlinePayments } from "@/lib/onlinePayments";
@@ -212,6 +213,7 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
               Iscrizione gratuita. La carta serve solo per attivare i mesi gratis.
             </Text>
           </XStack>
+          <InviteWelcome />
         </YStack>
       </div>
     </Band>

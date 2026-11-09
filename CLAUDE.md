@@ -147,6 +147,18 @@ prima discuterne e aggiornare questo file.
   tocco che risale ai contenitori, con una correzione di una riga al
   pacchetto (`patches/@tamagui__web@3.1.10.patch`, da rifare a ogni
   aggiornamento di Tamagui).
+- **Pagine pubbliche in HTML semplice** (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md
+  e 2026-11-09-citta-e-profilo-senza-tamagui.md): piè di pagina, home, schede
+  dei professionisti (logica comune in `professionalCardModel.ts`), profilo
+  pubblico e i pezzi comuni `Section`, `Avatar`, `Rating`, `Badge`, `Chip`,
+  `EmptyState`, `PriceLine`, `ProfessionalKindBadge` (varianti
+  `*.web.tsx` in `packages/ui`) usano `div`/`span` con le classi globali di
+  Tamagui (`is_View`, `is_Text`, `font_body`, `font_heading`) e un
+  `*.module.css` con le sue variabili (`--t-space-N`, `--c-nome`), non le
+  primitive Tamagui: il telefono non calcola gli stili all'apertura. Nuove
+  parti di queste pagine si scrivono così; una variante `.web.tsx` cambia
+  insieme al suo file per l'app. Il compilatore di Tamagui non va con
+  Turbopack.
 - **React Compiler** acceso su tutto il sito (docs/CHANGELOG.md §345), ma
   rompe gli stili `<style jsx>`: ogni componente che li usa deve iniziare
   con la direttiva `"use no memo"` (lo controlla `pnpm lint`,

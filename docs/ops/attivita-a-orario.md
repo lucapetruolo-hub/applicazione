@@ -75,6 +75,7 @@ Ogni giorno a ora fissa (ora italiana):
 | 9:00 | `IdentityVerificationService.checkBadgesOverTime` | Ricontrolla i badge "Verificato" |
 | 10:00 | `AwayService.remindEnding`, `ReviewReplyRemindersService.remindReplies`, `AgendaRemindersService.remindAgenda`, `IdentityVerificationService.remindUnverified` | Promemoria ai professionisti (fine pausa, recensioni da rispondere, agenda, verifica) |
 | 11:00 | `IdentityVerificationService.remindProfileSetup` | Promemoria del profilo da completare |
+| 11:00 | `ReviewReminderService.run` | Un solo promemoria della recensione a chi ha confermato il lavoro senza recensire (3-14 giorni dopo) |
 | 18-21 | `AgendaTomorrowSummaryService.sendTomorrowSummaries`, `WhatsAppService.professionalDayReminders` | Riepilogo della sera all'ora scelta dal professionista |
 
 Ogni settimana: lunedì 8:00 `InvoicesService.remindStuckSdi` (fatture
