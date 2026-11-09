@@ -15,6 +15,18 @@ const ctx: NotificationEmailContext = {
   proposedWhen: new Date("2026-10-15T10:00:00.000Z"),
 };
 
+describe("email dei preventivi (collaudo 08/11)", () => {
+  it("il nuovo preventivo dice il totale, come intervallo se i prezzi vanno da/a", () => {
+    expect(renderEmail(notificationEmail("NEW_QUOTE", { totalMinEurCents: 12000, totalMaxEurCents: 12000 }, ctx)!).text).toContain("Totale");
+    expect(renderEmail(notificationEmail("NEW_QUOTE", { totalMinEurCents: 10000, totalMaxEurCents: 15000 }, ctx)!).text).toContain("da €100 a €150");
+    expect(renderEmail(notificationEmail("NEW_QUOTE", { totalMinEurCents: 0, totalMaxEurCents: 0 }, ctx)!).text).not.toContain("Totale");
+  });
+
+  it("data del cliente accettata: si dice di accettare il preventivo per fissare l'appuntamento", () => {
+    expect(renderEmail(notificationEmail("QUOTE_DATE_CONFIRMED", {}, ctx)!).text).toContain("Accetta il preventivo per fissare l'appuntamento");
+  });
+});
+
 describe("modello grafico delle email", () => {
   it("scappa il testo e ammette solo il grassetto", () => {
     const email = renderEmail({ kind: "notification", subject: "Prova", title: "Titolo", paragraphs: ["**ok** <script>alert(1)</script>"] });

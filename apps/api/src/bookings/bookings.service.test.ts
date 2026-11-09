@@ -598,3 +598,91 @@ describe("BookingsService.reportIssue — orario dell'appuntamento in ora italia
     expect(early instanceof Error ? early.message : "").toMatch(/si può segnalare dall'inizio/);
   });
 });
+
+describe("Acconto pagato senza webhook (collaudo 08/11, E3-06)", () => {
+  const paid = (overrides: Record<string, unknown> = {}) =>
+    ({
+      payment_intent: "pi_1",
+      amount_total: 6000,
+      created: Math.floor(Date.now() / 1000) - 60 * 60,
+      metadata: { kind: "quote_deposit", quoteId: "quote-1", clientUserId: "client-1", paymentMethod: "ONLINE" },
+      ...overrides,
+    }) as never;
+
+  it("webhook e ritorno dal pagamento insieme: il lavoro nato nel frattempo prende l'acconto, mai un rimborso", async () => {
+    const { service, prisma, jobPaymentsService } = buildService();
+    // All'inizio nessun lavoro; quando si decide il rimborso, l'altra conferma l'ha già creato.
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({ clientId: "client-1", status: "CONFIRMED", jobPayment: { id: "jp-7", paymentMethod: "MANOVIA" } });
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote({ booking: { id: "b-7" } }));
+
+    await service.confirmQuoteDeposit(paid());
+
+    expect(jobPaymentsService.recordQuoteDeposit).toHaveBeenCalledWith("jp-7", expect.anything());
+    expect(jobPaymentsService.refundQuoteDeposit).not.toHaveBeenCalled();
+  });
+
+  it("lavoro appena creato e pagamento non ancora pronto: si riprova, senza rimborso", async () => {
+    const { service, prisma, jobPaymentsService } = buildService();
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({ clientId: "client-1", status: "CONFIRMED", jobPayment: null });
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote({ booking: { id: "b-7" } }));
+
+    await expect(service.confirmQuoteDeposit(paid())).rejects.toBeInstanceOf(ConflictException);
+    expect(jobPaymentsService.refundQuoteDeposit).not.toHaveBeenCalled();
+  });
+
+  it("al ritorno dal pagamento il lavoro nasce leggendo Stripe, anche senza webhook", async () => {
+    const { service, prisma, jobPaymentsService } = buildService();
+    Object.assign(jobPaymentsService, { paidQuoteDepositSession: vi.fn().mockResolvedValue(paid()) });
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ guidedRequest: { clientId: "client-1" }, booking: null })
+      .mockResolvedValue(baseQuote());
+    // Nessun lavoro all'inizio né dentro la conferma; alla fine c'è.
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({ id: "new-booking-9", clientId: "client-1" });
+    (prisma.booking.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (prisma.booking.create as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "new-booking-9", recipientPhone: "3331234567" });
+
+    await expect(service.verifyQuoteDeposit("client-1", "quote-1")).resolves.toEqual({ bookingId: "new-booking-9" });
+    expect(jobPaymentsService.createAtAcceptance).toHaveBeenCalled();
+    expect(jobPaymentsService.recordQuoteDeposit).toHaveBeenCalled();
+  });
+
+  it("un altro cliente non può controllare il pagamento di un preventivo non suo", async () => {
+    const { service, prisma } = buildService();
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ guidedRequest: { clientId: "client-1" }, booking: null });
+
+    await expect(service.verifyQuoteDeposit("client-2", "quote-1")).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("pagina non pagata: nessun lavoro, nessun errore", async () => {
+    const { service, prisma, jobPaymentsService } = buildService();
+    Object.assign(jobPaymentsService, { paidQuoteDepositSession: vi.fn().mockResolvedValue(null) });
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ guidedRequest: { clientId: "client-1" }, booking: null });
+
+    await expect(service.verifyQuoteDeposit("client-1", "quote-1")).resolves.toEqual({ bookingId: null });
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+  });
+
+  it("il giro orario lascia stare i pagamenti degli ultimi minuti: il webhook è in arrivo", async () => {
+    const { service, prisma, jobPaymentsService } = buildService();
+    Object.assign(jobPaymentsService, { paidQuoteDepositSession: vi.fn().mockResolvedValue(paid({ created: Math.floor(Date.now() / 1000) - 60 })) });
+    (prisma.quote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([{ id: "quote-1" }]);
+
+    await expect(service.confirmMissedQuoteDeposits()).resolves.toBe(0);
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("BookingsService.updateStatus — il lavoro si chiude solo con Lavoro terminato (collaudo 08/11, E1-03)", () => {
+  it.each(["COMPLETED", "NO_SHOW"])("rifiuta %s", async (status) => {
+    const { service, prisma } = buildService();
+    await expect(service.updateStatus("pro-user-1", "b-1", status as never)).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.booking.update).not.toHaveBeenCalled();
+  });
+});
