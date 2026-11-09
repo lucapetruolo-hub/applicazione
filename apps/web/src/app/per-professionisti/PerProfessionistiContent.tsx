@@ -18,6 +18,7 @@ import {
 } from "@professionisti/shared";
 import { Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc, type IconName } from "@professionisti/ui";
 import { MagneticButton } from "@/components/MagneticButton";
+import { InviteWelcome } from "@/components/InviteWelcome";
 import { GlowLights } from "@/components/GlowLights";
 import { useAuth } from "@/lib/AuthContext";
 import { useOnlinePayments } from "@/lib/onlinePayments";
@@ -212,6 +213,7 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
               Iscrizione gratuita. La carta serve solo per attivare i mesi gratis.
             </Text>
           </XStack>
+          <InviteWelcome />
         </YStack>
       </div>
     </Band>
@@ -733,6 +735,11 @@ const FAQ: { question: string; answer: string; paymentsLink?: boolean; founderOf
     question: "Cosa succede se arrivo al limite di lavori del mio livello?",
     answer:
       "Ti avvisiamo prima. Resti nelle ricerche e ricevi le richieste, ma per mandare preventivi nuovi passi al livello sopra: paghi 10 € più la differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del 10% (+ IVA). Altrimenti aspetti il rinnovo, quando i lavori ripartono. I preventivi già mandati restano validi. Su Plus e Pro più lavori allo stesso cliente nello stesso mese contano come uno.",
+  },
+  {
+    question: "I miei clienti di sempre contano nei lavori del mese?",
+    answer:
+      "No, se ti scrivono dal tuo link personale. Lo trovi nella tua area, con il codice QR da stampare e un messaggio pronto da mandare su WhatsApp. La richiesta arriva solo a te e il lavoro non conta, anche quando hai finito i lavori del mese. Vale per i clienti nuovi sul sito: chi ti aveva già trovato con la ricerca resta un cliente arrivato dal sito.",
   },
   {
     question: "I prezzi comprendono l'IVA?",

@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Icon, Section, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Icon, Section, brand } from "@professionisti/ui";
 import { useOnlinePayments } from "@/lib/onlinePayments";
+import styles from "./QualitySection.module.css";
 
 const POINTS: { title: string; text: string; online?: boolean }[] = [
   {
@@ -59,34 +60,18 @@ export function QualitySection() {
   const points = POINTS.filter((point) => !point.online || onlinePayments);
   return (
     <Section title="La trasparenza che non trovi in giro" maxWidth={1080}>
-      <YStack
-        width="100%"
-        gap="4"
-        flexDirection="gtMd:row"
-        flexWrap="gtMd:wrap"
-        backgroundColor={brand.calce}
-        borderRadius={radiusDoc}
-        borderWidth={1}
-        borderStyle="solid"
-        borderColor={brand.filetto}
-        boxShadow="0 6px 24px rgba(43, 32, 19, 0.06)"
-        padding="20px gtMd:32px"
-        data-stagger=""
-      >
+      <div className={`is_View ${styles.panel}`} data-stagger="">
         {points.map((point) => (
-          <XStack key={point.title} alignItems="flex-start" gap="3" flexBasis="gtMd:48%" flexGrow="gtMd:0">
-            <YStack width={26} height={26} borderRadius={13} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0} marginTop={1}>
+          <div key={point.title} className={`is_View ${styles.point}`}>
+            <div className={`is_View ${styles.check}`}>
               <Icon name="check" size={15} strokeWidth={2.5} color={brand.cianografiaScuro} />
-            </YStack>
-            <Text fontSize={16} color={brand.grafite70} lineHeight="24px" flex={1} minWidth={0}>
-              <Text fontFamily="body" fontWeight="700" color={brand.grafite}>
-                {point.title}.
-              </Text>{" "}
-              {point.text}
-            </Text>
-          </XStack>
+            </div>
+            <span className={`is_Text ${styles.text}`}>
+              <span className={`is_Text font_body ${styles.title}`}>{point.title}.</span> {point.text}
+            </span>
+          </div>
         ))}
-      </YStack>
+      </div>
       <Link href="/problemi-e-rimborsi" className="home-section-action">
         Scopri di più
       </Link>

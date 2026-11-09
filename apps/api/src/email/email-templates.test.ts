@@ -63,7 +63,7 @@ describe("email delle notifiche", () => {
     const opened = renderEmail(notificationEmail("JOB_STRIPE_DISPUTE", { status: "needs_response", feeEurCents: 2000 }, ctx)!);
     expect(opened.text).toContain("€20 di commissione per la contestazione: non torna");
     const unknown = renderEmail(notificationEmail("JOB_STRIPE_DISPUTE", { status: "needs_response" }, ctx)!);
-    expect(unknown.text).toContain("(di solito 20 €)");
+    expect(unknown.text).toContain("con l'importo del suo listino");
     const closed = renderEmail(notificationEmail("JOB_STRIPE_DISPUTE", { status: "won", feeEurCents: 2000 }, ctx)!);
     expect(closed.text).not.toContain("commissione");
   });

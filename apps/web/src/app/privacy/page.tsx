@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LegalList, LegalPage, LegalSummary } from "@/components/LegalPage";
-import { BRAND, CLIENT_DELETED_REQUEST_RETENTION_DAYS, COMPANY } from "@professionisti/shared";
+import { BRAND, CLIENT_DELETED_REQUEST_RETENTION_DAYS, COMPANY, DELETED_EMAIL_HASH_RETENTION_YEARS } from "@professionisti/shared";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -12,7 +12,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      updatedAt="30 ottobre 2026"
+      updatedAt="8 novembre 2026"
       intro={
         <LegalSummary
           points={[
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
         },
         {
           heading: "2. Dati che raccogliamo",
-          body: "Raccogliamo i dati che ci fornisci direttamente: nome, indirizzo email, numero di telefono (se lo inserisci), città e indirizzo del lavoro, descrizione del lavoro richiesto, eventuali foto o video caricati, i messaggi della chat, e — per i professionisti — i dati del profilo pubblico (nome attività, categoria, zona, servizi e prezzi) e i dati fiscali (codice fiscale, partita IVA, indirizzo, IBAN per la DAC7). Nella descrizione del lavoro e nelle foto scrivi e mostra solo quello che serve: in particolare, per le richieste di Babysitter, non caricare foto di bambini e non scrivere dati sulla loro salute. Raccogliamo inoltre dati tecnici di navigazione (log, indirizzo IP, tipo di browser) necessari al funzionamento e alla sicurezza del servizio.",
+          body: "Raccogliamo i dati che ci fornisci direttamente: nome, indirizzo email, numero di telefono (se lo inserisci), città e indirizzo del lavoro, descrizione del lavoro richiesto, eventuali foto o video caricati, i messaggi della chat, e — per i professionisti — i dati del profilo pubblico (nome attività, categoria, zona, servizi e prezzi) e i dati fiscali (codice fiscale, partita IVA, indirizzo, IBAN per la DAC7). Nella descrizione del lavoro e nelle foto scrivi e mostra solo quello che serve: in particolare, per le richieste di Babysitter, non caricare foto di bambini e non scrivere dati sulla loro salute. Se un nostro operatore crea il profilo di un professionista al telefono, inserisce i dati che il professionista gli detta; il professionista li controlla e li conferma dal link che riceve per email, insieme a questa informativa. Raccogliamo inoltre dati tecnici di navigazione (log, indirizzo IP, tipo di browser) necessari al funzionamento e alla sicurezza del servizio.",
         },
         {
           heading: "3. Perché trattiamo i tuoi dati (finalità e base giuridica)",
@@ -44,11 +44,21 @@ export default function PrivacyPage() {
         },
         {
           heading: "5. Conservazione",
-          body: "Conserviamo i dati solo per il tempo che serve, come indicato qui sotto. Puoi chiudere il tuo account in qualsiasi momento da Impostazioni: nome, cognome, email, telefono, data di nascita, foto del profilo e password vengono cancellati subito; il resto segue i tempi dell'elenco.",
+          body: "Conserviamo i dati solo per il tempo che serve, come indicato qui sotto. Puoi chiudere il tuo account in qualsiasi momento da Impostazioni: nome, cognome, email, telefono, foto del profilo e password vengono cancellati subito; il resto segue i tempi dell'elenco.",
           after: (
             <LegalList
               items={[
                 { title: "Dati dell'account", rows: [["Per quanto", "finché l'account è aperto; alla chiusura cancellati subito, come detto sopra"]] },
+                {
+                  // Controllo pre-lancio 08/11, E4-06: `User.deletedEmailHash`, cancellata da AccountClosuresService.
+                  title: "Impronta dell'email di un account chiuso",
+                  rows: [
+                    [
+                      "Per quanto",
+                      `${DELETED_EMAIL_HASH_RETENTION_YEARS} anni dalla chiusura. È un codice ricavato dall'email da cui non si può risalire all'email: serve solo a ritrovare l'account chiuso se chi conosce l'email esatta ci scrive per una contestazione o lo chiede un'autorità (legittimo interesse e obblighi di legge)`,
+                    ],
+                  ],
+                },
                 {
                   title: "Richieste, preventivi, lavori, chat e recensioni",
                   rows: [
@@ -77,12 +87,12 @@ export default function PrivacyPage() {
         {
           id: "verifica-identita",
           heading: "8. Verifica dei professionisti (dati fiscali, documento e selfie)",
-          body: `Per proteggere i clienti verifichiamo chi lavora sulla piattaforma. (a) Dati fiscali: quando un professionista salva codice fiscale e partita IVA, verifichiamo la partita IVA con VIES, il servizio gratuito della Commissione europea, e, se VIES non la conferma, il codice fiscale e la partita IVA all'Agenzia delle Entrate e al Registro Imprese tramite Openapi S.p.A. (Italia), responsabile del trattamento; conserviamo solo l'esito (valido, non valido, attiva o cessata) e la ragione sociale ufficiale. Base giuridica: obbligo di legge (DAC7, D.Lgs. 32/2023) e legittimo interesse alla sicurezza della piattaforma. (b) Documento e selfie: prima di inviare il primo preventivo il professionista (per un'azienda, il legale rappresentante) fotografa un documento d'identità e fa un breve selfie con Didit Identity S.L. (Unione europea), responsabile del trattamento. Il confronto del volto con la foto del documento è un trattamento di dati biometrici (art. 9 GDPR) e avviene solo con il consenso esplicito della persona verificata, che lo dà spuntando la casella prima di iniziare (per un'azienda lo spunta il legale rappresentante, di solito dal link che gli manda l'azienda) e può revocarlo in qualsiasi momento scrivendoci (senza la verifica però non potrai inviare preventivi). Immagini del documento e selfie restano a Didit e vengono cancellate secondo i suoi tempi di conservazione concordati con noi; ${BRAND.name} non riceve né conserva le immagini: salviamo solo l'esito (approvata, rifiutata o da controllare), il motivo di un eventuale rifiuto, la data del consenso e la data di scadenza del documento, per chiederti di rifare la verifica quando scade. Se la verifica non conferma la tua identità ti diciamo il motivo e puoi rifarla. Non usiamo questi dati per altri scopi né per decisioni automatizzate diverse dall'accesso all'invio di preventivi: se la verifica viene rifiutata puoi riprovare, o scriverci all'indirizzo del punto 1 per farla rivedere da una persona.`,
+          body: `Per proteggere i clienti verifichiamo chi lavora sulla piattaforma. (a) Dati fiscali: quando un professionista salva codice fiscale e partita IVA, verifichiamo la partita IVA con VIES, il servizio gratuito della Commissione europea, e, se VIES non la conferma, il codice fiscale e la partita IVA all'Agenzia delle Entrate e al Registro Imprese tramite Openapi S.p.A. (Italia), responsabile del trattamento; conserviamo solo l'esito (valido, non valido, attiva o cessata) e la ragione sociale ufficiale. Base giuridica: obbligo di legge (DAC7, D.Lgs. 32/2023) e legittimo interesse alla sicurezza della piattaforma. (b) Documento e selfie: prima di inviare il primo preventivo il professionista (per un'azienda, il legale rappresentante) fotografa un documento d'identità e fa un breve selfie con Didit Identity S.L. (Unione europea), responsabile del trattamento. Il confronto del volto con la foto del documento è un trattamento di dati biometrici (art. 9 GDPR) e avviene solo con il consenso esplicito della persona verificata, che lo dà spuntando la casella prima di iniziare (per un'azienda lo spunta il legale rappresentante, di solito dal link che gli manda l'azienda) e può revocarlo in qualsiasi momento scrivendoci (senza la verifica però non potrai inviare preventivi). Immagini del documento e selfie restano a Didit, che le conserva solo per il tempo necessario a fare la verifica e i suoi controlli contro le frodi, come previsto dal contratto con noi, e poi le cancella; ${BRAND.name} non riceve né conserva le immagini: salviamo solo l'esito (approvata, rifiutata o da controllare), il motivo di un eventuale rifiuto, la data del consenso e la data di scadenza del documento, per chiederti di rifare la verifica quando scade. Se la verifica non conferma la tua identità ti diciamo il motivo e puoi rifarla. Non usiamo questi dati per altri scopi né per decisioni automatizzate diverse dall'accesso all'invio di preventivi: se la verifica viene rifiutata puoi riprovare, o scriverci all'indirizzo del punto 1 per farla rivedere da una persona.`,
         },
         {
           id: "conteggi",
           heading: "9. Conteggi per migliorare il sito",
-          body: "Per capire dove il sito funziona male contiamo, giorno per giorno, quante volte succedono alcune cose: ricerche per lavoro e città, prestazioni del nostro elenco che corrispondono a una ricerca scritta (si salva il nome della prestazione, mai il testo cercato), passi del modulo di richiesta raggiunti, voci di \"Quanto costa\" toccate e i profili aperti e le richieste inviate partiti da lì (per questo la scheda del browser tiene un segno temporaneo, che si cancella chiudendola), invii non riusciti, parole cercate che non corrispondono a nessun lavoro (salvate solo se cercate in almeno 3 giorni diversi e mai se contengono numeri, email o più di tre parole), il canale da cui è arrivato chi si iscrive (Google, social, link diretto) e il motivo facoltativo scelto da chi chiude l'account o l'abbonamento. Salviamo solo il numero per giorno, mai chi ha fatto cosa: nessun nome, indirizzo IP, identificativo del dispositivo o cookie di profilazione, quindi non serve il tuo consenso (legittimo interesse a migliorare il servizio). Gli amministratori e chi prova il sito usano un cookie tecnico (\"non_contare\") che serve solo a non essere contati. I conteggi si cancellano dopo 25 mesi.",
+          body: "Per capire dove il sito funziona male contiamo, giorno per giorno, quante volte succedono alcune cose: ricerche per lavoro e città, prestazioni del nostro elenco che corrispondono a una ricerca scritta (si salva il nome della prestazione, mai il testo cercato), passi del modulo di richiesta raggiunti, voci di \"Quanto costa\" toccate e i profili aperti e le richieste inviate partiti da lì (per questo la scheda del browser tiene un segno temporaneo, che si cancella chiudendola), invii non riusciti, parole cercate che non corrispondono a nessun lavoro (salvate solo se cercate in almeno 3 giorni diversi e mai se contengono numeri, email o più di tre parole), il canale da cui è arrivato chi si iscrive (Google, social, link diretto) e il motivo facoltativo scelto da chi chiude l'account o l'abbonamento. Salviamo solo il numero per giorno, mai chi ha fatto cosa: nessun nome, indirizzo IP, identificativo del dispositivo o cookie di profilazione, quindi non serve il tuo consenso (legittimo interesse a migliorare il servizio). Gli amministratori e chi prova il sito usano un cookie tecnico (\"non_contare\") che serve solo a non essere contati. I conteggi si cancellano dopo 25 mesi. Unica eccezione legata alla persona: se ti iscrivi come professionista dal link d'invito di un collega o di un partner (per esempio il tuo commercialista), salviamo nel tuo account chi ti ha invitato, per sapere da dove arrivano gli iscritti (legittimo interesse); a chi ti ha invitato diciamo solo quanti colleghi si sono iscritti, mai chi, e nessuno riceve premi o compensi per la tua iscrizione.",
         },
       ]}
     />

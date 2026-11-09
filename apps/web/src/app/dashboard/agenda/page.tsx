@@ -28,6 +28,8 @@ import { apiClient } from "@/lib/apiClient";
 import { loadMyProfessionalProfile } from "@/lib/myProfessionalProfile";
 import { AwayCard } from "@/components/AwayCard";
 import { useAuth } from "@/lib/AuthContext";
+import { personalLinkNudgeAfterJob } from "@/components/PersonalLinkNudge";
+import { useKeepInPlace } from "@/lib/useKeepInPlace";
 import { CalendarShell, MonthGrid, type CalendarView } from "@/components/calendar/CalendarShell";
 import { SkeletonBlock } from "@/components/Skeleton";
 import { TimelineModal } from "@/components/TimelineModal";
@@ -152,6 +154,9 @@ function DashboardAgendaContent() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
+  // "Giorno per giorno" resta fermo sullo schermo mentre si tocca (docs/changelog/2026-11-09-giorno-per-giorno-fermo.md).
+  const { anchorRef: dayByDayRef, spacerRef: dayByDaySpacerRef, remember: rememberDayByDay } = useKeepInPlace<HTMLDivElement>();
+  const { anchorRef: calendarRef, spacerRef: calendarSpacerRef, remember: rememberCalendar } = useKeepInPlace<HTMLDivElement>();
 
   // Stesso criterio del calendario Prenotazioni sotto: su mobile il
   // default è "Giorno" perché la griglia settimanale non ci sta.
@@ -639,6 +644,7 @@ function DashboardAgendaContent() {
     patchBooking(completingBooking.id, { status: "COMPLETED", finalAmountEurCents: result.finalAmountEurCents });
     setCompletingBooking(null);
     setSelectedBooking(null);
+    personalLinkNudgeAfterJob(myProfileId);
   }
 
   /** Annulla con una nota per il cliente, come da "Richieste e lavori". */
@@ -1517,9 +1523,9 @@ function DashboardAgendaContent() {
     const start = addDaysUtc(today, Math.floor(offset / 7) * 7);
     return Array.from({ length: 7 }, (_, i) => addDaysUtc(start, i));
   }
-  function dayStrip(current: Date, onChange: (date: Date) => void, withWeather: boolean) {
+  function dayStrip(current: Date, onChange: (date: Date) => void, withWeather: boolean, inShell = false) {
     return (
-      <div className="ag-strip-row">
+      <div className={inShell ? "ag-strip-row in-shell" : "ag-strip-row"}>
         <button type="button" className="ag-strip-arrow" aria-label="Giorno precedente" onClick={() => onChange(addDaysUtc(current, -1))}>
           <ChevronLeft size={20} aria-hidden />
         </button>
@@ -2003,7 +2009,16 @@ function DashboardAgendaContent() {
             </aside>
             )}
 
-            <div style={{ minWidth: 0 }}>
+            <div
+              ref={calendarRef}
+              style={{ minWidth: 0 }}
+              // Fermo sullo schermo mentre lo si usa, anche dalla tendina della vista (docs/changelog/2026-11-09-giorno-per-giorno-fermo.md).
+              onPointerDownCapture={rememberCalendar}
+              onChangeCapture={rememberCalendar}
+              onKeyDownCapture={(e) => {
+                if (e.key === "Enter" || e.key === " ") rememberCalendar();
+              }}
+            >
               <div className="ag-toolbar">
                 <button
                   type="button"
@@ -2147,6 +2162,7 @@ function DashboardAgendaContent() {
                   {bookingsError}
                 </div>
               ) : null}
+              <div ref={calendarSpacerRef} aria-hidden />
             </div>
           </div>
         ) : activeTab === "orari" ? (
@@ -2216,7 +2232,17 @@ function DashboardAgendaContent() {
 
             <ZoneDemandCard demand={zoneDemand} template={weekTemplate} onAdd={addDemandSlot} />
 
-            <div className="ag-card" style={{ padding: 20 }}>
+            {/* Fermo sullo schermo mentre lo si usa (docs/changelog/2026-11-09-giorno-per-giorno-fermo.md). */}
+            <div>
+            <div
+              ref={dayByDayRef}
+              className="ag-card"
+              style={{ padding: 20 }}
+              onPointerDownCapture={rememberDayByDay}
+              onKeyDownCapture={(e) => {
+                if (e.key === "Enter" || e.key === " ") rememberDayByDay();
+              }}
+            >
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
                 <h2 style={{ fontSize: 19 }}>Giorno per giorno</h2>
                 <span className="ag-muted" style={{ fontSize: 13 }} aria-live="polite">
@@ -2253,12 +2279,11 @@ function DashboardAgendaContent() {
                   )}
                 </div>
               ) : null}
-              {view === "day" ? (
-                // Striscia della settimana come nel Calendario: venerdì è a un tocco, non a quattro frecce (U1, §310).
-                dayStrip(currentDate, setCurrentDate, false)
-              ) : null}
               <CalendarShell
                 dayStripAbove
+                // Striscia della settimana come nel Calendario: venerdì è a un tocco, non a quattro frecce (U1, §310).
+                // Sotto Giorno/Settimana/Mese come nel Calendario, così non li sposta comparendo.
+                belowToolbar={view === "day" ? dayStrip(currentDate, setCurrentDate, false, true) : null}
                 view={view}
                 onViewChange={setView}
                 currentDate={currentDate}
@@ -2280,6 +2305,8 @@ function DashboardAgendaContent() {
                   {error}
                 </div>
               ) : null}
+            </div>
+            <div ref={dayByDaySpacerRef} aria-hidden />
             </div>
           </div>
         ) : (

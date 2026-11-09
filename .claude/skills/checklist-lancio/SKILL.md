@@ -176,7 +176,13 @@ produzione):
    (Impostazioni → Pagamenti → Adaptive Pricing): il codice lo spegne già in
    ogni Checkout (`EUR_ONLY`), questa è la seconda sicurezza perché clienti
    e contestazioni restino sempre in euro (docs/changelog/2026-10-28-stripe-prova.md).
-   Usare una chiave limitata (`rk_`) al posto di quella segreta. E Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
+   Usare una chiave limitata (`rk_`) al posto di quella segreta. Dopo il
+   primo pagamento vero, controllare nel listino dell'account la commissione
+   per contestazione: il codice la legge da Stripe e ripiega su 20 €
+   (`STRIPE_DISPUTE_FEE_EUR_CENTS`), i testi non la citano in cifra (E3-12,
+   docs/changelog/2026-11-08-legale-nel-codice.md). Nel pannello di Didit
+   impostare la conservazione delle immagini del workflow e scriverne i
+   giorni nella Privacy, punto 8 (domanda L7 per l'avvocato). E Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
    `CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`).
 5bis. **Resend reali** (`RESEND_API_KEY`, dominio verificato su Resend +
    `RESEND_FROM_EMAIL` corrispondente) — senza queste variabili i
@@ -200,6 +206,17 @@ produzione):
    anche questo: oltre ai record SPF/DKIM chiesti da Resend, aggiungere un
    record DMARC (`_dmarc`, es. `v=DMARC1; p=none;`) e provare l'invio su
    Gmail/Outlook prima di reclutare i professionisti.
+5ter. **Dominio vero prima di stampare i QR** (docs/changelog/2026-11-08-canale-del-professionista.md):
+   il QR del link personale `/p/<codice>` prende l'indirizzo da
+   `FRONTEND_URL` (Render), il link mostrato, il messaggio di invito e il
+   pulsante per il sito da `SITE_URL` (`apps/web/src/lib/siteUrl.ts`).
+   Cambiarli insieme sul dominio definitivo **prima** di dare ai
+   professionisti la pagina "Il tuo link": un QR stampato con
+   `applicazione-web.vercel.app` non si aggiorna. Al cambio di dominio il
+   vecchio indirizzo deve rimandare al nuovo. Lo stesso vale per il bollino
+   con le stelle (`/p/<codice>/bollino.svg`, incollato sui siti dei
+   professionisti), l'invito "Porta un collega" e i link dei partner
+   (docs/changelog/2026-11-09-passaparola.md).
 6. Credenziali Stripe **Connect** reali per i pagamenti MANOVIA (distinte
    dalle chiavi Stripe Checkout del punto 5 — abilitano i pagamenti
    professionista↔piattaforma, non solo abbonamenti/boost/lead).

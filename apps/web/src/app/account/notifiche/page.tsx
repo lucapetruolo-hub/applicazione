@@ -152,7 +152,8 @@ export default function NotifichePage() {
                       item.locked ||
                       (item.channels ?? (["inApp", "email"] as const)).some((c) => prefs[c] && notificationItemChannelOn(notificationPrefs, item.key, c)),
                   ).length;
-                  const topicOff = !info.locked && !prefs.inApp && !prefs.email;
+                  const shownChannels = CHANNELS.filter((channel) => role !== "professional" || !info.professionalChannels || info.professionalChannels.includes(channel.key));
+                  const topicOff = !info.locked && shownChannels.every((channel) => !prefs[channel.key]);
                   const isOpen = openTopics.includes(topic);
                   const panelId = `nt-items-${topic}`;
                   return (
@@ -166,7 +167,9 @@ export default function NotifichePage() {
                           <p>
                             {topicOff
                               ? items.some((item) => item.locked)
-                                ? "Spento: ti avvisiamo solo dei problemi sul lavoro, che hanno delle scadenze."
+                                ? role === "client" && topic === "lavori"
+                                  ? "Spento: ricevi solo la conferma degli appuntamenti e gli avvisi sui problemi del lavoro, che hanno delle scadenze."
+                                  : "Spento: ti avvisiamo solo dei problemi sul lavoro, che hanno delle scadenze."
                                 : "Spento: nessun avviso, le novità restano nella campanella."
                               : copy.description}
                           </p>
@@ -179,7 +182,7 @@ export default function NotifichePage() {
                         ) : (
                           <div className="nt-channels" role="group" aria-label={`${copy.label}: dove avvisarti`}>
                             {/* Solo i canali che funzionano già: "presto" prometteva cose che non ci sono (collaudo dell'8/11, E6-24). */}
-                            {CHANNELS.filter((channel) => info.activeChannels.includes(channel.key)).map((channel) => {
+                            {shownChannels.filter((channel) => info.activeChannels.includes(channel.key)).map((channel) => {
                               const on = prefs[channel.key];
                               return (
                                 <button

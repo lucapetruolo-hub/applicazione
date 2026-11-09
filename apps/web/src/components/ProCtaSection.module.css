@@ -1,0 +1,119 @@
+/*
+ * Riquadro "Meno telefonate inutili" in HTML semplice, stessi valori che
+ * Tamagui scriveva (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md).
+ * Riquadro scuro, foto e notifiche restano in globals.css (.pro-cta).
+ */
+.wrap {
+  position: relative;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding-block: var(--t-space-8);
+  padding-inline: var(--t-space-4);
+}
+
+.content {
+  position: relative;
+  flex-direction: column;
+  gap: var(--t-space-6);
+  padding: var(--t-space-6);
+}
+
+@media (min-width: 801px) {
+  .content {
+    padding: var(--t-space-8);
+  }
+}
+
+.titleBox {
+  position: relative;
+  flex-direction: column;
+  gap: var(--t-space-3);
+}
+
+.title {
+  font-family: var(--f-family);
+  font-size: var(--f-size-9);
+  font-weight: 600;
+  color: white;
+}
+
+.columns {
+  position: relative;
+  flex-direction: column;
+  gap: var(--t-space-5);
+}
+
+.column {
+  position: relative;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--t-space-3);
+}
+
+.iconBox {
+  position: relative;
+  flex-direction: column;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.columnText {
+  position: relative;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: var(--t-space-1);
+}
+
+.columnTitle {
+  font-family: var(--f-family);
+  font-size: var(--f-size-6);
+  font-weight: 600;
+  color: white;
+}
+
+.columnBody {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.buttons {
+  position: relative;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--t-space-3);
+}
+
+.button {
+  position: relative;
+  flex-direction: row;
+  align-items: center;
+  height: 48px;
+  padding-inline: var(--t-space-5);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.buttonSolid {
+  background-color: white;
+}
+
+.buttonOutline {
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+}
+
+.buttonSolidLabel {
+  font-weight: 700;
+  color: var(--c-cianografiaScuro);
+}
+
+.buttonOutlineLabel {
+  font-weight: 700;
+  color: white;
+}

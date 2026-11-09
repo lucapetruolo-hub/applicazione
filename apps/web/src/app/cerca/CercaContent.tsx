@@ -37,6 +37,8 @@ export type ProblemSearch = {
   result: ProblemMatchResult;
   chosen: ProfessionalCategorySlug | null;
   questionDone: boolean;
+  /** Quanti professionisti per ogni mestiere proposto, quando sono più di uno. */
+  categoryCounts?: Partial<Record<ProfessionalCategorySlug, number>>;
 };
 
 /** "Perché" di una scheda: la prestazione del professionista che somiglia al problema. */
@@ -299,6 +301,8 @@ export function CercaContent({
       chosen={problem.chosen}
       count={professionals.length}
       questionDone={problem.questionDone}
+      categoryCounts={problem.categoryCounts}
+      otherTradesCount={alsoDoThisJob.length}
       chosenPros={chosenPros}
       maxChosen={canChoose ? MAX_CHOSEN_PROFESSIONALS : undefined}
       onClearChosen={clearChosen}

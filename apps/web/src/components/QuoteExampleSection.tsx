@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Icon, Section, Text, YStack, brand } from "@professionisti/ui";
+import { Icon, Section, brand } from "@professionisti/ui";
 import { usePrefersReducedMotion } from "@/lib/useMediaQuery";
+import styles from "./QuoteExampleSection.module.css";
 
 const REQUEST_TEXT =
   "Il rubinetto della cucina gocciola anche da chiuso. Sono a Milano, zona Città Studi. Meglio in settimana.";
@@ -140,14 +141,10 @@ export function QuoteExampleSection() {
         {STEPS.map((step, index) => (
           <li key={step.title}>
             <span className="qx-step-number">{index + 1}</span>
-            <YStack gap="1" flex={1}>
-              <Text fontFamily="heading" fontWeight="600" fontSize="5" color={brand.grafite}>
-                {step.title}
-              </Text>
-              <Text fontSize={16} color={brand.grafite70}>
-                {step.text}
-              </Text>
-            </YStack>
+            <div className={`is_View ${styles.step}`}>
+              <span className={`is_Text font_heading ${styles.stepTitle}`}>{step.title}</span>
+              <span className={`is_Text ${styles.muted}`}>{step.text}</span>
+            </div>
           </li>
         ))}
       </ol>
@@ -156,9 +153,7 @@ export function QuoteExampleSection() {
         <Link href="/preventivo" className="qx-cta-button">
           Descrivi il tuo lavoro
         </Link>
-        <Text fontSize={16} color={brand.grafite70}>
-          Per chi cerca, il servizio è gratuito.
-        </Text>
+        <span className={`is_Text ${styles.muted}`}>Per chi cerca, il servizio è gratuito.</span>
       </div>
     </Section>
   );

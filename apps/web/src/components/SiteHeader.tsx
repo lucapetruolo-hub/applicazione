@@ -5,17 +5,25 @@ import dynamic from "next/dynamic";
 import Link from "@/components/IntentLink";
 import { usePathname } from "next/navigation";
 import { Button, Logo, Text, XStack, brand, motionEasing, motionFast } from "@professionisti/ui";
-import { useAuth } from "@/lib/AuthContext";
-import { AccountMenu } from "./AccountMenu";
+import { TOKEN_STORAGE_KEY, useAuth } from "@/lib/AuthContext";
 import { prefetchCategoryOrder } from "@/lib/categoryOrder";
 import { MegaMenu } from "./MegaMenu";
-import { NotificationBell } from "./NotificationBell";
 import { BRAND } from "@professionisti/shared";
 
 // Caricata a parte (docs/CHANGELOG.md §345): serve solo nelle pagine dei
 // risultati e porta con sé l'elenco di tutti i comuni (circa 440 KB), che
 // prima finiva nel JavaScript di ogni pagina del sito.
 const HeaderSearchBar = dynamic(() => import("./HeaderSearchBar").then((module) => module.HeaderSearchBar));
+
+// Campanella e menu dell'account: servono solo a chi ha fatto l'accesso, ma
+// con i testi di tutte le notifiche e il percorso di attivazione del
+// professionista pesavano su ogni pagina anche per chi visita senza account
+// (docs/changelog/2026-11-09-meno-javascript-comune.md). Caricati a parte;
+// il posto è tenuto con le stesse misure, così l'intestazione non salta.
+const loadNotificationBell = () => import("./NotificationBell").then((module) => module.NotificationBell);
+const loadAccountMenu = () => import("./AccountMenu").then((module) => module.AccountMenu);
+const NotificationBell = dynamic(loadNotificationBell, { ssr: false, loading: () => <span className="hdr-slot-bell" aria-hidden="true" /> });
+const AccountMenu = dynamic(loadAccountMenu, { ssr: false, loading: () => <span className="hdr-slot-account" aria-hidden="true" /> });
 
 /**
  * Header sticky (brief "Vicinato", CLAUDE.md §19): niente più hairline —
@@ -59,6 +67,18 @@ export function SiteHeader() {
     }
     const timer = setTimeout(start, 1500);
     return () => clearTimeout(timer);
+  }, []);
+
+  // Chi ha già fatto l'accesso: campanella e menu scaricati subito, mentre
+  // il sito controlla ancora la sessione, così compaiono senza attesa.
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem(TOKEN_STORAGE_KEY)) return;
+    } catch {
+      return;
+    }
+    void loadNotificationBell();
+    void loadAccountMenu();
   }, []);
 
   useEffect(() => {
@@ -149,12 +169,10 @@ export function SiteHeader() {
         </XStack>
 
         <XStack alignItems="center" gap="4 xs:3">
-          {isLoading ? null : user ? (
-            <XStack alignItems="center" gap="2">
-              <NotificationBell />
-              <AccountMenu />
-            </XStack>
-          ) : (
+          {/* "Richiedi preventivo", poi campanella e tondino dell'account
+              insieme in fondo a destra (richieste di Luca,
+              docs/changelog/2026-11-09-barra-in-alto-semplice.md). */}
+          {isLoading || user ? null : (
             <Link href="/accedi" style={{ textDecoration: "none" }}>
               {/* brand.cianografia invece di $blue10 stock (Fase 6): 3.84:1 di
                   contrasto su bianco a questa dimensione, sotto la soglia
@@ -212,6 +230,12 @@ export function SiteHeader() {
                 )}
               </Button>
             </Link>
+          ) : null}
+          {!isLoading && user ? (
+            <XStack alignItems="center" gap="2">
+              <NotificationBell />
+              <AccountMenu />
+            </XStack>
           ) : null}
         </XStack>
       </XStack>

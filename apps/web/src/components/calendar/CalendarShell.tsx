@@ -41,6 +41,12 @@ export type CalendarShellProps = {
    * mostra già la striscia della settimana (T7, docs/CHANGELOG.md §311).
    */
   dayStripAbove?: boolean;
+  /**
+   * Riga tra i pulsanti Giorno/Settimana/Mese e la griglia (la striscia dei
+   * giorni): sotto i pulsanti, così comparendo o sparendo non li sposta
+   * (docs/changelog/2026-11-09-giorno-per-giorno-fermo.md).
+   */
+  belowToolbar?: ReactNode;
 };
 
 const BASE_VIEW_LABELS: { value: CalendarView; label: string }[] = [
@@ -69,6 +75,7 @@ export function CalendarShell({
   renderMonthCell,
   renderYearList,
   dayStripAbove = false,
+  belowToolbar,
 }: CalendarShellProps) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
@@ -250,6 +257,8 @@ export function CalendarShell({
         </XStack>
       </XStack>
 
+      {belowToolbar}
+
       <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         {/* `key={view}` forza un nuovo nodo DOM ad ogni cambio di vista
             (Giorno/Settimana/Mese/Anno, non ad ogni navigazione
@@ -383,7 +392,8 @@ function WeekOrDayGrid({
                 </XStack>
               </YStack>
             )}
-            <YStack padding="2" gap="2" minHeight={220} minWidth={0} overflow="hidden">
+            {/* Nella vista Giorno con la striscia sopra il riquadro è alto quanto le fasce, senza vuoto sotto (docs/changelog/2026-11-09-giorno-per-giorno-fermo.md). */}
+            <YStack padding="2" gap="2" minHeight={hideHeader ? undefined : 220} minWidth={0} overflow="hidden">
               {renderDayColumn(date)}
             </YStack>
           </YStack>

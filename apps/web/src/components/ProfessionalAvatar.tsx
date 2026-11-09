@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { YStack } from "@professionisti/ui";
 import { CategoryIconBadge } from "./CategoryIconBadge";
+import { photoBox, photoBoxStyles } from "./photoBoxStyle";
 
 /** "circle": foto tonda; "portrait": rettangolo verticale 3:4 con angoli arrotondati. */
 export type ProfessionalAvatarShape = "circle" | "portrait";
@@ -45,17 +45,16 @@ export function ProfessionalAvatar({ imageUrl, categorySlug, size = 44, mobileSi
   const height = avatarHeight(size, shape);
   // Angoli del sito (10/20 px): 20 per la foto verticale.
   const radius = shape === "portrait" ? 20 : size;
+  // HTML semplice, non Tamagui (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md).
+  const box = photoBox(
+    { width: size, height, radius },
+    mobileSize ? { width: mobileSize, height: avatarHeight(mobileSize, shape), radius: shape === "portrait" ? 20 : mobileSize } : undefined,
+  );
   return (
-    <YStack
-      width={mobileSize ? `${size}px xs:${mobileSize}px` : size}
-      height={mobileSize ? `${height}px xs:${avatarHeight(mobileSize, shape)}px` : height}
-      borderRadius={mobileSize ? `${radius}px xs:${shape === "portrait" ? 20 : mobileSize}px` : radius}
-      overflow="hidden"
-      flexShrink={0}
-    >
+    <div className={`${box.className} ${photoBoxStyles.clip}`} style={box.style}>
       {/* `next/image` (dimensione nota in anticipo, `size`): lazy-loading e
           formati moderni automatici, a differenza del vecchio <img> grezzo. */}
       <Image src={imageUrl} alt="" width={size} height={height} priority={priority} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-    </YStack>
+    </div>
   );
 }

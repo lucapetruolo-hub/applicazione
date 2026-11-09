@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AccountShell } from "@/components/account/AccountShell";
+import { PersonalLinkNudgeHost } from "@/components/PersonalLinkNudge";
 
 // Titolo della scheda del browser (le pagine sono client) e fuori da Google.
 export const metadata: Metadata = {
@@ -11,5 +12,11 @@ export const metadata: Metadata = {
 
 /** Menu delle pagine personali (docs/CHANGELOG.md §147). */
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <AccountShell>{children}</AccountShell>;
+  return (
+    <AccountShell>
+      {children}
+      {/* Invito a mandare il link personale dopo "Lavoro terminato" (docs/changelog/2026-11-08-canale-del-professionista.md). */}
+      <PersonalLinkNudgeHost />
+    </AccountShell>
+  );
 }

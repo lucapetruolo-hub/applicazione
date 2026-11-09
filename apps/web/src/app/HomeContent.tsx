@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import type { PopularJobsResponse, ProblemExamplesResponse, ProfessionalCategorySlug, ProfessionalSearchResult, ServicePriceIndexEntry } from "@professionisti/shared";
-import { Section, SectionDensityProvider, YStack } from "@professionisti/ui";
+import type { PopularJobsResponse, ProblemExamplesResponse, ProfessionalCategorySlug, ServicePriceIndexEntry } from "@professionisti/shared";
+import type { NewProfileSummary } from "@/lib/newProfiles";
+import { Section, SectionDensityProvider } from "@professionisti/ui";
 import { CategoryStoryRail, useCategoryStoryRail } from "@/components/CategoryStoryRail";
 import { FadeInSection } from "@/components/FadeInSection";
 import { HomeFaq } from "@/components/HomeFaq";
@@ -16,6 +17,7 @@ import { QualitySection } from "@/components/QualitySection";
 import { QuoteExampleSection } from "@/components/QuoteExampleSection";
 import { RecentReviews } from "@/components/RecentReviews";
 import { ProCtaSection } from "@/components/ProCtaSection";
+import styles from "./HomeContent.module.css";
 
 export default function HomeContent({
   professionals,
@@ -27,7 +29,7 @@ export default function HomeContent({
 }: {
   /** "Lavori più cercati" già in ordine; `null` se l'API non ha risposto (resta l'elenco di partenza). */
   popularJobs: PopularJobsResponse | null;
-  professionals: ProfessionalSearchResult[];
+  professionals: NewProfileSummary[];
   /** Frasi d'esempio della ricerca per problema, nell'ordine delle ricerche; `null` se l'API non ha risposto. */
   problemExamples: ProblemExamplesResponse | null;
   /** Professionisti per categoria, vicino all'ultima città cercata o in tutta Italia (app/page.tsx). */
@@ -54,11 +56,15 @@ export default function HomeContent({
           sottosezione (packages/ui/src/Section.tsx). Il link "Hai
           un'emergenza?" in fondo è stato tolto: la richiesta urgente è già
           nella parte verde in alto. */}
-      <YStack width="100%" alignItems="center">
+      <div className={`is_View ${styles.page}`}>
         {/* 1. Parte verde con la ricerca, invariata. */}
         <HomeHero examples={problemExamples} />
 
-        {platformStats ? <PlatformStats stats={platformStats} /> : null}
+        {platformStats ? (
+          <Suspense fallback={null}>
+            <PlatformStats stats={platformStats} />
+          </Suspense>
+        ) : null}
 
         {/* 2. Categorie. */}
         <FadeInSection>
@@ -123,8 +129,10 @@ export default function HomeContent({
         </FadeInSection>
 
         {/* 7. Per chi offre servizi. */}
-        <ProCtaSection />
-      </YStack>
+        <Suspense fallback={null}>
+          <ProCtaSection />
+        </Suspense>
+      </div>
     </SectionDensityProvider>
   );
 }

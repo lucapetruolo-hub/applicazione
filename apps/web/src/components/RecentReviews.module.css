@@ -1,0 +1,78 @@
+/* Testi delle recensioni in home in HTML semplice, stessi valori che Tamagui scriveva (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md). */
+.oneLine {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.muted {
+  font-size: 16px;
+  color: var(--c-grafite70);
+}
+
+.byline {
+  position: relative;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--t-space-2);
+}
+
+.confirmed {
+  position: relative;
+  flex-direction: row;
+  align-items: center;
+  gap: 3px;
+}
+
+.confirmedLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-verificato);
+}
+
+.pro {
+  position: relative;
+  flex-direction: row;
+  flex-shrink: 1;
+  align-items: center;
+  gap: var(--t-space-3);
+  min-width: 0;
+}
+
+.proText {
+  position: relative;
+  flex-direction: column;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.proName {
+  font-family: var(--f-family);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--c-cianografiaScuro);
+}
+
+.itemName {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--c-grafite);
+}
+
+.itemQuote {
+  font-size: 13px;
+  color: var(--c-grafite70);
+}
+
+.categoryAvatar {
+  position: relative;
+  flex-direction: column;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+}

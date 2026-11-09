@@ -32,9 +32,12 @@ export default defineConfig({
     launchOptions: process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},
   },
   projects: [
-    { name: "telefono-italia", testIgnore: /tempi-compiti/, use: { ...devices["Pixel 7"], timezoneId: "Europe/Rome" } },
-    { name: "telefono-new-york", testIgnore: /tempi-compiti/, use: { ...devices["Pixel 7"], timezoneId: "America/New_York" } },
-    { name: "computer-tokyo", testIgnore: /tempi-compiti/, use: { ...devices["Desktop Chrome"], timezoneId: "Asia/Tokyo", locale: "en-US" } },
+    { name: "telefono-italia", testIgnore: [/tempi-compiti/, /iphone-/], use: { ...devices["Pixel 7"], timezoneId: "Europe/Rome" } },
+    { name: "telefono-new-york", testIgnore: [/tempi-compiti/, /iphone-/], use: { ...devices["Pixel 7"], timezoneId: "America/New_York" } },
+    { name: "computer-tokyo", testIgnore: [/tempi-compiti/, /iphone-/], use: { ...devices["Desktop Chrome"], timezoneId: "Asia/Tokyo", locale: "en-US" } },
+    // Motore di Safari su un iPhone: solo le prove pensate per lui (campi ora
+    // e data, docs/changelog/2026-11-09-orari-doppi-iphone.md).
+    { name: "iphone-safari", testMatch: /iphone-/, use: { ...devices["iPhone 14"], timezoneId: "Europe/Rome" } },
     // Ultima: cambia i dati (completa un lavoro, chiude un giorno).
     {
       name: "misure",

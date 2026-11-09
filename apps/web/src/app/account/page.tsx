@@ -20,6 +20,7 @@ import { SaveBar } from "@/components/SaveBar";
 import { ClientEmailVerificationCard } from "@/components/ClientEmailVerificationCard";
 import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/components/PasswordRules";
 import { localPreviewUrl } from "@/lib/media";
+import { downloadBlobFile } from "@/components/admin/adminUi";
 import { PageLoading } from "@/components/PageLoading";
 
 const inputStyle = {
@@ -189,7 +190,7 @@ export default function AccountPage() {
   const [closureCheck, setClosureCheck] = useState<AccountClosureCheck | null>(null);
   // Esportazione dati personali (richiesta esplicita dell'utente, "Verbale
   // di Conformità" — diritto alla portabilità, art. 20 GDPR).
-  const [isExporting, setIsExporting] = useState(false);
+  const [isExporting, setIsExporting] = useState<"pdf" | "json" | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
 
   // Immagine profilo dell'account (richiesta esplicita dell'utente: prima
@@ -420,26 +421,23 @@ export default function AccountPage() {
     }
   }
 
-  async function handleExportData() {
+  // Due formati (controllo pre-lancio 08/11, E4-09): il PDF da leggere
+  // (GDPR art. 15) e il file JSON per portare i dati altrove (art. 20).
+  async function handleExportData(format: "pdf" | "json") {
     setExportError(null);
-    setIsExporting(true);
+    setIsExporting(format);
+    const day = new Date().toISOString().slice(0, 10);
     try {
-      const data = await apiClient.exportMyData(token as string);
-      // Download del file direttamente dal browser (questa è l'app reale,
-      // non un Artifact: nessuna restrizione sui download avviati da qui).
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `professionisti-dati-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      if (format === "pdf") {
+        downloadBlobFile(`i-miei-dati-${day}.pdf`, await apiClient.exportMyDataPdf(token as string));
+      } else {
+        const data = await apiClient.exportMyData(token as string);
+        downloadBlobFile(`i-miei-dati-${day}.json`, new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      }
     } catch (err) {
       setExportError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
-      setIsExporting(false);
+      setIsExporting(null);
     }
   }
 
@@ -833,22 +831,34 @@ export default function AccountPage() {
                 Scarica i tuoi dati
               </Text>
               <Text fontSize={13} color={brand.grafite70}>
-                Scarica un file con tutte le informazioni collegate al tuo account.
+                Tutte le informazioni collegate al tuo account: in PDF da leggere, o come file per portarle su un altro servizio.
               </Text>
             </YStack>
-            <XStack
-              gap="1"
-              alignItems="center"
-              cursor={isExporting ? "default" : "pointer"}
-              opacity={isExporting ? 0.6 : 1}
-              onPress={isExporting ? undefined : handleExportData}
-              role="button"
-              aria-label="Scarica i miei dati"
-            >
-              <Download size={15} strokeWidth={1.5} color={brand.grafite70} />
-              <Text color={brand.grafite70} fontWeight="600">
-                {isExporting ? "Preparo il file..." : "Scarica"}
-              </Text>
+            <XStack gap="4" flexWrap="wrap">
+              {(
+                [
+                  { format: "pdf", label: "PDF", aria: "Scarica i miei dati in PDF" },
+                  { format: "json", label: "File JSON", aria: "Scarica i miei dati come file JSON" },
+                ] as const
+              ).map((option) => (
+                <XStack
+                  key={option.format}
+                  gap="1"
+                  alignItems="center"
+                  minHeight={44}
+                  cursor={isExporting ? "default" : "pointer"}
+                  opacity={isExporting && isExporting !== option.format ? 0.6 : 1}
+                  onPress={isExporting ? undefined : () => handleExportData(option.format)}
+                  role="button"
+                  aria-label={option.aria}
+                  aria-disabled={Boolean(isExporting)}
+                >
+                  <Download size={15} strokeWidth={1.5} color={brand.grafite70} />
+                  <Text color={brand.grafite70} fontWeight="600">
+                    {isExporting === option.format ? "Preparo il file..." : option.label}
+                  </Text>
+                </XStack>
+              ))}
             </XStack>
           </XStack>
           {exportError ? (

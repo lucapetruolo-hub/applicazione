@@ -31,7 +31,9 @@ export function EmptySearchResults({
   const href = query ? `/preventivo?${query}` : "/preventivo";
 
   return (
-    <YStack gap="3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4" padding="4">
+    // `empty-search-results`: con questo riquadro "Richiedi preventivo" in alto
+    // non compare, farebbe la stessa cosa di "Invia la richiesta" (globals.css).
+    <YStack className="empty-search-results" gap="3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4" padding="4">
       <XStack alignItems="center" gap="3">
         {icon}
         <YStack gap="1" flex={1} minWidth={0}>

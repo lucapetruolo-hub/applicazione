@@ -31,6 +31,7 @@ import {
   type ProfessionalDetail,
   type ProfessionalInsights,
   type ProfessionalLead,
+  ownClientRequest,
   type ProfessionalSearchResult,
   type ProfessionalServiceItem,
   type ServicePriceUnit,
@@ -1224,7 +1225,7 @@ export class ProfessionalsService {
    * un account di prova che guarda, né il profilo di un account di prova
    * (docs/CHANGELOG.md §395).
    */
-  async recordProfileView(professionalProfileId: string, viewerUserId: string | null): Promise<void> {
+  async recordProfileView(professionalProfileId: string, viewerUserId: string | null, fromLink = false): Promise<void> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
       select: { userId: true, deletedAt: true, suspendedAt: true, isDemo: true, user: { select: { testAccountAt: true } } },
@@ -1239,8 +1240,8 @@ export class ProfessionalsService {
     day.setUTCHours(0, 0, 0, 0);
     await this.prisma.profileViewDay.upsert({
       where: { professionalProfileId_day: { professionalProfileId, day } },
-      create: { professionalProfileId, day, count: 1 },
-      update: { count: { increment: 1 } },
+      create: { professionalProfileId, day, count: 1, linkCount: fromLink ? 1 : 0 },
+      update: { count: { increment: 1 }, ...(fromLink ? { linkCount: { increment: 1 } } : {}) },
     });
   }
 
@@ -1529,6 +1530,9 @@ export class ProfessionalsService {
           // deve vedere subito per quale orario è stata richiesta.
           preferredDate: lead.guidedRequest.preferredDate?.toISOString().slice(0, 10) ?? null,
           preferredTimeSlot: lead.guidedRequest.preferredTimeSlot,
+          // Cliente arrivato dal tuo link personale: non conta nei lavori
+          // (docs/changelog/2026-11-08-canale-del-professionista.md).
+          fromProfessionalLink: ownClientRequest(lead.guidedRequest, professionalProfileId),
           // Eliminata (o annullata prima del §343) dal cliente: "Ritirata dal cliente", non "Scaduta".
           withdrawnByClient:
             lead.guidedRequest.closedReason === "CANCELED_BY_CLIENT"
