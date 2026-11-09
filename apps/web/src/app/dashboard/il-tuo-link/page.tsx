@@ -3,7 +3,17 @@
 import { Suspense, useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { BRAND, personalInviteMessage, personalLinkButtonHtml, type MyPersonalLink } from "@professionisti/shared";
+import {
+  BRAND,
+  colleagueInviteMessage,
+  inviteLinkPath,
+  personalInviteMessage,
+  personalLinkBadgeHtml,
+  personalLinkBadgeLabel,
+  personalLinkBadgePath,
+  personalLinkButtonHtml,
+  type MyPersonalLink,
+} from "@professionisti/shared";
 import { Button, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -76,7 +86,7 @@ function PersonalLinkContent() {
   const searchParams = useSearchParams();
   const [link, setLink] = useState<MyPersonalLink | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState<"link" | "message" | "code" | null>(null);
+  const [copied, setCopied] = useState<"link" | "message" | "code" | "badge" | "colleague" | null>(null);
   const [canShare, setCanShare] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   // Da "Invita questo cliente" di un lavoro aggiunto da te: il nome è già scritto.
@@ -105,9 +115,15 @@ function PersonalLinkContent() {
     [editedMessage, link, clientName, url],
   );
   const buttonHtml = url ? personalLinkButtonHtml(url) : "";
+  // Bollino con le stelle e "Porta un collega" (docs/changelog/2026-11-09-passaparola.md).
+  const badgeUrl = link ? `${SITE_URL}${personalLinkBadgePath(link.code)}` : "";
+  const badgeAlt = link ? personalLinkBadgeLabel({ rating: link.rating, reviewCount: link.reviewCount, siteName: BRAND.name }) : "";
+  const badgeHtml = link ? personalLinkBadgeHtml(url, badgeUrl, badgeAlt) : "";
+  const colleagueUrl = link ? `${SITE_URL}${inviteLinkPath(link.code)}` : "";
+  const colleagueMessage = link ? colleagueInviteMessage({ businessName: link.businessName, siteName: BRAND.name, url: colleagueUrl }) : "";
   const qrSrc = link ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(link.qrSvg)}` : "";
 
-  async function copy(text: string, what: "link" | "message" | "code") {
+  async function copy(text: string, what: "link" | "message" | "code" | "badge" | "colleague") {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(what);
@@ -217,9 +233,14 @@ function PersonalLinkContent() {
                 ) : null}
               </XStack>
               <Text fontSize={14} color={brand.grafite70}>
+                {link.opensThisPeriod > 0
+                  ? `In questo periodo ${link.opensThisPeriod === 1 ? "una persona ha" : `${link.opensThisPeriod} persone hanno`} aperto il tuo link. `
+                  : ""}
                 {link.requestsThisPeriod === 0 && link.jobsThisPeriod === 0
-                  ? "Ancora nessuna richiesta dal tuo link in questo periodo."
-                  : `In questo periodo: ${plural(link.requestsThisPeriod, "richiesta", "richieste")} e ${plural(link.jobsThisPeriod, "lavoro preso", "lavori presi")} dal tuo link, che non contano nel tuo abbonamento.`}
+                  ? link.opensThisPeriod > 0
+                    ? "Ancora nessuna richiesta da lì."
+                    : "Ancora nessuna richiesta dal tuo link in questo periodo."
+                  : `${link.opensThisPeriod > 0 ? "Da lì" : "In questo periodo"}: ${plural(link.requestsThisPeriod, "richiesta", "richieste")} e ${plural(link.jobsThisPeriod, "lavoro preso", "lavori presi")}, che non contano nel tuo abbonamento.`}
               </Text>
             </Surface>
 
@@ -341,6 +362,77 @@ function PersonalLinkContent() {
               <Button alignSelf="flex-start" variant="secondary" onPress={() => void copy(buttonHtml, "code")}>
                 {copied === "code" ? "Codice copiato" : "Copia il codice"}
               </Button>
+            </Surface>
+
+            <Surface gap="3">
+              <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize={20} color={brand.grafite}>
+                Le tue stelle sul tuo sito
+              </Text>
+              <Text color={brand.grafite70}>
+                {link.reviewCount > 0
+                  ? "Un bollino con il tuo voto e il numero delle recensioni, sempre aggiornato. Chi lo tocca arriva al tuo profilo."
+                  : "Un bollino che si aggiorna da solo: oggi invita a chiederti un preventivo, con le prime recensioni mostra il tuo voto."}
+              </Text>
+              <a href={url} target="_blank" rel="noopener" style={{ alignSelf: "flex-start", lineHeight: 0 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- lo stesso SVG che vedrà chi visita il sito del professionista */}
+                <img src={personalLinkBadgePath(link.code)} alt={badgeAlt} width={220} height={64} />
+              </a>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 14, color: brand.grafite70 }}>Codice del bollino</span>
+                <textarea
+                  readOnly
+                  style={{ ...fieldStyle, resize: "vertical", fontFamily: "ui-monospace, Menlo, Consolas, monospace", fontSize: 13, lineHeight: 1.45 }}
+                  rows={4}
+                  value={badgeHtml}
+                  onFocus={(event) => event.currentTarget.select()}
+                />
+              </label>
+              <Button alignSelf="flex-start" variant="secondary" onPress={() => void copy(badgeHtml, "badge")}>
+                {copied === "badge" ? "Codice copiato" : "Copia il codice"}
+              </Button>
+            </Surface>
+
+            <Surface gap="3">
+              <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize={20} color={brand.grafite}>
+                Porta un collega
+              </Text>
+              <Text color={brand.grafite70}>
+                Conosci un professionista bravo, anche di un altro mestiere? Mandagli il tuo invito: vede come funziona il sito e si iscrive da lì.
+              </Text>
+              <Text
+                fontSize={15}
+                color={brand.grafite}
+                backgroundColor={brand.gesso}
+                borderWidth={1}
+                borderColor={brand.filetto}
+                borderRadius={10}
+                paddingVertical="3"
+                paddingHorizontal="4"
+                style={{ overflowWrap: "anywhere" }}
+              >
+                {colleagueMessage}
+              </Text>
+              <XStack gap="2" flexWrap="wrap">
+                <a href={`https://wa.me/?text=${encodeURIComponent(colleagueMessage)}`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                  <Button tabIndex={-1} variant="primary" icon={<Icon name="message-circle" size={18} color="white" />}>
+                    Manda con WhatsApp
+                  </Button>
+                </a>
+                {canShare ? (
+                  <Button variant="secondary" icon={<Icon name="share-2" size={18} color={brand.grafite} />} onPress={() => void share(colleagueMessage)}>
+                    Altro
+                  </Button>
+                ) : (
+                  <Button variant="secondary" onPress={() => void copy(colleagueMessage, "colleague")}>
+                    {copied === "colleague" ? "Messaggio copiato" : "Copia il messaggio"}
+                  </Button>
+                )}
+              </XStack>
+              <Text fontSize={14} color={brand.grafite70}>
+                {link.colleaguesInvited === 0
+                  ? "Ancora nessun collega iscritto con il tuo invito."
+                  : `${link.colleaguesInvited === 1 ? "Un collega si è iscritto" : `${link.colleaguesInvited} colleghi si sono iscritti`} con il tuo invito. Grazie!`}
+              </Text>
             </Surface>
           </>
         ) : null}

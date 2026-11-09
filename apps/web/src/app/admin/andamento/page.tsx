@@ -26,13 +26,16 @@ import {
   SUBMIT_FORM_LABEL,
   TRAFFIC_SOURCE_LABELS,
   adminCan,
+  inviteLinkPath,
   ratioLabel,
+  type AdminInvitePartner,
   type AdminSiteStats,
   type GuideCellStatus,
   type SignupSourceKey,
 } from "@professionisti/shared";
 import { Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { SITE_URL } from "@/lib/siteUrl";
 import { useAuth } from "@/lib/AuthContext";
 import { chooseCountingDisabled, isCountingDisabled } from "@/lib/siteCounts";
 import {
@@ -198,6 +201,7 @@ export default function AdminAndamentoPage() {
           <UnknownJobsCard data={data} />
           <PopularServicesCard data={data} />
           <SourcesCard data={data} />
+          <PartnerLinksCard token={token} isSuper={isSuper} />
           <ChurnReasonsCard data={data} />
           <LaunchCard data={data} />
           <ReconciliationCard data={data} />
@@ -917,6 +921,8 @@ function PopularServicesCard({ data }: { data: AdminSiteStats }) {
 const SOURCE_LABEL: Record<SignupSourceKey, string> = {
   ...TRAFFIC_SOURCE_LABELS,
   INVITE: "Profilo creato al telefono",
+  COLLEAGUE: "Invitati da un collega",
+  PARTNER: "Dal link di un partner",
   unknown: "Non si sa",
 };
 
@@ -1141,6 +1147,116 @@ function NotesCard({
           {pending ? "Attendi..." : "Aggiungi la nota"}
         </button>
       </form>
+      {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+    </AdminCard>
+  );
+}
+
+/**
+ * Link dei partner (commercialisti, associazioni di artigiani,
+ * docs/changelog/2026-11-09-passaparola.md): uno per partner, con quanti
+ * professionisti si sono iscritti da lì. Nessuna commissione.
+ */
+function PartnerLinksCard({ token, isSuper }: { token: string | null; isSuper: boolean }) {
+  const [partners, setPartners] = useState<AdminInvitePartner[] | null>(null);
+  const [name, setName] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    if (!token) return;
+    apiClient
+      .adminInvitePartners(token)
+      .then(setPartners)
+      .catch((err) => setError(errorMessage(err)));
+  }, [token]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function add(event: FormEvent) {
+    event.preventDefault();
+    if (!token) return;
+    setPending(true);
+    setError(null);
+    try {
+      await apiClient.adminCreateInvitePartner(token, { name });
+      setName("");
+      load();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function archive(partner: AdminInvitePartner) {
+    if (!token || !window.confirm(`Togliere il link di «${partner.name}»? Chi lo apre non verrà più contato; gli iscritti di prima restano.`)) return;
+    try {
+      await apiClient.adminArchiveInvitePartner(token, partner.id);
+      load();
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  async function copy(partner: AdminInvitePartner) {
+    try {
+      await navigator.clipboard.writeText(`${SITE_URL}${inviteLinkPath(partner.code)}`);
+      setCopied(partner.id);
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      setError("Copia non riuscita: tieni premuto sul link per copiarlo.");
+    }
+  }
+
+  return (
+    <AdminCard>
+      <CardTitle
+        title="Link dei partner"
+        note="Un link per ogni commercialista o associazione che presenta il sito ai suoi artigiani: porta alla pagina per i professionisti e conta chi si iscrive da lì. Nessun compenso."
+      />
+      {partners === null && !error ? <Text color={brand.grafite70}>Caricamento...</Text> : null}
+      {partners && partners.length === 0 ? <Text color={brand.grafite70}>Nessun link creato.</Text> : null}
+      {partners && partners.length > 0 ? (
+        <ul className="site-notes">
+          {partners.map((partner) => (
+            <li key={partner.id}>
+              <span>
+                <strong>{partner.name}</strong> · {partner.signups === 1 ? "1 iscritto" : `${partner.signups} iscritti`}
+                <br />
+                <span style={{ overflowWrap: "anywhere", color: brand.grafite70 }}>{`${SITE_URL.replace(/^https?:\/\//, "")}${inviteLinkPath(partner.code)}`}</span>
+              </span>
+              <button type="button" className="notif-link" onClick={() => void copy(partner)}>
+                {copied === partner.id ? "Copiato" : "Copia"}
+              </button>
+              {isSuper ? (
+                <button type="button" className="notif-link site-note-delete" onClick={() => void archive(partner)} aria-label={`Togli il link di ${partner.name}`}>
+                  Togli
+                </button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {isSuper ? (
+        <form className="site-note-form" onSubmit={add}>
+          <input
+            className="admin-input"
+            aria-label="Nome del partner"
+            placeholder="Es. Studio Bianchi, commercialisti"
+            maxLength={80}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+          <button type="submit" className="admin-link-button" disabled={pending || name.trim().length < 2}>
+            {pending ? "Attendi..." : "Crea il link"}
+          </button>
+        </form>
+      ) : null}
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
     </AdminCard>
   );

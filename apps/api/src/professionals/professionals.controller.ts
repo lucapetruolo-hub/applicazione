@@ -279,6 +279,13 @@ export class ProfessionalsController {
     return this.personalLink.resolve(code);
   }
 
+  /** Chi ha mandato un invito "Porta un collega" o di un partner (docs/changelog/2026-11-09-passaparola.md). */
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Get("invite/:code")
+  resolveInvite(@Param("code") code: string) {
+    return this.personalLink.resolveInvite(code);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get("me/leads")
   getMyLeads(@Req() req: AuthenticatedRequest) {
@@ -369,7 +376,12 @@ export class ProfessionalsController {
    */
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post(":id/views")
-  async recordView(@Param("id") id: string, @Headers("authorization") authorization?: string, @Headers("user-agent") userAgent?: string) {
+  async recordView(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Headers("authorization") authorization?: string,
+    @Headers("user-agent") userAgent?: string,
+  ) {
     if (isBotUserAgent(userAgent)) return { ok: true };
     let viewerUserId: string | null = null;
     if (authorization?.startsWith("Bearer ")) {
@@ -379,7 +391,9 @@ export class ProfessionalsController {
         viewerUserId = null;
       }
     }
-    await this.professionalsService.recordProfileView(id, viewerUserId);
+    // Visita arrivata dal link personale /p/<codice> (docs/changelog/2026-11-09-passaparola.md).
+    const fromLink = typeof body === "object" && body !== null && (body as { fromLink?: unknown }).fromLink === true;
+    await this.professionalsService.recordProfileView(id, viewerUserId, fromLink);
     return { ok: true };
   }
 
