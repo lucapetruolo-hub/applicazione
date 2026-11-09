@@ -365,12 +365,31 @@ function LeMieRichiesteContent() {
 
   // Ritorno dal pagamento dell'acconto (docs/CHANGELOG.md §240): il lavoro
   // nasce quando arriva la conferma di Stripe, di solito pochi secondi dopo.
+  // Col preventivo nell'indirizzo si chiede subito a Stripe se è pagato
+  // (collaudo 08/11, E3-06): il lavoro nasce anche se il webhook non arriva.
   const depositPaid = searchParams.get("pagamento") === "completato";
+  const depositQuoteId = searchParams.get("preventivo");
   useEffect(() => {
     if (!depositPaid) return;
-    const timers = [3000, 8000].map((ms) => window.setTimeout(reload, ms));
-    return () => timers.forEach((t) => window.clearTimeout(t));
-  }, [depositPaid, reload]);
+    let active = true;
+    const check = () => {
+      if (!active) return;
+      if (token && depositQuoteId) {
+        apiClient
+          .verifyQuoteDeposit(token, depositQuoteId)
+          .catch(() => undefined)
+          .finally(() => active && reload());
+      } else {
+        reload();
+      }
+    };
+    check();
+    const timers = [3000, 8000].map((ms) => window.setTimeout(check, ms));
+    return () => {
+      active = false;
+      timers.forEach((t) => window.clearTimeout(t));
+    };
+  }, [depositPaid, depositQuoteId, token, reload]);
 
   // "Nuovo" su una card raggiunta solo tramite la propria Booking (un
   // aggiornamento sul lavoro, non sulla richiesta in sé) — tradotto nella

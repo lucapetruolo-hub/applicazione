@@ -14,6 +14,7 @@ import { UnreadDot } from "@/components/UnreadDot";
 import { ClientIssueStatus } from "./ClientIssueStatus";
 import { JobPaymentStatus } from "@/components/JobPaymentStatus";
 import { TimelineModal } from "@/components/TimelineModal";
+import { ConsentCheckbox } from "@/components/ConsentCheckbox";
 import { CardButton } from "@/components/CardButton";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
@@ -117,8 +118,8 @@ export function BookingSection({
     }
   }
 
-  async function handleSubmitReview(input: { rating: number; comment?: string; mediaUrls: string[] }) {
-    await apiClient.createReview(token, { bookingId: booking.id, rating: input.rating, comment: input.comment, photoUrls: input.mediaUrls });
+  async function handleSubmitReview(input: { rating: number; comment?: string; mediaUrls: string[]; showcase: boolean }) {
+    await apiClient.createReview(token, { bookingId: booking.id, rating: input.rating, comment: input.comment, photoUrls: input.mediaUrls, showcase: input.showcase });
     setShowReviewModal(false);
     onChanged();
   }
@@ -506,6 +507,10 @@ export function BookingSection({
                 Recensione inviata
               </Text>
             </XStack>
+            {/* "Lavori fatti": l'ok alle foto del professionista si dà o si toglie anche dopo (docs/changelog/2026-11-08-lavori-fatti.md). */}
+            {booking.myReview && booking.status === "COMPLETED" && booking.professionalCompletionPhotoUrls.length > 0 && !booking.professionalAccountDeleted ? (
+              <ShowcaseToggle token={token} reviewId={booking.myReview.id} initial={booking.myReview.showcase} professionalName={booking.businessName} />
+            ) : null}
             {/* Una volta sola, dopo una segnalazione a lavoro chiuso senza accordo (decisione di Luca del 30/10/2026). */}
             {booking.canUpdateReview ? (
               <YStack gap="1" alignItems="flex-start">
@@ -572,6 +577,7 @@ export function BookingSection({
           title="Recensisci il professionista"
           subtitle="Com'è andato il lavoro? Raccontalo ora, finché è fresco."
           uploadPhoto={(file) => apiClient.uploadReviewPhoto(token, file).then((r) => r.imageUrl)}
+          showcase={booking.professionalCompletionPhotoUrls.length > 0 ? { photoUrls: booking.professionalCompletionPhotoUrls, professionalName: booking.businessName } : undefined}
           onSubmit={handleSubmitReview}
           onClose={closeReviewModal}
         />
@@ -591,6 +597,45 @@ export function BookingSection({
 
       {showTimeline && booking.guidedRequestId ? (
         <TimelineModal token={token} guidedRequestId={booking.guidedRequestId} professionalProfileId={booking.professionalProfileId} viewerRole="CLIENT" otherPartyName={booking.businessName} otherPartyImageUrl={booking.professionalImageUrl} onClose={() => setShowTimeline(false)} />
+      ) : null}
+    </YStack>
+  );
+}
+
+/**
+ * Casella "Mostra le foto del lavoro nel profilo di …" sotto "Recensione
+ * inviata": salva al tocco, torna com'era se il server non risponde.
+ */
+function ShowcaseToggle({ token, reviewId, initial, professionalName }: { token: string; reviewId: string; initial: boolean; professionalName: string }) {
+  const [checked, setChecked] = useState(initial);
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function toggle() {
+    if (isSaving) return;
+    const next = !checked;
+    setChecked(next);
+    setError(null);
+    setIsSaving(true);
+    try {
+      await apiClient.setReviewShowcase(token, reviewId, next);
+    } catch (err) {
+      setChecked(!next);
+      setError(err instanceof Error ? err.message : "Non siamo riusciti a salvare, riprova.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <YStack className="review-showcase-toggle" gap="1">
+      <ConsentCheckbox checked={checked} onToggle={toggle}>
+        Mostra le foto del lavoro nel profilo di {professionalName}, senza il tuo nome.
+      </ConsentCheckbox>
+      {error ? (
+        <Text color={brand.urgenza} fontSize={13}>
+          {error}
+        </Text>
       ) : null}
     </YStack>
   );

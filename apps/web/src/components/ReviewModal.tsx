@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { X } from "lucide-react";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { ConsentCheckbox } from "@/components/ConsentCheckbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
@@ -33,15 +34,22 @@ export function ReviewModal({
   onSubmit,
   onClose,
   initial,
+  showcase,
   submitLabel = "Invia recensione",
 }: {
   title: string;
   subtitle: string;
   /** Recensione da aggiornare (una volta, dopo una segnalazione a lavoro chiuso): parte dai valori di prima. */
   initial?: { rating: number; comment: string | null; mediaUrls: string[] };
+  /**
+   * "Lavori fatti" (docs/changelog/2026-11-08-lavori-fatti.md): foto di fine
+   * lavoro del professionista, che il cliente può far vedere sul suo profilo.
+   * Casella spenta di serie: le foto sono di casa sua.
+   */
+  showcase?: { photoUrls: string[]; professionalName: string };
   submitLabel?: string;
   uploadPhoto: (file: File) => Promise<string>;
-  onSubmit: (input: { rating: number; comment?: string; mediaUrls: string[] }) => Promise<void>;
+  onSubmit: (input: { rating: number; comment?: string; mediaUrls: string[]; showcase: boolean }) => Promise<void>;
   onClose: () => void;
 }) {
   const [rating, setRating] = useState(initial?.rating ?? 5);
@@ -51,6 +59,7 @@ export function ReviewModal({
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showcaseChecked, setShowcaseChecked] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -86,7 +95,7 @@ export function ReviewModal({
     setError(null);
     setIsSubmitting(true);
     try {
-      await onSubmit({ rating, comment: comment.trim() || undefined, mediaUrls });
+      await onSubmit({ rating, comment: comment.trim() || undefined, mediaUrls, showcase: showcase !== undefined && showcaseChecked });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -206,6 +215,21 @@ export function ReviewModal({
             </Text>
           ) : null}
         </YStack>
+
+        {showcase && showcase.photoUrls.length > 0 ? (
+          <YStack className="review-showcase" gap="2" paddingTop="3" borderTopWidth={1} borderTopColor={brand.filetto}>
+            <XStack gap="2" flexWrap="wrap">
+              {showcase.photoUrls.slice(0, 4).map((url) => (
+                <YStack key={url} width={48} height={48} borderRadius="2" overflow="hidden" borderWidth={1} borderColor={brand.filetto}>
+                  <MediaPreview url={url} />
+                </YStack>
+              ))}
+            </XStack>
+            <ConsentCheckbox checked={showcaseChecked} onToggle={() => setShowcaseChecked((v) => !v)}>
+              Mostra le foto del lavoro nel profilo di {showcase.professionalName}. Senza il tuo nome né l&apos;indirizzo, le togli quando vuoi.
+            </ConsentCheckbox>
+          </YStack>
+        ) : null}
 
         {error ? (
           <Text color={brand.urgenza} fontSize={16}>

@@ -427,6 +427,13 @@ export type ProfessionalDetail = ProfessionalSearchResult & {
   acceptingRequests: boolean;
   /** In pausa per scelta sua (collaudo C-16): da questo giorno torna a ricevere richieste. */
   awayUntil?: string | null;
+  /**
+   * "Lavori fatti" (docs/changelog/2026-11-08-lavori-fatti.md): foto di fine
+   * lavoro del professionista, mostrate solo con l'ok del cliente dato
+   * recensendo. Mai il nome del cliente né l'indirizzo: la prestazione
+   * scritta nel preventivo, la città, il mese e le stelle della recensione.
+   */
+  finishedJobs?: { id: string; photoUrls: string[]; label: string; city: string | null; doneAt: string; rating: number }[];
 };
 
 export const PLACEHOLDER_PROFESSIONALS: PlaceholderProfessional[] = [
