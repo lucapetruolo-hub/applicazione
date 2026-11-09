@@ -1,5 +1,4 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
   agendaWeekTemplateSchema,
@@ -26,6 +25,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { AGENDA_BOOKING_STATUSES, touchingWindow } from "./commitments";
 import { comuneInAddress } from "./day-route.service";
 import { WeatherService } from "./weather.service";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const ZONE_DEMAND_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -230,7 +230,7 @@ export class AgendaService {
   }
 
   /** Ogni notte la settimana tipo riempie i giorni che entrano nei prossimi 63. */
-  @Cron("30 2 * * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("30 2 * * *", { timeZone: "Europe/Rome" })
   async extendWeekTemplates(): Promise<void> {
     const profiles = await this.prisma.professionalProfile.findMany({
       where: { agendaTemplateFilledUntil: { not: null }, deletedAt: null },

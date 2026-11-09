@@ -4,6 +4,7 @@
  */
 import {
   DEFAULT_FREE_MONTHS,
+  PAST_DUE_VISIBLE_DAYS,
   SUBSCRIPTION_TIERS,
   TRIAL_DAYS,
   freeMonthUpgradeEurCents,
@@ -73,6 +74,7 @@ export type SubscriptionRow = {
   currentPeriodEnd?: Date | null;
   founderNumber?: number | null;
   freeMonthsGranted?: number | null;
+  pastDueSince?: Date | null;
 };
 
 export function subscriptionState(row: SubscriptionRow | null, now: Date): MySubscription["state"] {
@@ -105,8 +107,10 @@ export function monthlyLimit(row: SubscriptionRow | null, now: Date): number | n
 /**
  * Perché l'account è in pausa (fuori dalla ricerca, niente nuove richieste),
  * o null se è operativo: prova finita senza livello o abbonamento concluso
- * (docs/CHANGELOG.md §162). Un pagamento non riuscito non mette in pausa:
- * Stripe riprova per qualche giorno e, se non va, chiude l'abbonamento.
+ * (docs/CHANGELOG.md §162). Rinnovo non pagato: un giorno di tolleranza,
+ * poi pausa finché il pagamento non passa (decisione di Luca del 9/11/2026,
+ * docs/changelog/2026-11-08-abbonamento-chiusure-e-rinnovi.md); dopo 14
+ * giorni l'abbonamento si chiude (`BillingService.runSubscriptionSafetyChecks`).
  * I lavori esauriti non mettono più in pausa (decisione dell'utente,
  * docs/CHANGELOG.md §362): vedi `jobLimitReached`.
  */
@@ -118,6 +122,9 @@ export function pauseReason(row: SubscriptionRow | null, now: Date): PauseReason
   // diventa un abbonamento Base di Stripe con i giorni gratis davanti.
   if (state === "TRIAL") return "CARD_NEEDED";
   if (state === "CANCELED") return "SUBSCRIPTION_ENDED";
+  if (state === "PAST_DUE" && row?.pastDueSince && now.getTime() - row.pastDueSince.getTime() >= PAST_DUE_VISIBLE_DAYS * 24 * 60 * 60 * 1000) {
+    return "PAYMENT_FAILED";
+  }
   return null;
 }
 

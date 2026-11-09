@@ -6,6 +6,7 @@ import { Button, ButtonArrow, Text, XStack, YStack, brand } from "@professionist
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
+import { BankConfirmStep } from "@/components/BankConfirmStep";
 import { nextTierOf, upgradeQuoteOf } from "@/components/SubscriptionPauseBanner";
 import { PAYMENT_PAGE_LABEL, startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
 
@@ -38,6 +39,7 @@ export function JobLimitModal({
   const dialogRef = useRef<HTMLDivElement>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bankConfirmUrl, setBankConfirmUrl] = useState<string | null>(null);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -61,12 +63,18 @@ export function JobLimitModal({
     setPending(true);
     startExternalRedirectProgress(PAYMENT_PAGE_LABEL);
     try {
-      const { url } = await apiClient.createSubscriptionCheckout(token, next, interval);
+      const { url, bankConfirmUrl: confirmUrl } = await apiClient.createSubscriptionCheckout(token, next, interval);
       if (url) {
         window.location.assign(url);
         return;
       }
       stopProgress();
+      if (confirmUrl) {
+        // La banca chiede la conferma: la pagina di Stripe in una scheda nuova, qui si aspetta il livello.
+        setBankConfirmUrl(confirmUrl);
+        setPending(false);
+        return;
+      }
       onUpgraded();
     } catch (err) {
       stopProgress();
@@ -136,7 +144,9 @@ export function JobLimitModal({
           {!sub.checkoutAvailable ? <Text color={brand.grafite70}>I pagamenti online non sono ancora attivi su questo ambiente.</Text> : null}
 
           <YStack gap="2">
-            {nextInfo && sub.checkoutAvailable ? (
+            {bankConfirmUrl && next && token ? (
+              <BankConfirmStep url={bankConfirmUrl} tier={next} token={token} onDone={onUpgraded} />
+            ) : nextInfo && sub.checkoutAvailable ? (
               <Button variant="acquisto" disabled={pending} opacity={pending ? 0.6 : 1} onPress={upgrade}>
                 <XStack alignItems="center" gap="2">
                   <Text color="white" fontFamily="body" fontWeight="600">

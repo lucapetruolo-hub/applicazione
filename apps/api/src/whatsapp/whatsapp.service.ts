@@ -6,7 +6,7 @@ import {
   Optional,
   UnauthorizedException,
 } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import { createHash, randomInt, timingSafeEqual } from "node:crypto";
 import {
   Prisma,
@@ -64,6 +64,7 @@ import {
   wallClockToInstant,
   whatsappNumber,
 } from "./whatsapp-rules";
+import { ScheduledJob } from "../common/scheduled-job";
 
 export const PHONE_CODE_VALID_MINUTES = 10;
 export const PHONE_CODE_MAX_ATTEMPTS = 5;
@@ -365,7 +366,7 @@ export class WhatsAppService {
   }
 
   /** Ogni 5 minuti i messaggi in attesa arrivati alla loro ora (ore di silenzio finite, nuovo tentativo). */
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @ScheduledJob(CronExpression.EVERY_5_MINUTES)
   async dispatchDue(now: Date = new Date()): Promise<number> {
     if (!this.provider) return 0;
     const due = await this.prisma.outboundMessage.findMany({
@@ -449,7 +450,7 @@ export class WhatsAppService {
    * (`depositReminderTimes`). Con un preavviso di 48 o 72 ore parte anche
    * quello del giorno prima; con 24 ore lo sostituisce.
    */
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  @ScheduledJob(CronExpression.EVERY_30_MINUTES)
   async depositReminders(now: Date = new Date()): Promise<number> {
     if (!this.provider) return 0;
     const wall = wallClockNow(now);
@@ -535,7 +536,7 @@ export class WhatsAppService {
    * la chiave per persona e giorno evita i doppioni. Le email restano una per
    * appuntamento.
    */
-  @Cron("0,30 18-21 * * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0,30 18-21 * * *", { timeZone: "Europe/Rome" })
   async professionalDayReminders(now: Date = new Date()): Promise<number> {
     if (!this.provider) return 0;
     // scheduledAt è l'ora italiana scritta in UTC (§287): domani da mezzanotte a mezzanotte.

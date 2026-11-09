@@ -1,6 +1,5 @@
 import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
-import type { Invoice, PrismaClient } from "@professionisti/database";
+import { Prisma, type Invoice, type PrismaClient } from "@professionisti/database";
 import {
   INVOICE_SOURCE_LABEL,
   accountingMonthLabel,
@@ -34,6 +33,7 @@ import { renderDocumentPdf } from "./document-pdf";
 import { courtesyYearPdfModel, invoicePdfModel, pdfFileName, statementPdfModel } from "./document-pdf-models";
 import { CourtesyCopyService } from "./courtesy-copy.service";
 import { professionalFiscalName } from "./invoice-documents";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const BOOKING_SELECT = {
   scheduledAt: true,
@@ -385,9 +385,18 @@ export class StatementsService {
    * anche il riepilogo dell'anno prima dei documenti dati ai clienti (§390),
    * pure senza movimenti a dicembre.
    */
-  @Cron("0 8 1 * *", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 8 1 * *", { timeZone: "Europe/Rome" })
   async sendAccountantStatements(now: Date = new Date()): Promise<number> {
-    const month = previousMonth(romeMonthOf(now));
+    return this.sendAccountantStatementsFor(previousMonth(romeMonthOf(now)), now);
+  }
+
+  /**
+   * Estratti di un mese ai commercialisti: dal giro del 1° o dal pulsante di
+   * Admin → Finanza se il giro è saltato. Mai due volte per lo stesso mese e
+   * professionista (`accountant_statement_sends`, segnata prima di mandare e
+   * tolta se l'invio non riesce, così si può riprovare).
+   */
+  async sendAccountantStatementsFor(month: string, now: Date = new Date()): Promise<number> {
     const closedYear = month.endsWith("-12") ? Number(month.slice(0, 4)) : null;
     const recipients = await this.prisma.professionalFiscalProfile.findMany({
       where: { accountantStatementsAt: { not: null }, accountantEmail: { not: null }, professionalProfile: { user: { deletedAt: null } } },
@@ -401,7 +410,11 @@ export class StatementsService {
       },
     });
     let sent = 0;
+    const already = new Set(
+      (await this.prisma.accountantStatementSend.findMany({ where: { month }, select: { professionalProfileId: true } })).map((row) => row.professionalProfileId),
+    );
     for (const r of recipients) {
+      if (already.has(r.professionalProfileId)) continue;
       try {
         const { statement, csvRows, movements, invoices } = await this.build(r.professionalProfileId, month);
         const yearly = closedYear !== null ? await this.courtesyCopyService.yearSummaryForProfile(r.professionalProfileId, closedYear) : null;
@@ -430,13 +443,30 @@ export class StatementsService {
             { filename: `documenti-clienti-${withYearly.year}.csv`, content: courtesyYearCsv(withYearly), contentType: "text/csv; charset=utf-8" },
           );
         }
+        if (!(await this.claimStatementSend(r.professionalProfileId, month))) continue;
         const ok = await this.emailService.send({ to: r.accountantEmail!, subject: email.subject, html: email.html, text: email.text, attachments });
         if (ok) sent += 1;
+        else await this.releaseStatementSend(r.professionalProfileId, month);
       } catch (err) {
         this.logger.error(`Estratto di ${month} non mandato al commercialista (${r.professionalProfileId}): ${err instanceof Error ? err.message : String(err)}`);
       }
     }
     return sent;
+  }
+
+  /** `false` se l'estratto di quel mese è già partito (o sta partendo) per questo professionista. */
+  private async claimStatementSend(professionalProfileId: string, month: string): Promise<boolean> {
+    try {
+      await this.prisma.accountantStatementSend.create({ data: { professionalProfileId, month } });
+      return true;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return false;
+      throw error;
+    }
+  }
+
+  private async releaseStatementSend(professionalProfileId: string, month: string): Promise<void> {
+    await this.prisma.accountantStatementSend.deleteMany({ where: { professionalProfileId, month } });
   }
 }
 

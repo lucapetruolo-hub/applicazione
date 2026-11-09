@@ -1,10 +1,11 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import { BAD_WORK_REPORT_DAYS } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { TimelineService } from "../timeline/timeline.service";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -34,7 +35,7 @@ export class CompletionDeadlineService {
     private readonly timelineService: TimelineService,
   ) {}
 
-  @Cron(CronExpression.EVERY_HOUR)
+  @ScheduledJob(CronExpression.EVERY_HOUR)
   async run(now: Date = new Date()): Promise<void> {
     await this.clientSilent(now);
     await this.professionalSilent(now);

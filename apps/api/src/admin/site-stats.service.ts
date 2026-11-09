@@ -1,6 +1,5 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { loadNotificationOptOuts } from "../notifications/opt-outs";
-import { Cron } from "@nestjs/schedule";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
   CHURN_KINDS,
@@ -62,6 +61,7 @@ import {
   type SiteServiceRow,
   type StalledProfessional,
 } from "./site-stats";
+import { ScheduledJob } from "../common/scheduled-job";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Giorni del confronto tra richieste contate dal browser e richieste salvate. */
@@ -477,7 +477,7 @@ export class SiteStatsService {
    * non c'è niente da fare. Prende il posto dell'avviso sulle ricerche senza
    * professionisti (§371), che ora è uno dei consigli.
    */
-  @Cron("0 9 * * 1", { timeZone: "Europe/Rome" })
+  @ScheduledJob("0 9 * * 1", { timeZone: "Europe/Rome" })
   async weeklyAdvice(now: Date = new Date()): Promise<AdminSiteStats["advice"] | null> {
     if (!hasLaunched(now, launchDate())) return null;
     const { advice } = await this.getStats(now);

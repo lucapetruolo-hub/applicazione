@@ -49,6 +49,8 @@ const publicRoutes = [
   "GET /general-requests/availability",
   "GET /guided-requests/reach",
   "GET /health",
+  // Il database risponde? Per l'uptime (docs/changelog/2026-11-08-infrastruttura-lancio.md).
+  "GET /health/db",
   "GET /health/features",
   // Verifica del legale rappresentante di una società: link firmato, senza accedere (docs/changelog/2026-11-02-iscrizione-verifica-professionisti.md).
   "GET /identity-verification/representative/:token",

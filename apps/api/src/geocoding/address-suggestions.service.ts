@@ -27,10 +27,17 @@ type GoogleTextSearchResponse = {
 };
 
 const TIMEOUT_MS = 5000;
-/** Tetti giornalieri (§293): ben sopra l'uso normale di oggi, sotto una bolletta a sorpresa. */
-const SUGGESTIONS_DAILY_LIMIT = 5000;
-const PLACES_DAILY_LIMIT = 2000;
-const POSTAL_CODE_DAILY_LIMIT = 2000;
+/**
+ * Tetti giornalieri (§293): sopra l'uso normale di una città, sotto una
+ * bolletta a sorpresa. Abbassati l'08/11/2026 vicino alla quota gratuita di
+ * Google, circa 10.000 chiamate al mese per tipo
+ * (docs/changelog/2026-11-08-infrastruttura-lancio.md): a un abuso da tanti
+ * IP la bolletta resta di poche decine di euro. GOOGLE_PUBLIC_DAILY_LIMIT su
+ * Render li cambia tutti insieme.
+ */
+const SUGGESTIONS_DAILY_LIMIT = 1000;
+const PLACES_DAILY_LIMIT = 500;
+const POSTAL_CODE_DAILY_LIMIT = 500;
 /**
  * Dopo un errore di Google, per qualche minuto il sito apre il modulo già con
  * i campi separati (§324): meglio che vederlo cambiare mentre si scrive.
