@@ -1,5 +1,6 @@
 import { z } from "zod";
 import "./zod";
+import { EMAIL_CODE_LENGTH } from "./emailCode";
 import { TRAFFIC_SOURCES } from "./trafficSources";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
 import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
@@ -267,11 +268,7 @@ export const verifyEmailSchema = z.object({
 });
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 
-/**
- * Codice di 6 cifre arrivato con l'email di conferma (docs/CHANGELOG.md
- * §243): spazi e trattini incollati insieme al codice vengono ignorati.
- */
-export const EMAIL_CODE_LENGTH = 6;
+/** Codice dell'email di conferma: spazi e trattini incollati insieme al codice vengono ignorati. */
 export const verifyEmailCodeSchema = z.object({
   code: z
     .string()
