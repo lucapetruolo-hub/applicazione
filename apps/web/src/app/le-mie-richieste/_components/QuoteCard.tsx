@@ -38,7 +38,7 @@ import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { textareaStyle } from "./clientRequestHelpers";
 import { QuoteDateChooser } from "./QuoteDateChooser";
 import { QuoteAcceptSummary } from "./QuoteAcceptSummary";
-import { InvoiceRequestFields, InvoiceRequestToggle, emptyInvoiceDraft, invoiceDraftFromView, parseInvoiceDraft, type InvoiceDraft } from "@/components/ClientInvoiceRequestForm";
+import { InvoiceRequestFields, InvoiceRequestToggle, emptyInvoiceDraft, invoiceDraftFromView, type InvoiceDraft } from "@/components/ClientInvoiceRequestForm";
 
 export function formatQuoteDate(iso: string): string {
   const date = new Date(iso);
@@ -196,6 +196,7 @@ export function QuoteCard({
     }
     let invoiceRequest: ClientInvoiceRequestInput | undefined;
     if (invoiceWanted) {
+      const { parseInvoiceDraft } = await import("@/components/clientInvoiceDraftParse");
       const parsed = parseInvoiceDraft(invoiceDraft, quote.professionalKind === "PRIVATE");
       if (!parsed.ok) {
         setInvoiceErrors(parsed.errors);
