@@ -149,7 +149,7 @@ export class GuidedRequestUserStateService {
    * sopra: mai due avvisi. Se nel frattempo il professionista ha chiuso
    * l'account o il cliente ha eliminato il suo, non parte nulla.
    */
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  @ScheduledJob(CronExpression.EVERY_30_MINUTES)
   async runDueRebookReminders(): Promise<void> {
     const due = await this.prisma.guidedRequestUserState.findMany({
       where: { rebookRemindAt: { lte: new Date() } },
