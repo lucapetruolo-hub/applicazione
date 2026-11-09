@@ -140,4 +140,9 @@ export function zod3Message(issue: Issue): string | undefined {
   }
 }
 
-z.config({ customError: zod3Message });
+// Nel browser zod senza `new Function` (controllo pre-lancio dell'08/11, E2-03):
+// la CSP del sito non permette più `eval`; zod se ne accorgerebbe da solo, ma
+// il suo tentativo finirebbe tra gli errori di sicurezza della console.
+// Stesse validazioni, solo un po' più lente su schemi enormi che il sito non
+// ha. L'API tiene la versione veloce.
+z.config({ customError: zod3Message, ...("window" in globalThis ? { jitless: true } : {}) });

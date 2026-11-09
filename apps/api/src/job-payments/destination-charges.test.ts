@@ -156,7 +156,7 @@ describe("OnlineMoneyService.recordCheckoutPayment", () => {
     await service.recordCheckoutPayment("jp-1", "deposit", { payment_intent: "pi_dep", amount_total: 10000 } as never, { notify: false });
 
     expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ stripeDestinationAccountId: "acct_1", applicationFeeEurCents: 854, cardFeeEurCents: { increment: 175 } }) }),
+      expect.objectContaining({ data: expect.objectContaining({ stripeDestinationAccountId: "acct_1", applicationFeeEurCents: { increment: 854 }, cardFeeEurCents: { increment: 175 } }) }),
     );
     // La trattenuta è già quella definitiva: niente conguaglio.
     expect(stripe.applicationFees.createRefund).not.toHaveBeenCalled();
@@ -538,7 +538,7 @@ describe("saldo addebitato sulla carta dell'acconto (§267)", () => {
       expect.objectContaining({ amount: 8000, customer: "cus_1", payment_method: "pm_1", off_session: true, confirm: true, transfer_data: { destination: "acct_1" } }),
       { idempotencyKey: "job-auto-balance-jp-1-2000-8000" },
     );
-    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ balancePaymentIntentId: "pi_bal", paidEurCents: 10000 }) }));
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ balancePaymentIntentId: "pi_bal", paidEurCents: { increment: 8000 } }) }));
     expect(notificationsService.notify).toHaveBeenCalledWith("client-1", "JOB_BALANCE_AUTO_CHARGED", expect.objectContaining({ amountEurCents: 8000 }));
   });
 

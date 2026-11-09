@@ -206,6 +206,7 @@ notification("JOB_REFUND_COMPLETED", "Cliente", "Pagamenti dei lavori", { amount
 notification("JOB_REFUND_WAITING_FUNDS", "Professionista", "Pagamenti dei lavori", { amountEurCents: 3600 });
 notification("ADMIN_JOB_REFUND_FAILED", "Admin", "Pagamenti dei lavori", { amountEurCents: 3600 });
 notification("ADMIN_JOB_REFUND_OUTSIDE", "Admin", "Pagamenti dei lavori", { amountEurCents: 3600, afterRelease: false });
+notification("ADMIN_SUBSCRIPTION_DUPLICATE", "Admin", "Abbonamenti", { amountEurCents: 2318, stripeSubscriptionId: "sub_123" });
 notification("ADMIN_STRIPE_UNKNOWN_PAYMENT", "Admin", "Pagamenti dei lavori", { amountEurCents: 3600, paymentIntentId: "pi_123", stripeAccount: "acct_123" });
 notification("ONLINE_LIMIT_LIFTED", "Professionista", "Pagamenti dei lavori");
 notification("ADMIN_STRIPE_ACCOUNT_UNREADABLE", "Admin", "Pagamenti dei lavori", { stripeAccountId: "acct_123", businessName: "Idraulica Rossi", error: "Permission denied" });

@@ -8,6 +8,10 @@
 # scade). Il vecchio professionisti-api in Oregon, con il database gratuito
 # scaduto il 05/11, è da sospendere.
 #
+# Tutte le variabili lette dall'API stanno qui sotto (anche quelle facoltative,
+# con sync: false), così un servizio ricreato dal Blueprint le propone tutte.
+# Una variabile nuova nel codice va aggiunta anche qui e in docs/ops/variabili.md.
+#
 # Il database NON è dichiarato qui (docs/CHANGELOG.md §229): DATABASE_URL si
 # imposta a mano dalla dashboard (Internal Database URL del database in uso),
 # così una sincronizzazione del Blueprint non può mai collegare l'API a un
@@ -149,5 +153,71 @@ services:
       # senza il quale gli errori restano solo nei log di Render.
       - key: SENTRY_DSN
         sync: false
+      # Indirizzo del sito: CORS (apps/api/src/app-setup.ts), link nelle email
+      # e ritorni da Stripe. AL CAMBIO DI DOMINIO va cambiato qui e su Render
+      # insieme agli altri posti di docs/ops/cambio-dominio.md: se resta il
+      # vecchio, dal dominio nuovo nessuna chiamata all'API passa.
       - key: FRONTEND_URL
         value: https://applicazione-web.vercel.app
+
+      # --- Variabili lette dal codice che prima mancavano qui ------------------
+      # (docs/changelog/2026-11-08-infrastruttura-lancio.md, controllo E9-03):
+      # un servizio ricreato dal Blueprint le "dimenticava" senza avvisi.
+      # Elenco completo con cosa succede se mancano: docs/ops/variabili.md.
+
+      # Chiave dei dati fiscali (IBAN, codici fiscali, impronte email:
+      # apps/api/src/common/fiscal-crypto.ts). OBBLIGATORIA: senza, l'API cifra
+      # con una chiave presa da JWT_SECRET, e cambiando JWT_SECRET i dati
+      # diventerebbero illeggibili. Si imposta una volta e non si cambia più.
+      - key: FISCAL_DATA_KEY
+        sync: false
+      # Giorno del lancio (AAAA-MM-GG): da lì mesi gratis, carta obbligatoria,
+      # pause e numeri del sito (CLAUDE.md §6 e §5 punto 17).
+      - key: LAUNCH_DATE
+        sync: false
+      # Aliquota IVA di Stripe (txr_...): senza, nessun abbonamento si compra.
+      - key: STRIPE_TAX_RATE_IVA
+        sync: false
+      # Prezzi annuali (per ora non offerti: l'annuale torna con i dati reali).
+      - key: STRIPE_PRICE_BASE_ANNUAL
+        sync: false
+      - key: STRIPE_PRICE_PLUS_ANNUAL
+        sync: false
+      - key: STRIPE_PRICE_PRO_ANNUAL
+        sync: false
+      # true dopo il dominio verificato su Resend: conferma dell'email obbligatoria.
+      - key: EMAIL_VERIFICATION_REQUIRED
+        sync: false
+      # Anti-bot Cloudflare Turnstile: prima la chiave del sito su Vercel, poi questa.
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
+      # Invio delle nostre fatture allo SdI con Openapi (apps/api/src/accounting/sdi-provider.ts).
+      - key: OPENAPI_TOKEN_SDI
+        sync: false
+      # "false" spegne le richieste generali (senza professionista scelto).
+      - key: GENERAL_REQUESTS_ENABLED
+        sync: false
+      # Tetto al giorno delle chiamate a Google dalle pagine aperte a tutti
+      # (suggerimenti di indirizzo, CAP, mappa fissa). Vuota = tetti di serie,
+      # già vicini alla quota gratuita (apps/api/src/common/daily-budget.ts).
+      - key: GOOGLE_PUBLIC_DAILY_LIMIT
+        sync: false
+      # Logo delle email (di serie l'icona del sito).
+      - key: EMAIL_LOGO_URL
+        sync: false
+      # Intelligenza artificiale: tetto di dubbi al giorno (3000) e modello di
+      # OpenRouter (solo fino al lancio, poi via insieme a OPENROUTER_API_KEY).
+      - key: PROBLEM_MATCH_AI_DAILY_LIMIT
+        sync: false
+      - key: OPENROUTER_MODEL
+        sync: false
+      # WhatsApp: versione delle API di Meta e prezzi per il registro dei costi
+      # (vuote = valori di serie, apps/api/src/whatsapp/whatsapp-env.ts).
+      - key: WHATSAPP_GRAPH_VERSION
+        sync: false
+      - key: WHATSAPP_PRICE_UTILITY_MICRO_EUR
+        sync: false
+      - key: WHATSAPP_PRICE_AUTHENTICATION_MICRO_EUR
+        sync: false
+      # Mai in produzione: RATE_LIMIT_PER_MINUTE (solo prove) e TZ (le attività
+      # a orario hanno già l'ora italiana, apps/api/src/common/scheduled-job.ts).

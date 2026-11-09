@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { EmailService } from "../email/email.service";
@@ -11,6 +11,7 @@ import { frontendUrl } from "../email/email-brand";
 import { depositReminderTimes } from "../whatsapp/whatsapp-rules";
 import { bookingReplyToken } from "./booking-reply-token";
 import { depositDeadline } from "./deposit-deadline";
+import { ScheduledJob } from "../common/scheduled-job";
 
 function wantsReminderEmail(stored: unknown): boolean {
   return notificationChannelEnabled(resolveNotificationPreferences(stored), "BOOKING_REMINDER", "email");
@@ -84,7 +85,7 @@ export class BookingRemindersService {
     @Optional() private readonly whatsAppService?: WhatsAppService,
   ) {}
 
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  @ScheduledJob(CronExpression.EVERY_30_MINUTES)
   async sendUpcomingReminders(): Promise<void> {
     // scheduledAt è l'ora italiana scritta in UTC: si confronta con l'ora italiana di adesso (docs/CHANGELOG.md §287).
     const now = wallClockNow();
@@ -98,6 +99,13 @@ export class BookingRemindersService {
     if (bookings.length === 0) return;
 
     for (const booking of bookings) {
+      // Segnata prima di mandare, come l'email dell'acconto più sotto
+      // (docs/changelog/2026-11-08-infrastruttura-lancio.md): un solo
+      // tentativo per prenotazione, anche se ci fosse un secondo giro in
+      // parallelo. Se l'email non è configurata o l'invio fallisce non si
+      // riprova ogni 30 minuti sulla stessa riga.
+      const claimed = await this.prisma.booking.updateMany({ where: { id: booking.id, reminderSentAt: null }, data: { reminderSentAt: new Date() } });
+      if (claimed.count === 0) continue;
       // Nome, contatti e luogo (docs/CHANGELOG.md §234) e calendario (§235).
       const people = bookingPeople(booking);
       const clientCalendar = bookingCalendar(booking, "client");
@@ -163,10 +171,6 @@ export class BookingRemindersService {
         }
       }
 
-      // Marcato comunque (anche se l'email non è configurata o l'invio è
-      // fallito): un solo tentativo per prenotazione, mai un retry
-      // all'infinito ogni 30 minuti sulla stessa riga.
-      await this.prisma.booking.update({ where: { id: booking.id }, data: { reminderSentAt: new Date() } });
     }
     this.logger.log(`Promemoria elaborati per ${bookings.length} prenotazioni.`);
   }
@@ -177,7 +181,7 @@ export class BookingRemindersService {
    * annullare e riaverlo (Luca, 29/10/2026): stessi orari del promemoria
    * WhatsApp (`depositReminderTimes`), una volta sola per appuntamento.
    */
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  @ScheduledJob(CronExpression.EVERY_30_MINUTES)
   async sendDepositReminders(now: Date = new Date()): Promise<number> {
     const wall = wallClockNow(now);
     const bookings = await this.prisma.booking.findMany({

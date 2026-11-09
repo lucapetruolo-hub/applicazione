@@ -748,6 +748,15 @@ model Subscription {
   // Carta data per l'abbonamento: primo abbonamento di Stripe attivo o in
   // prova (imbuto dell'iscrizione, docs/changelog/2026-10-30-iscrizione-carta-solida.md).
   cardAddedAt           DateTime?
+  // Rinnovo non pagato dal… (collaudo dell'8/11/2026, E3-03): dopo 14 giorni
+  // l'abbonamento si chiude anche se la Dashboard di Stripe lo lascia sospeso.
+  pastDueSince          DateTime?
+  // Ultimo avviso mandato 3 giorni prima della chiusura per rinnovo non pagato.
+  pastDueWarnedAt       DateTime?
+  // Quota di passaggio in corso (E3-02): fattura Stripe della quota (pagata o
+  // no) e inizio del passaggio, contro i doppi clic da due schede.
+  upgradeInvoiceId      String?
+  upgradeStartedAt      DateTime?
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 
@@ -1164,6 +1173,11 @@ model Quote {
   // (docs/CHANGELOG.md §186). Azzerato quando il cliente propone una data.
   previousStartDate        DateTime?
   previousEndDate          DateTime?
+  // Il professionista ha accettato la data proposta dal cliente prima
+  // dell'accettazione (collaudo 08/11, E1-02): il preventivo torna "inviato"
+  // con quella data e il cliente lo accetta come sempre, scegliendo il
+  // pagamento. Azzerato a ogni nuova proposta o modifica della data.
+  proposedDateAcceptedAt   DateTime?
   notes                    String?
   status                   QuoteStatus @default(SENT)
   createdAt                DateTime    @default(now())
@@ -3100,6 +3114,19 @@ model StripeWebhookEvent {
   @@map("stripe_webhook_events")
 }
 
+// Accessi chiusi con "Esci" (controllo pre-lancio dell'08/11,
+// docs/changelog/2026-11-08-sicurezza-controllo-lancio.md): il codice del
+// token (`jti`) resta qui fino alla sua scadenza, poi si cancella. Così
+// "Esci" su un computer condiviso chiude davvero quell'accesso, senza far
+// uscire gli altri dispositivi.
+model RevokedSession {
+  jti       String   @id
+  expiresAt DateTime
+
+  @@index([expiresAt])
+  @@map("revoked_sessions")
+}
+
 // Link d'invito per un profilo creato da un operatore (docs/CHANGELOG.md
 // §170): il professionista lo apre, sceglie la password ed entra. Si salva
 // solo l'impronta SHA-256 del codice, mai il codice stesso.
@@ -3417,4 +3444,37 @@ model AdminProposal {
 
   @@index([status])
   @@map("admin_proposals")
+}
+
+// Giri delle attività a orario (docs/changelog/2026-11-08-infrastruttura-lancio.md):
+// una riga per attività e minuto. Durante un deploy Render tiene accese per
+// qualche momento due API con gli stessi orari: chi scrive la riga per primo
+// fa il giro, l'altra lo salta (niente promemoria o email doppie). Serve anche
+// a vedere quando un'attività ha girato l'ultima volta e se è finita con un
+// errore (docs/ops/attivita-a-orario.md). Le righe si cancellano dopo 30 giorni.
+model CronRun {
+  name       String
+  // Minuto del giro, in UTC.
+  slot       DateTime
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  // Messaggio dell'errore, se il giro è finito male (corto).
+  error      String?
+
+  @@id([name, slot])
+  @@index([startedAt])
+  @@map("cron_runs")
+}
+
+// Estratto del mese mandato al commercialista (docs/changelog/2026-11-08-infrastruttura-lancio.md):
+// una riga per professionista e mese, scritta prima di mandare l'email. Così
+// il giro del 1° e il pulsante di Admin → Finanza non lo mandano mai due volte.
+model AccountantStatementSend {
+  professionalProfileId String
+  // AAAA-MM del mese dell'estratto.
+  month                 String
+  sentAt                DateTime @default(now())
+
+  @@id([professionalProfileId, month])
+  @@map("accountant_statement_sends")
 }

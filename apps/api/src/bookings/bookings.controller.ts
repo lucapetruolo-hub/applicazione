@@ -34,7 +34,10 @@ import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { BookingsService } from "./bookings.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 
-const updateStatusSchema = z.object({ status: z.enum(["CONFIRMED", "COMPLETED", "CANCELED", "NO_SHOW"]) });
+// Solo conferma e annullamento (collaudo 08/11, E1-03): il lavoro si chiude
+// solo con "Lavoro terminato" (`complete`), che controlla data, importo,
+// dichiarazione DAC7 e pagamento online.
+const updateStatusSchema = z.object({ status: z.enum(["CONFIRMED", "CANCELED"]) });
 const MAX_MEDIA_SIZE_BYTES = 50 * 1024 * 1024;
 
 @Controller("bookings")
@@ -84,12 +87,19 @@ export class BookingsController {
     return this.bookingsService.createFromQuote(req.user.userId, quoteId, body.paymentMethod, body.invoiceRequest);
   }
 
+  /** Ritorno dalla pagina dell'acconto: se Stripe dice pagato, il lavoro nasce subito (collaudo 08/11, E3-06). */
+  @UseGuards(JwtAuthGuard)
+  @Post("from-quote/:quoteId/verify-deposit")
+  verifyQuoteDeposit(@Req() req: AuthenticatedRequest, @Param("quoteId") quoteId: string) {
+    return this.bookingsService.verifyQuoteDeposit(req.user.userId, quoteId);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Patch(":id/status")
   updateStatus(
     @Req() req: AuthenticatedRequest,
     @Param("id") id: string,
-    @Body(new ZodValidationPipe(updateStatusSchema)) body: { status: "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW" },
+    @Body(new ZodValidationPipe(updateStatusSchema)) body: { status: "CONFIRMED" | "CANCELED" },
   ) {
     return this.bookingsService.updateStatus(req.user.userId, id, body.status);
   }

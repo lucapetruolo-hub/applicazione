@@ -98,6 +98,20 @@ export const SAME_CLIENT_ONCE = "Più lavori allo stesso cliente nello stesso me
 
 /** Un mese gratis dura 30 giorni e vale come il livello Base (stesso limite di lavori). */
 export const TRIAL_DAYS = 30;
+
+/**
+ * Giorni di rinnovo non pagato dopo cui l'abbonamento si chiude e il profilo
+ * va in pausa (collaudo dell'8/11/2026, E3-03), anche se la Dashboard di
+ * Stripe lasciasse l'abbonamento sospeso invece di annullarlo.
+ */
+export const PAST_DUE_GRACE_DAYS = 14;
+
+/**
+ * Giorni in cui chi non ha pagato il rinnovo resta visibile e riceve
+ * richieste (decisione di Luca del 9/11/2026): dopo, profilo in pausa finché
+ * il pagamento non passa, senza chiudere l'abbonamento.
+ */
+export const PAST_DUE_VISIBLE_DAYS = 1;
 /** Avviso di fine mesi gratis questi giorni prima. */
 export const TRIAL_ENDING_NOTICE_DAYS = 3;
 
@@ -196,7 +210,9 @@ export const FREE_MONTHS_END_NOTICE_DAYS = 7;
  * vedi `MySubscription.limitReached`. `CARD_NEEDED`: dal lancio i mesi gratis
  * valgono solo con la carta data (decisione di Luca del 29/10/2026).
  */
-export type PauseReason = "TRIAL_ENDED" | "SUBSCRIPTION_ENDED" | "CARD_NEEDED";
+// `PAYMENT_FAILED`: rinnovo non pagato da più di un giorno (decisione di Luca del 9/11/2026):
+// fuori dalla ricerca finché non paga, poi l'abbonamento si chiude dopo 14 giorni.
+export type PauseReason = "TRIAL_ENDED" | "SUBSCRIPTION_ENDED" | "CARD_NEEDED" | "PAYMENT_FAILED";
 
 /**
  * Errore dell'API per chi prova a mandare un preventivo o a rispondere per
@@ -296,3 +312,14 @@ export type MySubscription = {
   /** Deve verificare l'identità prima di inviare preventivi (docs/CHANGELOG.md §253). */
   identityVerificationNeeded: boolean;
 };
+
+/**
+ * Risposta alla scelta di un livello: `url` è la pagina di pagamento di Stripe
+ * (abbonamento nuovo), `bankConfirmUrl` la pagina dove confermare con la banca
+ * (3D Secure) una quota già addebitata: il sito la apre in una scheda nuova e
+ * resta in attesa del nuovo livello.
+ */
+export interface SubscriptionCheckoutResult {
+  url: string | null;
+  bankConfirmUrl?: string;
+}

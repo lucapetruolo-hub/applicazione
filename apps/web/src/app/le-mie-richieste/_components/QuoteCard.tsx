@@ -38,7 +38,7 @@ import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { textareaStyle } from "./clientRequestHelpers";
 import { QuoteDateChooser } from "./QuoteDateChooser";
 import { QuoteAcceptSummary } from "./QuoteAcceptSummary";
-import { InvoiceRequestFields, InvoiceRequestToggle, emptyInvoiceDraft, invoiceDraftFromView, parseInvoiceDraft, type InvoiceDraft } from "@/components/ClientInvoiceRequestForm";
+import { InvoiceRequestFields, InvoiceRequestToggle, emptyInvoiceDraft, invoiceDraftFromView, type InvoiceDraft } from "@/components/ClientInvoiceRequestForm";
 
 export function formatQuoteDate(iso: string): string {
   const date = new Date(iso);
@@ -196,6 +196,7 @@ export function QuoteCard({
     }
     let invoiceRequest: ClientInvoiceRequestInput | undefined;
     if (invoiceWanted) {
+      const { parseInvoiceDraft } = await import("@/components/clientInvoiceDraftParse");
       const parsed = parseInvoiceDraft(invoiceDraft, quote.professionalKind === "PRIVATE");
       if (!parsed.ok) {
         setInvoiceErrors(parsed.errors);
@@ -318,6 +319,17 @@ export function QuoteCard({
         </YStack>
       ) : null}
       {(() => {
+        // Il professionista ha accettato la tua data (collaudo 08/11, E1-02):
+        // l'appuntamento si fissa accettando il preventivo, col pagamento.
+        if (quote.status === "SENT" && quote.proposedDateAccepted) {
+          return (
+            <ScheduleChangeBox
+              title="Il professionista ha accettato la data che hai proposto: accetta il preventivo per fissare l'appuntamento"
+              afterLabel="Appuntamento"
+              afterText={formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
+            />
+          );
+        }
         // Stesso "prima → ora" che vede il professionista quando il cliente
         // propone un'altra data (docs/CHANGELOG.md §186).
         const change =

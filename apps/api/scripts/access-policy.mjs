@@ -29,6 +29,7 @@ const publicRoutes = [
   "GET /address/suggestions",
   "POST /admin/bootstrap",
   "POST /auth/email-status",
+  "POST /auth/google/nonce",
   "POST /auth/google/verify",
   "GET /auth/invite/:token",
   "POST /auth/invite/accept",
@@ -49,6 +50,8 @@ const publicRoutes = [
   "GET /general-requests/availability",
   "GET /guided-requests/reach",
   "GET /health",
+  // Il database risponde? Per l'uptime (docs/changelog/2026-11-08-infrastruttura-lancio.md).
+  "GET /health/db",
   "GET /health/features",
   // Verifica del legale rappresentante di una società: link firmato, senza accedere (docs/changelog/2026-11-02-iscrizione-verifica-professionisti.md).
   "GET /identity-verification/representative/:token",
@@ -97,6 +100,7 @@ const selfAny = [
   // "Ce ne occupiamo noi" (§392): la richiesta di chi chiama.
   "POST /problem-match/takeover",
   "POST /auth/change-password",
+  "POST /auth/logout",
   "POST /auth/logout-others",
   "DELETE /auth/me",
   "GET /auth/me",
@@ -251,6 +255,7 @@ const owned = {
   "PATCH /bookings/:id/report-no-show": booking(),
   "PATCH /bookings/:id/status": booking({ body: () => ({ status: "CANCELED" }) }),
   "POST /bookings/from-quote/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteA }) },
+  "POST /bookings/from-quote/:quoteId/verify-deposit": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteA }) },
 
   // Fattura chiesta dal cliente al professionista, sul lavoro accettato (§378).
   "PUT /client-invoice-requests/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteDone }) },

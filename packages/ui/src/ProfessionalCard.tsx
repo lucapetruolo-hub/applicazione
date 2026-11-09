@@ -9,6 +9,7 @@ import { Rating } from "./Rating";
 import { Surface } from "./Surface";
 import { PriceLine } from "./PriceLine";
 import { brand, radiusDoc } from "./tokens";
+import { formatDistanceKm, priceUnitSuffix, type ProfessionalCardPriceUnit } from "./cardText";
 
 export type ProfessionalCardService = {
   id: string;
@@ -19,7 +20,8 @@ export type ProfessionalCardService = {
   priceUnit?: ProfessionalCardPriceUnit;
 };
 
-export type ProfessionalCardPriceUnit = "JOB" | "HOUR" | "DAY" | "SQUARE_METER";
+export type { ProfessionalCardPriceUnit } from "./cardText";
+export { formatDistanceKm, priceUnitSuffix } from "./cardText";
 
 // Stesse parole di SERVICE_PRICE_UNIT_LABEL in packages/shared (duplicate per
 // lo stesso motivo di formatAmount qui sotto).
@@ -604,7 +606,7 @@ export function ProfessionalCard({
           <XStack gap="1" alignItems="center">
             <Icon name="map-pin" size={13} color={brand.grafite70} strokeWidth={1.5} />
             <Text fontSize={16} color={brand.grafite70}>
-              {distanceKm !== undefined ? `${city} · a ${distanceKm.toString().replace(".", ",")} km` : city}
+              {distanceKm !== undefined ? `${city} · ${formatDistanceKm(distanceKm)}` : city}
             </Text>
           </XStack>
           {/* In grigio (docs/CHANGELOG.md §349): è un dato, non un'azione, e
@@ -659,7 +661,7 @@ export function ProfessionalCard({
               {!expanded && highlighted
                 ? ` · ${highlighted.name.trim()}: ${formatServicePrice(highlighted.priceMinEurCents, highlighted.priceMaxEurCents, highlighted.priceUnit).toLowerCase()}`
                 : !expanded && lowestPrice !== null
-                  ? ` · da ${formatAmount(lowestPrice.cents)} €${lowestPrice.unit ? ` ${PRICE_UNIT_LABEL[lowestPrice.unit]}` : ""}`
+                  ? ` · da ${formatAmount(lowestPrice.cents)} €${priceUnitSuffix(lowestPrice.unit)}`
                   : null}
             </Text>
             <Icon name={expanded ? "chevron-up" : "chevron-down"} size={18} color={brand.cianografiaScuro} strokeWidth={2} />

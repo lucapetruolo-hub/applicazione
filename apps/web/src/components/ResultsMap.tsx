@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { AdvancedMarker, Map as GoogleMap } from "@vis.gl/react-google-maps";
 import { BadgeCheck, CalendarDays, ChevronLeft, ChevronRight, Star, X } from "lucide-react";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
-import { BadgeInfo, brand } from "@professionisti/ui";
+import { BadgeInfo, brand, formatDistanceKm } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { GOOGLE_MAPS_MAP_ID, GoogleMapGate } from "@/components/GoogleMapGate";
 
@@ -351,7 +351,7 @@ function MapPreview({
   "use no memo";
   const next = slotHref ? nextFreeDay(pro, mode) : null;
   const categories = (pro.categories?.length ? pro.categories.map((category) => category.label) : [pro.categoryLabel]).join(", ");
-  const distance = pro.distanceKm !== undefined ? ` · a ${pro.distanceKm < 10 ? pro.distanceKm.toFixed(1).replace(".", ",") : Math.round(pro.distanceKm)} km` : "";
+  const distance = pro.distanceKm !== undefined ? ` · ${formatDistanceKm(pro.distanceKm)}` : "";
   const rating = pro.rating ?? 0;
   const profile = profileHref(pro);
   // Il tocco su un pulsante o su un link non apre anche il profilo.
