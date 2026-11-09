@@ -562,4 +562,5 @@ export const PROFESSIONAL_JOB_PROBLEM_REASONS = [
 ] as const;
 export type ProfessionalJobProblemReason = (typeof PROFESSIONAL_JOB_PROBLEM_REASONS)[number]["value"];
 /** Inizio del motivo salvato sulla segnalazione: distingue queste da "Segnala richiesta". */
-export const PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX = "Problema sull'intervento: ";
+// Testo salvato nel database e cercato con startsWith: non cambiarlo (glossario: eccezione voluta).
+export const PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX = "Problema sull'intervento: "; // glossario: ok

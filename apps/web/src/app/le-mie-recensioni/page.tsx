@@ -93,7 +93,7 @@ export default function LeMieRecensioniPage() {
           <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             Le mie recensioni
           </Text>
-          <Text color={brand.grafite70}>Le recensioni che hai lasciato ai professionisti dopo un lavoro concluso.</Text>
+          <Text color={brand.grafite70}>Le recensioni che hai lasciato ai professionisti dopo un lavoro terminato.</Text>
         </YStack>
 
         <SentReviewsList reviews={sent} error={sentError} hasPending={toReview.length > 0} />
@@ -121,7 +121,7 @@ function PendingReviews({ bookings }: { bookings: ClientBooking[] }) {
                 {[booking.categoryLabel, `con ${booking.businessName}`, formatDate(booking.scheduledAt)].filter(Boolean).join(" · ")}
               </Text>
             </YStack>
-            <Link href={`/le-mie-richieste?open=${booking.guidedRequestId}`} style={{ textDecoration: "none" }}>
+            <Link href={`/le-mie-richieste?open=${booking.guidedRequestId}&recensione=${booking.id}`} style={{ textDecoration: "none" }}>
               <Button tabIndex={-1} variant="primary">Lascia una recensione</Button>
             </Link>
           </XStack>

@@ -5,7 +5,7 @@ import { BRAND } from "@professionisti/shared";
 export const metadata: Metadata = {
   title: "Domande frequenti",
   description:
-    `Le domande più comuni su come funziona ${BRAND.name} — costi, registrazione, cosa succede se qualcosa va storto durante un intervento.`,
+    `Le domande più comuni su come funziona ${BRAND.name} — costi, registrazione, cosa succede se qualcosa va storto durante un lavoro.`,
   alternates: { canonical: "/faq" },
 };
 

@@ -2,7 +2,7 @@
 
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 
-const STAGES = ["Richiesta", "Preventivo inviato", "Preventivo accettato", "Completato"] as const;
+const STAGES = ["Richiesta", "Preventivo inviato", "Fissato", "Terminato"] as const;
 
 /**
  * Stepper di stato in stile Deliveroo (richiesta esplicita dell'utente):

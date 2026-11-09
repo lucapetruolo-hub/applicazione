@@ -203,6 +203,15 @@ export class GuidedRequestsController {
     res.send(buffer);
   }
 
+  // Indirizzo dell'ultima richiesta a domicilio, per precompilare la
+  // richiesta nuova quando l'account non ne ha uno salvato
+  // (docs/changelog/2026-11-08-collaudo-ux-cliente-pro.md).
+  @UseGuards(JwtAuthGuard)
+  @Get("me/last-address")
+  lastAddress(@Req() req: AuthenticatedRequest) {
+    return this.guidedRequestsService.lastAddressForClient(req.user.userId);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get("me")
   listMine(@Req() req: AuthenticatedRequest) {

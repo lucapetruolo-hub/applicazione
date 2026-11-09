@@ -39,12 +39,12 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   BOOKING_NO_SHOW_REPORTED: { icon: "⚠️", message: "Un cliente ha segnalato che non ti sei presentato a un appuntamento." },
   TIMELINE_MESSAGE_FROM_CLIENT: { icon: "💬", message: "Il cliente ti ha scritto un messaggio." },
   TIMELINE_MESSAGE_FROM_PROFESSIONAL: { icon: "💬", message: "Il professionista ti ha scritto un messaggio." },
-  BOOKING_REOPENED_BY_CLIENT: { icon: "🔄", message: "Il cliente ha riaperto una prenotazione annullata." },
+  BOOKING_REOPENED_BY_CLIENT: { icon: "🔄", message: "Il cliente ha rimesso in agenda un lavoro annullato." },
   // Pulsanti del promemoria WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md).
   BOOKING_CLIENT_CONFIRMED: { icon: "👍", message: "Il cliente ha confermato che ci sarà all'appuntamento." },
   BOOKING_CLIENT_CANT_COME: { icon: "⚠️", message: "Il cliente ha scritto che non può più esserci all'appuntamento: scrivigli in chat." },
   BOOKING_CLIENT_CANT_COME_UNDONE: { icon: "👍", message: "Il cliente aveva premuto «Non posso più» per errore: ci sarà." },
-  BOOKING_REOPENED_BY_PROFESSIONAL: { icon: "🔄", message: "Il professionista ha riaperto una prenotazione annullata." },
+  BOOKING_REOPENED_BY_PROFESSIONAL: { icon: "🔄", message: "Il professionista ha rimesso in agenda un lavoro annullato." },
   // Riapertura su richiesta (collaudo F-08).
   BOOKING_REOPEN_REQUESTED: { icon: "🔄", message: "Ti hanno chiesto di riaprire un appuntamento annullato: accetta o rifiuta dalla scheda." },
   BOOKING_REOPEN_DECLINED: { icon: "🔄", message: "La tua richiesta di riaprire l'appuntamento non è stata accettata." },
@@ -150,7 +150,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_AUTO_CONFIRMED: { icon: "✅", message: "Un lavoro è stato considerato terminato: non ci hai segnalato problemi in tempo." },
   REVIEW_REMINDER: { icon: "⭐", message: "Com'è andato il lavoro? Se vuoi, lascia una recensione: bastano un voto e due righe." },
   JOB_CLOSE_REMINDER: { icon: "⏳", message: "Il cliente ha confermato un lavoro terminato: segnalalo anche tu con l'importo finale." },
-  JOB_CLOSE_EXPIRED: { icon: "⚠️", message: "Non hai segnato come terminato in tempo un lavoro confermato dal cliente." },
+  JOB_CLOSE_EXPIRED: { icon: "⚠️", message: "Non hai segnato come terminato in tempo un lavoro fissato con il cliente." },
   ADMIN_JOB_NOT_CLOSED: { icon: "⚠️", message: "Un professionista non ha chiuso un lavoro pagato online: soldi ancora bloccati." },
   JOB_ISSUE_SANCTION: { icon: "⛔", message: "Una segnalazione accolta comporta una misura sul tuo profilo: tocca per i dettagli." },
   JOB_ISSUE_RESOLVED: { icon: "⚖️", message: "C'è una decisione su una segnalazione di un lavoro: tocca per leggerla." },

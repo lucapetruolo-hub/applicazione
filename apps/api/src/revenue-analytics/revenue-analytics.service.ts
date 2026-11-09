@@ -175,8 +175,9 @@ export class RevenueAnalyticsService {
   /**
    * Statistiche del professionista sul periodo scelto (docs/CHANGELOG.md
    * §149), con il periodo precedente di pari durata per il confronto.
-   * Entrate e completati seguono la stessa regola di `getSummary` (doppia
-   * conferma, `updatedAt` come data di completamento); le recensioni
+   * Lavori terminati ed entrate contano i lavori segnati "Lavoro terminato"
+   * dal professionista (come nelle altre pagine, collaudo dell'8/11 E6-07),
+   * nel giorno in cui l'ha segnato; le recensioni
    * contano solo quelle pubbliche (non nascoste, con la recensione del
    * professionista già lasciata), come sul profilo.
    */
@@ -216,10 +217,12 @@ export class RevenueAnalyticsService {
       this.prisma.quote.findMany({ where: { professionalProfileId, createdAt: createdIn }, select: { createdAt: true } }),
       this.prisma.booking.findMany({ where: { professionalProfileId, createdAt: createdIn }, select: { createdAt: true } }),
       this.prisma.booking.findMany({
+        // "Lavoro terminato" del professionista, come in Oggi, nel Profilo e in
+        // Richieste e lavori (collaudo dell'8/11, E6-07): con la conferma del
+        // cliente in più le Statistiche dicevano 1 dove le altre pagine 3.
         where: {
           professionalProfileId,
           status: "COMPLETED",
-          clientConfirmedCompletedAt: { not: null },
           OR: [{ professionalCompletedAt: createdIn }, { professionalCompletedAt: null, updatedAt: createdIn }],
         },
         select: { updatedAt: true, professionalCompletedAt: true, finalAmountEurCents: true },

@@ -206,6 +206,9 @@ export function RequestCard({
   const [manualEndTime, setManualEndTime] = useState("");
   // Lavoro su più giorni (docs/CHANGELOG.md §310): stesso orario ogni giorno.
   const [jobDays, setJobDays] = useState(1);
+  // Campo "Di più" della durata (collaudo dell'8/11, E6-23): il testo scritto, valido o no.
+  const [moreJobDays, setMoreJobDays] = useState(false);
+  const [jobDaysText, setJobDaysText] = useState("");
   const [quoteNotes, setQuoteNotes] = useState("");
   // Modi di pagamento offerti al cliente e acconto online (docs/CHANGELOG.md §237).
   const onlinePaymentsActive = useOnlinePayments();
@@ -410,7 +413,7 @@ export function RequestCard({
   // dall'invio (se nata da una fascia generica dell'agenda pubblica,
   // stesso campo già mostrato in /le-mie-richieste).
   const collapsedDateTime = booking?.scheduledAt
-    ? { label: "Intervento", text: formatSlotRange(booking.scheduledAt, booking.scheduledEndAt) }
+    ? { label: "Appuntamento", text: formatSlotRange(booking.scheduledAt, booking.scheduledEndAt) }
     : lead.quote?.estimatedStartDate
       ? { label: "Preventivo per", text: formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate) }
       : gr.preferredDate && gr.preferredTimeSlot
@@ -893,7 +896,7 @@ export function RequestCard({
             {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
             {/* Per una richiesta completata, l'importo finale (esatto, da
                 "Lavoro terminato") sostituisce il range preventivato: è
-                l'informazione rilevante a lavoro concluso — richiesta
+                l'informazione rilevante a lavoro terminato — richiesta
                 esplicita dell'utente. */}
             {stage === "completata" && booking?.finalAmountEurCents != null ? (
               <Text fontFamily="body" fontWeight="800" fontSize={18} color={brand.grafite}>
@@ -1533,7 +1536,7 @@ export function RequestCard({
                 ) : null}
                 {/* Bug reale corretto: il link portava sempre alla data odierna
                     del calendario "Prenotazioni" invece che alla data vera
-                    della prenotazione (spesso settimane avanti/indietro),
+                    dell'appuntamento (spesso settimane avanti/indietro),
                     facendola sembrare assente dall'agenda. Il parametro
                     `?booking=` (letto da /dashboard/agenda) naviga alla data
                     esatta e apre subito il pannello di dettaglio. */}
@@ -1765,25 +1768,47 @@ export function RequestCard({
                 </Text>
                 <div className="slot-pills" role="radiogroup" aria-labelledby={`job-days-${gr.id}`}>
                   {JOB_DAY_PILLS.map((n) => (
-                    <button key={n} type="button" role="radio" aria-checked={jobDays === n} className={`slot-pill${jobDays === n ? " is-on" : ""}`} onClick={() => setJobDays(n)}>
+                    <button
+                      key={n}
+                      type="button"
+                      role="radio"
+                      aria-checked={jobDays === n}
+                      className={`slot-pill${jobDays === n ? " is-on" : ""}`}
+                      onClick={() => {
+                        setJobDays(n);
+                        setMoreJobDays(false);
+                        setJobDaysText("");
+                      }}
+                    >
                       {n === 1 ? "1 giorno" : `${n} giorni`}
                     </button>
                   ))}
-                  <select
-                    aria-label="Più giorni"
-                    value={jobDays > JOB_DAY_PILLS.length ? jobDays : ""}
-                    onChange={(e) => setJobDays(Number(e.target.value))}
-                    className={`slot-pill slot-pill-select${jobDays > JOB_DAY_PILLS.length ? " is-on" : ""}`}
-                  >
-                    <option value="" disabled>
+                  {/* Oltre 5 giorni un campo con il numero, non 25 voci da scorrere (collaudo dell'8/11, E6-23). */}
+                  {jobDays > JOB_DAY_PILLS.length || moreJobDays ? (
+                    <label className={`slot-pill slot-pill-number${jobDays > JOB_DAY_PILLS.length ? " is-on" : ""}`}>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={JOB_DAY_PILLS.length + 1}
+                        max={MAX_JOB_DAYS}
+                        aria-label={`Quanti giorni (da ${JOB_DAY_PILLS.length + 1} a ${MAX_JOB_DAYS})`}
+                        value={jobDaysText || (jobDays > JOB_DAY_PILLS.length ? String(jobDays) : "")}
+                        placeholder={String(JOB_DAY_PILLS.length + 1)}
+                        onChange={(e) => {
+                          setJobDaysText(e.target.value);
+                          const n = Number(e.target.value);
+                          if (Number.isInteger(n) && n > JOB_DAY_PILLS.length && n <= MAX_JOB_DAYS) setJobDays(n);
+                        }}
+                        onBlur={() => setJobDaysText("")}
+                        style={{ width: 48, border: "none", background: "transparent", font: "inherit", color: "inherit", textAlign: "center" }}
+                      />
+                      giorni
+                    </label>
+                  ) : (
+                    <button type="button" className="slot-pill" onClick={() => setMoreJobDays(true)}>
                       Di più
-                    </option>
-                    {Array.from({ length: MAX_JOB_DAYS - JOB_DAY_PILLS.length }, (_, i) => i + JOB_DAY_PILLS.length + 1).map((n) => (
-                      <option key={n} value={n}>
-                        {n} giorni
-                      </option>
-                    ))}
-                  </select>
+                    </button>
+                  )}
                 </div>
                 {jobDaysPreview ? (
                   <Text fontSize={12} color={brand.grafite70}>
@@ -1918,9 +1943,15 @@ export function RequestCard({
                 </Text>
               ) : null}
 
+              {/* Modifica di un preventivo già inviato (collaudo dell'8/11, E6-22): "Salva le modifiche" e cosa succede dopo. */}
+              {lead.quote ? (
+                <Text fontSize={13} color={brand.grafite70}>
+                  Il cliente riceve il preventivo aggiornato al posto di quello di prima.
+                </Text>
+              ) : null}
               <XStack gap="2" flexWrap="wrap">
                 <CardButton tone="primary" arrow disabled={isSubmittingQuote} onPress={handleSendQuote}>
-                  {isSubmittingQuote ? "Invio..." : "Invia preventivo"}
+                  {isSubmittingQuote ? (lead.quote ? "Salvataggio..." : "Invio...") : lead.quote ? "Salva le modifiche" : "Invia preventivo"}
                 </CardButton>
                 <CardButton onPress={() => setShowQuoteForm(false)}>Annulla</CardButton>
               </XStack>

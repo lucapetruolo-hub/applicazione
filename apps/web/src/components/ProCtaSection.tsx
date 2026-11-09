@@ -41,7 +41,7 @@ export function ProCtaSection() {
         <GlowLights tone="scuro" pressBoost />
         <div className={`is_View ${styles.content}`}>
           <div className={`is_View ${styles.titleBox}`}>
-            <span className={`is_Text font_heading ${styles.title}`}>Meno telefonate inutili, più lavoro concluso.</span>
+            <span className={`is_Text font_heading ${styles.title}`}>Meno telefonate inutili, più lavori fatti.</span>
           </div>
 
           <div className={`is_View ${styles.columns}`}>

@@ -48,7 +48,7 @@ test("Fattura all'accettazione: provincia dal comune e dati mancanti segnalati",
   await page.goto(`/le-mie-richieste?open=${request.id}`);
   const card = page.locator(`#request-${request.id}`);
   await card.locator(`#quote-${quotes[0].id}`).getByText("Accetta preventivo", { exact: true }).click();
-  await card.getByText(/Chiedi la (fattura|ricevuta) a/).click();
+  await card.getByText(/Ti serve la (fattura|ricevuta)\?/).click();
 
   // Comune fuori provincia di Latina: la sigla si aggiorna da sola.
   await card.getByRole("textbox", { name: "Comune", exact: true }).fill("Anzio");

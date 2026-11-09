@@ -968,7 +968,9 @@ export function GuidedRequestCard({
                 {formatEur(booking.finalAmountEurCents)}
               </Text>
             ) : null}
-            {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
+            {/* "Novità" e non "Nuovo" (sembrava una richiesta nuova), e a scheda aperta solo
+                "Da leggere" sul preventivo arrivato (collaudo dell'8/11, E6-15). */}
+            {isNew && !(isOpen && newQuoteIds && newQuoteIds.size > 0) ? <Badge variant="nuovo">Novità</Badge> : null}
           </YStack>
         </XStack>
 

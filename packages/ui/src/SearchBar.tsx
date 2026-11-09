@@ -486,6 +486,7 @@ export function SearchBar({
             id={`${fieldId}-cosa`}
             placeholder={customQueryField?.placeholder ?? (mode === "online" ? "Es. consulenza idraulico" : "Es. idraulico, un guasto")}
             size="5"
+            listInFlowOnPhone
             maxResults={professionalSuggestions.length + (customQueryField?.examples?.length ?? 0)}
             emptyItems={customQueryField?.examples?.length ? [...customQueryField.examples, ...professionalSuggestions] : undefined}
             emptyHeadings={

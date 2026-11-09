@@ -293,9 +293,11 @@ test("primo addebito fallito dopo i mesi gratis (0341, test clock): abbonamento 
   }
 
   await expect.poll(async () => (await subscriptionOf(profileId!)).status, { timeout: 90_000 }).toBe("PAST_DUE");
-  // L'API scrive prima lo stato e poi l'avviso: si aspetta anche l'avviso.
+  // Lo stato arriva anche da customer.subscription.updated, che Stripe può
+  // mandare prima di invoice.payment_failed (quello che crea l'avviso): si
+  // aspetta l'avviso, non solo lo stato.
   await expect
-    .poll(async () => prisma.notification.count({ where: { userId: user.id, type: "SUBSCRIPTION_PAYMENT_FAILED" } }), { timeout: 30_000 })
+    .poll(async () => prisma.notification.count({ where: { userId: user.id, type: "SUBSCRIPTION_PAYMENT_FAILED" } }), { timeout: 60_000 })
     .toBeGreaterThan(0);
   const subscription = await stripe<{ status: string }>("GET", `subscriptions/${row.stripeSubscriptionId}`);
   expect(subscription.status).toBe("past_due");

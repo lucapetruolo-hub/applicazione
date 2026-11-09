@@ -16,7 +16,7 @@ export function PreventivoContent() {
         subtitle={SUBTITLE}
         submitLabel="Invia richiesta"
         submittingLabel="Invio in corso..."
-        descriptionPlaceholder="Es. Perdita d'acqua sotto il lavandino della cucina, serve un intervento nei prossimi giorni."
+        descriptionPlaceholder="Es. Perdita d'acqua sotto il lavandino della cucina, da sistemare nei prossimi giorni."
       />
     </Suspense>
   );

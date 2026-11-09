@@ -268,6 +268,16 @@ export type ClientBooking = {
 /** Valutazione di un professionista: media con una cifra decimale (`null` senza recensioni) e numero di recensioni. */
 export type ProfessionalReviewSummary = { rating: number | null; count: number };
 
+/** Indirizzo dell'ultima richiesta a domicilio (GET /guided-requests/me/last-address). */
+export type LastRequestAddress = {
+  street: string;
+  houseNumber: string | null;
+  addressExtra: string | null;
+  postalCode: string | null;
+  city: string;
+  province: string | null;
+};
+
 export type ClientGuidedRequest = {
   id: string;
   /** Altre richieste dello stesso invio con più categorie (docs/CHANGELOG.md §259). */
@@ -1622,6 +1632,12 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
+      }),
+
+    /** Indirizzo dell'ultima richiesta a domicilio del cliente, per precompilare. */
+    lastGuidedRequestAddress: (token: string) =>
+      request<{ address: LastRequestAddress | null }>("/guided-requests/me/last-address", {
+        headers: { Authorization: `Bearer ${token}` },
       }),
 
     myGuidedRequests: (token: string) =>
