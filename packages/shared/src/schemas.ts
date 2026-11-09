@@ -5,10 +5,11 @@ import { TRAFFIC_SOURCES } from "./trafficSources";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
 import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
 import { quotePaymentOfferSchema } from "./onlinePaymentsSchemas";
-import { contentReportReason, contentReportReasonCodes, moderationGroundCodes } from "./moderation";
+import { accountMeasures, contentReportReason, contentReportReasonCodes, moderationGroundCodes } from "./moderation";
 import { newPasswordSchema } from "./password";
 import { REQUEST_TIMINGS } from "./requestTiming";
 import { SERVICE_PRICE_UNITS } from "./professionals";
+import { REBOOK_REMINDER_OPTIONS, type RebookReminderKey } from "./rebookReminder";
 
 /**
  * Da dove arriva chi manda una richiesta di preventivo (docs/CHANGELOG.md
@@ -799,11 +800,17 @@ export const reviewSchema = z.object({
   comment: z.string().max(2000).optional(),
   /** Foto o video del lavoro svolto, opzionali (fino a 5): mostrati poi nella sezione recensioni del professionista. */
   photoUrls: z.array(z.string().url()).max(5).default([]),
+  /** Ok a mostrare le foto di fine lavoro del professionista in "Lavori fatti" sul suo profilo (docs/changelog/2026-11-08-lavori-fatti.md). */
+  showcase: z.boolean().default(false),
 });
 export type ReviewInput = z.infer<typeof reviewSchema>;
 
 /** Aggiornamento della recensione dopo una segnalazione a lavoro chiuso senza accordo (una volta sola). */
-export const reviewUpdateSchema = reviewSchema.omit({ bookingId: true });
+export const reviewUpdateSchema = reviewSchema.omit({ bookingId: true, showcase: true });
+
+/** Il cliente toglie (o rimette) le foto del lavoro da "Lavori fatti". */
+export const reviewShowcaseSchema = z.object({ showcase: z.boolean() });
+export type ReviewShowcaseInput = z.infer<typeof reviewShowcaseSchema>;
 export type ReviewUpdateInput = z.infer<typeof reviewUpdateSchema>;
 
 /** Risposta pubblica del professionista a una recensione. */
@@ -1094,6 +1101,18 @@ export const contentReportDecisionNoteSchema = z.object({
 });
 export type ContentReportDecisionNoteInput = z.infer<typeof contentReportDecisionNoteSchema>;
 
+/**
+ * Sospensione o chiusura dell'account dalla scheda in Admin (controllo
+ * pre-lancio 08/11, E4-03): i fatti, la regola o la legge violata e la misura,
+ * tutto obbligatorio e tutto nell'email alla persona (P2B art. 4, DSA art. 17).
+ */
+export const adminAccountMeasureSchema = z.object({
+  measure: z.enum(accountMeasures),
+  ground: z.enum(moderationGroundCodes, { message: "Scegli la regola o la legge violata." }),
+  note: z.string().trim().min(10, "Scrivi i fatti: cosa è successo, in almeno una frase.").max(2000),
+});
+export type AdminAccountMeasureInput = z.infer<typeof adminAccountMeasureSchema>;
+
 /** Contestazione dell'autore del contenuto (reclamo interno, DSA art. 20). */
 export const contentReportAppealSchema = z.object({
   text: z.string().trim().min(10, "Spiega in almeno 10 caratteri perché contesti la decisione.").max(2000),
@@ -1267,6 +1286,8 @@ export const guidedRequestUserStateSchema = z
     markedUnread: z.boolean().optional(),
     /** ISO datetime futuro (entro 60 giorni) per programmare il promemoria, `null` per annullarlo. */
     remindAt: z.string().datetime({ offset: true }).nullable().optional(),
+    /** "Ricordamelo tra…" a lavoro terminato, solo il cliente (docs/changelog/2026-11-08-promemoria-manutenzione.md); `null` lo toglie. */
+    rebookReminder: z.enum(REBOOK_REMINDER_OPTIONS.map((o) => o.key) as [RebookReminderKey, ...RebookReminderKey[]]).nullable().optional(),
   })
   .refine((value) => Object.values(value).some((v) => v !== undefined), { message: "Nessuna modifica indicata." });
 export type GuidedRequestUserStateInput = z.infer<typeof guidedRequestUserStateSchema>;

@@ -3858,8 +3858,19 @@ a.admin-kpi:hover {
     padding-right: 18px !important;
   }
 }
+/* "Cambia" dentro la pillola: link (piano scelto) o pulsante (tipo in
+   Dati fiscali). Da pulsante il browser gli metteva fondo grigio e bordo,
+   e sembrava già premuto: qui si tolgono (docs/changelog/2026-11-09-cambia-dati-fiscali.md). */
 .plan-chip-change {
   flex-shrink: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: 0;
+  margin: 0;
+  font-family: inherit;
+  line-height: inherit;
+  cursor: pointer;
   padding: 6px 8px;
   border-radius: 999px;
   font-size: 13px;
@@ -3867,6 +3878,28 @@ a.admin-kpi:hover {
   color: #0e7a4c;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+/* Area da toccare di almeno 44 px senza ingrandire la pillola: un riquadro
+   invisibile attorno alla scritta. */
+.plan-chip-change {
+  position: relative;
+}
+.plan-chip-change::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+/* Nella pillola di Dati fiscali il testo è a 16 px: "Cambia" si allinea. */
+.plan-chip-change.is-large {
+  font-size: 16px;
+}
+.plan-chip-change:hover {
+  color: #0b6b42;
+  text-decoration-thickness: 2px;
 }
 .plan-chip-change:focus-visible {
   outline: 2px solid #189a63;
@@ -8589,6 +8622,122 @@ a.admin-kpi:hover {
     animation: none;
   }
 }
+/* Sagoma di una pagina o del modulo di richiesta mentre arriva (collaudo
+   08/11 E8-02, components/PageLoading.tsx): HTML semplice e sagome ferme,
+   stessa tinta delle altre sagome (.skeleton-shimmer). La riga in fondo dice
+   che sta arrivando ed è letta dal lettore di schermo. */
+.page-loading {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-height: 70vh;
+  padding: 28px 16px;
+  box-sizing: border-box;
+}
+.page-loading-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 960px;
+}
+.page-loading--form .page-loading-inner {
+  max-width: 480px;
+}
+.page-loading-bar {
+  display: block;
+  background: rgba(43, 32, 19, 0.08);
+  border-radius: 6px;
+}
+.page-loading-title {
+  width: 45%;
+  height: 30px;
+  border-radius: 8px;
+}
+.page-loading--form .page-loading-title {
+  width: 70%;
+}
+.page-loading-line {
+  width: 80%;
+  height: 14px;
+}
+.page-loading-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: #ffffff;
+  border-radius: 20px;
+}
+.page-loading-pill {
+  width: 92px;
+  height: 22px;
+  border-radius: 11px;
+}
+.page-loading-card-title {
+  width: 50%;
+  height: 17px;
+}
+.page-loading-card-line {
+  width: 85%;
+  height: 12px;
+}
+.page-loading-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.page-loading-label {
+  width: 140px;
+  height: 14px;
+}
+.page-loading-input {
+  width: 100%;
+  height: 46px;
+  border-radius: 10px;
+}
+.page-loading-button {
+  width: 100%;
+  height: 48px;
+  border-radius: 24px;
+}
+.page-loading-form-shape {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.page-loading-steps {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.page-loading-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  flex-shrink: 0;
+}
+.page-loading-step {
+  width: 70px;
+  height: 12px;
+}
+.page-loading-toggle {
+  width: 230px;
+  max-width: 100%;
+  height: 44px;
+  border-radius: 10px;
+}
+.page-loading-textarea {
+  width: 100%;
+  height: 116px;
+  border-radius: 10px;
+}
+.page-loading-note {
+  margin: 0;
+  text-align: center;
+  font-size: 15px;
+  color: #6e6459;
+}
 /* "Prova:" sotto "Descrivi il lavoro": le pillole della home, su fondo chiaro. */
 .guided-examples {
   display: flex;
@@ -9055,4 +9204,147 @@ a.admin-kpi:hover {
     min-width: 76px;
     width: 76px;
   }
+}
+
+
+/* "Lavori fatti tramite il sito" sul profilo (docs/changelog/2026-11-08-lavori-fatti.md):
+   schede che vanno a capo da computer e scorrono in una riga su telefono, come "Lavori svolti". */
+.finished-jobs-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+}
+@media (max-width: 660px) {
+  .finished-jobs-row {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 4px;
+  }
+  .finished-jobs-row > .finished-job {
+    flex: 0 0 168px;
+    scroll-snap-align: start;
+  }
+}
+@media (min-width: 661px) {
+  .finished-jobs-row {
+    -webkit-mask-image: none;
+    mask-image: none;
+    animation: none;
+  }
+}
+
+
+
+/* Preventivo in 30 secondi (docs/changelog/2026-11-08-preventivo-in-30-secondi.md):
+   prestazioni del profilo come pillole e "Usa il preventivo del …". */
+.quick-service-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: 44px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  text-align: left;
+  line-height: 1.25;
+}
+.quick-service-pill.is-suggested {
+  border-color: #189a63;
+  border-width: 2px;
+}
+.quick-service-price {
+  font-weight: 500;
+  color: #5c534d;
+}
+.quick-service-pill.is-on .quick-service-price {
+  color: #fff;
+}
+.quick-service-tag {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0e7a4c;
+}
+.quick-last-quote {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 1px dashed #189a63;
+  border-radius: 10px;
+  background: #fff;
+  color: #2b2420;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.quick-last-quote:hover {
+  background: #f1faf5;
+}
+.quick-last-quote:focus-visible,
+.quick-undo:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.quick-last-quote-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.quick-last-quote-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+.quick-last-quote-sub {
+  font-size: 13px;
+  color: #5c534d;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.quick-undo {
+  min-height: 44px;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: #0e7a4c;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+
+
+
+/* "Ti servirà di nuovo?" a lavoro terminato (docs/changelog/2026-11-08-promemoria-manutenzione.md). */
+.rebook-pill.is-suggested {
+  border-color: #189a63;
+  border-width: 2px;
+}
+.rebook-pill:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.rebook-keep {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: #0e7a4c;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.rebook-keep:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
 }

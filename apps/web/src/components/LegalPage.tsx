@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { Text, YStack, brand } from "@professionisti/ui";
 
@@ -17,7 +18,20 @@ type LegalSection = { heading: string; body: ReactNode; id?: string; after?: Rea
  * P.IVA, sede, email privacy) prima del lancio definitivo — i segnaposto
  * [DA COMPILARE] rendono evidente dove intervenire.
  */
-export function LegalPage({ title, updatedAt, sections, intro }: { title: string; updatedAt: string; sections: LegalSection[]; intro?: ReactNode }) {
+export function LegalPage({
+  title,
+  updatedAt,
+  sections,
+  intro,
+  historyHref,
+}: {
+  title: string;
+  updatedAt: string;
+  sections: LegalSection[];
+  intro?: ReactNode;
+  /** Link alla cronologia delle versioni accanto alla data (Termini, P2B art. 3; controllo pre-lancio 08/11). */
+  historyHref?: string;
+}) {
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
       <YStack width="100%" maxWidth={720} gap="5">
@@ -27,6 +41,14 @@ export function LegalPage({ title, updatedAt, sections, intro }: { title: string
           </Text>
           <Text fontSize={13} color={brand.grafite70}>
             Ultimo aggiornamento: {updatedAt}
+            {historyHref ? (
+              <>
+                {" · "}
+                <Link href={historyHref} style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>
+                  Versioni precedenti
+                </Link>
+              </>
+            ) : null}
           </Text>
         </YStack>
         {intro}

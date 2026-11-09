@@ -999,6 +999,60 @@ export function ProfessionalDetailContent({
           </YStack>
         ) : null}
 
+        {/* "Lavori fatti" (docs/changelog/2026-11-08-lavori-fatti.md): foto di
+            fine lavoro del professionista, solo con l'ok del cliente dato
+            recensendo. Diverse da "Lavori svolti" (caricate da lui): queste
+            vengono da lavori chiusi sul sito, con le stelle di quel lavoro. */}
+        {(professional.finishedJobs ?? []).length > 0 ? (
+          <YStack gap="3">
+            <XStack alignItems="center" gap="2">
+              <Icon name="badge-check" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
+              <Text fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
+                Lavori fatti tramite il sito
+              </Text>
+            </XStack>
+            <div className="finished-jobs-row scroll-fade" role="list">
+              {(professional.finishedJobs ?? []).map((job) => (
+                <div key={job.id} role="listitem" className="finished-job">
+                  <YStack
+                    width="100%"
+                    height={120}
+                    borderRadius="3"
+                    overflow="hidden"
+                    borderWidth={1}
+                    borderColor={brand.filetto}
+                    cursor="pointer"
+                    position="relative"
+                    onPress={() => setLightbox({ photos: job.photoUrls, index: 0 })}
+                    role="button"
+                    aria-label={`Ingrandisci le foto del lavoro: ${job.label}`}
+                  >
+                    <MediaPreview url={job.photoUrls[0] ?? ""} />
+                    {job.photoUrls.length > 1 ? (
+                      <YStack position="absolute" bottom={6} right={6} paddingHorizontal={6} paddingVertical={2} borderRadius={10} backgroundColor="rgba(20,24,30,0.7)">
+                        <Text fontSize={12} fontWeight="700" color="white">
+                          {job.photoUrls.length} foto
+                        </Text>
+                      </YStack>
+                    ) : null}
+                  </YStack>
+                  <YStack gap={2} paddingTop="2">
+                    <Text fontSize={14} fontWeight="700" color={brand.grafite} numberOfLines={2}>
+                      {job.label}
+                    </Text>
+                    <XStack alignItems="center" gap="1" flexWrap="wrap">
+                      <Icon name="star" size={13} strokeWidth={1.5} color={brand.ottone} fill={brand.ottone} />
+                      <Text fontSize={13} color={brand.grafite70}>
+                        {job.rating}/5 · {[job.city, new Date(job.doneAt).toLocaleDateString("it-IT", { month: "long", year: "numeric", timeZone: "Europe/Rome" })].filter(Boolean).join(", ")}
+                      </Text>
+                    </XStack>
+                  </YStack>
+                </div>
+              ))}
+            </div>
+          </YStack>
+        ) : null}
+
         {/* Ancora per le stelle accanto al nome nelle schede del cliente (§342), come #agenda. */}
         <div id="recensioni" style={{ scrollMarginTop: 96 }} />
         <YStack gap="3">

@@ -21,6 +21,7 @@ import { AwayCard } from "@/components/AwayCard";
 import { BoostSection } from "@/components/BoostSection";
 import { SetupJourneyCard, SetupJourneyHero, journeyNeedsHero, useSetupJourney } from "@/components/verification/SetupJourney";
 import { WeatherStrip, jobsHeadline, type DayJobRow } from "@/components/DaysAhead";
+import { PageLoading } from "@/components/PageLoading";
 
 /** Applica una risposta dell'API dentro `startTransition` (vedi sotto, §345). */
 function later<T>(apply: (value: T) => void): (value: T) => void {
@@ -114,7 +115,7 @@ export default function DashboardTodayPage() {
     return () => clearInterval(id);
   }, []);
 
-  if (isLoading) return null;
+  if (isLoading) return <PageLoading />;
 
   if (!user || !token) {
     return (

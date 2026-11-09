@@ -7,10 +7,11 @@ import { Button, Text, YStack, brand } from "@professionisti/ui";
 import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
 import { AuthIconBadge } from "@/components/AuthStepHeader";
 import { apiClient } from "@/lib/apiClient";
+import { PageLoading } from "@/components/PageLoading";
 
 export default function EmailNotifichePage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading variant="form" />}>
       <EmailOff />
     </Suspense>
   );

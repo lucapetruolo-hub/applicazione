@@ -90,6 +90,13 @@ const invoices: Invoice[] = [
     { number: "ABB/2026/0002", source: "UPGRADE_FEE", creditNote: false, periodMonth: null, issuedAt: "2026-11-20T16:10:00Z", totalEurCents: 4270, lines: [{ description: "Passaggio da Plus a Pro fino al rinnovo", detail: "10,00 € più la differenza per 25 giorni, maggiorata del 10%", taxableEurCents: 3500 }], relatedNumber: null, vatRecoverable: true, onlinePaidEurCents: null },
     { xmlType: "TD01", payment: "MP08", related: null, causale: ["Passaggio al livello superiore dell'abbonamento, pagato con carta."] },
   ),
+  // Rimborso dell'abbonamento dalla Dashboard di Stripe: nota di credito della serie ABB
+  // collegata alla fattura del pagamento (collaudo dell'08/11/2026, E5-06; domanda N8).
+  invoice(
+    "05-nota-di-credito-abbonamento-ABB",
+    { number: "ABB/2026/0003", source: "SUBSCRIPTION", creditNote: true, periodMonth: null, issuedAt: "2026-11-22T11:00:00Z", totalEurCents: 7198, lines: [{ description: "Abbonamento Plus, mensile", detail: "dal 15/11/2026 al 14/12/2026", taxableEurCents: 5900 }], relatedNumber: "ABB/2026/0001", vatRecoverable: true, onlinePaidEurCents: null },
+    { xmlType: "TD04", payment: "MP08", related: { number: "ABB/2026/0001", date: "2026-11-15" }, causale: ["Rimborso: abbonamento, restituito sulla carta."] },
+  ),
 ];
 
 const statement: MonthlyStatement = {
@@ -158,17 +165,17 @@ const yearSummary: CourtesyYearSummary = {
 
 const pdfs: [string, PdfDocumentModel][] = [
   ...invoices.map((i) => [i.file, invoicePdfModel(i.view)] as [string, PdfDocumentModel]),
-  ["05-estratto-del-mese", statementPdfModel(statement, "Mario Rossi")],
-  ["06-ricevuta-lavoro-occasionale-a-privato", receiptToPerson],
-  ["07-ricevuta-lavoro-occasionale-a-partita-iva", receiptToCompany],
-  ["08-riepilogo-anno-ricevute", courtesyYearPdfModel(yearSummary, new Date("2027-01-15T10:00:00Z"))],
+  ["06-estratto-del-mese", statementPdfModel(statement, "Mario Rossi")],
+  ["07-ricevuta-lavoro-occasionale-a-privato", receiptToPerson],
+  ["08-ricevuta-lavoro-occasionale-a-partita-iva", receiptToCompany],
+  ["09-riepilogo-anno-ricevute", courtesyYearPdfModel(yearSummary, new Date("2027-01-15T10:00:00Z"))],
   [
-    "09-riepilogo-dac7",
+    "10-riepilogo-dac7",
     dac7PdfModel(
-      { year: 2026, quarters: [{ quarter: 3, directEurCents: 25000, onlineEurCents: 0, feesEurCents: 0, jobs: 1 }, { quarter: 4, directEurCents: 25000, onlineEurCents: 50000, feesEurCents: 4270, jobs: 3 }], totalEurCents: 100000, submittedAt: null, notifiedAt: null },
+      { year: 2026, quarters: [{ quarter: 3, directEurCents: 25000, onlineEurCents: 0, feesEurCents: 0, jobs: 1 }, { quarter: 4, directEurCents: 25000, onlineEurCents: 50000, feesEurCents: 4270, jobs: 3 }], totalEurCents: 100000, submittedAt: "2027-01-28T10:00:00Z", submissionProtocol: "26012810000012345", notifiedAt: "2027-01-20T10:00:00Z" },
       "IT60 •••• •••• 1234",
       "Mario Rossi",
-      new Date("2027-01-10T10:00:00Z"),
+      new Date("2027-02-01T10:00:00Z"),
     ),
   ],
 ];

@@ -129,10 +129,13 @@ export const MODERATION_GROUNDS = [
   { code: "termini-contenuti", kind: "terms", label: "Termini di Servizio, punto 7 (contenuti vietati)" },
   { code: "termini-profilo", kind: "terms", label: "Termini di Servizio, punto 4 (dati del profilo non veritieri)" },
   { code: "termini-account", kind: "terms", label: "Termini di Servizio, punto 2 (uso scorretto dell'account)" },
+  // Misure sull'account da Admin (controllo pre-lancio 08/11, E4-03): saldo non pagato, contestazioni senza motivo.
+  { code: "termini-pagamenti", kind: "terms", label: "Termini di Servizio, punto 5 (pagamenti dei lavori non rispettati)" },
   { code: "legge-diffamazione", kind: "law", label: "Diffamazione (art. 595 del codice penale)" },
   { code: "legge-minacce", kind: "law", label: "Minacce (art. 612 del codice penale)" },
   { code: "legge-odio", kind: "law", label: "Propaganda e istigazione all'odio (art. 604-bis del codice penale)" },
   { code: "legge-dati-personali", kind: "law", label: "Dati personali pubblicati senza base legale (Regolamento UE 2016/679, GDPR)" },
+  { code: "legge-truffa", kind: "law", label: "Truffa (art. 640 del codice penale)" },
   { code: "legge-recensione-falsa", kind: "law", label: "Recensione falsa o pratica ingannevole (Codice del Consumo, artt. 21-23)" },
   { code: "legge-altra", kind: "law", label: "Altra norma di legge, indicata nella motivazione" },
 ] as const;
@@ -142,3 +145,16 @@ export const moderationGroundCodes = MODERATION_GROUNDS.map((g) => g.code) as [M
 export function moderationGround(code: string | null | undefined) {
   return code ? MODERATION_GROUNDS.find((g) => g.code === code) : undefined;
 }
+
+/**
+ * Misure sull'account decise da Admin (controllo pre-lancio dell'08/11/2026,
+ * E4-03, Reg. UE 2019/1150 art. 4 e DSA art. 17): "Sospendi" blocca subito
+ * l'account finché la decisione non viene rivista; "Chiudi con preavviso"
+ * lascia l'account attivo per ACCOUNT_CLOSURE_NOTICE_DAYS giorni e poi lo
+ * chiude (Termini, punto 10 "Sospensione e chiusura"). Per una chiusura
+ * immediata nei casi ammessi dai Termini (legge, violazioni ripetute,
+ * sicurezza dei clienti) si usa la sospensione.
+ */
+export const ACCOUNT_CLOSURE_NOTICE_DAYS = 30;
+export const accountMeasures = ["SUSPEND", "CLOSE_WITH_NOTICE"] as const;
+export type AccountMeasure = (typeof accountMeasures)[number];

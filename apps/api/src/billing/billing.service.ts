@@ -11,6 +11,8 @@ import {
   type BillingInterval,
   type SubscriptionCheckoutResult,
   type SubscriptionTier,
+  FISCAL_RESIDENCE_ABROAD_MESSAGE,
+  fiscalResidenceAbroad,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { SubscriptionsService, type SavedCard, type SubscriptionReceiptExtras } from "../subscriptions/subscriptions.service";
@@ -237,6 +239,16 @@ export class BillingService implements OnModuleInit {
       throw new NotFoundException("Completa prima il tuo profilo professionista.");
     }
     return profile;
+  }
+
+  /**
+   * Residenza fiscale fuori dall'Italia: niente abbonamento né pacchetti nuovi
+   * finché il commercialista non dice come fatturarli (collaudo dell'08/11/2026,
+   * E5-04, domanda 55): l'IVA del 22% e l'XML sono fatti per l'Italia.
+   */
+  private async refuseAbroad(professionalProfileId: string): Promise<void> {
+    const fiscal = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, select: { taxResidenceCountry: true, registeredCountry: true } });
+    if (fiscalResidenceAbroad(fiscal)) throw new BadRequestException(FISCAL_RESIDENCE_ABROAD_MESSAGE);
   }
 
   /**
@@ -503,13 +515,29 @@ export class BillingService implements OnModuleInit {
         if ((invoice.amount_paid ?? 0) <= 0) continue;
         const existing = await this.prisma.invoice.findUnique({ where: { dedupeKey: `STRIPE:${invoice.id}` }, select: { id: true } });
         if (existing) continue;
-        if (await this.invoicesService.issueForStripeInvoice(invoice, (priceId) => this.priceOf(priceId))) issued++;
+        if (await this.invoicesService.issueForStripeInvoice(invoice, (priceId) => this.priceOf(priceId), { alertSkipped: false })) issued++;
       }
     } catch (error) {
       this.logger.error("Recupero delle fatture dell'abbonamento non riuscito", error as Error);
     }
     if (issued) this.logger.warn(`Fatture dell'abbonamento recuperate: ${issued}`);
     return issued;
+  }
+
+  /** Rimborso di un pagamento fatto a noi: la fattura di Stripe da cui viene, poi la nota di credito. */
+  private async creditNoteForRefund(stripe: Stripe, charge: Stripe.Charge): Promise<void> {
+    const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : (charge.payment_intent?.id ?? null);
+    let stripeInvoiceId: string | null = null;
+    if (paymentIntentId) {
+      try {
+        const payments = await stripe.invoicePayments.list({ payment: { type: "payment_intent", payment_intent: paymentIntentId }, limit: 1 });
+        const ref = payments.data[0]?.invoice;
+        stripeInvoiceId = typeof ref === "string" ? ref : (ref?.id ?? null);
+      } catch (error) {
+        this.logger.warn(`Fattura Stripe del rimborso ${charge.id} non letta: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    await this.invoicesService.issueRefundCreditNote({ chargeId: charge.id, paymentIntentId, stripeInvoiceId, refundedEurCents: charge.amount_refunded ?? 0 });
   }
 
   /** Riporta sulla riga locale lo stato di un abbonamento Stripe. */
@@ -561,6 +589,8 @@ export class BillingService implements OnModuleInit {
     if (current?.stripeSubscriptionId && (state === "ACTIVE" || state === "PAST_DUE")) {
       return this.upgradeTier(stripe, profile.id, current.stripeSubscriptionId, tierOfPlan(current.plan), plan, launched);
     }
+    // Un abbonamento nuovo, non il cambio di livello di chi è già abbonato (E5-04).
+    await this.refuseAbroad(profile.id);
     // Prima del lancio non c'è limite di lavori: si dà solo la carta per i mesi gratis.
     if (!launched && plan !== "BASE") {
       throw new BadRequestException("Plus e Pro si scelgono dal giorno del lancio: fino ad allora non c'è limite di lavori.");
@@ -1049,6 +1079,7 @@ export class BillingService implements OnModuleInit {
     if (!priceEurCents) {
       throw new BadRequestException("Tipo di pacchetto visibilità non valido.");
     }
+    await this.refuseAbroad(profile.id);
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -1277,6 +1308,8 @@ export class BillingService implements OnModuleInit {
     // Rimborso fatto fuori dal sito (Dashboard di Stripe): si registra sul lavoro.
     if (event.type === "charge.refunded") {
       await this.jobPaymentsService.handleChargeRefunded(event.data.object as Stripe.Charge, event.account);
+      // Sul nostro conto (abbonamento, quota, pacchetto): nota di credito collegata alla fattura (collaudo dell'08/11/2026, E5-06).
+      if (!event.account) await this.creditNoteForRefund(stripe, event.data.object as Stripe.Charge);
     }
     // Saldo addebitato sulla carta salvata con l'acconto (§267).
     if (event.type === "payment_intent.succeeded") {

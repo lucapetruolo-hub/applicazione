@@ -296,6 +296,8 @@ export function profileInviteEmail(name: string | null, businessName: string, ur
       "Apri il link, scegli la password e controlla i dati: il profilo comparirà nelle ricerche solo dopo che l'avrai salvato tu.",
     ],
     cta: { label: "Completa il tuo profilo", url },
-    after: [`Il link vale ${days} giorni.`],
+    // Dati dettati al telefono e inseriti da noi: l'informativa arriva subito (GDPR art. 14, controllo pre-lancio 08/11, E4-07).
+    secondaryLink: { label: "Come trattiamo i tuoi dati", url: `${frontendUrl()}/privacy` },
+    after: [`Il link vale ${days} giorni.`, "I dati li ha inseriti un nostro operatore con quello che ci hai detto al telefono: se qualcosa non va, correggilo prima di salvare."],
   });
 }

@@ -157,17 +157,37 @@ describe("AdminService — sospensione dalla scheda utente e ruoli admin (docs/C
     return { service, prisma, notifications, audit, securityAlerts };
   }
 
-  it("sospende, avvisa l'utente con la motivazione e registra l'azione", async () => {
+  const measure = (note: string, extra: Partial<{ measure: "SUSPEND" | "CLOSE_WITH_NOTICE" }> = {}) => ({ measure: "SUSPEND" as const, ground: "termini-pagamenti" as const, note, ...extra });
+
+  it("sospende, avvisa l'utente con fatti e regola violata e registra l'azione (E4-03)", async () => {
     const { service, prisma, notifications, audit } = build({ id: "u2", role: "CLIENT", suspendedAt: null });
-    await service.suspendUser("admin-1", "u2", "Minacce al telefono");
+    await service.suspendUser("admin-1", "u2", measure("Saldo non pagato dal 2 novembre"));
     expect(prisma.$transaction).toHaveBeenCalledWith(["user-update", "profile-update"]);
-    expect(notifications.notify).toHaveBeenCalledWith("u2", "ACCOUNT_SUSPENDED", { note: "Minacce al telefono" });
+    expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ suspensionGround: "termini-pagamenti" }) }));
+    expect(notifications.notify).toHaveBeenCalledWith("u2", "ACCOUNT_SUSPENDED", { note: "Saldo non pagato dal 2 novembre", ground: "termini-pagamenti" });
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ entityType: "User", entityId: "u2", changedByUserId: "admin-1" }));
   });
 
+  it("chiusura con preavviso: l'account resta attivo e la data è tra 30 giorni (E4-03)", async () => {
+    const { service, prisma, notifications } = build({ id: "u2", role: "PROFESSIONAL", suspendedAt: null, closureScheduledAt: null });
+    const before = Date.now();
+    const result = await service.suspendUser("admin-1", "u2", measure("Due account con la stessa P.IVA", { measure: "CLOSE_WITH_NOTICE" }));
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    const closureAt = new Date(result.closureScheduledAt!).getTime();
+    expect(closureAt - before).toBeGreaterThanOrEqual(30 * 24 * 60 * 60 * 1000 - 1000);
+    expect(notifications.notify).toHaveBeenCalledWith("u2", "ACCOUNT_CLOSURE_SCHEDULED", expect.objectContaining({ ground: "termini-pagamenti", closureAt: result.closureScheduledAt }));
+  });
+
+  it("annullare una chiusura fissata toglie la data senza toccare il profilo", async () => {
+    const { service, prisma, notifications } = build({ id: "u2", suspendedAt: null, closureScheduledAt: new Date("2026-12-08") });
+    await service.reactivateUser("admin-1", "u2", "Chiarito al telefono");
+    expect(prisma.$transaction).toHaveBeenCalledWith(["user-update"]);
+    expect(notifications.notify).toHaveBeenCalledWith("u2", "ACCOUNT_REACTIVATED", { note: "Chiarito al telefono", closureCanceled: true });
+  });
+
   it("non sospende un admin né se stessi", async () => {
-    await expect(build({ id: "u2", role: "ADMIN", suspendedAt: null }).service.suspendUser("admin-1", "u2", "x")).rejects.toThrow("ruolo di amministratore");
-    await expect(build({ id: "admin-1", role: "CLIENT", suspendedAt: null }).service.suspendUser("admin-1", "admin-1", "x")).rejects.toThrow("stesso account");
+    await expect(build({ id: "u2", role: "ADMIN", suspendedAt: null }).service.suspendUser("admin-1", "u2", measure("x"))).rejects.toThrow("ruolo di amministratore");
+    await expect(build({ id: "admin-1", role: "CLIENT", suspendedAt: null }).service.suspendUser("admin-1", "admin-1", measure("x"))).rejects.toThrow("stesso account");
   });
 
   it("non toglie l'ultimo super admin", async () => {

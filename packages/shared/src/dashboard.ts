@@ -80,6 +80,8 @@ export type GuidedRequestMyState = {
   mutedAt: string | null;
   markedUnreadAt: string | null;
   remindAt: string | null;
+  /** Promemoria per rifare il lavoro con lo stesso professionista, solo del cliente (docs/changelog/2026-11-08-promemoria-manutenzione.md). */
+  rebookRemindAt: string | null;
 };
 
 export type ProfessionalLead = {

@@ -42,6 +42,7 @@ import { InlineAuthGate } from "@/components/InlineAuthGate";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { RequestSentScreen } from "@/components/RequestSentScreen";
 import { UploadingDots } from "@/components/UploadingDots";
+import { GuidedRequestSkeleton } from "@/components/PageLoading";
 import { CategoryTiles } from "@/components/CategoryTiles";
 import { SafetyNotice } from "@/components/ProblemBand";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
@@ -184,10 +185,13 @@ export type GuidedRequestFormProps = {
 };
 
 /**
- * Titolo e sottotitolo del modulo, mostrati da soli finché il modulo non è
- * pronto (accesso in caricamento, o `Suspense` della pagina): così la pagina
- * arriva a Google e al browser già col suo titolo, non vuota
- * (docs/CHANGELOG.md §296). Stessa misura del modulo completo, niente salti.
+ * Titolo e sottotitolo del modulo, con la sagoma del modulo sotto finché il
+ * modulo non è pronto (accesso in caricamento, o `Suspense` della pagina):
+ * la pagina arriva a Google e al browser già col suo titolo, non vuota
+ * (docs/CHANGELOG.md §296), e su rete lenta chi aspetta vede subito che il
+ * modulo sta arrivando invece di un grande vuoto (collaudo 08/11 E8-02,
+ * docs/changelog/2026-11-08-seo-e-velocita.md). La sagoma è nell'HTML che
+ * manda il server, quindi compare prima che il JavaScript sia scaricato.
  */
 export function GuidedRequestHeading({ title, subtitle }: { title: string; subtitle: string }) {
   return (
@@ -199,6 +203,7 @@ export function GuidedRequestHeading({ title, subtitle }: { title: string; subti
           </Text>
           <Text color={brand.grafite70}>{subtitle}</Text>
         </YStack>
+        <GuidedRequestSkeleton />
       </YStack>
     </YStack>
   );

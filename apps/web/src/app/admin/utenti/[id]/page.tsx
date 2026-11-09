@@ -13,8 +13,11 @@ import {
   CONTENT_REPORT_REASONS,
   CONTENT_REPORT_TARGET_LABEL,
   JOB_ISSUE_STATUS_LABEL,
+  ACCOUNT_CLOSURE_NOTICE_DAYS,
   MODERATION_GROUNDS,
+  moderationGround,
   moderationTemplatesFor,
+  type AccountMeasure,
   adminPersonName,
   REVIEW_HOLD_REASON_LABEL,
   PROFESSIONAL_STATUS_ONE_LABEL,
@@ -138,7 +141,12 @@ function UserDetail() {
         <XStack gap="2" flexWrap="wrap" marginTop={-8}>
           <AdminPill>{detail.role === "ADMIN" ? `Admin · ${adminRolesLabel(detail.adminRoles)}` : ROLE_LABEL[detail.role]}</AdminPill>
           {detail.deletedAt ? <AdminPill>Account chiuso il {formatAdminDate(detail.deletedAt)}</AdminPill> : null}
-          {detail.suspendedAt ? <AdminPill tone="danger">Sospeso dal {formatAdminDate(detail.suspendedAt)}</AdminPill> : null}
+          {detail.suspendedAt ? (
+            <AdminPill tone="danger">
+              {accountClosed(detail) ? `Chiuso dal ${formatAdminDate(detail.suspendedAt)}` : `Sospeso dal ${formatAdminDate(detail.suspendedAt)}`}
+            </AdminPill>
+          ) : null}
+          {!detail.suspendedAt && detail.closureScheduledAt ? <AdminPill tone="danger">Si chiude il {formatAdminDate(detail.closureScheduledAt)}</AdminPill> : null}
           {!detail.suspendedAt && !detail.deletedAt && profile && profile.searchStatus !== "VISIBLE" ? (
             <AdminPill tone="warn">{PROFESSIONAL_STATUS_ONE_LABEL[profile.searchStatus]}</AdminPill>
           ) : null}
@@ -817,21 +825,48 @@ function ReportsTable({ rows }: { rows: AdminUserDetail["reportsMade"] }) {
   );
 }
 
+/** Chiuso con preavviso (non solo sospeso): la data di chiusura è arrivata. */
+function accountClosed(detail: AdminUserDetail): boolean {
+  return Boolean(detail.suspendedAt && detail.closureScheduledAt && new Date(detail.closureScheduledAt).getTime() <= new Date(detail.suspendedAt).getTime() + 60_000);
+}
+
+/** Frasi pronte per i fatti di una misura sull'account (E4-03): l'admin le completa. */
+const ACCOUNT_MEASURE_TEMPLATES: { label: string; text: string; ground: ModerationGroundCode }[] = [
+  { label: "Saldo non pagato", text: "Non hai pagato il saldo del lavoro del … nonostante i nostri solleciti del … e del ….", ground: "termini-pagamenti" },
+  { label: "Account doppio", text: "Hai un secondo account professionista con lo stesso codice fiscale o la stessa partita IVA (…).", ground: "termini-account" },
+  { label: "Dati falsi", text: "I dati del profilo non corrispondono a quelli verificati: ….", ground: "termini-profilo" },
+  { label: "Truffa", text: "Più clienti ci hanno segnalato di aver pagato per lavori mai eseguiti: ….", ground: "legge-truffa" },
+];
+
+/**
+ * Sospensione o chiusura dell'account (controllo pre-lancio 08/11, E4-03):
+ * misura, regola o legge violata e fatti sono obbligatori e arrivano alla
+ * persona per email (Reg. UE 2019/1150 art. 4, DSA art. 17). "Sospendi"
+ * blocca subito; "Chiudi con preavviso" chiude dopo 30 giorni (Termini punto 10).
+ */
 function SuspendPanel({ detail, token, onChanged }: { detail: AdminUserDetail; token: string; onChanged: () => void }) {
   const [open, setOpen] = useState(false);
+  const [measure, setMeasure] = useState<AccountMeasure>("SUSPEND");
+  const [ground, setGround] = useState<ModerationGroundCode | "">("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const suspended = Boolean(detail.suspendedAt);
+  const closed = accountClosed(detail);
+  const closing = !suspended && Boolean(detail.closureScheduledAt);
+  const undoing = suspended || closing;
+  const currentGround = moderationGround(detail.suspensionGround);
+  const canConfirm = undoing ? note.trim().length >= 3 : note.trim().length >= 10 && Boolean(ground);
 
   async function confirm() {
     setBusy(true);
     setError(null);
     try {
-      if (suspended) await apiClient.adminReactivateUser(token, detail.id, note);
-      else await apiClient.adminSuspendUser(token, detail.id, note);
+      if (undoing) await apiClient.adminReactivateUser(token, detail.id, note.trim());
+      else if (ground) await apiClient.adminSuspendUser(token, detail.id, { measure, ground, note: note.trim() });
       setOpen(false);
       setNote("");
+      setGround("");
       onChanged();
     } catch (err) {
       setError(errorMessage(err));
@@ -840,29 +875,88 @@ function SuspendPanel({ detail, token, onChanged }: { detail: AdminUserDetail; t
     }
   }
 
+  const title = closed ? "Account chiuso" : suspended ? "Account sospeso" : closing ? "Chiusura dell'account fissata" : "Sospensione o chiusura dell'account";
+  const undoLabel = closing ? "Annulla la chiusura" : "Riattiva account";
   return (
-    <AdminCard highlight={suspended}>
+    <AdminCard highlight={undoing}>
       <Text fontWeight="700" color={brand.grafite}>
-        {suspended ? "Account sospeso" : "Sospensione dell'account"}
+        {title}
       </Text>
-      {suspended && detail.suspensionNote ? <Text color={brand.grafite70}>Motivazione: {detail.suspensionNote}</Text> : null}
+      {closing && detail.closureScheduledAt ? <Text color={brand.grafite}>Si chiude il {formatAdminDate(detail.closureScheduledAt)}: fino ad allora l&apos;account funziona.</Text> : null}
+      {undoing && detail.suspensionNote ? <Text color={brand.grafite70}>Fatti: {detail.suspensionNote}</Text> : null}
+      {undoing && currentGround ? <Text color={brand.grafite70}>{currentGround.kind === "law" ? "Legge violata" : "Regola violata"}: {currentGround.label}</Text> : null}
       <Text fontSize="3" color={brand.grafite70}>
-        {suspended
-          ? "Riattivando l'account l'utente può di nuovo accedere e, se professionista, torna visibile in ricerca. Riceve una notifica e un'email."
-          : "L'utente non potrà più accedere e, se professionista, sparisce da ricerca e profilo pubblico. Riceve la motivazione per notifica ed email. Per un contenuto segnalato usa invece la pagina Segnalazioni."}
+        {undoing
+          ? closing
+            ? "Annullando, l'account resta attivo. La persona riceve una notifica e un'email con il motivo."
+            : "Riattivando l'account l'utente può di nuovo accedere e, se professionista, torna visibile in ricerca. Riceve una notifica e un'email."
+          : "La persona riceve per email i fatti, la regola violata e come contestare. Per un contenuto segnalato usa invece la pagina Segnalazioni."}
       </Text>
       {open ? (
-        <YStack gap="2">
-          <textarea aria-label="Motivo"
-            className="admin-input admin-textarea"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder={suspended ? "Motivo della riattivazione (obbligatorio)" : "Motivazione per l'utente (obbligatoria): cosa ha fatto e quale regola ha violato"}
-          />
+        <YStack gap="3">
+          {undoing ? (
+            <textarea
+              aria-label="Motivo"
+              className="admin-input admin-textarea"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={closing ? "Motivo dell'annullamento (obbligatorio)" : "Motivo della riattivazione (obbligatorio)"}
+            />
+          ) : (
+            <>
+              <fieldset className="admin-field" style={{ border: 0, padding: 0, margin: 0 }}>
+                <legend style={{ marginBottom: 6, fontWeight: 600 }}>Misura</legend>
+                <YStack gap="2">
+                  <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer" }}>
+                    <input type="radio" name="account-measure" checked={measure === "SUSPEND"} onChange={() => setMeasure("SUSPEND")} />
+                    <span>
+                      <strong>Sospendi subito</strong>: l&apos;account si blocca finché non lo riattivi. Per i casi gravi (legge, violazioni ripetute, sicurezza dei clienti) o mentre controlli.
+                    </span>
+                  </label>
+                  <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer" }}>
+                    <input type="radio" name="account-measure" checked={measure === "CLOSE_WITH_NOTICE"} onChange={() => setMeasure("CLOSE_WITH_NOTICE")} />
+                    <span>
+                      <strong>Chiudi con {ACCOUNT_CLOSURE_NOTICE_DAYS} giorni di preavviso</strong>: l&apos;account funziona fino alla data e poi si chiude da solo.
+                    </span>
+                  </label>
+                </YStack>
+              </fieldset>
+              <label className="admin-field">
+                <span>Regola o legge violata</span>
+                <select style={selectStyle} value={ground} onChange={(e) => setGround(e.target.value as ModerationGroundCode)}>
+                  <option value="">Scegli…</option>
+                  {MODERATION_GROUNDS.map((g) => (
+                    <option key={g.code} value={g.code}>
+                      {g.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="admin-field">
+                <span>Cosa è successo (lo legge la persona)</span>
+                <textarea className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="I fatti, con le date: cosa ha fatto e quando" />
+              </label>
+              <XStack gap="2" flexWrap="wrap">
+                {ACCOUNT_MEASURE_TEMPLATES.map((t) => (
+                  <button
+                    key={t.label}
+                    type="button"
+                    className="admin-chip-button"
+                    onClick={() => {
+                      setNote(t.text);
+                      setGround(t.ground);
+                    }}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </XStack>
+            </>
+          )}
           {error ? <Text color={brand.urgenza}>{error}</Text> : null}
-          <XStack gap="2">
-            <Button variant="primary" size="3" disabled={busy || note.trim().length < 3} onPress={confirm}>
-              {busy ? "…" : suspended ? "Conferma riattivazione" : "Conferma sospensione"}
+          <XStack gap="2" flexWrap="wrap">
+            <Button variant="primary" size="3" disabled={busy || !canConfirm} onPress={confirm}>
+              {busy ? "…" : undoing ? `Conferma: ${undoLabel.toLowerCase()}` : measure === "SUSPEND" ? "Conferma sospensione" : "Conferma chiusura"}
             </Button>
             <Button variant="secondary" size="3" onPress={() => setOpen(false)}>
               Annulla
@@ -871,8 +965,8 @@ function SuspendPanel({ detail, token, onChanged }: { detail: AdminUserDetail; t
         </YStack>
       ) : (
         <XStack>
-          <Button variant={suspended ? "primary" : "secondary"} size="3" onPress={() => setOpen(true)}>
-            {suspended ? "Riattiva account" : "Sospendi account"}
+          <Button variant={undoing ? "primary" : "secondary"} size="3" onPress={() => setOpen(true)}>
+            {undoing ? undoLabel : "Sospendi o chiudi l'account"}
           </Button>
         </XStack>
       )}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ReimpostaPasswordContent } from "./ReimpostaPasswordContent";
+import { PageLoading } from "@/components/PageLoading";
 
 export const metadata: Metadata = {
   title: "Nuova password",
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function ReimpostaPasswordPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading variant="form" />}>
       <ReimpostaPasswordContent />
     </Suspense>
   );

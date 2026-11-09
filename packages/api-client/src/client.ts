@@ -172,6 +172,8 @@ import type {
   AdminProposalRestore,
   AdminRejectedProposal,
   AdminQueue,
+  AccountMeasure,
+  ModerationGroundCode,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
@@ -204,7 +206,7 @@ export type ClientBooking = {
   hasReview: boolean;
   /** Recensione aggiornabile una volta, dopo una segnalazione a lavoro chiuso senza accordo. */
   canUpdateReview: boolean;
-  myReview: { id: string; rating: number; comment: string | null; photoUrls: string[] } | null;
+  myReview: { id: string; rating: number; comment: string | null; photoUrls: string[]; /** Foto di fine lavoro in "Lavori fatti" sul profilo, con il suo ok. */ showcase: boolean } | null;
   /**
    * Conferma del cliente che il lavoro è davvero terminato dal suo lato
    * (richiesta esplicita dell'utente: "servono i completed da entrambi") —
@@ -463,6 +465,10 @@ export type AdminUserDetail = {
   deletedAt: string | null;
   suspendedAt: string | null;
   suspensionNote: string | null;
+  /** Regola o legge violata della sospensione o della chiusura (codice di MODERATION_GROUNDS, E4-03). */
+  suspensionGround: string | null;
+  /** Chiusura con preavviso fissata (o già fatta, se c'è anche `suspendedAt`): E4-03. */
+  closureScheduledAt: string | null;
   /** Segnato "Account di prova": fuori dai numeri (docs/CHANGELOG.md §395). */
   testAccountAt: string | null;
   /** Verifica in due passaggi attiva (solo per gli admin, docs/CHANGELOG.md §359). */
@@ -1452,6 +1458,8 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
      */
     exportMyData: (token: string) =>
       request<Record<string, unknown>>("/auth/me/export", { headers: { Authorization: `Bearer ${token}` } }),
+    /** Gli stessi dati in PDF leggibile (controllo pre-lancio 08/11, E4-09). */
+    exportMyDataPdf: (token: string) => downloadFile("/auth/me/export/pdf", token),
 
     /** Immagine profilo dell'account (cliente o professionista) — indipendente da uploadMyProfessionalImage. */
     uploadMyAccountImage: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/auth/me/image", token, file, "image"),
@@ -1892,7 +1900,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<{ fileName: string; xml: string }>(`/admin/invoices/${encodeURIComponent(id)}/xml`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminRunInvoiceMonth: (token: string, month: string) =>
-      request<{ issued: number; notified: number; statements: number }>(`/admin/invoices/run/${encodeURIComponent(month)}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+      request<{ issued: number; notified: number; statements: number; late: boolean; abroad: number }>(`/admin/invoices/run/${encodeURIComponent(month)}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     adminFeeReconciliation: (token: string, month: string) =>
       request<FeeReconciliation>(`/admin/invoices/reconciliation/${encodeURIComponent(month)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
@@ -2130,7 +2138,8 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     uploadBookingCompletionPhoto: (token: string, file: Blob) =>
       uploadFile<{ imageUrl: string }>("/bookings/completion-photos", token, file, "image"),
 
-    createReview: (token: string, input: ReviewInput) =>
+    /** `showcase`: ok a mostrare le foto di fine lavoro in "Lavori fatti" (spento se non indicato). */
+    createReview: (token: string, input: Omit<ReviewInput, "showcase"> & { showcase?: boolean }) =>
       request<{ id: string; held?: boolean }>("/reviews", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
@@ -2143,6 +2152,14 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
+      }),
+
+    /** Il cliente toglie o rimette le foto del lavoro da "Lavori fatti" sul profilo del professionista. */
+    setReviewShowcase: (token: string, reviewId: string, showcase: boolean) =>
+      request<{ showcase: boolean }>(`/reviews/${reviewId}/showcase`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ showcase }),
       }),
 
     /** Risposta pubblica del professionista a una recensione, scritta o modificata. */
@@ -2253,8 +2270,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     adminGetUser: (token: string, id: string) => request<AdminUserDetail>(`/admin/users/${id}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
-    adminSuspendUser: (token: string, id: string, note: string) =>
-      request<{ id: string }>(`/admin/users/${id}/suspend`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ note }) }),
+    /** Sospensione subito o chiusura con 30 giorni di preavviso, con fatti e regola violata (controllo pre-lancio 08/11, E4-03). */
+    adminSuspendUser: (token: string, id: string, input: { measure: AccountMeasure; ground: ModerationGroundCode; note: string }) =>
+      request<{ id: string }>(`/admin/users/${id}/suspend`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
 
     /** "Nascondi la recensione" / "Togli dalla ricerca" dalla scheda (docs/changelog/2026-10-30-admin-persone.md). */
     adminModerateFromUser: (token: string, id: string, input: AdminModerateInput) =>

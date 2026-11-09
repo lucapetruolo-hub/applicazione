@@ -9,6 +9,7 @@ import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
 import { AuthIconBadge } from "@/components/AuthStepHeader";
 import { apiClient } from "@/lib/apiClient";
 import { startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
+import { PageLoading } from "@/components/PageLoading";
 
 /** Di ritorno dalla verifica la pagina aspetta l'esito, per al massimo 3 minuti. */
 const POLL_MS = 4000;
@@ -17,7 +18,7 @@ const POLL_LIMIT_MS = 3 * 60_000;
 export default function VerificaLegalePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoading variant="form" />}>
       <VerificaLegale token={token} />
     </Suspense>
   );

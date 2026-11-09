@@ -98,6 +98,15 @@ model User {
   // arriva via notifica/email. `null` per le sospensioni da segnalazione (la
   // motivazione sta su ContentReport).
   suspensionNote             String?
+  // Regola dei Termini o legge violata (codice di MODERATION_GROUNDS) della
+  // sospensione o della chiusura decisa dalla scheda utente (controllo
+  // pre-lancio 08/11, E4-03): arriva alla persona nell'email.
+  suspensionGround           String?
+  // Chiusura dell'account con preavviso (Termini punto 10, P2B art. 4 c. 2):
+  // l'account resta attivo fino a questa data, poi AccountClosuresService lo
+  // chiude (suspendedAt). Con suspendedAt valorizzato e questa data passata
+  // l'account è "chiuso", non solo sospeso.
+  closureScheduledAt         DateTime?
   // Aree di competenza di un ADMIN, combinabili (docs/CHANGELOG.md §145-§146):
   // SUPER vede e fa tutto (e assegna i ruoli), MODERATOR segnalazioni/
   // messaggi/utenti, FINANCE finanza/rimborsi/DAC7/statistiche — es.
@@ -218,6 +227,7 @@ model User {
   @@map("users")
 
   @@index([deletedEmailHash])
+  @@index([closureScheduledAt])
 }
 
 // Dispositivi da cui un professionista ha già fatto l'accesso
@@ -1008,6 +1018,10 @@ model GuidedRequestUserState {
   // Promemoria programmato: il job RequestRemindersService crea una
   // notifica REQUEST_REMINDER a quest'ora e azzera il campo.
   remindAt        DateTime?
+  // "Ricordamelo tra…" del cliente a lavoro terminato, per rifarlo con lo
+  // stesso professionista (docs/changelog/2026-11-08-promemoria-manutenzione.md):
+  // a quest'ora parte REBOOK_REMINDER (sito ed email) e il campo si azzera.
+  rebookRemindAt  DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @default(now()) @updatedAt
 
@@ -1016,6 +1030,7 @@ model GuidedRequestUserState {
 
   @@unique([userId, guidedRequestId])
   @@index([remindAt])
+  @@index([rebookRemindAt])
   @@map("guided_request_user_states")
 }
 
@@ -1583,6 +1598,11 @@ model Review {
   // o la nasconde. heldReasons: i segnali (ReviewHoldReason).
   heldAt                DateTime?
   heldReasons           String[]  @default([])
+  // "Lavori fatti" sul profilo (docs/changelog/2026-11-08-lavori-fatti.md):
+  // il cliente acconsente, recensendo, a mostrare le foto di fine lavoro del
+  // professionista nel suo profilo pubblico. Null = mai mostrate (anche dopo
+  // averlo tolto).
+  showcaseConsentAt     DateTime?
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
