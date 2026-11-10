@@ -510,7 +510,8 @@ export function CompleteJobModal({
             onPress={handleSubmit}
             disabled={isSaving || isUploadingPhoto || !declaration}
           >
-            {isSaving ? <ButtonWaitBar label="Salvataggio…" /> : "Conferma"}
+            Conferma
+            {isSaving ? <ButtonWaitBar label="Salvataggio…" /> : null}
           </Button>
           <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSaving}>
             Annulla

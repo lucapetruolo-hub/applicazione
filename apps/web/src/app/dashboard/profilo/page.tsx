@@ -1963,7 +1963,8 @@ export default function DashboardProfiloPage() {
                   per l'azione distruttiva (le modifiche vanno perse). */}
               <XStack gap="3" flexWrap="wrap">
                 <Button flex={1} variant="primary" onPress={handleSaveAndLeave} disabled={isSavingBeforeLeave}>
-                  {isSavingBeforeLeave ? <ButtonWaitBar label="Salvataggio…" /> : "Salva"}
+                  Salva
+                  {isSavingBeforeLeave ? <ButtonWaitBar label="Salvataggio…" /> : null}
                 </Button>
                 <Button flex={1} variant="urgent" onPress={handleLeaveWithoutSaving} disabled={isSavingBeforeLeave}>
                   {confirmDiscard && !pendingHref ? "Non salvare" : "Esci senza salvare"}

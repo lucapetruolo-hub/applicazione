@@ -12,7 +12,7 @@ import { ExternalJobModal } from "@/components/ExternalJobModal";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import { TimelineModal } from "@/components/TimelineModal";
-import { ButtonWaitBar, WaitBarSignal } from "@/components/WaitBar";
+import { WaitBarSignal } from "@/components/WaitBar";
 import { PageLoading } from "@/components/PageLoading";
 
 type Filter = "ALL" | "SITE" | "EXTERNAL";
@@ -416,12 +416,12 @@ function ClientCard({
                 style={{ ...fieldStyle, resize: "vertical" }}
               />
               <XStack gap="3" alignItems="center">
-                <CardButton
+                <CardButton waitingLabel={noteState === "saving" ? "Salvataggio…" : undefined}
                   onPress={saveNote}
                   disabled={noteState === "saving" || note.trim() === (client.note ?? "")}
                   opacity={noteState !== "saving" && note.trim() === (client.note ?? "") ? 0.6 : 1}
                 >
-                  {noteState === "saving" ? <ButtonWaitBar tone="green" label="Salvataggio…" /> : "Salva la nota"}
+                  Salva la nota
                 </CardButton>
                 {noteState === "saved" ? (
                   <Text fontSize={14} color={brand.verificato} fontWeight="600" role="status">

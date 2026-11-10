@@ -402,7 +402,8 @@ function AccountantCard({ token, initial }: { token: string; initial: DocumentsO
       </ConsentCheckbox>
       <XStack gap="3" alignItems="center" flexWrap="wrap">
         <Button variant="primary" alignSelf="flex-start" disabled={!dirty || pending} opacity={!dirty && !pending ? 0.6 : 1} onPress={() => void save()}>
-          {pending ? <ButtonWaitBar label="Salvataggio…" /> : "Salva"}
+          Salva
+          {pending ? <ButtonWaitBar label="Salvataggio…" /> : null}
         </Button>
         {done && !dirty ? (
           <Text fontSize={16} color={brand.cianografiaScuro} role="status">

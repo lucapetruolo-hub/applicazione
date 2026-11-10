@@ -873,16 +873,13 @@ function RegistratiForm() {
 
           <MagneticButton block>
           <Button variant="primary" onPress={handleRegister} disabled={busy} opacity={busy && googleWait ? 0.6 : 1}>
-            {busy && !googleWait ? (
-              <ButtonWaitBar label="Stiamo creando il tuo account…" />
-            ) : (
-              <XStack alignItems="center" gap="2">
-                <Text color="white" fontFamily="body" fontWeight="600">
-                  Registrati
-                </Text>
-                <ButtonArrow />
-              </XStack>
-            )}
+            <XStack alignItems="center" gap="2">
+              <Text color="white" fontFamily="body" fontWeight="600">
+                Registrati
+              </Text>
+              <ButtonArrow />
+            </XStack>
+            {busy && !googleWait ? <ButtonWaitBar label="Stiamo creando il tuo account…" /> : null}
           </Button>
           </MagneticButton>
           <SlowWaitHint active={busy && !googleWait} />

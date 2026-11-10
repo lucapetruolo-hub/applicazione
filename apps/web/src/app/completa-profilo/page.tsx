@@ -167,7 +167,8 @@ function CompletaProfiloForm() {
                 onPress={handleSubmit}
                 disabled={isSubmitting || leaving}
               >
-                {isSubmitting || leaving ? <ButtonWaitBar label="Stiamo preparando il tuo account…" /> : "Scegli la password ed entra"}
+                Scegli la password ed entra
+                {isSubmitting || leaving ? <ButtonWaitBar label="Stiamo preparando il tuo account…" /> : null}
               </Button>
               <SlowWaitHint active={isSubmitting || leaving} />
             </YStack>

@@ -83,7 +83,6 @@ import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, 
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import { JobLimitModal } from "@/components/JobLimitModal";
-import { ButtonWaitBar } from "@/components/WaitBar";
 
 /** Orari liberi mostrati subito nel modulo del preventivo, gli altri con "Altri orari". */
 const QUOTE_SLOTS_SHOWN = 6;
@@ -1408,8 +1407,8 @@ export function RequestCard({
               style={{ width: "100%", padding: 8, borderRadius: radiusDoc, border: `1px solid ${brand.bordoCampo}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite, resize: "none", overflow: "hidden" }}
             />
             {noteChanged ? (
-              <CardButton alignSelf="flex-start" disabled={isSavingNote} opacity={1} onPress={handleSaveNote}>
-                {isSavingNote ? <ButtonWaitBar tone="green" label="Salvataggio…" /> : "Salva"}
+              <CardButton waitingLabel={isSavingNote ? "Salvataggio…" : undefined} alignSelf="flex-start" disabled={isSavingNote} opacity={1} onPress={handleSaveNote}>
+                Salva
               </CardButton>
             ) : null}
           </YStack>
@@ -2002,14 +2001,15 @@ export function RequestCard({
                 </Text>
               ) : null}
               <XStack gap="2" flexWrap="wrap">
-                <CardButton tone="primary" arrow={!isSubmittingQuote} disabled={isSubmittingQuote} opacity={1} onPress={handleSendQuote}>
-                  {isSubmittingQuote ? (
-                    <ButtonWaitBar label={lead.quote ? "Salvataggio…" : "Invio del preventivo…"} />
-                  ) : lead.quote ? (
-                    "Salva le modifiche"
-                  ) : (
-                    "Invia preventivo"
-                  )}
+                <CardButton
+                  tone="primary"
+                  arrow
+                  disabled={isSubmittingQuote}
+                  opacity={1}
+                  onPress={handleSendQuote}
+                  waitingLabel={isSubmittingQuote ? (lead.quote ? "Salvataggio…" : "Invio del preventivo…") : undefined}
+                >
+                  {lead.quote ? "Salva le modifiche" : "Invia preventivo"}
                 </CardButton>
                 <CardButton onPress={() => setShowQuoteForm(false)}>Annulla</CardButton>
               </XStack>
@@ -2082,8 +2082,8 @@ export function RequestCard({
                 </Text>
               ) : null}
               <XStack gap="2" flexWrap="wrap">
-                <CardButton tone="primary" disabled={isCountering} opacity={1} onPress={handleCounterPropose}>
-                  {isCountering ? <ButtonWaitBar label="Invio in corso…" /> : "Invia nuova proposta"}
+                <CardButton waitingLabel={isCountering ? "Invio in corso…" : undefined} tone="primary" disabled={isCountering} opacity={1} onPress={handleCounterPropose}>
+                  Invia nuova proposta
                 </CardButton>
                 <CardButton onPress={() => setShowCounterForm(false)}>Annulla</CardButton>
               </XStack>

@@ -25,16 +25,26 @@ export function WaitBarSignal() {
   return null;
 }
 
+/** Sui salvataggi veloci la barra nel pulsante non deve lampeggiare. */
+const BUTTON_BAR_AFTER_MS = 150;
+
 /**
  * Dentro un pulsante mentre si aspetta il server (invio della richiesta,
- * creazione dell'account, salvataggi): la barra al posto della scritta, alla
- * stessa altezza della riga. Bianca sui pulsanti verdi e rossi, verde
- * (`tone="green"`) sui pulsanti bianchi. La frase resta per il lettore di
- * schermo.
+ * creazione dell'account, salvataggi): da mettere accanto alla scritta, che
+ * resta al suo posto. Dopo 150 ms la barra la copre e la scritta si nasconde
+ * (`.button-wait-overlay` in globals.css), così il pulsante non cambia
+ * larghezza e sui salvataggi veloci non lampeggia. Bianca sui pulsanti verdi
+ * e rossi, verde (`tone="green"`) sui pulsanti bianchi. La frase è subito
+ * per il lettore di schermo.
  */
 export function ButtonWaitBar({ label, tone = "light" }: { label: string; tone?: "light" | "green" }) {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShown(true), BUTTON_BAR_AFTER_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
   return (
-    <span className={tone === "green" ? "button-wait-bar button-wait-bar--green" : "button-wait-bar"}>
+    <span className={`button-wait-overlay${shown ? " is-shown" : ""}`}>
       <span className={tone === "green" ? "flow-bar" : "flow-bar flow-bar--light"} aria-hidden="true" />
       <span className="sr-only" role="status">
         {label}

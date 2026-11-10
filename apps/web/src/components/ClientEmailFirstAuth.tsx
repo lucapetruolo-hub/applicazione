@@ -250,7 +250,8 @@ export function ClientEmailFirstAuth({
             />
             {errorText}
             <Button variant="primary" onPress={handleContinue} disabled={busy} opacity={busy && viaGoogle ? 0.6 : 1}>
-              {isSubmitting && !viaGoogle ? <ButtonWaitBar label="Un momento…" /> : "Continua"}
+              Continua
+              {isSubmitting && !viaGoogle ? <ButtonWaitBar label="Un momento…" /> : null}
             </Button>
           </YStack>
         </form>
@@ -330,11 +331,8 @@ export function ClientEmailFirstAuth({
           {isNew ? <TurnstileWidget onTokenChange={setTurnstileToken} resetSignal={turnstileReset} /> : null}
           {errorText}
           <Button variant="primary" onPress={handlePassword} disabled={busy} opacity={busy && viaGoogle ? 0.6 : 1}>
-            {busy && !viaGoogle ? (
-              <ButtonWaitBar label={isNew ? "Stiamo creando il tuo account…" : "Accesso in corso…"} />
-            ) : (
-              `${isNew ? "Crea account" : "Accedi"}${submitSuffix}`
-            )}
+            {`${isNew ? "Crea account" : "Accedi"}${submitSuffix}`}
+            {busy && !viaGoogle ? <ButtonWaitBar label={isNew ? "Stiamo creando il tuo account…" : "Accesso in corso…"} /> : null}
           </Button>
           {isNew ? <SlowWaitHint active={busy && !viaGoogle} /> : null}
         </YStack>

@@ -234,7 +234,8 @@ function TextForm({
         </Text>
       ) : null}
       <Button variant="secondary" size="2" height={36} alignSelf="flex-start" onPress={submit} disabled={isSaving}>
-        {isSaving ? <ButtonWaitBar tone="green" label="Invio in corso…" /> : submitLabel}
+        {submitLabel}
+        {isSaving ? <ButtonWaitBar tone="green" label="Invio in corso…" /> : null}
       </Button>
     </YStack>
   );
@@ -287,7 +288,8 @@ function RefundOfferForm({ current, onSubmit }: { current: number | null; onSubm
           €
         </Text>
         <Button variant="secondary" size="2" height={36} onPress={submit} disabled={isSaving}>
-          {isSaving ? <ButtonWaitBar tone="green" label="Invio in corso…" /> : current !== null ? "Cambia proposta" : "Proponi rimborso"}
+          {current !== null ? "Cambia proposta" : "Proponi rimborso"}
+          {isSaving ? <ButtonWaitBar tone="green" label="Invio in corso…" /> : null}
         </Button>
       </XStack>
       {error ? (

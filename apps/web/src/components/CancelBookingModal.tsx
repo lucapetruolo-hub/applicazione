@@ -148,7 +148,8 @@ export function CancelBookingModal({
 
         <XStack gap="2" flexWrap="wrap">
           <Button variant={confirmVariant} size="3" height={44} onPress={handleSubmit} disabled={isSaving}>
-            {isSaving ? <ButtonWaitBar label={confirmingLabel} /> : confirmLabel}
+            {confirmLabel}
+            {isSaving ? <ButtonWaitBar label={confirmingLabel} /> : null}
           </Button>
           <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSaving}>
             {backLabel}

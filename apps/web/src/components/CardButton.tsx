@@ -2,6 +2,7 @@
 
 import type { ComponentProps, ReactNode } from "react";
 import { Button, ButtonArrow, Text, XStack, brand } from "@professionisti/ui";
+import { ButtonWaitBar } from "./WaitBar";
 
 /**
  * Pulsante delle azioni in fondo alle schede delle richieste ("Richieste e
@@ -27,6 +28,8 @@ type CardButtonProps = Omit<ComponentProps<typeof Button>, "variant" | "size" | 
   compactOnPhone?: boolean;
   /** Freccia che ruota al passaggio del mouse, solo sulle azioni principali (docs/CHANGELOG.md §233). */
   arrow?: boolean;
+  /** Mentre si aspetta il server: la barra sopra la scritta, con questa frase per il lettore di schermo. */
+  waitingLabel?: string;
   children: ReactNode;
 };
 
@@ -35,7 +38,7 @@ type CardButtonProps = Omit<ComponentProps<typeof Button>, "variant" | "size" | 
 export const CARD_BUTTON_HEIGHT = 44;
 const CARD_BUTTON_HEIGHT_COMPACT = 40;
 
-export function CardButton({ tone = "outline", fill, compact, compactOnPhone, arrow, children, disabled, ...rest }: CardButtonProps) {
+export function CardButton({ tone = "outline", fill, compact, compactOnPhone, arrow, waitingLabel, children, disabled, ...rest }: CardButtonProps) {
   const textColor = fill || tone === "primary" || tone === "dangerSolid" ? "white" : tone === "danger" ? brand.urgenza : brand.grafite;
   const toneProps: ComponentProps<typeof Button> = fill
     ? { variant: "secondary", backgroundColor: fill, borderColor: fill }
@@ -77,6 +80,8 @@ export function CardButton({ tone = "outline", fill, compact, compactOnPhone, ar
       ) : (
         label
       )}
+      {/* Barra bianca sui pulsanti pieni, verde su quelli bianchi. */}
+      {waitingLabel ? <ButtonWaitBar label={waitingLabel} tone={fill || tone === "primary" || tone === "dangerSolid" ? "light" : "green"} /> : null}
     </Button>
   );
 }

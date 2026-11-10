@@ -94,7 +94,8 @@ export function ClientCompleteModal({
 
         <XStack gap="2" flexWrap="wrap">
           <Button variant="primary" size="3" height={44} onPress={handleSubmit} disabled={isSaving}>
-            {isSaving ? <ButtonWaitBar label="Conferma in corso…" /> : "Conferma lavoro terminato"}
+            Conferma lavoro terminato
+            {isSaving ? <ButtonWaitBar label="Conferma in corso…" /> : null}
           </Button>
           <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSaving}>
             Annulla

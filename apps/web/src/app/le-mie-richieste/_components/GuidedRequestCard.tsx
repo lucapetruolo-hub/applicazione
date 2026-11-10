@@ -57,7 +57,6 @@ import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 import { DeleteRequestModal } from "./DeleteRequestModal";
 import { announceRequestDeleted } from "./RequestDeletedNotice";
 import { ClientMiniTimeline, ClientStagePill, MAX_REQUEST_PHOTOS, STAGE_STYLE, ServiceBadge, formatDateTime, requestJobAddress, textareaStyle } from "./clientRequestHelpers";
-import { ButtonWaitBar } from "@/components/WaitBar";
 
 /** Acconto online che resta al professionista se il cliente annulla ora, dentro il preavviso (docs/CHANGELOG.md §348). */
 /** Pagato online e non ancora rimborsato (collaudo F-02). */
@@ -705,8 +704,8 @@ export function GuidedRequestCard({
             </Text>
           ) : null}
           <XStack gap="2">
-            <CardButton tone="primary" onPress={handleSaveEdit} disabled={isSaving || isUploadingPhoto} opacity={isUploadingPhoto && !isSaving ? 0.6 : 1}>
-              {isSaving ? <ButtonWaitBar label="Salvataggio…" /> : "Salva modifiche"}
+            <CardButton waitingLabel={isSaving ? "Salvataggio…" : undefined} tone="primary" onPress={handleSaveEdit} disabled={isSaving || isUploadingPhoto} opacity={isUploadingPhoto && !isSaving ? 0.6 : 1}>
+              Salva modifiche
             </CardButton>
             <CardButton onPress={requestExitEditing} disabled={isSaving}>
               Annulla

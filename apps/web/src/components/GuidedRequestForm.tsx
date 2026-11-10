@@ -1947,19 +1947,16 @@ export function GuidedRequestForm({
               flexGrow={2}
               flexBasis={200}
             >
-              {isSubmitting ? (
-                // Barra di attesa al posto della scritta (decisione di Luca,
-                // docs/changelog/2026-11-05-barra-di-attesa.md): stessa altezza
-                // della riga, la frase resta per il lettore di schermo.
-                <ButtonWaitBar label={submittingLabel} />
-              ) : (
-                <XStack alignItems="center" gap="2">
-                  <Text color="white" fontFamily="body" fontWeight="600">
-                    {shownSubmitLabel}
-                  </Text>
-                  <ButtonArrow />
-                </XStack>
-              )}
+              <XStack alignItems="center" gap="2">
+                <Text color="white" fontFamily="body" fontWeight="600">
+                  {shownSubmitLabel}
+                </Text>
+                <ButtonArrow />
+              </XStack>
+              {/* Barra di attesa sopra la scritta (decisione di Luca,
+                  docs/changelog/2026-11-05-barra-di-attesa.md): la frase resta
+                  per il lettore di schermo. */}
+              {isSubmitting ? <ButtonWaitBar label={submittingLabel} /> : null}
             </Button>
             </MagneticButton>
           )}

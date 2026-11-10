@@ -311,7 +311,8 @@ export function ExternalJobModal({
 
         <XStack gap="2" flexWrap="wrap">
           <Button variant="primary" size="3" height={40} disabled={isSaving} onPress={handleSubmit}>
-            {isSaving ? <ButtonWaitBar label="Salvataggio…" /> : "Salva"}
+            Salva
+            {isSaving ? <ButtonWaitBar label="Salvataggio…" /> : null}
           </Button>
           <Button variant="ghost" size="3" height={40} onPress={onClose}>
             Annulla

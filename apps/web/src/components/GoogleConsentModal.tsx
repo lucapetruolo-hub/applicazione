@@ -95,7 +95,8 @@ export function GoogleConsentModal({
               Annulla
             </Button>
             <Button variant="primary" flex={1} onPress={handleConfirm} disabled={isSubmitting}>
-              {isSubmitting ? <ButtonWaitBar label="Stiamo creando il tuo account…" /> : "Accetta e continua"}
+              Accetta e continua
+              {isSubmitting ? <ButtonWaitBar label="Stiamo creando il tuo account…" /> : null}
             </Button>
           </XStack>
           <SlowWaitHint active={!!isSubmitting} />

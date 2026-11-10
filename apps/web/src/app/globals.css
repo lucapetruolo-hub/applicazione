@@ -539,18 +539,29 @@ body:has(.chosen-bar) {
     rgba(255, 255, 255, 0.45)
   );
 }
-/* Contenitore della barra bianca dentro un pulsante (ButtonWaitBar): stessa
-   altezza della riga di testo, così il pulsante non cambia misura. */
-.button-wait-bar {
-  display: inline-flex;
+/* Barra dentro un pulsante (ButtonWaitBar): sopra la scritta, che resta al
+   suo posto e tiene la larghezza del pulsante; dopo 150 ms (.is-shown) la
+   scritta si nasconde e compare la barra. */
+:is(button, [role="button"]):has(> .button-wait-overlay) {
+  position: relative;
+}
+.button-wait-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
-  height: 20px;
+  pointer-events: none;
 }
-/* Sui pulsanti bianchi la barra verde, un po' più corta: sta anche nei
-   pulsanti piccoli ("Salva" della nota) senza allargarli troppo. */
-.button-wait-bar--green .flow-bar {
-  width: 96px;
+.button-wait-overlay .flow-bar {
+  width: min(120px, calc(100% - 28px));
+  opacity: 0;
+}
+.button-wait-overlay.is-shown .flow-bar {
+  opacity: 1;
+}
+:is(button, [role="button"]):has(> .button-wait-overlay.is-shown) > :not(.button-wait-overlay) {
+  visibility: hidden;
 }
 /* Frase sotto il pulsante quando l'attesa supera 5 secondi (SlowWaitHint). */
 .slow-wait-hint {

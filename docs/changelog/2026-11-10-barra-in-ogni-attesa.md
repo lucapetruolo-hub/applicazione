@@ -78,3 +78,22 @@ bianchi che aspettano il server).
   nelle segnalazioni dei lavori.
 - Presi anche due pulsanti verdi rimasti fuori: "Invia proposta" della nuova
   data (cliente) e "Invia nuova proposta" (professionista).
+
+## Quarto giro: due ritocchi su tutti i pulsanti
+
+**Richiesta** (Luca, 10/11/2026): "I due ritocchi per tutto" (dopo aver
+chiesto se lo stile della barra nei pulsanti fosse il migliore: tenuto, è lo
+stesso segno della barra in cima).
+
+- **Il pulsante non cambia larghezza**: la barra (`ButtonWaitBar`) ora sta
+  sopra la scritta (`.button-wait-overlay`, posizione assoluta) e la scritta
+  resta al suo posto, nascosta, invece di essere sostituita. Si usa accanto
+  alla scritta: `{testo}{attesa ? <ButtonWaitBar label=… /> : null}`; nei
+  `CardButton` con la prop `waitingLabel` (barra bianca sui pieni, verde su
+  quelli bianchi).
+- **Niente lampeggi**: la barra compare dopo 150 ms; prima resta la scritta
+  (pulsante già disattivato). La frase per il lettore di schermo c'è subito.
+
+**Verifica**: typecheck e lint verdi; sul sito compilato il pulsante
+"Registrati" resta largo 354 px (telefono) e 560 px (computer) prima e
+durante l'attesa, la barra non c'è appena premuto e c'è dopo 250 ms.

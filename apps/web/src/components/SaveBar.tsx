@@ -43,7 +43,8 @@ export function SaveBar({
             </Button>
           ) : null}
           <Button variant="primary" onPress={onSave} disabled={saving}>
-            {saving ? <ButtonWaitBar label="Salvataggio…" /> : saveLabel}
+            {saveLabel}
+            {saving ? <ButtonWaitBar label="Salvataggio…" /> : null}
           </Button>
         </XStack>
       </XStack>

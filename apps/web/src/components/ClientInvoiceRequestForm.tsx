@@ -329,7 +329,8 @@ export function ClientInvoiceRequestPanel({
           <InvoiceRequestFields draft={draft} onChange={setDraft} errors={errors} receipt={receipt} />
           <XStack gap="2" flexWrap="wrap">
             <Button variant="primary" onPress={() => void save()} disabled={saving}>
-              {saving ? <ButtonWaitBar label="Invio in corso…" /> : initial ? "Salva i dati" : "Manda la richiesta"}
+              {initial ? "Salva i dati" : "Manda la richiesta"}
+              {saving ? <ButtonWaitBar label="Invio in corso…" /> : null}
             </Button>
             <Button variant="secondary" onPress={() => setEditing(false)} disabled={saving}>
               Annulla

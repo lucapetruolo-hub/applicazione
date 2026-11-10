@@ -1142,7 +1142,8 @@ function DashboardFiscaleContent() {
                     disabled={saving || step2Missing.length > 0 || hasLiveErrors || !!recipientError || companyNameConflict}
                     opacity={!saving && (step2Missing.length > 0 || hasLiveErrors || !!recipientError || companyNameConflict) ? 0.45 : 1}
                   >
-                    {saving ? <ButtonWaitBar label="Salvataggio…" /> : "Salva"}
+                    Salva
+                    {saving ? <ButtonWaitBar label="Salvataggio…" /> : null}
                   </Button>
                 </XStack>
                 {/* Il controllo della partita IVA può durare qualche secondo (collaudo 0-06). */}

@@ -179,7 +179,8 @@ function AccediForm() {
           ) : null}
 
           <Button variant="primary" onPress={handleLogin} disabled={busy || googleBusy} opacity={googleBusy ? 0.6 : 1}>
-            {busy ? <ButtonWaitBar label="Accesso in corso…" /> : "Accedi"}
+            Accedi
+            {busy ? <ButtonWaitBar label="Accesso in corso…" /> : null}
           </Button>
 
           <Link href="/password-dimenticata" style={{ textDecoration: "none", textAlign: "center" }}>

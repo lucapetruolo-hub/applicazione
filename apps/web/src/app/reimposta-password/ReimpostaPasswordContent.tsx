@@ -91,7 +91,8 @@ export function ReimpostaPasswordContent() {
               </Text>
             ) : null}
             <Button variant="primary" onPress={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? <ButtonWaitBar label="Salvataggio…" /> : "Salva e accedi"}
+              Salva e accedi
+              {isSubmitting ? <ButtonWaitBar label="Salvataggio…" /> : null}
             </Button>
           </YStack>
         ) : (

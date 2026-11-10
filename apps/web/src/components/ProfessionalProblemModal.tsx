@@ -230,7 +230,8 @@ export function ProfessionalProblemModal({
 
             <XStack gap="2" flexWrap="wrap">
               <Button variant="urgent" size="3" height={44} opacity={isUploading && !isSaving ? 0.6 : 1} onPress={handleSubmit} disabled={isSaving || isUploading}>
-                {isSaving ? <ButtonWaitBar label="Invio in corso…" /> : "Invia segnalazione"}
+                Invia segnalazione
+                {isSaving ? <ButtonWaitBar label="Invio in corso…" /> : null}
               </Button>
               <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSaving}>
                 Annulla

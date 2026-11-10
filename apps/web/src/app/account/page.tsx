@@ -718,7 +718,8 @@ export default function AccountPage() {
                     onPress={handleChangePassword}
                     disabled={isSavingPassword}
                   >
-                    {isSavingPassword ? <ButtonWaitBar tone="green" label="Salvataggio…" /> : "Salva password"}
+                    Salva password
+                    {isSavingPassword ? <ButtonWaitBar tone="green" label="Salvataggio…" /> : null}
                   </Button>
                   <Text
                     color={brand.grafite70}

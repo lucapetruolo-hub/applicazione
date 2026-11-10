@@ -264,7 +264,8 @@ function BankDisputeNoteModal({
 
         <XStack gap="2" flexWrap="wrap">
           <Button variant="primary" size="3" height={44} opacity={isUploading && !isSaving ? 0.6 : 1} onPress={handleSubmit} disabled={isSaving || isUploading}>
-            {isSaving ? <ButtonWaitBar label="Invio in corso…" /> : "Invia la spiegazione"}
+            Invia la spiegazione
+            {isSaving ? <ButtonWaitBar label="Invio in corso…" /> : null}
           </Button>
           <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSaving}>
             Annulla

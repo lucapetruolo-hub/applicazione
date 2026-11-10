@@ -298,7 +298,8 @@ export function ImageCropModal({
               opacity: !isProcessing && !naturalSize ? 0.6 : 1,
             }}
           >
-            {isProcessing ? <ButtonWaitBar label="Salvataggio…" /> : "Salva"}
+            Salva
+            {isProcessing ? <ButtonWaitBar label="Salvataggio…" /> : null}
           </button>
         </div>
       </div>
