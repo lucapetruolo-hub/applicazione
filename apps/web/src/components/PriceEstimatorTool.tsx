@@ -10,6 +10,7 @@ import { apiClient } from "@/lib/apiClient";
 import { readLastSearchCity } from "@/lib/lastSearchCity";
 import { countPriceToolEntry } from "@/lib/siteCounts";
 import styles from "./PriceEstimatorTool.module.css";
+import { WaitBarSignal } from "@/components/WaitBar";
 
 type PriceEntry = ServicePriceIndexEntry;
 
@@ -158,7 +159,10 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
               </a>
             </div>
           ) : entries === null ? (
-            <p className="price-message">Caricamento...</p>
+            <p className="price-message">
+              Caricamento...
+              <WaitBarSignal />
+            </p>
           ) : visibleEntries.length === 0 ? (
             <div className={`is_View ${styles.message}`}>
               <span className={`is_Text ${styles.muted}`}>

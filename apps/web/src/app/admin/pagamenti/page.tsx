@@ -24,6 +24,7 @@ import { useAdminOverview } from "@/components/admin/AdminOverviewContext";
 import { AdminCard, AdminPageHeader, AdminPill, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { PdfButton } from "@/app/dashboard/documenti/_components/DocumentParts";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
+import { WaitBarSignal } from "@/components/WaitBar";
 
 const REFUND_STATUS: Record<AdminRefund["status"], { label: string; tone: "warn" | "ok" | "neutral" | "danger" }> = {
   REQUESTED: { label: "Da decidere", tone: "warn" },
@@ -675,7 +676,10 @@ function BankDisputeArchive({ token, reloadKey }: { token: string; reloadKey: un
       </Text>
       <SearchBox label="Cerca nelle contestazioni in banca" value={query} onChange={setQuery} placeholder="Cliente, professionista, email, cifra o codice" />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
-      {rows === null ? <Text color={brand.grafite70}>Caricamento…</Text> : null}
+      {rows === null ? <Text color={brand.grafite70}>
+          Caricamento…
+          <WaitBarSignal />
+        </Text> : null}
       {rows && rows.length === 0 ? (
         <Text color={brand.grafite70}>{search ? "Nessuna contestazione trovata." : "Nessuna contestazione in banca finora."}</Text>
       ) : null}

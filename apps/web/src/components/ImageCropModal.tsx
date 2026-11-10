@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as Reac
 import { useDialogFocus } from "@/lib/useDialogFocus";
 import { ZoomIn } from "lucide-react";
 import { brand } from "@professionisti/ui";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
@@ -326,10 +327,11 @@ export function ImageCropModal({
               fontSize: 16,
               fontWeight: 600,
               cursor: "pointer",
-              opacity: isProcessing || !naturalSize ? 0.6 : 1,
+              opacity: !isProcessing && !naturalSize ? 0.6 : 1,
             }}
           >
-            {isProcessing ? "Salvataggio..." : "Salva"}
+            Salva
+            {isProcessing ? <ButtonWaitBar label="Salvataggio…" /> : null}
           </button>
         </div>
       </div>

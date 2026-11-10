@@ -51,6 +51,7 @@ import { AdminProposalsOverview } from "@/components/admin/AdminProposalsOvervie
 import { AdminSummaryNumbers } from "@/components/admin/AdminSummaryNumbers";
 import { StatsBarChart } from "@/components/StatsBarChart";
 import { SkeletonTableRows } from "@/components/Skeleton";
+import { WaitBarSignal } from "@/components/WaitBar";
 
 /**
  * Andamento del sito (richiesta di Luca, docs/CHANGELOG.md §372): in cima
@@ -1228,7 +1229,10 @@ function PartnerLinksCard({ token, isSuper }: { token: string | null; isSuper: b
         title="Link dei partner"
         note="Un link per ogni commercialista o associazione che presenta il sito ai suoi artigiani: porta alla pagina per i professionisti e conta chi si iscrive da lì. Nessun compenso. La scheda PDF ha il link e il QR, da stampare o mandare."
       />
-      {partners === null && !error ? <Text color={brand.grafite70}>Caricamento...</Text> : null}
+      {partners === null && !error ? <Text color={brand.grafite70}>
+          Caricamento...
+          <WaitBarSignal />
+        </Text> : null}
       {partners && partners.length === 0 ? <Text color={brand.grafite70}>Nessun link creato.</Text> : null}
       {partners && partners.length > 0 ? (
         <ul className="site-notes">

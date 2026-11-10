@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Button, Text, XStack, brand } from "@professionisti/ui";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 /**
  * Riga "Salva" in fondo ai moduli lunghi (Account del cliente, Modifica
@@ -41,8 +42,9 @@ export function SaveBar({
               Annulla
             </Button>
           ) : null}
-          <Button variant="primary" onPress={onSave} disabled={saving} opacity={saving ? 0.6 : 1}>
-            {saving ? "Salvataggio..." : saveLabel}
+          <Button variant="primary" onPress={onSave} disabled={saving}>
+            {saveLabel}
+            {saving ? <ButtonWaitBar label="Salvataggio…" /> : null}
           </Button>
         </XStack>
       </XStack>

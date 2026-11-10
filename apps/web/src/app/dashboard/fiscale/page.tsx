@@ -35,6 +35,7 @@ import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput"
 import { FiscalWhyModal } from "@/components/verification/FiscalWhyModal";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { PageLoading } from "@/components/PageLoading";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 const isPersonType = (type: string) => type === "PRIVATE_INDIVIDUAL" || type === "SOLE_PROPRIETOR";
 
@@ -1139,9 +1140,10 @@ function DashboardFiscaleContent() {
                     variant="primary"
                     onPress={handleSave}
                     disabled={saving || step2Missing.length > 0 || hasLiveErrors || !!recipientError || companyNameConflict}
-                    opacity={saving || step2Missing.length > 0 || hasLiveErrors || !!recipientError || companyNameConflict ? 0.45 : 1}
+                    opacity={!saving && (step2Missing.length > 0 || hasLiveErrors || !!recipientError || companyNameConflict) ? 0.45 : 1}
                   >
-                    {saving ? "Salvataggio..." : "Salva"}
+                    Salva
+                    {saving ? <ButtonWaitBar label="Salvataggio…" /> : null}
                   </Button>
                 </XStack>
                 {/* Il controllo della partita IVA può durare qualche secondo (collaudo 0-06). */}

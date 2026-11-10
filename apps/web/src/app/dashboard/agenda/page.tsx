@@ -71,6 +71,7 @@ import { ExceptionLegend, ExceptionTag, SelectionCheckbox, SlotChip, SlotEditorM
 import { AGENDA_BOOKING_STATUS_LABEL, AGENDA_EXTERNAL_JOB_STATUS_LABEL, AgendaListItem, BOOKING_STATUS_COLOR, EXTERNAL_JOB_STATUS_COLOR, PENDING_QUOTE_COLOR, SlotDraft, WEEKDAY_FULL_LABELS, formatAgendaTimeRange, slotsOverlap } from "./_components/agendaHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { PageLoading } from "@/components/PageLoading";
+import { WaitBarSignal } from "@/components/WaitBar";
 
 // Tre sezioni (docs/CHANGELOG.md §288): il calendario degli appuntamenti,
 // gli orari di lavoro (settimana tipo + giorno per giorno) e il giro del giorno.
@@ -669,6 +670,7 @@ function DashboardAgendaContent() {
       <div aria-busy="true" style={{ minHeight: "100vh", padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
         <SkeletonBlock height={44} radius={12} />
         <SkeletonBlock height={420} radius={20} />
+        <WaitBarSignal />
       </div>
     );
   }
@@ -2148,7 +2150,10 @@ function DashboardAgendaContent() {
               ) : null}
 
               {bookings === null && !bookingsError ? (
-                <SkeletonBlock height={420} radius={20} />
+                <>
+                  <SkeletonBlock height={420} radius={20} />
+                  <WaitBarSignal />
+                </>
               ) : agendaSearchQuery.trim() ? (
                 <AgendaEventsList items={agendaSearchResults} emptyLabel="Nessun appuntamento corrisponde alla ricerca." />
               ) : bookingView === "day" || bookingView === "week" ? (

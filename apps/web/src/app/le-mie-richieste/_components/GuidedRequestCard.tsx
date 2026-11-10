@@ -704,8 +704,8 @@ export function GuidedRequestCard({
             </Text>
           ) : null}
           <XStack gap="2">
-            <CardButton tone="primary" onPress={handleSaveEdit} disabled={isSaving || isUploadingPhoto}>
-              {isSaving ? "Salvataggio..." : "Salva modifiche"}
+            <CardButton waitingLabel={isSaving ? "Salvataggio…" : undefined} tone="primary" onPress={handleSaveEdit} disabled={isSaving || isUploadingPhoto} opacity={isUploadingPhoto && !isSaving ? 0.6 : 1}>
+              Salva modifiche
             </CardButton>
             <CardButton onPress={requestExitEditing} disabled={isSaving}>
               Annulla

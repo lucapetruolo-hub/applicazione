@@ -22,6 +22,7 @@ import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/co
 import { localPreviewUrl } from "@/lib/media";
 import { downloadBlobFile } from "@/components/admin/adminUi";
 import { PageLoading } from "@/components/PageLoading";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 const inputStyle = {
   padding: "10px 12px",
@@ -716,9 +717,9 @@ export default function AccountPage() {
                     height={40}
                     onPress={handleChangePassword}
                     disabled={isSavingPassword}
-                    opacity={isSavingPassword ? 0.6 : 1}
                   >
-                    {isSavingPassword ? "Salvataggio..." : "Salva password"}
+                    Salva password
+                    {isSavingPassword ? <ButtonWaitBar tone="green" label="Salvataggio…" /> : null}
                   </Button>
                   <Text
                     color={brand.grafite70}

@@ -8,6 +8,7 @@ import { Button, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { PageLoading } from "@/components/PageLoading";
+import { WaitBarSignal } from "@/components/WaitBar";
 
 /**
  * Decisioni sui contenuti dell'utente (docs/CHANGELOG.md §144, §319): misura
@@ -66,7 +67,10 @@ export default function SegnalazioniPage() {
 
         <YStack gap="3">
           {data === null && !error ? (
-            <Text color={brand.grafite70}>Caricamento…</Text>
+            <Text color={brand.grafite70}>
+              Caricamento…
+              <WaitBarSignal />
+            </Text>
           ) : data && data.received.length === 0 ? (
             <Text color={brand.grafite70}>Nessuna decisione sui tuoi contenuti.</Text>
           ) : (

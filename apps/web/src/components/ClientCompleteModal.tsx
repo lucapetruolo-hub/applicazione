@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useDialogFocus } from "@/lib/useDialogFocus";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 /**
  * Conferma del cliente che il lavoro è davvero terminato dal suo lato
@@ -92,8 +93,9 @@ export function ClientCompleteModal({
         ) : null}
 
         <XStack gap="2" flexWrap="wrap">
-          <Button variant="primary" size="3" height={44} opacity={isSaving ? 0.6 : 1} onPress={handleSubmit} disabled={isSaving}>
-            {isSaving ? "Conferma..." : "Conferma lavoro terminato"}
+          <Button variant="primary" size="3" height={44} onPress={handleSubmit} disabled={isSaving}>
+            Conferma lavoro terminato
+            {isSaving ? <ButtonWaitBar label="Conferma in corso…" /> : null}
           </Button>
           <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSaving}>
             Annulla

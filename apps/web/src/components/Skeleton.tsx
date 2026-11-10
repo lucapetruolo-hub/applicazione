@@ -2,18 +2,16 @@
 
 import { brand, radiusDoc, XStack, YStack } from "@professionisti/ui";
 import { avatarHeight, CARD_PHOTO } from "./ProfessionalAvatar";
+import { useWaitBar } from "./WaitBar";
 
 /**
  * Stati "a scheletro" (richiesta esplicita dell'utente: "rendi più
  * innovativa la homepage/il sito", scelto tra le proposte come miglioria
- * a basso rischio) — sostituiscono `<LoadingState />` (il testo pulsante
- * "Caricamento...") nelle liste/tessere dove è facile anticipare la forma
- * reale del contenuto: righe compatte, card di richieste/professionisti,
- * tabelle admin, tessere KPI. `LoadingState` resta in uso dove il
- * contenuto in arrivo non ha una forma prevedibile (es. un singolo
- * messaggio di errore, un pulsante che aspetta un salvataggio) — sostituire
- * anche lì un pulsare generico con un rettangolo sagomato non aggiungeva
- * nulla.
+ * a basso rischio) — al posto del testo pulsante "Caricamento..." nelle
+ * liste/tessere dove è facile anticipare la forma reale del contenuto:
+ * righe compatte, card di richieste/professionisti, tabelle admin, tessere
+ * KPI. Il vecchio `LoadingState` è stato tolto il 10/11/2026: non lo usava
+ * più nessuno (docs/changelog/2026-11-10-barra-in-ogni-attesa.md).
  *
  * `SkeletonBlock`/`SkeletonCircle` sono i due soli primitivi con lo shimmer
  * vero (`.skeleton-shimmer`, `globals.css`): ogni skeleton composito qui
@@ -21,6 +19,11 @@ import { avatarHeight, CARD_PHOTO } from "./ProfessionalAvatar";
  * animazione. Colori dalla palette "Vicinato" (tinta `grafite` diluita,
  * stessa già usata per gli hairline del resto del sito) — mai un grigio
  * generico fuori palette.
+ *
+ * Le sagome composte (righe, schede, tessere, tabelle) accendono anche la
+ * barra di attesa in cima finché sono a schermo (`useWaitBar`,
+ * docs/changelog/2026-11-10-barra-in-ogni-attesa.md); i due primitivi no,
+ * perché si usano anche in punti piccoli come la tendina delle notifiche.
  */
 export function SkeletonBlock({
   width = "100%",
@@ -45,6 +48,7 @@ export function SkeletonCircle({ size = 40 }: { size?: number }) {
  * righe di testo + una pillola a destra.
  */
 export function SkeletonSummaryRow() {
+  useWaitBar();
   return (
     <XStack
       alignItems="center"
@@ -70,6 +74,7 @@ export function SkeletonSummaryRow() {
  * (orario).
  */
 export function SkeletonThreadRow({ zebra = false }: { zebra?: boolean }) {
+  useWaitBar();
   return (
     <XStack alignItems="center" gap="3" paddingHorizontal="3" paddingVertical="3" backgroundColor={zebra ? brand.gesso : "transparent"}>
       {/* Stessa misura del posto della foto in ChatThreadRow, così la riga non salta quando arriva. */}
@@ -89,6 +94,7 @@ export function SkeletonThreadRow({ zebra = false }: { zebra?: boolean }) {
  * città/rating a destra, una riga di prestazioni sotto.
  */
 export function SkeletonProfessionalCard() {
+  useWaitBar();
   return (
     <XStack alignItems="flex-start" gap="4 xs:3" padding="5 xs:4" backgroundColor={brand.calce} borderRadius={radiusDoc}>
       {/* Stessa forma e misura della foto vera (CARD_PHOTO), così la scheda non salta quando arriva. */}
@@ -118,6 +124,7 @@ export function SkeletonProfessionalCard() {
  * nome/categoria, descrizione su due righe.
  */
 export function SkeletonRequestCard() {
+  useWaitBar();
   return (
     <YStack backgroundColor={brand.calce} borderRadius={radiusDoc} padding="4" gap="3">
       <XStack alignItems="center" gap="2" flexWrap="wrap">
@@ -150,6 +157,7 @@ export function SkeletonRequestList({ count = 3 }: { count?: number }) {
  * dentro `.stats-kpi-grid`): etichetta piccola, valore grande, sottotitolo.
  */
 export function SkeletonStatTile() {
+  useWaitBar();
   return (
     <YStack backgroundColor={brand.calce} borderRadius={radiusDoc} padding="4" gap="2">
       <SkeletonBlock width="60%" height={12} />
@@ -193,6 +201,7 @@ export function SkeletonRevenuePanel() {
  * colonna per non farle sembrare tutte uguali.
  */
 export function SkeletonTableRows({ rows = 4, cols = 3 }: { rows?: number; cols?: number }) {
+  useWaitBar();
   return (
     <div className="admin-table-wrap">
       <table className="admin-table">

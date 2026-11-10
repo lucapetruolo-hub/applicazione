@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { JourneyProgress, PAYMENTS_ANCHOR, setupJourney, useJourneySubscription } from "@/components/verification/SetupJourney";
 import { startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
 import { PageLoading } from "@/components/PageLoading";
+import { WaitBarSignal } from "@/components/WaitBar";
 
 /** Mentre si aspetta l'esito la pagina si aggiorna da sola, per al massimo 3 minuti. */
 const POLL_MS = 4000;
@@ -107,7 +108,10 @@ function VerificaIdentitaContent() {
   if (isLoading || (!status && !loadError)) {
     return (
       <Section title="Verifica identità" pageTitle maxWidth={760}>
-        <Text color={brand.grafite70}>Caricamento…</Text>
+        <Text color={brand.grafite70}>
+          Caricamento…
+          <WaitBarSignal />
+        </Text>
       </Section>
     );
   }

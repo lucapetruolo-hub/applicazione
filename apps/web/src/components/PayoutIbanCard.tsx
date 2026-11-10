@@ -6,6 +6,7 @@ import { checkIban, formatIban } from "@professionisti/shared";
 import { Badge, Button, Field, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { LearnMore } from "@/components/LearnMore";
 import { apiClient } from "@/lib/apiClient";
+import { WaitBarSignal } from "@/components/WaitBar";
 
 const CHECK_LABEL = {
   MATCH: { variant: "verificato", label: "Corrisponde al conto su Stripe" },
@@ -134,6 +135,7 @@ export function PayoutIbanCard({
       {saved === undefined && !isStep ? (
         <Text fontSize={16} color={brand.grafite70}>
           Caricamento...
+          <WaitBarSignal />
         </Text>
       ) : showForm ? (
         <YStack gap="3">

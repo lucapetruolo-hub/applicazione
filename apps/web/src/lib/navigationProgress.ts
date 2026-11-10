@@ -88,3 +88,42 @@ export function startExternalRedirectProgress(label: string = SECURE_PAGE_LABEL)
 export function stopProgress() {
   if (state.active) emit({ active: false });
 }
+
+/*
+ * Attese dentro la pagina (docs/changelog/2026-11-10-barra-in-ogni-attesa.md):
+ * una schermata che carica i suoi dati (sagoma grigia, "Caricamento…") accende
+ * la stessa barra finché è a schermo. Contate a parte dalla navigazione: più
+ * attese insieme tengono accesa una sola barra, che si spegne con l'ultima.
+ */
+let waitCount = 0;
+const waitListeners = new Set<() => void>();
+
+function emitWaits() {
+  waitListeners.forEach((listener) => listener());
+}
+
+export function subscribeWaits(listener: () => void) {
+  waitListeners.add(listener);
+  return () => waitListeners.delete(listener);
+}
+
+export function getWaitCount() {
+  return waitCount;
+}
+
+export function getServerWaitCount() {
+  return 0;
+}
+
+/** Accende la barra per un'attesa; la funzione restituita la chiude (una volta sola). */
+export function beginWait(): () => void {
+  waitCount += 1;
+  emitWaits();
+  let ended = false;
+  return () => {
+    if (ended) return;
+    ended = true;
+    waitCount -= 1;
+    emitWaits();
+  };
+}

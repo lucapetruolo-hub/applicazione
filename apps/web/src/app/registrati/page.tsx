@@ -38,6 +38,8 @@ import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle"
 import { ChosenPlanChip, useChosenPlanDetail } from "@/components/ChosenPlanChip";
 import { EmailSuggestion } from "@/components/EmailSuggestion";
 import { PageLoading } from "@/components/PageLoading";
+import { ButtonWaitBar, SlowWaitHint, useLeavingWait, useWaitBar } from "@/components/WaitBar";
+import { startNavigationProgress } from "@/lib/navigationProgress";
 
 export default function RegistratiPage() {
   return (
@@ -452,6 +454,13 @@ function RegistratiForm() {
   // va sotto quel campo. Nullo: errore generale, sopra "Registrati".
   const [errorField, setErrorField] = useState<"categories" | "email" | "password" | "confirm" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Account creato o accesso fatto, la pagina successiva sta arrivando:
+  // l'attesa resta visibile (al massimo 20 s) invece di tornare "Registrati".
+  const [leaving, startLeaving] = useLeavingWait();
+  const busy = isSubmitting || leaving;
+  // Accesso dal pulsante di Google: la barra va in cima allo schermo.
+  const [googleWait, setGoogleWait] = useState(false);
+  useWaitBar(googleWait && busy);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileReset, setTurnstileReset] = useState(0);
   // Dichiarazioni obbligatorie ("Verbale di Conformità": informative lette e
@@ -515,15 +524,19 @@ function RegistratiForm() {
     // pagina Abbonamento senza profilo mostrava solo "Completa il tuo
     // profilo" e il livello scelto si perdeva. Il profilo se lo porta dietro
     // fino alla scelta del piano (docs/changelog/2026-11-02-registrazione-pro-grafica.md).
-    if (isNewUser) {
-      router.push(chosenTier ? `/dashboard/profilo?livello=${chosenTier}` : "/dashboard/profilo");
-      return;
-    }
-    if (chosenTier) {
-      router.push(`/dashboard/abbonamento?livello=${chosenTier}${chosenInterval ? `&rinnovo=${chosenInterval}` : ""}`);
-      return;
-    }
-    router.push("/dashboard");
+    const target = isNewUser
+      ? chosenTier
+        ? `/dashboard/profilo?livello=${chosenTier}`
+        : "/dashboard/profilo"
+      : chosenTier
+        ? `/dashboard/abbonamento?livello=${chosenTier}${chosenInterval ? `&rinnovo=${chosenInterval}` : ""}`
+        : "/dashboard";
+    // La pagina successiva può metterci qualche secondo: l'attesa resta
+    // visibile finché arriva (docs/changelog/2026-11-10-barra-in-ogni-attesa.md).
+    // Dal codice dell'email non c'è un pulsante in attesa: barra in cima.
+    if (codeStep) startNavigationProgress(target);
+    else startLeaving();
+    router.push(target);
   }
 
   function fieldError(field: "categories" | "email" | "password" | "confirm", message: string) {
@@ -617,12 +630,16 @@ function RegistratiForm() {
 
   async function completeGoogleAuth(idToken: string, accepted: boolean, adult: boolean, viaModal: boolean) {
     setIsSubmitting(true);
+    // Dal pulsante di Google la barra va in cima; dalla finestra del consenso
+    // dentro "Accetta e continua".
+    setGoogleWait(!viaModal);
     try {
       const { token, isNewUser } = await apiClient.verifyGoogle(idToken, role, undefined, accepted, adult, categorySlugs, entityChoice?.value);
       writeSignupDraft(null);
       await login(token);
       afterAuth(isNewUser);
     } catch (err) {
+      setGoogleWait(false);
       const message = err instanceof Error ? err.message : "Errore imprevisto, riprova.";
       // Il backend rifiuta con questo messaggio esatto SOLO quando sta per
       // creare davvero un account nuovo (nessun account trovato per
@@ -855,21 +872,17 @@ function RegistratiForm() {
           ) : null}
 
           <MagneticButton block>
-          <Button
-            variant="primary"
-            onPress={handleRegister}
-            disabled={isSubmitting}
-            opacity={isSubmitting ? 0.6 : 1}
-          >
+          <Button variant="primary" onPress={handleRegister} disabled={busy} opacity={busy && googleWait ? 0.6 : 1}>
             <XStack alignItems="center" gap="2">
-              {isSubmitting ? <span className="button-spinner" aria-hidden="true" /> : null}
               <Text color="white" fontFamily="body" fontWeight="600">
-                {isSubmitting ? "Creazione account..." : "Registrati"}
+                Registrati
               </Text>
-              {isSubmitting ? null : <ButtonArrow />}
+              <ButtonArrow />
             </XStack>
+            {busy && !googleWait ? <ButtonWaitBar label="Stiamo creando il tuo account…" /> : null}
           </Button>
           </MagneticButton>
+          <SlowWaitHint active={busy && !googleWait} />
         </YStack>
       </form>
 
@@ -893,7 +906,7 @@ function RegistratiForm() {
         onToggleConsent={() => setLegalConsent((v) => !v)}
         onConfirm={handleConfirmGoogleConsent}
         onCancel={handleCancelGoogleConsent}
-        isSubmitting={isSubmitting}
+        isSubmitting={busy}
         error={googleConsentError}
       />
     ) : null}
