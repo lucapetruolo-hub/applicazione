@@ -29,8 +29,17 @@ profilo, non in questa pagina, e il tipo si cambia solo tornando indietro.
   stesso avviso con i due pulsanti invece della riga rossa. Più corto anche il
   messaggio del profilo pubblico, che ora indica dove cambiare il tipo.
 
+- Miglioria 1 (scelta da Luca lo stesso giorno): lo stesso controllo mentre
+  si scrive il nome nel profilo pubblico, dove il nome si sceglie la prima
+  volta dopo la registrazione (la registrazione chiede solo il tipo). Con il
+  tipo "Privato" (Dati fiscali o, se non ancora salvati, quello della
+  registrazione) e un nome da società, sotto il campo compare la frase in
+  rosso con il link "cambia il tipo di attività" e il salvataggio si ferma
+  prima di chiamare il server.
+
 **Verifica**: typecheck di web e api; prova nel browser su un account di prova
 (privato con "Luca idraulica S.R.L.") da telefono (iPhone 14) e computer:
 avviso al passo 1, "Ho la partita IVA" apre la scelta del tipo, "Cambia il
 nome" apre il profilo con il nome selezionato, salvato si torna a Dati fiscali
 senza avviso.
+Miglioria 1: da telefono e computer la frase compare con "S.R.L." e "srl" e sparisce togliendola.
