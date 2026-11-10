@@ -110,13 +110,17 @@ export function professionalKindOf(entityType: string | null | undefined): Profe
   return null;
 }
 
-export const TRADER_STATUS_COPY: Record<ProfessionalTraderStatus, { label: string; note: string }> = {
+export const TRADER_STATUS_COPY: Record<ProfessionalTraderStatus, { label: string; short: string; note: string }> = {
   PRIVATE: {
     label: "Privato senza partita IVA",
+    // Riga breve del profilo pubblico, con "Scopri di più" che apre `note`
+    // (docs/changelog/2026-11-10-foto-profilo-telefono.md): il punto chiave resta scritto in chiaro.
+    short: "Lavora da privato: i diritti del consumatore non valgono.",
     note: "Lavora come privato, non come professionista: i diritti del consumatore (per esempio il recesso) non si applicano ai lavori fatti con questa persona.",
   },
   TRADER: {
     label: "Professionista con partita IVA",
+    short: "Lavora con partita IVA: valgono i diritti del consumatore.",
     note: "Lavora come professionista o azienda: si applicano i diritti del consumatore previsti dalla legge.",
   },
 };

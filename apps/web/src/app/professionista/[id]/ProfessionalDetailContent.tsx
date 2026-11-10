@@ -9,6 +9,7 @@ import { IconActionButton } from "@/components/IconActionButton";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { LearnMore } from "@/components/LearnMore";
 import { ProfileQuoteCta } from "@/components/ProfileQuoteCta";
 import { ChosenProsBar, chosenRequestHref } from "@/components/ChosenProsBar";
 import { requestDescriptionParam } from "@/lib/requestDescription";
@@ -464,9 +465,12 @@ export function ProfessionalDetailContent({
                     ) : null}
                   </div>
                   {/* Privato o professionista (Codice del consumo art. 49-bis, docs/CHANGELOG.md §241): per un privato
-                      l'avviso sui diritti del consumatore resta sempre scritto, non solo nel fumetto. */}
+                      l'avviso sui diritti del consumatore resta sempre scritto, non solo nel fumetto: una riga breve
+                      e il testo intero dietro "Scopri di più" (docs/changelog/2026-11-10-foto-profilo-telefono.md). */}
                   {professional.traderStatus === "PRIVATE" ? (
-                    <span className={`is_Text ${styles.small}`}>{TRADER_STATUS_COPY.PRIVATE.note}</span>
+                    <LearnMore summary={TRADER_STATUS_COPY.PRIVATE.short}>
+                      <span className={`is_Text ${styles.small}`}>{TRADER_STATUS_COPY.PRIVATE.note}</span>
+                    </LearnMore>
                   ) : null}
                   {professional.rating !== null ? (
                     <Rating value={professional.rating} count={professional.reviewCount} size={16} />
