@@ -10,6 +10,7 @@ import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 import { formatIssueDeadline } from "@/lib/leadDeadline";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -262,8 +263,8 @@ function BankDisputeNoteModal({
         ) : null}
 
         <XStack gap="2" flexWrap="wrap">
-          <Button variant="primary" size="3" height={44} opacity={isSaving ? 0.6 : 1} onPress={handleSubmit} disabled={isSaving || isUploading}>
-            {isSaving ? "Invio..." : "Invia la spiegazione"}
+          <Button variant="primary" size="3" height={44} opacity={isUploading && !isSaving ? 0.6 : 1} onPress={handleSubmit} disabled={isSaving || isUploading}>
+            {isSaving ? <ButtonWaitBar label="Invio in corso…" /> : "Invia la spiegazione"}
           </Button>
           <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSaving}>
             Annulla

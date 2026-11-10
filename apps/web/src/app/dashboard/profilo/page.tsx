@@ -52,6 +52,7 @@ import { keyActivate } from "@/lib/keyActivate";
 import { ChosenPlanChip } from "@/components/ChosenPlanChip";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { PageLoading } from "@/components/PageLoading";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 /** Prestazioni suggerite visibili prima di "Altre" (con un solo mestiere, e per mestiere quando sono più d'uno). */
@@ -1961,8 +1962,8 @@ export default function DashboardProfiloPage() {
                   dal popup. Il rosso della variante "urgent" qui è usato
                   per l'azione distruttiva (le modifiche vanno perse). */}
               <XStack gap="3" flexWrap="wrap">
-                <Button flex={1} variant="primary" onPress={handleSaveAndLeave} disabled={isSavingBeforeLeave} opacity={isSavingBeforeLeave ? 0.6 : 1}>
-                  {isSavingBeforeLeave ? "Salvataggio..." : "Salva"}
+                <Button flex={1} variant="primary" onPress={handleSaveAndLeave} disabled={isSavingBeforeLeave}>
+                  {isSavingBeforeLeave ? <ButtonWaitBar label="Salvataggio…" /> : "Salva"}
                 </Button>
                 <Button flex={1} variant="urgent" onPress={handleLeaveWithoutSaving} disabled={isSavingBeforeLeave}>
                   {confirmDiscard && !pendingHref ? "Non salvare" : "Esci senza salvare"}

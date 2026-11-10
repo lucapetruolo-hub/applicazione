@@ -12,7 +12,7 @@ import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle";
-import { ButtonWaitBar, useLeavingWait, useWaitBar } from "@/components/WaitBar";
+import { ButtonWaitBar, SlowWaitHint, useLeavingWait, useWaitBar } from "@/components/WaitBar";
 
 type Step = "email" | EmailStatus;
 
@@ -336,6 +336,7 @@ export function ClientEmailFirstAuth({
               `${isNew ? "Crea account" : "Accedi"}${submitSuffix}`
             )}
           </Button>
+          {isNew ? <SlowWaitHint active={busy && !viaGoogle} /> : null}
         </YStack>
       </form>
       {isNew ? (

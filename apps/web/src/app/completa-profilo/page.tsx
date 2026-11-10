@@ -13,7 +13,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle";
 import { PageLoading } from "@/components/PageLoading";
-import { ButtonWaitBar, useLeavingWait } from "@/components/WaitBar";
+import { ButtonWaitBar, SlowWaitHint, useLeavingWait } from "@/components/WaitBar";
 
 export default function CompletaProfiloPage() {
   return (
@@ -169,6 +169,7 @@ function CompletaProfiloForm() {
               >
                 {isSubmitting || leaving ? <ButtonWaitBar label="Stiamo preparando il tuo account…" /> : "Scegli la password ed entra"}
               </Button>
+              <SlowWaitHint active={isSubmitting || leaving} />
             </YStack>
           </form>
         ) : (

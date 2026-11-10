@@ -13,6 +13,7 @@ import {
 import { apiClient } from "@/lib/apiClient";
 import { useComuni } from "@/lib/comuniLazy";
 import { keyActivate } from "@/lib/keyActivate";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 /**
  * Fattura chiesta dal cliente al professionista (decisione dell'utente del
@@ -327,8 +328,8 @@ export function ClientInvoiceRequestPanel({
         <>
           <InvoiceRequestFields draft={draft} onChange={setDraft} errors={errors} receipt={receipt} />
           <XStack gap="2" flexWrap="wrap">
-            <Button variant="primary" onPress={() => void save()} disabled={saving} opacity={saving ? 0.45 : 1}>
-              {saving ? "Invio..." : initial ? "Salva i dati" : "Manda la richiesta"}
+            <Button variant="primary" onPress={() => void save()} disabled={saving}>
+              {saving ? <ButtonWaitBar label="Invio in corso…" /> : initial ? "Salva i dati" : "Manda la richiesta"}
             </Button>
             <Button variant="secondary" onPress={() => setEditing(false)} disabled={saving}>
               Annulla

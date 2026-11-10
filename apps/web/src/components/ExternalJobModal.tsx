@@ -9,6 +9,7 @@ import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 import { useDialogFocus } from "@/lib/useDialogFocus";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 const inputStyle = { padding: 10, borderRadius: 10, border: `1px solid ${brand.bordoCampo}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
 
@@ -309,8 +310,8 @@ export function ExternalJobModal({
         ) : null}
 
         <XStack gap="2" flexWrap="wrap">
-          <Button variant="primary" size="3" height={40} opacity={isSaving ? 0.6 : 1} disabled={isSaving} onPress={handleSubmit}>
-            {isSaving ? "Salvataggio..." : "Salva"}
+          <Button variant="primary" size="3" height={40} disabled={isSaving} onPress={handleSubmit}>
+            {isSaving ? <ButtonWaitBar label="Salvataggio…" /> : "Salva"}
           </Button>
           <Button variant="ghost" size="3" height={40} onPress={onClose}>
             Annulla

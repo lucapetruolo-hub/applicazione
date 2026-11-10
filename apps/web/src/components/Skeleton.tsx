@@ -7,14 +7,11 @@ import { useWaitBar } from "./WaitBar";
 /**
  * Stati "a scheletro" (richiesta esplicita dell'utente: "rendi più
  * innovativa la homepage/il sito", scelto tra le proposte come miglioria
- * a basso rischio) — sostituiscono `<LoadingState />` (il testo pulsante
- * "Caricamento...") nelle liste/tessere dove è facile anticipare la forma
- * reale del contenuto: righe compatte, card di richieste/professionisti,
- * tabelle admin, tessere KPI. `LoadingState` resta in uso dove il
- * contenuto in arrivo non ha una forma prevedibile (es. un singolo
- * messaggio di errore, un pulsante che aspetta un salvataggio) — sostituire
- * anche lì un pulsare generico con un rettangolo sagomato non aggiungeva
- * nulla.
+ * a basso rischio) — al posto del testo pulsante "Caricamento..." nelle
+ * liste/tessere dove è facile anticipare la forma reale del contenuto:
+ * righe compatte, card di richieste/professionisti, tabelle admin, tessere
+ * KPI. Il vecchio `LoadingState` è stato tolto il 10/11/2026: non lo usava
+ * più nessuno (docs/changelog/2026-11-10-barra-in-ogni-attesa.md).
  *
  * `SkeletonBlock`/`SkeletonCircle` sono i due soli primitivi con lo shimmer
  * vero (`.skeleton-shimmer`, `globals.css`): ogni skeleton composito qui

@@ -8,6 +8,7 @@ import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 const MAX_PHOTOS = 5;
 
@@ -228,8 +229,8 @@ export function ProfessionalProblemModal({
             ) : null}
 
             <XStack gap="2" flexWrap="wrap">
-              <Button variant="urgent" size="3" height={44} opacity={isSaving ? 0.6 : 1} onPress={handleSubmit} disabled={isSaving || isUploading}>
-                {isSaving ? "Invio..." : "Invia segnalazione"}
+              <Button variant="urgent" size="3" height={44} opacity={isUploading && !isSaving ? 0.6 : 1} onPress={handleSubmit} disabled={isSaving || isUploading}>
+                {isSaving ? <ButtonWaitBar label="Invio in corso…" /> : "Invia segnalazione"}
               </Button>
               <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSaving}>
                 Annulla

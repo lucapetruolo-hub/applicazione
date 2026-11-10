@@ -434,27 +434,6 @@ body:has(.chosen-bar) {
   }
 }
 
-/* Stato di caricamento (fase "motion"): un pulsare lento e simmetrico,
-   `ease-in-out` invece della curva direzionale `motionEasing` (pensata per
-   una transizione che parte e arriva a riposo una sola volta, non per un
-   ciclo che va avanti e indietro all'infinito). Applicata via className
-   diretto sul componente (`LoadingState`, apps/web/src/components) invece
-   di `<style jsx>` scoped: stesso pattern già in uso per `.bp-grid`, dato
-   che i componenti Tamagui inoltrano `className` al nodo DOM sottostante
-   su web (react-native-web). */
-@keyframes loading-pulse {
-  0%,
-  100% {
-    opacity: 0.4;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-.loading-pulse {
-  animation: loading-pulse 1.4s ease-in-out infinite;
-}
-
 /* Skeleton "a scheletro" (Skeleton.tsx): base + fascia più chiara che
    scorre in loop, stessa tinta `grafite` diluita già usata per gli
    hairline del resto del sito (mai un grigio generico fuori palette).
@@ -567,6 +546,15 @@ body:has(.chosen-bar) {
   align-items: center;
   justify-content: center;
   height: 20px;
+}
+/* Frase sotto il pulsante quando l'attesa supera 5 secondi (SlowWaitHint). */
+.slow-wait-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.4;
+  color: #6e6459;
+  animation: nav-progress-in 200ms ease-out;
 }
 /* In cima allo schermo, sopra la barra fissa del sito (NavigationProgress). */
 .nav-progress {

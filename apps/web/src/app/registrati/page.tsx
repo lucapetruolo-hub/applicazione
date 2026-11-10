@@ -38,7 +38,7 @@ import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle"
 import { ChosenPlanChip, useChosenPlanDetail } from "@/components/ChosenPlanChip";
 import { EmailSuggestion } from "@/components/EmailSuggestion";
 import { PageLoading } from "@/components/PageLoading";
-import { ButtonWaitBar, useLeavingWait, useWaitBar } from "@/components/WaitBar";
+import { ButtonWaitBar, SlowWaitHint, useLeavingWait, useWaitBar } from "@/components/WaitBar";
 import { startNavigationProgress } from "@/lib/navigationProgress";
 
 export default function RegistratiPage() {
@@ -885,6 +885,7 @@ function RegistratiForm() {
             )}
           </Button>
           </MagneticButton>
+          <SlowWaitHint active={busy && !googleWait} />
         </YStack>
       </form>
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Text, XStack, YStack, brand } from "@professionisti/ui";
 import { CardButton } from "@/components/CardButton";
 import { apiClient } from "@/lib/apiClient";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 const MAX_REPLY = 1000;
 
@@ -83,8 +84,8 @@ export function ReviewReply({
           </Text>
         ) : null}
         <XStack gap="2" flexWrap="wrap">
-          <CardButton tone="primary" disabled={busy} onPress={save}>
-            {busy ? "Salvataggio..." : "Pubblica la risposta"}
+          <CardButton tone="primary" disabled={busy} opacity={1} onPress={save}>
+            {busy ? <ButtonWaitBar label="Salvataggio…" /> : "Pubblica la risposta"}
           </CardButton>
           <CardButton
             onPress={() => {

@@ -60,3 +60,28 @@ export function useLeavingWait(): [boolean, () => void] {
   }, [leaving]);
   return [leaving, () => setLeaving(true)];
 }
+
+/** Dopo quanti secondi di attesa compare la frase che rassicura. */
+const SLOW_HINT_AFTER_MS = 5_000;
+
+/**
+ * Frase sotto il pulsante quando l'attesa supera 5 secondi (creazione
+ * dell'account): dice che non si è bloccato niente, così non si preme di
+ * nuovo né si chiude la pagina. Prima dei 5 secondi non c'è.
+ */
+export function SlowWaitHint({ active, text = "Ancora un attimo, quasi fatto…" }: { active: boolean; text?: string }) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!active) return;
+    const timer = window.setTimeout(() => setSlow(true), SLOW_HINT_AFTER_MS);
+    return () => {
+      window.clearTimeout(timer);
+      setSlow(false);
+    };
+  }, [active]);
+  return (
+    <p role="status" className={active && slow ? "slow-wait-hint" : "sr-only"}>
+      {active && slow ? text : ""}
+    </p>
+  );
+}

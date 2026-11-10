@@ -83,6 +83,7 @@ import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, 
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import { JobLimitModal } from "@/components/JobLimitModal";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 /** Orari liberi mostrati subito nel modulo del preventivo, gli altri con "Altri orari". */
 const QUOTE_SLOTS_SHOWN = 6;
@@ -2001,8 +2002,14 @@ export function RequestCard({
                 </Text>
               ) : null}
               <XStack gap="2" flexWrap="wrap">
-                <CardButton tone="primary" arrow disabled={isSubmittingQuote} onPress={handleSendQuote}>
-                  {isSubmittingQuote ? (lead.quote ? "Salvataggio..." : "Invio...") : lead.quote ? "Salva le modifiche" : "Invia preventivo"}
+                <CardButton tone="primary" arrow={!isSubmittingQuote} disabled={isSubmittingQuote} opacity={1} onPress={handleSendQuote}>
+                  {isSubmittingQuote ? (
+                    <ButtonWaitBar label={lead.quote ? "Salvataggio…" : "Invio del preventivo…"} />
+                  ) : lead.quote ? (
+                    "Salva le modifiche"
+                  ) : (
+                    "Invia preventivo"
+                  )}
                 </CardButton>
                 <CardButton onPress={() => setShowQuoteForm(false)}>Annulla</CardButton>
               </XStack>

@@ -5,7 +5,7 @@ import { useDialogFocus } from "@/lib/useDialogFocus";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { LegalConsentCheckbox } from "./LegalConsentCheckbox";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
-import { ButtonWaitBar } from "@/components/WaitBar";
+import { ButtonWaitBar, SlowWaitHint } from "@/components/WaitBar";
 
 /**
  * Popup mostrato subito dopo aver ottenuto le credenziali da Google —
@@ -98,6 +98,7 @@ export function GoogleConsentModal({
               {isSubmitting ? <ButtonWaitBar label="Stiamo creando il tuo account…" /> : "Accetta e continua"}
             </Button>
           </XStack>
+          <SlowWaitHint active={!!isSubmitting} />
         </YStack>
       </div>
     </div>

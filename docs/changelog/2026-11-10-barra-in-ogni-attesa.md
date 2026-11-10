@@ -40,3 +40,29 @@ profilo 8 s), telefono (iPhone 13) e computer: barra bianca nel pulsante
 durante la creazione, pulsante ancora in attesa mentre arriva il profilo,
 poi sagoma del profilo con la barra verde in cima. Foto in
 `anteprime/barra-ogni-attesa/` nei file del progetto.
+
+## Secondo giro: le tre migliorie
+
+**Richiesta** (Luca, 10/11/2026): "Effettua le tre migliorie".
+
+- **Pulsanti grandi di salvataggio e invio**: la barra bianca al posto di
+  "Salvataggio..."/"Invio..." nei pulsanti verdi e rossi che aspettano il
+  server: barra "Salva" del profilo e dell'account (`SaveBar`), "Salva" dei
+  dati fiscali (resta la frase sul controllo di codice fiscale o partita IVA),
+  "Salva" prima di uscire dal profilo, "Invia preventivo"/"Salva le
+  modifiche", "Salva modifiche" della richiesta del cliente, "Pubblica la
+  risposta" alla recensione, "Salva e accedi" della nuova password, conferma
+  del lavoro terminato (professionista e cliente), annullamento
+  dell'appuntamento, lavoro esterno in agenda, fattura chiesta dal cliente,
+  segnalazioni di problemi, spiegazione della contestazione in banca, impostazioni
+  del commercialista e ritaglio della foto. Restano come prima i pulsanti
+  bianchi e piccoli (la barra bianca non si vedrebbe) e quelli di Admin.
+- **"Ancora un attimo, quasi fatto…"** sotto il pulsante quando la creazione
+  dell'account supera 5 secondi (`SlowWaitHint`): professionista, cliente,
+  consenso Google e `/completa-profilo`. Letta anche dal lettore di schermo.
+- **`LoadingState` tolto**, con la sua animazione `.loading-pulse` in
+  `globals.css`: non li usava più nessuno.
+
+**Verifica**: `pnpm typecheck` e `pnpm lint` verdi; sul sito compilato con la
+registrazione rallentata a 9 s la frase compare dopo 5 secondi sotto il
+pulsante con la barra (foto `registrati-dopo-5-secondi-*.png`).

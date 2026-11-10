@@ -20,6 +20,7 @@ import { UploadingDots } from "@/components/UploadingDots";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 const MAX_COMPLETION_PHOTOS = 5;
 const MAX_NOTE_LENGTH = 1000;
@@ -505,11 +506,11 @@ export function CompleteJobModal({
             variant="primary"
             size="3"
             height={44}
-            opacity={isSaving || !declaration ? 0.6 : 1}
+            opacity={!isSaving && !declaration ? 0.6 : 1}
             onPress={handleSubmit}
             disabled={isSaving || isUploadingPhoto || !declaration}
           >
-            {isSaving ? "Salvataggio..." : "Conferma"}
+            {isSaving ? <ButtonWaitBar label="Salvataggio…" /> : "Conferma"}
           </Button>
           <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSaving}>
             Annulla

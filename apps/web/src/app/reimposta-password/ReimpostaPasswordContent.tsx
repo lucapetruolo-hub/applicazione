@@ -11,6 +11,7 @@ import { PASSWORD_RULES_ATTRIBUTE, PasswordRules } from "@/components/PasswordRu
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 /**
  * Link ricevuto via email per reimpostare la password (docs/CHANGELOG.md
@@ -89,8 +90,8 @@ export function ReimpostaPasswordContent() {
                 {error}
               </Text>
             ) : null}
-            <Button variant="primary" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
-              {isSubmitting ? "Salvataggio..." : "Salva e accedi"}
+            <Button variant="primary" onPress={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? <ButtonWaitBar label="Salvataggio…" /> : "Salva e accedi"}
             </Button>
           </YStack>
         ) : (
