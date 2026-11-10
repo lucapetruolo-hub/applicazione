@@ -379,6 +379,8 @@ export class SubscriptionsService {
       createdAt: { gte: period.start, lt: period.end },
       NOT: { status: "CANCELED" as const, canceledBy: "CLIENT" as const },
       ...COUNTED_BOOKING_ORIGIN,
+      // Lavoro ricorrente: conta una volta, con la prima visita (docs/changelog/2026-11-09-lavori-ricorrenti.md).
+      AND: [{ OR: [{ recurringNumber: null }, { recurringNumber: 1 }] }],
     };
     if (!countsClientsOnce(row, now)) return this.prisma.booking.count({ where });
     const clients = await this.prisma.booking.findMany({ where, select: { clientId: true }, distinct: ["clientId"] });

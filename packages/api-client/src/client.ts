@@ -178,6 +178,8 @@ import type {
   AdminQueue,
   AccountMeasure,
   ModerationGroundCode,
+  RecurringFrequency,
+  RecurringVisitInfo,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
@@ -259,6 +261,8 @@ export type ClientBooking = {
   lateCancelKeepsDeposit: boolean;
   /** Altra data proposta per l'appuntamento, in attesa di risposta. */
   dateChange: BookingDateChange | null;
+  /** Visita di un lavoro ricorrente (docs/changelog/2026-11-09-lavori-ricorrenti.md), null per un lavoro di una volta. */
+  recurring: RecurringVisitInfo | null;
   /** Link per una consulenza video (Meet/Zoom/ecc.), impostato dal professionista — richiesta esplicita dell'utente. */
   meetingLink: string | null;
   /** Il professionista ha eliminato l'account (soft-delete) — richiesta esplicita dell'utente, mostra "Account eliminato" con possibilità di eliminare la prenotazione dalla lista. */
@@ -402,6 +406,8 @@ export type ClientGuidedRequest = {
     cancellationNoticeHours: number;
     /** Annullando dentro il preavviso l'acconto online resta al professionista (docs/CHANGELOG.md §348). */
     lateCancelKeepsDeposit: boolean;
+    /** Lavoro ricorrente proposto, prezzo a visita (docs/changelog/2026-11-09-lavori-ricorrenti.md); null = una volta sola. */
+    repeatEvery: RecurringFrequency | null;
     /** Quando il professionista ha inviato un nuovo preventivo dopo un rifiuto, null se mai. */
     resentAt: string | null;
     notes: string | null;
@@ -2053,6 +2059,10 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status }),
       }),
+
+    /** "Interrompi" un lavoro ricorrente, da cliente o professionista (docs/changelog/2026-11-09-lavori-ricorrenti.md). */
+    stopRecurringJob: (token: string, seriesId: string) =>
+      request<{ stoppedAt: string; canceledVisits: number }>(`/bookings/recurring/${seriesId}/stop`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     cancelMyBooking: (token: string, bookingId: string) =>
       request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/cancel`, {

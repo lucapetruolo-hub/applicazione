@@ -23,6 +23,9 @@ import {
   type QuoteSelfInput,
   type RejectQuoteInput,
   notificationJobLabel,
+  RECURRING_FREQUENCY_LABELS,
+  recurringAllowedForCategory,
+  type RecurringFrequency,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { formatSlotForTimeline } from "../common/format-date.util";
@@ -96,7 +99,7 @@ export class QuotesService {
           professionalProfileId: professionalProfile.id,
         },
       },
-      include: { guidedRequest: { include: { client: true, category: { select: { label: true } } } } },
+      include: { guidedRequest: { include: { client: true, category: { select: { label: true, slug: true } } } } },
     });
     if (!lead) {
       // Il cliente può eliminare una richiesta senza preventivi (§343):
@@ -225,7 +228,21 @@ export class QuotesService {
       }
     }
 
+    // Lavoro ricorrente solo per i mestieri a visite ripetute
+    // (docs/changelog/2026-11-09-lavori-ricorrenti.md); assente = come prima.
+    const repeatEvery = input.repeatEvery === undefined ? (existingQuote?.repeatEvery ?? null) : input.repeatEvery;
+    if (repeatEvery && !recurringAllowedForCategory(lead.guidedRequest.category.slug)) {
+      throw new BadRequestException("Il lavoro ricorrente si può proporre solo per pulizie, giardiniere, babysitter e dogsitter.");
+    }
+    // Ogni visita si paga come la prima (decisione di Luca del 09/11): online
+    // con la carta salvata o diretto. Acconto online con saldo diretto no:
+    // ogni visita chiederebbe un nuovo acconto.
+    if (repeatEvery && offer.paymentOptions.includes("MIXED")) {
+      throw new BadRequestException("Per un lavoro ricorrente offri il pagamento diretto o tutto online, senza \"acconto online e saldo diretto\".");
+    }
+
     const data = {
+      repeatEvery,
       paymentOptions: offer.paymentOptions,
       depositPercent: offer.paymentOptions.some(paymentChoiceIsOnline) ? offer.depositPercent : null,
       // Preavviso per annullare (di serie quello del profilo) e acconto
@@ -259,7 +276,9 @@ export class QuotesService {
         .map((item) => JSON.stringify([item.name.trim(), item.priceMinEurCents ?? null, item.priceMaxEurCents ?? null]))
         .sort()
         .join("|");
-    const itemsChanged = !!existingQuote && itemsKey(existingQuote.items) !== itemsKey(input.items);
+    // Cambiare la ripetizione cambia cosa costa: si avvisa come un cambio delle voci.
+    const repeatChanged = !!existingQuote && !isResend && (existingQuote.repeatEvery ?? null) !== repeatEvery;
+    const itemsChanged = !!existingQuote && (itemsKey(existingQuote.items) !== itemsKey(input.items) || repeatChanged);
     const notesChanged = !!existingQuote && (existingQuote.notes ?? "").trim() !== (input.notes ?? "").trim();
     // Anche un cambio dei soli modi di pagamento si avvisa al cliente.
     const paymentChanged = !!existingQuote && paymentOfferChanged(quotePaymentOffer(existingQuote), offer);
@@ -429,12 +448,13 @@ export class QuotesService {
           : "";
       const noteText = notesChanged && input.notes?.trim() ? ` Nota: "${input.notes.trim()}"` : "";
       const paymentText = paymentChanged ? ` Pagamento offerto: ${describePaymentOffer(offer)}.` : "";
+      const repeatText = repeatChanged ? ` Ripetizione: ${repeatEvery ? RECURRING_FREQUENCY_LABELS[repeatEvery as RecurringFrequency].toLowerCase() : "una volta sola"}.` : "";
       await this.timelineService.log(
         lead.guidedRequestId,
         professionalProfile.id,
         "PROFESSIONAL",
         what
-          ? `Il professionista ha aggiornato ${what} del preventivo, senza cambiare data e orario.${priceText}${paymentText}${noteText}`
+          ? `Il professionista ha aggiornato ${what} del preventivo, senza cambiare data e orario.${priceText}${paymentText}${repeatText}${noteText}`
           : "Il professionista ha modificato il preventivo.",
       );
     }

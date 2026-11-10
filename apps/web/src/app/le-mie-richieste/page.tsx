@@ -2,7 +2,7 @@
 
 import { ModalDialog } from "@/components/ModalDialog";
 import { Suspense, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type ClientInvoiceRequestInput, type JobPaymentChoice, type SameTimeBookingCandidate } from "@professionisti/shared";
+import { jobByRequest, type ClientInvoiceRequestInput, type JobPaymentChoice, type SameTimeBookingCandidate } from "@professionisti/shared";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
@@ -178,14 +178,16 @@ function LeMieRichiesteContent() {
 
   useEffect(reload, [reload]);
 
-  const bookingByRequestId = useMemo(() => {
-    const map = new Map<string, ClientBooking>();
-    (bookings ?? []).forEach((b) => {
-      if (!b.guidedRequestId) return;
-      // Un appuntamento annullato non copre quello nato dopo da un altro preventivo (§346).
-      const current = map.get(b.guidedRequestId);
-      if (!current || current.status === "CANCELED") map.set(b.guidedRequestId, b);
-    });
+  // Un appuntamento annullato non copre quello nato dopo da un altro preventivo
+  // (§346); per un lavoro ricorrente la visita che chiede ancora qualcosa
+  // (docs/changelog/2026-11-09-lavori-ricorrenti.md).
+  const bookingByRequestId = useMemo(() => jobByRequest(bookings ?? [], "CLIENT"), [bookings]);
+  // Tutte le visite di ogni lavoro ricorrente, per l'elenco nella scheda.
+  const visitsBySeries = useMemo(() => {
+    const map = new Map<string, ClientBooking[]>();
+    for (const b of bookings ?? []) {
+      if (b.recurring) map.set(b.recurring.seriesId, [...(map.get(b.recurring.seriesId) ?? []), b]);
+    }
     return map;
   }, [bookings]);
 
@@ -792,6 +794,10 @@ function LeMieRichiesteContent() {
                 <GuidedRequestCard
                   request={request}
                   booking={bookingByRequestId.get(request.id) ?? null}
+                  recurringVisits={(() => {
+                    const seriesId = bookingByRequestId.get(request.id)?.recurring?.seriesId;
+                    return seriesId ? (visitsBySeries.get(seriesId) ?? []) : [];
+                  })()}
                   sameTradeBookings={(confirmedByCategory.get(request.categorySlug) ?? []).filter((b) => b.guidedRequestId !== request.id)}
                   stage={stageByRequestId.get(request.id)!}
                   token={token}

@@ -132,7 +132,8 @@ export function BookingSection({
     setShowClientCompleteModal(false);
     // Subito la recensione, anche se il professionista non ha ancora segnato
     // il lavoro come terminato (§189). Mai con una segnalazione in corso.
-    if (!booking.hasReview && booking.issue?.status !== "OPEN" && booking.issue?.status !== "CHAT") {
+    // Lavoro ricorrente: una recensione per la serie, la propone la scheda solo se manca ancora.
+    if (!booking.hasReview && (!booking.recurring || booking.recurring.number === 1) && booking.issue?.status !== "OPEN" && booking.issue?.status !== "CHAT") {
       setShowReviewModal(true);
     } else {
       onChanged();
@@ -711,7 +712,8 @@ export function ChangeLinks({ booking, onReschedule, onMessage, onCancel }: { bo
         </Text>
       ) : null}
       <Text fontSize={16} fontWeight="600" color={brand.urgenza} textDecorationLine="underline" cursor="pointer" role="button" onPress={onCancel}>
-        Annulla il lavoro
+        {/* Visita di un lavoro ricorrente: si salta solo questa (docs/changelog/2026-11-09-lavori-ricorrenti.md). */}
+        {booking.recurring && !booking.recurring.stoppedAt ? "Salta questa volta" : "Annulla il lavoro"}
       </Text>
     </XStack>
       {/* Preavviso scelto dal professionista (docs/CHANGELOG.md §347); già

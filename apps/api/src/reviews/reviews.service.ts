@@ -198,6 +198,11 @@ export class ReviewsService {
     if (booking.review) {
       throw new ConflictException("Hai già recensito questo lavoro.");
     }
+    // Lavoro ricorrente: una recensione per tutta la serie, non una a visita
+    // (docs/changelog/2026-11-09-lavori-ricorrenti.md).
+    if (booking.recurringJobId && (await this.prisma.review.count({ where: { booking: { recurringJobId: booking.recurringJobId } } })) > 0) {
+      throw new ConflictException("Hai già recensito questo lavoro ricorrente: puoi aggiornare la recensione che hai lasciato.");
+    }
     const allowed = clientCanReview({
       status: booking.status,
       clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt,

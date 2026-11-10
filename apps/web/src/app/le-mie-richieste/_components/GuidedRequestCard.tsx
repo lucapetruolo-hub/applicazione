@@ -44,6 +44,7 @@ import { useInternalLinkClick } from "@/lib/useInternalLinkClick";
 import { clientNextAction } from "@/lib/clientNextAction";
 import { CLIENT_STAGE_LABEL, type RequestStage } from "@/lib/requestStage";
 import { BookingSection, ChangeLinks } from "./BookingSection";
+import { RecurringVisitsBox } from "@/components/RecurringVisitsBox";
 import { QuoteDateChooser } from "./QuoteDateChooser";
 import { BookedDateChangeAnswer } from "./BookedDateChangeAnswer";
 import { QuoteCard, formatQuoteDateRange } from "./QuoteCard";
@@ -75,6 +76,7 @@ function keptDeposit(booking: ClientBooking): number {
 export function GuidedRequestCard({
   request,
   booking,
+  recurringVisits = [],
   sameTradeBookings,
   stage,
   token,
@@ -100,6 +102,8 @@ export function GuidedRequestCard({
   request: ClientGuidedRequest;
   /** Prenotazione nata dal preventivo accettato di questa richiesta, se esiste. */
   booking: ClientBooking | null;
+  /** Lavoro ricorrente: tutte le visite della serie (docs/changelog/2026-11-09-lavori-ricorrenti.md). */
+  recurringVisits?: ClientBooking[];
   /** Appuntamenti confermati dello stesso mestiere in altre richieste: avviso sulla stessa ora (collaudo I-11). */
   sameTradeBookings?: SameTimeBookingCandidate[];
   stage: RequestStage;
@@ -898,9 +902,12 @@ export function GuidedRequestCard({
           {otherQuotes.map(quoteCard)}
         </Disclosure>
       ) : null}
+      {/* Lavoro ricorrente: prossime visite, "Salta questa volta" e "Interrompi". */}
+      {booking.recurring ? <RecurringVisitsBox side="CLIENT" visits={recurringVisits} token={token} onChanged={onChanged} /> : null}
       <ChangeLinks
         booking={booking}
-        onReschedule={acceptedQuote && !showReschedule ? () => setShowReschedule(true) : null}
+        // Un'altra data si propone sul preventivo: solo per la prima visita di un lavoro ricorrente.
+        onReschedule={acceptedQuote && !showReschedule && (booking.recurring?.number ?? 1) === 1 ? () => setShowReschedule(true) : null}
         onMessage={booking.guidedRequestId ? () => setShowBookingChat(true) : null}
         onCancel={() => setShowCancelModal(true)}
       />
@@ -1351,7 +1358,8 @@ export function GuidedRequestCard({
       {showCancelModal ? (
         <CancelBookingModal
           // Stesso nome del pulsante, per cliente e professionista (collaudo A-06, O-03).
-          title="Annulla il lavoro"
+          // Visita di un lavoro ricorrente: si salta solo questa, le altre restano.
+          title={booking?.recurring && !booking.recurring.stoppedAt ? "Salta questa volta" : "Annulla il lavoro"}
           description={
             booking && isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours)
               ? `Il professionista verrà avvisato. Mancano meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)}, il preavviso che aveva chiesto.${
@@ -1362,11 +1370,15 @@ export function GuidedRequestCard({
                       : // Cosa si perde, detto chiaro (collaudo A-06): con il pagamento diretto niente.
                         " Non paghi niente, ma il professionista vede che hai annullato all'ultimo."
                 }`
-              : `Il professionista verrà avvisato dell'annullamento.${
+              : booking?.recurring && !booking.recurring.stoppedAt
+                ? `Il professionista verrà avvisato. Le altre visite restano in programma.${
+                    paidOnline(booking) > 0 ? ` I ${formatEurCents(paidOnline(booking))} che hai pagato online ti tornano sulla carta.` : ""
+                  }`
+                : `Il professionista verrà avvisato dell'annullamento.${
                   paidOnline(booking) > 0 ? ` I ${formatEurCents(paidOnline(booking))} che hai pagato online ti tornano sulla carta.` : ""
                 }`
           }
-          confirmLabel="Sì, annulla il lavoro"
+          confirmLabel={booking?.recurring && !booking.recurring.stoppedAt ? "Sì, salta questa volta" : "Sì, annulla il lavoro"}
           confirmingLabel="Annullamento..."
           showNote={false}
           onClose={() => setShowCancelModal(false)}

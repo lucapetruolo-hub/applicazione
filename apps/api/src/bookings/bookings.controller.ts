@@ -32,6 +32,7 @@ import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { BookingsService } from "./bookings.service";
+import { RecurringJobsService } from "./recurring-jobs.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 
 // Solo conferma e annullamento (collaudo 08/11, E1-03): il lavoro si chiude
@@ -46,6 +47,7 @@ export class BookingsController {
     private readonly bookingsService: BookingsService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly jobIssueOutcomeService: JobIssueOutcomeService,
+    private readonly recurringJobsService: RecurringJobsService,
   ) {}
 
   /**
@@ -108,6 +110,17 @@ export class BookingsController {
   @Patch(":id/cancel")
   cancelMine(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
     return this.bookingsService.cancelForClient(req.user.userId, id);
+  }
+
+  /**
+   * "Interrompi" un lavoro ricorrente, da cliente o professionista: niente
+   * più visite (docs/changelog/2026-11-09-lavori-ricorrenti.md). "Salta
+   * questa volta" è il normale annullamento della visita.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Post("recurring/:id/stop")
+  stopRecurring(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.recurringJobsService.stop(req.user.userId, id);
   }
 
   /** Chi ha annullato chiede di riaprire la prenotazione; l'altra parte risponde (collaudo F-08). */
