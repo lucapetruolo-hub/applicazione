@@ -618,6 +618,10 @@
   cursor: pointer;
   color: var(--ag-ink);
   z-index: 2;
+  /* Nome e orario in alto anche nei riquadri lunghi: il pulsante li centrava a metà altezza (docs/changelog/2026-11-10-appuntamenti-sovrapposti.md). */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
 }
 .ag-ev b {
   display: block;

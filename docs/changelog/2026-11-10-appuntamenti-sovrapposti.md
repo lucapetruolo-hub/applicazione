@@ -56,3 +56,10 @@ fasce di partenza (8-13 e 14-20, 5 posti) era quasi sempre acceso.
 **Verifica**: nuova prova in `e2e/tests/agenda-sovrapposti.spec.ts`
 (appuntamento e lavoro esterno insieme: rossi senza fasce, non rossi con una
 fascia da due posti). Typecheck e lint puliti.
+
+## Terzo giro: nome in alto nei riquadri lunghi
+
+Preparando la foto di una fascia 08:00-19:00 con più lavori (chiesta da Luca):
+il riquadro è un pulsante, che metteva nome e orario a metà altezza (nella
+foto di Luca "Gianpaolo" stava alle 17 in un blocco 14-20). Ora stanno in
+alto (`.ag-ev` in `apps/web/src/components/agenda/agenda.css`).
