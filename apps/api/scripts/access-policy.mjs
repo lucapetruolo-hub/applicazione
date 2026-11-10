@@ -43,6 +43,8 @@ const publicRoutes = [
   // Pulsanti "Ci sarò" e "Non posso più" dell'email del promemoria: link firmato, senza accedere (docs/changelog/2026-10-28-promemoria-whatsapp.md).
   "GET /booking-replies/:token",
   "POST /booking-replies/:token",
+  // File .ics di "Altri calendari": link firmato che scade, senza accedere (docs/changelog/2026-11-10-calendario-iphone.md).
+  "GET /bookings/ics/:file",
   "GET /calendar/:file",
   "GET /categories",
   "GET /categories/popular",
