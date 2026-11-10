@@ -159,7 +159,11 @@ prima discuterne e aggiornare questo file.
   primitive Tamagui: il telefono non calcola gli stili all'apertura. Nuove
   parti di queste pagine si scrivono così; una variante `.web.tsx` cambia
   insieme al suo file per l'app. Il compilatore di Tamagui non va con
-  Turbopack.
+  Turbopack. Anche `Button` sul sito è HTML semplice (`Button.web.tsx`,
+  docs/changelog/2026-11-10-pulsanti-senza-tamagui.md): varianti comuni con
+  l'app in `buttonStyle.ts`, prop di stile (anche `"44px xs:40px"` e
+  `hover:`) tradotte in classi di `Button.module.css`, che si genera con
+  `pnpm --filter @professionisti/ui genera-css-pulsante`.
 - **React Compiler** acceso su tutto il sito (docs/CHANGELOG.md §345), ma
   rompe gli stili `<style jsx>`: ogni componente che li usa deve iniziare
   con la direttiva `"use no memo"` (lo controlla `pnpm lint`,
