@@ -86,6 +86,19 @@ import { JobLimitModal } from "@/components/JobLimitModal";
 
 /** Orari liberi mostrati subito nel modulo del preventivo, gli altri con "Altri orari". */
 const QUOTE_SLOTS_SHOWN = 6;
+
+/**
+ * Orari in vista prima di "Altri orari": l'orario già scelto (chiesto dal
+ * cliente o già nel preventivo) resta sempre tra questi, per primo, anche
+ * quando cade dopo i primi sei (docs/changelog/2026-11-10-date-del-preventivo.md),
+ * come nella richiesta del cliente.
+ */
+function quoteSlotsInView(slots: ProfessionalAvailableSlot[], selectedKey: string): ProfessionalAvailableSlot[] {
+  const first = slots.slice(0, QUOTE_SLOTS_SHOWN);
+  const selected = selectedKey ? slots.find((sl) => slotKey(sl) === selectedKey) : undefined;
+  if (!selected || first.includes(selected)) return first;
+  return [selected, ...first.slice(0, QUOTE_SLOTS_SHOWN - 1)];
+}
 /** Durate a pillola; oltre resta un menu (docs/CHANGELOG.md §349). */
 const JOB_DAY_PILLS = [1, 2, 3, 4, 5];
 
@@ -1726,7 +1739,7 @@ export function RequestCard({
                     Quando
                   </Text>
                   <div className="slot-pills" role="radiogroup" aria-label="Orario dall'agenda">
-                    {(showAllSlots ? modeAvailableSlots : modeAvailableSlots.slice(0, QUOTE_SLOTS_SHOWN)).map((sl) => {
+                    {(showAllSlots ? modeAvailableSlots : quoteSlotsInView(modeAvailableSlots, selectedSlotKey)).map((sl) => {
                       const key = slotKey(sl);
                       return (
                         <button key={key} type="button" role="radio" aria-checked={selectedSlotKey === key} className={`slot-pill${selectedSlotKey === key ? " is-on" : ""}`} onClick={() => setSelectedSlotKey(key)}>
