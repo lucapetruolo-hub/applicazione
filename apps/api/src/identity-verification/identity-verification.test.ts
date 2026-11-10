@@ -50,6 +50,11 @@ describe("Didit", () => {
     expect(diditReason(["IMAGE_TOO_BLURRY", "DOCUMENT_EXPIRED"])).toContain("scaduto");
     expect(diditReason(["LOW_FRONT_CAMERA_FACE_MATCH_SIMILARITY"])).toContain("selfie");
     expect(diditReason(["POSSIBLE_DUPLICATED_USER"])).toContain("già usati");
+    // Foto illeggibile e dati incoerenti hanno due messaggi diversi.
+    expect(diditReason(["MRZ_NOT_DETECTED"])).toContain("rifai la foto");
+    expect(diditReason(["DATA_INCONSISTENT"])).toContain("non tornano tra loro");
+    // Con una foto sfocata conta prima la foto: i dati incoerenti possono venire da lì.
+    expect(diditReason(["IMAGE_TOO_BLURRY", "DATA_INCONSISTENT"])).toContain("sfocata");
     expect(diditReason(["DOB_MISMATCH_WITH_PROVIDED"])).toContain("dati fiscali");
     expect(diditReason(["CODICE_SCONOSCIUTO"])).toBeNull();
     // Gli avvisi solo informativi non contano.

@@ -82,6 +82,17 @@ export type RepresentativeVerificationView = {
   identity: Pick<MyVerificationStatus["identity"], "available" | "status" | "reason" | "standby" | "canStart" | "blockedReason">;
 };
 
+/**
+ * Il motivo del rifiuto si risolve correggendo i dati fiscali (nome, cognome
+ * o data diversi dal documento)? Solo allora la pagina mostra "Controlla i
+ * dati fiscali": sotto un errore di foto o di selfie quel link porterebbe
+ * fuori strada. Tutti i motivi di questo tipo nominano i dati fiscali
+ * (`identity-match.ts` e `didit.provider.ts` dell'API).
+ */
+export function identityReasonNeedsFiscalFix(reason: string | null | undefined): boolean {
+  return !!reason && /dati fiscali/i.test(reason);
+}
+
 /** Consenso al volto dato dal legale rappresentante, con il suo nome. */
 export function representativeConsentText(name: string): string {
   return `Sono ${name} e acconsento al confronto del mio volto con la foto del mio documento, solo per verificare la mia identità.`;
