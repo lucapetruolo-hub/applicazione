@@ -88,7 +88,10 @@ function ProblemiContent() {
     apiClient
       .adminListJobIssues(token, view, search)
       .then((list) => {
-        if (current) setLoaded({ key: `${view}:${reload}`, search, rows: list });
+        if (!current) return;
+        setLoaded({ key: `${view}:${reload}`, search, rows: list });
+        // Un errore di un caricamento precedente non resta sopra la lista arrivata.
+        setError(null);
       })
       .catch((err) => {
         if (current) setError(errorMessage(err));

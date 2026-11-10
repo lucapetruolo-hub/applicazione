@@ -211,7 +211,14 @@ test("Persone: ricerca, account chiuso, recensione nascosta e rimessa, profilo f
   await hide.getByLabel("Regola o legge violata").selectOption("termini-profilo");
   await hide.getByLabel("Spiegazione per l'autore").fill("Il profilo dice di avere un'esperienza che non risulta.");
   await hide.getByRole("button", { name: "Togli dalla ricerca" }).click();
-  await expect(page.getByText("Tolto dalla ricerca").first()).toBeVisible();
+  // Stato del profilo e pulsante giusto, non una scritta qualunque della pagina
+  // (docs/changelog/2026-11-10-prove-che-falliscono-in-locale.md).
+  await expect(hide).toHaveCount(0);
+  // Lo stato cambia in tutti e due i punti: in testa alla scheda e nel riquadro del profilo.
+  await expect(page.getByText("Tolto dalla ricerca", { exact: true })).toHaveCount(2);
+  await expect(page.getByText(/^Tolto dalla ricerca il .*Motivo: Il profilo dice di avere un'esperienza che non risulta\.$/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Rimetti nella ricerca" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Togli dalla ricerca" })).toHaveCount(0);
   await expect(page.getByText("Attivo", { exact: true })).toHaveCount(0);
   const proUser = await prisma.user.findUniqueOrThrow({ where: { id: ids.pro }, include: { professionalProfile: true } });
   expect(proUser.suspendedAt).toBeNull();
@@ -220,7 +227,13 @@ test("Persone: ricerca, account chiuso, recensione nascosta e rimessa, profilo f
   const show = page.getByRole("dialog", { name: "Rimetti nella ricerca" });
   await show.getByLabel("Motivo").fill("Ha corretto il profilo.");
   await show.getByRole("button", { name: "Rimetti nella ricerca" }).click();
-  await expect(page.getByText("Nella ricerca").first()).toBeVisible();
+  await expect(show).toHaveCount(0);
+  // In testa alla scheda torna "Attivo", nel riquadro del profilo "Nella ricerca".
+  await expect(page.getByText("Attivo", { exact: true })).toHaveCount(1);
+  await expect(page.getByText("Nella ricerca", { exact: true })).toHaveCount(1);
+  await expect(page.getByText("Tolto dalla ricerca", { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/^Tolto dalla ricerca il /)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Togli dalla ricerca" })).toBeVisible();
   // Una misura presa archivia il caso da sola, come "Gestito".
   await prisma.professionalProfile.update({ where: { userId: ids.pro }, data: { suspendedAt: new Date() } });
   // La lista chiesta all'apertura arriva apposta dopo "Controlla ora": non deve
@@ -302,8 +315,8 @@ test("I-08: \"pagamento=completato\" sulla richiesta di un altro non dice niente
   });
   const page = await context.newPage();
   await page.goto(`/le-mie-richieste?open=${other.id}&pagamento=completato`);
-  // Titolo e voce del menu possono esserci insieme: basta uno dei due (prima due insieme facevano fallire la prova).
-  await expect(page.getByRole("heading", { name: "Le mie richieste" }).or(page.getByText("Le mie richieste")).first()).toBeVisible();
+  // Il titolo della pagina, non la voce del menu con la stessa scritta.
+  await expect(page.getByRole("heading", { level: 1, name: "Le mie richieste", exact: true })).toBeVisible();
   await expect(page.getByText(/Pagamento ricevuto|Stiamo controllando il pagamento/)).toHaveCount(0);
   await context.close();
 });
