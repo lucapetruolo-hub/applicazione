@@ -11,7 +11,19 @@ test.beforeEach(async ({}, testInfo) => {
   test.skip(testInfo.project.name !== "iphone-safari", "Riguarda il motore di Safari.");
 });
 
-/** Il testo del campo nativo non si vede e il campo non esce dal suo riquadro. */
+/**
+ * Il campo ora è un campo di testo (docs/changelog/2026-11-10-campo-orario-scrivibile.md):
+ * mostra l'ora una volta sola e non esce dal suo riquadro. Il campo data
+ * resta quello nativo con il testo scritto sopra.
+ */
+async function expectTime(field: Locator, shown: RegExp) {
+  await expect(field).toHaveAttribute("type", "text");
+  await expect(field).toHaveValue(shown);
+  const overflow = await field.evaluate((input) => input.getBoundingClientRect().width - input.parentElement!.getBoundingClientRect().width);
+  expect(overflow).toBeLessThanOrEqual(0.5);
+}
+
+/** Il testo del campo data nativo non si vede e il campo non esce dal suo riquadro. */
 async function expectOnlyOurText(field: Locator, shown: RegExp) {
   const look = await field.evaluate((input) => {
     const style = getComputedStyle(input);
@@ -47,10 +59,12 @@ test("fascia oraria: inizio e fine si leggono una volta sola", async ({ page }) 
   await expect(modal).toBeVisible();
   const start = modal.getByLabel("Ora di inizio");
   const end = modal.getByLabel("Ora di fine");
-  await expectOnlyOurText(start, /^\d{2}:\d{2}$/);
-  await expectOnlyOurText(end, /^\d{2}:\d{2}$/);
+  await expectTime(start, /^\d{2}:\d{2}$/);
+  await expectTime(end, /^\d{2}:\d{2}$/);
   await expectSideBySide(start, end);
-  await expect(start).toHaveAttribute("step", "900");
+  // Sull'iPhone la rotella è la nostra e sale dal basso.
+  await modal.getByRole("button", { name: "Scegli con la rotella" }).first().click();
+  await expect(page.getByRole("dialog", { name: "Rotella dell'ora" })).toBeVisible();
 });
 
 test("lavoro esterno: data, inizio e fine si leggono una volta sola", async ({ page }) => {
@@ -64,7 +78,7 @@ test("lavoro esterno: data, inizio e fine si leggono una volta sola", async ({ p
   await expectOnlyOurText(modal.getByLabel("Data"), /^\d{2}\/\d{2}\/\d{4}$/);
   const start = modal.getByLabel("Ora di inizio");
   const end = modal.getByLabel("Ora di fine");
-  await expectOnlyOurText(start, /^\d{2}:\d{2}$/);
-  await expectOnlyOurText(end, /^\d{2}:\d{2}$/);
+  await expectTime(start, /^\d{2}:\d{2}$/);
+  await expectTime(end, /^\d{2}:\d{2}$/);
   await expectSideBySide(start, end);
 });
