@@ -1,0 +1,28 @@
+/*
+ * Tondino dell'account in HTML semplice (docs/changelog/2026-11-09-barra-in-alto-senza-tamagui.md):
+ * stessi valori che Tamagui scriveva per YStack/Text. Bordo, altezza e
+ * misure da telefono restano in `.acct-trigger` di globals.css.
+ */
+
+.wrap {
+  position: relative;
+  flex-direction: column;
+}
+
+.trigger {
+  position: relative;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--t-space-1);
+  cursor: pointer;
+}
+
+.name {
+  font-size: var(--f-size-3);
+  font-weight: 600;
+  color: var(--c-grafite);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

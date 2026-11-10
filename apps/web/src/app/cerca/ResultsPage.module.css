@@ -1,0 +1,41 @@
+/*
+ * Contenitore delle pagine dei risultati (/cerca e /cerca/<mestiere>/<città>)
+ * in HTML semplice (docs/changelog/2026-11-09-barra-in-alto-senza-tamagui.md):
+ * stessi valori che Tamagui scriveva per YStack/XStack/Text.
+ */
+
+.page {
+  position: relative;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  background-color: transparent;
+}
+
+.container {
+  position: relative;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1200px;
+  padding-inline: var(--t-space-4);
+  padding-block: var(--t-space-6);
+}
+
+.stack {
+  position: relative;
+  flex-direction: column;
+  gap: var(--t-space-3);
+}
+
+.serviceBar {
+  position: relative;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--t-space-2);
+}
+
+.serviceLabel {
+  font-size: 15px;
+  color: var(--c-grafite70);
+}

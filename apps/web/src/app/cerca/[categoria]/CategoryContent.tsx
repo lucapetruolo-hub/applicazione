@@ -2,7 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 import { MAX_CHOSEN_PROFESSIONALS, subTagLabel, type PROFESSIONAL_CATEGORIES, type ProfessionalSearchResult } from "@professionisti/shared";
-import { YStack } from "@professionisti/ui";
+import styles from "../ResultsPage.module.css";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
 import { ResultsListWithMap, type MapPoolQuery } from "@/components/ResultsListWithMap";
@@ -80,8 +80,10 @@ export function CategoryContent({
     );
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent">
-      <YStack width="100%" maxWidth={1200} paddingHorizontal="4" paddingVertical="6">
+    // HTML semplice, senza il calcolo degli stili di Tamagui
+    // (docs/changelog/2026-11-09-barra-in-alto-senza-tamagui.md).
+    <div className={`is_View ${styles.page}`}>
+      <div className={`is_View ${styles.container}`}>
         {/* Titolo principale (h1): da telefono si vede, in testo semplice sopra
             i filtri, perché chi arriva da Google legga subito "Idraulico a
             Latina" (collaudo N-15, scelto da Luca,
@@ -103,10 +105,10 @@ export function CategoryContent({
           footer={footer}
           selection={selection}
         />
-      </YStack>
+      </div>
       {chosen.length > 0 ? (
         <ChosenProsBar chosen={chosen} max={MAX_CHOSEN_PROFESSIONALS} href={chosenRequestHref(chosen, category.slug, "", city)} notice={limitNotice} />
       ) : null}
-    </YStack>
+    </div>
   );
 }

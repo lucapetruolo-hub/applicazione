@@ -4,7 +4,9 @@ import { Suspense, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "@/components/IntentLink";
 import { usePathname } from "next/navigation";
-import { Button, Logo, Text, XStack, brand, motionEasing, motionFast } from "@professionisti/ui";
+import { Button, motionEasing, motionFast } from "@professionisti/ui";
+import { LogoPlain } from "./LogoPlain";
+import styles from "./SiteHeader.module.css";
 import { TOKEN_STORAGE_KEY, useAuth } from "@/lib/AuthContext";
 import { prefetchCategoryOrder } from "@/lib/categoryOrder";
 import { MegaMenu } from "./MegaMenu";
@@ -108,14 +110,10 @@ export function SiteHeader() {
       }}
     >
       <div style={{ position: "relative", width: "100%" }}>
-      <XStack
-          width="100%"
-          height={64}
-          paddingHorizontal="4 gtSm:5"
-          alignItems="center"
-          justifyContent="space-between"
-        >
-        <XStack alignItems="center" gap="6">
+      {/* HTML semplice, senza il calcolo degli stili di Tamagui
+          (docs/changelog/2026-11-09-barra-in-alto-senza-tamagui.md). */}
+      <div className={`is_View ${styles.bar}`}>
+        <div className={`is_View ${styles.left}`}>
           <Link href="/" aria-label={`${BRAND.name}, vai alla home`} style={{ textDecoration: "none" }}>
             {/* Solo marchio sotto $xs (≤660px, telefoni): il wordmark
                 "Professionisti" (~120px) più Accedi+bottone CTA a destra
@@ -123,12 +121,12 @@ export function SiteHeader() {
                 (bug reale segnalato dall'utente, scroll orizzontale sulla
                 homepage) — `variant="mark"` esiste già in Logo.web.tsx
                 proprio per questo caso ("per spazi stretti"). */}
-            <XStack display="none gtXs:flex">
-              <Logo name={BRAND.name} size={26} />
-            </XStack>
-            <XStack display="gtXs:none">
-              <Logo name={BRAND.name} size={26} variant="mark" />
-            </XStack>
+            <div className={`is_View ${styles.row} ${styles.logoFull}`}>
+              <LogoPlain name={BRAND.name} size={26} />
+            </div>
+            <div className={`is_View ${styles.row} ${styles.logoMark}`}>
+              <LogoPlain name={BRAND.name} size={26} variant="mark" />
+            </div>
           </Link>
           {isSearchResultsPage ? (
             // Da telefono il menu c'è anche nelle pagine di ricerca: prima
@@ -136,20 +134,16 @@ export function SiteHeader() {
             // nascosto, al suo posto c'è la ricerca compatta al centro.
             <MegaMenu mobileOnly />
           ) : (
-            <XStack alignItems="center" gap="5">
+            <div className={`is_View ${styles.nav}`}>
               <MegaMenu />
-              <XStack alignItems="center" gap="5" display="none gtMd:flex">
+              <div className={`is_View ${styles.nav} ${styles.navLinks}`}>
                 <Link href="/#come-funziona" style={{ textDecoration: "none" }}>
-                  <Text fontSize={16} fontWeight="600" color={brand.grafite}>
-                    Come funziona
-                  </Text>
+                  <span className={`is_Text ${styles.navText}`}>Come funziona</span>
                 </Link>
                 {/* Strumento "Quanto costa in media" della home (richiesta di
                     Luca, docs/CHANGELOG.md §398). */}
                 <Link href="/#quanto-costa" style={{ textDecoration: "none" }}>
-                  <Text fontSize={16} fontWeight="600" color={brand.grafite}>
-                    Quanto costa
-                  </Text>
+                  <span className={`is_Text ${styles.navText}`}>Quanto costa</span>
                 </Link>
                 {/* "Prezzi" (abbonamento dei professionisti) tolto da qui: accanto a
                     "Quanto costa" si confondeva, resta in "Offri i tuoi servizi"
@@ -158,17 +152,15 @@ export function SiteHeader() {
                     "Diventa un sitter" su Rover (docs/CHANGELOG.md §173). */}
                 {!isLoading && !user?.isProfessional ? (
                   <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
-                    <Text fontSize={16} fontWeight="600" color={brand.grafite}>
-                      Offri i tuoi servizi
-                    </Text>
+                    <span className={`is_Text ${styles.navText}`}>Offri i tuoi servizi</span>
                   </Link>
                 ) : null}
-              </XStack>
-            </XStack>
+              </div>
+            </div>
           )}
-        </XStack>
+        </div>
 
-        <XStack alignItems="center" gap="4 xs:3">
+        <div className={`is_View ${styles.right}`}>
           {/* "Richiedi preventivo", poi campanella e tondino dell'account
               insieme in fondo a destra (richieste di Luca,
               docs/changelog/2026-11-09-barra-in-alto-semplice.md). */}
@@ -177,9 +169,7 @@ export function SiteHeader() {
               {/* brand.cianografia invece di $blue10 stock (Fase 6): 3.84:1 di
                   contrasto su bianco a questa dimensione, sotto la soglia
                   4.5:1 richiesta per testo normale (Lighthouse color-contrast). */}
-              <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro}>
-                Accedi
-              </Text>
+              <span className={`is_Text ${styles.loginText}`}>Accedi</span>
             </Link>
           )}
           {/* Nascosto per un account professionista già autenticato (richiesta
@@ -209,36 +199,28 @@ export function SiteHeader() {
               <Button tabIndex={-1} className="site-header-cta" variant="primary" size="3" height={40} paddingHorizontal="4 xs:3">
                 {user ? (
                   <>
-                    <Text display="none gtXs:flex" color="white" fontWeight="600">
-                      Richiedi preventivo
-                    </Text>
-                    <Text display="flex gtXs:none" color="white" fontWeight="600">
-                      Preventivo
-                    </Text>
+                    <span className={`is_Text ${styles.ctaText} ${styles.ctaLong}`}>Richiedi preventivo</span>
+                    <span className={`is_Text ${styles.ctaText} ${styles.ctaShort}`}>Preventivo</span>
                   </>
                 ) : (
                   // Sotto i 360 px (iPhone SE e simili) logo, menu, "Accedi" e
                   // l'etichetta intera non stanno in una riga: "Preventivo".
                   <>
-                    <Text className="site-header-cta-long" fontSize={16} color="white" fontWeight="600">
-                      Richiedi preventivo
-                    </Text>
-                    <Text className="site-header-cta-short" fontSize={16} color="white" fontWeight="600">
-                      Preventivo
-                    </Text>
+                    <span className={`is_Text site-header-cta-long ${styles.ctaText} ${styles.ctaText16}`}>Richiedi preventivo</span>
+                    <span className={`is_Text site-header-cta-short ${styles.ctaText} ${styles.ctaText16}`}>Preventivo</span>
                   </>
                 )}
               </Button>
             </Link>
           ) : null}
           {!isLoading && user ? (
-            <XStack alignItems="center" gap="2">
+            <div className={`is_View ${styles.account}`}>
               <NotificationBell />
               <AccountMenu />
-            </XStack>
+            </div>
           ) : null}
-        </XStack>
-      </XStack>
+        </div>
+      </div>
       {isSearchResultsPage ? (
         // "Servizi" (MegaMenu, trigger desktop + drawer mobile) nascosto del
         // tutto in questa modalità: la ricerca condensata prende il suo
@@ -251,7 +233,7 @@ export function SiteHeader() {
         // sufficienza, §"Ricerca spostata nell'header fisso") il banner
         // completo nel corpo pagina (SearchHeader.tsx) resta l'unico modo
         // di cercare, invariato — stessa soglia `$gtMd` di prima, ora sulla
-        // XStack interna anziché sul wrapper di posizionamento.
+        // riquadro interno anziché sul wrapper di posizionamento.
         <div
           style={{
             position: "absolute",
@@ -264,11 +246,11 @@ export function SiteHeader() {
             pointerEvents: "none",
           }}
         >
-          <XStack display="none gtMd:flex" pointerEvents="auto">
+          <div className={`is_View ${styles.row} ${styles.search}`}>
             <Suspense fallback={null}>
               <HeaderSearchBar />
             </Suspense>
-          </XStack>
+          </div>
         </div>
       ) : null}
       </div>
