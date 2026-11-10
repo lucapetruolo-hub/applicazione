@@ -1408,8 +1408,8 @@ export function RequestCard({
               style={{ width: "100%", padding: 8, borderRadius: radiusDoc, border: `1px solid ${brand.bordoCampo}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite, resize: "none", overflow: "hidden" }}
             />
             {noteChanged ? (
-              <CardButton alignSelf="flex-start" disabled={isSavingNote} onPress={handleSaveNote}>
-                {isSavingNote ? "Salvataggio..." : "Salva"}
+              <CardButton alignSelf="flex-start" disabled={isSavingNote} opacity={1} onPress={handleSaveNote}>
+                {isSavingNote ? <ButtonWaitBar tone="green" label="Salvataggio…" /> : "Salva"}
               </CardButton>
             ) : null}
           </YStack>
@@ -2082,8 +2082,8 @@ export function RequestCard({
                 </Text>
               ) : null}
               <XStack gap="2" flexWrap="wrap">
-                <CardButton tone="primary" disabled={isCountering} onPress={handleCounterPropose}>
-                  {isCountering ? "Invio..." : "Invia nuova proposta"}
+                <CardButton tone="primary" disabled={isCountering} opacity={1} onPress={handleCounterPropose}>
+                  {isCountering ? <ButtonWaitBar label="Invio in corso…" /> : "Invia nuova proposta"}
                 </CardButton>
                 <CardButton onPress={() => setShowCounterForm(false)}>Annulla</CardButton>
               </XStack>

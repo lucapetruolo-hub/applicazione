@@ -9,7 +9,7 @@ import { CardButton } from "@/components/CardButton";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import { textareaStyle } from "./clientRequestHelpers";
-import { WaitBarSignal } from "@/components/WaitBar";
+import { ButtonWaitBar, WaitBarSignal } from "@/components/WaitBar";
 
 // `isCurrentProposal` distingue la data/orario attualmente proposti dal
 // professionista quando non corrisponde a nessuna fascia reale
@@ -174,8 +174,8 @@ export function QuoteDateChooser({
           ) : null}
           <textarea aria-label="Dettagli aggiuntivi" value={proposeNote} onChange={(e) => setProposeNote(e.target.value)} placeholder="Dettagli aggiuntivi (opzionale): es. posso solo dopo le 17" rows={2} style={textareaStyle} />
           <XStack gap="2" flexWrap="wrap">
-            <CardButton tone="primary" onPress={handleProposeDate} disabled={isProposing}>
-              {isProposing ? "Invio..." : "Invia proposta"}
+            <CardButton tone="primary" onPress={handleProposeDate} disabled={isProposing} opacity={1}>
+              {isProposing ? <ButtonWaitBar label="Invio in corso…" /> : "Invia proposta"}
             </CardButton>
             <CardButton onPress={onCancel} disabled={isProposing}>
               Annulla

@@ -13,6 +13,7 @@ import {
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MediaPreview } from "@/components/MediaPreview";
 import { formatIssueDeadline } from "@/lib/leadDeadline";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 /**
  * Segnalazione del cliente vista dal professionista (docs/CHANGELOG.md
@@ -232,8 +233,8 @@ function TextForm({
           {error}
         </Text>
       ) : null}
-      <Button variant="secondary" size="2" height={36} alignSelf="flex-start" opacity={isSaving ? 0.6 : 1} onPress={submit} disabled={isSaving}>
-        {isSaving ? "Invio..." : submitLabel}
+      <Button variant="secondary" size="2" height={36} alignSelf="flex-start" onPress={submit} disabled={isSaving}>
+        {isSaving ? <ButtonWaitBar tone="green" label="Invio in corso…" /> : submitLabel}
       </Button>
     </YStack>
   );
@@ -285,8 +286,8 @@ function RefundOfferForm({ current, onSubmit }: { current: number | null; onSubm
         <Text fontSize={16} color={brand.grafite70}>
           €
         </Text>
-        <Button variant="secondary" size="2" height={36} onPress={submit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
-          {isSaving ? "Invio..." : current !== null ? "Cambia proposta" : "Proponi rimborso"}
+        <Button variant="secondary" size="2" height={36} onPress={submit} disabled={isSaving}>
+          {isSaving ? <ButtonWaitBar tone="green" label="Invio in corso…" /> : current !== null ? "Cambia proposta" : "Proponi rimborso"}
         </Button>
       </XStack>
       {error ? (

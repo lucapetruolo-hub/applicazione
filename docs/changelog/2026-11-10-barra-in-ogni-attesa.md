@@ -66,3 +66,15 @@ poi sagoma del profilo con la barra verde in cima. Foto in
 **Verifica**: `pnpm typecheck` e `pnpm lint` verdi; sul sito compilato con la
 registrazione rallentata a 9 s la frase compare dopo 5 secondi sotto il
 pulsante con la barra (foto `registrati-dopo-5-secondi-*.png`).
+
+## Terzo giro: barra verde nei pulsanti bianchi
+
+**Richiesta** (Luca, 10/11/2026): "Sì la prima" (barra anche nei pulsanti
+bianchi che aspettano il server).
+
+- `ButtonWaitBar tone="green"`: la barra verde, un po' più corta (96 px), nei
+  pulsanti bianchi: "Salva password" in Account, "Salva" della nota sulla
+  richiesta, "Salva la nota" in I miei clienti, invio e "Proponi rimborso"
+  nelle segnalazioni dei lavori.
+- Presi anche due pulsanti verdi rimasti fuori: "Invia proposta" della nuova
+  data (cliente) e "Invia nuova proposta" (professionista).

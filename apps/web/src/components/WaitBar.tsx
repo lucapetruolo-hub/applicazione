@@ -26,15 +26,16 @@ export function WaitBarSignal() {
 }
 
 /**
- * Dentro un pulsante verde o rosso mentre si aspetta il server (invio della
- * richiesta, creazione dell'account, accesso): la barra bianca al posto
- * della scritta, alla stessa altezza della riga. La frase resta per il
- * lettore di schermo.
+ * Dentro un pulsante mentre si aspetta il server (invio della richiesta,
+ * creazione dell'account, salvataggi): la barra al posto della scritta, alla
+ * stessa altezza della riga. Bianca sui pulsanti verdi e rossi, verde
+ * (`tone="green"`) sui pulsanti bianchi. La frase resta per il lettore di
+ * schermo.
  */
-export function ButtonWaitBar({ label }: { label: string }) {
+export function ButtonWaitBar({ label, tone = "light" }: { label: string; tone?: "light" | "green" }) {
   return (
-    <span className="button-wait-bar">
-      <span className="flow-bar flow-bar--light" aria-hidden="true" />
+    <span className={tone === "green" ? "button-wait-bar button-wait-bar--green" : "button-wait-bar"}>
+      <span className={tone === "green" ? "flow-bar" : "flow-bar flow-bar--light"} aria-hidden="true" />
       <span className="sr-only" role="status">
         {label}
       </span>

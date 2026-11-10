@@ -547,6 +547,11 @@ body:has(.chosen-bar) {
   justify-content: center;
   height: 20px;
 }
+/* Sui pulsanti bianchi la barra verde, un po' più corta: sta anche nei
+   pulsanti piccoli ("Salva" della nota) senza allargarli troppo. */
+.button-wait-bar--green .flow-bar {
+  width: 96px;
+}
 /* Frase sotto il pulsante quando l'attesa supera 5 secondi (SlowWaitHint). */
 .slow-wait-hint {
   margin: 0;
