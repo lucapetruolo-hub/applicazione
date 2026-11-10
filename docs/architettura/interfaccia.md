@@ -55,4 +55,7 @@ parola da `CLAUDE.md` §2 il 10/11/2026 (docs/changelog/2026-11-10-riordino-file
   docs/changelog/2026-11-10-pulsanti-senza-tamagui.md): varianti comuni con
   l'app in `buttonStyle.ts`, prop di stile (anche `"44px xs:40px"` e
   `hover:`) tradotte in classi di `Button.module.css`, che si genera con
-  `pnpm --filter @professionisti/ui genera-css-pulsante`.
+  `pnpm --filter @professionisti/ui genera-css-pulsante`. Anche `SearchBar` e
+  `Autocomplete` (docs/changelog/2026-11-10-barra-di-ricerca-senza-tamagui.md):
+  la logica comune con l'app sta in `searchBarModel.ts` e
+  `autocompleteModel.ts`, i file `.web.tsx` disegnano soltanto.
