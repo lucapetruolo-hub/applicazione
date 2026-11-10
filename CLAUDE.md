@@ -362,6 +362,6 @@ sintetica in §5 qui sopra, non solo nel changelog.
 Vive nella skill `checklist-lancio` (`.claude/skills/checklist-lancio/SKILL.md`):
 aggiornala lì. Due punti da non dimenticare anche senza aprirla: il sito resta
 `noindex` finché al lancio non si imposta `NEXT_PUBLIC_SITE_INDEXABLE=true`, e
-il claim "Profili verificati" non corrisponde a nessuna verifica reale —
-decisione dell'utente: non riformulare il testo, costruire davvero la
-verifica prima del lancio (o correggerlo, ma mai lasciarlo falso dal vivo).
+il badge "Verificato" lo dà solo la verifica di documento e selfie con Didit
+(§253-§255): prima del lancio va controllato il flusso Didit dal vivo
+(checklist punto 15), perché la promessa "Profili verificati" resti vera.
