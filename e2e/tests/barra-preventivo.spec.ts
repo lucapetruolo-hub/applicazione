@@ -134,6 +134,20 @@ test.describe("chi visita il profilo", () => {
     await expect(page.locator(".site-header-cta-link")).toHaveCount(0);
   });
 
+  test("un esempio della home cerca anche prima che la pagina sia pronta", async ({ browser }) => {
+    // Senza JavaScript, come nel primo istante dopo l'apertura: prima il tocco
+    // non faceva nulla (docs/changelog/2026-11-10-barra-di-ricerca-senza-tamagui.md).
+    const context = await browser.newContext({ baseURL: WEB_URL, javaScriptEnabled: false, storageState: anonymous });
+    const page = await context.newPage();
+    await page.goto("/");
+    await page.getByRole("group", { name: "Prova" }).locator(".hero-example").first().click();
+    await expect(page).toHaveURL(/\/cerca\?problema=/);
+    await page.goto("/");
+    await page.getByRole("group", { name: "O scrivi solo chi cerchi" }).locator(".hero-example").first().click();
+    await expect(page).toHaveURL(/\/cerca\/[a-z-]+/);
+    await context.close();
+  });
+
   test("nome lunghissimo e profilo senza foto: niente esce dallo schermo", async ({ page }) => {
     await page.goto(`/professionista/${ids.longName}`);
     await waitForProfile(page, LONG_NAME);

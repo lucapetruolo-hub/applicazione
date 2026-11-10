@@ -1,232 +1,43 @@
 "use client";
 
-import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment } from "react";
 import { Label, Text, XStack, YStack, isWeb } from "tamagui";
 import { AutocompleteList, revealFieldForList } from "./AutocompleteList";
+import { useAutocomplete, type AutocompleteProps } from "./autocompleteModel";
 import { Input } from "./Input";
-import { buildSearchIndex, rankSearchMatches } from "./searchMatch";
 import { brand } from "./tokens";
 
-export type AutocompleteProps<T> = {
-  items: T[];
-  getKey: (item: T) => string;
-  getLabel: (item: T) => string;
-  onSelect: (item: T) => void;
-  renderItem?: (item: T) => ReactNode;
-  value: string;
-  onChangeText: (text: string) => void;
-  placeholder?: string;
-  maxResults?: number;
-  /** Numero minimo di caratteri digitati prima di mostrare l'elenco (0 = mostra subito, anche a campo vuoto). */
-  minChars?: number;
-  size?: React.ComponentProps<typeof Input>["size"];
-  /**
-   * Etichetta visibile sopra il campo (regola "input-labels": il solo
-   * segnaposto sparisce mentre si scrive). Serve anche `id`, che lega
-   * l'etichetta al campo. Senza, il segnaposto fa da nome accessibile.
-   */
-  label?: string;
-  /** Pillola corta accanto all'etichetta (es. "Novità" sulla ricerca per problema in home). */
-  labelBadge?: string;
-  /** Riceve una funzione che mette il cursore nel campo (gli esempi della home). */
-  focusRef?: { current: (() => void) | null };
-  /** Classe del campo (in home il bordo con la luce che gira). */
-  inputClassName?: string;
-  id?: string;
-  /** Nome per il lettore di schermo quando l'etichetta visibile non è legata al campo: senza, si legge il segnaposto ("Es. Milano"). */
-  "aria-label"?: string;
-  /**
-   * Testo su cui si cerca, se diverso da `getLabel` (es. una frazione:
-   * si cerca "Borgo Sabotino", si mostra anche il comune).
-   */
-  getSearchText?: (item: T) => string;
-  /** A parità di corrispondenza, più bassa prima (es. città con professionisti, §383). */
-  priority?: (item: T) => number;
-  /** Elenco mostrato a campo vuoto, al posto dei primi `maxResults` di `items` (es. ultima città usata e più cercate). */
-  emptyItems?: T[];
-  /**
-   * Titoletti dentro l'elenco a campo vuoto, prima della voce di `emptyItems`
-   * con quell'indice (es. "Scrivi il problema, per esempio:" sopra le frasi
-   * d'esempio e "Oppure scegli chi cerchi:" sopra i mestieri, in home).
-   */
-  emptyHeadings?: { index: number; label: string }[];
-  /** Riga in cima a campo vuoto, prima dell'elenco (es. "Vicino a me"). */
-  leadingAction?: {
-    label: string;
-    description?: string;
-    /** Se restituisce una Promise, l'elenco resta aperto finché non risponde `true` (es. posizione trovata). */
-    onPress: () => void | Promise<boolean>;
-  };
-  /**
-   * Sotto gli 800 px, mentre si scrive, l'elenco sta nella pagina e spinge
-   * giù i campi sotto invece di coprirli (collaudo dell'8/11, E6-04: in home
-   * il suggerimento del problema nascondeva "Città").
-   */
-  listInFlowOnPhone?: boolean;
-};
+export type { AutocompleteProps } from "./autocompleteModel";
 
 /**
  * Campo di testo con elenco a discesa filtrato in tempo reale, usato per la
- * ricerca professionisti/città (condiviso web+mobile).
+ * ricerca professionisti/città (condiviso web+mobile). La logica sta in
+ * `autocompleteModel.ts`, comune con la variante del sito in HTML semplice
+ * (Autocomplete.web.tsx, docs/changelog/2026-11-10-barra-di-ricerca-senza-tamagui.md).
  */
-/**
- * Il campo ha il fuoco? Nell'app lo dice il TextInput (`isFocused`), sul
- * sito (Tamagui 3: un <input> vero) l'elemento attivo della pagina.
- */
-function inputHasFocus(input: { isFocused?: () => boolean } | null): boolean {
-  if (!input) return false;
-  if (typeof input.isFocused === "function") return input.isFocused();
-  const doc = (globalThis as { document?: { activeElement?: unknown } }).document;
-  return doc?.activeElement === input;
-}
-
-export function Autocomplete<T>({
-  items,
-  getKey,
-  getLabel,
-  onSelect,
-  renderItem,
-  value,
-  onChangeText,
-  placeholder,
-  maxResults = 30,
-  minChars = 0,
-  size,
-  label,
-  labelBadge,
-  focusRef,
-  inputClassName,
-  id,
-  "aria-label": accessibilityLabel,
-  getSearchText,
-  priority,
-  emptyItems,
-  emptyHeadings,
-  leadingAction,
-  listInFlowOnPhone = false,
-}: AutocompleteProps<T>) {
-  const [isFocused, setIsFocused] = useState(false);
-  // Opzione evidenziata con le frecce (-1 nessuna). 0 è la riga in cima se c'è.
-  const [highlighted, setHighlighted] = useState(-1);
-  const listboxId = `${useId().replace(/:/g, "")}-elenco`;
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const inputRef = useRef<{ focus?: () => void; blur?: () => void; isFocused?: () => boolean } | null>(null);
-  useEffect(() => {
-    if (!focusRef) return;
-    focusRef.current = () => inputRef.current?.focus?.();
-    return () => {
-      focusRef.current = null;
-    };
-  }, [focusRef]);
-
-  // Chiudi il dropdown anche al click/tap fuori dal campo (web): il blur
-  // ritardato da solo non basta — con il dropdown aperto a z-index alto il
-  // click sul bottone di invio sottostante veniva intercettato e il form
-  // risultava "non cliccabile" (bug reale segnalato in audit).
-  useEffect(() => {
-    // Web-only: il package è condiviso con React Native, dove `document`
-    // non esiste né nei tipi né a runtime — doppia guardia (typeof + cast)
-    // per non rompere il typecheck RN né il bundle nativo.
-    if (typeof globalThis !== "object" || !("document" in globalThis)) return;
-    type DocLike = {
-      addEventListener: (type: string, listener: (e: { target: unknown }) => void) => void;
-      removeEventListener: (type: string, listener: (e: { target: unknown }) => void) => void;
-    };
-    const doc = (globalThis as { document?: DocLike }).document;
-    if (!doc) return;
-    function handlePointerDown(e: { target: unknown }) {
-      const node = containerRef.current as unknown as { contains?: (t: unknown) => boolean } | null;
-      if (node && typeof node.contains === "function" && !node.contains(e.target)) {
-        setIsFocused(false);
-      }
-    }
-    doc.addEventListener("mousedown", handlePointerDown);
-    doc.addEventListener("touchstart", handlePointerDown);
-    return () => {
-      doc.removeEventListener("mousedown", handlePointerDown);
-      doc.removeEventListener("touchstart", handlePointerDown);
-    };
-  }, []);
-
-  // I testi si normalizzano una volta per elenco, non a ogni lettera
-  // (i comuni sono ~7900).
-  const searchIndex = useMemo(() => buildSearchIndex(items, getSearchText ?? getLabel), [items, getSearchText, getLabel]);
-  const trimmedQuery = value.trim();
-  // Campo vuoto: un elenco subito, senza dover scrivere (le più cercate,
-  // l'ultima città usata, o i primi N). Sotto la soglia `minChars` invece
-  // niente. Mentre si scrive l'ordine è quello di `rankSearchMatches`:
-  // prima chi inizia con le lettere scritte (non "Fabrica di Roma" prima di
-  // "Roma", bug segnalato dall'utente), poi le parole, poi chi le contiene,
-  // infine chi somiglia con un errore di battitura (§383).
-  const filtered =
-    trimmedQuery.length === 0
-      ? (emptyItems ?? items).slice(0, maxResults)
-      : trimmedQuery.length < minChars
-        ? []
-        : rankSearchMatches(searchIndex, trimmedQuery, { priority, limit: maxResults });
-  const action = trimmedQuery.length === 0 ? leadingAction : undefined;
-  const optionCount = filtered.length + (action ? 1 : 0);
-
-  const showDropdown = isFocused && optionCount > 0;
-  const listInFlow = listInFlowOnPhone && trimmedQuery.length > 0;
-  const activeIndex = showDropdown && highlighted >= 0 && highlighted < optionCount ? highlighted : -1;
-
-  function choose(index: number) {
-    if (action && index === 0) {
-      const result = action.onPress();
-      if (result instanceof Promise) {
-        // "Vicino a me": l'elenco resta aperto con "Cerco la tua posizione…"
-        // e, se non la trova, con il motivo; si chiude solo quando la trova.
-        inputRef.current?.focus?.();
-        setIsFocused(true);
-        void result.then((done) => {
-          if (done) {
-            setIsFocused(false);
-            inputRef.current?.blur?.();
-          }
-        });
-        return;
-      }
-    } else {
-      const item = filtered[index - (action ? 1 : 0)];
-      if (item !== undefined) onSelect(item);
-    }
-    setHighlighted(-1);
-    setIsFocused(false);
-  }
-
-  // Frecce, Invio ed Esc come in AddressAutocompleteInput (§324): il
-  // lettore di schermo legge l'opzione evidenziata.
-  function handleKey(key: string, preventDefault: () => void) {
-    if (key === "Escape") {
-      setIsFocused(false);
-      return;
-    }
-    if (!showDropdown) {
-      if (key === "ArrowDown") setIsFocused(true);
-      return;
-    }
-    if (key === "ArrowDown") {
-      preventDefault();
-      setHighlighted(Math.min(activeIndex + 1, optionCount - 1));
-    } else if (key === "ArrowUp") {
-      preventDefault();
-      setHighlighted(Math.max(activeIndex - 1, 0));
-    } else if (key === "Enter" && activeIndex >= 0) {
-      preventDefault();
-      choose(activeIndex);
-    }
-  }
-
-  const optionId = (index: number) => `${listboxId}-${index}`;
-  // Attributi del "combobox" per il web (react-native-web li passa al campo).
-  const comboboxProps = {
-    role: "combobox",
-    "aria-autocomplete": "list",
-    "aria-expanded": showDropdown,
-    "aria-controls": listboxId,
-    "aria-activedescendant": activeIndex >= 0 ? optionId(activeIndex) : undefined,
-  } as Record<string, unknown>;
+export function Autocomplete<T>(props: AutocompleteProps<T>) {
+  const { getKey, getLabel, renderItem, value, placeholder, size, label, labelBadge, id, inputClassName } = props;
+  const {
+    containerRef,
+    inputRef,
+    listboxId,
+    listboxLabel,
+    inputAriaLabel,
+    filtered,
+    action,
+    showDropdown,
+    listInFlow,
+    activeIndex,
+    optionId,
+    comboboxProps,
+    statusText,
+    headingBefore,
+    choose,
+    handleKey,
+    handleChangeText,
+    handleFocus,
+    handleBlur,
+  } = useAutocomplete(props);
 
   return (
     <YStack position="relative" flex={1} ref={containerRef as never}>
@@ -250,25 +61,17 @@ export function Autocomplete<T>({
         size={size}
         borderWidth={0}
         value={value}
-        onChangeText={(text) => {
-          setHighlighted(-1);
-          setIsFocused(true);
-          onChangeText(text);
-        }}
+        onChangeText={handleChangeText}
         placeholder={placeholder}
-        aria-label={label ? undefined : accessibilityLabel ?? placeholder}
+        aria-label={inputAriaLabel}
         autoComplete="off"
         // Invio senza suggerimento scelto non toglie il fuoco dal campo (collaudo L-08).
         blurOnSubmit={false}
         onFocus={() => {
-          setIsFocused(true);
+          handleFocus();
           revealFieldForList(containerRef.current);
         }}
-        onBlur={() =>
-          setTimeout(() => {
-            if (!inputHasFocus(inputRef.current)) setIsFocused(false);
-          }, 150)
-        }
+        onBlur={handleBlur}
         // Sul sito il tasto arriva da onKeyDown (con Tamagui 3 l'Input del
         // web è un <input> vero e ignora onKeyPress), nell'app da onKeyPress.
         onKeyDown={(event: { key: string; preventDefault: () => void }) => handleKey(event.key, () => event.preventDefault())}
@@ -280,11 +83,11 @@ export function Autocomplete<T>({
                 if (key) handleKey(key, () => undefined);
               },
             })}
-        {...comboboxProps}
+        {...(comboboxProps as Record<string, unknown>)}
       />
       {/* Annuncio per i lettori di schermo: quanti suggerimenti ci sono. */}
       <Text role="status" aria-live="polite" position="absolute" width={1} height={1} overflow="hidden" opacity={0} pointerEvents="none">
-        {isFocused && trimmedQuery ? (filtered.length > 0 ? `${filtered.length} ${filtered.length === 1 ? "suggerimento" : "suggerimenti"}: usa le frecce per sceglierne uno.` : "Nessun suggerimento.") : ""}
+        {statusText}
       </Text>
       {showDropdown ? (
         <YStack
@@ -309,7 +112,7 @@ export function Autocomplete<T>({
               sempre visibile e frecce che fanno scorrere la lista
               (AutocompleteList.web.tsx). */}
           <AutocompleteList activeOptionId={activeIndex >= 0 ? optionId(activeIndex) : undefined}>
-            <YStack id={listboxId} {...({ role: "listbox", "aria-label": label ?? accessibilityLabel ?? placeholder } as Record<string, unknown>)}>
+            <YStack id={listboxId} {...({ role: "listbox", "aria-label": listboxLabel } as Record<string, unknown>)}>
               {action ? (
                 <YStack
                   id={optionId(0)}
@@ -334,7 +137,7 @@ export function Autocomplete<T>({
               ) : null}
               {filtered.map((item, i) => {
                 const index = i + (action ? 1 : 0);
-                const heading = trimmedQuery.length === 0 ? emptyHeadings?.find((h) => h.index === i) : undefined;
+                const heading = headingBefore(i);
                 return (
                   <Fragment key={getKey(item)}>
                     {heading ? (
