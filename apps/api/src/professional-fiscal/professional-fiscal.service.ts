@@ -6,6 +6,7 @@ import {
   FISCAL_DECLARATION_VERSION,
   fiscalDataMissing,
   fiscalFieldErrors,
+  COMPANY_NAME_FOR_PRIVATE_MESSAGE,
   looksLikeCompanyName,
   normalizePartitaIva,
   normalizeReaNumber,
@@ -258,9 +259,7 @@ export class ProfessionalFiscalService {
     if ((input.entityType ?? existing?.entityType) === "PRIVATE_INDIVIDUAL") {
       const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { businessName: true } });
       if (looksLikeCompanyName(profile?.businessName)) {
-        throw new BadRequestException(
-          "Il nome della tua attività ha la forma di una società (S.R.L., S.N.C., S.p.A.): un privato senza partita IVA non può usarla. Cambia il nome nel profilo, oppure scrivici dalla pagina Contatti se sei un'azienda.",
-        );
+        throw new BadRequestException(COMPANY_NAME_FOR_PRIVATE_MESSAGE);
       }
     }
 
