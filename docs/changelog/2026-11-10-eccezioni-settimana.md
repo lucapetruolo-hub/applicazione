@@ -32,6 +32,10 @@ una riga in fondo ("I giorni cambiati a mano... restano com'erano").
     ("dalla settimana di dicembre 2026");
   - un giorno della settimana tipo rimasto con gli orari di prima per un
     lavoro fissato ora mostra "eccezione" (prima sembrava della settimana).
+- Seconda miglioria scelta da Luca ("Effettua seconda miglioria"): chiudendo
+  la finestra con la X, sotto la settimana compare "Settimana non salvata.
+  Quando vuoi, premi di nuovo "Salva la settimana"", così è chiaro che non è
+  cambiato nulla. Non scelta: messaggio verde con i giorni cambiati e lasciati.
 - Resta la decisione del §328: nessun tasto "Torna agli orari soliti" sul
   singolo giorno.
 

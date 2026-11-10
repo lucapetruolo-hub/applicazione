@@ -187,6 +187,11 @@ test("salvando la settimana chiede dei giorni cambiati a mano e li cambia se si 
   const week = page.getByRole("region", { name: "La tua settimana" });
   await week.getByLabel("Tutti i giorni: fine 1° orario").fill("13:00");
   await week.getByRole("button", { name: "Salva la settimana" }).click();
+  // Chiusa con la X non salva nulla e lo dice; poi si risalva.
+  await page.getByRole("dialog").getByRole("button", { name: "Chiudi senza salvare" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Settimana non salvata" })).toBeVisible();
+  expect(((await mySlots(request)) as FullSlot[]).filter((s) => s.date === wed).map((s) => s.endTime)).toEqual(["11:00"]);
+  await week.getByRole("button", { name: "Salva la settimana" }).click();
   // Possono esserci anche le domeniche salvate per un mese solo dalla prova prima: giorni a sé anche loro.
   const dialog = page.getByRole("dialog", { name: /^Hai (un giorno|\d+ giorni) cambiat[oi] a mano$/ });
   await expect(dialog).toBeVisible();

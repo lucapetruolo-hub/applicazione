@@ -2450,6 +2450,8 @@ function DashboardAgendaContent() {
           onClose={() => {
             manualDaysAsk.resolve(false);
             setManualDaysAsk(null);
+            // Chiusa con la X: niente è cambiato, e lo diciamo.
+            setTemplateNotice("Settimana non salvata. Quando vuoi, premi di nuovo \"Salva la settimana\".");
           }}
         />
       ) : null}
