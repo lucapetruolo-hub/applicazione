@@ -8463,6 +8463,35 @@ a.admin-kpi:hover {
   scroll-snap-align: center;
   scroll-snap-stop: always;
 }
+/* Ogni foto sta tutta dentro lo schermo, centrata (docs/changelog/2026-11-10-foto-profilo-telefono.md):
+   misure in percentuale del riquadro e non in `vw`, e un margine fisso che
+   lascia libera la X in alto. Su iPhone con Safari la foto profilo usciva a
+   destra. Con una foto sola non c'è nemmeno la riga che scorre
+   (`.lightbox-single`), solo la foto al centro. */
+.lightbox-slide,
+.lightbox-single {
+  box-sizing: border-box;
+  min-width: 0;
+  height: 100%;
+  padding: 64px max(16px, 5%);
+  overflow: hidden;
+}
+.lightbox-single {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lightbox-media {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 10px;
+}
 
 /* Pressione sulle scelte a pillola: "A domicilio / Online" (SearchBar di
    @professionisti/ui, `.press-scale`) e "Quando ti serve?" si stringono
