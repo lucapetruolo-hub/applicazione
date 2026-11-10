@@ -26,6 +26,13 @@ mentre la valutazione è ancora in corso?
 - "Controlla i dati fiscali →" solo sotto un motivo che riguarda i dati
   fiscali (`identityReasonNeedsFiscalFix` in `packages/shared`): sotto un
   errore di foto o di selfie portava fuori strada.
+- Il messaggio "Non siamo riusciti a leggere i dati del documento" resta solo
+  per i codici che dicono che il documento non si è letto (`NOT_DETECTED`,
+  `VALIDATION_FAILED`). Per i dati letti ma incoerenti tra loro
+  (`DATA_INCONSISTENT`, `NOT_SAME`, `INVALID_DATE`, `FORMAT_MISMATCH`,
+  `SIGNATURE_INVALID`) un messaggio a parte: rifare la foto non basta, serve
+  un documento integro o un altro documento (ok di Luca nel thread). Se c'è
+  anche un problema di foto, vince quello.
 - La casella del consenso al volto resta vuota a ogni nuovo tentativo: il
   consenso biometrico (art. 9 GDPR) va dato con un gesto attivo, una casella
   già spuntata non vale (Corte UE, Planet49 C-673/17).
@@ -33,4 +40,4 @@ mentre la valutazione è ancora in corso?
 ## Verifica
 
 - Prova in `packages/shared/src/identityVerification.test.ts`; `typecheck` e
-  lint del sito.
+  lint del sito; prove dei motivi Didit in `identity-verification.test.ts`.
