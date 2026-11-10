@@ -21,6 +21,7 @@ import { ArchivedCountRow, ArchivedNotice, RestoreAllArchivedBar, RestoredNotice
 import { RequestCard } from "./_components/RequestCard";
 import { filterInputStyle, filterLabelStyle, leadSearchText } from "./_components/requestHelpers";
 import { PageLoading } from "@/components/PageLoading";
+import { useLeaveEmptyArchive } from "@/lib/useLeaveEmptyArchive";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
 const UNREAD_BADGE_POLL_MS = 15000;
@@ -329,6 +330,10 @@ function RichiesteContent() {
     });
     return counts;
   }, [leads, stageByLeadId]);
+
+  // Ripristinata l'ultima archiviata, si torna a "Tutte" invece di restare
+  // su una scheda vuota (docs/changelog/2026-11-10-ripristino-pagina-bloccata.md).
+  useLeaveEmptyArchive(leads === null ? null : (tabCounts.archiviate ?? 0), activeTab, setActiveTab, "tutte");
 
   const visibleLeads = useMemo(() => {
     let list = leads ?? [];

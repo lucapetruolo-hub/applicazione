@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { PrismaClient } from "@professionisti/database";
+import { checkSingleRequestArchiveAndRestore, stateTab } from "../fixtures/archiviate";
 import { COMPUTER, PHONE, createClient, createProfessional, pageAsClient } from "../fixtures/preventivi";
 
 /**
@@ -37,8 +38,7 @@ async function setup() {
 }
 
 const card = (page: Page, text: string) => page.locator('[id^="request-"]', { hasText: text });
-// Le schede di stato hanno il numero nel nome ("Tutte 1"): così non si confondono con "Tutte" di A domicilio/Online.
-const tab = (page: Page, name: string) => page.getByRole("button", { name: new RegExp(`^${name}( \\d+)?$`) }).and(page.locator("[aria-pressed]")).first();
+const tab = (page: Page, name: string) => stateTab(page, name).first();
 
 async function archiveFromMenu(page: Page, text: string) {
   const menu = card(page, text).getByLabel("Azioni sulla richiesta", { exact: true });
@@ -96,6 +96,16 @@ async function checkArchivedFlow(page: Page, path: string, shot: string) {
 
   const axe = await new AxeBuilder({ page }).analyze();
   expect(axe.violations.filter((v) => v.impact === "critical" || v.impact === "serious")).toEqual([]);
+
+  // Ripristinata l'ultima archiviata si torna da soli a "Tutte", invece di
+  // restare su una scheda vuota (docs/changelog/2026-11-10-ripristino-pagina-bloccata.md).
+  const restore = card(page, "lavello").getByRole("button", { name: "Ripristina", exact: true });
+  await restore.scrollIntoViewIfNeeded();
+  await restore.click();
+  await expect(tab(page, "Tutte")).toHaveAttribute("aria-pressed", "true");
+  await expect(card(page, "lavello")).toHaveCount(1);
+  await expect(card(page, "Scaldabagno")).toHaveCount(1);
+  await expect(page.getByText(/richiest[ae] archiviat[ae]$/)).toHaveCount(0);
 }
 
 for (const [device, size] of [
@@ -116,3 +126,7 @@ for (const [device, size] of [
     await page.context().close();
   });
 }
+
+test("cliente con una sola richiesta: archivia e ripristina, la pagina resta usabile (telefono)", async ({ browser }) => {
+  await checkSingleRequestArchiveAndRestore(prisma, browser, PHONE, "android");
+});
