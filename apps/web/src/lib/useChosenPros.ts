@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MAX_CHOSEN_PROFESSIONALS, type ProfessionalCategorySlug, type ProfessionalSearchResult } from "@professionisti/shared";
 import type { ChosenPro } from "@/components/ChosenProsBar";
 import { chosenSearchKey, readChosenSearch, toggleChosenPro, writeChosenSearch } from "@/lib/chosenProsStore";
@@ -39,7 +39,8 @@ export function useChosenPros({
   scope: string;
   professionals: ProfessionalSearchResult[];
 }) {
-  const [chosen, setChosen] = useState<ChosenPro[]>([]);
+  // Scelti insieme alla ricerca a cui appartengono: una ricerca nuova parte vuota.
+  const [state, setState] = useState<{ key: string | null; list: ChosenPro[] }>({ key: null, list: [] });
   // Tocco su "Scegli" oltre il massimo: un avviso visibile per qualche
   // secondo, anche da telefono (docs/changelog/2026-11-04-esempi-cercano-subito.md).
   const [limitAt, setLimitAt] = useState<number | null>(null);
@@ -49,24 +50,45 @@ export function useChosenPros({
     return () => clearTimeout(timer);
   }, [limitAt]);
   const key = category ? chosenSearchKey(category, city, scope) : null;
+  // Solo chi è ancora tra i risultati.
+  const chosen = useMemo(() => {
+    if (key === null || state.key !== key) return [];
+    const ids = new Set(professionals.map((pro) => pro.id));
+    return state.list.filter((pro) => ids.has(pro.id));
+  }, [key, state, professionals]);
   const [restoredKey, setRestoredKey] = useState<string | null>(null);
   useEffect(() => {
     if (!key) return;
     const saved = readChosenSearch();
-    const ids = new Set(professionals.map((pro) => pro.id));
+    const restored = saved?.key === key ? saved.chosen : [];
+    // Un "Scegli" toccato appena aperta la pagina, prima di questo ripristino,
+    // non si perde: si aggiunge ai salvati invece di essere sostituito
+    // (docs/changelog/2026-11-10-prove-che-falliscono-in-locale.md).
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setChosen(saved?.key === key ? saved.chosen.filter((pro) => ids.has(pro.id)) : []);
+    setState((current) => {
+      const touched = current.key === key ? current.list : [];
+      const merged = [...restored, ...touched.filter((pro) => !restored.some((item) => item.id === pro.id))];
+      return { key, list: merged.slice(0, MAX_CHOSEN_PROFESSIONALS) };
+    });
     setRestoredKey(key);
-  }, [key, professionals]);
+  }, [key]);
   useEffect(() => {
     if (!key || restoredKey !== key || !category) return;
     writeChosenSearch({ key, url: `${window.location.pathname}${window.location.search}`, category, description, city, chosen });
   }, [key, restoredKey, chosen, category, description, city]);
 
   function toggle(pro: ProfessionalSearchResult) {
-    setChosen((current) =>
-      toggleChosenPro(current, { id: pro.id, businessName: pro.businessName, imageUrl: pro.imageUrl ?? null, categorySlug: pro.categorySlug }),
-    );
+    if (!key) return;
+    const ids = new Set(professionals.map((item) => item.id));
+    setState((current) => ({
+      key,
+      list: toggleChosenPro((current.key === key ? current.list : []).filter((item) => ids.has(item.id)), {
+        id: pro.id,
+        businessName: pro.businessName,
+        imageUrl: pro.imageUrl ?? null,
+        categorySlug: pro.categorySlug,
+      }),
+    }));
   }
 
   const selection = key
@@ -78,5 +100,5 @@ export function useChosenPros({
         onBlocked: () => setLimitAt(Date.now()),
       }
     : undefined;
-  return { chosen, clear: () => setChosen([]), selection, limitNotice: limitAt !== null ? chosenLimitText() : null };
+  return { chosen, clear: () => setState({ key, list: [] }), selection, limitNotice: limitAt !== null ? chosenLimitText() : null };
 }

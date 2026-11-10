@@ -73,16 +73,29 @@ function ProblemiContent() {
   }, [query]);
   // Righe insieme alla scheda (e al ricaricamento) da cui arrivano: cambiando
   // scheda o dopo una decisione si torna allo scheletro finché non arrivano le nuove.
-  const loadKey = `${view}:${reload}:${search}`;
-  const [loaded, setLoaded] = useState<{ key: string; rows: AdminJobIssue[] } | null>(null);
+  // Cambiando solo la ricerca restano le righe di prima fino alle nuove: niente
+  // scheletro a ogni lettera e una motivazione già scritta o una conferma aperta
+  // non spariscono (docs/changelog/2026-11-10-prove-che-falliscono-in-locale.md).
+  const loadKey = `${view}:${reload}`;
+  const [loaded, setLoaded] = useState<{ key: string; search: string; rows: AdminJobIssue[] } | null>(null);
   const rows = loaded?.key === loadKey ? loaded.rows : null;
+  const searching = rows !== null && loaded?.search !== search;
 
   useEffect(() => {
     if (!token) return;
+    // Solo la risposta dell'ultima ricerca: una più lenta arrivata dopo non la copre.
+    let current = true;
     apiClient
       .adminListJobIssues(token, view, search)
-      .then((list) => setLoaded({ key: `${view}:${reload}:${search}`, rows: list }))
-      .catch((err) => setError(errorMessage(err)));
+      .then((list) => {
+        if (current) setLoaded({ key: `${view}:${reload}`, search, rows: list });
+      })
+      .catch((err) => {
+        if (current) setError(errorMessage(err));
+      });
+    return () => {
+      current = false;
+    };
   }, [token, view, reload, search]);
 
   return (
@@ -112,8 +125,8 @@ function ProblemiContent() {
           style={{ maxWidth: 420 }}
         />
         {search ? (
-          <Text fontSize={13} color={brand.grafite70}>
-            Risultati in tutte le schede, aperte e chiuse.
+          <Text fontSize={13} color={brand.grafite70} role="status">
+            {searching ? "Cerco…" : "Risultati in tutte le schede, aperte e chiuse."}
           </Text>
         ) : null}
       </YStack>
