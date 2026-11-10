@@ -181,6 +181,8 @@ export function bookingReminderClientEmail(input: {
   description?: string | null;
   /** Link "Aggiungi a Google Calendar" (docs/CHANGELOG.md §235). */
   calendarUrl?: string | null;
+  /** Link "Altri calendari" al file .ics (docs/changelog/2026-11-10-calendario-iphone.md). */
+  icsUrl?: string | null;
   /** Pagina dei pulsanti "Ci sarò" e "Non posso più" (link firmato). */
   replyUrl?: string | null;
   /** Fino a quando annullando l'acconto torna indietro; assente senza acconto in gioco. */
@@ -210,7 +212,7 @@ export function bookingReminderClientEmail(input: {
       ...placeDetail(input.address, input.city),
       ...(input.category ? [{ label: "Lavoro", value: input.category }] : []),
       ...descriptionDetail(input.description),
-      ...calendarDetail(input.calendarUrl),
+      ...calendarDetail(input.calendarUrl, input.icsUrl),
     ],
     cta: input.replyUrl ? { label: "Ci sarò", url: `${input.replyUrl}?risposta=ci-saro` } : { label: "Apri la richiesta", url: `${frontendUrl()}/le-mie-richieste` },
     ...(input.replyUrl ? { secondaryLink: { label: "Non posso più", url: `${input.replyUrl}?risposta=non-posso` } } : {}),
@@ -239,6 +241,8 @@ export function bookingReminderProfessionalEmail(input: {
   description?: string | null;
   /** Link "Aggiungi a Google Calendar" (docs/CHANGELOG.md §235). */
   calendarUrl?: string | null;
+  /** Link "Altri calendari" al file .ics (docs/changelog/2026-11-10-calendario-iphone.md). */
+  icsUrl?: string | null;
 }): RenderedEmail {
   return renderEmail({
     kind: "notification",
@@ -254,7 +258,7 @@ export function bookingReminderProfessionalEmail(input: {
       ...(input.clientName ? [{ label: "Cliente", value: input.clientName }] : []),
       ...(input.clientPhone ? [{ label: "Telefono", value: input.clientPhone, url: `tel:${input.clientPhone.replace(/[^\d+]/g, "")}` }] : []),
       ...(input.clientEmail ? [{ label: "Email", value: input.clientEmail, url: `mailto:${input.clientEmail}` }] : []),
-      ...calendarDetail(input.calendarUrl),
+      ...calendarDetail(input.calendarUrl, input.icsUrl),
     ],
     cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
     after: ["Trovi gli stessi dati anche nella scheda dell'appuntamento."],

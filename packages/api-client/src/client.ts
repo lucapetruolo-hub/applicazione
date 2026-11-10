@@ -2148,9 +2148,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         body: JSON.stringify(input),
       }),
 
-    /** "Aggiungi al calendario" del cliente (docs/CHANGELOG.md §346): link di Google Calendar e file .ics. */
+    /** "Aggiungi al calendario" del cliente (docs/CHANGELOG.md §346): link di Google Calendar e link firmato al file .ics sul sito. */
     bookingCalendar: (token: string, bookingId: string) =>
-      request<{ googleUrl: string | null; ics: string }>(`/bookings/${bookingId}/calendar`, { headers: { Authorization: `Bearer ${token}` } }),
+      request<{ googleUrl: string | null; icsUrl: string | null }>(`/bookings/${bookingId}/calendar`, { headers: { Authorization: `Bearer ${token}` } }),
 
     /** "Sto arrivando" (docs/CHANGELOG.md §288): avvisa il cliente, una volta sola. */
     notifyOnTheWay: (token: string, bookingId: string) =>

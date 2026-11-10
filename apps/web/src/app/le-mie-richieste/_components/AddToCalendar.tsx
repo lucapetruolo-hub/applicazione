@@ -9,9 +9,14 @@ import { CardButton } from "@/components/CardButton";
  * "Aggiungi al calendario" del cliente (docs/CHANGELOG.md §346): stesso
  * evento delle email (stesso UID, niente doppioni), con Google Calendar o
  * con il file .ics che iPhone e Outlook aprono da soli.
+ *
+ * Il file arriva da un indirizzo vero del sito (link firmato, `text/calendar`):
+ * Safari su iPhone ignorava il vecchio link `data:` e il tasto non faceva
+ * nulla (docs/changelog/2026-11-10-calendario-iphone.md). Niente `download`,
+ * altrimenti l'iPhone lo mette nei Download invece di aprire il calendario.
  */
 export function AddToCalendar({ token, bookingId }: { token: string; bookingId: string }) {
-  const [calendar, setCalendar] = useState<{ googleUrl: string | null; ics: string } | null>(null);
+  const [calendar, setCalendar] = useState<{ googleUrl: string | null; icsUrl: string | null } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,16 +49,18 @@ export function AddToCalendar({ token, bookingId }: { token: string; bookingId: 
               </CardButton>
             </a>
           ) : null}
-          <a href={`data:text/calendar;charset=utf-8,${encodeURIComponent(calendar.ics)}`} download="appuntamento.ics" style={{ textDecoration: "none" }}>
-            <CardButton>
-              <XStack alignItems="center" gap="2">
-                {icon}
-                <Text fontFamily="body" fontWeight="600" fontSize="3" color={brand.grafite}>
-                  iPhone e altri
-                </Text>
-              </XStack>
-            </CardButton>
-          </a>
+          {calendar.icsUrl ? (
+            <a href={calendar.icsUrl} style={{ textDecoration: "none" }}>
+              <CardButton>
+                <XStack alignItems="center" gap="2">
+                  {icon}
+                  <Text fontFamily="body" fontWeight="600" fontSize="3" color={brand.grafite}>
+                    Altri calendari
+                  </Text>
+                </XStack>
+              </CardButton>
+            </a>
+          ) : null}
         </XStack>
       ) : (
         <CardButton onPress={load} disabled={loading}>
