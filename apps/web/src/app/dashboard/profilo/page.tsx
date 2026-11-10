@@ -27,6 +27,7 @@ import {
   allItalianCityNames,
   PROFILE_DECLARATION_TEXT,
   findComuneByName,
+  looksLikeCompanyName,
   type MyProfessionalProfile,
   type MyProfilePreview,
   type MyVerificationStatus,
@@ -267,6 +268,10 @@ export default function DashboardProfiloPage() {
   const { user, token, isLoading } = useAuth();
 
   const [businessName, setBusinessName] = useState("");
+  // Tipo dichiarato (Dati fiscali, altrimenti quello della registrazione): da
+  // privato il nome non può essere quello di una società, e lo si dice mentre
+  // lo si scrive, non solo al salvataggio (docs/changelog/2026-11-10-nome-societa-privato.md).
+  const [fiscalEntityType, setFiscalEntityType] = useState<string | null>(null);
   // Badge assegnato da un admin dopo il controllo dei documenti (docs/CHANGELOG.md §200).
   const [verified, setVerified] = useState(false);
   // "Richiedi la verifica" (docs/CHANGELOG.md §201): data della richiesta già inviata.
@@ -382,6 +387,21 @@ export default function DashboardProfiloPage() {
     focusEditTitleRef.current = true;
     setMode("edit");
   };
+  // Da Dati fiscali con "Cambia il nome" (/dashboard/profilo?campo=nome): si
+  // apre il modulo con il fuoco sul nome e, salvato, si torna lì
+  // (docs/changelog/2026-11-10-nome-societa-privato.md).
+  const businessNameInputRef = useRef<HTMLInputElement>(null);
+  const backToFiscalRef = useRef(false);
+  const [focusBusinessName, setFocusBusinessName] = useState(false);
+  useEffect(() => {
+    if (!focusBusinessName || mode !== "edit" || isLoadingProfile) return;
+    const input = businessNameInputRef.current;
+    if (!input) return;
+    setFocusBusinessName(false);
+    input.scrollIntoView({ block: "center" });
+    input.focus({ preventScroll: true });
+    input.select();
+  }, [focusBusinessName, mode, isLoadingProfile]);
   const [preview, setPreview] = useState<MyProfilePreview | null>(null);
   // Cosa manca per comparire nelle ricerche e inviare preventivi (richiesta
   // dell'utente, docs/CHANGELOG.md §260): i tre passi finché non sono fatti.
@@ -454,13 +474,24 @@ export default function DashboardProfiloPage() {
     if (!token) return;
     // Senza profilo non c'è niente da vedere in anteprima: niente chiamate che rispondono 404
     // (docs/changelog/2026-11-05-prova-utente-nuovo.md). Dopo il primo salvataggio la chiama handleSubmit.
-    if (user?.professionalProfileId !== null) loadPreview();
+    if (user?.professionalProfileId !== null) {
+      loadPreview();
+      apiClient
+        .myFiscalProfile(token)
+        .then((fiscal) => setFiscalEntityType(fiscal?.entityType ?? null))
+        .catch(() => undefined);
+    }
     apiClient
       .getMyProfessionalProfile(token)
       .then((profile) => {
         setIsFirstProfileSave(!profile);
         setNeedsConfirmation(!!profile && !profile.profileDeclarationAccepted);
         setMode(profile && profile.profileDeclarationAccepted ? "preview" : "edit");
+        if (profile && new URLSearchParams(window.location.search).get("campo") === "nome") {
+          backToFiscalRef.current = true;
+          setMode("edit");
+          setFocusBusinessName(true);
+        }
         // Primo profilo: parte dalla foto dell'account (quella di Google per
         // chi si è registrato con Google), modificabile come le altre.
         if (!profile && user?.imageUrl) setImageUrl(user.imageUrl);
@@ -527,6 +558,8 @@ export default function DashboardProfiloPage() {
   const { pendingHref, cancelLeave } = useUnsavedChangesGuard(isDirty);
   const [isSavingBeforeLeave, setIsSavingBeforeLeave] = useState(false);
 
+  const companyNameForPrivate = (fiscalEntityType ?? user?.signupEntityType ?? null) === "PRIVATE_INDIVIDUAL" && looksLikeCompanyName(businessName);
+
   if (isLoading || (token && isLoadingProfile)) return null;
 
   if (token && profileLoadFailed) {
@@ -585,6 +618,11 @@ export default function DashboardProfiloPage() {
     setError(null);
     if (!businessName.trim() || businessName.trim().length < 2) {
       setError("Inserisci il nome della tua attività.");
+      return false;
+    }
+    if (companyNameForPrivate) {
+      setError("Il nome è quello di una società: da privato senza partita IVA non si può usare.");
+      businessNameInputRef.current?.focus();
       return false;
     }
     if (categorySlugs.length === 0) {
@@ -699,6 +737,8 @@ export default function DashboardProfiloPage() {
       if (sub && sub.cardNeeded && sub.checkoutAvailable && sub.trialEndsAt) setShowPlanPrompt(true);
       else setShowAgendaPrompt(true);
       loadPreview();
+    } else if (backToFiscalRef.current) {
+      router.push("/dashboard/fiscale");
     } else {
       // Salvato: si torna all'anteprima aggiornata (docs/CHANGELOG.md §252).
       showSavedPreview();
@@ -1128,7 +1168,25 @@ export default function DashboardProfiloPage() {
 
           <YStack gap="2">
             <FieldLabel>Nome attività</FieldLabel>
-            <input aria-label="Nome attività" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Es. Rossi Impianti" style={inputStyle} />
+            <input
+              ref={businessNameInputRef}
+              aria-label="Nome attività"
+              aria-invalid={companyNameForPrivate || undefined}
+              aria-describedby={companyNameForPrivate ? "nome-societa-privato" : undefined}
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              placeholder="Es. Rossi Impianti"
+              style={companyNameForPrivate ? { ...inputStyle, borderColor: brand.urgenza } : inputStyle}
+            />
+            {companyNameForPrivate ? (
+              <Text id="nome-societa-privato" fontSize={13} color={brand.urgenza}>
+                Da privato senza partita IVA non si può usare il nome di una società (S.R.L. o simili). Toglila, oppure{" "}
+                <Link href="/dashboard/fiscale" style={{ color: brand.cianografiaScuro, fontWeight: 700, textDecoration: "underline" }}>
+                  cambia il tipo di attività
+                </Link>
+                .
+              </Text>
+            ) : null}
           </YStack>
 
           <YStack gap="1">

@@ -76,6 +76,15 @@ export function looksLikeCompanyName(name: string | null | undefined): boolean {
 }
 
 /**
+ * Messaggio unico, dal server e dal sito, per un privato senza partita IVA
+ * con il nome di una società (docs/changelog/2026-11-10-nome-societa-privato.md):
+ * prima compariva solo al salvataggio dell'indirizzo, lungo e senza un modo
+ * diretto per correggerlo.
+ */
+export const COMPANY_NAME_FOR_PRIVATE_MESSAGE =
+  "Il nome del tuo profilo è quello di una società (S.R.L. o simili): da privato senza partita IVA non si può usare.";
+
+/**
  * Lo stato da mostrare al cliente (art. 49-bis Codice del consumo): quello
  * dichiarato, tranne quando il nome dice il contrario. In quel caso non si
  * mostra "Privato" né la frase sui diritti del consumatore: nel dubbio mai
