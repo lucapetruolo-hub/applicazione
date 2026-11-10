@@ -9,6 +9,7 @@ import { IconActionButton } from "@/components/IconActionButton";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { LearnMore } from "@/components/LearnMore";
 import { ProfileQuoteCta } from "@/components/ProfileQuoteCta";
 import { ChosenProsBar, chosenRequestHref } from "@/components/ChosenProsBar";
 import { requestDescriptionParam } from "@/lib/requestDescription";
@@ -403,85 +404,96 @@ export function ProfessionalDetailContent({
                 <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={140} mobileSize={96} shape="portrait" />
               </div>
               <div className={`is_View ${styles.identityText}`}>
-                <h1 className={`is_Text font_heading ${styles.name}`} style={{ overflowWrap: "anywhere" }}>
-                  {professional.businessName}
-                </h1>
-                {/* Mestieri come testo sotto il nome (da 1 a 3, docs/CHANGELOG.md §217). */}
-                <span className={`is_Text ${styles.categories}`}>
-                  {(professional.categories?.length
-                    ? professional.categories
-                    : [{ slug: professional.categorySlug, label: professional.categoryLabel }]
-                  )
-                    .map((category) => category.label)
-                    .join(" · ")}
-                </span>
-                {/* Bollini in una riga che va a capo (docs/CHANGELOG.md §349); il
-                    significato di ognuno in un fumetto (§338). */}
-                <div className={`is_View ${styles.badges}`}>
-                  {professional.verified ? (
-                    <BadgeInfo info="verified">
-                      <Badge variant="verificato">Verificato</Badge>
-                    </BadgeInfo>
-                  ) : null}
-                  {professional.professionalKind ? <ProfessionalKindBadge kind={professional.professionalKind} size="md" /> : null}
-                  {/* Verifica di identità di Stripe, distinta dal "Verificato" del nostro team (docs/CHANGELOG.md §241). */}
-                  {professional.stripeVerified ? (
-                    <BadgeInfo info="stripeVerified">
-                      <Badge variant="verificato">{STRIPE_VERIFIED_BADGE.label}</Badge>
-                    </BadgeInfo>
-                  ) : null}
-                  {professional.boosted ? (
-                    <BadgeInfo info="boosted">
-                      <Badge variant="pro">Sponsorizzato</Badge>
-                    </BadgeInfo>
-                  ) : null}
-                  {professional.isNewProfile ? (
-                    <BadgeInfo info="newProfile">
-                      <Badge variant="nuovo">Iscritto da poco</Badge>
-                    </BadgeInfo>
-                  ) : null}
-                  {professional.hasLiabilityInsurance ? (
-                    <BadgeInfo info="liabilityInsurance">
-                      <span className="rc-badge">
-                        <span>
-                          <Icon name="shield-check" size={13} strokeWidth={2} color={brand.grafite} />
-                          Assicurazione RC
-                        </span>
-                        <small>dichiarata</small>
-                      </span>
-                    </BadgeInfo>
-                  ) : null}
-                </div>
-                <div className={`is_View ${styles.cityLine}`}>
-                  <Icon name="map-pin" size={13} color={brand.grafite70} />
-                  <span className={`is_Text font_body ${styles.city}`}>{professional.city}</span>
-                </div>
-                {/* Privato o professionista (Codice del consumo art. 49-bis, docs/CHANGELOG.md §241): per un privato
-                    l'avviso sui diritti del consumatore resta sempre scritto, non solo nel fumetto. */}
-                {professional.traderStatus === "PRIVATE" ? (
-                  <span className={`is_Text ${styles.small}`}>{TRADER_STATUS_COPY.PRIVATE.note}</span>
-                ) : null}
-                {professional.rating !== null ? (
-                  <Rating value={professional.rating} count={professional.reviewCount} size={16} />
-                ) : (
-                  <span className={`is_Text ${styles.muted}`}>Nessuna recensione ancora</span>
-                )}
-                {/* Una riga sola, in grigio (docs/CHANGELOG.md §349). Il totale non
-                    è mai meno dei lavori del mese; mai uno zero. */}
-                {completedTotal > 0 || professional.avgResponseTimeMinutes !== null ? (
-                  <span className={`is_Text ${styles.mutedLarge}`}>
-                    {[
-                      completedTotal > 0 ? `${completedTotal} ${completedTotal === 1 ? "lavoro terminato" : "lavori terminati"}` : null,
-                      professional.avgResponseTimeMinutes !== null
-                        ? respondsRightAway(professional.avgResponseTimeMinutes)
-                          ? "Risponde subito"
-                          : `Risponde entro ${formatResponseTime(professional.avgResponseTimeMinutes)}`
-                        : null,
-                    ]
-                      .filter(Boolean)
+                {/* Da telefono nome, mestieri e città restano accanto alla foto;
+                    bollini, avviso e recensioni scendono sotto a tutta larghezza
+                    invece di lasciare un vuoto sotto la foto
+                    (docs/changelog/2026-11-10-foto-profilo-telefono.md). */}
+                <div className={`is_View ${styles.identityHead}`}>
+                  <h1 className={`is_Text font_heading ${styles.name}`} style={{ overflowWrap: "anywhere" }}>
+                    {professional.businessName}
+                  </h1>
+                  {/* Mestieri come testo sotto il nome (da 1 a 3, docs/CHANGELOG.md §217). */}
+                  <span className={`is_Text ${styles.categories}`}>
+                    {(professional.categories?.length
+                      ? professional.categories
+                      : [{ slug: professional.categorySlug, label: professional.categoryLabel }]
+                    )
+                      .map((category) => category.label)
                       .join(" · ")}
                   </span>
-                ) : null}
+                  <div className={`is_View ${styles.cityLine}`}>
+                    <Icon name="map-pin" size={13} color={brand.grafite70} />
+                    <span className={`is_Text font_body ${styles.city}`}>{professional.city}</span>
+                  </div>
+                </div>
+                <div className={`is_View ${styles.identityDetails}`}>
+                  {/* Bollini in una riga che va a capo (docs/CHANGELOG.md §349); il
+                      significato di ognuno in un fumetto (§338). */}
+                  <div className={`is_View ${styles.badges}`}>
+                    {professional.verified ? (
+                      <BadgeInfo info="verified">
+                        <Badge variant="verificato">Verificato</Badge>
+                      </BadgeInfo>
+                    ) : null}
+                    {professional.professionalKind ? <ProfessionalKindBadge kind={professional.professionalKind} size="md" /> : null}
+                    {/* Verifica di identità di Stripe, distinta dal "Verificato" del nostro team (docs/CHANGELOG.md §241). */}
+                    {professional.stripeVerified ? (
+                      <BadgeInfo info="stripeVerified">
+                        <Badge variant="verificato">{STRIPE_VERIFIED_BADGE.label}</Badge>
+                      </BadgeInfo>
+                    ) : null}
+                    {professional.boosted ? (
+                      <BadgeInfo info="boosted">
+                        <Badge variant="pro">Sponsorizzato</Badge>
+                      </BadgeInfo>
+                    ) : null}
+                    {professional.isNewProfile ? (
+                      <BadgeInfo info="newProfile">
+                        <Badge variant="nuovo">Iscritto da poco</Badge>
+                      </BadgeInfo>
+                    ) : null}
+                    {professional.hasLiabilityInsurance ? (
+                      <BadgeInfo info="liabilityInsurance">
+                        <span className="rc-badge">
+                          <span>
+                            <Icon name="shield-check" size={13} strokeWidth={2} color={brand.grafite} />
+                            Assicurazione RC
+                          </span>
+                          <small>dichiarata</small>
+                        </span>
+                      </BadgeInfo>
+                    ) : null}
+                  </div>
+                  {/* Privato o professionista (Codice del consumo art. 49-bis, docs/CHANGELOG.md §241): per un privato
+                      l'avviso sui diritti del consumatore resta sempre scritto, non solo nel fumetto: una riga breve
+                      e il testo intero dietro "Scopri di più" (docs/changelog/2026-11-10-foto-profilo-telefono.md). */}
+                  {professional.traderStatus === "PRIVATE" ? (
+                    <LearnMore summary={TRADER_STATUS_COPY.PRIVATE.short}>
+                      <span className={`is_Text ${styles.small}`}>{TRADER_STATUS_COPY.PRIVATE.note}</span>
+                    </LearnMore>
+                  ) : null}
+                  {professional.rating !== null ? (
+                    <Rating value={professional.rating} count={professional.reviewCount} size={16} />
+                  ) : (
+                    <span className={`is_Text ${styles.muted}`}>Nessuna recensione ancora</span>
+                  )}
+                  {/* Una riga sola, in grigio (docs/CHANGELOG.md §349). Il totale non
+                      è mai meno dei lavori del mese; mai uno zero. */}
+                  {completedTotal > 0 || professional.avgResponseTimeMinutes !== null ? (
+                    <span className={`is_Text ${styles.mutedLarge}`}>
+                      {[
+                        completedTotal > 0 ? `${completedTotal} ${completedTotal === 1 ? "lavoro terminato" : "lavori terminati"}` : null,
+                        professional.avgResponseTimeMinutes !== null
+                          ? respondsRightAway(professional.avgResponseTimeMinutes)
+                            ? "Risponde subito"
+                            : `Risponde entro ${formatResponseTime(professional.avgResponseTimeMinutes)}`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  ) : null}
+                </div>
               </div>
             </div>
             {/* Salva, condividi e segnala in alto a destra della scheda

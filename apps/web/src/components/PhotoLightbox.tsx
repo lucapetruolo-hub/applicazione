@@ -84,6 +84,27 @@ export function PhotoLightbox({
     goTo(index + 1);
   }
 
+  function renderMedia(url: string, i: number) {
+    return isVideoUrl(url) ? (
+      // Video caricati dagli utenti: non esistono sottotitoli da collegare.
+      // eslint-disable-next-line jsx-a11y/media-has-caption
+      <video src={url} controls autoPlay={i === initialIndex} playsInline className="lightbox-media" />
+    ) : (
+      // `<img>` grezzo deliberato, non `next/image`: la foto può avere
+      // qualunque aspect ratio (caricata dall'utente, mai tracciata nel
+      // modello dati). `max-width`/`max-height` + `object-fit: contain`
+      // (`.lightbox-media` in globals.css) si affidano al dimensionamento
+      // intrinseco del browser, che `next/image` vorrebbe conoscere prima.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt={photos.length > 1 ? `Foto ${i + 1} di ${photos.length}` : ""}
+        loading={Math.abs(i - initialIndex) > 1 ? "lazy" : undefined}
+        className="lightbox-media"
+      />
+    );
+  }
+
   return (
     <div
       ref={dialogRef}
@@ -104,38 +125,21 @@ export function PhotoLightbox({
       }}
     >
       {/* Una foto per schermata. Un clic fuori dalla foto chiude (con la
-          tastiera Esc). */}
-      <div ref={trackRef} className="lightbox-track" onScroll={handleScroll}>
-        {photos.map((url, i) => (
-          <div key={`${url}-${i}`} role="presentation" className="lightbox-slide" onClick={closeOnBackdrop(onClose)}>
-            {isVideoUrl(url) ? (
-              // Video caricati dagli utenti: non esistono sottotitoli da collegare.
-              // eslint-disable-next-line jsx-a11y/media-has-caption
-              <video
-                src={url}
-                controls
-                autoPlay={i === initialIndex}
-                playsInline
-                style={{ maxWidth: "90vw", maxHeight: "85vh", borderRadius: 10 }}
-              />
-            ) : (
-              // `<img>` grezzo deliberato, non `next/image`: la foto può avere
-              // qualunque aspect ratio (caricata dall'utente, mai tracciata nel
-              // modello dati) — `maxWidth`/`maxHeight` + `objectFit: contain`
-              // si affidano al dimensionamento intrinseco nativo del browser,
-              // che `next/image` richiederebbe di conoscere in anticipo
-              // (width/height espliciti o `fill` con contenitore già dimensionato).
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={url}
-                alt={photos.length > 1 ? `Foto ${i + 1} di ${photos.length}` : ""}
-                loading={Math.abs(i - initialIndex) > 1 ? "lazy" : undefined}
-                style={{ maxWidth: "90vw", maxHeight: "85vh", objectFit: "contain", borderRadius: 10 }}
-              />
-            )}
-          </div>
-        ))}
-      </div>
+          tastiera Esc). Con una foto sola niente riga che scorre, solo la
+          foto al centro (docs/changelog/2026-11-10-foto-profilo-telefono.md). */}
+      {photos.length === 1 && photos[0] ? (
+        <div role="presentation" className="lightbox-single" onClick={closeOnBackdrop(onClose)}>
+          {renderMedia(photos[0], 0)}
+        </div>
+      ) : (
+        <div ref={trackRef} className="lightbox-track" onScroll={handleScroll}>
+          {photos.map((url, i) => (
+            <div key={`${url}-${i}`} role="presentation" className="lightbox-slide" onClick={closeOnBackdrop(onClose)}>
+              {renderMedia(url, i)}
+            </div>
+          ))}
+        </div>
+      )}
       <button
         type="button"
         aria-label="Chiudi"
