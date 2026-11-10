@@ -14,12 +14,12 @@ import { SkeletonRequestList } from "@/components/Skeleton";
 import { EmptyRequestsIllustration } from "@/components/icons/EmptyStateIllustrations";
 import { CategoryCarousel } from "@/components/CategoryCarousel";
 import { mergeCounts, mergeIds, unreadBookingCounts, unreadBookingIds, unreadGuidedRequestIds, unreadQuoteCounts, unreadQuoteIds, unreadThreadCounts } from "@/lib/notificationSections";
-import { RestoreAllArchivedBar, RestoredNotice } from "@/components/RequestCardPersonalActions";
+import { ArchivedCountRow, ArchivedNotice, RestoreAllArchivedBar, RestoredNotice, scrollToListTop } from "@/components/RequestCardPersonalActions";
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 import { classifyClientRequestStage, type RequestStage } from "@/lib/requestStage";
 import { RequestDeletedNotice } from "./_components/RequestDeletedNotice";
 import { GuidedRequestCard } from "./_components/GuidedRequestCard";
-import { clientRequestSearchText, filterInputStyle, requestJobAddress } from "./_components/clientRequestHelpers";
+import { clientRequestSearchText, filterInputStyle, filterLabelStyle, requestJobAddress } from "./_components/clientRequestHelpers";
 import { BookingConfirmed } from "./_components/BookingConfirmed";
 import { PAYMENT_PAGE_LABEL, startExternalRedirectProgress } from "@/lib/navigationProgress";
 import { PageLoading } from "@/components/PageLoading";
@@ -59,21 +59,23 @@ const UNREAD_BADGE_POLL_MS = 15000;
 // altri tab.
 type ClientTabKey = "tutte" | RequestStage | "archiviate";
 
-// Cinque schede in vista, con le parole del glossario, e le altre nei Filtri
+// Sei schede in vista, con le parole del glossario, e le altre nei Filtri
 // (collaudo dell'8/11, E6-17: nove schede in una riga, sul telefono se ne
 // vedevano due e mezza). "Da rispondere" raccoglie anche le modifiche chieste.
+// "Archiviate" è tornata in vista: dentro Filtri nessuno la trovava
+// (docs/changelog/2026-11-10-richieste-archiviate.md).
 const CLIENT_TABS: { key: ClientTabKey; label: string }[] = [
   { key: "tutte", label: "Tutte" },
   { key: "in_attesa", label: "Da rispondere" },
   { key: "da_quotare", label: "In attesa" },
   { key: "accettata", label: "Fissati" },
   { key: "completata", label: "Terminati" },
+  { key: "archiviate", label: "Archiviate" },
 ];
 const MORE_CLIENT_TABS: { key: ClientTabKey; label: string }[] = [
   { key: "annullata", label: "Annullate" },
   // "Chiuse" come dal lato del professionista (collaudo dell'8/11, E6-17).
   { key: "scaduta", label: "Chiuse" },
-  { key: "archiviate", label: "Archiviate" },
 ];
 /** Stadi raccolti da una scheda, quando non è uno solo. */
 const TAB_STAGES: Partial<Record<ClientTabKey, readonly RequestStage[]>> = { in_attesa: ["in_attesa", "modifica_richiesta"] };
@@ -152,6 +154,11 @@ function LeMieRichiesteContent() {
     setActiveStageTab(key);
     setPage(1);
     if (key !== activeStageTab) autoOpenAfterTabRef.current = true;
+  }
+  /** "Vedi archiviate" dal messaggio o dalla riga in fondo: apre la scheda e torna in cima all'elenco. */
+  function showArchived() {
+    updateStageTab("archiviate");
+    scrollToListTop(listTopRef.current);
   }
 
   // useCallback: cambia solo col token, così il poll qui sotto può
@@ -682,19 +689,21 @@ function LeMieRichiesteContent() {
                         <option value="ONLINE">Solo online</option>
                       </select>
                     </YStack>
-                    <select
-                      aria-label="Altre richieste"
-                      value={MORE_CLIENT_TABS.some((tab) => tab.key === activeStageTab) ? activeStageTab : ""}
-                      onChange={(e) => updateStageTab((e.target.value || "tutte") as ClientTabKey)}
-                      style={{ ...filterInputStyle, width: "100%" }}
-                    >
-                      <option value="">Richieste in corso e terminate</option>
-                      {MORE_CLIENT_TABS.map((tab) => (
-                        <option key={tab.key} value={tab.key}>
-                          {`${tab.label} (${tabCounts[tab.key] ?? 0})`}
-                        </option>
-                      ))}
-                    </select>
+                    <label style={filterLabelStyle}>
+                      Mostra
+                      <select
+                        value={MORE_CLIENT_TABS.some((tab) => tab.key === activeStageTab) ? activeStageTab : ""}
+                        onChange={(e) => updateStageTab((e.target.value || "tutte") as ClientTabKey)}
+                        style={{ ...filterInputStyle, width: "100%" }}
+                      >
+                        <option value="">In corso e terminate</option>
+                        {MORE_CLIENT_TABS.map((tab) => (
+                          <option key={tab.key} value={tab.key}>
+                            {`${tab.label} (${tabCounts[tab.key] ?? 0})`}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                     <select aria-label="Ordina per"
                       value={sortMode}
                       onChange={(e) => {
@@ -756,6 +765,7 @@ function LeMieRichiesteContent() {
             {requests ? `${filteredSortedRequests.length} ${filteredSortedRequests.length === 1 ? "richiesta mostrata" : "richieste mostrate"}` : ""}
           </p>
           <RestoredNotice />
+          <ArchivedNotice token={token} onChanged={reload} onShowArchived={showArchived} />
           <RequestDeletedNotice
             onUndo={async (guidedRequestId) => {
               await apiClient.restoreGuidedRequest(token, guidedRequestId);
@@ -841,6 +851,8 @@ function LeMieRichiesteContent() {
               </Button>
             </XStack>
           ) : null}
+
+          {requests && activeStageTab !== "archiviate" ? <ArchivedCountRow count={tabCounts.archiviate ?? 0} onShow={showArchived} /> : null}
         </YStack>
       </YStack>
     </YStack>

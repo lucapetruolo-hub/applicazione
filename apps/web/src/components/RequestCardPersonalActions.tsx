@@ -85,7 +85,21 @@ export function buildPersonalStateActions({
             announceRestored(1);
           },
         }
-      : { icon: "archive", text: "Archivia", onPress: () => update({ archived: true }) },
+      : {
+          icon: "archive",
+          text: "Archivia",
+          // Una riga sotto dice dove finisce (docs/changelog/2026-11-10-richieste-archiviate.md).
+          hint: "La ritrovi in Archiviate",
+          onPress: async () => {
+            try {
+              await apiClient.updateGuidedRequestMyState(token, guidedRequestId, { archived: true });
+              onChanged();
+              announceArchived(guidedRequestId);
+            } catch (err) {
+              onError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+            }
+          },
+        },
   ];
 }
 
@@ -271,4 +285,135 @@ export function RestoredNotice() {
       </Text>
     </XStack>
   );
+}
+
+// "Richiesta archiviata · Annulla · Vedi archiviate" (richiesta dell'utente,
+// docs/changelog/2026-11-10-richieste-archiviate.md): prima la scheda
+// spariva senza dire dove era andata. Stesso evento sulla finestra di
+// "Richiesta ripristinata", per non passare callback da ogni scheda.
+const ARCHIVED_EVENT = "request-archived";
+
+function announceArchived(guidedRequestId: string) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent<string>(ARCHIVED_EVENT, { detail: guidedRequestId }));
+}
+
+/** Messaggio dopo "Archivia", per 8 secondi come "Richiesta eliminata", con Annulla e il passaggio alla scheda Archiviate. */
+export function ArchivedNotice({ token, onShowArchived, onChanged }: { token: string; onShowArchived: () => void; onChanged: () => void }) {
+  const [archivedId, setArchivedId] = useState<string | null>(null);
+  const [isBusy, setIsBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    function handle(event: Event) {
+      setArchivedId((event as CustomEvent<string>).detail);
+      setError(null);
+      clearTimeout(timer);
+      timer = setTimeout(() => setArchivedId(null), 8000);
+    }
+    window.addEventListener(ARCHIVED_EVENT, handle);
+    return () => {
+      window.removeEventListener(ARCHIVED_EVENT, handle);
+      clearTimeout(timer);
+    };
+  }, []);
+  if (archivedId === null) return null;
+
+  async function handleUndo() {
+    if (!archivedId) return;
+    setIsBusy(true);
+    setError(null);
+    try {
+      await apiClient.updateGuidedRequestMyState(token, archivedId, {
+        archived: false,
+      });
+      setArchivedId(null);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  return (
+    <YStack role="status" gap="2" backgroundColor={brand.cianografiaVelo} borderRadius="3" padding="3">
+      <XStack alignItems="center" justifyContent="space-between" gap="3" flexWrap="wrap">
+        <XStack alignItems="center" gap="2" flexShrink={1} minWidth={0}>
+          <Icon name="archive" size={16} color={brand.cianografiaScuro} />
+          <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro}>
+            Richiesta archiviata.
+          </Text>
+        </XStack>
+        <XStack gap="2" flexWrap="wrap">
+          <CardButton onPress={handleUndo} disabled={isBusy}>
+            {isBusy ? "Annullo..." : "Annulla"}
+          </CardButton>
+          <CardButton
+            tone="primary"
+            onPress={() => {
+              setArchivedId(null);
+              onShowArchived();
+            }}
+            disabled={isBusy}
+          >
+            Vedi archiviate
+          </CardButton>
+        </XStack>
+      </XStack>
+      {error ? (
+        <Text color={brand.urgenza} fontSize={16}>
+          {error}
+        </Text>
+      ) : null}
+    </YStack>
+  );
+}
+
+/**
+ * "Hai 3 richieste archiviate · Vedi" in fondo all'elenco, solo se ce ne
+ * sono: è lì che si cercano quelle che mancano
+ * (docs/changelog/2026-11-10-richieste-archiviate.md).
+ */
+export function ArchivedCountRow({ count, onShow }: { count: number; onShow: () => void }) {
+  if (count < 1) return null;
+  return (
+    <XStack justifyContent="center" alignItems="center" gap="2" flexWrap="wrap" paddingVertical="2">
+      <Icon name="archive" size={16} color={brand.grafite70} />
+      <Text fontSize={16} color={brand.grafite70}>
+        {count === 1 ? "Hai 1 richiesta archiviata" : `Hai ${count} richieste archiviate`}
+      </Text>
+      <Text
+        render="button"
+        fontSize={16}
+        fontWeight="700"
+        color={brand.cianografiaScuro}
+        textDecorationLine="underline"
+        cursor="pointer"
+        backgroundColor="transparent"
+        borderWidth={0}
+        paddingHorizontal={4}
+        paddingVertical={10}
+        onPress={onShow}
+      >
+        Vedi
+      </Text>
+    </XStack>
+  );
+}
+
+/**
+ * Dopo "Vedi archiviate" riporta in vista le schede di stato sopra l'elenco,
+ * se si era scesi (per esempio dalla riga in fondo). Lascia un margine per la
+ * barra in alto e le schede; senza movimento per chi lo ha chiesto al sistema.
+ */
+export function scrollToListTop(element: HTMLElement | null) {
+  if (!element || typeof window === "undefined") return;
+  const top = element.getBoundingClientRect().top + window.scrollY - 180;
+  if (top >= window.scrollY) return;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  window.scrollTo({
+    top: Math.max(0, top),
+    behavior: reduce ? "auto" : "smooth",
+  });
 }

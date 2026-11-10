@@ -17,9 +17,9 @@ import { classifyLeadStage, leadTabBucket, type RequestStage } from "@/lib/reque
 import { mergeCounts, unreadGuidedRequestCounts } from "@/lib/notificationSections";
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 import { CategoryCarousel } from "@/components/CategoryCarousel";
-import { RestoreAllArchivedBar, RestoredNotice } from "@/components/RequestCardPersonalActions";
+import { ArchivedCountRow, ArchivedNotice, RestoreAllArchivedBar, RestoredNotice, scrollToListTop } from "@/components/RequestCardPersonalActions";
 import { RequestCard } from "./_components/RequestCard";
-import { filterInputStyle, leadSearchText } from "./_components/requestHelpers";
+import { filterInputStyle, filterLabelStyle, leadSearchText } from "./_components/requestHelpers";
 import { PageLoading } from "@/components/PageLoading";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
@@ -47,21 +47,23 @@ const UNREAD_BADGE_POLL_MS = 15000;
 // (menu hamburger, docs/CHANGELOG.md §130), escluse da tutti gli altri tab.
 type ProTabKey = "tutte" | RequestStage | "archiviate";
 
-// Cinque schede in vista e le altre nei Filtri, con le stesse parole del
+// Sei schede in vista e le altre nei Filtri, con le stesse parole del
 // cliente (collaudo dell'8/11, E6-17). "Da rispondere" raccoglie anche le
 // modifiche chieste dal cliente: in tutte e due tocca al professionista.
+// "Archiviate" è tornata in vista: dentro Filtri nessuno la trovava
+// (docs/changelog/2026-11-10-richieste-archiviate.md).
 const TABS: { key: ProTabKey; label: string }[] = [
   { key: "tutte", label: "Tutte" },
   { key: "da_quotare", label: "Da rispondere" },
   { key: "in_attesa", label: "In attesa" },
   { key: "accettata", label: "Fissati" },
   { key: "completata", label: "Terminati" },
+  { key: "archiviate", label: "Archiviate" },
 ];
 const MORE_TABS: { key: ProTabKey; label: string }[] = [
   { key: "annullata", label: "Annullate" },
   // Scadute e chiuse per un rifiuto o un preventivo ritirato (collaudo F-10).
   { key: "scaduta", label: "Chiuse" },
-  { key: "archiviate", label: "Archiviate" },
 ];
 function proTabOf(lead: ProfessionalLead, stage: RequestStage): ProTabKey {
   const bucket = leadTabBucket(lead, stage);
@@ -142,6 +144,12 @@ function RichiesteContent() {
   // card ad ogni tick, sovrascrivendo qualunque tab/scroll l'utente avesse
   // scelto nel frattempo.
   const consumedRequestOpenRef = useRef<string | null>(null);
+  const listTopRef = useRef<HTMLDivElement>(null);
+  /** "Vedi archiviate" dal messaggio o dalla riga in fondo: apre la scheda e torna in cima all'elenco. */
+  function showArchived() {
+    setActiveTab("archiviate");
+    scrollToListTop(listTopRef.current);
+  }
   // Bug reale segnalato dall'utente: cliccando una notifica di nuovo
   // messaggio (che porta `&chat=<professionalProfileId>` oltre a `?open=`)
   // la chat si apriva correttamente, ma cambiare filtro e tornare a "Tutte"
@@ -548,19 +556,21 @@ function RichiesteContent() {
               </XStack>
 
               <YStack gap="3">
-                <select
-                  aria-label="Altre richieste"
-                  value={MORE_TABS.some((tab) => tab.key === activeTab) ? activeTab : ""}
-                  onChange={(e) => setActiveTab((e.target.value || "tutte") as ProTabKey)}
-                  style={{ ...filterInputStyle, width: "100%" }}
-                >
-                  <option value="">Richieste in corso e terminate</option>
-                  {MORE_TABS.map((tab) => (
-                    <option key={tab.key} value={tab.key}>
-                      {`${tab.label} (${tabCounts[tab.key] ?? 0})`}
-                    </option>
-                  ))}
-                </select>
+                <label style={filterLabelStyle}>
+                  Mostra
+                  <select
+                    value={MORE_TABS.some((tab) => tab.key === activeTab) ? activeTab : ""}
+                    onChange={(e) => setActiveTab((e.target.value || "tutte") as ProTabKey)}
+                    style={{ ...filterInputStyle, width: "100%" }}
+                  >
+                    <option value="">In corso e terminate</option>
+                    {MORE_TABS.map((tab) => (
+                      <option key={tab.key} value={tab.key}>
+                        {`${tab.label} (${tabCounts[tab.key] ?? 0})`}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <select aria-label="Ordina per" value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} style={{ ...filterInputStyle, width: "100%" }}>
                   <option value="recenti">Data di ricezione più recente</option>
                   <option value="vecchie">Data di ricezione più vecchie</option>
@@ -599,11 +609,13 @@ function RichiesteContent() {
           </ModalDialog>
         ) : null}
 
+        <div ref={listTopRef} />
         {/* Quante richieste si vedono, detto al lettore di schermo quando cambia scheda o filtro. */}
         <p className="sr-only" role="status">
           {leads ? `${visibleLeads.length} ${visibleLeads.length === 1 ? "richiesta mostrata" : "richieste mostrate"}` : ""}
         </p>
         <RestoredNotice />
+        <ArchivedNotice token={token} onChanged={reloadLeads} onShowArchived={showArchived} />
         {activeTab === "archiviate" ? (
           <RestoreAllArchivedBar
             token={token}
@@ -711,6 +723,8 @@ function RichiesteContent() {
             ))}
           </YStack>
         )}
+
+        {leads && activeTab !== "archiviate" ? <ArchivedCountRow count={tabCounts.archiviate ?? 0} onShow={showArchived} /> : null}
       </YStack>
     </YStack>
   );
