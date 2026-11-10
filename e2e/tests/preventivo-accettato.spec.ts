@@ -99,9 +99,15 @@ test("percorso completo: Accetta, Appuntamento prenotato, biglietto con calendar
   await page.getByText("Aggiungi al calendario", { exact: true }).first().click();
   const google = page.getByRole("link", { name: /Google Calendar/ });
   await expect(google).toHaveAttribute("href", /calendar\.google\.com/);
-  const ics = await page.getByRole("link", { name: /iPhone e altri/ }).getAttribute("href");
-  expect(decodeURIComponent(ics ?? "")).toContain("BEGIN:VEVENT");
-  expect(decodeURIComponent(ics ?? "")).toContain("T100000");
+  // Indirizzo vero dell'API, non un link `data:` che Safari su iPhone ignora
+  // (docs/changelog/2026-11-10-calendario-iphone.md).
+  const ics = (await page.getByRole("link", { name: /Altri calendari/ }).getAttribute("href")) ?? "";
+  expect(ics.startsWith(`${API_URL}/bookings/ics/`)).toBe(true);
+  const file = await fetch(ics);
+  expect(file.headers.get("content-type")).toContain("text/calendar");
+  const body = await file.text();
+  expect(body).toContain("BEGIN:VEVENT");
+  expect(body).toContain("T100000");
 
   await page.getByText("Vai all'appuntamento", { exact: true }).click();
   await expect(card.getByText("Chiama", { exact: true })).toBeVisible();
