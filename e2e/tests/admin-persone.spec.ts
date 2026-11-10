@@ -223,10 +223,21 @@ test("Persone: ricerca, account chiuso, recensione nascosta e rimessa, profilo f
   await expect(page.getByText("Nella ricerca").first()).toBeVisible();
   // Una misura presa archivia il caso da sola, come "Gestito".
   await prisma.professionalProfile.update({ where: { userId: ids.pro }, data: { suspendedAt: new Date() } });
+  // La lista chiesta all'apertura arriva apposta dopo "Controlla ora": non deve
+  // coprirne il risultato (docs/changelog/2026-11-10-prove-che-falliscono-in-locale.md).
+  await page.route(/\/admin\/suspicious-users$/, async (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    const response = await route.fetch();
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await route.fulfill({ response });
+  });
   await page.goto("/admin/account-sospetti?vista=archiviati");
   await page.getByRole("button", { name: "Controlla ora" }).click();
   await expect(rows.filter({ hasText: `Idraulica Tubi ${stamp}` }).getByText("Gestito: profilo tolto dalla ricerca", { exact: true })).toBeVisible();
   await expect.poll(async () => (await prisma.suspiciousAccount.findUniqueOrThrow({ where: { userId: ids.pro } })).archiveReason).toBe("PROFILE_HIDDEN");
+  // Arrivata anche la lista di prima, il risultato del controllo resta.
+  await page.unrouteAll({ behavior: "wait" });
+  await expect(rows.filter({ hasText: `Idraulica Tubi ${stamp}` }).getByText("Gestito: profilo tolto dalla ricerca", { exact: true })).toBeVisible();
   await prisma.professionalProfile.update({ where: { userId: ids.pro }, data: { suspendedAt: null } });
 
   // Gli account da fare sono anche nella coda "Da fare" della Home.
@@ -291,7 +302,8 @@ test("I-08: \"pagamento=completato\" sulla richiesta di un altro non dice niente
   });
   const page = await context.newPage();
   await page.goto(`/le-mie-richieste?open=${other.id}&pagamento=completato`);
-  await expect(page.getByRole("heading", { name: "Le mie richieste" }).or(page.getByText("Le mie richieste").first())).toBeVisible();
+  // Titolo e voce del menu possono esserci insieme: basta uno dei due (prima due insieme facevano fallire la prova).
+  await expect(page.getByRole("heading", { name: "Le mie richieste" }).or(page.getByText("Le mie richieste")).first()).toBeVisible();
   await expect(page.getByText(/Pagamento ricevuto|Stiamo controllando il pagamento/)).toHaveCount(0);
   await context.close();
 });

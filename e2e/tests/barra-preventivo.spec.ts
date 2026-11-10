@@ -118,7 +118,7 @@ test.describe("chi visita il profilo", () => {
     // prima si scriveva solo nel campo). Le frasi seguono le ricerche
     // (docs/changelog/2026-11-03-luci-che-accelerano.md): si tocca la prima, qualunque sia.
     // Solo gli esempi, non le freccette: con frasi lunghe la riga scorre e il
-    // primo pulsante del gruppo è "Esempi precedenti"
+    // primo pulsante del gruppo era la freccetta "Esempi precedenti"
     // (docs/changelog/2026-11-10-prove-che-falliscono-in-locale.md).
     await page.getByRole("group", { name: "Prova" }).locator("button.hero-example").first().click();
     await expect(page).toHaveURL(/\/cerca\?.*problema=/);
