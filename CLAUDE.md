@@ -163,7 +163,10 @@ prima discuterne e aggiornare questo file.
   docs/changelog/2026-11-10-pulsanti-senza-tamagui.md): varianti comuni con
   l'app in `buttonStyle.ts`, prop di stile (anche `"44px xs:40px"` e
   `hover:`) tradotte in classi di `Button.module.css`, che si genera con
-  `pnpm --filter @professionisti/ui genera-css-pulsante`.
+  `pnpm --filter @professionisti/ui genera-css-pulsante`. Anche `SearchBar` e
+  `Autocomplete` (docs/changelog/2026-11-10-barra-di-ricerca-senza-tamagui.md):
+  la logica comune con l'app sta in `searchBarModel.ts` e
+  `autocompleteModel.ts`, i file `.web.tsx` disegnano soltanto.
 - **React Compiler** acceso su tutto il sito (docs/CHANGELOG.md §345), ma
   rompe gli stili `<style jsx>`: ogni componente che li usa deve iniziare
   con la direttiva `"use no memo"` (lo controlla `pnpm lint`,

@@ -6,6 +6,7 @@ import {
   FIELD_PROBLEM_EXAMPLES,
   FIELD_PROBLEM_EXAMPLES_POOL,
   VISIBLE_PROBLEM_EXAMPLES,
+  findCategoryByQuery,
   orderProblemExamples,
   type ProblemExamplesResponse,
 } from "@professionisti/shared";
@@ -159,12 +160,30 @@ function useHeroExamples(examples: ProblemExamplesResponse | null) {
 
 const FALLBACK_EXAMPLES = orderProblemExamples(DEFAULT_PROBLEM_EXAMPLES, []);
 
+/**
+ * Dove porta un esempio toccato prima che la pagina sia pronta (JavaScript
+ * non ancora partito): il modulo qui sotto lo apre da sé, come un link.
+ * Una frase va ai risultati per problema, un mestiere alla sua pagina
+ * (docs/changelog/2026-11-10-barra-di-ricerca-senza-tamagui.md).
+ */
+type ExampleFallback = { name: string; value: string } | { formAction: string };
+
+const problemFallback = (item: string): ExampleFallback => ({ name: "problema", value: item });
+
+function tradeFallback(item: string): ExampleFallback {
+  const slug = findCategoryByQuery(item)?.slug;
+  return slug ? { formAction: `/cerca/${slug}` } : { name: "q", value: item };
+}
+
 function HeroExamples({ problems, trades, onPick }: { problems: readonly string[]; trades: readonly string[]; onPick: (text: string) => void }) {
+  // Un modulo vero: prima che la pagina sia pronta un tocco su un esempio
+  // apre comunque la ricerca (prima non faceva nulla); dopo, `onPick` cerca
+  // come sempre, con la città scritta e le luci dell'attesa.
   return (
-    <div className="hero-examples">
-      <ExampleRow label="Prova:" items={problems} onPick={onPick} />
-      <ExampleRow label="O scrivi solo chi cerchi:" items={trades} onPick={onPick} />
-    </div>
+    <form className="hero-examples" action="/cerca" method="get">
+      <ExampleRow label="Prova:" items={problems} onPick={onPick} fallback={problemFallback} />
+      <ExampleRow label="O scrivi solo chi cerchi:" items={trades} onPick={onPick} fallback={tradeFallback} />
+    </form>
   );
 }
 
@@ -180,7 +199,17 @@ const AUTO_SCROLL_PAUSE_MS = 2500;
  * solo se c'è altro da vedere da quel lato; si scorre anche col dito. La
  * riga scorre da sola molto piano finché non la si tocca.
  */
-function ExampleRow({ label, items, onPick }: { label: string; items: readonly string[]; onPick: (text: string) => void }) {
+function ExampleRow({
+  label,
+  items,
+  onPick,
+  fallback,
+}: {
+  label: string;
+  items: readonly string[];
+  onPick: (text: string) => void;
+  fallback: (item: string) => ExampleFallback;
+}) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ start: false, end: false, fits: true });
   // Quanto si può scorrere, misurato solo quando la riga cambia misura: prima
@@ -336,7 +365,16 @@ function ExampleRow({ label, items, onPick }: { label: string; items: readonly s
       </button>
       <div ref={trackRef} className="hero-examples-track scroll-fade">
         {items.map((item) => (
-          <button key={item} type="button" className="hero-example" onClick={() => onPick(item)}>
+          <button
+            key={item}
+            type="submit"
+            {...fallback(item)}
+            className="hero-example"
+            onClick={(event) => {
+              event.preventDefault();
+              onPick(item);
+            }}
+          >
             {item}
           </button>
         ))}

@@ -1,0 +1,196 @@
+/*
+ * Autocomplete per il sito in HTML semplice (Autocomplete.web.tsx): stessi
+ * valori che Tamagui scriveva per Autocomplete.tsx (YStack, Label, Input,
+ * Text). Le classi globali is_View/is_Text/font_body e il tema t_light_Input
+ * vengono da public/tamagui.css del sito; qui solo il resto.
+ */
+
+.root {
+  flex-direction: column;
+  position: relative;
+}
+/* Tamagui scrive alcune proprietà con la classe ripetuta quattro volte: qui
+   lo stesso, così le regole di globals.css vincono o perdono come prima. */
+.root.root.root.root {
+  flex: 1 1 auto;
+}
+
+.labelRow {
+  position: relative;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--t-space-2);
+  padding-bottom: 4px;
+}
+
+.label {
+  font-family: var(--f-family);
+  letter-spacing: var(--f-letterSpacing-4);
+  background-color: transparent;
+  display: flex;
+  align-items: center;
+  user-select: none;
+  cursor: default;
+  font-size: 16px;
+  line-height: 18px;
+  height: auto;
+  font-weight: 600;
+  color: rgb(110, 100, 89);
+  padding-left: var(--t-space-1);
+}
+
+.badge {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  color: white;
+  background-color: rgb(18, 133, 82);
+  border-radius: 999px;
+}
+.badge.badge.badge.badge {
+  padding-inline: 8px;
+  padding-block: 2px;
+}
+
+/* Il campo: come `Input` (Input.tsx) con borderWidth={0} e flex={1}. */
+.input {
+  position: relative;
+  outline-width: 0px;
+  min-width: 0px;
+  font-family: var(--f-family);
+  color: var(--color);
+  background-color: var(--background);
+  border-radius: 20px;
+  font-weight: 400;
+  flex: 1 1 auto;
+}
+.input.input.input.input {
+  border-style: solid;
+  border-width: 0px;
+  border-color: var(--borderColor);
+}
+@media (hover: hover) {
+  .input.input.input.input:where(:hover) {
+    border-color: var(--borderColorHover);
+  }
+}
+.input.input.input.input:where(:focus) {
+  border-color: var(--borderColorFocus);
+}
+.input:where(:focus-visible) {
+  outline-width: 2px;
+  outline-color: var(--outlineColor);
+  outline-style: solid;
+}
+
+/* Misure "3", "4" e "5": altezza dal token size, margini dal token space
+   subito più piccolo, testo dal font body (come sizeStyle di Input.tsx). */
+.size3 {
+  height: 36px;
+  padding-inline: 10px;
+  font-size: 13px;
+  line-height: 22px;
+}
+.size4 {
+  height: 44px;
+  padding-inline: 16px;
+  font-size: 14px;
+  line-height: 23px;
+}
+.size5 {
+  height: 52px;
+  padding-inline: 21px;
+  font-size: 16px;
+  line-height: 26px;
+}
+
+.status {
+  color: var(--color);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+:where(.status) > * {
+  pointer-events: none;
+}
+
+.dropdown {
+  flex-direction: column;
+  position: absolute;
+  margin-top: var(--t-space-2);
+  background-color: white;
+  border-radius: var(--t-radius-4);
+  overflow: hidden;
+  z-index: 1000;
+  box-shadow: 0px 0px 12px color-mix(in srgb, var(--shadowColor) 15%, transparent);
+}
+.dropdown.dropdown.dropdown.dropdown {
+  top: 100%;
+  left: 0px;
+  right: 0px;
+  border-style: solid;
+  border-width: 1px;
+  border-color: var(--borderColor);
+}
+/* Sotto gli 800 px, mentre si scrive, l'elenco sta nella pagina (listInFlowOnPhone). */
+@media (max-width: 800px) {
+  .dropdown.dropdownInFlow {
+    position: relative;
+  }
+  .dropdown.dropdown.dropdown.dropdownInFlow {
+    top: auto;
+  }
+}
+
+.listbox {
+  position: relative;
+  flex-direction: column;
+}
+
+.option {
+  position: relative;
+  flex-direction: column;
+  padding: var(--t-space-3);
+  cursor: pointer;
+}
+.option.option.option.option {
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: var(--borderColor);
+}
+@media (hover: hover) {
+  .option:where(:hover) {
+    background-color: var(--color3);
+  }
+}
+.optionActive {
+  background-color: var(--color3);
+}
+
+.heading.heading.heading.heading {
+  padding-inline: var(--t-space-3);
+  padding-top: var(--t-space-3);
+  padding-bottom: var(--t-space-1);
+}
+.heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgb(110, 100, 89);
+}
+
+.text {
+  color: var(--color);
+}
+
+.actionLabel {
+  font-weight: 600;
+  color: rgb(18, 133, 82);
+}
+
+.detail {
+  font-size: 13px;
+  color: var(--color10);
+}
