@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
 import { ReviewReply } from "@/components/ReviewReply";
 import { PageLoading } from "@/components/PageLoading";
+import { WaitBarSignal } from "@/components/WaitBar";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
@@ -97,7 +98,10 @@ export default function DashboardRecensioniPage() {
         </YStack>
 
         {error ? <Text color={brand.urgenza}>{error}</Text> : null}
-        {reviews === null && !error ? <Text color={brand.grafite70}>Caricamento...</Text> : null}
+        {reviews === null && !error ? <Text color={brand.grafite70}>
+            Caricamento...
+            <WaitBarSignal />
+          </Text> : null}
 
         {reviews && reviews.length === 0 ? (
           <EmptyState

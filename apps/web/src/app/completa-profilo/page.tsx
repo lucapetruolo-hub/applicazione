@@ -13,6 +13,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle";
 import { PageLoading } from "@/components/PageLoading";
+import { ButtonWaitBar, useLeavingWait } from "@/components/WaitBar";
 
 export default function CompletaProfiloPage() {
   return (
@@ -45,6 +46,8 @@ function CompletaProfiloForm() {
   // Errore della password dal server (password rubata) o lunghezza massima.
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Account pronto, il profilo sta arrivando: il pulsante resta in attesa.
+  const [leaving, startLeaving] = useLeavingWait();
   // Pulsante sempre premibile: senza spunta la casella diventa rossa
   // (docs/CHANGELOG.md §248, come in /registrati).
   const [consentAttempt, setConsentAttempt] = useState(0);
@@ -85,6 +88,7 @@ function CompletaProfiloForm() {
     try {
       const result = await apiClient.acceptProfileInvite(parsed.data);
       await login(result.token);
+      startLeaving();
       router.push("/dashboard/profilo");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Errore imprevisto, riprova.";
@@ -161,10 +165,9 @@ function CompletaProfiloForm() {
               <Button
                 variant="primary"
                 onPress={handleSubmit}
-                disabled={isSubmitting}
-                opacity={isSubmitting ? 0.6 : 1}
+                disabled={isSubmitting || leaving}
               >
-                {isSubmitting ? "Un momento..." : "Scegli la password ed entra"}
+                {isSubmitting || leaving ? <ButtonWaitBar label="Stiamo preparando il tuo account…" /> : "Scegli la password ed entra"}
               </Button>
             </YStack>
           </form>

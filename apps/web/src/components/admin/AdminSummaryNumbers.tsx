@@ -9,6 +9,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AdminTrendTile } from "@/components/admin/AdminTrendTile";
 import { useAdminOverview } from "@/components/admin/AdminOverviewContext";
+import { WaitBarSignal } from "@/components/WaitBar";
 
 /**
  * Andamento delle ultime 12 settimane, richieste urgenti e numeri principali:
@@ -84,7 +85,10 @@ export function AdminSummaryNumbers() {
             <AdminTrendTile label="Segnalazioni ricevute" values={trends.series.reports} weekStarts={trends.weekStarts} />
           </div>
         ) : (
-          <Text color={brand.grafite70}>Caricamento…</Text>
+          <Text color={brand.grafite70}>
+            Caricamento…
+            <WaitBarSignal />
+          </Text>
         )}
       </YStack>
 

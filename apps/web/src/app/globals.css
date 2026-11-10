@@ -560,6 +560,14 @@ body:has(.chosen-bar) {
     rgba(255, 255, 255, 0.45)
   );
 }
+/* Contenitore della barra bianca dentro un pulsante (ButtonWaitBar): stessa
+   altezza della riga di testo, così il pulsante non cambia misura. */
+.button-wait-bar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+}
 /* In cima allo schermo, sopra la barra fissa del sito (NavigationProgress). */
 .nav-progress {
   position: fixed;

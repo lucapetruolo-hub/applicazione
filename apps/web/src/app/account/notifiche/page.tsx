@@ -20,6 +20,7 @@ import { playNotificationSound } from "@/lib/notificationSound";
 import { NOTIFICATION_TOPIC_STYLE } from "@/lib/notificationTopicStyle";
 import { WhatsAppRemindersCard } from "@/components/WhatsAppRemindersCard";
 import { PageLoading } from "@/components/PageLoading";
+import { WaitBarSignal } from "@/components/WaitBar";
 
 /**
  * Impostazioni delle notifiche (docs/CHANGELOG.md §152; nuova veste in
@@ -110,7 +111,10 @@ export default function NotifichePage() {
         </div>
 
         {!notificationPrefs ? (
-          <Text color={brand.grafite70}>Caricamento…</Text>
+          <Text color={brand.grafite70}>
+            Caricamento…
+            <WaitBarSignal />
+          </Text>
         ) : (
           <>
             <section aria-labelledby="nt-site-title" className="nt-section">

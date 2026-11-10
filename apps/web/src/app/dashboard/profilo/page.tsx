@@ -51,6 +51,7 @@ import { localPreviewUrl } from "@/lib/media";
 import { keyActivate } from "@/lib/keyActivate";
 import { ChosenPlanChip } from "@/components/ChosenPlanChip";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
+import { PageLoading } from "@/components/PageLoading";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 /** Prestazioni suggerite visibili prima di "Altre" (con un solo mestiere, e per mestiere quando sono più d'uno). */
@@ -560,7 +561,8 @@ export default function DashboardProfiloPage() {
 
   const companyNameForPrivate = (fiscalEntityType ?? user?.signupEntityType ?? null) === "PRIVATE_INDIVIDUAL" && looksLikeCompanyName(businessName);
 
-  if (isLoading || (token && isLoadingProfile)) return null;
+  // Sagoma e barra di attesa al posto della pagina vuota (docs/changelog/2026-11-10-barra-in-ogni-attesa.md).
+  if (isLoading || (token && isLoadingProfile)) return <PageLoading variant="form" />;
 
   if (token && profileLoadFailed) {
     return (

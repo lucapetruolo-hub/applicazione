@@ -12,12 +12,16 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MAX_ENGAGEMENT_RADIUS_KM, MAX_URGENT_ENGAGEMENT_RADIUS_KM } from "@professionisti/shared";
+import { WaitBarSignal } from "@/components/WaitBar";
 
 const EngagementRadiusMap = dynamic(() => import("./EngagementRadiusMap").then((mod) => mod.EngagementRadiusMap), {
   ssr: false,
   loading: () => (
     <YStack height={360} width="100%" borderRadius="2" backgroundColor={brand.gesso} alignItems="center" justifyContent="center">
-      <Text color={brand.grafite70}>Caricamento mappa…</Text>
+      <Text color={brand.grafite70}>
+        Caricamento mappa…
+        <WaitBarSignal />
+      </Text>
     </YStack>
   ),
 });

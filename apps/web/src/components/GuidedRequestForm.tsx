@@ -47,6 +47,7 @@ import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { RequestSentScreen } from "@/components/RequestSentScreen";
 import { UploadingDots } from "@/components/UploadingDots";
 import { GuidedRequestSkeleton } from "@/components/PageLoading";
+import { ButtonWaitBar } from "@/components/WaitBar";
 import { CategoryTiles } from "@/components/CategoryTiles";
 import { SafetyNotice } from "@/components/ProblemBand";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
@@ -1950,12 +1951,7 @@ export function GuidedRequestForm({
                 // Barra di attesa al posto della scritta (decisione di Luca,
                 // docs/changelog/2026-11-05-barra-di-attesa.md): stessa altezza
                 // della riga, la frase resta per il lettore di schermo.
-                <XStack alignItems="center" justifyContent="center" height={20}>
-                  <span className="flow-bar flow-bar--light" aria-hidden="true" />
-                  <span className="sr-only" role="status">
-                    {submittingLabel}
-                  </span>
-                </XStack>
+                <ButtonWaitBar label={submittingLabel} />
               ) : (
                 <XStack alignItems="center" gap="2">
                   <Text color="white" fontFamily="body" fontWeight="600">

@@ -9,6 +9,7 @@ import { CardButton } from "@/components/CardButton";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import { textareaStyle } from "./clientRequestHelpers";
+import { WaitBarSignal } from "@/components/WaitBar";
 
 // `isCurrentProposal` distingue la data/orario attualmente proposti dal
 // professionista quando non corrisponde a nessuna fascia reale
@@ -132,6 +133,7 @@ export function QuoteDateChooser({
         error ? null : (
           <Text fontSize={13} color={brand.grafite70}>
             Caricamento orari disponibili...
+            <WaitBarSignal />
           </Text>
         )
       ) : freeSlots.length === 0 ? (

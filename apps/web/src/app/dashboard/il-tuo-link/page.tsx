@@ -19,6 +19,8 @@ import { Button, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { SITE_URL } from "@/lib/siteUrl";
+import { WaitBarSignal } from "@/components/WaitBar";
+import { PageLoading } from "@/components/PageLoading";
 
 const fieldStyle: CSSProperties = {
   width: "100%",
@@ -143,7 +145,8 @@ function PersonalLinkContent() {
     }
   }
 
-  if (isLoading) return null;
+  // Sagoma e barra di attesa al posto della pagina vuota (docs/changelog/2026-11-10-barra-in-ogni-attesa.md).
+  if (isLoading) return <PageLoading />;
 
   if (!user || !token) {
     return (
@@ -203,7 +206,10 @@ function PersonalLinkContent() {
             {error}
           </Text>
         ) : null}
-        {!link && !error ? <Text color={brand.grafite70}>Caricamento...</Text> : null}
+        {!link && !error ? <Text color={brand.grafite70}>
+            Caricamento...
+            <WaitBarSignal />
+          </Text> : null}
 
         {link ? (
           <>
