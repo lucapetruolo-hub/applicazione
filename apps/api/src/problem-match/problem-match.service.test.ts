@@ -71,6 +71,22 @@ describe("ProblemMatchService", () => {
     expect(await service.match("ciao come funziona il sito")).toMatchObject({ categories: [], outOfService: null, reason: null });
   });
 
+  it("se l'IA non dà nessun mestiere, senza fuori servizio, resta il dizionario", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "test");
+    const service = newService();
+    service.askAi = vi.fn().mockResolvedValue(aiAnswer({ categories: [], reason: "" }));
+    const result = await service.match("macchia di umido sul soffitto");
+    expect(result.source).toBe("dizionario");
+    expect(result.categories.length).toBeGreaterThan(0);
+  });
+
+  it("con un fuori servizio dell'IA i mestieri restano vuoti", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "test");
+    const service = newService();
+    service.askAi = vi.fn().mockResolvedValue(aiAnswer({ categories: [], outOfService: "antennista", reason: "" }));
+    expect(await service.match("macchia di umido sul soffitto")).toMatchObject({ categories: [], outOfService: "antennista", source: "ia" });
+  });
+
   it("la stessa frase non si chiede due volte", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "test");
     const service = newService();
