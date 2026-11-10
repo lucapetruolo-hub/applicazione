@@ -17,6 +17,7 @@ import {
   SEARCH_RADIUS_KM,
   ONLINE_LIMIT_FREE_JOBS,
   asScheduleChange,
+  formatClockDeadline,
   formatItalianUntil,
   moderationActionOwnerText,
   moderationGround,
@@ -281,6 +282,9 @@ const BUILDERS: Record<string, Builder> = {
     // Senza `audience` (notifiche di prima) il testo resta quello di sempre.
     const direct = payload.audience === "direct";
     const among = payload.audience === "chosen" && typeof payload.among === "number" && payload.among > 1 ? payload.among : null;
+    // Diretta con "inoltrala se non risponde" (§209): l'ora in cui va anche ad altri.
+    const forwardAt = direct ? str(payload.forwardAt) : null;
+    const forwardSoon = forwardAt && new Date(forwardAt).getTime() > Date.now() ? formatClockDeadline(forwardAt) : null;
     const others = among !== null ? (among === 2 ? "un altro professionista" : `altri ${among - 1} professionisti`) : null;
     return {
       kind: "notification",
@@ -294,6 +298,7 @@ const BUILDERS: Record<string, Builder> = {
           : others
             ? `Un cliente cerca un professionista per **${category}**${where} e ha scelto **te e ${others}**.`
             : `Un cliente cerca un professionista per **${category}**${where}.`,
+        ...(forwardSoon ? [`**Se non rispondi entro ${forwardSoon}** la richiesta va anche ad altri professionisti della zona: potrai rispondere lo stesso.`] : []),
         ...(payload.audience === "shared" ? ["La richiesta è arrivata anche ad altri professionisti della zona."] : []),
         ...(urgent ? ["**È una richiesta urgente:** il cliente cerca qualcuno disponibile subito."] : []),
         // Quando serve, scelto dal cliente (docs/CHANGELOG.md §344).

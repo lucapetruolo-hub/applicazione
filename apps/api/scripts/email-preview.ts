@@ -93,7 +93,7 @@ add("richiesta-inviata-piu-categorie", "Richieste", "Cliente", requestSentEmail(
 add("richiesta-inviata-diretta", "Richieste", "Cliente", requestSentEmail({ name: "Giulia", category: "Idraulico", requestId: "esempio", city: "Milano", isUrgent: false, sentTo: 1, direct: true, description: requestDescription, summary: { ...requestSummary, preferredDate: new Date("2026-11-03T00:00:00.000Z"), preferredTimeSlot: "14:00-18:00", businessName: "Idraulica Rossi" } }));
 add("richiesta-inviata-nessuno", "Richieste", "Cliente", requestSentEmail({ name: "Giulia", category: "Idraulico", city: "Milano", isUrgent: false, sentTo: 0, direct: false }));
 notification("NEW_LEAD", "Professionista", "Richieste", { category: "Idraulico", city: "Milano", isUrgent: false });
-add("new_lead_per_te", "Richieste", "Professionista", renderEmail(notificationEmail("NEW_LEAD", { category: "Idraulico", city: "Milano", isUrgent: false, audience: "direct" }, forPro)!));
+add("new_lead_per_te", "Richieste", "Professionista", renderEmail(notificationEmail("NEW_LEAD", { category: "Idraulico", city: "Milano", isUrgent: false, audience: "direct", forwardAt: new Date(Date.now() + 6 * 3600_000).toISOString() }, forPro)!));
 add("new_lead_scelto_tra_3", "Richieste", "Professionista", renderEmail(notificationEmail("NEW_LEAD", { category: "Idraulico", city: "Milano", isUrgent: false, audience: "chosen", among: 3 }, forPro)!));
 add("new_lead_urgente", "Richieste", "Professionista", renderEmail(notificationEmail("NEW_LEAD", { category: "Idraulico", city: "Milano", isUrgent: true }, forPro)!));
 notification("REQUEST_FORWARDED", "Cliente", "Richieste", { count: 3 });

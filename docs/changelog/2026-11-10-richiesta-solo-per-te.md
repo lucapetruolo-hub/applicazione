@@ -32,6 +32,13 @@ fuorviante ("Chi risponde per primo ha più probabilità…" senza nessun altro)
 5. Stesso testo nella campanella: "Nuova richiesta solo per te: …",
    "Nuova richiesta (scelto tra 3): …".
 
+**Miglioria 1** (ok di Luca, stesso giorno): nell'email della diretta con
+"inoltrala se non risponde" (§209) una riga in grassetto "Se non rispondi entro
+le 15:30 la richiesta va anche ad altri professionisti della zona: potrai
+rispondere lo stesso." (`forwardAt` nel payload, ora detta come
+`formatClockDeadline`). Se l'email parte dopo quell'ora (trattenuta di notte)
+la riga non c'è.
+
 **Privacy**: solo il tipo e, per la scelta tra pochi, quanti sono; mai chi sono
 gli altri professionisti (stessa regola del §147).
 

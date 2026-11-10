@@ -547,7 +547,7 @@ export class GuidedRequestsService {
           // e testo dell'email (docs/changelog/2026-11-10-richiesta-solo-per-te.md).
           // Inoltri e richieste arrivate dopo restano "shared" (nessun campo).
           ...(input.professionalProfileId
-            ? { audience: "direct" }
+            ? { audience: "direct", forwardAt: guidedRequest.forwardAt?.toISOString() ?? null }
             : chosenProfiles.length > 0
               ? { audience: "chosen", among: chosenProfiles.length }
               : { audience: "shared" }),

@@ -15,6 +15,14 @@ describe("email Nuova richiesta", () => {
     expect(body({ audience: "direct" })).not.toContain("per primo");
   });
 
+  it("diretta con inoltro: dice entro quando, poi va anche ad altri", () => {
+    const forwardAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    expect(body({ audience: "direct", forwardAt })).toMatch(/\*\*Se non rispondi entro (le|domani alle) \d\d:\d\d\*\* la richiesta va anche ad altri/);
+    // Già passata (email trattenuta di notte): la frase non c'è.
+    expect(body({ audience: "direct", forwardAt: new Date(Date.now() - 60_000).toISOString() })).not.toContain("Se non rispondi");
+    expect(body({ audience: "direct", forwardAt: null })).not.toContain("Se non rispondi");
+  });
+
   it("diretta urgente", () => {
     const email = notificationEmail("NEW_LEAD", { ...base, isUrgent: true, audience: "direct" }, ctx)!;
     expect(email.subject).toBe("URGENTE — Richiesta per te: Idraulico a Roma");
