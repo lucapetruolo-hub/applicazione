@@ -543,6 +543,14 @@ export class GuidedRequestsService {
           timing: input.timing ?? null,
           isUrgent: input.isUrgent,
           respondUntil: respondUntilForEmail(input.isUrgent, requestExpiresAt),
+          // Solo per te, scelto tra pochi o a più professionisti: cambia oggetto
+          // e testo dell'email (docs/changelog/2026-11-10-richiesta-solo-per-te.md).
+          // Inoltri e richieste arrivate dopo restano "shared" (nessun campo).
+          ...(input.professionalProfileId
+            ? { audience: "direct" }
+            : chosenProfiles.length > 0
+              ? { audience: "chosen", among: chosenProfiles.length }
+              : { audience: "shared" }),
         });
       }
 
@@ -1329,6 +1337,7 @@ export class GuidedRequestsService {
         timing: request.timing ?? null,
         isUrgent: request.isUrgent,
         respondUntil: respondUntilForEmail(request.isUrgent, request.expiresAt),
+        audience: "shared",
       });
       if (isFirstRecipient) {
         await this.notificationsService.notify(request.clientId, "REQUEST_MATCHED_LATER", { guidedRequestId: request.id });
@@ -1466,6 +1475,7 @@ export class GuidedRequestsService {
         timing: request.timing ?? null,
         isUrgent: request.isUrgent,
         respondUntil: respondUntilForEmail(request.isUrgent, request.expiresAt),
+        audience: "shared",
       });
       await this.professionalMetricsService.recordRequestReceived(profile.id);
       await this.timelineService.log(
@@ -1589,6 +1599,7 @@ export class GuidedRequestsService {
         timing: notifyTarget.timing ?? null,
         isUrgent: notifyTarget.isUrgent,
         respondUntil: respondUntilForEmail(notifyTarget.isUrgent, notifyTarget.expiresAt),
+        audience: "shared",
       });
       // Metriche di affidabilità (CLAUDE.md §15, evento 1).
       await this.professionalMetricsService.recordRequestReceived(notifyTarget.professionalProfileId);

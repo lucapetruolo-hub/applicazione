@@ -79,7 +79,7 @@ import { ProfessionalInvoiceRequestBox } from "@/components/ProfessionalInvoiceR
 import { JobDocumentsModal } from "@/components/JobDocumentsModal";
 import { AppointmentReplyStatus } from "./AppointmentReplyStatus";
 import { QuoteQuickFill } from "./QuoteQuickFill";
-import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle, bookingsOverlapping, BusyTimeNotice } from "./requestHelpers";
+import { AudienceBadge, DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle, bookingsOverlapping, BusyTimeNotice } from "./requestHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import { JobLimitModal } from "@/components/JobLimitModal";
@@ -886,7 +886,10 @@ export function RequestCard({
             {gr.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
             {/* Cliente arrivato dal tuo link personale: non conta nei lavori del mese
                 (docs/changelog/2026-11-08-canale-del-professionista.md). */}
-            {gr.fromProfessionalLink ? <Badge variant="verificato">Dal tuo link</Badge> : null}
+            {/* Altrimenti a chi è arrivata: solo a te, scelto tra pochi o a più
+                professionisti (docs/changelog/2026-11-10-richiesta-solo-per-te.md).
+                Senza il dato (API non ancora aggiornata durante un rilascio) nessun bollino. */}
+            {gr.fromProfessionalLink ? <Badge variant="verificato">Dal tuo link</Badge> : lead.audience ? <AudienceBadge audience={lead.audience} /> : null}
             {/* Ordine invertito su richiesta esplicita dell'utente: lo stato
                 della richiesta (StagePill) precede il badge di modalità
                 (ServiceBadge, "A domicilio"/"Consulenza online"). */}

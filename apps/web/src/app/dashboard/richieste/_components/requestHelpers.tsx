@@ -1,6 +1,6 @@
 "use client";
 
-import { REQUEST_TIMING_LABEL, formatAppointmentTimeRange, formatBookingAddress, formatJobDays, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import { REQUEST_TIMING_LABEL, formatAppointmentTimeRange, leadAudienceLabel, type LeadAudience, formatBookingAddress, formatJobDays, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { REQUEST_STAGE_STYLE, type RequestStage } from "@/lib/requestStage";
 
@@ -120,6 +120,23 @@ export function StagePill({ stage, label }: { stage: RequestStage; label?: strin
       <Icon name={s.icon} size={15} strokeWidth={2} color={s.fg} />
       <Text fontFamily="body" fontSize={16} fontWeight="700" color={s.fg}>
         {label ?? s.label}
+      </Text>
+    </XStack>
+  );
+}
+
+/**
+ * Solo per te, scelto tra pochi o mandata a più professionisti
+ * (docs/changelog/2026-11-10-richiesta-solo-per-te.md): stessa pillola di
+ * "A domicilio", verde quando il cliente ha scelto proprio te.
+ */
+export function AudienceBadge({ audience }: { audience: LeadAudience }) {
+  const personal = audience.kind === "direct" || audience.kind === "chosen";
+  return (
+    <XStack alignItems="center" gap={6} paddingHorizontal="3" paddingVertical={8} borderRadius={999} backgroundColor={personal ? brand.cianografiaVelo : brand.gesso}>
+      <Icon name={audience.kind === "direct" ? "user-round" : "users"} size={15} strokeWidth={2} color={personal ? brand.verificato : brand.grafite70} />
+      <Text fontFamily="body" fontSize={16} fontWeight="700" color={personal ? brand.verificato : brand.grafite}>
+        {leadAudienceLabel(audience)}
       </Text>
     </XStack>
   );

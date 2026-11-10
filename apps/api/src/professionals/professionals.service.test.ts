@@ -65,6 +65,7 @@ function buildLead(overrides: Record<string, unknown> = {}) {
       description: "Perdita sotto il lavandino",
       city: "Latina",
       quotes: [],
+      chosenProfileIds: [],
     },
     ...overrides,
   };
@@ -133,6 +134,8 @@ describe("ProfessionalsService.getMyLeads — concorrenti che hanno già rispost
     });
     const leads = await service.getMyLeads("pro-user-1");
     expect(leads[0]!.competitors).toEqual({ responded: 2, total: 2 });
+    // Richiesta generale: bollino "A più professionisti" (docs/changelog/2026-11-10-richiesta-solo-per-te.md).
+    expect(leads[0]!.audience).toEqual({ kind: "shared" });
     expect(prisma.quote.groupBy).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ professionalProfileId: { not: "pro-1" }, status: { not: "WITHDRAWN" } }) }),
     );
@@ -149,6 +152,7 @@ describe("ProfessionalsService.getMyLeads — inoltro di una richiesta diretta (
     (prisma.lead.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([direct()]);
     const leads = await service.getMyLeads("pro-user-1");
     expect(leads[0]!.forwardAt).toBe(forwardAt.toISOString());
+    expect(leads[0]!.audience).toEqual({ kind: "direct" });
   });
 
   it("niente inoltro da mostrare se ha già scritto in chat o la richiesta è già stata inoltrata", async () => {
@@ -158,7 +162,10 @@ describe("ProfessionalsService.getMyLeads — inoltro di una richiesta diretta (
 
     const forwarded = buildService();
     (forwarded.prisma.lead.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([direct({ forwardedAt: new Date() })]);
-    expect((await forwarded.service.getMyLeads("pro-user-1"))[0]!.forwardAt).toBeNull();
+    const [forwardedLead] = await forwarded.service.getMyLeads("pro-user-1");
+    expect(forwardedLead!.forwardAt).toBeNull();
+    // Il bollino passa da "Solo per te" a "Inoltrata anche ad altri".
+    expect(forwardedLead!.audience).toEqual({ kind: "direct_forwarded" });
   });
 });
 

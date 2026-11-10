@@ -3,7 +3,7 @@
 import { Fragment, startTransition, useCallback, useEffect, useState } from "react";
 import Link from "@/components/IntentLink";
 import { Check, Navigation, Phone, Truck } from "lucide-react";
-import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, jobOccurrences, navigateUrl, scheduleChangeBetween, wallClockNow, wallClockToday, type AgendaAttention, type DayAhead, type ExternalJob, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
+import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, jobOccurrences, leadAudienceLabel, navigateUrl, scheduleChangeBetween, wallClockNow, wallClockToday, type AgendaAttention, type DayAhead, type ExternalJob, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
 import { Badge, Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { loadMyProfessionalProfile, loadMySubscription } from "@/lib/myProfessionalProfile";
@@ -533,11 +533,25 @@ const PHONE_TO_ANSWER = 3;
 function LeadToAnswerRow({ lead, extra = false }: { lead: ProfessionalLead; extra?: boolean }) {
   const deadlines = leadDeadlines(lead);
   const competitors = formatCompetitors(lead.competitors);
+  // Quando il cliente ha scelto proprio te, come in Richieste e lavori
+  // (docs/changelog/2026-11-10-richiesta-solo-per-te.md); le altre hanno già
+  // la riga "N altri professionisti".
+  const personal = lead.guidedRequest.fromProfessionalLink
+    ? "Dal tuo link"
+    : lead.audience?.kind === "direct" || lead.audience?.kind === "chosen"
+      ? leadAudienceLabel(lead.audience)
+      : null;
   return (
     <Link href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} className={extra ? "today-row is-phone-hidden" : "today-row"}>
       <span className="today-row-main">
         {/* Etichetta "Urgente" come in Richieste e lavori, non più l'emoji 🔴 (§352). */}
-        {lead.guidedRequest.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
+        {/* Etichette sulla stessa riga, non una sotto l'altra. */}
+        {lead.guidedRequest.isUrgent || personal ? (
+          <span className="today-row-badges">
+            {lead.guidedRequest.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
+            {personal ? <Badge variant="verificato">{personal}</Badge> : null}
+          </span>
+        ) : null}
         <strong>
           {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.city}
         </strong>
