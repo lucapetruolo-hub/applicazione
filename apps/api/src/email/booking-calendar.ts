@@ -1,6 +1,8 @@
 import { formatBookingAddress } from "@professionisti/shared";
 import { calendarIcs, googleCalendarUrl, type CalendarEvent } from "./email-calendar";
 import type { EmailContent } from "./email-layout";
+import { frontendUrl } from "./email-brand";
+import { bookingIcsExpiry, bookingIcsToken } from "../bookings/booking-ics-token";
 
 /**
  * Dati di una prenotazione per le email con il calendario (docs/CHANGELOG.md
@@ -95,6 +97,12 @@ export function bookingPeople(booking: BookingForCalendar): BookingPeople {
 export type BookingCalendar = {
   /** Link "Aggiungi a Google Calendar"; assente per un annullamento (Google non toglie eventi da un link). */
   calendarUrl: string | null;
+  /**
+   * Link "Altri calendari" al file .ics sul sito (iPhone, Outlook...), firmato
+   * e con scadenza; assente per un annullamento come quello di Google
+   * (docs/changelog/2026-11-10-calendario-iphone.md).
+   */
+  icsUrl: string | null;
   attachment: { filename: string; content: string; contentType: string };
 };
 
@@ -120,6 +128,7 @@ export function bookingCalendar(booking: BookingForCalendar, role: "client" | "p
   };
   return {
     calendarUrl: options.canceled ? null : googleCalendarUrl(event),
+    icsUrl: options.canceled ? null : bookingIcsUrl(booking.id, role, booking.scheduledAt),
     attachment: {
       filename: options.canceled ? "appuntamento-annullato.ics" : "appuntamento.ics",
       content: calendarIcs(event),
@@ -128,13 +137,25 @@ export function bookingCalendar(booking: BookingForCalendar, role: "client" | "p
   };
 }
 
-/** Riga "Calendario": il file .ics è allegato all'email, il link serve a chi usa Google Calendar. */
-export function calendarDetail(url: string | null | undefined): { label: string; value: string; url: string }[] {
-  return url ? [{ label: "Calendario", value: "Aggiungi a Google Calendar (o apri l'allegato)", url }] : [];
+/** Indirizzo sul sito del file .ics (`apps/web/src/app/calendario/[file]/route.ts`). */
+export function bookingIcsUrl(bookingId: string, role: "client" | "professional", scheduledAt: Date): string {
+  return `${frontendUrl()}/calendario/${bookingIcsToken(bookingId, role, bookingIcsExpiry(scheduledAt))}.ics`;
 }
 
-/** Email di una notifica con il calendario: la riga col link, o la spiegazione dell'allegato che toglie l'evento. */
+/**
+ * Righe del calendario: Google Calendar con il suo link, e "Altri calendari"
+ * con il link al file, che su iPhone si apre meglio dell'allegato (Gmail su
+ * iPhone a volte non apre gli allegati .ics). Il file resta anche allegato.
+ */
+export function calendarDetail(url: string | null | undefined, icsUrl?: string | null): { label: string; value: string; url: string }[] {
+  return [
+    ...(url ? [{ label: "Calendario", value: "Aggiungi a Google Calendar", url }] : []),
+    ...(icsUrl ? [{ label: "Altri calendari", value: "Aggiungi a iPhone, Outlook e altri", url: icsUrl }] : []),
+  ];
+}
+
+/** Email di una notifica con il calendario: le righe coi link, o la spiegazione dell'allegato che toglie l'evento. */
 export function withCalendar(content: EmailContent, calendar: BookingCalendar): EmailContent {
-  if (calendar.calendarUrl) return { ...content, details: [...(content.details ?? []), ...calendarDetail(calendar.calendarUrl)] };
+  if (calendar.calendarUrl) return { ...content, details: [...(content.details ?? []), ...calendarDetail(calendar.calendarUrl, calendar.icsUrl)] };
   return { ...content, after: [...(content.after ?? []), "Se avevi aggiunto l'appuntamento al calendario, apri l'allegato per toglierlo."] };
 }

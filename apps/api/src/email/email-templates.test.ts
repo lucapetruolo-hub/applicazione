@@ -245,8 +245,11 @@ describe("promemoria del giorno prima (docs/CHANGELOG.md §234)", () => {
       category: "Idraulico",
       description: "Perdita sotto il lavandino",
       calendarUrl: "https://calendar.google.com/calendar/render?action=TEMPLATE",
+      icsUrl: "https://sito.example/calendario/abc.ics",
     });
     expect(email.html).toContain("Aggiungi a Google Calendar");
+    expect(email.html).toContain('href="https://sito.example/calendario/abc.ics"');
+    expect(email.text).toContain("Altri calendari");
     expect(email.html).toContain('href="https://calendar.google.com/calendar/render?action=TEMPLATE"');
     for (const value of ["Luigi Rossi (Idraulica Rossi)", "Via Roma 10 — 00100 Roma (RM)", "giovedì 15 ottobre", "09:00–11:00", "Idraulico", "Perdita sotto il lavandino"]) {
       expect(email.text).toContain(value);
