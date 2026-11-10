@@ -1,7 +1,8 @@
 # Stato del progetto — dettaglio
 
 Dettaglio completo delle voci di `CLAUDE.md` §9 (stesso testo, spostato per
-non caricarlo in ogni sessione). In `CLAUDE.md` resta una riga per voce.
+non caricarlo in ogni sessione). In `CLAUDE.md` resta una riga corta per voce;
+il riepilogo com'era in `CLAUDE.md` fino al 10/11/2026 è in fondo a questo file.
 
 - [x] Architettura approvata dall'utente
 - [x] Decisioni di prodotto (categorie, piani, go-to-market) approvate
@@ -54,3 +55,29 @@ non caricarlo in ogni sessione). In `CLAUDE.md` resta una riga per voce.
 - [x] Correzioni della verifica dell'agenda (docs/CHANGELOG.md §310): niente doppie prenotazioni (`apps/api/src/agenda/commitments.ts`, blocco per professionista), lavori su più giorni (`MAX_JOB_DAYS`), agenda che si riapre senza rete e si aggiorna da sola, accessibilità e privacy.
 - [x] Agenda provata "come chi non la conosce" (docs/CHANGELOG.md §311): Settimana tipo con "Giorno libero", "Chiudi un giorno o le ferie" in cima, appuntamenti in cima a Oggi, striscia da oggi a +6, tasto "Aggiungi lavoro", Agenda seconda nel menu.
 - [x] Orari di partenza dei nuovi profili (docs/CHANGELOG.md §364): lun-sab 8–13 e 14–20, 5 a domicilio e 5 online per fascia, con avviso "Orari di partenza" finché il professionista non li conferma o li cambia.
+
+## Riepilogo com'era in CLAUDE.md §9 (fino al 10/11/2026)
+
+- [x] Architettura e decisioni di prodotto approvate
+- [x] Monorepo (Turborepo/pnpm), `apps/api`, `apps/web`, `apps/mobile`, design system `packages/ui`
+- [x] Autenticazione email+password + Google Sign-In, JWT da `apps/api` (in produzione)
+- [x] Ricerca per categoria/città (SSR, ranking boost→rating→recensioni; filtro per città, non ancora raggio PostGIS), comuni ISTAT con coordinate
+- [x] Mappa risultati (Google Maps) responsive, autocomplete categorie/comuni, modalità "A domicilio"/"Online", pagina `/cerca`
+- [x] Ricerca sempre aggiornata: `force-dynamic` + `cache: "no-store"`, niente ISR (un profilo eliminato non deve restare visibile)
+- [x] Richiesta guidata + fan-out lead, richiesta urgente (`/urgente`), foto su Cloudinary
+- [x] Preventivo strutturato a voci (`QuoteItem`) → l'accettazione crea la `Booking`
+- [x] Recensioni solo da prenotazione `COMPLETED`, con foto
+- [x] Dashboard professionista: profilo, immagine, prestazioni con range di prezzo, agenda settimanale con prenotazione diretta opzionale
+- [x] Promemoria anti no-show via email (cron `@nestjs/schedule`, non BullMQ) e su WhatsApp con Meta (codice pronto, spento finché la società non è verificata da Meta); niente SMS
+- [x] Email del sito con modello unico (benvenuto, preventivi, lavori, pagamenti, recupero password): testi in `apps/api/src/email/templates/`, marchio in `email-brand.ts`; partono davvero solo con Resend configurato
+- [x] Abbonamenti Stripe e boost di visibilità (codice pronto, servono le chiavi reali: skill `checklist-lancio`)
+- [x] Area account cliente, professionisti salvati, cancellazione account
+- [x] Area professionista e cliente a sezioni (`AccountShell`), preferenze di notifica
+- [x] Area admin: moderazione segnalazioni, ruoli admin, registro azioni, chat in sola lettura, bootstrap del primo admin (solo se non esiste nessun admin), verifica in due passaggi obbligatoria con codice ogni 8 ore e login admin di 7 giorni (docs/CHANGELOG.md §359)
+- [x] Smistamento delle richieste: a tutti i professionisti nel raggio, senza scadenza per rispondere (docs/CHANGELOG.md §210); richieste generali spegnibili (`GENERAL_REQUESTS_ENABLED=false` su Render) e chiuse in automatico per categoria e città (§211)
+- [x] Segnalazioni di problemi sul lavoro e controversie (modello A-Z)
+- [x] Pagamento online dei lavori con Stripe (serve Stripe Connect per andare live)
+- [x] Fatture e documenti: fattura del mese delle trattenute, fatture dell'abbonamento, estratto mensile (anche al commercialista), fattura chiesta dal cliente al professionista, modello di ricevuta per il lavoro occasionale, numerato e firmato dal professionista (elenco con il totale e il riepilogo dell'anno per il commercialista, e in Admin → Documenti ai clienti), voce "Documenti" nel menu di ogni lavoro per professionista e cliente, PDF fatti dal server, quadratura con Stripe (invio allo SdI con `OPENAPI_TOKEN_SDI`, prova in Finanza)
+- [x] Profilo creato da un operatore al telefono (`/admin/professionisti` → link `/completa-profilo`; fuori dalla ricerca finché non è confermato, `invitePendingAt`)
+- [x] Dal problema scritto ai professionisti adatti: dizionario + IA nei dubbi, avviso di sicurezza, domanda cliccabile, "Ce ne occupiamo noi", admin "Mestieri richiesti" e "Richieste da seguire" e scelta di fino a 5 professionisti (docs/CHANGELOG.md §392, §393)
+- [x] Verifica dei professionisti: codice fiscale e partita IVA controllati (formato, coerenza con nome e data, Openapi); documento + selfie con Didit obbligatori prima del primo preventivo, danno il badge "Verificato"; `/admin/verifiche` solo per guardare, ricontrollare e togliere il badge (docs/CHANGELOG.md §253-§255)

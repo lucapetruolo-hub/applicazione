@@ -1,5 +1,9 @@
 # AUDIT — Fase 0 (redesign "Professionisti")
 
+> Archivio: era `AUDIT.md` nella radice del repo fino al 10/11/2026
+> (docs/changelog/2026-11-10-riordino-file.md). Le citazioni "AUDIT.md §N" in
+> `docs/CHANGELOG.md` si riferiscono a questo file.
+
 Eseguito prima di qualunque modifica, come richiesto dal brief. Contiene solo osservazioni verificate sul repository reale, nessuna assunzione.
 
 ---

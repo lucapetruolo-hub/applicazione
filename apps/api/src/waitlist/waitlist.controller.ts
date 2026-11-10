@@ -9,7 +9,7 @@ export class WaitlistController {
   constructor(private readonly waitlistService: WaitlistService) {}
 
   // Unico endpoint pubblico senza autenticazione né account di mezzo (Fase
-  // 6/AUDIT.md §6): il bersaglio più esposto per l'email harvesting via bot.
+  // 6/docs/archivio/2026-09-audit-fase0.md §6): il bersaglio più esposto per l'email harvesting via bot.
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post()
   signup(@Body(new ZodValidationPipe(waitlistSignupSchema)) body: WaitlistSignupInput) {

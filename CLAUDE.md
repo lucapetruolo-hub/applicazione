@@ -40,164 +40,59 @@ Implicazioni tecniche dirette:
 
 ## 2. Stack tecnologico
 
-| Livello | Scelta | Perché |
-|---|---|---|
-| Web (desktop/mobile browser) | **Next.js 16** (App Router, TypeScript, Turbopack) | SSR/SSG per SEO su pagine categoria/professionista — critico per il ricavo da visibilità |
-| App mobile (iOS + Android) | **Expo 58 / React Native 0.88** (TypeScript) | Un'unica codebase per iOS e Android, OTA update, accesso a push notification/fotocamera/geolocalizzazione native |
-| UI condivisa web+mobile | **Tamagui 3** (o in alternativa NativeWind) | Stessi componenti/design tokens compilati sia per React Native che per web → "stessa interfaccia" richiesta, senza duplicare il design system |
-| Backend API | **NestJS 11** (Node.js, TypeScript, Express 5) | Struttura modulare adatta a un dominio con tanti bounded context (utenti, prenotazioni, pagamenti, ricerca) |
-| Database | **PostgreSQL** + **PostGIS** | Ricerca geografica (professionisti vicini) nativa in SQL; PostGIS evita di introdurre subito un motore di ricerca separato |
-| ORM | **Prisma 6** | Type-safety end-to-end condivisa col resto del monorepo TS |
-| Ricerca full-text avanzata (fase 2) | **Meilisearch** o **Typesense** | Da introdurre quando serve ranking sponsorizzato + filtri complessi oltre a ciò che Postgres gestisce bene |
-| Autenticazione | **Email+password + Google Sign-In**, JWT emesso da `apps/api` | Login implementato direttamente in NestJS (bcrypt + `@nestjs/jwt`, niente Auth.js/Clerk): un solo backend emette la sessione per web e mobile. Google: pagina di accesso di Google in una finestra (OpenID Connect `id_token` + `nonce` firmato dal server e monouso, solo email verificate da Google, docs/changelog/2026-11-08-sicurezza-controllo-lancio.md; ritorno su `/accesso-google`), nessuno script Google sul sito e quindi nessun consenso cookie (docs/CHANGELOG.md §265). Niente Apple Sign-In (richiede Apple Developer Program a pagamento, non attivato) |
-| Pagamenti | **Stripe** (Subscriptions + Checkout one-off) | Copre sia l'abbonamento SaaS ricorrente sia i pacchetti di visibilità one-shot |
-| Notifiche | Expo Push, **Resend** (email), **WhatsApp con Meta diretto** (Cloud API, `apps/api/src/whatsapp/`) | Promemoria automatici anti no-show. Decisione di Luca del 28/10/2026 (docs/changelog/2026-10-28-promemoria-whatsapp.md): niente Twilio né SMS. Su WhatsApp solo promemoria del giorno prima (al cliente con i pulsanti "Ci sarò"/"Non posso più" e, con un acconto in gioco, 6 ore prima del preavviso; al professionista un solo riepilogo la sera, all'ora del riassunto della sera delle email, `notificationPrefs.digestHour`, 18-21 e di serie 19: una sola ora per sito, email e WhatsApp), "sto arrivando", appuntamento annullato e codice del numero (`WHATSAPP_MESSAGE_TYPES`), a chi ha confermato il cellulare con un codice e acceso i promemoria in Notifiche. Gli stessi pulsanti nell'email del promemoria (link firmato a `/promemoria/…`, la risposta conta solo con un tocco); "Non posso più" porta alla stessa "Proponi un'altra data" dei preventivi (proposta sul preventivo accettato, nessuna strada separata), che il professionista accetta con "Accetta nuova data" (l'appuntamento si sposta), rifiuta o cambia con "Modifica" (allora risponde il cliente), con la data "In attesa" in Agenda e un promemoria dopo 12 ore senza risposta; ore di silenzio 21-8, tetto al giorno (`WHATSAPP_DAILY_LIMIT`), registro `outbound_messages` con esito e costo, webhook firmato. Spento senza `WHATSAPP_ACCESS_TOKEN`/`WHATSAPP_PHONE_NUMBER_ID` su Render, si accende con la società verificata da Meta (`docs/whatsapp-modelli.md`). Fornitore sostituibile dietro `WhatsAppProvider` |
-| Push in tempo reale (chat, notifiche in-app) | **Server-Sent Events** (`@Sse()` di NestJS lato server, `EventSource` nativo del browser lato client) — non Socket.io né WebSocket grezzo | Un solo servizio Render (nessuno scaling orizzontale, l'argomento Socket.io/adapter Redis non si applica), l'invio passa già per REST (serve solo un push server→client, mai bidirezionale), zero dipendenze nuove (`EventSource` è nativo, nessuna libreria client), riconnessione automatica alla caduta della connessione (Render free tier va in sleep/si riavvia). `EventSource` non può impostare header custom: nell'indirizzo passa un biglietto monouso da 60 secondi (`POST /realtime/ticket`, poi `?ticket=...`), mai il token di accesso (docs/CHANGELOG.md §293). Stato in memoria (`RealtimeService`, `Map<userId, Subject>`) esplicitamente scoped a singola istanza — se il progetto scalasse orizzontalmente, va sostituito con un pub/sub condiviso (es. Redis, già nello stack per BullMQ) solo internamente a quel servizio, l'interfaccia pubblica non cambia. Dettagli in `docs/CHANGELOG.md` §115. Il polling esistente resta come rete di sicurezza, solo allungato dove SSE copre ormai il caso comune |
-| Anti-bot registrazione | **Cloudflare Turnstile** (`apps/web/src/components/TurnstileWidget.tsx`, `apps/api/src/auth/turnstile.ts`) | Deciso dall'utente il 06/10/2026, implementato in docs/CHANGELOG.md §204: sulla registrazione con email e password (`/registrati` e `InlineAuthGate`), su "Password dimenticata" e sul modulo `/contatti`; Google Sign-In escluso. Gratuito, senza cookie di profilazione (nessun consenso nel banner), citato nell'informativa privacy. Spento senza chiavi (`NEXT_PUBLIC_TURNSTILE_SITE_KEY` su Vercel, `TURNSTILE_SECRET_KEY` su Render). Se Cloudflare non risponde la registrazione passa (resta il limite di 5/min per IP). Nessun proxy/WAF Cloudflare davanti a Vercel |
-| Controllo codice fiscale e partita IVA | **VIES** (gratis, solo P.IVA) poi **Openapi** (`apps/api/src/tax-id-check/`, `OPENAPI_TOKEN_RISK` e `OPENAPI_TOKEN_COMPANY` su Render, un token per servizio) | Decisione dell'utente del 14/10/2026 (docs/CHANGELOG.md §253-§254): la P.IVA prima con VIES e, se non conferma (non valida, lenta oltre 5s, non risponde), subito Openapi (Registro Imprese); CF del titolare con Openapi (Agenzia delle Entrate); CF del legale rappresentante solo controlli gratuiti, lo conferma il documento (§255). Nell'interfaccia solo "Verifica P.IVA" / "Verifica codice fiscale", senza nominare enti (decisione dell'utente). Un esito "non valido" toglie il profilo dalla ricerca (`publicVisibilityWhere`); Openapi irraggiungibile o senza chiave non blocca mai (riprova ogni 30 minuti). Fornitore sostituibile dietro `TaxIdProvider` |
-| Verifica identità (documento + selfie) | **Didit** (`apps/api/src/identity-verification/`, `DIDIT_API_KEY`/`DIDIT_WORKFLOW_ID`/`DIDIT_WEBHOOK_SECRET` su Render) | Decisione dell'utente del 14/10/2026 (docs/CHANGELOG.md §253): obbligatoria prima del primo preventivo, sostituisce la verifica manuale; nessun caso passa all'admin: se non conferma, il professionista riceve il motivo e la rifà (decisione dell'utente, §255). Consenso biometrico esplicito (art. 9 GDPR) prima di iniziare; si conserva solo l'esito, mai immagini. Fornitore sostituibile dietro `IdentityProvider`. Senza chiavi non è richiesta |
-| Fatture della piattaforma allo SdI | **Openapi** (`apps/api/src/accounting/sdi-provider.ts`, `OPENAPI_TOKEN_SDI` e `OPENAPI_SANDBOX` su Render) | Decisione dell'utente del 27/10/2026 (docs/CHANGELOG.md §378): stesso fornitore della verifica di P.IVA e codice fiscale. XML FatturaPA generato da noi (`invoice-xml.ts`), cifrato nel database; senza chiave le fatture si emettono comunque e l'XML si scarica da Admin → Finanza. Dati della società e data di partenza in Admin → Finanza: finché mancano partono solo gli estratti. Fornitore sostituibile dietro `SdiProvider`; con `OPENAPI_SANDBOX=true` il pulsante "Prova l'invio allo SdI" in Finanza (§379). PDF dei documenti fatti dal nostro server con **pdfkit** (`apps/api/src/accounting/document-pdf.ts`, §379), non dalla stampa del browser |
-| Code/cache | **Redis** (BullMQ) | Job asincroni: invio reminder, sync ranking di visibilità |
-| Monorepo | **Turborepo** + **pnpm workspaces** | Build cache e task orchestration tra app/pacchetti condivisi |
-| Error tracking e statistiche | **Sentry** (solo `apps/api`, `SENTRY_DSN`) + **Vercel Web Analytics** (`apps/web`, senza cookie) | Decisi con l'utente (consiglio CEO, docs/CHANGELOG.md §132): prima un 500, un cron fallito o un'email non inviata non li vedeva nessuno, e non esisteva nessuna misura delle visite. Piani gratuiti, nessuna carta. Uptime: `.github/workflows/uptime.yml` e **UptimeRobot** (piano gratuito, ogni 5 minuti su `/health/db` e sulla homepage, avviso sul telefono: deciso da Luca il 09/11/2026, docs/changelog/2026-11-08-infrastruttura-lancio.md, passi in `docs/ops/avvisi.md`) |
-| Hosting | Web → **Vercel** (`applicazione-web.vercel.app`); Mobile build → EAS (Expo); API/DB → **Render** a Francoforte, a pagamento dal 05/11/2026 (`professionisti-api-eu` Starter + Postgres Basic-256mb, docs/changelog/2026-11-05-render-francoforte.md; in precedenza Railway, abbandonato per scadenza piano free); funzioni Vercel a Francoforte (`fra1`) | Scelta pragmatica per iterare velocemente in fase iniziale |
-| Mappa risultati ricerca | **Google Maps** (`@vis.gl/react-google-maps`, `apps/web` only, mai in `packages/ui`) | Decisione esplicita dell'utente prima del lancio (docs/CHANGELOG.md §133), che **ribalta** la scelta iniziale di Leaflet + OpenStreetMap (presa allora per non collegare una carta di pagamento a Google Cloud): mappa più familiare agli utenti e indirizzi trovati meglio. Unico ingresso: `GoogleMapGate` (`apps/web/src/components/GoogleMapGate.tsx`) — lo script Google si carica solo con `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` impostata **e** dopo il consenso ai servizi Google del banner cookie (consenso centralizzato in `apps/web/src/lib/cookieConsent.ts`); senza consenso un'immagine fissa della mappa con i segnaposto preparata dal nostro server (`GET /maps/static`, Maps Static API con la chiave server, docs/CHANGELOG.md §265) e il pulsante "Usa la mappa interattiva", senza chiave "Mappa non disponibile". Mappa dei risultati con **segnaposto avanzati** (`AdvancedMarker` con la foto/icona del professionista, scelti dall'utente dopo il confronto, docs/CHANGELOG.md §140): richiede un Map ID (`NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`, fallback `DEMO_MAP_ID` di prova). Mappa del raggio in dashboard con `Marker` classico (icona SVG del brand). API in versione `quarterly`. Gli errori interni di Google visti in §135-§137 erano causati dalla chiave senza Maps JavaScript API (§138), non dai marker avanzati. Se Google rifiuta la chiave (`gm_authFailure`) la mappa viene smontata e compare un messaggio con l'indirizzo del sito. Solo web: su mobile andrà valutato `react-native-maps`, non nello scope attuale |
-| Dal problema scritto ai mestieri | Dizionario in `packages/shared/src/problemMatch.ts` + **Claude Haiku** (Anthropic, `claude-haiku-5-5`) solo nei casi dubbi, da `apps/api/src/problem-match/` (`ANTHROPIC_API_KEY` su Render) | Decisione di Luca (docs/CHANGELOG.md §392): prima il dizionario, al minimo dubbio l'intelligenza artificiale. Al modello va il testo senza email, telefoni, indirizzi e link; gli avvisi di sicurezza vengono sempre e solo dal dizionario; senza chiave, oltre 3000 dubbi al giorno (`PROBLEM_MATCH_AI_DAILY_LIMIT`) o se Anthropic non risponde in 3 secondi resta il dizionario. Fino al lancio, senza `ANTHROPIC_API_KEY`, lo stesso modello passa da **OpenRouter** (`OPENROUTER_API_KEY`, §394, decisione di Luca); senza credito su OpenRouter un modello gratuito, oggi Gemma 4 31B di Google con due gratuiti di riserva (docs/changelog/2026-10-28-ia-gratuita-fino-al-lancio.md e 2026-10-28-ia-gratuita-riserve.md: massimo 50 richieste al giorno, i testi senza contatti possono essere usati da chi fornisce il modello, quindi mai dopo il lancio): al lancio si torna ad Anthropic cambiando solo le variabili. All'IA va anche il catalogo dei servizi del sito (prestazioni suggerite, standard di Admin e scritte a mano dai professionisti visibili, rifatto ogni 10 minuti) e l'IA indica la prestazione, che mette prima chi la offre (docs/changelog/2026-11-06-ia-conosce-i-servizi.md). Il boost a pagamento non conta in questi risultati. Domanda n. 68 per l'avvocato (informativa e DPA) |
-| Agenda: meteo, giro, calendario collegato | **Open-Meteo** (meteo, gratis e senza chiave) + **Google Routes API** (tempi di strada, chiave server `GOOGLE_MAPS_API_KEY`) + feed **iCalendar** in sola lettura (`apps/api/src/agenda/`) | Decisi con l'utente (docs/CHANGELOG.md §288). Meteo: solo un'icona sui giorni con pioggia, temporale, neve, vento forte o nebbia, chiesto dal nostro server per le coordinate del profilo (nessun consenso). Giro intelligente: tappe a domicilio del giorno nell'ordine degli orari, mai riordinate; senza Routes API una stima in linea d'aria mostrata come "circa". Calendario collegato: link segreto `/calendar/<token>.ics` (Google o iPhone), si rigenera spegnendo e riaccendendo |
-| Storage immagini profilo | **Cloudinary** | Upload dell'immagine profilo dei professionisti (`apps/api/src/cloudinary/`). Deciso esplicitamente con l'utente al posto di Vercel Blob o di salvare il file nel database: piano gratuito senza carta di pagamento, CDN + resize automatico (800×800 max) incluso lato upload |
-| Geocodifica indirizzo preciso | **Google Places API (New)** dal nostro server (§264, prima nel browser) + **Google Geocoding API** lato server | Nel profilo in dashboard, e nei campi "Via/piazza" del cliente (richiesta di preventivo, modifica richiesta, impostazioni account, dove la scelta compila anche civico/CAP/città/provincia), il campo indirizzo propone indirizzi reali mentre si scrive (`apps/web/src/components/AddressAutocompleteInput.tsx`, docs/CHANGELOG.md §141: solo vie/civici in Italia, favoriti quelli vicini alla città indicata; dal §264 li chiede a Google il nostro server, `GET /address/suggestions` e `/address/place/:id` con Places API (New) e la chiave server, quindi niente consenso cookie e via e città in un solo campo; se il server non risponde resta un campo di testo); scegliendo un suggerimento le coordinate esatte vengono inviate col salvataggio e il server non geocodifica. Per un indirizzo scritto a mano resta `apps/api/src/geocoding/geocoding.service.ts`, che geocodifica l'indirizzo preciso (opzionale) inserito dal professionista in `/dashboard/profilo` per posizionarlo esatto sulla mappa dei risultati, invece che al centro del comune. Sostituisce Nominatim (docs/CHANGELOG.md §133, stessa decisione della mappa). Chiave server `GOOGLE_MAPS_API_KEY` su Render, distinta da quella del browser. Usata al salvataggio del profilo e, dal §264, per i suggerimenti degli indirizzi (serve "Places API (New)" abilitata sulla chiave), mai nella ricerca dei professionisti. Se la chiave manca, la geocodifica non trova nulla o Google non risponde entro 5s, si ricade silenziosamente sul centro del comune (dataset ISTAT) — non deve mai bloccare il salvataggio del profilo |
+Una riga per scelta. Il testo completo con i motivi, le date delle decisioni e
+i dettagli (ex tabella di questa sezione, parola per parola) è in
+**`docs/architettura/stack.md`**: leggerlo prima di toccare uno di questi
+servizi. Le note tecniche per cartella stanno nei `CLAUDE.md` di `apps/web`,
+`apps/api`, `apps/mobile`, `packages/ui`, `packages/shared` e
+`packages/database`, che Claude Code carica da solo quando lavora lì.
+
+| Livello | Scelta (file e variabili principali) |
+|---|---|
+| Web | **Next.js 16** (App Router, TypeScript, Turbopack), pagine SEO in SSR/SSG |
+| App mobile | **Expo 58 / React Native 0.88**: si rifà solo a sito finito |
+| UI condivisa | **Tamagui 3** in `packages/ui` (regole in `docs/architettura/interfaccia.md`) |
+| Backend API | **NestJS 11** (Express 5), un solo backend per web e mobile |
+| Database e ORM | **PostgreSQL** + PostGIS, **Prisma 6** (`packages/database`) |
+| Ricerca avanzata (fase 2) | Meilisearch o Typesense, non ancora introdotto |
+| Autenticazione | Email+password + Google Sign-In (OpenID Connect, finestra Google, nessuno script Google sul sito), JWT emesso da `apps/api` con bcrypt e `@nestjs/jwt`; niente Auth.js/Clerk né Apple |
+| Pagamenti | **Stripe** (Subscriptions, Checkout, Connect Express) |
+| Notifiche | Expo Push, **Resend** (email), **WhatsApp Meta Cloud API** (`apps/api/src/whatsapp/`, spento senza `WHATSAPP_ACCESS_TOKEN`); niente Twilio né SMS |
+| Tempo reale | **Server-Sent Events** (`RealtimeService`, biglietto monouso `POST /realtime/ticket`), niente Socket.io/WebSocket |
+| Anti-bot | **Cloudflare Turnstile** su registrazione, password dimenticata e contatti |
+| Codice fiscale e P.IVA | VIES poi **Openapi** (`apps/api/src/tax-id-check/`, dietro `TaxIdProvider`) |
+| Verifica identità | **Didit** (`apps/api/src/identity-verification/`, dietro `IdentityProvider`) |
+| Fatture allo SdI | **Openapi** (`apps/api/src/accounting/sdi-provider.ts`), PDF con **pdfkit** |
+| Code e attività a orario | Redis/BullMQ nominale; in pratica `@ScheduledJob` (`apps/api/src/common/scheduled-job.ts`) |
+| Monorepo | **Turborepo** + **pnpm workspaces** |
+| Errori, statistiche, uptime | **Sentry** (solo API), **Vercel Web Analytics**, `uptime.yml` + **UptimeRobot** |
+| Hosting | Sito **Vercel** (`fra1`), API e Postgres **Render** Francoforte, mobile EAS |
+| Mappa | **Google Maps** solo in `apps/web`, unico ingresso `GoogleMapGate` (consenso cookie, immagine fissa `GET /maps/static` senza consenso) |
+| Dal problema ai mestieri | Dizionario `packages/shared/src/problemMatch.ts` + **Claude Haiku** nei dubbi (`apps/api/src/problem-match/`), OpenRouter fino al lancio |
+| Agenda | **Open-Meteo**, **Google Routes API**, feed iCalendar (`apps/api/src/agenda/`) |
+| Immagini | **Cloudinary** (`apps/api/src/cloudinary/`) |
+| Indirizzi | **Google Places API (New)** e **Geocoding API** dal nostro server (`GOOGLE_MAPS_API_KEY`); mai bloccare il salvataggio del profilo |
 
 Non introdurre framework o servizi alternativi a questa tabella senza
-prima discuterne e aggiornare questo file.
+prima discuterne e aggiornare questo file (e `docs/architettura/stack.md`).
 
-**Note tecniche di scaffolding:**
+**Regole tecniche che valgono in tutto il monorepo** (dettaglio nei file citati):
+- **Tamagui**: in `apps/web` e `apps/mobile` mai importare primitive da
+  `"tamagui"`, sempre da `"@professionisti/ui"` (altrimenti `Can't find
+  Tamagui configuration`). Regole complete in `docs/architettura/interfaccia.md`.
+- **Migrazioni**: mai `prisma db push` in produzione, mai modificare una
+  migrazione già unita, solo additive (`packages/database/CLAUDE.md`).
 - `.npmrc` usa `node-linker=hoisted`: richiesto da Expo/Metro in monorepo
   pnpm (risolve problemi di risoluzione dei moduli nested). Non rimuoverlo.
-- I package condivisi (`packages/shared`, `packages/api-client`,
-  `packages/database`) hanno uno step di **build reale** (tsc → `dist/`),
-  non vengono consumati come sorgente TS: `apps/api` (NestJS) esegue
-  `node dist/main.js` in produzione e non transpila i `node_modules` a
-  runtime, a differenza di Next.js (`transpilePackages`) e Metro. `turbo dev`
-  dipende da `^build` per garantire che i package siano compilati prima
-  dell'avvio dei dev server.
-- **Next.js 16** (docs/changelog/2026-11-02-nextjs-16.md, prima Next.js 15
-  §297): le pagine le prepara **Turbopack**, non più webpack; gli alias
-  (`react-native` → `react-native-web`, sorgenti di `packages/shared`) e
-  l'ordine delle estensioni `.web.*` stanno in `turbopack` di
-  `next.config.mjs`. L'ingresso nascosto all'admin è in `src/proxy.ts` (il
-  vecchio `middleware.ts`); niente runtime `edge`, deprecato. `next build`
-  non fa più il lint: lo fa `pnpm lint` in CI. Nelle pagine server `params` e
-  `searchParams` (come `cookies()` e `headers()`) sono Promise da attendere;
-  il `typecheck` di `apps/web` esegue prima `next typegen`, che genera i tipi
-  con cui si controllano le props delle pagine. Sito e app usano la stessa
-  versione di React 19, fissata con `overrides` in `pnpm-workspace.yaml`
-  (§299): aggiornandola, cambiarla lì e nei `package.json` di `apps/web` e
-  `apps/mobile` insieme. Prima e dopo un aggiornamento importante
-  `pnpm --filter @professionisti/web confronto-pagine` fotografa tutte le
-  pagine e confronta i due giri pixel per pixel (istruzioni in testa a
-  `apps/web/scripts/confronto-pagine.mjs`). Per zod, `src/zod.ts` di
-  `packages/shared` tiene i messaggi d'errore di zod 3 (lo importa ogni file con
-  schemi, unico con effetti in `sideEffects`; gli schemi importano `z` da "zod", e `apps/web` usa i sorgenti di
-  shared, non `dist/`, per non caricare nel browser tutto zod) e `pnpm --filter @professionisti/shared confronto-zod` confronta
-  le validazioni prima/dopo un aggiornamento, anche da solo nelle PR che
-  cambiano la versione di zod (`.github/workflows/zod.yml`, docs/CHANGELOG.md §326).
-- **Versione di Node.js** (docs/CHANGELOG.md §373-§374): una sola fonte,
-  `.nvmrc` con la versione esatta (oggi 24.22.1), letta da Render e dalla CI;
-  `engines.node` è `24.x` per Vercel, che aggiorna da sé le correzioni.
-  Il controllo giornaliero `.github/workflows/node.yml` apre una
-  segnalazione quando esce una correzione di sicurezza di Node 24, appena
-  una versione più nuova diventa LTS (decisione di Luca: passarci subito,
-  §376) e 6 mesi prima della fine del supporto (§375). Il passaggio a una
+- `packages/shared`, `packages/api-client` e `packages/database` hanno un build
+  reale (tsc → `dist/`): l'API esegue `node dist/main.js`; `turbo dev` dipende
+  da `^build`. Il sito invece usa i sorgenti di `packages/shared`.
+- **Node.js**: una sola fonte, `.nvmrc` (oggi 24.22.1); `engines.node` è
+  `24.x`; controllo giornaliero `.github/workflows/node.yml`. Il passaggio a una
   nuova versione principale si fa in un thread dedicato.
-- **Aggiornamenti delle dipendenze** (docs/CHANGELOG.md §302): Dependabot
-  (`.github/dependabot.yml`) apre una PR al mese con gli aggiornamenti
-  piccoli raggruppati, da unire se la CI è verde; gli aggiornamenti grandi
-  arrivano in PR separate e vanno trattati in un thread dedicato con il
-  confronto delle pagine. React, React Native e le versioni grandi di Expo
-  sono esclusi: si aggiornano a mano, insieme. Per questi e per la fine del
-  supporto di Next.js, React, React Native e NestJS c'è il controllo mensile
-  `.github/workflows/aggiornamenti.yml` (apre una segnalazione); PostgreSQL di
-  Render lo controlla l'API ogni mese (email ai super admin).
-- **Il sito usa i sorgenti di `packages/shared`** (alias in
-  `apps/web/next.config.mjs`, `sideEffects: false`, docs/CHANGELOG.md §345):
-  ogni pagina prende solo le parti che usa. Un modulo di `packages/shared`
-  non deve contare su effetti al solo import (registrazioni, globali). L'API
-  usa sempre `dist/`.
-- **Tamagui 3** (docs/changelog/2026-11-02-tamagui-3.md, prima Tamagui 1):
-  valori "piatti", token senza `$` e stati nel valore
-  (`backgroundColor="blue10 hover:blue9 press:blue8"`, `fontSize="16px xs:13px"`),
-  niente `hoverStyle`/`pressStyle`/`$xs`; `render` al posto di `tag`, `role` e
-  `aria-label` al posto di `accessibilityRole`/`accessibilityLabel`; un
-  `lineHeight` numerico è un rapporto, i pixel si scrivono `"26px"`.
-  `styleCompat: "legacy"` e `defaultPosition: "relative"` in
-  `packages/ui/src/config.ts` tengono l'impaginazione di prima. `Button` e
-  `Input` sono nostri (`packages/ui/src/Button.tsx`, `Input.tsx`) con le
-  misure "1"…"5" di Tamagui 1: quelli di Tamagui 3 hanno misure "xs…xl".
-  Le classi atomiche di Tamagui 3 valgono quanto una sola classe: una regola
-  di `globals.css` con due classi ora vince sugli stili scritti nel
-  componente (prima no). I valori di base (token, font, temi) di Tamagui 1
-  restano fissati in `packages/ui/src/tamaguiDefaults.ts` (Tamagui 3 non ha
-  più quella config): un tema nuovo si scrive a mano lì e in
-  `packages/ui/src/usedThemes.ts`, poi
-  `pnpm --filter @professionisti/ui genera-default-tamagui` lo controlla. Non
-  si importa `@tamagui/config` nel sito (§345). Sul sito niente animazioni di
-  Tamagui (nessun driver, `animations.web.ts`). Due comportamenti di
-  Tamagui 1 rimessi sul sito: i riquadri con ruolo button/checkbox/link/
-  radio/textbox/switch raggiungibili col Tab (`focusableRoles.ts`) e il
-  tocco che risale ai contenitori, con una correzione di una riga al
-  pacchetto (`patches/@tamagui__web@3.1.10.patch`, da rifare a ogni
-  aggiornamento di Tamagui).
-- **Pagine pubbliche in HTML semplice** (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md
-  , 2026-11-09-citta-e-profilo-senza-tamagui.md e
-  2026-11-09-barra-in-alto-senza-tamagui.md): piè di pagina, barra in alto,
-  home, schede dei professionisti (logica comune in `professionalCardModel.ts`),
-  profilo pubblico, contenitore dei risultati e i pezzi comuni `Section`, `Avatar`, `Rating`, `Badge`, `Chip`,
-  `EmptyState`, `PriceLine`, `ProfessionalKindBadge` (varianti
-  `*.web.tsx` in `packages/ui`) usano `div`/`span` con le classi globali di
-  Tamagui (`is_View`, `is_Text`, `font_body`, `font_heading`) e un
-  `*.module.css` con le sue variabili (`--t-space-N`, `--c-nome`), non le
-  primitive Tamagui: il telefono non calcola gli stili all'apertura. Nuove
-  parti di queste pagine si scrivono così; una variante `.web.tsx` cambia
-  insieme al suo file per l'app. Il compilatore di Tamagui non va con
-  Turbopack. Anche `Button` sul sito è HTML semplice (`Button.web.tsx`,
-  docs/changelog/2026-11-10-pulsanti-senza-tamagui.md): varianti comuni con
-  l'app in `buttonStyle.ts`, prop di stile (anche `"44px xs:40px"` e
-  `hover:`) tradotte in classi di `Button.module.css`, che si genera con
-  `pnpm --filter @professionisti/ui genera-css-pulsante`.
-- **React Compiler** acceso su tutto il sito (docs/CHANGELOG.md §345), ma
-  rompe gli stili `<style jsx>`: ogni componente che li usa deve iniziare
-  con la direttiva `"use no memo"` (lo controlla `pnpm lint`,
-  `apps/web/scripts/controlla-style-jsx.mjs`).
-- Il build di produzione di `apps/mobile` avviene su **EAS Build** (cloud).
-  Dal passaggio a Expo 58 (§299) `npx expo export --platform android|ios`
-  funziona anche in locale ed è un buon controllo veloce che il pacchetto
-  si generi; `npx expo-doctor` controlla le versioni.
-- Lo script `build` di `apps/api` compila prima `@professionisti/database` e
-  `@professionisti/shared` (altrimenti TypeScript non trova quei moduli): non toglierlo.
-- **Migrazioni DB**: mai `prisma db push` in produzione. Lo `start` di
-  `apps/api` esegue `packages/database/scripts/migrate-deploy.mjs`
-  (`prisma migrate deploy`, con baseline automatica solo sull'errore `P3005`).
-  `20260921212750_baseline` deve restare lo schema realmente presente in
-  produzione al passaggio, mai lo schema corrente: ogni
-  modifica allo schema va in una nuova migrazione (`prisma migrate dev --name
-  <nome>` in locale), **mai modificare una migrazione già unita** (la CI lo
-  blocca). Migrazioni **solo additive** (nuove colonne e tabelle): un `DROP`
-  o un `RENAME` va in una PR a parte, almeno un deploy dopo il codice che
-  non usa più quella colonna, così il rollback dell'API resta possibile
-  (`docs/ops/rollback.md`). Le
-  categorie si sincronizzano a ogni avvio via `CategoriesSeedService`.
-- **Operazioni** (docs/changelog/2026-11-08-infrastruttura-lancio.md):
-  rollback, ripristino del database, attività a orario, avvisi, variabili e
-  cambio di dominio in `docs/ops/`. Ogni variabile letta dall'API va in
-  `render.yaml` (la CI lo controlla, `apps/api/scripts/check-render-env.mjs`).
-  Le attività a orario si scrivono con `@ScheduledJob` di
-  `apps/api/src/common/scheduled-job.ts`, mai con `@Cron`: ora italiana,
-  nessun giro accavallato e un solo giro anche con due API accese durante
-  un deploy (tabella `cron_runs`). `/health` è il controllo leggero di
-  Render, `/health/db` (usato dall'uptime) controlla anche il database.
-- L'API ascolta su `app.listen(port, "0.0.0.0")` e legge sempre
-  `process.env.PORT` (fallback 3001): senza host esplicito il proxy IPv4 della
-  piattaforma non la raggiunge; non hardcodare la porta.
+- **Dipendenze**: Dependabot una PR al mese con gli aggiornamenti piccoli;
+  quelli grandi, React, React Native ed Expo si aggiornano a mano in un thread
+  dedicato con il confronto delle pagine (`.github/workflows/aggiornamenti.yml`).
 - Deploy su Render/Vercel, variabili d'ambiente, limiti del free tier e "il
   sito non si aggiorna" (build Vercel saltate di proposito o non innescate):
   skill `deploy-ops` (`.claude/skills/deploy-ops/SKILL.md`).
@@ -207,25 +102,6 @@ prima discuterne e aggiornare questo file.
   ha il link. Si apre ai motori di ricerca solo con
   `NEXT_PUBLIC_SITE_INDEXABLE=true` su Vercel + nuovo deploy — non
   toglierlo prima del lancio ufficiale.
-- **Guard JWT senza `@nestjs/passport`**: `apps/api/src/auth/jwt-auth.guard.ts` verifica il token
-  manualmente con `JwtService.verify()` invece di usare `@nestjs/passport` +
-  `passport-jwt`. Motivo: con quella combinazione (testata con
-  `@nestjs/core@10.4.22` + `@nestjs/passport@10.0.3`), un guard che nega
-  l'accesso restituisce sempre `500 Internal Server Error` invece di `401`
-  — l'eccezione lanciata da `AuthGuard.handleRequest` non viene propagata
-  correttamente nella pipeline async di Nest. Non reintrodurre passport per
-  l'auth JWT senza aver prima verificato che il bug sia risolto a monte.
-- **Regola critica Tamagui**: in `apps/web` e `apps/mobile` non importare
-  MAI primitive da `"tamagui"` direttamente (`Text`, `XStack`, `YStack`,
-  `H1`, `Input`, ecc.) — vanno sempre importate da `"@professionisti/ui"`,
-  che le ri-esporta. Motivo: né `apps/web` né `apps/mobile` dichiarano
-  `tamagui` come propria dipendenza (solo `packages/ui` la dichiara);
-  importarla direttamente crea un'istanza del modulo diversa da quella in
-  cui `createTamagui()` è stato eseguito, causando a runtime l'errore
-  `Can't find Tamagui configuration` (capita sia in SSR che client-side,
-  indipendentemente da `@tamagui/next-plugin`). Se serve una nuova
-  primitiva Tamagui in un'app, va prima ri-esportata da
-  `packages/ui/src/index.ts`.
 
 ---
 
@@ -249,6 +125,26 @@ Principi:
 
 Regola: nessun codice di business dentro `apps/web` o `apps/mobile` che non
 sia UI/routing — la logica va in `apps/api` o `packages/shared`.
+
+```
+apps/web/            sito Next.js (src/app = pagine, src/components, src/lib, src/proxy.ts)
+apps/api/            API NestJS, un modulo per dominio in src/ (auth, quotes, billing, ...)
+apps/mobile/         app Expo (ferma finché il sito non è finito)
+packages/shared/     tipi, schemi zod, costanti (categorie, piani, notifiche)
+packages/ui/         design system Tamagui (varianti .web.tsx per il sito)
+packages/database/   schema Prisma e migrazioni
+packages/api-client/ client HTTP dell'API usato da web e mobile
+packages/config/     configurazioni condivise
+e2e/                 prove Playwright (tests/, lighthouse/, carta/)
+scripts/             controlli usati dalla CI (versioni di Node, aggiornamenti, Vercel)
+docs/                documentazione: indice in docs/README.md
+.claude/skills/      skill del progetto (deploy-ops, checklist-lancio, ...)
+```
+
+Dove cercare: il "perché" di una scelta in `docs/architettura/stack.md` o
+`docs/prodotto.md`; la storia di una funzione in `docs/indice-changelog.md`
+(archivio §10-§403) o con `ls docs/changelog/` (voci dal 28/10/2026); lo stato
+delle funzioni in `docs/STATO.md`; le operazioni in `docs/ops/`.
 
 ---
 
@@ -356,232 +252,57 @@ sia UI/routing — la logica va in `apps/api` o `packages/shared`.
 
 ## 6. Decisioni di prodotto
 
-### Categorie professionisti (MVP)
+Testo completo (categorie, abbonamento, mesi gratis, pausa, lavori esauriti,
+link personale, pagamento dei lavori, tetto online, documenti contabili,
+pacchetti di visibilità) in **`docs/prodotto.md`**, parola per parola: leggerlo
+prima di toccare abbonamenti, pagamenti, fatture o categorie. In breve:
 
-Lancio con poche categorie ad alta frequenza di ricerca, poi si espande:
-idraulico, elettricista, imbianchino, pulizie (casa/ufficio), giardiniere,
-traslochi, fabbro, climatizzazione/caldaie, muratore/ristrutturazioni,
-falegname. Ogni categoria ha sotto-tag di specializzazione (es. Elettricista
-→ impianti civili, domotica, certificazioni), usati sia per il matching in
-ricerca sia per differenziare i piani a pagamento.
-
-Espansa oltre il set iniziale di mestieri artigianali con cinque categorie,
-su richiesta esplicita dell'utente: **Tutto Fare** (piccole riparazioni
-generiche), **Dogsitter** e **Babysitter** (queste due al posto di OSS e
-Badanti, tolte su decisione dell'utente, docs/CHANGELOG.md §217),
-**Elettrodomestici** (riparazione) e **Tende da sole e zanzariere**
-(richiesta di Luca del 06/11/2026, docs/changelog/2026-11-06-mestiere-elettrodomestici.md:
-prima erano lavori "fuori servizio" del dizionario). Ogni
-professionista sceglie da 1 a 3 categorie (`MAX_PROFESSIONAL_CATEGORIES`). Fonte di verità unica in
-`packages/shared/src/categories.ts` (`PROFESSIONAL_CATEGORIES`): icone SVG
-e colori accento in `apps/web/src/components/icons/CategoryIcons.tsx`
-(`CATEGORY_ICONS`/`CATEGORY_ACCENT`, tipizzati `Record<ProfessionalCategorySlug, ...>`
-così il compilatore segnala ogni punto da aggiornare per una categoria
-nuova). Nessuna migrazione DB necessaria per aggiungerne: `CategoriesSeedService`
-sincronizza `PROFESSIONAL_CATEGORIES` nella tabella `categories` a ogni
-avvio dell'API (stesso meccanismo del seed iniziale, vedi §2).
-
-### Monetizzazione professionista — abbonamento unico a livelli
-
-**Decisione dell'utente del 28/09/2026 (docs/CHANGELOG.md §160), sostituisce
-i piani Free/Pro/Business per funzioni** (implementata in §161:
-`packages/shared/src/plans.ts`, `apps/api/src/subscriptions/`,
-`/dashboard/abbonamento`): un solo abbonamento con **tutte
-le funzionalità per tutti**, a livelli che si distinguono solo per il
-numero di **lavori accettati** al mese (Booking creato quando il cliente
-accetta il preventivo, mai i "completati", che segna il professionista).
-
-| Livello | Mensile + IVA | Annuale + IVA | Lavori accettati al mese |
-|---|---|---|---|
-| **Base** | 19 € | 190 € (16 €/mese) | 3 |
-| **Plus** | 59 € | 590 € (49 €/mese) | 10 |
-| **Pro** | 99 € | 990 € (83 €/mese) | senza limite |
-
-Prezzi e limiti decisi dall'utente il 26/10/2026 (docs/CHANGELOG.md §361),
-al posto di 19/39/69 € e 5/15 lavori: mostrati "+ IVA" con l'IVA compresa
-in piccolo, annuale (dieci mensilità, "Risparmi 2 mesi") in vista per primo;
-prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
-`STRIPE_PRICE_<LIVELLO>_ANNUAL`, IVA con `STRIPE_TAX_RATE_IVA`.
-
-- **Mesi gratis decisi dall'offerta in Admin** (decisioni di Luca del
-  29/10/2026, docs/changelog/2026-10-29-offerta-mesi-gratis.md, sostituiscono
-  il mese gratuito per tutti e il mese regalato a sorpresa): chi si iscrive
-  mentre un'offerta è attiva (di partenza 3 mesi, `SubscriptionOffer`) ha
-  quei mesi Base gratis, uno dopo l'altro, poi **Base mensile in automatico**
-  (va detto all'attivazione). **Carta obbligatoria**: "Attiva i mesi gratis"
-  è un abbonamento Base di Stripe in prova; senza carta dal lancio il profilo
-  è in pausa (`CARD_NEEDED`). Luca ferma l'offerta o ne crea un'altra in
-  Admin → Profili da confermare, con gli iscritti professionisti e clienti;
-  chi è già iscritto tiene i suoi mesi. **Plus o Pro nei mesi gratis**: il
-  mese del livello meno 19 €, mese nuovo da quel giorno con 0 lavori, i mesi
-  non iniziati in attesa (`freeMonthsWaiting`) e **mai persi**: si
-  riprendono con "Torna a Base" o scegliendo Base. Mesi a 0,99 € valutati e
-  scartati da Luca. **Per ora solo mensile** (l'annuale torna con i dati
-  reali). Sul sito resta la banda "GRATIS PER 3 MESI" dei primi 100
-  (`founderNumber`, `FOUNDER_SPOTS`), mai il conto alla rovescia.
-- **I mesi gratis valgono come Base** (3 lavori). Sulla pagina prezzi Base
-  mostra "€19" barrato e "Gratis per N mesi".
-- **Account in pausa** (`ProfessionalProfile.pausedAt`/`pausedReason`,
-  docs/CHANGELOG.md §162): a fine mese gratuito senza livello e ad
-  abbonamento concluso il profilo esce dalla
-  ricerca e dallo smistamento, non accetta richieste dirette né prenotazioni
-  (resta visibile dal link); banner fisso in Home e in Abbonamento. Ogni
-  nuovo punto che mostra professionisti o assegna richieste deve filtrare
-  anche `pausedAt` e `invitePendingAt` (profilo creato da un operatore e
-  non ancora confermato, docs/CHANGELOG.md §170). **Nessuna pausa finché
-  i pagamenti non sono attivi** (`STRIPE_SECRET_KEY` assente) **e prima
-  di `LAUNCH_DATE`**: senza Stripe nessuno potrebbe scegliere un livello e
-  a fine prova la ricerca resterebbe vuota.
-- **I mesi gratis partono dal lancio** (`LAUNCH_DATE` su Render,
-  AAAA-MM-GG, docs/CHANGELOG.md §170): chi si iscrive prima li ha dal
-  lancio. Senza la variabile non si dà la carta e non si paga nulla.
-- **Al limite:** si passa al livello superiore pagando **10 € più la
-  differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del
-  10%**, senza tetto (decisione dell'utente, §361; `upgradeFeeEurCents` in
-  `packages/shared/src/plans.ts`; nei mesi gratis vale la regola sopra); il nuovo livello vale fino al rinnovo, poi si paga
-  intero. Una sola cifra nell'interfaccia, il calcolo in "Scopri di più" e
-  nei Termini. Altrimenti si aspetta il rinnovo.
-- **Lavori esauriti** (decisioni dell'utente, docs/CHANGELOG.md §362): i
-  lavori si contano per periodo e **ripartono al rinnovo** (annuale: ogni
-  mese dal giorno di attivazione), mai il 1° del mese; su Plus e Pro lo
-  stesso cliente conta una volta per periodo (detto solo ai professionisti).
-  Al limite il profilo **resta nella ricerca** e riceve le richieste, ma
-  non manda preventivi nuovi e non risponde per primo in chat; l'agenda
-  resta visibile per chi chiede un preventivo (§363)
-  (`ProfessionalProfile.jobLimitReachedAt`, non
-  `pausedAt`); i preventivi già mandati restano validi. Finestra "Hai
-  esaurito l'abbonamento Base" con la richiesta, il livello sopra e una
-  sola cifra (`JobLimitModal`).
-- **Clienti dal link personale** (decisione di Luca del 26/10, fatta l'8/11,
-  docs/changelog/2026-11-08-canale-del-professionista.md): le richieste
-  partite da `/p/<codice>` del professionista sono clienti suoi
-  (`GuidedRequest.fromProfessionalLink`, solo se il sito non glieli aveva già
-  portati): **non contano nei lavori**, gli si risponde anche al limite e la
-  casella "Inoltra se non risponde" parte spenta. Pagina "Il tuo link" con QR
-  e "Invita un tuo cliente" (il messaggio lo manda lui, mai noi).
-- **Rinnovo automatico** mensile o annuale con avviso 3 giorni prima (sito + email);
-  annullabile da `/dashboard/abbonamento`, resta attivo fino alla scadenza.
-  Passare a un livello inferiore non è ancora previsto.
-- Prezzi e limiti da rivedere sui dati dei primi mesi.
-- Si incassa solo con P.IVA/società e parere del commercialista (checklist
-  §10). **Pagamento dei lavori** (decisioni dell'utente, docs/CHANGELOG.md
-  §168): nel preventivo il professionista offre uno o più modi (§237: diretto,
-  acconto online con percentuale sua 1-100% e saldo online o diretto) e
-  accettando il cliente sceglie tra questi: **online con Stripe**
-  (acconto, 20% del massimo se non cambiato, saldo a lavoro chiuso, soldi addebitati
-  sul conto Stripe del professionista meno la **trattenuta unica del 7% + IVA**,
-  tutto compreso (carta e bonifici di Stripe a carico nostro, docs/CHANGELOG.md
-  §378, prima 5% più i costi di Stripe), mai in custodia sulla piattaforma, e bloccati lì con i bonifici in manuale
-  fino alla conferma o per 7 giorni (massimo 90, regola Stripe),
-  docs/CHANGELOG.md §249; assistenza e rimborso sulle segnalazioni accolte)
-  oppure **diretto** (nessun rimborso né decisione nostra: le segnalazioni
-  restano tra le parti, il cliente può comunque recensire). Il pagamento
-  diretto non paga commissione.
-  **Tetto online** (decisione di Luca, docs/changelog/2026-10-28-tetto-pagamenti-online.md):
-  al massimo 2.000 € a lavoro chiesti online finché il professionista non ha
-  10 lavori pagati online senza contestazioni e 120 giorni dal primo
-  (`packages/shared/src/onlineLimit.ts`); l'admin lo può togliere, una
-  contestazione persa lo rimette.
-- **Documenti contabili** (decisioni dell'utente del 27/10/2026,
-  docs/CHANGELOG.md §378): una fattura al mese delle trattenute (serie `COM`,
-  nota di credito se il mese è negativo) e una per ogni pagamento
-  dell'abbonamento, quota di passaggio o pacchetto (serie `ABB`), dalla
-  pagina "Fatture e documenti" (`/dashboard/documenti`, scheda dell'area
-  "Fisco e pagamenti" con Dati fiscali, Pagamenti online e Dati
-  DAC7, docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md; voce
-  solo nella tendina dell'account) con estratto del mese e riepilogo a 0 € dei mesi gratuiti (mai una
-  fattura a zero). La fattura del professionista al cliente la fa lui:
-  noi diamo solo i dati chiesti dal cliente, **mai
-  nulla all'Agenzia delle Entrate per conto del professionista**. Solo per il
-  lavoro occasionale prepariamo un modello di ricevuta già compilato, che il
-  professionista controlla, numera e firma come documento suo (decisione di
-  Luca del 02/11, docs/changelog/2026-11-02-ricevuta-modello.md); con la
-  partita IVA nessuna copia della fattura, la fa col suo programma (decisione
-  di Luca del 30/10, docs/changelog/2026-10-30-documenti-snelli.md). L'estratto
-  (e a gennaio il riepilogo dell'anno delle ricevute, §390)
-  va al commercialista solo con la spunta del professionista.
-
-### Pacchetti di visibilità
-
-- **Boost locale**: prime posizioni nei risultati per categoria + zona, a
-  canone mensile o a credito consumato per contatto ricevuto.
-- **Badge reputazione**: evidenza per rating alto + tempo di risposta rapido.
-- **Storie di successo**: contenuti editoriali per i top professionisti
-  (leva marketing/retention, come su miodottore.it).
+- **Categorie**: fonte unica `packages/shared/src/categories.ts`
+  (`PROFESSIONAL_CATEGORIES`), icone in
+  `apps/web/src/components/icons/CategoryIcons.tsx`; da 1 a 3 per
+  professionista; sincronizzate a ogni avvio da `CategoriesSeedService`.
+- **Abbonamento unico a livelli** (`packages/shared/src/plans.ts`): tutte le
+  funzioni per tutti, cambia solo il numero di lavori accettati per periodo.
+  Base 19 € (3 lavori), Plus 59 € (10), Pro 99 € (senza limite), + IVA al
+  mese; annuale = dieci mensilità. I lavori ripartono al rinnovo.
+- **Mesi gratis** decisi dall'offerta in Admin (`SubscriptionOffer`, di
+  partenza 3 mesi Base), dal `LAUNCH_DATE`, carta obbligatoria, poi Base
+  mensile in automatico. Nessuna pausa senza Stripe attivo o prima del lancio.
+- **Al limite** il profilo resta nella ricerca ma non manda preventivi nuovi
+  (`jobLimitReachedAt`); passaggio di livello con `upgradeFeeEurCents`. I
+  clienti dal link personale `/p/<codice>` non contano nei lavori.
+- **Pagamento dei lavori**: diretto oppure online con Stripe (acconto e
+  saldo sul conto del professionista, trattenuta unica 7% + IVA, tetto
+  2.000 € per i nuovi, `packages/shared/src/onlineLimit.ts`).
+- **Documenti**: fatture nostre `COM` (trattenute del mese) e `ABB`
+  (abbonamento), mai nulla all'Agenzia delle Entrate per conto del
+  professionista; per il lavoro occasionale solo un modello di ricevuta.
 
 ---
 
 ## 7. Strategia go-to-market
 
-1. **Concentrare la liquidità, non disperderla**: lanciare in 1 città con 4
-   categorie ad alta frequenza (idraulico, elettricista, pulizie, falegname;
-   falegname aggiunto il 24/10/2026 sui volumi di Keyword Planner,
-   docs/CHANGELOG.md §303) prima di espandere. Un marketplace con ricerca vuota non converte, a prescindere
-   da quante città copre sulla carta.
-2. **Bootstrap manuale del lato offerta**: i primi 50-100 professionisti per
-   città vanno reclutati uno per uno (telefonate, contatti diretti), con
-   piano Pro gratuito per i primi 3 mesi. Senza offerta reale non c'è
-   domanda da servire.
-3. **Sequenza dei ricavi: lead a pagamento prima dell'abbonamento flat.**
-   *Superato il 28/09/2026: l'utente ha scelto l'abbonamento unico a livelli
-   con primo mese gratis (vedi §6), niente lead a pagamento.*
-   Un artigiano non si fida di un canone fisso finché non vede un lavoro
-   arrivare dalla piattaforma. Fase iniziale a pagamento per lead
-   qualificato (es. €3-8 a richiesta di preventivo ricevuta); solo dopo che
-   il professionista vede ROI concreto lo si converte su abbonamento flat.
-   **Questo cambia l'ordine del MVP**: il flusso "richiesta guidata + lead a
-   pagamento" viene prima dell'abbonamento Stripe ricorrente (vedi sezione 9).
-4. **La retention vera viene dal gestionale, non dal boost.** Il boost si
-   disattiva con un click; l'agenda con storico clienti/fatture crea
-   switching cost reale. Priorità di investimento tecnico coerente con
-   questo.
-5. **Verticale "urgenza" come margine più alto**: un flusso "richiesta
-   urgente" con instant-match e notifica push immediata ai professionisti
-   disponibili "ora" (es. idraulico per allagamento) giustifica una
-   commissione più alta sul singolo intervento e differenzia da chi offre
-   solo un elenco statico.
-6. **SEO locale come canale di acquisizione a costo quasi zero**: pagine
-   "quanto costa un [servizio] a [città]", recensioni per città/categoria —
-   motivo per cui Next.js SSR non è negoziabile (vedi sezione 2).
+In `docs/prodotto.md` (§7): lancio concentrato con poche categorie ad alta
+frequenza (idraulico, elettricista, pulizie, falegname), professionisti
+reclutati uno per uno, retention dal gestionale e non dal boost, verticale
+"urgenza", SEO locale (motivo per cui l'SSR non è negoziabile). Il sito è per
+tutta Italia: città, testi ed esempi mai limitati a una sola città.
 
 ---
 
 ## 8. Funzionalità chiave per innovazione, utilità, semplicità d'uso
 
-- **Richiesta guidata invece di ricerca a scaffale**: foto + poche domande
-  guidate → il sistema suggerisce categoria/sotto-categoria e un range di
-  prezzo stimato, poi fa il fan-out ai professionisti compatibili in zona.
-  Riduce le richieste alla categoria sbagliata, causa primaria di abbandono
-  in questi marketplace.
-- **Preventivo strutturato in-app**, non solo scambio di numero di
-  telefono: modulo con manodopera/materiali/tempistiche, per mantenere la
-  piattaforma nel mezzo della transazione (necessario anche per il modello
-  a lead/commissione).
-- **Recensioni solo da prenotazione confermata**: niente recensioni libere,
-  per credibilità del sistema reputazionale che giustifica il badge a
-  pagamento.
-- **Onboarding pensato per professionisti non digital-native**: login via
-  email+password o Google (niente OTP telefonico — deciso e implementato
-  in fase di sviluppo, vedi §2), profilo minimo obbligatorio, bio generata
-  da voce-testo; in fase di lancio manuale, un operatore crea il profilo al
-  telefono con loro.
-- **Notifiche quasi istantanee sulle nuove richieste**: in un mercato
-  locale il primo professionista che risponde spesso si aggiudica il
-  lavoro — la latenza della coda (Redis/BullMQ) è una feature competitiva,
-  non un dettaglio tecnico.
-- **App leggera e offline-friendly**: i professionisti sono spesso su
-  cantieri con connessione scarsa — caching locale delle richieste, retry
-  automatico sull'invio.
-- **Dashboard con dati comparativi** ("il tuo profilo ha ricevuto 12
-  visite, la media di categoria+zona è 28"): leva di prodotto per l'upsell
-  al boost, costruita con dati già raccolti.
+In `docs/prodotto.md` (§8): richiesta guidata invece della ricerca a scaffale,
+preventivo strutturato in-app, recensioni solo da lavoro confermato,
+onboarding per chi non è pratico di digitale, notifiche quasi istantanee, app
+leggera e offline-friendly, dati comparativi in dashboard.
 
 ---
 
 ## 9. Stato del progetto
 
-Una riga per voce; dettaglio completo (endpoint, file, bug corretti) in
-`docs/STATO.md`, storia in `docs/CHANGELOG.md` (fino alla §399) e in
+Una riga corta per voce; dettaglio completo (endpoint, file, bug corretti) in
+`docs/STATO.md`, storia in `docs/CHANGELOG.md` (archivio fino alla §403) e in
 `docs/changelog/` (voci dal 28/10/2026).
 
 - [x] Architettura e decisioni di prodotto approvate
@@ -594,52 +315,38 @@ Una riga per voce; dettaglio completo (endpoint, file, bug corretti) in
 - [x] Preventivo strutturato a voci (`QuoteItem`) → l'accettazione crea la `Booking`
 - [x] Recensioni solo da prenotazione `COMPLETED`, con foto
 - [x] Dashboard professionista: profilo, immagine, prestazioni con range di prezzo, agenda settimanale con prenotazione diretta opzionale
-- [x] Promemoria anti no-show via email (cron `@nestjs/schedule`, non BullMQ) e su WhatsApp con Meta (codice pronto, spento finché la società non è verificata da Meta); niente SMS
-- [x] Email del sito con modello unico (benvenuto, preventivi, lavori, pagamenti, recupero password): testi in `apps/api/src/email/templates/`, marchio in `email-brand.ts`; partono davvero solo con Resend configurato
+- [x] Promemoria anti no-show via email e WhatsApp Meta (spento finché Meta non verifica la società); niente SMS
+- [x] Email con modello unico (`apps/api/src/email/templates/`, marchio in `email-brand.ts`), solo con Resend configurato
 - [x] Abbonamenti Stripe e boost di visibilità (codice pronto, servono le chiavi reali: skill `checklist-lancio`)
 - [x] Area account cliente, professionisti salvati, cancellazione account
 - [x] Area professionista e cliente a sezioni (`AccountShell`), preferenze di notifica
-- [x] Area admin: moderazione segnalazioni, ruoli admin, registro azioni, chat in sola lettura, bootstrap del primo admin (solo se non esiste nessun admin), verifica in due passaggi obbligatoria con codice ogni 8 ore e login admin di 7 giorni (docs/CHANGELOG.md §359)
-- [x] Smistamento delle richieste: a tutti i professionisti nel raggio, senza scadenza per rispondere (docs/CHANGELOG.md §210); richieste generali spegnibili (`GENERAL_REQUESTS_ENABLED=false` su Render) e chiuse in automatico per categoria e città (§211)
+- [x] Area admin: moderazione, ruoli, registro azioni, chat in sola lettura, bootstrap del primo admin, due passaggi obbligatori (§359)
+- [x] Smistamento a tutti i professionisti nel raggio (§210); richieste generali spegnibili con `GENERAL_REQUESTS_ENABLED` (§211)
 - [x] Segnalazioni di problemi sul lavoro e controversie (modello A-Z)
 - [x] Pagamento online dei lavori con Stripe (serve Stripe Connect per andare live)
-- [x] Fatture e documenti: fattura del mese delle trattenute, fatture dell'abbonamento, estratto mensile (anche al commercialista), fattura chiesta dal cliente al professionista, modello di ricevuta per il lavoro occasionale, numerato e firmato dal professionista (elenco con il totale e il riepilogo dell'anno per il commercialista, e in Admin → Documenti ai clienti), voce "Documenti" nel menu di ogni lavoro per professionista e cliente, PDF fatti dal server, quadratura con Stripe (invio allo SdI con `OPENAPI_TOKEN_SDI`, prova in Finanza)
+- [x] Fatture e documenti: `COM` e `ABB`, estratto mensile, fattura chiesta dal cliente, modello di ricevuta occasionale, PDF dal server, quadratura Stripe, SdI con `OPENAPI_TOKEN_SDI`
 - [x] Profilo creato da un operatore al telefono (`/admin/professionisti` → link `/completa-profilo`; fuori dalla ricerca finché non è confermato, `invitePendingAt`)
-- [x] Dal problema scritto ai professionisti adatti: dizionario + IA nei dubbi, avviso di sicurezza, domanda cliccabile, "Ce ne occupiamo noi", admin "Mestieri richiesti" e "Richieste da seguire" e scelta di fino a 5 professionisti (docs/CHANGELOG.md §392, §393)
-- [x] Verifica dei professionisti: codice fiscale e partita IVA controllati (formato, coerenza con nome e data, Openapi); documento + selfie con Didit obbligatori prima del primo preventivo, danno il badge "Verificato"; `/admin/verifiche` solo per guardare, ricontrollare e togliere il badge (docs/CHANGELOG.md §253-§255)
+- [x] Dal problema scritto ai professionisti adatti: dizionario + IA nei dubbi, avviso di sicurezza, admin "Mestieri richiesti" (§392-§393)
+- [x] Verifica dei professionisti: CF e P.IVA con Openapi, documento + selfie Didit prima del primo preventivo, badge "Verificato" (§253-§255)
 
 ---
 
 
 ## 10. Storia dettagliata delle modifiche
 
-Lo storico narrativo di ogni singola modifica fatta al prodotto (redesign
-visivo, agenda, chat, MANOVIA, homepage, ecc. — quelle che qui erano le
-sezioni §10-§113 fino a settembre 2026) è stato spostato in
-**`docs/CHANGELOG.md`**, non cancellato: stesso contenuto, stessa
-numerazione di sezione, stesso livello di dettaglio (richiesta → decisione →
-motivo → verifica). La ragione del trasferimento è puramente di costo: questo
-file (`CLAUDE.md`) viene reiniettato per intero a ogni turno di ogni
-conversazione su questo progetto — con lo storico completo era arrivato a
-~900KB, decine di migliaia di token spesi automaticamente anche per una
-domanda banale. `docs/CHANGELOG.md` invece si legge solo su richiesta (Read o
-Grep mirato), quando serve davvero.
-
-**Quando leggerlo**: prima di ritoccare un'area con un bug già corretto in
-passato (per non reintrodurlo — es. i pattern flex/wrap che si sono ripetuti
-più volte, o gli scoping bug di `styled-jsx`), per capire il perché di una
-scelta implementativa non ovvia dal solo codice, o per ricostruire il
-contesto di una decisione di prodotto già presa. Non va letto per intero:
-`Grep` sul numero di sezione (es. "## 88\.") o su parole chiave dell'area
-d'interesse basta quasi sempre.
+La storia di ogni modifica (richiesta → decisione → motivo → verifica) non sta
+qui, perché questo file si rilegge a ogni messaggio: l'archivio §10-§403 è in
+**`docs/CHANGELOG.md`** (indice in `docs/indice-changelog.md`, da cercare con
+Grep, mai da leggere per intero), le voci dal 28/10/2026 in `docs/changelog/`.
+Leggerlo prima di ritoccare un'area con un bug già corretto in passato (es. i
+pattern flex/wrap o gli scoping bug di `styled-jsx`) o per capire il perché di
+una scelta non ovvia dal codice.
 
 **Regola per le prossime modifiche**: una nuova voce di lavoro (bug fix,
 nuova funzionalità, giro di correzioni) va scritta in un file suo in
 `docs/changelog/` (`AAAA-MM-GG-argomento.md`, istruzioni in
 `docs/changelog/README.md`), mai qui e mai più in fondo a
-`docs/CHANGELOG.md`, che resta l'archivio delle sezioni §10-§399: tutte le PR
-che scrivevano lì andavano in conflitto tra loro e restavano ferme senza
-controlli. Stesso formato di sempre (richiesta esplicita dell'utente,
+`docs/CHANGELOG.md` (archivio chiuso). Stesso formato di sempre (richiesta esplicita dell'utente,
 decisione presa, motivo, verifica); nel codice si cita il file. `CLAUDE.md` si aggiorna solo quando cambia davvero un fatto vivo
 delle sezioni 1-9 sopra: lo stack, l'architettura, una regola di sviluppo
 vincolante, o lo stato di una funzionalità (`[x]`/`[ ]` in §9, dettaglio in
