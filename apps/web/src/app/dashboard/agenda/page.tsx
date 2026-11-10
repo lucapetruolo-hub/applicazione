@@ -1674,6 +1674,42 @@ function DashboardAgendaContent() {
       : []),
   ];
 
+  /**
+   * Lavori oltre i posti della fascia (docs/changelog/2026-11-10-appuntamenti-sovrapposti.md):
+   * stessa regola del server quando il cliente accetta (commitments.ts). In
+   * una fascia larga con più posti, per esempio 08:00-19:00 da 5, tre lavori
+   * insieme sono normali; il bordo rosso compare solo quando i lavori che si
+   * toccano superano i posti della fascia in cui comincia il lavoro (uno solo
+   * fuori dalle fasce). I lavori su più giorni non occupano posti, come sul server.
+   */
+  const conflictKeys = (() => {
+    type Occupied = { key: string; date: string; start: number; end: number; mode: "HOME" | "ONLINE" | "ANY" };
+    const occupied: Occupied[] = [
+      ...(bookings ?? [])
+        .filter((b) => b.status === "CONFIRMED" || b.status === "PENDING" || b.status === "COMPLETED")
+        .flatMap((b) => onEachDay(b.scheduledAt, b.scheduledEndAt, `booking-${b.id}`).filter((day) => day.dayOf === null).map((day) => ({ ...day, mode: b.serviceMode === "ONLINE" ? ("ONLINE" as const) : ("HOME" as const) }))),
+      ...(externalJobs ?? [])
+        .filter((j) => j.status !== "CANCELED")
+        .flatMap((j) => onEachDay(j.scheduledAt, j.scheduledEndAt, `external-${j.id}`).filter((day) => day.dayOf === null).map((day) => ({ ...day, mode: "ANY" as const }))),
+    ];
+    const capacity = (item: Occupied) => {
+      const slot = slots.find((sl) => slotAppliesOnDateStr(sl, item.date) && timeMinutes(sl.start) <= item.start && item.start < timeMinutes(sl.end));
+      return (item.mode === "ONLINE" ? slot?.onlineMax : slot?.homeMax) ?? 1;
+    };
+    const keys = new Set<string>();
+    for (const item of occupied) {
+      // Come sul server: un lavoro esterno conta per ogni modalità, una prenotazione solo per la sua.
+      const others = occupied.filter(
+        (other) => other !== item && other.date === item.date && other.start < item.end && item.start < other.end && (item.mode === "ANY" || other.mode === "ANY" || other.mode === item.mode),
+      );
+      if (others.length + 1 > capacity(item)) {
+        keys.add(item.key);
+        for (const other of others) keys.add(other.key);
+      }
+    }
+    return keys;
+  })();
+
   /** Orari liberi di un giorno: le fasce dell'agenda, da oggi in poi, nei giorni aperti. */
   function freeBandsOn(dateStr: string): AgendaFreeBand[] {
     if (closedSet.has(dateStr) || dateStr < todayStr) return [];
@@ -2162,7 +2198,7 @@ function DashboardAgendaContent() {
               ) : bookingView === "day" || bookingView === "week" ? (
                 <AgendaTimeGrid
                   days={visibleDays}
-                  events={gridEvents}
+                  events={gridEvents.map((e) => (conflictKeys.has(e.key) ? { ...e, conflict: true } : e))}
                   free={freeBands}
                   closedDates={closedSet}
                   weather={weather}

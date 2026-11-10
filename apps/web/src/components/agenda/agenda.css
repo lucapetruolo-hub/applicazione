@@ -1606,3 +1606,7 @@
   padding: 0;
   border-left-width: 3px;
 }
+/* Più lavori dei posti della fascia: bordo rosso sottile, il colore del tipo resta a sinistra. */
+.ag-ev.conflict {
+  box-shadow: 0 0 0 2px var(--ag-red);
+}

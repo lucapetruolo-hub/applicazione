@@ -79,7 +79,7 @@ import { ProfessionalInvoiceRequestBox } from "@/components/ProfessionalInvoiceR
 import { JobDocumentsModal } from "@/components/JobDocumentsModal";
 import { AppointmentReplyStatus } from "./AppointmentReplyStatus";
 import { QuoteQuickFill } from "./QuoteQuickFill";
-import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle, bookingsOverlapping, BusyTimeNotice } from "./requestHelpers";
+import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle, bookingsOverlapping, BusyTimeNotice, hasRoomAt } from "./requestHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import { JobLimitModal } from "@/components/JobLimitModal";
@@ -276,7 +276,7 @@ export function RequestCard({
   const quoteBusy = (() => {
     const slot = modeAvailableSlots.length > 0 && !useManualDateTime ? modeAvailableSlots.find((sl) => slotKey(sl) === selectedSlotKey) : null;
     const chosen = slot ? { date: slot.date, start: slot.startTime, end: slot.endTime } : manualDate && manualStartTime ? { date: manualDate, start: manualStartTime, end: manualEndTime } : null;
-    return bookingsOverlapping(bookings, chosen, booking?.id);
+    return { bookings: bookingsOverlapping(bookings, chosen, booking?.id), roomLeft: hasRoomAt(modeAvailableSlots, chosen) };
   })();
 
   const [showCounterForm, setShowCounterForm] = useState(false);
@@ -299,7 +299,7 @@ export function RequestCard({
       : manualCounterDate && manualCounterStartTime
         ? { date: manualCounterDate, start: manualCounterStartTime, end: manualCounterEndTime }
         : null;
-    return bookingsOverlapping(bookings, chosen, booking?.id);
+    return { bookings: bookingsOverlapping(bookings, chosen, booking?.id), roomLeft: hasRoomAt(modeAvailableSlots, chosen) };
   })();
   const [counterNote, setCounterNote] = useState("");
   const [counterError, setCounterError] = useState<string | null>(null);
@@ -1785,7 +1785,7 @@ export function RequestCard({
                   ) : null}
                 </YStack>
               )}
-              <BusyTimeNotice bookings={quoteBusy} />
+              <BusyTimeNotice bookings={quoteBusy.bookings} roomLeft={quoteBusy.roomLeft} />
 
               {/* Lavoro su più giorni (docs/CHANGELOG.md §310): stesso orario ogni giorno, non blocca altri lavori. */}
               <YStack gap="1">
@@ -2074,7 +2074,7 @@ export function RequestCard({
                   ) : null}
                 </YStack>
               )}
-              <BusyTimeNotice bookings={counterBusy} />
+              <BusyTimeNotice bookings={counterBusy.bookings} roomLeft={counterBusy.roomLeft} />
               <textarea aria-label="Nota per il cliente" value={counterNote} onChange={(e) => setCounterNote(e.target.value)} placeholder="Nota per il cliente (facoltativa)" rows={2} style={{ ...smallInputStyle, resize: "vertical" }} />
               {counterError ? (
                 <Text color={brand.urgenza} fontSize={16}>

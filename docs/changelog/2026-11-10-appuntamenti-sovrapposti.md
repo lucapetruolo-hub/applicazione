@@ -28,3 +28,31 @@ due preventivi ("2 in attesa").
 (appuntamento 09:00–10:30 e preventivo 09:30–11:00 lo stesso lunedì, Giorno
 e Settimana, telefono e computer): i due riquadri ci sono e non hanno pixel
 in comune. Typecheck e lint di `apps/web` puliti.
+
+## Secondo giro: avviso e bordo rosso con le fasce larghe
+
+**Richiesta** (Luca): sì all'avviso nel preventivo e al bordo rosso in agenda,
+"considerando che si possono impostare anche delle fasce di lavoro ampie,
+quindi ad esempio 08:00-19:00 e lì tutte le prenotazioni all'interno".
+
+**Situazione**: l'avviso nel preventivo esisteva già (collaudo C-15), ma
+scattava per ogni lavoro nella stessa fascia, anche con posti liberi: con le
+fasce di partenza (8-13 e 14-20, 5 posti) era quasi sempre acceso.
+
+**Decisione**: stessa regola del server quando il cliente accetta
+(`apps/api/src/agenda/commitments.ts`), valida per fasce di qualsiasi durata.
+- Preventivo e "Proponi un'altra data": orario in una fascia con posto (le
+  fasce piene non compaiono tra quelle libere) = riga grigia "In questa fascia
+  hai già 1 lavoro: … C'è ancora posto."; fascia piena o orario fuori dalle
+  fasce che tocca un lavoro = avviso color ottone "Ti sovrapponi a … Scegli
+  un altro orario o mandalo lo stesso." (`hasRoomAt` e `BusyTimeNotice` in
+  `apps/web/src/app/dashboard/richieste/_components/requestHelpers.tsx`).
+- Agenda: bordo rosso sottile solo sui lavori (prenotazioni e lavori esterni,
+  non i preventivi in attesa) che insieme superano i posti della fascia in cui
+  comincia il lavoro; fuori dalle fasce il posto è uno. Un lavoro esterno
+  conta per ogni modalità, una prenotazione solo per la sua; i lavori su più
+  giorni non occupano posti. Il lettore di schermo dice "sovrapposto".
+
+**Verifica**: nuova prova in `e2e/tests/agenda-sovrapposti.spec.ts`
+(appuntamento e lavoro esterno insieme: rossi senza fasce, non rossi con una
+fascia da due posti). Typecheck e lint puliti.

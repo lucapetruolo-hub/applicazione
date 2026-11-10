@@ -21,6 +21,8 @@ export type AgendaGridEvent = {
   recurring?: boolean;
   /** Stesso lavoro su più giorni: una sola voce nei conteggi. */
   groupKey?: string;
+  /** Oltre i posti della fascia: bordo rosso (docs/changelog/2026-11-10-appuntamenti-sovrapposti.md). */
+  conflict?: boolean;
   onPress: () => void;
 };
 
@@ -289,7 +291,7 @@ export function AgendaTimeGrid({
                       <button
                         key={event.key}
                         type="button"
-                        className={`ag-ev ${event.kind}${narrowWeek ? " narrow" : ""}${tight ? " tight" : ""}${lanes > 1 ? " shared" : ""}${event.key === selectedKey ? " selected" : ""}`}
+                        className={`ag-ev ${event.kind}${narrowWeek ? " narrow" : ""}${tight ? " tight" : ""}${lanes > 1 ? " shared" : ""}${event.conflict ? " conflict" : ""}${event.key === selectedKey ? " selected" : ""}`}
                         style={{
                           top: y(start) + 2,
                           height: blockHeight,
@@ -342,7 +344,7 @@ export function AgendaTimeGrid({
                         <span className="sr-only">
                           , {event.label}
                           {event.recurring ? ", lavoro ricorrente" : ""}
-                          {lanes > 1 ? `, nella stessa fascia di un altro impegno` : ""}
+                          {event.conflict ? ", sovrapposto: più lavori dei posti della fascia" : lanes > 1 ? ", nella stessa fascia di un altro impegno" : ""}
                         </span>
                       </button>
                     );

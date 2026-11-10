@@ -62,3 +62,40 @@ for (const view of ["Settimana", "Giorno"] as const) {
     await page.screenshot({ path: testInfo.outputPath(`${view.toLowerCase()}.png`) });
   });
 }
+
+/**
+ * Bordo rosso solo oltre i posti della fascia (richiesta di Luca: con fasce
+ * larghe, per esempio 08:00-19:00, più lavori insieme sono normali).
+ */
+test("bordo rosso solo quando i lavori insieme superano i posti della fascia", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "computer-tokyo", "Basta il computer.");
+  const profile = await prisma.professionalProfile.findFirstOrThrow({ where: { userId: e2eData().userId } });
+  // Lunedì 26: appuntamento 09:00–10:30 e, sopra, un lavoro esterno 10:00–11:00.
+  const job = await prisma.externalJob.create({
+    data: { professionalProfileId: profile.id, clientName: "Mario Neri", scheduledAt: wall("2026-10-26T10:00"), scheduledEndAt: wall("2026-10-26T11:00") },
+  });
+  let slotId: string | null = null;
+  try {
+    await page.clock.setFixedTime(new Date("2026-10-26T06:00:00Z"));
+    await page.goto("/dashboard/agenda");
+    await page.getByRole("group", { name: "Vista" }).getByRole("button", { name: "Giorno" }).click();
+    const day = page.locator(".ag-col").first();
+    // Senza fasce il posto è uno solo: tutti e due in rosso.
+    await expect(day.locator(".ag-ev.conflict")).toHaveCount(2);
+    await expect(day.locator(".ag-ev.ext", { hasText: "Mario" })).toHaveAccessibleName(/sovrapposto/);
+    await page.screenshot({ path: testInfo.outputPath("conflitto.png") });
+
+    // Fascia larga 08:00–13:00 con due posti a domicilio: niente rosso.
+    const slot = await prisma.availabilitySlot.create({
+      data: { professionalProfileId: profile.id, dayOfWeek: 1, date: new Date("2026-10-26T00:00:00.000Z"), startTime: "08:00", endTime: "13:00", allowsHome: true, homeMaxBookings: 2 },
+    });
+    slotId = slot.id;
+    await page.reload();
+    await page.getByRole("group", { name: "Vista" }).getByRole("button", { name: "Giorno" }).click();
+    await expect(day.locator(".ag-ev.ext", { hasText: "Mario" })).toHaveCount(1);
+    await expect(day.locator(".ag-ev.conflict")).toHaveCount(0);
+  } finally {
+    await prisma.externalJob.delete({ where: { id: job.id } });
+    if (slotId) await prisma.availabilitySlot.delete({ where: { id: slotId } });
+  }
+});
