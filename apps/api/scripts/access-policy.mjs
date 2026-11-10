@@ -166,6 +166,8 @@ const selfProfessional = [
   "GET /agenda/week-template",
   "PUT /agenda/week-template",
   "PUT /agenda/week-template/month",
+  // Giorni cambiati a mano prima di salvare la settimana (docs/changelog/2026-11-10-eccezioni-settimana.md).
+  "POST /agenda/week-template/preview",
   "POST /agenda/week-template/starter/keep",
   "GET /agenda/online-slots",
   "POST /agenda/online-slots/remove",
