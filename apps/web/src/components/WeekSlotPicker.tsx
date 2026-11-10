@@ -30,7 +30,9 @@ function mondayOf(date: string): string {
 
 function groupByWeek<S extends WeekSlot>(slots: S[]): Week<S>[] {
   const weeks: Week<S>[] = [];
-  for (const slot of slots) {
+  // In ordine: la richiesta del cliente mette in testa l'orario del link anche se è più avanti.
+  const sorted = [...slots].sort((a, b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`));
+  for (const slot of sorted) {
     const key = mondayOf(slot.date);
     let week = weeks[weeks.length - 1];
     if (!week || week.key !== key) {

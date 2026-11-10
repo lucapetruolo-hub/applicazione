@@ -44,3 +44,30 @@ troppo vicine.
 `e2e/tests/date-preventivo.spec.ts` (telefono e computer: si apre sulla
 settimana dell'orario chiesto tra circa tre settimane, già scelto e segnato,
 frecce, nessun problema grave di accessibilità con axe).
+
+## Terzo giro (dopo l'unione di #308)
+
+**Richiesta** (Luca, stesso giorno): sì alla prova automatica per "Proponi
+un'altra data" e allo stesso elenco a settimane nella richiesta del cliente.
+
+**Decisione**:
+- Prova nuova in `e2e/tests/date-preventivo.spec.ts`: con una data proposta
+  dal cliente tra circa tre settimane, "Modifica" apre la sua settimana con la
+  fascia scelta e segnata "proposto dal cliente", niente menu a tendina, e
+  "Invia nuova proposta" salva la fascia scelta.
+- Richiesta del cliente (`GuidedRequestForm`): `WeekSlotPicker` al posto di
+  `SlotPills` (primi tre orari + "Altri orari" che apriva i giorni sette alla
+  volta), con "Nessuna preferenza" sopra. Si apre sulla settimana dell'orario
+  arrivato dal link (`data`/`fasciaOraria`). `WeekSlotPicker` ora ordina le
+  fasce: la richiesta mette in testa l'orario del link anche se è più avanti.
+  Tolte le classi non più usate `.slot-days`, `.slot-day`, `.slot-day-label`.
+
+**Verifica**: `tsc` e `pnpm lint` del sito, `tsc` di e2e; le cinque prove di
+`date-preventivo.spec.ts` passano in locale (telefono e computer, axe).
+
+**Andamento sul telefono** (sì di Luca, stesso giorno): con il passo in più
+"Modifica richiesta dal cliente" le etichette "Fissato" e "Terminato" si
+sovrapponevano. Le colonne di `MiniTimeline` (professionista e cliente) ora
+sono tutte larghe uguali (`flexBasis={0}`, 2 px di margine), così l'etichetta
+lunga va a capo nella sua colonna. Controllato nella prova "Modifica…" di
+`date-preventivo.spec.ts` (le due etichette non si toccano).
