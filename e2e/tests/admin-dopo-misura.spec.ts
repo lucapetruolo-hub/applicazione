@@ -151,6 +151,19 @@ test("Ricorso su un problema: chiede conferma e mostra la persona accanto all'at
   await context.close();
 });
 
+test("Problemi: dopo un caricamento fallito, la lista arrivata toglie l'errore", async ({ browser, isMobile }) => {
+  await prisma.jobIssue.update({ where: { id: ids.issue }, data: { status: "UPHELD", appealDecision: null, appealNote: null, appealResolvedAt: null, appealResolvedByUserId: null } });
+  const { context, page } = await adminPage(browser, isMobile);
+  // Il primo caricamento fallisce (docs/changelog/2026-11-10-prove-che-falliscono-in-locale.md).
+  await page.route(/\/admin\/job-issues\?view=open/, (route) => route.fulfill({ status: 500, json: { message: "Errore di prova del caricamento" } }), { times: 1 });
+  await page.goto("/admin/problemi");
+  await expect(page.getByText("Errore di prova del caricamento")).toBeVisible();
+  await page.getByRole("button", { name: "Ricorsi" }).click();
+  await expect(page.getByRole("link", { name: `Impianti Elettrici ${stamp} · Luigi Bianchi${stamp}` })).toBeVisible();
+  await expect(page.getByText("Errore di prova del caricamento")).toHaveCount(0);
+  await context.close();
+});
+
 test("Ce ne occupiamo noi: pericolo del gas e Prendo io anche nella pagina", async ({ browser, isMobile }) => {
   await prisma.adminCaseClaim.deleteMany({ where: { caseKey: `PROBLEM_TAKEOVER:${ids.takeover}` } });
   const { context, page } = await adminPage(browser, isMobile);
