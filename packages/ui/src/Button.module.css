@@ -1,0 +1,192 @@
+/*
+ * Pulsante del sito in HTML semplice (Button.web.tsx,
+ * docs/changelog/2026-11-10-pulsanti-senza-tamagui.md). FILE GENERATO da
+ * buttonModuleCss() in buttonStyle.ts: non modificarlo a mano, ma lì e poi
+ * `pnpm --filter @professionisti/ui genera-css-pulsante`.
+ *
+ * Le regole fisse di ButtonFrame e ButtonText; poi, per ogni proprietà e
+ * condizione, una classe che legge il valore dalla sua variabile CSS.
+ */
+
+.frame {
+  position: relative;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  border-style: solid;
+}
+
+/* Pulsante spento: niente tocco, nemmeno sui figli (come Tamagui). */
+.disabled {
+  pointer-events: none;
+}
+
+:where(.disabled) > * {
+  pointer-events: none;
+}
+
+.text {
+  user-select: none;
+  cursor: pointer;
+  flex-grow: 0;
+  flex-shrink: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.f_cursor_base { cursor: var(--bf-cursor-base); }
+.f_borderWidth_base { border-width: var(--bf-borderWidth-base); }
+.f_borderColor_base { border-color: var(--bf-borderColor-base); }
+.f_height_base { height: var(--bf-height-base); }
+.f_width_base { width: var(--bf-width-base); }
+.f_minHeight_base { min-height: var(--bf-minHeight-base); }
+.f_minWidth_base { min-width: var(--bf-minWidth-base); }
+.f_paddingHorizontal_base { padding-inline: var(--bf-paddingHorizontal-base); }
+.f_paddingVertical_base { padding-block: var(--bf-paddingVertical-base); }
+.f_borderRadius_base { border-radius: var(--bf-borderRadius-base); }
+.f_backgroundColor_base { background-color: var(--bf-backgroundColor-base); }
+.f_opacity_base { opacity: var(--bf-opacity-base); }
+.f_alignSelf_base { align-self: var(--bf-alignSelf-base); }
+.f_flex_base { flex: var(--bf-flex-base); }
+.f_flexGrow_base { flex-grow: var(--bf-flexGrow-base); }
+.f_flexShrink_base { flex-shrink: var(--bf-flexShrink-base); }
+.f_flexBasis_base { flex-basis: var(--bf-flexBasis-base); }
+.f_gap_base { gap: var(--bf-gap-base); }
+.f_outlineColor_base { outline-color: var(--bf-outlineColor-base); }
+.f_outlineStyle_base { outline-style: var(--bf-outlineStyle-base); }
+.f_outlineWidth_base { outline-width: var(--bf-outlineWidth-base); }
+.f_outlineOffset_base { outline-offset: var(--bf-outlineOffset-base); }
+.t_color_base { color: var(--bt-color-base); }
+.t_fontFamily_base { font-family: var(--bt-fontFamily-base); }
+.t_fontSize_base { font-size: var(--bt-fontSize-base); }
+.t_lineHeight_base { line-height: var(--bt-lineHeight-base); }
+.t_fontWeight_base { font-weight: var(--bt-fontWeight-base); }
+.t_letterSpacing_base { letter-spacing: var(--bt-letterSpacing-base); }
+@media (hover: hover) {
+  .f_borderColor_hover:where(:hover) { border-color: var(--bf-borderColor-hover); }
+  .f_backgroundColor_hover:where(:hover) { background-color: var(--bf-backgroundColor-hover); }
+  .f_opacity_hover:where(:hover) { opacity: var(--bf-opacity-hover); }
+  .f_outlineColor_hover:where(:hover) { outline-color: var(--bf-outlineColor-hover); }
+  .f_outlineStyle_hover:where(:hover) { outline-style: var(--bf-outlineStyle-hover); }
+  .f_outlineWidth_hover:where(:hover) { outline-width: var(--bf-outlineWidth-hover); }
+  .f_outlineOffset_hover:where(:hover) { outline-offset: var(--bf-outlineOffset-hover); }
+}
+.f_borderColor_press:where(:active) { border-color: var(--bf-borderColor-press); }
+.f_backgroundColor_press:where(:active) { background-color: var(--bf-backgroundColor-press); }
+.f_opacity_press:where(:active) { opacity: var(--bf-opacity-press); }
+.f_outlineColor_press:where(:active) { outline-color: var(--bf-outlineColor-press); }
+.f_outlineStyle_press:where(:active) { outline-style: var(--bf-outlineStyle-press); }
+.f_outlineWidth_press:where(:active) { outline-width: var(--bf-outlineWidth-press); }
+.f_outlineOffset_press:where(:active) { outline-offset: var(--bf-outlineOffset-press); }
+.f_borderColor_focus:where(:focus) { border-color: var(--bf-borderColor-focus); }
+.f_backgroundColor_focus:where(:focus) { background-color: var(--bf-backgroundColor-focus); }
+.f_opacity_focus:where(:focus) { opacity: var(--bf-opacity-focus); }
+.f_outlineColor_focus:where(:focus) { outline-color: var(--bf-outlineColor-focus); }
+.f_outlineStyle_focus:where(:focus) { outline-style: var(--bf-outlineStyle-focus); }
+.f_outlineWidth_focus:where(:focus) { outline-width: var(--bf-outlineWidth-focus); }
+.f_outlineOffset_focus:where(:focus) { outline-offset: var(--bf-outlineOffset-focus); }
+.f_borderColor_focusVisible:where(:focus-visible) { border-color: var(--bf-borderColor-focusVisible); }
+.f_backgroundColor_focusVisible:where(:focus-visible) { background-color: var(--bf-backgroundColor-focusVisible); }
+.f_opacity_focusVisible:where(:focus-visible) { opacity: var(--bf-opacity-focusVisible); }
+.f_outlineColor_focusVisible:where(:focus-visible) { outline-color: var(--bf-outlineColor-focusVisible); }
+.f_outlineStyle_focusVisible:where(:focus-visible) { outline-style: var(--bf-outlineStyle-focusVisible); }
+.f_outlineWidth_focusVisible:where(:focus-visible) { outline-width: var(--bf-outlineWidth-focusVisible); }
+.f_outlineOffset_focusVisible:where(:focus-visible) { outline-offset: var(--bf-outlineOffset-focusVisible); }
+@media (max-width: 1020px) {
+  .f_borderWidth_md { border-width: var(--bf-borderWidth-md); }
+  .f_height_md { height: var(--bf-height-md); }
+  .f_width_md { width: var(--bf-width-md); }
+  .f_minHeight_md { min-height: var(--bf-minHeight-md); }
+  .f_minWidth_md { min-width: var(--bf-minWidth-md); }
+  .f_paddingHorizontal_md { padding-inline: var(--bf-paddingHorizontal-md); }
+  .f_paddingVertical_md { padding-block: var(--bf-paddingVertical-md); }
+  .f_borderRadius_md { border-radius: var(--bf-borderRadius-md); }
+  .f_alignSelf_md { align-self: var(--bf-alignSelf-md); }
+  .f_flex_md { flex: var(--bf-flex-md); }
+  .f_flexGrow_md { flex-grow: var(--bf-flexGrow-md); }
+  .f_flexShrink_md { flex-shrink: var(--bf-flexShrink-md); }
+  .f_flexBasis_md { flex-basis: var(--bf-flexBasis-md); }
+  .f_gap_md { gap: var(--bf-gap-md); }
+}
+@media (max-width: 800px) {
+  .f_borderWidth_sm { border-width: var(--bf-borderWidth-sm); }
+  .f_height_sm { height: var(--bf-height-sm); }
+  .f_width_sm { width: var(--bf-width-sm); }
+  .f_minHeight_sm { min-height: var(--bf-minHeight-sm); }
+  .f_minWidth_sm { min-width: var(--bf-minWidth-sm); }
+  .f_paddingHorizontal_sm { padding-inline: var(--bf-paddingHorizontal-sm); }
+  .f_paddingVertical_sm { padding-block: var(--bf-paddingVertical-sm); }
+  .f_borderRadius_sm { border-radius: var(--bf-borderRadius-sm); }
+  .f_alignSelf_sm { align-self: var(--bf-alignSelf-sm); }
+  .f_flex_sm { flex: var(--bf-flex-sm); }
+  .f_flexGrow_sm { flex-grow: var(--bf-flexGrow-sm); }
+  .f_flexShrink_sm { flex-shrink: var(--bf-flexShrink-sm); }
+  .f_flexBasis_sm { flex-basis: var(--bf-flexBasis-sm); }
+  .f_gap_sm { gap: var(--bf-gap-sm); }
+}
+@media (max-width: 660px) {
+  .f_borderWidth_xs { border-width: var(--bf-borderWidth-xs); }
+  .f_height_xs { height: var(--bf-height-xs); }
+  .f_width_xs { width: var(--bf-width-xs); }
+  .f_minHeight_xs { min-height: var(--bf-minHeight-xs); }
+  .f_minWidth_xs { min-width: var(--bf-minWidth-xs); }
+  .f_paddingHorizontal_xs { padding-inline: var(--bf-paddingHorizontal-xs); }
+  .f_paddingVertical_xs { padding-block: var(--bf-paddingVertical-xs); }
+  .f_borderRadius_xs { border-radius: var(--bf-borderRadius-xs); }
+  .f_alignSelf_xs { align-self: var(--bf-alignSelf-xs); }
+  .f_flex_xs { flex: var(--bf-flex-xs); }
+  .f_flexGrow_xs { flex-grow: var(--bf-flexGrow-xs); }
+  .f_flexShrink_xs { flex-shrink: var(--bf-flexShrink-xs); }
+  .f_flexBasis_xs { flex-basis: var(--bf-flexBasis-xs); }
+  .f_gap_xs { gap: var(--bf-gap-xs); }
+}
+@media (min-width: 661px) {
+  .f_borderWidth_gtXs { border-width: var(--bf-borderWidth-gtXs); }
+  .f_height_gtXs { height: var(--bf-height-gtXs); }
+  .f_width_gtXs { width: var(--bf-width-gtXs); }
+  .f_minHeight_gtXs { min-height: var(--bf-minHeight-gtXs); }
+  .f_minWidth_gtXs { min-width: var(--bf-minWidth-gtXs); }
+  .f_paddingHorizontal_gtXs { padding-inline: var(--bf-paddingHorizontal-gtXs); }
+  .f_paddingVertical_gtXs { padding-block: var(--bf-paddingVertical-gtXs); }
+  .f_borderRadius_gtXs { border-radius: var(--bf-borderRadius-gtXs); }
+  .f_alignSelf_gtXs { align-self: var(--bf-alignSelf-gtXs); }
+  .f_flex_gtXs { flex: var(--bf-flex-gtXs); }
+  .f_flexGrow_gtXs { flex-grow: var(--bf-flexGrow-gtXs); }
+  .f_flexShrink_gtXs { flex-shrink: var(--bf-flexShrink-gtXs); }
+  .f_flexBasis_gtXs { flex-basis: var(--bf-flexBasis-gtXs); }
+  .f_gap_gtXs { gap: var(--bf-gap-gtXs); }
+}
+@media (min-width: 801px) {
+  .f_borderWidth_gtSm { border-width: var(--bf-borderWidth-gtSm); }
+  .f_height_gtSm { height: var(--bf-height-gtSm); }
+  .f_width_gtSm { width: var(--bf-width-gtSm); }
+  .f_minHeight_gtSm { min-height: var(--bf-minHeight-gtSm); }
+  .f_minWidth_gtSm { min-width: var(--bf-minWidth-gtSm); }
+  .f_paddingHorizontal_gtSm { padding-inline: var(--bf-paddingHorizontal-gtSm); }
+  .f_paddingVertical_gtSm { padding-block: var(--bf-paddingVertical-gtSm); }
+  .f_borderRadius_gtSm { border-radius: var(--bf-borderRadius-gtSm); }
+  .f_alignSelf_gtSm { align-self: var(--bf-alignSelf-gtSm); }
+  .f_flex_gtSm { flex: var(--bf-flex-gtSm); }
+  .f_flexGrow_gtSm { flex-grow: var(--bf-flexGrow-gtSm); }
+  .f_flexShrink_gtSm { flex-shrink: var(--bf-flexShrink-gtSm); }
+  .f_flexBasis_gtSm { flex-basis: var(--bf-flexBasis-gtSm); }
+  .f_gap_gtSm { gap: var(--bf-gap-gtSm); }
+}
+@media (min-width: 1021px) {
+  .f_borderWidth_gtMd { border-width: var(--bf-borderWidth-gtMd); }
+  .f_height_gtMd { height: var(--bf-height-gtMd); }
+  .f_width_gtMd { width: var(--bf-width-gtMd); }
+  .f_minHeight_gtMd { min-height: var(--bf-minHeight-gtMd); }
+  .f_minWidth_gtMd { min-width: var(--bf-minWidth-gtMd); }
+  .f_paddingHorizontal_gtMd { padding-inline: var(--bf-paddingHorizontal-gtMd); }
+  .f_paddingVertical_gtMd { padding-block: var(--bf-paddingVertical-gtMd); }
+  .f_borderRadius_gtMd { border-radius: var(--bf-borderRadius-gtMd); }
+  .f_alignSelf_gtMd { align-self: var(--bf-alignSelf-gtMd); }
+  .f_flex_gtMd { flex: var(--bf-flex-gtMd); }
+  .f_flexGrow_gtMd { flex-grow: var(--bf-flexGrow-gtMd); }
+  .f_flexShrink_gtMd { flex-shrink: var(--bf-flexShrink-gtMd); }
+  .f_flexBasis_gtMd { flex-basis: var(--bf-flexBasis-gtMd); }
+  .f_gap_gtMd { gap: var(--bf-gap-gtMd); }
+}
