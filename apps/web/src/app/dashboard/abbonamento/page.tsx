@@ -896,7 +896,16 @@ function AbbonamentoContent() {
               </Text>
               <Text color={brand.grafite70} fontSize={15} lineHeight="22px">
                 {rules.change}{" "}
-                <button type="button" className="fee-more" aria-expanded={feeDetailsOpen} onClick={() => setFeeDetailsOpen((open) => !open)}>
+                <button
+                  type="button"
+                  className="fee-more"
+                  aria-expanded={feeDetailsOpen}
+                  onClick={() => setFeeDetailsOpen((open) => !open)}
+                  // Esc richiude il dettaglio aperto (E7-16 del controllo dell'8/11).
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape" && feeDetailsOpen) setFeeDetailsOpen(false);
+                  }}
+                >
                   {feeDetailsOpen ? "Chiudi" : "Scopri di più"}
                 </button>
               </Text>

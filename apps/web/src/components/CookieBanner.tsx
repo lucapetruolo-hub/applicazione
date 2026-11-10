@@ -28,6 +28,9 @@ export function CookieBanner() {
   // <html> (COOKIE_CHOICE_BOOT_SCRIPT), poi qui sotto si toglie del tutto.
   const [visible, setVisible] = useState(true);
   const bannerRef = useRef<HTMLDivElement>(null);
+  // Riaperto da "Preferenze cookie": il fuoco va sui pulsanti del banner
+  // (E7-16 del controllo dell'8/11), non al primo caricamento.
+  const focusOnShowRef = useRef(false);
 
   useEffect(() => {
     // La scelta salvata nel browser si legge solo dopo il montaggio (nel render del server non c'è).
@@ -37,6 +40,7 @@ export function CookieBanner() {
     // (revoca del consenso, docs/CHANGELOG.md §170).
     const reopen = () => {
       document.documentElement.removeAttribute(COOKIE_CHOICE_ATTRIBUTE);
+      focusOnShowRef.current = true;
       setVisible(true);
     };
     // Consenso dato da un altro punto ("Usa la mappa interattiva", "Mostra la mappa"): il banner sparisce.
@@ -64,6 +68,10 @@ export function CookieBanner() {
       root.style.scrollPaddingBottom = height;
     };
     apply();
+    if (focusOnShowRef.current) {
+      focusOnShowRef.current = false;
+      banner.querySelector<HTMLButtonElement>("button")?.focus();
+    }
     const observer = new ResizeObserver(apply);
     observer.observe(banner);
     return () => {
@@ -141,7 +149,7 @@ export function CookieBanner() {
           in fondo alla pagina.
         </span>{" "}
         {/* "Scopri di più" al posto di "Cookie Policy" (prova con persone simulate, docs/changelog/2026-11-08-prova-persone-simulate.md). */}
-        <Link href="/cookie" style={{ color: "#0e7a4c", fontWeight: 600 }}>
+        <Link href="/cookie" style={{ color: "#0e7a4c", fontWeight: 600, display: "inline-block", padding: "4px 0" }}>
           Scopri di più
         </Link>
         .

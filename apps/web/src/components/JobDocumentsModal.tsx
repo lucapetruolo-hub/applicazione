@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode, useRef } from "react";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 import { Button, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { accountingDateLabel, formatEurCents, type JobDocumentsView } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
@@ -50,13 +51,9 @@ export function JobDocumentsModal({
     };
   }, [token, bookingId]);
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  // Fuoco dentro, Tab chiuso nella finestra, Esc chiude, fuoco restituito alla chiusura (lib/useDialogFocus.ts).
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onClose);
 
   return (
     <div
@@ -74,7 +71,7 @@ export function JobDocumentsModal({
       }}
     >
       <YStack
-        role="dialog"
+        ref={dialogRef as never} role="dialog"
         aria-modal
         aria-label={bookingId ? "Documenti del lavoro" : "Documenti"}
         width="100%"

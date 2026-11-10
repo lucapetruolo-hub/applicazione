@@ -382,7 +382,7 @@
   font: 500 12px var(--font-body), system-ui, sans-serif;
   color: var(--ag-ink);
   cursor: pointer;
-  min-height: 30px;
+  min-height: 32px;
 }
 .ag-mini-grid button:hover {
   background: #f6f1ec;
@@ -518,7 +518,7 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 500;
   margin-top: 3px;
   color: var(--ag-green-dark);
@@ -548,7 +548,8 @@
   position: relative;
 }
 .ag-hours > div {
-  font-size: 11px;
+  /* 13 px, prima 11 (E6-14 del controllo dell'8/11). */
+  font-size: 13px;
   color: var(--ag-muted);
   text-align: right;
   padding-right: 8px;
@@ -599,7 +600,7 @@
   position: absolute;
   top: 4px;
   left: 8px;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ag-green-dark);
 }
@@ -629,7 +630,7 @@
 .ag-ev span {
   display: block;
   color: var(--ag-muted);
-  font-size: 11.5px;
+  font-size: 12.5px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -664,7 +665,10 @@
 .ag-ev.canceled {
   background: #faf6f2;
   border-color: #d9cfc4;
-  opacity: 0.7;
+}
+/* Niente trasparenza: i testi restano sopra 4,5:1 (E7-05 del controllo dell'8/11). */
+.ag-ev.canceled b {
+  color: var(--ag-muted);
 }
 .ag-ev.canceled b {
   text-decoration: line-through;
@@ -1587,7 +1591,7 @@
 }
 /* Settimana sul telefono: ore libere senza spazi ("9h30") e un po' più piccole. */
 .ag-day-note.narrow {
-  font-size: 10px;
+  font-size: 11.5px;
   gap: 2px;
 }
 .ag-day-note.narrow .ag-weather {

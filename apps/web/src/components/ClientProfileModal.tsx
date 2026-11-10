@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useRef } from "react";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 import { Avatar, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
@@ -38,13 +39,9 @@ export function ClientProfileModal({
   imageUrl?: string | null;
   onClose: () => void;
 }) {
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  // Fuoco dentro, Tab chiuso nella finestra, Esc chiude, fuoco restituito alla chiusura (lib/useDialogFocus.ts).
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onClose);
 
   return (
     <div
@@ -65,7 +62,7 @@ export function ClientProfileModal({
       }}
     >
       <YStack
-        role="dialog"
+        ref={dialogRef as never} role="dialog"
         aria-modal
         aria-label="Scheda cliente"
         width="100%"

@@ -138,7 +138,7 @@ export default function ChatPage() {
     return (
       <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
-          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi per vedere le tue conversazioni
           </Text>
           <Link href="/accedi?redirect=/chat" style={{ textDecoration: "none" }}>
@@ -155,7 +155,9 @@ export default function ChatPage() {
     <YStack width="100%" alignItems="center" backgroundColor="transparent">
       {/* Niente titolo "Chat" sopra (docs/CHANGELOG.md §198, richiesta
           esplicita dell'utente): la voce attiva nel menu dice già dove si
-          è, lo spazio va alle conversazioni. */}
+          è, lo spazio va alle conversazioni. Il titolo resta per chi usa
+          il lettore di schermo (E7-01 del controllo dell'8/11). */}
+      <h1 className="sr-only">Messaggi</h1>
       {error ? (
         <Text color={brand.urgenza} paddingHorizontal="4" paddingTop="3" width="100%" maxWidth={1200}>
           {error}

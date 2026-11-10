@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { BRAND, COMPANY, type ContactMessageInput } from "@professionisti/shared";
 import { Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -74,36 +74,53 @@ export default function ContattiContent({ initialReport = false, initialProfileH
   const [turnstileReset, setTurnstileReset] = useState(0);
   const [goodFaith, setGoodFaith] = useState(false);
   const isReport = role === "REPORT_ILLEGAL";
+  // Campo sbagliato: segnato, collegato al messaggio e con il fuoco sopra,
+  // come in /accedi (E7-06 del controllo dell'8/11).
+  const [errorField, setErrorField] = useState<"email" | "name" | "url" | "content" | null>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const urlRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+
+  function fail(message: string, field: "email" | "name" | "url" | "content" | null) {
+    setErrorMessage(message);
+    setErrorField(field);
+    setStatus("error");
+    const target = { email: emailRef, name: nameRef, url: urlRef, content: contentRef }[field ?? "email"];
+    if (field) target.current?.focus();
+  }
+
+  function fieldError(field: "email" | "name" | "url" | "content") {
+    return status === "error" && errorField === field ? { "aria-invalid": true as const, "aria-describedby": "contatti-errore" } : {};
+  }
 
   async function handleSubmit() {
-    if (!email.trim() || !email.includes("@") || !content.trim()) {
-      setErrorMessage("Inserisci un'email valida e un messaggio.");
-      setStatus("error");
+    if (!email.trim() || !email.includes("@")) {
+      fail("Inserisci un'email valida.", "email");
+      return;
+    }
+    if (!content.trim()) {
+      fail(isReport ? "Spiega perché il contenuto è illegale." : "Scrivi il messaggio.", "content");
       return;
     }
     if (isReport && reporterName.trim().length < 2) {
-      setErrorMessage("Scrivi il tuo nome e cognome.");
-      setStatus("error");
+      fail("Scrivi il tuo nome e cognome.", "name");
       return;
     }
     if (isReport && !contentUrl.trim()) {
-      setErrorMessage("Incolla l'indirizzo della pagina con il contenuto.");
-      setStatus("error");
+      fail("Incolla l'indirizzo della pagina con il contenuto.", "url");
       return;
     }
     if (isReport && content.trim().length < 20) {
-      setErrorMessage("Spiega perché il contenuto è illegale.");
-      setStatus("error");
+      fail("Spiega perché il contenuto è illegale.", "content");
       return;
     }
     if (isReport && !goodFaith) {
-      setErrorMessage("Conferma che la segnalazione è fatta in buona fede.");
-      setStatus("error");
+      fail("Conferma che la segnalazione è fatta in buona fede.", null);
       return;
     }
     if (isTurnstileEnabled() && !turnstileToken) {
-      setErrorMessage(TURNSTILE_PENDING_MESSAGE);
-      setStatus("error");
+      fail(TURNSTILE_PENDING_MESSAGE, null);
       return;
     }
     setStatus("loading");
@@ -118,8 +135,7 @@ export default function ContattiContent({ initialReport = false, initialProfileH
       });
       setStatus("done");
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Invio non riuscito, riprova.");
-      setStatus("error");
+      fail(err instanceof Error ? err.message : "Invio non riuscito, riprova.", null);
       // Il token anti-bot vale una volta sola: ne serve uno nuovo per riprovare.
       setTurnstileReset((n) => n + 1);
     }
@@ -195,7 +211,10 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                     La tua email
                   </Text>
                   <input aria-label="La tua email"
+                    ref={emailRef}
+                    {...fieldError("email")}
                     type="email"
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
@@ -214,6 +233,8 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                       </Text>
                       <input
                         aria-label="Nome e cognome"
+                        ref={nameRef}
+                        {...fieldError("name")}
                         value={reporterName}
                         autoComplete="name"
                         onChange={(e) => {
@@ -229,6 +250,8 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                       </Text>
                       <input
                         aria-label="Indirizzo della pagina"
+                        ref={urlRef}
+                        {...fieldError("url")}
                         type="url"
                         inputMode="url"
                         value={contentUrl}
@@ -248,6 +271,8 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                     {isReport ? "Perché è illegale" : "Messaggio"}
                   </Text>
                   <textarea aria-label={isReport ? "Perché è illegale" : "Messaggio"}
+                    ref={contentRef}
+                    {...fieldError("content")}
                     value={content}
                     onChange={(e) => {
                       setContent(e.target.value);
@@ -289,11 +314,14 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                   {status === "loading" ? "Invio..." : "Invia"}
                 </button>
 
-                {status === "error" ? (
-                  <Text fontSize={16} color={brand.urgenza}>
-                    {errorMessage}
-                  </Text>
-                ) : null}
+                {/* Sempre presente, così il lettore di schermo annuncia il messaggio quando compare. */}
+                <div id="contatti-errore" role="alert">
+                  {status === "error" ? (
+                    <Text fontSize={16} color={brand.urgenza}>
+                      {errorMessage}
+                    </Text>
+                  ) : null}
+                </div>
               </YStack>
             )}
           </Surface>

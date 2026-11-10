@@ -40,6 +40,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
   const [mobileOpen, setMobileOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const desktopTriggerRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const { user, isLoading } = useAuth();
   const pathname = usePathname();
@@ -58,6 +59,8 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
     }
     function handleEscape(e: KeyboardEvent) {
       if (e.key === "Escape") {
+        // Esc riporta il fuoco su "Servizi" se era nel menu (E7-15 del controllo dell'8/11).
+        if (containerRef.current?.contains(document.activeElement)) desktopTriggerRef.current?.focus();
         setDesktopOpen(false);
         setMobileOpen(false);
       }
@@ -111,6 +114,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
       {/* Desktop */}
       <div className="mega-desktop" ref={containerRef} style={mobileOnly ? { display: "none" } : undefined}>
         <button
+          ref={desktopTriggerRef}
           type="button"
           className="mega-trigger"
           aria-expanded={desktopOpen}

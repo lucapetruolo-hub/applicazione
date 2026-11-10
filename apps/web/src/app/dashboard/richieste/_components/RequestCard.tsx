@@ -700,9 +700,18 @@ export function RequestCard({
     }
   }
 
+  // Aprendo il modulo del preventivo il fuoco va sul suo titolo (E7-08 del
+  // controllo dell'8/11): prima restava sul corpo della pagina.
+  const quoteFormTitleRef = useRef<HTMLElement>(null);
+  const [quoteFormOpenings, setQuoteFormOpenings] = useState(0);
+  useEffect(() => {
+    if (quoteFormOpenings > 0) quoteFormTitleRef.current?.focus();
+  }, [quoteFormOpenings]);
+
   /** Nuovo preventivo: l'orario del cliente già scelto, se è libero; altrimenti nessuno. */
   function openNewQuoteForm() {
     setSelectedSlotKey(requestedSlot ? slotKey(requestedSlot) : "");
+    setQuoteFormOpenings((n) => n + 1);
     setShowQuoteForm(true);
   }
 
@@ -722,6 +731,7 @@ export function RequestCard({
     setNoticeHours(isCancellationNoticeHours(lead.quote.cancellationNoticeHours) ? lead.quote.cancellationNoticeHours : standardNotice);
     setKeepDeposit(lead.quote.lateCancelKeepsDeposit);
     setRepeatEvery(lead.quote.repeatEvery);
+    setQuoteFormOpenings((n) => n + 1);
     setShowQuoteForm(true);
   }
 
@@ -1667,7 +1677,7 @@ export function RequestCard({
                   sta su una riga e "Da" / "A" affiancati sotto, prima "A €"
                   scendeva da solo a capo. */}
               <YStack gap={2}>
-                <Text fontSize={13} fontWeight="700" color={brand.grafite}>
+                <Text ref={quoteFormTitleRef as never} tabIndex={-1} className="step-focus-target" fontSize={13} fontWeight="700" color={brand.grafite}>
                   Voci del preventivo
                 </Text>
                 {/* Il cliente vede il prezzo finale, "IVA inclusa" solo se la applichi (docs/CHANGELOG.md §378). */}

@@ -43,7 +43,10 @@ export const brand = {
   urgenzaVelo: "#FBEAE7",
   ottone: "#D9A441",
   // Testo e icone sull'ottone chiaro (categoria principale in registrazione,
-  // docs/CHANGELOG.md §248): l'ottone pieno sul chiaro non si legge.
+  // docs/CHANGELOG.md §248): l'ottone pieno sul chiaro non si legge. È l'unico
+  // colore "attenzione" per i testi (scadenze, avvisi), come grafite70 è
+  // l'unico grigio dei testi secondari: entrambi sopra 4,5:1 sui fondi chiari
+  // (controllo dell'8/11, E7-05). Niente trasparenza sui testi.
   ottoneScuro: "#8A5A00",
   // Tinta chiara di sfondo per il badge "Sponsorizzato" (boost a pagamento in
   // ricerca) — stesso principio di cianografiaVelo/urgenzaVelo: colore

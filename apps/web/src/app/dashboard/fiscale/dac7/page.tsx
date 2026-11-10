@@ -118,7 +118,7 @@ export default function Dac7SummaryPage() {
                   const quarter = summary.quarters.find((item) => item.quarter === q);
                   const empty = !quarter || quarter.jobs === 0;
                   return (
-                    <Surface key={q} padding="3" opacity={empty ? 0.6 : 1}>
+                    <Surface key={q} padding="3" backgroundColor={empty ? brand.gesso : undefined}>
                       <YStack gap="2">
                         <XStack justifyContent="space-between" alignItems="baseline">
                           <Text fontSize={16} fontWeight="800" color={brand.grafite}>

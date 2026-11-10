@@ -39,7 +39,9 @@ export function AppointmentWhen({ booking, moment }: { booking: ClientBooking; m
   const canceled = booking.status === "CANCELED";
 
   return (
-    <XStack gap="3" alignItems="center" opacity={canceled ? 0.6 : 1}>
+    // Annullato: data barrata e orario in grigio, senza trasparenza che
+    // abbassava i testi sotto 4,5:1 (E7-05 del controllo dell'8/11).
+    <XStack gap="3" alignItems="center">
       <YStack width={64} flexShrink={0} borderRadius={radiusSm} overflow="hidden" borderWidth={1} borderColor={brand.filetto} backgroundColor={brand.calce} alignItems="center" aria-hidden>
         <Text alignSelf="stretch" textAlign="center" backgroundColor={canceled ? brand.grafite70 : brand.cianografiaPieno} color="white" fontSize={12} fontWeight="700" paddingVertical={3} textTransform="uppercase">
           {formatAppointmentDate(booking.scheduledAt, { weekday: "short" }).replace(".", "")}
@@ -55,7 +57,7 @@ export function AppointmentWhen({ booking, moment }: { booking: ClientBooking; m
         <Text fontFamily="heading" fontWeight="800" fontSize={22} lineHeight="28px" color={brand.grafite} textDecorationLine={canceled ? "line-through" : "none"}>
           {title}
         </Text>
-        <Text fontSize={18} fontWeight="600" color={brand.grafite}>
+        <Text fontSize={18} fontWeight="600" color={canceled ? brand.grafite70 : brand.grafite}>
           {jobDays ? `Ogni giorno ${time}` : time}
         </Text>
         {momentText ? (

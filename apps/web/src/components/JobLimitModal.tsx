@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 import { formatEur, subscriptionTierInfo, tierPeriodPriceEurCents, type MySubscription } from "@professionisti/shared";
 import { Button, ButtonArrow, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -41,14 +42,8 @@ export function JobLimitModal({
   const [error, setError] = useState<string | null>(null);
   const [bankConfirmUrl, setBankConfirmUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    dialogRef.current?.querySelector<HTMLElement>("button")?.focus();
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  // Fuoco dentro, Tab chiuso nella finestra, Esc chiude, fuoco restituito alla chiusura (lib/useDialogFocus.ts).
+  useDialogFocus(dialogRef, onClose);
 
   const currentLabel = subscriptionTierInfo(sub.tier ?? "BASE").label;
   const next = nextTierOf(sub);

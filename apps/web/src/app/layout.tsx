@@ -1,3 +1,4 @@
+import { SkipLink } from "@/components/SkipLink";
 import type { Metadata, Viewport } from "next";
 import { Suspense, type ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/react";
@@ -87,13 +88,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 focus da tastiera, permette di saltare header+mega-menu e arrivare
                 dritti al contenuto — senza, un utente da tastiera/screen reader
                 deve attraversare tutta la navigazione a ogni cambio pagina. */}
-            <a href="#main-content" className="skip-link">
-              Vai al contenuto
-            </a>
+            <SkipLink />
             <ToastStackLazy />
             <SiteHeader />
             <EmailVerificationBanner />
-            <main id="main-content">{children}</main>
+            <main id="main-content" style={{ outline: "none" }}>{children}</main>
             {/* Idratato a parte (Suspense), come le sezioni della home:
                 docs/changelog/2026-11-09-meno-javascript-comune.md. */}
             <Suspense fallback={null}>

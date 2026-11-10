@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 import { X } from "lucide-react";
 import {
   completionDeclaration,
@@ -132,13 +133,9 @@ export function CompleteJobModal({
   }, [token]);
   const declaration = entityType === undefined ? null : completionDeclaration(entityType);
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  // Fuoco dentro, Tab chiuso nella finestra, Esc chiude, fuoco restituito alla chiusura (lib/useDialogFocus.ts).
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onClose);
 
   function updateQuotedPrice(index: number, price: string) {
     setQuotedRows((prev) => prev.map((row, i) => (i === index ? { ...row, price } : row)));
@@ -264,7 +261,7 @@ export function CompleteJobModal({
       }}
     >
       <YStack
-        role="dialog"
+        ref={dialogRef as never} role="dialog"
         aria-modal
         aria-label="Segnala lavoro terminato"
         width="100%"

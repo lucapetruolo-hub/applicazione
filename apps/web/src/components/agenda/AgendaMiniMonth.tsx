@@ -58,7 +58,16 @@ export function AgendaMiniMonth({
             .filter(Boolean)
             .join(" ");
           return (
-            <button key={dateStr} type="button" className={classes} onClick={() => onPick(date)} aria-label={`${date.getUTCDate()} ${monthLabel(date)}`}>
+            // Giorno scelto e oggi detti anche al lettore di schermo (E7-10 del controllo dell'8/11).
+            <button
+              key={dateStr}
+              type="button"
+              className={classes}
+              onClick={() => onPick(date)}
+              aria-label={`${date.getUTCDate()} ${monthLabel(date)}`}
+              aria-pressed={isSameDateUtc(date, selected)}
+              aria-current={isSameDateUtc(date, today) ? "date" : undefined}
+            >
               {date.getUTCDate()}
             </button>
           );

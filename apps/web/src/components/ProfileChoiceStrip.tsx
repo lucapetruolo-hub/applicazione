@@ -43,8 +43,8 @@ export function ProfileChoiceStrip({ search, pro, onToggle }: { search: ChosenSe
   return (
     <XStack alignItems="center" justifyContent="space-between" gap="3" flexWrap="wrap">
       <Link href={search.url} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, minHeight: 44 }}>
-        <ArrowLeft size={18} color={brand.cianografia} aria-hidden />
-        <Text fontSize={15} fontWeight="600" color={brand.cianografia}>
+        <ArrowLeft size={18} color={brand.cianografiaScuro} aria-hidden />
+        <Text fontSize={15} fontWeight="600" color={brand.cianografiaScuro}>
           Torna ai risultati
         </Text>
       </Link>

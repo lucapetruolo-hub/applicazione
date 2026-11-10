@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { BRAND } from "@professionisti/shared";
 import { AccountShell } from "@/components/account/AccountShell";
 
-// Titolo della scheda del browser (le pagine sono client) e fuori da Google.
+// Titolo della scheda del browser (E7-01 del controllo dell'8/11) e fuori da Google.
+// `absolute` + `template`: le pagine qui dentro hanno il nome del sito in coda come le altre.
 export const metadata: Metadata = {
-  title: "Il tuo account",
+  title: { absolute: `Account | ${BRAND.name}`, template: `%s | ${BRAND.name}` },
   // Pagina personale o aperta da un link nelle email: mai in Google, anche
   // dopo il lancio (collaudo 08/11 E8-07).
   robots: { index: false, follow: false },

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useRef } from "react";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { LegalConsentCheckbox } from "./LegalConsentCheckbox";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
@@ -35,13 +36,9 @@ export function GoogleConsentModal({
   isSubmitting?: boolean;
   error?: string | null;
 }) {
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onCancel();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onCancel]);
+  // Fuoco dentro, Tab chiuso nella finestra, Esc chiude, fuoco restituito alla chiusura (lib/useDialogFocus.ts).
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onCancel);
 
   // "Accetta e continua" resta premibile: senza spunta la casella diventa
   // rossa (docs/CHANGELOG.md §248, come in /registrati).
@@ -70,7 +67,7 @@ export function GoogleConsentModal({
         zIndex: 400,
       }}
     >
-      <div role="dialog" aria-modal="true" aria-label="Accetta Privacy Policy e Termini di Servizio" style={{ width: "100%", maxWidth: 420 }}>
+      <div ref={dialogRef as never} role="dialog" aria-modal="true" aria-label="Accetta Privacy Policy e Termini di Servizio" style={{ width: "100%", maxWidth: 420 }}>
         <YStack width="100%" backgroundColor={brand.calce} borderRadius="5" padding="5" gap="4">
           <YStack gap="1">
             <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>

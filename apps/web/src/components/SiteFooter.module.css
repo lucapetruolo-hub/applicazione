@@ -75,6 +75,14 @@
   text-decoration: none;
 }
 
+/* Bersagli da almeno 24 px (E7-11 del controllo dell'8/11). */
+.link,
+.textButton {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+}
+
 .linkText {
   font-size: 16px;
   color: var(--c-grafite);

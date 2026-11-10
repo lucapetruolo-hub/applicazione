@@ -369,6 +369,19 @@ export default function DashboardProfiloPage() {
   // richiesta dell'utente): si apre sull'anteprima, il modulo solo con
   // "Modifica profilo". Senza profilo, o da confermare, si parte dal modulo.
   const [mode, setMode] = useState<"preview" | "edit">("edit");
+  // Aprendo "Modifica profilo" il fuoco va sul titolo del modulo (E7-08 del
+  // controllo dell'8/11): prima restava sul corpo della pagina.
+  const editTitleRef = useRef<HTMLHeadingElement>(null);
+  const focusEditTitleRef = useRef(false);
+  useEffect(() => {
+    if (mode !== "edit" || !focusEditTitleRef.current) return;
+    focusEditTitleRef.current = false;
+    editTitleRef.current?.focus();
+  }, [mode]);
+  const openEdit = () => {
+    focusEditTitleRef.current = true;
+    setMode("edit");
+  };
   const [preview, setPreview] = useState<MyProfilePreview | null>(null);
   // Cosa manca per comparire nelle ricerche e inviare preventivi (richiesta
   // dell'utente, docs/CHANGELOG.md §260): i tre passi finché non sono fatti.
@@ -537,7 +550,7 @@ export default function DashboardProfiloPage() {
     return (
       <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
-          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi come professionista
           </Text>
           <Link href="/accedi?redirect=/dashboard/profilo" style={{ textDecoration: "none" }}>
@@ -552,7 +565,7 @@ export default function DashboardProfiloPage() {
     return (
       <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="3" alignItems="center">
-          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Questa sezione è per i professionisti
           </Text>
           <Text color={brand.grafite70} textAlign="center">
@@ -878,7 +891,7 @@ export default function DashboardProfiloPage() {
         <YStack width="100%" maxWidth={920} gap="5">
           <XStack justifyContent="space-between" alignItems="flex-end" gap="3" flexWrap="wrap">
             <YStack gap="1" flex={1} minWidth={220}>
-              <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
+              <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
                 Profilo pubblico
               </Text>
               <Text color={brand.grafite70}>Così ti vedono i clienti su {BRAND.name}.</Text>
@@ -888,7 +901,7 @@ export default function DashboardProfiloPage() {
               icon={<Icon name="pencil" size={16} strokeWidth={2} color="#FFFFFF" />}
               onPress={() => {
                 setSaved(false);
-                setMode("edit");
+                openEdit();
                 window.scrollTo({ top: 0 });
               }}
             >
@@ -922,7 +935,7 @@ export default function DashboardProfiloPage() {
                     Apri la pagina pubblica ↗
                   </Link>
                 ) : preview.visibility === "NOT_CONFIRMED" ? (
-                  <button type="button" className="profile-visibility-link" onClick={() => setMode("edit")}>
+                  <button type="button" className="profile-visibility-link" onClick={openEdit}>
                     Controlla e salva →
                   </button>
                 ) : null}
@@ -1007,7 +1020,7 @@ export default function DashboardProfiloPage() {
               Account creato
             </span>
           ) : null}
-          <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
+          <Text ref={editTitleRef as never} tabIndex={-1} className="step-focus-target" render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             {isFirstProfileSave ? "Ora il tuo profilo pubblico" : "Modifica profilo"}
           </Text>
           <Text color={brand.grafite70}>

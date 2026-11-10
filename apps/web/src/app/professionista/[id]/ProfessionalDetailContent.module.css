@@ -306,7 +306,8 @@
 }
 
 .modeButtonActive {
-  background-color: var(--c-cianografia);
+  /* Verde scuro: testo bianco sopra 4,5:1 (E7-05 del controllo dell'8/11). */
+  background-color: var(--c-cianografiaPieno);
 }
 
 .modeText {

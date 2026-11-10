@@ -121,7 +121,7 @@ export default function DashboardTodayPage() {
     return (
       <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
-          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Accedi come professionista
           </Text>
           <Link href="/accedi?redirect=/dashboard" style={{ textDecoration: "none" }}>
@@ -144,7 +144,7 @@ export default function DashboardTodayPage() {
     return (
       <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
-          <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
             Completa il tuo profilo per iniziare
           </Text>
           <Text color={brand.grafite70} textAlign="center">
@@ -259,7 +259,7 @@ export default function DashboardTodayPage() {
     <YStack width="100%" alignItems="center" paddingVertical="6" paddingHorizontal="4">
       <YStack width="100%" maxWidth={1180} gap="6">
         <YStack gap="1">
-          <Text fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
             Oggi
           </Text>
           <Text color={brand.grafite70}>
@@ -517,7 +517,7 @@ function TodaySection({ title, subtitle, count, action, children }: { title: str
           ) : null}
         </YStack>
         {action ? (
-          <Link href={action.href} style={{ color: brand.cianografiaScuro, fontWeight: 600, fontSize: 16, textDecoration: "none" }}>
+          <Link href={action.href} style={{ color: brand.cianografiaScuro, fontWeight: 600, fontSize: 16, textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 44 }}>
             {action.label} →
           </Link>
         ) : null}
@@ -619,7 +619,7 @@ function AgendaNotice({ attention }: { attention: AgendaAttention }) {
         </YStack>
       </XStack>
       <Link href="/dashboard/agenda?tab=disponibilita" style={{ textDecoration: "none" }}>
-        <CardButton>Apri l'agenda</CardButton>
+        <CardButton tabIndex={-1}>Apri l'agenda</CardButton>
       </Link>
     </XStack>
   );
@@ -673,7 +673,8 @@ function Suggestion({ insights }: { insights: ProfessionalInsights }) {
         {text}
       </Text>
       <Link href={href} style={{ textDecoration: "none" }}>
-        <CardButton>{cta}</CardButton>
+        {/* Una sola fermata del Tab, il link (E7-13 del controllo dell'8/11). */}
+        <CardButton tabIndex={-1}>{cta}</CardButton>
       </Link>
     </XStack>
   );

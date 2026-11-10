@@ -1,5 +1,6 @@
 "use client";
 
+import { ModalDialog } from "@/components/ModalDialog";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -10,7 +11,6 @@ import { AuthIconBadge } from "@/components/AuthStepHeader";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { EmailCodeForm } from "@/components/EmailCodeForm";
-import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 import { PageLoading } from "@/components/PageLoading";
 
 export default function ConfermaEmailPage() {
@@ -227,21 +227,7 @@ function ConfermaEmail() {
         )}
       </AuthCard>
       {popupOpen && confirmedEmail ? (
-        <div
-          role="presentation"
-          onClick={closeOnBackdrop(() => setPopupOpen(false))}
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundColor: "rgba(43,32,19,0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-            zIndex: 400,
-          }}
-        >
-          <div role="dialog" aria-modal="true" aria-label="Email verificata con successo" style={{ width: "100%", maxWidth: 380 }}>
+        <ModalDialog label="Email verificata con successo" maxWidth={380} onClose={() => setPopupOpen(false)}>
             <YStack width="100%" backgroundColor={brand.calce} borderRadius="5" padding="5" gap="3" alignItems="center">
               <YStack
                 width={56}
@@ -277,8 +263,7 @@ function ConfermaEmail() {
                 {nextLabel}
               </Link>
             </YStack>
-          </div>
-        </div>
+        </ModalDialog>
       ) : null}
     </AuthPageBackground>
   );

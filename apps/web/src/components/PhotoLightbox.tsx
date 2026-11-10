@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { isVideoUrl } from "@/lib/media";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
@@ -30,6 +31,9 @@ export function PhotoLightbox({
 }) {
   const [index, setIndex] = useState(initialIndex);
   const trackRef = useRef<HTMLDivElement>(null);
+  // Fuoco dentro, Tab chiuso nella finestra, Esc chiude, fuoco restituito alla chiusura (lib/useDialogFocus.ts).
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onClose);
 
   // All'apertura la riga parte dalla foto scelta, senza animazione.
   useEffect(() => {
@@ -51,7 +55,6 @@ export function PhotoLightbox({
   // del tutto, l'unico modo per chiudere era il click sul backdrop o sulla X.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
       if (photos.length > 1 && e.key === "ArrowLeft") goTo(index - 1);
       if (photos.length > 1 && e.key === "ArrowRight") goTo(index + 1);
     }
@@ -83,6 +86,7 @@ export function PhotoLightbox({
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label="Foto ingrandita"

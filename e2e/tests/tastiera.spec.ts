@@ -184,3 +184,65 @@ test("Invio in un campo dei dati fiscali non toglie il fuoco", async ({ browser 
   await nome.press("Enter");
   await expect(nome).toBeFocused();
 });
+
+// Controllo pre-lancio dell'8/11, gruppo accessibilità (docs/changelog/2026-11-08-accessibilita.md).
+test("area riservata: titolo della scheda e H1 per pagina, finestra Filtri col fuoco dentro", async ({ browser }) => {
+  const client = await createClient(prisma);
+  const pro = await createProfessional(prisma, "Nina Tastiera");
+  await createRequestWithQuotes(prisma, client.id, [pro.id], { start: wallDay(4, "10:00") });
+  // Con una sola richiesta i filtri non si vedono.
+  await createRequestWithQuotes(prisma, client.id, [pro.id], { start: wallDay(6, "10:00"), description: "Seconda richiesta, per vedere i filtri." });
+
+  const page = await pageAsClient(browser, client.id, COMPUTER);
+  await page.goto("/le-mie-richieste");
+  await expect(page.getByText(/Vedi dettagli|Chiudi dettagli/).first()).toBeVisible();
+  await expect(page).toHaveTitle(/^Le mie richieste \|/);
+  await expect(page.locator("h1")).toHaveText(["Le mie richieste"]);
+
+  // E7-02: il fuoco entra nella finestra, Esc la chiude e torna su "Filtri".
+  await tabTo(page, (name) => name.startsWith("Filtri"));
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Filtri" });
+  await expect(dialog).toBeVisible();
+  await expect.poll(() => dialog.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => (document.activeElement as HTMLElement).innerText?.trim())).toMatch(/^Filtri/);
+
+  const proPage = await pageAsClient(browser, pro.userId, COMPUTER);
+  await proPage.goto("/dashboard/agenda");
+  await expect(proPage).toHaveTitle(/^Agenda \| [^|]+$/);
+  await proPage.goto("/dashboard");
+  await expect(proPage).toHaveTitle(/^Oggi \| [^|]+$/);
+  await proPage.goto("/dashboard/fiscale/dac7");
+  await expect(proPage).toHaveTitle(/^Dati DAC7 \| [^|]+$/);
+  await proPage.goto("/account/notifiche");
+  await expect(proPage).toHaveTitle(/^Notifiche \| [^|]+$/);
+  // E7-14: il nome dell'account si legge una volta sola.
+  await expect(proPage.getByRole("button", { name: /il mio account/i }).first()).toHaveAccessibleName(/^Nina Tastiera ?, il mio account/);
+  const phonePage = await pageAsClient(browser, pro.userId, PHONE);
+  await phonePage.goto("/account/notifiche");
+  await expect(phonePage.getByRole("button", { name: /il mio account/i }).first()).toHaveAccessibleName(/^Nina Tastiera ?, il mio account/);
+  await proPage.goto("/chat");
+  await expect(proPage).toHaveTitle(/^Messaggi \|/);
+  await expect(proPage.locator("h1")).toHaveText(["Messaggi"]);
+});
+
+test("Contatti: l'errore si annuncia e il fuoco va sul campo sbagliato", async ({ browser }) => {
+  const page = await anonymousPage(browser, COMPUTER);
+  await page.goto("/contatti");
+  await page.getByRole("button", { name: "Invia", exact: true }).click();
+  const email = page.getByRole("textbox", { name: "La tua email" });
+  await expect(email).toBeFocused();
+  await expect(email).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByRole("alert").filter({ hasText: "Inserisci un'email valida." })).toBeVisible();
+});
+
+test("Vai al contenuto porta il fuoco sul contenuto della pagina", async ({ browser }) => {
+  const page = await anonymousPage(browser, COMPUTER);
+  await page.goto("/contatti");
+  await page.keyboard.press("Tab");
+  await expect.poll(() => page.evaluate(() => (document.activeElement as HTMLElement).innerText?.trim())).toBe("Vai al contenuto");
+  await page.keyboard.press("Enter");
+  await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe("main-content");
+});

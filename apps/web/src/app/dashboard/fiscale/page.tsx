@@ -268,8 +268,8 @@ function DashboardFiscaleContent() {
   // dati, 2 l'indirizzo. `editing` riapre il modulo da dati già completi.
   const [formStep, setFormStep] = useState<1 | 2>(1);
   // Fuoco sul titolo della parte nuova (docs/changelog/2026-10-30-tastiera.md, collaudo L-06).
-  const formStepTitleRef = useStepFocus<HTMLHeadingElement>(formStep);
   const [editing, setEditing] = useState(false);
+  const formStepTitleRef = useStepFocus<HTMLHeadingElement>(`${editing ? "modifica" : "vista"}-${formStep}`); // anche aprendo "Modifica" (E7-08)
   const [abroad, setAbroad] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
   // Bozza ripresa dopo un ricaricamento (collaudo 0-04): `loadedDraft` è com'erano i dati salvati.

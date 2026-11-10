@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 import Link from "next/link";
 import { Check, Navigation, Phone, Repeat, Truck, Video, X } from "lucide-react";
 import {
@@ -65,14 +66,9 @@ export function AppointmentPanel({
   const closeRef = useRef<HTMLButtonElement>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    closeRef.current?.focus();
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  // Fuoco dentro, Tab chiuso nella finestra, Esc chiude, fuoco restituito alla chiusura (lib/useDialogFocus.ts).
+  const dialogRef = useRef<HTMLElement>(null);
+  useDialogFocus(dialogRef, onClose);
 
   useEffect(() => {
     const el = noteRef.current;
@@ -112,7 +108,7 @@ export function AppointmentPanel({
   return (
     <>
       <div className="ag-scrim" onClick={onClose} aria-hidden />
-      <aside className="ag-sheet" role="dialog" aria-modal="true" aria-label={`Appuntamento con ${name}`}>
+      <aside ref={dialogRef} className="ag-sheet" role="dialog" aria-modal="true" aria-label={`Appuntamento con ${name}`}>
         <div className="ag-sheet-top">
           <span className={`ag-pill ${pill.tone}`}>{pill.label}</span>
           {kindLabel ? <span className="ag-pill">{kindLabel}</span> : null}
@@ -123,7 +119,7 @@ export function AppointmentPanel({
               {RECURRING_FREQUENCY_LABELS[booking.recurring.frequency]}
             </span>
           ) : null}
-          <button ref={closeRef} type="button" className="ag-icon-btn" onClick={onClose} aria-label="Chiudi">
+          <button ref={closeRef} type="button" className="ag-icon-btn" onClick={onClose} aria-label="Chiudi" data-autofocus>
             <X size={18} aria-hidden />
           </button>
         </div>

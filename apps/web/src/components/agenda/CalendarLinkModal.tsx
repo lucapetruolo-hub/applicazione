@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 import { X } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
@@ -23,13 +24,9 @@ export function CalendarLinkModal({ token, onClose }: { token: string; onClose: 
       .catch(() => setFeedToken(null));
   }, [token]);
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  // Fuoco dentro, Tab chiuso nella finestra, Esc chiude, fuoco restituito alla chiusura (lib/useDialogFocus.ts).
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onClose);
 
   async function toggle() {
     setError(null);
@@ -61,7 +58,7 @@ export function CalendarLinkModal({ token, onClose }: { token: string; onClose: 
 
   return (
     <div className="ag-dialog-wrap" role="presentation" onClick={closeOnBackdrop(onClose)}>
-      <div className="ag-dialog" role="dialog" aria-modal="true" aria-labelledby="ag-cal-link-title">
+      <div className="ag-dialog" ref={dialogRef as never} role="dialog" aria-modal="true" aria-labelledby="ag-cal-link-title">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <h2 id="ag-cal-link-title">Collega al tuo calendario</h2>
           <button type="button" className="ag-icon-btn" style={{ marginLeft: "auto", background: "#f6f1ec", borderRadius: "50%" }} onClick={onClose} aria-label="Chiudi">

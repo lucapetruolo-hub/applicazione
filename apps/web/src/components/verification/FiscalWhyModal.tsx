@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 import Link from "next/link";
 import { Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
@@ -20,14 +21,9 @@ const REASONS: { icon: IconName; text: string }[] = [
 export function FiscalWhyModal({ onClose }: { onClose: () => void }) {
   const closeRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    closeRef.current?.querySelector<HTMLElement>("button")?.focus();
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  // Fuoco dentro, Tab chiuso nella finestra, Esc chiude, fuoco restituito alla chiusura (lib/useDialogFocus.ts).
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onClose);
 
   return (
     <div
@@ -44,7 +40,7 @@ export function FiscalWhyModal({ onClose }: { onClose: () => void }) {
         zIndex: 400,
       }}
     >
-      <div role="dialog" aria-modal="true" aria-labelledby="fiscal-why-title" style={{ width: "100%", maxWidth: 420 }}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="fiscal-why-title" style={{ width: "100%", maxWidth: 420 }}>
         <YStack width="100%" backgroundColor={brand.calce} borderRadius="5" padding="5" gap="4">
           <Text id="fiscal-why-title" render="h2" fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
             Perché ti chiediamo questi dati

@@ -233,6 +233,8 @@ function DashboardAgendaContent() {
     autoWeekChecked.current = true;
     // Un appuntamento aperto da un link (?booking=, ?esterno=) resta sul suo giorno: prima, la domenica, la settimana dopo lo copriva.
     if (deepLinkedDay || searchParams.get("booking") || searchParams.get("esterno") || !window.matchMedia("(max-width: 640px)").matches) return;
+    // Sotto i 360 px la settimana taglia le scritte ("Libe"): resta il giorno (E7-12 del controllo dell'8/11).
+    if (window.matchMedia("(max-width: 359px)").matches) return;
     const todayStr = toIsoDate(todayUtc());
     const busyToday =
       loadedBookings.some((b) => b.status !== "CANCELED" && jobOccurrenceOn(b.scheduledAt, b.scheduledEndAt, todayStr) !== null) ||
@@ -1185,7 +1187,7 @@ function DashboardAgendaContent() {
     }
 
     return (
-      <YStack gap="2" minWidth={0} opacity={isPast ? 0.55 : 1}>
+      <YStack gap="2" minWidth={0}>
         {/*
           Pulsanti veri al posto della parola sottolineata (richiesta di Luca,
           docs/changelog/2026-11-09-chiudi-riapri-pulsanti.md): "Chiudi" da solo
@@ -1273,7 +1275,7 @@ function DashboardAgendaContent() {
                 <Icon name="plus" size={16} strokeWidth={2} color={brand.grafite} />
               </XStack>
             ) : daySlots.length === 0 ? (
-              <Text fontFamily="body" fontSize={11} fontWeight="600" color={brand.grafite70}>
+              <Text fontFamily="body" fontSize={13} fontWeight="600" color={brand.grafite70}>
                 Giorno passato
               </Text>
             ) : null}
