@@ -807,7 +807,13 @@ function LeMieRichiesteContent() {
             </Surface>
           ) : visibleRequests.length === 0 ? (
             <Surface>
-              <EmptyState icon="search" title="Nessuna richiesta in questa sezione" description="Cambia filtro per vedere le altre richieste." />
+              {/* "Archiviate" vuota dice cosa ci finisce e quando ne esce, invece di
+                  "Cambia filtro" (docs/changelog/2026-11-10-archiviate-tornano-con-novita.md). */}
+              {activeStageTab === "archiviate" && (tabCounts.archiviate ?? 0) === 0 ? (
+                <EmptyState icon="archive" title="Nessuna richiesta archiviata" description="Le richieste che archivi finiscono qui. Tornano in Tutte quando hanno novità, se non le hai silenziate." />
+              ) : (
+                <EmptyState icon="search" title="Nessuna richiesta in questa sezione" description="Cambia filtro per vedere le altre richieste." />
+              )}
             </Surface>
           ) : (
             visibleRequests.map((request) => (
