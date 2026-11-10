@@ -49,6 +49,16 @@ jobs:
             echo "::warning file=docs/CHANGELOG.md::Voce nuova in fondo a docs/CHANGELOG.md: spostala in un file suo in docs/changelog/ (docs/changelog/README.md), così le PR non vanno in conflitto tra loro."
           fi
           echo "Changelog in ordine"
+      # CLAUDE.md si rilegge a ogni messaggio di Claude Code: avvisa se torna
+      # sopra i 25 KB (docs/changelog/2026-11-10-riordino-file.md). I dettagli
+      # vanno in docs/ o nei CLAUDE.md delle cartelle.
+      - name: Dimensione di CLAUDE.md
+        run: |
+          size=$(wc -c < CLAUDE.md)
+          if [ "$size" -gt 25600 ]; then
+            echo "::warning file=CLAUDE.md::CLAUDE.md pesa $size byte, sopra i 25 KB: sposta i dettagli in docs/ o nel CLAUDE.md della cartella (docs/README.md)."
+          fi
+          echo "CLAUDE.md: $size byte"
       # Migrazioni solo in avanti (docs/changelog/2026-11-08-infrastruttura-lancio.md,
       # CLAUDE.md §2): una migrazione già unita è già girata sul database vero,
       # cambiarla non cambia nulla in produzione e rompe chi riparte da zero.

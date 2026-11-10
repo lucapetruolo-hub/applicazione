@@ -29,9 +29,10 @@ pnpm dev           # avvia web, mobile e api in parallelo (Turborepo)
 
 ## Struttura
 
-Vedi CLAUDE.md §4 per la struttura cartelle completa e il razionale
-architetturale (perché Next.js + Expo + Tamagui, perché un solo backend
-NestJS, ecc.).
+Mappa delle cartelle in `CLAUDE.md` §4, motivi delle scelte tecniche in
+[`docs/architettura/stack.md`](./docs/architettura/stack.md), indice di tutta la
+documentazione in [`docs/README.md`](./docs/README.md). Ogni app e pacchetto
+principale ha il suo `CLAUDE.md` con le regole di quella cartella.
 
 ## Comandi principali
 
