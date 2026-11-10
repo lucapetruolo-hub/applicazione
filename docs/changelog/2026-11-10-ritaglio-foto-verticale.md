@@ -21,7 +21,7 @@ schede della ricerca la foto è verticale 3:4 con gli angoli arrotondati
 profilo pubblico e finestrella della mappa sono già verticali e ora mostrano
 la foto intera come l'ha posizionata il professionista, senza i tagli ai lati
 del vecchio quadrato. Le foto piccole tonde (chat, menu, preventivi, barra dei
-scelti, 36-48 px) e quelle tonde di "Nuovi profili" (80 px) e "Prenotazione
+professionisti scelti, 36-48 px) e quelle tonde di "Nuovi profili" (80 px) e "Prenotazione
 confermata" (88 px) prendono la parte centrale della foto verticale. Le foto
 già caricate (quadrate) restano come sono.
 
