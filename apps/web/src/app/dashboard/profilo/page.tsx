@@ -1112,8 +1112,8 @@ export default function DashboardProfiloPage() {
             <YStack flexDirection="row" alignItems="center" gap="3">
               <YStack
                 width={72}
-                height={72}
-                borderRadius={36}
+                height={96}
+                borderRadius={12}
                 backgroundColor={brand.gesso}
                 alignItems="center"
                 justifyContent="center"
@@ -1122,7 +1122,7 @@ export default function DashboardProfiloPage() {
                 borderColor={brand.filetto}
               >
                 {imageUrl ? (
-                  <Image src={imageUrl} alt="" width={72} height={72} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <Image src={imageUrl} alt="" width={72} height={96} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                   <Camera size={28} strokeWidth={1.5} color={brand.grafite70} />
                 )}
@@ -1913,7 +1913,7 @@ export default function DashboardProfiloPage() {
       )}
 
       {cropImageSrc ? (
-        <ImageCropModal imageSrc={cropImageSrc} onCancel={closeCropModal} onConfirm={handleCropConfirm} />
+        <ImageCropModal imageSrc={cropImageSrc} shape="portrait" onCancel={closeCropModal} onConfirm={handleCropConfirm} />
       ) : null}
 
       {pendingHref || confirmDiscard ? (
