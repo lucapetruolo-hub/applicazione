@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { SkeletonBlock, SkeletonTableRows } from "@/components/Skeleton";
 import { AdminInvoicesSection } from "@/components/admin/AdminInvoicesSection";
 import { BRAND, ONLINE_APP_FEE_PERCENT, formatEurCents } from "@professionisti/shared";
+import { WaitBarSignal } from "@/components/WaitBar";
 
 /**
  * Fisco e fatture → Le nostre fatture (CLAUDE.md §88, docs/CHANGELOG.md §378):
@@ -65,6 +66,7 @@ export default function AdminFinanzaPage() {
             <SkeletonBlock height={16} />
             <SkeletonBlock height={16} width="80%" />
             <SkeletonBlock height={16} width="60%" />
+            <WaitBarSignal />
           </YStack>
         ) : (
           <YStack gap="4">

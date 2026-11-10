@@ -13,6 +13,8 @@ import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
 import { AuthStepHeader } from "@/components/AuthStepHeader";
 import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle";
 import { PageLoading } from "@/components/PageLoading";
+import { ButtonWaitBar, useLeavingWait, useWaitBar } from "@/components/WaitBar";
+import { startNavigationProgress } from "@/lib/navigationProgress";
 
 export default function AccediPage() {
   return (
@@ -40,6 +42,11 @@ function AccediForm() {
   // Errore di un campo (email o password): va sotto quel campo (§279).
   const [errorField, setErrorField] = useState<"email" | "password" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Accesso con Google in corso: barra in cima (il pulsante è quello di Google).
+  const [googleBusy, setGoogleBusy] = useState(false);
+  useWaitBar(googleBusy);
+  // Accesso fatto, la pagina successiva sta arrivando: il pulsante resta in attesa.
+  const [leaving, startLeaving] = useLeavingWait();
   const [helpOpen, setHelpOpen] = useState(false);
 
   function destinationAfterLogin(isProfessional: boolean | undefined) {
@@ -64,6 +71,7 @@ function AccediForm() {
     try {
       const { token } = await apiClient.login(result.data.email, result.data.password);
       const currentUser = await login(token);
+      startLeaving();
       router.push(destinationAfterLogin(currentUser?.isProfessional));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
@@ -75,7 +83,7 @@ function AccediForm() {
   async function handleGoogleCredential(idToken: string) {
     setError(null);
     setErrorField(null);
-    setIsSubmitting(true);
+    setGoogleBusy(true);
     try {
       // createIfMissing=false: da questa pagina "Accedi con Google" non deve
       // mai iscrivere silenziosamente un account nuovo su un'email mai
@@ -85,7 +93,10 @@ function AccediForm() {
       // createIfMissing resta true (comportamento di default).
       const { token } = await apiClient.verifyGoogle(idToken, undefined, false);
       const currentUser = await login(token);
-      router.push(destinationAfterLogin(currentUser?.isProfessional));
+      const destination = destinationAfterLogin(currentUser?.isProfessional);
+      // La barra in cima continua finché arriva la pagina.
+      startNavigationProgress(destination);
+      router.push(destination);
     } catch (err) {
       if (err instanceof Error && err.message === "Nessun account trovato con questa email.") {
         router.push("/registrati?motivo=nessun-account");
@@ -93,9 +104,11 @@ function AccediForm() {
       }
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
-      setIsSubmitting(false);
+      setGoogleBusy(false);
     }
   }
+
+  const busy = isSubmitting || leaving;
 
   return (
     <AuthPageBackground>
@@ -165,8 +178,9 @@ function AccediForm() {
             </Text>
           ) : null}
 
-          <Button variant="primary" onPress={handleLogin} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
-            {isSubmitting ? "Accesso in corso..." : "Accedi"}
+          <Button variant="primary" onPress={handleLogin} disabled={busy || googleBusy} opacity={googleBusy ? 0.6 : 1}>
+            Accedi
+            {busy ? <ButtonWaitBar label="Accesso in corso…" /> : null}
           </Button>
 
           <Link href="/password-dimenticata" style={{ textDecoration: "none", textAlign: "center" }}>

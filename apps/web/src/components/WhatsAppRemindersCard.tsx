@@ -12,6 +12,7 @@ import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { forgetWhatsAppStatus } from "@/lib/useWhatsAppStatus";
+import { WaitBarSignal } from "@/components/WaitBar";
 
 /**
  * Promemoria su WhatsApp in Notifiche (docs/changelog/2026-10-28-promemoria-whatsapp.md).
@@ -173,7 +174,12 @@ export function WhatsAppRemindersCard({
       </p>
     );
   } else if (!status) {
-    body = <p className="notif-note">Caricamento…</p>;
+    body = (
+      <p className="notif-note">
+        Caricamento…
+        <WaitBarSignal />
+      </p>
+    );
   } else if (status.available && editingPhone) {
     body = (
       <>

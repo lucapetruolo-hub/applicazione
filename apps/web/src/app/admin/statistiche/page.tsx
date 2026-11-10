@@ -14,6 +14,7 @@ import { RevenueAnalyticsPanel } from "@/components/RevenueAnalyticsPanel";
 import { TrafficSourcesPanel } from "@/components/TrafficSourcesPanel";
 import { NotificationOptOutsPanel } from "@/components/NotificationOptOutsPanel";
 import { AdminPageHeader } from "@/components/admin/adminUi";
+import { PageLoading } from "@/components/PageLoading";
 
 /**
  * "Statistiche" → Revenue Analytics (richiesta esplicita dell'utente,
@@ -59,7 +60,8 @@ export default function AdminStatistichePage() {
       .catch(() => setOptOuts(null));
   }, [token, user]);
 
-  if (isLoading) return null;
+  // Sagoma e barra di attesa al posto della pagina vuota (docs/changelog/2026-11-10-barra-in-ogni-attesa.md).
+  if (isLoading) return <PageLoading />;
 
   if (!user || !token || user.role !== "ADMIN") {
     return (

@@ -21,6 +21,7 @@ import { AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatA
 import { SkeletonSummaryRow } from "@/components/Skeleton";
 import { MediaPreview } from "@/components/MediaPreview";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { WaitBarSignal } from "@/components/WaitBar";
 
 type View = "da-gestire" | "ricorsi" | "archivio";
 
@@ -265,7 +266,10 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
       {previewOpen ? (
         <YStack gap="2" padding="3" borderRadius={20} borderWidth={1} borderColor={brand.filetto}>
           {preview === null ? (
-            <Text color={brand.grafite70}>Caricamento…</Text>
+            <Text color={brand.grafite70}>
+              Caricamento…
+              <WaitBarSignal />
+            </Text>
           ) : !preview.exists ? (
             <Text color={brand.grafite70}>Il contenuto non esiste più (eliminato dall&apos;autore).</Text>
           ) : (

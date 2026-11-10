@@ -13,6 +13,7 @@ import { adminCan } from "@professionisti/shared";
 import { AdminOverviewContext } from "@/components/admin/AdminOverviewContext";
 import { AdminTwoFactorGate } from "@/components/admin/AdminTwoFactorGate";
 import { disableCountingForAdminOnce } from "@/lib/siteCounts";
+import { PageLoading } from "@/components/PageLoading";
 
 /**
  * Guscio comune dell'area admin (docs/CHANGELOG.md §144, scelta "A"
@@ -92,7 +93,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [token, verified, pathname]);
 
   if (pathname === "/admin/promuovi") return <>{children}</>;
-  if (isLoading) return null;
+  // Sagoma e barra di attesa al posto della pagina vuota (docs/changelog/2026-11-10-barra-in-ogni-attesa.md).
+  if (isLoading) return <PageLoading />;
 
   if (!user || !token) {
     return (
@@ -125,7 +127,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   if (!twoFactor) {
-    if (!twoFactorError) return null;
+    if (!twoFactorError) return <PageLoading />;
     return (
       <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="3" alignItems="center">

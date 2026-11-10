@@ -63,7 +63,7 @@ import { PopularJobsModule } from "./popular-jobs/popular-jobs.module";
     // può fare più chiamate ravvicinate). Endpoint pubblici ad alto rischio
     // di abuso (registrazione, login, waitlist, richieste guidate,
     // recensioni) hanno un limite più stretto via @Throttle sul singolo
-    // controller — CLAUDE.md §10/AUDIT.md §6, punto rimandato alla Fase 6.
+    // controller — CLAUDE.md §10/docs/archivio/2026-09-audit-fase0.md §6, punto rimandato alla Fase 6.
     // `RATE_LIMIT_PER_MINUTE` serve solo alle prove nel browser, che fanno
     // tutte le chiamate dallo stesso indirizzo (docs/CHANGELOG.md §311).
     ThrottlerModule.forRoot([{ name: "default", ttl: 60_000, limit: Number(process.env.RATE_LIMIT_PER_MINUTE) || 60 }]),

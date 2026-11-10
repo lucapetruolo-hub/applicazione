@@ -1227,6 +1227,30 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     }
   }
 
+  /**
+   * Corpo della risposta: `null` se è vuoto (`/auth/me` di un account
+   * eliminato, risposte senza dati) o non è JSON, come sempre. Una lettura
+   * interrotta invece è un errore di rete e si rilancia: succede quando si
+   * cambia pagina mentre la risposta arriva, e prima diventava `null`, cioè
+   * "accesso non più valido", con il token cancellato dal browser
+   * (docs/changelog/2026-11-10-accesso-perso-cambiando-pagina.md).
+   */
+  async function readBody(response: Response, init: RequestInit | undefined, path: string): Promise<unknown> {
+    let text: string;
+    try {
+      text = await response.text();
+    } catch (err) {
+      reportFailure(init, path, null);
+      throw err;
+    }
+    if (!text) return null;
+    try {
+      return JSON.parse(text) as unknown;
+    } catch {
+      return null;
+    }
+  }
+
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
     // Le letture (GET) si riprovano da sole due volte, dopo 1,5 e 3 secondi, se l'API non
     // risponde o risponde 502/503/504: succede per pochi secondi quando Render riavvia il
@@ -1254,7 +1278,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
     }
 
-    const body = await response.json().catch(() => null);
+    const body = await readBody(response, init, path);
 
     if (!response.ok) {
       reportFailure(init, path, response.status);
@@ -1290,7 +1314,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       throw err;
     }
 
-    const body = await response.json().catch(() => null);
+    const body = await readBody(response, { method: "POST" }, path);
 
     if (!response.ok) {
       reportFailure({ method: "POST" }, path, response.status);

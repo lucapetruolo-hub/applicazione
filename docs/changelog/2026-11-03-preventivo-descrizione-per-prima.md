@@ -34,7 +34,7 @@ stessa luce del campo "Cosa è successo?" della home.
 delle tessere, tutte le tessere in vista, proposta già scelta che segue il testo, scelta a mano che
 resta, categoria del link che resta, gas, descrizione non capita), le altre
 prove della richiesta e i test dell'API su `problem-match`. Foto da telefono
-e computer in `preventivo-descrizione/` della cartella del progetto.
+e computer in `anteprime/preventivo-descrizione/` della cartella del progetto.
 
 ## Secondo giro (03/11/2026, richieste di Luca)
 

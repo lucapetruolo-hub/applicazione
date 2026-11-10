@@ -1,0 +1,261 @@
+/*
+ * SearchBar per il sito in HTML semplice (SearchBar.web.tsx): stessi valori
+ * che Tamagui scriveva per SearchBar.tsx (XStack, YStack, Text). Le classi
+ * globali is_View/is_Text vengono da public/tamagui.css del sito; qui solo il
+ * resto. Dove Tamagui ripeteva la classe quattro volte, qui lo stesso: le
+ * regole di globals.css vincono o perdono come prima.
+ */
+
+/* Resa piena (home, risultati da telefono). */
+
+.card {
+  position: relative;
+  flex-direction: column;
+  gap: var(--t-space-3);
+  background-color: rgb(255, 255, 255);
+  padding: var(--t-space-3);
+  border-radius: 20px;
+  box-shadow: rgba(43, 32, 19, 0) 0px 0px 0px;
+}
+
+.tabs {
+  position: relative;
+  flex-direction: row;
+  gap: var(--t-space-2);
+  background-color: rgb(253, 239, 225);
+  border-radius: var(--t-radius-10);
+  padding: var(--t-space-1);
+  align-self: flex-start;
+}
+
+.tab {
+  position: relative;
+  flex-direction: row;
+  border-radius: var(--t-radius-10);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  gap: var(--t-space-2);
+}
+.tab.tab.tab.tab {
+  padding-inline: var(--t-space-3);
+  padding-block: var(--t-space-2);
+}
+.tabActive {
+  background-color: rgb(18, 133, 82);
+}
+.tabIdle {
+  background-color: transparent;
+}
+
+.tabLabel {
+  font-size: 16px;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.tabLabelActive {
+  color: white;
+}
+.tabLabelIdle {
+  color: rgb(110, 100, 89);
+}
+
+.fields {
+  position: relative;
+  flex-direction: column;
+  gap: var(--t-space-3);
+}
+
+.fieldsDivider {
+  position: relative;
+  flex-direction: row;
+  width: 1px;
+  height: 44px;
+  margin-bottom: 4px;
+  background-color: rgb(240, 220, 192);
+  display: none;
+}
+
+.onlineHelp {
+  font-size: 13px;
+  color: rgb(110, 100, 89);
+}
+
+@media (max-width: 660px) {
+  .tabs {
+    align-self: stretch;
+  }
+  .tab.tab.tab.tab {
+    flex-grow: 1;
+    flex-basis: 0px;
+  }
+}
+@media (min-width: 801px) {
+  .fields {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+  .fieldsDivider {
+    display: flex;
+  }
+}
+@media (max-width: 390px) {
+  .tabs,
+  .tab {
+    gap: var(--t-space-1);
+  }
+  .tab.tab.tab.tab {
+    flex-basis: auto;
+    padding-inline: var(--t-space-2);
+  }
+  .tabLabel {
+    font-size: 15px;
+  }
+}
+
+/* Resa compatta: la pillola nella barra in alto. */
+
+.pill {
+  flex-direction: row;
+  position: relative;
+  align-items: center;
+  height: 48px;
+  padding-inline: 5px;
+  gap: 2px;
+  background-color: rgb(255, 255, 255);
+  border-radius: 999px;
+}
+.pill.pill.pill.pill {
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgb(234, 223, 211);
+}
+
+.modeButton {
+  position: relative;
+  flex-direction: row;
+  height: 38px;
+  gap: 6px;
+  padding-inline: 12px;
+  border-radius: 999px;
+  background-color: rgb(238, 246, 241);
+  cursor: pointer;
+  align-items: center;
+}
+@media (hover: hover) {
+  .modeButton:where(:hover) {
+    background-color: rgb(226, 240, 232);
+  }
+}
+
+.modeButtonLabel {
+  display: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgb(18, 133, 82);
+  white-space: nowrap;
+}
+
+.menu {
+  flex-direction: column;
+  position: absolute;
+  margin-top: 8px;
+  width: 220px;
+  padding: 6px;
+  background-color: white;
+  border-radius: 16px;
+  z-index: 1000;
+  box-shadow: rgba(43, 32, 19, 0.14) 0px 8px 28px;
+}
+.menu.menu.menu.menu {
+  top: 100%;
+  left: 0px;
+}
+
+.menuItem {
+  position: relative;
+  flex-direction: row;
+  gap: 10px;
+  align-items: center;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.menuItem.menuItem.menuItem.menuItem {
+  padding-inline: 12px;
+  padding-block: 11px;
+}
+.menuItemActive {
+  background-color: rgb(238, 246, 241);
+}
+.menuItemIdle {
+  background-color: transparent;
+}
+@media (hover: hover) {
+  .menuItemIdle:where(:hover) {
+    background-color: rgb(246, 241, 236);
+  }
+}
+
+.menuItemLabel {
+  font-size: 15px;
+  font-weight: 400;
+  color: rgb(43, 36, 32);
+  flex: 1 1 auto;
+}
+.menuItemLabelActive {
+  font-weight: 600;
+}
+
+.pillQuery,
+.pillCity {
+  position: relative;
+  flex-direction: row;
+}
+.pillQuery {
+  width: 140px;
+}
+.pillCity {
+  width: 110px;
+}
+
+.pillDivider {
+  position: relative;
+  flex-direction: row;
+  width: 1px;
+  height: 24px;
+  background-color: rgb(234, 223, 211);
+}
+
+@media (min-width: 1281px) {
+  .modeButtonLabel {
+    display: flex;
+  }
+  .pillQuery {
+    width: 210px;
+  }
+  .pillCity {
+    width: 150px;
+  }
+}
+
+/* Voci dei suggerimenti. */
+
+.suggestion {
+  position: relative;
+  flex-direction: column;
+  gap: var(--t-space-1);
+}
+
+.suggestionTitle {
+  font-weight: 600;
+  color: var(--color);
+}
+
+.suggestionText {
+  color: var(--color);
+}
+
+.suggestionDetail {
+  font-size: 13px;
+  color: var(--color10);
+}

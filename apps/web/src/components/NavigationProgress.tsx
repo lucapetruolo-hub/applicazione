@@ -1,8 +1,20 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState, useSyncExternalStore } from "react";
-import { type ProgressState, getProgress, getServerProgress, pageKey, startHistoryProgress, startNavigationProgress, stopProgress, subscribeProgress } from "@/lib/navigationProgress";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  type ProgressState,
+  getProgress,
+  getServerProgress,
+  getServerWaitCount,
+  getWaitCount,
+  pageKey,
+  startHistoryProgress,
+  startNavigationProgress,
+  stopProgress,
+  subscribeProgress,
+  subscribeWaits,
+} from "@/lib/navigationProgress";
 
 /** Sulle pagine veloci la barra non deve lampeggiare. */
 const SHOW_AFTER_MS = 300;
@@ -12,7 +24,9 @@ const GIVE_UP_AFTER_MS = 20_000;
 /**
  * Barra sottile in cima allo schermo mentre si aspetta una pagina lenta, la
  * ricerca dal problema scritto o l'uscita verso Stripe/Didit
- * (docs/changelog/2026-11-05-barra-di-attesa.md). Stessa barra `.flow-bar`
+ * (docs/changelog/2026-11-05-barra-di-attesa.md), o una schermata che carica
+ * i suoi dati (`WaitBarSignal`, docs/changelog/2026-11-10-barra-in-ogni-attesa.md).
+ * Stessa barra `.flow-bar`
  * di globals.css; con le animazioni ridotte resta ferma e la frase resta.
  */
 export function NavigationProgress() {
@@ -25,15 +39,33 @@ export function NavigationProgress() {
   // copre anche il caso in cui la pagina arriva prima che la barra si accenda.
   const currentUrl = pageKey(pathname, new URLSearchParams(searchParams.toString()));
   const arrived = progress.href !== undefined && progress.href === currentUrl;
-  const visible = progress.active && !arrived && shownFor === progress;
+  const navVisible = progress.active && !arrived && shownFor === progress;
+  // Attese dentro la pagina: stessa soglia di 300 ms, nessun limite di tempo
+  // (finiscono quando la sagoma o il "Caricamento…" lasciano lo schermo).
+  const waiting = useSyncExternalStore(subscribeWaits, getWaitCount, getServerWaitCount) > 0;
+  const [waitShown, setWaitShown] = useState(false);
+  useEffect(() => {
+    if (!waiting) return;
+    const show = window.setTimeout(() => setWaitShown(true), SHOW_AFTER_MS);
+    return () => {
+      window.clearTimeout(show);
+      setWaitShown(false);
+    };
+  }, [waiting]);
+  const visible = navVisible || (waiting && waitShown);
+  const visibleRef = useRef(false);
+  useEffect(() => {
+    visibleRef.current = visible;
+  }, [visible]);
   useEffect(() => {
     stopProgress();
   }, [currentUrl]);
 
-  // Si mostra solo se l'attesa supera 300 ms.
+  // Si mostra solo se l'attesa supera 300 ms; se la barra è già accesa (per
+  // un'attesa dentro la pagina, come l'accesso con Google) resta accesa.
   useEffect(() => {
     if (!progress.active) return;
-    const show = window.setTimeout(() => setShownFor(progress), SHOW_AFTER_MS);
+    const show = window.setTimeout(() => setShownFor(progress), visibleRef.current ? 0 : SHOW_AFTER_MS);
     const giveUp = window.setTimeout(stopProgress, GIVE_UP_AFTER_MS);
     return () => {
       window.clearTimeout(show);
@@ -64,7 +96,7 @@ export function NavigationProgress() {
     };
   }, []);
 
-  const label = visible ? progress.label : undefined;
+  const label = navVisible ? progress.label : undefined;
   return (
     <>
       {visible ? (

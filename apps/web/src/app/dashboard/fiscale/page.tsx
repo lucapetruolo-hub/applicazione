@@ -21,6 +21,8 @@ import {
   type MyVerificationStatus,
   type TaxIdKind,
   FISCAL_RESIDENCE_ABROAD_MESSAGE,
+  COMPANY_NAME_FOR_PRIVATE_MESSAGE,
+  looksLikeCompanyName,
 } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
@@ -33,6 +35,7 @@ import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput"
 import { FiscalWhyModal } from "@/components/verification/FiscalWhyModal";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { PageLoading } from "@/components/PageLoading";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 const isPersonType = (type: string) => type === "PRIVATE_INDIVIDUAL" || type === "SOLE_PROPRIETOR";
 
@@ -289,11 +292,18 @@ function DashboardFiscaleContent() {
 
   // La città del profilo: i suggerimenti dell'indirizzo partono da lì (collaudo 0-03).
   const [profileCity, setProfileCity] = useState<string | null>(null);
+  // Il nome del profilo pubblico: da privato non può essere quello di una
+  // società, e lo si dice subito al passo 1, non al salvataggio dell'indirizzo
+  // (docs/changelog/2026-11-10-nome-societa-privato.md).
+  const [profileName, setProfileName] = useState<string | null>(null);
   useEffect(() => {
     if (!token) return;
     apiClient
       .getMyProfessionalProfile(token)
-      .then((p) => setProfileCity(p?.city ?? null))
+      .then((p) => {
+        setProfileCity(p?.city ?? null);
+        setProfileName(p?.businessName ?? null);
+      })
       .catch(() => undefined);
   }, [token]);
 
@@ -652,6 +662,8 @@ function DashboardFiscaleContent() {
   // Provincia in sigla di 2 lettere (richiesta dell'utente, docs/CHANGELOG.md §263).
   if (!abroad && !/^[A-Z]{2}$/.test(fields.registeredProvince ?? "")) step2Missing.push("registeredProvince");
 
+  const companyNameConflict = entityType === "PRIVATE_INDIVIDUAL" && looksLikeCompanyName(profileName);
+
   const fiscalComplete = verification?.fiscalDataComplete ?? false;
   const toFix = verification?.taxIdState === "TO_FIX";
   const showForm = editing || !fiscalComplete || toFix;
@@ -765,6 +777,34 @@ function DashboardFiscaleContent() {
                   {invalidChecks.map(taxIdCheckMessage).join(" ")}
                 </Text>
               </XStack>
+            ) : null}
+
+            {companyNameConflict || saveError === COMPANY_NAME_FOR_PRIVATE_MESSAGE ? (
+              <YStack gap="3" padding="3" borderRadius={20} backgroundColor={brand.urgenzaVelo} role="alert">
+                <XStack gap="2" alignItems="flex-start">
+                  <Icon name="triangle-alert" size={18} strokeWidth={2} color={brand.urgenza} />
+                  <Text flex={1} fontSize={16} color={brand.grafite}>
+                    Il nome del tuo profilo{profileName ? <>, <Text fontSize={16} fontWeight="700" color={brand.grafite}>{profileName}</Text>,</> : null} è quello di una società: da privato senza partita IVA non si può usare.
+                  </Text>
+                </XStack>
+                <XStack gap="2" flexWrap="wrap">
+                  <Link href="/dashboard/profilo?campo=nome" style={{ textDecoration: "none" }}>
+                    <Button tabIndex={-1} variant="primary">Cambia il nome</Button>
+                  </Link>
+                  {!profile?.stripeConnectAccountId ? (
+                    <Button
+                      variant="secondary"
+                      onPress={() => {
+                        setChangingType(true);
+                        setFormStep(1);
+                        setSaveError(null);
+                      }}
+                    >
+                      Ho la partita IVA
+                    </Button>
+                  ) : null}
+                </XStack>
+              </YStack>
             ) : null}
 
             {formStep === 1 ? (
@@ -945,7 +985,7 @@ function DashboardFiscaleContent() {
                 ) : null}
 
                 <XStack gap="3" alignItems="center" flexWrap="wrap" marginTop="2">
-                  <Button variant="primary" disabled={step1Missing.length > 0 || hasLiveErrors} opacity={step1Missing.length > 0 || hasLiveErrors ? 0.45 : 1} onPress={() => setFormStep(2)}>
+                  <Button variant="primary" disabled={step1Missing.length > 0 || hasLiveErrors || companyNameConflict} opacity={step1Missing.length > 0 || hasLiveErrors || companyNameConflict ? 0.45 : 1} onPress={() => setFormStep(2)}>
                     Avanti
                   </Button>
                   {editing && fiscalComplete && !toFix ? (
@@ -1099,10 +1139,11 @@ function DashboardFiscaleContent() {
                   <Button
                     variant="primary"
                     onPress={handleSave}
-                    disabled={saving || step2Missing.length > 0 || hasLiveErrors || !!recipientError}
-                    opacity={saving || step2Missing.length > 0 || hasLiveErrors || !!recipientError ? 0.45 : 1}
+                    disabled={saving || step2Missing.length > 0 || hasLiveErrors || !!recipientError || companyNameConflict}
+                    opacity={!saving && (step2Missing.length > 0 || hasLiveErrors || !!recipientError || companyNameConflict) ? 0.45 : 1}
                   >
-                    {saving ? "Salvataggio..." : "Salva"}
+                    Salva
+                    {saving ? <ButtonWaitBar label="Salvataggio…" /> : null}
                   </Button>
                 </XStack>
                 {/* Il controllo della partita IVA può durare qualche secondo (collaudo 0-06). */}
@@ -1115,7 +1156,7 @@ function DashboardFiscaleContent() {
                         : "Stiamo controllando codice fiscale e partita IVA: pochi secondi."}
                   </Text>
                 ) : null}
-                {saveError ? (
+                {saveError && saveError !== COMPANY_NAME_FOR_PRIVATE_MESSAGE ? (
                   <Text fontSize={16} color={brand.urgenza} role="alert">
                     {saveError}
                     {/* Un account appena registrato non ha ancora un profilo

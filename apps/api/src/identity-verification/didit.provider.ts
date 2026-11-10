@@ -199,7 +199,10 @@ const REASONS: [RegExp, string][] = [
   [/BLURRY|RESOLUTION|QUALITY_TOO_LOW/, "La foto del documento era sfocata: rifalla tenendo fermo il telefono."],
   [/TOO_DARK|TOO_BRIGHT/, "Troppa o poca luce sul documento: rifai la foto con una luce uniforme, senza riflessi."],
   [/NOT_FULLY_VISIBLE|OCCLUSION/, "Il documento non si vedeva per intero: inquadralo tutto, senza dita sopra."],
-  [/NOT_DETECTED|VALIDATION_FAILED|INVALID_DATE|FORMAT_MISMATCH|NOT_SAME|DATA_INCONSISTENT|SIGNATURE_INVALID/, "Non siamo riusciti a leggere i dati del documento: rifai la foto più nitida, con buona luce e senza riflessi."],
+  // Righe o codici del documento non letti: quasi sempre è la foto.
+  [/NOT_DETECTED|VALIDATION_FAILED/, "Non siamo riusciti a leggere i dati del documento: rifai la foto più nitida, con buona luce e senza riflessi."],
+  // Dati letti ma che non tornano tra loro (date, numeri, firma): rifare la foto di solito non basta.
+  [/INVALID_DATE|FORMAT_MISMATCH|NOT_SAME|DATA_INCONSISTENT|SIGNATURE_INVALID/, "I dati del documento non tornano tra loro (date o numeri): rifai la verifica con un documento integro e valido, oppure con un altro documento."],
 ];
 
 export function diditReason(warnings: string[]): string | null {

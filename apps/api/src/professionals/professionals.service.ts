@@ -959,7 +959,7 @@ export class ProfessionalsService {
       const entityType = declared?.professionalProfile?.fiscalProfile?.entityType ?? declared?.signupEntityType ?? null;
       if (entityType === "PRIVATE_INDIVIDUAL") {
         throw new BadRequestException(
-          "Ti sei iscritto come privato senza partita IVA: il nome non può avere la forma di una società (S.R.L., S.N.C., S.p.A.). Toglila, oppure scrivici dalla pagina Contatti se sei un'azienda.",
+          "Da privato senza partita IVA il nome non può essere quello di una società (S.R.L. o simili). Toglila, oppure cambia il tipo di attività in Dati fiscali.",
         );
       }
     }

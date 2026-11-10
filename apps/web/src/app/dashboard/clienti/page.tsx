@@ -12,6 +12,8 @@ import { ExternalJobModal } from "@/components/ExternalJobModal";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import { TimelineModal } from "@/components/TimelineModal";
+import { WaitBarSignal } from "@/components/WaitBar";
+import { PageLoading } from "@/components/PageLoading";
 
 type Filter = "ALL" | "SITE" | "EXTERNAL";
 
@@ -84,7 +86,8 @@ export default function DashboardClientiPage() {
     [clients, filter, query],
   );
 
-  if (isLoading) return null;
+  // Sagoma e barra di attesa al posto della pagina vuota (docs/changelog/2026-11-10-barra-in-ogni-attesa.md).
+  if (isLoading) return <PageLoading />;
 
   if (!user || !token) {
     return (
@@ -132,7 +135,10 @@ export default function DashboardClientiPage() {
         </YStack>
 
         {error ? <Text color={brand.urgenza}>{error}</Text> : null}
-        {clients === null && !error ? <Text color={brand.grafite70}>Caricamento...</Text> : null}
+        {clients === null && !error ? <Text color={brand.grafite70}>
+            Caricamento...
+            <WaitBarSignal />
+          </Text> : null}
 
         {clients && clients.length === 0 ? (
           <EmptyState
@@ -410,8 +416,12 @@ function ClientCard({
                 style={{ ...fieldStyle, resize: "vertical" }}
               />
               <XStack gap="3" alignItems="center">
-                <CardButton onPress={saveNote} disabled={noteState === "saving" || note.trim() === (client.note ?? "")}>
-                  {noteState === "saving" ? "Salvataggio..." : "Salva la nota"}
+                <CardButton waitingLabel={noteState === "saving" ? "Salvataggio…" : undefined}
+                  onPress={saveNote}
+                  disabled={noteState === "saving" || note.trim() === (client.note ?? "")}
+                  opacity={noteState !== "saving" && note.trim() === (client.note ?? "") ? 0.6 : 1}
+                >
+                  Salva la nota
                 </CardButton>
                 {noteState === "saved" ? (
                   <Text fontSize={14} color={brand.verificato} fontWeight="600" role="status">

@@ -23,6 +23,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { downloadTextFile } from "@/components/admin/adminUi";
 import { PdfButton, documentDate } from "./_components/DocumentParts";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 /**
  * "Fatture e documenti" del professionista (decisioni dell'utente del
@@ -400,8 +401,9 @@ function AccountantCard({ token, initial }: { token: string; initial: DocumentsO
         Mandagli l&apos;estratto ogni mese e a gennaio il riepilogo dell&apos;anno, in PDF e nel foglio di calcolo
       </ConsentCheckbox>
       <XStack gap="3" alignItems="center" flexWrap="wrap">
-        <Button variant="primary" alignSelf="flex-start" disabled={!dirty || pending} opacity={!dirty || pending ? 0.6 : 1} onPress={() => void save()}>
-          {pending ? "Salvataggio..." : "Salva"}
+        <Button variant="primary" alignSelf="flex-start" disabled={!dirty || pending} opacity={!dirty && !pending ? 0.6 : 1} onPress={() => void save()}>
+          Salva
+          {pending ? <ButtonWaitBar label="Salvataggio…" /> : null}
         </Button>
         {done && !dirty ? (
           <Text fontSize={16} color={brand.cianografiaScuro} role="status">

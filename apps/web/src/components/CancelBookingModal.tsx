@@ -4,6 +4,7 @@ import { useState, type ReactNode, useRef } from "react";
 import { useDialogFocus } from "@/lib/useDialogFocus";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
+import { ButtonWaitBar } from "@/components/WaitBar";
 
 const textareaStyle = {
   padding: 10,
@@ -146,8 +147,9 @@ export function CancelBookingModal({
         ) : null}
 
         <XStack gap="2" flexWrap="wrap">
-          <Button variant={confirmVariant} size="3" height={44} onPress={handleSubmit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
-            {isSaving ? confirmingLabel : confirmLabel}
+          <Button variant={confirmVariant} size="3" height={44} onPress={handleSubmit} disabled={isSaving}>
+            {confirmLabel}
+            {isSaving ? <ButtonWaitBar label={confirmingLabel} /> : null}
           </Button>
           <Button variant="ghost" size="3" height={44} onPress={onClose} disabled={isSaving}>
             {backLabel}

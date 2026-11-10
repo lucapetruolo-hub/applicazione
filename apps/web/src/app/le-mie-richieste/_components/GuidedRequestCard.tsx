@@ -704,8 +704,8 @@ export function GuidedRequestCard({
             </Text>
           ) : null}
           <XStack gap="2">
-            <CardButton tone="primary" onPress={handleSaveEdit} disabled={isSaving || isUploadingPhoto}>
-              {isSaving ? "Salvataggio..." : "Salva modifiche"}
+            <CardButton waitingLabel={isSaving ? "Salvataggio…" : undefined} tone="primary" onPress={handleSaveEdit} disabled={isSaving || isUploadingPhoto} opacity={isUploadingPhoto && !isSaving ? 0.6 : 1}>
+              Salva modifiche
             </CardButton>
             <CardButton onPress={requestExitEditing} disabled={isSaving}>
               Annulla
@@ -780,10 +780,6 @@ export function GuidedRequestCard({
       onError: setError,
     }),
   );
-  // "Archivia" accanto a "Elimina richiesta" si confondeva (prova simulata, §343): una riga sotto spiega la differenza.
-  for (const action of menuActions) {
-    if (action.text === "Archivia" && !booking) action.hint = "La ritrovi in Archiviate";
-  }
   // Quali segnalazioni si possono inviare lo decide il server (docs/CHANGELOG.md §164).
   if (booking && booking.issueTypesAllowed.length > 0) {
     menuActions.push({

@@ -1,3 +1,5 @@
+import { WaitBarSignal } from "./WaitBar";
+
 /**
  * Pagina in arrivo (collaudo 08/11 E8-02, docs/changelog/2026-11-08-seo-e-velocita.md):
  * al posto del vuoto mentre si carica l'accesso o il JavaScript della pagina,
@@ -11,6 +13,9 @@
  * ("Le mie richieste", TBT oltre 500 ms).
  *
  * `list`: titolo e qualche scheda (richieste, agenda, messaggi…).
+ * Accende anche la barra di attesa in cima (`WaitBarSignal`,
+ * docs/changelog/2026-11-10-barra-in-ogni-attesa.md).
+ *
  * `form`: colonna stretta con qualche campo e il pulsante (accesso, iscrizione, pagine aperte da un'email).
  */
 export function PageLoading({ variant = "list" }: { variant?: "list" | "form" }) {
@@ -42,6 +47,7 @@ export function PageLoading({ variant = "list" }: { variant?: "list" | "form" })
         <p role="status" className="page-loading-note">
           Caricamento…
         </p>
+        <WaitBarSignal />
       </div>
     </div>
   );
@@ -73,6 +79,7 @@ export function GuidedRequestSkeleton() {
       <p role="status" className="page-loading-note">
         Stiamo preparando il modulo…
       </p>
+      <WaitBarSignal />
     </div>
   );
 }

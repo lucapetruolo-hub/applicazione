@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
 import { ReviewReply } from "@/components/ReviewReply";
 import { PageLoading } from "@/components/PageLoading";
+import { WaitBarSignal } from "@/components/WaitBar";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
@@ -133,7 +134,13 @@ function PendingReviews({ bookings }: { bookings: ClientBooking[] }) {
 
 function SentReviewsList({ reviews, error, hasPending }: { reviews: SentReview[] | null; error: string | null; hasPending: boolean }) {
   if (error) return <Text color={brand.urgenza}>{error}</Text>;
-  if (reviews === null) return <Text color={brand.grafite70}>Caricamento...</Text>;
+  if (reviews === null)
+    return (
+      <Text color={brand.grafite70}>
+        Caricamento...
+        <WaitBarSignal />
+      </Text>
+    );
   if (reviews.length === 0) {
     // Con lavori da recensire qui sotto basta una riga.
     if (hasPending) return <Text color={brand.grafite70}>Non hai ancora lasciato recensioni.</Text>;

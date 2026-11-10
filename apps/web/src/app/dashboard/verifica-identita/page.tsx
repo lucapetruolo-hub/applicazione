@@ -3,13 +3,14 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { biometricConsentText, representativeConsentText, type MyVerificationStatus } from "@professionisti/shared";
+import { biometricConsentText, identityReasonNeedsFiscalFix, representativeConsentText, type MyVerificationStatus } from "@professionisti/shared";
 import { Button, Icon, Section, Surface, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { JourneyProgress, PAYMENTS_ANCHOR, setupJourney, useJourneySubscription } from "@/components/verification/SetupJourney";
 import { startExternalRedirectProgress, stopProgress } from "@/lib/navigationProgress";
 import { PageLoading } from "@/components/PageLoading";
+import { WaitBarSignal } from "@/components/WaitBar";
 
 /** Mentre si aspetta l'esito la pagina si aggiorna da sola, per al massimo 3 minuti. */
 const POLL_MS = 4000;
@@ -107,7 +108,10 @@ function VerificaIdentitaContent() {
   if (isLoading || (!status && !loadError)) {
     return (
       <Section title="Verifica identità" pageTitle maxWidth={760}>
-        <Text color={brand.grafite70}>Caricamento…</Text>
+        <Text color={brand.grafite70}>
+          Caricamento…
+          <WaitBarSignal />
+        </Text>
       </Section>
     );
   }
@@ -324,10 +328,12 @@ function ActionPanel({
       {retry && identity.reason ? (
         <YStack gap="1-5">
           <Text color={brand.urgenza}>{identity.reason}</Text>
-          {/* Il professionista si corregge da solo, nessun admin in mezzo (§255). */}
+          {/* Il professionista si corregge da solo, nessun admin in mezzo (§255); il link solo se il motivo sono i dati fiscali. */}
+          {identityReasonNeedsFiscalFix(identity.reason) ? (
           <Link href="/dashboard/fiscale" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 16, textDecoration: "underline", alignSelf: "flex-start" }}>
             Controlla i dati fiscali →
           </Link>
+          ) : null}
         </YStack>
       ) : null}
       <Text color={brand.grafite70}>

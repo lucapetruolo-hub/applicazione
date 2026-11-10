@@ -83,8 +83,8 @@ export function ReviewReply({
           </Text>
         ) : null}
         <XStack gap="2" flexWrap="wrap">
-          <CardButton tone="primary" disabled={busy} onPress={save}>
-            {busy ? "Salvataggio..." : "Pubblica la risposta"}
+          <CardButton waitingLabel={busy ? "Salvataggio…" : undefined} tone="primary" disabled={busy} opacity={1} onPress={save}>
+            Pubblica la risposta
           </CardButton>
           <CardButton
             onPress={() => {

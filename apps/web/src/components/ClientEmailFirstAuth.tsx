@@ -12,6 +12,7 @@ import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle";
+import { ButtonWaitBar, SlowWaitHint, useLeavingWait, useWaitBar } from "@/components/WaitBar";
 
 type Step = "email" | EmailStatus;
 
@@ -97,6 +98,13 @@ export function ClientEmailFirstAuth({
   // (docs/CHANGELOG.md §278). Nullo: errore generale, sopra il pulsante.
   const [errorField, setErrorField] = useState<"email" | "password" | "confirm" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Accesso fatto, la pagina o la finestra successiva sta arrivando: l'attesa continua.
+  const [leaving, startLeaving] = useLeavingWait();
+  const busy = isSubmitting || leaving;
+  // Con Google la barra va in cima (il pulsante è quello di Google), con
+  // email e password dentro il pulsante premuto.
+  const [viaGoogle, setViaGoogle] = useState(false);
+  useWaitBar(busy && viaGoogle);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileReset, setTurnstileReset] = useState(0);
 
@@ -116,9 +124,10 @@ export function ClientEmailFirstAuth({
     document.getElementById(inputId)?.focus();
   }
 
-  async function run(action: () => Promise<void>) {
+  async function run(action: () => Promise<void>, google = false) {
     setError(null);
     setErrorField(null);
+    setViaGoogle(google);
     setIsSubmitting(true);
     try {
       await action();
@@ -172,6 +181,7 @@ export function ClientEmailFirstAuth({
             ? await apiClient.register(email, password, undefined, "CLIENT", true, true, turnstileToken ?? undefined)
             : await apiClient.login(email, password);
         await login(token);
+        startLeaving();
         onAuthenticated(isNewUser);
       } catch (err) {
         // Il token anti-bot vale una volta sola: ne serve uno nuovo per riprovare.
@@ -187,8 +197,9 @@ export function ClientEmailFirstAuth({
     void run(async () => {
       const { token, isNewUser } = await apiClient.verifyGoogle(idToken, "CLIENT", true, true, true);
       await login(token);
+      startLeaving();
       onAuthenticated(isNewUser);
-    });
+    }, true);
   }
 
   const errorText =
@@ -206,7 +217,7 @@ export function ClientEmailFirstAuth({
         <Text fontSize={16} color={brand.grafite70}>
           {intro}
         </Text>
-        <GoogleSignInButton onCredential={handleGoogle} disabled={isSubmitting} />
+        <GoogleSignInButton onCredential={handleGoogle} disabled={busy} />
         {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
           <XStack alignItems="center" gap="3">
             <YStack flex={1} height={1} backgroundColor={brand.filetto} />
@@ -238,8 +249,9 @@ export function ClientEmailFirstAuth({
               footerId="email-suggestion"
             />
             {errorText}
-            <Button variant="primary" onPress={handleContinue} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
-              {isSubmitting ? "Un momento..." : "Continua"}
+            <Button variant="primary" onPress={handleContinue} disabled={busy} opacity={busy && viaGoogle ? 0.6 : 1}>
+              Continua
+              {isSubmitting && !viaGoogle ? <ButtonWaitBar label="Un momento…" /> : null}
             </Button>
           </YStack>
         </form>
@@ -261,7 +273,7 @@ export function ClientEmailFirstAuth({
         <Text fontSize={16} color={brand.grafite70}>
           Questo account è collegato a Google: accedi con lo stesso indirizzo.
         </Text>
-        <GoogleSignInButton onCredential={handleGoogle} disabled={isSubmitting} />
+        <GoogleSignInButton onCredential={handleGoogle} disabled={busy} />
         {errorText}
       </YStack>
     );
@@ -318,9 +330,11 @@ export function ClientEmailFirstAuth({
           ) : null}
           {isNew ? <TurnstileWidget onTokenChange={setTurnstileToken} resetSignal={turnstileReset} /> : null}
           {errorText}
-          <Button variant="primary" onPress={handlePassword} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
-            {isSubmitting ? "Un momento..." : `${isNew ? "Crea account" : "Accedi"}${submitSuffix}`}
+          <Button variant="primary" onPress={handlePassword} disabled={busy} opacity={busy && viaGoogle ? 0.6 : 1}>
+            {`${isNew ? "Crea account" : "Accedi"}${submitSuffix}`}
+            {busy && !viaGoogle ? <ButtonWaitBar label={isNew ? "Stiamo creando il tuo account…" : "Accesso in corso…"} /> : null}
           </Button>
+          {isNew ? <SlowWaitHint active={busy && !viaGoogle} /> : null}
         </YStack>
       </form>
       {isNew ? (
