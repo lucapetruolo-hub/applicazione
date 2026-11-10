@@ -174,7 +174,7 @@ export class AgendaService {
    * Salva la settimana tipo e la porta subito nei prossimi 63 giorni
    * (docs/CHANGELOG.md §323): da qui in avanti vale per tutte le settimane.
    */
-  async saveWeekTemplate(userId: string, template: AgendaWeekTemplate, applyToManual = false): Promise<AgendaWeekTemplateState> {
+  async saveWeekTemplate(userId: string, template: AgendaWeekTemplate, applyToManual: boolean | readonly string[] = false): Promise<AgendaWeekTemplateState> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
       select: { id: true, agendaWeekTemplate: true, agendaTemplateFilledUntil: true, remoteAvailable: true },
@@ -192,12 +192,18 @@ export class AgendaService {
    * gli stessi conti del salvataggio, senza scrivere nulla, per chiedere se
    * cambiare anche i giorni cambiati a mano.
    */
-  async previewWeekTemplate(userId: string, template: AgendaWeekTemplate, now = new Date()): Promise<WeekTemplatePreview> {
+  async previewWeekTemplate(userId: string, template: AgendaWeekTemplate, month: string | null = null, now = new Date()): Promise<WeekTemplatePreview> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
       select: { id: true, agendaWeekTemplate: true, agendaTemplateFilledUntil: true },
     });
     if (!profile) throw new NotFoundException("Profilo professionista non trovato.");
+    if (month) {
+      // Per un mese solo: stessi conti del salvataggio di quel mese.
+      const { dates, start, end } = this.monthWindow(month, now);
+      const sync = await this.computeSync(this.prisma, profile.id, template, null, null, dates, start, end);
+      return { manualDays: sync.manualDays, bookedDaysKept: sync.bookedDaysKept };
+    }
     const previousParsed = agendaWeekTemplateSchema.safeParse(profile.agendaWeekTemplate);
     const previous = profile.agendaTemplateFilledUntil && previousParsed.success ? previousParsed.data : null;
     const { dates, today, windowEnd } = this.syncWindow(now);
@@ -212,28 +218,21 @@ export class AgendaService {
    * i mesi). La settimana di tutti i mesi resta com'era; se non è mai stata
    * salvata, si ricorda questa per riaprire l'editor.
    */
-  async saveWeekTemplateForMonth(userId: string, template: AgendaWeekTemplate, month: string, now = new Date()): Promise<AgendaWeekTemplateState> {
+  async saveWeekTemplateForMonth(
+    userId: string,
+    template: AgendaWeekTemplate,
+    month: string,
+    now = new Date(),
+    applyToManual: boolean | readonly string[] = false,
+  ): Promise<AgendaWeekTemplateState> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
       select: { id: true, agendaWeekTemplate: true, agendaTemplateFilledUntil: true, remoteAvailable: true },
     });
     if (!profile) throw new NotFoundException("Profilo professionista non trovato.");
-    const today = wallClockToday(now);
-    const todayStr = today.toISOString().slice(0, 10);
-    const first = new Date(`${month}-01T00:00:00.000Z`);
-    const limit = new Date(today);
-    limit.setUTCFullYear(limit.getUTCFullYear() + 1);
-    if (first > limit) throw new BadRequestException("Si può scegliere al massimo un anno avanti.");
-    const dates: string[] = [];
-    for (const day = new Date(first); day.getUTCMonth() === first.getUTCMonth(); day.setUTCDate(day.getUTCDate() + 1)) {
-      const date = day.toISOString().slice(0, 10);
-      if (date >= todayStr) dates.push(date);
-    }
-    if (dates.length === 0) throw new BadRequestException("Quel mese è già passato.");
-    const end = new Date(`${dates[dates.length - 1]}T00:00:00.000Z`);
-    end.setUTCDate(end.getUTCDate() + 1);
+    const { dates, start, end } = this.monthWindow(month, now);
     const changedDays = await this.prisma.$transaction(async (tx) => {
-      const sync = await this.computeSync(tx, profile.id, template, null, null, dates, new Date(`${dates[0]}T00:00:00.000Z`), end);
+      const sync = await this.computeSync(tx, profile.id, template, null, null, dates, start, end, applyToManual);
       await this.applySync(tx, profile.id, sync, false);
       await tx.professionalProfile.update({
         where: { id: profile.id },
@@ -273,7 +272,7 @@ export class AgendaService {
     filledUntil: Date | null,
     now = new Date(),
     clearStarter = false,
-    applyToManual = false,
+    applyToManual: boolean | readonly string[] = false,
   ): Promise<number> {
     const { dates, today, lastDate, windowEnd } = this.syncWindow(now);
     return this.prisma.$transaction(async (tx) => {
@@ -290,6 +289,25 @@ export class AgendaService {
       });
       return sync.changedDays;
     });
+  }
+
+  /** I giorni di un mese da oggi in poi, al massimo un anno avanti (§327). */
+  private monthWindow(month: string, now: Date) {
+    const today = wallClockToday(now);
+    const todayStr = today.toISOString().slice(0, 10);
+    const first = new Date(`${month}-01T00:00:00.000Z`);
+    const limit = new Date(today);
+    limit.setUTCFullYear(limit.getUTCFullYear() + 1);
+    if (first > limit) throw new BadRequestException("Si può scegliere al massimo un anno avanti.");
+    const dates: string[] = [];
+    for (const day = new Date(first); day.getUTCMonth() === first.getUTCMonth(); day.setUTCDate(day.getUTCDate() + 1)) {
+      const date = day.toISOString().slice(0, 10);
+      if (date >= todayStr) dates.push(date);
+    }
+    if (dates.length === 0) throw new BadRequestException("Quel mese è già passato.");
+    const end = new Date(`${dates[dates.length - 1]}T00:00:00.000Z`);
+    end.setUTCDate(end.getUTCDate() + 1);
+    return { dates, start: new Date(`${dates[0]}T00:00:00.000Z`), end };
   }
 
   /** I prossimi 63 giorni che la settimana tipo tiene pieni. */
@@ -316,7 +334,7 @@ export class AgendaService {
     dates: string[],
     from: Date,
     to: Date,
-    applyToManual = false,
+    applyToManual: boolean | readonly string[] = false,
   ) {
     const [slots, exceptions, bookings] = await Promise.all([
       tx.availabilitySlot.findMany({ where: { professionalProfileId, OR: [{ date: null }, { date: { gte: from, lt: to } }] } }),
@@ -345,7 +363,7 @@ export class AgendaService {
       })),
       closedDates: new Set(exceptions.map((e) => e.date.toISOString().slice(0, 10))),
       bookedDates: new Set(bookings.map((b) => b.scheduledAt.toISOString().slice(0, 10))),
-      applyToManual,
+      applyToManual: typeof applyToManual === "boolean" ? applyToManual : new Set(applyToManual),
     });
   }
 
@@ -354,6 +372,10 @@ export class AgendaService {
     // Solo la settimana di tutti i mesi riprende come sue le eccezioni tornate uguali a lei.
     if (fromWeekTemplate && sync.adoptIds.length) {
       await tx.availabilitySlot.updateMany({ where: { id: { in: sync.adoptIds }, professionalProfileId }, data: { fromWeekTemplate: true } });
+    }
+    // E segna come eccezione i giorni rimasti con gli orari di prima per un lavoro fissato.
+    if (fromWeekTemplate && sync.demoteIds.length) {
+      await tx.availabilitySlot.updateMany({ where: { id: { in: sync.demoteIds }, professionalProfileId }, data: { fromWeekTemplate: false } });
     }
     if (!sync.added.length) return;
     await tx.availabilitySlot.createMany({

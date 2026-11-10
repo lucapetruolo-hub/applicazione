@@ -193,7 +193,7 @@ test("salvando la settimana chiede dei giorni cambiati a mano e li cambia se si 
   await expect(dialog.getByRole("listitem").filter({ hasText: "09:00–11:00" })).toHaveCount(1);
   await expect(dialog.getByRole("listitem").filter({ hasText: "09:00–11:00" })).toContainText("09:00–13:00");
   await expect(dialog.getByRole("listitem").filter({ hasText: "12:00" })).toHaveCount(0);
-  await dialog.getByRole("button", { name: /^Cambia anche quest[oi]$/ }).click();
+  await dialog.getByRole("button", { name: /^Cambia (anche questo|tutti e \d+)$/ }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole("status").filter({ hasText: "Settimana salvata a tutti i mesi" })).toBeVisible();
   const saved = ((await mySlots(request)) as FullSlot[]).filter((s) => s.date === wed);

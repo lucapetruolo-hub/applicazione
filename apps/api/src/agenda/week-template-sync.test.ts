@@ -115,6 +115,22 @@ describe("settimana tipo per tutte le settimane (§323)", () => {
       expect(sync.changedDays).toBe(1);
     });
 
+    it("con i giorni spuntati cambiano solo quelli", () => {
+      const tue = manualTue();
+      const wed = slot("2026-11-04", { ...MORNING, end: "12:00" }, false);
+      const sync = weekTemplateSync({ ...base, template: ONLY_MORNINGS, existing: [tue, wed], bookedDates: none, applyToManual: new Set(["2026-11-04"]) });
+      expect(sync.deleteIds).toEqual([wed.id]);
+      expect(sync.manualDays.map((d) => d.date)).toEqual(["2026-11-03", "2026-11-04"]);
+    });
+
+    it("un giorno della settimana tipo rimasto diverso per un lavoro fissato diventa un'eccezione", () => {
+      const booked = slot("2026-11-03", MORNING, true);
+      const afternoon = slot("2026-11-03", AFTERNOON, true);
+      const sync = weekTemplateSync({ ...base, template: ONLY_MORNINGS, existing: [booked, afternoon], bookedDates: new Set(["2026-11-03"]) });
+      expect(sync.deleteIds).toEqual([]);
+      expect(sync.demoteIds.sort()).toEqual([booked.id, afternoon.id].sort());
+    });
+
     it("un giorno con lavori fissati non si tocca mai, neanche con \"Cambia anche questi\"", () => {
       const manual = manualTue();
       const sync = weekTemplateSync({ ...base, template: ONLY_MORNINGS, existing: [manual], bookedDates: new Set(["2026-11-03"]), applyToManual: true });

@@ -2162,16 +2162,16 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     // Strumenti della nuova agenda (docs/CHANGELOG.md §288).
     agendaWeekTemplate: (token: string) => request<AgendaWeekTemplateState>("/agenda/week-template", { headers: { Authorization: `Bearer ${token}` } }),
-    saveAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate, applyToManual = false) =>
+    saveAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate, applyToManual: boolean | string[] = false) =>
       request<AgendaWeekTemplateState>("/agenda/week-template", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ template, applyToManual }) }),
     /** Giorni cambiati a mano che la settimana nuova cambierebbe, prima di salvarla (docs/changelog/2026-11-10-eccezioni-settimana.md). */
-    previewAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate) =>
-      request<WeekTemplatePreview>("/agenda/week-template/preview", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(template) }),
-    saveAgendaWeekTemplateForMonth: (token: string, template: AgendaWeekTemplate, month: string) =>
+    previewAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate, month: string | null = null) =>
+      request<WeekTemplatePreview>("/agenda/week-template/preview", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ template, month }) }),
+    saveAgendaWeekTemplateForMonth: (token: string, template: AgendaWeekTemplate, month: string, applyToManual: boolean | string[] = false) =>
       request<AgendaWeekTemplateState>("/agenda/week-template/month", {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ month, template }),
+        body: JSON.stringify({ month, template, applyToManual }),
       }),
     keepAgendaStarterHours: (token: string) =>
       request<AgendaWeekTemplateState>("/agenda/week-template/starter/keep", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),

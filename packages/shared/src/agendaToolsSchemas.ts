@@ -44,9 +44,13 @@ export type AgendaWeekTemplate = z.infer<typeof agendaWeekTemplateSchema>;
  * la settimana nuova (mai quelli con lavori fissati). Si accetta anche la sola
  * settimana, come prima.
  */
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data non valida.");
+/** `true` = tutti i giorni cambiati a mano, oppure solo quelli spuntati (AAAA-MM-GG). */
+const applyToManualSchema = z.union([z.boolean(), z.array(isoDate).max(400)]).default(false);
+
 export const agendaWeekTemplateSaveSchema = z.union([
-  z.object({ template: agendaWeekTemplateSchema, applyToManual: z.boolean() }),
-  agendaWeekTemplateSchema.transform((template) => ({ template, applyToManual: false })),
+  z.object({ template: agendaWeekTemplateSchema, applyToManual: applyToManualSchema }),
+  agendaWeekTemplateSchema.transform((template) => ({ template, applyToManual: false as boolean | string[] })),
 ]);
 export type AgendaWeekTemplateSave = z.infer<typeof agendaWeekTemplateSaveSchema>;
 
@@ -54,8 +58,17 @@ export type AgendaWeekTemplateSave = z.infer<typeof agendaWeekTemplateSaveSchema
  * Settimana tipo salvata per un mese solo (richiesta dell'utente,
  * docs/CHANGELOG.md §323): `month` in AAAA-MM, al massimo un anno avanti.
  */
+const monthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Mese non valido.");
 export const agendaWeekTemplateMonthSchema = z.object({
-  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Mese non valido."),
+  month: monthSchema,
   template: agendaWeekTemplateSchema,
+  applyToManual: applyToManualSchema,
 });
 export type AgendaWeekTemplateMonth = z.infer<typeof agendaWeekTemplateMonthSchema>;
+
+/** Domanda prima di salvare: la settimana e, se è per un mese solo, quel mese (docs/changelog/2026-11-10-eccezioni-settimana.md). */
+export const agendaWeekTemplatePreviewSchema = z.union([
+  z.object({ template: agendaWeekTemplateSchema, month: monthSchema.nullable().default(null) }),
+  agendaWeekTemplateSchema.transform((template) => ({ template, month: null as string | null })),
+]);
+export type AgendaWeekTemplatePreviewInput = z.infer<typeof agendaWeekTemplatePreviewSchema>;

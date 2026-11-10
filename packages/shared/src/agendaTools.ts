@@ -244,6 +244,8 @@ export type WeekTemplateSyncResult = {
   deleteIds: string[];
   /** Fasce cambiate a mano ma di nuovo uguali alla settimana tipo: tornano sue, senza bollino "eccezione". */
   adoptIds: string[];
+  /** Fasce della settimana tipo rimaste diverse da lei per un lavoro fissato: diventano un'eccezione. */
+  demoteIds: string[];
   added: WeekTemplateDateSlot[];
   changedDays: number;
   /** Giorni cambiati a mano diversi dalla settimana nuova (cambiati solo con `applyToManual`). */
@@ -275,10 +277,14 @@ export function weekTemplateSync(input: {
   existing: WeekTemplateExistingSlot[];
   closedDates: ReadonlySet<string>;
   bookedDates: ReadonlySet<string>;
-  /** "Applica anche a questi": i giorni cambiati a mano prendono la settimana nuova (docs/changelog/2026-11-10-eccezioni-settimana.md). */
-  applyToManual?: boolean;
+  /**
+   * "Cambia anche questi": i giorni cambiati a mano che prendono la settimana
+   * nuova, tutti (`true`) o solo quelli spuntati (docs/changelog/2026-11-10-eccezioni-settimana.md).
+   */
+  applyToManual?: boolean | ReadonlySet<string>;
 }): WeekTemplateSyncResult {
   const { template, previous, filledUntil, existing, closedDates, bookedDates, applyToManual = false } = input;
+  const applies = (date: string) => (typeof applyToManual === "boolean" ? applyToManual : applyToManual.has(date));
   const recurringDays = new Set(existing.filter((s) => s.date === null).map((s) => s.dayOfWeek));
   const byDate = new Map<string, WeekTemplateExistingSlot[]>();
   for (const slot of existing) {
@@ -287,6 +293,7 @@ export function weekTemplateSync(input: {
   }
   const deleteIds: string[] = [];
   const adoptIds: string[] = [];
+  const demoteIds: string[] = [];
   const added: WeekTemplateDateSlot[] = [];
   const manualDays: WeekTemplateManualDay[] = [];
   let bookedDaysKept = 0;
@@ -305,11 +312,13 @@ export function weekTemplateSync(input: {
       }
       if (bookedDates.has(date)) {
         bookedDaysKept++;
+        // Resta con gli orari di prima per il lavoro fissato: ora è un'eccezione e si vede.
+        demoteIds.push(...current.filter((s) => s.fromWeekTemplate).map((s) => s.id));
         continue;
       }
       if (manual) {
         manualDays.push({ date, current: current.map(slotTimes).sort(byStart), wanted: wanted.map(slotTimes).sort(byStart) });
-        if (!applyToManual) continue;
+        if (!applies(date)) continue;
       }
       deleteIds.push(...current.map((s) => s.id));
       for (const slot of wanted) added.push({ ...slot, dayOfWeek, date });
@@ -323,7 +332,7 @@ export function weekTemplateSync(input: {
     for (const slot of wanted) added.push({ ...slot, dayOfWeek, date });
     changedDays++;
   }
-  return { deleteIds, adoptIds, added, changedDays, manualDays, bookedDaysKept };
+  return { deleteIds, adoptIds, demoteIds, added, changedDays, manualDays, bookedDaysKept };
 }
 
 /**
