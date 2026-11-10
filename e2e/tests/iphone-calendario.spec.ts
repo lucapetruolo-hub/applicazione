@@ -7,7 +7,7 @@ import { acceptQuote, createClient, createProfessional, createRequestWithQuotes,
  * "Altri calendari" con il motore di Safari (WebKit, telefono iPhone): il
  * tasto apriva un link `data:` che Safari su iPhone ignora, e non succedeva
  * nulla (docs/changelog/2026-11-10-calendario-iphone.md). Ora il file arriva
- * dall'API come `text/calendar`, che l'iPhone apre con "Aggiungi al
+ * dal sito come `text/calendar`, che l'iPhone apre con "Aggiungi al
  * calendario". Gira solo nel progetto "iphone-safari".
  */
 const prisma = new PrismaClient();
@@ -31,7 +31,7 @@ test("Altri calendari apre davvero il file dell'appuntamento", async ({ browser 
   const card = page.locator(`#request-${request.id}`);
   await card.getByText("Aggiungi al calendario", { exact: true }).click();
   const link = card.getByRole("link", { name: /Altri calendari/ });
-  await expect(link).toHaveAttribute("href", /^https?:\/\/.+\/bookings\/ics\/.+\.ics$/);
+  await expect(link).toHaveAttribute("href", /^https?:\/\/.+\/calendario\/.+\.ics$/);
   await expect(link).not.toHaveAttribute("download", /.*/);
 
   // Safari riceve il file del calendario (in Playwright arriva come scaricamento).
@@ -39,5 +39,12 @@ test("Altri calendari apre davvero il file dell'appuntamento", async ({ browser 
   const body = await readFile((await download.path())!, "utf8");
   expect(body).toContain("BEGIN:VEVENT");
   expect(body).toContain("T100000");
+
+  // Appuntamento annullato: una pagina chiara, non un errore tecnico.
+  const href = (await link.getAttribute("href"))!;
+  await prisma.booking.updateMany({ where: { guidedRequestId: request.id }, data: { status: "CANCELED" } });
+  await page.goto(href);
+  await expect(page.getByRole("heading", { name: "Questo link non vale più" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Le mie richieste" })).toBeVisible();
   await page.context().close();
 });

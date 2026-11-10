@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { PrismaClient } from "@professionisti/database";
-import { API_URL } from "../fixtures/env";
+import { API_URL, WEB_URL } from "../fixtures/env";
 import { acceptQuote, createClient, createProfessional, createRequestWithQuotes, pageAsClient, PHONE, testToken, wallDay, wallFromNow } from "../fixtures/preventivi";
 
 /**
@@ -99,10 +99,10 @@ test("percorso completo: Accetta, Appuntamento prenotato, biglietto con calendar
   await page.getByText("Aggiungi al calendario", { exact: true }).first().click();
   const google = page.getByRole("link", { name: /Google Calendar/ });
   await expect(google).toHaveAttribute("href", /calendar\.google\.com/);
-  // Indirizzo vero dell'API, non un link `data:` che Safari su iPhone ignora
+  // Indirizzo vero del sito, non un link `data:` che Safari su iPhone ignora
   // (docs/changelog/2026-11-10-calendario-iphone.md).
   const ics = (await page.getByRole("link", { name: /Altri calendari/ }).getAttribute("href")) ?? "";
-  expect(ics.startsWith(`${API_URL}/bookings/ics/`)).toBe(true);
+  expect(ics.startsWith(`${WEB_URL}/calendario/`)).toBe(true);
   const file = await fetch(ics);
   expect(file.headers.get("content-type")).toContain("text/calendar");
   const body = await file.text();

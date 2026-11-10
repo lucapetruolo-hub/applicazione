@@ -129,6 +129,7 @@ export class BookingRemindersService {
             category: people.category,
             description: people.description,
             calendarUrl: clientCalendar.calendarUrl,
+            icsUrl: clientCalendar.icsUrl,
             replyUrl: replyUrl(booking.id),
             depositDeadline: depositDeadline(booking, new Date()),
           }),
@@ -150,6 +151,7 @@ export class BookingRemindersService {
             city: people.city,
             description: people.description,
             calendarUrl: professionalCalendar.calendarUrl,
+            icsUrl: professionalCalendar.icsUrl,
           }),
         });
       }
@@ -221,6 +223,7 @@ export class BookingRemindersService {
           category: people.category,
           description: people.description,
           calendarUrl: calendar.calendarUrl,
+          icsUrl: calendar.icsUrl,
           replyUrl: replyUrl(booking.id),
           depositDeadline: deadline,
           deposit: true,

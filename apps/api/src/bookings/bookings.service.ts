@@ -50,7 +50,7 @@ import {
   professionalKindOf } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { BOOKING_CALENDAR_INCLUDE, bookingCalendar } from "../email/booking-calendar";
-import { bookingIcsToken, readBookingIcsToken } from "./booking-ics-token";
+import { readBookingIcsToken } from "./booking-ics-token";
 import { cancellationNoticeFor, hasOtherJob, isOtherJobViolation, lockGuidedRequest } from "./one-job-per-request";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -1132,23 +1132,23 @@ export class BookingsService implements OnModuleInit {
   }
 
   /** Evento del calendario per il cliente: link di Google Calendar e file .ics, con lo stesso UID delle email. */
-  async calendarForClient(clientUserId: string, bookingId: string): Promise<{ googleUrl: string | null; icsPath: string }> {
+  async calendarForClient(clientUserId: string, bookingId: string): Promise<{ googleUrl: string | null; icsUrl: string | null }> {
     const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: BOOKING_CALENDAR_INCLUDE });
     if (!booking) throw new NotFoundException("Lavoro non trovato.");
     if (booking.clientId !== clientUserId) throw new ForbiddenException("Questo lavoro non è tuo.");
     if (booking.status === "CANCELED") throw new BadRequestException("Questo appuntamento è stato annullato.");
     const calendar = bookingCalendar(booking, "client");
     // Link vero al file per iPhone (docs/changelog/2026-11-10-calendario-iphone.md).
-    return { googleUrl: calendar.calendarUrl, icsPath: `/bookings/ics/${bookingIcsToken(booking.id)}.ics` };
+    return { googleUrl: calendar.calendarUrl, icsUrl: calendar.icsUrl };
   }
 
   /** File .ics aperto dal link firmato, senza accesso: riletto ogni volta, così un appuntamento spostato o annullato non torna com'era. */
   async calendarIcsFromLink(token: string): Promise<string | null> {
-    const bookingId = readBookingIcsToken(token);
-    if (!bookingId) return null;
-    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: BOOKING_CALENDAR_INCLUDE });
+    const link = readBookingIcsToken(token);
+    if (!link) return null;
+    const booking = await this.prisma.booking.findUnique({ where: { id: link.bookingId }, include: BOOKING_CALENDAR_INCLUDE });
     if (!booking || booking.status === "CANCELED") return null;
-    return bookingCalendar(booking, "client").attachment.content;
+    return bookingCalendar(booking, link.role).attachment.content;
   }
 
   /**
