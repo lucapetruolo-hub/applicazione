@@ -634,6 +634,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.ag-ev .ag-ev-repeat {
+  display: inline-block;
+  vertical-align: -1px;
+  margin-right: 4px;
+}
 .ag-ev.conf {
   background: #e9f7f0;
   border-color: var(--ag-green);

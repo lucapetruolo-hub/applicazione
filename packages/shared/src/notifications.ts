@@ -90,6 +90,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "BOOKING_CLIENT_CANT_COME",
       // "Ho sbagliato" dopo "Non posso più": il cliente ci sarà.
       "BOOKING_CLIENT_CANT_COME_UNDONE",
+      // Lavori ricorrenti (docs/changelog/2026-11-09-lavori-ricorrenti.md): visita saltata perché l'ora era occupata, serie interrotta.
+      "RECURRING_VISIT_SKIPPED",
+      "RECURRING_JOB_STOPPED",
       "BOOKING_NO_SHOW_REPORTED",
       // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164).
       "JOB_ISSUE_REPORTED",
@@ -393,6 +396,8 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "BOOKING_CLIENT_CONFIRMED",
       "BOOKING_CLIENT_CANT_COME",
       "BOOKING_CLIENT_CANT_COME_UNDONE",
+      "RECURRING_VISIT_SKIPPED",
+      "RECURRING_JOB_STOPPED",
     ],
     professional: { label: "Appuntamenti", description: "Annullati o riaperti dal cliente, e le sue risposte ai promemoria." },
     client: { label: "Appuntamenti", description: "Annullati o riaperti." },

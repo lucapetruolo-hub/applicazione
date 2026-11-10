@@ -593,7 +593,7 @@ model ProfessionalMetrics {
 // ad ogni salvataggio del profilo l'intera lista viene sostituita, coerente
 // con la scala attesa (poche voci a professionista).
 model ProfessionalService {
-  id                    String   @id @default(uuid())
+  id                    String           @id @default(uuid())
   professionalProfileId String
   name                  String
   // Range invece di prezzo fisso: molti lavori (es. "sostituzione caldaia")
@@ -611,7 +611,7 @@ model ProfessionalService {
   // prestazioni salvate prima: il sito le mette nel mestiere che le suggerisce,
   // altrimenti nel principale.
   categorySlug          String?
-  createdAt             DateTime @default(now())
+  createdAt             DateTime         @default(now())
 
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
 
@@ -1223,6 +1223,10 @@ model Quote {
   // con quella data e il cliente lo accetta come sempre, scegliendo il
   // pagamento. Azzerato a ogni nuova proposta o modifica della data.
   proposedDateAcceptedAt   DateTime?
+  // Lavoro ricorrente proposto dal professionista (RecurringFrequency di
+  // packages/shared: WEEKLY, BIWEEKLY, MONTHLY), prezzo a visita; null =
+  // una volta sola (docs/changelog/2026-11-09-lavori-ricorrenti.md).
+  repeatEvery              String?
   notes                    String?
   status                   QuoteStatus @default(SENT)
   createdAt                DateTime    @default(now())
@@ -1234,6 +1238,7 @@ model Quote {
 
   booking        Booking?
   invoiceRequest ClientInvoiceRequest?
+  recurringJob   RecurringJob?
 
   @@map("quotes")
 }
@@ -1494,6 +1499,15 @@ model Booking {
   // l'avviso una volta sola per appuntamento.
   onTheWayAt DateTime?
 
+  // Visita di un lavoro ricorrente (docs/changelog/2026-11-09-lavori-ricorrenti.md):
+  // la prima nasce dal preventivo come sempre, le altre senza preventivo
+  // (quoteId null) dalla serie. recurringNumber parte da 1. skippedAt:
+  // annullata con "Salta questa volta", la serie continua.
+  recurringJobId  String?
+  recurringNumber Int?
+  skippedAt       DateTime?
+  recurringJob    RecurringJob? @relation(fields: [recurringJobId], references: [id], onDelete: SetNull)
+
   quote               Quote?              @relation(fields: [quoteId], references: [id])
   client              User                @relation(fields: [clientId], references: [id], onDelete: Cascade)
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
@@ -1509,6 +1523,7 @@ model Booking {
   courtesyDocument CourtesyDocument?
 
   @@index([professionalProfileId, scheduledAt])
+  @@index([recurringJobId])
   @@map("bookings")
 }
 
@@ -1521,8 +1536,8 @@ model Booking {
 // 30/10/2026 si fanno solo ricevute: chi ha la partita IVA fa la fattura col
 // suo programma (docs/changelog/2026-10-30-documenti-snelli.md).
 model CourtesyDocument {
-  id                    String   @id @default(uuid())
-  bookingId             String   @unique
+  id                    String    @id @default(uuid())
+  bookingId             String    @unique
   professionalProfileId String
   /// Sempre RECEIPT: con la partita IVA nessuna copia della fattura (docs/changelog/2026-10-30-documenti-snelli.md).
   kind                  String
@@ -1538,8 +1553,8 @@ model CourtesyDocument {
   customerTaxCode       String?
   /// Ricevute a una partita IVA: il cliente trattiene la ritenuta d'acconto del 20%. Null = sì (C-04).
   withholding           Boolean?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
@@ -1620,18 +1635,18 @@ model ProfessionalClientNote {
 }
 
 model Review {
-  id        String    @id @default(uuid())
-  bookingId String    @unique
-  rating    Int
-  comment   String?
+  id                    String    @id @default(uuid())
+  bookingId             String    @unique
+  rating                Int
+  comment               String?
   // Foto del lavoro svolto, opzionali (fino a 3, stesso limite/pattern di
   // GuidedRequest.photoUrls): caricate su Cloudinary dal cliente al momento
   // della recensione, mostrate poi nella sezione recensioni del professionista.
-  photoUrls String[]  @default([])
+  photoUrls             String[]  @default([])
   // Nascosta da un admin su segnalazione (docs/CHANGELOG.md §144): esclusa
   // da profilo pubblico, ricerca, home e media voti. La riga resta.
-  hiddenAt  DateTime?
-  createdAt DateTime  @default(now())
+  hiddenAt              DateTime?
+  createdAt             DateTime  @default(now())
   // Risposta pubblica del professionista, modificabile (decisione di Luca del
   // 30/10/2026, docs/changelog/2026-10-30-collaudo-soldi-online.md).
   professionalReply     String?
@@ -2300,47 +2315,47 @@ model JobPayment {
   // la chiusura (`releaseDueAt`), meno il costo Stripe e la commissione.
   // Fasi (`onlineStage`, `JobPaymentOnlineStage` in packages/shared):
   // AWAITING_DEPOSIT, DEPOSIT_PAID, AWAITING_BALANCE, PAID, RELEASED, REFUNDED.
-  onlineStage            String?
-  depositEurCents        Int?
+  onlineStage              String?
+  depositEurCents          Int?
   // Acconto online e saldo pagato direttamente al professionista (MIXED,
   // docs/CHANGELOG.md §237): da Stripe passa solo l'acconto.
-  balanceDirect          Boolean   @default(false)
-  depositPaidAt          DateTime?
+  balanceDirect            Boolean   @default(false)
+  depositPaidAt            DateTime?
   // Acconto trattenuto perché il cliente ha annullato dentro il preavviso e
   // il preventivo lo prevedeva (docs/CHANGELOG.md §348): passa al
   // professionista dopo i soliti giorni di blocco, come un lavoro finito.
-  depositKeptAt          DateTime?
-  balancePaymentIntentId String?   @unique
-  balancePaidAt          DateTime?
-  paidEurCents           Int       @default(0)
+  depositKeptAt            DateTime?
+  balancePaymentIntentId   String?   @unique
+  balancePaidAt            DateTime?
+  paidEurCents             Int       @default(0)
   // Costo della carta a carico del professionista: solo per i pagamenti
   // fatti prima della trattenuta unica (docs/CHANGELOG.md §378), poi 0.
-  stripeFeeEurCents      Int       @default(0)
+  stripeFeeEurCents        Int       @default(0)
   // Costo della carta pagato da noi (trattenuta unica, §378): stimato al
   // pagamento con l'addebito diretto, poi confrontato col report di Stripe.
-  cardFeeEurCents        Int       @default(0)
-  refundedEurCents       Int       @default(0)
-  releaseDueAt           DateTime?
-  releasedAt             DateTime?
+  cardFeeEurCents          Int       @default(0)
+  refundedEurCents         Int       @default(0)
+  releaseDueAt             DateTime?
+  releasedAt               DateTime?
   // Saldo non pagato entro 7 giorni: il professionista riceve l'acconto e il
   // caso arriva al nostro team.
-  balanceUnpaidAt        DateTime?
+  balanceUnpaidAt          DateTime?
   // Contestazione aperta dal cliente presso la sua banca (chargeback,
   // docs/CHANGELOG.md §236): finché è aperta i soldi non passano al
   // professionista. Stato Stripe: needs_response, under_review, won, lost, ...
-  stripeDisputeId        String?   @unique
-  stripeDisputeStatus    String?
-  stripeDisputedAt       DateTime?
+  stripeDisputeId          String?   @unique
+  stripeDisputeStatus      String?
+  stripeDisputedAt         DateTime?
   // Ultimo giorno per mandare le prove alla banca (Stripe `evidence_details.due_by`)
   // e avviso al team 3 giorni prima, una volta sola
   // (docs/changelog/2026-10-28-stripe-prova.md).
-  stripeDisputeDueBy     DateTime?
-  disputeReminderSentAt  DateTime?
+  stripeDisputeDueBy       DateTime?
+  disputeReminderSentAt    DateTime?
   // Spiegazione e foto del professionista sulla contestazione, scritte dalla
   // sua area: l'admin le rilegge e le manda alla banca con le prove.
-  disputeProNote         String?
-  disputeProPhotoUrls    String[]  @default([])
-  disputeProNoteAt       DateTime?
+  disputeProNote           String?
+  disputeProPhotoUrls      String[]  @default([])
+  disputeProNoteAt         DateTime?
   // Promemoria al professionista 5 giorni prima della scadenza, se non ha scritto.
   disputeProReminderSentAt DateTime?
   // Archivio della contestazione (docs/changelog/2026-10-28-stripe-prova.md):
@@ -2388,49 +2403,49 @@ model JobPayment {
   // Cifra che Stripe ha tolto alla piattaforma per una contestazione in banca
   // e che abbiamo già ripreso dal conto del professionista (storno), più il
   // trasferimento con cui gliela restituiamo se la contestazione è vinta.
-  disputeRecoveredEurCents  Int       @default(0)
-  disputeReturnTransferId   String?
+  disputeRecoveredEurCents     Int       @default(0)
+  disputeReturnTransferId      String?
   // Una contestazione per ogni addebito (acconto e saldo sono due addebiti,
   // collaudo F-21): quanto ha preso ciascuna dai soldi di questo lavoro,
   // { "<id contestazione>": centesimi }, -1 quando è chiusa e già sistemata.
   // `disputeRecoveredEurCents` resta la somma di quelle ancora aperte.
-  disputeFunds              Json      @default("{}")
+  disputeFunds                 Json      @default("{}")
   // Stato di ciascuna contestazione, { "<id>": "needs_response" | "won" | ... }:
   // `stripeDisputeId`/`stripeDisputeStatus` mostrano quella ancora aperta.
-  disputeStatuses           Json      @default("{}")
+  disputeStatuses              Json      @default("{}")
   // Per l'archivio, senza chiedere a Stripe: { "<id>": { payment: "DEPOSIT" | "BALANCE", amountEurCents } }.
-  disputeDetails            Json      @default("{}")
+  disputeDetails               Json      @default("{}")
   // Allo sblocco (collaudo F-21): parte che Stripe aveva già preso dal saldo
   // del professionista per rimborsi o contestazioni di altri lavori, e debito
   // di lavori precedenti ripreso prima del bonifico. Ognuna ha la sua riga
   // nella scheda, così pagato − trattenuta − queste voci = in banca.
-  releaseTakenByStripeEurCents Int    @default(0)
-  releaseDebtRecoveredEurCents Int    @default(0)
+  releaseTakenByStripeEurCents Int       @default(0)
+  releaseDebtRecoveredEurCents Int       @default(0)
   // Commissione di Stripe di ciascuna contestazione (20 € per riceverla, non
   // restituita), presa dal saldo del professionista con l'addebito diretto e
   // sempre a suo carico (decisione di Luca, docs/changelog/2026-11-03-commissione-contestazioni.md):
   // { "<id contestazione>": centesimi }. Allo sblocco la parte tolta dai soldi
   // di questo lavoro, con la sua riga nella scheda.
-  disputeFees                  Json   @default("{}")
-  releaseDisputeFeeEurCents    Int    @default(0)
+  disputeFees                  Json      @default("{}")
+  releaseDisputeFeeEurCents    Int       @default(0)
   // Quanto il professionista deve ancora alla piattaforma per questo lavoro
   // (rimborso o contestazione persa per colpa sua quando i soldi erano già
   // partiti, trattenuta che resta a suo carico): si riprende dai prossimi
   // lavori sbloccati, prima del bonifico.
-  professionalDebtEurCents  Int       @default(0)
+  professionalDebtEurCents     Int       @default(0)
   // Costi di Stripe Connect ripresi dal professionista allo sblocco: costo
   // del bonifico e quota mensile dell'account attivo (`connectMonthlyFeeMonth`,
   // AAAA-MM, al primo sblocco del mese).
-  connectFeesEurCents       Int       @default(0)
-  connectMonthlyFeeMonth    String?
+  connectFeesEurCents          Int       @default(0)
+  connectMonthlyFeeMonth       String?
   // Carta del cliente salvata con l'acconto per addebitare da sola il saldo
   // alla chiusura del lavoro (docs/CHANGELOG.md §267): cliente Stripe sulla
   // piattaforma e metodo di pagamento. `balanceAutoChargeFailedAt`: addebito
   // non riuscito, il cliente paga con il link.
-  clientStripeCustomerId    String?
-  savedPaymentMethodId      String?
-  balanceAutoChargedAt      DateTime?
-  balanceAutoChargeFailedAt DateTime?
+  clientStripeCustomerId       String?
+  savedPaymentMethodId         String?
+  balanceAutoChargedAt         DateTime?
+  balanceAutoChargeFailedAt    DateTime?
 
   // --- DIRECT (auto-dichiarazione + conferma cliente) ---
   directReportedAt   DateTime?
@@ -2530,22 +2545,22 @@ enum Dac7ReportingStatus {
 // incrementa ad ogni correzione dopo un SUBMITTED/REJECTED — mai
 // sovrascritto in place (richiesta esplicita della specifica).
 model Dac7ReportingPeriod {
-  id                String              @id @default(uuid())
-  year              Int
-  quarter           Int? // 1-4, null = aggregato annuale
-  status            Dac7ReportingStatus @default(OPEN)
-  reportVersion     Int                 @default(1)
-  generatedAt       DateTime?
-  submittedAt       DateTime?
-  exportFileUrl     String?
+  id                 String              @id @default(uuid())
+  year               Int
+  quarter            Int? // 1-4, null = aggregato annuale
+  status             Dac7ReportingStatus @default(OPEN)
+  reportVersion      Int                 @default(1)
+  generatedAt        DateTime?
+  submittedAt        DateTime?
+  exportFileUrl      String?
   // Importi cambiati dopo l'invio (rimborso, lavoro riaperto): da correggere
   // (docs/CHANGELOG.md §247). Si azzera con la correzione.
-  needsCorrectionAt DateTime?
+  needsCorrectionAt  DateTime?
   // Numero di protocollo della ricevuta dell'Agenzia delle Entrate, scritto con
   // "Segna come inviato" (docs/changelog/2026-11-02-admin-protezioni.md).
   submissionProtocol String?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   records Dac7Record[]
 
@@ -3056,13 +3071,13 @@ model AdminCaseClaim {
 // le pagine admin leggono questi invece di ricalcolare tutto a ogni apertura.
 // Una riga per account con almeno un segnale; sparisce quando non ne ha più.
 model SuspiciousAccount {
-  userId      String    @id
+  userId           String    @id
   // AdminUserSignal[] di packages/shared/src/adminSignals.ts.
-  signals     Json
-  firstSeenAt DateTime  @default(now())
-  checkedAt   DateTime
+  signals          Json
+  firstSeenAt      DateTime  @default(now())
+  checkedAt        DateTime
   // Avviso agli admin già mandato per questo account.
-  notifiedAt  DateTime?
+  notifiedAt       DateTime?
   // "Va bene così" di un admin, con il motivo: l'account esce da "Cosa fare"
   // finché il controllo non trova un segnale nuovo (chiave tipo|dettaglio
   // fuori da dismissedSignals), allora torna e l'avviso riparte.
@@ -3550,4 +3565,35 @@ model AccountantStatementSend {
 
   @@id([professionalProfileId, month])
   @@map("accountant_statement_sends")
+}
+
+// Lavoro ricorrente (funzione nuova 3 del controllo pre-lancio dell'08/11,
+// docs/changelog/2026-11-09-lavori-ricorrenti.md): nasce accettando un
+// preventivo con `repeatEvery`. Le visite sono Booking con recurringJobId,
+// messe in agenda ogni giorno per i 28 giorni dopo (RecurringJobsService).
+// Il preventivo resta quello della prima visita: voci e prezzo valgono per
+// ogni visita. Si ferma con "Interrompi" (stoppedAt), da cliente o professionista.
+model RecurringJob {
+  id                    String    @id @default(uuid())
+  quoteId               String    @unique
+  clientId              String
+  professionalProfileId String
+  frequency             String
+  // Prima visita: le altre si contano da qui (stessa ora, stessa durata).
+  firstAt               DateTime
+  firstEndAt            DateTime?
+  // Modo di pagamento scelto accettando (JobPaymentChoice), uguale per ogni visita.
+  paymentChoice         String
+  lastNumber            Int       @default(1)
+  stoppedAt             DateTime?
+  // "CLIENT" o "PROFESSIONAL", o "SYSTEM" (account chiuso).
+  stoppedBy             String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  quote    Quote     @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([stoppedAt])
+  @@map("recurring_jobs")
 }

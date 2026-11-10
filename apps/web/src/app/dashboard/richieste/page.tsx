@@ -3,7 +3,7 @@
 import { Suspense, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { lastLaborPrice, lastSimilarQuote, type MyProfessionalProfile, type MySubscription, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import { jobByRequest, lastLaborPrice, lastSimilarQuote, type MyProfessionalProfile, type MySubscription, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { loadMyProfessionalProfile, loadMySubscription } from "@/lib/myProfessionalProfile";
@@ -286,13 +286,8 @@ function RichiesteContent() {
   // del popup), senza aspettare il poll qui sopra; i pallini restano al poll.
   useLiveRefresh(reloadLeads, Boolean(token), null);
 
-  const bookingByRequestId = useMemo(() => {
-    const map = new Map<string, ProfessionalBooking>();
-    (bookings ?? []).forEach((b) => {
-      if (b.guidedRequestId) map.set(b.guidedRequestId, b);
-    });
-    return map;
-  }, [bookings]);
+  // Lavoro ricorrente: la visita da segnare terminata, o la prossima (docs/changelog/2026-11-09-lavori-ricorrenti.md).
+  const bookingByRequestId = useMemo(() => jobByRequest(bookings ?? [], "PROFESSIONAL"), [bookings]);
 
   const zones = useMemo(() => {
     const set = new Set((leads ?? []).map((l) => l.guidedRequest.city).filter(Boolean));

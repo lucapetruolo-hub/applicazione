@@ -22,6 +22,7 @@ import {
   type JobPaymentChoice,
   sameTimeBooking,
   type SameTimeBookingCandidate,
+  recurringSummary,
 } from "@professionisti/shared";
 import { PaymentChoice, PaymentOffer, paymentSplit, selectablePaymentChoices } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
@@ -429,6 +430,17 @@ export function QuoteCard({
           <QuoteFact label="Lavori">
             <Text fontSize={16} color={brand.grafite}>
               {quote.items.map((item) => item.name).join(" · ")}
+            </Text>
+          </QuoteFact>
+        ) : null}
+        {/* Lavoro ricorrente: prezzo a visita (docs/changelog/2026-11-09-lavori-ricorrenti.md). */}
+        {quote.repeatEvery ? (
+          <QuoteFact label="Ogni quanto">
+            <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+              {recurringSummary(quote.repeatEvery)}
+            </Text>
+            <Text fontSize={13} color={brand.grafite70}>
+              Accetti una volta e le visite si fissano da sole, alla stessa ora. Puoi saltarne una o interrompere quando vuoi.
             </Text>
           </QuoteFact>
         ) : null}

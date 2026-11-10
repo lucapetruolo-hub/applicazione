@@ -57,8 +57,10 @@ import {
   nameSearchWords,
   type ProblemOutOfService,
   serviceMatchingProblem,
+  isRecurringFrequency,
 } from "@professionisti/shared";
 import { COUNTED_USER, countingFrom, daySinceLaunch } from "../site-counts/counted";
+import { recurringVisitInfo } from "../bookings/recurring-jobs.service";
 import { searchableProfileConditions, searchableProfileWhere } from "./searchable-profiles";
 import { calculateDistanceKm } from "../common/geo.util";
 import { PRISMA } from "../prisma/prisma.module";
@@ -1454,6 +1456,7 @@ export class ProfessionalsService {
               // Preavviso e acconto trattenuto scelti nel preventivo (docs/CHANGELOG.md §348).
               cancellationNoticeHours: quote.cancellationNoticeHours ?? DEFAULT_CANCELLATION_NOTICE_HOURS,
               lateCancelKeepsDeposit: quote.lateCancelKeepsDeposit,
+              repeatEvery: isRecurringFrequency(quote.repeatEvery) ? quote.repeatEvery : null,
               resentAt: quote.resentAt?.toISOString() ?? null,
               // Nuovo preventivo dopo il rifiuto del cliente, fino alla
               // scadenza della richiesta contata dal suo invio
@@ -1491,6 +1494,8 @@ export class ProfessionalsService {
         guidedRequest: {
           id: lead.guidedRequest.id,
           categoryLabel: lead.guidedRequest.category.label,
+          // Per i mestieri a visite ripetute il preventivo offre il lavoro ricorrente (docs/changelog/2026-11-09-lavori-ricorrenti.md).
+          categorySlug: lead.guidedRequest.category.slug,
           description: lead.guidedRequest.description,
           city: lead.guidedRequest.city,
           // Solo il nome finché il preventivo non è accettato, il cognome
@@ -1681,7 +1686,7 @@ export class ProfessionalsService {
     // l'ordinamento discendente precedente mostrava per primo l'impegno più
     // lontano nel futuro. La UI (/dashboard) raggruppa poi per giorno e
     // separa prossime/storico, questo endpoint resta la lista grezza.
-    const bookings = await this.prisma.booking.findMany({
+    const rows = await this.prisma.booking.findMany({
       where: { professionalProfileId },
       include: {
         client: true,
@@ -1703,9 +1708,23 @@ export class ProfessionalsService {
         issue: true,
         jobPayment: true,
         courtesyDocument: { select: COURTESY_DOCUMENT_FIELDS },
+        // Visite di un lavoro ricorrente dopo la prima: preventivo e richiesta della serie
+        // (docs/changelog/2026-11-09-lavori-ricorrenti.md).
+        recurringJob: {
+          include: {
+            quote: {
+              include: {
+                items: true,
+                guidedRequest: { select: { address: true, description: true, photoUrls: true, serviceMode: true, category: { select: { slug: true, label: true } } } },
+                invoiceRequest: true,
+              },
+            },
+          },
+        },
       },
       orderBy: { scheduledAt: "asc" },
     });
+    const bookings = rows.map((row) => ({ ...row, ownQuote: row.quote, quote: row.quote ?? row.recurringJob?.quote ?? null }));
 
     // Nota privata del professionista unificata con quella di
     // `/dashboard/richieste` (richiesta esplicita dell'utente, vedi
@@ -1837,7 +1856,7 @@ export class ProfessionalsService {
       clientCantComeAt: booking.clientCantComeAt?.toISOString() ?? null,
       clientReminder: clientReminder(booking),
       // Altra data proposta dal cliente sul preventivo accettato (docs/changelog/2026-10-28-promemoria-whatsapp.md).
-      dateChange: bookingDateChange(booking, booking.quote),
+      dateChange: bookingDateChange(booking, booking.ownQuote),
       professionalProblemReport: booking.quote?.guidedRequestId ? (problemReportByGuidedRequestId.get(booking.quote.guidedRequestId) ?? null) : null,
       description: booking.quote?.guidedRequest?.description ?? null,
       photoUrls: booking.quote?.guidedRequest?.photoUrls ?? [],
@@ -1874,6 +1893,7 @@ export class ProfessionalsService {
       // Ricevuta o copia di cortesia già preparata: se l'importo cambia dopo il PDF va rifatta (§381).
       courtesyDocument: booking.courtesyDocument ? courtesyDocumentSummary(booking.courtesyDocument, booking) : null,
       clientDocumentKind,
+      recurring: recurringVisitInfo(booking),
     }));
   }
 

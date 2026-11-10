@@ -12,11 +12,12 @@ import { BookingsService } from "./bookings.service";
 import { CompletionDeadlineService } from "./completion-deadline.service";
 import { ReviewReminderService } from "./review-reminder.service";
 import { MissedDepositsService } from "./missed-deposits.service";
+import { RecurringJobsService } from "./recurring-jobs.service";
 
 @Module({
   imports: [AuthModule, NotificationsModule, ProfessionalMetricsModule, TimelineModule, JobPaymentsModule, SubscriptionsModule, JobIssuesModule, ClientInvoiceRequestsModule],
   controllers: [BookingsController],
-  providers: [BookingsService, CompletionDeadlineService, ReviewReminderService, MissedDepositsService],
+  providers: [BookingsService, CompletionDeadlineService, ReviewReminderService, MissedDepositsService, RecurringJobsService],
   // Il webhook Stripe (BillingService) conferma il lavoro quando arriva l'acconto (docs/CHANGELOG.md §240).
   exports: [BookingsService],
 })

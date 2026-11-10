@@ -5,6 +5,7 @@ import type { JobPaymentChoice, JobPaymentSummary } from "./onlinePayments";
 import type { ProfessionalDetail } from "./professionals";
 import type { RequestTiming } from "./requestTiming";
 import type { ClientInvoiceRequestView, CourtesyDocumentSummary } from "./accounting";
+import type { RecurringFrequency, RecurringVisitInfo } from "./recurringJobs";
 /**
  * Anteprima del proprio profilo pubblico (docs/CHANGELOG.md §252): gli stessi
  * dati della pagina pubblica e se i clienti la vedono già, o perché no.
@@ -159,6 +160,8 @@ export type ProfessionalLead = {
     /** Preavviso per annullare scelto in questo preventivo e acconto trattenuto se il cliente annulla dentro il preavviso (docs/CHANGELOG.md §348). */
     cancellationNoticeHours: number;
     lateCancelKeepsDeposit: boolean;
+    /** Lavoro ricorrente proposto, prezzo a visita (docs/changelog/2026-11-09-lavori-ricorrenti.md); null = una volta sola. */
+    repeatEvery: RecurringFrequency | null;
     /** Ultimo nuovo preventivo inviato dopo un rifiuto, null se mai. */
     resentAt: string | null;
     /**
@@ -192,6 +195,7 @@ export type ProfessionalLead = {
   guidedRequest: {
     id: string;
     categoryLabel: string;
+    categorySlug: string;
     description: string;
     city: string;
     /**
@@ -392,6 +396,8 @@ export type ProfessionalBooking = {
   courtesyDocument?: CourtesyDocumentSummary | null;
   /** Il documento che il professionista dà al cliente: ricevuta se è un privato, altrimenti fattura (collaudo C-01). */
   clientDocumentKind?: "RECEIPT" | "INVOICE";
+  /** Visita di un lavoro ricorrente (docs/changelog/2026-11-09-lavori-ricorrenti.md), null per un lavoro di una volta. */
+  recurring: RecurringVisitInfo | null;
 };
 
 /**

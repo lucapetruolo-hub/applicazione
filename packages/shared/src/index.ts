@@ -93,5 +93,6 @@ export * from "./reviewHold";
 export * from "./sameTimeBooking";
 export * from "./professionalClients";
 export * from "./rebookReminder";
+export * from "./recurringJobs";
 export * from "./quoteQuickFill";
 export * from "./quoteComparison";
