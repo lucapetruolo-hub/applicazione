@@ -224,19 +224,43 @@ export function bookingsOverlapping(
   });
 }
 
-/** Una riga sotto l'orario: quali lavori ci sono già, senza bloccare l'invio. */
-export function BusyTimeNotice({ bookings }: { bookings: readonly ProfessionalBooking[] }) {
+/**
+ * C'è ancora posto all'orario scelto? Sì se cade in una fascia dell'agenda
+ * che risulta libera (le fasce piene non arrivano tra quelle disponibili).
+ * Con fasce larghe, per esempio 08:00-19:00 con più posti, gli altri lavori
+ * della fascia sono normali e non vanno segnalati come un problema
+ * (richiesta di Luca, docs/changelog/2026-11-10-appuntamenti-sovrapposti.md).
+ */
+export function hasRoomAt(slots: readonly ProfessionalAvailableSlot[], chosen: { date: string; start: string } | null): boolean {
+  if (!chosen) return false;
+  return slots.some((sl) => sl.date === chosen.date && chosen.start >= sl.startTime && chosen.start < sl.endTime);
+}
+
+/**
+ * Una riga sotto l'orario: quali lavori ci sono già, senza bloccare l'invio.
+ * Con posto nella fascia è solo un'informazione grigia; senza posto (o fuori
+ * dalle fasce) è un avviso, come il controllo che il server fa quando il
+ * cliente accetta.
+ */
+export function BusyTimeNotice({ bookings, roomLeft = false }: { bookings: readonly ProfessionalBooking[]; roomLeft?: boolean }) {
   if (bookings.length === 0) return null;
   const times = bookings
     .slice(0, 3)
-    .map((b) => `${formatAppointmentTimeRange(b.scheduledAt, b.scheduledEndAt ?? b.scheduledAt)}${b.clientName ? ` con ${b.clientName}` : ""}`)
+    .map((b) => `${b.clientName ? `${b.clientName} ` : ""}${formatAppointmentTimeRange(b.scheduledAt, b.scheduledEndAt ?? b.scheduledAt)}`)
     .join(", ");
+  const count = bookings.length === 1 ? "1 lavoro" : `${bookings.length} lavori`;
   return (
     <XStack gap="2" alignItems="flex-start" role="status">
-      <Icon name="clock" size={16} color={brand.grafite} />
-      <Text fontSize={14} color={brand.grafite} flex={1}>
-        {bookings.length === 1 ? "In quell'orario hai già un lavoro" : `In quell'orario hai già ${bookings.length} lavori`}: {times}. Puoi mandarlo lo stesso.
-      </Text>
+      <Icon name="clock" size={16} color={roomLeft ? brand.grafite70 : brand.ottoneScuro} />
+      {roomLeft ? (
+        <Text fontSize={14} color={brand.grafite70} flex={1}>
+          In questa fascia hai già {count}: {times}. C&apos;è ancora posto.
+        </Text>
+      ) : (
+        <Text fontSize={14} fontWeight="600" color={brand.ottoneScuro} flex={1}>
+          Ti sovrapponi a {times}. Scegli un altro orario o mandalo lo stesso.
+        </Text>
+      )}
     </XStack>
   );
 }
