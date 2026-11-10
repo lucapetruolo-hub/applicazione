@@ -1,0 +1,71 @@
+/*
+ * Ricerca in cima ai risultati, da telefono e tablet, in HTML semplice
+ * (docs/changelog/2026-11-09-barra-in-alto-senza-tamagui.md): stessi valori
+ * che Tamagui scriveva per YStack/XStack/Text. Da 1021 px la ricerca è
+ * nella barra in alto e questo riquadro sparisce.
+ */
+
+.root {
+  position: relative;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  background-color: var(--c-calce);
+  padding-block: var(--t-space-3);
+  padding-inline: var(--t-space-4);
+}
+
+.rootExpanded {
+  padding-block: var(--t-space-5);
+}
+
+@media (min-width: 1021px) {
+  .root {
+    display: none;
+  }
+}
+
+.inner {
+  position: relative;
+  flex-direction: column;
+  width: 100%;
+  max-width: 680px;
+}
+
+.expanded {
+  position: relative;
+  flex-direction: column;
+  gap: var(--t-space-2);
+}
+
+.closeRow {
+  position: relative;
+  flex-direction: row;
+  justify-content: flex-end;
+}
+
+.summaryText {
+  position: relative;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: flex-start;
+}
+
+.what,
+.where {
+  font-size: 16px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.what {
+  font-weight: 700;
+  color: var(--c-grafite);
+}
+
+.where {
+  color: var(--c-grafite70);
+}

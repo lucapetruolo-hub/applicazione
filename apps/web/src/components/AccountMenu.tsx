@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import Link from "@/components/IntentLink";
 import { usePathname } from "next/navigation";
-import { Avatar, Icon, Text, YStack, brand } from "@professionisti/ui";
+import { Avatar, Icon, brand } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { getAccountMenuGroups, hasNavAttention, isNavItemActive } from "@/lib/accountMenuItems";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
 import { useNavAttention } from "@/lib/useNavAttention";
+import styles from "./AccountMenu.module.css";
 
 export function AccountMenu() {
   const { user, logout, unreadCount, unreadNotifications } = useAuth();
@@ -108,25 +109,23 @@ export function AccountMenu() {
   const toDo = attention.size > 0;
 
   return (
-    <YStack ref={containerRef as never} position="relative" onBlur={onContainerBlur}>
-      <YStack
-        ref={triggerRef as never}
-        className="acct-trigger"
-        flexDirection="row"
-        alignItems="center"
-        gap="1"
-        cursor="pointer"
-        onPress={() => setIsOpen((open) => !open)}
+    // HTML semplice, senza il calcolo degli stili di Tamagui
+    // (docs/changelog/2026-11-09-barra-in-alto-senza-tamagui.md). Invio e
+    // Spazio sul tondino arrivano da KeyboardActivation, come prima.
+    <div ref={containerRef} className={`is_View ${styles.wrap}`} onBlur={onContainerBlur}>
+      <div
+        ref={triggerRef}
+        className={`is_View ${styles.trigger} acct-trigger`}
+        onClick={() => setIsOpen((open) => !open)}
         role="button"
+        tabIndex={0}
         aria-haspopup="menu"
         aria-expanded={isOpen}
-        onKeyDown={(event: unknown) => {
-                // L'evento è quello del browser, ma Tamagui lo tipizza come quello di React Native.
-                const keyEvent = event as ReactKeyboardEvent;
-                if (keyEvent.key !== "ArrowDown" || isOpen) return;
-                keyEvent.preventDefault();
-                setIsOpen(true);
-              }}
+        onKeyDown={(event: ReactKeyboardEvent) => {
+          if (event.key !== "ArrowDown" || isOpen) return;
+          event.preventDefault();
+          setIsOpen(true);
+        }}
       >
         {/* Niente etichetta separata: il nome letto è il testo visibile, più
             le novità solo per il lettore di schermo (WCAG 2.5.3, docs/CHANGELOG.md §310). */}
@@ -138,9 +137,7 @@ export function AccountMenu() {
             barra (docs/changelog/2026-11-09-barra-in-alto-semplice.md). Il
             nome resta per il lettore di schermo e nella tendina. */}
         <span className="acct-trigger-name">
-          <Text fontSize="3" fontWeight="600" color={brand.grafite} numberOfLines={1}>
-            {displayName ?? "Il mio account"}
-          </Text>
+          <span className={`is_Text ${styles.name}`}>{displayName ?? "Il mio account"}</span>
         </span>
         <span className="sr-only acct-trigger-name-sr">{displayName ?? "Il mio account"}</span>
         <span className="sr-only">
@@ -156,7 +153,7 @@ export function AccountMenu() {
         <span aria-hidden="true" className="acct-trigger-chevron">
           <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={14} color={brand.grafite70} />
         </span>
-      </YStack>
+      </div>
 
       {isOpen ? (
         // Stessi gruppi e icone del menu laterale (docs/CHANGELOG.md §148):
@@ -208,6 +205,6 @@ export function AccountMenu() {
           </div>
         </div>
       ) : null}
-    </YStack>
+    </div>
   );
 }

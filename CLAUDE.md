@@ -148,9 +148,10 @@ prima discuterne e aggiornare questo file.
   pacchetto (`patches/@tamagui__web@3.1.10.patch`, da rifare a ogni
   aggiornamento di Tamagui).
 - **Pagine pubbliche in HTML semplice** (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md
-  e 2026-11-09-citta-e-profilo-senza-tamagui.md): piè di pagina, home, schede
-  dei professionisti (logica comune in `professionalCardModel.ts`), profilo
-  pubblico e i pezzi comuni `Section`, `Avatar`, `Rating`, `Badge`, `Chip`,
+  , 2026-11-09-citta-e-profilo-senza-tamagui.md e
+  2026-11-09-barra-in-alto-senza-tamagui.md): piè di pagina, barra in alto,
+  home, schede dei professionisti (logica comune in `professionalCardModel.ts`),
+  profilo pubblico, contenitore dei risultati e i pezzi comuni `Section`, `Avatar`, `Rating`, `Badge`, `Chip`,
   `EmptyState`, `PriceLine`, `ProfessionalKindBadge` (varianti
   `*.web.tsx` in `packages/ui`) usano `div`/`span` con le classi globali di
   Tamagui (`is_View`, `is_Text`, `font_body`, `font_heading`) e un
