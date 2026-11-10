@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -46,12 +46,24 @@ function SuspiciousUsers() {
   const [dismissing, setDismissing] = useState<{ id: string; label: string } | null>(null);
   const [query, setQuery] = useState("");
 
+  // "Controlla ora" vince sulla lista semplice: una lista chiesta prima o
+  // durante il controllo (all'apertura della pagina) può arrivare dopo e non
+  // deve coprirne il risultato con i dati di prima
+  // (docs/changelog/2026-11-10-prove-che-falliscono-in-locale.md).
+  const checkRound = useRef(0);
+  const checkRunning = useRef(false);
+
   function reload() {
-    if (!token) return;
+    if (!token || checkRunning.current) return;
+    const round = checkRound.current;
     apiClient
       .adminSuspiciousUsers(token)
-      .then(setData)
-      .catch((err) => setError(errorMessage(err)));
+      .then((next) => {
+        if (round === checkRound.current) setData(next);
+      })
+      .catch((err) => {
+        if (round === checkRound.current) setError(errorMessage(err));
+      });
   }
   useEffect(() => {
     reload();
@@ -62,11 +74,15 @@ function SuspiciousUsers() {
     if (!token) return;
     setChecking(true);
     setError(null);
+    const round = ++checkRound.current;
+    checkRunning.current = true;
     try {
-      setData(await apiClient.adminCheckSuspiciousUsers(token));
+      const next = await apiClient.adminCheckSuspiciousUsers(token);
+      if (round === checkRound.current) setData(next);
     } catch (err) {
-      setError(errorMessage(err));
+      if (round === checkRound.current) setError(errorMessage(err));
     } finally {
+      if (round === checkRound.current) checkRunning.current = false;
       setChecking(false);
     }
   };
