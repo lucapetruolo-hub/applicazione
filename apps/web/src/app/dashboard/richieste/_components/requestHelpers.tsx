@@ -17,11 +17,6 @@ export type QuoteItemDraft = { name: string; priceMin: string; priceMax: string 
 export function slotKey(slot: ProfessionalAvailableSlot): string {
   return `${slot.date}|${slot.startTime}|${slot.endTime}`;
 }
-export function slotLabel(slot: ProfessionalAvailableSlot): string {
-  const date = new Date(`${slot.date}T00:00:00Z`);
-  const dateLabel = date.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
-  return `${dateLabel} · ${slot.startTime}–${slot.endTime}`;
-}
 export function formatDateTime(iso: string): string {
   const d = new Date(iso);
   return `${d.toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "Europe/Rome" })} · ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })}`;
