@@ -6254,23 +6254,6 @@ a.admin-kpi:hover {
   outline: 2px solid #189a63;
   outline-offset: 2px;
 }
-.slot-days {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: flex-start;
-}
-.slot-day {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.slot-day-label {
-  font-size: 13px;
-  font-weight: 700;
-  color: #6e6459;
-  text-transform: capitalize;
-}
 /* Orari una settimana alla volta, un giorno per riga (WeekSlotPicker,
    docs/changelog/2026-11-10-date-del-preventivo.md). */
 .week-slots {
