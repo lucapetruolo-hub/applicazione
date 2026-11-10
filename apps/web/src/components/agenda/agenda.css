@@ -1597,3 +1597,12 @@
 .ag-day-note.narrow .ag-weather {
   margin-left: 0;
 }
+/* Impegni affiancati nella stessa fascia (docs/changelog/2026-11-10-appuntamenti-sovrapposti.md). */
+.ag-ev.shared {
+  padding-left: 6px;
+  padding-right: 4px;
+}
+.ag-ev.tight {
+  padding: 0;
+  border-left-width: 3px;
+}

@@ -1608,6 +1608,7 @@ function DashboardAgendaContent() {
       const end = occurrence.end ? wallMinutes(occurrence.end.toISOString()) || 24 * 60 : null;
       return {
         key: days.length > 1 ? `${key}-${occurrence.date}` : key,
+        groupKey: key,
         date: occurrence.date,
         start,
         end: end !== null ? Math.max(start + 15, end) : start + DEFAULT_DURATION_MIN,
@@ -1706,11 +1707,13 @@ function DashboardAgendaContent() {
   const freeBands = filters.has("free") ? visibleDayStrs.flatMap(freeBandsOn) : [];
   const busyDates = new Set(gridEvents.filter((e) => e.kind !== "canceled").map((e) => e.date));
 
-  const rangeEvents = gridEvents.filter((e) => visibleDayStrs.includes(e.date) && e.kind !== "canceled" && e.kind !== "wait");
+  // Un lavoro o un preventivo su più giorni conta una volta sola (docs/changelog/2026-11-10-appuntamenti-sovrapposti.md).
+  const countJobs = (events: AgendaGridEvent[]) => new Set(events.map((e) => e.groupKey ?? e.key)).size;
+  const rangeEvents = countJobs(gridEvents.filter((e) => visibleDayStrs.includes(e.date) && e.kind !== "canceled" && e.kind !== "wait"));
   const rangeFree = visibleDayStrs.reduce((sum, d) => sum + (freeMinutesOn(d) ?? 0), 0);
-  const rangeWaiting = gridEvents.filter((e) => visibleDayStrs.includes(e.date) && e.kind === "wait").length;
+  const rangeWaiting = countJobs(gridEvents.filter((e) => visibleDayStrs.includes(e.date) && e.kind === "wait"));
   const rangeSummary = [
-    `${rangeEvents.length} ${rangeEvents.length === 1 ? "lavoro" : "lavori"}`,
+    `${rangeEvents} ${rangeEvents === 1 ? "lavoro" : "lavori"}`,
     rangeWaiting > 0 ? `${rangeWaiting} in attesa` : null,
     rangeFree > 0 ? `${hoursText(rangeFree)} libere` : null,
   ]

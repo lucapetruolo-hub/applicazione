@@ -19,6 +19,8 @@ export type AgendaGridEvent = {
   label: string;
   /** Visita di un lavoro ricorrente: piccola icona nel riquadro (docs/changelog/2026-11-09-lavori-ricorrenti.md). */
   recurring?: boolean;
+  /** Stesso lavoro su più giorni: una sola voce nei conteggi. */
+  groupKey?: string;
   onPress: () => void;
 };
 
@@ -53,6 +55,41 @@ export function WeatherIcon({ kind, size = 15 }: { kind: WeatherAlertKind; size?
       <IconComponent size={size} strokeWidth={2} aria-hidden />
     </span>
   );
+}
+
+// Prima gli impegni presi, poi quelli in attesa: a parità d'orario il lavoro confermato sta a sinistra.
+const KIND_ORDER: Record<AgendaEventKind, number> = { conf: 0, pending: 0, done: 1, ext: 2, wait: 3, canceled: 4 };
+
+/**
+ * Impegni nella stessa fascia affiancati come in Google Calendar, invece che
+ * uno sopra l'altro (richiesta di Luca, docs/changelog/2026-11-10-appuntamenti-sovrapposti.md).
+ * Ogni gruppo di impegni che si toccano divide la colonna in tante corsie
+ * quante ne servono; `minDuration` tiene conto dell'altezza minima del riquadro.
+ */
+export function layoutLanes(events: AgendaGridEvent[], minDuration = 0): Map<string, { lane: number; lanes: number }> {
+  const sorted = [...events].sort((a, b) => a.start - b.start || KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || b.end - a.end);
+  const result = new Map<string, { lane: number; lanes: number }>();
+  let group: { key: string; lane: number }[] = [];
+  let laneEnds: number[] = [];
+  let groupEnd = -1;
+  const close = () => {
+    for (const item of group) result.set(item.key, { lane: item.lane, lanes: laneEnds.length });
+    group = [];
+    laneEnds = [];
+  };
+  for (const event of sorted) {
+    const end = Math.max(event.end, event.start + minDuration);
+    if (event.start >= groupEnd) close();
+    let lane = laneEnds.findIndex((laneEnd) => laneEnd <= event.start);
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(end);
+    } else laneEnds[lane] = end;
+    group.push({ key: event.key, lane });
+    groupEnd = Math.max(groupEnd, end);
+  }
+  close();
+  return result;
 }
 
 export function minutesToLabel(minutes: number): string {
@@ -236,20 +273,41 @@ export function AgendaTimeGrid({
                       </div>
                     );
                   })}
-                {visible
-                  .filter((event) => event.date === dateStr && event.end > fromHour * 60)
-                  .map((event) => {
+                {(() => {
+                  const dayEvents = visible.filter((event) => event.date === dateStr && event.end > fromHour * 60);
+                  // Altezza minima del riquadro (26 px) in minuti, così due impegni brevi vicini non si coprono.
+                  const lanesOf = layoutLanes(dayEvents, Math.ceil(((26 + 4) / HOUR_PX) * 60));
+                  return dayEvents.map((event) => {
                     const start = Math.max(event.start, fromHour * 60);
                     const blockHeight = Math.max(26, y(event.end) - y(start) - 4);
+                    const { lane, lanes } = lanesOf.get(event.key) ?? { lane: 0, lanes: 1 };
+                    const side = narrowWeek ? 3 : 5;
+                    const gap = narrowWeek ? 1 : 3;
+                    // Nella Settimana del telefono due corsie sono troppo strette per l'ora: restano le strisce colorate.
+                    const tight = narrowWeek && lanes > 1;
                     return (
                       <button
                         key={event.key}
                         type="button"
-                        className={`ag-ev ${event.kind}${narrowWeek ? " narrow" : ""}${event.key === selectedKey ? " selected" : ""}`}
-                        style={{ top: y(start) + 2, height: blockHeight }}
+                        className={`ag-ev ${event.kind}${narrowWeek ? " narrow" : ""}${tight ? " tight" : ""}${lanes > 1 ? " shared" : ""}${event.key === selectedKey ? " selected" : ""}`}
+                        style={{
+                          top: y(start) + 2,
+                          height: blockHeight,
+                          ...(lanes > 1
+                            ? {
+                                left: `calc(${side}px + (100% - ${side * 2}px) * ${lane} / ${lanes})`,
+                                width: `calc((100% - ${side * 2}px) / ${lanes} - ${lane < lanes - 1 ? gap : 0}px)`,
+                                right: "auto",
+                              }
+                            : null),
+                        }}
                         onClick={event.onPress}
                       >
-                        {narrowWeek ? (
+                        {tight ? (
+                          <span className="sr-only">
+                            {event.title}, {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
+                          </span>
+                        ) : narrowWeek ? (
                           // Settimana sul telefono: colonne troppo strette per il nome, si vede l'ora d'inizio.
                           // Il lettore di schermo legge ancora nome e orario completo.
                           <>
@@ -284,10 +342,12 @@ export function AgendaTimeGrid({
                         <span className="sr-only">
                           , {event.label}
                           {event.recurring ? ", lavoro ricorrente" : ""}
+                          {lanes > 1 ? `, nella stessa fascia di un altro impegno` : ""}
                         </span>
                       </button>
                     );
-                  })}
+                  });
+                })()}
               </div>
             );
           })}
