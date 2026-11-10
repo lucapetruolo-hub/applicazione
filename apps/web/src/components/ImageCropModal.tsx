@@ -1,29 +1,44 @@
 "use client";
 
-import { useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useDialogFocus } from "@/lib/useDialogFocus";
 import { ZoomIn } from "lucide-react";
 import { brand } from "@professionisti/ui";
 
-const STAGE_SIZE = 280;
-const OUTPUT_SIZE = 480;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
 
 type Offset = { x: number; y: number };
 
-function clampOffset(offset: Offset, displayedWidth: number, displayedHeight: number): Offset {
+/**
+ * "portrait": la foto del professionista, verticale 3:4 con gli angoli
+ * arrotondati come nelle schede della ricerca (CARD_PHOTO in
+ * ProfessionalAvatar.tsx: 120×160 con angoli di 20 px, qui in scala 2:1).
+ * "circle": la foto dell'account, mostrata tonda nel resto del sito.
+ */
+export type ImageCropShape = "portrait" | "circle";
+
+type CropFormat = { stageWidth: number; stageHeight: number; outputWidth: number; outputHeight: number; radius: number | string };
+
+const CROP_FORMATS: Record<ImageCropShape, CropFormat> = {
+  // 600×800: entro il limite di 800 px di Cloudinary, quindi nessun
+  // ridimensionamento in più sul server.
+  portrait: { stageWidth: 240, stageHeight: 320, outputWidth: 600, outputHeight: 800, radius: 40 },
+  circle: { stageWidth: 280, stageHeight: 280, outputWidth: 480, outputHeight: 480, radius: "50%" },
+};
+
+function clampOffset(offset: Offset, displayedWidth: number, displayedHeight: number, stageWidth: number, stageHeight: number): Offset {
   // L'immagine ("cover") non deve mai lasciare spazi vuoti nel riquadro: se è
   // più grande dello stage, i bordi non possono superare verso l'interno lo
   // spazio [stage - displayed, 0] — calcolato separatamente per larghezza e
   // altezza. Con un unico limite condiviso (bug reale segnalato dall'utente),
-  // una foto "lunga" (verticale) ha displayedWidth == STAGE_SIZE esatto
-  // (copre esattamente in larghezza) e displayedHeight > STAGE_SIZE
+  // una foto "lunga" (verticale) ha displayedWidth uguale alla larghezza del riquadro
+  // (copre esattamente in larghezza) e displayedHeight più alta del riquadro
   // (sborda in verticale, come previsto): usare displayedWidth anche per
   // l'asse Y azzerava il range verticale, bloccando del tutto il trascinamento
   // verso il basso e impedendo di vedere la parte inferiore della foto.
-  const minX = Math.min(0, STAGE_SIZE - displayedWidth);
-  const minY = Math.min(0, STAGE_SIZE - displayedHeight);
+  const minX = Math.min(0, stageWidth - displayedWidth);
+  const minY = Math.min(0, stageHeight - displayedHeight);
   return {
     x: Math.min(0, Math.max(minX, offset.x)),
     y: Math.min(0, Math.max(minY, offset.y)),
@@ -33,20 +48,24 @@ function clampOffset(offset: Offset, displayedWidth: number, displayedHeight: nu
 /**
  * Modale per riposizionare/ridimensionare l'immagine profilo prima
  * dell'upload, così l'utente può far entrare bene il soggetto nel riquadro
- * circolare (drag per spostare, slider per zoomare) invece di subire un
+ * (verticale per i professionisti, tondo per l'account; drag per spostare,
+ * slider per zoomare) invece di subire un
  * ritaglio automatico. Canvas-based, nessuna libreria esterna: web-only,
  * resta in apps/web coerente con le altre primitive DOM-specifiche già
  * presenti qui (CategoryIconBadge, ProfessionalAvatar).
  */
 export function ImageCropModal({
   imageSrc,
+  shape = "circle",
   onCancel,
   onConfirm,
 }: {
   imageSrc: string;
+  shape?: ImageCropShape;
   onCancel: () => void;
   onConfirm: (blob: Blob) => void;
 }) {
+  const { stageWidth, stageHeight, outputWidth, outputHeight, radius } = CROP_FORMATS[shape];
   const imgRef = useRef<HTMLImageElement>(null);
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -69,19 +88,19 @@ export function ImageCropModal({
     if (!delta) return;
     e.preventDefault();
     setOffset((prev) =>
-      clampOffset({ x: prev.x + delta.x, y: prev.y + delta.y }, displayedWidth > 0 ? displayedWidth : STAGE_SIZE, displayedHeight > 0 ? displayedHeight : STAGE_SIZE),
+      clampOffset({ x: prev.x + delta.x, y: prev.y + delta.y }, displayedWidth > 0 ? displayedWidth : stageWidth, displayedHeight > 0 ? displayedHeight : stageHeight, stageWidth, stageHeight),
     );
   }
 
   // Scala minima che fa "coprire" (come CSS object-fit: cover) l'intero
-  // riquadro quadrato con l'immagine, qualunque siano le sue proporzioni.
+  // riquadro con l'immagine, qualunque siano le sue proporzioni.
   const baseScale = useMemo(() => {
     if (!naturalSize) return 1;
-    return Math.max(STAGE_SIZE / naturalSize.width, STAGE_SIZE / naturalSize.height);
-  }, [naturalSize]);
+    return Math.max(stageWidth / naturalSize.width, stageHeight / naturalSize.height);
+  }, [naturalSize, stageWidth, stageHeight]);
 
-  const displayedWidth = naturalSize ? naturalSize.width * baseScale * zoom : STAGE_SIZE;
-  const displayedHeight = naturalSize ? naturalSize.height * baseScale * zoom : STAGE_SIZE;
+  const displayedWidth = naturalSize ? naturalSize.width * baseScale * zoom : stageWidth;
+  const displayedHeight = naturalSize ? naturalSize.height * baseScale * zoom : stageHeight;
 
   function handleImageLoad() {
     const img = imgRef.current;
@@ -89,9 +108,18 @@ export function ImageCropModal({
     const width = img.naturalWidth;
     const height = img.naturalHeight;
     setNaturalSize({ width, height });
-    const scale = Math.max(STAGE_SIZE / width, STAGE_SIZE / height);
-    setOffset({ x: (STAGE_SIZE - width * scale) / 2, y: (STAGE_SIZE - height * scale) / 2 });
+    const scale = Math.max(stageWidth / width, stageHeight / height);
+    setOffset({ x: (stageWidth - width * scale) / 2, y: (stageHeight - height * scale) / 2 });
   }
+
+  // Un'immagine già in memoria può finire di caricarsi prima che React
+  // colleghi `onLoad`: senza misure il riquadro resterebbe schiacciato e
+  // "Salva" spento.
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img?.complete && img.naturalWidth > 0) handleImageLoad();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handlePointerDown(e: React.PointerEvent) {
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -107,7 +135,7 @@ export function ImageCropModal({
       y: dragState.current.offsetStart.y + dy,
     };
     setOffset(
-      clampOffset(next, displayedWidth > 0 ? displayedWidth : STAGE_SIZE, displayedHeight > 0 ? displayedHeight : STAGE_SIZE),
+      clampOffset(next, displayedWidth > 0 ? displayedWidth : stageWidth, displayedHeight > 0 ? displayedHeight : stageHeight, stageWidth, stageHeight),
     );
   }
 
@@ -125,7 +153,7 @@ export function ImageCropModal({
     setOffset((prev) => {
       const centerX = prev.x - (nextDisplayedWidth - displayedWidth) / 2;
       const centerY = prev.y - (nextDisplayedHeight - displayedHeight) / 2;
-      return clampOffset({ x: centerX, y: centerY }, nextDisplayedWidth, nextDisplayedHeight);
+      return clampOffset({ x: centerX, y: centerY }, nextDisplayedWidth, nextDisplayedHeight, stageWidth, stageHeight);
     });
   }
 
@@ -135,16 +163,17 @@ export function ImageCropModal({
     setIsProcessing(true);
     try {
       const scale = baseScale * zoom;
-      const sourceSize = STAGE_SIZE / scale;
+      const sourceWidth = stageWidth / scale;
+      const sourceHeight = stageHeight / scale;
       const sourceX = -offset.x / scale;
       const sourceY = -offset.y / scale;
 
       const canvas = document.createElement("canvas");
-      canvas.width = OUTPUT_SIZE;
-      canvas.height = OUTPUT_SIZE;
+      canvas.width = outputWidth;
+      canvas.height = outputHeight;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      ctx.drawImage(img, sourceX, sourceY, sourceSize, sourceSize, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+      ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, outputWidth, outputHeight);
 
       const blob: Blob | null = await new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/jpeg", 0.92));
       if (blob) onConfirm(blob);
@@ -204,10 +233,10 @@ export function ImageCropModal({
           onPointerLeave={handlePointerUp}
           style={{
             position: "relative",
-            width: STAGE_SIZE,
-            height: STAGE_SIZE,
+            width: stageWidth,
+            height: stageHeight,
             overflow: "hidden",
-            borderRadius: 20,
+            borderRadius: shape === "portrait" ? radius : 20,
             backgroundColor: "#f1f5f9",
             cursor: "grab",
             touchAction: "none",
@@ -237,16 +266,19 @@ export function ImageCropModal({
               pointerEvents: "none",
             }}
           />
-          {/* Maschera circolare: anteprima di come apparirà l'avatar (sempre mostrato tondo nel resto del sito). */}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              boxShadow: `0 0 0 ${STAGE_SIZE}px rgba(255,255,255,0.55)`,
-              borderRadius: "50%",
-              pointerEvents: "none",
-            }}
-          />
+          {/* Foto verticale: il riquadro stesso ha la forma della scheda nella
+              ricerca. Foto tonda: maschera circolare, fuori resta velato. */}
+          {shape === "circle" ? (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                boxShadow: `0 0 0 ${stageWidth}px rgba(255,255,255,0.55)`,
+                borderRadius: radius,
+                pointerEvents: "none",
+              }}
+            />
+          ) : null}
         </div>
 
         <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 10 }}>
