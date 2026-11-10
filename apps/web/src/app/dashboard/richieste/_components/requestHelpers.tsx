@@ -180,7 +180,9 @@ export function MiniTimeline({ stage }: { stage: RequestStage }) {
       {steps.map((step, i) => {
         const done = reached >= i;
         return (
-          <YStack key={step.key} flex={1} alignItems="center" position="relative" minWidth={0}>
+          // Colonne tutte uguali (flexBasis 0): con un'etichetta lunga, come "Modifica
+          // richiesta dal cliente", le parole delle altre si sovrapponevano sul telefono.
+          <YStack key={step.key} flex={1} flexBasis={0} alignItems="center" position="relative" minWidth={0} paddingHorizontal={2}>
             {i > 0 ? (
               <YStack position="absolute" top={5} right="50%" width="100%" height={2} backgroundColor={done ? brand.cianografia : brand.filetto} zIndex={0} />
             ) : null}

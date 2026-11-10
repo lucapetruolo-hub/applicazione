@@ -64,3 +64,10 @@ un'altra data" e allo stesso elenco a settimane nella richiesta del cliente.
 
 **Verifica**: `tsc` e `pnpm lint` del sito, `tsc` di e2e; le cinque prove di
 `date-preventivo.spec.ts` passano in locale (telefono e computer, axe).
+
+**Andamento sul telefono** (sì di Luca, stesso giorno): con il passo in più
+"Modifica richiesta dal cliente" le etichette "Fissato" e "Terminato" si
+sovrapponevano. Le colonne di `MiniTimeline` (professionista e cliente) ora
+sono tutte larghe uguali (`flexBasis={0}`, 2 px di margine), così l'etichetta
+lunga va a capo nella sua colonna. Controllato nella prova "Modifica…" di
+`date-preventivo.spec.ts` (le due etichette non si toccano).

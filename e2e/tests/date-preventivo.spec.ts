@@ -111,6 +111,14 @@ test("Modifica di una data proposta dal cliente: stesso elenco, aperto sulla sua
   const page = await pageAsClient(browser, owner.userId, PHONE);
   await page.goto("/dashboard/richieste");
   await page.getByText("Il boiler fa rumore", { exact: false }).first().click();
+
+  // Andamento con il passo in più: "Fissato" e "Terminato" non si sovrappongono sul telefono.
+  const fixed = await page.getByText("Fissato", { exact: true }).last().boundingBox();
+  const done = await page.getByText("Terminato", { exact: true }).last().boundingBox();
+  expect(fixed && done && fixed.x + fixed.width <= done.x).toBe(true);
+  await page.getByText("Modifica richiesta dal cliente", { exact: true }).last().scrollIntoViewIfNeeded();
+  await page.screenshot({ path: "test-results/date-preventivo-andamento-telefono.png" });
+
   await page.getByRole("button", { name: "Modifica", exact: true }).click();
 
   const group = page.getByRole("radiogroup", { name: `Orari di ${dayLabel(proposed)}` });
