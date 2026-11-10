@@ -39,6 +39,18 @@ export const agendaWeekTemplateSchema = z
 export type AgendaWeekTemplate = z.infer<typeof agendaWeekTemplateSchema>;
 
 /**
+ * Settimana di tutti i mesi (docs/changelog/2026-11-10-eccezioni-settimana.md):
+ * `applyToManual` = "Applica anche a questi", i giorni cambiati a mano prendono
+ * la settimana nuova (mai quelli con lavori fissati). Si accetta anche la sola
+ * settimana, come prima.
+ */
+export const agendaWeekTemplateSaveSchema = z.union([
+  z.object({ template: agendaWeekTemplateSchema, applyToManual: z.boolean() }),
+  agendaWeekTemplateSchema.transform((template) => ({ template, applyToManual: false })),
+]);
+export type AgendaWeekTemplateSave = z.infer<typeof agendaWeekTemplateSaveSchema>;
+
+/**
  * Settimana tipo salvata per un mese solo (richiesta dell'utente,
  * docs/CHANGELOG.md §323): `month` in AAAA-MM, al massimo un anno avanti.
  */

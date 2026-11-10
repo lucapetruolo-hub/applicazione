@@ -19,6 +19,7 @@ import {
   type WeatherDayAlert,
   type ZoneDemand,
   type ZoneDemandTip,
+  type WeekTemplatePreview,
 } from "@professionisti/shared";
 import { calculateDistanceKm } from "../common/geo.util";
 import { PRISMA } from "../prisma/prisma.module";
@@ -173,7 +174,7 @@ export class AgendaService {
    * Salva la settimana tipo e la porta subito nei prossimi 63 giorni
    * (docs/CHANGELOG.md §323): da qui in avanti vale per tutte le settimane.
    */
-  async saveWeekTemplate(userId: string, template: AgendaWeekTemplate): Promise<AgendaWeekTemplateState> {
+  async saveWeekTemplate(userId: string, template: AgendaWeekTemplate, applyToManual = false): Promise<AgendaWeekTemplateState> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
       select: { id: true, agendaWeekTemplate: true, agendaTemplateFilledUntil: true, remoteAvailable: true },
@@ -182,8 +183,26 @@ export class AgendaService {
     const previousParsed = agendaWeekTemplateSchema.safeParse(profile.agendaWeekTemplate);
     // Prima attivazione: nessun giorno "già riempito", la settimana di prima non conta.
     const previous = profile.agendaTemplateFilledUntil && previousParsed.success ? previousParsed.data : null;
-    const changedDays = await this.syncWeekTemplate(profile.id, template, previous, profile.agendaTemplateFilledUntil, new Date(), true);
+    const changedDays = await this.syncWeekTemplate(profile.id, template, previous, profile.agendaTemplateFilledUntil, new Date(), true, applyToManual);
     return { template, active: true, changedDays, starter: false, online: profile.remoteAvailable };
+  }
+
+  /**
+   * Prima di salvare la settimana di tutti i mesi (docs/changelog/2026-11-10-eccezioni-settimana.md):
+   * gli stessi conti del salvataggio, senza scrivere nulla, per chiedere se
+   * cambiare anche i giorni cambiati a mano.
+   */
+  async previewWeekTemplate(userId: string, template: AgendaWeekTemplate, now = new Date()): Promise<WeekTemplatePreview> {
+    const profile = await this.prisma.professionalProfile.findUnique({
+      where: { userId },
+      select: { id: true, agendaWeekTemplate: true, agendaTemplateFilledUntil: true },
+    });
+    if (!profile) throw new NotFoundException("Profilo professionista non trovato.");
+    const previousParsed = agendaWeekTemplateSchema.safeParse(profile.agendaWeekTemplate);
+    const previous = profile.agendaTemplateFilledUntil && previousParsed.success ? previousParsed.data : null;
+    const { dates, today, windowEnd } = this.syncWindow(now);
+    const sync = await this.computeSync(this.prisma, profile.id, template, previous, profile.agendaTemplateFilledUntil, dates, today, windowEnd);
+    return { manualDays: sync.manualDays, bookedDaysKept: sync.bookedDaysKept };
   }
 
   /**
@@ -254,19 +273,11 @@ export class AgendaService {
     filledUntil: Date | null,
     now = new Date(),
     clearStarter = false,
+    applyToManual = false,
   ): Promise<number> {
-    const today = wallClockToday(now);
-    const dates: string[] = [];
-    for (let i = 0; i < PUBLIC_AGENDA_DAYS; i++) {
-      const date = new Date(today);
-      date.setUTCDate(date.getUTCDate() + i);
-      dates.push(date.toISOString().slice(0, 10));
-    }
-    const lastDate = new Date(`${dates[dates.length - 1]}T00:00:00.000Z`);
-    const windowEnd = new Date(lastDate);
-    windowEnd.setUTCDate(windowEnd.getUTCDate() + 1);
+    const { dates, today, lastDate, windowEnd } = this.syncWindow(now);
     return this.prisma.$transaction(async (tx) => {
-      const sync = await this.computeSync(tx, professionalProfileId, template, previous, filledUntil, dates, today, windowEnd);
+      const sync = await this.computeSync(tx, professionalProfileId, template, previous, filledUntil, dates, today, windowEnd, applyToManual);
       await this.applySync(tx, professionalProfileId, sync, true);
       const nextFilledUntil = filledUntil && filledUntil > lastDate ? filledUntil : lastDate;
       await tx.professionalProfile.update({
@@ -281,6 +292,21 @@ export class AgendaService {
     });
   }
 
+  /** I prossimi 63 giorni che la settimana tipo tiene pieni. */
+  private syncWindow(now: Date) {
+    const today = wallClockToday(now);
+    const dates: string[] = [];
+    for (let i = 0; i < PUBLIC_AGENDA_DAYS; i++) {
+      const date = new Date(today);
+      date.setUTCDate(date.getUTCDate() + i);
+      dates.push(date.toISOString().slice(0, 10));
+    }
+    const lastDate = new Date(`${dates[dates.length - 1]}T00:00:00.000Z`);
+    const windowEnd = new Date(lastDate);
+    windowEnd.setUTCDate(windowEnd.getUTCDate() + 1);
+    return { dates, today, lastDate, windowEnd };
+  }
+
   private async computeSync(
     tx: Prisma.TransactionClient,
     professionalProfileId: string,
@@ -290,6 +316,7 @@ export class AgendaService {
     dates: string[],
     from: Date,
     to: Date,
+    applyToManual = false,
   ) {
     const [slots, exceptions, bookings] = await Promise.all([
       tx.availabilitySlot.findMany({ where: { professionalProfileId, OR: [{ date: null }, { date: { gte: from, lt: to } }] } }),
@@ -318,11 +345,16 @@ export class AgendaService {
       })),
       closedDates: new Set(exceptions.map((e) => e.date.toISOString().slice(0, 10))),
       bookedDates: new Set(bookings.map((b) => b.scheduledAt.toISOString().slice(0, 10))),
+      applyToManual,
     });
   }
 
   private async applySync(tx: Prisma.TransactionClient, professionalProfileId: string, sync: ReturnType<typeof weekTemplateSync>, fromWeekTemplate: boolean) {
     if (sync.deleteIds.length) await tx.availabilitySlot.deleteMany({ where: { id: { in: sync.deleteIds }, professionalProfileId } });
+    // Solo la settimana di tutti i mesi riprende come sue le eccezioni tornate uguali a lei.
+    if (fromWeekTemplate && sync.adoptIds.length) {
+      await tx.availabilitySlot.updateMany({ where: { id: { in: sync.adoptIds }, professionalProfileId }, data: { fromWeekTemplate: true } });
+    }
     if (!sync.added.length) return;
     await tx.availabilitySlot.createMany({
       data: sync.added.map((slot) => ({

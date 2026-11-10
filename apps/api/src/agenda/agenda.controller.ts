@@ -1,6 +1,13 @@
 import { Body, Controller, Delete, Get, Header, NotFoundException, Param, Post, Put, Query, Req, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import { agendaWeekTemplateMonthSchema, agendaWeekTemplateSchema, type AgendaWeekTemplate, type AgendaWeekTemplateMonth } from "@professionisti/shared";
+import {
+  agendaWeekTemplateMonthSchema,
+  agendaWeekTemplateSaveSchema,
+  agendaWeekTemplateSchema,
+  type AgendaWeekTemplate,
+  type AgendaWeekTemplateMonth,
+  type AgendaWeekTemplateSave,
+} from "@professionisti/shared";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { AgendaService } from "./agenda.service";
@@ -23,8 +30,14 @@ export class AgendaController {
   }
 
   @Put("week-template")
-  saveWeekTemplate(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(agendaWeekTemplateSchema)) body: AgendaWeekTemplate) {
-    return this.agendaService.saveWeekTemplate(req.user.userId, body);
+  saveWeekTemplate(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(agendaWeekTemplateSaveSchema)) body: AgendaWeekTemplateSave) {
+    return this.agendaService.saveWeekTemplate(req.user.userId, body.template, body.applyToManual);
+  }
+
+  /** Prima di salvare: i giorni cambiati a mano che la settimana nuova cambierebbe. Non salva nulla. */
+  @Post("week-template/preview")
+  previewWeekTemplate(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(agendaWeekTemplateSchema)) body: AgendaWeekTemplate) {
+    return this.agendaService.previewWeekTemplate(req.user.userId, body);
   }
 
   @Put("week-template/month")

@@ -95,4 +95,52 @@ describe("settimana tipo per tutte le settimane (§323)", () => {
     );
     expect([...kept]).toEqual(["2026-11-02"]);
   });
+
+  describe("giorni cambiati a mano (docs/changelog/2026-11-10-eccezioni-settimana.md)", () => {
+    const base = { previous: WEEKDAYS, dates: WEEK, filledUntil: "2026-11-08", closedDates: none };
+    const manualTue = () => slot("2026-11-03", { ...MORNING, start: "09:00" }, false);
+
+    it("li elenca e li lascia com'erano, se non si sceglie di cambiarli", () => {
+      const manual = manualTue();
+      const sync = weekTemplateSync({ ...base, template: ONLY_MORNINGS, existing: [manual], bookedDates: none });
+      expect(sync.deleteIds).not.toContain(manual.id);
+      expect(sync.manualDays).toEqual([{ date: "2026-11-03", current: [{ start: "09:00", end: "13:00" }], wanted: [{ start: "08:00", end: "13:00" }] }]);
+    });
+
+    it("con \"Cambia anche questi\" prendono la settimana nuova", () => {
+      const manual = manualTue();
+      const sync = weekTemplateSync({ ...base, template: ONLY_MORNINGS, existing: [manual], bookedDates: none, applyToManual: true });
+      expect(sync.deleteIds).toEqual([manual.id]);
+      expect(sync.added).toContainEqual({ ...MORNING, dayOfWeek: 2, date: "2026-11-03" });
+      expect(sync.changedDays).toBe(1);
+    });
+
+    it("un giorno con lavori fissati non si tocca mai, neanche con \"Cambia anche questi\"", () => {
+      const manual = manualTue();
+      const sync = weekTemplateSync({ ...base, template: ONLY_MORNINGS, existing: [manual], bookedDates: new Set(["2026-11-03"]), applyToManual: true });
+      expect(sync.deleteIds).toEqual([]);
+      expect(sync.manualDays).toEqual([]);
+      expect(sync.bookedDaysKept).toBe(1);
+    });
+
+    it("un'eccezione uguale alla settimana tipo torna sua e perde il bollino", () => {
+      const manual = slot("2026-11-03", MORNING, false);
+      const sync = weekTemplateSync({ ...base, template: ONLY_MORNINGS, existing: [manual], bookedDates: none });
+      expect(sync.adoptIds).toEqual([manual.id]);
+      expect(sync.manualDays).toEqual([]);
+      expect(sync.deleteIds).toEqual([]);
+    });
+
+    it("salvando Giorno per giorno, un giorno rimesso uguale alla settimana tipo torna suo", () => {
+      const kept = weekTemplateDatesKept(
+        [{ date: "2026-11-03", fromWeekTemplate: false, slot: { ...MORNING, start: "09:00" } }],
+        [
+          { date: "2026-11-03", slot: MORNING },
+          { date: "2026-11-04", slot: { ...MORNING, end: "12:00" } },
+        ],
+        ONLY_MORNINGS,
+      );
+      expect([...kept]).toEqual(["2026-11-03"]);
+    });
+  });
 });

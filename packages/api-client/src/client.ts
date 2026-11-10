@@ -50,6 +50,7 @@ import type {
   ProfessionalBooking,
   AgendaWeekTemplate,
   AgendaWeekTemplateState,
+  WeekTemplatePreview,
   CalendarFeedStatus,
   DayRoute,
   WeatherDayAlert,
@@ -2161,8 +2162,11 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     // Strumenti della nuova agenda (docs/CHANGELOG.md §288).
     agendaWeekTemplate: (token: string) => request<AgendaWeekTemplateState>("/agenda/week-template", { headers: { Authorization: `Bearer ${token}` } }),
-    saveAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate) =>
-      request<AgendaWeekTemplateState>("/agenda/week-template", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(template) }),
+    saveAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate, applyToManual = false) =>
+      request<AgendaWeekTemplateState>("/agenda/week-template", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ template, applyToManual }) }),
+    /** Giorni cambiati a mano che la settimana nuova cambierebbe, prima di salvarla (docs/changelog/2026-11-10-eccezioni-settimana.md). */
+    previewAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate) =>
+      request<WeekTemplatePreview>("/agenda/week-template/preview", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(template) }),
     saveAgendaWeekTemplateForMonth: (token: string, template: AgendaWeekTemplate, month: string) =>
       request<AgendaWeekTemplateState>("/agenda/week-template/month", {
         method: "PUT",

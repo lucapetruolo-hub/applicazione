@@ -228,13 +228,41 @@ function sameSlots(a: WeekTemplateSlot[], b: WeekTemplateSlot[]): boolean {
   return ka.length === kb.length && ka.every((k, i) => k === kb[i]);
 }
 
+/** Orario di una fascia come lo mostra l'elenco dei giorni cambiati a mano. */
+export type WeekTemplateSlotTimes = { start: string; end: string };
+
+/** Giorno cambiato a mano che la settimana nuova cambierebbe: orari di oggi e quelli nuovi. */
+export type WeekTemplateManualDay = { date: string; current: WeekTemplateSlotTimes[]; wanted: WeekTemplateSlotTimes[] };
+
+/**
+ * Prima di salvare la settimana di tutti i mesi (docs/changelog/2026-11-10-eccezioni-settimana.md):
+ * i giorni cambiati a mano che cambierebbero e quanti giorni con lavori fissati restano com'erano.
+ */
+export type WeekTemplatePreview = { manualDays: WeekTemplateManualDay[]; bookedDaysKept: number };
+
+export type WeekTemplateSyncResult = {
+  deleteIds: string[];
+  /** Fasce cambiate a mano ma di nuovo uguali alla settimana tipo: tornano sue, senza bollino "eccezione". */
+  adoptIds: string[];
+  added: WeekTemplateDateSlot[];
+  changedDays: number;
+  /** Giorni cambiati a mano diversi dalla settimana nuova (cambiati solo con `applyToManual`). */
+  manualDays: WeekTemplateManualDay[];
+  /** Giorni con orari diversi dalla settimana nuova che restano com'erano perché hanno lavori fissati. */
+  bookedDaysKept: number;
+};
+
+const slotTimes = (s: WeekTemplateSlot): WeekTemplateSlotTimes => ({ start: s.start, end: s.end });
+const byStart = (a: WeekTemplateSlotTimes, b: WeekTemplateSlotTimes) => a.start.localeCompare(b.start);
+
 /**
  * Settimana tipo che vale per tutte le settimane (decisione dell'utente,
  * docs/CHANGELOG.md §323). Le fasce restano per data: qui si decide, per
  * ogni giorno da oggi in poi, cosa togliere e cosa aggiungere.
  * - Giorno chiuso, con vecchie fasce ricorrenti o con lavori già fissati: resta com'è.
  * - Giorno con le sole fasce della settimana tipo: prende quelle nuove.
- * - Giorno con orari cambiati a mano: resta com'è.
+ * - Giorno con orari cambiati a mano: resta com'è, salvo "Applica anche a
+ *   questi" (`applyToManual`); se è di nuovo uguale alla settimana tipo torna suo.
  * - Giorno vuoto mai riempito (dopo `filledUntil`): prende la settimana tipo.
  * - Giorno vuoto già riempito in passato: si riempie solo se era vuoto per
  *   la settimana tipo di prima (giorno libero), non se è stato svuotato a mano.
@@ -247,8 +275,10 @@ export function weekTemplateSync(input: {
   existing: WeekTemplateExistingSlot[];
   closedDates: ReadonlySet<string>;
   bookedDates: ReadonlySet<string>;
-}): { deleteIds: string[]; added: WeekTemplateDateSlot[]; changedDays: number } {
-  const { template, previous, filledUntil, existing, closedDates, bookedDates } = input;
+  /** "Applica anche a questi": i giorni cambiati a mano prendono la settimana nuova (docs/changelog/2026-11-10-eccezioni-settimana.md). */
+  applyToManual?: boolean;
+}): WeekTemplateSyncResult {
+  const { template, previous, filledUntil, existing, closedDates, bookedDates, applyToManual = false } = input;
   const recurringDays = new Set(existing.filter((s) => s.date === null).map((s) => s.dayOfWeek));
   const byDate = new Map<string, WeekTemplateExistingSlot[]>();
   for (const slot of existing) {
@@ -256,7 +286,10 @@ export function weekTemplateSync(input: {
     byDate.set(slot.date, [...(byDate.get(slot.date) ?? []), slot]);
   }
   const deleteIds: string[] = [];
+  const adoptIds: string[] = [];
   const added: WeekTemplateDateSlot[] = [];
+  const manualDays: WeekTemplateManualDay[] = [];
+  let bookedDaysKept = 0;
   let changedDays = 0;
   for (const date of input.dates) {
     const dayOfWeek = new Date(`${date}T00:00:00.000Z`).getUTCDay();
@@ -264,7 +297,20 @@ export function weekTemplateSync(input: {
     const wanted = template.days[dayOfWeek] ?? [];
     const current = byDate.get(date) ?? [];
     if (current.length > 0) {
-      if (bookedDates.has(date) || !current.every((s) => s.fromWeekTemplate) || sameSlots(current, wanted)) continue;
+      const manual = !current.every((s) => s.fromWeekTemplate);
+      if (sameSlots(current, wanted)) {
+        // Un'eccezione tornata uguale alla settimana tipo non è più un'eccezione.
+        if (manual) adoptIds.push(...current.filter((s) => !s.fromWeekTemplate).map((s) => s.id));
+        continue;
+      }
+      if (bookedDates.has(date)) {
+        bookedDaysKept++;
+        continue;
+      }
+      if (manual) {
+        manualDays.push({ date, current: current.map(slotTimes).sort(byStart), wanted: wanted.map(slotTimes).sort(byStart) });
+        if (!applyToManual) continue;
+      }
       deleteIds.push(...current.map((s) => s.id));
       for (const slot of wanted) added.push({ ...slot, dayOfWeek, date });
       changedDays++;
@@ -277,15 +323,21 @@ export function weekTemplateSync(input: {
     for (const slot of wanted) added.push({ ...slot, dayOfWeek, date });
     changedDays++;
   }
-  return { deleteIds, added, changedDays };
+  return { deleteIds, adoptIds, added, changedDays, manualDays, bookedDaysKept };
 }
 
 /**
  * Salvataggio di "Giorno per giorno": una fascia resta "della settimana tipo"
- * solo se il suo giorno ha ancora esattamente le fasce della settimana tipo.
+ * solo se il suo giorno ha ancora esattamente le fasce della settimana tipo;
+ * con `template`, anche un giorno cambiato a mano che torna uguale a lei.
  * Restituisce le date (AAAA-MM-GG) che restano della settimana tipo.
  */
-export function weekTemplateDatesKept(previous: { date: string | null; fromWeekTemplate: boolean; slot: WeekTemplateSlot }[], incoming: { date: string | null; slot: WeekTemplateSlot }[]): Set<string> {
+export function weekTemplateDatesKept(
+  previous: { date: string | null; fromWeekTemplate: boolean; slot: WeekTemplateSlot }[],
+  incoming: { date: string | null; slot: WeekTemplateSlot }[],
+  /** Settimana di tutti i mesi, se attiva: un giorno con le sue stesse fasce è suo anche se era cambiato a mano. */
+  template: AgendaWeekTemplate | null = null,
+): Set<string> {
   const group = <T extends { date: string | null }>(list: T[]) => {
     const map = new Map<string, T[]>();
     for (const item of list) if (item.date) map.set(item.date, [...(map.get(item.date) ?? []), item]);
@@ -298,6 +350,12 @@ export function weekTemplateDatesKept(previous: { date: string | null; fromWeekT
     if (!slots.every((s) => s.fromWeekTemplate)) continue;
     const next = after.get(date);
     if (next && sameSlots(slots.map((s) => s.slot), next.map((s) => s.slot))) kept.add(date);
+  }
+  if (template) {
+    for (const [date, slots] of after) {
+      const wanted = template.days[new Date(`${date}T00:00:00.000Z`).getUTCDay()] ?? [];
+      if (sameSlots(slots.map((s) => s.slot), wanted)) kept.add(date);
+    }
   }
   return kept;
 }
