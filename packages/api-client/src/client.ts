@@ -294,6 +294,8 @@ export type ClientGuidedRequest = {
   address: string | null;
   /** Valorizzato solo se la richiesta è diretta al profilo di un professionista specifico, `null` per una richiesta generica (fan-out categoria+città) — richiesta esplicita dell'utente: "prezzo totale medio" si mostra solo su queste ultime. */
   professionalProfileId: string | null;
+  /** I 2-5 professionisti scelti nei risultati (docs/CHANGELOG.md §393), vuoto per le altre richieste: "Ripeti la richiesta" li ripropone. */
+  chosenProfileIds: string[];
   /**
    * Destinatario + resto dell'indirizzo strutturato, raccolti fin dalla
    * richiesta (richiesta esplicita dell'utente) — visibili solo al
