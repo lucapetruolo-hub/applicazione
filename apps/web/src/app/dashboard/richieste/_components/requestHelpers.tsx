@@ -9,6 +9,8 @@ export const smallInputStyle = { padding: 10, borderRadius: radiusDoc, border: `
 // della versione compatta usata nel form preventivo, richiesta esplicita
 // dell'utente ("anche le dimensioni e il carattere delle scritte").
 export const filterInputStyle = { padding: "14px 16px", borderRadius: radiusDoc, border: `1px solid ${brand.bordoCampo}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite, backgroundColor: brand.calce };
+/** Etichetta in vista sopra una tendina dei Filtri ("Mostra"). */
+export const filterLabelStyle = { display: "flex", flexDirection: "column", gap: 6, fontSize: 16, fontWeight: 700, color: brand.grafite } as const;
 
 export type QuoteItemDraft = { name: string; priceMin: string; priceMax: string };
 

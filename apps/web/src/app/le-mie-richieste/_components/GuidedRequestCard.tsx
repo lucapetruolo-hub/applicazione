@@ -780,10 +780,6 @@ export function GuidedRequestCard({
       onError: setError,
     }),
   );
-  // "Archivia" accanto a "Elimina richiesta" si confondeva (prova simulata, §343): una riga sotto spiega la differenza.
-  for (const action of menuActions) {
-    if (action.text === "Archivia" && !booking) action.hint = "La ritrovi in Archiviate";
-  }
   // Quali segnalazioni si possono inviare lo decide il server (docs/CHANGELOG.md §164).
   if (booking && booking.issueTypesAllowed.length > 0) {
     menuActions.push({
