@@ -17,6 +17,7 @@ import {
   SEARCH_RADIUS_KM,
   ONLINE_LIMIT_FREE_JOBS,
   asScheduleChange,
+  formatClockDeadline,
   formatItalianUntil,
   moderationActionOwnerText,
   moderationGround,
@@ -273,21 +274,40 @@ const BUILDERS: Record<string, Builder> = {
   NEW_LEAD: (payload, ctx) => {
     const category = str(payload.category) ?? ctx.category ?? "un lavoro";
     const city = str(payload.city) ?? ctx.city;
+    const where = city ? ` a ${city}` : "";
     const urgent = payload.isUrgent === true;
     const respondUntil = urgent ? null : str(payload.respondUntil);
+    // Solo per te, scelto tra pochi o a più professionisti: il professionista
+    // lo capisce già dall'oggetto (docs/changelog/2026-11-10-richiesta-solo-per-te.md).
+    // Senza `audience` (notifiche di prima) il testo resta quello di sempre.
+    const direct = payload.audience === "direct";
+    const among = payload.audience === "chosen" && typeof payload.among === "number" && payload.among > 1 ? payload.among : null;
+    // Diretta con "inoltrala se non risponde" (§209): l'ora in cui va anche ad altri.
+    const forwardAt = direct ? str(payload.forwardAt) : null;
+    const forwardSoon = forwardAt && new Date(forwardAt).getTime() > Date.now() ? formatClockDeadline(forwardAt) : null;
+    const others = among !== null ? (among === 2 ? "un altro professionista" : `altri ${among - 1} professionisti`) : null;
     return {
       kind: "notification",
       tone: urgent ? "urgent" : "default",
-      subject: `${urgent ? "URGENTE — " : ""}Nuova richiesta: ${category}${city ? ` a ${city}` : ""}`,
+      subject: `${urgent ? "URGENTE — " : ""}${direct ? "Richiesta per te" : "Nuova richiesta"}: ${category}${where}`,
       greeting: ctx.name,
-      title: urgent ? "Nuova richiesta urgente" : "Hai una nuova richiesta",
+      title: direct ? (urgent ? "Richiesta urgente per te" : "Un cliente ha scelto te") : urgent ? "Nuova richiesta urgente" : "Hai una nuova richiesta",
       paragraphs: [
-        `Un cliente cerca un professionista per **${category}**${city ? ` a ${city}` : ""}.`,
+        direct
+          ? `Un cliente cerca un professionista per **${category}**${where} e ha mandato la richiesta **solo a te**.`
+          : others
+            ? `Un cliente cerca un professionista per **${category}**${where} e ha scelto **te e ${others}**.`
+            : `Un cliente cerca un professionista per **${category}**${where}.`,
+        ...(forwardSoon ? [`**Se non rispondi entro ${forwardSoon}** la richiesta va anche ad altri professionisti della zona: potrai rispondere lo stesso.`] : []),
+        ...(payload.audience === "shared" ? ["La richiesta è arrivata anche ad altri professionisti della zona."] : []),
         ...(urgent ? ["**È una richiesta urgente:** il cliente cerca qualcuno disponibile subito."] : []),
         // Quando serve, scelto dal cliente (docs/CHANGELOG.md §344).
         ...(payload.timing === "WEEK" ? ["**Quando:** in settimana."] : payload.timing === "CALM" ? ["**Quando:** con calma, il cliente non ha fretta."] : []),
         ...(respondUntil ? [`**Puoi rispondere fino ${formatItalianUntil(respondUntil)}.**`] : []),
-        "Chi risponde per primo ha più probabilità di aggiudicarsi il lavoro: apri la richiesta, guarda le foto e invia il tuo preventivo.",
+        // Nessuna gara se la richiesta è solo tua: niente "chi risponde per primo".
+        direct
+          ? "Apri la richiesta, guarda le foto e invia il tuo preventivo."
+          : "Chi risponde per primo ha più probabilità di aggiudicarsi il lavoro: apri la richiesta, guarda le foto e invia il tuo preventivo.",
       ],
       cta: proRequests("Rispondi alla richiesta"),
     };

@@ -6,6 +6,7 @@ import type { ProfessionalDetail } from "./professionals";
 import type { RequestTiming } from "./requestTiming";
 import type { ClientInvoiceRequestView, CourtesyDocumentSummary } from "./accounting";
 import type { RecurringFrequency, RecurringVisitInfo } from "./recurringJobs";
+import type { LeadAudience } from "./leadAudience";
 /**
  * Anteprima del proprio profilo pubblico (docs/CHANGELOG.md §252): gli stessi
  * dati della pagina pubblica e se i clienti la vedono già, o perché no.
@@ -132,6 +133,11 @@ export type ProfessionalLead = {
    * mai chi sono né cosa hanno offerto.
    */
   competitors: { responded: number; total: number };
+  /**
+   * Solo per te, scelto tra pochi o mandata a più professionisti: bollino
+   * nella scheda (docs/changelog/2026-11-10-richiesta-solo-per-te.md).
+   */
+  audience: LeadAudience;
   /**
    * Preventivo eventualmente già inviato per questo lead (null se non ancora
    * inviato). `clientProposedDate` valorizzata solo quando status è

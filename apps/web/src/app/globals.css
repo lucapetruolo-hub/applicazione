@@ -1995,6 +1995,11 @@ html.site-menu-open .profile-cta-bar {
   min-width: 0;
   font-size: 16px;
 }
+.today-row-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 .today-row-sub {
   color: #6e6459;
   font-size: 16px;

@@ -33,6 +33,7 @@ import {
   type ProfessionalInsights,
   type ProfessionalLead,
   ownClientRequest,
+  leadAudience,
   type ProfessionalSearchResult,
   type ProfessionalServiceItem,
   type ServicePriceUnit,
@@ -1434,6 +1435,7 @@ export class ProfessionalsService {
           responded: otherQuotesPerRequest.get(lead.guidedRequest.id) ?? 0,
           total: Math.max(0, (leadsPerRequest.get(lead.guidedRequest.id) ?? 1) - 1),
         },
+        audience: leadAudience(lead.guidedRequest, professionalProfileId),
         quote: quote
           ? {
               id: quote.id,

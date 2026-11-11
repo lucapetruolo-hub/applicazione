@@ -41,7 +41,7 @@ test("le richieste da rispondere stanno in cima, sopra meteo e lavori", async ({
   const lead = {
     id: "lead-in-cima", status: "PENDING", declineNote: null, professionalNote: null, priceEurCents: 0,
     createdAt: "2026-10-26T06:00:00Z", updatedAt: "2026-10-26T06:00:00Z", expiresAt: null, forwardAt: "2026-10-26T13:00:00Z",
-    respondUntil: "2026-10-29T18:00:00Z", competitors: { responded: 0, total: 3 }, quote: null,
+    respondUntil: "2026-10-29T18:00:00Z", competitors: { responded: 0, total: 3 }, audience: { kind: "direct" }, quote: null,
     guidedRequest: { id: "gr-in-cima", categoryLabel: "Idraulico", city: "Latina", description: "Perdita sotto il lavello", isUrgent: false, withdrawnByClient: false, clientName: "Giulia" },
   };
   await page.route(`${API_URL}/professionals/me/leads`, (route) => route.fulfill({ json: [lead] }));
