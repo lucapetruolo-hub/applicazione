@@ -1,5 +1,6 @@
 "use client";
 
+import { HighlightMatch, matchesSearch, useSearchHighlight } from "@/lib/requestSearch";
 import { QUOTE_COMPARE_MIN, REQUEST_TIMING_LABEL, comparableQuotes, type ClientInvoiceRequestInput, type JobPaymentChoice, type RequestWithdrawReason, type SameTimeBookingCandidate } from "@professionisti/shared";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
@@ -386,6 +387,7 @@ export function GuidedRequestCard({
   }, [autoStartEditing]);
 
   const [showReschedule, setShowReschedule] = useState(false);
+  const searchHighlight = useSearchHighlight();
   // "Non posso più" dal promemoria: si apre solo con l'appuntamento fissato.
   useEffect(() => {
     if (!autoOpenReschedule) return;
@@ -1001,11 +1003,14 @@ export function GuidedRequestCard({
           <XStack flex={1} minWidth={0} alignItems="center" gap="3">
             {booking && !booking.professionalAccountDeleted ? <Avatar name={booking.businessName} imageUrl={booking.professionalImageUrl} size={40} /> : null}
             <YStack flex={1} minWidth={0} gap={2}>
-              <Text fontFamily="heading" fontWeight="800" fontSize={20} lineHeight="26px" color={brand.grafite} numberOfLines={isOpen ? undefined : 1}>
-                {request.description}
+              {/* Con una ricerca che trova la parola nel titolo, il titolo si
+                  legge intero e la parola è evidenziata
+                  (docs/changelog/2026-11-11-ricerca-fuori-dai-filtri.md). */}
+              <Text fontFamily="heading" fontWeight="800" fontSize={20} lineHeight="26px" color={brand.grafite} numberOfLines={isOpen || (searchHighlight && matchesSearch(request.description, searchHighlight)) ? undefined : 1}>
+                <HighlightMatch text={request.description} />
               </Text>
               <Text fontSize={16} color={brand.grafite70} numberOfLines={2}>
-                {metaLine}
+                <HighlightMatch text={metaLine} />
               </Text>
             </YStack>
           </XStack>

@@ -1,5 +1,6 @@
 "use client";
 
+import { HighlightMatch } from "@/lib/requestSearch";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -1009,11 +1010,11 @@ export function RequestCard({
         <XStack alignItems="center" gap="1">
           <Icon name="wrench" size={15} color={brand.grafite70} />
           <Text fontSize={16} color={brand.grafite70}>
-            {gr.categoryLabel} · {gr.city}
+            <HighlightMatch text={`${gr.categoryLabel} · ${gr.city}`} />
           </Text>
         </XStack>
         <Text fontSize={16} color={brand.grafite} lineHeight="22px">
-          {gr.description}
+          <HighlightMatch text={gr.description} />
         </Text>
         {/* Sotto la descrizione con l'icona, non più piccolo in un angolo tra
             i bollini (docs/CHANGELOG.md §349): è ciò che fa rispondere prima. */}
@@ -1261,7 +1262,7 @@ export function RequestCard({
                 Descrizione lavoro
               </Text>
               <Text fontSize={16} color={brand.grafite} lineHeight="19px">
-                {gr.description}
+                <HighlightMatch text={gr.description} />
               </Text>
               {gr.photoUrls.length > 0 ? (
                 <XStack gap="2" className="scroll-fade" style={{ overflowX: "auto" }}>

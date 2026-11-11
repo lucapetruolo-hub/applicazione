@@ -109,8 +109,11 @@ jobs:
           # Solo la cache di compilazione: i dati salvati da una prova (sitemap,
           # unstable_cache) non devono passare alla prova dopo
           # (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md).
+          # "cache/*" e non "cache": actions/cache non scende nelle cartelle,
+          # con "cache" l'esclusione non toglieva fetch-cache dall'archivio
+          # (docs/changelog/2026-11-11-cache-ci-senza-dati.md).
           path: |
-            apps/web/.next/cache
+            apps/web/.next/cache/*
             !apps/web/.next/cache/fetch-cache
           key: next-build-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: |
@@ -198,8 +201,11 @@ jobs:
           # Solo la cache di compilazione: i dati salvati da una prova (sitemap,
           # unstable_cache) non devono passare alla prova dopo
           # (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md).
+          # "cache/*" e non "cache": actions/cache non scende nelle cartelle,
+          # con "cache" l'esclusione non toglieva fetch-cache dall'archivio
+          # (docs/changelog/2026-11-11-cache-ci-senza-dati.md).
           path: |
-            apps/web/.next/cache
+            apps/web/.next/cache/*
             !apps/web/.next/cache/fetch-cache
           key: next-seo-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: |
@@ -283,8 +289,11 @@ jobs:
           # Solo la cache di compilazione: i dati salvati da una prova (sitemap,
           # unstable_cache) non devono passare alla prova dopo
           # (docs/changelog/2026-11-09-pagine-pubbliche-senza-tamagui.md).
+          # "cache/*" e non "cache": actions/cache non scende nelle cartelle,
+          # con "cache" l'esclusione non toglieva fetch-cache dall'archivio
+          # (docs/changelog/2026-11-11-cache-ci-senza-dati.md).
           path: |
-            apps/web/.next/cache
+            apps/web/.next/cache/*
             !apps/web/.next/cache/fetch-cache
           key: next-agenda-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: |
