@@ -1294,11 +1294,13 @@ export function RequestCard({
                 {stage === "accettata" || stage === "completata" || stage === "annullata" ? "Preventivo accettato" : "Il tuo preventivo"}
               </Text>
               {lead.quote.items.map((item) => (
-                <XStack key={item.id} justifyContent="space-between">
-                  <Text fontSize={16} color={brand.grafite}>
+                <XStack key={item.id} justifyContent="space-between" alignItems="baseline" gap="3">
+                  {/* Nome in grigio e importo scuro, come nella scheda del cliente
+                      (docs/changelog/2026-11-11-voci-prezzo-in-colonna.md). */}
+                  <Text fontSize={16} color={brand.grafite70} flexShrink={1} minWidth={0}>
                     {item.name}
                   </Text>
-                  <Text fontSize={16} color={brand.grafite}>
+                  <Text fontSize={16} color={brand.grafite} flexShrink={0} style={{ fontVariantNumeric: "tabular-nums" }}>
                     {formatEurRange(item.priceMinEurCents, item.priceMaxEurCents)}
                   </Text>
                 </XStack>
