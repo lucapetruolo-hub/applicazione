@@ -2274,11 +2274,11 @@ function DashboardAgendaContent() {
               <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap", marginTop: 12 }}>
                 <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600 }}>
                   Dal
-                  <ItalianDateInput className="ag-input" min={todayStr} value={vacationFrom} onChange={setVacationFrom} />
+                  <ItalianDateInput ariaLabel="Dal" className="ag-input" min={todayStr} value={vacationFrom} onChange={setVacationFrom} />
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600 }}>
                   Al (facoltativo)
-                  <ItalianDateInput className="ag-input" min={vacationFrom || todayStr} value={vacationTo} onChange={setVacationTo} />
+                  <ItalianDateInput ariaLabel="Al (facoltativo)" className="ag-input" min={vacationFrom || todayStr} value={vacationTo} onChange={setVacationTo} />
                 </label>
                 <button type="button" className="ag-btn" disabled={vacationBusy || !vacationFrom || (vacationTo !== "" && vacationTo < vacationFrom)} onClick={() => void addVacation()}>
                   {vacationBusy ? "Salvo..." : !vacationTo || vacationTo === vacationFrom ? "Chiudi questo giorno" : "Chiudi questi giorni"}
