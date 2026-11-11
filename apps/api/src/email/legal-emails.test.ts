@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderEmail } from "./email-layout";
 import { notificationEmail, type NotificationEmailContext } from "./templates/notification-emails";
+import { lateCancelDepositNotice } from "../bookings/bookings.service";
 
 /**
  * Controllo pre-lancio dell'08/11/2026 (gruppo 6, legale nel codice):
@@ -29,6 +30,22 @@ describe("email Appuntamento prenotato come conferma del contratto (E4-04)", () 
     expect(email.text).toContain("almeno 24 ore prima");
     expect(email.html).toContain("/termini#recesso");
     expect(email.text).toContain("conferma del tuo accordo");
+  });
+
+  it("con l'acconto trattenuto dice fino a quando si annulla gratis e che dopo non è rimborsabile", () => {
+    const email = render("BOOKING_CONFIRMED", {
+      payment: "24,00 € adesso con la carta",
+      notice: "24 ore",
+      depositNotice: lateCancelDepositNotice(true, { nowEurCents: 2400, restMaxEurCents: 9600 }, new Date("2026-11-20T08:00:00.000Z"), 24, new Date("2026-11-11T10:00:00.000Z")),
+    });
+    expect(email.text).toContain("Per annullare: Annullamento gratuito fino a giovedì 19 novembre alle 08:00.");
+    expect(email.text).toMatch(/Dopo, l'acconto di 24,00\s€ non è rimborsabile\./);
+    expect(email.text).not.toContain("almeno 24 ore prima");
+  });
+
+  it("col pagamento diretto niente frase sull'acconto", () => {
+    expect(lateCancelDepositNotice(true, null, new Date("2026-11-20T08:00:00.000Z"), 24)).toBeNull();
+    expect(lateCancelDepositNotice(false, { nowEurCents: 2400, restMaxEurCents: 9600 }, new Date("2026-11-20T08:00:00.000Z"), 24)).toBeNull();
   });
 
   it("senza prezzo né dati fiscali resta valida", () => {

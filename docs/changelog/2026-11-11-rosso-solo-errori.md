@@ -43,6 +43,16 @@ proprio mentre accettava.
   pagato l'acconto online, l'acconto resta al professionista". La domanda 42
   per l'avvocato (penale o caparra, parola "non rimborsabile") è aggiornata
   in `analisi/domande-commercialista-avvocato.md`.
+- Migliorie 1 e 3 approvate da Luca ("Effettua miglioria 1 e 3"):
+  - email "Appuntamento prenotato" (la conferma del contratto su supporto
+    durevole): con l'acconto trattenuto la riga "Per annullare" dice
+    "Annullamento gratuito fino a <giorno e ora>. Dopo, l'acconto di N € non
+    è rimborsabile." (`lateCancelDepositNotice` in `bookings.service.ts`);
+    col pagamento diretto resta "almeno 24 ore prima";
+  - scheda del lavoro fissato del professionista: "Il cliente può annullare
+    gratis fino a <giorno e ora>. Dopo, l'acconto resta a te." oppure, senza
+    acconto trattenuto, "Se annulla, il cliente deve avvisarti entro
+    <giorno e ora>.", in grigio, finché il preavviso non è passato.
 - Altri stati che non sono errori, dal rosso al grigio: "Hai rifiutato
   questo preventivo", "Il professionista ha ritirato questo preventivo",
   "Ha rifiutato" accanto al professionista, la riga "Annullata da te / dal
@@ -58,4 +68,5 @@ proprio mentre accettava.
 **Verifica**: foto prima e dopo da telefono e computer nella cartella del
 progetto (`anteprime/scritta-rossa-pagamento-diretto/`; il caso con acconto
 trattenuto simulato sul preventivo di prova). Prova della data in
-`cancellationNotice.test.ts`, lint e controllo dei tipi del sito.
+`cancellationNotice.test.ts` e dell'email in `legal-emails.test.ts`; lint,
+controllo dei tipi e prove di sito e API.

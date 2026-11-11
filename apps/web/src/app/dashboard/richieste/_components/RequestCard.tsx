@@ -38,6 +38,7 @@ import {
   CANCELLATION_NOTICE_OPTIONS,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
   cancellationNoticeLabel,
+  freeCancellationUntilLabel,
   isLateCancellation,
   isCancellationNoticeHours,
   type CancellationNoticeHours,
@@ -1378,6 +1379,14 @@ export function RequestCard({
             </Text>
           ) : null}
           {/* Promemoria e risposta del cliente (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
+          {/* Fino a quando il cliente annulla senza perdere niente, con giorno e ora (Luca, 11/11, docs/changelog/2026-11-11-rosso-solo-errori.md). */}
+          {booking?.status === "CONFIRMED" && lead.quote && !isLateCancellation(booking.scheduledAt, lead.quote.cancellationNoticeHours) ? (
+            <Text fontSize={13} color={brand.grafite70}>
+              {lead.quote.lateCancelKeepsDeposit && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0
+                ? `Il cliente può annullare gratis fino a ${freeCancellationUntilLabel(booking.scheduledAt, lead.quote.cancellationNoticeHours)}. Dopo, l'acconto resta a te.`
+                : `Se annulla, il cliente deve avvisarti entro ${freeCancellationUntilLabel(booking.scheduledAt, lead.quote.cancellationNoticeHours)}.`}
+            </Text>
+          ) : null}
           {booking ? <AppointmentReplyStatus booking={booking} /> : null}
           {/* Annullato dal cliente dentro il preavviso che hai scelto (docs/CHANGELOG.md §347). */}
           {booking?.status === "CANCELED" && booking.canceledBy === "CLIENT" && booking.canceledLate ? (
