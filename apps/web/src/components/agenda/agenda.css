@@ -618,6 +618,10 @@
   cursor: pointer;
   color: var(--ag-ink);
   z-index: 2;
+  /* Nome e orario in alto anche nei riquadri lunghi: il pulsante li centrava a metà altezza (docs/changelog/2026-11-10-appuntamenti-sovrapposti.md). */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
 }
 .ag-ev b {
   display: block;
@@ -1099,8 +1103,7 @@
 .ag-wt-time {
   width: 108px;
 }
-.ag-wt-time input,
-.ag-wt-time .it-time-text {
+.ag-wt-time input {
   padding: 0 8px;
   font-size: 15px;
 }
@@ -1596,6 +1599,19 @@
 }
 .ag-day-note.narrow .ag-weather {
   margin-left: 0;
+}
+/* Impegni affiancati nella stessa fascia (docs/changelog/2026-11-10-appuntamenti-sovrapposti.md). */
+.ag-ev.shared {
+  padding-left: 6px;
+  padding-right: 4px;
+}
+.ag-ev.tight {
+  padding: 0;
+  border-left-width: 3px;
+}
+/* Più lavori dei posti della fascia: bordo rosso sottile, il colore del tipo resta a sinistra. */
+.ag-ev.conflict {
+  box-shadow: 0 0 0 2px var(--ag-red);
 }
 
 /* Giorni cambiati a mano prima di salvare la settimana

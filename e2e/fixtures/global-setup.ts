@@ -19,6 +19,7 @@ const wall = (iso: string) => new Date(`${iso}:00.000Z`);
 export default async function globalSetup(): Promise<void> {
   const prisma = new PrismaClient();
   try {
+    await retireLeftoverProfessionals(prisma);
     const stamp = Date.now();
     const category = await prisma.category.findFirstOrThrow({ where: { slug: "idraulico" } });
     const pro = await prisma.user.create({
@@ -156,4 +157,29 @@ export default async function globalSetup(): Promise<void> {
   } finally {
     await prisma.$disconnect();
   }
+}
+
+/**
+ * Professionisti di prova dei giri precedenti: tolti come un account eliminato
+ * (`deletedAt`, la stessa strada del sito), così dopo tanti giri in locale le
+ * pagine dei risultati non si riempiono di centinaia di schede e le prove non
+ * rallentano. Le righe restano (prenotazioni, recensioni e preventivi collegati
+ * non si toccano). Solo su un database sul computer stesso (locale o CI) e solo
+ * per gli indirizzi delle prove
+ * (docs/changelog/2026-11-10-prove-che-falliscono-in-locale.md).
+ */
+async function retireLeftoverProfessionals(prisma: PrismaClient): Promise<void> {
+  const host = (() => {
+    try {
+      return new URL(process.env.DATABASE_URL ?? "").hostname;
+    } catch {
+      return "";
+    }
+  })();
+  if (host !== "localhost" && host !== "127.0.0.1") return;
+  const { count } = await prisma.professionalProfile.updateMany({
+    where: { deletedAt: null, user: { email: { endsWith: "@test.it" } } },
+    data: { deletedAt: new Date() },
+  });
+  if (count > 0) console.log(`Professionisti di prova dei giri precedenti tolti: ${count}`);
 }

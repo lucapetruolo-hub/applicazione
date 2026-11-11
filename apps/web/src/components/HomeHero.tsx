@@ -353,10 +353,15 @@ function ExampleRow({
       data-fits={edges.fits}
     >
       <span className="hero-examples-label">{label}</span>
+      {/* Freccette solo per il mouse: fuori dal Tab e dalla lettura dei lettori
+          di schermo, che scorrono già gli esempi uno a uno; prima leggevano due
+          pulsanti in più, anche quando erano invisibili
+          (docs/changelog/2026-11-10-prove-che-falliscono-in-locale.md). */}
       <button
         type="button"
         className="hero-examples-arrow"
         aria-label="Esempi precedenti"
+        aria-hidden="true"
         tabIndex={-1}
         data-hidden={!edges.start}
         onClick={() => scroll(-1)}
@@ -383,6 +388,7 @@ function ExampleRow({
         type="button"
         className="hero-examples-arrow"
         aria-label="Altri esempi"
+        aria-hidden="true"
         tabIndex={-1}
         data-hidden={!edges.end}
         onClick={() => scroll(1)}

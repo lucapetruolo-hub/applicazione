@@ -132,10 +132,12 @@ export class NotificationsService {
     // docs/CHANGELOG.md §130): la notifica resta nella cronologia della
     // campanella ma nasce già letta, niente badge/toast/push SSE. Mai per
     // un promemoria, che l'utente stesso ha chiesto (anche "Ricordamelo tra…").
-    const guidedRequestId = type !== "REQUEST_REMINDER" && type !== "REBOOK_REMINDER" ? payloadGuidedRequestId(payload) : null;
+    const requestId = payloadGuidedRequestId(payload);
+    const guidedRequestId = type !== "REQUEST_REMINDER" && type !== "REBOOK_REMINDER" ? requestId : null;
     const muted = guidedRequestId
       ? await this.prisma.guidedRequestUserState.findFirst({ where: { userId, guidedRequestId, mutedAt: { not: null } }, select: { id: true } })
       : null;
+    if (requestId) await this.bringBackFromArchive(userId, requestId);
     // Argomento spento sul canale "sito" nelle preferenze (docs/CHANGELOG.md
     // §152): stesso trattamento di una richiesta silenziata, la notifica
     // resta nella cronologia ma nasce letta.
@@ -177,6 +179,24 @@ export class NotificationsService {
       kind: "notification",
       notification: { id: created.id, type: created.type, payload: created.payload, createdAt: created.createdAt.toISOString() },
     });
+  }
+
+  /**
+   * Una richiesta archiviata con una novità per questo utente torna in
+   * "Tutte", a meno che non l'abbia silenziata (richiesta di Luca,
+   * docs/changelog/2026-11-10-archiviate-tornano-con-novita.md): archiviarla
+   * non deve far perdere un preventivo nuovo o un messaggio. Vale anche per
+   * i promemoria. Mai bloccante: se non riesce, la notifica parte lo stesso.
+   */
+  private async bringBackFromArchive(userId: string, guidedRequestId: string): Promise<void> {
+    try {
+      await this.prisma.guidedRequestUserState.updateMany({
+        where: { userId, guidedRequestId, archivedAt: { not: null }, mutedAt: null },
+        data: { archivedAt: null },
+      });
+    } catch (err) {
+      this.logger.error(`Richiesta non tolta dall'archivio: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   /**

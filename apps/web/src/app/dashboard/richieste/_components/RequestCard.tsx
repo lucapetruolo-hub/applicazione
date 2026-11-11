@@ -79,13 +79,13 @@ import { ProfessionalInvoiceRequestBox } from "@/components/ProfessionalInvoiceR
 import { JobDocumentsModal } from "@/components/JobDocumentsModal";
 import { AppointmentReplyStatus } from "./AppointmentReplyStatus";
 import { QuoteQuickFill } from "./QuoteQuickFill";
-import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle, bookingsOverlapping, BusyTimeNotice } from "./requestHelpers";
+import { WeekSlotPicker } from "@/components/WeekSlotPicker";
+import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, smallInputStyle, bookingsOverlapping, BusyTimeNotice, hasRoomAt } from "./requestHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import { JobLimitModal } from "@/components/JobLimitModal";
 
 /** Orari liberi mostrati subito nel modulo del preventivo, gli altri con "Altri orari". */
-const QUOTE_SLOTS_SHOWN = 6;
 /** Durate a pillola; oltre resta un menu (docs/CHANGELOG.md §349). */
 const JOB_DAY_PILLS = [1, 2, 3, 4, 5];
 
@@ -196,7 +196,6 @@ export function RequestCard({
       : null;
   const requestedSlot = gr.preferredDate && gr.preferredTimeSlot ? modeAvailableSlots.find((sl) => sl.date === gr.preferredDate && `${sl.startTime}-${sl.endTime}` === gr.preferredTimeSlot) : undefined;
   const [selectedSlotKey, setSelectedSlotKey] = useState(requestedSlot ? slotKey(requestedSlot) : "");
-  const [showAllSlots, setShowAllSlots] = useState(false);
   // Data/orario inserita a mano (richiesta esplicita dell'utente: "dai la
   // possibilità di inserire una data orario manualmente"), non solo come
   // ripiego quando l'agenda non ha fasce — sempre disponibile tramite il
@@ -276,7 +275,7 @@ export function RequestCard({
   const quoteBusy = (() => {
     const slot = modeAvailableSlots.length > 0 && !useManualDateTime ? modeAvailableSlots.find((sl) => slotKey(sl) === selectedSlotKey) : null;
     const chosen = slot ? { date: slot.date, start: slot.startTime, end: slot.endTime } : manualDate && manualStartTime ? { date: manualDate, start: manualStartTime, end: manualEndTime } : null;
-    return bookingsOverlapping(bookings, chosen, booking?.id);
+    return { bookings: bookingsOverlapping(bookings, chosen, booking?.id), roomLeft: hasRoomAt(modeAvailableSlots, chosen) };
   })();
 
   const [showCounterForm, setShowCounterForm] = useState(false);
@@ -299,7 +298,7 @@ export function RequestCard({
       : manualCounterDate && manualCounterStartTime
         ? { date: manualCounterDate, start: manualCounterStartTime, end: manualCounterEndTime }
         : null;
-    return bookingsOverlapping(bookings, chosen, booking?.id);
+    return { bookings: bookingsOverlapping(bookings, chosen, booking?.id), roomLeft: hasRoomAt(modeAvailableSlots, chosen) };
   })();
   const [counterNote, setCounterNote] = useState("");
   const [counterError, setCounterError] = useState<string | null>(null);
@@ -555,6 +554,14 @@ export function RequestCard({
       setIsRejectingDate(false);
     }
   }
+  // Fascia proposta dal cliente, segnata col pallino nella contro-proposta.
+  const clientProposedSlotKey = (() => {
+    const iso = lead.quote?.clientProposedDate;
+    if (!iso) return "";
+    const endIso = lead.quote?.clientProposedEndDate;
+    const matching = modeAvailableSlots.find((sl) => sl.date === iso.slice(0, 10) && sl.startTime === iso.slice(11, 16) && (!endIso || sl.endTime === endIso.slice(11, 16)));
+    return matching ? slotKey(matching) : "";
+  })();
   function toggleCounterForm() {
     if (lead.quote?.clientProposedDate) {
       presetSchedule(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate, {
@@ -1725,16 +1732,10 @@ export function RequestCard({
                   <Text fontSize={13} fontWeight="700" color={brand.grafite}>
                     Quando
                   </Text>
-                  <div className="slot-pills" role="radiogroup" aria-label="Orario dall'agenda">
-                    {(showAllSlots ? modeAvailableSlots : modeAvailableSlots.slice(0, QUOTE_SLOTS_SHOWN)).map((sl) => {
-                      const key = slotKey(sl);
-                      return (
-                        <button key={key} type="button" role="radio" aria-checked={selectedSlotKey === key} className={`slot-pill${selectedSlotKey === key ? " is-on" : ""}`} onClick={() => setSelectedSlotKey(key)}>
-                          {slotLabel(sl)}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {/* Una settimana alla volta, un giorno per riga
+                      (docs/changelog/2026-11-10-date-del-preventivo.md):
+                      si apre sulla settimana dell'orario già scelto. */}
+                  <WeekSlotPicker slots={modeAvailableSlots} selectedKey={selectedSlotKey} keyOf={slotKey} onSelect={setSelectedSlotKey} label="Orario dall'agenda" marked={requestedSlot ? { key: slotKey(requestedSlot), text: "chiesto dal cliente" } : undefined} />
                   {/* Orario diverso da quello chiesto, o chiesto e non libero (collaudo C-07). */}
                   {requestedSlotText && (!requestedSlot || selectedSlotKey !== slotKey(requestedSlot)) ? (
                     <Text fontSize={13} fontWeight="600" color={brand.ottoneScuro}>
@@ -1744,11 +1745,6 @@ export function RequestCard({
                     </Text>
                   ) : null}
                   <XStack gap="4" flexWrap="wrap">
-                    {!showAllSlots && modeAvailableSlots.length > QUOTE_SLOTS_SHOWN ? (
-                      <button type="button" className="slot-more" onClick={() => setShowAllSlots(true)}>
-                        Altri orari
-                      </button>
-                    ) : null}
                     <button type="button" className="slot-more" onClick={() => setUseManualDateTime(true)}>
                       Altra data
                     </button>
@@ -1757,9 +1753,9 @@ export function RequestCard({
               ) : (
                 <YStack gap="2">
                   <XStack gap="2" flexWrap="wrap">
-                    <ItalianDateInput ariaLabel="Data" value={manualDate} onChange={setManualDate} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} padX={10} />
-                    <ItalianTimeInput ariaLabel="Ora di inizio" value={manualStartTime} onChange={setManualStartTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} padX={10} />
-                    <ItalianTimeInput ariaLabel="Ora di fine (facoltativa)" value={manualEndTime} onChange={setManualEndTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} padX={10} />
+                    <ItalianDateInput ariaLabel="Data" value={manualDate} onChange={setManualDate} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} />
+                    <ItalianTimeInput ariaLabel="Ora di inizio" value={manualStartTime} onChange={setManualStartTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
+                    <ItalianTimeInput ariaLabel="Ora di fine (facoltativa)" value={manualEndTime} onChange={setManualEndTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
                   </XStack>
                   {/* Richiesta esplicita dell'utente: una data/orario inserita
                       a mano non fa parte delle fasce configurate in agenda —
@@ -1785,7 +1781,7 @@ export function RequestCard({
                   ) : null}
                 </YStack>
               )}
-              <BusyTimeNotice bookings={quoteBusy} />
+              <BusyTimeNotice bookings={quoteBusy.bookings} roomLeft={quoteBusy.roomLeft} />
 
               {/* Lavoro su più giorni (docs/CHANGELOG.md §310): stesso orario ogni giorno, non blocca altri lavori. */}
               <YStack gap="1">
@@ -2027,13 +2023,9 @@ export function RequestCard({
               ) : null}
               {modeAvailableSlots.length > 0 && !useManualCounterDateTime ? (
                 <YStack gap="2">
-                  <select aria-label="Orario dall'agenda" value={counterSlotKey} onChange={(e) => setCounterSlotKey(e.target.value)} style={smallInputStyle}>
-                    {modeAvailableSlots.map((sl) => (
-                      <option key={slotKey(sl)} value={slotKey(sl)}>
-                        {slotLabel(sl)}
-                      </option>
-                    ))}
-                  </select>
+                  {/* Stesso aspetto del preventivo al posto del menu a tendina
+                      (docs/changelog/2026-11-10-date-del-preventivo.md). */}
+                  <WeekSlotPicker slots={modeAvailableSlots} selectedKey={counterSlotKey} keyOf={slotKey} onSelect={setCounterSlotKey} label="Orario dall'agenda" marked={clientProposedSlotKey ? { key: clientProposedSlotKey, text: "proposto dal cliente" } : undefined} />
                   <Text
                     fontSize={13}
                     fontWeight="600"
@@ -2048,9 +2040,9 @@ export function RequestCard({
               ) : (
                 <YStack gap="2">
                   <XStack gap="2" flexWrap="wrap">
-                    <ItalianDateInput ariaLabel="Nuova data" value={manualCounterDate} onChange={setManualCounterDate} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} padX={10} />
-                    <ItalianTimeInput ariaLabel="Ora di inizio" value={manualCounterStartTime} onChange={setManualCounterStartTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} padX={10} />
-                    <ItalianTimeInput ariaLabel="Ora di fine" value={manualCounterEndTime} onChange={setManualCounterEndTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} padX={10} />
+                    <ItalianDateInput ariaLabel="Nuova data" value={manualCounterDate} onChange={setManualCounterDate} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} />
+                    <ItalianTimeInput ariaLabel="Ora di inizio" value={manualCounterStartTime} onChange={setManualCounterStartTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
+                    <ItalianTimeInput ariaLabel="Ora di fine" value={manualCounterEndTime} onChange={setManualCounterEndTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
                   </XStack>
                   {/* Richiesta esplicita dell'utente: la nuova data può non
                       far parte delle fasce configurate in agenda — comparirà
@@ -2074,7 +2066,7 @@ export function RequestCard({
                   ) : null}
                 </YStack>
               )}
-              <BusyTimeNotice bookings={counterBusy} />
+              <BusyTimeNotice bookings={counterBusy.bookings} roomLeft={counterBusy.roomLeft} />
               <textarea aria-label="Nota per il cliente" value={counterNote} onChange={(e) => setCounterNote(e.target.value)} placeholder="Nota per il cliente (facoltativa)" rows={2} style={{ ...smallInputStyle, resize: "vertical" }} />
               {counterError ? (
                 <Text color={brand.urgenza} fontSize={16}>

@@ -2,7 +2,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { PrismaClient } from "@professionisti/database";
 import { checkSingleRequestArchiveAndRestore, stateTab } from "../fixtures/archiviate";
-import { COMPUTER, PHONE, createClient, createProfessional, pageAsClient } from "../fixtures/preventivi";
+import { API_URL } from "../fixtures/env";
+import { COMPUTER, PHONE, createClient, createProfessional, pageAsClient, testToken } from "../fixtures/preventivi";
 
 /**
  * Richieste archiviate facili da ritrovare
@@ -27,14 +28,16 @@ async function setup() {
   const pro = await createProfessional(prisma, "Archivio Idraulica");
   const client = await createClient(prisma);
   const category = await prisma.category.findFirstOrThrow({ where: { slug: "idraulico" } });
+  const requestIds: string[] = [];
   for (const description of ["Perdita sotto il lavello della cucina", "Scaldabagno elettrico da sostituire"]) {
     const request = await prisma.guidedRequest.create({
       data: { clientId: client.id, categoryId: category.id, description, city: "Latina", serviceMode: "ONLINE", professionalProfileId: pro.id },
     });
     await prisma.lead.create({ data: { guidedRequestId: request.id, professionalProfileId: pro.id, priceEurCents: 0 } });
+    requestIds.push(request.id);
   }
   const owner = await prisma.professionalProfile.findUniqueOrThrow({ where: { id: pro.id } });
-  return { clientUserId: client.id, proUserId: owner.userId };
+  return { clientUserId: client.id, proUserId: owner.userId, requestIds };
 }
 
 const card = (page: Page, text: string) => page.locator('[id^="request-"]', { hasText: text });
@@ -106,6 +109,12 @@ async function checkArchivedFlow(page: Page, path: string, shot: string) {
   await expect(card(page, "lavello")).toHaveCount(1);
   await expect(card(page, "Scaldabagno")).toHaveCount(1);
   await expect(page.getByText(/richiest[ae] archiviat[ae]$/)).toHaveCount(0);
+
+  // "Archiviate" vuota dice cosa ci finisce e quando ne esce
+  // (docs/changelog/2026-11-10-archiviate-tornano-con-novita.md).
+  await tab(page, "Archiviate").click();
+  await expect(page.getByText("Nessuna richiesta archiviata")).toBeVisible();
+  await expect(page.getByText("Cambia filtro", { exact: false })).toHaveCount(0);
 }
 
 for (const [device, size] of [
@@ -129,4 +138,33 @@ for (const [device, size] of [
 
 test("cliente con una sola richiesta: archivia e ripristina, la pagina resta usabile (telefono)", async ({ browser }) => {
   await checkSingleRequestArchiveAndRestore(prisma, browser, PHONE, "android");
+});
+
+test("cliente: una richiesta archiviata con una novità torna in Tutte, se non è silenziata", async ({ browser }) => {
+  const { clientUserId, proUserId, requestIds } = await setup();
+  const [sink, boiler] = requestIds as [string, string];
+  const archivedAt = new Date();
+  await prisma.guidedRequestUserState.create({ data: { userId: clientUserId, guidedRequestId: sink, archivedAt } });
+  await prisma.guidedRequestUserState.create({ data: { userId: clientUserId, guidedRequestId: boiler, archivedAt, mutedAt: archivedAt } });
+
+  // Il professionista manda un preventivo su tutte e due.
+  for (const requestId of requestIds) {
+    const response = await fetch(`${API_URL}/quotes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${testToken(proUserId)}` },
+      body: JSON.stringify({ requestId, items: [{ name: "Intervento", priceMinEurCents: 8000 }], estimatedStartDate: "2026-12-01T09:00:00.000Z" }),
+    });
+    expect(response.status).toBe(201);
+  }
+
+  const page = await pageAsClient(browser, clientUserId, PHONE);
+  await page.goto("/le-mie-richieste");
+  // Il lavello è tornato tra le altre; lo scaldabagno, silenziato, resta in Archiviate.
+  await expect(tab(page, "Tutte")).toHaveAttribute("aria-pressed", "true");
+  await expect(card(page, "lavello")).toHaveCount(1);
+  await expect(card(page, "Scaldabagno")).toHaveCount(0);
+  await tab(page, "Archiviate").click();
+  await expect(card(page, "Scaldabagno")).toHaveCount(1);
+  await expect(card(page, "lavello")).toHaveCount(0);
+  await page.context().close();
 });

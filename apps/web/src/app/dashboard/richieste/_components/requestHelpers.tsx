@@ -17,11 +17,6 @@ export type QuoteItemDraft = { name: string; priceMin: string; priceMax: string 
 export function slotKey(slot: ProfessionalAvailableSlot): string {
   return `${slot.date}|${slot.startTime}|${slot.endTime}`;
 }
-export function slotLabel(slot: ProfessionalAvailableSlot): string {
-  const date = new Date(`${slot.date}T00:00:00Z`);
-  const dateLabel = date.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
-  return `${dateLabel} · ${slot.startTime}–${slot.endTime}`;
-}
 export function formatDateTime(iso: string): string {
   const d = new Date(iso);
   return `${d.toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "Europe/Rome" })} · ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })}`;
@@ -185,7 +180,9 @@ export function MiniTimeline({ stage }: { stage: RequestStage }) {
       {steps.map((step, i) => {
         const done = reached >= i;
         return (
-          <YStack key={step.key} flex={1} alignItems="center" position="relative" minWidth={0}>
+          // Colonne tutte uguali (flexBasis 0): con un'etichetta lunga, come "Modifica
+          // richiesta dal cliente", le parole delle altre si sovrapponevano sul telefono.
+          <YStack key={step.key} flex={1} flexBasis={0} alignItems="center" position="relative" minWidth={0} paddingHorizontal={2}>
             {i > 0 ? (
               <YStack position="absolute" top={5} right="50%" width="100%" height={2} backgroundColor={done ? brand.cianografia : brand.filetto} zIndex={0} />
             ) : null}
@@ -229,19 +226,43 @@ export function bookingsOverlapping(
   });
 }
 
-/** Una riga sotto l'orario: quali lavori ci sono già, senza bloccare l'invio. */
-export function BusyTimeNotice({ bookings }: { bookings: readonly ProfessionalBooking[] }) {
+/**
+ * C'è ancora posto all'orario scelto? Sì se cade in una fascia dell'agenda
+ * che risulta libera (le fasce piene non arrivano tra quelle disponibili).
+ * Con fasce larghe, per esempio 08:00-19:00 con più posti, gli altri lavori
+ * della fascia sono normali e non vanno segnalati come un problema
+ * (richiesta di Luca, docs/changelog/2026-11-10-appuntamenti-sovrapposti.md).
+ */
+export function hasRoomAt(slots: readonly ProfessionalAvailableSlot[], chosen: { date: string; start: string } | null): boolean {
+  if (!chosen) return false;
+  return slots.some((sl) => sl.date === chosen.date && chosen.start >= sl.startTime && chosen.start < sl.endTime);
+}
+
+/**
+ * Una riga sotto l'orario: quali lavori ci sono già, senza bloccare l'invio.
+ * Con posto nella fascia è solo un'informazione grigia; senza posto (o fuori
+ * dalle fasce) è un avviso, come il controllo che il server fa quando il
+ * cliente accetta.
+ */
+export function BusyTimeNotice({ bookings, roomLeft = false }: { bookings: readonly ProfessionalBooking[]; roomLeft?: boolean }) {
   if (bookings.length === 0) return null;
   const times = bookings
     .slice(0, 3)
-    .map((b) => `${formatAppointmentTimeRange(b.scheduledAt, b.scheduledEndAt ?? b.scheduledAt)}${b.clientName ? ` con ${b.clientName}` : ""}`)
+    .map((b) => `${b.clientName ? `${b.clientName} ` : ""}${formatAppointmentTimeRange(b.scheduledAt, b.scheduledEndAt ?? b.scheduledAt)}`)
     .join(", ");
+  const count = bookings.length === 1 ? "1 lavoro" : `${bookings.length} lavori`;
   return (
     <XStack gap="2" alignItems="flex-start" role="status">
-      <Icon name="clock" size={16} color={brand.grafite} />
-      <Text fontSize={14} color={brand.grafite} flex={1}>
-        {bookings.length === 1 ? "In quell'orario hai già un lavoro" : `In quell'orario hai già ${bookings.length} lavori`}: {times}. Puoi mandarlo lo stesso.
-      </Text>
+      <Icon name="clock" size={16} color={roomLeft ? brand.grafite70 : brand.ottoneScuro} />
+      {roomLeft ? (
+        <Text fontSize={14} color={brand.grafite70} flex={1}>
+          In questa fascia hai già {count}: {times}. C&apos;è ancora posto.
+        </Text>
+      ) : (
+        <Text fontSize={14} fontWeight="600" color={brand.ottoneScuro} flex={1}>
+          Ti sovrapponi a {times}. Scegli un altro orario o mandalo lo stesso.
+        </Text>
+      )}
     </XStack>
   );
 }

@@ -6254,22 +6254,118 @@ a.admin-kpi:hover {
   outline: 2px solid #189a63;
   outline-offset: 2px;
 }
-.slot-days {
+/* Orari una settimana alla volta, un giorno per riga (WeekSlotPicker,
+   docs/changelog/2026-11-10-date-del-preventivo.md). */
+.week-slots {
   display: flex;
   flex-direction: column;
+  gap: 8px;
+}
+.week-slots-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  max-width: 520px;
+}
+.week-slots-range {
+  font-size: 15px;
+  font-weight: 700;
+  color: #2b2420;
+  text-align: center;
+}
+.week-slots-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border: 1px solid #f0dcc0;
+  border-radius: 999px;
+  background: #fff;
+  color: #2b2420;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.week-slots-arrow:hover:not(:disabled) {
+  border-color: #189a63;
+}
+.week-slots-arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.week-slots-arrow:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.week-slots-days {
+  display: flex;
+  flex-direction: column;
+}
+.week-slots-day {
+  display: flex;
+  align-items: center;
   gap: 12px;
-  align-items: flex-start;
+  padding: 6px 0;
+  border-bottom: 1px solid #f6eadb;
 }
-.slot-day {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.week-slots-day:last-child {
+  border-bottom: none;
 }
-.slot-day-label {
-  font-size: 13px;
+.week-slots-label {
+  width: 96px;
+  flex: none;
+  font-size: 14px;
   font-weight: 700;
   color: #6e6459;
+}
+.week-slots-label.is-today {
+  color: #0e7a4c;
+}
+.week-slots-weekday {
   text-transform: capitalize;
+}
+.week-slots-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 999px;
+  background: #8a5a00;
+  vertical-align: 1px;
+}
+.slot-pill.is-on .week-slots-dot {
+  background: #fff;
+}
+.week-slots-legend {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6e6459;
+}
+/* Sul telefono le due fasce di un giorno stanno su una riga. */
+@media (max-width: 520px) {
+  .week-slots-day {
+    gap: 8px;
+  }
+  .week-slots-label {
+    width: 48px;
+    font-size: 13px;
+    line-height: 1.25;
+  }
+  .week-slots-weekday {
+    display: block;
+  }
+  .week-slots-day .slot-pills {
+    gap: 6px;
+  }
+  .week-slots-day .slot-pill {
+    padding: 0 10px;
+    font-size: 14px;
+  }
+  .week-slots-day .week-slots-dot {
+    margin-right: 4px;
+  }
 }
 
 .cat-tiles {
@@ -8462,6 +8558,35 @@ a.admin-kpi:hover {
   justify-content: center;
   scroll-snap-align: center;
   scroll-snap-stop: always;
+}
+/* Ogni foto sta tutta dentro lo schermo, centrata (docs/changelog/2026-11-10-foto-profilo-telefono.md):
+   misure in percentuale del riquadro e non in `vw`, e un margine fisso che
+   lascia libera la X in alto. Su iPhone con Safari la foto profilo usciva a
+   destra. Con una foto sola non c'è nemmeno la riga che scorre
+   (`.lightbox-single`), solo la foto al centro. */
+.lightbox-slide,
+.lightbox-single {
+  box-sizing: border-box;
+  min-width: 0;
+  height: 100%;
+  padding: 64px max(16px, 5%);
+  overflow: hidden;
+}
+.lightbox-single {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lightbox-media {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 10px;
 }
 
 /* Pressione sulle scelte a pillola: "A domicilio / Online" (SearchBar di

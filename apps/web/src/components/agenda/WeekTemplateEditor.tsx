@@ -139,9 +139,7 @@ function RangesEditor({ ranges, onChange, label }: { ranges: Range[]; onChange: 
             <ItalianTimeInput
               className="ag-input"
               wrapperClassName="ag-wt-time"
-              padX={8}
               value={range.start}
-              step={900}
               ariaLabel={`${label}: inizio ${index + 1}° orario`}
               onChange={(value) => onChange(ranges.map((r, i) => (i === index ? { ...r, start: value } : r)))}
             />
@@ -156,9 +154,7 @@ function RangesEditor({ ranges, onChange, label }: { ranges: Range[]; onChange: 
             <ItalianTimeInput
               className="ag-input"
               wrapperClassName="ag-wt-time"
-              padX={8}
               value={range.end}
-              step={900}
               ariaLabel={`${label}: fine ${index + 1}° orario`}
               onChange={(value) => onChange(ranges.map((r, i) => (i === index ? { ...r, end: value } : r)))}
             />

@@ -1,4 +1,6 @@
-import { BadRequestException, Controller, Body, Delete, Get, Param, Patch, Post, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Controller, Body, Delete, Get, NotFoundException, Param, Patch, Post, Req, Res, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
+import type { Response } from "express";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { z } from "zod";
 import {
@@ -210,6 +212,22 @@ export class BookingsController {
   @Get(":id/calendar")
   calendar(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
     return this.bookingsService.calendarForClient(req.user.userId, id);
+  }
+
+  /**
+   * Il file .ics di "Aggiungi al calendario" da un link firmato, senza
+   * accesso: Safari su iPhone apre "Aggiungi al calendario" solo da un
+   * indirizzo vero con `text/calendar` (docs/changelog/2026-11-10-calendario-iphone.md).
+   */
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Get("ics/:file")
+  async calendarIcs(@Param("file") file: string, @Res({ passthrough: true }) res: Response) {
+    const ics = await this.bookingsService.calendarIcsFromLink(file.replace(/\.ics$/, ""));
+    if (!ics) throw new NotFoundException("Link scaduto: torna alla scheda del lavoro e tocca di nuovo il pulsante.");
+    res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+    res.setHeader("Content-Disposition", 'inline; filename="appuntamento.ics"');
+    res.setHeader("Cache-Control", "private, no-store");
+    return ics;
   }
 
   @UseGuards(JwtAuthGuard)
