@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { PickerFieldStyles, PickerPanel, isFinePointer, usePicker, type PickerAnchor } from "@/components/PickerPopover";
 import { Clock } from "lucide-react";
 import { brand } from "@professionisti/ui";
 import { completeTypedTime, formatWhileTyping, parseTypedTime, shiftTime } from "@/lib/timeText";
@@ -44,11 +45,10 @@ export function ItalianTimeInput({
   const minuteStep = step ? Math.max(1, Math.round(step / 60)) : 5;
   const current = /^\d{2}:\d{2}/.test(value) ? value.slice(0, 5) : "";
   const [draft, setDraft] = useState(current);
-  const [open, setOpen] = useState(false);
-  const [anchor, setAnchor] = useState<{ top: number; left: number; up: boolean } | null>(null);
   const wrapRef = useRef<HTMLSpanElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelId = useId();
+  const { open, anchor, openPicker, closePicker, onWrapperBlur, setOpen } = usePicker({ wrapRef, inputRef, width: WHEEL_WIDTH, height: 290 });
   const { flex, minWidth, width, ...inputStyle } = style ?? {};
 
   // Il valore cambiato dalla pagina (ora di fine spostata con l'inizio) si vede nel campo.
@@ -73,52 +73,6 @@ export function ItalianTimeInput({
     }
   };
 
-  const place = () => {
-    const box = wrapRef.current?.getBoundingClientRect();
-    if (!box) return;
-    const panelHeight = 290;
-    const up = box.bottom + panelHeight + 8 > window.innerHeight && box.top > panelHeight + 8;
-    const left = Math.max(8, Math.min(box.left, window.innerWidth - 248));
-    setAnchor({ top: up ? box.top - 6 : box.bottom + 6, left, up });
-  };
-
-  const openWheel = () => {
-    place();
-    setOpen(true);
-  };
-  const closeWheel = (focusField: boolean) => {
-    setOpen(false);
-    if (focusField) inputRef.current?.focus();
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: PointerEvent) => {
-      const target = e.target as Element;
-      // Fuori dal campo, o sul fondo scuro dietro la rotella del telefono.
-      if (!wrapRef.current?.contains(target) || target.classList.contains("it-wheel-backdrop")) setOpen(false);
-    };
-    // Esc chiude solo la rotella, non la finestra che contiene il campo:
-    // ascoltato in cattura, arriva prima della finestra (useDialogFocus).
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.preventDefault();
-      e.stopPropagation();
-      closeWheel(true);
-    };
-    window.addEventListener("keydown", onKey, true);
-    const onMove = () => place();
-    document.addEventListener("pointerdown", onDown);
-    window.addEventListener("resize", onMove);
-    window.addEventListener("scroll", onMove, true);
-    return () => {
-      document.removeEventListener("pointerdown", onDown);
-      window.removeEventListener("resize", onMove);
-      window.removeEventListener("scroll", onMove, true);
-      window.removeEventListener("keydown", onKey, true);
-    };
-  }, [open]);
-
   const onFieldKey = (e: ReactKeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowUp" || e.key === "ArrowDown") {
       e.preventDefault();
@@ -134,11 +88,9 @@ export function ItalianTimeInput({
   return (
     <span
       ref={wrapRef}
-      className={wrapperClassName ? `it-time ${wrapperClassName}` : "it-time"}
+      className={wrapperClassName ? `pk-field ${wrapperClassName}` : "pk-field"}
       style={{ flex, minWidth, width }}
-      onBlur={(e) => {
-        if (!wrapRef.current?.contains(e.relatedTarget as Node | null)) setOpen(false);
-      }}
+      onBlur={onWrapperBlur}
     >
       <input
         ref={inputRef}
@@ -163,18 +115,18 @@ export function ItalianTimeInput({
         onClick={(e) => {
           // Al computer il clic nel campo apre anche la rotella; sul telefono
           // il tocco apre la tastiera e la rotella si apre dall'orologio.
-          if (!open && e.detail > 0 && window.matchMedia("(pointer: fine)").matches) openWheel();
+          if (!open && e.detail > 0 && isFinePointer()) openPicker();
         }}
         style={{ ...inputStyle, width: "100%", paddingRight: 44 }}
       />
       <button
         type="button"
-        className="it-time-btn"
+        className="pk-field-btn"
         aria-label="Scegli con la rotella"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        onClick={() => (open ? closeWheel(true) : openWheel())}
+        onClick={() => (open ? closePicker(true) : openPicker())}
       >
         <Clock size={18} aria-hidden />
       </button>
@@ -189,52 +141,15 @@ export function ItalianTimeInput({
             setDraft(next);
             if (next !== current) onChange(next);
           }}
-          onDone={() => closeWheel(true)}
+          onDone={() => closePicker(true)}
         />
       ) : null}
-      <style jsx global>{`
-        .it-time {
-          position: relative;
-          display: inline-block;
-          min-width: 0;
-        }
-        .it-time input {
-          margin: 0;
-          font-variant-numeric: tabular-nums;
-          box-sizing: border-box;
-        }
-        .it-time input::placeholder {
-          color: ${brand.grafite70};
-          opacity: 1;
-        }
-        .it-time-btn {
-          position: absolute;
-          top: 50%;
-          right: 4px;
-          transform: translateY(-50%);
-          width: 36px;
-          height: 36px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 0;
-          border-radius: 10px;
-          background: transparent;
-          color: ${brand.grafite};
-          cursor: pointer;
-        }
-        .it-time-btn:hover {
-          background: ${brand.gesso};
-        }
-        .it-time-btn:focus-visible {
-          outline: 2px solid ${brand.cianografiaScuro};
-          outline-offset: 1px;
-        }
-      `}</style>
+      <PickerFieldStyles />
     </span>
   );
 }
 
+const WHEEL_WIDTH = 240;
 const ITEM = 40;
 const VISIBLE = 5;
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -259,7 +174,7 @@ function TimeWheelPanel({
   label: string;
   value: string;
   minuteStep: number;
-  anchor: { top: number; left: number; up: boolean } | null;
+  anchor: PickerAnchor | null;
   onPick: (value: string) => void;
   onDone: () => void;
 }) {
@@ -273,15 +188,7 @@ function TimeWheelPanel({
   const pick = (hour: number, minute: number) => onPick(`${pad(hour)}:${pad(minute)}`);
 
   return (
-    <div
-      className={anchor?.up ? "it-wheel up" : "it-wheel"}
-      style={{ "--pop-top": `${anchor?.top ?? 0}px`, "--pop-left": `${anchor?.left ?? 0}px` } as CSSProperties}
-    >
-      <div className="it-wheel-backdrop" aria-hidden />
-      <div id={id} className="it-wheel-panel" role="dialog" aria-label="Rotella dell'ora">
-        <p className="it-wheel-title" aria-hidden>
-          {label}
-        </p>
+    <PickerPanel id={id} title={label} ariaLabel="Rotella dell'ora" anchor={anchor} width={WHEEL_WIDTH} onDone={onDone}>
         <div className="it-wheel-cols">
           <div className="it-wheel-band" aria-hidden />
           <WheelColumn label="Ore" items={HOURS} selected={h} onSelect={(hour) => pick(hour, m)} />
@@ -290,39 +197,7 @@ function TimeWheelPanel({
           </span>
           <WheelColumn label="Minuti" items={minutes} selected={m} onSelect={(minute) => pick(h, minute)} />
         </div>
-        <button type="button" className="it-wheel-done" onClick={onDone}>
-          Fatto
-        </button>
-      </div>
       <style jsx global>{`
-        .it-wheel-backdrop {
-          display: none;
-        }
-        .it-wheel-panel {
-          position: fixed;
-          z-index: 2000;
-          top: var(--pop-top);
-          left: var(--pop-left);
-          width: 240px;
-          box-sizing: border-box;
-          padding: 12px;
-          background: ${brand.calce};
-          border: 1px solid ${brand.filetto};
-          border-radius: 20px;
-          box-shadow: 0 12px 32px rgba(43, 36, 32, 0.18);
-          font-family: inherit;
-        }
-        .it-wheel.up .it-wheel-panel {
-          transform: translateY(-100%);
-        }
-        .it-wheel-title {
-          display: none;
-          margin: 0 0 8px;
-          font-weight: 800;
-          font-size: 17px;
-          color: ${brand.grafite};
-          text-align: center;
-        }
         .it-wheel-cols {
           position: relative;
           display: flex;
@@ -387,52 +262,14 @@ function TimeWheelPanel({
           color: ${brand.grafite};
           font-weight: 800;
         }
-        .it-wheel-done {
-          margin-top: 12px;
-          width: 100%;
-          min-height: 44px;
-          border: 0;
-          border-radius: 999px;
-          background: ${brand.cianografiaPieno};
-          color: #fff;
-          font: inherit;
-          font-weight: 700;
-          font-size: 16px;
-          cursor: pointer;
-        }
-        .it-wheel-done:focus-visible {
-          outline: 2px solid ${brand.grafite};
-          outline-offset: 2px;
-        }
-        /* Telefono: la rotella sale dal basso dello schermo, grande da toccare. */
+        /* Telefono: colonne più larghe, grandi da toccare. */
         @media (max-width: 639px) {
-          .it-wheel-backdrop {
-            display: block;
-            position: fixed;
-            inset: 0;
-            z-index: 1999;
-            background: rgba(20, 24, 30, 0.45);
-          }
-          .it-wheel-panel,
-          .it-wheel.up .it-wheel-panel {
-            top: auto;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            width: auto;
-            transform: none;
-            padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
-            border-radius: 20px 20px 0 0;
-          }
-          .it-wheel-title {
-            display: block;
-          }
           .it-wheel-col {
             width: 96px;
           }
         }
       `}</style>
-    </div>
+    </PickerPanel>
   );
 }
 

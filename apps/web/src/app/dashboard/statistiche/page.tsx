@@ -201,11 +201,11 @@ export default function DashboardStatistichePage() {
             <div className="pstats-custom">
               <label>
                 Dal
-                <ItalianDateInput value={customFrom} max={customTo || today} onChange={setCustomFrom} />
+                <ItalianDateInput ariaLabel="Dal" value={customFrom} max={customTo || today} onChange={setCustomFrom} />
               </label>
               <label>
                 Al
-                <ItalianDateInput value={customTo} min={customFrom} max={today} onChange={setCustomTo} />
+                <ItalianDateInput ariaLabel="Al" value={customTo} min={customFrom} max={today} onChange={setCustomTo} />
               </label>
               <button type="button" className="pstats-apply" onClick={applyCustom}>
                 Applica
