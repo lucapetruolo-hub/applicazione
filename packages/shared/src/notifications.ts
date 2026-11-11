@@ -182,6 +182,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "AWAY_SUGGESTED",
       // Agenda (docs/CHANGELOG.md §288): "Sto arrivando" al cliente, riepilogo della sera prima al professionista.
       "PROFESSIONAL_ON_THE_WAY",
+      // Al cliente: ora di arrivo indicata dal professionista dentro una fascia lunga (docs/changelog/2026-11-11-fasce-ampie.md).
+      "BOOKING_ARRIVAL_TIME",
       "AGENDA_TOMORROW_SUMMARY",
       // Nuova recensione ricevuta dal professionista (docs/CHANGELOG.md §185).
       "NEW_REVIEW",
@@ -405,9 +407,9 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "lavori.promemoria",
     topic: "lavori",
-    types: ["BOOKING_REMINDER", "AGENDA_REMINDER", "AWAY_ENDING", "AWAY_SUGGESTED", "AGENDA_TOMORROW_SUMMARY", "PROFESSIONAL_ON_THE_WAY"],
+    types: ["BOOKING_REMINDER", "AGENDA_REMINDER", "AWAY_ENDING", "AWAY_SUGGESTED", "AGENDA_TOMORROW_SUMMARY", "PROFESSIONAL_ON_THE_WAY", "BOOKING_ARRIVAL_TIME"],
     professional: { label: "Promemoria e agenda", description: "Il giorno prima, il riepilogo della sera, l'agenda senza orari liberi, la pausa." },
-    client: { label: "Promemoria", description: "Il giorno prima e quando il professionista sta arrivando." },
+    client: { label: "Promemoria", description: "Il giorno prima, l'ora di arrivo e quando il professionista sta arrivando." },
   },
   {
     key: "lavori.chiusura",

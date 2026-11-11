@@ -21,6 +21,10 @@ export type AgendaGridEvent = {
   recurring?: boolean;
   /** Stesso lavoro su più giorni: una sola voce nei conteggi. */
   groupKey?: string;
+  /** Orario scritto nel riquadro al posto di inizio–fine, per esempio "verso le 10:00 · fascia 08:00–19:00". */
+  timeLabel?: string;
+  /** Indirizzo del lavoro confermato, mostrato nel riquadro in basso della Settimana sul telefono. */
+  place?: string | null;
   /** Oltre i posti della fascia: bordo rosso (docs/changelog/2026-11-10-appuntamenti-sovrapposti.md). */
   conflict?: boolean;
   onPress: () => void;
@@ -94,6 +98,68 @@ export function layoutLanes(events: AgendaGridEvent[], minDuration = 0): Map<str
   return result;
 }
 
+// Altezza minima di una riga quando i lavori della stessa fascia stanno uno sotto l'altro.
+const STACK_MIN_ROW_PX = 34;
+
+/**
+ * Lavori con la stessa identica fascia (per esempio tre prenotazioni
+ * 08:00-19:00 prese dalle pillole del preventivo) uno sotto l'altro come un
+ * elenco, invece che in colonne strette uguali (scelta di Luca,
+ * docs/changelog/2026-11-11-fasce-ampie.md). Solo se ogni riga resta alta
+ * almeno STACK_MIN_ROW_PX: `fits(evento)` dice quante righe ci stanno.
+ * `routeOrder`: posizione di ogni lavoro nel Giro intelligente del giorno.
+ */
+export function stackSameBand(
+  events: AgendaGridEvent[],
+  fits: (event: AgendaGridEvent) => number,
+  routeOrder: ReadonlyMap<string, number> = new Map(),
+): Map<string, { index: number; count: number; leaderKey: string }> {
+  const groups = new Map<string, AgendaGridEvent[]>();
+  for (const event of events) {
+    if (event.kind === "canceled") continue;
+    const id = `${event.start}-${event.end}`;
+    groups.set(id, [...(groups.get(id) ?? []), event]);
+  }
+  const result = new Map<string, { index: number; count: number; leaderKey: string }>();
+  for (const group of groups.values()) {
+    if (group.length < 2 || fits(group[0]!) < group.length) continue;
+    // Nell'ordine del Giro intelligente quando c'è (scelta di Luca), poi per tipo e nome.
+    const place = (event: AgendaGridEvent) => routeOrder.get(event.groupKey ?? event.key) ?? Number.MAX_SAFE_INTEGER;
+    const sorted = [...group].sort((a, b) => place(a) - place(b) || KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.title.localeCompare(b.title, "it"));
+    sorted.forEach((event, index) => result.set(event.key, { index, count: sorted.length, leaderKey: sorted[0]!.key }));
+  }
+  return result;
+}
+
+// Un preventivo in attesa lungo almeno così diventa una striscia sottile se nella stessa fascia c'è già un lavoro.
+const STRIP_MIN_MINUTES = 180;
+
+/**
+ * Preventivi in attesa su tutta una fascia lunga (senza ora di arrivo) che
+ * toccano un lavoro già preso: una striscia sottile a destra invece di metà
+ * colonna, così il lavoro vero resta largo e leggibile (scelta di Luca,
+ * docs/changelog/2026-11-11-fasce-ampie.md). Da solo nella fascia resta un riquadro.
+ */
+export function waitStrips(events: AgendaGridEvent[]): Set<string> {
+  const taken = events.filter((event) => event.kind !== "wait" && event.kind !== "canceled");
+  return new Set(
+    events
+      .filter(
+        (event) =>
+          event.kind === "wait" &&
+          !event.timeLabel &&
+          event.end - event.start >= STRIP_MIN_MINUTES &&
+          taken.some((other) => other.start < event.end && other.end > event.start),
+      )
+      .map((event) => event.key),
+  );
+}
+
+/** Orario del riquadro: quello scritto apposta (ora di arrivo) o inizio–fine. */
+function eventTime(event: AgendaGridEvent): string {
+  return event.timeLabel ?? `${minutesToLabel(event.start)}–${minutesToLabel(event.end)}`;
+}
+
 export function minutesToLabel(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
@@ -116,6 +182,7 @@ export function AgendaTimeGrid({
   dayNote,
   onDayPress,
   onEmptyPress,
+  loadRouteOrder,
 }: {
   days: Date[];
   events: AgendaGridEvent[];
@@ -129,15 +196,55 @@ export function AgendaTimeGrid({
   onDayPress?: (date: Date) => void;
   /** Tocco su un orario vuoto: data e minuti (alla mezz'ora) per aggiungere un lavoro lì. */
   onEmptyPress?: (date: Date, minutes: number) => void;
+  /** Ordine delle tappe del Giro intelligente di un giorno (chiavi `booking-<id>`/`external-<id>`), per le pile della stessa fascia. */
+  loadRouteOrder?: (date: string) => Promise<string[]>;
 }) {
   // La griglia nasce solo nel browser (dopo il caricamento dei lavori): la misura dello schermo è già nota.
   const [phone] = useState(() => typeof window !== "undefined" && window.matchMedia(PHONE_QUERY).matches);
   const HOUR_PX = phone ? HOUR_PX_PHONE : HOUR_PX_COMPUTER;
   const [showEarly, setShowEarly] = useState(false);
+  // Settimana sul telefono: il primo tocco su un lavoro mostra in basso il nome intero, "Apri" lo apre.
+  const [peek, setPeek] = useState<AgendaGridEvent | null>(null);
+  const peekOpenRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!peek) return;
+    peekOpenRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPeek(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [peek]);
   // Settimana sul telefono: sette colonne strette, le scritte si accorciano.
   const narrowWeek = phone && days.length > 1;
   const dateStrs = days.map(toIsoDate);
   const visible = events.filter((e) => dateStrs.includes(e.date));
+  // Giorni con almeno due lavori presi nella stessa fascia: si chiede il loro ordine al Giro intelligente.
+  const stackDates = (() => {
+    const seen = new Map<string, number>();
+    for (const event of visible) {
+      if (event.kind === "canceled" || event.kind === "wait") continue;
+      const id = `${event.date}|${event.start}|${event.end}`;
+      seen.set(id, (seen.get(id) ?? 0) + 1);
+    }
+    return [...new Set([...seen].filter(([, count]) => count >= 2).map(([id]) => id.split("|")[0]!))].sort().join(",");
+  })();
+  const [routeOrders, setRouteOrders] = useState<Record<string, ReadonlyMap<string, number>>>({});
+  useEffect(() => {
+    if (!loadRouteOrder || !stackDates) return;
+    let cancelled = false;
+    for (const date of stackDates.split(",")) {
+      loadRouteOrder(date)
+        .then((keys) => {
+          if (!cancelled) setRouteOrders((prev) => ({ ...prev, [date]: new Map(keys.map((key, index) => [key, index])) }));
+        })
+        // Senza giro restano in ordine di tipo e nome.
+        .catch(() => {});
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [loadRouteOrder, stackDates]);
   const visibleFree = free.filter((f) => dateStrs.includes(f.date));
   const earliest = Math.min(DEFAULT_FROM * 60, ...visible.map((e) => e.start), ...visibleFree.map((f) => f.start));
   const latest = Math.max(DEFAULT_TO * 60, ...visible.map((e) => e.end), ...visibleFree.map((f) => f.end));
@@ -276,45 +383,90 @@ export function AgendaTimeGrid({
                     );
                   })}
                 {(() => {
-                  const dayEvents = visible.filter((event) => event.date === dateStr && event.end > fromHour * 60);
+                  const shown = visible.filter((event) => event.date === dateStr && event.end > fromHour * 60);
+                  const strips = waitStrips(shown);
+                  const dayEvents = shown.filter((event) => !strips.has(event.key));
+                  const stripEvents = shown.filter((event) => strips.has(event.key));
+                  const stripPx = narrowWeek ? 8 : 12;
+                  // Posto a destra lasciato alle strisce che toccano il lavoro.
+                  const reserveFor = (event: AgendaGridEvent) =>
+                    stripEvents.filter((strip) => strip.start < event.end && strip.end > event.start).length * (stripPx + 2);
                   // Altezza minima del riquadro (26 px) in minuti, così due impegni brevi vicini non si coprono.
-                  const lanesOf = layoutLanes(dayEvents, Math.ceil(((26 + 4) / HOUR_PX) * 60));
-                  return dayEvents.map((event) => {
+                  const stackOf = stackSameBand(dayEvents, (event) => (y(event.end) - y(Math.max(event.start, fromHour * 60))) / STACK_MIN_ROW_PX, routeOrders[dateStr]);
+                  // Una pila di lavori con la stessa fascia occupa una sola corsia, col posto del primo.
+                  const lanesOf = layoutLanes(
+                    dayEvents.filter((event) => (stackOf.get(event.key)?.index ?? 0) === 0),
+                    Math.ceil(((26 + 4) / HOUR_PX) * 60),
+                  );
+                  const stripButtons = stripEvents.map((event, index) => {
                     const start = Math.max(event.start, fromHour * 60);
-                    const blockHeight = Math.max(26, y(event.end) - y(start) - 4);
-                    const { lane, lanes } = lanesOf.get(event.key) ?? { lane: 0, lanes: 1 };
-                    const side = narrowWeek ? 3 : 5;
-                    const gap = narrowWeek ? 1 : 3;
-                    // Nella Settimana del telefono due corsie sono troppo strette per l'ora: restano le strisce colorate.
-                    const tight = narrowWeek && lanes > 1;
                     return (
                       <button
                         key={event.key}
                         type="button"
-                        className={`ag-ev ${event.kind}${narrowWeek ? " narrow" : ""}${tight ? " tight" : ""}${lanes > 1 ? " shared" : ""}${event.conflict ? " conflict" : ""}${event.key === selectedKey ? " selected" : ""}`}
+                        className={`ag-ev ${event.kind} strip${event.key === selectedKey ? " selected" : ""}`}
+                        title={`${event.title}, ${eventTime(event)}`}
+                        style={{ top: y(start) + 2, height: Math.max(26, y(event.end) - y(start) - 4), right: (narrowWeek ? 2 : 4) + index * (stripPx + 2), width: stripPx, left: "auto" }}
+                        onClick={narrowWeek ? () => setPeek(event) : event.onPress}
+                      >
+                        <span className="sr-only">
+                          {event.title}, {eventTime(event)}, {event.label}, nella stessa fascia di un altro impegno
+                        </span>
+                      </button>
+                    );
+                  });
+                  return [...stripButtons, ...dayEvents.map((event) => {
+                    const stack = stackOf.get(event.key) ?? null;
+                    const bandStart = Math.max(event.start, fromHour * 60);
+                    const bandHeight = Math.max(26, y(event.end) - y(bandStart) - 4);
+                    // In pila ogni lavoro ha una riga della fascia, uno sotto l'altro.
+                    const rowHeight = stack ? (bandHeight + 4) / stack.count : 0;
+                    const top = stack ? y(bandStart) + 2 + stack.index * rowHeight : y(bandStart) + 2;
+                    const blockHeight = stack ? rowHeight - 4 : bandHeight;
+                    const { lane, lanes } = lanesOf.get(stack?.leaderKey ?? event.key) ?? { lane: 0, lanes: 1 };
+                    const side = narrowWeek ? 3 : 5;
+                    const gap = narrowWeek ? 1 : 3;
+                    // Nella Settimana del telefono due corsie sono troppo strette per l'ora: restano le strisce colorate.
+                    const tight = narrowWeek && lanes > 1;
+                    const reserve = reserveFor(event);
+                    return (
+                      <button
+                        key={event.key}
+                        type="button"
+                        className={`ag-ev ${event.kind}${narrowWeek ? " narrow" : ""}${tight ? " tight" : ""}${lanes > 1 ? " shared" : ""}${stack ? " stacked" : ""}${event.conflict ? " conflict" : ""}${event.key === selectedKey ? " selected" : ""}`}
                         style={{
-                          top: y(start) + 2,
+                          top,
                           height: blockHeight,
                           ...(lanes > 1
                             ? {
-                                left: `calc(${side}px + (100% - ${side * 2}px) * ${lane} / ${lanes})`,
-                                width: `calc((100% - ${side * 2}px) / ${lanes} - ${lane < lanes - 1 ? gap : 0}px)`,
+                                left: `calc(${side}px + (100% - ${side * 2 + reserve}px) * ${lane} / ${lanes})`,
+                                width: `calc((100% - ${side * 2 + reserve}px) / ${lanes} - ${lane < lanes - 1 ? gap : 0}px)`,
                                 right: "auto",
                               }
-                            : null),
+                            : reserve > 0
+                              ? { right: side + reserve }
+                              : null),
                         }}
-                        onClick={event.onPress}
+                        onClick={narrowWeek ? () => setPeek(event) : event.onPress}
                       >
-                        {tight ? (
+                        {tight && !(stack && lanes === 1) ? (
                           <span className="sr-only">
-                            {event.title}, {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
+                            {event.title}, {eventTime(event)}
                           </span>
+                        ) : narrowWeek && stack ? (
+                          // In pila tutti hanno la stessa ora: al posto dell'ora l'inizio del nome.
+                          <>
+                            <span className="sr-only">
+                              {event.title}, {eventTime(event)}
+                            </span>
+                            <b aria-hidden="true">{event.title}</b>
+                          </>
                         ) : narrowWeek ? (
                           // Settimana sul telefono: colonne troppo strette per il nome, si vede l'ora d'inizio.
                           // Il lettore di schermo legge ancora nome e orario completo.
                           <>
                             <span className="sr-only">
-                              {event.title}, {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
+                              {event.title}, {eventTime(event)}
                             </span>
                             <b aria-hidden="true">
                               {event.recurring ? <Repeat className="ag-ev-repeat" size={10} strokeWidth={2.5} /> : null}
@@ -328,15 +480,24 @@ export function AgendaTimeGrid({
                               {event.recurring ? <Repeat className="ag-ev-repeat" size={11} strokeWidth={2.5} aria-hidden /> : null}
                               {event.title}
                             </b>
-                            {blockHeight >= 40 ? (
+                            {stack ? (
+                              // In pila l'orario è uguale per tutti: si legge la città e il lavoro.
+                              <span>
+                                <span className="sr-only">
+                                  , {eventTime(event)}
+                                  {blockHeight >= 40 && event.detail && event.detail !== event.label ? ", " : ""}
+                                </span>
+                                {blockHeight >= 40 && event.detail !== event.label ? event.detail : null}
+                              </span>
+                            ) : blockHeight >= 40 ? (
                               <span>
                                 <span className="sr-only">, </span>
-                                {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
+                                {eventTime(event)}
                                 {blockHeight > 60 && event.detail ? ` · ${event.detail}` : ""}
                               </span>
                             ) : (
                               <span className="sr-only">
-                                , {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
+                                , {eventTime(event)}
                               </span>
                             )}
                           </>
@@ -344,11 +505,17 @@ export function AgendaTimeGrid({
                         <span className="sr-only">
                           , {event.label}
                           {event.recurring ? ", lavoro ricorrente" : ""}
-                          {event.conflict ? ", sovrapposto: più lavori dei posti della fascia" : lanes > 1 ? ", nella stessa fascia di un altro impegno" : ""}
+                          {event.conflict
+                            ? ", sovrapposto: più lavori dei posti della fascia"
+                            : stack
+                              ? `, ${stack.index + 1} di ${stack.count} nella stessa fascia`
+                              : lanes > 1
+                                ? ", nella stessa fascia di un altro impegno"
+                                : ""}
                         </span>
                       </button>
                     );
-                  });
+                  })];
                 })()}
               </div>
             );
@@ -366,6 +533,35 @@ export function AgendaTimeGrid({
           ) : null}
         </div>
       </div>
+      {/* Cambiando settimana il foglio sparisce. */}
+      {peek && dateStrs.includes(peek.date) ? (
+        <div className="ag-peek" role="dialog" aria-modal="false" aria-labelledby="ag-peek-title">
+          <div className="ag-peek-text">
+            <b id="ag-peek-title">{peek.title}</b>
+            <span>{eventTime(peek)}</span>
+            {peek.detail && peek.detail !== peek.label ? <span>{peek.detail}</span> : null}
+            {peek.place ? <span>{peek.place}</span> : null}
+            <span className="ag-peek-label">{peek.label}</span>
+          </div>
+          <div className="ag-peek-actions">
+            <button
+              ref={peekOpenRef}
+              type="button"
+              className="ag-peek-open"
+              onClick={() => {
+                const event = peek;
+                setPeek(null);
+                event.onPress();
+              }}
+            >
+              Apri
+            </button>
+            <button type="button" className="ag-peek-close" aria-label="Chiudi" onClick={() => setPeek(null)}>
+              ×
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

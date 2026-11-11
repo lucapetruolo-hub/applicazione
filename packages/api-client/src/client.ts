@@ -200,6 +200,8 @@ export type ClientBooking = {
   scheduledAt: string;
   /** Fine della fascia (richiesta esplicita dell'utente), null se non nota (data indicata a mano o prenotazione precedente a questa funzionalità). */
   scheduledEndAt: string | null;
+  /** Ora indicativa di arrivo dentro la fascia, "HH:MM" (docs/changelog/2026-11-11-fasce-ampie.md). */
+  arrivalTime: string | null;
   /** Per l'ordinamento "per data di ricezione"/"per ultimo aggiornamento" nelle liste. */
   createdAt: string;
   updatedAt: string;
@@ -385,6 +387,8 @@ export type ClientGuidedRequest = {
     estimatedStartDate: string;
     /** Fine della fascia (richiesta esplicita dell'utente: mostrare tutta la fascia oraria, non solo l'inizio), null se non nota. */
     estimatedEndDate: string | null;
+    /** Ora indicativa di arrivo dentro la fascia, "HH:MM" (docs/changelog/2026-11-11-fasce-ampie.md). */
+    arrivalTime: string | null;
     /** Valorizzata solo se il cliente ha proposto una data diversa (status MODIFICATION_REQUESTED), in attesa di conferma del professionista. */
     clientProposedDate: string | null;
     clientProposedEndDate: string | null;
@@ -2160,6 +2164,14 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<{ bookingId: string; onTheWayAt: string }>(`/bookings/${bookingId}/on-the-way`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    // Ora indicativa di arrivo dei lavori di domani, da "Oggi" (docs/changelog/2026-11-11-fasce-ampie.md).
+    updateBookingArrivalTime: (token: string, bookingId: string, arrivalTime: string | null) =>
+      request<{ bookingId: string; arrivalTime: string | null }>(`/bookings/${bookingId}/arrival-time`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ arrivalTime }),
       }),
 
     // Strumenti della nuova agenda (docs/CHANGELOG.md §288).

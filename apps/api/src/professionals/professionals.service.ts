@@ -1448,6 +1448,7 @@ export class ProfessionalsService {
               // Fine della fascia (richiesta esplicita dell'utente: mostrare
               // tutta la fascia oraria, non solo l'inizio) — null se non nota.
               estimatedEndDate: quote.estimatedEndDate?.toISOString() ?? null,
+              arrivalTime: quote.arrivalTime,
               clientProposedDate: quote.clientProposedDate?.toISOString() ?? null,
               clientProposedEndDate: quote.clientProposedEndDate?.toISOString() ?? null,
               clientProposedNote: quote.clientProposedNote,
@@ -1808,6 +1809,7 @@ export class ProfessionalsService {
       // Fine della fascia (richiesta esplicita dell'utente: mostrare tutta
       // la fascia oraria, non solo l'inizio) — null se non nota.
       scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,
+      arrivalTime: booking.arrivalTime,
       createdAt: booking.createdAt.toISOString(),
       updatedAt: booking.updatedAt.toISOString(),
       status: booking.status,

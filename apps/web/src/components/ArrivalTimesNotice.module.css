@@ -1,0 +1,88 @@
+/* "Dì ai clienti di domani verso che ora passi" in Oggi (docs/changelog/2026-11-11-fasce-ampie.md). */
+.card {
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid #f0dcc0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #2b2420;
+}
+.text,
+.done {
+  margin: 0;
+  font-size: 15px;
+  color: #6e6459;
+}
+.done {
+  color: #0e7a4c;
+  font-weight: 600;
+}
+.band {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bandHead {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6e6459;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+.who {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 160px;
+  min-width: 0;
+  font-size: 16px;
+}
+.who span {
+  color: #6e6459;
+  font-size: 14px;
+}
+.preview {
+  flex-basis: 100%;
+  font-size: 13px;
+  color: #6e6459;
+  text-align: right;
+}
+.error {
+  margin: 0;
+  color: #b42318;
+  font-size: 14px;
+}
+.save {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  background: #128552;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.save:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+.save:focus-visible {
+  outline: 2px solid #2b2420;
+  outline-offset: 2px;
+}

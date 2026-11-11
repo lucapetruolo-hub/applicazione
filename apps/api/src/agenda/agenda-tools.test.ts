@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { agendaWeekTemplateSchema, dayRouteMapsUrl, DEFAULT_WEEK_TEMPLATE, starterWeekTemplate, weekTemplateCovers } from "@professionisti/shared";
 import { comuniWithinRadius, firstHomeCity, zoneDemandTips } from "./agenda.service";
 import { dayForecasts, weatherAlertKind, weatherAlerts, weatherCondition } from "./weather.service";
-import { comuneInAddress, estimateLeg, legTiming } from "./day-route.service";
+import { orderStops, comuneInAddress, estimateLeg, legTiming } from "./day-route.service";
 import { calendarFeedIcs } from "../email/email-calendar";
 
 describe("icona meteo", () => {
@@ -98,11 +98,11 @@ describe("settimana tipo", () => {
     expect(online.days[0]).toEqual([]);
     for (const day of [1, 2, 3, 4, 5, 6]) {
       expect(online.days[day]!.map((s) => `${s.start}-${s.end}`)).toEqual(["08:00-13:00", "14:00-20:00"]);
-      expect(online.days[day]!.every((s) => s.homeMax === 5 && s.onlineMax === 5 && s.allowsHome && s.allowsOnline)).toBe(true);
+      expect(online.days[day]!.every((s) => s.homeMax === 4 && s.onlineMax === 4 && s.allowsHome && s.allowsOnline)).toBe(true);
     }
     const homeOnly = starterWeekTemplate(false);
     expect(agendaWeekTemplateSchema.safeParse(homeOnly).success).toBe(true);
-    expect(homeOnly.days.flat().every((s) => !s.allowsOnline && s.onlineMax === null && s.homeMax === 5)).toBe(true);
+    expect(homeOnly.days.flat().every((s) => !s.allowsOnline && s.onlineMax === null && s.homeMax === 4)).toBe(true);
   });
 });
 
@@ -160,5 +160,13 @@ describe("comuniWithinRadius", () => {
     expect(near).toContain("Latina");
     expect(near).toContain("Sermoneta");
     expect(near).not.toContain("Roma");
+  });
+});
+
+describe("orderStops (docs/changelog/2026-11-11-fasce-ampie.md)", () => {
+  it("per orario, e nella stessa fascia dal più vicino alla tappa prima", () => {
+    const at = (key: string, order: number, latitude: number) => ({ key, order, latitude, longitude: 12.9 });
+    const ordered = orderStops([at("lontano", 8, 41.9), at("primo", 7, 41.4), at("vicino", 8, 41.45), at("medio", 8, 41.6)]);
+    expect(ordered.map((s) => s.key)).toEqual(["primo", "vicino", "medio", "lontano"]);
   });
 });

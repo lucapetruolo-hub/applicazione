@@ -22,6 +22,7 @@ import { BoostSection } from "@/components/BoostSection";
 import { SetupJourneyCard, SetupJourneyHero, journeyNeedsHero, useSetupJourney } from "@/components/verification/SetupJourney";
 import { WeatherStrip, jobsHeadline, type DayJobRow } from "@/components/DaysAhead";
 import { PageLoading } from "@/components/PageLoading";
+import { ArrivalTimesNotice, tomorrowBandsWithoutArrival } from "@/components/ArrivalTimesNotice";
 
 /** Applica una risposta dell'API dentro `startTransition` (vedi sotto, §345). */
 function later<T>(apply: (value: T) => void): (value: T) => void {
@@ -236,6 +237,7 @@ export default function DashboardTodayPage() {
   }
 
   const loading = leads === null || bookings === null || externalJobs === null;
+  const arrivalBands = tomorrowBandsWithoutArrival(bookings ?? []);
   // Tutto quello che sta sotto "Oggi e domani" compare insieme, quando sono
   // arrivati richieste, appuntamenti e percorso del profilo: arrivando in
   // momenti diversi si spingevano giù a vicenda (CLS, docs/CHANGELOG.md §334).
@@ -395,6 +397,14 @@ export default function DashboardTodayPage() {
                   )}
                 </TodaySection>
                 )}
+                {/* Domani più lavori nella stessa fascia lunga senza ora: si chiede verso che ora passa (docs/changelog/2026-11-11-fasce-ampie.md). */}
+                {!loading && !error ? (
+                  <ArrivalTimesNotice
+                    token={token}
+                    bands={arrivalBands}
+                    onSaved={(id, arrivalTime) => setBookings((list) => list?.map((b) => (b.id === id ? { ...b, arrivalTime } : b)) ?? list)}
+                  />
+                ) : null}
                 {ready && journeyBelowJobs ? <SetupJourneyHero steps={journeyBelowJobs} /> : null}
               </div>
               {!ready ? null : (
