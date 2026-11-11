@@ -2577,8 +2577,8 @@ html.site-menu-open .profile-cta-bar {
   border: 1px solid transparent;
 }
 .profile-verify-chip.is-verified {
-  background: #f6e3d9;
-  color: #a3441f;
+  background: #e1eeeb;
+  color: #325f54;
 }
 .profile-verify-chip.is-action {
   background: #ffffff;

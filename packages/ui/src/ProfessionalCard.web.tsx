@@ -197,9 +197,9 @@ export function ProfessionalCard(props: ProfessionalCardProps) {
               {renderName(styles.nameOnDesktop!)}
               {verified ? (
                 <BadgeInfo info="verified">
-                  <div className={cx("is_View", styles.badge, styles.badgeTerracotta)}>
-                    <Icon name="badge-check" size={14} color={brand.terracotta} strokeWidth={2} />
-                    <span className={cx("is_Text font_body", styles.badgeText, styles.textTerracotta)}>Verificato</span>
+                  <div className={cx("is_View", styles.badge, styles.badgeVerificato)}>
+                    <Icon name="badge-check" size={14} color={brand.verificato} strokeWidth={2} />
+                    <span className={cx("is_Text font_body", styles.badgeText, styles.textVerificato)}>Verificato</span>
                   </div>
                 </BadgeInfo>
               ) : null}

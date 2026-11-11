@@ -5,10 +5,11 @@ import { brand } from "./tokens";
 export type { BadgeProps, BadgeVariant } from "./badgeProps";
 
 const VARIANT_STYLE: Record<BadgeVariant, { bg: string; fg: string }> = {
-  // Colori semantici: terracotta solo sul segno di fiducia "Verificato",
-  // verde sulle cose attive o fatte, ottone solo su elementi a pagamento, rosso
-  // solo sul flusso urgenza (docs/changelog/2026-11-11-palette-e-figtree.md).
-  verificato: { bg: brand.terracottaVelo, fg: brand.terracotta },
+  // Colori semantici: verde su "Verificato" e sulle cose attive o fatte, ottone
+  // solo su elementi a pagamento, rosso solo sul flusso urgenza. "Verificato"
+  // non è più terracotta: accanto al rosso sembrava un errore (Luca,
+  // docs/changelog/2026-11-11-verificato-verde.md).
+  verificato: { bg: brand.cianografiaVelo, fg: brand.verificato },
   fatto: { bg: brand.cianografiaVelo, fg: brand.verificato },
   // ottoneScuro: l'ottone pieno sul suo velo era 1,9:1, illeggibile.
   pro: { bg: "#F5EEE0", fg: brand.ottoneScuro },

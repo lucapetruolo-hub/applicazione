@@ -225,7 +225,7 @@ function NewProfileCard({ pro, delayMs }: { pro: NewProfileSummary; delayMs: num
             {pro.verified ? (
               <BadgeInfo info="verified">
                 <div className={`is_View ${text.verified}`}>
-                  <Icon name="badge-check" size={13} color={brand.terracotta} strokeWidth={2} />
+                  <Icon name="badge-check" size={13} color={brand.verificato} strokeWidth={2} />
                   <span className={`is_Text ${text.verifiedLabel}`}>Verificato</span>
                 </div>
               </BadgeInfo>
