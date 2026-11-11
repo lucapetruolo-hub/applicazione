@@ -1753,9 +1753,9 @@ export function RequestCard({
               ) : (
                 <YStack gap="2">
                   <XStack gap="2" flexWrap="wrap">
-                    <ItalianDateInput ariaLabel="Data" value={manualDate} onChange={setManualDate} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} padX={10} />
-                    <ItalianTimeInput ariaLabel="Ora di inizio" value={manualStartTime} onChange={setManualStartTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} padX={10} />
-                    <ItalianTimeInput ariaLabel="Ora di fine (facoltativa)" value={manualEndTime} onChange={setManualEndTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} padX={10} />
+                    <ItalianDateInput ariaLabel="Data" value={manualDate} onChange={setManualDate} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} />
+                    <ItalianTimeInput ariaLabel="Ora di inizio" value={manualStartTime} onChange={setManualStartTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
+                    <ItalianTimeInput ariaLabel="Ora di fine (facoltativa)" value={manualEndTime} onChange={setManualEndTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
                   </XStack>
                   {/* Richiesta esplicita dell'utente: una data/orario inserita
                       a mano non fa parte delle fasce configurate in agenda —
@@ -2040,9 +2040,9 @@ export function RequestCard({
               ) : (
                 <YStack gap="2">
                   <XStack gap="2" flexWrap="wrap">
-                    <ItalianDateInput ariaLabel="Nuova data" value={manualCounterDate} onChange={setManualCounterDate} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} padX={10} />
-                    <ItalianTimeInput ariaLabel="Ora di inizio" value={manualCounterStartTime} onChange={setManualCounterStartTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} padX={10} />
-                    <ItalianTimeInput ariaLabel="Ora di fine" value={manualCounterEndTime} onChange={setManualCounterEndTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} padX={10} />
+                    <ItalianDateInput ariaLabel="Nuova data" value={manualCounterDate} onChange={setManualCounterDate} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} />
+                    <ItalianTimeInput ariaLabel="Ora di inizio" value={manualCounterStartTime} onChange={setManualCounterStartTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
+                    <ItalianTimeInput ariaLabel="Ora di fine" value={manualCounterEndTime} onChange={setManualCounterEndTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
                   </XStack>
                   {/* Richiesta esplicita dell'utente: la nuova data può non
                       far parte delle fasce configurate in agenda — comparirà
