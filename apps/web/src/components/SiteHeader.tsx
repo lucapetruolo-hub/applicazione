@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "@/components/IntentLink";
 import { usePathname } from "next/navigation";
-import { Button, motionEasing, motionFast } from "@professionisti/ui";
+import { Button } from "@professionisti/ui";
 import { LogoPlain } from "./LogoPlain";
 import styles from "./SiteHeader.module.css";
 import { TOKEN_STORAGE_KEY, useAuth } from "@/lib/AuthContext";
@@ -83,12 +83,12 @@ export function SiteHeader() {
     void loadAccountMenu();
   }, []);
 
-  // Scorrendo la barra diventa più bassa e più trasparente, come su apple.com
-  // (richiesta di Luca, docs/changelog/2026-11-11-home-caroselli-larghi.md).
-  // Due soglie diverse (24 px per stringerla, 4 px per riallargarla): con una
-  // sola, i 12 px che la barra perde spostavano la pagina proprio sulla
-  // soglia e la barra tremava. L'altezza va anche in `--site-header-h`, che
-  // usano le barre fisse sotto di lei (menu dell'account, indice del profilo).
+  // Scorrendo la barra della home diventa più bassa e più trasparente, come
+  // su apple.com (richiesta di Luca, docs/changelog/2026-11-11-home-caroselli-larghi.md).
+  // Solo trasformazioni (.site-header-shell in globals.css): la barra resta
+  // alta 64 px nella pagina, così niente si sposta sotto di lei (le prove
+  // misurano zero spostamenti, CLS 0). Due soglie diverse (24 px per
+  // stringerla, 4 px per riallargarla) perché non tremi sul confine.
   useEffect(() => {
     function onScroll() {
       setScrolled((was) => (was ? window.scrollY > 4 : window.scrollY > 24));
@@ -97,10 +97,7 @@ export function SiteHeader() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  useEffect(() => {
-    document.documentElement.style.setProperty("--site-header-h", scrolled ? "52px" : "64px");
-  }, [scrolled]);
+  const compact = scrolled && pathname === "/";
 
   return (
     // `position: sticky` non è tipizzato su Tamagui/React Native (stesso
@@ -108,22 +105,20 @@ export function SiteHeader() {
     // grezzo invece del prop Tamagui, che accetta solo i valori che RN
     // supporta (absolute/relative/static).
     <div
+      className="site-header-shell"
+      data-scrolled={scrolled || undefined}
+      data-compact={compact || undefined}
       style={{
         position: "sticky",
         top: 0,
         zIndex: 40,
         width: "100%",
-        backgroundColor: scrolled ? "rgba(255,255,255,0.72)" : "rgba(255,255,255,0.92)",
-        backdropFilter: scrolled ? "saturate(180%) blur(20px)" : "blur(8px)",
-        WebkitBackdropFilter: scrolled ? "saturate(180%) blur(20px)" : "blur(8px)",
-        boxShadow: scrolled ? "0 1px 0 rgba(43,32,19,0.06)" : "none",
-        transition: `box-shadow ${motionFast} ${motionEasing}, background-color ${motionFast} ${motionEasing}`,
       }}
     >
       <div style={{ position: "relative", width: "100%" }}>
       {/* HTML semplice, senza il calcolo degli stili di Tamagui
           (docs/changelog/2026-11-09-barra-in-alto-senza-tamagui.md). */}
-      <div className={`is_View ${styles.bar}${scrolled ? ` ${styles.barCompact}` : ""}`}>
+      <div className={`is_View ${styles.bar}`}>
         <div className={`is_View ${styles.left}`}>
           <Link href="/" aria-label={`${BRAND.name}, vai alla home`} style={{ textDecoration: "none" }}>
             {/* Solo marchio sotto $xs (≤660px, telefoni): il wordmark

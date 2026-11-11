@@ -70,7 +70,10 @@ export function HomeHero({ examples }: { examples: ProblemExamplesResponse | nul
               ricerca ed esempi (spunti da miodottore,
               docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md). */}
           {/* Titolo principale della pagina (h1) per Google e i lettori di schermo. */}
-          <h1 className={`is_Text font_heading ${styles.title}`}>Scrivi il problema. Ti diciamo chi chiamare.</h1>
+          <h1 className={`is_Text font_heading ${styles.title}`}>
+            <span className={styles.titleLine}>Scrivi il problema. </span>
+            <span className={styles.titleLine}>Ti diciamo chi chiamare.</span>
+          </h1>
           {/* La ricerca per problema in primo piano (scelta di Luca,
               docs/changelog/2026-11-03-ricerca-per-problema-home.md): prima il
               titolo diceva "Trova un professionista vicino a te" e nessuno

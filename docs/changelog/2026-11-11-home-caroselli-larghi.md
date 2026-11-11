@@ -38,11 +38,20 @@ compariva e spariva a ogni sezione.
   caldo, esempi e "Richiesta urgente" come pillole bianche col filo, verde
   solo su "Cerca", "A domicilio", "Novità" e nei bordi di fuoco. Le luci
   compaiono solo durante l'attesa della ricerca, nel tono chiaro.
-- **Barra in alto più bassa e trasparente scorrendo** (`SiteHeader`): da 64 a
-  52 px, bianco al 72% con sfocatura e saturazione, come su apple.com. Due
-  soglie (24 px per stringerla, 4 px per riallargarla) perché la barra non
-  tremi; l'altezza va in `--site-header-h`, usata dalle barre fisse sotto
-  (menu dell'account, indice del profilo).
+- **Barra in alto più bassa e trasparente scorrendo**, solo in home
+  (`SiteHeader`, `.site-header-shell` in `globals.css`): il fondo bianco sta
+  in un livello a parte che scorrendo sale di 12 px (barra visibile di 52
+  px), bianco al 72% con sfocatura e saturazione, come su apple.com; logo e
+  pulsanti salgono di 6 px. Solo trasformazioni: la barra resta alta 64 px
+  nella pagina. Il primo tentativo cambiava l'altezza vera e la prova
+  `barra-preventivo` (CLS 0) è diventata rossa: spostava di 12 px tutta la
+  pagina (riprodotto in locale, 4 spostamenti; dopo, zero). Due soglie (24
+  px per stringerla, 4 px per riallargarla) perché non tremi.
+- **Titolo d'apertura su due righe proprie** ("Scrivi il problema." / "Ti
+  diciamo chi chiamare."): prima il "Ti" restava in fondo alla prima riga.
+  Testo sotto con a capo curati (`text-wrap`), ombra leggera sotto la
+  casella bianca, "Ricerca gratuita, senza registrazione" a 14 px in grigio
+  #766b62 (4,6:1 sul pesca, sopra il minimo AA). Scelte di Luca.
 - **Da telefono la casella della ricerca a 12 px dai bordi** (Luca chiedeva
   da bordo a bordo): consigliato così perché resti una scheda con angoli e
   ombra; foto delle due versioni a Luca.

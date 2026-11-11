@@ -44,10 +44,12 @@
 .title {
   margin: 0;
   font-family: var(--f-family);
-  font-size: 38px;
-  line-height: 42px;
+  font-size: 36px;
+  line-height: 40px;
   font-weight: 600;
   letter-spacing: -0.8px;
+  /* Righe di lunghezza simile, mai una parola sola in fondo. */
+  text-wrap: balance;
   text-align: center;
   color: var(--c-grafite);
 }
@@ -61,10 +63,11 @@
 }
 
 .lead {
-  max-width: 560px;
+  max-width: 620px;
   font-size: var(--f-size-5);
   text-align: center;
   color: #5c534b;
+  text-wrap: pretty;
 }
 
 .search {
@@ -74,12 +77,28 @@
   margin-top: var(--t-space-4);
 }
 
+/* Ombra leggera sotto la casella bianca, che la stacca dal pesca (scelta di
+   Luca, docs/changelog/2026-11-11-home-caroselli-larghi.md). */
+.search > :first-child {
+  box-shadow:
+    0 1px 2px rgba(43, 32, 19, 0.06),
+    0 18px 40px -18px rgba(43, 32, 19, 0.25);
+}
+
+/* Le due frasi del titolo su righe proprie: "Scrivi il problema." poi "Ti
+   diciamo chi chiamare.", invece di un "Ti" rimasto in fondo alla prima riga. */
+.titleLine {
+  display: block;
+}
+
 .status {
   margin-top: var(--t-space-2);
-  font-size: 16px;
-  font-weight: 600;
+  /* Più piccola e più chiara: è una rassicurazione, non un'azione (scelta di
+     Luca). #766b62 sul pesca è 4,6:1, sopra il minimo AA. */
+  font-size: 14px;
+  font-weight: 500;
   text-align: center;
-  color: #6b6058;
+  color: #766b62;
 }
 
 .urgent {

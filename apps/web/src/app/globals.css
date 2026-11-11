@@ -183,6 +183,39 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   }
 }
 
+/* Barra in alto (SiteHeader.tsx): il fondo bianco sfocato sta in un livello
+   a parte, così in home, scorrendo, si accorcia e diventa più trasparente
+   come su apple.com solo con trasformazioni (docs/changelog/2026-11-11-home-caroselli-larghi.md):
+   la barra resta alta 64 px nella pagina e niente si sposta (CLS 0). */
+.site-header-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  transition:
+    transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.site-header-shell[data-scrolled]::before {
+  box-shadow: 0 1px 0 rgba(43, 32, 19, 0.06);
+}
+.site-header-shell[data-compact]::before {
+  transform: translateY(-12px);
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+.site-header-shell > div {
+  transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.site-header-shell[data-compact] > div {
+  transform: translateY(-6px);
+}
+
 /* Magnete e alone del pulsante principale della home (MagneticButton). */
 .magnet {
   display: inline-flex;
@@ -1392,8 +1425,7 @@ button.notif-row-main:hover {
   border-bottom: 1px solid #f0dcc0;
   scrollbar-width: none;
   position: sticky;
-  /* Altezza della barra in alto, che scorrendo si abbassa (SiteHeader.tsx). */
-  top: var(--site-header-h, 64px);
+  top: 64px;
   /* Sotto l'header (z-index 40), non sopra: altrimenti la tendina
      "Il mio account" finiva dietro questa barra (docs/CHANGELOG.md §148). */
   z-index: 30;
@@ -2604,7 +2636,7 @@ html.site-menu-open .profile-cta-bar {
 @media (min-width: 760px) {
   /* Le 7 voci entrano su una riga nella colonna da 760 px, senza scorrere. */
   .profile-index {
-    top: var(--site-header-h, 64px);
+    top: 64px;
     gap: 6px;
     margin: 0;
     padding: 8px 0;
