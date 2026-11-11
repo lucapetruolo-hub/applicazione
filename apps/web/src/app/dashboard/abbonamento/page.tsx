@@ -269,7 +269,7 @@ function PaymentCard({ showCard, card, portalPending, onChangeCard }: { showCard
   const wallet = card?.wallet ? CARD_WALLET_LABEL[card.wallet] : undefined;
   return (
     <Surface borderRadius={radiusDoc} padding="5" gap="3">
-      <Text render="h2" fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
+      <Text render="h2" fontFamily="heading" fontWeight="700" fontSize="6" color={brand.inchiostro}>
         Pagamento
       </Text>
       <XStack gap="3" alignItems="center" justifyContent="space-between" flexWrap="wrap">
@@ -317,7 +317,7 @@ function RecentPayments({ token, invoices, freeMonths }: { token: string | null;
   );
   return (
     <Surface borderRadius={radiusDoc} padding="5" gap="3">
-      <Text render="h2" fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
+      <Text render="h2" fontFamily="heading" fontWeight="700" fontSize="6" color={brand.inchiostro}>
         Fatture
       </Text>
       {invoices.length === 0 ? (

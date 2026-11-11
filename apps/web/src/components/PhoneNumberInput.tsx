@@ -324,7 +324,7 @@ export function PhoneNumberInput({ value, onChange, style, placeholder = "Numero
           padding: 9px 12px;
           cursor: pointer;
           font-size: 14px;
-          color: #2b2420;
+          color: #1b1a18;
         }
         .phone-panel li[role="option"].highlighted {
           background: #f5f1ea;
@@ -337,12 +337,12 @@ export function PhoneNumberInput({ value, onChange, style, placeholder = "Numero
           min-width: 0;
         }
         .phone-dial {
-          color: #6e6459;
+          color: #5e5a54;
         }
         .phone-empty {
           padding: 12px;
           font-size: 14px;
-          color: #6e6459;
+          color: #5e5a54;
         }
       `}</style>
     </div>

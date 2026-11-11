@@ -4,7 +4,7 @@
 .ag {
   --ag-line: #f3e6d6;
   --ag-line-soft: #f7eee4;
-  --ag-free: #edf8f2;
+  --ag-free: #eff6f4;
   --ag-teal: #1aa6a6;
   --ag-teal-veil: #ddf3f3;
   --ag-closed: #f6ede2;
@@ -645,7 +645,7 @@
   margin-right: 4px;
 }
 .ag-ev.conf {
-  background: #e9f7f0;
+  background: #ecf4f2;
   border-color: var(--ag-green);
 }
 .ag-ev.pending {
@@ -791,7 +791,7 @@
 .ag-scrim {
   position: fixed;
   inset: 0;
-  background: rgba(43, 36, 32, 0.35);
+  background: rgba(27, 26, 24, 0.35);
   z-index: 1000;
 }
 .ag-sheet {
@@ -933,7 +933,7 @@
   color: var(--ag-green-dark);
 }
 .ag-day-btn.reopen:hover {
-  background: #edf8f2;
+  background: #eff6f4;
 }
 @media (max-width: 1000px) {
   /* Settimana stretta: solo l'icona, il nome resta per il lettore di schermo. */
@@ -1391,7 +1391,7 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(43, 36, 32, 0.35);
+  background: rgba(27, 26, 24, 0.35);
   display: flex;
   align-items: flex-start;
   justify-content: center;

@@ -916,7 +916,7 @@ export function RequestCard({
             {/* Altrimenti a chi è arrivata: solo a te, scelto tra pochi o a più
                 professionisti (docs/changelog/2026-11-10-richiesta-solo-per-te.md).
                 Senza il dato (API non ancora aggiornata durante un rilascio) nessun bollino. */}
-            {gr.fromProfessionalLink ? <Badge variant="verificato">Dal tuo link</Badge> : lead.audience ? <AudienceBadge audience={lead.audience} /> : null}
+            {gr.fromProfessionalLink ? <Badge variant="fatto">Dal tuo link</Badge> : lead.audience ? <AudienceBadge audience={lead.audience} /> : null}
             {/* Ordine invertito su richiesta esplicita dell'utente: lo stato
                 della richiesta (StagePill) precede il badge di modalità
                 (ServiceBadge, "A domicilio"/"Consulenza online"). */}

@@ -58,7 +58,7 @@ export function AdminSummaryNumbers() {
     <YStack gap="5">
       {overview ? (
         <YStack gap="3">
-          <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
+          <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="6" color={brand.inchiostro}>
             In breve
           </Text>
           <div className="admin-kpi-grid">
@@ -73,7 +73,7 @@ export function AdminSummaryNumbers() {
       ) : null}
 
       <YStack gap="3">
-        <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
+        <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="6" color={brand.inchiostro}>
           Ultime 12 settimane
         </Text>
         {trends ? (
@@ -94,7 +94,7 @@ export function AdminSummaryNumbers() {
 
       {urgency ? (
         <YStack gap="3">
-          <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
+          <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="6" color={brand.inchiostro}>
             Richieste urgenti (ultimi 7 giorni)
           </Text>
           {urgency.alerts.map((alert) => (

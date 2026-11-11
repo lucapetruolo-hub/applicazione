@@ -71,7 +71,7 @@ export function FiscoArea({
         <YStack gap="4">
           <FiscoTabs active={tab} />
           <XStack alignItems="baseline" gap="2" flexWrap="wrap">
-            <Text render="h2" fontFamily="heading" fontWeight="800" fontSize={24} lineHeight="30px" color={brand.grafite} margin={0}>
+            <Text render="h2" fontFamily="heading" fontWeight="800" fontSize={24} lineHeight="30px" color={brand.inchiostro} margin={0}>
               {heading}
             </Text>
             {headingExtra}

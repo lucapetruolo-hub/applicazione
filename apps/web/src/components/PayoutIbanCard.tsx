@@ -9,7 +9,7 @@ import { apiClient } from "@/lib/apiClient";
 import { WaitBarSignal } from "@/components/WaitBar";
 
 const CHECK_LABEL = {
-  MATCH: { variant: "verificato", label: "Corrisponde al conto su Stripe" },
+  MATCH: { variant: "fatto", label: "Corrisponde al conto su Stripe" },
   MISMATCH: { variant: "urgente", label: "Diverso dal conto su Stripe" },
   UNAVAILABLE: { variant: "nuovo", label: "Da confrontare con Stripe" },
 } as const;

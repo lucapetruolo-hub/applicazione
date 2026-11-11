@@ -118,7 +118,7 @@ export default function AdminAndamentoPage() {
                 fontFamily="heading"
                 fontWeight="800"
                 fontSize="7"
-                color={brand.grafite}
+                color={brand.inchiostro}
               >
                 Cosa fare questa settimana
               </Text>
@@ -177,7 +177,7 @@ export default function AdminAndamentoPage() {
               fontFamily="heading"
               fontWeight="800"
               fontSize="7"
-              color={brand.grafite}
+              color={brand.inchiostro}
             >
               I numeri dietro i consigli
             </Text>
@@ -224,7 +224,7 @@ function CardTitle({ title, note }: { title: string; note?: string }) {
         fontFamily="heading"
         fontWeight="800"
         fontSize="6"
-        color={brand.grafite}
+        color={brand.inchiostro}
       >
         {title}
       </Text>

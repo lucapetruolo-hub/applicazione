@@ -138,7 +138,7 @@ export default function ChatPage() {
     return (
       <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.inchiostro} textAlign="center">
             Accedi per vedere le tue conversazioni
           </Text>
           <Link href="/accedi?redirect=/chat" style={{ textDecoration: "none" }}>

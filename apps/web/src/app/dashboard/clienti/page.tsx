@@ -126,7 +126,7 @@ export default function DashboardClientiPage() {
     <YStack width="100%" alignItems="center" paddingVertical="8" paddingHorizontal="4">
       <YStack width="100%" maxWidth={880} gap="5">
         <YStack gap="1">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize={30} color={brand.grafite}>
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize={30} color={brand.inchiostro}>
             I miei clienti
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
@@ -281,7 +281,7 @@ function ClientCard({
         <XStack alignItems="flex-start" justifyContent="space-between" gap="3" flexWrap="wrap">
           <YStack gap={4} flex={1} minWidth={200}>
             <XStack alignItems="center" gap="2" flexWrap="wrap">
-              <Text render="h2" margin={0} fontWeight="700" fontSize={18} color={brand.grafite}>
+              <Text render="h2" margin={0} fontWeight="700" fontSize={18} color={brand.inchiostro}>
                 {client.name}
               </Text>
               <Text fontSize={12} fontWeight="700" color={brand.grafite} paddingHorizontal={8} paddingVertical={2} borderRadius={10} backgroundColor={brand.filetto}>

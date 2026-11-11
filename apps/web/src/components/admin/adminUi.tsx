@@ -11,7 +11,7 @@ export function AdminPageHeader({ title, description, right }: { title: string; 
     <XStack justifyContent="space-between" alignItems="flex-end" gap="3" flexWrap="wrap" marginBottom="4">
       <YStack gap="1" flexShrink={1}>
         {/* Il titolo della sezione (h1) e le schede stanno sopra, nel guscio (docs/changelog/2026-10-30-admin-riordino.md). */}
-        <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
+        <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.inchiostro}>
           {title}
         </Text>
         {description ? <Text color={brand.grafite70}>{description}</Text> : null}

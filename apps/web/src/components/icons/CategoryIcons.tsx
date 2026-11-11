@@ -198,23 +198,23 @@ const CATEGORY_ICONS: Record<ProfessionalCategorySlug, (props: IconProps) => JSX
 // segni dei siti fatti con l'IA (docs/CHANGELOG.md §305). Testo sul fondo
 // sempre sopra 5:1.
 export const CATEGORY_ACCENT: Record<ProfessionalCategorySlug, { bg: string; fg: string }> = {
-  idraulico: { bg: "#DCE4EA", fg: "#2F5566" },
-  elettricista: { bg: "#F3E6C4", fg: "#74550F" },
-  imbianchino: { bg: "#ECDDE3", fg: "#7A3E58" },
-  pulizie: { bg: "#DCE8E2", fg: "#2F6352" },
-  giardiniere: { bg: "#E2E8D3", fg: "#4A5E25" },
-  traslochi: { bg: "#F3DDCB", fg: "#934420" },
-  fabbro: { bg: "#E4E2DE", fg: "#45423D" },
-  climatizzazione: { bg: "#D8E6E6", fg: "#2A5C5C" },
-  muratore: { bg: "#F2D9CF", fg: "#943823" },
-  falegname: { bg: "#EEDFCB", fg: "#74471F" },
-  tuttofare: { bg: "#E0E0EA", fg: "#474A72" },
+  idraulico: { bg: "#E2ECF4", fg: "#1F5E8C" },
+  elettricista: { bg: "#F7ECD2", fg: "#8A5A00" },
+  imbianchino: { bg: "#F6E3D9", fg: "#A3441F" },
+  pulizie: { bg: "#E1ECE9", fg: "#325F54" },
+  giardiniere: { bg: "#E8EFD9", fg: "#4F6B1E" },
+  traslochi: { bg: "#EFE6DF", fg: "#6B4E3D" },
+  fabbro: { bg: "#E5E8EC", fg: "#3F4A55" },
+  climatizzazione: { bg: "#DDEFF0", fg: "#1D6A73" },
+  muratore: { bg: "#F3E1DC", fg: "#8C3B2E" },
+  falegname: { bg: "#F2E6D8", fg: "#7A4A1F" },
+  tuttofare: { bg: "#E9E5F3", fg: "#5B4B8A" },
   // Acciaio smaltato degli elettrodomestici.
   elettrodomestici: { bg: "#DDE3EC", fg: "#34496B" },
   // Tela da tenda color sabbia.
   "tende-da-sole": { bg: "#F1E3C8", fg: "#6E4E14" },
-  dogsitter: { bg: "#F2DEDA", fg: "#8A4640" },
-  babysitter: { bg: "#E6E0EE", fg: "#5E4A80" },
+  dogsitter: { bg: "#F8E6D6", fg: "#9A4E12" },
+  babysitter: { bg: "#F6E1E8", fg: "#A13D5E" },
 };
 
 export function CategoryIcon({ slug, size = 24, color }: { slug: string; size?: number; color?: string }) {

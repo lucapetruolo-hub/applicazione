@@ -16,7 +16,7 @@ export async function GET() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#189A63",
+          background: "#40776A",
           borderRadius: 128,
         }}
       >

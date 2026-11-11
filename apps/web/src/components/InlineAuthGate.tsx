@@ -86,7 +86,7 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
                   <Text fontFamily="body" fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
                     {HEADERS[step].eyebrow}
                   </Text>
-                  <Text render="h2" fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
+                  <Text render="h2" fontFamily="heading" fontWeight="800" fontSize="6" color={brand.inchiostro}>
                     {HEADERS[step].title}
                   </Text>
                 </YStack>

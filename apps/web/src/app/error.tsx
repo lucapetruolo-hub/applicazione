@@ -30,17 +30,17 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
   return (
     <div style={{ maxWidth: 560, margin: "64px auto", padding: "0 16px", textAlign: "center", fontFamily: "var(--font-body), sans-serif" }}>
       <h1 style={{ fontSize: 22, margin: "0 0 8px" }}>Qualcosa è andato storto</h1>
-      <p style={{ color: "#6e6459", margin: "0 0 20px" }}>Riprova tra un momento. Se il problema continua, segnalacelo con il dettaglio qui sotto.</p>
+      <p style={{ color: "#5e5a54", margin: "0 0 20px" }}>Riprova tra un momento. Se il problema continua, segnalacelo con il dettaglio qui sotto.</p>
       <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 24 }}>
         <button
           type="button"
           onClick={retry}
           disabled={isPending}
-          style={{ background: "#128552", color: "#fff", border: "none", borderRadius: 999, padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}
+          style={{ background: "#40776a", color: "#fff", border: "none", borderRadius: 999, padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}
         >
           {isPending ? "Caricamento…" : "Riprova"}
         </button>
-        <Link href="/" style={{ padding: "10px 20px", color: "#0e7a4c", fontWeight: 700 }}>
+        <Link href="/" style={{ padding: "10px 20px", color: "#386c5f", fontWeight: 700 }}>
           Torna alla home
         </Link>
       </div>
@@ -53,7 +53,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
           borderRadius: 10,
           padding: 12,
           fontSize: 12,
-          color: "#6e6459",
+          color: "#5e5a54",
         }}
       >
         {error.message || "Errore sconosciuto"}

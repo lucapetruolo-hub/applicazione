@@ -12,7 +12,7 @@ export function CalendarioScadutoCard({ pro, retry }: { pro: boolean; retry: boo
       <AuthCard maxWidth={440}>
         <YStack gap="4" alignItems="center">
           <AuthIconBadge icon="calendar" />
-          <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center" style={{ textWrap: "balance" }}>
+          <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro} textAlign="center" style={{ textWrap: "balance" }}>
             {retry ? "Calendario non disponibile" : "Questo link non vale più"}
           </Text>
           <Text fontSize={16} color={brand.grafite70} textAlign="center">

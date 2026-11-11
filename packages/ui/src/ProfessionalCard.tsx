@@ -217,10 +217,10 @@ export function ProfessionalCard(props: ProfessionalCardProps) {
                     paddingHorizontal="2"
                     paddingVertical={2}
                     borderRadius="10"
-                    backgroundColor={brand.cianografiaVelo}
+                    backgroundColor={brand.terracottaVelo}
                   >
-                    <Icon name="badge-check" size={14} color={brand.verificato} strokeWidth={2} />
-                    <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.verificato}>
+                    <Icon name="badge-check" size={14} color={brand.terracotta} strokeWidth={2} />
+                    <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.terracotta}>
                       Verificato
                     </Text>
                   </XStack>

@@ -183,7 +183,7 @@ export function renderEmail(content: EmailContent): RenderedEmail {
     `</a></td></tr>` +
     // Corpo.
     `<tr><td style="background:${c.card};border-radius:24px;padding:32px 28px;">` +
-    `<h1 style="margin:0 0 18px;font-family:${FONT};font-size:24px;line-height:1.25;font-weight:800;color:${urgent ? c.urgent : c.text};">${inline(content.title)}</h1>` +
+    `<h1 style="margin:0 0 18px;font-family:${FONT};font-size:24px;line-height:1.25;font-weight:800;color:${urgent ? c.urgent : c.heading};">${inline(content.title)}</h1>` +
     (greeting ? p(greeting) : "") +
     content.paragraphs.map((text) => p(text)).join("") +
     detailsHtml +

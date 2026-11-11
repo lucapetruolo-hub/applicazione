@@ -59,7 +59,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
         {/* Riduce il menu a sole icone (da 1000px, docs/CHANGELOG.md §334):
             il nome della voce compare passando sopra o col tasto Tab. */}
         <button type="button" className="acct-nav-toggle" onClick={toggleCollapsed} aria-expanded={!collapsed} aria-keyshortcuts="[" aria-label={collapsed ? "Espandi il menu" : "Riduci il menu a icone"}>
-          <Icon name={collapsed ? "chevron-right" : "chevron-left"} size={16} color="#6e6459" />
+          <Icon name={collapsed ? "chevron-right" : "chevron-left"} size={16} color="#5e5a54" />
           <span className="acct-nav-tip" aria-hidden="true">
             {collapsed ? "Espandi il menu" : "Riduci il menu"} <kbd>[</kbd>
           </span>
@@ -72,7 +72,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
               const count = counts[item.href] ?? 0;
               return (
                 <Link key={item.href} href={item.href} className={`acct-nav-link${active ? " is-active" : ""}`} aria-current={active ? "page" : undefined}>
-                  <Icon name={item.icon} size={16} color={active ? "#2b2420" : "#6e6459"} />
+                  <Icon name={item.icon} size={16} color={active ? "#1b1a18" : "#5e5a54"} />
                   <span className="acct-nav-label">{item.label}</span>
                   <span className="acct-nav-short" aria-hidden="true">{item.shortLabel ?? item.label}</span>
                   {count > 0 ? <span className="acct-nav-badge">{count > 9 ? "9+" : count}</span> : hasNavAttention(item, attention) ? <span className="acct-nav-dot" role="img" aria-label="Da completare" /> : null}

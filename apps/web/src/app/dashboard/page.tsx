@@ -122,7 +122,7 @@ export default function DashboardTodayPage() {
     return (
       <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.inchiostro} textAlign="center">
             Accedi come professionista
           </Text>
           <Link href="/accedi?redirect=/dashboard" style={{ textDecoration: "none" }}>
@@ -145,7 +145,7 @@ export default function DashboardTodayPage() {
     return (
       <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.inchiostro} textAlign="center">
             Completa il tuo profilo per iniziare
           </Text>
           <Text color={brand.grafite70} textAlign="center">
@@ -261,7 +261,7 @@ export default function DashboardTodayPage() {
     <YStack width="100%" alignItems="center" paddingVertical="6" paddingHorizontal="4">
       <YStack width="100%" maxWidth={1180} gap="6">
         <YStack gap="1">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro}>
             Oggi
           </Text>
           <Text color={brand.grafite70}>
@@ -500,7 +500,7 @@ export default function DashboardTodayPage() {
 function TodayCounter({ href, icon, value, label, urgent, loading }: { href: string; icon: IconName; value: number; label: string; urgent: boolean; loading: boolean }) {
   return (
     <Link href={href} className={`admin-kpi${urgent ? " is-urgent" : ""}`}>
-      <Icon name={icon} size={18} color={urgent ? "#dc3545" : "#6e6459"} />
+      <Icon name={icon} size={18} color={urgent ? "#dc3545" : "#5e5a54"} />
       <span className="admin-kpi-value">{loading ? "…" : value}</span>
       <span className="admin-kpi-label">{label}</span>
     </Link>
@@ -559,7 +559,7 @@ function LeadToAnswerRow({ lead, extra = false }: { lead: ProfessionalLead; extr
         {lead.guidedRequest.isUrgent || personal ? (
           <span className="today-row-badges">
             {lead.guidedRequest.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
-            {personal ? <Badge variant="verificato">{personal}</Badge> : null}
+            {personal ? <Badge variant="fatto">{personal}</Badge> : null}
           </span>
         ) : null}
         <strong>
@@ -611,7 +611,7 @@ function InsightsGrid({ insights }: { insights: ProfessionalInsights }) {
         <div key={cell.label} className="admin-kpi">
           <span className="admin-kpi-label">{cell.label}</span>
           <span className={cell.isText ? "admin-kpi-value is-text" : "admin-kpi-value"}>{cell.value}</span>
-          {cell.compare ? <span style={{ fontSize: 13, color: "#6e6459", fontWeight: 600 }}>{cell.compare}</span> : null}
+          {cell.compare ? <span style={{ fontSize: 13, color: "#5e5a54", fontWeight: 600 }}>{cell.compare}</span> : null}
         </div>
       ))}
     </div>

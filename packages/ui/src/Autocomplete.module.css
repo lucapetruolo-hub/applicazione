@@ -35,7 +35,7 @@
   line-height: 18px;
   height: auto;
   font-weight: 600;
-  color: rgb(110, 100, 89);
+  color: rgb(94, 90, 84);
   padding-left: var(--t-space-1);
 }
 
@@ -44,7 +44,7 @@
   line-height: 16px;
   font-weight: 700;
   color: white;
-  background-color: rgb(18, 133, 82);
+  background-color: rgb(64, 119, 106);
   border-radius: 999px;
 }
 .badge.badge.badge.badge {
@@ -178,7 +178,7 @@
 .heading {
   font-size: 13px;
   font-weight: 700;
-  color: rgb(110, 100, 89);
+  color: rgb(94, 90, 84);
 }
 
 .text {
@@ -187,7 +187,7 @@
 
 .actionLabel {
   font-weight: 600;
-  color: rgb(18, 133, 82);
+  color: rgb(64, 119, 106);
 }
 
 .detail {

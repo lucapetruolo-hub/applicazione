@@ -930,7 +930,7 @@ export default function AccountPage() {
             </YStack>
           ) : null}
           {isConfirmingDelete && closureCheck && closureCheck.blockers.length === 0 ? (
-            <YStack gap="3" padding="4" backgroundColor="#FBEAE8" borderRadius="4" borderWidth={1} borderColor={brand.urgenza}>
+            <YStack gap="3" padding="4" backgroundColor="#FDE8E6" borderRadius="4" borderWidth={1} borderColor={brand.urgenza}>
               {closureCheck.jobsToCancel.length > 0 ? (
                 <YStack gap="1">
                   <Text fontWeight="700" color={brand.grafite} fontSize={16}>

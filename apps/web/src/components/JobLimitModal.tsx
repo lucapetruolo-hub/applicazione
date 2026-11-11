@@ -96,7 +96,7 @@ export function JobLimitModal({
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="job-limit-title" style={{ width: "100%", maxWidth: 460, maxHeight: "100%", overflowY: "auto" }}>
         <YStack width="100%" backgroundColor={brand.calce} borderRadius="5" padding="5" gap="4">
           <YStack gap="2">
-            <Text id="job-limit-title" render="h2" fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
+            <Text id="job-limit-title" render="h2" fontFamily="heading" fontWeight="800" fontSize="7" color={brand.inchiostro}>
               Hai esaurito l&apos;abbonamento {currentLabel}
             </Text>
             {nextInfo ? (

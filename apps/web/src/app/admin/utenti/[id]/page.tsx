@@ -1047,7 +1047,7 @@ function TestAccountPanel({ detail, token, onChanged }: { detail: AdminUserDetai
         utente vero usa invece la sospensione.
       </Text>
       {open ? (
-        <YStack gap="2" padding="3" borderRadius={10} backgroundColor="#FBEAE8">
+        <YStack gap="2" padding="3" borderRadius={10} backgroundColor="#FDE8E6">
           <Text color={brand.grafite}>
             Non si può annullare. Scrivi <Text fontWeight="800">ELIMINA</Text> per confermare.
           </Text>

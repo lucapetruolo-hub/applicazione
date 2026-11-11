@@ -5,7 +5,7 @@ import { BRAND } from "@professionisti/shared";
  * email di assistenza arrivano da `BRAND` (`packages/shared/src/brand.ts`,
  * unico punto da toccare per cambiare marchio; per il mittente anche
  * `RESEND_FROM_EMAIL` su Render).
- * I colori sono gli stessi della palette "Vicinato" (`packages/ui/src/tokens.ts`),
+ * I colori sono gli stessi della palette A del sito (`packages/ui/src/tokens.ts`),
  * scritti qui a mano perché l'API non dipende dal pacchetto UI.
  */
 export const EMAIL_BRAND = {
@@ -14,17 +14,19 @@ export const EMAIL_BRAND = {
   signature: `Il team di ${BRAND.name}`,
   supportEmail: BRAND.supportEmail,
   colors: {
-    background: "#FDEFE1",
+    background: "#FAF2E8",
     card: "#FFFFFF",
-    text: "#2B2420",
-    muted: "#6E6459",
-    border: "#F0DCC0",
+    text: "#1B1A18",
+    // Titoli in verde inchiostro come sul sito (brand.inchiostro, 11,3:1 sul crema).
+    heading: "#0F3B2C",
+    muted: "#5E5A54",
+    border: "#E7E0D7",
     // Verde pieno dei pulsanti del sito (cianografiaPieno, §350/§355): bianco leggibile, contrasto 4,7.
-    primary: "#128552",
-    primaryDark: "#0E7A4C",
-    primaryTint: "#DCF3E7",
-    urgent: "#C8362B",
-    urgentTint: "#FBEAE7",
+    primary: "#40776a",
+    primaryDark: "#386C5F",
+    primaryTint: "#E1EEEB",
+    urgent: "#B42318",
+    urgentTint: "#FDE8E6",
   },
 } as const;
 

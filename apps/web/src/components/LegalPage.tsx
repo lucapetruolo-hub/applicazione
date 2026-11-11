@@ -36,7 +36,7 @@ export function LegalPage({
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
       <YStack width="100%" maxWidth={720} gap="5">
         <YStack gap="2">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="9" color={brand.grafite}>
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="9" color={brand.inchiostro}>
             {title}
           </Text>
           <Text fontSize={13} color={brand.grafite70}>
@@ -102,7 +102,7 @@ export function LegalList({ items }: { items: { title: string; rows: [label: str
 export function LegalSummary({ points }: { points: string[] }) {
   return (
     <YStack gap="2" padding="4" borderRadius={20} backgroundColor={brand.cianografiaVelo}>
-      <Text render="h2" margin={0} fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
+      <Text render="h2" margin={0} fontFamily="heading" fontWeight="700" fontSize="6" color={brand.inchiostro}>
         In breve
       </Text>
       <YStack render="ul" margin={0} paddingLeft={20} gap="1">

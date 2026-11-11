@@ -77,7 +77,7 @@ export default function AccessoGooglePage() {
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
       <Surface floating width="100%" maxWidth={400} borderRadius={radiusDocLg} padding="6" gap="3">
-        <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
+        <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="7" color={brand.inchiostro} textAlign="center">
           {outcome === "error" ? "Accesso non riuscito" : outcome === "close" ? "Fatto" : "Un attimo..."}
         </Text>
         <Text fontSize="3" color={brand.grafite70} textAlign="center">

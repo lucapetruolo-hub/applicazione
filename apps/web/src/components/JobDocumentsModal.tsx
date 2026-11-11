@@ -86,7 +86,7 @@ export function JobDocumentsModal({
         gap="4"
       >
         <XStack justifyContent="space-between" alignItems="center" gap="3">
-          <Text render="h2" fontFamily="heading" fontSize={22} fontWeight="800" color={brand.grafite}>
+          <Text render="h2" fontFamily="heading" fontSize={22} fontWeight="800" color={brand.inchiostro}>
             {bookingId ? "Documenti del lavoro" : "Documenti"}
           </Text>
           <Text fontSize="5" color={brand.grafite70} cursor="pointer" onPress={onClose} role="button" aria-label="Chiudi">
