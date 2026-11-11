@@ -28,7 +28,7 @@ body {
    pagine, ora trasparenti per lo sfondo sfocato (docs/CHANGELOG.md §180).
    `html body` vince per specificità. */
 html body {
-  background: #f7f3ee;
+  background: #faf2e8;
 }
 
 a {
@@ -729,7 +729,7 @@ body:has(.chosen-bar) {
 }
 .notif-bell:hover,
 .notif-bell.is-open {
-  background: #f7f3ee;
+  background: #faf2e8;
 }
 .notif-bell:active {
   transform: scale(0.94);
@@ -828,7 +828,7 @@ body:has(.chosen-bar) {
   cursor: pointer;
 }
 .notif-clear:hover {
-  background: #f7f3ee;
+  background: #faf2e8;
   color: #1b1a18;
 }
 .notif-clear.is-confirm {
@@ -967,7 +967,7 @@ button.notif-row-main:hover {
   opacity: 1;
 }
 .notif-row-delete:hover {
-  background: #f7f3ee;
+  background: #faf2e8;
 }
 /* "Non avvisarmi più di questi", accanto alla "x"
    (docs/changelog/2026-10-29-notifiche-sempre-attive-e-campanella.md). */
@@ -995,7 +995,7 @@ button.notif-row-main:hover {
   opacity: 1;
 }
 .notif-row-mute:hover {
-  background: #f7f3ee;
+  background: #faf2e8;
 }
 .notif-row-mute:focus-visible {
   outline: 2px solid #0e7a4c;
@@ -1048,7 +1048,7 @@ button.notif-row-main:hover {
   height: 48px;
   margin-bottom: 6px;
   border-radius: 12px;
-  background: #f7f3ee;
+  background: #faf2e8;
 }
 .notif-empty-title {
   font-size: 16px;
@@ -1166,7 +1166,7 @@ button.notif-row-main:hover {
   flex-shrink: 0;
 }
 .admin-nav-link:hover {
-  background: #f7f3ee;
+  background: #faf2e8;
 }
 .admin-nav-link.is-active {
   background: #efe9e2;
@@ -1382,7 +1382,7 @@ button.notif-row-main:hover {
   text-align: left;
 }
 .admin-palette-item.is-active {
-  background: #f7f3ee;
+  background: #faf2e8;
 }
 .admin-palette-title {
   font-size: 14px;
@@ -1498,7 +1498,7 @@ button.notif-row-main:hover {
   flex-shrink: 0;
 }
 .acct-nav-link:hover {
-  background: #f7f3ee;
+  background: #faf2e8;
 }
 /* Voce attiva grigio chiaro, non più quasi nera (regola accettata
    dall'utente il 22/10, docs/CHANGELOG.md §306): il nero pieno pesava più
@@ -1654,7 +1654,7 @@ html.site-menu-open .profile-cta-bar {
   flex-shrink: 0;
 }
 .fisco-tab:hover {
-  background: #f7f3ee;
+  background: #faf2e8;
   color: #1b1a18;
 }
 .fisco-tab.is-active {
@@ -1795,7 +1795,7 @@ html.site-menu-open .profile-cta-bar {
     transition: background-color 150ms ease;
   }
   .acct-nav-toggle:hover {
-    background: #f7f3ee;
+    background: #faf2e8;
   }
   .acct-nav-toggle:focus-visible,
   .acct-nav-link:focus-visible {
@@ -2169,7 +2169,7 @@ html.site-menu-open .profile-cta-bar {
   box-shadow: inset 0 0 0 1px #1b1a18;
 }
 .today-nav.is-secondary:hover {
-  background: #f7f3ee;
+  background: #faf2e8;
 }
 .today-nav.is-secondary:disabled {
   cursor: default;
@@ -2364,7 +2364,7 @@ html.site-menu-open .profile-cta-bar {
 /* "Profilo pubblico": anteprima del profilo pubblico (docs/CHANGELOG.md §252). */
 .profile-preview-frame {
   border-radius: 20px;
-  background: #f7f3ee;
+  background: #faf2e8;
   border: 1px solid #e7e0d7;
   box-shadow: 0 12px 32px rgba(43, 32, 19, 0.08);
   overflow: hidden;
@@ -2643,7 +2643,7 @@ html.site-menu-open .profile-cta-bar {
   scrollbar-width: none;
   margin: 0 -16px;
   padding: 8px 16px;
-  background: rgba(247, 243, 238, 0.94);
+  background: rgba(250, 242, 232, 0.94);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   -webkit-overflow-scrolling: touch;
@@ -3404,7 +3404,7 @@ a.admin-kpi:hover {
   font-size: 15px;
 }
 .proposal-confirm {
-  background: #f7f3ee;
+  background: #faf2e8;
   color: #6b3a0e;
 }
 .proposal-error {
@@ -3532,7 +3532,7 @@ a.admin-kpi:hover {
   color: #b02a37;
 }
 .site-advice.is-important .site-advice-level {
-  background: #f7f3ee;
+  background: #faf2e8;
   color: #8a4a12;
 }
 .site-advice-title {
@@ -3625,7 +3625,7 @@ a.admin-kpi:hover {
   color: #0e6b42;
 }
 .site-status.is-yellow {
-  background: #f7f3ee;
+  background: #faf2e8;
   color: #8a4a12;
 }
 .site-status.is-red,
@@ -3765,7 +3765,7 @@ a.admin-kpi:hover {
   border-bottom: none;
 }
 .admin-table tr:nth-child(even) td {
-  background: #f7f3ee;
+  background: #faf2e8;
 }
 
 /* Griglia KPI di /admin/statistiche (menu "Statistiche", Revenue Analytics)
@@ -3824,7 +3824,7 @@ a.admin-kpi:hover {
    overflow:hidden messo troppo in alto nell'albero") evitato fin dalla
    prima stesura invece di dover essere corretto in un secondo momento. */
 /* Versione di tutto il sito (docs/CHANGELOG.md §180): fissa sullo schermo,
-   dietro a ogni contenuto (z-index -1 sopra il fondo carta del body). */
+   dietro a ogni contenuto (z-index -1 sopra il fondo crema del body). */
 .site-blobs {
   position: fixed;
   inset: 0;
@@ -3938,7 +3938,7 @@ a.admin-kpi:hover {
   touch-action: manipulation;
 }
 .auth-back:hover {
-  background: #f7f3ee;
+  background: #faf2e8;
 }
 .auth-back:focus-visible {
   outline: 2px solid #189a63;
@@ -3990,7 +3990,7 @@ a.admin-kpi:hover {
   margin: 0;
   padding: 4px 6px 4px 14px;
   border-radius: 999px;
-  background: #f7f3ee;
+  background: #faf2e8;
   font-size: 13px;
   line-height: 1.35;
   color: #1b1a18;
@@ -4147,10 +4147,10 @@ a.admin-kpi:hover {
   text-align: left;
 }
 .acct-menu-link:hover {
-  background: #f7f3ee;
+  background: #faf2e8;
 }
 .acct-menu-link.is-active {
-  background: #f7f3ee;
+  background: #faf2e8;
 }
 .acct-menu-logout {
   margin-top: 4px;
@@ -4204,7 +4204,7 @@ a.admin-kpi:hover {
   cursor: pointer;
 }
 .pstats-preset:hover {
-  background: #f7f3ee;
+  background: #faf2e8;
 }
 .pstats-preset.is-active {
   background: #1b1a18;
@@ -5106,7 +5106,7 @@ a.admin-kpi:hover {
 .toast-card-photo {
   border-radius: 10px;
   overflow: hidden;
-  background: #f7f3ee;
+  background: #faf2e8;
 }
 .toast-card-text {
   display: flex;
@@ -5481,7 +5481,7 @@ a.admin-kpi:hover {
   padding: 5px 12px;
   border-radius: 20px;
   /* Piena come gli altri bollini, senza bordo (docs/CHANGELOG.md §349). */
-  background: #f7f3ee;
+  background: #faf2e8;
   color: #1b1a18;
   font-size: 13px;
   font-weight: 700;
@@ -7358,7 +7358,7 @@ a.admin-kpi:hover {
 .glow-lights--scuro .glow-lights__light--three {
   background: radial-gradient(circle, rgba(64, 200, 220, 0.25), transparent 65%);
 }
-/* Sul fondo carta: luci tenui, verde e terracotta leggera (palette A,
+/* Sul fondo crema: luci tenui, verde e terracotta leggera (palette A,
    docs/changelog/2026-11-11-palette-e-figtree.md). */
 .glow-lights--chiaro .glow-lights__light--one {
   background: radial-gradient(circle, rgba(24, 154, 99, 0.3), transparent 65%);
@@ -8473,7 +8473,7 @@ a.admin-kpi:hover {
     border-bottom: none;
   }
   .admin-table tr:nth-child(even) {
-    background: #f7f3ee;
+    background: #faf2e8;
   }
   .admin-table td,
   .admin-table tr:nth-child(even) td {

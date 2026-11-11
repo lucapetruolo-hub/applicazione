@@ -54,7 +54,7 @@ export default async function ProfessionalOpengraphImage({ params }: { params: P
       <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", background: "#189A63", padding: "0 80px", gap: 56 }}>
         {photo ? (
           // eslint-disable-next-line jsx-a11y/alt-text -- immagine dentro next/og, non nella pagina
-          <img src={photo} width={300} height={300} style={{ borderRadius: 40, objectFit: "cover", border: "6px solid #F7F3EE" }} />
+          <img src={photo} width={300} height={300} style={{ borderRadius: 40, objectFit: "cover", border: "6px solid #FAF2E8" }} />
         ) : (
           <div
             style={{
@@ -76,8 +76,8 @@ export default async function ProfessionalOpengraphImage({ params }: { params: P
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 20, flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", color: "white", fontSize: name.length > 28 ? 54 : 66, fontWeight: 700, letterSpacing: -1, lineHeight: 1.1 }}>{name}</div>
-          <div style={{ display: "flex", color: "#F7F3EE", fontSize: 36 }}>{subtitle}</div>
-          <div style={{ display: "flex", color: "#F7F3EE", fontSize: 28, marginTop: 24, opacity: 0.85 }}>{`Preventivi e appuntamenti su ${BRAND.name}`}</div>
+          <div style={{ display: "flex", color: "#FAF2E8", fontSize: 36 }}>{subtitle}</div>
+          <div style={{ display: "flex", color: "#FAF2E8", fontSize: 28, marginTop: 24, opacity: 0.85 }}>{`Preventivi e appuntamenti su ${BRAND.name}`}</div>
         </div>
       </div>
     ),

@@ -14,7 +14,7 @@ export const EMAIL_BRAND = {
   signature: `Il team di ${BRAND.name}`,
   supportEmail: BRAND.supportEmail,
   colors: {
-    background: "#F7F3EE",
+    background: "#FAF2E8",
     card: "#FFFFFF",
     text: "#1B1A18",
     muted: "#5E5A54",

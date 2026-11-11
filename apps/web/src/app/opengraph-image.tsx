@@ -44,7 +44,7 @@ export default function OpengraphImage() {
             {BRAND.name}
           </div>
         </div>
-        <div style={{ display: "flex", color: "#F7F3EE", fontSize: 30 }}>Descrivi il lavoro. Ricevi un preventivo vero.</div>
+        <div style={{ display: "flex", color: "#FAF2E8", fontSize: 30 }}>Descrivi il lavoro. Ricevi un preventivo vero.</div>
       </div>
     ),
     { ...size },

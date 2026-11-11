@@ -22,7 +22,7 @@
   position: relative;
   flex-direction: row;
   gap: var(--t-space-2);
-  background-color: rgb(247, 243, 238);
+  background-color: rgb(250, 242, 232);
   border-radius: var(--t-radius-10);
   padding: var(--t-space-1);
   align-self: flex-start;

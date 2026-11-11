@@ -1,6 +1,6 @@
 // Palette A "Verde fiducia e terracotta" (scelta di Luca dell'11/11/2026,
 // docs/changelog/2026-11-11-palette-e-figtree.md, prima "Vicinato" pesca):
-// fondo color carta, verde per pulsanti e link, terracotta per i segni di
+// fondo crema #FAF2E8 (scelto da Luca al posto della carta #F7F3EE, più caldo), verde per pulsanti e link, terracotta per i segni di
 // fiducia, angoli morbidi, ombra soffice al posto dei filetti — stessi NOMI di chiave di prima
 // (mai rinominare/rimuovere: ~50 file in tutto il sito referenziano
 // `brand.grafite`/`brand.cianografia`/ecc., ricolorare qui basta a
@@ -8,7 +8,7 @@
 // uno). Valori grezzi esportati (oltre ai token Tamagui in config.ts) per
 // i punti che devono scriverli in CSS puro invece che via prop Tamagui.
 export const brand = {
-  gesso: "#F7F3EE",
+  gesso: "#FAF2E8",
   calce: "#FFFFFF",
   grafite: "#1B1A18",
   grafite70: "#5E5A54",
@@ -39,7 +39,7 @@ export const brand = {
   verificato: "#0E6B42",
   // Terracotta della palette A (docs/changelog/2026-11-11-palette-e-figtree.md):
   // solo per i segni di fiducia, cioè il bollino "Verificato" e "Lavoro fatto
-  // tramite il sito", mai per pulsanti o messaggi. 5,6:1 sul fondo carta,
+  // tramite il sito", mai per pulsanti o messaggi. 5,6:1 sul fondo crema,
   // 5,0:1 sulla sua tinta chiara.
   terracotta: "#A3441F",
   terracottaVelo: "#F6E3D9",

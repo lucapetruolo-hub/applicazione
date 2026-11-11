@@ -7,7 +7,7 @@ rivedere), poi il carattere Figtree, poi "Sì, PR ora": colori e carattere sul
 sito subito, senza aspettare nome e logo, dopo la home stile Apple (#319).
 
 **Decisione**:
-- Fondo color carta `#F7F3EE` al posto del pesca `#FDEFE1`; testo `#1B1A18`,
+- Fondo crema `#FAF2E8` al posto del pesca `#FDEFE1` (Luca ha provato la carta `#F7F3EE` della palette A e l'ha voluta "leggermente più calda come prima": scelta la crema, via di mezzo, tra tre fondi a confronto); testo `#1B1A18`,
   grigio dei testi secondari `#5E5A54`, filetto `#E7E0D7`, bordo dei campi
   `#8E867C`. Stessi nomi di chiave in `packages/ui/src/tokens.ts`
   (`gesso`, `grafite`, `grafite70`, `filetto`, `bordoCampo`): i ~50 file che li
@@ -20,6 +20,10 @@ sito subito, senza aspettare nome e logo, dopo la home stile Apple (#319).
   `#A3441F` su `brand.terracottaVelo` `#F6E3D9`), solo per i segni di fiducia:
   dare la terracotta a tutto `verificato` avrebbe colorato di terracotta anche
   i messaggi di conferma.
+- Luci sfumate del fondo (`.site-blobs`): terracotta leggera in alto a
+  destra e verde in basso a sinistra (prima verde in alto e ottone in basso,
+  colori invertiti su richiesta di Luca); anche la luce chiara di "Richiesta
+  inviata" passa dall'ottone alla terracotta.
 - Rosso `#B42318` (prima `#C8362B`) con velo `#FDE8E6`, anche nelle email.
 - Colori delle categorie (`CATEGORY_ACCENT` in
   `apps/web/src/components/icons/CategoryIcons.tsx`) dalla palette, uno per
@@ -31,13 +35,13 @@ sito subito, senza aspettare nome e logo, dopo la home stile Apple (#319).
 - Nome e logo restano provvisori ("Professionisti").
 
 **Motivo**: il pesca con il verde dava un'aria da "vicinato" ma poco
-distintiva; carta, verde e terracotta sono più puliti e ordinati (la
+distintiva; crema, verde e terracotta sono più puliti e ordinati (la
 sensazione chiesta da Luca) e lasciano al verde il ruolo di azione. Figtree è
 più caldo e tondo di Instrument Sans e si legge bene anche piccolo.
 
-**Verifica**: contrasti WCAG AA sul fondo carta: testo 15,7:1, grigio 6,2:1,
-terracotta 5,6:1 (5,0:1 sul suo velo), verde "fatto" 6,3:1 su bianco, rosso
-5,9:1, bordo dei campi 3,25:1 (3,6:1 su bianco), colori delle categorie tra 5
+**Verifica**: contrasti WCAG AA sul fondo crema: testo 15,7:1, grigio 6,2:1,
+terracotta 5,6:1 (5,0:1 sul suo velo), verde "fatto" 5,9:1 (6,3:1 su bianco),
+link verdi 4,85:1, rosso 5,9:1, bordo dei campi 3,24:1 (3,6:1 su bianco), colori delle categorie tra 5
 e 7,4:1 sul loro fondo. `pnpm lint`, `typecheck` e `test` di web, ui e api
 verdi. Foto prima/dopo di home, ricerca e profilo su computer e telefono nel
 thread.

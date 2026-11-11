@@ -13,7 +13,7 @@ describe("Button.module.css", () => {
 describe("parseButtonValue", () => {
   it("divide i valori piatti di Tamagui nelle condizioni", () => {
     assert.deepEqual(parseButtonValue("44px xs:40px", "size"), { base: "44px", xs: "40px" });
-    assert.deepEqual(parseButtonValue("transparent hover:#F7F3EE press:#E7E0D7", "none"), { base: "transparent", hover: "#F7F3EE", press: "#E7E0D7" });
+    assert.deepEqual(parseButtonValue("transparent hover:#FAF2E8 press:#E7E0D7", "none"), { base: "transparent", hover: "#FAF2E8", press: "#E7E0D7" });
     assert.deepEqual(parseButtonValue("focus-visible:outlineColor", "none"), { focusVisible: "var(--outlineColor)" });
     assert.deepEqual(parseButtonValue("blue10 hover:blue9", "none"), { base: "var(--blue10)", hover: "var(--blue9)" });
   });
