@@ -258,6 +258,7 @@ const owned = {
     body: () => ({ note: "Il lavoro è stato fatto il giorno concordato.", photoUrls: [] }),
   }),
   "POST /bookings/:id/job-payment/refund": booking({ body: () => ({ reason: "Il lavoro non è stato svolto come concordato." }) }),
+  "PATCH /bookings/:id/arrival-time": booking({ body: () => ({ arrivalTime: null }) }),
   "PATCH /bookings/:id/meeting-link": booking({ body: () => ({ meetingLink: "https://meet.google.com/abc-defg-hij" }) }),
   "PATCH /bookings/:id/note": booking({ body: () => ({ note: "Nota di prova" }) }),
   "POST /bookings/:id/on-the-way": booking(),
