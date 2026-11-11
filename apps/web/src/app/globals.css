@@ -5746,12 +5746,18 @@ a.admin-kpi:hover {
   height: 44px;
   border: none;
   border-radius: 999px;
-  background: #ffffff;
+  /* Due frecce uguali, grigio chiaro con la punta scura, come su apple.com
+     (richiesta di Luca, docs/changelog/2026-11-11-home-apertura-piu-alta.md;
+     prima una bianca e una nera). Alla fine della riga la freccia resta al
+     suo posto con la punta sbiadita. */
+  background: rgba(43, 36, 32, 0.08);
+  color: rgba(43, 36, 32, 0.8);
   cursor: pointer;
-  transition: opacity 160ms ease, transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: background-color 160ms ease, color 160ms ease, transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.bleed-rail-arrow--next {
-  background: #2b2420;
+.bleed-rail-arrow:hover:not(:disabled) {
+  background: rgba(43, 36, 32, 0.14);
+  color: #2b2420;
 }
 .bleed-rail-arrow:active:not(:disabled) {
   transform: scale(0.94);
@@ -5761,7 +5767,7 @@ a.admin-kpi:hover {
   outline-offset: 2px;
 }
 .bleed-rail-arrow:disabled {
-  opacity: 0.35;
+  color: rgba(43, 36, 32, 0.25);
   cursor: default;
 }
 /* Su un telefono senza mouse niente frecce (regola di .category-carousel-arrow):

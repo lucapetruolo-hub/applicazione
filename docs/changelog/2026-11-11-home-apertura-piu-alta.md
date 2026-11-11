@@ -21,3 +21,10 @@ terzo giro). Le foto dei mestieri si vedono subito, e chi non trova il suo
 mestiere trova l'uscita dopo l'ultima categoria. Tolti gli `order` del
 telefono, che ora non servono più: anche lì la scheda è l'ultima, dopo "Mostra
 altre N categorie", come prima.
+
+**Frecce dei caroselli uguali, come su apple.com** (richiesta di Luca): prima
+una era bianca e una nera, e restavano così anche a fine riga. Ora sono due
+cerchi uguali grigio chiaro con la punta scura (`.bleed-rail-arrow` in
+`globals.css`), un po' più scuri al passaggio del mouse; a fine riga la
+freccia resta con la punta sbiadita. Vale per le categorie e per i nuovi
+professionisti (`BleedRail`).
