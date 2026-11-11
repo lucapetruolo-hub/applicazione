@@ -1101,7 +1101,39 @@ export function RequestCard({
           ) : null}
 
           <XStack flexWrap="wrap" gap="4" paddingTop="3">
-            {/* Sezione 1 — Dettagli cliente. Sfondo colorato (richiesta
+            {/* Sezione 1 — Descrizione lavoro: prima il lavoro, poi chi lo chiede
+                (richiesta di Luca, docs/changelog/2026-11-11-fascia-in-corso.md). */}
+            <YStack flex={1} minWidth={260} gap="2">
+              <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
+                Descrizione lavoro
+              </Text>
+              <Text fontSize={16} color={brand.grafite} lineHeight="19px">
+                {gr.description}
+              </Text>
+              {gr.photoUrls.length > 0 ? (
+                <XStack gap="2" className="scroll-fade" style={{ overflowX: "auto" }}>
+                  {gr.photoUrls.map((url, i) => (
+                    <YStack
+                      key={url}
+                      width={72}
+                      height={72}
+                      borderRadius={10}
+                      overflow="hidden"
+                      borderWidth={1}
+                      borderColor={brand.filetto}
+                      cursor="pointer"
+                      onPress={() => setOpenPhotoIndex(i)}
+                      role="button"
+                      aria-label={`Apri foto ${i + 1}`}
+                    >
+                      <MediaPreview url={url} />
+                    </YStack>
+                  ))}
+                </XStack>
+              ) : null}
+            </YStack>
+
+            {/* Sezione 2 — Dettagli cliente. Sfondo colorato (richiesta
                 esplicita dell'utente: "fai visualizzare meglio la sezione
                 dettagli cliente magari colorando lo sfondo") — stesso
                 trattamento già in uso per "Sezione 3 — Preventivo" più
@@ -1253,37 +1285,6 @@ export function RequestCard({
                   ) : null}
                 </>
               )}
-            </YStack>
-
-            {/* Sezione 2 — Descrizione lavoro */}
-            <YStack flex={1} minWidth={260} gap="2">
-              <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
-                Descrizione lavoro
-              </Text>
-              <Text fontSize={16} color={brand.grafite} lineHeight="19px">
-                {gr.description}
-              </Text>
-              {gr.photoUrls.length > 0 ? (
-                <XStack gap="2" className="scroll-fade" style={{ overflowX: "auto" }}>
-                  {gr.photoUrls.map((url, i) => (
-                    <YStack
-                      key={url}
-                      width={72}
-                      height={72}
-                      borderRadius={10}
-                      overflow="hidden"
-                      borderWidth={1}
-                      borderColor={brand.filetto}
-                      cursor="pointer"
-                      onPress={() => setOpenPhotoIndex(i)}
-                      role="button"
-                      aria-label={`Apri foto ${i + 1}`}
-                    >
-                      <MediaPreview url={url} />
-                    </YStack>
-                  ))}
-                </XStack>
-              ) : null}
             </YStack>
           </XStack>
 

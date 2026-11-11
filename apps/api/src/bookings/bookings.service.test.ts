@@ -59,8 +59,9 @@ function baseQuote(overrides: Record<string, unknown> = {}) {
     professionalProfileId: "pro-1",
     guidedRequestId: "gr-1",
     status: "SENT",
-    estimatedStartDate: new Date("2026-10-01T10:00:00Z"),
-    estimatedEndDate: new Date("2026-10-01T11:00:00Z"),
+    // Data futura: un preventivo con la data già passata non si accetta (docs/changelog/2026-11-11-fascia-in-corso.md).
+    estimatedStartDate: new Date("2037-10-01T10:00:00Z"),
+    estimatedEndDate: new Date("2037-10-01T11:00:00Z"),
     booking: null,
     items: [{ priceMinEurCents: 20000, priceMaxEurCents: 30000 }],
     guidedRequest: {
@@ -103,6 +104,16 @@ describe("BookingsService.createFromQuote", () => {
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote({ booking: { id: "existing-booking" } }));
 
     await expect(service.createFromQuote("client-1", "quote-1")).rejects.toThrow(ForbiddenException);
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta un preventivo con la data già passata (docs/changelog/2026-11-11-fascia-in-corso.md)", async () => {
+    const { service, prisma } = buildService();
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
+      baseQuote({ estimatedStartDate: new Date("2020-10-01T10:00:00Z"), estimatedEndDate: new Date("2020-10-01T11:00:00Z") }),
+    );
+
+    await expect(service.createFromQuote("client-1", "quote-1")).rejects.toThrow("già passata");
     expect(prisma.booking.create).not.toHaveBeenCalled();
   });
 
@@ -351,7 +362,7 @@ describe("BookingsService.createFromQuote — professionista già impegnato (§3
     const { service, prisma } = buildService();
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
     (prisma.booking.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { professionalProfileId: "pro-1", scheduledAt: new Date("2026-10-01T09:00:00Z"), scheduledEndAt: new Date("2026-10-01T12:00:00Z"), serviceMode: "HOME" },
+      { professionalProfileId: "pro-1", scheduledAt: new Date("2037-10-01T09:00:00Z"), scheduledEndAt: new Date("2037-10-01T12:00:00Z"), serviceMode: "HOME" },
     ]);
 
     await expect(service.createFromQuote("client-1", "quote-1")).rejects.toThrow(ConflictException);
@@ -362,7 +373,7 @@ describe("BookingsService.createFromQuote — professionista già impegnato (§3
     const { service, prisma } = buildService();
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
     (prisma.externalJob.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { professionalProfileId: "pro-1", scheduledAt: new Date("2026-10-01T10:30:00Z"), scheduledEndAt: new Date("2026-10-01T11:30:00Z") },
+      { professionalProfileId: "pro-1", scheduledAt: new Date("2037-10-01T10:30:00Z"), scheduledEndAt: new Date("2037-10-01T11:30:00Z") },
     ]);
 
     await expect(service.createFromQuote("client-1", "quote-1")).rejects.toThrow(ConflictException);
@@ -373,7 +384,7 @@ describe("BookingsService.createFromQuote — professionista già impegnato (§3
     const { service, prisma } = buildService();
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
     (prisma.booking.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { professionalProfileId: "pro-1", scheduledAt: new Date("2026-10-01T10:00:00Z"), scheduledEndAt: null, serviceMode: "HOME" },
+      { professionalProfileId: "pro-1", scheduledAt: new Date("2037-10-01T10:00:00Z"), scheduledEndAt: null, serviceMode: "HOME" },
     ]);
     (prisma.availabilitySlot.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
       { dayOfWeek: 4, date: null, startTime: "08:00", endTime: "13:00", homeMaxBookings: 2, onlineMaxBookings: null },
@@ -400,7 +411,7 @@ describe("BookingsService.confirmQuoteDeposit — lavoro confermato solo dopo l'
     (prisma.booking.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
     (prisma.booking.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { professionalProfileId: "pro-1", scheduledAt: new Date("2026-10-01T10:00:00Z"), scheduledEndAt: new Date("2026-10-01T11:00:00Z"), serviceMode: "HOME" },
+      { professionalProfileId: "pro-1", scheduledAt: new Date("2037-10-01T10:00:00Z"), scheduledEndAt: new Date("2037-10-01T11:00:00Z"), serviceMode: "HOME" },
     ]);
 
     await service.confirmQuoteDeposit({

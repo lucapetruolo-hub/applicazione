@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "@professionisti/database";
 import { QuotesService } from "./quotes.service";
 import type { NotificationsService } from "../notifications/notifications.service";
@@ -14,7 +14,7 @@ import type { WhatsAppService } from "../whatsapp/whatsapp.service";
 const PROPOSED = new Date("2099-03-12T15:00:00.000Z");
 const PROPOSED_END = new Date("2099-03-12T17:00:00.000Z");
 
-function setup(options: { busy?: boolean; otherJob?: boolean } = {}) {
+function setup(options: { busy?: boolean; otherJob?: boolean; proposed?: Date; proposedEnd?: Date } = {}) {
   const quote: Record<string, unknown> = {
     id: "q1",
     status: "MODIFICATION_REQUESTED",
@@ -22,8 +22,8 @@ function setup(options: { busy?: boolean; otherJob?: boolean } = {}) {
     professionalProfileId: "p1",
     estimatedStartDate: new Date("2099-03-10T10:00:00.000Z"),
     estimatedEndDate: new Date("2099-03-10T12:00:00.000Z"),
-    clientProposedDate: PROPOSED,
-    clientProposedEndDate: PROPOSED_END,
+    clientProposedDate: options.proposed ?? PROPOSED,
+    clientProposedEndDate: options.proposedEnd ?? PROPOSED_END,
     clientProposedNote: "Posso solo il pomeriggio",
     professionalCounterNote: null,
     clientNote: null,
@@ -92,5 +92,28 @@ describe("Il professionista accetta la data proposta dal cliente prima dell'acce
     const { service, quote } = setup({ otherJob: true });
     await expect(service.confirmProposedDate("pro1", "q1")).rejects.toThrow("altro professionista");
     expect(quote.status).toBe("MODIFICATION_REQUESTED");
+  });
+
+  // docs/changelog/2026-11-11-fascia-in-corso.md: alle 14:20 "oggi 14:00–20:00"
+  // risultava "già passata" perché si guardava solo l'inizio.
+  describe("fascia di oggi già cominciata (ora italiana)", () => {
+    afterEach(() => vi.useRealTimers());
+    const band = { proposed: new Date("2026-11-11T14:00:00.000Z"), proposedEnd: new Date("2026-11-11T20:00:00.000Z") };
+
+    it("alle 14:20 la fascia 14:00–20:00 si accetta ancora", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2026-11-11T13:20:00.000Z"));
+      const { service, quote } = setup(band);
+      await expect(service.confirmProposedDate("pro1", "q1")).resolves.toEqual({ bookingId: null });
+      expect(quote.status).toBe("SENT");
+    });
+
+    it("alle 18:30 (meno di due ore alla fine) è già passata", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2026-11-11T17:30:00.000Z"));
+      const { service, quote } = setup(band);
+      await expect(service.confirmProposedDate("pro1", "q1")).rejects.toThrow("già passata");
+      expect(quote.status).toBe("MODIFICATION_REQUESTED");
+    });
   });
 });

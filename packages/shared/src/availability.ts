@@ -146,11 +146,33 @@ export function agendaAttention(slots: { date: Date | string | null }[], now: Da
  */
 export const SLOT_MIN_HOURS_LEFT = 2;
 
-/** Vero se la fascia (data "AAAA-MM-GG", fine "HH:MM", ora di parete italiana) si può ancora proporre. */
-export function slotStillOffered(date: string, endTime: string, now: Date = new Date()): boolean {
-  const end = new Date(`${date}T${endTime}:00.000Z`).getTime();
-  if (Number.isNaN(end)) return false;
-  return end - wallClockNow(now).getTime() >= SLOT_MIN_HOURS_LEFT * 60 * 60_000;
+/**
+ * Un appuntamento (inizio e fine facoltativa, ora di parete italiana) si può
+ * ancora proporre o accettare (docs/changelog/2026-11-11-fascia-in-corso.md):
+ * vero se non è ancora cominciato, oppure se è una fascia già cominciata ma
+ * con almeno `SLOT_MIN_HOURS_LEFT` ore prima della fine. Prima si guardava
+ * solo l'inizio, e alle 14:20 "oggi 14:00–20:00" risultava "già passata".
+ */
+export function appointmentStillAhead(start: Date | string, end: Date | string | null | undefined, now: Date = new Date()): boolean {
+  const wallNow = wallClockNow(now).getTime();
+  const startMs = new Date(start).getTime();
+  if (Number.isNaN(startMs)) return false;
+  if (startMs > wallNow) return true;
+  if (end == null) return false;
+  const endMs = new Date(end).getTime();
+  return !Number.isNaN(endMs) && endMs - wallNow >= SLOT_MIN_HOURS_LEFT * 60 * 60_000;
+}
+
+/**
+ * Vero se la fascia (data "AAAA-MM-GG", fine "HH:MM", ora di parete italiana)
+ * si può ancora proporre. Con l'inizio una fascia breve non ancora cominciata
+ * resta proposta anche se finisce entro due ore (08:00–09:00 alle 07:30).
+ */
+export function slotStillOffered(date: string, endTime: string, now: Date = new Date(), startTime?: string): boolean {
+  const end = `${date}T${endTime}:00.000Z`;
+  if (startTime) return appointmentStillAhead(`${date}T${startTime}:00.000Z`, end, now);
+  const endMs = new Date(end).getTime();
+  return !Number.isNaN(endMs) && endMs - wallClockNow(now).getTime() >= SLOT_MIN_HOURS_LEFT * 60 * 60_000;
 }
 
 /**
@@ -164,5 +186,5 @@ export function linkSlotUsable(date: string | undefined, timeSlot: string | unde
   if (Number.isNaN(day.getTime()) || day.toISOString().slice(0, 10) !== date) return false;
   const match = /^([01]\d|2[0-3]):([0-5]\d)-([01]\d|2[0-3]):([0-5]\d)$/.exec(timeSlot);
   if (!match || `${match[3]}:${match[4]}` <= `${match[1]}:${match[2]}`) return false;
-  return slotStillOffered(date, `${match[3]}:${match[4]}`, now);
+  return slotStillOffered(date, `${match[3]}:${match[4]}`, now, `${match[1]}:${match[2]}`);
 }

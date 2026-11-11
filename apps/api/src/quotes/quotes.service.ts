@@ -19,6 +19,7 @@ import {
   scheduleChangeAlternative,
   scheduleChangeBetween,
   scheduleChangeObject,
+  appointmentStillAhead,
   wallClockNow,
   type ProposeQuoteDateInput,
   type QuoteSelfInput,
@@ -215,7 +216,9 @@ export class QuotesService {
 
     // Mai un appuntamento già cominciato (collaudo B-05, D-09, I agente): un
     // preventivo per "oggi 08:00–13:00" mandato alle 14:50 veniva accettato e pagato.
-    if (new Date(input.estimatedStartDate).getTime() <= wallClockNow().getTime()) {
+    // Una fascia già cominciata va ancora bene se mancano almeno due ore alla fine
+    // (docs/changelog/2026-11-11-fascia-in-corso.md).
+    if (!appointmentStillAhead(input.estimatedStartDate, input.estimatedEndDate)) {
       throw new BadRequestException("Questo orario è già passato: scegli un'altra data o un orario più tardi.");
     }
 
@@ -566,6 +569,12 @@ export class QuotesService {
     }
     // Un lavoro su più giorni resta della stessa durata con la nuova data di inizio (§310).
     if (!isSameAsCurrentProposal) proposedEndDate = keepJobDays(quote, proposedEndDate);
+    // Mai una data già passata (docs/changelog/2026-11-11-fascia-in-corso.md):
+    // prima il controllo c'era solo per gli appuntamenti già fissati e il
+    // professionista scopriva il problema solo premendo "Accetta nuova data".
+    if (!isSameAsCurrentProposal && !appointmentStillAhead(proposedDate, proposedEndDate)) {
+      throw new BadRequestException("Scegli una data che deve ancora venire.");
+    }
 
     // Cosa cambia rispetto all'appuntamento sul preventivo: data, orario o
     // entrambi (docs/CHANGELOG.md §180).
@@ -577,7 +586,7 @@ export class QuotesService {
 
     if (booking) {
       if (!change) throw new BadRequestException("È la data dell'appuntamento: scegline un'altra. Per dire qualcosa al professionista scrivigli in chat.");
-      if (proposedDate.getTime() <= wallClockNow().getTime()) throw new BadRequestException("Scegli una data che deve ancora venire.");
+      if (!appointmentStillAhead(proposedDate, proposedEndDate)) throw new BadRequestException("Scegli una data che deve ancora venire.");
       const now = new Date();
       // Il preventivo resta accettato e l'appuntamento com'era finché il
       // professionista non risponde; la proposta sta dove sta sempre.
@@ -738,7 +747,8 @@ export class QuotesService {
     if (await hasOtherJob(this.prisma, quote.guidedRequestId)) throw new ConflictException(OTHER_PROFESSIONAL_CHOSEN);
 
     const scheduledAt = quote.clientProposedDate;
-    if (scheduledAt.getTime() <= wallClockNow().getTime()) {
+    // Fascia in corso con almeno due ore davanti: si accetta ancora (docs/changelog/2026-11-11-fascia-in-corso.md).
+    if (!appointmentStillAhead(scheduledAt, quote.clientProposedEndDate)) {
       throw new BadRequestException("La data proposta è già passata: proponine un'altra con \"Modifica\".");
     }
     // La fascia è ancora libera adesso: meglio dirlo al professionista subito
@@ -876,7 +886,7 @@ export class QuotesService {
     }
     const scheduledAt = quote.clientProposedDate;
     const scheduledEndAt = quote.clientProposedEndDate;
-    if (scheduledAt.getTime() <= wallClockNow(now).getTime()) {
+    if (!appointmentStillAhead(scheduledAt, scheduledEndAt, now)) {
       throw new BadRequestException("La data proposta è già passata: proponine un'altra.");
     }
     const mode = quote.guidedRequest.serviceMode;
@@ -986,7 +996,7 @@ export class QuotesService {
       end = resolved.scheduledEndAt;
     }
     end = keepJobDays({ estimatedStartDate: booking.scheduledAt, estimatedEndDate: booking.scheduledEndAt }, end);
-    if (start.getTime() <= wallClockNow().getTime()) throw new BadRequestException("Scegli una data che deve ancora venire.");
+    if (!appointmentStillAhead(start, end)) throw new BadRequestException("Scegli una data che deve ancora venire.");
     if (!scheduleChangeBetween({ start: booking.scheduledAt, end: booking.scheduledEndAt }, { start, end })) {
       throw new BadRequestException("È la data dell'appuntamento: per tenerla rifiuta la proposta del cliente.");
     }

@@ -708,7 +708,7 @@ export class ProfessionalsService {
 
         const times = profileSlots
           // Mai una fascia di oggi già finita o quasi (collaudo B-05, D-09).
-          .filter((slot) => slotAppliesOnDate(slot, date) && slotStillOffered(dateStr, slot.endTime))
+          .filter((slot) => slotAppliesOnDate(slot, date) && slotStillOffered(dateStr, slot.endTime, undefined, slot.startTime))
           .sort((a, b) => a.startTime.localeCompare(b.startTime))
           .map((slot) => {
             // Una fascia resta prenotabile finché ha capienza residua per
@@ -1944,7 +1944,7 @@ export class ProfessionalsService {
       const candidateSlots = slots.filter((slot) => slotAppliesOnDate(slot, date)).sort((a, b) => a.startTime.localeCompare(b.startTime));
       for (const slot of candidateSlots) {
         // Mai una fascia di oggi già finita o quasi (collaudo B-05, D-09).
-        if (!slotStillOffered(dateStr, slot.endTime)) continue;
+        if (!slotStillOffered(dateStr, slot.endTime, undefined, slot.startTime)) continue;
         const homeAvailable = slot.allowsHome && countBookingsInSlot(bookings, dateStr, slot.startTime, slot.endTime, "HOME") < (slot.homeMaxBookings ?? 1);
         const onlineAvailable =
           slot.allowsOnline && countBookingsInSlot(bookings, dateStr, slot.startTime, slot.endTime, "ONLINE") < (slot.onlineMaxBookings ?? 1);
@@ -2168,7 +2168,7 @@ export class ProfessionalsService {
         ? []
         : slots
             // Mai una fascia di oggi già finita o quasi (collaudo B-05, D-09).
-            .filter((slot) => slotAppliesOnDate(slot, date) && slotStillOffered(dateStr, slot.endTime))
+            .filter((slot) => slotAppliesOnDate(slot, date) && slotStillOffered(dateStr, slot.endTime, undefined, slot.startTime))
             .sort((a, b) => a.startTime.localeCompare(b.startTime))
             .map((slot) => {
               // Sia per le fasce esatte che per quelle generiche, "prenotato"
