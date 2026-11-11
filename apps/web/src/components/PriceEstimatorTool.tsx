@@ -96,7 +96,10 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
   const visibleEntries = showFullList ? filtered : mostAdded.slice(0, IDLE_VISIBLE_COUNT);
 
   return (
-    <Section title="Quanto costa in media?" maxWidth={780}>
+    // Larga come le altre sezioni della home, con le voci su due colonne da
+    // computer (docs/changelog/2026-11-11-home-caroselli-larghi.md): a 780 px
+    // il titolo non era allineato agli altri.
+    <Section title="Quanto costa in media?" maxWidth={1080}>
       <div className={`is_View ${styles.body}`}>
         <span className={`is_Text ${styles.muted}`}>
           {/* Nessuna cifra finché nessun lavoro ha 3 prezzi (§398): allora la
@@ -338,6 +341,17 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
         }
         .price-row:hover {
           background-color: ${brand.cianografiaVelo};
+        }
+        /* Due colonne da computer (PriceEstimatorTool.module.css): la riga di
+           separazione sopra ogni voce tranne le prime due, e una verticale
+           tra le colonne. */
+        @media (min-width: 900px) {
+          .price-row:nth-child(2) {
+            box-shadow: inset 1px 0 0 ${brand.filetto};
+          }
+          .price-row:nth-child(2n + 4) {
+            box-shadow: inset 1px 0 0 ${brand.filetto}, inset 0 1px 0 ${brand.filetto};
+          }
         }
         .price-row:focus-visible {
           outline: 2px solid ${brand.cianografiaScuro};

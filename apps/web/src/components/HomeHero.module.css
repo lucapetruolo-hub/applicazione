@@ -22,8 +22,14 @@
   max-width: 1160px;
   padding-block: var(--t-space-8);
   padding-inline: var(--t-space-5);
+  /* Niente riquadro verde: l'apertura sta sulla stessa sfumatura pesca del
+     resto della home, come su apple.com; il verde resta su pulsanti e
+     dettagli (scelta di Luca dell'11/11/2026, al posto dell'"hero verde"
+     del 24/10, docs/changelog/2026-11-11-home-caroselli-larghi.md). */
+  padding-top: var(--t-space-7);
+  padding-bottom: var(--t-space-4);
   border-radius: 40px;
-  background-color: var(--c-cianografia);
+  background-color: transparent;
 }
 
 .content {
@@ -38,26 +44,30 @@
 .title {
   margin: 0;
   font-family: var(--f-family);
-  font-size: 38px;
-  line-height: 42px;
+  font-size: 36px;
+  line-height: 40px;
   font-weight: 600;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.8px;
+  /* Righe di lunghezza simile, mai una parola sola in fondo. */
+  text-wrap: balance;
   text-align: center;
-  color: white;
+  color: var(--c-grafite);
 }
 
 @media (min-width: 801px) {
   .title {
-    font-size: 54px;
-    line-height: 56px;
+    font-size: 64px;
+    line-height: 66px;
+    letter-spacing: -1.2px;
   }
 }
 
 .lead {
-  max-width: 560px;
+  max-width: 620px;
   font-size: var(--f-size-5);
   text-align: center;
-  color: rgba(255, 255, 255, 0.88);
+  color: #5c534b;
+  text-wrap: pretty;
 }
 
 .search {
@@ -67,12 +77,28 @@
   margin-top: var(--t-space-4);
 }
 
+/* Ombra leggera sotto la casella bianca, che la stacca dal pesca (scelta di
+   Luca, docs/changelog/2026-11-11-home-caroselli-larghi.md). */
+.search > :first-child {
+  box-shadow:
+    0 1px 2px rgba(43, 32, 19, 0.06),
+    0 18px 40px -18px rgba(43, 32, 19, 0.25);
+}
+
+/* Le due frasi del titolo su righe proprie: "Scrivi il problema." poi "Ti
+   diciamo chi chiamare.", invece di un "Ti" rimasto in fondo alla prima riga. */
+.titleLine {
+  display: block;
+}
+
 .status {
   margin-top: var(--t-space-2);
-  font-size: 16px;
-  font-weight: 600;
+  /* Più piccola e più chiara: è una rassicurazione, non un'azione (scelta di
+     Luca). #766b62 sul pesca è 4,6:1, sopra il minimo AA. */
+  font-size: 14px;
+  font-weight: 500;
   text-align: center;
-  color: rgba(255, 255, 255, 0.75);
+  color: #766b62;
 }
 
 .urgent {
@@ -98,11 +124,32 @@
   flex-direction: column;
   flex: 1 1 auto;
   height: 1px;
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: #e6d6c4;
 }
 
 .urgentLabel {
   font-size: 14px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.8);
+  color: #6b6058;
+}
+
+/* Da telefono la casella della ricerca quasi a tutta larghezza, 12 px dai
+   bordi (richiesta di Luca, docs/changelog/2026-11-11-home-caroselli-larghi.md):
+   non a filo, così resta una scheda con angoli e ombra. I testi restano un
+   po' più dentro. */
+@media (max-width: 660px) {
+  .wrap {
+    padding-inline: 12px;
+  }
+
+  .panel {
+    padding-inline: 0;
+  }
+
+  .title,
+  .lead,
+  .status,
+  .urgent {
+    padding-inline: 12px;
+  }
 }

@@ -18,23 +18,24 @@ export const SectionDensityProvider = SectionDensityContext.Provider;
 
 const SectionNestingContext = createContext<SectionTone | null>(null);
 
-function SectionTitle({ title, isDark, nested, pageTitle }: { title: string; isDark: boolean; nested: boolean; pageTitle?: boolean }) {
+function SectionTitle({ title, titleNote, isDark, nested, pageTitle }: { title: string; titleNote?: string; isDark: boolean; nested: boolean; pageTitle?: boolean }) {
   const Heading = nested ? "h3" : pageTitle ? "h1" : "h2";
   const className = ["is_Text font_heading", styles.title, nested ? styles.titleNested : "", isDark ? styles.onDark : "", "tm-paragraph"].filter(Boolean).join(" ");
   return (
     <Heading role="heading" className={className}>
       {title}
+      {titleNote ? <span className={`${styles.titleNote} ${isDark ? styles.titleNoteOnDark : ""}`}>{` ${titleNote}`}</span> : null}
     </Heading>
   );
 }
 
-export function Section({ title, lead, titleAction, tone = "light", maxWidth = 1200, pageTitle, children }: SectionProps) {
+export function Section({ title, titleNote, lead, titleAction, tone = "light", maxWidth = 1200, pageTitle, children }: SectionProps) {
   const parentTone = useContext(SectionNestingContext);
   const nested = parentTone !== null;
   const isDark = nested ? parentTone === "dark" : tone === "dark";
   const density = useContext(SectionDensityContext);
 
-  const titleElement = title ? <SectionTitle title={title} isDark={isDark} nested={nested} pageTitle={pageTitle} /> : null;
+  const titleElement = title ? <SectionTitle title={title} titleNote={titleNote} isDark={isDark} nested={nested} pageTitle={pageTitle} /> : null;
   const header =
     title || lead ? (
       <div className={`is_View ${styles.header}`}>

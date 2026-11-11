@@ -38,6 +38,14 @@
   overflow: visible;
 }
 
+@media (min-width: 900px) {
+  .list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-content: start;
+  }
+}
+
 /* Aperto (a fuoco o con testo scritto): elenco completo scorribile. */
 .listOpen {
   max-height: 420px;

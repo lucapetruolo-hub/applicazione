@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { NewProfileSummary } from "@/lib/newProfiles";
 import { Avatar, BadgeInfo, Icon, Rating, Section, brand } from "@professionisti/ui";
+import { BleedRail } from "./BleedRail";
 import { BRAND, professionalPath } from "@professionisti/shared";
 import { CategoryIcon, CATEGORY_ACCENT } from "./icons/CategoryIcons";
 import { useRevealOnScroll } from "./useRevealOnScroll";
@@ -30,10 +30,11 @@ const FALLBACK_ACCENT = { bg: "#E4E2DE", fg: "#45423D" };
  *
  * Card a "biglietto da visita" (idea C scelta dall'utente, docs/CHANGELOG.md
  * §232): fascia in alto col colore e l'icona della categoria, foto grande al
- * centro, "iscritto N giorni fa". Sotto la striscia una barra mostra a che
- * punto si è e, da computer, le frecce; bordi sfumati per far capire che la
- * striscia continua. `overflow-y: hidden` sulla striscia: senza, la rotellina
- * del mouse la spostava di qualche pixel in verticale (§232).
+ * centro, "iscritto N giorni fa". La striscia, la barra che mostra a che
+ * punto si è e le frecce sono di `BleedRail`: riga larga quanto lo schermo
+ * come su apple.com (docs/changelog/2026-11-11-home-caroselli-larghi.md),
+ * con `overflow-y: hidden` (senza, la rotellina del mouse la spostava di
+ * qualche pixel in verticale, §232).
  *
  * Gli stili delle card vivono qui con `:global(...)` sotto `.npc-root`:
  * `<style jsx>` non applica le sue classi ai nodi di un altro componente
@@ -49,84 +50,22 @@ export function NewProfilesCarousel({
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [progress, setProgress] = useState({ start: 0, size: 1 });
-
-  function updateProgress() {
-    const track = trackRef.current;
-    if (!track || track.scrollWidth === 0) return;
-    setProgress({
-      start: track.scrollLeft / track.scrollWidth,
-      size: Math.min(1, track.clientWidth / track.scrollWidth),
-    });
-  }
-
-  useEffect(() => {
-    updateProgress();
-    window.addEventListener("resize", updateProgress);
-    return () => window.removeEventListener("resize", updateProgress);
-  }, [professionals]);
-
   if (professionals.length === 0) return null;
 
   const newest = [...professionals]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, VISIBLE_COUNT);
 
-  function scrollByCard(direction: 1 | -1) {
-    const track = trackRef.current;
-    if (!track) return;
-    const card = track.querySelector<HTMLElement>("[data-new-profile-card]");
-    const step = card ? card.getBoundingClientRect().width + CARD_GAP : track.clientWidth;
-    track.scrollBy({ left: direction * step, behavior: "smooth" });
-  }
-
-  const atStart = progress.start <= 0.001;
-  const atEnd = progress.start + progress.size >= 0.999;
-
   return (
     <Section title={showTitle ? `Appena arrivati su ${BRAND.name}` : undefined} maxWidth={1160}>
       <div className="npc-root">
-        <div
-          ref={trackRef}
-          className={`npc-track${atStart ? "" : " npc-track--fade-start"}${atEnd ? "" : " npc-track--fade-end"}`}
-          onScroll={updateProgress}
-        >
+        {/* Riga larga quanto lo schermo, come su apple.com, con la barra e le
+            frecce sotto (BleedRail, docs/changelog/2026-11-11-home-caroselli-larghi.md). */}
+        <BleedRail previousLabel="Profili precedenti" nextLabel="Profili successivi" itemSelector="[data-new-profile-card]">
           {newest.map((pro, index) => (
             <NewProfileCard key={pro.id} pro={pro} delayMs={Math.min(index * 70, MAX_STAGGER_MS)} />
           ))}
-        </div>
-
-        {progress.size < 1 ? (
-          <div className="npc-controls">
-            <div className="npc-progress" aria-hidden="true">
-              <span
-                className="npc-progress-thumb"
-                style={{ left: `${progress.start * 100}%`, width: `${progress.size * 100}%` }}
-              />
-            </div>
-            <div className="npc-arrows">
-              <button
-                type="button"
-                className="npc-arrow category-carousel-arrow"
-                aria-label="Profili precedenti"
-                disabled={atStart}
-                onClick={() => scrollByCard(-1)}
-              >
-                <Icon name="chevron-left" size={18} color={brand.grafite} />
-              </button>
-              <button
-                type="button"
-                className="npc-arrow npc-arrow--next category-carousel-arrow"
-                aria-label="Profili successivi"
-                disabled={atEnd}
-                onClick={() => scrollByCard(1)}
-              >
-                <Icon name="chevron-right" size={18} color={brand.calce} />
-              </button>
-            </div>
-          </div>
-        ) : null}
+        </BleedRail>
       </div>
 
       <style jsx>{`
@@ -135,39 +74,6 @@ export function NewProfilesCarousel({
           display: flex;
           flex-direction: column;
           gap: 18px;
-        }
-        .npc-track {
-          display: flex;
-          gap: ${CARD_GAP}px;
-          overflow-x: auto;
-          overflow-y: hidden;
-          scroll-snap-type: x mandatory;
-          scrollbar-width: none;
-          --npc-fade-start: 0px;
-          --npc-fade-end: 0px;
-          -webkit-mask-image: linear-gradient(
-            90deg,
-            transparent 0,
-            #000 var(--npc-fade-start),
-            #000 calc(100% - var(--npc-fade-end)),
-            transparent 100%
-          );
-          mask-image: linear-gradient(
-            90deg,
-            transparent 0,
-            #000 var(--npc-fade-start),
-            #000 calc(100% - var(--npc-fade-end)),
-            transparent 100%
-          );
-        }
-        .npc-track--fade-start {
-          --npc-fade-start: 40px;
-        }
-        .npc-track--fade-end {
-          --npc-fade-end: 40px;
-        }
-        .npc-track::-webkit-scrollbar {
-          display: none;
         }
         .npc-root :global(.npc-card) {
           flex-shrink: 0;
@@ -184,56 +90,13 @@ export function NewProfilesCarousel({
             width: calc((100% - ${CARD_GAP * 3}px) / 4);
           }
         }
-        .npc-controls {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-        }
-        .npc-progress {
-          position: relative;
-          flex: 1;
-          height: 4px;
-          border-radius: 2px;
-          background: ${brand.filetto};
-          overflow: hidden;
-        }
-        .npc-progress-thumb {
-          position: absolute;
-          top: 0;
-          bottom: 0;
-          border-radius: 2px;
-          background: ${brand.cianografiaPieno};
-          transition: left 120ms linear;
-        }
-        .npc-arrows {
-          display: flex;
-          gap: 8px;
-        }
-        .npc-arrow {
-          width: 42px;
-          height: 42px;
-          border-radius: 21px;
-          border: none;
-          background: ${brand.calce};
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: opacity 160ms ease;
-        }
-        .npc-arrow--next {
-          background: ${brand.grafite};
-        }
-        .npc-arrow:disabled {
-          opacity: 0.35;
-          cursor: default;
-        }
         .npc-root :global(.npc-link) {
           display: flex;
           flex-direction: column;
           height: 100%;
           background: ${brand.calce};
-          border-radius: 24px;
+          /* 20 px come le altre schede del sito (angoli 10/20, §317). */
+          border-radius: 20px;
           overflow: hidden;
           text-decoration: none;
           color: inherit;

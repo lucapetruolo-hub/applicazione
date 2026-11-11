@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "@/components/IntentLink";
 import { usePathname } from "next/navigation";
-import { Button, motionEasing, motionFast } from "@professionisti/ui";
+import { Button } from "@professionisti/ui";
 import { LogoPlain } from "./LogoPlain";
 import styles from "./SiteHeader.module.css";
 import { TOKEN_STORAGE_KEY, useAuth } from "@/lib/AuthContext";
@@ -38,6 +38,9 @@ const AccountMenu = dynamic(loadAccountMenu, { ssr: false, loading: () => <span 
  * tramite il proprio CSS interno (media query a 860px) — annidarla in un
  * wrapper Tamagui `$gtMd`-only nasconderebbe anche il suo trigger mobile.
  */
+/** Barre ferme sotto l'intestazione: con queste la barra non si accorcia (vedi sotto). */
+const STICKY_BELOW_HEADER = ".acct-nav, .admin-nav, .profile-index, .ag-days, .results-map-sticky";
+
 const AUTH_PAGES = ["/registrati", "/accedi", "/password-dimenticata", "/reimposta-password", "/conferma-email", "/completa-profilo"];
 
 export function SiteHeader() {
@@ -83,14 +86,29 @@ export function SiteHeader() {
     void loadAccountMenu();
   }, []);
 
+  // Scorrendo la barra diventa più bassa e più trasparente, come su apple.com
+  // (richiesta di Luca, docs/changelog/2026-11-11-home-caroselli-larghi.md).
+  // Solo trasformazioni (.site-header-shell in globals.css): la barra resta
+  // alta 64 px nella pagina, così niente si sposta sotto di lei (le prove
+  // misurano zero spostamenti, CLS 0). Due soglie diverse (24 px per
+  // stringerla, 4 px per riallargarla) perché non tremi sul confine.
+  // Non si accorcia nelle pagine con una barra ferma subito sotto (menu
+  // dell'area account e admin, indice del profilo, agenda, mappa dei
+  // risultati): tra le due resterebbe una fessura da cui si vede la pagina, e
+  // spostare quelle barre muoverebbe il contenuto.
+  const [hasStickyBelow, setHasStickyBelow] = useState(false);
   useEffect(() => {
     function onScroll() {
-      setScrolled(window.scrollY > 8);
+      setScrolled((was) => (was ? window.scrollY > 4 : window.scrollY > 24));
+      // Letto a ogni scorrimento (non solo all'apertura): cambiando pagina la
+      // barra resta montata e le barre ferme sotto compaiono e spariscono.
+      if (window.scrollY > 4) setHasStickyBelow(document.querySelector(STICKY_BELOW_HEADER) !== null);
     }
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+  const compact = scrolled && !hasStickyBelow;
 
   return (
     // `position: sticky` non è tipizzato su Tamagui/React Native (stesso
@@ -98,15 +116,14 @@ export function SiteHeader() {
     // grezzo invece del prop Tamagui, che accetta solo i valori che RN
     // supporta (absolute/relative/static).
     <div
+      className="site-header-shell"
+      data-scrolled={scrolled || undefined}
+      data-compact={compact || undefined}
       style={{
         position: "sticky",
         top: 0,
         zIndex: 40,
         width: "100%",
-        backgroundColor: "rgba(255,255,255,0.92)",
-        backdropFilter: "blur(8px)",
-        boxShadow: scrolled ? "0 1px 4px rgba(43,32,19,0.015)" : "none",
-        transition: `box-shadow ${motionFast} ${motionEasing}`,
       }}
     >
       <div style={{ position: "relative", width: "100%" }}>
