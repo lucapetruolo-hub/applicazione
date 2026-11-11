@@ -13,7 +13,9 @@ come le impostazioni delle notifiche di iOS e Android. I nomi "Sito" ed
 per canale (verde con la spunta = acceso, vuoto = spento), area di tocco
 44 × 44 px, in colonne di larghezza fissa. Il testo prende lo spazio che
 resta e va a capo. "Sempre attivo" (con il lucchetto) sta centrato sulle due
-colonne. Un avviso che non ha un canale (per esempio i promemoria del
+colonne; su telefono si legge solo "Sempre" (miglioria scelta da Luca, così
+il testo ha più spazio), il lettore di schermo legge comunque "Sempre
+attivo". Un avviso che non ha un canale (per esempio i promemoria del
 professionista, solo sul sito) mostra un trattino grigio in quella colonna,
 così le righe restano allineate. I pulsanti grandi Sito/Email dell'argomento
 restano come prima. Stesso disegno su telefono e computer.

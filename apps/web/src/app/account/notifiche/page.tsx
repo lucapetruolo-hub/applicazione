@@ -245,7 +245,10 @@ export default function NotifichePage() {
                                     {item.locked ? (
                                       <span className="nt-cols nt-item-locked">
                                         <Icon name="lock" size={14} color={brand.grafite70} strokeWidth={2} />
-                                        Sempre attivo
+                                        {/* Su telefono si legge "Sempre" (più spazio al testo); il lettore di schermo legge sempre tutto. */}
+                                        <span>
+                                          Sempre<span className="nt-locked-extra"> attivo</span>
+                                        </span>
                                       </span>
                                     ) : (
                                       <span className="nt-cols" role="group" aria-label={`${item.copy.label}: dove avvisarti`}>
