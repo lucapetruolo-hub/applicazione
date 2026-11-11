@@ -24,6 +24,10 @@ Altri punti controllati: il riepilogo chiuso del preventivo accettato
 (`GuidedRequestCard.tsx`) resta in una riga perché è il titolo di una sezione
 che si apre; dentro, le voci sono già in colonna.
 
+**Secondo giro** (Luca, stesso giorno, "sì" alla miglioria proposta): nella
+scheda del professionista il nome della voce passa in grigio (`grafite70`) e
+l'importo resta scuro con le cifre allineate, come nella scheda del cliente.
+
 **Verifica**: prova nel browser `e2e/tests/voci-prezzo-colonna.spec.ts`
 (telefono e computer): tre voci, una sotto l'altra, importi allineati a
 destra, la voce lunga non spinge l'importo fuori dalla scheda.
