@@ -107,8 +107,7 @@ export function ArrivalTimesNotice({ token, bands, onSaved }: { token: string; b
                       ariaLabel={`Ora di arrivo da ${booking.clientName ?? "cliente"}`}
                       value={value}
                       onChange={(next) => setValues((prev) => ({ ...prev, [booking.id]: next }))}
-                      style={{ width: 104 }}
-                      padX={10}
+                      style={{ width: 110, padding: "8px 10px", borderRadius: 10, border: "1px solid #e6d5c3", fontSize: 16, fontFamily: "inherit", color: "#2b2420" }}
                     />
                     {/^\d{2}:\d{2}$/.test(value) ? <span className={styles.preview}>{arrivalWindowText(value, booking.scheduledAt, booking.scheduledEndAt)}</span> : null}
                   </div>

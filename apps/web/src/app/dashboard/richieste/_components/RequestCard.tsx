@@ -1812,7 +1812,7 @@ export function RequestCard({
                     Verso che ora passi? <span style={{ fontWeight: 400, color: brand.grafite70 }}>(facoltativo)</span>
                   </Text>
                   <XStack gap="2" alignItems="center" flexWrap="wrap">
-                    <ItalianTimeInput ariaLabel="Ora indicativa di arrivo (facoltativa)" value={arrivalTime} onChange={setArrivalTime} style={{ ...smallInputStyle, width: 110 }} padX={10} />
+                    <ItalianTimeInput ariaLabel="Ora indicativa di arrivo (facoltativa)" value={arrivalTime} onChange={setArrivalTime} style={{ ...smallInputStyle, width: 110 }} />
                     {arrivalTime ? (
                       <button type="button" className="slot-more" onClick={() => setArrivalTime("")}>
                         Togli
