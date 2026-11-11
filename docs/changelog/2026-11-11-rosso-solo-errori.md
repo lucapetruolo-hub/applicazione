@@ -53,6 +53,19 @@ proprio mentre accettava.
     gratis fino a <giorno e ora>. Dopo, l'acconto resta a te." oppure, senza
     acconto trattenuto, "Se annulla, il cliente deve avvisarti entro
     <giorno e ora>.", in grigio, finché il preavviso non è passato.
+- PDF del preventivo (miglioria approvata da Luca): stessa frase con giorno
+  e ora in un riquadro sabbia; con l'acconto sempre rimborsabile "Pagando
+  online, se annulli prima dell'appuntamento l'acconto ti torna sempre."
+- "Sempre rimborsabile" in chiaro (Luca: "diamo possibilità al professionista
+  … anche un'opzione dove è sempre rimborsabile"): esisteva già, ma era solo
+  la casella "l'acconto online resta a me" lasciata vuota. Nel preventivo ora
+  due scelte: "Se annulla più tardi, l'acconto online: Torna sempre al
+  cliente / Resta a me, non è rimborsabile" (di serie la prima, come prima).
+  Al cliente si dice anche il caso buono: sul preventivo, prima di "Accetta"
+  ("Se annulli prima dell'appuntamento, l'acconto ti torna sempre sulla
+  carta"), nel PDF e nell'email di conferma. Sul server la regola c'era già:
+  annullando dentro il preavviso con l'acconto trattenuto `keepDeposit`,
+  altrimenti `refundOnCancel` rimborsa tutto su Stripe.
 - Altri stati che non sono errori, dal rosso al grigio: "Hai rifiutato
   questo preventivo", "Il professionista ha ritirato questo preventivo",
   "Ha rifiutato" accanto al professionista, la riga "Annullata da te / dal

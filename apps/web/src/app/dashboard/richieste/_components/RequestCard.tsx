@@ -2007,11 +2007,24 @@ export function RequestCard({
                     </Chip>
                   ))}
                 </XStack>
+                {/* Due scelte chiare al posto di una casella: "sempre rimborsabile" non si
+                    vedeva, era solo la casella non spuntata (Luca, 11/11,
+                    docs/changelog/2026-11-11-rosso-solo-errori.md). */}
                 {onlinePayments && paymentOptions.some(paymentChoiceIsOnline) ? (
-                  <label style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer", fontSize: 16, color: brand.grafite }}>
-                    <input type="checkbox" checked={keepDeposit} onChange={(e) => setKeepDeposit(e.target.checked)} style={QUOTE_CHECKBOX_STYLE} />
-                    Se annulla più tardi, l&apos;acconto online resta a me
-                  </label>
+                  <YStack gap="1" role="radiogroup" aria-label="Acconto online se il cliente annulla più tardi">
+                    <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+                      Se annulla più tardi, l&apos;acconto online:
+                    </Text>
+                    {[
+                      { keep: false, label: "Torna sempre al cliente" },
+                      { keep: true, label: "Resta a me, non è rimborsabile" },
+                    ].map((option) => (
+                      <label key={String(option.keep)} style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer", fontSize: 16, color: brand.grafite, minHeight: 32 }}>
+                        <input type="radio" name={`keep-deposit-${lead.id}`} checked={keepDeposit === option.keep} onChange={() => setKeepDeposit(option.keep)} style={QUOTE_CHECKBOX_STYLE} />
+                        {option.label}
+                      </label>
+                    ))}
+                  </YStack>
                 ) : null}
                 {/* Preavviso più lungo del tempo che manca (collaudo C-08). */}
                 {/* Con un preavviso più breve che va ancora bene: avviso da correggere. Se nemmeno

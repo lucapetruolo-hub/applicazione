@@ -146,11 +146,20 @@ export function QuoteAcceptSummary({
             ? `Mancano meno di ${cancellationNoticeLabel(quote.cancellationNoticeHours)} all'appuntamento: ${depositText} non è rimborsabile, anche se annulli.`
             : `Annullamento gratuito fino a ${freeCancellationUntilLabel(quote.estimatedStartDate, quote.cancellationNoticeHours)}. Dopo, ${depositText} non è rimborsabile.`}
         </Text>
-      ) : alreadyLate ? (
-        <Text fontSize={16} color={brand.grafite70}>
-          Mancano meno di {cancellationNoticeLabel(quote.cancellationNoticeHours)} all&apos;appuntamento.
-        </Text>
-      ) : null}
+      ) : (
+        <>
+          {alreadyLate ? (
+            <Text fontSize={16} color={brand.grafite70}>
+              Mancano meno di {cancellationNoticeLabel(quote.cancellationNoticeHours)} all&apos;appuntamento.
+            </Text>
+          ) : null}
+          {split ? (
+            <Text fontSize={16} color={brand.grafite70}>
+              Se annulli prima dell&apos;appuntamento, l&apos;acconto ti torna sempre sulla carta.
+            </Text>
+          ) : null}
+        </>
+      )}
       {/* Lavoro ricorrente: le visite dopo la prima si pagano come questa (decisione di Luca del 09/11, docs/changelog/2026-11-09-lavori-ricorrenti.md). */}
       {quote.repeatEvery ? (
         <Text fontSize={16} color={brand.grafite} data-testid="quote-accept-recurring">

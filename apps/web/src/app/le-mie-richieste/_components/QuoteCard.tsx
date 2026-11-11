@@ -485,6 +485,11 @@ export function QuoteCard({
                 Pagando online, se annulli dopo {freeCancellationUntilLabel(quote.estimatedStartDate, quote.cancellationNoticeHours)} l&apos;acconto non è
                 rimborsabile.
               </Text>
+            ) : onlinePayments && quote.paymentOptions.some(paymentChoiceIsOnline) ? (
+              // Acconto sempre rimborsabile: si dice, è un buon motivo per pagare online (Luca, 11/11).
+              <Text fontSize={13} color={brand.grafite70}>
+                Pagando online, se annulli prima dell&apos;appuntamento l&apos;acconto ti torna sempre.
+              </Text>
             ) : null}
           </QuoteFact>
         ) : null}

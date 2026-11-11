@@ -82,7 +82,7 @@ type AcceptableQuote = Awaited<ReturnType<BookingsService["loadAcceptableQuote"]
  * Acconto online che resta al professionista dopo il preavviso, detto chiaro
  * nell'email "Appuntamento prenotato" con giorno e ora, come sul sito
  * (decisione di Luca dell'11/11, docs/changelog/2026-11-11-rosso-solo-errori.md).
- * null col pagamento diretto o se il professionista non tiene l'acconto.
+ * Con l'acconto sempre rimborsabile lo dice; null col pagamento diretto.
  */
 export function lateCancelDepositNotice(
   keepsDeposit: boolean,
@@ -91,7 +91,9 @@ export function lateCancelDepositNotice(
   cancellationNoticeHours: number | null,
   now: Date = new Date(),
 ): string | null {
-  if (!keepsDeposit || !split || split.nowEurCents <= 0) return null;
+  if (!split || split.nowEurCents <= 0) return null;
+  // Acconto sempre rimborsabile: lo diciamo, è una garanzia per il cliente (Luca, 11/11).
+  if (!keepsDeposit) return `Avvisa almeno ${cancellationNoticeLabel(cancellationNoticeHours)} prima. Se annulli prima dell'appuntamento, l'acconto ti torna sempre sulla carta.`;
   const deposit = split.restMaxEurCents === 0 ? `quello che hai pagato online (${formatEurCents(split.nowEurCents)})` : `l'acconto di ${formatEurCents(split.nowEurCents)}`;
   return isLateCancellation(scheduledAt, cancellationNoticeHours, now)
     ? `Mancano meno di ${cancellationNoticeLabel(cancellationNoticeHours)} all'appuntamento: ${deposit} non è rimborsabile, anche se annulli.`

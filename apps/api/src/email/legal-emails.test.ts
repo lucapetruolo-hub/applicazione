@@ -43,9 +43,11 @@ describe("email Appuntamento prenotato come conferma del contratto (E4-04)", () 
     expect(email.text).not.toContain("almeno 24 ore prima");
   });
 
-  it("col pagamento diretto niente frase sull'acconto", () => {
+  it("col pagamento diretto niente frase sull'acconto; con l'acconto sempre rimborsabile lo dice", () => {
     expect(lateCancelDepositNotice(true, null, new Date("2026-11-20T08:00:00.000Z"), 24)).toBeNull();
-    expect(lateCancelDepositNotice(false, { nowEurCents: 2400, restMaxEurCents: 9600 }, new Date("2026-11-20T08:00:00.000Z"), 24)).toBeNull();
+    expect(lateCancelDepositNotice(false, { nowEurCents: 2400, restMaxEurCents: 9600 }, new Date("2026-11-20T08:00:00.000Z"), 24)).toBe(
+      "Avvisa almeno 24 ore prima. Se annulli prima dell'appuntamento, l'acconto ti torna sempre sulla carta.",
+    );
   });
 
   it("senza prezzo né dati fiscali resta valida", () => {
