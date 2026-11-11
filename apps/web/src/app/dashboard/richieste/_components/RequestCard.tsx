@@ -1294,7 +1294,7 @@ export function RequestCard({
                 {stage === "accettata" || stage === "completata" || stage === "annullata" ? "Preventivo accettato" : "Il tuo preventivo"}
               </Text>
               {lead.quote.items.map((item) => (
-                <XStack key={item.id} justifyContent="space-between">
+                <XStack key={item.id} justifyContent="space-between" alignItems="baseline" gap="3">
                   <Text fontSize={16} color={brand.grafite}>
                     {item.name}
                   </Text>

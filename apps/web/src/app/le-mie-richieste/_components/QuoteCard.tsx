@@ -427,17 +427,33 @@ export function QuoteCard({
               </Text>
             ) : null}
             {/* Le voci solo se sono più di una: con una sola ripetevano il totale (scelta di Luca, 05/11/2026). */}
+            {/* Una voce per riga, nome a sinistra e importo a destra (richiesta di Luca,
+                docs/changelog/2026-11-11-voci-prezzo-in-colonna.md): in fila con "·" non si
+                capiva quale importo andava con quale voce. */}
             {quote.items.length > 1 ? (
-              <Text fontSize={13} color={brand.grafite70}>
-                {quote.items.map((item) => `${item.name} ${formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}`).join(" · ")}
-              </Text>
+              <YStack gap={4} marginTop={6} maxWidth={460}>
+                {quote.items.map((item) => (
+                  <XStack key={item.id} justifyContent="space-between" alignItems="baseline" gap="3">
+                    <Text fontSize={15} color={brand.grafite70} flexShrink={1} minWidth={0}>
+                      {item.name}
+                    </Text>
+                    <Text fontSize={15} color={brand.grafite} flexShrink={0} style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
+                    </Text>
+                  </XStack>
+                ))}
+              </YStack>
             ) : null}
           </QuoteFact>
         ) : quote.items.length > 0 ? (
           <QuoteFact label="Lavori">
-            <Text fontSize={16} color={brand.grafite}>
-              {quote.items.map((item) => item.name).join(" · ")}
-            </Text>
+            <YStack gap={2}>
+              {quote.items.map((item) => (
+                <Text key={item.id} fontSize={16} color={brand.grafite}>
+                  {item.name}
+                </Text>
+              ))}
+            </YStack>
           </QuoteFact>
         ) : null}
         {/* Lavoro ricorrente: prezzo a visita (docs/changelog/2026-11-09-lavori-ricorrenti.md). */}
