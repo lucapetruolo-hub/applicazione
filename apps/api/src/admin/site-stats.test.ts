@@ -174,6 +174,16 @@ describe("consigli", () => {
     expect(buildSiteAdvice(baseInput({ popularJobs: view(12, 12) }))).toEqual([]);
   });
 
+  // docs/changelog/2026-11-11-mestieri-che-mancano.md
+  it("mestiere che non abbiamo: consiglio da 10 richieste in su, con le zone", () => {
+    const sarto = { name: "Sarto", count: 12, zones: [{ label: "Latina e provincia", count: 7 }, { label: "Roma e provincia", count: 5 }] };
+    const advice = buildSiteAdvice(baseInput({ missingTrades: [sarto, { name: "Veterinario", count: 9, zones: [] }] }));
+    expect(advice).toHaveLength(1);
+    expect(advice[0]).toMatchObject({ key: "missing-trade:sarto", level: "TIP", title: "Cercano «Sarto», un mestiere che non abbiamo" });
+    expect(advice[0]!.why).toBe("12 richieste negli ultimi 30 giorni, di più in: Latina e provincia (7), Roma e provincia (5).");
+    expect(advice[0]!.link?.href).toBe("/admin/mestieri-richiesti#mestieri-mancanti");
+  });
+
   it("niente da fare: nessun consiglio", () => {
     expect(buildSiteAdvice(baseInput())).toEqual([]);
   });

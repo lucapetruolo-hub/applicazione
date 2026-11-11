@@ -30,6 +30,8 @@ import {
   type SiteAdvice,
   type SubmitFailureKind,
   type SubmitFormKey,
+  MISSING_TRADE_ADVICE_MIN,
+  type MissingTrade,
 } from "@professionisti/shared";
 import type { NotificationOptOutGroup } from "../notifications/opt-outs";
 import { categoryLabel, searchCityLabel, type SearchDemandZone } from "./professional-stats";
@@ -262,6 +264,8 @@ export type SiteAdviceInput = {
   /** Ultimi 7 giorni. */
   failures: { form: SubmitFormKey; kind: SubmitFailureKind; count: number }[];
   unknownJobs: AdminSiteStats["unknownJobs"];
+  /** Mestieri che il sito non ha, scritti dall'IA, ultimi 30 giorni (docs/changelog/2026-11-11-mestieri-che-mancano.md). */
+  missingTrades?: MissingTrade[];
   popularServices: AdminSiteStats["popularServices"];
   missingServices: AdminSiteStats["missingServices"];
   /** "Lavori più cercati" della home, con le ricerche (docs/changelog/2026-11-07-lavori-piu-cercati-home.md). */
@@ -548,7 +552,20 @@ export function buildSiteAdvice(input: SiteAdviceInput): SiteAdvice[] {
       level: "TIP",
       title: `Cercano «${job.term}», un lavoro che non c'è`,
       why: `Cercato in ${job.days} giorni diversi negli ultimi 90.`,
-      todo: "Valuta se aggiungerlo: guarda quanto è cercato su Google (Keyword Planner) e se trovi professionisti a Latina.",
+      todo: "Valuta se aggiungerlo: guarda quanto è cercato su Google (Keyword Planner) e se trovi professionisti nelle zone dove lo cercano.",
+    });
+  }
+
+  // Mestieri che il sito non ha, proposti dall'IA alle descrizioni dei clienti
+  // (docs/changelog/2026-11-11-mestieri-che-mancano.md, richiesta di Luca).
+  for (const trade of (input.missingTrades ?? []).filter((t) => t.count >= MISSING_TRADE_ADVICE_MIN).slice(0, 2)) {
+    advice.push({
+      key: `missing-trade:${trade.name.toLowerCase()}`,
+      level: "TIP",
+      title: `Cercano «${trade.name}», un mestiere che non abbiamo`,
+      why: `${plural(trade.count, "richiesta", "richieste")} negli ultimi 30 giorni${trade.zones.length > 0 ? `, di più in: ${trade.zones.map((z) => `${z.label} (${z.count})`).join(", ")}` : ""}.`,
+      todo: "Valuta se aggiungerlo come mestiere del sito e cerca professionisti in quelle zone.",
+      link: { label: "Mestieri che non abbiamo", href: "/admin/mestieri-richiesti#mestieri-mancanti" },
     });
   }
 

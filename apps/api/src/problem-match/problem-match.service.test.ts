@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildServiceCatalog } from "@professionisti/shared";
-import { ProblemMatchService, anonymizeProblemText, cleanReason, openRouterBody } from "./problem-match.service";
+import { ProblemMatchService, anonymizeProblemText, cleanReason, missingTradeOf, openRouterBody } from "./problem-match.service";
 
 function fakePrisma(words: { word: string; categorySlug: string | null; outOfService: string | null }[] = []) {
   return {
@@ -11,8 +11,9 @@ function fakePrisma(words: { word: string; categorySlug: string | null; outOfSer
 const fakeCatalog = { catalog: vi.fn().mockResolvedValue(buildServiceCatalog({ handWritten: { idraulico: ["Riparazione autoclave"] } })) };
 const newService = (words?: Parameters<typeof fakePrisma>[0]) => new ProblemMatchService(fakePrisma(words) as never, fakeCatalog as never);
 
-const aiAnswer = (overrides: Partial<{ categories: string[]; outOfService: string | null; notAJob: boolean; reason: string; service: string | null }> = {}) =>
-  ({ categories: ["idraulico"], outOfService: null, notAJob: false, reason: "Lo sistema l'idraulico.", service: null, ...overrides }) as never;
+const aiAnswer = (
+  overrides: Partial<{ categories: string[]; outOfService: string | null; notAJob: boolean; reason: string; service: string | null; missingTrade: string | null }> = {},
+) => ({ categories: ["idraulico"], outOfService: null, notAJob: false, reason: "Lo sistema l'idraulico.", service: null, missingTrade: null, ...overrides }) as never;
 
 describe("ProblemMatchService", () => {
   afterEach(() => {
@@ -142,6 +143,17 @@ describe("ProblemMatchService", () => {
     expect((await other.match("macchia di umido sul soffitto")).service).toBeNull();
   });
 
+  // docs/changelog/2026-11-11-mestieri-che-mancano.md
+  it("salva il mestiere che non abbiamo scritto dall'IA, ma non lo manda al sito", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "test");
+    const prisma = fakePrisma();
+    const service = new ProblemMatchService(prisma as never, fakeCatalog as never);
+    service.askAi = vi.fn().mockResolvedValue(aiAnswer({ categories: [], reason: "", missingTrade: "sarto" }));
+    const result = await service.match("devo accorciare l'orlo dei pantaloni", "Latina");
+    expect(result).not.toHaveProperty("missingTrade");
+    expect(prisma.problemDescription.create).toHaveBeenCalledWith({ data: expect.objectContaining({ missingTrade: "Sarto", city: "Latina" }) });
+  });
+
   it("salva la descrizione senza contatti", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "");
     const prisma = fakePrisma();
@@ -149,6 +161,20 @@ describe("ProblemMatchService", () => {
     expect(prisma.problemDescription.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ text: "perdita dal rubinetto, chiamate [numero]", city: "Latina", categories: ["idraulico"] }),
     });
+  });
+});
+
+describe("missingTradeOf", () => {
+  const base = { categories: [], safety: null, outOfService: null, question: null, reason: null, service: null, source: "ia" as const };
+  it("il nome del lavoro fuori servizio, altrimenti quello dell'IA", () => {
+    expect(missingTradeOf({ ...base, missingTrade: "Veterinario" })).toBe("Veterinario");
+    expect(missingTradeOf({ ...base, outOfService: "antennista" })).toBe("Antennista");
+    expect(missingTradeOf({ ...base, outOfService: "antennista", missingTrade: "Tecnico antenne" })).toBe("Antennista");
+  });
+  it("niente se c'è un mestiere del sito o se l'IA nomina un mestiere che abbiamo", () => {
+    expect(missingTradeOf({ ...base, categories: ["idraulico"], missingTrade: "Sarto" })).toBeNull();
+    expect(missingTradeOf({ ...base, missingTrade: "Idraulico" })).toBeNull();
+    expect(missingTradeOf(base)).toBeNull();
   });
 });
 

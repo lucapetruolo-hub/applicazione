@@ -1,3 +1,4 @@
+import type { MissingTrade } from "./missingTrades";
 import type { ProfessionalCategorySlug } from "./categories";
 import { serviceFromWords } from "./problemServiceWords";
 
@@ -554,6 +555,8 @@ export type ProblemMatchAdminOverview = {
      * mestieri che mancano al sito (docs/changelog/2026-11-04-avviso-caldaie.md).
      */
     missing: { text: string; count: number }[];
+    /** Mestieri che il sito non ha, per nome e zona (docs/changelog/2026-11-11-mestieri-che-mancano.md). */
+    missingTrades: MissingTrade[];
     suggestions: ProblemSuggestionOutcomes;
   };
   descriptions: {
@@ -563,6 +566,7 @@ export type ProblemMatchAdminOverview = {
     categories: string[];
     safety: string | null;
     outOfService: string | null;
+    missingTrade: string | null;
     source: string;
     createdAt: string;
   }[];

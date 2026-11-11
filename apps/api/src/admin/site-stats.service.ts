@@ -33,6 +33,7 @@ import {
   type SiteNoteInput,
   type SubmitFailureKind,
   type SubmitFormKey,
+  buildMissingTrades,
   buildPopularJobsAdminView,
   popularJobsFromRows,
 } from "@professionisti/shared";
@@ -380,6 +381,12 @@ export class SiteStatsService {
       ),
     };
 
+    // Mestieri che mancano: ultimi 30 giorni, dal lancio (§395); le descrizioni non sanno chi le ha scritte.
+    const missingTradeRows = await this.prisma.problemDescription.findMany({
+      where: { createdAt: { gte: sinceLaunch(new Date(now.getTime() - 30 * DAY_MS), countingFrom()) }, missingTrade: { not: null } },
+      select: { missingTrade: true, city: true },
+    });
+
     const allAdvice = buildSiteAdvice({
       now,
       profileViews: funnelCounts.PROFILE_VIEWS,
@@ -389,6 +396,7 @@ export class SiteStatsService {
       requestSteps,
       failures: sumFailures(since7Day),
       unknownJobs,
+      missingTrades: buildMissingTrades(missingTradeRows),
       popularServices,
       popularJobs,
       missingServices,

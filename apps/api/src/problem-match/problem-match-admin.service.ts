@@ -2,6 +2,8 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from "@nes
 import type { PrismaClient } from "@professionisti/database";
 import {
   ALL_SUGGESTED_SERVICES,
+  MISSING_TRADES_SHOWN,
+  buildMissingTrades,
   OUT_OF_SERVICE_LABELS,
   POPULAR_SERVICES,
   PROFESSIONAL_CATEGORIES,
@@ -85,7 +87,7 @@ export class ProblemMatchAdminService {
       this.prisma.problemDescription.findMany({ where, orderBy: { createdAt: "desc" }, take: 200 }),
       this.prisma.problemDescription.findMany({
         where: { createdAt: { gte: since } },
-        select: { text: true, categories: true, outOfService: true, safety: true, source: true },
+        select: { text: true, city: true, categories: true, outOfService: true, safety: true, source: true, missingTrade: true },
       }),
       this.prisma.problemWord.findMany({ orderBy: { createdAt: "desc" } }),
       // Richieste inviate con la categoria proposta dalla descrizione (dal lancio, senza account di prova, §395).
@@ -118,7 +120,7 @@ export class ProblemMatchAdminService {
     const suggestions = suggestionOutcomes(suggested.map((row) => ({ suggested: row.suggestedCategorySlug!, chosen: row.category.slug, withOthers: Boolean(row.submissionGroupId) })));
 
     return {
-      lastMonth: { total: lastMonth.length, safety, ai, none, byCategory: sorted(byCategory), byOutOfService: sorted(byOutOfService), missing: sorted(missing).slice(0, MISSING_SHOWN).map(({ key, count }) => ({ text: key, count })), suggestions },
+      lastMonth: { total: lastMonth.length, safety, ai, none, byCategory: sorted(byCategory), byOutOfService: sorted(byOutOfService), missing: sorted(missing).slice(0, MISSING_SHOWN).map(({ key, count }) => ({ text: key, count })), missingTrades: buildMissingTrades(lastMonth).slice(0, MISSING_TRADES_SHOWN), suggestions },
       descriptions: descriptions.map((row) => ({
         id: row.id,
         text: row.text,
@@ -126,6 +128,7 @@ export class ProblemMatchAdminService {
         categories: row.categories,
         safety: row.safety,
         outOfService: row.outOfService,
+        missingTrade: row.missingTrade,
         source: row.source,
         createdAt: row.createdAt.toISOString(),
       })),

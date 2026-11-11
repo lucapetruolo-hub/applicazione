@@ -14,6 +14,7 @@ const prisma = new PrismaClient();
 const stamp = Date.now();
 const PROBLEM = "Il rubinetto della cucina perde";
 let adminId = "";
+let missingTrade = "";
 
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "telefono-italia" && testInfo.project.name !== "computer-tokyo", "Un giro su telefono e uno su computer.");
@@ -80,6 +81,15 @@ test.beforeAll(async () => {
   const tuttofare = await prisma.category.findUniqueOrThrow({ where: { slug: "tuttofare" } });
   await prisma.guidedRequest.create({
     data: { clientId: client.id, categoryId: tuttofare.id, description: `Mensola da montare ${stamp}`, city: "Latina", suggestedCategorySlug: "falegname" },
+  });
+  // Mestiere che non abbiamo, scritto dall'IA (docs/changelog/2026-11-11-mestieri-che-mancano.md).
+  const trade = `Sarto ${stamp.toString(36).replace(/[0-9]/g, "")}`;
+  missingTrade = trade.charAt(0).toUpperCase() + trade.slice(1).toLowerCase();
+  await prisma.problemDescription.createMany({
+    data: [
+      ...Array.from({ length: 7 }, () => ({ text: `Orlo dei pantaloni ${stamp}`, city: "Sabaudia", categories: [], source: "ia", missingTrade: trade })),
+      ...Array.from({ length: 4 }, () => ({ text: `Accorciare la giacca ${stamp}`, city: "Roma", categories: [], source: "ia", missingTrade: trade })),
+    ],
   });
 });
 
@@ -162,6 +172,11 @@ test("Admin: richieste che tengono o cambiano la categoria proposta", async ({ b
   await page.goto("/admin/mestieri-richiesti");
   await expect(page.getByText(/Richieste di preventivo con la categoria proposta: \d+/)).toBeVisible();
   await expect(page.getByText(/Falegname → Tutto Fare \d+/)).toBeVisible();
+  // Mestieri che non abbiamo, con le zone e "Da valutare" da 10 richieste.
+  const missing = page.locator("#mestieri-mancanti");
+  await expect(missing.getByText(missingTrade, { exact: true })).toBeVisible();
+  await expect(missing.getByText("Latina e provincia 7 · Roma e provincia 4")).toBeVisible();
+  await expect(missing.getByText("Da valutare").first()).toBeVisible();
   if (process.env.E2E_SCREENSHOTS) await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/admin-categoria-proposta-${testInfo.project.name}.png`, fullPage: true });
   await context.close();
 });

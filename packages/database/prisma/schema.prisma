@@ -3333,6 +3333,9 @@ model ProblemDescription {
   source       String
   /// Prestazione indicata per il primo mestiere (docs/changelog/2026-11-06-dizionario-prestazioni.md).
   service      String?
+  /// Mestiere che il sito non ha, scritto dall'IA quando nessun mestiere va bene
+  /// (docs/changelog/2026-11-11-mestieri-che-mancano.md).
+  missingTrade String?
   createdAt    DateTime @default(now())
 
   @@index([createdAt])
