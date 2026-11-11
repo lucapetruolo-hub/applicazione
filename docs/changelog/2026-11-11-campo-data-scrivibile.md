@@ -37,7 +37,9 @@ clienti", date di Statistiche, data di nascita nei dati fiscali).
 - I campi data dentro un `<label>` senza `ariaLabel` (Agenda "Dal"/"Al",
   Statistiche) ora ce l'hanno: il nome del pulsante del calendario non finisce
   nel nome del campo.
-- Il campo data di Admin › Andamento resta quello del browser (pagina interna).
+- Anche il giorno delle note in Admin › Andamento usa lo stesso campo
+  (approvato da Luca lo stesso giorno, seconda PR): senza data "Aggiungi la
+  nota" resta spento, al posto del `required` del campo del browser.
 
 **Verifica**: lint e typecheck di `apps/web`; prova nuova
 `e2e/tests/campo-data.spec.ts` (scrittura una cifra alla volta, anno mancante,
