@@ -108,6 +108,28 @@ test("\"Fatto\" toglie un consiglio e \"Riapri\" lo riporta", async ({ browser }
   await context.close();
 });
 
+test("nota sul grafico: il giorno si scrive a mano o si sceglie dal calendarietto", async ({ browser }) => {
+  // Campo data unico del sito (docs/changelog/2026-11-11-campo-data-scrivibile.md).
+  const { context, page } = await adminPage(browser, { width: 1280, height: 900, isMobile: false });
+  await page.goto("/admin/andamento");
+  const day = page.getByRole("textbox", { name: "Giorno", exact: true });
+  await day.scrollIntoViewIfNeeded();
+  await day.fill("");
+  await day.pressSequentially("0111");
+  await day.press("Tab");
+  await expect(day).toHaveValue(/^01\/11\/\d{4}$/);
+  // Un giorno nel futuro non si può annotare.
+  await day.fill("01/01/2099");
+  await day.press("Tab");
+  await expect(page.getByRole("alert").filter({ hasText: "fino al" })).toBeVisible();
+  await day.locator("xpath=..").getByRole("button", { name: "Scegli dal calendario" }).click();
+  const cal = page.getByRole("dialog", { name: "Calendario" });
+  await expect(cal).toBeVisible();
+  await expect(cal.getByRole("button", { name: "Mese dopo" })).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await context.close();
+});
+
 test("account di prova eliminato per sempre con le sue richieste", async ({ browser }) => {
   const client = await createClient(prisma, "Prova");
   const category = await prisma.category.findFirstOrThrow({ where: { slug: "idraulico" } });

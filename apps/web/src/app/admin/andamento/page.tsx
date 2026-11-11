@@ -50,6 +50,7 @@ import { SiteAdviceList } from "@/components/admin/SiteAdviceList";
 import { AdminProposalsOverview } from "@/components/admin/AdminProposalsOverview";
 import { AdminSummaryNumbers } from "@/components/admin/AdminSummaryNumbers";
 import { StatsBarChart } from "@/components/StatsBarChart";
+import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { SkeletonTableRows } from "@/components/Skeleton";
 import { WaitBarSignal } from "@/components/WaitBar";
 
@@ -1123,14 +1124,14 @@ function NotesCard({
         </ul>
       ) : null}
       <form className="site-note-form" onSubmit={add}>
-        <input
-          type="date"
+        {/* Campo data unico del sito (docs/changelog/2026-11-11-campo-data-scrivibile.md). */}
+        <ItalianDateInput
           className="admin-input"
-          aria-label="Giorno"
+          ariaLabel="Giorno"
           value={day}
           max={todayRome()}
-          onChange={(e) => setDay(e.target.value)}
-          required
+          onChange={setDay}
+          style={{ width: 170 }}
         />
         <input
           className="admin-input"
@@ -1144,7 +1145,7 @@ function NotesCard({
         <button
           type="submit"
           className="admin-link-button"
-          disabled={pending || text.trim().length < 2}
+          disabled={pending || !day || text.trim().length < 2}
         >
           {pending ? "Attendi..." : "Aggiungi la nota"}
         </button>
