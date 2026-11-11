@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { PopularJobsResponse, ProblemExamplesResponse, ProfessionalCategorySlug, ServicePriceIndexEntry } from "@professionisti/shared";
 import type { NewProfileSummary } from "@/lib/newProfiles";
 import { Section, SectionDensityProvider } from "@professionisti/ui";
-import { CategoryStoryRail, useCategoryStoryRail } from "@/components/CategoryStoryRail";
+import { CategoryStoryRail, goToProblemField, useCategoryStoryRail } from "@/components/CategoryStoryRail";
 import { FadeInSection } from "@/components/FadeInSection";
 import { HomeFaq } from "@/components/HomeFaq";
 import { HomeHero } from "@/components/HomeHero";
@@ -68,7 +68,20 @@ export default function HomeContent({
 
         {/* 2. Categorie. */}
         <FadeInSection>
-          <Section title="Di cosa hai bisogno?" titleNote="Trova chi c'è vicino a te." maxWidth={1080}>
+          <Section
+            title="Di cosa hai bisogno?"
+            titleNote="Trova chi c'è vicino a te."
+            // Da computer, per chi non arriva in fondo alla riga dove c'è la
+            // scheda "Non trovi il tuo lavoro?" (scelta di Luca,
+            // docs/changelog/2026-11-11-home-apertura-piu-alta.md). Da
+            // telefono la scheda si vede già nella griglia.
+            titleAction={
+              <Link href="/preventivo" className="home-section-action home-section-action--wide" onClick={goToProblemField}>
+                Non trovi il tuo lavoro?
+              </Link>
+            }
+            maxWidth={1080}
+          >
             <CategoryStoryRail state={categoryRail} />
             <PopularJobs data={popularJobs} />
           </Section>

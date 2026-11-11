@@ -1,0 +1,39 @@
+# Home: apertura più vicina alla barra in alto (11/11/2026)
+
+**Richiesta** (Luca): far iniziare la home un po' più in alto, così il primo
+schermo è già centrato.
+
+**Decisione e motivo**: tra la barra in alto e il titolo c'erano 71 px
+(32 di margine esterno e 39 interni, `HomeHero.module.css`). Ora sono 40 px
+da computer (8 + 32) e 32 da telefono (8 + 24). Su un portatile alto 768 px
+la prima schermata prima tagliava "Richiesta urgente" (finiva a 781 px); ora
+titolo, ricerca, esempi e "Richiesta urgente" ci stanno tutti (finisce a 750
+px). Il resto dell'apertura non cambia.
+
+**Verifica**: posizioni misurate con Playwright a 1440×900, 1366×768 e
+390×844 (titolo da 135 a 104 px da computer, da 135 a 96 da telefono), foto
+prima/dopo in `anteprime/home-caroselli-apple/alto*` della cartella del
+progetto.
+
+**"Non trovi il tuo lavoro?" torna in fondo alla riga delle categorie**
+(stesso giorno): a Luca non piaceva come prima scheda (docs/changelog/2026-11-11-home-caroselli-larghi.md,
+terzo giro). Le foto dei mestieri si vedono subito, e chi non trova il suo
+mestiere trova l'uscita dopo l'ultima categoria. Tolti gli `order` del
+telefono, che ora non servono più: anche lì la scheda è l'ultima, dopo "Mostra
+altre N categorie", come prima.
+
+**Frecce dei caroselli uguali, come su apple.com** (richiesta di Luca): prima
+una era bianca e una nera, e restavano così anche a fine riga. Ora sono due
+cerchi uguali grigio chiaro con la punta scura (`.bleed-rail-arrow` in
+`globals.css`), un po' più scuri al passaggio del mouse; a fine riga la
+freccia resta con la punta sbiadita. Vale per le categorie e per i nuovi
+professionisti (`BleedRail`). Poi, sempre su richiesta di Luca, anche il movimento di apple.com: al
+passaggio del mouse la punta scivola di 2 px nella sua direzione, al clic il
+cerchio si stringe appena (niente movimento con "riduci movimento").
+
+**Migliorie dopo la revisione da esperto** (sì di Luca): le frecce prendono
+il colore dei testi della palette nuova (#1b1a18, PR #324) invece del vecchio
+marrone scuro; da computer, accanto al titolo "Di cosa hai bisogno?", il link
+"Non trovi il tuo lavoro? →" porta al campo "Cosa è successo?" come la scheda
+in fondo alla riga (`goToProblemField`), per chi non scorre fino alla fine.
+Da telefono il link non c'è: la scheda è già visibile nella griglia.
