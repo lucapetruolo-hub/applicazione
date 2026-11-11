@@ -5617,6 +5617,97 @@ a.admin-kpi:hover {
   }
 }
 
+/* Righe larghe quanto lo schermo in home, come su apple.com (BleedRail,
+   docs/changelog/2026-11-11-home-caroselli-larghi.md). La riga esce dalla
+   colonna della sezione fino ai bordi dello schermo; il margine interno
+   (`--bleed-gutter`) tiene la prima scheda allineata al titolo, anche dopo
+   aver tornato indietro con le frecce (scroll-padding). Niente bordi
+   sfumati: la riga finisce col bordo dello schermo. Il contenitore della
+   home ha `overflow-x: clip` (HomeContent.module.css). */
+.bleed-rail {
+  --bleed-gutter: max(24px, calc((100vw - var(--bleed-max, 1080px)) / 2));
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+.bleed-rail-track {
+  display: flex;
+  gap: 16px;
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+  padding: 8px var(--bleed-gutter) 12px;
+  scroll-padding-inline: var(--bleed-gutter);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+}
+.bleed-rail-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bleed-rail-progress {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  margin-right: 8px;
+  border-radius: 2px;
+  background: #f0dcc0;
+  overflow: hidden;
+}
+.bleed-rail-progress > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 2px;
+  background: #128552;
+  transition: left 120ms linear;
+}
+.bleed-rail-arrow {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: opacity 160ms ease, transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.bleed-rail-arrow--next {
+  background: #2b2420;
+}
+.bleed-rail-arrow:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.bleed-rail-arrow:focus-visible {
+  outline: 3px solid #189a63;
+  outline-offset: 2px;
+}
+.bleed-rail-arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+/* Su un telefono senza mouse niente frecce (regola di .category-carousel-arrow):
+   resta solo la barra, che dice che la riga continua. */
+@media (hover: none) {
+  .bleed-rail-progress {
+    margin-right: 0;
+  }
+}
+/* Da computer le schede delle categorie un po' più grandi, come le schede
+   di apple.com: la riga ora ha tutto lo schermo. */
+@media (min-width: 1000px) {
+  .story-rail .story-card {
+    width: 260px;
+    height: 380px;
+  }
+}
+
 /* Sezione "Per chi offre servizi" con foto a lato (ProCtaSection). */
 .pro-cta {
   display: grid;
@@ -6936,8 +7027,15 @@ a.admin-kpi:hover {
     -webkit-mask-image: none !important;
     mask-image: none !important;
   }
-  .story-rail .category-carousel-arrow {
+  .story-rail .category-carousel-arrow,
+  .story-rail .bleed-rail-controls {
     display: none !important;
+  }
+  /* Griglia nella colonna della sezione, non larga quanto lo schermo. */
+  .story-rail .bleed-rail-track {
+    width: auto;
+    margin-inline: 0;
+    padding-inline: 0;
   }
   .story-rail .story-card {
     width: auto;

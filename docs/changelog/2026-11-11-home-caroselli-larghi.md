@@ -1,0 +1,40 @@
+# Home: caroselli larghi quanto lo schermo e sfumatura continua (11/11/2026)
+
+**Richiesta** (Luca, con uno screenshot di apple.com): in home l'elenco delle
+categorie e dei nuovi professionisti come su apple.com, a tutta larghezza
+della pagina; la stessa sfumatura su tutta la home; correggere lo sfondo che
+"a metà pagina si interrompe".
+
+**Causa dello sfondo che si interrompe**: le due luci sfumate del sito
+(`.site-blobs`, fisse dietro ai contenuti, docs/CHANGELOG.md §180) si vedono
+solo dove la pagina è trasparente. Le sezioni `Section` della home avevano il
+fondo pesca pieno (`--c-gesso`), le altre no: scorrendo, la sfumatura
+compariva e spariva a ogni sezione.
+
+**Decisione**:
+- `Section` (variante del sito) prende il fondo da `--section-light-bg`, di
+  base `--c-gesso` come prima; la home lo mette trasparente
+  (`HomeContent.module.css`). Le altre pagine non cambiano.
+- Nuovo `BleedRail` (`apps/web/src/components/BleedRail.tsx`, stili
+  `.bleed-rail*` in `globals.css`): riga che esce dalla colonna della
+  sezione fino ai bordi dello schermo, prima scheda allineata al titolo
+  (anche tornando indietro, `scroll-padding`), niente bordi sfumati, sotto a
+  destra la barra di avanzamento (scelta di Luca, §232) e le due frecce
+  spente alle estremità; senza frecce sui telefoni senza mouse.
+- Categorie (`CategoryStoryRail`) e nuovi professionisti
+  (`NewProfilesCarousel`) usano entrambe `BleedRail`: prima ognuna aveva
+  frecce e bordi diversi. Da computer le schede delle categorie passano da
+  230×340 a 260×380 px.
+- Da telefono le categorie restano la griglia a due colonne con "Mostra
+  altre N categorie" (docs/CHANGELOG.md §271, scelta di Luca); i nuovi
+  professionisti arrivano fino al bordo dello schermo.
+- Il contenitore della home ha `overflow-x: clip`, perché `100vw` comprende
+  la barra di scorrimento su Windows.
+
+**Non fatto (in attesa di Luca)**: apertura della home senza riquadro verde,
+come su apple.com. Va contro la decisione "hero verde" (24/10): proposta con
+foto, nessuna modifica senza il suo ok.
+
+**Verifica**: foto prima/dopo da telefono (390 px) e computer (1440 px) in
+`anteprime/home-caroselli-apple/` della cartella del progetto; lint,
+controllo dei tipi e prove della home.

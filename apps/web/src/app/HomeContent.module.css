@@ -4,4 +4,13 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
+  /* Sezioni senza fondo pieno: la sfumatura del sito (.site-blobs) resta
+     dietro a tutta la home, come su apple.com, invece di comparire e
+     sparire a ogni sezione (docs/changelog/2026-11-11-home-caroselli-larghi.md). */
+  --section-light-bg: transparent;
+  /* Le righe larghe quanto lo schermo (.bleed-rail) usano 100vw, che
+     comprende la barra di scorrimento verticale su Windows: senza questo la
+     pagina scorrerebbe di lato di qualche pixel. `clip` e non `hidden`, per
+     non creare un contenitore di scorrimento. */
+  overflow-x: clip;
 }

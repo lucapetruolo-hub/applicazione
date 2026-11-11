@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Icon } from "@professionisti/ui";
-import { CategoryCarousel } from "./CategoryCarousel";
+import { BleedRail } from "./BleedRail";
 import { CategoryIconBadge } from "./CategoryIconBadge";
 import { GlowLights } from "./GlowLights";
 import { CATEGORY_PHOTOS, CATEGORY_PHOTO_FOCUS } from "@/lib/categoryPhotos";
@@ -98,7 +98,16 @@ export function CategoryStoryRail({ state }: { state: CategoryStoryRailState }) 
           (regole CSS in .story-rail, globals.css): la riga da scorrere
           mostrava una scheda alla volta (revisione UX, docs/CHANGELOG.md §271).
           Da computer resta la riga da scorrere. */}
-      <CategoryCarousel key={group} id={RAIL_ID} className={`story-rail${showAll ? " show-all" : ""}`}>
+      {/* Da computer riga larga quanto lo schermo, come su apple.com (BleedRail,
+          docs/changelog/2026-11-11-home-caroselli-larghi.md). */}
+      <BleedRail
+        key={group}
+        id={RAIL_ID}
+        className={`story-rail${showAll ? " show-all" : ""}`}
+        previousLabel="Categorie precedenti"
+        nextLabel="Categorie successive"
+        itemSelector=".story-card"
+      >
         {categories.map((c, index) => {
           const photoUrl = CATEGORY_PHOTOS[c.slug];
           return (
@@ -162,7 +171,7 @@ export function CategoryStoryRail({ state }: { state: CategoryStoryRailState }) 
           <span className="story-card-title">Non trovi il tuo lavoro?</span>
           <span style={{ fontSize: 16, opacity: 0.9 }}>Scrivi il problema, ti diciamo chi chiamare →</span>
         </Link>
-      </CategoryCarousel>
+      </BleedRail>
     </div>
   );
 }
