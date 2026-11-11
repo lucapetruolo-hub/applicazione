@@ -49,7 +49,9 @@ mostrato come una striscia sottile".
 - Settimana sul telefono: il primo tocco su un lavoro apre in basso un foglio
   con nome intero, orario, città e tipo, "Apri" (che fa quello che faceva il
   tocco prima) e "Chiudi"; Esc lo chiude, cambiando settimana sparisce.
-  Giorno e computer restano col tocco che apre subito.
+  Giorno e computer restano col tocco che apre subito. Nel foglio anche
+  l'indirizzo del lavoro confermato (o del lavoro esterno), così "stasera so
+  dove devo andare domani" resta di un tocco.
 - Un preventivo in attesa lungo almeno 3 ore, senza ora di arrivo, che tocca un
   lavoro già preso diventa una striscia a righe ottone a destra della colonna
   (12 px al computer, 8 px sul telefono, `waitStrips`); il lavoro preso resta

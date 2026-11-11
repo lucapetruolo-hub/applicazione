@@ -1651,6 +1651,13 @@ function DashboardAgendaContent() {
               detail: [day.dayOf, b.categoryLabel, b.serviceMode === "ONLINE" ? "online" : b.city].filter(Boolean).join(" · "),
               kind: bookingKind(b),
               label: AGENDA_BOOKING_STATUS_LABEL[b.status],
+              // Indirizzo solo a lavoro confermato (CLAUDE.md §5 punto 9): "so dove devo andare" già dal riquadro in basso.
+              place:
+                b.status === "CONFIRMED" && b.serviceMode !== "ONLINE"
+                  ? b.street && b.houseNumber
+                    ? `${b.street} ${b.houseNumber}, ${[b.postalCode, b.city].filter(Boolean).join(" ")}`
+                    : b.address
+                  : null,
               recurring: Boolean(b.recurring),
               onPress: () => setSelectedBooking(b),
             })),
@@ -1662,6 +1669,7 @@ function DashboardAgendaContent() {
             ...day,
             title: j.clientName,
             detail: [day.dayOf, "Lavoro esterno"].filter(Boolean).join(" · "),
+            place: j.address,
             kind: j.status === "CANCELED" ? ("canceled" as const) : ("ext" as const),
             label: "Lavoro esterno",
             onPress: () => setSelectedExternalJob(j),

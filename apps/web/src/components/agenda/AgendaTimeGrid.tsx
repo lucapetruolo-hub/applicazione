@@ -23,6 +23,8 @@ export type AgendaGridEvent = {
   groupKey?: string;
   /** Orario scritto nel riquadro al posto di inizio–fine, per esempio "verso le 10:00 · fascia 08:00–19:00". */
   timeLabel?: string;
+  /** Indirizzo del lavoro confermato, mostrato nel riquadro in basso della Settimana sul telefono. */
+  place?: string | null;
   /** Oltre i posti della fascia: bordo rosso (docs/changelog/2026-11-10-appuntamenti-sovrapposti.md). */
   conflict?: boolean;
   onPress: () => void;
@@ -538,6 +540,7 @@ export function AgendaTimeGrid({
             <b id="ag-peek-title">{peek.title}</b>
             <span>{eventTime(peek)}</span>
             {peek.detail && peek.detail !== peek.label ? <span>{peek.detail}</span> : null}
+            {peek.place ? <span>{peek.place}</span> : null}
             <span className="ag-peek-label">{peek.label}</span>
           </div>
           <div className="ag-peek-actions">
