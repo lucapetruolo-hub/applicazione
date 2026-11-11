@@ -191,7 +191,7 @@ export function RecentReviews({
               </span>
               <BadgeInfo info="confirmedJob">
                 <div className={`is_View ${text.confirmed}`}>
-                  <Icon name="badge-check" size={13} color={brand.terracotta} strokeWidth={2} />
+                  <Icon name="badge-check" size={13} color={brand.verificato} strokeWidth={2} />
                   <span className={`is_Text ${text.confirmedLabel}`}>Lavoro fatto tramite il sito</span>
                 </div>
               </BadgeInfo>

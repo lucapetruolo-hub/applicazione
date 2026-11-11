@@ -5,7 +5,7 @@
  * `font_heading` (public/tamagui.css) danno la base; qui solo le proprietà in
  * più, con le variabili di Tamagui. Soglie: 660px (xs) e 390px (xxs).
  * Verificato e ottone non hanno una variabile di Tamagui: i loro valori sono
- * quelli di `brand.verificato`, `brand.terracotta`, `brand.ottone`, `brand.ottoneVelo` (tokens.ts).
+ * quelli di `brand.verificato`, `brand.verificato`, `brand.ottone`, `brand.ottoneVelo` (tokens.ts).
  */
 
 .row {
@@ -207,13 +207,14 @@
   color: #325f54;
 }
 
-/* brand.terracottaVelo e brand.terracotta: solo il bollino "Verificato". */
-.badgeTerracotta {
-  background-color: #f6e3d9;
+/* Bollino "Verificato": verde chiaro come "Pagamenti online" (scelta di Luca
+   dell'11/11/2026, docs/changelog/2026-11-11-verificato-verde.md). */
+.badgeVerificato {
+  background-color: #e1eeeb;
 }
 
-.textTerracotta {
-  color: #a3441f;
+.textVerificato {
+  color: #325f54;
 }
 
 /* brand.ottone */
