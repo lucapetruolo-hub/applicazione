@@ -188,6 +188,8 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
             letterSpacing={-0.8}
             textAlign="center"
             color={brand.inchiostro}
+            // Righe bilanciate: senza, da computer "zona." restava da sola sulla seconda riga.
+            style={{ textWrap: "balance" }}
           >
             Trova nuovi clienti nella tua zona.
           </Text>
