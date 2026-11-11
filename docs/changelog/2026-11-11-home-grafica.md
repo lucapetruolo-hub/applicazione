@@ -19,7 +19,10 @@ tre facoltative.
   ora hanno tutte la stessa tonalità. Prima alcune erano fredde e altre calde.
 - **Professionisti senza foto**: al posto del grande cerchio verde con le
   iniziali, che sembrava un segnaposto, l'icona del mestiere con le iniziali
-  piccole sotto, sul colore della categoria (`NewProfilesCarousel`).
+  piccole sotto, sul colore della categoria (`NewProfilesCarousel`). Poi,
+  sempre con l'ok di Luca, anche nelle schede dei risultati di ricerca, nei
+  professionisti salvati e nell'anteprima della mappa: nuova prop `name` di
+  `ProfessionalAvatar` e `CategoryIconBadge` (prima lì c'era solo l'icona).
 - **Fascia scura "Meno telefonate inutili" larga quanto lo schermo**, senza
   angoli, come le fasce scure di apple.com. Da computer il testo parte dove
   partono i titoli delle altre sezioni (`100cqw`, colonna di 1080 px).

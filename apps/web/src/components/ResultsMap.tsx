@@ -555,7 +555,7 @@ function MapPreview({
     >
       <div className={`map-preview-head${position ? " with-pager" : ""}`}>
         <span className="map-preview-photo">
-          <ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={64} shape="portrait" />
+          <ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={64} shape="portrait" name={pro.businessName} />
           {save ? (
             // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
             <span className="map-preview-save" onClick={stop}>

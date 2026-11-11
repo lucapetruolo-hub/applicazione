@@ -132,6 +132,7 @@ export default function ProfessionistiSalvatiPage() {
                         size={CARD_PHOTO.size}
                         mobileSize={CARD_PHOTO.mobileSize}
                         shape={CARD_PHOTO.shape}
+                        name={pro.businessName}
                       />
                     }
                     // Cuore pieno in alto a destra, come nella ricerca (docs/CHANGELOG.md

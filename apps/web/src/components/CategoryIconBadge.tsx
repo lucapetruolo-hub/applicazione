@@ -11,10 +11,23 @@ export type CategoryIconBadgeProps = {
   iconSize?: number;
   /** "portrait": rettangolo verticale 3:4 con angoli di 20px, come la foto (ProfessionalAvatar). */
   shape?: "circle" | "portrait";
+  /**
+   * Nome del professionista senza foto: sotto l'icona le sue iniziali
+   * piccole, sul colore del mestiere (scelta di Luca,
+   * docs/changelog/2026-11-11-home-grafica.md). Senza, solo l'icona.
+   */
+  name?: string;
 };
 
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+}
+
 /** Cerchio colorato (tinta per categoria) con l'icona a linee della categoria dentro. */
-export function CategoryIconBadge({ slug, size = 48, mobileSize, iconSize, shape = "circle" }: CategoryIconBadgeProps) {
+export function CategoryIconBadge({ slug, size = 48, mobileSize, iconSize, shape = "circle", name }: CategoryIconBadgeProps) {
   const accent = CATEGORY_ACCENT[slug as keyof typeof CATEGORY_ACCENT] ?? { bg: "#E4E2DE", fg: "#45423D" };
   const portrait = shape === "portrait";
   const heightFor = (width: number) => (portrait ? Math.round((width * 4) / 3) : width);
@@ -26,7 +39,16 @@ export function CategoryIconBadge({ slug, size = 48, mobileSize, iconSize, shape
   );
   return (
     <div className={`${box.className} ${photoBoxStyles.centered}`} style={{ ...box.style, backgroundColor: accent.bg }}>
-      <CategoryIcon slug={slug} size={iconSize ?? Math.round((mobileSize ? Math.min(size, mobileSize) : size) * 0.5)} color={accent.fg} />
+      <CategoryIcon
+        slug={slug}
+        size={iconSize ?? Math.round((mobileSize ? Math.min(size, mobileSize) : size) * (name ? 0.36 : 0.5))}
+        color={accent.fg}
+      />
+      {name ? (
+        <span className={photoBoxStyles.initials} style={{ color: accent.fg }}>
+          {initials(name)}
+        </span>
+      ) : null}
     </div>
   );
 }
