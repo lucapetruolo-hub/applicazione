@@ -62,6 +62,7 @@ const FIELD_LABELS: Record<string, string> = {
   scheduledEndAt: "Fine prevista",
   estimatedStartDate: "Data proposta",
   estimatedEndDate: "Fine proposta",
+  arrivalTime: "Ora indicativa di arrivo",
   recipientName: "Nome di chi riceve il professionista",
   recipientSurname: "Cognome di chi riceve il professionista",
   recipientPhone: "Telefono di chi riceve il professionista",

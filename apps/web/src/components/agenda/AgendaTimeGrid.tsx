@@ -21,6 +21,8 @@ export type AgendaGridEvent = {
   recurring?: boolean;
   /** Stesso lavoro su più giorni: una sola voce nei conteggi. */
   groupKey?: string;
+  /** Orario scritto nel riquadro al posto di inizio–fine, per esempio "verso le 10:00 · fascia 08:00–19:00". */
+  timeLabel?: string;
   /** Oltre i posti della fascia: bordo rosso (docs/changelog/2026-11-10-appuntamenti-sovrapposti.md). */
   conflict?: boolean;
   onPress: () => void;
@@ -92,6 +94,40 @@ export function layoutLanes(events: AgendaGridEvent[], minDuration = 0): Map<str
   }
   close();
   return result;
+}
+
+// Altezza minima di una riga quando i lavori della stessa fascia stanno uno sotto l'altro.
+const STACK_MIN_ROW_PX = 34;
+
+/**
+ * Lavori con la stessa identica fascia (per esempio tre prenotazioni
+ * 08:00-19:00 prese dalle pillole del preventivo) uno sotto l'altro come un
+ * elenco, invece che in colonne strette uguali (scelta di Luca,
+ * docs/changelog/2026-11-11-fasce-ampie.md). Solo se ogni riga resta alta
+ * almeno STACK_MIN_ROW_PX: `fits(evento)` dice quante righe ci stanno.
+ */
+export function stackSameBand(
+  events: AgendaGridEvent[],
+  fits: (event: AgendaGridEvent) => number,
+): Map<string, { index: number; count: number; leaderKey: string }> {
+  const groups = new Map<string, AgendaGridEvent[]>();
+  for (const event of events) {
+    if (event.kind === "canceled") continue;
+    const id = `${event.start}-${event.end}`;
+    groups.set(id, [...(groups.get(id) ?? []), event]);
+  }
+  const result = new Map<string, { index: number; count: number; leaderKey: string }>();
+  for (const group of groups.values()) {
+    if (group.length < 2 || fits(group[0]!) < group.length) continue;
+    const sorted = [...group].sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.title.localeCompare(b.title, "it"));
+    sorted.forEach((event, index) => result.set(event.key, { index, count: sorted.length, leaderKey: sorted[0]!.key }));
+  }
+  return result;
+}
+
+/** Orario del riquadro: quello scritto apposta (ora di arrivo) o inizio–fine. */
+function eventTime(event: AgendaGridEvent): string {
+  return event.timeLabel ?? `${minutesToLabel(event.start)}–${minutesToLabel(event.end)}`;
 }
 
 export function minutesToLabel(minutes: number): string {
@@ -278,11 +314,21 @@ export function AgendaTimeGrid({
                 {(() => {
                   const dayEvents = visible.filter((event) => event.date === dateStr && event.end > fromHour * 60);
                   // Altezza minima del riquadro (26 px) in minuti, così due impegni brevi vicini non si coprono.
-                  const lanesOf = layoutLanes(dayEvents, Math.ceil(((26 + 4) / HOUR_PX) * 60));
+                  const stackOf = stackSameBand(dayEvents, (event) => (y(event.end) - y(Math.max(event.start, fromHour * 60))) / STACK_MIN_ROW_PX);
+                  // Una pila di lavori con la stessa fascia occupa una sola corsia, col posto del primo.
+                  const lanesOf = layoutLanes(
+                    dayEvents.filter((event) => (stackOf.get(event.key)?.index ?? 0) === 0),
+                    Math.ceil(((26 + 4) / HOUR_PX) * 60),
+                  );
                   return dayEvents.map((event) => {
-                    const start = Math.max(event.start, fromHour * 60);
-                    const blockHeight = Math.max(26, y(event.end) - y(start) - 4);
-                    const { lane, lanes } = lanesOf.get(event.key) ?? { lane: 0, lanes: 1 };
+                    const stack = stackOf.get(event.key) ?? null;
+                    const bandStart = Math.max(event.start, fromHour * 60);
+                    const bandHeight = Math.max(26, y(event.end) - y(bandStart) - 4);
+                    // In pila ogni lavoro ha una riga della fascia, uno sotto l'altro.
+                    const rowHeight = stack ? (bandHeight + 4) / stack.count : 0;
+                    const top = stack ? y(bandStart) + 2 + stack.index * rowHeight : y(bandStart) + 2;
+                    const blockHeight = stack ? rowHeight - 4 : bandHeight;
+                    const { lane, lanes } = lanesOf.get(stack?.leaderKey ?? event.key) ?? { lane: 0, lanes: 1 };
                     const side = narrowWeek ? 3 : 5;
                     const gap = narrowWeek ? 1 : 3;
                     // Nella Settimana del telefono due corsie sono troppo strette per l'ora: restano le strisce colorate.
@@ -291,9 +337,9 @@ export function AgendaTimeGrid({
                       <button
                         key={event.key}
                         type="button"
-                        className={`ag-ev ${event.kind}${narrowWeek ? " narrow" : ""}${tight ? " tight" : ""}${lanes > 1 ? " shared" : ""}${event.conflict ? " conflict" : ""}${event.key === selectedKey ? " selected" : ""}`}
+                        className={`ag-ev ${event.kind}${narrowWeek ? " narrow" : ""}${tight ? " tight" : ""}${lanes > 1 ? " shared" : ""}${stack ? " stacked" : ""}${event.conflict ? " conflict" : ""}${event.key === selectedKey ? " selected" : ""}`}
                         style={{
-                          top: y(start) + 2,
+                          top,
                           height: blockHeight,
                           ...(lanes > 1
                             ? {
@@ -305,16 +351,24 @@ export function AgendaTimeGrid({
                         }}
                         onClick={event.onPress}
                       >
-                        {tight ? (
+                        {tight && !(stack && lanes === 1) ? (
                           <span className="sr-only">
-                            {event.title}, {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
+                            {event.title}, {eventTime(event)}
                           </span>
+                        ) : narrowWeek && stack ? (
+                          // In pila tutti hanno la stessa ora: al posto dell'ora l'inizio del nome.
+                          <>
+                            <span className="sr-only">
+                              {event.title}, {eventTime(event)}
+                            </span>
+                            <b aria-hidden="true">{event.title}</b>
+                          </>
                         ) : narrowWeek ? (
                           // Settimana sul telefono: colonne troppo strette per il nome, si vede l'ora d'inizio.
                           // Il lettore di schermo legge ancora nome e orario completo.
                           <>
                             <span className="sr-only">
-                              {event.title}, {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
+                              {event.title}, {eventTime(event)}
                             </span>
                             <b aria-hidden="true">
                               {event.recurring ? <Repeat className="ag-ev-repeat" size={10} strokeWidth={2.5} /> : null}
@@ -328,15 +382,24 @@ export function AgendaTimeGrid({
                               {event.recurring ? <Repeat className="ag-ev-repeat" size={11} strokeWidth={2.5} aria-hidden /> : null}
                               {event.title}
                             </b>
-                            {blockHeight >= 40 ? (
+                            {stack ? (
+                              // In pila l'orario è uguale per tutti: si legge la città e il lavoro.
+                              <span>
+                                <span className="sr-only">
+                                  , {eventTime(event)}
+                                  {blockHeight >= 40 && event.detail && event.detail !== event.label ? ", " : ""}
+                                </span>
+                                {blockHeight >= 40 && event.detail !== event.label ? event.detail : null}
+                              </span>
+                            ) : blockHeight >= 40 ? (
                               <span>
                                 <span className="sr-only">, </span>
-                                {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
+                                {eventTime(event)}
                                 {blockHeight > 60 && event.detail ? ` · ${event.detail}` : ""}
                               </span>
                             ) : (
                               <span className="sr-only">
-                                , {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
+                                , {eventTime(event)}
                               </span>
                             )}
                           </>
@@ -344,7 +407,13 @@ export function AgendaTimeGrid({
                         <span className="sr-only">
                           , {event.label}
                           {event.recurring ? ", lavoro ricorrente" : ""}
-                          {event.conflict ? ", sovrapposto: più lavori dei posti della fascia" : lanes > 1 ? ", nella stessa fascia di un altro impegno" : ""}
+                          {event.conflict
+                            ? ", sovrapposto: più lavori dei posti della fascia"
+                            : stack
+                              ? `, ${stack.index + 1} di ${stack.count} nella stessa fascia`
+                              : lanes > 1
+                                ? ", nella stessa fascia di un altro impegno"
+                                : ""}
                         </span>
                       </button>
                     );

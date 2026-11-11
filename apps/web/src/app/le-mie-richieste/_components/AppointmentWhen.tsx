@@ -60,6 +60,12 @@ export function AppointmentWhen({ booking, moment }: { booking: ClientBooking; m
         <Text fontSize={18} fontWeight="600" color={canceled ? brand.grafite70 : brand.grafite}>
           {jobDays ? `Ogni giorno ${time}` : time}
         </Text>
+        {booking.arrivalTime ? (
+          // Ora indicativa scelta dal professionista dentro una fascia lunga (docs/changelog/2026-11-11-fasce-ampie.md).
+          <Text fontSize={16} fontWeight="600" color={canceled ? brand.grafite70 : brand.cianografiaScuro}>
+            Arrivo verso le {booking.arrivalTime}
+          </Text>
+        ) : null}
         {momentText ? (
           <Text fontSize={16} fontWeight={moment?.kind === "days" ? "500" : "700"} color={moment?.kind === "days" ? brand.grafite70 : brand.cianografiaScuro}>
             {momentText}

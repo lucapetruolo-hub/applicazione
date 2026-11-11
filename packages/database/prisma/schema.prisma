@@ -1159,6 +1159,10 @@ model Quote {
   // i preventivi creati prima di questa funzionalità, casi in cui non
   // esiste una fascia con fine nota.
   estimatedEndDate         DateTime?
+  // Ora indicativa di arrivo dentro una fascia lunga, "HH:MM" ora italiana
+  // (per esempio "10:00" nella fascia 08:00-19:00), facoltativa
+  // (docs/changelog/2026-11-11-fasce-ampie.md). Si azzera se cambia la data.
+  arrivalTime              String?
   // Modi di pagamento offerti dal professionista (JobPaymentChoice in
   // packages/shared: DIRECT, ONLINE, MIXED) e percentuale dell'acconto online
   // (1-100), docs/CHANGELOG.md §237. Vuoto/null nei preventivi più vecchi:
@@ -1340,6 +1344,8 @@ model Booking {
   // conosce la fascia esatta ma non passa da questo campo) o per date
   // indicate a mano senza agenda impostata.
   scheduledEndAt          DateTime?
+  // Ora indicativa di arrivo copiata dal preventivo, "HH:MM" (docs/changelog/2026-11-11-fasce-ampie.md).
+  arrivalTime             String?
   status                  BookingStatus @default(PENDING)
   // Promemoria automatico anti no-show (CEO, tattico — CLAUDE.md §1: "core,
   // non accessoria"): email inviata via BookingRemindersService quando

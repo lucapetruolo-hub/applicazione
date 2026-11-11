@@ -1617,13 +1617,26 @@ function DashboardAgendaContent() {
     });
   }
 
+  /**
+   * Con l'ora indicativa di arrivo il lavoro si mette a quell'ora in agenda
+   * (scelta di Luca, docs/changelog/2026-11-11-fasce-ampie.md), lungo un'ora
+   * dentro la fascia; nel riquadro "verso le 10:00 · fascia 08:00–19:00". I posti della
+   * fascia si contano sempre sull'orario vero (conflictKeys).
+   */
+  function atArrival<T extends { start: number; end: number; dayOf: string | null }>(day: T, arrivalTime: string | null | undefined): T & { timeLabel?: string } {
+    if (!arrivalTime || day.dayOf !== null) return day;
+    const arrival = timeMinutes(arrivalTime);
+    if (arrival < day.start || arrival >= day.end) return day;
+    return { ...day, start: arrival, end: Math.min(day.end, arrival + 60), timeLabel: `verso le ${arrivalTime} · fascia ${minutesToLabel(day.start)}–${minutesToLabel(day.end)}` };
+  }
+
   const gridEvents: AgendaGridEvent[] = [
     ...(filters.has("conf") || filters.has("done")
       ? (bookings ?? [])
           .filter((b) => (b.status === "COMPLETED" ? filters.has("done") : filters.has("conf")))
           .flatMap((b) =>
             onEachDay(b.scheduledAt, b.scheduledEndAt, `booking-${b.id}`).map((day) => ({
-              ...day,
+              ...atArrival(day, b.arrivalTime),
               title: b.clientAccountDeleted ? "Account eliminato" : ([b.recipientName, b.recipientSurname].filter(Boolean).join(" ") || b.clientName || "Cliente"),
               detail: [day.dayOf, b.categoryLabel, b.serviceMode === "ONLINE" ? "online" : b.city].filter(Boolean).join(" · "),
               kind: bookingKind(b),
@@ -1651,7 +1664,7 @@ function DashboardAgendaContent() {
           .flatMap((lead) => {
             const quote = lead.quote!;
             return onEachDay(quote.estimatedStartDate, quote.estimatedEndDate, `pending-${lead.id}`).map((day) => ({
-              ...day,
+              ...atArrival(day, quote.arrivalTime),
               title: lead.guidedRequest.clientAccountDeleted ? "Account eliminato" : (lead.guidedRequest.clientName ?? "Cliente"),
               detail: [day.dayOf, "In attesa del cliente"].filter(Boolean).join(" · "),
               kind: "wait" as const,

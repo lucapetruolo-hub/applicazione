@@ -146,6 +146,8 @@ export type ProfessionalLead = {
     estimatedStartDate: string;
     /** Fine della fascia (richiesta esplicita dell'utente: mostrare tutta la fascia oraria, non solo l'inizio), null se non nota. */
     estimatedEndDate: string | null;
+    /** Ora indicativa di arrivo dentro la fascia, "HH:MM" (docs/changelog/2026-11-11-fasce-ampie.md). */
+    arrivalTime: string | null;
     clientProposedDate: string | null;
     clientProposedEndDate: string | null;
     /** Dettagli facoltativi scritti dal cliente insieme alla data proposta. */
@@ -283,6 +285,8 @@ export type ProfessionalBooking = {
   scheduledAt: string;
   /** Fine della fascia (richiesta esplicita dell'utente: mostrare tutta la fascia oraria, non solo l'inizio), null se non nota. */
   scheduledEndAt: string | null;
+  /** Ora indicativa di arrivo dentro la fascia, "HH:MM" (docs/changelog/2026-11-11-fasce-ampie.md). */
+  arrivalTime: string | null;
   /** Per l'ordinamento "per data di ricezione"/"per ultimo aggiornamento" nelle liste. */
   createdAt: string;
   updatedAt: string;

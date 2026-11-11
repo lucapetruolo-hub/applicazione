@@ -1,3 +1,4 @@
+import { arrivalTimeProblem } from "./arrival-time";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, type PrismaClient } from "@professionisti/database";
@@ -228,6 +229,11 @@ export class QuotesService {
       }
     }
 
+    // Ora indicativa di arrivo dentro la fascia (docs/changelog/2026-11-11-fasce-ampie.md).
+    const arrivalTime = input.arrivalTime ?? null;
+    const arrivalProblem = arrivalTimeProblem(input.estimatedStartDate, input.estimatedEndDate, arrivalTime);
+    if (arrivalProblem) throw new BadRequestException(arrivalProblem);
+
     // Lavoro ricorrente solo per i mestieri a visite ripetute
     // (docs/changelog/2026-11-09-lavori-ricorrenti.md); assente = come prima.
     const repeatEvery = input.repeatEvery === undefined ? (existingQuote?.repeatEvery ?? null) : input.repeatEvery;
@@ -251,6 +257,7 @@ export class QuotesService {
       lateCancelKeepsDeposit: offer.paymentOptions.some(paymentChoiceIsOnline) ? (input.lateCancelKeepsDeposit ?? existingQuote?.lateCancelKeepsDeposit ?? false) : false,
       estimatedStartDate: new Date(input.estimatedStartDate),
       estimatedEndDate: input.estimatedEndDate ? new Date(input.estimatedEndDate) : null,
+      arrivalTime,
       notes: input.notes,
       // Il nuovo preventivo torna "inviato" e perde la nota del rifiuto
       // precedente (resta nella cronologia); createdAt resta il primo invio.
@@ -751,6 +758,8 @@ export class QuotesService {
         status: "SENT",
         estimatedStartDate: scheduledAt,
         estimatedEndDate: quote.clientProposedEndDate,
+        // Nuova fascia: l'ora di arrivo scelta per la vecchia non vale più.
+        arrivalTime: null,
         ...NO_PROPOSAL,
         previousStartDate: null,
         previousEndDate: null,
@@ -888,6 +897,7 @@ export class QuotesService {
             data: {
               scheduledAt,
               scheduledEndAt,
+              arrivalTime: null,
               ...NO_DATE_CHANGE,
               // Nuova data: promemoria e risposte da capo.
               reminderSentAt: null,
@@ -900,7 +910,7 @@ export class QuotesService {
           if (moved.count === 0) throw new ConflictException("La proposta è cambiata: ricarica la pagina.");
           await tx.quote.update({
             where: { id: quote.id },
-            data: { estimatedStartDate: scheduledAt, estimatedEndDate: scheduledEndAt, ...NO_PROPOSAL },
+            data: { estimatedStartDate: scheduledAt, estimatedEndDate: scheduledEndAt, arrivalTime: null, ...NO_PROPOSAL },
           });
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },

@@ -519,6 +519,7 @@ export class BookingsService implements OnModuleInit {
         scheduledAt: quote.estimatedStartDate,
         cancellationNoticeHours,
         scheduledEndAt: quote.estimatedEndDate,
+        arrivalTime: quote.arrivalTime,
         serviceMode: guidedRequest.serviceMode,
         status: "CONFIRMED",
         recipientName: guidedRequest.recipientName,
@@ -1792,6 +1793,7 @@ export class BookingsService implements OnModuleInit {
       // una fascia con fine nota (data indicata a mano, o create prima di
       // questa funzionalità).
       scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,
+      arrivalTime: booking.arrivalTime,
       createdAt: booking.createdAt.toISOString(),
       updatedAt: booking.updatedAt.toISOString(),
       status: booking.status,

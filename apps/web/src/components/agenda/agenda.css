@@ -1614,3 +1614,11 @@
 .ag-ev.conflict {
   box-shadow: 0 0 0 2px var(--ag-red);
 }
+/* Lavori con la stessa fascia uno sotto l'altro (docs/changelog/2026-11-11-fasce-ampie.md). */
+.ag-ev.stacked.narrow b {
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: clip;
+  text-align: left;
+  padding-left: 1px;
+}
