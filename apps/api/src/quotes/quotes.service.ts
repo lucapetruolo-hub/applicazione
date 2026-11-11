@@ -216,7 +216,7 @@ export class QuotesService {
 
     // Mai un appuntamento già cominciato (collaudo B-05, D-09, I agente): un
     // preventivo per "oggi 08:00–13:00" mandato alle 14:50 veniva accettato e pagato.
-    // Una fascia già cominciata va ancora bene se mancano almeno due ore alla fine
+    // Una fascia già cominciata va ancora bene finché non è finita
     // (docs/changelog/2026-11-11-fascia-in-corso.md).
     if (!appointmentStillAhead(input.estimatedStartDate, input.estimatedEndDate)) {
       throw new BadRequestException("Questo orario è già passato: scegli un'altra data o un orario più tardi.");
@@ -747,7 +747,7 @@ export class QuotesService {
     if (await hasOtherJob(this.prisma, quote.guidedRequestId)) throw new ConflictException(OTHER_PROFESSIONAL_CHOSEN);
 
     const scheduledAt = quote.clientProposedDate;
-    // Fascia in corso con almeno due ore davanti: si accetta ancora (docs/changelog/2026-11-11-fascia-in-corso.md).
+    // Fascia in corso e non ancora finita: si accetta ancora (docs/changelog/2026-11-11-fascia-in-corso.md).
     if (!appointmentStillAhead(scheduledAt, quote.clientProposedEndDate)) {
       throw new BadRequestException("La data proposta è già passata: proponine un'altra con \"Modifica\".");
     }

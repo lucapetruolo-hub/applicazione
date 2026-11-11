@@ -184,7 +184,7 @@ export class BookingsService implements OnModuleInit {
     const quote = await this.loadAcceptableQuote(clientId, quoteId, paymentMethod);
     // Data del preventivo già passata (docs/changelog/2026-11-11-fascia-in-corso.md):
     // prima nasceva un appuntamento nel passato. Una fascia in corso va ancora
-    // bene se mancano almeno due ore alla fine, come in tutto il sito. Solo
+    // bene finché non è finita, come in tutto il sito. Solo
     // qui, quando il cliente preme "Accetta": ad acconto già pagato il lavoro
     // nasce comunque.
     if (!appointmentStillAhead(quote.estimatedStartDate, quote.estimatedEndDate)) {

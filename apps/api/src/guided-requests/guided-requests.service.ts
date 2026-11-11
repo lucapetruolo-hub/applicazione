@@ -1777,7 +1777,7 @@ export class GuidedRequestsService {
       throw new BadRequestException("Questa fascia oraria non è disponibile per l'invio di una richiesta di preventivo.");
     }
     // Fascia di oggi già finita o quasi (collaudo B-05, D-09, I-07).
-    if (endTime && !slotStillOffered(dateStr, endTime, undefined, startTime)) {
+    if (endTime && !slotStillOffered(dateStr, endTime)) {
       throw new BadRequestException("Questo orario è già passato: torna alla scelta della data e scegline un altro, oppure \"Nessuna preferenza\".");
     }
     if (exception) {

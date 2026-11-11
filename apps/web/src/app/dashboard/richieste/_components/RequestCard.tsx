@@ -43,6 +43,7 @@ import {
   type MySubscription,
   type MyProfessionalProfile,
   wallClockToday,
+  appointmentStillAhead,
   RECURRING_FREQUENCIES,
   RECURRING_FREQUENCY_LABELS,
   recurringAllowedForCategory,
@@ -786,6 +787,10 @@ export function RequestCard({
         { start: lead.quote.clientProposedDate, end: lead.quote.clientProposedEndDate },
       )
     : null;
+  // Data proposta già finita (docs/changelog/2026-11-11-fascia-in-corso.md):
+  // niente "Accetta", resta "Modifica" per proporne un'altra. Prima l'errore
+  // arrivava solo dopo il tocco.
+  const proposedDatePassed = dateChangePending && !!lead.quote?.clientProposedDate && !appointmentStillAhead(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate);
 
   // Azioni del menu hamburger, filtrate per stadio: le stesse già
   // raggiungibili dai bottoni della scheda espansa, qui a portata di un
@@ -839,7 +844,7 @@ export function RequestCard({
       },
     });
   }
-  if (dateChangePending) {
+  if (dateChangePending && !proposedDatePassed) {
     menuActions.push({ icon: "check", text: proposalChange ? "Accetta nuova data" : "Accetta la data", onPress: handleConfirmDate });
   }
   // "Lavoro terminato" dal giorno dell'appuntamento, come in Agenda (§311, collaudo F-01).
@@ -1506,9 +1511,11 @@ export function RequestCard({
 
             {stage === "modifica_richiesta" ? (
               <XStack gap="2" flexWrap="wrap">
-                <CardButton fill={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
-                  {isConfirmingDate ? "Conferma..." : proposalChange ? "Accetta nuova data" : "Accetta la data"}
-                </CardButton>
+                {proposedDatePassed ? null : (
+                  <CardButton fill={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
+                    {isConfirmingDate ? "Conferma..." : proposalChange ? "Accetta nuova data" : "Accetta la data"}
+                  </CardButton>
+                )}
                 {/* "Modifica" con sfondo, come "Modifica preventivo" e come
                     il cliente (richiesta esplicita dell'utente, prima
                     "Proponi altra data" quasi solo testo). */}
@@ -1524,7 +1531,11 @@ export function RequestCard({
                 </CardButton>
               </XStack>
             ) : null}
-            {stage === "modifica_richiesta" && !dateAnswerError ? (
+            {(stage === "modifica_richiesta" || bookedDateChange) && proposedDatePassed && !dateAnswerError ? (
+              <Text fontSize={13} color={brand.grafite70}>
+                La data proposta è già passata: proponine un&apos;altra con &quot;Modifica&quot;.
+              </Text>
+            ) : stage === "modifica_richiesta" && !dateAnswerError ? (
               <Text fontSize={13} color={brand.grafite70}>
                 Poi il cliente accetta il preventivo con quella data.
               </Text>
@@ -1538,9 +1549,11 @@ export function RequestCard({
             {bookedDateChange ? (
               // Stessi pulsanti della modifica di un preventivo; "Contatta" è già sotto, con il lavoro.
               <XStack gap="2" flexWrap="wrap">
-                <CardButton fill={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
-                  {isConfirmingDate ? "Conferma..." : "Accetta nuova data"}
-                </CardButton>
+                {proposedDatePassed ? null : (
+                  <CardButton fill={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
+                    {isConfirmingDate ? "Conferma..." : "Accetta nuova data"}
+                  </CardButton>
+                )}
                 <CardButton fill={brand.ottone} onPress={toggleCounterForm}>
                   Modifica
                 </CardButton>

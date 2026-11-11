@@ -100,17 +100,17 @@ describe("Il professionista accetta la data proposta dal cliente prima dell'acce
     afterEach(() => vi.useRealTimers());
     const band = { proposed: new Date("2026-11-11T14:00:00.000Z"), proposedEnd: new Date("2026-11-11T20:00:00.000Z") };
 
-    it("alle 14:20 la fascia 14:00–20:00 si accetta ancora", async () => {
+    it("alle 19:50 la fascia 14:00–20:00 si accetta ancora", async () => {
       vi.useFakeTimers({ toFake: ["Date"] });
-      vi.setSystemTime(new Date("2026-11-11T13:20:00.000Z"));
+      vi.setSystemTime(new Date("2026-11-11T18:50:00.000Z"));
       const { service, quote } = setup(band);
       await expect(service.confirmProposedDate("pro1", "q1")).resolves.toEqual({ bookingId: null });
       expect(quote.status).toBe("SENT");
     });
 
-    it("alle 18:30 (meno di due ore alla fine) è già passata", async () => {
+    it("alle 20:00 la fascia è finita: già passata", async () => {
       vi.useFakeTimers({ toFake: ["Date"] });
-      vi.setSystemTime(new Date("2026-11-11T17:30:00.000Z"));
+      vi.setSystemTime(new Date("2026-11-11T19:00:00.000Z"));
       const { service, quote } = setup(band);
       await expect(service.confirmProposedDate("pro1", "q1")).rejects.toThrow("già passata");
       expect(quote.status).toBe("MODIFICATION_REQUESTED");

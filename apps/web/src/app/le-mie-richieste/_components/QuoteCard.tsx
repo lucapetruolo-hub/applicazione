@@ -24,6 +24,7 @@ import {
   sameTimeBooking,
   type SameTimeBookingCandidate,
   recurringSummary,
+  appointmentStillAhead,
 } from "@professionisti/shared";
 import { PaymentChoice, PaymentOffer, paymentSplit, selectablePaymentChoices } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
@@ -166,6 +167,9 @@ export function QuoteCard({
   // senza il passaggio della scelta (docs/CHANGELOG.md §339).
   const selectablePayments = selectablePaymentChoices(quote.paymentOptions, onlinePayments);
   const onlyPayment = selectablePayments.length === 1 ? selectablePayments[0] : undefined;
+  // Data del preventivo già finita (docs/changelog/2026-11-11-fascia-in-corso.md):
+  // al posto di "Accetta" si propone subito un'altra data. Il server la rifiuta comunque.
+  const datePassed = quote.status === "SENT" && !appointmentStillAhead(quote.estimatedStartDate, quote.estimatedEndDate);
   const hasPrice = priceTotals.totalMinEurCents > 0 || priceTotals.totalMaxEurCents > 0;
   // Il pulsante dice la cifra che si paga ora (05/11/2026).
   const acceptSplit = paymentMethod ? paymentSplit(paymentMethod, priceTotals, quote.depositPercent) : null;
@@ -490,7 +494,21 @@ export function QuoteCard({
               computer tutti in riga (richiesta dell'utente, §338). Durante
               accettazione, modifica o rifiuto restano solo i pulsanti di
               quel passaggio (docs/CHANGELOG.md §225). */}
-          {!choosingPayment && !isChoosingDate && !confirmingReject ? (
+          {datePassed && !isChoosingDate && !confirmingReject ? (
+            <YStack gap="2">
+              <Text fontSize={14} color={brand.grafite}>
+                La data di questo preventivo è già passata: proponi al professionista un&apos;altra data.
+              </Text>
+              <XStack gap="2" flexWrap="wrap" alignItems="center xs:stretch" flexDirection="xs:column-reverse">
+                <CardButton tone="primary" arrow={false} height="44px xs:48px" onPress={startChoosingDate}>
+                  Proponi un&apos;altra data
+                </CardButton>
+                <CardButton tone="danger" height="44px xs:48px" paddingHorizontal="24px xs:12px" onPress={() => setConfirmingReject(true)}>
+                  Rifiuta
+                </CardButton>
+              </XStack>
+            </YStack>
+          ) : !choosingPayment && !isChoosingDate && !confirmingReject ? (
             <XStack gap="2" flexWrap="wrap" alignItems="center xs:stretch" flexDirection="xs:column-reverse">
               <CardButton
                 tone="primary"
