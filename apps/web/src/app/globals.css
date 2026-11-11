@@ -1392,7 +1392,8 @@ button.notif-row-main:hover {
   border-bottom: 1px solid #f0dcc0;
   scrollbar-width: none;
   position: sticky;
-  top: 64px;
+  /* Altezza della barra in alto, che scorrendo si abbassa (SiteHeader.tsx). */
+  top: var(--site-header-h, 64px);
   /* Sotto l'header (z-index 40), non sopra: altrimenti la tendina
      "Il mio account" finiva dietro questa barra (docs/CHANGELOG.md §148). */
   z-index: 30;
@@ -2603,7 +2604,7 @@ html.site-menu-open .profile-cta-bar {
 @media (min-width: 760px) {
   /* Le 7 voci entrano su una riga nella colonna da 760 px, senza scorrere. */
   .profile-index {
-    top: 64px;
+    top: var(--site-header-h, 64px);
     gap: 6px;
     margin: 0;
     padding: 8px 0;
@@ -6642,9 +6643,11 @@ a.admin-kpi:hover {
   text-decoration: underline;
 }
 
-/* "Richiesta urgente" dentro il riquadro verde della home
-   (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md): pillola chiara
-   sul verde, il rosso solo nel cerchio del fulmine. */
+/* "Richiesta urgente" nell'apertura della home
+   (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md): pillola bianca
+   col filo sul pesca (prima chiara sul verde, fino al
+   docs/changelog/2026-11-11-home-caroselli-larghi.md), il rosso solo nel
+   cerchio del fulmine. */
 .hero-urgent-link {
   display: inline-flex;
   align-items: center;
@@ -6653,24 +6656,22 @@ a.admin-kpi:hover {
   min-height: 48px;
   padding: 0 22px 0 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  color: #fff;
+  background: #ffffff;
+  border: 1px solid #eadfd3;
+  color: #2b2420;
   font-weight: 600;
   font-size: 16px;
   text-decoration: none;
-  box-shadow: 0 1px 2px rgba(0, 40, 20, 0.25), 0 10px 22px -10px rgba(0, 30, 15, 0.6);
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 .hero-urgent-link:hover {
-  background: rgba(255, 255, 255, 0.22);
-  border-color: rgba(255, 255, 255, 0.7);
+  border-color: #d9c6b1;
 }
 .hero-urgent-link:active {
   transform: scale(0.98);
 }
 .hero-urgent-link:focus-visible {
-  outline: 3px solid #fff;
+  outline: 3px solid #189a63;
   outline-offset: 2px;
 }
 .hero-urgent-icon {
@@ -6799,7 +6800,9 @@ a.admin-kpi:hover {
 
 /* Esempi da toccare sotto la ricerca della home
    (docs/changelog/2026-11-03-ricerca-per-problema-home.md): stessa pillola
-   chiara sul verde di "Richiesta urgente", più bassa. */
+   bianca di "Richiesta urgente", più bassa. Bianche col filo sul pesca da
+   quando l'apertura non ha più il riquadro verde
+   (docs/changelog/2026-11-11-home-caroselli-larghi.md). */
 .hero-examples {
   display: flex;
   flex-direction: column;
@@ -6839,13 +6842,14 @@ a.admin-kpi:hover {
   height: 28px;
   padding: 0;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid #eadfd3;
+  background: #ffffff;
+  color: #2b2420;
   cursor: pointer;
-  transition: opacity 150ms ease, background-color 150ms ease;
+  transition: opacity 150ms ease, border-color 150ms ease;
 }
 .hero-examples-arrow:hover {
-  background: rgba(255, 255, 255, 0.26);
+  border-color: #d9c6b1;
 }
 /* Nascosta ma al suo posto: la riga non salta quando compare. */
 .hero-examples-arrow[data-hidden="true"] {
@@ -6853,7 +6857,7 @@ a.admin-kpi:hover {
   pointer-events: none;
 }
 .hero-examples-label {
-  color: rgba(255, 255, 255, 0.85);
+  color: #6b6058;
   font-size: 15px;
   font-weight: 600;
 }
@@ -6861,24 +6865,23 @@ a.admin-kpi:hover {
   font: inherit;
   font-size: 15px;
   font-weight: 600;
-  color: #fff;
+  color: #2b2420;
   min-height: 40px;
   padding: 0 14px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: #ffffff;
+  border: 1px solid #eadfd3;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 .hero-example:hover {
-  background: rgba(255, 255, 255, 0.22);
-  border-color: rgba(255, 255, 255, 0.7);
+  border-color: #d9c6b1;
 }
 .hero-example:active {
   transform: scale(0.98);
 }
 .hero-example:focus-visible {
-  outline: 3px solid #fff;
+  outline: 3px solid #189a63;
   outline-offset: 2px;
 }
 .hero-examples-label,

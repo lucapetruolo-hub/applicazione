@@ -1,4 +1,4 @@
-# Home: caroselli larghi quanto lo schermo e sfumatura continua (11/11/2026)
+# Home stile apple.com: caroselli larghi, sfumatura continua, apertura senza riquadro (11/11/2026)
 
 **Richiesta** (Luca, con uno screenshot di apple.com): in home l'elenco delle
 categorie e dei nuovi professionisti come su apple.com, a tutta larghezza
@@ -31,9 +31,21 @@ compariva e spariva a ogni sezione.
 - Il contenitore della home ha `overflow-x: clip`, perché `100vw` comprende
   la barra di scorrimento su Windows.
 
-**Non fatto (in attesa di Luca)**: apertura della home senza riquadro verde,
-come su apple.com. Va contro la decisione "hero verde" (24/10): proposta con
-foto, nessuna modifica senza il suo ok.
+**Secondo giro (stesso giorno, scelte di Luca)**:
+- **Apertura senza riquadro verde** (Luca ha scelto "Sì, apertura stile
+  Apple", al posto della decisione "hero verde" del 24/10): titolo scuro più
+  grande (64 px da computer) sulla stessa sfumatura pesca, testi grigio
+  caldo, esempi e "Richiesta urgente" come pillole bianche col filo, verde
+  solo su "Cerca", "A domicilio", "Novità" e nei bordi di fuoco. Le luci
+  compaiono solo durante l'attesa della ricerca, nel tono chiaro.
+- **Barra in alto più bassa e trasparente scorrendo** (`SiteHeader`): da 64 a
+  52 px, bianco al 72% con sfocatura e saturazione, come su apple.com. Due
+  soglie (24 px per stringerla, 4 px per riallargarla) perché la barra non
+  tremi; l'altezza va in `--site-header-h`, usata dalle barre fisse sotto
+  (menu dell'account, indice del profilo).
+- **Da telefono la casella della ricerca a 12 px dai bordi** (Luca chiedeva
+  da bordo a bordo): consigliato così perché resti una scheda con angoli e
+  ombra; foto delle due versioni a Luca.
 
 **Verifica**: foto prima/dopo da telefono (390 px) e computer (1440 px) in
 `anteprime/home-caroselli-apple/` della cartella del progetto; lint,

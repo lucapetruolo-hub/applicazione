@@ -59,7 +59,10 @@ export function HomeHero({ examples }: { examples: ProblemExamplesResponse | nul
             livello a parte con "overflow:hidden" invece che sull'intero
             pannello, che tagliava il menu a discesa di SearchBar (CLAUDE.md
             §10). */}
-        <GlowLights tone="verde-opaco" radius={40} speed={searching ? 3 : undefined} />
+        {/* Senza riquadro verde le luci compaiono solo durante l'attesa della
+            ricerca per problema, chiare sul pesca
+            (docs/changelog/2026-11-11-home-caroselli-larghi.md). */}
+        {searching ? <GlowLights tone="chiaro" radius={40} speed={3} /> : null}
 
         <div className={`is_View ${styles.content}`}>
           {/* Tolta la frase "Non chiamare a caso. Chiamalo giusto." sopra il
@@ -366,7 +369,7 @@ function ExampleRow({
         data-hidden={!edges.start}
         onClick={() => scroll(-1)}
       >
-        <Icon name="chevron-left" size={16} color="white" strokeWidth={2.25} />
+        <Icon name="chevron-left" size={16} color="currentColor" strokeWidth={2.25} />
       </button>
       <div ref={trackRef} className="hero-examples-track scroll-fade">
         {items.map((item) => (
@@ -393,7 +396,7 @@ function ExampleRow({
         data-hidden={!edges.end}
         onClick={() => scroll(1)}
       >
-        <Icon name="chevron-right" size={16} color="white" strokeWidth={2.25} />
+        <Icon name="chevron-right" size={16} color="currentColor" strokeWidth={2.25} />
       </button>
     </div>
   );
