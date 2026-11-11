@@ -80,9 +80,7 @@
 /* Ombra leggera sotto la casella bianca, che la stacca dal pesca (scelta di
    Luca, docs/changelog/2026-11-11-home-caroselli-larghi.md). */
 .search > :first-child {
-  box-shadow:
-    0 1px 2px rgba(43, 32, 19, 0.06),
-    0 18px 40px -18px rgba(43, 32, 19, 0.25);
+  box-shadow: var(--card-shadow);
 }
 
 /* Le due frasi del titolo su righe proprie: "Scrivi il problema." poi "Ti

@@ -2,6 +2,16 @@
   box-sizing: border-box;
 }
 
+/* Una sola ombra per le schede bianche sul pesca (casella della ricerca in
+   home, "Quanto costa", "La trasparenza", schede dei nuovi professionisti):
+   prima ce n'erano tre diverse (scelta di Luca,
+   docs/changelog/2026-11-11-home-grafica.md). La seconda, più profonda, al
+   passaggio del mouse. */
+:root {
+  --card-shadow: 0 1px 2px rgba(43, 32, 19, 0.06), 0 18px 40px -18px rgba(43, 32, 19, 0.25);
+  --card-shadow-hover: 0 2px 4px rgba(43, 32, 19, 0.06), 0 24px 48px -18px rgba(43, 32, 19, 0.32);
+}
+
 html,
 body {
   margin: 0;
@@ -5565,12 +5575,28 @@ a.admin-kpi:hover {
   background: #f6ecd9;
   text-decoration: none;
   color: #fff;
-  transition: transform 160ms ease, box-shadow 160ms ease;
 }
-.story-card:hover,
-.story-card:focus-visible {
-  transform: translateY(-6px);
-  box-shadow: 0 18px 30px rgba(43, 36, 32, 0.25);
+/* Al passaggio del mouse la foto si ingrandisce appena dentro la scheda,
+   che resta ferma, come su apple.com (prima la scheda si alzava di 6 px con
+   un'ombra). Un velo caldo leggero dà a tutte le foto la stessa tonalità:
+   alcune erano fredde, altre calde. Scelte di Luca,
+   docs/changelog/2026-11-11-home-grafica.md. */
+.story-card img {
+  filter: sepia(0.12) saturate(1.06);
+  transition: transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.story-card:hover img,
+.story-card:focus-visible img {
+  transform: scale(1.05);
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-card img {
+    transition: none;
+  }
+  .story-card:hover img,
+  .story-card:focus-visible img {
+    transform: none;
+  }
 }
 .story-card:focus-visible {
   outline: 3px solid #189a63;
@@ -5672,7 +5698,7 @@ a.admin-kpi:hover {
   --bleed-gutter: max(24px, calc((var(--bleed-vw) - var(--bleed-max, 1080px)) / 2));
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 4px;
   width: 100%;
 }
 .bleed-rail-track {
@@ -5680,7 +5706,9 @@ a.admin-kpi:hover {
   gap: 16px;
   width: var(--bleed-vw);
   margin-inline: calc(50% - var(--bleed-vw) / 2);
-  padding: 8px var(--bleed-gutter) 12px;
+  /* 28 px sotto: spazio per l'ombra delle schede (--card-shadow), che
+     overflow-y: hidden altrimenti taglierebbe. */
+  padding: 8px var(--bleed-gutter) 28px;
   scroll-padding-inline: var(--bleed-gutter);
   overflow-x: auto;
   overflow-y: hidden;
@@ -5753,12 +5781,14 @@ a.admin-kpi:hover {
 }
 
 /* Sezione "Per chi offre servizi" con foto a lato (ProCtaSection). */
+/* Fascia scura larga quanto lo schermo, senza angoli, come le fasce scure di
+   apple.com (scelta di Luca, docs/changelog/2026-11-11-home-grafica.md;
+   prima riquadro largo 1112 px con angoli 20). Il testo resta allineato
+   alla colonna delle altre sezioni (padding in ProCtaSection.module.css). */
 .pro-cta {
   display: grid;
   grid-template-columns: 1fr 1fr;
   width: 100%;
-  max-width: 1112px;
-  border-radius: 20px;
   overflow: hidden;
   background: #2b2420;
 }
@@ -5769,7 +5799,6 @@ a.admin-kpi:hover {
 @media (max-width: 860px) {
   .pro-cta {
     grid-template-columns: 1fr;
-    border-radius: 20px;
   }
   .pro-cta-photo {
     min-height: 220px;

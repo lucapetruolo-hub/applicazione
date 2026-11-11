@@ -12,7 +12,7 @@
   border: 1px solid var(--c-filetto);
   border-radius: 20px;
   background-color: var(--c-calce);
-  box-shadow: 0 6px 24px rgba(43, 32, 19, 0.06);
+  box-shadow: var(--card-shadow);
 }
 
 .point {
