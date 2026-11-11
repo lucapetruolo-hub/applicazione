@@ -224,48 +224,59 @@ export default function NotifichePage() {
                             <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={18} color={brand.grafite} strokeWidth={2} />
                           </button>
                           {isOpen ? (
-                            <ul id={panelId} className="nt-items">
-                              {topicOff ? <li className="nt-items-note">Accendi Sito o Email qui sopra per scegliere i singoli avvisi.</li> : null}
-                              {items.map((item) => (
-                                <li key={item.key}>
-                                  <span>
-                                    <strong>{item.copy.label}</strong>
-                                    {item.copy.description ? <small>{item.copy.description}</small> : null}
-                                  </span>
-                                  {item.locked ? (
-                                    <span className="nt-locked">
-                                      <Icon name="lock" size={14} color={brand.grafite70} strokeWidth={2} />
-                                      Sempre attivo
+                            <div id={panelId}>
+                              {/* Una colonna per canale, con il nome scritto una volta sola in alto: il testo dell'avviso va a capo e i
+                                  pulsanti restano allineati a destra su ogni riga (docs/changelog/2026-11-11-avvisi-colonne.md). */}
+                              <div className="nt-items-head" aria-hidden="true">
+                                <span className="nt-cols">
+                                  {CHANNELS.map((channel) => (
+                                    <span key={channel.key}>{channel.label}</span>
+                                  ))}
+                                </span>
+                              </div>
+                              <ul className="nt-items">
+                                {topicOff ? <li className="nt-items-note">Accendi Sito o Email qui sopra per scegliere i singoli avvisi.</li> : null}
+                                {items.map((item) => (
+                                  <li key={item.key}>
+                                    <span className="nt-item-text">
+                                      <strong>{item.copy.label}</strong>
+                                      {item.copy.description ? <small>{item.copy.description}</small> : null}
                                     </span>
-                                  ) : (
-                                    <div className="nt-channels is-small" role="group" aria-label={`${item.copy.label}: dove avvisarti`}>
-                                      {CHANNELS.filter((channel) => !item.channels || item.channels.includes(channel.key)).map((channel) => {
-                                        // L'argomento spento su questo canale vale per tutti i suoi avvisi.
-                                        const masterOff = !prefs[channel.key];
-                                        const on = !masterOff && notificationItemChannelOn(notificationPrefs, item.key, channel.key);
-                                        return (
-                                          <button
-                                            key={channel.key}
-                                            type="button"
-                                            className={`nt-chip${on ? " is-on" : ""}`}
-                                            aria-pressed={on}
-                                            aria-label={`${item.copy.label}: ${channel.label}`}
-                                            disabled={masterOff}
-                                            title={masterOff ? `${channel.label} è spento per tutto l'argomento` : undefined}
-                                            onClick={() => toggleItemChannel(item.key, channel.key)}
-                                          >
-                                            <span className="nt-chip-check" aria-hidden="true">
-                                              {on ? <Icon name="check" size={12} color="#ffffff" strokeWidth={3} /> : null}
-                                            </span>
-                                            {channel.label}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
+                                    {item.locked ? (
+                                      <span className="nt-cols nt-item-locked">
+                                        <Icon name="lock" size={14} color={brand.grafite70} strokeWidth={2} />
+                                        Sempre attivo
+                                      </span>
+                                    ) : (
+                                      <span className="nt-cols" role="group" aria-label={`${item.copy.label}: dove avvisarti`}>
+                                        {CHANNELS.map((channel) => {
+                                          if (item.channels && !item.channels.includes(channel.key)) return <span key={channel.key} className="nt-tick-none" aria-hidden="true">–</span>;
+                                          // L'argomento spento su questo canale vale per tutti i suoi avvisi.
+                                          const masterOff = !prefs[channel.key];
+                                          const on = !masterOff && notificationItemChannelOn(notificationPrefs, item.key, channel.key);
+                                          return (
+                                            <button
+                                              key={channel.key}
+                                              type="button"
+                                              className={`nt-tick${on ? " is-on" : ""}`}
+                                              aria-pressed={on}
+                                              aria-label={`${item.copy.label}: ${channel.label}`}
+                                              disabled={masterOff}
+                                              title={masterOff ? `${channel.label} è spento per tutto l'argomento` : channel.label}
+                                              onClick={() => toggleItemChannel(item.key, channel.key)}
+                                            >
+                                              <span className="nt-tick-box" aria-hidden="true">
+                                                {on ? <Icon name="check" size={14} color="#ffffff" strokeWidth={3} /> : null}
+                                              </span>
+                                            </button>
+                                          );
+                                        })}
+                                      </span>
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                           ) : null}
                         </>
                       ) : null}
