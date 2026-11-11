@@ -15,6 +15,7 @@ import {
   wallClockNow,
   weekTemplateDatesKept,
   type AgendaWeekTemplate,
+  type WeekTemplatePreview,
   type DayPart,
   type ZoneDemand,
   DAY_PART_RANGE,
@@ -43,6 +44,7 @@ import { AgendaMiniMonth } from "@/components/agenda/AgendaMiniMonth";
 import { AppointmentPanel } from "@/components/agenda/AppointmentPanel";
 import { CalendarLinkModal } from "@/components/agenda/CalendarLinkModal";
 import { starterDaysLabel, WeekTemplateEditor } from "@/components/agenda/WeekTemplateEditor";
+import { ManualDaysDialog } from "@/components/agenda/ManualDaysDialog";
 import { ZoneDemandCard } from "@/components/agenda/ZoneDemandCard";
 import { DayRouteSection } from "@/components/agenda/DayRouteSection";
 import { readAgendaOffline, saveAgendaOffline } from "@/lib/agendaOffline";
@@ -353,6 +355,8 @@ function DashboardAgendaContent() {
   // con fasce sono un'"eccezione" in "Giorno per giorno" (docs/CHANGELOG.md §328).
   const [templateDates, setTemplateDates] = useState<Set<string>>(() => new Set());
   const [templateNotice, setTemplateNotice] = useState<string | null>(null);
+  // "Hai N giorni cambiati a mano" prima di salvare la settimana (docs/changelog/2026-11-10-eccezioni-settimana.md).
+  const [manualDaysAsk, setManualDaysAsk] = useState<{ next: AgendaWeekTemplate; month: string | null; preview: WeekTemplatePreview; resolve: (saved: boolean) => void } | null>(null);
   const [zoneDemand, setZoneDemand] = useState<ZoneDemand | null>(null);
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [vacationFrom, setVacationFrom] = useState("");
@@ -1087,6 +1091,7 @@ function DashboardAgendaContent() {
         weekTemplateDatesKept(
           savedSlotsRef.current.map((slot) => ({ ...asTemplateSlot(slot), fromWeekTemplate: slot.date ? templateDates.has(slot.date) : false })),
           nextSlots.map(asTemplateSlot),
+          weekTemplateActive ? weekTemplate : null,
         ),
       );
       savedSlotsRef.current = nextSlots;
@@ -1836,9 +1841,26 @@ function DashboardAgendaContent() {
   async function changeWeekTemplate(next: AgendaWeekTemplate, month: string | null = null): Promise<boolean> {
     if (!token) return false;
     setTemplateNotice(null);
+    // Giorni cambiati a mano che la settimana nuova cambierebbe: prima si chiede
+    // (docs/changelog/2026-11-10-eccezioni-settimana.md). Se il controllo non
+    // risponde si salva come prima, lasciandoli com'erano.
+    // Anche per un mese solo; non alla prima attivazione per tutti i mesi, dove non c'è ancora nulla da chiedere.
+    if (month || weekTemplateActive) {
+      setSavingTemplate(true);
+      const preview = await apiClient.previewAgendaWeekTemplate(token, next, month).catch(() => null);
+      setSavingTemplate(false);
+      if (preview && preview.manualDays.length > 0) {
+        return new Promise<boolean>((resolve) => setManualDaysAsk({ next, month, preview, resolve }));
+      }
+    }
+    return saveWeekTemplateNow(next, month, false);
+  }
+
+  async function saveWeekTemplateNow(next: AgendaWeekTemplate, month: string | null, applyToManual: boolean | string[]): Promise<boolean> {
+    if (!token) return false;
     setSavingTemplate(true);
     try {
-      const state = month ? await apiClient.saveAgendaWeekTemplateForMonth(token, next, month) : await apiClient.saveAgendaWeekTemplate(token, next);
+      const state = month ? await apiClient.saveAgendaWeekTemplateForMonth(token, next, month, applyToManual) : await apiClient.saveAgendaWeekTemplate(token, next, applyToManual);
       if (!month) setWeekTemplate(state.template);
       setWeekTemplateActive(state.active);
       setStarterHours(state.starter);
@@ -1847,7 +1869,7 @@ function DashboardAgendaContent() {
       const where = month ? `a ${templateMonths.find((m) => m.key === month)?.label ?? month}` : "a tutti i mesi";
       setTemplateNotice(
         state.changedDays > 0
-          ? `Settimana salvata ${where}: orari aggiornati in ${state.changedDays} ${state.changedDays === 1 ? "giorno" : "giorni"}. I giorni cambiati a mano, quelli chiusi e quelli con lavori già fissati restano com'erano.`
+          ? `Settimana salvata ${where}: orari aggiornati in ${state.changedDays} ${state.changedDays === 1 ? "giorno" : "giorni"}. ${applyToManual === true ? "I giorni chiusi e quelli con lavori già fissati restano com'erano." : applyToManual === false ? "I giorni cambiati a mano, quelli chiusi e quelli con lavori già fissati restano com'erano." : "Gli altri giorni cambiati a mano, quelli chiusi e quelli con lavori già fissati restano com'erano."}`
           : `Settimana salvata ${where}.`,
       );
       return true;
@@ -2451,6 +2473,24 @@ function DashboardAgendaContent() {
           onCancel={async () => {
             await toggleException(toIsoDate(confirmCloseDate));
             setConfirmCloseDate(null);
+          }}
+        />
+      ) : null}
+
+      {manualDaysAsk ? (
+        <ManualDaysDialog
+          preview={manualDaysAsk.preview}
+          monthLabel={manualDaysAsk.month ? (templateMonths.find((m) => m.key === manualDaysAsk.month)?.label ?? null) : null}
+          onChoose={async (applyToManual) => {
+            const saved = await saveWeekTemplateNow(manualDaysAsk.next, manualDaysAsk.month, applyToManual);
+            manualDaysAsk.resolve(saved);
+            setManualDaysAsk(null);
+          }}
+          onClose={() => {
+            manualDaysAsk.resolve(false);
+            setManualDaysAsk(null);
+            // Chiusa con la X: niente è cambiato, e lo diciamo.
+            setTemplateNotice("Settimana non salvata. Quando vuoi, premi di nuovo \"Salva la settimana\".");
           }}
         />
       ) : null}
