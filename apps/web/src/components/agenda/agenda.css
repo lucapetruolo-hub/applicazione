@@ -1697,6 +1697,7 @@
   font-size: 24px;
   line-height: 1;
   cursor: pointer;
+}
 
 /* Giorni cambiati a mano prima di salvare la settimana
    (docs/changelog/2026-11-10-eccezioni-settimana.md): finestra al centro,
