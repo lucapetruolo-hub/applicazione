@@ -725,6 +725,15 @@ export const updateBookingMeetingLinkSchema = z.object({
 });
 export type UpdateBookingMeetingLinkInput = z.infer<typeof updateBookingMeetingLinkSchema>;
 
+/** Ora indicativa di arrivo scritta dopo, da "Oggi" (docs/changelog/2026-11-11-fasce-ampie.md); `null` la toglie. */
+export const updateBookingArrivalTimeSchema = z.object({
+  arrivalTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Scrivi l'ora di arrivo come 10:00.")
+    .nullable(),
+});
+export type UpdateBookingArrivalTimeInput = z.infer<typeof updateBookingArrivalTimeSchema>;
+
 /**
  * Lavoro preso al di fuori della piattaforma (richiesta esplicita
  * dell'utente): il professionista lo inserisce a mano nella propria

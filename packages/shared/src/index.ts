@@ -49,6 +49,7 @@ export * from "./addressSuggestions";
 export * from "./dac7";
 export * from "./dac7Schemas";
 export * from "./appointmentTime";
+export * from "./arrivalWindow";
 export * from "./safeRedirect";
 export * from "./agendaTools";
 export * from "./agendaToolsSchemas";

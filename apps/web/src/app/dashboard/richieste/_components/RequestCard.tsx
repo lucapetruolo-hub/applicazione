@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  arrivalWindowText, arrivalWindowEndBefore,
   DEFAULT_QUOTE_PAYMENT_OPTIONS,
   MAX_DEPOSIT_PERCENT,
   MAX_JOB_DAYS,
@@ -437,7 +438,7 @@ export function RequestCard({
   const collapsedDateTime = booking?.scheduledAt
     ? { label: "Appuntamento", text: formatSlotRange(booking.scheduledAt, booking.scheduledEndAt) }
     : lead.quote?.estimatedStartDate
-      ? { label: "Preventivo per", text: `${formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}${lead.quote.arrivalTime ? `, arrivo verso le ${lead.quote.arrivalTime}` : ""}` }
+      ? { label: "Preventivo per", text: `${formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}${lead.quote.arrivalTime ? `, arrivo ${arrivalWindowText(lead.quote.arrivalTime, lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}` : ""}` }
       : gr.preferredDate && gr.preferredTimeSlot
         ? {
             label: "Richiesta per",
@@ -1816,7 +1817,7 @@ export function RequestCard({
                     ) : null}
                   </XStack>
                   <Text fontSize={13} color={brand.grafite70}>
-                    Il cliente vede &quot;Arrivo verso le {arrivalTime || "…"}&quot; e in agenda il lavoro si mette a quell&apos;ora.
+                    Il cliente vede &quot;Arrivo tra le {arrivalTime || "…"} e le {/^\d\d:\d\d$/.test(arrivalTime) ? arrivalWindowEndBefore(arrivalTime, arrivalRange.end) : "…"}&quot; e in agenda il lavoro si mette a quell&apos;ora.
                   </Text>
                 </YStack>
               ) : null}

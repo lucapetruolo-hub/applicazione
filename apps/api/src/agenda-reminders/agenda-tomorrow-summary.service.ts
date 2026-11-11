@@ -52,6 +52,23 @@ export function tomorrowSummaryItems(bookings: SummaryBooking[], externalJobs: S
 }
 
 /**
+ * Lavori di domani nella stessa fascia lunga (da 3 ore, un giorno solo) senza
+ * ora di arrivo, solo se nella fascia sono almeno 2: il riepilogo invita a
+ * dire ai clienti verso che ora passa (docs/changelog/2026-11-11-fasce-ampie.md).
+ */
+export function sameBandWithoutArrival(bookings: { scheduledAt: Date; scheduledEndAt: Date | null; arrivalTime: string | null }[]): number {
+  const groups = new Map<string, { arrivalTime: string | null }[]>();
+  for (const booking of bookings) {
+    const end = booking.scheduledEndAt;
+    if (!end || end.toISOString().slice(0, 10) !== booking.scheduledAt.toISOString().slice(0, 10)) continue;
+    if (end.getTime() - booking.scheduledAt.getTime() < 3 * 60 * 60_000) continue;
+    const key = `${booking.scheduledAt.toISOString()}|${end.toISOString()}`;
+    groups.set(key, [...(groups.get(key) ?? []), booking]);
+  }
+  return [...groups.values()].filter((list) => list.length >= 2).reduce((sum, list) => sum + list.filter((b) => !b.arrivalTime).length, 0);
+}
+
+/**
  * Riepilogo della sera prima (sito + email, argomento "Lavori e
  * appuntamenti", spegnibile): a chi ha lavori confermati domani, all'ora
  * della sera scelta in Notifiche (18-21, di serie le 19), la stessa del
@@ -88,6 +105,7 @@ export class AgendaTomorrowSummaryService {
           select: {
             scheduledAt: true,
             scheduledEndAt: true,
+            arrivalTime: true,
             city: true,
             serviceMode: true,
             recipientName: true,
@@ -118,7 +136,8 @@ export class AgendaTomorrowSummaryService {
         select: { id: true },
       });
       if (already) continue;
-      await this.notificationsService.notify(profile.userId, "AGENDA_TOMORROW_SUMMARY", { date, items });
+      const arrivalMissing = sameBandWithoutArrival(profile.bookings);
+      await this.notificationsService.notify(profile.userId, "AGENDA_TOMORROW_SUMMARY", { date, items, ...(arrivalMissing > 0 ? { arrivalMissing } : {}) });
     }
   }
 }

@@ -60,3 +60,40 @@ mostrato come una striscia sottile".
 "Apri" a fuoco sul telefono; striscia larga meno di 14 px con il lavoro accanto
 largo più del 60% della colonna, telefono e computer). Prove di
 `agenda-sovrapposti` ancora verdi.
+
+## Terzo giro (11/11, valutazione da esperto e ok di Luca)
+
+**Richiesta**: "valuta da alto esperto del settore", poi "si" a tre migliorie
+(promemoria la sera prima, finestra di un'ora per il cliente, pila nell'ordine
+del Giro intelligente) e "passa a 4" posti nelle fasce di partenza ("4 e 4 per
+fascia mattina e 4 e 4 per fascia pomeriggio").
+
+**Decisione**:
+- Il cliente legge una finestra di un'ora, "Arrivo tra le 10:00 e le 11:00"
+  (mai oltre la fine della fascia), al posto di "verso le 10:00": nel
+  settore si promette una finestra, riduce le lamentele per i ritardi
+  (`packages/shared/src/arrivalWindow.ts`). In agenda "arrivo 10:00–11:00 ·
+  fascia 08:00–19:00".
+- In "Oggi" il riquadro "Dì ai clienti di domani verso che ora passi" quando
+  domani ci sono 2 o più lavori nella stessa fascia lunga (da 3 ore) senza ora
+  di arrivo: un campo per cliente e "Avvisa i clienti"
+  (`apps/web/src/components/ArrivalTimesNotice.tsx`, `PATCH
+  /bookings/:id/arrival-time`). Il cliente riceve la notifica nuova
+  `BOOKING_ARRIVAL_TIME` (argomento "Promemoria", sito ed email, niente
+  WhatsApp) e la riga nella cronologia della richiesta. Il riepilogo della
+  sera prima al professionista aggiunge "Dì ai clienti verso che ora passi"
+  con il link a Oggi (`sameBandWithoutArrival`).
+- Giro intelligente: le tappe seguono l'ora di arrivo quando c'è; i lavori
+  della stessa fascia vanno dal più vicino alla tappa prima (la prima dal
+  comune del professionista), senza l'avviso "non fai in tempo" tra loro
+  (`orderStops`). In agenda la pila segue lo stesso ordine (`loadRouteOrder`).
+- Fasce di partenza dei profili nuovi: 4 clienti a domicilio e 4 online per
+  fascia (mattina 8–13 e pomeriggio 14–20), prima 5 (`STARTER_SLOT_CAPACITY`).
+  Chi ha già i suoi orari non cambia; poi decide il professionista.
+
+**Verifica**: API vitest (finestra, `updateArrivalTime`, `orderStops`,
+`sameBandWithoutArrival`, orari di partenza a 4); shared `arrivalWindow.test.ts`;
+`e2e/tests/agenda-fasce-ampie.spec.ts` (riquadro in Oggi con salvataggio e
+notifica, pila nell'ordine del giro: Cisterna prima di Terracina partendo da
+Latina) e `agenda-primo-uso.spec.ts` aggiornata per il tocco nella Settimana
+del telefono.

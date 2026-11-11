@@ -105,10 +105,12 @@ const STACK_MIN_ROW_PX = 34;
  * elenco, invece che in colonne strette uguali (scelta di Luca,
  * docs/changelog/2026-11-11-fasce-ampie.md). Solo se ogni riga resta alta
  * almeno STACK_MIN_ROW_PX: `fits(evento)` dice quante righe ci stanno.
+ * `routeOrder`: posizione di ogni lavoro nel Giro intelligente del giorno.
  */
 export function stackSameBand(
   events: AgendaGridEvent[],
   fits: (event: AgendaGridEvent) => number,
+  routeOrder: ReadonlyMap<string, number> = new Map(),
 ): Map<string, { index: number; count: number; leaderKey: string }> {
   const groups = new Map<string, AgendaGridEvent[]>();
   for (const event of events) {
@@ -119,7 +121,9 @@ export function stackSameBand(
   const result = new Map<string, { index: number; count: number; leaderKey: string }>();
   for (const group of groups.values()) {
     if (group.length < 2 || fits(group[0]!) < group.length) continue;
-    const sorted = [...group].sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.title.localeCompare(b.title, "it"));
+    // Nell'ordine del Giro intelligente quando c'è (scelta di Luca), poi per tipo e nome.
+    const place = (event: AgendaGridEvent) => routeOrder.get(event.groupKey ?? event.key) ?? Number.MAX_SAFE_INTEGER;
+    const sorted = [...group].sort((a, b) => place(a) - place(b) || KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.title.localeCompare(b.title, "it"));
     sorted.forEach((event, index) => result.set(event.key, { index, count: sorted.length, leaderKey: sorted[0]!.key }));
   }
   return result;
@@ -176,6 +180,7 @@ export function AgendaTimeGrid({
   dayNote,
   onDayPress,
   onEmptyPress,
+  loadRouteOrder,
 }: {
   days: Date[];
   events: AgendaGridEvent[];
@@ -189,6 +194,8 @@ export function AgendaTimeGrid({
   onDayPress?: (date: Date) => void;
   /** Tocco su un orario vuoto: data e minuti (alla mezz'ora) per aggiungere un lavoro lì. */
   onEmptyPress?: (date: Date, minutes: number) => void;
+  /** Ordine delle tappe del Giro intelligente di un giorno (chiavi `booking-<id>`/`external-<id>`), per le pile della stessa fascia. */
+  loadRouteOrder?: (date: string) => Promise<string[]>;
 }) {
   // La griglia nasce solo nel browser (dopo il caricamento dei lavori): la misura dello schermo è già nota.
   const [phone] = useState(() => typeof window !== "undefined" && window.matchMedia(PHONE_QUERY).matches);
@@ -210,6 +217,32 @@ export function AgendaTimeGrid({
   const narrowWeek = phone && days.length > 1;
   const dateStrs = days.map(toIsoDate);
   const visible = events.filter((e) => dateStrs.includes(e.date));
+  // Giorni con almeno due lavori presi nella stessa fascia: si chiede il loro ordine al Giro intelligente.
+  const stackDates = (() => {
+    const seen = new Map<string, number>();
+    for (const event of visible) {
+      if (event.kind === "canceled" || event.kind === "wait") continue;
+      const id = `${event.date}|${event.start}|${event.end}`;
+      seen.set(id, (seen.get(id) ?? 0) + 1);
+    }
+    return [...new Set([...seen].filter(([, count]) => count >= 2).map(([id]) => id.split("|")[0]!))].sort().join(",");
+  })();
+  const [routeOrders, setRouteOrders] = useState<Record<string, ReadonlyMap<string, number>>>({});
+  useEffect(() => {
+    if (!loadRouteOrder || !stackDates) return;
+    let cancelled = false;
+    for (const date of stackDates.split(",")) {
+      loadRouteOrder(date)
+        .then((keys) => {
+          if (!cancelled) setRouteOrders((prev) => ({ ...prev, [date]: new Map(keys.map((key, index) => [key, index])) }));
+        })
+        // Senza giro restano in ordine di tipo e nome.
+        .catch(() => {});
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [loadRouteOrder, stackDates]);
   const visibleFree = free.filter((f) => dateStrs.includes(f.date));
   const earliest = Math.min(DEFAULT_FROM * 60, ...visible.map((e) => e.start), ...visibleFree.map((f) => f.start));
   const latest = Math.max(DEFAULT_TO * 60, ...visible.map((e) => e.end), ...visibleFree.map((f) => f.end));
@@ -357,7 +390,7 @@ export function AgendaTimeGrid({
                   const reserveFor = (event: AgendaGridEvent) =>
                     stripEvents.filter((strip) => strip.start < event.end && strip.end > event.start).length * (stripPx + 2);
                   // Altezza minima del riquadro (26 px) in minuti, così due impegni brevi vicini non si coprono.
-                  const stackOf = stackSameBand(dayEvents, (event) => (y(event.end) - y(Math.max(event.start, fromHour * 60))) / STACK_MIN_ROW_PX);
+                  const stackOf = stackSameBand(dayEvents, (event) => (y(event.end) - y(Math.max(event.start, fromHour * 60))) / STACK_MIN_ROW_PX, routeOrders[dateStr]);
                   // Una pila di lavori con la stessa fascia occupa una sola corsia, col posto del primo.
                   const lanesOf = layoutLanes(
                     dayEvents.filter((event) => (stackOf.get(event.key)?.index ?? 0) === 0),

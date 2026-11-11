@@ -21,13 +21,13 @@ export type AgendaWeekTemplateState = {
   online: boolean;
 };
 
-/** Clienti per fascia negli orari di partenza, a domicilio e online (decisione dell'utente, §364). */
-export const STARTER_SLOT_CAPACITY = 5;
+/** Clienti per fascia negli orari di partenza, a domicilio e online: 4 (decisione di Luca dell'11/11, prima 5 da §364; docs/changelog/2026-11-11-fasce-ampie.md). */
+export const STARTER_SLOT_CAPACITY = 4;
 
 /**
  * Orari di partenza di ogni nuovo profilo (richiesta dell'utente,
- * docs/CHANGELOG.md §364): dal lunedì al sabato 8–13 e 14–20, 5 clienti a
- * domicilio e 5 online per fascia. Online solo per chi lavora anche online.
+ * docs/CHANGELOG.md §364): dal lunedì al sabato 8–13 e 14–20, 4 clienti a
+ * domicilio e 4 online per fascia (prima 5). Online solo per chi lavora anche online.
  */
 export function starterWeekTemplate(online: boolean, homeMax: number = STARTER_SLOT_CAPACITY): AgendaWeekTemplate {
   const slot = (start: string, end: string) => ({
@@ -43,7 +43,7 @@ export function starterWeekTemplate(online: boolean, homeMax: number = STARTER_S
 
 /**
  * Mestieri in cui si segue un cliente alla volta, per ore (collaudo C-15):
- * negli orari di partenza 1 cliente a domicilio per fascia invece di 5.
+ * negli orari di partenza 1 cliente a domicilio per fascia invece di 4.
  */
 export const ONE_CLIENT_AT_A_TIME_CATEGORIES: readonly string[] = ["babysitter"];
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tomorrowSummaryItems } from "./agenda-tomorrow-summary.service";
+import { sameBandWithoutArrival, tomorrowSummaryItems } from "./agenda-tomorrow-summary.service";
 
 describe("tomorrowSummaryItems", () => {
   it("mette in ordine di orario lavori e lavori esterni, con l'ora italiana", () => {
@@ -31,5 +31,18 @@ describe("tomorrowSummaryItems", () => {
       { time: "11:00–13:00", name: "Luca Neri", place: "Latina" },
       { time: "15:00", name: "Anna", place: "online" },
     ]);
+  });
+});
+
+describe("sameBandWithoutArrival (docs/changelog/2026-11-11-fasce-ampie.md)", () => {
+  const band = (arrivalTime: string | null, start = "08:00", end = "19:00") => ({
+    scheduledAt: new Date(`2026-11-12T${start}:00.000Z`),
+    scheduledEndAt: new Date(`2026-11-12T${end}:00.000Z`),
+    arrivalTime,
+  });
+  it("conta i lavori senza ora nella stessa fascia lunga, solo se sono almeno due", () => {
+    expect(sameBandWithoutArrival([band(null), band(null), band("10:00")])).toBe(2);
+    expect(sameBandWithoutArrival([band(null)])).toBe(0);
+    expect(sameBandWithoutArrival([band(null, "09:00", "10:00"), band(null, "09:00", "10:00")])).toBe(0);
   });
 });

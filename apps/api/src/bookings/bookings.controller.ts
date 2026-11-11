@@ -18,6 +18,8 @@ import {
   appealJobIssueSchema,
   type AppealJobIssueInput,
   updateBookingMeetingLinkSchema,
+  updateBookingArrivalTimeSchema,
+  type UpdateBookingArrivalTimeInput,
   updateBookingNoteSchema,
   type CancelBookingByProfessionalInput,
   type ClientConfirmCompleteInput,
@@ -205,6 +207,17 @@ export class BookingsController {
   @Post(":id/on-the-way")
   notifyOnTheWay(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
     return this.bookingsService.notifyOnTheWay(req.user.userId, id);
+  }
+
+  /** Ora indicativa di arrivo dentro una fascia lunga, scritta da "Oggi" (docs/changelog/2026-11-11-fasce-ampie.md). */
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id/arrival-time")
+  updateArrivalTime(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(updateBookingArrivalTimeSchema)) body: UpdateBookingArrivalTimeInput,
+  ) {
+    return this.bookingsService.updateArrivalTime(req.user.userId, id, body.arrivalTime);
   }
 
   /** "Aggiungi al calendario" dalla scheda del cliente (docs/CHANGELOG.md §346): stesso evento delle email. */

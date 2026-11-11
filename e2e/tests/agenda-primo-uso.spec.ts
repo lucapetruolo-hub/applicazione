@@ -49,6 +49,10 @@ test("T9 e T11: il tasto per aggiungere un lavoro ha la scritta; Lavoro terminat
   await expect(page.getByRole("button", { name: "Aggiungi lavoro" })).toContainText("Aggiungi lavoro");
   await page.getByRole("button", { name: /Giulia Bianchi ?, 09:00–10:30/ }).first().click();
   const dialog = page.getByRole("dialog", { name: /Appuntamento con/ });
+  // Nella Settimana del telefono il primo tocco mostra il nome intero, "Apri" apre (docs/changelog/2026-11-11-fasce-ampie.md).
+  const peek = page.getByRole("dialog", { name: "Giulia Bianchi" });
+  await peek.or(dialog).first().waitFor();
+  if (await peek.isVisible()) await peek.getByRole("button", { name: "Apri" }).click();
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Lavoro terminato" })).toHaveCount(0);
 });

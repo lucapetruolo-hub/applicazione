@@ -98,6 +98,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   AWAY_SUGGESTED: { icon: "📅", message: "Hai richieste ancora senza risposta: se hai poco tempo puoi metterti in pausa dall'agenda." },
   // Agenda (§288).
   PROFESSIONAL_ON_THE_WAY: { icon: "🚐", message: "Il professionista sta arrivando." },
+  BOOKING_ARRIVAL_TIME: { icon: "🕙", message: "Il professionista ti ha detto verso che ora arriva: guarda l'appuntamento." },
   AGENDA_TOMORROW_SUMMARY: { icon: "📅", message: "Ecco i tuoi lavori di domani." },
   TAX_ID_INVALID: { icon: "⚠️", message: "Non riusciamo a verificare il codice fiscale o la partita IVA: controllali nei dati fiscali." },
   // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164).
