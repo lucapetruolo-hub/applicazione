@@ -348,6 +348,7 @@ export class ProblemMatchAdminService {
         description: row.description,
         city: row.city,
         outOfService: row.outOfService,
+        missingTrade: row.missingTrade,
         // Pericolo e mestiere più probabile, come in Da fare: la pagina non resta con "—".
         safety: match.safety,
         likelyCategory: top ? (PROFESSIONAL_CATEGORIES.find((c) => c.slug === top)?.label ?? null) : null,

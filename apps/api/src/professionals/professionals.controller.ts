@@ -39,6 +39,7 @@ import {
   type UpdateLeadNoteInput,
   isBotUserAgent,
   OUT_OF_SERVICE_LABELS,
+  cleanMissingTrade,
   type ProblemOutOfService,
   PROBLEM_DESCRIPTION_MAX,
 } from "@professionisti/shared";
@@ -95,6 +96,8 @@ export class ProfessionalsController {
       excludeDemo: excludeDemo === "1" || excludeDemo === "true",
       merit: merito === "1",
       offers: typeof offre === "string" && offre in OUT_OF_SERVICE_LABELS ? (offre as ProblemOutOfService) : undefined,
+      // Un mestiere che il sito non ha (docs/changelog/2026-11-11-mestieri-che-mancano.md).
+      offersTrade: typeof offre === "string" && !(offre in OUT_OF_SERVICE_LABELS) ? (cleanMissingTrade(offre) ?? undefined) : undefined,
       problem: typeof problema === "string" && problema.trim() ? problema.slice(0, PROBLEM_DESCRIPTION_MAX) : undefined,
       problemService: typeof prestazione === "string" && prestazione.trim() ? prestazione.slice(0, 120) : undefined,
     });

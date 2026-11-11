@@ -8,6 +8,7 @@ import { X } from "lucide-react";
 import {
   MAX_CHOSEN_PROFESSIONALS,
   OUT_OF_SERVICE_KEYWORDS,
+  missingTradeKeywords,
   normalizeProblemText,
   type ProblemMatchResult,
   type ProfessionalCategorySlug,
@@ -49,7 +50,9 @@ function problemReason(problem: ProblemSearch, pro: ProfessionalSearchResult): s
   if (matched) return `offre «${matched.name}»`;
   const keywords = problem.result.outOfService
     ? OUT_OF_SERVICE_KEYWORDS[problem.result.outOfService]
-    : normalizeProblemText(problem.description)
+    : problem.result.missingTrade && !problem.chosen
+      ? missingTradeKeywords(problem.result.missingTrade)
+      : normalizeProblemText(problem.description)
         .split(" ")
         .filter((word) => word.length >= 5)
         .map((word) => word.slice(0, 5));
@@ -58,7 +61,7 @@ function problemReason(problem: ProblemSearch, pro: ProfessionalSearchResult): s
     return keywords.some((keyword) => name.includes(` ${keyword}`));
   });
   if (service) return `offre «${service.name}»`;
-  return problem.result.outOfService ? "lo dichiara nella sua descrizione" : null;
+  return problem.result.outOfService || (problem.result.missingTrade && !problem.chosen) ? "lo dichiara nella sua descrizione" : null;
 }
 
 export function CercaContent({

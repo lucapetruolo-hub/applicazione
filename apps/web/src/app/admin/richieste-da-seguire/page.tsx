@@ -116,7 +116,9 @@ export default function AdminRichiesteDaSeguirePage() {
                       <Text fontSize={14}>
                         {row.outOfService
                           ? (OUT_OF_SERVICE_LABELS[row.outOfService as keyof typeof OUT_OF_SERVICE_LABELS] ?? row.outOfService)
-                          : row.likelyCategory
+                          : row.missingTrade
+                            ? `Mestiere che non abbiamo: ${row.missingTrade}`
+                            : row.likelyCategory
                             ? `Probabile: ${row.likelyCategory}`
                             : "Mestiere non riconosciuto"}
                       </Text>

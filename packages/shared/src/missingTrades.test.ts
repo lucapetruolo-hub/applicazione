@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildMissingTrades, cleanMissingTrade, missingTradeZone } from "./missingTrades";
+import { buildMissingTrades, cleanMissingTrade, missingTradeKeywords, missingTradeZone } from "./missingTrades";
+
+describe("missingTradeKeywords", () => {
+  it("la radice della parola più lunga", () => {
+    assert.deepEqual(missingTradeKeywords("Sarto"), ["sart"]);
+    assert.deepEqual(missingTradeKeywords("Tecnico antenne"), ["antenn"]);
+    assert.deepEqual(missingTradeKeywords("Restauratore di mobili"), ["restaurator"]);
+    assert.deepEqual(missingTradeKeywords("Re"), []);
+    assert.deepEqual(missingTradeKeywords("Tecnico"), []);
+  });
+});
 
 describe("cleanMissingTrade", () => {
   it("pulisce il nome scritto dall'IA", () => {

@@ -56,6 +56,7 @@ import {
   type CategoryPriceStats,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
   OUT_OF_SERVICE_KEYWORDS,
+  missingTradeKeywords,
   nameSearchWords,
   type ProblemOutOfService,
   serviceMatchingProblem,
@@ -116,6 +117,11 @@ export type ProfessionalSearchParams = {
   merit?: boolean;
   /** Lavoro fuori dalle categorie: chi lo dichiara nelle prestazioni, nei patentini o nella descrizione. */
   offers?: ProblemOutOfService;
+  /**
+   * Mestiere che il sito non ha, proposto dall'IA: chi lo dichiara, come per
+   * `offers` (docs/changelog/2026-11-11-mestieri-che-mancano.md).
+   */
+  offersTrade?: string;
   /**
    * Descrizione del problema (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md):
    * prima chi ha tra le prestazioni proprio quel lavoro, in evidenza nella scheda.
@@ -317,14 +323,16 @@ export class ProfessionalsService {
     };
   }
 
-  async search({ category, city, q, remote, service, excludeDemo, merit, offers, problem, problemService }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
+  async search({ category, city, q, remote, service, excludeDemo, merit, offers, offersTrade, problem, problemService }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
     // Sinonimi compresi (docs/changelog/2026-10-28-quanto-costa-sinonimi.md): "perdite" trova chi ha scritto "Riparazione perdita d'acqua".
     const canonicalize = service || (problem && problemService) ? await this.serviceNamesService.canonicalizer() : null;
     const problemServiceKey = problem && problemService && canonicalize ? serviceGroupKey(problemService, canonicalize) : "";
     const serviceKey = service && canonicalize ? serviceGroupKey(service, canonicalize) : "";
     const serviceProfileIds = serviceKey && canonicalize ? await this.profileIdsWithService(serviceKey, canonicalize) : null;
     const publicWhere = this.publicSearchWhere(category, excludeDemo, serviceProfileIds);
-    const offerKeywords = offers ? OUT_OF_SERVICE_KEYWORDS[offers] : [];
+    const offerKeywords = offers ? OUT_OF_SERVICE_KEYWORDS[offers] : offersTrade ? missingTradeKeywords(offersTrade) : [];
+    // Un mestiere senza una parola da cercare non deve diventare "tutti i professionisti".
+    if (!offers && offersTrade && offerKeywords.length === 0) return [];
     const filtersWhere: Prisma.ProfessionalProfileWhereInput = {
       ...publicWhere,
       // Nell'AND: l'OR in cima è già usato da publicSearchWhere.

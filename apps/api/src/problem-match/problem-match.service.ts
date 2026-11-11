@@ -55,7 +55,7 @@ const WORDS_TTL_MS = 60_000;
 /** Le descrizioni salvate per "Mestieri richiesti" restano un anno. */
 const DESCRIPTION_RETENTION_DAYS = 365;
 
-/** Il risultato con il mestiere che manca, che resta nel registro di "Mestieri richiesti" e non va al sito. */
+/** Il risultato con il mestiere che manca scritto dall'IA, ancora da pulire. */
 type Classified = ProblemMatchResult & { missingTrade?: string | null };
 
 /**
@@ -222,8 +222,9 @@ export class ProblemMatchService {
   async match(description: string, city?: string): Promise<ProblemMatchResult> {
     const text = anonymizeProblemText(description);
     const classified = await this.classify(description, text);
-    const { missingTrade: _onlyForAdmin, ...result } = classified;
     const missingTrade = missingTradeOf(classified);
+    // Al sito solo un mestiere che non è tra i fuori servizio fissi: quelli hanno già il loro titolo.
+    const result: ProblemMatchResult = { ...classified, missingTrade: classified.outOfService ? null : missingTrade };
     // Registro per "Mestieri richiesti": senza contatti né chi l'ha scritto; un errore non blocca la ricerca.
     this.prisma.problemDescription
       .create({

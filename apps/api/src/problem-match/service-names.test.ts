@@ -98,7 +98,16 @@ describe("ProblemTakeoverService", () => {
     const prisma = { problemTakeover: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue({ id: "t2" }) } };
     await new ProblemTakeoverService(prisma as never).create("u1", { description: "boh", outOfService: "inventato" });
     expect(prisma.problemTakeover.create).toHaveBeenCalledWith({
-      data: { userId: "u1", description: "boh", city: null, outOfService: null },
+      data: { userId: "u1", description: "boh", city: null, outOfService: null, missingTrade: null },
+    });
+  });
+
+  // docs/changelog/2026-11-11-mestieri-che-mancano.md
+  it("salva il mestiere che non abbiamo, pulito", async () => {
+    const prisma = { problemTakeover: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue({ id: "t3" }) } };
+    await new ProblemTakeoverService(prisma as never).create("u1", { description: "orlo dei pantaloni", missingTrade: " sarto " });
+    expect(prisma.problemTakeover.create).toHaveBeenCalledWith({
+      data: { userId: "u1", description: "orlo dei pantaloni", city: null, outOfService: null, missingTrade: "Sarto" },
     });
   });
 });

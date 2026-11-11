@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { PrismaClient } from "@professionisti/database";
-import { WEB_URL } from "../fixtures/env";
+import { API_URL, WEB_URL } from "../fixtures/env";
 import { testToken } from "../fixtures/preventivi";
 
 /**
@@ -49,13 +49,15 @@ async function professional(slug: string, businessName: string, services: string
 test.beforeAll(async () => {
   // I profili di un giro precedente (prova ripetuta, database locale) confonderebbero i conti.
   await prisma.professionalProfile.updateMany({
-    where: { OR: ["Idraulico Caldaie ", "Idraulico Rubinetti ", "Tuttofare Rubinetti ", "Pulizie Cucine ", "Tecnico Lavatrici ", "Elettricista Elettrodomestici ", "Tuttofare Elettrodomestici "].map((name) => ({ businessName: { startsWith: name } })), deletedAt: null },
+    where: { OR: ["Idraulico Caldaie ", "Idraulico Rubinetti ", "Tuttofare Rubinetti ", "Pulizie Cucine ", "Tuttofare Sartoria ", "Tecnico Lavatrici ", "Elettricista Elettrodomestici ", "Tuttofare Elettrodomestici "].map((name) => ({ businessName: { startsWith: name } })), deletedAt: null },
     data: { deletedAt: new Date() },
   });
   await professional("idraulico", `Idraulico Caldaie ${stamp}`, ["Controllo caldaia"]);
   await professional("idraulico", `Idraulico Rubinetti ${stamp}`, ["Sostituzione rubinetto"]);
   await professional("tuttofare", `Tuttofare Rubinetti ${stamp}`, ["Sostituzione rubinetto"]);
   await professional("pulizie", `Pulizie Cucine ${stamp}`, ["Pulizia cucina"]);
+  // Un mestiere che il sito non ha, dichiarato tra le prestazioni (docs/changelog/2026-11-11-mestieri-che-mancano.md).
+  await professional("tuttofare", `Tuttofare Sartoria ${stamp}`, ["Piccole riparazioni di sartoria"]);
   await professional("elettrodomestici", `Tecnico Lavatrici ${stamp}`, ["Riparazione lavatrice"]);
   for (const n of [1, 2]) {
     await professional("elettricista", `Elettricista Elettrodomestici ${n} ${stamp}`, ["Riparazione elettrodomestici"]);
@@ -139,6 +141,15 @@ test("guasto della lavatrice: il mestiere Elettrodomestici e sotto tutti quelli 
     await expect(section.getByText(`Elettricista Elettrodomestici ${n} ${stamp}`).filter({ visible: true })).toBeVisible();
     await expect(section.getByText(`Tuttofare Elettrodomestici ${n} ${stamp}`).filter({ visible: true })).toBeVisible();
   }
+});
+
+test("mestiere che il sito non ha: chi lo dichiara tra le prestazioni, mai tutti", async ({ request }) => {
+  const names = async (offre: string) =>
+    ((await (await request.get(`${API_URL}/professionals/search?offre=${encodeURIComponent(offre)}&city=Latina`)).json()) as { businessName: string }[]).map((p) => p.businessName);
+  expect(await names("Sarto")).toContain(`Tuttofare Sartoria ${stamp}`);
+  expect(await names("Sarto")).not.toContain(`Pulizie Cucine ${stamp}`);
+  // Solo una parola generica: nessuno, non tutti.
+  expect(await names("Tecnico")).toEqual([]);
 });
 
 test("con l'avviso di sicurezza niente altri mestieri", async ({ page }) => {

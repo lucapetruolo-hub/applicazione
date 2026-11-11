@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
-import { OUT_OF_SERVICE_LABELS, type ProblemTakeoverInput } from "@professionisti/shared";
+import { OUT_OF_SERVICE_LABELS, cleanMissingTrade, type ProblemTakeoverInput } from "@professionisti/shared";
 import { opsAlert } from "../common/ops-alert";
 import { PRISMA } from "../prisma/prisma.module";
 
@@ -23,7 +23,7 @@ export class ProblemTakeoverService {
     if (existing) return { id: existing.id };
     const outOfService = input.outOfService && input.outOfService in OUT_OF_SERVICE_LABELS ? input.outOfService : null;
     const saved = await this.prisma.problemTakeover.create({
-      data: { userId, description: input.description, city: input.city || null, outOfService },
+      data: { userId, description: input.description, city: input.city || null, outOfService, missingTrade: outOfService ? null : cleanMissingTrade(input.missingTrade) },
     });
     opsAlert(`problem-takeover-${saved.id}`, "Nuova richiesta da seguire in admin (Ce ne occupiamo noi).");
     return { id: saved.id };

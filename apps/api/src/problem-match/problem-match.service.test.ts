@@ -144,14 +144,24 @@ describe("ProblemMatchService", () => {
   });
 
   // docs/changelog/2026-11-11-mestieri-che-mancano.md
-  it("salva il mestiere che non abbiamo scritto dall'IA, ma non lo manda al sito", async () => {
+  it("salva il mestiere che non abbiamo scritto dall'IA e lo manda al sito pulito", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "test");
     const prisma = fakePrisma();
     const service = new ProblemMatchService(prisma as never, fakeCatalog as never);
     service.askAi = vi.fn().mockResolvedValue(aiAnswer({ categories: [], reason: "", missingTrade: "sarto" }));
     const result = await service.match("devo accorciare l'orlo dei pantaloni", "Latina");
-    expect(result).not.toHaveProperty("missingTrade");
+    expect(result.missingTrade).toBe("Sarto");
     expect(prisma.problemDescription.create).toHaveBeenCalledWith({ data: expect.objectContaining({ missingTrade: "Sarto", city: "Latina" }) });
+  });
+
+  it("per un lavoro fuori servizio fisso il nome si salva ma al sito resta il suo titolo", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "test");
+    const prisma = fakePrisma();
+    const service = new ProblemMatchService(prisma as never, fakeCatalog as never);
+    service.askAi = vi.fn().mockResolvedValue(aiAnswer({ categories: [], reason: "", outOfService: "antennista", missingTrade: "Antennista" }));
+    const result = await service.match("non si vede la tv, forse è la parabola");
+    expect(result).toMatchObject({ outOfService: "antennista", missingTrade: null });
+    expect(prisma.problemDescription.create).toHaveBeenCalledWith({ data: expect.objectContaining({ missingTrade: "Antennista" }) });
   });
 
   it("salva la descrizione senza contatti", async () => {

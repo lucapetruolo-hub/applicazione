@@ -16,6 +16,8 @@ export const problemTakeoverSchema = z.object({
   description: z.string().trim().min(3).max(PROBLEM_DESCRIPTION_MAX),
   city: z.string().trim().max(80).optional(),
   outOfService: z.string().trim().max(40).optional(),
+  /** Mestiere che il sito non ha, proposto dall'IA (docs/changelog/2026-11-11-mestieri-che-mancano.md). */
+  missingTrade: z.string().trim().max(40).optional(),
 });
 export type ProblemTakeoverInput = z.infer<typeof problemTakeoverSchema>;
 

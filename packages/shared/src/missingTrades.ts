@@ -90,3 +90,21 @@ export function buildMissingTrades(rows: readonly { missingTrade: string | null;
     }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "it"));
 }
+
+/**
+ * Parole da cercare nelle prestazioni, nei patentini e nella descrizione dei
+ * professionisti per un mestiere che il sito non ha, come per i lavori fuori
+ * servizio fissi (`OUT_OF_SERVICE_KEYWORDS`): la radice della parola più lunga,
+ * così "Sarto" trova anche "sartoria" e "Tecnico antenne" non trova ogni tecnico.
+ */
+/** Parole che da sole non dicono il mestiere. */
+const GENERIC_TRADE_WORDS = new Set(["tecnico", "tecnica", "addetto", "addetta", "operaio", "esperto", "esperta", "specialista", "impresa", "ditta", "servizio", "servizi", "riparatore", "riparazione"]);
+
+export function missingTradeKeywords(name: string): string[] {
+  const words = tradeKey(name)
+    .split(" ")
+    .filter((word) => word.length >= 4 && !GENERIC_TRADE_WORDS.has(word));
+  const longest = words.sort((a, b) => b.length - a.length)[0];
+  if (!longest) return [];
+  return [longest.length > 4 ? longest.slice(0, -1) : longest];
+}

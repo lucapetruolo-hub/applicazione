@@ -3371,6 +3371,8 @@ model ProblemTakeover {
   description  String
   city         String?
   outOfService String?
+  /// Mestiere che il sito non ha, proposto dall'IA (docs/changelog/2026-11-11-mestieri-che-mancano.md).
+  missingTrade String?
   status       ProblemTakeoverStatus @default(OPEN)
   handledAt    DateTime?
   createdAt    DateTime              @default(now())

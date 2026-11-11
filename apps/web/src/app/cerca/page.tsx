@@ -195,11 +195,13 @@ async function ProblemResults({
   const result = await loadProblemMatch(description, city);
   const picked = searchParams.mestiere && isProfessionalCategorySlug(searchParams.mestiere) ? searchParams.mestiere : null;
   const chosen = picked ?? (result.outOfService ? null : (result.categories[0] ?? null));
-  const offers = !picked && result.outOfService ? result.outOfService : undefined;
+  // Lavoro fuori servizio o mestiere che il sito non ha: prima chi lo dichiara
+  // (docs/changelog/2026-11-11-mestieri-che-mancano.md).
+  const offers = picked ? undefined : (result.outOfService ?? (result.categories.length === 0 ? result.missingTrade : null) ?? undefined);
   const problem: ProblemSearch = {
     description,
-    // Scegliendo un mestiere a mano il "fuori servizio" non vale più.
-    result: picked ? { ...result, outOfService: null } : result,
+    // Scegliendo un mestiere a mano il "fuori servizio" e il mestiere che manca non valgono più.
+    result: picked ? { ...result, outOfService: null, missingTrade: null } : result,
     chosen,
     questionDone: Boolean(picked) || searchParams.domanda === "no",
   };

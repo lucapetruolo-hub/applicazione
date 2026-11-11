@@ -96,6 +96,23 @@ export function ProblemBand({
       ? choices.filter((slug) => slug !== chosen && (categoryCounts?.[slug] ?? 0) > 0)
       : [];
   const showQuestion = Boolean(result.question && !questionDone);
+  // Un mestiere che il sito non ha, proposto dall'IA (docs/changelog/2026-11-11-mestieri-che-mancano.md).
+  const missingTrade = !chosen && !result.outOfService ? (result.missingTrade ?? null) : null;
+
+  // Tutti i mestieri da scegliere a mano: nella banda se non abbiamo capito, sotto
+  // "Ce ne occupiamo noi" se l'IA propone un mestiere che il sito non ha.
+  const chooseTrade = (
+    <YStack gap="2">
+      <Text fontSize={16} color={brand.grafite70}>
+        {missingTrade ? "Se invece serve uno di questi mestieri, sceglilo:" : "Non siamo sicuri di aver capito. Scegli tu il mestiere:"}
+      </Text>
+      <XStack gap="2" flexWrap="wrap">
+        {PROFESSIONAL_CATEGORIES.map((category) => (
+          <ChoiceLink key={category.slug} href={problemResultsHref(description, city, { mestiere: category.slug })} label={category.label} />
+        ))}
+      </XStack>
+    </YStack>
+  );
 
   return (
     <YStack gap="3" width="100%" marginBottom="4">
@@ -174,6 +191,18 @@ export function ProblemBand({
           <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
             {OUT_OF_SERVICE_LABELS[result.outOfService]}
           </Text>
+        ) : missingTrade ? (
+          <YStack gap="1">
+            <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
+              {missingTrade}
+            </Text>
+            {/* Con chi lo dichiara la frase sotto la banda dice già tutto. */}
+            {count === 0 ? (
+              <Text fontSize={16} color={brand.grafite70}>
+                Per ora non lo trovi sul sito.
+              </Text>
+            ) : null}
+          </YStack>
         ) : (
           <Text fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
             Che lavoro ti serve?
@@ -207,24 +236,7 @@ export function ProblemBand({
           </YStack>
         ) : null}
 
-        {!chosen && !result.outOfService ? (
-          <YStack gap="2">
-            <Text fontSize={16} color={brand.grafite70}>
-              Non siamo sicuri di aver capito. Scegli tu il mestiere:
-            </Text>
-            <XStack gap="2" flexWrap="wrap">
-              {PROFESSIONAL_CATEGORIES.map((category) => (
-                <ChoiceLink
-                  key={category.slug}
-                  href={problemResultsHref(description, city, {
-                    mestiere: category.slug,
-                  })}
-                  label={category.label}
-                />
-              ))}
-            </XStack>
-          </YStack>
-        ) : null}
+        {!chosen && !result.outOfService && !missingTrade ? chooseTrade : null}
       </YStack>
 
       {/* Dopo la domanda: prima si sceglie la persona giusta, poi si chiede il preventivo. */}
@@ -270,6 +282,28 @@ export function ProblemBand({
         ) : (
           <TakeoverCard description={description} city={city} outOfService={result.outOfService} />
         )
+      ) : missingTrade ? (
+        <>
+          {count > 0 ? (
+            <>
+              <Text fontSize={16} color={brand.grafite}>
+                Nessuno dei nostri mestieri fa questo lavoro, ma questi professionisti dichiarano di farlo.
+              </Text>
+              {/* Chiusi, per non spingere giù i risultati. */}
+              <details>
+                <summary style={{ cursor: "pointer", color: brand.cianografiaScuro, fontWeight: 600, fontSize: 16, minHeight: 44, display: "flex", alignItems: "center" }}>
+                  Ti serve un altro mestiere?
+                </summary>
+                {chooseTrade}
+              </details>
+            </>
+          ) : (
+            <>
+              <TakeoverCard description={description} city={city} missingTrade={missingTrade} />
+              {chooseTrade}
+            </>
+          )}
+        </>
       ) : null}
     </YStack>
   );
@@ -373,7 +407,17 @@ export function SafetyNotice({ safety }: { safety: NonNullable<ProblemMatchResul
 }
 
 /** "Ce ne occupiamo noi": nessuna scadenza, poi la ricerca normale (decisione di Luca). */
-function TakeoverCard({ description, city, outOfService }: { description: string; city?: string; outOfService: string }) {
+function TakeoverCard({
+  description,
+  city,
+  outOfService,
+  missingTrade,
+}: {
+  description: string;
+  city?: string;
+  outOfService?: string;
+  missingTrade?: string;
+}) {
   const { token } = useAuth();
   const [state, setState] = useState<"idle" | "auth" | "sending" | "sent" | "declined" | "error">("idle");
   const [pendingSend, setPendingSend] = useState(false);
@@ -386,13 +430,14 @@ function TakeoverCard({ description, city, outOfService }: { description: string
           description,
           city,
           outOfService,
+          missingTrade,
         });
         setState("sent");
       } catch {
         setState("error");
       }
     },
-    [description, city, outOfService],
+    [description, city, outOfService, missingTrade],
   );
 
   // Dopo l'accesso dentro la finestra si invia da qui, con il token nuovo del contesto.
@@ -430,7 +475,9 @@ function TakeoverCard({ description, city, outOfService }: { description: string
           Ce ne occupiamo noi
         </Text>
         <Text fontSize={16} color={brand.grafite70}>
-          Per ora nessun professionista del sito fa questo lavoro qui. Se vuoi, cerchiamo noi qualcuno e ti scriviamo.
+          {missingTrade
+            ? "Se vuoi, cerchiamo noi qualcuno che lo faccia e ti scriviamo."
+            : "Per ora nessun professionista del sito fa questo lavoro qui. Se vuoi, cerchiamo noi qualcuno e ti scriviamo."}
         </Text>
       </YStack>
       {state === "error" ? (
