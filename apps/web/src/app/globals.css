@@ -3853,15 +3853,18 @@ a.admin-kpi:hover {
      invertiti su richiesta di Luca dell'11/11/2026
      (docs/changelog/2026-11-11-palette-e-figtree.md). */
   background: #c4562f;
-  opacity: 0.2;
+  opacity: 0.12;
 }
 .auth-page-blob--two {
   width: 320px;
   height: 320px;
   bottom: -140px;
   left: -110px;
+  /* 0,12 e non più 0,28: in basso a sinistra la luce passa sotto testi
+     piccoli grigi (date dell'agenda, admin), che devono restare sopra 4,5:1
+     anche sul punto più verde (#dee5d6 con #5e5a54 = 5,3:1; prove axe in CI). */
   background: #128552;
-  opacity: 0.28;
+  opacity: 0.12;
 }
 /* Comparsa del riquadro di accesso e registrazione: 250 ms e 8 px (prima
    450 ms e 16 px), si vede a ogni accesso (skill web-animation-design). */
