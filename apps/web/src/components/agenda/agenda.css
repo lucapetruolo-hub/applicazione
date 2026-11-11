@@ -1622,3 +1622,80 @@
   text-align: left;
   padding-left: 1px;
 }
+/* Preventivo in attesa su tutta una fascia lunga accanto a un lavoro già preso: striscia sottile a destra (docs/changelog/2026-11-11-fasce-ampie.md). */
+.ag-ev.strip {
+  padding: 0;
+  border-radius: 6px;
+  border-left-width: 1.5px;
+  background: repeating-linear-gradient(180deg, #fff8ea 0 6px, #f6e3b8 6px 12px);
+}
+/* Settimana sul telefono: un tocco mostra in basso nome intero e orario, "Apri" apre il lavoro. */
+.ag-peek {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px 12px 16px;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: var(--ag-float);
+  animation: ag-peek-in 160ms ease-out;
+}
+@keyframes ag-peek-in {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ag-peek {
+    animation: none;
+  }
+}
+.ag-peek-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font: 400 13.5px/1.35 var(--font-body), system-ui, sans-serif;
+  color: var(--ag-ink);
+}
+.ag-peek-text b {
+  font-weight: 600;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.ag-peek-text span {
+  color: var(--ag-muted);
+}
+.ag-peek-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ag-peek-open {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ag-green-fill);
+  color: #fff;
+  font: 600 14.5px var(--font-body), system-ui, sans-serif;
+  cursor: pointer;
+}
+.ag-peek-close {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ag-muted);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}

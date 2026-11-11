@@ -50,6 +50,17 @@ for (const view of ["Giorno", "Settimana"] as const) {
       if (testInfo.project.name === "computer-tokyo" || view === "Giorno") await expect(rows.filter({ hasText: "Carla" })).toHaveAccessibleName(/2 di 3 nella stessa fascia/);
       await rows.first().scrollIntoViewIfNeeded();
       await page.screenshot({ path: testInfo.outputPath(`pila-${view.toLowerCase()}.png`) });
+      if (view === "Settimana" && testInfo.project.name === "telefono-italia") {
+        // Colonne strette: un tocco mostra in basso il nome intero, "Apri" apre il lavoro.
+        await rows.filter({ hasText: "Car" }).click();
+        const peek = page.getByRole("dialog", { name: "Carla Ricci" });
+        await expect(peek).toContainText("08:00–19:00");
+        await expect(peek.getByRole("button", { name: "Apri" })).toBeFocused();
+        await page.screenshot({ path: testInfo.outputPath("nome-intero.png") });
+        await peek.getByRole("button", { name: "Apri" }).click();
+        await expect(peek).toHaveCount(0);
+        await expect(page.getByText("Carla Ricci").last()).toBeVisible();
+      }
     } finally {
       await prisma.externalJob.deleteMany({ where: { id: { in: jobs.map((j) => j.id) } } });
       await prisma.availabilitySlot.delete({ where: { id: slot.id } });
@@ -85,6 +96,43 @@ test("con l'ora di arrivo il preventivo sta a quell'ora in agenda e il cliente l
     await clientPage.context().close();
   } finally {
     await prisma.quoteItem.deleteMany({ where: { quoteId: quote.id } });
+    await prisma.quote.delete({ where: { id: quote.id } });
+    await prisma.lead.deleteMany({ where: { guidedRequestId: request.id } });
+    await prisma.guidedRequest.delete({ where: { id: request.id } });
+  }
+});
+
+test("preventivo in attesa su tutta la fascia accanto a un lavoro preso: striscia sottile", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "telefono-new-york", "Basta un telefono.");
+  const profile = await prisma.professionalProfile.findFirstOrThrow({ where: { userId: e2eData().userId } });
+  const client = await createClient(prisma, "Franco");
+  const request = await prisma.guidedRequest.create({
+    data: { clientId: client.id, categoryId: profile.categoryId, description: "Scarico della cucina lento.", city: "Latina" },
+  });
+  await prisma.lead.create({ data: { guidedRequestId: request.id, professionalProfileId: profile.id, priceEurCents: 0 } });
+  const quote = await prisma.quote.create({
+    data: { guidedRequestId: request.id, professionalProfileId: profile.id, estimatedStartDate: wall("2026-10-27T08:00"), estimatedEndDate: wall("2026-10-27T19:00"), status: "SENT" },
+  });
+  const job = await prisma.externalJob.create({
+    data: { professionalProfileId: profile.id, clientName: "Giulia Neri", scheduledAt: wall("2026-10-27T10:00"), scheduledEndAt: wall("2026-10-27T12:00") },
+  });
+  try {
+    await openDay(page, "Settimana");
+    const tuesday = page.locator(".ag-col").nth(1);
+    const strip = tuesday.locator(".ag-ev.wait.strip");
+    await expect(strip).toHaveCount(1);
+    await expect(strip).toHaveAccessibleName(/Franco/);
+    const stripBox = (await strip.boundingBox())!;
+    const jobBox = (await tuesday.locator(".ag-ev.ext", { hasText: testInfo.project.name === "computer-tokyo" ? "Giulia" : "10:00" }).boundingBox())!;
+    const column = (await tuesday.boundingBox())!;
+    expect(stripBox.width).toBeLessThan(14);
+    // Il lavoro preso resta largo quasi tutta la colonna, senza toccare la striscia.
+    expect(jobBox.width).toBeGreaterThan(column.width * 0.6);
+    expect(jobBox.x + jobBox.width).toBeLessThanOrEqual(stripBox.x + 0.5);
+    await strip.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath("striscia.png") });
+  } finally {
+    await prisma.externalJob.delete({ where: { id: job.id } });
     await prisma.quote.delete({ where: { id: quote.id } });
     await prisma.lead.deleteMany({ where: { guidedRequestId: request.id } });
     await prisma.guidedRequest.delete({ where: { id: request.id } });

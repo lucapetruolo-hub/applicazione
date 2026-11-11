@@ -38,3 +38,25 @@ l'altro in Giorno e Settimana, telefono e computer; preventivo con arrivo alle
 10 messo alle 10 e "Arrivo verso le 10:00" per il cliente; campo che compare
 con la fascia 14-20 e sparisce con una fascia di due ore). Typecheck e lint
 puliti.
+
+## Secondo giro (11/11, ok di Luca alle due migliorie proposte)
+
+**Richiesta**: "si" a "nella vista Settimana sul telefono, il nome completo
+quando tocchi la riga" e a "un preventivo in attesa che occupa tutta la fascia
+mostrato come una striscia sottile".
+
+**Decisione**:
+- Settimana sul telefono: il primo tocco su un lavoro apre in basso un foglio
+  con nome intero, orario, città e tipo, "Apri" (che fa quello che faceva il
+  tocco prima) e "Chiudi"; Esc lo chiude, cambiando settimana sparisce.
+  Giorno e computer restano col tocco che apre subito.
+- Un preventivo in attesa lungo almeno 3 ore, senza ora di arrivo, che tocca un
+  lavoro già preso diventa una striscia a righe ottone a destra della colonna
+  (12 px al computer, 8 px sul telefono, `waitStrips`); il lavoro preso resta
+  largo. Al computer il nome si legge passando sopra, sul telefono col foglio,
+  col lettore di schermo sempre. Da solo nella fascia resta un riquadro.
+
+**Verifica**: `e2e/tests/agenda-fasce-ampie.spec.ts` (foglio col nome intero e
+"Apri" a fuoco sul telefono; striscia larga meno di 14 px con il lavoro accanto
+largo più del 60% della colonna, telefono e computer). Prove di
+`agenda-sovrapposti` ancora verdi.

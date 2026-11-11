@@ -125,6 +125,30 @@ export function stackSameBand(
   return result;
 }
 
+// Un preventivo in attesa lungo almeno così diventa una striscia sottile se nella stessa fascia c'è già un lavoro.
+const STRIP_MIN_MINUTES = 180;
+
+/**
+ * Preventivi in attesa su tutta una fascia lunga (senza ora di arrivo) che
+ * toccano un lavoro già preso: una striscia sottile a destra invece di metà
+ * colonna, così il lavoro vero resta largo e leggibile (scelta di Luca,
+ * docs/changelog/2026-11-11-fasce-ampie.md). Da solo nella fascia resta un riquadro.
+ */
+export function waitStrips(events: AgendaGridEvent[]): Set<string> {
+  const taken = events.filter((event) => event.kind !== "wait" && event.kind !== "canceled");
+  return new Set(
+    events
+      .filter(
+        (event) =>
+          event.kind === "wait" &&
+          !event.timeLabel &&
+          event.end - event.start >= STRIP_MIN_MINUTES &&
+          taken.some((other) => other.start < event.end && other.end > event.start),
+      )
+      .map((event) => event.key),
+  );
+}
+
 /** Orario del riquadro: quello scritto apposta (ora di arrivo) o inizio–fine. */
 function eventTime(event: AgendaGridEvent): string {
   return event.timeLabel ?? `${minutesToLabel(event.start)}–${minutesToLabel(event.end)}`;
@@ -170,6 +194,18 @@ export function AgendaTimeGrid({
   const [phone] = useState(() => typeof window !== "undefined" && window.matchMedia(PHONE_QUERY).matches);
   const HOUR_PX = phone ? HOUR_PX_PHONE : HOUR_PX_COMPUTER;
   const [showEarly, setShowEarly] = useState(false);
+  // Settimana sul telefono: il primo tocco su un lavoro mostra in basso il nome intero, "Apri" lo apre.
+  const [peek, setPeek] = useState<AgendaGridEvent | null>(null);
+  const peekOpenRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!peek) return;
+    peekOpenRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPeek(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [peek]);
   // Settimana sul telefono: sette colonne strette, le scritte si accorciano.
   const narrowWeek = phone && days.length > 1;
   const dateStrs = days.map(toIsoDate);
@@ -312,7 +348,14 @@ export function AgendaTimeGrid({
                     );
                   })}
                 {(() => {
-                  const dayEvents = visible.filter((event) => event.date === dateStr && event.end > fromHour * 60);
+                  const shown = visible.filter((event) => event.date === dateStr && event.end > fromHour * 60);
+                  const strips = waitStrips(shown);
+                  const dayEvents = shown.filter((event) => !strips.has(event.key));
+                  const stripEvents = shown.filter((event) => strips.has(event.key));
+                  const stripPx = narrowWeek ? 8 : 12;
+                  // Posto a destra lasciato alle strisce che toccano il lavoro.
+                  const reserveFor = (event: AgendaGridEvent) =>
+                    stripEvents.filter((strip) => strip.start < event.end && strip.end > event.start).length * (stripPx + 2);
                   // Altezza minima del riquadro (26 px) in minuti, così due impegni brevi vicini non si coprono.
                   const stackOf = stackSameBand(dayEvents, (event) => (y(event.end) - y(Math.max(event.start, fromHour * 60))) / STACK_MIN_ROW_PX);
                   // Una pila di lavori con la stessa fascia occupa una sola corsia, col posto del primo.
@@ -320,7 +363,24 @@ export function AgendaTimeGrid({
                     dayEvents.filter((event) => (stackOf.get(event.key)?.index ?? 0) === 0),
                     Math.ceil(((26 + 4) / HOUR_PX) * 60),
                   );
-                  return dayEvents.map((event) => {
+                  const stripButtons = stripEvents.map((event, index) => {
+                    const start = Math.max(event.start, fromHour * 60);
+                    return (
+                      <button
+                        key={event.key}
+                        type="button"
+                        className={`ag-ev ${event.kind} strip${event.key === selectedKey ? " selected" : ""}`}
+                        title={`${event.title}, ${eventTime(event)}`}
+                        style={{ top: y(start) + 2, height: Math.max(26, y(event.end) - y(start) - 4), right: (narrowWeek ? 2 : 4) + index * (stripPx + 2), width: stripPx, left: "auto" }}
+                        onClick={narrowWeek ? () => setPeek(event) : event.onPress}
+                      >
+                        <span className="sr-only">
+                          {event.title}, {eventTime(event)}, {event.label}, nella stessa fascia di un altro impegno
+                        </span>
+                      </button>
+                    );
+                  });
+                  return [...stripButtons, ...dayEvents.map((event) => {
                     const stack = stackOf.get(event.key) ?? null;
                     const bandStart = Math.max(event.start, fromHour * 60);
                     const bandHeight = Math.max(26, y(event.end) - y(bandStart) - 4);
@@ -333,6 +393,7 @@ export function AgendaTimeGrid({
                     const gap = narrowWeek ? 1 : 3;
                     // Nella Settimana del telefono due corsie sono troppo strette per l'ora: restano le strisce colorate.
                     const tight = narrowWeek && lanes > 1;
+                    const reserve = reserveFor(event);
                     return (
                       <button
                         key={event.key}
@@ -343,13 +404,15 @@ export function AgendaTimeGrid({
                           height: blockHeight,
                           ...(lanes > 1
                             ? {
-                                left: `calc(${side}px + (100% - ${side * 2}px) * ${lane} / ${lanes})`,
-                                width: `calc((100% - ${side * 2}px) / ${lanes} - ${lane < lanes - 1 ? gap : 0}px)`,
+                                left: `calc(${side}px + (100% - ${side * 2 + reserve}px) * ${lane} / ${lanes})`,
+                                width: `calc((100% - ${side * 2 + reserve}px) / ${lanes} - ${lane < lanes - 1 ? gap : 0}px)`,
                                 right: "auto",
                               }
-                            : null),
+                            : reserve > 0
+                              ? { right: side + reserve }
+                              : null),
                         }}
-                        onClick={event.onPress}
+                        onClick={narrowWeek ? () => setPeek(event) : event.onPress}
                       >
                         {tight && !(stack && lanes === 1) ? (
                           <span className="sr-only">
@@ -417,7 +480,7 @@ export function AgendaTimeGrid({
                         </span>
                       </button>
                     );
-                  });
+                  })];
                 })()}
               </div>
             );
@@ -435,6 +498,34 @@ export function AgendaTimeGrid({
           ) : null}
         </div>
       </div>
+      {/* Cambiando settimana il foglio sparisce. */}
+      {peek && dateStrs.includes(peek.date) ? (
+        <div className="ag-peek" role="dialog" aria-modal="false" aria-labelledby="ag-peek-title">
+          <div className="ag-peek-text">
+            <b id="ag-peek-title">{peek.title}</b>
+            <span>{eventTime(peek)}</span>
+            {peek.detail && peek.detail !== peek.label ? <span>{peek.detail}</span> : null}
+            <span className="ag-peek-label">{peek.label}</span>
+          </div>
+          <div className="ag-peek-actions">
+            <button
+              ref={peekOpenRef}
+              type="button"
+              className="ag-peek-open"
+              onClick={() => {
+                const event = peek;
+                setPeek(null);
+                event.onPress();
+              }}
+            >
+              Apri
+            </button>
+            <button type="button" className="ag-peek-close" aria-label="Chiudi" onClick={() => setPeek(null)}>
+              ×
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
