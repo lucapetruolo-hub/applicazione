@@ -356,7 +356,7 @@ export function ResultsMap({
           position: relative;
           padding: 3px;
           background: #ffffff;
-          border: 2px solid #189a63;
+          border: 2px solid #4c8a7a;
           border-radius: 50%;
           box-shadow: 0 3px 8px rgba(15, 23, 42, 0.25);
           cursor: pointer;
@@ -369,7 +369,7 @@ export function ResultsMap({
           transform: translateX(-50%);
           border-left: 7px solid transparent;
           border-right: 7px solid transparent;
-          border-top: 8px solid #189a63;
+          border-top: 8px solid #4c8a7a;
         }
         .results-map-container :global(.advanced-pin-count) {
           position: absolute;
@@ -395,7 +395,7 @@ export function ResultsMap({
           border-color: ${brand.cianografiaPieno};
           transform: scale(1.2);
           transform-origin: 50% calc(100% + 8px);
-          box-shadow: 0 0 0 4px rgba(18, 133, 82, 0.25), 0 4px 12px rgba(15, 23, 42, 0.3);
+          box-shadow: 0 0 0 4px rgba(64, 119, 106, 0.25), 0 4px 12px rgba(15, 23, 42, 0.3);
         }
         .results-map-container :global(.advanced-pin.selected)::after {
           border-top-color: ${brand.cianografiaPieno};
@@ -878,7 +878,7 @@ function MapPreview({
           cursor: pointer;
         }
         .map-preview-slot:hover {
-          background: #c8ebd8;
+          background: #d0e3de;
         }
         .map-preview-more {
           padding: 0 12px 0 18px;

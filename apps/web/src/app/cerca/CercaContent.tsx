@@ -210,7 +210,7 @@ export function CercaContent({
           transition: background-color 0.15s ease;
         }
         :global(.service-chip:hover) {
-          background-color: #c9ecd9;
+          background-color: #d1e4df;
         }
         :global(.service-chip:focus-visible) {
           outline: 2px solid ${brand.cianografiaScuro};

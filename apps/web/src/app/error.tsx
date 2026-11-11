@@ -36,11 +36,11 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
           type="button"
           onClick={retry}
           disabled={isPending}
-          style={{ background: "#128552", color: "#fff", border: "none", borderRadius: 999, padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}
+          style={{ background: "#40776a", color: "#fff", border: "none", borderRadius: 999, padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}
         >
           {isPending ? "Caricamento…" : "Riprova"}
         </button>
-        <Link href="/" style={{ padding: "10px 20px", color: "#0e7a4c", fontWeight: 700 }}>
+        <Link href="/" style={{ padding: "10px 20px", color: "#386c5f", fontWeight: 700 }}>
           Torna alla home
         </Link>
       </div>

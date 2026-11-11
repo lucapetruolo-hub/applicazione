@@ -21,22 +21,22 @@ export const brand = {
   // (docs/CHANGELOG.md §278-§279): 3,2:1 su bianco, il minimo perché si veda
   // dove scrivere (il filetto è 1,3:1). Il filetto resta per i divisori.
   bordoCampo: "#8E867C",
-  cianografia: "#189A63",
+  cianografia: "#4C8A7A",
   // Verde dei testi verdi piccoli e dei link (5,4:1 su bianco, WCAG AA).
   // Sfondi, hero e pulsanti restano su cianografia (docs/CHANGELOG.md §172,
   // scelta dell'utente).
-  cianografiaScuro: "#0E7A4C",
+  cianografiaScuro: "#386C5F",
   // Sfondo dei pulsanti e delle aree piene con testo bianco (docs/CHANGELOG.md
   // §350): cianografia con il bianco sopra ha contrasto 3,6:1, sotto il 4,5:1
   // che serve ai testi di 16 px; questo tono, appena più scuro, arriva a 4,7:1.
-  cianografiaPieno: "#128552",
-  cianografiaVelo: "#DCF3E7",
+  cianografiaPieno: "#40776A",
+  cianografiaVelo: "#E1EEEB",
   // Verde scuro di "fatto" (salvato, confermato, pagato, lavoro concluso),
   // volutamente distinto dal verde dei pulsanti (cianografia): un messaggio
   // di conferma non deve confondersi con un bottone d'azione. 6,3:1 su
   // bianco. Il nome resta per i ~60 punti che lo usano; il bollino
   // "Verificato" ora è terracotta (sotto).
-  verificato: "#0E6B42",
+  verificato: "#325F54",
   // Terracotta della palette A (docs/changelog/2026-11-11-palette-e-figtree.md):
   // solo per i segni di fiducia, cioè il bollino "Verificato" e "Lavoro fatto
   // tramite il sito", mai per pulsanti o messaggi. 5,6:1 sul fondo crema,

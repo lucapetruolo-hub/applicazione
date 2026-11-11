@@ -321,12 +321,12 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
           color: inherit;
         }
         :global(.mega-item:hover) {
-          background: #dcf3e7;
+          background: #e1eeeb;
         }
         .mega-item-icon {
           flex-shrink: 0;
           margin-top: 2px;
-          color: #0e7a4c;
+          color: #386c5f;
         }
         .mega-item-text {
           display: flex;
@@ -343,7 +343,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
         }
         :global(.mega-footer) {
           display: block;
-          background: #128552;
+          background: #40776a;
           color: #ffffff;
           padding: 14px 24px;
           font-size: 14px;
@@ -351,7 +351,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
           text-decoration: none;
         }
         :global(.mega-footer:hover) {
-          background: #0e7a4c;
+          background: #386c5f;
         }
 
         .mega-mobile-trigger {
@@ -478,11 +478,11 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
         }
         :global(.mega-category.is-active) {
           background: #efe9e2;
-          color: #0e7a4c;
+          color: #386c5f;
         }
         .mega-category-icon {
           display: inline-flex;
-          color: #0e7a4c;
+          color: #386c5f;
         }
         .mega-drawer-cta {
           padding: 16px 20px;
@@ -491,7 +491,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
         :global(.mega-drawer-cta a) {
           display: block;
           text-align: center;
-          background: #128552;
+          background: #40776a;
           color: white;
           padding: 12px;
           border-radius: 14px;

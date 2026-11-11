@@ -52,7 +52,7 @@ export function BillingIntervalToggle({ value, onChange }: { value: BillingInter
           font-weight: 700;
         }
         button[aria-pressed="true"] .save {
-          color: #9fe3c2;
+          color: #aed4ca;
         }
         @media (max-width: 420px) {
           button {
