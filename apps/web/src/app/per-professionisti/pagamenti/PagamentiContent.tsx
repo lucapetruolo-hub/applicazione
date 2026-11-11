@@ -30,7 +30,7 @@ const EXAMPLE = onlineFeeExample();
 function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
     <YStack gap="2">
-      <Text render="h2" fontFamily="heading" fontWeight="700" fontSize="6" color={brand.grafite}>
+      <Text render="h2" fontFamily="heading" fontWeight="700" fontSize="6" color={brand.inchiostro}>
         {title}
       </Text>
       {children}
@@ -86,7 +86,7 @@ export function PagamentiContent() {
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
       <YStack width="100%" maxWidth={720} gap="6">
         <YStack gap="3">
-          <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="9" color={brand.grafite}>
+          <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="9" color={brand.inchiostro}>
             Come vieni pagato
           </Text>
           <P>

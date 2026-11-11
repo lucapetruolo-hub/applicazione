@@ -161,7 +161,7 @@
   font-family: var(--f-family);
   font-weight: 800;
   font-size: var(--f-size-8);
-  color: var(--c-grafite);
+  color: #0f3b2c; /* brand.inchiostro, titoli */
 }
 
 .categories {
@@ -706,11 +706,11 @@
   gap: 4px;
 }
 
-/* brand.verificato */
+/* brand.terracotta */
 .confirmedText {
   font-size: 13px;
   font-weight: 700;
-  color: #3d6b3e;
+  color: #a3441f;
 }
 
 .reviewAuthor {

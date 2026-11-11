@@ -42,7 +42,7 @@ export function BookingConfirmed({ booking, address, token, onDone }: { booking:
           </XStack>
         </YStack>
         <div ref={headingRef} tabIndex={-1} style={{ outline: "none" }}>
-          <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center">
+          <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro} textAlign="center">
             Appuntamento prenotato
           </Text>
         </div>

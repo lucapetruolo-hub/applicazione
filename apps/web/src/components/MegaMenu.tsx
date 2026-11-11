@@ -256,7 +256,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
           font-size: 16px;
           font-weight: 600;
           font-family: var(--font-body), sans-serif;
-          color: #2b2420;
+          color: #1b1a18;
           padding: 8px 0;
         }
         .mega-chevron {
@@ -304,7 +304,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
           font-family: var(--font-body), sans-serif;
           font-size: 13px;
           font-weight: 700;
-          color: #6e6459;
+          color: #5e5a54;
           margin-bottom: 8px;
         }
         /* Le regole che hanno come target un next/link usano :global():
@@ -321,12 +321,12 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
           color: inherit;
         }
         :global(.mega-item:hover) {
-          background: #dcf3e7;
+          background: #e1eeeb;
         }
         .mega-item-icon {
           flex-shrink: 0;
           margin-top: 2px;
-          color: #0e7a4c;
+          color: #386c5f;
         }
         .mega-item-text {
           display: flex;
@@ -335,15 +335,15 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
         .mega-item-name {
           font-size: 14px;
           font-weight: 600;
-          color: #2b2420;
+          color: #1b1a18;
         }
         .mega-item-desc {
           font-size: 12px;
-          color: #6e6459;
+          color: #5e5a54;
         }
         :global(.mega-footer) {
           display: block;
-          background: #128552;
+          background: #40776a;
           color: #ffffff;
           padding: 14px 24px;
           font-size: 14px;
@@ -351,7 +351,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
           text-decoration: none;
         }
         :global(.mega-footer:hover) {
-          background: #0e7a4c;
+          background: #386c5f;
         }
 
         .mega-mobile-trigger {
@@ -372,7 +372,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
         .mega-burger span {
           display: block;
           height: 2px;
-          background: #2b2420;
+          background: #1b1a18;
           border-radius: 1px;
         }
 
@@ -406,7 +406,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
           justify-content: space-between;
           align-items: center;
           padding: 20px;
-          border-bottom: 1px solid #f0dcc0;
+          border-bottom: 1px solid #e7e0d7;
           font-weight: 700;
           font-size: 16px;
         }
@@ -421,7 +421,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
           border: none;
           border-radius: 50%;
           cursor: pointer;
-          color: #6e6459;
+          color: #5e5a54;
         }
         .mega-drawer-close:hover {
           background: #efe9e2;
@@ -438,13 +438,13 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
           flex-direction: column;
           gap: 2px;
           padding-bottom: 12px;
-          border-bottom: 1px solid #f0dcc0;
+          border-bottom: 1px solid #e7e0d7;
           margin-bottom: 4px;
         }
         :global(.mega-navlink) {
           padding: 10px 4px;
           text-decoration: none;
-          color: #2b2420;
+          color: #1b1a18;
           font-size: 15px;
           font-weight: 600;
         }
@@ -453,7 +453,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.04em;
-          color: #6e6459;
+          color: #5e5a54;
           padding: 8px 4px 4px;
         }
         .mega-categories {
@@ -469,7 +469,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
           padding: 0 4px;
           border-radius: 10px;
           text-decoration: none;
-          color: #2b2420;
+          color: #1b1a18;
           font-size: 15px;
           font-weight: 600;
         }
@@ -478,20 +478,20 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
         }
         :global(.mega-category.is-active) {
           background: #efe9e2;
-          color: #0e7a4c;
+          color: #386c5f;
         }
         .mega-category-icon {
           display: inline-flex;
-          color: #0e7a4c;
+          color: #386c5f;
         }
         .mega-drawer-cta {
           padding: 16px 20px;
-          border-top: 1px solid #f0dcc0;
+          border-top: 1px solid #e7e0d7;
         }
         :global(.mega-drawer-cta a) {
           display: block;
           text-align: center;
-          background: #128552;
+          background: #40776a;
           color: white;
           padding: 12px;
           border-radius: 14px;

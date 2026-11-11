@@ -1,46 +1,59 @@
-// Palette "Vicinato" (sostituisce "Scheda Intervento", CLAUDE.md §19):
-// pesca caldo, verde smeraldo come accento primario, angoli morbidi,
-// ombra soffice al posto dei filetti — stessi NOMI di chiave di prima
+// Palette A "Verde fiducia e terracotta" (scelta di Luca dell'11/11/2026,
+// docs/changelog/2026-11-11-palette-e-figtree.md, prima "Vicinato" pesca):
+// fondo crema #FAF2E8 (scelto da Luca al posto della carta #F7F3EE, più caldo), verde per pulsanti e link, terracotta per i segni di
+// fiducia, angoli morbidi, ombra soffice al posto dei filetti — stessi NOMI di chiave di prima
 // (mai rinominare/rimuovere: ~50 file in tutto il sito referenziano
 // `brand.grafite`/`brand.cianografia`/ecc., ricolorare qui basta a
 // ripropagare il nuovo stile ovunque senza toccare quei file uno per
 // uno). Valori grezzi esportati (oltre ai token Tamagui in config.ts) per
 // i punti che devono scriverli in CSS puro invece che via prop Tamagui.
 export const brand = {
-  gesso: "#FDEFE1",
+  gesso: "#FAF2E8",
   calce: "#FFFFFF",
-  grafite: "#2B2420",
-  grafite70: "#6E6459",
+  grafite: "#1B1A18",
+  grafite70: "#5E5A54",
   // Non più un vero filetto strutturale (i pannelli usano ombra soffice
   // al suo posto, vedi shadowVicinato sotto) — resta come tinta di bordo
   // leggerissima per i pochi punti che ne hanno ancora bisogno (es. campi
   // di input).
-  filetto: "#F0DCC0",
+  filetto: "#E7E0D7",
   // Bordo di campi, menu a tendina e caselle di spunta in tutto il sito
   // (docs/CHANGELOG.md §278-§279): 3,2:1 su bianco, il minimo perché si veda
   // dove scrivere (il filetto è 1,3:1). Il filetto resta per i divisori.
-  bordoCampo: "#9C8E7F",
-  cianografia: "#189A63",
+  bordoCampo: "#8E867C",
+  cianografia: "#4C8A7A",
   // Verde dei testi verdi piccoli e dei link (5,4:1 su bianco, WCAG AA).
   // Sfondi, hero e pulsanti restano su cianografia (docs/CHANGELOG.md §172,
   // scelta dell'utente).
-  cianografiaScuro: "#0E7A4C",
+  cianografiaScuro: "#386C5F",
   // Sfondo dei pulsanti e delle aree piene con testo bianco (docs/CHANGELOG.md
   // §350): cianografia con il bianco sopra ha contrasto 3,6:1, sotto il 4,5:1
   // che serve ai testi di 16 px; questo tono, appena più scuro, arriva a 4,7:1.
-  cianografiaPieno: "#128552",
-  cianografiaVelo: "#DCF3E7",
-  // Verde muto, volutamente distinto dal verde smeraldo (cianografia,
-  // usato per i CTA): un badge "Verificato" non deve confondersi con un
-  // bottone d'azione.
-  verificato: "#3D6B3E",
-  urgenza: "#C8362B",
+  cianografiaPieno: "#40776A",
+  cianografiaVelo: "#E1EEEB",
+  // Verde scuro di "fatto" (salvato, confermato, pagato, lavoro concluso),
+  // volutamente distinto dal verde dei pulsanti (cianografia): un messaggio
+  // di conferma non deve confondersi con un bottone d'azione. 6,3:1 su
+  // bianco. Il nome resta per i ~60 punti che lo usano; il bollino
+  // "Verificato" ora è terracotta (sotto).
+  verificato: "#325F54",
+  // Terracotta della palette A (docs/changelog/2026-11-11-palette-e-figtree.md):
+  // solo per i segni di fiducia, cioè il bollino "Verificato" e "Lavoro fatto
+  // tramite il sito", mai per pulsanti o messaggi. 5,6:1 sul fondo crema,
+  // 5,0:1 sulla sua tinta chiara.
+  terracotta: "#A3441F",
+  // Verde inchiostro dei titoli (h1-h3), scelta di Luca dell'11/11/2026: dà
+  // carattere al marchio senza confondersi con il verde dei pulsanti, molto
+  // più chiaro. 11,3:1 sul fondo crema. Il testo normale resta grafite.
+  inchiostro: "#0F3B2C",
+  terracottaVelo: "#F6E3D9",
+  urgenza: "#B42318",
   // Tinta chiara di sfondo per segnalare un conflitto/errore (es. due fasce
   // dell'agenda sovrapposte), stesso principio di cianografiaVelo: colore
-  // pieno solo per bordi/testo, mai per sfondi estesi. Rosso invariato
-  // rispetto alla palette precedente: convenzione universale per
-  // distruttivo/urgente, cambiarlo confonderebbe l'utente.
-  urgenzaVelo: "#FBEAE7",
+  // pieno solo per bordi/testo, mai per sfondi estesi. Resta rosso
+  // (convenzione universale per distruttivo/urgente), appena più freddo per
+  // stare con la palette A.
+  urgenzaVelo: "#FDE8E6",
   ottone: "#D9A441",
   // Testo e icone sull'ottone chiaro (categoria principale in registrazione,
   // docs/CHANGELOG.md §248): l'ottone pieno sul chiaro non si legge. È l'unico
@@ -51,7 +64,7 @@ export const brand = {
   // Tinta chiara di sfondo per il badge "Sponsorizzato" (boost a pagamento in
   // ricerca) — stesso principio di cianografiaVelo/urgenzaVelo: colore
   // pieno solo per bordi/testo, mai per sfondi estesi.
-  ottoneVelo: "#F6ECD9",
+  ottoneVelo: "#FBF0D9",
 } as const;
 
 // Ombra soffice unica, usata al posto del filetto hairline sui pannelli

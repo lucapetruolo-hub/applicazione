@@ -57,7 +57,7 @@ export function QuoteCompareModal({
     <div role="presentation" className="quote-compare-overlay" onClick={closeOnBackdrop(onClose)}>
       <div role="dialog" aria-modal="true" aria-labelledby="quote-compare-title" className="quote-compare-dialog">
         <XStack justifyContent="space-between" alignItems="center" gap="$3" paddingBottom="$3">
-          <Text id="quote-compare-title" render="h2" fontFamily="$heading" fontWeight="800" fontSize={20} color={brand.grafite} margin={0}>
+          <Text id="quote-compare-title" render="h2" fontFamily="$heading" fontWeight="800" fontSize={20} color={brand.inchiostro} margin={0}>
             Confronta i preventivi
           </Text>
           <button ref={closeRef} type="button" className="quote-compare-close" onClick={onClose} aria-label="Chiudi il confronto">

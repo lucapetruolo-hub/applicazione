@@ -47,7 +47,8 @@ import {
   professionalChargesVat,
   quotePaymentSplitLine,
   TRADER_STATUS_COPY,
-  professionalKindOf } from "@professionisti/shared";
+  professionalKindOf,
+  arrivalWindowText } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { BOOKING_CALENDAR_INCLUDE, bookingCalendar } from "../email/booking-calendar";
 import { readBookingIcsToken } from "./booking-ics-token";
@@ -67,6 +68,7 @@ import { bookingDateChange } from "../quotes/booked-date-change";
 import { quoteExecutor } from "../guided-requests/guided-requests.service";
 import { RecurringJobsService, recurringVisitInfo } from "./recurring-jobs.service";
 import { formatSlotForTimeline } from "../common/format-date.util";
+import { arrivalTimeProblem } from "../quotes/arrival-time";
 
 /** Il cliente ha già un lavoro per questa richiesta (docs/CHANGELOG.md §346). */
 const CLIENT_CANCEL_TOO_LATE = "L'appuntamento è già cominciato e non si può più annullare. Se qualcosa non va, usa \"C'è un problema\".";
@@ -519,6 +521,7 @@ export class BookingsService implements OnModuleInit {
         scheduledAt: quote.estimatedStartDate,
         cancellationNoticeHours,
         scheduledEndAt: quote.estimatedEndDate,
+        arrivalTime: quote.arrivalTime,
         serviceMode: guidedRequest.serviceMode,
         status: "CONFIRMED",
         recipientName: guidedRequest.recipientName,
@@ -781,6 +784,42 @@ export class BookingsService implements OnModuleInit {
    * validazione URL già applicata lato Zod prima di arrivare qui), ma
    * visibile al cliente (a differenza della nota privata).
    */
+  /**
+   * Ora indicativa di arrivo scritta dopo l'accettazione, dal riquadro di
+   * "Oggi" per i lavori di domani nella stessa fascia lunga
+   * (docs/changelog/2026-11-11-fasce-ampie.md). Dentro la fascia, solo per un
+   * lavoro ancora da fare; il cliente riceve "Arrivo tra le … e le …".
+   */
+  async updateArrivalTime(professionalUserId: string, bookingId: string, arrivalTime: string | null) {
+    const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId } });
+    if (!professionalProfile) {
+      throw new NotFoundException("Profilo professionista non trovato.");
+    }
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: { select: { guidedRequestId: true } } } });
+    if (!booking || booking.professionalProfileId !== professionalProfile.id) {
+      throw new ForbiddenException("Questo lavoro non è tuo.");
+    }
+    if (booking.status !== "CONFIRMED" && booking.status !== "PENDING") {
+      throw new BadRequestException("Puoi indicare l'ora di arrivo solo per un lavoro ancora da fare.");
+    }
+    const problem = arrivalTimeProblem(booking.scheduledAt.toISOString(), booking.scheduledEndAt?.toISOString(), arrivalTime);
+    if (problem) throw new BadRequestException(problem);
+    if (booking.arrivalTime === arrivalTime) return { bookingId, arrivalTime };
+    await this.prisma.booking.update({ where: { id: bookingId }, data: { arrivalTime } });
+    if (arrivalTime) {
+      await this.notificationsService.notify(booking.clientId, "BOOKING_ARRIVAL_TIME", {
+        bookingId,
+        guidedRequestId: booking.quote?.guidedRequestId,
+        arrivalWindow: arrivalWindowText(arrivalTime, booking.scheduledAt.toISOString(), booking.scheduledEndAt?.toISOString()),
+      });
+      if (booking.quote) {
+        await this.timelineService.log(booking.quote.guidedRequestId, professionalProfile.id, "PROFESSIONAL", `Ora di arrivo indicata: ${arrivalWindowText(arrivalTime, booking.scheduledAt.toISOString(), booking.scheduledEndAt?.toISOString())}.`);
+      }
+    }
+    await this.professionalMetricsService.touchActivity(professionalProfile.id);
+    return { bookingId, arrivalTime };
+  }
+
   async updateMeetingLink(professionalUserId: string, bookingId: string, meetingLink: string) {
     const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId } });
     if (!professionalProfile) {
@@ -1792,6 +1831,7 @@ export class BookingsService implements OnModuleInit {
       // una fascia con fine nota (data indicata a mano, o create prima di
       // questa funzionalità).
       scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,
+      arrivalTime: booking.arrivalTime,
       createdAt: booking.createdAt.toISOString(),
       updatedAt: booking.updatedAt.toISOString(),
       status: booking.status,

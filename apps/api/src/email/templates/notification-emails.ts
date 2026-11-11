@@ -2200,17 +2200,36 @@ const BUILDERS: Record<string, Builder> = {
     cta: { label: "Apri la richiesta", url: `${frontendUrl()}/le-mie-richieste` },
     after: ["Se serve, scrivigli in chat dalla richiesta."],
   }),
+  // Ora indicativa di arrivo dentro una fascia lunga (docs/changelog/2026-11-11-fasce-ampie.md).
+  BOOKING_ARRIVAL_TIME: (payload, ctx) => {
+    const window = typeof payload.arrivalWindow === "string" ? payload.arrivalWindow : null;
+    return {
+      kind: "notification",
+      subject: window ? `${pro(ctx)} arriva ${window}` : `${pro(ctx)} ti ha detto verso che ora arriva`,
+      greeting: ctx.name,
+      title: "Ora di arrivo",
+      paragraphs: [window ? `**${pro(ctx)}** arriva ${window} per **${job(ctx)}**.` : `**${pro(ctx)}** ti ha detto verso che ora arriva per **${job(ctx)}**.`],
+      details: jobDetails(ctx),
+      cta: { label: "Apri la richiesta", url: `${frontendUrl()}/le-mie-richieste` },
+      after: ["È un orario indicativo: se cambia qualcosa, il professionista ti scrive in chat."],
+    };
+  },
   // Riepilogo della sera prima, senza orario di partenza (§288).
   AGENDA_TOMORROW_SUMMARY: (payload, ctx) => {
     const items = Array.isArray(payload.items) ? payload.items.filter(isSummaryItem) : [];
     const count = items.length;
+    const arrivalMissing = typeof payload.arrivalMissing === "number" ? payload.arrivalMissing : 0;
     return {
       kind: "notification",
       subject: count === 1 ? "Domani hai 1 lavoro" : `Domani hai ${count || "dei"} lavori`,
       greeting: ctx.name,
       title: "Il tuo domani",
-      paragraphs: count > 0 ? items.map((item) => `**${item.time}** · ${[item.name, item.place].filter(Boolean).join(", ")}`) : ["Domani hai lavori in agenda."],
-      cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
+      paragraphs: [
+        ...(count > 0 ? items.map((item) => `**${item.time}** · ${[item.name, item.place].filter(Boolean).join(", ")}`) : ["Domani hai lavori in agenda."]),
+        // Più lavori nella stessa fascia lunga senza ora di arrivo (docs/changelog/2026-11-11-fasce-ampie.md).
+        ...(arrivalMissing > 0 ? [`**Dì ai clienti verso che ora passi**: ${arrivalMissing === 1 ? "1 cliente non sa" : `${arrivalMissing} clienti non sanno`} ancora a che ora arrivi: scrivila in Oggi, riceveranno una finestra di un’ora.`] : []),
+      ],
+      cta: arrivalMissing > 0 ? { label: "Scrivi l'ora di arrivo", url: `${frontendUrl()}/dashboard` } : { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
     };
   },
   TAX_ID_INVALID: (payload, ctx) => {

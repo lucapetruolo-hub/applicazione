@@ -23,7 +23,7 @@ export function NotFoundContent() {
         <Icon name="search" size={28} color={brand.cianografiaScuro} strokeWidth={1.75} />
       </YStack>
       <YStack gap="2" alignItems="center">
-        <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="9" color={brand.grafite} textAlign="center" style={{ textWrap: "balance" }}>
+        <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="9" color={brand.inchiostro} textAlign="center" style={{ textWrap: "balance" }}>
           Pagina non trovata
         </Text>
         <Text fontSize="4" lineHeight="26px" color={brand.grafite70} textAlign="center" style={{ textWrap: "balance" }}>

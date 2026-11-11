@@ -38,6 +38,35 @@ export function legTiming(previous: Pick<DayRouteStop, "start" | "end">, next: P
 }
 
 /**
+ * Ordine delle tappe (docs/changelog/2026-11-11-fasce-ampie.md): per orario,
+ * con l'ora indicativa di arrivo al posto dell'inizio della fascia quando
+ * c'è; i lavori con lo stesso orario (stessa fascia lunga) dal più vicino
+ * alla tappa prima (o al comune del professionista), così l'agenda li mette
+ * uno sotto l'altro nello stesso ordine.
+ */
+export function orderStops<T extends Point & { order: number }>(stops: T[], origin: Point | null = null): T[] {
+  const sorted = [...stops].sort((a, b) => a.order - b.order);
+  const result: T[] = [];
+  let i = 0;
+  while (i < sorted.length) {
+    let j = i;
+    while (j < sorted.length && sorted[j]!.order === sorted[i]!.order) j++;
+    const tie = sorted.slice(i, j);
+    while (tie.length > 0) {
+      // La prima tappa del giorno parte dal comune del professionista.
+      const previous = result[result.length - 1] ?? origin;
+      let best = 0;
+      if (previous) {
+        for (let k = 1; k < tie.length; k++) if (distanceKm(previous, tie[k]!) < distanceKm(previous, tie[best]!)) best = k;
+      }
+      result.push(tie.splice(best, 1)[0]!);
+    }
+    i = j;
+  }
+  return result;
+}
+
+/**
  * "Giro intelligente" (docs/CHANGELOG.md §288, richiesta dell'utente): le
  * tappe di un giorno nell'ordine degli orari, il tempo di strada tra l'una e
  * l'altra e un avviso quando non basta. Tempi da Google Routes API con la
@@ -85,6 +114,7 @@ export class DayRouteService {
           id: true,
           scheduledAt: true,
           scheduledEndAt: true,
+          arrivalTime: true,
           street: true,
           houseNumber: true,
           postalCode: true,
@@ -112,39 +142,49 @@ export class DayRouteService {
           title: name || "Cliente",
           address: street ?? b.quote?.guidedRequest?.address ?? null,
           city: b.city ?? b.quote?.guidedRequest?.city ?? null,
+          arrivalTime: b.arrivalTime,
         };
       }),
-      ...externalJobs.map((j) => ({ key: `external-${j.id}`, start: j.scheduledAt, end: j.scheduledEndAt, title: j.clientName, address: j.address, city: comuneInAddress(j.address) ?? profile.city })),
+      ...externalJobs.map((j) => ({ key: `external-${j.id}`, start: j.scheduledAt, end: j.scheduledEndAt, title: j.clientName, address: j.address, city: comuneInAddress(j.address) ?? profile.city, arrivalTime: null as string | null })),
     ]
       // Un lavoro su più giorni entra nel giro di ogni suo giorno, con l'orario di quel giorno (§310).
       .flatMap((candidate) => {
         const occurrence = jobOccurrenceOn(candidate.start, candidate.end, date);
         return occurrence ? [{ ...candidate, start: occurrence.start, end: occurrence.end }] : [];
       })
-      .sort((a, b) => a.start.getTime() - b.start.getTime());
+      // A parità di orario e di distanza, in ordine di nome come in agenda.
+      .sort((a, b) => a.start.getTime() - b.start.getTime() || a.title.localeCompare(b.title, "it"));
 
-    const stops: DayRouteStop[] = [];
+    const located: (DayRouteStop & { order: number })[] = [];
     for (const candidate of candidates) {
-      const located = await this.locate(candidate.address, candidate.city);
-      if (!located) continue;
-      stops.push({
+      const place = await this.locate(candidate.address, candidate.city);
+      if (!place) continue;
+      // L'ora di arrivo vale solo dentro la fascia di quel giorno (come in agenda).
+      const arrival = candidate.arrivalTime ? new Date(`${date}T${candidate.arrivalTime}:00.000Z`) : null;
+      const useArrival = arrival && arrival >= candidate.start && (!candidate.end || arrival < candidate.end);
+      located.push({
         key: candidate.key,
         start: candidate.start.toISOString(),
         end: candidate.end?.toISOString() ?? null,
         title: candidate.title,
         address: candidate.address,
-        latitude: located.point.latitude,
-        longitude: located.point.longitude,
-        approximate: located.approximate,
+        latitude: place.point.latitude,
+        longitude: place.point.longitude,
+        approximate: place.approximate,
+        order: (useArrival ? arrival : candidate.start).getTime(),
       });
     }
+    const home = profile.city ? findComuneByName(profile.city) : undefined;
+    const stops: DayRouteStop[] = orderStops(located, home ? { latitude: home.lat, longitude: home.lon } : null).map(({ order: _order, ...stop }) => stop);
 
     const legs: DayRouteLeg[] = [];
     for (let i = 1; i < stops.length; i++) {
       const previous = stops[i - 1]!;
       const next = stops[i]!;
       const travel = await this.travel(previous, next);
-      legs.push({ ...travel, ...legTiming(previous, next, travel.minutes) });
+      // Nella stessa fascia l'ordine lo decide il professionista: niente avviso "non fai in tempo".
+      const sameBand = previous.start === next.start && previous.end === next.end;
+      legs.push({ ...travel, ...(sameBand ? { gapMinutes: 0, tight: false } : legTiming(previous, next, travel.minutes)) });
     }
     return { date, stops, legs };
   }

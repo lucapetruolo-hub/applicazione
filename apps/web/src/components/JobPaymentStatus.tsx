@@ -24,7 +24,7 @@ type Tone = "action" | "blocked" | "done" | "danger" | "neutral";
 const TONE: Record<Tone, { bg: string; fg: string }> = {
   action: { bg: brand.ottoneVelo, fg: "#8A6418" },
   blocked: { bg: brand.cianografiaVelo, fg: brand.cianografiaScuro },
-  done: { bg: "#E6F4EC", fg: brand.verificato },
+  done: { bg: "#E9F1EF", fg: brand.verificato },
   danger: { bg: brand.urgenzaVelo, fg: brand.urgenza },
   neutral: { bg: brand.gesso, fg: brand.grafite70 },
 };

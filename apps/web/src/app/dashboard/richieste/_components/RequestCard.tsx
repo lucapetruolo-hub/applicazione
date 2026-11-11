@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  arrivalWindowText, arrivalWindowEndBefore,
   DEFAULT_QUOTE_PAYMENT_OPTIONS,
   MAX_DEPOSIT_PERCENT,
   MAX_JOB_DAYS,
@@ -90,6 +91,9 @@ import { JobLimitModal } from "@/components/JobLimitModal";
 const JOB_DAY_PILLS = [1, 2, 3, 4, 5];
 
 const QUOTE_CHECKBOX_STYLE = { accentColor: brand.verificato, width: 22, height: 22, flexShrink: 0, margin: 0 } as const;
+
+/** Da quanti minuti di fascia si chiede l'ora indicativa di arrivo (docs/changelog/2026-11-11-fasce-ampie.md). */
+const ARRIVAL_MIN_RANGE_MIN = 180;
 
 export function RequestCard({
   lead,
@@ -210,6 +214,8 @@ export function RequestCard({
   const [manualDate, setManualDate] = useState("");
   const [manualStartTime, setManualStartTime] = useState("");
   const [manualEndTime, setManualEndTime] = useState("");
+  // Ora indicativa di arrivo dentro una fascia lunga (docs/changelog/2026-11-11-fasce-ampie.md).
+  const [arrivalTime, setArrivalTime] = useState(lead.quote?.arrivalTime ?? "");
   // Lavoro su più giorni (docs/CHANGELOG.md §310): stesso orario ogni giorno.
   const [jobDays, setJobDays] = useState(1);
   // Campo "Di più" della durata (collaudo dell'8/11, E6-23): il testo scritto, valido o no.
@@ -276,6 +282,14 @@ export function RequestCard({
     const slot = modeAvailableSlots.length > 0 && !useManualDateTime ? modeAvailableSlots.find((sl) => slotKey(sl) === selectedSlotKey) : null;
     const chosen = slot ? { date: slot.date, start: slot.startTime, end: slot.endTime } : manualDate && manualStartTime ? { date: manualDate, start: manualStartTime, end: manualEndTime } : null;
     return { bookings: bookingsOverlapping(bookings, chosen, booking?.id), roomLeft: hasRoomAt(modeAvailableSlots, chosen) };
+  })();
+  // Fascia scelta lunga almeno tre ore: si può dire verso che ora si passa.
+  const arrivalRange = (() => {
+    const slot = modeAvailableSlots.length > 0 && !useManualDateTime ? modeAvailableSlots.find((sl) => slotKey(sl) === selectedSlotKey) : null;
+    const range = slot ? { start: slot.startTime, end: slot.endTime } : manualStartTime && manualEndTime > manualStartTime ? { start: manualStartTime, end: manualEndTime } : null;
+    if (!range) return null;
+    const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+    return minutes(range.end) - minutes(range.start) >= ARRIVAL_MIN_RANGE_MIN ? range : null;
   })();
 
   const [showCounterForm, setShowCounterForm] = useState(false);
@@ -424,7 +438,7 @@ export function RequestCard({
   const collapsedDateTime = booking?.scheduledAt
     ? { label: "Appuntamento", text: formatSlotRange(booking.scheduledAt, booking.scheduledEndAt) }
     : lead.quote?.estimatedStartDate
-      ? { label: "Preventivo per", text: formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate) }
+      ? { label: "Preventivo per", text: `${formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}${lead.quote.arrivalTime ? `, arrivo ${arrivalWindowText(lead.quote.arrivalTime, lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}` : ""}` }
       : gr.preferredDate && gr.preferredTimeSlot
         ? {
             label: "Richiesta per",
@@ -482,6 +496,11 @@ export function RequestCard({
       }
     }
 
+    const arrival = arrivalRange && arrivalTime ? arrivalTime : null;
+    if (arrival && arrivalRange && (arrival < arrivalRange.start || arrival >= arrivalRange.end)) {
+      return setQuoteError(`L'ora di arrivo deve essere tra le ${arrivalRange.start} e le ${arrivalRange.end}.`);
+    }
+
     // Lavoro su più giorni (§310): la fine cade nell'ultimo giorno, alla stessa ora del primo.
     if (jobDays > 1) {
       if (!estimatedEndDate) return setQuoteError("Per un lavoro su più giorni indica anche l'ora di fine.");
@@ -512,6 +531,7 @@ export function RequestCard({
         items: parsed,
         estimatedStartDate,
         estimatedEndDate,
+        arrivalTime: arrival,
         notes: quoteNotes.trim() || undefined,
         paymentOptions: offered,
         ...(offered.some(paymentChoiceIsOnline) ? { depositPercent } : {}),
@@ -896,7 +916,7 @@ export function RequestCard({
             {/* Altrimenti a chi è arrivata: solo a te, scelto tra pochi o a più
                 professionisti (docs/changelog/2026-11-10-richiesta-solo-per-te.md).
                 Senza il dato (API non ancora aggiornata durante un rilascio) nessun bollino. */}
-            {gr.fromProfessionalLink ? <Badge variant="verificato">Dal tuo link</Badge> : lead.audience ? <AudienceBadge audience={lead.audience} /> : null}
+            {gr.fromProfessionalLink ? <Badge variant="fatto">Dal tuo link</Badge> : lead.audience ? <AudienceBadge audience={lead.audience} /> : null}
             {/* Ordine invertito su richiesta esplicita dell'utente: lo stato
                 della richiesta (StagePill) precede il badge di modalità
                 (ServiceBadge, "A domicilio"/"Consulenza online"). */}
@@ -1785,6 +1805,25 @@ export function RequestCard({
                 </YStack>
               )}
               <BusyTimeNotice bookings={quoteBusy.bookings} roomLeft={quoteBusy.roomLeft} />
+              {arrivalRange ? (
+                // Fascia lunga: ora indicativa di arrivo, facoltativa (scelta di Luca, docs/changelog/2026-11-11-fasce-ampie.md).
+                <YStack gap="1">
+                  <Text fontSize={13} fontWeight="700" color={brand.grafite} id={`arrival-${gr.id}`}>
+                    Verso che ora passi? <span style={{ fontWeight: 400, color: brand.grafite70 }}>(facoltativo)</span>
+                  </Text>
+                  <XStack gap="2" alignItems="center" flexWrap="wrap">
+                    <ItalianTimeInput ariaLabel="Ora indicativa di arrivo (facoltativa)" value={arrivalTime} onChange={setArrivalTime} style={{ ...smallInputStyle, width: 110 }} />
+                    {arrivalTime ? (
+                      <button type="button" className="slot-more" onClick={() => setArrivalTime("")}>
+                        Togli
+                      </button>
+                    ) : null}
+                  </XStack>
+                  <Text fontSize={13} color={brand.grafite70}>
+                    Il cliente vede &quot;Arrivo tra le {arrivalTime || "…"} e le {/^\d\d:\d\d$/.test(arrivalTime) ? arrivalWindowEndBefore(arrivalTime, arrivalRange.end) : "…"}&quot; e in agenda il lavoro si mette a quell&apos;ora.
+                  </Text>
+                </YStack>
+              ) : null}
 
               {/* Lavoro su più giorni (docs/CHANGELOG.md §310): stesso orario ogni giorno, non blocca altri lavori. */}
               <YStack gap="1">

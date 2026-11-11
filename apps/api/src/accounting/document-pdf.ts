@@ -40,6 +40,7 @@ export type PdfDocumentModel = { title: string; subtitle?: string | null; blocks
 
 const COLORS = {
   text: EMAIL_BRAND.colors.text,
+  heading: EMAIL_BRAND.colors.heading,
   muted: EMAIL_BRAND.colors.muted,
   border: EMAIL_BRAND.colors.border,
   panel: EMAIL_BRAND.colors.background,
@@ -143,7 +144,7 @@ function caps(text: string): string {
 
 function titleBlock(w: Writer, model: PdfDocumentModel): void {
   const titleHeight = w.height(model.title, BOLD, 22, CONTENT_WIDTH);
-  w.write(model.title, MARGIN, w.y, CONTENT_WIDTH, { font: BOLD, size: 22 });
+  w.write(model.title, MARGIN, w.y, CONTENT_WIDTH, { font: BOLD, size: 22, color: COLORS.heading });
   w.y += titleHeight + 4;
   if (model.subtitle) {
     w.y += w.write(model.subtitle, MARGIN, w.y, CONTENT_WIDTH, { size: 11, color: COLORS.muted });

@@ -22,7 +22,7 @@
   position: relative;
   flex-direction: row;
   gap: var(--t-space-2);
-  background-color: rgb(253, 239, 225);
+  background-color: rgb(250, 242, 232);
   border-radius: var(--t-radius-10);
   padding: var(--t-space-1);
   align-self: flex-start;
@@ -42,7 +42,7 @@
   padding-block: var(--t-space-2);
 }
 .tabActive {
-  background-color: rgb(18, 133, 82);
+  background-color: rgb(64, 119, 106);
 }
 .tabIdle {
   background-color: transparent;
@@ -57,7 +57,7 @@
   color: white;
 }
 .tabLabelIdle {
-  color: rgb(110, 100, 89);
+  color: rgb(94, 90, 84);
 }
 
 .fields {
@@ -72,13 +72,13 @@
   width: 1px;
   height: 44px;
   margin-bottom: 4px;
-  background-color: rgb(240, 220, 192);
+  background-color: rgb(231, 224, 215);
   display: none;
 }
 
 .onlineHelp {
   font-size: 13px;
-  color: rgb(110, 100, 89);
+  color: rgb(94, 90, 84);
 }
 
 @media (max-width: 660px) {
@@ -138,13 +138,13 @@
   gap: 6px;
   padding-inline: 12px;
   border-radius: 999px;
-  background-color: rgb(238, 246, 241);
+  background-color: rgb(240, 244, 243);
   cursor: pointer;
   align-items: center;
 }
 @media (hover: hover) {
   .modeButton:where(:hover) {
-    background-color: rgb(226, 240, 232);
+    background-color: rgb(229, 237, 235);
   }
 }
 
@@ -152,7 +152,7 @@
   display: none;
   font-size: 14px;
   font-weight: 600;
-  color: rgb(18, 133, 82);
+  color: rgb(64, 119, 106);
   white-space: nowrap;
 }
 
@@ -185,7 +185,7 @@
   padding-block: 11px;
 }
 .menuItemActive {
-  background-color: rgb(238, 246, 241);
+  background-color: rgb(240, 244, 243);
 }
 .menuItemIdle {
   background-color: transparent;
@@ -199,7 +199,7 @@
 .menuItemLabel {
   font-size: 15px;
   font-weight: 400;
-  color: rgb(43, 36, 32);
+  color: rgb(27, 26, 24);
   flex: 1 1 auto;
 }
 .menuItemLabelActive {

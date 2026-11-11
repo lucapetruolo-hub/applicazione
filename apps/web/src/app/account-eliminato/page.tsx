@@ -15,7 +15,7 @@ export default function AccountEliminatoPage() {
         <YStack width={64} height={64} borderRadius={32} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center">
           <Icon name="check" size={28} color={brand.cianografiaScuro} strokeWidth={1.75} />
         </YStack>
-        <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="9" color={brand.grafite} textAlign="center">
+        <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="9" color={brand.inchiostro} textAlign="center">
           Account eliminato
         </Text>
         <Text fontSize="4" lineHeight="26px" color={brand.grafite70} textAlign="center">

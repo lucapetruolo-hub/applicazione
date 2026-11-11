@@ -24,7 +24,7 @@ export function DocumentPage({ back, title, subtitle, children }: { back: { href
         </span>
         <div className="print-document">
           <YStack gap="1" marginBottom="4">
-            <Text render="h1" fontFamily="heading" fontSize={30} fontWeight="800" color={brand.grafite}>
+            <Text render="h1" fontFamily="heading" fontSize={30} fontWeight="800" color={brand.inchiostro}>
               {title}
             </Text>
             {subtitle ? (

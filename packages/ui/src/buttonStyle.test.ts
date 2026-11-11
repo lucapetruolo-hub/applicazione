@@ -13,7 +13,7 @@ describe("Button.module.css", () => {
 describe("parseButtonValue", () => {
   it("divide i valori piatti di Tamagui nelle condizioni", () => {
     assert.deepEqual(parseButtonValue("44px xs:40px", "size"), { base: "44px", xs: "40px" });
-    assert.deepEqual(parseButtonValue("transparent hover:#FDEFE1 press:#F0DCC0", "none"), { base: "transparent", hover: "#FDEFE1", press: "#F0DCC0" });
+    assert.deepEqual(parseButtonValue("transparent hover:#FAF2E8 press:#E7E0D7", "none"), { base: "transparent", hover: "#FAF2E8", press: "#E7E0D7" });
     assert.deepEqual(parseButtonValue("focus-visible:outlineColor", "none"), { focusVisible: "var(--outlineColor)" });
     assert.deepEqual(parseButtonValue("blue10 hover:blue9", "none"), { base: "var(--blue10)", hover: "var(--blue9)" });
   });
@@ -30,8 +30,8 @@ describe("parseButtonValue", () => {
 describe("mergeButtonStyle", () => {
   it("vince la prop scritta per ultima, stati compresi; undefined toglie la proprietà", () => {
     const map = mergeButtonStyle({}, { backgroundColor: "blue10 hover:blue9", height: 44 }, FRAME_PROPS);
-    mergeButtonStyle(map, { backgroundColor: "#C8362B", height: undefined, onPress: () => {} }, FRAME_PROPS);
-    assert.deepEqual(map, { backgroundColor: { base: "#C8362B" } });
+    mergeButtonStyle(map, { backgroundColor: "#B42318", height: undefined, onPress: () => {} }, FRAME_PROPS);
+    assert.deepEqual(map, { backgroundColor: { base: "#B42318" } });
   });
   it("dà a ogni proprietà e condizione la sua classe e variabile", () => {
     const classes = { f_height_base: "h", f_height_xs: "hx" };

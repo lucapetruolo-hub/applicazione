@@ -175,7 +175,7 @@ export function PaymentChoice({
               padding: 12,
               borderRadius: 10,
               border: `2px solid ${selected ? brand.verificato : brand.filetto}`,
-              background: selected ? "#E6F4EC" : "#fff",
+              background: selected ? "#E9F1EF" : "#fff",
               cursor: "pointer",
               alignItems: "flex-start",
             }}

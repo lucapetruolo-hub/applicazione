@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ProfessionalReviewsLink } from "@/components/ProfessionalReviewsLink";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
 import {
+  arrivalWindowText,
   TAX_BONUS_PAYMENT_NOTE,
   cancellationNoticeLabel,
   categoryMayHaveTaxBonus,
@@ -394,6 +395,12 @@ export function QuoteCard({
           <Text fontSize={16} fontWeight="600" color={brand.grafite}>
             {formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
           </Text>
+          {quote.arrivalTime ? (
+            // Ora indicativa dentro una fascia lunga (docs/changelog/2026-11-11-fasce-ampie.md).
+            <Text fontSize={15} color={brand.grafite70}>
+              Arrivo {arrivalWindowText(quote.arrivalTime, quote.estimatedStartDate, quote.estimatedEndDate)}
+            </Text>
+          ) : null}
         </QuoteFact>
         {hasPrice ? (
           <QuoteFact label="Prezzo">
@@ -528,7 +535,7 @@ export function QuoteCard({
               {paymentMethod ? (
               <QuoteAcceptSummary
                 quote={quote}
-                dateText={formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
+                dateText={`${formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}${quote.arrivalTime ? `, arrivo ${arrivalWindowText(quote.arrivalTime, quote.estimatedStartDate, quote.estimatedEndDate)}` : ""}`}
                 priceTotals={priceTotals}
                 payment={paymentMethod}
                 onlinePayments={onlinePayments}

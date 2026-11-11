@@ -550,6 +550,16 @@ export const quoteSchema = z.object({
    * nota da cui derivarla).
    */
   estimatedEndDate: z.string().datetime().optional(),
+  /**
+   * Ora indicativa di arrivo dentro una fascia lunga, "HH:MM" ora italiana
+   * (docs/changelog/2026-11-11-fasce-ampie.md): facoltativa, deve cadere
+   * dentro la fascia scelta.
+   */
+  arrivalTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Scrivi l'ora di arrivo come 10:00.")
+    .nullable()
+    .optional(),
   notes: z.string().max(2000).optional(),
   /** Modi di pagamento offerti al cliente e percentuale dell'acconto online (docs/CHANGELOG.md §237); assenti = valori di serie. */
   ...quotePaymentOfferSchema,
@@ -714,6 +724,15 @@ export const updateBookingMeetingLinkSchema = z.object({
     }),
 });
 export type UpdateBookingMeetingLinkInput = z.infer<typeof updateBookingMeetingLinkSchema>;
+
+/** Ora indicativa di arrivo scritta dopo, da "Oggi" (docs/changelog/2026-11-11-fasce-ampie.md); `null` la toglie. */
+export const updateBookingArrivalTimeSchema = z.object({
+  arrivalTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Scrivi l'ora di arrivo come 10:00.")
+    .nullable(),
+});
+export type UpdateBookingArrivalTimeInput = z.infer<typeof updateBookingArrivalTimeSchema>;
 
 /**
  * Lavoro preso al di fuori della piattaforma (richiesta esplicita

@@ -66,7 +66,7 @@ function EmailOff() {
         {state === "invalid" ? (
           <YStack gap="4" alignItems="center">
             <AuthIconBadge icon="mail" />
-            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center">
+            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro} textAlign="center">
               Questo link non vale
             </Text>
             <Text fontSize={16} color={brand.grafite70} textAlign="center">
@@ -83,7 +83,7 @@ function EmailOff() {
         ) : off ? (
           <YStack gap="4" alignItems="center">
             <AuthIconBadge icon="check" />
-            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center">
+            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro} textAlign="center">
               Fatto, niente più email
             </Text>
             <Text fontSize={16} color={brand.grafite70} textAlign="center" role="status">
@@ -99,7 +99,7 @@ function EmailOff() {
         ) : (
           <YStack gap="4" alignItems="center">
             <AuthIconBadge icon="bell-off" />
-            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center">
+            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro} textAlign="center">
               Basta email di «{label}»?
             </Text>
             <Text fontSize={16} color={brand.grafite70} textAlign="center">

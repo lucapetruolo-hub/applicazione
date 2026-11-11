@@ -76,7 +76,7 @@ export default function LeMieRecensioniPage() {
     return (
       <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.inchiostro} textAlign="center">
             Accedi per vedere le tue recensioni
           </Text>
           <Link href="/accedi?redirect=/le-mie-recensioni" style={{ textDecoration: "none" }}>
@@ -91,7 +91,7 @@ export default function LeMieRecensioniPage() {
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="8" paddingHorizontal="4">
       <YStack width="100%" maxWidth={880} gap="5">
         <YStack gap="1">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro}>
             Le mie recensioni
           </Text>
           <Text color={brand.grafite70}>Le recensioni che hai lasciato ai professionisti dopo un lavoro terminato.</Text>
@@ -107,7 +107,7 @@ export default function LeMieRecensioniPage() {
 function PendingReviews({ bookings }: { bookings: ClientBooking[] }) {
   return (
     <YStack gap="3">
-      <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
+      <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="6" color={brand.inchiostro}>
         Lavori che puoi ancora recensire
       </Text>
       {bookings.map((booking) => (

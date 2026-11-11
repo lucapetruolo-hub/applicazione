@@ -480,7 +480,7 @@ function LeMieRichiesteContent() {
     return (
       <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="4" alignItems="center">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite} textAlign="center">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.inchiostro} textAlign="center">
             Accedi per vedere le tue richieste
           </Text>
           <Link href="/accedi?redirect=/le-mie-richieste" style={{ textDecoration: "none" }}>
@@ -505,7 +505,7 @@ function LeMieRichiesteContent() {
           docs/CHANGELOG.md §334): stessa larghezza, titolo e riga sotto. */}
       <YStack width="100%" maxWidth={1180} gap="5">
         <YStack gap="1">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.inchiostro}>
             Le mie richieste
           </Text>
           <Text fontFamily="body" fontSize={16} color={brand.grafite70}>

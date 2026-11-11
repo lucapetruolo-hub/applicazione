@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, startTransition, useEffect, useRef, useState } from "react";
+import { Suspense, startTransition, useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarCheck, CalendarDays, CalendarX, ChevronLeft, ChevronRight, Navigation, PanelLeftClose, PanelLeftOpen, Phone, Plus, Search, Truck, X } from "lucide-react";
@@ -139,6 +139,11 @@ function DashboardAgendaContent() {
   const { user, token, isLoading, refreshUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  // Pile della stessa fascia nell'ordine del Giro intelligente (docs/changelog/2026-11-11-fasce-ampie.md).
+  const loadRouteOrder = useCallback(
+    async (date: string) => (token ? (await apiClient.agendaDayRoute(token, date)).stops.map((stop) => stop.key) : []),
+    [token],
+  );
 
   // "Prenotazioni" di default all'apertura (richiesta esplicita dell'utente):
   // è la vista con l'informazione più urgente al primo sguardo (gli
@@ -1622,17 +1627,37 @@ function DashboardAgendaContent() {
     });
   }
 
+  /**
+   * Con l'ora indicativa di arrivo il lavoro si mette a quell'ora in agenda
+   * (scelta di Luca, docs/changelog/2026-11-11-fasce-ampie.md), lungo un'ora
+   * dentro la fascia; nel riquadro "arrivo 10:00–11:00 · fascia 08:00–19:00". I posti della
+   * fascia si contano sempre sull'orario vero (conflictKeys).
+   */
+  function atArrival<T extends { start: number; end: number; dayOf: string | null }>(day: T, arrivalTime: string | null | undefined): T & { timeLabel?: string } {
+    if (!arrivalTime || day.dayOf !== null) return day;
+    const arrival = timeMinutes(arrivalTime);
+    if (arrival < day.start || arrival >= day.end) return day;
+    return { ...day, start: arrival, end: Math.min(day.end, arrival + 60), timeLabel: `arrivo ${arrivalTime}–${minutesToLabel(Math.min(day.end, arrival + 60))} · fascia ${minutesToLabel(day.start)}–${minutesToLabel(day.end)}` };
+  }
+
   const gridEvents: AgendaGridEvent[] = [
     ...(filters.has("conf") || filters.has("done")
       ? (bookings ?? [])
           .filter((b) => (b.status === "COMPLETED" ? filters.has("done") : filters.has("conf")))
           .flatMap((b) =>
             onEachDay(b.scheduledAt, b.scheduledEndAt, `booking-${b.id}`).map((day) => ({
-              ...day,
+              ...atArrival(day, b.arrivalTime),
               title: b.clientAccountDeleted ? "Account eliminato" : ([b.recipientName, b.recipientSurname].filter(Boolean).join(" ") || b.clientName || "Cliente"),
               detail: [day.dayOf, b.categoryLabel, b.serviceMode === "ONLINE" ? "online" : b.city].filter(Boolean).join(" · "),
               kind: bookingKind(b),
               label: AGENDA_BOOKING_STATUS_LABEL[b.status],
+              // Indirizzo solo a lavoro confermato (CLAUDE.md §5 punto 9): "so dove devo andare" già dal riquadro in basso.
+              place:
+                b.status === "CONFIRMED" && b.serviceMode !== "ONLINE"
+                  ? b.street && b.houseNumber
+                    ? `${b.street} ${b.houseNumber}, ${[b.postalCode, b.city].filter(Boolean).join(" ")}`
+                    : b.address
+                  : null,
               recurring: Boolean(b.recurring),
               onPress: () => setSelectedBooking(b),
             })),
@@ -1644,6 +1669,7 @@ function DashboardAgendaContent() {
             ...day,
             title: j.clientName,
             detail: [day.dayOf, "Lavoro esterno"].filter(Boolean).join(" · "),
+            place: j.address,
             kind: j.status === "CANCELED" ? ("canceled" as const) : ("ext" as const),
             label: "Lavoro esterno",
             onPress: () => setSelectedExternalJob(j),
@@ -1656,7 +1682,7 @@ function DashboardAgendaContent() {
           .flatMap((lead) => {
             const quote = lead.quote!;
             return onEachDay(quote.estimatedStartDate, quote.estimatedEndDate, `pending-${lead.id}`).map((day) => ({
-              ...day,
+              ...atArrival(day, quote.arrivalTime),
               title: lead.guidedRequest.clientAccountDeleted ? "Account eliminato" : (lead.guidedRequest.clientName ?? "Cliente"),
               detail: [day.dayOf, "In attesa del cliente"].filter(Boolean).join(" · "),
               kind: "wait" as const,
@@ -2228,6 +2254,7 @@ function DashboardAgendaContent() {
                   nowMinutes={nowMinutes}
                   selectedKey={selectedBooking ? `booking-${selectedBooking.id}` : null}
                   dayNote={dayNote}
+                  loadRouteOrder={loadRouteOrder}
                   onDayPress={(date) => {
                     setBookingCurrentDate(date);
                     setBookingView("day");

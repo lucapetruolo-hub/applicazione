@@ -73,7 +73,7 @@ function Promemoria({ token }: { token: string }) {
   }
 
   const title = (text: string) => (
-    <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center" style={{ textWrap: "balance" }}>
+    <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro} textAlign="center" style={{ textWrap: "balance" }}>
       {text}
     </Text>
   );

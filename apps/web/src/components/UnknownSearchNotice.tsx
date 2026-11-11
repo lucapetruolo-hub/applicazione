@@ -73,7 +73,7 @@ export function UnknownSearchNotice({ pathname, fallback }: { pathname: string; 
         <Icon name="search" size={28} color={brand.cianografiaScuro} strokeWidth={1.75} />
       </YStack>
       <YStack gap="2" alignItems="center">
-        <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="9" color={brand.grafite} textAlign="center" style={{ textWrap: "balance" }}>
+        <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="9" color={brand.inchiostro} textAlign="center" style={{ textWrap: "balance" }}>
           {unknown.title}
         </Text>
         <Text fontSize="4" lineHeight="26px" color={brand.grafite70} textAlign="center">

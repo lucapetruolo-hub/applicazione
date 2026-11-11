@@ -19,7 +19,7 @@ export default function OpengraphImage() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          background: "#189A63",
+          background: "#40776A",
           gap: 32,
         }}
       >
@@ -29,7 +29,7 @@ export default function OpengraphImage() {
               width: 72,
               height: 72,
               borderRadius: 24,
-              background: "#0E7A4C",
+              background: "#386C5F",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -44,7 +44,7 @@ export default function OpengraphImage() {
             {BRAND.name}
           </div>
         </div>
-        <div style={{ display: "flex", color: "#FDEFE1", fontSize: 30 }}>Descrivi il lavoro. Ricevi un preventivo vero.</div>
+        <div style={{ display: "flex", color: "#FAF2E8", fontSize: 30 }}>Descrivi il lavoro. Ricevi un preventivo vero.</div>
       </div>
     ),
     { ...size },

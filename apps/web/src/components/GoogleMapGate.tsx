@@ -230,7 +230,7 @@ function MapPlaceholder({ text, children }: { text: string; children?: ReactNode
   "use no memo";
   return (
     <div className="map-placeholder">
-      <MapPin size={28} strokeWidth={1.5} color="#6e6459" />
+      <MapPin size={28} strokeWidth={1.5} color="#5e5a54" />
       <p>{text}</p>
       {children}
       <style jsx>{`
@@ -247,7 +247,7 @@ function MapPlaceholder({ text, children }: { text: string; children?: ReactNode
           text-align: center;
           background: #f5f1ea;
           font-size: 13px;
-          color: #6e6459;
+          color: #5e5a54;
         }
         .map-placeholder p {
           margin: 0;
@@ -261,7 +261,7 @@ function MapPlaceholder({ text, children }: { text: string; children?: ReactNode
           word-break: break-word;
         }
         .map-placeholder :global(.map-consent-button) {
-          background: #128552;
+          background: #40776a;
           color: #ffffff;
           border: none;
           border-radius: 999px;

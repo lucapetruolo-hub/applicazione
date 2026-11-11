@@ -16,7 +16,7 @@ import { brand } from "./tokens";
 // eseguire all'apertura su un telefono lento. Stessi valori: il CSS dei
 // temi generato (apps/web/public/tamagui.css) è identico.
 
-// Famiglie per ruolo tipografico (Instrument Sans per titoli e testo, IBM
+// Famiglie per ruolo tipografico (sul sito Figtree via --font-display/--font-body; nell'app ferma resta Instrument Sans finché non si riprende; IBM
 // Plex Mono per le cifre, docs/CHANGELOG.md §304 e §306), diverse per piattaforma sullo stesso token
 // Tamagui — su web puntano alle CSS variable esposte da next/font
 // (apps/web/src/app/fonts.ts, applicate su <html> in layout.tsx); su

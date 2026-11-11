@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 
-const ACCENT = "#189A63";
-const MUTED = "#BFE3D1";
+const ACCENT = "#4C8A7A";
+const MUTED = "#C7DBD6";
 
 /**
  * Riquadro con andamento settimanale (docs/CHANGELOG.md §145): valore della
@@ -31,7 +31,7 @@ export function AdminTrendTile({ label, values, weekStarts }: { label: string; v
       <span className="admin-kpi-value">{current}</span>
       {/* Al passaggio sulle barre questa riga mostra il dato della settimana
           puntata, così il valore non copre mai il titolo del riquadro. */}
-      <span role="status" style={{ fontSize: 12, color: hover !== null ? "#2b2420" : "#6e6459", fontWeight: hover !== null ? 700 : 600 }}>
+      <span role="status" style={{ fontSize: 12, color: hover !== null ? "#1b1a18" : "#5e5a54", fontWeight: hover !== null ? 700 : 600 }}>
         {hover !== null
           ? `Settimana del ${weekLabel(weekStarts[hover] ?? "")}: ${values[hover]}`
           : delta === 0
@@ -46,7 +46,7 @@ export function AdminTrendTile({ label, values, weekStarts }: { label: string; v
         onMouseLeave={() => setHover(null)}
         style={{ display: "block", marginTop: 6, height: "auto" }}
       >
-        <line x1={0} x2={width} y1={height - 0.5} y2={height - 0.5} stroke="#F0DCC0" strokeWidth={1} />
+        <line x1={0} x2={width} y1={height - 0.5} y2={height - 0.5} stroke="#E7E0D7" strokeWidth={1} />
         {values.map((value, i) => {
           const h = value === 0 ? 0 : Math.max(3, (value / max) * (height - 4));
           const x = i * (barWidth + gap);

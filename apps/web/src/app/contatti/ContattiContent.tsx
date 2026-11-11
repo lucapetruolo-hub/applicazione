@@ -145,7 +145,7 @@ export default function ContattiContent({ initialReport = false, initialProfileH
     <YStack width="100%" alignItems="center" backgroundColor="gesso" paddingHorizontal="16px gtSm:40px" paddingTop="40px gtSm:56px" paddingBottom="64px gtSm:96px">
       <YStack width="100%" maxWidth={1080} gap="5">
         <YStack gap="2">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" color={brand.grafite} fontSize="34px gtSm:44px">
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" color={brand.inchiostro} fontSize="34px gtSm:44px">
             Contatti
           </Text>
           <Text fontSize={18} color={brand.grafite70} maxWidth={560} lineHeight="26px">

@@ -57,7 +57,7 @@ export default function SegnalazioniPage() {
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="8" paddingHorizontal="4">
       <YStack width="100%" maxWidth={880} gap="6">
         <YStack gap="2">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro}>
             Decisioni sui tuoi contenuti
           </Text>
           <Text color={brand.grafite70}>Le decisioni prese dopo una segnalazione, con il motivo. Se pensi che sia un errore puoi contestarla.</Text>

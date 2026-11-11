@@ -138,7 +138,7 @@ function DaFare() {
 
       {isSuper && advice && advice.length > 0 ? (
         <YStack gap="2">
-          <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
+          <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="6" color={brand.inchiostro}>
             Cosa fare questa settimana
           </Text>
           <SiteAdviceList advice={advice} limit={1} />
@@ -241,7 +241,7 @@ function DaFare() {
 
       {queue && queue.watching.length > 0 ? (
         <YStack gap="2">
-          <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
+          <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize="6" color={brand.inchiostro}>
             Da guardare, senza decisione
           </Text>
           <Text fontSize={14} color={brand.grafite70}>

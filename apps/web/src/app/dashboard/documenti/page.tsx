@@ -99,7 +99,7 @@ export default function DocumentsPage() {
         ) : (
           <>
             <YStack gap="3">
-              <Text render="h2" fontFamily="heading" fontSize={22} fontWeight="800" color={brand.grafite}>
+              <Text render="h2" fontFamily="heading" fontSize={22} fontWeight="800" color={brand.inchiostro}>
                 Estratti del mese
               </Text>
               {data.months.length === 0 ? (
@@ -123,7 +123,7 @@ export default function DocumentsPage() {
             </YStack>
 
             <YStack gap="3">
-              <Text render="h2" fontFamily="heading" fontSize={22} fontWeight="800" color={brand.grafite}>
+              <Text render="h2" fontFamily="heading" fontSize={22} fontWeight="800" color={brand.inchiostro}>
                 Fatture
               </Text>
               {data.invoices.length === 0 ? (
@@ -176,7 +176,7 @@ function MissingDocuments({ rows }: { rows: MissingClientDocument[] }) {
   const count = rows.length === 1 ? "1 lavoro pagato online" : `${rows.length} lavori pagati online`;
   return (
     <Surface borderRadius={radiusDoc} padding="4" gap="2" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce}>
-      <Text render="h2" fontSize={18} fontWeight="800" color={brand.grafite}>
+      <Text render="h2" fontSize={18} fontWeight="800" color={brand.inchiostro}>
         {count} senza ricevuta
       </Text>
       <Text fontSize={16} color={brand.grafite70}>
@@ -219,7 +219,7 @@ function ClientDocuments({ token, documents }: { token: string; documents: Court
   const incomeNotice = currentYearTotal ? occasionalIncomeNotice(currentYearTotal.totalEurCents) : null;
   return (
     <YStack gap="3">
-      <Text render="h2" fontFamily="heading" fontSize={22} fontWeight="800" color={brand.grafite}>
+      <Text render="h2" fontFamily="heading" fontSize={22} fontWeight="800" color={brand.inchiostro}>
         Ricevute date ai clienti
       </Text>
       {documents.length === 0 ? (
@@ -358,7 +358,7 @@ function AccountantCard({ token, initial }: { token: string; initial: DocumentsO
 
   return (
     <Surface borderRadius={radiusDoc} padding="5" gap="3">
-      <Text render="h2" fontFamily="heading" fontSize={22} fontWeight="800" color={brand.grafite}>
+      <Text render="h2" fontFamily="heading" fontSize={22} fontWeight="800" color={brand.inchiostro}>
         Il tuo commercialista
       </Text>
       <LearnMore fontSize={16} summary="Cosa dargli: con la spunta qui sotto gli arriva quasi tutto da solo.">

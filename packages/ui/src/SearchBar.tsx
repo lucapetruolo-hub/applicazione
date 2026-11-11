@@ -70,7 +70,7 @@ export function SearchBar(props: SearchBarProps) {
         gap={2}
         backgroundColor={brand.calce}
         borderWidth={1}
-        borderColor="#EADFD3"
+        borderColor="#E7E0D7"
         borderRadius={999}
       >
         <XStack
@@ -79,7 +79,7 @@ export function SearchBar(props: SearchBarProps) {
           gap={6}
           paddingHorizontal={12}
           borderRadius={999}
-          backgroundColor="#EEF6F1 hover:#E2F0E8"
+          backgroundColor="#F0F4F3 hover:#E5EDEB"
           cursor="pointer"
           alignItems="center"
           onPress={() => setModeMenuOpen((open) => !open)}
@@ -135,7 +135,7 @@ export function SearchBar(props: SearchBarProps) {
                   paddingVertical={11}
                   borderRadius={10}
                   cursor="pointer"
-                  backgroundColor={active ? "#EEF6F1" : "transparent hover:#F6F1EC"}
+                  backgroundColor={active ? "#F0F4F3" : "transparent hover:#F6F1EC"}
                   onPress={() => chooseMode(tab.key)}
                 >
                   <Icon name={tab.icon} size={16} color={active ? brand.cianografiaPieno : brand.grafite70} />
@@ -170,7 +170,7 @@ export function SearchBar(props: SearchBarProps) {
             )}
           />
         </XStack>
-        <XStack width={1} height={24} backgroundColor="#EADFD3" aria-hidden />
+        <XStack width={1} height={24} backgroundColor="#E7E0D7" aria-hidden />
         <XStack width="110px gtLg:150px">
           <Autocomplete {...cityField} value={city} onChangeText={setCity} placeholder="Città" inputClassName="search-pill-input" size="3" />
         </XStack>
