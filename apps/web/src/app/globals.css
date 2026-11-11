@@ -183,6 +183,39 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   }
 }
 
+/* Barra in alto (SiteHeader.tsx): il fondo bianco sfocato sta in un livello
+   a parte, così in home, scorrendo, si accorcia e diventa più trasparente
+   come su apple.com solo con trasformazioni (docs/changelog/2026-11-11-home-caroselli-larghi.md):
+   la barra resta alta 64 px nella pagina e niente si sposta (CLS 0). */
+.site-header-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  transition:
+    transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.site-header-shell[data-scrolled]::before {
+  box-shadow: 0 1px 0 rgba(43, 32, 19, 0.06);
+}
+.site-header-shell[data-compact]::before {
+  transform: translateY(-12px);
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+.site-header-shell > div {
+  transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.site-header-shell[data-compact] > div {
+  transform: translateY(-6px);
+}
+
 /* Magnete e alone del pulsante principale della home (MagneticButton). */
 .magnet {
   display: inline-flex;
@@ -1994,6 +2027,11 @@ html.site-menu-open .profile-cta-bar {
   flex: 1;
   min-width: 0;
   font-size: 16px;
+}
+.today-row-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .today-row-sub {
   color: #6e6459;
@@ -5617,6 +5655,103 @@ a.admin-kpi:hover {
   }
 }
 
+/* Righe larghe quanto lo schermo in home, come su apple.com (BleedRail,
+   docs/changelog/2026-11-11-home-caroselli-larghi.md). La riga esce dalla
+   colonna della sezione fino ai bordi dello schermo; il margine interno
+   (`--bleed-gutter`) tiene la prima scheda allineata al titolo, anche dopo
+   aver tornato indietro con le frecce (scroll-padding). Niente bordi
+   sfumati: la riga finisce col bordo dello schermo. Il contenitore della
+   home ha `overflow-x: clip` (HomeContent.module.css). */
+.bleed-rail {
+  /* Larghezza della pagina senza la barra di scorrimento: 100cqw del
+     contenitore della home (container-type in HomeContent.module.css). Con
+     100vw su Windows la prima scheda finiva circa 7 px più a destra del
+     titolo, perché 100vw comprende la barra. Fuori da un contenitore vale
+     come 100vw. */
+  --bleed-vw: 100cqw;
+  --bleed-gutter: max(24px, calc((var(--bleed-vw) - var(--bleed-max, 1080px)) / 2));
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+.bleed-rail-track {
+  display: flex;
+  gap: 16px;
+  width: var(--bleed-vw);
+  margin-inline: calc(50% - var(--bleed-vw) / 2);
+  padding: 8px var(--bleed-gutter) 12px;
+  scroll-padding-inline: var(--bleed-gutter);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+}
+.bleed-rail-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bleed-rail-progress {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  margin-right: 8px;
+  border-radius: 2px;
+  background: #f0dcc0;
+  overflow: hidden;
+}
+.bleed-rail-progress > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 2px;
+  background: #128552;
+  transition: left 120ms linear;
+}
+.bleed-rail-arrow {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: opacity 160ms ease, transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.bleed-rail-arrow--next {
+  background: #2b2420;
+}
+.bleed-rail-arrow:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.bleed-rail-arrow:focus-visible {
+  outline: 3px solid #189a63;
+  outline-offset: 2px;
+}
+.bleed-rail-arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+/* Su un telefono senza mouse niente frecce (regola di .category-carousel-arrow):
+   resta solo la barra, che dice che la riga continua. */
+@media (hover: none) {
+  .bleed-rail-progress {
+    margin-right: 0;
+  }
+}
+/* Da computer le schede delle categorie un po' più grandi, come le schede
+   di apple.com: la riga ora ha tutto lo schermo. */
+@media (min-width: 1000px) {
+  .story-rail .story-card {
+    width: 260px;
+    height: 380px;
+  }
+}
+
 /* Sezione "Per chi offre servizi" con foto a lato (ProCtaSection). */
 .pro-cta {
   display: grid;
@@ -6551,9 +6686,11 @@ a.admin-kpi:hover {
   text-decoration: underline;
 }
 
-/* "Richiesta urgente" dentro il riquadro verde della home
-   (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md): pillola chiara
-   sul verde, il rosso solo nel cerchio del fulmine. */
+/* "Richiesta urgente" nell'apertura della home
+   (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md): pillola bianca
+   col filo sul pesca (prima chiara sul verde, fino al
+   docs/changelog/2026-11-11-home-caroselli-larghi.md), il rosso solo nel
+   cerchio del fulmine. */
 .hero-urgent-link {
   display: inline-flex;
   align-items: center;
@@ -6562,24 +6699,22 @@ a.admin-kpi:hover {
   min-height: 48px;
   padding: 0 22px 0 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  color: #fff;
+  background: #ffffff;
+  border: 1px solid #eadfd3;
+  color: #2b2420;
   font-weight: 600;
   font-size: 16px;
   text-decoration: none;
-  box-shadow: 0 1px 2px rgba(0, 40, 20, 0.25), 0 10px 22px -10px rgba(0, 30, 15, 0.6);
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 .hero-urgent-link:hover {
-  background: rgba(255, 255, 255, 0.22);
-  border-color: rgba(255, 255, 255, 0.7);
+  border-color: #d9c6b1;
 }
 .hero-urgent-link:active {
   transform: scale(0.98);
 }
 .hero-urgent-link:focus-visible {
-  outline: 3px solid #fff;
+  outline: 3px solid #189a63;
   outline-offset: 2px;
 }
 .hero-urgent-icon {
@@ -6708,7 +6843,9 @@ a.admin-kpi:hover {
 
 /* Esempi da toccare sotto la ricerca della home
    (docs/changelog/2026-11-03-ricerca-per-problema-home.md): stessa pillola
-   chiara sul verde di "Richiesta urgente", più bassa. */
+   bianca di "Richiesta urgente", più bassa. Bianche col filo sul pesca da
+   quando l'apertura non ha più il riquadro verde
+   (docs/changelog/2026-11-11-home-caroselli-larghi.md). */
 .hero-examples {
   display: flex;
   flex-direction: column;
@@ -6748,13 +6885,14 @@ a.admin-kpi:hover {
   height: 28px;
   padding: 0;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid #eadfd3;
+  background: #ffffff;
+  color: #2b2420;
   cursor: pointer;
-  transition: opacity 150ms ease, background-color 150ms ease;
+  transition: opacity 150ms ease, border-color 150ms ease;
 }
 .hero-examples-arrow:hover {
-  background: rgba(255, 255, 255, 0.26);
+  border-color: #d9c6b1;
 }
 /* Nascosta ma al suo posto: la riga non salta quando compare. */
 .hero-examples-arrow[data-hidden="true"] {
@@ -6762,7 +6900,7 @@ a.admin-kpi:hover {
   pointer-events: none;
 }
 .hero-examples-label {
-  color: rgba(255, 255, 255, 0.85);
+  color: #6b6058;
   font-size: 15px;
   font-weight: 600;
 }
@@ -6770,24 +6908,23 @@ a.admin-kpi:hover {
   font: inherit;
   font-size: 15px;
   font-weight: 600;
-  color: #fff;
+  color: #2b2420;
   min-height: 40px;
   padding: 0 14px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: #ffffff;
+  border: 1px solid #eadfd3;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 .hero-example:hover {
-  background: rgba(255, 255, 255, 0.22);
-  border-color: rgba(255, 255, 255, 0.7);
+  border-color: #d9c6b1;
 }
 .hero-example:active {
   transform: scale(0.98);
 }
 .hero-example:focus-visible {
-  outline: 3px solid #fff;
+  outline: 3px solid #189a63;
   outline-offset: 2px;
 }
 .hero-examples-label,
@@ -6936,8 +7073,15 @@ a.admin-kpi:hover {
     -webkit-mask-image: none !important;
     mask-image: none !important;
   }
-  .story-rail .category-carousel-arrow {
+  .story-rail .category-carousel-arrow,
+  .story-rail .bleed-rail-controls {
     display: none !important;
+  }
+  /* Griglia nella colonna della sezione, non larga quanto lo schermo. */
+  .story-rail .bleed-rail-track {
+    width: auto;
+    margin-inline: 0;
+    padding-inline: 0;
   }
   .story-rail .story-card {
     width: auto;
@@ -6951,6 +7095,8 @@ a.admin-kpi:hover {
     display: none;
   }
   .story-rail .story-card-other {
+    /* Prima nel codice (prima scheda da computer), ultima qui. */
+    order: 2;
     grid-column: 1 / -1;
     height: auto;
     min-height: 112px;
@@ -6962,6 +7108,7 @@ a.admin-kpi:hover {
      sotto le schede (docs/changelog/2026-11-02-categorie-telefono.md),
      bianco con bordo e testo verdi, come i pulsanti secondari del sito. */
   .story-show-all {
+    order: 1;
     grid-column: 1 / -1;
     display: flex;
     align-items: center;

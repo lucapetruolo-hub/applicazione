@@ -349,8 +349,8 @@ function ClientCard({
               Scegli giorno e ora: prepariamo il messaggio nella chat con {client.name.split(" ")[0]}, lo controlli e lo mandi tu.
             </Text>
             <XStack gap="2" flexWrap="wrap" alignItems="center">
-              <ItalianDateInput ariaLabel="Giorno proposto" value={dateStr} onChange={setDateStr} min={today} style={fieldStyle} padX={10} />
-              <ItalianTimeInput ariaLabel="Ora proposta" value={time} onChange={setTime} style={fieldStyle} padX={10} />
+              <ItalianDateInput ariaLabel="Giorno proposto" value={dateStr} onChange={setDateStr} min={today} style={fieldStyle} />
+              <ItalianTimeInput ariaLabel="Ora proposta" value={time} onChange={setTime} style={fieldStyle} />
               <CardButton tone="primary" disabled={!dateStr || !time} onPress={() => onPropose(dateStr, time)}>
                 Scrivi il messaggio
               </CardButton>

@@ -30,7 +30,7 @@ export function HomeFaq() {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   return (
-    <Section maxWidth={780}>
+    <Section maxWidth={1080}>
       <div className="home-faq">
         {FAQ_ITEMS.map((item) => (
           <details key={item.question} className="home-faq-item">

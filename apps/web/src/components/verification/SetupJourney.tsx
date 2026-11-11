@@ -456,6 +456,12 @@ const STEP_MENU_HREF: Record<JourneyStepKey, string> = {
   // La scheda dei pagamenti: il menu "Fisco e pagamenti" lo riconosce come sua sottopagina (`hasNavAttention`).
   payments: "/dashboard/fiscale/pagamenti",
 };
+/**
+ * Il passo facoltativo dei pagamenti online: nel menu tiene il suo pallino, ma
+ * da solo non accende quello sull'icona dell'utente in alto a destra
+ * (docs/changelog/2026-11-11-pallino-pagamenti-facoltativi.md).
+ */
+export const OPTIONAL_JOURNEY_MENU_HREF = STEP_MENU_HREF.payments;
 /** Dopo quanto il menu rilegge il percorso cambiando pagina. */
 const JOURNEY_STALE_MS = 60_000;
 

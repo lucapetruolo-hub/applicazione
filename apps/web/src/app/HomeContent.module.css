@@ -4,4 +4,30 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
+  /* Sezioni senza fondo pieno: la sfumatura del sito (.site-blobs) resta
+     dietro a tutta la home, come su apple.com, invece di comparire e
+     sparire a ogni sezione (docs/changelog/2026-11-11-home-caroselli-larghi.md). */
+  --section-light-bg: transparent;
+  /* Le righe larghe quanto lo schermo (.bleed-rail) usano 100vw, che
+     comprende la barra di scorrimento verticale su Windows: senza questo la
+     pagina scorrerebbe di lato di qualche pixel. `clip` e non `hidden`, per
+     non creare un contenitore di scorrimento. */
+  overflow-x: clip;
+  /* Le righe larghe (.bleed-rail) misurano la pagina con 100cqw, che non
+     comprende la barra di scorrimento di Windows. */
+  container-type: inline-size;
+  /* Titoli più grandi e più aria tra le sezioni, come su apple.com: un'idea
+     per schermata (scelta di Luca, docs/changelog/2026-11-11-home-caroselli-larghi.md;
+     prima spazi stretti, docs/CHANGELOG.md §219). Valori letti da Section. */
+  --section-title-size: 30px;
+  --section-title-line: 34px;
+  --section-compact-pad: 56px;
+}
+
+@media (min-width: 801px) {
+  .page {
+    --section-title-size-wide: 44px;
+    --section-title-line-wide: 48px;
+    --section-compact-pad-wide: 88px;
+  }
 }

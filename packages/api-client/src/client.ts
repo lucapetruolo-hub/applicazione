@@ -50,6 +50,7 @@ import type {
   ProfessionalBooking,
   AgendaWeekTemplate,
   AgendaWeekTemplateState,
+  WeekTemplatePreview,
   CalendarFeedStatus,
   DayRoute,
   WeatherDayAlert,
@@ -296,6 +297,8 @@ export type ClientGuidedRequest = {
   address: string | null;
   /** Valorizzato solo se la richiesta è diretta al profilo di un professionista specifico, `null` per una richiesta generica (fan-out categoria+città) — richiesta esplicita dell'utente: "prezzo totale medio" si mostra solo su queste ultime. */
   professionalProfileId: string | null;
+  /** I 2-5 professionisti scelti nei risultati (docs/CHANGELOG.md §393), vuoto per le altre richieste: "Ripeti la richiesta" li ripropone. */
+  chosenProfileIds: string[];
   /**
    * Destinatario + resto dell'indirizzo strutturato, raccolti fin dalla
    * richiesta (richiesta esplicita dell'utente) — visibili solo al
@@ -2173,13 +2176,16 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     // Strumenti della nuova agenda (docs/CHANGELOG.md §288).
     agendaWeekTemplate: (token: string) => request<AgendaWeekTemplateState>("/agenda/week-template", { headers: { Authorization: `Bearer ${token}` } }),
-    saveAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate) =>
-      request<AgendaWeekTemplateState>("/agenda/week-template", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(template) }),
-    saveAgendaWeekTemplateForMonth: (token: string, template: AgendaWeekTemplate, month: string) =>
+    saveAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate, applyToManual: boolean | string[] = false) =>
+      request<AgendaWeekTemplateState>("/agenda/week-template", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ template, applyToManual }) }),
+    /** Giorni cambiati a mano che la settimana nuova cambierebbe, prima di salvarla (docs/changelog/2026-11-10-eccezioni-settimana.md). */
+    previewAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate, month: string | null = null) =>
+      request<WeekTemplatePreview>("/agenda/week-template/preview", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ template, month }) }),
+    saveAgendaWeekTemplateForMonth: (token: string, template: AgendaWeekTemplate, month: string, applyToManual: boolean | string[] = false) =>
       request<AgendaWeekTemplateState>("/agenda/week-template/month", {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ month, template }),
+        body: JSON.stringify({ month, template, applyToManual }),
       }),
     keepAgendaStarterHours: (token: string) =>
       request<AgendaWeekTemplateState>("/agenda/week-template/starter/keep", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),

@@ -15,7 +15,7 @@ test("un tocco su un orario vuoto apre Aggiungi lavoro con giorno, inizio e fine
   await sunday.click({ position: { x: 10, y: 5 } });
   const modal = page.getByRole("dialog", { name: "Aggiungi un tuo lavoro" });
   await expect(modal).toBeVisible();
-  await expect(modal.getByLabel("Data")).toHaveValue("2026-11-01");
+  await expect(modal.getByLabel("Data")).toHaveValue("01/11/2026");
   const start = await modal.getByLabel("Ora di inizio").inputValue();
   expect(start).toMatch(/^\d{2}:(00|30)$/);
   // Fine = durata dei lavori più frequenti: nei dati di prova un'ora (tre lavori da 1 h, due da 1 h 30).

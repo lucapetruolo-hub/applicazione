@@ -81,7 +81,7 @@ import { JobDocumentsModal } from "@/components/JobDocumentsModal";
 import { AppointmentReplyStatus } from "./AppointmentReplyStatus";
 import { QuoteQuickFill } from "./QuoteQuickFill";
 import { WeekSlotPicker } from "@/components/WeekSlotPicker";
-import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, smallInputStyle, bookingsOverlapping, BusyTimeNotice, hasRoomAt } from "./requestHelpers";
+import { AudienceBadge, DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, smallInputStyle, bookingsOverlapping, BusyTimeNotice, hasRoomAt } from "./requestHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import { JobLimitModal } from "@/components/JobLimitModal";
@@ -913,7 +913,10 @@ export function RequestCard({
             {gr.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
             {/* Cliente arrivato dal tuo link personale: non conta nei lavori del mese
                 (docs/changelog/2026-11-08-canale-del-professionista.md). */}
-            {gr.fromProfessionalLink ? <Badge variant="verificato">Dal tuo link</Badge> : null}
+            {/* Altrimenti a chi è arrivata: solo a te, scelto tra pochi o a più
+                professionisti (docs/changelog/2026-11-10-richiesta-solo-per-te.md).
+                Senza il dato (API non ancora aggiornata durante un rilascio) nessun bollino. */}
+            {gr.fromProfessionalLink ? <Badge variant="verificato">Dal tuo link</Badge> : lead.audience ? <AudienceBadge audience={lead.audience} /> : null}
             {/* Ordine invertito su richiesta esplicita dell'utente: lo stato
                 della richiesta (StagePill) precede il badge di modalità
                 (ServiceBadge, "A domicilio"/"Consulenza online"). */}
@@ -1773,9 +1776,9 @@ export function RequestCard({
               ) : (
                 <YStack gap="2">
                   <XStack gap="2" flexWrap="wrap">
-                    <ItalianDateInput ariaLabel="Data" value={manualDate} onChange={setManualDate} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} padX={10} />
-                    <ItalianTimeInput ariaLabel="Ora di inizio" value={manualStartTime} onChange={setManualStartTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} padX={10} />
-                    <ItalianTimeInput ariaLabel="Ora di fine (facoltativa)" value={manualEndTime} onChange={setManualEndTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} padX={10} />
+                    <ItalianDateInput ariaLabel="Data" value={manualDate} onChange={setManualDate} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} />
+                    <ItalianTimeInput ariaLabel="Ora di inizio" value={manualStartTime} onChange={setManualStartTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
+                    <ItalianTimeInput ariaLabel="Ora di fine (facoltativa)" value={manualEndTime} onChange={setManualEndTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
                   </XStack>
                   {/* Richiesta esplicita dell'utente: una data/orario inserita
                       a mano non fa parte delle fasce configurate in agenda —
@@ -2079,9 +2082,9 @@ export function RequestCard({
               ) : (
                 <YStack gap="2">
                   <XStack gap="2" flexWrap="wrap">
-                    <ItalianDateInput ariaLabel="Nuova data" value={manualCounterDate} onChange={setManualCounterDate} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} padX={10} />
-                    <ItalianTimeInput ariaLabel="Ora di inizio" value={manualCounterStartTime} onChange={setManualCounterStartTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} padX={10} />
-                    <ItalianTimeInput ariaLabel="Ora di fine" value={manualCounterEndTime} onChange={setManualCounterEndTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} padX={10} />
+                    <ItalianDateInput ariaLabel="Nuova data" value={manualCounterDate} onChange={setManualCounterDate} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} />
+                    <ItalianTimeInput ariaLabel="Ora di inizio" value={manualCounterStartTime} onChange={setManualCounterStartTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
+                    <ItalianTimeInput ariaLabel="Ora di fine" value={manualCounterEndTime} onChange={setManualCounterEndTime} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
                   </XStack>
                   {/* Richiesta esplicita dell'utente: la nuova data può non
                       far parte delle fasce configurate in agenda — comparirà

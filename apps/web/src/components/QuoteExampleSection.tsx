@@ -29,7 +29,9 @@ const STEPS = [
   },
 ];
 
-const TYPE_MS_PER_CHAR = 22;
+// Più veloce di prima (22 ms): il preventivo restava vuoto per quasi 3 secondi
+// (revisione UX dell'11/11/2026, docs/changelog/2026-11-11-home-caroselli-larghi.md).
+const TYPE_MS_PER_CHAR = 14;
 const ROW_STAGGER_MS = 160;
 
 /**
@@ -73,7 +75,9 @@ export function QuoteExampleSection() {
     return () => clearTimeout(timer);
   }, [started, typed]);
 
-  const quoteVisible = typed >= REQUEST_TEXT.length;
+  // Le voci del preventivo entrano a metà della richiesta, non alla fine: chi
+  // scorre vede subito i numeri invece di un riquadro vuoto.
+  const quoteVisible = typed >= REQUEST_TEXT.length / 2;
 
   return (
     <Section

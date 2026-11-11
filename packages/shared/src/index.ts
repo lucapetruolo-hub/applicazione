@@ -15,6 +15,7 @@ export * from "./adminRoles";
 export * from "./adminRoleSchemas";
 export * from "./plans";
 export * from "./personalLink";
+export * from "./leadAudience";
 export * from "./professionals";
 export * from "./limits";
 export * from "./schemas";

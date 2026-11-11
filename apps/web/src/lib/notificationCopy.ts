@@ -297,7 +297,9 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   }
   if (type === "NEW_LEAD" && text(data.category)) {
     const where = text(data.city) ? ` a ${text(data.city)}` : "";
-    return { icon: data.isUrgent === true ? "⚡" : "🎉", message: `${data.isUrgent === true ? "Richiesta urgente" : "Nuova richiesta"}: ${text(data.category)}${where}` };
+    // Solo per te o scelto tra pochi, come nell'email (docs/changelog/2026-11-10-richiesta-solo-per-te.md).
+    const audience = data.audience === "direct" ? " solo per te" : data.audience === "chosen" && typeof data.among === "number" ? ` (scelto tra ${data.among})` : "";
+    return { icon: data.isUrgent === true ? "⚡" : "🎉", message: `${data.isUrgent === true ? "Richiesta urgente" : "Nuova richiesta"}${audience}: ${text(data.category)}${where}` };
   }
   // Nuovo appuntamento nel testo della notifica (docs/CHANGELOG.md §228).
   const newSlot = slotLabel(data.to);

@@ -17,6 +17,7 @@ import {
   SEARCH_RADIUS_KM,
   type AvailabilitySlotInput,
   weekTemplateDatesKept,
+  agendaWeekTemplateSchema,
   type BookAgendaSlotInput,
   type DeclineLeadInput,
   type ServicePriceIndexEntry,
@@ -32,6 +33,7 @@ import {
   type ProfessionalInsights,
   type ProfessionalLead,
   ownClientRequest,
+  leadAudience,
   type ProfessionalSearchResult,
   type ProfessionalServiceItem,
   type ServicePriceUnit,
@@ -1433,6 +1435,7 @@ export class ProfessionalsService {
           responded: otherQuotesPerRequest.get(lead.guidedRequest.id) ?? 0,
           total: Math.max(0, (leadsPerRequest.get(lead.guidedRequest.id) ?? 1) - 1),
         },
+        audience: leadAudience(lead.guidedRequest, professionalProfileId),
         quote: quote
           ? {
               id: quote.id,
@@ -2035,7 +2038,14 @@ export class ProfessionalsService {
     await this.prisma.$transaction(async (tx) => {
       // Un giorno resta "della settimana tipo" solo se le sue fasce non sono
       // cambiate: cambiarle a mano ne fa un giorno a sé (docs/CHANGELOG.md §323).
-      const previous = await tx.availabilitySlot.findMany({ where: { professionalProfileId } });
+      const [previous, profile] = await Promise.all([
+        tx.availabilitySlot.findMany({ where: { professionalProfileId } }),
+        tx.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { agendaWeekTemplate: true, agendaTemplateFilledUntil: true } }),
+      ]);
+      // Un giorno rimesso uguale alla settimana di tutti i mesi torna suo, senza "eccezione"
+      // (docs/changelog/2026-11-10-eccezioni-settimana.md).
+      const parsedTemplate = agendaWeekTemplateSchema.safeParse(profile?.agendaWeekTemplate);
+      const activeTemplate = profile?.agendaTemplateFilledUntil && parsedTemplate.success ? parsedTemplate.data : null;
       const toTemplateSlot = (s: { startTime: string; endTime: string; allowsHome: boolean; allowsOnline: boolean; homeMaxBookings?: number | null; onlineMaxBookings?: number | null }) => ({
         start: s.startTime,
         end: s.endTime,
@@ -2047,6 +2057,7 @@ export class ProfessionalsService {
       const templateDates = weekTemplateDatesKept(
         previous.map((s) => ({ date: s.date ? s.date.toISOString().slice(0, 10) : null, fromWeekTemplate: s.fromWeekTemplate, slot: toTemplateSlot(s) })),
         slots.map((s) => ({ date: s.date ?? null, slot: toTemplateSlot(s) })),
+        activeTemplate,
       );
       await tx.availabilitySlot.deleteMany({ where: { professionalProfileId } });
       if (!slots.length) return;

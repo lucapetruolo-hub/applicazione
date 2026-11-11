@@ -8,6 +8,13 @@ export type SectionTone = "light" | "dark" | "blueprint";
 // tra i segni tipici dei siti fatti con l'IA (docs/CHANGELOG.md §304).
 export type SectionProps = {
   title?: string;
+  /**
+   * Seconda frase in grigio subito dopo il titolo, nella stessa riga, come i
+   * titoli di apple.com ("Di cosa hai bisogno? Trova chi c'è vicino a te.",
+   * docs/changelog/2026-11-11-home-caroselli-larghi.md). Fa parte del titolo
+   * per i lettori di schermo.
+   */
+  titleNote?: string;
   lead?: string;
   /** Comando accanto al titolo, allineato a destra (es. "Mostra tutte"). */
   titleAction?: ReactNode;

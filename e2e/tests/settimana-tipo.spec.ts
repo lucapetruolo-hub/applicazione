@@ -148,3 +148,63 @@ test("un giorno cambiato a mano mostra \"eccezione\" in Giorno per giorno (§328
   expect((await request.put(`${API_URL}/agenda/week-template`, { headers, data: { days: [[], [], [], [], [], [], []] } })).ok()).toBe(true);
   expect((await request.put(`${API_URL}/professionals/me/availability`, { headers, data: { slots: before.map(toInput) } })).ok()).toBe(true);
 });
+
+test("salvando la settimana chiede dei giorni cambiati a mano e li cambia se si sceglie (docs/changelog/2026-11-10-eccezioni-settimana.md)", async ({ page, request }, testInfo) => {
+  test.skip(testInfo.project.name !== "telefono-italia", "Cambia i dati: una volta sola.");
+  type FullSlot = Slot & { dayOfWeek: number; allowsHome: boolean; allowsOnline: boolean; homeMaxBookings: number | null; onlineMaxBookings: number | null; fromWeekTemplate: boolean };
+  const headers = { Authorization: `Bearer ${e2eData().token}`, "Content-Type": "application/json" };
+  const toInput = (s: FullSlot) => ({
+    dayOfWeek: s.dayOfWeek,
+    startTime: s.startTime,
+    endTime: s.endTime,
+    allowsHome: s.allowsHome,
+    allowsOnline: s.allowsOnline,
+    homeMaxBookings: s.homeMaxBookings ?? undefined,
+    onlineMaxBookings: s.onlineMaxBookings ?? undefined,
+    date: s.date ?? undefined,
+  });
+  const before = (await mySlots(request)) as FullSlot[];
+  // Il primo mercoledì ad almeno 10 giorni da oggi (lontano dagli appuntamenti di prova) e il giovedì dopo.
+  const day = 24 * 60 * 60 * 1000;
+  const today = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
+  const wednesday = new Date(today.getTime() + (10 + ((3 - ((today.getUTCDay() + 10) % 7) + 7) % 7)) * day);
+  const wed = wednesday.toISOString().slice(0, 10);
+  const thu = new Date(wednesday.getTime() + day).toISOString().slice(0, 10);
+  const morning = { start: "09:00", end: "12:00", allowsHome: true, allowsOnline: false, homeMax: 1, onlineMax: null };
+  expect((await request.put(`${API_URL}/agenda/week-template`, { headers, data: { template: { days: [[], [], [], [morning], [morning], [], []] }, applyToManual: false } })).ok()).toBe(true);
+  const filled = (await mySlots(request)) as FullSlot[];
+  // Mercoledì cambiato a mano (fino alle 11); giovedì cambiato e poi rimesso come la settimana.
+  const changed = filled.map((s) => (s.date === wed || s.date === thu ? { ...s, endTime: "11:00" } : s));
+  expect((await request.put(`${API_URL}/professionals/me/availability`, { headers, data: { slots: changed.map(toInput) } })).ok()).toBe(true);
+  const back = changed.map((s) => (s.date === thu ? { ...s, endTime: "12:00" } : s));
+  expect((await request.put(`${API_URL}/professionals/me/availability`, { headers, data: { slots: back.map(toInput) } })).ok()).toBe(true);
+  const afterBack = (await mySlots(request)) as FullSlot[];
+  expect(afterBack.filter((s) => s.date === thu).every((s) => s.fromWeekTemplate)).toBe(true);
+  expect(afterBack.filter((s) => s.date === wed).every((s) => !s.fromWeekTemplate)).toBe(true);
+
+  // Settimana fino alle 13: la finestra elenca solo il mercoledì cambiato a mano.
+  await page.goto("/dashboard/agenda?tab=orari");
+  const week = page.getByRole("region", { name: "La tua settimana" });
+  await week.getByLabel("Tutti i giorni: fine 1° orario").fill("13:00");
+  await week.getByRole("button", { name: "Salva la settimana" }).click();
+  // Chiusa con la X non salva nulla e lo dice; poi si risalva.
+  await page.getByRole("dialog").getByRole("button", { name: "Chiudi senza salvare" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Settimana non salvata" })).toBeVisible();
+  expect(((await mySlots(request)) as FullSlot[]).filter((s) => s.date === wed).map((s) => s.endTime)).toEqual(["11:00"]);
+  await week.getByRole("button", { name: "Salva la settimana" }).click();
+  // Possono esserci anche le domeniche salvate per un mese solo dalla prova prima: giorni a sé anche loro.
+  const dialog = page.getByRole("dialog", { name: /^Hai (un giorno|\d+ giorni) cambiat[oi] a mano$/ });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("listitem").filter({ hasText: "09:00–11:00" })).toHaveCount(1);
+  await expect(dialog.getByRole("listitem").filter({ hasText: "09:00–11:00" })).toContainText("09:00–13:00");
+  await expect(dialog.getByRole("listitem").filter({ hasText: "12:00" })).toHaveCount(0);
+  await dialog.getByRole("button", { name: /^Cambia (anche questo|tutti e \d+)$/ }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("status").filter({ hasText: "Settimana salvata a tutti i mesi" })).toBeVisible();
+  const saved = ((await mySlots(request)) as FullSlot[]).filter((s) => s.date === wed);
+  expect(saved.map((s) => [s.startTime, s.endTime, s.fromWeekTemplate])).toEqual([["09:00", "13:00", true]]);
+
+  // Rimette tutto com'era per le altre prove.
+  expect((await request.put(`${API_URL}/agenda/week-template`, { headers, data: { days: [[], [], [], [], [], [], []] } })).ok()).toBe(true);
+  expect((await request.put(`${API_URL}/professionals/me/availability`, { headers, data: { slots: before.map(toInput) } })).ok()).toBe(true);
+});

@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { H2, H3, Paragraph, XStack, YStack } from "tamagui";
+import { H2, H3, Paragraph, Text, XStack, YStack } from "tamagui";
 
 export type { SectionDensity, SectionProps, SectionTone } from "./sectionProps";
 import type { SectionDensity, SectionProps, SectionTone } from "./sectionProps";
@@ -55,11 +55,13 @@ const SectionNestingContext = createContext<SectionTone | null>(null);
 
 function SectionTitle({
   title,
+  titleNote,
   isDark,
   nested,
   pageTitle,
 }: {
   title: string;
+  titleNote?: string;
   isDark: boolean;
   nested: boolean;
   pageTitle?: boolean;
@@ -77,12 +79,18 @@ function SectionTitle({
           { fontSize: "26px gtSm:32px", lineHeight: "31px gtSm:38px" })}
     >
       {title}
+      {titleNote ? (
+        <Text color={isDark ? "rgba(255,255,255,0.7)" : "grafite70"} fontFamily="heading">
+          {` ${titleNote}`}
+        </Text>
+      ) : null}
     </Heading>
   );
 }
 
 export function Section({
   title,
+  titleNote,
   lead,
   titleAction,
   tone = "light",
@@ -104,6 +112,7 @@ export function Section({
             <YStack flex={1} minWidth={0}>
               <SectionTitle
                 title={title}
+                titleNote={titleNote}
                 isDark={isDark}
                 nested={nested}
                 pageTitle={pageTitle}
@@ -114,6 +123,7 @@ export function Section({
         ) : title ? (
           <SectionTitle
             title={title}
+            titleNote={titleNote}
             isDark={isDark}
             nested={nested}
             pageTitle={pageTitle}
