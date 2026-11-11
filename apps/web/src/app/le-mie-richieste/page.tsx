@@ -14,6 +14,7 @@ import { SkeletonRequestList } from "@/components/Skeleton";
 import { EmptyRequestsIllustration } from "@/components/icons/EmptyStateIllustrations";
 import { CategoryCarousel } from "@/components/CategoryCarousel";
 import { RequestSearchField } from "@/components/RequestSearchField";
+import { SearchHighlightProvider, matchesSearch, searchQuery } from "@/lib/requestSearch";
 import { mergeCounts, mergeIds, unreadBookingCounts, unreadBookingIds, unreadGuidedRequestIds, unreadQuoteCounts, unreadQuoteIds, unreadThreadCounts } from "@/lib/notificationSections";
 import { ArchivedCountRow, ArchivedNotice, RestoreAllArchivedBar, RestoredNotice, scrollToListTop } from "@/components/RequestCardPersonalActions";
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
@@ -272,10 +273,8 @@ function LeMieRichiesteContent() {
     }
     if (zoneFilter !== "tutte") list = list.filter((r) => r.city === zoneFilter);
     if (serviceModeFilter !== "tutte") list = list.filter((r) => r.serviceMode === serviceModeFilter);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter((r) => clientRequestSearchText(r, stageByRequestId.get(r.id), bookingByRequestId.get(r.id)).includes(q));
-    }
+    const q = searchQuery(search);
+    if (q) list = list.filter((r) => matchesSearch(clientRequestSearchText(r, stageByRequestId.get(r.id), bookingByRequestId.get(r.id)), q));
     list = [...list];
     if (sortMode === "vecchie") list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     else if (sortMode === "recenti") list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -820,7 +819,7 @@ function LeMieRichiesteContent() {
               )}
             </Surface>
           ) : (
-            visibleRequests.map((request) => (
+            <SearchHighlightProvider query={searchQuery(search)}>{visibleRequests.map((request) => (
               <div key={request.id} id={`request-${request.id}`}>
                 <GuidedRequestCard
                   request={request}
@@ -862,7 +861,7 @@ function LeMieRichiesteContent() {
                   onAutoRescheduleHandled={() => setPendingRescheduleId((prev) => (prev === request.id ? null : prev))}
                 />
               </div>
-            ))
+            ))}</SearchHighlightProvider>
           )}
 
           {hiddenCount > 0 ? (

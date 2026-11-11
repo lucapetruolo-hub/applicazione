@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { jobByRequest, lastLaborPrice, lastSimilarQuote, type MyProfessionalProfile, type MySubscription, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { RequestSearchField } from "@/components/RequestSearchField";
+import { SearchHighlightProvider, matchesSearch, searchQuery } from "@/lib/requestSearch";
 import { Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { loadMyProfessionalProfile, loadMySubscription } from "@/lib/myProfessionalProfile";
@@ -348,10 +349,8 @@ function RichiesteContent() {
     }
     if (zoneFilter !== "tutte") list = list.filter((l) => l.guidedRequest.city === zoneFilter);
     if (serviceModeFilter !== "tutte") list = list.filter((l) => l.guidedRequest.serviceMode === serviceModeFilter);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter((l) => leadSearchText(l, stageByLeadId.get(l.id), bookingByRequestId.get(l.guidedRequest.id)).includes(q));
-    }
+    const q = searchQuery(search);
+    if (q) list = list.filter((l) => matchesSearch(leadSearchText(l, stageByLeadId.get(l.id), bookingByRequestId.get(l.guidedRequest.id)), q));
     list = [...list];
     if (sortMode === "vecchie") list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     else if (sortMode === "recenti") list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -715,7 +714,7 @@ function RichiesteContent() {
           </YStack>
         ) : (
           <YStack gap="3">
-            {visibleLeads.map((lead) => (
+            <SearchHighlightProvider query={searchQuery(search)}>{visibleLeads.map((lead) => (
               <div key={lead.id} id={`request-${lead.id}`}>
                 <RequestCard
                   lead={lead}
@@ -758,7 +757,7 @@ function RichiesteContent() {
                   onChatAutoOpenHandled={() => setPendingChatOpenLeadId((prev) => (prev === lead.id ? null : prev))}
                 />
               </div>
-            ))}
+            ))}</SearchHighlightProvider>
           </YStack>
         )}
 

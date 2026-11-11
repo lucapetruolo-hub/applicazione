@@ -6,7 +6,8 @@ import { COMPUTER, PHONE, createClient, createProfessional, pageAsClient } from 
  * Ricerca delle richieste del cliente sempre a vista
  * (docs/changelog/2026-11-11-ricerca-fuori-dai-filtri.md): da telefono la
  * casella sta nella riga di "Filtri", non dentro il pannello; da computer
- * resta in una riga sua. Scrivere filtra subito l'elenco.
+ * resta in una riga sua. Scrivere filtra subito l'elenco, senza badare ad
+ * accenti e maiuscole, e la parola trovata è evidenziata.
  */
 const prisma = new PrismaClient();
 
@@ -50,6 +51,13 @@ for (const [name, device] of [
     await search.fill("scaldabagno");
     await expect(page.locator(cards)).toHaveCount(1);
     await expect(page.locator(cards).first()).toContainText("Scaldabagno");
+    await search.fill("");
+
+    // Accenti e maiuscole non contano, e la parola trovata è evidenziata.
+    await search.fill("PERDITÀ");
+    await expect(page.locator(cards)).toHaveCount(1);
+    await expect(page.locator(cards).first().locator("mark").first()).toHaveText("Perdita");
+    await page.screenshot({ path: `test-results/ricerca-richieste-${name}-evidenziata.png` });
     await search.fill("");
 
     // Nessun risultato: lo dice e offre di cancellare la ricerca.
@@ -96,6 +104,9 @@ test("telefono, professionista: ricerca nella riga di Filtri, modalità dentro F
   expect(Math.abs((a?.y ?? 0) - (b?.y ?? 99))).toBeLessThan(2);
   expect(Math.abs((a?.height ?? 0) - (b?.height ?? 99))).toBeLessThan(2);
   await page.screenshot({ path: "test-results/ricerca-richieste-pro-telefono.png" });
+  await search.fill("scaldabagno");
+  await expect(page.locator('[id^="request-"]')).toHaveCount(1);
+  await expect(page.locator('[id^="request-"] mark').first()).toHaveText("Scaldabagno");
   await search.fill("zzz nessuna");
   await expect(page.getByText("Nessuna richiesta trovata")).toBeVisible();
   await filters.click();
