@@ -32,17 +32,23 @@ const tradeKey = (name: string) =>
 
 const CATEGORY_KEYS = new Set(PROFESSIONAL_CATEGORIES.map((category) => tradeKey(category.label)));
 
+/** Spazi, virgolette e punteggiatura che l'IA a volte mette intorno al nome. */
+const EDGE_CHARS = new Set([..." \t\n\r\"'«»“”.,;:!?-"]);
+
 /**
  * Il nome del mestiere scritto dall'IA, pulito: una-quattro parole, niente
  * numeri o simboli, prima lettera maiuscola. Null se non è un nome di
  * mestiere o se è un mestiere che il sito ha già.
  */
 export function cleanMissingTrade(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const name = raw
-    .replace(/^[\s"'«»“”.,;:!?-]+|[\s"'«»“”.,;:!?-]+$/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  // Il testo arriva anche dall'indirizzo della ricerca: mai più lungo di così,
+  // e i bordi si tolgono senza espressioni regolari (nessun testo può rallentarle).
+  if (!raw || raw.length > 100) return null;
+  let start = 0;
+  let end = raw.length;
+  while (start < end && EDGE_CHARS.has(raw[start]!)) start += 1;
+  while (end > start && EDGE_CHARS.has(raw[end - 1]!)) end -= 1;
+  const name = raw.slice(start, end).split(/\s/).filter(Boolean).join(" ");
   if (name.length < 3 || name.length > 40) return null;
   if (/[0-9@#<>[\]{}/\\_=+*|]/.test(name)) return null;
   if (name.split(" ").length > 4) return null;

@@ -24,6 +24,8 @@ describe("cleanMissingTrade", () => {
     assert.equal(cleanMissingTrade("uno due tre quattro cinque"), null);
     // Un mestiere che il sito ha già.
     assert.equal(cleanMissingTrade("Idraulico"), null);
+    // Testo lunghissimo dall'indirizzo della ricerca: scartato subito.
+    assert.equal(cleanMissingTrade(`a${"\t".repeat(50_000)}b`), null);
   });
 });
 
