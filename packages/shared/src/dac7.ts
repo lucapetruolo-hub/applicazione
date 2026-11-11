@@ -221,11 +221,11 @@ function dac7DateLabel(iso: string): string {
 }
 
 /** A che punto è l'anno: comunicato, in corso o in preparazione (pagina e PDF del riepilogo). */
-export function dac7YearStatus(summary: Pick<Dac7YearSummary, "year" | "submittedAt" | "submissionProtocol">, now: Date = new Date()): { variant: "verificato" | "nuovo"; label: string; detail: string } {
+export function dac7YearStatus(summary: Pick<Dac7YearSummary, "year" | "submittedAt" | "submissionProtocol">, now: Date = new Date()): { variant: "fatto" | "nuovo"; label: string; detail: string } {
   if (summary.submittedAt) {
     const protocol = summary.submissionProtocol?.trim();
     return {
-      variant: "verificato",
+      variant: "fatto",
       label: "Comunicato al fisco",
       detail: `Comunicato all'Agenzia delle Entrate il ${dac7DateLabel(summary.submittedAt)}${protocol ? ` con protocollo ${protocol}` : ""}.`,
     };

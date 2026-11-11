@@ -100,7 +100,7 @@ export function OnlinePaymentsCard({
         <Text fontSize={16} fontWeight="700" color={brand.grafite}>
           Pagamenti online
         </Text>
-        <Badge variant="verificato">Attivi</Badge>
+        <Badge variant="fatto">Attivi</Badge>
       </XStack>
       <PayoutSummary />
       {children}

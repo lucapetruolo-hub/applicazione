@@ -439,7 +439,7 @@ export function ProfessionalDetailContent({
                     {/* Verifica di identità di Stripe, distinta dal "Verificato" del nostro team (docs/CHANGELOG.md §241). */}
                     {professional.stripeVerified ? (
                       <BadgeInfo info="stripeVerified">
-                        <Badge variant="verificato">{STRIPE_VERIFIED_BADGE.label}</Badge>
+                        <Badge variant="fatto">{STRIPE_VERIFIED_BADGE.label}</Badge>
                       </BadgeInfo>
                     ) : null}
                     {professional.boosted ? (

@@ -549,7 +549,7 @@ function LeadToAnswerRow({ lead, extra = false }: { lead: ProfessionalLead; extr
         {lead.guidedRequest.isUrgent || personal ? (
           <span className="today-row-badges">
             {lead.guidedRequest.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
-            {personal ? <Badge variant="verificato">{personal}</Badge> : null}
+            {personal ? <Badge variant="fatto">{personal}</Badge> : null}
           </span>
         ) : null}
         <strong>

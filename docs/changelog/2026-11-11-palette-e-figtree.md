@@ -45,6 +45,7 @@ sito subito, senza aspettare nome e logo, dopo la home stile Apple (#319).
   Fonts, licenza OFL) al posto di Instrument Sans per titoli e testo del sito,
   file nel repo (`apps/web/src/app/fonts/figtree-latin.woff2`). L'app mobile,
   ferma, resta con Instrument Sans: si cambia quando si riprende.
+- Etichette: nuova variante `fatto` di `Badge` (verde "fatto" `#325F54` sul velo `#E1EEEB`, 6,1:1) per ciò che è attivo o concluso ("Pagamenti online", "Attivi", "Dal tuo link", IBAN che corrisponde, DAC7 "Comunicato al fisco"): la terracotta resta solo su "Verificato", così non si confonde con il rosso degli errori né perde valore. "Sponsorizzato" passa all'ottone scuro `#8A5A00` (5,1:1): l'ottone pieno sul suo velo era 1,9:1.
 - Stesso verde cipresso anche fuori dalle pagine: icone del sito e del telefono, colore della barra del browser, anteprime per i social (anche quella del profilo), segnaposto della mappa (interattiva e immagine fissa), pulsante "Chiedi un preventivo" e bollino stelle da incollare sul sito del professionista (bordo del tema scuro `#7FB3A5`, 7,3:1).
 - Nome e logo restano provvisori ("Professionisti").
 
