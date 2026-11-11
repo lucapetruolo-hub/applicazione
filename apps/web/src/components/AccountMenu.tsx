@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { getAccountMenuGroups, hasNavAttention, isNavItemActive } from "@/lib/accountMenuItems";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
 import { useNavAttention } from "@/lib/useNavAttention";
+import { OPTIONAL_JOURNEY_MENU_HREF } from "@/components/verification/SetupJourney";
 import styles from "./AccountMenu.module.css";
 
 export function AccountMenu() {
@@ -106,7 +107,9 @@ export function AccountMenu() {
   // che porta alla pagina con la novità, es. "Dashboard"/"Le mie visite").
   const menuUnreadCounts = accountMenuUnreadCounts(user.isProfessional, unreadNotifications);
   // Qualcosa da fare (agenda, percorso del profilo): pallino anche accanto al nome.
-  const toDo = attention.size > 0;
+  // Non per i soli pagamenti online, facoltativi: quel pallino resta solo nel
+  // menu (docs/changelog/2026-11-11-pallino-pagamenti-facoltativi.md).
+  const toDo = [...attention].some((href) => href !== OPTIONAL_JOURNEY_MENU_HREF);
 
   return (
     // HTML semplice, senza il calcolo degli stili di Tamagui
