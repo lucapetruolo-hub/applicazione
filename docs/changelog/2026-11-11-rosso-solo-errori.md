@@ -88,3 +88,13 @@ progetto (`anteprime/scritta-rossa-pagamento-diretto/`; il caso con acconto
 trattenuto simulato sul preventivo di prova). Prova della data in
 `cancellationNotice.test.ts` e dell'email in `legal-emails.test.ts`; lint,
 controllo dei tipi e prove di sito e API.
+
+**Prova a mano con lo Stripe di prova** (11/11, sito e API in produzione,
+account di prova, carta 4242): due preventivi da 100 € con acconto del 30%,
+appuntamento il giorno dopo (dentro le 24 ore), accettati e pagati con
+Stripe Checkout, poi annullati dal cliente.
+- "Resta a me, non è rimborsabile": annullamento con `keptDepositEurCents`
+  3000, pagamento "PAID" con `depositKept: true`, nessun rimborso.
+- "Torna sempre al cliente": `keptDepositEurCents` 0, pagamento "REFUNDED"
+  con 30,00 € rimborsati subito su Stripe (`refundWaitingEurCents` 0, nessun
+  rimborso lasciato a mano alla Finanza).
