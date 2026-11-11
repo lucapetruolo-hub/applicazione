@@ -12,7 +12,7 @@ frase identica. La città c'era solo riga per riga. Nessun avviso.
 **Decisione**:
 - L'IA risponde anche `missingTrade`: quando nessun mestiere del sito va bene
   e il testo chiede un lavoro, il nome del mestiere che servirebbe ("Sarto").
-  Non va al sito: resta nel registro delle descrizioni
+  Si salva nel registro delle descrizioni
   (`problem_descriptions.missingTrade`, migrazione
   `20261111220000_mestiere_mancante`, solo additiva). Per gli 8 lavori fissi
   si salva sempre il loro nome, così si contano insieme. Un nome che è già un
@@ -54,8 +54,8 @@ comunque il professionista che l'ha inserito fra i suoi servizi, giusto?"):
 come "tanti"; ora si conta per nome e si vede dove serve.
 
 **Verifica**: test in `packages/shared/src/missingTrades.test.ts`,
-`apps/api/src/problem-match/problem-match.service.test.ts` (il campo non esce
-dalla risposta pubblica) e `apps/api/src/admin/site-stats.test.ts` (soglia e
+`apps/api/src/problem-match/problem-match.service.test.ts` (al sito solo il
+mestiere che non è tra gli 8 fissi) e `apps/api/src/admin/site-stats.test.ts` (soglia e
 testo del consiglio), `service-names.test.ts` (il mestiere nella richiesta
 presa in carico) e la prova nel browser `e2e/tests/prestazioni-problema.spec.ts`
 (ricerca per mestiere dichiarato, mai tutti con una parola generica). Foto con
