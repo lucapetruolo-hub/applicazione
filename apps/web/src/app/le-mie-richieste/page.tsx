@@ -13,6 +13,7 @@ import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { SkeletonRequestList } from "@/components/Skeleton";
 import { EmptyRequestsIllustration } from "@/components/icons/EmptyStateIllustrations";
 import { CategoryCarousel } from "@/components/CategoryCarousel";
+import { RequestSearchField } from "@/components/RequestSearchField";
 import { mergeCounts, mergeIds, unreadBookingCounts, unreadBookingIds, unreadGuidedRequestIds, unreadQuoteCounts, unreadQuoteIds, unreadThreadCounts } from "@/lib/notificationSections";
 import { ArchivedCountRow, ArchivedNotice, RestoreAllArchivedBar, RestoredNotice, scrollToListTop } from "@/components/RequestCardPersonalActions";
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
@@ -113,6 +114,10 @@ function LeMieRichiesteContent() {
   // §349): `page` conta i gruppi da 10 già mostrati.
   const pageSize = 10;
   const [page, setPage] = useState(1);
+  const updateSearch = useCallback((value: string) => {
+    setSearch(value);
+    setPage(1);
+  }, []);
   const [openId, setOpenId] = useState<string | null>(null);
   const [justBookedId, setJustBookedId] = useState<string | null>(null);
 
@@ -590,31 +595,12 @@ function LeMieRichiesteContent() {
                 sempre a vista senza aggiungere una fila di controlli
                 (docs/CHANGELOG.md §349); la modalità resta dentro "Filtri". */}
             <YStack display="xs:none">
-              <input
-                aria-label="Cerca nelle richieste"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Cerca in ogni campo della richiesta..."
-                style={{ ...filterInputStyle, width: "100%" }}
-              />
+              <RequestSearchField value={search} onChange={updateSearch} placeholder="Cerca in ogni campo della richiesta..." inputStyle={filterInputStyle} />
             </YStack>
 
             <XStack gap="2" alignItems="center" flexWrap="wrap">
               <XStack display="gtXs:none" flex={1} flexBasis={0} minWidth={0}>
-                <input
-                  aria-label="Cerca nelle richieste"
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPage(1);
-                  }}
-                  placeholder="Cerca nelle richieste..."
-                  enterKeyHint="search"
-                  style={{ ...filterInputStyle, width: "100%", minWidth: 0, paddingTop: 12, paddingBottom: 12 }}
-                />
+                <RequestSearchField value={search} onChange={updateSearch} placeholder="Cerca nelle richieste..." inputStyle={{ ...filterInputStyle, paddingTop: 12, paddingBottom: 12 }} />
               </XStack>
               <XStack
                 alignItems="center"
@@ -816,6 +802,19 @@ function LeMieRichiesteContent() {
                   "Cambia filtro" (docs/changelog/2026-11-10-archiviate-tornano-con-novita.md). */}
               {activeStageTab === "archiviate" && (tabCounts.archiviate ?? 0) === 0 ? (
                 <EmptyState icon="archive" title="Nessuna richiesta archiviata" description="Le richieste che archivi finiscono qui. Tornano in Tutte quando hanno novità, se non le hai silenziate." />
+              ) : search.trim() ? (
+                // Ricerca senza risultati: lo dice e offre di cancellarla
+                // (docs/changelog/2026-11-11-ricerca-fuori-dai-filtri.md).
+                <EmptyState
+                  icon="search"
+                  title="Nessuna richiesta trovata"
+                  description={`Nessuna richiesta contiene “${search.trim()}”. Prova con un'altra parola.`}
+                  action={
+                    <Button variant="secondary" onPress={() => updateSearch("")}>
+                      Cancella ricerca
+                    </Button>
+                  }
+                />
               ) : (
                 <EmptyState icon="search" title="Nessuna richiesta in questa sezione" description="Cambia filtro per vedere le altre richieste." />
               )}
