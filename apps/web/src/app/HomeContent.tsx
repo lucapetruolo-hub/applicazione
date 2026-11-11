@@ -68,7 +68,7 @@ export default function HomeContent({
 
         {/* 2. Categorie. */}
         <FadeInSection>
-          <Section title="Di cosa hai bisogno?" maxWidth={1080}>
+          <Section title="Di cosa hai bisogno?" titleNote="Trova chi c'è vicino a te." maxWidth={1080}>
             <CategoryStoryRail state={categoryRail} />
             <PopularJobs data={popularJobs} />
           </Section>
@@ -91,7 +91,9 @@ export default function HomeContent({
             {/* "Cosa dicono i clienti" (docs/CHANGELOG.md §349): il titolo
                 diceva professionisti e il contenuto erano recensioni. */}
             <Section
-              title={hasReviews ? "Cosa dicono i clienti" : "Nuovi professionisti"}
+              title={hasReviews ? "Cosa dicono i clienti." : "Nuovi professionisti."}
+              // Seconda frase grigia come su apple.com (docs/changelog/2026-11-11-home-caroselli-larghi.md).
+              titleNote={hasReviews ? "Solo da lavori fatti tramite il sito." : "Appena arrivati sul sito."}
               titleAction={
                 <Link href="/cerca" className="home-section-action">
                   Vedi tutti

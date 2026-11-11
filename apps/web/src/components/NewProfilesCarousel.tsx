@@ -95,7 +95,8 @@ export function NewProfilesCarousel({
           flex-direction: column;
           height: 100%;
           background: ${brand.calce};
-          border-radius: 24px;
+          /* 20 px come le altre schede del sito (angoli 10/20, §317). */
+          border-radius: 20px;
           overflow: hidden;
           text-decoration: none;
           color: inherit;

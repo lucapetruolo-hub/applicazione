@@ -38,6 +38,9 @@ const AccountMenu = dynamic(loadAccountMenu, { ssr: false, loading: () => <span 
  * tramite il proprio CSS interno (media query a 860px) — annidarla in un
  * wrapper Tamagui `$gtMd`-only nasconderebbe anche il suo trigger mobile.
  */
+/** Barre ferme sotto l'intestazione: con queste la barra non si accorcia (vedi sotto). */
+const STICKY_BELOW_HEADER = ".acct-nav, .admin-nav, .profile-index, .ag-days, .results-map-sticky";
+
 const AUTH_PAGES = ["/registrati", "/accedi", "/password-dimenticata", "/reimposta-password", "/conferma-email", "/completa-profilo"];
 
 export function SiteHeader() {
@@ -83,21 +86,29 @@ export function SiteHeader() {
     void loadAccountMenu();
   }, []);
 
-  // Scorrendo la barra della home diventa più bassa e più trasparente, come
-  // su apple.com (richiesta di Luca, docs/changelog/2026-11-11-home-caroselli-larghi.md).
+  // Scorrendo la barra diventa più bassa e più trasparente, come su apple.com
+  // (richiesta di Luca, docs/changelog/2026-11-11-home-caroselli-larghi.md).
   // Solo trasformazioni (.site-header-shell in globals.css): la barra resta
   // alta 64 px nella pagina, così niente si sposta sotto di lei (le prove
   // misurano zero spostamenti, CLS 0). Due soglie diverse (24 px per
   // stringerla, 4 px per riallargarla) perché non tremi sul confine.
+  // Non si accorcia nelle pagine con una barra ferma subito sotto (menu
+  // dell'area account e admin, indice del profilo, agenda, mappa dei
+  // risultati): tra le due resterebbe una fessura da cui si vede la pagina, e
+  // spostare quelle barre muoverebbe il contenuto.
+  const [hasStickyBelow, setHasStickyBelow] = useState(false);
   useEffect(() => {
     function onScroll() {
       setScrolled((was) => (was ? window.scrollY > 4 : window.scrollY > 24));
+      // Letto a ogni scorrimento (non solo all'apertura): cambiando pagina la
+      // barra resta montata e le barre ferme sotto compaiono e spariscono.
+      if (window.scrollY > 4) setHasStickyBelow(document.querySelector(STICKY_BELOW_HEADER) !== null);
     }
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-  const compact = scrolled && pathname === "/";
+  const compact = scrolled && !hasStickyBelow;
 
   return (
     // `position: sticky` non è tipizzato su Tamagui/React Native (stesso

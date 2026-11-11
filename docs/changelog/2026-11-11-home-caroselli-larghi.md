@@ -56,6 +56,29 @@ compariva e spariva a ogni sezione.
   da bordo a bordo): consigliato così perché resti una scheda con angoli e
   ombra; foto delle due versioni a Luca.
 
+**Terzo giro (stesso giorno, "sì" di Luca alla revisione da esperto)**:
+- **Barra in alto che si accorcia su tutto il sito**, tranne nelle pagine con
+  una barra ferma subito sotto (menu dell'area account e admin, indice del
+  profilo, giorni dell'agenda, mappa dei risultati): lì resterebbe una
+  fessura. Il controllo si fa a ogni scorrimento (`STICKY_BELOW_HEADER` in
+  `SiteHeader.tsx`). Spostamenti misurati in locale su home, /preventivo e
+  /come-funziona: zero.
+- **Titoli con una seconda frase grigia** ("Di cosa hai bisogno? Trova chi
+  c'è vicino a te."), nuova prop `titleNote` di `Section` (sito e app), e
+  titoli più grandi (44 px da computer, 30 da telefono) con più aria tra le
+  sezioni (88/56 px), solo in home tramite variabili CSS.
+- **"Non trovi il tuo lavoro?" prima scheda** delle categorie da computer;
+  da telefono resta in fondo alla griglia, dopo "Mostra altre N categorie"
+  (`order` in `globals.css`).
+- **Angoli a 20 px** nelle schede dei nuovi professionisti; **"Quanto costa
+  in media?" e le domande frequenti larghi 1080 px** come le altre sezioni,
+  con l'elenco dei prezzi su due colonne da computer; **"Ricevi preventivi
+  così"** scrive più in fretta e mostra le voci del preventivo già a metà.
+- **Caroselli allineati al titolo anche su Windows**: la riga usa `100cqw`
+  del contenitore della home (`container-type: inline-size`) invece di
+  `100vw`, che comprende la barra di scorrimento e spostava la prima scheda
+  di circa 7 px.
+
 **Verifica**: foto prima/dopo da telefono (390 px) e computer (1440 px) in
 `anteprime/home-caroselli-apple/` della cartella del progetto; lint,
 controllo dei tipi e prove della home.

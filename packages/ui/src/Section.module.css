@@ -15,7 +15,8 @@
 }
 
 .compact {
-  padding-block: 40px;
+  /* La home può dare più aria tra le sezioni (HomeContent.module.css). */
+  padding-block: var(--section-compact-pad, 40px);
 }
 
 .light {
@@ -81,8 +82,16 @@
   letter-spacing: var(--f-letterSpacing-8);
   text-transform: var(--f-transform-8);
   color: var(--c-grafite);
-  font-size: 26px;
-  line-height: 31px;
+  font-size: var(--section-title-size, 26px);
+  line-height: var(--section-title-line, 31px);
+}
+
+.titleNote {
+  color: var(--c-grafite70);
+}
+
+.titleNoteOnDark {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .titleNested {
@@ -117,11 +126,11 @@
   }
 
   .compact {
-    padding-block: 56px;
+    padding-block: var(--section-compact-pad-wide, 56px);
   }
 
   .title:not(.titleNested) {
-    font-size: 32px;
-    line-height: 38px;
+    font-size: var(--section-title-size-wide, 32px);
+    line-height: var(--section-title-line-wide, 38px);
   }
 }
