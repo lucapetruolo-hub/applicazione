@@ -45,6 +45,7 @@ sito subito, senza aspettare nome e logo, dopo la home stile Apple (#319).
   Fonts, licenza OFL) al posto di Instrument Sans per titoli e testo del sito,
   file nel repo (`apps/web/src/app/fonts/figtree-latin.woff2`). L'app mobile,
   ferma, resta con Instrument Sans: si cambia quando si riprende.
+- Stesso verde cipresso anche fuori dalle pagine: icone del sito e del telefono, colore della barra del browser, anteprime per i social (anche quella del profilo), segnaposto della mappa (interattiva e immagine fissa), pulsante "Chiedi un preventivo" e bollino stelle da incollare sul sito del professionista (bordo del tema scuro `#7FB3A5`, 7,3:1).
 - Nome e logo restano provvisori ("Professionisti").
 
 **Motivo**: il pesca con il verde dava un'aria da "vicinato" ma poco

@@ -9,7 +9,7 @@
  */
 const PIN_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38">' +
-  '<path d="M14 1C7 1 1.5 6.5 1.5 13.5 1.5 23 14 37 14 37s12.5-14 12.5-23.5C26.5 6.5 21 1 14 1z" fill="#4C8A7A" stroke="#335F54" stroke-width="1.5"/>' +
+  '<path d="M14 1C7 1 1.5 6.5 1.5 13.5 1.5 23 14 37 14 37s12.5-14 12.5-23.5C26.5 6.5 21 1 14 1z" fill="#40776A" stroke="#325F54" stroke-width="1.5"/>' +
   '<circle cx="14" cy="13.5" r="4.5" fill="#FFFFFF"/></svg>';
 
 export const MAP_PIN_ICON_URL = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(PIN_SVG)}`;

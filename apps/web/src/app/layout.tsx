@@ -32,7 +32,7 @@ const TAMAGUI_CSS_VERSION = process.env.TAMAGUI_CSS_VERSION;
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#4C8A7A",
+  themeColor: "#40776A",
 };
 
 export const metadata: Metadata = {

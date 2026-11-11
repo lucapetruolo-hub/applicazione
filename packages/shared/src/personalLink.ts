@@ -51,7 +51,7 @@ export function personalLinkButtonHtml(url: string): string {
   const safeUrl = url.replace(/[&"<>]/g, (c) => ({ "&": "&amp;", '"': "&quot;", "<": "&lt;", ">": "&gt;" })[c]!);
   return (
     `<a href="${safeUrl}" target="_blank" rel="noopener" ` +
-    `style="display:inline-block;padding:12px 22px;border-radius:999px;background:#128552;color:#ffffff;` +
+    `style="display:inline-block;padding:12px 22px;border-radius:999px;background:#40776A;color:#ffffff;` +
     `font:600 16px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none">Chiedi un preventivo</a>`
   );
 }
@@ -151,8 +151,8 @@ export function personalLinkBadgeTheme(value: string | null | undefined): Person
 }
 
 const BADGE_COLORS: Record<PersonalLinkBadgeTheme, { background: string; border: string; text: string; muted: string; emptyStar: string; star: string }> = {
-  light: { background: "#FFFFFF", border: "#128552", text: "#2B2420", muted: "#5C5249", emptyStar: "#E8DCCB", star: "#E0A100" },
-  dark: { background: "#1F1A17", border: "#4FC08D", text: "#FFFFFF", muted: "#D9CFC4", emptyStar: "#4A403A", star: "#F5B820" },
+  light: { background: "#FFFFFF", border: "#40776A", text: "#1B1A18", muted: "#5E5A54", emptyStar: "#E7E0D7", star: "#E0A100" },
+  dark: { background: "#1F1A17", border: "#7FB3A5", text: "#FFFFFF", muted: "#D9CFC4", emptyStar: "#4A403A", star: "#F5B820" },
 };
 
 const BADGE_WIDTH = 220;

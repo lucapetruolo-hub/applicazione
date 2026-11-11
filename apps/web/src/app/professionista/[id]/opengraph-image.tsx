@@ -51,7 +51,7 @@ export default async function ProfessionalOpengraphImage({ params }: { params: P
 
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", background: "#4C8A7A", padding: "0 80px", gap: 56 }}>
+      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", background: "#40776A", padding: "0 80px", gap: 56 }}>
         {photo ? (
           // eslint-disable-next-line jsx-a11y/alt-text -- immagine dentro next/og, non nella pagina
           <img src={photo} width={300} height={300} style={{ borderRadius: 40, objectFit: "cover", border: "6px solid #FAF2E8" }} />
