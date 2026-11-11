@@ -85,7 +85,7 @@ export function BleedRail({
           </div>
           <button
             type="button"
-            className="bleed-rail-arrow category-carousel-arrow"
+            className="bleed-rail-arrow bleed-rail-arrow--prev category-carousel-arrow"
             aria-label={previousLabel}
             disabled={atStart}
             onClick={() => scrollByItem(-1)}
@@ -94,7 +94,7 @@ export function BleedRail({
           </button>
           <button
             type="button"
-            className="bleed-rail-arrow category-carousel-arrow"
+            className="bleed-rail-arrow bleed-rail-arrow--next category-carousel-arrow"
             aria-label={nextLabel}
             disabled={atEnd}
             onClick={() => scrollByItem(1)}

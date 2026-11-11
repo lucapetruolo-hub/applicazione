@@ -27,4 +27,6 @@ una era bianca e una nera, e restavano così anche a fine riga. Ora sono due
 cerchi uguali grigio chiaro con la punta scura (`.bleed-rail-arrow` in
 `globals.css`), un po' più scuri al passaggio del mouse; a fine riga la
 freccia resta con la punta sbiadita. Vale per le categorie e per i nuovi
-professionisti (`BleedRail`).
+professionisti (`BleedRail`). Poi, sempre su richiesta di Luca, anche il movimento di apple.com: al
+passaggio del mouse la punta scivola di 2 px nella sua direzione, al clic il
+cerchio si stringe appena (niente movimento con "riduci movimento").

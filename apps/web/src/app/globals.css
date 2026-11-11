@@ -5753,14 +5753,38 @@ a.admin-kpi:hover {
   background: rgba(43, 36, 32, 0.08);
   color: rgba(43, 36, 32, 0.8);
   cursor: pointer;
-  transition: background-color 160ms ease, color 160ms ease, transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: background-color 200ms ease, color 200ms ease, transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Movimento come su apple.com: al passaggio del mouse il cerchio si scurisce
+   e la punta scivola di 2 px verso dove porta; al clic il cerchio si stringe
+   appena. */
+.bleed-rail-arrow > svg {
+  transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .bleed-rail-arrow:hover:not(:disabled) {
   background: rgba(43, 36, 32, 0.14);
   color: #2b2420;
 }
+.bleed-rail-arrow--prev:hover:not(:disabled) > svg {
+  transform: translateX(-2px);
+}
+.bleed-rail-arrow--next:hover:not(:disabled) > svg {
+  transform: translateX(2px);
+}
 .bleed-rail-arrow:active:not(:disabled) {
-  transform: scale(0.94);
+  transform: scale(0.9);
+  transition-duration: 80ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bleed-rail-arrow,
+  .bleed-rail-arrow > svg {
+    transition: background-color 200ms ease, color 200ms ease;
+  }
+  .bleed-rail-arrow--prev:hover:not(:disabled) > svg,
+  .bleed-rail-arrow--next:hover:not(:disabled) > svg,
+  .bleed-rail-arrow:active:not(:disabled) {
+    transform: none;
+  }
 }
 .bleed-rail-arrow:focus-visible {
   outline: 3px solid #189a63;
