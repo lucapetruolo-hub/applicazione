@@ -331,7 +331,7 @@ function DescriptionsTab() {
 function MissingTradesCard({ trades }: { trades: MissingTrade[] }) {
   return (
     <AdminCard>
-      <div id="mestieri-mancanti" style={{ scrollMarginTop: 80 }}>
+      <YStack id="mestieri-mancanti" style={{ scrollMarginTop: 120 }}>
         <Text fontWeight="700">Mestieri che non abbiamo, ultimi 30 giorni</Text>
         <Text color={brand.grafite70} fontSize={13} marginTop="1">
           Quando nessun nostro mestiere va bene, l&apos;intelligenza artificiale scrive quale servirebbe. Da {MISSING_TRADE_ADVICE_MIN} richieste
@@ -344,7 +344,7 @@ function MissingTradesCard({ trades }: { trades: MissingTrade[] }) {
         ) : (
           <YStack gap="2" marginTop="2">
             {trades.map((trade) => (
-              <YStack key={trade.name} gap={2}>
+              <YStack key={trade.name} gap={2} role="group" aria-label={trade.name}>
                 <XStack gap="2" alignItems="center" flexWrap="wrap">
                   <Text fontWeight="600">{trade.name}</Text>
                   <Text color={brand.grafite70}>
@@ -361,7 +361,7 @@ function MissingTradesCard({ trades }: { trades: MissingTrade[] }) {
             ))}
           </YStack>
         )}
-      </div>
+      </YStack>
     </AdminCard>
   );
 }

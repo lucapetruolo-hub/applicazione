@@ -173,10 +173,10 @@ test("Admin: richieste che tengono o cambiano la categoria proposta", async ({ b
   await expect(page.getByText(/Richieste di preventivo con la categoria proposta: \d+/)).toBeVisible();
   await expect(page.getByText(/Falegname → Tutto Fare \d+/)).toBeVisible();
   // Mestieri che non abbiamo, con le zone e "Da valutare" da 10 richieste.
-  const missing = page.locator("#mestieri-mancanti");
-  await expect(missing.getByText(missingTrade, { exact: true })).toBeVisible();
-  await expect(missing.getByText("Latina e provincia 7 · Roma e provincia 4")).toBeVisible();
-  await expect(missing.getByText("Da valutare").first()).toBeVisible();
+  const trade = page.locator("#mestieri-mancanti").getByRole("group", { name: missingTrade, exact: true });
+  await expect(trade.getByText("11 richieste")).toBeVisible();
+  await expect(trade.getByText("Latina e provincia 7 · Roma e provincia 4")).toBeVisible();
+  await expect(trade.getByText("Da valutare")).toBeVisible();
   if (process.env.E2E_SCREENSHOTS) await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/admin-categoria-proposta-${testInfo.project.name}.png`, fullPage: true });
   await context.close();
 });
