@@ -490,7 +490,7 @@ export default function DashboardTodayPage() {
 function TodayCounter({ href, icon, value, label, urgent, loading }: { href: string; icon: IconName; value: number; label: string; urgent: boolean; loading: boolean }) {
   return (
     <Link href={href} className={`admin-kpi${urgent ? " is-urgent" : ""}`}>
-      <Icon name={icon} size={18} color={urgent ? "#dc3545" : "#6e6459"} />
+      <Icon name={icon} size={18} color={urgent ? "#dc3545" : "#5e5a54"} />
       <span className="admin-kpi-value">{loading ? "…" : value}</span>
       <span className="admin-kpi-label">{label}</span>
     </Link>
@@ -601,7 +601,7 @@ function InsightsGrid({ insights }: { insights: ProfessionalInsights }) {
         <div key={cell.label} className="admin-kpi">
           <span className="admin-kpi-label">{cell.label}</span>
           <span className={cell.isText ? "admin-kpi-value is-text" : "admin-kpi-value"}>{cell.value}</span>
-          {cell.compare ? <span style={{ fontSize: 13, color: "#6e6459", fontWeight: 600 }}>{cell.compare}</span> : null}
+          {cell.compare ? <span style={{ fontSize: 13, color: "#5e5a54", fontWeight: 600 }}>{cell.compare}</span> : null}
         </div>
       ))}
     </div>

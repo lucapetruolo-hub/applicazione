@@ -1,7 +1,7 @@
 /*
  * Badge per il sito (Badge.web.tsx): stessi valori dell'XStack/Text di
  * Badge.tsx. Colori delle varianti come VARIANT_STYLE di Badge.tsx
- * (verificato = brand.verificato, pro = brand.ottone, urgente = brand.urgenza:
+ * (verificato = brand.terracotta, pro = brand.ottone, urgente = brand.urgenza:
  * senza una variabile di Tamagui).
  */
 .badge {
@@ -19,7 +19,7 @@
 }
 
 .verificato {
-  background-color: #e6f4ec;
+  background-color: #f6e3d9;
 }
 
 .pro {
@@ -27,7 +27,7 @@
 }
 
 .urgente {
-  background-color: #fbeae8;
+  background-color: #fde8e6;
 }
 
 .nuovo {
@@ -35,7 +35,7 @@
 }
 
 .verificato .text {
-  color: #3d6b3e;
+  color: #a3441f;
 }
 
 .pro .text {
@@ -43,7 +43,7 @@
 }
 
 .urgente .text {
-  color: #c8362b;
+  color: #b42318;
 }
 
 .nuovo .text {

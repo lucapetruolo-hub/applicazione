@@ -138,7 +138,7 @@ export function CookieBanner() {
         fontFamily: "var(--font-body), sans-serif",
       }}
     >
-      <p style={{ flex: "1 1 260px", margin: 0, fontSize: 13, lineHeight: 1.4, color: "#2b2420" }}>
+      <p style={{ flex: "1 1 260px", margin: 0, fontSize: 13, lineHeight: 1.4, color: "#1b1a18" }}>
         <span className="cookie-text-long">
           Usiamo solo cookie tecnici necessari al funzionamento del sito e, se lo accetti, la mappa
           interattiva di Google. Nessun cookie pubblicitario o di profilazione. Puoi cambiare idea quando vuoi da

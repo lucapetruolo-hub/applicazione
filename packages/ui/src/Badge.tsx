@@ -7,9 +7,9 @@ export type { BadgeProps, BadgeVariant } from "./badgeProps";
 const VARIANT_STYLE: Record<BadgeVariant, { bg: string; fg: string }> = {
   // Colori semantici: verde solo su verificato/conferma, ottone solo su
   // elementi a pagamento, rosso solo sul flusso urgenza (CLAUDE.md/brief §1.2).
-  verificato: { bg: "#E6F4EC", fg: brand.verificato },
+  verificato: { bg: brand.terracottaVelo, fg: brand.terracotta },
   pro: { bg: "#F5EEE0", fg: brand.ottone },
-  urgente: { bg: "#FBEAE8", fg: brand.urgenza },
+  urgente: { bg: "#FDE8E6", fg: brand.urgenza },
   nuovo: { bg: brand.cianografiaVelo, fg: brand.cianografiaScuro },
 };
 

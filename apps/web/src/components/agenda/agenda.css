@@ -791,7 +791,7 @@
 .ag-scrim {
   position: fixed;
   inset: 0;
-  background: rgba(43, 36, 32, 0.35);
+  background: rgba(27, 26, 24, 0.35);
   z-index: 1000;
 }
 .ag-sheet {
@@ -1391,7 +1391,7 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(43, 36, 32, 0.35);
+  background: rgba(27, 26, 24, 0.35);
   display: flex;
   align-items: flex-start;
   justify-content: center;

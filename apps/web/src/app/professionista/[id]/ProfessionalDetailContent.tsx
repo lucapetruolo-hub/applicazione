@@ -944,7 +944,7 @@ export function ProfessionalDetailContent({
                         {/* Ogni recensione nasce solo da un lavoro confermato sul sito: lo si dice (come in home). */}
                         <BadgeInfo info="confirmedJob">
                           <div className={`is_View ${styles.confirmed}`}>
-                            <Icon name="badge-check" size={13} strokeWidth={2} color={brand.verificato} />
+                            <Icon name="badge-check" size={13} strokeWidth={2} color={brand.terracotta} />
                             <span className={`is_Text ${styles.confirmedText}`}>Lavoro fatto tramite il sito</span>
                           </div>
                         </BadgeInfo>

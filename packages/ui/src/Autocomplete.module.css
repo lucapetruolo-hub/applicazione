@@ -35,7 +35,7 @@
   line-height: 18px;
   height: auto;
   font-weight: 600;
-  color: rgb(110, 100, 89);
+  color: rgb(94, 90, 84);
   padding-left: var(--t-space-1);
 }
 
@@ -178,7 +178,7 @@
 .heading {
   font-size: 13px;
   font-weight: 700;
-  color: rgb(110, 100, 89);
+  color: rgb(94, 90, 84);
 }
 
 .text {

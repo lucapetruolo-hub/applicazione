@@ -274,11 +274,11 @@ export function AddressAutocompleteInput({ value, onChange, onSelect, placeholde
           padding: 9px 12px;
           cursor: pointer;
           font-size: 14px;
-          color: #2b2420;
+          color: #1b1a18;
         }
         .address-suggestions li span {
           font-size: 12px;
-          color: #6e6459;
+          color: #5e5a54;
         }
         .address-suggestions li:hover,
         .address-suggestions li.highlighted {
@@ -288,7 +288,7 @@ export function AddressAutocompleteInput({ value, onChange, onSelect, placeholde
           cursor: default;
           /* Leggibile anche così piccola: contrasto almeno 4,5:1 (§324). */
           font-size: 12px;
-          color: #6e6459;
+          color: #5e5a54;
           align-items: flex-end;
         }
         .address-suggestions li.address-attribution:hover {

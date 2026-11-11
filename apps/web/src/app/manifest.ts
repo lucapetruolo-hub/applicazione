@@ -21,7 +21,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Cerca imbianchini, elettricisti, idraulici e altri professionisti vicino a te.",
     start_url: "/",
     display: "standalone",
-    background_color: "#FDEFE1",
+    background_color: "#F7F3EE",
     theme_color: "#189A63",
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png" },

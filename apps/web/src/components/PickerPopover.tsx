@@ -139,7 +139,7 @@ export function PickerPanel({
           background: ${brand.calce};
           border: 1px solid ${brand.filetto};
           border-radius: 20px;
-          box-shadow: 0 12px 32px rgba(43, 36, 32, 0.18);
+          box-shadow: 0 12px 32px rgba(27, 26, 24, 0.18);
           font-family: inherit;
           color: ${brand.grafite};
         }

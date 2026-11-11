@@ -14,17 +14,17 @@ export const EMAIL_BRAND = {
   signature: `Il team di ${BRAND.name}`,
   supportEmail: BRAND.supportEmail,
   colors: {
-    background: "#FDEFE1",
+    background: "#F7F3EE",
     card: "#FFFFFF",
-    text: "#2B2420",
-    muted: "#6E6459",
-    border: "#F0DCC0",
+    text: "#1B1A18",
+    muted: "#5E5A54",
+    border: "#E7E0D7",
     // Verde pieno dei pulsanti del sito (cianografiaPieno, §350/§355): bianco leggibile, contrasto 4,7.
     primary: "#128552",
     primaryDark: "#0E7A4C",
     primaryTint: "#DCF3E7",
-    urgent: "#C8362B",
-    urgentTint: "#FBEAE7",
+    urgent: "#B42318",
+    urgentTint: "#FDE8E6",
   },
 } as const;
 

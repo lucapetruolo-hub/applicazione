@@ -969,7 +969,7 @@ export default function DashboardProfiloPage() {
                 {/* Badge Verificato in breve accanto allo stato (docs/CHANGELOG.md §252). */}
                 {verified ? (
                   <span className="profile-verify-chip is-verified" title="Documento d'identità e dati fiscali controllati da noi">
-                    <Icon name="badge-check" size={14} strokeWidth={2} color={brand.verificato} />
+                    <Icon name="badge-check" size={14} strokeWidth={2} color={brand.terracotta} />
                     Verificato
                   </span>
                 ) : null}

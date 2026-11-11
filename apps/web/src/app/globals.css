@@ -20,7 +20,7 @@ body {
 
 body {
   font-family: var(--font-body), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: #2b2420;
+  color: #1b1a18;
 }
 
 /* Tamagui inietta `body { background: var(--background) }` (grigio chiaro)
@@ -28,7 +28,7 @@ body {
    pagine, ora trasparenti per lo sfondo sfocato (docs/CHANGELOG.md §180).
    `html body` vince per specificità. */
 html body {
-  background: #fdefe1;
+  background: #f7f3ee;
 }
 
 a {
@@ -147,7 +147,7 @@ html[data-cookie-choice] .cookie-banner {
    non compare con un clic del mouse. */
 button.is_Button:focus-visible,
 :is([role="button"], [role="checkbox"], [role="radio"], [role="switch"], [role="tab"], [role="menuitem"], [role="link"], [role="option"]):not(input):focus-visible {
-  outline: 3px solid #2b2420 !important;
+  outline: 3px solid #1b1a18 !important;
   outline-offset: 2px !important;
 }
 /* Link con dentro un pulsante ("Richiedi preventivo", "Completa profilo"):
@@ -157,7 +157,7 @@ a:has(> button.is_Button):focus-visible {
   outline: none;
 }
 a:focus-visible > button.is_Button {
-  outline: 3px solid #2b2420 !important;
+  outline: 3px solid #1b1a18 !important;
   outline-offset: 2px !important;
 }
 /* Titoli che ricevono il fuoco a ogni passo nuovo (useStepFocus, L-06):
@@ -387,8 +387,8 @@ body:has(.empty-search-results) .site-header-cta-link {
   color: #ffffff;
 }
 .choose-toggle[aria-disabled="true"] {
-  border-color: #9c8e7f;
-  color: #6e6459;
+  border-color: #8e867c;
+  color: #5e5a54;
   cursor: not-allowed;
   background: #ffffff;
 }
@@ -415,7 +415,7 @@ body:has(.empty-search-results) .site-header-cta-link {
   margin: 0 auto;
   font-size: 15px;
   font-weight: 600;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .chosen-bar-notice:not([data-visible="true"]) {
   position: absolute;
@@ -612,7 +612,7 @@ body:has(.chosen-bar) {
   text-align: center;
   font-size: 15px;
   line-height: 1.4;
-  color: #6e6459;
+  color: #5e5a54;
   animation: nav-progress-in 200ms ease-out;
 }
 /* In cima allo schermo, sopra la barra fissa del sito (NavigationProgress). */
@@ -647,8 +647,8 @@ body:has(.chosen-bar) {
   padding: 7px 14px;
   border-radius: 999px;
   background: #ffffff;
-  color: #2b2420;
-  border: 1px solid #f0dcc0;
+  color: #1b1a18;
+  border: 1px solid #e7e0d7;
   box-shadow: 0 4px 14px rgba(43, 32, 19, 0.12);
   font-size: 14px;
   font-weight: 700;
@@ -729,7 +729,7 @@ body:has(.chosen-bar) {
 }
 .notif-bell:hover,
 .notif-bell.is-open {
-  background: #fdefe1;
+  background: #f7f3ee;
 }
 .notif-bell:active {
   transform: scale(0.94);
@@ -748,7 +748,7 @@ body:has(.chosen-bar) {
   box-sizing: border-box;
   border-radius: 999px;
   border: 2px solid #fff;
-  background: #c8362b;
+  background: #b42318;
   color: #fff;
   font-size: 11px;
   line-height: 16px;
@@ -776,9 +776,9 @@ body:has(.chosen-bar) {
   display: flex;
   flex-direction: column;
   background: #fff;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   border-radius: 20px;
-  box-shadow: 0 16px 40px rgba(43, 36, 32, 0.14), 0 2px 6px rgba(43, 36, 32, 0.06);
+  box-shadow: 0 16px 40px rgba(27, 26, 24, 0.14), 0 2px 6px rgba(27, 26, 24, 0.06);
   overflow: hidden;
   transform-origin: top right;
   animation: notif-panel-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -799,13 +799,13 @@ body:has(.chosen-bar) {
   align-items: center;
   gap: 10px;
   padding: 14px 12px 12px 20px;
-  border-bottom: 1px solid #f0dcc0;
+  border-bottom: 1px solid #e7e0d7;
 }
 .notif-title {
   font-size: 18px;
   line-height: 24px;
   font-weight: 700;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .notif-new {
   padding: 2px 8px;
@@ -822,14 +822,14 @@ body:has(.chosen-bar) {
   border: 0;
   border-radius: 10px;
   background: transparent;
-  color: #6e6459;
+  color: #5e5a54;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
 }
 .notif-clear:hover {
-  background: #fdefe1;
-  color: #2b2420;
+  background: #f7f3ee;
+  color: #1b1a18;
 }
 .notif-clear.is-confirm {
   background: #fbe4e1;
@@ -855,7 +855,7 @@ body:has(.chosen-bar) {
   font-size: 13px;
   line-height: 18px;
   font-weight: 600;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .notif-rows {
   list-style: none;
@@ -883,7 +883,7 @@ button.notif-row-main {
   transition: background-color 120ms ease;
 }
 button.notif-row-main:hover {
-  background: #fdf8f2;
+  background: #fbf9f6;
 }
 .notif-row + .notif-row::before {
   content: "";
@@ -892,7 +892,7 @@ button.notif-row-main:hover {
   left: 74px;
   right: 0;
   height: 1px;
-  background: #f0dcc0;
+  background: #e7e0d7;
 }
 .notif-row-icon {
   display: inline-flex;
@@ -927,7 +927,7 @@ button.notif-row-main:hover {
 .notif-row-time {
   margin-left: auto;
   flex-shrink: 0;
-  color: #6e6459;
+  color: #5e5a54;
   font-variant-numeric: tabular-nums;
 }
 .notif-row-dot {
@@ -940,7 +940,7 @@ button.notif-row-main:hover {
 .notif-row-message {
   font-size: 16px;
   line-height: 22px;
-  color: #2b2420;
+  color: #1b1a18;
   overflow-wrap: anywhere;
 }
 .notif-row.is-unread .notif-row-message {
@@ -967,7 +967,7 @@ button.notif-row-main:hover {
   opacity: 1;
 }
 .notif-row-delete:hover {
-  background: #fdefe1;
+  background: #f7f3ee;
 }
 /* "Non avvisarmi più di questi", accanto alla "x"
    (docs/changelog/2026-10-29-notifiche-sempre-attive-e-campanella.md). */
@@ -995,7 +995,7 @@ button.notif-row-main:hover {
   opacity: 1;
 }
 .notif-row-mute:hover {
-  background: #fdefe1;
+  background: #f7f3ee;
 }
 .notif-row-mute:focus-visible {
   outline: 2px solid #0e7a4c;
@@ -1011,7 +1011,7 @@ button.notif-row-main:hover {
   background: #dcf3e7;
   font-size: 14px;
   line-height: 20px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .notif-muted > span {
   flex: 1;
@@ -1023,7 +1023,7 @@ button.notif-row-main:hover {
   font-weight: 700;
 }
 .notif-muted.is-error {
-  background: #fbeae7;
+  background: #fde8e6;
 }
 /* Sul telefono non c'è il passaggio del mouse: la "x" resta visibile. */
 @media (hover: none) {
@@ -1048,17 +1048,17 @@ button.notif-row-main:hover {
   height: 48px;
   margin-bottom: 6px;
   border-radius: 12px;
-  background: #fdefe1;
+  background: #f7f3ee;
 }
 .notif-empty-title {
   font-size: 16px;
   font-weight: 600;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .notif-empty-text {
   font-size: 15px;
   line-height: 22px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .notif-loading {
   display: flex;
@@ -1078,7 +1078,7 @@ button.notif-row-main:hover {
   gap: 8px;
 }
 .notif-foot {
-  border-top: 1px solid #f0dcc0;
+  border-top: 1px solid #e7e0d7;
   padding: 6px 12px;
 }
 .notif-settings {
@@ -1094,7 +1094,7 @@ button.notif-row-main:hover {
   text-decoration: none;
 }
 .notif-settings:hover {
-  background: #fdf8f2;
+  background: #fbf9f6;
 }
 @media (prefers-reduced-motion: reduce) {
   .notif-panel {
@@ -1158,7 +1158,7 @@ button.notif-row-main:hover {
   gap: 8px;
   padding: 9px 12px;
   border-radius: 10px;
-  color: #2b2420;
+  color: #1b1a18;
   text-decoration: none;
   font-weight: 600;
   font-size: 14px;
@@ -1166,11 +1166,11 @@ button.notif-row-main:hover {
   flex-shrink: 0;
 }
 .admin-nav-link:hover {
-  background: #fdefe1;
+  background: #f7f3ee;
 }
 .admin-nav-link.is-active {
   background: #efe9e2;
-  color: #2b2420;
+  color: #1b1a18;
   font-weight: 700;
 }
 .admin-nav-badge {
@@ -1211,7 +1211,7 @@ button.notif-row-main:hover {
     display: block;
     font-size: 13px;
     font-weight: 600;
-    color: #6e6459;
+    color: #5e5a54;
     padding: 4px 12px 8px;
   }
 }
@@ -1221,17 +1221,17 @@ button.notif-row-main:hover {
   font: inherit;
   cursor: pointer;
   text-align: left;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .admin-kbd {
   display: none;
   margin-left: auto;
   font-size: 11px;
   font-family: inherit;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   border-radius: 10px;
   padding: 1px 6px;
-  color: #6e6459;
+  color: #5e5a54;
   background: #ffffff;
 }
 /* Titolo della sezione e schede (docs/changelog/2026-10-30-admin-riordino.md). */
@@ -1244,13 +1244,13 @@ button.notif-row-main:hover {
   font-size: 24px;
   line-height: 30px;
   font-weight: 700;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .admin-tabs {
   display: flex;
   gap: 4px;
   overflow-x: auto;
-  border-bottom: 1px solid #f0dcc0;
+  border-bottom: 1px solid #e7e0d7;
   scrollbar-width: none;
 }
 .admin-tabs::-webkit-scrollbar {
@@ -1260,18 +1260,18 @@ button.notif-row-main:hover {
   padding: 10px 12px;
   margin-bottom: -1px;
   border-bottom: 2px solid transparent;
-  /* Più scuro del solito grigio: in alto a destra lo sfondo ha la sfumatura verde (axe, 3,6:1 col #6e6459). */
-  color: #4a423b;
+  /* Più scuro del solito grigio: in alto a destra lo sfondo ha la sfumatura verde (axe, 3,6:1 col #5e5a54). */
+  color: #45413c;
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
 }
 .admin-tab:hover {
-  color: #2b2420;
+  color: #1b1a18;
 }
 .admin-tab.is-active {
-  color: #2b2420;
+  color: #1b1a18;
   font-weight: 700;
   border-bottom-color: #128552;
 }
@@ -1329,7 +1329,7 @@ button.notif-row-main:hover {
 .admin-palette-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(43, 36, 32, 0.35);
+  background: rgba(27, 26, 24, 0.35);
   z-index: 2000;
   display: flex;
   justify-content: center;
@@ -1341,7 +1341,7 @@ button.notif-row-main:hover {
   max-width: 560px;
   background: #ffffff;
   border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(43, 36, 32, 0.25);
+  box-shadow: 0 20px 60px rgba(27, 26, 24, 0.25);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -1349,7 +1349,7 @@ button.notif-row-main:hover {
 }
 .admin-palette-input {
   border: none;
-  border-bottom: 1px solid #f0dcc0;
+  border-bottom: 1px solid #e7e0d7;
   padding: 16px 18px;
   font: inherit;
   font-size: 16px;
@@ -1364,7 +1364,7 @@ button.notif-row-main:hover {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #6e6459;
+  color: #5e5a54;
   padding: 10px 12px 4px;
 }
 .admin-palette-item {
@@ -1382,25 +1382,25 @@ button.notif-row-main:hover {
   text-align: left;
 }
 .admin-palette-item.is-active {
-  background: #fdefe1;
+  background: #f7f3ee;
 }
 .admin-palette-title {
   font-size: 14px;
   font-weight: 600;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .admin-palette-subtitle {
   font-size: 12px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .admin-palette-empty,
 .admin-palette-hint {
   padding: 12px 18px;
   font-size: 13px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .admin-palette-hint {
-  border-top: 1px solid #f0dcc0;
+  border-top: 1px solid #e7e0d7;
   font-size: 12px;
 }
 /* Pagine personali (docs/CHANGELOG.md §147): menu a sezioni del
@@ -1432,7 +1432,7 @@ button.notif-row-main:hover {
   overflow-x: auto;
   background: #ffffff;
   padding: 8px 12px;
-  border-bottom: 1px solid #f0dcc0;
+  border-bottom: 1px solid #e7e0d7;
   scrollbar-width: none;
   position: sticky;
   top: 64px;
@@ -1487,7 +1487,7 @@ button.notif-row-main:hover {
   gap: 8px;
   padding: 9px 12px;
   border-radius: 10px;
-  color: #2b2420;
+  color: #1b1a18;
   text-decoration: none;
   font-weight: 600;
   font-size: 15px;
@@ -1498,14 +1498,14 @@ button.notif-row-main:hover {
   flex-shrink: 0;
 }
 .acct-nav-link:hover {
-  background: #fdefe1;
+  background: #f7f3ee;
 }
 /* Voce attiva grigio chiaro, non più quasi nera (regola accettata
    dall'utente il 22/10, docs/CHANGELOG.md §306): il nero pieno pesava più
    del contenuto della pagina. */
 .acct-nav-link.is-active {
   background: #efe9e2;
-  color: #2b2420;
+  color: #1b1a18;
   font-weight: 700;
 }
 .acct-nav-badge {
@@ -1549,7 +1549,7 @@ button.notif-row-main:hover {
 .acct-trigger {
   height: 46px;
   padding: 0 10px 0 3px;
-  border: 1px solid #eadfd3;
+  border: 1px solid #e7e0d7;
   border-radius: 999px;
   background: #fff;
   transition: box-shadow 160ms ease;
@@ -1627,7 +1627,7 @@ html.site-menu-open .profile-cta-bar {
   gap: 4px;
   overflow-x: auto;
   background: #ffffff;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   border-radius: 16px;
   padding: 6px;
   scrollbar-width: none;
@@ -1646,7 +1646,7 @@ html.site-menu-open .profile-cta-bar {
   min-height: 44px;
   padding: 8px 14px;
   border-radius: 10px;
-  color: #6e6459;
+  color: #5e5a54;
   text-decoration: none;
   font-weight: 600;
   font-size: 15px;
@@ -1654,16 +1654,16 @@ html.site-menu-open .profile-cta-bar {
   flex-shrink: 0;
 }
 .fisco-tab:hover {
-  background: #fdefe1;
-  color: #2b2420;
+  background: #f7f3ee;
+  color: #1b1a18;
 }
 .fisco-tab.is-active {
   background: #efe9e2;
-  color: #2b2420;
+  color: #1b1a18;
   font-weight: 700;
 }
 .fisco-tab:focus-visible {
-  outline: 2px solid #2b2420;
+  outline: 2px solid #1b1a18;
   outline-offset: 2px;
 }
 .fisco-tab .acct-nav-dot {
@@ -1709,7 +1709,7 @@ html.site-menu-open .profile-cta-bar {
   .acct-nav-group + .acct-nav-group {
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px solid #f0dcc0;
+    border-top: 1px solid #e7e0d7;
   }
   .acct-nav-link {
     position: relative;
@@ -1762,7 +1762,7 @@ html.site-menu-open .profile-cta-bar {
     display: block;
     font-size: 13px;
     font-weight: 600;
-    color: #6e6459;
+    color: #5e5a54;
     padding: 4px 12px 6px;
   }
   /* La riga del primo titolo è alta quanto il tondo, che le sta accanto:
@@ -1784,7 +1784,7 @@ html.site-menu-open .profile-cta-bar {
     right: 12px;
     width: 32px;
     height: 32px;
-    border: 1px solid #f0dcc0;
+    border: 1px solid #e7e0d7;
     border-radius: 999px;
     background: #ffffff;
     display: inline-flex;
@@ -1795,11 +1795,11 @@ html.site-menu-open .profile-cta-bar {
     transition: background-color 150ms ease;
   }
   .acct-nav-toggle:hover {
-    background: #fdefe1;
+    background: #f7f3ee;
   }
   .acct-nav-toggle:focus-visible,
   .acct-nav-link:focus-visible {
-    outline: 2px solid #2b2420;
+    outline: 2px solid #1b1a18;
     outline-offset: 2px;
   }
   /* Etichetta a fumetto: nome del tasto e, col menu ridotto, delle voci. */
@@ -1811,13 +1811,13 @@ html.site-menu-open .profile-cta-bar {
     transform: translateY(-50%);
     padding: 6px 10px;
     border-radius: 8px;
-    background: #2b2420;
+    background: #1b1a18;
     color: #ffffff;
     font-size: 13px;
     font-weight: 600;
     white-space: nowrap;
     pointer-events: none;
-    box-shadow: 0 4px 12px rgba(43, 36, 32, 0.18);
+    box-shadow: 0 4px 12px rgba(27, 26, 24, 0.18);
     z-index: 1;
   }
   .acct-nav-tip {
@@ -1879,7 +1879,7 @@ html.site-menu-open .profile-cta-bar {
   html[data-acct-nav="collapsed"] .acct-nav-group + .acct-nav-group {
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px solid #f0dcc0;
+    border-top: 1px solid #e7e0d7;
   }
   html[data-acct-nav="collapsed"] .acct-nav-link {
     position: relative;
@@ -1993,11 +1993,11 @@ html.site-menu-open .profile-cta-bar {
   border-radius: 20px;
   background: #ffffff;
   text-decoration: none;
-  color: #2b2420;
+  color: #1b1a18;
   border: 1px solid transparent;
 }
 .today-row:hover {
-  border-color: #f0dcc0;
+  border-color: #e7e0d7;
 }
 /* "Vedi tutte le N richieste" sotto "Da rispondere ora" (docs/CHANGELOG.md
    §403): da telefono si vedono 3 richieste, dal computer 5. */
@@ -2006,7 +2006,7 @@ html.site-menu-open .profile-cta-bar {
   padding: 12px 16px;
   border-radius: 20px;
   background: #ffffff;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   color: #0e7a4c;
   font-weight: 600;
   text-align: center;
@@ -2016,7 +2016,7 @@ html.site-menu-open .profile-cta-bar {
   background: #fdf7f0;
 }
 .today-more:focus-visible {
-  outline: 2px solid #2b2420;
+  outline: 2px solid #1b1a18;
   outline-offset: 2px;
 }
 .today-more.is-phone-only {
@@ -2044,7 +2044,7 @@ html.site-menu-open .profile-cta-bar {
   gap: 6px;
 }
 .today-row-sub {
-  color: #6e6459;
+  color: #5e5a54;
   font-size: 16px;
 }
 .today-row-meta {
@@ -2062,7 +2062,7 @@ html.site-menu-open .profile-cta-bar {
   color: #dc3545;
 }
 .today-competitors {
-  color: #6e6459;
+  color: #5e5a54;
 }
 .today-row-cta {
   flex-shrink: 0;
@@ -2083,7 +2083,7 @@ html.site-menu-open .profile-cta-bar {
   padding: 14px 16px;
   border-radius: 20px;
   background: #ffffff;
-  color: #6e6459;
+  color: #5e5a54;
   font-size: 16px;
 }
 /* "Nessuna ancora" al posto di un numero: più piccolo, su una riga (§353). */
@@ -2122,7 +2122,7 @@ html.site-menu-open .profile-cta-bar {
   border: 1px solid transparent;
 }
 .today-appt:hover {
-  border-color: #f0dcc0;
+  border-color: #e7e0d7;
 }
 .today-appt > .today-row {
   flex: 1;
@@ -2159,17 +2159,17 @@ html.site-menu-open .profile-cta-bar {
   background: #0e7a4c;
 }
 .today-nav:focus-visible {
-  outline: 2px solid #2b2420;
+  outline: 2px solid #1b1a18;
   outline-offset: 2px;
 }
 /* "Sto arrivando" con bordo, accanto a "Naviga" verde (§353). */
 .today-nav.is-secondary {
   background: #ffffff;
-  color: #2b2420;
-  box-shadow: inset 0 0 0 1px #2b2420;
+  color: #1b1a18;
+  box-shadow: inset 0 0 0 1px #1b1a18;
 }
 .today-nav.is-secondary:hover {
-  background: #fdefe1;
+  background: #f7f3ee;
 }
 .today-nav.is-secondary:disabled {
   cursor: default;
@@ -2284,7 +2284,7 @@ html.site-menu-open .profile-cta-bar {
   transition: border-color 150ms ease-out;
 }
 .weather-chip:hover {
-  border-color: #f0dcc0;
+  border-color: #e7e0d7;
 }
 .weather-chip:focus-visible {
   outline: 3px solid #189a63;
@@ -2297,7 +2297,7 @@ html.site-menu-open .profile-cta-bar {
 .weather-chip-day {
   font-weight: 800;
   font-size: 15px;
-  color: #2b2420;
+  color: #1b1a18;
   text-transform: capitalize;
 }
 .weather-chip-main {
@@ -2309,17 +2309,17 @@ html.site-menu-open .profile-cta-bar {
   white-space: nowrap;
   font-size: 20px;
   font-weight: 800;
-  color: #2b2420;
+  color: #1b1a18;
   font-variant-numeric: tabular-nums;
 }
 .weather-chip-main strong span {
   font-size: 15px;
   font-weight: 600;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .weather-chip-label {
   font-size: 14px;
-  color: #6e6459;
+  color: #5e5a54;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2331,11 +2331,11 @@ html.site-menu-open .profile-cta-bar {
   gap: 2px 8px;
   margin: 8px 4px 0;
   font-size: 15px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .today-day-head strong {
   font-size: 16px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 @media (max-width: 640px) {
   .weather-chip {
@@ -2364,8 +2364,8 @@ html.site-menu-open .profile-cta-bar {
 /* "Profilo pubblico": anteprima del profilo pubblico (docs/CHANGELOG.md §252). */
 .profile-preview-frame {
   border-radius: 20px;
-  background: #fdefe1;
-  border: 1px solid #f0dcc0;
+  background: #f7f3ee;
+  border: 1px solid #e7e0d7;
   box-shadow: 0 12px 32px rgba(43, 32, 19, 0.08);
   overflow: hidden;
 }
@@ -2383,10 +2383,10 @@ html.site-menu-open .profile-cta-bar {
   gap: 12px;
   padding: 10px 16px;
   background: #ffffff;
-  border-bottom: 1px solid #f0dcc0;
+  border-bottom: 1px solid #e7e0d7;
   font-size: 13px;
   font-weight: 700;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .profile-preview-bar > span:last-child {
   display: inline-flex;
@@ -2401,13 +2401,13 @@ html.site-menu-open .profile-cta-bar {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #f0dcc0;
+  background: #e7e0d7;
 }
 /* Avanzamento di "Completa il profilo" in Oggi (docs/CHANGELOG.md §259). */
 .readiness-bar {
   height: 8px;
   border-radius: 999px;
-  background: #f0e6da;
+  background: #ece6de;
   overflow: hidden;
 }
 /* La barra scorre da sinistra invece di allargarsi (transform al posto di
@@ -2441,7 +2441,7 @@ html.site-menu-open .profile-cta-bar {
   bottom: 4px;
   width: 2px;
   border-radius: 2px;
-  background: #f0e6da;
+  background: #ece6de;
 }
 .journey-step.is-done:not(:last-child)::before {
   background: #b9e6cf;
@@ -2470,7 +2470,7 @@ html.site-menu-open .profile-cta-bar {
   min-width: 0;
   font-size: 16px;
   font-weight: 700;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .journey-bar-step:not(:last-child) {
   flex: 1 1 auto;
@@ -2484,10 +2484,10 @@ html.site-menu-open .profile-cta-bar {
   min-width: 8px;
   height: 2px;
   border-radius: 2px;
-  background: #f0e6da;
+  background: #ece6de;
 }
 .journey-bar-step.is-here {
-  color: #2b2420;
+  color: #1b1a18;
 }
 /* Da telefono le etichette restano, più piccole (docs/CHANGELOG.md §349):
    senza, i passi non attivi erano cerchi muti. */
@@ -2518,7 +2518,7 @@ html.site-menu-open .profile-cta-bar {
   flex-wrap: wrap;
   gap: 10px 16px;
   padding: 14px 16px;
-  border-top: 1px solid #f0e6da;
+  border-top: 1px solid #ece6de;
 }
 .profile-status-next-label {
   display: block;
@@ -2526,15 +2526,15 @@ html.site-menu-open .profile-cta-bar {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .profile-status-next-title {
   display: block;
   font-weight: 800;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .profile-status .profile-visibility + .profile-visibility {
-  border-top: 1px solid #f0e6da;
+  border-top: 1px solid #ece6de;
 }
 .profile-visibility {
   display: flex;
@@ -2558,17 +2558,17 @@ html.site-menu-open .profile-cta-bar {
 }
 .profile-visibility.is-warn .profile-visibility-dot {
   background: #d9a441;
-  box-shadow: 0 0 0 4px #f6ecd9;
+  box-shadow: 0 0 0 4px #fbf0d9;
 }
 .profile-visibility.is-off .profile-visibility-dot {
-  background: #c8362b;
-  box-shadow: 0 0 0 4px #fbeae7;
+  background: #b42318;
+  box-shadow: 0 0 0 4px #fde8e6;
 }
 .profile-visibility-text {
   flex: 1 1 0;
   min-width: 0;
   font-weight: 700;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .profile-visibility .profile-visibility-link {
   margin-left: auto;
@@ -2583,12 +2583,12 @@ html.site-menu-open .profile-cta-bar {
   padding: 4px 10px;
   border-radius: 999px;
   background: #f6f1ea;
-  color: #6e6459;
+  color: #5e5a54;
   border: 1px solid transparent;
 }
 .profile-verify-chip.is-verified {
-  background: #e6efe3;
-  color: #3d6b3e;
+  background: #f6e3d9;
+  color: #a3441f;
 }
 .profile-verify-chip.is-action {
   background: #ffffff;
@@ -2643,7 +2643,7 @@ html.site-menu-open .profile-cta-bar {
   scrollbar-width: none;
   margin: 0 -16px;
   padding: 8px 16px;
-  background: rgba(253, 239, 225, 0.94);
+  background: rgba(247, 243, 238, 0.94);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   -webkit-overflow-scrolling: touch;
@@ -2671,9 +2671,9 @@ html.site-menu-open .profile-cta-bar {
   min-height: 40px;
   padding: 0 16px;
   border-radius: 999px;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   background: #ffffff;
-  color: #2b2420;
+  color: #1b1a18;
   font-size: 16px;
   font-weight: 600;
   text-decoration: none;
@@ -2700,7 +2700,7 @@ html.site-menu-open .profile-cta-bar {
 .profile-required-title {
   font-size: 13px;
   font-weight: 700;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .profile-required-count {
   color: #0e7a4c;
@@ -2720,9 +2720,9 @@ html.site-menu-open .profile-cta-bar {
   min-height: 32px;
   padding: 0 12px 0 6px;
   border-radius: 999px;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   background: #ffffff;
-  color: #2b2420;
+  color: #1b1a18;
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
@@ -2802,14 +2802,14 @@ html.site-menu-open .profile-cta-bar {
   padding: 20px;
   border-radius: 20px;
   background: #ffffff;
-  color: #2b2420;
+  color: #1b1a18;
   box-shadow: 0 8px 24px rgba(43, 32, 19, 0.06);
 }
 .boost-card.is-green {
   background: linear-gradient(160deg, #dcf3e7 0%, #ffffff 58%);
 }
 .boost-card.is-gold {
-  background: linear-gradient(160deg, #f6ecd9 0%, #ffffff 58%);
+  background: linear-gradient(160deg, #fbf0d9 0%, #ffffff 58%);
 }
 .boost-card-glow {
   position: absolute;
@@ -2847,8 +2847,8 @@ html.site-menu-open .profile-cta-bar {
   padding: 4px 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.85);
-  border: 1px solid #f0dcc0;
-  color: #6e6459;
+  border: 1px solid #e7e0d7;
+  color: #5e5a54;
 }
 .boost-card-body {
   display: flex;
@@ -2865,7 +2865,7 @@ html.site-menu-open .profile-cta-bar {
   margin: 0;
   font-size: 16px;
   line-height: 1.45;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .boost-card-body ul {
   list-style: none;
@@ -2888,7 +2888,7 @@ html.site-menu-open .profile-cta-bar {
   align-items: baseline;
   gap: 6px;
   padding-top: 14px;
-  border-top: 1px dashed #f0dcc0;
+  border-top: 1px dashed #e7e0d7;
 }
 .boost-card-price strong {
   font-size: 24px;
@@ -2897,7 +2897,7 @@ html.site-menu-open .profile-cta-bar {
 }
 .boost-card-price span {
   font-size: 16px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 /* Griglia dei contatori della home admin. */
 .admin-kpi-grid {
@@ -2922,11 +2922,11 @@ html.site-menu-open .profile-cta-bar {
   border-radius: 20px;
   background: #ffffff;
   text-decoration: none;
-  color: #2b2420;
+  color: #1b1a18;
   border: 1px solid transparent;
 }
 a.admin-kpi:hover {
-  border-color: #f0dcc0;
+  border-color: #e7e0d7;
 }
 .admin-kpi-value {
   font-size: 28px;
@@ -2935,7 +2935,7 @@ a.admin-kpi:hover {
 }
 .admin-kpi-label {
   font-size: 13px;
-  color: #6e6459;
+  color: #5e5a54;
   font-weight: 600;
 }
 .admin-kpi.is-urgent .admin-kpi-value {
@@ -2951,7 +2951,7 @@ a.admin-kpi:hover {
   overflow: hidden;
 }
 .admin-todo li + li {
-  border-top: 1px solid #f0e6da;
+  border-top: 1px solid #ece6de;
 }
 .admin-todo-row {
   display: flex;
@@ -2960,10 +2960,10 @@ a.admin-kpi:hover {
   min-height: 64px;
   padding: 12px 16px;
   text-decoration: none;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .admin-todo-row:hover {
-  background: #fbf6ef;
+  background: #faf8f5;
 }
 .admin-todo-row:focus-visible {
   outline: 2px solid #128552;
@@ -2999,7 +2999,7 @@ a.admin-kpi:hover {
 }
 .admin-todo-detail {
   font-size: 13px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 /* Professionisti in numeri (docs/CHANGELOG.md §368). */
 .admin-filters {
@@ -3019,15 +3019,15 @@ a.admin-kpi:hover {
   min-height: 40px;
   padding: 0 16px;
   border-radius: 999px;
-  border: 1px solid #9c8e7f;
+  border: 1px solid #8e867c;
   background: #ffffff;
-  color: #2b2420;
+  color: #1b1a18;
   font-weight: 700;
   font-size: 14px;
   text-decoration: none;
 }
 .admin-link-button:hover {
-  border-color: #2b2420;
+  border-color: #1b1a18;
 }
 /* "Apri" nella coda Da fare: l'azione principale della riga. */
 .admin-link-button.is-primary {
@@ -3045,7 +3045,7 @@ a.admin-kpi:hover {
   display: grid;
   gap: 6px;
   font-size: 14px;
-  color: #4a423b;
+  color: #45413c;
 }
 /* Segnali da controllare sulla scheda della persona (docs/changelog/2026-10-30-admin-persone.md). */
 .admin-signals {
@@ -3062,7 +3062,7 @@ a.admin-kpi:hover {
   display: grid;
   gap: 4px;
   font-size: 14px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .admin-advice-list {
   margin: 0;
@@ -3080,7 +3080,7 @@ a.admin-kpi:hover {
   gap: 6px;
   font-size: 14px;
   font-weight: 700;
-  color: #4a423b;
+  color: #45413c;
 }
 .admin-chip-button {
   min-height: 36px;
@@ -3088,17 +3088,17 @@ a.admin-kpi:hover {
   border-radius: 999px;
   border: 1px solid #d9cbb8;
   background: #ffffff;
-  color: #2b2420;
+  color: #1b1a18;
   font-size: 13px;
   cursor: pointer;
 }
 .admin-chip-button:hover {
-  border-color: #2b2420;
+  border-color: #1b1a18;
 }
 .admin-cell-note {
   display: block;
   margin-top: 2px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .admin-stats-grid {
   display: grid;
@@ -3139,7 +3139,7 @@ a.admin-kpi:hover {
   align-items: baseline;
   gap: 12px;
   font-size: 14px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .admin-bars-label {
   min-width: 0;
@@ -3151,10 +3151,10 @@ a.admin-kpi:hover {
 .admin-bars-value {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .admin-bars-value strong {
-  color: #2b2420;
+  color: #1b1a18;
 }
 .admin-bars-track {
   margin-top: 6px;
@@ -3190,13 +3190,13 @@ a.admin-kpi:hover {
   font-size: 24px;
   font-weight: 800;
   line-height: 1.1;
-  color: #2b2420;
+  color: #1b1a18;
   font-variant-numeric: tabular-nums;
 }
 .admin-figure-label {
   font-size: 13px;
   font-weight: 600;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .admin-figure.is-alert .admin-figure-value {
   color: #b02a37;
@@ -3219,7 +3219,7 @@ a.admin-kpi:hover {
   gap: 8px;
   font-size: 22px;
   font-weight: 800;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .proposals-count {
   display: inline-flex;
@@ -3237,7 +3237,7 @@ a.admin-kpi:hover {
 .proposals-intro {
   margin: 0;
   font-size: 15px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .proposals-outcomes:empty {
   display: none;
@@ -3272,7 +3272,7 @@ a.admin-kpi:hover {
   padding: 16px 18px;
   border-radius: 20px;
   background: #ffffff;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
 }
 .proposal-kind {
   align-self: flex-start;
@@ -3289,14 +3289,14 @@ a.admin-kpi:hover {
   font-size: 18px;
   line-height: 1.3;
   font-weight: 800;
-  color: #2b2420;
+  color: #1b1a18;
   overflow-wrap: anywhere;
 }
 .proposal-why {
   margin: 0;
   font-size: 15px;
   line-height: 1.45;
-  color: #4f463d;
+  color: #4a4640;
 }
 .proposal-why span {
   font-weight: 700;
@@ -3315,7 +3315,7 @@ a.admin-kpi:hover {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .proposal-lines,
 .proposal-recipients {
@@ -3325,12 +3325,12 @@ a.admin-kpi:hover {
   gap: 4px;
   font-size: 15px;
   line-height: 1.45;
-  color: #2b2420;
+  color: #1b1a18;
   overflow-wrap: anywhere;
 }
 .proposal-recipients {
   font-size: 14px;
-  color: #4f463d;
+  color: #4a4640;
 }
 .proposal-recipients a {
   color: #0e6b42;
@@ -3345,7 +3345,7 @@ a.admin-kpi:hover {
 .proposal-email-note {
   margin: 0;
   font-size: 14px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .proposal-more-recipients summary {
   cursor: pointer;
@@ -3369,7 +3369,7 @@ a.admin-kpi:hover {
 .proposal-email-subject {
   margin: 0;
   font-size: 14px;
-  color: #4f463d;
+  color: #4a4640;
 }
 .proposal-email-subject span {
   font-weight: 700;
@@ -3378,13 +3378,13 @@ a.admin-kpi:hover {
   margin: 4px 0 0;
   font-size: 17px;
   font-weight: 800;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .proposal-email-text {
   margin: 0;
   font-size: 15px;
   line-height: 1.5;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .proposal-email-cta {
   align-self: flex-start;
@@ -3404,11 +3404,11 @@ a.admin-kpi:hover {
   font-size: 15px;
 }
 .proposal-confirm {
-  background: #fdf0e1;
+  background: #f7f3ee;
   color: #6b3a0e;
 }
 .proposal-error {
-  background: #fbeae8;
+  background: #fde8e6;
   color: #8f1f2b;
 }
 .proposal-actions {
@@ -3431,20 +3431,20 @@ a.admin-kpi:hover {
   padding: 0 12px;
   border: none;
   background: transparent;
-  color: #6e6459;
+  color: #5e5a54;
   font-size: 14px;
   font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 .proposal-never:hover {
-  color: #2b2420;
+  color: #1b1a18;
 }
 .proposal-undo,
 .proposals-more {
   margin: 0;
   font-size: 13px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .proposals-overview {
   display: flex;
@@ -3472,7 +3472,7 @@ a.admin-kpi:hover {
   cursor: pointer;
   font-size: 15px;
   font-weight: 700;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .proposals-rejected .site-notes {
   margin-top: 6px;
@@ -3482,7 +3482,7 @@ a.admin-kpi:hover {
   font-size: 14px;
 }
 .proposals-rejected-kind {
-  color: #6e6459;
+  color: #5e5a54;
 }
 @media (max-width: 520px) {
   .proposal {
@@ -3508,7 +3508,7 @@ a.admin-kpi:hover {
   padding: 16px 18px 16px 20px;
   border-radius: 20px;
   background: #ffffff;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   border-left: 6px solid #128552;
 }
 .site-advice.is-urgent {
@@ -3528,11 +3528,11 @@ a.admin-kpi:hover {
   color: #0e6b42;
 }
 .site-advice.is-urgent .site-advice-level {
-  background: #fbeae8;
+  background: #fde8e6;
   color: #b02a37;
 }
 .site-advice.is-important .site-advice-level {
-  background: #fdf0e1;
+  background: #f7f3ee;
   color: #8a4a12;
 }
 .site-advice-title {
@@ -3540,19 +3540,19 @@ a.admin-kpi:hover {
   font-size: 18px;
   line-height: 1.3;
   font-weight: 800;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .site-advice-todo {
   margin: 0;
   font-size: 16px;
   line-height: 1.45;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .site-advice-why {
   margin: 0;
   font-size: 14px;
   line-height: 1.45;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .site-advice-why span {
   font-weight: 700;
@@ -3563,7 +3563,7 @@ a.admin-kpi:hover {
   display: grid;
   gap: 4px;
   font-size: 14px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .site-advice-items a {
   color: #0e6b42;
@@ -3605,11 +3605,11 @@ a.admin-kpi:hover {
   padding: 18px 20px;
   border-radius: 20px;
   background: #e3f3ea;
-  color: #2b2420;
+  color: #1b1a18;
   font-size: 15px;
 }
 .site-advice-empty span {
-  color: #4f463d;
+  color: #4a4640;
   font-size: 14px;
 }
 .site-status {
@@ -3625,12 +3625,12 @@ a.admin-kpi:hover {
   color: #0e6b42;
 }
 .site-status.is-yellow {
-  background: #fdf0e1;
+  background: #f7f3ee;
   color: #8a4a12;
 }
 .site-status.is-red,
 .site-status.is-no_professionals {
-  background: #fbeae8;
+  background: #fde8e6;
   color: #b02a37;
 }
 .site-notes {
@@ -3649,7 +3649,7 @@ a.admin-kpi:hover {
 }
 .site-notes time {
   font-weight: 700;
-  color: #6e6459;
+  color: #5e5a54;
   font-variant-numeric: tabular-nums;
 }
 .site-note-form {
@@ -3688,17 +3688,17 @@ a.admin-kpi:hover {
   font-weight: 700;
 }
 .admin-bars .is-zero .admin-bars-head {
-  /* Grigio leggibile (AA, §372): prima #9c8e7f, contrasto 3,2:1. */
-  color: #6e6459;
+  /* Grigio leggibile (AA, §372): prima #8e867c, contrasto 3,2:1. */
+  color: #5e5a54;
 }
 .admin-input {
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid #9c8e7f;
+  border: 1px solid #8e867c;
   font: inherit;
   font-size: 14px;
   background: #ffffff;
-  color: #2b2420;
+  color: #1b1a18;
   box-sizing: border-box;
 }
 .admin-textarea {
@@ -3720,9 +3720,9 @@ a.admin-kpi:hover {
   text-align: left;
   font-size: 12px;
   font-weight: 700;
-  color: #6e6459;
+  color: #5e5a54;
   padding: 10px 12px;
-  border-bottom: 1px solid #f0dcc0;
+  border-bottom: 1px solid #e7e0d7;
   white-space: nowrap;
 }
 /* Pulsanti a icona nelle tabelle admin (Lavori più cercati in home). */
@@ -3740,7 +3740,7 @@ a.admin-kpi:hover {
   border-radius: 999px;
   border: 1px solid #d9c4a8;
   background: #fff;
-  color: #2b2420;
+  color: #1b1a18;
   cursor: pointer;
   transition: border-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -3758,14 +3758,14 @@ a.admin-kpi:hover {
 }
 .admin-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid #f0dcc0;
+  border-bottom: 1px solid #e7e0d7;
   vertical-align: top;
 }
 .admin-table tr:last-child td {
   border-bottom: none;
 }
 .admin-table tr:nth-child(even) td {
-  background: #fdefe1;
+  background: #f7f3ee;
 }
 
 /* Griglia KPI di /admin/statistiche (menu "Statistiche", Revenue Analytics)
@@ -3930,12 +3930,12 @@ a.admin-kpi:hover {
   font: inherit;
   font-size: 16px;
   font-weight: 600;
-  color: #2b2420;
+  color: #1b1a18;
   cursor: pointer;
   touch-action: manipulation;
 }
 .auth-back:hover {
-  background: #fdefe1;
+  background: #f7f3ee;
 }
 .auth-back:focus-visible {
   outline: 2px solid #189a63;
@@ -3951,7 +3951,7 @@ a.admin-kpi:hover {
 /* "circa 2 minuti" accanto al primo passo, meno in vista del numero. */
 .auth-step-note {
   font-weight: 600;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .auth-step-bar {
   display: flex;
@@ -3961,7 +3961,7 @@ a.admin-kpi:hover {
   flex: 1;
   height: 4px;
   border-radius: 999px;
-  background: #f0dcc0;
+  background: #e7e0d7;
 }
 .auth-step-bar span.is-done {
   background: #128552;
@@ -3987,16 +3987,16 @@ a.admin-kpi:hover {
   margin: 0;
   padding: 4px 6px 4px 14px;
   border-radius: 999px;
-  background: #fdefe1;
+  background: #f7f3ee;
   font-size: 13px;
   line-height: 1.35;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .plan-chip strong {
   font-weight: 700;
 }
 .plan-chip-detail {
-  color: #6e6459;
+  color: #5e5a54;
 }
 /* Scheda dei passi un po' meno imbottita sul telefono: più spazio alle
    tessere dei mestieri e ai campi. */
@@ -4084,7 +4084,7 @@ a.admin-kpi:hover {
   max-height: calc(100vh - 88px);
   overflow-y: auto;
   background: #ffffff;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   border-radius: 20px;
   box-shadow: 0 12px 32px rgba(43, 32, 19, 0.12);
   z-index: 1000;
@@ -4095,7 +4095,7 @@ a.admin-kpi:hover {
   align-items: center;
   gap: 10px;
   padding: 8px 8px 12px;
-  border-bottom: 1px solid #f0dcc0;
+  border-bottom: 1px solid #e7e0d7;
   margin-bottom: 4px;
 }
 .acct-menu-head-text {
@@ -4105,14 +4105,14 @@ a.admin-kpi:hover {
 }
 .acct-menu-head-text strong {
   font-size: 16px;
-  color: #2b2420;
+  color: #1b1a18;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .acct-menu-head-text span {
   font-size: 13px;
-  color: #6e6459;
+  color: #5e5a54;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4122,7 +4122,7 @@ a.admin-kpi:hover {
   padding: 10px 8px 4px;
   font-size: 13px;
   font-weight: 700;
-  color: #6e6459;
+  color: #5e5a54;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -4132,7 +4132,7 @@ a.admin-kpi:hover {
   gap: 10px;
   padding: 9px 8px;
   border-radius: 10px;
-  color: #2b2420;
+  color: #1b1a18;
   text-decoration: none;
   font-size: 16px;
   font-weight: 600;
@@ -4144,14 +4144,14 @@ a.admin-kpi:hover {
   text-align: left;
 }
 .acct-menu-link:hover {
-  background: #fdefe1;
+  background: #f7f3ee;
 }
 .acct-menu-link.is-active {
-  background: #fdefe1;
+  background: #f7f3ee;
 }
 .acct-menu-logout {
   margin-top: 4px;
-  border-top: 1px solid #f0dcc0;
+  border-top: 1px solid #e7e0d7;
   padding-top: 4px;
 }
 .acct-menu-logout .acct-menu-link {
@@ -4190,9 +4190,9 @@ a.admin-kpi:hover {
 }
 .pstats-preset {
   flex-shrink: 0;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   background: #ffffff;
-  color: #2b2420;
+  color: #1b1a18;
   border-radius: 999px;
   padding: 8px 14px;
   font: inherit;
@@ -4201,11 +4201,11 @@ a.admin-kpi:hover {
   cursor: pointer;
 }
 .pstats-preset:hover {
-  background: #fdefe1;
+  background: #f7f3ee;
 }
 .pstats-preset.is-active {
-  background: #2b2420;
-  border-color: #2b2420;
+  background: #1b1a18;
+  border-color: #1b1a18;
   color: #ffffff;
 }
 .pstats-custom {
@@ -4220,16 +4220,16 @@ a.admin-kpi:hover {
   gap: 2px;
   font-size: 13px;
   font-weight: 700;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .pstats-custom input {
   font: inherit;
   font-size: 16px;
   padding: 7px 10px;
-  border: 1px solid #9c8e7f;
+  border: 1px solid #8e867c;
   border-radius: 10px;
   background: #ffffff;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .pstats-apply {
   font: inherit;
@@ -4249,7 +4249,7 @@ a.admin-kpi:hover {
 }
 .pstats-period {
   font-size: 16px;
-  color: #6e6459;
+  color: #5e5a54;
   flex-basis: 100%;
 }
 .pstats-kpis {
@@ -4275,11 +4275,11 @@ a.admin-kpi:hover {
   border: 2px solid transparent;
   text-align: left;
   font: inherit;
-  color: #2b2420;
+  color: #1b1a18;
   cursor: pointer;
 }
 .pstats-kpi:hover {
-  border-color: #f0dcc0;
+  border-color: #e7e0d7;
 }
 .pstats-kpi.is-active {
   border-color: #0e7a4c;
@@ -4290,7 +4290,7 @@ a.admin-kpi:hover {
   gap: 6px;
   font-size: 13px;
   font-weight: 700;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .pstats-kpi-value {
   font-size: 28px;
@@ -4300,7 +4300,7 @@ a.admin-kpi:hover {
 .pstats-kpi-delta {
   font-size: 13px;
   font-weight: 600;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .pstats-kpi-delta.is-up {
   color: #128052;
@@ -4325,16 +4325,16 @@ a.admin-kpi:hover {
 .pstats-card-head h2 {
   margin: 0;
   font-size: 18px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .pstats-card-head p {
   margin: 4px 0 0;
   font-size: 16px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .pstats-card-head strong {
   font-size: 22px;
-  color: #2b2420;
+  color: #1b1a18;
   white-space: nowrap;
 }
 .pstats-table summary {
@@ -4358,7 +4358,7 @@ a.admin-kpi:hover {
 .pstats-table td {
   padding: 6px 10px;
   text-align: right;
-  border-bottom: 1px solid #f0dcc0;
+  border-bottom: 1px solid #e7e0d7;
   white-space: nowrap;
 }
 .pstats-table th:first-child {
@@ -4368,7 +4368,7 @@ a.admin-kpi:hover {
   position: sticky;
   top: 0;
   background: #ffffff;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .pstats-ratios {
   display: grid;
@@ -4386,11 +4386,11 @@ a.admin-kpi:hover {
 .pstats-ratio-value {
   font-size: 24px;
   font-weight: 800;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .pstats-ratio-detail {
   font-size: 13px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 @media (max-width: 799px) {
   .pstats-ratios {
@@ -4440,20 +4440,20 @@ a.admin-kpi:hover {
 .auth-field-label {
   font-size: 16px;
   font-weight: 700;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .auth-field-box {
   display: flex;
   align-items: center;
   gap: 8px;
   /* brand.bordoCampo: 3,2:1 su bianco (docs/CHANGELOG.md §278). */
-  border: 1px solid #9c8e7f;
+  border: 1px solid #8e867c;
   border-radius: 20px;
   background: #ffffff;
   padding: 0 12px;
 }
 .auth-field-box.has-error {
-  border-color: #c8362b;
+  border-color: #b42318;
 }
 .auth-field-box:focus-within {
   outline: 2px solid #189a63;
@@ -4473,7 +4473,7 @@ a.admin-kpi:hover {
   background: transparent;
   font: inherit;
   font-size: 16px;
-  color: #2b2420;
+  color: #1b1a18;
   padding: 0;
 }
 .auth-field-box input::placeholder {
@@ -4482,10 +4482,10 @@ a.admin-kpi:hover {
 .auth-field-hint,
 .auth-field-error {
   font-size: 16px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .auth-field-error {
-  color: #c8362b;
+  color: #b42318;
 }
 
 /* Regole della password nuova sotto il campo (PasswordRules,
@@ -4505,7 +4505,7 @@ a.admin-kpi:hover {
   gap: 8px;
   font-size: 13px;
   line-height: 18px;
-  color: #6e6459;
+  color: #5e5a54;
   transition: color 150ms ease;
 }
 .pw-rule-icon {
@@ -4513,7 +4513,7 @@ a.admin-kpi:hover {
   height: 16px;
   flex: none;
   border-radius: 50%;
-  border: 1.5px solid #9c8e7f;
+  border: 1.5px solid #8e867c;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4527,10 +4527,10 @@ a.admin-kpi:hover {
   border-color: #189a63;
 }
 .pw-rule.is-missing {
-  color: #c8362b;
+  color: #b42318;
 }
 .pw-rule.is-missing .pw-rule-icon {
-  border-color: #c8362b;
+  border-color: #b42318;
 }
 @media (prefers-reduced-motion: reduce) {
   .pw-rule,
@@ -4544,13 +4544,13 @@ a.admin-kpi:hover {
   font-size: 16px;
   font-weight: 600;
   min-height: 18px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .notif-status.is-saved {
   color: #128052;
 }
 .notif-status.is-error {
-  color: #c8362b;
+  color: #b42318;
 }
 .notif-card {
   background: #ffffff;
@@ -4563,7 +4563,7 @@ a.admin-kpi:hover {
 .notif-card h2 {
   margin: 0;
   font-size: 18px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .notif-switch-row {
   display: flex;
@@ -4571,7 +4571,7 @@ a.admin-kpi:hover {
   justify-content: space-between;
   gap: 16px;
   padding: 10px 0;
-  border-top: 1px solid #f0dcc0;
+  border-top: 1px solid #e7e0d7;
 }
 .notif-switch-row > div {
   display: flex;
@@ -4581,11 +4581,11 @@ a.admin-kpi:hover {
 }
 .notif-switch-row strong {
   font-size: 16px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .notif-switch-row small {
   font-size: 13px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .notif-link {
   background: none;
@@ -4640,7 +4640,7 @@ a.admin-kpi:hover {
 .notif-note {
   margin: 0;
   font-size: 16px;
-  color: #6e6459;
+  color: #5e5a54;
   line-height: 1.5;
 }
 /* Icona tonda accanto al titolo di una scheda (es. promemoria su WhatsApp). */
@@ -4675,12 +4675,12 @@ a.admin-kpi:hover {
 }
 .notif-small {
   font-size: 13px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .notif-error {
   margin: 0;
   font-size: 16px;
-  color: #c8362b;
+  color: #b42318;
 }
 .whatsapp-reminder-link {
   align-self: flex-start;
@@ -4695,23 +4695,23 @@ a.admin-kpi:hover {
   align-items: center;
   gap: 8px 10px;
   font-size: 15px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .notif-digest-select {
   min-height: 40px;
   padding: 0 12px;
   border-radius: 10px;
-  border: 1px solid #9c8e7f;
+  border: 1px solid #8e867c;
   background: #ffffff;
   font: inherit;
   font-weight: 700;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .whatsapp-list {
   margin: 0;
   padding-left: 18px;
   font-size: 13px;
-  color: #6e6459;
+  color: #5e5a54;
   line-height: 1.6;
 }
 /* Pagina Notifiche a schede (docs/changelog/2026-10-28-notifiche-impostazioni.md):
@@ -4745,7 +4745,7 @@ a.admin-kpi:hover {
   min-height: 32px;
   font-size: 14px;
   font-weight: 700;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .nt-status.is-saved {
   color: #0e7a4c;
@@ -4754,7 +4754,7 @@ a.admin-kpi:hover {
   padding: 0 12px;
 }
 .nt-status.is-error {
-  color: #c8362b;
+  color: #b42318;
 }
 .nt-section {
   display: flex;
@@ -4767,7 +4767,7 @@ a.admin-kpi:hover {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .nt-tiles {
   display: grid;
@@ -4806,11 +4806,11 @@ a.admin-kpi:hover {
 }
 .nt-tile strong {
   font-size: 16px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .nt-tile small {
   font-size: 14px;
-  color: #6e6459;
+  color: #5e5a54;
   line-height: 1.4;
 }
 .nt-topics {
@@ -4851,13 +4851,13 @@ a.admin-kpi:hover {
   margin: 0;
   font-size: 17px;
   font-weight: 800;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .nt-topic-text p {
   margin: 2px 0 0;
   font-size: 14px;
   line-height: 1.4;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .nt-channels {
   display: flex;
@@ -4871,17 +4871,17 @@ a.admin-kpi:hover {
   min-height: 40px;
   padding: 0 14px 0 8px;
   border-radius: 999px;
-  border: 1.5px solid #9c8e7f;
+  border: 1.5px solid #8e867c;
   background: #ffffff;
   font: inherit;
   font-size: 15px;
   font-weight: 700;
-  color: #2b2420;
+  color: #1b1a18;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 .nt-chip:hover {
-  border-color: #2b2420;
+  border-color: #1b1a18;
 }
 .nt-chip.is-on {
   background: #dcf3e7;
@@ -4897,7 +4897,7 @@ a.admin-kpi:hover {
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  border: 1.5px solid #9c8e7f;
+  border: 1.5px solid #8e867c;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4910,7 +4910,7 @@ a.admin-kpi:hover {
 .nt-chip small {
   font-size: 12px;
   font-weight: 600;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .nt-locked {
   display: inline-flex;
@@ -4922,7 +4922,7 @@ a.admin-kpi:hover {
   background: #f3ede6;
   font-size: 13px;
   font-weight: 700;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .nt-more {
   width: 100%;
@@ -4932,29 +4932,29 @@ a.admin-kpi:hover {
   gap: 12px;
   padding: 12px 18px;
   border: none;
-  border-top: 1px solid #f7e8d6;
+  border-top: 1px solid #f1ebe3;
   background: none;
   font: inherit;
   font-size: 15px;
   font-weight: 700;
-  color: #2b2420;
+  color: #1b1a18;
   cursor: pointer;
   text-align: left;
 }
 .nt-more:hover {
-  background: #fffaf3;
+  background: #fcfaf7;
 }
 .nt-more small {
   margin-left: 8px;
   font-size: 13px;
   font-weight: 600;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .nt-items {
   list-style: none;
   margin: 0;
   padding: 4px 18px 10px 78px;
-  background: linear-gradient(180deg, #fffaf3, #ffffff);
+  background: linear-gradient(180deg, #fcfaf7, #ffffff);
 }
 .nt-items li {
   display: flex;
@@ -4962,7 +4962,7 @@ a.admin-kpi:hover {
   justify-content: space-between;
   gap: 16px;
   padding: 12px 0;
-  border-top: 1px solid #f7e8d6;
+  border-top: 1px solid #f1ebe3;
 }
 .nt-items li:first-child {
   border-top: none;
@@ -4974,12 +4974,12 @@ a.admin-kpi:hover {
 }
 .nt-items strong {
   font-size: 15px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .nt-items small {
   font-size: 13px;
   line-height: 1.4;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .nt-channels.is-small .nt-chip {
   min-height: 34px;
@@ -4996,7 +4996,7 @@ a.admin-kpi:hover {
   cursor: not-allowed;
 }
 .nt-chip:disabled:hover {
-  border-color: #9c8e7f;
+  border-color: #8e867c;
 }
 .nt-items li.nt-items-note {
   font-size: 14px;
@@ -5088,7 +5088,7 @@ a.admin-kpi:hover {
   font: inherit;
   text-align: left;
   cursor: pointer;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .toast-card-icon {
   flex-shrink: 0;
@@ -5103,7 +5103,7 @@ a.admin-kpi:hover {
 .toast-card-photo {
   border-radius: 10px;
   overflow: hidden;
-  background: #fdefe1;
+  background: #f7f3ee;
 }
 .toast-card-text {
   display: flex;
@@ -5139,9 +5139,9 @@ a.admin-kpi:hover {
   font: inherit;
   font-size: 13px;
   font-weight: 700;
-  color: #6e6459;
+  color: #5e5a54;
   background: #ffffff;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   border-radius: 999px;
   padding: 6px 12px;
   cursor: pointer;
@@ -5190,18 +5190,18 @@ a.admin-kpi:hover {
   gap: 8px;
   padding: 8px 10px;
   border: none;
-  border-top: 3px solid #f0dcc0;
+  border-top: 3px solid #e7e0d7;
   background: none;
   font: inherit;
   font-size: 16px;
   font-weight: 700;
-  color: #6e6459;
+  color: #5e5a54;
   text-align: left;
   cursor: default;
 }
 .guided-steps li.is-current button {
   border-top-color: #189a63;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .guided-steps li.is-done button {
   border-top-color: #189a63;
@@ -5216,8 +5216,8 @@ a.admin-kpi:hover {
   align-items: center;
   justify-content: center;
   font-size: 13px;
-  background: #f0dcc0;
-  color: #2b2420;
+  background: #e7e0d7;
+  color: #1b1a18;
 }
 .guided-steps li.is-current .guided-step-dot,
 .guided-steps li.is-done .guided-step-dot {
@@ -5228,14 +5228,14 @@ a.admin-kpi:hover {
    "Urgente" e "Inoltra se non risponde" nel riepilogo. */
 .guided-options {
   border-radius: 20px;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   background: #ffffff;
   overflow: hidden;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 .guided-options.is-urgent-card:has(.guided-timing-option.is-today input:checked) {
-  border-color: #c8362b;
-  background: #fbeae7;
+  border-color: #b42318;
+  background: #fde8e6;
 }
 .guided-option {
   width: 100%;
@@ -5248,11 +5248,11 @@ a.admin-kpi:hover {
   background: none;
   font: inherit;
   text-align: left;
-  color: #2b2420;
+  color: #1b1a18;
   cursor: pointer;
 }
 .guided-option + .guided-option {
-  border-top: 1px solid #f0dcc0;
+  border-top: 1px solid #e7e0d7;
 }
 .guided-option:focus-visible {
   outline: 2px solid #189a63;
@@ -5276,7 +5276,7 @@ a.admin-kpi:hover {
 .guided-option-text small {
   font-size: 13px;
   line-height: 1.45;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .guided-option-track {
   flex-shrink: 0;
@@ -5318,7 +5318,7 @@ a.admin-kpi:hover {
   margin-bottom: 10px;
   font-size: 16px;
   font-weight: 700;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .guided-timing-options {
   clear: both;
@@ -5326,7 +5326,7 @@ a.admin-kpi:hover {
   gap: 4px;
   padding: 4px;
   border-radius: 999px;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   background: #fbf6f0;
 }
 .guided-timing-option {
@@ -5354,7 +5354,7 @@ a.admin-kpi:hover {
   border-radius: 999px;
   font-size: 15px;
   font-weight: 600;
-  color: #6e6459;
+  color: #5e5a54;
   white-space: nowrap;
   transition: background 0.15s ease, color 0.15s ease;
 }
@@ -5363,7 +5363,7 @@ a.admin-kpi:hover {
   color: #ffffff;
 }
 .guided-timing-option.is-today input:checked + span {
-  background: #c8362b;
+  background: #b42318;
 }
 .guided-timing-option input:focus-visible + span {
   outline: 2px solid #189a63;
@@ -5374,11 +5374,11 @@ a.admin-kpi:hover {
   margin-top: 8px;
   font-size: 13px;
   line-height: 1.45;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .guided-option + .guided-timing,
 .guided-timing + .guided-option {
-  border-top: 1px solid #f0dcc0;
+  border-top: 1px solid #e7e0d7;
 }
 @media (prefers-reduced-motion: reduce) {
   .guided-options,
@@ -5410,7 +5410,7 @@ a.admin-kpi:hover {
   padding: 16px;
   border-radius: 20px;
   background: #ffffff;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
 }
 .guided-recap > div {
   display: flex;
@@ -5423,7 +5423,7 @@ a.admin-kpi:hover {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .guided-recap button {
   background: none;
@@ -5438,11 +5438,11 @@ a.admin-kpi:hover {
 .guided-recap p {
   margin: 0;
   font-size: 16px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .guided-recap-text {
   white-space: pre-wrap;
-  color: #6e6459 !important;
+  color: #5e5a54 !important;
 }
 .guided-city input {
   background-color: #ffffff !important;
@@ -5478,8 +5478,8 @@ a.admin-kpi:hover {
   padding: 5px 12px;
   border-radius: 20px;
   /* Piena come gli altri bollini, senza bordo (docs/CHANGELOG.md §349). */
-  background: #fdefe1;
-  color: #2b2420;
+  background: #f7f3ee;
+  color: #1b1a18;
   font-size: 13px;
   font-weight: 700;
   line-height: 1.4;
@@ -5493,7 +5493,7 @@ a.admin-kpi:hover {
 .rc-badge small {
   font-size: 13px;
   font-weight: 500;
-  color: #6e6459;
+  color: #5e5a54;
 }
 
 /* Dichiarazione di responsabilità sopra "Salva profilo", accettata cliccando
@@ -5502,7 +5502,7 @@ a.admin-kpi:hover {
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .profile-declaration-note p {
   margin: 0;
@@ -5524,7 +5524,7 @@ a.admin-kpi:hover {
 /* Categorie della homepage a schede verticali con foto (CategoryStoryRail,
    docs/CHANGELOG.md §219). Colori dai token di packages/ui/src/tokens.ts:
    verde #189A63 per i pieni, #0E7A4C (cianografiaScuro) per i testi piccoli
-   sul chiaro, grafite #2B2420. */
+   sul chiaro, grafite #1B1A18. */
 .story-filters {
   display: flex;
   flex-wrap: wrap;
@@ -5536,9 +5536,9 @@ a.admin-kpi:hover {
   font-weight: 600;
   padding: 9px 15px;
   border-radius: 999px;
-  border: 1px solid #eadfd3;
+  border: 1px solid #e7e0d7;
   background: #fff;
-  color: #2b2420;
+  color: #1b1a18;
   cursor: pointer;
 }
 /* Sul telefono i filtri stanno su una riga sola da scorrere, invece di
@@ -5572,7 +5572,7 @@ a.admin-kpi:hover {
   height: 340px;
   border-radius: 20px;
   overflow: hidden;
-  background: #f6ecd9;
+  background: #fbf0d9;
   text-decoration: none;
   color: #fff;
 }
@@ -5726,7 +5726,7 @@ a.admin-kpi:hover {
   height: 4px;
   margin-right: 8px;
   border-radius: 2px;
-  background: #f0dcc0;
+  background: #e7e0d7;
   overflow: hidden;
 }
 .bleed-rail-progress > span {
@@ -5751,7 +5751,7 @@ a.admin-kpi:hover {
   transition: opacity 160ms ease, transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .bleed-rail-arrow--next {
-  background: #2b2420;
+  background: #1b1a18;
 }
 .bleed-rail-arrow:active:not(:disabled) {
   transform: scale(0.94);
@@ -5790,7 +5790,7 @@ a.admin-kpi:hover {
   grid-template-columns: 1fr 1fr;
   width: 100%;
   overflow: hidden;
-  background: #2b2420;
+  background: #1b1a18;
 }
 .pro-cta-photo {
   position: relative;
@@ -5825,11 +5825,11 @@ a.admin-kpi:hover {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .qx-bubble {
   background: #fff;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
 }
 /* "La riga del preventivo", il segno grafico del sito (docs/CHANGELOG.md
    §305): foglio color carta con righe leggere, voce a sinistra, puntini di
@@ -5851,7 +5851,7 @@ a.admin-kpi:hover {
   margin: 0;
   font-size: 17px;
   line-height: 1.45;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .qx-rest {
   opacity: 0;
@@ -5876,11 +5876,11 @@ a.admin-kpi:hover {
   aspect-ratio: 16 / 9;
   border-radius: 20px;
   overflow: hidden;
-  background: #f6ecd9;
+  background: #fbf0d9;
 }
 .qx-meta {
   font-size: 13px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .qx-arrow {
   display: flex;
@@ -5915,18 +5915,18 @@ a.admin-kpi:hover {
   display: block;
   font-weight: 700;
   font-size: 17px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .qx-sub {
   display: block;
   font-size: 13px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .qx-example {
   font-size: 13px;
   font-weight: 700;
   color: #8a6a1f;
-  background: #f6ecd9;
+  background: #fbf0d9;
   border-radius: 999px;
   padding: 3px 10px;
   flex-shrink: 0;
@@ -5947,7 +5947,7 @@ a.admin-kpi:hover {
   gap: 8px;
   padding: 11px 0;
   font-size: 16px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .qx-row > span:first-child {
   min-width: 0;
@@ -5967,11 +5967,11 @@ a.admin-kpi:hover {
 .qx-total {
   margin-top: 6px;
   padding-top: 14px;
-  border-top: 2px solid #2b2420;
+  border-top: 2px solid #1b1a18;
   font-family: var(--font-display), sans-serif;
   font-weight: 700;
   font-size: 24px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .qx.is-on .qx-row,
 .qx.is-on .qx-total {
@@ -6059,7 +6059,7 @@ a.admin-kpi:hover {
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.95);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
-  color: #2b2420;
+  color: #1b1a18;
   animation: pro-cta-float 5s ease-in-out infinite alternate;
 }
 .pro-cta-notif-top {
@@ -6087,7 +6087,7 @@ a.admin-kpi:hover {
 .pro-cta-notif small {
   display: block;
   font-size: 13px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 @media (max-width: 860px) {
   .pro-cta-notif-top {
@@ -6180,7 +6180,7 @@ a.admin-kpi:hover {
 }
 .email-code-box {
   height: 56px;
-  border: 1px solid #9c8e7f;
+  border: 1px solid #8e867c;
   border-radius: 12px;
   background: #ffffff;
   display: flex;
@@ -6188,7 +6188,7 @@ a.admin-kpi:hover {
   justify-content: center;
   font-size: 26px;
   font-weight: 800;
-  color: #2b2420;
+  color: #1b1a18;
   font-variant-numeric: tabular-nums;
   transition:
     border-color 0.15s ease,
@@ -6213,8 +6213,8 @@ a.admin-kpi:hover {
   background: #f3f2ef;
 }
 .email-code-boxes.is-error .email-code-box {
-  border-color: #c8362b;
-  background: #fbeae7;
+  border-color: #b42318;
+  background: #fde8e6;
 }
 .email-code-boxes.is-error {
   animation: email-code-shake 0.3s ease;
@@ -6258,7 +6258,7 @@ a.admin-kpi:hover {
 .admin-2fa-qr {
   padding: 12px;
   background: #ffffff;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   border-radius: 20px;
   line-height: 0;
 }
@@ -6271,9 +6271,9 @@ a.admin-kpi:hover {
   font-size: 17px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: #2b2420;
+  color: #1b1a18;
   background: #ffffff;
-  border: 1px solid #9c8e7f;
+  border: 1px solid #8e867c;
   border-radius: 10px;
   padding: 10px 14px;
   text-align: center;
@@ -6299,7 +6299,7 @@ a.admin-kpi:hover {
 .link-button.is-quiet {
   font-size: 13px;
   font-weight: 600;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .link-button:focus-visible {
   outline: 2px solid #189a63;
@@ -6377,10 +6377,10 @@ a.admin-kpi:hover {
 .slot-pill {
   min-height: 40px;
   padding: 0 14px;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   border-radius: 999px;
   background: #fff;
-  color: #2b2420;
+  color: #1b1a18;
   font: inherit;
   font-size: 15px;
   font-weight: 600;
@@ -6435,7 +6435,7 @@ a.admin-kpi:hover {
 .week-slots-range {
   font-size: 15px;
   font-weight: 700;
-  color: #2b2420;
+  color: #1b1a18;
   text-align: center;
 }
 .week-slots-arrow {
@@ -6445,10 +6445,10 @@ a.admin-kpi:hover {
   width: 40px;
   height: 40px;
   flex: none;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   border-radius: 999px;
   background: #fff;
-  color: #2b2420;
+  color: #1b1a18;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -6472,7 +6472,7 @@ a.admin-kpi:hover {
   align-items: center;
   gap: 12px;
   padding: 6px 0;
-  border-bottom: 1px solid #f6eadb;
+  border-bottom: 1px solid #f1ebe3;
 }
 .week-slots-day:last-child {
   border-bottom: none;
@@ -6482,7 +6482,7 @@ a.admin-kpi:hover {
   flex: none;
   font-size: 14px;
   font-weight: 700;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .week-slots-label.is-today {
   color: #0e7a4c;
@@ -6505,7 +6505,7 @@ a.admin-kpi:hover {
 .week-slots-legend {
   font-size: 13px;
   font-weight: 600;
-  color: #6e6459;
+  color: #5e5a54;
 }
 /* Sul telefono le due fasce di un giorno stanno su una riga. */
 @media (max-width: 520px) {
@@ -6546,11 +6546,11 @@ a.admin-kpi:hover {
   gap: 8px;
   min-height: 96px;
   padding: 12px 8px;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   border-radius: 20px;
   background: #ffffff;
   font: inherit;
-  color: #2b2420;
+  color: #1b1a18;
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -6729,15 +6729,15 @@ a.admin-kpi:hover {
   padding: 0 22px 0 12px;
   border-radius: 999px;
   background: #ffffff;
-  border: 1px solid #eadfd3;
-  color: #2b2420;
+  border: 1px solid #e7e0d7;
+  color: #1b1a18;
   font-weight: 600;
   font-size: 16px;
   text-decoration: none;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 .hero-urgent-link:hover {
-  border-color: #d9c6b1;
+  border-color: #d2c9bd;
 }
 .hero-urgent-link:active {
   transform: scale(0.98);
@@ -6753,7 +6753,7 @@ a.admin-kpi:hover {
   width: 26px;
   height: 26px;
   border-radius: 999px;
-  background: #c8362b; /* brand.urgenza */
+  background: #b42318; /* brand.urgenza */
 }
 @media (max-width: 660px) {
   .hero-urgent-link {
@@ -6914,14 +6914,14 @@ a.admin-kpi:hover {
   height: 28px;
   padding: 0;
   border-radius: 999px;
-  border: 1px solid #eadfd3;
+  border: 1px solid #e7e0d7;
   background: #ffffff;
-  color: #2b2420;
+  color: #1b1a18;
   cursor: pointer;
   transition: opacity 150ms ease, border-color 150ms ease;
 }
 .hero-examples-arrow:hover {
-  border-color: #d9c6b1;
+  border-color: #d2c9bd;
 }
 /* Nascosta ma al suo posto: la riga non salta quando compare. */
 .hero-examples-arrow[data-hidden="true"] {
@@ -6929,7 +6929,7 @@ a.admin-kpi:hover {
   pointer-events: none;
 }
 .hero-examples-label {
-  color: #6b6058;
+  color: #625d56;
   font-size: 15px;
   font-weight: 600;
 }
@@ -6937,17 +6937,17 @@ a.admin-kpi:hover {
   font: inherit;
   font-size: 15px;
   font-weight: 600;
-  color: #2b2420;
+  color: #1b1a18;
   min-height: 40px;
   padding: 0 14px;
   border-radius: 999px;
   background: #ffffff;
-  border: 1px solid #eadfd3;
+  border: 1px solid #e7e0d7;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 .hero-example:hover {
-  border-color: #d9c6b1;
+  border-color: #d2c9bd;
 }
 .hero-example:active {
   transform: scale(0.98);
@@ -7008,7 +7008,7 @@ a.admin-kpi:hover {
   font-size: 24px;
   line-height: 30px;
   font-weight: 800;
-  color: #2b2420;
+  color: #1b1a18;
   text-wrap: balance;
 }
 @media (min-width: 1021px) {
@@ -7034,7 +7034,7 @@ a.admin-kpi:hover {
   width: 100%;
   min-height: 56px;
   padding: 8px 8px;
-  border: 1px solid #eadfd3;
+  border: 1px solid #e7e0d7;
   border-radius: 999px;
   background: #fff;
   cursor: pointer;
@@ -7070,10 +7070,10 @@ a.admin-kpi:hover {
   gap: 6px;
   min-height: 40px;
   padding: 0 14px;
-  border: 1px solid #eadfd3;
+  border: 1px solid #e7e0d7;
   border-radius: 999px;
   background: #fff;
-  color: #2b2420;
+  color: #1b1a18;
   font: inherit;
   font-size: 15px;
   font-weight: 600;
@@ -7193,7 +7193,7 @@ a.admin-kpi:hover {
   margin: 0 0 14px;
   font-size: 18px;
   font-weight: 700;
-  color: #2b2420;
+  color: #1b1a18;
   text-wrap: balance;
 }
 .popular-services-list {
@@ -7212,8 +7212,8 @@ a.admin-kpi:hover {
   padding: 6px 16px 6px 6px;
   border-radius: 999px;
   background: #fff;
-  border: 1px solid #f0dcc0;
-  color: #2b2420;
+  border: 1px solid #e7e0d7;
+  color: #1b1a18;
   font-size: 16px;
   font-weight: 600;
   text-decoration: none;
@@ -7245,7 +7245,7 @@ a.admin-kpi:hover {
   margin: 0 0 14px;
   font-size: 20px;
   font-weight: 700;
-  color: #2b2420;
+  color: #1b1a18;
 }
 /* Da telefono tre righe da scorrere di lato invece di otto righe una sotto
    l'altra: l'elenco è largo il doppio dello schermo e va a capo da solo. */
@@ -7309,7 +7309,7 @@ a.admin-kpi:hover {
   mix-blend-mode: soft-light;
 }
 .glow-lights--scuro {
-  background: #2b2420;
+  background: #1b1a18;
 }
 .glow-lights--chiaro::after {
   opacity: 0.08;
@@ -7425,10 +7425,10 @@ a.admin-kpi:hover {
   width: 100%;
   font-size: 13px;
   line-height: 18px;
-  /* Più scuro del grigio caldo #6e6459: le briciole stanno sopra le forme
+  /* Più scuro del grigio caldo #5e5a54: le briciole stanno sopra le forme
      sfumate dello sfondo, e sul verde chiaro quel grigio arrivava a 3,6:1
-     (serve 4,5:1). #4f463e resta sopra 5:1 anche lì (docs/CHANGELOG.md §401). */
-  color: #4f463e;
+     (serve 4,5:1). #4a4640 resta sopra 5:1 anche lì (docs/CHANGELOG.md §401). */
+  color: #4a4640;
 }
 .breadcrumbs-list {
   list-style: none;
@@ -7456,12 +7456,12 @@ a.admin-kpi:hover {
   display: inline-flex;
   align-items: center;
   min-height: 32px;
-  color: #4f463e;
+  color: #4a4640;
   text-decoration: none;
   text-underline-offset: 3px;
 }
 .breadcrumbs-link:hover {
-  color: #2b2420;
+  color: #1b1a18;
   text-decoration: underline;
 }
 .breadcrumbs-link:focus-visible {
@@ -7470,7 +7470,7 @@ a.admin-kpi:hover {
   border-radius: 10px;
 }
 .breadcrumbs-current {
-  color: #2b2420;
+  color: #1b1a18;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -7509,7 +7509,7 @@ a.admin-kpi:hover {
   margin: 0 0 14px;
   font-size: 18px;
   font-weight: 700;
-  color: #2b2420;
+  color: #1b1a18;
   text-wrap: balance;
 }
 .city-facts-list {
@@ -7528,20 +7528,20 @@ a.admin-kpi:hover {
   padding: 14px 16px;
   border-radius: 20px;
   background: #fff;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   min-width: 0;
 }
 .city-facts-value {
   font-size: 22px;
   line-height: 28px;
   font-weight: 800;
-  color: #2b2420;
+  color: #1b1a18;
   font-variant-numeric: tabular-nums;
 }
 .city-facts-label {
   font-size: 16px;
   line-height: 22px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 /* Testo proprio della città e ultime recensioni (collaudo N-04,
    docs/changelog/2026-10-30-velocita-telefono.md). */
@@ -7549,7 +7549,7 @@ a.admin-kpi:hover {
   margin: 0 0 24px;
   font-size: 16px;
   line-height: 24px;
-  color: #2b2420;
+  color: #1b1a18;
   max-width: 68ch;
 }
 .city-facts-reviews {
@@ -7564,13 +7564,13 @@ a.admin-kpi:hover {
   padding: 14px 16px;
   border-radius: 20px;
   background: #fff;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
 }
 .city-facts-review-text {
   margin: 0 0 6px;
   font-size: 16px;
   line-height: 24px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .city-facts-review-stars {
   color: #8a5a00;
@@ -7580,7 +7580,7 @@ a.admin-kpi:hover {
   margin: 0;
   font-size: 14px;
   line-height: 20px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .city-facts-review-meta a {
   color: #0e7a4c;
@@ -7590,18 +7590,18 @@ a.admin-kpi:hover {
   margin: 0 0 10px;
   font-size: 16px;
   font-weight: 700;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .city-facts-faq {
   display: flex;
   flex-direction: column;
   border-radius: 20px;
   background: #fff;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   overflow: hidden;
 }
 .city-facts-question + .city-facts-question {
-  border-top: 1px solid #f0dcc0;
+  border-top: 1px solid #e7e0d7;
 }
 .city-facts-question summary {
   display: flex;
@@ -7612,7 +7612,7 @@ a.admin-kpi:hover {
   padding: 12px 16px;
   font-size: 16px;
   font-weight: 600;
-  color: #2b2420;
+  color: #1b1a18;
   cursor: pointer;
   list-style: none;
 }
@@ -7624,8 +7624,8 @@ a.admin-kpi:hover {
   flex-shrink: 0;
   width: 8px;
   height: 8px;
-  border-right: 2px solid #6e6459;
-  border-bottom: 2px solid #6e6459;
+  border-right: 2px solid #5e5a54;
+  border-bottom: 2px solid #5e5a54;
   transform: rotate(45deg) translateY(-2px);
   transition: transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -7633,7 +7633,7 @@ a.admin-kpi:hover {
   transform: rotate(-135deg) translateY(-2px);
 }
 .city-facts-question summary:hover {
-  background: #fdf8f2;
+  background: #fbf9f6;
 }
 .city-facts-question summary:focus-visible {
   outline: 2px solid #0e7a4c;
@@ -7644,7 +7644,7 @@ a.admin-kpi:hover {
   padding: 0 16px 14px;
   font-size: 16px;
   line-height: 24px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .city-facts-question a {
   color: #0e7a4c;
@@ -7695,7 +7695,7 @@ a.admin-kpi:hover {
   background: #c9b39a;
 }
 .traffic-bar-fill--google {
-  background: #2b2420;
+  background: #1b1a18;
 }
 
 /* Ora del riassunto della sera in Notifiche (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). */
@@ -7706,23 +7706,23 @@ a.admin-kpi:hover {
   margin-top: 4px;
   font-size: 15px;
   font-weight: 600;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .nt-hour select {
   min-height: 40px;
   padding: 0 34px 0 14px;
   border-radius: 999px;
-  border: 1.5px solid #9c8e7f;
+  border: 1.5px solid #8e867c;
   background: #ffffff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%232b2420' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
   appearance: none;
   font: inherit;
   font-size: 15px;
   font-weight: 700;
-  color: #2b2420;
+  color: #1b1a18;
   cursor: pointer;
 }
 .nt-hour select:hover {
-  border-color: #2b2420;
+  border-color: #1b1a18;
 }
 .nt-check {
   display: flex;
@@ -7731,7 +7731,7 @@ a.admin-kpi:hover {
   margin-top: 6px;
   font-size: 15px;
   font-weight: 600;
-  color: #2b2420;
+  color: #1b1a18;
   cursor: pointer;
 }
 .nt-check input {
@@ -7774,17 +7774,17 @@ a.admin-kpi:hover {
   font: inherit;
   font-size: 14px;
   font-weight: 700;
-  color: #6b5d50;
+  color: #625d56;
   cursor: pointer;
 }
 .optout-tabs button.is-on {
   background: #ffffff;
-  color: #2b2420;
-  box-shadow: 0 1px 3px rgba(43, 36, 32, 0.12);
+  color: #1b1a18;
+  box-shadow: 0 1px 3px rgba(27, 26, 24, 0.12);
 }
 .optout-tabs button small {
   font-weight: 600;
-  color: #6b5d50;
+  color: #625d56;
   margin-left: 4px;
 }
 .optout-tabs button:focus-visible {
@@ -7798,7 +7798,7 @@ a.admin-kpi:hover {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .optout-table th,
 .optout-table td {
@@ -7810,7 +7810,7 @@ a.admin-kpi:hover {
 .optout-table thead th {
   font-size: 12px;
   font-weight: 700;
-  color: #6b5d50;
+  color: #625d56;
   white-space: nowrap;
 }
 .optout-table td {
@@ -7827,11 +7827,11 @@ a.admin-kpi:hover {
 }
 .optout-table tr.is-topic th,
 .optout-table tr.is-topic td {
-  background: #fbf6ef;
+  background: #faf8f5;
 }
 .optout-na {
   font-size: 12px;
-  color: #6e6459;
+  color: #5e5a54;
   white-space: normal;
 }
 
@@ -7852,14 +7852,14 @@ a.admin-kpi:hover {
   font-size: clamp(28px, 5vw, 40px);
   line-height: 1.2;
   font-weight: 800;
-  color: #2b2420;
+  color: #1b1a18;
   text-wrap: balance;
 }
 .price-page-lead {
   margin: 0;
   font-size: 18px;
   line-height: 26px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .price-page .city-facts-list {
   margin: 0;
@@ -7868,7 +7868,7 @@ a.admin-kpi:hover {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   border-radius: 20px;
   background: #fff;
   overflow: hidden;
@@ -7878,20 +7878,20 @@ a.admin-kpi:hover {
 .price-table td {
   padding: 12px 16px;
   text-align: left;
-  border-top: 1px solid #f0dcc0;
+  border-top: 1px solid #e7e0d7;
 }
 .price-table thead th {
   border-top: 0;
   font-size: 13px;
   font-weight: 600;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .price-table thead th:last-child {
   text-align: right;
 }
 .price-table tbody th {
   font-weight: 500;
-  color: #2b2420;
+  color: #1b1a18;
 }
 /* Ogni riga apre chi offre il lavoro (docs/CHANGELOG.md §398): il link sul
    nome copre tutta la riga. */
@@ -7903,7 +7903,7 @@ a.admin-kpi:hover {
   background: #dcf3e7;
 }
 .price-table-link {
-  color: #2b2420;
+  color: #1b1a18;
   text-decoration: none;
 }
 .price-table-link::after {
@@ -7922,7 +7922,7 @@ a.admin-kpi:hover {
   margin-right: 8px;
   font-size: 13px;
   font-weight: 400;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .price-table-chevron {
   margin-left: 8px;
@@ -7939,12 +7939,12 @@ a.admin-kpi:hover {
   text-align: right;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .price-page-note {
   margin: 8px 0 0;
   font-size: 13px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .price-page-actions {
   display: flex;
@@ -8006,7 +8006,7 @@ a.admin-kpi:hover {
 .work-step-title {
   font-size: 16px;
   font-weight: 700;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .work-step-title::before {
   content: counter(work-step) ". ";
@@ -8031,7 +8031,7 @@ a.admin-kpi:hover {
   max-width: 720px;
   font-size: 15px;
   line-height: 20px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 /* Pillole semitrasparenti (richiesta di Luca dell'08/11/2026,
    docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md). */
@@ -8050,7 +8050,7 @@ a.admin-kpi:hover {
   background: rgba(255, 255, 255, 0.55);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
-  color: #2b2420;
+  color: #1b1a18;
   font-weight: 500;
   text-decoration: none;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
@@ -8079,15 +8079,15 @@ a.admin-kpi:hover {
   min-height: 40px;
   padding: 0 16px;
   border-radius: 999px;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   background: #fff;
-  color: #2b2420;
+  color: #1b1a18;
   font-size: 16px;
   font-weight: 600;
   text-decoration: none;
 }
 .city-facts-services a:hover {
-  background: #fdf8f2;
+  background: #fbf9f6;
 }
 .city-facts-services a:focus-visible {
   outline: 2px solid #0e7a4c;
@@ -8187,14 +8187,14 @@ a.admin-kpi:hover {
   font-size: 34px;
   line-height: 1.15;
   font-weight: 700;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .request-sent-title {
   margin: 0;
   font-size: 18px;
   line-height: 1.4;
   font-weight: 500;
-  color: #2b2420;
+  color: #1b1a18;
   text-wrap: balance;
 }
 .request-sent-badges {
@@ -8215,7 +8215,7 @@ a.admin-kpi:hover {
   flex-direction: column;
   background: #ffffff;
   border-radius: 20px;
-  box-shadow: 0 1px 2px rgba(43, 36, 32, 0.06), 0 8px 24px rgba(43, 36, 32, 0.06);
+  box-shadow: 0 1px 2px rgba(27, 26, 24, 0.06), 0 8px 24px rgba(27, 26, 24, 0.06);
 }
 .request-sent-steps li {
   display: flex;
@@ -8233,7 +8233,7 @@ a.admin-kpi:hover {
   top: 30px;
   bottom: 2px;
   width: 2px;
-  background: #f0dcc0;
+  background: #e7e0d7;
 }
 .request-sent-steps li.is-done:not(:last-child)::before {
   background: #128552;
@@ -8246,11 +8246,11 @@ a.admin-kpi:hover {
 }
 .request-sent-steps strong {
   font-size: 16px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .request-sent-steps li > div > span {
   font-size: 15px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .request-sent-meta {
   display: flex;
@@ -8269,8 +8269,8 @@ a.admin-kpi:hover {
   font-size: 14px;
   font-weight: 700;
   background: #ffffff;
-  border: 2px solid #f0dcc0;
-  color: #6e6459;
+  border: 2px solid #e7e0d7;
+  color: #5e5a54;
 }
 .request-sent-steps li.is-done .request-sent-dot {
   background: #128552;
@@ -8300,10 +8300,10 @@ a.admin-kpi:hover {
   flex: 1;
   min-width: 220px;
   font-size: 15px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .request-sent-save .request-sent-saved {
-  color: #3d6b3e;
+  color: #0e6b42;
   font-weight: 600;
 }
 .request-sent-save-actions {
@@ -8336,10 +8336,10 @@ a.admin-kpi:hover {
   bottom: 12px;
   z-index: 30;
   padding: 12px 16px;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   border-radius: 20px;
   background: #fff;
-  box-shadow: 0 8px 24px rgba(43, 36, 32, 0.12);
+  box-shadow: 0 8px 24px rgba(27, 26, 24, 0.12);
 }
 @media (prefers-reduced-motion: no-preference) {
   .save-bar.is-dirty {
@@ -8367,7 +8367,7 @@ a.admin-kpi:hover {
   gap: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .quote-item-price span {
   flex-shrink: 0;
@@ -8412,7 +8412,7 @@ a.admin-kpi:hover {
   min-height: 32px;
   font-size: 13px;
   font-weight: 700;
-  color: #2b2420;
+  color: #1b1a18;
   cursor: pointer;
   list-style: none;
 }
@@ -8463,13 +8463,13 @@ a.admin-kpi:hover {
     column-gap: 12px;
     row-gap: 4px;
     padding: 12px 14px;
-    border-bottom: 1px solid #f0dcc0;
+    border-bottom: 1px solid #e7e0d7;
   }
   .admin-table tr:last-child {
     border-bottom: none;
   }
   .admin-table tr:nth-child(even) {
-    background: #fdefe1;
+    background: #f7f3ee;
   }
   .admin-table td,
   .admin-table tr:nth-child(even) td {
@@ -8478,7 +8478,7 @@ a.admin-kpi:hover {
     border: none;
     background: none;
     font-size: 13px;
-    color: #6e6459;
+    color: #5e5a54;
     min-width: 0;
     overflow-wrap: anywhere;
   }
@@ -8500,7 +8500,7 @@ a.admin-kpi:hover {
     flex-basis: 100%;
     font-size: 15px;
     font-weight: 700;
-    color: #2b2420;
+    color: #1b1a18;
   }
 }
 
@@ -8542,7 +8542,7 @@ a.admin-kpi:hover {
   margin-block: -12px;
   cursor: pointer;
   font-size: 14px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .admin-test-toggle input {
   width: 20px;
@@ -8978,7 +8978,7 @@ a.admin-kpi:hover {
   margin: 6px 0 0;
   font-size: 14px;
   line-height: 20px;
-  color: #6e6459;
+  color: #5e5a54;
   overflow-wrap: anywhere;
 }
 .email-suggestion:empty {
@@ -9014,13 +9014,13 @@ a.admin-kpi:hover {
   flex-direction: column;
   font-size: 16px;
   line-height: 21px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .signup-summary-label {
   font-size: 13px;
   font-weight: 700;
   line-height: 18px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 .signup-summary-detail {
   font-weight: 600;
@@ -9165,7 +9165,7 @@ a.admin-kpi:hover {
   margin: 0;
   text-align: center;
   font-size: 15px;
-  color: #6e6459;
+  color: #5e5a54;
 }
 /* "Prova:" sotto "Descrivi il lavoro": le pillole della home, su fondo chiaro. */
 .guided-examples {
@@ -9175,7 +9175,7 @@ a.admin-kpi:hover {
   gap: 8px;
 }
 .guided-examples-label {
-  color: #6e6459;
+  color: #5e5a54;
   font-size: 15px;
   font-weight: 600;
 }
@@ -9205,7 +9205,7 @@ a.admin-kpi:hover {
   flex-direction: column;
   gap: 6px;
   padding: 14px 16px;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   border-radius: 10px;
   background: #ffffff;
 }
@@ -9280,7 +9280,7 @@ a.admin-kpi:hover {
   font-size: 26px;
   line-height: 1.2;
   font-weight: 800;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .journey-hero-sub {
   margin: 4px 0 0;
@@ -9305,7 +9305,7 @@ a.admin-kpi:hover {
   background: #dcf3e7;
 }
 .journey-hero-now.is-waiting {
-  background: #f6ecd9;
+  background: #fbf0d9;
 }
 .journey-hero-icon {
   flex: 0 0 auto;
@@ -9327,7 +9327,7 @@ a.admin-kpi:hover {
   flex-direction: column;
   gap: 2px;
   font-size: 16px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .journey-hero-now-text strong {
   font-size: 19px;
@@ -9347,7 +9347,7 @@ a.admin-kpi:hover {
   color: #4a413a;
 }
 .journey-hero-text.is-error {
-  color: #c8362b;
+  color: #b42318;
 }
 .journey-hero-cta {
   flex: 0 0 auto;
@@ -9484,9 +9484,9 @@ a.admin-kpi:hover {
   max-width: 960px;
   max-height: calc(100dvh - 32px);
   padding: 20px;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #e7e0d7;
   border-radius: 20px;
-  background: #fffdf9;
+  background: #fefdfb;
   box-sizing: border-box;
 }
 .quote-compare-close {
@@ -9502,7 +9502,7 @@ a.admin-kpi:hover {
   cursor: pointer;
 }
 .quote-compare-close:hover {
-  background: #f6eadb;
+  background: #f1ebe3;
 }
 .quote-compare-scroll {
   overflow: auto;
@@ -9515,13 +9515,13 @@ a.admin-kpi:hover {
   border-collapse: separate;
   border-spacing: 0;
   font-size: 15px;
-  color: #2b2420;
+  color: #1b1a18;
 }
 .quote-compare th,
 .quote-compare td {
   min-width: 180px;
   padding: 12px;
-  border-bottom: 1px solid #f0dcc0;
+  border-bottom: 1px solid #e7e0d7;
   text-align: left;
   vertical-align: top;
 }
@@ -9531,10 +9531,10 @@ a.admin-kpi:hover {
   z-index: 1;
   min-width: 96px;
   width: 96px;
-  background: #fffdf9;
+  background: #fefdfb;
   font-size: 13px;
   font-weight: 700;
-  color: #5c534d;
+  color: #56514b;
 }
 .quote-compare .quote-compare-corner {
   min-width: 96px;
@@ -9542,13 +9542,13 @@ a.admin-kpi:hover {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: #fffdf9;
+  background: #fefdfb;
 }
 .quote-compare thead th {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: #fffdf9;
+  background: #fefdfb;
 }
 .quote-compare thead .quote-compare-corner {
   top: 0;
@@ -9558,7 +9558,7 @@ a.admin-kpi:hover {
   display: none;
   margin: 0 0 8px;
   font-size: 13px;
-  color: #5c534d;
+  color: #56514b;
 }
 .quote-compare tbody tr:last-child td {
   border-bottom: none;
@@ -9593,10 +9593,10 @@ a.admin-kpi:hover {
   display: block;
   margin-top: 4px;
   font-size: 13px;
-  color: #5c534d;
+  color: #56514b;
 }
 .quote-compare-muted {
-  color: #5c534d;
+  color: #56514b;
 }
 .quote-compare-list {
   margin: 0;
@@ -9702,7 +9702,7 @@ a.admin-kpi:hover {
 }
 .quick-service-price {
   font-weight: 500;
-  color: #5c534d;
+  color: #56514b;
 }
 .quick-service-pill.is-on .quick-service-price {
   color: #fff;
@@ -9722,7 +9722,7 @@ a.admin-kpi:hover {
   border: 1px dashed #189a63;
   border-radius: 10px;
   background: #fff;
-  color: #2b2420;
+  color: #1b1a18;
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -9748,7 +9748,7 @@ a.admin-kpi:hover {
 }
 .quick-last-quote-sub {
   font-size: 13px;
-  color: #5c534d;
+  color: #56514b;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

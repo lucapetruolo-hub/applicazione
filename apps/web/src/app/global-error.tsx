@@ -13,7 +13,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         <button type="button" onClick={reset} style={{ padding: "10px 20px", borderRadius: 999, border: "none", background: "#189a63", color: "#fff", fontWeight: 700 }}>
           Riprova
         </button>
-        <pre style={{ maxWidth: 560, margin: "24px auto", textAlign: "left", whiteSpace: "pre-wrap", fontSize: 12, color: "#6e6459" }}>
+        <pre style={{ maxWidth: 560, margin: "24px auto", textAlign: "left", whiteSpace: "pre-wrap", fontSize: 12, color: "#5e5a54" }}>
           {error.message || "Errore sconosciuto"}
           {error.digest ? `\nCodice: ${error.digest}` : ""}
         </pre>

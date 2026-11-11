@@ -27,7 +27,7 @@ export function BillingIntervalToggle({ value, onChange }: { value: BillingInter
           padding: 4px;
           border-radius: 999px;
           background: ${brand.calce};
-          border: 1px solid rgba(43, 36, 32, 0.14);
+          border: 1px solid rgba(27, 26, 24, 0.14);
         }
         button {
           all: unset;

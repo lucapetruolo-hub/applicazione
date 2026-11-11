@@ -66,7 +66,7 @@
   max-width: 620px;
   font-size: var(--f-size-5);
   text-align: center;
-  color: #5c534b;
+  color: #56514b;
   text-wrap: pretty;
 }
 
@@ -92,11 +92,11 @@
 .status {
   margin-top: var(--t-space-2);
   /* Più piccola e più chiara: è una rassicurazione, non un'azione (scelta di
-     Luca). #766b62 sul pesca è 4,6:1, sopra il minimo AA. */
+     Luca). #6a655e sul fondo carta è 5,2:1, sopra il minimo AA. */
   font-size: 14px;
   font-weight: 500;
   text-align: center;
-  color: #766b62;
+  color: #6a655e;
 }
 
 .urgent {
@@ -122,13 +122,13 @@
   flex-direction: column;
   flex: 1 1 auto;
   height: 1px;
-  background-color: #e6d6c4;
+  background-color: #e1d9ce;
 }
 
 .urgentLabel {
   font-size: 14px;
   font-weight: 600;
-  color: #6b6058;
+  color: #625d56;
 }
 
 /* Da telefono la casella della ricerca quasi a tutta larghezza, 12 px dai

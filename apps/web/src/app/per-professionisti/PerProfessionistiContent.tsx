@@ -47,7 +47,7 @@ import { useOnlinePayments } from "@/lib/onlinePayments";
  */
 
 /** Colore dei filetti della griglia. */
-const LINE = "rgba(43,36,32,0.12)";
+const LINE = "rgba(27, 26, 24,0.12)";
 const MAX_WIDTH = 1160;
 
 export function PerProfessionistiContent({ founders = null }: { founders?: FounderSpots | null }) {

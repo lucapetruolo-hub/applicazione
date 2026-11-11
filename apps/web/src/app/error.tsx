@@ -30,7 +30,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
   return (
     <div style={{ maxWidth: 560, margin: "64px auto", padding: "0 16px", textAlign: "center", fontFamily: "var(--font-body), sans-serif" }}>
       <h1 style={{ fontSize: 22, margin: "0 0 8px" }}>Qualcosa è andato storto</h1>
-      <p style={{ color: "#6e6459", margin: "0 0 20px" }}>Riprova tra un momento. Se il problema continua, segnalacelo con il dettaglio qui sotto.</p>
+      <p style={{ color: "#5e5a54", margin: "0 0 20px" }}>Riprova tra un momento. Se il problema continua, segnalacelo con il dettaglio qui sotto.</p>
       <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 24 }}>
         <button
           type="button"
@@ -53,7 +53,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
           borderRadius: 10,
           padding: 12,
           fontSize: 12,
-          color: "#6e6459",
+          color: "#5e5a54",
         }}
       >
         {error.message || "Errore sconosciuto"}

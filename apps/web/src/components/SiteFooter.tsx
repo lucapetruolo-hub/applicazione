@@ -12,7 +12,7 @@ import styles from "./SiteFooter.module.css";
 // elementi a ogni apertura. Disegno identico (confronto pixel per pixel);
 // le sole parti che servono al browser sono in SiteFooterParts.tsx.
 // Colore delle icone: brand.grafite70 (packages/ui/src/tokens.ts).
-const ICON_COLOR = "#6E6459";
+const ICON_COLOR = "#5E5A54";
 
 // Prima i quattro mestieri del lancio (CLAUDE.md §7), poi gli altri fino a
 // otto: Falegname restava fuori (collaudo N-13,

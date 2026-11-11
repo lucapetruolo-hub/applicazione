@@ -154,7 +154,7 @@ export function AdminNav({ overview, adminRoles, onOpenSearch }: { overview: Adm
     <nav ref={navRef} className="admin-nav" aria-label="Sezioni amministrazione" data-more-right={moreRight ? "true" : undefined}>
       <span className="admin-nav-title">Amministrazione</span>
       <button type="button" className="admin-nav-link admin-nav-search" onClick={onOpenSearch}>
-        <Icon name="search" size={16} color="#6e6459" />
+        <Icon name="search" size={16} color="#5e5a54" />
         <span>Cerca</span>
         <kbd className="admin-kbd">⌘K</kbd>
       </button>
@@ -166,7 +166,7 @@ export function AdminNav({ overview, adminRoles, onOpenSearch }: { overview: Adm
         const count = countOf(tabs, overview);
         return (
           <Link key={section.key} href={first.href} className={`admin-nav-link${active ? " is-active" : ""}`} aria-current={active ? "page" : undefined}>
-            <Icon name={section.icon} size={16} color={active ? "#2b2420" : "#6e6459"} />
+            <Icon name={section.icon} size={16} color={active ? "#1b1a18" : "#5e5a54"} />
             <span>{section.label}</span>
             {count > 0 ? <span className="admin-nav-badge">{count}</span> : null}
           </Link>

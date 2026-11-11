@@ -1,25 +1,26 @@
-// Palette "Vicinato" (sostituisce "Scheda Intervento", CLAUDE.md §19):
-// pesca caldo, verde smeraldo come accento primario, angoli morbidi,
-// ombra soffice al posto dei filetti — stessi NOMI di chiave di prima
+// Palette A "Verde fiducia e terracotta" (scelta di Luca dell'11/11/2026,
+// docs/changelog/2026-11-11-palette-e-figtree.md, prima "Vicinato" pesca):
+// fondo color carta, verde per pulsanti e link, terracotta per i segni di
+// fiducia, angoli morbidi, ombra soffice al posto dei filetti — stessi NOMI di chiave di prima
 // (mai rinominare/rimuovere: ~50 file in tutto il sito referenziano
 // `brand.grafite`/`brand.cianografia`/ecc., ricolorare qui basta a
 // ripropagare il nuovo stile ovunque senza toccare quei file uno per
 // uno). Valori grezzi esportati (oltre ai token Tamagui in config.ts) per
 // i punti che devono scriverli in CSS puro invece che via prop Tamagui.
 export const brand = {
-  gesso: "#FDEFE1",
+  gesso: "#F7F3EE",
   calce: "#FFFFFF",
-  grafite: "#2B2420",
-  grafite70: "#6E6459",
+  grafite: "#1B1A18",
+  grafite70: "#5E5A54",
   // Non più un vero filetto strutturale (i pannelli usano ombra soffice
   // al suo posto, vedi shadowVicinato sotto) — resta come tinta di bordo
   // leggerissima per i pochi punti che ne hanno ancora bisogno (es. campi
   // di input).
-  filetto: "#F0DCC0",
+  filetto: "#E7E0D7",
   // Bordo di campi, menu a tendina e caselle di spunta in tutto il sito
   // (docs/CHANGELOG.md §278-§279): 3,2:1 su bianco, il minimo perché si veda
   // dove scrivere (il filetto è 1,3:1). Il filetto resta per i divisori.
-  bordoCampo: "#9C8E7F",
+  bordoCampo: "#8E867C",
   cianografia: "#189A63",
   // Verde dei testi verdi piccoli e dei link (5,4:1 su bianco, WCAG AA).
   // Sfondi, hero e pulsanti restano su cianografia (docs/CHANGELOG.md §172,
@@ -30,17 +31,25 @@ export const brand = {
   // che serve ai testi di 16 px; questo tono, appena più scuro, arriva a 4,7:1.
   cianografiaPieno: "#128552",
   cianografiaVelo: "#DCF3E7",
-  // Verde muto, volutamente distinto dal verde smeraldo (cianografia,
-  // usato per i CTA): un badge "Verificato" non deve confondersi con un
-  // bottone d'azione.
-  verificato: "#3D6B3E",
-  urgenza: "#C8362B",
+  // Verde scuro di "fatto" (salvato, confermato, pagato, lavoro concluso),
+  // volutamente distinto dal verde dei pulsanti (cianografia): un messaggio
+  // di conferma non deve confondersi con un bottone d'azione. 6,3:1 su
+  // bianco. Il nome resta per i ~60 punti che lo usano; il bollino
+  // "Verificato" ora è terracotta (sotto).
+  verificato: "#0E6B42",
+  // Terracotta della palette A (docs/changelog/2026-11-11-palette-e-figtree.md):
+  // solo per i segni di fiducia, cioè il bollino "Verificato" e "Lavoro fatto
+  // tramite il sito", mai per pulsanti o messaggi. 5,6:1 sul fondo carta,
+  // 5,0:1 sulla sua tinta chiara.
+  terracotta: "#A3441F",
+  terracottaVelo: "#F6E3D9",
+  urgenza: "#B42318",
   // Tinta chiara di sfondo per segnalare un conflitto/errore (es. due fasce
   // dell'agenda sovrapposte), stesso principio di cianografiaVelo: colore
-  // pieno solo per bordi/testo, mai per sfondi estesi. Rosso invariato
-  // rispetto alla palette precedente: convenzione universale per
-  // distruttivo/urgente, cambiarlo confonderebbe l'utente.
-  urgenzaVelo: "#FBEAE7",
+  // pieno solo per bordi/testo, mai per sfondi estesi. Resta rosso
+  // (convenzione universale per distruttivo/urgente), appena più freddo per
+  // stare con la palette A.
+  urgenzaVelo: "#FDE8E6",
   ottone: "#D9A441",
   // Testo e icone sull'ottone chiaro (categoria principale in registrazione,
   // docs/CHANGELOG.md §248): l'ottone pieno sul chiaro non si legge. È l'unico
@@ -51,7 +60,7 @@ export const brand = {
   // Tinta chiara di sfondo per il badge "Sponsorizzato" (boost a pagamento in
   // ricerca) — stesso principio di cianografiaVelo/urgenzaVelo: colore
   // pieno solo per bordi/testo, mai per sfondi estesi.
-  ottoneVelo: "#F6ECD9",
+  ottoneVelo: "#FBF0D9",
 } as const;
 
 // Ombra soffice unica, usata al posto del filetto hairline sui pannelli

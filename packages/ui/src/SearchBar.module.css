@@ -22,7 +22,7 @@
   position: relative;
   flex-direction: row;
   gap: var(--t-space-2);
-  background-color: rgb(253, 239, 225);
+  background-color: rgb(247, 243, 238);
   border-radius: var(--t-radius-10);
   padding: var(--t-space-1);
   align-self: flex-start;
@@ -57,7 +57,7 @@
   color: white;
 }
 .tabLabelIdle {
-  color: rgb(110, 100, 89);
+  color: rgb(94, 90, 84);
 }
 
 .fields {
@@ -72,13 +72,13 @@
   width: 1px;
   height: 44px;
   margin-bottom: 4px;
-  background-color: rgb(240, 220, 192);
+  background-color: rgb(231, 224, 215);
   display: none;
 }
 
 .onlineHelp {
   font-size: 13px;
-  color: rgb(110, 100, 89);
+  color: rgb(94, 90, 84);
 }
 
 @media (max-width: 660px) {
@@ -199,7 +199,7 @@
 .menuItemLabel {
   font-size: 15px;
   font-weight: 400;
-  color: rgb(43, 36, 32);
+  color: rgb(27, 26, 24);
   flex: 1 1 auto;
 }
 .menuItemLabelActive {
