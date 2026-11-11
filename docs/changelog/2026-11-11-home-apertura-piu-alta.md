@@ -14,3 +14,10 @@ px). Il resto dell'apertura non cambia.
 390×844 (titolo da 135 a 104 px da computer, da 135 a 96 da telefono), foto
 prima/dopo in `anteprime/home-caroselli-apple/alto*` della cartella del
 progetto.
+
+**"Non trovi il tuo lavoro?" torna in fondo alla riga delle categorie**
+(stesso giorno): a Luca non piaceva come prima scheda (docs/changelog/2026-11-11-home-caroselli-larghi.md,
+terzo giro). Le foto dei mestieri si vedono subito, e chi non trova il suo
+mestiere trova l'uscita dopo l'ultima categoria. Tolti gli `order` del
+telefono, che ora non servono più: anche lì la scheda è l'ultima, dopo "Mostra
+altre N categorie", come prima.
