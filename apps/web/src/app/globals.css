@@ -226,7 +226,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   transform: translateY(-6px);
 }
 
-/* Magnete e alone del pulsante principale della home (MagneticButton). */
+/* Magnete del pulsante principale della home (MagneticButton). */
 .magnet {
   display: inline-flex;
   transform: translate(var(--tx), var(--ty));
@@ -244,19 +244,9 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
 .magnet[data-active="true"] {
   transition-duration: 120ms;
 }
-/* Ombre a strati sui pulsanti verdi in cima alla home e nell'intestazione:
-   un filo scuro sotto il bordo e un'ombra morbida colorata, senza riflesso
-   chiaro in alto (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md). */
-.home-hero-panel .magnet button.is_Button,
-.site-header-cta-link button.is_Button {
-  box-shadow:
-    inset 0 -2px 0 rgba(0, 0, 0, 0.14),
-    0 1px 2px rgba(30, 54, 48, 0.28),
-    0 10px 22px -8px rgba(37, 71, 62, 0.7);
-}
-.magnet[data-active="true"] button.is_Button {
-  background-image: radial-gradient(circle 90px at var(--mx) var(--my), rgba(255, 255, 255, 0.3), transparent 70%);
-}
+/* Pulsanti piatti come su apple.com: niente ombra colorata sotto e niente
+   alone che segue il cursore (scelta di Luca dell'11/11/2026,
+   docs/changelog/2026-11-11-palette-e-figtree.md). Il magnete resta. */
 
 /* "Richiedi un preventivo a [nome]" nel profilo pubblico (ProfileQuoteCta):
    da computer largo quanto il testo, da telefono tutta la larghezza. Quando
@@ -8796,22 +8786,19 @@ a.admin-kpi:hover {
   background: rgba(64, 119, 106, 0.1);
 }
 
-/* Bordo che si riempie (richiesta di Luca del 04/11, riferimento
-   miodottore.it, docs/changelog/2026-11-04-bordo-e-tendine.md): passando col
-   mouse su un orario libero dell'agenda, sulle voci dei menu e sui pulsanti
-   accanto ai risultati, un filo verde corre lungo il bordo da sinistra a
-   destra (200 ms: sotto i 300 ms consigliati dalla skill web-animation-design
-   per i gesti ripetuti spesso). Un solo disegno per tutto il sito:
+/* Passaggio del mouse come su apple.com (scelta di Luca dell'11/11/2026,
+   docs/changelog/2026-11-11-palette-e-figtree.md): sulle voci dei menu, sugli
+   orari liberi e sui pulsanti accanto ai risultati compare solo una velatura
+   leggera, in 150 ms. Prima (04/11, riferimento miodottore.it) un filo verde
+   correva lungo il bordo da sinistra a destra: a Luca non piaceva più.
+   Stesse classi di prima, per non toccare i componenti:
    - `.hover-ring` sul pulsante stesso;
    - `.hover-ring-host` sul riquadro che si clicca e `.hover-ring-target`
-     sulla pillola da contornare (orari: si clicca tutta la cella);
-   - le voci dei menu (`.acct-nav-link`, `.acct-menu-link`, `.mega-item`) lo
-     hanno già qui, senza toccare i componenti.
-   Solo con il mouse (`hover: hover` e `pointer: fine`): sul telefono un tocco non lascia un
-   bordo appeso. Il filo è un `::after` sopra il pulsante, non un bordo vero:
-   niente spostamenti dell'impaginazione. `--hover-ring-inset: -1px` sui
-   pulsanti che hanno già un bordo, così il filo lo copre invece di
-   affiancarlo. Con "riduci movimento" il filo compare subito, senza corsa. */
+     sulla pillola da velare (orari: si clicca tutta la cella);
+   - le voci dei menu (`.acct-nav-link`, `.acct-menu-link`, `.mega-item`).
+   Solo con il mouse (`hover: hover` e `pointer: fine`): sul telefono un tocco
+   non lascia la velatura appesa. È un `::after` sopra il pulsante: niente
+   spostamenti dell'impaginazione. */
 .hover-ring,
 .hover-ring-target,
 .acct-nav-link,
@@ -8826,10 +8813,9 @@ a.admin-kpi:hover {
 .mega-item::after {
   content: "";
   position: absolute;
-  inset: var(--hover-ring-inset, 0);
+  inset: 0;
   border-radius: inherit;
-  box-shadow: inset 0 0 0 1.5px var(--hover-ring-color, #40776a);
-  clip-path: inset(0 100% 0 0);
+  background: var(--hover-tint, rgba(27, 26, 24, 0.05));
   opacity: 0;
   pointer-events: none;
 }
@@ -8839,7 +8825,6 @@ a.admin-kpi:hover {
   .acct-nav-link:hover::after,
   .acct-menu-link:hover::after,
   .mega-item:hover::after {
-    clip-path: inset(0 0 0 0);
     opacity: 1;
   }
 }
@@ -8849,17 +8834,11 @@ a.admin-kpi:hover {
   .acct-nav-link::after,
   .acct-menu-link::after,
   .mega-item::after {
-    transition:
-      clip-path 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
-      opacity 100ms ease-out;
+    transition: opacity 150ms ease-out;
   }
 }
 .acct-menu-logout .acct-menu-link {
-  --hover-ring-color: #dc3545;
-}
-.filters-toggle.hover-ring,
-.map-expand-toggle.hover-ring {
-  --hover-ring-inset: -1px;
+  --hover-tint: rgba(180, 35, 24, 0.06);
 }
 
 /* Tendine che si aprono morbide (stessa richiesta): le caselle con i

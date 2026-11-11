@@ -24,6 +24,19 @@ sito subito, senza aspettare nome e logo, dopo la home stile Apple (#319).
   destra e verde in basso a sinistra (prima verde in alto e ottone in basso,
   colori invertiti su richiesta di Luca); anche la luce chiara di "Richiesta
   inviata" passa dall'ottone alla terracotta.
+- Verde del marchio **cipresso pastello `#40776A`** (scelta di Luca tra cinque
+  verdi e poi tra tre cipressi più chiari, analisi in
+  `analisi/identita/colori/palette.md` della cartella del progetto): i verdi
+  accesi di prima (#128552 e famiglia, tinta 154°) erano quelli di Spotify,
+  WhatsApp e Fineco. Tutte le tinte verdi del sito spostate sulla stessa
+  famiglia (165°, meno sature): pieno `#40776A` (bianco 5,2:1), link
+  `#386C5F` (5,4:1 sul crema), velo `#E1EEEB`, "fatto" `#325F54`.
+- Titoli h1-h3 in verde inchiostro `brand.inchiostro` `#0F3B2C` (11,3:1).
+- Pulsanti piatti come su apple.com: tolti l'ombra colorata sotto e l'alone
+  che segue il cursore (il magnete resta). Al passaggio del mouse su menu,
+  orari e pulsanti dei risultati il filo verde che correva lungo il bordo
+  (04/11) diventa una velatura leggera in 150 ms. Pulsanti di acquisto neri
+  con il cerchio rosso: restano (Luca, 11/11).
 - Rosso `#B42318` (prima `#C8362B`) con velo `#FDE8E6`, anche nelle email.
 - Colori delle categorie (`CATEGORY_ACCENT` in
   `apps/web/src/components/icons/CategoryIcons.tsx`) dalla palette, uno per
