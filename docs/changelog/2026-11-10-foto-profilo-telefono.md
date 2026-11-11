@@ -1,0 +1,13 @@
+# Foto profilo ingrandita e spazio sotto la foto (profilo pubblico da telefono)
+
+**Richiesta** (Luca, 10/11/2026, thread "Sistemare foto ingrandita e spazio nel profilo", con due foto da iPhone e Safari): toccando la foto profilo nella pagina `/professionista/[id]` la foto ingrandita usciva un po' a destra dello schermo; sotto la foto, a sinistra, restava un grande spazio vuoto mentre nome, mestieri, bollini, avviso "Privato" e recensioni scendevano in una colonna stretta a destra.
+
+**Decisione**:
+- `PhotoLightbox`: con una foto sola non c'è più la riga che scorre (scroll-snap), solo la foto al centro dello schermo (`.lightbox-single`). Foto e video si misurano in percentuale del riquadro (`.lightbox-media`, `max-width/max-height: 100%`) dentro un margine fisso (64 px sopra e sotto per la X, `max(16px, 5%)` ai lati), non più in `90vw`/`85vh`. Vale per tutte le gallerie (recensioni, lavori svolti, chat): la riga che scorre resta per due o più foto.
+- Scheda identità del profilo, fino a 660 px: griglia con foto, nome con mestieri e città, e icone (salva, condividi, segnala) in alto; bollini, avviso "Privato", recensioni e "lavori terminati / risponde" sotto a tutta larghezza. I due contenitori in mezzo usano `display: contents`, l'ordine letto dal lettore di schermo non cambia. Sotto i 360 px foto e icone in alto, nome sotto (come prima, collaudo E6-05). La foto resta verticale 3:4 accanto al nome (scelte di Luca, 2026-11-04-prezzi-e-foto-profilo.md).
+- Avviso "Privato" (scelto da Luca dopo la proposta nel thread): una riga breve, "Lavora da privato: i diritti del consumatore non valgono." (`TRADER_STATUS_COPY.PRIVATE.short`), e il testo intero dietro "Scopri di più" (`LearnMore`). Il punto chiave resta scritto in chiaro come chiede l'art. 49-bis (badge-professionista); il testo lungo resta uguale nel riepilogo del preventivo, nel PDF e nelle email.
+- Da computer la città passa subito sotto i mestieri, prima dei bollini (stesso blocco "chi è e dove lavora" del telefono).
+
+**Causa dello spostamento**: in Chromium la foto era già centrata, il difetto si vede solo su Safari per iPhone; non è stato possibile provarlo su WebKit in questo ambiente. La correzione toglie entrambe le cose che Safari tratta in modo diverso con una foto sola (riga a scorrimento con aggancio al centro e misure in `vw`): va ricontrollata su iPhone vero dopo il deploy.
+
+**Verifica**: foto prima/dopo in `anteprime/foto-profilo-telefono/` della cartella del progetto (telefono 393 px, telefono 340 px, computer 1280 px, foto ingrandita). Margini della foto ingrandita uguali a destra e sinistra su telefono e computer. `tsc`, eslint e `controlla-style-jsx` puliti.

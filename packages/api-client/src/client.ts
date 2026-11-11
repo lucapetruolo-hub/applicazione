@@ -294,6 +294,8 @@ export type ClientGuidedRequest = {
   address: string | null;
   /** Valorizzato solo se la richiesta è diretta al profilo di un professionista specifico, `null` per una richiesta generica (fan-out categoria+città) — richiesta esplicita dell'utente: "prezzo totale medio" si mostra solo su queste ultime. */
   professionalProfileId: string | null;
+  /** I 2-5 professionisti scelti nei risultati (docs/CHANGELOG.md §393), vuoto per le altre richieste: "Ripeti la richiesta" li ripropone. */
+  chosenProfileIds: string[];
   /**
    * Destinatario + resto dell'indirizzo strutturato, raccolti fin dalla
    * richiesta (richiesta esplicita dell'utente) — visibili solo al
@@ -2148,9 +2150,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         body: JSON.stringify(input),
       }),
 
-    /** "Aggiungi al calendario" del cliente (docs/CHANGELOG.md §346): link di Google Calendar e file .ics. */
+    /** "Aggiungi al calendario" del cliente (docs/CHANGELOG.md §346): link di Google Calendar e link firmato al file .ics sul sito. */
     bookingCalendar: (token: string, bookingId: string) =>
-      request<{ googleUrl: string | null; ics: string }>(`/bookings/${bookingId}/calendar`, { headers: { Authorization: `Bearer ${token}` } }),
+      request<{ googleUrl: string | null; icsUrl: string | null }>(`/bookings/${bookingId}/calendar`, { headers: { Authorization: `Bearer ${token}` } }),
 
     /** "Sto arrivando" (docs/CHANGELOG.md §288): avvisa il cliente, una volta sola. */
     notifyOnTheWay: (token: string, bookingId: string) =>

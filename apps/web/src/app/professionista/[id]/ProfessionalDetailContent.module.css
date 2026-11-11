@@ -113,6 +113,49 @@
   min-width: 0;
 }
 
+.identityHead,
+.identityDetails {
+  position: relative;
+  flex-direction: column;
+  gap: var(--t-space-2);
+  min-width: 0;
+}
+
+/* Da telefono (docs/changelog/2026-11-10-foto-profilo-telefono.md): foto,
+   nome con mestieri e città, e le icone in una riga in alto; bollini, avviso
+   "Privato", recensioni e numeri sotto a tutta larghezza, invece di una
+   colonna stretta a destra con un vuoto sotto la foto. Griglia sulla scheda,
+   i due contenitori in mezzo spariscono (`display: contents`) così il
+   lettore di schermo legge sempre lo stesso ordine. */
+@media (max-width: 660px) {
+  .identity.identity {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "photo head actions"
+      "details details details";
+    column-gap: var(--t-space-3);
+    row-gap: var(--t-space-4);
+    align-items: start;
+  }
+  .identity .identityMain,
+  .identity .identityText {
+    display: contents;
+  }
+  .identity .identityMain > .stack {
+    grid-area: photo;
+  }
+  .identity .identityHead {
+    grid-area: head;
+  }
+  .identity .identityDetails {
+    grid-area: details;
+  }
+  .identity > .actions {
+    grid-area: actions;
+  }
+}
+
 .name {
   margin: 0;
   font-family: var(--f-family);
@@ -690,15 +733,18 @@
   opacity: 0.5;
 }
 
-/* Sotto i 360 px (o testo ingrandito): foto sopra e nome sotto a tutta
-   larghezza, invece di "Idraulic-a Pagam-enti" su cinque righe (collaudo
-   dell'8/11, E6-05). */
+/* Sotto i 360 px (o testo ingrandito): foto e icone in alto, nome sotto a
+   tutta larghezza, invece di "Idraulic-a Pagam-enti" su cinque righe
+   (collaudo dell'8/11, E6-05). */
 @media (max-width: 359px) {
-  .identityMain {
-    flex-direction: column;
+  .identity.identity {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "photo actions"
+      "head head"
+      "details details";
   }
-  .identityMain > .identityText {
-    align-self: stretch;
-    width: 100%;
+  .identity > .actions {
+    justify-self: end;
   }
 }

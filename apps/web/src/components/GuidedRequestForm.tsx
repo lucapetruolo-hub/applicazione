@@ -1,7 +1,7 @@
 "use client";
 
 import { useDeferredValue, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { X } from "lucide-react";
 import {
@@ -33,10 +33,11 @@ import {
 } from "@professionisti/shared";
 import { Autocomplete, Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { MagneticButton } from "./MagneticButton";
-import type { LastRequestAddress } from "@professionisti/api-client";
+import { ApiError, type LastRequestAddress } from "@professionisti/api-client";
 import { CATEGORY_WHO, joinWithOr } from "@/lib/problemChoices";
 import { apiClient } from "@/lib/apiClient";
 import { cameFromPersonalLink } from "@/lib/personalLink";
+import { setChosenParams } from "@/lib/chosenParams";
 import { useAuth } from "@/lib/AuthContext";
 import { useStepFocus } from "@/lib/useStepFocus";
 import { MediaPreview } from "@/components/MediaPreview";
@@ -49,6 +50,7 @@ import { UploadingDots } from "@/components/UploadingDots";
 import { GuidedRequestSkeleton } from "@/components/PageLoading";
 import { ButtonWaitBar } from "@/components/WaitBar";
 import { CategoryTiles } from "@/components/CategoryTiles";
+import { WeekSlotPicker } from "@/components/WeekSlotPicker";
 import { SafetyNotice } from "@/components/ProblemBand";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { useComuni } from "@/lib/comuniLazy";
@@ -106,14 +108,6 @@ function flattenPickableSlots(agenda: ProfessionalAgenda, mode: "HOME" | "ONLINE
 function pickableSlotValue(slot: Pick<PickableAgendaSlot, "date" | "startTime" | "endTime">): string {
   return `${slot.date}|${slot.startTime}-${slot.endTime}`;
 }
-
-/** Giorno della fascia, breve: "mar 28 ott". */
-function pickableSlotDay(date: string): string {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
-}
-
-/** Quanti giorni mostra "Altri orari" alla volta (docs/CHANGELOG.md §349). */
-const SLOT_DAYS_PAGE = 7;
 
 function pickableSlotLabel(slot: PickableAgendaSlot): string {
   const date = new Date(`${slot.date}T00:00:00Z`);
@@ -326,7 +320,6 @@ export function GuidedRequestForm({
   const [selectedSlotValue, setSelectedSlotValue] = useState(preferredDate && preferredTimeSlot ? `${preferredDate}|${preferredTimeSlot}` : "");
   // "Altri orari": quanti giorni dell'agenda sono aperti sotto i primi tre
   // orari liberi (0 = chiusi, docs/CHANGELOG.md §349).
-  const [slotDaysShown, setSlotDaysShown] = useState(0);
   // Tipo di intervento (richiesta esplicita dell'utente: "in modo che il
   // professionista già sa se può trattarsi di un intervento a domicilio o
   // online") — obbligatorio (a differenza della foto/video, non più
@@ -425,11 +418,41 @@ export function GuidedRequestForm({
   // categoria) e con il solo id la pagina tornava generica. I parametri
   // restano come valore iniziale, finché la risposta non arriva.
   const [professional, setProfessional] = useState<ProfessionalDetail | null>(null);
+  // A chi va la richiesta si cambia dal modulo con la X accanto a ogni
+  // professionista (anche quelli riproposti da "Ripeti la richiesta"): il
+  // link si riscrive come dai risultati, uno solo = richiesta diretta,
+  // nessuno = richiesta generale
+  // (docs/changelog/2026-11-10-ripeti-richiesta-scelti.md).
+  const router = useRouter();
+  const pathname = usePathname();
+  const [targetNotice, setTargetNotice] = useState("");
+  // Nome, foto e se accettano richieste dei professionisti scelti (§393).
+  const [chosenPros, setChosenPros] = useState<ProfessionalDetail[]>([]);
+  function sendOnlyTo(remaining: { id: string; businessName: string; imageUrl: string | null }[], notice: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    setChosenParams(params, remaining);
+    // La fascia dell'agenda era di quel professionista: senza di lui non vale più.
+    if (professionalProfileId && remaining[0]?.id !== professionalProfileId) {
+      params.delete("data");
+      params.delete("fasciaOraria");
+      setSelectedSlotValue("");
+      setPickableSlots([]);
+      setLinkSlotGone(false);
+      setViaPersonalLink(false);
+      setForwardIfNoReply(true);
+      setProfessional(null);
+    }
+    setChosenPros((current) => current.filter((pro) => remaining.some((kept) => kept.id === pro.id)));
+    setTargetNotice(notice);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
   useEffect(() => {
     if (!professionalProfileId) return;
+    let stale = false;
     apiClient
       .getProfessional(professionalProfileId)
       .then((detail) => {
+        if (stale) return;
         setProfessional(detail);
         // Con più categorie (docs/CHANGELOG.md §217) resta quella del link
         // se è una delle sue, altrimenti la principale.
@@ -437,17 +460,48 @@ export function GuidedRequestForm({
           current && detail.categories?.some((category) => category.slug === current) ? current : detail.categorySlug,
         ]);
       })
-      .catch(() => undefined);
+      .catch((error: unknown) => {
+        // Non più sul sito (eliminato, sospeso, non visibile): si toglie
+        // subito, invece di farlo scoprire all'invio.
+        if (stale || !(error instanceof ApiError) || error.status !== 404) return;
+        sendOnlyTo([], `${professionalName ?? "Il professionista che avevi scelto"} non è più sul sito: la richiesta andrà ai professionisti della zona.`);
+      });
+    return () => {
+      stale = true;
+    };
+    // sendOnlyTo cambia a ogni disegno: conta solo il professionista.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [professionalProfileId]);
   const shownProfessionalName = professional?.businessName ?? professionalName;
-  // Nome, foto e se accettano richieste dei professionisti scelti (§393).
-  const [chosenPros, setChosenPros] = useState<ProfessionalDetail[]>([]);
   useEffect(() => {
     if (!chosenParam) return;
+    let stale = false;
     const ids = chosenParam.split(",").slice(0, MAX_CHOSEN_PROFESSIONALS);
-    Promise.all(ids.map((id) => apiClient.getProfessional(id).catch(() => null)))
-      .then((details) => setChosenPros(details.filter((detail): detail is ProfessionalDetail => Boolean(detail))))
+    Promise.all(
+      ids.map((id) =>
+        apiClient.getProfessional(id).catch((error: unknown) => (error instanceof ApiError && error.status === 404 ? ("gone" as const) : null)),
+      ),
+    )
+      .then((results) => {
+        if (stale) return;
+        const found = results.filter((detail): detail is ProfessionalDetail => Boolean(detail) && detail !== "gone");
+        setChosenPros(found);
+        const gone = results.filter((detail) => detail === "gone").length;
+        // Chi non è più sul sito si toglie da solo (succede con "Ripeti la richiesta").
+        if (gone > 0) {
+          sendOnlyTo(
+            found,
+            `${gone === 1 ? "Un professionista che avevi scelto non è più" : `${gone} professionisti che avevi scelto non sono più`} sul sito: ${
+              found.length === 0 ? "la richiesta andrà ai professionisti della zona." : gone === 1 ? "l'abbiamo tolto." : "li abbiamo tolti."
+            }`,
+          );
+        }
+      })
       .catch(() => undefined);
+    return () => {
+      stale = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chosenParam]);
   const chosenNames = chosenPros.map((pro) => pro.businessName);
   const chosenPaused = chosenPros.filter((pro) => !pro.acceptingRequests);
@@ -1222,7 +1276,7 @@ export function GuidedRequestForm({
               <XStack
                   alignItems="center"
                   gap="3"
-                  alignSelf="flex-start"
+                  alignSelf="stretch"
                   backgroundColor={brand.calce}
                   borderWidth={1}
                   borderColor={brand.filetto}
@@ -1231,7 +1285,7 @@ export function GuidedRequestForm({
                   paddingVertical="3"
                 >
                 <ProfessionalAvatar imageUrl={shownProfessionalImage} categorySlug={selectedCategory?.slug ?? categorySlug} size={48} />
-                <YStack>
+                <YStack flex={1} minWidth={0}>
                   <Text fontSize={13} color={brand.grafite70}>
                     Stai inviando una richiesta a
                   </Text>
@@ -1256,22 +1310,40 @@ export function GuidedRequestForm({
                     </Text>
                   ) : null}
                 </YStack>
+                <RemoveChosenButton
+                  name={shownProfessionalName}
+                  onPress={() => sendOnlyTo([], `Hai tolto ${shownProfessionalName}: la richiesta andrà ai professionisti della zona.`)}
+                />
               </XStack>
               {professional && !professional.acceptingRequests ? (
                 // Account in pausa per l'abbonamento (docs/CHANGELOG.md §162): il server rifiuterebbe l'invio.
                 <Text color={brand.urgenza} fontWeight="700">
-                  {shownProfessionalName} al momento non accetta nuove richieste. Puoi inviarla ai professionisti della tua zona dalla{" "}
-                  <Link href={`/preventivo?categoria=${professional.categorySlug}`}>richiesta di preventivo</Link>.
+                  {shownProfessionalName} al momento non accetta nuove richieste. Toglilo con la X: la richiesta andrà ai professionisti della tua zona.
                 </Text>
               ) : (
                 <Text color={brand.grafite70}>Descrivi il lavoro: la richiesta arriva a {shownProfessionalName}.</Text>
               )}
             </>
           ) : chosenMode ? (
-            <ChosenProsHeading pros={chosenPros} count={chosenIds.length} categorySlug={selectedCategory?.slug ?? categorySlug} paused={chosenPaused} />
+            <ChosenProsHeading
+              pros={chosenPros}
+              count={chosenIds.length}
+              categorySlug={selectedCategory?.slug ?? categorySlug}
+              paused={chosenPaused}
+              onRemove={(removed) =>
+                sendOnlyTo(
+                  chosenPros.filter((pro) => pro.id !== removed.id),
+                  `Hai tolto ${removed.businessName}: ${chosenIds.length - 1 === 1 ? "la richiesta va solo all'altro professionista." : `la richiesta va ai ${chosenIds.length - 1} rimasti.`}`,
+                )
+              }
+            />
           ) : (
             <Text color={brand.grafite70}>{subtitle}</Text>
           )}
+          {/* Sempre nella pagina, così i lettori di schermo leggono l'avviso quando compare. */}
+          <Text role="status" color={brand.grafite70} fontSize={14} display={targetNotice ? "flex" : "none"}>
+            {targetNotice}
+          </Text>
         </YStack>
 
         {generalClosed ? (
@@ -1500,10 +1572,9 @@ export function GuidedRequestForm({
         {professionalProfileId && displaySlots.length > 0 ? (
           <YStack gap="2">
             <FieldLabel>Data e orario dell&apos;appuntamento (facoltativo)</FieldLabel>
-            {/* Pillole con i primi tre orari liberi e "Altri orari", al posto
-                del menu a tendina nativo che stonava con il resto del modulo
-                (docs/CHANGELOG.md §349). L'orario scelto dall'agenda resta
-                selezionato e in vista anche se non è tra i primi tre. */}
+            {/* Pillole al posto del menu a tendina nativo che stonava con il
+                resto del modulo (docs/CHANGELOG.md §349). L'orario scelto
+                dall'agenda resta selezionato e la sua settimana in vista. */}
             {linkSlotGone && !selectedSlotValue ? (
               <Text fontSize={16} fontWeight="600" color={brand.urgenza}>
                 L&apos;orario del link non è più disponibile: scegline un altro qui sotto.
@@ -1512,13 +1583,16 @@ export function GuidedRequestForm({
             <Text fontSize={13} color={brand.grafite70}>
               Scegli un orario libero o lascia senza preferenza: non è ancora un appuntamento.
             </Text>
-            <SlotPills
-              slots={displaySlots}
-              selected={selectedSlotValue}
-              onSelect={setSelectedSlotValue}
-              daysShown={slotDaysShown}
-              onShowMoreDays={() => setSlotDaysShown((shown) => shown + SLOT_DAYS_PAGE)}
-            />
+            {/* Stesso elenco del preventivo: una settimana alla volta, un
+                giorno per riga (docs/changelog/2026-11-10-date-del-preventivo.md). */}
+            <div className="slot-picker">
+              <div className="slot-pills" role="radiogroup" aria-label="Preferenza di orario">
+                <button type="button" role="radio" aria-checked={selectedSlotValue === ""} className={`slot-pill${selectedSlotValue === "" ? " is-on" : ""}`} onClick={() => setSelectedSlotValue("")}>
+                  Nessuna preferenza
+                </button>
+              </div>
+              <WeekSlotPicker slots={displaySlots} selectedKey={selectedSlotValue} keyOf={pickableSlotValue} onSelect={setSelectedSlotValue} label="Data e orario dell'appuntamento" />
+            </div>
           </YStack>
         ) : null}
 
@@ -2283,76 +2357,6 @@ function SendOptionSwitch({
 
 
 /**
- * Orari liberi del professionista a pillole (docs/CHANGELOG.md §349): i primi
- * tre e "Nessuna preferenza" sempre in vista, gli altri giorno per giorno con
- * "Altri orari", una settimana alla volta.
- */
-function SlotPills({
-  slots,
-  selected,
-  onSelect,
-  daysShown,
-  onShowMoreDays,
-}: {
-  slots: PickableAgendaSlot[];
-  selected: string;
-  onSelect: (value: string) => void;
-  daysShown: number;
-  onShowMoreDays: () => void;
-}) {
-  const quick = slots.slice(0, 3);
-  const selectedSlot = selected ? slots.find((slot) => pickableSlotValue(slot) === selected) : undefined;
-  // L'orario scelto resta in vista anche quando non è tra i primi tre.
-  const pinned = selectedSlot && !quick.includes(selectedSlot) && daysShown === 0 ? [selectedSlot, ...quick] : quick;
-  const days: { date: string; slots: PickableAgendaSlot[] }[] = [];
-  for (const slot of slots) {
-    const last = days[days.length - 1];
-    if (last && last.date === slot.date) last.slots.push(slot);
-    else days.push({ date: slot.date, slots: [slot] });
-  }
-  const pill = (slot: PickableAgendaSlot, label: string) => {
-    const value = pickableSlotValue(slot);
-    return (
-      <button key={value} type="button" role="radio" aria-checked={selected === value} className={`slot-pill${selected === value ? " is-on" : ""}`} onClick={() => onSelect(value)}>
-        {label}
-      </button>
-    );
-  };
-  return (
-    <div className="slot-picker">
-      <div className="slot-pills" role="radiogroup" aria-label="Data e orario dell'appuntamento">
-        <button type="button" role="radio" aria-checked={selected === ""} className={`slot-pill${selected === "" ? " is-on" : ""}`} onClick={() => onSelect("")}>
-          Nessuna preferenza
-        </button>
-        {daysShown === 0 ? pinned.map((slot) => pill(slot, `${pickableSlotDay(slot.date)} · ${slot.startTime}–${slot.endTime}`)) : null}
-      </div>
-      {daysShown === 0 && slots.length > quick.length ? (
-        <button type="button" className="slot-more" onClick={onShowMoreDays}>
-          Altri orari
-        </button>
-      ) : null}
-      {daysShown > 0 ? (
-        <div className="slot-days">
-          {days.slice(0, daysShown).map((day) => (
-            <div key={day.date} className="slot-day">
-              <span className="slot-day-label">{pickableSlotDay(day.date)}</span>
-              <div className="slot-pills" role="radiogroup" aria-label={`Orari di ${pickableSlotDay(day.date)}`}>
-                {day.slots.map((slot) => pill(slot, `${slot.startTime}–${slot.endTime}`))}
-              </div>
-            </div>
-          ))}
-          {days.length > daysShown ? (
-            <button type="button" className="slot-more" onClick={onShowMoreDays}>
-              Altri giorni
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-/**
  * Riquadro "Stai inviando la richiesta a" con i professionisti scelti nei
  * risultati (docs/CHANGELOG.md §393), come quello del professionista
  * singolo. Chi nel frattempo non accetta richieste è detto per nome: il
@@ -2363,11 +2367,13 @@ function ChosenProsHeading({
   count,
   categorySlug,
   paused,
+  onRemove,
 }: {
   pros: ProfessionalDetail[];
   count: number;
   categorySlug: string;
   paused: ProfessionalDetail[];
+  onRemove: (pro: ProfessionalDetail) => void;
 }) {
   return (
     <>
@@ -2387,7 +2393,7 @@ function ChosenProsHeading({
         {pros.map((pro) => (
           <XStack key={pro.id} alignItems="center" gap="3">
             <ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug || categorySlug} size={40} />
-            <YStack flexShrink={1}>
+            <YStack flex={1} minWidth={0}>
               <Text fontFamily="heading" fontWeight="800" fontSize="4" color={brand.grafite}>
                 {pro.businessName}
               </Text>
@@ -2400,18 +2406,43 @@ function ChosenProsHeading({
                   .join(" · ")}
               </Text>
             </YStack>
+            <RemoveChosenButton name={pro.businessName} onPress={() => onRemove(pro)} />
           </XStack>
         ))}
       </YStack>
       {paused.length > 0 ? (
         <Text color={brand.urgenza} fontWeight="700">
           {new Intl.ListFormat("it-IT", { type: "conjunction" }).format(paused.map((pro) => pro.businessName))}{" "}
-          {paused.length === 1 ? "al momento non accetta" : "al momento non accettano"} nuove richieste: torna ai risultati e{" "}
-          {paused.length === 1 ? "toglilo" : "toglili"} dalla scelta.
+          {paused.length === 1 ? "al momento non accetta" : "al momento non accettano"} nuove richieste:{" "}
+          {paused.length === 1 ? "toglilo" : "toglili"} con la X.
         </Text>
       ) : (
         <Text color={brand.grafite70}>Descrivi il lavoro: la richiesta arriva solo a loro, e confronti i preventivi.</Text>
       )}
     </>
+  );
+}
+
+/**
+ * X per togliere un professionista dalla richiesta (docs/changelog/2026-11-10-ripeti-richiesta-scelti.md):
+ * 44 px da toccare col dito, come gli altri pulsanti del modulo.
+ */
+function RemoveChosenButton({ name, onPress }: { name: string | undefined; onPress: () => void }) {
+  return (
+    <XStack
+      width={44}
+      height={44}
+      flexShrink={0}
+      borderRadius={22}
+      alignItems="center"
+      justifyContent="center"
+      cursor="pointer"
+      backgroundColor={`transparent hover:${brand.gesso} press:${brand.filetto}`}
+      onPress={onPress}
+      role="button"
+      aria-label={name ? `Togli ${name} dalla richiesta` : "Togli il professionista dalla richiesta"}
+    >
+      <X size={20} strokeWidth={2} color={brand.grafite70} aria-hidden />
+    </XStack>
   );
 }

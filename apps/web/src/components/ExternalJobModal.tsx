@@ -272,19 +272,19 @@ export function ExternalJobModal({
               <Text fontFamily="body" fontWeight="700" fontSize={11} color={brand.grafite70}>
                 Data *
               </Text>
-              <ItalianDateInput ariaLabel="Data" value={dateStr} onChange={setDateStr} style={inputStyle} padX={10} />
+              <ItalianDateInput ariaLabel="Data" value={dateStr} onChange={setDateStr} style={inputStyle} />
             </YStack>
             <YStack gap="1" flex={1} minWidth={100}>
               <Text fontFamily="body" fontWeight="700" fontSize={11} color={brand.grafite70}>
                 Ora inizio *
               </Text>
-              <ItalianTimeInput ariaLabel="Ora di inizio" value={startTime} onChange={setStartTime} style={inputStyle} padX={10} />
+              <ItalianTimeInput ariaLabel="Ora di inizio" value={startTime} onChange={setStartTime} style={inputStyle} />
             </YStack>
             <YStack gap="1" flex={1} minWidth={100}>
               <Text fontFamily="body" fontWeight="700" fontSize={11} color={brand.grafite70}>
                 Ora fine
               </Text>
-              <ItalianTimeInput ariaLabel="Ora di fine" value={endTime} onChange={setEndTime} style={inputStyle} padX={10} />
+              <ItalianTimeInput ariaLabel="Ora di fine" value={endTime} onChange={setEndTime} style={inputStyle} />
             </YStack>
           </XStack>
 

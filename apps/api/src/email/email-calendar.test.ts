@@ -99,7 +99,12 @@ describe("calendario: annullamento e prenotazioni (docs/CHANGELOG.md §235)", ()
 
   it("l'email della notifica riceve la riga o la spiegazione giusta", () => {
     const base = { kind: "notification" as const, subject: "s", title: "t", paragraphs: ["p"] };
-    expect(withCalendar(base, bookingCalendar(booking, "client")).details?.[0]?.label).toBe("Calendario");
+    const rows = withCalendar(base, bookingCalendar(booking, "client")).details ?? [];
+    expect(rows.map((row) => row.label)).toEqual(["Calendario", "Altri calendari"]);
+    // Link al file sul sito, non un allegato soltanto: su iPhone si apre meglio.
+    expect(rows[1]?.url).toMatch(/\/calendario\/b1\.c\.\d+\.[\w-]+\.ics$/);
+    expect(bookingCalendar(booking, "professional").icsUrl).toMatch(/\/calendario\/b1\.p\./);
+    expect(bookingCalendar(booking, "client", { canceled: true }).icsUrl).toBeNull();
     expect(withCalendar(base, bookingCalendar(booking, "client", { canceled: true })).after?.[0]).toContain("toglierlo");
   });
 });

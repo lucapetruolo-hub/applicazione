@@ -113,7 +113,7 @@ describe("Ricordamelo tra… a lavoro terminato (docs/changelog/2026-11-08-prome
 describe("NotificationsService.notify su richiesta silenziata", () => {
   function buildNotifications(muted: boolean) {
     const prisma = {
-      guidedRequestUserState: { findFirst: vi.fn().mockResolvedValue(muted ? { id: "s-1" } : null) },
+      guidedRequestUserState: { findFirst: vi.fn().mockResolvedValue(muted ? { id: "s-1" } : null), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
       notification: { create: vi.fn().mockResolvedValue({ id: "n-1", type: "NEW_QUOTE", payload: {}, createdAt: new Date() }) },
       user: { findUnique: vi.fn().mockResolvedValue({ notificationPrefs: null }) },
     };
@@ -129,6 +129,34 @@ describe("NotificationsService.notify su richiesta silenziata", () => {
     expect(realtime.publish).not.toHaveBeenCalled();
   });
 
+  it("una novità riporta in Tutte la richiesta archiviata, ma solo se non è silenziata", async () => {
+    const { service, prisma } = buildNotifications(false);
+    await service.notify("u-1", "NEW_QUOTE", { guidedRequestId: "gr-1" });
+    expect(prisma.guidedRequestUserState.updateMany).toHaveBeenCalledWith({
+      where: { userId: "u-1", guidedRequestId: "gr-1", archivedAt: { not: null }, mutedAt: null },
+      data: { archivedAt: null },
+    });
+  });
+
+  it("anche un promemoria riporta in Tutte la richiesta archiviata", async () => {
+    const { service, prisma } = buildNotifications(false);
+    await service.notify("u-1", "REBOOK_REMINDER", { guidedRequestId: "gr-1" });
+    expect(prisma.guidedRequestUserState.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ mutedAt: null }) }));
+  });
+
+  it("se togliere dall'archivio non riesce, la notifica parte lo stesso", async () => {
+    const { service, prisma, realtime } = buildNotifications(false);
+    prisma.guidedRequestUserState.updateMany.mockRejectedValueOnce(new Error("db giù"));
+    await service.notify("u-1", "NEW_QUOTE", { guidedRequestId: "gr-1" });
+    expect(realtime.publish).toHaveBeenCalled();
+  });
+
+  it("senza richiesta nel payload non tocca l'archivio", async () => {
+    const { service, prisma } = buildNotifications(false);
+    await service.notify("u-1", "ACCOUNT_REACTIVATED", { note: "ok" });
+    expect(prisma.guidedRequestUserState.updateMany).not.toHaveBeenCalled();
+  });
+
   it("non silenzia mai un promemoria chiesto dall'utente", async () => {
     const { service, prisma, realtime } = buildNotifications(true);
     await service.notify("u-1", "REQUEST_REMINDER", { guidedRequestId: "gr-1" });
@@ -140,7 +168,7 @@ describe("NotificationsService.notify su richiesta silenziata", () => {
 describe("NotificationsService — email sul nuovo lead", () => {
   function buildLeadNotifications(muted: boolean) {
     const prisma = {
-      guidedRequestUserState: { findFirst: vi.fn().mockResolvedValue(muted ? { id: "s-1" } : null) },
+      guidedRequestUserState: { findFirst: vi.fn().mockResolvedValue(muted ? { id: "s-1" } : null), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
       notification: { create: vi.fn().mockResolvedValue({ id: "n-1", type: "NEW_LEAD", payload: {}, createdAt: new Date() }) },
       user: { findUnique: vi.fn().mockResolvedValue({ email: "pro@example.com", name: "Pro", deletedAt: null, notificationPrefs: null }) },
       guidedRequest: { findUnique: vi.fn().mockResolvedValue({ city: "Roma", category: { label: "Idraulico" } }) },
@@ -183,7 +211,7 @@ describe("NotificationsService — email sul nuovo lead", () => {
 describe("NotificationsService — preferenze di notifica (docs/CHANGELOG.md §152)", () => {
   function build(prefs: unknown) {
     const prisma = {
-      guidedRequestUserState: { findFirst: vi.fn().mockResolvedValue(null) },
+      guidedRequestUserState: { findFirst: vi.fn().mockResolvedValue(null), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
       notification: { create: vi.fn().mockResolvedValue({ id: "n-1", type: "NEW_QUOTE", payload: {}, createdAt: new Date() }) },
       user: {
         findUnique: vi.fn().mockResolvedValue({ email: "pro@example.com", name: "Pro", deletedAt: null, notificationPrefs: prefs }),

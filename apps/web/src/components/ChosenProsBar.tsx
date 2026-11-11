@@ -5,6 +5,7 @@ import type { ProfessionalCategorySlug } from "@professionisti/shared";
 import { Button, ButtonArrow, Text, XStack, brand } from "@professionisti/ui";
 import { MagneticButton } from "./MagneticButton";
 import { ProfessionalAvatar } from "./ProfessionalAvatar";
+import { setChosenParams } from "@/lib/chosenParams";
 
 /** Il minimo che serve del professionista scelto: nome e foto per la barra e il modulo. */
 export type ChosenPro = { id: string; businessName: string; imageUrl: string | null; categorySlug: ProfessionalCategorySlug };
@@ -24,14 +25,7 @@ export function chosenRequestHref(
   // Dalla ricerca per mestiere non c'è descrizione: si scrive nel modulo.
   if (description) params.set("descrizione", description);
   if (city) params.set("citta", city);
-  const [first] = chosen;
-  if (chosen.length === 1 && first) {
-    params.set("professionista", first.id);
-    params.set("nomeProfessionista", first.businessName);
-    params.set("fotoProfessionista", first.imageUrl ?? "");
-  } else {
-    params.set("scelti", chosen.map((pro) => pro.id).join(","));
-  }
+  setChosenParams(params, chosen);
   return `/preventivo?${params.toString()}`;
 }
 

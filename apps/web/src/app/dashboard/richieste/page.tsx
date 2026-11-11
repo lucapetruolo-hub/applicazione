@@ -21,6 +21,7 @@ import { ArchivedCountRow, ArchivedNotice, RestoreAllArchivedBar, RestoredNotice
 import { RequestCard } from "./_components/RequestCard";
 import { filterInputStyle, filterLabelStyle, leadSearchText } from "./_components/requestHelpers";
 import { PageLoading } from "@/components/PageLoading";
+import { useLeaveEmptyArchive } from "@/lib/useLeaveEmptyArchive";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
 const UNREAD_BADGE_POLL_MS = 15000;
@@ -330,6 +331,10 @@ function RichiesteContent() {
     return counts;
   }, [leads, stageByLeadId]);
 
+  // Ripristinata l'ultima archiviata, si torna a "Tutte" invece di restare
+  // su una scheda vuota (docs/changelog/2026-11-10-ripristino-pagina-bloccata.md).
+  useLeaveEmptyArchive(leads === null ? null : (tabCounts.archiviate ?? 0), activeTab, setActiveTab, "tutte");
+
   const visibleLeads = useMemo(() => {
     let list = leads ?? [];
     if (activeTab === "archiviate") list = list.filter((l) => l.myState.archivedAt);
@@ -628,7 +633,13 @@ function RichiesteContent() {
         {visibleLeads.length === 0 ? (
           <YStack gap="3">
             <Surface>
-              <EmptyState icon="search" title="Nessuna richiesta in questa sezione" description="Cambia filtro o attendi nuove richieste dai clienti." />
+              {/* "Archiviate" vuota dice cosa ci finisce e quando ne esce, invece di
+                  "Cambia filtro" (docs/changelog/2026-11-10-archiviate-tornano-con-novita.md). */}
+              {activeTab === "archiviate" && (tabCounts.archiviate ?? 0) === 0 ? (
+                <EmptyState icon="archive" title="Nessuna richiesta archiviata" description="Le richieste che archivi finiscono qui. Tornano in Tutte quando hanno novità, se non le hai silenziate." />
+              ) : (
+                <EmptyState icon="search" title="Nessuna richiesta in questa sezione" description="Cambia filtro o attendi nuove richieste dai clienti." />
+              )}
             </Surface>
             {/* Mini-guida per i professionisti appena iscritti (tour
                 pre-lancio): senza richieste la pagina non spiegava cosa

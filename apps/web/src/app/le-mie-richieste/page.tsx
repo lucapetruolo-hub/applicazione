@@ -23,6 +23,7 @@ import { clientRequestSearchText, filterInputStyle, filterLabelStyle, requestJob
 import { BookingConfirmed } from "./_components/BookingConfirmed";
 import { PAYMENT_PAGE_LABEL, startExternalRedirectProgress } from "@/lib/navigationProgress";
 import { PageLoading } from "@/components/PageLoading";
+import { useLeaveEmptyArchive } from "@/lib/useLeaveEmptyArchive";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
 const UNREAD_BADGE_POLL_MS = 15000;
@@ -238,7 +239,23 @@ function LeMieRichiesteContent() {
 
   const filtersActiveCount = (zoneFilter !== "tutte" ? 1 : 0) + (sortMode !== "recenti" ? 1 : 0);
 
+  // Ripristinata l'ultima archiviata, si torna a "Tutte" invece di restare
+  // su una scheda vuota (docs/changelog/2026-11-10-ripristino-pagina-bloccata.md).
+  useLeaveEmptyArchive(requests === null ? null : (tabCounts.archiviate ?? 0), activeStageTab, setActiveStageTab, "tutte");
+
+  // Una sola richiesta in tutto: schede di stato, ricerca e filtri non
+  // servono e da telefono spingerebbero la scheda sotto la prima schermata
+  // (docs/CHANGELOG.md §336). Con altre richieste archiviate restano, per
+  // poterle raggiungere.
+  const singleRequest = requests !== null && requests.length === 1 && !requests[0]!.myState.archivedAt;
+
   const filteredSortedRequests = useMemo(() => {
+    // Con le schede e i filtri nascosti non deve restare attivo nessun filtro
+    // scelto prima: la scheda "Archiviate" rimasta selezionata dopo il
+    // ripristino dell'unica richiesta lasciava "Nessuna richiesta in questa
+    // sezione" senza niente da toccare per uscirne
+    // (docs/changelog/2026-11-10-ripristino-pagina-bloccata.md).
+    if (singleRequest && requests) return requests;
     let list = requests ?? [];
     if (activeStageTab === "archiviate") list = list.filter((r) => r.myState.archivedAt);
     else {
@@ -259,13 +276,7 @@ function LeMieRichiesteContent() {
     else if (sortMode === "recenti") list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     else if (sortMode === "aggiornamento") list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     return list;
-  }, [requests, activeStageTab, zoneFilter, serviceModeFilter, search, sortMode, stageByRequestId, bookingByRequestId]);
-
-  // Una sola richiesta in tutto: schede di stato, ricerca e filtri non
-  // servono e da telefono spingerebbero la scheda sotto la prima schermata
-  // (docs/CHANGELOG.md §336). Con altre richieste archiviate restano, per
-  // poterle raggiungere.
-  const singleRequest = requests !== null && requests.length === 1 && !requests[0]!.myState.archivedAt;
+  }, [requests, singleRequest, activeStageTab, zoneFilter, serviceModeFilter, search, sortMode, stageByRequestId, bookingByRequestId]);
 
   useEffect(() => {
     if (!autoOpenAfterTabRef.current) return;
@@ -796,7 +807,13 @@ function LeMieRichiesteContent() {
             </Surface>
           ) : visibleRequests.length === 0 ? (
             <Surface>
-              <EmptyState icon="search" title="Nessuna richiesta in questa sezione" description="Cambia filtro per vedere le altre richieste." />
+              {/* "Archiviate" vuota dice cosa ci finisce e quando ne esce, invece di
+                  "Cambia filtro" (docs/changelog/2026-11-10-archiviate-tornano-con-novita.md). */}
+              {activeStageTab === "archiviate" && (tabCounts.archiviate ?? 0) === 0 ? (
+                <EmptyState icon="archive" title="Nessuna richiesta archiviata" description="Le richieste che archivi finiscono qui. Tornano in Tutte quando hanno novità, se non le hai silenziate." />
+              ) : (
+                <EmptyState icon="search" title="Nessuna richiesta in questa sezione" description="Cambia filtro per vedere le altre richieste." />
+              )}
             </Surface>
           ) : (
             visibleRequests.map((request) => (

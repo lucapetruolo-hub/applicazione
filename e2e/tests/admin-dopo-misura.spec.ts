@@ -120,12 +120,24 @@ test("Ricorso su un problema: chiede conferma e mostra la persona accanto all'at
   await prisma.jobIssue.update({ where: { id: ids.issue }, data: { status: "UPHELD", appealDecision: null, appealNote: null, appealResolvedAt: null, appealResolvedByUserId: null } });
   const { context, page } = await adminPage(browser, isMobile);
   await page.goto(`/admin/problemi?vista=appeals`);
-  await page.getByRole("searchbox", { name: "Cerca nelle segnalazioni" }).fill(String(stamp));
+  const searchbox = page.getByRole("searchbox", { name: "Cerca nelle segnalazioni" });
+  await searchbox.fill(String(stamp));
+  // Prima si aspettano i risultati della ricerca: la lista di prima resta in
+  // vista mentre si cerca e, con un solo ricorso aperto, le righe sono le stesse
+  // (docs/changelog/2026-11-10-prove-che-falliscono-in-locale.md).
+  await expect(page.getByText("Risultati in tutte le schede, aperte e chiuse.")).toBeVisible();
   await expect(page.getByRole("link", { name: `Impianti Elettrici ${stamp} · Luigi Bianchi${stamp}` })).toBeVisible();
   // Dopo la ricerca resta solo questo ricorso.
   await expect(page.getByText(/la sua risposta è nel ricorso/)).toHaveCount(1);
 
-  await page.getByRole("textbox", { name: "Motivazione sul ricorso" }).fill("La stufa supera la potenza del contatore.");
+  const note = page.getByRole("textbox", { name: "Motivazione sul ricorso" });
+  await note.fill("La stufa supera la potenza del contatore.");
+  // Cambiando la ricerca la motivazione già scritta non si perde.
+  const searched = page.waitForResponse((response) => response.url().includes(`q=${encodeURIComponent(`Impianti Elettrici ${stamp}`)}`));
+  await searchbox.fill(`Impianti Elettrici ${stamp}`);
+  await searched;
+  await expect(page.getByText("Risultati in tutte le schede, aperte e chiuse.")).toBeVisible();
+  await expect(note).toHaveValue("La stufa supera la potenza del contatore.");
   await page.getByRole("button", { name: "Accogli il ricorso" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("Accogliere il ricorso?")).toBeVisible();
@@ -136,6 +148,19 @@ test("Ricorso su un problema: chiede conferma e mostra la persona accanto all'at
   await page.getByRole("button", { name: "Accogli il ricorso" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Accogli il ricorso" }).click();
   await expect.poll(async () => (await prisma.jobIssue.findUniqueOrThrow({ where: { id: ids.issue } })).appealDecision).toBe("ACCEPTED");
+  await context.close();
+});
+
+test("Problemi: dopo un caricamento fallito, la lista arrivata toglie l'errore", async ({ browser, isMobile }) => {
+  await prisma.jobIssue.update({ where: { id: ids.issue }, data: { status: "UPHELD", appealDecision: null, appealNote: null, appealResolvedAt: null, appealResolvedByUserId: null } });
+  const { context, page } = await adminPage(browser, isMobile);
+  // Il primo caricamento fallisce (docs/changelog/2026-11-10-prove-che-falliscono-in-locale.md).
+  await page.route(/\/admin\/job-issues\?view=open/, (route) => route.fulfill({ status: 500, json: { message: "Errore di prova del caricamento" } }), { times: 1 });
+  await page.goto("/admin/problemi");
+  await expect(page.getByText("Errore di prova del caricamento")).toBeVisible();
+  await page.getByRole("button", { name: "Ricorsi" }).click();
+  await expect(page.getByRole("link", { name: `Impianti Elettrici ${stamp} · Luigi Bianchi${stamp}` })).toBeVisible();
+  await expect(page.getByText("Errore di prova del caricamento")).toHaveCount(0);
   await context.close();
 });
 
