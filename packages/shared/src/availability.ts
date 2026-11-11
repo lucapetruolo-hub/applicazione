@@ -140,17 +140,21 @@ export function agendaAttention(slots: { date: Date | string | null }[], now: Da
 }
 
 /**
- * Ore che devono restare prima della fine di una fascia di oggi per
- * proporla (collaudo B-05, D-09): alle 12:19 si proponeva ancora "oggi
- * 08:00–13:00" a clienti e professionisti.
+ * Un appuntamento (inizio e fine facoltativa, ora di parete italiana) si può
+ * ancora proporre o accettare finché la sua fascia non è finita (decisione di
+ * Luca, docs/changelog/2026-11-11-fascia-in-corso.md: "14-20 va bene fino
+ * alle 20"). Senza fine conta l'inizio. Prima si guardava solo l'inizio, e
+ * alle 14:20 "oggi 14:00–20:00" risultava "già passata"; i moduli invece
+ * toglievano una fascia due ore prima della fine (collaudo B-05, D-09).
  */
-export const SLOT_MIN_HOURS_LEFT = 2;
+export function appointmentStillAhead(start: Date | string, end: Date | string | null | undefined, now: Date = new Date()): boolean {
+  const limit = new Date(end ?? start).getTime();
+  return !Number.isNaN(limit) && limit > wallClockNow(now).getTime();
+}
 
-/** Vero se la fascia (data "AAAA-MM-GG", fine "HH:MM", ora di parete italiana) si può ancora proporre. */
+/** Vero se la fascia (data "AAAA-MM-GG", fine "HH:MM", ora di parete italiana) si può ancora proporre: non è ancora finita. */
 export function slotStillOffered(date: string, endTime: string, now: Date = new Date()): boolean {
-  const end = new Date(`${date}T${endTime}:00.000Z`).getTime();
-  if (Number.isNaN(end)) return false;
-  return end - wallClockNow(now).getTime() >= SLOT_MIN_HOURS_LEFT * 60 * 60_000;
+  return appointmentStillAhead(`${date}T${endTime}:00.000Z`, `${date}T${endTime}:00.000Z`, now);
 }
 
 /**

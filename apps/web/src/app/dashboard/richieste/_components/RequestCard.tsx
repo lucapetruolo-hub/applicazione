@@ -44,6 +44,7 @@ import {
   type MySubscription,
   type MyProfessionalProfile,
   wallClockToday,
+  appointmentStillAhead,
   RECURRING_FREQUENCIES,
   RECURRING_FREQUENCY_LABELS,
   recurringAllowedForCategory,
@@ -787,6 +788,10 @@ export function RequestCard({
         { start: lead.quote.clientProposedDate, end: lead.quote.clientProposedEndDate },
       )
     : null;
+  // Data proposta già finita (docs/changelog/2026-11-11-fascia-in-corso.md):
+  // niente "Accetta", resta "Modifica" per proporne un'altra. Prima l'errore
+  // arrivava solo dopo il tocco.
+  const proposedDatePassed = dateChangePending && !!lead.quote?.clientProposedDate && !appointmentStillAhead(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate);
 
   // Azioni del menu hamburger, filtrate per stadio: le stesse già
   // raggiungibili dai bottoni della scheda espansa, qui a portata di un
@@ -840,7 +845,7 @@ export function RequestCard({
       },
     });
   }
-  if (dateChangePending) {
+  if (dateChangePending && !proposedDatePassed) {
     menuActions.push({ icon: "check", text: proposalChange ? "Accetta nuova data" : "Accetta la data", onPress: handleConfirmDate });
   }
   // "Lavoro terminato" dal giorno dell'appuntamento, come in Agenda (§311, collaudo F-01).
@@ -1102,7 +1107,39 @@ export function RequestCard({
           ) : null}
 
           <XStack flexWrap="wrap" gap="4" paddingTop="3">
-            {/* Sezione 1 — Dettagli cliente. Sfondo colorato (richiesta
+            {/* Sezione 1 — Descrizione lavoro: prima il lavoro, poi chi lo chiede
+                (richiesta di Luca, docs/changelog/2026-11-11-fascia-in-corso.md). */}
+            <YStack flex={1} minWidth={260} gap="2">
+              <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
+                Descrizione lavoro
+              </Text>
+              <Text fontSize={16} color={brand.grafite} lineHeight="19px">
+                <HighlightMatch text={gr.description} />
+              </Text>
+              {gr.photoUrls.length > 0 ? (
+                <XStack gap="2" className="scroll-fade" style={{ overflowX: "auto" }}>
+                  {gr.photoUrls.map((url, i) => (
+                    <YStack
+                      key={url}
+                      width={72}
+                      height={72}
+                      borderRadius={10}
+                      overflow="hidden"
+                      borderWidth={1}
+                      borderColor={brand.filetto}
+                      cursor="pointer"
+                      onPress={() => setOpenPhotoIndex(i)}
+                      role="button"
+                      aria-label={`Apri foto ${i + 1}`}
+                    >
+                      <MediaPreview url={url} />
+                    </YStack>
+                  ))}
+                </XStack>
+              ) : null}
+            </YStack>
+
+            {/* Sezione 2 — Dettagli cliente. Sfondo colorato (richiesta
                 esplicita dell'utente: "fai visualizzare meglio la sezione
                 dettagli cliente magari colorando lo sfondo") — stesso
                 trattamento già in uso per "Sezione 3 — Preventivo" più
@@ -1254,37 +1291,6 @@ export function RequestCard({
                   ) : null}
                 </>
               )}
-            </YStack>
-
-            {/* Sezione 2 — Descrizione lavoro */}
-            <YStack flex={1} minWidth={260} gap="2">
-              <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
-                Descrizione lavoro
-              </Text>
-              <Text fontSize={16} color={brand.grafite} lineHeight="19px">
-                <HighlightMatch text={gr.description} />
-              </Text>
-              {gr.photoUrls.length > 0 ? (
-                <XStack gap="2" className="scroll-fade" style={{ overflowX: "auto" }}>
-                  {gr.photoUrls.map((url, i) => (
-                    <YStack
-                      key={url}
-                      width={72}
-                      height={72}
-                      borderRadius={10}
-                      overflow="hidden"
-                      borderWidth={1}
-                      borderColor={brand.filetto}
-                      cursor="pointer"
-                      onPress={() => setOpenPhotoIndex(i)}
-                      role="button"
-                      aria-label={`Apri foto ${i + 1}`}
-                    >
-                      <MediaPreview url={url} />
-                    </YStack>
-                  ))}
-                </XStack>
-              ) : null}
             </YStack>
           </XStack>
 
@@ -1508,9 +1514,11 @@ export function RequestCard({
 
             {stage === "modifica_richiesta" ? (
               <XStack gap="2" flexWrap="wrap">
-                <CardButton fill={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
-                  {isConfirmingDate ? "Conferma..." : proposalChange ? "Accetta nuova data" : "Accetta la data"}
-                </CardButton>
+                {proposedDatePassed ? null : (
+                  <CardButton fill={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
+                    {isConfirmingDate ? "Conferma..." : proposalChange ? "Accetta nuova data" : "Accetta la data"}
+                  </CardButton>
+                )}
                 {/* "Modifica" con sfondo, come "Modifica preventivo" e come
                     il cliente (richiesta esplicita dell'utente, prima
                     "Proponi altra data" quasi solo testo). */}
@@ -1526,7 +1534,11 @@ export function RequestCard({
                 </CardButton>
               </XStack>
             ) : null}
-            {stage === "modifica_richiesta" && !dateAnswerError ? (
+            {(stage === "modifica_richiesta" || bookedDateChange) && proposedDatePassed && !dateAnswerError ? (
+              <Text fontSize={13} color={brand.grafite70}>
+                La data proposta è già passata: proponine un&apos;altra con &quot;Modifica&quot;.
+              </Text>
+            ) : stage === "modifica_richiesta" && !dateAnswerError ? (
               <Text fontSize={13} color={brand.grafite70}>
                 Poi il cliente accetta il preventivo con quella data.
               </Text>
@@ -1540,9 +1552,11 @@ export function RequestCard({
             {bookedDateChange ? (
               // Stessi pulsanti della modifica di un preventivo; "Contatta" è già sotto, con il lavoro.
               <XStack gap="2" flexWrap="wrap">
-                <CardButton fill={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
-                  {isConfirmingDate ? "Conferma..." : "Accetta nuova data"}
-                </CardButton>
+                {proposedDatePassed ? null : (
+                  <CardButton fill={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
+                    {isConfirmingDate ? "Conferma..." : "Accetta nuova data"}
+                  </CardButton>
+                )}
                 <CardButton fill={brand.ottone} onPress={toggleCounterForm}>
                   Modifica
                 </CardButton>

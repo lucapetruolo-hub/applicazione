@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import type { Browser, Page } from "@playwright/test";
-import type { PrismaClient } from "@professionisti/database";
+import { PrismaClient } from "@professionisti/database";
 import { API_URL, WEB_URL } from "./env";
 
 /**
@@ -98,13 +98,37 @@ export async function createRequestWithQuotes(
   return { request, quotes };
 }
 
-/** Accetta un preventivo dall'API come farebbe il pulsante "Accetta preventivo". */
-export function acceptQuote(clientId: string, quoteId: string): Promise<Response> {
-  return fetch(`${API_URL}/bookings/from-quote/${quoteId}`, {
+let db: PrismaClient | null = null;
+
+/** Lo sposta di dieci anni avanti: a quella data il professionista è libero. */
+const PAST_SHIFT_MS = 3650 * 24 * 60 * 60_000;
+
+/**
+ * Accetta un preventivo dall'API come farebbe il pulsante "Accetta preventivo".
+ * Un preventivo con la data già passata non si accetta più
+ * (docs/changelog/2026-11-11-fascia-in-corso.md): per le prove dei lavori già
+ * fatti lo si accetta su una data futura e poi preventivo e lavoro tornano
+ * alla data voluta, come se fosse stato accettato a suo tempo.
+ */
+export async function acceptQuote(clientId: string, quoteId: string): Promise<Response> {
+  db ??= new PrismaClient();
+  const quote = await db.quote.findUniqueOrThrow({ where: { id: quoteId } });
+  const start = quote.estimatedStartDate;
+  const end = quote.estimatedEndDate;
+  const limit = end ?? start;
+  const past = limit.getTime() <= wallFromNow(0).getTime();
+  const shift = (date: Date | null) => (date ? new Date(date.getTime() + PAST_SHIFT_MS) : null);
+  if (past) await db.quote.update({ where: { id: quoteId }, data: { estimatedStartDate: shift(start)!, estimatedEndDate: shift(end) } });
+  const response = await fetch(`${API_URL}/bookings/from-quote/${quoteId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${testToken(clientId)}` },
     body: JSON.stringify({ paymentMethod: "DIRECT" }),
   });
+  if (past) {
+    await db.quote.update({ where: { id: quoteId }, data: { estimatedStartDate: start, estimatedEndDate: end } });
+    await db.booking.updateMany({ where: { quoteId }, data: { scheduledAt: start, scheduledEndAt: end } });
+  }
+  return response;
 }
 
 /** Pagina del sito con il cliente già dentro e il banner dei cookie già chiuso. */
