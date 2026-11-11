@@ -718,6 +718,10 @@ export class GuidedRequestsService {
         // in UI per mostrare "prezzo totale medio" solo su queste ultime
         // (richiesta esplicita dell'utente).
         professionalProfileId: request.professionalProfileId,
+        // I 2-5 professionisti scelti nei risultati (§393): "Ripeti la
+        // richiesta" li ripropone nel modulo
+        // (docs/changelog/2026-11-10-ripeti-richiesta-scelti.md).
+        chosenProfileIds: request.chosenProfileIds,
         // Destinatario + resto dell'indirizzo strutturato: visibili qui
         // perché è il cliente stesso a vederli (i propri dati), a
         // differenza di ProfessionalLead.guidedRequest, che non li espone

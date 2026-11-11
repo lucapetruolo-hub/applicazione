@@ -21,6 +21,7 @@ import {
   type GuidedRequestStatusSummary,
 } from "@professionisti/shared";
 import { Autocomplete, Avatar, Badge, BadgeInfo, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { setChosenParams } from "@/lib/chosenParams";
 import { apiClient } from "@/lib/apiClient";
 import { useComuni } from "@/lib/comuniLazy";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -734,7 +735,12 @@ export function GuidedRequestCard({
     );
   }
 
-  const repeatHref = `/preventivo?${new URLSearchParams({
+  // "Ripeti la richiesta" ripropone i professionisti a cui era andata (il
+  // diretto o i 2-5 scelti), ognuno con la X nel modulo per toglierlo;
+  // senza nessuno torna una richiesta generale
+  // (docs/changelog/2026-11-10-ripeti-richiesta-scelti.md). Nome e foto dalla
+  // scheda, il modulo poi li ricarica e toglie chi non è più sul sito.
+  const repeatParams = new URLSearchParams({
     categoria: request.categorySlug,
     ...(request.city ? { citta: request.city } : {}),
     descrizione: request.description,
@@ -747,15 +753,22 @@ export function GuidedRequestCard({
     ...(request.recipientSurname ? { cognome: request.recipientSurname } : {}),
     ...(request.recipientPhone ? { telefono: request.recipientPhone } : {}),
     ...(request.serviceMode ? { modalita: request.serviceMode } : {}),
-  }).toString()}`;
+  });
+  const repeatTargetIds = request.professionalProfileId ? [request.professionalProfileId] : (request.chosenProfileIds ?? []);
+  setChosenParams(
+    repeatParams,
+    repeatTargetIds.map((id) => {
+      const lead = request.sentTo.find((pro) => pro.id === id);
+      return { id, businessName: lead?.businessName ?? "", imageUrl: lead?.imageUrl ?? null };
+    }),
+  );
+  const repeatHref = `/preventivo?${repeatParams.toString()}`;
   // "Prenota di nuovo" dopo la recensione (docs/CHANGELOG.md §348): stesso
   // professionista, indirizzo e contatti già scritti, il lavoro nuovo da descrivere.
   const rebookParams = new URLSearchParams(repeatHref.slice("/preventivo?".length));
   rebookParams.delete("descrizione");
   if (booking) {
-    rebookParams.set("professionista", booking.professionalProfileId);
-    rebookParams.set("nomeProfessionista", booking.businessName);
-    rebookParams.set("fotoProfessionista", booking.professionalImageUrl ?? "");
+    setChosenParams(rebookParams, [{ id: booking.professionalProfileId, businessName: booking.businessName, imageUrl: booking.professionalImageUrl ?? null }]);
   }
   const rebookHref = `/preventivo?${rebookParams.toString()}`;
 

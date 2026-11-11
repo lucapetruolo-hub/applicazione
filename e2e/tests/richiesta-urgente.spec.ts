@@ -18,6 +18,10 @@ const DIRECT = `/preventivo?categoria=idraulico&professionista=pro-prova&nomePro
 const GENERAL = `/preventivo?categoria=idraulico&citta=Latina&modalita=ONLINE&descrizione=${DESCRIPTION}`;
 
 async function mockReach(page: Page) {
+  // "pro-prova" non esiste: con il 404 il modulo lo toglierebbe da solo
+  // (docs/changelog/2026-11-10-ripeti-richiesta-scelti.md). Una rete che non
+  // risponde lo lascia, come prima.
+  await page.route(`${API_URL}/professionals/pro-prova**`, (route) => route.abort());
   await page.route(`${API_URL}/guided-requests/reach**`, (route) =>
     route.fulfill({ json: route.request().url().includes("professionista=") ? { standard: 8, urgent: 4 } : { standard: 12, urgent: 5 } }),
   );
