@@ -584,9 +584,11 @@ function LeMieRichiesteContent() {
               })}
             </CategoryCarousel>
 
-            {/* Da telefono restano solo le schede di stato e "Filtri", con
-                dentro ricerca e modalità (docs/CHANGELOG.md §349): tre file di
-                controlli spingevano la prima richiesta a metà schermo. */}
+            {/* Da computer la ricerca sta in una riga sua. Da telefono sta
+                nella stessa riga di "Filtri" (richiesta di Luca dell'11/11/2026,
+                docs/changelog/2026-11-11-ricerca-fuori-dai-filtri.md): resta
+                sempre a vista senza aggiungere una fila di controlli
+                (docs/CHANGELOG.md §349); la modalità resta dentro "Filtri". */}
             <YStack display="xs:none">
               <input
                 aria-label="Cerca nelle richieste"
@@ -601,6 +603,19 @@ function LeMieRichiesteContent() {
             </YStack>
 
             <XStack gap="2" alignItems="center" flexWrap="wrap">
+              <XStack display="gtXs:none" flex={1} flexBasis={0} minWidth={0}>
+                <input
+                  aria-label="Cerca nelle richieste"
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Cerca nelle richieste..."
+                  enterKeyHint="search"
+                  style={{ ...filterInputStyle, width: "100%", minWidth: 0, paddingTop: 12, paddingBottom: 12 }}
+                />
+              </XStack>
               <XStack
                 alignItems="center"
                 gap={6}
@@ -676,16 +691,6 @@ function LeMieRichiesteContent() {
 
                   <YStack gap="3">
                     <YStack gap="3" display="gtXs:none">
-                      <input
-                        aria-label="Cerca nelle richieste"
-                        value={search}
-                        onChange={(e) => {
-                          setSearch(e.target.value);
-                          setPage(1);
-                        }}
-                        placeholder="Cerca in ogni campo della richiesta..."
-                        style={{ ...filterInputStyle, width: "100%" }}
-                      />
                       <select
                         aria-label="Modalità"
                         value={serviceModeFilter}
