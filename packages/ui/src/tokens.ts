@@ -1,7 +1,7 @@
 // Palette A "Verde fiducia e terracotta" (scelta di Luca dell'11/11/2026,
 // docs/changelog/2026-11-11-palette-e-figtree.md, prima "Vicinato" pesca):
-// fondo crema #FAF2E8 (scelto da Luca al posto della carta #F7F3EE, più caldo), verde per pulsanti e link, terracotta per i segni di
-// fiducia, angoli morbidi, ombra soffice al posto dei filetti — stessi NOMI di chiave di prima
+// fondo crema #FAF2E8 (scelto da Luca al posto della carta #F7F3EE, più caldo), verde per pulsanti, link e bollino "Verificato", terracotta
+// solo per luci di sfondo e categorie, angoli morbidi, ombra soffice al posto dei filetti — stessi NOMI di chiave di prima
 // (mai rinominare/rimuovere: ~50 file in tutto il sito referenziano
 // `brand.grafite`/`brand.cianografia`/ecc., ricolorare qui basta a
 // ripropagare il nuovo stile ovunque senza toccare quei file uno per
@@ -34,13 +34,13 @@ export const brand = {
   // Verde scuro di "fatto" (salvato, confermato, pagato, lavoro concluso),
   // volutamente distinto dal verde dei pulsanti (cianografia): un messaggio
   // di conferma non deve confondersi con un bottone d'azione. 6,3:1 su
-  // bianco. Il nome resta per i ~60 punti che lo usano; il bollino
-  // "Verificato" ora è terracotta (sotto).
+  // bianco. Il nome resta per i ~60 punti che lo usano; anche il bollino
+  // "Verificato", su cianografiaVelo (docs/changelog/2026-11-11-verificato-verde.md).
   verificato: "#325F54",
   // Terracotta della palette A (docs/changelog/2026-11-11-palette-e-figtree.md):
-  // solo per i segni di fiducia, cioè il bollino "Verificato" e "Lavoro fatto
-  // tramite il sito", mai per pulsanti o messaggi. 5,6:1 sul fondo crema,
-  // 5,0:1 sulla sua tinta chiara.
+  // luci dello sfondo e colori delle categorie, mai per pulsanti, messaggi o
+  // bollini (accanto al rosso sembrava un errore, docs/changelog/2026-11-11-verificato-verde.md).
+  // 5,6:1 sul fondo crema, 5,0:1 sulla sua tinta chiara.
   terracotta: "#A3441F",
   // Verde inchiostro dei titoli (h1-h3), scelta di Luca dell'11/11/2026: dà
   // carattere al marchio senza confondersi con il verde dei pulsanti, molto

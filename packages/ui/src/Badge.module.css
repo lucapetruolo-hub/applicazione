@@ -1,7 +1,7 @@
 /*
  * Badge per il sito (Badge.web.tsx): stessi valori dell'XStack/Text di
  * Badge.tsx. Colori delle varianti come VARIANT_STYLE di Badge.tsx
- * (verificato = brand.terracotta, fatto = brand.verificato, pro =
+ * (verificato = brand.verificato, fatto = brand.verificato, pro =
  * brand.ottoneScuro, urgente = brand.urgenza:
  * senza una variabile di Tamagui).
  */
@@ -20,7 +20,7 @@
 }
 
 .verificato {
-  background-color: #f6e3d9;
+  background-color: #e1eeeb;
 }
 
 .fatto {
@@ -40,7 +40,7 @@
 }
 
 .verificato .text {
-  color: #a3441f;
+  color: #325f54;
 }
 
 .fatto .text {

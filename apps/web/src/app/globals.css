@@ -2577,8 +2577,8 @@ html.site-menu-open .profile-cta-bar {
   border: 1px solid transparent;
 }
 .profile-verify-chip.is-verified {
-  background: #f6e3d9;
-  color: #a3441f;
+  background: #e1eeeb;
+  color: #325f54;
 }
 .profile-verify-chip.is-action {
   background: #ffffff;
@@ -4946,27 +4946,119 @@ a.admin-kpi:hover {
   font-weight: 600;
   color: #5e5a54;
 }
+/* Singoli avvisi a colonne (docs/changelog/2026-11-11-avvisi-colonne.md):
+   il testo prende lo spazio che resta e va a capo, i pulsanti stanno in
+   colonne di larghezza fissa a destra, sotto i nomi dei canali scritti una
+   volta sola in alto. */
+.nt-items-head,
+.nt-items {
+  --nt-col: 56px;
+  --nt-col-gap: 4px;
+  margin: 0;
+  padding-left: 78px;
+  padding-right: 18px;
+  background: #fcfaf7;
+}
+.nt-items-head {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 10px;
+}
+.nt-items-head .nt-cols span {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5e5a54;
+  text-align: center;
+}
 .nt-items {
   list-style: none;
-  margin: 0;
-  padding: 4px 18px 10px 78px;
+  padding-top: 0;
+  padding-bottom: 10px;
   background: linear-gradient(180deg, #fcfaf7, #ffffff);
 }
 .nt-items li {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 0;
+  gap: 12px;
+  padding: 10px 0;
   border-top: 1px solid #f1ebe3;
 }
 .nt-items li:first-child {
   border-top: none;
 }
-.nt-items li > span:first-child {
+.nt-item-text {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow-wrap: anywhere;
+}
+.nt-cols {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(2, var(--nt-col));
+  gap: var(--nt-col-gap);
+  justify-items: center;
+  align-items: center;
+}
+.nt-tick {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.nt-tick-box {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1.5px solid #8e867c;
+  background: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.nt-tick:hover .nt-tick-box {
+  border-color: #1b1a18;
+}
+.nt-tick.is-on .nt-tick-box {
+  background: #40776a;
+  border-color: #40776a;
+}
+.nt-tick:focus-visible {
+  outline: 2px solid #4c8a7a;
+  outline-offset: -2px;
+}
+.nt-tick:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.nt-tick:disabled:hover .nt-tick-box {
+  border-color: #8e867c;
+}
+.nt-tick-none {
+  color: #b5ada3;
+  font-size: 16px;
+}
+.nt-item-locked {
+  display: flex;
+  width: calc(var(--nt-col) * 2 + var(--nt-col-gap));
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #5e5a54;
+  text-align: center;
 }
 .nt-items strong {
   font-size: 15px;
@@ -4976,16 +5068,6 @@ a.admin-kpi:hover {
   font-size: 13px;
   line-height: 1.4;
   color: #5e5a54;
-}
-.nt-channels.is-small .nt-chip {
-  min-height: 34px;
-  padding: 0 12px 0 6px;
-  font-size: 14px;
-  gap: 6px;
-}
-.nt-channels.is-small .nt-chip-check {
-  width: 18px;
-  height: 18px;
 }
 .nt-chip:disabled {
   opacity: 0.45;
@@ -5022,23 +5104,27 @@ a.admin-kpi:hover {
   .nt-more {
     padding: 12px 14px;
   }
+  .nt-items-head,
   .nt-items {
-    padding: 4px 14px 10px;
+    --nt-col: 48px;
+    --nt-col-gap: 2px;
+    padding-left: 14px;
+    padding-right: 10px;
   }
-  .nt-items li {
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  .nt-items .nt-channels.is-small {
-    width: auto;
-  }
-  .nt-items .nt-channels.is-small .nt-chip {
-    flex: 0 0 auto;
+  .nt-locked-extra {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .nt-chip,
   .nt-chip-check,
+  .nt-tick-box,
   .nt-tile-icon {
     transition: none;
   }
