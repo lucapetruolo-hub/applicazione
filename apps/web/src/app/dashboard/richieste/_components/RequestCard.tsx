@@ -107,6 +107,7 @@ export function RequestCard({
   myProfileId,
   defaultPaymentOffer,
   defaultCancellationNoticeHours,
+  defaultLateCancelKeepsDeposit = false,
   stripeVerified = true,
   onlineLimitEurCents = null,
   onlineLimitProgress = null,
@@ -137,6 +138,8 @@ export function RequestCard({
   defaultPaymentOffer?: { paymentOptions: JobPaymentChoice[]; depositPercent: number } | null;
   /** Preavviso per annullare standard del profilo, già scelto nei nuovi preventivi (docs/CHANGELOG.md §348). */
   defaultCancellationNoticeHours?: number | null;
+  /** Scelta di partenza sull'acconto trattenuto, dal Profilo (docs/changelog/2026-11-11-rosso-solo-errori.md). */
+  defaultLateCancelKeepsDeposit?: boolean;
   /** Verifica su Stripe completata: senza, l'acconto online non si può offrire (docs/CHANGELOG.md §241). */
   stripeVerified?: boolean;
   /** Tetto a lavoro per i pagamenti online, null = nessuno (docs/changelog/2026-10-28-tetto-pagamenti-online.md). */
@@ -243,7 +246,7 @@ export function RequestCard({
   // Preavviso per annullare e acconto trattenuto, scelti a ogni preventivo (docs/CHANGELOG.md §348).
   const standardNotice = isCancellationNoticeHours(defaultCancellationNoticeHours) ? defaultCancellationNoticeHours : DEFAULT_CANCELLATION_NOTICE_HOURS;
   const [noticeHours, setNoticeHours] = useState<CancellationNoticeHours>(standardNotice);
-  const [keepDeposit, setKeepDeposit] = useState(false);
+  const [keepDeposit, setKeepDeposit] = useState(defaultLateCancelKeepsDeposit);
   // Lavoro ricorrente, prezzo a visita (docs/changelog/2026-11-09-lavori-ricorrenti.md).
   const [repeatEvery, setRepeatEvery] = useState<RecurringFrequency | null>(null);
   const repeatChosen = canRepeat && repeatEvery !== null;
@@ -251,6 +254,11 @@ export function RequestCard({
   if (standardNotice !== appliedNotice) {
     setAppliedNotice(standardNotice);
     if (!showQuoteForm) setNoticeHours(standardNotice);
+  }
+  const [appliedKeepDeposit, setAppliedKeepDeposit] = useState(defaultLateCancelKeepsDeposit);
+  if (defaultLateCancelKeepsDeposit !== appliedKeepDeposit) {
+    setAppliedKeepDeposit(defaultLateCancelKeepsDeposit);
+    if (!showQuoteForm) setKeepDeposit(defaultLateCancelKeepsDeposit);
   }
   const [quoteError, setQuoteError] = useState<string | null>(null);
   // Inizio scelto nel modulo, per l'avviso sul preavviso (collaudo C-08).

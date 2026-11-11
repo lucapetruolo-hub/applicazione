@@ -896,6 +896,8 @@ export const professionalProfileSchema = z.object({
   hasLiabilityInsurance: z.boolean().default(false),
   // Preavviso per annullare (docs/CHANGELOG.md §347): non inviato = invariato.
   cancellationNoticeHours: z.union([z.literal(24), z.literal(48), z.literal(72)]).optional(),
+  // Acconto online se il cliente annulla dentro il preavviso, scelta di partenza dei preventivi: non inviato = invariato.
+  lateCancelKeepsDeposit: z.boolean().optional(),
 });
 export type ProfessionalProfileInput = z.infer<typeof professionalProfileSchema>;
 

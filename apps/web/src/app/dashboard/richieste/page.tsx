@@ -96,6 +96,7 @@ function RichiesteContent() {
   // Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §239).
   const [defaultPaymentOffer, setDefaultPaymentOffer] = useState<MyProfessionalProfile["defaultPaymentOffer"] | null>(null);
   const [defaultCancellationNoticeHours, setDefaultCancellationNoticeHours] = useState<number | null>(null);
+  const [defaultLateCancelKeepsDeposit, setDefaultLateCancelKeepsDeposit] = useState(false);
   const [stripeVerified, setStripeVerified] = useState(true);
   const [onlineLimitEurCents, setOnlineLimitEurCents] = useState<number | null>(null);
   const [onlineLimitProgress, setOnlineLimitProgress] = useState<MyProfessionalProfile["onlineLimitProgress"] | null>(null);
@@ -244,6 +245,7 @@ function RichiesteContent() {
         setMyServices(profile?.services ?? []);
         setDefaultPaymentOffer(profile?.defaultPaymentOffer ?? null);
         setDefaultCancellationNoticeHours(profile?.cancellationNoticeHours ?? null);
+        setDefaultLateCancelKeepsDeposit(profile?.lateCancelKeepsDeposit ?? false);
         setStripeVerified(profile?.stripeVerified ?? true);
         setOnlineLimitEurCents(profile?.onlineLimitEurCents ?? null);
         setOnlineLimitProgress(profile?.onlineLimitProgress ?? null);
@@ -726,6 +728,7 @@ function RichiesteContent() {
                   myProfileId={myProfileId}
                   defaultPaymentOffer={defaultPaymentOffer}
                   defaultCancellationNoticeHours={defaultCancellationNoticeHours}
+                  defaultLateCancelKeepsDeposit={defaultLateCancelKeepsDeposit}
                   stripeVerified={stripeVerified}
                   onlineLimitEurCents={onlineLimitEurCents}
                   onlineLimitProgress={onlineLimitProgress}

@@ -66,6 +66,11 @@ proprio mentre accettava.
   carta"), nel PDF e nell'email di conferma. Sul server la regola c'era già:
   annullando dentro il preavviso con l'acconto trattenuto `keepDeposit`,
   altrimenti `refundOnCancel` rimborsa tutto su Stripe.
+- Scelta di partenza nel Profilo (miglioria approvata da Luca): nella
+  sezione "Preavviso per annullare" le stesse due scelte sull'acconto
+  online; nuovi preventivi partono da lì e si cambia a ogni preventivo.
+  Nuova colonna `professional_profiles.lateCancelKeepsDeposit` (di serie
+  false, migrazione additiva `20261111220000_acconto_trattenuto_di_serie`).
 - Altri stati che non sono errori, dal rosso al grigio: "Hai rifiutato
   questo preventivo", "Il professionista ha ritirato questo preventivo",
   "Ha rifiutato" accanto al professionista, la riga "Annullata da te / dal
