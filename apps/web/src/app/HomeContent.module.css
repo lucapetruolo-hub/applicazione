@@ -22,6 +22,9 @@
   --section-title-size: 30px;
   --section-title-line: 34px;
   --section-compact-pad: 56px;
+  /* Lettere un po' più strette nei titoli grandi, come nei titoli Apple
+     (scelta di Luca, docs/changelog/2026-11-11-home-grafica.md). */
+  --section-title-tracking: -0.5px;
 }
 
 @media (min-width: 801px) {
@@ -29,5 +32,6 @@
     --section-title-size-wide: 44px;
     --section-title-line-wide: 48px;
     --section-compact-pad-wide: 88px;
+    --section-title-tracking: -1px;
   }
 }

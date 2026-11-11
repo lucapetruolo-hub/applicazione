@@ -100,10 +100,12 @@ export function NewProfilesCarousel({
           overflow: hidden;
           text-decoration: none;
           color: inherit;
+          /* Stessa ombra delle altre schede bianche (--card-shadow, globals.css). */
+          box-shadow: var(--card-shadow);
           transition: box-shadow 160ms ease;
         }
         .npc-root :global(.npc-link:hover) {
-          box-shadow: 0 10px 24px rgba(43, 32, 19, 0.08);
+          box-shadow: var(--card-shadow-hover);
         }
         .npc-root :global(.npc-band) {
           position: relative;
@@ -139,6 +141,16 @@ export function NewProfilesCarousel({
           border-radius: 50%;
           background: ${brand.calce};
           padding: 4px;
+        }
+        .npc-root :global(.npc-nophoto) {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 2px;
+          width: 80px;
+          height: 80px;
+          border-radius: 50%;
         }
         .npc-root :global(.npc-body) {
           display: flex;
@@ -182,7 +194,20 @@ function NewProfileCard({ pro, delayMs }: { pro: NewProfileSummary; delayMs: num
             </span>
           ) : null}
           <span className="npc-photo" style={{ boxShadow: `0 0 0 3px ${accent.bg}` }}>
-            <Avatar name={pro.businessName} imageUrl={pro.imageUrl} size={80} />
+            {pro.imageUrl ? (
+              <Avatar name={pro.businessName} imageUrl={pro.imageUrl} size={80} />
+            ) : (
+              // Senza foto: icona del mestiere e iniziali piccole sul suo
+              // colore, invece del grande cerchio verde con le iniziali che
+              // sembrava un segnaposto (scelta di Luca,
+              // docs/changelog/2026-11-11-home-grafica.md).
+              <span className="npc-nophoto" style={{ backgroundColor: accent.bg }}>
+                <CategoryIcon slug={pro.categorySlug} size={28} color={accent.fg} />
+                <span className={`is_Text ${text.initials}`} style={{ color: accent.fg }}>
+                  {initials(pro.businessName)}
+                </span>
+              </span>
+            )}
           </span>
         </div>
 
@@ -213,6 +238,13 @@ function NewProfileCard({ pro, delayMs }: { pro: NewProfileSummary; delayMs: num
       </Link>
     </div>
   );
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
 }
 
 function isNewProfile(createdAt: string): boolean {

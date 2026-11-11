@@ -259,13 +259,13 @@ export function PriceEstimatorTool({ children, initialEntries }: { children?: Re
           background: ${brand.calce};
           border: 1px solid ${brand.filetto};
           border-radius: ${radiusDoc}px;
-          box-shadow: 0 6px 24px rgba(43, 32, 19, 0.06);
+          box-shadow: var(--card-shadow);
           overflow: hidden;
           transition: box-shadow 0.15s ease, border-color 0.15s ease;
         }
         .price-panel:focus-within {
           border-color: ${brand.cianografia};
-          box-shadow: 0 0 0 3px ${brand.cianografiaVelo}, 0 6px 24px rgba(43, 32, 19, 0.06);
+          box-shadow: 0 0 0 3px ${brand.cianografiaVelo}, var(--card-shadow);
         }
         .price-search {
           display: flex;

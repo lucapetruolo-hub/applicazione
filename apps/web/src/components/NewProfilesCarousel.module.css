@@ -67,3 +67,11 @@
   font-weight: 700;
   color: var(--c-cianografiaScuro);
 }
+
+/* Iniziali sotto l'icona del mestiere, per chi non ha la foto. */
+.initials {
+  font-size: 13px;
+  line-height: 15px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}

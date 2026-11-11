@@ -583,6 +583,7 @@ export function ResultsListWithMap({
             mobileSize={CARD_PHOTO.mobileSize}
             shape={CARD_PHOTO.shape}
             priority={index === 0}
+            name={pro.businessName}
           />
           {canSave ? (
             // Il clic sul cuoricino non deve aprire anche il profilo (clic sulla card).

@@ -9,7 +9,8 @@
   align-items: center;
   width: 100%;
   padding-block: var(--t-space-8);
-  padding-inline: var(--t-space-4);
+  /* Fascia da bordo a bordo (.pro-cta in globals.css). */
+  padding-inline: 0;
 }
 
 .content {
@@ -22,6 +23,15 @@
 @media (min-width: 801px) {
   .content {
     padding: var(--t-space-8);
+  }
+}
+
+/* Da computer il testo parte dove partono i titoli delle altre sezioni
+   (colonna di 1080 px), non dal bordo dello schermo. 100cqw: larghezza della
+   home senza la barra di scorrimento (HomeContent.module.css). */
+@media (min-width: 861px) {
+  .content {
+    padding-left: max(var(--t-space-8), calc((100cqw - 1080px) / 2));
   }
 }
 

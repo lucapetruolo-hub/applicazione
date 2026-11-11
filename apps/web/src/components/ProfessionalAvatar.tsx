@@ -21,6 +21,8 @@ export type ProfessionalAvatarProps = {
    * N-02, docs/changelog/2026-10-30-velocita-telefono.md).
    */
   priority?: boolean;
+  /** Nome del professionista: senza foto, le iniziali sotto l'icona del mestiere. */
+  name?: string;
 };
 
 /** Altezza della foto: uguale alla larghezza se tonda, 4/3 se verticale. */
@@ -37,9 +39,9 @@ export function avatarHeight(width: number, shape: ProfessionalAvatarShape): num
 export const CARD_PHOTO: { size: number; mobileSize: number; shape: ProfessionalAvatarShape } = { size: 120, mobileSize: 96, shape: "portrait" };
 
 /** Immagine profilo del professionista se presente, altrimenti l'icona categoria colorata. */
-export function ProfessionalAvatar({ imageUrl, categorySlug, size = 44, mobileSize, shape = "circle", priority = false }: ProfessionalAvatarProps) {
+export function ProfessionalAvatar({ imageUrl, categorySlug, size = 44, mobileSize, shape = "circle", priority = false, name }: ProfessionalAvatarProps) {
   if (!imageUrl) {
-    return <CategoryIconBadge slug={categorySlug} size={size} mobileSize={mobileSize} shape={shape} />;
+    return <CategoryIconBadge slug={categorySlug} size={size} mobileSize={mobileSize} shape={shape} name={name} />;
   }
 
   const height = avatarHeight(size, shape);
