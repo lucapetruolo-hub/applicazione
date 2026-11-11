@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 import { H2, H3, Paragraph, Text, XStack, YStack } from "tamagui";
+import { brand } from "./tokens";
 
 export type { SectionDensity, SectionProps, SectionTone } from "./sectionProps";
 import type { SectionDensity, SectionProps, SectionTone } from "./sectionProps";
@@ -71,7 +72,7 @@ function SectionTitle({
     <Heading
       {...(pageTitle && !nested ? { render: "h1" } : null)}
       fontFamily="heading"
-      color={isDark ? "white" : "grafite"}
+      color={isDark ? "white" : brand.inchiostro}
       {...(nested
         ? { fontSize: "7", lineHeight: "7" }
         : // Titolo di sezione del sistema unico (docs/CHANGELOG.md §305): 26 px

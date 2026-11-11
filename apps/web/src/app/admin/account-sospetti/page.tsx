@@ -133,7 +133,7 @@ function SuspiciousUsers() {
       {data && view.status === "TODO" ? (
         shown.length > 0 ? (
           <section className="admin-signals" aria-label="Cosa fare">
-            <Text render="h3" margin={0} fontWeight="800" fontSize="5" color={brand.grafite}>
+            <Text render="h3" margin={0} fontWeight="800" fontSize="5" color={brand.inchiostro}>
               Cosa fare
             </Text>
             <ul className="admin-advice-list">

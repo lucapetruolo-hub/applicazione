@@ -745,7 +745,7 @@ function RequestsHeading() {
   return (
     <YStack gap="1">
       {/* Stesso nome della voce di menu (richiesta dell'utente, docs/CHANGELOG.md §334). */}
-      <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.grafite}>
+      <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="7" color={brand.inchiostro}>
         Richieste e lavori
       </Text>
       <Text fontFamily="body" fontSize={16} color={brand.grafite70}>

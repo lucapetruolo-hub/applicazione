@@ -79,7 +79,7 @@ export function AuthStepHeader({
       <YStack alignItems="center" gap="3">
         <AuthIconBadge icon={icon} />
         <YStack alignItems="center" gap="1">
-          <Text ref={titleRef as never} render="h1" tabIndex={-1} className="step-focus-target" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center" style={{ textWrap: "balance" }}>
+          <Text ref={titleRef as never} render="h1" tabIndex={-1} className="step-focus-target" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro} textAlign="center" style={{ textWrap: "balance" }}>
             {title}
           </Text>
           {subtitle ? (

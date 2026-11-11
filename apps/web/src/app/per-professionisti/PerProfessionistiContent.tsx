@@ -136,7 +136,7 @@ function SectionTitle({ children, lead }: { children: ReactNode; lead?: string }
         fontSize="34px gtSm:46px"
         lineHeight="38px gtSm:50px"
         letterSpacing={-0.5}
-        color={brand.grafite}
+        color={brand.inchiostro}
       >
         {children}
       </Text>
@@ -187,7 +187,7 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
             lineHeight="42px gtSm:56px"
             letterSpacing={-0.8}
             textAlign="center"
-            color={brand.grafite}
+            color={brand.inchiostro}
           >
             Trova nuovi clienti nella tua zona.
           </Text>
@@ -303,7 +303,7 @@ function ProOnlinePayment() {
             fontSize="30px gtSm:38px"
             lineHeight="34px gtSm:42px"
             letterSpacing={-0.5}
-            color={brand.grafite}
+            color={brand.inchiostro}
           >
             Il cliente paga l&apos;acconto prima. Tu lavori tranquillo.
           </Text>
@@ -568,7 +568,7 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
             fontSize="34px gtSm:46px"
             lineHeight="38px gtSm:50px"
             letterSpacing={-0.5}
-            color={brand.grafite}
+            color={brand.inchiostro}
           >
             Un solo abbonamento, tutte le funzioni
           </Text>
@@ -600,7 +600,7 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
             >
               <YStack gap={2}>
                 <XStack alignItems="center" gap="2" flexWrap="wrap">
-                  <Text render="h3" margin={0} fontFamily="heading" fontWeight="700" fontSize="7" color={brand.grafite}>
+                  <Text render="h3" margin={0} fontFamily="heading" fontWeight="700" fontSize="7" color={brand.inchiostro}>
                     {tier.label}
                   </Text>
                   {free ? (
@@ -774,7 +774,7 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
             fontSize="34px gtSm:46px"
             lineHeight="38px gtSm:50px"
             letterSpacing={-0.5}
-            color={brand.grafite}
+            color={brand.inchiostro}
           >
             Domande frequenti
           </Text>
@@ -866,7 +866,7 @@ function ProFinalCta() {
             lineHeight="38px gtSm:50px"
             letterSpacing={-0.5}
             textAlign="center"
-            color={brand.grafite}
+            color={brand.inchiostro}
           >
             Inizia a ricevere richieste
           </Text>

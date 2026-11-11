@@ -51,7 +51,7 @@
   /* Righe di lunghezza simile, mai una parola sola in fondo. */
   text-wrap: balance;
   text-align: center;
-  color: var(--c-grafite);
+  color: #0f3b2c; /* brand.inchiostro, titoli */
 }
 
 @media (min-width: 801px) {

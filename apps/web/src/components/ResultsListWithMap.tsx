@@ -1065,7 +1065,7 @@ export function ResultsListWithMap({
           {otherSection && otherSection.professionals.length > 0 ? (
             <section id="anche-questo-lavoro" aria-labelledby="results-other-section" className="results-other-section">
               <YStack gap="1" marginBottom="2">
-                <Text id="results-other-section" render="h2" fontFamily="heading" fontWeight="800" fontSize={20} color={brand.grafite}>
+                <Text id="results-other-section" render="h2" fontFamily="heading" fontWeight="800" fontSize={20} color={brand.inchiostro}>
                   {otherSection.title}
                 </Text>
                 <Text fontSize={14} color={brand.grafite70}>

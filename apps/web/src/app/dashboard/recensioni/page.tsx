@@ -89,7 +89,7 @@ export default function DashboardRecensioniPage() {
     <YStack width="100%" alignItems="center" paddingVertical="8" paddingHorizontal="4">
       <YStack width="100%" maxWidth={880} gap="5">
         <YStack gap="1">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize={30} color={brand.grafite}>
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize={30} color={brand.inchiostro}>
             Recensioni
           </Text>
           <Text fontSize={16} color={brand.grafite70}>

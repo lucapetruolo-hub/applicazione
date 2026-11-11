@@ -182,7 +182,7 @@ function PersonalLinkContent() {
     <YStack width="100%" alignItems="center" paddingVertical="8" paddingHorizontal="4">
       <YStack width="100%" maxWidth={880} gap="5">
         <YStack gap="2">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize={30} color={brand.grafite}>
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize={30} color={brand.inchiostro}>
             Il tuo link
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
@@ -214,7 +214,7 @@ function PersonalLinkContent() {
         {link ? (
           <>
             <Surface gap="3">
-              <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize={20} color={brand.grafite}>
+              <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize={20} color={brand.inchiostro}>
                 Il tuo link personale
               </Text>
               <XStack
@@ -253,7 +253,7 @@ function PersonalLinkContent() {
             </Surface>
 
             <Surface gap="3">
-              <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize={20} color={brand.grafite}>
+              <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize={20} color={brand.inchiostro}>
                 Invita un tuo cliente
               </Text>
               <Text color={brand.grafite70}>Il messaggio parte dal tuo telefono o dalla tua email: noi non scriviamo ai tuoi clienti.</Text>
@@ -310,7 +310,7 @@ function PersonalLinkContent() {
             </Surface>
 
             <Surface gap="3">
-              <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize={20} color={brand.grafite}>
+              <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize={20} color={brand.inchiostro}>
                 Codice QR
               </Text>
               <XStack gap="4" flexWrap="wrap" alignItems="center">
@@ -333,7 +333,7 @@ function PersonalLinkContent() {
             </Surface>
 
             <Surface gap="2">
-              <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize={20} color={brand.grafite}>
+              <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize={20} color={brand.inchiostro}>
                 Mettilo dove ti cercano
               </Text>
               <Text color={brand.grafite70}>
@@ -342,7 +342,7 @@ function PersonalLinkContent() {
             </Surface>
 
             <Surface gap="3">
-              <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize={20} color={brand.grafite}>
+              <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize={20} color={brand.inchiostro}>
                 Pulsante per il tuo sito
               </Text>
               <Text color={brand.grafite70}>
@@ -373,7 +373,7 @@ function PersonalLinkContent() {
             </Surface>
 
             <Surface gap="3">
-              <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize={20} color={brand.grafite}>
+              <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize={20} color={brand.inchiostro}>
                 Le tue stelle sul tuo sito
               </Text>
               <Text color={brand.grafite70}>
@@ -444,7 +444,7 @@ function PersonalLinkContent() {
             </Surface>
 
             <Surface gap="3">
-              <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize={20} color={brand.grafite}>
+              <Text render="h2" margin={0} fontFamily="heading" fontWeight="800" fontSize={20} color={brand.inchiostro}>
                 Porta un collega
               </Text>
               <Text color={brand.grafite70}>

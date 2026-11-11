@@ -42,7 +42,7 @@ export function FiscalWhyModal({ onClose }: { onClose: () => void }) {
     >
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="fiscal-why-title" style={{ width: "100%", maxWidth: 420 }}>
         <YStack width="100%" backgroundColor={brand.calce} borderRadius="5" padding="5" gap="4">
-          <Text id="fiscal-why-title" render="h2" fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
+          <Text id="fiscal-why-title" render="h2" fontFamily="heading" fontWeight="800" fontSize="6" color={brand.inchiostro}>
             Perché ti chiediamo questi dati
           </Text>
           <YStack gap="3">

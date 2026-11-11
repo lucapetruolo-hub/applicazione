@@ -46,7 +46,7 @@ function ConfermaConCodice() {
       <AuthCard maxWidth={440}>
         <YStack alignItems="center" gap="3">
           <AuthIconBadge icon="mail" />
-          <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center">
+          <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro} textAlign="center">
             Conferma la tua email
           </Text>
         </YStack>
@@ -164,7 +164,7 @@ function ConfermaEmail() {
         {state === "done" ? (
           <YStack gap="4" alignItems="center">
             <AuthIconBadge icon="check" />
-            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center">
+            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro} textAlign="center">
               {alreadyVerified ? "Email già confermata" : "Email confermata"}
             </Text>
             <Text fontSize={16} color={brand.grafite70} textAlign="center">
@@ -178,7 +178,7 @@ function ConfermaEmail() {
         ) : state === "error" ? (
           <YStack gap="4" alignItems="center">
             <AuthIconBadge icon="mail" />
-            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center">
+            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro} textAlign="center">
               {errorKind === "expired" ? "Il link è scaduto" : errorKind === "invalid" ? "Questo link non vale più" : "Conferma non riuscita"}
             </Text>
             <Text fontSize={16} color={brand.grafite70} textAlign="center" role="alert">
@@ -214,7 +214,7 @@ function ConfermaEmail() {
         ) : (
           <YStack gap="4" alignItems="center">
             <AuthIconBadge icon="mail" />
-            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite} textAlign="center">
+            <Text render="h1" fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro} textAlign="center">
               Conferma la tua email
             </Text>
             <Text fontSize={16} color={brand.grafite70} textAlign="center">

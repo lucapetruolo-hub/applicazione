@@ -81,7 +81,7 @@
   font-weight: var(--f-weight-8);
   letter-spacing: var(--section-title-tracking, var(--f-letterSpacing-8));
   text-transform: var(--f-transform-8);
-  color: var(--c-grafite);
+  color: #0f3b2c; /* brand.inchiostro, titoli */
   font-size: var(--section-title-size, 26px);
   line-height: var(--section-title-line, 31px);
 }

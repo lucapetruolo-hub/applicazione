@@ -197,7 +197,7 @@ export function GuidedRequestHeading({ title, subtitle }: { title: string; subti
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
       <YStack width="100%" maxWidth={560} gap="5">
         <YStack gap="3">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro}>
             {title}
           </Text>
           <Text color={brand.grafite70}>{subtitle}</Text>
@@ -1261,7 +1261,7 @@ export function GuidedRequestForm({
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
       <YStack width="100%" maxWidth={560} gap="5">
         <YStack gap="3">
-          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.grafite}>
+          <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize="8" color={brand.inchiostro}>
             {title}
           </Text>
           {professionalProfileId && shownProfessionalName ? (
