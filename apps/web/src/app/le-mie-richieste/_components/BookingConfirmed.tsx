@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { ClientBooking } from "@professionisti/api-client";
 import { Avatar, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
-import { formatServicePriceRange, quotePriceTotals } from "@professionisti/shared";
+import { cancellationNoticeLabel, formatEurCents, formatServicePriceRange, freeCancellationUntilLabel, isLateCancellation, quotePriceTotals } from "@professionisti/shared";
 import { CardButton } from "@/components/CardButton";
 import { JobPaymentStatus } from "@/components/JobPaymentStatus";
 import { AppointmentWhen, useAppointmentMoment } from "./AppointmentWhen";
@@ -26,6 +26,7 @@ export function BookingConfirmed({ booking, address, token, onDone }: { booking:
   const priceText = totals.totalMaxEurCents > 0 ? formatServicePriceRange(totals.totalMinEurCents, totals.totalMaxEurCents) : null;
   const online = !address;
   const direct = booking.payment?.method === "DIRECT";
+  const keptDeposit = booking.lateCancelKeepsDeposit && booking.payment?.method === "ONLINE" ? booking.payment.paidEurCents : 0;
   const steps = [
     { title: online ? `${booking.businessName} ha i tuoi contatti` : `${booking.businessName} ha il tuo indirizzo e il telefono`, note: "Ti può chiamare per i dettagli" },
     { title: "Ti ricordiamo l'appuntamento il giorno prima" },
@@ -73,6 +74,14 @@ export function BookingConfirmed({ booking, address, token, onDone }: { booking:
           </XStack>
         ) : null}
         {booking.payment ? <JobPaymentStatus payment={booking.payment} audience="client" /> : null}
+        {/* Acconto non rimborsabile dopo il preavviso, detto anche qui (Luca, 11/11, docs/changelog/2026-11-11-rosso-solo-errori.md). */}
+        {keptDeposit > 0 ? (
+          <Text fontSize={13} fontWeight="600" color={brand.ottoneScuro}>
+            {isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours)
+              ? `Mancano meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)}: l'acconto di ${formatEurCents(keptDeposit)} non è rimborsabile, anche se annulli.`
+              : `Annullamento gratuito fino a ${freeCancellationUntilLabel(booking.scheduledAt, booking.cancellationNoticeHours)}. Dopo, l'acconto di ${formatEurCents(keptDeposit)} non è rimborsabile.`}
+          </Text>
+        ) : null}
       </Surface>
 
       <YStack gap="3">

@@ -9,6 +9,7 @@ import {
   cancellationNoticeLabel,
   formatEurCents,
   formatServicePriceRange,
+  freeCancellationUntilLabel,
   isLateCancellation,
   jobPaymentChoiceCopy,
   quotePaymentRestText,
@@ -54,6 +55,12 @@ export function QuoteAcceptSummary({
   const executor = quote.executor ?? null;
   const isPrivate = quote.professionalKind === "PRIVATE";
   const split = paymentSplit(payment, priceTotals, quote.depositPercent);
+  // "l'acconto di 24,00 €", o tutto quello pagato online se l'acconto è il 100%.
+  const depositText = !split
+    ? "l'acconto"
+    : split.restMaxEurCents === 0
+      ? `quello che paghi online (${formatEurCents(split.nowEurCents)})`
+      : `l'acconto di ${formatEurCents(split.nowEurCents)}`;
   const taxNote = quotePriceTaxNote(quote.chargesVat ?? null);
   // Una riga del riquadro: a sinistra cosa e quando, a destra la cifra. Se
   // lo spazio non basta (telefono stretto) la cifra scende sotto, a destra:
@@ -128,12 +135,20 @@ export function QuoteAcceptSummary({
           </Link>
         </Text>
       ) : null}
-      {alreadyLate ? (
-        <Text fontSize={16} fontWeight="600" color={brand.urgenza}>
-          Mancano meno di {cancellationNoticeLabel(quote.cancellationNoticeHours)} all&apos;appuntamento, il preavviso chiesto per annullare.{" "}
-          {keepsDeposit
-            ? "Se poi annulli, l'acconto resta al professionista."
-            : "Se poi annulli non paghi niente, ma il professionista vede che hai annullato all'ultimo."}
+      {/* Preavviso e acconto (decisioni di Luca dell'11/11,
+          docs/changelog/2026-11-11-rosso-solo-errori.md): rosso solo per gli
+          errori. Senza acconto da perdere basta ricordare il tempo, in grigio.
+          Con l'acconto che resta al professionista si dice chiaro, sempre, che
+          non è rimborsabile, in ocra ("attenzione"). */}
+      {keepsDeposit ? (
+        <Text fontSize={16} fontWeight="600" color={brand.ottoneScuro} data-testid="quote-accept-deposit-kept">
+          {alreadyLate
+            ? `Mancano meno di ${cancellationNoticeLabel(quote.cancellationNoticeHours)} all'appuntamento: ${depositText} non è rimborsabile, anche se annulli.`
+            : `Annullamento gratuito fino a ${freeCancellationUntilLabel(quote.estimatedStartDate, quote.cancellationNoticeHours)}. Dopo, ${depositText} non è rimborsabile.`}
+        </Text>
+      ) : alreadyLate ? (
+        <Text fontSize={16} color={brand.grafite70}>
+          Mancano meno di {cancellationNoticeLabel(quote.cancellationNoticeHours)} all&apos;appuntamento.
         </Text>
       ) : null}
       {/* Lavoro ricorrente: le visite dopo la prima si pagano come questa (decisione di Luca del 09/11, docs/changelog/2026-11-09-lavori-ricorrenti.md). */}

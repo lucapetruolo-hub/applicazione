@@ -27,3 +27,17 @@ export function isLateCancellation(scheduledAt: Date | string, hours: number | n
   const start = new Date(scheduledAt).getTime();
   return start - wallClockNow(now).getTime() < (hours ?? DEFAULT_CANCELLATION_NOTICE_HOURS) * 60 * 60_000;
 }
+
+/**
+ * Fino a quando si annulla senza perdere l'acconto, detto con giorno e ora
+ * ("lunedì 9 novembre alle 08:00") invece che "24 ore prima": la scadenza
+ * esatta non va calcolata dal cliente (decisione di Luca dell'11/11,
+ * docs/changelog/2026-11-11-rosso-solo-errori.md). Orari "di parete"
+ * italiani, come scheduledAt: si formatta in UTC.
+ */
+export function freeCancellationUntilLabel(scheduledAt: Date | string, hours: number | null | undefined): string {
+  const until = new Date(new Date(scheduledAt).getTime() - (hours ?? DEFAULT_CANCELLATION_NOTICE_HOURS) * 60 * 60_000);
+  const day = until.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+  const time = until.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+  return `${day} alle ${time}`;
+}

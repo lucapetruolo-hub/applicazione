@@ -1381,7 +1381,7 @@ export function RequestCard({
           {booking ? <AppointmentReplyStatus booking={booking} /> : null}
           {/* Annullato dal cliente dentro il preavviso che hai scelto (docs/CHANGELOG.md §347). */}
           {booking?.status === "CANCELED" && booking.canceledBy === "CLIENT" && booking.canceledLate ? (
-            <Text fontSize={13} color={brand.urgenza} fontWeight="600">
+            <Text fontSize={13} color={brand.ottoneScuro} fontWeight="600">
               Il cliente ha annullato con meno preavviso di quello che chiedi.
             </Text>
           ) : null}

@@ -8,6 +8,7 @@ import {
   arrivalWindowText,
   TAX_BONUS_PAYMENT_NOTE,
   cancellationNoticeLabel,
+  freeCancellationUntilLabel,
   categoryMayHaveTaxBonus,
   formatAppointmentTimeRange,
   formatEurCents,
@@ -479,8 +480,10 @@ export function QuoteCard({
               Avvisa almeno {cancellationNoticeLabel(quote.cancellationNoticeHours)} prima
             </Text>
             {quote.lateCancelKeepsDeposit && onlinePayments && quote.paymentOptions.some(paymentChoiceIsOnline) ? (
-              <Text fontSize={13} color={brand.grafite70}>
-                Se annulli più tardi e hai pagato l&apos;acconto online, l&apos;acconto resta al professionista.
+              // Detto chiaro sul preventivo, prima di accettare (Luca, 11/11, docs/changelog/2026-11-11-rosso-solo-errori.md).
+              <Text fontSize={13} fontWeight="600" color={brand.ottoneScuro}>
+                Pagando online, se annulli dopo {freeCancellationUntilLabel(quote.estimatedStartDate, quote.cancellationNoticeHours)} l&apos;acconto non è
+                rimborsabile.
               </Text>
             ) : null}
           </QuoteFact>
@@ -683,7 +686,7 @@ export function QuoteCard({
         </Text>
       ) : quote.status === "REJECTED" ? (
         <YStack gap="1">
-          <Text fontSize={13} color={brand.urgenza} fontWeight="600">
+          <Text fontSize={13} color={brand.grafite70} fontWeight="600">
             Hai rifiutato questo preventivo
           </Text>
           {quote.rejectionNote ? (
@@ -698,7 +701,7 @@ export function QuoteCard({
           ) : null}
         </YStack>
       ) : quote.status === "WITHDRAWN" ? (
-        <Text fontSize={13} color={brand.urgenza} fontWeight="600">
+        <Text fontSize={13} color={brand.grafite70} fontWeight="600">
           Il professionista ha ritirato questo preventivo
         </Text>
       ) : null}
