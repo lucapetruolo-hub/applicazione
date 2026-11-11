@@ -6848,6 +6848,13 @@ a.admin-kpi:hover {
   outline-offset: 2px;
   border-radius: 6px;
 }
+/* Solo da computer: da telefono la scheda "Non trovi il tuo lavoro?" si vede
+   già in fondo alla griglia (HomeContent, "Di cosa hai bisogno?"). */
+@media (max-width: 700px) {
+  .home-section-action--wide {
+    display: none;
+  }
+}
 
 /* Pillola "Novità" accanto a "Cosa è successo?" in home
    (docs/changelog/2026-11-03-ricerca-per-problema-home.md, idea di Luca):

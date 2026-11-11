@@ -30,3 +30,10 @@ freccia resta con la punta sbiadita. Vale per le categorie e per i nuovi
 professionisti (`BleedRail`). Poi, sempre su richiesta di Luca, anche il movimento di apple.com: al
 passaggio del mouse la punta scivola di 2 px nella sua direzione, al clic il
 cerchio si stringe appena (niente movimento con "riduci movimento").
+
+**Migliorie dopo la revisione da esperto** (sì di Luca): le frecce prendono
+il colore dei testi della palette nuova (#1b1a18, PR #324) invece del vecchio
+marrone scuro; da computer, accanto al titolo "Di cosa hai bisogno?", il link
+"Non trovi il tuo lavoro? →" porta al campo "Cosa è successo?" come la scheda
+in fondo alla riga (`goToProblemField`), per chi non scorre fino alla fine.
+Da telefono il link non c'è: la scheda è già visibile nella griglia.

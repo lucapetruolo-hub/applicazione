@@ -181,7 +181,7 @@ export function CategoryStoryRail({ state }: { state: CategoryStoryRailState }) 
 }
 
 /** Porta al campo "Cosa è successo?" della home e ci mette il cursore; se non c'è, il link apre /preventivo. */
-function goToProblemField(event: MouseEvent<HTMLAnchorElement>) {
+export function goToProblemField(event: MouseEvent<HTMLAnchorElement>) {
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
   const field = document.querySelector<HTMLElement>(".hero-problem-input");
   const input = field?.matches("input") ? field : field?.querySelector<HTMLElement>("input");
