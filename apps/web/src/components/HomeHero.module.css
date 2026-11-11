@@ -8,7 +8,11 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-  padding-top: var(--t-space-6);
+  /* Apertura più vicina alla barra in alto (richiesta di Luca,
+     docs/changelog/2026-11-11-home-apertura-piu-alta.md): 40 px tra barra e
+     titolo da computer (prima 71), 32 da telefono, così titolo, ricerca ed
+     esempi stanno nella prima schermata anche su un portatile alto 768 px. */
+  padding-top: 8px;
   padding-bottom: var(--t-space-5);
   padding-inline: var(--t-space-4);
   background-color: transparent;
@@ -26,7 +30,7 @@
      resto della home, come su apple.com; il verde resta su pulsanti e
      dettagli (scelta di Luca dell'11/11/2026, al posto dell'"hero verde"
      del 24/10, docs/changelog/2026-11-11-home-caroselli-larghi.md). */
-  padding-top: var(--t-space-7);
+  padding-top: 32px;
   padding-bottom: var(--t-space-4);
   border-radius: 40px;
   background-color: transparent;
@@ -142,6 +146,7 @@
 
   .panel {
     padding-inline: 0;
+    padding-top: 24px;
   }
 
   .title,

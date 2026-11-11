@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Icon, brand } from "@professionisti/ui";
+import { Icon } from "@professionisti/ui";
 
 /**
  * Riga da scorrere larga quanto lo schermo, come i caroselli di apple.com
@@ -85,12 +85,12 @@ export function BleedRail({
           </div>
           <button
             type="button"
-            className="bleed-rail-arrow category-carousel-arrow"
+            className="bleed-rail-arrow bleed-rail-arrow--prev category-carousel-arrow"
             aria-label={previousLabel}
             disabled={atStart}
             onClick={() => scrollByItem(-1)}
           >
-            <Icon name="chevron-left" size={18} color={brand.grafite} />
+            <Icon name="chevron-left" size={18} color="currentColor" strokeWidth={2.25} />
           </button>
           <button
             type="button"
@@ -99,7 +99,7 @@ export function BleedRail({
             disabled={atEnd}
             onClick={() => scrollByItem(1)}
           >
-            <Icon name="chevron-right" size={18} color={brand.calce} />
+            <Icon name="chevron-right" size={18} color="currentColor" strokeWidth={2.25} />
           </button>
         </div>
       ) : null}

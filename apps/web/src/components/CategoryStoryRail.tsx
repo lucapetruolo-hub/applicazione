@@ -108,20 +108,6 @@ export function CategoryStoryRail({ state }: { state: CategoryStoryRailState }) 
         nextLabel="Categorie successive"
         itemSelector=".story-card"
       >
-        {/* Prima scheda da computer (scelta di Luca dell'11/11,
-            docs/changelog/2026-11-11-home-caroselli-larghi.md); da telefono
-            resta in fondo alla griglia con `order` (globals.css).
-            Porta al campo "Cosa è successo?" in cima alla home, con il cursore
-            dentro e le frasi d'esempio aperte (scelta di Luca,
-            docs/changelog/2026-11-03-luci-che-accelerano.md): prima apriva
-            /preventivo, che chiedeva di nuovo la categoria che la persona non
-            aveva trovato. Senza il campo (o senza JavaScript) resta il link. */}
-        <Link href="/preventivo" className="story-card story-card-other" onClick={goToProblemField}>
-          <GlowLights tone="verde" />
-          <Icon name="pencil" size={26} color="white" strokeWidth={1.5} />
-          <span className="story-card-title">Non trovi il tuo lavoro?</span>
-          <span style={{ fontSize: 16, opacity: 0.9 }}>Scrivi il problema, ti diciamo chi chiamare →</span>
-        </Link>
         {categories.map((c, index) => {
           const photoUrl = CATEGORY_PHOTOS[c.slug];
           return (
@@ -174,13 +160,28 @@ export function CategoryStoryRail({ state }: { state: CategoryStoryRailState }) 
             <Icon name={showAll ? "chevron-up" : "chevron-down"} size={18} color="currentColor" />
           </button>
         ) : null}
+        {/* In fondo alla riga: chi non trova il suo mestiere arriva qui
+            dopo l'ultima categoria. Per qualche ora è stata la prima scheda
+            da computer, ma a Luca non piaceva lì
+            (docs/changelog/2026-11-11-home-apertura-piu-alta.md).
+            Porta al campo "Cosa è successo?" in cima alla home, con il cursore
+            dentro e le frasi d'esempio aperte (scelta di Luca,
+            docs/changelog/2026-11-03-luci-che-accelerano.md): prima apriva
+            /preventivo, che chiedeva di nuovo la categoria che la persona non
+            aveva trovato. Senza il campo (o senza JavaScript) resta il link. */}
+        <Link href="/preventivo" className="story-card story-card-other" onClick={goToProblemField}>
+          <GlowLights tone="verde" />
+          <Icon name="pencil" size={26} color="white" strokeWidth={1.5} />
+          <span className="story-card-title">Non trovi il tuo lavoro?</span>
+          <span style={{ fontSize: 16, opacity: 0.9 }}>Scrivi il problema, ti diciamo chi chiamare →</span>
+        </Link>
       </BleedRail>
     </div>
   );
 }
 
 /** Porta al campo "Cosa è successo?" della home e ci mette il cursore; se non c'è, il link apre /preventivo. */
-function goToProblemField(event: MouseEvent<HTMLAnchorElement>) {
+export function goToProblemField(event: MouseEvent<HTMLAnchorElement>) {
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
   const field = document.querySelector<HTMLElement>(".hero-problem-input");
   const input = field?.matches("input") ? field : field?.querySelector<HTMLElement>("input");

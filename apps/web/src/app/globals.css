@@ -5828,22 +5828,52 @@ a.admin-kpi:hover {
   height: 44px;
   border: none;
   border-radius: 999px;
-  background: #ffffff;
+  /* Due frecce uguali, grigio chiaro con la punta scura, come su apple.com
+     (richiesta di Luca, docs/changelog/2026-11-11-home-apertura-piu-alta.md;
+     prima una bianca e una nera). Alla fine della riga la freccia resta al
+     suo posto con la punta sbiadita. */
+  background: rgba(27, 26, 24, 0.08);
+  color: rgba(27, 26, 24, 0.8);
   cursor: pointer;
-  transition: opacity 160ms ease, transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: background-color 200ms ease, color 200ms ease, transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.bleed-rail-arrow--next {
-  background: #1b1a18;
+/* Movimento come su apple.com: al passaggio del mouse il cerchio si scurisce
+   e la punta scivola di 2 px verso dove porta; al clic il cerchio si stringe
+   appena. */
+.bleed-rail-arrow > svg {
+  transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.bleed-rail-arrow:hover:not(:disabled) {
+  background: rgba(27, 26, 24, 0.14);
+  color: #1b1a18;
+}
+.bleed-rail-arrow--prev:hover:not(:disabled) > svg {
+  transform: translateX(-2px);
+}
+.bleed-rail-arrow--next:hover:not(:disabled) > svg {
+  transform: translateX(2px);
 }
 .bleed-rail-arrow:active:not(:disabled) {
-  transform: scale(0.94);
+  transform: scale(0.9);
+  transition-duration: 80ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bleed-rail-arrow,
+  .bleed-rail-arrow > svg {
+    transition: background-color 200ms ease, color 200ms ease;
+  }
+  .bleed-rail-arrow--prev:hover:not(:disabled) > svg,
+  .bleed-rail-arrow--next:hover:not(:disabled) > svg,
+  .bleed-rail-arrow:active:not(:disabled) {
+    transform: none;
+  }
 }
 .bleed-rail-arrow:focus-visible {
   outline: 3px solid #4c8a7a;
   outline-offset: 2px;
 }
 .bleed-rail-arrow:disabled {
-  opacity: 0.35;
+  color: rgba(27, 26, 24, 0.25);
   cursor: default;
 }
 /* Su un telefono senza mouse niente frecce (regola di .category-carousel-arrow):
@@ -6904,6 +6934,13 @@ a.admin-kpi:hover {
   outline-offset: 2px;
   border-radius: 6px;
 }
+/* Solo da computer: da telefono la scheda "Non trovi il tuo lavoro?" si vede
+   già in fondo alla griglia (HomeContent, "Di cosa hai bisogno?"). */
+@media (max-width: 700px) {
+  .home-section-action--wide {
+    display: none;
+  }
+}
 
 /* Pillola "Novità" accanto a "Cosa è successo?" in home
    (docs/changelog/2026-11-03-ricerca-per-problema-home.md, idea di Luca):
@@ -7206,8 +7243,6 @@ a.admin-kpi:hover {
     display: none;
   }
   .story-rail .story-card-other {
-    /* Prima nel codice (prima scheda da computer), ultima qui. */
-    order: 2;
     grid-column: 1 / -1;
     height: auto;
     min-height: 112px;
@@ -7219,7 +7254,6 @@ a.admin-kpi:hover {
      sotto le schede (docs/changelog/2026-11-02-categorie-telefono.md),
      bianco con bordo e testo verdi, come i pulsanti secondari del sito. */
   .story-show-all {
-    order: 1;
     grid-column: 1 / -1;
     display: flex;
     align-items: center;

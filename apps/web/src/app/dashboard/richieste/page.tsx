@@ -5,6 +5,8 @@ import { Suspense, startTransition, useCallback, useEffect, useMemo, useRef, use
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { jobByRequest, lastLaborPrice, lastSimilarQuote, type MyProfessionalProfile, type MySubscription, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import { RequestSearchField } from "@/components/RequestSearchField";
+import { SearchHighlightProvider, matchesSearch, searchQuery } from "@/lib/requestSearch";
 import { Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { loadMyProfessionalProfile, loadMySubscription } from "@/lib/myProfessionalProfile";
@@ -347,10 +349,8 @@ function RichiesteContent() {
     }
     if (zoneFilter !== "tutte") list = list.filter((l) => l.guidedRequest.city === zoneFilter);
     if (serviceModeFilter !== "tutte") list = list.filter((l) => l.guidedRequest.serviceMode === serviceModeFilter);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter((l) => leadSearchText(l, stageByLeadId.get(l.id), bookingByRequestId.get(l.guidedRequest.id)).includes(q));
-    }
+    const q = searchQuery(search);
+    if (q) list = list.filter((l) => matchesSearch(leadSearchText(l, stageByLeadId.get(l.id), bookingByRequestId.get(l.guidedRequest.id)), q));
     list = [...list];
     if (sortMode === "vecchie") list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     else if (sortMode === "recenti") list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -479,14 +479,17 @@ function RichiesteContent() {
             stesso pattern overlay già in uso altrove nel prodotto —
             role="dialog", chiusura su Escape/click sul backdrop). Il toggle
             "A domicilio/Online" resta anch'esso fuori, sempre visibile. */}
-        <input aria-label="Cerca nelle richieste"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Cerca in ogni campo della richiesta..."
-          style={{ ...filterInputStyle, width: "100%" }}
-        />
+        {/* Da telefono la ricerca sta nella riga di "Filtri" e la modalità
+            dentro "Filtri", come nelle richieste del cliente
+            (docs/changelog/2026-11-11-ricerca-fuori-dai-filtri.md). */}
+        <YStack display="xs:none">
+          <RequestSearchField value={search} onChange={setSearch} placeholder="Cerca in ogni campo della richiesta..." inputStyle={filterInputStyle} />
+        </YStack>
 
         <XStack gap="2" alignItems="center" flexWrap="wrap">
+          <XStack display="gtXs:none" flex={1} flexBasis={0} minWidth={0}>
+            <RequestSearchField value={search} onChange={setSearch} placeholder="Cerca nelle richieste..." inputStyle={{ ...filterInputStyle, paddingTop: 12, paddingBottom: 12 }} />
+          </XStack>
           <XStack
             alignItems="center"
             gap={6}
@@ -506,7 +509,7 @@ function RichiesteContent() {
             </Text>
           </XStack>
 
-          <XStack borderRadius={999} borderWidth={1} borderColor={brand.filetto} overflow="hidden">
+          <XStack display="xs:none" borderRadius={999} borderWidth={1} borderColor={brand.filetto} overflow="hidden">
             {(
               [
                 { key: "tutte", label: "Tutte", icon: null },
@@ -561,6 +564,18 @@ function RichiesteContent() {
               </XStack>
 
               <YStack gap="3">
+                <YStack display="gtXs:none">
+                  <select
+                    aria-label="Modalità"
+                    value={serviceModeFilter}
+                    onChange={(e) => setServiceModeFilter(e.target.value as typeof serviceModeFilter)}
+                    style={{ ...filterInputStyle, width: "100%" }}
+                  >
+                    <option value="tutte">A domicilio e online</option>
+                    <option value="HOME">Solo a domicilio</option>
+                    <option value="ONLINE">Solo online</option>
+                  </select>
+                </YStack>
                 <label style={filterLabelStyle}>
                   Mostra
                   <select
@@ -637,6 +652,17 @@ function RichiesteContent() {
                   "Cambia filtro" (docs/changelog/2026-11-10-archiviate-tornano-con-novita.md). */}
               {activeTab === "archiviate" && (tabCounts.archiviate ?? 0) === 0 ? (
                 <EmptyState icon="archive" title="Nessuna richiesta archiviata" description="Le richieste che archivi finiscono qui. Tornano in Tutte quando hanno novità, se non le hai silenziate." />
+              ) : search.trim() ? (
+                <EmptyState
+                  icon="search"
+                  title="Nessuna richiesta trovata"
+                  description={`Nessuna richiesta contiene “${search.trim()}”. Prova con un'altra parola.`}
+                  action={
+                    <Button variant="secondary" onPress={() => setSearch("")}>
+                      Cancella ricerca
+                    </Button>
+                  }
+                />
               ) : (
                 <EmptyState icon="search" title="Nessuna richiesta in questa sezione" description="Cambia filtro o attendi nuove richieste dai clienti." />
               )}
@@ -688,7 +714,7 @@ function RichiesteContent() {
           </YStack>
         ) : (
           <YStack gap="3">
-            {visibleLeads.map((lead) => (
+            <SearchHighlightProvider query={searchQuery(search)}>{visibleLeads.map((lead) => (
               <div key={lead.id} id={`request-${lead.id}`}>
                 <RequestCard
                   lead={lead}
@@ -731,7 +757,7 @@ function RichiesteContent() {
                   onChatAutoOpenHandled={() => setPendingChatOpenLeadId((prev) => (prev === lead.id ? null : prev))}
                 />
               </div>
-            ))}
+            ))}</SearchHighlightProvider>
           </YStack>
         )}
 

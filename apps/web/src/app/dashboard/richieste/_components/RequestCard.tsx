@@ -1,5 +1,6 @@
 "use client";
 
+import { HighlightMatch } from "@/lib/requestSearch";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -1014,11 +1015,11 @@ export function RequestCard({
         <XStack alignItems="center" gap="1">
           <Icon name="wrench" size={15} color={brand.grafite70} />
           <Text fontSize={16} color={brand.grafite70}>
-            {gr.categoryLabel} · {gr.city}
+            <HighlightMatch text={`${gr.categoryLabel} · ${gr.city}`} />
           </Text>
         </XStack>
         <Text fontSize={16} color={brand.grafite} lineHeight="22px">
-          {gr.description}
+          <HighlightMatch text={gr.description} />
         </Text>
         {/* Sotto la descrizione con l'icona, non più piccolo in un angolo tra
             i bollini (docs/CHANGELOG.md §349): è ciò che fa rispondere prima. */}
@@ -1113,7 +1114,7 @@ export function RequestCard({
                 Descrizione lavoro
               </Text>
               <Text fontSize={16} color={brand.grafite} lineHeight="19px">
-                {gr.description}
+                <HighlightMatch text={gr.description} />
               </Text>
               {gr.photoUrls.length > 0 ? (
                 <XStack gap="2" className="scroll-fade" style={{ overflowX: "auto" }}>
@@ -1300,11 +1301,13 @@ export function RequestCard({
                 {stage === "accettata" || stage === "completata" || stage === "annullata" ? "Preventivo accettato" : "Il tuo preventivo"}
               </Text>
               {lead.quote.items.map((item) => (
-                <XStack key={item.id} justifyContent="space-between">
-                  <Text fontSize={16} color={brand.grafite}>
+                <XStack key={item.id} justifyContent="space-between" alignItems="baseline" gap="3">
+                  {/* Nome in grigio e importo scuro, come nella scheda del cliente
+                      (docs/changelog/2026-11-11-voci-prezzo-in-colonna.md). */}
+                  <Text fontSize={16} color={brand.grafite70} flexShrink={1} minWidth={0}>
                     {item.name}
                   </Text>
-                  <Text fontSize={16} color={brand.grafite}>
+                  <Text fontSize={16} color={brand.grafite} flexShrink={0} style={{ fontVariantNumeric: "tabular-nums" }}>
                     {formatEurRange(item.priceMinEurCents, item.priceMaxEurCents)}
                   </Text>
                 </XStack>
