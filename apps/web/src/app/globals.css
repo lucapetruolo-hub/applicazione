@@ -3824,7 +3824,7 @@ a.admin-kpi:hover {
    overflow:hidden messo troppo in alto nell'albero") evitato fin dalla
    prima stesura invece di dover essere corretto in un secondo momento. */
 /* Versione di tutto il sito (docs/CHANGELOG.md §180): fissa sullo schermo,
-   dietro a ogni contenuto (z-index -1 sopra il fondo pesca del body). */
+   dietro a ogni contenuto (z-index -1 sopra il fondo carta del body). */
 .site-blobs {
   position: fixed;
   inset: 0;
@@ -3857,8 +3857,10 @@ a.admin-kpi:hover {
   height: 320px;
   bottom: -140px;
   left: -110px;
-  background: #d9a441;
-  opacity: 0.18;
+  /* Terracotta leggera della palette A (prima ottone), scelta di Luca
+     dell'11/11/2026 (docs/changelog/2026-11-11-palette-e-figtree.md). */
+  background: #c4562f;
+  opacity: 0.12;
 }
 /* Comparsa del riquadro di accesso e registrazione: 250 ms e 8 px (prima
    450 ms e 16 px), si vede a ogni accesso (skill web-animation-design). */
@@ -7355,12 +7357,13 @@ a.admin-kpi:hover {
 .glow-lights--scuro .glow-lights__light--three {
   background: radial-gradient(circle, rgba(64, 200, 220, 0.25), transparent 65%);
 }
-/* Sul fondo pesca: luci tenui, verde e ottone. */
+/* Sul fondo carta: luci tenui, verde e terracotta leggera (palette A,
+   docs/changelog/2026-11-11-palette-e-figtree.md). */
 .glow-lights--chiaro .glow-lights__light--one {
   background: radial-gradient(circle, rgba(24, 154, 99, 0.3), transparent 65%);
 }
 .glow-lights--chiaro .glow-lights__light--two {
-  background: radial-gradient(circle, rgba(217, 164, 65, 0.35), transparent 65%);
+  background: radial-gradient(circle, rgba(196, 86, 47, 0.2), transparent 65%);
 }
 .glow-lights--chiaro .glow-lights__light--three {
   background: radial-gradient(circle, rgba(64, 200, 220, 0.18), transparent 65%);
