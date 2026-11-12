@@ -16,6 +16,8 @@ import { Icon, SearchBar, type ProfessionalSuggestion, type SearchMode } from "@
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { problemExampleSuggestions, rememberSearchCity, useSearchBarHints } from "@/lib/useSearchBarHints";
 import { navigateWithTransition } from "@/lib/viewTransition";
+import { PROBLEM_SEARCH_LABEL } from "@/lib/navigationProgress";
+import { useThinkingLabel } from "@/lib/useThinkingLabel";
 import { GlowLights } from "./GlowLights";
 import { MagneticButton } from "./MagneticButton";
 import styles from "./HomeHero.module.css";
@@ -36,12 +38,13 @@ export function HomeHero({ examples }: { examples: ProblemExamplesResponse | nul
   const searchHints = useSearchBarHints("");
   const heroExamples = useHeroExamples(examples);
   // Attesa della ricerca per problema: il sito chiede al dizionario e, nei
-  // casi dubbi, all'intelligenza artificiale (fino a 3 secondi). Intanto nel
-  // riquadro compaiono le luci, veloci, e "Cerco chi ti serve…"
+  // casi dubbi, all'intelligenza artificiale (fino a 5 secondi). Intanto nel
+  // riquadro compaiono le luci, veloci, e "Cerco chi ti serve…", poi "Sto pensando…"
   // (docs/changelog/2026-11-03-luci-che-accelerano.md).
   const [navigating, startNavigation] = useTransition();
   const [problemSearch, setProblemSearch] = useState(false);
   const searching = problemSearch && navigating;
+  const searchingLabel = useThinkingLabel(searching ? PROBLEM_SEARCH_LABEL : undefined);
 
   async function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
     rememberSearchCity(params.city);
@@ -108,7 +111,7 @@ export function HomeHero({ examples }: { examples: ProblemExamplesResponse | nul
               secondo controllo "urgente" nello stesso schermo, col link rosso
               "Richiesta urgente" qui sotto, che resta. */}
           <span role="status" className={`is_Text ${styles.status}`}>
-            {searching ? "Cerco chi ti serve…" : "Ricerca gratuita, senza registrazione · Preventivi voce per voce"}
+            {searchingLabel ?? "Ricerca gratuita, senza registrazione · Preventivi voce per voce"}
           </span>
 
           {/* Una sola azione principale nel primo schermo, "Cerca" (§271). Il

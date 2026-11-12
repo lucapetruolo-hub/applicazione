@@ -46,7 +46,11 @@ const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_DEFAULT_MODEL = "google/gemma-4-31b-it:free";
 /** Gratuiti di riserva, in ordine: un gratuito saturo risponde 429 e OpenRouter passa al successivo. */
 const OPENROUTER_FREE_FALLBACKS = ["google/gemma-4-26b-a4b-it:free", "nvidia/nemotron-3.5-super-vl:free"];
-const TIMEOUT_MS = 3000;
+/**
+ * Quanto si aspetta l'IA prima di tenere il dizionario. Claude Haiku risponde in circa 2,3 s,
+ * ma con 3 s una risposta su 4 arrivava tardi (docs/changelog/2026-11-12-attesa-ia-5-secondi.md).
+ */
+const TIMEOUT_MS = 5000;
 /** Circa 0,1 centesimi a chiamata: 3000 al giorno sono 3 € nel caso peggiore. */
 const AI_DAILY_LIMIT = 3000;
 const CACHE_SIZE = 500;

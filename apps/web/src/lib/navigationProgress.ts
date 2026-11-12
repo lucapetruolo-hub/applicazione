@@ -15,6 +15,14 @@ export type ProgressState = {
 
 /** Frase mentre si cerca dal problema scritto: la stessa della home (luci che accelerano). */
 export const PROBLEM_SEARCH_LABEL = "Cerco chi ti serve…";
+/**
+ * Dopo un po' la stessa attesa dice che il sito ci sta pensando: nei casi
+ * dubbi risponde l'intelligenza artificiale, fino a 5 secondi
+ * (docs/changelog/2026-11-12-attesa-ia-5-secondi.md).
+ */
+export const PROBLEM_THINKING_LABEL = "Sto pensando a chi può aiutarti…";
+/** Quando "Cerco chi ti serve…" diventa "Sto pensando…". */
+export const PROBLEM_THINKING_AFTER_MS = 1500;
 /** Frase mentre si va a pagare su Stripe. */
 export const PAYMENT_PAGE_LABEL = "Ti portiamo al pagamento sicuro…";
 /** Frase mentre si va a Stripe (conto) o a Didit (verifica dell'identità). */

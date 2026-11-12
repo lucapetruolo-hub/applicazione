@@ -15,6 +15,7 @@ import {
   subscribeProgress,
   subscribeWaits,
 } from "@/lib/navigationProgress";
+import { useThinkingLabel } from "@/lib/useThinkingLabel";
 
 /** Sulle pagine veloci la barra non deve lampeggiare. */
 const SHOW_AFTER_MS = 300;
@@ -96,7 +97,7 @@ export function NavigationProgress() {
     };
   }, []);
 
-  const label = navVisible ? progress.label : undefined;
+  const label = useThinkingLabel(navVisible ? progress.label : undefined);
   return (
     <>
       {visible ? (
