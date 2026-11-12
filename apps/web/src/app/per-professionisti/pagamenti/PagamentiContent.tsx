@@ -11,7 +11,8 @@ import {
   ONLINE_LIMIT_FREE_MONTHS,
   onlineFeeExample,
 } from "@professionisti/shared";
-import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { useAuth } from "@/lib/AuthContext";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 
 const EXAMPLE = onlineFeeExample();
@@ -29,7 +30,8 @@ const EXAMPLE = onlineFeeExample();
 
 function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <YStack gap="2">
+    // Più spazio tra i punti: prima i blocchi di testo si toccavano.
+    <YStack gap="4">
       <Text render="h2" fontFamily="heading" fontWeight="700" fontSize="6" color={brand.inchiostro}>
         {title}
       </Text>
@@ -74,14 +76,60 @@ function Point({ n, title, children, list, id }: { n: number; title: string; chi
 /** Le commissioni Stripe una per una, già dentro la trattenuta (richiesta di Luca, docs/CHANGELOG.md §378). */
 const STRIPE_FEES = ["Commissione Stripe per il pagamento: la paghiamo noi", "Commissione Stripe per i bonifici verso la tua banca: la paghiamo noi"];
 
+// La prima riga di prima ("scegli tu i modi") è ora nell'introduzione, che
+// diceva il contrario: "il cliente sceglie come pagarti"
+// (docs/changelog/2026-11-12-pagina-per-professionisti.md).
 const SUMMARY = [
-  "Nel preventivo scegli tu i modi: online con carta, direttamente a te, o tutti e due.",
   "Online il cliente paga un acconto quando accetta e il saldo a lavoro chiuso, sul tuo conto Stripe.",
-  `Online tratteniamo il ${ONLINE_APP_FEE_PERCENT}% + IVA, commissioni Stripe comprese; il pagamento diretto non ha commissioni.`,
+  `Online tratteniamo il ${ONLINE_APP_FEE_PERCENT}% + IVA, commissioni Stripe comprese.`,
+  "Il pagamento diretto non ha commissioni né limiti.",
+];
+
+/** Il conto di un lavoro d'esempio in tre righe, al posto dei numeri dentro il testo. */
+function FeeExample() {
+  const rows: { label: string; value: string; strong?: boolean }[] = [
+    { label: "Il cliente paga online", value: formatEurCents(EXAMPLE.amountEurCents) },
+    { label: `Trattenuta ${ONLINE_APP_FEE_PERCENT}% + IVA`, value: `− ${formatEurCents(EXAMPLE.feeEurCents)}` },
+    { label: "Ti arrivano", value: formatEurCents(EXAMPLE.netEurCents), strong: true },
+  ];
+  return (
+    <YStack render="dl" margin={0} marginTop="2" padding="4" gap="2" borderRadius={20} backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto}>
+      {rows.map((row) => (
+        <XStack key={row.label} justifyContent="space-between" alignItems="baseline" gap="3" paddingTop={row.strong ? "2" : 0} borderTopWidth={row.strong ? 1 : 0} borderColor={brand.filetto}>
+          <Text render="dt" fontSize={16} color={row.strong ? brand.grafite : brand.grafite70} fontWeight={row.strong ? "700" : "400"}>
+            {row.label}
+          </Text>
+          <Text render="dd" margin={0} fontSize={16} color={row.strong ? brand.cianografiaScuro : brand.grafite} fontWeight="700" style={{ fontVariantNumeric: "tabular-nums" }}>
+            {row.value}
+          </Text>
+        </XStack>
+      ))}
+    </YStack>
+  );
+}
+
+/**
+ * Due domande che un professionista fa prima di attivare i pagamenti online
+ * (richiesta di Luca, docs/changelog/2026-11-12-pagina-per-professionisti.md),
+ * con le stesse regole dei Termini (punti 5 e 6) e dei tempi mostrati nella
+ * scheda del lavoro (`JobPaymentStatus`).
+ */
+const PAYMENT_FAQ: { question: string; answer: string }[] = [
+  {
+    question: "Quando arriva il bonifico?",
+    answer:
+      "Quando il cliente conferma che il lavoro è finito, oppure 7 giorni dopo la chiusura se non segnala problemi. Da lì il bonifico arriva sulla tua banca in 1-4 giorni lavorativi.",
+  },
+  {
+    question: "E se il cliente contesta?",
+    answer:
+      "Se segnala un problema sul sito, avete 48 ore per accordarvi in chat; se non vi accordate decide il nostro team, dopo aver sentito anche te. Se invece contesta il pagamento con la sua banca, decide la banca: i soldi restano bloccati fino alla risposta e la commissione di Stripe per la contestazione è a tuo carico. Con il pagamento diretto la questione resta tra te e il cliente.",
+  },
 ];
 
 export function PagamentiContent() {
   const onlinePayments = useOnlinePayments();
+  const { user } = useAuth();
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="9" paddingHorizontal="4">
       <YStack width="100%" maxWidth={720} gap="6">
@@ -90,8 +138,8 @@ export function PagamentiContent() {
             Come vieni pagato
           </Text>
           <P>
-            Quando accetta il tuo preventivo, il cliente sceglie come pagarti: online con carta, tramite la piattaforma, oppure
-            direttamente a te, come vi accordate.
+            Nel preventivo scegli tu come farti pagare: online con carta, direttamente a te, o tutti e due. Il cliente sceglie tra i
+            modi che offri quando accetta.
           </P>
           {!onlinePayments ? (
             <XStack gap="3" padding="4" borderRadius="4" backgroundColor={brand.cianografiaVelo} alignItems="flex-start">
@@ -122,10 +170,8 @@ export function PagamentiContent() {
 
         <Block title="Pagamento online">
           <Point n={1} title="Acconto">
-            Nel preventivo scegli tu come farti pagare, anche più modi insieme: tutto diretto, acconto online e saldo online, oppure
-            acconto online e saldo diretto. La percentuale dell&apos;acconto la decidi tu (da 1 a 100% dell&apos;importo massimo del
-            preventivo, 20% se non la cambi). Accettando il preventivo il cliente sceglie tra i modi che hai offerto e paga l&apos;acconto
-            con carta tramite Stripe.
+            Decidi tu quanto: da 1 a 100% dell&apos;importo massimo del preventivo (20% se non lo cambi). Il cliente lo paga con carta
+            quando accetta. Il saldo può essere online o diretto.
           </Point>
           <Point n={2} title="Saldo">
             Quando chiudi il lavoro indichi l&apos;importo finale e il cliente paga la differenza, online o direttamente a te secondo il
@@ -137,12 +183,10 @@ export function PagamentiContent() {
             parte il bonifico verso la tua banca. Con una segnalazione aperta resta bloccato finché non si chiude.
           </Point>
           <Point n={4} title="Costi" list={STRIPE_FEES}>
-            Da quanto il cliente paga online tratteniamo il {ONLINE_APP_FEE_PERCENT}% più l&apos;IVA, tutto compreso. Su un lavoro da{" "}
-            {formatEurCents(EXAMPLE.amountEurCents)} tratteniamo{" "}
-            {formatEurCents(EXAMPLE.feeEurCents)} ({formatEurCents(EXAMPLE.taxableEurCents)} + {formatEurCents(EXAMPLE.vatEurCents)} di IVA) e
-            ti arrivano {formatEurCents(EXAMPLE.netEurCents)}. Ogni mese ti mandiamo la fattura delle trattenute. Su quanto ti paga
-            direttamente non c&apos;è commissione. Il cliente non paga costi in più.
+            Da quanto il cliente paga online tratteniamo il {ONLINE_APP_FEE_PERCENT}% più l&apos;IVA, tutto compreso. Ogni mese ti mandiamo la
+            fattura delle trattenute. Il cliente non paga costi in più.
           </Point>
+          <FeeExample />
           {/* Il tetto dei professionisti nuovi, prima solo nei Termini (collaudo D-06). */}
           <Point n={5} id="limite" title="Limite per i primi lavori">
             All&apos;inizio online puoi chiedere al massimo {formatEurCents(ONLINE_LIMIT_EUR_CENTS)} a lavoro, e avere al massimo{" "}
@@ -158,8 +202,22 @@ export function PagamentiContent() {
 
         <Block title="Pagamento diretto">
           <P>
-            Vieni pagato direttamente dal cliente, senza commissioni.
+            Il cliente ti paga in contanti, con bonifico o come vi accordate. Nessuna commissione e nessun limite.
           </P>
+        </Block>
+
+        <Block title="Domande frequenti">
+          <YStack>
+            {PAYMENT_FAQ.map((item) => (
+              // "+" e "−" come nelle domande di /per-professionisti (`.pay-faq-item` in globals.css).
+              <details key={item.question} className="pay-faq-item">
+                <summary>{item.question}</summary>
+                <Text render="p" margin={0} marginBottom="3" fontSize={16} color={brand.grafite70} lineHeight="24px">
+                  {item.answer}
+                </Text>
+              </details>
+            ))}
+          </YStack>
         </Block>
 
         <Text fontSize={13} color={brand.grafite70}>
@@ -170,9 +228,18 @@ export function PagamentiContent() {
           , al punto 5.
         </Text>
 
-        <Link href="/per-professionisti" style={{ color: brand.cianografiaScuro, fontWeight: 700, textDecoration: "none" }}>
-          ← Torna alla pagina per i professionisti
-        </Link>
+        {/* Chi ha letto fin qui può iscriversi senza tornare indietro
+            (docs/changelog/2026-11-12-pagina-per-professionisti.md). */}
+        <XStack gap="3" flexWrap="wrap" alignItems="center">
+          <Link href={user?.isProfessional ? "/dashboard/fiscale" : "/registrati?ruolo=professionista"} style={{ textDecoration: "none" }}>
+            <Button tabIndex={-1} variant="primary">
+              {user?.isProfessional ? "Vai a Fisco e pagamenti" : "Iscriviti gratis"}
+            </Button>
+          </Link>
+          <Link href="/per-professionisti" style={{ color: brand.cianografiaScuro, fontWeight: 700, textDecoration: "none", minHeight: 44, display: "inline-flex", alignItems: "center" }}>
+            ← Torna alla pagina per i professionisti
+          </Link>
+        </XStack>
       </YStack>
     </YStack>
   );

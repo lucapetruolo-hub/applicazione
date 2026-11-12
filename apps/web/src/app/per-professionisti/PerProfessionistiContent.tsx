@@ -57,14 +57,16 @@ export function PerProfessionistiContent({ founders = null }: { founders?: Found
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent">
-      <ProHero ctaHref={ctaHref} ctaLabel={ctaLabel} />
+      {/* Prima come si trovano i clienti, poi come si viene pagati
+          (docs/changelog/2026-11-12-pagina-per-professionisti.md). */}
+      <ProHero ctaHref={ctaHref} ctaLabel={ctaLabel} offerMonths={founders?.offerMonths ?? null} />
       <ProPhoto />
-      <ProOnlinePayment />
       <ProBenefits />
       <ProSteps />
+      <ProOnlinePayment />
       <ProPricing isProfessional={Boolean(user?.isProfessional)} founders={founders} />
       <ProFaq offerMonths={founders?.offerMonths ?? null} />
-      <ProFinalCta />
+      <ProFinalCta ctaHref={ctaHref} ctaLabel={ctaLabel} />
     </YStack>
   );
 }
@@ -93,18 +95,19 @@ function Band({ children, id, last }: { children: ReactNode; id?: string; last?:
   );
 }
 
-/** Griglia di celle separate da filetti: lo sfondo è la linea, il `gap` di 1px la mostra. */
+/**
+ * Griglia di celle separate da filetti (`.pro-grid` in globals.css). Celle
+ * trasparenti: prima lo sfondo della griglia era la linea e le celle erano
+ * crema pieno, e scorrendo lo sfondo del sito sembrava interrompersi a ogni
+ * sezione (richiesta di Luca, docs/changelog/2026-11-12-pagina-per-professionisti.md).
+ */
 function Grid({ children }: { children: ReactNode }) {
-  return (
-    <YStack width="100%" gap={1} backgroundColor={LINE} borderTopWidth={1} borderColor={LINE} flexDirection="gtSm:row">
-      {children}
-    </YStack>
-  );
+  return <div className="pro-grid">{children}</div>;
 }
 
 function Cell({ children, flex = 1 }: { children: ReactNode; flex?: number }) {
   return (
-    <YStack flex={flex} flexBasis="gtSm:0px" backgroundColor={brand.gesso} padding="5 gtMd:6" gap="2">
+    <YStack flex={flex} flexBasis="gtSm:0px" padding="5 gtMd:6" gap="2">
       {children}
     </YStack>
   );
@@ -150,7 +153,24 @@ function SectionTitle({ children, lead }: { children: ReactNode; lead?: string }
 }
 
 /** Titolo centrato a due toni con alone verde, pillola sopra e due pulsanti. */
-function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
+/**
+ * Tre punti sotto i pulsanti, già nel primo schermo
+ * (docs/changelog/2026-11-12-pagina-per-professionisti.md): niente costo per
+ * contatto (i siti simili fanno pagare ogni richiesta), il prezzo vero dopo i
+ * mesi gratis, nessun vincolo.
+ */
+function heroPoints(offerMonths: number | null): string[] {
+  const base = SUBSCRIPTION_TIERS.find((tier) => tier.tier === "BASE");
+  const price = base ? `${formatEur(base.priceEurCents)} + IVA al mese` : null;
+  const months = offerMonths === 1 ? "1 mese gratis" : `${offerMonths} mesi gratis`;
+  return [
+    "Nessun costo per contatto",
+    ...(price ? [offerMonths ? `${months}, poi ${price}` : `Da ${price}`] : []),
+    "Annulli quando vuoi",
+  ];
+}
+
+function ProHero({ ctaHref, ctaLabel, offerMonths }: { ctaHref: string; ctaLabel: string; offerMonths: number | null }) {
   return (
     <Band>
       <div
@@ -163,7 +183,8 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
       >
         {/* Sfumatura che la pagina aveva già (scelta dell'utente), ora con le
             luci che si muovono piano come nella home (docs/CHANGELOG.md §306). */}
-        <GlowLights tone="chiaro" pressBoost />
+        {/* Sfumata in basso: prima finiva netta sul filetto sotto il titolo. */}
+        <GlowLights tone="chiaro" pressBoost className="glow-lights--sfuma" />
         <YStack position="relative" width="100%" maxWidth={760} alignItems="center" gap="4" paddingHorizontal="4" paddingVertical="10 gtMd:120px">
           <XStack borderWidth={1} borderColor={LINE} borderRadius={999} backgroundColor={brand.calce} overflow="hidden" alignItems="center">
             <Text fontSize={13} color={brand.grafite} paddingHorizontal="3" paddingVertical={6}>
@@ -195,7 +216,7 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
           </Text>
 
           <Text fontSize="6" lineHeight="28px" color={brand.grafite70} textAlign="center" maxWidth={560}>
-            Ricevi richieste di lavoro vicino a te, manda preventivi chiari e gestisci appuntamenti e recensioni in un unico posto.
+            Richieste di lavoro vicino a te, preventivi chiari, agenda e recensioni. Tutto in un posto.
           </Text>
 
           <XStack gap="3" flexWrap="wrap" justifyContent="center" marginTop="2">
@@ -209,11 +230,15 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
             </Link>
           </XStack>
 
-          <XStack gap="2" alignItems="center">
-            <Icon name="shield-check" size={16} color={brand.cianografiaScuro} strokeWidth={1.75} />
-            <Text fontSize={16} color={brand.grafite70}>
-              Iscrizione gratuita. La carta serve solo per attivare i mesi gratis.
-            </Text>
+          <XStack render="ul" margin={0} padding={0} gap="2 gtSm:4" flexWrap="wrap" justifyContent="center" flexDirection="column gtSm:row" alignItems="flex-start gtSm:center" style={{ listStyle: "none" }}>
+            {heroPoints(offerMonths).map((point) => (
+              <XStack key={point} render="li" gap="2" alignItems="center">
+                <Check size={16} strokeWidth={2.25} color={brand.cianografiaScuro} aria-hidden style={{ flexShrink: 0 }} />
+                <Text fontSize={15} color={brand.grafite}>
+                  {point}
+                </Text>
+              </XStack>
+            ))}
           </XStack>
           <InviteWelcome />
         </YStack>
@@ -234,7 +259,7 @@ const { props: AGENDA_DESKTOP } = getImageProps({
   src: "/page-photos/per-professionisti-agenda.webp",
   alt: AGENDA_ALT,
   width: 1600,
-  height: 1168,
+  height: 800,
   priority: true,
   sizes: "(max-width: 1200px) 100vw, 1100px",
 });
@@ -437,7 +462,8 @@ function ProBenefits() {
               ))}
             </XStack>
             <MiniLine strong>«Puntuale e pulito, lo richiamerò.»</MiniLine>
-            <MiniLine>Giulia R. · Lavoro fatto tramite il sito</MiniLine>
+            {/* "Esempio": non deve sembrare una recensione vera (niente testimonianze finché non ce ne sono). */}
+            <MiniLine>Esempio · Lavoro fatto tramite il sito</MiniLine>
           </Panel>
         </Cell>
       </Grid>
@@ -535,7 +561,8 @@ function FounderBand({ spots, months }: { spots: FounderSpots; months: number })
       justifyContent="space-between"
     >
       <YStack flex={1} gap="1">
-        <Text render="p" margin={0} fontFamily="heading" fontWeight="800" fontSize="28px gtSm:40px" lineHeight="32px gtSm:44px" letterSpacing={-0.5} color="white">
+        {/* Righe bilanciate: sul telefono "MESI" restava da solo sotto "GRATIS PER 3". */}
+        <Text render="p" margin={0} fontFamily="heading" fontWeight="800" fontSize="24px gtSm:40px" lineHeight="28px gtSm:44px" letterSpacing={-0.5} color="white" style={{ textWrap: "balance" }}>
           {months === 1 ? "GRATIS PER 1 MESE" : `GRATIS PER ${months} MESI`}
         </Text>
         <Text color="white" fontSize={15} lineHeight="21px">
@@ -590,13 +617,17 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
           const free = welcome && offerMonths !== null;
           const label = free && !isProfessional ? "Inizia gratis" : `Scegli ${tier.label}`;
           return (
+            // Tutta la casella porta dove porta il pulsante (`.pro-tier`, link
+            // allargato con ::after; docs/changelog/2026-11-12-pagina-per-professionisti.md).
             <YStack
               key={tier.tier}
+              className="pro-tier"
+              position="relative"
               flex={1}
               flexBasis="gtSm:0px"
-              backgroundColor={free ? brand.calce : brand.gesso}
-              borderTopWidth={3}
-              borderTopColor={free ? brand.cianografia : "transparent"}
+              // Solo il livello gratis ha il suo fondo e la riga verde; gli altri sono trasparenti sullo sfondo del sito.
+              backgroundColor={free ? brand.calce : "transparent"}
+              {...(free ? { borderTopWidth: 3, borderTopColor: brand.cianografia } : {})}
               padding="5 gtMd:6"
               gap="3"
             >
@@ -678,7 +709,7 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
                 ))}
               </YStack>
               <YStack flex={1} />
-              <Link href={href} style={{ textDecoration: "none" }} aria-label={`${label}${isProfessional ? "" : ": iscriviti come professionista"}`}>
+              <Link href={href} className="pro-tier-link" style={{ textDecoration: "none" }} aria-label={`${label}${isProfessional ? "" : ": iscriviti come professionista"}`}>
                 <Button tabIndex={-1} variant="acquisto" width="100%">
                   <XStack alignItems="center" gap="2">
                     <Text color="white" fontFamily="body" fontWeight="600">
@@ -700,7 +731,8 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
         <YStack gap="2" flexDirection="gtSm:row" flexWrap="gtSm:wrap">
           {SUBSCRIPTION_FEATURES.map((feature) => (
             <XStack key={feature} gap="2" alignItems="flex-start" width="gtSm:50%" paddingRight="3">
-              <Check size={16} strokeWidth={2} color={brand.cianografiaScuro} />
+              {/* flexShrink 0: sul telefono, nelle righe che vanno a capo, la spunta si rimpiccioliva. */}
+              <Check size={16} strokeWidth={2} color={brand.cianografiaScuro} aria-hidden style={{ flexShrink: 0, marginTop: 3 }} />
               <Text color={brand.grafite70} flex={1}>
                 {feature}
               </Text>
@@ -721,7 +753,7 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
 }
 
 /** Solo fatti già decisi e in funzione (CLAUDE.md §5 punto 9, §6). */
-const FAQ: { question: string; answer: string; paymentsLink?: boolean; founderOffer?: boolean }[] = [
+const FAQ: { question: string; answer: string; more?: string; paymentsLink?: boolean; founderOffer?: boolean }[] = [
   {
     // "N" diventa i mesi dell'offerta attiva (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
     question: "Come funzionano i N mesi gratis?",
@@ -735,8 +767,11 @@ const FAQ: { question: string; answer: string; paymentsLink?: boolean; founderOf
   },
   {
     question: "Cosa succede se arrivo al limite di lavori del mio livello?",
+    // Frase breve, il conto dietro "Scopri di più" (docs/changelog/2026-11-12-pagina-per-professionisti.md).
     answer:
-      "Ti avvisiamo prima. Resti nelle ricerche e ricevi le richieste, ma per mandare preventivi nuovi passi al livello sopra: paghi 10 € più la differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del 10% (+ IVA). Altrimenti aspetti il rinnovo, quando i lavori ripartono. I preventivi già mandati restano validi. Su Plus e Pro più lavori allo stesso cliente nello stesso mese contano come uno.",
+      "Ti avvisiamo prima. Resti nelle ricerche e ricevi le richieste; per mandare preventivi nuovi passi al livello sopra o aspetti il rinnovo, quando i lavori ripartono. I preventivi già mandati restano validi.",
+    more:
+      "Passando al livello sopra paghi 10 € più la differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del 10% (+ IVA). Su Plus e Pro più lavori allo stesso cliente nello stesso mese contano come uno.",
   },
   {
     question: "I miei clienti di sempre contano nei lavori del mese?",
@@ -767,8 +802,8 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
   "use no memo";
   return (
     <Band>
-      <YStack gap={1} backgroundColor={LINE} flexDirection="gtSm:row">
-        <YStack backgroundColor={brand.gesso} paddingTop="7 gtMd:8" paddingRight="5 gtMd:8" paddingBottom="7 gtMd:8" paddingLeft="5 gtMd:8" gap="3" width="gtSm:50%">
+      <div className="pro-grid pro-grid--senza-bordo">
+        <YStack paddingTop="7 gtMd:8" paddingRight="5 gtMd:8" paddingBottom="7 gtMd:8" paddingLeft="5 gtMd:8" gap="3" width="gtSm:50%">
           <Text
             render="h2"
             fontFamily="heading"
@@ -788,7 +823,7 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
             .
           </Text>
         </YStack>
-        <YStack backgroundColor={brand.gesso} flexGrow={1} width="gtSm:50%">
+        <YStack flexGrow={1} width="gtSm:50%">
           <div className="pro-faq">
             {FAQ.filter((item) => !item.founderOffer || offerMonths).map((item, index) => (
               <details key={item.question} className="pro-faq-item" open={index === 0}>
@@ -804,11 +839,17 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
                     </>
                   ) : null}
                 </p>
+                {item.more ? (
+                  <details className="pro-faq-more">
+                    <summary>Scopri di più</summary>
+                    <p>{item.more}</p>
+                  </details>
+                ) : null}
               </details>
             ))}
           </div>
         </YStack>
-      </YStack>
+      </div>
       <style jsx>{`
         .pro-faq {
           display: flex;
@@ -816,9 +857,13 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
         }
         .pro-faq-item {
           border-bottom: 1px solid ${LINE};
-          padding: 20px 24px;
+          padding: 0 24px;
         }
-        .pro-faq-item summary {
+        /* Lo spazio sta nella domanda, non attorno: tutta la riga si tocca
+           (prima la parte toccabile era alta 22 px sul telefono). */
+        .pro-faq-item > summary {
+          padding: 18px 0;
+          min-height: 44px;
           cursor: pointer;
           list-style: none;
           display: flex;
@@ -831,19 +876,39 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
         .pro-faq-item summary::-webkit-details-marker {
           display: none;
         }
-        .pro-faq-item summary::after {
+        .pro-faq-item > summary::after {
           content: "+";
           font-size: 22px;
           line-height: 1;
           color: ${brand.grafite70};
         }
-        .pro-faq-item[open] summary::after {
+        .pro-faq-item[open] > summary::after {
           content: "−";
         }
         .pro-faq-item p {
-          margin: 10px 0 0;
+          margin: 0 0 20px;
           color: ${brand.grafite70};
           line-height: 1.6;
+        }
+        .pro-faq-more {
+          margin: -12px 0 8px;
+        }
+        .pro-faq-more summary {
+          display: inline-flex;
+          align-items: center;
+          min-height: 44px;
+          cursor: pointer;
+          list-style: none;
+          font-weight: 700;
+          color: ${brand.cianografiaScuro};
+          text-decoration: underline;
+          text-underline-offset: 3px;
+        }
+        .pro-faq-more[open] summary {
+          display: none;
+        }
+        .pro-faq-more p {
+          margin: 0;
         }
       `}</style>
     </Band>
@@ -851,11 +916,11 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
 }
 
 /**
- * Invito finale semplice come quello di efferd: titolo a due toni e due
- * pulsanti, "Scopri di più" sui pagamenti (§174) e il ritorno alla scelta
- * del livello, dove ora sta il pulsante per iscriversi (§177).
+ * Invito finale semplice come quello di efferd: titolo e due pulsanti, i
+ * pagamenti (§174) e l'iscrizione (prima riportava alla scelta del livello,
+ * §177; docs/changelog/2026-11-12-pagina-per-professionisti.md).
  */
-function ProFinalCta() {
+function ProFinalCta({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
   return (
     <YStack width="100%" alignItems="center" paddingBottom="9">
       <Band last>
@@ -873,14 +938,16 @@ function ProFinalCta() {
             Inizia a ricevere richieste
           </Text>
           <Text fontSize="5" color={brand.grafite70} textAlign="center" maxWidth={520}>
-            Scegli il tuo livello e crea l&apos;account in un minuto, poi completi il profilo con calma.
+            Crei l&apos;account in un minuto, poi completi il profilo con calma.
           </Text>
           <XStack gap="3" flexWrap="wrap" justifyContent="center">
+            {/* Il pulsante principale porta all'iscrizione, non di nuovo ai prezzi
+                (docs/changelog/2026-11-12-pagina-per-professionisti.md). */}
             <Link href="/per-professionisti/pagamenti" style={{ textDecoration: "none" }}>
-              <Button tabIndex={-1} variant="secondary">Scopri di più</Button>
+              <Button tabIndex={-1} variant="secondary">Come funzionano i pagamenti</Button>
             </Link>
-            <Link href="#prezzi" style={{ textDecoration: "none" }}>
-              <Button tabIndex={-1} variant="primary">Scegli il tuo livello</Button>
+            <Link href={ctaHref} style={{ textDecoration: "none" }}>
+              <Button tabIndex={-1} variant="primary">{ctaLabel}</Button>
             </Link>
           </XStack>
           {/* Per chi non è a suo agio col computer: un operatore crea il

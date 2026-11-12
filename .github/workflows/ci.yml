@@ -419,13 +419,19 @@ jobs:
           node e2e/carta/prepara-stripe.mjs
           # Prima nel file, poi si apre: un download interrotto da GitHub si riprova
           # invece di passare a tar un pezzo di file (giro del 05/11 sul ramo principale).
-          curl -fsSL --retry 4 --retry-all-errors -o "$RUNNER_TEMP/stripe.tar.gz" https://github.com/stripe/stripe-cli/releases/download/v1.21.8/stripe_1.21.8_linux_x86_64.tar.gz
+          curl -fsSL --retry 4 --retry-all-errors -o "$RUNNER_TEMP/stripe.tar.gz" https://github.com/stripe/stripe-cli/releases/download/v1.55.11/stripe_1.55.11_linux_x86_64.tar.gz
           # Impronta dal file ufficiale stripe-linux-checksums.txt della versione:
           # se il file scaricato non è quello pubblicato, il job si ferma qui.
-          echo "143b3eb202731d9ffdd510350596ab668d006f440720e746cbaeb8bfa578678a  $RUNNER_TEMP/stripe.tar.gz" | sha256sum -c -
+          echo "c710bdb63045ea8e4c3d218efe4c269a90a32bd807c1306a29438e54f80bcfdc  $RUNNER_TEMP/stripe.tar.gz" | sha256sum -c -
           tar -xzf "$RUNNER_TEMP/stripe.tar.gz" -C "$RUNNER_TEMP" stripe
           echo "STRIPE_WEBHOOK_SECRET=$("$RUNNER_TEMP/stripe" listen --api-key "$E2E_STRIPE_SECRET_KEY" --print-secret)" >> "$GITHUB_ENV"
-          nohup "$RUNNER_TEMP/stripe" listen --api-key "$E2E_STRIPE_SECRET_KEY" --forward-to http://localhost:3001/billing/webhook > stripe-listen.log 2>&1 &
+          # Dalla 1.5x Stripe CLI vuole sapere quali notizie inoltrare: --all-snapshot
+          # sono tutte quelle classiche, come faceva da sola la 1.21.8.
+          nohup "$RUNNER_TEMP/stripe" listen --api-key "$E2E_STRIPE_SECRET_KEY" --all-snapshot --forward-to http://localhost:3001/billing/webhook > stripe-listen.log 2>&1 &
+          # Si parte solo con l'inoltro pronto: se Stripe CLI si ferma (opzioni cambiate,
+          # chiave sbagliata) il job lo dice qui invece di far fallire le prove più avanti.
+          for i in $(seq 1 30); do grep -q "Ready!" stripe-listen.log && break; sleep 1; done
+          grep -q "Ready!" stripe-listen.log || { echo "::error::Stripe CLI non inoltra i webhook:"; cat stripe-listen.log; exit 1; }
 
       - name: Browser per le prove
         if: steps.chiave.outputs.presente == 'true'
