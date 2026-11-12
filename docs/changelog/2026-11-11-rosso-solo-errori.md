@@ -1,0 +1,100 @@
+# Rosso solo per gli errori: avviso del preavviso e altri stati
+
+**Richiesta** (Luca, 11/11/2026, thread "Correggere la scritta rossa col
+pagamento diretto"): "controlla la scritta in rosso che compare quando un
+cliente paga direttamente al professionista". Dopo la proposta con le foto:
+"Al pagamento diretto ricordagli solo che mancano meno di 24 ore e basta, poi
+effettua miglioria 2" (cioè gli altri rossi che non sono errori). Poi:
+"La scritta per l'acconto deve essere chiara, non rimborsabile perché
+mancano meno di 24 ore, e anche se non mancano 24 ore dire chiaramente
+all'accettazione o comunque scritto sul preventivo che pagando online se
+annulla entro 3 giorni/24 ore ecc. perderà l'anticipo", "Elabora come alto
+esperto del settore".
+
+**Dove era la scritta**: nel riquadro "Prima di accettare"
+(`QuoteAcceptSummary.tsx`), quando l'appuntamento è già dentro il preavviso
+per annullare. Usciva in rosso e grassetto: "Mancano meno di 24 ore
+all'appuntamento, il preavviso chiesto per annullare. Se poi annulli non
+paghi niente, ma il professionista vede che hai annullato all'ultimo".
+Usciva così anche quando il cliente non aveva niente da perdere, come col
+pagamento diretto. Il rosso, che nel sito vuol dire errore, lo spaventava
+proprio mentre accettava.
+
+**Decisione**:
+- Senza acconto da perdere (pagamento diretto, oppure online quando il
+  professionista non tiene l'acconto) resta solo "Mancano meno di 24 ore
+  all'appuntamento.", in grigio normale.
+- Acconto che resta al professionista dopo il preavviso: si dice sempre, in
+  ocra scuro (`brand.ottoneScuro`, "attenzione") invece del rosso, con la
+  parola "non rimborsabile" e il giorno e l'ora esatti (come fanno le app
+  di prenotazione: la scadenza non la deve calcolare il cliente,
+  `freeCancellationUntilLabel` in `packages/shared/src/cancellationNotice.ts`):
+  - sul preventivo, voce "Annullare": "Pagando online, se annulli dopo
+    giovedì 19 novembre alle 08:00 l'acconto non è rimborsabile.";
+  - prima di "Accetta", scelta la carta: "Annullamento gratuito fino a
+    giovedì 19 novembre alle 08:00. Dopo, l'acconto di 24,00 € non è
+    rimborsabile." Già dentro il preavviso: "Mancano meno di 24 ore
+    all'appuntamento: l'acconto di 24,00 € non è rimborsabile, anche se
+    annulli.";
+  - su "Appuntamento prenotato" e nella scheda del lavoro fissato, la stessa
+    frase; nella finestra "Annulla il lavoro": "l'acconto di N € non è
+    rimborsabile: resta a lui".
+  Prima si leggeva solo, in piccolo e in grigio, "Se annulli più tardi e hai
+  pagato l'acconto online, l'acconto resta al professionista". La domanda 42
+  per l'avvocato (penale o caparra, parola "non rimborsabile") è aggiornata
+  in `analisi/domande-commercialista-avvocato.md`.
+- Migliorie 1 e 3 approvate da Luca ("Effettua miglioria 1 e 3"):
+  - email "Appuntamento prenotato" (la conferma del contratto su supporto
+    durevole): con l'acconto trattenuto la riga "Per annullare" dice
+    "Annullamento gratuito fino a <giorno e ora>. Dopo, l'acconto di N € non
+    è rimborsabile." (`lateCancelDepositNotice` in `bookings.service.ts`);
+    col pagamento diretto resta "almeno 24 ore prima";
+  - scheda del lavoro fissato del professionista: "Il cliente può annullare
+    gratis fino a <giorno e ora>. Dopo, l'acconto resta a te." oppure, senza
+    acconto trattenuto, "Se annulla, il cliente deve avvisarti entro
+    <giorno e ora>.", in grigio, finché il preavviso non è passato.
+- PDF del preventivo (miglioria approvata da Luca): stessa frase con giorno
+  e ora in un riquadro sabbia; con l'acconto sempre rimborsabile "Pagando
+  online, se annulli prima dell'appuntamento l'acconto ti torna sempre."
+- "Sempre rimborsabile" in chiaro (Luca: "diamo possibilità al professionista
+  … anche un'opzione dove è sempre rimborsabile"): esisteva già, ma era solo
+  la casella "l'acconto online resta a me" lasciata vuota. Nel preventivo ora
+  due scelte: "Se annulla più tardi, l'acconto online: Torna sempre al
+  cliente / Resta a me, non è rimborsabile" (di serie la prima, come prima).
+  Al cliente si dice anche il caso buono: sul preventivo, prima di "Accetta"
+  ("Se annulli prima dell'appuntamento, l'acconto ti torna sempre sulla
+  carta"), nel PDF e nell'email di conferma. Sul server la regola c'era già:
+  annullando dentro il preavviso con l'acconto trattenuto `keepDeposit`,
+  altrimenti `refundOnCancel` rimborsa tutto su Stripe.
+- Scelta di partenza nel Profilo (miglioria approvata da Luca): nella
+  sezione "Preavviso per annullare" le stesse due scelte sull'acconto
+  online; nuovi preventivi partono da lì e si cambia a ogni preventivo.
+  Nuova colonna `professional_profiles.lateCancelKeepsDeposit` (di serie
+  false, migrazione additiva `20261111220000_acconto_trattenuto_di_serie`).
+- Altri stati che non sono errori, dal rosso al grigio: "Hai rifiutato
+  questo preventivo", "Il professionista ha ritirato questo preventivo",
+  "Ha rifiutato" accanto al professionista, la riga "Annullata da te / dal
+  professionista" sotto la pillola, "Chiuso" nei giorni chiusi dell'agenda.
+- Dal rosso all'ocra scuro, perché chiedono un'azione ma non sono errori:
+  "Il professionista accetta solo il pagamento online, che non è ancora
+  attivo…", "Il cliente ha annullato con meno preavviso…" e "Il cliente ha
+  risposto al promemoria che non può più esserci…".
+- Restano rosse le pillole "Annullata" e "Scaduta" (colori chiesti da Luca,
+  `requestStage.ts`), gli errori veri, le conferme per eliminare o rifiutare
+  e le segnalazioni di problemi sul lavoro.
+
+**Verifica**: foto prima e dopo da telefono e computer nella cartella del
+progetto (`anteprime/scritta-rossa-pagamento-diretto/`; il caso con acconto
+trattenuto simulato sul preventivo di prova). Prova della data in
+`cancellationNotice.test.ts` e dell'email in `legal-emails.test.ts`; lint,
+controllo dei tipi e prove di sito e API.
+
+**Prova a mano con lo Stripe di prova** (11/11, sito e API in produzione,
+account di prova, carta 4242): due preventivi da 100 € con acconto del 30%,
+appuntamento il giorno dopo (dentro le 24 ore), accettati e pagati con
+Stripe Checkout, poi annullati dal cliente.
+- "Resta a me, non è rimborsabile": annullamento con `keptDepositEurCents`
+  3000, pagamento "PAID" con `depositKept: true`, nessun rimborso.
+- "Torna sempre al cliente": `keptDepositEurCents` 0, pagamento "REFUNDED"
+  con 30,00 € rimborsati subito su Stripe (`refundWaitingEurCents` 0, nessun
+  rimborso lasciato a mano alla Finanza).

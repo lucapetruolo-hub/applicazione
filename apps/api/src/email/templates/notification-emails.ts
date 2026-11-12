@@ -2165,6 +2165,8 @@ const BUILDERS: Record<string, Builder> = {
     const payment = str(payload.payment);
     const executor = str(payload.executor);
     const notice = str(payload.notice);
+    // Acconto non rimborsabile dopo il preavviso, con giorno e ora (docs/changelog/2026-11-11-rosso-solo-errori.md).
+    const depositNotice = str(payload.depositNotice);
     const site = frontendUrl();
     return {
       kind: "account",
@@ -2180,7 +2182,11 @@ const BUILDERS: Record<string, Builder> = {
         ...(price ? [{ label: "Prezzo", value: priceNote ? `${price}, ${priceNote.replace(/^Tutto/, "tutto")}` : price }] : []),
         ...(payment ? [{ label: "Pagamento", value: payment }] : []),
         ...(executor ? [{ label: "Esegue il lavoro", value: executor }] : []),
-        ...(notice ? [{ label: "Per annullare senza costi", value: `almeno ${notice} prima` }] : []),
+        ...(depositNotice
+          ? [{ label: "Per annullare", value: depositNotice, long: true }]
+          : notice
+            ? [{ label: "Per annullare senza costi", value: `almeno ${notice} prima` }]
+            : []),
         { label: "Recesso e annullamento", value: "Termini, punto 11", url: `${site}/termini#recesso` },
       ]),
       cta: { label: "Apri l'appuntamento", url: `${site}/le-mie-richieste${str(payload.guidedRequestId) ? `?open=${str(payload.guidedRequestId)}` : ""}` },

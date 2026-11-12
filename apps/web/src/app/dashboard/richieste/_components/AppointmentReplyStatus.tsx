@@ -27,7 +27,7 @@ export function AppointmentReplyStatus({ booking }: { booking: ProfessionalBooki
   return (
     <YStack gap="1-5">
       {booking.dateChange ? null : cantCome ? (
-        <Text fontSize={13} color={brand.urgenza} fontWeight="600">
+        <Text fontSize={13} color={brand.ottoneScuro} fontWeight="600">
           Il cliente ha risposto al promemoria che non può più esserci ({formatDateTime(booking.clientCantComeAt!)}): gli abbiamo chiesto di proporti un&apos;altra data. Puoi anche scrivergli in chat.
         </Text>
       ) : booking.clientConfirmedAt && !cantCome ? (

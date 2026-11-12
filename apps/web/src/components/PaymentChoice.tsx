@@ -64,7 +64,7 @@ export function PaymentOffer({
   return (
     <YStack gap={2} flex={1} minWidth={0}>
       {options.length === 0 ? (
-        <Text fontSize={16} color={brand.urgenza}>
+        <Text fontSize={16} fontWeight="600" color={brand.ottoneScuro}>
           Il professionista accetta solo il pagamento online, che non è ancora attivo: scrivigli dalla chat per accordarvi.
         </Text>
       ) : only ? (
@@ -207,7 +207,7 @@ export function PaymentChoice({
         );
       })}
       {options.length === 0 ? (
-        <Text fontSize={13} color={brand.urgenza}>
+        <Text fontSize={13} fontWeight="600" color={brand.ottoneScuro}>
           Il professionista accetta solo il pagamento online, che non è ancora attivo: scrivigli dalla chat per accordarvi.
         </Text>
       ) : onlineHidden ? (

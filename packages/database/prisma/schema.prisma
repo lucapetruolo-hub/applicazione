@@ -396,6 +396,9 @@ model ProfessionalProfile {
   // Preavviso per annullare scelto dal professionista: 24, 48 o 72 ore
   // (docs/CHANGELOG.md §347, CANCELLATION_NOTICE_OPTIONS in packages/shared).
   cancellationNoticeHours      Int       @default(24)
+  // Scelta di partenza sull'acconto online se il cliente annulla dentro il
+  // preavviso: false = torna sempre al cliente (docs/changelog/2026-11-11-rosso-solo-errori.md).
+  lateCancelKeepsDeposit       Boolean   @default(false)
   // Dichiarazione di responsabilità accettata salvando il profilo
   // (docs/CHANGELOG.md §158): quando e quale versione del testo
   // (PROFILE_DECLARATION_VERSION in packages/shared).

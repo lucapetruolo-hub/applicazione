@@ -40,8 +40,10 @@ import {
   CLIENT_ACCOUNT_CLOSED_NOTE,
   type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput,
   cancellationNoticeLabel,
-  DEFAULT_CANCELLATION_NOTICE_HOURS,
+  freeCancellationUntilLabel,
   isLateCancellation,
+  quotePaymentSplit,
+  DEFAULT_CANCELLATION_NOTICE_HOURS,
   type ClientInvoiceRequestInput,
   formatServicePriceRange,
   quotePriceTaxNote,
@@ -76,6 +78,28 @@ const CLIENT_CANCEL_TOO_LATE = "L'appuntamento è già cominciato e non si può 
 const OTHER_JOB_MESSAGE = "Hai già accettato un altro preventivo per questa richiesta. Per cambiare professionista annulla prima l'appuntamento.";
 
 type AcceptableQuote = Awaited<ReturnType<BookingsService["loadAcceptableQuote"]>>;
+
+/**
+ * Acconto online che resta al professionista dopo il preavviso, detto chiaro
+ * nell'email "Appuntamento prenotato" con giorno e ora, come sul sito
+ * (decisione di Luca dell'11/11, docs/changelog/2026-11-11-rosso-solo-errori.md).
+ * Con l'acconto sempre rimborsabile lo dice; null col pagamento diretto.
+ */
+export function lateCancelDepositNotice(
+  keepsDeposit: boolean,
+  split: { nowEurCents: number; restMaxEurCents: number } | null,
+  scheduledAt: Date,
+  cancellationNoticeHours: number | null,
+  now: Date = new Date(),
+): string | null {
+  if (!split || split.nowEurCents <= 0) return null;
+  // Acconto sempre rimborsabile: lo diciamo, è una garanzia per il cliente (Luca, 11/11).
+  if (!keepsDeposit) return `Avvisa almeno ${cancellationNoticeLabel(cancellationNoticeHours)} prima. Se annulli prima dell'appuntamento, l'acconto ti torna sempre sulla carta.`;
+  const deposit = split.restMaxEurCents === 0 ? `quello che hai pagato online (${formatEurCents(split.nowEurCents)})` : `l'acconto di ${formatEurCents(split.nowEurCents)}`;
+  return isLateCancellation(scheduledAt, cancellationNoticeHours, now)
+    ? `Mancano meno di ${cancellationNoticeLabel(cancellationNoticeHours)} all'appuntamento: ${deposit} non è rimborsabile, anche se annulli.`
+    : `Annullamento gratuito fino a ${freeCancellationUntilLabel(scheduledAt, cancellationNoticeHours)}. Dopo, ${deposit} non è rimborsabile.`;
+}
 
 /** Nota per il cliente sui lavori annullati perché il professionista ha chiuso l'account (docs/CHANGELOG.md §348). */
 export const ACCOUNT_CLOSED_NOTE = "Il professionista ha chiuso il suo account.";
@@ -481,7 +505,8 @@ export class BookingsService implements OnModuleInit {
     paymentMethod: JobPaymentChoice,
     depositPercent: number,
     cancellationNoticeHours: number | null,
-  ): Promise<{ price: string | null; priceNote: string; payment: string; executor: string | null; notice: string }> {
+    scheduledAt: Date,
+  ): Promise<{ price: string | null; priceNote: string; payment: string; executor: string | null; notice: string; depositNotice: string | null }> {
     const fiscal = await this.prisma.professionalFiscalProfile.findUnique({
       where: { professionalProfileId: quote.professionalProfileId },
       select: { entityType: true, businessName: true, fiscalFirstName: true, fiscalLastName: true, vatNumber: true, registeredCity: true, registeredProvince: true, chargesVat: true },
@@ -500,6 +525,7 @@ export class BookingsService implements OnModuleInit {
       payment: quotePaymentSplitLine(paymentMethod, totals, depositPercent, true),
       executor: executorText,
       notice: cancellationNoticeLabel(cancellationNoticeHours),
+      depositNotice: lateCancelDepositNotice(quote.lateCancelKeepsDeposit, quotePaymentSplit(paymentMethod, totals, depositPercent), scheduledAt, cancellationNoticeHours),
     };
   }
 
@@ -607,7 +633,7 @@ export class BookingsService implements OnModuleInit {
     // Con le stesse righe del riquadro "Prima di accettare": è la conferma del
     // contratto su supporto durevole (Codice del consumo art. 51 c. 7,
     // controllo pre-lancio 08/11, E4-04).
-    const contract = await this.bookingContractSummary(quote, paymentMethod, offer.depositPercent, booking.cancellationNoticeHours);
+    const contract = await this.bookingContractSummary(quote, paymentMethod, offer.depositPercent, booking.cancellationNoticeHours, booking.scheduledAt);
     this.notificationsService.emailOnly(clientId, "BOOKING_CONFIRMED", { bookingId: booking.id, guidedRequestId: quote.guidedRequestId, ...contract });
 
     // Metriche di affidabilità (CLAUDE.md §15, evento 3): il preventivo è

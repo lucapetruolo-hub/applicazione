@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import type { ClientBooking } from "@professionisti/api-client";
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { cancellationNoticeLabel, isLateCancellation, JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents, formatServicePriceRange, quotePriceTotals, type AppointmentMoment } from "@professionisti/shared";
+import { cancellationNoticeLabel, freeCancellationUntilLabel, isLateCancellation, JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents, formatServicePriceRange, quotePriceTotals, type AppointmentMoment } from "@professionisti/shared";
 import { AppointmentWhen, useAppointmentMoment } from "./AppointmentWhen";
 import { AddToCalendar } from "./AddToCalendar";
 import { WhatsAppReminderLink } from "@/components/WhatsAppReminderLink";
@@ -718,16 +718,21 @@ export function ChangeLinks({ booking, onReschedule, onMessage, onCancel }: { bo
     </XStack>
       {/* Preavviso scelto dal professionista (docs/CHANGELOG.md §347); già
           dentro il preavviso si dice cosa succede, non "avvisa prima" (collaudo A-06). */}
-      <Text fontSize={13} color={brand.grafite70}>
+      <Text
+        fontSize={13}
+        {...(booking.lateCancelKeepsDeposit && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0
+          ? { color: brand.ottoneScuro, fontWeight: "600" as const }
+          : { color: brand.grafite70 })}
+      >
         {isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours)
           ? `Mancano meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)}, il preavviso chiesto: ${
               booking.lateCancelKeepsDeposit && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0
-                ? "se annulli, l'acconto resta al professionista."
+                ? "se annulli, l'acconto non è rimborsabile."
                 : "se annulli non paghi niente, ma il professionista vede che hai annullato all'ultimo."
             }`
-          : `Se devi annullare, avvisa almeno ${cancellationNoticeLabel(booking.cancellationNoticeHours)} prima.${
-              booking.lateCancelKeepsDeposit && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0 ? " Più tardi, l'acconto resta al professionista." : ""
-            }`}
+          : booking.lateCancelKeepsDeposit && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0
+            ? `Annullamento gratuito fino a ${freeCancellationUntilLabel(booking.scheduledAt, booking.cancellationNoticeHours)}. Dopo, l'acconto non è rimborsabile.`
+            : `Se devi annullare, avvisa almeno ${cancellationNoticeLabel(booking.cancellationNoticeHours)} prima.`}
       </Text>
     </YStack>
   );

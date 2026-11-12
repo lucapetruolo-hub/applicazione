@@ -3,6 +3,7 @@ import type { PrismaClient } from "@professionisti/database";
 import {
   accountingDateLabel,
   cancellationNoticeLabel,
+  freeCancellationUntilLabel,
   clientPaymentOffer,
   formatAppointmentDate,
   formatAppointmentTimeRange,
@@ -163,7 +164,20 @@ export class QuotePdfService {
     }
 
     blocks.push({ type: "heading", text: "Annullare" }, { type: "text", lines: [`Avvisa almeno ${cancellationNoticeLabel(notice)} prima.`] });
-    if (quote.lateCancelKeepsDeposit && anyOnline) blocks.push({ type: "text", muted: true, lines: ["Se annulli più tardi e hai pagato l'acconto online, l'acconto resta al professionista."] });
+    // Acconto non rimborsabile dopo il preavviso, con giorno e ora, come sul sito e nell'email
+    // (decisione di Luca dell'11/11, docs/changelog/2026-11-11-rosso-solo-errori.md).
+    if (quote.lateCancelKeepsDeposit && anyOnline) {
+      const deposit = offer.paymentOptions.map((choice) => quotePaymentSplit(choice, totals, offer.depositPercent)?.nowEurCents ?? 0).find((cents) => cents > 0);
+      blocks.push({
+        type: "note",
+        tone: "sand",
+        lines: [
+          `Pagando online: annullamento gratuito fino a ${freeCancellationUntilLabel(quote.estimatedStartDate, notice)}. Dopo, ${deposit ? `l'acconto di ${formatEurCents(deposit)}` : "l'acconto"} non è rimborsabile.`,
+        ],
+      });
+    } else if (anyOnline) {
+      blocks.push({ type: "text", muted: true, lines: ["Pagando online, se annulli prima dell'appuntamento l'acconto ti torna sempre."] });
+    }
     if (quote.notes?.trim()) blocks.push({ type: "heading", text: "Messaggio del professionista" }, { type: "text", lines: [quote.notes.trim()] });
     blocks.push({
       type: "text",

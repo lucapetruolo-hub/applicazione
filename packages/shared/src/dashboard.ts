@@ -48,6 +48,8 @@ export type MyProfessionalProfile = {
   remoteAvailable: boolean;
   /** Preavviso per annullare scelto dal professionista: 24, 48 o 72 ore (docs/CHANGELOG.md §347). */
   cancellationNoticeHours: number;
+  /** Scelta di partenza: l'acconto online resta al professionista se il cliente annulla dentro il preavviso. */
+  lateCancelKeepsDeposit: boolean;
   imageUrl: string | null;
   /** Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul profilo pubblico. */
   portfolioUrls: string[];

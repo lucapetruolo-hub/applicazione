@@ -38,6 +38,7 @@ import {
   CANCELLATION_NOTICE_OPTIONS,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
   cancellationNoticeLabel,
+  freeCancellationUntilLabel,
   isLateCancellation,
   isCancellationNoticeHours,
   type CancellationNoticeHours,
@@ -107,6 +108,7 @@ export function RequestCard({
   myProfileId,
   defaultPaymentOffer,
   defaultCancellationNoticeHours,
+  defaultLateCancelKeepsDeposit = false,
   stripeVerified = true,
   onlineLimitEurCents = null,
   onlineLimitProgress = null,
@@ -137,6 +139,8 @@ export function RequestCard({
   defaultPaymentOffer?: { paymentOptions: JobPaymentChoice[]; depositPercent: number } | null;
   /** Preavviso per annullare standard del profilo, già scelto nei nuovi preventivi (docs/CHANGELOG.md §348). */
   defaultCancellationNoticeHours?: number | null;
+  /** Scelta di partenza sull'acconto trattenuto, dal Profilo (docs/changelog/2026-11-11-rosso-solo-errori.md). */
+  defaultLateCancelKeepsDeposit?: boolean;
   /** Verifica su Stripe completata: senza, l'acconto online non si può offrire (docs/CHANGELOG.md §241). */
   stripeVerified?: boolean;
   /** Tetto a lavoro per i pagamenti online, null = nessuno (docs/changelog/2026-10-28-tetto-pagamenti-online.md). */
@@ -243,7 +247,7 @@ export function RequestCard({
   // Preavviso per annullare e acconto trattenuto, scelti a ogni preventivo (docs/CHANGELOG.md §348).
   const standardNotice = isCancellationNoticeHours(defaultCancellationNoticeHours) ? defaultCancellationNoticeHours : DEFAULT_CANCELLATION_NOTICE_HOURS;
   const [noticeHours, setNoticeHours] = useState<CancellationNoticeHours>(standardNotice);
-  const [keepDeposit, setKeepDeposit] = useState(false);
+  const [keepDeposit, setKeepDeposit] = useState(defaultLateCancelKeepsDeposit);
   // Lavoro ricorrente, prezzo a visita (docs/changelog/2026-11-09-lavori-ricorrenti.md).
   const [repeatEvery, setRepeatEvery] = useState<RecurringFrequency | null>(null);
   const repeatChosen = canRepeat && repeatEvery !== null;
@@ -251,6 +255,11 @@ export function RequestCard({
   if (standardNotice !== appliedNotice) {
     setAppliedNotice(standardNotice);
     if (!showQuoteForm) setNoticeHours(standardNotice);
+  }
+  const [appliedKeepDeposit, setAppliedKeepDeposit] = useState(defaultLateCancelKeepsDeposit);
+  if (defaultLateCancelKeepsDeposit !== appliedKeepDeposit) {
+    setAppliedKeepDeposit(defaultLateCancelKeepsDeposit);
+    if (!showQuoteForm) setKeepDeposit(defaultLateCancelKeepsDeposit);
   }
   const [quoteError, setQuoteError] = useState<string | null>(null);
   // Inizio scelto nel modulo, per l'avviso sul preavviso (collaudo C-08).
@@ -1384,10 +1393,18 @@ export function RequestCard({
             </Text>
           ) : null}
           {/* Promemoria e risposta del cliente (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
+          {/* Fino a quando il cliente annulla senza perdere niente, con giorno e ora (Luca, 11/11, docs/changelog/2026-11-11-rosso-solo-errori.md). */}
+          {booking?.status === "CONFIRMED" && lead.quote && !isLateCancellation(booking.scheduledAt, lead.quote.cancellationNoticeHours) ? (
+            <Text fontSize={13} color={brand.grafite70}>
+              {lead.quote.lateCancelKeepsDeposit && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0
+                ? `Il cliente può annullare gratis fino a ${freeCancellationUntilLabel(booking.scheduledAt, lead.quote.cancellationNoticeHours)}. Dopo, l'acconto resta a te.`
+                : `Se annulla, il cliente deve avvisarti entro ${freeCancellationUntilLabel(booking.scheduledAt, lead.quote.cancellationNoticeHours)}.`}
+            </Text>
+          ) : null}
           {booking ? <AppointmentReplyStatus booking={booking} /> : null}
           {/* Annullato dal cliente dentro il preavviso che hai scelto (docs/CHANGELOG.md §347). */}
           {booking?.status === "CANCELED" && booking.canceledBy === "CLIENT" && booking.canceledLate ? (
-            <Text fontSize={13} color={brand.urgenza} fontWeight="600">
+            <Text fontSize={13} color={brand.ottoneScuro} fontWeight="600">
               Il cliente ha annullato con meno preavviso di quello che chiedi.
             </Text>
           ) : null}
@@ -2012,11 +2029,24 @@ export function RequestCard({
                     </Chip>
                   ))}
                 </XStack>
+                {/* Due scelte chiare al posto di una casella: "sempre rimborsabile" non si
+                    vedeva, era solo la casella non spuntata (Luca, 11/11,
+                    docs/changelog/2026-11-11-rosso-solo-errori.md). */}
                 {onlinePayments && paymentOptions.some(paymentChoiceIsOnline) ? (
-                  <label style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer", fontSize: 16, color: brand.grafite }}>
-                    <input type="checkbox" checked={keepDeposit} onChange={(e) => setKeepDeposit(e.target.checked)} style={QUOTE_CHECKBOX_STYLE} />
-                    Se annulla più tardi, l&apos;acconto online resta a me
-                  </label>
+                  <YStack gap="1" role="radiogroup" aria-label="Acconto online se il cliente annulla più tardi">
+                    <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+                      Se annulla più tardi, l&apos;acconto online:
+                    </Text>
+                    {[
+                      { keep: false, label: "Torna sempre al cliente" },
+                      { keep: true, label: "Resta a me, non è rimborsabile" },
+                    ].map((option) => (
+                      <label key={String(option.keep)} style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer", fontSize: 16, color: brand.grafite, minHeight: 32 }}>
+                        <input type="radio" name={`keep-deposit-${lead.id}`} checked={keepDeposit === option.keep} onChange={() => setKeepDeposit(option.keep)} style={QUOTE_CHECKBOX_STYLE} />
+                        {option.label}
+                      </label>
+                    ))}
+                  </YStack>
                 ) : null}
                 {/* Preavviso più lungo del tempo che manca (collaudo C-08). */}
                 {/* Con un preavviso più breve che va ancora bene: avviso da correggere. Se nemmeno

@@ -1037,7 +1037,7 @@ export function GuidedRequestCard({
           </XStack>
         ) : null}
         {stage === "annullata" && booking?.canceledBy ? (
-          <Text fontSize={16} fontWeight="700" color={STAGE_STYLE.annullata.fg}>
+          <Text fontSize={16} fontWeight="700" color={brand.grafite70}>
             Annullata {booking.canceledBy === "PROFESSIONAL" ? "dal professionista" : "da te"}
           </Text>
         ) : null}
@@ -1221,7 +1221,7 @@ export function GuidedRequestCard({
                             </BadgeInfo>
                           ) : null}
                           {professional.declined ? (
-                            <Text fontFamily="body" fontSize={10} fontWeight="700" color={brand.urgenza}>
+                            <Text fontFamily="body" fontSize={10} fontWeight="700" color={brand.grafite70}>
                               Ha rifiutato
                             </Text>
                           ) : null}
@@ -1378,7 +1378,7 @@ export function GuidedRequestCard({
             booking && isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours)
               ? `Il professionista verrà avvisato. Mancano meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)}, il preavviso che aveva chiesto.${
                   keptDeposit(booking) > 0
-                    ? ` Come scritto nel preventivo, l'acconto di ${formatEurCents(keptDeposit(booking))} resta a lui.`
+                    ? ` Come scritto nel preventivo, l'acconto di ${formatEurCents(keptDeposit(booking))} non è rimborsabile: resta a lui.`
                     : paidOnline(booking) > 0
                       ? ` I ${formatEurCents(paidOnline(booking))} che hai pagato online ti tornano sulla carta.`
                       : // Cosa si perde, detto chiaro (collaudo A-06): con il pagamento diretto niente.

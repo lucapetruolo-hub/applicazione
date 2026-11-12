@@ -296,6 +296,7 @@ export default function DashboardProfiloPage() {
   const [standardServices, setStandardServices] = useState<StandardServicesByCategory>({});
   // Preavviso per annullare chiesto al cliente (docs/CHANGELOG.md §347).
   const [cancellationNoticeHours, setCancellationNoticeHours] = useState<CancellationNoticeHours>(DEFAULT_CANCELLATION_NOTICE_HOURS);
+  const [lateCancelKeepsDeposit, setLateCancelKeepsDeposit] = useState(false);
   const [services, setServices] = useState<{ name: string; priceMin: string; priceMax: string; priceUnit: ServicePriceUnit; categorySlug: string | null }[]>([]);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   // Foto reali di lavori svolti (fino a MAX_PORTFOLIO_PHOTOS), mostrate in
@@ -441,6 +442,7 @@ export default function DashboardProfiloPage() {
     setRemoteAvailable(profile.remoteAvailable);
     setSavedRemoteAvailable(profile.remoteAvailable);
     setCancellationNoticeHours(isCancellationNoticeHours(profile.cancellationNoticeHours) ? profile.cancellationNoticeHours : DEFAULT_CANCELLATION_NOTICE_HOURS);
+    setLateCancelKeepsDeposit(profile.lateCancelKeepsDeposit ?? false);
     setImageUrl(profile.imageUrl);
     setPortfolioUrls(profile.portfolioUrls);
     setSpokenLanguages(profile.spokenLanguages);
@@ -543,6 +545,7 @@ export default function DashboardProfiloPage() {
     bio,
     remoteAvailable,
     cancellationNoticeHours,
+    lateCancelKeepsDeposit,
     services,
     portfolioUrls,
     spokenLanguages,
@@ -683,6 +686,7 @@ export default function DashboardProfiloPage() {
         bio: bio.trim() || undefined,
         remoteAvailable,
         cancellationNoticeHours,
+        lateCancelKeepsDeposit,
         // Se l'immagine è stata caricata prima ancora di salvare il resto
         // del profilo (nessuna riga ancora sul server in quel momento), va
         // inclusa qui nel primo salvataggio vero e proprio — vedi nota in
@@ -1485,6 +1489,30 @@ export default function DashboardProfiloPage() {
               </Chip>
             ))}
           </XStack>
+          {/* Scelta di partenza sull'acconto online, come nel preventivo (Luca, 11/11, docs/changelog/2026-11-11-rosso-solo-errori.md). */}
+          <YStack gap="1" role="radiogroup" aria-label="Acconto online se il cliente annulla più tardi">
+            <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+              Se annulla più tardi, l&apos;acconto online:
+            </Text>
+            {[
+              { keep: false, label: "Torna sempre al cliente" },
+              { keep: true, label: "Resta a me, non è rimborsabile" },
+            ].map((option) => (
+              <label key={String(option.keep)} style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer", fontSize: 16, color: brand.grafite, minHeight: 32 }}>
+                <input
+                  type="radio"
+                  name="profilo-acconto-trattenuto"
+                  checked={lateCancelKeepsDeposit === option.keep}
+                  onChange={() => setLateCancelKeepsDeposit(option.keep)}
+                  style={{ accentColor: brand.verificato, width: 22, height: 22, flexShrink: 0, margin: 0 }}
+                />
+                {option.label}
+              </label>
+            ))}
+            <Text fontSize={13} color={brand.grafite70}>
+              Vale solo quando il cliente paga l&apos;acconto online. Il cliente lo legge prima di accettare.
+            </Text>
+          </YStack>
         </Surface>
 
         <Surface gap="3" id="profilo-prestazioni" className="profile-section">

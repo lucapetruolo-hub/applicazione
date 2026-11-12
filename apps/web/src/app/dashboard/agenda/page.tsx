@@ -1301,7 +1301,7 @@ function DashboardAgendaContent() {
     const dateStr = toIsoDate(date);
     if (exceptionDates.includes(dateStr)) {
       return (
-        <Text fontFamily="body" fontSize={11} fontWeight="600" color={brand.urgenza}>
+        <Text fontFamily="body" fontSize={11} fontWeight="600" color={brand.grafite70}>
           Chiuso
         </Text>
       );
