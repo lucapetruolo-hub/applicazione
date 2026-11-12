@@ -45,3 +45,24 @@ tutte le proposte.
 database di prova; foto prima e dopo di computer e telefono in
 `anteprime/per-professionisti/` della cartella del progetto; nessuno
 scorrimento orizzontale a 390 e 320 px.
+
+## Secondo giro (12/11/2026): le tre migliorie in più
+
+**Richiesta** (Luca): "si" alle tre migliorie proposte dopo la PR.
+
+- /per-professionisti/pagamenti: l'introduzione diceva "il cliente sceglie
+  come pagarti" mentre il riepilogo diceva "scegli tu i modi"; ora: scegli
+  tu i modi nel preventivo, il cliente sceglie tra quelli. Acconto in due
+  righe; il conto d'esempio (200 € → trattenuta 7% + IVA → ti arrivano)
+  in un riquadro a tre righe invece che dentro il testo; pagamento diretto
+  "in contanti, con bonifico o come vi accordate, nessuna commissione e
+  nessun limite"; più spazio tra i punti; in fondo "Iscriviti gratis" (o
+  "Vai a Fisco e pagamenti" per un professionista già iscritto).
+- Plus o Pro dritti al pagamento dopo l'iscrizione: già così. Il livello
+  toccato (`?livello=`) passa da registrazione e profilo fino alla finestra
+  "Profilo salvato! Ora scegli il piano" con "Attiva Plus" (o Pro), che apre
+  Abbonamento su quel livello. Il profilo serve prima (Stripe lo vuole,
+  decisione di Luca del 30/10) e il clic per pagare resta del
+  professionista: nessuna modifica.
+- Schermata dell'agenda: anche due preventivi in attesa (bordo giallo
+  tratteggiato), come nella settimana vera.
