@@ -3822,16 +3822,16 @@ a.admin-kpi:hover {
   pointer-events: none;
   z-index: -1;
   /* Sfondo copiato dalla console di Meta (screenshot di Luca,
-     docs/changelog/2026-11-12-sfondo-velo.md): rosa in alto a sinistra,
+     docs/changelog/2026-11-12-sfondo-velo.md): crema in alto a sinistra (scelta di Luca),
      azzurro a destra, lilla al centro, menta in basso a destra, azzurro in
      basso a sinistra, tutto molto chiaro e opaco sopra il crema. */
   background:
-    radial-gradient(55% 50% at 0% 0%, rgba(250, 232, 236, 0.9), transparent 70%),
-    radial-gradient(55% 55% at 100% 10%, rgba(224, 236, 248, 0.95), transparent 70%),
-    radial-gradient(50% 45% at 45% 45%, rgba(236, 234, 246, 0.7), transparent 70%),
-    radial-gradient(60% 55% at 100% 100%, rgba(232, 248, 238, 0.95), transparent 70%),
-    radial-gradient(55% 50% at 0% 100%, rgba(228, 238, 249, 0.9), transparent 70%),
-    linear-gradient(135deg, #f6eff1 0%, #eeeef5 40%, #e7f1f7 70%, #eaf6f1 100%);
+    radial-gradient(65% 60% at 0% 0%, rgba(250, 238, 222, 0.95), transparent 70%),
+    radial-gradient(55% 55% at 100% 10%, rgba(231, 237, 242, 0.95), transparent 70%),
+    radial-gradient(50% 45% at 45% 45%, rgba(241, 234, 241, 0.7), transparent 70%),
+    radial-gradient(60% 55% at 100% 100%, rgba(237, 245, 231, 0.95), transparent 70%),
+    radial-gradient(55% 50% at 0% 100%, rgba(235, 238, 240, 0.9), transparent 70%),
+    linear-gradient(135deg, #f9f0e4 0%, #f3eff1 40%, #ecf0f0 70%, #eff4e9 100%);
 }
 /* Comparsa del riquadro di accesso e registrazione: 250 ms e 8 px (prima
    450 ms e 16 px), si vede a ogni accesso (skill web-animation-design). */
