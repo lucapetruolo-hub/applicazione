@@ -61,6 +61,11 @@ export function SiteHeader() {
   // dentro una richiesta: su /preventivo porterebbe alla pagina già aperta, su
   // /urgente a una richiesta diversa da quella che si sta compilando.
   const isQuotePage = pathname === "/preventivo" || pathname === "/urgente";
+  // Pagine per chi offre un servizio: a chi non ha un account il pulsante in
+  // alto propone l'iscrizione, non la richiesta di preventivo da cliente
+  // (richiesta di Luca, docs/changelog/2026-11-12-pagina-per-professionisti.md).
+  const isProPage = pathname === "/per-professionisti" || pathname.startsWith("/per-professionisti/") || pathname.startsWith("/lavora-con-noi/");
+  const showProSignup = !isLoading && !user && isProPage;
 
   // Ordine delle categorie per la richiesta di preventivo e la registrazione,
   // chiesto a pagina ferma: aprendole le tessere compaiono subito in ordine (§324).
@@ -200,7 +205,14 @@ export function SiteHeader() {
               ogni caricamento di pagina prima di sparire. */}
           {/* Nascosto anche nel profilo di un professionista che accetta
               richieste (`.site-header-cta-link` in globals.css, §385). */}
-          {!isLoading && !user?.isProfessional && !isAuthPage && !isQuotePage ? (
+          {showProSignup ? (
+            <Link href="/registrati?ruolo=professionista" className="site-header-cta-link" style={{ textDecoration: "none" }}>
+              <Button tabIndex={-1} className="site-header-cta" variant="primary" size="3" height={40} paddingHorizontal="4 xs:3">
+                <span className={`is_Text site-header-cta-long ${styles.ctaText} ${styles.ctaText16}`}>Iscriviti gratis</span>
+                <span className={`is_Text site-header-cta-short ${styles.ctaText} ${styles.ctaText16}`}>Iscriviti</span>
+              </Button>
+            </Link>
+          ) : !isLoading && !user?.isProfessional && !isAuthPage && !isQuotePage ? (
             <Link href="/preventivo" className="site-header-cta-link" style={{ textDecoration: "none" }}>
               {/* paddingHorizontal ridotto sotto $xs (≤660px): a 320px (iPhone
                   SE, il più stretto tra i telefoni comuni) il bottone a piena
