@@ -617,8 +617,12 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
           const free = welcome && offerMonths !== null;
           const label = free && !isProfessional ? "Inizia gratis" : `Scegli ${tier.label}`;
           return (
+            // Tutta la casella porta dove porta il pulsante (`.pro-tier`, link
+            // allargato con ::after; docs/changelog/2026-11-12-pagina-per-professionisti.md).
             <YStack
               key={tier.tier}
+              className="pro-tier"
+              position="relative"
               flex={1}
               flexBasis="gtSm:0px"
               // Solo il livello gratis ha il suo fondo e la riga verde; gli altri sono trasparenti sullo sfondo del sito.
@@ -705,7 +709,7 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
                 ))}
               </YStack>
               <YStack flex={1} />
-              <Link href={href} style={{ textDecoration: "none" }} aria-label={`${label}${isProfessional ? "" : ": iscriviti come professionista"}`}>
+              <Link href={href} className="pro-tier-link" style={{ textDecoration: "none" }} aria-label={`${label}${isProfessional ? "" : ": iscriviti come professionista"}`}>
                 <Button tabIndex={-1} variant="acquisto" width="100%">
                   <XStack alignItems="center" gap="2">
                     <Text color="white" fontFamily="body" fontWeight="600">
@@ -853,9 +857,13 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
         }
         .pro-faq-item {
           border-bottom: 1px solid ${LINE};
-          padding: 20px 24px;
+          padding: 0 24px;
         }
+        /* Lo spazio sta nella domanda, non attorno: tutta la riga si tocca
+           (prima la parte toccabile era alta 22 px sul telefono). */
         .pro-faq-item > summary {
+          padding: 18px 0;
+          min-height: 44px;
           cursor: pointer;
           list-style: none;
           display: flex;
@@ -878,12 +886,12 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
           content: "−";
         }
         .pro-faq-item p {
-          margin: 10px 0 0;
+          margin: 0 0 20px;
           color: ${brand.grafite70};
           line-height: 1.6;
         }
         .pro-faq-more {
-          margin-top: 8px;
+          margin: -12px 0 8px;
         }
         .pro-faq-more summary {
           display: inline-flex;

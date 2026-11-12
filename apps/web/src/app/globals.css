@@ -6929,6 +6929,24 @@ a.admin-kpi:hover {
     border-left: 1px solid rgba(27, 26, 24, 0.12);
   }
 }
+/* Caselle dei livelli: si tocca tutta la casella, non solo il pulsante. Il
+   link del pulsante si allarga a tutta la casella con ::after; al passaggio
+   del mouse un velo leggero dice che è cliccabile. */
+.pro-tier-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.pro-tier {
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .pro-tier:hover {
+    background-color: rgba(64, 119, 106, 0.06) !important;
+  }
+}
 /* Luci dell'apertura di /per-professionisti sfumate in basso: prima
    finivano nette sul filetto sotto il titolo. */
 .glow-lights--sfuma {
@@ -6940,7 +6958,6 @@ a.admin-kpi:hover {
    /per-professionisti (docs/changelog/2026-11-12-pagina-per-professionisti.md). */
 .pay-faq-item {
   border-top: 1px solid #e7e0d7; /* brand.filetto */
-  padding: 14px 0;
 }
 .pay-faq-item summary {
   cursor: pointer;
@@ -6949,7 +6966,8 @@ a.admin-kpi:hover {
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  min-height: 24px;
+  min-height: 44px;
+  padding: 12px 0;
   font-weight: 700;
   color: #1b1a18; /* brand.grafite */
 }

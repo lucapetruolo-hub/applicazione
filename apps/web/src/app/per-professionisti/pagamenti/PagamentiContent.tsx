@@ -212,7 +212,7 @@ export function PagamentiContent() {
               // "+" e "−" come nelle domande di /per-professionisti (`.pay-faq-item` in globals.css).
               <details key={item.question} className="pay-faq-item">
                 <summary>{item.question}</summary>
-                <Text render="p" margin={0} marginTop="2" fontSize={16} color={brand.grafite70} lineHeight="24px">
+                <Text render="p" margin={0} marginBottom="3" fontSize={16} color={brand.grafite70} lineHeight="24px">
                   {item.answer}
                 </Text>
               </details>

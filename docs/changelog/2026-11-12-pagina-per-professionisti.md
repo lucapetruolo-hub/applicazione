@@ -96,3 +96,17 @@ domande della pagina dei pagamenti.
 - Va con qualunque sfondo fisso del sito, anche il velo della PR "Sfondo a
   velo su tutto il sito".
 - /per-professionisti/pagamenti: domande con "+" e "−" (`.pay-faq-item`).
+
+## Quinto giro (12/11/2026): caselle dei livelli cliccabili e prova dei tocchi
+
+**Richiesta** (Luca): "confermi che sono cliccabili le caselle degli
+abbonamenti?". No: solo il pulsante. Ora tutta la casella porta dove porta
+il pulsante (link allargato con `::after`, `.pro-tier` in globals.css), con
+un velo leggero al passaggio del mouse.
+
+Prova di ogni tocco sulle due pagine (Playwright, telefono e computer): le
+tre caselle aprono la registrazione col livello giusto; 51 link su
+/per-professionisti e 29 su /pagamenti, nessuno rotto. Le domande frequenti
+erano toccabili solo sul testo (22 px di altezza sul telefono): ora tutta
+la riga, almeno 44 px. Restano più piccoli solo i link dentro le frasi
+("Scrivici", "Termini di servizio"), ammessi dalle regole di accessibilità.
