@@ -209,8 +209,9 @@ export function PagamentiContent() {
         <Block title="Domande frequenti">
           <YStack>
             {PAYMENT_FAQ.map((item) => (
-              <details key={item.question} style={{ borderTop: `1px solid ${brand.filetto}`, padding: "14px 0" }}>
-                <summary style={{ cursor: "pointer", fontWeight: 700, color: brand.grafite, minHeight: 24 }}>{item.question}</summary>
+              // "+" e "−" come nelle domande di /per-professionisti (`.pay-faq-item` in globals.css).
+              <details key={item.question} className="pay-faq-item">
+                <summary>{item.question}</summary>
                 <Text render="p" margin={0} marginTop="2" fontSize={16} color={brand.grafite70} lineHeight="24px">
                   {item.answer}
                 </Text>

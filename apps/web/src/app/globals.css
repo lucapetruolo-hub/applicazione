@@ -6905,6 +6905,37 @@ a.admin-kpi:hover {
   }
 }
 
+/* Domande di /per-professionisti/pagamenti: "+" e "−" come quelle di
+   /per-professionisti (docs/changelog/2026-11-12-pagina-per-professionisti.md). */
+.pay-faq-item {
+  border-top: 1px solid #e7e0d7; /* brand.filetto */
+  padding: 14px 0;
+}
+.pay-faq-item summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  min-height: 24px;
+  font-weight: 700;
+  color: #1b1a18; /* brand.grafite */
+}
+.pay-faq-item summary::-webkit-details-marker {
+  display: none;
+}
+.pay-faq-item summary::after {
+  content: "+";
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 400;
+  color: #5e5a54; /* brand.grafite70 */
+}
+.pay-faq-item[open] summary::after {
+  content: "\2212";
+}
+
 /* "Vedi tutti" accanto al titolo di una sezione della home
    (docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md). */
 .home-section-action {
