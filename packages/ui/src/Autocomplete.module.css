@@ -44,7 +44,7 @@
   line-height: 16px;
   font-weight: 700;
   color: white;
-  background-color: rgb(64, 119, 106);
+  background-color: rgb(30, 107, 110);
   border-radius: 999px;
 }
 .badge.badge.badge.badge {
@@ -187,7 +187,7 @@
 
 .actionLabel {
   font-weight: 600;
-  color: rgb(64, 119, 106);
+  color: rgb(30, 107, 110);
 }
 
 .detail {

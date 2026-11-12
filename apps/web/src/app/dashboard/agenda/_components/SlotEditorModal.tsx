@@ -87,7 +87,7 @@ export function SlotChip({
       gap={4}
       minWidth={0}
       cursor="pointer"
-      backgroundColor={isConflicting ? brand.urgenzaVelo : highlighted ? brand.cianografiaVelo : "#eff6f4"}
+      backgroundColor={isConflicting ? brand.urgenzaVelo : highlighted ? brand.cianografiaVelo : "#eef7f7"}
       onPress={onEdit}
       role="button"
       aria-label={isSelected !== undefined ? `${isSelected ? "Deseleziona" : "Seleziona"} fascia ${slot.start}–${slot.end}` : `Modifica fascia ${slot.start}–${slot.end}`}

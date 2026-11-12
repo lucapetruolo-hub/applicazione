@@ -149,7 +149,7 @@ export function CookieBanner() {
           in fondo alla pagina.
         </span>{" "}
         {/* "Scopri di più" al posto di "Cookie Policy" (prova con persone simulate, docs/changelog/2026-11-08-prova-persone-simulate.md). */}
-        <Link href="/cookie" style={{ color: "#386c5f", fontWeight: 600, display: "inline-block", padding: "4px 0" }}>
+        <Link href="/cookie" style={{ color: "#186163", fontWeight: 600, display: "inline-block", padding: "4px 0" }}>
           Scopri di più
         </Link>
         .
@@ -157,10 +157,10 @@ export function CookieBanner() {
       <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
         {/* Stesso peso visivo per i due bottoni: rifiutare dev'essere facile
             quanto accettare (Garante privacy, linee guida cookie 2021). */}
-        <button type="button" onClick={deny} style={{ ...buttonStyle, backgroundColor: "#ffffff", color: "#386c5f", border: "1.5px solid #386c5f" }}>
+        <button type="button" onClick={deny} style={{ ...buttonStyle, backgroundColor: "#ffffff", color: "#186163", border: "1.5px solid #186163" }}>
           Rifiuta
         </button>
-        <button type="button" onClick={accept} style={{ ...buttonStyle, backgroundColor: "#40776a", color: "#ffffff", border: "1.5px solid #40776a" }}>
+        <button type="button" onClick={accept} style={{ ...buttonStyle, backgroundColor: "#1e6b6e", color: "#ffffff", border: "1.5px solid #1e6b6e" }}>
           Accetta
         </button>
       </div>

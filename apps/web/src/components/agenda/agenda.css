@@ -4,7 +4,7 @@
 .ag {
   --ag-line: #f3e6d6;
   --ag-line-soft: #f7eee4;
-  --ag-free: #eff6f4;
+  --ag-free: #eef7f7;
   --ag-teal: #1aa6a6;
   --ag-teal-veil: #ddf3f3;
   --ag-closed: #f6ede2;
@@ -645,7 +645,7 @@
   margin-right: 4px;
 }
 .ag-ev.conf {
-  background: #ecf4f2;
+  background: #ebf5f5;
   border-color: var(--ag-green);
 }
 .ag-ev.pending {
@@ -933,7 +933,7 @@
   color: var(--ag-green-dark);
 }
 .ag-day-btn.reopen:hover {
-  background: #eff6f4;
+  background: #eef7f7;
 }
 @media (max-width: 1000px) {
   /* Settimana stretta: solo l'icona, il nome resta per il lettore di schermo. */
