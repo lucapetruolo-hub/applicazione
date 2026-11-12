@@ -28,3 +28,28 @@ buona notizia fa pensare a un problema e insegna a ignorare il rosso.
 
 **Verifica**: foto prima/dopo della tendina su telefono e computer in
 `anteprime/notifiche-positive-verdi/` della cartella condivisa.
+
+## Secondo giro: le quattro migliorie (Luca: "fai tutte 4 migliorie")
+
+1. **Stessa regola in tutte le sezioni**: il tono viene dall'icona del testo
+   della notifica (`notificationTone` in `notificationTopicStyle.ts`): ✅ 🥳
+   🎁 👍 verde, ⚠️ ⛔ rosso, più quattro tipi cattivi con un'icona propria
+   (verifica non riuscita, bonifico non arrivato, rimborso non accolto,
+   account in pausa). Il resto tiene il colore dell'argomento. Per esempio
+   "Un bonifico non è arrivato" in "Lavori" ora è rosso, "Il cliente ha
+   accettato il tuo preventivo" è verde.
+2. **IBAN segnalato due volte**: durante l'attivazione Stripe manda più
+   `account.updated` quasi insieme; letti in parallelo, ognuno vedeva
+   l'esito vecchio e mandava la notifica. Ora il cambio di esito si scrive
+   con una condizione (`updateMany` con `stripeCheck` diverso): Postgres
+   mette in fila le due scritture e solo la prima avvisa.
+3. **Ultime 4 cifre**: notifica ed email dicono "l'IBAN che ci hai dato
+   finisce con 1234, il conto su Stripe con 9876" (solo le ultime 4 cifre,
+   come già nella pagina Pagamenti online).
+4. **IBAN tornato a posto**: nuovo tipo `PAYOUT_IBAN_MATCHED`, verde, quando
+   un controllo passa da "diverso" a "uguale" (anche nel riassunto email
+   della sera, non subito).
+
+**Verifica**: `payout-iban-notifications.test.ts` (due webhook insieme = una
+notifica, cifre nel payload, notizia buona); typecheck di API e sito, lint del
+sito, test di shared ed email. Foto `dopo2-*` nella stessa cartella.

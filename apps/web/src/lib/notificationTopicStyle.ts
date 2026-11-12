@@ -1,5 +1,6 @@
 import { NOTIFICATION_TOPIC_INFO, notificationTopicOf, type NotificationTopic } from "@professionisti/shared";
 import { brand, type IconName } from "@professionisti/ui";
+import { notificationCopy } from "./notificationCopy";
 
 /**
  * Icona e colore per argomento di notifica (docs/CHANGELOG.md §152):
@@ -17,56 +18,46 @@ export const NOTIFICATION_TOPIC_STYLE: Record<NotificationTopic, { icon: IconNam
 };
 
 /**
- * "Account e sicurezza" mescola buone e cattive notizie: prima era tutto
- * rosso, anche "Stripe ha verificato la tua identità" (richiesta di Luca del
- * 12/11, docs/changelog/2026-11-12-notifiche-positive-verdi.md). Verde = fatto,
- * rosso = errore o misura da sistemare, il resto neutro.
+ * Tono della singola notizia (richiesta di Luca del 12/11,
+ * docs/changelog/2026-11-12-notifiche-positive-verdi.md): prima il colore era
+ * solo quello dell'argomento, e "Account e sicurezza" era tutto rosso, anche
+ * "Stripe ha verificato la tua identità". Verde = fatto, rosso = errore o
+ * misura da sistemare, il resto col colore dell'argomento.
+ *
+ * Il tono viene dall'icona del testo (`notificationCopy`), che segue già la
+ * notizia anche quando dipende dal payload: ✅ 🥳 🎁 👍 buona, ⚠️ ⛔ cattiva.
+ * Un tipo nuovo prende il colore giusto scegliendo l'icona giusta.
  */
-const ACCOUNT_GOOD = new Set([
-  "STRIPE_ACCOUNT_ACTIVE",
-  "PROFILE_VERIFIED",
-  "ACCOUNT_REACTIVATED",
-  "CONTENT_REPORT_REVERTED",
-  "SUBSCRIPTION_FREE_MONTHS_STARTED",
-  "SUBSCRIPTION_BONUS_MONTH",
-  "SUBSCRIPTION_RENEWED",
-  "SUBSCRIPTION_PAID",
-]);
-const ACCOUNT_BAD = new Set([
-  "ACCOUNT_SUSPENDED",
-  "ACCOUNT_CLOSURE_SCHEDULED",
-  "ACCOUNT_CLOSED",
-  "JOB_ISSUE_SANCTION",
-  "CONTENT_REPORT_UPHELD",
-  "PROFILE_VERIFICATION_REMOVED",
-  "IDENTITY_VERIFICATION_DECLINED",
-  "TAX_ID_INVALID",
-  "STRIPE_ACCOUNT_RESTRICTED",
-  "PAYOUT_IBAN_MISMATCH",
-  "SUBSCRIPTION_PAYMENT_FAILED",
-]);
-const GOOD_STYLE = { icon: "shield-check" as IconName, color: brand.verificato, tint: brand.cianografiaVelo };
-const BAD_STYLE = { icon: "shield" as IconName, color: brand.urgenza, tint: brand.urgenzaVelo };
+const GOOD_ICONS = new Set(["✅", "🥳", "🎁", "👍"]);
+const BAD_ICONS = new Set(["⚠️", "⛔"]);
+/** Cattive notizie con un'icona di argomento (🪪, 🏦, ↩️, ⏸️) invece di ⚠️. */
+const BAD_TYPES = new Set(["IDENTITY_VERIFICATION_DECLINED", "JOB_PAYOUT_FAILED", "JOB_REFUND_REJECTED", "SUBSCRIPTION_PAUSED"]);
 
-/** Tono di una notifica di "Account e sicurezza": buona, cattiva o neutra. */
-export function accountNotificationTone(type: string): "good" | "bad" | "neutral" {
-  if (ACCOUNT_GOOD.has(type)) return "good";
-  if (ACCOUNT_BAD.has(type)) return "bad";
+export type NotificationTone = "good" | "bad" | "neutral";
+
+export function notificationTone(type: string, payload?: unknown): NotificationTone {
+  if (BAD_TYPES.has(type)) return "bad";
+  const { icon } = notificationCopy(type, payload);
+  if (GOOD_ICONS.has(icon)) return "good";
+  if (BAD_ICONS.has(icon)) return "bad";
   return "neutral";
 }
+
+const GOOD_COLORS = { color: brand.verificato, tint: brand.cianografiaVelo };
+const BAD_COLORS = { color: brand.urgenza, tint: brand.urgenzaVelo };
 
 const FALLBACK = { icon: "bell-ring" as IconName, color: brand.grafite70, tint: brand.gesso };
 
 /** Titolo breve (l'argomento, dal punto di vista di chi riceve) + icona e colori. */
-export function notificationTopicStyle(type: string, isProfessional: boolean): { title: string; icon: IconName; color: string; tint: string } {
+export function notificationTopicStyle(type: string, isProfessional: boolean, payload?: unknown): { title: string; icon: IconName; color: string; tint: string } {
   const topic = notificationTopicOf(type);
   if (!topic) return { title: "Notifica", ...FALLBACK };
   const info = NOTIFICATION_TOPIC_INFO[topic];
   const title = (isProfessional ? info.professional : info.client).label;
-  if (topic === "account") {
-    const tone = accountNotificationTone(type);
-    if (tone === "good") return { title, ...GOOD_STYLE };
-    if (tone === "bad") return { title, ...BAD_STYLE };
-  }
-  return { title, ...NOTIFICATION_TOPIC_STYLE[topic] };
+  const base = NOTIFICATION_TOPIC_STYLE[topic];
+  const tone = notificationTone(type, payload);
+  // Nell'account lo scudo prende la spunta quando la notizia è buona.
+  if (tone === "good") return { title, ...base, ...GOOD_COLORS, icon: topic === "account" ? "shield-check" : base.icon };
+  if (tone === "bad") return { title, ...base, ...BAD_COLORS };
+  return { title, ...base };
 }

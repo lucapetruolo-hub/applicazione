@@ -263,6 +263,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Promemoria di novembre sui dati DAC7 mancanti e IBAN diverso da Stripe (§247).
       "DAC7_DATA_REMINDER",
       "PAYOUT_IBAN_MISMATCH",
+      // IBAN tornato uguale al conto su Stripe (docs/changelog/2026-11-12-notifiche-positive-verdi.md).
+      "PAYOUT_IBAN_MATCHED",
       // Abbonamento (docs/CHANGELOG.md §161): scadenze e limiti mensili.
       "SUBSCRIPTION_BONUS_MONTH",
       // Carta data: mesi gratis attivi, con fine, importo e come annullare
@@ -673,6 +675,7 @@ export const NOTIFICATION_DIGEST_TYPES: ReadonlySet<string> = new Set([
   "SUBSCRIPTION_BONUS_MONTH",
   "PROFILE_VERIFIED",
   "STRIPE_ACCOUNT_ACTIVE",
+  "PAYOUT_IBAN_MATCHED",
   "MONTHLY_DOCUMENTS_READY",
 ]);
 
