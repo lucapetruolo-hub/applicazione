@@ -36,5 +36,8 @@ incontrare entrambe le pagine.
 (`stripe listen` del job `iscrizione-carta`) da 1.21.8 a 1.55.11, con
 l'impronta SHA-256 presa dal file ufficiale `stripe-linux-checksums.txt`
 della versione (c710bdb6…). Provata a mano: `stripe listen` ha ancora
-`--api-key`, `--print-secret` e `--forward-to`. Verifica: controllo
+`--api-key`, `--print-secret` e `--forward-to`, ma senza `--events` o `--all-snapshot` non
+inoltra più nulla (primo giro della PR: "must specify events to forward",
+nessuna carta salvata): si aggiunge `--all-snapshot`, cioè tutte le notizie
+classiche come prima. Verifica: controllo
 `iscrizione-carta` della PR verde.

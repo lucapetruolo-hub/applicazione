@@ -425,7 +425,9 @@ jobs:
           echo "c710bdb63045ea8e4c3d218efe4c269a90a32bd807c1306a29438e54f80bcfdc  $RUNNER_TEMP/stripe.tar.gz" | sha256sum -c -
           tar -xzf "$RUNNER_TEMP/stripe.tar.gz" -C "$RUNNER_TEMP" stripe
           echo "STRIPE_WEBHOOK_SECRET=$("$RUNNER_TEMP/stripe" listen --api-key "$E2E_STRIPE_SECRET_KEY" --print-secret)" >> "$GITHUB_ENV"
-          nohup "$RUNNER_TEMP/stripe" listen --api-key "$E2E_STRIPE_SECRET_KEY" --forward-to http://localhost:3001/billing/webhook > stripe-listen.log 2>&1 &
+          # Dalla 1.5x Stripe CLI vuole sapere quali notizie inoltrare: --all-snapshot
+          # sono tutte quelle classiche, come faceva da sola la 1.21.8.
+          nohup "$RUNNER_TEMP/stripe" listen --api-key "$E2E_STRIPE_SECRET_KEY" --all-snapshot --forward-to http://localhost:3001/billing/webhook > stripe-listen.log 2>&1 &
 
       - name: Browser per le prove
         if: steps.chiave.outputs.presente == 'true'
