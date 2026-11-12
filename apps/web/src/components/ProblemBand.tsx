@@ -13,7 +13,7 @@ import {
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import type { ChosenPro } from "./ChosenProsBar";
+import { setRequestHints, type ChosenPro, type ProblemRequestHints } from "./ChosenProsBar";
 import { CATEGORY_WHO as WHO, joinWithOr, problemCategoryChoices } from "@/lib/problemChoices";
 
 // Accesso e registrazione (con i loro controlli dei campi) caricati solo
@@ -56,6 +56,7 @@ export function ProblemBand({
   topService = null,
   categoryCounts,
   otherTradesCount = 0,
+  requestHints,
 }: {
   description: string;
   city?: string;
@@ -76,11 +77,14 @@ export function ProblemBand({
   categoryCounts?: Partial<Record<ProfessionalCategorySlug, number>>;
   /** Professionisti di altri mestieri che offrono questo lavoro ("Potrebbero fare anche questo lavoro"). */
   otherTradesCount?: number;
+  /** Quando serve e comune presi dal testo, per precompilare la richiesta. */
+  requestHints?: ProblemRequestHints;
 }) {
   const choices = problemCategoryChoices(result, chosen);
   const quoteParams = new URLSearchParams({ descrizione: description });
   if (chosen) quoteParams.set("categoria", chosen);
   if (city) quoteParams.set("citta", city);
+  setRequestHints(quoteParams, requestHints);
   const quoteHref = `/preventivo?${quoteParams.toString()}`;
   const shortText = description.length > 90 ? `${description.slice(0, 90)}…` : description;
   // Più mestieri e nessuna scelta del cliente: il titolo li nomina tutti, senza

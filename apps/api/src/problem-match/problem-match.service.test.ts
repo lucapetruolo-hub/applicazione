@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildServiceCatalog } from "@professionisti/shared";
-import { aiSpeedOf } from "./problem-match-admin.service";
-import { ProblemMatchService, anonymizeProblemText, cleanReason, missingTradeOf, openRouterBody } from "./problem-match.service";
+import { aiSpeedOf, choiceSwitchesOf } from "./problem-match-admin.service";
+import { AiHealth, ProblemMatchService, PromptCacheWatch, anonymizeProblemText, cleanReason, missingTradeOf, openRouterBody } from "./problem-match.service";
 
 function fakePrisma(words: { word: string; categorySlug: string | null; outOfService: string | null }[] = []) {
   return {
@@ -336,5 +336,57 @@ describe("ProblemMatchService con OpenRouter", () => {
     expect((await newService().match("c'è una macchia strana sul soffitto del bagno")).source).toBe("dizionario");
     vi.stubGlobal("fetch", reply({ categories: ["astronauta"], outOfService: null, notAJob: false, reason: "" }));
     expect((await newService().match("c'è una macchia strana sul soffitto del bagno")).source).toBe("dizionario");
+  });
+});
+
+describe("AiHealth", () => {
+  it("avvisa una volta dopo 10 minuti senza risposte buone, di nuovo solo dopo che l'IA è tornata", () => {
+    const health = new AiHealth();
+    expect(health.record(false, 0)).toBe(false);
+    expect(health.record(false, 9 * 60_000)).toBe(false);
+    expect(health.record(false, 10 * 60_000)).toBe(true);
+    expect(health.record(false, 30 * 60_000)).toBe(false);
+    expect(health.record(true, 31 * 60_000)).toBe(false);
+    expect(health.record(false, 32 * 60_000)).toBe(false);
+    expect(health.record(false, 42 * 60_000)).toBe(true);
+  });
+
+  it("una risposta buona in mezzo azzera il conto", () => {
+    const health = new AiHealth();
+    health.record(false, 0);
+    health.record(true, 5 * 60_000);
+    expect(health.record(false, 11 * 60_000)).toBe(false);
+  });
+});
+
+describe("PromptCacheWatch", () => {
+  it("segnala una volta dopo 20 richieste di fila senza cache", () => {
+    const watch = new PromptCacheWatch();
+    for (let i = 0; i < 19; i++) expect(watch.record(0)).toBe(false);
+    expect(watch.record(undefined)).toBe(true);
+    expect(watch.record(0)).toBe(false);
+  });
+
+  it("una lettura dalla cache azzera il conto", () => {
+    const watch = new PromptCacheWatch();
+    for (let i = 0; i < 19; i++) watch.record(0);
+    watch.record(1200);
+    for (let i = 0; i < 19; i++) expect(watch.record(0)).toBe(false);
+  });
+});
+
+describe("choiceSwitchesOf", () => {
+  it("conta le coppie proposto/scelto, le più frequenti prima", () => {
+    expect(
+      choiceSwitchesOf([
+        { categories: ["idraulico", "muratore"], chosenCategory: "muratore" },
+        { categories: ["idraulico"], chosenCategory: "muratore" },
+        { categories: [], chosenCategory: "fabbro" },
+        { categories: ["imbianchino"], chosenCategory: null },
+      ]),
+    ).toEqual([
+      { proposed: "idraulico", chosen: "muratore", count: 2 },
+      { proposed: null, chosen: "fabbro", count: 1 },
+    ]);
   });
 });

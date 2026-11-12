@@ -43,7 +43,7 @@ export class ProblemMatchController {
   @Post()
   @HttpCode(200)
   match(@Body(new ZodValidationPipe(problemMatchRequestSchema)) body: ProblemMatchRequest) {
-    return this.problemMatchService.match(body.description, body.city);
+    return this.problemMatchService.match(body.description, body.city, body.chosen);
   }
 
   /** "Prendete in carico la richiesta" (Ce ne occupiamo noi): serve l'accesso. */

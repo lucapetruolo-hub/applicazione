@@ -184,6 +184,15 @@ function DescriptionsTab() {
               Mestieri: {month.byCategory.map((row) => `${targetLabel(row.key, null)} ${row.count}`).join(" · ")}
             </Text>
           ) : null}
+          {month.choiceSwitches.length > 0 ? (
+            // Il cliente ha toccato un altro mestiere della banda: solo da leggere, si insegna a mano da "Da approvare".
+            <Text color={brand.grafite70} marginTop="1">
+              Il cliente ha cambiato mestiere:{" "}
+              {month.choiceSwitches
+                .map((row) => `proposto ${row.proposed ? targetLabel(row.proposed, null) : "nessuno"}, scelto ${targetLabel(row.chosen, null)} ${row.count}`)
+                .join(" · ")}
+            </Text>
+          ) : null}
           {month.byOutOfService.length > 0 ? (
             <Text color={brand.grafite} fontWeight="600" marginTop="1">
               Lavori che non copriamo:{" "}

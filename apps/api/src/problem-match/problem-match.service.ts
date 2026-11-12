@@ -198,6 +198,54 @@ export function openRouterBody(text: string, catalog: readonly ServiceCatalogEnt
   };
 }
 
+/** Dopo quanto tempo senza nessuna risposta buona dell'IA si avvisa chi gestisce il sito. */
+const AI_DOWN_AFTER_MS = 10 * 60_000;
+
+/**
+ * Salute dell'IA (docs/changelog/2026-11-12-haiku-senza-ragionamento.md):
+ * se per 10 minuti nessuna risposta va a buon fine (chiave rifiutata, credito
+ * finito, errori o sempre in ritardo) avvisa una volta sola, e di nuovo solo
+ * dopo che l'IA è tornata a rispondere. Nel frattempo resta il dizionario.
+ */
+export class AiHealth {
+  private failingSince: number | null = null;
+  private alerted = false;
+
+  /** Vero quando va mandato l'avviso. */
+  record(ok: boolean, now = Date.now()): boolean {
+    if (ok) {
+      this.failingSince = null;
+      this.alerted = false;
+      return false;
+    }
+    this.failingSince ??= now;
+    if (this.alerted || now - this.failingSince < AI_DOWN_AFTER_MS) return false;
+    this.alerted = true;
+    return true;
+  }
+}
+
+/**
+ * Cache delle istruzioni da Anthropic: se le richieste vicine non la usano
+ * mai, le istruzioni cambiano a ogni domanda e ogni ricerca costa e aspetta di
+ * più. Vero quando va segnalato (una volta, dopo 20 richieste di fila senza).
+ */
+export class PromptCacheWatch {
+  private misses = 0;
+  private warned = false;
+
+  record(cacheReadTokens: number | null | undefined): boolean {
+    if ((cacheReadTokens ?? 0) > 0) {
+      this.misses = 0;
+      return false;
+    }
+    this.misses += 1;
+    if (this.warned || this.misses < 20) return false;
+    this.warned = true;
+    return true;
+  }
+}
+
 type ParseFn = (text: string, catalog: readonly ServiceCatalogEntry[]) => Promise<AiAnswer | null>;
 /** Tempo ed esito della domanda all'IA, salvati per Admin › Mestieri richiesti. */
 type AiCall = { ms: number | null; outcome: AiOutcome };
@@ -216,6 +264,8 @@ export class ProblemMatchService {
   );
   private readonly cache = new Map<string, Classified>();
   private client: Anthropic | null = null;
+  private readonly aiHealth = new AiHealth();
+  private readonly promptCache = new PromptCacheWatch();
   private words: { list: TaughtWord[]; loadedAt: number } | null = null;
 
   constructor(
@@ -226,12 +276,14 @@ export class ProblemMatchService {
   /** Sostituibile nei test. */
   askAi: ParseFn = (text, catalog) => (aiProvider() === "openrouter" ? this.callOpenRouter(text, catalog) : this.callClaude(text, catalog));
 
-  async match(description: string, city?: string): Promise<ProblemMatchResult> {
+  async match(description: string, city?: string, chosen?: string): Promise<ProblemMatchResult> {
     const text = anonymizeProblemText(description);
     const { classified, ai } = await this.classify(description, text);
     const missingTrade = missingTradeOf(classified);
     // Al sito solo un mestiere che non è tra i fuori servizio fissi: quelli hanno già il loro titolo.
     const result: ProblemMatchResult = { ...classified, missingTrade: classified.outOfService ? null : missingTrade };
+    // Il cliente ha lasciato il primo mestiere per un altro: solo da contare, l'IA non impara da sola (decisione di Luca, 6/11).
+    const chosenCategory = chosen && isProfessionalCategorySlug(chosen) && chosen !== result.categories[0] ? chosen : null;
     // Registro per "Mestieri richiesti": senza contatti né chi l'ha scritto; un errore non blocca la ricerca.
     this.prisma.problemDescription
       .create({
@@ -246,6 +298,7 @@ export class ProblemMatchService {
           source: result.source,
           aiMs: ai?.ms ?? null,
           aiOutcome: ai?.outcome ?? null,
+          chosenCategory,
         },
       })
       .catch((error: unknown) => this.logger.warn(`Descrizione non salvata: ${String(error)}`));
@@ -270,6 +323,10 @@ export class ProblemMatchService {
     const started = Date.now();
     const answer = await this.askAi(text, catalog);
     const ms = Date.now() - started;
+    if (this.aiHealth.record(answer !== null)) {
+      this.logger.error("L'intelligenza artificiale non risponde da 10 minuti: la ricerca usa solo il dizionario.");
+      opsAlert("problem-match-down", "L'intelligenza artificiale della ricerca non risponde da 10 minuti (chiave, credito o errori): resta solo il dizionario.");
+    }
     // Senza risposta: arrivata all'attesa massima vuol dire tardi, prima è un errore.
     if (!answer) return { classified: fromDictionary, ai: { ms, outcome: ms >= TIMEOUT_MS - 100 ? "tardi" : "errore" } };
     const result = this.combine(dictionary, answer, catalog);
@@ -391,6 +448,11 @@ export class ProblemMatchService {
         },
         { timeout: TIMEOUT_MS },
       );
+      if (this.promptCache.record(response.usage?.cache_read_input_tokens)) {
+        this.logger.warn(
+          `Le istruzioni dell'IA non vengono prese dalla cache da 20 richieste (scritti in cache ${response.usage?.cache_creation_input_tokens ?? 0} token): controllare che il catalogo non cambi a ogni domanda.`,
+        );
+      }
       return response.parsed_output ?? null;
     } catch (error) {
       if (error instanceof Anthropic.APIError) {

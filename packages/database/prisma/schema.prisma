@@ -3344,6 +3344,10 @@ model ProblemDescription {
   /// Esito della domanda all'IA: "ok", "tardi" (oltre l'attesa), "errore" o "tetto" (limite del giorno)
   /// (docs/changelog/2026-11-12-attesa-ia-5-secondi.md).
   aiOutcome    String?
+  /// Mestiere toccato dal cliente fra quelli proposti, quando non è il primo:
+  /// in "Mestieri richiesti" come "proposto X, scelto Y", solo da leggere
+  /// (docs/changelog/2026-11-12-haiku-senza-ragionamento.md).
+  chosenCategory String?
   createdAt    DateTime @default(now())
 
   @@index([createdAt])

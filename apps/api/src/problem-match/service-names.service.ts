@@ -39,7 +39,8 @@ export class ServiceNamesService {
   async standardByCategory(): Promise<Record<string, string[]>> {
     if (!this.standard || Date.now() - this.standard.loadedAt > ALIASES_TTL_MS) {
       const rows = await this.prisma.standardServiceName.findMany({
-        orderBy: { createdAt: "asc" },
+        // Ordine fisso (anche a parità di data): un catalogo uguale tiene valida la cache di Anthropic.
+        orderBy: [{ createdAt: "asc" }, { name: "asc" }],
         select: { categorySlug: true, name: true },
       });
       const byCategory: Record<string, string[]> = {};

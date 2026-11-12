@@ -21,7 +21,7 @@ import { EmptySearchResults } from "@/components/EmptySearchResults";
 import { ResultsListWithMap, type MapPoolQuery } from "@/components/ResultsListWithMap";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProblemBand } from "@/components/ProblemBand";
-import { ChosenProsBar, chosenRequestHref } from "@/components/ChosenProsBar";
+import { ChosenProsBar, chosenRequestHref, type ProblemRequestHints } from "@/components/ChosenProsBar";
 import { saveLastSearchCity } from "@/lib/lastSearchCity";
 import { useChosenPros } from "@/lib/useChosenPros";
 import { useComuni, type ComuniModule } from "@/lib/comuniLazy";
@@ -41,6 +41,8 @@ export type ProblemSearch = {
   questionDone: boolean;
   /** Quanti professionisti per ogni mestiere proposto, quando sono più di uno. */
   categoryCounts?: Partial<Record<ProfessionalCategorySlug, number>>;
+  /** Quando serve e comune presi dal testo, per precompilare la richiesta (docs/changelog/2026-11-12-haiku-senza-ragionamento.md). */
+  requestHints?: ProblemRequestHints;
 };
 
 /** "Perché" di una scheda: la prestazione del professionista che somiglia al problema. */
@@ -306,6 +308,7 @@ export function CercaContent({
       categoryCounts={problem.categoryCounts}
       otherTradesCount={alsoDoThisJob.length}
       chosenPros={chosenPros}
+      requestHints={problem.requestHints}
       maxChosen={canChoose ? MAX_CHOSEN_PROFESSIONALS : undefined}
       onClearChosen={clearChosen}
     />
@@ -351,7 +354,7 @@ export function CercaContent({
         <ChosenProsBar
           chosen={chosenPros}
           max={MAX_CHOSEN_PROFESSIONALS}
-          href={chosenRequestHref(chosenPros, problem.chosen, problem.description, city)}
+          href={chosenRequestHref(chosenPros, problem.chosen, problem.description, city, problem.requestHints)}
           notice={limitNotice}
         />
       ) : null}
