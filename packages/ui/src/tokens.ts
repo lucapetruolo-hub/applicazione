@@ -60,6 +60,11 @@ export const brand = {
   // per "fatto". 7,2:1 su bianco, 5,9:1 sulla sua tinta chiara.
   ardesia: "#3E5A73",
   ardesiaVelo: "#E3EAF1",
+  // Indaco: colore di base delle notifiche "Nuove richieste" (stesso file del
+  // changelog). Prima era il verde acqua dei pulsanti, quasi uguale al verde
+  // delle buone notizie. 7,2:1 su bianco, 6,1:1 sulla sua tinta chiara.
+  indaco: "#55508A",
+  indacoVelo: "#ECEAF5",
   ottone: "#D9A441",
   // Testo e icone sull'ottone chiaro (categoria principale in registrazione,
   // docs/CHANGELOG.md §248): l'ottone pieno sul chiaro non si legge. È l'unico

@@ -1129,6 +1129,8 @@ export type PayoutIbanView = {
   stripeCheck: PayoutIbanStripeCheck | null;
   stripeCheckedAt: string | null;
   updatedAt: string;
+  /** Ultime 4 cifre del conto su Stripe, solo quando non corrisponde. */
+  stripeLast4?: string | null;
 };
 
 export type PlatformDac7Settings = {

@@ -17,6 +17,11 @@ export type PayoutAccountView = {
   stripeCheck: PayoutIbanStripeCheck | null;
   stripeCheckedAt: string | null;
   updatedAt: string;
+  /**
+   * Ultime 4 cifre del conto su Stripe, solo quando non corrisponde: la
+   * pagina le mostra accanto all'avviso (docs/changelog/2026-11-12-notifiche-positive-verdi.md).
+   */
+  stripeLast4: string | null;
 };
 
 /**
@@ -100,18 +105,18 @@ export class PayoutAccountService implements OnApplicationBootstrap {
     return this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId: profile.id }, include: { payoutAccount: true } });
   }
 
-  private view(account: { ibanCountry: string; ibanLast4: string; holderName: string; stripeCheck: string | null; stripeCheckedAt: Date | null; updatedAt: Date }): PayoutAccountView {
+  private view(
+    account: { ibanCountry: string; ibanLast4: string; holderName: string; stripeCheck: string | null; stripeCheckedAt: Date | null; updatedAt: Date },
+    stripeLast4: string | null = null,
+  ): PayoutAccountView {
     return {
+      stripeLast4: account.stripeCheck === "MISMATCH" ? stripeLast4 : null,
       maskedIban: maskIban(account.ibanCountry, account.ibanLast4),
       holderName: account.holderName,
       stripeCheck: (account.stripeCheck as PayoutIbanStripeCheck | null) ?? null,
       stripeCheckedAt: account.stripeCheckedAt?.toISOString() ?? null,
       updatedAt: account.updatedAt.toISOString(),
     };
-  }
-
-  private async stripeCheck(stripeAccountId: string | null, iban: { country: string; last4: string }): Promise<PayoutIbanStripeCheck> {
-    return (await this.stripeComparison(stripeAccountId, iban)).check;
   }
 
   /** Esito del confronto e ultime 4 cifre del conto su Stripe (per dirle al professionista). */
@@ -137,9 +142,15 @@ export class PayoutAccountService implements OnApplicationBootstrap {
     // ricontrolla qui invece di aspettare un webhook.
     const age = account.stripeCheckedAt ? Date.now() - account.stripeCheckedAt.getTime() : Infinity;
     if (age > (account.stripeCheck === "MATCH" ? RECHECK_MATCH_MS : RECHECK_PENDING_MS)) {
-      const check = keepKnownCheck(account.stripeCheck, await this.stripeCheck(fiscal.stripeConnectAccountId, { country: account.ibanCountry, last4: account.ibanLast4 }));
+      const fresh = await this.stripeComparison(fiscal.stripeConnectAccountId, { country: account.ibanCountry, last4: account.ibanLast4 });
+      const check = keepKnownCheck(account.stripeCheck, fresh.check);
       const updated = await this.prisma.professionalPayoutAccount.update({ where: { id: account.id }, data: { stripeCheck: check, stripeCheckedAt: new Date() } });
-      return this.view(updated);
+      return this.view(updated, fresh.stripeLast4);
+    }
+    // Conto diverso: le cifre di Stripe si leggono ogni volta (non le salviamo).
+    if (account.stripeCheck === "MISMATCH") {
+      const fresh = await this.stripeComparison(fiscal.stripeConnectAccountId, { country: account.ibanCountry, last4: account.ibanLast4 });
+      return this.view(account, fresh.stripeLast4);
     }
     return this.view(account);
   }
@@ -196,7 +207,7 @@ export class PayoutAccountService implements OnApplicationBootstrap {
 
     const country = result.iban.slice(0, 2);
     const last4 = result.iban.slice(-4);
-    const check = await this.stripeCheck(fiscal.stripeConnectAccountId, { country, last4 });
+    const { check, stripeLast4 } = await this.stripeComparison(fiscal.stripeConnectAccountId, { country, last4 });
     const data = {
       ibanEncrypted: encryptFiscal(result.iban),
       ibanCountry: country,
@@ -220,6 +231,6 @@ export class PayoutAccountService implements OnApplicationBootstrap {
       changedByUserId: userId,
       reason: "IBAN per la DAC7 indicato dal professionista.",
     });
-    return this.view(account);
+    return this.view(account, stripeLast4);
   }
 }

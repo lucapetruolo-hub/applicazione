@@ -70,3 +70,17 @@ sito, test di shared ed email. Foto `dopo2-*` nella stessa cartella.
 **Verifica**: nuovi test in `payout-iban-notifications.test.ts`, che falliscono
 senza la correzione e passano con la correzione; typecheck di API, sito e ui,
 lint del sito. Foto `dopo3-*`.
+
+## Quarto giro (Luca: "Effettua le due migliorie poi unisci")
+
+1. **"Nuove richieste" in indaco** (`brand.indaco` #55508A su
+   `brand.indacoVelo` #ECEAF5, 7,2:1 su bianco): prima era il verde acqua dei
+   pulsanti, quasi uguale al verde delle buone notizie.
+2. **Ultime 4 cifre nella pagina Pagamenti online**: con l'IBAN diverso,
+   sotto il bollino rosso si legge "Questo IBAN finisce con 1234, il conto su
+   Stripe con 9876". Le cifre di Stripe non si salvano: l'API le legge da
+   Stripe solo quando l'esito è "diverso" (`stripeLast4` in
+   `PayoutAccountView`, nullo negli altri casi).
+
+**Verifica**: typecheck di API e sito, lint, test di `professional-fiscal`.
+Foto `dopo4-*` e `iban-pagina-telefono.png`.
