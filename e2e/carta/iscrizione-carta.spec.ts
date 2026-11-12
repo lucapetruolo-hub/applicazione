@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type Browser, type BrowserContext, type Frame, type Page } from "@playwright/test";
 import { PrismaClient } from "@professionisti/database";
 import { testToken } from "../fixtures/preventivi";
 import { WEB_URL } from "../fixtures/env";
@@ -111,13 +111,82 @@ async function backOnSite(page: Page, url: RegExp): Promise<Page> {
 }
 
 /**
- * La pagina di Stripe è pronta quando mostra il modulo della carta (o la voce
- * "Carta" da aprire). Prima Stripe sta ancora caricando i suoi riquadri.
+ * Stripe mostra a caso una di due pagine di Checkout
+ * (docs/changelog/2026-11-12-prova-carta-due-pagine-stripe.md):
+ * - "classica": il modulo della carta è nella pagina (`#cardNumber`), a volte
+ *   dentro la voce "Carta" da aprire;
+ * - "nuova" (prova di Stripe `checkout_guacamole`, vista nella CI dal
+ *   12/11): il modulo è dentro un riquadro di Stripe (Payment Element), con
+ *   campi `#payment-…Input` e Paese di partenza "Stati Uniti" con il CAP.
+ * Prima la prova cercava solo la classica e con la nuova aspettava 30 s una
+ * casella che non c'era: falliva a caso, a seconda della pagina pescata.
  */
-async function waitCheckoutReady(page: Page) {
-  const cardNumber = page.locator("#cardNumber");
-  const payWithCard = page.getByTestId("card-accordion-item-button");
-  await expect.poll(async () => (await cardNumber.isVisible()) || (await payWithCard.count()) > 0, { timeout: 30_000 }).toBe(true);
+type CheckoutForm = {
+  layout: "classica" | "nuova";
+  /** Pagina o riquadro di Stripe che contiene i campi della carta. */
+  scope: Page | Frame;
+  number: string;
+  expiry: string;
+  cvc: string;
+  name: string;
+  country: string;
+  postalCode: string | null;
+  submit: string;
+};
+
+const CLASSIC_FORM: Omit<CheckoutForm, "scope"> = {
+  layout: "classica",
+  number: "#cardNumber",
+  expiry: "#cardExpiry",
+  cvc: "#cardCvc",
+  name: "#billingName",
+  country: "#billingCountry",
+  postalCode: null,
+  submit: '[data-testid="hosted-payment-submit-button"]',
+};
+
+const NEW_FORM: Omit<CheckoutForm, "scope"> = {
+  layout: "nuova",
+  number: "#payment-numberInput",
+  expiry: "#payment-expiryInput",
+  cvc: "#payment-cvcInput",
+  name: "#payment-nameInput",
+  country: "#payment-countryInput",
+  postalCode: "#payment-postalCodeInput",
+  submit: '[data-testid="payment-form-submit-button"]',
+};
+
+/**
+ * La pagina di Stripe è pronta quando mostra il modulo della carta (o la voce
+ * "Carta" da aprire), nell'una o nell'altra versione. Prima Stripe sta ancora
+ * caricando i suoi riquadri. La versione pescata va nel resoconto della prova.
+ */
+async function waitCheckoutReady(page: Page): Promise<CheckoutForm> {
+  let found: CheckoutForm | null = null;
+  await expect
+    .poll(
+      async () => {
+        const classicNumber = page.locator(CLASSIC_FORM.number);
+        const payWithCard = page.getByTestId("card-accordion-item-button");
+        if ((await classicNumber.isVisible().catch(() => false)) || (await payWithCard.count().catch(() => 0)) > 0) {
+          found = { ...CLASSIC_FORM, scope: page };
+          return true;
+        }
+        for (const frame of page.frames()) {
+          if (frame === page.mainFrame()) continue;
+          if (await frame.locator(NEW_FORM.number).isVisible().catch(() => false)) {
+            found = { ...NEW_FORM, scope: frame };
+            return true;
+          }
+        }
+        return false;
+      },
+      { timeout: 30_000, message: "Il modulo della carta di Stripe non compare (né la pagina classica né la nuova)" },
+    )
+    .toBe(true);
+  const form = found!;
+  test.info().annotations.push({ type: "stripe", description: `pagina di Checkout ${form.layout}` });
+  return form;
 }
 
 /** Da "Attiva i mesi gratis" alla pagina della carta di Stripe. */
@@ -127,22 +196,30 @@ async function openCheckout(page: Page) {
   await page.waitForURL(/checkout\.stripe\.com/, { timeout: 60_000 });
 }
 
-async function fillCard(page: Page, number: string) {
-  // Con più metodi di pagamento Stripe mostra un elenco: si apre "Carta".
-  // Il pulsante della voce copre tutta la riga ed è trasparente: si attiva
-  // con un evento di clic invece del clic del mouse.
-  const cardNumber = page.locator("#cardNumber");
-  const payWithCard = page.getByTestId("card-accordion-item-button");
-  await waitCheckoutReady(page);
-  if (!(await cardNumber.isVisible())) await payWithCard.dispatchEvent("click");
+async function fillCard(page: Page, number: string): Promise<CheckoutForm> {
+  const form = await waitCheckoutReady(page);
+  const field = (selector: string) => form.scope.locator(selector);
+  const cardNumber = field(form.number);
+  // Pagina classica con più metodi di pagamento: Stripe mostra un elenco e si
+  // apre "Carta". Il pulsante della voce copre tutta la riga ed è
+  // trasparente: si attiva con un evento di clic invece del clic del mouse.
+  if (form.layout === "classica" && !(await cardNumber.isVisible())) await page.getByTestId("card-accordion-item-button").dispatchEvent("click");
   await expect(cardNumber).toBeVisible();
   await cardNumber.fill(number);
-  await page.locator("#cardExpiry").fill("12 / 34");
-  await page.locator("#cardCvc").fill("123");
-  await page.locator("#billingName").fill("Paolo Neri");
-  const country = page.locator("#billingCountry");
+  await field(form.expiry).fill("12 / 34");
+  await field(form.cvc).fill("123");
+  await field(form.name).fill("Paolo Neri");
+  const country = field(form.country);
   if (await country.isVisible().catch(() => false)) await country.selectOption("IT");
-  await page.getByTestId("hosted-payment-submit-button").or(page.getByRole("button", { name: "Avvia prova" })).first().click();
+  // Il CAP Stripe lo chiede solo per alcuni Paesi: con l'Italia di solito sparisce.
+  if (form.postalCode) {
+    const postalCode = field(form.postalCode);
+    if (await postalCode.isVisible().catch(() => false)) await postalCode.fill("04100");
+  }
+  const submit = field(form.submit);
+  if (form.layout === "classica") await submit.or(page.getByRole("button", { name: "Avvia prova" })).first().click();
+  else await submit.click();
+  return form;
 }
 
 /**
@@ -239,8 +316,12 @@ test("carta rifiutata (9995): Stripe lo dice sulla sua pagina, nel database non 
   const { user, profileId } = await newProfessional({ withProfile: true });
   const page = await signedIn(browser, user.id);
   await openCheckout(page);
-  await fillCard(page, "4000000000009995");
-  await expect(page.getByText(/insufficient funds|fondi insufficienti|rifiutata|declined/i).first()).toBeVisible({ timeout: 60_000 });
+  const form = await fillCard(page, "4000000000009995");
+  // Con la pagina nuova l'errore compare dentro il riquadro della carta.
+  const declined = /insufficient funds|fondi (in)?sufficienti|rifiutata|declined/i;
+  // (due locator di riquadri diversi non si uniscono con .or: si guardano entrambi).
+  const shown = async (scope: Page | Frame) => scope.getByText(declined).first().isVisible().catch(() => false);
+  await expect.poll(async () => (await shown(form.scope)) || (await shown(page)), { timeout: 60_000 }).toBe(true);
   expect(page.url()).toMatch(/checkout\.stripe\.com/);
   const row = await subscriptionOf(profileId!);
   expect(row.stripeSubscriptionId).toBeNull();
