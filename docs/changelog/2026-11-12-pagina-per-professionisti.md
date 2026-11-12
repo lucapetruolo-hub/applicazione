@@ -66,3 +66,15 @@ scorrimento orizzontale a 390 e 320 px.
   professionista: nessuna modifica.
 - Schermata dell'agenda: anche due preventivi in attesa (bordo giallo
   tratteggiato), come nella settimana vera.
+
+## Terzo giro (12/11/2026): domande e titolo della pagina dei pagamenti
+
+**Richiesta** (Luca): "si" alle due migliorie facoltative.
+
+- /per-professionisti/pagamenti: "Domande frequenti" con "Quando arriva il
+  bonifico?" (conferma o 7 giorni, poi 1-4 giorni lavorativi, come la scheda
+  del lavoro) e "E se il cliente contesta?" (segnalazione sul sito: 48 ore
+  per accordarsi, poi decide il team; contestazione con la banca: decide la
+  banca, soldi bloccati, commissione Stripe a carico del professionista,
+  come nei Termini punti 5 e 6).
+- Titolo per Google: "Come vieni pagato: acconto online e pagamento diretto".
