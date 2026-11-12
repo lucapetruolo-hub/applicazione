@@ -3339,6 +3339,11 @@ model ProblemDescription {
   /// Mestiere che il sito non ha, scritto dall'IA quando nessun mestiere va bene
   /// (docs/changelog/2026-11-11-mestieri-che-mancano.md).
   missingTrade String?
+  /// Millisecondi della risposta dell'IA; null se l'IA non è stata chiesta (o risposta già in memoria).
+  aiMs         Int?
+  /// Esito della domanda all'IA: "ok", "tardi" (oltre l'attesa), "errore" o "tetto" (limite del giorno)
+  /// (docs/changelog/2026-11-12-attesa-ia-5-secondi.md).
+  aiOutcome    String?
   createdAt    DateTime @default(now())
 
   @@index([createdAt])

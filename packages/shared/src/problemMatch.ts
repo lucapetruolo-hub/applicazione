@@ -547,6 +547,11 @@ export type ProblemSuggestionOutcomes = {
   changes: { from: string; to: string; count: number }[];
 };
 
+/** Esito della domanda all'IA per una ricerca dubbia (docs/changelog/2026-11-12-attesa-ia-5-secondi.md). */
+export type AiOutcome = "ok" | "tardi" | "errore" | "tetto";
+/** Risposte dell'IA nelle ricerche dubbie: arrivate, tardive, errori, oltre il limite del giorno. */
+export type AiSpeed = { asked: number; ok: number; late: number; failed: number; capped: number; medianMs: number | null };
+
 export type ProblemMatchAdminOverview = {
   /** Ultimi 30 giorni; i mestieri contano il primo proposto. */
   lastMonth: {
@@ -564,6 +569,8 @@ export type ProblemMatchAdminOverview = {
     /** Mestieri che il sito non ha, per nome e zona (docs/changelog/2026-11-11-mestieri-che-mancano.md). */
     missingTrades: MissingTrade[];
     suggestions: ProblemSuggestionOutcomes;
+    /** Ultimi 7 giorni. */
+    aiSpeed: AiSpeed;
   };
   descriptions: {
     id: string;

@@ -13,6 +13,7 @@ import {
   normalizeProblemText,
   serviceNameKey,
   type AddStandardServiceInput,
+  type AiSpeed,
   type ProblemSuggestionOutcomes,
   type ServiceNamesAdminOverview,
   type TeachProblemWordInput,
@@ -63,6 +64,23 @@ const MISSING_SHOWN = 20;
  * Pagine admin "Mestieri richiesti" e "Richieste da seguire"
  * (docs/CHANGELOG.md §392, richieste di Luca).
  */
+/** Risposte dell'IA della settimana: arrivate, tardive, errori, oltre il limite; tempo mediano di quelle arrivate. */
+export function aiSpeedOf(rows: { aiMs: number | null; aiOutcome: string | null }[]): AiSpeed {
+  const count = (outcome: string) => rows.filter((row) => row.aiOutcome === outcome).length;
+  const times = rows
+    .filter((row) => row.aiOutcome === "ok" && row.aiMs !== null)
+    .map((row) => row.aiMs!)
+    .sort((a, b) => a - b);
+  return {
+    asked: rows.length,
+    ok: count("ok"),
+    late: count("tardi"),
+    failed: count("errore"),
+    capped: count("tetto"),
+    medianMs: times[Math.floor(times.length / 2)] ?? null,
+  };
+}
+
 @Injectable()
 export class ProblemMatchAdminService {
   constructor(
@@ -83,7 +101,8 @@ export class ProblemMatchAdminService {
           : filter === "nessuno"
             ? { categories: { isEmpty: true }, outOfService: null }
             : {};
-    const [descriptions, lastMonth, words, suggested] = await Promise.all([
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60_000);
+    const [descriptions, lastMonth, words, suggested, aiCalls] = await Promise.all([
       this.prisma.problemDescription.findMany({ where, orderBy: { createdAt: "desc" }, take: 200 }),
       this.prisma.problemDescription.findMany({
         where: { createdAt: { gte: since } },
@@ -94,6 +113,11 @@ export class ProblemMatchAdminService {
       this.prisma.guidedRequest.findMany({
         where: { createdAt: { gte: sinceLaunch(since, countingFrom()) }, suggestedCategorySlug: { not: null }, client: COUNTED_USER },
         select: { suggestedCategorySlug: true, submissionGroupId: true, category: { select: { slug: true } } },
+      }),
+      // Domande all'IA della settimana: quante risposte arrivano in tempo (docs/changelog/2026-11-12-attesa-ia-5-secondi.md).
+      this.prisma.problemDescription.findMany({
+        where: { createdAt: { gte: weekAgo }, aiOutcome: { not: null } },
+        select: { aiMs: true, aiOutcome: true },
       }),
     ]);
 
@@ -120,7 +144,7 @@ export class ProblemMatchAdminService {
     const suggestions = suggestionOutcomes(suggested.map((row) => ({ suggested: row.suggestedCategorySlug!, chosen: row.category.slug, withOthers: Boolean(row.submissionGroupId) })));
 
     return {
-      lastMonth: { total: lastMonth.length, safety, ai, none, byCategory: sorted(byCategory), byOutOfService: sorted(byOutOfService), missing: sorted(missing).slice(0, MISSING_SHOWN).map(({ key, count }) => ({ text: key, count })), missingTrades: buildMissingTrades(lastMonth).slice(0, MISSING_TRADES_SHOWN), suggestions },
+      lastMonth: { total: lastMonth.length, safety, ai, none, byCategory: sorted(byCategory), byOutOfService: sorted(byOutOfService), missing: sorted(missing).slice(0, MISSING_SHOWN).map(({ key, count }) => ({ text: key, count })), missingTrades: buildMissingTrades(lastMonth).slice(0, MISSING_TRADES_SHOWN), suggestions, aiSpeed: aiSpeedOf(aiCalls) },
       descriptions: descriptions.map((row) => ({
         id: row.id,
         text: row.text,

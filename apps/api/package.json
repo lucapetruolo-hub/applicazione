@@ -9,7 +9,8 @@
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "email:preview": "tsx scripts/email-preview.ts"
+    "email:preview": "tsx scripts/email-preview.ts",
+    "banco-ia": "node scripts/banco-ia.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
