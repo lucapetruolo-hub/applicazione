@@ -317,8 +317,9 @@ test("carta rifiutata (9995): Stripe lo dice sulla sua pagina, nel database non 
   const page = await signedIn(browser, user.id);
   await openCheckout(page);
   const form = await fillCard(page, "4000000000009995");
-  // Con la pagina nuova l'errore compare dentro il riquadro della carta.
-  const declined = /insufficient funds|fondi (in)?sufficienti|rifiutata|declined/i;
+  // Con la pagina nuova l'errore compare dentro il riquadro della carta:
+  // "I fondi della carta non sono sufficienti. Prova con un'altra." (CI del 12/11).
+  const declined = /insufficient funds|fondi insufficienti|fondi della carta non sono sufficienti|rifiutata|declined/i;
   // (due locator di riquadri diversi non si uniscono con .or: si guardano entrambi).
   const shown = async (scope: Page | Frame) => scope.getByText(declined).first().isVisible().catch(() => false);
   await expect.poll(async () => (await shown(form.scope)) || (await shown(page)), { timeout: 60_000 }).toBe(true);

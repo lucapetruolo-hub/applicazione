@@ -20,7 +20,9 @@ secondo tentativo. Non era un'attesa troppo corta: allungarla non serviva.
 (classica e nuova) e compila i campi di quella che trova, cercando nella
 pagina e nei suoi riquadri; con la nuova sceglie l'Italia e scrive il CAP
 solo se Stripe lo chiede ancora. L'errore della carta rifiutata si cerca
-anche dentro il riquadro. La pagina pescata va nel resoconto della prova
+anche dentro il riquadro, dove Stripe scrive "I fondi della carta non sono
+sufficienti. Prova con un'altra." (primo giro della PR: la frase non era tra
+quelle attese). La pagina pescata va nel resoconto della prova
 ("pagina di Checkout classica/nuova"), così si vede quando Stripe passa
 tutti alla nuova. I controlli sono gli stessi di prima: stessa carta, stesso
 risultato atteso su sito, database e Stripe, stessi tempi.
