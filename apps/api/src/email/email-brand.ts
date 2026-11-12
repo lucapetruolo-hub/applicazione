@@ -22,9 +22,9 @@ export const EMAIL_BRAND = {
     muted: "#5E5A54",
     border: "#E7E0D7",
     // Verde pieno dei pulsanti del sito (cianografiaPieno, §350/§355): bianco leggibile, contrasto 4,7.
-    primary: "#40776a",
-    primaryDark: "#386C5F",
-    primaryTint: "#E1EEEB",
+    primary: "#1e6b6e",
+    primaryDark: "#186163",
+    primaryTint: "#DFF0F0",
     urgent: "#B42318",
     urgentTint: "#FDE8E6",
   },

@@ -87,7 +87,7 @@ html[data-cookie-choice] .cookie-banner {
   top: -48px;
   left: 8px;
   z-index: 1000;
-  background: #40776a;
+  background: #1e6b6e;
   color: #ffffff;
   padding: 12px 16px;
   border-radius: 20px;
@@ -360,9 +360,9 @@ body:has(.empty-search-results) .site-header-cta-link {
   min-height: 40px;
   padding: 0 14px;
   border-radius: 999px;
-  border: 1.5px solid #40776a;
+  border: 1.5px solid #1e6b6e;
   background: #ffffff;
-  color: #386c5f;
+  color: #186163;
   font-family: inherit;
   font-size: 15px;
   font-weight: 700;
@@ -370,10 +370,10 @@ body:has(.empty-search-results) .site-header-cta-link {
   transition: background-color 150ms ease, color 150ms ease;
 }
 .choose-toggle:hover {
-  background: #e1eeeb;
+  background: #dff0f0;
 }
 .choose-toggle[data-selected="true"] {
-  background: #40776a;
+  background: #1e6b6e;
   color: #ffffff;
 }
 .choose-toggle[aria-disabled="true"] {
@@ -383,7 +383,7 @@ body:has(.empty-search-results) .site-header-cta-link {
   background: #ffffff;
 }
 .choose-toggle:focus-visible {
-  outline: 2px solid #386c5f;
+  outline: 2px solid #186163;
   outline-offset: 2px;
 }
 .chosen-bar {
@@ -538,7 +538,7 @@ body:has(.chosen-bar) {
   display: block;
   height: 4px;
   border-radius: 2px;
-  background-image: linear-gradient(90deg, #40776a, #4c8a7a, #92c0b5, #4c8a7a, #40776a);
+  background-image: linear-gradient(90deg, #1e6b6e, #247c7c, #8ac6c8, #247c7c, #1e6b6e);
   background-size: 300% 100%;
   background-position: 0 0;
   animation: flow-bar 2s linear infinite;
@@ -725,7 +725,7 @@ body:has(.chosen-bar) {
   transform: scale(0.94);
 }
 .notif-bell:focus-visible {
-  outline: 2px solid #386c5f;
+  outline: 2px solid #186163;
   outline-offset: 2px;
 }
 .notif-badge {
@@ -800,8 +800,8 @@ body:has(.chosen-bar) {
 .notif-new {
   padding: 2px 8px;
   border-radius: 999px;
-  background: #e1eeeb;
-  color: #386c5f;
+  background: #dff0f0;
+  color: #186163;
   font-size: 13px;
   font-weight: 600;
 }
@@ -829,7 +829,7 @@ body:has(.chosen-bar) {
 .notif-row-main:focus-visible,
 .notif-row-delete:focus-visible,
 .notif-settings:focus-visible {
-  outline: 2px solid #386c5f;
+  outline: 2px solid #186163;
   outline-offset: -2px;
 }
 .notif-list {
@@ -925,7 +925,7 @@ button.notif-row-main:hover {
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: #40776a;
+  background: #1e6b6e;
 }
 .notif-row-message {
   font-size: 16px;
@@ -988,7 +988,7 @@ button.notif-row-main:hover {
   background: #faf2e8;
 }
 .notif-row-mute:focus-visible {
-  outline: 2px solid #386c5f;
+  outline: 2px solid #186163;
   outline-offset: -2px;
 }
 .notif-muted {
@@ -998,7 +998,7 @@ button.notif-row-main:hover {
   margin: 8px 12px 0;
   padding: 10px 12px;
   border-radius: 12px;
-  background: #e1eeeb;
+  background: #dff0f0;
   font-size: 14px;
   line-height: 20px;
   color: #1b1a18;
@@ -1009,7 +1009,7 @@ button.notif-row-main:hover {
 }
 .notif-muted .notif-clear {
   flex-shrink: 0;
-  color: #386c5f;
+  color: #186163;
   font-weight: 700;
 }
 .notif-muted.is-error {
@@ -1078,7 +1078,7 @@ button.notif-row-main:hover {
   min-height: 44px;
   padding: 0 8px;
   border-radius: 10px;
-  color: #386c5f;
+  color: #186163;
   font-size: 15px;
   font-weight: 600;
   text-decoration: none;
@@ -1263,7 +1263,7 @@ button.notif-row-main:hover {
 .admin-tab.is-active {
   color: #1b1a18;
   font-weight: 700;
-  border-bottom-color: #40776a;
+  border-bottom-color: #1e6b6e;
 }
 .admin-tab-count {
   margin-left: 6px;
@@ -1997,7 +1997,7 @@ html.site-menu-open .profile-cta-bar {
   border-radius: 20px;
   background: #ffffff;
   border: 1px solid #e7e0d7;
-  color: #386c5f;
+  color: #186163;
   font-weight: 600;
   text-align: center;
   text-decoration: none;
@@ -2059,7 +2059,7 @@ html.site-menu-open .profile-cta-bar {
   font-size: 16px;
   font-weight: 700;
   color: #ffffff;
-  background: #40776a;
+  background: #1e6b6e;
   padding: 8px 12px;
   border-radius: 999px;
 }
@@ -2139,14 +2139,14 @@ html.site-menu-open .profile-cta-bar {
   cursor: pointer;
   padding: 0 16px;
   border-radius: 999px;
-  background: #40776a;
+  background: #1e6b6e;
   color: #ffffff;
   font-size: 16px;
   font-weight: 700;
   text-decoration: none;
 }
 .today-nav:hover {
-  background: #386c5f;
+  background: #186163;
 }
 .today-nav:focus-visible {
   outline: 2px solid #1b1a18;
@@ -2166,8 +2166,8 @@ html.site-menu-open .profile-cta-bar {
   opacity: 0.6;
 }
 .today-nav.is-done {
-  background: #e9f1ef;
-  color: #386c5f;
+  background: #e8f2f2;
+  color: #186163;
   cursor: default;
 }
 .today-nav-error {
@@ -2277,7 +2277,7 @@ html.site-menu-open .profile-cta-bar {
   border-color: #e7e0d7;
 }
 .weather-chip:focus-visible {
-  outline: 3px solid #4c8a7a;
+  outline: 3px solid #247c7c;
   outline-offset: 2px;
 }
 .weather-chip.is-loading {
@@ -2408,7 +2408,7 @@ html.site-menu-open .profile-cta-bar {
   width: 100%;
   height: 100%;
   border-radius: 999px;
-  background: #40776a;
+  background: #1e6b6e;
   transition: transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 /* Percorso "Completa il profilo" (docs/CHANGELOG.md §261): passi in verticale
@@ -2434,7 +2434,7 @@ html.site-menu-open .profile-cta-bar {
   background: #ece6de;
 }
 .journey-step.is-done:not(:last-child)::before {
-  background: #c3dcd6;
+  background: #bfdfe0;
 }
 .journey-sr {
   position: absolute;
@@ -2543,8 +2543,8 @@ html.site-menu-open .profile-cta-bar {
   flex-shrink: 0;
 }
 .profile-visibility.is-ok .profile-visibility-dot {
-  background: #40776a;
-  box-shadow: 0 0 0 4px #e1eeeb;
+  background: #1e6b6e;
+  box-shadow: 0 0 0 4px #dff0f0;
 }
 .profile-visibility.is-warn .profile-visibility-dot {
   background: #d9a441;
@@ -2577,17 +2577,17 @@ html.site-menu-open .profile-cta-bar {
   border: 1px solid transparent;
 }
 .profile-verify-chip.is-verified {
-  background: #e1eeeb;
+  background: #dff0f0;
   color: #325f54;
 }
 .profile-verify-chip.is-action {
   background: #ffffff;
-  border-color: #4c8a7a;
-  color: #386c5f;
+  border-color: #247c7c;
+  color: #186163;
   cursor: pointer;
 }
 .profile-verify-chip.is-action:hover {
-  background: #e1eeeb;
+  background: #dff0f0;
 }
 .profile-verify-chip.is-action:disabled {
   opacity: 0.6;
@@ -2596,7 +2596,7 @@ html.site-menu-open .profile-cta-bar {
 .profile-visibility-link {
   font: inherit;
   font-weight: 700;
-  color: #386c5f;
+  color: #186163;
   text-decoration: none;
   background: none;
   border: 0;
@@ -2615,8 +2615,8 @@ html.site-menu-open .profile-cta-bar {
   align-self: flex-start;
   padding: 4px 12px;
   border-radius: 999px;
-  background: #e1eeeb;
-  color: #386c5f;
+  background: #dff0f0;
+  color: #186163;
   font-size: 13px;
   font-weight: 700;
 }
@@ -2672,12 +2672,12 @@ html.site-menu-open .profile-cta-bar {
   transition: border-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .profile-index-link:hover {
-  border-color: #4c8a7a;
+  border-color: #247c7c;
 }
 .profile-index-link.is-active {
-  border-color: #386c5f;
-  background: #e1eeeb;
-  color: #386c5f;
+  border-color: #186163;
+  background: #dff0f0;
+  color: #186163;
 }
 /* Campi che servono per pubblicare il primo profilo, spuntati mentre si
    compilano (docs/changelog/2026-11-02-registrazione-pro-migliorie.md). */
@@ -2693,7 +2693,7 @@ html.site-menu-open .profile-cta-bar {
   color: #5e5a54;
 }
 .profile-required-count {
-  color: #386c5f;
+  color: #186163;
 }
 .profile-required-list {
   display: flex;
@@ -2718,7 +2718,7 @@ html.site-menu-open .profile-cta-bar {
   text-decoration: none;
 }
 .profile-required-item:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 .profile-required-mark {
@@ -2732,11 +2732,11 @@ html.site-menu-open .profile-cta-bar {
   box-sizing: border-box;
 }
 .profile-required-item.is-done {
-  border-color: #c1d8d2;
+  border-color: #bddcdc;
 }
 .profile-required-item.is-done .profile-required-mark {
   border: none;
-  background: #40776a;
+  background: #1e6b6e;
 }
 @media (prefers-reduced-motion: no-preference) {
   .profile-required-mark {
@@ -2744,7 +2744,7 @@ html.site-menu-open .profile-cta-bar {
   }
 }
 .profile-index-link:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 .profile-section {
@@ -2763,7 +2763,7 @@ html.site-menu-open .profile-cta-bar {
   font: inherit;
   font-size: 16px;
   font-weight: 700;
-  color: #386c5f;
+  color: #186163;
   background: none;
   border: 0;
   padding: 0;
@@ -2796,7 +2796,7 @@ html.site-menu-open .profile-cta-bar {
   box-shadow: 0 8px 24px rgba(43, 32, 19, 0.06);
 }
 .boost-card.is-green {
-  background: linear-gradient(160deg, #e1eeeb 0%, #ffffff 58%);
+  background: linear-gradient(160deg, #dff0f0 0%, #ffffff 58%);
 }
 .boost-card.is-gold {
   background: linear-gradient(160deg, #fbf0d9 0%, #ffffff 58%);
@@ -2824,8 +2824,8 @@ html.site-menu-open .profile-cta-bar {
   border-radius: 12px;
 }
 .is-green .boost-card-icon {
-  background: #40776a;
-  box-shadow: 0 6px 14px rgba(76, 138, 122, 0.3);
+  background: #1e6b6e;
+  box-shadow: 0 6px 14px rgba(36, 124, 124, 0.3);
 }
 .is-gold .boost-card-icon {
   background: #d9a441;
@@ -2956,7 +2956,7 @@ a.admin-kpi:hover {
   background: #faf8f5;
 }
 .admin-todo-row:focus-visible {
-  outline: 2px solid #40776a;
+  outline: 2px solid #1e6b6e;
   outline-offset: -2px;
 }
 .admin-todo-count {
@@ -3021,13 +3021,13 @@ a.admin-kpi:hover {
 }
 /* "Apri" nella coda Da fare: l'azione principale della riga. */
 .admin-link-button.is-primary {
-  background: #40776a;
-  border-color: #40776a;
+  background: #1e6b6e;
+  border-color: #1e6b6e;
   color: #ffffff;
 }
 .admin-link-button.is-primary:hover {
-  background: #335f54;
-  border-color: #335f54;
+  background: #175556;
+  border-color: #175556;
 }
 .admin-watch {
   margin: 0;
@@ -3136,7 +3136,7 @@ a.admin-kpi:hover {
   overflow-wrap: anywhere;
 }
 .admin-bars-label a {
-  color: #386c5f;
+  color: #186163;
 }
 .admin-bars-value {
   white-space: nowrap;
@@ -3156,7 +3156,7 @@ a.admin-kpi:hover {
 .admin-bars-fill {
   height: 100%;
   border-radius: 999px;
-  background: #40776a;
+  background: #1e6b6e;
 }
 /* Cosa cercano (docs/CHANGELOG.md §370). */
 .admin-bars-alert {
@@ -3219,7 +3219,7 @@ a.admin-kpi:hover {
   height: 26px;
   padding: 0 8px;
   border-radius: 999px;
-  background: #40776a;
+  background: #1e6b6e;
   color: #ffffff;
   font-size: 14px;
   font-weight: 800;
@@ -3236,7 +3236,7 @@ a.admin-kpi:hover {
   margin: 0 0 6px;
   padding: 10px 14px;
   border-radius: 10px;
-  background: #e7efed;
+  background: #e6f0f0;
   color: #1f3d2c;
   font-size: 15px;
 }
@@ -3271,7 +3271,7 @@ a.admin-kpi:hover {
   letter-spacing: 0.02em;
   padding: 3px 10px;
   border-radius: 999px;
-  background: #e7efed;
+  background: #e6f0f0;
   color: #325f54;
 }
 .proposal-title {
@@ -3381,7 +3381,7 @@ a.admin-kpi:hover {
   margin-top: 4px;
   padding: 8px 16px;
   border-radius: 999px;
-  background: #40776a;
+  background: #1e6b6e;
   color: #ffffff;
   font-size: 14px;
   font-weight: 700;
@@ -3499,7 +3499,7 @@ a.admin-kpi:hover {
   border-radius: 20px;
   background: #ffffff;
   border: 1px solid #e7e0d7;
-  border-left: 6px solid #40776a;
+  border-left: 6px solid #1e6b6e;
 }
 .site-advice.is-urgent {
   border-left-color: #b02a37;
@@ -3514,7 +3514,7 @@ a.admin-kpi:hover {
   letter-spacing: 0.02em;
   padding: 3px 10px;
   border-radius: 999px;
-  background: #e7efed;
+  background: #e6f0f0;
   color: #325f54;
 }
 .site-advice.is-urgent .site-advice-level {
@@ -3594,7 +3594,7 @@ a.admin-kpi:hover {
   gap: 4px;
   padding: 18px 20px;
   border-radius: 20px;
-  background: #e7efed;
+  background: #e6f0f0;
   color: #1b1a18;
   font-size: 15px;
 }
@@ -3611,7 +3611,7 @@ a.admin-kpi:hover {
   white-space: nowrap;
 }
 .site-status.is-green {
-  background: #e7efed;
+  background: #e6f0f0;
   color: #325f54;
 }
 .site-status.is-yellow {
@@ -3735,11 +3735,11 @@ a.admin-kpi:hover {
   transition: border-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .admin-icon-button:hover:not(:disabled) {
-  border-color: #4c8a7a;
-  background: #f4f9f8;
+  border-color: #247c7c;
+  background: #f3f9fa;
 }
 .admin-icon-button:focus-visible {
-  outline: 2px solid #386c5f;
+  outline: 2px solid #186163;
   outline-offset: 2px;
 }
 .admin-icon-button:disabled {
@@ -3782,20 +3782,20 @@ a.admin-kpi:hover {
    (apps/web/src/lib/deepLinkHighlight.ts). */
 @keyframes deep-link-highlight {
   0% {
-    background-color: rgba(76, 138, 122, 0.26);
-    box-shadow: 0 0 0 5px rgba(76, 138, 122, 0.55);
+    background-color: rgba(36, 124, 124, 0.26);
+    box-shadow: 0 0 0 5px rgba(36, 124, 124, 0.55);
   }
   20% {
-    background-color: rgba(76, 138, 122, 0.26);
-    box-shadow: 0 0 0 5px rgba(76, 138, 122, 0.55);
+    background-color: rgba(36, 124, 124, 0.26);
+    box-shadow: 0 0 0 5px rgba(36, 124, 124, 0.55);
   }
   75% {
-    background-color: rgba(76, 138, 122, 0.1);
-    box-shadow: 0 0 0 4px rgba(76, 138, 122, 0.2);
+    background-color: rgba(36, 124, 124, 0.1);
+    box-shadow: 0 0 0 4px rgba(36, 124, 124, 0.2);
   }
   100% {
-    background-color: rgba(76, 138, 122, 0);
-    box-shadow: 0 0 0 0 rgba(76, 138, 122, 0);
+    background-color: rgba(36, 124, 124, 0);
+    box-shadow: 0 0 0 0 rgba(36, 124, 124, 0);
   }
 }
 .deep-link-highlight {
@@ -3821,40 +3821,17 @@ a.admin-kpi:hover {
   overflow: hidden;
   pointer-events: none;
   z-index: -1;
-}
-.auth-page-blobs {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 0;
-}
-.auth-page-blob {
-  position: absolute;
-  border-radius: 999px;
-  filter: blur(70px);
-}
-.auth-page-blob--one {
-  width: 380px;
-  height: 380px;
-  top: -160px;
-  right: -110px;
-  /* In alto a destra la terracotta, in basso a sinistra il verde: colori
-     invertiti su richiesta di Luca dell'11/11/2026
-     (docs/changelog/2026-11-11-palette-e-figtree.md). */
-  background: #c4562f;
-  opacity: 0.12;
-}
-.auth-page-blob--two {
-  width: 320px;
-  height: 320px;
-  bottom: -140px;
-  left: -110px;
-  /* 0,12 e non più 0,28: in basso a sinistra la luce passa sotto testi
-     piccoli grigi (date dell'agenda, admin), che devono restare sopra 4,5:1
-     anche sul punto più verde (#dee5d6 con #5e5a54 = 5,3:1; prove axe in CI). */
-  background: #40776a;
-  opacity: 0.12;
+  /* Sfondo copiato dalla console di Meta (screenshot di Luca,
+     docs/changelog/2026-11-12-sfondo-velo.md): crema in alto a sinistra (scelta di Luca),
+     azzurro a destra, lilla al centro, menta in basso a destra, azzurro in
+     basso a sinistra, tutto molto chiaro e opaco sopra il crema. */
+  background:
+    radial-gradient(65% 60% at 0% 0%, rgba(250, 238, 222, 0.95), transparent 70%),
+    radial-gradient(55% 55% at 100% 10%, rgba(228, 236, 245, 0.95), transparent 70%),
+    radial-gradient(50% 45% at 45% 45%, rgba(238, 234, 244, 0.7), transparent 70%),
+    radial-gradient(60% 55% at 100% 100%, rgba(234, 246, 234, 0.95), transparent 70%),
+    radial-gradient(55% 50% at 0% 100%, rgba(232, 238, 244, 0.9), transparent 70%),
+    linear-gradient(135deg, #f9f0e4 0%, #f0eef3 40%, #eaf0f4 70%, #ecf5ed 100%);
 }
 /* Comparsa del riquadro di accesso e registrazione: 250 ms e 8 px (prima
    450 ms e 16 px), si vede a ogni accesso (skill web-animation-design). */
@@ -3882,7 +3859,7 @@ a.admin-kpi:hover {
 @media (hover: hover) and (pointer: fine) {
   .auth-role-card:hover {
     transform: translateY(-2px);
-    border-color: #4c8a7a;
+    border-color: #247c7c;
   }
 }
 /* Le schede di scelta sono link veri (docs/CHANGELOG.md §278): fuoco da
@@ -3896,12 +3873,12 @@ a.admin-kpi:hover {
   touch-action: manipulation;
 }
 .auth-role-card-link:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 .auth-role-card-link:active .auth-role-card {
   transform: scale(0.98);
-  border-color: #4c8a7a;
+  border-color: #247c7c;
 }
 
 /* Intestazione dei passi della registrazione (docs/CHANGELOG.md §278):
@@ -3934,7 +3911,7 @@ a.admin-kpi:hover {
   background: #faf2e8;
 }
 .auth-back:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 1px;
 }
 .auth-step-count {
@@ -3942,25 +3919,64 @@ a.admin-kpi:hover {
   padding-right: 8px;
   font-size: 13px;
   font-weight: 700;
-  color: #386c5f;
+  color: #186163;
 }
 /* "circa 2 minuti" accanto al primo passo, meno in vista del numero. */
 .auth-step-note {
   font-weight: 600;
   color: #5e5a54;
 }
+/* Passi numerati in fila, uniti da una linea: spunta verde sui passi fatti,
+   anello verde col numero sul passo di adesso, grigio sui prossimi
+   (docs/changelog/2026-11-12-sfondo-velo.md). */
 .auth-step-bar {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
-  gap: 6px;
+  align-items: center;
 }
-.auth-step-bar span {
+.auth-step-bar li {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+}
+.auth-step-bar li:last-child {
+  flex: 0 0 auto;
+}
+.auth-step-bar li:not(:last-child)::after {
+  content: "";
   flex: 1;
-  height: 4px;
-  border-radius: 999px;
+  height: 2px;
+  margin: 0 8px;
+  border-radius: 2px;
   background: #e7e0d7;
 }
-.auth-step-bar span.is-done {
-  background: #40776a;
+.auth-step-bar li.is-done:not(:last-child)::after {
+  background: #1e6b6e;
+}
+.auth-step-dot {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  color: #5e5a54;
+  background: #ffffff;
+  border: 2px solid #d8d0c5;
+  box-sizing: border-box;
+}
+.is-done > .auth-step-dot {
+  background: #1e6b6e;
+  border-color: #1e6b6e;
+}
+.is-current > .auth-step-dot {
+  color: #0f3b2c;
+  border-color: #1e6b6e;
 }
 
 /* Iscrizione del professionista: una colonna sola anche sul computer, scheda
@@ -4019,7 +4035,7 @@ a.admin-kpi:hover {
   border-radius: 999px;
   font-size: 13px;
   font-weight: 700;
-  color: #386c5f;
+  color: #186163;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -4042,11 +4058,11 @@ a.admin-kpi:hover {
   font-size: 16px;
 }
 .plan-chip-change:hover {
-  color: #305e52;
+  color: #145656;
   text-decoration-thickness: 2px;
 }
 .plan-chip-change:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
   border-radius: 10px;
 }
@@ -4234,7 +4250,7 @@ a.admin-kpi:hover {
   padding: 9px 16px;
   border-radius: 999px;
   border: none;
-  background: #40776a;
+  background: #1e6b6e;
   color: #ffffff;
   cursor: pointer;
 }
@@ -4278,7 +4294,7 @@ a.admin-kpi:hover {
   border-color: #e7e0d7;
 }
 .pstats-kpi.is-active {
-  border-color: #386c5f;
+  border-color: #186163;
 }
 .pstats-kpi-label {
   display: inline-flex;
@@ -4299,7 +4315,7 @@ a.admin-kpi:hover {
   color: #5e5a54;
 }
 .pstats-kpi-delta.is-up {
-  color: #40776a;
+  color: #1e6b6e;
 }
 .pstats-kpi-delta.is-down {
   color: #c42a39;
@@ -4337,7 +4353,7 @@ a.admin-kpi:hover {
   cursor: pointer;
   font-size: 16px;
   font-weight: 700;
-  color: #386c5f;
+  color: #186163;
 }
 .pstats-table-scroll {
   overflow-x: auto;
@@ -4452,7 +4468,7 @@ a.admin-kpi:hover {
   border-color: #b42318;
 }
 .auth-field-box:focus-within {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 1px;
 }
 .auth-field-slot {
@@ -4516,11 +4532,11 @@ a.admin-kpi:hover {
   transition: background-color 150ms ease, border-color 150ms ease;
 }
 .pw-rule.is-ok {
-  color: #386c5f;
+  color: #186163;
 }
 .pw-rule.is-ok .pw-rule-icon {
-  background: #40776a;
-  border-color: #4c8a7a;
+  background: #1e6b6e;
+  border-color: #247c7c;
 }
 .pw-rule.is-missing {
   color: #b42318;
@@ -4543,7 +4559,7 @@ a.admin-kpi:hover {
   color: #5e5a54;
 }
 .notif-status.is-saved {
-  color: #40776a;
+  color: #1e6b6e;
 }
 .notif-status.is-error {
   color: #b42318;
@@ -4593,7 +4609,7 @@ a.admin-kpi:hover {
   font: inherit;
   font-size: 16px;
   font-weight: 700;
-  color: #386c5f;
+  color: #186163;
   cursor: pointer;
 }
 .notif-switch {
@@ -4620,7 +4636,7 @@ a.admin-kpi:hover {
   transition: transform 0.15s ease;
 }
 .notif-switch.is-on {
-  background: #40776a;
+  background: #1e6b6e;
 }
 .notif-switch.is-on span {
   transform: translateX(18px);
@@ -4630,7 +4646,7 @@ a.admin-kpi:hover {
   cursor: not-allowed;
 }
 .notif-switch:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 .notif-note {
@@ -4662,7 +4678,7 @@ a.admin-kpi:hover {
   border: 0;
   padding: 0;
   cursor: pointer;
-  color: #386c5f;
+  color: #186163;
   font-weight: 700;
   text-decoration: none;
 }
@@ -4744,8 +4760,8 @@ a.admin-kpi:hover {
   color: #5e5a54;
 }
 .nt-status.is-saved {
-  color: #386c5f;
-  background: #e1eeeb;
+  color: #186163;
+  background: #dff0f0;
   border-radius: 999px;
   padding: 0 12px;
 }
@@ -4798,7 +4814,7 @@ a.admin-kpi:hover {
   transition: background 0.15s ease;
 }
 .nt-tile.is-on .nt-tile-icon {
-  background: #e1eeeb;
+  background: #dff0f0;
 }
 .nt-tile strong {
   font-size: 16px;
@@ -4880,13 +4896,13 @@ a.admin-kpi:hover {
   border-color: #1b1a18;
 }
 .nt-chip.is-on {
-  background: #e1eeeb;
-  border-color: #40776a;
-  color: #386c5f;
+  background: #dff0f0;
+  border-color: #1e6b6e;
+  color: #186163;
 }
 .nt-chip:focus-visible,
 .nt-more:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 .nt-chip-check {
@@ -4900,8 +4916,8 @@ a.admin-kpi:hover {
   transition: background 0.15s ease;
 }
 .nt-chip.is-on .nt-chip-check {
-  background: #40776a;
-  border-color: #40776a;
+  background: #1e6b6e;
+  border-color: #1e6b6e;
 }
 .nt-chip small {
   font-size: 12px;
@@ -5031,11 +5047,11 @@ a.admin-kpi:hover {
   border-color: #1b1a18;
 }
 .nt-tick.is-on .nt-tick-box {
-  background: #40776a;
-  border-color: #40776a;
+  background: #1e6b6e;
+  border-color: #1e6b6e;
 }
 .nt-tick:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: -2px;
 }
 .nt-tick:disabled {
@@ -5153,7 +5169,7 @@ a.admin-kpi:hover {
   align-items: flex-start;
   background: #ffffff;
   border-radius: 20px;
-  border-left: 4px solid #4c8a7a;
+  border-left: 4px solid #247c7c;
   box-shadow: 0 10px 28px rgba(43, 32, 19, 0.18);
   animation: toast-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
   overflow: hidden;
@@ -5207,7 +5223,7 @@ a.admin-kpi:hover {
 .toast-card-cta {
   font-size: 13px;
   font-weight: 700;
-  color: #386c5f;
+  color: #186163;
   margin-top: 2px;
 }
 .toast-card-close {
@@ -5282,11 +5298,11 @@ a.admin-kpi:hover {
   cursor: default;
 }
 .guided-steps li.is-current button {
-  border-top-color: #4c8a7a;
+  border-top-color: #247c7c;
   color: #1b1a18;
 }
 .guided-steps li.is-done button {
-  border-top-color: #4c8a7a;
+  border-top-color: #247c7c;
   cursor: pointer;
 }
 .guided-step-dot {
@@ -5303,7 +5319,7 @@ a.admin-kpi:hover {
 }
 .guided-steps li.is-current .guided-step-dot,
 .guided-steps li.is-done .guided-step-dot {
-  background: #40776a;
+  background: #1e6b6e;
   color: #ffffff;
 }
 /* Opzioni d'invio con interruttore tondo: "È urgente?" al passo 1,
@@ -5337,7 +5353,7 @@ a.admin-kpi:hover {
   border-top: 1px solid #e7e0d7;
 }
 .guided-option:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: -4px;
   border-radius: 20px;
 }
@@ -5384,7 +5400,7 @@ a.admin-kpi:hover {
   transform: translateX(18px);
 }
 .guided-option.is-on .guided-option-track {
-  background: #40776a;
+  background: #1e6b6e;
 }
 /* Scelta dei tempi "Quando ti serve?" (§344): tre pillole, Oggi in rosso. */
 .guided-timing {
@@ -5441,14 +5457,14 @@ a.admin-kpi:hover {
   transition: background 0.15s ease, color 0.15s ease;
 }
 .guided-timing-option input:checked + span {
-  background: #40776a;
+  background: #1e6b6e;
   color: #ffffff;
 }
 .guided-timing-option.is-today input:checked + span {
   background: #b42318;
 }
 .guided-timing-option input:focus-visible + span {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 .guided-timing-desc {
@@ -5473,8 +5489,8 @@ a.admin-kpi:hover {
 .guided-next {
   padding: 16px;
   border-radius: 14px;
-  background: #e1eeeb;
-  color: #284740;
+  background: #dff0f0;
+  color: #143e40;
 }
 .guided-next strong {
   font-size: 16px;
@@ -5513,7 +5529,7 @@ a.admin-kpi:hover {
   font: inherit;
   font-size: 16px;
   font-weight: 700;
-  color: #386c5f;
+  color: #186163;
   cursor: pointer;
   padding: 0;
 }
@@ -5605,7 +5621,7 @@ a.admin-kpi:hover {
 
 /* Categorie della homepage a schede verticali con foto (CategoryStoryRail,
    docs/CHANGELOG.md §219). Colori dai token di packages/ui/src/tokens.ts:
-   verde #4C8A7A per i pieni, #386C5F (cianografiaScuro) per i testi piccoli
+   verde #247C7C per i pieni, #186163 (cianografiaScuro) per i testi piccoli
    sul chiaro, grafite #1B1A18. */
 .story-filters {
   display: flex;
@@ -5642,8 +5658,8 @@ a.admin-kpi:hover {
   }
 }
 .story-filter[aria-pressed="true"] {
-  background: #40776a;
-  border-color: #4c8a7a;
+  background: #1e6b6e;
+  border-color: #247c7c;
   color: #fff;
 }
 .story-card {
@@ -5681,7 +5697,7 @@ a.admin-kpi:hover {
   }
 }
 .story-card:focus-visible {
-  outline: 3px solid #4c8a7a;
+  outline: 3px solid #247c7c;
   outline-offset: 2px;
 }
 .story-card-icon {
@@ -5741,7 +5757,7 @@ a.admin-kpi:hover {
 }
 .story-card-other {
   position: relative;
-  background: #40776a;
+  background: #1e6b6e;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -5816,7 +5832,7 @@ a.admin-kpi:hover {
   top: 0;
   bottom: 0;
   border-radius: 2px;
-  background: #40776a;
+  background: #1e6b6e;
   transition: left 120ms linear;
 }
 .bleed-rail-arrow {
@@ -5869,7 +5885,7 @@ a.admin-kpi:hover {
   }
 }
 .bleed-rail-arrow:focus-visible {
-  outline: 3px solid #4c8a7a;
+  outline: 3px solid #247c7c;
   outline-offset: 2px;
 }
 .bleed-rail-arrow:disabled {
@@ -5974,7 +5990,7 @@ a.admin-kpi:hover {
   height: 1.1em;
   margin-left: 1px;
   vertical-align: -0.15em;
-  background: #40776a;
+  background: #1e6b6e;
   animation: qx-blink 0.8s steps(1) infinite;
 }
 @keyframes qx-blink {
@@ -6013,8 +6029,8 @@ a.admin-kpi:hover {
   width: 46px;
   height: 46px;
   border-radius: 50%;
-  background: #e1eeeb;
-  color: #386c5f;
+  background: #dff0f0;
+  color: #186163;
   font-family: var(--font-display), sans-serif;
   font-weight: 700;
   font-size: 20px;
@@ -6116,8 +6132,8 @@ a.admin-kpi:hover {
   width: 32px;
   height: 32px;
   border-radius: 999px;
-  background: #e1eeeb;
-  color: #386c5f;
+  background: #dff0f0;
+  color: #186163;
   font-family: var(--font-display), sans-serif;
   font-weight: 700;
   display: flex;
@@ -6133,7 +6149,7 @@ a.admin-kpi:hover {
 }
 .qx-cta-button {
   display: inline-block;
-  background: #40776a;
+  background: #1e6b6e;
   color: #fff;
   font-weight: 700;
   padding: 13px 24px;
@@ -6307,17 +6323,17 @@ a.admin-kpi:hover {
     background-color 0.15s ease;
 }
 .email-code-box.is-filled {
-  border-color: #4c8a7a;
+  border-color: #247c7c;
 }
 .email-code-box.is-active {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 1px;
 }
 .email-code-box.is-active::after {
   content: "";
   width: 2px;
   height: 26px;
-  background: #40776a;
+  background: #1e6b6e;
   animation: email-code-caret 1s steps(1) infinite;
 }
 .email-code-boxes.is-expired .email-code-box {
@@ -6332,9 +6348,9 @@ a.admin-kpi:hover {
   animation: email-code-shake 0.3s ease;
 }
 .email-code-boxes.is-done .email-code-box {
-  border-color: #4c8a7a;
-  background: #e1eeeb;
-  color: #386c5f;
+  border-color: #247c7c;
+  background: #dff0f0;
+  color: #186163;
 }
 @keyframes email-code-caret {
   50% {
@@ -6402,7 +6418,7 @@ a.admin-kpi:hover {
   font: inherit;
   font-size: 16px;
   font-weight: 700;
-  color: #386c5f;
+  color: #186163;
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
@@ -6414,7 +6430,7 @@ a.admin-kpi:hover {
   color: #5e5a54;
 }
 .link-button:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
   border-radius: 10px;
 }
@@ -6430,17 +6446,17 @@ a.admin-kpi:hover {
   min-height: 44px;
   padding: 10px 24px;
   border-radius: 999px;
-  background: #40776a;
+  background: #1e6b6e;
   color: #ffffff;
   font-size: 16px;
   font-weight: 600;
   text-decoration: none;
 }
 .auth-primary-link:hover {
-  background: #386c5f;
+  background: #186163;
 }
 .auth-primary-link:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 /* "Apri Gmail" e simili nell'attesa della conferma email
@@ -6453,18 +6469,18 @@ a.admin-kpi:hover {
   min-height: 44px;
   padding: 10px 20px;
   border-radius: 999px;
-  border: 1px solid #c0d4cf;
-  background: #e1eeeb;
-  color: #386c5f;
+  border: 1px solid #bcd7d8;
+  background: #dff0f0;
+  color: #186163;
   font-size: 16px;
   font-weight: 700;
   text-decoration: none;
 }
 .email-webmail-link:hover {
-  background: #d4e7e2;
+  background: #d1eaea;
 }
 .email-webmail-link:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 
@@ -6501,15 +6517,15 @@ a.admin-kpi:hover {
   touch-action: manipulation;
 }
 .slot-pill:hover {
-  border-color: #4c8a7a;
+  border-color: #247c7c;
 }
 .slot-pill.is-on {
-  border-color: #4c8a7a;
-  background: #40776a;
+  border-color: #247c7c;
+  background: #1e6b6e;
   color: #fff;
 }
 .slot-pill:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 .slot-more {
@@ -6518,7 +6534,7 @@ a.admin-kpi:hover {
   padding: 0 2px;
   border: none;
   background: none;
-  color: #386c5f;
+  color: #186163;
   font: inherit;
   font-size: 15px;
   font-weight: 700;
@@ -6527,7 +6543,7 @@ a.admin-kpi:hover {
   cursor: pointer;
 }
 .slot-more:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 /* Orari una settimana alla volta, un giorno per riga (WeekSlotPicker,
@@ -6565,14 +6581,14 @@ a.admin-kpi:hover {
   touch-action: manipulation;
 }
 .week-slots-arrow:hover:not(:disabled) {
-  border-color: #4c8a7a;
+  border-color: #247c7c;
 }
 .week-slots-arrow:disabled {
   opacity: 0.35;
   cursor: default;
 }
 .week-slots-arrow:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 .week-slots-days {
@@ -6597,7 +6613,7 @@ a.admin-kpi:hover {
   color: #5e5a54;
 }
 .week-slots-label.is-today {
-  color: #386c5f;
+  color: #186163;
 }
 .week-slots-weekday {
   text-transform: capitalize;
@@ -6672,20 +6688,20 @@ a.admin-kpi:hover {
     background-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .cat-tile:hover:not(:disabled) {
-  border-color: #4c8a7a;
+  border-color: #247c7c;
 }
 .cat-tile:active:not(:disabled) {
   transform: scale(0.97);
 }
 .cat-tile:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 .cat-tile.is-on {
   /* 2px con 1px di padding in meno: la tessera non cambia misura. */
-  border: 2px solid #4c8a7a;
+  border: 2px solid #247c7c;
   padding: 11px 7px;
-  background: #f4f9f8;
+  background: #f3f9fa;
 }
 .cat-tile:disabled {
   opacity: 0.45;
@@ -6721,7 +6737,7 @@ a.admin-kpi:hover {
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  background: #40776a;
+  background: #1e6b6e;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6820,7 +6836,7 @@ a.admin-kpi:hover {
   font: inherit;
   font-size: 16px;
   font-weight: 700;
-  color: #386c5f;
+  color: #186163;
   cursor: pointer;
 }
 .fiscal-link-button:hover {
@@ -6855,7 +6871,7 @@ a.admin-kpi:hover {
   transform: scale(0.98);
 }
 .hero-urgent-link:focus-visible {
-  outline: 3px solid #4c8a7a;
+  outline: 3px solid #247c7c;
   outline-offset: 2px;
 }
 .hero-urgent-icon {
@@ -6912,7 +6928,7 @@ a.admin-kpi:hover {
   align-items: center;
   gap: 4px;
   min-height: 44px;
-  color: #386c5f; /* brand.cianografiaScuro */
+  color: #186163; /* brand.cianografiaScuro */
   font-size: 16px;
   font-weight: 600;
   text-decoration: none;
@@ -6930,7 +6946,7 @@ a.admin-kpi:hover {
   transform: translateX(2px);
 }
 .home-section-action:focus-visible {
-  outline: 3px solid #386c5f;
+  outline: 3px solid #186163;
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -6959,9 +6975,9 @@ a.admin-kpi:hover {
 .label-badge {
   border: 2px solid transparent;
   background:
-    linear-gradient(#40776a, #40776a) padding-box,
-    conic-gradient(from var(--badge-angle), #40776a, #93c2b6, #f2c14e, #93c2b6, #40776a) border-box !important;
-  box-shadow: 0 0 10px rgba(147, 194, 182, 0.55);
+    linear-gradient(#1e6b6e, #1e6b6e) padding-box,
+    conic-gradient(from var(--badge-angle), #1e6b6e, #8bcaca, #f2c14e, #8bcaca, #1e6b6e) border-box !important;
+  box-shadow: 0 0 10px rgba(139, 202, 202, 0.55);
   /* Due giri all'apertura della pagina, poi ferma (scelta di Luca). */
   animation: label-badge-spin 3s linear 2;
 }
@@ -6973,14 +6989,14 @@ a.admin-kpi:hover {
   border: 2px solid transparent !important;
   background:
     linear-gradient(#f7f7f7, #f7f7f7) padding-box,
-    conic-gradient(from var(--badge-angle), #40776a, #93c2b6, #f2c14e, #93c2b6, #40776a) border-box !important;
+    conic-gradient(from var(--badge-angle), #1e6b6e, #8bcaca, #f2c14e, #8bcaca, #1e6b6e) border-box !important;
   animation: label-badge-spin 3s linear 2;
 }
 .hero-problem-input:focus {
   animation: none;
   background:
     linear-gradient(#f7f7f7, #f7f7f7) padding-box,
-    linear-gradient(#40776a, #40776a) border-box !important;
+    linear-gradient(#1e6b6e, #1e6b6e) border-box !important;
 }
 @media (prefers-reduced-motion: reduce) {
   .label-badge,
@@ -7072,7 +7088,7 @@ a.admin-kpi:hover {
   transform: scale(0.98);
 }
 .hero-example:focus-visible {
-  outline: 3px solid #4c8a7a;
+  outline: 3px solid #247c7c;
   outline-offset: 2px;
 }
 .hero-examples-label,
@@ -7170,16 +7186,16 @@ a.admin-kpi:hover {
   width: 38px;
   height: 38px;
   border-radius: 999px;
-  background: #f0f4f3;
+  background: #eff5f5;
 }
 .search-summary-go {
-  background: #40776a;
+  background: #1e6b6e;
 }
 .search-summary:active {
   background: #faf6f0;
 }
 .search-summary:focus-visible {
-  outline: 3px solid #4c8a7a;
+  outline: 3px solid #247c7c;
   outline-offset: 2px;
 }
 /* "Chiudi" sopra la ricerca aperta da telefono (docs/CHANGELOG.md §349). */
@@ -7200,7 +7216,7 @@ a.admin-kpi:hover {
   touch-action: manipulation;
 }
 .search-close:focus-visible {
-  outline: 3px solid #4c8a7a;
+  outline: 3px solid #247c7c;
   outline-offset: 2px;
 }
 
@@ -7261,10 +7277,10 @@ a.admin-kpi:hover {
     gap: 6px;
     min-height: 48px;
     padding: 0 20px;
-    border: 1.5px solid #4c8a7a;
+    border: 1.5px solid #247c7c;
     border-radius: 999px;
     background: #fff;
-    color: #386c5f;
+    color: #186163;
     font: inherit;
     font-weight: 700;
     font-size: 16px;
@@ -7277,7 +7293,7 @@ a.admin-kpi:hover {
     transform: scale(0.98);
   }
   .story-show-all:focus-visible {
-    outline: 3px solid #4c8a7a;
+    outline: 3px solid #247c7c;
     outline-offset: 2px;
   }
   /* Le categorie che compaiono entrano piano, non di colpo. */
@@ -7336,11 +7352,11 @@ a.admin-kpi:hover {
   transition: border-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .popular-services-link:hover {
-  border-color: #4c8a7a;
-  background: #f4f9f8;
+  border-color: #247c7c;
+  background: #f3f9fa;
 }
 .popular-services-link:focus-visible {
-  outline: 2px solid #386c5f;
+  outline: 2px solid #186163;
   outline-offset: 2px;
 }
 .popular-services-icon {
@@ -7411,14 +7427,14 @@ a.admin-kpi:hover {
 }
 .glow-lights--verde {
   background:
-    radial-gradient(120% 90% at 50% 120%, rgba(30, 61, 53, 0.55), transparent 60%),
-    linear-gradient(160deg, #599d8c 0%, #4c8a7a 42%, #3b6f63 100%);
+    radial-gradient(120% 90% at 50% 120%, rgba(12, 56, 56, 0.55), transparent 60%),
+    linear-gradient(160deg, #2c8b8d 0%, #247c7c 42%, #1b6265 100%);
 }
 /* Hero della home (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md):
    verde opaco con una sfumatura leggera dall'alto in basso e una grana appena
    percepibile contro le bande del gradiente, senza luci né riflessi. */
 .glow-lights--verde-opaco {
-  background: linear-gradient(170deg, #508e7e 0%, #40776a 100%);
+  background: linear-gradient(170deg, #277f7f 0%, #1e6b6e 100%);
 }
 .glow-lights--verde-opaco::after {
   opacity: 0.05;
@@ -7463,7 +7479,7 @@ a.admin-kpi:hover {
 }
 /* Sul fondo scuro: verde e arancio caldo, più intensi. */
 .glow-lights--scuro .glow-lights__light--one {
-  background: radial-gradient(circle, rgba(76, 138, 122, 0.75), transparent 65%);
+  background: radial-gradient(circle, rgba(36, 124, 124, 0.75), transparent 65%);
 }
 .glow-lights--scuro .glow-lights__light--two {
   background: radial-gradient(circle, rgba(255, 138, 61, 0.45), transparent 65%);
@@ -7474,7 +7490,7 @@ a.admin-kpi:hover {
 /* Sul fondo crema: luci tenui, verde e terracotta leggera (palette A,
    docs/changelog/2026-11-11-palette-e-figtree.md). */
 .glow-lights--chiaro .glow-lights__light--one {
-  background: radial-gradient(circle, rgba(76, 138, 122, 0.3), transparent 65%);
+  background: radial-gradient(circle, rgba(36, 124, 124, 0.3), transparent 65%);
 }
 .glow-lights--chiaro .glow-lights__light--two {
   background: radial-gradient(circle, rgba(196, 86, 47, 0.2), transparent 65%);
@@ -7582,7 +7598,7 @@ a.admin-kpi:hover {
   text-decoration: underline;
 }
 .breadcrumbs-link:focus-visible {
-  outline: 2px solid #386c5f;
+  outline: 2px solid #186163;
   outline-offset: 2px;
   border-radius: 10px;
 }
@@ -7700,7 +7716,7 @@ a.admin-kpi:hover {
   color: #5e5a54;
 }
 .city-facts-review-meta a {
-  color: #386c5f;
+  color: #186163;
   font-weight: 600;
 }
 .city-facts-subtitle {
@@ -7753,7 +7769,7 @@ a.admin-kpi:hover {
   background: #fbf9f6;
 }
 .city-facts-question summary:focus-visible {
-  outline: 2px solid #386c5f;
+  outline: 2px solid #186163;
   outline-offset: -2px;
 }
 .city-facts-question p {
@@ -7764,7 +7780,7 @@ a.admin-kpi:hover {
   color: #5e5a54;
 }
 .city-facts-question a {
-  color: #386c5f;
+  color: #186163;
   font-weight: 600;
   text-underline-offset: 3px;
 }
@@ -7856,7 +7872,7 @@ a.admin-kpi:hover {
   height: 22px;
   margin: 0;
   flex-shrink: 0;
-  accent-color: #40776a;
+  accent-color: #1e6b6e;
   cursor: pointer;
 }
 .nt-check span {
@@ -7869,7 +7885,7 @@ a.admin-kpi:hover {
 }
 .nt-check input:focus-visible,
 .nt-hour select:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 
@@ -7905,7 +7921,7 @@ a.admin-kpi:hover {
   margin-left: 4px;
 }
 .optout-tabs button:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 .optout-wrap {
@@ -8017,7 +8033,7 @@ a.admin-kpi:hover {
   transition: background-color 0.15s ease;
 }
 .price-table tbody tr:hover {
-  background: #e1eeeb;
+  background: #dff0f0;
 }
 .price-table-link {
   color: #1b1a18;
@@ -8032,7 +8048,7 @@ a.admin-kpi:hover {
   outline: none;
 }
 .price-table tbody tr:has(.price-table-link:focus-visible) {
-  outline: 2px solid #386c5f;
+  outline: 2px solid #186163;
   outline-offset: -2px;
 }
 .price-table-unit {
@@ -8044,7 +8060,7 @@ a.admin-kpi:hover {
 .price-table-chevron {
   margin-left: 8px;
   vertical-align: -3px;
-  color: #386c5f;
+  color: #186163;
 }
 @media (prefers-reduced-motion: reduce) {
   .price-table tbody tr {
@@ -8075,14 +8091,14 @@ a.admin-kpi:hover {
   min-height: 48px;
   padding: 0 22px;
   border-radius: 999px;
-  background: #40776a;
+  background: #1e6b6e;
   color: #fff;
   font-weight: 700;
   text-decoration: none;
   transition: background-color 150ms ease, transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .price-page-cta:hover {
-  background: #386c5f;
+  background: #186163;
 }
 .price-page-cta:active {
   transform: scale(0.97);
@@ -8096,13 +8112,13 @@ a.admin-kpi:hover {
   }
 }
 .price-page-link {
-  color: #386c5f;
+  color: #186163;
   font-weight: 600;
   text-underline-offset: 3px;
 }
 .price-page-cta:focus-visible,
 .price-page-link:focus-visible {
-  outline: 2px solid #386c5f;
+  outline: 2px solid #186163;
   outline-offset: 3px;
 }
 
@@ -8173,12 +8189,12 @@ a.admin-kpi:hover {
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 .work-links a:hover {
-  background: rgba(64, 119, 106, 0.1);
-  border-color: rgba(64, 119, 106, 0.3);
-  color: #386c5f;
+  background: rgba(30, 107, 110, 0.1);
+  border-color: rgba(30, 107, 110, 0.3);
+  color: #186163;
 }
 .work-links a:focus-visible {
-  outline: 2px solid #386c5f;
+  outline: 2px solid #186163;
   outline-offset: 2px;
 }
 /* Link alle pagine per servizio nelle pagine città (docs/CHANGELOG.md §296). */
@@ -8207,7 +8223,7 @@ a.admin-kpi:hover {
   background: #fbf9f6;
 }
 .city-facts-services a:focus-visible {
-  outline: 2px solid #386c5f;
+  outline: 2px solid #186163;
   outline-offset: 2px;
 }
 
@@ -8262,7 +8278,7 @@ a.admin-kpi:hover {
   position: absolute;
   inset: -22px;
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(76, 138, 122, 0.18), transparent 70%);
+  background: radial-gradient(circle, rgba(36, 124, 124, 0.18), transparent 70%);
 }
 .request-sent-photo > img,
 .request-sent-photo > div {
@@ -8272,7 +8288,7 @@ a.admin-kpi:hover {
   border-radius: 999px;
   object-fit: cover;
   border: 5px solid #ffffff;
-  box-shadow: 0 10px 30px rgba(76, 138, 122, 0.22);
+  box-shadow: 0 10px 30px rgba(36, 124, 124, 0.22);
 }
 .request-sent-check {
   position: absolute;
@@ -8281,7 +8297,7 @@ a.admin-kpi:hover {
   width: 40px;
   height: 40px;
   border-radius: 999px;
-  background: #40776a;
+  background: #1e6b6e;
   color: #ffffff;
   border: 4px solid #ffffff;
   display: flex;
@@ -8353,7 +8369,7 @@ a.admin-kpi:hover {
   background: #e7e0d7;
 }
 .request-sent-steps li.is-done:not(:last-child)::before {
-  background: #40776a;
+  background: #1e6b6e;
 }
 .request-sent-steps li > div {
   display: flex;
@@ -8390,12 +8406,12 @@ a.admin-kpi:hover {
   color: #5e5a54;
 }
 .request-sent-steps li.is-done .request-sent-dot {
-  background: #40776a;
-  border-color: #4c8a7a;
+  background: #1e6b6e;
+  border-color: #247c7c;
   color: #ffffff;
 }
 .request-sent-home {
-  color: #386c5f;
+  color: #186163;
   font-weight: 600;
   text-decoration: none;
   padding: 10px 4px;
@@ -8540,18 +8556,18 @@ a.admin-kpi:hover {
   content: "›";
   margin-left: 2px;
   font-size: 16px;
-  color: #386c5f;
+  color: #186163;
   transition: transform 150ms ease;
 }
 .bio-tips[open] summary::after {
   transform: rotate(90deg);
 }
 .bio-tips summary:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 .radius-more summary {
-  color: #386c5f;
+  color: #186163;
   min-height: 24px;
 }
 
@@ -8635,7 +8651,7 @@ a.admin-kpi:hover {
   min-height: 32px;
   font-size: 13px;
   font-weight: 700;
-  color: #386c5f;
+  color: #186163;
   cursor: pointer;
   list-style: none;
 }
@@ -8643,7 +8659,7 @@ a.admin-kpi:hover {
   display: none;
 }
 .counting-from-more summary:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 .counting-from-more[open] {
@@ -8664,7 +8680,7 @@ a.admin-kpi:hover {
 .admin-test-toggle input {
   width: 20px;
   height: 20px;
-  accent-color: #40776a;
+  accent-color: #1e6b6e;
   cursor: pointer;
 }
 
@@ -8822,7 +8838,7 @@ a.admin-kpi:hover {
     position: absolute;
     inset: -1px;
     border-radius: 50%;
-    border: 2px solid #40776a;
+    border: 2px solid #1e6b6e;
     pointer-events: none;
     animation: heart-ring 520ms ease-out forwards;
   }
@@ -8903,7 +8919,7 @@ a.admin-kpi:hover {
 /* Mentre la si tiene premuta, una scelta non ancora presa si colora appena:
    il solo restringimento su una pillola trasparente quasi non si vedeva. */
 .guided-timing-option:active input:not(:checked) + span {
-  background: rgba(64, 119, 106, 0.1);
+  background: rgba(30, 107, 110, 0.1);
 }
 
 /* Passaggio del mouse come su apple.com (scelta di Luca dell'11/11/2026,
@@ -9021,17 +9037,17 @@ a.admin-kpi:hover {
   background: transparent;
 }
 .autocomplete-scroll::-webkit-scrollbar-thumb {
-  background: #a6bfb9;
+  background: #a2c2c3;
   border: 3px solid #fff;
   border-radius: 999px;
 }
 .autocomplete-scroll::-webkit-scrollbar-thumb:hover {
-  background: #40776a;
+  background: #1e6b6e;
 }
 @supports (-moz-appearance: none) {
   .autocomplete-scroll {
     scrollbar-width: thin;
-    scrollbar-color: #a6bfb9 transparent;
+    scrollbar-color: #a2c2c3 transparent;
   }
 }
 /* In fondo alla lista: sfumatura bianca con "Altre N". La sfumatura lascia
@@ -9056,7 +9072,7 @@ a.admin-kpi:hover {
   gap: 4px;
   min-height: 28px;
   padding: 4px 12px;
-  border: 1px solid #d8e4e1;
+  border: 1px solid #d6e6e6;
   border-radius: 999px;
   background: #fff;
   font: inherit;
@@ -9075,7 +9091,7 @@ a.admin-kpi:hover {
 @media (hover: hover) and (pointer: fine) {
   .autocomplete-more button:hover {
     background: #eef7f1;
-    border-color: #40776a;
+    border-color: #1e6b6e;
   }
 }
 
@@ -9099,7 +9115,7 @@ a.admin-kpi:hover {
 /* Riepilogo delle scelte in cima al modulo dell'iscrizione: come lavori e
    piano in un solo riquadro (docs/changelog/2026-11-02-registrazione-pro-migliorie.md). */
 .signup-summary {
-  background: #e1eeeb;
+  background: #dff0f0;
   border-radius: 10px;
   padding: 4px 14px;
 }
@@ -9110,7 +9126,7 @@ a.admin-kpi:hover {
   padding: 10px 0;
 }
 .signup-summary-row + .signup-summary-row {
-  border-top: 1px solid rgba(56, 108, 95, 0.16);
+  border-top: 1px solid rgba(24, 97, 99, 0.16);
 }
 .signup-summary-text {
   flex: 1 1 0;
@@ -9141,7 +9157,7 @@ a.admin-kpi:hover {
   border: 2px solid transparent !important;
   background:
     linear-gradient(#ffffff, #ffffff) padding-box,
-    conic-gradient(from var(--badge-angle), #40776a, #93c2b6, #f2c14e, #93c2b6, #40776a) border-box !important;
+    conic-gradient(from var(--badge-angle), #1e6b6e, #8bcaca, #f2c14e, #8bcaca, #1e6b6e) border-box !important;
   animation: label-badge-spin 3s linear 2;
 }
 .guided-description-input:focus {
@@ -9150,7 +9166,7 @@ a.admin-kpi:hover {
   outline: none;
   background:
     linear-gradient(#ffffff, #ffffff) padding-box,
-    linear-gradient(#40776a, #40776a) border-box !important;
+    linear-gradient(#1e6b6e, #1e6b6e) border-box !important;
 }
 @media (prefers-reduced-motion: reduce) {
   .guided-description-input {
@@ -9289,18 +9305,18 @@ a.admin-kpi:hover {
   font: inherit;
   font-size: 15px;
   font-weight: 600;
-  color: #386c5f;
+  color: #186163;
   min-height: 40px;
   padding: 0 14px;
   border-radius: 999px;
   background: #ffffff;
-  border: 1px solid #c1d4cf;
+  border: 1px solid #bed7d7;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 .guided-example:hover {
-  background: #f0f6f4;
-  border-color: #40776a;
+  background: #eff7f7;
+  border-color: #1e6b6e;
 }
 .guided-example:active {
   transform: scale(0.98);
@@ -9319,8 +9335,8 @@ a.admin-kpi:hover {
   margin-top: 4px;
 }
 .guided-example[aria-pressed="true"] {
-  background: #40776a;
-  border-color: #40776a;
+  background: #1e6b6e;
+  border-color: #1e6b6e;
   color: #ffffff;
 }
 /* "Potrebbero fare anche questo lavoro": stesse schede dei risultati, più staccate. */
@@ -9370,8 +9386,8 @@ a.admin-kpi:hover {
   padding: 24px;
   border-radius: 20px;
   background: #ffffff;
-  border: 2px solid #40776a;
-  box-shadow: 0 10px 30px rgba(64, 119, 106, 0.12);
+  border: 2px solid #1e6b6e;
+  box-shadow: 0 10px 30px rgba(30, 107, 110, 0.12);
 }
 .journey-hero-head {
   display: flex;
@@ -9396,8 +9412,8 @@ a.admin-kpi:hover {
 .journey-hero-count {
   font-size: 15px;
   font-weight: 700;
-  color: #386c5f;
-  background: #e1eeeb;
+  color: #186163;
+  background: #dff0f0;
   border-radius: 999px;
   padding: 6px 12px;
   white-space: nowrap;
@@ -9408,7 +9424,7 @@ a.admin-kpi:hover {
   gap: 16px;
   padding: 18px;
   border-radius: 16px;
-  background: #e1eeeb;
+  background: #dff0f0;
 }
 .journey-hero-now.is-waiting {
   background: #fbf0d9;
@@ -9421,7 +9437,7 @@ a.admin-kpi:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #40776a;
+  background: #1e6b6e;
 }
 .journey-hero-now.is-waiting .journey-hero-icon {
   background: #ffffff;
@@ -9442,7 +9458,7 @@ a.admin-kpi:hover {
 .journey-hero-eyebrow {
   font-size: 13px;
   font-weight: 700;
-  color: #386c5f;
+  color: #186163;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -9487,7 +9503,7 @@ a.admin-kpi:hover {
    una volta: il cerchio "salta" e il tratto si riempie da sinistra. Con
    "riduci movimento" la regola globale in cima lo rende istantaneo. */
 .journey-bar-step.is-done:not(:last-child)::after {
-  background: #c3dcd6;
+  background: #bfdfe0;
   transform-origin: left center;
 }
 .journey-hero .journey-bar-step.is-just-done > :first-child {
@@ -9511,10 +9527,10 @@ a.admin-kpi:hover {
 /* Un cerchio verde che si allarga e sparisce: si nota anche da telefono, dove il tratto è corto. */
 @keyframes journey-step-ring {
   from {
-    box-shadow: 0 0 0 0 rgba(64, 119, 106, 0.45);
+    box-shadow: 0 0 0 0 rgba(30, 107, 110, 0.45);
   }
   to {
-    box-shadow: 0 0 0 12px rgba(64, 119, 106, 0);
+    box-shadow: 0 0 0 12px rgba(30, 107, 110, 0);
   }
 }
 @keyframes journey-line-fill {
@@ -9546,10 +9562,10 @@ a.admin-kpi:hover {
   gap: 8px;
   min-height: 44px;
   padding: 0 16px;
-  border: 1px solid #4c8a7a;
+  border: 1px solid #247c7c;
   border-radius: 999px;
   background: #fff;
-  color: #386c5f;
+  color: #186163;
   font: inherit;
   font-size: 15px;
   font-weight: 700;
@@ -9557,13 +9573,13 @@ a.admin-kpi:hover {
   touch-action: manipulation;
 }
 .quote-compare-open:hover {
-  background: #f3f8f7;
+  background: #f2f8f9;
 }
 .quote-compare-open:focus-visible,
 .quote-compare-close:focus-visible,
 .quote-compare-pick:focus-visible,
 .quote-compare-scroll:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 .quote-anchor {
@@ -9690,8 +9706,8 @@ a.admin-kpi:hover {
   margin-top: 6px;
   padding: 2px 10px;
   border-radius: 999px;
-  background: #e7f0ee;
-  color: #305e52;
+  background: #e5f1f2;
+  color: #145656;
   font-size: 12px;
   font-weight: 700;
 }
@@ -9723,7 +9739,7 @@ a.admin-kpi:hover {
   padding: 0 14px;
   border: none;
   border-radius: 999px;
-  background: #40776a;
+  background: #1e6b6e;
   color: #fff;
   font: inherit;
   font-size: 15px;
@@ -9732,7 +9748,7 @@ a.admin-kpi:hover {
   touch-action: manipulation;
 }
 .quote-compare-pick:hover {
-  background: #386c5f;
+  background: #186163;
 }
 @media (max-width: 660px) {
   .quote-compare-overlay {
@@ -9803,7 +9819,7 @@ a.admin-kpi:hover {
   line-height: 1.25;
 }
 .quick-service-pill.is-suggested {
-  border-color: #4c8a7a;
+  border-color: #247c7c;
   border-width: 2px;
 }
 .quick-service-price {
@@ -9816,7 +9832,7 @@ a.admin-kpi:hover {
 .quick-service-tag {
   font-size: 12px;
   font-weight: 700;
-  color: #386c5f;
+  color: #186163;
 }
 .quick-last-quote {
   display: flex;
@@ -9825,7 +9841,7 @@ a.admin-kpi:hover {
   width: 100%;
   min-height: 56px;
   padding: 10px 14px;
-  border: 1px dashed #4c8a7a;
+  border: 1px dashed #247c7c;
   border-radius: 10px;
   background: #fff;
   color: #1b1a18;
@@ -9835,11 +9851,11 @@ a.admin-kpi:hover {
   touch-action: manipulation;
 }
 .quick-last-quote:hover {
-  background: #f3f8f7;
+  background: #f2f8f9;
 }
 .quick-last-quote:focus-visible,
 .quick-undo:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 .quick-last-quote-text {
@@ -9864,7 +9880,7 @@ a.admin-kpi:hover {
   padding: 0 4px;
   border: none;
   background: none;
-  color: #386c5f;
+  color: #186163;
   font: inherit;
   font-size: 14px;
   font-weight: 700;
@@ -9877,7 +9893,7 @@ a.admin-kpi:hover {
 
 /* "Ti servirà di nuovo?" a lavoro terminato (docs/changelog/2026-11-08-promemoria-manutenzione.md). */
 .rebook-pill.is-suggested {
-  border-color: #4c8a7a;
+  border-color: #247c7c;
   border-width: 2px;
 }
 .rebook-pill:disabled {
@@ -9890,7 +9906,7 @@ a.admin-kpi:hover {
   padding: 0 2px;
   border: none;
   background: none;
-  color: #386c5f;
+  color: #186163;
   font: inherit;
   font-size: 14px;
   font-weight: 700;
@@ -9898,7 +9914,7 @@ a.admin-kpi:hover {
   cursor: pointer;
 }
 .rebook-keep:focus-visible {
-  outline: 2px solid #4c8a7a;
+  outline: 2px solid #247c7c;
   outline-offset: 2px;
 }
 
@@ -9908,7 +9924,7 @@ a.admin-kpi:hover {
 
 /* Rubrica "I miei clienti" (docs/changelog/2026-11-08-rubrica-clienti.md). */
 .client-job-link {
-  color: #386c5f; /* brand.cianografiaScuro */
+  color: #186163; /* brand.cianografiaScuro */
   font-weight: 700;
   font-size: 14px;
   text-decoration: none;

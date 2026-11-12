@@ -186,7 +186,7 @@ export function CardActionsMenu({
         cursor="pointer"
         borderWidth={1.5}
         borderColor={brand.cianografia}
-        backgroundColor={`${isOpen ? brand.cianografia : brand.cianografiaVelo} hover:${isOpen ? brand.cianografia : "#CEE3DE"} press:${brand.cianografia}`}
+        backgroundColor={`${isOpen ? brand.cianografia : brand.cianografiaVelo} hover:${isOpen ? brand.cianografia : "#CAE6E7"} press:${brand.cianografia}`}
         onPress={(e: { stopPropagation: () => void }) => {
                 e.stopPropagation();
                 if (isOpen) close();

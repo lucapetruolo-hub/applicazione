@@ -210,7 +210,7 @@
 /* Bollino "Verificato": verde chiaro come "Pagamenti online" (scelta di Luca
    dell'11/11/2026, docs/changelog/2026-11-11-verificato-verde.md). */
 .badgeVerificato {
-  background-color: #e1eeeb;
+  background-color: #dff0f0;
 }
 
 .textVerificato {

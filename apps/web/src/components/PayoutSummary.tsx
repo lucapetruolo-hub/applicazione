@@ -15,8 +15,8 @@ function eur(cents: number): string {
 const TILES: Array<{ key: keyof Omit<ProfessionalPayoutTotals, "hasFailed" | "disputedEurCents">; label: string; icon: IconName; color: string; bg: string }> = [
   { key: "blockedEurCents", label: "Bloccati", icon: "lock", color: brand.cianografiaScuro, bg: brand.cianografiaVelo },
   { key: "preparingEurCents", label: "Sbloccati", icon: "lock-open", color: brand.cianografiaScuro, bg: brand.cianografiaVelo },
-  { key: "sentEurCents", label: "In arrivo in banca", icon: "landmark", color: brand.verificato, bg: "#E9F1EF" },
-  { key: "paidEurCents", label: "Arrivati in banca", icon: "check", color: brand.verificato, bg: "#E9F1EF" },
+  { key: "sentEurCents", label: "In arrivo in banca", icon: "landmark", color: brand.verificato, bg: "#E8F2F2" },
+  { key: "paidEurCents", label: "Arrivati in banca", icon: "check", color: brand.verificato, bg: "#E8F2F2" },
 ];
 
 /**

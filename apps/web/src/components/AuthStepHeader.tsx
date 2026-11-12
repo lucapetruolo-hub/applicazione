@@ -68,11 +68,20 @@ export function AuthStepHeader({
             ) : null}
           </div>
           {step ? (
-            <div className="auth-step-bar" aria-hidden="true">
-              {Array.from({ length: step.total }, (_, i) => (
-                <span key={i} className={i < step.current ? "is-done" : undefined} />
-              ))}
-            </div>
+            // Passi numerati: spunta su quelli fatti, numero su quello di adesso
+            // (spunto dalla console di Meta, docs/changelog/2026-11-12-sfondo-velo.md).
+            <ol className="auth-step-bar" aria-hidden="true">
+              {Array.from({ length: step.total }, (_, i) => {
+                const state = i + 1 < step.current ? "is-done" : i + 1 === step.current ? "is-current" : "is-next";
+                return (
+                  <li key={i} className={state}>
+                    <span className="auth-step-dot">
+                      {state === "is-done" ? <Icon name="check" size={14} color="white" strokeWidth={2.6} /> : i + 1}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
           ) : null}
         </YStack>
       ) : null}

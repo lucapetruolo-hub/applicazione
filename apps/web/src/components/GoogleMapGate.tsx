@@ -261,7 +261,7 @@ function MapPlaceholder({ text, children }: { text: string; children?: ReactNode
           word-break: break-word;
         }
         .map-placeholder :global(.map-consent-button) {
-          background: #40776a;
+          background: #1e6b6e;
           color: #ffffff;
           border: none;
           border-radius: 999px;
