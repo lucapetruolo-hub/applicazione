@@ -39,5 +39,6 @@ della versione (c710bdb6…). Provata a mano: `stripe listen` ha ancora
 `--api-key`, `--print-secret` e `--forward-to`, ma senza `--events` o `--all-snapshot` non
 inoltra più nulla (primo giro della PR: "must specify events to forward",
 nessuna carta salvata): si aggiunge `--all-snapshot`, cioè tutte le notizie
-classiche come prima. Verifica: controllo
+classiche come prima. In più il job aspetta "Ready!" di Stripe CLI e si
+ferma subito con il suo messaggio se l'inoltro non parte. Verifica: controllo
 `iscrizione-carta` della PR verde.
