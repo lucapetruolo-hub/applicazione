@@ -13,6 +13,7 @@ import {
   catalogServiceFor,
   cleanMissingTrade,
   serviceCatalogText,
+  type AiOutcome,
   type ProblemMatch,
   type ProblemMatchResult,
   type ProblemOutOfService,
@@ -131,14 +132,14 @@ ${serviceCatalogText(catalog)}
 Se una regola qui sotto e il catalogo non concordano, vale la regola.
 
 Confini di legge (DM 37/2008): impianti elettrici, automazione di cancelli, porte e tapparelle motorizzate = elettricista; riscaldamento, caldaie, condizionatori, scaldabagno a gas, canne fumarie della caldaia = climatizzazione; impianti idrici e sanitari = idraulico; tubi del gas e piano cottura = idraulico, la caldaia a gas = climatizzazione. Il tuttofare non mette mano agli impianti.
-Casi frequenti: macchia di umido o infiltrazione = idraulico, poi muratore; muffa sulle pareti = imbianchino, poi muratore; acqua calda che non arriva = climatizzazione, poi idraulico; porta di legno che gratta = falegname, serratura = fabbro; tapparella manuale bloccata = tuttofare, poi falegname; montare mobili = tuttofare, poi falegname; tende da sole, pergotende e zanzariere = tende-da-sole, poi tuttofare per le zanzariere; sgombero o trasporto di mobili = traslochi; lavatrice, frigorifero, lavastoviglie, forno o altro elettrodomestico guasto = elettrodomestici (installarli invece è idraulico o elettricista).
+Casi frequenti: macchia di umido o infiltrazione = idraulico, poi muratore; muffa sulle pareti = imbianchino, poi muratore; acqua calda che non arriva = climatizzazione, poi idraulico; porta di legno che gratta = falegname, serratura = fabbro; tapparella manuale bloccata = tuttofare, poi falegname; montare mobili = tuttofare, poi falegname; tende da sole, pergotende e zanzariere = tende-da-sole, poi tuttofare per le zanzariere; sgombero o trasporto di mobili = traslochi; lavatrice, frigorifero, lavastoviglie, forno o altro elettrodomestico guasto = elettrodomestici (installarli invece è idraulico o elettricista); aloni o macchie su mobili, cucine e superfici = pulizie; chiavi o oggetti chiusi dentro, porta che non si apre più = fabbro; macchia nera di calore o fumo sul muro = imbianchino.
 
 Nessun mestiere del sito copre (outOfService): antenne e parabole (antennista), insetti e topi (disinfestazione), pozzi neri e fosse biologiche (spurghi), pulizia della canna fumaria del camino (spazzacamino), vetri da tagliare (vetraio), allarmi (antifurto), ascensori, assistenza ad anziani (badante). In quel caso categories vuoto.
 
 Rispondi con:
 - categories: da 1 a 3 codici in ordine, dal più adatto; il secondo e il terzo solo se davvero possibili. Vuoto se è fuori servizio o se il testo non è una richiesta di lavoro.
 - outOfService: il codice se nessun mestiere va bene, altrimenti null.
-- notAJob: true se il testo non chiede un lavoro (saluti, domande sul sito, frasi senza senso).
+- notAJob: true se il testo non chiede un lavoro (saluti, domande sul sito, frasi senza senso). Una domanda o una richiesta di consiglio su un problema della casa è invece una richiesta di lavoro: notAJob false e i mestieri che lo risolvono (es. "Perché viene la muffa sul muro?" = imbianchino, poi muratore; "Come si chiama chi ripara le finestre?" = falegname; "Consiglio su un boiler elettrico" = idraulico, poi elettricista).
 - reason: una frase di massimo 12 parole, rivolta al cliente, che spiega perché il primo mestiere (es. "Il rubinetto che gocciola lo sistema l'idraulico."). Nomina chi fa il lavoro con parole per una persona, mai con il codice: "il tecnico di caldaie" (non "il climatizzazione"), "l'impresa di pulizie", "chi fa traslochi", "il tecnico degli elettrodomestici", "chi monta tende da sole". Vuota se categories è vuoto.
 - service: la prestazione del catalogo del primo mestiere che è proprio il lavoro descritto, scritta esattamente come nel catalogo (es. "Sostituzione rubinetteria"). Solo se il cliente chiede quel lavoro: una prestazione solo simile o vicina non va bene (lo scaldabagno non è la caldaia, riparare non è fare la manutenzione, l'umidità non è la muffa). Se nel catalogo non c'è il lavoro chiesto, null: non scegliere la prestazione più vicina dello stesso mestiere. Esempi di null: un buco nel solaio o un massetto storto non sono il cartongesso né la ristrutturazione del bagno; gli sbalzi di tensione non sono la certificazione dell'impianto; le cerniere di un mobile non sono le porte; valvole dei termosifoni o odore di gas non sono l'installazione della caldaia. Nel dubbio null: meglio nessuna prestazione che una sbagliata. null anche se categories è vuoto.
 - missingTrade: solo se categories è vuoto e il testo chiede un lavoro, il nome del mestiere che servirebbe, una o due parole al maschile singolare (es. "Sarto", "Antennista", "Veterinario"). null in tutti gli altri casi. Serve solo al sito per sapere quali mestieri aggiungere: non cambia le altre risposte.
@@ -198,6 +199,8 @@ export function openRouterBody(text: string, catalog: readonly ServiceCatalogEnt
 }
 
 type ParseFn = (text: string, catalog: readonly ServiceCatalogEntry[]) => Promise<AiAnswer | null>;
+/** Tempo ed esito della domanda all'IA, salvati per Admin › Mestieri richiesti. */
+type AiCall = { ms: number | null; outcome: AiOutcome };
 
 @Injectable()
 export class ProblemMatchService {
@@ -225,7 +228,7 @@ export class ProblemMatchService {
 
   async match(description: string, city?: string): Promise<ProblemMatchResult> {
     const text = anonymizeProblemText(description);
-    const classified = await this.classify(description, text);
+    const { classified, ai } = await this.classify(description, text);
     const missingTrade = missingTradeOf(classified);
     // Al sito solo un mestiere che non è tra i fuori servizio fissi: quelli hanno già il loro titolo.
     const result: ProblemMatchResult = { ...classified, missingTrade: classified.outOfService ? null : missingTrade };
@@ -241,32 +244,37 @@ export class ProblemMatchService {
           service: result.service,
           missingTrade,
           source: result.source,
+          aiMs: ai?.ms ?? null,
+          aiOutcome: ai?.outcome ?? null,
         },
       })
       .catch((error: unknown) => this.logger.warn(`Descrizione non salvata: ${String(error)}`));
     return result;
   }
 
-  private async classify(description: string, text: string): Promise<Classified> {
+  private async classify(description: string, text: string): Promise<{ classified: Classified; ai: AiCall | null }> {
     const dictionary = matchProblem(description);
     const fromDictionary = this.fromDictionary(dictionary);
     const taught = await this.taughtMatch(description, dictionary);
-    if (taught) return taught;
+    if (taught) return { classified: taught, ai: null };
     if (dictionary.confident || !aiProvider()) {
-      return fromDictionary;
+      return { classified: fromDictionary, ai: null };
     }
 
     const key = text.toLowerCase().replace(/\s+/g, " ");
     const cached = this.cache.get(key);
-    if (cached) return cached;
-    if (!this.budget.take()) return fromDictionary;
+    if (cached) return { classified: cached, ai: null };
+    if (!this.budget.take()) return { classified: fromDictionary, ai: { ms: null, outcome: "tetto" } };
 
     const catalog = await this.serviceCatalog.catalog();
+    const started = Date.now();
     const answer = await this.askAi(text, catalog);
-    if (!answer) return fromDictionary;
+    const ms = Date.now() - started;
+    // Senza risposta: arrivata all'attesa massima vuol dire tardi, prima è un errore.
+    if (!answer) return { classified: fromDictionary, ai: { ms, outcome: ms >= TIMEOUT_MS - 100 ? "tardi" : "errore" } };
     const result = this.combine(dictionary, answer, catalog);
     this.remember(key, result);
-    return result;
+    return { classified: result, ai: { ms, outcome: "ok" } };
   }
 
   /** Una parola insegnata in admin vince sul dizionario e sull'intelligenza artificiale; la sicurezza resta. */
@@ -326,9 +334,11 @@ export class ProblemMatchService {
   /** La sicurezza resta del dizionario; la domanda resta solo se il mestiere scelto è tra le sue risposte. */
   private combine(dictionary: ProblemMatch, answer: AiAnswer, catalog: readonly ServiceCatalogEntry[]): Classified {
     const fromAi = answer.notAJob || answer.outOfService ? [] : [...new Set(answer.categories)].slice(0, 3);
-    // L'IA non dà nessun mestiere ma nemmeno "fuori servizio" o "non è un lavoro": resta il dizionario
-    // (docs/changelog/2026-11-10-ia-prestazioni-piu-severe.md).
-    if (fromAi.length === 0 && !answer.notAJob && !answer.outOfService && dictionary.categories.length > 0) {
+    // L'IA non dà nessun mestiere ma nemmeno "fuori servizio": resta il dizionario
+    // (docs/changelog/2026-11-10-ia-prestazioni-piu-severe.md). Anche con "non è un lavoro", se il
+    // dizionario riconosce un mestiere: erano domande su un problema vero ("Perché viene la muffa?"),
+    // 12 errori su 21 nella misura con Haiku (docs/changelog/2026-11-12-attesa-ia-5-secondi.md).
+    if (fromAi.length === 0 && !answer.outOfService && dictionary.categories.length > 0) {
       return this.fromDictionary(dictionary);
     }
     const categories = fromAi;

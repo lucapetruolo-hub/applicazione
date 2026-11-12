@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildServiceCatalog } from "@professionisti/shared";
+import { aiSpeedOf } from "./problem-match-admin.service";
 import { ProblemMatchService, anonymizeProblemText, cleanReason, missingTradeOf, openRouterBody } from "./problem-match.service";
 
 function fakePrisma(words: { word: string; categorySlug: string | null; outOfService: string | null }[] = []) {
@@ -72,6 +73,16 @@ describe("ProblemMatchService", () => {
     expect(await service.match("ciao come funziona il sito")).toMatchObject({ categories: [], outOfService: null, reason: null });
   });
 
+  it("\"non è un lavoro\" su una domanda con un mestiere del dizionario: restano i mestieri del dizionario", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "test");
+    const service = newService();
+    service.askAi = vi.fn().mockResolvedValue(aiAnswer({ categories: [], notAJob: true, reason: "" }));
+    const result = await service.match("perché viene la muffa sul muro?");
+    expect(service.askAi).toHaveBeenCalled();
+    expect(result.source).toBe("dizionario");
+    expect(result.categories.length).toBeGreaterThan(0);
+  });
+
   it("se l'IA non dà nessun mestiere, senza fuori servizio, resta il dizionario", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "test");
     const service = newService();
@@ -141,6 +152,35 @@ describe("ProblemMatchService", () => {
     const other = newService();
     other.askAi = vi.fn().mockResolvedValue(aiAnswer({ service: "Potatura siepi" }));
     expect((await other.match("macchia di umido sul soffitto")).service).toBeNull();
+  });
+
+  // docs/changelog/2026-11-12-attesa-ia-5-secondi.md
+  it("salva tempo ed esito della domanda all'IA: ok, errore, niente per il dizionario sicuro", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "test");
+    const prisma = fakePrisma();
+    const service = new ProblemMatchService(prisma as never, fakeCatalog as never);
+    service.askAi = vi.fn().mockResolvedValue(aiAnswer());
+    await service.match("macchia di umido sul soffitto");
+    expect(prisma.problemDescription.create).toHaveBeenLastCalledWith({ data: expect.objectContaining({ aiOutcome: "ok", aiMs: expect.any(Number) }) });
+    service.askAi = vi.fn().mockResolvedValue(null);
+    await service.match("una macchia di umido diversa sul soffitto");
+    expect(prisma.problemDescription.create).toHaveBeenLastCalledWith({ data: expect.objectContaining({ aiOutcome: "errore" }) });
+    await service.match("perdita dal rubinetto del lavandino");
+    expect(prisma.problemDescription.create).toHaveBeenLastCalledWith({ data: expect.objectContaining({ aiOutcome: null, aiMs: null }) });
+  });
+
+  it("riassume le risposte dell'IA della settimana", () => {
+    expect(
+      aiSpeedOf([
+        { aiMs: 2000, aiOutcome: "ok" },
+        { aiMs: 3000, aiOutcome: "ok" },
+        { aiMs: 1000, aiOutcome: "ok" },
+        { aiMs: 5000, aiOutcome: "tardi" },
+        { aiMs: 200, aiOutcome: "errore" },
+        { aiMs: null, aiOutcome: "tetto" },
+      ]),
+    ).toEqual({ asked: 6, ok: 3, late: 1, failed: 1, capped: 1, medianMs: 2000 });
+    expect(aiSpeedOf([]).medianMs).toBeNull();
   });
 
   // docs/changelog/2026-11-11-mestieri-che-mancano.md

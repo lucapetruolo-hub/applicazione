@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   OUT_OF_SERVICE_LABELS,
+  type AiSpeed,
   PROFESSIONAL_CATEGORIES,
   FIELD_PROBLEM_EXAMPLES_POOL,
   MISSING_TRADE_ADVICE_MIN,
@@ -34,6 +35,25 @@ const SAFETY_LABEL: Record<string, string> = {
   "acqua-elettrico": "Acqua sull'impianto",
   monossido: "Monossido",
 };
+
+/**
+ * Domande all'IA della settimana: quante risposte in tempo, tardive, errori, oltre il limite
+ * (docs/changelog/2026-11-12-attesa-ia-5-secondi.md).
+ */
+function aiSpeedText(speed: AiSpeed): string {
+  const seconds = speed.medianMs === null ? "" : `, in ${(speed.medianMs / 1000).toLocaleString("it-IT", { maximumFractionDigits: 1 })} s di solito`;
+  const problems = [
+    speed.late > 0 ? `${speed.late} arrivate tardi` : null,
+    speed.failed > 0 ? `${speed.failed} con un errore` : null,
+    speed.capped > 0 ? `${speed.capped} oltre il limite del giorno` : null,
+  ].filter(Boolean);
+  return `Ultimi 7 giorni: l'intelligenza artificiale ha risposto a ${speed.ok} ricerche dubbie su ${speed.asked}${seconds}${problems.length > 0 ? ` · ${problems.join(" · ")} (lì è rimasto il dizionario)` : ""}`;
+}
+
+/** Più di una ricerca dubbia su 10 senza risposta dell'IA: la riga si fa più scura. */
+function aiSpeedTrouble(speed: AiSpeed): boolean {
+  return speed.late + speed.failed + speed.capped > speed.asked / 10;
+}
 
 function targetLabel(categorySlug: string | null, outOfService: string | null): string {
   if (categorySlug) return PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlug)?.label ?? categorySlug;
@@ -154,6 +174,11 @@ function DescriptionsTab() {
           <Text color={brand.grafite70} marginTop="1">
             {month.safety} con avviso di sicurezza · {month.ai} decise dall&apos;intelligenza artificiale · {month.none} non capite
           </Text>
+          {month.aiSpeed.asked > 0 ? (
+            <Text color={aiSpeedTrouble(month.aiSpeed) ? brand.grafite : brand.grafite70} fontWeight={aiSpeedTrouble(month.aiSpeed) ? "600" : "400"} marginTop="1">
+              {aiSpeedText(month.aiSpeed)}
+            </Text>
+          ) : null}
           {month.byCategory.length > 0 ? (
             <Text color={brand.grafite70} marginTop="1">
               Mestieri: {month.byCategory.map((row) => `${targetLabel(row.key, null)} ${row.count}`).join(" · ")}
