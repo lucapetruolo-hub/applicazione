@@ -6,6 +6,8 @@ import {
   OUT_OF_SERVICE_LABELS,
   PROFESSIONAL_CATEGORIES,
   FIELD_PROBLEM_EXAMPLES_POOL,
+  MISSING_TRADE_ADVICE_MIN,
+  type MissingTrade,
   POPULAR_JOBS_COUNT,
   POPULAR_JOBS_MIN_SEARCHES,
   POPULAR_SERVICES,
@@ -105,6 +107,12 @@ function DescriptionsTab() {
 
   useEffect(load, [load]);
 
+  // Il consiglio in Home Admin porta qui con #mestieri-mancanti: il riquadro c'è solo dopo il caricamento.
+  const loaded = data !== null;
+  useEffect(() => {
+    if (loaded && window.location.hash === "#mestieri-mancanti") document.getElementById("mestieri-mancanti")?.scrollIntoView();
+  }, [loaded]);
+
   const teach = async () => {
     if (!token || !target) return;
     setBusy(true);
@@ -161,6 +169,8 @@ function DescriptionsTab() {
           ) : null}
         </AdminCard>
       ) : null}
+
+      {month ? <MissingTradesCard trades={month.missingTrades} /> : null}
 
       {month ? <SuggestionOutcomesCard outcomes={month.suggestions} /> : null}
 
@@ -297,7 +307,9 @@ function DescriptionsTab() {
                       ? targetLabel(null, row.outOfService)
                       : row.categories.length > 0
                         ? row.categories.map((slug) => targetLabel(slug, null)).join(", ")
-                        : "Non capita"}
+                        : row.missingTrade
+                          ? `Mestiere che non abbiamo: ${row.missingTrade}`
+                          : "Non capita"}
                   </td>
                   <td>{row.safety ? <AdminPill tone="danger">{SAFETY_LABEL[row.safety] ?? row.safety}</AdminPill> : "—"}</td>
                   <td>{row.source === "ia" ? "IA" : row.source === "parola" ? "Parola insegnata" : "Dizionario"}</td>
@@ -309,6 +321,48 @@ function DescriptionsTab() {
         </div>
       ) : null}
     </YStack>
+  );
+}
+
+/**
+ * Mestieri che il sito non ha, scritti dall'IA quando nessun mestiere va bene,
+ * con le zone (docs/changelog/2026-11-11-mestieri-che-mancano.md, richiesta di Luca).
+ */
+function MissingTradesCard({ trades }: { trades: MissingTrade[] }) {
+  return (
+    <AdminCard>
+      <YStack id="mestieri-mancanti" style={{ scrollMarginTop: 120 }}>
+        <Text fontWeight="700">Mestieri che non abbiamo, ultimi 30 giorni</Text>
+        <Text color={brand.grafite70} fontSize={13} marginTop="1">
+          Quando nessun nostro mestiere va bene, l&apos;intelligenza artificiale scrive quale servirebbe. Da {MISSING_TRADE_ADVICE_MIN} richieste
+          in su compare anche in Home tra le cose da fare.
+        </Text>
+        {trades.length === 0 ? (
+          <Text color={brand.grafite70} marginTop="2">
+            Ancora nessuno.
+          </Text>
+        ) : (
+          <YStack gap="2" marginTop="2">
+            {trades.map((trade) => (
+              <YStack key={trade.name} gap={2} role="group" aria-label={trade.name}>
+                <XStack gap="2" alignItems="center" flexWrap="wrap">
+                  <Text fontWeight="600">{trade.name}</Text>
+                  <Text color={brand.grafite70}>
+                    · {trade.count} {trade.count === 1 ? "richiesta" : "richieste"}
+                  </Text>
+                  {trade.count >= MISSING_TRADE_ADVICE_MIN ? <AdminPill tone="warn">Da valutare</AdminPill> : null}
+                </XStack>
+                {trade.zones.length > 0 ? (
+                  <Text color={brand.grafite70} fontSize={13}>
+                    {trade.zones.map((zone) => `${zone.label} ${zone.count}`).join(" · ")}
+                  </Text>
+                ) : null}
+              </YStack>
+            ))}
+          </YStack>
+        )}
+      </YStack>
+    </AdminCard>
   );
 }
 

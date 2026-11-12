@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { PrismaClient } from "@professionisti/database";
-import { WEB_URL } from "../fixtures/env";
+import { API_URL, WEB_URL } from "../fixtures/env";
 import { testToken } from "../fixtures/preventivi";
 
 /**
@@ -14,6 +14,7 @@ const prisma = new PrismaClient();
 const stamp = Date.now();
 const PROBLEM = "Il rubinetto della cucina perde";
 let adminId = "";
+let missingTrade = "";
 
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "telefono-italia" && testInfo.project.name !== "computer-tokyo", "Un giro su telefono e uno su computer.");
@@ -48,13 +49,15 @@ async function professional(slug: string, businessName: string, services: string
 test.beforeAll(async () => {
   // I profili di un giro precedente (prova ripetuta, database locale) confonderebbero i conti.
   await prisma.professionalProfile.updateMany({
-    where: { OR: ["Idraulico Caldaie ", "Idraulico Rubinetti ", "Tuttofare Rubinetti ", "Pulizie Cucine ", "Tecnico Lavatrici ", "Elettricista Elettrodomestici ", "Tuttofare Elettrodomestici "].map((name) => ({ businessName: { startsWith: name } })), deletedAt: null },
+    where: { OR: ["Idraulico Caldaie ", "Idraulico Rubinetti ", "Tuttofare Rubinetti ", "Pulizie Cucine ", "Tuttofare Sartoria ", "Tecnico Lavatrici ", "Elettricista Elettrodomestici ", "Tuttofare Elettrodomestici "].map((name) => ({ businessName: { startsWith: name } })), deletedAt: null },
     data: { deletedAt: new Date() },
   });
   await professional("idraulico", `Idraulico Caldaie ${stamp}`, ["Controllo caldaia"]);
   await professional("idraulico", `Idraulico Rubinetti ${stamp}`, ["Sostituzione rubinetto"]);
   await professional("tuttofare", `Tuttofare Rubinetti ${stamp}`, ["Sostituzione rubinetto"]);
   await professional("pulizie", `Pulizie Cucine ${stamp}`, ["Pulizia cucina"]);
+  // Un mestiere che il sito non ha, dichiarato tra le prestazioni (docs/changelog/2026-11-11-mestieri-che-mancano.md).
+  await professional("tuttofare", `Tuttofare Sartoria ${stamp}`, ["Piccole riparazioni di sartoria"]);
   await professional("elettrodomestici", `Tecnico Lavatrici ${stamp}`, ["Riparazione lavatrice"]);
   for (const n of [1, 2]) {
     await professional("elettricista", `Elettricista Elettrodomestici ${n} ${stamp}`, ["Riparazione elettrodomestici"]);
@@ -80,6 +83,15 @@ test.beforeAll(async () => {
   const tuttofare = await prisma.category.findUniqueOrThrow({ where: { slug: "tuttofare" } });
   await prisma.guidedRequest.create({
     data: { clientId: client.id, categoryId: tuttofare.id, description: `Mensola da montare ${stamp}`, city: "Latina", suggestedCategorySlug: "falegname" },
+  });
+  // Mestiere che non abbiamo, scritto dall'IA (docs/changelog/2026-11-11-mestieri-che-mancano.md).
+  const trade = `Sarto ${stamp.toString(36).replace(/[0-9]/g, "")}`;
+  missingTrade = trade.charAt(0).toUpperCase() + trade.slice(1).toLowerCase();
+  await prisma.problemDescription.createMany({
+    data: [
+      ...Array.from({ length: 7 }, () => ({ text: `Orlo dei pantaloni ${stamp}`, city: "Sabaudia", categories: [], source: "ia", missingTrade: trade })),
+      ...Array.from({ length: 4 }, () => ({ text: `Accorciare la giacca ${stamp}`, city: "Roma", categories: [], source: "ia", missingTrade: trade })),
+    ],
   });
 });
 
@@ -131,6 +143,15 @@ test("guasto della lavatrice: il mestiere Elettrodomestici e sotto tutti quelli 
   }
 });
 
+test("mestiere che il sito non ha: chi lo dichiara tra le prestazioni, mai tutti", async ({ request }) => {
+  const names = async (offre: string) =>
+    ((await (await request.get(`${API_URL}/professionals/search?offre=${encodeURIComponent(offre)}&city=Latina`)).json()) as { businessName: string }[]).map((p) => p.businessName);
+  expect(await names("Sarto")).toContain(`Tuttofare Sartoria ${stamp}`);
+  expect(await names("Sarto")).not.toContain(`Pulizie Cucine ${stamp}`);
+  // Solo una parola generica: nessuno, non tutti.
+  expect(await names("Tecnico")).toEqual([]);
+});
+
 test("con l'avviso di sicurezza niente altri mestieri", async ({ page }) => {
   await page.goto(`/cerca?problema=${encodeURIComponent("Sento odore di gas vicino al rubinetto")}&citta=Latina`);
   await expect(page.getByRole("note", { name: "Prima di tutto la sicurezza" })).toBeVisible();
@@ -162,6 +183,11 @@ test("Admin: richieste che tengono o cambiano la categoria proposta", async ({ b
   await page.goto("/admin/mestieri-richiesti");
   await expect(page.getByText(/Richieste di preventivo con la categoria proposta: \d+/)).toBeVisible();
   await expect(page.getByText(/Falegname → Tutto Fare \d+/)).toBeVisible();
+  // Mestieri che non abbiamo, con le zone e "Da valutare" da 10 richieste.
+  const trade = page.locator("#mestieri-mancanti").getByRole("group", { name: missingTrade, exact: true });
+  await expect(trade.getByText("11 richieste")).toBeVisible();
+  await expect(trade.getByText("Latina e provincia 7 · Roma e provincia 4")).toBeVisible();
+  await expect(trade.getByText("Da valutare")).toBeVisible();
   if (process.env.E2E_SCREENSHOTS) await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/admin-categoria-proposta-${testInfo.project.name}.png`, fullPage: true });
   await context.close();
 });

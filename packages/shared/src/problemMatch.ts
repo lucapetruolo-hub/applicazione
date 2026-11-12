@@ -1,3 +1,4 @@
+import type { MissingTrade } from "./missingTrades";
 import type { ProfessionalCategorySlug } from "./categories";
 import { serviceFromWords } from "./problemServiceWords";
 
@@ -456,6 +457,12 @@ export type ProblemMatchResult = {
    */
   service: string | null;
   source: "dizionario" | "parola" | "ia";
+  /**
+   * Mestiere che il sito non ha, scritto dall'IA quando nessun mestiere va bene
+   * e non è uno dei lavori fuori servizio fissi: il cliente lo vede con "Ce ne
+   * occupiamo noi" (docs/changelog/2026-11-11-mestieri-che-mancano.md).
+   */
+  missingTrade?: string | null;
 };
 
 /**
@@ -554,6 +561,8 @@ export type ProblemMatchAdminOverview = {
      * mestieri che mancano al sito (docs/changelog/2026-11-04-avviso-caldaie.md).
      */
     missing: { text: string; count: number }[];
+    /** Mestieri che il sito non ha, per nome e zona (docs/changelog/2026-11-11-mestieri-che-mancano.md). */
+    missingTrades: MissingTrade[];
     suggestions: ProblemSuggestionOutcomes;
   };
   descriptions: {
@@ -563,6 +572,7 @@ export type ProblemMatchAdminOverview = {
     categories: string[];
     safety: string | null;
     outOfService: string | null;
+    missingTrade: string | null;
     source: string;
     createdAt: string;
   }[];
@@ -591,6 +601,7 @@ export type ProblemTakeoverAdmin = {
   description: string;
   city: string | null;
   outOfService: string | null;
+  missingTrade: string | null;
   /** Possibile pericolo nella descrizione (gas, corrente...), come in Da fare. */
   safety: ProblemSafety | null;
   /** Mestiere più probabile secondo il dizionario, quando non è un lavoro fuori servizio. */
