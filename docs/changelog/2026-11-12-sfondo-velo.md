@@ -29,7 +29,8 @@ di azzurro: "verde-azzurro" #1E6B6E, al posto del cipresso #40776A.
   esplicita di Luca. Il crema resta nei riquadri che lo usano. Poi Luca:
   "la parte in alto e sinistra più crema": il rosa in alto a sinistra diventa
   crema caldo, più largo. Infine "tutti i colori leggermente più caldi":
-  azzurri, lilla e menta spostati verso il caldo (meno blu, un filo di rosso).
+  azzurri, lilla e menta spostati verso il caldo (meno blu, un filo di rosso), poi a metà strada tra quella e la versione
+  col solo crema ("una via di mezzo", Luca).
 - Giro precedente, Luca: "mi piace con più colori su tutta la pagina come
   Meta": colori pieni anche ai lati e in basso, con "più sfumature di rosa, viola":
   viola in alto al centro e a destra a metà, rosa a sinistra a metà e in basso

@@ -3827,11 +3827,11 @@ a.admin-kpi:hover {
      basso a sinistra, tutto molto chiaro e opaco sopra il crema. */
   background:
     radial-gradient(65% 60% at 0% 0%, rgba(250, 238, 222, 0.95), transparent 70%),
-    radial-gradient(55% 55% at 100% 10%, rgba(231, 237, 242, 0.95), transparent 70%),
-    radial-gradient(50% 45% at 45% 45%, rgba(241, 234, 241, 0.7), transparent 70%),
-    radial-gradient(60% 55% at 100% 100%, rgba(237, 245, 231, 0.95), transparent 70%),
-    radial-gradient(55% 50% at 0% 100%, rgba(235, 238, 240, 0.9), transparent 70%),
-    linear-gradient(135deg, #f9f0e4 0%, #f3eff1 40%, #ecf0f0 70%, #eff4e9 100%);
+    radial-gradient(55% 55% at 100% 10%, rgba(228, 236, 245, 0.95), transparent 70%),
+    radial-gradient(50% 45% at 45% 45%, rgba(238, 234, 244, 0.7), transparent 70%),
+    radial-gradient(60% 55% at 100% 100%, rgba(234, 246, 234, 0.95), transparent 70%),
+    radial-gradient(55% 50% at 0% 100%, rgba(232, 238, 244, 0.9), transparent 70%),
+    linear-gradient(135deg, #f9f0e4 0%, #f0eef3 40%, #eaf0f4 70%, #ecf5ed 100%);
 }
 /* Comparsa del riquadro di accesso e registrazione: 250 ms e 8 px (prima
    450 ms e 16 px), si vede a ogni accesso (skill web-animation-design). */
