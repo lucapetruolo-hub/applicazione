@@ -20,7 +20,7 @@ di azzurro: "verde-azzurro" #1E6B6E, al posto del cipresso #40776A.
   prossimi. "Passo N di M" scritto resta (la fila è decorativa,
   `aria-hidden`). Nell'area del professionista ("Completa il profilo",
   `SetupJourney`) i passi con spunta c'erano già.
-- Velo misto: in alto menta 0,34, lilla 0,3, pesca 0,32; in basso menta 0,17,
+- Velo misto: in alto menta 0,41, lilla 0,36, pesca 0,38 ("un pelo più colorato", Luca); in basso menta 0,17,
   pesca 0,14, lilla 0,12.
 - Verde di marca: `cianografiaPieno` #40776A → #1E6B6E (pulsanti, link, spunte,
   logo provvisorio, icone, email, mappa). Tutta la famiglia del verde segue

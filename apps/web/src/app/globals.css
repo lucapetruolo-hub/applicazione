@@ -3827,9 +3827,9 @@ a.admin-kpi:hover {
      pesca a destra. Al punto più carico il grigio dei testi (#5e5a54) resta
      sopra 5:1. */
   background:
-    radial-gradient(60% 55% at 12% -5%, rgba(140, 205, 200, 0.34), transparent 70%),
-    radial-gradient(45% 40% at 50% 5%, rgba(200, 215, 240, 0.3), transparent 70%),
-    radial-gradient(60% 55% at 88% -5%, rgba(240, 170, 140, 0.32), transparent 70%),
+    radial-gradient(60% 55% at 12% -5%, rgba(140, 205, 200, 0.41), transparent 70%),
+    radial-gradient(45% 40% at 50% 5%, rgba(200, 215, 240, 0.36), transparent 70%),
+    radial-gradient(60% 55% at 88% -5%, rgba(240, 170, 140, 0.38), transparent 70%),
     radial-gradient(60% 50% at 5% 100%, rgba(140, 205, 200, 0.17), transparent 70%),
     radial-gradient(55% 45% at 95% 95%, rgba(240, 190, 160, 0.14), transparent 70%),
     radial-gradient(40% 35% at 60% 55%, rgba(205, 215, 240, 0.12), transparent 70%);
