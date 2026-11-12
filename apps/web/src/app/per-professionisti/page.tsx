@@ -5,8 +5,9 @@ import { API_URL } from "@/lib/apiUrl";
 import { openGraphFor } from "@/lib/openGraph";
 
 export const metadata: Metadata = {
-  title: "Per i professionisti",
-  description: "Iscriviti come professionista: ricevi richieste di preventivo dai clienti della tua zona e gestisci la tua agenda.",
+  // Le parole che cerca un artigiano su Google (docs/changelog/2026-11-12-pagina-per-professionisti.md).
+  title: "Lavora come professionista nella tua zona",
+  description: "Iscriviti come professionista: ricevi richieste di lavoro dai clienti della tua zona, senza costo per contatto. Preventivi, agenda e recensioni in un posto.",
   alternates: { canonical: "/per-professionisti" },
   openGraph: openGraphFor("/per-professionisti"),
 };
