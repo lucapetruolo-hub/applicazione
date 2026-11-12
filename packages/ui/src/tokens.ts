@@ -45,7 +45,7 @@ export const brand = {
   // Verde inchiostro dei titoli (h1-h3), scelta di Luca dell'11/11/2026: dà
   // carattere al marchio senza confondersi con il verde dei pulsanti, molto
   // più chiaro. 11,3:1 sul fondo crema. Il testo normale resta grafite.
-  inchiostro: "#0F3B2C",
+  inchiostro: "#0F3B3B",
   terracottaVelo: "#F6E3D9",
   urgenza: "#B42318",
   // Tinta chiara di sfondo per segnalare un conflitto/errore (es. due fasce
