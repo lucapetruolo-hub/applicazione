@@ -21,16 +21,16 @@ export const brand = {
   // (docs/CHANGELOG.md §278-§279): 3,2:1 su bianco, il minimo perché si veda
   // dove scrivere (il filetto è 1,3:1). Il filetto resta per i divisori.
   bordoCampo: "#8E867C",
-  cianografia: "#4C8A7A",
+  cianografia: "#247C7C",
   // Verde dei testi verdi piccoli e dei link (5,4:1 su bianco, WCAG AA).
   // Sfondi, hero e pulsanti restano su cianografia (docs/CHANGELOG.md §172,
   // scelta dell'utente).
-  cianografiaScuro: "#386C5F",
+  cianografiaScuro: "#186163",
   // Sfondo dei pulsanti e delle aree piene con testo bianco (docs/CHANGELOG.md
   // §350): cianografia con il bianco sopra ha contrasto 3,6:1, sotto il 4,5:1
   // che serve ai testi di 16 px; questo tono, appena più scuro, arriva a 4,7:1.
-  cianografiaPieno: "#40776A",
-  cianografiaVelo: "#E1EEEB",
+  cianografiaPieno: "#1E6B6E",
+  cianografiaVelo: "#DFF0F0",
   // Verde scuro di "fatto" (salvato, confermato, pagato, lavoro concluso),
   // volutamente distinto dal verde dei pulsanti (cianografia): un messaggio
   // di conferma non deve confondersi con un bottone d'azione. 6,3:1 su
@@ -45,7 +45,7 @@ export const brand = {
   // Verde inchiostro dei titoli (h1-h3), scelta di Luca dell'11/11/2026: dà
   // carattere al marchio senza confondersi con il verde dei pulsanti, molto
   // più chiaro. 11,3:1 sul fondo crema. Il testo normale resta grafite.
-  inchiostro: "#0F3B2C",
+  inchiostro: "#0F3B3B",
   terracottaVelo: "#F6E3D9",
   urgenza: "#B42318",
   // Tinta chiara di sfondo per segnalare un conflitto/errore (es. due fasce
@@ -54,6 +54,17 @@ export const brand = {
   // (convenzione universale per distruttivo/urgente), appena più freddo per
   // stare con la palette A.
   urgenzaVelo: "#FDE8E6",
+  // Blu ardesia: colore di base delle notifiche "Lavori e appuntamenti"
+  // (docs/changelog/2026-11-12-notifiche-positive-verdi.md). Prima erano
+  // verdi e una notizia normale sembrava una buona notizia, ora verde solo
+  // per "fatto". 7,2:1 su bianco, 5,9:1 sulla sua tinta chiara.
+  ardesia: "#3E5A73",
+  ardesiaVelo: "#E3EAF1",
+  // Indaco: colore di base delle notifiche "Nuove richieste" (stesso file del
+  // changelog). Prima era il verde acqua dei pulsanti, quasi uguale al verde
+  // delle buone notizie. 7,2:1 su bianco, 6,1:1 sulla sua tinta chiara.
+  indaco: "#55508A",
+  indacoVelo: "#ECEAF5",
   ottone: "#D9A441",
   // Testo e icone sull'ottone chiaro (categoria principale in registrazione,
   // docs/CHANGELOG.md §248): l'ottone pieno sul chiaro non si legge. È l'unico

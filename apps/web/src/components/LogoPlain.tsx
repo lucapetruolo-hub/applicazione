@@ -1,7 +1,7 @@
 import styles from "./LogoPlain.module.css";
 
 // Colori del marchio: brand.cianografia e brand.grafite (packages/ui/src/tokens.ts).
-const MARK_COLOR = "#4C8A7A";
+const MARK_COLOR = "#247C7C";
 
 /**
  * Logo (quadrato + nome) in HTML semplice, senza Tamagui, per le parti

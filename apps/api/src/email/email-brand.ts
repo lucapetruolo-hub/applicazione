@@ -18,13 +18,13 @@ export const EMAIL_BRAND = {
     card: "#FFFFFF",
     text: "#1B1A18",
     // Titoli in verde inchiostro come sul sito (brand.inchiostro, 11,3:1 sul crema).
-    heading: "#0F3B2C",
+    heading: "#0F3B3B",
     muted: "#5E5A54",
     border: "#E7E0D7",
     // Verde pieno dei pulsanti del sito (cianografiaPieno, §350/§355): bianco leggibile, contrasto 4,7.
-    primary: "#40776a",
-    primaryDark: "#386C5F",
-    primaryTint: "#E1EEEB",
+    primary: "#1e6b6e",
+    primaryDark: "#186163",
+    primaryTint: "#DFF0F0",
     urgent: "#B42318",
     urgentTint: "#FDE8E6",
   },

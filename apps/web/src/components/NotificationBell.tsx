@@ -75,7 +75,7 @@ function NotificationRow({
   const draggingRef = useRef(false);
 
   const copy = notificationCopy(item.type, item.payload);
-  const topic = notificationTopicStyle(item.type, isProfessional);
+  const topic = notificationTopicStyle(item.type, isProfessional, item.payload);
   const isUnread = item.readAt === null;
   const destination = notificationDeepLink(item.type, item.payload);
 

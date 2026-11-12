@@ -40,7 +40,7 @@ function ToastCard({
   // banner resta finché non viene aperto o chiuso con la "x".
   const destination = notificationDeepLink(type, payload);
   // Titolo, icona e colore dell'argomento (docs/CHANGELOG.md §152).
-  const topic = notificationTopicStyle(type, isProfessional);
+  const topic = notificationTopicStyle(type, isProfessional, payload);
   const aggregated = id.startsWith("batch-");
   const photo = aggregated ? null : chatToastPhoto(type, payload);
 

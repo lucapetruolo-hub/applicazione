@@ -32,7 +32,7 @@ const TAMAGUI_CSS_VERSION = process.env.TAMAGUI_CSS_VERSION;
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#40776A",
+  themeColor: "#1E6B6E",
 };
 
 export const metadata: Metadata = {
@@ -68,13 +68,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: COOKIE_CHOICE_BOOT_SCRIPT }} />
       </head>
       <body>
-        {/* Sfondo sfocato di tutto il sito (docs/CHANGELOG.md §180): due forme
-            sfumate fisse dietro ai contenuti, visibili dove le pagine hanno
-            fondo trasparente. Solo decorazione, nessun contenuto. */}
-        <div className="site-blobs" aria-hidden="true">
-          <div className="auth-page-blob auth-page-blob--one" />
-          <div className="auth-page-blob auth-page-blob--two" />
-        </div>
+        {/* Sfondo di tutto il sito (docs/CHANGELOG.md §180): un velo sfumato
+            fisso dietro ai contenuti, visibile dove le pagine hanno fondo
+            trasparente (docs/changelog/2026-11-12-sfondo-velo.md). Solo
+            decorazione, nessun contenuto. */}
+        <div className="site-blobs" aria-hidden="true" />
         <StyledJsxRegistry>
           <Providers>
             <ServiceWorkerRegistration />

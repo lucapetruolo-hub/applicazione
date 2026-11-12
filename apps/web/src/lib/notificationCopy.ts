@@ -78,6 +78,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   STRIPE_ACCOUNT_ACTIVE: { icon: "✅", message: "Stripe ha verificato la tua identità: ora puoi offrire l'acconto online nei preventivi." },
   DAC7_DATA_REMINDER: { icon: "🧾", message: "Mancano dei dati per la comunicazione al fisco di gennaio: completali entro dicembre." },
   PAYOUT_IBAN_MISMATCH: { icon: "⚠️", message: "L'IBAN non corrisponde al conto su Stripe: controllalo." },
+  PAYOUT_IBAN_MATCHED: { icon: "✅", message: "L'IBAN ora corrisponde al conto su Stripe: è tutto a posto." },
   DAC7_ANNUAL_NOTICE: { icon: "🧾", message: "Abbiamo inviato al fisco i tuoi compensi dell'anno (DAC7)." },
   STRIPE_ACCOUNT_RESTRICTED: { icon: "⚠️", message: "Stripe ha sospeso i pagamenti online sul tuo account: completa i dati in Fisco e pagamenti." },
   PROFILE_VERIFIED: { icon: "✅", message: "Identità verificata: ora mostri il badge Verificato e puoi inviare preventivi." },
@@ -203,6 +204,10 @@ function slotLabel(value: unknown): string | null {
  * l'orario o entrambi (docs/CHANGELOG.md §180). Le notifiche più vecchie,
  * senza il campo, restano col testo fisso.
  */
+function last4(value: unknown): string | null {
+  return typeof value === "string" && /^[0-9A-Za-z]{4}$/.test(value) ? value : null;
+}
+
 export function notificationCopy(type: string, payload?: unknown): { icon: string; message: string } {
   const change = asScheduleChange(payload && typeof payload === "object" ? (payload as Record<string, unknown>).change : null);
   // Stessa data e stesso orario: è stata aggiunta solo una nota (docs/CHANGELOG.md §196).
@@ -268,6 +273,13 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   }
   if (type === "RECURRING_JOB_STOPPED") {
     return { icon: "⏹️", message: `${data.stoppedBy === "CLIENT" ? "Il cliente" : (who ?? "Il professionista")} ha interrotto il lavoro ricorrente${jobSuffix}: niente più visite.` };
+  }
+  // Ultime 4 cifre dei due conti, così si vede subito cosa non torna
+  // (docs/changelog/2026-11-12-notifiche-positive-verdi.md).
+  if (type === "PAYOUT_IBAN_MISMATCH") {
+    const ours = last4(data.ibanLast4);
+    const stripe = last4(data.stripeLast4);
+    if (ours && stripe) return { icon: "⚠️", message: `L'IBAN che ci hai dato finisce con ${ours}, il conto su Stripe con ${stripe}: controlla quale è giusto.` };
   }
   if (type === "BOOKING_CANCELED_BY_CLIENT") {
     const late = text(data.lateNotice) ? `, con meno di ${text(data.lateNotice)} di preavviso` : "";

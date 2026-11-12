@@ -201,7 +201,7 @@ export const CATEGORY_ACCENT: Record<ProfessionalCategorySlug, { bg: string; fg:
   idraulico: { bg: "#E2ECF4", fg: "#1F5E8C" },
   elettricista: { bg: "#F7ECD2", fg: "#8A5A00" },
   imbianchino: { bg: "#F6E3D9", fg: "#A3441F" },
-  pulizie: { bg: "#E1ECE9", fg: "#325F54" },
+  pulizie: { bg: "#DFEEEE", fg: "#325F54" },
   giardiniere: { bg: "#E8EFD9", fg: "#4F6B1E" },
   traslochi: { bg: "#EFE6DF", fg: "#6B4E3D" },
   fabbro: { bg: "#E5E8EC", fg: "#3F4A55" },
