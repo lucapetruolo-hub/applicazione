@@ -31,3 +31,14 @@ risultato atteso su sito, database e Stripe, stessi tempi.
 provate su due pagine finte (classica e con il riquadro) con Chromium;
 controllo `iscrizione-carta` della PR verde, rilanciato più volte per
 incontrare entrambe le pagine.
+
+**Seguito** (Luca, 12/11/2026, "sì" alla miglioria): Stripe CLI della CI
+(`stripe listen` del job `iscrizione-carta`) da 1.21.8 a 1.55.11, con
+l'impronta SHA-256 presa dal file ufficiale `stripe-linux-checksums.txt`
+della versione (c710bdb6…). Provata a mano: `stripe listen` ha ancora
+`--api-key`, `--print-secret` e `--forward-to`, ma senza `--events` o `--all-snapshot` non
+inoltra più nulla (primo giro della PR: "must specify events to forward",
+nessuna carta salvata): si aggiunge `--all-snapshot`, cioè tutte le notizie
+classiche come prima. In più il job aspetta "Ready!" di Stripe CLI e si
+ferma subito con il suo messaggio se l'inoltro non parte. Verifica: controllo
+`iscrizione-carta` della PR verde.
