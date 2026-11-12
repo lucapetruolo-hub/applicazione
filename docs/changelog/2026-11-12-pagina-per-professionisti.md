@@ -78,3 +78,21 @@ scorrimento orizzontale a 390 e 320 px.
   banca, soldi bloccati, commissione Stripe a carico del professionista,
   come nei Termini punti 5 e 6).
 - Titolo per Google: "Come vieni pagato: acconto online e pagamento diretto".
+
+## Quarto giro (12/11/2026): sfondo continuo mentre si scorre
+
+**Richiesta** (Luca): "sistema le pagine in modo che lo sfondo non sembra
+che si interrompa, mentre scorri la pagina"; poi "+" e "−" anche nelle
+domande della pagina dei pagamenti.
+
+- /per-professionisti: le celle delle griglie (vantaggi, come funziona,
+  livelli Plus e Pro, domande) erano crema pieno su uno sfondo che era la
+  linea (`gap` di 1 px): coprivano lo sfondo fisso del sito e scorrendo
+  sembrava interrompersi a ogni sezione. Ora sono trasparenti, con i
+  filetti fatti da bordi (`.pro-grid` in globals.css). Resta col suo fondo
+  solo la scheda del livello gratis, che deve risaltare.
+- Le luci dell'apertura sfumano verso il basso (`.glow-lights--sfuma`)
+  invece di finire nette sul filetto sotto il titolo.
+- Va con qualunque sfondo fisso del sito, anche il velo della PR "Sfondo a
+  velo su tutto il sito".
+- /per-professionisti/pagamenti: domande con "+" e "−" (`.pay-faq-item`).

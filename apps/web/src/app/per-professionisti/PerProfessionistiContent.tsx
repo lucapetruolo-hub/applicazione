@@ -95,18 +95,19 @@ function Band({ children, id, last }: { children: ReactNode; id?: string; last?:
   );
 }
 
-/** Griglia di celle separate da filetti: lo sfondo è la linea, il `gap` di 1px la mostra. */
+/**
+ * Griglia di celle separate da filetti (`.pro-grid` in globals.css). Celle
+ * trasparenti: prima lo sfondo della griglia era la linea e le celle erano
+ * crema pieno, e scorrendo lo sfondo del sito sembrava interrompersi a ogni
+ * sezione (richiesta di Luca, docs/changelog/2026-11-12-pagina-per-professionisti.md).
+ */
 function Grid({ children }: { children: ReactNode }) {
-  return (
-    <YStack width="100%" gap={1} backgroundColor={LINE} borderTopWidth={1} borderColor={LINE} flexDirection="gtSm:row">
-      {children}
-    </YStack>
-  );
+  return <div className="pro-grid">{children}</div>;
 }
 
 function Cell({ children, flex = 1 }: { children: ReactNode; flex?: number }) {
   return (
-    <YStack flex={flex} flexBasis="gtSm:0px" backgroundColor={brand.gesso} padding="5 gtMd:6" gap="2">
+    <YStack flex={flex} flexBasis="gtSm:0px" padding="5 gtMd:6" gap="2">
       {children}
     </YStack>
   );
@@ -182,7 +183,8 @@ function ProHero({ ctaHref, ctaLabel, offerMonths }: { ctaHref: string; ctaLabel
       >
         {/* Sfumatura che la pagina aveva già (scelta dell'utente), ora con le
             luci che si muovono piano come nella home (docs/CHANGELOG.md §306). */}
-        <GlowLights tone="chiaro" pressBoost />
+        {/* Sfumata in basso: prima finiva netta sul filetto sotto il titolo. */}
+        <GlowLights tone="chiaro" pressBoost className="glow-lights--sfuma" />
         <YStack position="relative" width="100%" maxWidth={760} alignItems="center" gap="4" paddingHorizontal="4" paddingVertical="10 gtMd:120px">
           <XStack borderWidth={1} borderColor={LINE} borderRadius={999} backgroundColor={brand.calce} overflow="hidden" alignItems="center">
             <Text fontSize={13} color={brand.grafite} paddingHorizontal="3" paddingVertical={6}>
@@ -619,9 +621,9 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
               key={tier.tier}
               flex={1}
               flexBasis="gtSm:0px"
-              backgroundColor={free ? brand.calce : brand.gesso}
-              borderTopWidth={3}
-              borderTopColor={free ? brand.cianografia : "transparent"}
+              // Solo il livello gratis ha il suo fondo e la riga verde; gli altri sono trasparenti sullo sfondo del sito.
+              backgroundColor={free ? brand.calce : "transparent"}
+              {...(free ? { borderTopWidth: 3, borderTopColor: brand.cianografia } : {})}
               padding="5 gtMd:6"
               gap="3"
             >
@@ -796,8 +798,8 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
   "use no memo";
   return (
     <Band>
-      <YStack gap={1} backgroundColor={LINE} flexDirection="gtSm:row">
-        <YStack backgroundColor={brand.gesso} paddingTop="7 gtMd:8" paddingRight="5 gtMd:8" paddingBottom="7 gtMd:8" paddingLeft="5 gtMd:8" gap="3" width="gtSm:50%">
+      <div className="pro-grid pro-grid--senza-bordo">
+        <YStack paddingTop="7 gtMd:8" paddingRight="5 gtMd:8" paddingBottom="7 gtMd:8" paddingLeft="5 gtMd:8" gap="3" width="gtSm:50%">
           <Text
             render="h2"
             fontFamily="heading"
@@ -817,7 +819,7 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
             .
           </Text>
         </YStack>
-        <YStack backgroundColor={brand.gesso} flexGrow={1} width="gtSm:50%">
+        <YStack flexGrow={1} width="gtSm:50%">
           <div className="pro-faq">
             {FAQ.filter((item) => !item.founderOffer || offerMonths).map((item, index) => (
               <details key={item.question} className="pro-faq-item" open={index === 0}>
@@ -843,7 +845,7 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
             ))}
           </div>
         </YStack>
-      </YStack>
+      </div>
       <style jsx>{`
         .pro-faq {
           display: flex;

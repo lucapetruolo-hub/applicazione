@@ -6905,6 +6905,37 @@ a.admin-kpi:hover {
   }
 }
 
+/* Griglie di /per-professionisti: celle trasparenti separate da filetti,
+   così lo sfondo del sito continua sotto le sezioni mentre si scorre
+   (docs/changelog/2026-11-12-pagina-per-professionisti.md). 801 px = gtSm. */
+.pro-grid {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border-top: 1px solid rgba(27, 26, 24, 0.12);
+}
+.pro-grid--senza-bordo {
+  border-top: 0;
+}
+.pro-grid > * + * {
+  border-top: 1px solid rgba(27, 26, 24, 0.12);
+}
+@media (min-width: 801px) {
+  .pro-grid {
+    flex-direction: row;
+  }
+  .pro-grid > * + * {
+    border-top: 0;
+    border-left: 1px solid rgba(27, 26, 24, 0.12);
+  }
+}
+/* Luci dell'apertura di /per-professionisti sfumate in basso: prima
+   finivano nette sul filetto sotto il titolo. */
+.glow-lights--sfuma {
+  -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
+}
+
 /* Domande di /per-professionisti/pagamenti: "+" e "−" come quelle di
    /per-professionisti (docs/changelog/2026-11-12-pagina-per-professionisti.md). */
 .pay-faq-item {
