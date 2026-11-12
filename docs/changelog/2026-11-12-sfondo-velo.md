@@ -20,7 +20,14 @@ di azzurro: "verde-azzurro" #1E6B6E, al posto del cipresso #40776A.
   prossimi. "Passo N di M" scritto resta (la fila è decorativa,
   `aria-hidden`). Nell'area del professionista ("Completa il profilo",
   `SetupJourney`) i passi con spunta c'erano già.
-- Poi (stesso giorno) Luca: "mi piace con più colori su tutta la pagina come
+- Versione finale (stesso giorno), Luca manda lo screenshot della console Meta
+  e chiede "rendila più simile a questo sfondo": colori presi punto per punto
+  dallo screenshot (rosa #f8f0f1 in alto a sinistra, azzurro #e6f0f7 a destra,
+  lilla al centro, menta #ecf8f0 in basso a destra, azzurro in basso a
+  sinistra), opachi sopra il crema: il fondo del sito diventa freddo e chiaro
+  come quello di Meta. Va contro il "fondo crema" della palette A, su richiesta
+  esplicita di Luca. Il crema resta nei riquadri che lo usano.
+- Giro precedente, Luca: "mi piace con più colori su tutta la pagina come
   Meta": colori pieni anche ai lati e in basso, con "più sfumature di rosa, viola":
   viola in alto al centro e a destra a metà, rosa a sinistra a metà e in basso
   al centro, menta 0,38 e pesca 0,34 in basso.
