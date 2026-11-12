@@ -98,12 +98,21 @@ export class PayoutAccountService implements OnApplicationBootstrap {
   }
 
   private async stripeCheck(stripeAccountId: string | null, iban: { country: string; last4: string }): Promise<PayoutIbanStripeCheck> {
-    if (!this.stripe || !stripeAccountId) return "UNAVAILABLE";
+    return (await this.stripeComparison(stripeAccountId, iban)).check;
+  }
+
+  /** Esito del confronto e ultime 4 cifre del conto su Stripe (per dirle al professionista). */
+  private async stripeComparison(
+    stripeAccountId: string | null,
+    iban: { country: string; last4: string },
+  ): Promise<{ check: PayoutIbanStripeCheck; stripeLast4: string | null }> {
+    if (!this.stripe || !stripeAccountId) return { check: "UNAVAILABLE", stripeLast4: null };
     try {
-      return compareWithStripe(iban, await readStripeBankAccounts(this.stripe, stripeAccountId));
+      const accounts = await readStripeBankAccounts(this.stripe, stripeAccountId);
+      return { check: compareWithStripe(iban, accounts), stripeLast4: accounts[0]?.last4 ?? null };
     } catch (err) {
       this.logger.warn(`Conti Stripe di ${stripeAccountId} non leggibili: ${err instanceof Error ? err.message : String(err)}`);
-      return "UNAVAILABLE";
+      return { check: "UNAVAILABLE", stripeLast4: null };
     }
   }
 
@@ -134,10 +143,27 @@ export class PayoutAccountService implements OnApplicationBootstrap {
     });
     const account = fiscal?.payoutAccount;
     if (!fiscal || !account) return;
-    const check = await this.stripeCheck(stripeAccountId, { country: account.ibanCountry, last4: account.ibanLast4 });
-    await this.prisma.professionalPayoutAccount.update({ where: { id: account.id }, data: { stripeCheck: check, stripeCheckedAt: new Date() } });
-    if (check === "MISMATCH" && account.stripeCheck !== "MISMATCH") {
-      await this.notificationsService.notify(fiscal.professionalProfile.userId, "PAYOUT_IBAN_MISMATCH", {});
+    const { check, stripeLast4 } = await this.stripeComparison(stripeAccountId, { country: account.ibanCountry, last4: account.ibanLast4 });
+    // Durante l'attivazione Stripe manda più `account.updated` quasi insieme:
+    // lette in parallelo, ognuna vedeva ancora l'esito vecchio e mandava la
+    // sua notifica (IBAN segnalato due volte, docs/changelog/2026-11-12-notifiche-positive-verdi.md).
+    // Il cambio di esito si scrive solo se nel frattempo nessuno l'ha già
+    // scritto: Postgres mette in fila le due scritture e la seconda non
+    // trova più la riga da cambiare, quindi avvisa una volta sola.
+    const changed = await this.prisma.professionalPayoutAccount.updateMany({
+      where: { id: account.id, OR: [{ stripeCheck: null }, { stripeCheck: { not: check } }] },
+      data: { stripeCheck: check, stripeCheckedAt: new Date() },
+    });
+    if (changed.count === 0) {
+      await this.prisma.professionalPayoutAccount.update({ where: { id: account.id }, data: { stripeCheckedAt: new Date() } });
+      return;
+    }
+    const userId = fiscal.professionalProfile.userId;
+    if (check === "MISMATCH") {
+      await this.notificationsService.notify(userId, "PAYOUT_IBAN_MISMATCH", { ibanLast4: account.ibanLast4, stripeLast4 });
+    } else if (check === "MATCH" && account.stripeCheck === "MISMATCH") {
+      // Il professionista ha sistemato il conto su Stripe: lo sa anche lui.
+      await this.notificationsService.notify(userId, "PAYOUT_IBAN_MATCHED", { ibanLast4: account.ibanLast4 });
     }
   }
 

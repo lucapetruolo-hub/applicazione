@@ -142,7 +142,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   if (type === "JOB_ISSUE_SANCTION" || type === "ONLINE_LIMIT_LIFTED") return "/dashboard/richieste";
   // Pagamenti online dei lavori (§168).
   // Pagamenti online: la loro scheda (docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md).
-  if (type === "JOB_PAYOUT_ACCOUNT_NEEDED" || type === "JOB_PAYOUT_FAILED" || type === "PAYOUT_IBAN_MISMATCH") return "/dashboard/fiscale/pagamenti";
+  if (type === "JOB_PAYOUT_ACCOUNT_NEEDED" || type === "JOB_PAYOUT_FAILED" || type === "PAYOUT_IBAN_MISMATCH" || type === "PAYOUT_IBAN_MATCHED") return "/dashboard/fiscale/pagamenti";
   if (type === "DAC7_ANNUAL_NOTICE") return "/dashboard/fiscale/dac7";
   if (type === "DAC7_DATA_REMINDER") return "/dashboard/fiscale";
   if (type === "ADMIN_DAC7_NEEDS_CORRECTION") return "/admin/finanza";

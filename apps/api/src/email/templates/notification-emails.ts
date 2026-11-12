@@ -94,6 +94,12 @@ function str(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
 }
 
+/** Ultime 4 cifre di un conto dal payload, solo se sono davvero 4 cifre o lettere. */
+function last4Of(payload: Payload, key: string): string | null {
+  const value = payload[key];
+  return typeof value === "string" && /^[0-9A-Za-z]{4}$/.test(value) ? value : null;
+}
+
 function pro(ctx: NotificationEmailContext): string {
   return ctx.businessName ?? "Il professionista";
 }
@@ -1977,14 +1983,37 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Completa i dati", url: `${frontendUrl()}/dashboard/fiscale` },
     };
   },
-  PAYOUT_IBAN_MISMATCH: (_payload, ctx) => ({
-    kind: "account",
-    subject: "L'IBAN non corrisponde al conto su Stripe",
-    greeting: ctx.name,
-    title: "Controlla l'IBAN",
-    paragraphs: ["Le ultime 4 cifre dell'IBAN che ci hai dato non sono quelle del conto indicato a Stripe. Correggilo in Fisco e pagamenti, scheda Pagamenti online."],
-    cta: { label: "Controlla l'IBAN", url: `${frontendUrl()}/dashboard/fiscale/pagamenti` },
-  }),
+  PAYOUT_IBAN_MISMATCH: (payload, ctx) => {
+    // Ultime 4 cifre dei due conti quando ci sono (docs/changelog/2026-11-12-notifiche-positive-verdi.md):
+    // si capisce subito quale dei due è sbagliato.
+    const ours = last4Of(payload, "ibanLast4");
+    const stripe = last4Of(payload, "stripeLast4");
+    return {
+      kind: "account",
+      subject: "L'IBAN non corrisponde al conto su Stripe",
+      greeting: ctx.name,
+      title: "Controlla l'IBAN",
+      paragraphs: [
+        ours && stripe
+          ? `L'IBAN che ci hai dato finisce con **${ours}**, il conto indicato a Stripe con **${stripe}**. Se il conto giusto è quello su Stripe, correggi l'IBAN in Fisco e pagamenti, scheda Pagamenti online; altrimenti cambia il conto su Stripe.`
+          : "Le ultime 4 cifre dell'IBAN che ci hai dato non sono quelle del conto indicato a Stripe. Correggilo in Fisco e pagamenti, scheda Pagamenti online.",
+      ],
+      cta: { label: "Controlla l'IBAN", url: `${frontendUrl()}/dashboard/fiscale/pagamenti` },
+    };
+  },
+  PAYOUT_IBAN_MATCHED: (payload, ctx) => {
+    const ours = last4Of(payload, "ibanLast4");
+    return {
+      kind: "account",
+      subject: "L'IBAN ora corrisponde al conto su Stripe",
+      greeting: ctx.name,
+      title: "IBAN a posto",
+      paragraphs: [
+        `L'IBAN che ci hai dato${ours ? ` (finisce con **${ours}**)` : ""} ora è lo stesso del conto indicato a Stripe: non devi fare nulla.`,
+      ],
+      cta: { label: "Vai ai pagamenti online", url: `${frontendUrl()}/dashboard/fiscale/pagamenti` },
+    };
+  },
   STRIPE_ACCOUNT_RESTRICTED: (_payload, ctx) => ({
     kind: "account",
     subject: "Stripe ha sospeso i pagamenti online sul tuo account",
