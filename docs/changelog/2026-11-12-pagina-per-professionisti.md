@@ -110,3 +110,10 @@ tre caselle aprono la registrazione col livello giusto; 51 link su
 erano toccabili solo sul testo (22 px di altezza sul telefono): ora tutta
 la riga, almeno 44 px. Restano più piccoli solo i link dentro le frasi
 ("Scrivici", "Termini di servizio"), ammessi dalle regole di accessibilità.
+
+## Sesto giro (12/11/2026): insieme allo sfondo a velo
+
+Unito il ramo principale con lo sfondo a velo (PR "Sfondo a velo su tutto il
+sito") e il verde-azzurro definitivo #1E6B6E: nessun conflitto; il velo al
+passaggio del mouse sulle caselle dei livelli usa ora il nuovo verde. Foto
+mentre si scorre (computer e telefono): sfondo continuo dall'alto al fondo.

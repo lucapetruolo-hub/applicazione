@@ -6960,7 +6960,7 @@ a.admin-kpi:hover {
 }
 @media (hover: hover) and (pointer: fine) {
   .pro-tier:hover {
-    background-color: rgba(64, 119, 106, 0.06) !important;
+    background-color: rgba(30, 107, 110, 0.06) !important;
   }
 }
 /* Luci dell'apertura di /per-professionisti sfumate in basso: prima
