@@ -1,4 +1,4 @@
-# Claude Haiku senza ragionamento, e due esempi in più nelle istruzioni
+# Claude Haiku: ragionamento provato spento (torna acceso), e due esempi in più nelle istruzioni
 
 **Richiesta** (Luca, 12/11/2026): miglioria 4 di
 `analisi/abbinamento-problema/migliorie-ricerca-2026-11-12.md` ("sono d'accordo
@@ -19,6 +19,22 @@ WhatsApp di prova" dopo la rimisura delle 93 frasi.
 frasi, prima (istruzioni della #336, ragionamento acceso) e dopo l'unione. Si
 tiene solo se il primo mestiere giusto non scende e i tempi calano; altrimenti
 si torna indietro. Risultati sotto.
+
+**Risultato** (banco delle 376 frasi, mucchio chiuso, 81 frasi di lavoro):
+
+| | Primo mestiere giusto | Risposte dell'IA in tempo | Secondi dell'IA (mediana / 9 su 10 entro) |
+|---|---|---|---|
+| Istruzioni della #336, ragionamento acceso | 91% (74/81) | 79/81 | 2,6 / 3,7 |
+| Ragionamento spento (#343) | 86% (70/81) | 79/81 | 1,3 / 1,9 |
+
+Spento risponde in metà tempo ma sbaglia 4 frasi in più e non ne indovina
+nessuna in più ("Levigare il marmo" senza mestiere, un trasloco di mobili
+preso per falegname, un balcone con grigliati preso per muratore, piccoli
+lavori di bagno senza mestiere). Quindi **il ragionamento torna acceso**
+(nella #345); i due esempi nuovi restano. Con il ragionamento acceso le
+risposte stanno comunque dentro i 5 secondi. Risposte in
+`analisi/abbinamento-problema/misura-ia/banco-2026-11-12-istruzioni-nuove.csv` e
+`banco-2026-11-13-senza-ragionamento.csv`.
 
 ## Altre quattro migliorie della ricerca
 

@@ -441,9 +441,8 @@ export class ProblemMatchService {
           // Istruzioni e catalogo uguali per tutti: in cache da Anthropic.
           system: [{ type: "text", text: systemPrompt(catalog), cache_control: { type: "ephemeral" } }],
           messages: [{ role: "user", content: `<problema>${text}</problema>` }],
-          // Niente ragionamento: scegliere un mestiere è una classificazione e
-          // la risposta deve arrivare entro TIMEOUT_MS (docs/changelog/2026-11-12-haiku-senza-ragionamento.md).
-          thinking: { type: "disabled" },
+          // Ragionamento lasciato acceso: spento rispondeva in metà tempo ma
+          // sbagliava 4 frasi su 81 in più (docs/changelog/2026-11-12-haiku-senza-ragionamento.md).
           output_config: { format: zodOutputFormat(aiAnswerSchema), effort: "low" },
         },
         { timeout: TIMEOUT_MS },
