@@ -167,7 +167,7 @@ test("Contatti: la segnalazione si apre dal link sotto il modulo e si torna al m
   // "Segnalo un contenuto illegale" non è più tra le scelte di "Chi sei?".
   await expect(page.getByRole("radio", { name: /contenuto illegale/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Segnalalo qui" }).click();
-  await expect(page.getByText("Segnala un contenuto illegale", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Invia segnalazione" })).toBeVisible();
   await expect(page.getByLabel("Indirizzo della pagina")).toBeVisible();
   await expect(page.getByLabel("La tua email")).toBeFocused();
   await page.getByRole("button", { name: "Scrivi un messaggio" }).click();
