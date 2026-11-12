@@ -10,7 +10,8 @@ import { notificationCopy } from "./notificationCopy";
 export const NOTIFICATION_TOPIC_STYLE: Record<NotificationTopic, { icon: IconName; color: string; tint: string }> = {
   richieste: { icon: "file-text", color: brand.cianografiaScuro, tint: brand.cianografiaVelo },
   preventivi: { icon: "receipt-text", color: "#8a6417", tint: brand.ottoneVelo },
-  lavori: { icon: "calendar", color: brand.verificato, tint: "#E4EEE4" },
+  // Blu ardesia, non verde: il verde resta per le buone notizie (12/11).
+  lavori: { icon: "calendar", color: brand.ardesia, tint: brand.ardesiaVelo },
   messaggi: { icon: "message-circle", color: brand.grafite, tint: brand.gesso },
   promemoria: { icon: "clock", color: "#8a6417", tint: brand.ottoneVelo },
   // Neutro: il colore lo decide il tono della singola notizia (vedi sotto).

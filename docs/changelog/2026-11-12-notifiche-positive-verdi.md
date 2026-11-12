@@ -53,3 +53,20 @@ buona notizia fa pensare a un problema e insegna a ignorare il rosso.
 **Verifica**: `payout-iban-notifications.test.ts` (due webhook insieme = una
 notifica, cifre nel payload, notizia buona); typecheck di API e sito, lint del
 sito, test di shared ed email. Foto `dopo2-*` nella stessa cartella.
+
+## Terzo giro (Luca: "si" alle due migliorie dopo l'unione di #335)
+
+1. **"Lavori e appuntamenti" in blu ardesia** (`brand.ardesia` #3E5A73 su
+   `brand.ardesiaVelo` #E3EAF1, 7,2:1 su bianco): prima il colore di base era
+   verde, quindi un promemoria normale sembrava una buona notizia. Ora il
+   verde vuol dire solo "fatto".
+2. **IBAN: niente secondo avviso dopo un momento in cui Stripe non risponde**
+   (`keepKnownCheck` in `payout-account.service.ts`): se Stripe non risponde
+   resta l'ultimo esito vero ("uguale" o "diverso"), invece di scrivere
+   "non disponibile". Prima diverso → non disponibile → diverso faceva
+   arrivare di nuovo la notifica. Vale per il webhook e per l'apertura della
+   pagina. Un IBAN nuovo scritto dal professionista riparte da capo.
+
+**Verifica**: nuovi test in `payout-iban-notifications.test.ts`, che falliscono
+senza la correzione e passano con la correzione; typecheck di API, sito e ui,
+lint del sito. Foto `dopo3-*`.

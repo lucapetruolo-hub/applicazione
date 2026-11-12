@@ -38,6 +38,19 @@ export function compareWithStripe(iban: { country: string; last4: string }, stri
 }
 
 /**
+ * Un momento in cui Stripe non risponde (o non mostra i conti) non cancella
+ * l'ultimo esito vero: altrimenti al giro dopo "IBAN diverso" sembrava una
+ * novità e arrivava di nuovo la notifica
+ * (docs/changelog/2026-11-12-notifiche-positive-verdi.md). Vale solo per
+ * il ricontrollo dello stesso IBAN: quando il professionista ne scrive uno
+ * nuovo, l'esito riparte da capo.
+ */
+export function keepKnownCheck(previous: string | null, fresh: PayoutIbanStripeCheck): PayoutIbanStripeCheck {
+  if (fresh === "UNAVAILABLE" && (previous === "MATCH" || previous === "MISMATCH")) return previous;
+  return fresh;
+}
+
+/**
  * IBAN per la DAC7 (decisione D4 di Luca, docs/CHANGELOG.md §246): lo scrive
  * solo chi attiva i pagamenti online, perché Stripe non ce lo dà in chiaro.
  * Controllato (mod-97), salvato cifrato, mai restituito intero: al
@@ -124,7 +137,7 @@ export class PayoutAccountService implements OnApplicationBootstrap {
     // ricontrolla qui invece di aspettare un webhook.
     const age = account.stripeCheckedAt ? Date.now() - account.stripeCheckedAt.getTime() : Infinity;
     if (age > (account.stripeCheck === "MATCH" ? RECHECK_MATCH_MS : RECHECK_PENDING_MS)) {
-      const check = await this.stripeCheck(fiscal.stripeConnectAccountId, { country: account.ibanCountry, last4: account.ibanLast4 });
+      const check = keepKnownCheck(account.stripeCheck, await this.stripeCheck(fiscal.stripeConnectAccountId, { country: account.ibanCountry, last4: account.ibanLast4 }));
       const updated = await this.prisma.professionalPayoutAccount.update({ where: { id: account.id }, data: { stripeCheck: check, stripeCheckedAt: new Date() } });
       return this.view(updated);
     }
@@ -143,7 +156,9 @@ export class PayoutAccountService implements OnApplicationBootstrap {
     });
     const account = fiscal?.payoutAccount;
     if (!fiscal || !account) return;
-    const { check, stripeLast4 } = await this.stripeComparison(stripeAccountId, { country: account.ibanCountry, last4: account.ibanLast4 });
+    const fresh = await this.stripeComparison(stripeAccountId, { country: account.ibanCountry, last4: account.ibanLast4 });
+    const check = keepKnownCheck(account.stripeCheck, fresh.check);
+    const { stripeLast4 } = fresh;
     // Durante l'attivazione Stripe manda più `account.updated` quasi insieme:
     // lette in parallelo, ognuna vedeva ancora l'esito vecchio e mandava la
     // sua notifica (IBAN segnalato due volte, docs/changelog/2026-11-12-notifiche-positive-verdi.md).
