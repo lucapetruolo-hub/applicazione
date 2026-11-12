@@ -219,7 +219,9 @@ export function PayoutIbanCard({
               <Badge variant={CHECK_LABEL[saved.stripeCheck].variant}>{CHECK_LABEL[saved.stripeCheck].label}</Badge>
               {CHECK_HINT[saved.stripeCheck] ? (
                 <Text fontSize={16} color={saved.stripeCheck === "MISMATCH" ? brand.urgenza : brand.grafite70}>
-                  {CHECK_HINT[saved.stripeCheck]}
+                  {saved.stripeCheck === "MISMATCH" && saved.stripeLast4
+                    ? `Questo IBAN finisce con ${saved.maskedIban.slice(-4)}, il conto su Stripe con ${saved.stripeLast4}: correggi qui o su Stripe.`
+                    : CHECK_HINT[saved.stripeCheck]}
                 </Text>
               ) : null}
             </YStack>

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { PayoutAccountService } from "./payout-account.service";
+import { PayoutAccountService, keepKnownCheck } from "./payout-account.service";
 
 /**
  * Avvisi sull'IBAN quando Stripe cambia l'account
@@ -9,12 +9,12 @@ import { PayoutAccountService } from "./payout-account.service";
  */
 function build(previous: string | null, stripeLast4: string) {
   // Stato condiviso come in Postgres: la seconda scrittura vede la prima.
-  const row = { stripeCheck: previous };
+  const row: { stripeCheck: string | null } = { stripeCheck: previous };
   const prisma = {
     professionalFiscalProfile: {
       findUnique: vi.fn().mockImplementation(async () => ({
         id: "fp-1",
-        payoutAccount: { id: "pa-1", ibanCountry: "IT", ibanLast4: "1234", stripeCheck: previous },
+        payoutAccount: { id: "pa-1", ibanCountry: "IT", ibanLast4: "1234", stripeCheck: row.stripeCheck },
         professionalProfile: { userId: "pro-user-1" },
       })),
     },
@@ -53,5 +53,23 @@ describe("PayoutAccountService.recheckForStripeAccount — avvisi IBAN", () => {
     const { service, notificationsService } = build(null, "1234");
     await service.recheckForStripeAccount("acct_1");
     expect(notificationsService.notify).not.toHaveBeenCalled();
+  });
+});
+
+describe("keepKnownCheck — Stripe che per un momento non risponde", () => {
+  it("diverso → Stripe non risponde → diverso: un solo avviso", async () => {
+    const { service, notificationsService } = build("MISMATCH", "9876");
+    const stripe = (service as unknown as { stripe: { accounts: { listExternalAccounts: ReturnType<typeof vi.fn> } } }).stripe;
+    stripe.accounts.listExternalAccounts.mockRejectedValueOnce(new Error("Stripe non risponde"));
+    await service.recheckForStripeAccount("acct_1");
+    await service.recheckForStripeAccount("acct_1");
+    expect(notificationsService.notify).not.toHaveBeenCalled();
+  });
+
+  it("tiene l'ultimo esito vero solo al posto di UNAVAILABLE", () => {
+    expect(keepKnownCheck("MISMATCH", "UNAVAILABLE")).toBe("MISMATCH");
+    expect(keepKnownCheck("MATCH", "UNAVAILABLE")).toBe("MATCH");
+    expect(keepKnownCheck(null, "UNAVAILABLE")).toBe("UNAVAILABLE");
+    expect(keepKnownCheck("MATCH", "MISMATCH")).toBe("MISMATCH");
   });
 });

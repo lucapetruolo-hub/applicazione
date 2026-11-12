@@ -8,9 +8,11 @@ import { notificationCopy } from "./notificationCopy";
  * si capisce di cosa si tratta (una richiesta, un messaggio...).
  */
 export const NOTIFICATION_TOPIC_STYLE: Record<NotificationTopic, { icon: IconName; color: string; tint: string }> = {
-  richieste: { icon: "file-text", color: brand.cianografiaScuro, tint: brand.cianografiaVelo },
+  // Indaco, non verde acqua: accanto al verde delle buone notizie sembrava lo stesso colore (12/11).
+  richieste: { icon: "file-text", color: brand.indaco, tint: brand.indacoVelo },
   preventivi: { icon: "receipt-text", color: "#8a6417", tint: brand.ottoneVelo },
-  lavori: { icon: "calendar", color: brand.verificato, tint: "#E4EEE4" },
+  // Blu ardesia, non verde: il verde resta per le buone notizie (12/11).
+  lavori: { icon: "calendar", color: brand.ardesia, tint: brand.ardesiaVelo },
   messaggi: { icon: "message-circle", color: brand.grafite, tint: brand.gesso },
   promemoria: { icon: "clock", color: "#8a6417", tint: brand.ottoneVelo },
   // Neutro: il colore lo decide il tono della singola notizia (vedi sotto).
