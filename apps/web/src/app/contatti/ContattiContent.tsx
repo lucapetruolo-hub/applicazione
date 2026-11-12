@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { BRAND, COMPANY, type ContactMessageInput } from "@professionisti/shared";
+import { BRAND, COMPANY, companyDataReady, type ContactMessageInput } from "@professionisti/shared";
 import { Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
@@ -12,10 +12,23 @@ const ROLE_OPTIONS: { value: ContactMessageInput["role"]; label: string }[] = [
   { value: "CLIENT", label: "Sono un cliente" },
   { value: "PROFESSIONAL", label: "Sono un professionista" },
   { value: "OTHER", label: "Altro" },
-  // Anche senza account (DSA art. 16 c. 1, docs/CHANGELOG.md §319): il
-  // link "Segnala un contenuto illegale" del footer apre il modulo già qui.
-  { value: "REPORT_ILLEGAL", label: "Segnalo un contenuto illegale" },
 ];
+// La segnalazione di un contenuto illegale (DSA art. 16 c. 1, anche senza
+// account, docs/CHANGELOG.md §319) non è più una scelta di "Chi sei?": non è
+// un tipo di persona. Si apre dal link sotto il modulo o da quello del piede
+// (`?motivo=segnalazione`), con lo stesso modulo
+// (docs/changelog/2026-11-12-contatti-sfondo-e-link-home.md).
+
+// Prima di scrivere: le pagine che rispondono già alle domande più comuni.
+const HELP_LINKS: { href: string; icon: "message-circle" | "triangle-alert" | "shield-check"; label: string }[] = [
+  { href: "/faq", icon: "message-circle", label: "Domande frequenti" },
+  { href: "/problemi-e-rimborsi", icon: "triangle-alert", label: "Problemi su un lavoro" },
+  { href: "/sicurezza", icon: "shield-check", label: "Sicurezza e truffe" },
+];
+
+// Etichette vere legate al campo: toccando la scritta il cursore va nel campo
+// e il lettore di schermo la legge una volta sola.
+const labelStyle = { fontSize: 16, fontWeight: 600, color: brand.grafite70 } as const;
 
 const fieldStyle = {
   padding: "16px 18px",
@@ -90,6 +103,14 @@ export default function ContattiContent({ initialReport = false, initialProfileH
     if (field) target.current?.focus();
   }
 
+  /** Passa dal messaggio alla segnalazione (e ritorno), con il fuoco sul primo campo. */
+  function switchReport(toReport: boolean) {
+    setRole(toReport ? "REPORT_ILLEGAL" : "CLIENT");
+    setStatus("idle");
+    setErrorField(null);
+    requestAnimationFrame(() => emailRef.current?.focus());
+  }
+
   function fieldError(field: "email" | "name" | "url" | "content") {
     return status === "error" && errorField === field ? { "aria-invalid": true as const, "aria-describedby": "contatti-errore" } : {};
   }
@@ -162,6 +183,22 @@ export default function ContattiContent({ initialReport = false, initialProfileH
           </Text>
         </YStack>
 
+        <nav aria-label="Prima di scrivere" className="contatti-help">
+          <Text fontSize={16} color={brand.grafite70}>
+            Forse la risposta è già qui:
+          </Text>
+          <ul>
+            {HELP_LINKS.map((item) => (
+              <li key={item.href}>
+                <Link href={item.href} className="contatti-help-link">
+                  <Icon name={item.icon} size={18} color={brand.cianografiaScuro} />
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
         <XStack flexWrap="wrap" gap="5" width="100%" alignItems="flex-start">
           <Surface flexGrow={2} flexShrink={1} flexBasis={340} minWidth={0} padding="4 gtSm:6" gap="4">
             <Text fontFamily="heading" fontWeight="700" fontSize={24} color={brand.grafite}>
@@ -176,12 +213,13 @@ export default function ContattiContent({ initialReport = false, initialProfileH
               </Text>
             ) : (
               <YStack gap="4">
+                {isReport ? null : (
                 <YStack gap="2">
-                  <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
+                  <Text id="contatti-chi-sei" fontSize={16} fontWeight="600" color={brand.grafite70}>
                     Chi sei?
                   </Text>
-                  {/* Quattro scelte visibili invece di un menu a tendina (docs/CHANGELOG.md §349). */}
-                  <div className="slot-pills" role="radiogroup" aria-label="Chi sei?">
+                  {/* Scelte visibili invece di un menu a tendina (docs/CHANGELOG.md §349). */}
+                  <div className="slot-pills" role="radiogroup" aria-labelledby="contatti-chi-sei">
                     {ROLE_OPTIONS.map((option) => (
                       <button
                         key={option.value}
@@ -196,6 +234,7 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                     ))}
                   </div>
                 </YStack>
+                )}
 
                 <input
                   type="text"
@@ -209,10 +248,11 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                 />
 
                 <YStack gap="2">
-                  <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
+                  <label htmlFor="contatti-email" style={labelStyle}>
                     La tua email
-                  </Text>
-                  <input aria-label="La tua email"
+                  </label>
+                  <input
+                    id="contatti-email"
                     ref={emailRef}
                     {...fieldError("email")}
                     type="email"
@@ -230,11 +270,11 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                 {isReport ? (
                   <>
                     <YStack gap="2">
-                      <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
+                      <label htmlFor="contatti-nome" style={labelStyle}>
                         Nome e cognome
-                      </Text>
+                      </label>
                       <input
-                        aria-label="Nome e cognome"
+                        id="contatti-nome"
                         ref={nameRef}
                         {...fieldError("name")}
                         value={reporterName}
@@ -247,11 +287,11 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                       />
                     </YStack>
                     <YStack gap="2">
-                      <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
+                      <label htmlFor="contatti-indirizzo" style={labelStyle}>
                         Indirizzo della pagina
-                      </Text>
+                      </label>
                       <input
-                        aria-label="Indirizzo della pagina"
+                        id="contatti-indirizzo"
                         ref={urlRef}
                         {...fieldError("url")}
                         type="url"
@@ -269,10 +309,11 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                 ) : null}
 
                 <YStack gap="2">
-                  <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
+                  <label htmlFor="contatti-messaggio" style={labelStyle}>
                     {isReport ? "Perché è illegale" : "Messaggio"}
-                  </Text>
-                  <textarea aria-label={isReport ? "Perché è illegale" : "Messaggio"}
+                  </label>
+                  <textarea
+                    id="contatti-messaggio"
                     ref={contentRef}
                     {...fieldError("content")}
                     value={content}
@@ -313,7 +354,7 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                     width: "100%",
                   }}
                 >
-                  {status === "loading" ? "Invio..." : "Invia"}
+                  {status === "loading" ? "Invio..." : isReport ? "Invia segnalazione" : "Invia messaggio"}
                 </button>
 
                 {/* Sempre presente, così il lettore di schermo annuncia il messaggio quando compare. */}
@@ -324,6 +365,13 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                     </Text>
                   ) : null}
                 </div>
+
+                <Text fontSize={16} color={brand.grafite70} lineHeight="22px" paddingTop="3" borderTopWidth={1} borderTopColor={brand.filetto}>
+                  {isReport ? "Non è una segnalazione? " : "Hai visto un contenuto illegale sul sito? "}
+                  <button type="button" className="contatti-switch" onClick={() => switchReport(!isReport)}>
+                    {isReport ? "Scrivi un messaggio" : "Segnalalo qui"}
+                  </button>
+                </Text>
               </YStack>
             )}
           </Surface>
@@ -332,6 +380,11 @@ export default function ContattiContent({ initialReport = false, initialProfileH
             <Text fontFamily="heading" fontWeight="700" fontSize={24} color={brand.grafite}>
               Dati dell&apos;azienda
             </Text>
+            {/* Finché la società non c'è, niente segnaposto "[DA COMPILARE]" in
+                vista (come nel piede, `companyDataReady`): una riga sola.
+                I dati veri si scrivono in `COMPANY` prima del lancio
+                (checklist di lancio). */}
+            {companyDataReady() ? (
             <YStack gap="4">
               {COMPANY_ROWS.map((row) => (
                 <XStack key={row.label} gap="3" alignItems="flex-start">
@@ -357,6 +410,11 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                 </XStack>
               ))}
             </YStack>
+            ) : (
+              <Text fontSize={16} color={brand.grafite70} lineHeight="23px">
+                Ragione sociale, sede, partita IVA e PEC compariranno qui all&apos;apertura del sito.
+              </Text>
+            )}
             <Text fontSize={16} color={brand.grafite70} lineHeight="21px" paddingTop="2" borderTopWidth={1} borderTopColor={brand.filetto}>
               Tutti i dati legali sono anche nelle{" "}
               <Link href="/note-legali" style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>

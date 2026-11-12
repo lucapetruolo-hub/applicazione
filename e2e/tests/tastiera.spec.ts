@@ -231,7 +231,7 @@ test("area riservata: titolo della scheda e H1 per pagina, finestra Filtri col f
 test("Contatti: l'errore si annuncia e il fuoco va sul campo sbagliato", async ({ browser }) => {
   const page = await anonymousPage(browser, COMPUTER);
   await page.goto("/contatti");
-  await page.getByRole("button", { name: "Invia", exact: true }).click();
+  await page.getByRole("button", { name: "Invia messaggio" }).click();
   const email = page.getByRole("textbox", { name: "La tua email" });
   await expect(email).toBeFocused();
   await expect(email).toHaveAttribute("aria-invalid", "true");

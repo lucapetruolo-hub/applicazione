@@ -7045,6 +7045,61 @@ a.admin-kpi:hover {
   }
 }
 
+/* /contatti: link alle pagine che rispondono già alle domande più comuni e
+   passaggio tra messaggio e segnalazione
+   (docs/changelog/2026-11-12-contatti-sfondo-e-link-home.md). */
+.contatti-help {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.contatti-help ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.contatti-help-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid #e7e0d7; /* brand.filetto */
+  background: #ffffff; /* brand.calce */
+  color: #186163; /* brand.cianografiaScuro */
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .contatti-help-link:hover {
+    border-color: #247c7c;
+  }
+}
+.contatti-help-link:focus-visible,
+.contatti-switch:focus-visible {
+  outline: 3px solid #186163;
+  outline-offset: 2px;
+}
+.contatti-switch {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #186163;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
 /* Pillola "Novità" accanto a "Cosa è successo?" in home
    (docs/changelog/2026-11-03-ricerca-per-problema-home.md, idea di Luca):
    bordo con una luce che gira nei verdi del sito e un filo d'oro. Ferma per
