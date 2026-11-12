@@ -428,6 +428,10 @@ jobs:
           # Dalla 1.5x Stripe CLI vuole sapere quali notizie inoltrare: --all-snapshot
           # sono tutte quelle classiche, come faceva da sola la 1.21.8.
           nohup "$RUNNER_TEMP/stripe" listen --api-key "$E2E_STRIPE_SECRET_KEY" --all-snapshot --forward-to http://localhost:3001/billing/webhook > stripe-listen.log 2>&1 &
+          # Si parte solo con l'inoltro pronto: se Stripe CLI si ferma (opzioni cambiate,
+          # chiave sbagliata) il job lo dice qui invece di far fallire le prove più avanti.
+          for i in $(seq 1 30); do grep -q "Ready!" stripe-listen.log && break; sleep 1; done
+          grep -q "Ready!" stripe-listen.log || { echo "::error::Stripe CLI non inoltra i webhook:"; cat stripe-listen.log; exit 1; }
 
       - name: Browser per le prove
         if: steps.chiave.outputs.presente == 'true'
