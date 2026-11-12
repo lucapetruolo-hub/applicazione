@@ -3821,40 +3821,18 @@ a.admin-kpi:hover {
   overflow: hidden;
   pointer-events: none;
   z-index: -1;
-}
-.auth-page-blobs {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 0;
-}
-.auth-page-blob {
-  position: absolute;
-  border-radius: 999px;
-  filter: blur(70px);
-}
-.auth-page-blob--one {
-  width: 380px;
-  height: 380px;
-  top: -160px;
-  right: -110px;
-  /* In alto a destra la terracotta, in basso a sinistra il verde: colori
-     invertiti su richiesta di Luca dell'11/11/2026
-     (docs/changelog/2026-11-11-palette-e-figtree.md). */
-  background: #c4562f;
-  opacity: 0.12;
-}
-.auth-page-blob--two {
-  width: 320px;
-  height: 320px;
-  bottom: -140px;
-  left: -110px;
-  /* 0,12 e non più 0,28: in basso a sinistra la luce passa sotto testi
-     piccoli grigi (date dell'agenda, admin), che devono restare sopra 4,5:1
-     anche sul punto più verde (#dee5d6 con #5e5a54 = 5,3:1; prove axe in CI). */
-  background: #40776a;
-  opacity: 0.12;
+  /* Velo morbido su tutta la pagina, preso dalla console di Meta e fatto coi
+     nostri colori (docs/changelog/2026-11-12-sfondo-velo.md): in alto menta a
+     sinistra, lilla al centro e pesca a destra; in basso menta a sinistra e
+     pesca a destra. Al punto più carico il grigio dei testi (#5e5a54) resta
+     sopra 5:1. */
+  background:
+    radial-gradient(60% 55% at 12% -5%, rgba(140, 205, 200, 0.22), transparent 70%),
+    radial-gradient(45% 40% at 50% 5%, rgba(200, 215, 240, 0.2), transparent 70%),
+    radial-gradient(60% 55% at 88% -5%, rgba(240, 170, 140, 0.2), transparent 70%),
+    radial-gradient(60% 50% at 5% 100%, rgba(140, 205, 200, 0.17), transparent 70%),
+    radial-gradient(55% 45% at 95% 95%, rgba(240, 190, 160, 0.14), transparent 70%),
+    radial-gradient(40% 35% at 60% 55%, rgba(205, 215, 240, 0.12), transparent 70%);
 }
 /* Comparsa del riquadro di accesso e registrazione: 250 ms e 8 px (prima
    450 ms e 16 px), si vede a ogni accesso (skill web-animation-design). */
@@ -3949,18 +3927,57 @@ a.admin-kpi:hover {
   font-weight: 600;
   color: #5e5a54;
 }
+/* Passi numerati in fila, uniti da una linea: spunta verde sui passi fatti,
+   anello verde col numero sul passo di adesso, grigio sui prossimi
+   (docs/changelog/2026-11-12-sfondo-velo.md). */
 .auth-step-bar {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
-  gap: 6px;
+  align-items: center;
 }
-.auth-step-bar span {
+.auth-step-bar li {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+}
+.auth-step-bar li:last-child {
+  flex: 0 0 auto;
+}
+.auth-step-bar li:not(:last-child)::after {
+  content: "";
   flex: 1;
-  height: 4px;
-  border-radius: 999px;
+  height: 2px;
+  margin: 0 8px;
+  border-radius: 2px;
   background: #e7e0d7;
 }
-.auth-step-bar span.is-done {
+.auth-step-bar li.is-done:not(:last-child)::after {
   background: #40776a;
+}
+.auth-step-dot {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  color: #5e5a54;
+  background: #ffffff;
+  border: 2px solid #d8d0c5;
+  box-sizing: border-box;
+}
+.is-done > .auth-step-dot {
+  background: #40776a;
+  border-color: #40776a;
+}
+.is-current > .auth-step-dot {
+  color: #0f3b2c;
+  border-color: #40776a;
 }
 
 /* Iscrizione del professionista: una colonna sola anche sul computer, scheda
