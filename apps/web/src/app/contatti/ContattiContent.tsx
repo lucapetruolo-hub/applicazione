@@ -142,7 +142,9 @@ export default function ContattiContent({ initialReport = false, initialProfileH
   }
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="gesso" paddingHorizontal="16px gtSm:40px" paddingTop="40px gtSm:56px" paddingBottom="64px gtSm:96px">
+    // Senza fondo pieno: dietro resta lo sfondo a velo di tutto il sito, come
+    // nelle altre pagine (docs/changelog/2026-11-12-contatti-sfondo-e-link-home.md).
+    <YStack width="100%" alignItems="center" paddingHorizontal="16px gtSm:40px" paddingTop="40px gtSm:56px" paddingBottom="64px gtSm:96px">
       <YStack width="100%" maxWidth={1080} gap="5">
         <YStack gap="2">
           <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" color={brand.inchiostro} fontSize="34px gtSm:44px">

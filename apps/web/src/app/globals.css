@@ -7004,10 +7004,14 @@ a.admin-kpi:hover {
 /* "Vedi tutti" accanto al titolo di una sezione della home
    (docs/changelog/2026-11-08-trasparenza-chiara-prezzi-in-arrivo.md). */
 .home-section-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 44px;
+  /* In riga semplice e non in flex: con il flex la freccia era un elemento a
+     sé, staccato di 4 px, e la sottolineatura al passaggio del mouse si
+     spezzava tra testo e freccia (segnalato da Luca il 12/11,
+     docs/changelog/2026-11-12-contatti-sfondo-e-link-home.md). Ora la riga
+     sta solo sotto il testo e la freccia, a blocco, non viene sottolineata.
+     Altezza 44 px per il tocco con la riga di testo. */
+  display: inline-block;
+  line-height: 44px;
   color: #186163; /* brand.cianografiaScuro */
   font-size: 16px;
   font-weight: 600;
@@ -7016,11 +7020,14 @@ a.admin-kpi:hover {
 }
 .home-section-action::after {
   content: "→";
+  display: inline-block;
+  margin-left: 4px;
   transition: transform 0.15s ease;
 }
 .home-section-action:hover {
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
 }
 .home-section-action:hover::after {
   transform: translateX(2px);
