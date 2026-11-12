@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 
-const ACCENT = "#4C8A7A";
-const MUTED = "#C7DBD6";
+const ACCENT = "#247C7C";
+const MUTED = "#C3DEDE";
 
 /**
  * Riquadro con andamento settimanale (docs/CHANGELOG.md §145): valore della

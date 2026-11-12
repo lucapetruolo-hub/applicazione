@@ -19,7 +19,7 @@ describe("immagine fissa della mappa (§265)", () => {
     const markers = params.getAll("markers");
     expect(markers).toHaveLength(2);
     expect(markers).toContainEqual(expect.stringContaining("41.945,12.5"));
-    expect(markers).toContainEqual(expect.stringMatching(/size:normal\|color:0x40776A\|label:3\|41\.9,12\.5$/));
+    expect(markers).toContainEqual(expect.stringMatching(/size:normal\|color:0x1E6B6E\|label:3\|41\.9,12\.5$/));
     // Molto lontani tra loro restano separati anche senza zoom chiesto.
     const apart = staticMapGoogleParams(parseStaticMapQuery({ size: "600x400", m: "41.9,12.5;45.46,9.19" }));
     expect(apart.getAll("markers")).toHaveLength(1);

@@ -79,7 +79,7 @@ export function SearchBar(props: SearchBarProps) {
           gap={6}
           paddingHorizontal={12}
           borderRadius={999}
-          backgroundColor="#F0F4F3 hover:#E5EDEB"
+          backgroundColor="#EFF5F5 hover:#E4EEEE"
           cursor="pointer"
           alignItems="center"
           onPress={() => setModeMenuOpen((open) => !open)}
@@ -135,7 +135,7 @@ export function SearchBar(props: SearchBarProps) {
                   paddingVertical={11}
                   borderRadius={10}
                   cursor="pointer"
-                  backgroundColor={active ? "#F0F4F3" : "transparent hover:#F6F1EC"}
+                  backgroundColor={active ? "#EFF5F5" : "transparent hover:#F6F1EC"}
                   onPress={() => chooseMode(tab.key)}
                 >
                   <Icon name={tab.icon} size={16} color={active ? brand.cianografiaPieno : brand.grafite70} />

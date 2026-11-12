@@ -9,7 +9,7 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const CACHE_MAX = 300;
 /** Immagini nuove chieste a Google al giorno (§293, abbassato l'08/11/2026 vicino alla quota gratuita); quelle già pronte non contano. */
 const DAILY_LIMIT = 500;
-const PIN_COLOR = "0x40776A";
+const PIN_COLOR = "0x1E6B6E";
 /** Raggio richieste standard e urgenti (stessi colori della mappa interattiva). */
 const CIRCLE_STYLES = ["color:0x325F54CC|weight:2|fillcolor:0x325F541F", "color:0xD9A441CC|weight:2|fillcolor:0xD9A44114"];
 

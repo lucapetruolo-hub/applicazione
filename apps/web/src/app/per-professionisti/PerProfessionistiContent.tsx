@@ -320,7 +320,7 @@ function ProOnlinePayment() {
       <YStack gap="6" paddingTop="7 gtMd:8" paddingRight="5 gtMd:8" paddingBottom="7 gtMd:8" paddingLeft="5 gtMd:8" flexDirection="gtSm:row" alignItems="gtSm:center">
         <YStack gap="3" flex="gtSm:1" flexBasis="gtSm:0px" minWidth="gtSm:0px">
           {/* Verde più scuro: sul pesca della banda il verde scuro di sempre si fermava a 4,3:1 (collaudo L-09). */}
-          <Text fontSize={13} fontWeight="700" letterSpacing={0.6} textTransform="uppercase" color="#2F5D51">
+          <Text fontSize={13} fontWeight="700" letterSpacing={0.6} textTransform="uppercase" color="#145555">
             Pagamento online
           </Text>
           <Text
