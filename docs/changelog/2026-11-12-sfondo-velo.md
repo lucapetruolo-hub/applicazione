@@ -20,7 +20,11 @@ di azzurro: "verde-azzurro" #1E6B6E, al posto del cipresso #40776A.
   prossimi. "Passo N di M" scritto resta (la fila è decorativa,
   `aria-hidden`). Nell'area del professionista ("Completa il profilo",
   `SetupJourney`) i passi con spunta c'erano già.
-- Velo misto: in alto menta 0,41, lilla 0,36, pesca 0,38 ("un pelo più colorato", Luca); in basso menta 0,17,
+- Poi (stesso giorno) Luca: "mi piace con più colori su tutta la pagina come
+  Meta": colori pieni anche ai lati e in basso, con "più sfumature di rosa, viola":
+  viola in alto al centro e a destra a metà, rosa a sinistra a metà e in basso
+  al centro, menta 0,38 e pesca 0,34 in basso.
+- Prima versione, velo misto: in alto menta 0,41, lilla 0,36, pesca 0,38 ("un pelo più colorato", Luca); in basso menta 0,17,
   pesca 0,14, lilla 0,12.
 - Verde di marca: `cianografiaPieno` #40776A → #1E6B6E (pulsanti, link, spunte,
   logo provvisorio, icone, email, mappa). Tutta la famiglia del verde segue
