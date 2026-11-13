@@ -1183,6 +1183,11 @@ export default function DashboardProfiloPage() {
               token={token as string}
               canEdit={!isFirstProfileSave}
               categorySlugs={categorySlugs}
+              owner={{
+                name: businessName.trim(),
+                imageUrl,
+                subtitle: [PROFESSIONAL_CATEGORIES.find((category) => category.slug === categorySlugs[0])?.label, city.trim()].filter(Boolean).join(" a "),
+              }}
               value={cover}
               onChange={(next) => {
                 setCover(next);

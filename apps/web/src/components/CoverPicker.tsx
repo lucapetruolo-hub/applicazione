@@ -10,6 +10,50 @@ import { UploadingDots } from "@/components/UploadingDots";
 import styles from "./CoverPicker.module.css";
 
 export type CoverValue = { coverImageUrl: string | null; coverPreset: string | null };
+/** Quello che il cliente vede sopra la copertina: foto, nome, mestiere e città. */
+export type CoverOwner = { name: string; imageUrl: string | null; subtitle: string };
+
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+/**
+ * Riquadro "come la vede il cliente": la copertina con sopra il primo riquadro
+ * bianco del profilo, da computer (fascia larga) e da telefono (solo il centro).
+ */
+function CustomerView({ src, owner, phone }: { src: string; owner: CoverOwner; phone: boolean }) {
+  return (
+    <figure className={styles.view}>
+      <div className={`${styles.frame} ${phone ? styles.framePhone : styles.frameWide}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- foto di Cloudinary già ridotta o copertina in /public */}
+        <img className={styles.frameCover} src={src} alt="" />
+        <div className={styles.card}>
+          {owner.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- foto profilo già ridotta da Cloudinary
+            <img className={styles.cardPhoto} src={owner.imageUrl} alt="" />
+          ) : (
+            <span className={styles.cardPhoto}>{initials(owner.name) || "P"}</span>
+          )}
+          <span className={styles.cardText}>
+            <span className={styles.cardName}>{owner.name || "Il tuo nome"}</span>
+            {owner.subtitle ? <span className={styles.cardSub}>{owner.subtitle}</span> : null}
+          </span>
+          {/* Il resto del riquadro (descrizione, pulsanti) solo accennato. */}
+          <span className={styles.cardLines} aria-hidden="true">
+            <i />
+            <i />
+          </span>
+        </div>
+      </div>
+      <figcaption className={styles.caption}>{phone ? "Da telefono" : "Da computer"}</figcaption>
+    </figure>
+  );
+}
 
 /**
  * Copertina del profilo pubblico (docs/changelog/2026-11-13-copertina-profilo.md):
@@ -21,6 +65,7 @@ export function CoverPicker({
   token,
   canEdit,
   categorySlugs,
+  owner,
   value,
   onChange,
 }: {
@@ -28,6 +73,7 @@ export function CoverPicker({
   /** Falso al primissimo profilo: la copertina si aggiunge dopo il primo salvataggio. */
   canEdit: boolean;
   categorySlugs: readonly string[];
+  owner: CoverOwner;
   value: CoverValue;
   onChange: (value: CoverValue) => void;
 }) {
@@ -85,10 +131,15 @@ export function CoverPicker({
 
   return (
     <div className={styles.picker}>
-      <div className={styles.preview}>
+      <div className={styles.preview} aria-busy={busy === "upload"}>
         {src ? (
-          // eslint-disable-next-line @next/next/no-img-element -- foto di Cloudinary già ridotta o copertina in /public
-          <img src={src} alt="" />
+          <>
+            <p className={styles.previewTitle}>Come la vede il cliente</p>
+            <div className={styles.views}>
+              <CustomerView src={src} owner={owner} phone={false} />
+              <CustomerView src={src} owner={owner} phone />
+            </div>
+          </>
         ) : (
           <span className={styles.empty}>Nessuna copertina: resta lo sfondo del sito</span>
         )}

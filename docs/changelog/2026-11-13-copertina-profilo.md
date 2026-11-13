@@ -37,6 +37,9 @@ profilo); copertina anche nell'anteprima di WhatsApp e social.
 - Area professionista, "Il mio profilo": campo "Immagine di copertina" con
   ritaglio 2:1 e due linee guida (da telefono si vede la parte centrale), le
   copertine pronte e "Togli la copertina". Si salva subito, come la foto.
+  Al posto della semplice immagine c'è "Come la vede il cliente" (miglioria
+  approvata da Luca): la copertina con sopra il primo riquadro, con foto, nome,
+  mestiere e città, da computer e da telefono (dove si vede solo il centro).
 - Anteprima social (`opengraph-image.tsx`): copertina sotto un velo verde,
   sopra foto, nome e mestiere come prima.
 
