@@ -12,6 +12,7 @@ import {
   ONLINE_RELEASE_DAYS,
   onlineApplicationFeeHoldEurCents,
   onlineFeeWithVatEurCents,
+  BALANCE_AUTO_CHARGE_WAIT_HOURS,
   onlineBalanceDueEurCents,
   onlineTargetEurCents,
   onlineCanRelease,
@@ -102,7 +103,7 @@ function saveCardForBalance(enabled: boolean, recurring = false) {
         submit: {
           message: recurring
             ? "Il resto del prezzo e ogni visita dopo la prima li paghi con questa carta, in automatico, quando il professionista chiude la visita. Mai più del prezzo massimo del preventivo a visita."
-            : "Il resto del prezzo lo paghi con questa carta, in automatico, quando il professionista chiude il lavoro. Mai più del prezzo massimo del preventivo.",
+            : "Il resto del prezzo lo paghi con questa carta, in automatico, quando il professionista chiude il lavoro. Mai più del prezzo massimo del preventivo; se il prezzo finale è sopra il minimo hai 48 ore per segnalare un problema prima dell'addebito.",
         },
       },
     },
@@ -1013,8 +1014,8 @@ export class OnlineMoneyService {
     jobPaymentId: string,
     finalAmountEurCents: number,
     appFeeEurCents: number,
-    opts: { autoCharge?: boolean } = {},
-  ): Promise<{ balanceDueEurCents: number; autoChargedEurCents: number }> {
+    opts: { autoCharge?: boolean; waitForClient?: boolean; now?: Date } = {},
+  ): Promise<{ balanceDueEurCents: number; autoChargedEurCents: number; autoChargeAt?: Date }> {
     const jp = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jobPaymentId } });
     // Col saldo diretto (§237) da Stripe passa solo l'acconto: il saldo online è già a zero.
     const onlineTarget = onlineTargetEurCents(finalAmountEurCents, jp);
@@ -1040,8 +1041,63 @@ export class OnlineMoneyService {
     }
     // Saldo addebitato da solo sulla carta salvata con l'acconto (§267):
     // solo se l'importo finale resta nel preventivo accettato dal cliente.
+    // Prezzo finale sopra il minimo (decisione di Luca del 13/11): prima 48 ore
+    // al cliente per dire "Va bene" o "Non sono d'accordo", poi la carta.
+    if (due > 0 && opts.autoCharge && opts.waitForClient && jp.savedPaymentMethodId && !jp.balanceDirect) {
+      const autoChargeAt = new Date((opts.now ?? new Date()).getTime() + BALANCE_AUTO_CHARGE_WAIT_HOURS * 60 * 60 * 1000);
+      await this.prisma.jobPayment.update({ where: { id: jp.id }, data: { balanceAutoChargeAt: autoChargeAt } });
+      return { balanceDueEurCents: due, autoChargedEurCents: 0, autoChargeAt };
+    }
     if (due > 0 && opts.autoCharge && (await this.chargeSavedCard(jp.id, due))) return { balanceDueEurCents: 0, autoChargedEurCents: due };
     return { balanceDueEurCents: due, autoChargedEurCents: 0 };
+  }
+
+  /**
+   * Saldo in attesa della risposta del cliente (`balanceAutoChargeAt`): lo
+   * addebita sulla carta salvata, allo scadere delle 48 ore o quando il
+   * cliente conferma "Lavoro terminato". Con un problema segnalato non
+   * addebita nulla. Se la banca rifiuta resta il link, come alla chiusura.
+   */
+  async chargeHeldBalance(jobPaymentId: string, reason: "CONFIRMED" | "EXPIRED"): Promise<boolean> {
+    const jp = await this.prisma.jobPayment.findUnique({
+      where: { id: jobPaymentId },
+      include: { booking: { select: { id: true, clientId: true, finalAmountEurCents: true, issue: { select: { id: true } }, quote: { select: { guidedRequestId: true } } } } },
+    });
+    if (!jp?.balanceAutoChargeAt) return false;
+    // Una sola volta, anche con due giri insieme: chi azzera la data addebita.
+    const claimed = await this.prisma.jobPayment.updateMany({ where: { id: jp.id, balanceAutoChargeAt: jp.balanceAutoChargeAt }, data: { balanceAutoChargeAt: null } });
+    if (claimed.count === 0) return false;
+    if (jp.booking.issue || jp.booking.finalAmountEurCents === null || jp.onlineStage !== "AWAITING_BALANCE") return false;
+    const due = onlineBalanceDueEurCents(onlineTargetEurCents(jp.booking.finalAmountEurCents, jp), jp.paidEurCents);
+    if (due <= 0) return false;
+    if (await this.chargeSavedCard(jp.id, due)) return true;
+    // Carta rifiutata o da confermare: il cliente paga con il link.
+    await this.notificationsService.notify(jp.booking.clientId, "JOB_BALANCE_DUE", {
+      bookingId: jp.booking.id,
+      guidedRequestId: jp.booking.quote?.guidedRequestId ?? null,
+      amountEurCents: due,
+      audience: "CLIENT",
+      ...(reason === "EXPIRED" ? { autoChargeFailed: true } : {}),
+    });
+    return false;
+  }
+
+  /** Ogni ora: i saldi arrivati alla fine delle 48 ore senza risposta del cliente. */
+  @ScheduledJob(CronExpression.EVERY_HOUR)
+  async runHeldBalanceCharges(now: Date = new Date()): Promise<number> {
+    const due = await this.prisma.jobPayment.findMany({
+      where: { paymentMethod: "MANOVIA", onlineStage: "AWAITING_BALANCE", balanceAutoChargeAt: { lte: now } },
+      select: { id: true },
+    });
+    let charged = 0;
+    for (const row of due) {
+      try {
+        if (await this.chargeHeldBalance(row.id, "EXPIRED")) charged += 1;
+      } catch (err) {
+        this.logger.error(`Saldo dopo 48 ore non addebitato per ${row.id}: ${(err as Error).message}`);
+      }
+    }
+    return charged;
   }
 
   /**

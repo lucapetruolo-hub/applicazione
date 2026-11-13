@@ -6,7 +6,7 @@ import { AiHealth, ProblemMatchService, PromptCacheWatch, anonymizeProblemText, 
 function fakePrisma(words: { word: string; categorySlug: string | null; outOfService: string | null }[] = []) {
   return {
     problemWord: { findMany: vi.fn().mockResolvedValue(words) },
-    problemDescription: { create: vi.fn().mockResolvedValue({}), deleteMany: vi.fn() },
+    problemDescription: { create: vi.fn().mockResolvedValue({}), deleteMany: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
   };
 }
 const fakeCatalog = { catalog: vi.fn().mockResolvedValue(buildServiceCatalog({ handWritten: { idraulico: ["Riparazione autoclave"] } })) };
@@ -47,6 +47,27 @@ describe("ProblemMatchService", () => {
     const result = await service.match("macchia di umido sul soffitto");
     expect(result).toMatchObject({ categories: ["idraulico"], source: "ia", reason: "Lo sistema l'idraulico." });
     expect(result.question?.id).toBe("macchia");
+  });
+
+  it("la proposta dell'IA ha l'id per segnalarla, quella del dizionario no", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "test");
+    const prisma = fakePrisma();
+    const service = new ProblemMatchService(prisma as never, fakeCatalog as never);
+    service.askAi = vi.fn().mockResolvedValue(aiAnswer());
+    const result = await service.match("macchia di umido sul soffitto");
+    expect(result.reportId).toEqual(expect.any(String));
+    expect(prisma.problemDescription.create).toHaveBeenCalledWith({ data: expect.objectContaining({ id: result.reportId }) });
+    expect((await service.match("perdita dal rubinetto del lavandino")).reportId).toBeNull();
+  });
+
+  it("la segnalazione vale una volta, solo sulle proposte dell'IA, e la nota perde i contatti", async () => {
+    const prisma = fakePrisma();
+    const service = new ProblemMatchService(prisma as never, fakeCatalog as never);
+    await expect(service.report("8b1a4c0e-1111-4c2a-9d4e-2f6a7b8c9d00", "mestiere", "chiamatemi al 333 1234567")).resolves.toEqual({ ok: true });
+    const call = prisma.problemDescription.updateMany.mock.calls[0]![0];
+    expect(call.where).toEqual({ id: "8b1a4c0e-1111-4c2a-9d4e-2f6a7b8c9d00", source: "ia", reportedAt: null });
+    expect(call.data).toMatchObject({ reportReason: "mestiere", reportedAt: expect.any(Date) });
+    expect(call.data.reportNote).not.toContain("333");
   });
 
   it("se l'intelligenza artificiale non risponde resta il dizionario", async () => {

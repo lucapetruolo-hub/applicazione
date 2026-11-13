@@ -307,14 +307,16 @@ export class ReviewsService {
     });
     if (!review) throw new NotFoundException("Recensione non trovata.");
     if (review.booking.clientId !== clientId) throw new ForbiddenException("Questa recensione non è tua.");
-    if (!clientCanUpdateReview({ hasReview: true, reviewUpdatedAt: review.updatedAfterIssueAt, issue: review.booking.issue })) {
+    if (!clientCanUpdateReview({ hasReview: true, reviewUpdatedAt: review.updatedAfterIssueAt, issue: review.booking.issue, correctionRequestedAt: review.correctionRequestedAt })) {
       throw new BadRequestException("La recensione si può aggiornare una volta sola, dopo una segnalazione a lavoro chiuso senza accordo.");
     }
-    // Una sola volta anche con due tocchi insieme.
-    const updated = await this.prisma.review.updateMany({
-      where: { id: reviewId, updatedAfterIssueAt: null },
-      data: { rating: input.rating, comment: input.comment ?? null, photoUrls: input.photoUrls, updatedAfterIssueAt: new Date() },
-    });
+    // Una sola volta anche con due tocchi insieme. Dopo "Chiedi all'autore di
+    // correggere" (docs/changelog/2026-11-13-admin-ia-propone.md) la correzione
+    // chiesta toglie la richiesta, e non consuma l'aggiornamento dopo un problema.
+    const content = { rating: input.rating, comment: input.comment ?? null, photoUrls: input.photoUrls };
+    const updated = review.correctionRequestedAt
+      ? await this.prisma.review.updateMany({ where: { id: reviewId, correctionRequestedAt: { not: null } }, data: { ...content, correctionRequestedAt: null } })
+      : await this.prisma.review.updateMany({ where: { id: reviewId, updatedAfterIssueAt: null }, data: { ...content, updatedAfterIssueAt: new Date() } });
     if (updated.count === 0) throw new ConflictException("Hai già aggiornato questa recensione.");
     await this.professionalMetricsService.recomputeReviews(review.booking.professionalProfileId);
     await this.notificationsService.notify(review.booking.professionalProfile.userId, "NEW_REVIEW", {

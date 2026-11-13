@@ -2,6 +2,7 @@ import { z } from "zod";
 import "./zod";
 import { PROBLEM_DESCRIPTION_MAX } from "./limits";
 import { PROBLEM_EXAMPLE_MAX } from "./problemExamples";
+import { PROBLEM_REPORT_REASONS } from "./problemMatch";
 
 /** Corpi delle rotte "dal problema ai mestieri" (docs/CHANGELOG.md §392). */
 
@@ -14,6 +15,14 @@ export const problemMatchRequestSchema = z.object({
   photo: z.string().uuid().optional(),
 });
 export type ProblemMatchRequest = z.infer<typeof problemMatchRequestSchema>;
+
+/** "Segnala un errore" sotto la proposta dell'IA (docs/changelog/2026-11-13-segnala-risposta-ia.md). */
+export const problemReportSchema = z.object({
+  id: z.string().uuid(),
+  reason: z.enum(PROBLEM_REPORT_REASONS),
+  note: z.string().trim().max(300).optional(),
+});
+export type ProblemReportInput = z.infer<typeof problemReportSchema>;
 
 /** Testo e città che accompagnano la foto del problema (campi del modulo multipart). */
 export const problemPhotoRequestSchema = z.object({

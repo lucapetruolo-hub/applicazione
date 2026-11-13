@@ -4,6 +4,8 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   OUT_OF_SERVICE_LABELS,
+  PROBLEM_REPORT_LABELS,
+  type ProblemReportReason,
   type AiSpeed,
   PROFESSIONAL_CATEGORIES,
   FIELD_PROBLEM_EXAMPLES_POOL,
@@ -219,6 +221,25 @@ function DescriptionsTab() {
 
       {month ? <SuggestionOutcomesCard outcomes={month.suggestions} /> : null}
 
+      {month && month.reports.length > 0 ? (
+        // Proposte dell'IA segnalate dai clienti: solo da leggere, si corregge a mano (docs/changelog/2026-11-13-segnala-risposta-ia.md).
+        <AdminCard>
+          <Text fontWeight="700">Segnalate dai clienti, ultimi 30 giorni</Text>
+          <Text color={brand.grafite70} fontSize={13} marginTop="1">
+            Per il cliente la proposta automatica è sbagliata. Si corregge a mano.
+          </Text>
+          <YStack gap="2" marginTop="2">
+            {month.reports.map((row) => (
+              <Text key={row.id} color={brand.grafite}>
+                «{row.text}» · proposto {row.categories[0] ? targetLabel(row.categories[0], null) : "nessuno"}
+                {row.service ? `, ${row.service}` : ""} · {PROBLEM_REPORT_LABELS[row.reason as ProblemReportReason] ?? row.reason}
+                {row.note ? ` · «${row.note}»` : ""}
+              </Text>
+            ))}
+          </YStack>
+        </AdminCard>
+      ) : null}
+
       {month && month.missing.length > 0 ? (
         // I mestieri che mancano: le ricerche non capite più frequenti (docs/changelog/2026-11-04-avviso-caldaie.md).
         <AdminCard>
@@ -379,7 +400,7 @@ function MissingTradesCard({ trades }: { trades: MissingTrade[] }) {
       <YStack id="mestieri-mancanti" style={{ scrollMarginTop: 120 }}>
         <Text fontWeight="700">Mestieri che non abbiamo, ultimi 30 giorni</Text>
         <Text color={brand.grafite70} fontSize={13} marginTop="1">
-          A volte nessun nostro mestiere va bene. Allora il computer scrive quale servirebbe. Da {MISSING_TRADE_ADVICE_MIN} richieste
+          A volte nessun nostro mestiere va bene. Allora l&apos;IA scrive quale servirebbe. Da {MISSING_TRADE_ADVICE_MIN} richieste
           in su compare anche in Home tra le cose da fare.
         </Text>
         {trades.length === 0 ? (

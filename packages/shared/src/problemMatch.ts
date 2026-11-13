@@ -274,9 +274,16 @@ const GAS_QUESTION: ProblemQuestion = {
   ],
 };
 
-const QUESTIONS: readonly { pairs: readonly Pair[]; question: ProblemQuestion }[] = [
+/**
+ * `topic`: la domanda parte solo se il testo parla di quell'argomento (una
+ * domanda sull'acqua solo se c'è acqua, umidità o una perdita); `unless`: parole
+ * che la rendono fuori luogo (docs/changelog/2026-11-13-domanda-acqua-calda.md).
+ */
+const WATER_TOPIC = ["acqua", "umid", "muffa", "macchi", "infiltra", "perd", "gocciol", "condensa", "bagnat", "piov", "pioggia", "allag"];
+const QUESTIONS: readonly { pairs: readonly Pair[]; question: ProblemQuestion; topic?: readonly string[]; unless?: readonly string[] }[] = [
   {
     pairs: [["idraulico", "muratore"], ["imbianchino", "muratore"], ["idraulico", "imbianchino"]],
+    topic: WATER_TOPIC,
     question: {
       id: "macchia",
       text: "Da dove sembra arrivare l'acqua o l'umidità?",
@@ -289,6 +296,9 @@ const QUESTIONS: readonly { pairs: readonly Pair[]; question: ProblemQuestion }[
   },
   {
     pairs: [["climatizzazione", "idraulico"]],
+    // Un condizionatore che perde acqua non c'entra con chi scalda l'acqua.
+    topic: [...WATER_TOPIC, "caldai", "scaldabagn", "boiler", "riscaldament", "termosifon", "calorifer", "scald", "fredd", "calda"],
+    unless: ["condizionator", "climatizzator", "split", "aria condizionata"],
     question: {
       id: "acqua-calda",
       text: "Che cosa scalda l'acqua o la casa?",
@@ -338,6 +348,7 @@ const QUESTIONS: readonly { pairs: readonly Pair[]; question: ProblemQuestion }[
   },
   {
     pairs: [["idraulico", "tuttofare"]],
+    topic: [...WATER_TOPIC, "tub", "scaric", "rubinett", "lavatric", "lavastovigli", "lavandin", "lavell", "sifon", "bagn", "docc", "vasca", "wc", "water", "sigill", "silicon"],
     question: {
       id: "perde-acqua",
       text: "Perde acqua o vanno collegati dei tubi?",
@@ -426,8 +437,11 @@ export function matchProblem(description: string): ProblemMatch {
     question = GAS_QUESTION;
   } else if (first && second && second.score >= first.score / 2) {
     question =
-      QUESTIONS.find((entry) =>
-        entry.pairs.some(([a, b]) => (a === first.slug && b === second.slug) || (a === second.slug && b === first.slug)),
+      QUESTIONS.find(
+        (entry) =>
+          entry.pairs.some(([a, b]) => (a === first.slug && b === second.slug) || (a === second.slug && b === first.slug)) &&
+          (!entry.topic || entry.topic.some((word) => containsWord(text, word))) &&
+          !entry.unless?.some((word) => containsWord(text, word)),
       )?.question ?? null;
   }
 
@@ -472,6 +486,20 @@ export type ProblemMatchResult = {
    * occupiamo noi" (docs/changelog/2026-11-11-mestieri-che-mancano.md).
    */
   missingTrade?: string | null;
+  /**
+   * Per "Segnala un errore" sotto la proposta dell'IA: l'id della ricerca
+   * salvata (docs/changelog/2026-11-13-segnala-risposta-ia.md).
+   */
+  reportId?: string | null;
+};
+
+/** Perché il cliente segnala la proposta dell'IA. */
+export const PROBLEM_REPORT_REASONS = ["mestiere", "prestazione", "altro"] as const;
+export type ProblemReportReason = (typeof PROBLEM_REPORT_REASONS)[number];
+export const PROBLEM_REPORT_LABELS: Record<ProblemReportReason, string> = {
+  mestiere: "Il mestiere è sbagliato",
+  prestazione: "Il lavoro indicato è sbagliato",
+  altro: "Altro",
 };
 
 /**
@@ -588,6 +616,8 @@ export type ProblemMatchAdminOverview = {
      * (docs/changelog/2026-11-12-haiku-senza-ragionamento.md).
      */
     choiceSwitches: { proposed: string | null; chosen: string; count: number }[];
+    /** Proposte dell'IA segnalate dai clienti, le più recenti prima (docs/changelog/2026-11-13-segnala-risposta-ia.md). */
+    reports: { id: string; text: string; categories: string[]; service: string | null; reason: string; note: string | null; reportedAt: string }[];
   };
   descriptions: {
     id: string;

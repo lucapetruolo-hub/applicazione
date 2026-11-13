@@ -7,6 +7,7 @@ import {
   mergeServiceNameSchema,
   problemMatchRequestSchema,
   problemPhotoRequestSchema,
+  problemReportSchema,
   PROBLEM_PHOTO_MAX_BYTES,
   problemTakeoverSchema,
   teachProblemWordSchema,
@@ -15,6 +16,7 @@ import {
   type MergeServiceNameInput,
   type ProblemMatchRequest,
   type ProblemPhotoRequest,
+  type ProblemReportInput,
   type ProblemTakeoverInput,
   type TeachProblemWordInput,
 } from "@professionisti/shared";
@@ -51,6 +53,14 @@ export class ProblemMatchController {
   @HttpCode(200)
   match(@Body(new ZodValidationPipe(problemMatchRequestSchema)) body: ProblemMatchRequest) {
     return this.problemMatchService.match(body.description, body.city, body.chosen, body.photo);
+  }
+
+  /** "Segnala un errore" sotto la proposta dell'IA (docs/changelog/2026-11-13-segnala-risposta-ia.md). */
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post("report")
+  @HttpCode(200)
+  report(@Body(new ZodValidationPipe(problemReportSchema)) body: ProblemReportInput) {
+    return this.problemMatchService.report(body.id, body.reason, body.note);
   }
 
   /** Il sito chiede se mostrare il pulsante della foto. */

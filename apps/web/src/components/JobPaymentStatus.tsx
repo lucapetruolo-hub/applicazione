@@ -65,6 +65,16 @@ function clientView(payment: JobPaymentSummary): View {
       step: 1,
     };
   }
+  // Prezzo finale sopra il minimo: 48 ore per dire di no prima della carta (docs/changelog/2026-11-13-tutto-online-forbice.md).
+  if (stage === "AWAITING_BALANCE" && payment.balanceAutoChargeAt) {
+    return {
+      tone: "action",
+      icon: "credit-card",
+      title: "Controlla il prezzo finale",
+      body: `Se va bene non devi fare nulla: ${formatIssueDeadline(payment.balanceAutoChargeAt)} addebitiamo ${eur(payment.balanceDueEurCents)} sulla carta dell'acconto. Se non sei d'accordo, segnala un problema: non addebitiamo nulla.`,
+      step: 1,
+    };
+  }
   if (stage === "AWAITING_BALANCE") {
     return payment.balanceUnpaid
       ? { tone: "danger", icon: "credit-card", title: "Saldo da pagare", body: "Pagalo ora per chiudere il lavoro.", step: 1 }
@@ -122,6 +132,15 @@ function professionalView(payment: JobPaymentSummary): View {
       body: payment.balanceDirect
         ? "Lo ricevi in banca quando il cliente conferma il lavoro. Il saldo te lo paga lui."
         : "Lo ricevi in banca col saldo, quando il cliente conferma il lavoro.",
+      step: 1,
+    };
+  }
+  if (stage === "AWAITING_BALANCE" && payment.balanceAutoChargeAt) {
+    return {
+      tone: "blocked",
+      icon: "clock",
+      title: "In attesa del saldo",
+      body: `Il prezzo finale è sopra il minimo del preventivo: il cliente ha 48 ore per controllarlo. Se non segnala un problema, il saldo si addebita da solo sulla sua carta ${formatIssueDeadline(payment.balanceAutoChargeAt)}.`,
       step: 1,
     };
   }
@@ -300,7 +319,8 @@ export function JobPaymentStatus({
     }
   }
 
-  const canPay = audience === "client" && onPay && (stage === "AWAITING_DEPOSIT" || payment.balanceDueEurCents > 0);
+  // Saldo in attesa delle 48 ore: niente "Paga il saldo", la carta dell'acconto basta.
+  const canPay = audience === "client" && onPay && (stage === "AWAITING_DEPOSIT" || (payment.balanceDueEurCents > 0 && !payment.balanceAutoChargeAt));
 
   return (
     <YStack gap="3" padding="3" borderRadius="3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto}>

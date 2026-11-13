@@ -19,6 +19,7 @@ import {
   type ProblemOutOfService,
   type ProblemPhotoCheck,
   type ProblemPhotoResult,
+  type ProblemReportReason,
   type ProblemSafety,
   type ProfessionalCategorySlug,
   type ServiceCatalogEntry,
@@ -157,7 +158,7 @@ export function photoInstructions(text: string): string {
   return `Il cliente ha mandato la foto qui sopra${text ? " e ha scritto il testo tra i tag <problema>" : " senza scrivere niente"}. Usa la foto${text ? " insieme al testo (se non concordano, vale il testo)" : ""} per dire quali mestieri chiamare, con le stesse regole.
 Rispondi anche con:
 - photo: "ok" se la foto mostra una parte di casa, giardino o garage (impianti, tubi, prese, quadri elettrici, caldaie, elettrodomestici, muri, pavimenti, porte, finestre, mobili, serrature, prato), anche se il guasto non si vede bene: in quel caso indica il mestiere di quella parte; "dati-personali" se si vedono bene persone, documenti, numeri di telefono, targhe o indirizzi, anche se nella foto non c'è niente di una casa; "non-pertinente" solo se non c'è niente di una casa (animali, cibo, paesaggi, persone, schermate di testo); "non-adatta" se è violenta, sessuale o offensiva. Con "non-pertinente" o "non-adatta": categories vuoto e photoDescription vuota.
-- Nelle foto: crepe, buchi o intonaco rovinato in muri, pavimenti e soffitti sono del muratore (l'imbianchino solo per pittura e macchie in superficie); porte, finestre e mobili di legno del falegname; lavatrice, lavastoviglie, forno, frigorifero e piano cottura degli elettrodomestici anche se perdono acqua o sono a gas.
+- Nelle foto: crepe, buchi o intonaco rovinato in muri, pavimenti e soffitti sono del muratore (l'imbianchino solo per pittura e macchie in superficie); porte, finestre e mobili di legno del falegname; lavatrice, lavastoviglie, forno, frigorifero e piano cottura degli elettrodomestici anche se perdono acqua o sono a gas. Un muro crepato, bagnato o con l'intonaco gonfio, senza un tubo o un rubinetto che perde in vista, è del muratore, poi idraulico; buchi, buche, terra smossa o avvallamenti nel prato o nel terreno del giardino sono del giardiniere, anche se li ha fatti un animale.
 - photoDescription: cosa si vede, massimo 8 parole, come lo scriverebbe il cliente (es. "Scarico del lavandino che perde"). Mai nomi di persone, marche o dati personali.
 - safety: "gas" (tubo, rubinetto o bombola del gas, odore di gas, fiamma anomala, fiammella di scaldabagno o caldaia che si spegne, fuochi o forno a gas che non si accendono; anche in una foto di fornelli a gas, di uno scaldabagno a gas o di un tubo del gas quando il guasto riguarda proprio loro), "elettrico" (fili scoperti, presa o quadro bruciati), "acqua-elettrico" (acqua vicino a prese o quadro), "monossido" (caldaia o stufa annerita, fumo che rientra; anche un muro, un foro o un tubo anneriti vicino a caldaia, stufa, camino, scaldabagno o condizionatore); null se non si vede un pericolo.
 - impianto: "gas" se nella foto ci sono fornelli, forno, scaldabagno o caldaia a gas, tubi, rubinetti o bombole del gas; "elettrico" se ci sono quadro elettrico, interruttori, fili, prese o spine; "caldaia" se c'è una caldaia, una stufa o un camino che non sono a gas; null se non c'è nessuno di questi. Se ce n'è più di uno, il primo dell'elenco.
@@ -399,13 +400,20 @@ export class ProblemMatchService {
     const { classified, ai } = fromPhoto ?? (await this.classify(description, text));
     const missingTrade = missingTradeOf(classified);
     // Al sito solo un mestiere che non è tra i fuori servizio fissi: quelli hanno già il loro titolo.
-    const result: ProblemMatchResult = { ...classified, missingTrade: classified.outOfService ? null : missingTrade };
+    // L'id serve a "Segnala un errore" sotto la proposta dell'IA (docs/changelog/2026-11-13-segnala-risposta-ia.md).
+    const id = randomUUID();
+    const result: ProblemMatchResult = {
+      ...classified,
+      missingTrade: classified.outOfService ? null : missingTrade,
+      reportId: classified.source === "ia" ? id : null,
+    };
     // Il cliente ha lasciato il primo mestiere per un altro: solo da contare, l'IA non impara da sola (decisione di Luca, 6/11).
     const chosenCategory = chosen && isProfessionalCategorySlug(chosen) && chosen !== result.categories[0] ? chosen : null;
     // Registro per "Mestieri richiesti": senza contatti né chi l'ha scritto; un errore non blocca la ricerca.
     this.prisma.problemDescription
       .create({
         data: {
+          id,
           text: text.slice(0, 1000),
           city: city?.trim().slice(0, 80) || null,
           categories: result.categories,
@@ -422,6 +430,19 @@ export class ProblemMatchService {
       })
       .catch((error: unknown) => this.logger.warn(`Descrizione non salvata: ${String(error)}`));
     return result;
+  }
+
+  /**
+   * Il cliente segnala la proposta dell'IA: una volta sola per ricerca, nota
+   * senza contatti. Risponde sempre allo stesso modo, anche con un id che non
+   * esiste. Solo da leggere in "Mestieri richiesti": l'IA non impara da sola.
+   */
+  async report(id: string, reason: ProblemReportReason, note: string | undefined): Promise<{ ok: true }> {
+    const cleanNote = note?.trim() ? anonymizeProblemText(note).slice(0, 300) : null;
+    await this.prisma.problemDescription
+      .updateMany({ where: { id, source: "ia", reportedAt: null }, data: { reportedAt: new Date(), reportReason: reason, reportNote: cleanNote } })
+      .catch((error: unknown) => this.logger.warn(`Segnalazione non salvata: ${String(error)}`));
+    return { ok: true };
   }
 
   /**

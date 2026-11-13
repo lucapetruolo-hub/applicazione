@@ -111,8 +111,11 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
             ? "Dalla foto non capiamo il problema. Scrivilo con parole tue, oppure prova con un'altra foto."
             : result.check === "non-adatta"
               ? "Questa foto non si può usare. Scrivi il problema con parole tue."
-              : "Ora non riusciamo a leggere la foto. Scrivi il problema con parole tue.",
+              : // Tempo scaduto o IA occupata con la sola foto: la foto resta, bastano due parole
+                // (docs/changelog/2026-11-13-foto-due-parole-esempi.md).
+                "Con la sola foto ora non ci riusciamo. Scrivi due parole sul problema e tocca di nuovo Cerca: guardiamo la foto insieme alle parole.",
         );
+        if (result.check === "spenta") document.querySelector<HTMLInputElement>('input[id$="-cosa"]')?.focus();
         return true;
       }
       // Con persone o documenti nella foto si cerca lo stesso, ma la foto non va nella richiesta (CLAUDE.md §5 punto 9).

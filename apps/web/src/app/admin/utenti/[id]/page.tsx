@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Fragment, Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { AdminRoleName, AdminUserDetail, AdminUserReview } from "@professionisti/api-client";
@@ -36,6 +36,7 @@ import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { SuspiciousDismissModal } from "@/components/admin/SuspiciousDismissModal";
 import { AdminConfirmModal } from "@/components/admin/AdminConfirmModal";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
+import { CaseAdviceBox, useCaseAdvice } from "@/components/admin/CaseAdviceBox";
 
 const ROLE_LABEL = { CLIENT: "Cliente", PROFESSIONAL: "Professionista", ADMIN: "Amministratore" } as const;
 const KIND_ICON: Record<string, string> = { account: "👤", request: "📝", booking: "📅", review: "⭐", report: "🚩", admin: "🛡️" };
@@ -560,7 +561,10 @@ function ReviewsTable({
   onChanged: () => void;
 }) {
   const [hiding, setHiding] = useState<AdminUserReview | null>(null);
+  // "Modifica" sulla proposta dell'IA: il modulo "Nascondi" già compilato (docs/changelog/2026-11-13-admin-ia-propone.md).
+  const [hidingInitial, setHidingInitial] = useState<{ ground: string | null; note: string | null } | null>(null);
   const [showing, setShowing] = useState<AdminUserReview | null>(null);
+  const advice = useCaseAdvice(canModerate ? token : null);
   const [publishing, setPublishing] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<{ id: string; message: string } | null>(null);
 
@@ -597,8 +601,11 @@ function ReviewsTable({
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
-                <tr key={r.id}>
+              {rows.map((r) => {
+                const proposal = r.heldAt && canModerate ? advice.get("HELD_REVIEW", r.id) : null;
+                return (
+                <Fragment key={r.id}>
+                <tr>
                   <td style={{ whiteSpace: "nowrap" }}>{formatAdminDate(r.createdAt)}</td>
                   <td>{r.other}</td>
                   <td>
@@ -650,7 +657,27 @@ function ReviewsTable({
                     </td>
                   ) : null}
                 </tr>
-              ))}
+                {proposal ? (
+                  <tr>
+                    <td colSpan={5}>
+                      <CaseAdviceBox
+                        advice={proposal}
+                        token={token}
+                        onApproved={() => {
+                          advice.reload();
+                          onChanged();
+                        }}
+                        onModify={() => {
+                          setHidingInitial(proposal.decision === "HIDE" ? { ground: proposal.ground, note: proposal.note } : null);
+                          setHiding(r);
+                        }}
+                      />
+                    </td>
+                  </tr>
+                ) : null}
+                </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -662,9 +689,15 @@ function ReviewsTable({
           who={`la recensione da ${hiding.rating}★ ${otherLabel === "Cliente" ? `di ${hiding.other}` : `a ${hiding.other}`}`}
           detail={detail}
           token={token}
-          onClose={() => setHiding(null)}
+          initial={hidingInitial}
+          onClose={() => {
+            setHiding(null);
+            setHidingInitial(null);
+          }}
           onDone={() => {
             setHiding(null);
+            setHidingInitial(null);
+            advice.reload();
             onChanged();
           }}
         />
@@ -700,6 +733,7 @@ function ModerateModal({
   who,
   detail,
   token,
+  initial,
   onClose,
   onDone,
 }: {
@@ -708,12 +742,14 @@ function ModerateModal({
   who: string;
   detail: AdminUserDetail;
   token: string;
+  /** Regola e spiegazione proposte dall'IA, da cambiare se serve. */
+  initial?: { ground: string | null; note: string | null } | null;
   onClose: () => void;
   onDone: () => void;
 }) {
   const [reason, setReason] = useState<ContentReportReasonCode | "">("");
-  const [ground, setGround] = useState<ModerationGroundCode | "">("");
-  const [note, setNote] = useState("");
+  const [ground, setGround] = useState<ModerationGroundCode | "">((MODERATION_GROUNDS.find((g) => g.code === initial?.ground)?.code ?? "") as ModerationGroundCode | "");
+  const [note, setNote] = useState(initial?.note ?? "");
   const isReview = kind === "REVIEW";
   const label = moderationActionAdminLabel(isReview ? "HIDE_CONTENT" : "SUSPEND_PROFILE", kind);
   const confirm = isReview ? "Nascondi la recensione" : "Togli dalla ricerca";
