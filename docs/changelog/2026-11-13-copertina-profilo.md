@@ -12,7 +12,7 @@ profilo); copertina anche nell'anteprima di WhatsApp e social.
 **Decisione**:
 - Database: `ProfessionalProfile.coverImageUrl` (foto caricata, Cloudinary
   1600×800) e `coverPreset` (id di una copertina pronta). Migrazione additiva
-  `20261113190000_copertina_profilo`. Mai tutte e due insieme.
+  `20261113210000_copertina_profilo`. Mai tutte e due insieme.
 - Copertine pronte in `packages/shared/src/coverPresets.ts`: una foto per
   mestiere (senza persone né scritte) e sei colori (Verde, Notte, Salvia,
   Crema, Terracotta, Cielo). File in `apps/web/public/copertine/` (1536×768
