@@ -155,7 +155,7 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
         style={textareaStyle}
       />
       <Text fontSize={13} color={brand.grafite70}>
-        {`Se la accogli: affidabilità del professionista più bassa nell'assegnazione delle richieste e misura «${JOB_ISSUE_SANCTION_LABEL[nextSanction]}» (${
+        {`Se la accogli: affidabilità del professionista più bassa nell'assegnazione delle richieste e conseguenza «${JOB_ISSUE_SANCTION_LABEL[nextSanction]}» (${
           nextCount === 1 ? "prima segnalazione accolta in 30 giorni" : `${nextCount}ª segnalazione accolta in 30 giorni`
         }).${row.issue.paidOnline ? ` Lavoro pagato sul sito: rimborso al cliente del ${percent}% di quanto pagato${refundEur(percent) ? ` (${refundEur(percent)})` : ""}, a carico del professionista.` : ""}`}
       </Text>
@@ -202,10 +202,10 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
           title={confirming === "UPHELD" ? "Accogliere la segnalazione?" : "Respingere la segnalazione?"}
           description={
             confirming === "UPHELD"
-              ? `${proName} riceve la misura «${JOB_ISSUE_SANCTION_LABEL[nextSanction]}».${
+              ? `${proName} riceve la conseguenza «${JOB_ISSUE_SANCTION_LABEL[nextSanction]}».${
                   row.issue.paidOnline ? ` ${client} riceve subito il rimborso del ${percent}%${refundEur(percent) ? `, ${refundEur(percent)},` : ""} preso dal conto del professionista.` : ""
-                } Cliente e professionista leggono la tua motivazione. Non si può annullare: il professionista può solo fare ricorso.`
-              : `Nessuna misura per ${proName} e nessun rimborso a ${client}. Cliente e professionista leggono la tua motivazione.`
+                } Cliente e professionista leggono la tua motivazione. Non si può annullare: il professionista può solo chiedere di rivedere la decisione.`
+              : `Nessuna conseguenza per ${proName} e nessun rimborso a ${client}. Cliente e professionista leggono la tua motivazione.`
           }
           showNote={false}
           confirmLabel={confirming === "UPHELD" ? (refundEur(percent) ? `Accogli e rimborsa ${refundEur(percent)}` : "Accogli la segnalazione") : "Respingi la segnalazione"}
@@ -263,46 +263,46 @@ export function AppealForm({ row, token, onDone }: { row: AdminJobIssue; token: 
   if (row.decidedByMe) {
     return (
       <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
-        Hai deciso tu questa segnalazione: il ricorso lo decide un altro admin.
+        Hai deciso tu questa segnalazione: a rivederla deve essere un altro admin.
       </Text>
     );
   }
   return (
     <YStack gap="2" paddingTop="2" borderTopWidth={1} borderTopColor={brand.filetto}>
       <Text fontWeight="700" color={brand.grafite}>
-        Decisione sul ricorso
+        Rivedi la decisione
       </Text>
       <textarea
         value={note}
         onChange={(e) => setNote(e.target.value.slice(0, 1000))}
         placeholder="Motivazione, visibile al professionista (e al cliente se accogli)"
-        aria-label="Motivazione sul ricorso"
+        aria-label="Perché decidi così"
         style={textareaStyle}
       />
       <Text fontSize={13} color={brand.grafite70}>
-        Se accogli il ricorso la segnalazione diventa respinta, l&apos;affidabilità torna com&apos;era e la misura presa viene tolta.
+        Se annulli la decisione, la segnalazione diventa respinta, l&apos;affidabilità torna com&apos;era e la conseguenza viene tolta.
       </Text>
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       <XStack gap="2" flexWrap="wrap">
         <Button variant="secondary" size="3" height={40} onPress={() => askConfirm("ACCEPTED")}>
-          Accogli il ricorso
+          Ha ragione: annulla la decisione
         </Button>
         <Button variant="ghost" size="3" height={40} onPress={() => askConfirm("REJECTED")}>
-          Respingi il ricorso
+          La decisione resta
         </Button>
       </XStack>
       {confirming ? (
         <CancelBookingModal
           onClose={() => setConfirming(null)}
           onCancel={() => decide(confirming)}
-          title={confirming === "ACCEPTED" ? "Accogliere il ricorso?" : "Respingere il ricorso?"}
+          title={confirming === "ACCEPTED" ? "Annullare la decisione?" : "Confermare la decisione?"}
           description={
             confirming === "ACCEPTED"
-              ? `La segnalazione di ${client} diventa respinta: ${proName} torna all'affidabilità di prima e la misura presa viene tolta. Cliente e professionista leggono la tua motivazione. Non si può annullare.`
-              : `La segnalazione resta accolta e la misura per ${proName} resta. Il professionista legge la tua motivazione. Non si può annullare.`
+              ? `La segnalazione di ${client} diventa respinta: ${proName} torna all'affidabilità di prima e la conseguenza viene tolta. Cliente e professionista leggono la tua motivazione. Non si può annullare.`
+              : `La segnalazione resta accolta e la conseguenza per ${proName} resta. Il professionista legge la tua motivazione. Non si può annullare.`
           }
           showNote={false}
-          confirmLabel={confirming === "ACCEPTED" ? "Accogli il ricorso" : "Respingi il ricorso"}
+          confirmLabel={confirming === "ACCEPTED" ? "Annulla la decisione" : "Conferma la decisione"}
           confirmingLabel="Salvataggio..."
           confirmVariant={confirming === "ACCEPTED" ? "urgent" : "primary"}
         >

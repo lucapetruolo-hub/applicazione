@@ -13,7 +13,7 @@ import {
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { AdminCard, AdminPageHeader, AdminPill, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
+import { AdminCard, AdminPageHeader, AdminPill, TechNote, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonTableRows } from "@/components/Skeleton";
 import { AdminConfirmModal } from "@/components/admin/AdminConfirmModal";
 
@@ -84,9 +84,12 @@ export default function AdminRichiesteGeneraliPage() {
           </Text>
           <Text color={brand.grafite70} marginTop="1">
             {data.globallyEnabled
-              ? "Per spegnerle ovunque imposta GENERAL_REQUESTS_ENABLED=false sul servizio API di Render. Le richieste a un professionista scelto continuano a funzionare."
-              : "Spente da GENERAL_REQUESTS_ENABLED=false su Render. Per riaccenderle togli la variabile o mettila a true."}
+              ? "Si possono spegnere ovunque solo dalle impostazioni del server: chiedilo a Claude. Le richieste a un professionista scelto funzionano sempre."
+              : "Sono spente dalle impostazioni del server. Per riaccenderle chiedilo a Claude."}
           </Text>
+          <TechNote>
+            {data.globallyEnabled ? "Si spengono con GENERAL_REQUESTS_ENABLED=false sul servizio API di Render." : "Spente da GENERAL_REQUESTS_ENABLED=false su Render: togli la variabile o mettila a true."}
+          </TechNote>
         </AdminCard>
       ) : null}
 

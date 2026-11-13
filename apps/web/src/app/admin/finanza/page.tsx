@@ -140,8 +140,7 @@ export default function AdminFinanzaPage() {
         >
           <H2 size="7">Regole di commissione</H2>
           <Text fontSize={12} color={brand.grafite70}>
-            Mai valori fissi nel codice — ogni regola è un dato, modificabile
-            qui senza deploy.
+            Le cambi da qui quando vuoi, senza chiamare un tecnico.
           </Text>
         </XStack>
         {/* Collaudo dell'8/11/2026, E3-10: sui pagamenti online la trattenuta si tiene all'addebito. */}

@@ -792,7 +792,7 @@ function RevertModal({ title, description, reportId, token, onClose, onDone }: {
     <CancelBookingModal title={title} description={description} confirmLabel={title} confirmingLabel="Un momento..." backLabel="Annulla" showNote={false} onClose={onClose} onCancel={submit}>
       <label className="admin-field">
         <span>Motivo</span>
-        <textarea className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Es. ricorso accolto, errore" />
+        <textarea className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Es. ha chiesto di rivederla e aveva ragione, errore" />
       </label>
     </CancelBookingModal>
   );
@@ -816,7 +816,7 @@ function ReportsTable({ rows }: { rows: AdminUserDetail["reportsMade"] }) {
               <td>{formatAdminDate(r.createdAt)}</td>
               <td>{CONTENT_REPORT_TARGET_LABEL[r.targetType]}</td>
               <td>{r.reason}</td>
-              <td>{r.status === "OPEN" ? "Da gestire" : r.status === "DISMISSED" ? "Non accolta" : r.revertedAt ? "Misura annullata" : `Accolta${r.action ? `: ${moderationActionAdminLabel(r.action, r.targetType).toLowerCase()}` : ""}`}</td>
+              <td>{r.status === "OPEN" ? "Da gestire" : r.status === "DISMISSED" ? "Non accolta" : r.revertedAt ? "Decisione annullata" : `Accolta${r.action ? `: ${moderationActionAdminLabel(r.action, r.targetType).toLowerCase()}` : ""}`}</td>
             </tr>
           ))}
         </tbody>
@@ -905,7 +905,7 @@ function SuspendPanel({ detail, token, onChanged }: { detail: AdminUserDetail; t
           ) : (
             <>
               <fieldset className="admin-field" style={{ border: 0, padding: 0, margin: 0 }}>
-                <legend style={{ marginBottom: 6, fontWeight: 600 }}>Misura</legend>
+                <legend style={{ marginBottom: 6, fontWeight: 600 }}>Cosa fai</legend>
                 <YStack gap="2">
                   <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer" }}>
                     <input type="radio" name="account-measure" checked={measure === "SUSPEND"} onChange={() => setMeasure("SUSPEND")} />
@@ -1117,7 +1117,7 @@ function TestTimePanel({ detail, token, onChanged }: { detail: AdminUserDetail; 
         result.trial === "NOT_LAUNCHED"
           ? " Il mese gratuito parte dal lancio: finché non c'è la data di lancio non finisce."
           : result.trial === "STRIPE"
-            ? " L'abbonamento pagato lo rinnova Stripe: il suo periodo non cambia."
+            ? " L'abbonamento pagato si rinnova da solo con la carta: il suo periodo non cambia."
             : result.trial === "MOVED"
               ? " Anche il mese gratuito è andato avanti."
               : "";

@@ -76,14 +76,14 @@ function SegnalazioniContent() {
     <YStack>
       <AdminPageHeader
         title="Segnalazioni"
-        description="Decidi su contenuti segnalati dagli utenti. Se accolta, l'autore riceve misura, regola violata e motivazione; chi ha segnalato un contenuto illegale riceve solo l'esito."
+        description="Decidi su contenuti segnalati dagli utenti. Se le dai ragione, l'autore riceve la conseguenza, la regola violata e il perché; chi ha segnalato un contenuto illegale riceve solo l'esito."
       />
       <AdminTabs<View>
         value={view}
         onChange={setView}
         tabs={[
           { key: "da-gestire", label: `Da gestire (${open.length})` },
-          { key: "ricorsi", label: `Ricorsi (${appeals.length})` },
+          { key: "ricorsi", label: `Da rivedere (${appeals.length})` },
           { key: "archivio", label: "Archivio" },
         ]}
       />
@@ -95,7 +95,7 @@ function SegnalazioniContent() {
         </YStack>
       ) : list.length === 0 ? (
         <Text color={brand.grafite70}>
-          {view === "da-gestire" ? "Nessuna segnalazione da gestire." : view === "ricorsi" ? "Nessuna contestazione in attesa." : "Archivio vuoto."}
+          {view === "da-gestire" ? "Nessuna segnalazione da gestire." : view === "ricorsi" ? "Nessuna decisione da rivedere." : "Archivio vuoto."}
         </Text>
       ) : (
         <YStack gap="3">
@@ -186,7 +186,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
           <AdminPill>{CONTENT_REPORT_TARGET_LABEL[report.targetType]}</AdminPill>
           {/* DSA art. 16 (docs/CHANGELOG.md §319): solo per un contenuto illegale chi segnala riceve l'esito. */}
           {report.claimsIllegal ? <AdminPill tone="danger">Illegale secondo chi segnala</AdminPill> : null}
-          {report.status === "RESOLVED" ? <AdminPill tone={report.revertedAt ? "neutral" : "danger"}>{report.revertedAt ? "Misura annullata" : "Accolta"}</AdminPill> : null}
+          {report.status === "RESOLVED" ? <AdminPill tone={report.revertedAt ? "neutral" : "danger"}>{report.revertedAt ? "Decisione annullata" : "Accolta"}</AdminPill> : null}
           {report.status === "DISMISSED" ? <AdminPill tone="ok">Non accolta</AdminPill> : null}
           {report.authoritiesNotifiedAt ? <AdminPill tone="warn">Segnalata alle autorità</AdminPill> : null}
           {appealPending ? <AdminPill tone="warn">Contestata dall&apos;autore</AdminPill> : null}
@@ -233,7 +233,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
         <YStack gap="1" paddingTop="1">
           <Text fontSize="3" color={brand.grafite}>
             <Text fontWeight="700">Decisione del {formatAdminDate(report.resolvedAt)}: </Text>
-            {report.status === "RESOLVED" && report.action ? moderationActionAdminLabel(report.action, report.targetType) : "nessuna misura"}
+            {report.status === "RESOLVED" && report.action ? moderationActionAdminLabel(report.action, report.targetType) : "nessuna conseguenza"}
           </Text>
           {moderationGround(report.ground) ? (
             <Text fontSize="3" color={brand.grafite70}>
@@ -247,17 +247,17 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
           ) : null}
           {report.appealedAt ? (
             <Text fontSize="3" color={brand.grafite}>
-              <Text fontWeight="700">Ricorso dell&apos;autore ({formatAdminDate(report.appealedAt)}): </Text>“{report.appealText}”
+              <Text fontWeight="700">L&apos;autore chiede di rivedere la decisione ({formatAdminDate(report.appealedAt)}): </Text>“{report.appealText}”
             </Text>
           ) : null}
           {report.appealRejectedAt ? (
             <Text fontSize="3" color={brand.grafite70}>
-              Ricorso respinto: {report.appealRejectNote}
+              Decisione confermata: {report.appealRejectNote}
             </Text>
           ) : null}
           {report.revertedAt ? (
             <Text fontSize="3" color={brand.grafite70}>
-              Misura annullata il {formatAdminDate(report.revertedAt)}: {report.revertNote}
+              Decisione annullata il {formatAdminDate(report.revertedAt)}: {report.revertNote}
             </Text>
           ) : null}
         </YStack>
@@ -332,12 +332,12 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
           ) : null}
           {report.status === "RESOLVED" && !report.revertedAt && report.action ? (
             <Button variant="secondary" size="3" onPress={() => start("revert")}>
-              {appealPending ? "Accogli il ricorso" : "Annulla misura"}
+              {appealPending ? "Ha ragione: annulla la decisione" : "Annulla la decisione"}
             </Button>
           ) : null}
           {appealPending ? (
             <Button variant="secondary" size="3" onPress={() => start("reject-appeal")}>
-              Respingi il ricorso
+              La decisione resta
             </Button>
           ) : null}
         </XStack>
@@ -346,7 +346,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
           {mode === "resolve" ? (
             <>
               <Text fontWeight="700" color={brand.grafite}>
-                Quale misura prendi?
+                Cosa succede al contenuto?
               </Text>
               <YStack gap="2">
                 {allowedActions.map((a) => (
@@ -411,9 +411,9 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
                   : "Non accogliere la segnalazione? Chi ha segnalato non riceve altro: ha già avuto la presa in carico."
                 : mode === "revert"
                   ? appealPending
-                    ? "Accogliere il ricorso? La misura viene annullata, il contenuto torna com'era e l'autore viene avvisato."
-                    : "Annullare la misura? Il contenuto torna com'era e l'autore viene avvisato."
-                  : "Respingere il ricorso? La misura resta e l'autore riceve la motivazione."}
+                    ? "Annullare la decisione? Il contenuto torna com'era e l'autore viene avvisato."
+                    : "Annullare la decisione? Il contenuto torna com'era e l'autore viene avvisato."
+                  : "Confermare la decisione? Tutto resta com'è e l'autore riceve il perché."}
             </Text>
           )}
           <textarea aria-label="Motivazione"
@@ -457,17 +457,15 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
               {busy
                 ? "Salvataggio…"
                 : mode === "resolve"
-                  ? "Applica misura"
+                  ? "Applica la decisione"
                   : mode === "dismiss"
                     ? "Conferma: non accolta"
                     : mode === "revert"
-                      ? appealPending
-                        ? "Accogli il ricorso"
-                        : "Annulla la misura"
-                      : "Respingi il ricorso"}
+                      ? "Annulla la decisione"
+                      : "Conferma la decisione"}
             </Button>
             <Button variant="secondary" size="3" onPress={() => setMode("idle")}>
-              Annulla
+              Torna indietro
             </Button>
           </XStack>
         </YStack>

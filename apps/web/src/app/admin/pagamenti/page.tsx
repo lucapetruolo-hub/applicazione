@@ -258,7 +258,7 @@ function RefundCard({ refund, token, onChanged, alsoOpen }: { refund: AdminRefun
           title={confirming === "APPROVED" ? `Rimborsare ${euro(refund.amountEurCents)} a ${client}?` : "Rifiutare il rimborso?"}
           description={
             confirming === "APPROVED"
-              ? `Stripe restituisce ${euro(refund.amountEurCents)} sulla carta di ${client}. La cifra viene ripresa dal conto di ${professional}. Non si può annullare.`
+              ? `${client} riavrà ${euro(refund.amountEurCents)} sulla carta. La cifra viene ripresa dal conto di ${professional}. Non si può annullare.`
               : `${client} non riceve ${euro(refund.amountEurCents)}. Gli scriviamo il motivo che metti qui.`
           }
           notePlaceholder={confirming === "APPROVED" ? "Es. Lavoro non fatto, d'accordo con il professionista." : "Es. Il lavoro risulta fatto come da preventivo."}
@@ -604,7 +604,7 @@ function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; tok
           </XStack>
           <PdfButton load={() => apiClient.adminBankDisputePdf(token, row.jobPaymentId)} fileName="riepilogo-lavoro.pdf" label="Guarda il riepilogo PDF" variant="secondary" />
           {error ? <Text color={brand.urgenza}>{error}</Text> : null}
-          {saved ? <Text color={brand.grafite70}>Salvate su Stripe, non ancora mandate alla banca.</Text> : null}
+          {saved ? <Text color={brand.grafite70}>Salvate, non ancora mandate alla banca.</Text> : null}
           {confirming ? (
             <YStack gap="2">
               <Text color={brand.grafite}>Dopo l&apos;invio le prove non si possono più cambiare.</Text>
@@ -700,7 +700,7 @@ function DisputeParts({ parts }: { parts: BankDisputePart[] }) {
   const feeNote =
     fees > 0 ? (
       <Text fontSize={13} color={brand.grafite70}>
-        Commissione di Stripe {formatEurCents(fees)}, a carico del professionista.
+        Costo della contestazione {formatEurCents(fees)}, lo paga il professionista.
       </Text>
     ) : null;
   if (parts.length < 2) return feeNote;
@@ -764,7 +764,7 @@ function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRo
               <ArchiveText title={row.evidenceSentAt ? "Spiegazione mandata alla banca" : "Spiegazione salvata, non ancora mandata"} text={evidence.explanation} />
               {evidence.stripeText ? (
                 <Text fontSize={13} color={brand.grafite70}>
-                  Con le chiavi di prova a Stripe è partita solo la parola «{evidence.stripeText}».
+                  Siamo in prova: alla banca è arrivata solo la parola «{evidence.stripeText}».
                 </Text>
               ) : null}
               <Text fontSize={13} color={brand.grafite70}>
@@ -776,7 +776,7 @@ function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRo
             </YStack>
           ) : (
             <Text fontSize={13} color={brand.grafite70}>
-              {row.evidenceSentAt || row.closedAt ? "Prove mandate prima che il sito le conservasse: il testo si legge su Stripe." : "Prove non ancora preparate."}
+              {row.evidenceSentAt || row.closedAt ? "Prove mandate prima che il sito le conservasse: il testo si legge nel pannello dei pagamenti." : "Prove non ancora preparate."}
             </Text>
           )}
           {row.history.length ? (

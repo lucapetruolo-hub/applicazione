@@ -111,7 +111,7 @@ function ProblemiContent() {
         tabs={[
           { key: "open", label: "Da decidere" },
           { key: "chat", label: "In chat tra le parti" },
-          { key: "appeals", label: "Ricorsi" },
+          { key: "appeals", label: "Da rivedere" },
           { key: "closed", label: "Chiuse" },
         ]}
         value={view}
@@ -145,7 +145,7 @@ function ProblemiContent() {
             : view === "chat"
               ? "Nessuna segnalazione in chat tra le parti."
               : view === "appeals"
-                ? "Nessun ricorso da decidere."
+                ? "Nessuna decisione da rivedere."
                 : "Nessuna segnalazione chiusa finora."}
         </Text>
       ) : rows && token ? (
@@ -212,7 +212,7 @@ function ProblemiContent() {
                     <Text color={brand.grafite}>“{row.issue.professionalResponse}”</Text>
                   ) : (
                     <Text fontSize={13} color={brand.grafite70}>
-                      {row.issue.appealedAt ? "Non ha mandato la sua versione prima della decisione: la sua risposta è nel ricorso, più sotto." : "Non ha ancora risposto."}
+                      {row.issue.appealedAt ? "Non ha mandato la sua versione prima della decisione: la sua risposta è nella richiesta di rivedere la decisione, più sotto." : "Non ha ancora risposto."}
                     </Text>
                   )}
                   {row.issue.infoRequestText ? (
@@ -249,11 +249,11 @@ function ProblemiContent() {
                   <Text fontWeight="700" color={brand.grafite}>
                     Decisa il {formatAdminDate(row.issue.resolvedAt, true)}
                     {row.issue.autoDecision ? " automaticamente" : ""}
-                    {row.issue.sanction ? ` · misura: ${JOB_ISSUE_SANCTION_LABEL[row.issue.sanction].toLowerCase()}` : ""}
+                    {row.issue.sanction ? ` · conseguenza: ${JOB_ISSUE_SANCTION_LABEL[row.issue.sanction].toLowerCase()}` : ""}
                   </Text>
                   {row.issue.resolutionNote ? <Text color={brand.grafite}>“{row.issue.resolutionNote}”</Text> : null}
                   <Text fontWeight="700" color={brand.grafite}>
-                    Ricorso del {formatAdminDate(row.issue.appealedAt, true)}
+                    Ha chiesto di rivedere la decisione il {formatAdminDate(row.issue.appealedAt, true)}
                   </Text>
                   <Text color={brand.grafite}>“{row.issue.appealText}”</Text>
                   <AppealForm row={row} token={token} onDone={() => setReload((n) => n + 1)} />
@@ -274,16 +274,16 @@ function ProblemiContent() {
                   <Text fontWeight="700" color={brand.grafite}>
                     Decisa il {formatAdminDate(row.issue.resolvedAt, true)}
                     {row.issue.autoDecision ? " automaticamente" : ""}
-                    {row.issue.sanction ? ` · misura: ${JOB_ISSUE_SANCTION_LABEL[row.issue.sanction].toLowerCase()}` : ""}
+                    {row.issue.sanction ? ` · conseguenza: ${JOB_ISSUE_SANCTION_LABEL[row.issue.sanction].toLowerCase()}` : ""}
                   </Text>
                   {row.issue.resolutionNote ? <Text color={brand.grafite}>“{row.issue.resolutionNote}”</Text> : null}
                   {row.issue.appealDecision ? (
                     <Text fontSize={13} color={brand.grafite}>
-                      Ricorso {row.issue.appealDecision === "ACCEPTED" ? "accolto" : "respinto"}: “{row.issue.appealNote}”
+                      {row.issue.appealDecision === "ACCEPTED" ? "Decisione annullata dopo la richiesta" : "Decisione confermata dopo la richiesta"}: “{row.issue.appealNote}”
                     </Text>
                   ) : row.issue.appealedAt ? (
                     <Text fontSize={13} color={brand.grafite70}>
-                      Ricorso presentato: da decidere nel tab Ricorsi.
+                      Ha chiesto di rivedere la decisione: la trovi in &quot;Da rivedere&quot;.
                     </Text>
                   ) : null}
                 </YStack>

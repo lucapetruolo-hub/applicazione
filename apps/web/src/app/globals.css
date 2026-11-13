@@ -10013,3 +10013,63 @@ a.admin-kpi:hover {
 .client-job-link:hover {
   text-decoration: underline;
 }
+
+/* "Vedi i numeri" e "Per il tecnico" nell'Admin (docs/changelog/2026-11-13-admin-scritte-semplici.md). */
+.admin-more {
+  border-top: 1px solid rgba(15, 59, 59, 0.12);
+  padding-top: 4px;
+}
+.admin-more > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #186163;
+  cursor: pointer;
+  list-style: none;
+}
+.admin-more > summary::-webkit-details-marker {
+  display: none;
+}
+.admin-more > summary::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.15s ease-out;
+}
+.admin-more[open] > summary::after {
+  transform: translateY(2px) rotate(-135deg);
+}
+.admin-more > summary:focus-visible {
+  outline: 2px solid #247c7c;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.admin-more-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-top: 8px;
+}
+.admin-tech {
+  font-size: 13px;
+  color: #5e5a54;
+}
+.admin-tech > summary {
+  font-size: 13px;
+  min-height: 32px;
+  color: #5e5a54;
+}
+.admin-tech .admin-more-body {
+  gap: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-more > summary::after {
+    transition: none;
+  }
+}

@@ -68,6 +68,9 @@ for (const device of [
     await page.goto("/admin/andamento");
     await expect(page.getByRole("heading", { name: "Cosa fare questa settimana" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Il numero guida" })).toBeVisible();
+    // Le tabelle stanno chiuse sotto "Vedi tutti i numeri" (docs/changelog/2026-11-13-admin-scritte-semplici.md).
+    await expect(page.getByRole("heading", { name: "Lavori e città" })).toBeHidden();
+    await page.getByText("Vedi tutti i numeri").click();
     await expect(page.getByRole("heading", { name: "Lavori e città" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Prestazioni più cercate" })).toBeVisible();
     // Senza data del lancio le richieste per pulsante non si contano ancora (§402).
@@ -112,6 +115,7 @@ test("nota sul grafico: il giorno si scrive a mano o si sceglie dal calendariett
   // Campo data unico del sito (docs/changelog/2026-11-11-campo-data-scrivibile.md).
   const { context, page } = await adminPage(browser, { width: 1280, height: 900, isMobile: false });
   await page.goto("/admin/andamento");
+  await page.getByText("Vedi tutti i numeri").click();
   const day = page.getByRole("textbox", { name: "Giorno", exact: true });
   await day.scrollIntoViewIfNeeded();
   await day.fill("");

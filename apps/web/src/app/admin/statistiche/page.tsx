@@ -13,7 +13,7 @@ import { SkeletonRevenuePanel } from "@/components/Skeleton";
 import { RevenueAnalyticsPanel } from "@/components/RevenueAnalyticsPanel";
 import { TrafficSourcesPanel } from "@/components/TrafficSourcesPanel";
 import { NotificationOptOutsPanel } from "@/components/NotificationOptOutsPanel";
-import { AdminPageHeader } from "@/components/admin/adminUi";
+import { AdminPageHeader, ShowNumbers } from "@/components/admin/adminUi";
 import { PageLoading } from "@/components/PageLoading";
 
 /**
@@ -82,7 +82,7 @@ export default function AdminStatistichePage() {
     <YStack gap="7">
       <AdminPageHeader
         title="Entrate"
-        description="Entrate dai lavori completati, da dove arrivano le visite e chi ha spento le notifiche."
+        description="Quanto entra dai lavori terminati. Sotto, da dove arrivano le visite e chi ha spento le notifiche."
       />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
@@ -91,13 +91,16 @@ export default function AdminStatistichePage() {
       ) : data ? (
         <RevenueAnalyticsPanel
           data={data}
-          chartCaption="Solo lavori confermati completati da entrambe le parti (professionista e cliente), su tutta la piattaforma. Passa il mouse su un punto per i dettagli."
+          chartCaption="Solo i lavori che cliente e professionista hanno segnato come terminati. Tocca un punto per vedere i dettagli."
         />
       ) : null}
 
-      {traffic ? <TrafficSourcesPanel data={traffic} /> : null}
-
-      {optOuts ? <NotificationOptOutsPanel data={optOuts} /> : null}
+      {traffic || optOuts ? (
+        <ShowNumbers label="Da dove arrivano le visite e chi ha spento le notifiche">
+          {traffic ? <TrafficSourcesPanel data={traffic} /> : null}
+          {optOuts ? <NotificationOptOutsPanel data={optOuts} /> : null}
+        </ShowNumbers>
+      ) : null}
     </YStack>
   );
 }

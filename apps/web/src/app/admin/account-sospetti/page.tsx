@@ -174,7 +174,7 @@ function SuspiciousUsers() {
       {data && view.status === "ARCHIVED" ? (
         <>
           <Text fontSize={13} color={brand.grafite70}>
-            &quot;Va bene così&quot;, casi gestiti con una misura, segnali spariti e &quot;Nessuna azione&quot; senza novità. Si tengono 2 anni per i precedenti; con un segnale nuovo tornano in &quot;Da gestire&quot;.
+            &quot;Va bene così&quot;, casi già decisi, segnali spariti e &quot;Nessuna azione&quot; senza novità. Si tengono 2 anni per i precedenti; con un segnale nuovo tornano in &quot;Da gestire&quot;.
           </Text>
           <label className="admin-field">
             <span>Cerca negli archiviati</span>

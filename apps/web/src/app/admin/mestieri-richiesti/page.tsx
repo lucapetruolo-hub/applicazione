@@ -308,7 +308,7 @@ function DescriptionsTab() {
         tabs={[
           { key: "tutte", label: "Tutte" },
           { key: "fuori", label: "Lavori che non copriamo" },
-          { key: "ia", label: "Decise dall'IA" },
+          { key: "ia", label: "Intelligenza artificiale" },
           { key: "nessuno", label: "Non capite" },
         ]}
         value={filter}
@@ -346,7 +346,7 @@ function DescriptionsTab() {
                           : "Non capita"}
                   </td>
                   <td>{row.safety ? <AdminPill tone="danger">{SAFETY_LABEL[row.safety] ?? row.safety}</AdminPill> : "—"}</td>
-                  <td>{row.source === "ia" ? "IA" : row.source === "parola" ? "Parola insegnata" : "Dizionario"}</td>
+                  <td>{row.source === "ia" ? "Intelligenza artificiale" : row.source === "parola" ? "Parola insegnata" : "Dizionario"}</td>
                   <td>{formatAdminDate(row.createdAt, true)}</td>
                 </tr>
               ))}

@@ -1,0 +1,103 @@
+// Scritte dell'Admin che capisce anche un bambino (richiesta di Luca del
+// 13/11/2026, docs/changelog/2026-11-13-admin-scritte-semplici.md): niente
+// sigle, nomi di servizi esterni o nomi delle chiavi nei testi che l'admin
+// legge. Controlla solo i testi visibili (testo JSX e stringhe con almeno uno
+// spazio), salta commenti e test. Ammessi dentro <TechNote> ("Per il
+// tecnico", solo super admin) o su una riga con il commento
+// "scritte-admin: ok" (con il motivo).
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { createRequire } from "node:module";
+import { join, relative } from "node:path";
+
+const require = createRequire(import.meta.url);
+const ts = require("typescript");
+
+const repo = new URL("../../..", import.meta.url).pathname;
+const dirs = ["apps/web/src/app/admin", "apps/web/src/components/admin"];
+const singleFiles = [
+  "packages/shared/src/adminQueue.ts",
+  "packages/shared/src/adminProposals.ts",
+  "packages/shared/src/siteStats.ts",
+  "apps/api/src/admin/site-stats.ts",
+  "apps/api/src/admin/admin-queue.service.ts",
+  "apps/api/src/admin/database-version.service.ts",
+  "apps/api/src/admin-proposals/admin-proposals.ts",
+  "apps/api/src/admin-proposals/admin-proposals.service.ts",
+];
+
+const RULES = [
+  [/\bSdI\b/, "Agenzia delle Entrate"],
+  [/\bXML\b/, "file della fattura, oppure dentro <TechNote>"],
+  [/\bCSV\b/, "Excel"],
+  [/\b(Render|Vercel|Openapi|Didit|VIES|PostgreSQL|Cloudinary|Resend|Turnstile)\b/, "parole semplici; il nome del servizio va dentro <TechNote>"],
+  [/\bStripe\b/, "il servizio dei pagamenti, la banca, la carta"],
+  [/\bdi Meta\b/, "WhatsApp"],
+  [/\b[A-Z][A-Z0-9]{2,}_[A-Z0-9_]{2,}\b/, "il nome della chiave va dentro <TechNote>"],
+  [/(?<!\()\bDAC7\b(?!\))/, "dati per il fisco (DAC7), con la sigla solo tra parentesi"],
+  [/\b[Rr]icors[oi]\b/, "richiesta di rivedere la decisione"],
+  [/\b[Mm]isur[ae]\b(?! (il|i|le|la|lo|gli)\b)/, "conseguenza, decisione"],
+  [/\b[Aa]ggregazion[ei]\b/, "conti"],
+  [/\b[Qq]uadratura\b/, "controllo dei conti"],
+  [/\bIA\b|\bdall'IA\b/, "il computer"],
+  [/\b[Mm]edian[ao]\b/, "di solito, a metà"],
+  [/\b(sandbox|webhook|backend|deploy|token|endpoint|funnel|cron)\b/i, "parole semplici, oppure dentro <TechNote>"],
+];
+
+const files = [...singleFiles.map((f) => join(repo, f))];
+for (const dir of dirs) (function walk(path) {
+  for (const name of readdirSync(path)) {
+    const full = join(path, name);
+    if (statSync(full).isDirectory()) walk(full);
+    else if (/\.tsx?$/.test(name) && !/\.(test|spec)\./.test(name)) files.push(full);
+  }
+})(join(repo, dir));
+
+function insideTechNote(node) {
+  for (let n = node.parent; n; n = n.parent) {
+    if (ts.isJsxElement(n) && n.openingElement.tagName.getText() === "TechNote") return true;
+  }
+  return false;
+}
+
+function insideImportOrType(node) {
+  for (let n = node.parent; n; n = n.parent) {
+    if (ts.isImportDeclaration(n) || ts.isExportDeclaration(n) || ts.isTypeNode(n) || ts.isLiteralTypeNode(n)) return true;
+  }
+  return false;
+}
+
+const errors = [];
+for (const file of files) {
+  const source = readFileSync(file, "utf8");
+  const lines = source.split("\n");
+  const sf = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  const check = (node, text) => {
+    if (!/\s/.test(text.trim()) && !ts.isJsxText(node)) return;
+    if (insideTechNote(node) || insideImportOrType(node)) return;
+    const { line } = sf.getLineAndCharacterOfPosition(node.getStart());
+    if (lines.slice(Math.max(0, line - 3), line + 1).some((l) => l.includes("scritte-admin: ok"))) return;
+    for (const [rule, better] of RULES) {
+      const match = text.match(rule);
+      if (match) errors.push(`${relative(repo, file)}:${line + 1}: "${match[0]}" (usa: ${better})`);
+    }
+  };
+  (function visit(node) {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) check(node, node.text);
+    else if (ts.isTemplateExpression(node)) {
+      const parts = [node.head.text, ...node.templateSpans.map((s) => s.literal.text)];
+      // Una chiave come `TIPO:${id}` non ha spazi: non è un testo da leggere.
+      if (/\s/.test(parts.join("").trim())) check(node, parts.join(" "));
+    }
+    else if (ts.isJsxText(node) && node.text.trim()) check(node, node.text);
+    ts.forEachChild(node, visit);
+  })(sf);
+}
+
+if (errors.length > 0) {
+  console.error(
+    "Scritte dell'Admin con sigle o parole tecniche (docs/changelog/2026-11-13-admin-scritte-semplici.md).\n" +
+      "Scrivi in parole semplici; i dettagli tecnici vanno dentro <TechNote>:\n" +
+      errors.join("\n"),
+  );
+  process.exit(1);
+}

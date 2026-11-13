@@ -33,7 +33,7 @@ const DAC7_STATUS_LABEL: Record<string, string> = {
   DATA_COLLECTION: "Raccolta dati",
   VALIDATION: "In controllo",
   READY: "Pronto",
-  EXPORTED: "Esportato",
+  EXPORTED: "File scaricato",
   SUBMITTED: "Inviato",
   REJECTED: "Respinto",
   CORRECTED: "Corretto",
@@ -92,7 +92,7 @@ export default function AdminDac7Page() {
         platformIdValue: settingsFields.platformIdValue || undefined,
       });
       setPlatformSettings(updated);
-      setActionMessage("Impostazioni piattaforma DAC7 salvate.");
+      setActionMessage("I nostri dati per il fisco sono salvati.");
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Impossibile salvare le impostazioni.",
@@ -120,11 +120,11 @@ export default function AdminDac7Page() {
     setActionMessage(null);
     try {
       await apiClient.adminAggregateDac7Now(token);
-      setActionMessage("Aggregazione DAC7 aggiornata.");
+      setActionMessage("Conti rifatti.");
       reloadAll();
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Errore durante l'aggregazione.",
+        e instanceof Error ? e.message : "Non sono riuscito a rifare i conti.",
       );
     }
   }
@@ -156,7 +156,7 @@ export default function AdminDac7Page() {
     const updated = await apiClient.adminMarkDac7Submitted(token, id, protocol);
     setActionMessage(
       updated.quarter === null
-        ? "Anno segnato come inviato: ai professionisti è partito l'avviso con i loro dati DAC7."
+        ? "Anno segnato come inviato: ogni professionista ha ricevuto l'email con i suoi guadagni dell'anno."
         : "Periodo segnato come inviato.",
     );
     setConfirming(null);
@@ -167,7 +167,7 @@ export default function AdminDac7Page() {
     if (!token) return;
     setError(null);
     const { sent } = await apiClient.adminNotifyDac7Sellers(token, id);
-    setActionMessage(`Avviso DAC7 rimandato a ${sent} professionisti.`);
+    setActionMessage(`Email con i guadagni dell'anno rimandata a ${sent} professionisti.`);
     setConfirming(null);
     if (selectedPeriod?.id === id) openPeriod(id);
   }
@@ -177,7 +177,7 @@ export default function AdminDac7Page() {
     setError(null);
     try {
       await apiClient.adminCorrectDac7Period(token, id);
-      setActionMessage("Periodo corretto (nuova versione).");
+      setActionMessage("Corretto: ora scarica di nuovo il file e rimandalo.");
       reloadAll();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Errore.");
@@ -210,11 +210,10 @@ export default function AdminDac7Page() {
           flexWrap="wrap"
           gap="3"
         >
-          <H2 size="7">Impostazioni piattaforma DAC7</H2>
-          <Text fontSize={12} color={brand.grafite70}>
-            Identità richiesta dallo schema OECD DPI (MessageSpec/Platform) —
-            senza questi dati l&apos;export non può costruire un identificativo
-            di trasmissione valido.
+          <H2 size="7">I nostri dati per il fisco</H2>
+          <Text fontSize={13} color={brand.grafite70}>
+            Servono per preparare il file da mandare all&apos;Agenzia delle
+            Entrate. Si scrivono una volta sola.
           </Text>
         </XStack>
         {platformSettings?.sendingEntityIn &&
@@ -222,27 +221,27 @@ export default function AdminDac7Page() {
         platformSettings?.platformIdValue ? null : (
           // Avviso, non errore (docs/CHANGELOG.md §349): l'esportazione funziona lo stesso.
           <Text fontSize={13} color={brand.ottoneScuro}>
-            Dati incompleti: l&apos;export segnalerà esplicitamente questa
-            mancanza (non blocca l&apos;esportazione, la contrassegna).
+            Mancano dei dati: il file si scarica lo stesso, ma dirà che sono
+            mancanti.
           </Text>
         )}
         <YStack gap="3" maxWidth={460}>
           <Field
-            label={`P.IVA / identificativo fiscale di ${BRAND.name} (es. IT01234567890)`}
+            label={`Partita IVA di ${BRAND.name} (es. IT01234567890)`}
             value={settingsFields.sendingEntityIn}
             onChangeText={(v) =>
               setSettingsFields((p) => ({ ...p, sendingEntityIn: v }))
             }
           />
           <Field
-            label="Nome piattaforma"
+            label="Nome del sito"
             value={settingsFields.platformName}
             onChangeText={(v) =>
               setSettingsFields((p) => ({ ...p, platformName: v }))
             }
           />
           <Field
-            label="Numero di registrazione della piattaforma (PlatformID)"
+            label="Numero di iscrizione del sito all'Agenzia delle Entrate"
             value={settingsFields.platformIdValue}
             onChangeText={(v) =>
               setSettingsFields((p) => ({ ...p, platformIdValue: v }))
@@ -254,7 +253,7 @@ export default function AdminDac7Page() {
               onPress={handleSaveSettings}
               disabled={settingsSaving}
             >
-              {settingsSaving ? "Salvataggio..." : "Salva impostazioni"}
+              {settingsSaving ? "Salvo..." : "Salva"}
             </Button>
           </XStack>
         </YStack>
@@ -267,21 +266,21 @@ export default function AdminDac7Page() {
           flexWrap="wrap"
           gap="3"
         >
-          <H2 size="7">Periodi DAC7</H2>
+          <H2 size="7">Guadagni da mandare al fisco</H2>
           <Button variant="secondary" onPress={handleAggregateNow}>
-            Aggiorna aggregazione ora
+            Rifai i conti adesso
           </Button>
         </XStack>
         <Text fontSize={12} color={brand.grafite70}>
-          Online contati all&apos;accredito, diretti a &quot;lavoro
-          terminato&quot;. &quot;Segna come inviato&quot; registra l&apos;invio
-          fatto a mano all&apos;Agenzia delle Entrate e, sull&apos;anno, avvisa
-          i professionisti.
+          Ogni anno, entro il 31 gennaio, diciamo all&apos;Agenzia delle
+          Entrate quanto ha guadagnato ogni professionista sul sito. Scarica il
+          file, mandalo dal sito dell&apos;Agenzia, poi premi &quot;Segna come
+          inviato&quot;: il sito avvisa i professionisti.
         </Text>
         {periods === null ? (
           <SkeletonTableRows rows={3} cols={4} />
         ) : periods.length === 0 ? (
-          <Text color={brand.grafite70}>Nessun periodo ancora aggregato.</Text>
+          <Text color={brand.grafite70}>Ancora nessun conto pronto.</Text>
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -289,7 +288,7 @@ export default function AdminDac7Page() {
                 <tr>
                   <th>Periodo</th>
                   <th>Stato</th>
-                  <th>Versione</th>
+                  <th>Volte corretto</th>
                   <th>Azioni</th>
                 </tr>
               </thead>
@@ -297,7 +296,7 @@ export default function AdminDac7Page() {
                 {periods.map((p) => (
                   <tr key={p.id}>
                     <td>
-                      {p.year} {p.quarter ? `Q${p.quarter}` : "(anno intero)"}
+                      {p.year} {p.quarter ? `, ${p.quarter}° trimestre` : "(anno intero)"}
                     </td>
                     <td>
                       {DAC7_STATUS_LABEL[p.status] ?? p.status}
@@ -317,7 +316,7 @@ export default function AdminDac7Page() {
                         </Text>
                       ) : null}
                     </td>
-                    <td>{p.reportVersion}</td>
+                    <td>{Math.max(0, p.reportVersion - 1)}</td>
                     <td>
                       <XStack gap="2" flexWrap="wrap">
                         <Button
@@ -332,7 +331,7 @@ export default function AdminDac7Page() {
                           variant="secondary"
                           onPress={() => handleExport(p.id)}
                         >
-                          Esporta
+                          Scarica il file
                         </Button>
                         {p.status === "EXPORTED" && (
                           <Button
@@ -361,7 +360,7 @@ export default function AdminDac7Page() {
                               variant="secondary"
                               onPress={() => setConfirming({ kind: "notify", period: p })}
                             >
-                              Rimanda avviso ai professionisti
+                              Rimanda l&apos;email ai professionisti
                             </Button>
                           )}
                       </XStack>
@@ -382,12 +381,12 @@ export default function AdminDac7Page() {
           >
             <Text fontWeight="700">
               Dettaglio {selectedPeriod.year}{" "}
-              {selectedPeriod.quarter ? `Q${selectedPeriod.quarter}` : "(anno)"}
+              {selectedPeriod.quarter ? `, ${selectedPeriod.quarter}° trimestre` : "(anno intero)"}
             </Text>
             {selectedPeriod.needsCorrectionAt ? (
               <Text fontSize={13} color={brand.urgenza}>
-                Importi cambiati dopo l&apos;invio: usa &quot;Correggi&quot;,
-                poi esporta e invia di nuovo.
+                Le cifre sono cambiate dopo l&apos;invio: premi &quot;Correggi&quot;,
+                poi scarica di nuovo il file e rimandalo.
               </Text>
             ) : null}
             {selectedPeriod.records.length === 0 ? (
@@ -415,7 +414,7 @@ export default function AdminDac7Page() {
                     {r.missingIban ? (
                       <Text fontSize={13} color={brand.urgenza}>
                         {" "}
-                        · IBAN mancante
+                        · manca il conto (IBAN)
                       </Text>
                     ) : null}
                   </Text>
@@ -434,13 +433,13 @@ export default function AdminDac7Page() {
       </YStack>
       {confirming ? (
         <AdminConfirmModal
-          title={confirming.kind === "submit" ? "Segna come inviato" : "Rimanda l'avviso ai professionisti"}
+          title={confirming.kind === "submit" ? "Segna come inviato" : "Rimanda l'email ai professionisti"}
           description={
             confirming.kind === "submit"
-              ? `Segna ${confirming.period.year}${confirming.period.quarter ? ` Q${confirming.period.quarter}` : ""} come inviato all'Agenzia delle Entrate. Non si annulla${confirming.period.quarter === null ? " e parte subito l'avviso via email a ogni professionista con i suoi dati" : ""}. Fallo solo dopo l'invio vero.`
-              : `Ogni professionista del ${confirming.period.year} riceve di nuovo l'email con i suoi dati DAC7. Serve dopo una correzione.`
+              ? `Segna ${confirming.period.year}${confirming.period.quarter ? `, ${confirming.period.quarter}° trimestre,` : ""} come inviato all'Agenzia delle Entrate. Non si annulla${confirming.period.quarter === null ? " e parte subito l'avviso via email a ogni professionista con i suoi dati" : ""}. Fallo solo dopo l'invio vero.`
+              : `Ogni professionista del ${confirming.period.year} riceve di nuovo l'email con i suoi guadagni dell'anno. Serve dopo una correzione.`
           }
-          confirmLabel={confirming.kind === "submit" ? "Segna come inviato" : "Rimanda l'avviso"}
+          confirmLabel={confirming.kind === "submit" ? "Segna come inviato" : "Rimanda l'email"}
           reasonLabel={confirming.kind === "submit" ? "Numero di protocollo della ricevuta" : undefined}
           reasonPlaceholder="Es. 26013112345678901"
           reasonMin={DAC7_PROTOCOL_MIN}
