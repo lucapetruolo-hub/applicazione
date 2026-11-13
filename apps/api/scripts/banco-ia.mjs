@@ -11,7 +11,16 @@
 // (frasi/frasi-etichettate.csv e misura-ia/da-provare.txt).
 //
 // Uso:
-//   node apps/api/scripts/banco-ia.mjs <frasi-etichettate.csv> <da-provare.txt> <uscita.csv> [indirizzo API]
+//   node apps/api/scripts/banco-ia.mjs <frasi-etichettate.csv> <da-provare.txt> <uscita.csv> [indirizzo API] [--prestazioni=<file>]
+//
+// Con --prestazioni conta anche le prestazioni indicate, confrontate con quelle
+// scritte a mano ("-" se nessuna va bene, "|" tra più giuste;
+// docs/changelog/2026-11-13-banco-prestazioni-haiku.md). Le 100 frasi del repo:
+//   node apps/api/scripts/banco-ia.mjs packages/shared/test-data/banco-problemi.csv - uscita.csv \
+//     --prestazioni=packages/shared/test-data/banco-prestazioni.csv
+// (con "-" al posto di <da-provare.txt> si provano le frasi del file delle prestazioni).
+// Riferimento del 13/11/2026 (Claude Haiku): 56 giuste su 75 con una prestazione
+// adatta, 5 sbagliate, 5 date su 25 senza prestazione adatta.
 // Riprende da dove si era fermato se <uscita.csv> esiste già. Lanciarlo dopo un
 // deploy nuovo: l'API tiene in memoria le ultime 500 risposte dell'IA.
 //
@@ -20,14 +29,16 @@
 
 import { existsSync, readFileSync, appendFileSync, writeFileSync } from "node:fs";
 
-const [labelsPath, idsPath, outPath, api = "https://professionisti-api-eu.onrender.com"] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const servicesPath = args.find((a) => a.startsWith("--prestazioni="))?.slice("--prestazioni=".length);
+const [labelsPath, idsPath, outPath, api = "https://professionisti-api-eu.onrender.com"] = args.filter((a) => !a.startsWith("--"));
 if (!labelsPath || !idsPath || !outPath) {
   console.error("Uso: node banco-ia.mjs <frasi-etichettate.csv> <da-provare.txt> <uscita.csv> [indirizzo API]");
   process.exit(1);
 }
 
 const REFERENCE = { top: 0.86, topAi: 0.94 };
-const HEADER = ["id", "source", "categorie", "fuori_servizio", "mestiere_mancante", "secondi"];
+const HEADER = ["id", "source", "categorie", "fuori_servizio", "mestiere_mancante", "secondi", "prestazione"];
 
 /** CSV con il punto e virgola, campi anche tra virgolette. */
 function readCsv(path) {
@@ -55,7 +66,8 @@ function readCsv(path) {
 const csvField = (v) => (/[;"\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
 
 const labels = new Map(readCsv(labelsPath).map((r) => [r.id, r]));
-const ids = readFileSync(idsPath, "utf8").split(/\s+/).filter(Boolean);
+const expectedServices = servicesPath ? new Map(readCsv(servicesPath).map((r) => [r.id, r.prestazione])) : null;
+const ids = idsPath === "-" && expectedServices ? [...expectedServices.keys()] : readFileSync(idsPath, "utf8").split(/\s+/).filter(Boolean);
 if (!existsSync(outPath)) writeFileSync(outPath, HEADER.join(";") + "\n");
 const done = new Set(readCsv(outPath).map((r) => r.id));
 
@@ -77,7 +89,7 @@ for (let index = 0; index < pending.length; index++) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const r = await res.json();
     const seconds = ((Date.now() - started) / 1000).toFixed(2);
-    const row = [id, r.source ?? "", (r.categories ?? []).join("|"), r.outOfService ?? "", r.missingTrade ?? "", seconds];
+    const row = [id, r.source ?? "", (r.categories ?? []).join("|"), r.outOfService ?? "", r.missingTrade ?? "", seconds, r.service ?? ""];
     appendFileSync(outPath, row.map(csvField).join(";") + "\n");
   } catch (err) {
     console.error(`${id}: ${err.message}`);
@@ -117,3 +129,24 @@ console.log(`Quando risponde l'IA: ${pct(count.topAi, count.workAi)} (${count.to
 console.log(`Fuori servizio o non lavoro riconosciuti: ${pct(count.outOk, count.out)} (${count.outOk}/${count.out})`);
 console.log(`Secondi: mediana ${seconds[Math.floor(seconds.length / 2)] ?? "-"}, massimo ${seconds.at(-1) ?? "-"}`);
 if (count.work && count.top / count.work < REFERENCE.top) console.log("ATTENZIONE: sotto il riferimento, il cambio non va tenuto.");
+
+// Prestazioni: giuste, sbagliate, mancate e date quando nessuna va bene.
+if (expectedServices) {
+  const s = { fit: 0, right: 0, wrong: 0, missed: 0, none: 0, givenNone: 0 };
+  for (const a of answers) {
+    const expected = expectedServices.get(a.id);
+    if (expected === undefined) continue;
+    const given = a.prestazione ?? "";
+    if (expected === "-") {
+      s.none++;
+      if (given) { s.givenNone++; console.log(`  data senza prestazione adatta: ${a.id} → ${given}`); }
+      continue;
+    }
+    s.fit++;
+    if (!given) s.missed++;
+    else if (expected.split("|").includes(given)) s.right++;
+    else { s.wrong++; console.log(`  sbagliata: ${a.id} → ${given} (giusta: ${expected})`); }
+  }
+  console.log(`Prestazione giusta: ${pct(s.right, s.fit)} (${s.right}/${s.fit}), sbagliata ${s.wrong}, nessuna ${s.missed}`);
+  console.log(`Senza prestazione adatta, data lo stesso: ${s.givenNone} su ${s.none}`);
+}
