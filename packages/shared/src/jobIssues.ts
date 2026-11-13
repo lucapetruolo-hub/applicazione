@@ -401,7 +401,10 @@ export function clientCanUpdateReview(b: {
   hasReview: boolean;
   reviewUpdatedAt: Date | string | null;
   issue: { late?: boolean | null; status: string } | null;
+  /** Un admin ha chiesto all'autore di correggerla (docs/changelog/2026-11-13-admin-ia-propone.md). */
+  correctionRequestedAt?: Date | string | null;
 }): boolean {
+  if (b.hasReview && b.correctionRequestedAt) return true;
   return b.hasReview && !b.reviewUpdatedAt && !!b.issue?.late && b.issue.status === "UNRESOLVED";
 }
 

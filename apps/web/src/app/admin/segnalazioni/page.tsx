@@ -22,6 +22,8 @@ import { SkeletonSummaryRow } from "@/components/Skeleton";
 import { MediaPreview } from "@/components/MediaPreview";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { WaitBarSignal } from "@/components/WaitBar";
+import { CaseAdviceBox, useCaseAdvice } from "@/components/admin/CaseAdviceBox";
+import type { CaseAdvice } from "@professionisti/shared";
 
 type View = "da-gestire" | "ricorsi" | "archivio";
 
@@ -48,9 +50,11 @@ function SegnalazioniContent() {
   const [view, setView] = useState<View>(["da-gestire", "ricorsi", "archivio"].includes(initialView) ? initialView : "da-gestire");
   const [reports, setReports] = useState<AdminContentReport[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const advice = useCaseAdvice(token);
 
   function reload() {
     if (!token) return;
+    advice.reload();
     apiClient
       .adminListContentReports(token)
       .then((list) => {
@@ -100,7 +104,19 @@ function SegnalazioniContent() {
       ) : (
         <YStack gap="3">
           {list.map((report) => (
-            <ReportCard key={report.id} report={report} token={token ?? ""} onChanged={reload} />
+            <ReportCard
+              key={report.id}
+              report={report}
+              token={token ?? ""}
+              onChanged={reload}
+              advice={
+                report.status === "OPEN"
+                  ? advice.get("CONTENT_REPORT", report.id)
+                  : report.appealedAt && !report.appealRejectedAt && !report.revertedAt
+                    ? advice.get("REPORT_APPEAL", report.id)
+                    : null
+              }
+            />
           ))}
         </YStack>
       )}
@@ -121,7 +137,7 @@ function reportTargetHref(report: AdminContentReport): string | null {
 
 type Mode = "idle" | "resolve" | "dismiss" | "revert" | "reject-appeal";
 
-function ReportCard({ report, token, onChanged }: { report: AdminContentReport; token: string; onChanged: () => void }) {
+function ReportCard({ report, token, onChanged, advice }: { report: AdminContentReport; token: string; onChanged: () => void; advice: CaseAdvice | null }) {
   const [mode, setMode] = useState<Mode>("idle");
   const [action, setAction] = useState<ModerationActionValue | null>(null);
   const [ground, setGround] = useState("");
@@ -160,6 +176,16 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
     setGround("");
     setAuthorities(false);
     setError(null);
+  }
+
+  /** "Modifica" sulla proposta dell'IA: il modulo di sempre già compilato (docs/changelog/2026-11-13-admin-ia-propone.md). */
+  function modifyAdvice(a: CaseAdvice) {
+    const next: Mode =
+      a.kind === "REPORT_APPEAL" ? (a.decision === "REVERT" ? "revert" : "reject-appeal") : a.decision === "DISMISS" ? "dismiss" : "resolve";
+    start(next);
+    if (next === "resolve" && allowedActions.includes(a.decision as ModerationActionValue)) setAction(a.decision as ModerationActionValue);
+    if (a.ground) setGround(a.ground);
+    if (a.note) setNote(a.note);
   }
 
   async function run(fn: () => Promise<unknown>) {
@@ -307,6 +333,22 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
           )}
         </YStack>
       ) : null}
+
+      {/* "Già avvisato N volte" accanto ai pulsanti (domanda di Luca nel banco dei 40 casi). */}
+      {report.ownerHistory ? (
+        <Text fontSize="3" color={report.ownerHistory.warnings + report.ownerHistory.otherMeasures > 0 ? brand.urgenza : brand.grafite70}>
+          {report.ownerHistory.warnings + report.ownerHistory.otherMeasures === 0
+            ? "Prima volta: l'autore non ha avuto altre decisioni contro."
+            : `Già deciso contro l'autore: ${[
+                report.ownerHistory.warnings ? (report.ownerHistory.warnings === 1 ? "1 avviso" : `${report.ownerHistory.warnings} avvisi`) : "",
+                report.ownerHistory.otherMeasures ? (report.ownerHistory.otherMeasures === 1 ? "1 altra conseguenza" : `${report.ownerHistory.otherMeasures} altre conseguenze`) : "",
+              ]
+                .filter(Boolean)
+                .join(" e ")}.`}
+        </Text>
+      ) : null}
+
+      {mode === "idle" && advice ? <CaseAdviceBox advice={advice} token={token} onApproved={onChanged} onModify={() => modifyAdvice(advice)} /> : null}
 
       {mode === "idle" ? (
         <XStack gap="2" flexWrap="wrap" paddingTop="1">

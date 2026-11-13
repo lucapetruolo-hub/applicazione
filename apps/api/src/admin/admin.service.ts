@@ -1,9 +1,11 @@
 import { ACTION_SHORT_LABEL, auditLabel } from "./audit-label";
 import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
 import { ACCOUNT_CLOSURE_NOTICE_DAYS, type AccountMeasure, type ModerationGroundCode, CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, jobIssueAssisted, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, type AdminSignupFunnel, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES, ADMIN_BOOKING_STATUS_LABEL, ADMIN_REQUEST_STATUS_LABEL, contentReportReason, type AdminModerateInput, type AdminSignalArchiveReason, type AdminSignalRole, type AdminUserSignal, adviseSuspiciousUser, type ProfessionalStatusKey, type ReviewHoldReason, csvCell } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { CaseAdviceService } from "./case-advice.service";
+import { contentOwnerUserId, ownerHistory } from "./content-owner";
 import { PUBLIC_VISIBILITY_SELECT } from "../professional-fiscal/public-visibility";
 import { bookingSearchWhere, userSearchWhere } from "./admin-search";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -78,7 +80,62 @@ export class AdminService {
     private readonly auditLogService: AuditLogService,
     private readonly jobIssueOutcomeService: JobIssueOutcomeService,
     private readonly securityAlerts: AdminSecurityAlertsService,
+    // Facoltativo: le prove costruiscono il servizio senza (docs/changelog/2026-11-13-admin-ia-propone.md).
+    @Optional() private readonly caseAdvice?: CaseAdviceService,
   ) {}
+
+  /**
+   * "Approva" sulla proposta dell'IA (docs/changelog/2026-11-13-admin-ia-propone.md,
+   * decisione di Luca del 13/11/2026): decide come propone l'IA passando dagli
+   * stessi servizi dei pulsanti a mano, con le stesse email e lo stesso
+   * registro. Un caso alla volta, mai "approva tutti".
+   */
+  async approveCaseAdvice(adminUserId: string, kind: string, caseId: string) {
+    // Un problema sul lavoro può avere un secondo giro dopo le informazioni chieste ("<id>#<ora>").
+    const advice = await this.prisma.adminCaseAdvice.findFirst({
+      where: { kind, adminDecidedAt: null, OR: [{ caseId }, { caseId: { startsWith: `${caseId}#` } }] },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!advice) throw new NotFoundException("Proposta non trovata o caso già deciso.");
+    const note = advice.note?.trim() ?? "";
+    const ground = moderationGround(advice.ground)?.code;
+    const needsNote = () => {
+      if (note.length < 10 || !ground) throw new BadRequestException("La proposta non ha la regola o la spiegazione per l'autore: usa Modifica.");
+    };
+    let result: unknown;
+    if (kind === "CONTENT_REPORT") {
+      if (advice.decision === "DISMISS") {
+        result = await this.resolveContentReport(caseId, { status: "DISMISSED" }, adminUserId);
+      } else {
+        needsNote();
+        result = await this.resolveContentReport(caseId, { status: "RESOLVED", action: advice.decision as ModerationAction, ground: ground as ModerationGroundCode, resolutionNote: note }, adminUserId);
+      }
+    } else if (kind === "HELD_REVIEW") {
+      if (advice.decision === "PUBLISH") {
+        result = await this.publishHeldReview(adminUserId, caseId);
+      } else {
+        needsNote();
+        const review = await this.prisma.review.findUnique({ where: { id: caseId }, select: { booking: { select: { clientId: true } } } });
+        if (!review) throw new NotFoundException("Recensione non trovata.");
+        result = await this.moderateFromUserPage(adminUserId, review.booking.clientId, { targetType: "REVIEW", targetId: caseId, reason: reasonForGround(ground!), ground: ground as ModerationGroundCode, note });
+      }
+    } else if (kind === "REPORT_APPEAL") {
+      if (note.length < 10) throw new BadRequestException("La proposta non ha la spiegazione per l'autore: usa Modifica.");
+      result = advice.decision === "REVERT" ? await this.revertContentReport(caseId, note, adminUserId) : await this.rejectAppeal(caseId, note, adminUserId);
+    } else if (kind === "JOB_ISSUE" || kind === "JOB_ISSUE_APPEAL" || kind === "REFUND" || kind === "DISPUTE") {
+      // Casi di soldi: "Approva" compila il modulo della pagina e apre la conferma di sempre (chi riceve cosa, quanto).
+      throw new BadRequestException("Per i casi di soldi conferma la decisione dalla pagina del caso.");
+    } else {
+      throw new BadRequestException("Per i messaggi l'IA prepara solo la bozza della risposta.");
+    }
+    await this.auditLogService.record({ entityType: "AdminCaseAdvice", entityId: caseId, fieldName: kind, newValue: `APPROVED:${advice.decision}`, changedByUserId: adminUserId });
+    return result;
+  }
+
+  /** La decisione presa: si conta se era quella proposta dall'IA. Mai bloccante. */
+  private async recordAdvice(kind: "CONTENT_REPORT" | "HELD_REVIEW" | "REPORT_APPEAL", caseId: string, decision: string): Promise<void> {
+    await this.caseAdvice?.recordDecision(kind, caseId, decision).catch(() => undefined);
+  }
 
   /**
    * Richieste di preventivo degli ultimi 30 giorni per provenienza della
@@ -633,6 +690,7 @@ export class AdminService {
     const updated = await this.prisma.review.updateMany({ where: { id: reviewId, heldAt: { not: null } }, data: { heldAt: null, hiddenAt: null } });
     if (updated.count === 0) throw new BadRequestException("La recensione è già stata decisa.");
     await this.auditLogService.record({ entityType: "Review", entityId: reviewId, fieldName: "heldAt", newValue: "PUBLISHED", changedByUserId: adminUserId });
+    await this.recordAdvice("HELD_REVIEW", reviewId, "PUBLISH");
     await this.professionalMetricsService.recomputeReviews(review.booking.professionalProfileId);
     await this.notificationsService.notify(review.booking.professionalProfile.userId, "NEW_REVIEW", {
       bookingId: review.booking.id,
@@ -1125,8 +1183,18 @@ export class AdminService {
       }),
     );
 
+    // "Già avvisato N volte" accanto ai pulsanti (docs/changelog/2026-11-13-admin-ia-propone.md): solo per i casi da decidere.
+    const histories = await Promise.all(
+      reports.map(async (report) =>
+        report.status === "OPEN" || (report.appealedAt && !report.appealRejectedAt && !report.revertedAt)
+          ? ownerHistory(this.prisma, report.contentOwnerId ?? (await this.resolveContentOwnerUserId(report.targetType, report.targetId)), report.id)
+          : null,
+      ),
+    );
+
     return reports.map((report, index) => ({
       id: report.id,
+      ownerHistory: histories[index],
       targetType: report.targetType,
       targetId: report.targetId,
       targetLabel: targetInfo[index]?.label ?? null,
@@ -1202,6 +1270,9 @@ export class AdminService {
       throw new BadRequestException("Impossibile risalire all'autore del contenuto.");
     }
 
+    // Una recensione trattenuta dal sito e nascosta da qui: è la decisione "Non pubblicare".
+    const heldReview =
+      report.targetType === "REVIEW" && action === "HIDE_CONTENT" ? (await this.prisma.review.findUnique({ where: { id: report.targetId }, select: { heldAt: true } }))?.heldAt : null;
     const now = new Date();
     const affectedProfileIds = await this.prisma.$transaction(async (tx) => {
       const profileIds = action ? await this.applyModeration(tx, report.targetType, report.targetId, action, ownerUserId, now) : [];
@@ -1250,6 +1321,9 @@ export class AdminService {
       });
     }
 
+    await this.recordAdvice("CONTENT_REPORT", report.id, status === "DISMISSED" ? "DISMISS" : (action ?? "DISMISS"));
+    if (heldReview) await this.recordAdvice("HELD_REVIEW", report.targetId, "HIDE");
+
     return { id: report.id, status, action, resolutionNote: note };
   }
 
@@ -1288,7 +1362,8 @@ export class AdminService {
         note: note.trim(),
       });
     }
-    return { id: report.id, revertedAt: now.toISOString() };
+    if (report.appealedAt && !report.appealRejectedAt) await this.recordAdvice("REPORT_APPEAL", report.id, "REVERT");
+        return { id: report.id, revertedAt: now.toISOString() };
   }
 
   /** Ricorso dell'autore respinto: la misura resta, l'autore riceve la motivazione. */
@@ -1315,7 +1390,8 @@ export class AdminService {
         note: note.trim(),
       });
     }
-    return { id: report.id, appealRejectedAt: now.toISOString() };
+    await this.recordAdvice("REPORT_APPEAL", report.id, "KEEP");
+        return { id: report.id, appealRejectedAt: now.toISOString() };
   }
 
   private async adminName(id: string | null): Promise<string> {
@@ -1352,6 +1428,10 @@ export class AdminService {
     if (action === "SUSPEND_PROFILE" || (action === "SUSPEND_USER" && targetType === "PROFESSIONAL_PROFILE")) {
       await tx.professionalProfile.update({ where: { id: targetId }, data: { suspendedAt: now } });
     }
+    // "Chiedi all'autore di correggere" una recensione: può cambiarla una volta (docs/changelog/2026-11-13-admin-ia-propone.md).
+    if (action === "REQUEST_CORRECTION" && targetType === "REVIEW") {
+      await tx.review.updateMany({ where: { id: targetId }, data: { correctionRequestedAt: now } });
+    }
     if (action === "SUSPEND_USER" && ownerUserId) {
       await tx.user.update({ where: { id: ownerUserId }, data: { suspendedAt: now } });
       // Un professionista sospeso sparisce anche da ricerca e fan-out.
@@ -1372,6 +1452,9 @@ export class AdminService {
     if (contentWasHidden) profileIds.push(...(await this.setContentHidden(tx, targetType, targetId, null)));
     if (action === "SUSPEND_PROFILE" || (action === "SUSPEND_USER" && targetType === "PROFESSIONAL_PROFILE")) {
       await tx.professionalProfile.updateMany({ where: { id: targetId }, data: { suspendedAt: null } });
+    }
+    if (action === "REQUEST_CORRECTION" && targetType === "REVIEW") {
+      await tx.review.updateMany({ where: { id: targetId }, data: { correctionRequestedAt: null } });
     }
     if (action === "SUSPEND_USER" && ownerUserId) {
       await tx.user.updateMany({ where: { id: ownerUserId }, data: { suspendedAt: null } });
@@ -1409,31 +1492,9 @@ export class AdminService {
     return [];
   }
 
-  /**
-   * Chi ha scritto/possiede il contenuto segnalato — il destinatario dello
-   * "statement of reasons" quando una segnalazione viene accolta. Stessa
-   * distinzione per `targetType` già usata in `listContentReports` per
-   * risolvere `targetLabel`.
-   */
+  /** Chi ha scritto o possiede il contenuto segnalato (`contentOwnerUserId`). */
   private async resolveContentOwnerUserId(targetType: ContentReportTargetType, targetId: string): Promise<string | null> {
-    if (targetType === "PROFESSIONAL_PROFILE") {
-      const profile = await this.prisma.professionalProfile.findUnique({ where: { id: targetId }, select: { userId: true } });
-      return profile?.userId ?? null;
-    }
-    if (targetType === "REVIEW") {
-      const review = await this.prisma.review.findUnique({ where: { id: targetId }, select: { booking: { select: { clientId: true } } } });
-      return review?.booking.clientId ?? null;
-    }
-    if (targetType === "CHAT_MESSAGE") {
-      const event = await this.prisma.conversationEvent.findUnique({
-        where: { id: targetId },
-        select: { actor: true, guidedRequest: { select: { clientId: true } }, professionalProfile: { select: { userId: true } } },
-      });
-      if (!event || event.actor === "SYSTEM") return null;
-      return event.actor === "CLIENT" ? event.guidedRequest.clientId : event.professionalProfile.userId;
-    }
-    const request = await this.prisma.guidedRequest.findUnique({ where: { id: targetId }, select: { clientId: true } });
-    return request?.clientId ?? null;
+    return contentOwnerUserId(this.prisma, targetType, targetId);
   }
 
   /**
@@ -1466,6 +1527,7 @@ export class AdminService {
       throw new NotFoundException("Messaggio non trovato.");
     }
     const updated = await this.prisma.contactMessage.update({ where: { id }, data: { resolved } });
+    if (resolved) await this.caseAdvice?.closeDraft(id).catch(() => undefined);
     return { id: updated.id, resolved: updated.resolved };
   }
 
@@ -2120,3 +2182,13 @@ export type AdminConversationDetail = {
   issue: { type: string; status: string } | null;
   events: { id: string; actor: string; message: string; mediaUrls: string[]; createdAt: string }[];
 };
+
+/** Il motivo della segnalazione che corrisponde alla regola scelta dall'IA, per nascondere una recensione trattenuta. */
+export function reasonForGround(ground: string): AdminModerateInput["reason"] {
+  if (ground === "legge-diffamazione" || ground === "legge-minacce") return "insulti-minacce";
+  if (ground === "legge-odio") return "odio-discriminazione";
+  if (ground === "legge-dati-personali") return "dati-personali";
+  if (ground === "legge-recensione-falsa" || ground === "legge-truffa") return "recensione-falsa-truffa";
+  if (ground === "termini-profilo") return "informazioni-false";
+  return "altro";
+}

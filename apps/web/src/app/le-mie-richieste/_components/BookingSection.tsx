@@ -540,7 +540,9 @@ export function BookingSection({
             {booking.canUpdateReview ? (
               <YStack gap="1" alignItems="flex-start">
                 <Text fontSize={13} color={brand.grafite70}>
-                  Non vi siete accordati sul problema: puoi aggiornare la recensione una volta, perché anche gli altri clienti lo sappiano.
+                  {booking.reviewCorrectionRequested
+                    ? "Ti abbiamo chiesto di correggere la recensione: puoi cambiarla una volta."
+                    : "Non vi siete accordati sul problema: puoi aggiornare la recensione una volta, perché anche gli altri clienti lo sappiano."}
                 </Text>
                 <CardButton tone="primary" onPress={() => setShowUpdateReviewModal(true)}>
                   Aggiorna la recensione

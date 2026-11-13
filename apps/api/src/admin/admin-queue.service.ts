@@ -10,6 +10,8 @@ import {
   jobIssueReviewPhase,
   matchProblem,
   sortAdminQueue,
+  CASE_ADVICE_DECISION_LABEL,
+  type CaseAdviceDecision,
   type AdminQueue,
   type AdminQueueItem,
   type AdminQueueKind,
@@ -61,7 +63,7 @@ export class AdminQueueService {
   async getQueue(adminUserId: string): Promise<AdminQueue> {
     const roles = await this.rolesOf(adminUserId);
     const can = (kind: AdminQueueKind) => adminCan(roles, ADMIN_QUEUE_KINDS[kind].scope);
-    const items: Omit<AdminQueueItem, "claimedBy">[] = [];
+    const items: Omit<AdminQueueItem, "claimedBy" | "advice">[] = [];
     const bookingInclude = {
       client: { select: { name: true, surname: true } },
       professionalProfile: { select: { businessName: true, user: { select: { name: true, surname: true } } } },
@@ -486,8 +488,14 @@ export class AdminQueueService {
       : new Map<string, string>();
     const claimByKey = new Map(claims.map((c) => [c.caseKey, { id: c.adminUserId, name: claimers.get(c.adminUserId) ?? "Admin" }]));
 
+    // La proposta dell'IA accanto al caso (docs/changelog/2026-11-13-admin-ia-propone.md).
+    const advices = items.length ? await this.prisma.adminCaseAdvice.findMany({ where: { adminDecidedAt: null }, select: { kind: true, caseId: true, decision: true } }) : [];
+    const adviceByKey = new Map(
+      advices.map((a) => [`${a.kind}:${a.caseId}`, a.kind === "CONTACT_MESSAGE" ? (a.decision === "REPLY" ? "Risposta pronta" : "Non rispondere") : CASE_ADVICE_DECISION_LABEL[a.decision as CaseAdviceDecision] ?? null]),
+    );
+
     return {
-      items: sortAdminQueue(items.map((i) => ({ ...i, claimedBy: claimByKey.get(i.key) ?? null }))),
+      items: sortAdminQueue(items.map((i) => ({ ...i, claimedBy: claimByKey.get(i.key) ?? null, advice: adviceByKey.get(i.key) ?? null }))),
       watching: chatIssues
         .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
         .map((i) => ({

@@ -120,6 +120,8 @@ import type {
   AccountClosureCheck,
   SiteNoteInput,
   SiteHealth,
+  CaseAdviceOverview,
+  CaseAdviceKind,
   SiteDeadline,
   SiteDeadlineInput,
   SiteAdviceDoneInput,
@@ -219,6 +221,7 @@ export type ClientBooking = {
   hasReview: boolean;
   /** Recensione aggiornabile una volta, dopo una segnalazione a lavoro chiuso senza accordo. */
   canUpdateReview: boolean;
+  reviewCorrectionRequested?: boolean;
   myReview: { id: string; rating: number; comment: string | null; photoUrls: string[]; /** Foto di fine lavoro in "Lavori fatti" sul profilo, con il suo ok. */ showcase: boolean } | null;
   /**
    * Conferma del cliente che il lavoro è davvero terminato dal suo lato
@@ -738,6 +741,8 @@ export type AdminDispute = {
 /** Segnalazione contenuti (richiesta esplicita dell'utente, "Verbale di Conformità" — DSA art. 16), vista admin. */
 export type AdminContentReport = {
   id: string;
+  /** Decisioni già prese contro l'autore, solo per i casi da decidere: "Già avvisato N volte". */
+  ownerHistory: { warnings: number; otherMeasures: number } | null;
   targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "GUIDED_REQUEST" | "CHAT_MESSAGE";
   targetId: string;
   targetLabel: string | null;
@@ -2454,6 +2459,10 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<void>("/admin/site-advice/undo", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ key }) }),
 
     /** Scadenze del sito e controllo della notte (docs/changelog/2026-11-13-admin-scadenze-controlli.md), solo super admin. */
+    adminCaseAdvice: (token: string) =>
+      request<CaseAdviceOverview>("/admin/case-advice", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminApproveCaseAdvice: (token: string, kind: CaseAdviceKind, caseId: string) =>
+      request<unknown>(`/admin/case-advice/${kind}/${encodeURIComponent(caseId)}/approve`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
     adminSiteHealth: (token: string) =>
       request<SiteHealth>("/admin/site-health", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     adminAddSiteDeadline: (token: string, input: SiteDeadlineInput) =>

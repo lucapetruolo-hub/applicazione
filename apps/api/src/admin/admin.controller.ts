@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Header, HttpCode, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, ForbiddenException, Get, Header, HttpCode, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
 import {
   adminRoleUpdateSchema,
   contentReportDecisionNoteSchema,
@@ -36,6 +36,7 @@ import { AdminService } from "./admin.service";
 import { SiteStatsService } from "./site-stats.service";
 import { AdminQueueService } from "./admin-queue.service";
 import { SiteHealthService } from "./site-health.service";
+import { CaseAdviceService } from "./case-advice.service";
 import { SuspiciousAccountsService } from "./suspicious-accounts.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 import { InvitePartnersService } from "./invite-partners.service";
@@ -55,6 +56,7 @@ export class AdminController {
     private readonly invitePartners: InvitePartnersService,
     private readonly auditLogService: AuditLogService,
     private readonly siteHealthService: SiteHealthService,
+    private readonly caseAdviceService: CaseAdviceService,
   ) {}
 
   /** Scadenze del sito e controllo della notte (docs/changelog/2026-11-13-admin-scadenze-controlli.md). */
@@ -381,6 +383,23 @@ export class AdminController {
   rejectAppeal(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(contentReportDecisionNoteSchema)) body: ContentReportDecisionNoteInput) {
     return this.adminService.rejectAppeal(id, body.note, req.user.userId);
   }
+
+  /** Proposte dell'IA nei casi di Da fare e quante sono state approvate (docs/changelog/2026-11-13-admin-ia-propone.md). */
+  // Ognuno vede le proposte dei casi del suo ruolo (moderazione, finanza).
+  @RequireAdminScope("ANY")
+  @Get("case-advice")
+  async caseAdviceOverview(@Req() req: AuthenticatedRequest) {
+    return this.caseAdviceService.overview(await this.caseAdviceService.kindsFor(req.user.userId));
+  }
+
+  /** "Approva": decide come propone l'IA, con gli stessi servizi dei pulsanti a mano. */
+  @RequireAdminScope("ANY")
+  @Post("case-advice/:kind/:caseId/approve")
+  async approveCaseAdvice(@Req() req: AuthenticatedRequest, @Param("kind") kind: string, @Param("caseId") caseId: string) {
+    if (!(await this.caseAdviceService.kindsFor(req.user.userId)).includes(kind as never)) throw new ForbiddenException("Questa sezione non rientra nel tuo ruolo di amministratore.");
+    return this.adminService.approveCaseAdvice(req.user.userId, kind, caseId);
+  }
+
 
   /** Messaggi dal form "Contatti" del footer (richiesta esplicita dell'utente). */
   @RequireAdminScope("MODERATION")

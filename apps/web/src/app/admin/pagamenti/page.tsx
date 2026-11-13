@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { AdminDispute, AdminRefund } from "@professionisti/api-client";
+import type { CaseAdvice } from "@professionisti/shared";
+import { CaseAdviceBox, useCaseAdvice } from "@/components/admin/CaseAdviceBox";
 import {
   ONLINE_LIMIT_FREE_DAYS,
   ONLINE_LIMIT_FREE_JOBS,
@@ -52,6 +54,7 @@ export default function AdminPagamentiPage() {
   const { token } = useAuth();
   const { refresh } = useAdminOverview();
   const [refunds, setRefunds] = useState<AdminRefund[] | null>(null);
+  const advice = useCaseAdvice(token);
   const [disputes, setDisputes] = useState<AdminDispute[] | null>(null);
   const [unpaid, setUnpaid] = useState<AdminUnpaidBalance[] | null>(null);
   const [limits, setLimits] = useState<AdminOnlineLimitRow[] | null>(null);
@@ -151,6 +154,8 @@ export default function AdminPagamentiPage() {
           <RefundCard
             key={refund.id}
             refund={refund}
+            advice={advice.get("REFUND", refund.id)}
+            onAdviceDone={advice.reload}
             token={token ?? ""}
             onChanged={reload}
             // Stessa storia aperta due volte (misura "dopo" del riordino): si decidono insieme.
@@ -174,6 +179,8 @@ export default function AdminPagamentiPage() {
           <DisputeCard
             key={dispute.id}
             dispute={dispute}
+            advice={advice.get("DISPUTE", dispute.id)}
+            onAdviceDone={advice.reload}
             token={token ?? ""}
             onChanged={reload}
             alsoOpen={refunds?.some((r) => r.jobPayment.id === dispute.jobPayment.id && r.status === "REQUESTED") ? "Sullo stesso lavoro c'è anche un rimborso da decidere, più sopra: decidili insieme." : null}
@@ -208,8 +215,24 @@ function refundClientName(refund: AdminRefund): string {
  * chi, con la cifra esatta e il nome, e chiede il motivo; il pulsante porta il
  * nome dell'azione (collaudo 29/10 e riordino admin).
  */
-function RefundCard({ refund, token, onChanged, alsoOpen }: { refund: AdminRefund; token: string; onChanged: () => void; alsoOpen: string | null }) {
+function RefundCard({
+  refund,
+  advice,
+  onAdviceDone,
+  token,
+  onChanged,
+  alsoOpen,
+}: {
+  refund: AdminRefund;
+  advice: CaseAdvice | null;
+  onAdviceDone: () => void;
+  token: string;
+  onChanged: () => void;
+  alsoOpen: string | null;
+}) {
   const [confirming, setConfirming] = useState<"APPROVED" | "REJECTED" | null>(null);
+  // La motivazione proposta dall'IA, da ritoccare nella finestra di conferma.
+  const [draftNote, setDraftNote] = useState("");
   const status = REFUND_STATUS[refund.status];
   const client = refundClientName(refund);
   const professional = refund.jobPayment.booking.professionalProfile.businessName;
@@ -218,6 +241,7 @@ function RefundCard({ refund, token, onChanged, alsoOpen }: { refund: AdminRefun
     await apiClient.adminDecideRefund(token, refund.id, { decision, note });
     setConfirming(null);
     onChanged();
+    onAdviceDone();
   }
 
   return (
@@ -238,6 +262,18 @@ function RefundCard({ refund, token, onChanged, alsoOpen }: { refund: AdminRefun
         <Text fontSize={13} fontWeight="700" color={brand.urgenza}>
           {alsoOpen}
         </Text>
+      ) : null}
+      {advice && refund.status === "REQUESTED" ? (
+        <CaseAdviceBox
+          advice={advice}
+          token={token}
+          onApproved={onAdviceDone}
+          onApprove={() => {
+            setDraftNote(advice.note ?? "");
+            setConfirming(advice.decision === "REFUND_REJECTED" ? "REJECTED" : "APPROVED");
+          }}
+          onModify={() => setDraftNote(advice.note ?? "")}
+        />
       ) : null}
       {refund.status === "REQUESTED" ? (
         <XStack gap="2">
@@ -261,6 +297,7 @@ function RefundCard({ refund, token, onChanged, alsoOpen }: { refund: AdminRefun
           }
           notePlaceholder={confirming === "APPROVED" ? "Es. Lavoro non fatto, d'accordo con il professionista." : "Es. Il lavoro risulta fatto come da preventivo."}
           noteMinLength={5}
+          initialNote={draftNote}
           confirmLabel={confirming === "APPROVED" ? `Rimborsa ${euro(refund.amountEurCents)}` : "Rifiuta il rimborso"}
           confirmingLabel="Salvataggio..."
           backLabel="Torna indietro"
@@ -271,7 +308,21 @@ function RefundCard({ refund, token, onChanged, alsoOpen }: { refund: AdminRefun
   );
 }
 
-function DisputeCard({ dispute, token, onChanged, alsoOpen }: { dispute: AdminDispute; token: string; onChanged: () => void; alsoOpen: string | null }) {
+function DisputeCard({
+  dispute,
+  advice,
+  onAdviceDone,
+  token,
+  onChanged,
+  alsoOpen,
+}: {
+  dispute: AdminDispute;
+  advice: CaseAdvice | null;
+  onAdviceDone: () => void;
+  token: string;
+  onChanged: () => void;
+  alsoOpen: string | null;
+}) {
   const [choice, setChoice] = useState<"RESOLVED_CLIENT" | "RESOLVED_PROFESSIONAL" | "CLOSED" | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -287,6 +338,7 @@ function DisputeCard({ dispute, token, onChanged, alsoOpen }: { dispute: AdminDi
       await apiClient.adminResolveDispute(token, dispute.id, { status: choice, resolutionNote: note.trim() || undefined });
       setChoice(null);
       onChanged();
+      onAdviceDone();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -316,6 +368,18 @@ function DisputeCard({ dispute, token, onChanged, alsoOpen }: { dispute: AdminDi
       ) : null}
       {dispute.resolutionNote ? <Text color={brand.grafite70}>Esito: {dispute.resolutionNote}</Text> : null}
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+      {advice && isOpen ? (
+        <CaseAdviceBox
+          advice={advice}
+          token={token}
+          onApproved={onAdviceDone}
+          onApprove={() => {
+            setNote(advice.note ?? "");
+            setChoice(advice.decision as "RESOLVED_CLIENT" | "RESOLVED_PROFESSIONAL" | "CLOSED");
+          }}
+          onModify={() => setNote(advice.note ?? "")}
+        />
+      ) : null}
       {isOpen ? (
         <YStack gap="2">
           <XStack gap="2" flexWrap="wrap">

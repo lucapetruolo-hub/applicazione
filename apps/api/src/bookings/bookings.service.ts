@@ -1892,7 +1892,10 @@ export class BookingsService implements OnModuleInit {
         hasReview: booking.review !== null,
         reviewUpdatedAt: booking.review?.updatedAfterIssueAt ?? null,
         issue: booking.issue,
+        correctionRequestedAt: booking.review?.correctionRequestedAt ?? null,
       }),
+      // Un admin ha chiesto di correggere la recensione: cambia la frase sopra "Aggiorna la recensione".
+      reviewCorrectionRequested: Boolean(booking.review?.correctionRequestedAt),
       myReview: booking.review
         ? { id: booking.review.id, rating: booking.review.rating, comment: booking.review.comment, photoUrls: booking.review.photoUrls, showcase: booking.review.showcaseConsentAt !== null }
         : null,
