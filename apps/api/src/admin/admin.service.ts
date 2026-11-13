@@ -122,7 +122,7 @@ export class AdminService {
     } else if (kind === "REPORT_APPEAL") {
       if (note.length < 10) throw new BadRequestException("La proposta non ha la spiegazione per l'autore: usa Modifica.");
       result = advice.decision === "REVERT" ? await this.revertContentReport(caseId, note, adminUserId) : await this.rejectAppeal(caseId, note, adminUserId);
-    } else if (kind === "JOB_ISSUE" || kind === "JOB_ISSUE_APPEAL" || kind === "REFUND" || kind === "DISPUTE") {
+    } else if (kind === "JOB_ISSUE" || kind === "JOB_ISSUE_APPEAL" || kind === "REFUND" || kind === "DISPUTE" || kind === "BANK_DISPUTE" || kind === "UNPAID_BALANCE") {
       // Casi di soldi: "Approva" compila il modulo della pagina e apre la conferma di sempre (chi riceve cosa, quanto).
       throw new BadRequestException("Per i casi di soldi conferma la decisione dalla pagina del caso.");
     } else {

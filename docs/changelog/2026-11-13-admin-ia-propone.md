@@ -30,7 +30,7 @@ le nostre linee guida e regole".
   trattenute, messaggi dal sito (solo una bozza, mai inviata da sola: "Copia
   la risposta" o "Scrivi l'email"), e i casi di soldi: problemi sul lavoro
   da decidere, richieste di rivederli, rimborsi chiesti, contestazioni di un
-  pagamento. Restano fuori le contestazioni in banca e i saldi non pagati.
+  pagamento e, con il sì di Luca alla miglioria proposta, contestazioni in banca ("manda le prove" o "non mandarle") e saldi non pagati ("aspetta" o "chiudi il saldo"). Quando la proposta è di non fare nulla, al posto dei pulsanti c'è una frase che dice cosa succede.
 - Istruzioni: `CASE_ADVICE_RULES` (regole del sito con quelle uscite dalle
   risposte di Luca), `SITE_GUIDE` (dove sono i pulsanti, per le bozze),
   `MONEY_RULES` (rimborsi a livelli 100/50/20, mancata presentazione sempre
@@ -51,6 +51,7 @@ le nostre linee guida e regole".
   Finanza). Le decisioni automatiche e gli accordi tra le parti non contano.
   Nuova pagina Impostazioni → **Proposte dell'IA** (`/admin/proposte-ia`)
   con i numeri e le ultime volte in cui l'admin ha deciso diversamente.
+- Promemoria in Scadenze e controlli al 13/12/2026 (nella stessa migrazione): rileggere le volte in cui l'admin ha deciso diversamente e migliorare le istruzioni (miglioria scelta da Luca).
 - Ognuno vede le proposte dei casi del suo ruolo (`CASE_ADVICE_KIND_SCOPE`):
   moderazione per segnalazioni, recensioni e messaggi, finanza per rimborsi e
   contestazioni, tutti per i problemi sul lavoro.
@@ -68,7 +69,8 @@ conferma con cifre e nomi, e i numeri per tipo dicono dove l'IA sbaglia.
   8 casi scritti apposta, due giri. Primo giro 8 su 8 come atteso; nel
   secondo, con le spiegazioni più corte, un lavoro con difetti piccoli e la
   versione contraria del professionista diventa "chiedi informazioni"
-  invece di "rimborso del 20%".
+  invece di "rimborso del 20%". Contestazioni in banca e saldi non pagati:
+  4 casi, 4 come atteso.
 - Test: `apps/api/src/admin/case-advice.test.ts` (pulizia della risposta,
   regole dei soldi nelle istruzioni, giro dopo le informazioni chieste, come
   si legge la decisione di un caso di soldi, numeri per tipo, chi vede cosa).

@@ -16,10 +16,10 @@
 
 import type { AdminScope } from "./adminRoles";
 
-export type CaseAdviceKind = "CONTENT_REPORT" | "HELD_REVIEW" | "REPORT_APPEAL" | "CONTACT_MESSAGE" | "JOB_ISSUE" | "JOB_ISSUE_APPEAL" | "REFUND" | "DISPUTE";
+export type CaseAdviceKind = "CONTENT_REPORT" | "HELD_REVIEW" | "REPORT_APPEAL" | "CONTACT_MESSAGE" | "JOB_ISSUE" | "JOB_ISSUE_APPEAL" | "REFUND" | "DISPUTE" | "BANK_DISPUTE" | "UNPAID_BALANCE";
 
 /** I tipi con una decisione da misurare (i messaggi hanno solo la bozza). */
-export const MEASURED_ADVICE_KINDS = ["CONTENT_REPORT", "HELD_REVIEW", "REPORT_APPEAL", "JOB_ISSUE", "JOB_ISSUE_APPEAL", "REFUND", "DISPUTE"] as const satisfies readonly CaseAdviceKind[];
+export const MEASURED_ADVICE_KINDS = ["CONTENT_REPORT", "HELD_REVIEW", "REPORT_APPEAL", "JOB_ISSUE", "JOB_ISSUE_APPEAL", "REFUND", "DISPUTE", "BANK_DISPUTE", "UNPAID_BALANCE"] as const satisfies readonly CaseAdviceKind[];
 export type MeasuredAdviceKind = (typeof MEASURED_ADVICE_KINDS)[number];
 
 export const CASE_ADVICE_KIND_LABEL: Record<CaseAdviceKind, string> = {
@@ -31,6 +31,8 @@ export const CASE_ADVICE_KIND_LABEL: Record<CaseAdviceKind, string> = {
   JOB_ISSUE_APPEAL: "Richieste di rivedere un problema sul lavoro",
   REFUND: "Rimborsi chiesti",
   DISPUTE: "Contestazioni di un pagamento",
+  BANK_DISPUTE: "Contestazioni in banca",
+  UNPAID_BALANCE: "Saldi non pagati",
 };
 
 /** Chi vede e approva le proposte di ogni tipo: gli stessi ruoli delle pagine dei casi. */
@@ -43,6 +45,8 @@ export const CASE_ADVICE_KIND_SCOPE: Record<CaseAdviceKind, AdminScope> = {
   JOB_ISSUE_APPEAL: "ANY",
   REFUND: "FINANCE",
   DISPUTE: "FINANCE",
+  BANK_DISPUTE: "FINANCE",
+  UNPAID_BALANCE: "FINANCE",
 };
 
 /**
@@ -60,6 +64,8 @@ export const CASE_ADVICE_DECISIONS = {
   JOB_ISSUE_APPEAL: ["APPEAL_ACCEPTED", "APPEAL_REJECTED"],
   REFUND: ["REFUND_APPROVED", "REFUND_REJECTED"],
   DISPUTE: ["RESOLVED_CLIENT", "RESOLVED_PROFESSIONAL", "CLOSED"],
+  BANK_DISPUTE: ["CONTEST", "DONT_CONTEST"],
+  UNPAID_BALANCE: ["WAIT", "CLOSE"],
 } as const satisfies Record<CaseAdviceKind, readonly string[]>;
 export type CaseAdviceDecision = (typeof CASE_ADVICE_DECISIONS)[CaseAdviceKind][number];
 
@@ -89,6 +95,10 @@ export const CASE_ADVICE_DECISION_LABEL: Record<CaseAdviceDecision, string> = {
   RESOLVED_CLIENT: "Ha ragione il cliente",
   RESOLVED_PROFESSIONAL: "Ha ragione il professionista",
   CLOSED: "Chiudi senza decidere",
+  CONTEST: "Manda le prove alla banca",
+  DONT_CONTEST: "Non mandare prove: il cliente ha ragione",
+  WAIT: "Aspetta: il cliente può ancora pagare",
+  CLOSE: "Chiudi il saldo: pagato fuori dal sito o lasciato perdere",
 };
 
 /** Si guardano solo le ultime decisioni: le istruzioni migliorano, i vecchi errori pesano meno. */

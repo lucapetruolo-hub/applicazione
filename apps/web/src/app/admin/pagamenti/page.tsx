@@ -126,7 +126,7 @@ export default function AdminPagamentiPage() {
           Clienti che hanno contestato un pagamento online con la loro banca. Il sito ha già scritto le prove. Rileggile e mandale prima della scadenza.
         </Text>
         {bankDisputes && bankDisputes.length === 0 ? <Text color={brand.grafite70}>Nessuna contestazione in banca aperta.</Text> : null}
-        {bankDisputes?.map((row) => <BankDisputeCard key={row.jobPaymentId} row={row} token={token ?? ""} onChanged={reload} />)}
+        {bankDisputes?.map((row) => <BankDisputeCard key={row.jobPaymentId} row={row} advice={advice.get("BANK_DISPUTE", row.jobPaymentId)} token={token ?? ""} onChanged={() => { reload(); advice.reload(); }} />)}
       </YStack>
 
       {token ? <BankDisputeArchive token={token} reloadKey={bankDisputes} /> : null}
@@ -139,7 +139,7 @@ export default function AdminPagamentiPage() {
           Clienti che non hanno pagato il resto entro 7 giorni dalla fine del lavoro. Il professionista ha già avuto la parte pagata. Scrivi al cliente per ricordarglielo. Se paga dal sito, i soldi arrivano da soli al professionista.
         </Text>
         {unpaid && unpaid.length === 0 ? <Text color={brand.grafite70}>Nessuno deve ancora pagare il resto.</Text> : null}
-        {unpaid?.map((row) => <UnpaidCard key={row.jobPaymentId} row={row} token={token ?? ""} onChanged={reload} />)}
+        {unpaid?.map((row) => <UnpaidCard key={row.jobPaymentId} row={row} advice={advice.get("UNPAID_BALANCE", row.jobPaymentId)} token={token ?? ""} onChanged={() => { reload(); advice.reload(); }} />)}
       </YStack>
 
       <YStack gap="3">
@@ -408,7 +408,7 @@ function DisputeCard({
   );
 }
 
-function UnpaidCard({ row, token, onChanged }: { row: AdminUnpaidBalance; token: string; onChanged: () => void }) {
+function UnpaidCard({ row, token, onChanged, advice }: { row: AdminUnpaidBalance; token: string; onChanged: () => void; advice: CaseAdvice | null }) {
   const [note, setNote] = useState("");
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -444,6 +444,22 @@ function UnpaidCard({ row, token, onChanged }: { row: AdminUnpaidBalance; token:
         Cliente <Link href={`/admin/utenti/${row.client.userId}`}>{row.client.name ?? row.client.email}</Link> ({row.client.email}) · professionista{" "}
         <Link href={`/admin/utenti/${row.professional.userId}`}>{row.professional.businessName}</Link>
       </Text>
+      {advice ? (
+        <CaseAdviceBox
+          advice={advice}
+          token={token}
+          onApproved={onChanged}
+          noAction={advice.decision === "WAIT" ? "Per ora non serve fare niente: se il cliente paga, il saldo si chiude da solo." : undefined}
+          onApprove={() => {
+            setNote(advice.note ?? "");
+            setOpen(true);
+          }}
+          onModify={() => {
+            setNote(advice.note ?? "");
+            setOpen(true);
+          }}
+        />
+      ) : null}
       {open ? (
         <YStack gap="2">
           <textarea aria-label="Come si è chiuso" className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Come si è chiuso (es. pagato al professionista, rinuncia)" />
@@ -554,7 +570,7 @@ function dueWithinDays(iso: string, days: number): boolean {
   return new Date(iso).getTime() - Date.now() < days * 86_400_000;
 }
 
-function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; token: string; onChanged: () => void }) {
+function BankDisputeCard({ row, token, onChanged, advice }: { row: AdminBankDispute; token: string; onChanged: () => void; advice: CaseAdvice | null }) {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [draft, setDraft] = useState(row.draft);
@@ -603,6 +619,19 @@ function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; tok
         {row.professionalName} · cliente {row.clientName}
         {!row.submitted ? (row.professionalNote ? " · il professionista ha scritto la sua spiegazione" : " · il professionista non ha ancora scritto") : ""}
       </Text>
+      {advice && !row.submitted ? (
+        <CaseAdviceBox
+          advice={advice}
+          token={token}
+          onApproved={onChanged}
+          noAction={advice.decision === "DONT_CONTEST" ? "Se non mandi le prove entro la scadenza, la banca dà ragione al cliente. Puoi sempre mandarle qui sotto." : undefined}
+          onApprove={() => {
+            setOpen(true);
+            setConfirming(true);
+          }}
+          onModify={() => setOpen(true)}
+        />
+      ) : null}
       {row.submitted ? (
         <YStack gap="2">
           <Text fontSize={13} color={brand.grafite70}>

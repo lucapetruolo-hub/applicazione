@@ -38,6 +38,7 @@ export function CaseAdviceBox({
   onApproved,
   onModify,
   onApprove,
+  noAction,
   replyTo,
 }: {
   advice: CaseAdvice;
@@ -49,6 +50,8 @@ export function CaseAdviceBox({
    * conferma (chi riceve cosa, quanto), invece di decidere subito.
    */
   onApprove?: () => void;
+  /** Quando la proposta è di non fare nulla: la frase al posto dei pulsanti. */
+  noAction?: string;
   /** Solo per i messaggi: l'email a cui rispondere. */
   replyTo?: string;
 }) {
@@ -58,7 +61,7 @@ export function CaseAdviceBox({
   const ground = moderationGround(advice.ground);
   const isMessage = advice.kind === "CONTACT_MESSAGE";
 
-  const isMoney = advice.kind === "JOB_ISSUE" || advice.kind === "JOB_ISSUE_APPEAL" || advice.kind === "REFUND" || advice.kind === "DISPUTE";
+  const isMoney = advice.kind === "JOB_ISSUE" || advice.kind === "JOB_ISSUE_APPEAL" || advice.kind === "REFUND" || advice.kind === "DISPUTE" || advice.kind === "BANK_DISPUTE" || advice.kind === "UNPAID_BALANCE";
   const noteLabel = advice.decision === "ASK_INFO" ? "Domanda al professionista" : isMoney ? "Motivazione" : "Cosa legge l'autore";
 
   async function approve() {
@@ -142,6 +145,10 @@ export function CaseAdviceBox({
               ) : null}
             </>
           ) : null
+        ) : noAction ? (
+          <Text fontSize="3" color={brand.grafite70}>
+            {noAction}
+          </Text>
         ) : (
           <>
             <Button variant="primary" size="3" disabled={busy} onPress={() => void approve()}>

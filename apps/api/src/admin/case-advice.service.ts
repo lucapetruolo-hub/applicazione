@@ -6,6 +6,7 @@ import type { PrismaClient } from "@professionisti/database";
 import {
   CASE_ADVICE_DECISIONS,
   CASE_ADVICE_KIND_SCOPE,
+  BANK_DISPUTE_OPEN_STATUSES,
   adminCan,
   CASE_ADVICE_WINDOW,
   CONTENT_REPORT_TARGET_LABEL,
@@ -87,6 +88,8 @@ export const MONEY_RULES = `Regole del sito sui soldi e sui problemi dei lavori:
 - Una richiesta di rivedere la decisione si accoglie solo se porta fatti o prove nuove; il disaccordo da solo non basta.
 - Un rimborso chiesto si approva se le parti sono d'accordo o se c'è un motivo chiaro (lavoro non fatto, importo pagato due volte, prezzo sbagliato); si rifiuta se il motivo manca o non regge, e chi l'ha chiesto riceve il motivo del rifiuto.
 - Una contestazione di un pagamento: "ha ragione il cliente" se il lavoro non è stato fatto o è molto diverso dal preventivo; "ha ragione il professionista" se il lavoro risulta fatto come concordato; "chiudi senza decidere" se le parti si sono messe d'accordo o mancano gli elementi.
+- Contestazione in banca: il cliente ha chiesto alla sua banca di annullare il pagamento con la carta. Decide la banca, in base alle prove che mandiamo (preventivo accettato, messaggi, lavoro chiuso, foto). Si mandano le prove se il lavoro risulta fatto come concordato; non si mandano se il cliente ha ragione (lavoro non fatto, annullato, pagato due volte). La commissione della banca per la contestazione la paga sempre il professionista.
+- Saldo non pagato: il cliente non ha pagato il resto online entro 7 giorni dalla fine del lavoro. Si chiude il saldo solo se dalla chat risulta che ha pagato il professionista in altro modo o che il professionista ci rinuncia; altrimenti si aspetta.
 - Con meno di 24 ore di preavviso l'acconto pagato sul sito non si rimborsa se il cliente annulla.
 - Non dire mai "i nostri professionisti" e non promettere soldi che le regole non prevedono.`;
 
@@ -111,9 +114,11 @@ const jobIssueAnswer = z.object({ decision: z.enum(CASE_ADVICE_DECISIONS.JOB_ISS
 const jobIssueAppealAnswer = z.object({ decision: z.enum(CASE_ADVICE_DECISIONS.JOB_ISSUE_APPEAL), reason: z.string(), note: z.string() });
 const refundAnswer = z.object({ decision: z.enum(CASE_ADVICE_DECISIONS.REFUND), reason: z.string(), note: z.string() });
 const disputeAnswer = z.object({ decision: z.enum(CASE_ADVICE_DECISIONS.DISPUTE), reason: z.string(), note: z.string() });
+const bankDisputeAnswer = z.object({ decision: z.enum(CASE_ADVICE_DECISIONS.BANK_DISPUTE), reason: z.string(), note: z.string() });
+const unpaidBalanceAnswer = z.object({ decision: z.enum(CASE_ADVICE_DECISIONS.UNPAID_BALANCE), reason: z.string(), note: z.string() });
 
 /** I tipi di soldi: istruzioni con le nostre regole, approvazione dai servizi di sempre. */
-export const MONEY_ADVICE_KINDS = ["JOB_ISSUE", "JOB_ISSUE_APPEAL", "REFUND", "DISPUTE"] as const satisfies readonly CaseAdviceKind[];
+export const MONEY_ADVICE_KINDS = ["JOB_ISSUE", "JOB_ISSUE_APPEAL", "REFUND", "DISPUTE", "BANK_DISPUTE", "UNPAID_BALANCE"] as const satisfies readonly CaseAdviceKind[];
 export type MoneyAdviceKind = (typeof MONEY_ADVICE_KINDS)[number];
 
 type Answer = { decision: CaseAdviceDecision; reason: string; ground?: string | null; note?: string | null; draft?: string | null };
@@ -143,6 +148,10 @@ export function adviceInstructions(c: AdviceCase): string {
       return `Una persona chiede un rimborso su un lavoro. Decisione tra: REFUND_APPROVED (approva) o REFUND_REJECTED (rifiuta). reason: perché, in una frase per l'amministratore. note: con REFUND_REJECTED il motivo per chi l'ha chiesto, 1-2 frasi; con REFUND_APPROVED una frase breve per il registro.\n\n${MONEY_RULES}`;
     case "DISPUTE":
       return `Una persona contesta un pagamento. Decisione tra: RESOLVED_CLIENT (ha ragione il cliente), RESOLVED_PROFESSIONAL (ha ragione il professionista) o CLOSED (chiudi senza decidere). reason: perché, in una frase per l'amministratore. note: la motivazione, 1-2 frasi.\n\n${MONEY_RULES}`;
+    case "BANK_DISPUTE":
+      return `Il cliente ha contestato il pagamento con la sua banca. Decisione tra: CONTEST (manda le prove alla banca) o DONT_CONTEST (non mandare prove, il cliente ha ragione). reason: perché, in una frase per l'amministratore. note: per l'amministratore, al massimo 2 frasi: con CONTEST quale prova conta di più o cosa manca, con DONT_CONTEST cosa lo dimostra.\n\n${MONEY_RULES}`;
+    case "UNPAID_BALANCE":
+      return `Il cliente non ha pagato il resto online. Decisione tra: WAIT (aspetta, può ancora pagare) o CLOSE (chiudi il saldo: pagato al professionista in altro modo o il professionista ci rinuncia). reason: perché, in una frase per l'amministratore. note: con CLOSE come si è chiuso, una frase per il registro; con WAIT cosa controllare.\n\n${MONEY_RULES}`;
   }
 }
 
@@ -168,6 +177,10 @@ function answerSchema(kind: CaseAdviceKind) {
       return refundAnswer;
     case "DISPUTE":
       return disputeAnswer;
+    case "BANK_DISPUTE":
+      return bankDisputeAnswer;
+    case "UNPAID_BALANCE":
+      return unpaidBalanceAnswer;
   }
 }
 
@@ -197,6 +210,11 @@ export function jobIssueAdviceId(issue: { id: string; infoRespondedAt: Date | nu
   return issue.infoRespondedAt ? `${issue.id}#${issue.infoRespondedAt.getTime()}` : issue.id;
 }
 
+/** Chiave della proposta per un saldo non pagato: un pagamento può restare scoperto più di una volta. */
+export function unpaidAdviceId(job: { id: string; balanceUnpaidAt: Date }): string {
+  return `${job.id}#${job.balanceUnpaidAt.getTime()}`;
+}
+
 /** L'id del caso come lo vede la pagina (senza il giro del problema sul lavoro). */
 export function adviceCaseId(caseId: string): string {
   return caseId.split("#")[0]!;
@@ -206,7 +224,9 @@ type MoneyState =
   | { kind: "JOB_ISSUE"; status: string; refundPercent: number | null; paidOnline: boolean; autoDecision: string | null; infoRequestedAt: Date | null }
   | { kind: "JOB_ISSUE_APPEAL"; appealDecision: string | null }
   | { kind: "REFUND"; status: string }
-  | { kind: "DISPUTE"; status: string };
+  | { kind: "DISPUTE"; status: string }
+  | { kind: "BANK_DISPUTE"; evidenceSent: boolean; open: boolean }
+  | { kind: "UNPAID_BALANCE"; stillUnpaid: boolean; paidByClient: boolean };
 
 /**
  * Com'è finito un caso di soldi, letto dal suo stato: `undefined` se è ancora
@@ -230,6 +250,12 @@ export function moneyAdminDecision(state: MoneyState | null, adviceCreatedAt: Da
       return state.status === "REQUESTED" ? undefined : state.status === "REJECTED" ? "REFUND_REJECTED" : "REFUND_APPROVED";
     case "DISPUTE":
       return state.status === "OPEN" || state.status === "UNDER_REVIEW" ? undefined : state.status;
+    case "BANK_DISPUTE":
+      // Prove mandate = contestata; chiusa senza prove = lasciata al cliente.
+      return state.evidenceSent ? "CONTEST" : state.open ? undefined : "DONT_CONTEST";
+    case "UNPAID_BALANCE":
+      // Pagato dal cliente: aspettare era giusto. Chiuso senza pagamento: l'admin l'ha chiuso.
+      return state.stillUnpaid ? undefined : state.paidByClient ? "WAIT" : "CLOSE";
   }
 }
 
@@ -424,6 +450,43 @@ export class CaseAdviceService {
         text: `${await this.jobText(booking)}\nChi contesta: ${d.openedById === booking.clientId ? "il cliente" : "il professionista"}\nMotivo: ${short(d.reason, 1000)}`,
       });
     }
+
+    await this.bankCases(push, decided);
+  }
+
+  /** Contestazioni in banca ancora da rispondere e saldi non pagati (casi della Finanza). */
+  private async bankCases(push: (c: AdviceCase | null) => void, decided: (kind: CaseAdviceKind, ids: string[]) => Promise<Set<string>>): Promise<void> {
+    const disputed = await this.prisma.jobPayment.findMany({
+      where: { stripeDisputeId: { not: null }, stripeDisputeStatus: { in: [...BANK_DISPUTE_OPEN_STATUSES] }, disputeEvidenceSentAt: null },
+      orderBy: { stripeDisputedAt: "asc" },
+      take: PER_RUN,
+      include: { booking: { include: { ...bookingForAdvice, issue: { select: { type: true, status: true, description: true } } } } },
+    });
+    const seenDisputes = await decided("BANK_DISPUTE", disputed.map((j) => j.id));
+    for (const job of disputed) {
+      if (seenDisputes.has(job.id)) continue;
+      const b = job.booking;
+      push({
+        kind: "BANK_DISPUTE",
+        caseId: job.id,
+        allowed: CASE_ADVICE_DECISIONS.BANK_DISPUTE,
+        text: `${await this.jobText(b)}\nLavoro segnato come terminato dal professionista: ${b.professionalCompletedAt ? "sì" : "no"}; confermato dal cliente: ${b.clientConfirmedCompletedAt ? "sì" : b.completionAutoClosedAt ? "chiuso senza segnalazioni del cliente" : "no"}\nFoto del lavoro finito: ${b.professionalCompletionPhotoUrls.length + b.clientCompletionPhotoUrls.length}\nProblema segnalato sul sito: ${b.issue ? `${JOB_ISSUE_LABEL[b.issue.type]} (stato ${b.issue.status}): ${short(b.issue.description, 400)}` : "nessuno"}\nMotivo dato dalla banca: ${job.stripeDisputeReason ?? "non indicato"}\nSpiegazione del professionista: ${short(job.disputeProNote, 1000) || "(non ancora scritta)"}`,
+      });
+    }
+
+    const unpaid = await this.prisma.jobPayment.findMany({ where: { balanceUnpaidAt: { not: null } }, orderBy: { balanceUnpaidAt: "asc" }, take: PER_RUN, include: { booking: { include: bookingForAdvice } } });
+    const ids = unpaid.map((j) => unpaidAdviceId({ id: j.id, balanceUnpaidAt: j.balanceUnpaidAt! }));
+    const seenUnpaid = await decided("UNPAID_BALANCE", ids);
+    for (const [i, job] of unpaid.entries()) {
+      if (seenUnpaid.has(ids[i]!)) continue;
+      const days = Math.floor((Date.now() - job.balanceUnpaidAt!.getTime()) / 86_400_000);
+      push({
+        kind: "UNPAID_BALANCE",
+        caseId: ids[i]!,
+        allowed: CASE_ADVICE_DECISIONS.UNPAID_BALANCE,
+        text: `${await this.jobText(job.booking)}\nImporto finale del lavoro: ${job.booking.finalAmountEurCents !== null ? euro(job.booking.finalAmountEurCents) : "non indicato"}\nIl cliente aveva 7 giorni per pagare il resto: è in ritardo da ${days} giorni`,
+      });
+    }
   }
 
   /** Il lavoro in breve: preventivo, pagamento e gli ultimi messaggi della chat, senza contatti. */
@@ -532,7 +595,7 @@ export class CaseAdviceService {
   async reconcileMoney(): Promise<void> {
     const open = await this.prisma.adminCaseAdvice.findMany({ where: { adminDecidedAt: null, kind: { in: [...MONEY_ADVICE_KINDS] } } });
     for (const advice of open) {
-      const admin = moneyAdminDecision(await this.moneyState(advice.kind as MoneyAdviceKind, adviceCaseId(advice.caseId)), advice.createdAt);
+      const admin = moneyAdminDecision(await this.moneyState(advice.kind as MoneyAdviceKind, advice.caseId), advice.createdAt);
       if (admin === undefined) continue;
       await this.prisma.adminCaseAdvice.updateMany({
         where: { id: advice.id, adminDecidedAt: null },
@@ -541,7 +604,8 @@ export class CaseAdviceService {
     }
   }
 
-  private async moneyState(kind: MoneyAdviceKind, id: string): Promise<MoneyState | null> {
+  private async moneyState(kind: MoneyAdviceKind, caseId: string): Promise<MoneyState | null> {
+    const id = adviceCaseId(caseId);
     if (kind === "JOB_ISSUE" || kind === "JOB_ISSUE_APPEAL") {
       const issue = await this.prisma.jobIssue.findUnique({
         where: { id },
@@ -555,6 +619,16 @@ export class CaseAdviceService {
     if (kind === "REFUND") {
       const refund = await this.prisma.refund.findUnique({ where: { id }, select: { status: true } });
       return refund ? { kind, status: refund.status } : null;
+    }
+    if (kind === "BANK_DISPUTE") {
+      const job = await this.prisma.jobPayment.findUnique({ where: { id }, select: { disputeEvidenceSentAt: true, stripeDisputeStatus: true } });
+      return job ? { kind, evidenceSent: !!job.disputeEvidenceSentAt, open: (BANK_DISPUTE_OPEN_STATUSES as readonly string[]).includes(job.stripeDisputeStatus ?? "") } : null;
+    }
+    if (kind === "UNPAID_BALANCE") {
+      const [jobId, since] = [adviceCaseId(caseId), Number(caseId.split("#")[1])];
+      const job = await this.prisma.jobPayment.findUnique({ where: { id: jobId }, select: { balanceUnpaidAt: true, balancePaidAt: true } });
+      if (!job) return null;
+      return { kind, stillUnpaid: job.balanceUnpaidAt?.getTime() === since, paidByClient: !!job.balancePaidAt && job.balancePaidAt.getTime() >= since };
     }
     const dispute = await this.prisma.dispute.findUnique({ where: { id }, select: { status: true } });
     return dispute ? { kind, status: dispute.status } : null;

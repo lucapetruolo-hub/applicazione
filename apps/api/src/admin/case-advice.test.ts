@@ -10,6 +10,7 @@ import {
   kindStats,
   moneyAdminDecision,
   moneyAgrees,
+  unpaidAdviceId,
   type AdviceCase,
 } from "./case-advice.service";
 
@@ -49,7 +50,7 @@ describe("cleanAnswer", () => {
 
 describe("istruzioni", () => {
   it("i casi di soldi hanno le nostre regole", () => {
-    for (const kind of ["JOB_ISSUE", "JOB_ISSUE_APPEAL", "REFUND", "DISPUTE"] as const) {
+    for (const kind of ["JOB_ISSUE", "JOB_ISSUE_APPEAL", "REFUND", "DISPUTE", "BANK_DISPUTE", "UNPAID_BALANCE"] as const) {
       expect(adviceInstructions({ kind, caseId: "x", text: "", allowed: CASE_ADVICE_DECISIONS[kind] })).toContain(MONEY_RULES);
     }
     expect(MONEY_RULES).toContain("100%");
@@ -93,6 +94,17 @@ describe("com'è finito un caso di soldi", () => {
     expect(moneyAdminDecision({ kind: "DISPUTE", status: "CLOSED" }, createdAt)).toBe("CLOSED");
   });
 
+  it("contestazione in banca e saldo non pagato", () => {
+    expect(moneyAdminDecision({ kind: "BANK_DISPUTE", evidenceSent: false, open: true }, createdAt)).toBeUndefined();
+    expect(moneyAdminDecision({ kind: "BANK_DISPUTE", evidenceSent: true, open: false }, createdAt)).toBe("CONTEST");
+    expect(moneyAdminDecision({ kind: "BANK_DISPUTE", evidenceSent: false, open: false }, createdAt)).toBe("DONT_CONTEST");
+    expect(moneyAdminDecision({ kind: "UNPAID_BALANCE", stillUnpaid: true, paidByClient: false }, createdAt)).toBeUndefined();
+    expect(moneyAdminDecision({ kind: "UNPAID_BALANCE", stillUnpaid: false, paidByClient: true }, createdAt)).toBe("WAIT");
+    expect(moneyAdminDecision({ kind: "UNPAID_BALANCE", stillUnpaid: false, paidByClient: false }, createdAt)).toBe("CLOSE");
+    const id = unpaidAdviceId({ id: "j1", balanceUnpaidAt: createdAt });
+    expect(adviceCaseId(id)).toBe("j1");
+  });
+
   it("con il pagamento diretto conta solo accogli o respingi", () => {
     expect(moneyAgrees("UPHELD_100", "UPHELD")).toBe(true);
     expect(moneyAgrees("UPHELD_50", "UPHELD_100")).toBe(false);
@@ -117,7 +129,7 @@ describe("chi vede le proposte", () => {
   it("la finanza vede rimborsi e problemi sul lavoro, non le segnalazioni", async () => {
     const prisma = { user: { findUnique: vi.fn().mockResolvedValue({ adminRoles: ["FINANCE"] }) } };
     const kinds = await new CaseAdviceService(prisma as never).kindsFor("u1");
-    expect(kinds).toEqual(expect.arrayContaining(["REFUND", "DISPUTE", "JOB_ISSUE", "JOB_ISSUE_APPEAL"]));
+    expect(kinds).toEqual(expect.arrayContaining(["REFUND", "DISPUTE", "BANK_DISPUTE", "UNPAID_BALANCE", "JOB_ISSUE", "JOB_ISSUE_APPEAL"]));
     expect(kinds).not.toContain("CONTENT_REPORT");
   });
 });
