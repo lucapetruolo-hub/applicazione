@@ -463,6 +463,11 @@ export class ProblemMatchService {
    * Conta una foto per l'indirizzo e dice se oggi ne restano
    * (`PROBLEM_PHOTO_IP_DAILY_LIMIT` lo cambia, per esempio per il banco di prova).
    */
+  /** Foto di oggi per Admin › Mestieri richiesti (docs/changelog/2026-11-13-difese-ricerca-con-foto.md). */
+  photoUsage(): { enabled: boolean; used: number; limit: number } {
+    return { enabled: photoSearchEnabled(), ...this.photoBudget.usage() };
+  }
+
   takePhotoForIp(ip: string, now: Date = new Date()): boolean {
     const today = now.toISOString().slice(0, 10);
     if (today !== this.photoIpDay || this.photosByIp.size >= PHOTO_IPS_MAX) {

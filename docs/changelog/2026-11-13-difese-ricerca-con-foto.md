@@ -26,3 +26,10 @@ detto sì alle tre difese insieme.
 **Verifica**: test dell'API (`problem-photo.test.ts`: 5 per indirizzo poi no,
 altro indirizzo e giorno dopo sì, variabile che alza il limite; tetto delle
 foto che non tocca quello del testo), typecheck e lint, `check-render-env`.
+
+**Aggiunta** (Luca, "si" alla miglioria): in Admin › Mestieri richiesti, sotto
+la velocità dell'IA, "Ricerche con foto oggi: N su 1000" (in grassetto dall'80%,
+con "Finite: fino a mezzanotte si cerca solo a parole" al tetto), solo con la
+ricerca con foto accesa. Un salto improvviso vuol dire qualcuno che ne abusa.
+Il conteggio è in memoria come il tetto: riparte a mezzanotte (UTC) e dopo un
+riavvio dell'API. Limite per indirizzo abbassato a 5 su richiesta di Luca.

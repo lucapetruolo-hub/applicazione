@@ -159,6 +159,7 @@ describe("ricerca con foto", () => {
     expect((await service.analyzePhoto(JPEG, "image/jpeg", "")).photoId).not.toBeNull();
     expect((await service.analyzePhoto(JPEG, "image/jpeg", "")).check).toBe("spenta");
     expect(service.askAiWithPhoto).toHaveBeenCalledTimes(1);
+    expect(service.photoUsage()).toEqual({ enabled: true, used: 1, limit: 1 });
     expect((service as unknown as { budget: { hasRoom: () => boolean } }).budget.hasRoom()).toBe(true);
   });
 
