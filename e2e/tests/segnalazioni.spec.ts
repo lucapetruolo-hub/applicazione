@@ -151,12 +151,43 @@ test("segnalazione di un contenuto illegale senza account", async ({ browser }) 
   await page.getByLabel("Nome e cognome").fill("Anna Vicino");
   await page.getByLabel("Indirizzo della pagina").fill(`${WEB_URL}/professionista/${profileId}`);
   await page.getByLabel("Perché è illegale").fill("La recensione riporta il mio indirizzo di casa.");
-  await page.getByRole("button", { name: "Invia", exact: true }).click();
+  await page.getByRole("button", { name: "Invia segnalazione" }).click();
   await expect(page.getByText("Conferma che la segnalazione è fatta in buona fede.")).toBeVisible();
   await page.getByRole("checkbox").click({ position: { x: 12, y: 12 } });
-  await page.getByRole("button", { name: "Invia", exact: true }).click();
+  await page.getByRole("button", { name: "Invia segnalazione" }).click();
   await expect(page.getByText("Segnalazione presa in carico")).toBeVisible();
   const message = await prisma.contactMessage.findFirstOrThrow({ where: { email } });
   expect(message.role).toBe("REPORT_ILLEGAL");
   expect(message.content).toContain("Segnalato da: Anna Vicino");
+});
+
+test("Contatti: la segnalazione si apre dal link sotto il modulo e si torna al messaggio", async ({ browser }) => {
+  const page = await pageAs(browser, null);
+  await page.goto("/contatti");
+  // "Segnalo un contenuto illegale" non è più tra le scelte di "Chi sei?".
+  await expect(page.getByRole("radio", { name: /contenuto illegale/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Segnalalo qui" }).click();
+  await expect(page.getByRole("button", { name: "Invia segnalazione" })).toBeVisible();
+  await expect(page.getByLabel("Indirizzo della pagina")).toBeVisible();
+  await expect(page.getByLabel("La tua email")).toBeFocused();
+  await page.getByRole("button", { name: "Scrivi un messaggio" }).click();
+  await expect(page.getByRole("radio", { name: "Sono un cliente" })).toBeChecked();
+  await expect(page.getByRole("button", { name: "Invia messaggio" })).toBeVisible();
+});
+
+test("Contatti: email già scritta per chi ha fatto l'accesso, errore sotto il campo, conferma con l'email", async ({ browser }) => {
+  const page = await pageAs(browser, people.reporter);
+  await page.goto("/contatti");
+  const email = page.getByLabel("La tua email");
+  await expect(email).toHaveValue(people.reporter);
+  // Errore subito sotto il campo, collegato al campo.
+  await email.fill("senza-chiocciola");
+  await page.getByRole("button", { name: "Invia messaggio" }).click();
+  await expect(email).toHaveAttribute("aria-describedby", "contatti-errore-email");
+  await expect(page.locator("#contatti-errore-email")).toHaveText("Inserisci un'email valida.");
+  await email.fill(people.reporter);
+  await page.getByLabel("Messaggio").fill("Vorrei sapere come cambiare la mia città.");
+  await page.getByRole("button", { name: "Invia messaggio" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Messaggio inviato" })).toContainText(`Ti risponderemo il prima possibile a ${people.reporter}`);
+  await expect(page.getByRole("link", { name: "Torna alla home" })).toBeVisible();
 });
