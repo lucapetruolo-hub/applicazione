@@ -272,7 +272,8 @@ const GAS_QUESTION: ProblemQuestion = {
   ],
 };
 
-const QUESTIONS: readonly { pairs: readonly Pair[]; question: ProblemQuestion }[] = [
+/** `unless`: parole che rendono la domanda fuori luogo (docs/changelog/2026-11-13-domanda-acqua-calda.md). */
+const QUESTIONS: readonly { pairs: readonly Pair[]; question: ProblemQuestion; unless?: readonly string[] }[] = [
   {
     pairs: [["idraulico", "muratore"], ["imbianchino", "muratore"], ["idraulico", "imbianchino"]],
     question: {
@@ -287,6 +288,8 @@ const QUESTIONS: readonly { pairs: readonly Pair[]; question: ProblemQuestion }[
   },
   {
     pairs: [["climatizzazione", "idraulico"]],
+    // Un condizionatore che perde acqua non c'entra con chi scalda l'acqua.
+    unless: ["condizionator", "climatizzator", "split", "aria condizionata"],
     question: {
       id: "acqua-calda",
       text: "Che cosa scalda l'acqua o la casa?",
@@ -424,8 +427,10 @@ export function matchProblem(description: string): ProblemMatch {
     question = GAS_QUESTION;
   } else if (first && second && second.score >= first.score / 2) {
     question =
-      QUESTIONS.find((entry) =>
-        entry.pairs.some(([a, b]) => (a === first.slug && b === second.slug) || (a === second.slug && b === first.slug)),
+      QUESTIONS.find(
+        (entry) =>
+          entry.pairs.some(([a, b]) => (a === first.slug && b === second.slug) || (a === second.slug && b === first.slug)) &&
+          !entry.unless?.some((word) => containsWord(text, word)),
       )?.question ?? null;
   }
 
