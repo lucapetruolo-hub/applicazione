@@ -88,6 +88,11 @@ test("casi tipici", () => {
   assert.equal(matchProblem("Il rubinetto della cucina gocciola").categories[0]?.slug, "idraulico");
   assert.equal(matchProblem("Mi è rimasta la chiave dentro e la porta blindata non si apre").categories[0]?.slug, "fabbro");
   assert.equal(matchProblem("sento puzza di gas in cucina").safety, "gas");
+  // Quadro e interruttori che si muovono o scaldano (docs/changelog/2026-11-13-pericoli-dalla-foto.md).
+  assert.equal(matchProblem("il quadro elettrico è tutto allentato").safety, "elettrico");
+  assert.equal(matchProblem("l'interruttore della cucina scotta").safety, "elettrico");
+  assert.equal(matchProblem("il salvavita ronza da ieri sera").safety, "elettrico");
+  assert.equal(matchProblem("voglio spostare il quadro elettrico in corridoio").safety, null);
   assert.equal(matchProblem("la presa fa scintille").safety, "elettrico");
   assert.equal(matchProblem("sento un rumore strano nel muro quando piove e c'è una macchia scura vicino alla presa").safety, "acqua-elettrico");
   assert.equal(matchProblem("devo installare la lavatrice nuova").outOfService, null);

@@ -254,6 +254,8 @@ const SAFETY_RULES: readonly { kind: ProblemSafety; test: (t: string) => boolean
     kind: "elettrico",
     test: (t) =>
       (/\sscintill/.test(t) && !/\s(fiamma|accension|piezo|bruciatore)/.test(t)) ||
+      // Quadro o interruttori allentati, caldi o che ronzano (banco foto del 13/11, decisione di Luca).
+      /\s(quadro|interruttor\w*|salvavita|magnetotermic\w*)\s(\w+\s){0,4}(allentat|si muov|traballa|scald|scotta|ronz|sfrigol|crepit)/.test(t) ||
       /\s(scossa|bruciat|plastica fusa|fumo dalla presa|fumo dal quadro|fumo e)|\s(odore|puzza)\s(\w+\s){0,6}(presa|prese|interrut|quadro|scatola)|\s(cavo|filo|cavi|presa|spina)\s(\w+\s){0,3}(si scald|scotta|fuma)|\sfa fumo|\sfuma\s/.test(t),
   },
 ];
@@ -446,6 +448,13 @@ export type ProblemMatchResult = {
   categories: ProfessionalCategorySlug[];
   /** Sempre e solo dal dizionario, mai dall'intelligenza artificiale. */
   safety: ProblemSafety | null;
+  /**
+   * Ricerca con foto: impianto a gas, elettrico o caldaia visto nella foto
+   * senza un pericolo certo. Il sito mostra solo una riga leggera che apre
+   * l'avviso (decisione di Luca del 13/11/2026,
+   * docs/changelog/2026-11-13-pericoli-dalla-foto.md).
+   */
+  safetyHint?: ProblemSafety | null;
   outOfService: ProblemOutOfService | null;
   question: ProblemQuestion | null;
   /** Riga "Perché" breve, solo quando risponde l'intelligenza artificiale. */
