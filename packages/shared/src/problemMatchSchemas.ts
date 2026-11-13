@@ -10,8 +10,32 @@ export const problemMatchRequestSchema = z.object({
   city: z.string().trim().max(80).optional(),
   /** Mestiere che il cliente ha toccato fra quelli proposti (solo per contarlo in Admin). */
   chosen: z.string().trim().max(40).optional(),
+  /** Ricerca partita da una foto: il risultato già pronto (docs/changelog/2026-11-13-ricerca-con-foto.md). */
+  photo: z.string().uuid().optional(),
 });
 export type ProblemMatchRequest = z.infer<typeof problemMatchRequestSchema>;
+
+/** Testo e città che accompagnano la foto del problema (campi del modulo multipart). */
+export const problemPhotoRequestSchema = z.object({
+  description: z.string().trim().max(PROBLEM_DESCRIPTION_MAX).optional(),
+  city: z.string().trim().max(80).optional(),
+});
+export type ProblemPhotoRequest = z.infer<typeof problemPhotoRequestSchema>;
+
+/**
+ * Esito della foto: "ok" va ai risultati; "dati-personali" va ai risultati ma
+ * la foto non si allega alla richiesta (persone, documenti, numeri: CLAUDE.md
+ * §5 punto 9); "non-pertinente" e "non-adatta" chiedono di scrivere il problema.
+ */
+export type ProblemPhotoCheck = "ok" | "dati-personali" | "non-pertinente" | "non-adatta";
+
+export type ProblemPhotoResult =
+  | { photoId: string; description: string; check: "ok" | "dati-personali" }
+  | { photoId: null; description: null; check: "non-pertinente" | "non-adatta" | "spenta" };
+
+/** La foto si rimpicciolisce nel browser (lato lungo 1280 px): sopra questo peso è un errore. */
+export const PROBLEM_PHOTO_MAX_BYTES = 3 * 1024 * 1024;
+export const PROBLEM_PHOTO_MAX_EDGE = 1280;
 
 /** "Prendete in carico la richiesta": un lavoro che nessun professionista del sito fa. */
 export const problemTakeoverSchema = z.object({

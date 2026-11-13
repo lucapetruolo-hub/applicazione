@@ -26,7 +26,10 @@ export default function HomeContent({
   categoryCounts,
   problemExamples,
   popularJobs,
+  photoSearch = false,
 }: {
+  /** Ricerca con foto accesa sull'API (docs/changelog/2026-11-13-ricerca-con-foto.md). */
+  photoSearch?: boolean;
   /** "Lavori più cercati" già in ordine; `null` se l'API non ha risposto (resta l'elenco di partenza). */
   popularJobs: PopularJobsResponse | null;
   professionals: NewProfileSummary[];
@@ -58,7 +61,7 @@ export default function HomeContent({
           nella parte verde in alto. */}
       <div className={`is_View ${styles.page}`}>
         {/* 1. Parte verde con la ricerca, invariata. */}
-        <HomeHero examples={problemExamples} />
+        <HomeHero examples={problemExamples} photoSearch={photoSearch} />
 
         {platformStats ? (
           <Suspense fallback={null}>

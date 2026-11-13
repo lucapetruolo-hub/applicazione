@@ -58,6 +58,7 @@ import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 import { cleanPostalCode, postalCodeCityProblem, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
 import { localPreviewUrl } from "@/lib/media";
+import { searchPhotoFor } from "@/lib/photoSearch";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 
 /**
@@ -750,6 +751,17 @@ export function GuidedRequestForm({
   const [photos, setPhotos] = useState<{ url: string; file: File | null; isVideo: boolean }[]>([]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  // La foto della ricerca con foto, se la richiesta nasce da lì: già allegata, si può togliere
+  // (docs/changelog/2026-11-13-ricerca-con-foto.md). Resta solo nel browser fino all'invio.
+  const [photoFromSearch, setPhotoFromSearch] = useState(false);
+  useEffect(() => {
+    const file = searchPhotoFor(searchParams.get("descrizione") ?? "");
+    if (!file) return;
+    // La foto è nel browser (sessionStorage), che il server non vede: si legge solo dopo il primo disegno.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPhotos((prev) => (prev.length > 0 ? prev : [{ url: localPreviewUrl(file), file, isVideo: false }]));
+    setPhotoFromSearch(true);
+  }, [searchParams]);
   // Gate di autenticazione spostato al momento dell'invio (F2.2): il modulo
   // resta sempre compilabile da anonimo, il gate compare solo qui, senza
   // mai far perdere quanto già scritto/selezionato (nessuna navigazione).
@@ -1695,6 +1707,11 @@ export function GuidedRequestForm({
           {photoError ? (
             <Text color={brand.urgenza} fontSize={13}>
               {photoError}
+            </Text>
+          ) : null}
+          {photoFromSearch && photos.length > 0 ? (
+            <Text color={brand.grafite70} fontSize={13}>
+              Abbiamo aggiunto la foto della tua ricerca: se non serve, toglila.
             </Text>
           ) : null}
         </YStack>

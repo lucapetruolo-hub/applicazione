@@ -43,6 +43,8 @@ export type ProblemSearch = {
   categoryCounts?: Partial<Record<ProfessionalCategorySlug, number>>;
   /** Quando serve e comune presi dal testo, per precompilare la richiesta (docs/changelog/2026-11-12-haiku-senza-ragionamento.md). */
   requestHints?: ProblemRequestHints;
+  /** Ricerca partita da una foto: l'id resta nei link dei mestieri (docs/changelog/2026-11-13-ricerca-con-foto.md). */
+  photo?: string;
 };
 
 /** "Perché" di una scheda: la prestazione del professionista che somiglia al problema. */
@@ -309,6 +311,7 @@ export function CercaContent({
       otherTradesCount={alsoDoThisJob.length}
       chosenPros={chosenPros}
       requestHints={problem.requestHints}
+      photo={problem.photo}
       maxChosen={canChoose ? MAX_CHOSEN_PROFESSIONALS : undefined}
       onClearChosen={clearChosen}
     />

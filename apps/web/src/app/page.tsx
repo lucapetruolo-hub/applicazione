@@ -53,7 +53,7 @@ async function loadCategoryCounts(): Promise<Partial<Record<ProfessionalCategory
 
 export default async function HomePage() {
   // Le richieste insieme, non una dopo l'altra (collaudo N-01/N-02).
-  const [professionals, platformStats, priceIndex, categoryCounts, problemExamples, popularJobs] = await Promise.all([
+  const [professionals, platformStats, priceIndex, categoryCounts, problemExamples, popularJobs, photoSearch] = await Promise.all([
     // excludeDemo: la home dichiara esplicitamente di mostrare conteggi e
     // professionisti reali (redesign "Scheda Intervento" §4.3/§4.6) — i
     // profili del seed (PLACEHOLDER_PROFESSIONALS) non devono contribuire
@@ -70,6 +70,8 @@ export default async function HomePage() {
     apiClient.getProblemExamples().catch(() => null),
     // "Lavori più cercati" sotto le categorie (docs/changelog/2026-11-07-lavori-piu-cercati-home.md).
     apiClient.getPopularJobs().catch(() => null),
+    // Pulsante "Aggiungi una foto" solo se la ricerca con foto è accesa (docs/changelog/2026-11-13-ricerca-con-foto.md).
+    apiClient.getPhotoSearchStatus().then((status) => status.enabled, () => false),
   ]);
 
   return (
@@ -77,7 +79,7 @@ export default async function HomePage() {
       {siteJsonLd.map((data) => (
         <JsonLd key={data["@type"]} data={data} />
       ))}
-      <HomeContent professionals={newestProfiles(professionals)} platformStats={platformStats} priceIndex={priceIndex} categoryCounts={categoryCounts} problemExamples={problemExamples} popularJobs={popularJobs} />
+      <HomeContent professionals={newestProfiles(professionals)} platformStats={platformStats} priceIndex={priceIndex} categoryCounts={categoryCounts} problemExamples={problemExamples} popularJobs={popularJobs} photoSearch={photoSearch} />
     </>
   );
 }

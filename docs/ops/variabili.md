@@ -33,6 +33,7 @@ Vercel entrano nel sito alla build: dopo un cambio serve **Redeploy**.
 | `OPENAPI_TOKEN_SDI` | Fac. | Fatture emesse, XML da scaricare a mano |
 | `DIDIT_API_KEY`, `DIDIT_WORKFLOW_ID`, `DIDIT_WEBHOOK_SECRET`, `DIDIT_SANDBOX` | Fac. | Verifica identità non richiesta |
 | `ANTHROPIC_API_KEY` / `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `PROBLEM_MATCH_AI_DAILY_LIMIT` | Fac. | Solo dizionario |
+| `PHOTO_SEARCH_ENABLED` | Fac. (`true` accende, serve `ANTHROPIC_API_KEY`) | Niente pulsante "Aggiungi una foto" |
 | `WHATSAPP_ACCESS_TOKEN`, `_PHONE_NUMBER_ID`, `_APP_SECRET`, `_WEBHOOK_VERIFY_TOKEN`, `_DAILY_LIMIT` | Fac. | WhatsApp spento |
 | `WHATSAPP_GRAPH_VERSION`, `WHATSAPP_PRICE_*` | Fac. | Valori di serie |
 | `GENERAL_REQUESTS_ENABLED` | Fac. (`false` spegne) | Richieste generali attive |
