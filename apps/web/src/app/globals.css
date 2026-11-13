@@ -525,10 +525,12 @@ body:has(.chosen-bar) {
 }
 
 /* Barra di attesa "sta cercando" (docs/changelog/2026-11-05-barra-di-attesa.md):
-   sottile, verdi del sito che scorrono in loop, bordi sfumati. Solo verdi:
-   i colori dell'esempio (blu, viola, rosso, giallo) danno l'aspetto "fatto
-   con l'IA". Con le animazioni ridotte resta ferma (regola globale sopra):
-   la frase sotto dice comunque che si sta aspettando. */
+   sottile, colori che scorrono in loop, bordi sfumati. Dal 13/11 non più solo
+   verdi ma i colori dello sfondo a velo (scelta di Luca,
+   docs/changelog/2026-11-13-barra-colori-velo.md): verde di marca, azzurro,
+   lilla, rosa e pesca, andata e ritorno così il giro non passa dal marrone.
+   Con le animazioni ridotte resta ferma (regola globale sopra): la frase sotto
+   dice comunque che si sta aspettando. */
 @keyframes flow-bar {
   to {
     background-position: -300% 0;
@@ -538,7 +540,18 @@ body:has(.chosen-bar) {
   display: block;
   height: 4px;
   border-radius: 2px;
-  background-image: linear-gradient(90deg, #1e6b6e, #247c7c, #8ac6c8, #247c7c, #1e6b6e);
+  background-image: linear-gradient(
+    90deg,
+    #1e6b6e,
+    #3f8fb0,
+    #8e7cc8,
+    #e48aa3,
+    #f0a46e,
+    #e48aa3,
+    #8e7cc8,
+    #3f8fb0,
+    #1e6b6e
+  );
   background-size: 300% 100%;
   background-position: 0 0;
   animation: flow-bar 2s linear infinite;
