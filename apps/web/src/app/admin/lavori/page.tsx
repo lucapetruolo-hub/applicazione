@@ -82,7 +82,7 @@ export default function AdminLavoriPage() {
     <YStack>
       <AdminPageHeader
         title="Lavori terminati"
-        description="Note e foto/video lasciate da professionista e cliente a lavoro terminato, con l'importo finale rispetto al preventivo."
+        description="Lavori finiti, con note e foto. Accanto, quanto è costato davvero e quanto diceva il preventivo."
       />
       <AdminTabs
         tabs={[

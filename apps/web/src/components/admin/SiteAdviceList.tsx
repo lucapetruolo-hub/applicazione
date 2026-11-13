@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { SITE_ADVICE_LEVEL_LABEL, type SiteAdvice } from "@professionisti/shared";
 import { SITE_INDEXABLE } from "@/lib/siteIndexing";
+import { TechNote } from "@/components/admin/adminUi";
 
 /**
  * "Cosa fare questa settimana" (docs/CHANGELOG.md §372, richiesta di Luca):
@@ -50,6 +51,7 @@ export function SiteAdviceList({ advice, limit, onDone, pendingKey }: { advice: 
               ))}
             </ul>
           ) : null}
+          {item.techNote ? <TechNote>{item.techNote}</TechNote> : null}
           {item.link || onDone ? (
             <div className="site-advice-actions">
               {item.link ? (

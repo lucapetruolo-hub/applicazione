@@ -50,7 +50,7 @@ export default function AdminProfessionistiPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   // Riga con "Elimina" premuto una volta: serve la conferma.
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  // Link aperto da "Visualizza link" (nessuna email inviata ora).
+  // Link aperto da "Mostra il link" (nessuna email inviata ora).
   const [linkViewed, setLinkViewed] = useState(false);
 
   // Primi 100 professionisti dell'offerta di lancio (docs/CHANGELOG.md §363).
@@ -162,7 +162,7 @@ export default function AdminProfessionistiPage() {
     <YStack gap="4">
       <AdminPageHeader
         title="Profili da confermare"
-        description="Crea il profilo di un professionista mentre sei al telefono con lui. Gli arriva un link per scegliere la password e confermare i dati: fino ad allora il profilo non compare nella ricerca."
+        description="Crea il profilo di un professionista mentre sei al telefono con lui. Gli arriva un link per la password e i dati. Fino ad allora non è nella ricerca."
       />
       {/* Offerta dei mesi gratis con gli iscritti (docs/changelog/2026-10-29-offerta-mesi-gratis.md). */}
       {token ? <SubscriptionOfferCard token={token} adminRoles={user?.adminRoles ?? []} /> : null}
@@ -264,7 +264,7 @@ export default function AdminProfessionistiPage() {
             <textarea aria-label="Presentazione"
               className="admin-input"
               rows={3}
-              placeholder="Presentazione (facoltativa, il professionista potrà cambiarla)"
+              placeholder="Presentazione (se vuoi: il professionista potrà cambiarla)"
               value={form.bio}
               onChange={(e) => update("bio", e.target.value)}
             />
@@ -328,7 +328,7 @@ export default function AdminProfessionistiPage() {
                         ) : (
                           <>
                             <Button variant="secondary" size="2" disabled={busyId === row.userId} onPress={() => viewLink(row.userId)}>
-                              {busyId === row.userId ? "…" : "Visualizza link"}
+                              {busyId === row.userId ? "…" : "Mostra il link"}
                             </Button>
                             <Button variant="secondary" size="2" onPress={() => setConfirmDeleteId(row.userId)}>
                               Elimina
@@ -350,7 +350,7 @@ export default function AdminProfessionistiPage() {
           {founders ? `Offerta di lancio: ${founders.taken} posti presi su ${founders.total}` : "Offerta di lancio"}
         </Text>
         <Text color={brand.grafite70}>
-          I primi {founders?.total ?? 100} professionisti con il profilo completo: servono alla scritta della pagina prezzi. I mesi gratis li dà l&apos;offerta qui sopra, a tutti.
+          I primi {founders?.total ?? 100} professionisti con il profilo completo. Li usa la pagina dei prezzi. I mesi gratis li dà l&apos;offerta qui sopra, a tutti.
         </Text>
         {foundersError ? <Text color={brand.urgenza}>{foundersError}</Text> : null}
         {founders === null && !foundersError ? (

@@ -314,14 +314,14 @@ export function jobIssueOutcomeText(input: {
   const rimborso =
     upheld && input.paidOnline
       ? input.audience === "client"
-        ? ` Avendo pagato sul sito, ti rimborsiamo ${quanto} sul metodo di pagamento usato.`
-        : ` Il lavoro era stato pagato sul sito: ${percent >= 100 ? "l'importo viene rimborsato" : `il ${percent}% di quanto pagato viene rimborsato`} al cliente e la nostra trattenuta sul pagamento resta a tuo carico.`
+        ? ` Hai pagato sul sito: ti ridiamo ${quanto} sulla carta o sul conto che hai usato.`
+        : ` Il cliente aveva pagato sul sito: gli ridiamo ${percent >= 100 ? "tutto l'importo" : `il ${percent}% di quanto ha pagato`}. La nostra trattenuta sul pagamento resta a tuo carico.`
       : "";
   const rimedi =
     input.audience === "professional" && upheld && input.withAppealHint !== false
-      ? ` Puoi fare ricorso entro ${JOB_ISSUE_APPEAL_DAYS} giorni: lo esaminerà una persona diversa del nostro team.`
+      ? ` Puoi chiedere di rivedere la decisione entro ${JOB_ISSUE_APPEAL_DAYS} giorni. La guarderà un'altra persona del nostro team.`
       : "";
-  return `La segnalazione "${JOB_ISSUE_LABEL[input.type].toLowerCase()}" è stata ${esito}. Motivazione: ${input.note}${rimborso}${rimedi} La nostra decisione non impedisce di rivolgersi a un organismo di mediazione o al giudice.`;
+  return `La segnalazione "${JOB_ISSUE_LABEL[input.type].toLowerCase()}" è stata ${esito}. Motivazione: ${input.note}${rimborso}${rimedi} Anche dopo la nostra decisione puoi andare da un ente di mediazione o dal giudice.`;
 }
 
 export type JobIssueSummary = {

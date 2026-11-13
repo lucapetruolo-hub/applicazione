@@ -417,7 +417,7 @@ export class AdminProposalsService implements OnApplicationBootstrap {
           kind: "DICTIONARY_WORD",
           score: 500 + Math.min(w.aiAnswers, 99),
           title: `Insegna «${w.example}» al dizionario`,
-          why: `Il dizionario non conosce questa parola: l'intelligenza artificiale l'ha capita ${plural(w.aiAnswers, "volta", "volte")}, sempre come ${label}. Insegnandola, la risposta arriva subito e senza chiamare l'IA.`,
+          why: `Il dizionario non conosce questa parola: l'intelligenza artificiale l'ha capita ${plural(w.aiAnswers, "volta", "volte")}, sempre come ${label}. Insegnandola, la risposta arriva subito, senza aspettare l'intelligenza artificiale.`,
           preview: {
             type: "lines",
             lines: [
@@ -448,7 +448,7 @@ export class AdminProposalsService implements OnApplicationBootstrap {
           kind: "DICTIONARY_SERVICE_WORD",
           score: 480 + Math.min(w.aiAnswers, 99),
           title: `Lega «${w.example}» a «${w.service}»`,
-          why: `Il dizionario porta già questa parola a ${label}. L'intelligenza artificiale l'ha legata ${plural(w.aiAnswers, "volta", "volte")} sempre alla stessa prestazione. Insegnandola, i professionisti che la offrono vanno per primi senza chiamare l'IA.`,
+          why: `Il dizionario porta già questa parola a ${label}. L'intelligenza artificiale l'ha legata ${plural(w.aiAnswers, "volta", "volte")} sempre alla stessa prestazione. Insegnandola, chi la offre va per primo senza aspettare l'intelligenza artificiale.`,
           preview: {
             type: "lines",
             lines: [`Chi scrive «${w.example}» (o una parola che inizia con «${w.stem}») trova ${label}, prima chi fa «${w.service}»`, "Gli avvisi di sicurezza (gas, corrente) restano quelli del dizionario."],

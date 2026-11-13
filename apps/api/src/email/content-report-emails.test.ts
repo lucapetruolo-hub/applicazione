@@ -25,12 +25,12 @@ describe("email delle segnalazioni", () => {
 
   it("esito a chi segnala: una riga, il ricorso al giudice, mai la motivazione", () => {
     const upheld = render("CONTENT_REPORT_DECISION", { targetType: "REVIEW", status: "RESOLVED", note: "Testo riservato dell'admin" });
-    expect(upheld.text).toContain("preso provvedimenti sul contenuto");
+    expect(upheld.text).toContain("siamo intervenuti sul contenuto");
     expect(upheld.text).toContain("autorità giudiziaria");
     expect(upheld.text).not.toContain("Testo riservato");
     expect(upheld.html).not.toContain("/segnalazioni");
     const dismissed = render("CONTENT_REPORT_DECISION", { targetType: "REVIEW", status: "DISMISSED" });
-    expect(dismissed.text).toContain("non abbiamo preso provvedimenti");
+    expect(dismissed.text).toContain("il contenuto resta com'è");
   });
 
   it("decisione all'autore: misura, legge violata, motivazione e contestazione", () => {

@@ -6,6 +6,7 @@ import { Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import {
+  TechNote,
   AdminPageHeader,
   AdminPill,
   errorMessage,
@@ -92,7 +93,7 @@ export default function AdminWhatsAppPage() {
     <YStack gap="5">
       <AdminPageHeader
         title="WhatsApp"
-        description="Promemoria degli appuntamenti: messaggi, costo, risposte dei clienti e lavori saltati con e senza promemoria."
+        description="Quanti promemoria partono e quanto costano. E se aiutano: lavori saltati con e senza promemoria."
         right={
           <input
             type="month"
@@ -111,10 +112,12 @@ export default function AdminWhatsAppPage() {
       />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {data && !data.available ? (
-        <Text fontSize={16} color={brand.grafite70}>
-          Spento: mancano le chiavi di Meta su Render (WHATSAPP_ACCESS_TOKEN e
-          WHATSAPP_PHONE_NUMBER_ID). Nessun messaggio parte.
-        </Text>
+        <YStack gap="1">
+          <Text fontSize={16} color={brand.grafite70}>
+            Spento: WhatsApp non è ancora collegato al sito, nessun messaggio parte.
+          </Text>
+          <TechNote>Mancano WHATSAPP_ACCESS_TOKEN e WHATSAPP_PHONE_NUMBER_ID su Render.</TechNote>
+        </YStack>
       ) : null}
 
       {!data && !error ? (

@@ -112,7 +112,7 @@ function SuspiciousUsers() {
     <YStack gap="4">
       <AdminPageHeader
         title="Account sospetti"
-        description="Stessi dati di un altro account (telefono, indirizzo, codice fiscale, IBAN), recensioni sospette, contatti scritti in chat prima dell'accettazione, ritorni dopo un account chiuso, email usa e getta, troppi problemi sul lavoro, lavori chiusi prima dell'appuntamento, acconti del 100% da professionisti nuovi. Fuori gli account chiusi e quelli di prova."
+        description="Account con qualcosa che non torna. Per esempio lo stesso telefono di un altro, recensioni strane o email usa e getta. Non ci sono gli account chiusi e quelli di prova."
         right={
           <button type="button" className="admin-link-button is-primary" onClick={checkNow} disabled={checking || !token} aria-busy={checking}>
             {checking ? "Controllo in corso…" : "Controlla ora"}
@@ -174,7 +174,7 @@ function SuspiciousUsers() {
       {data && view.status === "ARCHIVED" ? (
         <>
           <Text fontSize={13} color={brand.grafite70}>
-            &quot;Va bene così&quot;, casi gestiti con una misura, segnali spariti e &quot;Nessuna azione&quot; senza novità. Si tengono 2 anni per i precedenti; con un segnale nuovo tornano in &quot;Da gestire&quot;.
+            &quot;Va bene così&quot;, casi già decisi, segnali spariti e &quot;Nessuna azione&quot; senza novità. Si tengono 2 anni per i precedenti; con un segnale nuovo tornano in &quot;Da gestire&quot;.
           </Text>
           <label className="admin-field">
             <span>Cerca negli archiviati</span>

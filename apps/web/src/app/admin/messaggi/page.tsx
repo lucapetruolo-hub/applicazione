@@ -114,7 +114,7 @@ function MessageCard({ message, token, onResolved, onChanged }: { message: Admin
   const mailto = `mailto:${message.email}?subject=${encodeURIComponent(isReport ? "Esito della tua segnalazione" : "Risposta al tuo messaggio")}&body=${encodeURIComponent(
     `${
       isReport
-        ? "Abbiamo esaminato la tua segnalazione e preso provvedimenti sul contenuto.\nAbbiamo esaminato la tua segnalazione: non abbiamo preso provvedimenti.\n\nSe non sei d'accordo puoi rivolgerti all'autorità giudiziaria."
+        ? "Abbiamo letto la tua segnalazione e siamo intervenuti sul contenuto.\nAbbiamo letto la tua segnalazione: il contenuto resta.\n\nSe non sei d'accordo puoi rivolgerti all'autorità giudiziaria."
         : ""
     }\n\n---\nIl tuo messaggio del ${formatAdminDate(message.createdAt)}:\n${message.content}`,
   )}`;
@@ -163,7 +163,7 @@ function MessageCard({ message, token, onResolved, onChanged }: { message: Admin
       </Text>
       {isReport ? (
         <Text fontSize="2" color={brand.grafite70}>
-          Rispondi con l&apos;esito in una riga, senza motivazione: lascia una delle due frasi già scritte.
+          Rispondi in una riga, senza il perché. Usa una delle due frasi pronte.
         </Text>
       ) : null}
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}

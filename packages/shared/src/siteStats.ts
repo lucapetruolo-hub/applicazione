@@ -208,6 +208,8 @@ export type SiteAdvice = {
   items?: { label: string; detail?: string; href?: string }[];
   /** Pagina del sito dove farlo. */
   link?: { label: string; href: string };
+  /** Dettaglio tecnico (chiavi, servizi): solo in "Per il tecnico", chiuso. */
+  techNote?: string;
 };
 
 /** Giorni in cui un consiglio segnato come fatto non torna (§372): il tempo di vedere se è servito. */

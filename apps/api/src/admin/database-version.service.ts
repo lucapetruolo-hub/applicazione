@@ -28,12 +28,12 @@ export function postgresNotice(serverVersionNum: number, cycles: { cycle: string
   const when = end.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
   const past = end < now;
   return {
-    title: `Aggiornare PostgreSQL ${major} su Render`,
+    title: "Il database del sito va aggiornato",
     paragraphs: [
-      `Il database del sito usa PostgreSQL ${major}, che ${past ? "non riceve più correzioni di sicurezza dal" : "riceve correzioni di sicurezza solo fino al"} ${when}.`,
-      newest
-        ? `Su Render si passa a una versione più nuova (oggi la più recente è la ${newest}) dal database, alla voce per l'aggiornamento della versione: fai prima un backup e scegli un'ora di poco traffico. Chiedi a Claude di prepararlo in un thread dedicato.`
-        : "Chiedi a Claude, in un thread dedicato, come passare a una versione più nuova su Render.",
+      `Il programma che conserva i dati del sito (versione ${major}) ${past ? "non riceve più correzioni di sicurezza dal" : "riceve correzioni di sicurezza solo fino al"} ${when}.`,
+      "Chiedi a Claude, in un thread dedicato, di prepararlo: si fa una copia dei dati e si sceglie un'ora con poca gente sul sito.",
+      // scritte-admin: ok (dettaglio per chi fa l'aggiornamento)
+      `Per il tecnico: PostgreSQL ${major} su Render${newest ? `, passare alla ${newest} dalla voce per l'aggiornamento della versione del database` : ""}.`,
     ],
   };
 }

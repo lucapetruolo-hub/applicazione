@@ -48,9 +48,9 @@ export function AdminSummaryNumbers() {
   const urgencyNumbers = urgency
     ? [
         { value: urgency.urgentShare === null ? "—" : `${Math.round(urgency.urgentShare * 100)}%`, label: `Richieste urgenti (${urgency.urgent} su ${urgency.requests})` },
-        { value: minutes(urgency.urgentMedianMinutesToFirstQuote), label: "Primo preventivo, urgenti" },
-        { value: minutes(urgency.standardMedianMinutesToFirstQuote), label: "Primo preventivo, normali" },
-        { value: String(urgency.urgentWithoutRecipients), label: "Urgenti senza destinatari", urgent: urgency.urgentWithoutRecipients > 0 },
+        { value: minutes(urgency.urgentMedianMinutesToFirstQuote), label: "Attesa del primo preventivo, se urgente" },
+        { value: minutes(urgency.standardMedianMinutesToFirstQuote), label: "Attesa del primo preventivo, se non urgente" },
+        { value: String(urgency.urgentWithoutRecipients), label: "Urgenti che nessuno ha ricevuto", urgent: urgency.urgentWithoutRecipients > 0 },
       ]
     : [];
 
@@ -81,12 +81,12 @@ export function AdminSummaryNumbers() {
             <AdminTrendTile label="Nuovi clienti" values={trends.series.newClients} weekStarts={trends.weekStarts} />
             <AdminTrendTile label="Nuovi professionisti" values={trends.series.newProfessionals} weekStarts={trends.weekStarts} />
             <AdminTrendTile label="Richieste di preventivo" values={trends.series.requests} weekStarts={trends.weekStarts} />
-            <AdminTrendTile label="Interventi prenotati" values={trends.series.bookings} weekStarts={trends.weekStarts} />
+            <AdminTrendTile label="Lavori fissati" values={trends.series.bookings} weekStarts={trends.weekStarts} />
             <AdminTrendTile label="Segnalazioni ricevute" values={trends.series.reports} weekStarts={trends.weekStarts} />
           </div>
         ) : (
           <Text color={brand.grafite70}>
-            Caricamento…
+            Un momento…
             <WaitBarSignal />
           </Text>
         )}

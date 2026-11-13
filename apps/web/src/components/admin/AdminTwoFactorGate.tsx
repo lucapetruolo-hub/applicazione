@@ -82,7 +82,8 @@ function SetupStep({ token, onVerified }: { token: string; onVerified: (token: s
       <Heading title="Proteggi l'area admin" text="Oltre alla password servirà un codice dall'app sul tuo telefono. Lo chiediamo ogni 8 ore." />
 
       <YStack gap="3">
-        <StepTitle number={1} text="Apri un'app di autenticazione e inquadra il codice QR" />
+        <StepTitle number={1} text="Apri un'app per i codici e inquadra il codice QR" />
+        {/* scritte-admin: ok (nomi delle app, non si accorciano) */}
         <Text fontSize={14} color={brand.grafite70}>
           Va bene Google Authenticator, Microsoft Authenticator o Password dell&apos;iPhone.
         </Text>
@@ -97,7 +98,7 @@ function SetupStep({ token, onVerified }: { token: string; onVerified: (token: s
           <YStack gap="3" alignItems="center">
             <div className="admin-2fa-qr">
               {/* eslint-disable-next-line @next/next/no-img-element -- immagine SVG generata dall'API, non un file da ottimizzare */}
-              <img src={setup.qrCode} alt="Codice QR da inquadrare con l'app di autenticazione" width={196} height={196} />
+              <img src={setup.qrCode} alt="Codice QR da inquadrare con l'app per i codici" width={196} height={196} />
             </div>
             <a className="link-button" href={setup.otpauthUrl}>
               Sei sul telefono? Apri nell&apos;app
@@ -177,7 +178,7 @@ function VerifyStep({
 
   return (
     <>
-      <Heading title="Inserisci il codice" text="Apri l'app di autenticazione sul telefono e scrivi il codice di 6 cifre dell'area admin." />
+      <Heading title="Inserisci il codice" text="Apri l'app per i codici sul telefono e scrivi il codice di 6 cifre dell'area admin." />
       <CodeBoxes
         submit={async (code) => {
           await onVerified((await apiClient.adminTwoFactorVerify(token, code)).token);

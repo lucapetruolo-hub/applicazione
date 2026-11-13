@@ -90,7 +90,7 @@ export const ADMIN_SECTIONS: NavSection[] = [
     icon: "landmark",
     tabs: [
       { href: "/admin/finanza", label: "Le nostre fatture", icon: "file-text", scope: "FINANCE", badge: (o) => o.sdiRejectedInvoices },
-      { href: "/admin/finanza/dac7", label: "DAC7", searchLabel: "DAC7: compensi dei professionisti al fisco", icon: "landmark", scope: "FINANCE" },
+      { href: "/admin/finanza/dac7", label: "Guadagni per il fisco", searchLabel: "Guadagni dei professionisti per il fisco (DAC7)", icon: "landmark", scope: "FINANCE" },
     ],
   },
   {

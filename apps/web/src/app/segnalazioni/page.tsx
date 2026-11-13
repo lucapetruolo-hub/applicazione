@@ -124,7 +124,7 @@ function DecisionCard({ decision, token, onChanged }: { decision: MyContentRepor
         </Text>
       </XStack>
       <Text color={brand.grafite} fontWeight="700">
-        {decision.revertedAt ? "Misura annullata: il contenuto è di nuovo come prima." : moderationActionOwnerText(decision.action, decision.targetType)}
+        {decision.revertedAt ? "Decisione annullata: il contenuto è di nuovo come prima." : moderationActionOwnerText(decision.action, decision.targetType)}
       </Text>
       {ground ? (
         <Text fontSize={16} color={brand.grafite}>
@@ -190,7 +190,7 @@ function DecisionCard({ decision, token, onChanged }: { decision: MyContentRepor
       ) : null}
       {!decision.revertedAt ? (
         <Text fontSize={13} color={brand.grafite70}>
-          Puoi anche rivolgerti a un organismo di risoluzione extragiudiziale delle controversie o all&apos;autorità giudiziaria.
+          Puoi anche andare dal giudice, o da un ente che aiuta a fare pace senza tribunale (organismo di risoluzione extragiudiziale).
         </Text>
       ) : null}
     </YStack>

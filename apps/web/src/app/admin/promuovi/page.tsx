@@ -39,9 +39,10 @@ export default function AdminPromuoviPage() {
       <YStack width="100%" maxWidth={420} gap="4">
         <YStack gap="1">
           <H1 size="7">Promuovi ad admin</H1>
+          {/* scritte-admin: ok (pagina che usa solo chi accende il sito la prima volta) */}
           <Paragraph color={brand.grafite70}>
-            Inserisci l&apos;email dell&apos;account da promuovere e il codice configurato in
-            <Text fontWeight="600"> ADMIN_BOOTSTRAP_SECRET</Text> sul backend (Render).
+            Scrivi l&apos;email dell&apos;account da far diventare amministratore e il codice segreto
+            del primo accesso (sul server si chiama<Text fontWeight="600"> ADMIN_BOOTSTRAP_SECRET</Text>).
           </Paragraph>
         </YStack>
 
