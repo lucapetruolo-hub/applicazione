@@ -1988,6 +1988,13 @@ export function RequestCard({
                         </Text>
                       </XStack>
                     ) : null}
+                    {/* Al 100% "acconto e saldo diretto" coincide con "tutto online": al cliente si mostra solo quello
+                        (docs/changelog/2026-11-13-annullare-data-passata.md). */}
+                    {paymentOptions.includes("MIXED") && Number(depositPercentDraft) >= 100 ? (
+                      <Text fontSize={13} color={brand.grafite70}>
+                        Con l&apos;acconto al 100% il cliente paga tutto con la carta, quindi non vedrà &quot;{QUOTE_PAYMENT_OPTION_LABEL.MIXED}&quot;.
+                      </Text>
+                    ) : null}
                     {paymentOptions.some(paymentChoiceIsOnline) && limitHint ? (
                       <Text fontSize={13} color={brand.grafite70}>
                         {limitHint}

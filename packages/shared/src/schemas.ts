@@ -523,11 +523,21 @@ export const timelineUpdateSchema = z
   });
 export type TimelineUpdateInput = z.infer<typeof timelineUpdateSchema>;
 
+/**
+ * Prima lettera maiuscola nel nome di una voce ("manodopera" → "Manodopera"),
+ * il resto come l'ha scritto il professionista (richiesta di Luca,
+ * docs/changelog/2026-11-13-annullare-data-passata.md).
+ */
+export function capitalizeItemName(name: string): string {
+  const trimmed = name.trim();
+  return trimmed.charAt(0).toLocaleUpperCase("it-IT") + trimmed.slice(1);
+}
+
 /** Preventivo strutturato in-app (CLAUDE.md §8): niente scambio libero di contatti. */
 /** Voce di un preventivo (es. "Manodopera", "Materiali"): nome + range di prezzo, stesso pattern di professionalServiceSchema. */
 export const quoteItemSchema = z
   .object({
-    name: z.string().min(2).max(120),
+    name: z.string().min(2).max(120).transform(capitalizeItemName),
     priceMinEurCents: z.number().int().nonnegative().optional(),
     priceMaxEurCents: z.number().int().nonnegative().optional(),
   })
@@ -631,7 +641,7 @@ export type RejectQuoteInput = z.infer<typeof rejectQuoteSchema>;
  * effettivamente addebitato, non più stimando.
  */
 export const bookingFinalItemSchema = z.object({
-  name: z.string().min(1, "Il nome della voce è obbligatorio.").max(120),
+  name: z.string().min(1, "Il nome della voce è obbligatorio.").max(120).transform(capitalizeItemName),
   priceEurCents: z.number().int().nonnegative().max(100_000_00),
 });
 export type BookingFinalItemInput = z.infer<typeof bookingFinalItemSchema>;
@@ -847,7 +857,7 @@ export type ReviewReplyInput = z.infer<typeof reviewReplySchema>;
 /** Prestazione offerta dal professionista: nome + prezzo facoltativo (in centesimi). */
 export const professionalServiceSchema = z
   .object({
-    name: z.string().min(2).max(120),
+    name: z.string().min(2).max(120).transform(capitalizeItemName),
     priceMinEurCents: z.number().int().nonnegative().optional(),
     priceMaxEurCents: z.number().int().nonnegative().optional(),
     /** A cosa si riferisce il prezzo (§398); senza, "a lavoro". */

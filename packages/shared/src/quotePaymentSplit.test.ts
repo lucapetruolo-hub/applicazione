@@ -23,6 +23,15 @@ test("tutto ora con il 100%", () => {
   assert.equal(quotePaymentSplitLine("ONLINE", fifty, 100, true), "50,00 € adesso con la carta, tutto il prezzo");
 });
 
+// Con la forbice si paga il massimo e la differenza torna: si dice
+// (docs/changelog/2026-11-13-annullare-data-passata.md).
+test("tutto ora con la forbice: il prezzo massimo e la differenza che torna", () => {
+  assert.equal(
+    quotePaymentSplitLine("ONLINE", { totalMinEurCents: 25000, totalMaxEurCents: 115000 }, 100, true).replace(/\u00a0/g, " "),
+    "1.150,00 € adesso con la carta, il prezzo massimo. Se il prezzo finale è più basso, la differenza ti torna sulla carta",
+  );
+});
+
 test("pagamento diretto o senza prezzo: nessuna cifra", () => {
   assert.equal(quotePaymentSplit("DIRECT", fifty, 20), null);
   assert.equal(quotePaymentSplit("ONLINE", { totalMinEurCents: 0, totalMaxEurCents: 0 }, 20), null);
