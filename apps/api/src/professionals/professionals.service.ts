@@ -29,6 +29,7 @@ import {
   type ProfessionalAvailabilityPreviewDay,
   type ProfessionalAvailableSlot,
   type ProfessionalBooking,
+  depositKeptOnLateCancel,
   type ProfessionalDetail,
   type ProfessionalInsights,
   type ProfessionalLead,
@@ -1822,6 +1823,8 @@ export class ProfessionalsService {
       // la fascia oraria, non solo l'inizio) — null se non nota.
       scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,
       arrivalTime: booking.arrivalTime,
+      // Con il testo letto dal cliente (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
+      depositKeptOnLateCancel: depositKeptOnLateCancel(booking.ownQuote?.lateCancelKeepsDeposit, booking.acceptedTerms),
       createdAt: booking.createdAt.toISOString(),
       updatedAt: booking.updatedAt.toISOString(),
       status: booking.status,

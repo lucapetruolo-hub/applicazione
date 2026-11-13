@@ -1,5 +1,6 @@
 "use client";
 
+import { useMinuteClock } from "@/lib/useMinuteClock";
 import { useEffect, useRef } from "react";
 import type { ClientBooking } from "@professionisti/api-client";
 import { Avatar, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -18,6 +19,8 @@ import { AddToCalendar } from "./AddToCalendar";
  */
 export function BookingConfirmed({ booking, address, token, onDone }: { booking: ClientBooking; address: string | null; token: string; onDone: () => void }) {
   const moment = useAppointmentMoment(booking);
+  // La frase su annullare cambia da sola quando passa la scadenza (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
+  const now = useMinuteClock();
   const headingRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -29,7 +32,7 @@ export function BookingConfirmed({ booking, address, token, onDone }: { booking:
   const direct = booking.payment?.method === "DIRECT";
   // Annullare e acconto, da una sola fonte (docs/changelog/2026-11-13-annullare-una-fonte.md).
   const cancelTerms = cancellationTerms({
-    phase: cancellationPhase(booking.scheduledAt, booking.scheduledEndAt, booking.cancellationNoticeHours),
+    phase: cancellationPhase(booking.scheduledAt, booking.scheduledEndAt, booking.cancellationNoticeHours, now),
     start: booking.scheduledAt,
     hours: booking.cancellationNoticeHours,
     money: bookingCancellationMoney(booking.payment, booking.lateCancelKeepsDeposit, totals.totalMaxEurCents),

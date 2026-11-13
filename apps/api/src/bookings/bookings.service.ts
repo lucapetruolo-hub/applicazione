@@ -53,7 +53,13 @@ import {
   quotePaymentSplitLine,
   TRADER_STATUS_COPY,
   professionalKindOf,
-  arrivalWindowText } from "@professionisti/shared";
+  arrivalWindowText,
+  buildAcceptedTerms,
+  cancellationTermsChangedMessage,
+  CANCELLATION_TERMS_CHANGED_CODE,
+  depositKeptOnLateCancel,
+  type AcceptableCancellationPhase,
+  type AcceptedTerms } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { BOOKING_CALENDAR_INCLUDE, bookingCalendar } from "../email/booking-calendar";
 import { readBookingIcsToken } from "./booking-ics-token";
@@ -80,6 +86,19 @@ const CLIENT_CANCEL_TOO_LATE = "L'appuntamento è già cominciato e non si può 
 const OTHER_JOB_MESSAGE = "Hai già accettato un altro preventivo per questa richiesta. Per cambiare professionista annulla prima l'appuntamento.";
 
 type AcceptableQuote = Awaited<ReturnType<BookingsService["loadAcceptableQuote"]>>;
+
+/** Cosa leggeva il cliente premendo "Accetta" (docs/changelog/2026-11-13-annullare-pagina-aperta.md). */
+type SeenCancellationTerms = { phase?: AcceptableCancellationPhase; at?: string };
+
+/** Lo stesso, tornato con l'acconto pagato: Stripe ripete i metadati della pagina di pagamento. */
+function seenFromMetadata(metadata: Stripe.Metadata | null | undefined): SeenCancellationTerms {
+  const phase = metadata?.seenCancellationPhase;
+  const at = metadata?.seenTermsAt;
+  return {
+    phase: phase === "free" || phase === "late" || phase === "started" ? phase : undefined,
+    at: at && !Number.isNaN(Date.parse(at)) ? at : undefined,
+  };
+}
 
 /**
  * "Per annullare" nell'email "Appuntamento prenotato": le stesse frasi della
@@ -211,6 +230,7 @@ export class BookingsService implements OnModuleInit {
     quoteId: string,
     paymentMethod: JobPaymentChoice = "DIRECT",
     invoiceRequest?: ClientInvoiceRequestInput,
+    seen: SeenCancellationTerms = {},
   ): Promise<{ bookingId: string | null; paymentMethod: JobPaymentChoice; checkoutUrl: string | null }> {
     const quote = await this.loadAcceptableQuote(clientId, quoteId, paymentMethod);
     // Data del preventivo già passata (docs/changelog/2026-11-11-fascia-in-corso.md):
@@ -223,6 +243,15 @@ export class BookingsService implements OnModuleInit {
     }
     if (paymentChoiceIsOnline(paymentMethod) && !onlinePaymentsEnabled()) {
       throw new BadRequestException("Il pagamento online non è ancora disponibile: scegli il pagamento diretto al professionista.");
+    }
+    // Controllo sul server di cosa ha letto il cliente
+    // (docs/changelog/2026-11-13-annullare-pagina-aperta.md): se tra la
+    // lettura e "Accetta" il preavviso è iniziato (o l'appuntamento), si
+    // chiede di rileggere invece di far nascere un lavoro con regole diverse.
+    if (seen.phase) {
+      const hours = quote.cancellationNoticeHours ?? (await cancellationNoticeFor(this.prisma, quote.professionalProfileId));
+      const changed = cancellationTermsChangedMessage(seen.phase, cancellationPhase(quote.estimatedStartDate, quote.estimatedEndDate, hours));
+      if (changed) throw new ConflictException({ statusCode: 409, message: changed, code: CANCELLATION_TERMS_CHANGED_CODE });
     }
     // Fattura chiesta al professionista (docs/CHANGELOG.md §378): salvata ora,
     // anche prima dell'acconto online, e letta quando nasce il lavoro.
@@ -255,11 +284,14 @@ export class BookingsService implements OnModuleInit {
         businessName: quote.professionalProfile.businessName,
         professionalProfileId: quote.professionalProfileId,
         recurring: !!quote.repeatEvery,
+        // Cosa ha letto il cliente, per salvarlo sul lavoro a pagamento riuscito.
+        seenCancellationPhase: seen.phase,
+        seenTermsAt: seen.at,
       });
       if (!url) throw new BadRequestException("Il pagamento online non è partito: riprova tra poco.");
       return { bookingId: null, paymentMethod, checkoutUrl: url };
     }
-    const bookingId = await this.confirmAcceptedQuote(quote, clientId, paymentMethod);
+    const bookingId = await this.confirmAcceptedQuote(quote, clientId, paymentMethod, seen);
     return { bookingId, paymentMethod, checkoutUrl: null };
   }
 
@@ -369,7 +401,7 @@ export class BookingsService implements OnModuleInit {
     let bookingId: string | null = null;
     if (quote && !refundReason) {
       try {
-        bookingId = await this.confirmAcceptedQuote(quote, clientUserId, paymentMethod);
+        bookingId = await this.confirmAcceptedQuote(quote, clientUserId, paymentMethod, seenFromMetadata(session.metadata));
       } catch (err) {
         // Nel frattempo il professionista ha preso un altro lavoro a quell'ora
         // (§310). Se invece il lavoro c'è già (stesso evento arrivato due volte
@@ -513,6 +545,7 @@ export class BookingsService implements OnModuleInit {
     depositPercent: number,
     cancellationNoticeHours: number | null,
     scheduledAt: Date,
+    acceptedTerms: unknown = null,
   ): Promise<{ price: string | null; priceNote: string; payment: string; executor: string | null; notice: string; depositNotice: string | null }> {
     const fiscal = await this.prisma.professionalFiscalProfile.findUnique({
       where: { professionalProfileId: quote.professionalProfileId },
@@ -532,12 +565,12 @@ export class BookingsService implements OnModuleInit {
       payment: quotePaymentSplitLine(paymentMethod, totals, depositPercent, true),
       executor: executorText,
       notice: cancellationNoticeLabel(cancellationNoticeHours),
-      depositNotice: lateCancelDepositNotice(quote.lateCancelKeepsDeposit, quotePaymentSplit(paymentMethod, totals, depositPercent), scheduledAt, cancellationNoticeHours, new Date(), quote.estimatedEndDate),
+      depositNotice: lateCancelDepositNotice(depositKeptOnLateCancel(quote.lateCancelKeepsDeposit, acceptedTerms), quotePaymentSplit(paymentMethod, totals, depositPercent), scheduledAt, cancellationNoticeHours, new Date(), quote.estimatedEndDate),
     };
   }
 
   /** Crea la prenotazione dal preventivo accettato: da qui il professionista vede i contatti del cliente (CLAUDE.md §5 punto 9). */
-  private async confirmAcceptedQuote(quote: AcceptableQuote, clientId: string, paymentMethod: JobPaymentChoice): Promise<string> {
+  private async confirmAcceptedQuote(quote: AcceptableQuote, clientId: string, paymentMethod: JobPaymentChoice, seen: SeenCancellationTerms = {}): Promise<string> {
     const offer = quotePaymentOffer(quote);
     const { guidedRequest } = quote;
     // Una accettazione alla volta per professionista: la seconda vede il
@@ -555,8 +588,22 @@ export class BookingsService implements OnModuleInit {
       await this.assertNoOtherJob(tx, quote.guidedRequestId);
       await this.assertProfessionalFree(tx, quote);
       const cancellationNoticeHours = quote.cancellationNoticeHours ?? (await cancellationNoticeFor(tx, quote.professionalProfileId));
+      // Testo letto dal cliente, salvato sul lavoro (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
+      const acceptedTerms: AcceptedTerms = buildAcceptedTerms({
+        start: quote.estimatedStartDate,
+        end: quote.estimatedEndDate,
+        hours: cancellationNoticeHours ?? DEFAULT_CANCELLATION_NOTICE_HOURS,
+        lateCancelKeepsDeposit: quote.lateCancelKeepsDeposit,
+        paymentMethod,
+        totals: quotePriceTotals(quote.items),
+        depositPercent: offer.depositPercent,
+        onlyPaymentOption: true,
+        phaseSeen: seen.phase ?? null,
+        seenAt: seen.at ?? null,
+      });
       return tx.booking.create({
       data: {
+        acceptedTerms,
         quoteId: quote.id,
         clientId,
         professionalProfileId: quote.professionalProfileId,
@@ -640,7 +687,7 @@ export class BookingsService implements OnModuleInit {
     // Con le stesse righe del riquadro "Prima di accettare": è la conferma del
     // contratto su supporto durevole (Codice del consumo art. 51 c. 7,
     // controllo pre-lancio 08/11, E4-04).
-    const contract = await this.bookingContractSummary(quote, paymentMethod, offer.depositPercent, booking.cancellationNoticeHours, booking.scheduledAt);
+    const contract = await this.bookingContractSummary(quote, paymentMethod, offer.depositPercent, booking.cancellationNoticeHours, booking.scheduledAt, booking.acceptedTerms);
     this.notificationsService.emailOnly(clientId, "BOOKING_CONFIRMED", { bookingId: booking.id, guidedRequestId: quote.guidedRequestId, ...contract });
 
     // Metriche di affidabilità (CLAUDE.md §15, evento 3): il preventivo è
@@ -1180,7 +1227,8 @@ export class BookingsService implements OnModuleInit {
           : {}),
       },
     });
-    const keptEurCents = late && job.quote?.lateCancelKeepsDeposit ? await this.jobPaymentsService.keepDepositOnLateCancel(bookingId) : 0;
+    // Tranne se il cliente non ha mai avuto il tempo di annullare gratis (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
+    const keptEurCents = late && depositKeptOnLateCancel(job.quote?.lateCancelKeepsDeposit, job.acceptedTerms) ? await this.jobPaymentsService.keepDepositOnLateCancel(bookingId) : 0;
     // Lavoro pagato online (§168): altrimenti l'acconto torna al cliente.
     if (keptEurCents === 0) await this.jobPaymentsService.refundOnCancel(bookingId, clientId);
     // Prima il professionista non veniva avvisato; l'email toglie anche
@@ -1951,7 +1999,8 @@ export class BookingsService implements OnModuleInit {
       // Preavviso per annullare valido per questo lavoro (docs/CHANGELOG.md §347): 24 ore per i lavori di prima.
       cancellationNoticeHours: booking.cancellationNoticeHours ?? DEFAULT_CANCELLATION_NOTICE_HOURS,
       // Solo la prima visita di un lavoro ricorrente ha un acconto e una data da cambiare sul preventivo.
-      lateCancelKeepsDeposit: booking.ownQuote?.lateCancelKeepsDeposit ?? false,
+      // Tolto se il cliente non ha mai avuto il tempo di annullare gratis (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
+      lateCancelKeepsDeposit: depositKeptOnLateCancel(booking.ownQuote?.lateCancelKeepsDeposit, booking.acceptedTerms),
       // Altra data proposta sul preventivo accettato, in attesa del professionista.
       dateChange: bookingDateChange(booking, booking.ownQuote),
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,

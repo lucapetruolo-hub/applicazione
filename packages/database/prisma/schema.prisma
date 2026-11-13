@@ -1376,6 +1376,11 @@ model Booking {
   rescheduleProposedBy    String?
   // Promemoria a chi deve rispondere, dopo 12 ore senza risposta.
   rescheduleReminderAt    DateTime?
+  // Cosa ha letto il cliente su annullare e acconto accettando il preventivo
+  // (docs/changelog/2026-11-13-annullare-pagina-aperta.md): frasi, cifre, ora
+  // di lettura e di accettazione (tipo AcceptedTerms di packages/shared).
+  // null per i lavori nati prima e per quelli senza preventivo.
+  acceptedTerms           Json?
   createdAt               DateTime      @default(now())
   updatedAt               DateTime      @updatedAt
 

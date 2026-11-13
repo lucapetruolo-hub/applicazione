@@ -1,5 +1,6 @@
 "use client";
 
+import { useMinuteClock } from "@/lib/useMinuteClock";
 import { HighlightMatch } from "@/lib/requestSearch";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -174,6 +175,8 @@ export function RequestCard({
   /** Prezzo della "Manodopera" dell'ultimo preventivo: la riga con cui si apre il modulo parte da lì. */
   laborPrice?: { priceMinEurCents: number | null; priceMaxEurCents: number | null } | null;
 }) {
+  // Ora aggiornata ogni minuto: le frasi su annullare cambiano da sole (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
+  const now = useMinuteClock();
   const gr = lead.guidedRequest;
   const canRepeat = recurringAllowedForCategory(gr.categorySlug);
   const isOnline = gr.serviceMode === "ONLINE";
@@ -1402,10 +1405,10 @@ export function RequestCard({
           {booking?.status === "CONFIRMED" && lead.quote ? (
             <CancellationTermsLines
               terms={cancellationTerms({
-                phase: cancellationPhase(booking.scheduledAt, booking.scheduledEndAt, lead.quote.cancellationNoticeHours),
+                phase: cancellationPhase(booking.scheduledAt, booking.scheduledEndAt, lead.quote.cancellationNoticeHours, now),
                 start: booking.scheduledAt,
                 hours: lead.quote.cancellationNoticeHours,
-                money: bookingCancellationMoney(booking.payment, lead.quote.lateCancelKeepsDeposit),
+                money: bookingCancellationMoney(booking.payment, booking.depositKeptOnLateCancel),
                 stage: "booked",
                 audience: "professional",
               })}
