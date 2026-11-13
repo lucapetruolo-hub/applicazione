@@ -3,6 +3,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import type Stripe from "stripe";
 import {
+  balanceChargeWaitsForClient,
   onlineLimitCompletionProblem,
   JOB_ISSUE_LABEL,
   completionDeviation,
@@ -1050,6 +1051,9 @@ export class BookingsService implements OnModuleInit {
       // Saldo sulla carta dell'acconto solo dentro il preventivo accettato: niente voci nuove né totale sopra il massimo (§267).
       autoChargeBalance:
         !!deviation && deviation.addedItemNames.length === 0 && deviation.direction !== "ABOVE" && deviation.quoteMaxEurCents !== null,
+      // Sopra il minimo del preventivo: 48 ore al cliente prima della carta (decisione di Luca del 13/11).
+      // Se il cliente ha già confermato "Lavoro terminato" non può più segnalare un problema: niente attesa.
+      waitForClient: !!deviation && booking.clientConfirmedCompletedAt === null && balanceChargeWaitsForClient(deviation.totalEurCents, deviation.quoteMinEurCents),
     });
     // Pagamento online (§168): il cliente paga il saldo sull'importo finale.
     if (online && online.balanceDueEurCents > 0) {
@@ -1058,6 +1062,7 @@ export class BookingsService implements OnModuleInit {
         guidedRequestId: booking.quote?.guidedRequestId,
         amountEurCents: online.balanceDueEurCents,
         audience: "CLIENT",
+        ...(online.autoChargeAt ? { autoChargeAt: online.autoChargeAt.toISOString(), finalAmountEurCents } : {}),
       });
     }
 
@@ -1603,6 +1608,8 @@ export class BookingsService implements OnModuleInit {
       },
     });
     if (!inChat) await this.jobIssueOutcomeService.notifyIssueAdmins("ADMIN_JOB_ISSUE_TO_REVIEW", { bookingId, issueType: input.type, stage: "ESCALATED" });
+    // "Non sono d'accordo" sul prezzo finale: il saldo in attesa non parte più da solo.
+    await this.prisma.jobPayment.updateMany({ where: { bookingId, balanceAutoChargeAt: { not: null } }, data: { balanceAutoChargeAt: null } });
 
     await this.notificationsService.notify(booking.professionalProfile.userId, "JOB_ISSUE_REPORTED", {
       bookingId,

@@ -2460,6 +2460,10 @@ model JobPayment {
   savedPaymentMethodId         String?
   balanceAutoChargedAt         DateTime?
   balanceAutoChargeFailedAt    DateTime?
+  // Prezzo finale sopra il minimo del preventivo: il saldo si addebita da
+  // solo a quest'ora, 48 ore dopo la chiusura, se il cliente non conferma
+  // prima o non segnala un problema (docs/changelog/2026-11-13-tutto-online-forbice.md).
+  balanceAutoChargeAt          DateTime?
 
   // --- DIRECT (auto-dichiarazione + conferma cliente) ---
   directReportedAt   DateTime?

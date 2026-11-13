@@ -33,3 +33,34 @@ unico, percentuale, solo massimo), `apps/api/src/bookings/bookings.service.test.
 rimborso); typecheck, eslint, prove dell'API. Non c'è ancora una prova con
 Stripe in modalità di prova per i pagamenti dei lavori (solo per l'iscrizione
 con carta).
+
+## Secondo giro: 48 ore per dire di no sul prezzo finale
+
+**Richiesta** (Luca, 13/11/2026): "e se poi il professionista spara un prezzo
+non concordato?". Sopra il massimo o con voci nuove non c'era già addebito
+automatico (motivo obbligatorio, il cliente paga col link); dentro la forbice
+invece il resto partiva subito dalla carta. Luca ha scelto (scheda) "48 ore per
+dire di no".
+
+**Decisione**:
+- Prezzo finale sopra il minimo del preventivo (`balanceChargeWaitsForClient`,
+  `BALANCE_AUTO_CHARGE_WAIT_HOURS = 48` in `packages/shared/src/onlinePayments.ts`):
+  alla chiusura il saldo non si addebita, si salva `JobPayment.balanceAutoChargeAt`
+  (migrazione `20261113200000_saldo_dopo_48_ore`).
+- Cliente: notifica ed email "Controlla il prezzo finale" con data e ora
+  dell'addebito. "Va bene" = non fare nulla o confermare "Lavoro terminato"
+  (addebito subito); "Non sono d'accordo" = "Segnala un problema": la data si
+  azzera e non parte nulla. Nella scheda del pagamento sparisce "Paga il saldo"
+  mentre si aspetta. Il professionista legge che il cliente ha 48 ore.
+- Allo scadere: `OnlineMoneyService.runHeldBalanceCharges` (ogni ora) addebita la
+  carta salvata; una sola volta anche con due giri (la data si azzera prima di
+  addebitare); con la carta rifiutata il cliente riceve il link, come prima.
+- Al minimo o sotto: addebito subito come prima. Cliente che aveva già
+  confermato "Lavoro terminato" (non può più segnalare): addebito subito.
+- Testo sulla pagina di Stripe dove si salva la carta: aggiunte le 48 ore.
+
+**Verifica**: `destination-charges.test.ts` (attesa alla chiusura, addebito allo
+scadere, niente addebito con un problema, niente doppio addebito, carta
+rifiutata), `online-limit-completion.test.ts` (sopra il minimo aspetta, al
+minimo no, già confermato no); 1523 prove dell'API, prove di `packages/shared`,
+typecheck ed eslint di sito e API.

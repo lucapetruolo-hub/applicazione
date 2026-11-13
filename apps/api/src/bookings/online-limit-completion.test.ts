@@ -28,16 +28,17 @@ function buildService(jobPayment: { paymentMethod: string; balanceDirect: boolea
     bookingFinalItem: { deleteMany: vi.fn(), createMany: vi.fn() },
     $transaction: vi.fn().mockResolvedValue([]),
   };
+  const jobPaymentsService = { createOnCompletion: vi.fn().mockResolvedValue(null) };
   const service = new BookingsService(
     prisma as never,
     { notify: vi.fn() } as never,
     { recordJobCompleted: vi.fn(), recordAppointmentOutcome: vi.fn() } as never,
     { log: vi.fn() } as never,
-    { createOnCompletion: vi.fn().mockResolvedValue(null) } as never,
+    jobPaymentsService as never,
     { afterJobAccepted: vi.fn() } as never,
     {} as never,
   );
-  return { service, prisma };
+  return { service, prisma, jobPaymentsService };
 }
 
 const input = {
@@ -92,5 +93,25 @@ describe("riapertura di un appuntamento annullato (collaudo F-08)", () => {
 
     await expect(service.reopenBooking("client-1", "bk-1")).rejects.toThrow(/già passata/);
     expect(prisma.booking.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("prezzo finale sopra il minimo: 48 ore al cliente (13/11)", () => {
+  const close = (priceEurCents: number) => ({ ...input, items: [{ name: "Manodopera", priceEurCents }] });
+
+  it("sopra il minimo il saldo aspetta, al minimo no", async () => {
+    const { service, jobPaymentsService } = buildService(null);
+    await service.completeWithFinalAmount("pro-user-1", "bk-1", close(250000));
+    await service.completeWithFinalAmount("pro-user-1", "bk-1", close(200000));
+    const calls = jobPaymentsService.createOnCompletion.mock.calls.map((call) => (call as [{ autoChargeBalance: boolean; waitForClient: boolean }])[0]);
+    expect(calls[0]).toMatchObject({ autoChargeBalance: true, waitForClient: true });
+    expect(calls[1]).toMatchObject({ autoChargeBalance: true, waitForClient: false });
+  });
+
+  it("se il cliente ha già confermato il lavoro non aspetta", async () => {
+    const { service, prisma, jobPaymentsService } = buildService(null);
+    prisma.booking.findUnique.mockResolvedValue({ ...(await prisma.booking.findUnique()), clientConfirmedCompletedAt: new Date("2026-01-10T12:00:00Z") });
+    await service.completeWithFinalAmount("pro-user-1", "bk-1", close(250000));
+    expect(jobPaymentsService.createOnCompletion).toHaveBeenCalledWith(expect.objectContaining({ waitForClient: false }));
   });
 });

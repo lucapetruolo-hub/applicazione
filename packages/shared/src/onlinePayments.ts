@@ -108,6 +108,21 @@ export const UPFRONT_PAYMENT_NOTE =
 
 /** Giorni dopo la chiusura del lavoro in cui i soldi passano al professionista se il cliente non conferma né segnala. */
 export const ONLINE_RELEASE_DAYS = 7;
+
+/**
+ * Prezzo finale sopra il minimo del preventivo (decisione di Luca del
+ * 13/11/2026, docs/changelog/2026-11-13-tutto-online-forbice.md): il saldo
+ * non parte subito dalla carta salvata. Il cliente ha 48 ore per dire "Va
+ * bene" (conferma "Lavoro terminato", addebito subito) o "Non sono
+ * d'accordo" (segnala un problema, niente addebito); senza risposta si
+ * addebita allo scadere.
+ */
+export const BALANCE_AUTO_CHARGE_WAIT_HOURS = 48;
+
+/** Il saldo aspetta la risposta del cliente: prezzo finale sopra il minimo del preventivo. */
+export function balanceChargeWaitsForClient(finalAmountEurCents: number, quoteMinEurCents: number): boolean {
+  return finalAmountEurCents > quoteMinEurCents;
+}
 /**
  * Trattenuta unica sui pagamenti online, IVA esclusa, a carico del
  * professionista (decisione dell'utente del 27/10/2026, docs/CHANGELOG.md
@@ -435,6 +450,8 @@ export type JobPaymentSummary = {
   releaseDueAt: string | null;
   releasedAt: string | null;
   balanceUnpaid: boolean;
+  /** Quando il saldo si addebita da solo sulla carta se il cliente non risponde (prezzo sopra il minimo); null se non aspetta. */
+  balanceAutoChargeAt: string | null;
   /** Annullato dal cliente dentro il preavviso: l'acconto resta al professionista (§348). */
   depositKept: boolean;
   /** Solo per il professionista: trattenuta (con l'IVA, §378), e quanto riceve. */
@@ -487,6 +504,7 @@ type JobPaymentRow = {
   releaseDueAt: Date | null;
   releasedAt: Date | null;
   balanceUnpaidAt: Date | null;
+  balanceAutoChargeAt?: Date | null;
   depositKeptAt?: Date | null;
   refundWaitingEurCents?: number;
   stripeDestinationAccountId?: string | null;
@@ -557,6 +575,7 @@ export function toJobPaymentSummary(
     releaseDueAt: jp.releaseDueAt?.toISOString() ?? null,
     releasedAt: jp.releasedAt?.toISOString() ?? null,
     balanceUnpaid: !!jp.balanceUnpaidAt,
+    balanceAutoChargeAt: stage === "AWAITING_BALANCE" ? (jp.balanceAutoChargeAt?.toISOString() ?? null) : null,
     depositKept: !!jp.depositKeptAt,
   };
   if (forProfessional && method === "ONLINE") {

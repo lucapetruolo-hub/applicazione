@@ -130,6 +130,14 @@ function formatLongDate(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
 }
 
+/** "venerdì 15 novembre alle 17:30", ora italiana: per le ore vere (non gli appuntamenti). */
+function formatDayTime(iso: string): string {
+  const date = new Date(iso);
+  const day = date.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Rome" });
+  const time = date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
+  return `${day} alle ${time}`;
+}
+
 function jobDetails(ctx: NotificationEmailContext, extra: EmailDetail[] = []): EmailDetail[] {
   return [
     ...(ctx.category ? [{ label: "Lavoro", value: ctx.city ? `${ctx.category}, ${ctx.city}` : ctx.category }] : []),
@@ -1125,7 +1133,23 @@ const BUILDERS: Record<string, Builder> = {
     details: typeof payload.amountEurCents === "number" ? [{ label: "Saldo", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: proRequests("Apri il lavoro"),
   }),
-  JOB_BALANCE_DUE: (payload, ctx) => ({
+  JOB_BALANCE_DUE: (payload, ctx) =>
+    // Prezzo finale sopra il minimo (docs/changelog/2026-11-13-tutto-online-forbice.md): 48 ore per dire di no.
+    typeof payload.autoChargeAt === "string"
+      ? {
+          kind: "notification",
+          subject: "Controlla il prezzo finale del lavoro",
+          greeting: ctx.name,
+          title: "Controlla il prezzo finale",
+          paragraphs: [
+            `**${pro(ctx)}** ha chiuso il lavoro per **${job(ctx)}**${typeof payload.finalAmountEurCents === "number" ? ` a **${formatEur(payload.finalAmountEurCents)}**` : ""}, dentro il preventivo che hai accettato.`,
+            `Se il prezzo va bene non devi fare nulla: ${formatDayTime(payload.autoChargeAt)} addebitiamo il resto sulla carta dell'acconto. Se confermi "Lavoro terminato" lo addebitiamo subito.`,
+            "Se non sei d'accordo, segnala un problema dalla pagina del lavoro: non addebitiamo nulla finché non si chiarisce.",
+          ],
+          details: typeof payload.amountEurCents === "number" ? [{ label: "Resto da addebitare", value: formatEur(payload.amountEurCents) }] : undefined,
+          cta: { label: "Controlla il lavoro", url: `${frontendUrl()}/le-mie-richieste` },
+        }
+      : {
     kind: "notification",
     subject: "Paga il saldo del lavoro",
     greeting: ctx.name,
@@ -1136,7 +1160,7 @@ const BUILDERS: Record<string, Builder> = {
     ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Saldo da pagare", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: { label: "Paga il saldo", url: `${frontendUrl()}/le-mie-richieste` },
-  }),
+        },
   // Al cliente: acconto o saldo pagato online, con il riepilogo
   // (docs/changelog/2026-11-03-conferme-pagamento-e-abbonamento.md).
   JOB_PAYMENT_CONFIRMED: (payload, ctx) => {
