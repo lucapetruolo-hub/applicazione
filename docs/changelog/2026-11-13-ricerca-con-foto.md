@@ -81,3 +81,6 @@ secondo tentativo aspetta 0,8 s dopo un errore di Anthropic, il log dice il
 motivo di una risposta senza dati e la risposta può essere più lunga (1536
 token). Se l'IA non risponde e il cliente ha scritto qualcosa, la home cerca
 con le parole senza mostrare errori.
+Esempi in più nelle istruzioni (proposta 4, ok di Luca): fornelli, scaldabagno
+o tubo del gas guasti in foto = gas; muro, foro o tubo anneriti vicino a
+caldaia, stufa, camino, scaldabagno o condizionatore = monossido.
