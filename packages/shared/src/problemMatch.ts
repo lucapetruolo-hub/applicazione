@@ -274,10 +274,16 @@ const GAS_QUESTION: ProblemQuestion = {
   ],
 };
 
-/** `unless`: parole che rendono la domanda fuori luogo (docs/changelog/2026-11-13-domanda-acqua-calda.md). */
-const QUESTIONS: readonly { pairs: readonly Pair[]; question: ProblemQuestion; unless?: readonly string[] }[] = [
+/**
+ * `topic`: la domanda parte solo se il testo parla di quell'argomento (una
+ * domanda sull'acqua solo se c'è acqua, umidità o una perdita); `unless`: parole
+ * che la rendono fuori luogo (docs/changelog/2026-11-13-domanda-acqua-calda.md).
+ */
+const WATER_TOPIC = ["acqua", "umid", "muffa", "macchi", "infiltra", "perd", "gocciol", "condensa", "bagnat", "piov", "pioggia", "allag"];
+const QUESTIONS: readonly { pairs: readonly Pair[]; question: ProblemQuestion; topic?: readonly string[]; unless?: readonly string[] }[] = [
   {
     pairs: [["idraulico", "muratore"], ["imbianchino", "muratore"], ["idraulico", "imbianchino"]],
+    topic: WATER_TOPIC,
     question: {
       id: "macchia",
       text: "Da dove sembra arrivare l'acqua o l'umidità?",
@@ -291,6 +297,7 @@ const QUESTIONS: readonly { pairs: readonly Pair[]; question: ProblemQuestion; u
   {
     pairs: [["climatizzazione", "idraulico"]],
     // Un condizionatore che perde acqua non c'entra con chi scalda l'acqua.
+    topic: [...WATER_TOPIC, "caldai", "scaldabagn", "boiler", "riscaldament", "termosifon", "calorifer", "scald", "fredd", "calda"],
     unless: ["condizionator", "climatizzator", "split", "aria condizionata"],
     question: {
       id: "acqua-calda",
@@ -341,6 +348,7 @@ const QUESTIONS: readonly { pairs: readonly Pair[]; question: ProblemQuestion; u
   },
   {
     pairs: [["idraulico", "tuttofare"]],
+    topic: [...WATER_TOPIC, "tub", "scaric", "rubinett", "lavatric", "lavastovigli", "lavandin", "lavell", "sifon", "bagn", "docc", "vasca", "wc", "water", "sigill", "silicon"],
     question: {
       id: "perde-acqua",
       text: "Perde acqua o vanno collegati dei tubi?",
@@ -432,6 +440,7 @@ export function matchProblem(description: string): ProblemMatch {
       QUESTIONS.find(
         (entry) =>
           entry.pairs.some(([a, b]) => (a === first.slug && b === second.slug) || (a === second.slug && b === first.slug)) &&
+          (!entry.topic || entry.topic.some((word) => containsWord(text, word))) &&
           !entry.unless?.some((word) => containsWord(text, word)),
       )?.question ?? null;
   }
