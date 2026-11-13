@@ -610,7 +610,11 @@ const BUILDERS: Record<string, Builder> = {
         subject: `${pro(ctx)} ha spostato l'appuntamento`,
         greeting: ctx.name,
         title: "Appuntamento spostato",
-        paragraphs: [`**${pro(ctx)}** ha accettato la data che hai proposto per **${job(ctx)}**: l'appuntamento è spostato.`],
+        paragraphs: [
+          `**${pro(ctx)}** ha accettato la data che hai proposto per **${job(ctx)}**: l'appuntamento è spostato.`,
+          // La nuova scadenza per annullare (docs/changelog/2026-11-13-annullare-spostamento.md).
+          ...(typeof payload.cancelNotice === "string" ? [payload.cancelNotice] : []),
+        ],
         details: changeDetails(ctx, payload, "Prima", "Adesso", true),
         cta: clientRequests(),
       };
@@ -633,7 +637,10 @@ const BUILDERS: Record<string, Builder> = {
     subject: "Il cliente ha accettato la nuova data",
     greeting: ctx.name,
     title: "Appuntamento spostato",
-    paragraphs: [`Il cliente ha accettato la data che hai proposto per **${job(ctx)}**: l'appuntamento è spostato.`],
+    paragraphs: [
+      `Il cliente ha accettato la data che hai proposto per **${job(ctx)}**: l'appuntamento è spostato.`,
+      ...(typeof payload.cancelNotice === "string" ? [payload.cancelNotice] : []),
+    ],
     details: changeDetails(ctx, payload, "Prima", "Adesso", false),
     cta: proRequests("Apri la richiesta"),
   }),

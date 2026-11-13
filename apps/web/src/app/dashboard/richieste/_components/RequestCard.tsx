@@ -40,6 +40,7 @@ import {
   DEFAULT_CANCELLATION_NOTICE_HOURS,
   cancellationNoticeLabel,
   bookingCancellationMoney,
+  rescheduleCancellationLine,
   cancellationPhase,
   cancellationTerms,
   isLateCancellation,
@@ -1580,6 +1581,24 @@ export function RequestCard({
               </Text>
             ) : null}
 
+            {/* Con la data nuova il preavviso può essere già iniziato (docs/changelog/2026-11-13-annullare-spostamento.md). */}
+            {bookedDateChange && booking && lead.quote?.clientProposedDate && !proposedDatePassed
+              ? (() => {
+                  const line = rescheduleCancellationLine({
+                    start: lead.quote.clientProposedDate,
+                    end: lead.quote.clientProposedEndDate,
+                    hours: lead.quote.cancellationNoticeHours,
+                    money: bookingCancellationMoney(booking.payment, booking.depositKeptOnLateCancel),
+                    audience: "professional",
+                    now,
+                  });
+                  return line ? (
+                    <Text fontSize={13} color={brand.grafite70} data-testid="pro-reschedule-cancel">
+                      {line.text}
+                    </Text>
+                  ) : null;
+                })()
+              : null}
             {bookedDateChange ? (
               // Stessi pulsanti della modifica di un preventivo; "Contatta" è già sotto, con il lavoro.
               <XStack gap="2" flexWrap="wrap">

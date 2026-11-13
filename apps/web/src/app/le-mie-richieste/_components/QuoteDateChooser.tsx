@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ClientGuidedRequest } from "@professionisti/api-client";
-import { jobDayCount } from "@professionisti/shared";
+import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
+import { bookingCancellationMoney, jobDayCount, quotePriceTotals, rescheduleCancellationLine } from "@professionisti/shared";
+import { useMinuteClock } from "@/lib/useMinuteClock";
 import { Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { CardButton } from "@/components/CardButton";
@@ -36,6 +37,7 @@ export function QuoteDateChooser({
   quote,
   serviceMode,
   from,
+  booking,
   onSent,
   onCancel,
 }: {
@@ -45,6 +47,8 @@ export function QuoteDateChooser({
   serviceMode: "HOME" | "ONLINE" | null;
   /** Data da cui si parte: l'ultima proposta. */
   from: { start: string; end: string | null };
+  /** Appuntamento già fissato che si sposta: si dice cosa cambia per annullare con la data scelta. */
+  booking?: ClientBooking;
   onSent: () => void;
   onCancel: () => void;
 }) {
@@ -56,6 +60,7 @@ export function QuoteDateChooser({
   const [manualEndTime, setManualEndTime] = useState("");
   const [isProposing, setIsProposing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const now = useMinuteClock();
 
   useEffect(() => {
     let active = true;
@@ -166,6 +171,33 @@ export function QuoteDateChooser({
               </Text>
             </YStack>
           ) : null}
+          {/* Spostando un appuntamento fissato: con la data scelta il preavviso può essere già
+              iniziato (docs/changelog/2026-11-13-annullare-spostamento.md). */}
+          {booking
+            ? (() => {
+                const [date, startTime, endTime] =
+                  selectedSlotKey === MANUAL_OPTION_VALUE ? [manualDate, manualStartTime, manualEndTime] : selectedSlotKey.split("|");
+                if (!date || !startTime || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(startTime)) return null;
+                const line = rescheduleCancellationLine({
+                  start: `${date}T${startTime}:00.000Z`,
+                  end: endTime && /^\d{2}:\d{2}$/.test(endTime) ? `${date}T${endTime}:00.000Z` : null,
+                  hours: booking.cancellationNoticeHours,
+                  money: bookingCancellationMoney(booking.payment, booking.lateCancelKeepsDeposit, quotePriceTotals(booking.quoteItems).totalMaxEurCents),
+                  audience: "client",
+                  now,
+                });
+                return line ? (
+                  <Text
+                    fontSize={line.tone === "warning" ? 16 : 13}
+                    fontWeight={line.tone === "warning" ? "600" : "400"}
+                    color={line.tone === "warning" ? brand.ottoneScuro : brand.grafite70}
+                    data-testid="reschedule-cancel"
+                  >
+                    {line.text}
+                  </Text>
+                ) : null;
+              })()
+            : null}
           {/* Lavoro su più giorni (docs/CHANGELOG.md §310): la durata resta quella del preventivo. */}
           {jobDayCount(quote.estimatedStartDate, quote.estimatedEndDate) > 1 ? (
             <Text fontSize={12} color={brand.grafite70}>
