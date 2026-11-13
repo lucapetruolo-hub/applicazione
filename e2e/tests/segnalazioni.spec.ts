@@ -174,3 +174,20 @@ test("Contatti: la segnalazione si apre dal link sotto il modulo e si torna al m
   await expect(page.getByRole("radio", { name: "Sono un cliente" })).toBeChecked();
   await expect(page.getByRole("button", { name: "Invia messaggio" })).toBeVisible();
 });
+
+test("Contatti: email già scritta per chi ha fatto l'accesso, errore sotto il campo, conferma con l'email", async ({ browser }) => {
+  const page = await pageAs(browser, people.reporter);
+  await page.goto("/contatti");
+  const email = page.getByLabel("La tua email");
+  await expect(email).toHaveValue(people.reporter);
+  // Errore subito sotto il campo, collegato al campo.
+  await email.fill("senza-chiocciola");
+  await page.getByRole("button", { name: "Invia messaggio" }).click();
+  await expect(email).toHaveAttribute("aria-describedby", "contatti-errore-email");
+  await expect(page.locator("#contatti-errore-email")).toHaveText("Inserisci un'email valida.");
+  await email.fill(people.reporter);
+  await page.getByLabel("Messaggio").fill("Vorrei sapere come cambiare la mia città.");
+  await page.getByRole("button", { name: "Invia messaggio" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Messaggio inviato" })).toContainText(`Ti risponderemo il prima possibile a ${people.reporter}`);
+  await expect(page.getByRole("link", { name: "Torna alla home" })).toBeVisible();
+});

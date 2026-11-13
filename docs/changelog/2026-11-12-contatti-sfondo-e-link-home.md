@@ -64,3 +64,27 @@ passaggio messaggio/segnalazione in `segnalazioni.spec.ts`; foto in
   (#e4ecf5, azzurro in alto a destra): nessun testo sotto 4,5:1 (3:1 per i
   titoli grandi). Il grigio dei testi secondari (#5E5A54) sta a circa 5,9:1.
   Nessuna modifica necessaria. Anche axe (color-contrast) non trova errori.
+
+## Quarto giro (13/11/2026): revisione da esperto
+
+**Richiesta** (Luca): "valuta da alto esperto del settore", poi sì alle
+migliorie 1-5 proposte (la 6, avviso dei cookie sopra il tasto, resta a parte).
+
+**Decisione**:
+1. L'errore compare subito sotto il campo sbagliato (`contatti-errore-<campo>`,
+   collegato con aria-describedby e annunciato), con bordo e contorno rossi.
+   In fondo al modulo restano solo gli errori senza campo (buona fede,
+   anti-bot, invio non riuscito).
+2. Chi ha fatto l'accesso trova la sua email già scritta e, se è un
+   professionista, "Sono un professionista" già scelto: valori ricavati
+   dall'account finché la persona non li cambia (niente effetto che copia).
+3. Sotto "Messaggio" una riga d'aiuto: "Se riguarda una richiesta o un
+   preventivo, scrivi il mestiere e la città".
+4. Dopo l'invio: spunta, "Messaggio inviato" (o "Segnalazione presa in
+   carico"), "Ti risponderemo il prima possibile a <email>" e il tasto "Torna
+   alla home"; la conferma prende il fuoco e si porta in vista.
+5. "Scrivici per email" con l'indirizzo di supporto in cima alla colonna a
+   destra, sopra "Dati dell'azienda"; tolto dalla testata.
+
+**Verifica**: prova nuova in `segnalazioni.spec.ts` (email già scritta, errore
+sotto il campo, conferma con l'email); foto v4-* in `anteprime/contatti-sfondo/`.

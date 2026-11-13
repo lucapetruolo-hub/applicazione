@@ -7103,6 +7103,47 @@ a.admin-kpi:hover {
     display: none;
   }
 }
+.contatti-mail-link {
+  color: #186163;
+  font-size: 17px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+.contatti-home-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  min-height: 48px;
+  padding: 0 24px;
+  border-radius: 999px;
+  border: 1.5px solid #1e6b6e;
+  color: #186163;
+  font-size: 17px;
+  font-weight: 700;
+  text-decoration: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .contatti-home-link:hover {
+    background: #dff0f0;
+  }
+}
+.contatti-mail-link:focus-visible,
+.contatti-home-link:focus-visible {
+  outline: 3px solid #186163;
+  outline-offset: 2px;
+}
+/* Campo sbagliato: anche il contorno del fuoco è rosso, sopra il bordo rosso. */
+input[id^="contatti-"][aria-invalid="true"],
+textarea[id^="contatti-"][aria-invalid="true"] {
+  outline: 2px solid #b42318;
+  outline-offset: 2px;
+}
+.contatti-done:focus {
+  outline: none;
+}
 .contatti-switch {
   padding: 0;
   border: none;

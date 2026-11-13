@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BRAND, COMPANY, companyDataReady, type ContactMessageInput } from "@professionisti/shared";
 import { Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { useAuth } from "@/lib/AuthContext";
 import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
 import { ConsentCheckbox } from "@/components/ConsentCheckbox";
 
@@ -40,6 +41,11 @@ const fieldStyle = {
   boxSizing: "border-box" as const,
   backgroundColor: brand.calce,
 };
+// Campo sbagliato: bordo rosso (oltre ad aria-invalid) e messaggio subito
+// sotto, non più in fondo al modulo
+// (docs/changelog/2026-11-12-contatti-sfondo-e-link-home.md).
+const fieldErrorStyle = { ...fieldStyle, border: `2px solid ${brand.urgenza}` };
+type Field = "email" | "name" | "url" | "content";
 
 // Dati della società da un solo punto (`COMPANY` in packages/shared/src/brand.ts,
 // D.Lgs. 70/2003 art. 7; collaudo del 29/10/2026, M-01 e M-10).
@@ -73,8 +79,16 @@ const COMPANY_ROWS: { icon: "file-text" | "map-pin" | "mail"; label: string; val
 const PROFILE_HELP_MESSAGE = "Vorrei aiuto per creare il mio profilo. Il mio mestiere è: \nMi potete chiamare al numero: ";
 
 export default function ContattiContent({ initialReport = false, initialProfileHelp = false }: { initialReport?: boolean; initialProfileHelp?: boolean }) {
-  const [role, setRole] = useState<ContactMessageInput["role"]>(initialReport ? "REPORT_ILLEGAL" : initialProfileHelp ? "PROFESSIONAL" : "CLIENT");
-  const [email, setEmail] = useState("");
+  // Chi ha fatto l'accesso trova la sua email già scritta (si può cambiare) e,
+  // se è un professionista, "Sono un professionista" già scelto. Valori
+  // ricavati, non copiati con un effetto: finché la persona non tocca il
+  // campo o la scelta, vale quello dell'account.
+  const { user } = useAuth();
+  const defaultRole: ContactMessageInput["role"] = initialReport ? "REPORT_ILLEGAL" : initialProfileHelp || user?.role === "PROFESSIONAL" ? "PROFESSIONAL" : "CLIENT";
+  const [chosenRole, setRole] = useState<ContactMessageInput["role"] | null>(null);
+  const role = chosenRole ?? defaultRole;
+  const [typedEmail, setEmail] = useState<string | null>(null);
+  const email = typedEmail ?? user?.email ?? "";
   // Segnalazione di un contenuto illegale: nome e indirizzo della pagina in
   // campi a sé (DSA art. 16 c. 2 lett. b-c; collaudo del 29/10/2026, M-09).
   const [reporterName, setReporterName] = useState("");
@@ -94,6 +108,7 @@ export default function ContattiContent({ initialReport = false, initialProfileH
   const nameRef = useRef<HTMLInputElement>(null);
   const urlRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLTextAreaElement>(null);
+  const doneRef = useRef<HTMLDivElement>(null);
 
   function fail(message: string, field: "email" | "name" | "url" | "content" | null) {
     setErrorMessage(message);
@@ -111,8 +126,21 @@ export default function ContattiContent({ initialReport = false, initialProfileH
     requestAnimationFrame(() => emailRef.current?.focus());
   }
 
-  function fieldError(field: "email" | "name" | "url" | "content") {
-    return status === "error" && errorField === field ? { "aria-invalid": true as const, "aria-describedby": "contatti-errore" } : {};
+  function hasError(field: Field) {
+    return status === "error" && errorField === field;
+  }
+
+  function fieldError(field: Field) {
+    return hasError(field) ? { "aria-invalid": true as const, "aria-describedby": `contatti-errore-${field}` } : {};
+  }
+
+  /** Messaggio sotto il campo sbagliato, annunciato dal lettore di schermo. */
+  function fieldMessage(field: Field) {
+    return hasError(field) ? (
+      <Text id={`contatti-errore-${field}`} role="alert" fontSize={15} lineHeight="20px" color={brand.urgenza}>
+        {errorMessage}
+      </Text>
+    ) : null;
   }
 
   async function handleSubmit() {
@@ -155,6 +183,12 @@ export default function ContattiContent({ initialReport = false, initialProfileH
         turnstileToken: turnstileToken ?? undefined,
       });
       setStatus("done");
+      // La conferma prende il fuoco e si porta in vista: da telefono il tasto
+      // "Invia" è in basso e la scheda si accorcia.
+      requestAnimationFrame(() => {
+        doneRef.current?.focus({ preventScroll: true });
+        doneRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      });
     } catch (err) {
       fail(err instanceof Error ? err.message : "Invio non riuscito, riprova.", null);
       // Il token anti-bot vale una volta sola: ne serve uno nuovo per riprovare.
@@ -173,13 +207,6 @@ export default function ContattiContent({ initialReport = false, initialProfileH
           </Text>
           <Text fontSize={18} color={brand.grafite70} maxWidth={560} lineHeight="26px">
             Scrivici per qualsiasi domanda: ti rispondiamo il prima possibile, in italiano o in inglese.
-          </Text>
-          {/* Punto di contatto per utenti e autorità (DSA artt. 11-12, D.Lgs. 70/2003 art. 7 c. 1 lett. c; M-10). */}
-          <Text fontSize={16} color={brand.grafite70}>
-            Oppure scrivi a{" "}
-            <a href={`mailto:${BRAND.supportEmail}`} style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>
-              {BRAND.supportEmail}
-            </a>
           </Text>
         </YStack>
 
@@ -201,16 +228,37 @@ export default function ContattiContent({ initialReport = false, initialProfileH
 
         <XStack flexWrap="wrap" gap="5" width="100%" alignItems="flex-start">
           <Surface flexGrow={2} flexShrink={1} flexBasis={340} minWidth={0} padding="4 gtSm:6" gap="4">
-            <Text fontFamily="heading" fontWeight="700" fontSize={24} color={brand.grafite}>
-              {isReport ? "Segnala un contenuto illegale" : "Invia un messaggio"}
-            </Text>
+            {/* Dopo l'invio il titolo lo dà la conferma. */}
+            {status === "done" ? null : (
+              <Text fontFamily="heading" fontWeight="700" fontSize={24} color={brand.grafite}>
+                {isReport ? "Segnala un contenuto illegale" : "Invia un messaggio"}
+              </Text>
+            )}
 
             {status === "done" ? (
-              <Text fontSize={18} color={brand.verificato} fontWeight="600">
-                {isReport
-                  ? "Segnalazione presa in carico. Ti scriveremo l'esito a questa email."
-                  : "Messaggio inviato. Ti risponderemo il prima possibile."}
-              </Text>
+              // Conferma chiara: a quale email arriva la risposta e dove andare dopo.
+              <div ref={doneRef} tabIndex={-1} role="status" className="contatti-done">
+              <YStack gap="4">
+                <XStack gap="3" alignItems="center">
+                  <YStack width={44} height={44} borderRadius={22} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
+                    <Icon name="check" size={22} color={brand.verificato} />
+                  </YStack>
+                  <Text fontSize={20} fontWeight="700" color={brand.grafite}>
+                    {isReport ? "Segnalazione presa in carico" : "Messaggio inviato"}
+                  </Text>
+                </XStack>
+                <Text fontSize={17} lineHeight="25px" color={brand.grafite70}>
+                  {isReport ? "Ti scriveremo l'esito a " : "Ti risponderemo il prima possibile a "}
+                  <Text fontWeight="700" color={brand.grafite}>
+                    {email.trim()}
+                  </Text>
+                  .
+                </Text>
+                <Link href="/" className="contatti-home-link">
+                  Torna alla home
+                </Link>
+              </YStack>
+              </div>
             ) : (
               <YStack gap="4">
                 {isReport ? null : (
@@ -263,8 +311,9 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                       if (status === "error") setStatus("idle");
                     }}
                     placeholder="nome@esempio.it"
-                    style={fieldStyle}
+                    style={hasError("email") ? fieldErrorStyle : fieldStyle}
                   />
+                  {fieldMessage("email")}
                 </YStack>
 
                 {isReport ? (
@@ -283,8 +332,9 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                           setReporterName(e.target.value);
                           if (status === "error") setStatus("idle");
                         }}
-                        style={fieldStyle}
+                        style={hasError("name") ? fieldErrorStyle : fieldStyle}
                       />
+                      {fieldMessage("name")}
                     </YStack>
                     <YStack gap="2">
                       <label htmlFor="contatti-indirizzo" style={labelStyle}>
@@ -302,8 +352,9 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                           if (status === "error") setStatus("idle");
                         }}
                         placeholder="Incolla il link del profilo o della recensione"
-                        style={fieldStyle}
+                        style={hasError("url") ? fieldErrorStyle : fieldStyle}
                       />
+                      {fieldMessage("url")}
                     </YStack>
                   </>
                 ) : null}
@@ -312,10 +363,17 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                   <label htmlFor="contatti-messaggio" style={labelStyle}>
                     {isReport ? "Perché è illegale" : "Messaggio"}
                   </label>
+                  {isReport ? null : (
+                    // Così si può rispondere al primo messaggio, senza chiedere altro.
+                    <Text id="contatti-messaggio-aiuto" fontSize={15} lineHeight="20px" color={brand.grafite70} marginTop={-4}>
+                      Se riguarda una richiesta o un preventivo, scrivi il mestiere e la città.
+                    </Text>
+                  )}
                   <textarea
                     id="contatti-messaggio"
                     ref={contentRef}
-                    {...fieldError("content")}
+                    aria-describedby={hasError("content") ? "contatti-errore-content" : isReport ? undefined : "contatti-messaggio-aiuto"}
+                    aria-invalid={hasError("content") || undefined}
                     value={content}
                     onChange={(e) => {
                       setContent(e.target.value);
@@ -323,8 +381,9 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                     }}
                     placeholder={isReport ? "Indica il contenuto (per esempio la frase o la foto) e spiega perché è illegale." : "Scrivi qui la tua richiesta..."}
                     rows={7}
-                    style={{ ...fieldStyle, resize: "vertical", minHeight: 160, fontFamily: "inherit" }}
+                    style={{ ...(hasError("content") ? fieldErrorStyle : fieldStyle), resize: "vertical", minHeight: 160, fontFamily: "inherit" }}
                   />
+                  {fieldMessage("content")}
                 </YStack>
 
                 {isReport ? (
@@ -359,7 +418,7 @@ export default function ContattiContent({ initialReport = false, initialProfileH
 
                 {/* Sempre presente, così il lettore di schermo annuncia il messaggio quando compare. */}
                 <div id="contatti-errore" role="alert">
-                  {status === "error" ? (
+                  {status === "error" && errorField === null ? (
                     <Text fontSize={16} color={brand.urgenza}>
                       {errorMessage}
                     </Text>
@@ -377,7 +436,21 @@ export default function ContattiContent({ initialReport = false, initialProfileH
           </Surface>
 
           <Surface flexGrow={1} flexShrink={1} flexBasis={300} minWidth={0} padding="4 gtSm:6" gap="4">
+            {/* Punto di contatto per utenti e autorità (DSA artt. 11-12, D.Lgs.
+                70/2003 art. 7 c. 1 lett. c; M-10): primo modo di contatto della
+                colonna a destra, non più sotto il titolo. */}
             <Text fontFamily="heading" fontWeight="700" fontSize={24} color={brand.grafite}>
+              Scrivici per email
+            </Text>
+            <XStack gap="3" alignItems="center">
+              <YStack width={40} height={40} borderRadius={12} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
+                <Icon name="mail" size={19} color={brand.cianografiaScuro} />
+              </YStack>
+              <a href={`mailto:${BRAND.supportEmail}`} className="contatti-mail-link">
+                {BRAND.supportEmail}
+              </a>
+            </XStack>
+            <Text fontFamily="heading" fontWeight="700" fontSize={24} color={brand.grafite} paddingTop="4" borderTopWidth={1} borderTopColor={brand.filetto}>
               Dati dell&apos;azienda
             </Text>
             {/* Finché la società non c'è, niente segnaposto "[DA COMPILARE]" in
