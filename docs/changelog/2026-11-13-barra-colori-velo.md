@@ -23,7 +23,8 @@ vede poco sul velo chiaro. Restano bianche la barra e la rotellina dentro i
 pulsanti verdi e rossi, verde quella nei pulsanti bianchi; sagome e pallini restano neutri.
 
 Poi Luca sceglie la vivace e approva la miglioria: in cima allo schermo la
-barra è alta 4 px sul computer (da 760 px di larghezza, come le altre regole del sito), 3 px sul telefono.
+barra è alta 4 px sul computer (da 760 px di larghezza, come le altre regole del sito), 3 px sul telefono, e il giro dei colori dura 2,5 secondi invece di 2 (più
+calmo con più colori).
 Luca chiede poi di non cambiare i pulsanti: dentro i pulsanti bianchi la
 barra resta verde come prima (`.button-wait-overlay`), i colori del velo solo
 nella barra in cima e in "Cerca in quest'area" sulla mappa.

@@ -637,6 +637,8 @@ body:has(.chosen-bar) {
 .nav-progress .flow-bar {
   height: 3px;
   border-radius: 0;
+  /* Giro più lento coi colori del velo (2,5 s invece di 2), più calmo. */
+  animation-duration: 2.5s;
 }
 /* Sul computer 4 px: sugli schermi larghi 3 px si notavano poco
    (docs/changelog/2026-11-13-barra-colori-velo.md). */
