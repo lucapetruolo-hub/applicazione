@@ -73,3 +73,11 @@ quasi tutti invisibili nella foto: lo dicono i giudici.
 contano solo i pericoli che si vedono nella foto (colonna `pericolo_visibile`
 della chiave, da confermare coi giudici); quelli che si capiscono solo dal
 testo, come la fiammella che si spegne, contano nella prova testo + foto.
+
+**Terzo giro** (13/11, `analisi/ricerca-foto/esito-banco-3.md`): solo foto
+83%, 99% entro 6 s, dati personali riconosciuti; testo + foto 86% per 7
+risposte mancate di Anthropic (503 di fila), 90,6% senza quelle. Ora il
+secondo tentativo aspetta 0,8 s dopo un errore di Anthropic, il log dice il
+motivo di una risposta senza dati e la risposta può essere più lunga (1536
+token). Se l'IA non risponde e il cliente ha scritto qualcosa, la home cerca
+con le parole senza mostrare errori.

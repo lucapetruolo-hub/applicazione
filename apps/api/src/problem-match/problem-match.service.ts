@@ -110,6 +110,8 @@ type PhotoAnswer = z.infer<typeof photoAnswerSchema>;
 const PHOTO_TIMEOUT_MS = 8000;
 /** Tempo che deve restare per rifare la domanda all'IA dopo un errore. */
 const PHOTO_RETRY_MIN_MS = 4000;
+/** Pausa prima del secondo tentativo dopo un errore di Anthropic. */
+const PHOTO_RETRY_PAUSE_MS = 800;
 /** I risultati delle foto restano in memoria mezz'ora: il tempo di passare ai risultati e alla richiesta. */
 const PHOTO_RESULT_TTL_MS = 30 * 60_000;
 const PHOTO_RESULTS_MAX = 500;
@@ -614,7 +616,7 @@ export class ProblemMatchService {
         const response = await this.client.messages.parse(
           {
             model: MODEL,
-            max_tokens: 1024,
+            max_tokens: 1536,
             system: [{ type: "text", text: systemPrompt(catalog), cache_control: { type: "ephemeral" } }],
             messages: [
               {
@@ -636,11 +638,15 @@ export class ProblemMatchService {
         );
         if (response.stop_reason === "refusal") return { ...EMPTY_PHOTO_ANSWER, photo: "non-adatta" };
         if (response.parsed_output) return response.parsed_output;
-        throw new Error("risposta senza dati");
+        throw new Error(`risposta senza dati (${response.stop_reason ?? "motivo sconosciuto"})`);
       } catch (error) {
         const status = error instanceof Anthropic.APIError ? error.status : undefined;
         const retryable = status === undefined ? !(error instanceof Anthropic.APIConnectionTimeoutError) : status === 429 || status >= 500;
-        if (attempt === 1 && retryable && deadline - Date.now() >= PHOTO_RETRY_MIN_MS) continue;
+        if (attempt === 1 && retryable && deadline - Date.now() >= PHOTO_RETRY_MIN_MS) {
+          // Dopo un 503 Anthropic resta occupato per qualche istante (terzo giro del banco, 13/11).
+          if (status !== undefined) await new Promise((ok) => setTimeout(ok, PHOTO_RETRY_PAUSE_MS));
+          continue;
+        }
         this.logger.warn(`Intelligenza artificiale non disponibile per la foto: ${status ?? (error instanceof Error ? error.message : String(error))}.`);
         return null;
       }

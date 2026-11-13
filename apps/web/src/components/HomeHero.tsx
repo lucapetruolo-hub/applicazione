@@ -75,12 +75,15 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
     setPhotoMessage(null);
   }
 
-  async function searchWithPhoto(query: string, city: string, blob: Blob) {
+  /** Torna false se la foto non si è potuta leggere per un guasto: allora si cerca con le parole scritte. */
+  async function searchWithPhoto(query: string, city: string, blob: Blob): Promise<boolean> {
     setReadingPhoto(true);
     setPhotoMessage(null);
     try {
       const result = await apiClient.analyzeProblemPhoto(blob, { description: query, city });
       if (!result.photoId) {
+        // IA occupata o senza risposta (banco di prova del 13/11): con il testo si cerca lo stesso.
+        if (result.check === "spenta" && query.trim()) return false;
         setPhotoMessage(
           result.check === "non-pertinente"
             ? "Dalla foto non capiamo il problema. Scrivilo con parole tue, oppure prova con un'altra foto."
@@ -88,7 +91,7 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
               ? "Questa foto non si può usare. Scrivi il problema con parole tue."
               : "Ora non riusciamo a leggere la foto. Scrivi il problema con parole tue.",
         );
-        return;
+        return true;
       }
       // Con persone o documenti nella foto si cerca lo stesso, ma la foto non va nella richiesta (CLAUDE.md §5 punto 9).
       if (result.check === "ok") await rememberSearchPhoto(result.description, blob);
@@ -97,8 +100,11 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
       if (city.trim()) params.set("citta", city.trim());
       setProblemSearch(true);
       navigateWithTransition(() => startNavigation(() => router.push(`/cerca?${params.toString()}`)));
+      return true;
     } catch (error) {
+      if (query.trim()) return false;
       setPhotoMessage(error instanceof Error ? error.message : "Ora non riusciamo a leggere la foto. Scrivi il problema con parole tue.");
+      return true;
     } finally {
       setReadingPhoto(false);
     }
@@ -107,8 +113,8 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
   async function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
     if (photo && params.mode === "domicilio" && !params.professional) {
       rememberSearchCity(params.city);
-      await searchWithPhoto(params.query, params.city, photo.blob);
-      return;
+      if (await searchWithPhoto(params.query, params.city, photo.blob)) return;
+      forgetSearchPhoto();
     }
     rememberSearchCity(params.city);
     const destination = await buildSearchDestination(params);
