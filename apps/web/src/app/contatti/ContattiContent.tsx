@@ -22,8 +22,8 @@ const ROLE_OPTIONS: { value: ContactMessageInput["role"]; label: string }[] = [
 // Prima di scrivere: le pagine che rispondono già alle domande più comuni.
 const HELP_LINKS: { href: string; icon: "message-circle" | "triangle-alert" | "shield-check"; label: string }[] = [
   { href: "/faq", icon: "message-circle", label: "Domande frequenti" },
-  { href: "/problemi-e-rimborsi", icon: "triangle-alert", label: "Problemi su un lavoro" },
   { href: "/sicurezza", icon: "shield-check", label: "Sicurezza e truffe" },
+  { href: "/problemi-e-rimborsi", icon: "triangle-alert", label: "Problemi su un lavoro" },
 ];
 
 // Etichette vere legate al campo: toccando la scritta il cursore va nel campo

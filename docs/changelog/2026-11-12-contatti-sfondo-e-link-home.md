@@ -48,3 +48,19 @@ altre pagine; in home la riga che compare sotto "Non trovi il tuo lavoro?" e
 **Verifica**: prove e2e aggiornate (nomi dei tasti) e prova nuova sul
 passaggio messaggio/segnalazione in `segnalazioni.spec.ts`; foto in
 `anteprime/contatti-sfondo/` (v2-*).
+
+## Terzo giro (13/11/2026)
+
+**Richiesta** (Luca): sì alle due migliorie proposte prima di unire.
+
+**Decisione**:
+- Da telefono i link "Forse la risposta è già qui" sono più compatti (15 px,
+  senza icona, su una riga sola) e stanno due per riga: Domande frequenti e
+  Sicurezza e truffe sopra, Problemi su un lavoro sotto. Altezza 44 px.
+- Contrasto dei testi con lo sfondo a velo misurato su 19 pagine pubbliche
+  (home, Contatti, FAQ, Prezzi, Sicurezza, Problemi e rimborsi, Per i
+  professionisti, pagine legali, Urgente, Preventivo, Cerca, accesso e
+  registrazione), da telefono e computer, contro il punto più scuro del velo
+  (#e4ecf5, azzurro in alto a destra): nessun testo sotto 4,5:1 (3:1 per i
+  titoli grandi). Il grigio dei testi secondari (#5E5A54) sta a circa 5,9:1.
+  Nessuna modifica necessaria. Anche axe (color-contrast) non trova errori.

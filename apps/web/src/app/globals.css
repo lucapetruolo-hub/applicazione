@@ -7087,6 +7087,22 @@ a.admin-kpi:hover {
   outline: 3px solid #186163;
   outline-offset: 2px;
 }
+/* Da telefono più compatti, due per riga invece di uno sotto l'altro (scelta
+   di Luca del 13/11): senza icona e su una riga sola, così le pillole restano
+   tonde; resta l'altezza di 44 px per il dito. */
+@media (max-width: 700px) {
+  .contatti-help ul {
+    gap: 8px 6px;
+  }
+  .contatti-help-link {
+    padding: 0 12px;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+  .contatti-help-link svg {
+    display: none;
+  }
+}
 .contatti-switch {
   padding: 0;
   border: none;
