@@ -24,6 +24,7 @@ const photoAnswer = (overrides: Record<string, unknown> = {}) =>
     photo: "ok",
     photoDescription: "Scarico del lavandino che perde",
     safety: null,
+    impianto: null,
     ...overrides,
   }) as never;
 
@@ -116,6 +117,27 @@ describe("ricerca con foto", () => {
     const photo = await service.analyzePhoto(JPEG, "image/jpeg", "");
     const result = await service.match(photo.description ?? "", undefined, undefined, photo.photoId ?? undefined);
     expect(result.safety).toBe("elettrico");
+  });
+
+  it("un impianto visto senza pericolo porta solo la riga leggera, mai insieme all'avviso", async () => {
+    enable();
+    const service = new ProblemMatchService(fakePrisma() as never, fakeCatalog as never);
+    service.askAiWithPhoto = vi.fn().mockResolvedValue(photoAnswer({ categories: ["idraulico"], photoDescription: "Caldaia che perde acqua", impianto: "caldaia" }));
+    let photo = await service.analyzePhoto(JPEG, "image/jpeg", "");
+    let result = await service.match(photo.description ?? "", undefined, undefined, photo.photoId ?? undefined);
+    expect(result.safety).toBeNull();
+    expect(result.safetyHint).toBe("monossido");
+
+    service.askAiWithPhoto = vi.fn().mockResolvedValue(photoAnswer({ categories: ["elettricista"], photoDescription: "Quadro con fili", safety: "elettrico", impianto: "elettrico" }));
+    photo = await service.analyzePhoto(JPEG, "image/jpeg", "");
+    result = await service.match(photo.description ?? "", undefined, undefined, photo.photoId ?? undefined);
+    expect(result.safety).toBe("elettrico");
+    expect(result.safetyHint).toBeNull();
+
+    service.askAiWithPhoto = vi.fn().mockResolvedValue(photoAnswer());
+    photo = await service.analyzePhoto(JPEG, "image/jpeg", "");
+    result = await service.match(photo.description ?? "", undefined, undefined, photo.photoId ?? undefined);
+    expect(result.safetyHint).toBeNull();
   });
 
   it("senza risposta dall'IA non dà un risultato a caso", async () => {
