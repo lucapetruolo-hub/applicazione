@@ -19,6 +19,7 @@ import {
   type ProblemOutOfService,
   type ProblemPhotoCheck,
   type ProblemPhotoResult,
+  type ProblemReportReason,
   type ProblemSafety,
   type ProfessionalCategorySlug,
   type ServiceCatalogEntry,
@@ -366,13 +367,20 @@ export class ProblemMatchService {
     const { classified, ai } = fromPhoto ?? (await this.classify(description, text));
     const missingTrade = missingTradeOf(classified);
     // Al sito solo un mestiere che non è tra i fuori servizio fissi: quelli hanno già il loro titolo.
-    const result: ProblemMatchResult = { ...classified, missingTrade: classified.outOfService ? null : missingTrade };
+    // L'id serve a "Segnala un errore" sotto la proposta dell'IA (docs/changelog/2026-11-13-segnala-risposta-ia.md).
+    const id = randomUUID();
+    const result: ProblemMatchResult = {
+      ...classified,
+      missingTrade: classified.outOfService ? null : missingTrade,
+      reportId: classified.source === "ia" ? id : null,
+    };
     // Il cliente ha lasciato il primo mestiere per un altro: solo da contare, l'IA non impara da sola (decisione di Luca, 6/11).
     const chosenCategory = chosen && isProfessionalCategorySlug(chosen) && chosen !== result.categories[0] ? chosen : null;
     // Registro per "Mestieri richiesti": senza contatti né chi l'ha scritto; un errore non blocca la ricerca.
     this.prisma.problemDescription
       .create({
         data: {
+          id,
           text: text.slice(0, 1000),
           city: city?.trim().slice(0, 80) || null,
           categories: result.categories,
@@ -389,6 +397,19 @@ export class ProblemMatchService {
       })
       .catch((error: unknown) => this.logger.warn(`Descrizione non salvata: ${String(error)}`));
     return result;
+  }
+
+  /**
+   * Il cliente segnala la proposta dell'IA: una volta sola per ricerca, nota
+   * senza contatti. Risponde sempre allo stesso modo, anche con un id che non
+   * esiste. Solo da leggere in "Mestieri richiesti": l'IA non impara da sola.
+   */
+  async report(id: string, reason: ProblemReportReason, note: string | undefined): Promise<{ ok: true }> {
+    const cleanNote = note?.trim() ? anonymizeProblemText(note).slice(0, 300) : null;
+    await this.prisma.problemDescription
+      .updateMany({ where: { id, source: "ia", reportedAt: null }, data: { reportedAt: new Date(), reportReason: reason, reportNote: cleanNote } })
+      .catch((error: unknown) => this.logger.warn(`Segnalazione non salvata: ${String(error)}`));
+    return { ok: true };
   }
 
   /**

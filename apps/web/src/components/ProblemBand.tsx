@@ -14,6 +14,7 @@ import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { setRequestHints, type ChosenPro, type ProblemRequestHints } from "./ChosenProsBar";
+import { ReportAiAnswer } from "./ReportAiAnswer";
 import { CATEGORY_WHO as WHO, joinWithOr, problemCategoryChoices } from "@/lib/problemChoices";
 
 // Accesso e registrazione (con i loro controlli dei campi) caricati solo
@@ -177,12 +178,15 @@ export function ProblemBand({
                 l'avvocato; collaudo del 29/10/2026, M-11): solo quando la proposta non
                 viene dal dizionario. */}
             {result.source === "ia" && chosen === result.categories[0] ? (
-              <Text fontSize={13} color={brand.grafite70}>
-                Proposta automatica: controlla che sia il mestiere giusto.{" "}
-                <Link href="/privacy#fornitori" style={{ color: brand.cianografiaScuro }}>
-                  Come funziona
-                </Link>
-              </Text>
+              <YStack gap="1">
+                <Text fontSize={13} color={brand.grafite70}>
+                  Proposta automatica: controlla che sia il mestiere giusto.{" "}
+                  <Link href="/privacy#fornitori" style={{ color: brand.cianografiaScuro }}>
+                    Come funziona
+                  </Link>
+                </Text>
+                {result.reportId ? <ReportAiAnswer key={result.reportId} reportId={result.reportId} /> : null}
+              </YStack>
             ) : null}
             {/* Non solo i mestieri proposti: anche chi, di un altro mestiere (es. un
                 tuttofare), ha questo lavoro tra le prestazioni (richiesta di Luca, 9/11). */}

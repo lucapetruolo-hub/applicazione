@@ -468,6 +468,20 @@ export type ProblemMatchResult = {
    * occupiamo noi" (docs/changelog/2026-11-11-mestieri-che-mancano.md).
    */
   missingTrade?: string | null;
+  /**
+   * Per "Segnala un errore" sotto la proposta dell'IA: l'id della ricerca
+   * salvata (docs/changelog/2026-11-13-segnala-risposta-ia.md).
+   */
+  reportId?: string | null;
+};
+
+/** Perché il cliente segnala la proposta dell'IA. */
+export const PROBLEM_REPORT_REASONS = ["mestiere", "prestazione", "altro"] as const;
+export type ProblemReportReason = (typeof PROBLEM_REPORT_REASONS)[number];
+export const PROBLEM_REPORT_LABELS: Record<ProblemReportReason, string> = {
+  mestiere: "Il mestiere è sbagliato",
+  prestazione: "Il lavoro indicato è sbagliato",
+  altro: "Altro",
 };
 
 /**
@@ -582,6 +596,8 @@ export type ProblemMatchAdminOverview = {
      * (docs/changelog/2026-11-12-haiku-senza-ragionamento.md).
      */
     choiceSwitches: { proposed: string | null; chosen: string; count: number }[];
+    /** Proposte dell'IA segnalate dai clienti, le più recenti prima (docs/changelog/2026-11-13-segnala-risposta-ia.md). */
+    reports: { id: string; text: string; categories: string[]; service: string | null; reason: string; note: string | null; reportedAt: string }[];
   };
   descriptions: {
     id: string;
