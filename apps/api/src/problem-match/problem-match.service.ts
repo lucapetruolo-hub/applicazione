@@ -413,11 +413,12 @@ export class ProblemMatchService {
       outOfService: answer.notAJob ? null : (answer.outOfService ?? null),
       question,
       reason: categories.length > 0 ? reason : null,
-      // Solo una prestazione che c'è davvero nel catalogo del primo mestiere;
-      // senza, quella del dizionario se ha lo stesso primo mestiere.
-      service: first
-        ? (catalogServiceFor(catalog, [first], answer.service) ?? (dictionary.categories[0]?.slug === first ? dictionary.service : null))
-        : null,
+      // Solo una prestazione che c'è davvero nel catalogo del primo mestiere.
+      // Se l'IA dice nessuna, resta nessuna: prima si riempiva con quella del
+      // dizionario, che per una parola in comune dava la prestazione sbagliata
+      // ("perdita di gas" → "Riparazione perdita d'acqua"; 8 errori su 15 nel
+      // banco di allenamento, docs/changelog/2026-11-13-banco-prestazioni-esperto.md).
+      service: first ? catalogServiceFor(catalog, [first], answer.service) : null,
       source: "ia",
       missingTrade: categories.length === 0 && !answer.notAJob ? answer.missingTrade : null,
     };

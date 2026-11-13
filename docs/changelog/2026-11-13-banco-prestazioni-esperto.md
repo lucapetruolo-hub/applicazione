@@ -30,6 +30,16 @@ per regole o esempi, e il banco deve impedirlo da solo.
     fermano se un pezzo di 5 parole di una frase di prova entra nelle istruzioni
     dell'IA. Con 4 parole scattava su pezzi comuni ("un odore di gas").
 
+- **Prima correzione, nel codice e non nelle istruzioni**: se l'IA risponde
+  "nessuna prestazione", resta nessuna. Prima la riempiva il dizionario
+  (`combine()` in `problem-match.service.ts`), che per una parola in comune dava
+  la prestazione sbagliata: "perdita di gas" → "Riparazione perdita d'acqua",
+  "il citofono non suona" → "Installazione videocitofono". Nel banco di
+  allenamento dopo la #348 (3 volte per frase) erano 8 errori su 15, il gruppo
+  più grande; per questo le regole nuove della #348 non avevano cambiato niente
+  (prova: 56/75 come prima, sbagliate 10 su 100 come prima, McNemar p = 1;
+  allenamento: 41/62, 15 su 100, p = 0,73).
+
 Motivo: con 75 frasi "56 su 75" vuol dire tra il 64% e l'85%; senza margini e
 senza confronto frase per frase una differenza di 3-4 frasi non dice nulla. La
 seconda prova sul sito dopo un deploy prendeva le risposte dalla memoria.
