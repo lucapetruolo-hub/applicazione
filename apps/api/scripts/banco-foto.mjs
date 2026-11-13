@@ -126,7 +126,7 @@ for (const test of ["testo+foto", "foto"]) {
       continue;
     }
     const cats = a.categorie ? a.categorie.split("|") : [];
-    const ok = cats.length > 0 && [key.chiave, key.alternativa].filter(Boolean).includes(cats[0]);
+    const ok = cats.length > 0 && [key.chiave, ...key.alternativa.split("|")].filter(Boolean).includes(cats[0]);
     jobs++;
     right += ok ? 1 : 0;
     if (!ok) wrong.push(`${key.file}: atteso ${key.chiave}, dato ${cats[0] ?? a.controllo}`);
