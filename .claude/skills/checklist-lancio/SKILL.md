@@ -644,6 +644,18 @@ Città, pagine vuote fuori da Google.
     nuovo deploy, poi Render). Gli account "Collaudo ..." vanno eliminati da
     Admin → Utenti → "Elimina account di prova".
 
+44. **Ricerca con foto** (docs/changelog/2026-11-13-ricerca-con-foto.md): si
+    accende al lancio con `PHOTO_SEARCH_ENABLED=true` su Render **solo se il
+    banco di prova con le foto supera la soglia** (testo più foto almeno al
+    91%, solo foto almeno all'80%, 9 risposte su 10 entro 6 secondi, nessun
+    pericolo mancato: con la sola foto contano solo i pericoli che si vedono
+    nella foto, decisione di Luca del 13/11; analisi/ricerca-foto-versione-profonda.md).
+    Banco: `apps/api/scripts/banco-foto.mjs`, foto e chiave in
+    analisi/ricerca-foto/foto-grezze/ (la chiave la confermano due giudici).
+    Prima: domanda 68 per l'avvocato estesa alle foto, tempi di conservazione
+    dei dati di Anthropic controllati sui termini commerciali, valutazione
+    d'impatto privacy breve; foto del banco cancellate a fine prova.
+
 ## Da fare dopo il lancio
 
 Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:

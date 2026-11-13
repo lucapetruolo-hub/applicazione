@@ -43,6 +43,10 @@ const SYNONYMS: Record<string, string> = Object.fromEntries(
       ["Sostituzione rubinetteria", ["sostituzione rubinetto", "cambio rubinetto", "cambio rubinetti", "rubinetteria"]],
       ["Riparazione cassetta WC", ["cassetta wc", "riparazione sciacquone", "sciacquone", "cassetta scarico"]],
       ["Installazione scaldabagno", ["sostituzione scaldabagno", "montaggio scaldabagno", "scaldabagno"]],
+      // docs/changelog/2026-11-13-prestazioni-mancanti.md
+      ["Riparazione scaldabagno elettrico", ["riparazione boiler elettrico", "riparazione scaldabagno elettrico", "boiler elettrico guasto"]],
+      ["Riparazione citofono e videocitofono", ["riparazione citofono", "riparazione videocitofono", "citofono guasto", "citofono rotto"]],
+      ["Riparazione infissi in PVC e alluminio", ["riparazione infissi pvc", "riparazione infissi in pvc", "riparazione infissi alluminio", "riparazione infissi in alluminio", "riparazione finestre pvc", "riparazione finestre in pvc"]],
       ["Ricerca guasti (salvavita che scatta)", ["ricerca guasti", "ricerca guasto", "salvavita", "guasti elettrici"]],
       ["Installazione punti luce", ["punti luce", "installazione lampadari", "montaggio lampadari", "lampadari"]],
       // "Condizionatore" è la parola che si cerca di più (Keyword Planner del 06/11/2026); i vecchi nomi restano varianti.
@@ -56,7 +60,7 @@ const SYNONYMS: Record<string, string> = Object.fromEntries(
       ["Sostituzione cilindro europeo", ["cambio cilindro", "sostituzione cilindro", "cilindro europeo"]],
       ["Potatura siepi", ["potatura", "taglio siepi", "taglio siepe", "potatura siepe"]],
       ["Taglio erba", ["taglio prato", "rasatura prato", "taglio erba prato"]],
-      ["Montaggio mobili", ["montaggio mobile", "assemblaggio mobili", "montaggio arredi"]],
+      ["Montaggio mobili", ["montaggio mobile", "assemblaggio mobili", "montaggio arredi", "montaggio mobili ikea", "montaggio ikea", "mobili ikea"]],
       ["Montaggio zanzariere", ["montaggio zanzariera"]],
       // Tende da sole e zanzariere, mestiere a sé dal 06/11/2026.
       ["Installazione zanzariere", ["zanzariere", "installazione zanzariera", "sostituzione zanzariere", "zanzariere su misura"]],
@@ -127,7 +131,7 @@ const SYNONYMS: Record<string, string> = Object.fromEntries(
       ["Ricarica gas condizionatore", ["ricarica gas climatizzatore", "ricarica gas", "ricarica condizionatore"]],
       ["Installazione pompa di calore", ["pompa di calore", "pompe di calore", "installazione pompe di calore", "montaggio pompa di calore", "sostituzione pompa di calore"]],
       ["Trasformazione vasca in doccia", ["vasca in doccia", "da vasca a doccia", "sostituzione vasca con doccia", "trasformazione vasca doccia", "cambio vasca con doccia"]],
-      ["Assistenza guasti", ["riparazione condizionatore", "riparazione climatizzatore", "condizionatore guasto", "climatizzatore guasto"]],
+      ["Riparazione condizionatore", ["assistenza guasti", "assistenza guasti condizionatore", "riparazione climatizzatore", "condizionatore guasto", "climatizzatore guasto"]],
       ["Riparazione caldaia", ["caldaia guasta", "assistenza caldaia", "riparazione caldaie"]],
       ["Riparazione scaldabagno", ["scaldabagno guasto", "assistenza scaldabagno", "riparazione boiler"]],
       ["Controllo fumi caldaia", ["analisi fumi", "prova fumi", "controllo fumi", "bollino caldaia"]],
@@ -151,7 +155,6 @@ const SYNONYMS: Record<string, string> = Object.fromEntries(
       ["Manutenzione generale casa", ["manutenzione casa", "manutenzione ordinaria casa", "manutenzione domestica"]],
       ["Montaggio tende e bastoni", ["montaggio tende", "installazione tende", "montaggio bastoni tende", "bastoni tende"]],
       ["Sigillatura con silicone (bagno e cucina)", ["siliconatura", "silicone", "rifacimento silicone", "sigillatura silicone", "sigillatura"]],
-      ["Montaggio mobili IKEA", ["montaggio ikea", "mobili ikea"]],
       ["Fissaggio a muro (mensole, quadri, TV)", ["montaggio mensole", "fissaggio tv", "installazione tv a muro", "montaggio staffa tv", "appendere quadri", "fissaggio mensole"]],
       ["Passeggiata con il cane", ["passeggiate cani", "dog walking", "portare fuori il cane", "passeggiata cane", "uscite col cane"]],
       ["Pensione per cani", ["pensione cani", "ospitalita cani", "cani in pensione", "dog boarding"]],

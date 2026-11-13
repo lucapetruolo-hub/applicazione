@@ -3378,6 +3378,8 @@ model ProblemDescription {
   /// in "Mestieri richiesti" come "proposto X, scelto Y", solo da leggere
   /// (docs/changelog/2026-11-12-haiku-senza-ragionamento.md).
   chosenCategory String?
+  /// Ricerca partita da una foto del problema (docs/changelog/2026-11-13-ricerca-con-foto.md).
+  withPhoto    Boolean  @default(false)
   createdAt    DateTime @default(now())
 
   @@index([createdAt])

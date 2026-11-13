@@ -122,7 +122,9 @@ async function publicCatalog() {
     const body = await res.json();
     for (const profile of Array.isArray(body) ? body : (body.items ?? [])) {
       const slugs = (profile.categories ?? []).map((c) => c.slug).filter(shared.isProfessionalCategorySlug);
-      for (const service of profile.services ?? []) {
+      for (const raw of profile.services ?? []) {
+        // Come il sito: i nomi scritti in un altro modo diventano quello suggerito (le unioni di Admin non sono pubbliche).
+        const service = { ...raw, name: shared.canonicalServiceName(raw.name) };
         const slug = shared.serviceCategoryOf(service, slugs);
         if (!slug) continue;
         (handWritten[slug] ??= new Map());

@@ -105,7 +105,7 @@ export const SERVICE_WORDS: readonly { category: ProfessionalCategorySlug; servi
   { category: "falegname", service: "Montaggio mobili", words: ["montare", "montaggio"] },
   { category: "falegname", service: "Riparazione mobili", words: ["cassett", "anta", "ante", "armadio", "mobile", "tavolo", "sedia"] },
   // Tutto Fare
-  { category: "tuttofare", service: "Montaggio mobili IKEA", words: ["ikea", "pax", "kallax", "billy"] },
+  { category: "tuttofare", service: "Montaggio mobili", words: ["ikea", "pax", "kallax", "billy"] },
   { category: "tuttofare", service: "Montaggio zanzariere", words: ["zanzarier"] },
   { category: "tuttofare", service: "Riparazione tapparelle", words: ["tapparell", "avvolgibil", "cinghia"] },
   { category: "tuttofare", service: "Montaggio tende e bastoni", words: ["tende", "tenda", "bastone", "bastoni", "binario"] },

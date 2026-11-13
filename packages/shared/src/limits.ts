@@ -19,3 +19,10 @@ export const MAX_CHOSEN_PROFESSIONALS = 5;
 
 /** Lunghezza massima della descrizione del problema scritta dal cliente. */
 export const PROBLEM_DESCRIPTION_MAX = 1000;
+
+/**
+ * Ricerca con foto (docs/changelog/2026-11-13-ricerca-con-foto.md): la foto si
+ * rimpicciolisce nel browser (lato lungo 1280 px); sopra questo peso è un errore.
+ */
+export const PROBLEM_PHOTO_MAX_BYTES = 3 * 1024 * 1024;
+export const PROBLEM_PHOTO_MAX_EDGE = 1280;

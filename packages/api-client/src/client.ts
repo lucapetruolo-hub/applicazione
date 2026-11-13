@@ -144,6 +144,7 @@ import type {
   ProfessionalPayoutTotals,
   ProblemMatchRequest,
   ProblemMatchResult,
+  ProblemPhotoResult,
   ProblemExample,
   ProblemExamplesResponse,
   PopularJobsResponse,
@@ -2546,6 +2547,29 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     /** Dal problema scritto ai mestieri (docs/CHANGELOG.md §392). */
     matchProblem: (input: ProblemMatchRequest) =>
       request<ProblemMatchResult>("/problem-match", { method: "POST", body: JSON.stringify(input), cache: "no-store" }),
+    /** Se la ricerca con foto è accesa (docs/changelog/2026-11-13-ricerca-con-foto.md). */
+    getPhotoSearchStatus: () => request<{ enabled: boolean }>("/problem-match/photo", { cache: "no-store" }),
+    /** Foto del problema (già rimpicciolita) con il testo facoltativo: l'IA dice cosa si vede, la foto non si salva. */
+    analyzeProblemPhoto: async (photo: Blob, input: { description?: string; city?: string }): Promise<ProblemPhotoResult> => {
+      const path = "/problem-match/photo";
+      const formData = new FormData();
+      formData.append("image", photo, "foto.jpg");
+      if (input.description?.trim()) formData.append("description", input.description.trim());
+      if (input.city?.trim()) formData.append("city", input.city.trim());
+      let response: Response;
+      try {
+        response = await fetch(`${baseUrl}${path}`, { method: "POST", body: formData });
+      } catch (err) {
+        reportFailure({ method: "POST" }, path, null);
+        throw err;
+      }
+      const body = await readBody(response, { method: "POST" }, path);
+      if (!response.ok) {
+        reportFailure({ method: "POST" }, path, response.status);
+        throw new ApiError(extractErrorMessage(body, "Non riusciamo a leggere la foto: scrivi il problema con parole tue."), response.status);
+      }
+      return body as ProblemPhotoResult;
+    },
     /** Frasi d'esempio della home (docs/changelog/2026-11-03-luci-che-accelerano.md). */
     getProblemExamples: () => request<ProblemExamplesResponse>("/problem-match/examples"),
     adminProblemExamples: (token: string) =>

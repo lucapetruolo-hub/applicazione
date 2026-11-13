@@ -7295,6 +7295,73 @@ textarea[id^="contatti-"][aria-invalid="true"] {
   flex-shrink: 0;
   white-space: nowrap;
 }
+/* "Aggiungi una foto del problema" sotto la ricerca
+   (docs/changelog/2026-11-13-ricerca-con-foto.md): stessa pillola degli
+   esempi, con l'anteprima e "Togli" quando la foto c'è. */
+.hero-photo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+}
+.hero-photo-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+.hero-photo-chosen {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 4px 6px 4px 4px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #e7e0d7;
+}
+.hero-photo-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+.hero-photo-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1b1a18;
+}
+.hero-photo-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: #f4efe8;
+  cursor: pointer;
+}
+.hero-photo-remove:focus-visible {
+  outline: 3px solid #247c7c;
+  outline-offset: 2px;
+}
+.hero-photo-remove:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.hero-photo-hint {
+  font-size: 13px;
+  color: #625d56;
+}
+.hero-photo-message {
+  font-size: 14px;
+  font-weight: 600;
+  color: #b02a37;
+  text-align: center;
+  max-width: 420px;
+}
 /* Se le frasi stanno tutte, niente freccette: la riga resta centrata. */
 .hero-examples-row[data-fits="true"] {
   justify-content: center;

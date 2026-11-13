@@ -1,23 +1,28 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, NotFoundException, Param, Post, Query, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
 import {
   addProblemExampleSchema,
   addStandardServiceSchema,
   mergeServiceNameSchema,
   problemMatchRequestSchema,
+  problemPhotoRequestSchema,
+  PROBLEM_PHOTO_MAX_BYTES,
   problemTakeoverSchema,
   teachProblemWordSchema,
   type AddProblemExampleInput,
   type AddStandardServiceInput,
   type MergeServiceNameInput,
   type ProblemMatchRequest,
+  type ProblemPhotoRequest,
   type ProblemTakeoverInput,
   type TeachProblemWordInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
-import { ProblemMatchService } from "./problem-match.service";
+import { MulterExceptionFilter } from "../common/multer-exception.filter";
+import { ProblemMatchService, photoMediaType, photoSearchEnabled } from "./problem-match.service";
 import { ProblemMatchAdminService } from "./problem-match-admin.service";
 import { ProblemExamplesService } from "./problem-examples.service";
 import { ProblemTakeoverService } from "./problem-takeover.service";
@@ -43,7 +48,31 @@ export class ProblemMatchController {
   @Post()
   @HttpCode(200)
   match(@Body(new ZodValidationPipe(problemMatchRequestSchema)) body: ProblemMatchRequest) {
-    return this.problemMatchService.match(body.description, body.city, body.chosen);
+    return this.problemMatchService.match(body.description, body.city, body.chosen, body.photo);
+  }
+
+  /** Il sito chiede se mostrare il pulsante della foto. */
+  @Get("photo")
+  photoStatus() {
+    return { enabled: photoSearchEnabled() };
+  }
+
+  /**
+   * Ricerca con foto (docs/changelog/2026-11-13-ricerca-con-foto.md): la foto
+   * arriva già rimpicciolita dal browser, va all'IA e non si salva. Spenta
+   * senza PHOTO_SEARCH_ENABLED. Limite stretto: ogni foto è una chiamata a pagamento.
+   */
+  @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  @UseFilters(MulterExceptionFilter)
+  @Post("photo")
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor("image", { limits: { fileSize: PROBLEM_PHOTO_MAX_BYTES, files: 1 } }))
+  async photo(@UploadedFile() file: Express.Multer.File | undefined, @Body(new ZodValidationPipe(problemPhotoRequestSchema)) body: ProblemPhotoRequest) {
+    if (!photoSearchEnabled()) throw new NotFoundException("La ricerca con foto non è attiva.");
+    if (!file) throw new BadRequestException("Nessuna foto caricata.");
+    const mediaType = photoMediaType(file.buffer);
+    if (!mediaType) throw new BadRequestException("La foto deve essere un'immagine JPEG, PNG o WebP.");
+    return this.problemMatchService.analyzePhoto(file.buffer, mediaType, body.description);
   }
 
   /** "Prendete in carico la richiesta" (Ce ne occupiamo noi): serve l'accesso. */

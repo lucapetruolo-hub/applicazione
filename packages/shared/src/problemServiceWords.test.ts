@@ -18,7 +18,7 @@ test("dal problema alla prestazione, senza intelligenza artificiale", () => {
     ["mi salta il salvavita quando accendo il forno", "elettricista", "Ricerca guasti (salvavita che scatta)"],
     ["devo cambiare il cilindro della porta blindata", "fabbro", "Sostituzione cilindro europeo"],
     ["siepe da potare in giardino", "giardiniere", "Potatura siepi"],
-    ["montare un armadio pax di ikea", "tuttofare", "Montaggio mobili IKEA"],
+    ["montare un armadio pax di ikea", "tuttofare", "Montaggio mobili"],
     ["l'idraulico deve sostituire il box doccia che perde", "idraulico", "Sostituzione box doccia"],
     ["vorrei trasformare la vasca in doccia", "idraulico", "Trasformazione vasca in doccia"],
     ["installare una pompa di calore in casa", "climatizzazione", "Installazione pompa di calore"],

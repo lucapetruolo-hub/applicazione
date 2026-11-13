@@ -7,10 +7,7 @@
   "exports": {
     ".": "./dist/index.js"
   },
-  "sideEffects": [
-    "./src/zod.ts",
-    "./dist/zod.js"
-  ],
+  "sideEffects": false,
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
@@ -22,7 +19,7 @@
   },
   "devDependencies": {
     "@professionisti/config": "workspace:*",
+    "fast-check": "^4.10.2",
     "typescript": "~6.0.3"
-  },
-  "sideEffects": false
+  }
 }
