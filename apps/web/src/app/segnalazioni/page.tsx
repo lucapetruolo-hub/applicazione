@@ -190,7 +190,7 @@ function DecisionCard({ decision, token, onChanged }: { decision: MyContentRepor
       ) : null}
       {!decision.revertedAt ? (
         <Text fontSize={13} color={brand.grafite70}>
-          Puoi anche andare dal giudice, o da un ente che aiuta a fare pace senza tribunale.
+          Puoi anche andare dal giudice, o da un ente che aiuta a fare pace senza tribunale (organismo di risoluzione extragiudiziale).
         </Text>
       ) : null}
     </YStack>

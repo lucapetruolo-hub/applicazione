@@ -120,7 +120,8 @@ function accountMeasureReasons(payload: Record<string, unknown>, note: string | 
 function accountMeasureAfter(): string[] {
   return [
     "Pensi che sia un errore? Rispondi a questa email o scrivici dal modulo Contatti. Una persona del nostro team rivede la decisione e ti risponde.",
-    "Puoi anche andare dal giudice, o da un ente che aiuta a fare pace senza tribunale.",
+    // scritte-admin: ok (nome ufficiale tra parentesi, DSA artt. 17 e 21)
+    "Puoi anche andare dal giudice, o da un ente che aiuta a fare pace senza tribunale (organismo di risoluzione extragiudiziale).",
   ];
 }
 
@@ -1844,7 +1845,8 @@ const BUILDERS: Record<string, Builder> = {
         : { label: "Contesta la decisione", url: `${site}/segnalazioni` },
       after: [
         suspended ? "Se ritieni che sia un errore, rispondi a questa email o scrivici dal modulo Contatti." : "Se ritieni che sia un errore puoi contestare la decisione.",
-        "Puoi anche andare dal giudice, o da un ente che aiuta a fare pace senza tribunale.",
+        // scritte-admin: ok (nome ufficiale tra parentesi, DSA artt. 17 e 21)
+        "Puoi anche andare dal giudice, o da un ente che aiuta a fare pace senza tribunale (organismo di risoluzione extragiudiziale).",
       ],
     };
   },
@@ -2305,7 +2307,8 @@ const BUILDERS: Record<string, Builder> = {
       paragraphs: [
         "Abbiamo esaminato la tua contestazione: la decisione resta valida.",
         ...(note ? [`**Motivazione:** ${note}`] : []),
-        "Puoi anche andare dal giudice, o da un ente che aiuta a fare pace senza tribunale.",
+        // scritte-admin: ok (nome ufficiale tra parentesi, DSA artt. 17 e 21)
+        "Puoi anche andare dal giudice, o da un ente che aiuta a fare pace senza tribunale (organismo di risoluzione extragiudiziale).",
       ],
     };
   },

@@ -30,7 +30,8 @@ le parole fuori dal vocabolario di base, fare le schermate prima e dopo.
   "conseguenza" o "decisione", "preso provvedimenti" → "siamo intervenuti",
   "organismo di risoluzione extragiudiziale delle controversie o autorità
   giudiziaria" → "andare dal giudice, o da un ente che aiuta a fare pace senza
-  tribunale". Il contenuto per legge resta (DSA art. 17: conseguenza, fatti,
+  tribunale (organismo di risoluzione extragiudiziale)", con il nome ufficiale
+  tra parentesi come chiede la legge. Il contenuto per legge resta (DSA art. 17: conseguenza, fatti,
   regola, chi ha deciso, come contestare), detto più semplice, come chiede lo
   stesso articolo ("chiaro e facilmente comprensibile").
 
