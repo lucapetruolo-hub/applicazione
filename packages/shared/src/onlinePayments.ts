@@ -231,7 +231,8 @@ export function jobPaymentChoiceCopy(
       title: only ? (full ? "Tutto online con carta" : "Online con carta") : full ? "Tutto online con carta (consigliato)" : "Paga online con carta (consigliato)",
       body:
         depositPercent >= 100
-          ? "Paghi tutto ora. Il professionista riceve i soldi quando confermi il lavoro; se qualcosa va storto ti assistiamo noi."
+          ? // Con una forbice di prezzo si paga il minimo (docs/changelog/2026-11-13-tutto-online-forbice.md).
+            "Paghi ora con la carta. Se il prezzo va da un minimo a un massimo, ora paghi il minimo e il resto solo se serve, a lavoro finito. Il professionista riceve i soldi quando confermi il lavoro; se qualcosa va storto ti assistiamo noi."
           : `Paghi ora un acconto del ${depositPercent}%. Il resto lo paghi a lavoro finito, in automatico con la stessa carta. Il professionista riceve i soldi quando confermi il lavoro; se qualcosa va storto ti assistiamo noi.`,
     };
   }
@@ -267,6 +268,25 @@ export function onlineDepositEurCents(quoteMaxEurCents: number, depositPercent: 
 }
 
 /**
+ * Quanto si paga accettando il preventivo. Di solito la percentuale del
+ * professionista sul prezzo massimo; con "tutto online" (100%) e una forbice
+ * di prezzo si paga il prezzo minimo e il resto a lavoro finito con la stessa
+ * carta, solo se serve (decisione di Luca del 13/11/2026,
+ * docs/changelog/2026-11-13-tutto-online-forbice.md): prima si pagava il
+ * massimo e la differenza tornava, ma Stripe non restituisce la sua
+ * commissione sulla parte rimborsata e la pagava il professionista.
+ */
+export function quoteDepositEurCents(totals: { totalMinEurCents: number; totalMaxEurCents: number }, depositPercent: number = ONLINE_DEPOSIT_PERCENT): number {
+  if (depositPercentIsFull(depositPercent) && totals.totalMinEurCents > 0 && totals.totalMinEurCents < totals.totalMaxEurCents) return totals.totalMinEurCents;
+  return onlineDepositEurCents(totals.totalMaxEurCents, depositPercent);
+}
+
+/** "Tutto online": acconto al 100%. */
+export function depositPercentIsFull(depositPercent: number): boolean {
+  return depositPercent >= 100;
+}
+
+/**
  * Quanto si paga ora e quanto a lavoro finito con un modo online
  * (docs/changelog/2026-11-05-scheda-preventivo-semplice.md): il cliente non
  * capiva che online paga solo l'acconto. null per il pagamento diretto o
@@ -277,11 +297,13 @@ export function quotePaymentSplit(
   choice: JobPaymentChoice,
   totals: { totalMinEurCents: number; totalMaxEurCents: number },
   depositPercent: number,
-): { nowEurCents: number; restMinEurCents: number; restMaxEurCents: number; restIsRange: boolean; restOnline: boolean } | null {
+): { nowEurCents: number; restMinEurCents: number; restMaxEurCents: number; restIsRange: boolean; restOnline: boolean; nowIsMinimum: boolean } | null {
   if (!paymentChoiceIsOnline(choice) || totals.totalMaxEurCents <= 0) return null;
-  const now = onlineDepositEurCents(totals.totalMaxEurCents, depositPercent);
+  const now = quoteDepositEurCents(totals, depositPercent);
   return {
     nowEurCents: now,
+    // "Tutto online" con la forbice: adesso il prezzo minimo (docs/changelog/2026-11-13-tutto-online-forbice.md).
+    nowIsMinimum: depositPercentIsFull(depositPercent) && now === totals.totalMinEurCents && now < totals.totalMaxEurCents,
     restMinEurCents: Math.max(0, totals.totalMinEurCents - now),
     restMaxEurCents: Math.max(0, totals.totalMaxEurCents - now),
     restIsRange: totals.totalMinEurCents > 0 && totals.totalMinEurCents < totals.totalMaxEurCents,
@@ -296,6 +318,8 @@ export function quotePaymentSplit(
  * (docs/changelog/2026-11-08-prova-persone-simulate.md).
  */
 export function quotePaymentRestText(split: { restMinEurCents: number; restMaxEurCents: number; restIsRange: boolean }): string {
+  // Pagato adesso il minimo, il resto può anche essere zero: "fino a".
+  if (split.restIsRange && split.restMinEurCents === 0 && split.restMaxEurCents > 0) return `fino a ${formatEurCents(split.restMaxEurCents)}`;
   return split.restIsRange && split.restMinEurCents < split.restMaxEurCents
     ? `da ${formatEurCents(split.restMinEurCents)} a ${formatEurCents(split.restMaxEurCents)}`
     : formatEurCents(split.restMaxEurCents);
@@ -316,6 +340,9 @@ export function quotePaymentSplitLine(choice: JobPaymentChoice, totals: { totalM
     return split.restIsRange
       ? `${formatEurCents(split.nowEurCents)} adesso con la carta, il prezzo massimo. Se il prezzo finale è più basso, la differenza ti torna sulla carta`
       : `${formatEurCents(split.nowEurCents)} adesso con la carta, tutto il prezzo`;
+  }
+  if (split.nowIsMinimum) {
+    return `${formatEurCents(split.nowEurCents)} adesso con la carta, il prezzo minimo. Il resto (${quotePaymentRestText(split)}) a lavoro finito con la stessa carta, solo se il prezzo finale è più alto`;
   }
   return `${formatEurCents(split.nowEurCents)} adesso con la carta, il resto (${quotePaymentRestText(split)}) a lavoro finito ${split.restOnline ? "con la stessa carta" : "direttamente al professionista"}`;
 }

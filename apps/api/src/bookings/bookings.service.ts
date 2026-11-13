@@ -22,7 +22,7 @@ import {
   type JobPaymentChoice,
   paymentChoiceIsOnline,
   quotePaymentOffer,
-  onlineDepositEurCents,
+  quoteDepositEurCents,
   ONLINE_MIN_CHARGE_EUR_CENTS,
   jobIssueCanEscalate,
   jobIssueEvidenceDueAt,
@@ -296,7 +296,7 @@ export class BookingsService implements OnModuleInit {
   }
 
   private quoteDepositEurCents(quote: AcceptableQuote): number {
-    return onlineDepositEurCents(quotePriceTotals(quote.items).totalMaxEurCents, quotePaymentOffer(quote).depositPercent);
+    return quoteDepositEurCents(quotePriceTotals(quote.items), quotePaymentOffer(quote).depositPercent);
   }
 
   /** Il preventivo esiste, è del cliente, si può ancora accettare e offre il modo di pagamento scelto. */
@@ -638,6 +638,7 @@ export class BookingsService implements OnModuleInit {
       choice: paymentMethod,
       depositPercent: offer.depositPercent,
       quoteMaxEurCents: quotePriceTotals(quote.items).totalMaxEurCents,
+      quoteMinEurCents: quotePriceTotals(quote.items).totalMinEurCents,
       clientUserId: clientId,
     });
     // Lavoro ricorrente (docs/changelog/2026-11-09-lavori-ricorrenti.md): nasce la serie e le prossime visite entrano in agenda.

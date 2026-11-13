@@ -5,7 +5,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { PlatformFeeRulesService } from "../platform-fee-rules/platform-fee-rules.service";
 import {
-  onlineDepositEurCents,
+  quoteDepositEurCents,
   onlineTargetEurCents,
   paymentChoiceIsOnline,
   professionalPayoutTotals,
@@ -50,6 +50,8 @@ export class JobPaymentsService {
     /** Percentuale dell'acconto online scelta dal professionista nel preventivo (§237). */
     depositPercent?: number;
     quoteMaxEurCents: number;
+    /** Prezzo minimo: con "tutto online" e una forbice l'acconto è il minimo (docs/changelog/2026-11-13-tutto-online-forbice.md). */
+    quoteMinEurCents?: number;
     clientUserId: string;
   }): Promise<void> {
     const existing = await this.prisma.jobPayment.findUnique({ where: { bookingId: params.bookingId } });
@@ -65,7 +67,7 @@ export class JobPaymentsService {
         platformFeeEurCents: 0,
         netAmountEurCents: params.quoteMaxEurCents,
         ...(online
-          ? { onlineStage: "AWAITING_DEPOSIT", depositEurCents: onlineDepositEurCents(params.quoteMaxEurCents, params.depositPercent), balanceDirect }
+          ? { onlineStage: "AWAITING_DEPOSIT", depositEurCents: quoteDepositEurCents({ totalMinEurCents: params.quoteMinEurCents ?? params.quoteMaxEurCents, totalMaxEurCents: params.quoteMaxEurCents }, params.depositPercent), balanceDirect }
           : {}),
       },
     });
