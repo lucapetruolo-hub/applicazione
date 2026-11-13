@@ -108,6 +108,8 @@ type PhotoAnswer = z.infer<typeof photoAnswerSchema>;
 
 /** Una foto si legge un po' più lentamente di un testo: attesa propria, oltre resta l'invito a scrivere. */
 const PHOTO_TIMEOUT_MS = 8000;
+/** Tempo che deve restare per rifare la domanda all'IA dopo un errore. */
+const PHOTO_RETRY_MIN_MS = 4000;
 /** I risultati delle foto restano in memoria mezz'ora: il tempo di passare ai risultati e alla richiesta. */
 const PHOTO_RESULT_TTL_MS = 30 * 60_000;
 const PHOTO_RESULTS_MAX = 500;
@@ -133,7 +135,7 @@ export function photoMediaType(buffer: Buffer): PhotoMediaType | null {
 export function photoInstructions(text: string): string {
   return `Il cliente ha mandato la foto qui sopra${text ? " e ha scritto il testo tra i tag <problema>" : " senza scrivere niente"}. Usa la foto${text ? " insieme al testo (se non concordano, vale il testo)" : ""} per dire quali mestieri chiamare, con le stesse regole.
 Rispondi anche con:
-- photo: "ok" se la foto mostra una parte di casa, giardino o garage (impianti, tubi, prese, quadri elettrici, caldaie, elettrodomestici, muri, pavimenti, porte, finestre, mobili, serrature, prato), anche se il guasto non si vede bene: in quel caso indica il mestiere di quella parte; "dati-personali" se mostra un problema ma si vedono bene persone, documenti, numeri di telefono, targhe o indirizzi; "non-pertinente" solo se non c'è niente di una casa (animali, cibo, paesaggi, persone, schermate di testo); "non-adatta" se è violenta, sessuale o offensiva. Con "non-pertinente" o "non-adatta": categories vuoto e photoDescription vuota.
+- photo: "ok" se la foto mostra una parte di casa, giardino o garage (impianti, tubi, prese, quadri elettrici, caldaie, elettrodomestici, muri, pavimenti, porte, finestre, mobili, serrature, prato), anche se il guasto non si vede bene: in quel caso indica il mestiere di quella parte; "dati-personali" se si vedono bene persone, documenti, numeri di telefono, targhe o indirizzi, anche se nella foto non c'è niente di una casa; "non-pertinente" solo se non c'è niente di una casa (animali, cibo, paesaggi, persone, schermate di testo); "non-adatta" se è violenta, sessuale o offensiva. Con "non-pertinente" o "non-adatta": categories vuoto e photoDescription vuota.
 - Nelle foto: crepe, buchi o intonaco rovinato in muri, pavimenti e soffitti sono del muratore (l'imbianchino solo per pittura e macchie in superficie); porte, finestre e mobili di legno del falegname; lavatrice, lavastoviglie, forno, frigorifero e piano cottura degli elettrodomestici anche se perdono acqua o sono a gas.
 - photoDescription: cosa si vede, massimo 8 parole, come lo scriverebbe il cliente (es. "Scarico del lavandino che perde"). Mai nomi di persone, marche o dati personali.
 - safety: "gas" (tubo, rubinetto o bombola del gas, odore di gas, fiamma anomala, fiammella di scaldabagno o caldaia che si spegne, fuochi o forno a gas che non si accendono), "elettrico" (fili scoperti, presa o quadro bruciati), "acqua-elettrico" (acqua vicino a prese o quadro), "monossido" (caldaia o stufa annerita, fumo che rientra); null se non si vede un pericolo.
@@ -604,37 +606,47 @@ export class ProblemMatchService {
   /** La foto va solo ad Anthropic (mai attraverso OpenRouter); qualunque errore chiede al cliente di scrivere il problema. */
   private async callClaudeWithPhoto(text: string, image: Buffer, mediaType: PhotoMediaType, catalog: readonly ServiceCatalogEntry[]): Promise<PhotoAnswer | null> {
     this.client ??= new Anthropic({ maxRetries: 0 });
-    try {
-      const response = await this.client.messages.parse(
-        {
-          model: MODEL,
-          max_tokens: 1024,
-          system: [{ type: "text", text: systemPrompt(catalog), cache_control: { type: "ephemeral" } }],
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "image", source: { type: "base64", media_type: mediaType, data: image.toString("base64") } },
-                { type: "text", text: photoInstructions(text) },
-              ],
-            },
-          ],
-          output_config: { format: zodOutputFormat(photoAnswerSchema), effort: "low" },
-        },
-        { timeout: PHOTO_TIMEOUT_MS },
-      );
-      const usage = response.usage;
-      // Costo vero di ogni foto nei log, per confrontarlo con la stima (analisi/ricerca-foto/stima-costi.md).
-      this.logger.log(
-        `Ricerca con foto: ${usage?.input_tokens ?? 0} token in ingresso, ${usage?.cache_read_input_tokens ?? 0} dalla cache, ${usage?.output_tokens ?? 0} in uscita.`,
-      );
-      if (response.stop_reason === "refusal") return { ...EMPTY_PHOTO_ANSWER, photo: "non-adatta" };
-      return response.parsed_output ?? null;
-    } catch (error) {
-      this.logger.warn(`Intelligenza artificiale non disponibile per la foto: ${error instanceof Anthropic.APIError ? (error.status ?? "rete") : String(error)}.`);
-      return null;
+    // Un secondo tentativo se Anthropic è occupato o la risposta arriva rotta
+    // (banco di prova del 13/11: 8 prove su 237), solo se resta tempo nell'attesa.
+    const deadline = Date.now() + PHOTO_TIMEOUT_MS;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const response = await this.client.messages.parse(
+          {
+            model: MODEL,
+            max_tokens: 1024,
+            system: [{ type: "text", text: systemPrompt(catalog), cache_control: { type: "ephemeral" } }],
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "image", source: { type: "base64", media_type: mediaType, data: image.toString("base64") } },
+                  { type: "text", text: photoInstructions(text) },
+                ],
+              },
+            ],
+            output_config: { format: zodOutputFormat(photoAnswerSchema), effort: "low" },
+          },
+          { timeout: Math.max(1000, deadline - Date.now()) },
+        );
+        const usage = response.usage;
+        // Costo vero di ogni foto nei log, per confrontarlo con la stima (analisi/ricerca-foto/stima-costi.md).
+        this.logger.log(
+          `Ricerca con foto: ${usage?.input_tokens ?? 0} token in ingresso, ${usage?.cache_read_input_tokens ?? 0} dalla cache, ${usage?.output_tokens ?? 0} in uscita.`,
+        );
+        if (response.stop_reason === "refusal") return { ...EMPTY_PHOTO_ANSWER, photo: "non-adatta" };
+        if (response.parsed_output) return response.parsed_output;
+        throw new Error("risposta senza dati");
+      } catch (error) {
+        const status = error instanceof Anthropic.APIError ? error.status : undefined;
+        const retryable = status === undefined ? !(error instanceof Anthropic.APIConnectionTimeoutError) : status === 429 || status >= 500;
+        if (attempt === 1 && retryable && deadline - Date.now() >= PHOTO_RETRY_MIN_MS) continue;
+        this.logger.warn(`Intelligenza artificiale non disponibile per la foto: ${status ?? (error instanceof Error ? error.message : String(error))}.`);
+        return null;
+      }
     }
   }
+
 
   /** Stesso modello e stesse istruzioni attraverso OpenRouter (§394); qualunque errore lascia il dizionario. */
   async callOpenRouter(text: string, catalog: readonly ServiceCatalogEntry[]): Promise<AiAnswer | null> {

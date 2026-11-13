@@ -60,3 +60,11 @@ crepe nei muri al muratore, legno al falegname, elettrodomestici anche se
 perdono acqua. Esito e risposte nella cartella del progetto
 (`analisi/ricerca-foto/esito-banco.md`). Si rifà il banco con
 `apps/api/scripts/banco-foto.mjs`.
+
+**Secondo giro** (13/11): testo + foto 92%, solo foto 84%, 10 su 10 entro
+6 s, pericoli con testo 18/18; 8 prove su 237 fallite per un 503 o una
+risposta rotta di Anthropic (`analisi/ricerca-foto/esito-banco-2.md`). Ora la
+domanda all'IA si rifà una volta se resta tempo nell'attesa di 8 secondi, e
+documenti, targhe e numeri di telefono sono "dati-personali" anche senza
+niente di una casa. Con la sola foto restano 7 pericoli non segnalati,
+quasi tutti invisibili nella foto: lo dicono i giudici.
