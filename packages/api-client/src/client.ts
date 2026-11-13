@@ -119,6 +119,9 @@ import type {
   ChurnReason,
   AccountClosureCheck,
   SiteNoteInput,
+  SiteHealth,
+  SiteDeadline,
+  SiteDeadlineInput,
   SiteAdviceDoneInput,
   ProfessionalVerificationFilter,
   ProfessionalVerificationRow,
@@ -2449,6 +2452,16 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     adminUndoSiteAdviceDone: (token: string, key: string) =>
       request<void>("/admin/site-advice/undo", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ key }) }),
+
+    /** Scadenze del sito e controllo della notte (docs/changelog/2026-11-13-admin-scadenze-controlli.md), solo super admin. */
+    adminSiteHealth: (token: string) =>
+      request<SiteHealth>("/admin/site-health", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminAddSiteDeadline: (token: string, input: SiteDeadlineInput) =>
+      request<SiteDeadline>("/admin/site-deadlines", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    adminSiteDeadlineDone: (token: string, id: string) =>
+      request<void>(`/admin/site-deadlines/${id}/done`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+    adminDeleteSiteDeadline: (token: string, id: string) =>
+      request<void>(`/admin/site-deadlines/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
 
     adminDeleteSiteNote: (token: string, id: string) =>
       request<void>(`/admin/site-notes/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),

@@ -111,6 +111,7 @@ export const ADMIN_SECTIONS: NavSection[] = [
       { href: "/admin/amministratori", label: "Amministratori", icon: "shield", scope: "SUPER" },
       { href: "/admin/account-di-prova", label: "Account di prova", icon: "sparkles", scope: "SUPER" },
       { href: "/admin/mestieri-richiesti", label: "Dizionario dei mestieri", icon: "search", scope: "MODERATION" },
+      { href: "/admin/sito", label: "Scadenze e controlli", searchLabel: "Scadenze del sito e controllo della notte", icon: "clock", scope: "SUPER" },
       { href: "/admin/registro", label: "Registro azioni", icon: "file-text", scope: "SUPER" },
     ],
   },

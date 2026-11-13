@@ -26,6 +26,8 @@ import {
   type AdminModerateInput,
   invitePartnerCreateSchema,
   type InvitePartnerCreateInput,
+  siteDeadlineSchema,
+  type SiteDeadlineInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
@@ -33,6 +35,7 @@ import { AdminGuard, RequireAdminScope } from "./admin.guard";
 import { AdminService } from "./admin.service";
 import { SiteStatsService } from "./site-stats.service";
 import { AdminQueueService } from "./admin-queue.service";
+import { SiteHealthService } from "./site-health.service";
 import { SuspiciousAccountsService } from "./suspicious-accounts.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 import { InvitePartnersService } from "./invite-partners.service";
@@ -51,7 +54,35 @@ export class AdminController {
     private readonly adminQueueService: AdminQueueService,
     private readonly invitePartners: InvitePartnersService,
     private readonly auditLogService: AuditLogService,
+    private readonly siteHealthService: SiteHealthService,
   ) {}
+
+  /** Scadenze del sito e controllo della notte (docs/changelog/2026-11-13-admin-scadenze-controlli.md). */
+  @RequireAdminScope("SUPER")
+  @Get("site-health")
+  siteHealth() {
+    return this.siteHealthService.getHealth();
+  }
+
+  @RequireAdminScope("SUPER")
+  @Post("site-deadlines")
+  addSiteDeadline(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(siteDeadlineSchema)) body: SiteDeadlineInput) {
+    return this.siteHealthService.addDeadline(req.user.userId, body);
+  }
+
+  @RequireAdminScope("SUPER")
+  @Post("site-deadlines/:id/done")
+  @HttpCode(204)
+  async markSiteDeadlineDone(@Req() req: AuthenticatedRequest, @Param("id") id: string): Promise<void> {
+    await this.siteHealthService.markDeadlineDone(req.user.userId, id);
+  }
+
+  @RequireAdminScope("SUPER")
+  @Delete("site-deadlines/:id")
+  @HttpCode(204)
+  async deleteSiteDeadline(@Req() req: AuthenticatedRequest, @Param("id") id: string): Promise<void> {
+    await this.siteHealthService.deleteDeadline(req.user.userId, id);
+  }
 
   /** Link d'invito dei partner, con gli iscritti arrivati da ciascuno (docs/changelog/2026-11-09-passaparola.md). */
   @RequireAdminScope("ANY")

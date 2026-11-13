@@ -17,6 +17,9 @@ import {
   type AdminSignalRole,
   type AdminUserSignal,
   REVIEW_HOLD_DECISION_HOURS,
+  SITE_CHECK_LABEL,
+  SITE_DEADLINE_NOTICE_DAYS,
+  type SiteCheckKey,
   REVIEW_HOLD_REASON_LABEL,
   type ReviewHoldReason,
 } from "@professionisti/shared";
@@ -428,6 +431,47 @@ export class AdminQueueService {
         createdAt: heldAt.toISOString(),
         status: "Da pubblicare o nascondere",
         danger: false,
+      });
+    }
+
+    // Scadenze del sito e problemi trovati dal controllo della notte (docs/changelog/2026-11-13-admin-scadenze-controlli.md).
+    const [deadlines, failedChecks] = await Promise.all([
+      can("SITE_DEADLINE")
+        ? this.prisma.siteDeadline.findMany({ where: { doneAt: null, dueAt: { lte: new Date(now.getTime() + SITE_DEADLINE_NOTICE_DAYS * 24 * 3_600_000) } } })
+        : [],
+      can("SITE_CHECK") ? this.prisma.siteCheck.findMany({ where: { ok: false } }) : [],
+    ]);
+    for (const d of deadlines) {
+      items.push({
+        key: `SITE_DEADLINE:${d.id}`,
+        kind: "SITE_DEADLINE",
+        href: "/admin/sito",
+        title: d.title,
+        detail: short(d.note, 160),
+        who: null,
+        amountEurCents: null,
+        dueAt: d.dueAt.toISOString(),
+        dueNote: "scadenza scritta in Il sito",
+        createdAt: d.createdAt.toISOString(),
+        status: "Da fare prima della data",
+        danger: false,
+      });
+    }
+    for (const c of failedChecks) {
+      items.push({
+        key: `SITE_CHECK:${c.id}`,
+        kind: "SITE_CHECK",
+        href: "/admin/sito",
+        title: `Non va: ${SITE_CHECK_LABEL[c.key as SiteCheckKey] ?? c.key}`,
+        detail: short(c.problem, 160),
+        who: null,
+        amountEurCents: null,
+        dueAt: null,
+        dueNote: null,
+        createdAt: (c.failingSince ?? c.checkedAt).toISOString(),
+        status: "Trovato dal controllo della notte",
+        // Il sito che non si apre va in cima, come un pericolo.
+        danger: c.key === "SITE",
       });
     }
 
