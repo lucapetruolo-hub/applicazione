@@ -45,3 +45,14 @@ sembrava già scelto.
 
 **Verifica**: foto prima/dopo (`riga-*`, `spunta-*`, `livelli-*`) nella stessa
 cartella, fatte applicando le modifiche alle pagine pubblicate.
+
+## Terzo giro (Luca, 13/11/2026)
+
+**Richiesta**: sì al bordo verde sulle caselle dei livelli al passaggio del mouse.
+
+**Decisione**: `.pro-tier` ha un bordo verde interno di 2 px (ombra interna,
+così la casella non si sposta) al passaggio del mouse e quando il suo
+collegamento prende il fuoco da tastiera, oltre alla leggera tinta di fondo
+che c'era già.
+
+**Verifica**: `livelli-mouse-computer.png` nella stessa cartella.

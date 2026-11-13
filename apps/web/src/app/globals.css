@@ -6965,12 +6965,22 @@ a.admin-kpi:hover {
 }
 .pro-tier {
   cursor: pointer;
-  transition: background-color 150ms ease;
+  transition:
+    background-color 150ms ease,
+    box-shadow 150ms ease;
 }
+/* Bordo verde interno al passaggio del mouse e col fuoco da tastiera: si
+   capisce che tutta la casella si clicca (Luca, 13/11/2026,
+   docs/changelog/2026-11-13-preventivo-esempio-colori.md). Ombra interna e non
+   `border`, così la casella non si sposta e non copre le linee della griglia. */
 @media (hover: hover) and (pointer: fine) {
   .pro-tier:hover {
     background-color: rgba(30, 107, 110, 0.06) !important;
+    box-shadow: inset 0 0 0 2px var(--c-cianografia, #247c7c);
   }
+}
+.pro-tier:has(.pro-tier-link:focus-visible) {
+  box-shadow: inset 0 0 0 2px var(--c-cianografia, #247c7c);
 }
 /* Luci dell'apertura di /per-professionisti sfumate in basso: prima
    finivano nette sul filetto sotto il titolo. */
