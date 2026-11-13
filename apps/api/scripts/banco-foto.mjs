@@ -130,7 +130,9 @@ for (const test of ["testo+foto", "foto"]) {
     jobs++;
     right += ok ? 1 : 0;
     if (!ok) wrong.push(`${key.file}: atteso ${key.chiave}, dato ${cats[0] ?? a.controllo}`);
-    if (key.pericolo) {
+    // Con la sola foto contano solo i pericoli che si vedono nella foto
+    // (decisione di Luca del 13/11/2026; colonna pericolo_visibile, da confermare coi giudici).
+    if (key.pericolo && (test !== "foto" || key.pericolo_visibile !== "no")) {
       danger++;
       if (a.pericolo) dangerOk++;
       else wrong.push(`${key.file}: pericolo ${key.pericolo} non segnalato`);

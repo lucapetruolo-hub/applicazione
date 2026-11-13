@@ -68,3 +68,8 @@ domanda all'IA si rifà una volta se resta tempo nell'attesa di 8 secondi, e
 documenti, targhe e numeri di telefono sono "dati-personali" anche senza
 niente di una casa. Con la sola foto restano 7 pericoli non segnalati,
 quasi tutti invisibili nella foto: lo dicono i giudici.
+
+**Pericoli con la sola foto** (decisione di Luca del 13/11): per la soglia
+contano solo i pericoli che si vedono nella foto (colonna `pericolo_visibile`
+della chiave, da confermare coi giudici); quelli che si capiscono solo dal
+testo, come la fiammella che si spegne, contano nella prova testo + foto.
