@@ -57,6 +57,7 @@ export function ProblemBand({
   categoryCounts,
   otherTradesCount = 0,
   requestHints,
+  photo,
 }: {
   description: string;
   city?: string;
@@ -79,7 +80,10 @@ export function ProblemBand({
   otherTradesCount?: number;
   /** Quando serve e comune presi dal testo, per precompilare la richiesta. */
   requestHints?: ProblemRequestHints;
+  /** Ricerca partita da una foto: resta nei link dei mestieri, così vale ancora quello che si vede (es. un pericolo). */
+  photo?: string;
 }) {
+  const resultsHref = (extra: Record<string, string>) => problemResultsHref(description, city, photo ? { ...extra, foto: photo } : extra);
   const choices = problemCategoryChoices(result, chosen);
   const quoteParams = new URLSearchParams({ descrizione: description });
   if (chosen) quoteParams.set("categoria", chosen);
@@ -112,7 +116,7 @@ export function ProblemBand({
       </Text>
       <XStack gap="2" flexWrap="wrap">
         {PROFESSIONAL_CATEGORIES.map((category) => (
-          <ChoiceLink key={category.slug} href={problemResultsHref(description, city, { mestiere: category.slug })} label={category.label} />
+          <ChoiceLink key={category.slug} href={resultsHref({ mestiere: category.slug })} label={category.label} />
         ))}
       </XStack>
     </YStack>
@@ -135,7 +139,7 @@ export function ProblemBand({
               {choices.map((slug) => (
                 <CategoryChoice
                   key={slug}
-                  href={problemResultsHref(description, city, { mestiere: slug })}
+                  href={resultsHref({ mestiere: slug })}
                   label={categoryLabel(slug)}
                   count={categoryCounts?.[slug]}
                   selected={slug === chosen}
@@ -161,7 +165,7 @@ export function ProblemBand({
                 {nearbyElsewhere.map((slug, index) => (
                   <span key={slug}>
                     {index > 0 ? " " : ""}
-                    <Link href={problemResultsHref(description, city, { mestiere: slug })} scroll={false} style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>
+                    <Link href={resultsHref({ mestiere: slug })} scroll={false} style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>
                       {categoryLabel(slug)}
                     </Link>
                     : {categoryCounts?.[slug] === 1 ? "1 vicino" : `${categoryCounts?.[slug]} vicini`}.
@@ -229,13 +233,13 @@ export function ProblemBand({
               {result.question.answers.map((answer) => (
                 <ChoiceLink
                   key={answer.label}
-                  href={problemResultsHref(description, city, {
+                  href={resultsHref({
                     mestiere: answer.category,
                   })}
                   label={answer.label}
                 />
               ))}
-              <ChoiceLink href={problemResultsHref(description, city, { domanda: "no" })} label="Non lo so" />
+              <ChoiceLink href={resultsHref({ domanda: "no" })} label="Non lo so" />
             </XStack>
           </YStack>
         ) : null}

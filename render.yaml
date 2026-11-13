@@ -145,6 +145,11 @@ services:
       # dizionario. PROBLEM_MATCH_AI_DAILY_LIMIT cambia il tetto (3000).
       - key: ANTHROPIC_API_KEY
         sync: false
+      # Ricerca con foto (docs/changelog/2026-11-13-ricerca-con-foto.md):
+      # "true" la accende (serve anche ANTHROPIC_API_KEY). Spenta finché il
+      # banco di prova con le foto non supera la soglia.
+      - key: PHOTO_SEARCH_ENABLED
+        sync: false
       # Solo fino al lancio (docs/CHANGELOG.md §394): senza ANTHROPIC_API_KEY
       # lo stesso modello attraverso OpenRouter. Da togliere al lancio.
       - key: OPENROUTER_API_KEY
