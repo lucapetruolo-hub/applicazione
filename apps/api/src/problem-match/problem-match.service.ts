@@ -130,7 +130,7 @@ const PHOTO_RESULT_TTL_MS = 30 * 60_000;
  * alla ricerca a parole), e un massimo di foto al giorno per indirizzo.
  */
 const PHOTO_DAILY_LIMIT = 1000;
-const PHOTO_PER_IP_DAILY_LIMIT = 10;
+const PHOTO_PER_IP_DAILY_LIMIT = 5;
 /** Oltre questi indirizzi in un giorno si riparte da capo: la memoria resta piccola. */
 const PHOTO_IPS_MAX = 50_000;
 const PHOTO_RESULTS_MAX = 500;

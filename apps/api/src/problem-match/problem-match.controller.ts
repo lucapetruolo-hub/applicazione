@@ -64,7 +64,7 @@ export class ProblemMatchController {
    * arriva già rimpicciolita dal browser, va all'IA e non si salva. Spenta
    * senza PHOTO_SEARCH_ENABLED. Limite stretto: ogni foto è una chiamata a pagamento.
    * Contro chi cambia indirizzo (docs/changelog/2026-11-13-difese-ricerca-con-foto.md):
-   * Turnstile, 10 foto al giorno per indirizzo e il tetto delle foto di tutto il sito.
+   * Turnstile, 5 foto al giorno per indirizzo e il tetto delle foto di tutto il sito.
    */
   @Throttle({ default: { limit: 6, ttl: 60_000 } })
   @UseFilters(MulterExceptionFilter)
