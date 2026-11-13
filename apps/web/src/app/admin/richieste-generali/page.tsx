@@ -85,7 +85,7 @@ export default function AdminRichiesteGeneraliPage() {
           <Text color={brand.grafite70} marginTop="1">
             {data.globallyEnabled
               ? "Per spegnerle ovunque, chiedilo a Claude. Le richieste a un professionista scelto funzionano sempre."
-              : "Sono spente dalle impostazioni del server. Per riaccenderle chiedilo a Claude."}
+              : "Sono spente dalle impostazioni del sito. Per riaccenderle chiedilo a Claude."}
           </Text>
           <TechNote>
             {data.globallyEnabled ? "Si spengono con GENERAL_REQUESTS_ENABLED=false sul servizio API di Render." : "Spente da GENERAL_REQUESTS_ENABLED=false su Render: togli la variabile o mettila a true."}

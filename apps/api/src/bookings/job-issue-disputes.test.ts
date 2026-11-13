@@ -95,14 +95,14 @@ describe("prove minime ed esito standard (§167)", () => {
   it("il professionista con esito accolto legge del ricorso, tutti leggono di mediazione e giudice", () => {
     const pro = jobIssueOutcomeText({ type: "NO_SHOW", decision: "UPHELD", note: "Nessuna risposta.", audience: "professional" });
     const client = jobIssueOutcomeText({ type: "NO_SHOW", decision: "UPHELD", note: "Nessuna risposta.", audience: "client" });
-    expect(pro).toContain("ricorso");
-    expect(client).not.toContain("ricorso");
+    expect(pro).toContain("rivedere la decisione");
+    expect(client).not.toContain("rivedere la decisione");
     expect(client).toContain("giudice");
   });
   it("pagato sul sito con Stripe: il cliente legge del rimborso", () => {
     const online = jobIssueOutcomeText({ type: "BAD_WORK", decision: "UPHELD", note: "Difetti.", audience: "client", paidOnline: true });
     const direct = jobIssueOutcomeText({ type: "BAD_WORK", decision: "UPHELD", note: "Difetti.", audience: "client" });
-    expect(online).toContain("rimborsiamo");
-    expect(direct).not.toContain("rimborsiamo");
+    expect(online).toContain("ti ridiamo");
+    expect(direct).not.toContain("ti ridiamo");
   });
 });

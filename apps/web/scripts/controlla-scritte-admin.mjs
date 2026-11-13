@@ -43,7 +43,30 @@ const RULES = [
   [/\b(sandbox|webhook|backend|deploy|token|endpoint|funnel|cron)\b/i, "parole semplici, oppure dentro <TechNote>"],
 ];
 
-const files = [...singleFiles.map((f) => join(repo, f))];
+// Email che partono da una decisione admin (richiesta di Luca del 13/11/2026):
+// le legge la persona colpita, quindi valgono le stesse regole e la stessa
+// soglia di leggibilità. Si controllano solo questi pezzi dei file, non le
+// altre email.
+const decisionEmails = {
+  "apps/api/src/email/templates/notification-emails.ts": [
+    "JOB_ISSUE_INFO_REQUESTED", "JOB_ISSUE_RESOLVED", "JOB_ISSUE_APPEAL_DECIDED", "JOB_ISSUE_SANCTION",
+    "JOB_REFUND_REJECTED", "CONTENT_REPORT_DECISION", "CONTENT_REPORT_UPHELD", "CONTENT_REPORT_REVERTED",
+    "CONTENT_REPORT_APPEAL_REJECTED", "ACCOUNT_SUSPENDED", "ACCOUNT_CLOSURE_SCHEDULED", "ACCOUNT_CLOSED",
+    "ACCOUNT_REACTIVATED", "PROFILE_VERIFICATION_REMOVED", "FISCAL_ENTITY_TYPE_CHANGED",
+    "accountMeasureReasons", "accountMeasureAfter", "NOT_BINDING",
+  ],
+  "packages/shared/src/moderation.ts": ["moderationActionOwnerText", "MODERATION_REASON_TEMPLATES"],
+  "packages/shared/src/jobIssues.ts": ["JOB_ISSUE_SANCTION_LABEL", "jobIssueOutcomeText"],
+};
+function insideDecisionEmail(node, names) {
+  for (let n = node.parent; n; n = n.parent) {
+    const name = (ts.isPropertyAssignment(n) || ts.isFunctionDeclaration(n) || ts.isVariableDeclaration(n)) && n.name ? n.name.getText() : null;
+    if (name && names.includes(name)) return true;
+  }
+  return false;
+}
+
+const files = [...singleFiles.map((f) => join(repo, f)), ...Object.keys(decisionEmails).map((f) => join(repo, f))];
 for (const dir of dirs) (function walk(path) {
   for (const name of readdirSync(path)) {
     const full = join(path, name);
@@ -74,7 +97,8 @@ const GULPEASE_MIN = 60;
 const GULPEASE_MIN_WORDS = 8;
 function hardSentences(text) {
   const hard = [];
-  for (const sentence of text.replace(/&apos;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim().split(/(?<=[.!?;])\s+/)) {
+  // Un pezzo variabile seguito da una maiuscola chiude la frase prima: "${nota} Anche dopo…".
+  for (const sentence of text.replace(/ …\s+(?=[A-ZÀ-Ý])/g, ". ").replace(/&apos;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim().split(/(?<=[.!?;])\s+/)) {
     const words = sentence.match(/[A-Za-zÀ-ÿ']+/g) ?? [];
     if (words.length < GULPEASE_MIN_WORDS) continue;
     const letters = words.join("").replace(/'/g, "").length;
@@ -88,13 +112,15 @@ const webAdmin = dirs.map((dir) => join(repo, dir));
 const errors = [];
 const hardErrors = [];
 for (const file of files) {
-  const measure = webAdmin.some((dir) => file.startsWith(dir));
+  const emailNames = decisionEmails[relative(repo, file)];
+  const measure = Boolean(emailNames) || webAdmin.some((dir) => file.startsWith(dir));
   const source = readFileSync(file, "utf8");
   const lines = source.split("\n");
   const sf = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   const check = (node, text) => {
     if (!/\s/.test(text.trim()) && !ts.isJsxText(node)) return;
     if (insideTechNote(node) || insideImportOrType(node)) return;
+    if (emailNames && !insideDecisionEmail(node, emailNames)) return;
     const { line } = sf.getLineAndCharacterOfPosition(node.getStart());
     if (lines.slice(Math.max(0, line - 3), line + 1).some((l) => l.includes("scritte-admin: ok"))) return;
     for (const [rule, better] of RULES) {

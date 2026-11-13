@@ -133,9 +133,9 @@ export default function AdminPagamentiPage() {
           Saldi non pagati
         </Text>
         <Text fontSize={13} color={brand.grafite70}>
-          Clienti che non hanno pagato il resto entro 7 giorni dalla fine del lavoro. Il professionista ha già avuto la parte pagata. Sollecita il cliente; se paga dal sito il saldo arriva da solo al professionista.
+          Clienti che non hanno pagato il resto entro 7 giorni dalla fine del lavoro. Il professionista ha già avuto la parte pagata. Scrivi al cliente per ricordarglielo. Se paga dal sito, i soldi arrivano da soli al professionista.
         </Text>
-        {unpaid && unpaid.length === 0 ? <Text color={brand.grafite70}>Nessun saldo scoperto.</Text> : null}
+        {unpaid && unpaid.length === 0 ? <Text color={brand.grafite70}>Nessuno deve ancora pagare il resto.</Text> : null}
         {unpaid?.map((row) => <UnpaidCard key={row.jobPaymentId} row={row} token={token ?? ""} onChanged={reload} />)}
       </YStack>
 
@@ -327,7 +327,7 @@ function DisputeCard({ dispute, token, onChanged, alsoOpen }: { dispute: AdminDi
           </XStack>
           {choice ? (
             <>
-              <textarea aria-label="Nota sull'esito" className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nota sull'esito (facoltativa)" />
+              <textarea aria-label="Nota sull'esito" className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nota sull'esito (se vuoi)" />
               <XStack gap="2">
                 <Button variant="primary" size="3" disabled={busy} onPress={resolve}>
                   {busy ? "…" : "Conferma esito"}
@@ -370,7 +370,7 @@ function UnpaidCard({ row, token, onChanged }: { row: AdminUnpaidBalance; token:
   return (
     <AdminCard>
       <Text fontWeight="800" color={brand.grafite}>
-        Saldo scoperto: {formatEurCents(row.dueEurCents)}
+        Resto da pagare: {formatEurCents(row.dueEurCents)}
       </Text>
       <Text fontSize={13} color={brand.grafite70}>
         Importo finale {row.finalAmountEurCents !== null ? formatEurCents(row.finalAmountEurCents) : "—"} · pagato {formatEurCents(row.paidEurCents)} · dal{" "}
@@ -675,7 +675,7 @@ function BankDisputeArchive({ token, reloadKey }: { token: string; reloadKey: un
       <SearchBox label="Cerca nelle contestazioni in banca" value={query} onChange={setQuery} placeholder="Cliente, professionista, email, cifra o codice" />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {rows === null ? <Text color={brand.grafite70}>
-          Caricamento…
+          Un momento…
           <WaitBarSignal />
         </Text> : null}
       {rows && rows.length === 0 ? (
@@ -780,7 +780,7 @@ function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRo
           {row.history.length ? (
             <YStack gap="1">
               <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
-                Cronologia
+                Cosa è successo
               </Text>
               {row.history.map((h, i) => (
                 <Text key={i} fontSize={13} color={brand.grafite}>

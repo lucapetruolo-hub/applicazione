@@ -58,7 +58,7 @@ export default function AdminRichiesteEliminatePage() {
                   <th>Cliente</th>
                   <th>Motivo</th>
                   <th>Professionisti</th>
-                  <th>Cancellazione</th>
+                  <th>Eliminata il</th>
                 </tr>
               </thead>
               <tbody>

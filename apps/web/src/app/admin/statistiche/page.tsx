@@ -46,7 +46,7 @@ export default function AdminStatistichePage() {
       .then(setData)
       .catch((err) =>
         setError(
-          err instanceof Error ? err.message : "Errore nel caricamento.",
+          err instanceof Error ? err.message : "Non riesco a caricare i numeri.",
         ),
       );
     // Pannello a parte: se non risponde, le entrate restano visibili.

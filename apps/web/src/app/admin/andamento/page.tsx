@@ -1231,7 +1231,7 @@ function PartnerLinksCard({ token, isSuper }: { token: string | null; isSuper: b
         note="Un link per chi ci presenta agli artigiani, come un commercialista. Conta chi si iscrive da lì. Nessun compenso. La scheda PDF ha il link e il QR, da stampare o mandare."
       />
       {partners === null && !error ? <Text color={brand.grafite70}>
-          Caricamento...
+          Un momento…
           <WaitBarSignal />
         </Text> : null}
       {partners && partners.length === 0 ? <Text color={brand.grafite70}>Nessun link creato.</Text> : null}

@@ -154,7 +154,7 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
   const founders = data.byPlan.find((p) => p.key === "FOUNDER")?.count ?? 0;
   const excluded = [
     data.excluded.deleted ? `${data.excluded.deleted} ${data.excluded.deleted === 1 ? "eliminato" : "eliminati"}` : null,
-    data.excluded.demo ? `${data.excluded.demo} ${data.excluded.demo === 1 ? "profilo dimostrativo" : "profili dimostrativi"}` : null,
+    data.excluded.demo ? `${data.excluded.demo} ${data.excluded.demo === 1 ? "profilo di esempio" : "profili di esempio"}` : null,
     data.excluded.test ? `${data.excluded.test} account di prova` : null,
   ].filter(Boolean);
 

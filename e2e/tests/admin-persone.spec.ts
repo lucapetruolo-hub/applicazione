@@ -185,7 +185,7 @@ test("Persone: ricerca, account chiuso, recensione nascosta e rimessa, profilo f
   await dialog.getByRole("button", { name: "Nascondi la recensione" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(reviewRow.getByText(/Nascosta dal/)).toBeVisible();
-  await expect(reviewRow.getByText(/Motivo: La recensione non descrive/)).toBeVisible();
+  await expect(reviewRow.getByText(/Motivo: La recensione non racconta un lavoro fatto davvero/)).toBeVisible();
   expect((await prisma.review.findUniqueOrThrow({ where: { id: ids.review } })).hiddenAt).not.toBeNull();
   // È passata dalle segnalazioni: una segnalazione accolta, con la regola.
   const report = await prisma.contentReport.findFirstOrThrow({ where: { targetId: ids.review }, orderBy: { createdAt: "desc" } });

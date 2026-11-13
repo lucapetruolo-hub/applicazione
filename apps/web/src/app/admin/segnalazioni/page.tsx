@@ -267,7 +267,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
         <YStack gap="2" padding="3" borderRadius={20} borderWidth={1} borderColor={brand.filetto}>
           {preview === null ? (
             <Text color={brand.grafite70}>
-              Caricamento…
+              Un momento…
               <WaitBarSignal />
             </Text>
           ) : !preview.exists ? (
@@ -420,7 +420,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
             className="admin-input admin-textarea"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder={mode === "dismiss" ? "Nota interna (facoltativa)" : "Motivazione (obbligatoria)"}
+            placeholder={mode === "dismiss" ? "Nota per gli admin (se vuoi)" : "Motivazione (obbligatoria)"}
           />
           {mode === "resolve" ? (
             <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer", fontSize: 14 }}>

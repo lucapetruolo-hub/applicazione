@@ -50,7 +50,7 @@ export default function AdminProfessionistiPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   // Riga con "Elimina" premuto una volta: serve la conferma.
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  // Link aperto da "Visualizza link" (nessuna email inviata ora).
+  // Link aperto da "Mostra il link" (nessuna email inviata ora).
   const [linkViewed, setLinkViewed] = useState(false);
 
   // Primi 100 professionisti dell'offerta di lancio (docs/CHANGELOG.md §363).
@@ -264,7 +264,7 @@ export default function AdminProfessionistiPage() {
             <textarea aria-label="Presentazione"
               className="admin-input"
               rows={3}
-              placeholder="Presentazione (facoltativa, il professionista potrà cambiarla)"
+              placeholder="Presentazione (se vuoi: il professionista potrà cambiarla)"
               value={form.bio}
               onChange={(e) => update("bio", e.target.value)}
             />
@@ -328,7 +328,7 @@ export default function AdminProfessionistiPage() {
                         ) : (
                           <>
                             <Button variant="secondary" size="2" disabled={busyId === row.userId} onPress={() => viewLink(row.userId)}>
-                              {busyId === row.userId ? "…" : "Visualizza link"}
+                              {busyId === row.userId ? "…" : "Mostra il link"}
                             </Button>
                             <Button variant="secondary" size="2" onPress={() => setConfirmDeleteId(row.userId)}>
                               Elimina

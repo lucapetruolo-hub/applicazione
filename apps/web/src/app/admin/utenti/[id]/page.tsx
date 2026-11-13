@@ -48,7 +48,7 @@ const TABS = [
   { key: "recensioni", label: "Recensioni" },
   { key: "pagamenti", label: "Pagamenti" },
   { key: "segnalazioni", label: "Segnalazioni" },
-  { key: "cronologia", label: "Cronologia" },
+  { key: "cronologia", label: "Cosa è successo" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -832,7 +832,7 @@ function accountClosed(detail: AdminUserDetail): boolean {
 
 /** Frasi pronte per i fatti di una misura sull'account (E4-03): l'admin le completa. */
 const ACCOUNT_MEASURE_TEMPLATES: { label: string; text: string; ground: ModerationGroundCode }[] = [
-  { label: "Saldo non pagato", text: "Non hai pagato il saldo del lavoro del … nonostante i nostri solleciti del … e del ….", ground: "termini-pagamenti" },
+  { label: "Saldo non pagato", text: "Non hai pagato il saldo del lavoro del … anche se te l'abbiamo ricordato il … e il ….", ground: "termini-pagamenti" },
   { label: "Account doppio", text: "Hai un altro account con lo stesso codice fiscale o la stessa partita IVA (…).", ground: "termini-account" },
   { label: "Dati falsi", text: "I dati del profilo non corrispondono a quelli verificati: ….", ground: "termini-profilo" },
   { label: "Truffa", text: "Più clienti ci hanno segnalato di aver pagato per lavori mai eseguiti: ….", ground: "legge-truffa" },
@@ -900,7 +900,7 @@ function SuspendPanel({ detail, token, onChanged }: { detail: AdminUserDetail; t
               className="admin-input admin-textarea"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder={closing ? "Motivo dell'annullamento (obbligatorio)" : "Motivo della riattivazione (obbligatorio)"}
+              placeholder={closing ? "Perché annulli la chiusura (obbligatorio)" : "Perché lo riattivi (obbligatorio)"}
             />
           ) : (
             <>
@@ -1196,7 +1196,7 @@ function TwoFactorResetPanel({ detail, token, onChanged }: { detail: AdminUserDe
         confirming ? (
           <XStack gap="2" flexWrap="wrap">
             <Button variant="primary" size="3" disabled={busy} onPress={reset}>
-              {busy ? "…" : "Conferma azzeramento"}
+              {busy ? "…" : "Sì, azzera la verifica"}
             </Button>
             <Button variant="secondary" size="3" onPress={() => setConfirming(false)}>
               Annulla

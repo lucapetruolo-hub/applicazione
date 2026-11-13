@@ -132,7 +132,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <YStack width="100%" alignItems="center" paddingVertical="9" paddingHorizontal="4">
         <YStack width="100%" maxWidth={480} gap="3" alignItems="center">
           <Paragraph color={brand.grafite70} textAlign="center">
-            Non riusciamo a raggiungere il server. Controlla la connessione e riprova.
+            Il sito non risponde. Controlla la connessione e riprova.
           </Paragraph>
           <Button variant="secondary" onPress={() => setTwoFactorAttempt((n) => n + 1)}>
             Riprova

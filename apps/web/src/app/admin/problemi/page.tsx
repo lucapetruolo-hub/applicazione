@@ -231,7 +231,7 @@ function ProblemiContent() {
                       ? `Ha chiuso il lavoro il ${formatAdminDate(row.professionalCompletedAt, true)}${row.finalAmountEurCents !== null ? ` · ${formatEurCents(row.finalAmountEurCents)}` : ""}.`
                       : "Non ha chiuso il lavoro."}
                   </Text>
-                  {row.completionChangeReason ? <Text fontSize={13} color={brand.grafite}>Motivo differenze: “{row.completionChangeReason}”</Text> : null}
+                  {row.completionChangeReason ? <Text fontSize={13} color={brand.grafite}>Perché è cambiato: “{row.completionChangeReason}”</Text> : null}
                   {row.professionalCompletionNote ? <Text fontSize={13} color={brand.grafite}>Note: “{row.professionalCompletionNote}”</Text> : null}
                   <Photos urls={row.professionalCompletionPhotoUrls} />
                 </Block>

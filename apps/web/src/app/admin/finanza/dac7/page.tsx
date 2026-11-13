@@ -144,7 +144,7 @@ export default function AdminDac7Page() {
       if (selectedPeriod?.id === id) openPeriod(id);
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Errore durante l'esportazione.",
+        e instanceof Error ? e.message : "Non riesco a scaricare il file.",
       );
     }
   }

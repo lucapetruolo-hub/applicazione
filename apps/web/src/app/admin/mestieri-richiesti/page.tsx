@@ -766,7 +766,7 @@ function ExamplesTab() {
     index < VISIBLE_PROBLEM_EXAMPLES
       ? "Sotto la ricerca"
       : index < VISIBLE_PROBLEM_EXAMPLES + FIELD_PROBLEM_EXAMPLES_POOL
-        ? "Nel campo, a rotazione"
+        ? "Nel campo, una alla volta"
         : "In riserva";
 
   return (

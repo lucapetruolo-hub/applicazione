@@ -119,8 +119,8 @@ function accountMeasureReasons(payload: Record<string, unknown>, note: string | 
 
 function accountMeasureAfter(): string[] {
   return [
-    "Se ritieni che sia un errore, rispondi a questa email o scrivici dal modulo Contatti: una persona del nostro team rivede la decisione e ti risponde per email.",
-    "Puoi anche rivolgerti a un organismo di risoluzione extragiudiziale delle controversie o all'autorità giudiziaria.",
+    "Pensi che sia un errore? Rispondi a questa email o scrivici dal modulo Contatti. Una persona del nostro team rivede la decisione e ti risponde.",
+    "Puoi anche andare dal giudice, o da un ente che aiuta a fare pace senza tribunale.",
   ];
 }
 
@@ -273,7 +273,7 @@ function subscriptionManageNote(payload: Payload): string[] {
     : ["Puoi cambiare la carta o annullare quando vuoi dalla pagina Abbonamento: resta attivo fino alla scadenza."];
 }
 
-const NOT_BINDING = "La nostra decisione non impedisce di rivolgersi a un organismo di mediazione o al giudice.";
+const NOT_BINDING = "Anche dopo la nostra decisione puoi andare da un ente di mediazione o dal giudice.";
 
 const BUILDERS: Record<string, Builder> = {
   // ── Richieste ──────────────────────────────────────────────────────────
@@ -1034,7 +1034,7 @@ const BUILDERS: Record<string, Builder> = {
     greeting: ctx.name,
     title: "Ci servono altre informazioni",
     paragraphs: [
-      `Per decidere sulla segnalazione del lavoro per **${job(ctx)}** il nostro team ti chiede qualche informazione in più.`,
+      `Ci serve qualche informazione in più sulla segnalazione per **${job(ctx)}**. Poi decidiamo.`,
       `Rispondi **entro ${JOB_ISSUE_INFO_HOURS} ore** dalla richiesta: trovi la domanda nella scheda del lavoro.`,
     ],
     cta: proRequests("Rispondi"),
@@ -1056,15 +1056,15 @@ const BUILDERS: Record<string, Builder> = {
     const note = str(payload.note);
     return {
       kind: "notification",
-      subject: "Decisione sul ricorso",
+      subject: "Abbiamo rivisto la decisione",
       greeting: ctx.name,
-      title: "Decisione sul ricorso",
+      title: "Decisione rivista",
       paragraphs: [
         client
-          ? `Il professionista ha fatto ricorso contro la decisione sulla tua segnalazione per **${job(ctx)}** e una persona diversa del nostro team l'ha accolto: la segnalazione ora risulta respinta.`
+          ? `Il professionista ha chiesto di cambiare la decisione sul lavoro per **${job(ctx)}**. Un'altra persona del nostro team gli ha dato ragione: la tua segnalazione ora non è più accolta.`
           : accepted
-            ? `Abbiamo accolto il tuo ricorso sulla segnalazione del lavoro per **${job(ctx)}**: la segnalazione ora risulta respinta e la misura sul tuo profilo è annullata.`
-            : `Abbiamo esaminato il tuo ricorso sulla segnalazione del lavoro per **${job(ctx)}**: la decisione resta valida.`,
+            ? `Hai chiesto di cambiare la decisione sul lavoro per **${job(ctx)}**: ti abbiamo dato ragione. La segnalazione non è più accolta e sul tuo profilo non c'è più nessuna conseguenza.`
+            : `Abbiamo rivisto la decisione sulla segnalazione per **${job(ctx)}**: resta com'era.`,
         ...(note ? [`**Motivazione:** ${note}`] : []),
         NOT_BINDING,
       ],
@@ -1077,18 +1077,18 @@ const BUILDERS: Record<string, Builder> = {
     return {
       kind: "account",
       tone: "urgent",
-      subject: "Una segnalazione accolta comporta una misura sul tuo profilo",
+      subject: "Una segnalazione accolta ha una conseguenza sul tuo profilo",
       greeting: ctx.name,
-      title: "Misura sul tuo profilo",
+      title: "Conseguenza sul tuo profilo",
       paragraphs: [
-        "Una segnalazione su un tuo lavoro è stata accolta e comporta questa misura sul tuo profilo:",
+        "Abbiamo accolto una segnalazione su un tuo lavoro. Per questo, sul tuo profilo succede questo:",
       ],
       details: [
-        ...(sanction ? [{ label: "Misura", value: JOB_ISSUE_SANCTION_LABEL[sanction] }] : []),
+        ...(sanction ? [{ label: "Conseguenza", value: JOB_ISSUE_SANCTION_LABEL[sanction] }] : []),
         ...(until ? [{ label: "Fino al", value: formatDay(until) }] : []),
       ],
       cta: proRequests("Vedi i dettagli"),
-      after: [`Puoi fare ricorso entro ${JOB_ISSUE_APPEAL_DAYS} giorni: lo esaminerà una persona diversa del nostro team.`],
+      after: [`Puoi chiedere di rivedere la decisione entro ${JOB_ISSUE_APPEAL_DAYS} giorni. La guarderà un'altra persona del nostro team.`],
     };
   },
 
@@ -1814,8 +1814,8 @@ const BUILDERS: Record<string, Builder> = {
       title: "Esito della tua segnalazione",
       paragraphs: [
         upheld
-          ? `Abbiamo esaminato la tua segnalazione (${what}) e preso provvedimenti sul contenuto.`
-          : `Abbiamo esaminato la tua segnalazione (${what}): non abbiamo preso provvedimenti.`,
+          ? `Abbiamo letto la tua segnalazione (${what}) e siamo intervenuti sul contenuto.`
+          : `Abbiamo letto la tua segnalazione (${what}): il contenuto resta com'è.`,
       ],
       after: ["Se non sei d'accordo puoi rivolgerti all'autorità giudiziaria."],
     };
@@ -1844,7 +1844,7 @@ const BUILDERS: Record<string, Builder> = {
         : { label: "Contesta la decisione", url: `${site}/segnalazioni` },
       after: [
         suspended ? "Se ritieni che sia un errore, rispondi a questa email o scrivici dal modulo Contatti." : "Se ritieni che sia un errore puoi contestare la decisione.",
-        "Puoi anche rivolgerti a un organismo di risoluzione extragiudiziale delle controversie o all'autorità giudiziaria.",
+        "Puoi anche andare dal giudice, o da un ente che aiuta a fare pace senza tribunale.",
       ],
     };
   },
@@ -1860,7 +1860,7 @@ const BUILDERS: Record<string, Builder> = {
       greeting: ctx.name,
       title: "Account sospeso",
       paragraphs: [
-        "Il tuo account è stato sospeso: non puoi accedere e, se sei un professionista, il tuo profilo non compare nella ricerca finché la decisione non viene rivista.",
+        "Abbiamo sospeso il tuo account: per ora non puoi entrare. Se sei un professionista, per ora nessuno trova il tuo profilo nella ricerca.",
         ...accountMeasureReasons(payload, note),
         "La decisione è stata presa da una persona del nostro team, non da un sistema automatico.",
       ],
@@ -1896,7 +1896,7 @@ const BUILDERS: Record<string, Builder> = {
       greeting: ctx.name,
       title: "Account chiuso",
       paragraphs: [
-        `Come ti avevamo scritto ${ACCOUNT_CLOSURE_NOTICE_DAYS} giorni fa, il tuo account è stato chiuso: non puoi più accedere e, se sei un professionista, il tuo profilo non compare più sul sito.`,
+        `Come ti avevamo scritto ${ACCOUNT_CLOSURE_NOTICE_DAYS} giorni fa, il tuo account è chiuso: non puoi più entrare. Se sei un professionista, il tuo profilo non compare più sul sito.`,
         ...accountMeasureReasons(payload, note),
       ],
       cta: { label: "Scrivici dal modulo Contatti", url: `${frontendUrl()}/contatti` },
@@ -2035,7 +2035,7 @@ const BUILDERS: Record<string, Builder> = {
       paragraphs: [
         "Il tuo profilo non mostra più il badge Verificato.",
         ...(note ? [`**Motivazione:** ${note}`] : []),
-        "Per riaverlo rifai la verifica dell'identità con documento e selfie: servono circa 2 minuti. Se pensi che sia un errore, scrivici dal modulo Contatti.",
+        "Per riaverlo rifai la verifica con documento e selfie. Ci vogliono circa 2 minuti. Se pensi che sia un errore, scrivici dal modulo Contatti.",
       ],
       cta: { label: "Rifai la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
     };
@@ -2289,10 +2289,10 @@ const BUILDERS: Record<string, Builder> = {
     const note = str(payload.note);
     return {
       kind: "account",
-      subject: "La misura su un tuo contenuto è stata annullata",
+      subject: "Abbiamo annullato la decisione su un tuo contenuto",
       greeting: ctx.name,
-      title: "Misura annullata",
-      paragraphs: [`Abbiamo annullato la misura presa su un tuo contenuto (${what}): è di nuovo come prima.`, ...(note ? [`**Motivazione:** ${note}`] : [])],
+      title: "Decisione annullata",
+      paragraphs: [`Abbiamo annullato la decisione su un tuo contenuto (${what}): ora è di nuovo come prima.`, ...(note ? [`**Motivazione:** ${note}`] : [])],
     };
   },
   CONTENT_REPORT_APPEAL_REJECTED: (payload, ctx) => {
@@ -2305,7 +2305,7 @@ const BUILDERS: Record<string, Builder> = {
       paragraphs: [
         "Abbiamo esaminato la tua contestazione: la decisione resta valida.",
         ...(note ? [`**Motivazione:** ${note}`] : []),
-        "Puoi rivolgerti a un organismo di risoluzione extragiudiziale delle controversie o all'autorità giudiziaria.",
+        "Puoi anche andare dal giudice, o da un ente che aiuta a fare pace senza tribunale.",
       ],
     };
   },

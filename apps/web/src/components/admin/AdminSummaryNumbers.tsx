@@ -86,7 +86,7 @@ export function AdminSummaryNumbers() {
           </div>
         ) : (
           <Text color={brand.grafite70}>
-            Caricamento…
+            Un momento…
             <WaitBarSignal />
           </Text>
         )}
