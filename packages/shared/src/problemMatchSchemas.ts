@@ -33,10 +33,6 @@ export type ProblemPhotoResult =
   | { photoId: string; description: string; check: "ok" | "dati-personali" }
   | { photoId: null; description: null; check: "non-pertinente" | "non-adatta" | "spenta" };
 
-/** La foto si rimpicciolisce nel browser (lato lungo 1280 px): sopra questo peso è un errore. */
-export const PROBLEM_PHOTO_MAX_BYTES = 3 * 1024 * 1024;
-export const PROBLEM_PHOTO_MAX_EDGE = 1280;
-
 /** "Prendete in carico la richiesta": un lavoro che nessun professionista del sito fa. */
 export const problemTakeoverSchema = z.object({
   description: z.string().trim().min(3).max(PROBLEM_DESCRIPTION_MAX),
