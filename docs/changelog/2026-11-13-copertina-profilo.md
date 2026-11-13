@@ -13,9 +13,10 @@ profilo); copertina anche nell'anteprima di WhatsApp e social.
 - Database: `ProfessionalProfile.coverImageUrl` (foto caricata, Cloudinary
   1600×800) e `coverPreset` (id di una copertina pronta). Migrazione additiva
   `20261113210000_copertina_profilo`. Mai tutte e due insieme.
-- Copertine pronte in `packages/shared/src/coverPresets.ts`: una foto per
+- Copertine pronte in `packages/shared/src/coverPresets.ts`: due foto per
   mestiere (senza persone né scritte) e sei colori (Verde, Notte, Salvia,
-  Crema, Terracotta, Cielo). File in `apps/web/public/copertine/` (1536×768
+  Crema, Terracotta, Cielo). Poi Luca: "seconda foto per tutti", quindi due
+  foto per mestiere (`<mestiere>` e `<mestiere>-2`). File in `apps/web/public/copertine/` (1536×768
   WebP, copia 480 per la scelta, JPG 1200×630 per l'anteprima social). Nella
   scelta prima i mestieri del professionista, poi i colori, poi gli altri.
 - API: `POST /professionals/me/cover` (foto, 10 all'ora) e

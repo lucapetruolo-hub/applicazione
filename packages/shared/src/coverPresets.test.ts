@@ -3,9 +3,10 @@ import { COVER_PRESET_IDS, profileCover, coverPresetsFor, isCoverPreset } from "
 import { setCoverPresetSchema } from "./schemas";
 
 describe("copertine pronte (docs/changelog/2026-11-13-copertina-profilo.md)", () => {
-  it("almeno una per mestiere, quelle del professionista per prime", () => {
+  it("due per mestiere, quelle del professionista per prime", () => {
     expect(COVER_PRESET_IDS).toContain("idraulico");
-    expect(coverPresetsFor(["falegname", "fabbro"]).slice(0, 3).map((preset) => preset.id)).toEqual(["falegname", "fabbro", "colore-verde"]);
+    expect(COVER_PRESET_IDS).toContain("idraulico-2");
+    expect(coverPresetsFor(["falegname", "fabbro"]).slice(0, 5).map((preset) => preset.id)).toEqual(["falegname", "falegname-2", "fabbro", "fabbro-2", "colore-verde"]);
     expect(coverPresetsFor(["falegname"])).toHaveLength(COVER_PRESET_IDS.length);
   });
 

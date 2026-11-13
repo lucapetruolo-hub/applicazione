@@ -1,6 +1,6 @@
 /**
  * Copertine pronte per il profilo pubblico (docs/changelog/2026-11-13-copertina-profilo.md),
- * per chi non ha una foto sua: una foto per mestiere (fatta con l'IA di Figma,
+ * per chi non ha una foto sua: due foto per mestiere (fatta con l'IA di Figma,
  * senza persone né scritte) e sei nei colori del sito. I file stanno in
  * `apps/web/public/copertine/<id>.webp` (1536×768) con la copia piccola
  * `<id>-480.webp` per la scelta e `anteprima/<id>.jpg` per WhatsApp e social. Nel database si salva solo l'id
@@ -28,7 +28,10 @@ function preset(id: string, label: string, categorySlug: string | null, tone: Co
 }
 
 export const COVER_PRESETS: readonly CoverPreset[] = [
-  ...PROFESSIONAL_CATEGORIES.map((category) => preset(category.slug, category.label, category.slug, "dark")),
+  ...PROFESSIONAL_CATEGORIES.flatMap((category) => [
+    preset(category.slug, category.label, category.slug, "dark"),
+    preset(`${category.slug}-2`, `${category.label} 2`, category.slug, "dark"),
+  ]),
   ...COLOR_COVERS.map((color) => preset(color.id, color.label, null, color.tone)),
 ];
 
