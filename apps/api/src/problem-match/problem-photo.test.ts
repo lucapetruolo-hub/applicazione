@@ -140,6 +140,29 @@ describe("ricerca con foto", () => {
     expect(result.safetyHint).toBeNull();
   });
 
+  it("al massimo 5 foto al giorno per indirizzo, poi si riparte il giorno dopo", () => {
+    const service = new ProblemMatchService(fakePrisma() as never, fakeCatalog as never);
+    const day = new Date("2026-11-13T10:00:00Z");
+    for (let i = 0; i < 5; i++) expect(service.takePhotoForIp("1.2.3.4", day)).toBe(true);
+    expect(service.takePhotoForIp("1.2.3.4", day)).toBe(false);
+    expect(service.takePhotoForIp("5.6.7.8", day)).toBe(true);
+    expect(service.takePhotoForIp("1.2.3.4", new Date("2026-11-14T10:00:00Z"))).toBe(true);
+    vi.stubEnv("PROBLEM_PHOTO_IP_DAILY_LIMIT", "300");
+    for (let i = 0; i < 200; i++) expect(service.takePhotoForIp("9.9.9.9", day)).toBe(true);
+  });
+
+  it("le foto hanno un tetto loro: finito quello, la ricerca a parole ha ancora l'IA", async () => {
+    enable();
+    vi.stubEnv("PROBLEM_PHOTO_DAILY_LIMIT", "1");
+    const service = new ProblemMatchService(fakePrisma() as never, fakeCatalog as never);
+    service.askAiWithPhoto = vi.fn().mockResolvedValue(photoAnswer());
+    expect((await service.analyzePhoto(JPEG, "image/jpeg", "")).photoId).not.toBeNull();
+    expect((await service.analyzePhoto(JPEG, "image/jpeg", "")).check).toBe("spenta");
+    expect(service.askAiWithPhoto).toHaveBeenCalledTimes(1);
+    expect(service.photoUsage()).toEqual({ enabled: true, used: 1, limit: 1 });
+    expect((service as unknown as { budget: { hasRoom: () => boolean } }).budget.hasRoom()).toBe(true);
+  });
+
   it("senza risposta dall'IA non dà un risultato a caso", async () => {
     enable();
     const service = new ProblemMatchService(fakePrisma() as never, fakeCatalog as never);

@@ -214,6 +214,12 @@ services:
       # OpenRouter (solo fino al lancio, poi via insieme a OPENROUTER_API_KEY).
       - key: PROBLEM_MATCH_AI_DAILY_LIMIT
         sync: false
+      # Ricerca con foto: tetto di tutto il sito (1000 al giorno) e foto al
+      # giorno per indirizzo (5), docs/changelog/2026-11-13-difese-ricerca-con-foto.md.
+      - key: PROBLEM_PHOTO_DAILY_LIMIT
+        sync: false
+      - key: PROBLEM_PHOTO_IP_DAILY_LIMIT
+        sync: false
       - key: OPENROUTER_MODEL
         sync: false
       # WhatsApp: versione delle API di Meta e prezzi per il registro dei costi

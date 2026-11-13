@@ -19,6 +19,8 @@ export type ProblemMatchRequest = z.infer<typeof problemMatchRequestSchema>;
 export const problemPhotoRequestSchema = z.object({
   description: z.string().trim().max(PROBLEM_DESCRIPTION_MAX).optional(),
   city: z.string().trim().max(80).optional(),
+  /** Anti-bot Cloudflare Turnstile (docs/changelog/2026-11-13-difese-ricerca-con-foto.md). */
+  turnstileToken: z.string().max(2048).optional(),
 });
 export type ProblemPhotoRequest = z.infer<typeof problemPhotoRequestSchema>;
 

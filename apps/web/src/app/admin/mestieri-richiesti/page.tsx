@@ -179,6 +179,17 @@ function DescriptionsTab() {
               {aiSpeedText(month.aiSpeed)}
             </Text>
           ) : null}
+          {month.photosToday.enabled ? (
+            // Tetto delle foto di tutto il sito: un salto improvviso vuol dire qualcuno che ne abusa.
+            <Text
+              color={month.photosToday.used >= month.photosToday.limit * 0.8 ? brand.grafite : brand.grafite70}
+              fontWeight={month.photosToday.used >= month.photosToday.limit * 0.8 ? "600" : "400"}
+              marginTop="1"
+            >
+              Ricerche con foto oggi: {month.photosToday.used} su {month.photosToday.limit}
+              {month.photosToday.used >= month.photosToday.limit ? ". Finite: fino a mezzanotte si cerca solo a parole." : ""}
+            </Text>
+          ) : null}
           {month.byCategory.length > 0 ? (
             <Text color={brand.grafite70} marginTop="1">
               Mestieri: {month.byCategory.map((row) => `${targetLabel(row.key, null)} ${row.count}`).join(" · ")}

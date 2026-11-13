@@ -24,6 +24,12 @@ export class DailyBudget {
     return Number.isInteger(parsed) && parsed >= 0 ? parsed : this.defaultLimit;
   }
 
+  /** Chiamate usate oggi e tetto, per Admin. */
+  usage(now: Date = new Date()): { used: number; limit: number } {
+    const today = now.toISOString().slice(0, 10);
+    return { used: today === this.day ? this.used : 0, limit: this.limit() };
+  }
+
   /** `true` se oggi resta almeno una chiamata, senza contarla. */
   hasRoom(now: Date = new Date()): boolean {
     const today = now.toISOString().slice(0, 10);
