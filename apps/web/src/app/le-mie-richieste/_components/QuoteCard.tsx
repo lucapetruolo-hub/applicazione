@@ -9,6 +9,7 @@ import {
   TAX_BONUS_PAYMENT_NOTE,
   cancellationNoticeLabel,
   freeCancellationUntilLabel,
+  capitalizeItemName,
   isLateCancellation,
   categoryMayHaveTaxBonus,
   formatAppointmentTimeRange,
@@ -441,7 +442,8 @@ export function QuoteCard({
                 {quote.items.map((item) => (
                   <XStack key={item.id} justifyContent="space-between" alignItems="baseline" gap="3">
                     <Text fontSize={15} color={brand.grafite70} flexShrink={1} minWidth={0}>
-                      {item.name}
+                      {/* Maiuscola anche sulle voci salvate prima (docs/changelog/2026-11-13-annullare-data-passata.md). */}
+                      {capitalizeItemName(item.name)}
                     </Text>
                     <Text fontSize={15} color={brand.grafite} flexShrink={0} style={{ fontVariantNumeric: "tabular-nums" }}>
                       {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
