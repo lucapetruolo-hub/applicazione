@@ -1,8 +1,9 @@
 "use client";
 
+import { useMinuteClock } from "@/lib/useMinuteClock";
 import { useEffect, useRef } from "react";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
-import { cancellationNoticeLabel, formatEurRange, jobPaymentChoiceCopy, quoteComparisonHighlights, quotePriceTotals } from "@professionisti/shared";
+import { cancellationPhase, cancellationTerms, formatEurRange, paymentChoiceIsOnline, jobPaymentChoiceCopy, quoteComparisonHighlights, quotePriceTotals } from "@professionisti/shared";
 import { Avatar, Badge, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 import { selectablePaymentChoices } from "@/components/PaymentChoice";
@@ -32,6 +33,8 @@ export function QuoteCompareModal({
   onPick: (quoteId: string) => void;
   onClose: () => void;
 }) {
+  // Ora aggiornata ogni minuto: le frasi su annullare cambiano da sole (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
+  const now = useMinuteClock();
   const closeRef = useRef<HTMLButtonElement>(null);
   const { cheapestId, soonestId } = quoteComparisonHighlights(quotes);
 
@@ -133,9 +136,32 @@ export function QuoteCompareModal({
               </tr>
               <tr>
                 <th scope="row">Se annulli</th>
-                {quotes.map((q) => (
-                  <td key={q.id}>Avvisa {cancellationNoticeLabel(q.cancellationNoticeHours)} prima</td>
-                ))}
+                {/* Anche cosa succede all'acconto: è una differenza vera tra due preventivi
+                    (tabella dei casi, docs/changelog/2026-11-13-annullare-una-fonte.md). */}
+                {quotes.map((q) => {
+                  const onlineOffered = selectablePaymentChoices(q.paymentOptions, onlineAvailable).some(paymentChoiceIsOnline);
+                  const start = q.status === "MODIFICATION_REQUESTED" && q.clientProposedDate ? q.clientProposedDate : q.estimatedStartDate;
+                  const end = q.status === "MODIFICATION_REQUESTED" && q.clientProposedDate ? q.clientProposedEndDate : q.estimatedEndDate;
+                  const terms = cancellationTerms({
+                    phase: cancellationPhase(start, end, q.cancellationNoticeHours, now),
+                    start,
+                    hours: q.cancellationNoticeHours,
+                    money: !onlineOffered ? { kind: "none" } : q.lateCancelKeepsDeposit ? { kind: "kept" } : { kind: "refunded" },
+                    stage: "offer",
+                    audience: "client",
+                    onlineIsOption: onlineOffered,
+                  });
+                  return (
+                    <td key={q.id}>
+                      {terms.notice?.text ?? "Data passata"}
+                      {terms.money ? (
+                        <span className="quote-compare-note" style={terms.money.tone === "warning" ? { color: brand.ottoneScuro, fontWeight: 600 } : undefined}>
+                          {terms.money.text}
+                        </span>
+                      ) : null}
+                    </td>
+                  );
+                })}
               </tr>
               <tr>
                 <th scope="row">Recensioni</th>

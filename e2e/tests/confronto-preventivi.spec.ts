@@ -25,7 +25,8 @@ for (const [device, size] of [["telefono", PHONE], ["computer", COMPUTER]] as co
     const pros = [await createProfessional(prisma, "Rapidi Idraulica"), await createProfessional(prisma, "Bianchi Impianti"), await createProfessional(prisma, "Studio Acqua Latina")];
     const { request, quotes } = await createRequestWithQuotes(prisma, client.id, pros.map((p) => p.id), { start: wallDay(5, "10:00") });
     // Il secondo prima degli altri; il primo è il più economico (80–120 €).
-    await prisma.quote.update({ where: { id: quotes[1]!.id }, data: { estimatedStartDate: wallDay(2, "09:00"), estimatedEndDate: wallDay(2, "11:00"), cancellationNoticeHours: 48 } });
+    // Tra 3 giorni: con 48 ore di preavviso a 2 giorni si sarebbe già dentro il preavviso.
+    await prisma.quote.update({ where: { id: quotes[1]!.id }, data: { estimatedStartDate: wallDay(3, "09:00"), estimatedEndDate: wallDay(3, "11:00"), cancellationNoticeHours: 48 } });
 
     const page = await pageAsClient(browser, client.id, size);
     await page.goto(`/le-mie-richieste?open=${request.id}`);
@@ -48,7 +49,7 @@ for (const [device, size] of [["telefono", PHONE], ["computer", COMPUTER]] as co
     const whenRow = dialog.getByRole("row").filter({ has: page.getByRole("rowheader", { name: "Quando" }) });
     await expect(whenRow.getByRole("cell").nth(column("Bianchi Impianti"))).toContainText("Data più vicina");
     await expect(whenRow.getByText("Data più vicina")).toHaveCount(1);
-    await expect(dialog.getByText("Avvisa 48 ore prima")).toBeVisible();
+    await expect(dialog.getByText("Avvisa almeno 48 ore prima.")).toBeVisible();
     await page.screenshot({ path: `test-results/confronto-preventivi-${device}.png` });
 
     const axe = await new AxeBuilder({ page }).include(".quote-compare-dialog").analyze();

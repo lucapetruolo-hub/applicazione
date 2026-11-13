@@ -329,11 +329,22 @@ export class OnlineMoneyService {
     professionalProfileId: string;
     /** Preventivo di un lavoro ricorrente: la carta paga anche le visite dopo. */
     recurring?: boolean;
+    /** Cosa leggeva il cliente su annullare e acconto (docs/changelog/2026-11-13-annullare-pagina-aperta.md). */
+    seenCancellationPhase?: string;
+    seenTermsAt?: string;
   }): Promise<{ url: string | null }> {
     const back = `${this.frontendUrl()}/le-mie-richieste?open=${params.guidedRequestId}`;
     const suffix = statementSuffix(params.businessName);
     const account = await this.professionalAccount(params.professionalProfileId, { direct: true });
-    const metadata = { kind: "quote_deposit", quoteId: params.quoteId, clientUserId: params.clientUserId, paymentMethod: params.paymentMethod, stripeAccount: account };
+    const metadata = {
+      kind: "quote_deposit",
+      quoteId: params.quoteId,
+      clientUserId: params.clientUserId,
+      paymentMethod: params.paymentMethod,
+      stripeAccount: account,
+      ...(params.seenCancellationPhase ? { seenCancellationPhase: params.seenCancellationPhase } : {}),
+      ...(params.seenTermsAt ? { seenTermsAt: params.seenTermsAt } : {}),
+    };
     const reused = await this.reuseQuoteDepositCheckout(params, account);
     if (reused) return { url: reused };
     await this.assertHeldLimit(params.professionalProfileId, params.amountEurCents);
@@ -387,7 +398,7 @@ export class OnlineMoneyService {
    * l'importo o il modo di pagare, la vecchia pagina si chiude.
    */
   private async reuseQuoteDepositCheckout(
-    params: { quoteId: string; clientUserId: string; paymentMethod: string; amountEurCents: number },
+    params: { quoteId: string; clientUserId: string; paymentMethod: string; amountEurCents: number; seenCancellationPhase?: string },
     account: string | null,
   ): Promise<string | null> {
     const quote = await this.prisma.quote.findUnique({ where: { id: params.quoteId }, select: { depositCheckoutSessionId: true } });
@@ -406,7 +417,9 @@ export class OnlineMoneyService {
     const same =
       previous.amount_total === params.amountEurCents &&
       previous.metadata?.paymentMethod === params.paymentMethod &&
-      previous.metadata?.clientUserId === params.clientUserId;
+      previous.metadata?.clientUserId === params.clientUserId &&
+      // Il cliente ha riletto frasi diverse (pagina rimasta aperta): pagina di pagamento nuova.
+      (previous.metadata?.seenCancellationPhase ?? "") === (params.seenCancellationPhase ?? "");
     if (same && previous.url) return previous.url;
     // Se intanto viene pagata, il pagamento doppio torna da solo al cliente.
     await stripe.checkout.sessions.expire(previous.id, {}, onAccount(account)).catch(() => undefined);

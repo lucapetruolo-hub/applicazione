@@ -3,14 +3,14 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { paymentSplit } from "@/components/PaymentChoice";
+import { CancellationTermsLines } from "@/components/CancellationTermsLines";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
 import {
   TRADER_STATUS_COPY,
-  cancellationNoticeLabel,
+  cancellationPhase,
+  cancellationTerms,
   formatEurCents,
   formatServicePriceRange,
-  freeCancellationUntilLabel,
-  isLateCancellation,
   jobPaymentChoiceCopy,
   quotePaymentRestText,
   paymentChoiceIsOnline,
@@ -38,6 +38,7 @@ export function QuoteAcceptSummary({
   priceTotals,
   payment,
   onlinePayments,
+  now,
   children,
 }: {
   quote: ClientGuidedRequest["quotes"][number];
@@ -45,22 +46,27 @@ export function QuoteAcceptSummary({
   priceTotals: { totalMinEurCents: number; totalMaxEurCents: number };
   payment: JobPaymentChoice;
   onlinePayments: boolean;
+  /** Ora aggiornata ogni minuto dalla scheda (docs/changelog/2026-11-13-annullare-pagina-aperta.md). */
+  now: Date;
   /** Richiesta della fattura, chiesta qui e non prima di decidere (05/11/2026). */
   children?: ReactNode;
 }) {
   const hasPrice = priceTotals.totalMinEurCents > 0 || priceTotals.totalMaxEurCents > 0;
   const priceText = hasPrice ? formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents) : null;
-  const alreadyLate = isLateCancellation(quote.estimatedStartDate, quote.cancellationNoticeHours);
-  const keepsDeposit = quote.lateCancelKeepsDeposit && onlinePayments && paymentChoiceIsOnline(payment);
   const executor = quote.executor ?? null;
   const isPrivate = quote.professionalKind === "PRIVATE";
   const split = paymentSplit(payment, priceTotals, quote.depositPercent);
-  // "l'acconto di 24,00 €", o tutto quello pagato online se l'acconto è il 100%.
-  const depositText = !split
-    ? "l'acconto"
-    : split.restMaxEurCents === 0
-      ? `quello che paghi online (${formatEurCents(split.nowEurCents)})`
-      : `l'acconto di ${formatEurCents(split.nowEurCents)}`;
+  const online = onlinePayments && paymentChoiceIsOnline(payment) && !!split && split.nowEurCents > 0;
+  const cancelTerms = cancellationTerms({
+    phase: cancellationPhase(quote.estimatedStartDate, quote.estimatedEndDate, quote.cancellationNoticeHours, now),
+    start: quote.estimatedStartDate,
+    hours: quote.cancellationNoticeHours,
+    money: !online
+      ? { kind: "none" }
+      : { kind: quote.lateCancelKeepsDeposit ? "kept" : "refunded", eurCents: split.nowEurCents, full: split.restMaxEurCents === 0 },
+    stage: "offer",
+    audience: "client",
+  });
   const taxNote = quotePriceTaxNote(quote.chargesVat ?? null);
   // Una riga del riquadro: a sinistra cosa e quando, a destra la cifra. Se
   // lo spazio non basta (telefono stretto) la cifra scende sotto, a destra:
@@ -137,29 +143,9 @@ export function QuoteAcceptSummary({
       ) : null}
       {/* Preavviso e acconto (decisioni di Luca dell'11/11,
           docs/changelog/2026-11-11-rosso-solo-errori.md): rosso solo per gli
-          errori. Senza acconto da perdere basta ricordare il tempo, in grigio.
-          Con l'acconto che resta al professionista si dice chiaro, sempre, che
-          non è rimborsabile, in ocra ("attenzione"). */}
-      {keepsDeposit ? (
-        <Text fontSize={16} fontWeight="600" color={brand.ottoneScuro} data-testid="quote-accept-deposit-kept">
-          {alreadyLate
-            ? `Mancano meno di ${cancellationNoticeLabel(quote.cancellationNoticeHours)} all'appuntamento: ${depositText} non è rimborsabile, anche se annulli.`
-            : `Annullamento gratuito fino a ${freeCancellationUntilLabel(quote.estimatedStartDate, quote.cancellationNoticeHours)}. Dopo, ${depositText} non è rimborsabile.`}
-        </Text>
-      ) : (
-        <>
-          {alreadyLate ? (
-            <Text fontSize={16} color={brand.grafite70}>
-              Mancano meno di {cancellationNoticeLabel(quote.cancellationNoticeHours)} all&apos;appuntamento.
-            </Text>
-          ) : null}
-          {split ? (
-            <Text fontSize={16} color={brand.grafite70}>
-              Se annulli prima dell&apos;appuntamento, l&apos;acconto ti torna sempre sulla carta.
-            </Text>
-          ) : null}
-        </>
-      )}
+          errori; ocra per l'acconto non rimborsabile. Frasi da una sola fonte,
+          anche a fascia già iniziata (docs/changelog/2026-11-13-annullare-una-fonte.md). */}
+      <CancellationTermsLines terms={cancelTerms} moneySize={16} testId="quote-accept-cancel" />
       {/* Lavoro ricorrente: le visite dopo la prima si pagano come questa (decisione di Luca del 09/11, docs/changelog/2026-11-09-lavori-ricorrenti.md). */}
       {quote.repeatEvery ? (
         <Text fontSize={16} color={brand.grafite} data-testid="quote-accept-recurring">

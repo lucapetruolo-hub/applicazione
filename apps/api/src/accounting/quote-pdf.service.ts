@@ -2,9 +2,8 @@ import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import {
   accountingDateLabel,
-  cancellationNoticeLabel,
-  freeCancellationUntilLabel,
-  isLateCancellation,
+  cancellationPhase,
+  cancellationTerms,
   clientPaymentOffer,
   formatAppointmentDate,
   formatAppointmentTimeRange,
@@ -164,22 +163,21 @@ export class QuotePdfService {
       });
     }
 
-    blocks.push({ type: "heading", text: "Annullare" }, { type: "text", lines: [`Avvisa almeno ${cancellationNoticeLabel(notice)} prima.`] });
-    // Acconto non rimborsabile dopo il preavviso, con giorno e ora, come sul sito e nell'email
-    // (decisione di Luca dell'11/11, docs/changelog/2026-11-11-rosso-solo-errori.md).
-    if (quote.lateCancelKeepsDeposit && anyOnline) {
-      const deposit = offer.paymentOptions.map((choice) => quotePaymentSplit(choice, totals, offer.depositPercent)?.nowEurCents ?? 0).find((cents) => cents > 0);
-      blocks.push({
-        type: "note",
-        tone: "sand",
-        lines: [
-          isLateCancellation(quote.estimatedStartDate, notice)
-            ? `Pagando online: mancano meno di ${cancellationNoticeLabel(notice)} all'appuntamento, ${deposit ? `l'acconto di ${formatEurCents(deposit)}` : "l'acconto"} non è rimborsabile, anche se annulli.`
-            : `Pagando online: annullamento gratuito fino a ${freeCancellationUntilLabel(quote.estimatedStartDate, notice)}. Dopo, ${deposit ? `l'acconto di ${formatEurCents(deposit)}` : "l'acconto"} non è rimborsabile.`,
-        ],
-      });
-    } else if (anyOnline) {
-      blocks.push({ type: "text", muted: true, lines: ["Pagando online, se annulli prima dell'appuntamento l'acconto ti torna sempre."] });
+    // Annullare e acconto: stesse frasi della scheda del preventivo, da una sola fonte,
+    // anche dentro il preavviso e a fascia iniziata (docs/changelog/2026-11-13-annullare-una-fonte.md).
+    const deposit = offer.paymentOptions.map((choice) => quotePaymentSplit(choice, totals, offer.depositPercent)?.nowEurCents ?? 0).find((cents) => cents > 0);
+    const cancel = cancellationTerms({
+      phase: cancellationPhase(quote.estimatedStartDate, quote.estimatedEndDate, notice),
+      start: quote.estimatedStartDate,
+      hours: notice,
+      money: !anyOnline ? { kind: "none" } : { kind: quote.lateCancelKeepsDeposit ? "kept" : "refunded", eurCents: deposit ?? null },
+      stage: "offer",
+      audience: "client",
+      onlineIsOption: true,
+    });
+    if (cancel.notice) {
+      blocks.push({ type: "heading", text: "Annullare" }, { type: "text", lines: [cancel.notice.text] });
+      if (cancel.money) blocks.push(cancel.money.tone === "warning" ? { type: "note", tone: "sand", lines: [cancel.money.text] } : { type: "text", muted: true, lines: [cancel.money.text] });
     }
     if (quote.notes?.trim()) blocks.push({ type: "heading", text: "Messaggio del professionista" }, { type: "text", lines: [quote.notes.trim()] });
     blocks.push({

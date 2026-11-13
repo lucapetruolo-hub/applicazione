@@ -1,5 +1,6 @@
 "use client";
 
+import { useMinuteClock } from "@/lib/useMinuteClock";
 import { HighlightMatch } from "@/lib/requestSearch";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -38,7 +39,9 @@ import {
   CANCELLATION_NOTICE_OPTIONS,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
   cancellationNoticeLabel,
-  freeCancellationUntilLabel,
+  bookingCancellationMoney,
+  cancellationPhase,
+  cancellationTerms,
   isLateCancellation,
   isCancellationNoticeHours,
   type CancellationNoticeHours,
@@ -58,6 +61,7 @@ import { Avatar, Badge, Chip, Icon, Surface, Text, XStack, YStack, brand, radius
 import { apiClient } from "@/lib/apiClient";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 import { formatCompetitors, leadDeadlines } from "@/lib/leadDeadline";
+import { CancellationTermsLines } from "@/components/CancellationTermsLines";
 import { ClientProfileModal } from "@/components/ClientProfileModal";
 import { TimelineModal } from "@/components/TimelineModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -171,6 +175,8 @@ export function RequestCard({
   /** Prezzo della "Manodopera" dell'ultimo preventivo: la riga con cui si apre il modulo parte da lì. */
   laborPrice?: { priceMinEurCents: number | null; priceMaxEurCents: number | null } | null;
 }) {
+  // Ora aggiornata ogni minuto: le frasi su annullare cambiano da sole (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
+  const now = useMinuteClock();
   const gr = lead.guidedRequest;
   const canRepeat = recurringAllowedForCategory(gr.categorySlug);
   const isOnline = gr.serviceMode === "ONLINE";
@@ -1393,13 +1399,21 @@ export function RequestCard({
             </Text>
           ) : null}
           {/* Promemoria e risposta del cliente (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
-          {/* Fino a quando il cliente annulla senza perdere niente, con giorno e ora (Luca, 11/11, docs/changelog/2026-11-11-rosso-solo-errori.md). */}
-          {booking?.status === "CONFIRMED" && lead.quote && !isLateCancellation(booking.scheduledAt, lead.quote.cancellationNoticeHours) ? (
-            <Text fontSize={13} color={brand.grafite70}>
-              {lead.quote.lateCancelKeepsDeposit && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0
-                ? `Il cliente può annullare gratis fino a ${freeCancellationUntilLabel(booking.scheduledAt, lead.quote.cancellationNoticeHours)}. Dopo, l'acconto resta a te.`
-                : `Se annulla, il cliente deve avvisarti entro ${freeCancellationUntilLabel(booking.scheduledAt, lead.quote.cancellationNoticeHours)}.`}
-            </Text>
+          {/* Fino a quando il cliente annulla senza perdere niente, con giorno e ora (Luca, 11/11,
+              docs/changelog/2026-11-11-rosso-solo-errori.md); dentro il preavviso, che l'acconto
+              resta a lui (Luca, 13/11). Frasi da una sola fonte (docs/changelog/2026-11-13-annullare-una-fonte.md). */}
+          {booking?.status === "CONFIRMED" && lead.quote ? (
+            <CancellationTermsLines
+              terms={cancellationTerms({
+                phase: cancellationPhase(booking.scheduledAt, booking.scheduledEndAt, lead.quote.cancellationNoticeHours, now),
+                start: booking.scheduledAt,
+                hours: lead.quote.cancellationNoticeHours,
+                money: bookingCancellationMoney(booking.payment, booking.depositKeptOnLateCancel),
+                stage: "booked",
+                audience: "professional",
+              })}
+              testId="pro-cancel"
+            />
           ) : null}
           {booking ? <AppointmentReplyStatus booking={booking} /> : null}
           {/* Annullato dal cliente dentro il preavviso che hai scelto (docs/CHANGELOG.md §347). */}

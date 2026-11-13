@@ -295,6 +295,12 @@ export type ProfessionalBooking = {
   scheduledEndAt: string | null;
   /** Ora indicativa di arrivo dentro la fascia, "HH:MM" (docs/changelog/2026-11-11-fasce-ampie.md). */
   arrivalTime: string | null;
+  /**
+   * L'acconto resta al professionista se il cliente annulla tardi: come il
+   * preventivo, tranne se il cliente non ha mai avuto il tempo di annullare
+   * gratis (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
+   */
+  depositKeptOnLateCancel: boolean;
   /** Per l'ordinamento "per data di ricezione"/"per ultimo aggiornamento" nelle liste. */
   createdAt: string;
   updatedAt: string;

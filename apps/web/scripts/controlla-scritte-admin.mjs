@@ -21,6 +21,8 @@ const singleFiles = [
   "apps/api/src/admin/site-stats.ts",
   "apps/api/src/admin/admin-queue.service.ts",
   "apps/api/src/admin/database-version.service.ts",
+  "apps/api/src/admin/site-health.service.ts",
+  "packages/shared/src/siteHealth.ts",
   "apps/api/src/admin-proposals/admin-proposals.ts",
   "apps/api/src/admin-proposals/admin-proposals.service.ts",
 ];

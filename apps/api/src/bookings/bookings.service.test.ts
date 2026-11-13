@@ -697,3 +697,93 @@ describe("BookingsService.updateStatus — il lavoro si chiude solo con Lavoro t
     expect(prisma.booking.update).not.toHaveBeenCalled();
   });
 });
+
+describe("Accetta: controllo sul server e testo salvato (docs/changelog/2026-11-13-annullare-pagina-aperta.md)", () => {
+  // Appuntamento mercoledì 1/10/2037 alle 10:00 ora italiana, preavviso 24 ore:
+  // annullamento gratuito fino a martedì 30/9 alle 10:00 italiane (08:00 UTC, ora legale).
+  const FREE_NOW = new Date("2037-09-30T07:00:00Z");
+  const LATE_NOW = new Date("2037-09-30T08:03:00Z");
+  afterEach(() => vi.useRealTimers());
+
+  it("il cliente ha letto 'gratuito fino a' e intanto il preavviso è iniziato: 409, rileggi e conferma, nessun lavoro", async () => {
+    vi.useFakeTimers({ now: LATE_NOW, toFake: ["Date"] });
+    const { service, prisma } = buildService();
+    prisma.quote.findUnique.mockResolvedValue(baseQuote({ cancellationNoticeHours: 24 }));
+    const error = await service.createFromQuote("client-1", "quote-1", "DIRECT", undefined, { phase: "free" }).catch((err: unknown) => err);
+    expect(error).toBeInstanceOf(ConflictException);
+    expect((error as ConflictException).getResponse()).toMatchObject({ code: "CANCELLATION_TERMS_CHANGED", message: "Il tempo per annullare gratis è appena scaduto: rileggi e conferma." });
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+  });
+
+  it("letto 'mancano meno di' e l'appuntamento è iniziato: chiede di rileggere", async () => {
+    vi.useFakeTimers({ now: new Date("2037-10-01T08:10:00Z"), toFake: ["Date"] });
+    const { service, prisma } = buildService();
+    prisma.quote.findUnique.mockResolvedValue(baseQuote({ cancellationNoticeHours: 24 }));
+    await expect(service.createFromQuote("client-1", "quote-1", "DIRECT", undefined, { phase: "late" })).rejects.toThrow("L'appuntamento è appena iniziato: rileggi e conferma.");
+  });
+
+  it("accettato in tempo: il lavoro nasce con frasi, cifre, ora di lettura e di accettazione", async () => {
+    vi.useFakeTimers({ now: FREE_NOW, toFake: ["Date"] });
+    const { service, prisma } = buildService();
+    prisma.quote.findUnique.mockResolvedValue(baseQuote({ cancellationNoticeHours: 24 }));
+    prisma.booking.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: "b-new", ...data }));
+    await service.createFromQuote("client-1", "quote-1", "DIRECT", undefined, { phase: "free", at: "2037-09-30T06:58:00.000Z" });
+    const data = (prisma.booking.create.mock.calls[0] as [{ data: Record<string, unknown> }])[0].data;
+    expect(data.acceptedTerms).toMatchObject({
+      version: 1,
+      phaseSeen: "free",
+      phaseAtAcceptance: "free",
+      notice: "Avvisa almeno 24 ore prima.",
+      money: null,
+      paymentMethod: "DIRECT",
+      seenAt: "2037-09-30T06:58:00.000Z",
+      acceptedAt: FREE_NOW.toISOString(),
+      depositRefundedIfLate: false,
+    });
+  });
+
+  it("sito vecchio che non manda cosa ha letto: nessun blocco, il testo si salva lo stesso", async () => {
+    vi.useFakeTimers({ now: LATE_NOW, toFake: ["Date"] });
+    const { service, prisma } = buildService();
+    prisma.quote.findUnique.mockResolvedValue(baseQuote({ cancellationNoticeHours: 24 }));
+    prisma.booking.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: "b-new", ...data }));
+    await service.createFromQuote("client-1", "quote-1");
+    expect((prisma.booking.create.mock.calls[0] as [{ data: Record<string, unknown> }])[0].data.acceptedTerms).toMatchObject({ phaseSeen: null, phaseAtAcceptance: "late", notice: "Mancano meno di 24 ore all'appuntamento." });
+  });
+
+  it("con l'acconto online il momento letto va nella pagina di pagamento", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test";
+    vi.useFakeTimers({ now: FREE_NOW, toFake: ["Date"] });
+    const { service, prisma, jobPaymentsService } = buildService();
+    prisma.quote.findUnique.mockResolvedValue(baseQuote({ cancellationNoticeHours: 24, paymentOptions: ["ONLINE"], depositPercent: 20 }));
+    await service.createFromQuote("client-1", "quote-1", "ONLINE", undefined, { phase: "free", at: "2037-09-30T06:58:00.000Z" });
+    expect(jobPaymentsService.createQuoteDepositCheckout).toHaveBeenCalledWith(expect.objectContaining({ seenCancellationPhase: "free", seenTermsAt: "2037-09-30T06:58:00.000Z" }));
+  });
+
+  it("pagamento finito su Stripe dopo la scadenza che il cliente aveva letto: l'acconto gli torna anche annullando tardi", async () => {
+    vi.useFakeTimers({ now: LATE_NOW, toFake: ["Date"] });
+    const { service, prisma } = buildService();
+    prisma.booking.findUnique.mockResolvedValue(null);
+    prisma.booking.findFirst.mockResolvedValue(null);
+    prisma.quote.findUnique.mockResolvedValue(baseQuote({ cancellationNoticeHours: 24, paymentOptions: ["ONLINE"], depositPercent: 20, lateCancelKeepsDeposit: true }));
+    prisma.booking.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: "b-new", ...data }));
+    await service.confirmQuoteDeposit({
+      payment_intent: "pi_1",
+      amount_total: 6000,
+      metadata: { kind: "quote_deposit", quoteId: "quote-1", clientUserId: "client-1", paymentMethod: "ONLINE", seenCancellationPhase: "free", seenTermsAt: "2037-09-30T07:59:00.000Z" },
+    } as never);
+    expect((prisma.booking.create.mock.calls[0] as [{ data: Record<string, unknown> }])[0].data.acceptedTerms).toMatchObject({ phaseSeen: "free", phaseAtAcceptance: "late", depositRefundedIfLate: true });
+  });
+
+  it("annullando tardi un lavoro così, l'acconto torna al cliente invece di restare al professionista", async () => {
+    const { service, prisma, jobPaymentsService } = buildService({ professionalProfile: { findUnique: vi.fn().mockResolvedValue({ userId: "pro-user-1" }) } });
+    prisma.booking.findUnique.mockResolvedValue({
+      id: "b-1", clientId: "client-1", professionalProfileId: "pro-1", status: "CONFIRMED", scheduledAt: new Date(wallClockNow().getTime() + 10 * 60 * 60_000), cancellationNoticeHours: 24,
+      quote: { guidedRequestId: "gr-1", lateCancelKeepsDeposit: true },
+      acceptedTerms: { depositRefundedIfLate: true },
+    });
+    await service.cancelForClient("client-1", "b-1");
+    expect(jobPaymentsService.keepDepositOnLateCancel).not.toHaveBeenCalled();
+    expect(jobPaymentsService.refundOnCancel).toHaveBeenCalledWith("b-1", "client-1");
+  });
+});

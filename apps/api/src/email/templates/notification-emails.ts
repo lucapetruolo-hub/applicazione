@@ -1722,7 +1722,7 @@ const BUILDERS: Record<string, Builder> = {
     // Proposte già pronte da approvare con un clic (docs/changelog/2026-11-03-automazioni-admin.md).
     const proposals = typeof payload.proposals === "number" && payload.proposals > 0 ? payload.proposals : 0;
     const proposalsLine = proposals
-      ? `**${proposals === 1 ? "Una proposta da approvare" : `${proposals} proposte da approvare`}** in Da fare: sono già pronte, basta un clic.`
+      ? `**${proposals === 1 ? "Una proposta da approvare" : `${proposals} proposte da approvare`}** in Da fare: sono già pronte, basta un clic. Ci vogliono circa ${Math.max(1, Math.ceil(proposals / 2))} ${Math.ceil(proposals / 2) > 1 ? "minuti" : "minuto"}.`
       : null;
     if (items.length === 0) {
       return {
@@ -1730,7 +1730,7 @@ const BUILDERS: Record<string, Builder> = {
         subject: proposals === 1 ? "Una proposta da approvare" : `${proposals} proposte da approvare`,
         title: "Da approvare",
         paragraphs: [proposalsLine ?? "Niente da approvare."],
-        cta: { label: "Apri Da fare", url: `${frontendUrl()}/admin` },
+        cta: { label: "Apri Da approvare", url: `${frontendUrl()}/admin#da-approvare` },
       };
     }
     return {

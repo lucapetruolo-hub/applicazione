@@ -119,6 +119,9 @@ import type {
   ChurnReason,
   AccountClosureCheck,
   SiteNoteInput,
+  SiteHealth,
+  SiteDeadline,
+  SiteDeadlineInput,
   SiteAdviceDoneInput,
   ProfessionalVerificationFilter,
   ProfessionalVerificationRow,
@@ -158,6 +161,7 @@ import type {
   MergeServiceNameInput,
   ProblemTakeoverAdmin,
   ClientInvoiceRequestInput,
+  SeenCancellationTerms,
   ClientInvoiceRequestView,
   AccountantSettingsInput,
   CourtesyCopyView,
@@ -1886,11 +1890,12 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
      * della richiesta (richiesta esplicita dell'utente). Con il metodo di
      * pagamento scelto dal cliente (§168).
      */
-    acceptQuote: (token: string, quoteId: string, paymentMethod: JobPaymentChoice, invoiceRequest?: ClientInvoiceRequestInput) =>
+    acceptQuote: (token: string, quoteId: string, paymentMethod: JobPaymentChoice, invoiceRequest?: ClientInvoiceRequestInput, seen?: SeenCancellationTerms) =>
       request<{ bookingId: string | null; paymentMethod: JobPaymentChoice; checkoutUrl: string | null }>(`/bookings/from-quote/${quoteId}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ paymentMethod, invoiceRequest }),
+        // Cosa leggeva il cliente su annullare e acconto (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
+        body: JSON.stringify({ paymentMethod, invoiceRequest, ...(seen ? { seenCancellationPhase: seen.phase, seenTermsAt: seen.at } : {}) }),
       }),
 
     /** Fattura chiesta al professionista (docs/CHANGELOG.md §378): ultimi dati usati, per precompilare. */
@@ -2449,6 +2454,16 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     adminUndoSiteAdviceDone: (token: string, key: string) =>
       request<void>("/admin/site-advice/undo", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ key }) }),
+
+    /** Scadenze del sito e controllo della notte (docs/changelog/2026-11-13-admin-scadenze-controlli.md), solo super admin. */
+    adminSiteHealth: (token: string) =>
+      request<SiteHealth>("/admin/site-health", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminAddSiteDeadline: (token: string, input: SiteDeadlineInput) =>
+      request<SiteDeadline>("/admin/site-deadlines", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    adminSiteDeadlineDone: (token: string, id: string) =>
+      request<void>(`/admin/site-deadlines/${id}/done`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+    adminDeleteSiteDeadline: (token: string, id: string) =>
+      request<void>(`/admin/site-deadlines/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
 
     adminDeleteSiteNote: (token: string, id: string) =>
       request<void>(`/admin/site-notes/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),

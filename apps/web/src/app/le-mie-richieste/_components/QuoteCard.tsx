@@ -1,5 +1,6 @@
 "use client";
 
+import { useMinuteClock } from "@/lib/useMinuteClock";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ProfessionalReviewsLink } from "@/components/ProfessionalReviewsLink";
@@ -7,10 +8,11 @@ import type { ClientGuidedRequest } from "@professionisti/api-client";
 import {
   arrivalWindowText,
   TAX_BONUS_PAYMENT_NOTE,
-  cancellationNoticeLabel,
-  freeCancellationUntilLabel,
   capitalizeItemName,
-  isLateCancellation,
+  cancellationPhase,
+  type CancellationPhase,
+  type SeenCancellationTerms,
+  cancellationTerms,
   categoryMayHaveTaxBonus,
   formatAppointmentTimeRange,
   formatEurCents,
@@ -44,6 +46,7 @@ import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { textareaStyle } from "./clientRequestHelpers";
 import { QuoteDateChooser } from "./QuoteDateChooser";
 import { QuoteAcceptSummary } from "./QuoteAcceptSummary";
+import { CancellationTermsLines } from "@/components/CancellationTermsLines";
 import { InvoiceRequestFields, InvoiceRequestToggle, emptyInvoiceDraft, invoiceDraftFromView, type InvoiceDraft } from "@/components/ClientInvoiceRequestForm";
 
 export function formatQuoteDate(iso: string): string {
@@ -108,7 +111,7 @@ export function QuoteCard({
   notChosen?: boolean;
   token: string;
   onChanged: () => void;
-  onAcceptQuote: (quoteId: string, paymentMethod: JobPaymentChoice, invoiceRequest?: ClientInvoiceRequestInput) => Promise<void>;
+  onAcceptQuote: (quoteId: string, paymentMethod: JobPaymentChoice, invoiceRequest?: ClientInvoiceRequestInput, seen?: SeenCancellationTerms) => Promise<void>;
   /** Richiesta di origine, per i messaggi. */
   guidedRequestId: string;
   /** Modalità della richiesta originale — filtra le fasce proponibili a quelle che offrono questa modalità. */
@@ -124,6 +127,14 @@ export function QuoteCard({
   /** "Non ti serve più il lavoro? Elimina la richiesta" nella conferma di Rifiuta (docs/CHANGELOG.md §343): chi non vuole più il lavoro sceglieva "Rifiuta". */
   onDeleteRequest?: () => void;
 }) {
+  // Ora aggiornata ogni minuto: le frasi su annullare cambiano da sole (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
+  const now = useMinuteClock();
+  // Il momento che il riepilogo prima di "Accetta" mostra adesso, e da quando: va al server con "Accetta".
+  const acceptPhase = cancellationPhase(quote.estimatedStartDate, quote.estimatedEndDate, quote.cancellationNoticeHours, now);
+  const seenTermsRef = useRef<{ phase: CancellationPhase; at: Date }>({ phase: acceptPhase, at: now });
+  useEffect(() => {
+    if (seenTermsRef.current.phase !== acceptPhase) seenTermsRef.current = { phase: acceptPhase, at: new Date() };
+  }, [acceptPhase]);
   const [isChoosingDate, setIsChoosingDate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
@@ -217,7 +228,9 @@ export function QuoteCard({
     }
     setIsAccepting(true);
     try {
-      await onAcceptQuote(quote.id, method, invoiceRequest);
+      // Cosa c'era scritto sopra "Accetta": il server controlla che valga ancora (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
+      const seen = seenTermsRef.current;
+      await onAcceptQuote(quote.id, method, invoiceRequest, seen.phase === "over" ? undefined : { phase: seen.phase, at: seen.at.toISOString() });
     } catch (err) {
       if (err instanceof ApiError && err.code === "EMAIL_NOT_VERIFIED") {
         setNeedsEmail(true);
@@ -272,6 +285,22 @@ export function QuoteCard({
     />
   ) : null;
 
+  // La data in gioco: quella proposta dal cliente finché il professionista non risponde
+  // (tabella dei casi, docs/changelog/2026-11-13-annullare-una-fonte.md).
+  const cancelSlot =
+    quote.status === "MODIFICATION_REQUESTED" && quote.clientProposedDate
+      ? { start: quote.clientProposedDate, end: quote.clientProposedEndDate }
+      : { start: quote.estimatedStartDate, end: quote.estimatedEndDate };
+  const onlineOffered = onlinePayments && quote.paymentOptions.some(paymentChoiceIsOnline);
+  const cancelTerms = cancellationTerms({
+    phase: cancellationPhase(cancelSlot.start, cancelSlot.end, quote.cancellationNoticeHours, now),
+    start: cancelSlot.start,
+    hours: quote.cancellationNoticeHours,
+    money: !onlineOffered ? { kind: "none" } : quote.lateCancelKeepsDeposit ? { kind: "kept" } : { kind: "refunded" },
+    stage: "offer",
+    audience: "client",
+    onlineIsOption: onlineOffered,
+  });
   return (
     <YStack id={`quote-${quote.id}`} backgroundColor={brand.gesso} borderRadius="3" padding="3" gap="2">
       <XStack alignItems="center" gap="2">
@@ -480,34 +509,12 @@ export function QuoteCard({
             <PaymentOffer priceTotals={priceTotals} onlineAvailable={onlinePayments} offered={quote.paymentOptions} depositPercent={quote.depositPercent} />
           </QuoteFact>
         ) : null}
-        {/* Preavviso scelto dal professionista nel preventivo, detto prima di Accetta (docs/CHANGELOG.md §347, §348). */}
-        {(quote.status === "SENT" || quote.status === "MODIFICATION_REQUESTED") && !notChosen ? (
+        {/* Preavviso scelto dal professionista nel preventivo, detto prima di Accetta (docs/CHANGELOG.md §347, §348).
+            Frasi da una sola fonte, per ogni momento: prima del preavviso, dentro, fascia
+            iniziata; a data finita la riga non c'è (docs/changelog/2026-11-13-annullare-una-fonte.md). */}
+        {(quote.status === "SENT" || quote.status === "MODIFICATION_REQUESTED") && !notChosen && cancelTerms.notice ? (
           <QuoteFact label="Annullare">
-            {/* Già dentro il preavviso la data "annulla entro…" sarebbe passata: si dice
-                che mancano meno di 24 ore, come in QuoteAcceptSummary (Luca, 11/11,
-                docs/changelog/2026-11-13-annullare-data-passata.md). */}
-            {isLateCancellation(quote.estimatedStartDate, quote.cancellationNoticeHours) ? (
-              <Text fontSize={16} color={brand.grafite} data-testid="quote-cancel-late">
-                Mancano meno di {cancellationNoticeLabel(quote.cancellationNoticeHours)} all&apos;appuntamento.
-              </Text>
-            ) : (
-              <Text fontSize={16} color={brand.grafite}>
-                Avvisa almeno {cancellationNoticeLabel(quote.cancellationNoticeHours)} prima
-              </Text>
-            )}
-            {quote.lateCancelKeepsDeposit && onlinePayments && quote.paymentOptions.some(paymentChoiceIsOnline) ? (
-              // Detto chiaro sul preventivo, prima di accettare (Luca, 11/11, docs/changelog/2026-11-11-rosso-solo-errori.md).
-              <Text fontSize={13} fontWeight="600" color={brand.ottoneScuro}>
-                {isLateCancellation(quote.estimatedStartDate, quote.cancellationNoticeHours)
-                  ? "Pagando online, l'acconto non è rimborsabile, anche se annulli."
-                  : `Pagando online, se annulli dopo ${freeCancellationUntilLabel(quote.estimatedStartDate, quote.cancellationNoticeHours)} l'acconto non è rimborsabile.`}
-              </Text>
-            ) : onlinePayments && quote.paymentOptions.some(paymentChoiceIsOnline) ? (
-              // Acconto sempre rimborsabile: si dice, è un buon motivo per pagare online (Luca, 11/11).
-              <Text fontSize={13} color={brand.grafite70}>
-                Pagando online, se annulli prima dell&apos;appuntamento l&apos;acconto ti torna sempre.
-              </Text>
-            ) : null}
+            <CancellationTermsLines terms={cancelTerms} testId="quote-cancel" />
           </QuoteFact>
         ) : null}
       </YStack>
@@ -594,6 +601,7 @@ export function QuoteCard({
                 priceTotals={priceTotals}
                 payment={paymentMethod}
                 onlinePayments={onlinePayments}
+                now={now}
               >
                 {/* Fattura chiesta al professionista, non a noi (§378): qui, quando si è deciso (05/11/2026). */}
                 <YStack gap="3">
