@@ -202,7 +202,7 @@ function DaFare() {
                           {item.amountEurCents ? ` · ${formatEurCents(item.amountEurCents)}` : ""}
                         </Text>
                         {item.detail ? <div style={{ fontSize: 13, color: brand.grafite70 }}>{item.detail}</div> : null}
-                        {item.advice ? <div style={{ fontSize: 13, color: brand.cianografia, fontWeight: 600 }}>Il computer propone: {item.advice}</div> : null}
+                        {item.advice ? <div style={{ fontSize: 13, color: brand.cianografia, fontWeight: 600 }}>L&apos;IA propone: {item.advice}</div> : null}
                       </td>
                       <td>{item.who ?? "—"}</td>
                       <td>

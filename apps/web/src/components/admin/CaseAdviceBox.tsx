@@ -89,9 +89,9 @@ export function CaseAdviceBox({
   }
 
   return (
-    <YStack gap="2" padding="3" borderRadius={20} borderWidth={1} borderColor={brand.filetto} backgroundColor={brand.calce} role="note" aria-label="Proposta del computer">
+    <YStack gap="2" padding="3" borderRadius={20} borderWidth={1} borderColor={brand.filetto} backgroundColor={brand.calce} role="note" aria-label="Proposta dell'IA">
       <Text fontSize={13} fontWeight="700" color={brand.cianografia}>
-        {isMessage ? "Risposta proposta dal computer" : "Il computer propone"}
+        {isMessage ? "Risposta proposta dall'IA" : "L'IA propone"}
       </Text>
       {isMessage ? (
         advice.draft ? (

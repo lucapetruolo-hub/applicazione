@@ -42,18 +42,20 @@ le nostre linee guida e regole".
   e motivazione, DSA art. 17); "Modifica" compila il modulo di sempre. Nei
   casi di soldi "Approva la proposta" compila il modulo e apre la conferma di
   sempre (chi riceve cosa, quanto): nessun soldo si muove con un solo tocco.
-  Niente "approva tutti". In Da fare la riga mostra "Il computer propone: …".
+  Niente "approva tutti". In Da fare la riga mostra "L'IA propone: …".
 - Recensioni: nuova conseguenza "Chiedi all'autore di correggere la
   recensione": il cliente può cambiarla una volta da Le mie richieste.
 - Si conta per tipo, sulle ultime 100 decisioni, quante proposte l'admin ha
   deciso così come erano: per la moderazione dai servizi stessi, per i soldi
   leggendo lo stato del caso (anche quando si decide dalle pagine della
   Finanza). Le decisioni automatiche e gli accordi tra le parti non contano.
-  Nuova pagina Impostazioni → **Proposte del computer** (`/admin/proposte-ia`)
+  Nuova pagina Impostazioni → **Proposte dell'IA** (`/admin/proposte-ia`)
   con i numeri e le ultime volte in cui l'admin ha deciso diversamente.
 - Ognuno vede le proposte dei casi del suo ruolo (`CASE_ADVICE_KIND_SCOPE`):
   moderazione per segnalazioni, recensioni e messaggi, finanza per rimborsi e
   contestazioni, tutti per i problemi sul lavoro.
+
+- Nelle scritte dell'Admin si scrive "IA" (Luca, 13/11/2026: "il computer" faceva pensare a una regola fissa del sito): il controllo delle scritte semplici non la segna più. È più chiaro dire che è un'IA, e la legge europea sull'IA chiede di dirlo.
 
 **Perché** proposta sempre visibile e non un periodo in ombra: è la scelta di
 Luca. Il rischio è fidarsi troppo della proposta (detto una volta a Luca); per
@@ -70,4 +72,4 @@ conferma con cifre e nomi, e i numeri per tipo dicono dove l'IA sbaglia.
 - Test: `apps/api/src/admin/case-advice.test.ts` (pulizia della risposta,
   regole dei soldi nelle istruzioni, giro dopo le informazioni chieste, come
   si legge la decisione di un caso di soldi, numeri per tipo, chi vede cosa).
-  `pnpm lint` del sito (scritte semplici: "il computer" al posto di "IA").
+  `pnpm lint` del sito.

@@ -11,7 +11,7 @@ import { SkeletonTableRows } from "@/components/Skeleton";
 const decisionLabel = (d: string) => CASE_ADVICE_DECISION_LABEL[d as CaseAdviceDecision] ?? d;
 
 /**
- * Impostazioni → Proposte del computer (docs/changelog/2026-11-13-admin-ia-propone.md):
+ * Impostazioni → Proposte dell'IA (docs/changelog/2026-11-13-admin-ia-propone.md):
  * per ogni tipo di caso quante proposte l'admin ha deciso così come erano e
  * quante ha cambiato, con gli ultimi casi cambiati per migliorare le istruzioni.
  */
@@ -33,13 +33,13 @@ export default function AdminProposteIaPage() {
   return (
     <YStack gap="5">
       <AdminPageHeader
-        title="Proposte del computer"
-        description="In ogni caso il computer propone una decisione. Tu la approvi o la cambi. Qui vedi quante volte hai deciso come lui, sulle ultime 100 decisioni di ogni tipo."
+        title="Proposte dell'IA"
+        description="In ogni caso l'IA propone una decisione. Tu la approvi o la cambi. Qui vedi quante volte hai deciso come lei, sulle ultime 100 decisioni di ogni tipo."
       />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {data && !data.active ? (
         <Text fontWeight="700" color={brand.urgenza}>
-          Le proposte sono spente: manca la chiave sul server. I casi si decidono a mano come sempre.
+          L&apos;IA è spenta: manca la sua chiave sul server. I casi si decidono a mano come sempre.
         </Text>
       ) : null}
 
@@ -82,7 +82,7 @@ export default function AdminProposteIaPage() {
                 <tr>
                   <th>Quando</th>
                   <th>Tipo</th>
-                  <th>Il computer proponeva</th>
+                  <th>L&apos;IA proponeva</th>
                   <th>Hai deciso</th>
                   <th>Perché lo proponeva</th>
                 </tr>
@@ -92,7 +92,7 @@ export default function AdminProposteIaPage() {
                   <tr key={`${d.kind}:${d.caseId}`}>
                     <td data-label="Quando">{formatAdminDate(d.decidedAt)}</td>
                     <td data-label="Tipo">{CASE_ADVICE_KIND_LABEL[d.kind]}</td>
-                    <td data-label="Il computer proponeva">{decisionLabel(d.advice)}</td>
+                    <td data-label="L'IA proponeva">{decisionLabel(d.advice)}</td>
                     <td data-label="Hai deciso">{decisionLabel(d.admin)}</td>
                     <td data-label="Perché lo proponeva">{d.reason}</td>
                   </tr>
