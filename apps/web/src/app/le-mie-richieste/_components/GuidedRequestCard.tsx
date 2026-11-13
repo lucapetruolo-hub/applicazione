@@ -938,6 +938,7 @@ export function GuidedRequestCard({
           quote={acceptedQuote}
           serviceMode={request.serviceMode}
           from={booking.dateChange ? { start: booking.dateChange.start, end: booking.dateChange.end } : { start: booking.scheduledAt, end: booking.scheduledEndAt }}
+          booking={booking}
           onSent={() => {
             setShowReschedule(false);
             onChanged();

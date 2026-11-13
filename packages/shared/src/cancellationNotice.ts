@@ -242,3 +242,42 @@ export function bookingCancellationMoney(
   const full = totalMaxEurCents !== undefined && totalMaxEurCents > 0 && paid >= totalMaxEurCents;
   return { kind: lateCancelKeepsDeposit ? "kept" : "refunded", eurCents: paid, full };
 }
+
+/**
+ * Prima di spostare un appuntamento già fissato (accettare la nuova data o
+ * proporne una): cosa cambia per annullare con la data nuova
+ * (docs/changelog/2026-11-13-annullare-spostamento.md). Con l'acconto
+ * trattenuto e la data dentro il preavviso, l'acconto non sarà più
+ * rimborsabile: si dice prima, in ocra scuro. null se non cambia niente da dire.
+ */
+export function rescheduleCancellationLine(input: {
+  start: Date | string;
+  end?: Date | string | null;
+  hours: number | null | undefined;
+  money: CancellationMoney;
+  /** Chi sta scegliendo: il cliente accetta o propone, il professionista accetta la data del cliente. */
+  audience: "client" | "professional";
+  now?: Date;
+  formatAmount?: (eurCents: number) => string;
+}): CancellationLine | null {
+  const format = input.formatAmount ?? formatEurCents;
+  const phase = cancellationPhase(input.start, input.end, input.hours, input.now);
+  if (phase === "over") return null;
+  const notice = cancellationNoticeLabel(input.hours);
+  const kept = input.money.kind === "kept" ? input.money : null;
+  const what = kept ? depositPhrase(kept, format, false, "booked") : null;
+  if (phase === "free") {
+    if (!kept) return null;
+    return input.audience === "client"
+      ? { text: `Con questa data puoi annullare gratis fino a ${freeCancellationUntilLabel(input.start, input.hours)}.`, tone: "muted" }
+      : { text: `Con questa data il cliente può annullare gratis fino a ${freeCancellationUntilLabel(input.start, input.hours)}.`, tone: "muted" };
+  }
+  // Dentro il preavviso o già iniziata.
+  if (input.audience === "professional") {
+    return kept
+      ? { text: `Con questa data il preavviso è già iniziato: se il cliente annulla, ${what?.replace("quello che hai pagato online", "quello che ha pagato online")} resta a te.`, tone: "muted" }
+      : { text: `Con questa data mancano meno di ${notice} all'appuntamento.`, tone: "muted" };
+  }
+  if (kept) return { text: `Con questa data mancano meno di ${notice}: ${what} non sarà più rimborsabile, anche se annulli.`, tone: "warning" };
+  return { text: `Con questa data mancano meno di ${notice} all'appuntamento.`, tone: "muted" };
+}

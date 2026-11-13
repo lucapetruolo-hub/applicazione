@@ -27,7 +27,7 @@ if (!notesPath || !photoDir || !outPath) {
 
 /** Soglia di accensione decisa con Luca il 13/11/2026. */
 const THRESHOLD = { textAndPhoto: 0.91, photoOnly: 0.8, fastShare: 0.9, fastSeconds: 6 };
-const HEADER = ["n", "prova", "controllo", "categorie", "descrizione", "pericolo", "secondi"];
+const HEADER = ["n", "prova", "controllo", "categorie", "descrizione", "pericolo", "secondi", "riga_leggera"];
 
 /** CSV con il punto e virgola, campi anche tra virgolette. */
 function readCsv(path) {
@@ -84,6 +84,7 @@ for (let index = 0; index < jobs.length; index++) {
     const seconds = ((Date.now() - started) / 1000).toFixed(2);
     let categories = "";
     let safety = "";
+    let hint = "";
     if (r.photoId) {
       // Il risultato della foto lo dà la pagina dei risultati, come sul sito.
       const m = await fetch(`${api}/problem-match`, {
@@ -94,8 +95,9 @@ for (let index = 0; index < jobs.length; index++) {
       }).then((x) => x.json());
       categories = (m.categories ?? []).join("|");
       safety = m.safety ?? "";
+      hint = m.safetyHint ?? "";
     }
-    const row = [note.n, test, r.check, categories, r.description ?? "", safety, seconds];
+    const row = [note.n, test, r.check, categories, r.description ?? "", safety, seconds, hint];
     appendFileSync(outPath, row.map(csvField).join(";") + "\n");
     console.log(`${index + 1}/${jobs.length} ${note.file} ${test}: ${r.check} ${categories}`);
   } catch (err) {
@@ -115,7 +117,7 @@ const report = [];
 let pass = true;
 for (const test of ["testo+foto", "foto"]) {
   const rows = answers.filter((a) => a.prova === test && byN.has(a.n));
-  let jobs = 0, right = 0, checks = 0, checksOk = 0, danger = 0, dangerOk = 0;
+  let jobs = 0, right = 0, checks = 0, checksOk = 0, danger = 0, dangerOk = 0, hinted = 0;
   const wrong = [];
   for (const a of rows) {
     const key = byN.get(a.n);
@@ -134,7 +136,10 @@ for (const test of ["testo+foto", "foto"]) {
     // (decisione di Luca del 13/11/2026; colonna pericolo_visibile, da confermare coi giudici).
     if (key.pericolo && (test !== "foto" || key.pericolo_visibile !== "no")) {
       danger++;
+      // Coperto anche dalla riga leggera degli impianti visti in foto
+      // (docs/changelog/2026-11-13-pericoli-dalla-foto.md), contata a parte.
       if (a.pericolo) dangerOk++;
+      else if (a.riga_leggera) { dangerOk++; hinted++; }
       else wrong.push(`${key.file}: pericolo ${key.pericolo} non segnalato`);
     }
   }
@@ -144,7 +149,7 @@ for (const test of ["testo+foto", "foto"]) {
   report.push(
     `${test}: mestiere giusto ${pct(right, jobs)} (${right}/${jobs}), soglia ${bar * 100}%`,
     `  foto che non c'entrano o con dati personali riconosciute: ${pct(checksOk, checks)} (${checksOk}/${checks})`,
-    `  pericoli segnalati: ${dangerOk}/${danger}`,
+    `  pericoli segnalati: ${dangerOk}/${danger}${hinted ? ` (${hinted} solo con la riga leggera)` : ""}`,
     ...wrong.map((w) => `  - ${w}`),
   );
 }

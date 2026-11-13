@@ -107,6 +107,10 @@ export function ProblemBand({
   const showQuestion = Boolean(result.question && !questionDone);
   // Un mestiere che il sito non ha, proposto dall'IA (docs/changelog/2026-11-11-mestieri-che-mancano.md).
   const missingTrade = !chosen && !result.outOfService ? (result.missingTrade ?? null) : null;
+  // L'IA ha dato il mestiere: dal testo, dalla foto o proponendone uno che il sito non ha
+  // (non quando il cliente ha scelto a mano un mestiere fuori dalla proposta).
+  const aiSuggested =
+    Boolean(missingTrade) || (chosen !== null && result.categories.includes(chosen) && (result.source === "ia" || Boolean(photo)));
 
   // Tutti i mestieri da scegliere a mano: nella banda se non abbiamo capito, sotto
   // "Ce ne occupiamo noi" se l'IA propone un mestiere che il sito non ha.
@@ -125,7 +129,11 @@ export function ProblemBand({
 
   return (
     <YStack gap="3" width="100%" marginBottom="4">
-      {result.safety ? <SafetyNotice safety={result.safety} /> : null}
+      {result.safety ? (
+        <SafetyNotice safety={result.safety} />
+      ) : result.safetyHint ? (
+        <SafetyHint safety={result.safetyHint} />
+      ) : null}
 
       <YStack gap="3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4" padding="4">
         <Text fontSize={13} color={brand.grafite70}>
@@ -174,20 +182,6 @@ export function ProblemBand({
                 ))}
               </Text>
             ) : null}
-            {/* Trasparenza sull'intelligenza artificiale (AI Act art. 50, domanda 77 per
-                l'avvocato; collaudo del 29/10/2026, M-11): solo quando la proposta non
-                viene dal dizionario. */}
-            {result.source === "ia" && chosen === result.categories[0] ? (
-              <YStack gap="1">
-                <Text fontSize={13} color={brand.grafite70}>
-                  Proposta automatica: controlla che sia il mestiere giusto.{" "}
-                  <Link href="/privacy#fornitori" style={{ color: brand.cianografiaScuro }}>
-                    Come funziona
-                  </Link>
-                </Text>
-                {result.reportId ? <ReportAiAnswer key={result.reportId} reportId={result.reportId} /> : null}
-              </YStack>
-            ) : null}
             {/* Non solo i mestieri proposti: anche chi, di un altro mestiere (es. un
                 tuttofare), ha questo lavoro tra le prestazioni (richiesta di Luca, 9/11). */}
             {otherTradesCount > 0 ? (
@@ -220,6 +214,23 @@ export function ProblemBand({
             Che lavoro ti serve?
           </Text>
         )}
+
+        {/* Trasparenza sull'intelligenza artificiale (AI Act art. 50, domanda 77 per
+            l'avvocato; collaudo del 29/10/2026, M-11): ogni volta che la proposta viene
+            dall'IA, anche da una foto o con un mestiere che il sito non ha, mai col solo
+            dizionario (richiesta di Luca del 13/11, docs/changelog/2026-11-13-pericoli-dalla-foto.md). */}
+        {aiSuggested ? (
+          <YStack gap="1">
+            <Text fontSize={13} color={brand.grafite70}>
+              Suggerimento dell'intelligenza artificiale: può sbagliare, controlla che sia il mestiere giusto.{" "}
+              <Link href="/privacy#fornitori" style={{ color: brand.cianografiaScuro }}>
+                Come funziona
+              </Link>
+            </Text>
+            {/* "Segnala un errore" (docs/changelog/2026-11-13-segnala-risposta-ia.md). */}
+            {result.reportId ? <ReportAiAnswer key={result.reportId} reportId={result.reportId} /> : null}
+          </YStack>
+        ) : null}
 
         {/* La domanda nello stesso riquadro, subito sotto il titolo: la
             risposta sceglie il mestiere (docs/changelog/2026-11-09-banda-mestieri-chiara.md). */}
@@ -415,6 +426,43 @@ export function SafetyNotice({ safety }: { safety: NonNullable<ProblemMatchResul
         {text.after}
       </Text>
     </YStack>
+  );
+}
+
+/**
+ * Riga leggera quando nella foto c'è un impianto (gas, quadro elettrico, caldaia)
+ * ma nessun pericolo detto: apre lo stesso avviso, senza allarmare chi non ne ha
+ * bisogno (decisione di Luca del 13/11, docs/changelog/2026-11-13-pericoli-dalla-foto.md).
+ */
+export function SafetyHint({ safety }: { safety: NonNullable<ProblemMatchResult["safetyHint"]> }) {
+  const text = PROBLEM_SAFETY_TEXTS[safety];
+  return (
+    <details
+      style={{
+        border: `1px solid ${brand.filetto}`,
+        borderRadius: 10,
+        padding: "10px 14px",
+        background: brand.calce,
+      }}
+    >
+      <summary style={{ cursor: "pointer", fontWeight: 600, color: brand.grafite, fontSize: 16 }}>
+        Senti odore di gas, fumo o bruciato? Ecco cosa fare
+      </summary>
+      <YStack gap="2" marginTop="2">
+        <ul style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 4 }}>
+          {text.steps.map((step) => (
+            <li key={step}>
+              <Text fontSize={16} color={brand.grafite}>
+                {step}
+              </Text>
+            </li>
+          ))}
+        </ul>
+        <Text fontSize={16} color={brand.grafite70}>
+          {text.after}
+        </Text>
+      </YStack>
+    </details>
   );
 }
 

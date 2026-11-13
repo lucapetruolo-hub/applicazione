@@ -1557,7 +1557,7 @@ export function GuidedRequestForm({
                 {suggestion?.source === "ia" && autoSlug && categorySlugs.includes(autoSlug) ? (
                   // Trasparenza sull'intelligenza artificiale come nella ricerca (AI Act art. 50).
                   <>
-                    {" "}Proposta automatica.{" "}
+                    {" "}Suggerimento dell'intelligenza artificiale: può sbagliare, controlla.{" "}
                     <Link href="/privacy#fornitori" style={{ color: brand.cianografiaScuro }}>
                       Come funziona
                     </Link>

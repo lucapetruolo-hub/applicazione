@@ -28,6 +28,12 @@ import {
   RECURRING_FREQUENCY_LABELS,
   recurringAllowedForCategory,
   type RecurringFrequency,
+  bookingCancellationMoney,
+  cancellationPhase,
+  cancellationTerms,
+  cancellationTermsText,
+  depositKeptOnLateCancel,
+  toJobPaymentSummary,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { formatSlotForTimeline } from "../common/format-date.util";
@@ -873,6 +879,29 @@ export class QuotesService {
     };
   }
 
+  /** Cosa vale per annullare con la data nuova, per chi riceve l'email (docs/changelog/2026-11-13-annullare-spostamento.md). */
+  private async movedBookingCancelNotice(bookingId: string, start: Date, end: Date | null, audience: "client" | "professional", now: Date): Promise<string | null> {
+    const row = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: {
+        cancellationNoticeHours: true,
+        acceptedTerms: true,
+        finalAmountEurCents: true,
+        jobPayment: true,
+        quote: { select: { lateCancelKeepsDeposit: true, items: { select: { priceMinEurCents: true, priceMaxEurCents: true } } } },
+      },
+    });
+    if (!row) return null;
+    const money = bookingCancellationMoney(
+      toJobPaymentSummary(row.jobPayment, row.finalAmountEurCents),
+      depositKeptOnLateCancel(row.quote?.lateCancelKeepsDeposit, row.acceptedTerms),
+      quotePriceTotals(row.quote?.items ?? []).totalMaxEurCents,
+    );
+    return cancellationTermsText(
+      cancellationTerms({ phase: cancellationPhase(start, end, row.cancellationNoticeHours, now), start, hours: row.cancellationNoticeHours, money, stage: "booked", audience }),
+    );
+  }
+
   /**
    * "Accetta nuova data" su un appuntamento già fissato (docs/changelog/2026-10-28-promemoria-whatsapp.md):
    * l'appuntamento si sposta con acconto e pagamento com'erano, e
@@ -933,11 +962,14 @@ export class QuotesService {
     }
     await this.whatsAppService.forgetBookingReminders(booking.id, now);
     const byClient = answeredBy === "CLIENT";
+    // La nuova scadenza per annullare, nell'email a chi non ha accettato (docs/changelog/2026-11-13-annullare-spostamento.md).
+    const cancelNotice = await this.movedBookingCancelNotice(booking.id, scheduledAt, scheduledEndAt, byClient ? "professional" : "client", now);
     await this.notificationsService.notify(byClient ? professionalUserId : quote.guidedRequest.clientId, byClient ? "QUOTE_DATE_CONFIRMED_BY_CLIENT" : "QUOTE_DATE_CONFIRMED", {
       guidedRequestId: quote.guidedRequestId,
       quoteId: quote.id,
       bookingId: booking.id,
       booked: true,
+      ...(cancelNotice ? { cancelNotice } : {}),
       from: slotPayload(booking.scheduledAt, booking.scheduledEndAt),
       to: slotPayload(scheduledAt, scheduledEndAt),
     });

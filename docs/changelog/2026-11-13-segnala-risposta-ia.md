@@ -4,8 +4,8 @@
 dell'ai da parte dell'utente".
 
 **Decisione**:
-- Nei risultati della ricerca per problema, sotto "Proposta automatica:
-  controlla che sia il mestiere giusto", il link "Segnala un errore" (solo
+- Nei risultati della ricerca per problema, sotto "Suggerimento
+  dell'intelligenza artificiale: può sbagliare…", il link "Segnala un errore" (solo
   quando la proposta viene dall'IA). Il cliente sceglie "Il mestiere è
   sbagliato", "Il lavoro indicato è sbagliato" o "Altro" e può aggiungere una
   nota (300 caratteri, numeri ed email tolti come nel testo del problema).

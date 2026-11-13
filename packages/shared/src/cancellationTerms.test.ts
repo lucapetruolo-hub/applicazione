@@ -8,6 +8,7 @@ import {
   freeCancellationDeadline,
   freeCancellationUntilLabel,
   isLateCancellation,
+  rescheduleCancellationLine,
   type CancellationMoney,
   type CancellationPhase,
   type CancellationTermsInput,
@@ -168,4 +169,22 @@ test("prove a caso: adesso + resto = massimo, e acconto mai sotto zero", () => {
     }),
     { numRuns: 2000 },
   );
+});
+
+// Spostare un appuntamento già fissato (docs/changelog/2026-11-13-annullare-spostamento.md).
+test("spostare l'appuntamento: avviso prima di accettare una data dentro il preavviso", () => {
+  const line = (money: CancellationMoney, audience: "client" | "professional", phase: CancellationPhase) =>
+    rescheduleCancellationLine({ start: START, end: END, hours: 24, money, audience, now: NOW[phase] });
+  assert.deepEqual(clean(line(KEPT, "client", "late")?.text), "Con questa data mancano meno di 24 ore: l'acconto di 24,00 € non sarà più rimborsabile, anche se annulli.");
+  assert.equal(line(KEPT, "client", "late")?.tone, "warning");
+  assert.deepEqual(clean(line(KEPT_FULL, "client", "late")?.text), "Con questa data mancano meno di 24 ore: quello che hai pagato online (1.150,00 €) non sarà più rimborsabile, anche se annulli.");
+  assert.deepEqual(clean(line(KEPT, "client", "free")?.text), "Con questa data puoi annullare gratis fino a giovedì 19 novembre alle 08:00.");
+  assert.equal(line(BACK, "client", "free"), null);
+  assert.equal(line(NONE, "client", "free"), null);
+  assert.deepEqual(clean(line(BACK, "client", "late")?.text), "Con questa data mancano meno di 24 ore all'appuntamento.");
+  assert.deepEqual(clean(line(NONE, "client", "started")?.text), "Con questa data mancano meno di 24 ore all'appuntamento.");
+  assert.deepEqual(clean(line(KEPT, "professional", "late")?.text), "Con questa data il preavviso è già iniziato: se il cliente annulla, l'acconto di 24,00 € resta a te.");
+  assert.deepEqual(clean(line(KEPT_FULL, "professional", "late")?.text), "Con questa data il preavviso è già iniziato: se il cliente annulla, quello che ha pagato online (1.150,00 €) resta a te.");
+  assert.deepEqual(clean(line(KEPT, "professional", "free")?.text), "Con questa data il cliente può annullare gratis fino a giovedì 19 novembre alle 08:00.");
+  assert.equal(line(KEPT, "client", "over"), null);
 });

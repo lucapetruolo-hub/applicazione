@@ -14,7 +14,7 @@ import type { WhatsAppService } from "../whatsapp/whatsapp.service";
 const FAR = new Date("2099-03-10T10:00:00.000Z");
 const FAR_END = new Date("2099-03-10T12:00:00.000Z");
 
-function setup(options: { otherBookings?: { scheduledAt: Date; scheduledEndAt: Date | null; serviceMode: string | null }[] } = {}) {
+function setup(options: { otherBookings?: { scheduledAt: Date; scheduledEndAt: Date | null; serviceMode: string | null }[]; depositKept?: boolean } = {}) {
   const booking: Record<string, unknown> = {
     id: "b1",
     status: "CONFIRMED",
@@ -53,6 +53,16 @@ function setup(options: { otherBookings?: { scheduledAt: Date; scheduledEndAt: D
       update: vi.fn(async ({ data }: { data: Record<string, unknown> }) => Object.assign(quote, data)),
     },
     booking: {
+      // Soldi e preavviso del lavoro, per la nuova scadenza nell'email (docs/changelog/2026-11-13-annullare-spostamento.md).
+      findUnique: vi.fn(async () => ({
+        cancellationNoticeHours: 24,
+        acceptedTerms: null,
+        finalAmountEurCents: null,
+        jobPayment: options.depositKept
+          ? { paymentMethod: "MANOVIA", balanceDirect: true, onlineStage: "DEPOSIT_PAID", depositEurCents: 2400, paidEurCents: 2400, refundedEurCents: 0, platformFeeEurCents: 0, stripeFeeEurCents: 0, netAmountEurCents: 0, releaseDueAt: null, releasedAt: null, balanceUnpaidAt: null }
+          : null,
+        quote: { lateCancelKeepsDeposit: !!options.depositKept, items: [{ priceMinEurCents: 12000, priceMaxEurCents: 12000 }] },
+      })),
       update: vi.fn(async ({ data }: { data: Record<string, unknown> }) => Object.assign(booking, data)),
       updateMany: vi.fn(async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
         if (booking.status !== where.status || booking.rescheduleRequestedAt === null) return { count: 0 };
@@ -190,5 +200,26 @@ describe("Altra data per un appuntamento già fissato, dalla proposta standard",
     expect(booking.scheduledAt).toBe(FAR);
     expect(booking.rescheduleRequestedAt).toBeNull();
     expect(notify).toHaveBeenCalledWith("pro1", "QUOTE_DATE_REJECTED_BY_CLIENT", expect.objectContaining({ bookingId: "b1" }));
+  });
+
+  it("l'email della data spostata dice la nuova scadenza per annullare (docs/changelog/2026-11-13-annullare-spostamento.md)", async () => {
+    const { service, notify } = setup({ depositKept: true });
+    await service.proposeDate("c1", "q1", PROPOSAL);
+    notify.mockClear();
+    await service.confirmProposedDate("pro1", "q1");
+    expect(notify).toHaveBeenCalledWith(
+      "c1",
+      "QUOTE_DATE_CONFIRMED",
+      expect.objectContaining({ cancelNotice: expect.stringMatching(/^Annullamento gratuito fino a mercoledì 11 marzo alle 15:00\. Dopo, l'acconto di 24,00\s€ non è rimborsabile\.$/) }),
+    );
+  });
+
+  it("senza acconto trattenuto, al professionista si dice entro quando il cliente deve avvisare", async () => {
+    const { service, notify } = setup();
+    await service.proposeDate("c1", "q1", PROPOSAL);
+    await service.counterProposeDate("pro1", "q1", { date: "2099-03-13", startTime: "09:00", endTime: "11:00", isManual: true });
+    notify.mockClear();
+    await service.confirmProposedDate("c1", "q1");
+    expect(notify).toHaveBeenCalledWith("pro1", "QUOTE_DATE_CONFIRMED_BY_CLIENT", expect.objectContaining({ cancelNotice: "Se annulla, il cliente deve avvisarti entro giovedì 12 marzo alle 09:00." }));
   });
 });
