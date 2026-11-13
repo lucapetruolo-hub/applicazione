@@ -603,6 +603,12 @@ body:has(.chosen-bar) {
   width: min(120px, calc(100% - 28px));
   opacity: 0;
 }
+/* Nei pulsanti bianchi la barra resta verde come prima (scelta di Luca,
+   docs/changelog/2026-11-13-barra-colori-velo.md): i colori del velo solo
+   nella barra in cima e sulla mappa. */
+.button-wait-overlay .flow-bar:not(.flow-bar--light) {
+  background-image: linear-gradient(90deg, #1e6b6e, #247c7c, #8ac6c8, #247c7c, #1e6b6e);
+}
 .button-wait-overlay.is-shown .flow-bar {
   opacity: 1;
 }

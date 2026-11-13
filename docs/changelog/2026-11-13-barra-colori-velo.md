@@ -20,10 +20,13 @@ verde non compare un marrone. Va contro la scelta "solo verdi" del 05/11
 (docs/changelog/2026-11-05-barra-di-attesa.md), su richiesta esplicita di
 Luca. Mostrata anche una versione "tenue" (pastello), non scelta: a 3 px si
 vede poco sul velo chiaro. Restano bianche la barra e la rotellina dentro i
-pulsanti verdi e rossi; sagome e pallini restano neutri.
+pulsanti verdi e rossi, verde quella nei pulsanti bianchi; sagome e pallini restano neutri.
 
 Poi Luca sceglie la vivace e approva la miglioria: in cima allo schermo la
 barra è alta 4 px sul computer (da 760 px di larghezza, come le altre regole del sito), 3 px sul telefono.
+Luca chiede poi di non cambiare i pulsanti: dentro i pulsanti bianchi la
+barra resta verde come prima (`.button-wait-overlay`), i colori del velo solo
+nella barra in cima e in "Cerca in quest'area" sulla mappa.
 
 **Verifica**: foto prima/dopo da telefono e computer e confronto ingrandito
 delle versioni in `anteprime/barra-colori/` della cartella del progetto.
