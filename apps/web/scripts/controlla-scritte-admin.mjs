@@ -40,7 +40,7 @@ const RULES = [
   [/\b[Mm]isur[ae]\b(?! (il|i|le|la|lo|gli)\b)/, "conseguenza, decisione"],
   [/\b[Aa]ggregazion[ei]\b/, "conti"],
   [/\b[Qq]uadratura\b/, "controllo dei conti"],
-  [/\bIA\b|\bdall'IA\b/, "il computer"],
+  // "IA" si scrive (decisione di Luca del 13/11/2026, docs/changelog/2026-11-13-admin-ia-propone.md): dire che è un'IA è più chiaro e lo chiede la legge europea sull'IA.
   [/\b[Mm]edian[ao]\b/, "di solito, a metà"],
   [/\b(sandbox|webhook|backend|deploy|token|endpoint|funnel|cron)\b/i, "parole semplici, oppure dentro <TechNote>"],
 ];

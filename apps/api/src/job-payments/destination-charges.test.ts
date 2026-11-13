@@ -561,6 +561,79 @@ describe("saldo addebitato sulla carta dell'acconto (§267)", () => {
   });
 });
 
+describe("prezzo finale sopra il minimo: 48 ore per dire di no (13/11)", () => {
+  const NOW = new Date("2026-11-20T15:00:00Z");
+  function heldJob(overrides: Record<string, unknown> = {}) {
+    return {
+      id: "jp-1",
+      onlineStage: "AWAITING_BALANCE",
+      paymentMethod: "MANOVIA",
+      paidEurCents: 2000,
+      depositEurCents: 2000,
+      balanceDirect: false,
+      clientStripeCustomerId: "cus_1",
+      savedPaymentMethodId: "pm_1",
+      stripeDestinationAccountId: "acct_1",
+      balanceAutoChargeAt: new Date("2026-11-22T15:00:00Z"),
+      booking: { id: "b-1", clientId: "client-1", finalAmountEurCents: 10000, issue: null, quote: { guidedRequestId: "gr-1" } },
+      ...overrides,
+    };
+  }
+
+  it("alla chiusura non addebita: fissa l'addebito fra 48 ore", async () => {
+    const { service, prisma, stripe } = buildService();
+    prisma.jobPayment.findUniqueOrThrow.mockResolvedValue({ ...heldJob({ onlineStage: "DEPOSIT_PAID", balanceAutoChargeAt: null }), refundedEurCents: 0, stripeFeeEurCents: 0, releasedAt: null });
+    stripe.paymentIntents.create = vi.fn();
+
+    const result = await service.afterCompletion("jp-1", 10000, 500, { autoCharge: true, waitForClient: true, now: NOW });
+
+    expect(result).toEqual({ balanceDueEurCents: 8000, autoChargedEurCents: 0, autoChargeAt: new Date("2026-11-22T15:00:00Z") });
+    expect(stripe.paymentIntents.create).not.toHaveBeenCalled();
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith({ where: { id: "jp-1" }, data: { balanceAutoChargeAt: new Date("2026-11-22T15:00:00Z") } });
+  });
+
+  it("allo scadere addebita il resto sulla carta salvata", async () => {
+    const { service, prisma, stripe } = buildService();
+    prisma.jobPayment.findMany.mockResolvedValue([{ id: "jp-1" }]);
+    prisma.jobPayment.findUnique.mockResolvedValue(heldJob());
+    const charge = vi.spyOn(service as unknown as { chargeSavedCard: (id: string, amount: number) => Promise<boolean> }, "chargeSavedCard").mockResolvedValue(true);
+    stripe.paymentIntents.create = vi.fn();
+
+    await expect(service.runHeldBalanceCharges(new Date("2026-11-22T15:30:00Z"))).resolves.toBe(1);
+    expect(prisma.jobPayment.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ balanceAutoChargeAt: { lte: new Date("2026-11-22T15:30:00Z") } }) }));
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith({ where: { id: "jp-1", balanceAutoChargeAt: new Date("2026-11-22T15:00:00Z") }, data: { balanceAutoChargeAt: null } });
+    expect(charge).toHaveBeenCalledWith("jp-1", 8000);
+  });
+
+  it("con un problema segnalato non addebita nulla", async () => {
+    const { service, prisma } = buildService();
+    prisma.jobPayment.findUnique.mockResolvedValue(heldJob({ booking: { id: "b-1", clientId: "client-1", finalAmountEurCents: 10000, issue: { id: "i-1" }, quote: null } }));
+    const charge = vi.spyOn(service as unknown as { chargeSavedCard: (id: string, amount: number) => Promise<boolean> }, "chargeSavedCard");
+
+    await expect(service.chargeHeldBalance("jp-1", "EXPIRED")).resolves.toBe(false);
+    expect(charge).not.toHaveBeenCalled();
+  });
+
+  it("un secondo giro non addebita due volte", async () => {
+    const { service, prisma } = buildService();
+    prisma.jobPayment.findUnique.mockResolvedValue(heldJob());
+    prisma.jobPayment.updateMany.mockResolvedValue({ count: 0 });
+    const charge = vi.spyOn(service as unknown as { chargeSavedCard: (id: string, amount: number) => Promise<boolean> }, "chargeSavedCard");
+
+    await expect(service.chargeHeldBalance("jp-1", "CONFIRMED")).resolves.toBe(false);
+    expect(charge).not.toHaveBeenCalled();
+  });
+
+  it("carta rifiutata allo scadere: il cliente riceve il link per pagare", async () => {
+    const { service, prisma, notificationsService } = buildService();
+    prisma.jobPayment.findUnique.mockResolvedValue(heldJob());
+    vi.spyOn(service as unknown as { chargeSavedCard: (id: string, amount: number) => Promise<boolean> }, "chargeSavedCard").mockResolvedValue(false);
+
+    await expect(service.chargeHeldBalance("jp-1", "EXPIRED")).resolves.toBe(false);
+    expect(notificationsService.notify).toHaveBeenCalledWith("client-1", "JOB_BALANCE_DUE", expect.objectContaining({ amountEurCents: 8000, autoChargeFailed: true }));
+  });
+});
+
 describe("OnlineMoneyService.alertLongHolds", () => {
   it("avvisa una volta il team Finanza dei soldi bloccati da più di 80 giorni", async () => {
     const { service, prisma, notificationsService } = buildService();

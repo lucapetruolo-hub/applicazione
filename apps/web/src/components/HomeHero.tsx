@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import {
   DEFAULT_PROBLEM_EXAMPLES,
   FIELD_PROBLEM_EXAMPLES,
@@ -21,6 +21,7 @@ import { useThinkingLabel } from "@/lib/useThinkingLabel";
 import { apiClient } from "@/lib/apiClient";
 import { localPreviewUrl } from "@/lib/media";
 import { forgetSearchPhoto, rememberSearchPhoto, shrinkPhoto } from "@/lib/photoSearch";
+import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "./TurnstileWidget";
 import { GlowLights } from "./GlowLights";
 import { MagneticButton } from "./MagneticButton";
 import styles from "./HomeHero.module.css";
@@ -53,6 +54,18 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
   // Ricerca con foto (docs/changelog/2026-11-13-ricerca-con-foto.md): facoltativa, accanto al testo.
   const [photo, setPhoto] = useState<{ blob: Blob; preview: string } | null>(null);
   const [photoMessage, setPhotoMessage] = useState<string | null>(null);
+  // Anti-bot prima di mandare la foto (docs/changelog/2026-11-13-difese-ricerca-con-foto.md):
+  // il widget si carica solo dopo aver scelto una foto, la home resta leggera.
+  const turnstileToken = useRef<string | null>(null);
+  const [turnstileReset, setTurnstileReset] = useState(0);
+
+  /** Il token di Turnstile, aspettando qualche secondo se la verifica non è ancora pronta. */
+  async function waitForTurnstile(): Promise<string | null> {
+    for (let waited = 0; !turnstileToken.current && waited < 5000; waited += 250) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    return turnstileToken.current;
+  }
 
   async function choosePhoto(file: File) {
     setPhotoMessage(null);
@@ -80,7 +93,16 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
     setReadingPhoto(true);
     setPhotoMessage(null);
     try {
-      const result = await apiClient.analyzeProblemPhoto(blob, { description: query, city });
+      const token = isTurnstileEnabled() ? await waitForTurnstile() : null;
+      if (isTurnstileEnabled() && !token) {
+        if (query.trim()) return false;
+        setPhotoMessage(TURNSTILE_PENDING_MESSAGE);
+        return true;
+      }
+      // Il token vale una volta sola: dopo l'invio se ne chiede uno nuovo.
+      turnstileToken.current = null;
+      setTurnstileReset((n) => n + 1);
+      const result = await apiClient.analyzeProblemPhoto(blob, { description: query, city, turnstileToken: token ?? undefined });
       if (!result.photoId) {
         // IA occupata o senza risposta (banco di prova del 13/11): con il testo si cerca lo stesso.
         if (result.check === "spenta" && query.trim()) return false;
@@ -173,7 +195,16 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
                 mode === "domicilio" ? (
                   <>
                     {photoSearch ? (
-                      <PhotoPicker photo={photo?.preview ?? null} busy={readingPhoto} message={photoMessage} onChoose={choosePhoto} onRemove={removePhoto} />
+                      <PhotoPicker photo={photo?.preview ?? null} busy={readingPhoto} message={photoMessage} onChoose={choosePhoto} onRemove={removePhoto}>
+                        {photo ? (
+                          <TurnstileWidget
+                            onTokenChange={(token) => {
+                              turnstileToken.current = token;
+                            }}
+                            resetSignal={turnstileReset}
+                          />
+                        ) : null}
+                      </PhotoPicker>
                     ) : null}
                     <HeroExamples problems={heroExamples.visible} trades={heroExamples.trades} onPick={searchFor} />
                   </>
@@ -272,12 +303,15 @@ function PhotoPicker({
   message,
   onChoose,
   onRemove,
+  children,
 }: {
   photo: string | null;
   busy: boolean;
   message: string | null;
   onChoose: (file: File) => void;
   onRemove: () => void;
+  /** Il controllo anti-bot, solo con la foto scelta. */
+  children?: ReactNode;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
@@ -315,6 +349,7 @@ function PhotoPicker({
       ) : (
         <span className="hero-photo-hint">Facoltativa. Non fotografare persone o documenti.</span>
       )}
+      {children}
     </div>
   );
 }

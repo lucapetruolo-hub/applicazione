@@ -5,7 +5,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { PlatformFeeRulesService } from "../platform-fee-rules/platform-fee-rules.service";
 import {
-  onlineDepositEurCents,
+  quoteDepositEurCents,
   onlineTargetEurCents,
   paymentChoiceIsOnline,
   professionalPayoutTotals,
@@ -50,6 +50,8 @@ export class JobPaymentsService {
     /** Percentuale dell'acconto online scelta dal professionista nel preventivo (§237). */
     depositPercent?: number;
     quoteMaxEurCents: number;
+    /** Prezzo minimo: con "tutto online" e una forbice l'acconto è il minimo (docs/changelog/2026-11-13-tutto-online-forbice.md). */
+    quoteMinEurCents?: number;
     clientUserId: string;
   }): Promise<void> {
     const existing = await this.prisma.jobPayment.findUnique({ where: { bookingId: params.bookingId } });
@@ -65,7 +67,7 @@ export class JobPaymentsService {
         platformFeeEurCents: 0,
         netAmountEurCents: params.quoteMaxEurCents,
         ...(online
-          ? { onlineStage: "AWAITING_DEPOSIT", depositEurCents: onlineDepositEurCents(params.quoteMaxEurCents, params.depositPercent), balanceDirect }
+          ? { onlineStage: "AWAITING_DEPOSIT", depositEurCents: quoteDepositEurCents({ totalMinEurCents: params.quoteMinEurCents ?? params.quoteMaxEurCents, totalMaxEurCents: params.quoteMaxEurCents }, params.depositPercent), balanceDirect }
           : {}),
       },
     });
@@ -134,7 +136,9 @@ export class JobPaymentsService {
     alreadyConfirmedByClient?: boolean;
     /** Importo finale dentro il preventivo accettato: il saldo si può addebitare sulla carta salvata (§267). */
     autoChargeBalance?: boolean;
-  }): Promise<{ balanceDueEurCents: number; autoChargedEurCents: number } | null> {
+    /** Prezzo finale sopra il minimo: il saldo aspetta 48 ore la risposta del cliente. */
+    waitForClient?: boolean;
+  }): Promise<{ balanceDueEurCents: number; autoChargedEurCents: number; autoChargeAt?: Date } | null> {
     const existing = await this.prisma.jobPayment.findUnique({ where: { bookingId: params.bookingId }, include: { booking: true } });
 
     if (existing?.paymentMethod === "MANOVIA") {
@@ -145,7 +149,7 @@ export class JobPaymentsService {
       const fee = this.feeRulesService.computeFee(onlineTarget, rule);
       const appFee = Math.min(onlineTarget, fee + vatOnEurCents(fee));
       if (rule) await this.prisma.jobPayment.update({ where: { id: existing.id }, data: { appliedFeeRuleId: rule.id } });
-      const result = await this.onlineMoneyService.afterCompletion(existing.id, params.grossAmountEurCents, appFee, { autoCharge: params.autoChargeBalance });
+      const result = await this.onlineMoneyService.afterCompletion(existing.id, params.grossAmountEurCents, appFee, { autoCharge: params.autoChargeBalance, waitForClient: params.waitForClient });
       if (params.alreadyConfirmedByClient) await this.onlineMoneyService.releaseIfDue(existing.id).catch(() => false);
       return result;
     }
@@ -197,6 +201,8 @@ export class JobPaymentsService {
   async confirmDirect(bookingId: string, clientUserId: string): Promise<void> {
     const jobPayment = await this.prisma.jobPayment.findUnique({ where: { bookingId } });
     if (jobPayment?.paymentMethod === "MANOVIA") {
+      // "Va bene" sul prezzo finale: il saldo in attesa parte subito dalla carta.
+      if (jobPayment.balanceAutoChargeAt) await this.onlineMoneyService.chargeHeldBalance(jobPayment.id, "CONFIRMED").catch(() => false);
       // Mai bloccare la conferma del cliente: se l'accredito non riesce ora, lo riprova il giro orario.
       await this.onlineMoneyService.releaseIfDue(jobPayment.id).catch(() => false);
       return;

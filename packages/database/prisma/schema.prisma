@@ -1668,6 +1668,10 @@ model Review {
   // Aggiornata dal cliente una sola volta dopo una segnalazione a lavoro
   // chiuso finita senza accordo (stessa decisione).
   updatedAfterIssueAt   DateTime?
+  // Un admin ha chiesto all'autore di correggerla ("Chiedi all'autore di
+  // correggere", docs/changelog/2026-11-13-admin-ia-propone.md): può
+  // cambiarla una volta, poi il campo torna vuoto.
+  correctionRequestedAt DateTime?
   // Promemoria al professionista per una recensione da 1-2 stelle ancora
   // senza risposta dopo 3 giorni, uno solo (decisione di Luca del 30/10/2026).
   replyReminderSentAt   DateTime?
@@ -2460,6 +2464,10 @@ model JobPayment {
   savedPaymentMethodId         String?
   balanceAutoChargedAt         DateTime?
   balanceAutoChargeFailedAt    DateTime?
+  // Prezzo finale sopra il minimo del preventivo: il saldo si addebita da
+  // solo a quest'ora, 48 ore dopo la chiusura, se il cliente non conferma
+  // prima o non segnala un problema (docs/changelog/2026-11-13-tutto-online-forbice.md).
+  balanceAutoChargeAt          DateTime?
 
   // --- DIRECT (auto-dichiarazione + conferma cliente) ---
   directReportedAt   DateTime?
@@ -3662,4 +3670,28 @@ model RecurringJob {
 
   @@index([stoppedAt])
   @@map("recurring_jobs")
+}
+
+/// Proposta dell'IA per un caso di Da fare (docs/changelog/2026-11-13-admin-ia-propone.md).
+/// Si vede in ogni caso; quando l'admin decide si salva la sua decisione e se ha
+/// approvato la proposta così com'era.
+model AdminCaseAdvice {
+  id             String    @id @default(uuid())
+  /// CONTENT_REPORT, HELD_REVIEW, REPORT_APPEAL o CONTACT_MESSAGE (`CaseAdviceKind`).
+  kind           String
+  caseId         String
+  decision       String
+  reason         String
+  ground         String?
+  note           String?
+  draft          String?
+  model          String
+  createdAt      DateTime  @default(now())
+  adminDecision  String?
+  adminDecidedAt DateTime?
+  agrees         Boolean?
+
+  @@unique([kind, caseId])
+  @@index([kind, adminDecidedAt])
+  @@map("admin_case_advice")
 }

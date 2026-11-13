@@ -16,7 +16,8 @@ export type ModerationAction = (typeof moderationActions)[number];
  * automatica.
  */
 export const MODERATION_ACTIONS_BY_TARGET: Record<ContentReportTargetType, readonly ModerationAction[]> = {
-  REVIEW: ["HIDE_CONTENT", "WARN", "SUSPEND_USER"],
+  // "Chiedi all'autore di correggere": può modificare la recensione una volta (docs/changelog/2026-11-13-admin-ia-propone.md).
+  REVIEW: ["HIDE_CONTENT", "REQUEST_CORRECTION", "WARN", "SUSPEND_USER"],
   PROFESSIONAL_PROFILE: ["SUSPEND_PROFILE", "REQUEST_CORRECTION", "WARN", "SUSPEND_USER"],
   GUIDED_REQUEST: ["HIDE_CONTENT", "WARN", "SUSPEND_USER"],
   CHAT_MESSAGE: ["HIDE_CONTENT", "WARN", "SUSPEND_USER"],
@@ -28,7 +29,7 @@ export function moderationActionAdminLabel(action: ModerationAction, targetType:
     case "WARN":
       return "Avvisa l'autore (il contenuto resta)";
     case "REQUEST_CORRECTION":
-      return "Chiedi di correggere il profilo";
+      return targetType === "REVIEW" ? "Chiedi all'autore di correggere la recensione" : "Chiedi di correggere il profilo";
     case "HIDE_CONTENT":
       return targetType === "GUIDED_REQUEST" ? "Chiudi e nascondi la richiesta" : targetType === "CHAT_MESSAGE" ? "Nascondi il messaggio" : "Nascondi la recensione";
     case "SUSPEND_PROFILE":
@@ -63,7 +64,9 @@ export function moderationActionOwnerText(action: ModerationAction | null, targe
     case "SUSPEND_USER":
       return "Abbiamo sospeso il tuo account: non puoi entrare finché la decisione resta.";
     case "REQUEST_CORRECTION":
-      return `Ti chiediamo di correggere ${what}. Se resta com'è, potremmo prendere altre decisioni.`;
+      return targetType === "REVIEW"
+        ? "Ti chiediamo di correggere la tua recensione. Puoi cambiarla una volta da Le mie richieste. Se resta com'è, potremmo prendere altre decisioni."
+        : `Ti chiediamo di correggere ${what}. Se resta com'è, potremmo prendere altre decisioni.`;
     case "WARN":
       return `Questo è un avviso: ${what} resta visibile. Se succede di nuovo, le conseguenze saranno più gravi.`;
     default:

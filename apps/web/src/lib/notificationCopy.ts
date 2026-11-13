@@ -298,6 +298,9 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   if (type === "JOB_PAYMENT_CONFIRMED" && typeof data.amountEurCents === "number") {
     return { icon: "💳", message: `Pagamento confermato${jobSuffix}: ${data.part === "balance" ? "saldo" : "acconto"} di ${formatEur(data.amountEurCents)}.` };
   }
+  if (type === "JOB_BALANCE_DUE" && typeof data.autoChargeAt === "string") {
+    return { icon: "💳", message: `Il lavoro è chiuso${jobSuffix}: controlla il prezzo finale. Se va bene non devi fare nulla, se non sei d'accordo segnala un problema entro 48 ore.` };
+  }
   if (type === "JOB_BALANCE_AUTO_CHARGED" && typeof data.amountEurCents === "number") {
     return { icon: "💳", message: `Il lavoro è chiuso${jobSuffix}: abbiamo addebitato il saldo di ${formatEur(data.amountEurCents)} sulla carta dell'acconto.` };
   }

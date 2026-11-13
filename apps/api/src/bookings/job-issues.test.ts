@@ -27,6 +27,8 @@ describe("finestre per segnalare un problema (§164)", () => {
   it("\"Lavoro terminato\" del cliente vale come accettazione: niente più segnalazioni", () => {
     expect(jobIssueTypesAllowed({ ...base, clientConfirmedCompletedAt: at(DAY) }, at(2 * DAY))).toEqual([]);
     expect(jobIssueTypesAllowed({ ...base, status: "COMPLETED", clientConfirmedCompletedAt: at(DAY) }, at(2 * DAY))).toEqual([]);
+    // Saldo in attesa delle 48 ore sul prezzo finale: "Non sono d'accordo" anche dopo la conferma (13/11).
+    expect(jobIssueTypesAllowed({ ...base, status: "COMPLETED", clientConfirmedCompletedAt: at(DAY), balanceAwaitingClient: true }, at(2 * DAY))).toEqual(["BAD_WORK"]);
   });
   it("la conferma d'ufficio allo scadere del termine chiude le segnalazioni (§190)", () => {
     const autoClosed = { ...base, status: "COMPLETED", professionalCompletedAt: at(DAY), clientConfirmedCompletedAt: at(8 * DAY), completionAutoClosedAt: at(8 * DAY) };

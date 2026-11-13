@@ -181,6 +181,17 @@ function DescriptionsTab() {
               {aiSpeedText(month.aiSpeed)}
             </Text>
           ) : null}
+          {month.photosToday.enabled ? (
+            // Tetto delle foto di tutto il sito: un salto improvviso vuol dire qualcuno che ne abusa.
+            <Text
+              color={month.photosToday.used >= month.photosToday.limit * 0.8 ? brand.grafite : brand.grafite70}
+              fontWeight={month.photosToday.used >= month.photosToday.limit * 0.8 ? "600" : "400"}
+              marginTop="1"
+            >
+              Ricerche con foto oggi: {month.photosToday.used} su {month.photosToday.limit}
+              {month.photosToday.used >= month.photosToday.limit ? ". Finite: fino a mezzanotte si cerca solo a parole." : ""}
+            </Text>
+          ) : null}
           {month.byCategory.length > 0 ? (
             <Text color={brand.grafite70} marginTop="1">
               Mestieri: {month.byCategory.map((row) => `${targetLabel(row.key, null)} ${row.count}`).join(" · ")}
@@ -389,7 +400,7 @@ function MissingTradesCard({ trades }: { trades: MissingTrade[] }) {
       <YStack id="mestieri-mancanti" style={{ scrollMarginTop: 120 }}>
         <Text fontWeight="700">Mestieri che non abbiamo, ultimi 30 giorni</Text>
         <Text color={brand.grafite70} fontSize={13} marginTop="1">
-          A volte nessun nostro mestiere va bene. Allora il computer scrive quale servirebbe. Da {MISSING_TRADE_ADVICE_MIN} richieste
+          A volte nessun nostro mestiere va bene. Allora l&apos;IA scrive quale servirebbe. Da {MISSING_TRADE_ADVICE_MIN} richieste
           in su compare anche in Home tra le cose da fare.
         </Text>
         {trades.length === 0 ? (

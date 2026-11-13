@@ -3,6 +3,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import type Stripe from "stripe";
 import {
+  balanceChargeWaitsForClient,
   onlineLimitCompletionProblem,
   JOB_ISSUE_LABEL,
   completionDeviation,
@@ -22,7 +23,7 @@ import {
   type JobPaymentChoice,
   paymentChoiceIsOnline,
   quotePaymentOffer,
-  onlineDepositEurCents,
+  quoteDepositEurCents,
   ONLINE_MIN_CHARGE_EUR_CENTS,
   jobIssueCanEscalate,
   jobIssueEvidenceDueAt,
@@ -296,7 +297,7 @@ export class BookingsService implements OnModuleInit {
   }
 
   private quoteDepositEurCents(quote: AcceptableQuote): number {
-    return onlineDepositEurCents(quotePriceTotals(quote.items).totalMaxEurCents, quotePaymentOffer(quote).depositPercent);
+    return quoteDepositEurCents(quotePriceTotals(quote.items), quotePaymentOffer(quote).depositPercent);
   }
 
   /** Il preventivo esiste, è del cliente, si può ancora accettare e offre il modo di pagamento scelto. */
@@ -638,6 +639,7 @@ export class BookingsService implements OnModuleInit {
       choice: paymentMethod,
       depositPercent: offer.depositPercent,
       quoteMaxEurCents: quotePriceTotals(quote.items).totalMaxEurCents,
+      quoteMinEurCents: quotePriceTotals(quote.items).totalMinEurCents,
       clientUserId: clientId,
     });
     // Lavoro ricorrente (docs/changelog/2026-11-09-lavori-ricorrenti.md): nasce la serie e le prossime visite entrano in agenda.
@@ -1049,6 +1051,9 @@ export class BookingsService implements OnModuleInit {
       // Saldo sulla carta dell'acconto solo dentro il preventivo accettato: niente voci nuove né totale sopra il massimo (§267).
       autoChargeBalance:
         !!deviation && deviation.addedItemNames.length === 0 && deviation.direction !== "ABOVE" && deviation.quoteMaxEurCents !== null,
+      // Sopra il minimo del preventivo: 48 ore al cliente prima della carta (decisione di Luca del 13/11).
+      // Anche se il cliente aveva già confermato "Lavoro terminato": il prezzo lo vede ora.
+      waitForClient: !!deviation && balanceChargeWaitsForClient(deviation.totalEurCents, deviation.quoteMinEurCents),
     });
     // Pagamento online (§168): il cliente paga il saldo sull'importo finale.
     if (online && online.balanceDueEurCents > 0) {
@@ -1057,6 +1062,9 @@ export class BookingsService implements OnModuleInit {
         guidedRequestId: booking.quote?.guidedRequestId,
         amountEurCents: online.balanceDueEurCents,
         audience: "CLIENT",
+        ...(online.autoChargeAt
+          ? { autoChargeAt: online.autoChargeAt.toISOString(), finalAmountEurCents, ...(booking.clientConfirmedCompletedAt ? { clientConfirmed: true } : {}) }
+          : {}),
       });
     }
 
@@ -1558,7 +1566,7 @@ export class BookingsService implements OnModuleInit {
         professionalProfile: { select: { userId: true } },
         quote: { select: { guidedRequestId: true } },
         issue: { select: { id: true } },
-        jobPayment: { select: { paymentMethod: true } },
+        jobPayment: { select: { paymentMethod: true, balanceAutoChargeAt: true } },
       },
     });
     if (!booking || booking.clientId !== clientId) {
@@ -1571,7 +1579,8 @@ export class BookingsService implements OnModuleInit {
     // wallClockNow(), non con new Date(), altrimenti la segnalazione si apriva un'ora
     // dopo l'inizio (due d'estate) (docs/changelog/2026-11-05-pagamenti-di-prova.md).
     const issueNow = wallClockNow();
-    const allowed = jobIssueTypesAllowed({ ...booking, hasIssue: false }, issueNow);
+    const balanceAwaitingClient = !!booking.jobPayment?.balanceAutoChargeAt;
+    const allowed = jobIssueTypesAllowed({ ...booking, hasIssue: false, balanceAwaitingClient }, issueNow);
     // Passato il termine resta la segnalazione senza rimborso (decisione di Luca del 30/10/2026).
     const late = !allowed.includes(input.type) && input.type === "BAD_WORK" && jobIssueLateAllowed({ ...booking, hasIssue: false }, issueNow);
     if (!allowed.includes(input.type) && !late) {
@@ -1602,6 +1611,8 @@ export class BookingsService implements OnModuleInit {
       },
     });
     if (!inChat) await this.jobIssueOutcomeService.notifyIssueAdmins("ADMIN_JOB_ISSUE_TO_REVIEW", { bookingId, issueType: input.type, stage: "ESCALATED" });
+    // "Non sono d'accordo" sul prezzo finale: il saldo in attesa non parte più da solo.
+    await this.prisma.jobPayment.updateMany({ where: { bookingId, balanceAutoChargeAt: { not: null } }, data: { balanceAutoChargeAt: null } });
 
     await this.notificationsService.notify(booking.professionalProfile.userId, "JOB_ISSUE_REPORTED", {
       bookingId,
@@ -1903,11 +1914,11 @@ export class BookingsService implements OnModuleInit {
       }),
       // Pagamento del lavoro (§168): metodo scelto, acconto, saldo, rimborsi.
       payment: toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents),
-      issueTypesAllowed: jobIssueLateAllowed({ ...booking, hasIssue: booking.issue !== null }, wallClockNow(now))
+      issueTypesAllowed: jobIssueLateAllowed({ ...booking, hasIssue: booking.issue !== null, balanceAwaitingClient: !!booking.jobPayment?.balanceAutoChargeAt }, wallClockNow(now))
         ? ["BAD_WORK" as const]
-        : jobIssueTypesAllowed({ ...booking, hasIssue: booking.issue !== null }, wallClockNow(now)),
+        : jobIssueTypesAllowed({ ...booking, hasIssue: booking.issue !== null, balanceAwaitingClient: !!booking.jobPayment?.balanceAutoChargeAt }, wallClockNow(now)),
       // Dopo il termine si segnala ancora un lavoro non andato bene, senza rimborso.
-      issueLate: jobIssueLateAllowed({ ...booking, hasIssue: booking.issue !== null }, wallClockNow(now)),
+      issueLate: jobIssueLateAllowed({ ...booking, hasIssue: booking.issue !== null, balanceAwaitingClient: !!booking.jobPayment?.balanceAutoChargeAt }, wallClockNow(now)),
       canReview:
         !(booking.recurringJobId && reviewedSeries.has(booking.recurringJobId) && !booking.review) &&
         clientCanReview({
@@ -1940,7 +1951,10 @@ export class BookingsService implements OnModuleInit {
         hasReview: booking.review !== null,
         reviewUpdatedAt: booking.review?.updatedAfterIssueAt ?? null,
         issue: booking.issue,
+        correctionRequestedAt: booking.review?.correctionRequestedAt ?? null,
       }),
+      // Un admin ha chiesto di correggere la recensione: cambia la frase sopra "Aggiorna la recensione".
+      reviewCorrectionRequested: Boolean(booking.review?.correctionRequestedAt),
       myReview: booking.review
         ? { id: booking.review.id, rating: booking.review.rating, comment: booking.review.comment, photoUrls: booking.review.photoUrls, showcase: booking.review.showcaseConsentAt !== null }
         : null,

@@ -787,3 +787,28 @@ describe("Accetta: controllo sul server e testo salvato (docs/changelog/2026-11-
     expect(jobPaymentsService.refundOnCancel).toHaveBeenCalledWith("b-1", "client-1");
   });
 });
+
+describe("Tutto online con la forbice: il minimo adesso (docs/changelog/2026-11-13-tutto-online-forbice.md)", () => {
+  it("la pagina di pagamento chiede il prezzo minimo, non il massimo", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test";
+    const { service, prisma, jobPaymentsService } = buildService();
+    prisma.quote.findUnique.mockResolvedValue(baseQuote({ paymentOptions: ["ONLINE"], depositPercent: 100 }));
+    await service.createFromQuote("client-1", "quote-1", "ONLINE");
+    expect(jobPaymentsService.createQuoteDepositCheckout).toHaveBeenCalledWith(expect.objectContaining({ amountEurCents: 20000 }));
+  });
+
+  it("a pagamento riuscito il lavoro nasce con l'acconto pari al minimo e il resto online", async () => {
+    const { service, prisma, jobPaymentsService } = buildService();
+    prisma.booking.findUnique.mockResolvedValue(null);
+    prisma.booking.findFirst.mockResolvedValue(null);
+    prisma.quote.findUnique.mockResolvedValue(baseQuote({ paymentOptions: ["ONLINE"], depositPercent: 100 }));
+    prisma.booking.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: "b-new", ...data }));
+    await service.confirmQuoteDeposit({
+      payment_intent: "pi_1",
+      amount_total: 20000,
+      metadata: { kind: "quote_deposit", quoteId: "quote-1", clientUserId: "client-1", paymentMethod: "ONLINE" },
+    } as never);
+    expect(jobPaymentsService.refundQuoteDeposit).not.toHaveBeenCalled();
+    expect(jobPaymentsService.createAtAcceptance).toHaveBeenCalledWith(expect.objectContaining({ choice: "ONLINE", depositPercent: 100, quoteMinEurCents: 20000, quoteMaxEurCents: 30000 }));
+  });
+});

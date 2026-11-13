@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, HttpCode, NotFoundException, Param, Post, Query, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpException, HttpStatus, NotFoundException, Param, Post, Query, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
 import {
@@ -24,6 +24,8 @@ import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
+import { clientIp } from "../common/client-ip";
+import { assertTurnstile } from "../auth/turnstile";
 import { ProblemMatchService, photoMediaType, photoSearchEnabled } from "./problem-match.service";
 import { ProblemMatchAdminService } from "./problem-match-admin.service";
 import { ProblemExamplesService } from "./problem-examples.service";
@@ -71,17 +73,28 @@ export class ProblemMatchController {
    * Ricerca con foto (docs/changelog/2026-11-13-ricerca-con-foto.md): la foto
    * arriva già rimpicciolita dal browser, va all'IA e non si salva. Spenta
    * senza PHOTO_SEARCH_ENABLED. Limite stretto: ogni foto è una chiamata a pagamento.
+   * Contro chi cambia indirizzo (docs/changelog/2026-11-13-difese-ricerca-con-foto.md):
+   * Turnstile, 5 foto al giorno per indirizzo e il tetto delle foto di tutto il sito.
    */
   @Throttle({ default: { limit: 6, ttl: 60_000 } })
   @UseFilters(MulterExceptionFilter)
   @Post("photo")
   @HttpCode(200)
   @UseInterceptors(FileInterceptor("image", { limits: { fileSize: PROBLEM_PHOTO_MAX_BYTES, files: 1 } }))
-  async photo(@UploadedFile() file: Express.Multer.File | undefined, @Body(new ZodValidationPipe(problemPhotoRequestSchema)) body: ProblemPhotoRequest) {
+  async photo(
+    @Req() req: Parameters<typeof clientIp>[0],
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body(new ZodValidationPipe(problemPhotoRequestSchema)) body: ProblemPhotoRequest,
+  ) {
     if (!photoSearchEnabled()) throw new NotFoundException("La ricerca con foto non è attiva.");
     if (!file) throw new BadRequestException("Nessuna foto caricata.");
     const mediaType = photoMediaType(file.buffer);
     if (!mediaType) throw new BadRequestException("La foto deve essere un'immagine JPEG, PNG o WebP.");
+    const ip = clientIp(req);
+    await assertTurnstile(body.turnstileToken, ip);
+    if (!this.problemMatchService.takePhotoForIp(ip)) {
+      throw new HttpException("Per oggi hai già cercato con molte foto: scrivi il problema con parole tue.", HttpStatus.TOO_MANY_REQUESTS);
+    }
     return this.problemMatchService.analyzePhoto(file.buffer, mediaType, body.description);
   }
 

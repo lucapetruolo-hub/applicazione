@@ -44,6 +44,7 @@ export function CancelBookingModal({
   showNote = true,
   confirmVariant = "urgent",
   noteMinLength,
+  initialNote = "",
   children,
 }: {
   onClose: () => void;
@@ -60,10 +61,12 @@ export function CancelBookingModal({
   confirmVariant?: "urgent" | "primary";
   /** Nota obbligatoria di almeno tanti caratteri (le azioni admin che toccano soldi o persone: motivo sempre scritto). */
   noteMinLength?: number;
+  /** Nota già scritta, da ritoccare (per esempio la motivazione proposta dall'IA in Admin). */
+  initialNote?: string;
   /** Contenuto in più tra la descrizione e i pulsanti, per esempio il motivo di "Elimina richiesta". */
   children?: ReactNode;
 }) {
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(initialNote);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 

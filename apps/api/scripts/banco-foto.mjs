@@ -11,7 +11,10 @@
 // forum): sono nella cartella del progetto, analisi/ricerca-foto/foto-grezze/
 // (note.csv, LEGGIMI.md).
 //
-// Uso (API con PHOTO_SEARCH_ENABLED=true e ANTHROPIC_API_KEY):
+// Uso (API con PHOTO_SEARCH_ENABLED=true, ANTHROPIC_API_KEY e
+// PROBLEM_PHOTO_IP_DAILY_LIMIT=1000: di serie sono 5 foto al giorno per
+// indirizzo, docs/changelog/2026-11-13-difese-ricerca-con-foto.md; senza
+// TURNSTILE_SECRET_KEY, come in locale, il controllo anti-bot è spento):
 //   node apps/api/scripts/banco-foto.mjs <note.csv> <cartella foto> <uscita.csv> [indirizzo API]
 // Riprende da dove si era fermato se <uscita.csv> esiste già.
 

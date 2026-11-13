@@ -165,7 +165,7 @@ export class ProblemMatchAdminService {
     const suggestions = suggestionOutcomes(suggested.map((row) => ({ suggested: row.suggestedCategorySlug!, chosen: row.category.slug, withOthers: Boolean(row.submissionGroupId) })));
 
     return {
-      lastMonth: { total: lastMonth.length, safety, ai, none, byCategory: sorted(byCategory), byOutOfService: sorted(byOutOfService), missing: sorted(missing).slice(0, MISSING_SHOWN).map(({ key, count }) => ({ text: key, count })), missingTrades: buildMissingTrades(lastMonth).slice(0, MISSING_TRADES_SHOWN), suggestions, aiSpeed: aiSpeedOf(aiCalls), choiceSwitches: choiceSwitchesOf(lastMonth), reports: reports.map((row) => ({ id: row.id, text: row.text, categories: row.categories, service: row.service, reason: row.reportReason ?? "altro", note: row.reportNote, reportedAt: row.reportedAt!.toISOString() })) },
+      lastMonth: { total: lastMonth.length, safety, ai, none, byCategory: sorted(byCategory), byOutOfService: sorted(byOutOfService), missing: sorted(missing).slice(0, MISSING_SHOWN).map(({ key, count }) => ({ text: key, count })), missingTrades: buildMissingTrades(lastMonth).slice(0, MISSING_TRADES_SHOWN), suggestions, aiSpeed: aiSpeedOf(aiCalls), photosToday: this.problemMatchService.photoUsage(), choiceSwitches: choiceSwitchesOf(lastMonth), reports: reports.map((row) => ({ id: row.id, text: row.text, categories: row.categories, service: row.service, reason: row.reportReason ?? "altro", note: row.reportNote, reportedAt: row.reportedAt!.toISOString() })) },
       descriptions: descriptions.map((row) => ({
         id: row.id,
         text: row.text,

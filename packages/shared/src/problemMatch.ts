@@ -608,6 +608,8 @@ export type ProblemMatchAdminOverview = {
     suggestions: ProblemSuggestionOutcomes;
     /** Ultimi 7 giorni. */
     aiSpeed: AiSpeed;
+    /** Ricerche con foto di oggi sul tetto di tutto il sito (docs/changelog/2026-11-13-difese-ricerca-con-foto.md). */
+    photosToday: { enabled: boolean; used: number; limit: number };
     /**
      * Cliente che lascia il primo mestiere proposto per un altro, le coppie più
      * frequenti prima: solo da leggere, l'IA non impara da sola

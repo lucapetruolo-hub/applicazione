@@ -10,8 +10,10 @@ import {
   adminPersonName,
   formatEurCents,
   jobIssueSanctionFor,
+  type CaseAdvice,
   type JobIssueRefundPercent,
 } from "@professionisti/shared";
+import { CaseAdviceBox } from "@/components/admin/CaseAdviceBox";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { errorMessage } from "@/components/admin/adminUi";
@@ -68,7 +70,7 @@ export function PhaseDeadline({ row }: { row: AdminJobIssue }) {
  * misura che scatterebbe se accolta; la richiesta di informazioni al
  * professionista (72 ore).
  */
-export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token: string; onDone: () => void }) {
+export function DecisionForm({ row, token, onDone, advice }: { row: AdminJobIssue; token: string; onDone: () => void; advice?: CaseAdvice | null }) {
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState<"UPHELD" | "REJECTED" | "INFO" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +97,21 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
       return;
     }
     setConfirming(decision);
+  }
+
+  /** La proposta dell'IA nel modulo; con `confirm` apre anche la conferma di sempre. */
+  function applyAdvice(a: CaseAdvice, confirm: boolean) {
+    setError(null);
+    const text = a.note ?? "";
+    if (a.decision === "ASK_INFO") {
+      setQuestion(text);
+      setAsking(true);
+      return;
+    }
+    setNote(text);
+    const percent = Number(/^UPHELD_(\d+)$/.exec(a.decision)?.[1]);
+    if ((JOB_ISSUE_REFUND_PERCENTS as readonly number[]).includes(percent)) setRefundPercent(percent as JobIssueRefundPercent);
+    if (confirm && text.trim().length >= 3) setConfirming(a.decision === "REJECTED" ? "REJECTED" : "UPHELD");
   }
 
   async function decide(decision: "UPHELD" | "REJECTED") {
@@ -129,6 +146,7 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
       <Text fontWeight="700" color={brand.grafite}>
         Decisione
       </Text>
+      {advice ? <CaseAdviceBox advice={advice} token={token} onApproved={onDone} onApprove={() => applyAdvice(advice, true)} onModify={() => applyAdvice(advice, false)} /> : null}
       <Text fontSize={13} color={brand.grafite70}>
         Esiti standard: sceglilo e ritocca il testo se serve.
       </Text>
@@ -237,7 +255,7 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
 }
 
 /** Ricorso del professionista (§167): lo decide un admin diverso da chi ha deciso la segnalazione. */
-export function AppealForm({ row, token, onDone }: { row: AdminJobIssue; token: string; onDone: () => void }) {
+export function AppealForm({ row, token, onDone, advice }: { row: AdminJobIssue; token: string; onDone: () => void; advice?: CaseAdvice | null }) {
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   // Decisione in attesa di conferma (misura "dopo" del riordino): come per la segnalazione, non si decide con un solo clic.
@@ -272,6 +290,18 @@ export function AppealForm({ row, token, onDone }: { row: AdminJobIssue; token: 
       <Text fontWeight="700" color={brand.grafite}>
         Rivedi la decisione
       </Text>
+      {advice ? (
+        <CaseAdviceBox
+          advice={advice}
+          token={token}
+          onApproved={onDone}
+          onApprove={() => {
+            setNote(advice.note ?? "");
+            if ((advice.note ?? "").trim().length >= 3) setConfirming(advice.decision === "APPEAL_ACCEPTED" ? "ACCEPTED" : "REJECTED");
+          }}
+          onModify={() => setNote(advice.note ?? "")}
+        />
+      ) : null}
       <textarea
         value={note}
         onChange={(e) => setNote(e.target.value.slice(0, 1000))}

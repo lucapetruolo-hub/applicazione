@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import { useCaseAdvice } from "@/components/admin/CaseAdviceBox";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { AdminJobIssue } from "@professionisti/api-client";
@@ -59,6 +60,7 @@ const VIEWS: View[] = ["open", "chat", "appeals", "closed"];
 
 function ProblemiContent() {
   const { token } = useAuth();
+  const advice = useCaseAdvice(token);
   // `?vista=` arriva dalla coda "Da fare" (docs/changelog/2026-10-30-admin-riordino.md).
   const initialView = useSearchParams().get("vista") as View | null;
   const [view, setView] = useState<View>(initialView && VIEWS.includes(initialView) ? initialView : "open");
@@ -256,10 +258,10 @@ function ProblemiContent() {
                     Ha chiesto di rivedere la decisione il {formatAdminDate(row.issue.appealedAt, true)}
                   </Text>
                   <Text color={brand.grafite}>“{row.issue.appealText}”</Text>
-                  <AppealForm row={row} token={token} onDone={() => setReload((n) => n + 1)} />
+                  <AppealForm row={row} token={token} advice={advice.get("JOB_ISSUE_APPEAL", row.issue.id)} onDone={() => { setReload((n) => n + 1); advice.reload(); }} />
                 </YStack>
               ) : row.issue.status === "OPEN" ? (
-                <DecisionForm row={row} token={token} onDone={() => setReload((n) => n + 1)} />
+                <DecisionForm row={row} token={token} advice={advice.get("JOB_ISSUE", row.issue.id)} onDone={() => { setReload((n) => n + 1); advice.reload(); }} />
               ) : row.issue.status === "CHAT" ? (
                 <Text fontSize={13} color={brand.grafite70}>
                   Ne parlano in chat. Arriva qui se il professionista non risponde in 48 ore, o se il cliente lo chiede.
