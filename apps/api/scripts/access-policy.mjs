@@ -72,6 +72,9 @@ const publicRoutes = [
   // ricerca a testo, spenta (404) senza PHOTO_SEARCH_ENABLED.
   "GET /problem-match/photo",
   "POST /problem-match/photo",
+  // "Segnala un errore" sotto la proposta dell'IA: pubblica come la ricerca, una volta per ricerca
+  // e senza dire se l'id esiste (docs/changelog/2026-11-13-segnala-risposta-ia.md).
+  "POST /problem-match/report",
   // "Lavori più cercati" della home (docs/changelog/2026-11-07-lavori-piu-cercati-home.md).
   "GET /popular-jobs",
   // Prestazioni standard aggiunte dall'admin (§388), mostrate in iscrizione e nel profilo.

@@ -116,7 +116,7 @@ export class ProblemMatchAdminService {
             ? { categories: { isEmpty: true }, outOfService: null }
             : {};
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60_000);
-    const [descriptions, lastMonth, words, suggested, aiCalls] = await Promise.all([
+    const [descriptions, lastMonth, words, suggested, aiCalls, reports] = await Promise.all([
       this.prisma.problemDescription.findMany({ where, orderBy: { createdAt: "desc" }, take: 200 }),
       this.prisma.problemDescription.findMany({
         where: { createdAt: { gte: since } },
@@ -132,6 +132,13 @@ export class ProblemMatchAdminService {
       this.prisma.problemDescription.findMany({
         where: { createdAt: { gte: weekAgo }, aiOutcome: { not: null } },
         select: { aiMs: true, aiOutcome: true },
+      }),
+      // Proposte dell'IA segnalate dai clienti (docs/changelog/2026-11-13-segnala-risposta-ia.md).
+      this.prisma.problemDescription.findMany({
+        where: { reportedAt: { gte: since } },
+        orderBy: { reportedAt: "desc" },
+        take: 50,
+        select: { id: true, text: true, categories: true, service: true, reportReason: true, reportNote: true, reportedAt: true },
       }),
     ]);
 
@@ -158,7 +165,7 @@ export class ProblemMatchAdminService {
     const suggestions = suggestionOutcomes(suggested.map((row) => ({ suggested: row.suggestedCategorySlug!, chosen: row.category.slug, withOthers: Boolean(row.submissionGroupId) })));
 
     return {
-      lastMonth: { total: lastMonth.length, safety, ai, none, byCategory: sorted(byCategory), byOutOfService: sorted(byOutOfService), missing: sorted(missing).slice(0, MISSING_SHOWN).map(({ key, count }) => ({ text: key, count })), missingTrades: buildMissingTrades(lastMonth).slice(0, MISSING_TRADES_SHOWN), suggestions, aiSpeed: aiSpeedOf(aiCalls), photosToday: this.problemMatchService.photoUsage(), choiceSwitches: choiceSwitchesOf(lastMonth) },
+      lastMonth: { total: lastMonth.length, safety, ai, none, byCategory: sorted(byCategory), byOutOfService: sorted(byOutOfService), missing: sorted(missing).slice(0, MISSING_SHOWN).map(({ key, count }) => ({ text: key, count })), missingTrades: buildMissingTrades(lastMonth).slice(0, MISSING_TRADES_SHOWN), suggestions, aiSpeed: aiSpeedOf(aiCalls), photosToday: this.problemMatchService.photoUsage(), choiceSwitches: choiceSwitchesOf(lastMonth), reports: reports.map((row) => ({ id: row.id, text: row.text, categories: row.categories, service: row.service, reason: row.reportReason ?? "altro", note: row.reportNote, reportedAt: row.reportedAt!.toISOString() })) },
       descriptions: descriptions.map((row) => ({
         id: row.id,
         text: row.text,

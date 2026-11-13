@@ -145,6 +145,7 @@ import type {
   ProfileInvitePreview,
   ProfessionalPayoutTotals,
   ProblemMatchRequest,
+  ProblemReportInput,
   ProblemMatchResult,
   ProblemPhotoResult,
   ProblemExample,
@@ -2558,6 +2559,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     /** Dal problema scritto ai mestieri (docs/CHANGELOG.md §392). */
     matchProblem: (input: ProblemMatchRequest) =>
       request<ProblemMatchResult>("/problem-match", { method: "POST", body: JSON.stringify(input), cache: "no-store" }),
+    /** "Segnala un errore" sotto la proposta dell'IA (docs/changelog/2026-11-13-segnala-risposta-ia.md). */
+    reportProblemMatch: (input: ProblemReportInput) =>
+      request<{ ok: true }>("/problem-match/report", { method: "POST", body: JSON.stringify(input), cache: "no-store" }),
     /** Se la ricerca con foto è accesa (docs/changelog/2026-11-13-ricerca-con-foto.md). */
     getPhotoSearchStatus: () => request<{ enabled: boolean }>("/problem-match/photo", { cache: "no-store" }),
     /** Foto del problema (già rimpicciolita) con il testo facoltativo: l'IA dice cosa si vede, la foto non si salva. */

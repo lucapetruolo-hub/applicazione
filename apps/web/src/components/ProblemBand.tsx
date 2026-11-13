@@ -14,6 +14,7 @@ import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { setRequestHints, type ChosenPro, type ProblemRequestHints } from "./ChosenProsBar";
+import { ReportAiAnswer } from "./ReportAiAnswer";
 import { CATEGORY_WHO as WHO, joinWithOr, problemCategoryChoices } from "@/lib/problemChoices";
 
 // Accesso e registrazione (con i loro controlli dei campi) caricati solo
@@ -219,12 +220,16 @@ export function ProblemBand({
             dall'IA, anche da una foto o con un mestiere che il sito non ha, mai col solo
             dizionario (richiesta di Luca del 13/11, docs/changelog/2026-11-13-pericoli-dalla-foto.md). */}
         {aiSuggested ? (
-          <Text fontSize={13} color={brand.grafite70}>
-            Suggerimento dell'intelligenza artificiale: può sbagliare, controlla che sia il mestiere giusto.{" "}
-            <Link href="/privacy#fornitori" style={{ color: brand.cianografiaScuro }}>
-              Come funziona
-            </Link>
-          </Text>
+          <YStack gap="1">
+            <Text fontSize={13} color={brand.grafite70}>
+              Suggerimento dell'intelligenza artificiale: può sbagliare, controlla che sia il mestiere giusto.{" "}
+              <Link href="/privacy#fornitori" style={{ color: brand.cianografiaScuro }}>
+                Come funziona
+              </Link>
+            </Text>
+            {/* "Segnala un errore" (docs/changelog/2026-11-13-segnala-risposta-ia.md). */}
+            {result.reportId ? <ReportAiAnswer key={result.reportId} reportId={result.reportId} /> : null}
+          </YStack>
         ) : null}
 
         {/* La domanda nello stesso riquadro, subito sotto il titolo: la

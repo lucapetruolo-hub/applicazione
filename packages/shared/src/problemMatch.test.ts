@@ -97,6 +97,12 @@ test("casi tipici", () => {
   assert.equal(matchProblem("sento un rumore strano nel muro quando piove e c'è una macchia scura vicino alla presa").safety, "acqua-elettrico");
   assert.equal(matchProblem("devo installare la lavatrice nuova").outOfService, null);
   assert.equal(matchProblem("macchia di umido sul soffitto del bagno").question?.id, "macchia");
+  // Il condizionatore che perde acqua non fa chiedere chi scalda l'acqua.
+  assert.notEqual(matchProblem("il condizionatore del salotto perde acqua dallo split").question?.id, "acqua-calda");
+  assert.notEqual(matchProblem("il climatizzatore gocciola acqua sul pavimento").question?.id, "acqua-calda");
+  // Una domanda sull'acqua solo se il testo parla di acqua o umidità (anche dalla foto).
+  assert.equal(matchProblem("uomo che tinteggia una parete bianca con il rullo").question, null);
+  assert.equal(matchProblem("macchia scura sulla parete della camera").question?.id, "macchia");
   // Domande aggiunte il 9/11 (docs/changelog/2026-11-09-domande-preventivo.md).
   assert.equal(matchProblem("la caldaia non riparte dopo che è saltata la corrente").question?.id, "caldaia-corrente");
   assert.equal(matchProblem("sigillare il box doccia").question?.id, "perde-acqua");

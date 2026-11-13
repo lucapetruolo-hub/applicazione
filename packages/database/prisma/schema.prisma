@@ -3393,9 +3393,15 @@ model ProblemDescription {
   chosenCategory String?
   /// Ricerca partita da una foto del problema (docs/changelog/2026-11-13-ricerca-con-foto.md).
   withPhoto    Boolean  @default(false)
+  /// Il cliente ha segnalato la proposta dell'IA: "mestiere", "prestazione" o "altro",
+  /// con una nota facoltativa senza contatti (docs/changelog/2026-11-13-segnala-risposta-ia.md).
+  reportedAt   DateTime?
+  reportReason String?
+  reportNote   String?
   createdAt    DateTime @default(now())
 
   @@index([createdAt])
+  @@index([reportedAt])
   @@map("problem_descriptions")
 }
 
