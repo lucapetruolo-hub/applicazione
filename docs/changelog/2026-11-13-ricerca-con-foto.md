@@ -50,3 +50,13 @@ con un'API finta: home con la foto, risultati con `foto=`, richiesta con la
 foto già allegata (foto in `anteprime/ricerca-foto/` nella cartella del
 progetto). Il banco di prova con foto vere da thread di forum si fa prima del
 lancio, con le foto solo nella cartella del progetto (mai nel repository).
+
+**Primo giro del banco di prova** (13/11, 124 foto, Haiku 5.5): sotto la
+soglia. Testo + foto 90,99% (soglia 91%), solo foto 74% (soglia 80%), 10 su 10
+entro 6 s, 2 pericoli del gas mancati con il testo. Correzioni alle istruzioni
+della foto: "gas" comprende anche la fiammella che si spegne e i fuochi che non
+si accendono; "non-pertinente" solo se nella foto non c'è niente di una casa;
+crepe nei muri al muratore, legno al falegname, elettrodomestici anche se
+perdono acqua. Esito e risposte nella cartella del progetto
+(`analisi/ricerca-foto/esito-banco.md`). Si rifà il banco con
+`apps/api/scripts/banco-foto.mjs`.
