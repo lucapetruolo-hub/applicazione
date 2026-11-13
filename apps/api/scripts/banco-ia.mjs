@@ -59,8 +59,11 @@ const ids = readFileSync(idsPath, "utf8").split(/\s+/).filter(Boolean);
 if (!existsSync(outPath)) writeFileSync(outPath, HEADER.join(";") + "\n");
 const done = new Set(readCsv(outPath).map((r) => r.id));
 
-for (const id of ids) {
-  if (done.has(id)) continue;
+// L'API accetta al massimo 20 ricerche al minuto da uno stesso indirizzo: una ogni 3,5 secondi.
+const PAUSE_MS = 3500;
+const pending = ids.filter((id) => !done.has(id));
+for (let index = 0; index < pending.length; index++) {
+  const id = pending[index];
   const phrase = labels.get(id)?.frase;
   if (!phrase) { console.error(`${id}: frase mancante`); continue; }
   const started = Date.now();
@@ -78,10 +81,12 @@ for (const id of ids) {
     appendFileSync(outPath, row.map(csvField).join(";") + "\n");
   } catch (err) {
     console.error(`${id}: ${err.message}`);
-    await new Promise((ok) => setTimeout(ok, 10_000));
+    // Troppe richieste: si aspetta un minuto e si rifà la stessa frase.
+    if (err.message === "HTTP 429") index--;
+    await new Promise((ok) => setTimeout(ok, err.message === "HTTP 429" ? 60_000 : 10_000));
     continue;
   }
-  await new Promise((ok) => setTimeout(ok, 1000));
+  await new Promise((ok) => setTimeout(ok, PAUSE_MS));
 }
 
 // Conteggio: si guarda il mucchio "chiuso" (frasi dove il mestiere giusto è uno solo o due).

@@ -571,6 +571,12 @@ export type ProblemMatchAdminOverview = {
     suggestions: ProblemSuggestionOutcomes;
     /** Ultimi 7 giorni. */
     aiSpeed: AiSpeed;
+    /**
+     * Cliente che lascia il primo mestiere proposto per un altro, le coppie più
+     * frequenti prima: solo da leggere, l'IA non impara da sola
+     * (docs/changelog/2026-11-12-haiku-senza-ragionamento.md).
+     */
+    choiceSwitches: { proposed: string | null; chosen: string; count: number }[];
   };
   descriptions: {
     id: string;

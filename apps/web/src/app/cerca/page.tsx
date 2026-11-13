@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import {
+  comuneFromProblem,
   findComuneByName,
   isProfessionalCategorySlug,
   matchProblem,
   problemMatchFromDictionary,
+  timingFromProblem,
   type ProblemMatchResult,
   type ProfessionalCategorySlug,
   type ProfessionalSearchResult,
@@ -64,9 +66,9 @@ async function loadAllNearby(description: string, city: string | undefined, isOn
 }
 
 /** Se il server non risponde resta il dizionario: la pagina non deve mai fallire. */
-async function loadProblemMatch(description: string, city: string | undefined): Promise<ProblemMatchResult> {
+async function loadProblemMatch(description: string, city: string | undefined, chosen?: string): Promise<ProblemMatchResult> {
   try {
-    return await apiClient.matchProblem({ description, city });
+    return await apiClient.matchProblem({ description, city, chosen });
   } catch {
     return problemMatchFromDictionary(matchProblem(description));
   }
@@ -192,8 +194,9 @@ async function ProblemResults({
   isOnline: boolean;
   city: string | undefined;
 }) {
-  const result = await loadProblemMatch(description, city);
   const picked = searchParams.mestiere && isProfessionalCategorySlug(searchParams.mestiere) ? searchParams.mestiere : null;
+  // Il mestiere toccato dal cliente va all'API solo per contarlo in Admin ("proposto X, scelto Y").
+  const result = await loadProblemMatch(description, city, picked ?? undefined);
   const chosen = picked ?? (result.outOfService ? null : (result.categories[0] ?? null));
   // Lavoro fuori servizio o mestiere che il sito non ha: prima chi lo dichiara
   // (docs/changelog/2026-11-11-mestieri-che-mancano.md).
@@ -204,6 +207,8 @@ async function ProblemResults({
     result: picked ? { ...result, outOfService: null, missingTrade: null } : result,
     chosen,
     questionDone: Boolean(picked) || searchParams.domanda === "no",
+    // Quando serve e comune dal testo, per precompilare la richiesta: il cliente li può cambiare.
+    requestHints: { timing: timingFromProblem(description), city: city ? null : comuneFromProblem(description) },
   };
 
   let professionals: ProfessionalSearchResult[] = [];

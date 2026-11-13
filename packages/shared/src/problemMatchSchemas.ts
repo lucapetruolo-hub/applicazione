@@ -8,6 +8,8 @@ import { PROBLEM_EXAMPLE_MAX } from "./problemExamples";
 export const problemMatchRequestSchema = z.object({
   description: z.string().trim().min(3).max(PROBLEM_DESCRIPTION_MAX),
   city: z.string().trim().max(80).optional(),
+  /** Mestiere che il cliente ha toccato fra quelli proposti (solo per contarlo in Admin). */
+  chosen: z.string().trim().max(40).optional(),
 });
 export type ProblemMatchRequest = z.infer<typeof problemMatchRequestSchema>;
 

@@ -65,6 +65,20 @@ const MISSING_SHOWN = 20;
  * (docs/CHANGELOG.md §392, richieste di Luca).
  */
 /** Risposte dell'IA della settimana: arrivate, tardive, errori, oltre il limite; tempo mediano di quelle arrivate. */
+/** Coppie "proposto X, scelto Y" più frequenti (al massimo 10). */
+export function choiceSwitchesOf(rows: { categories: string[]; chosenCategory: string | null }[]) {
+  const counts = new Map<string, { proposed: string | null; chosen: string; count: number }>();
+  for (const row of rows) {
+    if (!row.chosenCategory) continue;
+    const proposed = row.categories[0] ?? null;
+    const key = `${proposed ?? ""}>${row.chosenCategory}`;
+    const entry = counts.get(key) ?? { proposed, chosen: row.chosenCategory, count: 0 };
+    entry.count += 1;
+    counts.set(key, entry);
+  }
+  return [...counts.values()].sort((a, b) => b.count - a.count).slice(0, 10);
+}
+
 export function aiSpeedOf(rows: { aiMs: number | null; aiOutcome: string | null }[]): AiSpeed {
   const count = (outcome: string) => rows.filter((row) => row.aiOutcome === outcome).length;
   const times = rows
@@ -106,7 +120,7 @@ export class ProblemMatchAdminService {
       this.prisma.problemDescription.findMany({ where, orderBy: { createdAt: "desc" }, take: 200 }),
       this.prisma.problemDescription.findMany({
         where: { createdAt: { gte: since } },
-        select: { text: true, city: true, categories: true, outOfService: true, safety: true, source: true, missingTrade: true },
+        select: { text: true, city: true, categories: true, outOfService: true, safety: true, source: true, missingTrade: true, chosenCategory: true },
       }),
       this.prisma.problemWord.findMany({ orderBy: { createdAt: "desc" } }),
       // Richieste inviate con la categoria proposta dalla descrizione (dal lancio, senza account di prova, §395).
@@ -144,7 +158,7 @@ export class ProblemMatchAdminService {
     const suggestions = suggestionOutcomes(suggested.map((row) => ({ suggested: row.suggestedCategorySlug!, chosen: row.category.slug, withOthers: Boolean(row.submissionGroupId) })));
 
     return {
-      lastMonth: { total: lastMonth.length, safety, ai, none, byCategory: sorted(byCategory), byOutOfService: sorted(byOutOfService), missing: sorted(missing).slice(0, MISSING_SHOWN).map(({ key, count }) => ({ text: key, count })), missingTrades: buildMissingTrades(lastMonth).slice(0, MISSING_TRADES_SHOWN), suggestions, aiSpeed: aiSpeedOf(aiCalls) },
+      lastMonth: { total: lastMonth.length, safety, ai, none, byCategory: sorted(byCategory), byOutOfService: sorted(byOutOfService), missing: sorted(missing).slice(0, MISSING_SHOWN).map(({ key, count }) => ({ text: key, count })), missingTrades: buildMissingTrades(lastMonth).slice(0, MISSING_TRADES_SHOWN), suggestions, aiSpeed: aiSpeedOf(aiCalls), choiceSwitches: choiceSwitchesOf(lastMonth) },
       descriptions: descriptions.map((row) => ({
         id: row.id,
         text: row.text,

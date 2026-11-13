@@ -224,7 +224,13 @@ export function GuidedRequestForm({
   // "Oggi" è l'urgente; "In settimana" e "Con calma" sono richieste normali.
   // Nessuna scelta preselezionata (da /urgente "Oggi"): il cliente decide
   // (nel test chi andava di fretta lasciava quella già scelta).
-  const [timing, setTiming] = useState<RequestTiming | null>(isUrgentInitial ? "TODAY" : null);
+  // Dalla ricerca per problema arriva in `quando` ciò che il cliente ha già
+  // scritto ("urgente", "domani", "con calma"): resta modificabile
+  // (docs/changelog/2026-11-12-haiku-senza-ragionamento.md).
+  const timingParam = searchParams.get("quando");
+  const [timing, setTiming] = useState<RequestTiming | null>(
+    isUrgentInitial ? "TODAY" : REQUEST_TIMINGS.find((value) => value === timingParam) ?? null,
+  );
   const isUrgent = timing === "TODAY";
   // Frase per il lettore di schermo quando cambia l'urgenza: cosa cambia,
   // in poche parole (§344). Vuota all'apertura, così non legge nulla.
