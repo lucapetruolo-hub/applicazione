@@ -43,11 +43,23 @@ describe("email Appuntamento prenotato come conferma del contratto (E4-04)", () 
     expect(email.text).not.toContain("almeno 24 ore prima");
   });
 
-  it("col pagamento diretto niente frase sull'acconto; con l'acconto sempre rimborsabile lo dice", () => {
-    expect(lateCancelDepositNotice(true, null, new Date("2026-11-20T08:00:00.000Z"), 24)).toBeNull();
-    expect(lateCancelDepositNotice(false, { nowEurCents: 2400, restMaxEurCents: 9600 }, new Date("2026-11-20T08:00:00.000Z"), 24)).toBe(
-      "Avvisa almeno 24 ore prima. Se annulli prima dell'appuntamento, l'acconto ti torna sempre sulla carta.",
+  // Stesse frasi della scheda, per ogni momento (docs/changelog/2026-11-13-annullare-una-fonte.md).
+  it("col pagamento diretto solo il preavviso; con l'acconto sempre rimborsabile lo dice; dentro il preavviso e a fascia iniziata non promette niente", () => {
+    const start = new Date("2026-11-20T08:00:00.000Z");
+    const end = new Date("2026-11-20T13:00:00.000Z");
+    const early = new Date("2026-11-11T10:00:00.000Z");
+    const split = { nowEurCents: 2400, restMaxEurCents: 9600 };
+    const clean = (text: string | null) => text?.replace(/\u00a0/g, " ") ?? null;
+    expect(lateCancelDepositNotice(true, null, start, 24, early, end)).toBe("Se devi annullare, avvisa almeno 24 ore prima.");
+    expect(clean(lateCancelDepositNotice(false, split, start, 24, early, end))).toBe(
+      "Se devi annullare, avvisa almeno 24 ore prima. Se annulli prima dell'appuntamento, l'acconto di 24,00 € ti torna sempre sulla carta.",
     );
+    // Dentro il preavviso (20 ore prima): niente più "avvisa almeno 24 ore prima" né "senza costi".
+    expect(lateCancelDepositNotice(false, null, start, 24, new Date("2026-11-19T11:00:00.000Z"), end)).toBe(
+      "Mancano meno di 24 ore all'appuntamento. Se annulli non paghi niente, ma il professionista vede che hai annullato all'ultimo.",
+    );
+    // Fascia iniziata: non si può più annullare.
+    expect(lateCancelDepositNotice(true, split, start, 24, new Date("2026-11-20T09:00:00.000Z"), end)).toBe("L'appuntamento è già iniziato: non si può più annullare.");
   });
 
   it("senza prezzo né dati fiscali resta valida", () => {

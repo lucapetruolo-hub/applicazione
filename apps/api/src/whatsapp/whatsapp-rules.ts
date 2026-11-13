@@ -1,3 +1,4 @@
+import { freeCancellationDeadline } from "@professionisti/shared";
 import parsePhoneNumber from "libphonenumber-js/max";
 import {
   WHATSAPP_QUIET_END_HOUR,
@@ -138,7 +139,8 @@ export function depositReminderTimes(
   scheduledAt: Date,
   noticeHours: number,
 ): { sendFrom: Date; deadline: Date } {
-  const deadline = new Date(scheduledAt.getTime() - noticeHours * 3_600_000);
+  // Stessa scadenza delle frasi sul sito (docs/changelog/2026-11-13-annullare-una-fonte.md).
+  const deadline = freeCancellationDeadline(scheduledAt, noticeHours);
   const sendFrom = new Date(
     deadline.getTime() - DEPOSIT_REMINDER_HOURS_BEFORE * 3_600_000,
   );

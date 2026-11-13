@@ -40,7 +40,9 @@ import {
   CLIENT_ACCOUNT_CLOSED_NOTE,
   type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput,
   cancellationNoticeLabel,
-  freeCancellationUntilLabel,
+  cancellationPhase,
+  cancellationTerms,
+  cancellationTermsText,
   isLateCancellation,
   quotePaymentSplit,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
@@ -80,10 +82,10 @@ const OTHER_JOB_MESSAGE = "Hai già accettato un altro preventivo per questa ric
 type AcceptableQuote = Awaited<ReturnType<BookingsService["loadAcceptableQuote"]>>;
 
 /**
- * Acconto online che resta al professionista dopo il preavviso, detto chiaro
- * nell'email "Appuntamento prenotato" con giorno e ora, come sul sito
- * (decisione di Luca dell'11/11, docs/changelog/2026-11-11-rosso-solo-errori.md).
- * Con l'acconto sempre rimborsabile lo dice; null col pagamento diretto.
+ * "Per annullare" nell'email "Appuntamento prenotato": le stesse frasi della
+ * scheda, da una sola fonte (`cancellationTerms`, docs/changelog/2026-11-13-annullare-una-fonte.md),
+ * per ogni momento (prima del preavviso, dentro, fascia iniziata) e ogni
+ * pagamento. Parole decise da Luca l'11/11 (docs/changelog/2026-11-11-rosso-solo-errori.md).
  */
 export function lateCancelDepositNotice(
   keepsDeposit: boolean,
@@ -91,14 +93,19 @@ export function lateCancelDepositNotice(
   scheduledAt: Date,
   cancellationNoticeHours: number | null,
   now: Date = new Date(),
+  scheduledEndAt: Date | null = null,
 ): string | null {
-  if (!split || split.nowEurCents <= 0) return null;
-  // Acconto sempre rimborsabile: lo diciamo, è una garanzia per il cliente (Luca, 11/11).
-  if (!keepsDeposit) return `Avvisa almeno ${cancellationNoticeLabel(cancellationNoticeHours)} prima. Se annulli prima dell'appuntamento, l'acconto ti torna sempre sulla carta.`;
-  const deposit = split.restMaxEurCents === 0 ? `quello che hai pagato online (${formatEurCents(split.nowEurCents)})` : `l'acconto di ${formatEurCents(split.nowEurCents)}`;
-  return isLateCancellation(scheduledAt, cancellationNoticeHours, now)
-    ? `Mancano meno di ${cancellationNoticeLabel(cancellationNoticeHours)} all'appuntamento: ${deposit} non è rimborsabile, anche se annulli.`
-    : `Annullamento gratuito fino a ${freeCancellationUntilLabel(scheduledAt, cancellationNoticeHours)}. Dopo, ${deposit} non è rimborsabile.`;
+  const paidOnline = !!split && split.nowEurCents > 0;
+  return cancellationTermsText(
+    cancellationTerms({
+      phase: cancellationPhase(scheduledAt, scheduledEndAt, cancellationNoticeHours, now),
+      start: scheduledAt,
+      hours: cancellationNoticeHours,
+      money: paidOnline ? { kind: keepsDeposit ? "kept" : "refunded", eurCents: split.nowEurCents, full: split.restMaxEurCents === 0 } : { kind: "none" },
+      stage: "booked",
+      audience: "client",
+    }),
+  );
 }
 
 /** Nota per il cliente sui lavori annullati perché il professionista ha chiuso l'account (docs/CHANGELOG.md §348). */
@@ -525,7 +532,7 @@ export class BookingsService implements OnModuleInit {
       payment: quotePaymentSplitLine(paymentMethod, totals, depositPercent, true),
       executor: executorText,
       notice: cancellationNoticeLabel(cancellationNoticeHours),
-      depositNotice: lateCancelDepositNotice(quote.lateCancelKeepsDeposit, quotePaymentSplit(paymentMethod, totals, depositPercent), scheduledAt, cancellationNoticeHours),
+      depositNotice: lateCancelDepositNotice(quote.lateCancelKeepsDeposit, quotePaymentSplit(paymentMethod, totals, depositPercent), scheduledAt, cancellationNoticeHours, new Date(), quote.estimatedEndDate),
     };
   }
 
