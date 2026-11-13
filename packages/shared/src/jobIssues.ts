@@ -382,6 +382,12 @@ export type JobIssueWindowInput = {
   /** Conferma d'ufficio allo scadere del termine (§190): non riapre la finestra. */
   completionAutoClosedAt?: Date | null;
   hasIssue: boolean;
+  /**
+   * Saldo in attesa delle 48 ore sul prezzo finale (`JobPayment.balanceAutoChargeAt`,
+   * docs/changelog/2026-11-13-tutto-online-forbice.md): il cliente può dire "Non sono
+   * d'accordo" anche se aveva già confermato "Lavoro terminato" prima del prezzo.
+   */
+  balanceAwaitingClient?: boolean;
 };
 
 /**
@@ -432,7 +438,7 @@ export function jobIssueTypesAllowed(b: JobIssueWindowInput, now: Date): JobIssu
   // "Lavoro terminato" del cliente vale come accettazione (collaudo P-04); la conferma d'ufficio chiude comunque il termine.
   const clientAccepted = !!b.clientConfirmedCompletedAt;
   const lastEvent = Math.max(end, b.professionalCompletedAt?.getTime() ?? 0);
-  if (!clientAccepted && t >= b.scheduledAt.getTime() && t <= lastEvent + BAD_WORK_REPORT_DAYS * DAY_MS) {
+  if (b.balanceAwaitingClient || (!clientAccepted && t >= b.scheduledAt.getTime() && t <= lastEvent + BAD_WORK_REPORT_DAYS * DAY_MS)) {
     allowed.push("BAD_WORK");
   }
   return allowed;

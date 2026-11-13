@@ -104,12 +104,22 @@ export function QuoteAcceptSummary({
         <YStack gap="2" borderRadius="3" padding="3" borderWidth={2} borderColor={split ? brand.cianografiaPieno : brand.filetto} data-testid="quote-accept-amounts">
           {split ? (
             <>
-              {line("Paghi ora, online", split.restMaxEurCents > 0 ? "Acconto con carta" : "Tutto il prezzo, con carta", formatEurCents(split.nowEurCents), true)}
+              {line(
+                "Paghi ora, online",
+                // "Tutto online" con la forbice: adesso il minimo (docs/changelog/2026-11-13-tutto-online-forbice.md).
+                split.nowIsMinimum ? "Il prezzo minimo, con carta" : split.restMaxEurCents > 0 ? "Acconto con carta" : "Tutto il prezzo, con carta",
+                formatEurCents(split.nowEurCents),
+                true,
+              )}
               {split.restMaxEurCents > 0
                 ? line(
                     split.restOnline ? "A lavoro finito, con la stessa carta" : "A lavoro finito, al professionista",
                     // Il saldo online parte da solo: prima lo diceva solo la pagina di Stripe (docs/changelog/2026-11-08-prova-persone-simulate.md).
-                    split.restOnline ? "Il resto, in automatico quando il professionista chiude il lavoro" : "Il resto, direttamente a lui",
+                    split.nowIsMinimum
+                      ? "Solo se il prezzo finale è più alto, in automatico quando il professionista chiude il lavoro"
+                      : split.restOnline
+                        ? "Il resto, in automatico quando il professionista chiude il lavoro"
+                        : "Il resto, direttamente a lui",
                     quotePaymentRestText(split),
                   )
                 : null}

@@ -2028,6 +2028,12 @@ export function RequestCard({
                         Con l&apos;acconto al 100% il cliente paga tutto con la carta, quindi non vedrà &quot;{QUOTE_PAYMENT_OPTION_LABEL.MIXED}&quot;.
                       </Text>
                     ) : null}
+                    {/* "Tutto online" con la forbice: il minimo subito (decisione di Luca, docs/changelog/2026-11-13-tutto-online-forbice.md). */}
+                    {paymentOptions.some(paymentChoiceIsOnline) && Number(depositPercentDraft) >= 100 ? (
+                      <Text fontSize={13} color={brand.grafite70}>
+                        Con una forbice di prezzo il cliente paga subito il minimo e il resto, se serve, a lavoro finito con la stessa carta.
+                      </Text>
+                    ) : null}
                     {paymentOptions.some(paymentChoiceIsOnline) && limitHint ? (
                       <Text fontSize={13} color={brand.grafite70}>
                         {limitHint}
