@@ -40,6 +40,19 @@ per regole o esempi, e il banco deve impedirlo da solo.
   (prova: 56/75 come prima, sbagliate 10 su 100 come prima, McNemar p = 1;
   allenamento: 41/62, 15 su 100, p = 0,73).
 
+- **Seconda correzione, nelle istruzioni** (esempi solo dalla pila di
+  allenamento): senza il dizionario l'IA era troppo prudente e lasciava vuoti
+  casi chiari ("la caldaia non riparte dopo un blackout"). La regola dice di
+  scegliere la prestazione anche con altre parole quando l'oggetto è lo stesso.
+- Misura diretta (Anthropic senza memoria, 3 volte per frase), prima → dopo le
+  due correzioni:
+  - prova: sbagliate su 100 frasi 9 → 5, trovate 58 → 53 su 75, date senza
+    prestazione adatta 4 → 1 su 25 (McNemar p = 0,75: può essere caso);
+  - allenamento: sbagliate 15 → 10, trovate 42 → 40 su 62, date senza 10 → 4
+    su 38 (p = 0,52).
+  Gli errori rimasti nell'allenamento sono soprattutto porte (4 su 10, 3 su
+  "Riparazione porta o finestra" di un account di prova).
+
 Motivo: con 75 frasi "56 su 75" vuol dire tra il 64% e l'85%; senza margini e
 senza confronto frase per frase una differenza di 3-4 frasi non dice nulla. La
 seconda prova sul sito dopo un deploy prendeva le risposte dalla memoria.
