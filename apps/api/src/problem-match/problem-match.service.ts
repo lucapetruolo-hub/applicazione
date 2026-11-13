@@ -123,6 +123,16 @@ const PHOTO_RETRY_MIN_MS = 4000;
 const PHOTO_RETRY_PAUSE_MS = 800;
 /** I risultati delle foto restano in memoria mezz'ora: il tempo di passare ai risultati e alla richiesta. */
 const PHOTO_RESULT_TTL_MS = 30 * 60_000;
+/**
+ * Difese contro chi cambia indirizzo IP (decisione di Luca del 13/11,
+ * docs/changelog/2026-11-13-difese-ricerca-con-foto.md): un tetto per le foto
+ * di tutto il sito, separato da quello del testo (le foto non spengono l'IA
+ * alla ricerca a parole), e un massimo di foto al giorno per indirizzo.
+ */
+const PHOTO_DAILY_LIMIT = 1000;
+const PHOTO_PER_IP_DAILY_LIMIT = 10;
+/** Oltre questi indirizzi in un giorno si riparte da capo: la memoria resta piccola. */
+const PHOTO_IPS_MAX = 50_000;
 const PHOTO_RESULTS_MAX = 500;
 export type PhotoMediaType = "image/jpeg" | "image/png" | "image/webp";
 
@@ -347,6 +357,18 @@ export class ProblemMatchService {
     },
     "PROBLEM_MATCH_AI_DAILY_LIMIT",
   );
+  /** Tetto delle foto per tutto il sito, separato da quello del testo. */
+  private readonly photoBudget = new DailyBudget(
+    PHOTO_DAILY_LIMIT,
+    () => {
+      const message = "Tetto giornaliero delle foto raggiunto: fino a mezzanotte la ricerca va solo a parole.";
+      this.logger.error(message);
+      opsAlert("problem-photo-budget", message);
+    },
+    "PROBLEM_PHOTO_DAILY_LIMIT",
+  );
+  private photoIpDay = "";
+  private readonly photosByIp = new Map<string, number>();
   private readonly cache = new Map<string, Classified>();
   /** Risultati delle foto, per id: la foto non si tiene, solo cosa ne ha capito l'IA. */
   private readonly photoResults = new Map<string, { classified: Classified; ai: AiCall | null; at: number }>();
@@ -409,7 +431,7 @@ export class ProblemMatchService {
    */
   async analyzePhoto(image: Buffer, mediaType: PhotoMediaType, description: string | undefined): Promise<ProblemPhotoResult> {
     const off: ProblemPhotoResult = { photoId: null, description: null, check: "spenta" };
-    if (!photoSearchEnabled() || !this.budget.take()) return off;
+    if (!photoSearchEnabled() || !this.photoBudget.take()) return off;
     const typed = description?.trim() ?? "";
     const text = anonymizeProblemText(typed);
     const catalog = await this.serviceCatalog.catalog();
@@ -437,6 +459,24 @@ export class ProblemMatchService {
   }
 
   /** Il risultato di una foto, una volta sola con i tempi dell'IA (per Admin); dopo la mezz'ora non c'è più. */
+  /**
+   * Conta una foto per l'indirizzo e dice se oggi ne restano
+   * (`PROBLEM_PHOTO_IP_DAILY_LIMIT` lo cambia, per esempio per il banco di prova).
+   */
+  takePhotoForIp(ip: string, now: Date = new Date()): boolean {
+    const today = now.toISOString().slice(0, 10);
+    if (today !== this.photoIpDay || this.photosByIp.size >= PHOTO_IPS_MAX) {
+      this.photoIpDay = today;
+      this.photosByIp.clear();
+    }
+    const raw = Number(process.env.PROBLEM_PHOTO_IP_DAILY_LIMIT?.trim() || NaN);
+    const limit = Number.isInteger(raw) && raw >= 0 ? raw : PHOTO_PER_IP_DAILY_LIMIT;
+    const used = this.photosByIp.get(ip) ?? 0;
+    if (used >= limit) return false;
+    this.photosByIp.set(ip, used + 1);
+    return true;
+  }
+
   private takePhotoResult(photoId: string): { classified: Classified; ai: AiCall | null } | null {
     const saved = this.photoResults.get(photoId);
     if (!saved) return null;
