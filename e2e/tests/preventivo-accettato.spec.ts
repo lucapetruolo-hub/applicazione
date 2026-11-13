@@ -134,10 +134,14 @@ test("preavviso per annullare scelto dal professionista: detto prima di Accetta,
   const page = await pageAsClient(browser, client.id, PHONE);
   await page.goto(`/le-mie-richieste?open=${request.id}`);
   const card = page.locator(`#request-${request.id}`);
-  await expect(card.locator(`#quote-${quotes[0].id}`).getByText("Avvisa almeno 48 ore prima", { exact: true })).toBeVisible();
+  // Già dentro il preavviso la scheda non dice "Avvisa almeno 48 ore prima" né una data passata
+  // (docs/changelog/2026-11-13-annullare-data-passata.md).
+  await expect(card.locator(`#quote-${quotes[0].id}`).getByTestId("quote-cancel-late")).toHaveText("Mancano meno di 48 ore all'appuntamento.");
+  await expect(card.locator(`#quote-${quotes[0].id}`).getByText("Avvisa almeno 48 ore prima", { exact: true })).toHaveCount(0);
   await card.locator(`#quote-${quotes[0].id}`).getByText("Accetta preventivo", { exact: true }).click();
   // Già dentro il preavviso: lo dice il riepilogo prima di accettare (collaudo A-06).
-  await expect(card.getByText(/già dentro il preavviso|meno di 48 ore/).first()).toBeVisible();
+  // (oltre alla scheda, anche il riepilogo: due volte la stessa frase).
+  await expect(card.getByText("Mancano meno di 48 ore all'appuntamento.", { exact: true })).toHaveCount(2);
   await card.getByText("Accetta con obbligo di pagare", { exact: true }).click();
   await page.getByText("Vai all'appuntamento", { exact: true }).click();
   // Già dentro il preavviso: si dice cosa succede annullando, non "avvisa prima" (collaudo A-06).

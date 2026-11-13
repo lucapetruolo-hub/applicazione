@@ -48,6 +48,22 @@ describe("PDF del preventivo: annullare", () => {
     expect(textOf(model)).toContain("Pagando online: annullamento gratuito fino a giovedì 19 novembre alle 08:00. Dopo, l'acconto di 24,00 € non è rimborsabile.");
   });
 
+  // Dentro il preavviso la data "fino a…" sarebbe già passata
+  // (docs/changelog/2026-11-13-annullare-data-passata.md).
+  it("dentro il preavviso non dà una data già passata", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-19T12:00:00.000Z"));
+    try {
+      const prisma = { quote: { findUnique: vi.fn().mockResolvedValue(quote(true)) } };
+      const service = new QuotePdfService(prisma as never, {} as never);
+      const text = textOf((await service.forUser("c1", "q1")).model);
+      expect(text).toContain("Pagando online: mancano meno di 24 ore all'appuntamento, l'acconto di 24,00 € non è rimborsabile, anche se annulli.");
+      expect(text).not.toContain("annullamento gratuito fino a");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("senza acconto trattenuto resta solo il preavviso", async () => {
     const prisma = { quote: { findUnique: vi.fn().mockResolvedValue(quote(false)) } };
     const service = new QuotePdfService(prisma as never, {} as never);

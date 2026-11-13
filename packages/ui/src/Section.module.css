@@ -20,11 +20,12 @@
 }
 
 .light {
-  /* La home la rende trasparente (HomeContent.module.css): così la stessa
-     sfumatura del sito resta dietro a tutte le sezioni, invece di
-     interrompersi a ogni sezione col fondo pieno
-     (docs/changelog/2026-11-11-home-caroselli-larghi.md). */
-  background-color: var(--section-light-bg, var(--c-gesso));
+  /* Trasparente su tutto il sito: lo sfondo a velo (.site-blobs) resta
+     dietro a ogni sezione invece di interrompersi col fondo crema pieno
+     (prima solo in home, docs/changelog/2026-11-11-home-caroselli-larghi.md;
+     poi ovunque, docs/changelog/2026-11-12-contatti-sfondo-e-link-home.md).
+     Una pagina può ancora chiedere un fondo con --section-light-bg. */
+  background-color: var(--section-light-bg, transparent);
 }
 
 .dark {

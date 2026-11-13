@@ -43,11 +43,17 @@ export function quotePaymentOffer(quote: { paymentOptions?: string[] | null; dep
   paymentOptions: JobPaymentChoice[];
   depositPercent: number;
 } {
-  const saved = (quote.paymentOptions ?? []).filter((o): o is JobPaymentChoice => (jobPaymentChoices as readonly string[]).includes(o));
+  const depositPercent = quote.depositPercent ?? ONLINE_DEPOSIT_PERCENT;
+  const saved = (quote.paymentOptions ?? [])
+    .filter((o): o is JobPaymentChoice => (jobPaymentChoices as readonly string[]).includes(o))
+    // Con l'acconto al 100% "acconto online, saldo diretto" è lo stesso che
+    // "tutto online": si offre solo quello (richiesta di Luca,
+    // docs/changelog/2026-11-13-annullare-data-passata.md).
+    .map((o) => (o === "MIXED" && depositPercent >= 100 ? "ONLINE" : o));
   return {
     // Ordine fisso, qualunque sia quello salvato.
     paymentOptions: saved.length ? jobPaymentChoices.filter((o) => saved.includes(o)) : DEFAULT_QUOTE_PAYMENT_OPTIONS,
-    depositPercent: quote.depositPercent ?? ONLINE_DEPOSIT_PERCENT,
+    depositPercent,
   };
 }
 
@@ -97,7 +103,8 @@ export function paymentChoiceIsOnline(choice: JobPaymentChoice): boolean {
  * subito che i soldi restano fermi e che la differenza gli torna.
  */
 export const UPFRONT_PAYMENT_NOTE =
-  "Paghi tutto adesso. I soldi restano fermi finché confermi che il lavoro è fatto; se il prezzo finale è più basso, la differenza ti torna.";
+  // La differenza che torna sulla carta la dice la riga con le cifre, solo con la forbice di prezzo (docs/changelog/2026-11-13-annullare-data-passata.md).
+  "Paghi tutto adesso. I soldi restano fermi finché confermi che il lavoro è fatto.";
 
 /** Giorni dopo la chiusura del lavoro in cui i soldi passano al professionista se il cliente non conferma né segnala. */
 export const ONLINE_RELEASE_DAYS = 7;
@@ -303,7 +310,13 @@ export function quotePaymentRestText(split: { restMinEurCents: number; restMaxEu
 export function quotePaymentSplitLine(choice: JobPaymentChoice, totals: { totalMinEurCents: number; totalMaxEurCents: number }, depositPercent: number, only: boolean): string {
   const split = quotePaymentSplit(choice, totals, depositPercent);
   if (!split) return jobPaymentChoiceCopy(choice, depositPercent, only).title;
-  if (split.restMaxEurCents === 0) return `${formatEurCents(split.nowEurCents)} adesso con la carta, tutto il prezzo`;
+  if (split.restMaxEurCents === 0) {
+    // Con la forbice si paga il massimo: si dice che la differenza torna
+    // (richiesta di Luca, docs/changelog/2026-11-13-annullare-data-passata.md).
+    return split.restIsRange
+      ? `${formatEurCents(split.nowEurCents)} adesso con la carta, il prezzo massimo. Se il prezzo finale è più basso, la differenza ti torna sulla carta`
+      : `${formatEurCents(split.nowEurCents)} adesso con la carta, tutto il prezzo`;
+  }
   return `${formatEurCents(split.nowEurCents)} adesso con la carta, il resto (${quotePaymentRestText(split)}) a lavoro finito ${split.restOnline ? "con la stessa carta" : "direttamente al professionista"}`;
 }
 
