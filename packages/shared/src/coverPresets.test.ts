@@ -1,35 +1,38 @@
-import { describe, expect, it } from "vitest";
-import { COVER_PRESET_IDS, profileCover, coverPresetsFor, isCoverPreset } from "./coverPresets";
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { COVER_PRESETS, COVER_PRESET_IDS, profileCover, coverPresetsFor, isCoverPreset } from "./coverPresets";
 import { setCoverPresetSchema } from "./schemas";
 
-describe("copertine pronte (docs/changelog/2026-11-13-copertina-profilo.md)", () => {
-  it("due per mestiere, quelle del professionista per prime", () => {
-    expect(COVER_PRESET_IDS).toContain("idraulico");
-    expect(COVER_PRESET_IDS).toContain("idraulico-2");
-    expect(coverPresetsFor(["falegname", "fabbro"]).slice(0, 5).map((preset) => preset.id)).toEqual(["falegname", "falegname-2", "fabbro", "fabbro-2", "colore-verde"]);
-    expect(coverPresetsFor(["falegname"])).toHaveLength(COVER_PRESET_IDS.length);
-  });
+// Copertine pronte (docs/changelog/2026-11-13-copertina-profilo.md).
 
-  it("la foto caricata vince sulla copertina pronta", () => {
-    expect(profileCover({ coverImageUrl: "https://res.cloudinary.com/x.jpg", coverPreset: "idraulico" })).toEqual({ src: "https://res.cloudinary.com/x.jpg", tone: "dark" });
-    expect(profileCover({ coverPreset: "pulizie" })).toEqual({ src: "/copertine/pulizie.webp", tone: "dark" });
-    expect(profileCover({ coverPreset: "colore-crema" })?.tone).toBe("light");
-    expect(profileCover({ coverPreset: "inventata" })).toBeNull();
-    expect(profileCover({})).toBeNull();
-  });
-
-  it("si accettano solo copertine esistenti", () => {
-    expect(isCoverPreset("pulizie")).toBe(true);
-    expect(setCoverPresetSchema.safeParse({ preset: "../etc" }).success).toBe(false);
-    expect(setCoverPresetSchema.safeParse({ preset: null }).success).toBe(true);
-  });
+test("copertine: due per mestiere, quelle del professionista per prime", () => {
+  assert.ok(COVER_PRESET_IDS.includes("idraulico"));
+  assert.ok(COVER_PRESET_IDS.includes("idraulico-2"));
+  assert.deepEqual(
+    coverPresetsFor(["falegname", "fabbro"]).slice(0, 5).map((preset) => preset.id),
+    ["falegname", "falegname-2", "fabbro", "fabbro-2", "colore-verde"],
+  );
+  assert.equal(coverPresetsFor(["falegname"]).length, COVER_PRESET_IDS.length);
 });
 
-describe("file delle copertine pronte", () => {
-  it("ogni copertina ha il file grande e quello piccolo nel sito", async () => {
-    const { existsSync } = await import("node:fs");
-    const { COVER_PRESETS } = await import("./coverPresets");
-    const missing = COVER_PRESETS.flatMap((preset) => [preset.src, preset.thumb, preset.og]).filter((src) => !existsSync(new URL(`../../../apps/web/public${src}`, import.meta.url)));
-    expect(missing).toEqual([]);
-  });
+test("copertine: la foto caricata vince sulla copertina pronta", () => {
+  assert.deepEqual(profileCover({ coverImageUrl: "https://res.cloudinary.com/x.jpg", coverPreset: "idraulico" }), { src: "https://res.cloudinary.com/x.jpg", tone: "dark" });
+  assert.deepEqual(profileCover({ coverPreset: "pulizie" }), { src: "/copertine/pulizie.webp", tone: "dark" });
+  assert.equal(profileCover({ coverPreset: "colore-crema" })?.tone, "light");
+  assert.equal(profileCover({ coverPreset: "inventata" }), null);
+  assert.equal(profileCover({}), null);
+});
+
+test("copertine: si accettano solo copertine esistenti", () => {
+  assert.equal(isCoverPreset("pulizie"), true);
+  assert.equal(setCoverPresetSchema.safeParse({ preset: "../etc" }).success, false);
+  assert.equal(setCoverPresetSchema.safeParse({ preset: null }).success, true);
+});
+
+test("copertine: ogni copertina ha il file grande, quello piccolo e l'anteprima nel sito", () => {
+  const publicDir = join(__dirname, "..", "..", "..", "apps", "web", "public");
+  const missing = COVER_PRESETS.flatMap((preset) => [preset.src, preset.thumb, preset.og]).filter((src) => !existsSync(join(publicDir, src)));
+  assert.deepEqual(missing, []);
 });
