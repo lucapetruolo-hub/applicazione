@@ -3068,6 +3068,36 @@ model SiteNote {
   @@map("site_notes")
 }
 
+// Scadenze del sito (docs/changelog/2026-11-13-admin-scadenze-controlli.md):
+// compaiono in Da fare 15 giorni prima, finché un super admin non dice "Fatto".
+model SiteDeadline {
+  id          String    @id @default(uuid())
+  title       String
+  note        String?
+  dueAt       DateTime  @db.Date
+  doneAt      DateTime?
+  doneById    String?
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  @@index([doneAt, dueAt])
+  @@map("site_deadlines")
+}
+
+// Ultimo esito di ogni controllo della notte sul sito vero (stesso file).
+model SiteCheck {
+  id           String    @id @default(uuid())
+  key          String    @unique
+  ok           Boolean
+  problem      String?
+  // Dettaglio per il tecnico (nomi delle attività, codice della risposta).
+  techNote     String?
+  failingSince DateTime?
+  checkedAt    DateTime
+
+  @@map("site_checks")
+}
+
 // Coda "Da fare" dell'area admin (docs/changelog/2026-10-30-admin-riordino.md):
 // chi ha preso un caso, perché due admin non lavorino sullo stesso. La chiave
 // è "<tipo>:<id>" (es. "JOB_ISSUE:<uuid>"), senza relazioni: i casi stanno in

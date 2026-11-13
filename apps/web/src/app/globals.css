@@ -5960,13 +5960,14 @@ a.admin-kpi:hover {
   border: 1px solid #e7e0d7;
 }
 /* "La riga del preventivo", il segno grafico del sito (docs/CHANGELOG.md
-   §305): foglio color carta con righe leggere, voce a sinistra, puntini di
-   guida, cifre in carattere a larghezza fissa in colonna, riga piena sopra
-   il totale. */
+   §305): foglio con righe leggere, voce a sinistra, puntini di guida, cifre
+   in carattere a larghezza fissa in colonna, riga piena sopra il totale.
+   Colori presi dai token del tema (verde-azzurro e inchiostro del 12/11/2026,
+   docs/changelog/2026-11-13-preventivo-esempio-colori.md): prima era un foglio
+   color carta con righe e bordo beige della vecchia palette. */
 .qx-quote {
-  background-color: #fff9f1;
-  background-image: repeating-linear-gradient(transparent 0 31px, rgba(185, 165, 140, 0.16) 31px 32px);
-  border: 1px solid #e6d3bc;
+  background-color: var(--c-calce, #fff);
+  border: 1px solid color-mix(in srgb, var(--c-cianografia, #247c7c) 24%, #fff);
 }
 .qx-bubble {
   border-radius: 22px 22px 22px 6px;
@@ -5990,7 +5991,7 @@ a.admin-kpi:hover {
   height: 1.1em;
   margin-left: 1px;
   vertical-align: -0.15em;
-  background: #1e6b6e;
+  background: var(--c-cianografiaPieno, #1e6b6e);
   animation: qx-blink 0.8s steps(1) infinite;
 }
 @keyframes qx-blink {
@@ -6004,7 +6005,7 @@ a.admin-kpi:hover {
   aspect-ratio: 16 / 9;
   border-radius: 20px;
   overflow: hidden;
-  background: #fbf0d9;
+  background: var(--c-cianografiaVelo, #dff0f0);
 }
 .qx-meta {
   font-size: 13px;
@@ -6023,14 +6024,14 @@ a.admin-kpi:hover {
   align-items: center;
   gap: 12px;
   padding-bottom: 14px;
-  border-bottom: 1px solid #f0e6dc;
+  border-bottom: 1px solid var(--c-cianografiaVelo, #dff0f0);
 }
 .qx-avatar {
   width: 46px;
   height: 46px;
   border-radius: 50%;
-  background: #dff0f0;
-  color: #186163;
+  background: var(--c-cianografiaVelo, #dff0f0);
+  color: var(--c-cianografiaScuro, #186163);
   font-family: var(--font-display), sans-serif;
   font-weight: 700;
   font-size: 20px;
@@ -6053,8 +6054,8 @@ a.admin-kpi:hover {
 .qx-example {
   font-size: 13px;
   font-weight: 700;
-  color: #8a6a1f;
-  background: #fbf0d9;
+  color: var(--c-cianografiaScuro, #186163);
+  background: var(--c-cianografiaVelo, #dff0f0);
   border-radius: 999px;
   padding: 3px 10px;
   flex-shrink: 0;
@@ -6077,14 +6078,16 @@ a.admin-kpi:hover {
   font-size: 16px;
   color: #1b1a18;
 }
+/* La riga leggera sta sotto ogni voce invece che stampata sul fondo ogni
+   32 px: prima non coincideva con le voci (richiesta di Luca del 13/11/2026). */
+.qx-row {
+  border-bottom: 1px solid color-mix(in srgb, var(--c-cianografia, #247c7c) 12%, transparent);
+}
+.qx-row:has(+ .qx-total) {
+  border-bottom: 0;
+}
 .qx-row > span:first-child {
   min-width: 0;
-}
-.qx-leader {
-  flex: 1;
-  min-width: 16px;
-  border-bottom: 2px dotted #b9a58c;
-  transform: translateY(-4px);
 }
 .qx-value {
   font-weight: 600;
@@ -6095,11 +6098,11 @@ a.admin-kpi:hover {
 .qx-total {
   margin-top: 6px;
   padding-top: 14px;
-  border-top: 2px solid #1b1a18;
+  border-top: 2px solid #0f3b3b; /* inchiostro dei titoli (brand.inchiostro) */
   font-family: var(--font-display), sans-serif;
   font-weight: 700;
   font-size: 24px;
-  color: #1b1a18;
+  color: #0f3b3b;
 }
 .qx.is-on .qx-row,
 .qx.is-on .qx-total {
@@ -6956,12 +6959,34 @@ a.admin-kpi:hover {
 }
 .pro-tier {
   cursor: pointer;
-  transition: background-color 150ms ease;
+  transition:
+    background-color 150ms ease,
+    box-shadow 150ms ease;
 }
+/* Bordo verde interno al passaggio del mouse e col fuoco da tastiera: si
+   capisce che tutta la casella si clicca (Luca, 13/11/2026,
+   docs/changelog/2026-11-13-preventivo-esempio-colori.md). Ombra interna e non
+   `border`, così la casella non si sposta e non copre le linee della griglia. */
 @media (hover: hover) and (pointer: fine) {
   .pro-tier:hover {
     background-color: rgba(30, 107, 110, 0.06) !important;
+    box-shadow: inset 0 0 0 2px var(--c-cianografia, #247c7c);
   }
+  /* Il Plus parte già colorato: al passaggio del mouse si scurisce appena
+     invece di schiarirsi. */
+  .pro-tier.pro-tier--consigliato:hover {
+    background-color: var(--c-cianografiaVelo, #dff0f0) !important;
+  }
+}
+/* Plus messo in evidenza come livello consigliato (Luca, 13/11/2026): fondo
+   appena colorato e l'etichetta "Consigliato"; niente riga in alto, che
+   faceva sembrare la casella già scelta. Due classi per vincere sul fondo
+   trasparente scritto nel componente. */
+.pro-tier.pro-tier--consigliato {
+  background-color: color-mix(in srgb, var(--c-cianografiaVelo, #dff0f0) 60%, transparent);
+}
+.pro-tier:has(.pro-tier-link:focus-visible) {
+  box-shadow: inset 0 0 0 2px var(--c-cianografia, #247c7c);
 }
 /* Luci dell'apertura di /per-professionisti sfumate in basso: prima
    finivano nette sul filetto sotto il titolo. */
