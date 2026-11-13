@@ -22,5 +22,8 @@ Luca. Mostrata anche una versione "tenue" (pastello), non scelta: a 3 px si
 vede poco sul velo chiaro. Restano bianche la barra e la rotellina dentro i
 pulsanti verdi e rossi; sagome e pallini restano neutri.
 
+Poi Luca sceglie la vivace e approva la miglioria: in cima allo schermo la
+barra è alta 4 px sul computer (da 760 px di larghezza, come le altre regole del sito), 3 px sul telefono.
+
 **Verifica**: foto prima/dopo da telefono e computer e confronto ingrandito
 delle versioni in `anteprime/barra-colori/` della cartella del progetto.

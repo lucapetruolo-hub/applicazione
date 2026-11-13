@@ -632,6 +632,13 @@ body:has(.chosen-bar) {
   height: 3px;
   border-radius: 0;
 }
+/* Sul computer 4 px: sugli schermi larghi 3 px si notavano poco
+   (docs/changelog/2026-11-13-barra-colori-velo.md). */
+@media (min-width: 760px) {
+  .nav-progress .flow-bar {
+    height: 4px;
+  }
+}
 @keyframes nav-progress-in {
   from {
     opacity: 0;
