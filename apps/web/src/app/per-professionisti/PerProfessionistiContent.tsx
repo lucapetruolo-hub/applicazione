@@ -625,9 +625,11 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
               position="relative"
               flex={1}
               flexBasis="gtSm:0px"
-              // Solo il livello gratis ha il suo fondo e la riga verde; gli altri sono trasparenti sullo sfondo del sito.
-              backgroundColor={free ? brand.calce : "transparent"}
-              {...(free ? { borderTopWidth: 3, borderTopColor: brand.cianografia } : {})}
+              // Tre caselle uguali, trasparenti sullo sfondo del sito: con il fondo bianco
+              // e la riga verde solo sul Base sembrava già scelto (Luca, 13/11/2026,
+              // docs/changelog/2026-11-13-preventivo-esempio-colori.md). Il Base si
+              // distingue già per "Gratis" e "Offerta di lancio", il Plus per "Consigliato".
+              backgroundColor="transparent"
               padding="5 gtMd:6"
               gap="3"
             >

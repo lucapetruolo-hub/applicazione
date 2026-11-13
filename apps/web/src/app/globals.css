@@ -5967,10 +5967,6 @@ a.admin-kpi:hover {
    color carta con righe e bordo beige della vecchia palette. */
 .qx-quote {
   background-color: var(--c-calce, #fff);
-  background-image: repeating-linear-gradient(
-    transparent 0 31px,
-    color-mix(in srgb, var(--c-cianografia, #247c7c) 9%, transparent) 31px 32px
-  );
   border: 1px solid color-mix(in srgb, var(--c-cianografia, #247c7c) 24%, #fff);
 }
 .qx-bubble {
@@ -6081,6 +6077,14 @@ a.admin-kpi:hover {
   padding: 11px 0;
   font-size: 16px;
   color: #1b1a18;
+}
+/* La riga leggera sta sotto ogni voce invece che stampata sul fondo ogni
+   32 px: prima non coincideva con le voci (richiesta di Luca del 13/11/2026). */
+.qx-row {
+  border-bottom: 1px solid color-mix(in srgb, var(--c-cianografia, #247c7c) 12%, transparent);
+}
+.qx-row:has(+ .qx-total) {
+  border-bottom: 0;
 }
 .qx-row > span:first-child {
   min-width: 0;

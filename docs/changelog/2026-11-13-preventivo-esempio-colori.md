@@ -22,3 +22,26 @@ oltre 11:1.
 **Verifica**: foto prima/dopo da telefono (390 px) e computer (1280 px) con il
 CSS nuovo applicato alla home pubblicata, in
 `/mnt/project-files/anteprime/preventivo-esempio-colori/`.
+
+## Secondo giro (Luca, 13/11/2026)
+
+**Richiesta**: sì ai punti 1 e 3 delle migliorie proposte (spunta verde,
+righe allineate); no al punto 2 (la freccia nel cerchio rosso dei pulsanti
+di acquisto resta). In più: in /per-professionisti, fra i tre livelli, il Base
+sembrava già scelto.
+
+**Decisione**:
+- Home, fascia per i professionisti: la notifica d'esempio "Preventivo
+  accettato" ha la spunta nel verde di "fatto" (`brand.verificato`) invece che
+  arancione `#FF8A3D`, come vuole la regola "verde = buone notizie".
+- Preventivo d'esempio: niente più righe stampate sul fondo ogni 32 px, che
+  non coincidevano con le voci; una riga leggera sotto ogni voce (tranne
+  l'ultima, sopra il totale).
+- /per-professionisti: le tre caselle dei livelli sono uguali, trasparenti
+  sullo sfondo del sito. Prima solo il Base aveva fondo bianco e riga verde
+  in alto, il modo classico di mostrare un'opzione già selezionata. Il Base
+  resta riconoscibile per "Gratis" e "Offerta di lancio", il Plus per
+  "Consigliato".
+
+**Verifica**: foto prima/dopo (`riga-*`, `spunta-*`, `livelli-*`) nella stessa
+cartella, fatte applicando le modifiche alle pagine pubblicate.
