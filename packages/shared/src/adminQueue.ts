@@ -84,6 +84,8 @@ export type AdminQueueItem = {
   /** Pericolo per le persone (gas, monossido, acqua sull'impianto elettrico): in cima. */
   danger: boolean;
   claimedBy: { id: string; name: string } | null;
+  /** Cosa propone l'IA, in poche parole (docs/changelog/2026-11-13-admin-ia-propone.md). */
+  advice: string | null;
 };
 
 export type AdminQueue = {

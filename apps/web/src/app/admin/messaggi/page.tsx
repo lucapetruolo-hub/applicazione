@@ -8,6 +8,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { useAdminOverview } from "@/components/admin/AdminOverviewContext";
 import { AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
+import { CaseAdviceBox, useCaseAdvice } from "@/components/admin/CaseAdviceBox";
+import type { CaseAdvice } from "@professionisti/shared";
 
 const ROLE_LABEL: Record<AdminContactMessage["role"], string> = { CLIENT: "Cliente", PROFESSIONAL: "Professionista", OTHER: "Altro", REPORT_ILLEGAL: "Segnalazione di contenuto illegale" };
 
@@ -21,6 +23,8 @@ export default function AdminMessaggiPage() {
   const { refresh } = useAdminOverview();
   const [view, setView] = useState<"aperti" | "archivio">("aperti");
   const [error, setError] = useState<string | null>(null);
+  // Bozza di risposta dell'IA (docs/changelog/2026-11-13-admin-ia-propone.md): mai inviata da sola.
+  const advice = useCaseAdvice(token);
   // Ogni messaggio gestito fa ricaricare l'elenco.
   const [version, setVersion] = useState(0);
   // Elenco insieme alla scheda (e al ricaricamento) da cui arriva: fino
@@ -97,14 +101,33 @@ export default function AdminMessaggiPage() {
         <Text color={brand.grafite70}>{view === "aperti" ? "Nessun messaggio da gestire." : "Archivio vuoto."}</Text>
       ) : (
         <YStack gap="3">
-          {messages?.map((message) => <MessageCard key={message.id} message={message} token={token ?? ""} onResolved={() => resolved(message)} onChanged={reload} />)}
+          {messages?.map((message) => <MessageCard
+              key={message.id}
+              message={message}
+              token={token ?? ""}
+              advice={message.resolved ? null : advice.get("CONTACT_MESSAGE", message.id)}
+              onResolved={() => resolved(message)}
+              onChanged={reload}
+            />)}
         </YStack>
       )}
     </YStack>
   );
 }
 
-function MessageCard({ message, token, onResolved, onChanged }: { message: AdminContactMessage; token: string; onResolved: () => void; onChanged: () => void }) {
+function MessageCard({
+  message,
+  token,
+  advice,
+  onResolved,
+  onChanged,
+}: {
+  message: AdminContactMessage;
+  token: string;
+  advice: CaseAdvice | null;
+  onResolved: () => void;
+  onChanged: () => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Segnalazione di contenuto illegale senza account (docs/CHANGELOG.md
@@ -166,6 +189,7 @@ function MessageCard({ message, token, onResolved, onChanged }: { message: Admin
           Rispondi in una riga, senza il perché. Usa una delle due frasi pronte.
         </Text>
       ) : null}
+      {advice ? <CaseAdviceBox advice={advice} token={token} onApproved={onChanged} replyTo={message.email} /> : null}
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       <XStack gap="2" flexWrap="wrap">
         <a href={mailto} style={{ textDecoration: "none" }}>

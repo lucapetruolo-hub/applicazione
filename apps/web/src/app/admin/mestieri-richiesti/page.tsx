@@ -379,7 +379,7 @@ function MissingTradesCard({ trades }: { trades: MissingTrade[] }) {
       <YStack id="mestieri-mancanti" style={{ scrollMarginTop: 120 }}>
         <Text fontWeight="700">Mestieri che non abbiamo, ultimi 30 giorni</Text>
         <Text color={brand.grafite70} fontSize={13} marginTop="1">
-          A volte nessun nostro mestiere va bene. Allora il computer scrive quale servirebbe. Da {MISSING_TRADE_ADVICE_MIN} richieste
+          A volte nessun nostro mestiere va bene. Allora l&apos;IA scrive quale servirebbe. Da {MISSING_TRADE_ADVICE_MIN} richieste
           in su compare anche in Home tra le cose da fare.
         </Text>
         {trades.length === 0 ? (

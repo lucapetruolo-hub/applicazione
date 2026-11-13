@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { AdminDispute, AdminRefund } from "@professionisti/api-client";
+import type { CaseAdvice } from "@professionisti/shared";
+import { CaseAdviceBox, useCaseAdvice } from "@/components/admin/CaseAdviceBox";
 import {
   ONLINE_LIMIT_FREE_DAYS,
   ONLINE_LIMIT_FREE_JOBS,
@@ -52,6 +54,7 @@ export default function AdminPagamentiPage() {
   const { token } = useAuth();
   const { refresh } = useAdminOverview();
   const [refunds, setRefunds] = useState<AdminRefund[] | null>(null);
+  const advice = useCaseAdvice(token);
   const [disputes, setDisputes] = useState<AdminDispute[] | null>(null);
   const [unpaid, setUnpaid] = useState<AdminUnpaidBalance[] | null>(null);
   const [limits, setLimits] = useState<AdminOnlineLimitRow[] | null>(null);
@@ -123,7 +126,7 @@ export default function AdminPagamentiPage() {
           Clienti che hanno contestato un pagamento online con la loro banca. Il sito ha già scritto le prove. Rileggile e mandale prima della scadenza.
         </Text>
         {bankDisputes && bankDisputes.length === 0 ? <Text color={brand.grafite70}>Nessuna contestazione in banca aperta.</Text> : null}
-        {bankDisputes?.map((row) => <BankDisputeCard key={row.jobPaymentId} row={row} token={token ?? ""} onChanged={reload} />)}
+        {bankDisputes?.map((row) => <BankDisputeCard key={row.jobPaymentId} row={row} advice={advice.get("BANK_DISPUTE", row.jobPaymentId)} token={token ?? ""} onChanged={() => { reload(); advice.reload(); }} />)}
       </YStack>
 
       {token ? <BankDisputeArchive token={token} reloadKey={bankDisputes} /> : null}
@@ -136,7 +139,7 @@ export default function AdminPagamentiPage() {
           Clienti che non hanno pagato il resto entro 7 giorni dalla fine del lavoro. Il professionista ha già avuto la parte pagata. Scrivi al cliente per ricordarglielo. Se paga dal sito, i soldi arrivano da soli al professionista.
         </Text>
         {unpaid && unpaid.length === 0 ? <Text color={brand.grafite70}>Nessuno deve ancora pagare il resto.</Text> : null}
-        {unpaid?.map((row) => <UnpaidCard key={row.jobPaymentId} row={row} token={token ?? ""} onChanged={reload} />)}
+        {unpaid?.map((row) => <UnpaidCard key={row.jobPaymentId} row={row} advice={advice.get("UNPAID_BALANCE", row.jobPaymentId)} token={token ?? ""} onChanged={() => { reload(); advice.reload(); }} />)}
       </YStack>
 
       <YStack gap="3">
@@ -151,6 +154,8 @@ export default function AdminPagamentiPage() {
           <RefundCard
             key={refund.id}
             refund={refund}
+            advice={advice.get("REFUND", refund.id)}
+            onAdviceDone={advice.reload}
             token={token ?? ""}
             onChanged={reload}
             // Stessa storia aperta due volte (misura "dopo" del riordino): si decidono insieme.
@@ -174,6 +179,8 @@ export default function AdminPagamentiPage() {
           <DisputeCard
             key={dispute.id}
             dispute={dispute}
+            advice={advice.get("DISPUTE", dispute.id)}
+            onAdviceDone={advice.reload}
             token={token ?? ""}
             onChanged={reload}
             alsoOpen={refunds?.some((r) => r.jobPayment.id === dispute.jobPayment.id && r.status === "REQUESTED") ? "Sullo stesso lavoro c'è anche un rimborso da decidere, più sopra: decidili insieme." : null}
@@ -208,8 +215,24 @@ function refundClientName(refund: AdminRefund): string {
  * chi, con la cifra esatta e il nome, e chiede il motivo; il pulsante porta il
  * nome dell'azione (collaudo 29/10 e riordino admin).
  */
-function RefundCard({ refund, token, onChanged, alsoOpen }: { refund: AdminRefund; token: string; onChanged: () => void; alsoOpen: string | null }) {
+function RefundCard({
+  refund,
+  advice,
+  onAdviceDone,
+  token,
+  onChanged,
+  alsoOpen,
+}: {
+  refund: AdminRefund;
+  advice: CaseAdvice | null;
+  onAdviceDone: () => void;
+  token: string;
+  onChanged: () => void;
+  alsoOpen: string | null;
+}) {
   const [confirming, setConfirming] = useState<"APPROVED" | "REJECTED" | null>(null);
+  // La motivazione proposta dall'IA, da ritoccare nella finestra di conferma.
+  const [draftNote, setDraftNote] = useState("");
   const status = REFUND_STATUS[refund.status];
   const client = refundClientName(refund);
   const professional = refund.jobPayment.booking.professionalProfile.businessName;
@@ -218,6 +241,7 @@ function RefundCard({ refund, token, onChanged, alsoOpen }: { refund: AdminRefun
     await apiClient.adminDecideRefund(token, refund.id, { decision, note });
     setConfirming(null);
     onChanged();
+    onAdviceDone();
   }
 
   return (
@@ -238,6 +262,18 @@ function RefundCard({ refund, token, onChanged, alsoOpen }: { refund: AdminRefun
         <Text fontSize={13} fontWeight="700" color={brand.urgenza}>
           {alsoOpen}
         </Text>
+      ) : null}
+      {advice && refund.status === "REQUESTED" ? (
+        <CaseAdviceBox
+          advice={advice}
+          token={token}
+          onApproved={onAdviceDone}
+          onApprove={() => {
+            setDraftNote(advice.note ?? "");
+            setConfirming(advice.decision === "REFUND_REJECTED" ? "REJECTED" : "APPROVED");
+          }}
+          onModify={() => setDraftNote(advice.note ?? "")}
+        />
       ) : null}
       {refund.status === "REQUESTED" ? (
         <XStack gap="2">
@@ -261,6 +297,7 @@ function RefundCard({ refund, token, onChanged, alsoOpen }: { refund: AdminRefun
           }
           notePlaceholder={confirming === "APPROVED" ? "Es. Lavoro non fatto, d'accordo con il professionista." : "Es. Il lavoro risulta fatto come da preventivo."}
           noteMinLength={5}
+          initialNote={draftNote}
           confirmLabel={confirming === "APPROVED" ? `Rimborsa ${euro(refund.amountEurCents)}` : "Rifiuta il rimborso"}
           confirmingLabel="Salvataggio..."
           backLabel="Torna indietro"
@@ -271,7 +308,21 @@ function RefundCard({ refund, token, onChanged, alsoOpen }: { refund: AdminRefun
   );
 }
 
-function DisputeCard({ dispute, token, onChanged, alsoOpen }: { dispute: AdminDispute; token: string; onChanged: () => void; alsoOpen: string | null }) {
+function DisputeCard({
+  dispute,
+  advice,
+  onAdviceDone,
+  token,
+  onChanged,
+  alsoOpen,
+}: {
+  dispute: AdminDispute;
+  advice: CaseAdvice | null;
+  onAdviceDone: () => void;
+  token: string;
+  onChanged: () => void;
+  alsoOpen: string | null;
+}) {
   const [choice, setChoice] = useState<"RESOLVED_CLIENT" | "RESOLVED_PROFESSIONAL" | "CLOSED" | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -287,6 +338,7 @@ function DisputeCard({ dispute, token, onChanged, alsoOpen }: { dispute: AdminDi
       await apiClient.adminResolveDispute(token, dispute.id, { status: choice, resolutionNote: note.trim() || undefined });
       setChoice(null);
       onChanged();
+      onAdviceDone();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -316,6 +368,18 @@ function DisputeCard({ dispute, token, onChanged, alsoOpen }: { dispute: AdminDi
       ) : null}
       {dispute.resolutionNote ? <Text color={brand.grafite70}>Esito: {dispute.resolutionNote}</Text> : null}
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+      {advice && isOpen ? (
+        <CaseAdviceBox
+          advice={advice}
+          token={token}
+          onApproved={onAdviceDone}
+          onApprove={() => {
+            setNote(advice.note ?? "");
+            setChoice(advice.decision as "RESOLVED_CLIENT" | "RESOLVED_PROFESSIONAL" | "CLOSED");
+          }}
+          onModify={() => setNote(advice.note ?? "")}
+        />
+      ) : null}
       {isOpen ? (
         <YStack gap="2">
           <XStack gap="2" flexWrap="wrap">
@@ -344,7 +408,7 @@ function DisputeCard({ dispute, token, onChanged, alsoOpen }: { dispute: AdminDi
   );
 }
 
-function UnpaidCard({ row, token, onChanged }: { row: AdminUnpaidBalance; token: string; onChanged: () => void }) {
+function UnpaidCard({ row, token, onChanged, advice }: { row: AdminUnpaidBalance; token: string; onChanged: () => void; advice: CaseAdvice | null }) {
   const [note, setNote] = useState("");
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -380,6 +444,22 @@ function UnpaidCard({ row, token, onChanged }: { row: AdminUnpaidBalance; token:
         Cliente <Link href={`/admin/utenti/${row.client.userId}`}>{row.client.name ?? row.client.email}</Link> ({row.client.email}) · professionista{" "}
         <Link href={`/admin/utenti/${row.professional.userId}`}>{row.professional.businessName}</Link>
       </Text>
+      {advice ? (
+        <CaseAdviceBox
+          advice={advice}
+          token={token}
+          onApproved={onChanged}
+          noAction={advice.decision === "WAIT" ? "Per ora non serve fare niente: se il cliente paga, il saldo si chiude da solo." : undefined}
+          onApprove={() => {
+            setNote(advice.note ?? "");
+            setOpen(true);
+          }}
+          onModify={() => {
+            setNote(advice.note ?? "");
+            setOpen(true);
+          }}
+        />
+      ) : null}
       {open ? (
         <YStack gap="2">
           <textarea aria-label="Come si è chiuso" className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Come si è chiuso (es. pagato al professionista, rinuncia)" />
@@ -490,7 +570,7 @@ function dueWithinDays(iso: string, days: number): boolean {
   return new Date(iso).getTime() - Date.now() < days * 86_400_000;
 }
 
-function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; token: string; onChanged: () => void }) {
+function BankDisputeCard({ row, token, onChanged, advice }: { row: AdminBankDispute; token: string; onChanged: () => void; advice: CaseAdvice | null }) {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [draft, setDraft] = useState(row.draft);
@@ -539,6 +619,19 @@ function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; tok
         {row.professionalName} · cliente {row.clientName}
         {!row.submitted ? (row.professionalNote ? " · il professionista ha scritto la sua spiegazione" : " · il professionista non ha ancora scritto") : ""}
       </Text>
+      {advice && !row.submitted ? (
+        <CaseAdviceBox
+          advice={advice}
+          token={token}
+          onApproved={onChanged}
+          noAction={advice.decision === "DONT_CONTEST" ? "Se non mandi le prove entro la scadenza, la banca dà ragione al cliente. Puoi sempre mandarle qui sotto." : undefined}
+          onApprove={() => {
+            setOpen(true);
+            setConfirming(true);
+          }}
+          onModify={() => setOpen(true)}
+        />
+      ) : null}
       {row.submitted ? (
         <YStack gap="2">
           <Text fontSize={13} color={brand.grafite70}>
