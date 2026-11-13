@@ -57,7 +57,8 @@ describe("PDF del preventivo: annullare", () => {
       const prisma = { quote: { findUnique: vi.fn().mockResolvedValue(quote(true)) } };
       const service = new QuotePdfService(prisma as never, {} as never);
       const text = textOf((await service.forUser("c1", "q1")).model);
-      expect(text).toContain("Pagando online: mancano meno di 24 ore all'appuntamento, l'acconto di 24,00 € non è rimborsabile, anche se annulli.");
+      expect(text).toContain("Mancano meno di 24 ore all'appuntamento.");
+      expect(text).toContain("Pagando online, l'acconto di 24,00 € non è rimborsabile, anche se annulli.");
       expect(text).not.toContain("annullamento gratuito fino a");
     } finally {
       vi.useRealTimers();
@@ -70,6 +71,6 @@ describe("PDF del preventivo: annullare", () => {
     const text = textOf((await service.forUser("c1", "q1")).model);
     expect(text).toContain("Avvisa almeno 24 ore prima.");
     expect(text).not.toContain("non è rimborsabile");
-    expect(text).toContain("l'acconto ti torna sempre");
+    expect(text).toContain("Pagando online, se annulli prima dell'appuntamento, l'acconto di 24,00 € ti torna sempre sulla carta.");
   });
 });
