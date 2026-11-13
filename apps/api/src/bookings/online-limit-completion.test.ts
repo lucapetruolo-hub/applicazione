@@ -108,10 +108,10 @@ describe("prezzo finale sopra il minimo: 48 ore al cliente (13/11)", () => {
     expect(calls[1]).toMatchObject({ autoChargeBalance: true, waitForClient: false });
   });
 
-  it("se il cliente ha già confermato il lavoro non aspetta", async () => {
+  it("aspetta anche se il cliente aveva già confermato il lavoro prima del prezzo", async () => {
     const { service, prisma, jobPaymentsService } = buildService(null);
     prisma.booking.findUnique.mockResolvedValue({ ...(await prisma.booking.findUnique()), clientConfirmedCompletedAt: new Date("2026-01-10T12:00:00Z") });
     await service.completeWithFinalAmount("pro-user-1", "bk-1", close(250000));
-    expect(jobPaymentsService.createOnCompletion).toHaveBeenCalledWith(expect.objectContaining({ waitForClient: false }));
+    expect(jobPaymentsService.createOnCompletion).toHaveBeenCalledWith(expect.objectContaining({ waitForClient: true }));
   });
 });

@@ -1143,7 +1143,7 @@ const BUILDERS: Record<string, Builder> = {
           title: "Controlla il prezzo finale",
           paragraphs: [
             `**${pro(ctx)}** ha chiuso il lavoro per **${job(ctx)}**${typeof payload.finalAmountEurCents === "number" ? ` a **${formatEur(payload.finalAmountEurCents)}**` : ""}, dentro il preventivo che hai accettato.`,
-            `Se il prezzo va bene non devi fare nulla: ${formatDayTime(payload.autoChargeAt)} addebitiamo il resto sulla carta dell'acconto. Se confermi "Lavoro terminato" lo addebitiamo subito.`,
+            `Se il prezzo va bene non devi fare nulla: ${formatDayTime(payload.autoChargeAt)} addebitiamo il resto sulla carta dell'acconto.${payload.clientConfirmed === true ? "" : ' Se confermi "Lavoro terminato" lo addebitiamo subito.'}`,
             "Se non sei d'accordo, segnala un problema dalla pagina del lavoro: non addebitiamo nulla finché non si chiarisce.",
           ],
           details: typeof payload.amountEurCents === "number" ? [{ label: "Resto da addebitare", value: formatEur(payload.amountEurCents) }] : undefined,

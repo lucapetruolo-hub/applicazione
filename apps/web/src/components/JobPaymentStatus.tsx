@@ -71,7 +71,7 @@ function clientView(payment: JobPaymentSummary): View {
       tone: "action",
       icon: "credit-card",
       title: "Controlla il prezzo finale",
-      body: `Se va bene non devi fare nulla: ${formatIssueDeadline(payment.balanceAutoChargeAt)} addebitiamo ${eur(payment.balanceDueEurCents)} sulla carta dell'acconto (se confermi "Lavoro terminato", subito). Se non sei d'accordo, segnala un problema: non addebitiamo nulla.`,
+      body: `Se va bene non devi fare nulla: ${formatIssueDeadline(payment.balanceAutoChargeAt)} addebitiamo ${eur(payment.balanceDueEurCents)} sulla carta dell'acconto. Se non sei d'accordo, segnala un problema: non addebitiamo nulla.`,
       step: 1,
     };
   }

@@ -1052,8 +1052,8 @@ export class BookingsService implements OnModuleInit {
       autoChargeBalance:
         !!deviation && deviation.addedItemNames.length === 0 && deviation.direction !== "ABOVE" && deviation.quoteMaxEurCents !== null,
       // Sopra il minimo del preventivo: 48 ore al cliente prima della carta (decisione di Luca del 13/11).
-      // Se il cliente ha già confermato "Lavoro terminato" non può più segnalare un problema: niente attesa.
-      waitForClient: !!deviation && booking.clientConfirmedCompletedAt === null && balanceChargeWaitsForClient(deviation.totalEurCents, deviation.quoteMinEurCents),
+      // Anche se il cliente aveva già confermato "Lavoro terminato": il prezzo lo vede ora.
+      waitForClient: !!deviation && balanceChargeWaitsForClient(deviation.totalEurCents, deviation.quoteMinEurCents),
     });
     // Pagamento online (§168): il cliente paga il saldo sull'importo finale.
     if (online && online.balanceDueEurCents > 0) {
@@ -1062,7 +1062,9 @@ export class BookingsService implements OnModuleInit {
         guidedRequestId: booking.quote?.guidedRequestId,
         amountEurCents: online.balanceDueEurCents,
         audience: "CLIENT",
-        ...(online.autoChargeAt ? { autoChargeAt: online.autoChargeAt.toISOString(), finalAmountEurCents } : {}),
+        ...(online.autoChargeAt
+          ? { autoChargeAt: online.autoChargeAt.toISOString(), finalAmountEurCents, ...(booking.clientConfirmedCompletedAt ? { clientConfirmed: true } : {}) }
+          : {}),
       });
     }
 
@@ -1564,7 +1566,7 @@ export class BookingsService implements OnModuleInit {
         professionalProfile: { select: { userId: true } },
         quote: { select: { guidedRequestId: true } },
         issue: { select: { id: true } },
-        jobPayment: { select: { paymentMethod: true } },
+        jobPayment: { select: { paymentMethod: true, balanceAutoChargeAt: true } },
       },
     });
     if (!booking || booking.clientId !== clientId) {
@@ -1577,7 +1579,8 @@ export class BookingsService implements OnModuleInit {
     // wallClockNow(), non con new Date(), altrimenti la segnalazione si apriva un'ora
     // dopo l'inizio (due d'estate) (docs/changelog/2026-11-05-pagamenti-di-prova.md).
     const issueNow = wallClockNow();
-    const allowed = jobIssueTypesAllowed({ ...booking, hasIssue: false }, issueNow);
+    const balanceAwaitingClient = !!booking.jobPayment?.balanceAutoChargeAt;
+    const allowed = jobIssueTypesAllowed({ ...booking, hasIssue: false, balanceAwaitingClient }, issueNow);
     // Passato il termine resta la segnalazione senza rimborso (decisione di Luca del 30/10/2026).
     const late = !allowed.includes(input.type) && input.type === "BAD_WORK" && jobIssueLateAllowed({ ...booking, hasIssue: false }, issueNow);
     if (!allowed.includes(input.type) && !late) {
@@ -1911,11 +1914,11 @@ export class BookingsService implements OnModuleInit {
       }),
       // Pagamento del lavoro (§168): metodo scelto, acconto, saldo, rimborsi.
       payment: toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents),
-      issueTypesAllowed: jobIssueLateAllowed({ ...booking, hasIssue: booking.issue !== null }, wallClockNow(now))
+      issueTypesAllowed: jobIssueLateAllowed({ ...booking, hasIssue: booking.issue !== null, balanceAwaitingClient: !!booking.jobPayment?.balanceAutoChargeAt }, wallClockNow(now))
         ? ["BAD_WORK" as const]
-        : jobIssueTypesAllowed({ ...booking, hasIssue: booking.issue !== null }, wallClockNow(now)),
+        : jobIssueTypesAllowed({ ...booking, hasIssue: booking.issue !== null, balanceAwaitingClient: !!booking.jobPayment?.balanceAutoChargeAt }, wallClockNow(now)),
       // Dopo il termine si segnala ancora un lavoro non andato bene, senza rimborso.
-      issueLate: jobIssueLateAllowed({ ...booking, hasIssue: booking.issue !== null }, wallClockNow(now)),
+      issueLate: jobIssueLateAllowed({ ...booking, hasIssue: booking.issue !== null, balanceAwaitingClient: !!booking.jobPayment?.balanceAutoChargeAt }, wallClockNow(now)),
       canReview:
         !(booking.recurringJobId && reviewedSeries.has(booking.recurringJobId) && !booking.review) &&
         clientCanReview({

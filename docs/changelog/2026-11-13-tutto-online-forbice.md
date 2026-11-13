@@ -55,12 +55,16 @@ dire di no".
 - Allo scadere: `OnlineMoneyService.runHeldBalanceCharges` (ogni ora) addebita la
   carta salvata; una sola volta anche con due giri (la data si azzera prima di
   addebitare); con la carta rifiutata il cliente riceve il link, come prima.
-- Al minimo o sotto: addebito subito come prima. Cliente che aveva già
-  confermato "Lavoro terminato" (non può più segnalare): addebito subito.
+- Al minimo o sotto: addebito subito come prima.
+- Cliente che aveva già confermato "Lavoro terminato" prima del prezzo
+  (miglioria approvata da Luca, "si"): aspetta anche lui 48 ore e può segnalare
+  un problema con l'assistenza anche dopo la conferma, finché il saldo aspetta
+  (`balanceAwaitingClient` in `jobIssueTypesAllowed`).
 - Testo sulla pagina di Stripe dove si salva la carta: aggiunte le 48 ore.
 
 **Verifica**: `destination-charges.test.ts` (attesa alla chiusura, addebito allo
 scadere, niente addebito con un problema, niente doppio addebito, carta
 rifiutata), `online-limit-completion.test.ts` (sopra il minimo aspetta, al
-minimo no, già confermato no); 1523 prove dell'API, prove di `packages/shared`,
+minimo no, già confermato aspetta), `job-issues.test.ts` (segnalazione dopo la
+conferma solo col saldo in attesa); 1523 prove dell'API, prove di `packages/shared`,
 typecheck ed eslint di sito e API.
