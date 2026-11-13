@@ -621,7 +621,7 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
             // allargato con ::after; docs/changelog/2026-11-12-pagina-per-professionisti.md).
             <YStack
               key={tier.tier}
-              className="pro-tier"
+              className={tier.tier === "PLUS" ? "pro-tier pro-tier--consigliato" : "pro-tier"}
               position="relative"
               flex={1}
               flexBasis="gtSm:0px"

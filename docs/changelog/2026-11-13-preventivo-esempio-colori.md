@@ -56,3 +56,20 @@ collegamento prende il fuoco da tastiera, oltre alla leggera tinta di fondo
 che c'era già.
 
 **Verifica**: `livelli-mouse-computer.png` nella stessa cartella.
+
+## Quarto giro (Luca, 13/11/2026)
+
+**Richiesta**: sì a tre migliorie della valutazione da esperto.
+
+**Decisione**:
+- Preventivo d'esempio: "Uscita" diventa "Diritto di chiamata" (chi non è del
+  mestiere non sapeva cosa fosse) e via i puntini di guida: resta solo la riga
+  sotto ogni voce, che fa già da guida per l'occhio.
+- /per-professionisti: il Plus ha il fondo appena colorato di verde-azzurro
+  (`.pro-tier--consigliato`) oltre all'etichetta "Consigliato", come si fa sulle
+  pagine prezzi per il livello consigliato. Niente riga in alto, che era il
+  segno di "già scelto" tolto al Base nel secondo giro. Al passaggio del mouse
+  il fondo del Plus si scurisce appena.
+
+**Verifica**: foto `p3-*` prima/dopo nella stessa cartella, con le modifiche
+applicate alle pagine pubblicate.

@@ -13,7 +13,9 @@ const REQUEST_TEXT =
 const QUOTE_ROWS = [
   { label: "Manodopera (1 ora)", value: "€ 45" },
   { label: "Materiali · cartuccia", value: "€ 28" },
-  { label: "Uscita", value: "€ 20" },
+  // "Diritto di chiamata" invece di "Uscita": chi non è del mestiere non sapeva
+  // cosa fosse (Luca, 13/11/2026, docs/changelog/2026-11-13-preventivo-esempio-colori.md).
+  { label: "Diritto di chiamata", value: "€ 20" },
   { label: "Quando", value: "giovedì 9:00–11:00" },
 ];
 
@@ -129,7 +131,6 @@ export function QuoteExampleSection() {
             {QUOTE_ROWS.map((row, index) => (
               <div key={row.label} className="qx-row" style={{ transitionDelay: `${index * ROW_STAGGER_MS}ms` }}>
                 <span>{row.label}</span>
-                <span className="qx-leader" aria-hidden />
                 <span className="qx-value">{row.value}</span>
               </div>
             ))}

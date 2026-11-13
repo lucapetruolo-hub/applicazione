@@ -6089,12 +6089,6 @@ a.admin-kpi:hover {
 .qx-row > span:first-child {
   min-width: 0;
 }
-.qx-leader {
-  flex: 1;
-  min-width: 16px;
-  border-bottom: 2px dotted color-mix(in srgb, var(--c-cianografia, #247c7c) 40%, #fff);
-  transform: translateY(-4px);
-}
 .qx-value {
   font-weight: 600;
   text-align: right;
@@ -6978,6 +6972,13 @@ a.admin-kpi:hover {
     background-color: rgba(30, 107, 110, 0.06) !important;
     box-shadow: inset 0 0 0 2px var(--c-cianografia, #247c7c);
   }
+}
+/* Plus messo in evidenza come livello consigliato (Luca, 13/11/2026): fondo
+   appena colorato e l'etichetta "Consigliato"; niente riga in alto, che
+   faceva sembrare la casella già scelta. Due classi per vincere sul fondo
+   trasparente scritto nel componente. */
+.pro-tier.pro-tier--consigliato {
+  background-color: color-mix(in srgb, var(--c-cianografiaVelo, #dff0f0) 60%, transparent);
 }
 .pro-tier:has(.pro-tier-link:focus-visible) {
   box-shadow: inset 0 0 0 2px var(--c-cianografia, #247c7c);
