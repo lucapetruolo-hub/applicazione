@@ -111,8 +111,7 @@ export function SignupFunnelCard({ token }: { token: string }) {
             </table>
           </div>
           <Text color={brand.grafite70} fontSize={12}>
-            Ogni passo conta chi l&apos;ha fatto. La settimana è quella in cui è stato creato l&apos;account. La carta entro 24 ore e 7 giorni si conta su chi ha salvato il profilo, quindi
-            l&apos;ultima settimana cresce ancora.
+            Ogni passo conta chi l&apos;ha fatto. La settimana è quella in cui è stato creato l&apos;account. La carta si conta su chi ha salvato il profilo. L&apos;ultima settimana può ancora salire.
           </Text>
         </>
       )}

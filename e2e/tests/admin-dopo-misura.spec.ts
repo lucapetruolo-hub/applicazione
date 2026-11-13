@@ -128,7 +128,7 @@ test("Ricorso su un problema: chiede conferma e mostra la persona accanto all'at
   await expect(page.getByText("Risultati in tutte le schede, aperte e chiuse.")).toBeVisible();
   await expect(page.getByRole("link", { name: `Impianti Elettrici ${stamp} · Luigi Bianchi${stamp}` })).toBeVisible();
   // Dopo la ricerca resta solo questo ricorso.
-  await expect(page.getByText(/la sua risposta è nella richiesta di rivedere la decisione/)).toHaveCount(1);
+  await expect(page.getByText(/La sua risposta è più sotto/)).toHaveCount(1);
 
   const note = page.getByRole("textbox", { name: "Perché decidi così" });
   await note.fill("La stufa supera la potenza del contatore.");

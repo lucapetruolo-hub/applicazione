@@ -156,7 +156,7 @@ export default function AdminDac7Page() {
     const updated = await apiClient.adminMarkDac7Submitted(token, id, protocol);
     setActionMessage(
       updated.quarter === null
-        ? "Anno segnato come inviato: ogni professionista ha ricevuto l'email con i suoi guadagni dell'anno."
+        ? "Fatto. Ogni professionista ha ricevuto un'email con quanto ha preso nell'anno."
         : "Periodo segnato come inviato.",
     );
     setConfirming(null);
@@ -272,10 +272,9 @@ export default function AdminDac7Page() {
           </Button>
         </XStack>
         <Text fontSize={12} color={brand.grafite70}>
-          Ogni anno, entro il 31 gennaio, diciamo all&apos;Agenzia delle
-          Entrate quanto ha guadagnato ogni professionista sul sito. Scarica il
-          file, mandalo dal sito dell&apos;Agenzia, poi premi &quot;Segna come
-          inviato&quot;: il sito avvisa i professionisti.
+          Ogni anno, entro il 31 gennaio, diciamo al fisco quanto ha preso ogni professionista. Scarica il
+          file e mandalo al fisco. Poi premi &quot;Segna come inviato&quot;: il
+          sito avvisa i professionisti.
         </Text>
         {periods === null ? (
           <SkeletonTableRows rows={3} cols={4} />

@@ -47,7 +47,7 @@ function aiSpeedText(speed: AiSpeed): string {
     speed.failed > 0 ? `${speed.failed} con un errore` : null,
     speed.capped > 0 ? `${speed.capped} oltre il limite del giorno` : null,
   ].filter(Boolean);
-  return `Ultimi 7 giorni: l'intelligenza artificiale ha risposto a ${speed.ok} ricerche dubbie su ${speed.asked}${seconds}${problems.length > 0 ? ` · ${problems.join(" · ")} (lì è rimasto il dizionario)` : ""}`;
+  return `Ultimi 7 giorni: ricerche difficili ${speed.asked}, risolte dall'intelligenza artificiale ${speed.ok}${seconds}${problems.length > 0 ? ` · ${problems.join(" · ")} (lì è rimasto il dizionario)` : ""}`;
 }
 
 /** Più di una ricerca dubbia su 10 senza risposta dell'IA: la riga si fa più scura. */
@@ -83,7 +83,7 @@ function MestieriRichiesti() {
     <YStack>
       <AdminPageHeader
         title="Mestieri richiesti"
-        description="Le descrizioni scritte dai clienti nella ricerca (senza contatti, tenute 12 mesi), i nomi delle prestazioni scritti a mano dai professionisti, le frasi d'esempio e i lavori più cercati della home."
+        description="Cosa scrivono i clienti quando cercano, e come lo capisce il sito. Qui insegni parole nuove e scegli cosa va in home."
       />
       <AdminTabs
         tabs={[
@@ -241,8 +241,8 @@ function DescriptionsTab() {
       <YStack gap="2">
         <Text fontWeight="700">Insegna una parola al dizionario</Text>
         <Text color={brand.grafite70} fontSize={13}>
-          Se la parola compare nella descrizione, il cliente va a quel mestiere senza chiedere all&apos;intelligenza artificiale. Basta
-          l&apos;inizio della parola: «zanzarier» vale per zanzariera e zanzariere.
+          Se il cliente scrive questa parola, va subito a quel mestiere. Basta
+          l&apos;inizio: «zanzarier» vale per zanzariera e zanzariere.
         </Text>
         <XStack gap="2" flexWrap="wrap">
           <input
@@ -368,7 +368,7 @@ function MissingTradesCard({ trades }: { trades: MissingTrade[] }) {
       <YStack id="mestieri-mancanti" style={{ scrollMarginTop: 120 }}>
         <Text fontWeight="700">Mestieri che non abbiamo, ultimi 30 giorni</Text>
         <Text color={brand.grafite70} fontSize={13} marginTop="1">
-          Quando nessun nostro mestiere va bene, l&apos;intelligenza artificiale scrive quale servirebbe. Da {MISSING_TRADE_ADVICE_MIN} richieste
+          A volte nessun nostro mestiere va bene. Allora il computer scrive quale servirebbe. Da {MISSING_TRADE_ADVICE_MIN} richieste
           in su compare anche in Home tra le cose da fare.
         </Text>
         {trades.length === 0 ? (
@@ -439,9 +439,8 @@ function ServiceNamesTab() {
   return (
     <YStack gap="3" marginTop="3">
       <Text color={brand.grafite70}>
-        Accanto a ogni prestazione, quanti professionisti la usano. Con <Text fontWeight="700">+</Text> una prestazione scritta dai
-        professionisti entra tra le standard e compare in iscrizione e nel profilo; &quot;Unisci a…&quot; se è lo stesso lavoro di una
-        standard.
+        Accanto a ogni prestazione, quanti professionisti la usano. Con <Text fontWeight="700">+</Text> un lavoro scritto a mano
+        diventa uno di quelli pronti da scegliere. &quot;Unisci a…&quot; se è uguale a uno che c&apos;è già.
       </Text>
       <label className="mr-check">
         <input type="checkbox" checked={onlyToReview} onChange={(e) => setOnlyToReview(e.target.checked)} /> Solo i mestieri con prestazioni
@@ -888,7 +887,7 @@ function PopularJobsTab() {
       <Text color={brand.grafite70}>
         Le pillole sotto le categorie in home: ne compaiono {POPULAR_JOBS_COUNT}, le altre restano di riserva.{" "}
         {ordered
-          ? "Ora le mette in ordine il sito: prima i lavori più cercati negli ultimi 90 giorni, a parità di ricerche vale l'ordine qui sotto."
+          ? "L'ordine lo fa il sito. Prima i lavori più cercati. A pari ricerche, vale l'ordine qui sotto."
           : `Finché le ricerche sono meno di ${POPULAR_JOBS_MIN_SEARCHES} vale l'ordine qui sotto; dopo, prima i lavori più cercati.`}{" "}
         Toccare una pillola non conta come ricerca.
       </Text>

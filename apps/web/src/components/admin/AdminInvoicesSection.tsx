@@ -182,9 +182,9 @@ export function AdminInvoicesSection({ token }: { token: string }) {
           {settings.ready ? "Dati della società completi: le fatture partono." : "Mancano i dati della società: per ora i professionisti vedono solo gli estratti."}{" "}
           {settings.sdiConfigured
             ? settings.sdiSandbox
-              ? "Le fatture partono solo per prova: all'Agenzia delle Entrate non arriva niente."
+              ? "Le fatture partono solo per prova: al fisco non arriva niente."
               : "Le fatture partono da sole verso l'Agenzia delle Entrate."
-            : "Le fatture non partono da sole: scarica il file di ognuna e caricalo a mano sul sito dell'Agenzia delle Entrate."}
+            : "Le fatture non partono da sole. Scaricale e caricale a mano sul sito del fisco."}
         </Text>
       ) : null}
       {settings ? (
@@ -246,7 +246,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
         </Button>
       </XStack>
       <Text fontSize={13} color={brand.grafite70}>
-        Il giro parte da solo il 1° del mese: fatture delle trattenute e riepilogo ai professionisti alle 7, estratti ai commercialisti alle 8. Dal 2 al 15 ogni mattina recupera le fatture mancate e il 10 avvisa se ne manca ancora qualcuna. Se è saltato, rifallo da qui: quello già fatto non riparte. Il controllo dei conti arriva anche in notifica il 1° del mese.
+        Il giro parte da solo il 1° del mese. Alle 7 le fatture e i riepiloghi ai professionisti, alle 8 i conti ai commercialisti. Dal 2 al 15 ogni mattina recupera le fatture mancate e il 10 avvisa se ne manca ancora qualcuna. Se è saltato, rifallo da qui: quello già fatto non riparte. Il controllo dei conti arriva anche in notifica il 1° del mese.
       </Text>
       {reconciliation ? <ReconciliationBox data={reconciliation} /> : null}
 
@@ -306,7 +306,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
           title={confirm.kind === "run" ? "Rifai il giro del mese" : settings?.sdiConfigured ? "Rimanda la fattura" : "Rifai la fattura"}
           description={
             confirm.kind === "run"
-              ? `${monthlyInvoiceLate(month) ? `Attenzione: la fattura di ${month} andava emessa entro il 15 del mese dopo. Uscirà con la data dell'ultimo giorno di ${month} e un numero successivo alle fatture già emesse: sentite prima il commercialista. ` : ""}Per ${month}: emette le fatture delle trattenute${settings?.sdiConfigured ? " e le manda all'Agenzia delle Entrate" : ""}, manda il riepilogo ai professionisti e l'estratto ai commercialisti di chi l'ha chiesto. Solo quello che manca: niente parte due volte. Una fattura emessa non si cancella, si corregge con una nota di credito.`
+              ? `${monthlyInvoiceLate(month) ? `Attenzione: la fattura di ${month} andava emessa entro il 15 del mese dopo. Avrà la data dell'ultimo giorno di ${month} e il numero dopo le altre. Sentite prima il commercialista. ` : ""}Per ${month} fa le fatture${settings?.sdiConfigured ? " e le manda al fisco" : ""}. Poi manda i riepiloghi ai professionisti e ai loro commercialisti. Solo quello che manca: niente parte due volte. Una fattura emessa non si cancella, si corregge con una nota di credito.`
               : `${settings?.sdiConfigured ? "Manda di nuovo all'Agenzia delle Entrate la fattura" : "Rifà la fattura"} ${confirm.number} con i dati fiscali di oggi del professionista.`
           }
           confirmLabel={confirm.kind === "run" ? "Rifai il giro" : settings?.sdiConfigured ? "Rimanda" : "Rifai"}
@@ -370,7 +370,7 @@ function ReconciliationBox({ data }: { data: FeeReconciliation }) {
         </table>
       </div>
       <Text fontSize={13} color={brand.grafite70}>
-        Costi fatti pagare ai professionisti (per esempio le contestazioni perse): {formatEurCents(data.ledger.costsEurCents)}.
+        Costi pagati dai professionisti, come le contestazioni perse: {formatEurCents(data.ledger.costsEurCents)}.
         {data.stripe ? "" : " Il servizio dei pagamenti non è collegato: si vedono solo i nostri conti."}
       </Text>
       {data.alerts.length === 0 ? (

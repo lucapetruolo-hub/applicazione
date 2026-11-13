@@ -74,7 +74,7 @@ export default function AdminRichiesteDaSeguirePage() {
     <YStack>
       <AdminPageHeader
         title="Richieste da seguire"
-        description="Lavori che nessun professionista del sito fa: il cliente ha chiesto a noi di trovare qualcuno. Contattalo e segna la richiesta come fatta."
+        description="Lavori che sul sito non fa nessuno. Il cliente ci chiede di trovare qualcuno. Contattalo e segna la richiesta come fatta."
       />
       <AdminTabs
         tabs={[

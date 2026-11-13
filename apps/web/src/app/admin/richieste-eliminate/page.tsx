@@ -113,7 +113,7 @@ export default function AdminRichiesteEliminatePage() {
           Dai professionisti
         </Text>
         <Text fontSize={14} color={brand.grafite70}>
-          Tolte dalla lista &quot;Richieste e lavori&quot; di un professionista, mai cancellate: il cliente continua a vederle.
+          Il professionista le ha tolte dalla sua lista. Non sono cancellate: il cliente le vede ancora.
         </Text>
         {rows === null && !error ? (
           <SkeletonTableRows rows={3} cols={5} />

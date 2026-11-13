@@ -93,7 +93,7 @@ export default function AdminWhatsAppPage() {
     <YStack gap="5">
       <AdminPageHeader
         title="WhatsApp"
-        description="Promemoria degli appuntamenti: messaggi, costo, risposte dei clienti e lavori saltati con e senza promemoria."
+        description="Quanti promemoria partono e quanto costano. E se aiutano: lavori saltati con e senza promemoria."
         right={
           <input
             type="month"

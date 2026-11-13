@@ -523,7 +523,7 @@ function ChurnCard({ rows, countingFrom }: { rows: AdminProfessionalStats["churn
     <AdminCard>
       <CardTitle
         title={`Abbandoni ${periodText(365, countingFrom, "negli ultimi 12 mesi")}`}
-        note="In pausa: solo chi lo è ancora. Abbonamenti annullati: nel mese dell'annullamento, anche se restano attivi fino alla scadenza."
+        note="In pausa: solo chi lo è ancora. Abbonamenti annullati: contano nel mese in cui uno annulla, anche se dura ancora un po'."
       />
       <div className="admin-table-wrap">
         <table className="admin-table admin-table-numbers">

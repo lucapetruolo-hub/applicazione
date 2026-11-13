@@ -83,6 +83,7 @@ function SetupStep({ token, onVerified }: { token: string; onVerified: (token: s
 
       <YStack gap="3">
         <StepTitle number={1} text="Apri un'app di autenticazione e inquadra il codice QR" />
+        {/* scritte-admin: ok (nomi delle app, non si accorciano) */}
         <Text fontSize={14} color={brand.grafite70}>
           Va bene Google Authenticator, Microsoft Authenticator o Password dell&apos;iPhone.
         </Text>

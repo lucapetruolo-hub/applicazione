@@ -111,7 +111,7 @@ export default function AdminPagamentiPage() {
     <YStack gap="6">
       <AdminPageHeader
         title="Pagamenti e rimborsi"
-        description="Saldi dei pagamenti online non pagati, rimborsi e contestazioni. I rimborsi delle segnalazioni accolte e degli annullamenti partono da soli; qui restano quelli da controllare."
+        description="Saldi dei pagamenti online non pagati, rimborsi e contestazioni. I rimborsi partono da soli; qui restano quelli da controllare."
       />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
@@ -120,8 +120,7 @@ export default function AdminPagamentiPage() {
           Contestazioni in banca
         </Text>
         <Text fontSize={13} color={brand.grafite70}>
-          Clienti che hanno contestato un pagamento online con la loro banca. Rileggi le prove già scritte dal sito e mandale prima della
-          scadenza: con le prove parte anche il riepilogo PDF del lavoro.
+          Clienti che hanno contestato un pagamento online con la loro banca. Il sito ha già scritto le prove. Rileggile e mandale prima della scadenza.
         </Text>
         {bankDisputes && bankDisputes.length === 0 ? <Text color={brand.grafite70}>Nessuna contestazione in banca aperta.</Text> : null}
         {bankDisputes?.map((row) => <BankDisputeCard key={row.jobPaymentId} row={row} token={token ?? ""} onChanged={reload} />)}
@@ -134,8 +133,7 @@ export default function AdminPagamentiPage() {
           Saldi non pagati
         </Text>
         <Text fontSize={13} color={brand.grafite70}>
-          Clienti che non hanno pagato il saldo online entro 7 giorni dalla chiusura del lavoro: il professionista ha ricevuto quanto già
-          pagato. Sollecita il cliente; se paga dal sito il saldo arriva da solo al professionista.
+          Clienti che non hanno pagato il resto entro 7 giorni dalla fine del lavoro. Il professionista ha già avuto la parte pagata. Sollecita il cliente; se paga dal sito il saldo arriva da solo al professionista.
         </Text>
         {unpaid && unpaid.length === 0 ? <Text color={brand.grafite70}>Nessun saldo scoperto.</Text> : null}
         {unpaid?.map((row) => <UnpaidCard key={row.jobPaymentId} row={row} token={token ?? ""} onChanged={reload} />)}
@@ -156,7 +154,7 @@ export default function AdminPagamentiPage() {
             token={token ?? ""}
             onChanged={reload}
             // Stessa storia aperta due volte (misura "dopo" del riordino): si decidono insieme.
-            alsoOpen={disputes?.some((d) => d.jobPayment.id === refund.jobPayment.id && (d.status === "OPEN" || d.status === "UNDER_REVIEW")) ? "Sullo stesso lavoro c'è anche una contestazione di pagamento aperta, più sotto: decidile insieme." : null}
+            alsoOpen={disputes?.some((d) => d.jobPayment.id === refund.jobPayment.id && (d.status === "OPEN" || d.status === "UNDER_REVIEW")) ? "Su questo lavoro c'è anche un pagamento contestato, più sotto. Decidi tutti e due insieme." : null}
           />
         ))}
       </YStack>

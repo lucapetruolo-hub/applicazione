@@ -613,7 +613,7 @@ function ProfileSourcesCard({ data }: { data: AdminSiteStats }) {
     <AdminCard>
       <CardTitle
         title={title}
-        note={`Dal lancio (${sinceLabel}). Richieste iniziate e inviate partendo da un profilo, con la percentuale sulle visite e, sotto, su tutte le richieste di quella colonna.`}
+        note={`Dal lancio (${sinceLabel}). Richieste partite dalla pagina di un professionista. Accanto, quante su cento visite.`}
       />
       <div className="admin-table-wrap">
         <table className="admin-table admin-table-numbers">
@@ -666,7 +666,7 @@ function ProfileSourcesCard({ data }: { data: AdminSiteStats }) {
       </div>
       {total.sent > 0 && total.sent < MIN_CASES_FOR_PERCENT ? (
         <Text color={brand.grafite70} fontSize={13}>
-          {`Ancora meno di ${MIN_CASES_FOR_PERCENT} richieste inviate: le percentuali cambiano molto anche per una sola richiesta.`}
+          {`Ancora meno di ${MIN_CASES_FOR_PERCENT} richieste inviate: basta una richiesta in più per cambiare tutto.`}
         </Text>
       ) : null}
     </AdminCard>
@@ -688,7 +688,7 @@ function PriceToolCard({ data }: { data: AdminSiteStats }) {
     <AdminCard>
       <CardTitle
         title="Dallo strumento «Quanto costa»"
-        note="Voci toccate nella home e nelle pagine dei prezzi, profili aperti da quell'elenco e richieste inviate partite da lì."
+        note="Lavori toccati nelle pagine dei prezzi, e le richieste nate da lì."
       />
       <Bars rows={rows} total={0} steps />
       <Text color={brand.grafite70} fontSize={13}>
@@ -705,7 +705,7 @@ function ClientCohortsCard({ data }: { data: AdminSiteStats }) {
     <AdminCard>
       <CardTitle
         title="Clienti per settimana della prima richiesta"
-        note="Per ogni settimana, cosa è successo dopo ai clienti che hanno fatto la prima richiesta in quella settimana. Hanno chiesto ancora: hanno fatto un'altra richiesta."
+        note="Clienti divisi per la settimana della prima richiesta. Poi: cosa hanno fatto dopo. Hanno chiesto ancora: hanno fatto un'altra richiesta."
       />
       {data.clientCohorts.length === 0 ? (
         <Text color={brand.grafite70}>Ancora nessun cliente.</Text>
@@ -852,7 +852,7 @@ function UnknownJobsCard({ data }: { data: AdminSiteStats }) {
     <AdminCard>
       <CardTitle
         title="Lavori cercati che non esistono sul sito"
-        note="Parole cercate in almeno 3 giorni diversi negli ultimi 90 giorni senza trovare né un lavoro né un professionista. Dicono quale lavoro aggiungere."
+        note="Parole cercate più volte negli ultimi 90 giorni, senza trovare niente. Dicono quale lavoro aggiungere."
       />
       {data.unknownJobs.length === 0 ? (
         <Text color={brand.grafite70}>
@@ -877,7 +877,7 @@ function PopularServicesCard({ data }: { data: AdminSiteStats }) {
     <AdminCard>
       <CardTitle
         title="Prestazioni più cercate"
-        note="Ricerche scritte negli ultimi 90 giorni che corrispondono a una prestazione suggerita, per lavoro, e quanti professionisti di quel lavoro la offrono. Si conta solo il nome della prestazione, mai quello che ha scritto il cliente."
+        note="Cosa cercano di più i clienti, negli ultimi 90 giorni. Accanto, quanti professionisti lo fanno. Si conta solo il nome della prestazione, mai quello che ha scritto il cliente."
       />
       {data.popularServices.length === 0 ? (
         <Text color={brand.grafite70}>Ancora nessuna ricerca di una prestazione.</Text>
@@ -903,7 +903,7 @@ function PopularServicesCard({ data }: { data: AdminSiteStats }) {
         Scritte a mano dai professionisti, non suggerite
       </Text>
       <Text color={brand.grafite70} fontSize={13}>
-        {`Prestazioni scritte da almeno ${MISSING_SERVICE_MIN_PROFESSIONALS} professionisti che il sito non propone: aggiungerle con + in "Prestazioni per mestiere" le rende un clic e somma bene i prezzi medi.`}
+        {`Lavori scritti a mano da almeno ${MISSING_SERVICE_MIN_PROFESSIONALS} professionisti. Aggiungili con + in "Prestazioni per mestiere": poi si scelgono con un clic.`}
       </Text>
       {data.missingServices.length === 0 ? (
         <Text color={brand.grafite70}>Nessuna per ora.</Text>
@@ -962,7 +962,7 @@ function ChurnReasonsCard({ data }: { data: AdminSiteStats }) {
     <AdminCard>
       <CardTitle
         title="Perché se ne vanno"
-        note="Motivo scelto (facoltativo) da chi ha eliminato l'account o annullato l'abbonamento negli ultimi 90 giorni."
+        note="Perché se ne vanno. Lo dice chi chiude l'account o l'abbonamento, se vuole. Ultimi 90 giorni."
       />
       {rows.length === 0 ? (
         <Text color={brand.grafite70}>Nessun motivo scelto finora.</Text>
@@ -1017,7 +1017,7 @@ function LaunchCard({ data }: { data: AdminSiteStats }) {
     <AdminCard>
       <CardTitle
         title="Prima di aprire il sito a Google"
-        note="Le tappe da raggiungere con i professionisti chiamati uno per uno, prima di farsi trovare da tutti."
+        note="I numeri da fare prima di aprire il sito a tutti."
       />
       <ul className="site-progress">
         {steps.map((s) => (
@@ -1040,7 +1040,7 @@ function ReconciliationCard({ data }: { data: AdminSiteStats }) {
     <AdminCard>
       <CardTitle
         title="Controllo dei conteggi"
-        note={`Richieste inviate contate dal browser contro quelle salvate davvero, ultimi ${r.days} giorni. Il browser ne conta un po' meno (admin, chi ha spento il conteggio, blocchi della pubblicità).`}
+        note={`Richieste mandate e salvate, ultimi ${r.days} giorni. Il browser ne conta un po' meno (admin, chi ha spento il conteggio, blocchi della pubblicità).`}
       />
       <Text color={r.ok ? brand.grafite : brand.urgenza} fontWeight="700">
         {r.counted} contate, {r.saved} salvate ·{" "}
@@ -1099,7 +1099,7 @@ function NotesCard({
     <AdminCard>
       <CardTitle
         title="Note sul grafico"
-        note="Cose successe che cambiano i numeri: lancio, nuovi prezzi, una campagna, un giro di telefonate. Il lancio e i cambi di prezzo ci sono già."
+        note="Fatti che cambiano i numeri: il lancio, prezzi nuovi, un giro di telefonate. Il lancio e i cambi di prezzo ci sono già."
       />
       {data.notes.length ? (
         <ul className="site-notes">
@@ -1228,7 +1228,7 @@ function PartnerLinksCard({ token, isSuper }: { token: string | null; isSuper: b
     <AdminCard>
       <CardTitle
         title="Link dei partner"
-        note="Un link per ogni commercialista o associazione che presenta il sito ai suoi artigiani: porta alla pagina per i professionisti e conta chi si iscrive da lì. Nessun compenso. La scheda PDF ha il link e il QR, da stampare o mandare."
+        note="Un link per chi ci presenta agli artigiani, come un commercialista. Conta chi si iscrive da lì. Nessun compenso. La scheda PDF ha il link e il QR, da stampare o mandare."
       />
       {partners === null && !error ? <Text color={brand.grafite70}>
           Caricamento...

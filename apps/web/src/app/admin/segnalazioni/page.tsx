@@ -357,7 +357,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
                 ))}
               </YStack>
               <Text fontSize="2" color={brand.grafite70}>
-                Una recensione negativa ma vera non va nascosta: si nasconde solo se viola le regole (offese, dati personali, falsa).
+                Una recensione brutta ma vera resta. Si nasconde solo se offende, ha dati personali o è falsa.
               </Text>
               <Text fontWeight="700" color={brand.grafite}>
                 Quale regola o legge viola?
@@ -426,8 +426,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
             <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer", fontSize: 14 }}>
               <input type="checkbox" checked={authorities} onChange={(e) => setAuthorities(e.target.checked)} />
               <span>
-                Ho segnalato il caso alle autorità (obbligatorio se c&apos;è un sospetto reato che mette in pericolo la vita o la sicurezza di
-                qualcuno, DSA art. 18)
+                Ho avvisato le autorità. Va fatto sempre se qualcuno può essere in pericolo (DSA art. 18).
               </span>
             </label>
           ) : null}

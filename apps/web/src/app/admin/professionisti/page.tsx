@@ -162,7 +162,7 @@ export default function AdminProfessionistiPage() {
     <YStack gap="4">
       <AdminPageHeader
         title="Profili da confermare"
-        description="Crea il profilo di un professionista mentre sei al telefono con lui. Gli arriva un link per scegliere la password e confermare i dati: fino ad allora il profilo non compare nella ricerca."
+        description="Crea il profilo di un professionista mentre sei al telefono con lui. Gli arriva un link per la password e i dati. Fino ad allora non è nella ricerca."
       />
       {/* Offerta dei mesi gratis con gli iscritti (docs/changelog/2026-10-29-offerta-mesi-gratis.md). */}
       {token ? <SubscriptionOfferCard token={token} adminRoles={user?.adminRoles ?? []} /> : null}
@@ -350,7 +350,7 @@ export default function AdminProfessionistiPage() {
           {founders ? `Offerta di lancio: ${founders.taken} posti presi su ${founders.total}` : "Offerta di lancio"}
         </Text>
         <Text color={brand.grafite70}>
-          I primi {founders?.total ?? 100} professionisti con il profilo completo: servono alla scritta della pagina prezzi. I mesi gratis li dà l&apos;offerta qui sopra, a tutti.
+          I primi {founders?.total ?? 100} professionisti con il profilo completo. Li usa la pagina dei prezzi. I mesi gratis li dà l&apos;offerta qui sopra, a tutti.
         </Text>
         {foundersError ? <Text color={brand.urgenza}>{foundersError}</Text> : null}
         {founders === null && !foundersError ? (

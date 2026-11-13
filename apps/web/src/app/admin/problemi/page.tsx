@@ -105,7 +105,7 @@ function ProblemiContent() {
     <YStack>
       <AdminPageHeader
         title="Problemi segnalati"
-        description="Mancate presentazioni e lavori non andati bene non risolti in chat. Il professionista ha 72 ore per la sua versione (o per le informazioni che chiedi), poi la segnalazione è accolta da sola; con le prove complete decidi entro 2 giorni."
+        description="Mancate presentazioni e lavori non andati bene non risolti in chat. Il professionista ha 72 ore per rispondere. Poi la segnalazione è accolta da sola; con le prove complete decidi entro 2 giorni."
       />
       <AdminTabs
         tabs={[
@@ -212,7 +212,7 @@ function ProblemiContent() {
                     <Text color={brand.grafite}>“{row.issue.professionalResponse}”</Text>
                   ) : (
                     <Text fontSize={13} color={brand.grafite70}>
-                      {row.issue.appealedAt ? "Non ha mandato la sua versione prima della decisione: la sua risposta è nella richiesta di rivedere la decisione, più sotto." : "Non ha ancora risposto."}
+                      {row.issue.appealedAt ? "Non ha risposto prima della decisione. La sua risposta è più sotto, nella richiesta di rivedere la decisione." : "Non ha ancora risposto."}
                     </Text>
                   )}
                   {row.issue.infoRequestText ? (
@@ -262,8 +262,7 @@ function ProblemiContent() {
                 <DecisionForm row={row} token={token} onDone={() => setReload((n) => n + 1)} />
               ) : row.issue.status === "CHAT" ? (
                 <Text fontSize={13} color={brand.grafite70}>
-                  Cliente e professionista stanno provando a risolvere in chat: arriva qui se il professionista non risponde entro 48 ore o se il
-                  cliente lo chiede.
+                  Ne parlano in chat. Arriva qui se il professionista non risponde in 48 ore, o se il cliente lo chiede.
                 </Text>
               ) : row.issue.status === "RESOLVED" ? (
                 <Text fontWeight="700" color={brand.grafite}>

@@ -66,8 +66,29 @@ function insideImportOrType(node) {
   return false;
 }
 
+// Leggibilità (versione profonda, analisi/admin-automazione-versione-profonda.md):
+// indice Gulpease, la misura fatta per l'italiano. Sotto 60 una frase è
+// difficile anche per chi ha la licenza media. Si misurano le frasi di almeno
+// 8 parole dei testi delle pagine admin del sito.
+const GULPEASE_MIN = 60;
+const GULPEASE_MIN_WORDS = 8;
+function hardSentences(text) {
+  const hard = [];
+  for (const sentence of text.replace(/&apos;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim().split(/(?<=[.!?;])\s+/)) {
+    const words = sentence.match(/[A-Za-zÀ-ÿ']+/g) ?? [];
+    if (words.length < GULPEASE_MIN_WORDS) continue;
+    const letters = words.join("").replace(/'/g, "").length;
+    const score = 89 + (300 - 10 * letters) / words.length;
+    if (score < GULPEASE_MIN) hard.push({ score: Math.round(score), sentence });
+  }
+  return hard;
+}
+const webAdmin = dirs.map((dir) => join(repo, dir));
+
 const errors = [];
+const hardErrors = [];
 for (const file of files) {
+  const measure = webAdmin.some((dir) => file.startsWith(dir));
   const source = readFileSync(file, "utf8");
   const lines = source.split("\n");
   const sf = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
@@ -80,13 +101,16 @@ for (const file of files) {
       const match = text.match(rule);
       if (match) errors.push(`${relative(repo, file)}:${line + 1}: "${match[0]}" (usa: ${better})`);
     }
+    if (measure) {
+      for (const { score, sentence } of hardSentences(text)) hardErrors.push(`${relative(repo, file)}:${line + 1}: ${score} «${sentence.slice(0, 120)}»`);
+    }
   };
   (function visit(node) {
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) check(node, node.text);
     else if (ts.isTemplateExpression(node)) {
       const parts = [node.head.text, ...node.templateSpans.map((s) => s.literal.text)];
       // Una chiave come `TIPO:${id}` non ha spazi: non è un testo da leggere.
-      if (/\s/.test(parts.join("").trim())) check(node, parts.join(" "));
+      if (/\s/.test(parts.join("").trim())) check(node, parts.join(" … "));
     }
     else if (ts.isJsxText(node) && node.text.trim()) check(node, node.text);
     ts.forEachChild(node, visit);
@@ -99,5 +123,11 @@ if (errors.length > 0) {
       "Scrivi in parole semplici; i dettagli tecnici vanno dentro <TechNote>:\n" +
       errors.join("\n"),
   );
-  process.exit(1);
 }
+if (hardErrors.length > 0) {
+  console.error(
+    `Frasi dell'Admin difficili da leggere (indice Gulpease sotto ${GULPEASE_MIN}). Spezzale in frasi più corte, con parole più brevi:\n` +
+      hardErrors.join("\n"),
+  );
+}
+if (errors.length > 0 || hardErrors.length > 0) process.exit(1);

@@ -36,9 +36,9 @@ export function PhaseDeadline({ row }: { row: AdminJobIssue }) {
     return (
       <Text fontSize={13} color={brand.grafite70}>
         {issue.late
-          ? "Segnalata dopo il termine (7 giorni o lavoro confermato): resta tra cliente e professionista, senza rimborso né decisione nostra."
+          ? "Segnalata troppo tardi. Se la vedono cliente e professionista: noi non decidiamo e non c'è rimborso."
           : !issue.assisted
-          ? "Pagamento diretto: la segnalazione resta tra cliente e professionista, non arriva a noi."
+          ? "Pagato a mano: se la vedono cliente e professionista, non noi."
           : issue.proRepliedInChat
           ? "Il professionista ha risposto in chat: decide il cliente se passarla a noi."
           : `Il professionista deve rispondere in chat entro ${formatIssueDeadline(issue.chatReplyDueAt)}, poi passa da sola a noi.`}
@@ -49,9 +49,9 @@ export function PhaseDeadline({ row }: { row: AdminJobIssue }) {
   const late = issue.reviewPhase === "TO_DECIDE" && isPastDeadline(issue.phaseDueAt);
   const text =
     issue.reviewPhase === "AWAITING_EVIDENCE"
-      ? `In attesa della versione del professionista fino a ${formatIssueDeadline(issue.phaseDueAt)}: poi è accolta automaticamente.`
+      ? `Aspetta la versione del professionista fino a ${formatIssueDeadline(issue.phaseDueAt)}. Poi è accolta da sola.`
       : issue.reviewPhase === "AWAITING_INFO"
-        ? `In attesa delle informazioni richieste fino a ${formatIssueDeadline(issue.phaseDueAt)}: poi è accolta automaticamente.`
+        ? `Aspetta le risposte fino a ${formatIssueDeadline(issue.phaseDueAt)}. Poi è accolta da sola.`
         : late
           ? `Decisione in ritardo: andava presa entro ${formatIssueDeadline(issue.phaseDueAt)}.`
           : `Da decidere entro ${formatIssueDeadline(issue.phaseDueAt)}.`;
@@ -155,9 +155,9 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
         style={textareaStyle}
       />
       <Text fontSize={13} color={brand.grafite70}>
-        {`Se la accogli: affidabilità del professionista più bassa nell'assegnazione delle richieste e conseguenza «${JOB_ISSUE_SANCTION_LABEL[nextSanction]}» (${
+        {`Se la accogli, il professionista riceve meno richieste. Conseguenza: «${JOB_ISSUE_SANCTION_LABEL[nextSanction]}» (${
           nextCount === 1 ? "prima segnalazione accolta in 30 giorni" : `${nextCount}ª segnalazione accolta in 30 giorni`
-        }).${row.issue.paidOnline ? ` Lavoro pagato sul sito: rimborso al cliente del ${percent}% di quanto pagato${refundEur(percent) ? ` (${refundEur(percent)})` : ""}, a carico del professionista.` : ""}`}
+        }).${row.issue.paidOnline ? ` Pagato sul sito: il cliente riavrà il ${percent}%${refundEur(percent) ? ` (${refundEur(percent)})` : ""}. Paga il professionista.` : ""}`}
       </Text>
       {choosesRefund ? (
         <YStack gap="1">
@@ -204,7 +204,7 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
             confirming === "UPHELD"
               ? `${proName} riceve la conseguenza «${JOB_ISSUE_SANCTION_LABEL[nextSanction]}».${
                   row.issue.paidOnline ? ` ${client} riceve subito il rimborso del ${percent}%${refundEur(percent) ? `, ${refundEur(percent)},` : ""} preso dal conto del professionista.` : ""
-                } Cliente e professionista leggono la tua motivazione. Non si può annullare: il professionista può solo chiedere di rivedere la decisione.`
+                } Cliente e professionista leggono la tua motivazione. Non si torna indietro. Il professionista può solo chiedere di rivederla.`
               : `Nessuna conseguenza per ${proName} e nessun rimborso a ${client}. Cliente e professionista leggono la tua motivazione.`
           }
           showNote={false}
@@ -225,7 +225,7 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
             style={textareaStyle}
           />
           <Text fontSize={13} color={brand.grafite70}>
-            Il professionista ha 72 ore per rispondere, poi la segnalazione è accolta automaticamente.
+            Il professionista ha 72 ore per rispondere. Se non lo fa, la segnalazione è accolta.
           </Text>
           <Button variant="secondary" size="3" height={40} alignSelf="flex-start" disabled={saving !== null} opacity={saving ? 0.6 : 1} onPress={askInfo}>
             {saving === "INFO" ? "Invio..." : "Invia la richiesta"}
@@ -280,7 +280,7 @@ export function AppealForm({ row, token, onDone }: { row: AdminJobIssue; token: 
         style={textareaStyle}
       />
       <Text fontSize={13} color={brand.grafite70}>
-        Se annulli la decisione, la segnalazione diventa respinta, l&apos;affidabilità torna com&apos;era e la conseguenza viene tolta.
+        Se annulli la decisione, tutto torna come prima. Il professionista non ha più la conseguenza.
       </Text>
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       <XStack gap="2" flexWrap="wrap">
@@ -298,7 +298,7 @@ export function AppealForm({ row, token, onDone }: { row: AdminJobIssue; token: 
           title={confirming === "ACCEPTED" ? "Annullare la decisione?" : "Confermare la decisione?"}
           description={
             confirming === "ACCEPTED"
-              ? `La segnalazione di ${client} diventa respinta: ${proName} torna all'affidabilità di prima e la conseguenza viene tolta. Cliente e professionista leggono la tua motivazione. Non si può annullare.`
+              ? `Tutto torna come prima: ${proName} non ha più la conseguenza. ${client} e il professionista leggono la tua motivazione. Non si può annullare.`
               : `La segnalazione resta accolta e la conseguenza per ${proName} resta. Il professionista legge la tua motivazione. Non si può annullare.`
           }
           showNote={false}
