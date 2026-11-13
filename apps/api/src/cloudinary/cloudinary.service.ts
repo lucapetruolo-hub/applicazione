@@ -17,7 +17,12 @@ export class CloudinaryService {
     }
   }
 
-  async uploadImage(file: Express.Multer.File, folder: string): Promise<string> {
+  /**
+   * `size`: misura massima dell'immagine salvata. La copertina del profilo
+   * (docs/changelog/2026-11-13-copertina-profilo.md) arriva già ritagliata 2:1
+   * dal browser e si salva a 1600×800 riempiendo la misura.
+   */
+  async uploadImage(file: Express.Multer.File, folder: string, size: { width: number; height: number; crop: "limit" | "fill" } = { width: 800, height: 800, crop: "limit" }): Promise<string> {
     if (!this.isConfigured) {
       throw new BadRequestException(
         "Il caricamento immagini non è ancora configurato su questo ambiente. Aggiungi CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET per attivarlo.",
@@ -34,7 +39,7 @@ export class CloudinaryService {
             // migliore per contenuto e il formato più leggero supportato dal
             // browser che la richiede (es. WebP/AVIF), invece del JPEG fisso
             // caricato dal client — stessa immagine, file più piccolo.
-            transformation: [{ width: 800, height: 800, crop: "limit", quality: "auto", fetch_format: "auto" }],
+            transformation: [{ ...size, quality: "auto", fetch_format: "auto" }],
           },
           (error, result) => {
             if (error || !result) {

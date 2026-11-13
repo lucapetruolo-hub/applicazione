@@ -17,7 +17,7 @@ type Offset = { x: number; y: number };
  * ProfessionalAvatar.tsx: 120×160 con angoli di 20 px, qui in scala 2:1).
  * "circle": la foto dell'account, mostrata tonda nel resto del sito.
  */
-export type ImageCropShape = "portrait" | "circle";
+export type ImageCropShape = "portrait" | "circle" | "cover";
 
 type CropFormat = { stageWidth: number; stageHeight: number; outputWidth: number; outputHeight: number; radius: number | string };
 
@@ -26,6 +26,9 @@ const CROP_FORMATS: Record<ImageCropShape, CropFormat> = {
   // ridimensionamento in più sul server.
   portrait: { stageWidth: 240, stageHeight: 320, outputWidth: 600, outputHeight: 800, radius: 40 },
   circle: { stageWidth: 280, stageHeight: 280, outputWidth: 480, outputHeight: 480, radius: "50%" },
+  // Copertina del profilo (docs/changelog/2026-11-13-copertina-profilo.md): 2:1,
+  // salvata 1600×800 (COVER_WIDTH/COVER_HEIGHT in packages/shared/src/coverPresets.ts).
+  cover: { stageWidth: 320, stageHeight: 160, outputWidth: 1600, outputHeight: 800, radius: 10 },
 };
 
 function clampOffset(offset: Offset, displayedWidth: number, displayedHeight: number, stageWidth: number, stageHeight: number): Offset {
@@ -214,7 +217,7 @@ export function ImageCropModal({
         }}
       >
         <div style={{ width: "100%" }}>
-          <h2 id={titleId} style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Posiziona la tua immagine</h2>
+          <h2 id={titleId} style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{shape === "cover" ? "Posiziona la copertina" : "Posiziona la tua immagine"}</h2>
           <p style={{ fontSize: 16, color: "#667085", margin: "4px 0 0" }}>
             Trascina o usa le frecce per spostare, la barra per ingrandire.
           </p>
@@ -237,7 +240,8 @@ export function ImageCropModal({
             width: stageWidth,
             height: stageHeight,
             overflow: "hidden",
-            borderRadius: shape === "portrait" ? radius : 20,
+            borderRadius: shape === "circle" ? 20 : radius,
+            maxWidth: "100%",
             backgroundColor: "#f1f5f9",
             cursor: "grab",
             touchAction: "none",
@@ -280,7 +284,28 @@ export function ImageCropModal({
               }}
             />
           ) : null}
+          {/* Copertina: da telefono si vede solo la parte centrale (circa metà
+              larghezza). Le due linee la segnano, così il soggetto resta lì. */}
+          {shape === "cover" ? (
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                top: 0,
+                bottom: 0,
+                left: "25%",
+                right: "25%",
+                borderLeft: "1.5px dashed rgba(255,255,255,0.9)",
+                borderRight: "1.5px dashed rgba(255,255,255,0.9)",
+                boxShadow: "0 0 0 9999px rgba(15,23,42,0.18)",
+                pointerEvents: "none",
+              }}
+            />
+          ) : null}
         </div>
+        {shape === "cover" ? (
+          <p style={{ fontSize: 14, color: "#667085", margin: 0, width: "100%" }}>Tieni la parte importante tra le due linee: da telefono si vede quella.</p>
+        ) : null}
 
         <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 10 }}>
           <ZoomIn size={18} strokeWidth={1.5} color="#4A525E" />

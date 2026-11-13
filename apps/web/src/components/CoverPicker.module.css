@@ -1,0 +1,157 @@
+/* Scelta della copertina in /dashboard/profilo (docs/changelog/2026-11-13-copertina-profilo.md). */
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 560px;
+}
+
+.preview {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 2 / 1;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--c-filetto, #e7dfd4);
+  background-color: var(--c-gesso, #f4efe8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.empty {
+  padding: 12px;
+  font-size: 14px;
+  color: var(--c-grafite70, #5f6670);
+  text-align: center;
+}
+
+.busy {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-grafite, #2b2b2b);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.remove {
+  border: 0;
+  background: none;
+  padding: 8px 4px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--c-urgenza, #b42318);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.remove:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--c-grafite70, #5f6670);
+}
+
+.error {
+  margin: 0;
+  font-size: 14px;
+  color: var(--c-urgenza, #b42318);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 660px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  border-radius: 10px;
+  overflow: hidden;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  background-color: var(--c-gesso, #f4efe8);
+}
+
+.thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.option:hover .thumb {
+  outline-color: var(--c-filetto, #d9cfc2);
+}
+
+.option:focus-visible {
+  outline: none;
+}
+
+.option:focus-visible .thumb,
+.optionActive .thumb {
+  outline-color: var(--c-cianografia, #1e6b6e);
+}
+
+.optionLabel {
+  font-size: 14px;
+  color: var(--c-grafite, #2b2b2b);
+}
+
+.optionActive .optionLabel {
+  font-weight: 700;
+  color: var(--c-cianografiaScuro, #0f3b3b);
+}

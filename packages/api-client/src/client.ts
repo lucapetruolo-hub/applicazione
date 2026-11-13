@@ -1821,6 +1821,18 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     uploadMyProfessionalImage: (token: string, file: Blob) =>
       uploadFile<{ imageUrl: string }>("/professionals/me/image", token, file, "image"),
 
+    /** Copertina caricata: controllata dall'IA prima di pubblicarla (docs/changelog/2026-11-13-copertina-profilo.md). */
+    uploadMyCover: (token: string, file: Blob) =>
+      uploadFile<{ coverImageUrl: string; coverPreset: null }>("/professionals/me/cover", token, file, "image"),
+
+    /** Copertina pronta per mestiere, o null per non averne. */
+    setMyCoverPreset: (token: string, preset: string | null) =>
+      request<{ coverImageUrl: null; coverPreset: string | null }>("/professionals/me/cover", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ preset }),
+      }),
+
     uploadMyPortfolioPhoto: (token: string, file: Blob) =>
       uploadFile<{ imageUrl: string }>("/professionals/me/portfolio-photos", token, file, "image"),
 

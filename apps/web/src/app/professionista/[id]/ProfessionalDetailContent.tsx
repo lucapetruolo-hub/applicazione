@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BRAND, MAX_CHOSEN_PROFESSIONALS, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, shownServicePriceUnit, formatServicePriceRange, serviceCategoryOf, subTagLabel, type ProfessionalAgenda, type ProfessionalCategorySlug, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, COVER_PHONE_SPACE, MAX_CHOSEN_PROFESSIONALS, profileCover, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, shownServicePriceUnit, formatServicePriceRange, serviceCategoryOf, subTagLabel, type ProfessionalAgenda, type ProfessionalCategorySlug, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
@@ -74,6 +74,13 @@ function reviewTimeAgo(iso: string): string {
  * azioni (salva, condividi, segnala, richiedi preventivo) e senza contare la
  * visita.
  */
+/** Da telefono la pagina parte sotto la copertina, come senza (scelta di Luca, docs/changelog/2026-11-13-copertina-profilo.md). */
+function startBelowPhoneCover() {
+  if (window.matchMedia("(max-width: 660px)").matches && !window.location.hash && window.scrollY < 5) window.scrollTo(0, COVER_PHONE_SPACE);
+}
+// Scritta a mano, non con toString(): la versione compilata cambia i nomi.
+const coverPhoneScrollScript = `if(matchMedia("(max-width: 660px)").matches&&!location.hash&&scrollY<5)scrollTo(0,${COVER_PHONE_SPACE})`;
+
 export function ProfessionalDetailContent({
   professional,
   initialAgenda = null,
@@ -98,6 +105,15 @@ export function ProfessionalDetailContent({
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   const { user, token, isLoading: isAuthLoading } = useAuth();
+  const cover = profileCover(professional);
+  // Arrivando da un link interno lo script nella pagina non gira: stessa
+  // partenza sotto la copertina, dopo lo scorrimento in cima di Next.js.
+  const hasPhoneCover = cover !== null && !preview;
+  useLayoutEffect(() => {
+    if (!hasPhoneCover) return;
+    const frame = requestAnimationFrame(startBelowPhoneCover);
+    return () => cancelAnimationFrame(frame);
+  }, [hasPhoneCover]);
   const router = useRouter();
   const serviceCategories = professional.categories?.length ? professional.categories : [{ slug: professional.categorySlug, label: professional.categoryLabel }];
   const serviceGroups: { slug: ProfessionalCategorySlug | null; label: string; services: ProfessionalDetail["services"] }[] =
@@ -365,6 +381,21 @@ export function ProfessionalDetailContent({
   return (
     <div className={`is_View ${styles.page}`}>
       <div className={`is_View ${styles.column}`}>
+        {/* Copertina (docs/changelog/2026-11-13-copertina-profilo.md): al posto
+            dello sfondo della pagina, dietro al percorso e alla scheda fino a
+            circa metà. Da telefono la pagina si apre come senza copertina e la
+            si vede scorrendo verso l'alto (scelta di Luca). */}
+        <div className={`is_View ${styles.head}${cover ? ` ${styles.headWithCover} ${cover.tone === "dark" ? styles.headDark : ""}${preview ? "" : ` ${styles.headPhoneSpace}`}` : ""}`}>
+        {cover ? (
+          <div className={styles.cover} aria-hidden="true">
+            {/* eslint-disable-next-line @next/next/no-img-element -- foto già ridotta (Cloudinary 1600×800 o copertina pronta in /public) */}
+            <img src={cover.src} alt="" decoding="async" fetchPriority="high" />
+          </div>
+        ) : null}
+        {cover && !preview ? (
+          // Prima che il telefono disegni la pagina: si parte già sotto la copertina.
+          <script dangerouslySetInnerHTML={{ __html: coverPhoneScrollScript }} />
+        ) : null}
         {/* Più vicino alla scheda del gap standard: il percorso ne è l'intestazione. */}
         {breadcrumbs ? (
           <div className={`is_View ${styles.stack}`} style={{ marginTop: -8, marginBottom: -12 }}>
@@ -637,6 +668,7 @@ export function ProfessionalDetailContent({
               </span>
             </div>
           ) : null}
+        </div>
         </div>
 
         {professional.acceptingRequests && agendaPreview?.hasAnySlot ? (

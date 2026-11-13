@@ -14,6 +14,7 @@ export * from "./moderation";
 export * from "./adminRoles";
 export * from "./adminRoleSchemas";
 export * from "./plans";
+export * from "./coverPresets";
 export * from "./personalLink";
 export * from "./leadAudience";
 export * from "./professionals";

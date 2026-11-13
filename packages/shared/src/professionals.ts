@@ -414,6 +414,14 @@ export type ProfessionalDetail = ProfessionalSearchResult & {
    */
   portfolioUrls: string[];
   /**
+   * Copertina del profilo pubblico (docs/changelog/2026-11-13-copertina-profilo.md):
+   * foto caricata dal professionista oppure una copertina pronta
+   * (`coverPreset`, packages/shared/src/coverPresets.ts). Facoltativi: un'API
+   * non ancora aggiornata non li manda.
+   */
+  coverImageUrl?: string | null;
+  coverPreset?: string | null;
+  /**
    * Lavori completati in totale (non solo nel mese corrente, a differenza
    * di `completedThisMonth` sopra) e tempo medio di risposta a una
    * richiesta — CEO, consiglio esperti (CPO): dati già calcolati da tempo

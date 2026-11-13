@@ -36,6 +36,7 @@ import { Autocomplete, Button, Chip, Icon, Surface, Text, XStack, YStack, brand 
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
+import { CoverPicker, type CoverValue } from "@/components/CoverPicker";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { EngagementRadiusSection } from "@/components/EngagementRadiusSection";
 import { MediaPreview } from "@/components/MediaPreview";
@@ -299,6 +300,8 @@ export default function DashboardProfiloPage() {
   const [lateCancelKeepsDeposit, setLateCancelKeepsDeposit] = useState(false);
   const [services, setServices] = useState<{ name: string; priceMin: string; priceMax: string; priceUnit: ServicePriceUnit; categorySlug: string | null }[]>([]);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  // Copertina del profilo pubblico: si salva subito, come la foto (docs/changelog/2026-11-13-copertina-profilo.md).
+  const [cover, setCover] = useState<CoverValue>({ coverImageUrl: null, coverPreset: null });
   // Foto reali di lavori svolti (fino a MAX_PORTFOLIO_PHOTOS), mostrate in
   // una galleria sul profilo pubblico — richiesta esplicita dell'utente:
   // "un'idea dei lavori svolti". Distinte da imageUrl (la foto profilo
@@ -444,6 +447,7 @@ export default function DashboardProfiloPage() {
     setCancellationNoticeHours(isCancellationNoticeHours(profile.cancellationNoticeHours) ? profile.cancellationNoticeHours : DEFAULT_CANCELLATION_NOTICE_HOURS);
     setLateCancelKeepsDeposit(profile.lateCancelKeepsDeposit ?? false);
     setImageUrl(profile.imageUrl);
+    setCover({ coverImageUrl: profile.coverImageUrl ?? null, coverPreset: profile.coverPreset ?? null });
     setPortfolioUrls(profile.portfolioUrls);
     setSpokenLanguages(profile.spokenLanguages);
     setYearsOfExperience(profile.yearsOfExperience !== null ? String(profile.yearsOfExperience) : "");
@@ -1171,6 +1175,20 @@ export default function DashboardProfiloPage() {
                 ) : null}
               </YStack>
             </YStack>
+          </YStack>
+
+          <YStack gap="2">
+            <FieldLabel>Immagine di copertina</FieldLabel>
+            <CoverPicker
+              token={token as string}
+              canEdit={!isFirstProfileSave}
+              categorySlugs={categorySlugs}
+              value={cover}
+              onChange={(next) => {
+                setCover(next);
+                loadPreview();
+              }}
+            />
           </YStack>
 
           <YStack gap="2">
