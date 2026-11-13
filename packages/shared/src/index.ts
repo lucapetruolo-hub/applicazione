@@ -66,6 +66,7 @@ export * from "./accountRetention";
 export * from "./requestWithdrawSchemas";
 export * from "./timelineText";
 export * from "./cancellationNotice";
+export * from "./acceptedTerms";
 export * from "./professionalStats";
 export * from "./accounting";
 export * from "./csv";

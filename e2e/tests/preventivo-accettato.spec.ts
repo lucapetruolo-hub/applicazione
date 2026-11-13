@@ -188,6 +188,47 @@ test("annullare: fascia già iniziata e data proposta dal cliente", async ({ bro
   await page.context().close();
 });
 
+test("annullare con la pagina aperta: la frase cambia da sola e il server chiede di rileggere", async ({ browser }) => {
+  // docs/changelog/2026-11-13-annullare-pagina-aperta.md: appuntamento tra 24 ore e 2 minuti.
+  const client = await createClient(prisma);
+  const pro = await createProfessional(prisma, "Paola Verdi Elettricista");
+  const { request, quotes } = await createRequestWithQuotes(prisma, client.id, [pro.id], { start: wallFromNow(24 * 60 + 2) });
+  await prisma.quote.update({ where: { id: quotes[0].id }, data: { cancellationNoticeHours: 24 } });
+  const page = await pageAsClient(browser, client.id, PHONE);
+  await page.clock.install({ time: new Date() });
+  await page.goto(`/le-mie-richieste?open=${request.id}`);
+  const notice = page.locator(`#quote-${quotes[0].id}`).getByTestId("quote-cancel-notice");
+  await expect(notice).toHaveText("Avvisa almeno 24 ore prima.");
+  // Pagina lasciata aperta: passano 3 minuti e il preavviso inizia, senza ricaricare.
+  await page.clock.fastForward("03:00");
+  await expect(notice).toHaveText("Mancano meno di 24 ore all'appuntamento.");
+  await page.context().close();
+
+  // Chi aveva letto "gratuito fino a…" e preme Accetta adesso: 409, nessun lavoro.
+  const late = await createRequestWithQuotes(prisma, client.id, [pro.id], { start: wallFromNow(10 * 60) });
+  const response = await fetch(`${API_URL}/bookings/from-quote/${late.quotes[0].id}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${testToken(client.id)}` },
+    body: JSON.stringify({ paymentMethod: "DIRECT", seenCancellationPhase: "free", seenTermsAt: new Date().toISOString() }),
+  });
+  expect(response.status, await response.clone().text()).toBe(409);
+  expect(((await response.json()) as { message: string }).message).toBe("Il tempo per annullare gratis è appena scaduto: rileggi e conferma.");
+  expect(await prisma.booking.count({ where: { quoteId: late.quotes[0].id } })).toBe(0);
+
+  // Chi l'ha letto davvero: il lavoro nasce col testo salvato.
+  const ok = await fetch(`${API_URL}/bookings/from-quote/${late.quotes[0].id}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${testToken(client.id)}` },
+    body: JSON.stringify({ paymentMethod: "DIRECT", seenCancellationPhase: "late", seenTermsAt: new Date().toISOString() }),
+  });
+  expect(ok.status, await ok.clone().text()).toBe(201);
+  const { bookingId } = (await ok.json()) as { bookingId: string };
+  const saved = (await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } })).acceptedTerms as { phaseSeen: string; notice: string; acceptedAt: string };
+  expect(saved.phaseSeen).toBe("late");
+  expect(saved.notice).toMatch(/^Mancano meno di \d+ ore all'appuntamento\.$/);
+  expect(saved.acceptedAt).toBeTruthy();
+});
+
 test("preavviso scelto nel preventivo (§348): vale quello del preventivo, non lo standard del profilo", async () => {
   const client = await createClient(prisma);
   const pro = await createProfessional(prisma, "Sara Pulizie");

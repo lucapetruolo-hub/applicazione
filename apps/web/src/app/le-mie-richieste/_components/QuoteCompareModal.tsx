@@ -1,5 +1,6 @@
 "use client";
 
+import { useMinuteClock } from "@/lib/useMinuteClock";
 import { useEffect, useRef } from "react";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
 import { cancellationPhase, cancellationTerms, formatEurRange, paymentChoiceIsOnline, jobPaymentChoiceCopy, quoteComparisonHighlights, quotePriceTotals } from "@professionisti/shared";
@@ -32,6 +33,8 @@ export function QuoteCompareModal({
   onPick: (quoteId: string) => void;
   onClose: () => void;
 }) {
+  // Ora aggiornata ogni minuto: le frasi su annullare cambiano da sole (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
+  const now = useMinuteClock();
   const closeRef = useRef<HTMLButtonElement>(null);
   const { cheapestId, soonestId } = quoteComparisonHighlights(quotes);
 
@@ -140,7 +143,7 @@ export function QuoteCompareModal({
                   const start = q.status === "MODIFICATION_REQUESTED" && q.clientProposedDate ? q.clientProposedDate : q.estimatedStartDate;
                   const end = q.status === "MODIFICATION_REQUESTED" && q.clientProposedDate ? q.clientProposedEndDate : q.estimatedEndDate;
                   const terms = cancellationTerms({
-                    phase: cancellationPhase(start, end, q.cancellationNoticeHours),
+                    phase: cancellationPhase(start, end, q.cancellationNoticeHours, now),
                     start,
                     hours: q.cancellationNoticeHours,
                     money: !onlineOffered ? { kind: "none" } : q.lateCancelKeepsDeposit ? { kind: "kept" } : { kind: "refunded" },

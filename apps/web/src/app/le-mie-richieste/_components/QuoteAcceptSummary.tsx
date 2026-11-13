@@ -38,6 +38,7 @@ export function QuoteAcceptSummary({
   priceTotals,
   payment,
   onlinePayments,
+  now,
   children,
 }: {
   quote: ClientGuidedRequest["quotes"][number];
@@ -45,6 +46,8 @@ export function QuoteAcceptSummary({
   priceTotals: { totalMinEurCents: number; totalMaxEurCents: number };
   payment: JobPaymentChoice;
   onlinePayments: boolean;
+  /** Ora aggiornata ogni minuto dalla scheda (docs/changelog/2026-11-13-annullare-pagina-aperta.md). */
+  now: Date;
   /** Richiesta della fattura, chiesta qui e non prima di decidere (05/11/2026). */
   children?: ReactNode;
 }) {
@@ -55,7 +58,7 @@ export function QuoteAcceptSummary({
   const split = paymentSplit(payment, priceTotals, quote.depositPercent);
   const online = onlinePayments && paymentChoiceIsOnline(payment) && !!split && split.nowEurCents > 0;
   const cancelTerms = cancellationTerms({
-    phase: cancellationPhase(quote.estimatedStartDate, quote.estimatedEndDate, quote.cancellationNoticeHours),
+    phase: cancellationPhase(quote.estimatedStartDate, quote.estimatedEndDate, quote.cancellationNoticeHours, now),
     start: quote.estimatedStartDate,
     hours: quote.cancellationNoticeHours,
     money: !online

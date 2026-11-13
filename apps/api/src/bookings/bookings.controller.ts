@@ -90,7 +90,7 @@ export class BookingsController {
   @UseGuards(JwtAuthGuard, VerifiedEmailGuard)
   @Post("from-quote/:quoteId")
   createFromQuote(@Req() req: AuthenticatedRequest, @Param("quoteId") quoteId: string, @Body(new ZodValidationPipe(acceptQuoteSchema)) body: AcceptQuoteInput) {
-    return this.bookingsService.createFromQuote(req.user.userId, quoteId, body.paymentMethod, body.invoiceRequest);
+    return this.bookingsService.createFromQuote(req.user.userId, quoteId, body.paymentMethod, body.invoiceRequest, { phase: body.seenCancellationPhase, at: body.seenTermsAt });
   }
 
   /** Ritorno dalla pagina dell'acconto: se Stripe dice pagato, il lavoro nasce subito (collaudo 08/11, E3-06). */

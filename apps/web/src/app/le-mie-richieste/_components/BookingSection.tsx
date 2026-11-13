@@ -1,5 +1,6 @@
 "use client";
 
+import { useMinuteClock } from "@/lib/useMinuteClock";
 import { useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -694,6 +695,8 @@ function isUpcoming(moment: AppointmentMoment | null): boolean {
  */
 export function ChangeLinks({ booking, onReschedule, onMessage, onCancel }: { booking: ClientBooking; onReschedule: (() => void) | null; onMessage: (() => void) | null; onCancel: () => void }) {
   const moment = useAppointmentMoment(booking);
+  // Ora aggiornata ogni minuto: le frasi su annullare cambiano da sole (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
+  const now = useMinuteClock();
   if ((booking.status !== "CONFIRMED" && booking.status !== "PENDING") || booking.professionalAccountDeleted || !isUpcoming(moment)) return null;
   return (
     <YStack gap="1" paddingHorizontal="1" paddingTop="1">
@@ -722,7 +725,7 @@ export function ChangeLinks({ booking, onReschedule, onMessage, onCancel }: { bo
           sola fonte (docs/changelog/2026-11-13-annullare-una-fonte.md). */}
       <CancellationTermsLines
         terms={cancellationTerms({
-          phase: cancellationPhase(booking.scheduledAt, booking.scheduledEndAt, booking.cancellationNoticeHours),
+          phase: cancellationPhase(booking.scheduledAt, booking.scheduledEndAt, booking.cancellationNoticeHours, now),
           start: booking.scheduledAt,
           hours: booking.cancellationNoticeHours,
           money: bookingCancellationMoney(booking.payment, booking.lateCancelKeepsDeposit, quotePriceTotals(booking.quoteItems).totalMaxEurCents),

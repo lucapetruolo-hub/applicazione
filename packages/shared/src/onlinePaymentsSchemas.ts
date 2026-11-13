@@ -1,6 +1,7 @@
 import { z } from "zod";
 import "./zod";
 import { clientInvoiceRequestSchema } from "./accountingSchemas";
+import { ACCEPTABLE_CANCELLATION_PHASES } from "./acceptedTerms";
 import { MAX_DEPOSIT_PERCENT, MIN_DEPOSIT_PERCENT, jobPaymentChoices } from "./onlinePayments";
 
 /**
@@ -11,6 +12,11 @@ import { MAX_DEPOSIT_PERCENT, MIN_DEPOSIT_PERCENT, jobPaymentChoices } from "./o
 export const acceptQuoteSchema = z.object({
   paymentMethod: z.enum(jobPaymentChoices).default("DIRECT"),
   invoiceRequest: clientInvoiceRequestSchema.optional(),
+  // Cosa leggeva il cliente su annullare e acconto premendo "Accetta"
+  // (docs/changelog/2026-11-13-annullare-pagina-aperta.md): se intanto è
+  // cambiato, il server chiede di rileggere. Facoltativi per le app vecchie.
+  seenCancellationPhase: z.enum(ACCEPTABLE_CANCELLATION_PHASES).optional(),
+  seenTermsAt: z.string().datetime().optional(),
 });
 
 /** Modi di pagamento scelti dal professionista nel preventivo (§237). */

@@ -2,7 +2,7 @@
 
 import { ModalDialog } from "@/components/ModalDialog";
 import { Suspense, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { jobByRequest, type ClientInvoiceRequestInput, type JobPaymentChoice, type SameTimeBookingCandidate } from "@professionisti/shared";
+import { jobByRequest, type ClientInvoiceRequestInput, type SeenCancellationTerms, type JobPaymentChoice, type SameTimeBookingCandidate } from "@professionisti/shared";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
@@ -448,9 +448,9 @@ function LeMieRichiesteContent() {
   // Con l'acconto online si va al checkout Stripe: il lavoro si conferma
   // solo a pagamento riuscito (docs/CHANGELOG.md §240), fino ad allora il
   // preventivo resta da accettare.
-  async function handleAcceptQuote(quoteId: string, paymentMethod: JobPaymentChoice, invoiceRequest?: ClientInvoiceRequestInput) {
+  async function handleAcceptQuote(quoteId: string, paymentMethod: JobPaymentChoice, invoiceRequest?: ClientInvoiceRequestInput, seen?: SeenCancellationTerms) {
     if (!token) throw new Error("Devi accedere per accettare un preventivo.");
-    const { checkoutUrl, bookingId } = await apiClient.acceptQuote(token, quoteId, paymentMethod, invoiceRequest);
+    const { checkoutUrl, bookingId } = await apiClient.acceptQuote(token, quoteId, paymentMethod, invoiceRequest, seen);
     if (checkoutUrl) {
       startExternalRedirectProgress(PAYMENT_PAGE_LABEL);
       window.location.href = checkoutUrl;

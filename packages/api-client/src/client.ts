@@ -161,6 +161,7 @@ import type {
   MergeServiceNameInput,
   ProblemTakeoverAdmin,
   ClientInvoiceRequestInput,
+  SeenCancellationTerms,
   ClientInvoiceRequestView,
   AccountantSettingsInput,
   CourtesyCopyView,
@@ -1889,11 +1890,12 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
      * della richiesta (richiesta esplicita dell'utente). Con il metodo di
      * pagamento scelto dal cliente (§168).
      */
-    acceptQuote: (token: string, quoteId: string, paymentMethod: JobPaymentChoice, invoiceRequest?: ClientInvoiceRequestInput) =>
+    acceptQuote: (token: string, quoteId: string, paymentMethod: JobPaymentChoice, invoiceRequest?: ClientInvoiceRequestInput, seen?: SeenCancellationTerms) =>
       request<{ bookingId: string | null; paymentMethod: JobPaymentChoice; checkoutUrl: string | null }>(`/bookings/from-quote/${quoteId}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ paymentMethod, invoiceRequest }),
+        // Cosa leggeva il cliente su annullare e acconto (docs/changelog/2026-11-13-annullare-pagina-aperta.md).
+        body: JSON.stringify({ paymentMethod, invoiceRequest, ...(seen ? { seenCancellationPhase: seen.phase, seenTermsAt: seen.at } : {}) }),
       }),
 
     /** Fattura chiesta al professionista (docs/CHANGELOG.md §378): ultimi dati usati, per precompilare. */
