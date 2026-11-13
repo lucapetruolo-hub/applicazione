@@ -7184,8 +7184,14 @@ textarea[id^="contatti-"][aria-invalid="true"] {
 
 /* Pillola "Novità" accanto a "Cosa è successo?" in home
    (docs/changelog/2026-11-03-ricerca-per-problema-home.md, idea di Luca):
-   bordo con una luce che gira nei verdi del sito e un filo d'oro. Ferma per
-   chi chiede meno animazioni; senza @property il bordo resta sfumato fermo. */
+   bordo con una luce che gira. Dal 13/11 con i colori tenui dello sfondo
+   (pesca, rosa, lilla, azzurro, menta) al posto di verdi e oro, uguali sul
+   campo, sulla pillola e su "Descrivi il lavoro" (scelta di Luca,
+   docs/changelog/2026-11-13-foto-nel-campo-di-ricerca.md). Ferma per chi
+   chiede meno animazioni; senza @property il bordo resta sfumato fermo. */
+:root {
+  --field-light: #f4c3a3, #eeb6ca, #c8b9e8, #acc9e8, #acdcc0, #f4c3a3;
+}
 @property --badge-angle {
   syntax: "<angle>";
   initial-value: 0deg;
@@ -7200,8 +7206,8 @@ textarea[id^="contatti-"][aria-invalid="true"] {
   border: 2px solid transparent;
   background:
     linear-gradient(#1e6b6e, #1e6b6e) padding-box,
-    conic-gradient(from var(--badge-angle), #1e6b6e, #8bcaca, #f2c14e, #8bcaca, #1e6b6e) border-box !important;
-  box-shadow: 0 0 10px rgba(139, 202, 202, 0.55);
+    conic-gradient(from var(--badge-angle), var(--field-light)) border-box !important;
+  box-shadow: 0 0 10px rgba(200, 185, 232, 0.5);
   /* Due giri all'apertura della pagina, poi ferma (scelta di Luca). */
   animation: label-badge-spin 3s linear 2;
 }
@@ -7213,7 +7219,7 @@ textarea[id^="contatti-"][aria-invalid="true"] {
   border: 2px solid transparent !important;
   background:
     linear-gradient(#f7f7f7, #f7f7f7) padding-box,
-    conic-gradient(from var(--badge-angle), #1e6b6e, #8bcaca, #f2c14e, #8bcaca, #1e6b6e) border-box !important;
+    conic-gradient(from var(--badge-angle), var(--field-light)) border-box !important;
   animation: label-badge-spin 3s linear 2;
 }
 .hero-problem-input:focus {
@@ -7320,65 +7326,103 @@ textarea[id^="contatti-"][aria-invalid="true"] {
   flex-shrink: 0;
   white-space: nowrap;
 }
-/* "Aggiungi una foto del problema" sotto la ricerca
-   (docs/changelog/2026-11-13-ricerca-con-foto.md): stessa pillola degli
-   esempi, con l'anteprima e "Togli" quando la foto c'è. */
+/* Foto del problema dentro il campo (scelta di Luca,
+   docs/changelog/2026-11-13-foto-nel-campo-di-ricerca.md): tasto "Foto"
+   bianco con ombra leggera alla fine del campo, miniatura con la ✕ all'inizio.
+   Stesso tasto in "Descrivi il lavoro" della richiesta di preventivo. Sotto il
+   riquadro restano solo l'avviso e il controllo anti-bot. */
+.field-photo-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 14px 0 10px;
+  border: 1px solid rgba(30, 107, 110, 0.25);
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 59, 59, 0.18), 0 2px 8px rgba(15, 59, 59, 0.08);
+  color: #1e6b6e;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  /* 40 px visibili, 44 da toccare. */
+  position: relative;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.field-photo-button::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+}
+@media (hover: hover) {
+  .field-photo-button:hover {
+    box-shadow: 0 2px 6px rgba(15, 59, 59, 0.2), 0 4px 12px rgba(15, 59, 59, 0.1);
+  }
+}
+.field-photo-button:active {
+  transform: scale(0.97);
+}
+.field-photo-button:focus-visible {
+  outline: 3px solid #247c7c;
+  outline-offset: 2px;
+}
+.field-photo-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.field-photo-thumb {
+  position: relative;
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+}
+.field-photo-thumb img {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.field-photo-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #1b1a18;
+  cursor: pointer;
+}
+/* 24 px visibili, 44 da toccare. */
+.field-photo-remove::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+}
+.field-photo-remove:focus-visible {
+  outline: 3px solid #247c7c;
+  outline-offset: 2px;
+}
+.field-photo-remove:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
 .hero-photo {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  margin-top: 16px;
-}
-.hero-photo-add {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-}
-.hero-photo-chosen {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 52px;
-  padding: 4px 6px 4px 4px;
-  border-radius: 999px;
-  background: #ffffff;
-  border: 1px solid #e7e0d7;
-}
-.hero-photo-thumb {
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  object-fit: cover;
-}
-.hero-photo-text {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1b1a18;
-}
-.hero-photo-remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border: 0;
-  border-radius: 999px;
-  background: #f4efe8;
-  cursor: pointer;
-}
-.hero-photo-remove:focus-visible {
-  outline: 3px solid #247c7c;
-  outline-offset: 2px;
-}
-.hero-photo-remove:disabled {
-  cursor: default;
-  opacity: 0.6;
+  margin-top: 12px;
 }
 .hero-photo-hint {
   font-size: 13px;
   color: #625d56;
+  text-align: center;
 }
 .hero-photo-message {
   font-size: 14px;
@@ -9444,11 +9488,43 @@ textarea[id^="contatti-"][aria-invalid="true"] {
    (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md, scelta di
    Luca): la stessa luce del campo "Cosa è successo?" della home, due giri
    all'apertura e poi ferma; verde pieno mentre si scrive. */
+/* Tasto "Foto" dentro "Descrivi il lavoro", in basso a destra (lontano
+   dall'angolo per allungare il campo), e le foto subito sotto
+   (docs/changelog/2026-11-13-foto-nel-campo-di-ricerca.md). */
+.guided-description-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.guided-description-photo {
+  position: absolute;
+  right: 22px;
+  bottom: 10px;
+}
+.guided-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 6px;
+}
+.guided-photo {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  border: 1px solid #e7e0d7;
+}
+.guided-photo-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #faf6f1;
+}
 .guided-description-input {
   border: 2px solid transparent !important;
   background:
     linear-gradient(#ffffff, #ffffff) padding-box,
-    conic-gradient(from var(--badge-angle), #1e6b6e, #8bcaca, #f2c14e, #8bcaca, #1e6b6e) border-box !important;
+    conic-gradient(from var(--badge-angle), var(--field-light)) border-box !important;
   animation: label-badge-spin 3s linear 2;
 }
 .guided-description-input:focus {

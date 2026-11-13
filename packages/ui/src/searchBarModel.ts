@@ -85,6 +85,12 @@ export type SearchBarProps = {
      * può scrivere il problema con parole proprie.
      */
     examples?: ProfessionalSuggestion[];
+    /**
+     * Dentro il campo, all'inizio e alla fine: in home la miniatura della foto
+     * scelta e il tasto "Foto" (docs/changelog/2026-11-13-foto-nel-campo-di-ricerca.md).
+     */
+    inputStart?: ReactNode;
+    inputEnd?: ReactNode;
   };
   /**
    * Contenuto sotto il riquadro (gli esempi da toccare della home): riceve il

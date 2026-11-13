@@ -104,6 +104,34 @@
   line-height: 26px;
 }
 
+/* Miniatura e tasti dentro il campo (home: la foto del problema,
+   docs/changelog/2026-11-13-foto-nel-campo-di-ricerca.md). Il campo lascia
+   lo spazio, così il testo non ci passa sotto. */
+.inputWrap {
+  position: relative;
+  flex-direction: column;
+}
+.inputStart,
+.inputEnd {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  flex-direction: row;
+  align-items: center;
+}
+.inputStart {
+  left: 8px;
+}
+.inputEnd {
+  right: 6px;
+}
+.inputHasStart.inputHasStart.inputHasStart.inputHasStart {
+  padding-left: 56px;
+}
+.inputHasEnd.inputHasEnd.inputHasEnd.inputHasEnd {
+  padding-right: 108px;
+}
+
 .status {
   color: var(--color);
   position: absolute;
