@@ -25,10 +25,12 @@ export type AdminQueueKind =
   | "VERIFICATION"
   | "CLOSED_ZONE"
   | "SUSPICIOUS_ACCOUNT"
-  | "HELD_REVIEW";
+  | "HELD_REVIEW"
+  | "SITE_DEADLINE"
+  | "SITE_CHECK";
 
 /** Gruppo del filtro "Tipo" della coda: gli stessi nomi delle voci del menu. */
-export type AdminQueueGroup = "soldi" | "reclami" | "richieste" | "persone" | "fisco";
+export type AdminQueueGroup = "soldi" | "reclami" | "richieste" | "persone" | "fisco" | "sito";
 
 export const ADMIN_QUEUE_KINDS: Record<AdminQueueKind, { label: string; group: AdminQueueGroup; scope: AdminScope }> = {
   BANK_DISPUTE: { label: "Il cliente chiede i soldi alla sua banca", group: "soldi", scope: "FINANCE" },
@@ -48,6 +50,8 @@ export const ADMIN_QUEUE_KINDS: Record<AdminQueueKind, { label: string; group: A
   CLOSED_ZONE: { label: "Zona dove le richieste non arrivano più", group: "richieste", scope: "MODERATION" },
   SUSPICIOUS_ACCOUNT: { label: "Account sospetto", group: "persone", scope: "MODERATION" },
   HELD_REVIEW: { label: "Recensione da controllare", group: "reclami", scope: "MODERATION" },
+  SITE_DEADLINE: { label: "Scadenza del sito", group: "sito", scope: "SUPER" },
+  SITE_CHECK: { label: "Il sito ha un problema", group: "sito", scope: "SUPER" },
 };
 
 export const ADMIN_QUEUE_GROUP_LABEL: Record<AdminQueueGroup, string> = {
@@ -56,6 +60,7 @@ export const ADMIN_QUEUE_GROUP_LABEL: Record<AdminQueueGroup, string> = {
   richieste: "Richieste",
   persone: "Persone",
   fisco: "Fisco e fatture",
+  sito: "Il sito",
 };
 
 export type AdminQueueItem = {

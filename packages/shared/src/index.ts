@@ -89,6 +89,7 @@ export * from "./problemSafetyTexts";
 export * from "./whatsapp";
 export * from "./appointmentReply";
 export * from "./adminQueue";
+export * from "./siteHealth";
 export * from "./adminProposals";
 export * from "./adminProposalsSchemas";
 export * from "./adminSignals";

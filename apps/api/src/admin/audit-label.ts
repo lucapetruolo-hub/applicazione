@@ -220,11 +220,11 @@ export function auditLabel(row: { entityType: string; fieldName: string | null; 
 
   switch (entityType) {
     case "ContentReport":
-      if (fieldName === "revert") return "Misura annullata";
+      if (fieldName === "revert") return "Decisione annullata";
       if (fieldName === "appeal") return "Contestazione respinta";
       if (fieldName === "status" && typeof value === "string" && value.startsWith("RESOLVED")) {
         const action = value.split(":")[1] ?? "";
-        return `Segnalazione accolta: ${ACTION_SHORT_LABEL[action] ?? (action || "nessuna misura")}`;
+        return `Segnalazione accolta: ${ACTION_SHORT_LABEL[action] ?? (action || "nessuna conseguenza")}`;
       }
       if (fieldName === "status" && value === "DISMISSED") return "Segnalazione non accolta";
       return "Segnalazione aggiornata";
@@ -282,6 +282,9 @@ export function auditLabel(row: { entityType: string; fieldName: string | null; 
     // Proposte da approvare in Admin (docs/changelog/2026-11-03-automazioni-admin.md): cosa proponeva è nel motivo.
     case "AdminProposal":
       return value === "APPROVED" ? "Proposta approvata" : value === "SNOOZED" ? "Proposta rimandata di 14 giorni" : "Proposta rifiutata per sempre";
+    // Scadenze del sito (docs/changelog/2026-11-13-admin-scadenze-controlli.md).
+    case "SiteDeadline":
+      return fieldName === "done" ? "Scadenza del sito segnata come fatta" : fieldName === "deleted" ? "Scadenza del sito tolta" : `Scadenza del sito aggiunta: ${asText(value)}`;
     case "ProblemTakeover":
       return value === "DONE" ? "Richiesta da seguire segnata come fatta" : "Richiesta da seguire riaperta";
     default:
