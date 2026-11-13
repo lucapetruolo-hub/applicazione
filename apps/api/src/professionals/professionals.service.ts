@@ -806,6 +806,8 @@ export class ProfessionalsService {
       latitude: profile.latitude,
       longitude: profile.longitude,
       imageUrl: profile.imageUrl,
+      coverImageUrl: profile.coverImageUrl,
+      coverPreset: profile.coverPreset,
       services: mapServices(profile.services),
       subTags: profile.subTags,
       spokenLanguages: profile.spokenLanguages,
@@ -884,6 +886,8 @@ export class ProfessionalsService {
       cancellationNoticeHours: profile.cancellationNoticeHours,
       lateCancelKeepsDeposit: profile.lateCancelKeepsDeposit,
       imageUrl: profile.imageUrl,
+      coverImageUrl: profile.coverImageUrl,
+      coverPreset: profile.coverPreset,
       portfolioUrls: profile.portfolioUrls,
       services: mapServices(profile.services),
       engagementRadiusKm: profile.engagementRadiusKm,
@@ -1148,6 +1152,8 @@ export class ProfessionalsService {
       cancellationNoticeHours: profile.cancellationNoticeHours,
       lateCancelKeepsDeposit: profile.lateCancelKeepsDeposit,
       imageUrl: profile.imageUrl,
+      coverImageUrl: profile.coverImageUrl,
+      coverPreset: profile.coverPreset,
       portfolioUrls: profile.portfolioUrls,
       services: mapServices(savedServices),
       engagementRadiusKm: profile.engagementRadiusKm,
@@ -1162,6 +1168,16 @@ export class ProfessionalsService {
       ...onlineLimitFields(await professionalOnlineLimit(this.prisma, profile.id)),
       identityVerificationNeeded: identityVerificationNeeded(profile),
     };
+  }
+
+  /** La copertina si aggiunge a un profilo già salvato (docs/changelog/2026-11-13-copertina-profilo.md). */
+  async assertHasProfile(userId: string): Promise<void> {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true } });
+    if (!profile) throw new BadRequestException("Salva prima il profilo, poi aggiungi la copertina.");
+  }
+
+  async updateMyCover(userId: string, cover: { coverImageUrl: string | null; coverPreset: string | null }): Promise<void> {
+    await this.prisma.professionalProfile.update({ where: { userId }, data: cover });
   }
 
   async updateMyImage(userId: string, imageUrl: string): Promise<void> {

@@ -748,3 +748,86 @@
     justify-self: end;
   }
 }
+
+/* Copertina (docs/changelog/2026-11-13-copertina-profilo.md): percorso e
+   scheda identità in un blocco; la copertina sta dietro, larga quanto la
+   finestra, dall'intestazione fino a circa metà della scheda. */
+.head {
+  position: relative;
+  flex-direction: column;
+  gap: var(--t-space-6);
+}
+
+.headWithCover > :not(.cover) {
+  position: relative;
+  z-index: 1;
+}
+
+.headWithCover .surface {
+  box-shadow: 0 10px 30px rgba(15, 59, 59, 0.16);
+}
+
+.cover {
+  position: absolute;
+  z-index: 0;
+  top: calc(-1 * var(--t-space-6));
+  bottom: 45%;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  overflow: hidden;
+  pointer-events: none;
+  background-color: var(--c-gesso);
+}
+
+.cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Copertina scura: velo in alto e percorso bianco, leggibile su ogni foto. */
+.headDark .cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.38) 0%, rgba(0, 0, 0, 0) 40%);
+}
+
+.headDark :global(.breadcrumbs-link),
+.headDark :global(.breadcrumbs-current),
+.headDark :global(.breadcrumbs-sep) {
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+/* La copertina larga quanto la finestra non deve far scorrere la pagina di lato. */
+.page {
+  overflow-x: clip;
+}
+
+@media (max-width: 660px) {
+  /* 180 px di copertina sopra il percorso (COVER_PHONE_SPACE), poi circa
+     200 px dietro la scheda: la pagina si apre già sotto. */
+  .headPhoneSpace {
+    padding-top: 180px;
+  }
+
+  .headWithCover .cover {
+    bottom: auto;
+    height: calc(var(--t-space-6) + 180px + 240px);
+  }
+
+  .headWithCover:not(.headPhoneSpace) .cover {
+    height: calc(var(--t-space-6) + 240px);
+  }
+}
+
+@media (max-width: 660px) {
+  /* Da telefono il percorso sta a metà della copertina: il velo scende fin lì. */
+  .headDark.headPhoneSpace .cover::after {
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.4) 45%, rgba(0, 0, 0, 0) 68%);
+  }
+}

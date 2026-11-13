@@ -29,6 +29,10 @@ import {
   updateEngagementRadiusSchema,
   setAwaySchema,
   type SetAwayInput,
+  setCoverPresetSchema,
+  type SetCoverPresetInput,
+  COVER_WIDTH,
+  COVER_HEIGHT,
   updateLeadNoteSchema,
   type AvailabilityExceptionInput,
   type BookAgendaSlotInput,
@@ -52,6 +56,8 @@ import { CategoriesService } from "../categories/categories.service";
 import { SiteCountsService } from "../site-counts/site-counts.service";
 import { ProfessionalsService } from "./professionals.service";
 import { PersonalLinkService } from "./personal-link.service";
+import { CoverImageCheckService, coverRejectedMessage } from "./cover-image-check";
+import { photoMediaType } from "../problem-match/problem-match.service";
 import { hasNearbyResult } from "./search-area";
 
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
@@ -69,6 +75,7 @@ export class ProfessionalsController {
     private readonly categoriesService: CategoriesService,
     private readonly siteCounts: SiteCountsService,
     private readonly personalLink: PersonalLinkService,
+    private readonly coverCheck: CoverImageCheckService,
   ) {}
 
   @Get("search")
@@ -228,6 +235,39 @@ export class ProfessionalsController {
     const imageUrl = await this.cloudinaryService.uploadImage(file, "professionisti");
     await this.professionalsService.updateMyImage(req.user.userId, imageUrl);
     return { imageUrl };
+  }
+
+  /**
+   * Copertina del profilo pubblico (docs/changelog/2026-11-13-copertina-profilo.md):
+   * arriva già ritagliata 2:1 dal browser. Prima di pubblicarla l'IA controlla
+   * che non ci siano contatti (telefono, email, sito, social, QR code): i
+   * contatti restano nascosti fino all'accettazione (CLAUDE.md §5 punto 9).
+   * Limite stretto perché ogni controllo è una chiamata a pagamento.
+   */
+  @Throttle({ default: { limit: 10, ttl: 3_600_000 } })
+  @UseGuards(JwtAuthGuard)
+  @UseFilters(MulterExceptionFilter)
+  @Post("me/cover")
+  @UseInterceptors(FileInterceptor("image", { limits: { fileSize: MAX_IMAGE_SIZE_BYTES, files: 1 } }))
+  async uploadMyCover(@Req() req: AuthenticatedRequest, @UploadedFile() file?: Express.Multer.File) {
+    if (!file) throw new BadRequestException("Nessuna immagine caricata.");
+    const mediaType = photoMediaType(file.buffer);
+    if (!mediaType) throw new BadRequestException("La copertina deve essere un'immagine JPEG, PNG o WebP.");
+    await this.professionalsService.assertHasProfile(req.user.userId);
+    const verdict = await this.coverCheck.check(file.buffer, mediaType);
+    if (verdict !== "ok") throw new BadRequestException(coverRejectedMessage(verdict));
+    const coverImageUrl = await this.cloudinaryService.uploadImage(file, "professionisti-copertine", { width: COVER_WIDTH, height: COVER_HEIGHT, crop: "fill" });
+    await this.professionalsService.updateMyCover(req.user.userId, { coverImageUrl, coverPreset: null });
+    return { coverImageUrl, coverPreset: null };
+  }
+
+  /** Copertina pronta per mestiere, oppure nessuna copertina (preset null). Toglie sempre la foto caricata. */
+  @UseGuards(JwtAuthGuard)
+  @Put("me/cover")
+  async setMyCoverPreset(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(setCoverPresetSchema)) body: SetCoverPresetInput) {
+    await this.professionalsService.assertHasProfile(req.user.userId);
+    await this.professionalsService.updateMyCover(req.user.userId, { coverImageUrl: null, coverPreset: body.preset });
+    return { coverImageUrl: null, coverPreset: body.preset };
   }
 
   // Una chiamata per foto/video (fino a 10, vedi professionalProfileSchema.portfolioUrls

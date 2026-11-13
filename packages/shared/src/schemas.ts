@@ -3,6 +3,7 @@ import "./zod";
 import { EMAIL_CODE_LENGTH } from "./emailCode";
 import { TRAFFIC_SOURCES } from "./trafficSources";
 import { isInviteCode } from "./personalLink";
+import { isCoverPreset } from "./coverPresets";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
 import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
 import { quotePaymentOfferSchema } from "./onlinePaymentsSchemas";
@@ -1343,3 +1344,12 @@ export const invitePartnerCreateSchema = z.object({
   name: z.string().trim().min(2, "Scrivi il nome del partner.").max(80, "Al massimo 80 caratteri."),
 });
 export type InvitePartnerCreateInput = z.infer<typeof invitePartnerCreateSchema>;
+
+/** Copertina pronta scelta nel profilo, o null per toglierla (docs/changelog/2026-11-13-copertina-profilo.md). */
+export const setCoverPresetSchema = z.object({
+  preset: z
+    .string()
+    .nullable()
+    .refine((value) => value === null || isCoverPreset(value), { message: "Copertina non valida." }),
+});
+export type SetCoverPresetInput = z.infer<typeof setCoverPresetSchema>;

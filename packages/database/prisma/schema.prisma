@@ -335,6 +335,12 @@ model ProfessionalProfile {
   // card risultati e nel profilo pubblico come su miodottore.it.
   address                      String?
   imageUrl                     String?
+  // Immagine di copertina del profilo pubblico (docs/changelog/2026-11-13-copertina-profilo.md):
+  // una foto caricata (Cloudinary, 1600×800) oppure una delle copertine pronte
+  // per mestiere (`coverPreset`, elenco in packages/shared/src/coverPresets.ts).
+  // Mai tutte e due: chi carica una foto toglie la copertina pronta e viceversa.
+  coverImageUrl                String?
+  coverPreset                  String?
   // Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul
   // profilo pubblico — richiesta esplicita dell'utente: "in modo che gli
   // utenti aprendo l'account del professionista possano avere un'idea dei

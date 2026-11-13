@@ -1,0 +1,336 @@
+/* Scelta della copertina in /dashboard/profilo (docs/changelog/2026-11-13-copertina-profilo.md). */
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 560px;
+}
+
+.preview {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 90px;
+  justify-content: center;
+}
+
+.previewTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-grafite70, #5f6670);
+}
+
+/* "Come la vede il cliente": stesse proporzioni della pagina del profilo. */
+.views {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+@media (max-width: 660px) {
+  .views {
+    gap: 10px;
+  }
+
+  .view:last-child {
+    flex-basis: 100px;
+  }
+}
+
+.view {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.view:first-child {
+  flex: 1 1 auto;
+  max-width: 400px;
+}
+
+.view:last-child {
+  flex: 0 0 120px;
+}
+
+.frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid var(--c-filetto, #e7dfd4);
+  background-color: var(--c-gesso, #faf2e8);
+}
+
+.frameWide {
+  aspect-ratio: 16 / 7;
+}
+
+.framePhone {
+  aspect-ratio: 9 / 13;
+}
+
+.frameCover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 62%;
+  object-fit: cover;
+}
+
+.card {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  top: 40%;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 6px 18px rgba(15, 59, 59, 0.16);
+}
+
+.framePhone .card {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  flex-wrap: nowrap;
+  top: 30%;
+  left: 6%;
+  right: 6%;
+  padding: 6px;
+}
+
+.cardLines {
+  flex: 1 0 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.cardLines i {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background-color: var(--c-filetto, #e7e0d7);
+}
+
+.cardLines i:last-child {
+  width: 60%;
+}
+
+.cardPhoto {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #186163;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.framePhone .cardPhoto {
+  width: 26px;
+  height: 26px;
+  font-size: 11px;
+}
+
+.cardText {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.framePhone .cardText {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.cardName {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-cianografiaScuro, #0f3b3b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardSub {
+  font-size: 11px;
+  color: var(--c-grafite70, #5f6670);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.framePhone .cardName {
+  font-size: 11px;
+}
+
+.framePhone .cardSub {
+  font-size: 10px;
+}
+
+.caption {
+  font-size: 13px;
+  color: var(--c-grafite70, #5f6670);
+}
+
+.empty {
+  max-width: 360px;
+  aspect-ratio: 2 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid var(--c-filetto, #e7dfd4);
+  background-color: var(--c-gesso, #f4efe8);
+  padding: 12px;
+  font-size: 14px;
+  color: var(--c-grafite70, #5f6670);
+  text-align: center;
+}
+
+.busy {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.82);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-grafite, #2b2b2b);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.remove {
+  border: 0;
+  background: none;
+  padding: 8px 4px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--c-urgenza, #b42318);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.remove:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--c-grafite70, #5f6670);
+}
+
+.error {
+  margin: 0;
+  font-size: 14px;
+  color: var(--c-urgenza, #b42318);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 660px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  border-radius: 10px;
+  overflow: hidden;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  background-color: var(--c-gesso, #f4efe8);
+}
+
+.thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.option:hover .thumb {
+  outline-color: var(--c-filetto, #d9cfc2);
+}
+
+.option:focus-visible {
+  outline: none;
+}
+
+.option:focus-visible .thumb,
+.optionActive .thumb {
+  outline-color: var(--c-cianografia, #1e6b6e);
+}
+
+.optionLabel {
+  font-size: 14px;
+  color: var(--c-grafite, #2b2b2b);
+}
+
+.optionActive .optionLabel {
+  font-weight: 700;
+  color: var(--c-cianografiaScuro, #0f3b3b);
+}
+
+.framePhone .cardLines {
+  flex: 0 0 auto;
+  width: 100%;
+  margin-top: 4px;
+}

@@ -211,6 +211,9 @@ const selfProfessional = [
   "POST /professionals/me/fiscal-profile/stripe-connect",
   "POST /professionals/me/fiscal-profile/stripe-dashboard",
   "POST /professionals/me/image",
+  // Copertina del profilo (docs/changelog/2026-11-13-copertina-profilo.md).
+  "POST /professionals/me/cover",
+  "PUT /professionals/me/cover",
   "GET /professionals/me/insights",
   "GET /professionals/me/leads",
   "GET /professionals/me/personal-link",

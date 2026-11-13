@@ -958,7 +958,8 @@ export class AdminService {
         title: `${p.businessName} · ${p.category.label} · ${p.city}`,
         author: p.user.email,
         text: p.bio,
-        photos: [...(p.imageUrl ? [p.imageUrl] : []), ...p.portfolioUrls],
+        // Anche la copertina caricata: chi segnala il profilo può segnalare quella (docs/changelog/2026-11-13-copertina-profilo.md).
+        photos: [...(p.imageUrl ? [p.imageUrl] : []), ...(p.coverImageUrl ? [p.coverImageUrl] : []), ...p.portfolioUrls],
         rating: null,
         state: p.deletedAt ? "Eliminato dall'utente" : p.suspendedAt ? "Tolto da ricerca e pagina pubblica" : "Visibile",
         ownerUserId: p.userId,
