@@ -224,12 +224,14 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
     "Ricerca perdite e infiltrazioni",
     "Installazione lavatrice e lavastoviglie",
     "Trasformazione vasca in doccia",
+    "Riparazione scaldabagno elettrico",
   ],
   elettricista: [
     "Impianto elettrico civile",
     "Installazione punti luce",
     "Sostituzione quadro elettrico",
     "Installazione videocitofono",
+    "Riparazione citofono e videocitofono",
     "Certificazione impianto",
     "Ricerca guasti (salvavita che scatta)",
     "Sostituzione prese e interruttori",
@@ -324,6 +326,7 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
     "Restauro mobili",
     "Riparazione porte in legno",
     "Riparazione finestre e persiane in legno",
+    "Riparazione infissi in PVC e alluminio",
     "Posa e riparazione parquet",
   ],
   tuttofare: [

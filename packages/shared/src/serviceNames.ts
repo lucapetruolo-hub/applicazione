@@ -43,6 +43,10 @@ const SYNONYMS: Record<string, string> = Object.fromEntries(
       ["Sostituzione rubinetteria", ["sostituzione rubinetto", "cambio rubinetto", "cambio rubinetti", "rubinetteria"]],
       ["Riparazione cassetta WC", ["cassetta wc", "riparazione sciacquone", "sciacquone", "cassetta scarico"]],
       ["Installazione scaldabagno", ["sostituzione scaldabagno", "montaggio scaldabagno", "scaldabagno"]],
+      // docs/changelog/2026-11-13-prestazioni-mancanti.md
+      ["Riparazione scaldabagno elettrico", ["riparazione boiler elettrico", "riparazione scaldabagno elettrico", "boiler elettrico guasto"]],
+      ["Riparazione citofono e videocitofono", ["riparazione citofono", "riparazione videocitofono", "citofono guasto", "citofono rotto"]],
+      ["Riparazione infissi in PVC e alluminio", ["riparazione infissi pvc", "riparazione infissi in pvc", "riparazione infissi alluminio", "riparazione infissi in alluminio", "riparazione finestre pvc", "riparazione finestre in pvc"]],
       ["Ricerca guasti (salvavita che scatta)", ["ricerca guasti", "ricerca guasto", "salvavita", "guasti elettrici"]],
       ["Installazione punti luce", ["punti luce", "installazione lampadari", "montaggio lampadari", "lampadari"]],
       // "Condizionatore" è la parola che si cerca di più (Keyword Planner del 06/11/2026); i vecchi nomi restano varianti.
