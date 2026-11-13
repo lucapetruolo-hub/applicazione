@@ -48,7 +48,7 @@ for (const [device, size] of [["telefono", PHONE], ["computer", COMPUTER]] as co
     const whenRow = dialog.getByRole("row").filter({ has: page.getByRole("rowheader", { name: "Quando" }) });
     await expect(whenRow.getByRole("cell").nth(column("Bianchi Impianti"))).toContainText("Data più vicina");
     await expect(whenRow.getByText("Data più vicina")).toHaveCount(1);
-    await expect(dialog.getByText("Avvisa 48 ore prima")).toBeVisible();
+    await expect(dialog.getByText("Avvisa almeno 48 ore prima.")).toBeVisible();
     await page.screenshot({ path: `test-results/confronto-preventivi-${device}.png` });
 
     const axe = await new AxeBuilder({ page }).include(".quote-compare-dialog").analyze();
