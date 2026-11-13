@@ -9,6 +9,7 @@ import {
   TAX_BONUS_PAYMENT_NOTE,
   cancellationNoticeLabel,
   freeCancellationUntilLabel,
+  isLateCancellation,
   categoryMayHaveTaxBonus,
   formatAppointmentTimeRange,
   formatEurCents,
@@ -480,14 +481,24 @@ export function QuoteCard({
         {/* Preavviso scelto dal professionista nel preventivo, detto prima di Accetta (docs/CHANGELOG.md §347, §348). */}
         {(quote.status === "SENT" || quote.status === "MODIFICATION_REQUESTED") && !notChosen ? (
           <QuoteFact label="Annullare">
-            <Text fontSize={16} color={brand.grafite}>
-              Avvisa almeno {cancellationNoticeLabel(quote.cancellationNoticeHours)} prima
-            </Text>
+            {/* Già dentro il preavviso la data "annulla entro…" sarebbe passata: si dice
+                che mancano meno di 24 ore, come in QuoteAcceptSummary (Luca, 11/11,
+                docs/changelog/2026-11-13-annullare-data-passata.md). */}
+            {isLateCancellation(quote.estimatedStartDate, quote.cancellationNoticeHours) ? (
+              <Text fontSize={16} color={brand.grafite} data-testid="quote-cancel-late">
+                Mancano meno di {cancellationNoticeLabel(quote.cancellationNoticeHours)} all&apos;appuntamento.
+              </Text>
+            ) : (
+              <Text fontSize={16} color={brand.grafite}>
+                Avvisa almeno {cancellationNoticeLabel(quote.cancellationNoticeHours)} prima
+              </Text>
+            )}
             {quote.lateCancelKeepsDeposit && onlinePayments && quote.paymentOptions.some(paymentChoiceIsOnline) ? (
               // Detto chiaro sul preventivo, prima di accettare (Luca, 11/11, docs/changelog/2026-11-11-rosso-solo-errori.md).
               <Text fontSize={13} fontWeight="600" color={brand.ottoneScuro}>
-                Pagando online, se annulli dopo {freeCancellationUntilLabel(quote.estimatedStartDate, quote.cancellationNoticeHours)} l&apos;acconto non è
-                rimborsabile.
+                {isLateCancellation(quote.estimatedStartDate, quote.cancellationNoticeHours)
+                  ? "Pagando online, l'acconto non è rimborsabile, anche se annulli."
+                  : `Pagando online, se annulli dopo ${freeCancellationUntilLabel(quote.estimatedStartDate, quote.cancellationNoticeHours)} l'acconto non è rimborsabile.`}
               </Text>
             ) : onlinePayments && quote.paymentOptions.some(paymentChoiceIsOnline) ? (
               // Acconto sempre rimborsabile: si dice, è un buon motivo per pagare online (Luca, 11/11).

@@ -4,6 +4,7 @@ import {
   accountingDateLabel,
   cancellationNoticeLabel,
   freeCancellationUntilLabel,
+  isLateCancellation,
   clientPaymentOffer,
   formatAppointmentDate,
   formatAppointmentTimeRange,
@@ -172,7 +173,9 @@ export class QuotePdfService {
         type: "note",
         tone: "sand",
         lines: [
-          `Pagando online: annullamento gratuito fino a ${freeCancellationUntilLabel(quote.estimatedStartDate, notice)}. Dopo, ${deposit ? `l'acconto di ${formatEurCents(deposit)}` : "l'acconto"} non è rimborsabile.`,
+          isLateCancellation(quote.estimatedStartDate, notice)
+            ? `Pagando online: mancano meno di ${cancellationNoticeLabel(notice)} all'appuntamento, ${deposit ? `l'acconto di ${formatEurCents(deposit)}` : "l'acconto"} non è rimborsabile, anche se annulli.`
+            : `Pagando online: annullamento gratuito fino a ${freeCancellationUntilLabel(quote.estimatedStartDate, notice)}. Dopo, ${deposit ? `l'acconto di ${formatEurCents(deposit)}` : "l'acconto"} non è rimborsabile.`,
         ],
       });
     } else if (anyOnline) {
