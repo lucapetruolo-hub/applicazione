@@ -80,7 +80,7 @@ export function ProCtaSection() {
             style={{ objectFit: "cover" }}
           />
           <div className="pro-cta-notif pro-cta-notif-top" aria-hidden>
-            <span className="pro-cta-notif-icon" style={{ background: "#FF8A3D" }}>
+            <span className="pro-cta-notif-icon" style={{ background: brand.verificato }}>
               <Icon name="check" size={18} color="white" strokeWidth={2.5} />
             </span>
             <span>
