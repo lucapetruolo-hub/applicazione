@@ -13,7 +13,7 @@ import {
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { AdminCard, AdminPageHeader, AdminPill, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
+import { AdminCard, AdminPageHeader, AdminPill, TechNote, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonTableRows } from "@/components/Skeleton";
 import { AdminConfirmModal } from "@/components/admin/AdminConfirmModal";
 
@@ -74,7 +74,7 @@ export default function AdminRichiesteGeneraliPage() {
     <YStack>
       <AdminPageHeader
         title="Richieste generali"
-        description={`Richieste inviate senza scegliere un professionista, ultimi ${GENERAL_REQUESTS_WINDOW_DAYS} giorni. Quando una zona si chiude il cliente vede un avviso e sceglie un professionista dalla ricerca; gli admin di moderazione ricevono un'email.`}
+        description={`Richieste mandate a tutti, senza scegliere chi. Ultimi ${GENERAL_REQUESTS_WINDOW_DAYS} giorni. In una zona chiusa il cliente vede un avviso. Sceglie lui un professionista; gli admin di moderazione ricevono un'email.`}
       />
 
       {data ? (
@@ -84,9 +84,12 @@ export default function AdminRichiesteGeneraliPage() {
           </Text>
           <Text color={brand.grafite70} marginTop="1">
             {data.globallyEnabled
-              ? "Per spegnerle ovunque imposta GENERAL_REQUESTS_ENABLED=false sul servizio API di Render. Le richieste a un professionista scelto continuano a funzionare."
-              : "Spente da GENERAL_REQUESTS_ENABLED=false su Render. Per riaccenderle togli la variabile o mettila a true."}
+              ? "Per spegnerle ovunque, chiedilo a Claude. Le richieste a un professionista scelto funzionano sempre."
+              : "Sono spente dalle impostazioni del sito. Per riaccenderle chiedilo a Claude."}
           </Text>
+          <TechNote>
+            {data.globallyEnabled ? "Si spengono con GENERAL_REQUESTS_ENABLED=false sul servizio API di Render." : "Spente da GENERAL_REQUESTS_ENABLED=false su Render: togli la variabile o mettila a true."}
+          </TechNote>
         </AdminCard>
       ) : null}
 
@@ -217,7 +220,7 @@ export default function AdminRichiesteGeneraliPage() {
       {closing ? (
         <AdminConfirmModal
           title="Chiudi la zona"
-          description={`${PROFESSIONAL_CATEGORIES.find((c) => c.slug === closing.slug)?.label ?? closing.slug} a ${closing.city}: i clienti non possono più mandare una richiesta senza scegliere un professionista e vedono un avviso. Si riapre da qui.`}
+          description={`${PROFESSIONAL_CATEGORIES.find((c) => c.slug === closing.slug)?.label ?? closing.slug} a ${closing.city}: i clienti vedono un avviso e devono scegliere loro un professionista. Si riapre da qui.`}
           confirmLabel="Chiudi la zona"
           reasonLabel="Motivo"
           reasonPlaceholder="Es. troppe richieste per i 2 professionisti della zona"

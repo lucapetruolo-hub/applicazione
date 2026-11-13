@@ -154,6 +154,16 @@ describe("ProblemMatchService", () => {
     expect((await other.match("macchia di umido sul soffitto")).service).toBeNull();
   });
 
+  // docs/changelog/2026-11-13-banco-prestazioni-esperto.md
+  it("se l'IA non dà nessuna prestazione non usa quella del dizionario", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "test");
+    const service = newService();
+    service.askAi = vi.fn().mockResolvedValue(aiAnswer({ categories: ["elettricista"], service: null }));
+    const result = await service.match("cosa devo fare se il citofono non suona da ieri?");
+    expect(result).toMatchObject({ categories: ["elettricista"], source: "ia" });
+    expect(result.service).toBeNull();
+  });
+
   // docs/changelog/2026-11-12-attesa-ia-5-secondi.md
   it("salva tempo ed esito della domanda all'IA: ok, errore, niente per il dizionario sicuro", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "test");

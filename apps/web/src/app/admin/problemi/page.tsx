@@ -105,13 +105,13 @@ function ProblemiContent() {
     <YStack>
       <AdminPageHeader
         title="Problemi segnalati"
-        description="Mancate presentazioni e lavori non andati bene non risolti in chat. Il professionista ha 72 ore per la sua versione (o per le informazioni che chiedi), poi la segnalazione è accolta da sola; con le prove complete decidi entro 2 giorni."
+        description="Mancate presentazioni e lavori non andati bene non risolti in chat. Il professionista ha 72 ore per rispondere. Poi la segnalazione è accolta da sola; con le prove complete decidi entro 2 giorni."
       />
       <AdminTabs
         tabs={[
           { key: "open", label: "Da decidere" },
           { key: "chat", label: "In chat tra le parti" },
-          { key: "appeals", label: "Ricorsi" },
+          { key: "appeals", label: "Da rivedere" },
           { key: "closed", label: "Chiuse" },
         ]}
         value={view}
@@ -145,7 +145,7 @@ function ProblemiContent() {
             : view === "chat"
               ? "Nessuna segnalazione in chat tra le parti."
               : view === "appeals"
-                ? "Nessun ricorso da decidere."
+                ? "Nessuna decisione da rivedere."
                 : "Nessuna segnalazione chiusa finora."}
         </Text>
       ) : rows && token ? (
@@ -212,7 +212,7 @@ function ProblemiContent() {
                     <Text color={brand.grafite}>“{row.issue.professionalResponse}”</Text>
                   ) : (
                     <Text fontSize={13} color={brand.grafite70}>
-                      {row.issue.appealedAt ? "Non ha mandato la sua versione prima della decisione: la sua risposta è nel ricorso, più sotto." : "Non ha ancora risposto."}
+                      {row.issue.appealedAt ? "Non ha risposto prima della decisione. La sua risposta è più sotto, nella richiesta di rivedere la decisione." : "Non ha ancora risposto."}
                     </Text>
                   )}
                   {row.issue.infoRequestText ? (
@@ -231,7 +231,7 @@ function ProblemiContent() {
                       ? `Ha chiuso il lavoro il ${formatAdminDate(row.professionalCompletedAt, true)}${row.finalAmountEurCents !== null ? ` · ${formatEurCents(row.finalAmountEurCents)}` : ""}.`
                       : "Non ha chiuso il lavoro."}
                   </Text>
-                  {row.completionChangeReason ? <Text fontSize={13} color={brand.grafite}>Motivo differenze: “{row.completionChangeReason}”</Text> : null}
+                  {row.completionChangeReason ? <Text fontSize={13} color={brand.grafite}>Perché è cambiato: “{row.completionChangeReason}”</Text> : null}
                   {row.professionalCompletionNote ? <Text fontSize={13} color={brand.grafite}>Note: “{row.professionalCompletionNote}”</Text> : null}
                   <Photos urls={row.professionalCompletionPhotoUrls} />
                 </Block>
@@ -249,11 +249,11 @@ function ProblemiContent() {
                   <Text fontWeight="700" color={brand.grafite}>
                     Decisa il {formatAdminDate(row.issue.resolvedAt, true)}
                     {row.issue.autoDecision ? " automaticamente" : ""}
-                    {row.issue.sanction ? ` · misura: ${JOB_ISSUE_SANCTION_LABEL[row.issue.sanction].toLowerCase()}` : ""}
+                    {row.issue.sanction ? ` · conseguenza: ${JOB_ISSUE_SANCTION_LABEL[row.issue.sanction].toLowerCase()}` : ""}
                   </Text>
                   {row.issue.resolutionNote ? <Text color={brand.grafite}>“{row.issue.resolutionNote}”</Text> : null}
                   <Text fontWeight="700" color={brand.grafite}>
-                    Ricorso del {formatAdminDate(row.issue.appealedAt, true)}
+                    Ha chiesto di rivedere la decisione il {formatAdminDate(row.issue.appealedAt, true)}
                   </Text>
                   <Text color={brand.grafite}>“{row.issue.appealText}”</Text>
                   <AppealForm row={row} token={token} onDone={() => setReload((n) => n + 1)} />
@@ -262,8 +262,7 @@ function ProblemiContent() {
                 <DecisionForm row={row} token={token} onDone={() => setReload((n) => n + 1)} />
               ) : row.issue.status === "CHAT" ? (
                 <Text fontSize={13} color={brand.grafite70}>
-                  Cliente e professionista stanno provando a risolvere in chat: arriva qui se il professionista non risponde entro 48 ore o se il
-                  cliente lo chiede.
+                  Ne parlano in chat. Arriva qui se il professionista non risponde in 48 ore, o se il cliente lo chiede.
                 </Text>
               ) : row.issue.status === "RESOLVED" ? (
                 <Text fontWeight="700" color={brand.grafite}>
@@ -274,16 +273,16 @@ function ProblemiContent() {
                   <Text fontWeight="700" color={brand.grafite}>
                     Decisa il {formatAdminDate(row.issue.resolvedAt, true)}
                     {row.issue.autoDecision ? " automaticamente" : ""}
-                    {row.issue.sanction ? ` · misura: ${JOB_ISSUE_SANCTION_LABEL[row.issue.sanction].toLowerCase()}` : ""}
+                    {row.issue.sanction ? ` · conseguenza: ${JOB_ISSUE_SANCTION_LABEL[row.issue.sanction].toLowerCase()}` : ""}
                   </Text>
                   {row.issue.resolutionNote ? <Text color={brand.grafite}>“{row.issue.resolutionNote}”</Text> : null}
                   {row.issue.appealDecision ? (
                     <Text fontSize={13} color={brand.grafite}>
-                      Ricorso {row.issue.appealDecision === "ACCEPTED" ? "accolto" : "respinto"}: “{row.issue.appealNote}”
+                      {row.issue.appealDecision === "ACCEPTED" ? "Decisione annullata dopo la richiesta" : "Decisione confermata dopo la richiesta"}: “{row.issue.appealNote}”
                     </Text>
                   ) : row.issue.appealedAt ? (
                     <Text fontSize={13} color={brand.grafite70}>
-                      Ricorso presentato: da decidere nel tab Ricorsi.
+                      Ha chiesto di rivedere la decisione: la trovi in &quot;Da rivedere&quot;.
                     </Text>
                   ) : null}
                 </YStack>

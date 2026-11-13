@@ -18,6 +18,9 @@ import { problemExampleSuggestions, rememberSearchCity, useSearchBarHints } from
 import { navigateWithTransition } from "@/lib/viewTransition";
 import { PROBLEM_SEARCH_LABEL } from "@/lib/navigationProgress";
 import { useThinkingLabel } from "@/lib/useThinkingLabel";
+import { apiClient } from "@/lib/apiClient";
+import { localPreviewUrl } from "@/lib/media";
+import { forgetSearchPhoto, rememberSearchPhoto, shrinkPhoto } from "@/lib/photoSearch";
 import { GlowLights } from "./GlowLights";
 import { MagneticButton } from "./MagneticButton";
 import styles from "./HomeHero.module.css";
@@ -33,7 +36,7 @@ import styles from "./HomeHero.module.css";
  * (brief "Vicinato", CLAUDE.md §19): la ricerca vive dentro il pannello, non
  * su uno sfondo neutro.
  */
-export function HomeHero({ examples }: { examples: ProblemExamplesResponse | null }) {
+export function HomeHero({ examples, photoSearch = false }: { examples: ProblemExamplesResponse | null; photoSearch?: boolean }) {
   const router = useRouter();
   const searchHints = useSearchBarHints("");
   const heroExamples = useHeroExamples(examples);
@@ -43,10 +46,76 @@ export function HomeHero({ examples }: { examples: ProblemExamplesResponse | nul
   // (docs/changelog/2026-11-03-luci-che-accelerano.md).
   const [navigating, startNavigation] = useTransition();
   const [problemSearch, setProblemSearch] = useState(false);
-  const searching = problemSearch && navigating;
+  const [readingPhoto, setReadingPhoto] = useState(false);
+  const searching = (problemSearch && navigating) || readingPhoto;
   const searchingLabel = useThinkingLabel(searching ? PROBLEM_SEARCH_LABEL : undefined);
 
+  // Ricerca con foto (docs/changelog/2026-11-13-ricerca-con-foto.md): facoltativa, accanto al testo.
+  const [photo, setPhoto] = useState<{ blob: Blob; preview: string } | null>(null);
+  const [photoMessage, setPhotoMessage] = useState<string | null>(null);
+
+  async function choosePhoto(file: File) {
+    setPhotoMessage(null);
+    try {
+      const blob = await shrinkPhoto(file);
+      setPhoto((previous) => {
+        if (previous) URL.revokeObjectURL(previous.preview);
+        return { blob, preview: localPreviewUrl(blob) };
+      });
+    } catch {
+      setPhotoMessage("Non riusciamo ad aprire questa foto. Prova con un'altra o scrivi il problema.");
+    }
+  }
+
+  function removePhoto() {
+    setPhoto((previous) => {
+      if (previous) URL.revokeObjectURL(previous.preview);
+      return null;
+    });
+    setPhotoMessage(null);
+  }
+
+  /** Torna false se la foto non si è potuta leggere per un guasto: allora si cerca con le parole scritte. */
+  async function searchWithPhoto(query: string, city: string, blob: Blob): Promise<boolean> {
+    setReadingPhoto(true);
+    setPhotoMessage(null);
+    try {
+      const result = await apiClient.analyzeProblemPhoto(blob, { description: query, city });
+      if (!result.photoId) {
+        // IA occupata o senza risposta (banco di prova del 13/11): con il testo si cerca lo stesso.
+        if (result.check === "spenta" && query.trim()) return false;
+        setPhotoMessage(
+          result.check === "non-pertinente"
+            ? "Dalla foto non capiamo il problema. Scrivilo con parole tue, oppure prova con un'altra foto."
+            : result.check === "non-adatta"
+              ? "Questa foto non si può usare. Scrivi il problema con parole tue."
+              : "Ora non riusciamo a leggere la foto. Scrivi il problema con parole tue.",
+        );
+        return true;
+      }
+      // Con persone o documenti nella foto si cerca lo stesso, ma la foto non va nella richiesta (CLAUDE.md §5 punto 9).
+      if (result.check === "ok") await rememberSearchPhoto(result.description, blob);
+      else forgetSearchPhoto();
+      const params = new URLSearchParams({ problema: result.description, foto: result.photoId });
+      if (city.trim()) params.set("citta", city.trim());
+      setProblemSearch(true);
+      navigateWithTransition(() => startNavigation(() => router.push(`/cerca?${params.toString()}`)));
+      return true;
+    } catch (error) {
+      if (query.trim()) return false;
+      setPhotoMessage(error instanceof Error ? error.message : "Ora non riusciamo a leggere la foto. Scrivi il problema con parole tue.");
+      return true;
+    } finally {
+      setReadingPhoto(false);
+    }
+  }
+
   async function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
+    if (photo && params.mode === "domicilio" && !params.professional) {
+      rememberSearchCity(params.city);
+      if (await searchWithPhoto(params.query, params.city, photo.blob)) return;
+      forgetSearchPhoto();
+    }
     rememberSearchCity(params.city);
     const destination = await buildSearchDestination(params);
     const problem = destination.includes("problema=");
@@ -100,7 +169,16 @@ export function HomeHero({ examples }: { examples: ProblemExamplesResponse | nul
               }}
               // Un tocco su un esempio cerca subito (richiesta di Luca,
               // docs/changelog/2026-11-04-esempi-cercano-subito.md).
-              footer={({ mode, searchFor }) => (mode === "domicilio" ? <HeroExamples problems={heroExamples.visible} trades={heroExamples.trades} onPick={searchFor} /> : null)}
+              footer={({ mode, searchFor }) =>
+                mode === "domicilio" ? (
+                  <>
+                    {photoSearch ? (
+                      <PhotoPicker photo={photo?.preview ?? null} busy={readingPhoto} message={photoMessage} onChoose={choosePhoto} onRemove={removePhoto} />
+                    ) : null}
+                    <HeroExamples problems={heroExamples.visible} trades={heroExamples.trades} onPick={searchFor} />
+                  </>
+                ) : null
+              }
               {...searchHints}
             />
           </div>
@@ -182,6 +260,63 @@ const problemFallback = (item: string): ExampleFallback => ({ name: "problema", 
 function tradeFallback(item: string): ExampleFallback {
   const slug = findCategoryByQuery(item)?.slug;
   return slug ? { formAction: `/cerca/${slug}` } : { name: "q", value: item };
+}
+
+/**
+ * "Aggiungi una foto" sotto la ricerca (docs/changelog/2026-11-13-ricerca-con-foto.md):
+ * facoltativa, con l'anteprima e "Togli". La foto parte solo con "Cerca".
+ */
+function PhotoPicker({
+  photo,
+  busy,
+  message,
+  onChoose,
+  onRemove,
+}: {
+  photo: string | null;
+  busy: boolean;
+  message: string | null;
+  onChoose: (file: File) => void;
+  onRemove: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="hero-photo">
+      {photo ? (
+        <div className="hero-photo-chosen">
+          {/* eslint-disable-next-line @next/next/no-img-element -- anteprima locale (blob:), non un'immagine da ottimizzare */}
+          <img src={photo} alt="La foto del problema" className="hero-photo-thumb" />
+          <span className="hero-photo-text">{busy ? "Guardo la foto…" : "Foto aggiunta: ora tocca Cerca"}</span>
+          <button type="button" className="hero-photo-remove" onClick={onRemove} disabled={busy} aria-label="Togli la foto">
+            <Icon name="x" size={16} color="#1b1a18" strokeWidth={2} />
+          </button>
+        </div>
+      ) : (
+        <button type="button" className="hero-example hero-photo-add" onClick={() => inputRef.current?.click()}>
+          <Icon name="camera" size={17} color="#1e6b6e" strokeWidth={2} />
+          Aggiungi una foto del problema
+        </button>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) onChoose(file);
+        }}
+      />
+      {message ? (
+        <span role="alert" className="hero-photo-message">
+          {message}
+        </span>
+      ) : (
+        <span className="hero-photo-hint">Facoltativa. Non fotografare persone o documenti.</span>
+      )}
+    </div>
+  );
 }
 
 function HeroExamples({ problems, trades, onPick }: { problems: readonly string[]; trades: readonly string[]; onPick: (text: string) => void }) {

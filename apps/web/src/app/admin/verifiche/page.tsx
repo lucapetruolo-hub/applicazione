@@ -194,7 +194,7 @@ export default function AdminVerifichePage() {
     <YStack gap="4">
       <AdminPageHeader
         title="Verifica profili"
-        description="La verifica è tutta automatica: documento e selfie con Didit, codice fiscale e partita IVA con VIES e Openapi. Se qualcosa non torna il professionista riceve il motivo e la rifà da solo. Qui vedi a che punto è ognuno, puoi ricontrollare i dati fiscali o togliere il badge a chi non lo merita più."
+        description="Il sito controlla da solo documento, selfie, codice fiscale e partita IVA. Se qualcosa non va, il professionista legge il motivo e rifà il controllo da solo. Qui vedi a che punto è ognuno, puoi ricontrollare i dati fiscali o togliere il badge a chi non lo merita più."
       />
 
       <AdminTabs

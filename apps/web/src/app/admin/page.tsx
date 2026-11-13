@@ -245,7 +245,7 @@ function DaFare() {
             Da guardare, senza decisione
           </Text>
           <Text fontSize={14} color={brand.grafite70}>
-            Problemi ancora in chat tra cliente e professionista: i soldi restano fermi finché non si chiudono.
+            Problemi di cui parlano ancora in chat. Finché non finiscono, i soldi restano fermi.
           </Text>
           <ul className="admin-watch">
             {queue.watching.map((w) => (

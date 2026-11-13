@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { AdminSignalAdviceLevel } from "@professionisti/shared";
+import { adminCan, type AdminSignalAdviceLevel } from "@professionisti/shared";
+import { useAuth } from "@/lib/AuthContext";
 import { Text, XStack, YStack, brand } from "@professionisti/ui";
 
 /** Piccoli pezzi condivisi dalle pagine admin (docs/CHANGELOG.md §144). */
@@ -129,12 +130,44 @@ export function CountingFromNote({ countingFrom, launchDate }: { countingFrom: s
       <details className="counting-from-more">
         <summary>Scopri di più</summary>
         <Text color={brand.grafite70} fontSize={13}>
-          Richieste, ricerche, visite e preventivi contano dal giorno del lancio
-          (la data impostata come LAUNCH_DATE). I professionisti iscritti prima
+          Richieste, ricerche, visite e preventivi contano dal giorno del
+          lancio. I professionisti iscritti prima
           restano contati. Gli account segnati &quot;Account di prova&quot; non
           contano mai. Niente viene cancellato.
         </Text>
       </details>
     </div>
+  );
+}
+
+/**
+ * Numeri di dettaglio chiusi sotto "Vedi i numeri" (scritte semplici
+ * dell'Admin, docs/changelog/2026-11-13-admin-scritte-semplici.md): in
+ * pagina restano i consigli e pochi numeri grandi, le tabelle si aprono solo
+ * se servono.
+ */
+export function ShowNumbers({ children, label = "Vedi i numeri" }: { children: ReactNode; label?: string }) {
+  return (
+    <details className="admin-more">
+      <summary>{label}</summary>
+      <div className="admin-more-body">{children}</div>
+    </details>
+  );
+}
+
+/**
+ * Dettagli che servono solo a chi mette mano al sito (nomi delle chiavi,
+ * servizi esterni, file tecnici): chiusi e visibili solo al super admin.
+ * Il testo per tutti resta fuori, in parole semplici. Qui dentro le sigle
+ * sono ammesse (controllo `controlla-scritte-admin.mjs`).
+ */
+export function TechNote({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  if (!adminCan(user?.adminRoles ?? [], "SUPER")) return null;
+  return (
+    <details className="admin-more admin-tech">
+      <summary>Per il tecnico</summary>
+      <div className="admin-more-body">{children}</div>
+    </details>
   );
 }

@@ -115,10 +115,10 @@ test("segnalazione illegale, decisione e contestazione", async ({ browser }) => 
   await expect(card.getByText("Illegale secondo chi segnala")).toBeVisible();
   await card.getByRole("button", { name: "Risolvi" }).click();
   await adminPage.getByText("Nascondi la recensione").click();
-  await expect(adminPage.getByRole("button", { name: "Applica misura" })).toBeDisabled();
+  await expect(adminPage.getByRole("button", { name: "Applica la decisione" })).toBeDisabled();
   await adminPage.getByLabel("Regola o legge violata").selectOption("legge-diffamazione");
   await adminPage.getByLabel("Motivazione").fill("Accusa di furto senza alcun riscontro.");
-  await adminPage.getByRole("button", { name: "Applica misura" }).click();
+  await adminPage.getByRole("button", { name: "Applica la decisione" }).click();
   // Decisa: esce da "Da gestire".
   await expect(adminPage.getByText("Recensione su Luigi Impianti")).toHaveCount(0);
   const decided = await prisma.contentReport.findUniqueOrThrow({ where: { id: report.id } });

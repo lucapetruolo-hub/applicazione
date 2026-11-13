@@ -647,7 +647,9 @@ export function buildSiteAdvice(input: SiteAdviceInput): SiteAdvice[] {
       level: "IMPORTANT",
       title: "Puoi aprire il sito a Google",
       why: `Hai raggiunto i numeri della tappa silenziosa e le richieste ricevono un preventivo in tempo da ${input.launchStatus.greenWeeks} settimane.`,
-      todo: "Se non l'hai già fatto: su Vercel imposta NEXT_PUBLIC_SITE_INDEXABLE=true e rifai il deploy.",
+      todo: "Se non l'hai già fatto, chiedi a Claude di aprire il sito a Google: è una sola impostazione.",
+      // scritte-admin: ok (si legge solo in "Per il tecnico")
+      techNote: "Su Vercel imposta NEXT_PUBLIC_SITE_INDEXABLE=true e rifai il deploy.",
     });
   }
 

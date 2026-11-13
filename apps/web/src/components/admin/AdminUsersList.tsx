@@ -193,7 +193,7 @@ export function AdminUsersList({
             disabled={exporting}
             onPress={exportCsv}
           >
-            {exporting ? "Esportazione…" : "Esporta CSV"}
+            {exporting ? "Preparo il file…" : "Scarica in Excel"}
           </Button>
         }
       />

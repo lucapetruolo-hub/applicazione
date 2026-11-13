@@ -48,7 +48,7 @@ const TABS = [
   { key: "recensioni", label: "Recensioni" },
   { key: "pagamenti", label: "Pagamenti" },
   { key: "segnalazioni", label: "Segnalazioni" },
-  { key: "cronologia", label: "Cronologia" },
+  { key: "cronologia", label: "Cosa è successo" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -224,7 +224,7 @@ function UserDetail() {
             </XStack>
           ) : null}
           <Text fontSize={13} color={brand.grafite70}>
-            Da soli non provano niente: guardali insieme alle recensioni e ai lavori prima di decidere. Controllo di ogni mattina alle 7.
+            Da soli non provano niente. Guarda anche recensioni e lavori. Controllo di ogni mattina alle 7.
           </Text>
           {error ? <Text color={brand.urgenza}>{error}</Text> : null}
         </section>
@@ -792,7 +792,7 @@ function RevertModal({ title, description, reportId, token, onClose, onDone }: {
     <CancelBookingModal title={title} description={description} confirmLabel={title} confirmingLabel="Un momento..." backLabel="Annulla" showNote={false} onClose={onClose} onCancel={submit}>
       <label className="admin-field">
         <span>Motivo</span>
-        <textarea className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Es. ricorso accolto, errore" />
+        <textarea className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Es. ha chiesto di rivederla e aveva ragione, errore" />
       </label>
     </CancelBookingModal>
   );
@@ -816,7 +816,7 @@ function ReportsTable({ rows }: { rows: AdminUserDetail["reportsMade"] }) {
               <td>{formatAdminDate(r.createdAt)}</td>
               <td>{CONTENT_REPORT_TARGET_LABEL[r.targetType]}</td>
               <td>{r.reason}</td>
-              <td>{r.status === "OPEN" ? "Da gestire" : r.status === "DISMISSED" ? "Non accolta" : r.revertedAt ? "Misura annullata" : `Accolta${r.action ? `: ${moderationActionAdminLabel(r.action, r.targetType).toLowerCase()}` : ""}`}</td>
+              <td>{r.status === "OPEN" ? "Da gestire" : r.status === "DISMISSED" ? "Non accolta" : r.revertedAt ? "Decisione annullata" : `Accolta${r.action ? `: ${moderationActionAdminLabel(r.action, r.targetType).toLowerCase()}` : ""}`}</td>
             </tr>
           ))}
         </tbody>
@@ -832,8 +832,8 @@ function accountClosed(detail: AdminUserDetail): boolean {
 
 /** Frasi pronte per i fatti di una misura sull'account (E4-03): l'admin le completa. */
 const ACCOUNT_MEASURE_TEMPLATES: { label: string; text: string; ground: ModerationGroundCode }[] = [
-  { label: "Saldo non pagato", text: "Non hai pagato il saldo del lavoro del … nonostante i nostri solleciti del … e del ….", ground: "termini-pagamenti" },
-  { label: "Account doppio", text: "Hai un secondo account professionista con lo stesso codice fiscale o la stessa partita IVA (…).", ground: "termini-account" },
+  { label: "Saldo non pagato", text: "Non hai pagato il saldo del lavoro del … anche se te l'abbiamo ricordato il … e il ….", ground: "termini-pagamenti" },
+  { label: "Account doppio", text: "Hai un altro account con lo stesso codice fiscale o la stessa partita IVA (…).", ground: "termini-account" },
   { label: "Dati falsi", text: "I dati del profilo non corrispondono a quelli verificati: ….", ground: "termini-profilo" },
   { label: "Truffa", text: "Più clienti ci hanno segnalato di aver pagato per lavori mai eseguiti: ….", ground: "legge-truffa" },
 ];
@@ -889,7 +889,7 @@ function SuspendPanel({ detail, token, onChanged }: { detail: AdminUserDetail; t
         {undoing
           ? closing
             ? "Annullando, l'account resta attivo. La persona riceve una notifica e un'email con il motivo."
-            : "Riattivando l'account l'utente può di nuovo accedere e, se professionista, torna visibile in ricerca. Riceve una notifica e un'email."
+            : "Così può di nuovo entrare. Se è un professionista, torna nella ricerca. Riceve una notifica e un'email."
           : "La persona riceve per email i fatti, la regola violata e come contestare. Per un contenuto segnalato usa invece la pagina Segnalazioni."}
       </Text>
       {open ? (
@@ -900,17 +900,17 @@ function SuspendPanel({ detail, token, onChanged }: { detail: AdminUserDetail; t
               className="admin-input admin-textarea"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder={closing ? "Motivo dell'annullamento (obbligatorio)" : "Motivo della riattivazione (obbligatorio)"}
+              placeholder={closing ? "Perché annulli la chiusura (obbligatorio)" : "Perché lo riattivi (obbligatorio)"}
             />
           ) : (
             <>
               <fieldset className="admin-field" style={{ border: 0, padding: 0, margin: 0 }}>
-                <legend style={{ marginBottom: 6, fontWeight: 600 }}>Misura</legend>
+                <legend style={{ marginBottom: 6, fontWeight: 600 }}>Cosa fai</legend>
                 <YStack gap="2">
                   <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer" }}>
                     <input type="radio" name="account-measure" checked={measure === "SUSPEND"} onChange={() => setMeasure("SUSPEND")} />
                     <span>
-                      <strong>Sospendi subito</strong>: l&apos;account si blocca finché non lo riattivi. Per i casi gravi (legge, violazioni ripetute, sicurezza dei clienti) o mentre controlli.
+                      <strong>Sospendi subito</strong>: l&apos;account si blocca finché non lo riattivi. Per i casi gravi, o mentre controlli.
                     </span>
                   </label>
                   <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer" }}>
@@ -1023,7 +1023,7 @@ function TestAccountPanel({ detail, token, onChanged }: { detail: AdminUserDetai
           <small>
             {isTest
               ? `Segnato il ${formatAdminDate(detail.testAccountAt)}: non conta nei numeri e non prende un posto dei primi 100.`
-              : "Spento: l'account conta nei numeri. Accendilo per un account creato per le prove: funziona come prima ma non conta mai nei numeri e non prende un posto dei primi 100."}
+              : "Spento: l'account conta nei numeri. Accendilo per un account di prova. Funziona uguale, ma non conta nei numeri."}
           </small>
         </div>
         <button
@@ -1043,7 +1043,7 @@ function TestAccountPanel({ detail, token, onChanged }: { detail: AdminUserDetai
       {isTest ? (
       <>
       <Text fontSize="3" color={brand.grafite70}>
-        Non ti serve più? Eliminalo: spariscono per sempre l&apos;account, le richieste, i preventivi, i messaggi e le recensioni che ha creato. Per un
+        Non ti serve più? Eliminalo: sparisce per sempre tutto, anche l&apos;account. Per un
         utente vero usa invece la sospensione.
       </Text>
       {open ? (
@@ -1117,7 +1117,7 @@ function TestTimePanel({ detail, token, onChanged }: { detail: AdminUserDetail; 
         result.trial === "NOT_LAUNCHED"
           ? " Il mese gratuito parte dal lancio: finché non c'è la data di lancio non finisce."
           : result.trial === "STRIPE"
-            ? " L'abbonamento pagato lo rinnova Stripe: il suo periodo non cambia."
+            ? " L'abbonamento pagato si rinnova da solo con la carta: il suo periodo non cambia."
             : result.trial === "MOVED"
               ? " Anche il mese gratuito è andato avanti."
               : "";
@@ -1136,8 +1136,7 @@ function TestTimePanel({ detail, token, onChanged }: { detail: AdminUserDetail; 
         Fai passare il tempo
       </Text>
       <Text fontSize="3" color={brand.grafite70}>
-        Solo per le prove: richieste, lavori e mese gratuito di questo account vanno avanti come se fossero passati i giorni scelti, poi partono
-        subito promemoria, chiusure e sblocchi dei soldi. Vale solo dove anche l&apos;altra persona è un account di prova.
+        Solo per le prove. Il sito fa finta che siano passati i giorni scelti. Poi partono subito promemoria e pagamenti. Vale solo dove anche l&apos;altra persona è un account di prova.
       </Text>
       <AdminTabs tabs={TIME_STEPS.map((step) => ({ key: step, label: step === "1" ? "1 giorno" : `${step} giorni` }))} value={days} onChange={setDays} />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
@@ -1189,7 +1188,7 @@ function TwoFactorResetPanel({ detail, token, onChanged }: { detail: AdminUserDe
       </XStack>
       <Text fontSize="3" color={brand.grafite70}>
         {detail.adminTwoFactorEnabled
-          ? "Se ha perso il telefono e non riceve l'email con il codice, azzerala: lo faremo uscire da tutti i dispositivi e la riattiverà al prossimo ingresso."
+          ? "Se ha perso il telefono, azzerala. Lo facciamo uscire ovunque. Al prossimo accesso la rifà."
           : "La attiverà da solo la prossima volta che apre l'area admin."}
       </Text>
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
@@ -1197,7 +1196,7 @@ function TwoFactorResetPanel({ detail, token, onChanged }: { detail: AdminUserDe
         confirming ? (
           <XStack gap="2" flexWrap="wrap">
             <Button variant="primary" size="3" disabled={busy} onPress={reset}>
-              {busy ? "…" : "Conferma azzeramento"}
+              {busy ? "…" : "Sì, azzera la verifica"}
             </Button>
             <Button variant="secondary" size="3" onPress={() => setConfirming(false)}>
               Annulla

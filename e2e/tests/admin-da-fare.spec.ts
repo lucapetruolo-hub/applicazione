@@ -96,9 +96,9 @@ test("Da fare: pericoli in cima, Prendo io, menu a sezioni", async ({ browser },
   await page.getByRole("navigation", { name: "Sezioni amministrazione" }).getByRole("link", { name: /Fisco e fatture/ }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Fisco e fatture" })).toBeVisible();
   const tabs = page.getByRole("navigation", { name: "Schede di Fisco e fatture" });
-  await tabs.getByRole("link", { name: "DAC7" }).click();
+  await tabs.getByRole("link", { name: "Guadagni per il fisco" }).click();
   await expect(page).toHaveURL(/\/admin\/finanza\/dac7$/);
-  await expect(tabs.getByRole("link", { name: "DAC7" })).toHaveAttribute("aria-current", "page");
+  await expect(tabs.getByRole("link", { name: "Guadagni per il fisco" })).toHaveAttribute("aria-current", "page");
 
   await context.close();
 });

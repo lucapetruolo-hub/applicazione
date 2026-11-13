@@ -45,6 +45,7 @@ import {
   downloadBlobFile,
   errorMessage,
   formatAdminDate,
+  ShowNumbers,
 } from "@/components/admin/adminUi";
 import { SiteAdviceList } from "@/components/admin/SiteAdviceList";
 import { AdminProposalsOverview } from "@/components/admin/AdminProposalsOverview";
@@ -169,47 +170,46 @@ export default function AdminAndamentoPage() {
               ) : null}
             </YStack>
           </section>
-          <AdminSummaryNumbers />
-
-          <YStack gap="1" marginTop="4">
-            <Text
-              render="h2"
-              fontFamily="heading"
-              fontWeight="800"
-              fontSize="7"
-              color={brand.inchiostro}
-            >
-              I numeri dietro i consigli
-            </Text>
-            <Text color={brand.grafite70} fontSize={14}>
-              Ultimi {data.windowDays} giorni
-              {data.countingFrom ? ", mai prima del lancio" : ""}, salvo dove
-              scritto. Sotto{" "}
-              {MIN_CASES_FOR_PERCENT} casi si scrive &quot;7 su 9&quot; invece
-              della percentuale; le righe con meno di {MIN_CASES_PER_ROW} casi
-              sono messe insieme. Admin, account di prova, robot e browser con
-              &quot;Non contare&quot; non sono contati.
-            </Text>
-          </YStack>
-
           <GuideCard data={data} />
-          <CellsCard data={data} />
-          <FunnelCard data={data} />
-          <StepsCard data={data} />
-          <ProfileSourcesCard data={data} />
-          <PriceToolCard data={data} />
-          <ClientCohortsCard data={data} />
-          <ProfessionalCohortsCard data={data} />
-          <FailuresCard data={data} />
-          <UnknownJobsCard data={data} />
-          <PopularServicesCard data={data} />
-          <SourcesCard data={data} />
-          <PartnerLinksCard token={token} isSuper={isSuper} />
-          <ChurnReasonsCard data={data} />
-          <LaunchCard data={data} />
-          <ReconciliationCard data={data} />
-          <NotesCard data={data} token={token} onChanged={load} />
-          <CountingCard />
+          <ShowNumbers label="Vedi tutti i numeri">
+            <YStack gap="1">
+              <Text
+                render="h2"
+                fontFamily="heading"
+                fontWeight="800"
+                fontSize="7"
+                color={brand.inchiostro}
+              >
+                Da dove vengono i consigli
+              </Text>
+              <Text color={brand.grafite70} fontSize={14}>
+                Ultimi {data.windowDays} giorni
+                {data.countingFrom ? ", mai prima del lancio" : ""}. Con meno di{" "}
+                {MIN_CASES_FOR_PERCENT} casi scriviamo &quot;7 su 9&quot; invece
+                della percentuale; i lavori con meno di {MIN_CASES_PER_ROW} casi
+                stanno insieme. Non contano admin, account di prova e robot.
+              </Text>
+            </YStack>
+            <AdminSummaryNumbers />
+
+            <CellsCard data={data} />
+            <FunnelCard data={data} />
+            <StepsCard data={data} />
+            <ProfileSourcesCard data={data} />
+            <PriceToolCard data={data} />
+            <ClientCohortsCard data={data} />
+            <ProfessionalCohortsCard data={data} />
+            <FailuresCard data={data} />
+            <UnknownJobsCard data={data} />
+            <PopularServicesCard data={data} />
+            <SourcesCard data={data} />
+            <PartnerLinksCard token={token} isSuper={isSuper} />
+            <ChurnReasonsCard data={data} />
+            <LaunchCard data={data} />
+            <ReconciliationCard data={data} />
+            <NotesCard data={data} token={token} onChanged={load} />
+            <CountingCard />
+          </ShowNumbers>
         </>
       ) : null}
     </YStack>
@@ -342,7 +342,7 @@ function CellsCard({ data }: { data: AdminSiteStats }) {
     <AdminCard>
       <CardTitle
         title="Lavori e città"
-        note="Prima le caselle dove i clienti restano senza risposta. Ricerche a vuoto: nessun professionista vicino. Professionisti: visibili con sede in quella città."
+        note="Prima le caselle dove i clienti restano senza risposta. Professionisti: quelli visibili con sede in quella città."
       />
       {data.cells.length === 0 && !data.otherCells ? (
         <Text color={brand.grafite70}>
@@ -357,7 +357,7 @@ function CellsCard({ data }: { data: AdminSiteStats }) {
                 <th>Com&apos;è</th>
                 <th>Richieste</th>
                 <th>Con preventivo in {GUIDE_QUOTE_HOURS} ore</th>
-                <th>Ricerche a vuoto</th>
+                <th>Cercato senza trovare nessuno</th>
                 <th>Professionisti</th>
               </tr>
             </thead>
@@ -381,7 +381,7 @@ function CellsCard({ data }: { data: AdminSiteStats }) {
                       : "—"}
                   </td>
                   <td
-                    data-label="Ricerche a vuoto"
+                    data-label="Cercato senza trovare nessuno"
                     className={cell.emptySearches > 0 ? "is-alert" : undefined}
                   >
                     {cell.emptySearches}
@@ -414,7 +414,7 @@ function CellsCard({ data }: { data: AdminSiteStats }) {
                         )
                       : "—"}
                   </td>
-                  <td data-label="Ricerche a vuoto">—</td>
+                  <td data-label="Cercato senza trovare nessuno">—</td>
                   <td data-label="Professionisti">—</td>
                 </tr>
               ) : null}
@@ -583,7 +583,7 @@ function ProfileSourcesCard({ data }: { data: AdminSiteStats }) {
         <Text color={brand.grafite70}>
           {sinceLabel
             ? `Si comincia a contare dal lancio, il ${sinceLabel}: le prove fatte prima non entrano in questi numeri.`
-            : "Si comincia a contare dal giorno del lancio, quando sarà impostata la data (LAUNCH_DATE su Render)."}
+            : "Si comincia a contare dal giorno del lancio, appena sarà impostata la data."}
         </Text>
       </AdminCard>
     );
@@ -613,13 +613,13 @@ function ProfileSourcesCard({ data }: { data: AdminSiteStats }) {
     <AdminCard>
       <CardTitle
         title={title}
-        note={`Dal lancio (${sinceLabel}). Richieste iniziate e inviate partendo da un profilo, con la percentuale sulle visite e, sotto, su tutte le richieste di quella colonna.`}
+        note={`Dal lancio (${sinceLabel}). Richieste partite dalla pagina di un professionista. Accanto, quante su cento visite.`}
       />
       <div className="admin-table-wrap">
         <table className="admin-table admin-table-numbers">
           <thead>
             <tr>
-              <th>Dispositivo</th>
+              <th>Telefono o computer</th>
               <th>Visite ai profili</th>
               <th>Richieste iniziate</th>
               <th>Richieste inviate</th>
@@ -628,7 +628,7 @@ function ProfileSourcesCard({ data }: { data: AdminSiteStats }) {
           <tbody>
             {[...devices, { key: "TOTALE", label: "Totale", ...total }].map((row) => (
               <tr key={row.key}>
-                <td data-label="Dispositivo">{row.label}</td>
+                <td data-label="Telefono o computer">{row.label}</td>
                 <td data-label="Visite ai profili">{row.visits}</td>
                 <td data-label="Richieste iniziate">{countWithShare(row.started, row.visits)}</td>
                 <td data-label="Richieste inviate">{countWithShare(row.sent, row.visits)}</td>
@@ -666,7 +666,7 @@ function ProfileSourcesCard({ data }: { data: AdminSiteStats }) {
       </div>
       {total.sent > 0 && total.sent < MIN_CASES_FOR_PERCENT ? (
         <Text color={brand.grafite70} fontSize={13}>
-          {`Ancora meno di ${MIN_CASES_FOR_PERCENT} richieste inviate: le percentuali cambiano molto anche per una sola richiesta.`}
+          {`Ancora meno di ${MIN_CASES_FOR_PERCENT} richieste inviate: basta una richiesta in più per cambiare tutto.`}
         </Text>
       ) : null}
     </AdminCard>
@@ -688,7 +688,7 @@ function PriceToolCard({ data }: { data: AdminSiteStats }) {
     <AdminCard>
       <CardTitle
         title="Dallo strumento «Quanto costa»"
-        note="Voci toccate nella home e nelle pagine dei prezzi, profili aperti da quell'elenco e richieste inviate partite da lì."
+        note="Lavori toccati nelle pagine dei prezzi, e le richieste nate da lì."
       />
       <Bars rows={rows} total={0} steps />
       <Text color={brand.grafite70} fontSize={13}>
@@ -705,7 +705,7 @@ function ClientCohortsCard({ data }: { data: AdminSiteStats }) {
     <AdminCard>
       <CardTitle
         title="Clienti per settimana della prima richiesta"
-        note="Per ogni settimana, cosa è successo dopo ai clienti che hanno fatto la prima richiesta in quella settimana. Tornati: hanno fatto un'altra richiesta."
+        note="Clienti divisi per la settimana della prima richiesta. Poi: cosa hanno fatto dopo. Hanno chiesto ancora: hanno fatto un'altra richiesta."
       />
       {data.clientCohorts.length === 0 ? (
         <Text color={brand.grafite70}>Ancora nessun cliente.</Text>
@@ -719,7 +719,7 @@ function ClientCohortsCard({ data }: { data: AdminSiteStats }) {
                 <th>Con preventivo</th>
                 <th>Hanno accettato</th>
                 <th>Recensione</th>
-                <th>Tornati</th>
+                <th>Hanno chiesto ancora</th>
               </tr>
             </thead>
             <tbody>
@@ -736,7 +736,7 @@ function ClientCohortsCard({ data }: { data: AdminSiteStats }) {
                   <td data-label="Recensione">
                     {c.clients ? ratioLabel(c.reviewed, c.clients) : "—"}
                   </td>
-                  <td data-label="Tornati">
+                  <td data-label="Hanno chiesto ancora">
                     {c.clients ? ratioLabel(c.returned, c.clients) : "—"}
                   </td>
                 </tr>
@@ -852,7 +852,7 @@ function UnknownJobsCard({ data }: { data: AdminSiteStats }) {
     <AdminCard>
       <CardTitle
         title="Lavori cercati che non esistono sul sito"
-        note="Parole cercate in almeno 3 giorni diversi negli ultimi 90 giorni senza trovare né un lavoro né un professionista. Dicono quale lavoro aggiungere."
+        note="Parole cercate più volte negli ultimi 90 giorni, senza trovare niente. Dicono quale lavoro aggiungere."
       />
       {data.unknownJobs.length === 0 ? (
         <Text color={brand.grafite70}>
@@ -877,7 +877,7 @@ function PopularServicesCard({ data }: { data: AdminSiteStats }) {
     <AdminCard>
       <CardTitle
         title="Prestazioni più cercate"
-        note="Ricerche scritte negli ultimi 90 giorni che corrispondono a una prestazione suggerita, per lavoro, e quanti professionisti di quel lavoro la offrono. Si conta solo il nome della prestazione, mai quello che ha scritto il cliente."
+        note="Cosa cercano di più i clienti, negli ultimi 90 giorni. Accanto, quanti professionisti lo fanno. Si conta solo il nome della prestazione, mai quello che ha scritto il cliente."
       />
       {data.popularServices.length === 0 ? (
         <Text color={brand.grafite70}>Ancora nessuna ricerca di una prestazione.</Text>
@@ -903,7 +903,7 @@ function PopularServicesCard({ data }: { data: AdminSiteStats }) {
         Scritte a mano dai professionisti, non suggerite
       </Text>
       <Text color={brand.grafite70} fontSize={13}>
-        {`Prestazioni scritte da almeno ${MISSING_SERVICE_MIN_PROFESSIONALS} professionisti che il sito non propone: aggiungerle con + in "Prestazioni per mestiere" le rende un clic e somma bene i prezzi medi.`}
+        {`Lavori scritti a mano da almeno ${MISSING_SERVICE_MIN_PROFESSIONALS} professionisti. Aggiungili con + in "Prestazioni per mestiere": poi si scelgono con un clic.`}
       </Text>
       {data.missingServices.length === 0 ? (
         <Text color={brand.grafite70}>Nessuna per ora.</Text>
@@ -962,7 +962,7 @@ function ChurnReasonsCard({ data }: { data: AdminSiteStats }) {
     <AdminCard>
       <CardTitle
         title="Perché se ne vanno"
-        note="Motivo scelto (facoltativo) da chi ha eliminato l'account o annullato l'abbonamento negli ultimi 90 giorni."
+        note="Perché se ne vanno. Lo dice chi chiude l'account o l'abbonamento, se vuole. Ultimi 90 giorni."
       />
       {rows.length === 0 ? (
         <Text color={brand.grafite70}>Nessun motivo scelto finora.</Text>
@@ -1017,7 +1017,7 @@ function LaunchCard({ data }: { data: AdminSiteStats }) {
     <AdminCard>
       <CardTitle
         title="Prima di aprire il sito a Google"
-        note="Le tappe da raggiungere con i professionisti chiamati uno per uno, prima di farsi trovare da tutti."
+        note="I numeri da fare prima di aprire il sito a tutti."
       />
       <ul className="site-progress">
         {steps.map((s) => (
@@ -1040,7 +1040,7 @@ function ReconciliationCard({ data }: { data: AdminSiteStats }) {
     <AdminCard>
       <CardTitle
         title="Controllo dei conteggi"
-        note={`Richieste inviate contate dal browser contro quelle salvate davvero, ultimi ${r.days} giorni. Il browser ne conta un po' meno (admin, chi ha spento il conteggio, blocchi della pubblicità).`}
+        note={`Richieste mandate e salvate, ultimi ${r.days} giorni. Il browser ne conta un po' meno (admin, chi ha spento il conteggio, blocchi della pubblicità).`}
       />
       <Text color={r.ok ? brand.grafite : brand.urgenza} fontWeight="700">
         {r.counted} contate, {r.saved} salvate ·{" "}
@@ -1099,7 +1099,7 @@ function NotesCard({
     <AdminCard>
       <CardTitle
         title="Note sul grafico"
-        note="Cose successe che cambiano i numeri: lancio, nuovi prezzi, una campagna, un giro di telefonate. Il lancio e i cambi di prezzo ci sono già."
+        note="Fatti che cambiano i numeri: il lancio, prezzi nuovi, un giro di telefonate. Il lancio e i cambi di prezzo ci sono già."
       />
       {data.notes.length ? (
         <ul className="site-notes">
@@ -1228,10 +1228,10 @@ function PartnerLinksCard({ token, isSuper }: { token: string | null; isSuper: b
     <AdminCard>
       <CardTitle
         title="Link dei partner"
-        note="Un link per ogni commercialista o associazione che presenta il sito ai suoi artigiani: porta alla pagina per i professionisti e conta chi si iscrive da lì. Nessun compenso. La scheda PDF ha il link e il QR, da stampare o mandare."
+        note="Un link per chi ci presenta agli artigiani, come un commercialista. Conta chi si iscrive da lì. Nessun compenso. La scheda PDF ha il link e il QR, da stampare o mandare."
       />
       {partners === null && !error ? <Text color={brand.grafite70}>
-          Caricamento...
+          Un momento…
           <WaitBarSignal />
         </Text> : null}
       {partners && partners.length === 0 ? <Text color={brand.grafite70}>Nessun link creato.</Text> : null}

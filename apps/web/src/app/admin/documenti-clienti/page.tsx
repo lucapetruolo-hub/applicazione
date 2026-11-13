@@ -76,7 +76,7 @@ function DocumentiClientiContent() {
     <YStack>
       <AdminPageHeader
         title="Documenti ai clienti"
-        description="Ricevute per prestazione occasionale che i professionisti hanno preparato per i clienti. Ogni PDF che apri resta nel registro azioni."
+        description="Le ricevute che i professionisti senza partita IVA hanno fatto ai clienti. Ogni PDF che apri resta nel registro azioni."
       />
       <XStack gap="2" flexWrap="wrap" marginBottom="3">
         <input

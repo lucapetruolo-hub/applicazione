@@ -128,9 +128,9 @@ test("Ricorso su un problema: chiede conferma e mostra la persona accanto all'at
   await expect(page.getByText("Risultati in tutte le schede, aperte e chiuse.")).toBeVisible();
   await expect(page.getByRole("link", { name: `Impianti Elettrici ${stamp} · Luigi Bianchi${stamp}` })).toBeVisible();
   // Dopo la ricerca resta solo questo ricorso.
-  await expect(page.getByText(/la sua risposta è nel ricorso/)).toHaveCount(1);
+  await expect(page.getByText(/La sua risposta è più sotto/)).toHaveCount(1);
 
-  const note = page.getByRole("textbox", { name: "Motivazione sul ricorso" });
+  const note = page.getByRole("textbox", { name: "Perché decidi così" });
   await note.fill("La stufa supera la potenza del contatore.");
   // Cambiando la ricerca la motivazione già scritta non si perde.
   const searched = page.waitForResponse((response) => response.url().includes(`q=${encodeURIComponent(`Impianti Elettrici ${stamp}`)}`));
@@ -138,15 +138,15 @@ test("Ricorso su un problema: chiede conferma e mostra la persona accanto all'at
   await searched;
   await expect(page.getByText("Risultati in tutte le schede, aperte e chiuse.")).toBeVisible();
   await expect(note).toHaveValue("La stufa supera la potenza del contatore.");
-  await page.getByRole("button", { name: "Accogli il ricorso" }).click();
+  await page.getByRole("button", { name: "Ha ragione: annulla la decisione" }).click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText("Accogliere il ricorso?")).toBeVisible();
+  await expect(dialog.getByText("Annullare la decisione?")).toBeVisible();
   await dialog.getByRole("button", { name: "Torna indietro" }).click();
   // Tornando indietro non si decide nulla.
   expect((await prisma.jobIssue.findUniqueOrThrow({ where: { id: ids.issue } })).appealDecision).toBeNull();
 
-  await page.getByRole("button", { name: "Accogli il ricorso" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Accogli il ricorso" }).click();
+  await page.getByRole("button", { name: "Ha ragione: annulla la decisione" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Annulla la decisione" }).click();
   await expect.poll(async () => (await prisma.jobIssue.findUniqueOrThrow({ where: { id: ids.issue } })).appealDecision).toBe("ACCEPTED");
   await context.close();
 });
@@ -158,7 +158,7 @@ test("Problemi: dopo un caricamento fallito, la lista arrivata toglie l'errore",
   await page.route(/\/admin\/job-issues\?view=open/, (route) => route.fulfill({ status: 500, json: { message: "Errore di prova del caricamento" } }), { times: 1 });
   await page.goto("/admin/problemi");
   await expect(page.getByText("Errore di prova del caricamento")).toBeVisible();
-  await page.getByRole("button", { name: "Ricorsi" }).click();
+  await page.getByRole("button", { name: "Da rivedere" }).click();
   await expect(page.getByRole("link", { name: `Impianti Elettrici ${stamp} · Luigi Bianchi${stamp}` })).toBeVisible();
   await expect(page.getByText("Errore di prova del caricamento")).toHaveCount(0);
   await context.close();

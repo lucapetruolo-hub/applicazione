@@ -111,7 +111,7 @@ export default function AdminPagamentiPage() {
     <YStack gap="6">
       <AdminPageHeader
         title="Pagamenti e rimborsi"
-        description="Saldi dei pagamenti online non pagati, rimborsi e contestazioni. I rimborsi delle segnalazioni accolte e degli annullamenti partono da soli; qui restano quelli da controllare."
+        description="Saldi dei pagamenti online non pagati, rimborsi e contestazioni. I rimborsi partono da soli; qui restano quelli da controllare."
       />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
@@ -120,8 +120,7 @@ export default function AdminPagamentiPage() {
           Contestazioni in banca
         </Text>
         <Text fontSize={13} color={brand.grafite70}>
-          Clienti che hanno contestato un pagamento online con la loro banca. Rileggi le prove già scritte dal sito e mandale prima della
-          scadenza: con le prove parte anche il riepilogo PDF del lavoro.
+          Clienti che hanno contestato un pagamento online con la loro banca. Il sito ha già scritto le prove. Rileggile e mandale prima della scadenza.
         </Text>
         {bankDisputes && bankDisputes.length === 0 ? <Text color={brand.grafite70}>Nessuna contestazione in banca aperta.</Text> : null}
         {bankDisputes?.map((row) => <BankDisputeCard key={row.jobPaymentId} row={row} token={token ?? ""} onChanged={reload} />)}
@@ -134,10 +133,9 @@ export default function AdminPagamentiPage() {
           Saldi non pagati
         </Text>
         <Text fontSize={13} color={brand.grafite70}>
-          Clienti che non hanno pagato il saldo online entro 7 giorni dalla chiusura del lavoro: il professionista ha ricevuto quanto già
-          pagato. Sollecita il cliente; se paga dal sito il saldo arriva da solo al professionista.
+          Clienti che non hanno pagato il resto entro 7 giorni dalla fine del lavoro. Il professionista ha già avuto la parte pagata. Scrivi al cliente per ricordarglielo. Se paga dal sito, i soldi arrivano da soli al professionista.
         </Text>
-        {unpaid && unpaid.length === 0 ? <Text color={brand.grafite70}>Nessun saldo scoperto.</Text> : null}
+        {unpaid && unpaid.length === 0 ? <Text color={brand.grafite70}>Nessuno deve ancora pagare il resto.</Text> : null}
         {unpaid?.map((row) => <UnpaidCard key={row.jobPaymentId} row={row} token={token ?? ""} onChanged={reload} />)}
       </YStack>
 
@@ -156,7 +154,7 @@ export default function AdminPagamentiPage() {
             token={token ?? ""}
             onChanged={reload}
             // Stessa storia aperta due volte (misura "dopo" del riordino): si decidono insieme.
-            alsoOpen={disputes?.some((d) => d.jobPayment.id === refund.jobPayment.id && (d.status === "OPEN" || d.status === "UNDER_REVIEW")) ? "Sullo stesso lavoro c'è anche una contestazione di pagamento aperta, più sotto: decidile insieme." : null}
+            alsoOpen={disputes?.some((d) => d.jobPayment.id === refund.jobPayment.id && (d.status === "OPEN" || d.status === "UNDER_REVIEW")) ? "Su questo lavoro c'è anche un pagamento contestato, più sotto. Decidi tutti e due insieme." : null}
           />
         ))}
       </YStack>
@@ -258,7 +256,7 @@ function RefundCard({ refund, token, onChanged, alsoOpen }: { refund: AdminRefun
           title={confirming === "APPROVED" ? `Rimborsare ${euro(refund.amountEurCents)} a ${client}?` : "Rifiutare il rimborso?"}
           description={
             confirming === "APPROVED"
-              ? `Stripe restituisce ${euro(refund.amountEurCents)} sulla carta di ${client}. La cifra viene ripresa dal conto di ${professional}. Non si può annullare.`
+              ? `${client} riavrà ${euro(refund.amountEurCents)} sulla carta. La cifra viene ripresa dal conto di ${professional}. Non si può annullare.`
               : `${client} non riceve ${euro(refund.amountEurCents)}. Gli scriviamo il motivo che metti qui.`
           }
           notePlaceholder={confirming === "APPROVED" ? "Es. Lavoro non fatto, d'accordo con il professionista." : "Es. Il lavoro risulta fatto come da preventivo."}
@@ -329,7 +327,7 @@ function DisputeCard({ dispute, token, onChanged, alsoOpen }: { dispute: AdminDi
           </XStack>
           {choice ? (
             <>
-              <textarea aria-label="Nota sull'esito" className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nota sull'esito (facoltativa)" />
+              <textarea aria-label="Nota sull'esito" className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nota sull'esito (se vuoi)" />
               <XStack gap="2">
                 <Button variant="primary" size="3" disabled={busy} onPress={resolve}>
                   {busy ? "…" : "Conferma esito"}
@@ -372,7 +370,7 @@ function UnpaidCard({ row, token, onChanged }: { row: AdminUnpaidBalance; token:
   return (
     <AdminCard>
       <Text fontWeight="800" color={brand.grafite}>
-        Saldo scoperto: {formatEurCents(row.dueEurCents)}
+        Resto da pagare: {formatEurCents(row.dueEurCents)}
       </Text>
       <Text fontSize={13} color={brand.grafite70}>
         Importo finale {row.finalAmountEurCents !== null ? formatEurCents(row.finalAmountEurCents) : "—"} · pagato {formatEurCents(row.paidEurCents)} · dal{" "}
@@ -604,7 +602,7 @@ function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; tok
           </XStack>
           <PdfButton load={() => apiClient.adminBankDisputePdf(token, row.jobPaymentId)} fileName="riepilogo-lavoro.pdf" label="Guarda il riepilogo PDF" variant="secondary" />
           {error ? <Text color={brand.urgenza}>{error}</Text> : null}
-          {saved ? <Text color={brand.grafite70}>Salvate su Stripe, non ancora mandate alla banca.</Text> : null}
+          {saved ? <Text color={brand.grafite70}>Salvate, non ancora mandate alla banca.</Text> : null}
           {confirming ? (
             <YStack gap="2">
               <Text color={brand.grafite}>Dopo l&apos;invio le prove non si possono più cambiare.</Text>
@@ -677,7 +675,7 @@ function BankDisputeArchive({ token, reloadKey }: { token: string; reloadKey: un
       <SearchBox label="Cerca nelle contestazioni in banca" value={query} onChange={setQuery} placeholder="Cliente, professionista, email, cifra o codice" />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {rows === null ? <Text color={brand.grafite70}>
-          Caricamento…
+          Un momento…
           <WaitBarSignal />
         </Text> : null}
       {rows && rows.length === 0 ? (
@@ -700,7 +698,7 @@ function DisputeParts({ parts }: { parts: BankDisputePart[] }) {
   const feeNote =
     fees > 0 ? (
       <Text fontSize={13} color={brand.grafite70}>
-        Commissione di Stripe {formatEurCents(fees)}, a carico del professionista.
+        Costo della contestazione {formatEurCents(fees)}, lo paga il professionista.
       </Text>
     ) : null;
   if (parts.length < 2) return feeNote;
@@ -764,7 +762,7 @@ function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRo
               <ArchiveText title={row.evidenceSentAt ? "Spiegazione mandata alla banca" : "Spiegazione salvata, non ancora mandata"} text={evidence.explanation} />
               {evidence.stripeText ? (
                 <Text fontSize={13} color={brand.grafite70}>
-                  Con le chiavi di prova a Stripe è partita solo la parola «{evidence.stripeText}».
+                  Siamo in prova: alla banca è arrivata solo la parola «{evidence.stripeText}».
                 </Text>
               ) : null}
               <Text fontSize={13} color={brand.grafite70}>
@@ -776,13 +774,13 @@ function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRo
             </YStack>
           ) : (
             <Text fontSize={13} color={brand.grafite70}>
-              {row.evidenceSentAt || row.closedAt ? "Prove mandate prima che il sito le conservasse: il testo si legge su Stripe." : "Prove non ancora preparate."}
+              {row.evidenceSentAt || row.closedAt ? "Prove mandate prima che il sito le conservasse: il testo si legge nel pannello dei pagamenti." : "Prove non ancora preparate."}
             </Text>
           )}
           {row.history.length ? (
             <YStack gap="1">
               <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
-                Cronologia
+                Cosa è successo
               </Text>
               {row.history.map((h, i) => (
                 <Text key={i} fontSize={13} color={brand.grafite}>

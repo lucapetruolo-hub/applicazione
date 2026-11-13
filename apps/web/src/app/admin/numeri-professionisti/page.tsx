@@ -19,7 +19,7 @@ import {
 import { Button, Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { AdminCard, AdminPageHeader, CountingFromNote, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
+import { AdminCard, AdminPageHeader, CountingFromNote, ShowNumbers, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { StatsBarChart } from "@/components/StatsBarChart";
 import { SkeletonTableRows } from "@/components/Skeleton";
 import { SignupFunnelCard } from "@/components/admin/SignupFunnelCard";
@@ -154,7 +154,7 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
   const founders = data.byPlan.find((p) => p.key === "FOUNDER")?.count ?? 0;
   const excluded = [
     data.excluded.deleted ? `${data.excluded.deleted} ${data.excluded.deleted === 1 ? "eliminato" : "eliminati"}` : null,
-    data.excluded.demo ? `${data.excluded.demo} ${data.excluded.demo === 1 ? "profilo dimostrativo" : "profili dimostrativi"}` : null,
+    data.excluded.demo ? `${data.excluded.demo} ${data.excluded.demo === 1 ? "profilo di esempio" : "profili di esempio"}` : null,
     data.excluded.test ? `${data.excluded.test} account di prova` : null,
   ].filter(Boolean);
 
@@ -200,91 +200,93 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
         </div>
       </div>
 
-      {data.total === 0 ? (
-        <Text color={brand.grafite70}>Nessun professionista con questi filtri.</Text>
-      ) : (
-        <div className="admin-stats-grid">
-          <BarSection
-            title="Per categoria"
-            note="Un professionista può offrire fino a 3 categorie: la somma supera il totale."
-            total={data.total}
-            rows={data.byCategory.map((c) => ({ key: c.slug, label: c.label, count: c.count, href: usersHref({ ...filters, category: c.slug }) }))}
-          />
-          <BarSection
-            title="Per città"
-            total={data.total}
-            rows={[
-              ...cities.map((c) => ({ key: c.city, label: c.city, count: c.count, href: usersHref({ ...filters, city: c.city }) })),
-              ...(otherCities.length
-                ? [
-                    {
-                      key: "altre",
-                      label: `Altre ${otherCities.length} città`,
-                      count: otherCities.reduce((sum, c) => sum + c.count, 0),
-                    },
-                  ]
-                : []),
-            ]}
-          />
-          <BarSection
-            title="Stato del profilo"
-            total={data.total}
-            rows={data.byStatus.map((s) => ({ key: s.key, label: PROFESSIONAL_STATUS_LABEL[s.key], count: s.count }))}
-          />
-          <BarSection
-            title="Abbonamento"
-            total={data.total}
-            rows={data.byPlan.map((p) => ({ key: p.key, label: PROFESSIONAL_PLAN_LABEL[p.key], count: p.count }))}
-          />
-          <BarSection
-            title="Come lavorano"
-            total={data.total}
-            rows={data.byEntity.map((e) => ({ key: e.key, label: PROFESSIONAL_ENTITY_LABEL[e.key], count: e.count }))}
-          />
-          <BarSection
-            title="A che punto dell'iscrizione"
-            note="Ogni riga conta chi ha già fatto quel passo: il calo tra due righe è chi si è fermato prima."
-            total={data.total}
-            rows={data.funnel.map((f) => ({ key: f.key, label: PROFESSIONAL_FUNNEL_LABEL[f.key], count: f.count }))}
-          />
-          <BarSection
-            title="Profili completi"
-            total={data.total}
-            rows={data.completeness.map((c) => ({ key: c.key, label: PROFESSIONAL_COMPLETENESS_LABEL[c.key], count: c.count }))}
-          />
-        </div>
-      )}
+      <ShowNumbers>
+        {data.total === 0 ? (
+          <Text color={brand.grafite70}>Nessun professionista con questi filtri.</Text>
+        ) : (
+          <div className="admin-stats-grid">
+            <BarSection
+              title="Per categoria"
+              note="Un professionista può offrire fino a 3 categorie: la somma supera il totale."
+              total={data.total}
+              rows={data.byCategory.map((c) => ({ key: c.slug, label: c.label, count: c.count, href: usersHref({ ...filters, category: c.slug }) }))}
+            />
+            <BarSection
+              title="Per città"
+              total={data.total}
+              rows={[
+                ...cities.map((c) => ({ key: c.city, label: c.city, count: c.count, href: usersHref({ ...filters, city: c.city }) })),
+                ...(otherCities.length
+                  ? [
+                      {
+                        key: "altre",
+                        label: `Altre ${otherCities.length} città`,
+                        count: otherCities.reduce((sum, c) => sum + c.count, 0),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+            <BarSection
+              title="Stato del profilo"
+              total={data.total}
+              rows={data.byStatus.map((s) => ({ key: s.key, label: PROFESSIONAL_STATUS_LABEL[s.key], count: s.count }))}
+            />
+            <BarSection
+              title="Abbonamento"
+              total={data.total}
+              rows={data.byPlan.map((p) => ({ key: p.key, label: PROFESSIONAL_PLAN_LABEL[p.key], count: p.count }))}
+            />
+            <BarSection
+              title="Come lavorano"
+              total={data.total}
+              rows={data.byEntity.map((e) => ({ key: e.key, label: PROFESSIONAL_ENTITY_LABEL[e.key], count: e.count }))}
+            />
+            <BarSection
+              title="A che punto dell'iscrizione"
+              note="Ogni riga conta chi ha già fatto quel passo: il calo tra due righe è chi si è fermato prima."
+              total={data.total}
+              rows={data.funnel.map((f) => ({ key: f.key, label: PROFESSIONAL_FUNNEL_LABEL[f.key], count: f.count }))}
+            />
+            <BarSection
+              title="Profili completi"
+              total={data.total}
+              rows={data.completeness.map((c) => ({ key: c.key, label: PROFESSIONAL_COMPLETENESS_LABEL[c.key], count: c.count }))}
+            />
+          </div>
+        )}
 
 
-      <AdminCard>
-        <div className="admin-chart-head">
-          <YStack gap="1">
-            <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
-              Iscrizioni per mese
-            </Text>
-            <Text color={brand.grafite70} fontSize={13}>
-              {periodTotal === 1 ? "1 professionista" : `${periodTotal} professionisti`} {period === "last12" ? "negli ultimi 12 mesi" : `nel ${period}`}
-            </Text>
-          </YStack>
-          <select aria-label="Periodo del grafico" className="admin-input" value={period} onChange={(e) => setPeriod(e.target.value)}>
-            <option value="last12">Ultimi 12 mesi</option>
-            {years.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </div>
-        <StatsBarChart points={months} formatValue={(v) => String(v)} ariaLabel="Professionisti iscritti per mese" />
-      </AdminCard>
+        <AdminCard>
+          <div className="admin-chart-head">
+            <YStack gap="1">
+              <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
+                Iscrizioni per mese
+              </Text>
+              <Text color={brand.grafite70} fontSize={13}>
+                {periodTotal === 1 ? "1 professionista" : `${periodTotal} professionisti`} {period === "last12" ? "negli ultimi 12 mesi" : `nel ${period}`}
+              </Text>
+            </YStack>
+            <select aria-label="Periodo del grafico" className="admin-input" value={period} onChange={(e) => setPeriod(e.target.value)}>
+              <option value="last12">Ultimi 12 mesi</option>
+              {years.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
+          <StatsBarChart points={months} formatValue={(v) => String(v)} ariaLabel="Professionisti iscritti per mese" />
+        </AdminCard>
 
-      <SearchCard searches={data.searches} withCategory={Boolean(filters.category)} countingFrom={data.countingFrom} />
-      <SearchZonesCard rows={data.searches.byCategoryCity} />
-      <CoverageCard rows={data.coverage} countingFrom={data.countingFrom} />
-      <CategoryActivityCard rows={data.byCategoryActivity} countingFrom={data.countingFrom} />
-      <ChurnCard rows={data.churnByMonth} countingFrom={data.countingFrom} />
+        <SearchCard searches={data.searches} withCategory={Boolean(filters.category)} countingFrom={data.countingFrom} />
+        <SearchZonesCard rows={data.searches.byCategoryCity} />
+        <CoverageCard rows={data.coverage} countingFrom={data.countingFrom} />
+        <CategoryActivityCard rows={data.byCategoryActivity} countingFrom={data.countingFrom} />
+        <ChurnCard rows={data.churnByMonth} countingFrom={data.countingFrom} />
 
-      {excluded.length ? <Text color={brand.grafite70} fontSize={13}>Non contati: {excluded.join(", ")}.</Text> : null}
+        {excluded.length ? <Text color={brand.grafite70} fontSize={13}>Non contati: {excluded.join(", ")}.</Text> : null}
+      </ShowNumbers>
     </YStack>
   );
 }
@@ -521,7 +523,7 @@ function ChurnCard({ rows, countingFrom }: { rows: AdminProfessionalStats["churn
     <AdminCard>
       <CardTitle
         title={`Abbandoni ${periodText(365, countingFrom, "negli ultimi 12 mesi")}`}
-        note="In pausa: solo chi lo è ancora. Abbonamenti annullati: nel mese dell'annullamento, anche se restano attivi fino alla scadenza."
+        note="In pausa: solo chi lo è ancora. Abbonamenti annullati: contano nel mese in cui uno annulla, anche se dura ancora un po'."
       />
       <div className="admin-table-wrap">
         <table className="admin-table admin-table-numbers">
