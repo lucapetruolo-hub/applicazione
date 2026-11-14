@@ -131,6 +131,14 @@
 .inputHasEnd.inputHasEnd.inputHasEnd.inputHasEnd {
   padding-right: 108px;
 }
+/* Da computer i campi stanno in riga e la loro larghezza segue il contenuto:
+   con la miniatura il margine totale resta quello del tasto (56 + 73 = 21 +
+   108), così il campo non si restringe quando si sceglie la foto. */
+@media (min-width: 801px) {
+  .inputHasStart.inputHasStart.inputHasStart.inputHasStart {
+    padding-right: 73px;
+  }
+}
 
 .status {
   color: var(--color);

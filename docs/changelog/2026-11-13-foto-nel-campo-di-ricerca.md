@@ -28,6 +28,10 @@ colori della luce del campo, e lo stesso nella richiesta di preventivo.
   posto di verdi e oro (supera la scelta del 03/11). Scrivendo, il bordo resta
   verde pieno.
 
+- Da computer (campi in riga) il campo non si restringe più quando si sceglie
+  la foto: con la miniatura il margine totale resta quello del tasto (miglioria
+  scelta da Luca il 14/11).
+
 **Verifica**: typecheck e lint; sito costruito e provato nel browser su
 telefono, 320 px e computer (tasto trovato col Tab, sparisce con "Online",
 foto scelta con miniatura e ✕ nella home e nella richiesta di preventivo).
