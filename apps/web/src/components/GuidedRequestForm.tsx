@@ -48,6 +48,7 @@ import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { RequestSentScreen } from "@/components/RequestSentScreen";
 import { UploadingDots } from "@/components/UploadingDots";
 import { FieldCameraIcon } from "@/components/FieldCameraIcon";
+import { TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
 import { GuidedRequestSkeleton } from "@/components/PageLoading";
 import { ButtonWaitBar } from "@/components/WaitBar";
 import { CategoryTiles } from "@/components/CategoryTiles";
@@ -59,7 +60,7 @@ import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 import { cleanPostalCode, postalCodeCityProblem, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
 import { localPreviewUrl } from "@/lib/media";
-import { searchPhotoFor } from "@/lib/photoSearch";
+import { searchPhotoFor, withoutHiddenData } from "@/lib/photoSearch";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 
 /**
@@ -755,14 +756,66 @@ export function GuidedRequestForm({
   // La foto della ricerca con foto, se la richiesta nasce da lì: già allegata, si può togliere
   // (docs/changelog/2026-11-13-ricerca-con-foto.md). Resta solo nel browser fino all'invio.
   const [photoFromSearch, setPhotoFromSearch] = useState(false);
+  // Le copie piccole delle foto, per la prima foto da far guardare all'IA (sotto).
+  const photoBlobsRef = useRef(new Map<string, Blob>());
   useEffect(() => {
     const file = searchPhotoFor(searchParams.get("descrizione") ?? "");
     if (!file) return;
     // La foto è nel browser (sessionStorage), che il server non vede: si legge solo dopo il primo disegno.
+    const url = localPreviewUrl(file);
+    photoBlobsRef.current.set(url, file);
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPhotos((prev) => (prev.length > 0 ? prev : [{ url: localPreviewUrl(file), file, isVideo: false }]));
+    setPhotos((prev) => (prev.length > 0 ? prev : [{ url, file, isVideo: false }]));
     setPhotoFromSearch(true);
   }, [searchParams]);
+  // Se dal testo l'IA non capisce il mestiere, guarda la prima foto per il
+  // professionista (scelta di Luca, docs/changelog/2026-11-14-foto-per-il-professionista.md):
+  // una sola chiamata, solo in quel caso, con la copia piccola già senza GPS.
+  // Un video non si guarda.
+  const photoTurnstileToken = useRef<string | null>(null);
+  const [photoTurnstileReset, setPhotoTurnstileReset] = useState(0);
+  const [readingFirstPhoto, setReadingFirstPhoto] = useState(false);
+  const [categoryFromPhoto, setCategoryFromPhoto] = useState<ProfessionalCategorySlug | null>(null);
+  const firstPhotoTriedRef = useRef("");
+  const firstPhotoUrl = photos[0] && !photos[0].isVideo ? photos[0].url : null;
+  const textNotUnderstoodByAi =
+    notUnderstood && checkedDescription?.text === typedDescription && checkedDescription.result.categories.length === 0;
+  useEffect(() => {
+    if (!textNotUnderstoodByAi || !firstPhotoUrl) return;
+    const blob = photoBlobsRef.current.get(firstPhotoUrl);
+    const key = `${typedDescription}\n${firstPhotoUrl}`;
+    if (!blob || firstPhotoTriedRef.current === key) return;
+    firstPhotoTriedRef.current = key;
+    const text = typedDescription;
+    let cancelled = false;
+    void (async () => {
+      setReadingFirstPhoto(true);
+      try {
+        for (let waited = 0; isTurnstileEnabled() && !photoTurnstileToken.current && waited < 8000; waited += 250) {
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        }
+        const turnstileToken = photoTurnstileToken.current ?? undefined;
+        if (isTurnstileEnabled() && !turnstileToken) return;
+        // Il token vale una volta sola.
+        photoTurnstileToken.current = null;
+        setPhotoTurnstileReset((n) => n + 1);
+        const read = await apiClient.analyzeProblemPhoto(blob, { description: text, city: city.trim() || undefined, turnstileToken });
+        if (!read.photoId || cancelled) return;
+        const result = await apiClient.matchProblem({ description: text, city: city.trim() || undefined, photo: read.photoId });
+        if (cancelled || result.categories.length === 0) return;
+        setCheckedDescription({ text, result });
+        setCategoryFromPhoto(result.question ? null : (result.categories[0] ?? null));
+      } catch {
+        // IA spenta, occupata o foto non leggibile: si sceglie la categoria a mano, come prima.
+      } finally {
+        if (!cancelled) setReadingFirstPhoto(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      setReadingFirstPhoto(false);
+    };
+  }, [textNotUnderstoodByAi, firstPhotoUrl, typedDescription, city]);
   // Gate di autenticazione spostato al momento dell'invio (F2.2): il modulo
   // resta sempre compilabile da anonimo, il gate compare solo qui, senza
   // mai far perdere quanto già scritto/selezionato (nessuna navigazione).
@@ -1189,11 +1242,19 @@ export function GuidedRequestForm({
   }
 
   async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const picked = e.target.files?.[0];
     e.target.value = "";
-    if (!file || photos.length >= MAX_PHOTOS) return;
+    if (!picked || photos.length >= MAX_PHOTOS) return;
 
     setPhotoError(null);
+    const isVideo = picked.type.startsWith("video/");
+    // Una foto del telefono porta spesso dentro la posizione GPS, cioè
+    // l'indirizzo di casa, che il professionista non vede prima
+    // dell'accettazione (CLAUDE.md §5 punto 9): la ridisegniamo nel browser
+    // come la foto della ricerca, che così perde i dati nascosti e pesa meno
+    // (docs/changelog/2026-11-14-foto-per-il-professionista.md). Se il
+    // browser non sa aprirla (es. HEIC su Chrome per computer) parte com'è.
+    const file = isVideo ? picked : await withoutHiddenData(picked);
     if (token) {
       setIsUploadingPhoto(true);
       try {
@@ -1203,7 +1264,8 @@ export function GuidedRequestForm({
         // finire nel database come URL — richiesta esplicita dell'utente
         // ("ridimensionala per occupare meno memoria").
         const result = await apiClient.uploadGuidedRequestPhoto(token, file);
-        setPhotos((prev) => [...prev, { url: result.imageUrl, file: null, isVideo: false }].slice(0, MAX_PHOTOS));
+        if (!isVideo) photoBlobsRef.current.set(result.imageUrl, file);
+        setPhotos((prev) => [...prev, { url: result.imageUrl, file: null, isVideo }].slice(0, MAX_PHOTOS));
       } catch (err) {
         setPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
       } finally {
@@ -1215,7 +1277,8 @@ export function GuidedRequestForm({
     // un'anteprima via blob:, caricata davvero solo al momento dell'invio
     // (doSubmit, dopo il gate F2.2).
     const previewUrl = localPreviewUrl(file);
-    setPhotos((prev) => [...prev, { url: previewUrl, file, isVideo: file.type.startsWith("video/") }].slice(0, MAX_PHOTOS));
+    if (!isVideo) photoBlobsRef.current.set(previewUrl, file);
+    setPhotos((prev) => [...prev, { url: previewUrl, file, isVideo }].slice(0, MAX_PHOTOS));
   }
 
   function removePhoto(url: string) {
@@ -1224,6 +1287,7 @@ export function GuidedRequestForm({
       if (target?.file) URL.revokeObjectURL(target.url);
       return prev.filter((p) => p.url !== url);
     });
+    photoBlobsRef.current.delete(url);
   }
 
   // Campo della città: con il titolo "Città" nella consulenza online; a
@@ -1448,10 +1512,6 @@ export function GuidedRequestForm({
           <FieldLabel>Descrivi il lavoro</FieldLabel>
           {/* Primo campo, con la stessa luce del campo della home: due giri
               all'apertura, verde pieno mentre si scrive. */}
-          {/* Il tasto "Foto" dentro il campo, come nella ricerca della home
-              (scelta di Luca, docs/changelog/2026-11-13-foto-nel-campo-di-ricerca.md):
-              le foto si aggiungono mentre si descrive il lavoro e si vedono
-              subito sotto, non più in una sezione a parte più in basso. */}
           <div className="guided-description-wrap">
             <textarea aria-label="Descrivi il lavoro"
               ref={descriptionRef}
@@ -1468,57 +1528,9 @@ export function GuidedRequestForm({
                 fontFamily: "inherit",
                 color: brand.grafite,
                 resize: "vertical",
-                // Spazio per il tasto "Foto" in basso a destra.
-                paddingBottom: 56,
               }}
             />
-            <button
-              type="button"
-              className="field-photo-button guided-description-photo"
-              onClick={() => photoInputRef.current?.click()}
-              disabled={isUploadingPhoto || photos.length >= MAX_PHOTOS}
-              aria-label={photos.length >= MAX_PHOTOS ? `Hai già ${MAX_PHOTOS} foto o video` : "Aggiungi una foto o un video"}
-              title={photos.length >= MAX_PHOTOS ? `Al massimo ${MAX_PHOTOS} foto o video` : "Aggiungi una foto o un video"}
-            >
-              <FieldCameraIcon />
-              <span aria-hidden="true">Foto</span>
-            </button>
           </div>
-          <input
-            ref={photoInputRef}
-            type="file"
-            accept="image/*,video/*"
-            onChange={handlePhotoChange}
-            disabled={isUploadingPhoto}
-            style={{ display: "none" }}
-          />
-          {photos.length > 0 || isUploadingPhoto ? (
-            <div className="guided-photos" role="group" aria-label={`Foto e video aggiunti (fino a ${MAX_PHOTOS})`}>
-              {photos.map((photo) => (
-                <div key={photo.url} className="guided-photo">
-                  <MediaPreview url={photo.url} forceVideo={photo.isVideo} style={{ borderRadius: 9 }} />
-                  <button type="button" className="field-photo-remove" onClick={() => removePhoto(photo.url)} aria-label="Togli la foto">
-                    <X size={12} strokeWidth={3} color="white" />
-                  </button>
-                </div>
-              ))}
-              {isUploadingPhoto ? (
-                <div className="guided-photo guided-photo-loading" role="status" aria-label="Caricamento della foto">
-                  <UploadingDots dotSize={7} />
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          {photoError ? (
-            <Text color={brand.urgenza} fontSize={13}>
-              {photoError}
-            </Text>
-          ) : null}
-          {photoFromSearch && photos.length > 0 ? (
-            <Text color={brand.grafite70} fontSize={13}>
-              Abbiamo aggiunto la foto della tua ricerca: se non serve, toglila.
-            </Text>
-          ) : null}
           {showExamples ? (
             // Due esempi da toccare, come in home (scelta di Luca): riconosciuti
             // con sicurezza dal dizionario, mostrano subito la categoria.
@@ -1599,7 +1611,9 @@ export function GuidedRequestForm({
                   : notUnderstood && categorySlugs.length === 0
                     ? suggestion?.outOfService
                       ? `${OUT_OF_SERVICE_LABELS[suggestion.outOfService]}. Se pensi che serva una di queste, sceglila tu.`
-                      : "Non abbiamo capito chi ti serve: sceglilo tu."
+                      : readingFirstPhoto
+                        ? "Guardiamo la foto per capire chi ti serve…"
+                        : "Non abbiamo capito chi ti serve: sceglilo tu, oppure aggiungi una foto qui sotto."
                     : categorySlugs.length === 0
                       ? "Scrivi il lavoro qui sopra e ti suggeriamo la categoria, oppure sceglila tu."
                       : ""}
@@ -1683,6 +1697,79 @@ export function GuidedRequestForm({
             />
           </div>
         ) : null}
+
+        {/* Le foto per il professionista di nuovo in uno spazio loro, sotto
+            (scelta di Luca, docs/changelog/2026-11-14-foto-per-il-professionista.md):
+            la foto per l'IA si mette nella ricerca, queste le vede solo chi
+            riceve la richiesta. La foto della ricerca entra già qui. */}
+        <YStack gap="2">
+          <FieldLabel>Foto per il professionista (facoltative)</FieldLabel>
+          <Text fontSize={13} color={brand.grafite70}>
+            Aiutano a capire il lavoro e a darti un preventivo più preciso. Le vede il professionista: niente numeri di
+            telefono, documenti o persone.
+          </Text>
+          <div className="guided-photos" role="group" aria-label={`Foto e video per il professionista (fino a ${MAX_PHOTOS})`}>
+            {photos.map((photo) => (
+              <div key={photo.url} className="guided-photo">
+                <MediaPreview url={photo.url} forceVideo={photo.isVideo} style={{ borderRadius: 9 }} />
+                <button type="button" className="field-photo-remove" onClick={() => removePhoto(photo.url)} aria-label="Togli la foto">
+                  <X size={12} strokeWidth={3} color="white" />
+                </button>
+              </div>
+            ))}
+            {isUploadingPhoto ? (
+              <div className="guided-photo guided-photo-loading" role="status" aria-label="Caricamento della foto">
+                <UploadingDots dotSize={7} />
+              </div>
+            ) : photos.length < MAX_PHOTOS ? (
+              <button
+                type="button"
+                className="guided-photo guided-photo-add"
+                onClick={() => photoInputRef.current?.click()}
+                aria-label="Aggiungi una foto o un video"
+              >
+                <FieldCameraIcon />
+                <span aria-hidden="true">Aggiungi</span>
+              </button>
+            ) : null}
+          </div>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*,video/*"
+            onChange={handlePhotoChange}
+            disabled={isUploadingPhoto}
+            style={{ display: "none" }}
+            aria-label="Aggiungi una foto o un video per il professionista"
+          />
+          {photoError ? (
+            <Text color={brand.urgenza} fontSize={13}>
+              {photoError}
+            </Text>
+          ) : null}
+          {readingFirstPhoto ? (
+            <Text color={brand.grafite70} fontSize={13} role="status">
+              Guardiamo la foto per capire chi ti serve…
+            </Text>
+          ) : categoryFromPhoto && categorySlugs.includes(categoryFromPhoto) ? (
+            <Text color={brand.grafite70} fontSize={13} role="status">
+              Dalla foto ti suggeriamo {categoryLabelOf(categoryFromPhoto)}: l&apos;abbiamo scelta sopra, puoi cambiarla.
+            </Text>
+          ) : null}
+          {textNotUnderstoodByAi && firstPhotoUrl ? (
+            <TurnstileWidget
+              onTokenChange={(token) => {
+                photoTurnstileToken.current = token;
+              }}
+              resetSignal={photoTurnstileReset}
+            />
+          ) : null}
+          {photoFromSearch && photos.length > 0 ? (
+            <Text color={brand.grafite70} fontSize={13}>
+              Abbiamo aggiunto la foto della tua ricerca: se non serve, toglila.
+            </Text>
+          ) : null}
+        </YStack>
 
 
           </>
