@@ -16,7 +16,7 @@ export type { AutocompleteProps } from "./autocompleteModel";
  * (Autocomplete.web.tsx, docs/changelog/2026-11-10-barra-di-ricerca-senza-tamagui.md).
  */
 export function Autocomplete<T>(props: AutocompleteProps<T>) {
-  const { getKey, getLabel, renderItem, value, placeholder, size, label, labelBadge, id, inputClassName } = props;
+  const { getKey, getLabel, renderItem, value, placeholder, size, label, labelBadge, id, inputClassName, inputStart, inputEnd } = props;
   const {
     containerRef,
     inputRef,
@@ -39,6 +39,41 @@ export function Autocomplete<T>(props: AutocompleteProps<T>) {
     handleBlur,
   } = useAutocomplete(props);
 
+  const field = (
+    <Input
+      ref={inputRef as never}
+      className={inputClassName}
+      id={id}
+      flex={1}
+      size={size}
+      borderWidth={0}
+      value={value}
+      onChangeText={handleChangeText}
+      placeholder={placeholder}
+      aria-label={inputAriaLabel}
+      autoComplete="off"
+      // Invio senza suggerimento scelto non toglie il fuoco dal campo (collaudo L-08).
+      blurOnSubmit={false}
+      onFocus={() => {
+        handleFocus();
+        revealFieldForList(containerRef.current);
+      }}
+      onBlur={handleBlur}
+      // Sul sito il tasto arriva da onKeyDown (con Tamagui 3 l'Input del
+      // web è un <input> vero e ignora onKeyPress), nell'app da onKeyPress.
+      onKeyDown={(event: { key: string; preventDefault: () => void }) => handleKey(event.key, () => event.preventDefault())}
+      {...(isWeb
+        ? null
+        : {
+            onKeyPress: (event: unknown) => {
+              const key = (event as { nativeEvent?: { key?: string } }).nativeEvent?.key;
+              if (key) handleKey(key, () => undefined);
+            },
+          })}
+      {...(comboboxProps as Record<string, unknown>)}
+    />
+  );
+
   return (
     <YStack position="relative" flex={1} ref={containerRef as never}>
       {label ? (
@@ -53,38 +88,16 @@ export function Autocomplete<T>(props: AutocompleteProps<T>) {
           ) : null}
         </XStack>
       ) : null}
-      <Input
-        ref={inputRef as never}
-        className={inputClassName}
-        id={id}
-        flex={1}
-        size={size}
-        borderWidth={0}
-        value={value}
-        onChangeText={handleChangeText}
-        placeholder={placeholder}
-        aria-label={inputAriaLabel}
-        autoComplete="off"
-        // Invio senza suggerimento scelto non toglie il fuoco dal campo (collaudo L-08).
-        blurOnSubmit={false}
-        onFocus={() => {
-          handleFocus();
-          revealFieldForList(containerRef.current);
-        }}
-        onBlur={handleBlur}
-        // Sul sito il tasto arriva da onKeyDown (con Tamagui 3 l'Input del
-        // web è un <input> vero e ignora onKeyPress), nell'app da onKeyPress.
-        onKeyDown={(event: { key: string; preventDefault: () => void }) => handleKey(event.key, () => event.preventDefault())}
-        {...(isWeb
-          ? null
-          : {
-              onKeyPress: (event: unknown) => {
-                const key = (event as { nativeEvent?: { key?: string } }).nativeEvent?.key;
-                if (key) handleKey(key, () => undefined);
-              },
-            })}
-        {...(comboboxProps as Record<string, unknown>)}
-      />
+      {inputStart != null || inputEnd != null ? (
+        // Miniatura e tasti dentro il campo, come sul sito (docs/changelog/2026-11-13-foto-nel-campo-di-ricerca.md).
+        <XStack alignItems="center" gap="2">
+          {inputStart}
+          {field}
+          {inputEnd}
+        </XStack>
+      ) : (
+        field
+      )}
       {/* Annuncio per i lettori di schermo: quanti suggerimenti ci sono. */}
       <Text role="status" aria-live="polite" position="absolute" width={1} height={1} overflow="hidden" opacity={0} pointerEvents="none">
         {statusText}

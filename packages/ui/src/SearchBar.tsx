@@ -263,6 +263,8 @@ export function SearchBar(props: SearchBarProps) {
             labelBadge={customQueryField?.badge}
             focusRef={queryFocusRef}
             inputClassName={customQueryField?.className}
+            inputStart={customQueryField?.inputStart}
+            inputEnd={customQueryField?.inputEnd}
             id={`${fieldId}-cosa`}
             placeholder={customQueryField?.placeholder ?? (mode === "online" ? "Es. consulenza idraulico" : "Es. idraulico, un guasto")}
             size="5"

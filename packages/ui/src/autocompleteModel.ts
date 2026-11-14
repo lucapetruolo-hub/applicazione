@@ -35,6 +35,14 @@ export type AutocompleteProps<T> = {
   focusRef?: { current: (() => void) | null };
   /** Classe del campo (in home il bordo con la luce che gira). */
   inputClassName?: string;
+  /**
+   * Contenuto dentro il campo, all'inizio e alla fine (in home la miniatura
+   * della foto scelta e il tasto "Foto",
+   * docs/changelog/2026-11-13-foto-nel-campo-di-ricerca.md). Il campo lascia
+   * lo spazio per non scriverci sotto.
+   */
+  inputStart?: ReactNode;
+  inputEnd?: ReactNode;
   id?: string;
   /** Nome per il lettore di schermo quando l'etichetta visibile non è legata al campo: senza, si legge il segnaposto ("Es. Milano"). */
   "aria-label"?: string;

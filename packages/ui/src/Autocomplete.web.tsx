@@ -22,7 +22,7 @@ const SIZE_CLASS = { "3": styles.size3, "4": styles.size4, "5": styles.size5 } a
  * disegno. Se cambia uno dei due file, va cambiato anche l'altro.
  */
 export function Autocomplete<T>(props: AutocompleteProps<T>) {
-  const { getKey, getLabel, renderItem, value, placeholder, size, label, labelBadge, inputClassName, id } = props;
+  const { getKey, getLabel, renderItem, value, placeholder, size, label, labelBadge, inputClassName, inputStart, inputEnd, id } = props;
   const model = useAutocomplete(props);
   const labelId = useId();
   const sizeClass = SIZE_CLASS[size ?? "4"];
@@ -42,6 +42,41 @@ export function Autocomplete<T>(props: AutocompleteProps<T>) {
     </div>
   );
 
+  // Il tema dei campi di Tamagui (colori, bordo, anello del fuoco) dalle sue classi in tamagui.css.
+  const field = (
+    <span className="t_sub_theme t_Input t_light_Input is_Theme" style={{ color: "var(--color)", display: "contents" }}>
+      <input
+        ref={model.inputRef as React.RefObject<HTMLInputElement>}
+        tabIndex={0}
+        placeholder={placeholder}
+        aria-label={model.inputAriaLabel}
+        autoComplete="off"
+        {...model.comboboxProps}
+        data-disable-theme="true"
+        id={id}
+        name="Input"
+        value={value}
+        aria-labelledby={label ? labelId : undefined}
+        className={cx(
+          "is_View",
+          styles.input,
+          sizeClass,
+          "is_View font_body",
+          inputStart != null && styles.inputHasStart,
+          inputEnd != null && styles.inputHasEnd,
+          inputClassName,
+        )}
+        onChange={(event) => model.handleChangeText(event.target.value)}
+        onFocus={() => {
+          model.handleFocus();
+          revealFieldForList(model.containerRef.current);
+        }}
+        onBlur={model.handleBlur}
+        onKeyDown={(event) => model.handleKey(event.key, () => event.preventDefault())}
+      />
+    </span>
+  );
+
   return (
     <div className={`is_View ${styles.root}`} ref={model.containerRef as React.RefObject<HTMLDivElement>}>
       {label ? (
@@ -52,30 +87,16 @@ export function Autocomplete<T>(props: AutocompleteProps<T>) {
           {labelBadge ? <span className={`is_Text ${styles.badge} label-badge`}>{labelBadge}</span> : null}
         </div>
       ) : null}
-      {/* Il tema dei campi di Tamagui (colori, bordo, anello del fuoco) dalle sue classi in tamagui.css. */}
-      <span className="t_sub_theme t_Input t_light_Input is_Theme" style={{ color: "var(--color)", display: "contents" }}>
-        <input
-          ref={model.inputRef as React.RefObject<HTMLInputElement>}
-          tabIndex={0}
-          placeholder={placeholder}
-          aria-label={model.inputAriaLabel}
-          autoComplete="off"
-          {...model.comboboxProps}
-          data-disable-theme="true"
-          id={id}
-          name="Input"
-          value={value}
-          aria-labelledby={label ? labelId : undefined}
-          className={cx("is_View", styles.input, sizeClass, "is_View font_body", inputClassName)}
-          onChange={(event) => model.handleChangeText(event.target.value)}
-          onFocus={() => {
-            model.handleFocus();
-            revealFieldForList(model.containerRef.current);
-          }}
-          onBlur={model.handleBlur}
-          onKeyDown={(event) => model.handleKey(event.key, () => event.preventDefault())}
-        />
-      </span>
+      {inputStart != null || inputEnd != null ? (
+        // Miniatura e tasti dentro il campo (docs/changelog/2026-11-13-foto-nel-campo-di-ricerca.md).
+        <div className={`is_View ${styles.inputWrap}`}>
+          {field}
+          {inputStart != null ? <div className={`is_View ${styles.inputStart}`}>{inputStart}</div> : null}
+          {inputEnd != null ? <div className={`is_View ${styles.inputEnd}`}>{inputEnd}</div> : null}
+        </div>
+      ) : (
+        field
+      )}
       {/* Annuncio per i lettori di schermo: quanti suggerimenti ci sono. */}
       <span role="status" aria-live="polite" className={`is_Text ${styles.status}`}>
         {model.statusText}

@@ -47,6 +47,7 @@ import { InlineAuthGate } from "@/components/InlineAuthGate";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { RequestSentScreen } from "@/components/RequestSentScreen";
 import { UploadingDots } from "@/components/UploadingDots";
+import { FieldCameraIcon } from "@/components/FieldCameraIcon";
 import { GuidedRequestSkeleton } from "@/components/PageLoading";
 import { ButtonWaitBar } from "@/components/WaitBar";
 import { CategoryTiles } from "@/components/CategoryTiles";
@@ -1447,23 +1448,77 @@ export function GuidedRequestForm({
           <FieldLabel>Descrivi il lavoro</FieldLabel>
           {/* Primo campo, con la stessa luce del campo della home: due giri
               all'apertura, verde pieno mentre si scrive. */}
-          <textarea aria-label="Descrivi il lavoro"
-            ref={descriptionRef}
-            className="guided-description-input"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            onBlur={checkDescription}
-            placeholder={resolvedDescriptionPlaceholder}
-            rows={4}
-            style={{
-              padding: 12,
-              borderRadius: 10,
-              fontSize: 16,
-              fontFamily: "inherit",
-              color: brand.grafite,
-              resize: "vertical",
-            }}
+          {/* Il tasto "Foto" dentro il campo, come nella ricerca della home
+              (scelta di Luca, docs/changelog/2026-11-13-foto-nel-campo-di-ricerca.md):
+              le foto si aggiungono mentre si descrive il lavoro e si vedono
+              subito sotto, non più in una sezione a parte più in basso. */}
+          <div className="guided-description-wrap">
+            <textarea aria-label="Descrivi il lavoro"
+              ref={descriptionRef}
+              className="guided-description-input"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              onBlur={checkDescription}
+              placeholder={resolvedDescriptionPlaceholder}
+              rows={4}
+              style={{
+                padding: 12,
+                borderRadius: 10,
+                fontSize: 16,
+                fontFamily: "inherit",
+                color: brand.grafite,
+                resize: "vertical",
+                // Spazio per il tasto "Foto" in basso a destra.
+                paddingBottom: 56,
+              }}
+            />
+            <button
+              type="button"
+              className="field-photo-button guided-description-photo"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={isUploadingPhoto || photos.length >= MAX_PHOTOS}
+              aria-label={photos.length >= MAX_PHOTOS ? `Hai già ${MAX_PHOTOS} foto o video` : "Aggiungi una foto o un video"}
+              title={photos.length >= MAX_PHOTOS ? `Al massimo ${MAX_PHOTOS} foto o video` : "Aggiungi una foto o un video"}
+            >
+              <FieldCameraIcon />
+              <span aria-hidden="true">Foto</span>
+            </button>
+          </div>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*,video/*"
+            onChange={handlePhotoChange}
+            disabled={isUploadingPhoto}
+            style={{ display: "none" }}
           />
+          {photos.length > 0 || isUploadingPhoto ? (
+            <div className="guided-photos" role="group" aria-label={`Foto e video aggiunti (fino a ${MAX_PHOTOS})`}>
+              {photos.map((photo) => (
+                <div key={photo.url} className="guided-photo">
+                  <MediaPreview url={photo.url} forceVideo={photo.isVideo} style={{ borderRadius: 9 }} />
+                  <button type="button" className="field-photo-remove" onClick={() => removePhoto(photo.url)} aria-label="Togli la foto">
+                    <X size={12} strokeWidth={3} color="white" />
+                  </button>
+                </div>
+              ))}
+              {isUploadingPhoto ? (
+                <div className="guided-photo guided-photo-loading" role="status" aria-label="Caricamento della foto">
+                  <UploadingDots dotSize={7} />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          {photoError ? (
+            <Text color={brand.urgenza} fontSize={13}>
+              {photoError}
+            </Text>
+          ) : null}
+          {photoFromSearch && photos.length > 0 ? (
+            <Text color={brand.grafite70} fontSize={13}>
+              Abbiamo aggiunto la foto della tua ricerca: se non serve, toglila.
+            </Text>
+          ) : null}
           {showExamples ? (
             // Due esempi da toccare, come in home (scelta di Luca): riconosciuti
             // con sicurezza dal dizionario, mostrano subito la categoria.
@@ -1629,92 +1684,6 @@ export function GuidedRequestForm({
           </div>
         ) : null}
 
-        <YStack gap="2">
-          <FieldLabel>Foto o video (fino a {MAX_PHOTOS})</FieldLabel>
-          <Text fontSize={13} color={brand.grafite70}>
-            Una foto o un video aiutano il professionista a capire subito il lavoro e a darti un preventivo più preciso.
-          </Text>
-          <YStack flexDirection="row" flexWrap="wrap" gap="2">
-            {photos.map((photo) => (
-              <YStack
-                key={photo.url}
-                width={88}
-                height={88}
-                borderRadius="3"
-                overflow="hidden"
-                position="relative"
-                borderWidth={1}
-                borderColor={brand.filetto}
-              >
-                <MediaPreview url={photo.url} forceVideo={photo.isVideo} />
-                <YStack
-                  position="absolute"
-                  top={4}
-                  right={4}
-                  width={22}
-                  height={22}
-                  borderRadius={11}
-                  backgroundColor="rgba(20,24,30,0.7)"
-                  alignItems="center"
-                  justifyContent="center"
-                  cursor="pointer"
-                  onPress={() => removePhoto(photo.url)}
-                  role="button"
-                  aria-label="Rimuovi foto"
-                >
-                  <X size={13} strokeWidth={2} color="white" />
-                </YStack>
-              </YStack>
-            ))}
-            {photos.length < MAX_PHOTOS ? (
-              <YStack
-                          width={88}
-                          height={88}
-                          borderRadius="3"
-                          borderWidth={1}
-                          borderColor={brand.filetto}
-                          borderStyle="dashed"
-                          alignItems="center"
-                          justifyContent="center"
-                          gap="1"
-                          cursor="pointer"
-                          opacity={isUploadingPhoto ? 0.6 : 1}
-                          onPress={() => !isUploadingPhoto && photoInputRef.current?.click()}
-                          role="button"
-                          aria-label="Aggiungi foto"
-                        >
-                {isUploadingPhoto ? (
-                  <UploadingDots dotSize={7} />
-                ) : (
-                  <Text fontSize="7" color={brand.grafite70}>
-                    +
-                  </Text>
-                )}
-                <Text fontSize={13} color={brand.grafite70}>
-                  {isUploadingPhoto ? "Caricamento" : "Aggiungi"}
-                </Text>
-              </YStack>
-            ) : null}
-          </YStack>
-          <input
-            ref={photoInputRef}
-            type="file"
-            accept="image/*,video/*"
-            onChange={handlePhotoChange}
-            disabled={isUploadingPhoto}
-            style={{ display: "none" }}
-          />
-          {photoError ? (
-            <Text color={brand.urgenza} fontSize={13}>
-              {photoError}
-            </Text>
-          ) : null}
-          {photoFromSearch && photos.length > 0 ? (
-            <Text color={brand.grafite70} fontSize={13}>
-              Abbiamo aggiunto la foto della tua ricerca: se non serve, toglila.
-            </Text>
-          ) : null}
-        </YStack>
 
           </>
         ) : null}

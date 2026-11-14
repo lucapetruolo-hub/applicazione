@@ -22,6 +22,7 @@ import { apiClient } from "@/lib/apiClient";
 import { localPreviewUrl } from "@/lib/media";
 import { forgetSearchPhoto, rememberSearchPhoto, shrinkPhoto } from "@/lib/photoSearch";
 import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "./TurnstileWidget";
+import { FieldCameraIcon } from "./FieldCameraIcon";
 import { GlowLights } from "./GlowLights";
 import { MagneticButton } from "./MagneticButton";
 import styles from "./HomeHero.module.css";
@@ -191,14 +192,23 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
                 placeholder: "Es. scarico intasato",
                 className: "hero-problem-input",
                 examples: heroExamples.field,
+                // Il tasto "Foto" e la miniatura dentro il campo, non più un
+                // pulsante sotto il riquadro (scelta di Luca,
+                // docs/changelog/2026-11-13-foto-nel-campo-di-ricerca.md).
+                // Spenta con PHOTO_SEARCH_ENABLED=false: il campo resta com'era.
+                ...(photoSearch
+                  ? photo
+                    ? { inputStart: <PhotoThumb preview={photo.preview} busy={readingPhoto} onRemove={removePhoto} /> }
+                    : { inputEnd: <PhotoButton onChoose={choosePhoto} /> }
+                  : {}),
               }}
               // Un tocco su un esempio cerca subito (richiesta di Luca,
               // docs/changelog/2026-11-04-esempi-cercano-subito.md).
               footer={({ mode, searchFor }) =>
                 mode === "domicilio" ? (
                   <>
-                    {photoSearch ? (
-                      <PhotoPicker photo={photo?.preview ?? null} busy={readingPhoto} message={photoMessage} onChoose={choosePhoto} onRemove={removePhoto}>
+                    {photoSearch && (photo || photoMessage) ? (
+                      <PhotoNote busy={readingPhoto} message={photoMessage}>
                         {photo ? (
                           <TurnstileWidget
                             onTokenChange={(token) => {
@@ -207,7 +217,7 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
                             resetSignal={turnstileReset}
                           />
                         ) : null}
-                      </PhotoPicker>
+                      </PhotoNote>
                     ) : null}
                     <HeroExamples problems={heroExamples.visible} trades={heroExamples.trades} onPick={searchFor} />
                   </>
@@ -296,48 +306,33 @@ function tradeFallback(item: string): ExampleFallback {
   return slug ? { formAction: `/cerca/${slug}` } : { name: "q", value: item };
 }
 
+/** Formati che il telefono propone scegliendo la foto (anche le foto di iPhone, HEIC). */
+const PHOTO_ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif";
+
 /**
- * "Aggiungi una foto" sotto la ricerca (docs/changelog/2026-11-13-ricerca-con-foto.md):
- * facoltativa, con l'anteprima e "Togli". La foto parte solo con "Cerca".
+ * Tasto "Foto" dentro il campo "Cosa è successo?"
+ * (docs/changelog/2026-11-13-foto-nel-campo-di-ricerca.md): la fotocamera
+ * sfumata con i colori dello sfondo e la parola, perché un'icona da sola non
+ * si capisce che è un pulsante. Bianco con un'ombra leggera, 44 px da toccare.
  */
-function PhotoPicker({
-  photo,
-  busy,
-  message,
-  onChoose,
-  onRemove,
-  children,
-}: {
-  photo: string | null;
-  busy: boolean;
-  message: string | null;
-  onChoose: (file: File) => void;
-  onRemove: () => void;
-  /** Il controllo anti-bot, solo con la foto scelta. */
-  children?: ReactNode;
-}) {
+function PhotoButton({ onChoose }: { onChoose: (file: File) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
-    <div className="hero-photo">
-      {photo ? (
-        <div className="hero-photo-chosen">
-          {/* eslint-disable-next-line @next/next/no-img-element -- anteprima locale (blob:), non un'immagine da ottimizzare */}
-          <img src={photo} alt="La foto del problema" className="hero-photo-thumb" />
-          <span className="hero-photo-text">{busy ? "Guardo la foto…" : "Foto aggiunta: ora tocca Cerca"}</span>
-          <button type="button" className="hero-photo-remove" onClick={onRemove} disabled={busy} aria-label="Togli la foto">
-            <Icon name="x" size={16} color="#1b1a18" strokeWidth={2} />
-          </button>
-        </div>
-      ) : (
-        <button type="button" className="hero-example hero-photo-add" onClick={() => inputRef.current?.click()}>
-          <Icon name="camera" size={17} color="#1e6b6e" strokeWidth={2} />
-          Aggiungi una foto del problema
-        </button>
-      )}
+    <>
+      <button
+        type="button"
+        className="field-photo-button"
+        onClick={() => inputRef.current?.click()}
+        aria-label="Aggiungi una foto del problema"
+        title="Aggiungi una foto del problema"
+      >
+        <FieldCameraIcon />
+        <span aria-hidden="true">Foto</span>
+      </button>
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+        accept={PHOTO_ACCEPT}
         hidden
         onChange={(event) => {
           const file = event.target.files?.[0];
@@ -345,12 +340,37 @@ function PhotoPicker({
           if (file) onChoose(file);
         }}
       />
+    </>
+  );
+}
+
+/** La foto scelta, piccola, all'inizio del campo, con la ✕ per toglierla. */
+function PhotoThumb({ preview, busy, onRemove }: { preview: string; busy: boolean; onRemove: () => void }) {
+  return (
+    <span className="field-photo-thumb">
+      {/* eslint-disable-next-line @next/next/no-img-element -- anteprima locale (blob:), non un'immagine da ottimizzare */}
+      <img src={preview} alt="La foto del problema" />
+      <button type="button" className="field-photo-remove" onClick={onRemove} disabled={busy} aria-label="Togli la foto">
+        <Icon name="x" size={12} color="white" strokeWidth={3} />
+      </button>
+    </span>
+  );
+}
+
+/**
+ * Sotto il riquadro, solo con la foto scelta o con un avviso: cosa succede
+ * ora, l'avviso su persone e documenti (lo controlla anche il server) e il
+ * controllo anti-bot.
+ */
+function PhotoNote({ busy, message, children }: { busy: boolean; message: string | null; children?: ReactNode }) {
+  return (
+    <div className="hero-photo">
       {message ? (
         <span role="alert" className="hero-photo-message">
           {message}
         </span>
       ) : (
-        <span className="hero-photo-hint">Facoltativa. Non fotografare persone o documenti.</span>
+        <span className="hero-photo-hint">{busy ? "Guardo la foto…" : "Foto aggiunta: ora tocca Cerca. Niente persone o documenti."}</span>
       )}
       {children}
     </div>
