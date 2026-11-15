@@ -14,19 +14,12 @@ import { cachedPopularOrder, loadPopularOrder, type CategoryOrderBy, type Popula
 const POPULAR_ORDER_TIMEOUT_MS = 1200;
 
 /**
- * Nomi lunghi accorciati solo nelle tessere da 3 per riga del telefono, dove
- * andavano a capo su tre righe; il nome intero resta per i lettori di schermo
- * (docs/changelog/2026-11-02-registrazione-pro-migliorie.md).
- */
-const COMPACT_LABELS: Partial<Record<ProfessionalCategorySlug, string>> = {
-  climatizzazione: "Clima e caldaie",
-  muratore: "Muratore",
-};
-
-/**
- * Tessere delle categorie con l'icona colorata (docs/CHANGELOG.md §279-§280, stile
- * A scelto dall'utente): scelta dei lavori del professionista
- * (`CategoryMultiPicker`) e categorie della richiesta di preventivo.
+ * Categorie da scegliere, a pillole con l'icona colorata (dal 15/11/2026 al
+ * posto delle tessere grandi, scelta di Luca,
+ * docs/changelog/2026-11-15-scelta-categoria-suggerita.md; prima tessere di
+ * docs/CHANGELOG.md §279-§280): scelta dei lavori del professionista
+ * (`CategoryMultiPicker`) e categorie della richiesta di preventivo quando
+ * non c'è una categoria suggerita (`CategoryChoice`).
  * Pulsanti veri con `aria-pressed`; raggiunto `max` le altre si attenuano.
  *
  * Ordine: in cima le categorie già scelte all'apertura (nella richiesta, la
@@ -48,7 +41,6 @@ export function CategoryTiles({
   showPrimary = false,
   ariaLabel,
   orderBy = "searches",
-  compact = false,
   first = [],
 }: {
   value: ProfessionalCategorySlug[];
@@ -61,8 +53,6 @@ export function CategoryTiles({
   ariaLabel?: string;
   /** Più cercati (di serie) o con più professionisti iscritti (scelta dei lavori del professionista). */
   orderBy?: CategoryOrderBy;
-  /** Sul telefono 3 per riga e più basse (docs/changelog/2026-11-02-registrazione-pro-grafica.md). */
-  compact?: boolean;
   /**
    * Tessere da mettere in cima, prima di tutte: le categorie suggerite dalla
    * descrizione nella richiesta di preventivo (scelta di Luca,
@@ -71,7 +61,7 @@ export function CategoryTiles({
    */
   first?: ProfessionalCategorySlug[];
 }) {
-  const gridClass = compact ? "cat-tiles is-compact" : "cat-tiles";
+  const gridClass = "cat-tiles";
   const [initialCity] = useState(city?.trim() || undefined);
   // Ordine già in memoria (seconda apertura): niente attesa.
   const [popularOrder, setPopularOrder] = useState<PopularOrder | undefined>(() => cachedPopularOrder(initialCity, orderBy));
@@ -123,10 +113,6 @@ export function CategoryTiles({
         const isPrimary = showPrimary && value[0] === category.slug;
         const disabled = !active && isFull;
         const accent = CATEGORY_ACCENT[category.slug];
-        // Con il nome corto il nome letto viene dal testo in vista (quello
-        // nascosto con display:none non conta), così chi usa la voce dice
-        // ciò che vede (WCAG 2.5.3).
-        const shortLabel = compact ? COMPACT_LABELS[category.slug] : undefined;
         return (
           <button
             key={category.slug}
@@ -135,27 +121,14 @@ export function CategoryTiles({
             onClick={() => onToggle(category.slug)}
             aria-pressed={active}
             disabled={disabled}
-            aria-label={shortLabel ? undefined : isPrimary ? `${category.label}, principale` : category.label}
+            aria-label={isPrimary ? `${category.label}, principale` : category.label}
           >
-            <span className="cat-tile-icon" style={{ background: accent.bg, color: accent.fg }} aria-hidden="true">
-              <CategoryIcon slug={category.slug} size={compact ? 22 : 26} />
+            {/* Scelta: la spunta prende il posto dell'icona, come un interruttore acceso. */}
+            <span className="cat-tile-icon" style={active ? undefined : { background: accent.bg, color: accent.fg }} aria-hidden="true">
+              {active ? <Icon name="check" size={16} color="white" strokeWidth={3} /> : <CategoryIcon slug={category.slug} size={18} />}
             </span>
-            {shortLabel ? (
-              <span className="cat-tile-label">
-                <span className="cat-tile-label-full">{category.label}</span>
-                <span className="cat-tile-label-short">
-                  {shortLabel}
-                </span>
-              </span>
-            ) : (
-              <span className="cat-tile-label">{category.label}</span>
-            )}
+            <span className="cat-tile-label">{category.label}</span>
             {isPrimary ? <span className="cat-tile-primary">Principale</span> : null}
-            {active ? (
-              <span className="cat-tile-check" aria-hidden="true">
-                <Icon name="check" size={14} color="white" strokeWidth={3} />
-              </span>
-            ) : null}
           </button>
         );
       })}

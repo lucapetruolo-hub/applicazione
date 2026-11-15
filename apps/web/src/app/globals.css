@@ -6691,69 +6691,78 @@ a.admin-kpi:hover {
   }
 }
 
+/* Categorie a pillole con l'icona colorata (dal 15/11/2026, al posto delle
+   tessere grandi: docs/changelog/2026-11-15-scelta-categoria-suggerita.md).
+   Stesse classi delle tessere di §279 perché valgono le stesse regole: ordine
+   già giusto all'apertura (§324), spunta sulle scelte, attenuate al massimo. */
 .cat-tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .cat-tile {
   position: relative;
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 96px;
-  padding: 12px 8px;
-  border: 1px solid #e7e0d7;
-  border-radius: 20px;
+  gap: 10px;
+  /* 46 px: comodo da toccare col pollice (WCAG 2.5.8 chiede almeno 24). */
+  min-height: 46px;
+  max-width: 100%;
+  padding: 7px 16px 7px 7px;
+  border: 1px solid #e2dad0;
+  border-radius: 999px;
   background: #ffffff;
   font: inherit;
   color: #1b1a18;
+  text-align: left;
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition:
     transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
     border-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
-    background-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+    background-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
+    color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.cat-tile:hover:not(:disabled) {
-  border-color: #247c7c;
+@media (hover: hover) and (pointer: fine) {
+  .cat-tile:hover:not(:disabled):not(.is-on) {
+    border-color: #1e6b6e;
+  }
 }
 .cat-tile:active:not(:disabled) {
   transform: scale(0.97);
 }
 .cat-tile:focus-visible {
-  outline: 2px solid #247c7c;
+  outline: 2px solid #1e6b6e;
   outline-offset: 2px;
 }
 .cat-tile.is-on {
-  /* 2px con 1px di padding in meno: la tessera non cambia misura. */
-  border: 2px solid #247c7c;
-  padding: 11px 7px;
-  background: #f3f9fa;
+  border-color: #1e6b6e;
+  background: #1e6b6e;
+  color: #ffffff;
 }
 .cat-tile:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 .cat-tile-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.cat-tile.is-on .cat-tile-icon {
+  background: rgba(255, 255, 255, 0.2);
 }
 .cat-tile-label {
   font-size: 16px;
   font-weight: 600;
   line-height: 1.25;
-  text-align: center;
 }
 .cat-tile-primary {
-  margin-top: -2px;
   padding: 2px 8px;
   border-radius: 999px;
   background: #fff3d6;
@@ -6761,73 +6770,19 @@ a.admin-kpi:hover {
   font-size: 13px;
   font-weight: 700;
 }
-.cat-tile-check {
-  position: absolute;
-  top: 7px;
-  right: 7px;
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  background: #1e6b6e;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-/* Tessere compatte (scelta dei mestieri del professionista,
-   docs/changelog/2026-11-02-registrazione-pro-grafica.md): sul telefono 3
-   per riga e più basse, i 13 mestieri stanno in una schermata invece di due. */
-@media (max-width: 560px) {
-  .cat-tiles.is-compact {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-  .cat-tiles.is-compact .cat-tile {
-    min-height: 82px;
-    gap: 6px;
-    padding: 10px 4px;
-  }
-  .cat-tiles.is-compact .cat-tile.is-on {
-    padding: 9px 3px;
-  }
-  .cat-tiles.is-compact .cat-tile-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-  }
-  .cat-tiles.is-compact .cat-tile-label {
-    font-size: 13px;
-    hyphens: auto;
-    overflow-wrap: anywhere;
-  }
-  .cat-tiles.is-compact .cat-tile-label-full {
-    display: none;
-  }
-  .cat-tiles.is-compact .cat-tile-label-short {
-    display: inline;
-  }
-  .cat-tiles.is-compact .cat-tile-check {
-    top: 5px;
-    right: 5px;
-    width: 18px;
-    height: 18px;
-  }
-}
-/* Nome corto solo nelle tessere compatte del telefono (sopra). */
-.cat-tile-label-short {
-  display: none;
-}
-/* Tessere vuote finché non arriva l'ordine dei più cercati (§324): stessa
-   misura delle vere, così la pagina non salta; poi compaiono con una
+/* Pillole vuote finché non arriva l'ordine dei più cercati (§324): stessa
+   altezza delle vere, così la pagina non salta; poi compaiono con una
    dissolvenza breve, mai riordinate davanti a chi guarda. */
 .cat-tile.cat-tile-placeholder {
   cursor: default;
   border-color: #f3e7d6;
+  width: 132px;
 }
 .cat-tile-placeholder .cat-tile-icon {
   background-color: transparent;
 }
 .cat-tile-placeholder-label {
-  width: 64%;
+  width: 64px;
   height: 14px;
   border-radius: 6px;
 }
@@ -6842,11 +6797,344 @@ a.admin-kpi:hover {
 .cat-tiles-ready {
   animation: cat-tiles-in 0.18s ease-out;
 }
+
+/* Categoria suggerita con "Cambia" (proposta A scelta da Luca il 15/11/2026,
+   docs/changelog/2026-11-15-scelta-categoria-suggerita.md). */
+.cat-choice-card {
+  border: 2px solid #1e6b6e;
+  border-radius: 20px;
+  background: #ffffff;
+  padding: 6px 0;
+}
+.cat-choice-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+}
+.cat-choice-row + .cat-choice-row {
+  border-top: 1px solid #efe8df;
+}
+.cat-choice-icon {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cat-choice-text {
+  flex: 1;
+  min-width: 0;
+}
+.cat-choice-name {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #1b1a18;
+}
+.cat-choice-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #6f665d;
+}
+.cat-choice-note a {
+  color: #1e6b6e;
+  font-weight: 600;
+}
+.cat-choice-change {
+  flex: none;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid #d9d1c7;
+  border-radius: 999px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e6b6e;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    border-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .cat-choice-change:hover {
+    border-color: #1e6b6e;
+  }
+}
+.cat-choice-change:active {
+  transform: scale(0.97);
+}
+.cat-choice-change:focus-visible {
+  outline: 2px solid #1e6b6e;
+  outline-offset: 2px;
+}
+.cat-choice-also {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 14px;
+  color: #6f665d;
+}
+.cat-choice-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px dashed #8fbcbd;
+  border-radius: 999px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e6b6e;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.cat-choice-add:focus-visible {
+  outline: 2px solid #1e6b6e;
+  outline-offset: 2px;
+}
+
+/* Pannello "Cambia": dal basso sul telefono, finestra al centro sul computer. */
+.cat-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(15, 25, 25, 0.42);
+  animation: cat-sheet-fade 0.2s ease-out;
+}
+.cat-sheet {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  /* Altezza fissa: cercando, il pannello non si accorcia sotto il dito. */
+  height: 82dvh;
+  border-radius: 20px 20px 0 0;
+  background: #ffffff;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
+  padding: 10px 0 env(safe-area-inset-bottom, 0px);
+  outline: none;
+  animation: cat-sheet-up 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.cat-sheet-grab {
+  width: 40px;
+  height: 5px;
+  border-radius: 9px;
+  background: #d8d2ca;
+  margin: 0 auto 8px;
+}
+.cat-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px 10px 20px;
+}
+.cat-sheet-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: #0f3b3b;
+  margin: 0;
+}
+.cat-sheet-count {
+  display: block;
+  font-size: 13px;
+  font-weight: 400;
+  color: #6f665d;
+}
+.cat-sheet-done {
+  min-height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  background: #1e6b6e;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.cat-sheet-done:focus-visible,
+.cat-sheet-option:focus-visible {
+  outline: 2px solid #1e6b6e;
+  outline-offset: 2px;
+}
+.cat-sheet-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 20px 8px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #f4efe8;
+  color: #6f665d;
+}
+.cat-sheet-search:focus-within {
+  border-color: #1e6b6e;
+  background: #ffffff;
+}
+.cat-sheet-search input {
+  flex: 1;
+  min-width: 0;
+  min-height: 46px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  /* 16 px: sotto, Safari ingrandisce la pagina quando si tocca il campo. */
+  font-size: 16px;
+  color: #1b1a18;
+}
+.cat-sheet-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 8px 12px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  align-content: start;
+}
+.cat-sheet-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  color: #1b1a18;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .cat-sheet-option:hover:not(:disabled) {
+    background: #f7f3ee;
+  }
+}
+.cat-sheet-option[aria-pressed="true"] {
+  background: #f1f8f8;
+}
+.cat-sheet-option:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.cat-sheet-option-icon {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cat-sheet-option-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.cat-sheet-option-note {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e6b6e;
+}
+.cat-sheet-check {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid #cfc7bd;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cat-sheet-option[aria-pressed="true"] .cat-sheet-check {
+  border-color: #1e6b6e;
+  background: #1e6b6e;
+}
+.cat-sheet-empty {
+  padding: 16px 12px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #6f665d;
+}
+.cat-sheet-full {
+  margin: 0 20px 6px;
+  font-size: 13px;
+  color: #6f665d;
+}
+@media (min-width: 720px) {
+  .cat-sheet-backdrop {
+    align-items: center;
+    padding: 24px;
+  }
+  .cat-sheet {
+    max-width: 640px;
+    height: min(660px, 90dvh);
+    border-radius: 20px;
+    padding-top: 18px;
+    box-shadow:
+      0 12px 48px rgba(15, 40, 40, 0.18),
+      0 0 0 1px rgba(0, 0, 0, 0.04);
+    animation: cat-sheet-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .cat-sheet-grab {
+    display: none;
+  }
+  .cat-sheet-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@keyframes cat-sheet-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes cat-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes cat-sheet-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .cat-tile {
+  .cat-tile,
+  .cat-choice-change,
+  .cat-sheet-option {
     transition: none;
   }
-  .cat-tiles-ready {
+  .cat-tiles-ready,
+  .cat-sheet-backdrop,
+  .cat-sheet {
     animation: none;
   }
 }

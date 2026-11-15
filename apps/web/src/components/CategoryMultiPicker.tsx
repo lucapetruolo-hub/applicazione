@@ -12,11 +12,11 @@ import { keyActivate } from "@/lib/keyActivate";
  * si sceglie l'ordine con cui compaiono sul profilo. Raggiunto il massimo, le altre non si possono
  * toccare finché non se ne toglie una.
  *
- * Tessere con l'icona colorata della categoria, le stesse della home
- * (docs/CHANGELOG.md §279, stile A scelto dall'utente al posto delle
- * etichette con il bordo dorato animato di §248): spunta verde sulle
- * scelte, "Principale" sotto il nome della prima, "N su 3" in alto.
- * Tessere in `CategoryTiles`, con prima i lavori che hanno più professionisti
+ * Pillole con l'icona colorata della categoria (dal 15/11/2026,
+ * docs/changelog/2026-11-15-scelta-categoria-suggerita.md; prima tessere di
+ * docs/CHANGELOG.md §279): spunta sulle scelte, "Principale" nella pillola
+ * della prima, "N su 3" in alto.
+ * Pillole in `CategoryTiles`, con prima i lavori che hanno più professionisti
  * iscritti (richiesta di Luca, docs/changelog/2026-11-02-categorie-telefono.md;
  * prima i più cercati).
  */
@@ -62,7 +62,6 @@ export function CategoryMultiPicker({
         max={MAX_PROFESSIONAL_CATEGORIES}
         city={city}
         showPrimary
-        compact
         ariaLabel="Che lavori fai?"
         orderBy="professionals"
       />

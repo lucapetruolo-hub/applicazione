@@ -51,7 +51,7 @@ import { FieldCameraIcon } from "@/components/FieldCameraIcon";
 import { TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
 import { GuidedRequestSkeleton } from "@/components/PageLoading";
 import { ButtonWaitBar } from "@/components/WaitBar";
-import { CategoryTiles } from "@/components/CategoryTiles";
+import { CategoryChoice } from "@/components/CategoryChoice";
 import { WeekSlotPicker } from "@/components/WeekSlotPicker";
 import { SafetyNotice } from "@/components/ProblemBand";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
@@ -1593,60 +1593,42 @@ export function GuidedRequestForm({
         {suggestionsOn || !selectedCategory ? (
           <YStack gap="2" id="guided-field-categorie">
             <XStack justifyContent="space-between" alignItems="baseline" gap="2">
-              <FieldLabel>Categorie</FieldLabel>
+              {/* "Chi ti serve" al posto di "Categorie", più parlato (scelta di Luca,
+                  docs/changelog/2026-11-15-scelta-categoria-suggerita.md). */}
+              <FieldLabel>Chi ti serve</FieldLabel>
               <Text fontSize={13} color={brand.grafite70} aria-live="polite">
                 {/* "Scegli fino a 3", poi "1 di 3" (docs/CHANGELOG.md §349): "Fino a 3"
-                    da solo non diceva che si possono scegliere più tessere. */}
+                    da solo non diceva che si possono scegliere più categorie. */}
                 {categorySlugs.length > 0 ? `${categorySlugs.length} di ${MAX_REQUEST_CATEGORIES}` : `Scegli fino a ${MAX_REQUEST_CATEGORIES}`}
               </Text>
             </XStack>
-            {/* Tutte le tessere sempre in vista, con quelle suggerite dalla
-                descrizione in cima e la prima già scelta (scelte di Luca). */}
-            {suggestionsOn ? (
+            {/* Senza una categoria scelta, una riga che dice cosa fare. Con la
+                categoria suggerita lo dice la scheda stessa (`CategoryChoice`). */}
+            {suggestionsOn && categorySlugs.length === 0 ? (
               <Text fontSize={13} color={brand.grafite70} aria-live="polite">
-                {openQuestion && categorySlugs.length === 0
+                {openQuestion
                   ? `Può servirti ${joinWithOr(suggestedSlugs.map((slug) => CATEGORY_WHO[slug]))}: rispondi alla domanda qui sopra o scegli tu.`
-                  : autoSlug && categorySlugs.includes(autoSlug) && !openQuestion
-                  ? `Ti suggeriamo ${categoryLabelOf(autoSlug)}: è già scelta, puoi cambiarla o aggiungerne altre.`
-                  : notUnderstood && categorySlugs.length === 0
+                  : notUnderstood
                     ? suggestion?.outOfService
                       ? `${OUT_OF_SERVICE_LABELS[suggestion.outOfService]}. Se pensi che serva una di queste, sceglila tu.`
                       : readingFirstPhoto
                         ? "Guardiamo la foto per capire chi ti serve…"
                         : "Non abbiamo capito chi ti serve: sceglilo tu, oppure aggiungi una foto qui sotto."
-                    : categorySlugs.length === 0
-                      ? "Scrivi il lavoro qui sopra e ti suggeriamo la categoria, oppure sceglila tu."
-                      : ""}
-                {/* Anche gli altri mestieri proposti, non solo il primo
-                    (docs/changelog/2026-11-09-mestieri-proposti-pulsanti.md):
-                    non si scelgono da soli, perché ognuno è una richiesta in più. */}
-                {categorySlugs.length > 0 && alsoSuggested.length > 0 && categorySlugs.length < MAX_REQUEST_CATEGORIES
-                  ? ` Può servire anche ${alsoSuggested.map(categoryLabelOf).join(" o ")}: ${alsoSuggested.length === 1 ? "toccala" : "toccane una"} per aggiungerla.`
-                  : ""}
-                {suggestion?.source === "ia" && autoSlug && categorySlugs.includes(autoSlug) ? (
-                  // Trasparenza sull'intelligenza artificiale come nella ricerca (AI Act art. 50).
-                  <>
-                    {" "}Suggerimento dell'intelligenza artificiale: può sbagliare, controlla.{" "}
-                    <Link href="/privacy#fornitori" style={{ color: brand.cianografiaScuro }}>
-                      Come funziona
-                    </Link>
-                  </>
-                ) : null}
+                    : "Scrivi il lavoro qui sopra e ti suggeriamo chi ti serve, oppure sceglilo tu."}
               </Text>
             ) : null}
-            {/* Più categorie insieme (docs/CHANGELOG.md §259), a tessere come
-                nella registrazione del professionista (§279), con le più
-                cercate nella città di partenza prima. */}
-            <CategoryTiles
+            {/* Categoria suggerita in una scheda con "Cambia", pillole senza
+                suggerimento (proposta A scelta da Luca il 15/11/2026). Più
+                categorie insieme come prima (docs/CHANGELOG.md §259). */}
+            <CategoryChoice
               value={categorySlugs}
               onToggle={toggleCategory}
               max={MAX_REQUEST_CATEGORIES}
               city={initialCity}
-              ariaLabel="Categorie"
-              first={suggestedSlugs}
-              // Richiesta urgente: tessere piccole a tre per riga sul telefono, tutte
-              // ancora in vista ma "Avanti" molto più in alto (collaudo dell'8/11, E6-25).
-              compact={isUrgentInitial}
+              suggested={suggestedSlugs}
+              autoSlug={suggestionsOn && autoApplied && categorySlugs.includes(autoApplied) ? autoApplied : null}
+              fromAi={suggestion?.source === "ia"}
+              also={suggestionsOn ? alsoSuggested : []}
             />
             {categorySlugs.length > 1 ? (
               <Text fontSize={13} color={brand.grafite70}>

@@ -403,8 +403,8 @@ function RegistratiForm() {
   const chosenInterval = parseBillingInterval(searchParams.get("rinnovo"));
   const role = isProfessional ? "PROFESSIONAL" : "CLIENT";
   const entityChoice = entityChoiceFromParam(searchParams.get("tipo"));
-  // L'ordine delle tessere "Che lavori fai?" si chiede appena si apre la
-  // pagina: arrivati a quel passo le tessere compaiono subito, senza attesa
+  // L'ordine delle categorie "Che lavori fai?" si chiede appena si apre la
+  // pagina: arrivati a quel passo le pillole compaiono subito, senza attesa
   // (docs/changelog/2026-11-02-categorie-telefono.md).
   useEffect(() => {
     if (isProfessional) prefetchCategoryOrder(undefined, "professionals");
