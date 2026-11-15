@@ -144,7 +144,7 @@ test("odore di gas: prima di tutto l'avviso di sicurezza", async ({ page }) => {
 test("descrizione che non fa capire il mestiere: si sceglie dall'elenco", async ({ page }) => {
   await page.goto("/preventivo");
   await page.getByLabel("Descrivi il lavoro").fill("Mi serve una mano per una cosa");
-  await expect(page.getByText("Non abbiamo capito chi ti serve: sceglilo tu, oppure aggiungi una foto qui sotto.")).toBeVisible();
+  await expect(page.getByText("Non abbiamo capito chi ti serve: sceglilo tu, oppure aggiungi una foto qui sopra.")).toBeVisible();
   await expect(page.getByRole("group", { name: "Categorie" }).locator(".cat-tile.is-on")).toHaveCount(0);
 });
 

@@ -1590,6 +1590,80 @@ export function GuidedRequestForm({
           </div>
         ) : null}
 
+        {/* Le foto per il professionista in uno spazio loro, subito dopo la
+            descrizione (scelte di Luca, docs/changelog/2026-11-14-foto-per-il-professionista.md
+            e 2026-11-15-foto-sotto-la-descrizione.md):
+            la foto per l'IA si mette nella ricerca, queste le vede solo chi
+            riceve la richiesta. La foto della ricerca entra già qui. */}
+        <YStack gap="2">
+          <FieldLabel>Foto per il professionista (facoltative)</FieldLabel>
+          <Text fontSize={13} color={brand.grafite70}>
+            Aiutano a capire il lavoro e a darti un preventivo più preciso. Le vede il professionista: niente numeri di
+            telefono, documenti o persone.
+          </Text>
+          <div className="guided-photos" role="group" aria-label={`Foto e video per il professionista (fino a ${MAX_PHOTOS})`}>
+            {photos.map((photo) => (
+              <div key={photo.url} className="guided-photo">
+                <MediaPreview url={photo.url} forceVideo={photo.isVideo} style={{ borderRadius: 9 }} />
+                <button type="button" className="field-photo-remove" onClick={() => removePhoto(photo.url)} aria-label="Togli la foto">
+                  <X size={12} strokeWidth={3} color="white" />
+                </button>
+              </div>
+            ))}
+            {isUploadingPhoto ? (
+              <div className="guided-photo guided-photo-loading" role="status" aria-label="Caricamento della foto">
+                <UploadingDots dotSize={7} />
+              </div>
+            ) : photos.length < MAX_PHOTOS ? (
+              <button
+                type="button"
+                className="guided-photo guided-photo-add"
+                onClick={() => photoInputRef.current?.click()}
+                aria-label="Aggiungi una foto o un video"
+              >
+                <FieldCameraIcon />
+                <span aria-hidden="true">Aggiungi</span>
+              </button>
+            ) : null}
+          </div>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*,video/*"
+            onChange={handlePhotoChange}
+            disabled={isUploadingPhoto}
+            style={{ display: "none" }}
+            aria-label="Aggiungi una foto o un video per il professionista"
+          />
+          {photoError ? (
+            <Text color={brand.urgenza} fontSize={13}>
+              {photoError}
+            </Text>
+          ) : null}
+          {readingFirstPhoto ? (
+            <Text color={brand.grafite70} fontSize={13} role="status">
+              Guardiamo la foto per capire chi ti serve…
+            </Text>
+          ) : categoryFromPhoto && categorySlugs.includes(categoryFromPhoto) ? (
+            <Text color={brand.grafite70} fontSize={13} role="status">
+              Dalla foto ti suggeriamo {categoryLabelOf(categoryFromPhoto)}: l&apos;abbiamo scelta qui sotto, puoi cambiarla.
+            </Text>
+          ) : null}
+          {textNotUnderstoodByAi && firstPhotoUrl ? (
+            <TurnstileWidget
+              onTokenChange={(token) => {
+                photoTurnstileToken.current = token;
+              }}
+              resetSignal={photoTurnstileReset}
+            />
+          ) : null}
+          {photoFromSearch && photos.length > 0 ? (
+            <Text color={brand.grafite70} fontSize={13}>
+              Abbiamo aggiunto la foto della tua ricerca: se non serve, toglila.
+            </Text>
+          ) : null}
+        </YStack>
+
         {suggestionsOn || !selectedCategory ? (
           <YStack gap="2" id="guided-field-categorie">
             <XStack justifyContent="space-between" alignItems="baseline" gap="2">
@@ -1613,7 +1687,7 @@ export function GuidedRequestForm({
                       ? `${OUT_OF_SERVICE_LABELS[suggestion.outOfService]}. Se pensi che serva una di queste, sceglila tu.`
                       : readingFirstPhoto
                         ? "Guardiamo la foto per capire chi ti serve…"
-                        : "Non abbiamo capito chi ti serve: sceglilo tu, oppure aggiungi una foto qui sotto."
+                        : "Non abbiamo capito chi ti serve: sceglilo tu, oppure aggiungi una foto qui sopra."
                     : categorySlugs.length === 0
                       ? "Scrivi il lavoro qui sopra e ti suggeriamo la categoria, oppure sceglila tu."
                       : ""}
@@ -1697,79 +1771,6 @@ export function GuidedRequestForm({
             />
           </div>
         ) : null}
-
-        {/* Le foto per il professionista di nuovo in uno spazio loro, sotto
-            (scelta di Luca, docs/changelog/2026-11-14-foto-per-il-professionista.md):
-            la foto per l'IA si mette nella ricerca, queste le vede solo chi
-            riceve la richiesta. La foto della ricerca entra già qui. */}
-        <YStack gap="2">
-          <FieldLabel>Foto per il professionista (facoltative)</FieldLabel>
-          <Text fontSize={13} color={brand.grafite70}>
-            Aiutano a capire il lavoro e a darti un preventivo più preciso. Le vede il professionista: niente numeri di
-            telefono, documenti o persone.
-          </Text>
-          <div className="guided-photos" role="group" aria-label={`Foto e video per il professionista (fino a ${MAX_PHOTOS})`}>
-            {photos.map((photo) => (
-              <div key={photo.url} className="guided-photo">
-                <MediaPreview url={photo.url} forceVideo={photo.isVideo} style={{ borderRadius: 9 }} />
-                <button type="button" className="field-photo-remove" onClick={() => removePhoto(photo.url)} aria-label="Togli la foto">
-                  <X size={12} strokeWidth={3} color="white" />
-                </button>
-              </div>
-            ))}
-            {isUploadingPhoto ? (
-              <div className="guided-photo guided-photo-loading" role="status" aria-label="Caricamento della foto">
-                <UploadingDots dotSize={7} />
-              </div>
-            ) : photos.length < MAX_PHOTOS ? (
-              <button
-                type="button"
-                className="guided-photo guided-photo-add"
-                onClick={() => photoInputRef.current?.click()}
-                aria-label="Aggiungi una foto o un video"
-              >
-                <FieldCameraIcon />
-                <span aria-hidden="true">Aggiungi</span>
-              </button>
-            ) : null}
-          </div>
-          <input
-            ref={photoInputRef}
-            type="file"
-            accept="image/*,video/*"
-            onChange={handlePhotoChange}
-            disabled={isUploadingPhoto}
-            style={{ display: "none" }}
-            aria-label="Aggiungi una foto o un video per il professionista"
-          />
-          {photoError ? (
-            <Text color={brand.urgenza} fontSize={13}>
-              {photoError}
-            </Text>
-          ) : null}
-          {readingFirstPhoto ? (
-            <Text color={brand.grafite70} fontSize={13} role="status">
-              Guardiamo la foto per capire chi ti serve…
-            </Text>
-          ) : categoryFromPhoto && categorySlugs.includes(categoryFromPhoto) ? (
-            <Text color={brand.grafite70} fontSize={13} role="status">
-              Dalla foto ti suggeriamo {categoryLabelOf(categoryFromPhoto)}: l&apos;abbiamo scelta sopra, puoi cambiarla.
-            </Text>
-          ) : null}
-          {textNotUnderstoodByAi && firstPhotoUrl ? (
-            <TurnstileWidget
-              onTokenChange={(token) => {
-                photoTurnstileToken.current = token;
-              }}
-              resetSignal={photoTurnstileReset}
-            />
-          ) : null}
-          {photoFromSearch && photos.length > 0 ? (
-            <Text color={brand.grafite70} fontSize={13}>
-              Abbiamo aggiunto la foto della tua ricerca: se non serve, toglila.
-            </Text>
-          ) : null}
-        </YStack>
 
 
           </>
