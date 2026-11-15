@@ -1,4 +1,5 @@
 import { PROBLEM_PHOTO_MAX_EDGE } from "@professionisti/shared";
+import { localPreviewUrl } from "@/lib/media";
 
 /**
  * Ricerca con foto (docs/changelog/2026-11-13-ricerca-con-foto.md): la foto
@@ -53,7 +54,8 @@ export async function withoutHiddenData(file: File): Promise<File> {
  */
 export function frameFromVideo(file: File): Promise<Blob | null> {
   return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
+    // localPreviewUrl: stesso indirizzo blob: delle anteprime, già passato da encodeURI (CodeQL).
+    const url = localPreviewUrl(file);
     const video = document.createElement("video");
     let done = false;
     const finish = (blob: Blob | null) => {
