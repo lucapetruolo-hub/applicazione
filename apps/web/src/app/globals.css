@@ -9524,11 +9524,6 @@ textarea[id^="contatti-"][aria-invalid="true"] {
   display: flex;
   flex-direction: column;
 }
-.guided-description-photo {
-  position: absolute;
-  right: 22px;
-  bottom: 10px;
-}
 .guided-photos {
   display: flex;
   flex-wrap: wrap;
@@ -9541,6 +9536,31 @@ textarea[id^="contatti-"][aria-invalid="true"] {
   height: 72px;
   border-radius: 10px;
   border: 1px solid #e7e0d7;
+}
+/* Casella "Aggiungi" in coda alle miniature, con la fotocamera sfumata del campo della home. */
+.guided-photo-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0;
+  background: #fff;
+  border: 1px dashed #cfc5b8;
+  color: #4a5560;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.guided-photo-add:hover {
+  border-color: #1e6b6e;
+  background: #f7fbfa;
+}
+.guided-photo-add:focus-visible {
+  outline: 2px solid #1e6b6e;
+  outline-offset: 2px;
 }
 .guided-photo-loading {
   display: flex;

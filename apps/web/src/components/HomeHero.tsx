@@ -178,8 +178,10 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
               capiva che si può descrivere il guasto. Le parole per Google
               (idraulici, elettricisti, vicino a te) restano qui sotto. */}
           <span className={`is_Text ${styles.lead}`}>
-            Con parole tue: l&apos;intelligenza artificiale capisce chi ti serve. Idraulici, elettricisti e altri
-            professionisti vicino a te.
+            {/* "o con una foto" solo con la ricerca con foto accesa (scelta di Luca,
+                docs/changelog/2026-11-14-foto-per-il-professionista.md). */}
+            {photoSearch ? "Con parole tue o con una foto" : "Con parole tue"}: l&apos;intelligenza artificiale capisce chi
+            ti serve. Idraulici, elettricisti e altri professionisti vicino a te.
           </span>
 
           <div className={`is_View ${styles.search}`}>

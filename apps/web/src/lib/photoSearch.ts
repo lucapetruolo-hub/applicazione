@@ -31,6 +31,21 @@ export async function shrinkPhoto(file: File): Promise<Blob> {
   });
 }
 
+/**
+ * La stessa foto senza dati nascosti (posizione GPS, modello del telefono), per le foto
+ * che il cliente aggiunge per il professionista (docs/changelog/2026-11-14-foto-per-il-professionista.md).
+ * Se il browser non riesce ad aprirla resta l'originale: la richiesta non si blocca per questo.
+ */
+export async function withoutHiddenData(file: File): Promise<File> {
+  try {
+    const blob = await shrinkPhoto(file);
+    const name = `${file.name.replace(/\.[^.]+$/, "") || "foto"}.jpg`;
+    return new File([blob], name, { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}
+
 type SavedPhoto = { description: string; dataUrl: string; at: number };
 
 function blobToDataUrl(blob: Blob): Promise<string> {
