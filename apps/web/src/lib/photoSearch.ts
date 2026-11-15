@@ -46,6 +46,48 @@ export async function withoutHiddenData(file: File): Promise<File> {
   }
 }
 
+/**
+ * Un fotogramma del video (a 1 secondo, o a metà se è più corto), piccolo e in JPEG:
+ * se il cliente aggiunge solo video, l'IA guarda questo come una foto
+ * (docs/changelog/2026-11-15-foto-sotto-la-descrizione.md). Null se il browser non ci riesce.
+ */
+export function frameFromVideo(file: File): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    let done = false;
+    const finish = (blob: Blob | null) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      URL.revokeObjectURL(url);
+      video.removeAttribute("src");
+      video.load();
+      resolve(blob);
+    };
+    const timer = setTimeout(() => finish(null), 8000);
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.onerror = () => finish(null);
+    video.onloadeddata = () => {
+      const duration = Number.isFinite(video.duration) ? video.duration : 0;
+      video.currentTime = duration > 2 ? 1 : duration / 2;
+    };
+    video.onseeked = () => {
+      const scale = Math.min(1, PROBLEM_PHOTO_MAX_EDGE / Math.max(video.videoWidth, video.videoHeight, 1));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+      canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+      const context = canvas.getContext("2d");
+      if (!context || video.videoWidth === 0) return finish(null);
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => finish(blob), "image/jpeg", 0.82);
+    };
+    video.src = url;
+  });
+}
+
 type SavedPhoto = { description: string; dataUrl: string; at: number };
 
 function blobToDataUrl(blob: Blob): Promise<string> {

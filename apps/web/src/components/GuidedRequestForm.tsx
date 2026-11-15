@@ -61,7 +61,7 @@ import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 import { cleanPostalCode, postalCodeCityProblem, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
 import { localPreviewUrl } from "@/lib/media";
-import { searchPhotoFor, withoutHiddenData } from "@/lib/photoSearch";
+import { frameFromVideo, searchPhotoFor, withoutHiddenData } from "@/lib/photoSearch";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 
 /**
@@ -772,13 +772,15 @@ export function GuidedRequestForm({
   // Se dal testo l'IA non capisce il mestiere, guarda la prima foto per il
   // professionista (scelta di Luca, docs/changelog/2026-11-14-foto-per-il-professionista.md):
   // una sola chiamata, solo in quel caso, con la copia piccola già senza GPS.
-  // Un video non si guarda.
+  // Con soli video si guarda un fotogramma del primo, preso nel browser.
   const photoTurnstileToken = useRef<string | null>(null);
   const [photoTurnstileReset, setPhotoTurnstileReset] = useState(0);
   const [readingFirstPhoto, setReadingFirstPhoto] = useState(false);
   const [categoryFromPhoto, setCategoryFromPhoto] = useState<ProfessionalCategorySlug | null>(null);
   const firstPhotoTriedRef = useRef("");
-  const firstPhotoUrl = photos[0] && !photos[0].isVideo ? photos[0].url : null;
+  // La prima foto dell'elenco; se il cliente ha tolto le foto e restano video,
+  // un fotogramma del primo video.
+  const firstPhotoUrl = (photos.find((item) => !item.isVideo) ?? photos[0])?.url ?? null;
   const textNotUnderstoodByAi =
     notUnderstood && checkedDescription?.text === typedDescription && checkedDescription.result.categories.length === 0;
   useEffect(() => {
@@ -1252,6 +1254,9 @@ export function GuidedRequestForm({
     // (docs/changelog/2026-11-14-foto-per-il-professionista.md). Se il
     // browser non sa aprirla (es. HEIC su Chrome per computer) parte com'è.
     const file = isVideo ? picked : await withoutHiddenData(picked);
+    // La copia per l'IA, usata solo se dal testo non si capisce il mestiere: la foto
+    // stessa, o per un video un fotogramma.
+    const aiCopy = isVideo ? await frameFromVideo(picked) : file;
     if (token) {
       setIsUploadingPhoto(true);
       try {
@@ -1261,7 +1266,7 @@ export function GuidedRequestForm({
         // finire nel database come URL — richiesta esplicita dell'utente
         // ("ridimensionala per occupare meno memoria").
         const result = await apiClient.uploadGuidedRequestPhoto(token, file);
-        if (!isVideo) photoBlobsRef.current.set(result.imageUrl, file);
+        if (aiCopy) photoBlobsRef.current.set(result.imageUrl, aiCopy);
         setPhotos((prev) => [...prev, { url: result.imageUrl, file: null, isVideo }].slice(0, MAX_PHOTOS));
       } catch (err) {
         setPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
@@ -1274,7 +1279,7 @@ export function GuidedRequestForm({
     // un'anteprima via blob:, caricata davvero solo al momento dell'invio
     // (doSubmit, dopo il gate F2.2).
     const previewUrl = localPreviewUrl(file);
-    if (!isVideo) photoBlobsRef.current.set(previewUrl, file);
+    if (aiCopy) photoBlobsRef.current.set(previewUrl, aiCopy);
     setPhotos((prev) => [...prev, { url: previewUrl, file, isVideo }].slice(0, MAX_PHOTOS));
   }
 
@@ -1595,7 +1600,7 @@ export function GuidedRequestForm({
         <YStack gap="2">
           <FieldLabel>Foto per il professionista</FieldLabel>
           <Text fontSize={13} color={brand.grafite70}>
-            Aiutano a capire il lavoro e a darti un preventivo più preciso. Le vede il professionista: niente numeri di
+            Prima una foto del problema da vicino, poi altre foto o video. Le vede il professionista: niente numeri di
             telefono, documenti o persone.
           </Text>
           <div className="guided-photos" role="group" aria-label={`Foto e video per il professionista (fino a ${MAX_PHOTOS})`}>
@@ -1613,15 +1618,17 @@ export function GuidedRequestForm({
               </div>
             ) : photos.length < MAX_PHOTOS ? (
               // Dal telefono si sceglie tra fotocamera, video e galleria (PhotoPicker).
+              // La prima è per forza una foto del problema (scelta di Luca del 15/11): è
+              // quella che guarda l'IA se dal testo non si capisce il mestiere. Poi anche video.
               <PhotoPicker
-                accept="image/*,video/*"
-                allowVideo
+                accept={photos.length === 0 ? "image/*" : "image/*,video/*"}
+                allowVideo={photos.length > 0}
                 onFile={addPhoto}
                 className="guided-photo guided-photo-add"
-                label="Aggiungi una foto o un video"
+                label={photos.length === 0 ? "Aggiungi una foto del problema" : "Aggiungi una foto o un video"}
               >
                 <FieldCameraIcon />
-                <span aria-hidden="true">Aggiungi</span>
+                <span aria-hidden="true">{photos.length === 0 ? "Foto del problema" : "Aggiungi"}</span>
               </PhotoPicker>
             ) : null}
           </div>

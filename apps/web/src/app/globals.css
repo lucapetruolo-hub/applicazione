@@ -9551,6 +9551,8 @@ textarea[id^="contatti-"][aria-invalid="true"] {
   font: inherit;
   font-size: 13px;
   font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
   cursor: pointer;
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
