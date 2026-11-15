@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { useDeferredValue, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { X } from "lucide-react";
@@ -48,6 +48,7 @@ import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { RequestSentScreen } from "@/components/RequestSentScreen";
 import { UploadingDots } from "@/components/UploadingDots";
 import { FieldCameraIcon } from "@/components/FieldCameraIcon";
+import { PhotoPicker } from "@/components/PhotoPicker";
 import { TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
 import { GuidedRequestSkeleton } from "@/components/PageLoading";
 import { ButtonWaitBar } from "@/components/WaitBar";
@@ -909,13 +910,11 @@ export function GuidedRequestForm({
     };
   }, [user]);
 
-  // Un solo input file, senza `capture`: su iOS/Android questo fa comparire
-  // il menu nativo del sistema ("Scatta foto"/"Libreria foto"/"Scegli file",
-  // stile iPhone) invece di aprire direttamente una delle due opzioni —
-  // richiesta esplicita dell'utente. Con `capture` impostato il browser
-  // salta il menu e apre subito la fotocamera, che è il comportamento che
-  // si vuole evitare qui.
-  const photoInputRef = useRef<HTMLInputElement>(null);
+  // Prima un solo input senza `capture`, per il menu nativo del telefono
+  // (richiesta dell'utente). Su Android quel menu non offre sempre la
+  // fotocamera, quindi dal 15/11 dal telefono si apre il menu di PhotoPicker
+  // con "Scatta una foto", "Fai un video" e "Scegli dalla galleria", come il
+  // "+" della chat (docs/changelog/2026-11-15-foto-sotto-la-descrizione.md).
 
   // Riparte da sola non appena il token diventa disponibile dopo il gate
   // (login/registrazione appena completati dentro InlineAuthGate, senza
@@ -1241,10 +1240,8 @@ export function GuidedRequestForm({
     }
   }
 
-  async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
-    const picked = e.target.files?.[0];
-    e.target.value = "";
-    if (!picked || photos.length >= MAX_PHOTOS) return;
+  async function addPhoto(picked: File) {
+    if (photos.length >= MAX_PHOTOS) return;
 
     setPhotoError(null);
     const isVideo = picked.type.startsWith("video/");
@@ -1596,7 +1593,7 @@ export function GuidedRequestForm({
             la foto per l'IA si mette nella ricerca, queste le vede solo chi
             riceve la richiesta. La foto della ricerca entra già qui. */}
         <YStack gap="2">
-          <FieldLabel>Foto per il professionista (facoltative)</FieldLabel>
+          <FieldLabel>Foto per il professionista</FieldLabel>
           <Text fontSize={13} color={brand.grafite70}>
             Aiutano a capire il lavoro e a darti un preventivo più preciso. Le vede il professionista: niente numeri di
             telefono, documenti o persone.
@@ -1615,26 +1612,19 @@ export function GuidedRequestForm({
                 <UploadingDots dotSize={7} />
               </div>
             ) : photos.length < MAX_PHOTOS ? (
-              <button
-                type="button"
+              // Dal telefono si sceglie tra fotocamera, video e galleria (PhotoPicker).
+              <PhotoPicker
+                accept="image/*,video/*"
+                allowVideo
+                onFile={addPhoto}
                 className="guided-photo guided-photo-add"
-                onClick={() => photoInputRef.current?.click()}
-                aria-label="Aggiungi una foto o un video"
+                label="Aggiungi una foto o un video"
               >
                 <FieldCameraIcon />
                 <span aria-hidden="true">Aggiungi</span>
-              </button>
+              </PhotoPicker>
             ) : null}
           </div>
-          <input
-            ref={photoInputRef}
-            type="file"
-            accept="image/*,video/*"
-            onChange={handlePhotoChange}
-            disabled={isUploadingPhoto}
-            style={{ display: "none" }}
-            aria-label="Aggiungi una foto o un video per il professionista"
-          />
           {photoError ? (
             <Text color={brand.urgenza} fontSize={13}>
               {photoError}
