@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { BRAND, COMPANY, companyDataReady, type ContactMessageInput } from "@professionisti/shared";
+import { BRAND, COMPANY, companyDataReady, contactFaqOrDefault, faqByIds, type ContactFaqPicks, type ContactMessageInput } from "@professionisti/shared";
 import { Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -26,6 +26,17 @@ const HELP_LINKS: { href: string; icon: "message-circle" | "triangle-alert" | "s
   { href: "/sicurezza", icon: "shield-check", label: "Sicurezza e truffe" },
   { href: "/problemi-e-rimborsi", icon: "triangle-alert", label: "Problemi su un lavoro" },
 ];
+
+// Tre domande frequenti adatte a chi scrive, sotto "Chi sei?": spesso la
+// risposta è già lì (docs/changelog/2026-11-16-domande-frequenti.md). Le
+// sceglie l'Admin approvando le proposte; ricontrollate qui, così un id che
+// questo sito non conosce non rompe la pagina.
+function roleFaq(picks: ContactFaqPicks | undefined): Partial<Record<ContactMessageInput["role"], ReturnType<typeof faqByIds>>> {
+  return {
+    CLIENT: faqByIds(contactFaqOrDefault("cliente", picks?.cliente)),
+    PROFESSIONAL: faqByIds(contactFaqOrDefault("professionista", picks?.professionista)),
+  };
+}
 
 // Etichette vere legate al campo: toccando la scritta il cursore va nel campo
 // e il lettore di schermo la legge una volta sola.
@@ -78,7 +89,16 @@ const COMPANY_ROWS: { icon: "file-text" | "map-pin" | "mail"; label: string; val
 /** Messaggio già avviato per chi chiede aiuto a creare il profilo, da completare col numero. */
 const PROFILE_HELP_MESSAGE = "Vorrei aiuto per creare il mio profilo. Il mio mestiere è: \nMi potete chiamare al numero: ";
 
-export default function ContattiContent({ initialReport = false, initialProfileHelp = false }: { initialReport?: boolean; initialProfileHelp?: boolean }) {
+export default function ContattiContent({
+  initialReport = false,
+  initialProfileHelp = false,
+  faqPicks,
+}: {
+  initialReport?: boolean;
+  initialProfileHelp?: boolean;
+  faqPicks?: ContactFaqPicks;
+}) {
+  const faqByRole = roleFaq(faqPicks);
   // Chi ha fatto l'accesso trova la sua email già scritta (si può cambiare) e,
   // se è un professionista, "Sono un professionista" già scelto. Valori
   // ricavati, non copiati con un effetto: finché la persona non tocca il
@@ -281,6 +301,20 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                       </button>
                     ))}
                   </div>
+                  {faqByRole[role] ? (
+                    <div className="contatti-faq">
+                      <span>Forse cerchi:</span>
+                      <ul>
+                        {faqByRole[role]!.map((item) => (
+                          <li key={item.id}>
+                            <Link href={`/faq#${item.id}`} className="contatti-faq-link">
+                              {item.question}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                 </YStack>
                 )}
 

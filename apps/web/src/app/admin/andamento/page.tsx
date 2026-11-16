@@ -205,6 +205,7 @@ export default function AdminAndamentoPage() {
             <SourcesCard data={data} />
             <PartnerLinksCard token={token} isSuper={isSuper} />
             <ChurnReasonsCard data={data} />
+            <FaqFeedbackCard data={data} token={token} onChanged={load} />
             <LaunchCard data={data} />
             <ReconciliationCard data={data} />
             <NotesCard data={data} token={token} onChanged={load} />
@@ -976,6 +977,90 @@ function ChurnReasonsCard({ data }: { data: AdminSiteStats }) {
           total={total}
         />
       )}
+    </AdminCard>
+  );
+}
+
+/**
+ * "Ti è stata utile?" sotto le domande frequenti (docs/changelog/2026-11-16-domande-frequenti.md):
+ * prima quelle con più "No", da riscrivere o completare in packages/shared/src/faq.ts.
+ */
+function FaqFeedbackCard({ data, token, onChanged }: { data: AdminSiteStats; token: string | null; onChanged: () => void }) {
+  const rows = data.faqFeedback.slice(0, 12);
+  const changed = data.contactFaq.some((c) => c.changed);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function reset() {
+    if (!token) return;
+    setPending(true);
+    setError(null);
+    try {
+      await apiClient.adminResetContactFaq(token);
+      onChanged();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <AdminCard>
+      <CardTitle
+        title="Domande frequenti poco utili"
+        note="Sotto ogni domanda frequente si chiede: ti è stata utile? Qui i No degli ultimi 90 giorni. In cima quelle da riscrivere."
+      />
+      {rows.length === 0 ? (
+        <Text color={brand.grafite70}>Ancora nessuna risposta.</Text>
+      ) : (
+        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+          {rows.map((f) => (
+            <li key={f.faqId} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <Text fontWeight="700">{f.question}</Text>
+              <Text fontSize={14} color={brand.grafite70}>
+                {f.no} No · {f.yes} Sì · {f.audience === "cliente" ? "per chi cerca" : "per i professionisti"}
+              </Text>
+              <details>
+                <summary style={{ cursor: "pointer", color: brand.cianografiaScuro, fontWeight: 600, fontSize: 14 }}>Leggi la risposta</summary>
+                <Text fontSize={14} color={brand.grafite70} style={{ display: "block", marginTop: 6 }}>
+                  {f.answer}
+                </Text>
+              </details>
+            </li>
+          ))}
+        </ul>
+      )}
+      <YStack gap="2">
+        <Text fontWeight="700">In Contatti oggi</Text>
+        <Text fontSize={14} color={brand.grafite70}>
+          Le tre domande sotto «Chi sei?». Cambiano solo se approvi una proposta in Home.
+        </Text>
+        {data.contactFaq.map((c) => (
+          <div key={c.audience}>
+            <Text fontSize={14} fontWeight="600">
+              {c.audience === "cliente" ? "Per chi cerca" : "Per i professionisti"}
+              {c.changed ? " (cambiate)" : ""}
+            </Text>
+            <ul style={{ margin: "4px 0 0", paddingLeft: 20 }}>
+              {c.questions.map((q) => (
+                <li key={q}>
+                  <Text fontSize={14}>{q}</Text>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+        {changed ? (
+          <button type="button" className="admin-link-button" disabled={pending} onClick={() => void reset()} style={{ alignSelf: "flex-start" }}>
+            {pending ? "Attendi..." : "Rimetti quelle di partenza"}
+          </button>
+        ) : null}
+        {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+      </YStack>
+      <Link href="/faq" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
+        Apri le domande frequenti
+      </Link>
     </AdminCard>
   );
 }

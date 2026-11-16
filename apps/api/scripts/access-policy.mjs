@@ -90,6 +90,10 @@ const publicRoutes = [
   "POST /site/profile-view",
   // Passi dalle voci di "Quanto costa" (§399), senza account.
   "POST /site/price-tool",
+  // "Ti è stata utile?" sotto le domande frequenti (docs/changelog/2026-11-16-domande-frequenti.md), senza account.
+  "POST /site/faq-feedback",
+  // Le tre domande frequenti mostrate in Contatti, uguali per tutti.
+  "GET /site/contact-faq",
   "GET /professionals/category-counts",
   // Link personale /p/<codice> del professionista: porta solo al profilo pubblico (docs/changelog/2026-11-08-canale-del-professionista.md).
   "GET /professionals/link/:code",

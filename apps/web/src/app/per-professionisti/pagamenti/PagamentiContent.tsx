@@ -10,6 +10,7 @@ import {
   ONLINE_LIMIT_FREE_JOBS,
   ONLINE_LIMIT_FREE_MONTHS,
   onlineFeeExample,
+  faqByIds,
 } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
@@ -112,20 +113,10 @@ function FeeExample() {
  * Due domande che un professionista fa prima di attivare i pagamenti online
  * (richiesta di Luca, docs/changelog/2026-11-12-pagina-per-professionisti.md),
  * con le stesse regole dei Termini (punti 5 e 6) e dei tempi mostrati nella
- * scheda del lavoro (`JobPaymentStatus`).
+ * scheda del lavoro (`JobPaymentStatus`). Testi dalla fonte unica delle
+ * domande frequenti (packages/shared/src/faq.ts).
  */
-const PAYMENT_FAQ: { question: string; answer: string }[] = [
-  {
-    question: "Quando arriva il bonifico?",
-    answer:
-      "Quando il cliente conferma che il lavoro è finito, oppure 7 giorni dopo la chiusura se non segnala problemi. Da lì il bonifico arriva sulla tua banca in 1-4 giorni lavorativi.",
-  },
-  {
-    question: "E se il cliente contesta?",
-    answer:
-      "Se segnala un problema sul sito, avete 48 ore per accordarvi in chat; se non vi accordate decide il nostro team, dopo aver sentito anche te. Se invece contesta il pagamento con la sua banca, decide la banca: i soldi restano bloccati fino alla risposta e la commissione di Stripe per la contestazione è a tuo carico. Con il pagamento diretto la questione resta tra te e il cliente.",
-  },
-];
+const PAYMENT_FAQ = faqByIds(["quando-arriva-bonifico", "cliente-contesta"]);
 
 export function PagamentiContent() {
   const onlinePayments = useOnlinePayments();

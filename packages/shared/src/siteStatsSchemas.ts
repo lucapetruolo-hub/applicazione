@@ -45,6 +45,10 @@ export type SiteFailureEvent = z.infer<typeof siteFailureEventSchema>;
 export const siteProfileViewEventSchema = z.object({ device: z.enum(DEVICE_KINDS) });
 export type SiteProfileViewEvent = z.infer<typeof siteProfileViewEventSchema>;
 
+/** "Ti è stata utile?" sotto una domanda frequente: l'id va controllato contro FAQ dall'API. */
+export const faqFeedbackEventSchema = z.object({ faqId: z.string().regex(/^[a-z0-9-]{1,60}$/), helpful: z.boolean() });
+export type FaqFeedbackEvent = z.infer<typeof faqFeedbackEventSchema>;
+
 export const siteNoteSchema = z.object({
   day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data non valida."),
   text: z.string().trim().min(2, "Scrivi la nota.").max(140, "Al massimo 140 caratteri."),

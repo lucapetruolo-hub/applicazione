@@ -20,6 +20,7 @@ export const ADMIN_PROPOSAL_KINDS = [
   "TEST_ACCOUNTS",
   "GENERAL_REQUESTS_REOPEN",
   "GENERAL_REQUESTS_CLOSE",
+  "CONTACT_FAQ",
 ] as const;
 export type AdminProposalKind = (typeof ADMIN_PROPOSAL_KINDS)[number];
 
@@ -103,6 +104,12 @@ export const ADMIN_PROPOSAL_KINDS_INFO: Record<AdminProposalKind, AdminProposalK
     scope: "MODERATION",
     approveLabel: "Chiudi",
     undo: { label: "Si riapre da Richieste generali", href: "/admin/richieste-generali" },
+  },
+  CONTACT_FAQ: {
+    label: "Domande in Contatti",
+    scope: "MODERATION",
+    approveLabel: "Cambia la domanda",
+    undo: { label: "Si rimettono quelle di partenza da Andamento", href: "/admin/andamento" },
   },
 };
 

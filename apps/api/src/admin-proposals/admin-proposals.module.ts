@@ -7,6 +7,7 @@ import { CategoriesModule } from "../categories/categories.module";
 import { ProblemMatchModule } from "../problem-match/problem-match.module";
 import { GeneralRequestsModule } from "../general-requests/general-requests.module";
 import { IdentityVerificationModule } from "../identity-verification/identity-verification.module";
+import { SiteCountsModule } from "../site-counts/site-counts.module";
 import { AdminProposalsController } from "./admin-proposals.controller";
 import { AdminProposalsService } from "./admin-proposals.service";
 
@@ -16,7 +17,7 @@ import { AdminProposalsService } from "./admin-proposals.service";
  * Nessun modulo importa questo, quindi nessun giro circolare.
  */
 @Module({
-  imports: [AuthModule, AdminModule, AuditLogModule, NotificationsModule, CategoriesModule, ProblemMatchModule, GeneralRequestsModule, IdentityVerificationModule],
+  imports: [AuthModule, AdminModule, AuditLogModule, NotificationsModule, CategoriesModule, ProblemMatchModule, GeneralRequestsModule, IdentityVerificationModule, SiteCountsModule],
   controllers: [AdminProposalsController],
   providers: [AdminProposalsService],
 })

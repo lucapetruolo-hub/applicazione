@@ -15,6 +15,9 @@ import {
   type AdminProposalRestore,
   type AdminRejectedProposal,
   type AdminRoleValue,
+  type FaqAudience,
+  CONTACT_FAQ_DEFAULT,
+  faqByIds,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
@@ -37,6 +40,7 @@ import {
   PROFILE_REMINDER_MIN_DAYS,
   categoryChangeWordCandidates,
   categoryLabel,
+  contactFaqSwaps,
   dictionaryWordCandidates,
   serviceWordCandidates,
   groupKey,
@@ -48,6 +52,7 @@ import {
   wordStem,
 } from "./admin-proposals";
 import { ScheduledJob } from "../common/scheduled-job";
+import { ContactFaqService } from "../site-counts/contact-faq.service";
 
 const DAY_MS = 24 * 60 * 60_000;
 /** Una proposta già approvata torna solo se dopo tanti giorni vale di nuovo (es. una frase tolta a mano). */
@@ -95,6 +100,7 @@ export class AdminProposalsService implements OnApplicationBootstrap {
     private readonly problemMatchAdminService: ProblemMatchAdminService,
     private readonly generalRequestsService: GeneralRequestsService,
     private readonly identityVerificationService: IdentityVerificationService,
+    private readonly contactFaqService: ContactFaqService,
   ) {}
 
   /** All'avvio (Render riparte spesso): un calcolo poco dopo, per non lasciare la Home vuota fino a notte. */
@@ -274,6 +280,9 @@ export class AdminProposalsService implements OnApplicationBootstrap {
         for (const r of recipients) await this.notificationsService.notify(r.userId, "AWAY_SUGGESTED", { requests: r.requests });
         return sentLabel(recipients.length, recipients.length);
       }
+      case "CONTACT_FAQ":
+        await this.saveContactFaq(adminUserId, d.audience as FaqAudience, (d.faqIds as string[]) ?? [], c.title);
+        return null;
       case "TEST_ACCOUNTS": {
         const ids = (d.userIds as string[]) ?? [];
         const failed: string[] = [];
@@ -385,8 +394,53 @@ export class AdminProposalsService implements OnApplicationBootstrap {
       case "GENERAL_REQUESTS_REOPEN":
       case "GENERAL_REQUESTS_CLOSE":
         return (await this.generalRequests()).filter((c) => c.kind === kind);
+      case "CONTACT_FAQ":
+        return this.contactFaq(now);
     }
     return [];
+  }
+
+  // -------------------------------------------------------------------------
+  // Domande in Contatti (docs/changelog/2026-11-16-domande-frequenti.md)
+  // -------------------------------------------------------------------------
+
+  private async contactFaq(now: Date): Promise<Candidate[]> {
+    const [current, votes] = await Promise.all([this.contactFaqService.picks(), this.contactFaqService.votes(now)]);
+    return contactFaqSwaps(current, votes).map((swap) => {
+      const incoming = faqByIds([swap.inId])[0]!;
+      const outgoing = faqByIds([swap.outId])[0]!;
+      const faqIds = current[swap.audience].map((id) => (id === swap.outId ? swap.inId : id));
+      const who = swap.audience === "cliente" ? "Sono un cliente" : "Sono un professionista";
+      return {
+        key: `CONTACT_FAQ:${swap.audience}:${swap.outId}:${swap.inId}`,
+        kind: "CONTACT_FAQ",
+        score: 300 + Math.min(swap.inNo, 99),
+        title: `Contatti, ${swap.audience === "cliente" ? "per chi cerca" : "per i professionisti"}: «${monthsWord(incoming.question)}»`,
+        why: `${plural(swap.inNo, "persona ha", "persone hanno")} detto che questa risposta non basta (ultimi 90 giorni): è un dubbio che torna, e chi non trova la risposta ci scrive. Prende il posto di «${monthsWord(outgoing.question)}», che ha ${swap.outNo} No.`,
+        preview: {
+          type: "lines",
+          lines: [`Chi sceglie «${who}» in Contatti vedrà:`, ...faqByIds(faqIds).map((item) => `• ${monthsWord(item.question)}`), "Intanto conviene riscrivere la risposta: i No sono in Andamento."],
+        },
+        data: { audience: swap.audience, faqIds },
+      };
+    });
+  }
+
+  /** Salva le domande di Contatti con il registro azioni: lo usano "Approva" e "Rimetti quelle di partenza". */
+  private async saveContactFaq(adminUserId: string, audience: FaqAudience, faqIds: string[], reason: string): Promise<void> {
+    const before = (await this.contactFaqService.picks())[audience];
+    await this.contactFaqService.save(audience, faqIds, adminUserId);
+    await this.auditLogService.record({ entityType: "ContactFaqPick", entityId: audience, fieldName: "faqIds", oldValue: before, newValue: faqIds, changedByUserId: adminUserId, reason });
+  }
+
+  /** "Rimetti quelle di partenza" in Andamento: lo stesso permesso della proposta. */
+  async resetContactFaq(adminUserId: string): Promise<void> {
+    if (!adminCan(await this.rolesOf(adminUserId), ADMIN_PROPOSAL_KINDS_INFO.CONTACT_FAQ.scope)) throw new ForbiddenException("Non hai il permesso per questa modifica.");
+    const current = await this.contactFaqService.picks();
+    for (const audience of ["cliente", "professionista"] as const) {
+      const start = [...CONTACT_FAQ_DEFAULT[audience]];
+      if (current[audience].join() !== start.join()) await this.saveContactFaq(adminUserId, audience, start, "Domande in Contatti: rimesse quelle di partenza");
+    }
   }
 
   private async examplePhrases(): Promise<Candidate[]> {
@@ -771,6 +825,11 @@ function emailPreview(type: string, payload: Record<string, unknown>, name: stri
 function sentLabel(sent: number, total: number): string {
   if (sent === total) return plural(sent, "email inviata", "email inviate");
   return `${plural(sent, "email inviata", "email inviate")}; ${total - sent} no, perché nel frattempo hanno completato il profilo`;
+}
+
+/** Nelle domande dei mesi gratis "{mesi}" diventa "mesi" (in Contatti non ci sono, ma il titolo resta leggibile). */
+function monthsWord(text: string): string {
+  return text.replaceAll("{mesi}", "mesi");
 }
 
 function formatDay(iso: string): string {

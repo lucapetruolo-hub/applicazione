@@ -106,3 +106,5 @@ export * from "./rebookReminder";
 export * from "./recurringJobs";
 export * from "./quoteQuickFill";
 export * from "./quoteComparison";
+export * from "./faq";
+export * from "./faqHome";

@@ -20,6 +20,14 @@ export class AdminProposalsController {
     return this.adminProposalsService.list(req.user.userId);
   }
 
+  /** "Rimetti quelle di partenza" per le domande in Contatti (Andamento). */
+  @RequireAdminScope("MODERATION")
+  @Post("contact-faq/reset")
+  @HttpCode(204)
+  async resetContactFaq(@Req() req: AuthenticatedRequest): Promise<void> {
+    await this.adminProposalsService.resetContactFaq(req.user.userId);
+  }
+
   /** Le proposte fermate con "No, mai" (in Andamento). */
   @RequireAdminScope("ANY")
   @Get("rejected")

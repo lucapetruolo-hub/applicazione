@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import {
+  FAQ,
   PROFESSIONAL_CATEGORIES,
+  contactFaqEligible,
+  type ContactFaqPicks,
+  type FaqAudience,
   SUGGESTED_PROBLEM_EXAMPLES,
   describeProblemExample,
   isProfessionalCategorySlug,
@@ -383,4 +387,37 @@ export const TEST_ACCOUNTS_DAYS_BEFORE_LAUNCH = 7;
 
 export function testAccountsProposalDue(now: Date, launch: Date | null): boolean {
   return !!launch && now.getTime() >= launch.getTime() - TEST_ACCOUNTS_DAYS_BEFORE_LAUNCH * 24 * 60 * 60_000;
+}
+
+// ---------------------------------------------------------------------------
+// 9. Domande in Contatti (docs/changelog/2026-11-16-domande-frequenti.md)
+// ---------------------------------------------------------------------------
+
+/** "No" a "Ti è stata utile?" (ultimi 90 giorni) perché una domanda entri in Contatti. */
+export const CONTACT_FAQ_MIN_NO = 5;
+
+/**
+ * Per ogni pubblico, la domanda con più "No" che non è ancora in Contatti, al
+ * posto di quella in Contatti con meno "No". Molti "No" vogliono dire che è
+ * un dubbio frequente che la pagina non scioglie: è quello per cui ci si
+ * scrive. Solo se ne ha più di quella che toglie.
+ */
+export function contactFaqSwaps(
+  current: ContactFaqPicks,
+  votes: { faqId: string; yes: number; no: number }[],
+): { audience: FaqAudience; inId: string; outId: string; inNo: number; outNo: number }[] {
+  const noOf = new Map(votes.map((v) => [v.faqId, v.no]));
+  return (["cliente", "professionista"] as const).flatMap((audience) => {
+    const shown = current[audience];
+    const best = FAQ.filter((item) => contactFaqEligible(item, audience) && !shown.includes(item.id) && (noOf.get(item.id) ?? 0) >= CONTACT_FAQ_MIN_NO).sort(
+      (a, b) => (noOf.get(b.id) ?? 0) - (noOf.get(a.id) ?? 0),
+    )[0];
+    if (!best) return [];
+    // Con lo stesso numero di "No" esce l'ultima della lista.
+    const outId = [...shown].reverse().sort((a, b) => (noOf.get(a) ?? 0) - (noOf.get(b) ?? 0))[0];
+    if (!outId) return [];
+    const inNo = noOf.get(best.id) ?? 0;
+    const outNo = noOf.get(outId) ?? 0;
+    return inNo > outNo ? [{ audience, inId: best.id, outId, inNo, outNo }] : [];
+  });
 }
