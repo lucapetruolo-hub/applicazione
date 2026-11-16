@@ -1,11 +1,13 @@
 // Account di prova realistici (docs/changelog/2026-11-16-account-di-prova.md).
 //
+// Di solito si lancia da GitHub: Actions → "Account di prova" → Run workflow
+// (.github/workflows/account-prova.yml). A mano:
 //   node apps/api/scripts/account-prova.mjs crea    -> toglie quelli di prima e li ricrea
 //   node apps/api/scripts/account-prova.mjs togli   -> li elimina tutti, prima del lancio
 //   node apps/api/scripts/account-prova.mjs elenco  -> mostra cosa c'è adesso
 //
-// Si lancia dalla Shell di Render (servizio API, usa il suo DATABASE_URL) o in
-// locale dopo `pnpm --filter @professionisti/api build`. Tocca SOLO gli
+// Serve DATABASE_URL e il build di @professionisti/database e
+// @professionisti/shared. Tocca SOLO gli
 // account con email `@prova.example.com` segnati "Account di prova"
 // (User.testAccountAt): fuori da ogni numero (CLAUDE.md §5 punto 17) e, dal
 // lancio, fuori dalla ricerca (publicVisibilityWhere). Dopo il LAUNCH_DATE
@@ -21,16 +23,10 @@ import { createRequire } from "node:module";
 import { randomInt, randomUUID } from "node:crypto";
 
 const require = createRequire(import.meta.url);
-const { prisma: prismaBase } = require("@professionisti/database");
-// Stesso client dell'API: il codice fiscale si salva cifrato (docs/CHANGELOG.md §292).
-let fiscalEncryptionExtension;
-try {
-  ({ fiscalEncryptionExtension } = require("../dist/common/fiscal-encryption.extension.js"));
-} catch {
-  console.error("Manca il build dell'API: lancia prima `pnpm --filter @professionisti/api build`.");
-  process.exit(1);
-}
-const prisma = prismaBase.$extends(fiscalEncryptionExtension);
+// Il codice fiscale si salva in chiaro: l'API lo legge così com'è e al
+// prossimo avvio lo cifra con la sua chiave (FiscalEncryptionMigrationService,
+// docs/CHANGELOG.md §292). Così lo script non deve conoscere FISCAL_DATA_KEY.
+const { prisma } = require("@professionisti/database");
 const shared = require("@professionisti/shared");
 const bcrypt = require("bcryptjs");
 
@@ -290,7 +286,8 @@ async function crea() {
 
   console.log(`Creati ${PROFESSIONISTI.length} professionisti e ${CLIENTI.length} clienti di prova, ${RECENSIONI.length} recensioni e 6 storie in corso.`);
   await elenco();
-  console.log(`\nPassword di tutti (salvala, non si rivede): ${PASSWORD}`);
+  // Con PROVA_PASSWORD (GitHub) non si stampa: i registri del repo pubblico li vede chiunque.
+  console.log(process.env.PROVA_PASSWORD?.trim() ? "\nPassword di tutti: quella del segreto PROVA_PASSWORD." : `\nPassword di tutti (salvala, non si rivede): ${PASSWORD}`);
 }
 
 async function categorieDb() {
@@ -698,5 +695,5 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
-    await prismaBase.$disconnect();
+    await prisma.$disconnect();
   });

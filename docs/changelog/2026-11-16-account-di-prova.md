@@ -29,16 +29,23 @@ script li toglie tutti.
 - Tutto inventato: codice fiscale e partita IVA giusti solo nella forma
   (ufficio IVA 099), telefono con prefisso 300, niente foto di persone, niente
   IBAN né Stripe. Nessuna riga `TaxIdCheck`: niente chiamate (e costi) a
-  Openapi. Il codice fiscale si salva cifrato con lo stesso client dell'API
-  (`fiscal-encryption.extension`), per questo serve il build dell'API.
+  Openapi. Il codice fiscale si salva in chiaro e l'API lo cifra al suo
+  avvio successivo (`FiscalEncryptionMigrationService`, §292): lo script non
+  deve conoscere `FISCAL_DATA_KEY`.
 - Gli account sono segnati `testAccountAt`: fuori da ogni numero (CLAUDE.md §5
   punto 17) e, dal lancio, fuori dalla ricerca (`publicVisibilityWhere`).
 
-**Come si usa**: Render → `professionisti-api-eu` → Shell →
-`node apps/api/scripts/account-prova.mjs crea`. La password (uguale per
-tutti) non sta nel repo, che è pubblico: si sceglie con `PROVA_PASSWORD=...`
-davanti al comando, altrimenti lo script ne genera una e la stampa alla fine.
-Checklist di lancio punto 45 per toglierli.
+**Come si usa**: la Shell di Render c'è solo con il piano a pagamento
+(osservazione di Luca), quindi si lancia da GitHub con un pulsante:
+`.github/workflows/account-prova.yml`, Actions → "Account di prova" → Run
+workflow → `elenco`, `crea` o `togli`. Due segreti del repository, da
+rimettere quando si rifà il database: `PROVA_DATABASE_URL` (External Database
+URL di Render) e `PROVA_PASSWORD` (password uguale per tutti, mai stampata:
+i registri del repo pubblico li vede chiunque). Facoltativa la variabile
+`LAUNCH_DATE` di GitHub, che fa rifiutare `crea` dopo il lancio. A mano:
+`DATABASE_URL=... node apps/api/scripts/account-prova.mjs crea` (senza
+`PROVA_PASSWORD` ne genera una e la stampa). Checklist di lancio punto 45 per
+toglierli.
 
 **Verifica**: su un Postgres locale con tutte le migrazioni: `crea` due volte
 di fila, `togli` lascia zero righe in users, bookings, guided_requests,
