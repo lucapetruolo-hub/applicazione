@@ -91,7 +91,7 @@ esempio un foglio nella cartella del progetto.
 | Cosa | Dove | Per quanto |
 |---|---|---|
 | Database | Render, backup automatici e ripristino a un istante (solo piano Basic o superiore) | Ripristino a un istante: 3 giorni sul workspace Hobby, 7 su Professional. Backup scaricabili: 7 giorni |
-| Database, copia esterna | Da preparare (proposta: una copia cifrata a settimana in UE, fuori da Render) | 30 giorni, poi si cancella da sola |
+| Database, copia esterna | Da preparare prima del lancio: una copia cifrata a settimana su Backblaze B2 in UE, fuori da Render (checklist di lancio, punto 28) | 30 giorni, poi si cancella da sola |
 | Codice | GitHub, più la copia sul Mac | Sempre |
 | Chiavi e variabili | Gestore di password di Luca ([protezione-account.md](protezione-account.md)) | Sempre |
 | Pagamenti, email, verifiche | Restano da Stripe, Resend e Didit | Secondo i loro contratti |
