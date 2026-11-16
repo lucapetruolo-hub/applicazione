@@ -193,10 +193,7 @@ import type {
   RecurringVisitInfo,
   ProfessionalPin,
   ProfessionalSearchPage,
-  ResultFilters,
-  ResultsBounds,
 } from "@professionisti/shared";
-import { RESULT_FILTER_PARAMS, resultFilterEntries } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
 
@@ -1616,23 +1613,19 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
      * (docs/changelog/2026-11-16-pagine-da-20.md). Con `bounds` la pagina
      * mostra chi sta nell'inquadratura della mappa.
      */
-    searchProfessionalsPage: (params: ProfessionalSearchQuery, page: number, filters: ResultFilters, bounds?: ResultsBounds) => {
+    // `pageQuery` arriva già pronto da `resultsPageQuery` di packages/shared:
+    // il client non importa valori da shared, che porterebbero nel browser
+    // tutto il pacchetto (zod e l'elenco dei comuni) a ogni pagina pubblica.
+    searchProfessionalsPage: (params: ProfessionalSearchQuery, pageQuery: [string, string][]) => {
       const query = searchQueryParams(params);
-      for (const [name, value] of resultFilterEntries(filters)) query.set(name, value);
-      if (page > 1) query.set(RESULT_FILTER_PARAMS.page, String(page));
-      if (bounds) {
-        query.set("nord", String(bounds.north));
-        query.set("sud", String(bounds.south));
-        query.set("est", String(bounds.east));
-        query.set("ovest", String(bounds.west));
-      }
+      for (const [name, value] of pageQuery) query.set(name, value);
       return request<ProfessionalSearchPage>(`/professionals/search-page?${query.toString()}`, { cache: "no-store" });
     },
 
-    /** Tutti i trovati come puntini leggeri per la mappa, con gli stessi filtri della pagina. */
-    getProfessionalPins: (params: ProfessionalSearchQuery, filters: ResultFilters) => {
+    /** Tutti i trovati come puntini leggeri per la mappa, con gli stessi filtri della pagina (`resultsPageQuery` senza pagina). */
+    getProfessionalPins: (params: ProfessionalSearchQuery, filterQuery: [string, string][]) => {
       const query = searchQueryParams({ ...params, track: false });
-      for (const [name, value] of resultFilterEntries(filters)) query.set(name, value);
+      for (const [name, value] of filterQuery) query.set(name, value);
       return request<ProfessionalPin[]>(`/professionals/pins?${query.toString()}`, { cache: "no-store" });
     },
 

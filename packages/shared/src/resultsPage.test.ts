@@ -11,6 +11,7 @@ import {
   parseResultsPage,
   resultFilterEntries,
   resultsFacts,
+  resultsPageQuery,
 } from "./resultsPage";
 
 const day = (date: string, time: string, free: boolean) => ({
@@ -93,5 +94,18 @@ describe("risultati a pagine: numeri sotto le schede", () => {
     assert.deepEqual(pagerItems(5, 10), [1, "gap", 4, 5, 6, "gap", 10]);
     assert.deepEqual(pagerItems(4, 10), [1, 2, 3, 4, 5, "gap", 10]);
     assert.deepEqual(pagerItems(10, 10), [1, "gap", 9, 10]);
+  });
+});
+
+describe("risultati a pagine: parametri della chiamata", () => {
+  it("filtri, pagina dalla seconda e inquadratura", () => {
+    assert.deepEqual(resultsPageQuery({ online: true }), [["online", "1"]]);
+    assert.deepEqual(resultsPageQuery({}, 3, { north: 42, south: 41, east: 13.5, west: 12 }), [
+      ["pagina", "3"],
+      ["nord", "42"],
+      ["sud", "41"],
+      ["est", "13.5"],
+      ["ovest", "12"],
+    ]);
   });
 });

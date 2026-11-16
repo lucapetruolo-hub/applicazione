@@ -12,6 +12,7 @@ import {
   emptyResultsPage,
   parseResultFilters,
   parseResultsPage,
+  resultsPageQuery,
   type ProfessionalCategorySlug,
   type ProfessionalSearchPage,
   type ResultFilters,
@@ -104,7 +105,7 @@ async function tooFewRealProfessionals(categorySlug: string, city?: string, subT
   if (!SITE_INDEXABLE) return false;
   try {
     // Solo il numero: una pagina di schede, non tutti i professionisti (docs/changelog/2026-11-16-pagine-da-20.md).
-    const { total } = await apiClient.searchProfessionalsPage({ category: categorySlug, city, excludeDemo: true }, 1, subTag ? { subTag } : {});
+    const { total } = await apiClient.searchProfessionalsPage({ category: categorySlug, city, excludeDemo: true }, resultsPageQuery(subTag ? { subTag } : {}));
     return total < (city ? MIN_PROFESSIONALS_TO_INDEX_CITY : 1);
   } catch {
     return false;
@@ -197,7 +198,7 @@ export async function CategoryResults({
   try {
     // Contata una volta, alla prima pagina senza filtri: sfogliare non è una nuova ricerca.
     const track = pageNumber === 1 && activeResultFilterCount(filters) === 0 && (await shouldCountVisit());
-    page = await apiClient.searchProfessionalsPage({ ...search, track }, pageNumber, filters);
+    page = await apiClient.searchProfessionalsPage({ ...search, track }, resultsPageQuery(filters, pageNumber));
   } catch {
     loadFailed = true;
   }

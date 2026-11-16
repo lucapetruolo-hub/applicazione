@@ -10,6 +10,7 @@ import {
   emptyResultsPage,
   parseResultFilters,
   parseResultsPage,
+  resultsPageQuery,
   type ProblemMatchResult,
   type ProfessionalCategorySlug,
   type ProfessionalSearchPage,
@@ -168,7 +169,7 @@ export default async function CercaPage(props: { searchParams: Promise<PageSearc
     // una volta sola: sfogliare le pagine o accendere un filtro non è una nuova ricerca.
     const firstLook = pageNumber === 1 && activeResultFilterCount(filters) === 0;
     const track = firstLook && Boolean(city?.trim() || searchParams.q?.trim()) && (await shouldCountVisit());
-    page = await apiClient.searchProfessionalsPage({ ...search, track }, pageNumber, filters);
+    page = await apiClient.searchProfessionalsPage({ ...search, track }, resultsPageQuery(filters, pageNumber));
   } catch {
     loadFailed = true;
   }
@@ -260,7 +261,7 @@ async function ProblemResults({
     try {
       const firstLook = pageNumber === 1 && activeResultFilterCount(filters) === 0;
       const track = firstLook && Boolean(chosen && city?.trim()) && (await shouldCountVisit());
-      page = await apiClient.searchProfessionalsPage({ ...search, track }, pageNumber, filters);
+      page = await apiClient.searchProfessionalsPage({ ...search, track }, resultsPageQuery(filters, pageNumber));
     } catch {
       loadFailed = true;
     }

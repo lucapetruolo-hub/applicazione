@@ -13,6 +13,7 @@ import {
   activeResultFilterCount,
   agendaToPreviewDays,
   resultFilterEntries,
+  resultsPageQuery,
   type ProfessionalPin,
   type ProfessionalSearchPage,
   type ProfessionalSearchResult,
@@ -267,7 +268,7 @@ export function ResultsListWithMap({
     if (!shouldMountMap) return;
     let active = true;
     const [query, pinFilters] = JSON.parse(pinsKey) as [ProfessionalSearchQuery, ResultFilters];
-    apiClient.getProfessionalPins(query, pinFilters).then(
+    apiClient.getProfessionalPins(query, resultsPageQuery(pinFilters)).then(
       (list) => {
         if (active) setPins(list);
       },
@@ -310,7 +311,7 @@ export function ResultsListWithMap({
     let active = true;
     const [query, areaFilters, area, number] = JSON.parse(areaKey) as [ProfessionalSearchQuery, ResultFilters, MapBounds, number];
     const timer = setTimeout(() => {
-      apiClient.searchProfessionalsPage({ ...query, track: false }, number, areaFilters, area).then(
+      apiClient.searchProfessionalsPage({ ...query, track: false }, resultsPageQuery(areaFilters, number, area)).then(
         (data) => {
           if (!active) return;
           setAreaPage({ key: areaKey, data });
@@ -407,7 +408,7 @@ export function ResultsListWithMap({
     let active = true;
     const [query, draftFilters, area] = JSON.parse(draftKey) as [ProfessionalSearchQuery, ResultFilters, MapBounds | null];
     const timer = setTimeout(() => {
-      apiClient.searchProfessionalsPage({ ...query, track: false }, 1, draftFilters, area ?? undefined).then(
+      apiClient.searchProfessionalsPage({ ...query, track: false }, resultsPageQuery(draftFilters, 1, area ?? undefined)).then(
         (data) => active && setDraftCount({ key: draftKey, total: data.total }),
         () => undefined,
       );

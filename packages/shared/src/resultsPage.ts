@@ -224,7 +224,21 @@ export function resultFilterEntries(filters: ResultFilters): [string, string][] 
   return entries;
 }
 
-/** Pagine da mostrare: la prima, l'ultima e le vicine a quella aperta, con "…" in mezzo. */
+/**
+ * Parametri di una chiamata a `GET /professionals/search-page` (e, senza
+ * pagina né inquadratura, a `/professionals/pins`): filtri, pagina e
+ * inquadratura della mappa. Li passa al client dell'API chi li chiama.
+ */
+export function resultsPageQuery(filters: ResultFilters, page = 1, bounds?: ResultsBounds): [string, string][] {
+  const entries = resultFilterEntries(filters);
+  if (page > 1) entries.push([RESULT_FILTER_PARAMS.page, String(page)]);
+  if (bounds) {
+    entries.push(["nord", String(bounds.north)], ["sud", String(bounds.south)], ["est", String(bounds.east)], ["ovest", String(bounds.west)]);
+  }
+  return entries;
+}
+
+/** Numeri sotto le schede (`ResultsPager` del sito): Pagine da mostrare: la prima, l'ultima e le vicine a quella aperta, con "…" in mezzo. */
 export function pagerItems(page: number, pageCount: number): (number | "gap")[] {
   const wanted = new Set([1, pageCount, page - 1, page, page + 1].filter((n) => n >= 1 && n <= pageCount));
   // Con un solo numero saltato si mostra il numero, non "…".
