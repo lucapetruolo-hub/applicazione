@@ -74,3 +74,26 @@ describe("PDF del preventivo: annullare", () => {
     expect(text).toContain("Pagando online, se annulli prima dell'appuntamento, l'acconto di 24,00 € ti torna sempre sulla carta.");
   });
 });
+
+describe("PDF del riepilogo dei pagamenti per il cliente", () => {
+  it("dice quale lavoro e mette il rimborso col segno meno", async () => {
+    const prisma = {
+      booking: { findUniqueOrThrow: vi.fn().mockResolvedValue({ scheduledAt: new Date("2026-11-20T08:00:00Z"), professionalProfile: { businessName: "Idraulica Prova" }, quote: { guidedRequest: { category: { label: "Idraulico" } } } }) },
+    };
+    const jobDocuments = {
+      forUser: vi.fn().mockResolvedValue({
+        audience: "CLIENT",
+        movements: [
+          { date: "2026-11-09T18:00:00Z", label: "Acconto pagato online", amountEurCents: -3100 },
+          { date: "2026-11-22T12:00:00Z", label: "Rimborso ricevuto", amountEurCents: 1500 },
+        ],
+      }),
+    };
+    const { model } = await new QuotePdfService(prisma as never, jobDocuments as never).paymentsForClient("c1", "b1");
+    const text = textOf(model);
+    expect(model.subtitle).toBe("Idraulica Prova. Idraulico, appuntamento del 20 novembre 2026.");
+    expect(text).toContain("−15,00 €");
+    expect(text).toContain('"value":"31,00 €"');
+    expect(text).toContain("16,00 €");
+  });
+});

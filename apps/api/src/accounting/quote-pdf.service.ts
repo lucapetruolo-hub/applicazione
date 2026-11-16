@@ -202,16 +202,25 @@ export class QuotePdfService {
   async paymentsForClient(userId: string, bookingId: string): Promise<{ model: PdfDocumentModel; fileName: string }> {
     const view = await this.jobDocuments.forUser(userId, bookingId);
     if (view.audience !== "CLIENT") throw new NotFoundException("Lavoro non trovato.");
-    const booking = await this.prisma.booking.findUniqueOrThrow({ where: { id: bookingId }, select: { professionalProfile: { select: { businessName: true } } } });
+    const booking = await this.prisma.booking.findUniqueOrThrow({
+      where: { id: bookingId },
+      select: { scheduledAt: true, professionalProfile: { select: { businessName: true } }, quote: { select: { guidedRequest: { select: { category: { select: { label: true } } } } } } },
+    });
     const businessName = booking.professionalProfile.businessName;
+    // Quale lavoro: mestiere e giorno dell'appuntamento, da ritrovare tra più lavori con lo stesso professionista.
+    const job = [booking.quote?.guidedRequest.category.label, `appuntamento del ${accountingDateLabel(booking.scheduledAt.toISOString())}`].filter(Boolean).join(", ");
     // Per il cliente i pagamenti sono in negativo e i rimborsi in positivo.
     const paid = -view.movements.reduce((sum, m) => sum + m.amountEurCents, 0);
     const model: PdfDocumentModel = {
       title: "Riepilogo dei pagamenti",
-      subtitle: businessName,
+      subtitle: `${businessName}. ${job.charAt(0).toUpperCase()}${job.slice(1)}.`,
       blocks: [
         view.movements.length > 0
-          ? { type: "rows", rows: view.movements.map((m) => ({ label: m.label, detail: accountingDateLabel(m.date), value: formatEurCents(Math.abs(m.amountEurCents)) })) }
+          ? {
+              type: "rows",
+              // Un rimborso col segno meno: toglie dal "Totale pagato" e si vede subito.
+              rows: view.movements.map((m) => ({ label: m.label, detail: accountingDateLabel(m.date), value: m.amountEurCents > 0 ? `−${formatEurCents(m.amountEurCents)}` : formatEurCents(-m.amountEurCents) })),
+            }
           : { type: "text", lines: ["Ancora nessun pagamento su questo lavoro."] },
         { type: "totals", rows: [], total: { label: "Totale pagato", value: formatEurCents(paid) } },
         {

@@ -6,6 +6,7 @@ import {
   dac7YearStatus,
   platformInvoiceVatNote,
   formatEurCents,
+  OCCASIONAL_INPS_THRESHOLD_EUR_CENTS,
   platformInvoiceNote,
   platformInvoiceOriginalNote,
   platformInvoiceSubtitle,
@@ -76,7 +77,7 @@ export function invoicePdfModel(invoice: PlatformInvoiceView): PdfDocumentModel 
     },
   ];
   if (noteLines.length > 0) blocks.push({ type: "note", tone: "green", lines: noteLines });
-  blocks.push({ type: "text", muted: true, lines: [...platformInvoiceTechnicalNotes(invoice), platformInvoiceOriginalNote(hasRecipientCode)] });
+  blocks.push({ type: "text", muted: true, lines: [...platformInvoiceTechnicalNotes(invoice), `Copia di cortesia in PDF. ${platformInvoiceOriginalNote(hasRecipientCode)}`] });
 
   return { title: `${invoice.creditNote ? "Nota di credito" : "Fattura"} n. ${invoice.number}`, subtitle: platformInvoiceSubtitle(invoice), blocks };
 }
@@ -94,7 +95,7 @@ export function statementPdfModel(statement: MonthlyStatement, who: string | nul
       tiles: [
         { label: "Pagato online", value: eur(statement.totals.onlineEurCents) },
         { label: "Pagato a te", value: eur(statement.totals.directEurCents) },
-        { label: "Trattenute", value: eur(statement.totals.feesEurCents) },
+        { label: "Trattenute (con IVA)", value: eur(statement.totals.feesEurCents) },
         { label: "Bonifici arrivati", value: eur(statement.totals.payoutsArrivedEurCents) },
       ],
     },
@@ -148,7 +149,7 @@ export function courtesyPdfModel(copy: CourtesyCopyView, audience: "professional
       type: "parties",
       parties: [
         { label: "Da", ...copy.issuer },
-        { label: "Ricevuto da", ...copy.customer },
+        { label: "Cliente", ...copy.customer },
       ],
     },
   ];
@@ -161,7 +162,7 @@ export function courtesyPdfModel(copy: CourtesyCopyView, audience: "professional
       type: "totals",
       rows: [
         { label: "Compenso lordo", value: total },
-        { label: "Ritenuta d'acconto 20%", value: `−${eur(withholding.amountEurCents)}` },
+        { label: "Ritenuta d'acconto 20% (art. 25 DPR 600/1973)", value: `−${eur(withholding.amountEurCents)}` },
       ],
       total: { label: "Netto pagato", value: eur(withholding.netEurCents), detail: copy.paidHow },
     });
@@ -202,7 +203,7 @@ export function dac7PdfModel(summary: Dac7YearSummary, maskedIban: string | null
         return {
           cells: empty
             ? [`${q}° trimestre`, "—", "—", "—", "0"]
-            : [`${q}° trimestre`, eur(quarter.directEurCents), eur(quarter.onlineEurCents), quarter.feesEurCents > 0 ? eur(quarter.feesEurCents) : "—", String(quarter.jobs)],
+            : [`${q}° trimestre`, amountOrDash(quarter.directEurCents), amountOrDash(quarter.onlineEurCents), amountOrDash(quarter.feesEurCents), String(quarter.jobs)],
           details: [DAC7_QUARTER_LABEL[q], null, null, null, null],
         };
       }),
@@ -262,16 +263,20 @@ export function courtesyYearPdfModel(summary: CourtesyYearSummary, now: Date = n
         row.paidAt && accountingShortDate(row.paidAt) !== accountingShortDate(row.date) ? `pagato il ${accountingShortDate(row.paidAt)}` : null,
         [row.customerTaxId, row.customerHasVatNumber && !row.customerTaxId ? "Con partita IVA" : null].filter(Boolean).join(" · ") || null,
         row.amountChanged ? `Oggi ${row.currentEurCents !== null ? eur(row.currentEurCents) : "senza importo"}: serve un nuovo documento` : null,
-        row.withholdingEurCents ? `ritenuta ${eur(row.withholdingEurCents)}` : row.stampDuty ? "Bollo da 2 €" : null,
+        // Una ricevuta a una partita IVA sopra 77,47 € ha sia la ritenuta sia il bollo.
+        [row.withholdingEurCents ? `ritenuta ${eur(row.withholdingEurCents)}` : null, row.stampDuty ? "bollo 2 €" : null].filter(Boolean).join(" · ") || null,
       ],
     })),
   });
 
   if (summary.receipts.length > 0) {
     const lines = [
-      "Il totale delle ricevute va nella dichiarazione dei redditi: sono i compensi delle prestazioni occasionali dell'anno.",
+      "Il totale delle ricevute (compensi lordi, prima della ritenuta) va nella dichiarazione dei redditi: sono redditi diversi da prestazioni occasionali.",
       receipts.withholdingEurCents > 0
         ? `Ritenute d'acconto trattenute dai clienti con partita IVA: ${eur(receipts.withholdingEurCents)}. Le versano loro per te e a inizio anno ti mandano la Certificazione Unica.`
+        : null,
+      receipts.totalEurCents > OCCASIONAL_INPS_THRESHOLD_EUR_CENTS
+        ? `Nel ${summary.year} le ricevute superano 5.000 €: sulla parte in più si pagano i contributi INPS (Gestione Separata). Il limite conta anche il lavoro occasionale fatto fuori dal sito: parlane con il tuo commercialista.`
         : null,
       receipts.stampDuty > 0 ? `${receipts.stampDuty === 1 ? "1 ricevuta supera" : `${receipts.stampDuty} ricevute superano`} 77,47 €: sull'originale va la marca da bollo da 2 €.` : null,
     ].filter((line): line is string => !!line);
@@ -295,6 +300,11 @@ export function courtesyYearPdfModel(summary: CourtesyYearSummary, now: Date = n
     subtitle: `${summary.who ? `${summary.who}. ` : ""}Ricevute per prestazione occasionale, da dare al commercialista.`,
     blocks,
   };
+}
+
+/** Un importo, o il trattino quando è zero (riepilogo DAC7). */
+function amountOrDash(cents: number): string {
+  return cents === 0 ? "—" : eur(cents);
 }
 
 /** "27/10/2026", in ora italiana. */
