@@ -4,15 +4,19 @@ import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { PopularJobsService } from "./popular-jobs.service";
+import { ShortCache, SUMMARY_CACHE_MS } from "../common/short-cache";
 
 /** Pubblico: solo nomi dell'elenco suggerito, nessun conteggio ("Lavori più cercati" in home). */
 @Controller("popular-jobs")
 export class PopularJobsController {
+  // Un minuto di memoria breve: numero di riepilogo, uguale per tutti (docs/changelog/2026-11-16-traffico-elevato.md).
+  private readonly cache = new ShortCache<Awaited<ReturnType<PopularJobsService["publicJobs"]>>>(SUMMARY_CACHE_MS);
+
   constructor(private readonly popularJobsService: PopularJobsService) {}
 
   @Get()
   list() {
-    return this.popularJobsService.publicJobs();
+    return this.cache.get("tutti", () => this.popularJobsService.publicJobs());
   }
 }
 

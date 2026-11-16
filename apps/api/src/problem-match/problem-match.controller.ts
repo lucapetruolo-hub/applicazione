@@ -29,11 +29,15 @@ import { assertTurnstile } from "../auth/turnstile";
 import { ProblemMatchService, photoMediaType, photoSearchEnabled } from "./problem-match.service";
 import { ProblemMatchAdminService } from "./problem-match-admin.service";
 import { ProblemExamplesService } from "./problem-examples.service";
+import { ShortCache, SUMMARY_CACHE_MS } from "../common/short-cache";
 import { ProblemTakeoverService } from "./problem-takeover.service";
 import { ServiceNamesService } from "./service-names.service";
 
 @Controller("problem-match")
 export class ProblemMatchController {
+  // Un minuto di memoria breve: frasi uguali per tutti (docs/changelog/2026-11-16-traffico-elevato.md).
+  private readonly examplesCache = new ShortCache<Awaited<ReturnType<ProblemExamplesService["publicExamples"]>>>(SUMMARY_CACHE_MS);
+
   constructor(
     private readonly problemMatchService: ProblemMatchService,
     private readonly problemTakeoverService: ProblemTakeoverService,
@@ -43,7 +47,7 @@ export class ProblemMatchController {
   /** Frasi d'esempio della home, già nell'ordine delle ricerche (docs/changelog/2026-11-03-luci-che-accelerano.md). */
   @Get("examples")
   examples() {
-    return this.problemExamplesService.publicExamples();
+    return this.examplesCache.get("tutti", () => this.problemExamplesService.publicExamples());
   }
 
   // Pubblico (il cliente descrive il problema prima di accedere); limite più
