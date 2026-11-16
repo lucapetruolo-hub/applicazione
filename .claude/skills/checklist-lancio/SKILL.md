@@ -665,6 +665,18 @@ Città, pagine vuote fuori da Google.
     dei dati di Anthropic controllati sui termini commerciali, valutazione
     d'impatto privacy breve; foto del banco cancellate a fine prova.
 
+45. **Togliere gli account di prova** (docs/changelog/2026-11-16-account-di-prova.md):
+    l'ultimo giorno prima del lancio, GitHub → Actions → "Account di prova" →
+    Run workflow → `togli`, poi di nuovo con `elenco` per controllare che non ne
+    resti nessuno. Poi cancellare i segreti `PROVA_DATABASE_URL` e
+    `PROVA_PASSWORD` del repository. Toglie i 14 account
+    `@prova.example.com` con richieste, preventivi, lavori e recensioni. Gli
+    altri account di prova fatti a mano (elenco in
+    `/mnt/project-files/analisi/identita/account-prova.md`) si eliminano da
+    Admin → Utenti → "Elimina account di prova". Dopo il `LAUNCH_DATE` lo
+    script non ne crea più e, anche se ne restasse uno, la ricerca nasconde già
+    gli account di prova.
+
 ## Da fare dopo il lancio
 
 Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:

@@ -1,0 +1,70 @@
+# Account di prova realistici (docs/changelog/2026-11-16-account-di-prova.md):
+# crea, toglie o elenca gli account `@prova.example.com` nel database di
+# Render con apps/api/scripts/account-prova.mjs. Parte solo a mano:
+# Actions → "Account di prova" → Run workflow → scegli l'azione.
+#
+# Configurazione (una volta, e di nuovo quando si rifà il database):
+# Settings → Secrets and variables → Actions → Secrets:
+# - PROVA_DATABASE_URL: "External Database URL" del Postgres su Render;
+# - PROVA_PASSWORD: password uguale per tutti gli account di prova.
+# I segreti non finiscono nei registri (il repo è pubblico): lo script non
+# stampa la password quando arriva da qui.
+name: Account di prova
+
+on:
+  workflow_dispatch:
+    inputs:
+      azione:
+        description: "crea = toglie quelli di prima e li ricrea; togli = li elimina tutti (prima del lancio); elenco = mostra cosa c'è"
+        type: choice
+        options: [elenco, crea, togli]
+        default: elenco
+
+permissions:
+  contents: read
+
+concurrency:
+  group: account-prova
+  cancel-in-progress: false
+
+jobs:
+  account-prova:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Controllo dei segreti
+        env:
+          PROVA_DATABASE_URL: ${{ secrets.PROVA_DATABASE_URL }}
+          PROVA_PASSWORD: ${{ secrets.PROVA_PASSWORD }}
+        run: |
+          if [ -z "$PROVA_DATABASE_URL" ]; then echo "::error::Manca il segreto PROVA_DATABASE_URL (External Database URL di Render)."; exit 1; fi
+          if [ -z "$PROVA_PASSWORD" ]; then echo "::error::Manca il segreto PROVA_PASSWORD."; exit 1; fi
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build di database e shared
+        run: pnpm --filter @professionisti/database build && pnpm --filter @professionisti/shared build
+
+      - name: Account di prova
+        env:
+          DATABASE_URL: ${{ secrets.PROVA_DATABASE_URL }}
+          PROVA_PASSWORD: ${{ secrets.PROVA_PASSWORD }}
+          # Facoltativa: con la data di lancio passata "crea" si rifiuta.
+          LAUNCH_DATE: ${{ vars.LAUNCH_DATE }}
+          FRONTEND_URL: ${{ vars.SITE_URL || 'https://applicazione-web.vercel.app' }}
+          AZIONE: ${{ inputs.azione }}
+        run: node apps/api/scripts/account-prova.mjs "$AZIONE"
