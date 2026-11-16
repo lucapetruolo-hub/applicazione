@@ -27,6 +27,7 @@ import { GeneralRequestsService } from "../general-requests/general-requests.ser
 import { IdentityVerificationService } from "../identity-verification/identity-verification.service";
 import { EMPTY_EMAIL_CONTEXT, notificationEmail } from "../email/templates/notification-emails";
 import { launchDate } from "../subscriptions/subscription-rules";
+import { COUNTED_USER, countingFrom } from "../site-counts/counted";
 import { stripEmailMarkdown } from "./email-text";
 import {
   PAUSE_GAP_DAYS,
@@ -34,6 +35,7 @@ import {
   PROFILE_REMINDER_GAP_DAYS,
   PROFILE_REMINDER_MAX_DAYS,
   PROFILE_REMINDER_MIN_DAYS,
+  categoryChangeWordCandidates,
   categoryLabel,
   dictionaryWordCandidates,
   serviceWordCandidates,
@@ -242,6 +244,7 @@ export class AdminProposalsService implements OnApplicationBootstrap {
         return null;
       case "DICTIONARY_WORD":
       case "DICTIONARY_SERVICE_WORD":
+      case "CATEGORY_CHANGE_WORD":
         await this.problemMatchAdminService.teachWord(adminUserId, {
           word: String(d.word),
           categorySlug: String(d.categorySlug),
@@ -367,6 +370,8 @@ export class AdminProposalsService implements OnApplicationBootstrap {
         return this.dictionaryWords();
       case "DICTIONARY_SERVICE_WORD":
         return this.serviceWords();
+      case "CATEGORY_CHANGE_WORD":
+        return this.categoryChangeWords();
       case "STANDARD_SERVICE":
         return this.standardServices();
       case "MERGE_SERVICE_NAME":
@@ -426,6 +431,45 @@ export class AdminProposalsService implements OnApplicationBootstrap {
             ],
           },
           data: { word: wordStem(w.stem), categorySlug: w.categorySlug, ...(w.service ? { serviceName: w.service } : {}) },
+        };
+      });
+  }
+
+  /**
+   * Dai numeri "categoria suggerita tenuta o cambiata" di Mestieri richiesti:
+   * una parola per cui i clienti cambiano sempre il mestiere suggerito con lo
+   * stesso altro mestiere (docs/changelog/2026-11-16-scelta-categoria-migliorie.md).
+   * Dal lancio e senza account di prova, come quei numeri (§395).
+   */
+  private async categoryChangeWords(): Promise<Candidate[]> {
+    const from = countingFrom();
+    const [requests, taught] = await Promise.all([
+      this.prisma.guidedRequest.findMany({
+        where: { suggestedCategorySlug: { not: null }, client: COUNTED_USER, ...(from ? { createdAt: { gte: from } } : {}) },
+        select: { description: true, suggestedCategorySlug: true, category: { select: { slug: true } } },
+      }),
+      this.prisma.problemWord.findMany({ select: { word: true } }),
+    ]);
+    const rows = requests.map((r) => ({ text: r.description, suggested: r.suggestedCategorySlug!, chosen: r.category.slug }));
+    return categoryChangeWordCandidates(rows, taught.map((t) => t.word))
+      .slice(0, 5)
+      .map((w) => {
+        const fromLabel = categoryLabel(w.from);
+        const toLabel = categoryLabel(w.to);
+        return {
+          key: `CATEGORY_CHANGE_WORD:${w.stem}`,
+          kind: "CATEGORY_CHANGE_WORD",
+          score: 520 + Math.min(w.changes, 99),
+          title: `Con «${w.example}» suggerisci ${toLabel}`,
+          why: `${w.changes} clienti hanno scritto «${w.example}» e hanno cambiato ${fromLabel} con ${toLabel}. Su ${w.total} richieste con questa parola, ${w.chosenTo} hanno scelto ${toLabel}. Insegnandola, il sito suggerisce subito il mestiere giusto.`,
+          preview: {
+            type: "lines",
+            lines: [
+              `Chi scrive «${w.example}» (o una parola che inizia con «${wordStem(w.stem)}») trova subito: ${toLabel}, non più ${fromLabel}`,
+              "Gli avvisi di sicurezza (gas, corrente) restano quelli del dizionario.",
+            ],
+          },
+          data: { word: wordStem(w.stem), categorySlug: w.to },
         };
       });
   }

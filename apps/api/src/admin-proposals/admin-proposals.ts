@@ -90,12 +90,18 @@ type WordStat = {
 };
 
 /** Per ogni radice di parola: quante descrizioni, con quale mestiere e quale prestazione dell'IA. */
+/** Radici delle parole utili di un testo, con la forma scritta: solo lettere, da 5 in su, non generiche. */
+function stemsOf(text: string): Map<string, string> {
+  const words = new Set(normalizeProblemText(text).trim().split(" ").filter((w) => /^[a-z]{5,30}$/.test(w) && !GENERIC_WORDS.has(w)));
+  const stems = new Map<string, string>();
+  for (const w of words) stems.set(wordStem(w), w);
+  return stems;
+}
+
 function wordStats(rows: DescriptionRow[]): Map<string, WordStat> {
   const stats = new Map<string, WordStat>();
   for (const row of rows) {
-    const words = new Set(normalizeProblemText(row.text).trim().split(" ").filter((w) => /^[a-z]{5,30}$/.test(w) && !GENERIC_WORDS.has(w)));
-    const stems = new Map<string, string>();
-    for (const w of words) stems.set(wordStem(w), w);
+    const stems = stemsOf(row.text);
     const first = row.outOfService ? null : row.categories[0] ?? null;
     for (const [stem, variant] of stems) {
       const stat = stats.get(stem) ?? { total: 0, byCategory: new Map(), aiByCategory: new Map(), aiByService: new Map(), variants: new Map() };
@@ -186,6 +192,77 @@ export function serviceWordCandidates(
     result.push({ stem, example, categorySlug: best[0], service: steady.service, aiAnswers: steady.answers });
   }
   return result.sort((a, b) => b.aiAnswers - a.aiAnswers || a.stem.localeCompare(b.stem));
+}
+
+// ---------------------------------------------------------------------------
+// 2b. Parola dalle categorie cambiate dai clienti
+// ---------------------------------------------------------------------------
+
+/**
+ * Richieste in cui il cliente ha cambiato la categoria suggerita, con la
+ * stessa parola, verso lo stesso mestiere: da qui in su si propone
+ * (docs/changelog/2026-11-16-scelta-categoria-migliorie.md, richiesta di Luca
+ * di avere i numeri di "Mestieri richiesti" già pronti da approvare). Meno
+ * delle risposte dell'IA perché qui sceglie una persona, non una macchina.
+ */
+export const CHANGE_WORD_MIN_CHANGES = 5;
+
+export type SuggestionRow = { text: string; suggested: string; chosen: string };
+
+export type ChangeWordCandidate = {
+  stem: string;
+  example: string;
+  /** Il mestiere che il sito suggeriva (il più frequente tra i cambi). */
+  from: ProfessionalCategorySlug;
+  /** Il mestiere che i clienti hanno scelto. */
+  to: ProfessionalCategorySlug;
+  /** Richieste cambiate da `from` a `to` con questa parola. */
+  changes: number;
+  /** Richieste con questa parola che sono finite su `to` (cambiate o tenute). */
+  chosenTo: number;
+  /** Tutte le richieste suggerite con questa parola. */
+  total: number;
+};
+
+/**
+ * Parole che portano il sito a suggerire un mestiere che i clienti poi
+ * cambiano sempre con un altro: almeno CHANGE_WORD_MIN_CHANGES cambi verso
+ * lo stesso mestiere e almeno WORD_MIN_SHARE delle richieste con la parola
+ * finite lì, perché una parola insegnata vince sul dizionario e sull'IA.
+ * Mai parole generiche, numeri o già insegnate; mai se il dizionario la
+ * porta già al mestiere scelto. Sempre da approvare.
+ */
+export function categoryChangeWordCandidates(rows: SuggestionRow[], taughtWords: string[]): ChangeWordCandidate[] {
+  const taught = taughtWords.map((w) => w.trim()).filter(Boolean);
+  type Stat = { total: number; chosen: Map<string, number>; pairs: Map<string, number>; variants: Map<string, number> };
+  const stats = new Map<string, Stat>();
+  for (const row of rows) {
+    for (const [stem, variant] of stemsOf(row.text)) {
+      const stat = stats.get(stem) ?? { total: 0, chosen: new Map(), pairs: new Map(), variants: new Map() };
+      stat.total += 1;
+      stat.variants.set(variant, (stat.variants.get(variant) ?? 0) + 1);
+      stat.chosen.set(row.chosen, (stat.chosen.get(row.chosen) ?? 0) + 1);
+      if (row.suggested !== row.chosen) {
+        const pair = `${row.suggested}>${row.chosen}`;
+        stat.pairs.set(pair, (stat.pairs.get(pair) ?? 0) + 1);
+      }
+      stats.set(stem, stat);
+    }
+  }
+  const result: ChangeWordCandidate[] = [];
+  for (const [stem, stat] of stats) {
+    const best = [...stat.pairs.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
+    if (!best || best[1] < CHANGE_WORD_MIN_CHANGES) continue;
+    const [from, to] = best[0].split(">") as [string, string];
+    if (!isProfessionalCategorySlug(from) || !isProfessionalCategorySlug(to)) continue;
+    const chosenTo = stat.chosen.get(to) ?? 0;
+    if (chosenTo / stat.total < WORD_MIN_SHARE) continue;
+    if (taught.some((t) => stem.startsWith(t) || t.startsWith(stem))) continue;
+    const example = [...stat.variants.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]![0];
+    if (matchProblem(example).categories[0]?.slug === to) continue;
+    result.push({ stem, example, from, to, changes: best[1], chosenTo, total: stat.total });
+  }
+  return result.sort((a, b) => b.changes - a.changes || a.stem.localeCompare(b.stem));
 }
 
 // ---------------------------------------------------------------------------

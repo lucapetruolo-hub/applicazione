@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Icon } from "@professionisti/ui";
 import { CATEGORY_ACCENT, CategoryIcon } from "@/components/icons/CategoryIcons";
@@ -38,6 +38,7 @@ export function CategoryChoice({
   autoSlug,
   fromAi,
   also,
+  unsure = false,
 }: {
   value: ProfessionalCategorySlug[];
   onToggle: (slug: ProfessionalCategorySlug) => void;
@@ -51,10 +52,17 @@ export function CategoryChoice({
   fromAi: boolean;
   /** Altri mestieri proposti, non ancora scelti. */
   also: ProfessionalCategorySlug[];
+  /**
+   * Suggerimento nel dubbio (l'IA non ha risposto): la categoria resta scelta
+   * ma si vedono le pillole, così si controlla a colpo d'occhio
+   * (docs/changelog/2026-11-16-scelta-categoria-migliorie.md).
+   */
+  unsure?: boolean;
 }) {
   const [fromPills, setFromPills] = useState(false);
   const [open, setOpen] = useState(false);
-  const showCard = value.length > 0 && !fromPills;
+  const onlyUnsureGuess = unsure && autoSlug !== null && value.length === 1 && value[0] === autoSlug;
+  const showCard = value.length > 0 && !fromPills && !onlyUnsureGuess;
 
   return (
     <>
@@ -75,8 +83,7 @@ export function CategoryChoice({
                       <span className="cat-choice-note">
                         {fromAi ? (
                           <>
-                            Suggerita dall&apos;intelligenza artificiale: può sbagliare.{" "}
-                            <Link href="/privacy#fornitori">Come funziona</Link>
+                            Suggerita dall&apos;intelligenza artificiale: può sbagliare. <Link href="/privacy#fornitori">Come funziona</Link>
                           </>
                         ) : (
                           "Suggerita dalla tua descrizione"
@@ -102,6 +109,9 @@ export function CategoryChoice({
                   {labelOf(slug)}
                 </button>
               ))}
+              {/* Detto prima del tocco: ogni mestiere in più è una richiesta in più
+                  (docs/changelog/2026-11-16-scelta-categoria-migliorie.md). */}
+              <span className="cat-choice-also-note">Ogni mestiere aggiunto riceve una richiesta a parte.</span>
             </div>
           ) : null}
         </>
@@ -119,15 +129,7 @@ export function CategoryChoice({
         />
       )}
       {open ? (
-        <CategoryPanel
-          value={value}
-          onToggle={onToggle}
-          max={max}
-          city={city}
-          suggested={suggested}
-          autoSlug={autoSlug}
-          onClose={() => setOpen(false)}
-        />
+        <CategoryPanel value={value} onToggle={onToggle} max={max} city={city} suggested={suggested} autoSlug={autoSlug} onClose={() => setOpen(false)} />
       ) : null}
     </>
   );
@@ -163,20 +165,57 @@ function CategoryPanel({
   const shown = searchCategories(query, order);
   const isFull = value.length >= max;
 
+  // Da telefono il pannello si chiude anche trascinandolo in giù dalla
+  // maniglia o dal titolo, come i fogli di iOS e Android
+  // (docs/changelog/2026-11-16-scelta-categoria-migliorie.md).
+  const drag = useRef<{ startY: number; startTime: number; dy: number } | null>(null);
+  function onDragStart(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!window.matchMedia("(max-width: 719px)").matches) return;
+    if ((event.target as HTMLElement).closest("button")) return;
+    drag.current = { startY: event.clientY, startTime: event.timeStamp, dy: 0 };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    if (ref.current) ref.current.style.transition = "none";
+  }
+  function onDragMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!drag.current || !ref.current) return;
+    const dy = Math.max(0, event.clientY - drag.current.startY);
+    drag.current.dy = dy;
+    ref.current.style.transform = `translateY(${dy}px)`;
+  }
+  function onDragEnd(event: ReactPointerEvent<HTMLDivElement>) {
+    const state = drag.current;
+    const sheet = ref.current;
+    drag.current = null;
+    if (!state || !sheet) return;
+    const speed = state.dy / Math.max(1, event.timeStamp - state.startTime);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (state.dy > 100 || (state.dy > 24 && speed > 0.6)) {
+      if (reduced) return onClose();
+      sheet.style.transition = "transform 0.2s cubic-bezier(0.32, 0.72, 0, 1)";
+      sheet.style.transform = "translateY(100%)";
+      window.setTimeout(onClose, 180);
+    } else {
+      sheet.style.transition = reduced ? "none" : "transform 0.2s cubic-bezier(0.32, 0.72, 0, 1)";
+      sheet.style.transform = "";
+    }
+  }
+
   return (
     <div className="cat-sheet-backdrop" role="presentation" onClick={closeOnBackdrop(onClose)}>
       <div ref={ref} className="cat-sheet" role="dialog" aria-modal="true" aria-labelledby={titleId}>
-        <div className="cat-sheet-grab" aria-hidden="true" />
-        <div className="cat-sheet-head">
-          <h2 id={titleId} className="cat-sheet-title">
-            Chi ti serve
-            <span className="cat-sheet-count" aria-live="polite">
-              {value.length > 0 ? `${value.length} di ${max} scelte` : `Scegli fino a ${max}`}
-            </span>
-          </h2>
-          <button type="button" className="cat-sheet-done" onClick={onClose}>
-            Fatto
-          </button>
+        <div className="cat-sheet-drag" onPointerDown={onDragStart} onPointerMove={onDragMove} onPointerUp={onDragEnd} onPointerCancel={onDragEnd}>
+          <div className="cat-sheet-grab" aria-hidden="true" />
+          <div className="cat-sheet-head">
+            <h2 id={titleId} className="cat-sheet-title">
+              Chi ti serve
+              <span className="cat-sheet-count" aria-live="polite">
+                {value.length > 0 ? `${value.length} di ${max} scelte` : `Scegli fino a ${max}`}
+              </span>
+            </h2>
+            <button type="button" className="cat-sheet-done" onClick={onClose}>
+              Fatto
+            </button>
+          </div>
         </div>
         <label className="cat-sheet-search">
           <Icon name="search" size={18} color="#6f665d" />
@@ -202,14 +241,7 @@ function CategoryPanel({
               const active = value.includes(slug);
               const note = slug === autoSlug ? "Suggerita" : !active && suggested.includes(slug) ? "Può servire" : null;
               return (
-                <button
-                  key={slug}
-                  type="button"
-                  className="cat-sheet-option"
-                  aria-pressed={active}
-                  disabled={!active && isFull}
-                  onClick={() => onToggle(slug)}
-                >
+                <button key={slug} type="button" className="cat-sheet-option" aria-pressed={active} disabled={!active && isFull} onClick={() => onToggle(slug)}>
                   <span className="cat-sheet-option-icon" style={{ background: accent.bg, color: accent.fg }} aria-hidden="true">
                     <CategoryIcon slug={slug} size={22} />
                   </span>

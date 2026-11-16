@@ -35,7 +35,7 @@ async function mockAddress(page: Page, options: { available: boolean; suggestion
 /** Passo 1 compilato, "A domicilio", poi Avanti fino a "Dove". */
 async function goToAddressStep(page: Page) {
   await page.goto("/preventivo");
-  await page.getByLabel("Descrivi il lavoro").fill("Perdita sotto il lavandino della cucina");
+  await page.getByLabel("Descrivi il lavoro").fill("Il rubinetto del bagno gocciola");
   await expect(chosenCard(page).getByText("Idraulico", { exact: true })).toBeVisible();
   const home = page.getByText("A domicilio", { exact: true }).first();
   if (await home.count()) await home.click();
@@ -177,6 +177,52 @@ test("scegliendo a mano dalle pillole si resta sulle pillole", async ({ page }) 
   await pills.getByRole("button", { name: "Traslochi" }).click();
   await expect(pills.getByRole("button", { name: "Traslochi", pressed: true })).toBeVisible();
   await expect(chosenCard(page)).toHaveCount(0);
+});
+
+test("suggerimento nel dubbio (l'IA non risponde): pillole con la categoria già scelta, da controllare", async ({ page }) => {
+  await page.route(`${API_URL}/problem-match**`, (route) => route.fulfill({ status: 503, json: { message: "Non disponibile" } }));
+  await page.goto("/preventivo");
+  const description = page.getByLabel("Descrivi il lavoro");
+  await description.fill("Si è staccata una piastrella");
+  await description.blur();
+  await expect(page.getByText("Forse ti serve Muratore e ristrutturazioni: l'abbiamo già scelta")).toBeVisible();
+  await expect(page.getByRole("group", { name: "Chi ti serve" }).getByRole("button", { name: "Muratore e ristrutturazioni", pressed: true })).toBeVisible();
+  await expect(chosenCard(page)).toHaveCount(0);
+});
+
+test("+ mestiere proposto: si dice prima che è una richiesta in più", async ({ page }) => {
+  await page.goto("/preventivo?categoria=imbianchino");
+  await page.getByLabel("Descrivi il lavoro").fill("Il rubinetto del bagno gocciola");
+  await expect(page.getByText("Ogni mestiere aggiunto riceve una richiesta a parte.")).toBeVisible();
+  await page.getByRole("button", { name: "Aggiungi Idraulico" }).click();
+  await expect(chosenCard(page).getByText("Idraulico", { exact: true })).toBeVisible();
+  await expect(page.getByText("Riceverai una richiesta separata per ogni categoria.")).toBeVisible();
+});
+
+test("da telefono il pannello si chiude trascinandolo in giù", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "solo da telefono");
+  await page.goto("/preventivo");
+  await page.getByLabel("Descrivi il lavoro").fill("Il rubinetto del bagno gocciola");
+  await chosenCard(page).getByRole("button", { name: "Cambia" }).click();
+  const panel = page.getByRole("dialog", { name: /Chi ti serve/ });
+  await expect(panel).toBeVisible();
+  // Fine della salita del pannello, prima di misurare dove sta la maniglia.
+  await panel.evaluate((el) => Promise.all(el.getAnimations().map((animation) => animation.finished)));
+  const grab = page.locator(".cat-sheet-grab");
+  const box = (await grab.boundingBox())!;
+  // Un trascinamento corto riporta il pannello al suo posto.
+  await page.mouse.move(box.x + box.width / 2, box.y + 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + 18, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  await expect(panel).toBeVisible();
+  // Uno lungo lo chiude.
+  await page.mouse.move(box.x + box.width / 2, box.y + 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + 260, { steps: 12 });
+  await page.mouse.up();
+  await expect(panel).toHaveCount(0);
 });
 
 test("la categoria del link resta scelta qualunque cosa si scriva", async ({ page }) => {
