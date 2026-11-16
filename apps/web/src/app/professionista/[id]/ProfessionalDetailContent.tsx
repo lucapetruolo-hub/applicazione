@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BRAND, COVER_PHONE_SPACE, MAX_CHOSEN_PROFESSIONALS, profileCover, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, shownServicePriceUnit, formatServicePriceRange, serviceCategoryOf, subTagLabel, type ProfessionalAgenda, type ProfessionalCategorySlug, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, COVER_DESKTOP_SPACE, COVER_PHONE_SPACE, COVER_WIDE_MIN_WIDTH, COVER_WIDE_SPACE, MAX_CHOSEN_PROFESSIONALS, profileCover, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, shownServicePriceUnit, formatServicePriceRange, serviceCategoryOf, subTagLabel, type ProfessionalAgenda, type ProfessionalCategorySlug, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
@@ -74,12 +74,55 @@ function reviewTimeAgo(iso: string): string {
  * azioni (salva, condividi, segnala, richiedi preventivo) e senza contare la
  * visita.
  */
-/** Da telefono la pagina parte sotto la copertina, come senza (scelta di Luca, docs/changelog/2026-11-13-copertina-profilo.md). */
-function startBelowPhoneCover() {
-  if (window.matchMedia("(max-width: 660px)").matches && !window.location.hash && window.scrollY < 5) window.scrollTo(0, COVER_PHONE_SPACE);
+/**
+ * La pagina parte sotto la copertina, come senza: la foto si vede scorrendo in
+ * su. Prima solo da telefono (docs/changelog/2026-11-13-copertina-profilo.md),
+ * dal 16/11 anche da computer (docs/changelog/2026-11-16-copertina-da-computer.md).
+ */
+function startBelowCover() {
+  if (window.location.hash || window.scrollY >= 5) return;
+  const space = window.matchMedia("(max-width: 660px)").matches
+    ? COVER_PHONE_SPACE
+    : window.matchMedia(`(min-width: ${COVER_WIDE_MIN_WIDTH}px)`).matches
+      ? COVER_WIDE_SPACE
+      : COVER_DESKTOP_SPACE;
+  window.scrollTo(0, space);
 }
 // Scritta a mano, non con toString(): la versione compilata cambia i nomi.
-const coverPhoneScrollScript = `if(matchMedia("(max-width: 660px)").matches&&!location.hash&&scrollY<5)scrollTo(0,${COVER_PHONE_SPACE})`;
+const coverScrollScript = `if(!location.hash&&scrollY<5)scrollTo(0,matchMedia("(max-width: 660px)").matches?${COVER_PHONE_SPACE}:matchMedia("(min-width: ${COVER_WIDE_MIN_WIDTH}px)").matches?${COVER_WIDE_SPACE}:${COVER_DESKTOP_SPACE})`;
+
+/**
+ * Segnale che sopra c'è la copertina (miglioria approvata da Luca il
+ * 16/11/2026, docs/changelog/2026-11-16-copertina-da-computer.md): un piccolo
+ * pulsante tondo con la freccia in su accanto al percorso, che porta in cima
+ * alla foto. Sparisce quando si è già in cima. Non cambia l'apertura della
+ * pagina: il percorso gli lascia solo lo spazio a destra.
+ */
+function CoverPeekButton() {
+  const [atTop, setAtTop] = useState(false);
+  useEffect(() => {
+    const update = () => setAtTop(window.scrollY < 8);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+  return (
+    <button
+      type="button"
+      className={`${styles.coverPeek}${atTop ? ` ${styles.coverPeekHidden}` : ""}`}
+      aria-label="Vedi la foto di copertina"
+      title="Vedi la foto di copertina"
+      tabIndex={atTop ? -1 : undefined}
+      aria-hidden={atTop || undefined}
+      onClick={() => {
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+      }}
+    >
+      <Icon name="chevron-up" size={18} color={brand.cianografiaScuro} />
+    </button>
+  );
+}
 
 export function ProfessionalDetailContent({
   professional,
@@ -108,12 +151,12 @@ export function ProfessionalDetailContent({
   const cover = profileCover(professional);
   // Arrivando da un link interno lo script nella pagina non gira: stessa
   // partenza sotto la copertina, dopo lo scorrimento in cima di Next.js.
-  const hasPhoneCover = cover !== null && !preview;
+  const hasCoverSpace = cover !== null && !preview;
   useLayoutEffect(() => {
-    if (!hasPhoneCover) return;
-    const frame = requestAnimationFrame(startBelowPhoneCover);
+    if (!hasCoverSpace) return;
+    const frame = requestAnimationFrame(startBelowCover);
     return () => cancelAnimationFrame(frame);
-  }, [hasPhoneCover]);
+  }, [hasCoverSpace]);
   const router = useRouter();
   const serviceCategories = professional.categories?.length ? professional.categories : [{ slug: professional.categorySlug, label: professional.categoryLabel }];
   const serviceGroups: { slug: ProfessionalCategorySlug | null; label: string; services: ProfessionalDetail["services"] }[] =
@@ -383,9 +426,10 @@ export function ProfessionalDetailContent({
       <div className={`is_View ${styles.column}`}>
         {/* Copertina (docs/changelog/2026-11-13-copertina-profilo.md): al posto
             dello sfondo della pagina, dietro al percorso e alla scheda fino a
-            circa metà. Da telefono la pagina si apre come senza copertina e la
-            si vede scorrendo verso l'alto (scelta di Luca). */}
-        <div className={`is_View ${styles.head}${cover ? ` ${styles.headWithCover} ${cover.tone === "dark" ? styles.headDark : ""}${preview ? "" : ` ${styles.headPhoneSpace}`}` : ""}`}>
+            circa metà. La pagina si apre come senza copertina e la si vede
+            scorrendo verso l'alto (scelta di Luca: prima da telefono, dal
+            16/11 anche da computer). */}
+        <div className={`is_View ${styles.head}${cover ? ` ${styles.headWithCover} ${cover.tone === "dark" ? styles.headDark : ""}${preview ? "" : ` ${styles.headCoverSpace}`}` : ""}`}>
         {cover ? (
           <div className={styles.cover} aria-hidden="true">
             {/* eslint-disable-next-line @next/next/no-img-element -- foto già ridotta (Cloudinary 1600×800 o copertina pronta in /public) */}
@@ -393,13 +437,14 @@ export function ProfessionalDetailContent({
           </div>
         ) : null}
         {cover && !preview ? (
-          // Prima che il telefono disegni la pagina: si parte già sotto la copertina.
-          <script dangerouslySetInnerHTML={{ __html: coverPhoneScrollScript }} />
+          // Prima che il browser disegni la pagina: si parte già sotto la copertina.
+          <script dangerouslySetInnerHTML={{ __html: coverScrollScript }} />
         ) : null}
         {/* Più vicino alla scheda del gap standard: il percorso ne è l'intestazione. */}
         {breadcrumbs ? (
-          <div className={`is_View ${styles.stack}`} style={{ marginTop: -8, marginBottom: -12 }}>
+          <div className={`is_View ${styles.stack}${hasCoverSpace ? ` ${styles.crumbsWithPeek}` : ""}`} style={{ marginTop: -8, marginBottom: -12 }}>
             {breadcrumbs}
+            {hasCoverSpace ? <CoverPeekButton /> : null}
           </div>
         ) : null}
         {choice.search ? <ProfileChoiceStrip search={choice.search} pro={choicePro} onToggle={choice.toggle} /> : null}

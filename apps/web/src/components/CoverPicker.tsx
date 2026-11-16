@@ -25,6 +25,8 @@ function initials(name: string): string {
 /**
  * Riquadro "come la vede il cliente": la copertina con sopra il primo riquadro
  * bianco del profilo, da computer (fascia larga) e da telefono (solo il centro).
+ * Con "Scorrendo in su" il riquadro scende e si vede quasi tutta la foto, come
+ * sulla pagina vera da computer e da telefono.
  */
 function CustomerView({ src, owner, phone }: { src: string; owner: CoverOwner; phone: boolean }) {
   return (
@@ -82,6 +84,9 @@ export function CoverPicker({
   const [showPresets, setShowPresets] = useState(false);
   const [busy, setBusy] = useState<"upload" | "preset" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // "Scorrendo in su": la copertina come la vede chi scorre in cima al profilo
+  // (docs/changelog/2026-11-16-copertina-da-computer.md).
+  const [scrolledUp, setScrolledUp] = useState(false);
   const src = profileCover(value)?.src ?? null;
   const presets = coverPresetsFor(categorySlugs);
 
@@ -134,8 +139,18 @@ export function CoverPicker({
       <div className={styles.preview} aria-busy={busy === "upload"}>
         {src ? (
           <>
-            <p className={styles.previewTitle}>Come la vede il cliente</p>
-            <div className={styles.views}>
+            <div className={styles.previewHead}>
+              <p className={styles.previewTitle}>Come la vede il cliente</p>
+              <div className={styles.segmented} role="group" aria-label="Momento della visita">
+                <button type="button" className={styles.segment} aria-pressed={!scrolledUp} onClick={() => setScrolledUp(false)}>
+                  All&apos;apertura
+                </button>
+                <button type="button" className={styles.segment} aria-pressed={scrolledUp} onClick={() => setScrolledUp(true)}>
+                  Scorrendo in su
+                </button>
+              </div>
+            </div>
+            <div className={`${styles.views}${scrolledUp ? ` ${styles.viewsScrolled}` : ""}`}>
               <CustomerView src={src} owner={owner} phone={false} />
               <CustomerView src={src} owner={owner} phone />
             </div>

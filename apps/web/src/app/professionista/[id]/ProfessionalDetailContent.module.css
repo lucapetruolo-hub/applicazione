@@ -803,6 +803,110 @@
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 
+/* Da computer (docs/changelog/2026-11-16-copertina-da-computer.md): 260 px di
+   copertina sopra il percorso (COVER_DESKTOP_SPACE), nascosti all'apertura come
+   da telefono. La copertina finisce dove finiva prima: il 45% si calcola anche
+   sullo spazio in più, che va tolto (0,45 × 260 = 117 px). */
+.headCoverSpace {
+  padding-top: 260px;
+}
+
+.headWithCover.headCoverSpace .cover {
+  bottom: calc(45% - 117px);
+}
+
+/* Il percorso ora sta a metà della copertina: il velo scuro si sposta lì,
+   appena accennato in cima per non spegnere la foto. */
+.headDark.headCoverSpace .cover::after {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.08) 0, rgba(0, 0, 0, 0.36) 280px, rgba(0, 0, 0, 0) 420px);
+}
+
+/* Schermi molto larghi (COVER_WIDE_MIN_WIDTH, COVER_WIDE_SPACE): 360 px
+   sopra il percorso, perché la foto a tutta larghezza è più alta
+   (0,45 × 360 = 162 px). */
+@media (min-width: 1600px) {
+  .headCoverSpace {
+    padding-top: 360px;
+  }
+
+  .headWithCover.headCoverSpace .cover {
+    bottom: calc(45% - 162px);
+  }
+
+  .headDark.headCoverSpace .cover::after {
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.08) 0, rgba(0, 0, 0, 0.36) 380px, rgba(0, 0, 0, 0) 520px);
+  }
+}
+
+/* Pulsante "Vedi la foto di copertina" a destra del percorso
+   (docs/changelog/2026-11-16-copertina-da-computer.md). Il percorso gli lascia
+   lo spazio; l'ultima voce si accorcia con i puntini come già sul telefono. */
+.crumbsWithPeek {
+  position: relative;
+  padding-right: 48px;
+}
+
+.coverPeek {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 36px;
+  height: 36px;
+  margin-top: -18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.86);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(15, 59, 59, 0.18);
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease;
+  animation: coverPeekIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.6s backwards;
+}
+
+.coverPeek:hover {
+  background-color: #fff;
+  transform: translateY(-2px);
+}
+
+.coverPeek:active {
+  transform: scale(0.94);
+}
+
+.coverPeek:focus-visible {
+  outline: 2px solid var(--c-cianografia, #1e6b6e);
+  outline-offset: 2px;
+}
+
+.coverPeekHidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(6px);
+}
+
+/* Compare con un piccolo movimento verso l'alto, una volta sola. */
+@keyframes coverPeekIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coverPeek {
+    animation: none;
+    transition: none;
+  }
+}
+
 /* La copertina larga quanto la finestra non deve far scorrere la pagina di lato. */
 .page {
   overflow-x: clip;
@@ -811,23 +915,24 @@
 @media (max-width: 660px) {
   /* 180 px di copertina sopra il percorso (COVER_PHONE_SPACE), poi circa
      200 px dietro la scheda: la pagina si apre già sotto. */
-  .headPhoneSpace {
+  .headCoverSpace {
     padding-top: 180px;
   }
 
-  .headWithCover .cover {
+  .headWithCover .cover,
+  .headWithCover.headCoverSpace .cover {
     bottom: auto;
     height: calc(var(--t-space-6) + 180px + 240px);
   }
 
-  .headWithCover:not(.headPhoneSpace) .cover {
+  .headWithCover:not(.headCoverSpace) .cover {
     height: calc(var(--t-space-6) + 240px);
   }
 }
 
 @media (max-width: 660px) {
   /* Da telefono il percorso sta a metà della copertina: il velo scende fin lì. */
-  .headDark.headPhoneSpace .cover::after {
+  .headDark.headCoverSpace .cover::after {
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.4) 45%, rgba(0, 0, 0, 0) 68%);
   }
 }

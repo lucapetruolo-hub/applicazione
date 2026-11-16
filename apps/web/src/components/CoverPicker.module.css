@@ -15,6 +15,54 @@
   justify-content: center;
 }
 
+/* Titolo e scelta "All'apertura / Scorrendo in su" sulla stessa riga; sotto
+   se lo spazio non basta. */
+.previewHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 999px;
+  background-color: var(--c-gesso, #f4efe8);
+  border: 1px solid var(--c-filetto, #e7dfd4);
+}
+
+.segment {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-grafite70, #5f6670);
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.segment:hover {
+  color: var(--c-cianografiaScuro, #0f3b3b);
+}
+
+.segment[aria-pressed="true"] {
+  background-color: #fff;
+  color: var(--c-cianografiaScuro, #0f3b3b);
+  box-shadow: 0 1px 3px rgba(15, 59, 59, 0.14);
+}
+
+.segment:focus-visible {
+  outline: 2px solid var(--c-cianografia, #1e6b6e);
+  outline-offset: 1px;
+}
+
 .previewTitle {
   margin: 0;
   font-size: 14px;
@@ -333,4 +381,44 @@
   flex: 0 0 auto;
   width: 100%;
   margin-top: 4px;
+}
+
+/* "Scorrendo in su" (docs/changelog/2026-11-16-copertina-da-computer.md): il
+   riquadro scende e la copertina si allunga, come sulla pagina vera quando si
+   scorre in cima (260 px da computer, 180 da telefono). */
+.frameCover,
+.card {
+  transition: top 0.35s cubic-bezier(0.22, 1, 0.36, 1), height 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.viewsScrolled .frameWide .frameCover {
+  height: 90%;
+}
+
+.viewsScrolled .frameWide .card {
+  top: 68%;
+}
+
+.viewsScrolled .framePhone .frameCover {
+  height: 86%;
+}
+
+.viewsScrolled .framePhone .card {
+  top: 54%;
+}
+
+/* Da telefono la scheda del computer è piccola: scorrendo in su resta solo il
+   nome, senza la foto tagliata a metà. */
+@media (max-width: 660px) {
+  .viewsScrolled .frameWide .cardPhoto,
+  .viewsScrolled .frameWide .cardSub {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frameCover,
+  .card {
+    transition: none;
+  }
 }
