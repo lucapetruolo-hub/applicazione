@@ -39,6 +39,7 @@ export function CategoryChoice({
   fromAi,
   also,
   unsure = false,
+  waiting = false,
 }: {
   value: ProfessionalCategorySlug[];
   onToggle: (slug: ProfessionalCategorySlug) => void;
@@ -58,11 +59,30 @@ export function CategoryChoice({
    * (docs/changelog/2026-11-16-scelta-categoria-migliorie.md).
    */
   unsure?: boolean;
+  /**
+   * L'IA sta ancora pensando: al posto delle pillole una riga d'attesa, così
+   * la forma non cambia sotto gli occhi quando arriva la risposta
+   * (docs/changelog/2026-11-16-scelta-categoria-attesa-ia.md). "Scegli tu"
+   * mostra subito le pillole.
+   */
+  waiting?: boolean;
 }) {
   const [fromPills, setFromPills] = useState(false);
   const [open, setOpen] = useState(false);
   const onlyUnsureGuess = unsure && autoSlug !== null && value.length === 1 && value[0] === autoSlug;
   const showCard = value.length > 0 && !fromPills && !onlyUnsureGuess;
+
+  if (waiting && !fromPills) {
+    return (
+      <div className="cat-choice-wait" role="status">
+        <span className="cat-choice-wait-dot" aria-hidden="true" />
+        <span className="cat-choice-wait-text">Sto capendo chi ti serve…</span>
+        <button type="button" className="cat-choice-change" onClick={() => setFromPills(true)}>
+          Scegli tu
+        </button>
+      </div>
+    );
+  }
 
   return (
     <>

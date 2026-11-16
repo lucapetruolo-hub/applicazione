@@ -190,10 +190,51 @@ test("suggerimento nel dubbio (l'IA non risponde): pillole con la categoria già
   await expect(chosenCard(page)).toHaveCount(0);
 });
 
+test("mentre l'IA pensa: \"Sto capendo chi ti serve…\" e poi la scheda, senza pillole in mezzo", async ({ page }) => {
+  let answer: () => void = () => undefined;
+  const answered = new Promise<void>((resolve) => (answer = resolve));
+  await page.route(`${API_URL}/problem-match**`, async (route) => {
+    await answered;
+    await route.fulfill({
+      json: { categories: ["muratore"], safety: null, outOfService: null, question: null, reason: null, service: null, source: "ia", missingTrade: null, reportId: null },
+    });
+  });
+  await page.goto("/preventivo");
+  const description = page.getByLabel("Descrivi il lavoro");
+  await description.fill("Si è staccata una piastrella");
+  // Anche senza uscire dal campo: l'IA parte dopo una pausa di scrittura.
+  const wait = page.getByRole("status").filter({ hasText: "Sto capendo chi ti serve…" });
+  await expect(wait).toBeVisible();
+  await expect(page.locator(".guided-chosen-hint")).toHaveText("Sto capendo chi ti serve…");
+  await expect(page.locator(".cat-tile")).toHaveCount(0);
+  answer();
+  await expect(chosenCard(page).getByText("Muratore e ristrutturazioni", { exact: true })).toBeVisible();
+  await expect(chosenCard(page).getByText(/Suggerita dall.intelligenza artificiale/)).toBeVisible();
+  await expect(wait).toHaveCount(0);
+});
+
+test("\"Scegli tu\" mentre l'IA pensa mostra subito tutte le categorie", async ({ page }) => {
+  await page.route(`${API_URL}/problem-match**`, () => undefined);
+  await page.goto("/preventivo");
+  await page.getByLabel("Descrivi il lavoro").fill("Si è staccata una piastrella");
+  await page.getByRole("status").filter({ hasText: "Sto capendo chi ti serve…" }).getByRole("button", { name: "Scegli tu" }).click();
+  await expect(page.getByRole("group", { name: "Chi ti serve" }).getByRole("button", { name: "Tutto Fare" })).toBeVisible();
+});
+
+test("sotto la descrizione si legge chi ti serve, e un tocco porta alla scelta", async ({ page }) => {
+  await page.goto("/preventivo");
+  await page.getByLabel("Descrivi il lavoro").fill("Il rubinetto del bagno gocciola");
+  const hint = page.getByRole("button", { name: "Ti serve: Idraulico" });
+  await expect(hint).toBeVisible();
+  await hint.click();
+  await expect(chosenCard(page)).toBeInViewport();
+});
+
 test("+ mestiere proposto: si dice prima che è una richiesta in più", async ({ page }) => {
   await page.goto("/preventivo?categoria=imbianchino");
   await page.getByLabel("Descrivi il lavoro").fill("Il rubinetto del bagno gocciola");
   await expect(page.getByText("Ogni mestiere aggiunto riceve una richiesta a parte.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Ti serve: Imbianchino · forse anche Idraulico" })).toBeVisible();
   await page.getByRole("button", { name: "Aggiungi Idraulico" }).click();
   await expect(chosenCard(page).getByText("Idraulico", { exact: true })).toBeVisible();
   await expect(page.getByText("Riceverai una richiesta separata per ogni categoria.")).toBeVisible();
