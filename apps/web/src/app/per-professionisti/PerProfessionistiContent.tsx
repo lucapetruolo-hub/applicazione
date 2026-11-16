@@ -13,6 +13,8 @@ import {
   formatEur,
   withVatEurCents,
   ONLINE_APP_FEE_PERCENT,
+  faqByIds,
+  faqWithMonths,
   type FounderSpots,
   type SubscriptionTier,
 } from "@professionisti/shared";
@@ -754,50 +756,22 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
   );
 }
 
-/** Solo fatti già decisi e in funzione (CLAUDE.md §5 punto 9, §6). */
-const FAQ: { question: string; answer: string; more?: string; paymentsLink?: boolean; founderOffer?: boolean }[] = [
-  {
-    // "N" diventa i mesi dell'offerta attiva (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
-    question: "Come funzionano i N mesi gratis?",
-    answer:
-      "Il livello Base è gratis per N, a partire dal lancio del sito. Per attivarli aggiungi la carta: oggi non paghi nulla e alla fine parte Base a 19 € + IVA al mese, in automatico, con un avviso qualche giorno prima. Annulli quando vuoi. Se ti servono più lavori puoi passare a Plus o Pro anche durante i mesi gratis: paghi il primo mese meno 19 €, e i mesi gratis che restano ti aspettano se torni a Base.",
-    founderOffer: true,
-  },
-  {
-    question: "Quando vedo i contatti del cliente?",
-    answer: "Quando il cliente accetta il tuo preventivo. Prima vedi la città, la descrizione del lavoro, le foto e la vostra chat.",
-  },
-  {
-    question: "Cosa succede se arrivo al limite di lavori del mio livello?",
-    // Frase breve, il conto dietro "Scopri di più" (docs/changelog/2026-11-12-pagina-per-professionisti.md).
-    answer:
-      "Ti avvisiamo prima. Resti nelle ricerche e ricevi le richieste; per mandare preventivi nuovi passi al livello sopra o aspetti il rinnovo, quando i lavori ripartono. I preventivi già mandati restano validi.",
-    more:
-      "Passando al livello sopra paghi 10 € più la differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del 10% (+ IVA). Su Plus e Pro più lavori allo stesso cliente nello stesso mese contano come uno.",
-  },
-  {
-    question: "I miei clienti di sempre contano nei lavori del mese?",
-    answer:
-      "No, se ti scrivono dal tuo link personale. Lo trovi nella tua area, con il codice QR da stampare e un messaggio pronto da mandare su WhatsApp. La richiesta arriva solo a te e il lavoro non conta, anche quando hai finito i lavori del mese. Vale per i clienti nuovi sul sito: chi ti aveva già trovato con la ricerca resta un cliente arrivato dal sito.",
-  },
-  {
-    question: "I prezzi comprendono l'IVA?",
-    answer: "No: sono IVA esclusa e l'IVA del 22% si aggiunge in fattura. Sotto ogni prezzo trovi anche il totale con l'IVA.",
-  },
-  {
-    question: "Posso annullare l'abbonamento?",
-    answer: "Sì, quando vuoi dalla pagina Abbonamento. Resta attivo fino alla fine del mese o dell'anno già pagato.",
-  },
-  {
-    question: "Chi può lasciarmi una recensione?",
-    answer: "Solo un cliente che ha prenotato un lavoro con te sul sito.",
-  },
-  {
-    question: "Come vengo pagato dai clienti?",
-    answer: "Il cliente sceglie se pagarti online con carta o direttamente a te.",
-    paymentsLink: true,
-  },
-];
+/**
+ * Solo fatti già decisi e in funzione (CLAUDE.md §5 punto 9, §6). Le risposte
+ * vengono dalla fonte unica delle domande frequenti (packages/shared/src/faq.ts,
+ * docs/changelog/2026-11-16-domande-frequenti.md): qui le otto che un
+ * professionista chiede prima di iscriversi, tutte le altre in /faq.
+ */
+const FAQ = faqByIds([
+  "mesi-gratis",
+  "pro-contatti",
+  "limite-lavori",
+  "link-personale",
+  "prezzi-iva",
+  "annullare-abbonamento",
+  "chi-recensisce",
+  "come-vengo-pagato",
+]);
 
 function ProFaq({ offerMonths }: { offerMonths: number | null }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
@@ -818,9 +792,12 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
             Domande frequenti
           </Text>
           <Text color={brand.grafite70} fontSize="5" lineHeight="26px">
-            Non trovi la risposta?{" "}
+            <Link href="/faq?per=professionisti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
+              Tutte le domande
+            </Link>{" "}
+            oppure{" "}
             <Link href="/contatti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
-              Scrivici
+              scrivici
             </Link>
             .
           </Text>
@@ -829,10 +806,11 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
           <div className="pro-faq">
             {FAQ.filter((item) => !item.founderOffer || offerMonths).map((item, index) => (
               <details key={item.question} className="pro-faq-item" open={index === 0}>
-                <summary>{item.founderOffer ? item.question.replace("N mesi", offerMonths === 1 ? "1 mese" : `${offerMonths} mesi`) : item.question}</summary>
+                <summary>{faqWithMonths(item.question, offerMonths)}</summary>
                 <p>
-                  {item.founderOffer ? item.answer.replace("per N,", offerMonths === 1 ? "per 1 mese," : `per ${offerMonths} mesi,`) : item.answer}
-                  {item.paymentsLink ? (
+                  {faqWithMonths(item.answer, offerMonths)}
+                  {/* Solo i link che chi non è iscritto può aprire, non quelli della sua area. */}
+                  {item.more === "/per-professionisti/pagamenti" ? (
                     <>
                       {" "}
                       <Link href="/per-professionisti/pagamenti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
@@ -841,10 +819,10 @@ function ProFaq({ offerMonths }: { offerMonths: number | null }) {
                     </>
                   ) : null}
                 </p>
-                {item.more ? (
+                {item.detail ? (
                   <details className="pro-faq-more">
                     <summary>Scopri di più</summary>
-                    <p>{item.more}</p>
+                    <p>{item.detail}</p>
                   </details>
                 ) : null}
               </details>

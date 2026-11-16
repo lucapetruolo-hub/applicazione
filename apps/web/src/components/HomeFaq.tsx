@@ -1,24 +1,11 @@
 "use client";
 
 import { Section, brand } from "@professionisti/ui";
+import { faqByIds } from "@professionisti/shared";
 
-// Risposta corretta rispetto alla proposta originale dell'utente ("ti
-// registri solo se vuoi prenotare"): GuidedRequestForm richiede già un
-// account per inviare la richiesta stessa (non solo per prenotare, vedi
-// il ramo "Accedi per inviare la richiesta" del form) — la domanda resta
-// utile ma la risposta deve restare vera, mai una promessa che il
-// prodotto non mantiene.
-export const FAQ_ITEMS = [
-  {
-    question: "Quanto costa usare il servizio?",
-    answer: "È gratis per chi cerca un professionista. Paghi solo il lavoro che fai fare.",
-  },
-  {
-    question: "Devo registrarmi per ricevere un preventivo?",
-    answer:
-      "Sì, serve un account gratuito (email o Google) per inviare la richiesta e ricevere i preventivi — bastano pochi secondi, nessuna carta richiesta.",
-  },
-];
+// Le due domande della home vengono dalla fonte unica delle domande frequenti
+// (packages/shared/src/faq.ts, docs/changelog/2026-11-16-domande-frequenti.md).
+const HOME_FAQ = faqByIds(["quanto-costa", "registrazione"]);
 
 /**
  * Micro-FAQ a scomparsa sotto "Come funziona" (richiesta esplicita
@@ -32,7 +19,7 @@ export function HomeFaq() {
   return (
     <Section maxWidth={1080}>
       <div className="home-faq">
-        {FAQ_ITEMS.map((item) => (
+        {HOME_FAQ.map((item) => (
           <details key={item.question} className="home-faq-item">
             <summary>{item.question}</summary>
             <p>{item.answer}</p>
