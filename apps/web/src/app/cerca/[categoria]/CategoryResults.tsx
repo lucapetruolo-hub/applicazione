@@ -51,19 +51,22 @@ async function popularOrder(city?: string): Promise<string[]> {
 
 /**
  * Categorie con almeno un professionista nella città (docs/CHANGELOG.md §282):
- * si collegano solo pagine con risultati, come nella sitemap. Dal lancio
- * (sito indicizzabile) contano solo i professionisti veri, non i profili demo.
- * `null` se la ricerca non risponde: meglio nessun link che link a pagine vuote.
+ * si collegano solo pagine con risultati, come nella sitemap. Contano solo i
+ * professionisti veri entro il raggio della ricerca, dal conteggio per
+ * mestiere dell'API: prima qui si chiedeva la ricerca completa di tutti i
+ * professionisti della città, la chiamata più pesante del sito
+ * (docs/changelog/2026-11-16-traffico-elevato.md). `null` se l'API non
+ * risponde: meglio nessun link che link a pagine vuote.
  */
 async function categoriesInCity(city: string): Promise<string[] | null> {
   try {
-    const list = await apiClient.searchProfessionals({ city, excludeDemo: SITE_INDEXABLE });
+    const { scope, counts } = await apiClient.getCategoryProfessionalCounts(city);
+    // Nessuno vicino: il conteggio passa a tutta Italia, qui nessun link.
+    if (scope !== "CITY") return [];
     // Solo i mestieri con abbastanza professionisti in città: un link a una
     // pagina città compare dai 3 in su, come in Google (scelta di Luca,
     // docs/changelog/2026-10-30-velocita-telefono.md).
-    const counts = new Map<string, number>();
-    for (const slug of list.flatMap((pro) => pro.categories.map((item) => item.slug))) counts.set(slug, (counts.get(slug) ?? 0) + 1);
-    return [...counts].filter(([, count]) => count >= MIN_PROFESSIONALS_TO_INDEX_CITY).map(([slug]) => slug);
+    return counts.filter((item) => item.count >= MIN_PROFESSIONALS_TO_INDEX_CITY).map((item) => item.slug);
   } catch {
     return null;
   }

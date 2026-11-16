@@ -169,6 +169,21 @@ export class ProfessionalsController {
     return this.professionalsService.getCategoryProfessionalCounts(typeof city === "string" ? city.slice(0, 100) : undefined);
   }
 
+  // Pubblico: "Nuovi profili" della home, pochi e con i soli dati della
+  // scheda (docs/changelog/2026-11-16-traffico-elevato.md). Prima di ":id".
+  @Get("newest")
+  getNewest(@Query("limit") limit?: string) {
+    const parsed = Number.parseInt(limit ?? "", 10);
+    return this.professionalsService.newest(Number.isFinite(parsed) ? parsed : 21);
+  }
+
+  // Pubblico: elenco leggero per la sitemap (id, nome, città, mestieri,
+  // ultima modifica), gli stessi dati che si vedono già nelle pagine.
+  @Get("directory")
+  getDirectory() {
+    return this.professionalsService.directory();
+  }
+
   @Get("languages/popular")
   getLanguagePopularity() {
     return this.professionalsService.getLanguagePopularity();

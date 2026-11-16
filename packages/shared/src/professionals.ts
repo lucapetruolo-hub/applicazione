@@ -265,6 +265,17 @@ export type ProfessionalAvailabilityPreviewDay = {
   times: ProfessionalAvailabilityPreviewSlot[];
 };
 
+/** "Nuovi profili" della home: GET /professionals/newest (docs/changelog/2026-11-16-traffico-elevato.md). */
+export type ProfessionalNewestResult = Pick<
+  ProfessionalSearchResult,
+  "id" | "businessName" | "categorySlug" | "categoryLabel" | "city" | "createdAt" | "imageUrl" | "rating" | "verified"
+>;
+
+/** Elenco leggero per la sitemap: GET /professionals/directory. */
+export type ProfessionalDirectoryEntry = Pick<ProfessionalSearchResult, "id" | "businessName" | "city" | "categories" | "subTags"> & {
+  updatedAt: string;
+};
+
 /** Risultato reale restituito da GET /professionals/search su apps/api. */
 export type ProfessionalSearchResult = {
   id: string;

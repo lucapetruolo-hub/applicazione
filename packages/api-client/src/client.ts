@@ -70,6 +70,8 @@ import type {
   ProfessionalLead,
   ProfessionalProfileSelfInput,
   ProfessionalSearchResult,
+  ProfessionalNewestResult,
+  ProfessionalDirectoryEntry,
   ProposeQuoteDateInput,
   RejectQuoteInput,
   QuoteSelfInput,
@@ -1592,6 +1594,13 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         cache: "no-store",
       });
     },
+
+    /** "Nuovi profili" della home: pochi e leggeri (docs/changelog/2026-11-16-traffico-elevato.md). */
+    getNewestProfessionals: (limit: number) =>
+      request<ProfessionalNewestResult[]>(`/professionals/newest?limit=${encodeURIComponent(String(limit))}`, { cache: "no-store" }),
+
+    /** Elenco leggero dei profili visibili, per la sitemap. */
+    getProfessionalDirectory: () => request<ProfessionalDirectoryEntry[]>("/professionals/directory", { cache: "no-store" }),
 
     /** Micro-tool "Quanto costa in media" (homepage): prezzi veri per prestazione, mai un dato finto (docs/CHANGELOG.md §398). */
     getServicePriceIndex: () =>
