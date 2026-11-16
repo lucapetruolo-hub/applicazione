@@ -3734,3 +3734,44 @@ model AdminCaseAdvice {
   @@index([kind, adminDecidedAt])
   @@map("admin_case_advice")
 }
+
+// Tetti giornalieri delle chiamate a pagamento (Google, IA), uguali per tutte
+// le copie dell'API e non azzerati da un aggiornamento
+// (docs/changelog/2026-11-16-traffico-elevato.md).
+model DailyBudgetUsage {
+  name String
+  day  DateTime @db.Date
+  used Int      @default(0)
+
+  @@id([name, day])
+  @@map("daily_budget_usage")
+}
+
+// Biglietti monouso per collegarsi al tempo reale (POST /realtime/ticket):
+// nel database perché il biglietto chiesto a una copia dell'API possa essere
+// usato su un'altra. Si tiene solo l'impronta del codice
+// (docs/changelog/2026-11-16-traffico-elevato.md).
+model RealtimeTicket {
+  codeHash       String   @id
+  userId         String
+  sessionVersion Int
+  jti            String?
+  expiresAt      DateTime
+
+  @@index([expiresAt])
+  @@map("realtime_tickets")
+}
+
+// Eventi in tempo reale da passare alle altre copie dell'API: ognuna li
+// legge ogni secondo e li manda a chi è collegato da lei. Tenuti pochi
+// minuti (docs/changelog/2026-11-16-traffico-elevato.md).
+model RealtimeEvent {
+  id        BigInt   @id @default(autoincrement())
+  userId    String
+  payload   Json
+  origin    String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("realtime_events")
+}

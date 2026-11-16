@@ -48,7 +48,7 @@ export class GeocodingService {
     const message = "Tetto giornaliero dei CAP controllati raggiunto: fino a mezzanotte il CAP non si controlla.";
     this.logger.error(message);
     opsAlert("postal-code-budget", message);
-  });
+  }, undefined, "google-cap-controllati");
 
   /**
    * Il CAP è della città? (docs/CHANGELOG.md §357) `false` solo quando è sicuro: CAP di
@@ -62,7 +62,7 @@ export class GeocodingService {
     // Il CAP ricostruito cifra per cifra: nell'indirizzo chiesto a Google non
     // finisce mai il testo arrivato dal browser.
     const postalCode = [...input.postalCode.trim()].map((digit) => DIGITS.indexOf(digit)).join("");
-    if (!this.postalCodeBudget.take()) return null;
+    if (!(await this.postalCodeBudget.take())) return null;
     const data = await this.fetchGeocode("", apiKey, `postal_code:${postalCode}|country:IT`);
     const result = data?.status === "OK" ? data.results[0] : undefined;
     if (!result) return null;

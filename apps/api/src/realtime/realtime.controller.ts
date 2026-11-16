@@ -42,7 +42,7 @@ export class RealtimeTicketGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<TicketRequest>();
     const code = typeof request.query.ticket === "string" ? request.query.ticket : null;
-    const ticket = code ? this.tickets.redeem(code) : null;
+    const ticket = code ? await this.tickets.redeem(code) : null;
     if (!ticket || (await sessionClosed(this.prisma, ticket))) throw new UnauthorizedException("Biglietto non valido o scaduto.");
     request.realtimeTicket = ticket;
     return true;
@@ -69,7 +69,7 @@ export class RealtimeController {
     const user = await this.prisma.user.findUnique({ where: { id: req.user.userId }, select: { sessionVersion: true } });
     if (!user) throw new UnauthorizedException("Accesso non valido.");
     const jti = req.user.session?.jti;
-    return { ticket: this.tickets.issue({ userId: req.user.userId, sessionVersion: user.sessionVersion, ...(jti ? { jti } : {}) }) };
+    return { ticket: await this.tickets.issue({ userId: req.user.userId, sessionVersion: user.sessionVersion, ...(jti ? { jti } : {}) }) };
   }
 
   /**

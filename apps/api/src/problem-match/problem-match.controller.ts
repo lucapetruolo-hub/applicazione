@@ -96,7 +96,7 @@ export class ProblemMatchController {
     if (!mediaType) throw new BadRequestException("La foto deve essere un'immagine JPEG, PNG o WebP.");
     const ip = clientIp(req);
     await assertTurnstile(body.turnstileToken, ip);
-    if (!this.problemMatchService.takePhotoForIp(ip)) {
+    if (!(await this.problemMatchService.takePhotoForIp(ip))) {
       throw new HttpException("Per oggi hai già cercato con molte foto: scrivi il problema con parole tue.", HttpStatus.TOO_MANY_REQUESTS);
     }
     return this.problemMatchService.analyzePhoto(file.buffer, mediaType, body.description);

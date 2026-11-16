@@ -24,11 +24,11 @@ import {
   type ProfessionalCategorySlug,
   type ServiceCatalogEntry,
 } from "@professionisti/shared";
-import { DailyBudget } from "../common/daily-budget";
+import { DailyBudget, type DailyBudgetStore, sharedBudgetStore } from "../common/daily-budget";
 import { opsAlert } from "../common/ops-alert";
 import { PRISMA } from "../prisma/prisma.module";
 import { ServiceCatalogService } from "./service-catalog.service";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { ScheduledJob } from "../common/scheduled-job";
 
 /**
@@ -132,8 +132,6 @@ const PHOTO_RESULT_TTL_MS = 30 * 60_000;
  */
 const PHOTO_DAILY_LIMIT = 1000;
 const PHOTO_PER_IP_DAILY_LIMIT = 5;
-/** Oltre questi indirizzi in un giorno si riparte da capo: la memoria resta piccola. */
-const PHOTO_IPS_MAX = 50_000;
 const PHOTO_RESULTS_MAX = 500;
 export type PhotoMediaType = "image/jpeg" | "image/png" | "image/webp";
 
@@ -357,6 +355,7 @@ export class ProblemMatchService {
       opsAlert("problem-match-budget", message);
     },
     "PROBLEM_MATCH_AI_DAILY_LIMIT",
+    "ia-testo",
   );
   /** Tetto delle foto per tutto il sito, separato da quello del testo. */
   private readonly photoBudget = new DailyBudget(
@@ -367,9 +366,8 @@ export class ProblemMatchService {
       opsAlert("problem-photo-budget", message);
     },
     "PROBLEM_PHOTO_DAILY_LIMIT",
+    "ia-foto",
   );
-  private photoIpDay = "";
-  private readonly photosByIp = new Map<string, number>();
   private readonly cache = new Map<string, Classified>();
   /** Risultati delle foto, per id: la foto non si tiene, solo cosa ne ha capito l'IA. */
   private readonly photoResults = new Map<string, { classified: Classified; ai: AiCall | null; at: number }>();
@@ -452,7 +450,7 @@ export class ProblemMatchService {
    */
   async analyzePhoto(image: Buffer, mediaType: PhotoMediaType, description: string | undefined): Promise<ProblemPhotoResult> {
     const off: ProblemPhotoResult = { photoId: null, description: null, check: "spenta" };
-    if (!photoSearchEnabled() || !this.photoBudget.take()) return off;
+    if (!photoSearchEnabled() || !(await this.photoBudget.take())) return off;
     const typed = description?.trim() ?? "";
     const text = anonymizeProblemText(typed);
     const catalog = await this.serviceCatalog.catalog();
@@ -485,22 +483,28 @@ export class ProblemMatchService {
    * (`PROBLEM_PHOTO_IP_DAILY_LIMIT` lo cambia, per esempio per il banco di prova).
    */
   /** Foto di oggi per Admin › Mestieri richiesti (docs/changelog/2026-11-13-difese-ricerca-con-foto.md). */
-  photoUsage(): { enabled: boolean; used: number; limit: number } {
-    return { enabled: photoSearchEnabled(), ...this.photoBudget.usage() };
+  async photoUsage(): Promise<{ enabled: boolean; used: number; limit: number }> {
+    return { enabled: photoSearchEnabled(), ...(await this.photoBudget.usage()) };
   }
 
-  takePhotoForIp(ip: string, now: Date = new Date()): boolean {
+  /**
+   * Foto per indirizzo contate nel database (docs/changelog/2026-11-16-traffico-elevato.md):
+   * uguali su tutte le copie dell'API e non azzerate da un aggiornamento.
+   * Dell'indirizzo si tiene solo un'impronta, mai l'indirizzo.
+   */
+  photoIpStore: DailyBudgetStore | null = null;
+
+  async takePhotoForIp(ip: string, now: Date = new Date()): Promise<boolean> {
     const today = now.toISOString().slice(0, 10);
-    if (today !== this.photoIpDay || this.photosByIp.size >= PHOTO_IPS_MAX) {
-      this.photoIpDay = today;
-      this.photosByIp.clear();
-    }
     const raw = Number(process.env.PROBLEM_PHOTO_IP_DAILY_LIMIT?.trim() || NaN);
     const limit = Number.isInteger(raw) && raw >= 0 ? raw : PHOTO_PER_IP_DAILY_LIMIT;
-    const used = this.photosByIp.get(ip) ?? 0;
-    if (used >= limit) return false;
-    this.photosByIp.set(ip, used + 1);
-    return true;
+    if (limit === 0) return false;
+    const print = createHash("sha256").update(`${ip}|${today}`).digest("hex").slice(0, 24);
+    try {
+      return await (this.photoIpStore ?? sharedBudgetStore()).take(`ia-foto-ip:${print}`, today, limit);
+    } catch {
+      return false;
+    }
   }
 
   private takePhotoResult(photoId: string): { classified: Classified; ai: AiCall | null } | null {
@@ -536,7 +540,7 @@ export class ProblemMatchService {
     const key = text.toLowerCase().replace(/\s+/g, " ");
     const cached = this.cache.get(key);
     if (cached) return { classified: cached, ai: null };
-    if (!this.budget.take()) return { classified: fromDictionary, ai: { ms: null, outcome: "tetto" } };
+    if (!(await this.budget.take())) return { classified: fromDictionary, ai: { ms: null, outcome: "tetto" } };
 
     const catalog = await this.serviceCatalog.catalog();
     const started = Date.now();

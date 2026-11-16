@@ -48,8 +48,8 @@ export class AddressSuggestionsController {
   /** Se i suggerimenti funzionano, senza chiamare Google (§324). */
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @Get("status")
-  status() {
-    return { available: this.addressSuggestionsService.available() };
+  async status() {
+    return { available: await this.addressSuggestionsService.available() };
   }
 
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
