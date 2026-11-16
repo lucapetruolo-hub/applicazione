@@ -1,6 +1,27 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { type ExecutionContext, Injectable, Logger } from "@nestjs/common";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import { isIP } from "node:net";
+import { timingSafeEqual } from "node:crypto";
+
+/**
+ * Chiamate fatte dal server del sito (pagine preparate su Vercel), riconosciute
+ * da una chiave segreta che conoscono solo Vercel e Render (`SITE_SERVER_KEY`,
+ * docs/changelog/2026-11-16-traffico-elevato.md). Senza, il limite al minuto
+ * contava tutti i visitatori sull'indirizzo di Vercel: con ~8 visite al
+ * minuto dalla stessa uscita la home restava senza professionisti. Una chiave
+ * corta o assente non vale mai.
+ */
+export const SITE_KEY_HEADER = "x-site-key";
+const MIN_SITE_KEY_LENGTH = 32;
+
+export function isSiteServerRequest(req: { headers?: Record<string, string | string[] | undefined> }, expected = process.env.SITE_SERVER_KEY?.trim()): boolean {
+  if (!expected || expected.length < MIN_SITE_KEY_LENGTH) return false;
+  const header = req.headers?.[SITE_KEY_HEADER];
+  if (typeof header !== "string" || !header) return false;
+  const given = Buffer.from(header);
+  const wanted = Buffer.from(expected);
+  return given.length === wanted.length && timingSafeEqual(given, wanted);
+}
 
 /**
  * Indirizzo di chi chiama l'API (controllo pre-lancio dell'08/11, E2-02,
@@ -54,6 +75,19 @@ function describeOnce(req: { headers?: Record<string, string | string[] | undefi
 /** Limite al minuto contato sull'indirizzo vero del cliente (`clientIp`). */
 @Injectable()
 export class ClientIpThrottlerGuard extends ThrottlerGuard {
+  /**
+   * Le pagine del sito preparate sul server non contano nei limiti al minuto:
+   * li conta già il browser di ogni visitatore quando chiama l'API, e
+   * contarle sull'indirizzo di Vercel bloccava il sito stesso
+   * (docs/changelog/2026-11-16-traffico-elevato.md). Contro chi martella le
+   * pagine resta la protezione di Vercel (docs/ops/avvisi.md).
+   */
+  protected override async shouldSkip(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest<Parameters<typeof isSiteServerRequest>[0]>();
+    if (request && isSiteServerRequest(request)) return true;
+    return super.shouldSkip(context);
+  }
+
   protected override async getTracker(req: Record<string, unknown>): Promise<string> {
     const request = req as Parameters<typeof clientIp>[0];
     describeOnce(request);

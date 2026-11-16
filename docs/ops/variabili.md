@@ -38,6 +38,7 @@ Vercel entrano nel sito alla build: dopo un cambio serve **Redeploy**.
 | `WHATSAPP_GRAPH_VERSION`, `WHATSAPP_PRICE_*` | Fac. | Valori di serie |
 | `GENERAL_REQUESTS_ENABLED` | Fac. (`false` spegne) | Richieste generali attive |
 | `ADMIN_BOOTSTRAP_SECRET` | Fino al primo admin | Primo admin impossibile; poi va tolta |
+| `SITE_SERVER_KEY` | Obbl. al lancio | Le pagine del sito contano nel limite di 60 chiamate al minuto sull'indirizzo di Vercel: con traffico, home e ricerca senza professionisti. Almeno 32 caratteri, uguale su Vercel ([avvisi.md](avvisi.md)) |
 | `RATE_LIMIT_PER_MINUTE`, `TZ` | **Mai in produzione** | — |
 
 ## Sito (Vercel)
@@ -50,6 +51,7 @@ Vercel entrano nel sito alla build: dopo un cambio serve **Redeploy**.
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Fac. | Anti-bot spento (va messa **prima** di quella su Render) |
 | `NEXT_PUBLIC_SITE_INDEXABLE` | Il giorno del lancio | Sito `noindex` |
 | `ADMIN_ENTRY_PATH` | Fac. | `/admin` raggiungibile da tutti (resta protetto dall'API) |
+| `SITE_SERVER_KEY` | Obbl. al lancio | Come su Render: la stessa chiave, **senza** `NEXT_PUBLIC_` (non deve arrivare al browser). Dopo il cambio serve **Redeploy** |
 
 ## GitHub (Actions)
 

@@ -164,6 +164,13 @@ services:
       # vecchio, dal dominio nuovo nessuna chiamata all'API passa.
       - key: FRONTEND_URL
         value: https://applicazione-web.vercel.app
+      # Chiave segreta delle pagine del sito preparate su Vercel (almeno 32
+      # caratteri, la stessa in SITE_SERVER_KEY su Vercel): le loro chiamate non
+      # contano nel limite al minuto, che le contava tutte sull'indirizzo di
+      # Vercel (docs/changelog/2026-11-16-traffico-elevato.md). Senza, tutto
+      # come prima.
+      - key: SITE_SERVER_KEY
+        sync: false
 
       # --- Variabili lette dal codice che prima mancavano qui ------------------
       # (docs/changelog/2026-11-08-infrastruttura-lancio.md, controllo E9-03):
