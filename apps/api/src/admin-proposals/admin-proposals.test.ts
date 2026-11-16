@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ServiceNamesAdminOverview } from "@professionisti/shared";
 import {
+  categoryChangeWordCandidates,
   dictionaryWordCandidates,
   serviceWordCandidates,
   groupKey,
@@ -29,6 +30,34 @@ describe("frase d'esempio", () => {
     expect(list[0]).toEqual({ categorySlug: "dogsitter", text: "Passeggiate per il cane", searches: 9 });
     expect(list[1]).toMatchObject({ categorySlug: "babysitter", text: "Babysitter per la sera" });
     expect(list.find((p) => p.categorySlug === "tuttofare")?.text).toBe("Montare una mensola");
+  });
+});
+
+describe("parola dalle categorie cambiate", () => {
+  const req = (text: string, suggested: string, chosen: string) => ({ text, suggested, chosen });
+  const places = ["camera", "salotto", "studio", "cameretta", "ingresso", "corridoio"];
+
+  it("propone la parola con cui 5 clienti cambiano lo stesso mestiere con lo stesso altro", () => {
+    const rows = places.slice(0, 5).map((place) => req(`Pergolato da sistemare: ${place}`, "tuttofare", "falegname"));
+    const list = categoryChangeWordCandidates(rows, []);
+    expect(list.find((w) => w.example === "pergolato")).toMatchObject({ from: "tuttofare", to: "falegname", changes: 5, chosenTo: 5, total: 5 });
+  });
+
+  it("niente con 4 cambi, se meno di 9 su 10 scelgono quel mestiere, se già insegnata o generica", () => {
+    expect(categoryChangeWordCandidates(places.slice(0, 4).map((p) => req(`Pergolato per ${p}`, "tuttofare", "falegname")), [])).toEqual([]);
+    const mixed = [
+      ...places.slice(0, 5).map((p) => req(`Pergolato per ${p}`, "tuttofare", "falegname")),
+      req("Pergolato per bagno", "tuttofare", "tuttofare"),
+    ];
+    expect(categoryChangeWordCandidates(mixed, []).map((w) => w.example)).not.toContain("pergolato");
+    const five = places.slice(0, 5).map((p) => req(`Pergolato per ${p}`, "tuttofare", "falegname"));
+    expect(categoryChangeWordCandidates(five, ["pergolat"]).map((w) => w.example)).not.toContain("pergolato");
+    expect(categoryChangeWordCandidates(places.map(() => req("Lavoro urgente in casa", "tuttofare", "muratore")), [])).toEqual([]);
+  });
+
+  it("mai se il dizionario porta già la parola al mestiere scelto, mai numeri", () => {
+    expect(categoryChangeWordCandidates(places.map(() => req("rubinetto", "tuttofare", "idraulico")), [])).toEqual([]);
+    expect(categoryChangeWordCandidates(places.map(() => req("3331234567", "tuttofare", "idraulico")), [])).toEqual([]);
   });
 });
 

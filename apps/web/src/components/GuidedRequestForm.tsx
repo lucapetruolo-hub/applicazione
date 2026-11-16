@@ -570,12 +570,19 @@ export function GuidedRequestForm({
   const suggestionsOn = !professionalProfileId && !chosenMode;
   const typedDescription = useDeferredValue(description.trim());
   const [checkedDescription, setCheckedDescription] = useState<{ text: string; result: ProblemMatchResult } | null>(null);
-  const suggestion: ProblemMatchResult | null =
-    !suggestionsOn || typedDescription.length < 4
-      ? null
-      : checkedDescription?.text === typedDescription
-        ? checkedDescription.result
-        : problemMatchFromDictionary(matchProblem(typedDescription));
+  const localMatch = !suggestionsOn || typedDescription.length < 4 ? null : matchProblem(typedDescription);
+  const suggestion: ProblemMatchResult | null = !localMatch
+    ? null
+    : checkedDescription?.text === typedDescription
+      ? checkedDescription.result
+      : problemMatchFromDictionary(localMatch);
+  // Suggerimento sicuro: dizionario senza dubbi, nome del mestiere o risposta
+  // dell'IA. Sul banco delle frasi la scheda con "Cambia" è giusta 99 volte su
+  // 100 col dizionario sicuro e 96 con l'IA, ma solo 80 quando l'IA non
+  // risponde e resta il dizionario nel dubbio: lì si mostrano le pillole con
+  // la categoria già scelta, da controllare
+  // (docs/changelog/2026-11-16-scelta-categoria-migliorie.md).
+  const suggestionSure = suggestion !== null && (suggestion.source !== "dizionario" || localMatch?.confident === true);
   const suggestedSlugs = suggestion?.categories ?? [];
   const categoryLabelOf = (slug: ProfessionalCategorySlug) => PROFESSIONAL_CATEGORIES.find((c) => c.slug === slug)?.label ?? slug;
   const autoSlug = suggestedSlugs[0] ?? null;
@@ -1675,6 +1682,11 @@ export function GuidedRequestForm({
             </XStack>
             {/* Senza una categoria scelta, una riga che dice cosa fare. Con la
                 categoria suggerita lo dice la scheda stessa (`CategoryChoice`). */}
+            {suggestionsOn && autoApplied && !suggestionSure && categorySlugs.length === 1 && categorySlugs[0] === autoApplied ? (
+              <Text fontSize={13} color={brand.grafite70} aria-live="polite">
+                {`Forse ti serve ${categoryLabelOf(autoApplied)}: l'abbiamo già scelta, controlla qui sotto o scegline un'altra.`}
+              </Text>
+            ) : null}
             {suggestionsOn && categorySlugs.length === 0 ? (
               <Text fontSize={13} color={brand.grafite70} aria-live="polite">
                 {openQuestion
@@ -1699,6 +1711,7 @@ export function GuidedRequestForm({
               suggested={suggestedSlugs}
               autoSlug={suggestionsOn && autoApplied && categorySlugs.includes(autoApplied) ? autoApplied : null}
               fromAi={suggestion?.source === "ia"}
+              unsure={!suggestionSure}
               also={suggestionsOn ? alsoSuggested : []}
             />
             {categorySlugs.length > 1 ? (

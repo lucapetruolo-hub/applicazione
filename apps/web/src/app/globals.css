@@ -6884,6 +6884,11 @@ a.admin-kpi:hover {
   font-size: 14px;
   color: #6f665d;
 }
+.cat-choice-also-note {
+  flex-basis: 100%;
+  font-size: 13px;
+  color: #6f665d;
+}
 .cat-choice-add {
   display: inline-flex;
   align-items: center;
@@ -6928,6 +6933,10 @@ a.admin-kpi:hover {
   padding: 10px 0 env(safe-area-inset-bottom, 0px);
   outline: none;
   animation: cat-sheet-up 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.cat-sheet-drag {
+  /* Il trascinamento in giù lo gestisce il pannello, non lo scorrimento della pagina. */
+  touch-action: none;
 }
 .cat-sheet-grab {
   width: 40px;
@@ -7105,6 +7114,9 @@ a.admin-kpi:hover {
   }
   .cat-sheet-grab {
     display: none;
+  }
+  .cat-sheet-drag {
+    touch-action: auto;
   }
   .cat-sheet-list {
     grid-template-columns: 1fr 1fr;

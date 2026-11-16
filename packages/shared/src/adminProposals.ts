@@ -12,6 +12,7 @@ export const ADMIN_PROPOSAL_KINDS = [
   "EXAMPLE_PHRASE",
   "DICTIONARY_WORD",
   "DICTIONARY_SERVICE_WORD",
+  "CATEGORY_CHANGE_WORD",
   "STANDARD_SERVICE",
   "MERGE_SERVICE_NAME",
   "PROFILE_REMINDER",
@@ -50,6 +51,12 @@ export const ADMIN_PROPOSAL_KINDS_INFO: Record<AdminProposalKind, AdminProposalK
   },
   DICTIONARY_SERVICE_WORD: {
     label: "Parola per una prestazione",
+    scope: "MODERATION",
+    approveLabel: "Insegna la parola",
+    undo: { label: "Si toglie da Mestieri richiesti", href: "/admin/mestieri-richiesti" },
+  },
+  CATEGORY_CHANGE_WORD: {
+    label: "Categoria che i clienti cambiano",
     scope: "MODERATION",
     approveLabel: "Insegna la parola",
     undo: { label: "Si toglie da Mestieri richiesti", href: "/admin/mestieri-richiesti" },
