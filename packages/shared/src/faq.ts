@@ -563,3 +563,26 @@ export function normalizeFaqText(text: string): string {
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
+
+/**
+ * Le tre domande sotto "Chi sei?" in Contatti (docs/changelog/2026-11-16-domande-frequenti.md).
+ * Si cambiano solo approvando una proposta in Admin, partita dai "No" di
+ * "Ti è stata utile?": mai da sole. Queste sono quelle di partenza.
+ */
+export const CONTACT_FAQ_COUNT = 3;
+export const CONTACT_FAQ_DEFAULT: Record<FaqAudience, readonly string[]> = {
+  cliente: ["annullare", "lavoro-fatto-male", "come-pago"],
+  professionista: ["profilo-non-compare", "limite-lavori", "annullare-abbonamento"],
+};
+export type ContactFaqPicks = Record<FaqAudience, string[]>;
+
+/** Può stare in Contatti: niente risposte che dipendono da pagamenti online o offerte accese. */
+export function contactFaqEligible(item: FaqItem, audience: FaqAudience): boolean {
+  return item.audience === audience && !item.onlineOnly && !item.founderOffer;
+}
+
+/** Le domande salvate se valgono ancora (tre, esistenti, del pubblico giusto), altrimenti quelle di partenza. */
+export function contactFaqOrDefault(audience: FaqAudience, ids: readonly string[] | null | undefined): string[] {
+  const valid = (ids ?? []).filter((id, i, all) => all.indexOf(id) === i && FAQ.some((item) => item.id === id && contactFaqEligible(item, audience)));
+  return valid.length === CONTACT_FAQ_COUNT ? valid : [...CONTACT_FAQ_DEFAULT[audience]];
+}

@@ -2516,6 +2516,10 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     adminUndoSiteAdviceDone: (token: string, key: string) =>
       request<void>("/admin/site-advice/undo", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ key }) }),
 
+    /** "Rimetti quelle di partenza" per le tre domande in Contatti (docs/changelog/2026-11-16-domande-frequenti.md). */
+    adminResetContactFaq: (token: string) =>
+      request<void>("/admin/proposals/contact-faq/reset", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
     /** Scadenze del sito e controllo della notte (docs/changelog/2026-11-13-admin-scadenze-controlli.md), solo super admin. */
     adminCaseAdvice: (token: string) =>
       request<CaseAdviceOverview>("/admin/case-advice", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

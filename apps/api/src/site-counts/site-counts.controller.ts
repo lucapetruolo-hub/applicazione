@@ -1,4 +1,4 @@
-import { Body, Controller, Headers, HttpCode, Post } from "@nestjs/common";
+import { Body, Controller, Get, Headers, HttpCode, Post } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import {
   faqFeedbackEventSchema,
@@ -15,6 +15,7 @@ import {
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { SiteCountsService } from "./site-counts.service";
+import { ContactFaqService } from "./contact-faq.service";
 
 /**
  * Conteggi mandati dal browser (docs/CHANGELOG.md §372): un passo della
@@ -25,7 +26,10 @@ import { SiteCountsService } from "./site-counts.service";
  */
 @Controller("site")
 export class SiteCountsController {
-  constructor(private readonly siteCounts: SiteCountsService) {}
+  constructor(
+    private readonly siteCounts: SiteCountsService,
+    private readonly contactFaq: ContactFaqService,
+  ) {}
 
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @Post("step")
@@ -68,5 +72,11 @@ export class SiteCountsController {
   async faqFeedback(@Body(new ZodValidationPipe(faqFeedbackEventSchema)) body: FaqFeedbackEvent, @Headers("user-agent") userAgent?: string): Promise<void> {
     if (isBotUserAgent(userAgent)) return;
     await this.siteCounts.recordFaqFeedback(body.faqId, body.helpful).catch(() => undefined);
+  }
+
+  /** Le tre domande frequenti sotto "Chi sei?" in Contatti, per chi cerca e per i professionisti. */
+  @Get("contact-faq")
+  contactFaqPicks() {
+    return this.contactFaq.picks();
   }
 }

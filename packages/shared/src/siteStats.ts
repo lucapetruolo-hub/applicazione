@@ -283,7 +283,9 @@ export type AdminSiteStats = {
   /** Motivi scelti negli ultimi 90 giorni. */
   churnReasons: { kind: ChurnKind; reason: ChurnReason; count: number }[];
   /** "Ti è stata utile?" sulle domande frequenti negli ultimi 90 giorni, prima quelle con più "No". */
-  faqFeedback: { faqId: string; question: string; audience: "cliente" | "professionista"; yes: number; no: number }[];
+  faqFeedback: { faqId: string; question: string; answer: string; audience: "cliente" | "professionista"; yes: number; no: number }[];
+  /** Le tre domande in Contatti oggi, per pubblico, e se sono ancora quelle di partenza. */
+  contactFaq: { audience: "cliente" | "professionista"; questions: string[]; changed: boolean }[];
   notes: { id: string | null; day: string; text: string }[];
   /** Richieste inviate contate dal browser contro quelle salvate, ultimi 14 giorni. */
   reconciliation: { days: number; counted: number; saved: number; ok: boolean };

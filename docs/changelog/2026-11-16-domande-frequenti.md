@@ -57,3 +57,33 @@ sole tolgono messaggi ai Contatti, soprattutto dai professionisti bloccati.
 **Verifica**: prova in `site-counts.service.test.ts` (sì/no contati, id
 inventati ignorati), lint e tipi di sito e API, anteprime `utile-*.png` e
 `contatti-*.png` in `anteprime/domande-frequenti/`.
+
+## Terzo giro: risposte in Admin e domande di Contatti con proposta
+
+**Richiesta** (Luca, 16/11): sì a "il testo della risposta accanto ai No" e a
+"cambiare le 3 domande di Contatti secondo i No", "sempre tramite automazioni
+che arrivano in admin con approva ed ignora".
+
+**Decisione**:
+- **Andamento → Domande frequenti poco utili**: ogni domanda con No e Sì,
+  per chi è, e "Leggi la risposta" che apre il testo sul posto. Sotto, "In
+  Contatti oggi" con le tre domande per pubblico e, se sono cambiate,
+  "Rimetti quelle di partenza".
+- **Contatti**: le tre domande stanno nella tabella `contact_faq_picks`
+  (senza righe valgono `CONTACT_FAQ_DEFAULT`), lette da `GET /site/contact-faq`
+  con 10 minuti di cache; il sito le ricontrolla (`contactFaqOrDefault`).
+- **Proposta `CONTACT_FAQ`** nelle proposte di sempre in Home (Approva / Non
+  ora / No, mai, docs/changelog/2026-11-03-automazioni-admin.md): ogni notte,
+  per pubblico, la domanda fuori da Contatti con più No (almeno
+  `CONTACT_FAQ_MIN_NO` = 5 in 90 giorni dal lancio) al posto di quella in
+  Contatti con meno No, solo se ne ha di più. Mai domande dei pagamenti online
+  o dei mesi gratis. Approva ricontrolla che valga ancora e scrive il registro
+  azioni (`ContactFaqPick`). Permesso: moderazione.
+
+**Motivo**: molti No dicono che è un dubbio che torna e che la pagina non
+scioglie: è quello per cui la gente scrive. Niente cambia da solo (regola
+delle proposte).
+
+**Verifica**: prove in `admin-proposals.test.ts` (regola, Approva, Rimetti) e
+`faq.test.ts` (domande di partenza valide, ritorno a quelle se le salvate non
+valgono), tutte le prove dell'API, lint e tipi di sito e API.

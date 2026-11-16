@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ServiceNamesAdminOverview } from "@professionisti/shared";
 import {
+  CONTACT_FAQ_MIN_NO,
   categoryChangeWordCandidates,
+  contactFaqSwaps,
   dictionaryWordCandidates,
   serviceWordCandidates,
   groupKey,
@@ -199,7 +201,7 @@ describe("decisioni", () => {
     const audit = { record: vi.fn() };
     const examplesService = { adminList: vi.fn().mockResolvedValue({ custom: true, examples }), add: vi.fn() };
     const categories = { getPopularity: vi.fn().mockResolvedValue({ scope: "ALL", counts: [] }) };
-    const service = new AdminProposalsService(prisma as never, audit as never, {} as never, categories as never, {} as never, examplesService as never, {} as never, {} as never, {} as never);
+    const service = new AdminProposalsService(prisma as never, audit as never, {} as never, categories as never, {} as never, examplesService as never, {} as never, {} as never, {} as never, {} as never);
     return { prisma, audit, examplesService, service };
   }
 
@@ -300,5 +302,65 @@ describe("serviceWordCandidates", () => {
     const places = ["intonaco", "del soffitto", "forte", "in sala", "esterno", "in cucina", "della scala", "in bagno", "sul balcone", "in garage"];
     const rows = places.map((place) => ({ ...iaService(`scrostamento ${place}`, "muratore", "Riparazione crepe nei muri") }));
     expect(dictionaryWordCandidates(rows, []).find((w) => w.example === "scrostamento")).toMatchObject({ service: "Riparazione crepe nei muri" });
+  });
+});
+
+describe("domande in Contatti", () => {
+  const current = { cliente: ["annullare", "lavoro-fatto-male", "come-pago"], professionista: ["profilo-non-compare", "limite-lavori", "annullare-abbonamento"] };
+
+  it("mette la domanda con più No al posto di quella in Contatti con meno No", () => {
+    const swaps = contactFaqSwaps(current, [
+      { faqId: "annullare", yes: 3, no: 2 },
+      { faqId: "lavoro-fatto-male", yes: 1, no: 1 },
+      { faqId: "come-pago", yes: 0, no: 4 },
+      { faqId: "quanto-costa", yes: 0, no: CONTACT_FAQ_MIN_NO + 2 },
+    ]);
+    expect(swaps).toEqual([{ audience: "cliente", inId: "quanto-costa", outId: "lavoro-fatto-male", inNo: CONTACT_FAQ_MIN_NO + 2, outNo: 1 }]);
+  });
+
+  it("niente proposta sotto la soglia, con una domanda dell'altro pubblico o se quella in Contatti ha più No", () => {
+    expect(contactFaqSwaps(current, [{ faqId: "quanto-costa", yes: 0, no: CONTACT_FAQ_MIN_NO - 1 }])).toEqual([]);
+    expect(contactFaqSwaps({ ...current, cliente: ["annullare", "lavoro-fatto-male", "come-pago"] }, [{ faqId: "mesi-gratis", yes: 0, no: 50 }])).toEqual([]);
+    expect(
+      contactFaqSwaps(current, [
+        { faqId: "annullare", yes: 0, no: 9 },
+        { faqId: "lavoro-fatto-male", yes: 0, no: 9 },
+        { faqId: "come-pago", yes: 0, no: 9 },
+        { faqId: "quanto-costa", yes: 0, no: 9 },
+      ]),
+    ).toEqual([]);
+  });
+});
+
+describe("domande in Contatti: Approva e Rimetti", () => {
+  const now = new Date("2026-12-10T10:00:00Z");
+  function setup(roles: string[]) {
+    const contactFaq = {
+      picks: vi.fn().mockResolvedValue({ cliente: ["annullare", "lavoro-fatto-male", "come-pago"], professionista: ["profilo-non-compare", "limite-lavori", "annullare-abbonamento"] }),
+      votes: vi.fn().mockResolvedValue([{ faqId: "quanto-costa", yes: 0, no: 8 }]),
+      save: vi.fn(),
+    };
+    const key = "CONTACT_FAQ:cliente:come-pago:quanto-costa";
+    const row = { id: "p1", key, kind: "CONTACT_FAQ", status: "PENDING", payload: {}, updatedAt: now, snoozedUntil: null };
+    const prisma = {
+      user: { findUnique: vi.fn().mockResolvedValue({ adminRoles: roles }) },
+      adminProposal: { findUnique: vi.fn().mockResolvedValue(row), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    };
+    const audit = { record: vi.fn() };
+    const service = new AdminProposalsService(prisma as never, audit as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, contactFaq as never);
+    return { contactFaq, audit, service };
+  }
+
+  it("Approva cambia una sola domanda e lo scrive nel registro", async () => {
+    const { contactFaq, audit, service } = setup(["MODERATOR"]);
+    await service.decide("admin-1", "p1", "approve", now);
+    expect(contactFaq.save).toHaveBeenCalledWith("cliente", ["annullare", "lavoro-fatto-male", "quanto-costa"], "admin-1");
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ entityType: "ContactFaqPick", entityId: "cliente", newValue: ["annullare", "lavoro-fatto-male", "quanto-costa"] }));
+  });
+
+  it("Rimetti quelle di partenza non scrive nulla se non sono cambiate", async () => {
+    const { contactFaq, service } = setup(["MODERATOR"]);
+    await service.resetContactFaq("admin-1");
+    expect(contactFaq.save).not.toHaveBeenCalled();
   });
 });
