@@ -6,9 +6,15 @@ import {
   matchProblem,
   problemMatchFromDictionary,
   timingFromProblem,
+  activeResultFilterCount,
+  emptyResultsPage,
+  parseResultFilters,
+  parseResultsPage,
   type ProblemMatchResult,
   type ProfessionalCategorySlug,
+  type ProfessionalSearchPage,
   type ProfessionalSearchResult,
+  type ResultFilters,
 } from "@professionisti/shared";
 import { apiClient } from "../../lib/apiClient";
 import { SearchHeader } from "@/components/SearchHeader";
@@ -33,7 +39,21 @@ type PageSearchParams = {
   domanda?: string;
   /** Ricerca partita da una foto: id del risultato sull'API (docs/changelog/2026-11-13-ricerca-con-foto.md). */
   foto?: string;
+  /** Pagina dei risultati e filtri del pannello (`RESULT_FILTER_PARAMS`, docs/changelog/2026-11-16-pagine-da-20.md). */
+  pagina?: string;
+  [name: string]: string | string[] | undefined;
 };
+
+/** Un parametro dell'indirizzo come testo (ripetuto: il primo). */
+function param(searchParams: PageSearchParams, name: string): string | undefined {
+  const value = searchParams[name];
+  return Array.isArray(value) ? value[0] : value;
+}
+
+/** Filtri del pannello e pagina dall'indirizzo. */
+function pageOptions(searchParams: PageSearchParams): { filters: ResultFilters; pageNumber: number } {
+  return { filters: parseResultFilters((name) => param(searchParams, name)), pageNumber: parseResultsPage(param(searchParams, "pagina")) };
+}
 
 /**
  * Professionisti di altri mestieri con quel lavoro tra le prestazioni
@@ -89,7 +109,13 @@ export async function generateMetadata(props: { searchParams: Promise<PageSearch
   // pagine da indicizzare: canonical sulla pagina base e fuori da Google. Le
   // pagine città indicizzabili sono /cerca/[categoria]/[citta].
   const filtered = Boolean(
-    searchParams.online || searchParams.citta || searchParams.q || searchParams.urgente || searchParams.servizio || searchParams.problema,
+    searchParams.online ||
+      searchParams.citta ||
+      searchParams.q ||
+      searchParams.urgente ||
+      searchParams.servizio ||
+      searchParams.problema ||
+      activeResultFilterCount(pageOptions(searchParams).filters) > 0,
   );
   const seo: Metadata = {
     alternates: { canonical: "/cerca" },
@@ -130,13 +156,19 @@ export default async function CercaPage(props: { searchParams: Promise<PageSearc
     return <ProblemResults description={description} searchParams={searchParams} isOnline={isOnline} city={city} />;
   }
 
-  let professionals: ProfessionalSearchResult[] = [];
+  // Una pagina da 20 schede con filtri e ordine dell'API (docs/changelog/2026-11-16-pagine-da-20.md).
+  const search = { city, q: searchParams.q, remote: isOnline, service };
+  const { filters, pageNumber } = pageOptions(searchParams);
+  let page: ProfessionalSearchPage = emptyResultsPage();
   // API non raggiungibile ≠ nessun risultato: si mostra "Riprova", non
   // "nessun professionista" (docs/CHANGELOG.md §284).
   let loadFailed = false;
   try {
-    // Contata solo con una città o una parola scritta, mai il testo (§370).
-    professionals = await apiClient.searchProfessionals({ city, q: searchParams.q, remote: isOnline, service, track: Boolean(city?.trim() || searchParams.q?.trim()) && (await shouldCountVisit()) });
+    // Contata solo con una città o una parola scritta, mai il testo (§370), e
+    // una volta sola: sfogliare le pagine o accendere un filtro non è una nuova ricerca.
+    const firstLook = pageNumber === 1 && activeResultFilterCount(filters) === 0;
+    const track = firstLook && Boolean(city?.trim() || searchParams.q?.trim()) && (await shouldCountVisit());
+    page = await apiClient.searchProfessionalsPage({ ...search, track }, pageNumber, filters);
   } catch {
     loadFailed = true;
   }
@@ -152,7 +184,7 @@ export default async function CercaPage(props: { searchParams: Promise<PageSearc
   // una lista vuota, e la ricerca finisce in Admin → Mestieri richiesti
   // (docs/changelog/2026-11-04-avviso-caldaie.md).
   const word = searchParams.q?.trim();
-  if (word && !service && !loadFailed && professionals.length === 0) {
+  if (word && !service && !loadFailed && page.facts.count === 0) {
     return <ProblemResults description={word.slice(0, 1000)} searchParams={searchParams} isOnline={isOnline} city={city} />;
   }
 
@@ -172,10 +204,11 @@ export default async function CercaPage(props: { searchParams: Promise<PageSearc
         online={isOnline}
         q={searchParams.q}
         service={service}
-        professionals={professionals}
+        page={page}
+        search={search}
+        filters={filters}
         mapPool={mapPool}
         loadFailed={loadFailed}
-        initialUrgentOnly={searchParams.urgente === "1"}
       />
     </div>
   );
@@ -215,21 +248,19 @@ async function ProblemResults({
     photo,
   };
 
-  let professionals: ProfessionalSearchResult[] = [];
+  let page: ProfessionalSearchPage = emptyResultsPage();
   let mapPool: MapPoolQuery | undefined;
   let loadFailed = false;
+  const { filters, pageNumber } = pageOptions(searchParams);
+  // La prestazione scelta dall'IA vale solo per il suo mestiere (docs/changelog/2026-11-06-ia-conosce-i-servizi.md).
+  const problemService = chosen && chosen === result.categories[0] ? (result.service ?? undefined) : undefined;
+  const base = { category: chosen ?? undefined, offers, remote: isOnline, merit: true };
+  const search = { ...base, problem: description, problemService, city };
   if (chosen || offers) {
-    const base = { category: chosen ?? undefined, offers, remote: isOnline, merit: true };
     try {
-      // La prestazione scelta dall'IA vale solo per il suo mestiere (docs/changelog/2026-11-06-ia-conosce-i-servizi.md).
-      const problemService = chosen && chosen === result.categories[0] ? (result.service ?? undefined) : undefined;
-      professionals = await apiClient.searchProfessionals({
-        ...base,
-        problem: description,
-        problemService,
-        city,
-        track: Boolean(chosen && city?.trim()) && (await shouldCountVisit()),
-      });
+      const firstLook = pageNumber === 1 && activeResultFilterCount(filters) === 0;
+      const track = firstLook && Boolean(chosen && city?.trim()) && (await shouldCountVisit());
+      page = await apiClient.searchProfessionalsPage({ ...search, track }, pageNumber, filters);
     } catch {
       loadFailed = true;
     }
@@ -242,12 +273,12 @@ async function ProblemResults({
   const choices = problemCategoryChoices(result, chosen);
   const needAll = choices.length > 1 || Boolean(chosen && !result.safety && !loadFailed);
   const all = needAll ? await loadAllNearby(description, city, isOnline) : null;
-  const alsoDo = chosen && !result.safety && !loadFailed && all ? alsoDoThisJob(all, chosen, professionals) : [];
+  const alsoDo = chosen && !result.safety && !loadFailed && all ? alsoDoThisJob(all, chosen, page.results) : [];
   if (choices.length > 1 && all) {
     problem.categoryCounts = Object.fromEntries(
       choices.map((slug) => [
         slug,
-        slug === chosen && !loadFailed ? professionals.length : all.filter((pro) => pro.categories.some((category) => category.slug === slug)).length,
+        slug === chosen && !loadFailed ? page.facts.count : all.filter((pro) => pro.categories.some((category) => category.slug === slug)).length,
       ]),
     );
   }
@@ -261,10 +292,11 @@ async function ProblemResults({
         city={city}
         cityCenter={comune ? [comune.lat, comune.lon] : undefined}
         online={isOnline}
-        professionals={professionals}
+        page={page}
+        search={search}
+        filters={filters}
         mapPool={mapPool}
         loadFailed={loadFailed}
-        initialUrgentOnly={searchParams.urgente === "1"}
         problem={problem}
         alsoDoThisJob={alsoDo}
       />

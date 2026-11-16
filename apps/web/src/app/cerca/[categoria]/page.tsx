@@ -25,7 +25,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   }
   // Con `?citta=` di un comune reale la versione canonica è la pagina
   // indicizzabile /cerca/[categoria]/[citta] (stesso contenuto).
-  return categoryMetadata(findCategory(params.categoria), searchParams.citta);
+  return categoryMetadata(findCategory(params.categoria), searchParams.citta, undefined, searchParams);
 }
 
 export default async function CategoryPage(props: PageProps) {

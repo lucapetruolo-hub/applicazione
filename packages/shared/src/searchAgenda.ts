@@ -32,6 +32,9 @@ export function trimSearchAgenda(days: ProfessionalAvailabilityPreviewDay[], fro
   for (const day of [firstHome, firstOnline]) {
     if (day && !kept.includes(day)) kept.push(day);
   }
+  // Nessun giorno tenuto ma qualche fascia più avanti, tutte al completo: il
+  // primo giorno resta, così la scheda mostra comunque la griglia (§206).
+  if (kept.length === 0 && days.length > 0) kept.push(days[0]!);
   return kept.sort((a, b) => a.date.localeCompare(b.date));
 }
 

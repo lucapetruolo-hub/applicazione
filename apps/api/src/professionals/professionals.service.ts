@@ -15,6 +15,15 @@ import {
   PUBLIC_AGENDA_DAYS,
   searchAgendaCompleteUntil,
   trimSearchAgenda,
+  FILTER_AGENDA_DAYS,
+  SEARCH_AGENDA_COMPLETE_DAYS,
+  matchesAvailabilityFilters,
+  matchesProfileFilters,
+  resultsFacts,
+  type ProfessionalPin,
+  type ProfessionalSearchPage,
+  type ResultFilters,
+  type ResultsBounds,
   SEARCH_FALLBACK_MAX_KM,
   SEARCH_RADIUS_KM,
   type AvailabilitySlotInput,
@@ -112,6 +121,12 @@ import { ProfessionalVerificationService } from "../professional-verification/pr
 import { clientNameForProfessional, publicClientName } from "../common/client-name.util";
 import { cancellationNoticeFor } from "../bookings/one-job-per-request";
 import { bookingDateChange } from "../quotes/booked-date-change";
+
+/** Coordinate dentro l'inquadratura della mappa (0,0 = comune non ancora trovato, mai sulla mappa). */
+function withinBounds(pro: { latitude: number; longitude: number }, bounds: ResultsBounds): boolean {
+  if (pro.latitude === 0 && pro.longitude === 0) return false;
+  return pro.latitude <= bounds.north && pro.latitude >= bounds.south && pro.longitude <= bounds.east && pro.longitude >= bounds.west;
+}
 
 export type ProfessionalSearchParams = {
   category?: string;
@@ -339,7 +354,109 @@ export class ProfessionalsService {
     };
   }
 
-  async search({ category, city, q, remote, service, excludeDemo, merit, offers, offersTrade, problem, problemService }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
+  async search(params: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
+    // Al massimo SEARCH_MAX_RESULTS schede, i primi nell'ordine, e l'agenda
+    // dei prossimi giorni solo per loro: è la parte più pesante della
+    // risposta (docs/changelog/2026-11-16-traffico-elevato.md).
+    const shown = (await this.rankedSearch(params)).slice(0, SEARCH_MAX_RESULTS);
+    await this.fillSearchAgenda(shown);
+    return shown;
+  }
+
+  /**
+   * Una pagina di risultati con filtri e ordine calcolati qui
+   * (docs/changelog/2026-11-16-pagine-da-20.md, scelta di Luca). Con
+   * l'inquadratura della mappa la pagina mostra chi ci sta dentro: prima chi
+   * è nella ricerca per luogo, nel suo ordine, poi gli altri visibili nell'ordine
+   * della stessa ricerca senza luogo, come faceva il sito.
+   */
+  async searchPage(
+    params: ProfessionalSearchParams,
+    options: { page: number; pageSize: number; filters: ResultFilters; bounds?: ResultsBounds; now?: Date },
+  ): Promise<ProfessionalSearchPage> {
+    const now = options.now ?? new Date();
+    const main = await this.rankedSearch(params);
+    let candidates = main;
+    if (options.bounds) {
+      const pool = params.city ? await this.rankedSearch({ ...params, city: undefined }) : main;
+      const fromMain = new Map(main.map((pro, index) => [pro.id, { pro, index }]));
+      const inBounds = (pro: ProfessionalSearchResult) => withinBounds(pro, options.bounds!);
+      const seen = new Set<string>();
+      candidates = [];
+      for (const pro of main) if (inBounds(pro)) (candidates.push(pro), seen.add(pro.id));
+      for (const pro of pool) if (!seen.has(pro.id) && !fromMain.has(pro.id) && inBounds(pro)) candidates.push(pro);
+    }
+    const filtered = await this.applyResultFilters(candidates, options.filters, now);
+    const pageSize = Math.min(Math.max(1, options.pageSize), 50);
+    const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+    const page = Math.min(Math.max(1, options.page), pageCount);
+    const results = filtered.slice((page - 1) * pageSize, page * pageSize);
+    await this.fillSearchAgenda(results);
+    const languages = [...new Set(main.flatMap((pro) => pro.spokenLanguages))].sort((a, b) => a.localeCompare(b, "it"));
+    // Nessuno entro il raggio: l'API ha allargato fino al più vicino (selectSearchArea).
+    const distances = main.map((pro) => pro.distanceKm);
+    const nearestOutsideKm =
+      params.city && main.length > 0 && distances.every((d) => d !== undefined && d > SEARCH_RADIUS_KM) ? Math.round(Math.min(...(distances as number[]))) : null;
+    const facts = resultsFacts(options.filters.subTag ? main.filter((pro) => pro.subTags.includes(options.filters.subTag!)) : main);
+    return { results, total: filtered.length, page, pageSize, pageCount, languages, nearestOutsideKm, facts };
+  }
+
+  /**
+   * Tutti i trovati come puntini leggeri per la mappa (scelta di Luca: sulla
+   * mappa si vedono tutti, non solo la pagina). Stessi filtri della pagina.
+   * Senza luogo nei parametri: il chiamante toglie la città per vedere anche
+   * chi sta fuori, come faceva la mappa.
+   */
+  async pins(params: ProfessionalSearchParams, filters: ResultFilters, now = new Date()): Promise<ProfessionalPin[]> {
+    const found = await this.applyResultFilters(await this.rankedSearch(params), filters, now);
+    return found
+      .filter((pro) => pro.latitude !== 0 || pro.longitude !== 0)
+      .map((pro) => {
+        const matchedServiceName = pro.matchedServiceId ? pro.services.find((service) => service.id === pro.matchedServiceId)?.name : undefined;
+        return {
+          id: pro.id,
+          businessName: pro.businessName,
+          categorySlug: pro.categorySlug,
+          categoryLabel: pro.categoryLabel,
+          categories: pro.categories,
+          city: pro.city,
+          latitude: pro.latitude,
+          longitude: pro.longitude,
+          imageUrl: pro.imageUrl,
+          rating: pro.rating,
+          reviewCount: pro.reviewCount,
+          verified: pro.verified,
+          ...(pro.distanceKm !== undefined ? { distanceKm: pro.distanceKm } : {}),
+          ...(matchedServiceName ? { matchedServiceName } : {}),
+        };
+      });
+  }
+
+  /** Filtri del pannello: quelli sull'agenda guardano solo i prossimi giorni, calcolati per tutti insieme. */
+  private async applyResultFilters(list: ProfessionalSearchResult[], filters: ResultFilters, now: Date): Promise<ProfessionalSearchResult[]> {
+    const byProfile = list.filter((pro) => matchesProfileFilters(pro, filters));
+    if (!filters.urgent && !filters.availability) return byProfile;
+    const previews = await this.buildAvailabilityPreviews(
+      byProfile.map((pro) => pro.id),
+      { days: FILTER_AGENDA_DAYS },
+    );
+    return byProfile.filter((pro) => matchesAvailabilityFilters(previews.get(pro.id)?.days ?? [], pro.availabilityFrom, filters, now.getTime()));
+  }
+
+  /** Agenda leggera nelle schede (packages/shared/src/searchAgenda.ts). */
+  private async fillSearchAgenda(shown: ProfessionalSearchResult[]): Promise<void> {
+    const previewsByProfileId = await this.buildAvailabilityPreviews(
+      shown.map((result) => result.id),
+      { completeDays: SEARCH_AGENDA_COMPLETE_DAYS },
+    );
+    for (const result of shown) {
+      result.availabilityPreview = trimSearchAgenda(previewsByProfileId.get(result.id)?.days ?? [], result.availabilityFrom);
+      result.availabilityCompleteUntil = searchAgendaCompleteUntil(result.availabilityFrom);
+    }
+  }
+
+  /** Tutti i trovati, nell'ordine della ricerca, senza agenda. */
+  private async rankedSearch({ category, city, q, remote, service, excludeDemo, merit, offers, offersTrade, problem, problemService }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
     // Sinonimi compresi (docs/changelog/2026-10-28-quanto-costa-sinonimi.md): "perdite" trova chi ha scritto "Riparazione perdita d'acqua".
     const canonicalize = service || (problem && problemService) ? await this.serviceNamesService.canonicalizer() : null;
     const problemServiceKey = problem && problemService && canonicalize ? serviceGroupKey(problemService, canonicalize) : "";
@@ -456,7 +573,7 @@ export class ProfessionalsService {
         subTags: profile.subTags,
         spokenLanguages: profile.spokenLanguages,
         hasLiabilityInsurance: profile.hasLiabilityInsurance,
-        // Riempita sotto, solo per i primi SEARCH_MAX_RESULTS dopo l'ordine.
+        // Riempita solo per le schede mostrate (fillSearchAgenda).
         availabilityPreview: [] as ProfessionalAvailabilityPreviewDay[],
         availabilityFrom: new Date().toISOString().slice(0, 10),
         availabilityCompleteUntil: undefined as string | undefined,
@@ -500,19 +617,7 @@ export class ProfessionalsService {
       return (a.distanceKm ?? 0) - (b.distanceKm ?? 0);
     });
 
-    // Al massimo SEARCH_MAX_RESULTS schede, i primi nell'ordine qui sopra, e
-    // l'agenda dei prossimi giorni solo per loro: è la parte più pesante della
-    // risposta (~25 KB a professionista, docs/changelog/2026-11-16-traffico-elevato.md).
-    const shown = results.slice(0, SEARCH_MAX_RESULTS);
-    const previewsByProfileId = await this.buildAvailabilityPreviews(shown.map((result) => result.id));
-    // Nella scheda solo la prima settimana e il primo giorno libero per
-    // modalità: il resto lo chiede la scheda quando si sfoglia oltre
-    // (packages/shared/src/searchAgenda.ts).
-    for (const result of shown) {
-      result.availabilityPreview = trimSearchAgenda(previewsByProfileId.get(result.id)?.days ?? [], result.availabilityFrom);
-      result.availabilityCompleteUntil = searchAgendaCompleteUntil(result.availabilityFrom);
-    }
-    return shown;
+    return results;
   }
 
   /**
@@ -766,13 +871,26 @@ export class ProfessionalsService {
    * essere alto e questa funzione gira dentro l'endpoint di ricerca, dove un
    * N+1 sarebbe un problema di scala reale, non solo teorico.
    */
-  private async buildAvailabilityPreviews(profileIds: string[]): Promise<Map<string, { days: ProfessionalAvailabilityPreviewDay[] }>> {
+  /**
+   * `days`: quanti giorni calcolare (di serie tutta l'agenda pubblica; 3 per i
+   * filtri di disponibilità). `completeDays`: per le schede della ricerca
+   * (docs/changelog/2026-11-16-pagine-da-20.md), i primi giorni interi e poi
+   * solo il primo giorno libero a domicilio e il primo online, fermandosi
+   * appena trovati: prima si calcolavano sempre 63 giorni anche se la scheda
+   * ne riceveva 7.
+   */
+  private async buildAvailabilityPreviews(
+    profileIds: string[],
+    options: { days?: number; completeDays?: number } = {},
+  ): Promise<Map<string, { days: ProfessionalAvailabilityPreviewDay[] }>> {
     const result = new Map<string, { days: ProfessionalAvailabilityPreviewDay[] }>();
     if (profileIds.length === 0) return result;
+    const agendaDays = Math.min(options.days ?? PUBLIC_AGENDA_DAYS, PUBLIC_AGENDA_DAYS);
+    const completeDays = options.completeDays;
 
     const startOfToday = wallClockToday();
     const searchEnd = new Date(startOfToday);
-    searchEnd.setUTCDate(searchEnd.getUTCDate() + PUBLIC_AGENDA_DAYS);
+    searchEnd.setUTCDate(searchEnd.getUTCDate() + agendaDays);
 
     const [slots, bookingsByProfile, exceptions] = await Promise.all([
       // Ogni fascia, a prescindere dalla capienza (richiesta esplicita
@@ -812,7 +930,15 @@ export class ProfessionalsService {
       // Solo i giorni con almeno una fascia: la card ricostruisce da sola le
       // colonne vuote a partire da `availabilityFrom` (risposta più leggera).
       const days: ProfessionalAvailabilityPreviewDay[] = [];
-      for (let offset = 0; offset < PUBLIC_AGENDA_DAYS; offset++) {
+      let foundHome = false;
+      let foundOnline = false;
+      // Primo giorno con una fascia, anche al completo: la scheda mostra comunque la griglia (§206).
+      let firstDay: ProfessionalAvailabilityPreviewDay | null = null;
+      const offersHome = profileSlots.some((slot) => slot.allowsHome);
+      const offersOnline = profileSlots.some((slot) => slot.allowsOnline);
+      for (let offset = 0; offset < agendaDays; offset++) {
+        // Oltre i giorni interi basta il primo giorno libero per modalità.
+        if (completeDays !== undefined && offset >= completeDays && (foundHome || !offersHome) && (foundOnline || !offersOnline) && (days.length > 0 || firstDay)) break;
         const date = new Date(startOfToday);
         date.setUTCDate(date.getUTCDate() + offset);
         const dateStr = date.toISOString().slice(0, 10);
@@ -835,8 +961,16 @@ export class ProfessionalsService {
               countBookingsInSlot(profileBookings, dateStr, slot.startTime, slot.endTime, "ONLINE") < (slot.onlineMaxBookings ?? 1);
             return { time: slot.startTime, endTime: slot.endTime, allowsHome: slot.allowsHome, allowsOnline: slot.allowsOnline, homeAvailable, onlineAvailable };
           });
-        if (times.length > 0) days.push({ date: dateStr, times });
+        if (times.length === 0) continue;
+        const day = { date: dateStr, times };
+        const freeHome = times.some((slot) => slot.homeAvailable);
+        const freeOnline = times.some((slot) => slot.onlineAvailable);
+        if (completeDays === undefined || offset < completeDays || (freeHome && !foundHome) || (freeOnline && !foundOnline)) days.push(day);
+        else firstDay ??= day;
+        foundHome ||= freeHome;
+        foundOnline ||= freeOnline;
       }
+      if (days.length === 0 && firstDay) days.push(firstDay);
 
       // Restituita sempre quando il professionista ha almeno una fascia nei
       // prossimi due mesi, anche se oggi è tutto al completo (bug reale

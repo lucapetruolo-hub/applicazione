@@ -48,4 +48,12 @@ describe("agenda leggera della ricerca", () => {
       { date: "2026-11-30", times: [{ time: "09:00", endTime: "10:00", allowsHome: true, allowsOnline: true, homeAvailable: false, onlineAvailable: true }] },
     ]);
   });
+
+  it("con tutte le fasce al completo oltre la prima settimana resta il primo giorno", () => {
+    const days = [
+      { date: "2026-12-01", times: [slot(false, false)] },
+      { date: "2026-12-02", times: [slot(false, false)] },
+    ];
+    assert.deepEqual(trimSearchAgenda(days, "2026-11-16").map((day) => day.date), ["2026-12-01"]);
+  });
 });

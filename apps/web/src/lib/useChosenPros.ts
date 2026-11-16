@@ -30,14 +30,12 @@ export function useChosenPros({
   city,
   description,
   scope,
-  professionals,
 }: {
   category: ProfessionalCategorySlug | null;
   city: string | undefined;
   /** Descrizione del problema da portare nel modulo; vuota nella ricerca per mestiere. */
   description: string;
   scope: string;
-  professionals: ProfessionalSearchResult[];
 }) {
   // Scelti insieme alla ricerca a cui appartengono: una ricerca nuova parte vuota.
   const [state, setState] = useState<{ key: string | null; list: ChosenPro[] }>({ key: null, list: [] });
@@ -50,12 +48,11 @@ export function useChosenPros({
     return () => clearTimeout(timer);
   }, [limitAt]);
   const key = category ? chosenSearchKey(category, city, scope) : null;
-  // Solo chi è ancora tra i risultati.
-  const chosen = useMemo(() => {
-    if (key === null || state.key !== key) return [];
-    const ids = new Set(professionals.map((pro) => pro.id));
-    return state.list.filter((pro) => ids.has(pro.id));
-  }, [key, state, professionals]);
+  // Scelti di questa ricerca, anche da altre pagine dei risultati
+  // (docs/changelog/2026-11-16-pagine-da-20.md): prima si tenevano solo quelli
+  // ancora nella lista, che ora ha 20 schede per pagina. Un profilo sparito
+  // nel frattempo lo scarta la richiesta stessa.
+  const chosen = useMemo(() => (key !== null && state.key === key ? state.list : []), [key, state]);
   const [restoredKey, setRestoredKey] = useState<string | null>(null);
   useEffect(() => {
     if (!key) return;
@@ -79,10 +76,9 @@ export function useChosenPros({
 
   function toggle(pro: ProfessionalSearchResult) {
     if (!key) return;
-    const ids = new Set(professionals.map((item) => item.id));
     setState((current) => ({
       key,
-      list: toggleChosenPro((current.key === key ? current.list : []).filter((item) => ids.has(item.id)), {
+      list: toggleChosenPro(current.key === key ? current.list : [], {
         id: pro.id,
         businessName: pro.businessName,
         imageUrl: pro.imageUrl ?? null,

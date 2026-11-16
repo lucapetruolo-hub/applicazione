@@ -12,9 +12,12 @@ import {
   normalizeProblemText,
   type ProblemMatchResult,
   type ProfessionalCategorySlug,
+  type ProfessionalSearchPage,
   type ProfessionalSearchResult,
+  type ResultFilters,
   serviceNameKey,
 } from "@professionisti/shared";
+import type { ProfessionalSearchQuery } from "@professionisti/api-client";
 import { brand } from "@professionisti/ui";
 import styles from "./ResultsPage.module.css";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
@@ -74,10 +77,11 @@ export function CercaContent({
   online,
   q,
   service,
-  professionals,
+  page,
+  search,
+  filters,
   mapPool,
   loadFailed,
-  initialUrgentOnly,
   problem,
   alsoDoThisJob = [],
 }: {
@@ -88,13 +92,16 @@ export function CercaContent({
   q?: string;
   /** Prestazione scelta in "Quanto costa in media" (docs/CHANGELOG.md §398). */
   service?: string;
-  professionals: ProfessionalSearchResult[];
+  /** Pagina di risultati dall'API (docs/changelog/2026-11-16-pagine-da-20.md). */
+  page: ProfessionalSearchPage;
+  /** Parametri della ricerca, per la zona della mappa e il numero nei Filtri. */
+  search: ProfessionalSearchQuery;
+  /** Filtri accesi, dall'indirizzo. */
+  filters: ResultFilters;
   /** Tutti i professionisti (nessun filtro città), per i puntini sulla mappa: li chiede il browser. */
   mapPool?: MapPoolQuery;
   /** La ricerca non è arrivata dall'API: "Riprova" invece di "nessun risultato". */
   loadFailed?: boolean;
-  /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage. */
-  initialUrgentOnly?: boolean;
   problem?: ProblemSearch;
   /** Altri mestieri con quel lavoro tra le prestazioni (ricerca per problema). */
   alsoDoThisJob?: ProfessionalSearchResult[];
@@ -106,7 +113,7 @@ export function CercaContent({
 
   // "Scegli" sulle schede (docs/CHANGELOG.md §393): solo con un mestiere
   // deciso e almeno due professionisti, altrimenti non c'è niente da scegliere.
-  const canChoose = Boolean(problem?.chosen) && professionals.length >= 2;
+  const canChoose = Boolean(problem?.chosen) && page.facts.count >= 2;
   const {
     chosen: chosenPros,
     clear: clearChosen,
@@ -117,7 +124,6 @@ export function CercaContent({
     city,
     description: problem?.description ?? "",
     scope: problem?.description ?? "",
-    professionals,
   });
 
   const title = problem
@@ -139,7 +145,7 @@ export function CercaContent({
   // Richiesta esplicita dell'utente: niente scheda "Ricerca / N
   // professionisti verificati trovati" in cima ai risultati — la lista parla
   // da sola. Il riquadro resta SOLO quando non c'e' nessun risultato.
-  const notice = loadFailed ? <LoadErrorNotice title="Non riusciamo a caricare i professionisti" /> : professionals.length > 0 ? null : <EmptySearchResults title={title} online={Boolean(online)} city={city} />;
+  const notice = loadFailed ? <LoadErrorNotice title="Non riusciamo a caricare i professionisti" /> : page.facts.count > 0 ? null : <EmptySearchResults title={title} online={Boolean(online)} city={city} />;
 
   // Arrivando da una voce di "Quanto costa in media" si dice quale
   // prestazione filtra l'elenco e come tornare a vedere tutti (§398).
@@ -291,7 +297,7 @@ export function CercaContent({
   // (docs/changelog/2026-11-06-dizionario-prestazioni.md).
   const topService =
     problem?.result.service && problem.chosen === problem.result.categories[0]
-      ? professionals.some((pro) => {
+      ? page.results.some((pro) => {
           const matched = pro.matchedServiceId ? pro.services.find((item) => item.id === pro.matchedServiceId) : undefined;
           return matched ? serviceNameKey(matched.name) === serviceNameKey(problem.result.service!) : false;
         })
@@ -305,7 +311,7 @@ export function CercaContent({
       city={city}
       result={problem.result}
       chosen={problem.chosen}
-      count={professionals.length}
+      count={page.facts.count}
       questionDone={problem.questionDone}
       categoryCounts={problem.categoryCounts}
       otherTradesCount={alsoDoThisJob.length}
@@ -330,14 +336,15 @@ export function CercaContent({
       <h1 className="sr-only">{title}</h1>
       <div className={`is_View ${styles.container}`}>
         <ResultsListWithMap
-          professionals={professionals}
+          page={page}
+          search={search}
+          filters={filters}
           mapPool={mapPool}
           showMap
           city={city}
           cityCenter={cityCenter}
           header={header}
           defaultMode={online ? "ONLINE" : "HOME"}
-          initialUrgentOnly={initialUrgentOnly}
           merit={Boolean(problem)}
           problemDescription={problem?.description}
           reasonFor={problem ? (pro) => problemReason(problem, pro) : undefined}

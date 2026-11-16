@@ -191,7 +191,12 @@ import type {
   ModerationGroundCode,
   RecurringFrequency,
   RecurringVisitInfo,
+  ProfessionalPin,
+  ProfessionalSearchPage,
+  ResultFilters,
+  ResultsBounds,
 } from "@professionisti/shared";
+import { RESULT_FILTER_PARAMS, resultFilterEntries } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
 
@@ -1207,6 +1212,43 @@ export class ApiError extends Error {
   }
 }
 
+/** Parametri di una ricerca di professionisti, uguali per la lista, la pagina e i puntini. */
+export type ProfessionalSearchQuery = {
+  category?: string;
+  city?: string;
+  q?: string;
+  remote?: boolean;
+  service?: string;
+  excludeDemo?: boolean;
+  track?: boolean;
+  /** Dalla descrizione del problema: niente boost (docs/CHANGELOG.md §392). */
+  merit?: boolean;
+  /** Lavoro fuori dalle categorie: chi lo dichiara. */
+  offers?: string;
+  /** Descrizione del problema: prima chi ha quella prestazione. */
+  problem?: string;
+  /** Prestazione scelta dall'IA per quel problema (docs/changelog/2026-11-06-ia-conosce-i-servizi.md). */
+  problemService?: string;
+};
+
+function searchQueryParams(params: ProfessionalSearchQuery): URLSearchParams {
+  const query = new URLSearchParams();
+  if (params.merit) query.set("merito", "1");
+  if (params.offers) query.set("offre", params.offers);
+  if (params.problem) query.set("problema", params.problem);
+  if (params.problem && params.problemService) query.set("prestazione", params.problemService);
+  if (params.category) query.set("category", params.category);
+  if (params.city) query.set("city", params.city);
+  if (params.q) query.set("q", params.q);
+  // Nome di una prestazione, dalle voci di "Quanto costa in media" (docs/CHANGELOG.md §398).
+  if (params.service) query.set("service", params.service);
+  if (params.remote) query.set("remote", "1");
+  if (params.excludeDemo) query.set("excludeDemo", "1");
+  // Conta la ricerca per i lavori più cercati (docs/CHANGELOG.md §281): solo dalla pagina dei risultati, una volta.
+  if (params.track) query.set("track", "1");
+  return query;
+}
+
 function extractErrorCode(body: unknown): string | undefined {
   if (body && typeof body === "object" && typeof (body as Record<string, unknown>).code === "string") {
     return (body as Record<string, string>).code;
@@ -1556,40 +1598,8 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     /** Campo "Città": più cercate e comuni con professionisti vicini per un lavoro (docs/CHANGELOG.md §383). */
     getCityHints: (category?: string) =>
       request<{ popular: string[]; covered: string[] }>(`/professionals/city-hints${category ? `?category=${encodeURIComponent(category)}` : ""}`),
-    searchProfessionals: (
-      params: {
-        category?: string;
-        city?: string;
-        q?: string;
-        remote?: boolean;
-        service?: string;
-        excludeDemo?: boolean;
-        track?: boolean;
-        /** Dalla descrizione del problema: niente boost (docs/CHANGELOG.md §392). */
-        merit?: boolean;
-        /** Lavoro fuori dalle categorie: chi lo dichiara. */
-        offers?: string;
-        /** Descrizione del problema: prima chi ha quella prestazione. */
-        problem?: string;
-        /** Prestazione scelta dall'IA per quel problema (docs/changelog/2026-11-06-ia-conosce-i-servizi.md). */
-        problemService?: string;
-      } = {},
-    ) => {
-      const query = new URLSearchParams();
-      if (params.merit) query.set("merito", "1");
-      if (params.offers) query.set("offre", params.offers);
-      if (params.problem) query.set("problema", params.problem);
-      if (params.problem && params.problemService) query.set("prestazione", params.problemService);
-      if (params.category) query.set("category", params.category);
-      if (params.city) query.set("city", params.city);
-      if (params.q) query.set("q", params.q);
-      // Nome di una prestazione, dalle voci di "Quanto costa in media" (docs/CHANGELOG.md §398).
-      if (params.service) query.set("service", params.service);
-      if (params.remote) query.set("remote", "1");
-      if (params.excludeDemo) query.set("excludeDemo", "1");
-      // Conta la ricerca per i lavori più cercati (docs/CHANGELOG.md §281): solo dalla pagina dei risultati, una volta.
-      if (params.track) query.set("track", "1");
-      const queryString = query.toString();
+    searchProfessionals: (params: ProfessionalSearchQuery = {}) => {
+      const queryString = searchQueryParams(params).toString();
       // cache: "no-store" esplicito: senza questo, in Next.js il Data Cache
       // può mantenere in cache questa fetch indipendentemente da
       // `export const dynamic = "force-dynamic"` sulla pagina chiamante —
@@ -1599,6 +1609,31 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       return request<ProfessionalSearchResult[]>(`/professionals/search${queryString ? `?${queryString}` : ""}`, {
         cache: "no-store",
       });
+    },
+
+    /**
+     * Una pagina di risultati con filtri e ordine calcolati dall'API
+     * (docs/changelog/2026-11-16-pagine-da-20.md). Con `bounds` la pagina
+     * mostra chi sta nell'inquadratura della mappa.
+     */
+    searchProfessionalsPage: (params: ProfessionalSearchQuery, page: number, filters: ResultFilters, bounds?: ResultsBounds) => {
+      const query = searchQueryParams(params);
+      for (const [name, value] of resultFilterEntries(filters)) query.set(name, value);
+      if (page > 1) query.set(RESULT_FILTER_PARAMS.page, String(page));
+      if (bounds) {
+        query.set("nord", String(bounds.north));
+        query.set("sud", String(bounds.south));
+        query.set("est", String(bounds.east));
+        query.set("ovest", String(bounds.west));
+      }
+      return request<ProfessionalSearchPage>(`/professionals/search-page?${query.toString()}`, { cache: "no-store" });
+    },
+
+    /** Tutti i trovati come puntini leggeri per la mappa, con gli stessi filtri della pagina. */
+    getProfessionalPins: (params: ProfessionalSearchQuery, filters: ResultFilters) => {
+      const query = searchQueryParams({ ...params, track: false });
+      for (const [name, value] of resultFilterEntries(filters)) query.set(name, value);
+      return request<ProfessionalPin[]>(`/professionals/pins?${query.toString()}`, { cache: "no-store" });
     },
 
     /** "Nuovi profili" della home: pochi e leggeri (docs/changelog/2026-11-16-traffico-elevato.md). */

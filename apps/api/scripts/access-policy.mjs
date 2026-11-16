@@ -99,6 +99,9 @@ const publicRoutes = [
   // Prezzi aggregati della pagina "Quanto costa", mai sotto le soglie (§296).
   "GET /professionals/prices/:category",
   "GET /professionals/search",
+  // Risultati a pagine da 20 e puntini leggeri della mappa, stessi filtri della ricerca (docs/changelog/2026-11-16-pagine-da-20.md).
+  "GET /professionals/search-page",
+  "GET /professionals/pins",
   // Elenchi leggeri dei profili pubblici per home e sitemap, con gli stessi filtri della ricerca (docs/changelog/2026-11-16-traffico-elevato.md).
   "GET /professionals/newest",
   "GET /professionals/directory",
