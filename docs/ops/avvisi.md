@@ -48,3 +48,26 @@ si leggono, UptimeRobot avvisa sul telefono. Piano gratuito, senza carta.
 `/health/db` risponde 503 se il database non risponde: UptimeRobot lo
 segna giù. Un singolo rallentamento non manda nulla (UptimeRobot riprova
 prima di avvisare).
+
+## Traffico elevato (docs/changelog/2026-11-16-traffico-elevato.md)
+
+**Prima del lancio, una volta:**
+1. Crea una chiave lunga, per esempio con `openssl rand -hex 32` o con un gestore di password (almeno 32
+   caratteri).
+2. Render → servizio API → Environment: `SITE_SERVER_KEY` = la chiave.
+3. Vercel → progetto → Settings → Environment Variables (Production): `SITE_SERVER_KEY` = la stessa chiave,
+   **senza** `NEXT_PUBLIC_`. Poi Deployments → **Redeploy**.
+4. Controllo: apri la home e una pagina di ricerca; nei log di Render non devono comparire risposte 429.
+   Senza chiave il sito funziona lo stesso, ma con traffico le pagine fatte da Vercel finiscono nel limite di
+   60 chiamate al minuto e la ricerca risulta vuota.
+
+**Piani:** API su **Standard** (1 CPU, 2 GB), database su **Basic-1gb** prima del 5/12. Per più copie
+dell'API basta alzare il numero di istanze su Render: tetti, biglietti ed eventi del tempo reale sono già
+condivisi nel database.
+
+**Facoltativo, protezione di Vercel:** Vercel → Firewall → regola di limite (per esempio 300 richieste al
+minuto per indirizzo sulle pagine) contro chi scarica il sito in massa. Le pagine vere di un visitatore
+restano molto sotto.
+
+**Avvisi:** quando l'IA (testo o foto) arriva all'80% del tetto giornaliero arriva un avviso Sentry; al 100%
+arriva quello di sempre e la funzione si ferma fino al giorno dopo.
