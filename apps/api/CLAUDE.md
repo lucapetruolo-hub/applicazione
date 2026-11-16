@@ -37,3 +37,8 @@ Si carica quando Claude Code lavora in `apps/api`. Testo da `CLAUDE.md` §2
   non usa più quella colonna, così il rollback dell'API resta possibile
   (`docs/ops/rollback.md`). Le
   categorie si sincronizzano a ogni avvio via `CategoriesSeedService`.
+
+- **Skill per Prisma**: `prisma-patterns` (`.claude/skills/prisma-patterns/`)
+  quando si scrivono query, transazioni o operazioni in blocco;
+  `database-migrations` prima di una migrazione. Regole del progetto in
+  `packages/database/CLAUDE.md`, che valgono più delle skill.
