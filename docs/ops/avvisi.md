@@ -61,7 +61,7 @@ prima di avvisare).
    Senza chiave il sito funziona lo stesso, ma con traffico le pagine fatte da Vercel finiscono nel limite di
    60 chiamate al minuto e la ricerca risulta vuota.
 
-**Piani:** API su **Standard** (1 CPU, 2 GB), database su **Basic-1gb** prima del 5/12. Per più copie
+**Piani:** al lancio API su **Standard** (1 CPU, 2 GB) e database su **Basic-1gb** (prima, fino alla società, Luca resta sui piani gratuiti: checklist di lancio, punto 4quater). Per più copie
 dell'API basta alzare il numero di istanze su Render: tetti, biglietti ed eventi del tempo reale sono già
 condivisi nel database.
 

@@ -29,6 +29,9 @@ circa 57 ms, di cui 25 solo per le prestazioni.
    non nell'ordinamento.
 5. `docs/ops/avvisi.md`: in Vercel il pulsante della regola del Firewall si chiama "Add Rule"
    (segnalato da Luca).
+6. **Piani di Render al lancio** (decisione di Luca): fino alla società, da gennaio, si resta
+   sui piani gratuiti e il database Free si rifà quando scade. Database Basic-1gb e API
+   Standard sono nella checklist di lancio (punto 4quater) e in `docs/ops/avvisi.md`.
 
 **Verifica.**
 - Prove in `apps/api/src/professionals/professionals.service.test.ts`:

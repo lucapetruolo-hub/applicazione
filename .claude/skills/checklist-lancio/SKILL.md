@@ -78,6 +78,15 @@ produzione):
    Render che il database sia davvero sul piano a pagamento: un Postgres
    Free scade dopo 30 giorni e viene cancellato. `NEXT_PUBLIC_API_URL` si
    scrive senza barra finale (il sito la toglie comunque, `lib/apiUrl.ts`).
+4quater. **Piani a pagamento di Render** (decisione di Luca del 16/11/2026,
+   docs/changelog/2026-11-16-ricerca-leggera.md): fino alla società (srl, da
+   gennaio 2027) database ed API restano sui piani gratuiti o minimi, e il
+   database Free si rifà quando scade (ogni 30 giorni: senza dati veri non
+   si perde nulla, ma vanno rifatti accesso admin e account di prova). Prima
+   del lancio: database `professionisti-db-eu` su **Basic-1gb** e API
+   `professionisti-api-eu` su **Standard** (1 CPU, 2 GB), il piano che ha
+   retto le prove di carico (docs/changelog/2026-11-16-traffico-elevato.md).
+   Per più traffico basta alzare il numero di istanze dell'API.
 5bis. **Prima di mettere le chiavi Stripe vere: dati fiscali solo dopo la carta**
    (richiesta di Luca del 30/10/2026, docs/changelog/2026-10-30-iscrizione-carta-solida.md).
    Oggi il lucchetto "Dopo il piano" sui dati fiscali c'è solo nel percorso
