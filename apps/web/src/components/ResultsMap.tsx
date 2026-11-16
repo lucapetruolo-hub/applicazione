@@ -1,16 +1,26 @@
 "use client";
 
 import { formatRating, professionalPath } from "@professionisti/shared";
-import { useState, type ReactNode, type TouchEvent } from "react";
+import { useEffect, useState, type ReactNode, type TouchEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AdvancedMarker, Map as GoogleMap } from "@vis.gl/react-google-maps";
 import { BadgeCheck, CalendarDays, ChevronLeft, ChevronRight, Star, X } from "lucide-react";
-import type { ProfessionalSearchResult } from "@professionisti/shared";
+import type { ProfessionalAvailabilityPreviewDay, ProfessionalPin, ProfessionalSearchResult } from "@professionisti/shared";
 import { BadgeInfo, brand, formatDistanceKm } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { GOOGLE_MAPS_MAP_ID, GoogleMapGate } from "@/components/GoogleMapGate";
 
 export type MapBounds = { north: number; south: number; east: number; west: number };
+
+/**
+ * Professionista sulla mappa: un puntino leggero di tutti i trovati
+ * (docs/changelog/2026-11-16-pagine-da-20.md), con l'agenda solo se è anche
+ * una scheda della pagina. Per gli altri l'anteprima la chiede quando si apre.
+ */
+export type MapProfessional = ProfessionalPin & Partial<Pick<ProfessionalSearchResult, "availabilityPreview" | "availabilityFrom">>;
+
+/** Agenda chiesta per l'anteprima di un puntino senza scheda nella pagina. */
+export type MapAvailability = { from: string; days: ProfessionalAvailabilityPreviewDay[] };
 
 const ROME_FALLBACK: [number, number] = [41.9028, 12.4964];
 
@@ -24,9 +34,10 @@ const PREVIEW_SLOTS = 2;
  * mappa (docs/changelog/2026-11-05-anteprima-mappa.md): "Oggi", "Domani" o
  * il giorno della settimana, come nella scheda della lista.
  */
-function nextFreeDay(pro: ProfessionalSearchResult, mode: "HOME" | "ONLINE") {
+function nextFreeDay(pro: MapProfessional, mode: "HOME" | "ONLINE") {
   const allows = mode === "HOME" ? "allowsHome" : "allowsOnline";
   const free = mode === "HOME" ? "homeAvailable" : "onlineAvailable";
+  if (!pro.availabilityPreview) return null;
   const start = Date.parse(`${pro.availabilityFrom}T00:00:00Z`);
   const days = [...pro.availabilityPreview].sort((a, b) => a.date.localeCompare(b.date));
   for (const day of days) {
@@ -58,8 +69,8 @@ function toLatLng([lat, lng]: [number, number]): google.maps.LatLngLiteral {
 // senza spostarli fuori dal quartiere/comune reale.
 const CLUSTER_OFFSET_DEG = 0.0009;
 
-function offsetOverlappingPositions(items: ProfessionalSearchResult[]): Map<string, [number, number]> {
-  const groups = new Map<string, ProfessionalSearchResult[]>();
+function offsetOverlappingPositions(items: MapProfessional[]): Map<string, [number, number]> {
+  const groups = new Map<string, MapProfessional[]>();
   for (const item of items) {
     const key = `${item.latitude.toFixed(5)},${item.longitude.toFixed(5)}`;
     const group = groups.get(key);
@@ -90,9 +101,9 @@ const PIN_GROUP_PX = 44;
 /** Schede nell'elenco scorrevole sotto la mappa da telefono. */
 const STRIP_MAX = 30;
 
-type PinGroup = { position: [number, number]; members: ProfessionalSearchResult[] };
+type PinGroup = { position: [number, number]; members: MapProfessional[] };
 
-export function groupNearbyPins(items: ProfessionalSearchResult[], positions: Map<string, [number, number]>, zoom: number | null): PinGroup[] {
+export function groupNearbyPins(items: MapProfessional[], positions: Map<string, [number, number]>, zoom: number | null): PinGroup[] {
   const groups: PinGroup[] = [];
   // Gradi di longitudine per pixel a questo zoom (proiezione di Google: 256 px per 360° a zoom 0).
   const degPerPx = zoom === null ? 0 : 360 / (256 * 2 ** zoom);
@@ -133,11 +144,12 @@ export function ResultsMap({
   profileHref = (pro) => professionalPath(pro),
   renderSave,
   onSelectedChange,
+  loadAvailability,
 }: {
   /** Tutti i professionisti da mostrare come puntini sulla mappa. */
-  professionals: ProfessionalSearchResult[];
+  professionals: MapProfessional[];
   /** Sottoinsieme (es. filtrato per città cercata) su cui centrare/zoomare all'apertura. Default: `professionals`. */
-  initialProfessionals?: ProfessionalSearchResult[];
+  initialProfessionals?: MapProfessional[];
   /** Centro su cui zoomare quando non ci sono professionisti con coordinate (es. coordinate della città cercata). */
   fallbackCenter?: [number, number];
   /** Notifica i confini visibili della mappa ad ogni pan/zoom, per sincronizzare la lista a sinistra. */
@@ -151,13 +163,15 @@ export function ResultsMap({
   /** Modalità cercata: gli orari dell'anteprima sono quelli liberi per questa. */
   mode?: "HOME" | "ONLINE";
   /** Richiesta di preventivo con l'orario toccato nell'anteprima. Senza: niente orari. */
-  slotHref?: (pro: ProfessionalSearchResult, date: string, time: string, endTime: string, mode: "HOME" | "ONLINE") => string;
+  slotHref?: (pro: MapProfessional, date: string, time: string, endTime: string, mode: "HOME" | "ONLINE") => string;
   /** Profilo del professionista, con `date` aperto sull'agenda di quel giorno. */
-  profileHref?: (pro: ProfessionalSearchResult, date?: string) => string;
+  profileHref?: (pro: MapProfessional, date?: string) => string;
   /** Cuoricino "Salva" sulla foto dell'anteprima, come nelle schede della lista. */
-  renderSave?: (pro: ProfessionalSearchResult) => ReactNode;
+  renderSave?: (pro: MapProfessional) => ReactNode;
   /** Professionista dell'anteprima aperta (null quando si chiude): la lista lo segna. */
   onSelectedChange?: (id: string | null) => void;
+  /** Agenda di un puntino che non è una scheda della pagina, chiesta all'apertura dell'anteprima. */
+  loadAvailability?: (id: string) => Promise<MapAvailability>;
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
@@ -169,11 +183,29 @@ export function ResultsMap({
   // Professionista selezionato cliccando un puntino: mostrato come banner in
   // basso SOPRA la mappa (che resta aperta), invece di navigare subito al
   // profilo — l'utente vede un'anteprima e decide se aprirlo.
-  const [selected, setSelectedState] = useState<ProfessionalSearchResult | null>(null);
-  const setSelected = (pro: ProfessionalSearchResult | null) => {
+  const [selected, setSelectedState] = useState<MapProfessional | null>(null);
+  const setSelected = (pro: MapProfessional | null) => {
     setSelectedState(pro);
     onSelectedChange?.(pro?.id ?? null);
   };
+  // Agende chieste per le anteprime dei puntini (una volta per professionista;
+  // null = non arrivata, l'anteprima porta comunque al profilo).
+  const [agendas, setAgendas] = useState<Record<string, MapAvailability | null>>({});
+  const needsAgenda = selected && !selected.availabilityPreview && loadAvailability && !(selected.id in agendas) ? selected.id : null;
+  useEffect(() => {
+    if (!needsAgenda || !loadAvailability) return;
+    let active = true;
+    loadAvailability(needsAgenda).then(
+      (agenda) => active && setAgendas((current) => ({ ...current, [needsAgenda]: agenda })),
+      () => active && setAgendas((current) => ({ ...current, [needsAgenda]: null })),
+    );
+    return () => {
+      active = false;
+    };
+  }, [needsAgenda, loadAvailability]);
+  const selectedAgenda = selected && !selected.availabilityPreview ? agendas[selected.id] : undefined;
+  const previewPro: MapProfessional | null =
+    selected && selectedAgenda ? { ...selected, availabilityPreview: selectedAgenda.days, availabilityFrom: selectedAgenda.from } : selected;
 
   // Coordinate 0,0 = professionista senza comune geocodificato ancora: non ha senso metterlo sull'oceano davanti all'Africa.
   const withCoords = professionals.filter((p) => p.latitude !== 0 || p.longitude !== 0);
@@ -217,7 +249,7 @@ export function ResultsMap({
 
   // Professionisti tra cui scorrere l'anteprima (docs/changelog/2026-11-05-anteprima-mappa.md):
   // quelli visibili sulla mappa, nell'ordine della lista.
-  const inView = (pro: ProfessionalSearchResult) => {
+  const inView = (pro: MapProfessional) => {
     if (!viewBounds) return true;
     const [lat, lng] = markerPositions.get(pro.id) ?? [pro.latitude, pro.longitude];
     return lat <= viewBounds.north && lat >= viewBounds.south && lng <= viewBounds.east && lng >= viewBounds.west;
@@ -332,7 +364,8 @@ export function ResultsMap({
       {selected ? (
         <MapPreview
           key={selected.id}
-          pro={selected}
+          pro={previewPro ?? selected}
+          agendaLoading={Boolean(loadAvailability) && !selected.availabilityPreview && selectedAgenda === undefined}
           mode={mode}
           slotHref={slotHref}
           profileHref={profileHref}
@@ -492,6 +525,7 @@ export function ResultsMap({
  */
 function MapPreview({
   pro,
+  agendaLoading,
   mode,
   slotHref,
   profileHref,
@@ -503,7 +537,9 @@ function MapPreview({
   onClose,
   onOpen,
 }: {
-  pro: ProfessionalSearchResult;
+  pro: MapProfessional;
+  /** Agenda del puntino in arrivo. */
+  agendaLoading: boolean;
   save?: ReactNode;
   /** Posizione tra i professionisti visibili sulla mappa (null se è l'unico). */
   position: { index: number; total: number } | null;
@@ -512,8 +548,8 @@ function MapPreview({
   onPrev: () => void;
   onNext: () => void;
   mode: "HOME" | "ONLINE";
-  slotHref?: (pro: ProfessionalSearchResult, date: string, time: string, endTime: string, mode: "HOME" | "ONLINE") => string;
-  profileHref: (pro: ProfessionalSearchResult, date?: string) => string;
+  slotHref?: (pro: MapProfessional, date: string, time: string, endTime: string, mode: "HOME" | "ONLINE") => string;
+  profileHref: (pro: MapProfessional, date?: string) => string;
   onClose: () => void;
   onOpen: (href: string) => void;
 }) {
@@ -607,7 +643,14 @@ function MapPreview({
       </div>
 
       {slotHref ? (
-        next ? (
+        agendaLoading ? (
+          <div className="map-preview-agenda">
+            <span className="map-preview-when" role="status">
+              <CalendarDays size={16} strokeWidth={1.75} aria-hidden />
+              Cerco il primo orario libero…
+            </span>
+          </div>
+        ) : next ? (
           <div className="map-preview-agenda">
             <span className="map-preview-when">
               <CalendarDays size={16} strokeWidth={1.75} aria-hidden />
@@ -641,14 +684,14 @@ function MapPreview({
               </button>
             </div>
           </div>
-        ) : (
+        ) : pro.availabilityPreview ? (
           <div className="map-preview-agenda">
             <span className="map-preview-when">
               <CalendarDays size={16} strokeWidth={1.75} aria-hidden />
               Nessun orario libero nei prossimi giorni
             </span>
           </div>
-        )
+        ) : null
       ) : null}
 
       {position ? (

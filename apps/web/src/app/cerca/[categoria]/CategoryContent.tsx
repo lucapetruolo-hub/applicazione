@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { MAX_CHOSEN_PROFESSIONALS, subTagLabel, type PROFESSIONAL_CATEGORIES, type ProfessionalSearchResult } from "@professionisti/shared";
+import { MAX_CHOSEN_PROFESSIONALS, subTagLabel, type PROFESSIONAL_CATEGORIES, type ProfessionalSearchPage, type ResultFilters } from "@professionisti/shared";
+import type { ProfessionalSearchQuery } from "@professionisti/api-client";
 import styles from "../ResultsPage.module.css";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
@@ -18,10 +19,11 @@ export function CategoryContent({
   city,
   cityCenter,
   online,
-  professionals,
+  page,
+  search,
+  filters,
   mapPool,
   loadFailed,
-  initialUrgentOnly,
   footer,
   subTag,
 }: {
@@ -32,13 +34,16 @@ export function CategoryContent({
   /** Centro del comune, per la mappa. */
   cityCenter?: [number, number];
   online?: boolean;
-  professionals: ProfessionalSearchResult[];
+  /** Pagina di risultati dall'API (docs/changelog/2026-11-16-pagine-da-20.md). */
+  page: ProfessionalSearchPage;
+  /** Parametri della ricerca, per la zona della mappa e il numero nei Filtri. */
+  search: ProfessionalSearchQuery;
+  /** Filtri accesi, dall'indirizzo. */
+  filters: ResultFilters;
   /** Tutti i professionisti della categoria (nessun filtro città), per i puntini sulla mappa: li chiede il browser. */
   mapPool?: MapPoolQuery;
   /** La ricerca non è arrivata dall'API: "Riprova" invece di "nessun risultato". */
   loadFailed?: boolean;
-  /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage. */
-  initialUrgentOnly?: boolean;
   /** Sotto le schede, nella colonna dei risultati: "[Lavoro] a [città] in breve" (docs/CHANGELOG.md §349). */
   footer?: ReactNode;
 }) {
@@ -56,11 +61,10 @@ export function CategoryContent({
   // (docs/changelog/2026-11-03-scegli-ricerca-mestiere.md): la descrizione
   // del lavoro si scrive nel modulo della richiesta.
   const { chosen, selection, limitNotice } = useChosenPros({
-    category: !loadFailed && professionals.length >= 2 ? category.slug : null,
+    category: !loadFailed && page.facts.count >= 2 ? category.slug : null,
     city,
     description: "",
     scope: subTag ? `servizio:${subTag}` : "",
-    professionals,
   });
 
   // Pagina per servizio: la specializzazione anche nel titolo visibile, come
@@ -69,7 +73,7 @@ export function CategoryContent({
   const title = `${category.label}${online && city ? ` · consulenza online a ${city}` : online ? " · consulenza online" : city ? ` a ${city}` : " vicino a te"}${service}`;
   const header = loadFailed ? (
     <LoadErrorNotice title="Non riusciamo a caricare i professionisti" />
-  ) : professionals.length > 0 ? null : (
+  ) : page.total > 0 || page.facts.count > 0 ? null : (
       <EmptySearchResults
         title={title}
         online={Boolean(online)}
@@ -94,14 +98,15 @@ export function CategoryContent({
         {/* Senza risultati il titolo c'è già nel riquadro "nessun professionista". */}
         <h1 className={header ? "sr-only" : "results-title"}>{title}</h1>
         <ResultsListWithMap
-          professionals={professionals}
+          page={page}
+          search={search}
+          filters={filters}
           mapPool={mapPool}
           showMap
           city={city}
           cityCenter={cityCenter}
           header={header}
           defaultMode={online ? "ONLINE" : "HOME"}
-          initialUrgentOnly={initialUrgentOnly}
           footer={footer}
           selection={selection}
         />

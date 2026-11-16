@@ -1,0 +1,81 @@
+/* Pagine numerate dei risultati (docs/changelog/2026-11-16-pagine-da-20.md). */
+.pager {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--c-filetto, #e4e1d8);
+  background: var(--c-calce, #fff);
+  color: var(--c-grafite, #2b2f33);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.item:hover {
+  border-color: var(--c-cianografia, #247c7c);
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--c-cianografiaScuro, #186163);
+  outline-offset: 2px;
+}
+
+.current {
+  background: var(--c-cianografiaPieno, #1e6b6e);
+  border-color: var(--c-cianografiaPieno, #1e6b6e);
+  color: #fff;
+  cursor: default;
+}
+
+.current:hover {
+  border-color: var(--c-cianografiaPieno, #1e6b6e);
+}
+
+.gap {
+  min-width: 20px;
+  text-align: center;
+  color: var(--c-grafite70, #5d6166);
+}
+
+.summary {
+  font-size: 14px;
+  color: var(--c-grafite70, #5d6166);
+}
+
+/* Da telefono le frecce restano senza testo: i numeri ci stanno su una riga. */
+@media (max-width: 480px) {
+  .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}

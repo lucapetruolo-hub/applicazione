@@ -41,6 +41,8 @@ const INDEXABLE = [
   ["/prezzi/idraulico", "/prezzi/idraulico"],
   ["/prezzi/idraulico/latina", "/prezzi/idraulico/latina"],
   ["/lavora-con-noi/pulizie", "/lavora-con-noi/pulizie"],
+  // Dalla seconda pagina dei risultati il canonical è la pagina stessa (docs/changelog/2026-11-16-pagine-da-20.md).
+  ["/cerca/idraulico/latina?pagina=2", "/cerca/idraulico/latina?pagina=2"],
 ];
 
 /** Pagine che devono restare fuori da Google anche col sito aperto. */
@@ -49,6 +51,7 @@ const NOINDEX = [
   "/cerca/pulizie", // nessun professionista vero in Italia
   "/cerca?citta=Latina", // ricerca filtrata
   "/cerca/idraulico/latina/impianti-sanitari", // specializzazione senza professionisti
+  "/cerca/idraulico/latina?assicurati=1", // filtro del pannello acceso
 ];
 
 const failures = [];

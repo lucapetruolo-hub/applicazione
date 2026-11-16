@@ -21,10 +21,11 @@ function resolve(params: PageParams) {
   return { category: findCategory(params.categoria), comune, subTag: params.servizio };
 }
 
-export async function generateMetadata(props: { params: Promise<PageParams> }): Promise<Metadata> {
-  const page = resolve(await props.params);
+export async function generateMetadata(props: { params: Promise<PageParams>; searchParams: Promise<CategorySearchParams> }): Promise<Metadata> {
+  const [params, searchParams] = await Promise.all([props.params, props.searchParams]);
+  const page = resolve(params);
   if (!page) return {};
-  return categoryMetadata(page.category, page.comune.name, page.subTag);
+  return categoryMetadata(page.category, page.comune.name, page.subTag, searchParams);
 }
 
 export default async function CategoryCityServicePage(props: { params: Promise<PageParams>; searchParams: Promise<CategorySearchParams> }) {

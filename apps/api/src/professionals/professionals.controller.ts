@@ -46,6 +46,11 @@ import {
   cleanMissingTrade,
   type ProblemOutOfService,
   PROBLEM_DESCRIPTION_MAX,
+  RESULT_FILTER_PARAMS,
+  RESULTS_PAGE_SIZE,
+  parseResultFilters,
+  parseResultsPage,
+  type ResultsBounds,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
@@ -61,6 +66,39 @@ import { photoMediaType } from "../problem-match/problem-match.service";
 import { hasNearbyResult } from "./search-area";
 import { MEDIA_UPLOAD_DIR } from "../common/media-upload";
 import { ShortCache, SUMMARY_CACHE_MS } from "../common/short-cache";
+
+/** Parametri di ricerca come arrivano nell'indirizzo (tutti facoltativi). */
+type SearchQuery = Record<string, string | undefined>;
+
+/** Parametri comuni a ricerca, pagina e puntini. */
+function parseSearchQuery(query: SearchQuery) {
+  const str = (value: unknown) => (typeof value === "string" ? value : undefined);
+  const { remote, service, excludeDemo, merito, offre, problema, prestazione } = query;
+  return {
+    category: str(query.category),
+    city: str(query.city),
+    q: str(query.q),
+    remote: remote === "1" || remote === "true",
+    service: typeof service === "string" ? service.slice(0, 120) : undefined,
+    excludeDemo: excludeDemo === "1" || excludeDemo === "true",
+    // Dalla descrizione del problema (docs/CHANGELOG.md §392): niente boost,
+    // e per un lavoro fuori dalle categorie chi lo dichiara.
+    merit: merito === "1",
+    offers: typeof offre === "string" && offre in OUT_OF_SERVICE_LABELS ? (offre as ProblemOutOfService) : undefined,
+    // Un mestiere che il sito non ha (docs/changelog/2026-11-11-mestieri-che-mancano.md).
+    offersTrade: typeof offre === "string" && !(offre in OUT_OF_SERVICE_LABELS) ? (cleanMissingTrade(offre) ?? undefined) : undefined,
+    problem: typeof problema === "string" && problema.trim() ? problema.slice(0, PROBLEM_DESCRIPTION_MAX) : undefined,
+    problemService: typeof prestazione === "string" && prestazione.trim() ? prestazione.slice(0, 120) : undefined,
+  };
+}
+
+/** Inquadratura della mappa, solo se completa e sensata. */
+function parseBounds(query: SearchQuery): ResultsBounds | null {
+  const [north, south, east, west] = [query.nord, query.sud, query.est, query.ovest].map((value) => Number(value));
+  if (![north, south, east, west].every((value) => Number.isFinite(value))) return null;
+  if (!(north! > south!) || !(east! > west!) || north! > 90 || south! < -90 || east! > 180 || west! < -180) return null;
+  return { north: north!, south: south!, east: east!, west: west! };
+}
 
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 // Un video pesa naturalmente molto di più di una foto compressa: limite
@@ -90,62 +128,64 @@ export class ProfessionalsController {
   };
 
   @Get("search")
-  async search(
-    @Query("category") category?: string,
-    @Query("city") city?: string,
-    @Query("q") q?: string,
-    @Query("remote") remote?: string,
-    @Query("service") service?: string,
-    @Query("excludeDemo") excludeDemo?: string,
-    @Query("track") track?: string,
-    // Dalla descrizione del problema (docs/CHANGELOG.md §392): niente boost,
-    // e per un lavoro fuori dalle categorie chi lo dichiara.
-    @Query("merito") merito?: string,
-    @Query("offre") offre?: string,
-    @Query("problema") problema?: string,
-    @Query("prestazione") prestazione?: string,
-  ) {
-    const results = await this.professionalsService.search({
-      category,
-      city,
-      q,
-      remote: remote === "1" || remote === "true",
-      service: typeof service === "string" ? service.slice(0, 120) : undefined,
-      excludeDemo: excludeDemo === "1" || excludeDemo === "true",
-      merit: merito === "1",
-      offers: typeof offre === "string" && offre in OUT_OF_SERVICE_LABELS ? (offre as ProblemOutOfService) : undefined,
-      // Un mestiere che il sito non ha (docs/changelog/2026-11-11-mestieri-che-mancano.md).
-      offersTrade: typeof offre === "string" && !(offre in OUT_OF_SERVICE_LABELS) ? (cleanMissingTrade(offre) ?? undefined) : undefined,
-      problem: typeof problema === "string" && problema.trim() ? problema.slice(0, PROBLEM_DESCRIPTION_MAX) : undefined,
-      problemService: typeof prestazione === "string" && prestazione.trim() ? prestazione.slice(0, 120) : undefined,
-    });
-    // La pagina dei risultati chiede di contare la ricerca una volta sola
-    // (`track=1`, docs/CHANGELOG.md §281): serve a mettere prima i lavori più
-    // cercati e ai numeri dell'area admin (§370), con le ricerche senza
-    // nessuno vicino. Un errore qui non deve mai rompere la ricerca.
-    if (track === "1") {
-      const cityName = typeof city === "string" ? city : undefined;
-      const empty = !hasNearbyResult(results);
-      const record =
-        typeof category === "string" && category
-          ? this.categoriesService.recordSearch(category, cityName, empty)
-          : this.categoriesService.recordFreeSearch(cityName, typeof q === "string" && q.trim() !== "", empty);
-      void record.catch(() => undefined);
-      // Una parola che non trova né un lavoro né un professionista (es.
-      // "antennista", §372): dice quale lavoro manca sul sito.
-      if (!category && typeof q === "string" && q.trim() && results.length === 0) {
-        void this.siteCounts.recordUnknownJobSearch(q).catch(() => undefined);
-      }
-      // Prestazioni più cercate (§384): solo il nome preso dal nostro elenco.
-      // Solo la parola scritta (`q`), mai `service`: le pillole "Lavori più
-      // cercati" della home aprono `?servizio=` e non devono contarsi, o i
-      // primi resterebbero primi solo perché stanno in alto
-      // (docs/changelog/2026-11-07-lavori-piu-cercati-home.md).
-      if (typeof q === "string" && q.trim()) {
-        void this.siteCounts.recordServiceSearch(q, typeof category === "string" ? category : undefined).catch(() => undefined);
-      }
-    }
+  async search(@Query() query: SearchQuery) {
+    const results = await this.professionalsService.search(parseSearchQuery(query));
+    if (query.track === "1") this.recordSearch(query, !hasNearbyResult(results), results.length);
     return results;
+  }
+
+  /**
+   * Una pagina di risultati con i filtri del pannello calcolati qui
+   * (docs/changelog/2026-11-16-pagine-da-20.md): `pagina`, i filtri di
+   * RESULT_FILTER_PARAMS e, se la mappa è stata spostata, l'inquadratura
+   * (`nord`, `sud`, `est`, `ovest`).
+   */
+  @Get("search-page")
+  async searchPage(@Query() query: SearchQuery) {
+    const bounds = parseBounds(query);
+    const page = await this.professionalsService.searchPage(parseSearchQuery(query), {
+      page: parseResultsPage(query[RESULT_FILTER_PARAMS.page]),
+      pageSize: RESULTS_PAGE_SIZE,
+      filters: parseResultFilters((name) => query[name]),
+      ...(bounds ? { bounds } : {}),
+    });
+    if (query.track === "1") this.recordSearch(query, page.total === 0 || page.nearestOutsideKm !== null, page.total);
+    return page;
+  }
+
+  /** Tutti i trovati come puntini leggeri per la mappa, con gli stessi filtri della pagina. */
+  @Get("pins")
+  pins(@Query() query: SearchQuery) {
+    return this.professionalsService.pins(parseSearchQuery(query), parseResultFilters((name) => query[name]));
+  }
+
+  /**
+   * La pagina dei risultati chiede di contare la ricerca una volta sola
+   * (`track=1`, docs/CHANGELOG.md §281): serve a mettere prima i lavori più
+   * cercati e ai numeri dell'area admin (§370), con le ricerche senza
+   * nessuno vicino. Un errore qui non deve mai rompere la ricerca.
+   */
+  private recordSearch(query: SearchQuery, empty: boolean, count: number): void {
+    const { category, city, q } = query;
+    const cityName = typeof city === "string" ? city : undefined;
+    const record =
+      typeof category === "string" && category
+        ? this.categoriesService.recordSearch(category, cityName, empty)
+        : this.categoriesService.recordFreeSearch(cityName, typeof q === "string" && q.trim() !== "", empty);
+    void record.catch(() => undefined);
+    // Una parola che non trova né un lavoro né un professionista (es.
+    // "antennista", §372): dice quale lavoro manca sul sito.
+    if (!category && typeof q === "string" && q.trim() && count === 0) {
+      void this.siteCounts.recordUnknownJobSearch(q).catch(() => undefined);
+    }
+    // Prestazioni più cercate (§384): solo il nome preso dal nostro elenco.
+    // Solo la parola scritta (`q`), mai `service`: le pillole "Lavori più
+    // cercati" della home aprono `?servizio=` e non devono contarsi, o i
+    // primi resterebbero primi solo perché stanno in alto
+    // (docs/changelog/2026-11-07-lavori-piu-cercati-home.md).
+    if (typeof q === "string" && q.trim()) {
+      void this.siteCounts.recordServiceSearch(q, typeof category === "string" ? category : undefined).catch(() => undefined);
+    }
   }
 
   // Pubblico (nessun guard, sola lettura di dati aggregati non sensibili):

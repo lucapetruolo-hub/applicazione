@@ -8,8 +8,14 @@ import {
   hasCategoryPrices,
   subTagLabel,
   findComuneByName,
+  activeResultFilterCount,
+  emptyResultsPage,
+  parseResultFilters,
+  parseResultsPage,
+  resultsPageQuery,
   type ProfessionalCategorySlug,
-  type ProfessionalSearchResult,
+  type ProfessionalSearchPage,
+  type ResultFilters,
 } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { SITE_INDEXABLE } from "@/lib/siteIndexing";
@@ -25,7 +31,20 @@ import { CategoryContent } from "./CategoryContent";
 import { openGraphFor } from "@/lib/openGraph";
 
 type Category = (typeof PROFESSIONAL_CATEGORIES)[number];
-export type CategorySearchParams = { citta?: string; online?: string; urgente?: string };
+/** Parametri dell'indirizzo: città, modalità e i filtri e la pagina dei risultati (`RESULT_FILTER_PARAMS`). */
+export type CategorySearchParams = { citta?: string; online?: string; urgente?: string; pagina?: string; [name: string]: string | string[] | undefined };
+
+/** Un parametro dell'indirizzo come testo (ripetuto: il primo). */
+function param(searchParams: CategorySearchParams | undefined, name: string): string | undefined {
+  const value = searchParams?.[name];
+  return Array.isArray(value) ? value[0] : value;
+}
+
+/** Filtri del pannello dall'indirizzo, più la specializzazione della pagina per servizio. */
+function filtersFrom(searchParams: CategorySearchParams | undefined, subTag?: string): ResultFilters {
+  const filters = parseResultFilters((name) => param(searchParams, name));
+  return subTag ? { ...filters, subTag } : filters;
+}
 
 export function findCategory(slug: ProfessionalCategorySlug): Category {
   return PROFESSIONAL_CATEGORIES.find((c) => c.slug === slug)!;
@@ -85,8 +104,9 @@ async function categoriesInCity(city: string): Promise<string[] | null> {
 async function tooFewRealProfessionals(categorySlug: string, city?: string, subTag?: string): Promise<boolean> {
   if (!SITE_INDEXABLE) return false;
   try {
-    const list = withSubTag(await apiClient.searchProfessionals({ category: categorySlug, city, excludeDemo: true }), subTag);
-    return list.length < (city ? MIN_PROFESSIONALS_TO_INDEX_CITY : 1);
+    // Solo il numero: una pagina di schede, non tutti i professionisti (docs/changelog/2026-11-16-pagine-da-20.md).
+    const { total } = await apiClient.searchProfessionalsPage({ category: categorySlug, city, excludeDemo: true }, resultsPageQuery(subTag ? { subTag } : {}));
+    return total < (city ? MIN_PROFESSIONALS_TO_INDEX_CITY : 1);
   } catch {
     return false;
   }
@@ -99,14 +119,23 @@ async function pricePageHref(categorySlug: string, city: string): Promise<string
   return (await has()) ? `/prezzi/${categorySlug}` : null;
 }
 
-/** Solo i professionisti con quella specializzazione (pagine per servizio, docs/CHANGELOG.md §296). */
-function withSubTag(list: ProfessionalSearchResult[], subTag?: string): ProfessionalSearchResult[] {
-  return subTag ? list.filter((pro) => pro.subTags.includes(subTag)) : list;
+/**
+ * Pagina dei risultati per Google (docs/changelog/2026-11-16-pagine-da-20.md):
+ * dalla seconda in poi l'indirizzo canonico ha `?pagina=N`, così ogni pagina
+ * conta per sé; con un filtro acceso è una ricerca, fuori da Google come le
+ * altre varianti (/cerca con filtri).
+ */
+function pageSeo(base: string, searchParams?: CategorySearchParams): { canonical: string; filtered: boolean } {
+  const filtered = activeResultFilterCount(filtersFrom(searchParams)) > 0;
+  const page = parseResultsPage(param(searchParams, "pagina"));
+  return { canonical: page > 1 && !filtered ? `${base}?pagina=${page}` : base, filtered };
 }
 
-export async function categoryMetadata(category: Category, city?: string, subTag?: string): Promise<Metadata> {
+export async function categoryMetadata(category: Category, city?: string, subTag?: string, searchParams?: CategorySearchParams): Promise<Metadata> {
   const comune = city ? findComuneByName(city) : undefined;
-  const empty = await tooFewRealProfessionals(category.slug, comune?.name, subTag);
+  const base = comune && subTag ? `/cerca/${category.slug}/${comuneSlug(comune.name)}/${subTag}` : comune ? `/cerca/${category.slug}/${comuneSlug(comune.name)}` : `/cerca/${category.slug}`;
+  const { canonical, filtered } = pageSeo(base, searchParams);
+  const empty = filtered || (await tooFewRealProfessionals(category.slug, comune?.name, subTag));
   const robots: Metadata = empty ? { robots: { index: false, follow: true } } : {};
   if (comune && subTag) {
     const service = subTagLabel(subTag);
@@ -114,8 +143,8 @@ export async function categoryMetadata(category: Category, city?: string, subTag
       ...robots,
       title: `${category.label} a ${comune.name}: ${service.toLowerCase()}`,
       description: `${category.label} a ${comune.name} per ${service.toLowerCase()}: confronta profili, prezzi e recensioni e chiedi un preventivo gratis.`,
-      alternates: { canonical: `/cerca/${category.slug}/${comuneSlug(comune.name)}/${subTag}` },
-      openGraph: openGraphFor(`/cerca/${category.slug}/${comuneSlug(comune.name)}/${subTag}`),
+      alternates: { canonical },
+      openGraph: openGraphFor(base),
     };
   }
   if (comune) {
@@ -124,16 +153,16 @@ export async function categoryMetadata(category: Category, city?: string, subTag
       title: `${category.label} a ${comune.name}`,
       // Con l'articolo ("un idraulico"), collaudo N-11.
       description: `Trova e contatta ${CATEGORY_SEO_NOUN[category.slug].findQuestion} a ${comune.name}: confronta profili, prezzi e recensioni e chiedi un preventivo gratis.`,
-      alternates: { canonical: `/cerca/${category.slug}/${comuneSlug(comune.name)}` },
-      openGraph: openGraphFor(`/cerca/${category.slug}/${comuneSlug(comune.name)}`),
+      alternates: { canonical },
+      openGraph: openGraphFor(base),
     };
   }
   return {
     ...robots,
     title: `${category.label} vicino a te`,
     description: `Trova e contatta ${CATEGORY_SEO_NOUN[category.slug].findQuestion} nella tua zona: confronta profili, prezzi e recensioni e chiedi un preventivo gratis.`,
-    alternates: { canonical: `/cerca/${category.slug}` },
-    openGraph: openGraphFor(`/cerca/${category.slug}`),
+    alternates: { canonical },
+    openGraph: openGraphFor(base),
   };
 }
 
@@ -157,12 +186,19 @@ export async function CategoryResults({
   const comune = city ? findComuneByName(city) : undefined;
   // Fetch server-side: contenuto SEO-critico deve essere presente nell'HTML
   // già al primo render, non caricato via client-side fetch (CLAUDE.md §5.4).
-  let professionals: ProfessionalSearchResult[] = [];
+  // Una pagina da 20 schede con filtri e ordine dell'API
+  // (docs/changelog/2026-11-16-pagine-da-20.md).
+  const search = { category: category.slug, city, remote: isOnline };
+  const filters = filtersFrom(searchParams, subTag);
+  const pageNumber = parseResultsPage(param(searchParams, "pagina"));
+  let page: ProfessionalSearchPage = emptyResultsPage();
   // API non raggiungibile ≠ nessun risultato: si mostra "Riprova", non
   // "nessun professionista" (docs/CHANGELOG.md §284).
   let loadFailed = false;
   try {
-    professionals = withSubTag(await apiClient.searchProfessionals({ category: category.slug, city, remote: isOnline, track: await shouldCountVisit() }), subTag);
+    // Contata una volta, alla prima pagina senza filtri: sfogliare non è una nuova ricerca.
+    const track = pageNumber === 1 && activeResultFilterCount(filters) === 0 && (await shouldCountVisit());
+    page = await apiClient.searchProfessionalsPage({ ...search, track }, resultsPageQuery(filters, pageNumber));
   } catch {
     loadFailed = true;
   }
@@ -180,7 +216,7 @@ export async function CategoryResults({
   const pricePagePromise = comune ? pricePageHref(category.slug, comune.name) : Promise.resolve(null);
   // Ultime recensioni del mestiere in questa città, per il testo "in breve"
   // (collaudo N-04); senza risposta la sezione resta senza recensioni.
-  const reviewsPromise = comune && !loadFailed && professionals.length > 0
+  const reviewsPromise = comune && !loadFailed && page.facts.count > 0
     ? apiClient
         .getRecentReviews({ category: category.slug, city: comune.name })
         // Solo di questa città anche da un'API non ancora aggiornata, che darebbe quelle di tutto il sito.
@@ -189,12 +225,12 @@ export async function CategoryResults({
     : Promise.resolve([]);
 
   // Tutti i professionisti della categoria (nessun filtro città, ma stesso
-  // filtro online): alimenta i puntini sulla mappa così, allontanando lo
-  // zoom, ne compaiono altri oltre a quelli della città cercata — la colonna
-  // a sinistra si aggiorna di conseguenza in base a cosa è visibile sulla
-  // mappa (ResultsListWithMap). Li chiede il browser quando apre la mappa;
-  // senza città la ricerca è già quella.
-  const mapPool: MapPoolQuery | undefined = city ? { category: category.slug, remote: isOnline, subTag } : undefined;
+  // filtro online e stessi filtri): alimenta i puntini sulla mappa così,
+  // allontanando lo zoom, ne compaiono altri oltre a quelli della città
+  // cercata — la colonna a sinistra si aggiorna di conseguenza in base a cosa
+  // è visibile sulla mappa (ResultsListWithMap). Li chiede il browser quando
+  // apre la mappa; senza città la ricerca è già quella.
+  const mapPool: MapPoolQuery | undefined = city ? { category: category.slug, remote: isOnline } : undefined;
 
   // Percorso per Google (Home › Idraulico › Latina), senza riquadro visibile:
   // il titolo sopra i risultati era stato tolto (docs/CHANGELOG.md §271, §295).
@@ -216,7 +252,7 @@ export async function CategoryResults({
           categorySlug={category.slug}
           categoryLabel={category.label}
           city={comune.name}
-          professionals={professionals}
+          facts={page.facts}
           pricePageHref={pricePagePromise}
           reviews={reviewsPromise}
           subTag={subTag}
@@ -237,14 +273,15 @@ export async function CategoryResults({
         city={city}
         cityCenter={comune ? [comune.lat, comune.lon] : undefined}
         online={isOnline}
-        professionals={professionals}
+        page={page}
+        search={search}
+        filters={filters}
         mapPool={mapPool}
         loadFailed={loadFailed}
-        initialUrgentOnly={searchParams.urgente === "1"}
         footer={cityFacts}
         subTag={subTag}
       />
-      {!city && !loadFailed ? <CategoryCityLinks categorySlug={category.slug} categoryLabel={category.label} professionals={professionals} /> : null}
+      {!city && !loadFailed ? <CategoryCityLinks categorySlug={category.slug} categoryLabel={category.label} cities={page.facts.cities} /> : null}
       <Suspense fallback={null}>
         <PopularServicesLinksWhenReady currentSlug={category.slug} city={comune?.name} citySlug={citySlug} order={popularPromise} available={availablePromise} />
       </Suspense>

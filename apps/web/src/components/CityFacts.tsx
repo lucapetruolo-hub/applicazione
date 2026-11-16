@@ -10,7 +10,7 @@ import {
   formatRating,
   subTagLabel,
   type ProfessionalCategorySlug,
-  type ProfessionalSearchResult,
+  type ResultsFacts,
 } from "@professionisti/shared";
 
 /**
@@ -34,7 +34,7 @@ export function CityFacts({
   categorySlug,
   categoryLabel,
   city,
-  professionals,
+  facts: found,
   pricePageHref = null,
   subTag,
   reviews = [],
@@ -42,7 +42,8 @@ export function CityFacts({
   categorySlug: ProfessionalCategorySlug;
   categoryLabel: string;
   city: string;
-  professionals: ProfessionalSearchResult[];
+  /** Numeri di tutti i trovati, dall'API: la pagina ha solo 20 schede (docs/changelog/2026-11-16-pagine-da-20.md). */
+  facts: ResultsFacts;
   /** Pagina "Quanto costa" con prezzi veri da collegare (`/prezzi/...`, §296), se c'è. */
   pricePageHref?: string | null;
   /** Pagina per servizio: i dati sono già dei soli professionisti con questa specializzazione. */
@@ -50,11 +51,9 @@ export function CityFacts({
   /** Ultime recensioni del mestiere in questa città (collaudo N-04). */
   reviews?: CityReview[];
 }) {
-  if (professionals.length === 0) return null;
+  if (found.count === 0) return null;
   const noun = CATEGORY_SEO_NOUN[categorySlug];
-  const verified = professionals.filter((pro) => pro.verified).length;
-  const reviewCount = professionals.reduce((sum, pro) => sum + pro.reviewCount, 0);
-  const ratingSum = professionals.reduce((sum, pro) => sum + (pro.rating ?? 0) * pro.reviewCount, 0);
+  const { verified, reviewCount, ratingSum } = found;
   const averageRating = reviewCount > 0 ? formatRating(ratingSum / reviewCount) : null;
 
   // Niente tessere a zero e, con un solo professionista, niente numeri
@@ -62,10 +61,10 @@ export function CityFacts({
   // dare fiducia ottiene l'effetto opposto, e "1 professionista in zona"
   // sopra la sua unica scheda non dice nulla di nuovo.
   const facts =
-    professionals.length < 2
+    found.count < 2
       ? []
       : [
-          { value: String(professionals.length), label: "professionisti in zona" },
+          { value: String(found.count), label: "professionisti in zona" },
           ...(verified > 0 ? [{ value: String(verified), label: "con badge Verificato" }] : []),
           averageRating
             ? { value: `${averageRating}/5`, label: `su ${reviewCount} ${reviewCount === 1 ? "recensione" : "recensioni"}` }
@@ -78,11 +77,11 @@ export function CityFacts({
   const serviceLinks = subTag
     ? []
     : categorySubTags(categorySlug).filter(
-        (tag) => professionals.filter((pro) => pro.subTags.includes(tag)).length >= MIN_PROFESSIONALS_TO_INDEX_CITY,
+        (tag) => (found.subTagCounts[tag] ?? 0) >= MIN_PROFESSIONALS_TO_INDEX_CITY,
       );
 
   const what = subTag ? `${categoryLabel} (${subTagLabel(subTag).toLowerCase()})` : categoryLabel;
-  const servicesOffered = [...new Set(professionals.flatMap((pro) => pro.services.map((service) => service.name)))].slice(0, 3);
+  const servicesOffered = found.services.slice(0, 3);
   // I numeri stanno già nelle tessere: il testo li ripete solo quando le
   // tessere non ci sono (un solo professionista).
   const intro = [

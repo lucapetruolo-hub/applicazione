@@ -12,6 +12,31 @@ function send(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
+/** Risposta di /professionals/search-page per i professionisti trovati (una sola pagina). */
+function pageOf(found) {
+  const subTagCounts = {};
+  for (const pro of found) for (const tag of pro.subTags) subTagCounts[tag] = (subTagCounts[tag] ?? 0) + 1;
+  const reviewCount = found.reduce((sum, pro) => sum + pro.reviewCount, 0);
+  return {
+    results: found,
+    total: found.length,
+    page: 1,
+    pageSize: 20,
+    pageCount: 1,
+    languages: [...new Set(found.flatMap((pro) => pro.spokenLanguages))],
+    nearestOutsideKm: null,
+    facts: {
+      count: found.length,
+      verified: found.filter((pro) => pro.verified).length,
+      reviewCount,
+      ratingSum: found.reduce((sum, pro) => sum + (pro.rating ?? 0) * pro.reviewCount, 0),
+      subTagCounts,
+      services: [...new Set(found.flatMap((pro) => pro.services.map((service) => service.name)))].slice(0, 3),
+      cities: found.length > 0 ? [{ city: found[0].city, count: found.length }] : [],
+    },
+  };
+}
+
 createServer((req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
   if (url.pathname === "/professionals/search") {
@@ -19,6 +44,16 @@ createServer((req, res) => {
     const city = url.searchParams.get("city");
     const match = (!category || category === "idraulico") && (!city || city.toLowerCase() === "latina");
     return send(res, 200, match ? PROFESSIONALS : []);
+  }
+  // Pagina da 20 e puntini della mappa (docs/changelog/2026-11-16-pagine-da-20.md).
+  if (url.pathname === "/professionals/search-page" || url.pathname === "/professionals/pins") {
+    const category = url.searchParams.get("category");
+    const city = url.searchParams.get("city");
+    const subTag = url.searchParams.get("specializzazione");
+    const match = (!category || category === "idraulico") && (!city || city.toLowerCase() === "latina");
+    const found = (match ? PROFESSIONALS : []).filter((pro) => !subTag || pro.subTags.includes(subTag));
+    if (url.pathname === "/professionals/pins") return send(res, 200, found);
+    return send(res, 200, pageOf(found));
   }
   // Elenchi leggeri usati da sitemap e home (docs/changelog/2026-11-16-traffico-elevato.md).
   if (url.pathname === "/professionals/directory") {

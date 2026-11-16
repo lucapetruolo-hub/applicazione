@@ -2,9 +2,26 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Check, ChevronDown, ChevronUp, CreditCard, Info, Map as MapIcon, Maximize2, Minimize2, Plus, RotateCw, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
-import { PROFILE_REQUEST_SOURCE_PARAM, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, agendaToPreviewDays, type ProfessionalSearchResult, professionalPath, subTagLabel } from "@professionisti/shared";
+import {
+  PROFILE_REQUEST_SOURCE_PARAM,
+  PUBLIC_AGENDA_DAYS,
+  RESULT_FILTER_PARAMS,
+  SEARCH_RADIUS_KM,
+  activeResultFilterCount,
+  agendaToPreviewDays,
+  resultFilterEntries,
+  resultsPageQuery,
+  type ProfessionalPin,
+  type ProfessionalSearchPage,
+  type ProfessionalSearchResult,
+  type ResultFilters,
+  professionalPath,
+  subTagLabel,
+} from "@professionisti/shared";
+import type { ProfessionalSearchQuery } from "@professionisti/api-client";
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { apiClient } from "@/lib/apiClient";
@@ -14,8 +31,9 @@ import { useSavedProfessionals } from "@/lib/useSavedProfessionals";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import { CHOICE_PROFILE_PARAM } from "@/lib/chosenProsStore";
 import { PROBLEM_PROFILE_PARAM, requestDescriptionParam } from "@/lib/requestDescription";
-import type { MapBounds } from "./ResultsMap";
+import type { MapAvailability, MapBounds, MapProfessional } from "./ResultsMap";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
+import { ResultsPager } from "@/components/ResultsPager";
 
 // Cuoricino sull'angolo della foto: sul bordo del cerchio, dentro l'angolo
 // arrotondato del rettangolo.
@@ -26,9 +44,13 @@ const heartOffset = CARD_PHOTO.shape === "portrait" ? { right: 6, bottom: 6 } : 
 // questo — niente da indicizzare in una mappa interattiva).
 const ResultsMap = dynamic(() => import("./ResultsMap").then((mod) => mod.ResultsMap), { ssr: false });
 
+/** Scheda o puntino della mappa: i link servono a tutti e due. */
+type LinkablePro = ProfessionalPin & Partial<Pick<ProfessionalSearchResult, "matchedServiceId" | "services">>;
+
 /** Nome della prestazione cercata (`?servizio=`) che il professionista offre, se c'è (§398). */
-function matchedServiceName(pro: ProfessionalSearchResult): string | undefined {
-  return pro.matchedServiceId ? pro.services.find((service) => service.id === pro.matchedServiceId)?.name : undefined;
+function matchedServiceName(pro: LinkablePro): string | undefined {
+  if (pro.matchedServiceName) return pro.matchedServiceName;
+  return pro.matchedServiceId ? pro.services?.find((service) => service.id === pro.matchedServiceId)?.name : undefined;
 }
 
 /**
@@ -36,7 +58,7 @@ function matchedServiceName(pro: ProfessionalSearchResult): string | undefined {
  * con sé la prestazione, così "Richiedi preventivo" sul profilo parte con il
  * lavoro già scritto (§398).
  */
-function profileHref(pro: ProfessionalSearchResult, extra: Record<string, string>, problem?: string): string {
+function profileHref(pro: LinkablePro, extra: Record<string, string>, problem?: string): string {
   // Dalla ricerca per problema il profilo riceve il problema scritto, non la
   // prestazione: la richiesta parte con le parole del cliente e la visita non
   // si conta come arrivata da "Quanto costa" (§399).
@@ -47,7 +69,7 @@ function profileHref(pro: ProfessionalSearchResult, extra: Record<string, string
 }
 
 /** Descrizione della richiesta già scritta: il problema cercato, altrimenti la prestazione cercata (§398). */
-function serviceDescriptionParam(pro: ProfessionalSearchResult, problem?: string): string {
+function serviceDescriptionParam(pro: LinkablePro, problem?: string): string {
   return requestDescriptionParam(problem, matchedServiceName(pro));
 }
 
@@ -63,26 +85,34 @@ function sameBounds(a: MapBounds | null, b: MapBounds | null): boolean {
   );
 }
 
+/** Stessi filtri (per non ricaricare la pagina chiudendo il pannello senza cambiare nulla). */
+function sameFilters(a: ResultFilters, b: ResultFilters): boolean {
+  return JSON.stringify(resultFilterEntries(a)) === JSON.stringify(resultFilterEntries(b));
+}
+
+/** Attesa prima di chiedere la pagina dopo uno spostamento della mappa o un filtro toccato. */
+const REFRESH_DELAY_MS = 350;
+
 /**
  * Ricerca senza città per i puntini della mappa (stessi filtri della pagina):
  * la fa il browser quando la mappa si apre, non il server prima di mandare
  * la pagina, che così arriva prima (collaudo N-02,
  * docs/changelog/2026-10-30-velocita-telefono.md). Da telefono la mappa parte
- * chiusa: chi non la apre non la scarica.
+ * chiusa: chi non la apre non la scarica. Arrivano solo puntini leggeri, tutti
+ * i trovati (scelta di Luca, docs/changelog/2026-11-16-pagine-da-20.md).
  */
-export type MapPoolQuery = {
-  category?: string;
-  q?: string;
-  remote?: boolean;
-  service?: string;
-  offers?: string;
-  merit?: boolean;
-  /** Solo i professionisti con questa specializzazione (pagine per servizio). */
-  subTag?: string;
-};
+export type MapPoolQuery = Omit<ProfessionalSearchQuery, "city" | "track">;
+
+/**
+ * Pagina mostrata: quella del server, oppure quella chiesta dal browser per
+ * l'inquadratura della mappa (`bounds`), con il suo numero di pagina.
+ */
+type AreaPage = { key: string; data: ProfessionalSearchPage };
 
 export function ResultsListWithMap({
-  professionals,
+  page,
+  search,
+  filters,
   mapPool,
   showMap,
   city,
@@ -91,18 +121,24 @@ export function ResultsListWithMap({
   footer,
   otherSection,
   defaultMode,
-  initialUrgentOnly,
   problemDescription,
   reasonFor,
   merit = false,
   selection,
 }: {
-  /** Risultati della ricerca corrente (es. filtrati per città): usati per il primo render e come base della mappa. */
-  professionals: ProfessionalSearchResult[];
   /**
-   * Tutti i professionisti disponibili per il puntinamento sulla mappa (es. stessa categoria, nessun filtro città).
+   * Pagina di risultati preparata dal server (20 schede, filtri e ordine
+   * calcolati dall'API, docs/changelog/2026-11-16-pagine-da-20.md).
+   */
+  page: ProfessionalSearchPage;
+  /** Parametri della ricerca della pagina: il browser li riusa per la zona della mappa e per il numero nei Filtri. */
+  search: ProfessionalSearchQuery;
+  /** Filtri accesi (dall'indirizzo, più la specializzazione della pagina per servizio). */
+  filters: ResultFilters;
+  /**
+   * Ricerca senza città per i puntini sulla mappa (es. stessa categoria, nessun filtro città).
    * Muovendo/zoomando la mappa la colonna a sinistra si aggiorna mostrando chi è visibile nell'inquadratura corrente.
-   * Senza (nessuna città cercata): `professionals`, la ricerca è già quella.
+   * Senza (nessuna città cercata): `search`, la ricerca è già quella.
    */
   mapPool?: MapPoolQuery;
   showMap: boolean;
@@ -127,8 +163,6 @@ export function ResultsListWithMap({
   otherSection?: { title: string; subtitle: string; professionals: ProfessionalSearchResult[] };
   /** Tab di default della mini-agenda di ogni card (richiesta esplicita dell'utente): "a domicilio" se cercato a domicilio, "online" se cercato online. */
   defaultMode?: "HOME" | "ONLINE";
-  /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage — evita di dover ripetere la scelta qui. */
-  initialUrgentOnly?: boolean;
   /** Problema scritto nella ricerca: arriva già scritto nella richiesta, dalla scheda e dal profilo. */
   problemDescription?: string;
   /** Riga "Perché" di ogni scheda, dalla descrizione del problema (docs/CHANGELOG.md §392). */
@@ -149,19 +183,13 @@ export function ResultsListWithMap({
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   // Con "Scegli" il profilo sa di arrivare da qui: mostra "Torna ai risultati"
   // e lo stesso "Scegli" (docs/changelog/2026-11-03-scelti-restano.md).
   const fromChoice: Record<string, string> = selection ? { [CHOICE_PROFILE_PARAM]: "1" } : {};
   const { canSave, savedIds, pendingId, toggleSave } = useSavedProfessionals();
   const fallbackCenter = cityCenter;
-  // Nessuno entro il raggio di ricerca: l'API ha allargato fino al
-  // professionista più vicino (ProfessionalsService.search), lo diciamo.
-  const nearestOutsideKm = useMemo(() => {
-    if (!city || professionals.length === 0) return null;
-    const distances = professionals.map((pro) => pro.distanceKm);
-    if (distances.some((d) => d === undefined || d <= SEARCH_RADIUS_KM)) return null;
-    return Math.round(Math.min(...(distances as number[])));
-  }, [city, professionals]);
 
   // Inquadratura attuale della mappa (null finché non c'è). Da computer la
   // lista mostra subito chi ci sta dentro.
@@ -186,6 +214,7 @@ export function ResultsListWithMap({
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const mapToggleRef = useRef<HTMLButtonElement>(null);
   const mapCloseRef = useRef<HTMLButtonElement>(null);
+  const listTopRef = useRef<HTMLDivElement>(null);
   // "Espandi mappa" (riferimento miodottore.it): allarga la colonna mappa a
   // scapito della lista, solo da desktop — da mobile la mappa è già a piena
   // larghezza quando aperta, non ha senso "espanderla" ulteriormente.
@@ -231,25 +260,25 @@ export function ResultsListWithMap({
   const wideScreen = useMediaQuery("(min-width: 700px)");
   if ((mobileMapOpen || wideScreen) && !shouldMountMap) setShouldMountMap(true);
 
-  // Puntini oltre la città cercata, chiesti quando la mappa si monta (vedi MapPoolQuery).
-  const [extraPool, setExtraPool] = useState<ProfessionalSearchResult[] | null>(null);
-  const mapPoolKey = mapPool ? JSON.stringify(mapPool) : null;
+  // Tutti i trovati come puntini leggeri, chiesti quando la mappa si monta
+  // (vedi MapPoolQuery): sulla mappa si vedono tutti, non solo la pagina.
+  const [pins, setPins] = useState<ProfessionalPin[] | null>(null);
+  const pinsKey = JSON.stringify([mapPool ?? search, filters]);
   useEffect(() => {
-    if (!shouldMountMap || !mapPoolKey) return;
+    if (!shouldMountMap) return;
     let active = true;
-    const { subTag, ...query } = JSON.parse(mapPoolKey) as MapPoolQuery;
-    apiClient.searchProfessionals(query).then(
+    const [query, pinFilters] = JSON.parse(pinsKey) as [ProfessionalSearchQuery, ResultFilters];
+    apiClient.getProfessionalPins(query, resultsPageQuery(pinFilters)).then(
       (list) => {
-        if (active) setExtraPool(subTag ? list.filter((pro) => pro.subTags.includes(subTag)) : list);
+        if (active) setPins(list);
       },
-      // Senza risposta la mappa resta con i risultati della città.
+      // Senza risposta la mappa resta con le schede della pagina.
       () => undefined,
     );
     return () => {
       active = false;
     };
-  }, [shouldMountMap, mapPoolKey]);
-  const pool = extraPool ?? professionals;
+  }, [shouldMountMap, pinsKey]);
 
   function handleBoundsChange(bounds: MapBounds) {
     // Su mobile la mappa parte chiusa (display:none) ma resta montata: una mappa
@@ -264,12 +293,49 @@ export function ResultsListWithMap({
     setStartBounds((prev) => prev ?? bounds);
   }
 
-  // Da computer la lista segue la mappa a ogni spostamento; da telefono solo
-  // l'ultima zona cercata con "Cerca in quest'area".
-  const bounds = wideScreen ? liveBounds : areaBounds;
+  // Da computer la lista segue la mappa appena la si sposta (l'inquadratura
+  // d'apertura mostra la pagina del server, senza una seconda richiesta); da
+  // telefono solo l'ultima zona cercata con "Cerca in quest'area".
+  const bounds = wideScreen ? (liveBounds && !sameBounds(liveBounds, startBounds) ? liveBounds : null) : areaBounds;
   const phoneMapOpen = mobileMapOpen && !wideScreen;
   // "Cerca in quest'area" compare solo dopo aver spostato o zoomato la mappa.
   const areaMoved = liveBounds !== null && !sameBounds(liveBounds, areaBounds ?? startBounds);
+
+  // Pagina della zona della mappa, chiesta all'API con l'inquadratura: prima
+  // chi è nella ricerca per luogo, poi gli altri visibili (come prima nel browser).
+  const [areaPageNumber, setAreaPageNumber] = useState(1);
+  const [areaPage, setAreaPage] = useState<AreaPage | null>(null);
+  const areaKey = bounds ? JSON.stringify([search, filters, bounds, areaPageNumber]) : null;
+  useEffect(() => {
+    if (!areaKey) return;
+    let active = true;
+    const [query, areaFilters, area, number] = JSON.parse(areaKey) as [ProfessionalSearchQuery, ResultFilters, MapBounds, number];
+    const timer = setTimeout(() => {
+      apiClient.searchProfessionalsPage({ ...query, track: false }, resultsPageQuery(areaFilters, number, area)).then(
+        (data) => {
+          if (!active) return;
+          setAreaPage({ key: areaKey, data });
+        },
+        // Senza risposta resta la lista di prima.
+        () => undefined,
+      );
+    }, REFRESH_DELAY_MS);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [areaKey]);
+  // Spostando la mappa si riparte dalla prima pagina della zona.
+  const boundsKey = bounds ? JSON.stringify(bounds) : null;
+  const [lastBoundsKey, setLastBoundsKey] = useState<string | null>(null);
+  if (boundsKey !== lastBoundsKey) {
+    setLastBoundsKey(boundsKey);
+    setAreaPageNumber(1);
+  }
+  // Finché la zona non è arrivata resta la pagina di prima (la zona
+  // precedente o quella del server): niente lista vuota a metà.
+  const shown: ProfessionalSearchPage = bounds && areaPage ? areaPage.data : page;
+  const areaLoading = Boolean(areaKey) && areaPage?.key !== areaKey;
 
   function closePhoneMap() {
     setMobileMapOpen(false);
@@ -296,43 +362,15 @@ export function ResultsListWithMap({
     };
   }, [phoneMapOpen]);
 
-  // Calcolata dall'inquadratura e non salvata: quando arrivano i puntini
-  // oltre la città, la lista si aggiorna senza dover muovere la mappa.
-  const visible = bounds
-    ? pool.filter(
-        (pro) =>
-          (pro.latitude !== 0 || pro.longitude !== 0) &&
-          pro.latitude <= bounds.north &&
-          pro.latitude >= bounds.south &&
-          pro.longitude <= bounds.east &&
-          pro.longitude >= bounds.west,
-      )
-    : professionals;
-
-  // Ranking già applicato da apiClient.searchProfessionals (boost→rating→recensioni→distanza):
-  // manteniamo lo stesso ordine anche nel sottoinsieme filtrato per inquadratura mappa.
-  // Prima l'ordine della ricerca per città, che conosce le distanze; poi gli
-  // altri professionisti visibili sulla mappa nell'ordine di tutta la ricerca.
-  // Prima si usava solo quest'ultimo, senza distanze: a parità di stelle e
-  // recensioni non veniva prima il più vicino, come dice la spiegazione
-  // "Ordinato per pertinenza" (collaudo del 29/10/2026, M-08).
-  const orderedVisible = useMemo(() => {
-    const order = new Map(professionals.map((pro, index) => [pro.id, index]));
-    for (const pro of pool) if (!order.has(pro.id)) order.set(pro.id, order.size);
-    return [...visible].sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
-  }, [visible, pool, professionals]);
-
   // Pannello filtri (richiesta esplicita dell'utente, riferimento
   // miodottore.it: bottone "Filtri" sopra "Mostra mappa", apre un pannello
-  // con "Consulenza online", "Date disponibili" e "Lingua parlata"). Tutto
-  // calcolato client-side sui risultati già scaricati, nessun nuovo query
-  // param lato server — stesso principio già seguito per ListControls
-  // (filtro/ordina/mostra) nelle liste richieste/prenotazioni.
+  // con "Consulenza online", "Date disponibili" e "Lingua parlata"). I filtri
+  // stanno nell'indirizzo e li applica l'API su tutti i trovati, non solo
+  // sulla pagina (docs/changelog/2026-11-16-pagine-da-20.md): nel pannello
+  // si toccano in bozza e valgono alla chiusura.
   const [showFilters, setShowFilters] = useState(false);
-  const [filterOnlineOnly, setFilterOnlineOnly] = useState(false);
-  const [filterAvailability, setFilterAvailability] = useState<"any" | "today" | "3days">("any");
+  const [draft, setDraft] = useState<ResultFilters>(filters);
   const [languageQuery, setLanguageQuery] = useState("");
-  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   // Sezioni ad accordion (richiesta esplicita dell'utente, riferimento
   // miodottore.it): un titolo per sezione, click per espandere/richiudere —
   // "Date disponibili" aperta di default quando si arriva già con
@@ -340,28 +378,65 @@ export function ResultsListWithMap({
   // visibile che il filtro è attivo), altrimenti "Consulenza online" come
   // prima.
   const [expandedSection, setExpandedSection] = useState<"online" | "availability" | "language" | "insurance" | "payment" | null>(
-    initialUrgentOnly ? "availability" : "online",
+    filters.urgent ? "availability" : "online",
   );
+  const filterOnlineOnly = Boolean(draft.online);
+  const filterUrgentOnly = Boolean(draft.urgent);
+  const filterAvailability = draft.availability ?? "any";
+  const selectedLanguage = draft.language ?? null;
+  const filterInsuredOnly = Boolean(draft.insured);
+  const filterOnlinePaymentOnly = Boolean(draft.onlinePayment);
+  const setFlag = (name: "online" | "urgent" | "insured" | "onlinePayment") => () =>
+    setDraft((current) => {
+      const { [name]: on, ...rest } = current;
+      return on ? rest : { ...rest, [name]: true };
+    });
+  const setFilterOnlineOnly = setFlag("online");
+  const setFilterUrgentOnly = setFlag("urgent");
+  const setFilterInsuredOnly = setFlag("insured");
+  const setFilterOnlinePaymentOnly = setFlag("onlinePayment");
+  const setFilterAvailability = (value: "any" | "today" | "3days") =>
+    setDraft(({ availability: _old, ...rest }) => (value === "any" ? rest : { ...rest, availability: value }));
+  const setSelectedLanguage = (value: string | null) => setDraft(({ language: _old, ...rest }) => (value ? { ...rest, language: value } : rest));
 
-  // Toggle "Intervento urgente?" (richiesta esplicita dell'utente): mostra
-  // solo chi ha almeno una fascia libera nelle prossime 24 ore reali, non
-  // "oggi" in senso di giorno di calendario (diverso dal filtro "Date
-  // disponibili" per giorno intero, sotto). Selezionabile già in homepage
-  // (`HomeHero`, che porta `?urgente=1` in URL) — una volta cercato, non
-  // serve più un controllo a sé sempre visibile qui: il filtro arriva già
-  // preimpostato e resta comunque regolabile dentro il pannello Filtri.
-  const [filterUrgentOnly, setFilterUrgentOnly] = useState(initialUrgentOnly ?? false);
+  // Numero per "Mostra N risultati" in fondo al pannello (richiesta esplicita
+  // dell'utente, riferimento miodottore.it): chiesto all'API per la bozza.
+  const [draftCount, setDraftCount] = useState<{ key: string; total: number } | null>(null);
+  const draftKey = showFilters && !sameFilters(draft, filters) ? JSON.stringify([search, draft, bounds]) : null;
+  useEffect(() => {
+    if (!draftKey) return;
+    let active = true;
+    const [query, draftFilters, area] = JSON.parse(draftKey) as [ProfessionalSearchQuery, ResultFilters, MapBounds | null];
+    const timer = setTimeout(() => {
+      apiClient.searchProfessionalsPage({ ...query, track: false }, resultsPageQuery(draftFilters, 1, area ?? undefined)).then(
+        (data) => active && setDraftCount({ key: draftKey, total: data.total }),
+        () => undefined,
+      );
+    }, REFRESH_DELAY_MS);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [draftKey]);
+  const filteredResultsCount = draftKey === null ? shown.total : draftCount?.key === draftKey ? draftCount.total : null;
 
-  // Solo profili con assicurazione RC professionale dichiarata
-  // (docs/CHANGELOG.md §157, richiesta esplicita dell'utente).
-  const [filterInsuredOnly, setFilterInsuredOnly] = useState(false);
+  /** Indirizzo della stessa ricerca con altri filtri o un'altra pagina. */
+  function resultsHref(nextFilters: ResultFilters, nextPage: number): string {
+    const query = new URLSearchParams(searchParams?.toString() ?? "");
+    for (const name of Object.values(RESULT_FILTER_PARAMS)) query.delete(name);
+    // La specializzazione della pagina per servizio sta nel percorso, non nell'indirizzo.
+    const { subTag: _pageSubTag, ...urlFilters } = nextFilters;
+    for (const [name, value] of resultFilterEntries(urlFilters)) query.set(name, value);
+    if (nextPage > 1) query.set(RESULT_FILTER_PARAMS.page, String(nextPage));
+    const text = query.toString();
+    return `${pathname}${text ? `?${text}` : ""}`;
+  }
 
-  // Solo chi può farsi pagare online, cioè con il bollino "Pagamenti online"
-  // (richiesta di Luca, docs/changelog/2026-11-04-prezzi-e-foto-profilo.md).
-  // Tiene chi accetta ANCHE i pagamenti online, non chi accetta solo quelli:
-  // per questo la scritta è "Accetta pagamenti online" e non "Solo con
-  // pagamento online" (docs/changelog/2026-11-06-filtro-pagamenti-online.md).
-  const [filterOnlinePaymentOnly, setFilterOnlinePaymentOnly] = useState(false);
+  // Chiudendo il pannello valgono i filtri toccati: la pagina riparte dalla prima.
+  function closeFilters() {
+    setShowFilters(false);
+    if (!sameFilters(draft, filters)) router.push(resultsHref(draft, 1), { scroll: false });
+  }
 
   // Popup centrato (richiesta esplicita dell'utente), stesso pattern
   // overlay già in uso altrove nel prodotto (BookingDetailPanel,
@@ -370,11 +445,11 @@ export function ResultsListWithMap({
   useEffect(() => {
     if (!showFilters) return;
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setShowFilters(false);
+      if (e.key === "Escape") closeFilters();
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [showFilters]);
+  });
 
   // "Ordinato per pertinenza" cliccabile (richiesta esplicita dell'utente):
   // un piccolo popup spiega il criterio reale di ordinamento invece di
@@ -389,94 +464,63 @@ export function ResultsListWithMap({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [showSortInfo]);
 
-  // Solo le lingue effettivamente parlate tra i professionisti nei
-  // risultati correnti (richiesta esplicita dell'utente), filtrate dal
-  // testo digitato.
+  // Solo le lingue effettivamente parlate tra i professionisti trovati
+  // (richiesta esplicita dell'utente, dall'API su tutti i trovati), filtrate
+  // dal testo digitato.
   const availableLanguages = useMemo(() => {
-    const all = new Set<string>();
-    for (const pro of professionals) {
-      for (const lang of pro.spokenLanguages) all.add(lang);
-    }
-    const list = Array.from(all).sort((a, b) => a.localeCompare(b, "it"));
     const query = languageQuery.trim().toLowerCase();
-    return query ? list.filter((lang) => lang.toLowerCase().includes(query)) : list;
-  }, [professionals, languageQuery]);
+    return query ? page.languages.filter((lang) => lang.toLowerCase().includes(query)) : page.languages;
+  }, [page.languages, languageQuery]);
 
-  function hasAvailabilityWithinDays(pro: ProfessionalSearchResult, maxDayOffset: number): boolean {
-    return pro.availabilityPreview
-      .slice(0, maxDayOffset + 1)
-      .some((day) => day.times.some((slot) => slot.homeAvailable || slot.onlineAvailable));
-  }
-
-  // Toggle "Intervento urgente?" (richiesta esplicita dell'utente): a
-  // differenza di "Date disponibili" (giorno di calendario intero), questa
-  // è una vera finestra scorrevole di 24 ore da adesso — combina data+ora
-  // di ogni fascia (`day.date` + `slot.time`) come "wall clock UTC", stessa
-  // convenzione già in uso in tutto il modulo agenda (mai convertita al
-  // fuso del browser).
-  // "Adesso" fissato all'apertura della pagina: il calcolo resta lo stesso a ogni render.
-  const [now] = useState(() => Date.now());
-  function hasAvailabilityWithin24h(pro: ProfessionalSearchResult): boolean {
-    const cutoff = now + 24 * 60 * 60 * 1000;
-    return pro.availabilityPreview.some((day) =>
-      day.times.some((slot) => {
-        if (!(slot.homeAvailable || slot.onlineAvailable)) return false;
-        const slotTime = new Date(`${day.date}T${slot.time}:00Z`).getTime();
-        return slotTime >= now && slotTime <= cutoff;
-      }),
-    );
-  }
-
-  function matchesFilters(pro: ProfessionalSearchResult): boolean {
-    if (filterUrgentOnly && !hasAvailabilityWithin24h(pro)) return false;
-    if (filterOnlineOnly && !pro.remoteAvailable) return false;
-    if (filterAvailability === "today" && !hasAvailabilityWithinDays(pro, 0)) return false;
-    if (filterAvailability === "3days" && !hasAvailabilityWithinDays(pro, 2)) return false;
-    if (selectedLanguage && !pro.spokenLanguages.includes(selectedLanguage)) return false;
-    if (filterInsuredOnly && !pro.hasLiabilityInsurance) return false;
-    if (filterOnlinePaymentOnly && !pro.stripeVerified) return false;
-    return true;
-  }
-
-  const activeFilterCount =
-    (filterUrgentOnly ? 1 : 0) + (filterOnlineOnly ? 1 : 0) + (filterAvailability !== "any" ? 1 : 0) +
-    (selectedLanguage ? 1 : 0) +
-    (filterInsuredOnly ? 1 : 0) +
-    (filterOnlinePaymentOnly ? 1 : 0);
-
-  // Pool gia' filtrato dai filtri attivi: lista E mappa leggono da qui, cosi'
-  // i puntini sulla mappa corrispondono sempre alle schede visibili (bug
-  // segnalato dall'utente: con "Solo disponibili entro 24h" attivo la mappa
-  // continuava a mostrare i puntini dei professionisti filtrati fuori).
-  const filteredProfessionals = professionals.filter(matchesFilters);
-  const filteredPool = pool.filter(matchesFilters);
-  const filteredOrderedVisible = orderedVisible.filter(matchesFilters);
-  // Conteggio live per il bottone "Mostra N risultati" in fondo al pop-up
-  // (richiesta esplicita dell'utente, riferimento miodottore.it).
-  const filteredResultsCount = (showMap ? filteredOrderedVisible : filteredProfessionals).length;
+  const activeFilterCount = activeResultFilterCount(filters);
 
   // Riaprendo i filtri con "Accetta pagamenti online" acceso, la sezione
   // "Pagamento" è già aperta: si vede subito che il filtro è attivo (Luca,
   // docs/changelog/2026-11-06-filtro-pagamenti-online.md).
   function toggleFilters() {
-    if (!showFilters && filterOnlinePaymentOnly) setExpandedSection("payment");
-    setShowFilters((v) => !v);
+    if (showFilters) {
+      closeFilters();
+      return;
+    }
+    if (filters.onlinePayment) setExpandedSection("payment");
+    setDraft(filters);
+    setShowFilters(true);
   }
 
   function toggleSection(section: "online" | "availability" | "language" | "insurance" | "payment") {
     setExpandedSection((prev) => (prev === section ? null : section));
   }
 
+  // Cambiando pagina della zona della mappa la lista torna in cima.
+  function goToAreaPage(number: number) {
+    setAreaPageNumber(number);
+    listTopRef.current?.scrollIntoView({ block: "start" });
+  }
+
+  // Puntini: tutti i trovati quando sono arrivati, altrimenti le schede della pagina.
+  // Le schede della pagina hanno già l'agenda per l'anteprima.
+  const shownById = new Map(shown.results.map((pro) => [pro.id, pro]));
+  const mapProfessionals: MapProfessional[] = pins ? pins.map((pin) => shownById.get(pin.id) ?? pin) : shown.results;
+  const loadMapAvailability = useMemo(
+    () =>
+      async (id: string): Promise<MapAvailability> => {
+        const agenda = await apiClient.getProfessionalAgenda(id);
+        return { from: agenda.days[0]?.date ?? new Date().toISOString().slice(0, 10), days: agendaToPreviewDays(agenda) };
+      },
+    [],
+  );
+
+
   // Richiesta di preventivo già con giorno, orario e modalità: dalla scheda
   // e dall'anteprima sulla mappa (docs/changelog/2026-11-05-anteprima-mappa.md).
-  const slotHref = (pro: ProfessionalSearchResult, date: string, time: string, endTime: string, mode: "HOME" | "ONLINE") =>
+  const slotHref = (pro: LinkablePro, date: string, time: string, endTime: string, mode: "HOME" | "ONLINE") =>
     `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&nomeProfessionista=${encodeURIComponent(pro.businessName)}&fotoProfessionista=${encodeURIComponent(pro.imageUrl ?? "")}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}${serviceDescriptionParam(pro, problemDescription)}&da=${PROFILE_REQUEST_SOURCE_PARAM.RICERCA}`;
   // Profilo, eventualmente aperto sull'agenda di un giorno (anteprima sulla mappa).
-  const mapProfileHref = (pro: ProfessionalSearchResult, date?: string) =>
+  const mapProfileHref = (pro: LinkablePro, date?: string) =>
     `${profileHref(pro, { ...fromChoice, ...(date ? { data: date } : {}), ...(defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {}) }, problemDescription)}${date ? "#agenda" : ""}`;
 
   // Cuoricino "Salva" sulla foto dell'anteprima della mappa, come nelle schede.
-  const renderMapSave = (pro: ProfessionalSearchResult) =>
+  const renderMapSave = (pro: MapProfessional) =>
     canSave ? (
       <IconActionButton
         label={savedIds.has(pro.id) ? "Salvato" : "Salva"}
@@ -630,11 +674,11 @@ export function ResultsListWithMap({
     // era uno schermo stretto. 700px isola davvero solo i telefoni.
     <div className="results-layout">
       {showFilters ? (
-        <div className="filters-backdrop" role="presentation" onClick={closeOnBackdrop(() => setShowFilters(false))}>
+        <div className="filters-backdrop" role="presentation" onClick={closeOnBackdrop(closeFilters)}>
           <div className="filters-modal" role="dialog" aria-modal="true" aria-label="Filtri">
             <div className="filters-modal-header">
               <span className="filters-modal-title">Filtri</span>
-              <button type="button" className="filters-modal-close" onClick={() => setShowFilters(false)} aria-label="Chiudi">
+              <button type="button" className="filters-modal-close" onClick={closeFilters} aria-label="Chiudi">
                 <X size={18} strokeWidth={1.5} />
               </button>
             </div>
@@ -654,7 +698,7 @@ export function ResultsListWithMap({
                       <span id="filter-online-label">Mostra tutti i professionisti che offrono consulenza online</span>
                       <span
                         className={`filters-switch${filterOnlineOnly ? " on" : ""}`}
-                        onClick={() => setFilterOnlineOnly((v) => !v)}
+                        onClick={setFilterOnlineOnly}
                         role="switch"
                         aria-labelledby="filter-online-label"
                         aria-checked={filterOnlineOnly}
@@ -662,7 +706,7 @@ export function ResultsListWithMap({
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
-                            setFilterOnlineOnly((v) => !v);
+                            setFilterOnlineOnly();
                           }
                         }}
                       >
@@ -694,7 +738,7 @@ export function ResultsListWithMap({
                       </span>
                       <span
                         className={`filters-switch${filterUrgentOnly ? " on" : ""}`}
-                        onClick={() => setFilterUrgentOnly((v) => !v)}
+                        onClick={setFilterUrgentOnly}
                         role="switch"
                         aria-labelledby="filter-urgent-label"
                         aria-checked={filterUrgentOnly}
@@ -702,7 +746,7 @@ export function ResultsListWithMap({
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
-                            setFilterUrgentOnly((v) => !v);
+                            setFilterUrgentOnly();
                           }
                         }}
                       >
@@ -745,7 +789,7 @@ export function ResultsListWithMap({
                       </span>
                       <span
                         className={`filters-switch${filterInsuredOnly ? " on" : ""}`}
-                        onClick={() => setFilterInsuredOnly((v) => !v)}
+                        onClick={setFilterInsuredOnly}
                         role="switch"
                         aria-labelledby="filter-insured-label"
                         aria-checked={filterInsuredOnly}
@@ -753,7 +797,7 @@ export function ResultsListWithMap({
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
-                            setFilterInsuredOnly((v) => !v);
+                            setFilterInsuredOnly();
                           }
                         }}
                       >
@@ -779,7 +823,7 @@ export function ResultsListWithMap({
                       </span>
                       <span
                         className={`filters-switch${filterOnlinePaymentOnly ? " on" : ""}`}
-                        onClick={() => setFilterOnlinePaymentOnly((v) => !v)}
+                        onClick={setFilterOnlinePaymentOnly}
                         role="switch"
                         aria-labelledby="filter-online-payment-label"
                         aria-checked={filterOnlinePaymentOnly}
@@ -787,7 +831,7 @@ export function ResultsListWithMap({
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
-                            setFilterOnlinePaymentOnly((v) => !v);
+                            setFilterOnlinePaymentOnly();
                           }
                         }}
                       >
@@ -835,25 +879,23 @@ export function ResultsListWithMap({
             </div>
 
             <div className="filters-modal-footer">
-              {activeFilterCount > 0 ? (
+              {activeResultFilterCount(draft) > 0 ? (
                 <button
                   type="button"
                   className="filters-reset"
                   onClick={() => {
-                    setFilterUrgentOnly(false);
-                    setFilterOnlineOnly(false);
-                    setFilterAvailability("any");
                     setLanguageQuery("");
-                    setSelectedLanguage(null);
-                    setFilterInsuredOnly(false);
-                    setFilterOnlinePaymentOnly(false);
+                    // La specializzazione della pagina per servizio non è un filtro del pannello.
+                    setDraft(filters.subTag ? { subTag: filters.subTag } : {});
                   }}
                 >
                   Reimposta filtri
                 </button>
               ) : null}
-              <button type="button" className="filters-apply" onClick={() => setShowFilters(false)}>
-                Mostra {filteredResultsCount} risultat{filteredResultsCount === 1 ? "o" : "i"}
+              <button type="button" className="filters-apply" onClick={closeFilters}>
+                {filteredResultsCount === null
+                  ? "Mostra i risultati"
+                  : `Mostra ${filteredResultsCount} risultat${filteredResultsCount === 1 ? "o" : "i"}`}
               </button>
             </div>
           </div>
@@ -937,9 +979,11 @@ export function ResultsListWithMap({
                     </button>
                   ) : areaBounds ? (
                     <span className="map-search-area map-area-count" role="status">
-                      {filteredOrderedVisible.length === 0
-                        ? "Nessun professionista qui"
-                        : `${filteredOrderedVisible.length} professionist${filteredOrderedVisible.length === 1 ? "a" : "i"} qui`}
+                      {areaLoading
+                        ? "Cerco in quest'area…"
+                        : shown.total === 0
+                          ? "Nessun professionista qui"
+                          : `${shown.total} professionist${shown.total === 1 ? "a" : "i"} qui`}
                     </span>
                   ) : null}
                 </div>
@@ -963,8 +1007,9 @@ export function ResultsListWithMap({
             >
               {shouldMountMap ? (
                 <ResultsMap
-                  professionals={filteredPool}
-                  initialProfessionals={filteredProfessionals}
+                  professionals={mapProfessionals}
+                  initialProfessionals={page.results}
+                  loadAvailability={loadMapAvailability}
                   fallbackCenter={fallbackCenter}
                   onBoundsChange={handleBoundsChange}
                   fullScreen={!wideScreen}
@@ -994,7 +1039,9 @@ export function ResultsListWithMap({
           {/* Senza nessun risultato Filtri, Mappa e ordinamento non servono:
               resta solo il riquadro per inviare lo stesso la richiesta
               (docs/CHANGELOG.md §271). */}
-          {professionals.length === 0 ? null : (
+          {/* Con dei filtri accesi la riga resta, anche senza risultati: si
+              devono poter togliere. */}
+          {page.total === 0 && activeFilterCount === 0 ? null : (
           <XStack alignItems="center" justifyContent="space-between" flexWrap="wrap" gap="2">
             <XStack alignItems="center" gap="2" flexWrap="wrap">
               <button type="button" className="filters-toggle hover-ring" onClick={toggleFilters}>
@@ -1039,11 +1086,11 @@ export function ResultsListWithMap({
           </XStack>
           )}
           {header}
-          {nearestOutsideKm !== null ? (
+          {page.nearestOutsideKm !== null ? (
             <YStack backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4" padding="3">
               <Text color={brand.grafite} fontSize={16}>
                 Nessun professionista entro {SEARCH_RADIUS_KM} km da {city}: ti mostriamo il più
-                vicino, a circa {nearestOutsideKm} km.
+                vicino, a circa {page.nearestOutsideKm} km.
               </Text>
             </YStack>
           ) : null}
@@ -1052,20 +1099,40 @@ export function ResultsListWithMap({
           {showMap && !wideScreen && areaBounds ? (
             <div className="map-area-notice">
               <span>
-                {filteredOrderedVisible.length === 0
-                  ? "Nessuno nella zona cercata sulla mappa."
-                  : "Solo la zona cercata sulla mappa."}
+                {!areaLoading && shown.total === 0 ? "Nessuno nella zona cercata sulla mappa." : "Solo la zona cercata sulla mappa."}
               </span>
               <button type="button" className="map-area-reset" onClick={() => setAreaBounds(null)}>
                 Mostra tutti
               </button>
             </div>
           ) : null}
-          {(showMap ? filteredOrderedVisible : filteredProfessionals).map((pro, index) => (
-            <div key={pro.id} className={`results-card${wideScreen && mapSelectedId === pro.id ? " map-selected" : ""}`}>
-              {renderCard(pro, index)}
+          {/* Filtri accesi e nessuno che li rispetta: lo diciamo, con il modo di toglierli. */}
+          {page.total > 0 || activeFilterCount === 0 || bounds ? null : (
+            <div className="map-area-notice results-filters-empty" role="status">
+              <span>Nessun professionista con questi filtri.</span>
+              <Link href={resultsHref(filters.subTag ? { subTag: filters.subTag } : {}, 1)} scroll={false}>
+                Togli i filtri
+              </Link>
             </div>
-          ))}
+          )}
+          <div ref={listTopRef} className={`results-cards${areaLoading ? " refreshing" : ""}`} aria-busy={areaLoading}>
+            {shown.results.map((pro, index) => (
+              <div key={pro.id} className={`results-card${wideScreen && mapSelectedId === pro.id ? " map-selected" : ""}`}>
+                {renderCard(pro, index)}
+              </div>
+            ))}
+          </div>
+          {/* Pagine numerate (scelta di Luca, docs/changelog/2026-11-16-pagine-da-20.md):
+              link veri per la ricerca, pulsanti per la zona della mappa. */}
+          {shown.pageCount > 1 ? (
+            <ResultsPager
+              page={shown.page}
+              pageCount={shown.pageCount}
+              total={shown.total}
+              pageSize={shown.pageSize}
+              {...(bounds ? { onPage: goToAreaPage } : { hrefFor: (number: number) => resultsHref(filters, number) })}
+            />
+          ) : null}
           {otherSection && otherSection.professionals.length > 0 ? (
             <section id="anche-questo-lavoro" aria-labelledby="results-other-section" className="results-other-section">
               <YStack gap="1" marginBottom="2">
@@ -1084,6 +1151,26 @@ export function ResultsListWithMap({
       </div>
 
       <style jsx>{`
+        .results-cards {
+          display: flex;
+          flex-direction: column;
+          gap: var(--t-space-3, 12px);
+          scroll-margin-top: 96px;
+          transition: opacity 0.15s ease;
+        }
+        .results-cards.refreshing {
+          opacity: 0.55;
+        }
+        .results-filters-empty :global(a) {
+          display: inline-flex;
+          align-items: center;
+          min-height: 40px;
+          padding: 0 4px;
+          color: ${brand.cianografiaScuro};
+          font-weight: 700;
+          text-decoration: underline;
+          text-underline-offset: 3px;
+        }
         .results-layout {
           display: flex;
           flex-direction: column;

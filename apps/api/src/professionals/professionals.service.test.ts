@@ -400,3 +400,169 @@ describe("servicesFirstFor — prestazioni del mestiere cercato per prime", () =
     expect(servicesFirstFor(services, "idraulico", ["idraulico"])).toBe(services);
   });
 });
+
+describe("ricerca a pagine e puntini della mappa (docs/changelog/2026-11-16-pagine-da-20.md)", () => {
+  type Pro = Record<string, unknown> & { id: string };
+  const pro = (id: string, extra: Record<string, unknown> = {}): Pro => ({
+    id,
+    businessName: `Ditta ${id}`,
+    categorySlug: "idraulico",
+    categoryLabel: "Idraulico",
+    categories: [],
+    city: "Latina",
+    latitude: 41.46,
+    longitude: 12.9,
+    imageUrl: null,
+    rating: 4.5,
+    reviewCount: 3,
+    verified: true,
+    remoteAvailable: false,
+    spokenLanguages: ["Italiano"],
+    hasLiabilityInsurance: false,
+    stripeVerified: false,
+    subTags: [],
+    services: [],
+    availabilityFrom: "2026-11-16",
+    distanceKm: 2,
+    ...extra,
+  });
+  const build = (byCity: Pro[], withoutCity: Pro[] = byCity, freeIds: string[] = []) => {
+    const service = new ProfessionalsService({} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    const inner = service as unknown as {
+      rankedSearch: (params: { city?: string }) => Promise<Pro[]>;
+      buildAvailabilityPreviews: (ids: string[], options: { days?: number; completeDays?: number }) => Promise<Map<string, { days: unknown[] }>>;
+    };
+    const ranked = vi.spyOn(inner, "rankedSearch").mockImplementation(async (params) => (params.city ? byCity : withoutCity).map((item) => ({ ...item })));
+    const free = { days: [{ date: "2026-11-16", times: [{ time: "15:00", endTime: "16:00", allowsHome: true, allowsOnline: false, homeAvailable: true, onlineAvailable: false }] }] };
+    const previews = vi
+      .spyOn(inner, "buildAvailabilityPreviews")
+      .mockImplementation(async (ids) => new Map(ids.filter((id) => freeIds.includes(id)).map((id) => [id, free])));
+    return { service, ranked, previews };
+  };
+  const now = new Date("2026-11-16T10:00:00Z");
+  const many = Array.from({ length: 45 }, (_, index) => pro(`p${index + 1}`, { spokenLanguages: index % 2 ? ["Italiano", "Inglese"] : ["Italiano"] }));
+
+  it("divide i trovati in pagine da 20 nell'ordine della ricerca, l'ultima con il resto", async () => {
+    const { service, previews } = build(many);
+    const first = await service.searchPage({ category: "idraulico", city: "Latina" }, { page: 1, pageSize: 20, filters: {}, now });
+    expect(first.results.map((item) => item.id)).toEqual(many.slice(0, 20).map((item) => item.id));
+    expect(first).toMatchObject({ total: 45, page: 1, pageCount: 3, languages: ["Inglese", "Italiano"], nearestOutsideKm: null });
+    // L'agenda leggera solo per le 20 schede della pagina.
+    expect(previews).toHaveBeenCalledWith(many.slice(0, 20).map((item) => item.id), { completeDays: 7 });
+    const last = await service.searchPage({ category: "idraulico", city: "Latina" }, { page: 3, pageSize: 20, filters: {}, now });
+    expect(last.results.map((item) => item.id)).toEqual(["p41", "p42", "p43", "p44", "p45"]);
+    // "In breve" parla di tutti i trovati, non della pagina.
+    expect(last.facts).toMatchObject({ count: 45, verified: 45, reviewCount: 135, cities: [{ city: "Latina", count: 45 }] });
+  });
+
+  it("una pagina che non esiste più diventa l'ultima", async () => {
+    const { service } = build(many);
+    const page = await service.searchPage({ category: "idraulico", city: "Latina" }, { page: 9, pageSize: 20, filters: {}, now });
+    expect(page.page).toBe(3);
+    expect(page.results).toHaveLength(5);
+  });
+
+  it("i filtri contano su tutti i trovati, non solo sulla pagina", async () => {
+    const { service } = build(many, many, ["p2", "p4", "p30"]);
+    const english = await service.searchPage({ category: "idraulico", city: "Latina" }, { page: 1, pageSize: 20, filters: { language: "Inglese" }, now });
+    expect(english.total).toBe(22);
+    const today = await service.searchPage({ category: "idraulico", city: "Latina" }, { page: 1, pageSize: 20, filters: { availability: "today" }, now });
+    expect(today.results.map((item) => item.id)).toEqual(["p2", "p4", "p30"]);
+    // Le lingue del pannello restano quelle di tutti i trovati.
+    expect(english.languages).toEqual(["Inglese", "Italiano"]);
+  });
+
+  it("con l'inquadratura prima i trovati per luogo che ci stanno dentro, poi gli altri della zona", async () => {
+    const inside = pro("dentro");
+    const outside = pro("fuori", { latitude: 45.4, longitude: 9.19 });
+    const nearby = pro("vicino", { latitude: 41.6, longitude: 12.7, city: "Aprilia" });
+    const { service } = build([inside, outside], [outside, nearby, inside]);
+    const page = await service.searchPage(
+      { category: "idraulico", city: "Latina" },
+      { page: 1, pageSize: 20, filters: {}, bounds: { north: 42, south: 41, east: 13.5, west: 12 }, now },
+    );
+    expect(page.results.map((item) => item.id)).toEqual(["dentro", "vicino"]);
+  });
+
+  it("nessuno nel raggio: dice la distanza del più vicino", async () => {
+    const { service } = build([pro("lontano", { distanceKm: 37.6 })]);
+    const page = await service.searchPage({ category: "idraulico", city: "Latina" }, { page: 1, pageSize: 20, filters: {}, now });
+    expect(page.nearestOutsideKm).toBe(38);
+  });
+
+  it("i puntini sono tutti i trovati con i filtri, leggeri e senza chi non ha coordinate", async () => {
+    const withService = pro("p1", { services: [{ id: "s1", name: "Sostituzione rubinetto" }], matchedServiceId: "s1" });
+    const { service, previews } = build(many, [withService, pro("senza", { latitude: 0, longitude: 0 }), ...many.slice(1)]);
+    const pins = await service.pins({ category: "idraulico" }, {}, now);
+    expect(pins).toHaveLength(45);
+    expect(pins[0]).toEqual({
+      id: "p1",
+      businessName: "Ditta p1",
+      categorySlug: "idraulico",
+      categoryLabel: "Idraulico",
+      categories: [],
+      city: "Latina",
+      latitude: 41.46,
+      longitude: 12.9,
+      imageUrl: null,
+      rating: 4.5,
+      reviewCount: 3,
+      verified: true,
+      distanceKm: 2,
+      matchedServiceName: "Sostituzione rubinetto",
+    });
+    // Senza filtri sull'agenda i puntini non la calcolano.
+    expect(previews).not.toHaveBeenCalled();
+  });
+});
+
+describe("agenda leggera calcolata solo per i giorni che servono", () => {
+  const slot = (extra: Record<string, unknown>) => ({
+    professionalProfileId: "p-1",
+    dayOfWeek: 0,
+    date: null,
+    startTime: "23:00",
+    endTime: "23:59",
+    allowsHome: true,
+    allowsOnline: false,
+    homeMaxBookings: 1,
+    onlineMaxBookings: 1,
+    ...extra,
+  });
+  const run = async (slots: unknown[], options: { days?: number; completeDays?: number }) => {
+    const prisma = {
+      availabilitySlot: { findMany: vi.fn().mockResolvedValue(slots) },
+      booking: { findMany: vi.fn().mockResolvedValue([]) },
+      externalJob: { findMany: vi.fn().mockResolvedValue([]) },
+      availabilityException: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const service = new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    const inner = service as unknown as { buildAvailabilityPreviews: (ids: string[], o: typeof options) => Promise<Map<string, { days: { date: string }[] }>> };
+    return (await inner.buildAvailabilityPreviews(["p-1"], options)).get("p-1")?.days.map((day) => day.date) ?? [];
+  };
+  const addDays = (days: number) => {
+    const date = new Date();
+    date.setUTCHours(0, 0, 0, 0);
+    date.setUTCDate(date.getUTCDate() + days);
+    return date;
+  };
+  const everyDay = Array.from({ length: 7 }, (_, dayOfWeek) => slot({ dayOfWeek }));
+
+  it("con fasce libere ogni giorno si ferma alla prima settimana", async () => {
+    const dates = await run(everyDay, { completeDays: 7 });
+    expect(dates.length).toBeGreaterThan(0);
+    expect(dates.every((date) => date <= addDays(6).toISOString().slice(0, 10))).toBe(true);
+  });
+
+  it("più avanti tiene solo il primo giorno libero online", async () => {
+    const online = slot({ date: addDays(20), allowsHome: false, allowsOnline: true, startTime: "10:00", endTime: "11:00" });
+    const later = slot({ date: addDays(25), allowsHome: false, allowsOnline: true, startTime: "10:00", endTime: "11:00" });
+    const dates = await run([...everyDay, online, later], { completeDays: 7 });
+    expect(dates.filter((date) => date > addDays(6).toISOString().slice(0, 10))).toEqual([addDays(20).toISOString().slice(0, 10)]);
+  });
+
+  it("per i filtri bastano i prossimi giorni chiesti", async () => {
+    const dates = await run(everyDay, { days: 3 });
+    expect(dates.every((date) => date <= addDays(2).toISOString().slice(0, 10))).toBe(true);
+  });
+});

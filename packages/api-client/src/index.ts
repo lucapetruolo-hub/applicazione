@@ -1,4 +1,5 @@
 export { ApiError, createApiClient } from "./client";
+export type { ProfessionalSearchQuery } from "./client";
 export type {
   AdminTwoFactorSetup,
   AdminTwoFactorStatus,

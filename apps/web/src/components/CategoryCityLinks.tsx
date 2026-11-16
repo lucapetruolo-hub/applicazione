@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MIN_PROFESSIONALS_TO_INDEX_CITY, comuneSlug, type ProfessionalCategorySlug, type ProfessionalSearchResult } from "@professionisti/shared";
+import { MIN_PROFESSIONALS_TO_INDEX_CITY, comuneSlug, type ProfessionalCategorySlug, type ResultsFacts } from "@professionisti/shared";
 import { CATEGORY_ACCENT, CategoryIcon } from "@/components/icons/CategoryIcons";
 
 const MAX_LINKS = 12;
@@ -15,18 +15,19 @@ const MAX_LINKS = 12;
 export function CategoryCityLinks({
   categorySlug,
   categoryLabel,
-  professionals,
+  cities: found,
 }: {
   categorySlug: ProfessionalCategorySlug;
   categoryLabel: string;
-  professionals: ProfessionalSearchResult[];
+  /** Città di tutti i trovati con quanti professionisti, dall'API (docs/changelog/2026-11-16-pagine-da-20.md). */
+  cities: ResultsFacts["cities"];
 }) {
   const counts = new Map<string, { city: string; slug: string; count: number }>();
-  for (const pro of professionals) {
-    const slug = comuneSlug(pro.city);
+  for (const item of found) {
+    const slug = comuneSlug(item.city);
     if (!slug) continue;
-    const entry = counts.get(slug) ?? { city: pro.city, slug, count: 0 };
-    entry.count += 1;
+    const entry = counts.get(slug) ?? { city: item.city, slug, count: 0 };
+    entry.count += item.count;
     counts.set(slug, entry);
   }
   const cities = [...counts.values()]
