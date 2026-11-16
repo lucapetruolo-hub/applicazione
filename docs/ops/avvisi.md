@@ -74,7 +74,7 @@ ne sono toccate.
    `/_next/static` (i file del sito non contano).
 4. **Then**: **Rate Limit**, finestra fissa di **60 secondi**, **600 richieste**, chiave **IP Address**,
    azione **Too Many Requests (429)**.
-5. **Save Rule** → **Review Changes** → **Publish**.
+5. **Add Rule** (in alcune versioni "Save Rule") → **Review Changes** → **Publish**.
 6. Controllo: apri il sito e sfoglia qualche pagina di ricerca e profilo; in Firewall → Traffic la regola deve
    restare a zero per te. Una persona vera fa poche decine di richieste al minuto, anche con le anteprime dei
    link che il sito carica in anticipo.

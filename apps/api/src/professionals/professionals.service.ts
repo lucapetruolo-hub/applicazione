@@ -128,6 +128,71 @@ function withinBounds(pro: { latitude: number; longitude: number }, bounds: Resu
   return pro.latitude <= bounds.north && pro.latitude >= bounds.south && pro.longitude <= bounds.east && pro.longitude >= bounds.west;
 }
 
+/**
+ * Quello che serve a ordinare, filtrare, riassumere e disegnare i puntini:
+ * si legge per tutti i trovati. La scheda intera (descrizione, prezzi,
+ * indirizzo) si legge solo per quelli mostrati (searchDetails,
+ * docs/changelog/2026-11-16-ricerca-leggera.md).
+ */
+const SEARCH_ROW_SELECT = {
+  id: true,
+  businessName: true,
+  city: true,
+  latitude: true,
+  longitude: true,
+  imageUrl: true,
+  verified: true,
+  isDemo: true,
+  identityExpiredAt: true,
+  demotedUntil: true,
+  requestsBlockedUntil: true,
+  remoteAvailable: true,
+  spokenLanguages: true,
+  hasLiabilityInsurance: true,
+  subTags: true,
+  categoryOrder: true,
+  category: { select: { slug: true, label: true } },
+  extraCategories: { select: { slug: true, label: true } },
+  visibilityBoosts: { where: { status: "ACTIVE" }, select: { id: true } },
+  services: { select: { id: true, name: true, categorySlug: true } },
+  fiscalProfile: { select: { stripePayoutsEnabled: true } },
+} satisfies Prisma.ProfessionalProfileSelect;
+
+/** Scheda intera, letta solo per le schede mostrate. */
+const SEARCH_DETAIL_INCLUDE = {
+  category: true,
+  extraCategories: true,
+  visibilityBoosts: { where: { status: "ACTIVE" } },
+  services: true,
+  fiscalProfile: { select: { stripePayoutsEnabled: true, entityType: true } },
+} satisfies Prisma.ProfessionalProfileInclude;
+
+/** Un trovato nella ricerca, in forma leggera (SEARCH_ROW_SELECT). */
+export type SearchRow = Pick<
+  ProfessionalSearchResult,
+  | "id"
+  | "businessName"
+  | "categorySlug"
+  | "categoryLabel"
+  | "categories"
+  | "city"
+  | "latitude"
+  | "longitude"
+  | "imageUrl"
+  | "verified"
+  | "stripeVerified"
+  | "rating"
+  | "reviewCount"
+  | "boosted"
+  | "remoteAvailable"
+  | "subTags"
+  | "spokenLanguages"
+  | "hasLiabilityInsurance"
+  | "availabilityFrom"
+  | "matchedServiceId"
+  | "distanceKm"
+> & { services: { id: string; name: string }[] };
+
 export type ProfessionalSearchParams = {
   category?: string;
   city?: string;
@@ -358,7 +423,7 @@ export class ProfessionalsService {
     // Al massimo SEARCH_MAX_RESULTS schede, i primi nell'ordine, e l'agenda
     // dei prossimi giorni solo per loro: è la parte più pesante della
     // risposta (docs/changelog/2026-11-16-traffico-elevato.md).
-    const shown = (await this.rankedSearch(params)).slice(0, SEARCH_MAX_RESULTS);
+    const shown = await this.searchDetails((await this.rankedSearch(params)).slice(0, SEARCH_MAX_RESULTS), params.category);
     await this.fillSearchAgenda(shown);
     return shown;
   }
@@ -380,7 +445,7 @@ export class ProfessionalsService {
     if (options.bounds) {
       const pool = params.city ? await this.rankedSearch({ ...params, city: undefined }) : main;
       const fromMain = new Map(main.map((pro, index) => [pro.id, { pro, index }]));
-      const inBounds = (pro: ProfessionalSearchResult) => withinBounds(pro, options.bounds!);
+      const inBounds = (pro: SearchRow) => withinBounds(pro, options.bounds!);
       const seen = new Set<string>();
       candidates = [];
       for (const pro of main) {
@@ -394,14 +459,15 @@ export class ProfessionalsService {
     const pageSize = Math.min(Math.max(1, options.pageSize), 50);
     const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
     const page = Math.min(Math.max(1, options.page), pageCount);
-    const results = filtered.slice((page - 1) * pageSize, page * pageSize);
+    const results = await this.searchDetails(filtered.slice((page - 1) * pageSize, page * pageSize), params.category);
     await this.fillSearchAgenda(results);
     const languages = [...new Set(main.flatMap((pro) => pro.spokenLanguages))].sort((a, b) => a.localeCompare(b, "it"));
     // Nessuno entro il raggio: l'API ha allargato fino al più vicino (selectSearchArea).
     const distances = main.map((pro) => pro.distanceKm);
     const nearestOutsideKm =
       params.city && main.length > 0 && distances.every((d) => d !== undefined && d > SEARCH_RADIUS_KM) ? Math.round(Math.min(...(distances as number[]))) : null;
-    const facts = resultsFacts(options.filters.subTag ? main.filter((pro) => pro.subTags.includes(options.filters.subTag!)) : main);
+    const factsOf = options.filters.subTag ? main.filter((pro) => pro.subTags.includes(options.filters.subTag!)) : main;
+    const facts = { ...resultsFacts(factsOf), services: await this.firstServiceNames(factsOf, params.category) };
     return { results, total: filtered.length, page, pageSize, pageCount, languages, nearestOutsideKm, facts };
   }
 
@@ -437,7 +503,7 @@ export class ProfessionalsService {
   }
 
   /** Filtri del pannello: quelli sull'agenda guardano solo i prossimi giorni, calcolati per tutti insieme. */
-  private async applyResultFilters(list: ProfessionalSearchResult[], filters: ResultFilters, now: Date): Promise<ProfessionalSearchResult[]> {
+  private async applyResultFilters<T extends SearchRow>(list: T[], filters: ResultFilters, now: Date): Promise<T[]> {
     const byProfile = list.filter((pro) => matchesProfileFilters(pro, filters));
     if (!filters.urgent && !filters.availability) return byProfile;
     const previews = await this.buildAvailabilityPreviews(
@@ -459,8 +525,8 @@ export class ProfessionalsService {
     }
   }
 
-  /** Tutti i trovati, nell'ordine della ricerca, senza agenda. */
-  private async rankedSearch({ category, city, q, remote, service, excludeDemo, merit, offers, offersTrade, problem, problemService }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
+  /** Tutti i trovati, nell'ordine della ricerca, in forma leggera (SearchRow): le schede intere le dà searchDetails. */
+  private async rankedSearch({ category, city, q, remote, service, excludeDemo, merit, offers, offersTrade, problem, problemService }: ProfessionalSearchParams): Promise<SearchRow[]> {
     // Sinonimi compresi (docs/changelog/2026-10-28-quanto-costa-sinonimi.md): "perdite" trova chi ha scritto "Riparazione perdita d'acqua".
     const canonicalize = service || (problem && problemService) ? await this.serviceNamesService.canonicalizer() : null;
     const problemServiceKey = problem && problemService && canonicalize ? serviceGroupKey(problemService, canonicalize) : "";
@@ -518,15 +584,12 @@ export class ProfessionalsService {
       where = { ...baseWhere, city: { equals: city, mode: "insensitive" } };
     }
 
+    // Le prestazioni di tutti i trovati servono solo per trovare quella che
+    // corrisponde alla voce o al problema cercato: altrimenti non si leggono.
+    const needServices = Boolean(serviceKey || problem);
     const profiles = await this.prisma.professionalProfile.findMany({
       where,
-      include: {
-        category: true,
-        extraCategories: true,
-        visibilityBoosts: { where: { status: "ACTIVE" } },
-        services: true,
-        fiscalProfile: { select: { stripePayoutsEnabled: true, entityType: true } },
-      },
+      select: needServices ? SEARCH_ROW_SELECT : { ...SEARCH_ROW_SELECT, services: { ...SEARCH_ROW_SELECT.services, take: 0 } },
       // Senza mestiere, luogo né parola (home vecchia, sitemap, chiamate da
       // fuori) al massimo i più recenti: prima si scaricava tutta Italia a
       // ogni chiamata (docs/changelog/2026-11-16-traffico-elevato.md).
@@ -537,22 +600,15 @@ export class ProfessionalsService {
     // (docs/changelog/2026-11-16-traffico-elevato.md). Recensioni dei clienti
     // pubbliche subito (docs/CHANGELOG.md §215).
     const statsByProfileId = await loadReviewStats(this.prisma, profiles.map((profile) => profile.id));
+    const today = new Date().toISOString().slice(0, 10);
 
     const results = profiles.map((profile) => {
       const stats = statsByProfileId.get(profile.id) ?? emptyReviewStats();
-      const reviewCount = stats.reviewCount;
-      const rating = stats.rating;
       const categories = profileCategories(profile);
       // Cercando "idraulico" la card mostra Idraulico anche se è una
       // categoria aggiuntiva del professionista.
       const shownCategory = categories.find((item) => item.slug === category) ?? categories[0]!;
-      const orderedServices = servicesFirstFor(profile.services, category, categories.map((item) => item.slug));
-      // Il "da … €" della scheda solo sulle prestazioni del mestiere cercato.
-      const categoryServiceCount =
-        category && categories.length > 1
-          ? orderedServices.filter((service) => serviceCategoryOf(service, categories.map((item) => item.slug)) === category).length
-          : undefined;
-
+      const services = servicesFirstFor(profile.services, category, categories.map((item) => item.slug)).map(({ id, name }) => ({ id, name }));
       return {
         id: profile.id,
         businessName: profile.businessName,
@@ -560,39 +616,27 @@ export class ProfessionalsService {
         categoryLabel: shownCategory.label,
         categories,
         city: profile.city,
-        address: profile.address,
-        verified: publicVerified(profile),
-        stripeVerified: stripeVerified(profile.fiscalProfile),
-        professionalKind: publicProfessionalKindOf(profile.fiscalProfile?.entityType, profile.businessName),
-        rating,
-        reviewCount,
-        boosted: profile.visibilityBoosts.length > 0,
-        remoteAvailable: profile.remoteAvailable,
         latitude: profile.latitude,
         longitude: profile.longitude,
         imageUrl: profile.imageUrl,
-        // Cercando un mestiere, le sue prestazioni per prime (richiesta di Luca,
-        // docs/changelog/2026-11-05-registrazione-colonna-unica.md).
-        services: mapServices(orderedServices),
+        verified: publicVerified(profile),
+        stripeVerified: stripeVerified(profile.fiscalProfile),
+        rating: stats.rating,
+        reviewCount: stats.reviewCount,
+        boosted: profile.visibilityBoosts.length > 0,
+        remoteAvailable: profile.remoteAvailable,
         subTags: profile.subTags,
         spokenLanguages: profile.spokenLanguages,
         hasLiabilityInsurance: profile.hasLiabilityInsurance,
-        // Riempita solo per le schede mostrate (fillSearchAgenda).
-        availabilityPreview: [] as ProfessionalAvailabilityPreviewDay[],
-        availabilityFrom: new Date().toISOString().slice(0, 10),
-        availabilityCompleteUntil: undefined as string | undefined,
-        createdAt: profile.createdAt.toISOString(),
-        updatedAt: lastVisibleChange(profile.updatedAt, profile.services, stats.lastReviewAt ? [{ createdAt: stats.lastReviewAt }] : []).toISOString(),
-        completedThisMonth: stats.completedThisMonth,
-        isNewProfile: computeIsNewProfile(profile.createdAt),
+        availabilityFrom: today,
+        services,
         ...(serviceKey && canonicalize
-          ? matchedServiceField(profile.services, serviceKey, canonicalize)
+          ? matchedServiceField(services, serviceKey, canonicalize)
           : problem
-            ? problemServiceField(profile.services, problem, problemServiceKey && canonicalize ? { key: problemServiceKey, canonicalize } : null)
+            ? problemServiceField(services, problem, problemServiceKey && canonicalize ? { key: problemServiceKey, canonicalize } : null)
             : {}),
-        ...(categoryServiceCount ? { categoryServiceCount } : {}),
         ...(distanceById?.has(profile.id) ? { distanceKm: Math.round(distanceById.get(profile.id)! * 10) / 10 } : {}),
-      } satisfies ProfessionalSearchResult;
+      } satisfies SearchRow;
     });
 
     // Ranking sponsorizzabile: boost attivo prima, poi rating, poi numero
@@ -622,6 +666,93 @@ export class ProfessionalsService {
     });
 
     return results;
+  }
+
+  /**
+   * Prime tre prestazioni diverse dei trovati, nell'ordine della ricerca, per
+   * "in breve" (resultsFacts): si leggono a gruppi di 20 professionisti e ci
+   * si ferma appena bastano, invece di leggere le prestazioni di tutti.
+   */
+  private async firstServiceNames(rows: SearchRow[], category: string | undefined): Promise<string[]> {
+    const names: string[] = [];
+    for (let start = 0; start < rows.length && names.length < 3; start += 20) {
+      const chunk = rows.slice(start, start + 20);
+      const services = await this.prisma.professionalService.findMany({
+        where: { professionalProfileId: { in: chunk.map((row) => row.id) } },
+        select: { professionalProfileId: true, name: true, categorySlug: true },
+      });
+      for (const row of chunk) {
+        const own = services.filter((service) => service.professionalProfileId === row.id);
+        for (const service of servicesFirstFor(own, category, row.categories.map((item) => item.slug))) {
+          if (names.length < 3 && !names.includes(service.name)) names.push(service.name);
+        }
+        if (names.length >= 3) break;
+      }
+    }
+    return names;
+  }
+
+  /**
+   * Schede intere dei trovati da mostrare, nello stesso ordine
+   * (docs/changelog/2026-11-16-ricerca-leggera.md): prestazioni con i prezzi,
+   * indirizzo, tipo di professionista, ultima modifica. Stelle, distanza e
+   * prestazione in evidenza vengono dalla riga leggera.
+   */
+  private async searchDetails(rows: SearchRow[], category: string | undefined): Promise<ProfessionalSearchResult[]> {
+    if (rows.length === 0) return [];
+    const ids = rows.map((row) => row.id);
+    const [profiles, statsByProfileId] = await Promise.all([
+      this.prisma.professionalProfile.findMany({ where: { id: { in: ids } }, include: SEARCH_DETAIL_INCLUDE }),
+      loadReviewStats(this.prisma, ids),
+    ]);
+    const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
+    return rows.flatMap((row) => {
+      const profile = profileById.get(row.id);
+      if (!profile) return [];
+      const stats = statsByProfileId.get(profile.id) ?? emptyReviewStats();
+      const categorySlugs = row.categories.map((item) => item.slug);
+      const orderedServices = servicesFirstFor(profile.services, category, categorySlugs);
+      // Il "da … €" della scheda solo sulle prestazioni del mestiere cercato.
+      const categoryServiceCount =
+        category && categorySlugs.length > 1 ? orderedServices.filter((service) => serviceCategoryOf(service, categorySlugs) === category).length : undefined;
+      const result: ProfessionalSearchResult = {
+        id: profile.id,
+        businessName: profile.businessName,
+        categorySlug: row.categorySlug,
+        categoryLabel: row.categoryLabel,
+        categories: row.categories,
+        city: profile.city,
+        address: profile.address,
+        verified: row.verified,
+        stripeVerified: row.stripeVerified,
+        professionalKind: publicProfessionalKindOf(profile.fiscalProfile?.entityType, profile.businessName),
+        rating: row.rating,
+        reviewCount: row.reviewCount,
+        boosted: row.boosted,
+        remoteAvailable: profile.remoteAvailable,
+        latitude: profile.latitude,
+        longitude: profile.longitude,
+        imageUrl: profile.imageUrl,
+        // Cercando un mestiere, le sue prestazioni per prime (richiesta di Luca,
+        // docs/changelog/2026-11-05-registrazione-colonna-unica.md).
+        services: mapServices(orderedServices),
+        subTags: profile.subTags,
+        spokenLanguages: profile.spokenLanguages,
+        hasLiabilityInsurance: profile.hasLiabilityInsurance,
+        // Riempita solo per le schede mostrate (fillSearchAgenda).
+        availabilityPreview: [],
+        availabilityFrom: row.availabilityFrom,
+        availabilityCompleteUntil: undefined,
+        createdAt: profile.createdAt.toISOString(),
+        updatedAt: lastVisibleChange(profile.updatedAt, profile.services, stats.lastReviewAt ? [{ createdAt: stats.lastReviewAt }] : []).toISOString(),
+        completedThisMonth: stats.completedThisMonth,
+        isNewProfile: computeIsNewProfile(profile.createdAt),
+        ...(row.matchedServiceId ? { matchedServiceId: row.matchedServiceId } : {}),
+        ...(categoryServiceCount ? { categoryServiceCount } : {}),
+        ...(row.distanceKm !== undefined ? { distanceKm: row.distanceKm } : {}),
+      };
+      return [result];
+    });
   }
 
   /**
