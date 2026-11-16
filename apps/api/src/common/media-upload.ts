@@ -1,4 +1,5 @@
 import { tmpdir } from "node:os";
+import { basename, dirname, resolve } from "node:path";
 import { type CallHandler, type ExecutionContext, Injectable, type NestInterceptor } from "@nestjs/common";
 import { unlink } from "node:fs/promises";
 import { finalize, type Observable } from "rxjs";
@@ -13,6 +14,19 @@ import { finalize, type Observable } from "rxjs";
  */
 export const MEDIA_UPLOAD_DIR = tmpdir();
 
+/**
+ * Il percorso del file temporaneo solo se è davvero uno di quelli scritti da
+ * Multer: dentro `MEDIA_UPLOAD_DIR` e con il suo nome casuale (32 caratteri
+ * esadecimali). Qualunque altro percorso viene ignorato, così nessun dato
+ * della richiesta può far leggere o cancellare un altro file.
+ */
+export function temporaryUploadPath(path: string | undefined): string | null {
+  if (!path) return null;
+  const folder = resolve(MEDIA_UPLOAD_DIR);
+  const resolved = resolve(path);
+  if (dirname(resolved) !== folder || !/^[a-f0-9]{32}$/.test(basename(resolved))) return null;
+  return resolved;
+}
 
 /**
  * A fine richiesta toglie dal disco il file caricato, anche quando la
@@ -26,7 +40,7 @@ export class TemporaryUploadCleanupInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest<{ file?: { path?: string } } | undefined>();
     return next.handle().pipe(
       finalize(() => {
-        const path = request?.file?.path;
+        const path = temporaryUploadPath(request?.file?.path);
         if (path) void unlink(path).catch(() => undefined);
       }),
     );

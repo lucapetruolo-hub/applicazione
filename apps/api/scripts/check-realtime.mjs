@@ -18,7 +18,32 @@ const { RealtimeTickets } = require("../dist/realtime/realtime-tickets.js");
 const { PRISMA } = require("../dist/prisma/prisma.module.js");
 const { configureApp } = require("../dist/app-setup.js");
 
-const prisma = { user: { findUnique: async () => ({ suspendedAt: null, sessionVersion: 0 }) } };
+// Database finto: biglietti ed eventi stanno nel database dal 16/11
+// (docs/changelog/2026-11-16-traffico-elevato.md); qui una tabella in memoria.
+const tickets = new Map();
+const prisma = {
+  user: { findUnique: async () => ({ suspendedAt: null, sessionVersion: 0 }) },
+  revokedSession: { findUnique: async () => null },
+  realtimeTicket: {
+    deleteMany: async () => ({ count: 0 }),
+    create: async ({ data }) => {
+      tickets.set(data.codeHash, data);
+      return data;
+    },
+  },
+  // Unica query raw dei biglietti: DELETE … WHERE "codeHash" = $1 RETURNING …
+  $queryRaw: async (_strings, codeHash) => {
+    const row = tickets.get(codeHash);
+    tickets.delete(codeHash);
+    return row ? [row] : [];
+  },
+  realtimeEvent: {
+    create: async () => ({}),
+    findFirst: async () => null,
+    findMany: async () => [],
+    deleteMany: async () => ({ count: 0 }),
+  },
+};
 
 class CheckModule {}
 Module({
@@ -31,7 +56,7 @@ const app = await NestFactory.create(CheckModule, { logger: ["error"], abortOnEr
 configureApp(app);
 await app.listen(0, "127.0.0.1");
 const { port } = app.getHttpServer().address();
-const ticket = app.get(RealtimeTickets).issue({ userId: "check", sessionVersion: 0 });
+const ticket = await app.get(RealtimeTickets).issue({ userId: "check", sessionVersion: 0 });
 const event = { kind: "notification", notification: { id: "check", type: "CHECK", payload: {}, createdAt: new Date().toISOString() } };
 setTimeout(() => app.get(RealtimeService).publish("check", event), 300);
 

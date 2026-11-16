@@ -3,6 +3,7 @@ import { createReadStream } from "node:fs";
 import { unlink } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import { BadRequestException, Injectable } from "@nestjs/common";
+import { temporaryUploadPath } from "../common/media-upload";
 import { v2 as cloudinary } from "cloudinary";
 
 /**
@@ -11,8 +12,9 @@ import { v2 as cloudinary } from "cloudinary";
  * (docs/changelog/2026-11-16-traffico-elevato.md).
  */
 function sendFile(file: Express.Multer.File, uploadStream: NodeJS.WritableStream, reject: (error: unknown) => void): void {
-  if (file.path) {
-    const source = createReadStream(file.path);
+  const path = temporaryUploadPath(file.path);
+  if (path) {
+    const source = createReadStream(path);
     source.on("error", reject);
     source.pipe(uploadStream);
     return;
@@ -22,7 +24,8 @@ function sendFile(file: Express.Multer.File, uploadStream: NodeJS.WritableStream
 
 /** Toglie il file temporaneo dal disco, anche se il caricamento non è riuscito. */
 async function removeTemporaryFile(file: Express.Multer.File): Promise<void> {
-  if (file.path) await unlink(file.path).catch(() => undefined);
+  const path = temporaryUploadPath(file.path);
+  if (path) await unlink(path).catch(() => undefined);
 }
 
 @Injectable()
