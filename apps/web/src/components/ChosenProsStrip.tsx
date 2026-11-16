@@ -32,12 +32,15 @@ export function ChosenProsStrip({
   description,
   onRemove,
   onClear,
+  undo,
 }: {
   chosen: ChosenPro[];
   max: number | undefined;
   description: string;
   onRemove?: (id: string) => void;
   onClear?: () => void;
+  /** "Annulla" per qualche secondo dopo la X o "Togli tutti". */
+  undo?: { text: string; onUndo: () => void } | null;
 }) {
   const headingRef = useRef<HTMLParagraphElement>(null);
   const rowRef = useRef<HTMLUListElement>(null);
@@ -55,6 +58,31 @@ export function ChosenProsStrip({
     });
   }
 
+  const undoLine = (
+    // Sempre nella pagina, così i lettori di schermo leggono la riga quando compare.
+    <div className="chosen-strip-undo" role="status" data-visible={undo ? "true" : undefined}>
+      {undo ? (
+        <>
+          <span>{undo.text}</span>
+          <button
+            type="button"
+            className="chosen-strip-undo-button"
+            onClick={() => {
+              undo.onUndo();
+              requestAnimationFrame(() => headingRef.current?.focus());
+            }}
+          >
+            Annulla
+          </button>
+        </>
+      ) : null}
+    </div>
+  );
+
+  if (chosen.length === 0) {
+    return undo ? <section className="chosen-strip" aria-label="I tuoi scelti">{undoLine}</section> : null;
+  }
+
   return (
     <section className="chosen-strip" aria-label="I tuoi scelti">
       <div className="chosen-strip-head">
@@ -67,7 +95,14 @@ export function ChosenProsStrip({
           </span>
         </p>
         {chosen.length > 1 && onClear ? (
-          <button type="button" className="chosen-strip-clear" onClick={onClear}>
+          <button
+            type="button"
+            className="chosen-strip-clear"
+            onClick={() => {
+              onClear();
+              requestAnimationFrame(() => document.querySelector<HTMLButtonElement>(".chosen-strip-undo-button")?.focus());
+            }}
+          >
             Togli tutti
           </button>
         ) : null}
@@ -109,6 +144,7 @@ export function ChosenProsStrip({
           );
         })}
       </ul>
+      {undoLine}
     </section>
   );
 }

@@ -23,8 +23,18 @@ scelto, con una X in alto a destra per toglierlo.
 - `ChosenPro` ha ora mestiere, città, voto e recensioni facoltativi: le scelte
   salvate prima (sessionStorage) mostrano solo nome e foto.
 
+**Secondo giro** (Luca, stesso giorno, "sì" a due migliorie proposte):
+- La stessa anteprima anche nella ricerca per mestiere (`CategoryContent`),
+  sopra i risultati; il titolo "Idraulico a Rieti" resta visibile da telefono.
+- "Annulla" per 6 secondi dopo la X o "Togli tutti" (`undo` in
+  `useChosenPros`): una pillola "Hai tolto … · Annulla" sotto le schede;
+  rimette la scelta di prima. Sparisce subito se si tocca un altro «Scegli».
+- Il profilo aperto dai risultati salva anche mestiere, città e voto quando
+  si sceglie da lì, così l'anteprima è completa.
+
 **Verifica**: typecheck e lint; sito e API in locale con 4 elettricisti a
-Rieti, foto da iPhone 14 e da computer con 1 e 4 scelti
+Rieti, foto da iPhone 14 e da computer con 1 e 4 scelti, ricerca per
+mestiere e "Annulla"
 (anteprime/anteprima-scelti/ nei file del progetto); la X toglie il
 professionista e sposta il fuoco sulla X successiva; prova nel browser in
 `e2e/tests/scelti-restano.spec.ts`.

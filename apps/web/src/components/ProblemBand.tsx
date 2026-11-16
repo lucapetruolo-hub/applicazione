@@ -56,6 +56,7 @@ export function ProblemBand({
   maxChosen,
   onClearChosen,
   onRemoveChosen,
+  chosenUndo = null,
   topService = null,
   categoryCounts,
   otherTradesCount = 0,
@@ -77,6 +78,8 @@ export function ProblemBand({
   onClearChosen?: () => void;
   /** X sull'anteprima del singolo scelto (docs/changelog/2026-11-16-anteprima-scelti.md). */
   onRemoveChosen?: (id: string) => void;
+  /** "Annulla" dopo la X o "Togli tutti". */
+  chosenUndo?: { text: string; onUndo: () => void } | null;
   /** Prestazione proposta per il problema, offerta da chi è in cima ai risultati. */
   topService?: string | null;
   /** Quanti professionisti per ogni mestiere proposto (pulsanti in cima). */
@@ -267,13 +270,14 @@ export function ProblemBand({
       </YStack>
 
       {/* Dopo la domanda: prima si sceglie la persona giusta, poi si chiede il preventivo. */}
-      {chosen && chosenPros.length > 0 ? (
+      {chosen && (chosenPros.length > 0 || chosenUndo) ? (
         <ChosenProsStrip
           chosen={chosenPros}
           max={maxChosen}
           description={description}
           onRemove={onRemoveChosen}
           onClear={onClearChosen}
+          undo={chosenUndo}
         />
       ) : chosen ? (
         <YStack gap="2">

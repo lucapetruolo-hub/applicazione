@@ -67,6 +67,10 @@ test("la scelta resta tornando dal profilo, e dal profilo si sceglie", async ({ 
   await expect(preview).toContainText("Scelti 2 su 5");
   await expect(page.getByRole("button", { name: `Scegli ${second}` })).toBeVisible();
   await expect(bar).toContainText("2 scelti su 5");
+  // "Annulla" lo rimette, per qualche secondo.
+  await preview.getByRole("button", { name: "Annulla" }).click();
+  await expect(preview).toContainText("Scelti 3 su 5");
+  await expect(page.getByRole("button", { name: `Scelto: ${second}` })).toBeVisible();
 
   // Una ricerca diversa riparte da zero.
   await page.goto(`/cerca?problema=${encodeURIComponent("lo scarico del lavandino è intasato")}&citta=Rieti`);
@@ -81,6 +85,8 @@ test("anche cercando il mestiere si scelgono più professionisti", async ({ page
   await page.getByRole("button", { name: `Scegli ${second}` }).click();
   const bar = page.getByRole("region", { name: "Professionisti scelti" });
   await expect(bar).toContainText("2 scelti su 5");
+  // La stessa anteprima con la X sopra i risultati.
+  await expect(page.locator(".chosen-strip")).toContainText("Scelti 2 su 5");
 
   // Il profilo e il ritorno, come dal problema scritto.
   await page.getByText(first, { exact: true }).filter({ visible: true }).first().click();
