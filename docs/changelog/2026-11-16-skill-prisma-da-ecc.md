@@ -23,3 +23,15 @@ Le altre skill di ECC sono generiche o doppioni di quelle che abbiamo già
 solo, nessun link esterno oltre alla fonte); controllati i percorsi citati
 (`packages/database/scripts/migrate-deploy.mjs`, `docs/ops/rollback.md`,
 `publicVisibilityWhere`).
+
+**Giro sul codice con le regole delle skill** (16/11/2026, chiesto da Luca):
+- `updateMany`/`deleteMany` usati come record: nessuno, tutti leggono `.count`
+  (e TypeScript strict lo impedirebbe comunque).
+- `deleteMany()` senza `where`: nessuno.
+- Chiamate esterne (Stripe, email, fetch) dentro `$transaction(async ...)`:
+  nessuna nelle 10 transazioni interattive.
+- `@updatedAt` su `updateMany`: la skill dice che non si aggiorna, ma su
+  Prisma 6.19.3 si aggiorna (provato su Postgres locale). Corretto nella
+  sezione "Nel nostro progetto" di `prisma-patterns`.
+- Migrazioni: le ultime con `DROP COLUMN` sono già unite e non si toccano;
+  nessun `ADD COLUMN ... NOT NULL` senza valore di partenza.

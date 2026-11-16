@@ -16,6 +16,7 @@ Fonte: [affaan-m/ECC](https://github.com/affaan-m/ECC) `skills/prisma-patterns/S
 - Niente migrazioni "DOWN": da noi si torna indietro con una nuova migrazione in avanti o con il rollback dell'API.
 - L'API gira su Render come server sempre acceso, non serverless: la sezione "Connection Pool — Serverless" vale solo se un giorno il sito su Vercel parlasse direttamente col database (oggi non lo fa, passa sempre da `apps/api`).
 - Profili e recensioni nascosti: oltre a `deletedAt` vanno filtrati `suspendedAt`, `hiddenAt`, `pausedAt`, `requestsBlockedUntil` e i dati fiscali (`publicVisibilityWhere()`, `CLAUDE.md` §5 punto 11). Il trucco `findFirstOrThrow` qui sotto vale per tutti questi campi.
+- **La trappola "`@updatedAt` does not fire on `updateMany`" qui sotto non vale per noi**: provato il 16/11/2026 su Prisma 6.19.3 con Postgres, `updateMany` scrive da solo `"updatedAt" = $2` e la data cambia. Non aggiungere `updatedAt: new Date()` a mano.
 - Mai restituire entità Prisma intere: in più ai campi interni, telefono, email e indirizzo del cliente restano nascosti al professionista fino a una `Booking` (`CLAUDE.md` §5 punto 9).
 
 Production patterns and non-obvious traps for Prisma ORM in TypeScript backends.
