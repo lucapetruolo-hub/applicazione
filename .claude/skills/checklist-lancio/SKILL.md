@@ -483,6 +483,17 @@ aperti solo:
     - **Backup del database**: con il piano a pagamento (punto 4bis) Render
       fa i backup giornalieri. Provare una volta il ripristino su un
       database di prova, prima del lancio.
+    - **Account, chiavi e copie** (16/11/2026): gestore di password con
+      tutte le variabili e `FISCAL_DATA_KEY` anche su carta, accesso di
+      emergenza a una persona di fiducia, carta di riserva sui servizi,
+      Time Machine + copia mensile del repo, cartella del progetto scaricata
+      sul Mac. Passi uno per uno in `docs/ops/protezione-account.md`.
+    - **Copia esterna automatica del database** (decisione di Luca del
+      16/11/2026): una copia cifrata a settimana su Backblaze B2 in UE
+      (Amsterdam), cancellata dopo 30 giorni, con avviso se fallisce. Da
+      preparare con un thread insieme al passaggio del database a Basic,
+      prima che entrino dati veri. Non più di 30 giorni: lo promette la
+      Privacy (punto 5).
     - ~~**`FISCAL_DATA_KEY` su Render**~~ — fatto (24/10/2026). Non
       perderla e non cambiarla più: all'avvio l'API ricifra da sola IBAN e
       codici fiscali salvati con la chiave vecchia.
@@ -548,9 +559,11 @@ aperti solo:
     - **OWASP ASVS livello 2 e API Security Top 10 2023**, voce per voce.
     - **Mappa dei dati personali definitiva** e DPIA della verifica con
       selfie, da far vedere all'avvocato (bozza nel file sopra).
-    - **Piano per gli incidenti**: chi avvisare, come cambiare in fretta
-      tutte le chiavi, notifica al Garante entro 72 ore (art. 33 GDPR).
-      Con la prova di ripristino del database del punto 28 (la fa Luca).
+    - **Piano per gli incidenti**: scritto il 16/11/2026 in
+      `docs/ops/emergenza.md` (cosa è giù, rollback, ripristino, chiavi da
+      cambiare, Garante entro 72 ore, registro delle violazioni). Resta da
+      provarlo insieme alla prova di ripristino del database del punto 28
+      (la fa Luca).
     - **Penetration test esterno** (una o due giornate, da uno studio o un
       professionista): è l'unica verifica davvero indipendente. Lo sceglie
       e lo paga Luca.
