@@ -15,3 +15,8 @@ Si carica quando Claude Code lavora in `packages/database`. Testo da
   non usa più quella colonna, così il rollback dell'API resta possibile
   (`docs/ops/rollback.md`). Le
   categorie si sincronizzano a ogni avvio via `CategoriesSeedService`.
+- **Skill da usare qui**: `database-migrations` (`.claude/skills/database-migrations/`)
+  prima di scrivere una migrazione, `prisma-patterns`
+  (`.claude/skills/prisma-patterns/`) per schema e query. La loro sezione
+  "Nel nostro progetto" vale più del testo originale; le regole sopra valgono
+  più di entrambe.
