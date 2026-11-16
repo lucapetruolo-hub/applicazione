@@ -62,6 +62,8 @@ export default defineConfig({
         RATE_LIMIT_PER_MINUTE: "1000",
         // Stesso motivo per il pulsante dell'email di conferma (10 al minuto); sul server pubblicato non vale.
         E2E_VERIFY_EMAIL_PER_MINUTE: "1000",
+        // Le prove creano un prezzo o un professionista e lo cercano subito: niente minuto di memoria breve.
+        E2E_SUMMARY_CACHE_SECONDS: "0",
       },
     },
     {

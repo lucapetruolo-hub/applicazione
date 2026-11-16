@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { BRAND, type ProfessionalCategorySlug, type ProfessionalSearchResult } from "@professionisti/shared";
+import { BRAND, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { apiClient } from "../lib/apiClient";
 import { LAST_SEARCH_CITY_COOKIE } from "../lib/lastSearchCity";
 import { SITE_URL } from "@/lib/siteUrl";
 import { JsonLd } from "@/components/JsonLd";
-import { newestProfiles } from "@/lib/newProfiles";
+import { NEW_PROFILES_COUNT, type NewProfileSummary } from "@/lib/newProfiles";
 import HomeContent from "./HomeContent";
 import { openGraphFor } from "@/lib/openGraph";
 
@@ -54,11 +54,10 @@ async function loadCategoryCounts(): Promise<Partial<Record<ProfessionalCategory
 export default async function HomePage() {
   // Le richieste insieme, non una dopo l'altra (collaudo N-01/N-02).
   const [professionals, platformStats, priceIndex, categoryCounts, problemExamples, popularJobs, photoSearch] = await Promise.all([
-    // excludeDemo: la home dichiara esplicitamente di mostrare conteggi e
-    // professionisti reali (redesign "Scheda Intervento" §4.3/§4.6) — i
-    // profili del seed (PLACEHOLDER_PROFESSIONALS) non devono contribuire
-    // né ai conteggi per categoria né alla vetrina in evidenza.
-    apiClient.searchProfessionals({ excludeDemo: true }).catch((): ProfessionalSearchResult[] => []),
+    // Solo i nuovi profili da mostrare, senza i profili demo (redesign
+    // "Scheda Intervento" §4.3/§4.6): prima qui si chiedeva l'intera ricerca
+    // di tutta Italia a ogni visita (docs/changelog/2026-11-16-traffico-elevato.md).
+    apiClient.getNewestProfessionals(NEW_PROFILES_COUNT).catch((): NewProfileSummary[] => []),
     // Numeri reali per la striscia "social proof" (richiesta esplicita
     // dell'utente) — se l'API non risponde, la striscia semplicemente non
     // compare invece di mostrare uno zero fuorviante (vedi PlatformStats).
@@ -79,7 +78,7 @@ export default async function HomePage() {
       {siteJsonLd.map((data) => (
         <JsonLd key={data["@type"]} data={data} />
       ))}
-      <HomeContent professionals={newestProfiles(professionals)} platformStats={platformStats} priceIndex={priceIndex} categoryCounts={categoryCounts} problemExamples={problemExamples} popularJobs={popularJobs} photoSearch={photoSearch} />
+      <HomeContent professionals={professionals} platformStats={platformStats} priceIndex={priceIndex} categoryCounts={categoryCounts} problemExamples={problemExamples} popularJobs={popularJobs} photoSearch={photoSearch} />
     </>
   );
 }

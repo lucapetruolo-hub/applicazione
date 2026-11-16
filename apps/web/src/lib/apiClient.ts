@@ -26,8 +26,21 @@ function deviceId(): string | null {
   }
 }
 
+/**
+ * Chiave delle pagine preparate sul server (docs/changelog/2026-11-16-traffico-elevato.md):
+ * le loro chiamate non contano nel limite al minuto dell'API, che altrimenti le
+ * contava tutte sull'indirizzo di Vercel. Variabile senza NEXT_PUBLIC_: nel
+ * browser non esiste e non si manda mai.
+ */
+function siteServerHeaders(): Record<string, string> {
+  if (typeof window !== "undefined") return {};
+  const key = process.env.SITE_SERVER_KEY?.trim();
+  return key ? { "X-Site-Key": key } : {};
+}
+
 export const apiClient = createApiClient({
   baseUrl: API_URL,
+  extraHeaders: siteServerHeaders,
   deviceId,
   // Andamento del sito (docs/CHANGELOG.md §372): provenienza delle iscrizioni e invii non riusciti.
   trafficSource: storedTrafficSource,

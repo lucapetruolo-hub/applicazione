@@ -149,7 +149,7 @@ export class StaticMapService {
   private readonly cache = new Map<string, { buffer: Buffer; contentType: string; expiresAt: number }>();
   private readonly budget = new DailyBudget(DAILY_LIMIT, () =>
     this.alert("static-map-budget", "Tetto giornaliero delle mappe fisse raggiunto: fino a mezzanotte compare \"Mappa non disponibile\"."),
-  );
+  undefined, "google-mappa-fissa");
 
   /** Nel log e, una volta l'ora, su Sentry (§324). */
   private alert(key: string, message: string): void {
@@ -168,7 +168,7 @@ export class StaticMapService {
     const cached = this.cache.get(cacheKey);
     if (cached && cached.expiresAt > now) return cached;
     if (cached) this.cache.delete(cacheKey);
-    if (!this.budget.take(new Date(now))) throw new ServiceUnavailableException("Mappa non disponibile.");
+    if (!(await this.budget.take(new Date(now)))) throw new ServiceUnavailableException("Mappa non disponibile.");
     const image = await this.fetchImage(params, key);
     this.cache.set(cacheKey, { ...image, expiresAt: now + CACHE_TTL_MS });
     while (this.cache.size > CACHE_MAX) this.cache.delete(this.cache.keys().next().value!);

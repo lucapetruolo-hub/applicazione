@@ -20,6 +20,18 @@ createServer((req, res) => {
     const match = (!category || category === "idraulico") && (!city || city.toLowerCase() === "latina");
     return send(res, 200, match ? PROFESSIONALS : []);
   }
+  // Elenchi leggeri usati da sitemap e home (docs/changelog/2026-11-16-traffico-elevato.md).
+  if (url.pathname === "/professionals/directory") {
+    return send(res, 200, PROFESSIONALS.map(({ id, businessName, city, categories, subTags, updatedAt }) => ({ id, businessName, city, categories, subTags, updatedAt })));
+  }
+  if (url.pathname === "/professionals/newest") {
+    return send(res, 200, PROFESSIONALS.map(({ id, businessName, categorySlug, categoryLabel, city, createdAt, imageUrl, rating, verified }) => ({ id, businessName, categorySlug, categoryLabel, city, createdAt, imageUrl, rating, verified })));
+  }
+  if (url.pathname === "/professionals/category-counts") {
+    const city = url.searchParams.get("city");
+    const counts = !city || city.toLowerCase() === "latina" ? [{ slug: "idraulico", count: PROFESSIONALS.length }] : [];
+    return send(res, 200, { scope: city ? "CITY" : "ALL", counts });
+  }
   const priceMatch = /^\/professionals\/prices\/([^/]+)$/.exec(url.pathname);
   if (priceMatch) return send(res, 200, prices(priceMatch[1], url.searchParams.get("city")));
   const profile = /^\/professionals\/([^/]+)$/.exec(url.pathname);

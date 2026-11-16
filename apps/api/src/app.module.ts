@@ -1,8 +1,9 @@
 import { Module } from "@nestjs/common";
-import { APP_FILTER, APP_GUARD, Reflector } from "@nestjs/core";
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, Reflector } from "@nestjs/core";
 import { SentryGlobalFilter, SentryModule } from "@sentry/nestjs/setup";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { ClientIpThrottlerGuard } from "./common/client-ip";
+import { TemporaryUploadCleanupInterceptor } from "./common/media-upload";
 import { ScheduleModule } from "@nestjs/schedule";
 import { CronRunsService } from "./health/cron-runs.service";
 import { HealthController } from "./health/health.controller";
@@ -147,6 +148,8 @@ import { PopularJobsModule } from "./popular-jobs/popular-jobs.module";
   providers: [
     Reflector,
     { provide: APP_GUARD, useClass: ClientIpThrottlerGuard },
+    // Foto e video scritti sul disco da Multer: tolti a fine richiesta (docs/changelog/2026-11-16-traffico-elevato.md).
+    { provide: APP_INTERCEPTOR, useClass: TemporaryUploadCleanupInterceptor },
     // Invia a Sentry le eccezioni non gestite (i 4xx voluti no), poi
     // risponde come il filtro di default di Nest.
     { provide: APP_FILTER, useClass: SentryGlobalFilter },

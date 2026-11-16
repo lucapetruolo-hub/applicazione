@@ -13,6 +13,8 @@ import {
   italianComuni,
   PROFILE_DECLARATION_VERSION,
   PUBLIC_AGENDA_DAYS,
+  searchAgendaCompleteUntil,
+  trimSearchAgenda,
   SEARCH_FALLBACK_MAX_KM,
   SEARCH_RADIUS_KM,
   type AvailabilitySlotInput,
@@ -36,6 +38,8 @@ import {
   ownClientRequest,
   leadAudience,
   type ProfessionalSearchResult,
+  type ProfessionalNewestResult,
+  type ProfessionalDirectoryEntry,
   type ProfessionalServiceItem,
   type ServicePriceUnit,
   type ProfessionalCategorySlug,
@@ -86,6 +90,17 @@ import { AgendaService } from "../agenda/agenda.service";
 import { countBookingsInSlot, loadCommitments, lockProfessionalAgenda, type Commitment } from "../agenda/commitments";
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
 import { profileCategories } from "../common/profile-categories.util";
+import { emptyReviewStats, loadReviewStats } from "./review-stats";
+
+/**
+ * Schede al massimo in una risposta della ricerca, le prime nell'ordine
+ * (boost, stelle, recensioni, distanza). Con un comune il raggio basta quasi
+ * sempre a restare sotto; serve per "tutta Italia" quando i professionisti
+ * saranno migliaia (docs/changelog/2026-11-16-traffico-elevato.md).
+ */
+export const SEARCH_MAX_RESULTS = 100;
+/** Massimo di "Nuovi profili" chiesti in una volta. */
+const NEWEST_MAX = 30;
 import { computeIsNewProfile } from "../common/new-profile.util";
 import { lastVisibleChange } from "./last-visible-change";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -356,6 +371,7 @@ export class ProfessionalsService {
     // Nome dell'attività senza badare alla desinenza: "termoidraulico" trova
     // "Termoidraulica Rossi" (docs/changelog/2026-11-04-nomi-dei-mestieri.md).
     const nameWords = q ? nameSearchWords(q) : [];
+    const unfiltered = !category && !city && nameWords.length === 0 && !service && !problem && offerKeywords.length === 0 && !remote;
     const baseWhere: Prisma.ProfessionalProfileWhereInput =
       nameWords.length > 0
         ? { AND: [filtersWhere, ...nameWords.map((word) => ({ businessName: { contains: word, mode: "insensitive" as const } }))] }
@@ -386,26 +402,25 @@ export class ProfessionalsService {
       include: {
         category: true,
         extraCategories: true,
-        bookings: { include: { review: true } },
         visibilityBoosts: { where: { status: "ACTIVE" } },
         services: true,
         fiscalProfile: { select: { stripePayoutsEnabled: true, entityType: true } },
       },
+      // Senza mestiere, luogo né parola (home vecchia, sitemap, chiamate da
+      // fuori) al massimo i più recenti: prima si scaricava tutta Italia a
+      // ogni chiamata (docs/changelog/2026-11-16-traffico-elevato.md).
+      ...(unfiltered ? { orderBy: { createdAt: "desc" as const }, take: SEARCH_MAX_RESULTS } : {}),
     });
 
-    const previewsByProfileId = await this.buildAvailabilityPreviews(profiles.map((profile) => profile.id));
+    // Stelle e recensioni contate dal database, non caricando ogni lavoro
+    // (docs/changelog/2026-11-16-traffico-elevato.md). Recensioni dei clienti
+    // pubbliche subito (docs/CHANGELOG.md §215).
+    const statsByProfileId = await loadReviewStats(this.prisma, profiles.map((profile) => profile.id));
 
     const results = profiles.map((profile) => {
-      // Recensioni dei clienti pubbliche subito (docs/CHANGELOG.md §215: il
-      // professionista non recensisce più il cliente, niente "doppio cieco").
-      const reviews = profile.bookings
-        .filter((booking) => booking.review !== null && booking.review.hiddenAt === null)
-        .map((booking) => booking.review)
-        .filter((review): review is NonNullable<typeof review> => review !== null);
-      const reviewCount = reviews.length;
-      const rating =
-        reviewCount > 0 ? Math.round((reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount) * 10) / 10 : null;
-      const preview = previewsByProfileId.get(profile.id);
+      const stats = statsByProfileId.get(profile.id) ?? emptyReviewStats();
+      const reviewCount = stats.reviewCount;
+      const rating = stats.rating;
       const categories = profileCategories(profile);
       // Cercando "idraulico" la card mostra Idraulico anche se è una
       // categoria aggiuntiva del professionista.
@@ -441,11 +456,13 @@ export class ProfessionalsService {
         subTags: profile.subTags,
         spokenLanguages: profile.spokenLanguages,
         hasLiabilityInsurance: profile.hasLiabilityInsurance,
-        availabilityPreview: preview?.days ?? [],
+        // Riempita sotto, solo per i primi SEARCH_MAX_RESULTS dopo l'ordine.
+        availabilityPreview: [] as ProfessionalAvailabilityPreviewDay[],
         availabilityFrom: new Date().toISOString().slice(0, 10),
+        availabilityCompleteUntil: undefined as string | undefined,
         createdAt: profile.createdAt.toISOString(),
-        updatedAt: lastVisibleChange(profile.updatedAt, profile.services, reviews).toISOString(),
-        completedThisMonth: countCompletedThisMonth(profile.bookings),
+        updatedAt: lastVisibleChange(profile.updatedAt, profile.services, stats.lastReviewAt ? [{ createdAt: stats.lastReviewAt }] : []).toISOString(),
+        completedThisMonth: stats.completedThisMonth,
         isNewProfile: computeIsNewProfile(profile.createdAt),
         ...(serviceKey && canonicalize
           ? matchedServiceField(profile.services, serviceKey, canonicalize)
@@ -483,7 +500,93 @@ export class ProfessionalsService {
       return (a.distanceKm ?? 0) - (b.distanceKm ?? 0);
     });
 
-    return results;
+    // Al massimo SEARCH_MAX_RESULTS schede, i primi nell'ordine qui sopra, e
+    // l'agenda dei prossimi giorni solo per loro: è la parte più pesante della
+    // risposta (~25 KB a professionista, docs/changelog/2026-11-16-traffico-elevato.md).
+    const shown = results.slice(0, SEARCH_MAX_RESULTS);
+    const previewsByProfileId = await this.buildAvailabilityPreviews(shown.map((result) => result.id));
+    // Nella scheda solo la prima settimana e il primo giorno libero per
+    // modalità: il resto lo chiede la scheda quando si sfoglia oltre
+    // (packages/shared/src/searchAgenda.ts).
+    for (const result of shown) {
+      result.availabilityPreview = trimSearchAgenda(previewsByProfileId.get(result.id)?.days ?? [], result.availabilityFrom);
+      result.availabilityCompleteUntil = searchAgendaCompleteUntil(result.availabilityFrom);
+    }
+    return shown;
+  }
+
+  /**
+   * "Nuovi profili" della home: gli ultimi iscritti visibili nella ricerca,
+   * con i soli dati della scheda (docs/changelog/2026-11-16-traffico-elevato.md).
+   * Prima la home chiedeva l'intera ricerca di tutta Italia a ogni visita.
+   */
+  async newest(limit: number): Promise<ProfessionalNewestResult[]> {
+    const profiles = await this.prisma.professionalProfile.findMany({
+      where: this.publicSearchWhere(undefined, true),
+      orderBy: { createdAt: "desc" },
+      take: Math.min(Math.max(1, limit), NEWEST_MAX),
+      select: {
+        id: true,
+        businessName: true,
+        city: true,
+        createdAt: true,
+        imageUrl: true,
+        verified: true,
+        isDemo: true,
+        categoryOrder: true,
+        category: true,
+        extraCategories: true,
+      },
+    });
+    const stats = await loadReviewStats(this.prisma, profiles.map((profile) => profile.id));
+    return profiles.map((profile) => {
+      const main = profileCategories(profile)[0]!;
+      return {
+        id: profile.id,
+        businessName: profile.businessName,
+        categorySlug: main.slug,
+        categoryLabel: main.label,
+        city: profile.city,
+        createdAt: profile.createdAt.toISOString(),
+        imageUrl: profile.imageUrl,
+        rating: stats.get(profile.id)?.rating ?? null,
+        verified: publicVerified(profile),
+      };
+    });
+  }
+
+  /**
+   * Elenco leggero dei profili visibili per la sitemap: niente agenda, niente
+   * prestazioni intere, recensioni contate dal database
+   * (docs/changelog/2026-11-16-traffico-elevato.md).
+   */
+  async directory(): Promise<ProfessionalDirectoryEntry[]> {
+    const profiles = await this.prisma.professionalProfile.findMany({
+      where: this.publicSearchWhere(undefined, true),
+      select: {
+        id: true,
+        businessName: true,
+        city: true,
+        updatedAt: true,
+        subTags: true,
+        categoryOrder: true,
+        category: true,
+        extraCategories: true,
+        services: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    });
+    const stats = await loadReviewStats(this.prisma, profiles.map((profile) => profile.id));
+    return profiles.map((profile) => {
+      const last = stats.get(profile.id)?.lastReviewAt;
+      return {
+        id: profile.id,
+        businessName: profile.businessName,
+        city: profile.city,
+        categories: profileCategories(profile),
+        subTags: profile.subTags,
+        updatedAt: lastVisibleChange(profile.updatedAt, profile.services, last ? [{ createdAt: last }] : []).toISOString(),
+      };
+    });
   }
 
   /**

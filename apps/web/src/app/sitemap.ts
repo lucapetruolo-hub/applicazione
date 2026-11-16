@@ -58,7 +58,8 @@ function categoryEntries(slugs: string[]): MetadataRoute.Sitemap {
  * l'errore risale e non si tiene nulla: alla lettura dopo si riprova.
  */
 async function dynamicEntries(): Promise<MetadataRoute.Sitemap> {
-  const professionals = await apiClient.searchProfessionals({ excludeDemo: true });
+  // Elenco leggero, senza agenda né prestazioni (docs/changelog/2026-11-16-traffico-elevato.md).
+  const professionals = await apiClient.getProfessionalDirectory();
   const professionalEntries: MetadataRoute.Sitemap = professionals.map((pro) => ({
     url: `${SITE_URL}${professionalPath(pro)}`,
     // Ultima modifica visibile del profilo, mandata dall'API (E8-10).

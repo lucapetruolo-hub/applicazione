@@ -59,6 +59,8 @@ import { PersonalLinkService } from "./personal-link.service";
 import { CoverImageCheckService, coverRejectedMessage } from "./cover-image-check";
 import { photoMediaType } from "../problem-match/problem-match.service";
 import { hasNearbyResult } from "./search-area";
+import { MEDIA_UPLOAD_DIR } from "../common/media-upload";
+import { ShortCache, SUMMARY_CACHE_MS } from "../common/short-cache";
 
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 // Un video pesa naturalmente molto di più di una foto compressa: limite
@@ -77,6 +79,15 @@ export class ProfessionalsController {
     private readonly personalLink: PersonalLinkService,
     private readonly coverCheck: CoverImageCheckService,
   ) {}
+
+  // Numeri di riepilogo pubblici, un minuto di memoria breve (docs/changelog/2026-11-16-traffico-elevato.md):
+  // prezzi medi, conteggi per mestiere, lingue. Mai la ricerca né i profili.
+  private readonly summaryCache = {
+    priceIndex: new ShortCache<Awaited<ReturnType<ProfessionalsService["getServicePriceIndex"]>>>(SUMMARY_CACHE_MS),
+    prices: new ShortCache<Awaited<ReturnType<ProfessionalsService["getCategoryPriceStats"]>>>(SUMMARY_CACHE_MS),
+    counts: new ShortCache<Awaited<ReturnType<ProfessionalsService["getCategoryProfessionalCounts"]>>>(SUMMARY_CACHE_MS),
+    languages: new ShortCache<Awaited<ReturnType<ProfessionalsService["getLanguagePopularity"]>>>(SUMMARY_CACHE_MS),
+  };
 
   @Get("search")
   async search(
@@ -143,7 +154,7 @@ export class ProfessionalsController {
   // un id di professionista.
   @Get("services/price-index")
   getServicePriceIndex() {
-    return this.professionalsService.getServicePriceIndex();
+    return this.summaryCache.priceIndex.get("tutti", () => this.professionalsService.getServicePriceIndex());
   }
 
   // Pubblico allo stesso modo (nessun dato sensibile, solo lingua+conteggio
@@ -153,7 +164,8 @@ export class ProfessionalsController {
   // costa" (docs/CHANGELOG.md §296), mai sotto le soglie. Prima di ":id".
   @Get("prices/:category")
   getCategoryPriceStats(@Param("category") category: string, @Query("city") city?: string) {
-    return this.professionalsService.getCategoryPriceStats(category, city?.trim() || undefined);
+    const place = city?.trim() || undefined;
+    return this.summaryCache.prices.get(`${category}|${(place ?? "").toLowerCase()}`, () => this.professionalsService.getCategoryPriceStats(category, place));
   }
 
   // Pubblico, solo nomi di comuni: suggerimenti del campo "Città" (docs/CHANGELOG.md §383).
@@ -166,12 +178,28 @@ export class ProfessionalsController {
   // ordinare la scelta dei lavori (docs/changelog/2026-11-02-categorie-telefono.md).
   @Get("category-counts")
   getCategoryProfessionalCounts(@Query("city") city?: string) {
-    return this.professionalsService.getCategoryProfessionalCounts(typeof city === "string" ? city.slice(0, 100) : undefined);
+    const place = typeof city === "string" ? city.slice(0, 100) : undefined;
+    return this.summaryCache.counts.get((place ?? "").trim().toLowerCase(), () => this.professionalsService.getCategoryProfessionalCounts(place));
+  }
+
+  // Pubblico: "Nuovi profili" della home, pochi e con i soli dati della
+  // scheda (docs/changelog/2026-11-16-traffico-elevato.md). Prima di ":id".
+  @Get("newest")
+  getNewest(@Query("limit") limit?: string) {
+    const parsed = Number.parseInt(limit ?? "", 10);
+    return this.professionalsService.newest(Number.isFinite(parsed) ? parsed : 21);
+  }
+
+  // Pubblico: elenco leggero per la sitemap (id, nome, città, mestieri,
+  // ultima modifica), gli stessi dati che si vedono già nelle pagine.
+  @Get("directory")
+  getDirectory() {
+    return this.professionalsService.directory();
   }
 
   @Get("languages/popular")
   getLanguagePopularity() {
-    return this.professionalsService.getLanguagePopularity();
+    return this.summaryCache.languages.get("tutti", () => this.professionalsService.getLanguagePopularity());
   }
 
   @UseGuards(JwtAuthGuard)
@@ -283,6 +311,7 @@ export class ProfessionalsController {
   @Post("me/portfolio-photos")
   @UseInterceptors(
     FileInterceptor("image", {
+      dest: MEDIA_UPLOAD_DIR,
       limits: { fileSize: MAX_MEDIA_SIZE_BYTES },
       fileFilter: (_req, file, callback) => {
         if (!file.mimetype.startsWith("image/") && !file.mimetype.startsWith("video/")) {

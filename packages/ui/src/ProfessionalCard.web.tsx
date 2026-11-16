@@ -101,6 +101,7 @@ export function ProfessionalCard(props: ProfessionalCardProps) {
     firstFree,
     firstFreeLabel,
     timeRows,
+    agendaLoading,
     openAgendaAt,
     canGoBack,
     canGoForward,
@@ -375,7 +376,11 @@ export function ProfessionalCard(props: ProfessionalCardProps) {
               </div>
 
               {timeRows.length > 0 ? (
-                <div className={cx("is_View", styles.times, pager && styles.timesWithPager)}>
+                <div
+                  className={cx("is_View", styles.times, pager && styles.timesWithPager)}
+                  aria-busy={agendaLoading || undefined}
+                  style={agendaLoading ? { opacity: 0.5 } : undefined}
+                >
                   {timeRows.map((time) => (
                     <div key={time} className={cx("is_View", styles.row)}>
                       {visibleDays.map((day, index) => {

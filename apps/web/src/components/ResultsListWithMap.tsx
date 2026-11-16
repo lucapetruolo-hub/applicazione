@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown, ChevronUp, CreditCard, Info, Map as MapIcon, Maximize2, Minimize2, Plus, RotateCw, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
-import { PROFILE_REQUEST_SOURCE_PARAM, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type ProfessionalSearchResult, professionalPath, subTagLabel } from "@professionisti/shared";
+import { PROFILE_REQUEST_SOURCE_PARAM, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, agendaToPreviewDays, type ProfessionalSearchResult, professionalPath, subTagLabel } from "@professionisti/shared";
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { apiClient } from "@/lib/apiClient";
@@ -528,6 +528,10 @@ export function ResultsListWithMap({
       availabilityPreview={pro.availabilityPreview}
       availabilityFrom={pro.availabilityFrom}
       availabilityDays={PUBLIC_AGENDA_DAYS}
+      // Agenda leggera: oltre la prima settimana la scheda chiede quella del
+      // profilo, una volta sola (docs/changelog/2026-11-16-traffico-elevato.md).
+      availabilityCompleteUntil={pro.availabilityCompleteUntil}
+      loadFullAvailability={() => apiClient.getProfessionalAgenda(pro.id).then(agendaToPreviewDays)}
       defaultMode={defaultMode}
       // Se la ricerca è in modalità "Online", il profilo si apre già
       // con l'agenda su quel tab (richiesta esplicita dell'utente) —

@@ -39,6 +39,7 @@ import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { TimelineService } from "../timeline/timeline.service";
 import { GuidedRequestsService } from "./guided-requests.service";
 import { GuidedRequestUserStateService } from "./guided-request-user-state.service";
+import { MEDIA_UPLOAD_DIR } from "../common/media-upload";
 
 // Un video pesa naturalmente molto di più di una foto compressa: limite
 // più permissivo solo per questo endpoint (richiesta esplicita
@@ -106,6 +107,7 @@ export class GuidedRequestsController {
   @Post("photos")
   @UseInterceptors(
     FileInterceptor("image", {
+      dest: MEDIA_UPLOAD_DIR,
       limits: { fileSize: MAX_MEDIA_SIZE_BYTES },
       fileFilter: (_req, file, callback) => {
         if (!file.mimetype.startsWith("image/") && !file.mimetype.startsWith("video/")) {
@@ -145,6 +147,7 @@ export class GuidedRequestsController {
   @Post("timeline-photos")
   @UseInterceptors(
     FileInterceptor("image", {
+      dest: MEDIA_UPLOAD_DIR,
       limits: { fileSize: MAX_MEDIA_SIZE_BYTES },
       fileFilter: (_req, file, callback) => {
         const isMedia = file.mimetype.startsWith("image/") || file.mimetype.startsWith("video/");

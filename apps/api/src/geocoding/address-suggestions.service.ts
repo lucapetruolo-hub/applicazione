@@ -57,14 +57,14 @@ export class AddressSuggestionsService {
   private readonly logger = new Logger(AddressSuggestionsService.name);
   private readonly suggestionsBudget = new DailyBudget(SUGGESTIONS_DAILY_LIMIT, () =>
     this.alert("address-budget", "Tetto giornaliero dei suggerimenti di indirizzo raggiunto: fino a mezzanotte si scrive l'indirizzo a mano."),
-  );
+  undefined, "google-suggerimenti-indirizzo");
   private readonly placesBudget = new DailyBudget(PLACES_DAILY_LIMIT, () =>
     this.alert("address-place-budget", "Tetto giornaliero dei dettagli di indirizzo raggiunto: fino a mezzanotte si scrive l'indirizzo a mano."),
-  );
+  undefined, "google-dettagli-indirizzo");
 
   private readonly postalCodeBudget = new DailyBudget(POSTAL_CODE_DAILY_LIMIT, () =>
     this.alert("postal-code-budget", "Tetto giornaliero dei CAP cercati raggiunto: fino a mezzanotte il CAP si scrive a mano."),
-  );
+  undefined, "google-cap-cercati");
 
   /** Nel log e, una volta l'ora, su Sentry: il cliente vede solo i campi separati (§324). */
   private alert(key: string, message: string): void {
@@ -80,15 +80,15 @@ export class AddressSuggestionsService {
    * sito lo chiede prima che si scriva l'indirizzo, così sceglie subito tra
    * campo unico con suggerimenti e campi separati (§324).
    */
-  available(now = Date.now()): boolean {
+  async available(now = Date.now()): Promise<boolean> {
     if (!process.env.GOOGLE_MAPS_API_KEY?.trim()) return false;
-    if (!this.suggestionsBudget.hasRoom(new Date(now))) return false;
+    if (!(await this.suggestionsBudget.hasRoom(new Date(now)))) return false;
     return now - this.lastFailureAt > RECENT_FAILURE_MS;
   }
 
   /** Oltre il tetto il sito mostra il campo di testo semplice, come quando Google non risponde. */
-  private takeBudget(budget: DailyBudget): void {
-    if (!budget.take()) throw new ServiceUnavailableException("Suggerimenti di indirizzo non disponibili.");
+  private async takeBudget(budget: DailyBudget): Promise<void> {
+    if (!(await budget.take())) throw new ServiceUnavailableException("Suggerimenti di indirizzo non disponibili.");
   }
 
   private apiKey(): string {
@@ -133,7 +133,7 @@ export class AddressSuggestionsService {
     const text = input.q.trim().slice(0, 200);
     if (text.length < 3) return [];
     const key = this.apiKey();
-    this.takeBudget(this.suggestionsBudget);
+    await this.takeBudget(this.suggestionsBudget);
     const named = comuneNamedIn(text);
     const hasBias = input.latitude !== undefined && input.longitude !== undefined && Number.isFinite(input.latitude) && Number.isFinite(input.longitude);
     const center = named ? { latitude: named.lat, longitude: named.lon } : hasBias ? { latitude: input.latitude!, longitude: input.longitude! } : null;
@@ -172,7 +172,7 @@ export class AddressSuggestionsService {
       });
     };
     let found = await ask(center !== null);
-    if (center && found.length < 2 && this.suggestionsBudget.take()) {
+    if (center && found.length < 2 && (await this.suggestionsBudget.take())) {
       const wider = await ask(false);
       found = [...found, ...wider.filter((item) => !found.some((f) => f.id === item.id))];
     }
@@ -189,7 +189,7 @@ export class AddressSuggestionsService {
    */
   async postalCodeFor(input: { street: string; houseNumber: string; city: string }): Promise<string | null> {
     const key = process.env.GOOGLE_MAPS_API_KEY?.trim();
-    if (!key || !this.postalCodeBudget.take()) return null;
+    if (!key || !(await this.postalCodeBudget.take())) return null;
     const data = await this.call<GoogleTextSearchResponse>("https://places.googleapis.com/v1/places:searchText", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.types,places.addressComponents" },
@@ -206,7 +206,7 @@ export class AddressSuggestionsService {
 
   async place(id: string, session: string): Promise<AddressPlace> {
     const key = this.apiKey();
-    this.takeBudget(this.placesBudget);
+    await this.takeBudget(this.placesBudget);
     const url = new URL(`https://places.googleapis.com/v1/places/${encodeURIComponent(id)}`);
     url.searchParams.set("languageCode", "it");
     if (session) url.searchParams.set("sessionToken", session);

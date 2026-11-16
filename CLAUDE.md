@@ -58,12 +58,12 @@ servizi. Le note tecniche per cartella stanno nei `CLAUDE.md` di `apps/web`,
 | Autenticazione | Email+password + Google Sign-In (OpenID Connect, finestra Google, nessuno script Google sul sito), JWT emesso da `apps/api` con bcrypt e `@nestjs/jwt`; niente Auth.js/Clerk né Apple |
 | Pagamenti | **Stripe** (Subscriptions, Checkout, Connect Express) |
 | Notifiche | Expo Push, **Resend** (email), **WhatsApp Meta Cloud API** (`apps/api/src/whatsapp/`, spento senza `WHATSAPP_ACCESS_TOKEN`); niente Twilio né SMS |
-| Tempo reale | **Server-Sent Events** (`RealtimeService`, biglietto monouso `POST /realtime/ticket`), niente Socket.io/WebSocket |
+| Tempo reale | **Server-Sent Events** (`RealtimeService`, biglietto monouso `POST /realtime/ticket`), eventi tra più copie dell'API via tabella `realtime_events`; niente Socket.io/WebSocket né Redis |
 | Anti-bot | **Cloudflare Turnstile** su registrazione, password dimenticata e contatti |
 | Codice fiscale e P.IVA | VIES poi **Openapi** (`apps/api/src/tax-id-check/`, dietro `TaxIdProvider`) |
 | Verifica identità | **Didit** (`apps/api/src/identity-verification/`, dietro `IdentityProvider`) |
 | Fatture allo SdI | **Openapi** (`apps/api/src/accounting/sdi-provider.ts`), PDF con **pdfkit** |
-| Code e attività a orario | Redis/BullMQ nominale; in pratica `@ScheduledJob` (`apps/api/src/common/scheduled-job.ts`) |
+| Code e attività a orario | Redis/BullMQ nominale; in pratica `@ScheduledJob` (`apps/api/src/common/scheduled-job.ts`); tetti giornalieri condivisi in `daily_budget_usage` (`DailyBudget`) |
 | Monorepo | **Turborepo** + **pnpm workspaces** |
 | Errori, statistiche, uptime | **Sentry** (solo API), **Vercel Web Analytics**, `uptime.yml` + **UptimeRobot** |
 | Hosting | Sito **Vercel** (`fra1`), API e Postgres **Render** Francoforte, mobile EAS |
@@ -102,6 +102,11 @@ prima discuterne e aggiornare questo file (e `docs/architettura/stack.md`).
   ha il link. Si apre ai motori di ricerca solo con
   `NEXT_PUBLIC_SITE_INDEXABLE=true` su Vercel + nuovo deploy — non
   toglierlo prima del lancio ufficiale.
+- **Traffico** (docs/changelog/2026-11-16-traffico-elevato.md): l'API può
+  girare in più copie. Nessuno stato solo in memoria che debba valere per
+  tutti (tetti, biglietti, eventi stanno nel database), nessuna pagina pubblica
+  che scarichi tutti i professionisti, foto sul disco temporaneo e non in
+  memoria.
 
 ---
 

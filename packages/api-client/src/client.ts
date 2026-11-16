@@ -70,6 +70,8 @@ import type {
   ProfessionalLead,
   ProfessionalProfileSelfInput,
   ProfessionalSearchResult,
+  ProfessionalNewestResult,
+  ProfessionalDirectoryEntry,
   ProposeQuoteDateInput,
   RejectQuoteInput,
   QuoteSelfInput,
@@ -456,6 +458,11 @@ export type ApiClientConfig = {
    * è la persona (§372). `status` è `null` se la rete non ha risposto.
    */
   onFailure?: (failure: { method: string; path: string; status: number | null }) => void;
+  /**
+   * Intestazioni in più su ogni chiamata, solo dal server del sito: la chiave
+   * che dice all'API "sono le pagine del sito" (docs/changelog/2026-11-16-traffico-elevato.md).
+   */
+  extraHeaders?: () => Record<string, string>;
 };
 
 export type AuthResult = { token: string; isNewUser: boolean };
@@ -1229,7 +1236,7 @@ function extractErrorMessage(body: unknown, fallback: string): string {
  * Client tipizzato unico per chiamare apps/api da apps/web e apps/mobile —
  * niente logica di business duplicata nei due frontend (CLAUDE.md §3).
  */
-export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, inviteCode, onFailure }: ApiClientConfig) {
+export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, inviteCode, onFailure, extraHeaders }: ApiClientConfig) {
   // Senza barra finale: "https://api/" + "/path" darebbe "//path" e 404 (docs/changelog/2026-11-05-render-francoforte.md).
   // Ciclo e non una regex: CodeQL segnala /\/+$/ come lenta su tante barre.
   let baseUrl = rawBaseUrl;
@@ -1285,6 +1292,7 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
           ...init,
           headers: {
             "Content-Type": "application/json",
+            ...extraHeaders?.(),
             ...init?.headers,
           },
         });
@@ -1592,6 +1600,13 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         cache: "no-store",
       });
     },
+
+    /** "Nuovi profili" della home: pochi e leggeri (docs/changelog/2026-11-16-traffico-elevato.md). */
+    getNewestProfessionals: (limit: number) =>
+      request<ProfessionalNewestResult[]>(`/professionals/newest?limit=${encodeURIComponent(String(limit))}`, { cache: "no-store" }),
+
+    /** Elenco leggero dei profili visibili, per la sitemap. */
+    getProfessionalDirectory: () => request<ProfessionalDirectoryEntry[]>("/professionals/directory", { cache: "no-store" }),
 
     /** Micro-tool "Quanto costa in media" (homepage): prezzi veri per prestazione, mai un dato finto (docs/CHANGELOG.md §398). */
     getServicePriceIndex: () =>

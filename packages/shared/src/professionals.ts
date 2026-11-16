@@ -265,6 +265,17 @@ export type ProfessionalAvailabilityPreviewDay = {
   times: ProfessionalAvailabilityPreviewSlot[];
 };
 
+/** "Nuovi profili" della home: GET /professionals/newest (docs/changelog/2026-11-16-traffico-elevato.md). */
+export type ProfessionalNewestResult = Pick<
+  ProfessionalSearchResult,
+  "id" | "businessName" | "categorySlug" | "categoryLabel" | "city" | "createdAt" | "imageUrl" | "rating" | "verified"
+>;
+
+/** Elenco leggero per la sitemap: GET /professionals/directory. */
+export type ProfessionalDirectoryEntry = Pick<ProfessionalSearchResult, "id" | "businessName" | "city" | "categories" | "subTags"> & {
+  updatedAt: string;
+};
+
 /** Risultato reale restituito da GET /professionals/search su apps/api. */
 export type ProfessionalSearchResult = {
   id: string;
@@ -305,6 +316,13 @@ export type ProfessionalSearchResult = {
   availabilityPreview: ProfessionalAvailabilityPreviewDay[];
   /** Primo giorno dell'agenda (oggi, AAAA-MM-GG in UTC): la colonna "Oggi" della card. */
   availabilityFrom: string;
+  /**
+   * Ultimo giorno che `availabilityPreview` contiene per intero
+   * (packages/shared/src/searchAgenda.ts): dopo ci sono solo i primi giorni
+   * liberi, e la scheda chiede l'agenda completa quando si sfoglia oltre.
+   * Assente = agenda completa.
+   */
+  availabilityCompleteUntil?: string;
   /**
    * Data di creazione del profilo — usata dalla vetrina "Sulla piattaforma"
    * in homepage per ordinare per più recenti e mostrare un badge "Nuovo"

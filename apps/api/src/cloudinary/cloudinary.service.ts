@@ -1,7 +1,32 @@
 import { extname } from "node:path";
+import { createReadStream } from "node:fs";
+import { unlink } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import { BadRequestException, Injectable } from "@nestjs/common";
+import { temporaryUploadPath } from "../common/media-upload";
 import { v2 as cloudinary } from "cloudinary";
+
+/**
+ * Manda il file a Cloudinary: dal disco a pezzi se Multer l'ha scritto lì
+ * (foto e video fino a 50 MB, `MEDIA_UPLOAD_DIR`), altrimenti dalla memoria
+ * (docs/changelog/2026-11-16-traffico-elevato.md).
+ */
+function sendFile(file: Express.Multer.File, uploadStream: NodeJS.WritableStream, reject: (error: unknown) => void): void {
+  const path = temporaryUploadPath(file.path);
+  if (path) {
+    const source = createReadStream(path);
+    source.on("error", reject);
+    source.pipe(uploadStream);
+    return;
+  }
+  uploadStream.end(file.buffer);
+}
+
+/** Toglie il file temporaneo dal disco, anche se il caricamento non è riuscito. */
+async function removeTemporaryFile(file: Express.Multer.File): Promise<void> {
+  const path = temporaryUploadPath(file.path);
+  if (path) await unlink(path).catch(() => undefined);
+}
 
 @Injectable()
 export class CloudinaryService {
@@ -24,6 +49,7 @@ export class CloudinaryService {
    */
   async uploadImage(file: Express.Multer.File, folder: string, size: { width: number; height: number; crop: "limit" | "fill" } = { width: 800, height: 800, crop: "limit" }): Promise<string> {
     if (!this.isConfigured) {
+      await removeTemporaryFile(file);
       throw new BadRequestException(
         "Il caricamento immagini non è ancora configurato su questo ambiente. Aggiungi CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET per attivarlo.",
       );
@@ -49,7 +75,7 @@ export class CloudinaryService {
             resolve(result.secure_url);
           },
         );
-        uploadStream.end(file.buffer);
+        sendFile(file, uploadStream, reject);
       });
     } catch (error) {
       // Un errore di Cloudinary (formato non valido, file troppo grande per
@@ -58,6 +84,8 @@ export class CloudinaryService {
       // chiaro invece di crash" già usato per Stripe/Google in questo file.
       const message = error instanceof Error ? error.message : "Errore sconosciuto.";
       throw new BadRequestException(`Caricamento immagine non riuscito: ${message}`);
+    } finally {
+      await removeTemporaryFile(file);
     }
   }
 
@@ -99,6 +127,7 @@ export class CloudinaryService {
    */
   async uploadMedia(file: Express.Multer.File, folder: string): Promise<string> {
     if (!this.isConfigured) {
+      await removeTemporaryFile(file);
       throw new BadRequestException(
         "Il caricamento non è ancora configurato su questo ambiente. Aggiungi CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET per attivarlo.",
       );
@@ -173,11 +202,13 @@ export class CloudinaryService {
             resolve(result.secure_url);
           },
         );
-        uploadStream.end(file.buffer);
+        sendFile(file, uploadStream, reject);
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Errore sconosciuto.";
       throw new BadRequestException(`Caricamento non riuscito: ${message}`);
+    } finally {
+      await removeTemporaryFile(file);
     }
   }
 
