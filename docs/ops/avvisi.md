@@ -61,7 +61,7 @@ prima di avvisare).
    Senza chiave il sito funziona lo stesso, ma con traffico le pagine fatte da Vercel finiscono nel limite di
    60 chiamate al minuto e la ricerca risulta vuota.
 
-**Piani:** API su **Standard** (1 CPU, 2 GB), database su **Basic-1gb** prima del 5/12. Per più copie
+**Piani:** al lancio API su **Standard** (1 CPU, 2 GB) e database su **Basic-1gb** (prima, fino alla società, Luca resta sui piani gratuiti: checklist di lancio, punto 4quater). Per più copie
 dell'API basta alzare il numero di istanze su Render: tetti, biglietti ed eventi del tempo reale sono già
 condivisi nel database.
 
@@ -74,7 +74,7 @@ ne sono toccate.
    `/_next/static` (i file del sito non contano).
 4. **Then**: **Rate Limit**, finestra fissa di **60 secondi**, **600 richieste**, chiave **IP Address**,
    azione **Too Many Requests (429)**.
-5. **Save Rule** → **Review Changes** → **Publish**.
+5. **Add Rule** (in alcune versioni "Save Rule") → **Review Changes** → **Publish**.
 6. Controllo: apri il sito e sfoglia qualche pagina di ricerca e profilo; in Firewall → Traffic la regola deve
    restare a zero per te. Una persona vera fa poche decine di richieste al minuto, anche con le anteprime dei
    link che il sito carica in anticipo.

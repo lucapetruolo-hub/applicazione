@@ -430,22 +430,31 @@ describe("ricerca a pagine e puntini della mappa (docs/changelog/2026-11-16-pagi
     const service = new ProfessionalsService({} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
     const inner = service as unknown as {
       rankedSearch: (params: { city?: string }) => Promise<Pro[]>;
+      searchDetails: (rows: Pro[]) => Promise<Pro[]>;
+      firstServiceNames: () => Promise<string[]>;
       buildAvailabilityPreviews: (ids: string[], options: { days?: number; completeDays?: number }) => Promise<Map<string, { days: unknown[] }>>;
     };
     const ranked = vi.spyOn(inner, "rankedSearch").mockImplementation(async (params) => (params.city ? byCity : withoutCity).map((item) => ({ ...item })));
+    // Le schede intere solo per quelle della pagina (docs/changelog/2026-11-16-ricerca-leggera.md).
+    vi.spyOn(inner, "firstServiceNames").mockResolvedValue([]);
+    const details = vi.spyOn(inner, "searchDetails").mockImplementation(async (rows) => rows.map((row) => ({ ...row, full: true })));
     const free = { days: [{ date: "2026-11-16", times: [{ time: "15:00", endTime: "16:00", allowsHome: true, allowsOnline: false, homeAvailable: true, onlineAvailable: false }] }] };
     const previews = vi
       .spyOn(inner, "buildAvailabilityPreviews")
       .mockImplementation(async (ids) => new Map(ids.filter((id) => freeIds.includes(id)).map((id) => [id, free])));
-    return { service, ranked, previews };
+    return { service, ranked, previews, details };
   };
   const now = new Date("2026-11-16T10:00:00Z");
   const many = Array.from({ length: 45 }, (_, index) => pro(`p${index + 1}`, { spokenLanguages: index % 2 ? ["Italiano", "Inglese"] : ["Italiano"] }));
 
   it("divide i trovati in pagine da 20 nell'ordine della ricerca, l'ultima con il resto", async () => {
-    const { service, previews } = build(many);
+    const { service, previews, details } = build(many);
     const first = await service.searchPage({ category: "idraulico", city: "Latina" }, { page: 1, pageSize: 20, filters: {}, now });
     expect(first.results.map((item) => item.id)).toEqual(many.slice(0, 20).map((item) => item.id));
+    // La scheda intera si legge solo per le 20 della pagina, non per i 45 trovati.
+    expect(details).toHaveBeenCalledTimes(1);
+    expect(details.mock.calls[0]![0].map((item) => item.id)).toEqual(many.slice(0, 20).map((item) => item.id));
+    expect(first.results.every((item) => (item as unknown as { full?: boolean }).full)).toBe(true);
     expect(first).toMatchObject({ total: 45, page: 1, pageCount: 3, languages: ["Inglese", "Italiano"], nearestOutsideKm: null });
     // L'agenda leggera solo per le 20 schede della pagina.
     expect(previews).toHaveBeenCalledWith(many.slice(0, 20).map((item) => item.id), { completeDays: 7 });
@@ -492,7 +501,7 @@ describe("ricerca a pagine e puntini della mappa (docs/changelog/2026-11-16-pagi
 
   it("i puntini sono tutti i trovati con i filtri, leggeri e senza chi non ha coordinate", async () => {
     const withService = pro("p1", { services: [{ id: "s1", name: "Sostituzione rubinetto" }], matchedServiceId: "s1" });
-    const { service, previews } = build(many, [withService, pro("senza", { latitude: 0, longitude: 0 }), ...many.slice(1)]);
+    const { service, previews, details } = build(many, [withService, pro("senza", { latitude: 0, longitude: 0 }), ...many.slice(1)]);
     const pins = await service.pins({ category: "idraulico" }, {}, now);
     expect(pins).toHaveLength(45);
     expect(pins[0]).toEqual({
@@ -511,8 +520,9 @@ describe("ricerca a pagine e puntini della mappa (docs/changelog/2026-11-16-pagi
       distanceKm: 2,
       matchedServiceName: "Sostituzione rubinetto",
     });
-    // Senza filtri sull'agenda i puntini non la calcolano.
+    // Senza filtri sull'agenda i puntini non la calcolano, e non leggono le schede intere.
     expect(previews).not.toHaveBeenCalled();
+    expect(details).not.toHaveBeenCalled();
   });
 });
 
@@ -564,5 +574,98 @@ describe("agenda leggera calcolata solo per i giorni che servono", () => {
   it("per i filtri bastano i prossimi giorni chiesti", async () => {
     const dates = await run(everyDay, { days: 3 });
     expect(dates.every((date) => date <= addDays(2).toISOString().slice(0, 10))).toBe(true);
+  });
+});
+
+describe("ricerca leggera: si leggono solo i campi che servono (docs/changelog/2026-11-16-ricerca-leggera.md)", () => {
+  const category = { id: "c1", slug: "idraulico", label: "Idraulico" };
+  const light = (id: string, reviews: number) => ({
+    id,
+    businessName: `Ditta ${id}`,
+    city: "Latina",
+    latitude: 41.46,
+    longitude: 12.9,
+    imageUrl: null,
+    verified: true,
+    isDemo: false,
+    identityExpiredAt: null,
+    demotedUntil: null,
+    requestsBlockedUntil: null,
+    remoteAvailable: false,
+    spokenLanguages: ["Italiano"],
+    hasLiabilityInsurance: false,
+    subTags: [],
+    categoryOrder: [],
+    category,
+    extraCategories: [],
+    visibilityBoosts: [],
+    services: [{ id: `s-${id}`, name: "Sostituzione rubinetto", categorySlug: null }],
+    fiscalProfile: { stripePayoutsEnabled: false },
+    reviews,
+  });
+  const full = (id: string) => ({
+    ...light(id, 0),
+    address: "Via Roma 1",
+    createdAt: new Date("2026-10-01T00:00:00Z"),
+    updatedAt: new Date("2026-11-01T00:00:00Z"),
+    services: [{ id: `s-${id}`, name: "Sostituzione rubinetto", priceMinEurCents: 5000, priceMaxEurCents: null, priceUnit: "FIXED", categorySlug: null, createdAt: new Date("2026-10-01T00:00:00Z") }],
+    fiscalProfile: { stripePayoutsEnabled: false, entityType: "PRIVATE_INDIVIDUAL" },
+  });
+  const rows = Array.from({ length: 30 }, (_, index) => light(`p${index + 1}`, index));
+
+  const build = () => {
+    const findMany = vi.fn(async (args: { select?: unknown; where: { id?: { in: string[] } } }) =>
+      args.select ? rows : (args.where.id?.in ?? []).map((id) => full(id)),
+    );
+    const prisma = {
+      professionalProfile: { findMany },
+      professionalService: {
+        findMany: vi.fn(async (args: { where: { professionalProfileId: { in: string[] } } }) =>
+          args.where.professionalProfileId.in.flatMap((id) => [
+            { professionalProfileId: id, name: "Sostituzione rubinetto", categorySlug: null },
+            { professionalProfileId: id, name: `Lavoro ${id}`, categorySlug: null },
+          ]),
+        ),
+      },
+      // Stelle: più recensioni a chi ha il numero più alto, così l'ordine si vede.
+      $queryRaw: vi.fn(async () => rows.map((row) => ({ profileId: row.id, count: BigInt(row.reviews), average: row.reviews ? 4.5 : null, last: null }))),
+      booking: { groupBy: vi.fn().mockResolvedValue([]), findMany: vi.fn().mockResolvedValue([]) },
+      availabilitySlot: { findMany: vi.fn().mockResolvedValue([]) },
+      externalJob: { findMany: vi.fn().mockResolvedValue([]) },
+      availabilityException: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const service = new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    return { service, findMany };
+  };
+
+  it("legge i trovati con una select ridotta e la scheda intera solo per la pagina", async () => {
+    const { service, findMany } = build();
+    const page = await service.searchPage({ category: "idraulico" }, { page: 1, pageSize: 20, filters: {}, now: new Date("2026-11-16T10:00:00Z") });
+    const [lightCall, detailCall] = findMany.mock.calls.map((call) => call[0] as { select?: Record<string, unknown>; include?: unknown; where: { id?: { in: string[] } } });
+    expect(lightCall!.include).toBeUndefined();
+    // Niente descrizione, indirizzo o prezzi nella lettura di tutti i trovati.
+    expect(Object.keys(lightCall!.select!)).not.toEqual(expect.arrayContaining(["bio"]));
+    expect(lightCall!.select).not.toHaveProperty("address");
+    // Senza voce né problema cercato le prestazioni di tutti non si leggono.
+    expect(lightCall!.select!.services).toEqual({ select: { id: true, name: true, categorySlug: true }, take: 0 });
+    // "In breve": le prime tre prestazioni diverse, nell'ordine della ricerca.
+    expect(page.facts.services).toEqual(["Sostituzione rubinetto", "Lavoro p30", "Lavoro p29"]);
+    // Le schede intere: le 20 della pagina, nell'ordine delle stelle.
+    expect(detailCall!.where.id!.in).toHaveLength(20);
+    expect(page.results.map((item) => item.id).slice(0, 3)).toEqual(["p30", "p29", "p28"]);
+    expect(page.results[0]).toMatchObject({ address: "Via Roma 1", reviewCount: 29, services: [{ priceMinEurCents: 5000 }] });
+    expect(page.total).toBe(30);
+  });
+
+  it("i puntini non leggono mai la scheda intera", async () => {
+    const { service, findMany } = build();
+    const pins = await service.pins({ category: "idraulico" }, {}, new Date("2026-11-16T10:00:00Z"));
+    expect(pins).toHaveLength(30);
+    expect(findMany).toHaveBeenCalledTimes(1);
+    // Cercando dal problema le prestazioni servono, per il nome di quella in evidenza.
+    await service.pins({ category: "idraulico", problem: "il rubinetto perde" }, {}, new Date("2026-11-16T10:00:00Z"));
+    expect(findMany.mock.calls[1]![0]).toMatchObject({ select: { services: { select: { id: true, name: true, categorySlug: true } } } });
+    expect((findMany.mock.calls[1]![0] as { select: { services: { take?: number } } }).select.services.take).toBeUndefined();
+    expect(findMany.mock.calls[0]![0]).toHaveProperty("select");
   });
 });

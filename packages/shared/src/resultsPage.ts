@@ -79,7 +79,7 @@ export type ResultsFacts = {
 
 /** Riassunto dei trovati per `ResultsFacts`. */
 export function resultsFacts(
-  list: Pick<ProfessionalSearchResult, "verified" | "reviewCount" | "rating" | "subTags" | "services" | "city">[],
+  list: (Pick<ProfessionalSearchResult, "verified" | "reviewCount" | "rating" | "subTags" | "city"> & { services: { name: string }[] })[],
 ): ResultsFacts {
   const subTagCounts: Record<string, number> = {};
   const cities = new Map<string, { city: string; count: number }>();
