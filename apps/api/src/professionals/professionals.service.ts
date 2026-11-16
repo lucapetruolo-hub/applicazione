@@ -20,6 +20,8 @@ import {
   matchesAvailabilityFilters,
   matchesProfileFilters,
   resultsFacts,
+  emptyResultsPage,
+  type ResultsFacts,
   type ProfessionalPin,
   type ProfessionalSearchPage,
   type ResultFilters,
@@ -83,13 +85,14 @@ import { calculateDistanceKm } from "../common/geo.util";
 import { PRISMA } from "../prisma/prisma.module";
 import { invoiceRequestView } from "../client-invoice-requests/client-invoice-requests.service";
 import { COURTESY_DOCUMENT_FIELDS, courtesyDocumentSummary } from "../accounting/courtesy-documents";
-import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
+import { identityVerificationNeeded, identityVerificationRequired } from "../identity-verification/identity-provider-env";
+import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
 import { quoteResendWindow } from "../quotes/quote-resend";
 import { onlineLimitFields, professionalOnlineLimit } from "../job-payments/online-limit";
 import { NOT_ACCEPTING_REQUESTS, NOT_BOOKABLE_ONLINE } from "../subscriptions/subscription-rules";
 import { GeocodingService } from "../geocoding/geocoding.service";
-import { coveredComuni, selectSearchArea } from "./search-area";
+import { coveredComuni, searchAreaBox, selectSearchArea } from "./search-area";
 import { acceptedQuoteStats, declaredServiceStats, quoteMidpointEurCents } from "./category-prices";
 import { buildServicePriceIndex } from "./service-price-index";
 import { type ServiceCanonicalizer, serviceGroupKey } from "./service-group-key";
@@ -151,6 +154,8 @@ const SEARCH_ROW_SELECT = {
   hasLiabilityInsurance: true,
   subTags: true,
   categoryOrder: true,
+  reviewCount: true,
+  reviewRating: true,
   category: { select: { slug: true, label: true } },
   extraCategories: { select: { slug: true, label: true } },
   visibilityBoosts: { where: { status: "ACTIVE" }, select: { id: true } },
@@ -192,6 +197,63 @@ export type SearchRow = Pick<
   | "matchedServiceId"
   | "distanceKm"
 > & { services: { id: string; name: string }[] };
+
+type SearchRowProfile = Prisma.ProfessionalProfileGetPayload<{ select: typeof SEARCH_ROW_SELECT }>;
+
+/** Una riga leggera dai campi di SEARCH_ROW_SELECT. Stelle e recensioni salvate nel profilo (docs/changelog/2026-11-16-stelle-nel-profilo.md). */
+function toSearchRow(
+  profile: SearchRowProfile,
+  context: {
+    category: string | undefined;
+    today: string;
+    distanceById: Map<string, number> | null;
+    serviceKey?: string;
+    canonicalize?: ServiceCanonicalizer | null;
+    problem?: string;
+    problemServiceKey?: string;
+  },
+): SearchRow {
+  const { category, serviceKey, canonicalize, problem, problemServiceKey, distanceById } = context;
+  const categories = profileCategories(profile);
+  // Cercando "idraulico" la card mostra Idraulico anche se è una
+  // categoria aggiuntiva del professionista.
+  const shownCategory = categories.find((item) => item.slug === category) ?? categories[0]!;
+  const services = servicesFirstFor(profile.services, category, categories.map((item) => item.slug)).map(({ id, name }) => ({ id, name }));
+  return {
+    id: profile.id,
+    businessName: profile.businessName,
+    categorySlug: shownCategory.slug,
+    categoryLabel: shownCategory.label,
+    categories,
+    city: profile.city,
+    latitude: profile.latitude,
+    longitude: profile.longitude,
+    imageUrl: profile.imageUrl,
+    verified: publicVerified(profile),
+    stripeVerified: stripeVerified(profile.fiscalProfile),
+    // Recensioni dei clienti pubbliche subito (docs/CHANGELOG.md §215).
+    rating: profile.reviewCount > 0 ? profile.reviewRating : null,
+    reviewCount: profile.reviewCount,
+    boosted: profile.visibilityBoosts.length > 0,
+    remoteAvailable: profile.remoteAvailable,
+    subTags: profile.subTags,
+    spokenLanguages: profile.spokenLanguages,
+    hasLiabilityInsurance: profile.hasLiabilityInsurance,
+    availabilityFrom: context.today,
+    services,
+    ...(serviceKey && canonicalize
+      ? matchedServiceField(services, serviceKey, canonicalize)
+      : problem
+        ? problemServiceField(services, problem, problemServiceKey && canonicalize ? { key: problemServiceKey, canonicalize } : null)
+        : {}),
+    ...(distanceById?.has(profile.id) ? { distanceKm: roundedKm(distanceById.get(profile.id)!) } : {}),
+  };
+}
+
+/** Distanza mostrata e usata nell'ordine: un decimale. */
+function roundedKm(km: number): number {
+  return Math.round(km * 10) / 10;
+}
 
 export type ProfessionalSearchParams = {
   category?: string;
@@ -440,6 +502,12 @@ export class ProfessionalsService {
     options: { page: number; pageSize: number; filters: ResultFilters; bounds?: ResultsBounds; now?: Date },
   ): Promise<ProfessionalSearchPage> {
     const now = options.now ?? new Date();
+    // Ricerca per mestiere e luogo con i filtri del profilo (la più frequente,
+    // le pagine città): ordine, pagina e riassunto li fa il database
+    // (docs/changelog/2026-11-16-stelle-nel-profilo.md). Prestazione o problema
+    // cercati (la prestazione in evidenza si trova nel codice), zona della mappa
+    // e filtri sull'agenda passano dalla ricerca nel codice.
+    if (this.sortsInDatabase(params, options)) return this.searchPageInDatabase(params, options, now);
     const main = await this.rankedSearch(params);
     let candidates = main;
     if (options.bounds) {
@@ -525,8 +593,13 @@ export class ProfessionalsService {
     }
   }
 
-  /** Tutti i trovati, nell'ordine della ricerca, in forma leggera (SearchRow): le schede intere le dà searchDetails. */
-  private async rankedSearch({ category, city, q, remote, service, excludeDemo, merit, offers, offersTrade, problem, problemService }: ProfessionalSearchParams): Promise<SearchRow[]> {
+  /**
+   * Chi cercare: condizioni del database, distanze dal comune cercato e
+   * chiavi della prestazione o del problema. Comune alla ricerca nel codice
+   * (rankedSearch) e a quella ordinata dal database (searchPageInDatabase).
+   * null = nessuno da cercare.
+   */
+  private async searchScope({ category, city, q, remote, service, excludeDemo, offers, offersTrade, problem, problemService }: ProfessionalSearchParams) {
     // Sinonimi compresi (docs/changelog/2026-10-28-quanto-costa-sinonimi.md): "perdite" trova chi ha scritto "Riparazione perdita d'acqua".
     const canonicalize = service || (problem && problemService) ? await this.serviceNamesService.canonicalizer() : null;
     const problemServiceKey = problem && problemService && canonicalize ? serviceGroupKey(problemService, canonicalize) : "";
@@ -535,7 +608,7 @@ export class ProfessionalsService {
     const publicWhere = this.publicSearchWhere(category, excludeDemo, serviceProfileIds);
     const offerKeywords = offers ? OUT_OF_SERVICE_KEYWORDS[offers] : offersTrade ? missingTradeKeywords(offersTrade) : [];
     // Un mestiere senza una parola da cercare non deve diventare "tutti i professionisti".
-    if (!offers && offersTrade && offerKeywords.length === 0) return [];
+    if (!offers && offersTrade && offerKeywords.length === 0) return null;
     const filtersWhere: Prisma.ProfessionalProfileWhereInput = {
       ...publicWhere,
       // Nell'AND: l'OR in cima è già usato da publicSearchWhere.
@@ -574,8 +647,9 @@ export class ProfessionalsService {
     let distanceById: Map<string, number> | null = null;
     let where: Prisma.ProfessionalProfileWhereInput = baseWhere;
     if (comune) {
+      const box = searchAreaBox(comune, SEARCH_FALLBACK_MAX_KM);
       const candidates = await this.prisma.professionalProfile.findMany({
-        where: baseWhere,
+        where: { AND: [baseWhere, { latitude: { gte: box.south, lte: box.north }, longitude: { gte: box.west, lte: box.east } }] },
         select: { id: true, latitude: true, longitude: true },
       });
       distanceById = selectSearchArea(comune, candidates, SEARCH_RADIUS_KM, SEARCH_FALLBACK_MAX_KM);
@@ -584,6 +658,133 @@ export class ProfessionalsService {
       where = { ...baseWhere, city: { equals: city, mode: "insensitive" } };
     }
 
+    return { where, distanceById, unfiltered, serviceKey, canonicalize, problemServiceKey };
+  }
+
+  /** Quando la pagina la può ordinare il database (searchPageInDatabase). */
+  private sortsInDatabase(params: ProfessionalSearchParams, options: { filters: ResultFilters; bounds?: ResultsBounds }): boolean {
+    return !params.problem && !params.service && !params.offers && !params.offersTrade && !options.bounds && !options.filters.urgent && !options.filters.availability;
+  }
+
+  /**
+   * Una pagina ordinata e divisa dal database, con stelle e recensioni salvate
+   * nel profilo (docs/changelog/2026-11-16-stelle-nel-profilo.md): si leggono
+   * solo gli id dei trovati, poi il database ordina, conta, riassume e
+   * restituisce i 20 della pagina. Stesso ordine di rankedSearch (le prove
+   * confrontano le due ricerche).
+   */
+  private async searchPageInDatabase(
+    params: ProfessionalSearchParams,
+    options: { page: number; pageSize: number; filters: ResultFilters },
+    now: Date,
+  ): Promise<ProfessionalSearchPage> {
+    const scope = await this.searchScope(params);
+    const ids = !scope
+      ? []
+      : scope.distanceById
+        ? [...scope.distanceById.keys()]
+        : (
+            await this.prisma.professionalProfile.findMany({
+              where: scope.where,
+              select: { id: true },
+              ...(scope.unfiltered ? { orderBy: { createdAt: "desc" as const }, take: SEARCH_MAX_RESULTS } : {}),
+            })
+          ).map((row) => row.id);
+    const pageSize = Math.min(Math.max(1, options.pageSize), 50);
+    if (ids.length === 0) return { ...emptyResultsPage(), pageSize };
+    const distanceById = scope?.distanceById ?? null;
+    const distances = ids.map((id) => (distanceById?.has(id) ? roundedKm(distanceById.get(id)!) : 0));
+    const { filters } = options;
+
+    const found = Prisma.sql`
+      FROM "professional_profiles" p
+      JOIN unnest(${ids}::text[], ${distances}::float8[]) AS c("id", "dist") ON c."id" = p."id"
+      LEFT JOIN "professional_fiscal_profiles" f ON f."professionalProfileId" = p."id"`;
+    const bySubTag = filters.subTag ? Prisma.sql`${filters.subTag} = ANY(p."subTags")` : Prisma.sql`TRUE`;
+    // Stessi filtri di matchesProfileFilters (packages/shared/src/resultsPage.ts).
+    const byPanel = Prisma.sql`${bySubTag}
+      ${filters.online ? Prisma.sql`AND p."remoteAvailable"` : Prisma.empty}
+      ${filters.language ? Prisma.sql`AND ${filters.language} = ANY(p."spokenLanguages")` : Prisma.empty}
+      ${filters.insured ? Prisma.sql`AND p."hasLiabilityInsurance"` : Prisma.empty}
+      ${filters.onlinePayment ? Prisma.sql`AND ${onlinePaymentsEnabled()} AND COALESCE(f."stripePayoutsEnabled", FALSE)` : Prisma.empty}`;
+    // Stesso ordine di rankedSearch: abbassati in fondo, poi chi deve ancora
+    // verificare l'identità, boost (non con merito=1), stelle, recensioni,
+    // distanza, id (byte per byte, come il confronto tra stringhe del codice).
+    const order = Prisma.sql`ORDER BY
+      (p."demotedUntil" IS NOT NULL AND p."demotedUntil" > ${now}) ASC,
+      (${identityVerificationRequired()} AND NOT p."isDemo" AND NOT p."verified" AND p."identityExpiredAt" IS NULL) ASC,
+      ${params.merit ? Prisma.empty : Prisma.sql`EXISTS (SELECT 1 FROM "visibility_boosts" v WHERE v."professionalProfileId" = p."id" AND v."status" = 'ACTIVE') DESC,`}
+      COALESCE(p."reviewRating", 0) DESC, p."reviewCount" DESC, c."dist" ASC, p."id" COLLATE "C" ASC`;
+
+    const pageOf = (page: number) =>
+      this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`SELECT p."id" ${found} WHERE ${byPanel} ${order} LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`);
+    const requestedPage = Math.max(1, options.page);
+    // Tutto insieme: la pagina chiesta si legge subito, senza aspettare il totale.
+    const [[totals], tagRows, cityRows, languageRows, requestedIds, factsIds] = await Promise.all([
+      this.prisma.$queryRaw<{ total: number; count: number; verified: number; reviewCount: number; ratingSum: number }[]>(Prisma.sql`
+        SELECT COUNT(*) FILTER (WHERE ${byPanel})::int AS "total",
+          COUNT(*) FILTER (WHERE ${bySubTag})::int AS "count",
+          COUNT(*) FILTER (WHERE ${bySubTag} AND p."verified" AND NOT p."isDemo")::int AS "verified",
+          COALESCE(SUM(p."reviewCount") FILTER (WHERE ${bySubTag}), 0)::int AS "reviewCount",
+          COALESCE(SUM(COALESCE(p."reviewRating", 0) * p."reviewCount") FILTER (WHERE ${bySubTag}), 0)::float8 AS "ratingSum"
+        ${found}`),
+      this.prisma.$queryRaw<{ tag: string; count: number }[]>(Prisma.sql`
+        SELECT t AS "tag", COUNT(*)::int AS "count" ${found} CROSS JOIN LATERAL unnest(p."subTags") AS t WHERE ${bySubTag} GROUP BY t`),
+      // A parità di nome scritto in modi diversi (maiuscole) si mostra il primo in ordine alfabetico.
+      this.prisma.$queryRaw<{ city: string; count: number }[]>(Prisma.sql`
+        SELECT MIN(btrim(p."city")) AS "city", COUNT(*)::int AS "count" ${found}
+        WHERE ${bySubTag} AND btrim(p."city") <> '' GROUP BY lower(btrim(p."city"))`),
+      // Le lingue del pannello: di tutti i trovati, senza i filtri.
+      this.prisma.$queryRaw<{ language: string }[]>(Prisma.sql`SELECT DISTINCT unnest(p."spokenLanguages") AS "language" ${found}`),
+      pageOf(requestedPage),
+      // Per le tre prestazioni di "in breve": i primi nell'ordine (firstServiceNames).
+      this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`SELECT p."id" ${found} WHERE ${bySubTag} ${order} LIMIT 60`),
+    ]);
+
+    const total = totals?.total ?? 0;
+    const pageCount = Math.max(1, Math.ceil(total / pageSize));
+    // Una pagina che non esiste più diventa l'ultima (di rado: un link vecchio).
+    const page = Math.min(requestedPage, pageCount);
+    const pageIds = page === requestedPage ? requestedIds : await pageOf(page);
+    const wanted = [...new Set([...pageIds, ...factsIds].map((row) => row.id))];
+    const profiles = await this.prisma.professionalProfile.findMany({
+      where: { id: { in: wanted } },
+      select: { ...SEARCH_ROW_SELECT, services: { ...SEARCH_ROW_SELECT.services, take: 0 } },
+    });
+    const today = new Date().toISOString().slice(0, 10);
+    const rowById = new Map(profiles.map((profile) => [profile.id, toSearchRow(profile, { category: params.category, today, distanceById })]));
+    const rowsOf = (list: { id: string }[]) => list.flatMap((row) => (rowById.has(row.id) ? [rowById.get(row.id)!] : []));
+
+    const [results, services] = await Promise.all([
+      this.searchDetails(rowsOf(pageIds), params.category).then(async (details) => {
+        await this.fillSearchAgenda(details);
+        return details;
+      }),
+      this.firstServiceNames(rowsOf(factsIds), params.category),
+    ]);
+    const nearestOutsideKm =
+      params.city && distanceById && ids.every((id) => (distanceById.get(id) ?? 0) > SEARCH_RADIUS_KM)
+        ? Math.round(Math.min(...ids.map((id) => roundedKm(distanceById.get(id)!))))
+        : null;
+    const facts: ResultsFacts = {
+      count: totals?.count ?? 0,
+      verified: totals?.verified ?? 0,
+      reviewCount: totals?.reviewCount ?? 0,
+      ratingSum: Math.round((totals?.ratingSum ?? 0) * 100) / 100,
+      subTagCounts: Object.fromEntries(tagRows.map((row) => [row.tag, row.count])),
+      services,
+      cities: cityRows.sort((a, b) => b.count - a.count || a.city.localeCompare(b.city, "it")).slice(0, 30),
+    };
+    const languages = languageRows.map((row) => row.language).sort((a, b) => a.localeCompare(b, "it"));
+    return { results, total, page, pageSize, pageCount, languages, nearestOutsideKm, facts };
+  }
+
+  /** Tutti i trovati, nell'ordine della ricerca, in forma leggera (SearchRow): le schede intere le dà searchDetails. */
+  private async rankedSearch(params: ProfessionalSearchParams): Promise<SearchRow[]> {
+    const { category, merit, problem } = params;
+    const scope = await this.searchScope(params);
+    if (!scope) return [];
+    const { where, distanceById, unfiltered, serviceKey, canonicalize, problemServiceKey } = scope;
     // Le prestazioni di tutti i trovati servono solo per trovare quella che
     // corrisponde alla voce o al problema cercato: altrimenti non si leggono.
     const needServices = Boolean(serviceKey || problem);
@@ -596,48 +797,8 @@ export class ProfessionalsService {
       ...(unfiltered ? { orderBy: { createdAt: "desc" as const }, take: SEARCH_MAX_RESULTS } : {}),
     });
 
-    // Stelle e recensioni contate dal database, non caricando ogni lavoro
-    // (docs/changelog/2026-11-16-traffico-elevato.md). Recensioni dei clienti
-    // pubbliche subito (docs/CHANGELOG.md §215).
-    const statsByProfileId = await loadReviewStats(this.prisma, profiles.map((profile) => profile.id));
     const today = new Date().toISOString().slice(0, 10);
-
-    const results = profiles.map((profile) => {
-      const stats = statsByProfileId.get(profile.id) ?? emptyReviewStats();
-      const categories = profileCategories(profile);
-      // Cercando "idraulico" la card mostra Idraulico anche se è una
-      // categoria aggiuntiva del professionista.
-      const shownCategory = categories.find((item) => item.slug === category) ?? categories[0]!;
-      const services = servicesFirstFor(profile.services, category, categories.map((item) => item.slug)).map(({ id, name }) => ({ id, name }));
-      return {
-        id: profile.id,
-        businessName: profile.businessName,
-        categorySlug: shownCategory.slug,
-        categoryLabel: shownCategory.label,
-        categories,
-        city: profile.city,
-        latitude: profile.latitude,
-        longitude: profile.longitude,
-        imageUrl: profile.imageUrl,
-        verified: publicVerified(profile),
-        stripeVerified: stripeVerified(profile.fiscalProfile),
-        rating: stats.rating,
-        reviewCount: stats.reviewCount,
-        boosted: profile.visibilityBoosts.length > 0,
-        remoteAvailable: profile.remoteAvailable,
-        subTags: profile.subTags,
-        spokenLanguages: profile.spokenLanguages,
-        hasLiabilityInsurance: profile.hasLiabilityInsurance,
-        availabilityFrom: today,
-        services,
-        ...(serviceKey && canonicalize
-          ? matchedServiceField(services, serviceKey, canonicalize)
-          : problem
-            ? problemServiceField(services, problem, problemServiceKey && canonicalize ? { key: problemServiceKey, canonicalize } : null)
-            : {}),
-        ...(distanceById?.has(profile.id) ? { distanceKm: Math.round(distanceById.get(profile.id)! * 10) / 10 } : {}),
-      } satisfies SearchRow;
-    });
+    const results = profiles.map((profile) => toSearchRow(profile, { category, today, distanceById, serviceKey, canonicalize, problem, problemServiceKey }));
 
     // Ranking sponsorizzabile: boost attivo prima, poi rating, poi numero
     // recensioni (CLAUDE.md §1 — il ranking è la leva di monetizzazione).
@@ -662,7 +823,11 @@ export class ProfessionalsService {
       const reviewDiff = b.reviewCount - a.reviewCount;
       if (reviewDiff !== 0) return reviewDiff;
       // A parità di tutto, nella ricerca per luogo prima il più vicino.
-      return (a.distanceKm ?? 0) - (b.distanceKm ?? 0);
+      const distanceDiff = (a.distanceKm ?? 0) - (b.distanceKm ?? 0);
+      if (distanceDiff !== 0) return distanceDiff;
+      // Poi un ordine fisso, uguale a quello del database (searchPageInDatabase):
+      // le pagine non si scambiano i professionisti tra una richiesta e l'altra.
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
     });
 
     return results;
