@@ -1728,7 +1728,11 @@ export function GuidedRequestForm({
               <Text fontSize={13} color={brand.grafite70} aria-live="polite">
                 {/* "Scegli fino a 3", poi "1 di 3" (docs/CHANGELOG.md §349): "Fino a 3"
                     da solo non diceva che si possono scegliere più categorie. */}
-                {categorySlugs.length > 0 ? `${categorySlugs.length} di ${MAX_REQUEST_CATEGORIES}` : `Scegli fino a ${MAX_REQUEST_CATEGORIES}`}
+                {categorySlugs.length > 1
+                  ? `${categorySlugs.length} di ${MAX_REQUEST_CATEGORIES} · ${categorySlugs.length} richieste`
+                  : categorySlugs.length > 0
+                    ? `${categorySlugs.length} di ${MAX_REQUEST_CATEGORIES}`
+                    : `Scegli fino a ${MAX_REQUEST_CATEGORIES}`}
               </Text>
             </XStack>
             {/* Senza una categoria scelta, una riga che dice cosa fare. Con la
@@ -1766,10 +1770,14 @@ export function GuidedRequestForm({
               waiting={waitingForAi}
               also={suggestionsOn ? alsoSuggested : []}
             />
+            {/* Più grande e scuro (test con 5 persone, chi legge piano non era
+                sicuro: "o una sola con tutte e due?"),
+                docs/changelog/2026-11-16-scelta-categoria-togli.md. */}
             {categorySlugs.length > 1 ? (
-              <Text fontSize={13} color={brand.grafite70}>
-                Riceverai una richiesta separata per ogni categoria.
-              </Text>
+              <p className="guided-requests-count" aria-live="polite">
+                <Icon name="send" size={16} color="#1E6B6E" strokeWidth={2.2} />
+                {`Partono ${categorySlugs.length} richieste, una per mestiere.`}
+              </p>
             ) : null}
           </YStack>
         ) : null}

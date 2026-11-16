@@ -6929,6 +6929,31 @@ a.admin-kpi:hover {
     border-color: #1e6b6e;
   }
 }
+.cat-choice-remove {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #e4ddd2;
+  border-radius: 999px;
+  background: #ffffff;
+  cursor: pointer;
+}
+.cat-choice-remove:focus-visible {
+  outline: 2px solid #1e6b6e;
+  outline-offset: 2px;
+}
+.guided-requests-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f3b3b;
+}
 .cat-choice-change:active {
   transform: scale(0.97);
 }
