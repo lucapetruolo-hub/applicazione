@@ -18,27 +18,9 @@ import { ONLINE_LIMIT_EUR_CENTS, ONLINE_LIMIT_FREE_DAYS, ONLINE_LIMIT_FREE_JOBS 
 import { ONLINE_APP_FEE_PERCENT, ONLINE_DEPOSIT_PERCENT, ONLINE_RELEASE_DAYS } from "./onlinePayments";
 import { MAX_AWAY_DAYS } from "./away";
 import { PAST_DUE_GRACE_DAYS, SUBSCRIPTION_TIERS } from "./plans";
+import { FAQ_HOME, type FaqAudience, type FaqItem } from "./faqHome";
 
-export type FaqAudience = "cliente" | "professionista";
-
-export type FaqItem = {
-  /** Ancora della domanda in `/faq#<id>`: non cambiarla, la usano i link. */
-  id: string;
-  audience: FaqAudience;
-  topic: string;
-  question: string;
-  answer: string;
-  /** Al posto di `answer` finché i pagamenti online non sono attivi. */
-  answerWithoutOnline?: string;
-  /** Domanda nascosta finché i pagamenti online non sono attivi. */
-  onlineOnly?: boolean;
-  /** "Scopri di più" verso questa pagina del sito. */
-  more?: string;
-  /** "Scopri di più" che si apre sul posto, per il conto o il dettaglio. */
-  detail?: string;
-  /** Domanda dei mesi gratis: `{mesi}` diventa "3 mesi"; nascosta senza offerta attiva. */
-  founderOffer?: boolean;
-};
+export type { FaqAudience, FaqItem } from "./faqHome";
 
 /** Argomenti in ordine di pagina, per ciascun pubblico. */
 export const FAQ_TOPICS: Record<FaqAudience, readonly string[]> = {
@@ -54,21 +36,7 @@ const PRO = tier("PRO");
 
 export const FAQ: readonly FaqItem[] = [
   // ——— Clienti: come funziona ———
-  {
-    id: "quanto-costa",
-    audience: "cliente",
-    topic: "Come funziona",
-    question: "Quanto costa usare il servizio?",
-    answer: "È gratis per chi cerca un professionista. Paghi solo il lavoro che fai fare, al prezzo del preventivo che scegli.",
-  },
-  {
-    id: "registrazione",
-    audience: "cliente",
-    topic: "Come funziona",
-    question: "Devo registrarmi per ricevere un preventivo?",
-    answer:
-      "Sì, serve un account gratuito (email o Google) per inviare la richiesta e ricevere i preventivi. Bastano pochi secondi, nessuna carta richiesta.",
-  },
+  ...FAQ_HOME,
   {
     id: "come-chiedere",
     audience: "cliente",

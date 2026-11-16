@@ -1,11 +1,11 @@
 "use client";
 
 import { Section, brand } from "@professionisti/ui";
-import { faqByIds } from "@professionisti/shared";
+import { FAQ_HOME } from "@professionisti/shared";
 
 // Le due domande della home vengono dalla fonte unica delle domande frequenti
 // (packages/shared/src/faq.ts, docs/changelog/2026-11-16-domande-frequenti.md).
-const HOME_FAQ = faqByIds(["quanto-costa", "registrazione"]);
+const HOME_FAQ = FAQ_HOME;
 
 /**
  * Micro-FAQ a scomparsa sotto "Come funziona" (richiesta esplicita

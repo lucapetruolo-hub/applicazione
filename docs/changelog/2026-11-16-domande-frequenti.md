@@ -11,7 +11,8 @@ progetto), fare solo la base di risposte scritte, **senza IA per ora**.
   prezzi, percentuali, tetti) vengono dalle costanti, mai scritti a mano. Le
   vecchie 8 (`HomeFaq.tsx`, `WhatIfSection.tsx`) e le 10 di
   `/per-professionisti` e `/per-professionisti/pagamenti` ora le prendono da
-  qui per `id`: stesso testo, nessun doppione. `WhatIfSection.tsx` tolto.
+  qui per `id`: stesso testo, nessun doppione. `WhatIfSection.tsx` tolto. Le due domande della home stanno in
+  `faqHome.ts`, così la home non scarica tutte le altre risposte.
 - `/faq`: scelta in alto "Per chi cerca" / "Per i professionisti", argomenti
   come titoli, campo "Cerca tra le domande" (inizio di parola, senza accenti,
   senza IA), "Non hai trovato la risposta? Scrivici" in fondo.
@@ -32,4 +33,5 @@ sole tolgono messaggi ai Contatti, soprattutto dai professionisti bloccati.
 **Verifica**: `packages/shared/src/faq.test.ts` (id unici, argomenti validi,
 `{mesi}` solo nella domanda dei mesi gratis, risposte brevi, ordine),
 `pnpm lint` (anche frasi da intermediario) e `typecheck` di `apps/web`,
-anteprime da telefono e computer in `anteprime/domande-frequenti/`.
+`next build` con `controlla-js-pagine-pubbliche.mjs` verde (`/faq`
+303 KB compressi, home 342 KB), anteprime da telefono e computer in `anteprime/domande-frequenti/`.
