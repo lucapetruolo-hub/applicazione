@@ -49,3 +49,19 @@ copertina nessuno scorrimento, nessuno scorrimento di lato.
 **Verifica**: la prova nuova verde su telefono e computer (7 prove) con API,
 sito e database veri; foto dell'anteprima (computer e telefono, tutti e due
 gli stati) e del profilo a 1920 px (aperto a 360 px).
+
+## Altre due migliorie approvate da Luca (16/11/2026)
+
+- **Freccia "Vedi la foto di copertina"**: pulsante tondo bianco con la
+  freccia in su a destra del percorso, solo nei profili con copertina. Porta
+  in cima alla foto (scorrimento morbido, subito con "riduci movimento") e
+  sparisce quando si è in cima. Compare con un piccolo movimento una volta
+  sola. Il percorso gli lascia 48 px a destra (l'ultima voce si accorcia con i
+  puntini): l'apertura della pagina non cambia.
+- **Anteprima da telefono**: con "Scorrendo in su" la piccola scheda del
+  computer mostra solo il nome, senza la foto profilo tagliata a metà.
+
+**Verifica**: prova `copertina-profilo.spec.ts` con due casi in più (la
+freccia porta in cima e sparisce; senza copertina niente freccia), 11 prove
+verdi su telefono e computer con API, sito e database veri; foto del profilo
+aperto da computer e da telefono e dell'anteprima da telefono.

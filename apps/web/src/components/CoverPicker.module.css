@@ -407,6 +407,15 @@
   top: 54%;
 }
 
+/* Da telefono la scheda del computer è piccola: scorrendo in su resta solo il
+   nome, senza la foto tagliata a metà. */
+@media (max-width: 660px) {
+  .viewsScrolled .frameWide .cardPhoto,
+  .viewsScrolled .frameWide .cardSub {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .frameCover,
   .card {

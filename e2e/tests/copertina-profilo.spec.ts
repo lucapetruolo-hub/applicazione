@@ -99,6 +99,20 @@ test("scorrendo in su si vede la copertina", async ({ page }) => {
   expect(Math.round(after!.y - before!.y)).toBe(expectedSpace(page.viewportSize()?.width ?? 0));
 });
 
+test("il pulsante con la freccia porta in cima alla copertina e poi sparisce", async ({ page }) => {
+  await openAndMeasure(page, ids.withCover, "Marco Bianchi Idraulica");
+  const peek = page.getByRole("button", { name: "Vedi la foto di copertina" });
+  await expect(peek).toBeVisible();
+  await peek.click();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await expect(peek).toBeHidden();
+});
+
+test("senza copertina niente pulsante con la freccia", async ({ page }) => {
+  await openAndMeasure(page, ids.withoutCover, "Luisa Neri Idraulica");
+  await expect(page.getByRole("button", { name: "Vedi la foto di copertina" })).toHaveCount(0);
+});
+
 test("con un # nel link non scorre sotto la copertina", async ({ page }) => {
   const opened = await openAndMeasure(page, ids.withCover, "Marco Bianchi Idraulica", "#prestazioni-che-non-esiste");
   expect(opened.scrollY).toBe(0);

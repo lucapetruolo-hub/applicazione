@@ -91,6 +91,39 @@ function startBelowCover() {
 // Scritta a mano, non con toString(): la versione compilata cambia i nomi.
 const coverScrollScript = `if(!location.hash&&scrollY<5)scrollTo(0,matchMedia("(max-width: 660px)").matches?${COVER_PHONE_SPACE}:matchMedia("(min-width: ${COVER_WIDE_MIN_WIDTH}px)").matches?${COVER_WIDE_SPACE}:${COVER_DESKTOP_SPACE})`;
 
+/**
+ * Segnale che sopra c'è la copertina (miglioria approvata da Luca il
+ * 16/11/2026, docs/changelog/2026-11-16-copertina-da-computer.md): un piccolo
+ * pulsante tondo con la freccia in su accanto al percorso, che porta in cima
+ * alla foto. Sparisce quando si è già in cima. Non cambia l'apertura della
+ * pagina: il percorso gli lascia solo lo spazio a destra.
+ */
+function CoverPeekButton() {
+  const [atTop, setAtTop] = useState(false);
+  useEffect(() => {
+    const update = () => setAtTop(window.scrollY < 8);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+  return (
+    <button
+      type="button"
+      className={`${styles.coverPeek}${atTop ? ` ${styles.coverPeekHidden}` : ""}`}
+      aria-label="Vedi la foto di copertina"
+      title="Vedi la foto di copertina"
+      tabIndex={atTop ? -1 : undefined}
+      aria-hidden={atTop || undefined}
+      onClick={() => {
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+      }}
+    >
+      <Icon name="chevron-up" size={18} color={brand.cianografiaScuro} />
+    </button>
+  );
+}
+
 export function ProfessionalDetailContent({
   professional,
   initialAgenda = null,
@@ -409,8 +442,9 @@ export function ProfessionalDetailContent({
         ) : null}
         {/* Più vicino alla scheda del gap standard: il percorso ne è l'intestazione. */}
         {breadcrumbs ? (
-          <div className={`is_View ${styles.stack}`} style={{ marginTop: -8, marginBottom: -12 }}>
+          <div className={`is_View ${styles.stack}${hasCoverSpace ? ` ${styles.crumbsWithPeek}` : ""}`} style={{ marginTop: -8, marginBottom: -12 }}>
             {breadcrumbs}
+            {hasCoverSpace ? <CoverPeekButton /> : null}
           </div>
         ) : null}
         {choice.search ? <ProfileChoiceStrip search={choice.search} pro={choicePro} onToggle={choice.toggle} /> : null}
