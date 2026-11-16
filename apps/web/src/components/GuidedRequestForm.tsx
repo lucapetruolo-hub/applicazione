@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useRef, useState, type ReactNode } from "react";
+import { useDeferredValue, useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { X } from "lucide-react";
@@ -604,15 +604,43 @@ export function GuidedRequestForm({
     setCategorySlugs(slugs.slice(0, MAX_REQUEST_CATEGORIES));
   }
   const checkingRef = useRef("");
-  function checkDescription() {
-    const text = description.trim();
+  // Descrizione per cui l'IA non ha risposto (errore o troppo lenta): si
+  // mostra quello che ha capito il dizionario, come prima.
+  const [failedDescription, setFailedDescription] = useState<string | null>(null);
+  function checkDescription(text = description.trim()) {
     if (!suggestionsOn || text.length < 10 || checkingRef.current === text) return;
     checkingRef.current = text;
     apiClient
       .matchProblem({ description: text, city: city.trim() || undefined })
       .then((result) => setCheckedDescription({ text, result }))
-      .catch(() => undefined);
+      .catch(() => setFailedDescription(text));
   }
+  // "Sto capendo chi ti serve…" (test con 5 persone del 16/11/2026,
+  // docs/changelog/2026-11-16-scelta-categoria-attesa-ia.md): quando il
+  // dizionario ha un dubbio, invece di mostrare le pillole e poi, all'arrivo
+  // dell'IA, la scheda (la forma cambiava sotto gli occhi), si aspetta l'IA
+  // e si mostra la forma giusta una volta sola. L'IA parte anche dopo una
+  // pausa di scrittura, non solo uscendo dal campo: da telefono si scorre
+  // senza uscire. Dopo 9 secondi senza risposta si torna al dizionario.
+  const waitingForAi =
+    suggestionsOn &&
+    !categoriesByHand &&
+    typedDescription.length >= 10 &&
+    localMatch !== null &&
+    !localMatch.confident &&
+    checkedDescription?.text !== typedDescription &&
+    failedDescription !== typedDescription;
+  const checkAfterPause = useEffectEvent((text: string) => checkDescription(text));
+  useEffect(() => {
+    if (!waitingForAi) return;
+    const text = typedDescription;
+    const pause = setTimeout(() => checkAfterPause(text), 1500);
+    const giveUp = setTimeout(() => setFailedDescription(text), 9000);
+    return () => {
+      clearTimeout(pause);
+      clearTimeout(giveUp);
+    };
+  }, [waitingForAi, typedDescription]);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   // Esempi solo per una richiesta generale senza categoria di partenza: con
   // "Imbianchino" già scelto un esempio da idraulico confonderebbe.
@@ -1527,7 +1555,7 @@ export function GuidedRequestForm({
               className="guided-description-input"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              onBlur={checkDescription}
+              onBlur={() => checkDescription()}
               placeholder={resolvedDescriptionPlaceholder}
               rows={4}
               style={{
@@ -1540,6 +1568,29 @@ export function GuidedRequestForm({
               }}
             />
           </div>
+          {/* Cosa ha capito il sito, subito sotto la descrizione: chi scrive da
+              telefono non vede la scelta più in basso (test con 5 persone,
+              docs/changelog/2026-11-16-scelta-categoria-attesa-ia.md). */}
+          {suggestionsOn && typedDescription.length >= 4 && (waitingForAi || categorySlugs.length > 0) ? (
+            <div className="guided-chosen-hint" aria-live="polite">
+              {waitingForAi ? (
+                <span className="guided-chosen-wait">Sto capendo chi ti serve…</span>
+              ) : (
+                <button
+                  type="button"
+                  className="guided-chosen-link"
+                  onClick={() => {
+                    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                    document.getElementById("guided-field-categorie")?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+                  }}
+                >
+                  Ti serve: {categorySlugs.map(categoryLabelOf).join(", ")}
+                  {alsoSuggested.length > 0 && categorySlugs.length < MAX_REQUEST_CATEGORIES ? ` · forse anche ${alsoSuggested.map(categoryLabelOf).join(", ")}` : null}
+                  <Icon name="chevron-down" size={16} color="#1E6B6E" strokeWidth={2.4} />
+                </button>
+              )}
+            </div>
+          ) : null}
           {showExamples ? (
             // Due esempi da toccare, come in home (scelta di Luca): riconosciuti
             // con sicurezza dal dizionario, mostrano subito la categoria.
@@ -1682,12 +1733,12 @@ export function GuidedRequestForm({
             </XStack>
             {/* Senza una categoria scelta, una riga che dice cosa fare. Con la
                 categoria suggerita lo dice la scheda stessa (`CategoryChoice`). */}
-            {suggestionsOn && autoApplied && !suggestionSure && categorySlugs.length === 1 && categorySlugs[0] === autoApplied ? (
+            {!waitingForAi && suggestionsOn && autoApplied && !suggestionSure && categorySlugs.length === 1 && categorySlugs[0] === autoApplied ? (
               <Text fontSize={13} color={brand.grafite70} aria-live="polite">
                 {`Forse ti serve ${categoryLabelOf(autoApplied)}: l'abbiamo già scelta, controlla qui sotto o scegline un'altra.`}
               </Text>
             ) : null}
-            {suggestionsOn && categorySlugs.length === 0 ? (
+            {!waitingForAi && suggestionsOn && categorySlugs.length === 0 ? (
               <Text fontSize={13} color={brand.grafite70} aria-live="polite">
                 {openQuestion
                   ? `Può servirti ${joinWithOr(suggestedSlugs.map((slug) => CATEGORY_WHO[slug]))}: rispondi alla domanda qui sopra o scegli tu.`
@@ -1712,6 +1763,7 @@ export function GuidedRequestForm({
               autoSlug={suggestionsOn && autoApplied && categorySlugs.includes(autoApplied) ? autoApplied : null}
               fromAi={suggestion?.source === "ia"}
               unsure={!suggestionSure}
+              waiting={waitingForAi}
               also={suggestionsOn ? alsoSuggested : []}
             />
             {categorySlugs.length > 1 ? (

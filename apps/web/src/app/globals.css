@@ -6800,6 +6800,67 @@ a.admin-kpi:hover {
 
 /* Categoria suggerita con "Cambia" (proposta A scelta da Luca il 15/11/2026,
    docs/changelog/2026-11-15-scelta-categoria-suggerita.md). */
+/* "Sto capendo chi ti serve…": attesa dell'IA, alta quanto la scheda. */
+.cat-choice-wait {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+  padding: 8px 14px;
+  border: 1px solid #e4ddd2;
+  border-radius: 20px;
+  background: #ffffff;
+}
+.cat-choice-wait-text {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f3b3b;
+}
+.cat-choice-wait-dot {
+  width: 12px;
+  height: 12px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: #1e6b6e;
+  animation: cat-choice-pulse 1.1s ease-in-out infinite;
+}
+@keyframes cat-choice-pulse {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cat-choice-wait-dot { animation: none; opacity: 0.6; }
+}
+/* "Ti serve: Idraulico ↓" sotto la descrizione. */
+.guided-chosen-hint {
+  min-height: 28px;
+  font-size: 14px;
+}
+.guided-chosen-wait {
+  color: #6f665d;
+}
+.guided-chosen-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e6b6e;
+  cursor: pointer;
+  text-align: left;
+}
+.guided-chosen-link:focus-visible {
+  outline: 2px solid #1e6b6e;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 .cat-choice-card {
   border: 2px solid #1e6b6e;
   border-radius: 20px;
