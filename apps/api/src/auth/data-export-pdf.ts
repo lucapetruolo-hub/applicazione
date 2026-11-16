@@ -94,6 +94,15 @@ const FIELD_LABELS: Record<string, string> = {
   reply: "Risposta",
   title: "Titolo",
   exportedAt: "Scaricato il",
+  priceEurCents: "Prezzo",
+  priceMinEurCents: "Prezzo da",
+  priceMaxEurCents: "Prezzo fino a",
+  totalEurCents: "Totale",
+  depositEurCents: "Acconto",
+  paidEurCents: "Pagato",
+  refundedEurCents: "Rimborsato",
+  grossAmountEurCents: "Importo",
+  finalAmountEurCents: "Importo finale",
 };
 
 /** Campi tecnici che nel PDF non dicono nulla alla persona (restano nel JSON). */
@@ -121,6 +130,11 @@ function formatValue(key: string, value: unknown): string | null {
     return parts.length ? parts.join(", ") : null;
   }
   return null;
+}
+
+/** "il 3 novembre", ma "l'8 novembre" e "l'11 novembre". */
+function withArticle(date: string): string {
+  return /^(8|11) /.test(date) ? `l'${date}` : `il ${date}`;
 }
 
 function formatDate(date: Date): string {
@@ -172,7 +186,7 @@ export function dataExportPdfModel(data: Record<string, unknown>): PdfDocumentMo
     {
       type: "text",
       lines: [
-        `Copia dei dati personali del tuo account, scaricata il ${formatDate(new Date(String(data.exportedAt ?? new Date().toISOString())))}.`,
+        `Copia dei dati personali del tuo account, scaricata ${withArticle(formatDate(new Date(String(data.exportedAt ?? new Date().toISOString()))))}.`,
         "Lo stesso contenuto, con tutti i campi tecnici, è nel file JSON che scarichi da Impostazioni: serve per portare i dati su un altro servizio.",
       ],
       muted: true,

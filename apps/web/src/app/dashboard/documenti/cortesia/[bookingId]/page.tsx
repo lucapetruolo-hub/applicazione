@@ -245,7 +245,7 @@ export default function CourtesyCopyPage() {
         </Text>
       </XStack>
 
-      <PartyBoxes from={copy.issuer} to={customer} toLabel="Ricevuto da" />
+      <PartyBoxes from={copy.issuer} to={customer} toLabel="Cliente" />
 
       <YStack>
         {copy.lines.map((line, index) => (
@@ -254,7 +254,7 @@ export default function CourtesyCopyPage() {
         {withholding && copy.totalEurCents !== null ? (
           <YStack paddingTop="2">
             <AmountRow label="Compenso lordo" value={eur(copy.totalEurCents)} divider={false} />
-            <AmountRow label="Ritenuta d'acconto 20%" value={`−${eur(withholdingAmount)}`} divider={false} />
+            <AmountRow label="Ritenuta d'acconto 20% (art. 25 DPR 600/1973)" value={`−${eur(withholdingAmount)}`} divider={false} />
           </YStack>
         ) : null}
         <YStack borderTopWidth={2} borderColor={brand.grafite} marginTop="2">

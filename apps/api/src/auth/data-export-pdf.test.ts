@@ -26,6 +26,10 @@ describe("dataExportPdfModel", () => {
     expect(flat).not.toContain("sessionVersion");
     expect(flat).not.toContain("\"c1\"");
     expect(flat).toContain("Nessun dato.");
+    // Campi degli importi in italiano e "l'8 novembre" (controllo dei PDF del 16/11/2026).
+    expect(flat).toContain("Prezzo da");
+    expect(flat).not.toContain("Price min");
+    expect(flat).toContain("scaricata l'8 novembre 2026");
   });
 
   it("si stampa in un PDF", async () => {

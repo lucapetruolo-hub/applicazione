@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import { courtesyAmountChanged, courtesyDocumentLabel, courtesyTotalEurCents, courtesyYearCsv, courtesyYearTotals, type CourtesyDocumentSummary, type CourtesyYearSummary, type MonthlyStatement } from "@professionisti/shared";
 import { courtesyDocumentSummary } from "./courtesy-documents";
-import { layout, pdfText, renderDocumentPdf } from "./document-pdf";
+import { layout, pdfText, renderDocumentPdf, type PdfBlock } from "./document-pdf";
 import { courtesyPdfModel, courtesyYearPdfModel, dac7PdfModel, invoicePdfModel, pdfFileName, statementPdfModel } from "./document-pdf-models";
 import { sandboxTestInvoiceXml, sdiCompanyOf, type IssuerSnapshot } from "./invoice-documents";
 import { OpenapiSdiProvider, sdiOutcomeFromNotifications, sdiRejectionMessage } from "./sdi-provider";
@@ -107,13 +107,17 @@ describe("PDF dei documenti", () => {
     expect(JSON.stringify(receipt.blocks)).toContain("4/2026");
     expect(receipt.blocks.some((b) => b.type === "signature")).toBe(true);
     // Lordo, ritenuta e netto (C-04); i consigli restano fuori dal documento; in alto chi lo emette (G-11).
-    expect(JSON.stringify(receipt.blocks)).toContain("Ritenuta d'acconto 20%");
+    expect(JSON.stringify(receipt.blocks)).toContain("Ritenuta d'acconto 20% (art. 25 DPR 600/1973)");
+    expect(JSON.stringify(receipt.blocks)).toContain('"label":"Cliente"');
     expect(JSON.stringify(receipt.blocks)).toContain("144,00");
     expect(JSON.stringify(receipt.blocks)).not.toContain("Consiglio solo per il professionista");
     expect(receipt.issuedBy).toBe(party.name);
 
     const dac7 = dac7PdfModel({ year: 2026, quarters: [{ quarter: 3, directEurCents: 1000, onlineEurCents: 0, feesEurCents: 0, jobs: 1 }], totalEurCents: 1000, submittedAt: null, notifiedAt: null }, null, "Mario Rossi", new Date("2026-10-27T10:00:00Z"));
     expect(JSON.stringify(dac7.blocks)).toContain("Anno in corso");
+    // Zero online nel trimestre: il trattino, come nei trimestri vuoti, non "0,00 €".
+    expect(JSON.stringify(dac7.blocks)).not.toMatch(/"0,00/);
+    expect(JSON.stringify(invoice.blocks)).toContain("Copia di cortesia in PDF.");
 
     for (const model of [invoice, statement, receipt, dac7]) {
       const pdf = await renderDocumentPdf(model);
@@ -391,6 +395,12 @@ describe("riepilogo dell'anno per il commercialista", () => {
     expect(texts.replace(/\u00a0|\u202f/g, " ")).toMatch(/Ritenute d'acconto trattenute dai clienti con partita IVA: 20,00\s€/);
     expect(texts).toContain("marca da bollo");
     expect(texts).toContain("1 documento ha l'importo cambiato dopo il PDF");
+    // Ricevuta a una partita IVA sopra 77,47 €: ritenuta e bollo insieme (controllo dei PDF del 16/11/2026).
+    expect(texts.replace(/\u00a0|\u202f/g, " ")).toMatch(/ritenuta 20,00\s€ · bollo 2 €/);
+    expect(texts).toContain("compensi lordi, prima della ritenuta");
+    expect(texts).not.toContain("contributi INPS");
+    const over = courtesyYearPdfModel({ ...summary, receipts: [{ ...summary.receipts[0]!, totalEurCents: 510000 }] }, new Date("2027-01-15T10:00:00Z"));
+    expect(JSON.stringify(over.blocks)).toContain("Nel 2026 le ricevute superano 5.000 €");
     const pdf = await renderDocumentPdf(model);
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
   });
@@ -731,5 +741,18 @@ describe("invio allo SdI con Openapi", () => {
     expect(xml).toContain("<CodiceFiscale>RSSMRA80A01H501U</CodiceFiscale>");
     expect(xml).toMatch(/<Numero>PROVA-[0-9A-Z]+<\/Numero>/);
     expect(xml).toContain("<ImportoTotaleDocumento>1.22</ImportoTotaleDocumento>");
+  });
+});
+
+describe("preventivo con la seconda pagina quasi vuota", () => {
+  it("stringe spazi, titoli e totale e resta su una pagina", async () => {
+    const blocks: PdfBlock[] = [{ type: "highlight", label: "Totale", value: "90 €", detail: "Tutto compreso" }];
+    for (let i = 0; i < 9; i += 1) blocks.push({ type: "heading", text: `Parte ${i + 1}` }, { type: "text", lines: ["Una riga di testo del preventivo, abbastanza lunga da occupare la sua riga intera."] });
+    let extra = 0;
+    const model = () => ({ title: "Preventivo", blocks: [...blocks, ...Array.from({ length: extra }, (_, i): PdfBlock => ({ type: "heading", text: `In più ${i}` }))] });
+    // Il primo titolo in più che, con gli spazi normali, porta su una seconda pagina.
+    while (layout(model(), 16).doc.bufferedPageRange().count === 1) extra += 1;
+    const pdf = await renderDocumentPdf(model());
+    expect((pdf.toString("latin1").match(/\/Type \/Page\b/g) ?? []).length).toBe(1);
   });
 });

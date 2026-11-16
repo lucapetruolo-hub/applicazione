@@ -60,8 +60,13 @@ const BOTTOM = PAGE.height - 64;
 const GAP = 16;
 /** Spazio tra i blocchi quando con quello normale l'ultima pagina avrebbe solo poche righe. */
 const COMPACT_GAP = 8;
-/** "Poche righe": quanto occupa al massimo l'ultima pagina perché valga la pena stringere. */
-const SHORT_LAST_PAGE = 90;
+/**
+ * "Poche righe": quanto occupa al massimo l'ultima pagina perché valga la pena
+ * stringere. Un terzo di pagina: un preventivo con la seconda pagina fatta
+ * solo di "Annullare" e del messaggio del professionista sta su una
+ * (controllo dei PDF del 16/11/2026, docs/changelog/2026-11-16-controllo-pdf.md).
+ */
+const SHORT_LAST_PAGE = 260;
 
 // Caratteri che i font standard del PDF sanno scrivere (WinAnsi): il resto
 // diventerebbe un simbolo sbagliato, quindi si sostituisce prima.
@@ -89,6 +94,8 @@ class Writer {
     private readonly top: string = EMAIL_BRAND.name,
     /** Spazio tra un blocco e l'altro. */
     readonly gap: number = GAP,
+    /** Titoli e totale in evidenza un po' più piccoli, per stare in meno pagine. */
+    readonly dense: boolean = false,
   ) {
     this.doc = new PDFDocument({
       size: "A4",
@@ -143,8 +150,9 @@ function caps(text: string): string {
 }
 
 function titleBlock(w: Writer, model: PdfDocumentModel): void {
-  const titleHeight = w.height(model.title, BOLD, 22, CONTENT_WIDTH);
-  w.write(model.title, MARGIN, w.y, CONTENT_WIDTH, { font: BOLD, size: 22, color: COLORS.heading });
+  const size = w.dense ? 20 : 22;
+  const titleHeight = w.height(model.title, BOLD, size, CONTENT_WIDTH);
+  w.write(model.title, MARGIN, w.y, CONTENT_WIDTH, { font: BOLD, size, color: COLORS.heading });
   w.y += titleHeight + 4;
   if (model.subtitle) {
     w.y += w.write(model.subtitle, MARGIN, w.y, CONTENT_WIDTH, { size: 11, color: COLORS.muted });
@@ -156,7 +164,7 @@ function titleBlock(w: Writer, model: PdfDocumentModel): void {
 function heading(w: Writer, block: Extract<PdfBlock, { type: "heading" }>): void {
   // Il titolo non resta da solo in fondo alla pagina: con sé almeno una riga.
   w.ensure(60);
-  w.y += w.write(block.text, MARGIN, w.y, CONTENT_WIDTH, { font: BOLD, size: 14 }) + 8;
+  w.y += w.write(block.text, MARGIN, w.y, CONTENT_WIDTH, { font: BOLD, size: w.dense ? 12.5 : 14 }) + (w.dense ? 5 : 8);
 }
 
 function highlight(w: Writer, block: Extract<PdfBlock, { type: "highlight" }>): void {
@@ -170,8 +178,8 @@ function highlight(w: Writer, block: Extract<PdfBlock, { type: "highlight" }>): 
     w.write(badge, MARGIN + CONTENT_WIDTH - width, w.y + 1, width, { font: BOLD, size: 8.5, color: COLORS.green, align: "center" });
   }
   w.y += 16;
-  w.write(block.value, MARGIN, w.y, CONTENT_WIDTH, { font: BOLD, size: 28 });
-  w.y += 36;
+  w.write(block.value, MARGIN, w.y, CONTENT_WIDTH, { font: BOLD, size: w.dense ? 24 : 28 });
+  w.y += w.dense ? 31 : 36;
   if (block.detail) w.y += w.write(block.detail, MARGIN, w.y, CONTENT_WIDTH, { size: 10.5, color: COLORS.muted }) + 6;
   w.y += w.gap - 6;
 }
@@ -384,11 +392,17 @@ export function renderDocumentPdf(model: PdfDocumentModel): Promise<Buffer> {
   // Se con lo spazio normale l'ultima pagina avrebbe solo qualche riga (per
   // esempio la nota finale della fattura), si stringono gli spazi tra i blocchi
   // e si tiene la versione con meno pagine (pacchetto per il commercialista).
+  // Se non basta, anche titoli e totale in evidenza un po' più piccoli.
   let w = layout(model, GAP);
   const pages = w.doc.bufferedPageRange().count;
   if (pages > 1 && w.y - (MARGIN + 30) <= SHORT_LAST_PAGE) {
-    const compact = layout(model, COMPACT_GAP);
-    if (compact.doc.bufferedPageRange().count < pages) w = compact;
+    for (const dense of [false, true]) {
+      const compact = layout(model, COMPACT_GAP, dense);
+      if (compact.doc.bufferedPageRange().count < pages) {
+        w = compact;
+        break;
+      }
+    }
   }
   const chunks: Buffer[] = [];
   const done = new Promise<Buffer>((resolve, reject) => {
@@ -412,8 +426,8 @@ export function renderDocumentPdf(model: PdfDocumentModel): Promise<Buffer> {
 }
 
 /** Impagina tutti i blocchi del documento, senza ancora chiuderlo (esportata per i test). */
-export function layout(model: PdfDocumentModel, gap: number): Writer {
-  const w = new Writer(model.title, model.issuedBy || EMAIL_BRAND.name, gap);
+export function layout(model: PdfDocumentModel, gap: number, dense = false): Writer {
+  const w = new Writer(model.title, model.issuedBy || EMAIL_BRAND.name, gap, dense);
   titleBlock(w, model);
   for (const block of model.blocks) {
     if (block.type === "heading") heading(w, block);
