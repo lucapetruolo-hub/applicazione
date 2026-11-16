@@ -9,6 +9,7 @@ import { EmptySearchResults } from "@/components/EmptySearchResults";
 import { ResultsListWithMap, type MapPoolQuery } from "@/components/ResultsListWithMap";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ChosenProsBar, chosenRequestHref } from "@/components/ChosenProsBar";
+import { ChosenProsStrip } from "@/components/ChosenProsStrip";
 import { saveLastSearchCity } from "@/lib/lastSearchCity";
 import { useChosenPros } from "@/lib/useChosenPros";
 
@@ -60,7 +61,7 @@ export function CategoryContent({
   // "+ Scegli" anche cercando un mestiere, come dal problema scritto
   // (docs/changelog/2026-11-03-scegli-ricerca-mestiere.md): la descrizione
   // del lavoro si scrive nel modulo della richiesta.
-  const { chosen, selection, limitNotice } = useChosenPros({
+  const { chosen, selection, limitNotice, remove, clear, undo } = useChosenPros({
     category: !loadFailed && page.facts.count >= 2 ? category.slug : null,
     city,
     description: "",
@@ -71,7 +72,7 @@ export function CategoryContent({
   // nel titolo della pagina, altrimenti H1 uguale alla pagina città (collaudo 08/11 E8-05).
   const service = subTag ? `: ${subTagLabel(subTag).toLowerCase()}` : "";
   const title = `${category.label}${online && city ? ` · consulenza online a ${city}` : online ? " · consulenza online" : city ? ` a ${city}` : " vicino a te"}${service}`;
-  const header = loadFailed ? (
+  const emptyHeader = loadFailed ? (
     <LoadErrorNotice title="Non riusciamo a caricare i professionisti" />
   ) : page.total > 0 || page.facts.count > 0 ? null : (
       <EmptySearchResults
@@ -82,6 +83,14 @@ export function CategoryContent({
         icon={<CategoryIconBadge slug={category.slug} size={48} />}
       />
     );
+
+  // Anteprima dei scelti sopra i risultati, come dal problema scritto
+  // (docs/changelog/2026-11-16-anteprima-scelti.md).
+  const header =
+    emptyHeader ??
+    (chosen.length > 0 || undo ? (
+      <ChosenProsStrip chosen={chosen} max={MAX_CHOSEN_PROFESSIONALS} description="" onRemove={remove} onClear={clear} undo={undo} />
+    ) : null);
 
   return (
     // HTML semplice, senza il calcolo degli stili di Tamagui
@@ -96,7 +105,7 @@ export function CategoryContent({
             risultati era stato tolto su richiesta e la ricerca in alto dice
             già cosa si sta guardando (docs/CHANGELOG.md §271). */}
         {/* Senza risultati il titolo c'è già nel riquadro "nessun professionista". */}
-        <h1 className={header ? "sr-only" : "results-title"}>{title}</h1>
+        <h1 className={emptyHeader ? "sr-only" : "results-title"}>{title}</h1>
         <ResultsListWithMap
           page={page}
           search={search}

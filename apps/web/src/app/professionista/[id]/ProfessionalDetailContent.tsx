@@ -174,7 +174,17 @@ export function ProfessionalDetailContent({
   const [isSaved, setIsSaved] = useState(false);
   // Aperto dai risultati con "Scegli": si torna indietro con la scelta
   // e si può scegliere anche da qui (docs/changelog/2026-11-03-scelti-restano.md).
-  const choicePro = { id: professional.id, businessName: professional.businessName, imageUrl: professional.imageUrl ?? null, categorySlug: professional.categorySlug };
+  const choicePro = {
+    id: professional.id,
+    businessName: professional.businessName,
+    imageUrl: professional.imageUrl ?? null,
+    categorySlug: professional.categorySlug,
+    // Per l'anteprima dei scelti nei risultati (docs/changelog/2026-11-16-anteprima-scelti.md).
+    categoryLabel: professional.categoryLabel,
+    city: professional.city,
+    rating: professional.rating,
+    reviewCount: professional.reviewCount,
+  };
   const choice = useProfileChoice(!preview && query.scelta === "1", choicePro);
 
   // Visita al profilo (CLAUDE.md §8, dati comparativi in Home "Oggi",

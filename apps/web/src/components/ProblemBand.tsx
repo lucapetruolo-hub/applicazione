@@ -14,6 +14,7 @@ import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { setRequestHints, type ChosenPro, type ProblemRequestHints } from "./ChosenProsBar";
+import { ChosenProsStrip } from "./ChosenProsStrip";
 import { ReportAiAnswer } from "./ReportAiAnswer";
 import { CATEGORY_WHO as WHO, joinWithOr, problemCategoryChoices } from "@/lib/problemChoices";
 
@@ -54,6 +55,8 @@ export function ProblemBand({
   chosenPros = [],
   maxChosen,
   onClearChosen,
+  onRemoveChosen,
+  chosenUndo = null,
   topService = null,
   categoryCounts,
   otherTradesCount = 0,
@@ -73,6 +76,10 @@ export function ProblemBand({
   /** Assente quando nei risultati non si può scegliere (meno di 2 schede). */
   maxChosen?: number;
   onClearChosen?: () => void;
+  /** X sull'anteprima del singolo scelto (docs/changelog/2026-11-16-anteprima-scelti.md). */
+  onRemoveChosen?: (id: string) => void;
+  /** "Annulla" dopo la X o "Togli tutti". */
+  chosenUndo?: { text: string; onUndo: () => void } | null;
   /** Prestazione proposta per il problema, offerta da chi è in cima ai risultati. */
   topService?: string | null;
   /** Quanti professionisti per ogni mestiere proposto (pulsanti in cima). */
@@ -263,17 +270,15 @@ export function ProblemBand({
       </YStack>
 
       {/* Dopo la domanda: prima si sceglie la persona giusta, poi si chiede il preventivo. */}
-      {chosen && chosenPros.length > 0 ? (
-        <XStack gap="3" alignItems="center" flexWrap="wrap" justifyContent="space-between">
-          <Text fontSize={16} color={brand.grafite} role="status">
-            {chosenPros.length === 1
-              ? `Hai scelto ${chosenPros[0]!.businessName}: puoi aggiungerne altri, fino a ${maxChosen}.`
-              : `Hai scelto ${chosenPros.length} professionisti su ${maxChosen}: la richiesta arriva solo a loro.`}
-          </Text>
-          <Button variant="secondary" onPress={onClearChosen}>
-            Annulla la scelta
-          </Button>
-        </XStack>
+      {chosen && (chosenPros.length > 0 || chosenUndo) ? (
+        <ChosenProsStrip
+          chosen={chosenPros}
+          max={maxChosen}
+          description={description}
+          onRemove={onRemoveChosen}
+          onClear={onClearChosen}
+          undo={chosenUndo}
+        />
       ) : chosen ? (
         <YStack gap="2">
           <XStack gap="3" alignItems="center" flexWrap="wrap" justifyContent="space-between">

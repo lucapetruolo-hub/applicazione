@@ -8,6 +8,12 @@ import { chosenSearchKey, readChosenSearch, toggleChosenPro, writeChosenSearch }
 /** Quanto resta visibile "Puoi sceglierne al massimo 5". */
 export const LIMIT_NOTICE_MS = 4000;
 
+/** Quanto resta "Annulla" dopo la X o "Togli tutti" (docs/changelog/2026-11-16-anteprima-scelti.md). */
+export const UNDO_MS = 6000;
+
+/** Ultima cosa tolta con la X o "Togli tutti", per rimetterla con "Annulla". */
+export type ChosenUndo = { text: string; list: ChosenPro[]; at: number };
+
 export function chosenLimitText(): string {
   return `Puoi sceglierne al massimo ${MAX_CHOSEN_PROFESSIONALS}.`;
 }
@@ -76,6 +82,8 @@ export function useChosenPros({
 
   function toggle(pro: ProfessionalSearchResult) {
     if (!key) return;
+    // Dopo un nuovo «Scegli» l'"Annulla" toglierebbe anche questo: sparisce.
+    setUndoState(null);
     setState((current) => ({
       key,
       list: toggleChosenPro(current.key === key ? current.list : [], {
@@ -83,6 +91,10 @@ export function useChosenPros({
         businessName: pro.businessName,
         imageUrl: pro.imageUrl ?? null,
         categorySlug: pro.categorySlug,
+        categoryLabel: pro.categoryLabel,
+        city: pro.city,
+        rating: pro.rating,
+        reviewCount: pro.reviewCount,
       }),
     }));
   }
@@ -96,5 +108,32 @@ export function useChosenPros({
         onBlocked: () => setLimitAt(Date.now()),
       }
     : undefined;
-  return { chosen, clear: () => setState({ key, list: [] }), selection, limitNotice: limitAt !== null ? chosenLimitText() : null };
+  // La X sull'anteprima del singolo scelto e "Togli tutti", con "Annulla" per
+  // qualche secondo se toccati per sbaglio (docs/changelog/2026-11-16-anteprima-scelti.md).
+  const [undoState, setUndoState] = useState<ChosenUndo | null>(null);
+  useEffect(() => {
+    if (!undoState) return;
+    const timer = setTimeout(() => setUndoState(null), UNDO_MS);
+    return () => clearTimeout(timer);
+  }, [undoState]);
+  // Un "Annulla" vale solo per la ricerca in cui si è tolto.
+  const undoInfo = undoState && state.key === key ? undoState : null;
+  function remove(id: string) {
+    if (!key) return;
+    const pro = chosen.find((item) => item.id === id);
+    if (!pro) return;
+    setUndoState({ text: `Hai tolto ${pro.businessName}.`, list: chosen, at: Date.now() });
+    setState({ key, list: chosen.filter((item) => item.id !== id) });
+  }
+  function clear() {
+    if (chosen.length > 0) setUndoState({ text: chosen.length === 1 ? `Hai tolto ${chosen[0]!.businessName}.` : `Hai tolto ${chosen.length} professionisti.`, list: chosen, at: Date.now() });
+    setState({ key, list: [] });
+  }
+  function undo() {
+    if (!key || !undoInfo) return;
+    setState({ key, list: undoInfo.list.slice(0, MAX_CHOSEN_PROFESSIONALS) });
+    setUndoState(null);
+  }
+
+  return { chosen, clear, remove, undo: undoInfo ? { text: undoInfo.text, onUndo: undo } : null, selection, limitNotice: limitAt !== null ? chosenLimitText() : null };
 }

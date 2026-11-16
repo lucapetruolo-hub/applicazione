@@ -7,8 +7,22 @@ import { MagneticButton } from "./MagneticButton";
 import { ProfessionalAvatar } from "./ProfessionalAvatar";
 import { setChosenParams } from "@/lib/chosenParams";
 
-/** Il minimo che serve del professionista scelto: nome e foto per la barra e il modulo. */
-export type ChosenPro = { id: string; businessName: string; imageUrl: string | null; categorySlug: ProfessionalCategorySlug };
+/**
+ * Il minimo che serve del professionista scelto: nome e foto per la barra e il
+ * modulo; mestiere, città e voto per l'anteprima nei risultati
+ * (docs/changelog/2026-11-16-anteprima-scelti.md), facoltativi perché le
+ * scelte salvate prima non li hanno.
+ */
+export type ChosenPro = {
+  id: string;
+  businessName: string;
+  imageUrl: string | null;
+  categorySlug: ProfessionalCategorySlug;
+  categoryLabel?: string;
+  city?: string;
+  rating?: number | null;
+  reviewCount?: number;
+};
 
 /** Indizi presi dal problema scritto (`timingFromProblem`, `comuneFromProblem`): il modulo li precompila, il cliente li può cambiare. */
 export type ProblemRequestHints = { timing: RequestTiming | null; city: string | null };
