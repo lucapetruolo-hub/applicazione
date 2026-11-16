@@ -12,7 +12,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      updatedAt="13 novembre 2026"
+      updatedAt="16 novembre 2026"
       intro={
         <LegalSummary
           points={[
@@ -72,6 +72,11 @@ export default function PrivacyPage() {
                 { title: "Fatture, pagamenti online e documenti contabili", rows: [["Per quanto", "10 anni (art. 2220 del codice civile)"]] },
                 { title: "Conteggi per migliorare il sito", rows: [["Per quanto", "25 mesi, solo numeri per giorno (punto 9)"]] },
                 { title: "Log tecnici e segnalazioni di errore", rows: [["Per quanto", "il tempo breve previsto dal servizio del fornitore, di norma poche settimane"]] },
+                {
+                  // docs/changelog/2026-11-16-backup-e-piano-di-emergenza.md
+                  title: "Copie di sicurezza (backup)",
+                  rows: [["Per quanto", "fino a 30 giorni, cifrate e su server nell'Unione europea, poi si cancellano da sole: un dato cancellato può restare in queste copie fino ad allora, ma non lo usiamo e non torna nel sito, salvo un ripristino dopo un guasto"]],
+                },
               ]}
             />
           ),

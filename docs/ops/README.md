@@ -6,11 +6,13 @@ aggiornano quando cambia qualcosa su Render, Vercel o nel codice.
 
 | Pagina | Quando aprirla |
 |---|---|
+| [emergenza.md](emergenza.md) | **Da aprire per prima**: il sito è giù, dati persi o chiave finita in giro. Chi avvisare (Garante entro 72 ore) |
 | [rollback.md](rollback.md) | Un deploy ha rotto il sito o l'API: tornare indietro in 5 minuti |
 | [ripristino.md](ripristino.md) | Dati cancellati o rovinati: ripristinare il database a un istante |
 | [attivita-a-orario.md](attivita-a-orario.md) | Un promemoria, una fattura del mese o un'email periodica non è partita (o è partita due volte) |
 | [avvisi.md](avvisi.md) | Chi riceve quali avvisi, e come accorgersi che il sito è giù |
 | [variabili.md](variabili.md) | Che cosa serve su Render, Vercel e GitHub, e cosa succede se manca |
+| [protezione-account.md](protezione-account.md) | Una volta: gestore di password, verifica in due passaggi, copie di codice e documenti |
 | [cambio-dominio.md](cambio-dominio.md) | Il giorno del dominio vero: tutti i posti da cambiare |
 
 Indirizzi:
