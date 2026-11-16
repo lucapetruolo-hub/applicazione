@@ -115,7 +115,13 @@ export function CategoryChoice({
                     <button type="button" className="cat-choice-change" onClick={() => setOpen(true)} aria-haspopup="dialog">
                       Cambia
                     </button>
-                  ) : null}
+                  ) : (
+                    // "×" sulle righe aggiunte: nel test 2 persone su 5 non sapevano
+                    // come togliere un mestiere (docs/changelog/2026-11-16-scelta-categoria-togli.md).
+                    <button type="button" className="cat-choice-remove" onClick={() => onToggle(slug)} aria-label={`Togli ${labelOf(slug)}`}>
+                      <Icon name="x" size={18} color="#4a443e" strokeWidth={2.4} />
+                    </button>
+                  )}
                 </div>
               );
             })}

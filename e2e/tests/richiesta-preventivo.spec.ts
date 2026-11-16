@@ -237,7 +237,14 @@ test("+ mestiere proposto: si dice prima che è una richiesta in più", async ({
   await expect(page.getByRole("button", { name: "Ti serve: Imbianchino · forse anche Idraulico" })).toBeVisible();
   await page.getByRole("button", { name: "Aggiungi Idraulico" }).click();
   await expect(chosenCard(page).getByText("Idraulico", { exact: true })).toBeVisible();
-  await expect(page.getByText("Riceverai una richiesta separata per ogni categoria.")).toBeVisible();
+  await expect(page.getByText("Partono 2 richieste, una per mestiere.")).toBeVisible();
+  await expect(page.getByText("2 di 3 · 2 richieste")).toBeVisible();
+  // Il mestiere aggiunto si toglie con la "×" della sua riga.
+  await chosenCard(page).getByRole("button", { name: "Togli Idraulico" }).click();
+  await expect(chosenCard(page).getByText("Idraulico", { exact: true })).toHaveCount(0);
+  await expect(chosenCard(page).getByText("Imbianchino", { exact: true })).toBeVisible();
+  await expect(page.getByText("Partono 2 richieste, una per mestiere.")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Aggiungi Idraulico" })).toBeVisible();
 });
 
 test("da telefono il pannello si chiude trascinandolo in giù", async ({ page, isMobile }) => {
