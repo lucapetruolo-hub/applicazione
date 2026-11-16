@@ -3,13 +3,19 @@
 import { Camera, Image as ImageIcon, Video } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { WebcamCapture } from "./WebcamCapture";
 
 /**
  * Scelta della foto: dal telefono un piccolo menu dal basso con "Scatta una
  * foto", "Fai un video" (se ammesso) e "Scegli dalla galleria"; dal computer
- * si apre subito la scelta del file (richiesta di Luca,
+ * si apre la scelta del file (richiesta di Luca,
  * docs/changelog/2026-11-15-foto-sotto-la-descrizione.md). Serve perché su
  * Android il selettore delle foto non offre sempre la fotocamera.
+ *
+ * Dal computer con una webcam (richiesta di Luca del 16/11,
+ * docs/changelog/2026-11-16-webcam-da-computer.md) si apre una finestra al
+ * centro con "Scatta con la webcam" e "Scegli dal computer"; senza webcam si
+ * apre subito la scelta del file, come prima.
  */
 export function PhotoPicker({
   accept,
@@ -35,29 +41,41 @@ export function PhotoPicker({
   const cameraRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const firstOptionRef = useRef<HTMLButtonElement>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const openerRef = useRef<HTMLButtonElement>(null);
+  /** "phone": menu dal basso; "desktop": finestra al centro; "webcam": anteprima della webcam. */
+  const [sheet, setSheet] = useState<null | "phone" | "desktop" | "webcam">(null);
+  const hasWebcam = useHasWebcam();
 
   function open() {
     if (disabled) return;
     const phone = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
-    if (phone) setSheetOpen(true);
+    if (phone) setSheet("phone");
+    else if (hasWebcam) setSheet("desktop");
     else galleryRef.current?.click();
   }
 
+  function close() {
+    setSheet(null);
+    openerRef.current?.focus();
+  }
+
   function pick(input: HTMLInputElement | null) {
-    setSheetOpen(false);
+    setSheet(null);
     input?.click();
   }
 
   useEffect(() => {
-    if (!sheetOpen) return;
-    firstOptionRef.current?.focus();
+    if (!sheet) return;
+    if (sheet !== "webcam") firstOptionRef.current?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSheetOpen(false);
+      if (event.key === "Escape") {
+        setSheet(null);
+        openerRef.current?.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [sheetOpen]);
+  }, [sheet]);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -67,39 +85,96 @@ export function PhotoPicker({
 
   return (
     <>
-      <button type="button" className={className} onClick={open} disabled={disabled} aria-label={label} title={label}>
+      <button ref={openerRef} type="button" className={className} onClick={open} disabled={disabled} aria-label={label} title={label}>
         {children}
       </button>
       <input ref={galleryRef} type="file" accept={accept} hidden onChange={handleChange} />
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={handleChange} />
       {allowVideo ? <input ref={videoRef} type="file" accept="video/*" capture="environment" hidden onChange={handleChange} /> : null}
-      {sheetOpen
+      {sheet
         ? createPortal(
-            <div className="photo-sheet-layer">
-              <button type="button" className="photo-sheet-backdrop" aria-label="Chiudi" onClick={() => setSheetOpen(false)} />
-              <div className="photo-sheet" role="dialog" aria-modal="true" aria-label="Aggiungi una foto">
-                <button ref={firstOptionRef} type="button" className="photo-sheet-option" onClick={() => pick(cameraRef.current)}>
-                  <Camera size={22} strokeWidth={2} aria-hidden="true" />
-                  Scatta una foto
-                </button>
-                {allowVideo ? (
-                  <button type="button" className="photo-sheet-option" onClick={() => pick(videoRef.current)}>
-                    <Video size={22} strokeWidth={2} aria-hidden="true" />
-                    Fai un video
+            <div className={sheet === "phone" ? "photo-sheet-layer" : "photo-sheet-layer photo-sheet-layer-center"}>
+              <button type="button" className="photo-sheet-backdrop" aria-label="Chiudi" onClick={close} />
+              {sheet === "webcam" ? (
+                <div className="photo-sheet photo-sheet-webcam" role="dialog" aria-modal="true" aria-label="Scatta con la webcam">
+                  <WebcamCapture
+                    onPhoto={(file) => {
+                      close();
+                      onFile(file);
+                    }}
+                    onChooseFile={() => pick(galleryRef.current)}
+                    onClose={close}
+                  />
+                </div>
+              ) : (
+                <div className="photo-sheet" role="dialog" aria-modal="true" aria-label="Aggiungi una foto">
+                  {sheet === "phone" ? (
+                    <>
+                      <button ref={firstOptionRef} type="button" className="photo-sheet-option" onClick={() => pick(cameraRef.current)}>
+                        <Camera size={22} strokeWidth={2} aria-hidden="true" />
+                        Scatta una foto
+                      </button>
+                      {allowVideo ? (
+                        <button type="button" className="photo-sheet-option" onClick={() => pick(videoRef.current)}>
+                          <Video size={22} strokeWidth={2} aria-hidden="true" />
+                          Fai un video
+                        </button>
+                      ) : null}
+                      <button type="button" className="photo-sheet-option" onClick={() => pick(galleryRef.current)}>
+                        <ImageIcon size={22} strokeWidth={2} aria-hidden="true" />
+                        Scegli dalla galleria
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button ref={firstOptionRef} type="button" className="photo-sheet-option" onClick={() => setSheet("webcam")}>
+                        <Camera size={22} strokeWidth={2} aria-hidden="true" />
+                        Scatta con la webcam
+                      </button>
+                      <button type="button" className="photo-sheet-option" onClick={() => pick(galleryRef.current)}>
+                        <ImageIcon size={22} strokeWidth={2} aria-hidden="true" />
+                        {allowVideo ? "Scegli foto o video dal computer" : "Scegli dal computer"}
+                      </button>
+                    </>
+                  )}
+                  <button type="button" className="photo-sheet-cancel" onClick={close}>
+                    Annulla
                   </button>
-                ) : null}
-                <button type="button" className="photo-sheet-option" onClick={() => pick(galleryRef.current)}>
-                  <ImageIcon size={22} strokeWidth={2} aria-hidden="true" />
-                  Scegli dalla galleria
-                </button>
-                <button type="button" className="photo-sheet-cancel" onClick={() => setSheetOpen(false)}>
-                  Annulla
-                </button>
-              </div>
+                </div>
+              )}
             </div>,
             document.body,
           )
         : null}
     </>
   );
+}
+
+/**
+ * Se il computer ha una webcam. I browser dicono quali dispositivi ci sono
+ * anche prima del permesso (senza i nomi), quindi non chiede nulla
+ * all'utente. Si aggiorna se si collega o si stacca una webcam.
+ */
+function useHasWebcam(): boolean {
+  const [has, setHas] = useState(false);
+  useEffect(() => {
+    const devices = typeof navigator !== "undefined" ? navigator.mediaDevices : undefined;
+    if (!devices?.enumerateDevices || !devices.getUserMedia) return;
+    let alive = true;
+    const check = () => {
+      devices
+        .enumerateDevices()
+        .then((list) => {
+          if (alive) setHas(list.some((device) => device.kind === "videoinput"));
+        })
+        .catch(() => undefined);
+    };
+    check();
+    devices.addEventListener?.("devicechange", check);
+    return () => {
+      alive = false;
+      devices.removeEventListener?.("devicechange", check);
+    };
+  }, []);
+  return has;
 }

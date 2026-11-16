@@ -10877,3 +10877,183 @@ textarea[id^="contatti-"][aria-invalid="true"] {
     animation: none;
   }
 }
+
+/* Dal computer la stessa finestra sta al centro: scelta tra webcam e file, poi
+   l'anteprima della webcam (WebcamCapture, docs/changelog/2026-11-16-webcam-da-computer.md). */
+.photo-sheet-layer-center {
+  align-items: center;
+  padding: 16px;
+}
+.photo-sheet-layer-center .photo-sheet {
+  max-width: 380px;
+  padding: 12px 16px 16px;
+  border-radius: 20px;
+  box-shadow: 0 16px 40px rgba(15, 59, 59, 0.2);
+  animation: photo-dialog-in 0.18s ease-out;
+}
+.photo-sheet-layer-center .photo-sheet-option:hover,
+.photo-sheet-layer-center .photo-sheet-cancel:hover {
+  background: #f7f4ef;
+}
+.photo-sheet-layer-center .photo-sheet.photo-sheet-webcam {
+  max-width: 640px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: 16px 20px 20px;
+}
+@keyframes photo-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .photo-sheet-layer-center .photo-sheet {
+    animation: none;
+  }
+}
+.webcam {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.webcam-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.webcam-title {
+  margin: 0;
+  color: #0f3b3b;
+  font-size: 19px;
+  font-weight: 700;
+}
+.webcam-close {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+  color: #4a5560;
+  font-size: 18px;
+  cursor: pointer;
+}
+.webcam-close:hover {
+  background: #f3efe9;
+}
+.webcam-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: calc(100vh - 220px);
+  overflow: hidden;
+  border-radius: 10px;
+  background: #0f3b3b;
+}
+.webcam-video,
+.webcam-shot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Tutta l'inquadratura, anche con le webcam larghe 16:9: si vede quello che finisce nella foto. */
+  object-fit: contain;
+}
+/* A specchio come nelle videochiamate; la foto salvata resta dritta. */
+.webcam-video {
+  transform: scaleX(-1);
+}
+.webcam-video[hidden] {
+  display: none;
+}
+.webcam-wait {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 24px;
+  color: #ffffff;
+  font-size: 15px;
+  text-align: center;
+}
+.webcam-hint {
+  margin: 0;
+  color: #4a5560;
+  font-size: 14px;
+}
+.webcam-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 16px;
+  border-radius: 10px;
+  background: #f7f4ef;
+  color: #0f3b3b;
+  text-align: center;
+}
+.webcam-error svg {
+  color: #1e6b6e;
+}
+.webcam-error strong {
+  font-size: 17px;
+}
+.webcam-error p {
+  margin: 0;
+  max-width: 420px;
+  color: #4a5560;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.webcam-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.webcam-primary,
+.webcam-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 22px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.webcam-primary {
+  border: 0;
+  background: #1e6b6e;
+  color: #ffffff;
+}
+.webcam-primary:hover:not(:disabled) {
+  background: #175556;
+}
+.webcam-primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.webcam-secondary {
+  border: 1px solid #d9d2c7;
+  background: #ffffff;
+  color: #0f3b3b;
+}
+.webcam-secondary:hover {
+  background: #f7f4ef;
+}
+.webcam-primary:focus-visible,
+.webcam-secondary:focus-visible,
+.webcam-close:focus-visible {
+  outline: 2px solid #1e6b6e;
+  outline-offset: 2px;
+}
