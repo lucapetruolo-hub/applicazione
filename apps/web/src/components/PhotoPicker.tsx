@@ -1,8 +1,9 @@
 "use client";
 
-import { Camera, Image as ImageIcon, Video } from "lucide-react";
+import { Camera, Image as ImageIcon, Smartphone, Video } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { PhoneHandoff } from "./PhoneHandoff";
 import { WebcamCapture } from "./WebcamCapture";
 
 /**
@@ -12,10 +13,11 @@ import { WebcamCapture } from "./WebcamCapture";
  * docs/changelog/2026-11-15-foto-sotto-la-descrizione.md). Serve perché su
  * Android il selettore delle foto non offre sempre la fotocamera.
  *
- * Dal computer con una webcam (richiesta di Luca del 16/11,
- * docs/changelog/2026-11-16-webcam-da-computer.md) si apre una finestra al
- * centro con "Scatta con la webcam" e "Scegli dal computer"; senza webcam si
- * apre subito la scelta del file, come prima.
+ * Dal computer (richieste di Luca del 16/11) si apre una finestra al centro con
+ * "Scatta con la webcam" (solo se c'è una webcam,
+ * docs/changelog/2026-11-16-webcam-da-computer.md), "Scatta dal telefono" col
+ * codice QR (docs/changelog/2026-11-16-scatta-dal-telefono.md) e "Scegli dal
+ * computer".
  */
 export function PhotoPicker({
   accept,
@@ -42,16 +44,14 @@ export function PhotoPicker({
   const videoRef = useRef<HTMLInputElement>(null);
   const firstOptionRef = useRef<HTMLButtonElement>(null);
   const openerRef = useRef<HTMLButtonElement>(null);
-  /** "phone": menu dal basso; "desktop": finestra al centro; "webcam": anteprima della webcam. */
-  const [sheet, setSheet] = useState<null | "phone" | "desktop" | "webcam">(null);
+  /** "phone": menu dal basso; "desktop": finestra al centro; "webcam": anteprima; "qr": codice per il telefono. */
+  const [sheet, setSheet] = useState<null | "phone" | "desktop" | "webcam" | "qr">(null);
   const hasWebcam = useHasWebcam();
 
   function open() {
     if (disabled) return;
     const phone = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
-    if (phone) setSheet("phone");
-    else if (hasWebcam) setSheet("desktop");
-    else galleryRef.current?.click();
+    setSheet(phone ? "phone" : "desktop");
   }
 
   function close() {
@@ -66,7 +66,7 @@ export function PhotoPicker({
 
   useEffect(() => {
     if (!sheet) return;
-    if (sheet !== "webcam") firstOptionRef.current?.focus();
+    if (sheet === "phone" || sheet === "desktop") firstOptionRef.current?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setSheet(null);
@@ -106,6 +106,17 @@ export function PhotoPicker({
                     onClose={close}
                   />
                 </div>
+              ) : sheet === "qr" ? (
+                <div className="photo-sheet photo-sheet-webcam" role="dialog" aria-modal="true" aria-label="Scatta dal telefono">
+                  <PhoneHandoff
+                    onPhoto={(file) => {
+                      close();
+                      onFile(file);
+                    }}
+                    onChooseFile={() => pick(galleryRef.current)}
+                    onClose={close}
+                  />
+                </div>
               ) : (
                 <div className="photo-sheet" role="dialog" aria-modal="true" aria-label="Aggiungi una foto">
                   {sheet === "phone" ? (
@@ -127,9 +138,20 @@ export function PhotoPicker({
                     </>
                   ) : (
                     <>
-                      <button ref={firstOptionRef} type="button" className="photo-sheet-option" onClick={() => setSheet("webcam")}>
-                        <Camera size={22} strokeWidth={2} aria-hidden="true" />
-                        Scatta con la webcam
+                      {hasWebcam ? (
+                        <button ref={firstOptionRef} type="button" className="photo-sheet-option" onClick={() => setSheet("webcam")}>
+                          <Camera size={22} strokeWidth={2} aria-hidden="true" />
+                          Scatta con la webcam
+                        </button>
+                      ) : null}
+                      <button
+                        ref={hasWebcam ? undefined : firstOptionRef}
+                        type="button"
+                        className="photo-sheet-option"
+                        onClick={() => setSheet("qr")}
+                      >
+                        <Smartphone size={22} strokeWidth={2} aria-hidden="true" />
+                        Scatta dal telefono
                       </button>
                       <button type="button" className="photo-sheet-option" onClick={() => pick(galleryRef.current)}>
                         <ImageIcon size={22} strokeWidth={2} aria-hidden="true" />

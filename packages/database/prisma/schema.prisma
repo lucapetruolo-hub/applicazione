@@ -3775,3 +3775,23 @@ model RealtimeEvent {
   @@index([createdAt])
   @@map("realtime_events")
 }
+
+/// Foto scattata dal telefono per la finestra foto del computer, col codice QR
+/// (docs/changelog/2026-11-16-scatta-dal-telefono.md). Vive al massimo 10
+/// minuti: si cancella appena il computer la prende, o alla scadenza.
+/// Nel database e non in memoria: l'API può girare in più copie.
+model PhotoHandoff {
+  /// Impronta (sha256) del codice nel QR: il codice vero non si salva.
+  codeHash  String    @id
+  /// Impronta della chiave che solo il computer conosce: serve per prendere la foto.
+  keyHash   String
+  photo     Bytes?
+  mediaType String?
+  /// Quando il telefono ha aperto il link: il computer scrive "Telefono collegato".
+  openedAt  DateTime?
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+
+  @@index([expiresAt])
+  @@map("photo_handoffs")
+}

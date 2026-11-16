@@ -2641,6 +2641,57 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       }
       return body as ProblemPhotoResult;
     },
+    /**
+     * "Scatta dal telefono" (docs/changelog/2026-11-16-scatta-dal-telefono.md): il computer
+     * apre un codice QR, il telefono manda la foto, il computer la prende.
+     */
+    createPhotoHandoff: () =>
+      request<{ code: string; key: string; url: string; qrSvg: string; expiresAt: string }>("/photo-handoff", { method: "POST", cache: "no-store" }),
+    openPhotoHandoff: (code: string) =>
+      request<{ status: "opened" | "sent" | "expired" }>(`/photo-handoff/${encodeURIComponent(code)}/open`, { method: "POST", cache: "no-store" }),
+    sendPhotoHandoff: async (code: string, photo: Blob): Promise<void> => {
+      const path = `/photo-handoff/${encodeURIComponent(code)}/photo`;
+      const formData = new FormData();
+      formData.append("image", photo, "foto.jpg");
+      let response: Response;
+      try {
+        response = await fetch(`${baseUrl}${path}`, { method: "POST", body: formData });
+      } catch (err) {
+        reportFailure({ method: "POST" }, path, null);
+        throw err;
+      }
+      if (!response.ok) {
+        const body = await readBody(response, { method: "POST" }, path);
+        reportFailure({ method: "POST" }, path, response.status);
+        throw new ApiError(extractErrorMessage(body, "Non riusciamo a mandare la foto. Riprova."), response.status);
+      }
+    },
+    /** La foto se è arrivata (una volta sola), altrimenti a che punto è il telefono. */
+    takePhotoHandoff: async (
+      code: string,
+      key: string,
+    ): Promise<{ status: "waiting" | "opened" | "expired" } | { status: "sent"; photo: Blob }> => {
+      const path = `/photo-handoff/${encodeURIComponent(code)}/take`;
+      const response = await fetch(`${baseUrl}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key }),
+        cache: "no-store",
+      });
+      if (!response.ok) throw new ApiError(`Richiesta API fallita: ${response.status}`, response.status);
+      if ((response.headers.get("content-type") ?? "").startsWith("image/")) return { status: "sent", photo: await response.blob() };
+      return (await response.json()) as { status: "waiting" | "opened" | "expired" };
+    },
+    cancelPhotoHandoff: (code: string, key: string) =>
+      fetch(`${baseUrl}/photo-handoff/${encodeURIComponent(code)}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key }),
+        keepalive: true,
+      }).then(
+        () => undefined,
+        () => undefined,
+      ),
     /** Frasi d'esempio della home (docs/changelog/2026-11-03-luci-che-accelerano.md). */
     getProblemExamples: () => request<ProblemExamplesResponse>("/problem-match/examples"),
     adminProblemExamples: (token: string) =>

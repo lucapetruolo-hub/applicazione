@@ -14,9 +14,10 @@ ignora `capture`, quindi la webcam non si poteva usare.
   stesso stile del menu del telefono, con "Scatta con la webcam" e "Scegli dal
   computer" (nella richiesta, dalla seconda foto, "Scegli foto o video dal
   computer").
-- Computer **senza** webcam: si apre subito la scelta del file, come prima.
-  Il browser dice se c'è una webcam senza chiedere il permesso
-  (`enumerateDevices`), e si aggiorna se la si collega dopo.
+- Computer **senza** webcam: la voce "Scatta con la webcam" non compare (il
+  browser dice se c'è una webcam senza chiedere il permesso,
+  `enumerateDevices`, e si aggiorna se la si collega dopo). Restano "Scatta dal
+  telefono" e "Scegli dal computer" (`2026-11-16-scatta-dal-telefono.md`).
 - "Scatta con la webcam" (`WebcamCapture.tsx`): anteprima dal vivo, a specchio
   come nelle videochiamate; riga "Inquadra il problema da vicino, con buona
   luce. Niente persone o documenti."; "Scatta", poi "Va bene questa foto?" con
