@@ -117,6 +117,7 @@ export function CercaContent({
   const {
     chosen: chosenPros,
     clear: clearChosen,
+    remove: removeChosen,
     selection,
     limitNotice,
   } = useChosenPros({
@@ -320,6 +321,7 @@ export function CercaContent({
       photo={problem.photo}
       maxChosen={canChoose ? MAX_CHOSEN_PROFESSIONALS : undefined}
       onClearChosen={clearChosen}
+      onRemoveChosen={removeChosen}
     />
   ) : serviceBar && notice ? (
     <div className={`is_View ${styles.stack}`}>

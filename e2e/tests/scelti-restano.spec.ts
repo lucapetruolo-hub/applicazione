@@ -59,6 +59,15 @@ test("la scelta resta tornando dal profilo, e dal profilo si sceglie", async ({ 
   await expect(bar).toContainText("3 scelti su 5");
   await expect(bar.getByRole("link")).toHaveAttribute("href", /scelti=/);
 
+  // L'anteprima sopra i risultati: la X toglie solo quel professionista
+  // (docs/changelog/2026-11-16-anteprima-scelti.md).
+  const preview = page.locator(".chosen-strip");
+  await expect(preview).toContainText("Scelti 3 su 5");
+  await preview.getByRole("button", { name: `Togli ${second} dai scelti` }).click();
+  await expect(preview).toContainText("Scelti 2 su 5");
+  await expect(page.getByRole("button", { name: `Scegli ${second}` })).toBeVisible();
+  await expect(bar).toContainText("2 scelti su 5");
+
   // Una ricerca diversa riparte da zero.
   await page.goto(`/cerca?problema=${encodeURIComponent("lo scarico del lavandino è intasato")}&citta=Rieti`);
   await expect(page.getByRole("button", { name: /^Scelto:/ })).toHaveCount(0);

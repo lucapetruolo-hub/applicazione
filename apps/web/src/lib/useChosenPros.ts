@@ -83,6 +83,10 @@ export function useChosenPros({
         businessName: pro.businessName,
         imageUrl: pro.imageUrl ?? null,
         categorySlug: pro.categorySlug,
+        categoryLabel: pro.categoryLabel,
+        city: pro.city,
+        rating: pro.rating,
+        reviewCount: pro.reviewCount,
       }),
     }));
   }
@@ -96,5 +100,11 @@ export function useChosenPros({
         onBlocked: () => setLimitAt(Date.now()),
       }
     : undefined;
-  return { chosen, clear: () => setState({ key, list: [] }), selection, limitNotice: limitAt !== null ? chosenLimitText() : null };
+  // La X sull'anteprima del singolo scelto (docs/changelog/2026-11-16-anteprima-scelti.md).
+  function remove(id: string) {
+    if (!key) return;
+    setState((current) => ({ key, list: (current.key === key ? current.list : []).filter((pro) => pro.id !== id) }));
+  }
+
+  return { chosen, clear: () => setState({ key, list: [] }), remove, selection, limitNotice: limitAt !== null ? chosenLimitText() : null };
 }

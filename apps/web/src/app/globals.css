@@ -386,6 +386,209 @@ body:has(.empty-search-results) .site-header-cta-link {
   outline: 2px solid #186163;
   outline-offset: 2px;
 }
+/* Anteprime dei professionisti scelti sopra i risultati, con la X per
+   toglierli (docs/changelog/2026-11-16-anteprima-scelti.md). Angoli 20 come
+   le schede, X tonda piatta; con più scelti fila che scorre col dito,
+   da computer le schede vanno a capo. */
+.chosen-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.chosen-strip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
+}
+.chosen-strip-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1b1a18; /* brand.grafite */
+}
+.chosen-strip-title:focus-visible {
+  outline: 2px solid #186163;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.chosen-strip-hint {
+  font-weight: 400;
+  color: #5e5a54; /* brand.grafite70 */
+}
+.chosen-strip-hint::before {
+  content: " · ";
+}
+.chosen-strip-clear {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: #186163; /* brand.cianografiaScuro */
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chosen-strip-clear:hover {
+  text-decoration: underline;
+}
+.chosen-strip-clear:focus-visible {
+  outline: 2px solid #186163;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.chosen-strip-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.chosen-strip-row[data-single="true"] {
+  grid-template-columns: minmax(0, 360px);
+}
+.chosen-strip-card {
+  position: relative;
+  min-width: 0;
+  border: 1.5px solid #1e6b6e; /* verde di marca: è una scelta fatta */
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(43, 32, 19, 0.06);
+}
+.chosen-strip-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 48px 10px 10px;
+  border-radius: 18px;
+  color: inherit;
+  text-decoration: none;
+}
+.chosen-strip-link:hover .chosen-strip-name {
+  text-decoration: underline;
+}
+.chosen-strip-link:focus-visible {
+  outline: 2px solid #186163;
+  outline-offset: 2px;
+}
+.chosen-strip-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.chosen-strip-name,
+.chosen-strip-details {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.chosen-strip-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f3b3b; /* brand.inchiostro, titoli */
+}
+.chosen-strip-details {
+  font-size: 14px;
+  color: #5e5a54; /* brand.grafite70 */
+}
+.chosen-strip-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: #5e5a54;
+}
+.chosen-strip-rating svg {
+  color: #c98a1b;
+  flex-shrink: 0;
+}
+.chosen-strip-rating strong {
+  color: #1b1a18;
+}
+/* X: 32 px a vista, 44 px da toccare (lo spazio in più è trasparente). */
+.chosen-strip-x {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #1b1a18;
+  cursor: pointer;
+}
+.chosen-strip-x::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #f3efe9;
+  transition: background-color 150ms ease;
+}
+.chosen-strip-x svg {
+  position: relative;
+}
+.chosen-strip-x:hover::before {
+  background: #e7e0d7; /* brand.filetto */
+}
+.chosen-strip-x:focus-visible {
+  outline: none;
+}
+.chosen-strip-x:focus-visible::before {
+  outline: 2px solid #186163;
+  outline-offset: 2px;
+}
+@media (max-width: 660px) {
+  /* Da telefono una fila che scorre: si vede l'inizio della scheda dopo, così
+     si capisce che ce ne sono altre. Un solo scelto occupa tutta la riga. */
+  .chosen-strip-row,
+  .chosen-strip-row[data-single="true"] {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    margin: 0 -16px;
+    padding: 2px 16px 4px;
+    scroll-padding: 0 16px;
+  }
+  /* Da telefono il suggerimento va sotto, invece di andare a capo a metà. */
+  .chosen-strip-hint {
+    display: block;
+    font-size: 14px;
+  }
+  .chosen-strip-hint::before {
+    content: none;
+  }
+  .chosen-strip-row::-webkit-scrollbar {
+    display: none;
+  }
+  .chosen-strip-card {
+    flex: 0 0 82%;
+    scroll-snap-align: start;
+  }
+  .chosen-strip-row[data-single="true"] .chosen-strip-card {
+    flex-basis: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chosen-strip-x::before {
+    transition: none;
+  }
+}
 .chosen-bar {
   position: fixed;
   left: 0;
