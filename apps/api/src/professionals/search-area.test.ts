@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { findComuneByName, italianComuni } from "@professionisti/shared";
-import { coveredComuni, hasNearbyResult, selectSearchArea, type SearchAreaCandidate } from "./search-area";
+import { calculateDistanceKm } from "../common/geo.util";
+import { coveredComuni, hasNearbyResult, searchAreaBox, selectSearchArea, type SearchAreaCandidate } from "./search-area";
 
 const milano = findComuneByName("Milano")!;
 const monza = findComuneByName("Monza")!;
@@ -67,5 +68,28 @@ describe("coveredComuni (città con professionisti vicini, §383)", () => {
 
   it("senza posizione (0,0) nessun comune", () => {
     expect(coveredComuni(italianComuni(), [{ latitude: 0, longitude: 0 }], 25)).toEqual([]);
+  });
+});
+
+describe("searchAreaBox (docs/changelog/2026-11-16-stelle-nel-profilo.md)", () => {
+  it("contiene tutto ciò che sta entro la distanza massima, in ogni direzione, anche al nord", () => {
+    for (const center of [{ lat: 41.4676, lon: 12.9037 }, { lat: 46.5, lon: 11.35 }, { lat: 37.5, lon: 15.08 }]) {
+      const box = searchAreaBox(center, 100);
+      for (let bearing = 0; bearing < 360; bearing += 15) {
+        // Punto a 100 km nella direzione data (formula della sfera).
+        const r = 100 / 6371;
+        const lat1 = (center.lat * Math.PI) / 180;
+        const lon1 = (center.lon * Math.PI) / 180;
+        const b = (bearing * Math.PI) / 180;
+        const lat2 = Math.asin(Math.sin(lat1) * Math.cos(r) + Math.cos(lat1) * Math.sin(r) * Math.cos(b));
+        const lon2 = lon1 + Math.atan2(Math.sin(b) * Math.sin(r) * Math.cos(lat1), Math.cos(r) - Math.sin(lat1) * Math.sin(lat2));
+        const point = { lat: (lat2 * 180) / Math.PI, lon: (lon2 * 180) / Math.PI };
+        expect(calculateDistanceKm(center.lat, center.lon, point.lat, point.lon)).toBeCloseTo(100, 0);
+        expect(point.lat).toBeGreaterThan(box.south);
+        expect(point.lat).toBeLessThan(box.north);
+        expect(point.lon).toBeGreaterThan(box.west);
+        expect(point.lon).toBeLessThan(box.east);
+      }
+    }
   });
 });

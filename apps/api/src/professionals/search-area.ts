@@ -74,3 +74,18 @@ export function coveredComuni<C extends { name: string; lat: number; lon: number
   }
   return counted.sort((a, b) => b.count - a.count || a.comune.name.localeCompare(b.comune.name, "it")).map((c) => c.comune);
 }
+
+/**
+ * Riquadro di coordinate che contiene tutto ciò che selectSearchArea può
+ * scegliere (entro maxKm dal centro, con un margine): il database scarta
+ * subito chi è più lontano invece di mandare all'API tutta Italia
+ * (docs/changelog/2026-11-16-stelle-nel-profilo.md).
+ */
+export function searchAreaBox(center: { lat: number; lon: number }, maxKm: number): { south: number; north: number; west: number; east: number } {
+  const km = maxKm + 5;
+  // Un grado di latitudine misura almeno 110,5 km; uno di longitudine 111,3 km per il coseno della latitudine.
+  const latDelta = km / 110;
+  const farthestLat = Math.min(89, Math.abs(center.lat) + latDelta);
+  const lonDelta = km / (111 * Math.cos((farthestLat * Math.PI) / 180));
+  return { south: center.lat - latDelta, north: center.lat + latDelta, west: center.lon - lonDelta, east: center.lon + lonDelta };
+}
