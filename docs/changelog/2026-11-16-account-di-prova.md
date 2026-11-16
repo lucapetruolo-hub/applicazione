@@ -14,7 +14,8 @@ script li toglie tutti.
 - `crea`: toglie quelli di prima e crea 8 professionisti (Milano, Torino,
   Bologna, Firenze, Roma, Napoli, Bari, Palermo; non Rieti, Viterbo e Ancona
   delle prove di carico) e 6 clienti. Professionisti con presentazione,
-  prestazioni e prezzi, orari, copertina pronta, dati fiscali, verifica
+  prestazioni e prezzi, orari, copertina pronta, due foto nei "Lavori svolti"
+  (le due copertine del mestiere, indirizzo da `FRONTEND_URL`; sì di Luca del 16/11), dati fiscali, verifica
   d'identità come da Didit di prova, 21 lavori passati con recensione (alcune
   con risposta) e numeri del profilo calcolati da quelli. Tipi diversi: ditta
   individuale, lavoro occasionale (Sara Galli), società (Ricci Decorazioni

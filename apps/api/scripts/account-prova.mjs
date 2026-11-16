@@ -13,7 +13,7 @@
 //
 // Tutto inventato: nomi, indirizzi, codici fiscali e partite IVA giusti solo
 // nella forma, numeri di telefono con il prefisso 300 (non assegnato). Niente
-// foto di persone, niente IBAN, niente Stripe: i pagamenti online e gli
+// foto di persone (nel portfolio due copertine del sito), niente IBAN, niente Stripe: i pagamenti online e gli
 // abbonamenti si provano dal sito con Stripe di prova. Nessun controllo
 // Openapi (nessuna riga TaxIdCheck): niente costi e niente profili tolti dalla
 // ricerca per un codice inventato.
@@ -39,6 +39,7 @@ export const DOMINIO_PROVA = "@prova.example.com";
 // oppure se ne genera una a ogni "crea", stampata alla fine (uguale per tutti).
 const PASSWORD = process.env.PROVA_PASSWORD?.trim() || `Prova-${randomInt(100000, 999999)}-${randomInt(1000, 9999)}`;
 const DAY = 24 * 60 * 60 * 1000;
+const SITO = (process.env.FRONTEND_URL?.trim() || "https://applicazione-web.vercel.app").replace(/\/$/, "");
 const NOW = new Date();
 
 // --- Città (tutta Italia; non Rieti, Viterbo e Ancona delle prove di carico) ---
@@ -369,6 +370,8 @@ async function creaProfessionista(p, passwordHash, categorie) {
       address: `${p.via} ${p.civico}`,
       bio: p.bio,
       coverPreset: p.copertina,
+      // Due foto di lavori finti dalle copertine del sito (decisione di Luca del 16/11/2026): indirizzo completo, come chiede lo schema.
+      portfolioUrls: nuovo ? [] : [`${SITO}/copertine/${p.categoria}.webp`, `${SITO}/copertine/${p.categoria}-2.webp`],
       remoteAvailable: !!p.online,
       engagementRadiusKm: p.raggio,
       urgentEngagementRadiusKm: p.raggio,
