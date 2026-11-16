@@ -37,9 +37,11 @@ async function professional(slug: string, businessName: string, services: string
       userId: user.id,
       categoryId: category.id,
       businessName,
-      city: "Latina",
-      latitude: 41.4677,
-      longitude: 12.9036,
+      // Ad Ancona, dove nessun'altra prova crea professionisti: a Latina quelli delle altre prove sono
+      // più di una pagina di risultati (20, docs/changelog/2026-11-16-pagine-da-20.md).
+      city: "Ancona",
+      latitude: 43.61583,
+      longitude: 13.51889,
       services: { create: services.map((name) => ({ name, priceMinEurCents: 5000 })) },
       fiscalProfile: { create: { entityType: "PRIVATE_INDIVIDUAL", fiscalFirstName: "Prova", fiscalLastName: businessName } },
     },
@@ -98,7 +100,7 @@ test.beforeAll(async () => {
 test.afterAll(() => prisma.$disconnect());
 
 test("prima chi fa quel lavoro, poi gli altri mestieri che potrebbero farlo", async ({ page }) => {
-  await page.goto(`/cerca?problema=${encodeURIComponent(PROBLEM)}&citta=Latina`);
+  await page.goto(`/cerca?problema=${encodeURIComponent(PROBLEM)}&citta=Ancona`);
   await expect(page.getByText(`Idraulico Rubinetti ${stamp}`).filter({ visible: true }).first()).toBeVisible();
   const order = await page.evaluate(
     ([withService, without]) => {
@@ -119,7 +121,7 @@ test("prima chi fa quel lavoro, poi gli altri mestieri che potrebbero farlo", as
 });
 
 test("dal profilo aperto nei risultati la richiesta parte con il problema scritto", async ({ page }) => {
-  await page.goto(`/cerca?problema=${encodeURIComponent(PROBLEM)}&citta=Latina`);
+  await page.goto(`/cerca?problema=${encodeURIComponent(PROBLEM)}&citta=Ancona`);
   const section = page.getByRole("region", { name: "Potrebbero fare anche questo lavoro" });
   await section.getByText(`Tuttofare Rubinetti ${stamp}`).filter({ visible: true }).click();
   await expect(page).toHaveURL(/problema=/);
@@ -134,7 +136,7 @@ test("dal profilo aperto nei risultati la richiesta parte con il problema scritt
 test("guasto della lavatrice: il mestiere Elettrodomestici e sotto tutti quelli che lo fanno", async ({ page }) => {
   // docs/changelog/2026-11-06-mestiere-elettrodomestici.md: prima era "fuori servizio";
   // nella sezione tutti i professionisti di altri mestieri, non più al massimo 3.
-  await page.goto(`/cerca?problema=${encodeURIComponent("La lavatrice non scarica")}&citta=Latina`);
+  await page.goto(`/cerca?problema=${encodeURIComponent("La lavatrice non scarica")}&citta=Ancona`);
   await expect(page.getByText(`Tecnico Lavatrici ${stamp}`).filter({ visible: true }).first()).toBeVisible();
   const section = page.getByRole("region", { name: "Potrebbero fare anche questo lavoro" });
   for (const n of [1, 2]) {
@@ -145,7 +147,7 @@ test("guasto della lavatrice: il mestiere Elettrodomestici e sotto tutti quelli 
 
 test("mestiere che il sito non ha: chi lo dichiara tra le prestazioni, mai tutti", async ({ request }) => {
   const names = async (offre: string) =>
-    ((await (await request.get(`${API_URL}/professionals/search?offre=${encodeURIComponent(offre)}&city=Latina`)).json()) as { businessName: string }[]).map((p) => p.businessName);
+    ((await (await request.get(`${API_URL}/professionals/search?offre=${encodeURIComponent(offre)}&city=Ancona`)).json()) as { businessName: string }[]).map((p) => p.businessName);
   expect(await names("Sarto")).toContain(`Tuttofare Sartoria ${stamp}`);
   expect(await names("Sarto")).not.toContain(`Pulizie Cucine ${stamp}`);
   // Solo una parola generica: nessuno, non tutti.
@@ -153,7 +155,7 @@ test("mestiere che il sito non ha: chi lo dichiara tra le prestazioni, mai tutti
 });
 
 test("con l'avviso di sicurezza niente altri mestieri", async ({ page }) => {
-  await page.goto(`/cerca?problema=${encodeURIComponent("Sento odore di gas vicino al rubinetto")}&citta=Latina`);
+  await page.goto(`/cerca?problema=${encodeURIComponent("Sento odore di gas vicino al rubinetto")}&citta=Ancona`);
   await expect(page.getByRole("note", { name: "Prima di tutto la sicurezza" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Potrebbero fare anche questo lavoro" })).toHaveCount(0);
 });
