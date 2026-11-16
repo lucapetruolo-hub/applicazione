@@ -7,6 +7,7 @@ import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { ReviewsService } from "./reviews.service";
+import { MEDIA_UPLOAD_DIR } from "../common/media-upload";
 
 // Un video pesa naturalmente molto di più di una foto compressa: limite
 // più permissivo solo per questo endpoint (richiesta esplicita
@@ -88,6 +89,7 @@ export class ReviewsController {
   @Post("photos")
   @UseInterceptors(
     FileInterceptor("image", {
+      dest: MEDIA_UPLOAD_DIR,
       limits: { fileSize: MAX_MEDIA_SIZE_BYTES },
       fileFilter: (_req, file, callback) => {
         if (!file.mimetype.startsWith("image/") && !file.mimetype.startsWith("video/")) {

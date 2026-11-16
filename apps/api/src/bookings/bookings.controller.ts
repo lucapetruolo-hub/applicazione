@@ -38,6 +38,7 @@ import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { BookingsService } from "./bookings.service";
 import { RecurringJobsService } from "./recurring-jobs.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
+import { MEDIA_UPLOAD_DIR } from "../common/media-upload";
 
 // Solo conferma e annullamento (collaudo 08/11, E1-03): il lavoro si chiude
 // solo con "Lavoro terminato" (`complete`), che controlla data, importo,
@@ -67,6 +68,7 @@ export class BookingsController {
   @Post("completion-photos")
   @UseInterceptors(
     FileInterceptor("image", {
+      dest: MEDIA_UPLOAD_DIR,
       limits: { fileSize: MAX_MEDIA_SIZE_BYTES },
       fileFilter: (_req, file, callback) => {
         if (!file.mimetype.startsWith("image/") && !file.mimetype.startsWith("video/")) {

@@ -59,6 +59,7 @@ import { PersonalLinkService } from "./personal-link.service";
 import { CoverImageCheckService, coverRejectedMessage } from "./cover-image-check";
 import { photoMediaType } from "../problem-match/problem-match.service";
 import { hasNearbyResult } from "./search-area";
+import { MEDIA_UPLOAD_DIR } from "../common/media-upload";
 
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 // Un video pesa naturalmente molto di più di una foto compressa: limite
@@ -298,6 +299,7 @@ export class ProfessionalsController {
   @Post("me/portfolio-photos")
   @UseInterceptors(
     FileInterceptor("image", {
+      dest: MEDIA_UPLOAD_DIR,
       limits: { fileSize: MAX_MEDIA_SIZE_BYTES },
       fileFilter: (_req, file, callback) => {
         if (!file.mimetype.startsWith("image/") && !file.mimetype.startsWith("video/")) {
