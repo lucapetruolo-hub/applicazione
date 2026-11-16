@@ -383,7 +383,11 @@ export class ProfessionalsService {
       const inBounds = (pro: ProfessionalSearchResult) => withinBounds(pro, options.bounds!);
       const seen = new Set<string>();
       candidates = [];
-      for (const pro of main) if (inBounds(pro)) (candidates.push(pro), seen.add(pro.id));
+      for (const pro of main) {
+        if (!inBounds(pro)) continue;
+        candidates.push(pro);
+        seen.add(pro.id);
+      }
       for (const pro of pool) if (!seen.has(pro.id) && !fromMain.has(pro.id) && inBounds(pro)) candidates.push(pro);
     }
     const filtered = await this.applyResultFilters(candidates, options.filters, now);
