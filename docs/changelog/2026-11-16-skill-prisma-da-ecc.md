@@ -35,3 +35,11 @@ solo, nessun link esterno oltre alla fonte); controllati i percorsi citati
   sezione "Nel nostro progetto" di `prisma-patterns`.
 - Migrazioni: le ultime con `DROP COLUMN` sono già unite e non si toccano;
   nessun `ADD COLUMN ... NOT NULL` senza valore di partenza.
+
+**Controllo in `pnpm lint`** (16/11/2026, ok di Luca): in `eslint.config.mjs`
+una regola per `apps/api/src` blocca `deleteMany()`, `deleteMany({})` e
+`deleteMany({ where: {} })`, che svuotano la tabella intera. L'unico caso
+voluto (`popular-jobs.service.ts`, l'elenco su misura sostituisce quello di
+partenza) ha `eslint-disable-next-line` con il motivo. Verifica: `eslint src`
+dell'API passa; un file di prova con le tre forme dà i tre errori, la forma
+con una condizione vera passa.

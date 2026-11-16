@@ -24,6 +24,30 @@ export default tseslint.config(
     },
   },
   {
+    // Un deleteMany() senza condizione svuota la tabella intera (skill
+    // prisma-patterns, docs/changelog/2026-11-16-skill-prisma-da-ecc.md).
+    // Se svuotarla è voluto, eslint-disable-next-line con il motivo accanto.
+    files: ["apps/api/src/**/*.ts"],
+    ignores: ["**/*.spec.ts", "**/*.test.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "CallExpression[callee.property.name='deleteMany'][arguments.length=0]",
+          message: "deleteMany() senza where cancella tutte le righe: aggiungi { where: ... }.",
+        },
+        {
+          selector: "CallExpression[callee.property.name='deleteMany'] > ObjectExpression:first-child[properties.length=0]",
+          message: "deleteMany({}) cancella tutte le righe: aggiungi { where: ... }.",
+        },
+        {
+          selector: "CallExpression[callee.property.name='deleteMany'] > ObjectExpression:first-child > Property[key.name='where'] > ObjectExpression[properties.length=0]",
+          message: "deleteMany({ where: {} }) cancella tutte le righe: metti una condizione vera.",
+        },
+      ],
+    },
+  },
+  {
     files: ["apps/web/**/*.{ts,tsx}"],
     plugins: { "react-hooks": reactHooks, "@next/next": nextPlugin, "jsx-a11y": jsxA11y },
     // Percorso assoluto: il lint parte da apps/web (turbo), non dalla radice,

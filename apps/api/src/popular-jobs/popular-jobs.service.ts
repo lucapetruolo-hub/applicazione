@@ -70,6 +70,8 @@ export class PopularJobsService {
     const { jobs, custom } = await this.list();
     if (custom) return;
     await this.prisma.$transaction([
+      // Voluto: l'elenco su misura sostituisce per intero quello di partenza.
+      // eslint-disable-next-line no-restricted-syntax
       this.prisma.popularJob.deleteMany({}),
       this.prisma.popularJob.createMany({
         data: jobs.map((job, position) => ({ service: job.service, categorySlug: job.categorySlug, position, createdById: adminUserId })),
