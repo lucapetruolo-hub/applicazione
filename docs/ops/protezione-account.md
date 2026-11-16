@@ -6,12 +6,22 @@ repo è pubblico: qui solo i passi, **mai una chiave o una password**.
 
 Spuntare a mano man mano (anche nella skill `checklist-lancio`, punto 28).
 
-## 1. Database a pagamento (subito, 5 minuti)
+## 1. Database a pagamento (prima del lancio, con la società)
 
-- [ ] Render → `professionisti-db-eu` → **Info → Plan** → **Basic** (o
-      superiore). Il piano Free non fa backup e scade il 05/12/2026.
+Decisione di Luca del 16/11/2026: il database resta sul piano Free finché non
+nasce la società (gennaio 2027), perché non ci sono dati veri. Fino ad allora
+**non ci sono backup**: va bene solo finché nel database ci sono soltanto
+account di prova.
+
+- [ ] Entro il **05/12/2026** (scadenza del Free): creare un nuovo database
+      Free e cambiare `DATABASE_URL` su Render. Il database nuovo parte vuoto:
+      account di prova e primo admin vanno rifatti.
+- [ ] Prima del lancio (con la società): Render → database → **Info → Plan**
+      → **Basic**. Solo dal piano Basic ci sono i backup automatici.
 - [ ] Dopo il cambio: Render → database → **Recovery**. Deve comparire il
       ripristino a un istante (Point-in-Time Recovery).
+- [ ] Nessun dato vero (professionisti veri, inviti, pagamenti in Live) finché
+      il database è Free.
 
 ## 2. Gestore di password (30 minuti)
 

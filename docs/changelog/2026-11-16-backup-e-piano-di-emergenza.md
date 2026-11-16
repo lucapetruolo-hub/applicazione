@@ -21,6 +21,11 @@ nei miei account".
   settimanale proposta a Luca (ancora da decidere dove salvarla).
 - Checklist di lancio, punti 28 e 29: rimandi alle due pagine.
 
+Aggiornato lo stesso giorno: Luca ha deciso (thread sul traffico) che il
+database resta Free fino alla società (gennaio 2027) e passa a Basic prima
+del lancio. La guida ora dice di rifarlo Free entro il 05/12 e di non
+mettere dati veri finché non ha backup.
+
 **Motivo**: regola 3-2-1 (tre copie, due supporti, una fuori dal fornitore
 principale). Il database era sul piano Free senza backup; le chiavi esistevano
 solo su Render e Vercel; i passi per un incidente erano sparsi in tre guide e
