@@ -43,6 +43,12 @@ export const COVER_PRESETS: readonly CoverPreset[] = [
 export const COVER_WIDTH = 1600;
 /** Da telefono: quanta copertina c'è sopra il percorso, nascosta all'apertura (si vede scorrendo in su). */
 export const COVER_PHONE_SPACE = 180;
+/**
+ * Da computer: stessa idea del telefono (richiesta di Luca del 16/11/2026,
+ * docs/changelog/2026-11-16-copertina-da-computer.md). Più alta perché la
+ * finestra è larga: scorrendo in su si vede circa metà della foto 2:1.
+ */
+export const COVER_DESKTOP_SPACE = 260;
 export const COVER_HEIGHT = 800;
 
 export const COVER_PRESET_IDS: readonly string[] = COVER_PRESETS.map((preset) => preset.id);

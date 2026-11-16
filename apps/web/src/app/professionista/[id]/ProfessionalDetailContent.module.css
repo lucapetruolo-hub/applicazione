@@ -803,6 +803,24 @@
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 
+/* Da computer (docs/changelog/2026-11-16-copertina-da-computer.md): 260 px di
+   copertina sopra il percorso (COVER_DESKTOP_SPACE), nascosti all'apertura come
+   da telefono. La copertina finisce dove finiva prima: il 45% si calcola anche
+   sullo spazio in più, che va tolto (0,45 × 260 = 117 px). */
+.headCoverSpace {
+  padding-top: 260px;
+}
+
+.headWithCover.headCoverSpace .cover {
+  bottom: calc(45% - 117px);
+}
+
+/* Il percorso ora sta a metà della copertina: il velo scuro si sposta lì,
+   appena accennato in cima per non spegnere la foto. */
+.headDark.headCoverSpace .cover::after {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.08) 0, rgba(0, 0, 0, 0.36) 280px, rgba(0, 0, 0, 0) 420px);
+}
+
 /* La copertina larga quanto la finestra non deve far scorrere la pagina di lato. */
 .page {
   overflow-x: clip;
@@ -811,23 +829,24 @@
 @media (max-width: 660px) {
   /* 180 px di copertina sopra il percorso (COVER_PHONE_SPACE), poi circa
      200 px dietro la scheda: la pagina si apre già sotto. */
-  .headPhoneSpace {
+  .headCoverSpace {
     padding-top: 180px;
   }
 
-  .headWithCover .cover {
+  .headWithCover .cover,
+  .headWithCover.headCoverSpace .cover {
     bottom: auto;
     height: calc(var(--t-space-6) + 180px + 240px);
   }
 
-  .headWithCover:not(.headPhoneSpace) .cover {
+  .headWithCover:not(.headCoverSpace) .cover {
     height: calc(var(--t-space-6) + 240px);
   }
 }
 
 @media (max-width: 660px) {
   /* Da telefono il percorso sta a metà della copertina: il velo scende fin lì. */
-  .headDark.headPhoneSpace .cover::after {
+  .headDark.headCoverSpace .cover::after {
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.4) 45%, rgba(0, 0, 0, 0) 68%);
   }
 }
