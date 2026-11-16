@@ -432,11 +432,14 @@ describe("ricerca a pagine e puntini della mappa (docs/changelog/2026-11-16-pagi
       rankedSearch: (params: { city?: string }) => Promise<Pro[]>;
       searchDetails: (rows: Pro[]) => Promise<Pro[]>;
       firstServiceNames: () => Promise<string[]>;
+      sortsInDatabase: () => boolean;
       buildAvailabilityPreviews: (ids: string[], options: { days?: number; completeDays?: number }) => Promise<Map<string, { days: unknown[] }>>;
     };
     const ranked = vi.spyOn(inner, "rankedSearch").mockImplementation(async (params) => (params.city ? byCity : withoutCity).map((item) => ({ ...item })));
     // Le schede intere solo per quelle della pagina (docs/changelog/2026-11-16-ricerca-leggera.md).
     vi.spyOn(inner, "firstServiceNames").mockResolvedValue([]);
+    // Qui la ricerca nel codice; quella ordinata dal database ha le sue prove più sotto.
+    vi.spyOn(inner, "sortsInDatabase").mockReturnValue(false);
     const details = vi.spyOn(inner, "searchDetails").mockImplementation(async (rows) => rows.map((row) => ({ ...row, full: true })));
     const free = { days: [{ date: "2026-11-16", times: [{ time: "15:00", endTime: "16:00", allowsHome: true, allowsOnline: false, homeAvailable: true, onlineAvailable: false }] }] };
     const previews = vi
@@ -601,7 +604,9 @@ describe("ricerca leggera: si leggono solo i campi che servono (docs/changelog/2
     visibilityBoosts: [],
     services: [{ id: `s-${id}`, name: "Sostituzione rubinetto", categorySlug: null }],
     fiscalProfile: { stripePayoutsEnabled: false },
-    reviews,
+    // Stelle salvate nel profilo (docs/changelog/2026-11-16-stelle-nel-profilo.md).
+    reviewCount: reviews,
+    reviewRating: reviews ? 4.5 : null,
   });
   const full = (id: string) => ({
     ...light(id, 0),
@@ -628,13 +633,15 @@ describe("ricerca leggera: si leggono solo i campi che servono (docs/changelog/2
         ),
       },
       // Stelle: più recensioni a chi ha il numero più alto, così l'ordine si vede.
-      $queryRaw: vi.fn(async () => rows.map((row) => ({ profileId: row.id, count: BigInt(row.reviews), average: row.reviews ? 4.5 : null, last: null }))),
+      // Solo per le schede intere (ultima recensione e lavori del mese).
+      $queryRaw: vi.fn(async () => rows.map((row) => ({ profileId: row.id, count: BigInt(row.reviewCount), average: row.reviewRating, last: null }))),
       booking: { groupBy: vi.fn().mockResolvedValue([]), findMany: vi.fn().mockResolvedValue([]) },
       availabilitySlot: { findMany: vi.fn().mockResolvedValue([]) },
       externalJob: { findMany: vi.fn().mockResolvedValue([]) },
       availabilityException: { findMany: vi.fn().mockResolvedValue([]) },
     };
     const service = new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    vi.spyOn(service as unknown as { sortsInDatabase: () => boolean }, "sortsInDatabase").mockReturnValue(false);
     return { service, findMany };
   };
 
@@ -667,5 +674,113 @@ describe("ricerca leggera: si leggono solo i campi che servono (docs/changelog/2
     expect(findMany.mock.calls[1]![0]).toMatchObject({ select: { services: { select: { id: true, name: true, categorySlug: true } } } });
     expect((findMany.mock.calls[1]![0] as { select: { services: { take?: number } } }).select.services.take).toBeUndefined();
     expect(findMany.mock.calls[0]![0]).toHaveProperty("select");
+  });
+});
+
+describe("pagina ordinata dal database (docs/changelog/2026-11-16-stelle-nel-profilo.md)", () => {
+  const row = (id: string, extra: Record<string, unknown> = {}) => ({
+    id,
+    businessName: `Ditta ${id}`,
+    city: "Latina",
+    latitude: 41.46,
+    longitude: 12.9,
+    imageUrl: null,
+    verified: true,
+    isDemo: false,
+    identityExpiredAt: null,
+    demotedUntil: null,
+    requestsBlockedUntil: null,
+    remoteAvailable: false,
+    spokenLanguages: ["Italiano"],
+    hasLiabilityInsurance: false,
+    subTags: [],
+    categoryOrder: [],
+    reviewCount: 4,
+    reviewRating: 4.5,
+    category: { slug: "idraulico", label: "Idraulico" },
+    extraCategories: [],
+    visibilityBoosts: [],
+    services: [],
+    fiscalProfile: { stripePayoutsEnabled: false },
+    ...extra,
+  });
+  const sqlText = (query: { strings?: readonly string[]; sql?: string }) => query.sql ?? (query.strings ?? []).join("?");
+
+  const build = (options: { total: number; pageIds: string[][] }) => {
+    const pages = [...options.pageIds];
+    const queryRaw = vi.fn(async (query: { strings?: readonly string[]; sql?: string }) => {
+      const text = sqlText(query);
+      if (text.includes('AS "total"')) return [{ total: options.total, count: 30, verified: 28, reviewCount: 120, ratingSum: 540.004 }];
+      if (text.includes('AS "tag"')) return [{ tag: "caldaie", count: 3 }];
+      if (text.includes('AS "city"')) return [{ city: "Sezze", count: 2 }, { city: "Latina", count: 28 }];
+      if (text.includes('AS "language"')) return [{ language: "Italiano" }, { language: "Inglese" }];
+      if (text.includes("LIMIT 60")) return [{ id: "a1" }];
+      return (pages.shift() ?? []).map((id) => ({ id }));
+    });
+    const findMany = vi.fn(async (args: { where: { id?: { in: string[] } } }) => (args.where.id?.in ?? ["a1", "a2", "a3"]).map((id) => row(id)));
+    const prisma = { $queryRaw: queryRaw, professionalProfile: { findMany } };
+    const service = new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    const inner = service as unknown as {
+      searchScope: () => Promise<unknown>;
+      searchDetails: (rows: { id: string }[]) => Promise<{ id: string }[]>;
+      fillSearchAgenda: () => Promise<void>;
+      firstServiceNames: (rows: { id: string }[]) => Promise<string[]>;
+    };
+    vi.spyOn(inner, "searchScope").mockResolvedValue({ where: {}, distanceById: new Map([["a1", 1.04], ["a2", 2], ["a3", 30]]), unfiltered: false });
+    const details = vi.spyOn(inner, "searchDetails").mockImplementation(async (rows) => rows.map((item) => ({ id: item.id })));
+    vi.spyOn(inner, "fillSearchAgenda").mockResolvedValue();
+    const services = vi.spyOn(inner, "firstServiceNames").mockResolvedValue(["Riparazione perdita"]);
+    return { service, queryRaw, details, services };
+  };
+
+  it("pagina, totale e riassunto vengono dal database, la scheda intera solo per la pagina", async () => {
+    const { service, queryRaw, details, services } = build({ total: 45, pageIds: [["a3", "a1"]] });
+    const page = await service.searchPage({ category: "idraulico", city: "Latina" }, { page: 3, pageSize: 20, filters: { language: "Inglese" } });
+    expect(page).toMatchObject({ total: 45, page: 3, pageCount: 3, languages: ["Inglese", "Italiano"], nearestOutsideKm: null });
+    // L'ordine è quello del database, non quello degli id.
+    expect(page.results.map((item) => item.id)).toEqual(["a3", "a1"]);
+    expect(details.mock.calls[0]![0].map((item) => item.id)).toEqual(["a3", "a1"]);
+    expect(services.mock.calls[0]![0].map((item) => item.id)).toEqual(["a1"]);
+    expect(page.facts).toEqual({
+      count: 30,
+      verified: 28,
+      reviewCount: 120,
+      ratingSum: 540,
+      subTagCounts: { caldaie: 3 },
+      services: ["Riparazione perdita"],
+      cities: [{ city: "Latina", count: 28 }, { city: "Sezze", count: 2 }],
+    });
+    // Il filtro della lingua arriva al database come parametro, mai scritto nel testo.
+    const pageQuery = queryRaw.mock.calls.find((call) => sqlText(call[0]).includes("OFFSET"))![0] as { strings: readonly string[]; values: unknown[] };
+    expect(pageQuery.values).toContain("Inglese");
+    expect(pageQuery.values).toContain(40);
+    expect(sqlText(pageQuery)).toContain('COLLATE "C"');
+  });
+
+  it("una pagina che non esiste più diventa l'ultima", async () => {
+    const { service } = build({ total: 25, pageIds: [[], ["a2"]] });
+    const page = await service.searchPage({ category: "idraulico", city: "Latina" }, { page: 9, pageSize: 20, filters: {} });
+    expect(page).toMatchObject({ page: 2, pageCount: 2 });
+    expect(page.results.map((item) => item.id)).toEqual(["a2"]);
+  });
+
+  it("con merito=1 il boost non entra nell'ordine", async () => {
+    const withBoost = build({ total: 3, pageIds: [["a1"]] });
+    await withBoost.service.searchPage({ category: "idraulico", city: "Latina" }, { page: 1, pageSize: 20, filters: {} });
+    expect(withBoost.queryRaw.mock.calls.some((call) => sqlText(call[0]).includes("visibility_boosts"))).toBe(true);
+    const merit = build({ total: 3, pageIds: [["a1"]] });
+    await merit.service.searchPage({ category: "idraulico", city: "Latina", merit: true }, { page: 1, pageSize: 20, filters: {} });
+    expect(merit.queryRaw.mock.calls.some((call) => sqlText(call[0]).includes("visibility_boosts"))).toBe(false);
+  });
+
+  it("problema, prestazione, zona della mappa e filtri sull'agenda restano alla ricerca nel codice", () => {
+    const service = new ProfessionalsService({} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    const sorts = (service as unknown as { sortsInDatabase: (params: object, options: object) => boolean }).sortsInDatabase.bind(service);
+    expect(sorts({ category: "idraulico", city: "Latina" }, { filters: { online: true, insured: true, language: "Inglese" } })).toBe(true);
+    expect(sorts({ category: "idraulico", problem: "perde" }, { filters: {} })).toBe(false);
+    expect(sorts({ service: "Sostituzione rubinetto" }, { filters: {} })).toBe(false);
+    expect(sorts({ category: "idraulico" }, { filters: {}, bounds: { north: 42, south: 41, east: 13, west: 12 } })).toBe(false);
+    expect(sorts({ category: "idraulico" }, { filters: { availability: "today" } })).toBe(false);
+    expect(sorts({ category: "idraulico" }, { filters: { urgent: true } })).toBe(false);
   });
 });

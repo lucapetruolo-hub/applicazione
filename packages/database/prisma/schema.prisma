@@ -505,6 +505,13 @@ model ProfessionalProfile {
   identityVerifications  IdentityVerification[]
   // Colleghi iscritti dal suo link d'invito (docs/changelog/2026-11-09-passaparola.md).
   invitedColleagues      User[]                  @relation("ColleagueInvites")
+  // Stelle e numero di recensioni salvati nel profilo
+  // (docs/changelog/2026-11-16-stelle-nel-profilo.md): li tiene aggiornati il
+  // database con un trigger a ogni recensione nuova, nascosta, ripubblicata o
+  // cancellata, così la ricerca ordina senza contarle. Stesse regole di
+  // loadReviewStats: recensioni non nascoste, media arrotondata a un decimale.
+  reviewCount            Int                     @default(0)
+  reviewRating           Float?
 
   @@index([categoryId, city])
   @@map("professional_profiles")
