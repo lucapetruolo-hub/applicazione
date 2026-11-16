@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { ProfessionalKindValue } from "./professionalKind";
 import { priceUnitSuffix, type ProfessionalCardPriceUnit } from "./cardText";
 
@@ -173,6 +173,15 @@ export type ProfessionalCardProps = {
   /** Quanti giorni si possono sfogliare da `availabilityFrom` (default 63). */
   availabilityDays?: number;
   /**
+   * Ultimo giorno che `availabilityPreview` contiene per intero (agenda
+   * leggera della ricerca, docs/changelog/2026-11-16-traffico-elevato.md):
+   * oltre ci sono solo i primi giorni liberi. Quando il cliente sfoglia oltre,
+   * la scheda chiama una volta `loadFullAvailability` e da lì sfoglia senza
+   * altre chiamate. Assente = agenda già completa.
+   */
+  availabilityCompleteUntil?: string;
+  loadFullAvailability?: () => Promise<ProfessionalCardAvailabilityDay[]>;
+  /**
    * Tab di default (richiesta esplicita dell'utente: prescelto in base al
    * tipo di ricerca fatto dalla homepage — "a domicilio" se cercato a
    * domicilio, "online" se cercato online). Default "HOME" se assente.
@@ -247,6 +256,8 @@ export function useProfessionalCardModel(props: ProfessionalCardProps, isPhone: 
     availabilityPreview,
     availabilityFrom,
     availabilityDays = DEFAULT_AGENDA_DAYS,
+    availabilityCompleteUntil,
+    loadFullAvailability,
     defaultMode,
     defaultExpanded = false,
     onAgendaPress,
@@ -287,10 +298,15 @@ export function useProfessionalCardModel(props: ProfessionalCardProps, isPhone: 
   const visibleCount = isPhone ? AGENDA_VISIBLE_DAYS_PHONE : AGENDA_VISIBLE_DAYS;
   // Colonne giorno consecutive da `availabilityFrom`, con "-" dove il
   // professionista non ha fasce (riferimento miodottore.it).
+  // Agenda completa, chiesta una volta sola quando si sfoglia oltre
+  // `availabilityCompleteUntil`.
+  const [fullAvailability, setFullAvailability] = useState<ProfessionalCardAvailabilityDay[] | null>(null);
+  const [fullAvailabilityState, setFullAvailabilityState] = useState<"idle" | "loading" | "failed">("idle");
+  const days = fullAvailability ?? availabilityPreview;
   const allDays = useMemo(() => {
-    if (!availabilityPreview || availabilityPreview.length === 0) return [];
-    const timesByDate = new Map(availabilityPreview.map((day) => [day.date, day.times]));
-    const start = new Date(`${availabilityFrom ?? availabilityPreview[0]!.date}T00:00:00Z`);
+    if (!days || days.length === 0) return [];
+    const timesByDate = new Map(days.map((day) => [day.date, day.times]));
+    const start = new Date(`${availabilityFrom ?? days[0]!.date}T00:00:00Z`);
     return Array.from({ length: availabilityDays }, (_, index) => {
       const date = new Date(start);
       date.setUTCDate(date.getUTCDate() + index);
@@ -302,13 +318,24 @@ export function useProfessionalCardModel(props: ProfessionalCardProps, isPhone: 
         times: timesByDate.get(iso) ?? [],
       };
     });
-  }, [availabilityPreview, availabilityFrom, availabilityDays]);
+  }, [days, availabilityFrom, availabilityDays]);
   const totalDays = allDays.length;
   const maxOffset = Math.max(0, totalDays - visibleCount);
   const offset = Math.min(windowOffset, maxOffset);
   const allowsKey = activeMode === "HOME" ? ("allowsHome" as const) : ("allowsOnline" as const);
   const availableKey = activeMode === "HOME" ? ("homeAvailable" as const) : ("onlineAvailable" as const);
   const visibleDaysRaw = allDays.slice(offset, offset + visibleCount);
+  const needsFullAvailability =
+    !fullAvailability && Boolean(availabilityCompleteUntil && loadFullAvailability) && visibleDaysRaw.some((day) => day.date > availabilityCompleteUntil!);
+  useEffect(() => {
+    if (!needsFullAvailability || fullAvailabilityState !== "idle" || !loadFullAvailability) return;
+    setFullAvailabilityState("loading");
+    loadFullAvailability()
+      .then((loaded) => setFullAvailability(loaded))
+      // Senza rete restano la prima settimana e i primi giorni liberi; il clic su un giorno porta comunque all'agenda del profilo.
+      .catch(() => setFullAvailabilityState("failed"));
+  }, [needsFullAvailability, fullAvailabilityState, loadFullAvailability]);
+  const agendaLoading = needsFullAvailability && fullAvailabilityState === "loading";
   // Solo gli orari liberi della modalità scelta (docs/CHANGELOG.md §349): in
   // una lista serve sapere quando il professionista è libero, gli orari al
   // completo (prima barrati) restano nell'agenda della pagina profilo.
@@ -383,6 +410,7 @@ export function useProfessionalCardModel(props: ProfessionalCardProps, isPhone: 
     firstFree,
     firstFreeLabel,
     timeRows,
+    agendaLoading,
     openAgendaAt,
     canGoBack,
     canGoForward,

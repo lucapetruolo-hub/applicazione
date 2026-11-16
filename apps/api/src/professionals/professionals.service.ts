@@ -13,6 +13,8 @@ import {
   italianComuni,
   PROFILE_DECLARATION_VERSION,
   PUBLIC_AGENDA_DAYS,
+  searchAgendaCompleteUntil,
+  trimSearchAgenda,
   SEARCH_FALLBACK_MAX_KM,
   SEARCH_RADIUS_KM,
   type AvailabilitySlotInput,
@@ -457,6 +459,7 @@ export class ProfessionalsService {
         // Riempita sotto, solo per i primi SEARCH_MAX_RESULTS dopo l'ordine.
         availabilityPreview: [] as ProfessionalAvailabilityPreviewDay[],
         availabilityFrom: new Date().toISOString().slice(0, 10),
+        availabilityCompleteUntil: undefined as string | undefined,
         createdAt: profile.createdAt.toISOString(),
         updatedAt: lastVisibleChange(profile.updatedAt, profile.services, stats.lastReviewAt ? [{ createdAt: stats.lastReviewAt }] : []).toISOString(),
         completedThisMonth: stats.completedThisMonth,
@@ -502,7 +505,13 @@ export class ProfessionalsService {
     // risposta (~25 KB a professionista, docs/changelog/2026-11-16-traffico-elevato.md).
     const shown = results.slice(0, SEARCH_MAX_RESULTS);
     const previewsByProfileId = await this.buildAvailabilityPreviews(shown.map((result) => result.id));
-    for (const result of shown) result.availabilityPreview = previewsByProfileId.get(result.id)?.days ?? [];
+    // Nella scheda solo la prima settimana e il primo giorno libero per
+    // modalità: il resto lo chiede la scheda quando si sfoglia oltre
+    // (packages/shared/src/searchAgenda.ts).
+    for (const result of shown) {
+      result.availabilityPreview = trimSearchAgenda(previewsByProfileId.get(result.id)?.days ?? [], result.availabilityFrom);
+      result.availabilityCompleteUntil = searchAgendaCompleteUntil(result.availabilityFrom);
+    }
     return shown;
   }
 

@@ -59,6 +59,17 @@ per memoria esaurita già a 2 visite al secondo. I motivi:
 - `SITE_SERVER_KEY` su Render e Vercel, poi Redeploy;
 - API su Standard e database su Basic-1gb prima del 5/12.
 
+**Migliorie scelte da Luca dopo la PR (16/11).**
+- **Agenda leggera nelle schede della ricerca** (`packages/shared/src/searchAgenda.ts`). Prima ogni scheda portava 63 giorni
+  di fasce, circa 22 KB: 50 schede facevano 1,2 MB, che finivano anche nella pagina del telefono. Ora la
+  ricerca manda la prima settimana intera, più il primo giorno libero a domicilio e quello online, con
+  `availabilityCompleteUntil`. Così restano veri i filtri "Oggi", "Entro 3 giorni" e "Intervento urgente",
+  "Mostra orari disponibili" e l'anteprima della mappa. Quando il cliente sfoglia la scheda oltre la prima
+  settimana, la scheda chiede una volta sola l'agenda del profilo (`GET /professionals/:id/agenda`) e da lì
+  sfoglia senza altre chiamate. Durante il caricamento gli orari restano visibili ma più chiari.
+  - Verifica: la stessa ricerca passa da 1,2 MB a 240 KB. Con 3.000 professionisti, a 20 pagine/s il p95
+    scende da 1,7 s a 0,4 s, e il massimo sale da circa 25 a circa 30 pagine/s.
+- **Regola di limite nel Firewall di Vercel**: si imposta a mano, passi in `docs/ops/avvisi.md`.
+
 **Prossimo passo.** Risultati a pagine numerate da 20, con filtri e mappa calcolati sul server e tutti i
-puntini sulla mappa (scelta di Luca del 16/11), in una PR a parte. Oggi la parte più pesante è l'agenda di 63
-giorni dentro ogni scheda della ricerca: circa 22 KB a scheda.
+puntini sulla mappa (scelta di Luca del 16/11), in una PR a parte.

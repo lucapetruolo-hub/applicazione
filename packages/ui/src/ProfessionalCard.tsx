@@ -80,6 +80,7 @@ export function ProfessionalCard(props: ProfessionalCardProps) {
     firstFree,
     firstFreeLabel,
     timeRows,
+    agendaLoading,
     openAgendaAt,
     canGoBack,
     canGoForward,
@@ -471,7 +472,7 @@ export function ProfessionalCard(props: ProfessionalCardProps) {
               </XStack>
 
               {timeRows.length > 0 ? (
-                <YStack gap="1" paddingHorizontal={pager ? AGENDA_ARROW_SPACE : 0}>
+                <YStack gap="1" paddingHorizontal={pager ? AGENDA_ARROW_SPACE : 0} opacity={agendaLoading ? 0.5 : 1}>
                   {timeRows.map((time) => (
                     <XStack key={time}>
                       {visibleDays.map((day, index) => {

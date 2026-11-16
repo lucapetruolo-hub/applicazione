@@ -317,6 +317,13 @@ export type ProfessionalSearchResult = {
   /** Primo giorno dell'agenda (oggi, AAAA-MM-GG in UTC): la colonna "Oggi" della card. */
   availabilityFrom: string;
   /**
+   * Ultimo giorno che `availabilityPreview` contiene per intero
+   * (packages/shared/src/searchAgenda.ts): dopo ci sono solo i primi giorni
+   * liberi, e la scheda chiede l'agenda completa quando si sfoglia oltre.
+   * Assente = agenda completa.
+   */
+  availabilityCompleteUntil?: string;
+  /**
    * Data di creazione del profilo — usata dalla vetrina "Sulla piattaforma"
    * in homepage per ordinare per più recenti e mostrare un badge "Nuovo"
    * (richiesta esplicita dell'utente, carosello in stile miodottore.it),

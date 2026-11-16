@@ -65,9 +65,19 @@ prima di avvisare).
 dell'API basta alzare il numero di istanze su Render: tetti, biglietti ed eventi del tempo reale sono già
 condivisi nel database.
 
-**Facoltativo, protezione di Vercel:** Vercel → Firewall → regola di limite (per esempio 300 richieste al
-minuto per indirizzo sulle pagine) contro chi scarica il sito in massa. Le pagine vere di un visitatore
-restano molto sotto.
+**Protezione di Vercel (miglioria scelta da Luca il 16/11, 5 minuti, a mano):** serve contro chi scarica
+il sito in massa con un programma. Le chiamate che le pagine fanno all'API non passano da qui, quindi non
+ne sono toccate.
+1. Vercel → progetto del sito → **Firewall** → **Configure** → **+ New Rule**.
+2. Nome: `Limite per indirizzo`.
+3. **If**: `Request Path` · `Starts with` · `/`, poi **and** `Request Path` · `Does not start with` ·
+   `/_next/static` (i file del sito non contano).
+4. **Then**: **Rate Limit**, finestra fissa di **60 secondi**, **600 richieste**, chiave **IP Address**,
+   azione **Too Many Requests (429)**.
+5. **Save Rule** → **Review Changes** → **Publish**.
+6. Controllo: apri il sito e sfoglia qualche pagina di ricerca e profilo; in Firewall → Traffic la regola deve
+   restare a zero per te. Una persona vera fa poche decine di richieste al minuto, anche con le anteprime dei
+   link che il sito carica in anticipo.
 
 **Avvisi:** quando l'IA (testo o foto) arriva all'80% del tetto giornaliero arriva un avviso Sentry; al 100%
 arriva quello di sempre e la funzione si ferma fino al giorno dopo.

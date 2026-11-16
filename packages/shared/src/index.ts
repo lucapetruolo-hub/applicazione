@@ -18,6 +18,7 @@ export * from "./coverPresets";
 export * from "./personalLink";
 export * from "./leadAudience";
 export * from "./professionals";
+export * from "./searchAgenda";
 export * from "./limits";
 export * from "./schemas";
 export * from "./emailCode";
