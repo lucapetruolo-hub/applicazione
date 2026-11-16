@@ -15,20 +15,20 @@ import { prisma } from "@professionisti/database";
  * Senza nome (prove) resta in memoria.
  */
 export interface DailyBudgetStore {
-  /** Conta una chiamata se `used < limit`; restituisce `false` se il tetto è pieno. */
-  take(name: string, day: string, limit: number): Promise<boolean>;
+  /** Conta una chiamata se `used < limit` e restituisce le chiamate usate; `null` se il tetto è pieno. */
+  take(name: string, day: string, limit: number): Promise<number | null>;
   used(name: string, day: string): Promise<number>;
 }
 
 export class MemoryBudgetStore implements DailyBudgetStore {
   private readonly counts = new Map<string, number>();
 
-  async take(name: string, day: string, limit: number): Promise<boolean> {
+  async take(name: string, day: string, limit: number): Promise<number | null> {
     const key = `${name}|${day}`;
     const used = this.counts.get(key) ?? 0;
-    if (used >= limit) return false;
+    if (used >= limit) return null;
     this.counts.set(key, used + 1);
-    return true;
+    return used + 1;
   }
 
   async used(name: string, day: string): Promise<number> {
@@ -37,6 +37,9 @@ export class MemoryBudgetStore implements DailyBudgetStore {
 }
 
 const logger = new Logger("TettoGiornaliero");
+
+/** Quota del tetto oltre la quale si avvisa (una volta al giorno per copia). */
+const NEARLY_EXHAUSTED_SHARE = 0.8;
 
 /** Giorni di conteggi tenuti nella tabella: servono solo quelli di oggi. */
 const KEEP_DAYS = 7;
@@ -54,7 +57,7 @@ export const prismaBudgetStore: DailyBudgetStore = {
     if (Math.random() < 0.01) {
       void prisma.$executeRaw`DELETE FROM daily_budget_usage WHERE day < (${day}::date - ${KEEP_DAYS}::int)`.catch(() => undefined);
     }
-    return rows.length > 0;
+    return rows[0]?.used ?? null;
   },
   async used(name, day) {
     const rows = await prisma.$queryRaw<{ used: number }[]>`SELECT used FROM daily_budget_usage WHERE name = ${name} AND day = ${day}::date`;
@@ -76,6 +79,7 @@ export function sharedBudgetStore(): DailyBudgetStore {
 
 export class DailyBudget {
   private warnedDay = "";
+  private nearlyWarnedDay = "";
   private readonly memory = new MemoryBudgetStore();
   private readonly name: string;
 
@@ -87,6 +91,11 @@ export class DailyBudget {
     /** Nome della voce nel database; senza, il conteggio resta in memoria. */
     private readonly sharedName?: string,
     private readonly customStore?: DailyBudgetStore,
+    /**
+     * Avviso quando oggi è usato l'80% del tetto (docs/changelog/2026-11-16-traffico-elevato.md):
+     * c'è tempo di alzarlo su Render prima che la funzione si spenga.
+     */
+    private readonly onNearlyExhausted?: (used: number, limit: number) => void,
   ) {
     this.name = sharedName ?? "memoria";
   }
@@ -115,20 +124,27 @@ export class DailyBudget {
   async take(now: Date = new Date()): Promise<boolean> {
     const today = now.toISOString().slice(0, 10);
     const limit = this.limit();
-    let allowed: boolean;
+    let used: number | null;
     try {
-      allowed = limit > 0 && (await this.store.take(this.name, today, limit));
+      used = limit > 0 ? await this.store.take(this.name, today, limit) : null;
     } catch (error) {
       // Database irraggiungibile: niente chiamata a pagamento, meglio che una
       // spesa senza tetto.
       logger.error(`Tetto "${this.name}" non leggibile: chiamata non fatta. ${error instanceof Error ? error.message : ""}`);
       return false;
     }
-    if (!allowed && this.warnedDay !== today) {
-      this.warnedDay = today;
-      this.onExhausted?.();
+    if (used === null) {
+      if (this.warnedDay !== today) {
+        this.warnedDay = today;
+        this.onExhausted?.();
+      }
+      return false;
     }
-    return allowed;
+    if (used >= Math.ceil(limit * NEARLY_EXHAUSTED_SHARE) && this.nearlyWarnedDay !== today) {
+      this.nearlyWarnedDay = today;
+      this.onNearlyExhausted?.(used, limit);
+    }
+    return true;
   }
 
   private async safeUsed(now: Date): Promise<number> {

@@ -356,6 +356,8 @@ export class ProblemMatchService {
     },
     "PROBLEM_MATCH_AI_DAILY_LIMIT",
     "ia-testo",
+    undefined,
+    (used, limit) => opsAlert("problem-match-budget-80", `IA della ricerca a parole: usate ${used} chiamate su ${limit} oggi. Se il traffico cresce, alzare PROBLEM_MATCH_AI_DAILY_LIMIT su Render.`),
   );
   /** Tetto delle foto per tutto il sito, separato da quello del testo. */
   private readonly photoBudget = new DailyBudget(
@@ -367,6 +369,8 @@ export class ProblemMatchService {
     },
     "PROBLEM_PHOTO_DAILY_LIMIT",
     "ia-foto",
+    undefined,
+    (used, limit) => opsAlert("problem-photo-budget-80", `Ricerca con foto: usate ${used} foto su ${limit} oggi. Se il traffico cresce, alzare PROBLEM_PHOTO_DAILY_LIMIT su Render.`),
   );
   private readonly cache = new Map<string, Classified>();
   /** Risultati delle foto, per id: la foto non si tiene, solo cosa ne ha capito l'IA. */
@@ -501,7 +505,7 @@ export class ProblemMatchService {
     if (limit === 0) return false;
     const print = createHash("sha256").update(`${ip}|${today}`).digest("hex").slice(0, 24);
     try {
-      return await (this.photoIpStore ?? sharedBudgetStore()).take(`ia-foto-ip:${print}`, today, limit);
+      return (await (this.photoIpStore ?? sharedBudgetStore()).take(`ia-foto-ip:${print}`, today, limit)) !== null;
     } catch {
       return false;
     }

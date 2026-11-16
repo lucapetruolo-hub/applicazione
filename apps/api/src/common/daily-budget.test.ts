@@ -46,6 +46,18 @@ describe("DailyBudget", () => {
     expect(await second.usage(day)).toEqual({ used: 2, limit: 2 });
   });
 
+  it("avvisa una volta quando si arriva all'80% del tetto", async () => {
+    const nearly = vi.fn();
+    const budget = new DailyBudget(10, undefined, "PROVA_TETTO", "prova", new MemoryBudgetStore(), nearly);
+    const day = new Date("2026-11-16T10:00:00Z");
+    for (let i = 0; i < 7; i++) await budget.take(day);
+    expect(nearly).not.toHaveBeenCalled();
+    await budget.take(day);
+    await budget.take(day);
+    expect(nearly).toHaveBeenCalledTimes(1);
+    expect(nearly).toHaveBeenCalledWith(8, 10);
+  });
+
   it("se il deposito non risponde la chiamata a pagamento non parte", async () => {
     const broken = { take: vi.fn().mockRejectedValue(new Error("giù")), used: vi.fn().mockRejectedValue(new Error("giù")) };
     const budget = new DailyBudget(5, undefined, "PROVA_TETTO", "prova", broken);
