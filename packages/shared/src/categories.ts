@@ -128,6 +128,30 @@ export const CATEGORY_COMPANIONS: Partial<Record<ProfessionalCategorySlug, { sug
   },
 };
 
+/**
+ * I due mestieri con cui una categoria si confonde più spesso, mostrati come
+ * "Oppure: …" sotto la categoria suggerita nella richiesta di preventivo
+ * (docs/changelog/2026-11-16-scelta-categoria-oppure.md): se il suggerimento
+ * è sbagliato, l'alternativa giusta è quasi sempre una di queste, a un tocco.
+ */
+export const CATEGORY_ALTERNATIVES: Record<ProfessionalCategorySlug, readonly [ProfessionalCategorySlug, ProfessionalCategorySlug]> = {
+  idraulico: ["climatizzazione", "muratore"],
+  elettricista: ["elettrodomestici", "tuttofare"],
+  imbianchino: ["muratore", "tuttofare"],
+  pulizie: ["traslochi", "tuttofare"],
+  giardiniere: ["tuttofare", "muratore"],
+  traslochi: ["tuttofare", "pulizie"],
+  fabbro: ["falegname", "tuttofare"],
+  climatizzazione: ["idraulico", "elettricista"],
+  muratore: ["imbianchino", "idraulico"],
+  falegname: ["tuttofare", "fabbro"],
+  tuttofare: ["falegname", "elettricista"],
+  elettrodomestici: ["elettricista", "idraulico"],
+  "tende-da-sole": ["tuttofare", "falegname"],
+  dogsitter: ["babysitter", "pulizie"],
+  babysitter: ["dogsitter", "pulizie"],
+};
+
 export function isProfessionalCategorySlug(value: string): value is ProfessionalCategorySlug {
   return PROFESSIONAL_CATEGORIES.some((category) => category.slug === value);
 }

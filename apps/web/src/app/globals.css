@@ -6910,6 +6910,22 @@ a.admin-kpi:hover {
   outline-offset: 2px;
 }
 
+/* "Oppure: …": sostituisce il mestiere (bordo pieno), "+ Fabbro" lo aggiunge (tratteggiato). */
+.cat-choice-or .cat-choice-add {
+  border-style: solid;
+  border-color: #d9d2c7;
+  padding-left: 8px;
+  color: #0f3b3b;
+}
+.cat-choice-or-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+}
+
 /* Pannello "Cambia": dal basso sul telefono, finestra al centro sul computer. */
 .cat-sheet-backdrop {
   position: fixed;

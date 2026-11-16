@@ -190,6 +190,25 @@ test("suggerimento nel dubbio (l'IA non risponde): pillole con la categoria già
   await expect(chosenCard(page)).toHaveCount(0);
 });
 
+test("Oppure: due mestieri sempre in vista sotto la scheda, un tocco sostituisce il suggerito", async ({ page }) => {
+  await page.goto("/preventivo");
+  await page.getByLabel("Descrivi il lavoro").fill("Il rubinetto del bagno gocciola");
+  const card = chosenCard(page);
+  await expect(card.getByText("Idraulico", { exact: true })).toBeVisible();
+  const or = page.locator(".cat-choice-or");
+  await expect(or.getByText("Oppure:")).toBeVisible();
+  const options = or.getByRole("button", { name: /al posto di Idraulico$/ });
+  await expect(options).toHaveCount(2);
+  const label = (await options.first().getAttribute("aria-label"))!;
+  const other = label.replace(/^Scegli /, "").replace(/ al posto di Idraulico$/, "");
+  await options.first().click();
+  await expect(card.getByText(other, { exact: true })).toBeVisible();
+  await expect(card.getByText("Idraulico", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("1 di 3")).toBeVisible();
+  // L'Oppure ora propone le alternative del nuovo mestiere.
+  await expect(or.getByRole("button", { name: new RegExp(`al posto di ${other}$`) })).toHaveCount(2);
+});
+
 test("+ mestiere proposto: si dice prima che è una richiesta in più", async ({ page }) => {
   await page.goto("/preventivo?categoria=imbianchino");
   await page.getByLabel("Descrivi il lavoro").fill("Il rubinetto del bagno gocciola");

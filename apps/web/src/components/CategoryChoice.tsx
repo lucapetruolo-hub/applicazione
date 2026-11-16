@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useId, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@professionisti/shared";
+import { CATEGORY_ALTERNATIVES, PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Icon } from "@professionisti/ui";
 import { CATEGORY_ACCENT, CategoryIcon } from "@/components/icons/CategoryIcons";
 import { CategoryTiles } from "@/components/CategoryTiles";
@@ -63,6 +63,16 @@ export function CategoryChoice({
   const [open, setOpen] = useState(false);
   const onlyUnsureGuess = unsure && autoSlug !== null && value.length === 1 && value[0] === autoSlug;
   const showCard = value.length > 0 && !fromPills && !onlyUnsureGuess;
+  // "Oppure: …" (docs/changelog/2026-11-16-scelta-categoria-oppure.md): con un
+  // solo mestiere, i due con cui si confonde più spesso, sempre in vista, così
+  // un suggerimento sbagliato si corregge con un tocco senza aprire "Cambia".
+  // Mai quelli già in "Può servire anche"; se mancano, i più cercati.
+  const alternatives =
+    value.length === 1
+      ? [...new Set([...CATEGORY_ALTERNATIVES[value[0]!], ...(cachedPopularOrder(city?.trim() || undefined) ?? CATALOG)])]
+          .filter((slug) => !value.includes(slug) && !also.includes(slug))
+          .slice(0, 2)
+      : [];
 
   return (
     <>
@@ -100,6 +110,31 @@ export function CategoryChoice({
               );
             })}
           </div>
+          {alternatives.length > 0 ? (
+            <div className="cat-choice-also cat-choice-or">
+              <span>Oppure:</span>
+              {alternatives.map((slug) => {
+                const accent = CATEGORY_ACCENT[slug];
+                return (
+                  <button
+                    key={slug}
+                    type="button"
+                    className="cat-choice-add"
+                    onClick={() => {
+                      onToggle(value[0]!);
+                      onToggle(slug);
+                    }}
+                    aria-label={`Scegli ${labelOf(slug)} al posto di ${labelOf(value[0]!)}`}
+                  >
+                    <span className="cat-choice-or-icon" style={{ background: accent.bg, color: accent.fg }} aria-hidden="true">
+                      <CategoryIcon slug={slug} size={14} />
+                    </span>
+                    {labelOf(slug)}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
           {also.length > 0 && value.length < max ? (
             <div className="cat-choice-also">
               <span>Può servire anche:</span>
