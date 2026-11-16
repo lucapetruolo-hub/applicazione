@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import { courtesyAmountChanged, courtesyDocumentLabel, courtesyTotalEurCents, courtesyYearCsv, courtesyYearTotals, type CourtesyDocumentSummary, type CourtesyYearSummary, type MonthlyStatement } from "@professionisti/shared";
 import { courtesyDocumentSummary } from "./courtesy-documents";
-import { layout, pdfText, renderDocumentPdf } from "./document-pdf";
+import { layout, pdfText, renderDocumentPdf, type PdfBlock } from "./document-pdf";
 import { courtesyPdfModel, courtesyYearPdfModel, dac7PdfModel, invoicePdfModel, pdfFileName, statementPdfModel } from "./document-pdf-models";
 import { sandboxTestInvoiceXml, sdiCompanyOf, type IssuerSnapshot } from "./invoice-documents";
 import { OpenapiSdiProvider, sdiOutcomeFromNotifications, sdiRejectionMessage } from "./sdi-provider";
@@ -741,5 +741,18 @@ describe("invio allo SdI con Openapi", () => {
     expect(xml).toContain("<CodiceFiscale>RSSMRA80A01H501U</CodiceFiscale>");
     expect(xml).toMatch(/<Numero>PROVA-[0-9A-Z]+<\/Numero>/);
     expect(xml).toContain("<ImportoTotaleDocumento>1.22</ImportoTotaleDocumento>");
+  });
+});
+
+describe("preventivo con la seconda pagina quasi vuota", () => {
+  it("stringe spazi, titoli e totale e resta su una pagina", async () => {
+    const blocks: PdfBlock[] = [{ type: "highlight", label: "Totale", value: "90 €", detail: "Tutto compreso" }];
+    for (let i = 0; i < 9; i += 1) blocks.push({ type: "heading", text: `Parte ${i + 1}` }, { type: "text", lines: ["Una riga di testo del preventivo, abbastanza lunga da occupare la sua riga intera."] });
+    let extra = 0;
+    const model = () => ({ title: "Preventivo", blocks: [...blocks, ...Array.from({ length: extra }, (_, i): PdfBlock => ({ type: "heading", text: `In più ${i}` }))] });
+    // Il primo titolo in più che, con gli spazi normali, porta su una seconda pagina.
+    while (layout(model(), 16).doc.bufferedPageRange().count === 1) extra += 1;
+    const pdf = await renderDocumentPdf(model());
+    expect((pdf.toString("latin1").match(/\/Type \/Page\b/g) ?? []).length).toBe(1);
   });
 });

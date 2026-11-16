@@ -34,6 +34,14 @@ cliente, "I tuoi dati", scheda per i partner.
 - "I tuoi dati": prezzi e importi in italiano ("Prezzo da" invece di "Price
   min") e "scaricata l'8 novembre".
 
+**Secondo giro** (Luca, 16/11/2026, "Preventivo su una sola pagina quando la
+seconda ha solo poche righe: sì"): se l'ultima pagina di un PDF occupa al
+massimo un terzo di pagina (prima 90 punti, ora 260), si stringono gli spazi
+e, se non basta, anche titoli e totale in evidenza un po' più piccoli; si
+tiene la versione con meno pagine. Il preventivo da privato di prova passa da
+2 pagine a 1; quello con tre voci, pagamento online e messaggio resta su 2,
+perché la seconda pagina ha davvero contenuto.
+
 Le domande per commercialista e avvocato nate dal controllo sono in
 `analisi/domande-commercialista-avvocato.md` (sezione del 16/11/2026).
 
