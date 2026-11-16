@@ -20,6 +20,7 @@ import { PROBLEM_SEARCH_LABEL } from "@/lib/navigationProgress";
 import { useThinkingLabel } from "@/lib/useThinkingLabel";
 import { apiClient } from "@/lib/apiClient";
 import { localPreviewUrl } from "@/lib/media";
+import { PhotoPicker } from "./PhotoPicker";
 import { forgetSearchPhoto, rememberSearchPhoto, shrinkPhoto } from "@/lib/photoSearch";
 import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "./TurnstileWidget";
 import { FieldCameraIcon } from "./FieldCameraIcon";
@@ -318,31 +319,12 @@ const PHOTO_ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif";
  * si capisce che è un pulsante. Bianco con un'ombra leggera, 44 px da toccare.
  */
 function PhotoButton({ onChoose }: { onChoose: (file: File) => void }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  // Dal telefono si sceglie tra fotocamera e galleria (PhotoPicker).
   return (
-    <>
-      <button
-        type="button"
-        className="field-photo-button"
-        onClick={() => inputRef.current?.click()}
-        aria-label="Aggiungi una foto del problema"
-        title="Aggiungi una foto del problema"
-      >
-        <FieldCameraIcon />
-        <span aria-hidden="true">Foto</span>
-      </button>
-      <input
-        ref={inputRef}
-        type="file"
-        accept={PHOTO_ACCEPT}
-        hidden
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) onChoose(file);
-        }}
-      />
-    </>
+    <PhotoPicker accept={PHOTO_ACCEPT} onFile={onChoose} className="field-photo-button" label="Aggiungi una foto del problema">
+      <FieldCameraIcon />
+      <span aria-hidden="true">Foto</span>
+    </PhotoPicker>
   );
 }
 

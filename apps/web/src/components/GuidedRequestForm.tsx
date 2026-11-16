@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { useDeferredValue, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { X } from "lucide-react";
@@ -48,6 +48,7 @@ import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { RequestSentScreen } from "@/components/RequestSentScreen";
 import { UploadingDots } from "@/components/UploadingDots";
 import { FieldCameraIcon } from "@/components/FieldCameraIcon";
+import { PhotoPicker } from "@/components/PhotoPicker";
 import { TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
 import { GuidedRequestSkeleton } from "@/components/PageLoading";
 import { ButtonWaitBar } from "@/components/WaitBar";
@@ -60,7 +61,7 @@ import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 import { cleanPostalCode, postalCodeCityProblem, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
 import { localPreviewUrl } from "@/lib/media";
-import { searchPhotoFor, withoutHiddenData } from "@/lib/photoSearch";
+import { frameFromVideo, searchPhotoFor, withoutHiddenData } from "@/lib/photoSearch";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 
 /**
@@ -771,13 +772,15 @@ export function GuidedRequestForm({
   // Se dal testo l'IA non capisce il mestiere, guarda la prima foto per il
   // professionista (scelta di Luca, docs/changelog/2026-11-14-foto-per-il-professionista.md):
   // una sola chiamata, solo in quel caso, con la copia piccola già senza GPS.
-  // Un video non si guarda.
+  // Con soli video si guarda un fotogramma del primo, preso nel browser.
   const photoTurnstileToken = useRef<string | null>(null);
   const [photoTurnstileReset, setPhotoTurnstileReset] = useState(0);
   const [readingFirstPhoto, setReadingFirstPhoto] = useState(false);
   const [categoryFromPhoto, setCategoryFromPhoto] = useState<ProfessionalCategorySlug | null>(null);
   const firstPhotoTriedRef = useRef("");
-  const firstPhotoUrl = photos[0] && !photos[0].isVideo ? photos[0].url : null;
+  // La prima foto dell'elenco; se il cliente ha tolto le foto e restano video,
+  // un fotogramma del primo video.
+  const firstPhotoUrl = (photos.find((item) => !item.isVideo) ?? photos[0])?.url ?? null;
   const textNotUnderstoodByAi =
     notUnderstood && checkedDescription?.text === typedDescription && checkedDescription.result.categories.length === 0;
   useEffect(() => {
@@ -909,13 +912,11 @@ export function GuidedRequestForm({
     };
   }, [user]);
 
-  // Un solo input file, senza `capture`: su iOS/Android questo fa comparire
-  // il menu nativo del sistema ("Scatta foto"/"Libreria foto"/"Scegli file",
-  // stile iPhone) invece di aprire direttamente una delle due opzioni —
-  // richiesta esplicita dell'utente. Con `capture` impostato il browser
-  // salta il menu e apre subito la fotocamera, che è il comportamento che
-  // si vuole evitare qui.
-  const photoInputRef = useRef<HTMLInputElement>(null);
+  // Prima un solo input senza `capture`, per il menu nativo del telefono
+  // (richiesta dell'utente). Su Android quel menu non offre sempre la
+  // fotocamera, quindi dal 15/11 dal telefono si apre il menu di PhotoPicker
+  // con "Scatta una foto", "Fai un video" e "Scegli dalla galleria", come il
+  // "+" della chat (docs/changelog/2026-11-15-foto-sotto-la-descrizione.md).
 
   // Riparte da sola non appena il token diventa disponibile dopo il gate
   // (login/registrazione appena completati dentro InlineAuthGate, senza
@@ -1241,10 +1242,8 @@ export function GuidedRequestForm({
     }
   }
 
-  async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
-    const picked = e.target.files?.[0];
-    e.target.value = "";
-    if (!picked || photos.length >= MAX_PHOTOS) return;
+  async function addPhoto(picked: File) {
+    if (photos.length >= MAX_PHOTOS) return;
 
     setPhotoError(null);
     const isVideo = picked.type.startsWith("video/");
@@ -1255,6 +1254,9 @@ export function GuidedRequestForm({
     // (docs/changelog/2026-11-14-foto-per-il-professionista.md). Se il
     // browser non sa aprirla (es. HEIC su Chrome per computer) parte com'è.
     const file = isVideo ? picked : await withoutHiddenData(picked);
+    // La copia per l'IA, usata solo se dal testo non si capisce il mestiere: la foto
+    // stessa, o per un video un fotogramma.
+    const aiCopy = isVideo ? await frameFromVideo(picked) : file;
     if (token) {
       setIsUploadingPhoto(true);
       try {
@@ -1264,7 +1266,7 @@ export function GuidedRequestForm({
         // finire nel database come URL — richiesta esplicita dell'utente
         // ("ridimensionala per occupare meno memoria").
         const result = await apiClient.uploadGuidedRequestPhoto(token, file);
-        if (!isVideo) photoBlobsRef.current.set(result.imageUrl, file);
+        if (aiCopy) photoBlobsRef.current.set(result.imageUrl, aiCopy);
         setPhotos((prev) => [...prev, { url: result.imageUrl, file: null, isVideo }].slice(0, MAX_PHOTOS));
       } catch (err) {
         setPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
@@ -1277,7 +1279,7 @@ export function GuidedRequestForm({
     // un'anteprima via blob:, caricata davvero solo al momento dell'invio
     // (doSubmit, dopo il gate F2.2).
     const previewUrl = localPreviewUrl(file);
-    if (!isVideo) photoBlobsRef.current.set(previewUrl, file);
+    if (aiCopy) photoBlobsRef.current.set(previewUrl, aiCopy);
     setPhotos((prev) => [...prev, { url: previewUrl, file, isVideo }].slice(0, MAX_PHOTOS));
   }
 
@@ -1590,6 +1592,75 @@ export function GuidedRequestForm({
           </div>
         ) : null}
 
+        {/* Le foto per il professionista in uno spazio loro, subito dopo la
+            descrizione (scelte di Luca, docs/changelog/2026-11-14-foto-per-il-professionista.md
+            e 2026-11-15-foto-sotto-la-descrizione.md):
+            la foto per l'IA si mette nella ricerca, queste le vede solo chi
+            riceve la richiesta. La foto della ricerca entra già qui. */}
+        <YStack gap="2">
+          <FieldLabel>Foto per il professionista</FieldLabel>
+          <Text fontSize={13} color={brand.grafite70}>
+            Prima una foto del problema da vicino, poi altre foto o video. Le vede il professionista: niente numeri di
+            telefono, documenti o persone.
+          </Text>
+          <div className="guided-photos" role="group" aria-label={`Foto e video per il professionista (fino a ${MAX_PHOTOS})`}>
+            {photos.map((photo) => (
+              <div key={photo.url} className="guided-photo">
+                <MediaPreview url={photo.url} forceVideo={photo.isVideo} style={{ borderRadius: 9 }} />
+                <button type="button" className="field-photo-remove" onClick={() => removePhoto(photo.url)} aria-label="Togli la foto">
+                  <X size={12} strokeWidth={3} color="white" />
+                </button>
+              </div>
+            ))}
+            {isUploadingPhoto ? (
+              <div className="guided-photo guided-photo-loading" role="status" aria-label="Caricamento della foto">
+                <UploadingDots dotSize={7} />
+              </div>
+            ) : photos.length < MAX_PHOTOS ? (
+              // Dal telefono si sceglie tra fotocamera, video e galleria (PhotoPicker).
+              // La prima è per forza una foto del problema (scelta di Luca del 15/11): è
+              // quella che guarda l'IA se dal testo non si capisce il mestiere. Poi anche video.
+              <PhotoPicker
+                accept={photos.length === 0 ? "image/*" : "image/*,video/*"}
+                allowVideo={photos.length > 0}
+                onFile={addPhoto}
+                className="guided-photo guided-photo-add"
+                label={photos.length === 0 ? "Aggiungi una foto del problema" : "Aggiungi una foto o un video"}
+              >
+                <FieldCameraIcon />
+                <span aria-hidden="true">{photos.length === 0 ? "Foto del problema" : "Aggiungi"}</span>
+              </PhotoPicker>
+            ) : null}
+          </div>
+          {photoError ? (
+            <Text color={brand.urgenza} fontSize={13}>
+              {photoError}
+            </Text>
+          ) : null}
+          {readingFirstPhoto ? (
+            <Text color={brand.grafite70} fontSize={13} role="status">
+              Guardiamo la foto per capire chi ti serve…
+            </Text>
+          ) : categoryFromPhoto && categorySlugs.includes(categoryFromPhoto) ? (
+            <Text color={brand.grafite70} fontSize={13} role="status">
+              Dalla foto ti suggeriamo {categoryLabelOf(categoryFromPhoto)}: l&apos;abbiamo scelta qui sotto, puoi cambiarla.
+            </Text>
+          ) : null}
+          {textNotUnderstoodByAi && firstPhotoUrl ? (
+            <TurnstileWidget
+              onTokenChange={(token) => {
+                photoTurnstileToken.current = token;
+              }}
+              resetSignal={photoTurnstileReset}
+            />
+          ) : null}
+          {photoFromSearch && photos.length > 0 ? (
+            <Text color={brand.grafite70} fontSize={13}>
+              Abbiamo aggiunto la foto della tua ricerca: se non serve, toglila.
+            </Text>
+          ) : null}
+        </YStack>
+
         {suggestionsOn || !selectedCategory ? (
           <YStack gap="2" id="guided-field-categorie">
             <XStack justifyContent="space-between" alignItems="baseline" gap="2">
@@ -1613,7 +1684,7 @@ export function GuidedRequestForm({
                       ? `${OUT_OF_SERVICE_LABELS[suggestion.outOfService]}. Se pensi che serva una di queste, sceglila tu.`
                       : readingFirstPhoto
                         ? "Guardiamo la foto per capire chi ti serve…"
-                        : "Non abbiamo capito chi ti serve: sceglilo tu, oppure aggiungi una foto qui sotto."
+                        : "Non abbiamo capito chi ti serve: sceglilo tu, oppure aggiungi una foto qui sopra."
                     : "Scrivi il lavoro qui sopra e ti suggeriamo chi ti serve, oppure sceglilo tu."}
               </Text>
             ) : null}
@@ -1679,79 +1750,6 @@ export function GuidedRequestForm({
             />
           </div>
         ) : null}
-
-        {/* Le foto per il professionista di nuovo in uno spazio loro, sotto
-            (scelta di Luca, docs/changelog/2026-11-14-foto-per-il-professionista.md):
-            la foto per l'IA si mette nella ricerca, queste le vede solo chi
-            riceve la richiesta. La foto della ricerca entra già qui. */}
-        <YStack gap="2">
-          <FieldLabel>Foto per il professionista (facoltative)</FieldLabel>
-          <Text fontSize={13} color={brand.grafite70}>
-            Aiutano a capire il lavoro e a darti un preventivo più preciso. Le vede il professionista: niente numeri di
-            telefono, documenti o persone.
-          </Text>
-          <div className="guided-photos" role="group" aria-label={`Foto e video per il professionista (fino a ${MAX_PHOTOS})`}>
-            {photos.map((photo) => (
-              <div key={photo.url} className="guided-photo">
-                <MediaPreview url={photo.url} forceVideo={photo.isVideo} style={{ borderRadius: 9 }} />
-                <button type="button" className="field-photo-remove" onClick={() => removePhoto(photo.url)} aria-label="Togli la foto">
-                  <X size={12} strokeWidth={3} color="white" />
-                </button>
-              </div>
-            ))}
-            {isUploadingPhoto ? (
-              <div className="guided-photo guided-photo-loading" role="status" aria-label="Caricamento della foto">
-                <UploadingDots dotSize={7} />
-              </div>
-            ) : photos.length < MAX_PHOTOS ? (
-              <button
-                type="button"
-                className="guided-photo guided-photo-add"
-                onClick={() => photoInputRef.current?.click()}
-                aria-label="Aggiungi una foto o un video"
-              >
-                <FieldCameraIcon />
-                <span aria-hidden="true">Aggiungi</span>
-              </button>
-            ) : null}
-          </div>
-          <input
-            ref={photoInputRef}
-            type="file"
-            accept="image/*,video/*"
-            onChange={handlePhotoChange}
-            disabled={isUploadingPhoto}
-            style={{ display: "none" }}
-            aria-label="Aggiungi una foto o un video per il professionista"
-          />
-          {photoError ? (
-            <Text color={brand.urgenza} fontSize={13}>
-              {photoError}
-            </Text>
-          ) : null}
-          {readingFirstPhoto ? (
-            <Text color={brand.grafite70} fontSize={13} role="status">
-              Guardiamo la foto per capire chi ti serve…
-            </Text>
-          ) : categoryFromPhoto && categorySlugs.includes(categoryFromPhoto) ? (
-            <Text color={brand.grafite70} fontSize={13} role="status">
-              Dalla foto ti suggeriamo {categoryLabelOf(categoryFromPhoto)}: l&apos;abbiamo scelta sopra, puoi cambiarla.
-            </Text>
-          ) : null}
-          {textNotUnderstoodByAi && firstPhotoUrl ? (
-            <TurnstileWidget
-              onTokenChange={(token) => {
-                photoTurnstileToken.current = token;
-              }}
-              resetSignal={photoTurnstileReset}
-            />
-          ) : null}
-          {photoFromSearch && photos.length > 0 ? (
-            <Text color={brand.grafite70} fontSize={13}>
-              Abbiamo aggiunto la foto della tua ricerca: se non serve, toglila.
-            </Text>
-          ) : null}
-        </YStack>
 
 
           </>
