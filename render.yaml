@@ -237,5 +237,5 @@ services:
         sync: false
       - key: WHATSAPP_PRICE_AUTHENTICATION_MICRO_EUR
         sync: false
-      # Mai in produzione: RATE_LIMIT_PER_MINUTE (solo prove) e TZ (le attività
+      # Mai in produzione: RATE_LIMIT_PER_MINUTE, E2E_SUMMARY_CACHE_SECONDS (solo prove) e TZ (le attività
       # a orario hanno già l'ora italiana, apps/api/src/common/scheduled-job.ts).

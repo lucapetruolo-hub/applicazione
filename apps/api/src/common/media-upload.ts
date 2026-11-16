@@ -1,5 +1,5 @@
 import { tmpdir } from "node:os";
-import { basename, dirname, resolve } from "node:path";
+import { basename, resolve, sep } from "node:path";
 import { type CallHandler, type ExecutionContext, Injectable, type NestInterceptor } from "@nestjs/common";
 import { unlink } from "node:fs/promises";
 import { finalize, type Observable } from "rxjs";
@@ -22,9 +22,12 @@ export const MEDIA_UPLOAD_DIR = tmpdir();
  */
 export function temporaryUploadPath(path: string | undefined): string | null {
   if (!path) return null;
-  const folder = resolve(MEDIA_UPLOAD_DIR);
-  const resolved = resolve(path);
-  if (dirname(resolved) !== folder || !/^[a-f0-9]{32}$/.test(basename(resolved))) return null;
+  const folder = resolve(MEDIA_UPLOAD_DIR) + sep;
+  const name = basename(path);
+  if (!/^[a-f0-9]{32}$/.test(name)) return null;
+  const resolved = resolve(folder, name);
+  // Il file deve essere proprio quello nella cartella, non uno con lo stesso nome altrove.
+  if (!resolved.startsWith(folder) || resolve(path) !== resolved) return null;
   return resolved;
 }
 

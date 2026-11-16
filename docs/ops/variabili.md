@@ -39,7 +39,7 @@ Vercel entrano nel sito alla build: dopo un cambio serve **Redeploy**.
 | `GENERAL_REQUESTS_ENABLED` | Fac. (`false` spegne) | Richieste generali attive |
 | `ADMIN_BOOTSTRAP_SECRET` | Fino al primo admin | Primo admin impossibile; poi va tolta |
 | `SITE_SERVER_KEY` | Obbl. al lancio | Le pagine del sito contano nel limite di 60 chiamate al minuto sull'indirizzo di Vercel: con traffico, home e ricerca senza professionisti. Almeno 32 caratteri, uguale su Vercel ([avvisi.md](avvisi.md)) |
-| `RATE_LIMIT_PER_MINUTE`, `TZ` | **Mai in produzione** | — |
+| `RATE_LIMIT_PER_MINUTE`, `E2E_SUMMARY_CACHE_SECONDS`, `TZ` | **Mai in produzione** | — |
 
 ## Sito (Vercel)
 

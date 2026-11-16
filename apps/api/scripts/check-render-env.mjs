@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 // Impostate da Render o solo per le prove: non vanno nel Blueprint.
-const NOT_IN_BLUEPRINT = new Set(["NODE_ENV", "PORT", "RENDER", "RATE_LIMIT_PER_MINUTE", "E2E_VERIFY_EMAIL_PER_MINUTE", "TZ", "VITEST", "CI"]);
+const NOT_IN_BLUEPRINT = new Set(["NODE_ENV", "PORT", "RENDER", "RATE_LIMIT_PER_MINUTE", "E2E_VERIFY_EMAIL_PER_MINUTE", "E2E_SUMMARY_CACHE_SECONDS", "TZ", "VITEST", "CI"]);
 
 function files(dir) {
   return readdirSync(dir).flatMap((name) => {

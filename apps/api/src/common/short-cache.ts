@@ -40,5 +40,14 @@ export class ShortCache<T> {
   }
 }
 
-/** Durata di serie: un minuto. */
-export const SUMMARY_CACHE_MS = 60_000;
+/**
+ * Durata di serie: un minuto. Solo le prove nel browser la mettono a zero con
+ * `E2E_SUMMARY_CACHE_SECONDS=0`, perché creano un prezzo o un professionista e
+ * lo cercano subito dopo; mai in produzione.
+ */
+export const SUMMARY_CACHE_MS = summaryCacheMs(process.env.E2E_SUMMARY_CACHE_SECONDS);
+
+export function summaryCacheMs(seconds: string | undefined): number {
+  const value = Number(seconds);
+  return seconds !== undefined && seconds !== "" && Number.isFinite(value) && value >= 0 ? value * 1000 : 60_000;
+}

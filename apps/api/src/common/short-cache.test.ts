@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ShortCache } from "./short-cache";
+import { ShortCache, summaryCacheMs } from "./short-cache";
 
 describe("ShortCache (docs/changelog/2026-11-16-traffico-elevato.md)", () => {
   it("tiene il risultato per la durata data, poi chiede di nuovo", async () => {
@@ -34,5 +34,13 @@ describe("ShortCache (docs/changelog/2026-11-16-traffico-elevato.md)", () => {
     expect(await cache.get("milano", async () => "m")).toBe("m");
     cache.clear();
     expect(await cache.get("roma", async () => "r2")).toBe("r2");
+  });
+
+  it("un minuto di serie, zero solo se le prove lo chiedono", () => {
+    expect(summaryCacheMs(undefined)).toBe(60_000);
+    expect(summaryCacheMs("")).toBe(60_000);
+    expect(summaryCacheMs("abc")).toBe(60_000);
+    expect(summaryCacheMs("-5")).toBe(60_000);
+    expect(summaryCacheMs("0")).toBe(0);
   });
 });
