@@ -4,6 +4,7 @@ import type { PrismaClient } from "@professionisti/database";
 import {
   SITE_ADVICE_DONE_DAYS,
   SITE_COUNTERS_RETENTION_MONTHS,
+  FAQ,
   matchPopularServices,
   normalizeJobTerm,
   type ChurnKind,
@@ -161,6 +162,20 @@ export class SiteCountsService {
   }
 
   /**
+   * "Ti è stata utile?" sotto una domanda frequente: solo l'id (se esiste
+   * davvero tra le FAQ) e sì/no del giorno, mai chi ha risposto.
+   */
+  async recordFaqFeedback(faqId: string, helpful: boolean): Promise<void> {
+    if (!FAQ.some((item) => item.id === faqId)) return;
+    const day = today();
+    await this.prisma.faqFeedbackDay.upsert({
+      where: { faqId_day: { faqId, day } },
+      create: { faqId, day, yes: helpful ? 1 : 0, no: helpful ? 0 : 1 },
+      update: helpful ? { yes: { increment: 1 } } : { no: { increment: 1 } },
+    });
+  }
+
+  /**
    * Ogni notte alle 3: i contatori più vecchi di SITE_COUNTERS_RETENTION_MONTHS
    * mesi si cancellano (§372, scritto nell'informativa privacy), e con loro le
    * parole che non hanno più nessun giorno.
@@ -179,6 +194,7 @@ export class SiteCountsService {
       this.prisma.unknownJobSearchDay.deleteMany({ where: before }),
       this.prisma.serviceSearchDay.deleteMany({ where: before }),
       this.prisma.churnReasonDay.deleteMany({ where: before }),
+      this.prisma.faqFeedbackDay.deleteMany({ where: before }),
       // Consigli segnati come fatti: servono solo per SITE_ADVICE_DONE_DAYS giorni.
       this.prisma.siteAdviceDone.deleteMany({ where: { doneAt: { lt: new Date(now.getTime() - SITE_ADVICE_DONE_DAYS * DAY_MS) } } }),
     ]);

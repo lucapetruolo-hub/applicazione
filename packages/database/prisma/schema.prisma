@@ -3102,6 +3102,20 @@ model ChurnReasonDay {
   @@map("churn_reason_days")
 }
 
+// "Ti è stata utile?" sotto una domanda frequente (/faq,
+// docs/changelog/2026-11-16-domande-frequenti.md): solo l'id della domanda e
+// quanti sì/no al giorno, mai chi ha risposto.
+model FaqFeedbackDay {
+  faqId String
+  day   DateTime @db.Date
+  yes   Int      @default(0)
+  no    Int      @default(0)
+
+  @@id([faqId, day])
+  @@index([day])
+  @@map("faq_feedback_days")
+}
+
 // Note sul grafico dell'andamento (es. "chiamati 20 idraulici a Latina"),
 // scritte da un admin. Lancio e cambi di prezzo si aggiungono da soli.
 model SiteNote {

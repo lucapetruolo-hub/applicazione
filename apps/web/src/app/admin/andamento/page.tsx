@@ -205,6 +205,7 @@ export default function AdminAndamentoPage() {
             <SourcesCard data={data} />
             <PartnerLinksCard token={token} isSuper={isSuper} />
             <ChurnReasonsCard data={data} />
+            <FaqFeedbackCard data={data} />
             <LaunchCard data={data} />
             <ReconciliationCard data={data} />
             <NotesCard data={data} token={token} onChanged={load} />
@@ -976,6 +977,37 @@ function ChurnReasonsCard({ data }: { data: AdminSiteStats }) {
           total={total}
         />
       )}
+    </AdminCard>
+  );
+}
+
+/**
+ * "Ti è stata utile?" sotto le domande frequenti (docs/changelog/2026-11-16-domande-frequenti.md):
+ * prima quelle con più "No", da riscrivere o completare in packages/shared/src/faq.ts.
+ */
+function FaqFeedbackCard({ data }: { data: AdminSiteStats }) {
+  const rows = data.faqFeedback.slice(0, 12);
+  return (
+    <AdminCard>
+      <CardTitle
+        title="Domande frequenti poco utili"
+        note="Sotto ogni domanda frequente si chiede: ti è stata utile? Qui i No degli ultimi 90 giorni. In cima quelle da riscrivere."
+      />
+      {rows.length === 0 ? (
+        <Text color={brand.grafite70}>Ancora nessuna risposta.</Text>
+      ) : (
+        <Bars
+          rows={rows.map((f) => ({
+            key: f.faqId,
+            label: `${f.question} · ${f.audience === "cliente" ? "per chi cerca" : "per i professionisti"} · ${f.yes} sì`,
+            count: f.no,
+          }))}
+          total={0}
+        />
+      )}
+      <Link href="/faq" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
+        Apri le domande frequenti
+      </Link>
     </AdminCard>
   );
 }

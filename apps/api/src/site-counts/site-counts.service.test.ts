@@ -104,3 +104,16 @@ describe("SiteCountsService: richieste dai profili per pulsante (§402)", () => 
     }
   });
 });
+
+describe("SiteCountsService.recordFaqFeedback", () => {
+  it("conta sì e no per le domande che esistono, ignora gli id inventati", async () => {
+    const prisma = { faqFeedbackDay: { upsert: vi.fn() } };
+    const service = new SiteCountsService(prisma as never);
+    await service.recordFaqFeedback("annullare", false);
+    await service.recordFaqFeedback("non-esiste", true);
+    expect(prisma.faqFeedbackDay.upsert).toHaveBeenCalledTimes(1);
+    const call = prisma.faqFeedbackDay.upsert.mock.calls[0]![0];
+    expect(call.create).toMatchObject({ faqId: "annullare", yes: 0, no: 1 });
+    expect(call.update).toEqual({ no: { increment: 1 } });
+  });
+});

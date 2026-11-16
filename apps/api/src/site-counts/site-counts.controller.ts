@@ -1,11 +1,13 @@
 import { Body, Controller, Headers, HttpCode, Post } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import {
+  faqFeedbackEventSchema,
   isBotUserAgent,
   priceToolStepEventSchema,
   siteFailureEventSchema,
   siteProfileViewEventSchema,
   siteStepEventSchema,
+  type FaqFeedbackEvent,
   type PriceToolStepEvent,
   type SiteFailureEvent,
   type SiteProfileViewEvent,
@@ -57,5 +59,14 @@ export class SiteCountsController {
   async profileView(@Body(new ZodValidationPipe(siteProfileViewEventSchema)) body: SiteProfileViewEvent, @Headers("user-agent") userAgent?: string): Promise<void> {
     if (isBotUserAgent(userAgent)) return;
     await this.siteCounts.recordProfileView(body.device).catch(() => undefined);
+  }
+
+  /** "Ti è stata utile?" sotto una domanda frequente (docs/changelog/2026-11-16-domande-frequenti.md). */
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Post("faq-feedback")
+  @HttpCode(204)
+  async faqFeedback(@Body(new ZodValidationPipe(faqFeedbackEventSchema)) body: FaqFeedbackEvent, @Headers("user-agent") userAgent?: string): Promise<void> {
+    if (isBotUserAgent(userAgent)) return;
+    await this.siteCounts.recordFaqFeedback(body.faqId, body.helpful).catch(() => undefined);
   }
 }

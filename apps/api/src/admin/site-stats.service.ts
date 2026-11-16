@@ -4,6 +4,7 @@ import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
   CHURN_KINDS,
   CHURN_REASONS,
+  FAQ,
   CLIENT_FUNNEL_KEYS,
   PRICE_TOOL_STEP_KEYS,
   REQUEST_STEP_KEYS,
@@ -110,7 +111,7 @@ export class SiteStatsService {
     const launchOn = from ? { createdAt: { gte: from } } : {};
     const proCounted: Prisma.ProfessionalProfileWhereInput = { deletedAt: null, user: { deletedAt: null, ...COUNTED_USER }, isDemo: false };
 
-    const [requestRows, searchDays, freeSearches, profileViews, stepDays, proRows, failureDays, terms, termDays, signups, churnDays, notes, serviceSearches, serviceRows, priceToolDays] = await Promise.all([
+    const [requestRows, searchDays, freeSearches, profileViews, stepDays, proRows, failureDays, terms, termDays, signups, churnDays, notes, serviceSearches, serviceRows, priceToolDays, faqDays] = await Promise.all([
       this.prisma.guidedRequest.findMany({
         where: { createdAt: { gte: fromLaunch(weeksStart < windowStart ? weeksStart : windowStart) }, hiddenAt: null, ...notAdmin },
         select: {
@@ -151,6 +152,7 @@ export class SiteStatsService {
         },
       }),
       this.prisma.priceToolStepDay.groupBy({ by: ["step"], where: { day: { gte: windowDay } }, _sum: { count: true } }),
+      this.prisma.faqFeedbackDay.groupBy({ by: ["faqId"], where: { day: { gte: dayFromLaunch(dayStart(since90)) } }, _sum: { yes: true, no: true } }),
     ]);
 
     const requests: SiteRequestRow[] = requestRows.map((r) => {
@@ -337,6 +339,13 @@ export class SiteStatsService {
       .filter((c) => (CHURN_KINDS as readonly string[]).includes(c.kind) && (CHURN_REASONS as readonly string[]).includes(c.reason))
       .map((c) => ({ kind: c.kind as ChurnKind, reason: c.reason as ChurnReason, count: c._sum.count ?? 0 }))
       .sort((a, b) => b.count - a.count);
+    const faqFeedback = faqDays
+      .flatMap((d) => {
+        const item = FAQ.find((faq) => faq.id === d.faqId);
+        return item ? [{ faqId: item.id, question: item.question.replaceAll("{mesi}", "mesi"), audience: item.audience, yes: d._sum.yes ?? 0, no: d._sum.no ?? 0 }] : [];
+      })
+      .filter((f) => f.yes + f.no > 0)
+      .sort((a, b) => b.no - a.no || a.yes - b.yes);
 
     // Confronto: richieste inviate contate dal browser contro quelle salvate.
     const firstCounted = await this.prisma.requestStepDay.findFirst({ where: { step: "INVIATA" }, orderBy: { day: "asc" }, select: { day: true } });
@@ -446,6 +455,7 @@ export class SiteStatsService {
       missingServices,
       signupSources,
       churnReasons,
+      faqFeedback,
       notes: [...automaticNotes, ...notes.map((n) => ({ id: n.id, day: isoDay(n.day), text: n.text }))].sort((a, b) => a.day.localeCompare(b.day)),
       reconciliation,
       launch: launchStatus,

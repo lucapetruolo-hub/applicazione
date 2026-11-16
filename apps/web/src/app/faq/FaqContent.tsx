@@ -15,6 +15,7 @@ import {
 import { useOnlinePayments } from "@/lib/onlinePayments";
 import { useAuth } from "@/lib/AuthContext";
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
+import { countFaqFeedback } from "@/lib/siteCounts";
 
 /**
  * Domande frequenti divise tra chi cerca e chi lavora sul sito (richiesta di
@@ -57,6 +58,8 @@ export default function FaqContent({ founders = null }: { founders?: FounderSpot
   const audience: FaqAudience = picked ?? (user?.isProfessional ? "professionista" : "cliente");
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  // "Ti è stata utile?": risposta data in questa visita, per domanda.
+  const [votes, setVotes] = useState<Record<string, boolean>>({});
   const panelId = useId();
   const searchId = useId();
 
@@ -88,6 +91,11 @@ export default function FaqContent({ founders = null }: { founders?: FounderSpot
     el.scrollIntoView({ block: "start" });
     highlightDeepLinkTarget(openId);
   }, [openId, audience]);
+
+  function vote(faqId: string, helpful: boolean) {
+    setVotes((current) => ({ ...current, [faqId]: helpful }));
+    countFaqFeedback(faqId, helpful);
+  }
 
   function choose(next: FaqAudience) {
     setPicked(next);
@@ -127,6 +135,25 @@ export default function FaqContent({ founders = null }: { founders?: FounderSpot
             <p>{item.detail}</p>
           </details>
         ) : null}
+        <div className="faq-useful" aria-live="polite">
+          {votes[item.id] === undefined ? (
+            <>
+              <span>Ti è stata utile?</span>
+              <button type="button" onClick={() => vote(item.id, true)}>
+                Sì
+              </button>
+              <button type="button" onClick={() => vote(item.id, false)}>
+                No
+              </button>
+            </>
+          ) : votes[item.id] ? (
+            <span>Grazie!</span>
+          ) : (
+            <span>
+              Grazie, ci aiuta a migliorarla. <Link href="/contatti">Scrivici cosa mancava</Link>
+            </span>
+          )}
+        </div>
       </details>
     );
   }
@@ -375,6 +402,39 @@ export default function FaqContent({ founders = null }: { founders?: FounderSpot
           font-size: 15px;
           font-weight: 700;
           color: ${brand.cianografiaScuro};
+        }
+        .faq :global(.faq-useful) {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 8px;
+          margin-top: 14px;
+          font-size: 14px;
+          color: ${brand.grafite70};
+        }
+        .faq :global(.faq-useful button) {
+          font: inherit;
+          font-weight: 700;
+          min-height: 36px;
+          min-width: 52px;
+          padding: 0 14px;
+          border-radius: 999px;
+          border: 1px solid ${brand.bordoCampo};
+          background: ${brand.calce};
+          color: ${brand.grafite};
+          cursor: pointer;
+        }
+        .faq :global(.faq-useful button:hover) {
+          border-color: ${brand.cianografiaScuro};
+          color: ${brand.cianografiaScuro};
+        }
+        .faq :global(.faq-useful button:focus-visible) {
+          outline: 2px solid ${brand.cianografiaScuro};
+          outline-offset: 2px;
+        }
+        .faq :global(.faq-useful a) {
+          color: ${brand.cianografiaScuro};
+          font-weight: 700;
         }
         .faq-help {
           display: flex;

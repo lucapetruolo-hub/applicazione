@@ -35,3 +35,25 @@ sole tolgono messaggi ai Contatti, soprattutto dai professionisti bloccati.
 `pnpm lint` (anche frasi da intermediario) e `typecheck` di `apps/web`,
 `next build` con `controlla-js-pagine-pubbliche.mjs` verde (`/faq`
 303 KB compressi, home 342 KB), anteprime da telefono e computer in `anteprime/domande-frequenti/`.
+
+## Secondo giro (16/11, "sì" di Luca alle tre migliorie)
+
+- **"Ti è stata utile? Sì / No"** sotto ogni risposta di `/faq`. Il browser
+  manda solo l'id della domanda e sì/no (`POST /site/faq-feedback`, stesse
+  regole degli altri conteggi: niente robot, niente admin né chi ha scelto
+  "Non contare questo browser", al massimo 20 al minuto); l'API conta solo
+  gli id che esistono davvero in `FAQ`. Tabella `faq_feedback_days` (sì e no
+  per giorno, mai chi ha risposto, cancellata con gli altri contatori dopo
+  `SITE_COUNTERS_RETENTION_MONTHS`). Con "No" compare "Scrivici cosa
+  mancava". In Admin → Andamento la scheda "Domande frequenti poco utili":
+  ultimi 90 giorni dal lancio, prima quelle con più "No".
+- **Piè di pagina**: "Domande frequenti" anche sotto "Per i professionisti"
+  (`/faq?per=professionisti`).
+- **Contatti**: sotto "Chi sei?" il riquadro "Forse cerchi:" con tre domande
+  adatte (cliente: annullare, lavoro fatto male, come pago; professionista:
+  profilo che non compare, limite lavori, annullare l'abbonamento), che
+  aprono la risposta in `/faq#id`. Niente per "Altro".
+
+**Verifica**: prova in `site-counts.service.test.ts` (sì/no contati, id
+inventati ignorati), lint e tipi di sito e API, anteprime `utile-*.png` e
+`contatti-*.png` in `anteprime/domande-frequenti/`.

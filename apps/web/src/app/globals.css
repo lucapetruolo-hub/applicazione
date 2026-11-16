@@ -7542,6 +7542,41 @@ a.admin-kpi:hover {
     display: none;
   }
 }
+/* Tre domande frequenti sotto "Chi sei?" (docs/changelog/2026-11-16-domande-frequenti.md). */
+.contatti-faq {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: #dff0f0; /* brand.cianografiaVelo */
+  font-size: 15px;
+  color: #5e5a54; /* brand.grafite70 */
+}
+.contatti-faq ul {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.contatti-faq-link {
+  display: inline-block;
+  padding: 2px 0;
+  line-height: 1.35;
+  color: #186163; /* brand.cianografiaScuro */
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.contatti-faq-link:focus-visible {
+  outline: 3px solid #186163;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 .contatti-mail-link {
   color: #186163;
   font-size: 17px;

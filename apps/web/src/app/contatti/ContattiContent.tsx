@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { BRAND, COMPANY, companyDataReady, type ContactMessageInput } from "@professionisti/shared";
+import { BRAND, COMPANY, companyDataReady, faqByIds, type ContactMessageInput } from "@professionisti/shared";
 import { Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -26,6 +26,13 @@ const HELP_LINKS: { href: string; icon: "message-circle" | "triangle-alert" | "s
   { href: "/sicurezza", icon: "shield-check", label: "Sicurezza e truffe" },
   { href: "/problemi-e-rimborsi", icon: "triangle-alert", label: "Problemi su un lavoro" },
 ];
+
+// Tre domande frequenti adatte a chi scrive, sotto "Chi sei?": spesso la
+// risposta è già lì (docs/changelog/2026-11-16-domande-frequenti.md).
+const ROLE_FAQ: Partial<Record<ContactMessageInput["role"], ReturnType<typeof faqByIds>>> = {
+  CLIENT: faqByIds(["annullare", "lavoro-fatto-male", "come-pago"]),
+  PROFESSIONAL: faqByIds(["profilo-non-compare", "limite-lavori", "annullare-abbonamento"]),
+};
 
 // Etichette vere legate al campo: toccando la scritta il cursore va nel campo
 // e il lettore di schermo la legge una volta sola.
@@ -281,6 +288,20 @@ export default function ContattiContent({ initialReport = false, initialProfileH
                       </button>
                     ))}
                   </div>
+                  {ROLE_FAQ[role] ? (
+                    <div className="contatti-faq">
+                      <span>Forse cerchi:</span>
+                      <ul>
+                        {ROLE_FAQ[role]!.map((item) => (
+                          <li key={item.id}>
+                            <Link href={`/faq#${item.id}`} className="contatti-faq-link">
+                              {item.question}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                 </YStack>
                 )}
 

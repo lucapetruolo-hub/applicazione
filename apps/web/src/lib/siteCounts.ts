@@ -66,7 +66,7 @@ export function chooseCountingDisabled(disabled: boolean): void {
   setCountingDisabled(disabled);
 }
 
-function send(path: "step" | "failure" | "profile-view" | "price-tool", body: object): void {
+function send(path: "step" | "failure" | "profile-view" | "price-tool" | "faq-feedback", body: object): void {
   if (isCountingDisabled()) return;
   // `keepalive`: parte anche se la pagina cambia subito dopo (invio riuscito).
   void fetch(`${API_URL}/site/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), keepalive: true }).catch(
@@ -163,4 +163,9 @@ export function countSubmitFailure({ method, path, status }: { method: string; p
   const form = submitFormOf(method, path);
   const kind = submitFailureKindOf(status);
   if (form && kind) send("failure", { form, kind });
+}
+
+/** "Ti è stata utile?" sotto una domanda frequente: solo l'id e sì/no (docs/changelog/2026-11-16-domande-frequenti.md). */
+export function countFaqFeedback(faqId: string, helpful: boolean): void {
+  send("faq-feedback", { faqId, helpful });
 }
