@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BRAND, COVER_DESKTOP_SPACE, COVER_PHONE_SPACE, MAX_CHOSEN_PROFESSIONALS, profileCover, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, shownServicePriceUnit, formatServicePriceRange, serviceCategoryOf, subTagLabel, type ProfessionalAgenda, type ProfessionalCategorySlug, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, COVER_DESKTOP_SPACE, COVER_PHONE_SPACE, COVER_WIDE_MIN_WIDTH, COVER_WIDE_SPACE, MAX_CHOSEN_PROFESSIONALS, profileCover, PROFILE_REQUEST_SOURCE_PARAM, formatAppointmentDate, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, shownServicePriceUnit, formatServicePriceRange, serviceCategoryOf, subTagLabel, type ProfessionalAgenda, type ProfessionalCategorySlug, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
@@ -81,10 +81,15 @@ function reviewTimeAgo(iso: string): string {
  */
 function startBelowCover() {
   if (window.location.hash || window.scrollY >= 5) return;
-  window.scrollTo(0, window.matchMedia("(max-width: 660px)").matches ? COVER_PHONE_SPACE : COVER_DESKTOP_SPACE);
+  const space = window.matchMedia("(max-width: 660px)").matches
+    ? COVER_PHONE_SPACE
+    : window.matchMedia(`(min-width: ${COVER_WIDE_MIN_WIDTH}px)`).matches
+      ? COVER_WIDE_SPACE
+      : COVER_DESKTOP_SPACE;
+  window.scrollTo(0, space);
 }
 // Scritta a mano, non con toString(): la versione compilata cambia i nomi.
-const coverScrollScript = `if(!location.hash&&scrollY<5)scrollTo(0,matchMedia("(max-width: 660px)").matches?${COVER_PHONE_SPACE}:${COVER_DESKTOP_SPACE})`;
+const coverScrollScript = `if(!location.hash&&scrollY<5)scrollTo(0,matchMedia("(max-width: 660px)").matches?${COVER_PHONE_SPACE}:matchMedia("(min-width: ${COVER_WIDE_MIN_WIDTH}px)").matches?${COVER_WIDE_SPACE}:${COVER_DESKTOP_SPACE})`;
 
 export function ProfessionalDetailContent({
   professional,

@@ -49,6 +49,13 @@ export const COVER_PHONE_SPACE = 180;
  * finestra è larga: scorrendo in su si vede circa metà della foto 2:1.
  */
 export const COVER_DESKTOP_SPACE = 260;
+/**
+ * Da computer con schermo molto largo (da 1600 px, `COVER_WIDE_MIN_WIDTH`): la
+ * foto 2:1 a tutta larghezza è alta quasi 1000 px e con 260 px se ne vedrebbe
+ * solo una fascia; con 360 px se ne vede circa il 70%.
+ */
+export const COVER_WIDE_SPACE = 360;
+export const COVER_WIDE_MIN_WIDTH = 1600;
 export const COVER_HEIGHT = 800;
 
 export const COVER_PRESET_IDS: readonly string[] = COVER_PRESETS.map((preset) => preset.id);

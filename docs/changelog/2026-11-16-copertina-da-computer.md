@@ -30,3 +30,22 @@ differenze.
 copertina foto, colore chiaro e senza copertina: computer aperto a 260 px e
 identico a prima, telefono aperto a 180 px e identico a prima, senza
 copertina nessuno scorrimento, nessuno scorrimento di lato.
+
+## Migliorie approvate da Luca (16/11/2026)
+
+- **Schermi molto larghi** (da 1600 px, `COVER_WIDE_MIN_WIDTH`): 360 px di
+  copertina nascosta (`COVER_WIDE_SPACE`) invece di 260, perché la foto 2:1 a
+  tutta larghezza è più alta: in cima se ne vede circa il 70% e non solo una
+  fascia. Velo scuro e fine della copertina spostati di conseguenza.
+- **"Come la vede il cliente"** (`CoverPicker`): accanto al titolo la scelta
+  "All'apertura / Scorrendo in su"; con la seconda il riquadro scende e la
+  copertina si allunga, da computer e da telefono, con un'animazione breve
+  (niente animazione con "riduci movimento").
+- **Prova automatica** `e2e/tests/copertina-profilo.spec.ts`: apertura a
+  180 px da telefono, 260 da computer, 360 a 1680 px; il nome sta nello stesso
+  punto di un profilo senza copertina; in cima la copertina scende di tutto lo
+  spazio nascosto; senza copertina o con un `#` nessuno scorrimento.
+
+**Verifica**: la prova nuova verde su telefono e computer (7 prove) con API,
+sito e database veri; foto dell'anteprima (computer e telefono, tutti e due
+gli stati) e del profilo a 1920 px (aperto a 360 px).
