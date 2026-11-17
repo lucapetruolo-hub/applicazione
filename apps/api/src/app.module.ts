@@ -55,6 +55,7 @@ import { AgendaModule } from "./agenda/agenda.module";
 import { ProblemMatchModule } from "./problem-match/problem-match.module";
 import { PhotoHandoffModule } from "./photo-handoff/photo-handoff.module";
 import { PopularJobsModule } from "./popular-jobs/popular-jobs.module";
+import { RequestBoardModule } from "./request-board/request-board.module";
 
 @Module({
   imports: [
@@ -123,6 +124,7 @@ import { PopularJobsModule } from "./popular-jobs/popular-jobs.module";
     ProblemMatchModule,
     PhotoHandoffModule,
     PopularJobsModule,
+    RequestBoardModule,
     SubscriptionsModule,
     // Profili creati al telefono da un operatore (docs/CHANGELOG.md §170).
     ProfileInvitesModule,

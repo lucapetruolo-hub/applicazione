@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CATEGORY_SEO_NOUN, PROFESSIONAL_CATEGORIES, isProfessionalCategorySlug } from "@professionisti/shared";
+import { CATEGORY_SEO_NOUN, PROFESSIONAL_CATEGORIES, PROVINCE_NAMES, isProfessionalCategorySlug, provinceSlug, type BoardSummaryRow } from "@professionisti/shared";
+import { apiClient } from "@/lib/apiClient";
 import { breadcrumbJsonLd } from "@/lib/jsonLd";
 import { JsonLd } from "@/components/JsonLd";
+import boardStyles from "@/components/requestBoard/BoardPage.module.css";
 
 /**
  * "Lavora con noi" per ogni lavoro (docs/CHANGELOG.md §296, strategia SEO
@@ -18,6 +20,18 @@ export function generateStaticParams(): PageParams[] {
 }
 
 export const dynamicParams = false;
+// Le province con lavori cercati cambiano di ora in ora
+// (docs/changelog/2026-11-17-bacheca-lavori-cercati.md).
+export const dynamic = "force-dynamic";
+
+async function boardProvinces(slug: string): Promise<BoardSummaryRow[]> {
+  try {
+    const { rows } = await apiClient.getRequestBoardSummary();
+    return rows.filter((row) => row.trade === slug).sort((a, b) => b.count - a.count || (PROVINCE_NAMES[a.province] ?? "").localeCompare(PROVINCE_NAMES[b.province] ?? "", "it"));
+  } catch {
+    return [];
+  }
+}
 
 function findCategory(slug: string) {
   return isProfessionalCategorySlug(slug) ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === slug) : undefined;
@@ -44,6 +58,7 @@ export default async function WorkWithUsPage(props: { params: Promise<PageParams
   const category = findCategory((await props.params).categoria);
   if (!category) notFound();
   const noun = CATEGORY_SEO_NOUN[category.slug];
+  const provinces = await boardProvinces(category.slug);
   const breadcrumbs = breadcrumbJsonLd([
     { label: "Home", href: "/" },
     { label: "Per i professionisti", href: "/per-professionisti" },
@@ -63,6 +78,23 @@ export default async function WorkWithUsPage(props: { params: Promise<PageParams
           </li>
         ))}
       </ol>
+      {provinces.length > 0 ? (
+        <section aria-labelledby="lavori-cercati">
+          <h2 id="lavori-cercati" className={boardStyles.boxTitle}>
+            Lavori cercati adesso
+          </h2>
+          <p className={boardStyles.boxText}>Clienti che aspettano ancora un preventivo. Scegli la provincia per vederli.</p>
+          <ul className={boardStyles.provinces}>
+            {provinces.map((row) => (
+              <li key={row.province}>
+                <Link className={boardStyles.chip} href={`/lavora-con-noi/${category.slug}/${provinceSlug(row.province)}`}>
+                  {PROVINCE_NAMES[row.province]} · {row.count}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       <p className="price-page-note">Nessuna commissione sui lavori che il cliente ti paga direttamente.</p>
       <div className="price-page-actions">
         <Link className="price-page-cta" href={`/registrati?ruolo=professionista&categoria=${category.slug}`}>
