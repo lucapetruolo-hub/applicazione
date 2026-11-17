@@ -34,3 +34,13 @@ dizionario lo cambiamo a mano, l'IA non ci scrive da sola.
 (`CercaContent.tsx`): il secondo mestiere è un'ipotesi della ricerca, non una
 certezza, e il condizionale lo dice senza promettere
 (docs/changelog/2026-11-17-ricerca-home-in-attesa.md).
+
+## Eccezione di osv-scanner per picomatch (Luca, 17/11/2026)
+
+osv-scanner è diventato rosso su tutte le PR per GHSA-fc5q-39xc-vjpf (ReDoS in
+picomatch, nessuna versione corretta: l'ultima colpita è la 4.0.7). Luca ha
+approvato l'eccezione in `osv-scanner.toml`, come per deepmerge e minimatch,
+solo per le versioni 2.3.2, 4.0.4 e 4.0.7: picomatch lo usano solo strumenti di
+sviluppo e di build (Metro, Jest, ricerca dei file) con schemi di file scritti
+da noi, e l'API non lo usa (`pnpm why picomatch --prod`). Da togliere quando
+esce una versione corretta.
