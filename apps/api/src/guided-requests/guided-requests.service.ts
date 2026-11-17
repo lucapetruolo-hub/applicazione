@@ -3,7 +3,7 @@ import { GeocodingService } from "../geocoding/geocoding.service";
 import { CronExpression } from "@nestjs/schedule";
 import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
-import { isRecurringFrequency, CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_RESTORE_WINDOW_MINUTES, type RequestWithdrawReason, findComuneByName, notificationJobLabel, slotStillOffered, professionalChargesVat, professionalKindOf, professionalRestrictions, clientPaymentOffer, quotePriceTotals, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestReach, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
+import { WAITING_REQUEST_HOST_CATEGORY, WAITING_REQUEST_STILL_NEEDED_DAYS, isWaitingTradeKey, textsMatchWaitingTrade, waitingTradeKeywords, waitingTradeName, isRecurringFrequency, CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_RESTORE_WINDOW_MINUTES, type RequestWithdrawReason, findComuneByName, notificationJobLabel, slotStillOffered, professionalChargesVat, professionalKindOf, professionalRestrictions, clientPaymentOffer, quotePriceTotals, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestReach, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { reviewSummariesFor, type ReviewSummary } from "../reviews/review-summary";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
@@ -115,6 +115,24 @@ export function quoteExecutor(
 
 /** Finestra in cui la stessa richiesta mandata di nuovo è un doppio invio (collaudo I-10). */
 const DUPLICATE_REQUEST_MINUTES = 30;
+/** Raggio di partenza di un profilo nuovo (ProfessionalProfile.engagementRadiusKm), per "Vicino a te ci sono…". */
+const WAITING_NEARBY_RADIUS_KM = 25;
+
+/** Riga per il professionista che riceve una richiesta rimasta in attesa del suo mestiere. */
+export function waitingRequestTimelineMessage(createdAt: Date, now: Date): string {
+  const days = Math.floor((now.getTime() - createdAt.getTime()) / (24 * 60 * 60 * 1000));
+  const when = days <= 0 ? "oggi" : days === 1 ? "ieri" : `${days} giorni fa`;
+  return `Il cliente l'ha mandata ${when}, quando nessuno faceva questo lavoro nella sua zona: ora arriva a te.`;
+}
+
+/** Chi ha le parole del mestiere nelle prestazioni, nei patentini o nella descrizione (come la ricerca "Chi offre…"). */
+function tradeKeywordsWhere(keywords: readonly string[]): Prisma.ProfessionalProfileWhereInput[] {
+  return keywords.flatMap((word) => [
+    { services: { some: { name: { contains: word, mode: "insensitive" as const } } } },
+    { certifications: { contains: word, mode: "insensitive" as const } },
+    { bio: { contains: word, mode: "insensitive" as const } },
+  ]);
+}
 /** Testo confrontato senza maiuscole, spazi doppi e punteggiatura finale. */
 function sameRequestText(text: string | null | undefined): string {
   return (text ?? "").toLowerCase().replace(/\s+/g, " ").replace(/[\s.!?]+$/u, "").trim();
@@ -316,9 +334,36 @@ export class GuidedRequestsService {
 
   async create(
     clientId: string,
-    input: Omit<GuidedRequestInput, "extraCategorySlugs">,
+    rawInput: Omit<GuidedRequestInput, "extraCategorySlugs">,
     opts: { excludeProfileId?: string; checksDone?: boolean; submissionGroupId?: string } = {},
   ) {
+    // Richiesta in attesa di un mestiere che nessuno fa ancora vicino al
+    // cliente (docs/changelog/2026-11-17-richieste-in-attesa.md, decisioni di
+    // Luca): una richiesta generale salvata con una categoria di comodo, che
+    // arriva a chi dichiara quel mestiere. "Oggi" non si promette: vale per i
+    // prossimi giorni (il modulo lo dice prima dell'invio).
+    const wantsWaiting = Boolean(rawInput.waitingTradeKey || rawInput.waitingTrade);
+    const waitingTrade = wantsWaiting ? waitingTradeName({ key: rawInput.waitingTradeKey, name: rawInput.waitingTrade }) : null;
+    if (wantsWaiting && !waitingTrade) {
+      throw new BadRequestException("Mestiere non valido.");
+    }
+    const waitingTradeKey = waitingTrade && isWaitingTradeKey(rawInput.waitingTradeKey) ? rawInput.waitingTradeKey : null;
+    const input: Omit<GuidedRequestInput, "extraCategorySlugs"> = waitingTrade
+      ? {
+          ...rawInput,
+          categorySlug: WAITING_REQUEST_HOST_CATEGORY,
+          isUrgent: false,
+          timing: rawInput.timing === "TODAY" ? "WEEK" : rawInput.timing,
+          professionalProfileId: undefined,
+          professionalProfileIds: undefined,
+          preferredDate: undefined,
+          preferredTimeSlot: undefined,
+          forwardIfNoReply: false,
+          viaProfessionalLink: false,
+        }
+      : rawInput;
+    const tradeKeywords = waitingTrade ? waitingTradeKeywords({ key: waitingTradeKey, name: waitingTrade }) : undefined;
+
     let category = await this.prisma.category.findUnique({ where: { slug: input.categorySlug } });
     if (!category) {
       throw new BadRequestException("Categoria non valida.");
@@ -329,7 +374,13 @@ export class GuidedRequestsService {
     // Professionisti scelti dai risultati (§393): come una richiesta diretta,
     // vale anche dove le richieste generali sono chiuse.
     const chosenIds = input.professionalProfileId ? [] : (input.professionalProfileIds ?? []);
-    if (!input.professionalProfileId && chosenIds.length === 0 && !opts.excludeProfileId && !opts.checksDone) {
+    if (waitingTrade) {
+      // Solo la chiusura di tutto il sito: la categoria di comodo non è il mestiere.
+      const availability = await this.generalRequestsService.availability(null, input.city ?? null);
+      if (!availability.open) {
+        throw new ForbiddenException("Le richieste generali non sono attive: scegli un professionista dalla ricerca e invia la richiesta dal suo profilo.");
+      }
+    } else if (!input.professionalProfileId && chosenIds.length === 0 && !opts.excludeProfileId && !opts.checksDone) {
       await this.assertGeneralRequestsOpen(category, input.city ?? null);
     }
     const chosenProfiles = chosenIds.length > 0 ? await this.loadChosenProfiles(chosenIds, category.id) : [];
@@ -470,7 +521,9 @@ export class GuidedRequestsService {
               preferredTimeSlot: resolvedSlot ? input.preferredTimeSlot : undefined,
               submissionGroupId: opts.submissionGroupId,
               trafficSource: input.trafficSource ?? null,
-              suggestedCategorySlug: input.suggestedCategorySlug ?? null,
+              suggestedCategorySlug: waitingTrade ? null : (input.suggestedCategorySlug ?? null),
+              waitingTrade,
+              waitingTradeKey,
             },
           });
         },
@@ -504,6 +557,7 @@ export class GuidedRequestsService {
         : await this.matchProfilesForFanOut(category.id, input.city ?? "", input.isUrgent, {
           excludeProfileId: opts.excludeProfileId,
           remoteOnly: input.serviceMode === "ONLINE",
+          tradeKeywords,
         });
 
     // A tutti i compatibili, senza tetto né coda di riserva (docs/CHANGELOG.md §210).
@@ -538,7 +592,7 @@ export class GuidedRequestsService {
       for (const profile of leadRecipients) {
         await this.notificationsService.notify(profile.userId, "NEW_LEAD", {
           guidedRequestId: guidedRequest.id,
-          category: category.label,
+          category: waitingTrade ?? category.label,
           city: input.city ?? null,
           timing: input.timing ?? null,
           isUrgent: input.isUrgent,
@@ -578,7 +632,8 @@ export class GuidedRequestsService {
 
     // Conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §185).
     if (!opts.submissionGroupId) this.notificationsService.emailRequestSent(clientId, {
-      category: category.label,
+      category: waitingTrade ?? category.label,
+      waiting: Boolean(waitingTrade) && leadRecipients.length === 0,
       requestId: guidedRequest.id,
       city: guidedRequest.city || null,
       isUrgent: input.isUrgent,
@@ -716,7 +771,9 @@ export class GuidedRequestsService {
       return {
         id: request.id,
         categorySlug: request.category.slug,
-        categoryLabel: request.category.label,
+        // In attesa di un mestiere: il cliente vede sempre il mestiere che ha chiesto.
+        categoryLabel: request.waitingTrade ?? request.category.label,
+        waitingTrade: request.waitingTrade ? { name: request.waitingTrade, key: request.waitingTradeKey } : null,
         description: request.description,
         city: request.city,
         address: request.address,
@@ -1145,6 +1202,9 @@ export class GuidedRequestsService {
       } else if (request.closedReason === "COMPLETED") {
         statusMessage = "Richiesta conclusa: hai accettato un preventivo.";
       }
+    } else if (request.waitingTrade && totalContacted === 0) {
+      // Decisioni di Luca del 17/11/2026 (docs/changelog/2026-11-17-richieste-in-attesa.md).
+      statusMessage = `Nessuno fa ancora il lavoro di ${request.waitingTrade.toLowerCase()} vicino a te: la mandiamo da sola a chi lo fa appena si iscrive nella tua zona. Il preventivo te lo fa lui, e scegli tu se accettarlo.`;
     } else if (pending === 0 && responded === 0) {
       // Coda di riserva esaurita, nessuno ha risposto — richiesta esplicita
       // dell'utente, testo esatto.
@@ -1210,9 +1270,17 @@ export class GuidedRequestsService {
     categoryId: string,
     city: string,
     isUrgent: boolean,
-    opts: { excludeProfileId?: string; remoteOnly?: boolean } = {},
+    opts: { excludeProfileId?: string; remoteOnly?: boolean; tradeKeywords?: string[] } = {},
   ): Promise<MatchedCandidate[]> {
-    const { excludeProfileId, remoteOnly } = opts;
+    const { excludeProfileId, remoteOnly, tradeKeywords } = opts;
+    // Richiesta in attesa di un mestiere (docs/changelog/2026-11-17-richieste-in-attesa.md):
+    // chi lo dichiara nelle prestazioni, nei patentini o nella descrizione, di
+    // qualunque categoria, come la ricerca "Chi offre…". Senza parole, nessuno.
+    if (tradeKeywords && tradeKeywords.length === 0) return [];
+    const scopeWhere: Prisma.ProfessionalProfileWhereInput = tradeKeywords
+      ? { OR: tradeKeywordsWhere(tradeKeywords) }
+      : // Categoria principale o una delle aggiuntive (docs/CHANGELOG.md §217).
+        { OR: [{ categoryId }, { extraCategories: { some: { id: categoryId } } }] };
     // Un professionista che ha eliminato l'account (soft-delete) non entra
     // mai nel fan-out — stesso filtro già applicato a search()/getById().
     const candidates = await this.prisma.professionalProfile.findMany({
@@ -1227,8 +1295,7 @@ export class GuidedRequestsService {
         // Nessuna nuova richiesta per 14 giorni dopo la 3ª segnalazione accolta (§167),
         // né durante la pausa scelta dal professionista (collaudo C-16).
         AND: [
-          // Categoria principale o una delle aggiuntive (docs/CHANGELOG.md §217).
-          { OR: [{ categoryId }, { extraCategories: { some: { id: categoryId } } }] },
+          scopeWhere,
           // Dati fiscali compilati (docs/CHANGELOG.md §239, §241).
           publicVisibilityWhere(),
           { OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }] },
@@ -1304,6 +1371,8 @@ export class GuidedRequestsService {
         professionalProfileId: null,
         // Scelti dal cliente (§393): solo a loro, mai a chi si iscrive dopo.
         chosenProfileIds: { isEmpty: true },
+        // In attesa di un mestiere: arrivano per mestiere, non per categoria (matchProfileToWaitingTrades).
+        waitingTrade: null,
         OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
       },
       include: { category: true },
@@ -1355,6 +1424,126 @@ export class GuidedRequestsService {
         "SYSTEM",
         "La richiesta ti è stata inoltrata: sei un professionista compatibile appena iscritto.",
       );
+    }
+    await this.matchProfileToWaitingTrades(profile.id);
+  }
+
+  /**
+   * Quante richieste in attesa di un mestiere ci sono vicino a una città, per
+   * i mestieri che il professionista scrive nelle prestazioni o nella
+   * descrizione (decisione di Luca del 17/11/2026: "Vicino a te ci sono 3
+   * richieste" durante l'iscrizione). Solo il nome del mestiere e il numero,
+   * entro il raggio di partenza di un profilo nuovo.
+   */
+  async waitingNearby(city: string, text: string): Promise<{ trade: string; count: number }[]> {
+    const comune = findComuneByName(city.trim());
+    if (!comune || !text.trim()) return [];
+    const now = new Date();
+    const requests = await this.prisma.guidedRequest.findMany({
+      where: {
+        waitingTrade: { not: null },
+        status: { in: ["OPEN", "MATCHED"] },
+        deletedByClientAt: null,
+        hiddenAt: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+      select: { city: true, waitingTrade: true, waitingTradeKey: true },
+      take: 2000,
+    });
+    const counts = new Map<string, number>();
+    for (const request of requests) {
+      const keywords = waitingTradeKeywords({ key: request.waitingTradeKey, name: request.waitingTrade });
+      if (!request.waitingTrade || !textsMatchWaitingTrade(keywords, [text])) continue;
+      const requestComune = findComuneByName(request.city);
+      if (!requestComune) continue;
+      if (calculateDistanceKm(requestComune.lat, requestComune.lon, comune.lat, comune.lon) > WAITING_NEARBY_RADIUS_KM) continue;
+      counts.set(request.waitingTrade, (counts.get(request.waitingTrade) ?? 0) + 1);
+    }
+    return [...counts.entries()].map(([trade, count]) => ({ trade, count })).sort((a, b) => b.count - a.count);
+  }
+
+  /**
+   * Richieste in attesa di un mestiere (docs/changelog/2026-11-17-richieste-in-attesa.md,
+   * decisioni di Luca del 17/11/2026): appena il professionista è visibile e
+   * dichiara quel mestiere nelle prestazioni, nei patentini o nella
+   * descrizione, riceve le richieste aperte nel suo raggio, anche vecchie
+   * (nessuna domanda al cliente prima, decisione di Luca). Si può chiamare a
+   * ogni salvataggio del profilo: una richiesta già ricevuta non si ripete.
+   */
+  async matchProfileToWaitingTrades(professionalProfileId: string): Promise<void> {
+    if (!(await this.receivesRequests(professionalProfileId))) return;
+    const profile = await this.prisma.professionalProfile.findUnique({
+      where: { id: professionalProfileId },
+      select: {
+        id: true,
+        userId: true,
+        isDemo: true,
+        categoryId: true,
+        latitude: true,
+        longitude: true,
+        engagementRadiusKm: true,
+        remoteAvailable: true,
+        bio: true,
+        certifications: true,
+        services: { select: { name: true, categorySlug: true } },
+      },
+    });
+    // Mai a un profilo dimostrativo né senza coordinate vere (come matchProfilesForFanOut).
+    if (!profile || profile.isDemo || (profile.latitude === 0 && profile.longitude === 0)) return;
+
+    const now = new Date();
+    const requests = await this.prisma.guidedRequest.findMany({
+      where: {
+        waitingTrade: { not: null },
+        status: { in: ["OPEN", "MATCHED"] },
+        deletedByClientAt: null,
+        hiddenAt: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        leads: { none: { professionalProfileId: profile.id } },
+      },
+      select: { id: true, clientId: true, city: true, serviceMode: true, timing: true, expiresAt: true, createdAt: true, waitingTrade: true, waitingTradeKey: true },
+    });
+
+    for (const request of requests) {
+      const trade = { key: request.waitingTradeKey, name: request.waitingTrade };
+      const keywords = waitingTradeKeywords(trade);
+      if (keywords.length === 0) continue;
+      if (!textsMatchWaitingTrade(keywords, [...profile.services.map((service) => service.name), profile.certifications, profile.bio])) continue;
+      if (request.serviceMode === "ONLINE" && !profile.remoteAvailable) continue;
+      const requestComune = findComuneByName(request.city);
+      if (!requestComune) continue;
+      const distanceKm = calculateDistanceKm(requestComune.lat, requestComune.lon, profile.latitude, profile.longitude);
+      if (distanceKm > profile.engagementRadiusKm) continue;
+
+      const isFirstRecipient = (await this.prisma.lead.count({ where: { guidedRequestId: request.id } })) === 0;
+      // Al primo che la riceve la richiesta prende il suo mestiere: quello della
+      // prestazione con le parole del lavoro, se ce l'ha, altrimenti il principale.
+      let categoryId: string | undefined;
+      if (isFirstRecipient) {
+        const tradeService = profile.services.find((service) => service.categorySlug && textsMatchWaitingTrade(keywords, [service.name]));
+        const serviceCategory = tradeService?.categorySlug
+          ? await this.prisma.category.findUnique({ where: { slug: tradeService.categorySlug }, select: { id: true } })
+          : null;
+        categoryId = serviceCategory?.id ?? profile.categoryId;
+      }
+      await this.prisma.lead.create({
+        data: { guidedRequestId: request.id, professionalProfileId: profile.id, priceEurCents: LEAD_PRICE_STANDARD_EUR_CENTS, expiresAt: null, wasExpanded: true },
+      });
+      await this.prisma.guidedRequest.update({ where: { id: request.id }, data: { status: "MATCHED", ...(categoryId ? { categoryId } : {}) } });
+      await this.notificationsService.notify(profile.userId, "NEW_LEAD", {
+        guidedRequestId: request.id,
+        category: request.waitingTrade,
+        city: request.city,
+        timing: request.timing ?? null,
+        isUrgent: false,
+        respondUntil: respondUntilForEmail(false, request.expiresAt),
+        audience: "shared",
+      });
+      if (isFirstRecipient) {
+        await this.notificationsService.notify(request.clientId, "REQUEST_MATCHED_LATER", { guidedRequestId: request.id });
+      }
+      await this.professionalMetricsService.recordRequestReceived(profile.id);
+      await this.timelineService.log(request.id, profile.id, "SYSTEM", waitingRequestTimelineMessage(request.createdAt, now));
     }
   }
 
@@ -1694,6 +1883,29 @@ export class GuidedRequestsService {
       await this.forwardDirectRequest(request.id);
     }
 
+    // "Ti serve ancora?" dopo 30 giorni senza nessuno che faccia il mestiere
+    // (docs/changelog/2026-11-17-richieste-in-attesa.md, decisione di Luca):
+    // una volta sola; se non risponde la richiesta resta fino alla scadenza.
+    const askBefore = new Date(now.getTime() - WAITING_REQUEST_STILL_NEEDED_DAYS * 24 * 60 * 60 * 1000);
+    const stillNeeded = await this.prisma.guidedRequest.findMany({
+      where: {
+        waitingTrade: { not: null },
+        status: "OPEN",
+        stillNeededAskedAt: null,
+        deletedByClientAt: null,
+        createdAt: { lt: askBefore },
+        expiresAt: { gt: now },
+        leads: { none: {} },
+      },
+      select: { id: true, clientId: true },
+    });
+    for (const request of stillNeeded) {
+      // Prenota l'avviso prima di mandarlo: due giri insieme non lo raddoppiano.
+      const claimed = await this.prisma.guidedRequest.updateMany({ where: { id: request.id, stillNeededAskedAt: null }, data: { stillNeededAskedAt: now } });
+      if (claimed.count === 0) continue;
+      await this.notificationsService.notify(request.clientId, "WAITING_REQUEST_STILL_NEEDED", { guidedRequestId: request.id });
+    }
+
     const expiredRequests = await this.prisma.guidedRequest.findMany({
       where: { status: { in: ["OPEN", "MATCHED"] }, expiresAt: { lt: now } },
     });
@@ -1709,6 +1921,8 @@ export class GuidedRequestsService {
       });
       await this.notificationsService.notify(request.clientId, "GUIDED_REQUEST_EXPIRED", {
         guidedRequestId: request.id,
+        // Nessuno che faccia il mestiere in 60 giorni: testo e "Rimandala" diversi.
+        ...(request.waitingTrade && leads.length === 0 ? { waiting: true } : {}),
       });
       await Promise.all(
         leads.map((lead) =>

@@ -11,10 +11,12 @@ import { personalLinkQrSvg } from "../professionals/personal-link.service";
  * "Scatta dal telefono" (docs/changelog/2026-11-16-scatta-dal-telefono.md): dal
  * computer si apre un codice QR, il telefono lo inquadra, scatta e la foto
  * arriva da sola nella finestra del computer. Due segreti diversi:
- * - il **codice** nel QR (nel link del telefono): serve solo a mandare UNA foto;
+ * - il **codice** nel QR (nel link del telefono): serve solo a mandare foto,
+ *   al massimo quante ne ha chieste il computer (1 nella ricerca, dal 17/11 fino
+ *   a 10 altrove: docs/changelog/2026-11-17-piu-foto-dal-telefono.md);
  * - la **chiave**, che resta nel computer: serve solo a prenderla.
  * Così chi vede il QR non può leggere la foto. Si salvano solo le impronte
- * (sha256). La foto vive al massimo 10 minuti nel database e si cancella
+ * (sha256). Una foto vive al massimo 10 minuti nel database e si cancella
  * appena il computer la prende.
  */
 
@@ -23,9 +25,12 @@ export const HANDOFF_TTL_MS = 10 * 60_000;
 /** Codici al giorno per indirizzo: chi lo usa davvero ne apre pochi. */
 export const HANDOFF_PER_IP_DAILY_LIMIT = 30;
 
+/** Foto al massimo per codice (il portfolio del professionista ne tiene 10). */
+export const HANDOFF_MAX_PHOTOS = 10;
+
 export type HandoffStatus = "waiting" | "opened" | "sent" | "expired";
 
-type Store = Pick<PrismaClient, "photoHandoff">;
+type Store = Pick<PrismaClient, "photoHandoff" | "photoHandoffPhoto" | "$queryRaw">;
 
 function hash(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -47,6 +52,11 @@ export function validCode(value: unknown): value is string {
   return typeof value === "string" && /^[A-Za-z0-9_-]{22}$/.test(value);
 }
 
+/** Da 1 a 10, 1 se manca o non è un numero intero. */
+export function clampMaxPhotos(value: unknown): number {
+  return typeof value === "number" && Number.isInteger(value) ? Math.min(HANDOFF_MAX_PHOTOS, Math.max(1, value)) : 1;
+}
+
 @Injectable()
 export class PhotoHandoffService {
   constructor(@Inject(PRISMA) private readonly prisma: Store) {}
@@ -65,65 +75,90 @@ export class PhotoHandoffService {
     }
   }
 
-  async create(now: Date = new Date()) {
+  async create(maxPhotos = 1, now: Date = new Date()) {
     const code = secret();
     const key = secret();
     const expiresAt = new Date(now.getTime() + HANDOFF_TTL_MS);
-    await this.prisma.photoHandoff.create({ data: { codeHash: hash(code), keyHash: hash(key), expiresAt } });
+    const max = clampMaxPhotos(maxPhotos);
+    await this.prisma.photoHandoff.create({ data: { codeHash: hash(code), keyHash: hash(key), maxPhotos: max, expiresAt } });
     const url = `${frontendUrl()}/scatta/${code}`;
-    return { code, key, url, qrSvg: personalLinkQrSvg(url), expiresAt: expiresAt.toISOString() };
+    return { code, key, url, qrSvg: personalLinkQrSvg(url), maxPhotos: max, expiresAt: expiresAt.toISOString() };
   }
 
   /** Il telefono apre il link: si segna, così il computer scrive "Telefono collegato". */
-  async open(code: string, now: Date = new Date()): Promise<HandoffStatus> {
-    const row = await this.prisma.photoHandoff.findUnique({ where: { codeHash: hash(code) }, select: { mediaType: true, openedAt: true, expiresAt: true } });
-    if (!row || row.expiresAt <= now) return "expired";
-    if (row.mediaType) return "sent";
-    if (!row.openedAt) await this.prisma.photoHandoff.updateMany({ where: { codeHash: hash(code), openedAt: null }, data: { openedAt: now } });
-    return "opened";
-  }
-
-  /** Il telefono manda la foto: una sola per codice. */
-  async upload(code: string, photo: Buffer, mediaType: string, now: Date = new Date()): Promise<"ok" | "expired" | "sent"> {
+  async open(code: string, now: Date = new Date()): Promise<{ status: HandoffStatus; sent: number; max: number }> {
     const codeHash = hash(code);
-    const { count } = await this.prisma.photoHandoff.updateMany({
-      where: { codeHash, mediaType: null, expiresAt: { gt: now } },
-      data: { photo: new Uint8Array(photo), mediaType, openedAt: now },
-    });
-    if (count === 1) return "ok";
-    const row = await this.prisma.photoHandoff.findUnique({ where: { codeHash }, select: { mediaType: true, expiresAt: true } });
-    return row && row.expiresAt > now && row.mediaType ? "sent" : "expired";
+    const row = await this.prisma.photoHandoff.findUnique({ where: { codeHash }, select: { openedAt: true, expiresAt: true, sentCount: true, maxPhotos: true } });
+    if (!row || row.expiresAt <= now) return { status: "expired", sent: 0, max: 0 };
+    if (row.sentCount >= row.maxPhotos) return { status: "sent", sent: row.sentCount, max: row.maxPhotos };
+    if (!row.openedAt) await this.prisma.photoHandoff.updateMany({ where: { codeHash, openedAt: null }, data: { openedAt: now } });
+    return { status: "opened", sent: row.sentCount, max: row.maxPhotos };
   }
 
   /**
-   * Il computer chiede se la foto è arrivata. Con la foto la consegna una
-   * volta sola e cancella la riga.
+   * Il telefono manda una foto. Il posto si prende con un solo comando sul
+   * database (sentCount < maxPhotos), così due invii insieme non ne passano uno in più.
+   */
+  async upload(
+    code: string,
+    photo: Buffer,
+    mediaType: string,
+    now: Date = new Date(),
+  ): Promise<{ result: "ok"; sent: number; max: number } | { result: "expired" | "full" }> {
+    const codeHash = hash(code);
+    const rows = await this.prisma.$queryRaw<{ sentCount: number; maxPhotos: number }[]>`
+      UPDATE photo_handoffs SET "sentCount" = "sentCount" + 1, "openedAt" = COALESCE("openedAt", ${now})
+      WHERE "codeHash" = ${codeHash} AND "sentCount" < "maxPhotos" AND "expiresAt" > ${now}
+      RETURNING "sentCount", "maxPhotos"`;
+    const taken = rows[0];
+    if (taken) {
+      await this.prisma.photoHandoffPhoto.create({ data: { codeHash, photo: new Uint8Array(photo), mediaType } });
+      return { result: "ok", sent: taken.sentCount, max: taken.maxPhotos };
+    }
+    const row = await this.prisma.photoHandoff.findUnique({ where: { codeHash }, select: { expiresAt: true } });
+    return { result: row && row.expiresAt > now ? "full" : "expired" };
+  }
+
+  /**
+   * Il computer chiede se è arrivata una foto: le consegna una alla volta,
+   * ognuna una volta sola, e la cancella. "done" quando le ha prese tutte.
    */
   async take(
     code: string,
     key: string,
     now: Date = new Date(),
-  ): Promise<{ status: "waiting" | "opened" | "expired" } | { status: "sent"; photo: Buffer; mediaType: string }> {
+  ): Promise<{ status: "waiting" | "opened" | "expired" | "done" } | { status: "sent"; photo: Buffer; mediaType: string }> {
     const codeHash = hash(code);
-    const row = await this.prisma.photoHandoff.findUnique({ where: { codeHash } });
+    const row = await this.prisma.photoHandoff.findUnique({ where: { codeHash }, select: { keyHash: true, expiresAt: true, openedAt: true, sentCount: true, maxPhotos: true } });
     if (!row || !sameHash(row.keyHash, hash(key)) || row.expiresAt <= now) return { status: "expired" };
-    if (!row.photo || !row.mediaType) return { status: row.openedAt ? "opened" : "waiting" };
-    const { count } = await this.prisma.photoHandoff.deleteMany({ where: { codeHash } });
-    if (count === 0) return { status: "expired" };
-    return { status: "sent", photo: Buffer.from(row.photo), mediaType: row.mediaType };
+    const next = await this.prisma.photoHandoffPhoto.findFirst({ where: { codeHash }, orderBy: { id: "asc" } });
+    if (next) {
+      const { count } = await this.prisma.photoHandoffPhoto.deleteMany({ where: { id: next.id } });
+      // Presa nel frattempo da un'altra richiesta: alla prossima domanda c'è la successiva.
+      if (count === 0) return { status: "opened" };
+      return { status: "sent", photo: Buffer.from(next.photo), mediaType: next.mediaType };
+    }
+    if (row.sentCount >= row.maxPhotos) {
+      await this.prisma.photoHandoff.deleteMany({ where: { codeHash } });
+      return { status: "done" };
+    }
+    return { status: row.openedAt ? "opened" : "waiting" };
   }
 
-  /** Il computer chiude la finestra: il codice non serve più. */
+  /** Il computer chiude la finestra: il codice e le foto non prese non servono più. */
   async cancel(code: string, key: string): Promise<void> {
     const codeHash = hash(code);
     const row = await this.prisma.photoHandoff.findUnique({ where: { codeHash }, select: { keyHash: true } });
-    if (row && sameHash(row.keyHash, hash(key))) await this.prisma.photoHandoff.deleteMany({ where: { codeHash } });
+    if (!row || !sameHash(row.keyHash, hash(key))) return;
+    await this.prisma.photoHandoffPhoto.deleteMany({ where: { codeHash } });
+    await this.prisma.photoHandoff.deleteMany({ where: { codeHash } });
   }
 
-  /** Foto e codici scaduti, mai presi: via ogni 10 minuti. */
+  /** Codici scaduti e foto mai prese: via ogni 10 minuti. Una foto non vive più del suo codice. */
   @ScheduledJob("*/10 * * * *")
   async removeExpired(now: Date = new Date()): Promise<number> {
     const { count } = await this.prisma.photoHandoff.deleteMany({ where: { expiresAt: { lte: now } } });
+    await this.prisma.photoHandoffPhoto.deleteMany({ where: { createdAt: { lte: new Date(now.getTime() - HANDOFF_TTL_MS) } } });
     return count;
   }
 }

@@ -1033,6 +1033,15 @@ model GuidedRequest {
   // suo, il lavoro non conta nei lavori del mese e si può rispondere anche
   // con i lavori esauriti. Falsa se il cliente era già arrivato a lui dal sito.
   fromProfessionalLink  Boolean                      @default(false)
+  // Richiesta in attesa di un mestiere che nessuno fa ancora vicino al
+  // cliente (docs/changelog/2026-11-17-richieste-in-attesa.md): nome del
+  // mestiere mostrato al cliente e chiave di uno degli 8 lavori fuori servizio
+  // (null per un mestiere proposto dall'IA). Arriva a chi ha quelle parole
+  // nelle prestazioni, nei patentini o nella descrizione, mai per categoria.
+  waitingTrade          String?
+  waitingTradeKey       String?
+  // Quando è partita la domanda "Ti serve ancora?" (30 giorni senza nessuno).
+  stillNeededAskedAt    DateTime?
 
   client              User                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
   category            Category             @relation(fields: [categoryId], references: [id])
@@ -1047,6 +1056,7 @@ model GuidedRequest {
   @@index([deletedByClientAt])
   @@index([clientId])
   @@index([professionalProfileId])
+  @@index([waitingTrade, status])
   @@map("guided_requests")
 }
 
@@ -3810,22 +3820,42 @@ model RealtimeEvent {
   @@map("realtime_events")
 }
 
-/// Foto scattata dal telefono per la finestra foto del computer, col codice QR
+/// "Scatta dal telefono": codice QR della finestra foto del computer
 /// (docs/changelog/2026-11-16-scatta-dal-telefono.md). Vive al massimo 10
-/// minuti: si cancella appena il computer la prende, o alla scadenza.
-/// Nel database e non in memoria: l'API può girare in più copie.
+/// minuti. Nel database e non in memoria: l'API può girare in più copie.
+/// Dal 17/11 più foto per codice: le foto stanno in `photo_handoff_photos`
+/// (docs/changelog/2026-11-17-piu-foto-dal-telefono.md).
 model PhotoHandoff {
   /// Impronta (sha256) del codice nel QR: il codice vero non si salva.
   codeHash  String    @id
   /// Impronta della chiave che solo il computer conosce: serve per prendere la foto.
   keyHash   String
+  /// Non più usate dal 17/11 (le foto stanno in photo_handoff_photos): da togliere in una PR a parte.
   photo     Bytes?
   mediaType String?
   /// Quando il telefono ha aperto il link: il computer scrive "Telefono collegato".
   openedAt  DateTime?
+  /// Quante foto può mandare il telefono con questo codice (dove si usa: 1 nella ricerca, fino a 10 nel portfolio).
+  maxPhotos Int       @default(1)
+  /// Quante ne ha già mandate.
+  sentCount Int       @default(0)
   createdAt DateTime  @default(now())
   expiresAt DateTime
 
   @@index([expiresAt])
   @@map("photo_handoffs")
+}
+
+/// Una foto mandata dal telefono, in attesa che il computer la prenda: si
+/// cancella appena presa, o con il suo codice.
+model PhotoHandoffPhoto {
+  id        BigInt   @id @default(autoincrement())
+  codeHash  String
+  photo     Bytes
+  mediaType String
+  createdAt DateTime @default(now())
+
+  @@index([codeHash])
+  @@index([createdAt])
+  @@map("photo_handoff_photos")
 }

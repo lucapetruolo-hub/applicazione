@@ -151,6 +151,8 @@ const selfAny = [
   "GET /guided-requests/me/last-address",
   "POST /guided-requests/photos",
   "POST /guided-requests/timeline-photos",
+  // Quante richieste in attesa di un mestiere ci sono vicino: solo numero e mestiere, mai dati del cliente.
+  "GET /guided-requests/waiting-nearby",
   "DELETE /notifications",
   "GET /notifications/history",
   "POST /notifications/mark-all-read",

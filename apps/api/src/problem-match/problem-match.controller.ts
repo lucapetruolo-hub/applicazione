@@ -199,6 +199,13 @@ export class AdminProblemMatchController {
     return this.adminService.removeAlias(req.user.userId, key);
   }
 
+  // Richieste in attesa di un mestiere (docs/changelog/2026-11-17-richieste-in-attesa.md).
+  @RequireAdminScope("MODERATION")
+  @Get("waiting-requests")
+  waitingRequests() {
+    return this.adminService.waitingRequests();
+  }
+
   @RequireAdminScope("MODERATION")
   @Get("takeovers")
   takeovers(@Query("stato") stato?: string) {

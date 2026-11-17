@@ -7165,6 +7165,21 @@ a.admin-kpi:hover {
   color: #1e6b6e;
   font-weight: 600;
 }
+/* Mestiere in attesa (docs/changelog/2026-11-17-richieste-in-attesa.md). */
+.cat-choice-icon-waiting {
+  background: #e3efee;
+}
+.cat-choice-waiting {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #f3ece2;
+  color: #6f665d;
+  font-size: 13px;
+  font-weight: 600;
+  vertical-align: 2px;
+}
 .cat-choice-change {
   flex: none;
   min-height: 44px;
@@ -8905,6 +8920,16 @@ textarea[id^="contatti-"][aria-invalid="true"] {
 }
 .nt-hour select:hover {
   border-color: #1b1a18;
+}
+/* Scelta del suono e "Prova il suono" sulla stessa riga, a capo se non c'è spazio (docs/changelog/2026-11-17-suoni-notifica.md). */
+.nt-sound {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+}
+.nt-sound .notif-link {
+  min-height: 40px;
 }
 .nt-check {
   display: flex;
@@ -11492,6 +11517,13 @@ textarea[id^="contatti-"][aria-invalid="true"] {
     animation: none;
   }
 }
+.handoff-status-ok {
+  color: #0f3b3b;
+  font-weight: 600;
+}
+.handoff-status-ok svg {
+  color: #1e6b6e;
+}
 .handoff-done {
   display: flex;
   flex-direction: column;
@@ -11512,4 +11544,129 @@ textarea[id^="contatti-"][aria-invalid="true"] {
   .handoff-qr {
     align-self: center;
   }
+}
+
+/* Casella "Aggiungi" del portfolio nel profilo del professionista, ora con
+   PhotoPicker (docs/changelog/2026-11-17-piu-foto-dal-telefono.md): stesse
+   misure delle miniature accanto (88 px). */
+.portfolio-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 88px;
+  height: 88px;
+  padding: 0;
+  border: 1px dashed #cfc5b8;
+  border-radius: 10px;
+  background: #fff;
+  color: #4a5560;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.portfolio-add:hover:not(:disabled) {
+  border-color: #1e6b6e;
+  background: #f7fbfa;
+}
+.portfolio-add:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.portfolio-add:focus-visible {
+  outline: 2px solid #1e6b6e;
+  outline-offset: 2px;
+}
+.portfolio-add-plus {
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1;
+}
+.scatta-sent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #e6f2f1;
+  color: #0f3b3b;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.scatta-sent svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #1e6b6e;
+}
+
+/* "Scopri di più" della richiesta in attesa (docs/changelog/2026-11-17-richieste-in-attesa.md). */
+.waiting-request-more summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: #1e6b6e;
+  font-weight: 600;
+  font-size: 16px;
+}
+.waiting-request-more ul {
+  margin: 4px 0 0;
+  padding-left: 20px;
+  color: #6f665d;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.waiting-request-more li + li {
+  margin-top: 4px;
+}
+
+/* Admin › Richieste in attesa: chi cercare (docs/changelog/2026-11-17-richieste-in-attesa.md). */
+.waiting-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.waiting-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 1px solid #e7dfd5;
+  border-radius: 10px;
+  background: #fffdf9;
+  font-size: 15px;
+  color: #6f665d;
+}
+.waiting-group strong {
+  font-size: 17px;
+  color: #1b1a18;
+}
+.waiting-group-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  color: #1e6b6e;
+  font-weight: 600;
+}
+
+/* "Vicino a te ci sono 3 richieste" nel profilo (docs/changelog/2026-11-17-richieste-in-attesa.md). */
+.waiting-nearby {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #e3efee;
+  color: #1b1a18;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.waiting-nearby p {
+  margin: 0;
+}
+.waiting-nearby p + p {
+  margin-top: 6px;
+}
+.waiting-nearby strong {
+  color: #0f3b3b;
 }

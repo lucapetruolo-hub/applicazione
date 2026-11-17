@@ -1669,6 +1669,10 @@ export class ProfessionalsService {
         urgentEngagementRadiusKm: profile.urgentEngagementRadiusKm,
         remoteAvailable: profile.remoteAvailable,
       });
+    } else if (isActiveProfile) {
+      // Prestazioni o descrizione cambiate: le richieste in attesa di un mestiere
+      // che ora dichiara (docs/changelog/2026-11-17-richieste-in-attesa.md).
+      await this.guidedRequestsService.matchProfileToWaitingTrades(profile.id);
     }
 
     return {
@@ -2063,7 +2067,8 @@ export class ProfessionalsService {
           : null,
         guidedRequest: {
           id: lead.guidedRequest.id,
-          categoryLabel: lead.guidedRequest.category.label,
+          // Il mestiere chiesto, per una richiesta rimasta in attesa (docs/changelog/2026-11-17-richieste-in-attesa.md).
+          categoryLabel: lead.guidedRequest.waitingTrade ?? lead.guidedRequest.category.label,
           // Per i mestieri a visite ripetute il preventivo offre il lavoro ricorrente (docs/changelog/2026-11-09-lavori-ricorrenti.md).
           categorySlug: lead.guidedRequest.category.slug,
           description: lead.guidedRequest.description,

@@ -35,6 +35,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   REQUEST_FORWARDED: { icon: "📨", message: "Il professionista scelto non ha ancora risposto: abbiamo inoltrato la richiesta anche ad altri professionisti simili." },
   // Richiesta senza destinatari arrivata a un professionista iscritto dopo (docs/CHANGELOG.md §271).
   REQUEST_MATCHED_LATER: { icon: "🙌", message: "Un professionista compatibile ha ricevuto la tua richiesta." },
+  // "Ti serve ancora?" dopo 30 giorni in attesa di un mestiere (docs/changelog/2026-11-17-richieste-in-attesa.md).
+  WAITING_REQUEST_STILL_NEEDED: { icon: "⏳", message: "La tua richiesta è ancora in attesa di chi fa questo lavoro. Se non ti serve più, ritirala." },
   REQUEST_FORWARD_NO_MATCH: { icon: "📭", message: "Il professionista scelto non ha ancora risposto e in zona non ce ne sono altri disponibili per ora." },
   BOOKING_NO_SHOW_REPORTED: { icon: "⚠️", message: "Un cliente ha segnalato che non ti sei presentato a un appuntamento." },
   TIMELINE_MESSAGE_FROM_CLIENT: { icon: "💬", message: "Il cliente ti ha scritto un messaggio." },

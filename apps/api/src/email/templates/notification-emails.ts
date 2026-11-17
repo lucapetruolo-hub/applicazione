@@ -327,17 +327,32 @@ const BUILDERS: Record<string, Builder> = {
       cta: proRequests("Rispondi alla richiesta"),
     };
   },
-  GUIDED_REQUEST_EXPIRED: (_payload, ctx) => ({
-    kind: "notification",
-    subject: "La tua richiesta è scaduta",
-    greeting: ctx.name,
-    title: "La tua richiesta è scaduta",
-    paragraphs: [
-      `La tua richiesta per **${job(ctx)}** è scaduta senza ricevere preventivi.`,
-      "Può succedere quando in zona i professionisti sono tutti impegnati. Prova a inviarla di nuovo, magari con una data più flessibile.",
-    ],
-    cta: { label: "Invia una nuova richiesta", url: `${frontendUrl()}/preventivo` },
-  }),
+  GUIDED_REQUEST_EXPIRED: (payload, ctx) =>
+    // In attesa di un mestiere per 60 giorni senza nessuno (docs/changelog/2026-11-17-richieste-in-attesa.md):
+    // "Ripeti la richiesta" in Le mie richieste la rimanda con gli stessi dati.
+    payload.waiting === true
+      ? {
+          kind: "notification",
+          subject: "La tua richiesta è chiusa",
+          greeting: ctx.name,
+          title: "Non abbiamo trovato nessuno in tempo",
+          paragraphs: [
+            `In 60 giorni non si è iscritto nessuno che fa **${job(ctx)}** vicino a te, e la richiesta è chiusa.`,
+            "Se ti serve ancora, rimandala con un clic da Le mie richieste: riparte con gli stessi dati.",
+          ],
+          cta: { label: "Rimanda la richiesta", url: `${frontendUrl()}/le-mie-richieste` },
+        }
+      : {
+          kind: "notification",
+          subject: "La tua richiesta è scaduta",
+          greeting: ctx.name,
+          title: "La tua richiesta è scaduta",
+          paragraphs: [
+            `La tua richiesta per **${job(ctx)}** è scaduta senza ricevere preventivi.`,
+            "Può succedere quando in zona i professionisti sono tutti impegnati. Prova a inviarla di nuovo, magari con una data più flessibile.",
+          ],
+          cta: { label: "Invia una nuova richiesta", url: `${frontendUrl()}/preventivo` },
+        },
   REQUEST_FORWARDED: (_payload, ctx) => {
     // Senza il numero dei professionisti (docs/CHANGELOG.md §211).
     return {
@@ -362,6 +377,20 @@ const BUILDERS: Record<string, Builder> = {
       "La richiesta resta aperta e lui può ancora risponderti. Intanto puoi cercare un altro professionista.",
     ],
     cta: { label: "Cerca un professionista", url: `${frontendUrl()}/cerca` },
+  }),
+
+  // "Ti serve ancora?" dopo 30 giorni in attesa di un mestiere che nessuno fa
+  // vicino al cliente (docs/changelog/2026-11-17-richieste-in-attesa.md).
+  WAITING_REQUEST_STILL_NEEDED: (_payload, ctx) => ({
+    kind: "notification",
+    subject: "Ti serve ancora? La tua richiesta è in attesa",
+    greeting: ctx.name,
+    title: "La tua richiesta è ancora in attesa",
+    paragraphs: [
+      `Non si è ancora iscritto nessuno che fa **${job(ctx)}** vicino a te.`,
+      "Se ti serve ancora non devi fare nulla: la teniamo aperta fino alla scadenza e la mandiamo appena arriva qualcuno. Se hai già risolto, ritirala da Le mie richieste.",
+    ],
+    cta: clientRequests(),
   }),
 
   // Richiesta inviata quando in zona non c'era nessuno: si è iscritto un

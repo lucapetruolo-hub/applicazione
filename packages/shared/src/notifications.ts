@@ -3,6 +3,7 @@
 // docs/changelog/2026-10-30-velocita-telefono.md).
 import { DEFAULT_NOTIFICATION_PREFERENCES } from "./notificationDefaults";
 import type { NotificationPreferences } from "./notificationSchemas";
+import { NOTIFICATION_SOUND_KEYS } from "./notificationSounds";
 
 /**
  * Preferenze di notifica per argomento e canale (docs/CHANGELOG.md §152,
@@ -43,7 +44,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
     // REQUEST_SENT: solo email, la conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §185).
     // REQUEST_MATCHED_LATER: richiesta senza destinatari arrivata al primo professionista iscritto dopo (§271).
     // REQUEST_WITHDRAWN: al professionista, il cliente ha ritirato la richiesta (collaudo B-09).
-    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_MATCHED_LATER", "REQUEST_SENT", "REQUEST_WITHDRAWN"],
+    // WAITING_REQUEST_STILL_NEEDED: "Ti serve ancora?" dopo 30 giorni in attesa di un mestiere (docs/changelog/2026-11-17-richieste-in-attesa.md).
+    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_MATCHED_LATER", "REQUEST_SENT", "REQUEST_WITHDRAWN", "WAITING_REQUEST_STILL_NEEDED"],
     activeChannels: ["inApp", "email"],
   },
   preventivi: {
@@ -346,8 +348,8 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "richieste.novita",
     topic: "richieste",
-    types: ["LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_MATCHED_LATER"],
-    client: { label: "Novità sulla richiesta", description: "Un professionista trovato più tardi, la richiesta inoltrata ad altri, rifiutata o scaduta." },
+    types: ["LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_MATCHED_LATER", "WAITING_REQUEST_STILL_NEEDED"],
+    client: { label: "Novità sulla richiesta", description: "Un professionista trovato più tardi, la richiesta inoltrata ad altri, rifiutata, scaduta o ancora in attesa." },
   },
   {
     key: "preventivi.nuovi",
@@ -543,6 +545,7 @@ export function resolveNotificationPreferences(stored: unknown): NotificationPre
     const s = stored as Partial<NotificationPreferences>;
     if (typeof s.popups === "boolean") base.popups = s.popups;
     if (typeof s.sound === "boolean") base.sound = s.sound;
+    if (typeof s.soundName === "string" && (NOTIFICATION_SOUND_KEYS as readonly string[]).includes(s.soundName)) base.soundName = s.soundName;
     if (typeof s.digest === "boolean") base.digest = s.digest;
     if (typeof s.quietNight === "boolean") base.quietNight = s.quietNight;
     if (typeof s.quietNightUrgent === "boolean") base.quietNightUrgent = s.quietNightUrgent;

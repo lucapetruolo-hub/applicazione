@@ -1,6 +1,10 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import {
+  groupWaitingRequests,
+  missingTradeZone,
+  type WaitingRequestAdminRow,
+  type WaitingRequestsAdmin,
   ALL_SUGGESTED_SERVICES,
   MISSING_TRADES_SHOWN,
   buildMissingTrades,
@@ -365,6 +369,45 @@ export class ProblemMatchAdminService {
     });
     this.serviceNamesService.forget();
     return { ok: true as const };
+  }
+
+  /**
+   * Richieste in attesa di un mestiere degli ultimi 90 giorni
+   * (docs/changelog/2026-11-17-richieste-in-attesa.md): per mestiere e zona,
+   * per sapere chi reclutare. Mai i contatti del cliente.
+   */
+  async waitingRequests(now = new Date()): Promise<WaitingRequestsAdmin> {
+    const since = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    const requests = await this.prisma.guidedRequest.findMany({
+      where: { waitingTrade: { not: null }, createdAt: { gte: since } },
+      orderBy: { createdAt: "asc" },
+      take: 500,
+      select: {
+        id: true,
+        waitingTrade: true,
+        description: true,
+        city: true,
+        status: true,
+        deletedByClientAt: true,
+        createdAt: true,
+        expiresAt: true,
+        stillNeededAskedAt: true,
+        _count: { select: { leads: true } },
+      },
+    });
+    const rows: WaitingRequestAdminRow[] = requests.map((request) => ({
+      id: request.id,
+      trade: request.waitingTrade ?? "",
+      description: request.description,
+      city: request.city,
+      zone: missingTradeZone(request.city),
+      state: request.status === "CLOSED" || request.deletedByClientAt ? "CLOSED" : request._count.leads > 0 ? "SENT" : "WAITING",
+      recipients: request._count.leads,
+      createdAt: request.createdAt.toISOString(),
+      expiresAt: request.expiresAt?.toISOString() ?? null,
+      stillNeededAskedAt: request.stillNeededAskedAt?.toISOString() ?? null,
+    }));
+    return { groups: groupWaitingRequests(rows), rows };
   }
 
   async takeovers(status: "OPEN" | "DONE") {

@@ -15,7 +15,7 @@ import { serviceFromWords } from "./problemServiceWords";
 
 export type ProblemSafety = "gas" | "elettrico" | "acqua-elettrico" | "monossido";
 
-/** Lavori che nessuna nostra categoria copre: prima si cercano i professionisti che li dichiarano, poi "Ce ne occupiamo noi". */
+/** Lavori che nessuna nostra categoria copre: prima si cercano i professionisti che li dichiarano, poi la richiesta in attesa (docs/changelog/2026-11-17-richieste-in-attesa.md). */
 export type ProblemOutOfService =
   | "antennista"
   | "disinfestazione"
@@ -161,7 +161,8 @@ const RULES: readonly Rule[] = [
   // muratore; in legno ("legno" qui sopra) passa avanti il falegname (giro di
   // prova del 17/11, docs/changelog/2026-11-17-ricerca-home-in-attesa.md).
   { words: ["battiscopa", "zoccolino", "zoccolini"], weights: { muratore: 2, falegname: 1 } },
-  { words: ["porta", "porte", "anta", "ante", "cerniere", "armadio", "armadi", "mobile", "mobili", "cucina"], weights: { falegname: 1, tuttofare: 1 } },
+  // "ante " parola intera: "antenna" non è un'anta (docs/changelog/2026-11-17-richieste-in-attesa.md).
+  { words: ["porta", "porte", "anta", "ante ", "cerniere", "armadio", "armadi", "mobile", "mobili", "cucina"], weights: { falegname: 1, tuttofare: 1 } },
 
   // Tutto Fare
   { words: ["tuttofare", "tutto fare", "piccoli lavori", "piccoli interventi", "piccole riparazioni", "lavoretti", "lavori manuali"], weights: { tuttofare: 5 } },

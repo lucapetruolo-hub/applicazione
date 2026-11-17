@@ -23,40 +23,56 @@ export function PhotoPicker({
   accept,
   allowVideo = false,
   disabled = false,
+  maxPhotos = 1,
   onFile,
   className,
   label,
   children,
+  trigger,
 }: {
   /** Tipi ammessi dalla galleria. */
   accept: string;
   allowVideo?: boolean;
   disabled?: boolean;
+  /**
+   * Quante foto può mandare il telefono con "Scatta dal telefono" (posti ancora
+   * liberi; docs/changelog/2026-11-17-piu-foto-dal-telefono.md). Di serie una.
+   */
+  maxPhotos?: number;
+  /** Ogni foto scelta; con "Scatta dal telefono" una volta per foto arrivata. */
   onFile: (file: File) => void;
   /** Classe e nome accessibile del pulsante che apre la scelta. */
-  className: string;
-  label: string;
+  className?: string;
+  label?: string;
   /** Contenuto del pulsante (icona e scritta). */
-  children: ReactNode;
+  children?: ReactNode;
+  /**
+   * Al posto del pulsante di serie, un pulsante già esistente che chiama
+   * `open` (foto del profilo e copertina, docs/changelog/2026-11-17-piu-foto-dal-telefono.md).
+   */
+  trigger?: (open: () => void) => ReactNode;
 }) {
   const galleryRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const firstOptionRef = useRef<HTMLButtonElement>(null);
   const openerRef = useRef<HTMLButtonElement>(null);
+  /** Chi aveva il fuoco all'apertura (anche un pulsante di `trigger`): lo riprende alla chiusura. */
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   /** "phone": menu dal basso; "desktop": finestra al centro; "webcam": anteprima; "qr": codice per il telefono. */
   const [sheet, setSheet] = useState<null | "phone" | "desktop" | "webcam" | "qr">(null);
   const hasWebcam = useHasWebcam();
 
   function open() {
     if (disabled) return;
+    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : openerRef.current;
     const phone = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
     setSheet(phone ? "phone" : "desktop");
   }
 
   function close() {
     setSheet(null);
-    openerRef.current?.focus();
+    returnFocusRef.current?.focus();
   }
 
   function pick(input: HTMLInputElement | null) {
@@ -70,7 +86,7 @@ export function PhotoPicker({
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setSheet(null);
-        openerRef.current?.focus();
+        returnFocusRef.current?.focus();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -85,9 +101,13 @@ export function PhotoPicker({
 
   return (
     <>
-      <button ref={openerRef} type="button" className={className} onClick={open} disabled={disabled} aria-label={label} title={label}>
-        {children}
-      </button>
+      {trigger ? (
+        <Trigger render={trigger} open={open} />
+      ) : (
+        <button ref={openerRef} type="button" className={className} onClick={open} disabled={disabled} aria-label={label} title={label}>
+          {children}
+        </button>
+      )}
       <input ref={galleryRef} type="file" accept={accept} hidden onChange={handleChange} />
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={handleChange} />
       {allowVideo ? <input ref={videoRef} type="file" accept="video/*" capture="environment" hidden onChange={handleChange} /> : null}
@@ -109,10 +129,9 @@ export function PhotoPicker({
               ) : sheet === "qr" ? (
                 <div className="photo-sheet photo-sheet-webcam" role="dialog" aria-modal="true" aria-label="Scatta dal telefono">
                   <PhoneHandoff
-                    onPhoto={(file) => {
-                      close();
-                      onFile(file);
-                    }}
+                    maxPhotos={maxPhotos}
+                    onPhoto={onFile}
+                    onDone={close}
                     onChooseFile={() => pick(galleryRef.current)}
                     onClose={close}
                   />
@@ -170,6 +189,11 @@ export function PhotoPicker({
         : null}
     </>
   );
+}
+
+/** Disegna il pulsante di `trigger` (come componente, così `open` si passa come un onClick). */
+function Trigger({ render, open }: { render: (open: () => void) => ReactNode; open: () => void }) {
+  return <>{render(open)}</>;
 }
 
 /**

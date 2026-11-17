@@ -101,3 +101,10 @@ test("riassunto della sera e notte senza email accesi per chi non ha scelto", ()
   assert.equal(resolveNotificationPreferences({ digest: false, quietNight: false }).digest, false);
   assert.equal(resolveNotificationPreferences({ digest: false, quietNight: false }).quietNight, false);
 });
+
+test("il suono scelto si tiene, uno sconosciuto torna a quello di serie (docs/changelog/2026-11-17-suoni-notifica.md)", () => {
+  assert.equal(resolveNotificationPreferences(null).soundName, "dolce");
+  assert.equal(resolveNotificationPreferences({ soundName: "vetro" }).soundName, "vetro");
+  assert.equal(resolveNotificationPreferences({ soundName: "sirena" }).soundName, "dolce");
+  assert.equal(resolveNotificationPreferences({ sound: false }).sound, false);
+});
