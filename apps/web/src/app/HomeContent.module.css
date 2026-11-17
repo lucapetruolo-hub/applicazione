@@ -35,3 +35,62 @@
     --section-title-tracking: -1px;
   }
 }
+
+/* Titoli della home con frase grigia senza andare a capo: "Cosa dicono i
+   clienti. Solo da lavori fatti tramite il sito." e "Di cosa hai bisogno?
+   Trova chi c'è vicino a te." (richiesta di Luca del 17/11,
+   docs/changelog/2026-11-17-titolo-recensioni-una-riga.md).
+   Telefono e tablet: titolo su una riga, frase grigia sotto più piccola,
+   "Vedi tutti" sotto la frase. Computer: tutto su una riga, con il titolo
+   che si stringe quanto basta (al massimo 44 px come gli altri). */
+.oneLineTitle {
+  position: relative;
+  flex-direction: column;
+  width: 100%;
+  /* Larghezza del testo divisa per la grandezza del carattere, e spazio
+     occupato dal link a destra con lo spazio prima. */
+  --one-line-ratio: 23.5;
+  --one-line-action: 150px;
+}
+
+/* "Di cosa hai bisogno?": testo più corto, link "Non trovi il tuo lavoro?" più largo. */
+.oneLineTitleCategories {
+  --one-line-ratio: 19.8;
+  --one-line-action: 205px;
+}
+
+@media (max-width: 1023px) {
+  .oneLineTitle {
+    --section-title-row-wrap: wrap;
+    --section-title-main-basis: 100%;
+    --section-title-note-display: block;
+    --section-title-note-size: 18px;
+    --section-title-note-line: 24px;
+    --section-title-note-tracking: -0.2px;
+    --section-title-note-gap: 6px;
+    /* "Vedi tutti" subito sotto la frase: il link è già alto 44 px per il tocco. */
+    --section-title-row-gap: 0;
+  }
+}
+
+/* Telefoni piccoli (320 px): titolo un po' più piccolo per stare su una riga. */
+@media (max-width: 359px) {
+  .oneLineTitle {
+    --section-title-size: 26px;
+    --section-title-line: 31px;
+  }
+}
+
+@media (min-width: 801px) and (max-width: 1023px) {
+  .oneLineTitle {
+    --section-title-note-size: 24px;
+    --section-title-note-line: 30px;
+    --section-title-note-gap: 4px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .oneLineTitle {
+    --section-title-size-wide: min(44px, calc((min(1080px, 100vw - 80px) - var(--one-line-action)) / var(--one-line-ratio)));
+  }
+}
