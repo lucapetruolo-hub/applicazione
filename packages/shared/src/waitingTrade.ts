@@ -72,7 +72,34 @@ export type WaitingRequestAdminRow = {
 
 export type WaitingRequestAdminGroup = { trade: string; zone: string; waiting: number; oldestCreatedAt: string };
 
-export type WaitingRequestsAdmin = { groups: WaitingRequestAdminGroup[]; rows: WaitingRequestAdminRow[] };
+/** Un mestiere che non abbiamo e quante volte è stato chiesto, in attesa e di prima insieme. */
+export type MostRequestedTrade = { trade: string; requests: number };
+
+export type WaitingRequestsAdmin = {
+  groups: WaitingRequestAdminGroup[];
+  rows: WaitingRequestAdminRow[];
+  /** Contatore dei mestieri più richiesti (decisione di Luca del 17/11/2026). */
+  mostRequested: MostRequestedTrade[];
+};
+
+/**
+ * Contatore dei mestieri più chiesti (decisione di Luca del 17/11/2026,
+ * docs/changelog/2026-11-17-mestiere-piu-vicino.md): un nome per richiesta,
+ * senza badare alle maiuscole; i più chiesti prima, a pari numero in ordine
+ * alfabetico.
+ */
+export function countRequestedTrades(trades: readonly (string | null | undefined)[]): MostRequestedTrade[] {
+  const counts = new Map<string, MostRequestedTrade>();
+  for (const trade of trades) {
+    const name = trade?.trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    const found = counts.get(key);
+    if (found) found.requests += 1;
+    else counts.set(key, { trade: name, requests: 1 });
+  }
+  return [...counts.values()].sort((a, b) => b.requests - a.requests || a.trade.localeCompare(b.trade, "it"));
+}
 
 /** Gruppi per mestiere e zona delle sole richieste ancora senza nessuno, i più numerosi prima. */
 export function groupWaitingRequests(rows: readonly WaitingRequestAdminRow[]): WaitingRequestAdminGroup[] {

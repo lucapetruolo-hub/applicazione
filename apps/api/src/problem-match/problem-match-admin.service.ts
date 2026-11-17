@@ -1,7 +1,9 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import {
+  countRequestedTrades,
   groupWaitingRequests,
+  waitingTradeName,
   missingTradeZone,
   type WaitingRequestAdminRow,
   type WaitingRequestsAdmin,
@@ -407,7 +409,17 @@ export class ProblemMatchAdminService {
       expiresAt: request.expiresAt?.toISOString() ?? null,
       stillNeededAskedAt: request.stillNeededAskedAt?.toISOString() ?? null,
     }));
-    return { groups: groupWaitingRequests(rows), rows };
+    // Contatore dei più richiesti: le richieste in attesa e quelle di prima
+    // ("Ce ne occupiamo noi") insieme, negli stessi 90 giorni
+    // (docs/changelog/2026-11-17-mestiere-piu-vicino.md).
+    const old = await this.prisma.problemTakeover.findMany({
+      where: { createdAt: { gte: since }, OR: [{ outOfService: { not: null } }, { missingTrade: { not: null } }] },
+      select: { outOfService: true, missingTrade: true },
+      take: 2000,
+    });
+    const oldTrades = old.map((row) => waitingTradeName({ key: row.outOfService, name: row.missingTrade }));
+    const mostRequested = countRequestedTrades([...rows.map((row) => row.trade), ...oldTrades]);
+    return { groups: groupWaitingRequests(rows), rows, mostRequested };
   }
 
   async takeovers(status: "OPEN" | "DONE") {

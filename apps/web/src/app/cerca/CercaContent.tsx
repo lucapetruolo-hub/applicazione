@@ -321,6 +321,7 @@ export function CercaContent({
       questionDone={problem.questionDone}
       categoryCounts={problem.categoryCounts}
       otherTradesCount={alsoDoThisJob.length}
+      nearestOutsideKm={page.nearestOutsideKm}
       chosenPros={chosenPros}
       requestHints={problem.requestHints}
       photo={problem.photo}
@@ -352,6 +353,7 @@ export function CercaContent({
           city={city}
           cityCenter={cityCenter}
           header={header}
+          nearestInHeader={Boolean(problem && !problem.chosen && (problem.result.outOfService || problem.result.missingTrade))}
           defaultMode={online ? "ONLINE" : "HOME"}
           merit={Boolean(problem)}
           problemDescription={problem?.description}

@@ -56,7 +56,35 @@ test.beforeAll(async () => {
   });
 });
 
+// Due antennisti fuori zona da Lecce: Brindisi (circa 37 km) e Taranto (circa 81).
+const far = [
+  { city: "Brindisi", latitude: 40.6327, longitude: 17.9418 },
+  { city: "Taranto", latitude: 40.4644, longitude: 17.247 },
+];
+const farIds: string[] = [];
+
+test.beforeAll(async () => {
+  const category = await prisma.category.findFirstOrThrow({ where: { slug: "elettricista" } });
+  for (const place of far) {
+    const user = await prisma.user.create({
+      data: { role: "PROFESSIONAL", email: `antenne-${place.city}-${stamp}@test.it`, name: "Prova", surname: place.city, emailVerifiedAt: new Date(), legalConsentAt: new Date() },
+    });
+    const profile = await prisma.professionalProfile.create({
+      data: {
+        userId: user.id,
+        categoryId: category.id,
+        businessName: `Antenne ${place.city} ${stamp}`,
+        ...place,
+        services: { create: [{ name: "Installazione antenna TV", priceMinEurCents: 8000 }] },
+        fiscalProfile: { create: { entityType: "PRIVATE_INDIVIDUAL", fiscalFirstName: "Prova", fiscalLastName: place.city } },
+      },
+    });
+    farIds.push(profile.id);
+  }
+});
+
 test.afterAll(async () => {
+  await prisma.professionalProfile.updateMany({ where: { id: { in: farIds } }, data: { deletedAt: new Date() } });
   await prisma.guidedRequest.deleteMany({ where: { clientId: ids.client } });
   await prisma.$disconnect();
 });
@@ -103,6 +131,24 @@ for (const [name, device] of [
     await page.context().close();
   });
 
+  test(`ricerca: nessuno vicino, il più vicino a quanti km e tutti gli altri dal più vicino (${name})`, async ({ browser }) => {
+    const page = await pageAsClient(browser, ids.client, device);
+    await page.goto(`/cerca?problema=${encodeURIComponent("l'antenna non prende i canali")}&citta=Lecce`);
+    await expect(page.getByText("Nessuno fa ancora questo lavoro vicino a te")).toBeVisible();
+    await expect(page.getByText(/Nessuno lo fa entro \d+ km da Lecce\. Il più vicino è a circa 3\d km: qui sotto trovi tutti i 2, dal più vicino/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Lascia la richiesta" })).toHaveAttribute("href", /attesaChiave=antennista/);
+    // La riga generica della lista non si ripete.
+    await expect(page.getByText(/ti mostriamo i? ?più vicin/)).toHaveCount(0);
+    const brindisi = page.locator("a:visible", { hasText: `Antenne Brindisi ${stamp}` }).first();
+    const taranto = page.locator("a:visible", { hasText: `Antenne Taranto ${stamp}` }).first();
+    await expect(brindisi).toBeVisible();
+    await expect(taranto).toBeVisible();
+    const [b, t] = [await brindisi.boundingBox(), await taranto.boundingBox()];
+    expect(b!.y).toBeLessThan(t!.y);
+    if (SHOTS) await page.screenshot({ path: `${SHOTS}/5-piu-vicino-${name}.png` });
+    await page.context().close();
+  });
+
   test(`modulo: mestiere in attesa, niente "Oggi", la richiesta si salva (${name})`, async ({ browser }) => {
     const page = await pageAsClient(browser, ids.client, device);
     await page.goto(`/preventivo?attesaChiave=antennista&citta=Bari&modalita=ONLINE&quando=TODAY&descrizione=${encodeURIComponent(`${DESCRIPTION} (${name})`)}`);
@@ -140,6 +186,9 @@ for (const [name, device] of [
     await expect(page.getByText("Chi cercare", { exact: true })).toBeVisible();
     await expect(page.getByText("Bari e provincia").first()).toBeVisible();
     await expect(page.getByRole("button", { name: /Copia annuncio/ }).first()).toBeVisible();
+    const most = page.locator(".most-requested");
+    await expect(page.getByText("Più richiesti", { exact: true })).toBeVisible();
+    await expect(most.locator("li").filter({ hasText: "Antennista" })).toBeVisible();
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/4-admin-${name}.png`, fullPage: true });
     await page.context().close();
   });

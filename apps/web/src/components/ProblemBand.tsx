@@ -6,6 +6,7 @@ import {
   OUT_OF_SERVICE_LABELS,
   PROBLEM_SAFETY_TEXTS,
   PROFESSIONAL_CATEGORIES,
+  SEARCH_RADIUS_KM,
   type ProblemMatchResult,
   type ProfessionalCategorySlug,
 } from "@professionisti/shared";
@@ -53,6 +54,7 @@ export function ProblemBand({
   otherTradesCount = 0,
   requestHints,
   photo,
+  nearestOutsideKm = null,
 }: {
   description: string;
   city?: string;
@@ -77,6 +79,8 @@ export function ProblemBand({
   categoryCounts?: Partial<Record<ProfessionalCategorySlug, number>>;
   /** Professionisti di altri mestieri che offrono questo lavoro ("Potrebbero fare anche questo lavoro"). */
   otherTradesCount?: number;
+  /** Nessuno nel raggio: a quanti km è il più vicino tra i risultati (null = qualcuno è vicino). */
+  nearestOutsideKm?: number | null;
   /** Quando serve e comune presi dal testo, per precompilare la richiesta. */
   requestHints?: ProblemRequestHints;
   /** Ricerca partita da una foto: resta nei link dei mestieri, così vale ancora quello che si vede (es. un pericolo). */
@@ -302,7 +306,16 @@ export function ProblemBand({
       ) : null}
 
       {result.outOfService ? (
-        count > 0 ? (
+        count > 0 && nearestOutsideKm !== null ? (
+          <WaitingRequestCard
+            href={waitingHref({ key: result.outOfService })}
+            trade={OUT_OF_SERVICE_LABELS[result.outOfService]}
+            urgent={requestHints?.timing === "TODAY"}
+            city={city}
+            nearestKm={nearestOutsideKm}
+            count={count}
+          />
+        ) : count > 0 ? (
           <Text fontSize={16} color={brand.grafite}>
             Nessuna delle nostre categorie fa questo lavoro, ma questi professionisti dichiarano di farlo.
           </Text>
@@ -311,7 +324,16 @@ export function ProblemBand({
         )
       ) : missingTrade ? (
         <>
-          {count > 0 ? (
+          {count > 0 && nearestOutsideKm !== null ? (
+            <WaitingRequestCard
+              href={waitingHref({ name: missingTrade })}
+              trade={missingTrade}
+              urgent={requestHints?.timing === "TODAY"}
+              city={city}
+              nearestKm={nearestOutsideKm}
+              count={count}
+            />
+          ) : count > 0 ? (
             <>
               <Text fontSize={16} color={brand.grafite}>
                 Nessuno dei nostri mestieri fa questo lavoro, ma questi professionisti dichiarano di farlo.
@@ -533,7 +555,26 @@ export function SafetyHint({ safety }: { safety: NonNullable<ProblemMatchResult[
  * completa con lo stesso modulo di sempre e arriva da sola a chi lo fa appena
  * si iscrive nella sua zona. Per "Oggi" si dice subito che non c'è nessuno.
  */
-function WaitingRequestCard({ href, trade, urgent }: { href: string; trade: string; urgent: boolean }) {
+function WaitingRequestCard({
+  href,
+  trade,
+  urgent,
+  city,
+  nearestKm = null,
+  count = 0,
+}: {
+  href: string;
+  trade: string;
+  urgent: boolean;
+  city?: string;
+  /**
+   * Nessuno nel raggio ma qualcuno più lontano (decisione di Luca del
+   * 17/11/2026, docs/changelog/2026-11-17-mestiere-piu-vicino.md): si dice a
+   * quanti km è il più vicino e sotto ci sono tutti, dal più vicino.
+   */
+  nearestKm?: number | null;
+  count?: number;
+}) {
   const [declined, setDeclined] = useState(false);
   if (declined) {
     return (
@@ -550,8 +591,14 @@ function WaitingRequestCard({ href, trade, urgent }: { href: string; trade: stri
         <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
           Nessuno fa ancora questo lavoro vicino a te
         </Text>
+        {nearestKm !== null ? (
+          <Text fontSize={16} color={brand.grafite}>
+            Nessuno lo fa entro {SEARCH_RADIUS_KM} km{city ? ` da ${city}` : ""}. Il più vicino è a circa {nearestKm} km
+            {count > 1 ? `: qui sotto trovi tutti i ${count}, dal più vicino. Puoi chiedere a loro un preventivo.` : ": lo trovi qui sotto e puoi chiedergli un preventivo."}
+          </Text>
+        ) : null}
         <Text fontSize={16} color={brand.grafite70}>
-          {urgent ? "Per oggi non possiamo trovarti nessuno. Se va bene anche nei prossimi giorni, lascia" : "Lascia"} la richiesta
+          {nearestKm !== null ? "Oppure lascia" : urgent ? "Per oggi non possiamo trovarti nessuno. Se va bene anche nei prossimi giorni, lascia" : "Lascia"} la richiesta
           completa: la mandiamo a chi fa il lavoro di {trade.toLowerCase()} appena si iscrive nella tua zona. Il preventivo te lo fa lui, e scegli tu
           se accettarlo.
         </Text>

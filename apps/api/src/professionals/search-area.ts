@@ -21,6 +21,12 @@ export function selectSearchArea(
   candidates: SearchAreaCandidate[],
   radiusKm: number,
   maxFallbackKm: number = Number.POSITIVE_INFINITY,
+  /**
+   * "all": fuori raggio tutti quelli entro `maxFallbackKm`, non solo il più
+   * vicino. Per i mestieri che quasi nessuno fa (decisione di Luca del
+   * 17/11/2026, docs/changelog/2026-11-17-mestiere-piu-vicino.md).
+   */
+  widen: "nearest" | "all" = "nearest",
 ): Map<string, number> {
   const withDistance = candidates
     .filter((c) => c.latitude !== 0 || c.longitude !== 0)
@@ -32,6 +38,7 @@ export function selectSearchArea(
 
   const nearest = Math.min(...withDistance.map((c) => c.distanceKm));
   if (nearest > maxFallbackKm) return new Map();
+  if (widen === "all") return new Map(withDistance.filter((c) => c.distanceKm <= maxFallbackKm).map((c) => [c.id, c.distanceKm]));
   return new Map(
     withDistance.filter((c) => c.distanceKm <= nearest + SAME_DISTANCE_TOLERANCE_KM).map((c) => [c.id, c.distanceKm]),
   );

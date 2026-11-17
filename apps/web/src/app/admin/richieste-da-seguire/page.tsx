@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   OUT_OF_SERVICE_LABELS,
   waitingTradeAd,
+  type MostRequestedTrade,
   type ProblemSafety,
   type ProblemTakeoverAdmin,
   type WaitingRequestAdminGroup,
@@ -75,6 +76,7 @@ export default function AdminRichiesteInAttesaPage() {
         value={tab}
         onChange={setTab}
       />
+      {data && data.mostRequested.length > 0 ? <MostRequested trades={data.mostRequested} /> : null}
       {tab === "prima" ? (
         <OldTakeovers />
       ) : error ? (
@@ -131,6 +133,41 @@ export default function AdminRichiesteInAttesaPage() {
           )}
         </YStack>
       )}
+    </YStack>
+  );
+}
+
+/**
+ * Contatore dei mestieri più richiesti (decisione di Luca del 17/11/2026,
+ * docs/changelog/2026-11-17-mestiere-piu-vicino.md): richieste in attesa e di
+ * prima insieme, degli ultimi 90 giorni.
+ */
+function MostRequested({ trades }: { trades: MostRequestedTrade[] }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? trades : trades.slice(0, 8);
+  return (
+    <YStack gap="2" marginBottom="4">
+      <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
+        Più richiesti
+      </Text>
+      <ol className="most-requested">
+        {shown.map((item) => (
+          <li key={item.trade}>
+            <span>{item.trade}</span>
+            <strong>{item.requests}</strong>
+          </li>
+        ))}
+      </ol>
+      <XStack gap="3" alignItems="center" flexWrap="wrap">
+        <Text fontSize={13} color={brand.grafite70}>
+          Richieste degli ultimi 90 giorni, nuove e di prima.
+        </Text>
+        {trades.length > 8 ? (
+          <button type="button" className="waiting-group-link most-requested-more" onClick={() => setAll((v) => !v)}>
+            {all ? "Mostra meno" : `Mostra tutti (${trades.length})`}
+          </button>
+        ) : null}
+      </XStack>
     </YStack>
   );
 }
@@ -227,13 +264,14 @@ function OldTakeovers() {
     }
   };
 
-  // Prima i pericoli, poi la più vecchia (come in Da fare).
-  const sorted = rows && tab === "aperte" ? [...rows].sort((a, b) => Number(Boolean(b.safety)) - Number(Boolean(a.safety))) : rows;
+  // In ordine di arrivo, la prima ricevuta in cima (decisione di Luca del
+  // 17/11/2026): il pericolo resta segnato nella riga.
+  const sorted = rows ? [...rows].sort((a, b) => a.createdAt.localeCompare(b.createdAt)) : rows;
 
   return (
     <YStack>
       <Text color={brand.grafite70} marginBottom="2">
-        Sono richieste di prima. Il cliente ci chiedeva di trovare qualcuno. Contattalo e poi segna la richiesta come fatta.
+        Sono richieste di prima, in ordine di arrivo. Il cliente ci chiedeva di trovare qualcuno. Contattalo e poi segna la richiesta come fatta.
       </Text>
       <AdminTabs
         tabs={[
@@ -258,6 +296,7 @@ function OldTakeovers() {
           <table className="admin-table">
             <thead>
               <tr>
+                <th>N.</th>
                 <th>Lavoro</th>
                 <th>Descrizione</th>
                 <th>Città</th>
@@ -267,8 +306,9 @@ function OldTakeovers() {
               </tr>
             </thead>
             <tbody>
-              {(sorted ?? []).map((row) => (
+              {(sorted ?? []).map((row, index) => (
                 <tr key={row.id}>
+                  <td>{index + 1}</td>
                   <td>
                     <YStack gap={4} alignItems="flex-start">
                       {row.safety ? <AdminPill tone="danger">{SAFETY_LABEL[row.safety]}</AdminPill> : null}

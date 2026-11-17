@@ -121,6 +121,7 @@ export function ResultsListWithMap({
   city,
   cityCenter,
   header,
+  nearestInHeader = false,
   footer,
   otherSection,
   nextTradeSection,
@@ -152,6 +153,8 @@ export function ResultsListWithMap({
   cityCenter?: [number, number];
   /** Contenuto mostrato in cima alla colonna sinistra, allineato con l'inizio della mappa (titolo/filtri categoria). */
   header?: ReactNode;
+  /** La riga "Nessun professionista entro…" la dice già l'intestazione (mestiere che quasi nessuno fa). */
+  nearestInHeader?: boolean;
   /**
    * Contenuto subito sotto le schede, nella stessa colonna (es. "[Lavoro] a
    * [città] in breve", docs/CHANGELOG.md §349): fuori dalla colonna finiva
@@ -1097,11 +1100,12 @@ export function ResultsListWithMap({
           </XStack>
           )}
           {header}
-          {page.nearestOutsideKm !== null ? (
+          {page.nearestOutsideKm !== null && !nearestInHeader ? (
             <YStack backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4" padding="3">
               <Text color={brand.grafite} fontSize={16}>
-                Nessun professionista entro {SEARCH_RADIUS_KM} km da {city}: ti mostriamo il più
-                vicino, a circa {page.nearestOutsideKm} km.
+                {page.total > 1
+                  ? `Nessun professionista entro ${SEARCH_RADIUS_KM} km da ${city}: ti mostriamo i più vicini, il primo a circa ${page.nearestOutsideKm} km.`
+                  : `Nessun professionista entro ${SEARCH_RADIUS_KM} km da ${city}: ti mostriamo il più vicino, a circa ${page.nearestOutsideKm} km.`}
               </Text>
             </YStack>
           ) : null}
