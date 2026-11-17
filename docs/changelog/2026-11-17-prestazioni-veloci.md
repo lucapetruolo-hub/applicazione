@@ -56,6 +56,13 @@ ordinate per quello che cercano i clienti e un promemoria in "Oggi".
   doppio da aggiungere.
 - Prova con 5 professionisti veri sulla casella a virgole: da fare con i primi
   iscritti.
+- Il numero di professionisti per prestazione in Admin › Mestieri richiesti
+  c'era già (§388). In più, sempre con il sì di Luca: per ogni mestiere
+  "Più cercate dai clienti (90 giorni)", con "cercata N volte · M
+  professionisti" e l'etichetta "Pochi professionisti" da 5 ricerche e più del
+  doppio dei professionisti (`fewProfessionalsForSearches`). Stessi dati e
+  stessa memoria di dieci minuti delle pillole (`searchedCounts`). Foto in
+  `anteprime/prestazioni-veloci/admin-*.png`.
 
 **Scartato.** "Aggiungi tutte le più cercate" con un tocco: porterebbe in cima
 alle ricerche chi non fa quel lavoro. Una sola casella con tutto l'elenco

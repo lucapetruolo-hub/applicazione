@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import { matchProblem, serviceMatchingProblem } from "./problemMatch";
+import { fewProfessionalsForSearches, matchProblem, serviceMatchingProblem } from "./problemMatch";
 import { DEFAULT_PROBLEM_EXAMPLES, describeProblemExample, orderProblemExamples } from "./problemExamples";
 
 // Banco di prova (analisi/abbinamento-problema/fase1-numeri.md): 769 frasi
@@ -243,4 +243,10 @@ test("l'antenna non è un'anta: niente falegname né domanda sulle porte", () =>
   assert.equal(match.question, null);
   // "ante" da sola resta del falegname.
   assert.ok(matchProblem("le ante dell'armadio non chiudono").categories.some((c) => c.slug === "falegname"));
+});
+
+test("lavoro cercato tanto ma offerto da pochi", () => {
+  assert.equal(fewProfessionalsForSearches(40, 2), true);
+  assert.equal(fewProfessionalsForSearches(4, 0), false);
+  assert.equal(fewProfessionalsForSearches(10, 5), false);
 });

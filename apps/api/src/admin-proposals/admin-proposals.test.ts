@@ -104,6 +104,7 @@ const overview = (handwritten: { name: string; professionalCount: number }[], st
       label: "Climatizzazione",
       standard: standard.map((name) => ({ name, id: null, professionalCount: 0 })),
       handwritten: handwritten.map((h) => ({ ...h, variants: [h.name] })),
+      searched: [],
     },
   ],
 });

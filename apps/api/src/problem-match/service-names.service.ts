@@ -24,7 +24,7 @@ const SEARCHED_PER_CATEGORY = 12;
 export class ServiceNamesService {
   private aliases: { map: Map<string, string>; loadedAt: number } | null = null;
   private standard: { byCategory: Record<string, string[]>; loadedAt: number } | null = null;
-  private searched: { byCategory: Record<string, string[]>; loadedAt: number } | null = null;
+  private searched: { counts: SearchedCounts; byCategory: Record<string, string[]>; loadedAt: number } | null = null;
 
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
@@ -68,7 +68,19 @@ export class ServiceNamesService {
    * anonime: nessun account da escludere; dal lancio (§395).
    */
   async searchedByCategory(now: Date = new Date()): Promise<Record<string, string[]>> {
-    if (this.searched && now.getTime() - this.searched.loadedAt <= SEARCHED_TTL_MS) return this.searched.byCategory;
+    return (await this.loadSearched(now)).byCategory;
+  }
+
+  /**
+   * Ricerche per mestiere e prestazione (nome del catalogo), stessi 90 giorni:
+   * in Admin › Mestieri richiesti accanto al numero di professionisti.
+   */
+  async searchedCounts(now: Date = new Date()): Promise<SearchedCounts> {
+    return (await this.loadSearched(now)).counts;
+  }
+
+  private async loadSearched(now: Date) {
+    if (this.searched && now.getTime() - this.searched.loadedAt <= SEARCHED_TTL_MS) return this.searched;
     const since = sinceLaunch(new Date(now.getTime() - SEARCHED_WINDOW_MS), countingFrom(now));
     const [rows, canonicalize] = await Promise.all([
       this.prisma.$queryRaw<{ slug: string; service: string; count: bigint }[]>`
@@ -78,8 +90,9 @@ export class ServiceNamesService {
         GROUP BY 1, 2`,
       this.canonicalizer(),
     ]);
-    this.searched = { byCategory: rankSearchedServices(rows, canonicalize), loadedAt: now.getTime() };
-    return this.searched.byCategory;
+    const counts = countSearchedServices(rows, canonicalize);
+    this.searched = { counts, byCategory: rankSearchedServices(counts), loadedAt: now.getTime() };
+    return this.searched;
   }
 
   forget() {
@@ -89,18 +102,25 @@ export class ServiceNamesService {
   }
 }
 
-/** Somma le varianti con lo stesso nome del catalogo e tiene, per mestiere, le più cercate. */
-export function rankSearchedServices(rows: readonly { slug: string; service: string; count: bigint | number }[], canonicalize: (name: string) => string): Record<string, string[]> {
-  const counts = new Map<string, Map<string, number>>();
+/** Mestiere → nome del catalogo → ricerche. */
+export type SearchedCounts = Record<string, Record<string, number>>;
+
+/** Somma le varianti con lo stesso nome del catalogo. */
+export function countSearchedServices(rows: readonly { slug: string; service: string; count: bigint | number }[], canonicalize: (name: string) => string): SearchedCounts {
+  const counts: SearchedCounts = {};
   for (const row of rows) {
-    const bySlug = counts.get(row.slug) ?? new Map<string, number>();
+    const bySlug = (counts[row.slug] ??= {});
     const name = canonicalize(row.service);
-    bySlug.set(name, (bySlug.get(name) ?? 0) + Number(row.count));
-    counts.set(row.slug, bySlug);
+    bySlug[name] = (bySlug[name] ?? 0) + Number(row.count);
   }
+  return counts;
+}
+
+/** Per mestiere, le prestazioni più cercate (almeno `SEARCHED_MIN_COUNT` ricerche). */
+export function rankSearchedServices(counts: SearchedCounts): Record<string, string[]> {
   const byCategory: Record<string, string[]> = {};
-  for (const [slug, bySlug] of counts) {
-    const names = [...bySlug]
+  for (const [slug, bySlug] of Object.entries(counts)) {
+    const names = Object.entries(bySlug)
       .filter(([, count]) => count >= SEARCHED_MIN_COUNT)
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "it"))
       .slice(0, SEARCHED_PER_CATEGORY)

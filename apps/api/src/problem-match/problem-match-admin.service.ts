@@ -101,6 +101,9 @@ export function aiSpeedOf(rows: { aiMs: number | null; aiOutcome: string | null 
   };
 }
 
+/** Prestazioni più cercate mostrate per mestiere in "Mestieri richiesti". */
+const SEARCHED_ADMIN_ROWS = 8;
+
 @Injectable()
 export class ProblemMatchAdminService {
   constructor(
@@ -237,7 +240,7 @@ export class ProblemMatchAdminService {
    * scritte a mano dai professionisti, ognuna con quanti la usano.
    */
   async handwrittenServices(): Promise<ServiceNamesAdminOverview> {
-    const [services, aliases, standard, canonical] = await Promise.all([
+    const [services, aliases, standard, canonical, searchedCounts] = await Promise.all([
       this.prisma.professionalService.findMany({
         where: { professionalProfile: { isDemo: false, deletedAt: null } },
         select: {
@@ -249,6 +252,7 @@ export class ProblemMatchAdminService {
       this.prisma.serviceNameAlias.findMany({ orderBy: { createdAt: "desc" } }),
       this.prisma.standardServiceName.findMany({ orderBy: { createdAt: "asc" } }),
       this.serviceNamesService.canonicalizer(),
+      this.serviceNamesService.searchedCounts(),
     ]);
 
     type Group = { name: string; variants: Set<string>; professionals: Set<string> };
@@ -281,7 +285,12 @@ export class ProblemMatchAdminService {
         .filter(([key]) => !standardKeys.has(key))
         .map(([, group]) => ({ name: group.name, variants: [...group.variants], professionalCount: group.professionals.size }))
         .sort((a, b) => b.professionalCount - a.professionalCount || a.name.localeCompare(b.name, "it"));
-      return { slug: category.slug, label: category.label, standard: standardRows, handwritten };
+      // Cercate dai clienti accanto a chi le offre (docs/changelog/2026-11-17-prestazioni-veloci.md).
+      const searched = Object.entries(searchedCounts[category.slug] ?? {})
+        .map(([name, searchCount]) => ({ name, searchCount, professionalCount: byName.get(serviceNameKey(name))?.professionals.size ?? 0 }))
+        .sort((a, b) => b.searchCount - a.searchCount || a.name.localeCompare(b.name, "it"))
+        .slice(0, SEARCHED_ADMIN_ROWS);
+      return { slug: category.slug, label: category.label, standard: standardRows, handwritten, searched };
     });
 
     return {

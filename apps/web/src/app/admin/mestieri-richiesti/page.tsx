@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
+  fewProfessionalsForSearches,
   OUT_OF_SERVICE_LABELS,
   PROBLEM_REPORT_LABELS,
   type ProblemReportReason,
@@ -494,6 +495,25 @@ function ServiceNamesTab() {
                 {category.handwritten.length > 0 ? <AdminPill tone="warn">{category.handwritten.length} scritte a mano</AdminPill> : null}
               </XStack>
 
+              {category.searched.length > 0 ? (
+                <>
+                  <Text fontSize={13} fontWeight="700" color={brand.grafite70} marginTop="2">
+                    Più cercate dai clienti (90 giorni)
+                  </Text>
+                  <ul className="mr-rows" aria-label={`Prestazioni più cercate di ${category.label}`}>
+                    {category.searched.map((row) => (
+                      <li key={row.name} className="mr-row">
+                        <span className="mr-row-name">{row.name}</span>
+                        <span className="mr-searched">
+                          cercata {row.searchCount === 1 ? "1 volta" : `${row.searchCount} volte`} · {row.professionalCount === 1 ? "1 professionista" : `${row.professionalCount} professionisti`}
+                        </span>
+                        {fewProfessionalsForSearches(row.searchCount, row.professionalCount) ? <AdminPill tone="warn">Pochi professionisti</AdminPill> : null}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+
               <Text fontSize={13} fontWeight="700" color={brand.grafite70} marginTop="2">
                 Standard
               </Text>
@@ -654,6 +674,11 @@ function ServiceNamesTab() {
           background: #f1ece6;
           font-size: 12px;
           font-weight: 700;
+          font-variant-numeric: tabular-nums;
+        }
+        .mr-searched {
+          font-size: 13px;
+          color: ${brand.grafite70};
           font-variant-numeric: tabular-nums;
         }
         .mr-remove,

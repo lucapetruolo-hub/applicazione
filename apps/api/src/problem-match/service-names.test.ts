@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ServiceNamesService, rankSearchedServices } from "./service-names.service";
+import { ServiceNamesService, countSearchedServices, rankSearchedServices } from "./service-names.service";
 import { ProblemMatchAdminService } from "./problem-match-admin.service";
 import { ProblemTakeoverService } from "./problem-takeover.service";
 
@@ -21,9 +21,11 @@ describe("Prestazioni per mestiere (§388)", () => {
   function setup(
     services: { name: string; professionalProfileId: string; professionalProfile: ReturnType<typeof profile> }[],
     standard: object[] = [],
+    searches: { slug: string; service: string; count: bigint }[] = [],
   ) {
     const prisma = {
       professionalService: { findMany: vi.fn().mockResolvedValue(services) },
+      $queryRaw: vi.fn().mockResolvedValue(searches),
       serviceNameAlias: { findMany: vi.fn().mockResolvedValue([]) },
       standardServiceName: {
         findMany: vi.fn().mockResolvedValue(standard),
@@ -50,6 +52,22 @@ describe("Prestazioni per mestiere (§388)", () => {
       { name: "Pulizia pannelli solari", variants: ["Pulizia pannelli solari", "pulizia pannelli solari"], professionalCount: 2 },
     ]);
     expect(overview.categories.find((c) => c.slug === "tuttofare")?.handwritten[0]?.professionalCount).toBe(1);
+  });
+
+  it("accanto alle più cercate dai clienti, quanti professionisti le offrono", async () => {
+    const { service } = setup(
+      [{ name: "Sturatura scarichi", professionalProfileId: "p1", professionalProfile: profile("idraulico") }],
+      [],
+      [
+        { slug: "idraulico", service: "Sturatura scarichi", count: 40n },
+        { slug: "idraulico", service: "Sostituzione sifone", count: 3n },
+      ],
+    );
+    const idraulico = (await service.handwrittenServices()).categories.find((c) => c.slug === "idraulico");
+    expect(idraulico?.searched).toEqual([
+      { name: "Sturatura scarichi", searchCount: 40, professionalCount: 1 },
+      { name: "Sostituzione sifone", searchCount: 3, professionalCount: 0 },
+    ]);
   });
 
   it("una prestazione aggiunta alle standard non è più tra le scritte a mano", async () => {
@@ -115,7 +133,7 @@ describe("ProblemTakeoverService", () => {
 describe("Prestazioni più cercate dai clienti (docs/changelog/2026-11-17-prestazioni-veloci.md)", () => {
   const same = (name: string) => (name === "Perdite" ? "Riparazione perdita d'acqua" : name);
   it("somma le varianti, ordina per ricerche e scarta le cercate una volta", () => {
-    const ranked = rankSearchedServices(
+    const counts = countSearchedServices(
       [
         { slug: "idraulico", service: "Sturatura scarichi", count: 3n },
         { slug: "idraulico", service: "Riparazione perdita d'acqua", count: 2n },
@@ -125,7 +143,8 @@ describe("Prestazioni più cercate dai clienti (docs/changelog/2026-11-17-presta
       ],
       same,
     );
-    expect(ranked).toEqual({ idraulico: ["Riparazione perdita d'acqua", "Sturatura scarichi"] });
+    expect(counts.idraulico).toEqual({ "Sturatura scarichi": 3, "Riparazione perdita d'acqua": 4, "Sostituzione sifone": 1 });
+    expect(rankSearchedServices(counts)).toEqual({ idraulico: ["Riparazione perdita d'acqua", "Sturatura scarichi"] });
   });
 
   it("legge il database una volta ogni dieci minuti", async () => {
