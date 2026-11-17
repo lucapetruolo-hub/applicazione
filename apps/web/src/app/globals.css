@@ -11477,6 +11477,13 @@ textarea[id^="contatti-"][aria-invalid="true"] {
     animation: none;
   }
 }
+.handoff-status-ok {
+  color: #0f3b3b;
+  font-weight: 600;
+}
+.handoff-status-ok svg {
+  color: #1e6b6e;
+}
 .handoff-done {
   display: flex;
   flex-direction: column;
@@ -11497,4 +11504,60 @@ textarea[id^="contatti-"][aria-invalid="true"] {
   .handoff-qr {
     align-self: center;
   }
+}
+
+/* Casella "Aggiungi" del portfolio nel profilo del professionista, ora con
+   PhotoPicker (docs/changelog/2026-11-17-piu-foto-dal-telefono.md): stesse
+   misure delle miniature accanto (88 px). */
+.portfolio-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 88px;
+  height: 88px;
+  padding: 0;
+  border: 1px dashed #cfc5b8;
+  border-radius: 10px;
+  background: #fff;
+  color: #4a5560;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.portfolio-add:hover:not(:disabled) {
+  border-color: #1e6b6e;
+  background: #f7fbfa;
+}
+.portfolio-add:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.portfolio-add:focus-visible {
+  outline: 2px solid #1e6b6e;
+  outline-offset: 2px;
+}
+.portfolio-add-plus {
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1;
+}
+.scatta-sent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #e6f2f1;
+  color: #0f3b3b;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.scatta-sent svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #1e6b6e;
 }
