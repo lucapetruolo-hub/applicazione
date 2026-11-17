@@ -25,7 +25,7 @@ export type ChosenPro = {
   reviewCount?: number;
   /**
    * Mestiere della richiesta per cui è stato scelto, se non è quello della
-   * ricerca: scelto sotto "Può farlo anche…" (richiesta a due mestieri,
+   * ricerca: scelto sotto "Potrebbe farlo anche…" (richiesta a due mestieri,
    * docs/changelog/2026-11-17-scelti-due-mestieri.md).
    */
   requestCategory?: ProfessionalCategorySlug;

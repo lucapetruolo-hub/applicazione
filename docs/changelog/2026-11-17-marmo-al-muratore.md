@@ -27,3 +27,10 @@ dizionario lo cambiamo a mano, l'IA non ci scrive da sola.
   pianoforte" → Accordatore restano mestieri mancanti.
 - Banco delle 376 frasi sull'API in locale: risultato in
   `analisi/abbinamento-problema/misura-ia/banco-2026-11-17-marmo.log`.
+
+## Titolo della sezione del secondo mestiere (Luca, 17/11/2026)
+
+"Può farlo anche un falegname" diventa "Potrebbe farlo anche un falegname"
+(`CercaContent.tsx`): il secondo mestiere è un'ipotesi della ricerca, non una
+certezza, e il condizionale lo dice senza promettere
+(docs/changelog/2026-11-17-ricerca-home-in-attesa.md).

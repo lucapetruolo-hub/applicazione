@@ -371,7 +371,7 @@ export function CercaContent({
           nextTradeSection={
             problem && nextTrade
               ? {
-                  title: `Può farlo anche ${CATEGORY_WHO[nextTrade.slug]}`,
+                  title: `Potrebbe farlo anche ${CATEGORY_WHO[nextTrade.slug]}`,
                   subtitle: selection
                     ? "L'altro mestiere proposto. Puoi sceglierli insieme ai primi: parte una richiesta per mestiere."
                     : "L'altro mestiere proposto per questo lavoro.",
