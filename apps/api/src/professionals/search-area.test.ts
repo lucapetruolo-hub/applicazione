@@ -38,6 +38,14 @@ describe("selectSearchArea (ricerca per luogo con raggio)", () => {
     expect([...selectSearchArea(milano, [at("bergamo", bergamo), at("roma", roma)], 25, 100).keys()]).toEqual(["bergamo"]);
   });
 
+  it("per un mestiere raro, fuori raggio tutti quelli entro il limite, non solo il più vicino", () => {
+    // Milano-Bergamo circa 42 km, Milano-Torino circa 126, Milano-Roma circa 480.
+    const result = selectSearchArea(milano, [at("bergamo", bergamo), at("torino", torino), at("roma", roma)], 25, 200, "all");
+    expect([...result.keys()].sort()).toEqual(["bergamo", "torino"]);
+    // Con qualcuno nel raggio restano solo quelli vicini.
+    expect([...selectSearchArea(milano, [at("monza", monza), at("bergamo", bergamo)], 25, 200, "all").keys()]).toEqual(["monza"]);
+  });
+
   it("ignora chi non ha coordinate", () => {
     expect(selectSearchArea(milano, [{ id: "x", latitude: 0, longitude: 0 }], 25).size).toBe(0);
   });
