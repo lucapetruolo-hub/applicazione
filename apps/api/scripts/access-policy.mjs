@@ -127,6 +127,8 @@ const publicRoutes = [
 ];
 
 const selfAny = [
+  // Prestazioni più cercate dai clienti, per le pillole del profilo (docs/changelog/2026-11-17-prestazioni-veloci.md).
+  "GET /service-names/searched",
   // "Ce ne occupiamo noi" (§392): la richiesta di chi chiama.
   "POST /problem-match/takeover",
   "POST /auth/change-password",

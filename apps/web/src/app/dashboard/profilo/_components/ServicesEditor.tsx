@@ -201,7 +201,11 @@ export function ServicesEditor({
               if (!/[\r\n]/.test(pasted)) return;
               e.preventDefault();
               const joined = pasted.split(/[\r\n]+/).map((line) => line.trim()).filter(Boolean).join(", ");
-              setQuickText((prev) => (prev.trim() ? `${prev.replace(/[\s,]+$/, "")}, ${joined}` : joined));
+              setQuickText((prev) => {
+                let end = prev.length;
+                while (end > 0 && (prev[end - 1] === "," || prev[end - 1]!.trim() === "")) end -= 1;
+                return end > 0 ? `${prev.slice(0, end)}, ${joined}` : joined;
+              });
             }}
             onKeyDown={(e) => {
               if (e.key !== "Enter") return;
