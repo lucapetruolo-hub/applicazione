@@ -438,8 +438,11 @@ export const guidedRequestSchema = z
     message: "Una richiesta a un professionista scelto ha una sola categoria.",
     path: ["extraCategorySlugs"],
   })
-  .refine((data) => !data.professionalProfileIds || (!data.professionalProfileId && data.extraCategorySlugs.length === 0 && !data.preferredDate), {
-    message: "Una richiesta ai professionisti scelti ha una sola categoria e nessuna fascia oraria.",
+  // Scelti di due mestieri ("Può farlo anche…" nei risultati): più categorie
+  // sì, una richiesta per mestiere ai suoi scelti
+  // (docs/changelog/2026-11-17-scelti-due-mestieri.md).
+  .refine((data) => !data.professionalProfileIds || (!data.professionalProfileId && !data.preferredDate), {
+    message: "Una richiesta ai professionisti scelti non ha una fascia oraria.",
     path: ["professionalProfileIds"],
   })
   .refine((data) => !data.professionalProfileIds || new Set(data.professionalProfileIds).size === data.professionalProfileIds.length, {

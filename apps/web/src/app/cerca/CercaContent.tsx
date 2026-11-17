@@ -124,6 +124,7 @@ export function CercaContent({
     remove: removeChosen,
     undo: chosenUndo,
     selection,
+    selectionFor,
     limitNotice,
   } = useChosenPros({
     category: canChoose ? (problem?.chosen ?? null) : null,
@@ -371,12 +372,16 @@ export function CercaContent({
             problem && nextTrade
               ? {
                   title: `Può farlo anche ${CATEGORY_WHO[nextTrade.slug]}`,
-                  subtitle: "L'altro mestiere proposto per questo lavoro.",
+                  subtitle: selection
+                    ? "L'altro mestiere proposto. Puoi sceglierli insieme ai primi: parte una richiesta per mestiere."
+                    : "L'altro mestiere proposto per questo lavoro.",
                   professionals: nextTrade.professionals,
-                  // Sempre il link all'elenco intero di quel mestiere, dove c'è "Scegli":
-                  // una richiesta va a un mestiere solo.
-                  moreHref: problemResultsHref(problem.description, city, { mestiere: nextTrade.slug, ...(problem.photo ? { foto: problem.photo } : {}) }),
-                  moreLabel: "Vedi tutti e scegli",
+                  // "Scegli" anche qui: si mandano insieme, una richiesta per
+                  // mestiere (scelta di Luca, docs/changelog/2026-11-17-scelti-due-mestieri.md).
+                  selection: selectionFor(nextTrade.slug),
+                  ...(nextTrade.total > nextTrade.professionals.length
+                    ? { moreHref: problemResultsHref(problem.description, city, { mestiere: nextTrade.slug, ...(problem.photo ? { foto: problem.photo } : {}) }), moreLabel: "Vedi tutti" }
+                    : {}),
                 }
               : undefined
           }
@@ -389,6 +394,7 @@ export function CercaContent({
           max={MAX_CHOSEN_PROFESSIONALS}
           href={chosenRequestHref(chosenPros, problem.chosen, problem.description, city, problem.requestHints)}
           notice={limitNotice}
+          category={problem.chosen}
         />
       ) : null}
     </div>

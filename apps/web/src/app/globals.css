@@ -695,6 +695,8 @@ body:has(.empty-search-results) .site-header-cta-link {
 }
 .chosen-bar-text {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 .chosen-bar-link {
   flex-shrink: 0;

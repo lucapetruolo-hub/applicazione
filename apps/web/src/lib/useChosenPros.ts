@@ -80,7 +80,7 @@ export function useChosenPros({
     writeChosenSearch({ key, url: `${window.location.pathname}${window.location.search}`, category, description, city, chosen });
   }, [key, restoredKey, chosen, category, description, city]);
 
-  function toggle(pro: ProfessionalSearchResult) {
+  function toggle(pro: ProfessionalSearchResult, requestCategory?: ProfessionalCategorySlug) {
     if (!key) return;
     // Dopo un nuovo «Scegli» l'"Annulla" toglierebbe anche questo: sparisce.
     setUndoState(null);
@@ -95,19 +95,24 @@ export function useChosenPros({
         city: pro.city,
         rating: pro.rating,
         reviewCount: pro.reviewCount,
+        ...(requestCategory && requestCategory !== category ? { requestCategory } : {}),
       }),
     }));
   }
 
-  const selection = key
-    ? {
-        selectedIds: new Set(chosen.map((pro) => pro.id)),
-        canAdd: chosen.length < MAX_CHOSEN_PROFESSIONALS,
-        max: MAX_CHOSEN_PROFESSIONALS,
-        onToggle: toggle,
-        onBlocked: () => setLimitAt(Date.now()),
-      }
-    : undefined;
+  // `requestCategory`: per le schede di "Può farlo anche…", scelte per l'altro
+  // mestiere proposto (docs/changelog/2026-11-17-scelti-due-mestieri.md).
+  const selectionFor = (requestCategory?: ProfessionalCategorySlug) =>
+    key
+      ? {
+          selectedIds: new Set(chosen.map((pro) => pro.id)),
+          canAdd: chosen.length < MAX_CHOSEN_PROFESSIONALS,
+          max: MAX_CHOSEN_PROFESSIONALS,
+          onToggle: (pro: ProfessionalSearchResult) => toggle(pro, requestCategory),
+          onBlocked: () => setLimitAt(Date.now()),
+        }
+      : undefined;
+  const selection = selectionFor();
   // La X sull'anteprima del singolo scelto e "Togli tutti", con "Annulla" per
   // qualche secondo se toccati per sbaglio (docs/changelog/2026-11-16-anteprima-scelti.md).
   const [undoState, setUndoState] = useState<ChosenUndo | null>(null);
@@ -135,5 +140,5 @@ export function useChosenPros({
     setUndoState(null);
   }
 
-  return { chosen, clear, remove, undo: undoInfo ? { text: undoInfo.text, onUndo: undo } : null, selection, limitNotice: limitAt !== null ? chosenLimitText() : null };
+  return { chosen, clear, remove, undo: undoInfo ? { text: undoInfo.text, onUndo: undo } : null, selection, selectionFor, limitNotice: limitAt !== null ? chosenLimitText() : null };
 }

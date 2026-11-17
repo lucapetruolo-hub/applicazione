@@ -107,6 +107,17 @@ export type MapPoolQuery = Omit<ProfessionalSearchQuery, "city" | "track">;
  * Pagina mostrata: quella del server, oppure quella chiesta dal browser per
  * l'inquadratura della mappa (`bounds`), con il suo numero di pagina.
  */
+/** "Scegli" sulle schede (docs/CHANGELOG.md §393). */
+export type ResultsSelection = {
+  selectedIds: ReadonlySet<string>;
+  /** Si può ancora sceglierne un altro (sotto il massimo). */
+  canAdd: boolean;
+  max: number;
+  onToggle: (pro: ProfessionalSearchResult) => void;
+  /** Tocco su "Scegli" oltre il massimo: mostra l'avviso. */
+  onBlocked?: () => void;
+};
+
 /** Una sezione di schede sotto i risultati, con titolo e riga sotto. */
 export type OtherResultsSection = { title: string; subtitle: string; professionals: ProfessionalSearchResult[] };
 
@@ -174,7 +185,12 @@ export function ResultsListWithMap({
    * loro: due elenchi uno dopo l'altro, non mescolati (giro di prova del 17/11,
    * docs/changelog/2026-11-17-ricerca-home-in-attesa.md).
    */
-  nextTradeSection?: OtherResultsSection & { moreHref?: string; moreLabel?: string };
+  nextTradeSection?: OtherResultsSection & {
+    moreHref?: string;
+    moreLabel?: string;
+    /** "Scegli" anche qui: la richiesta va anche a questo mestiere (docs/changelog/2026-11-17-scelti-due-mestieri.md). */
+    selection?: ResultsSelection;
+  };
   /** Tab di default della mini-agenda di ogni card (richiesta esplicita dell'utente): "a domicilio" se cercato a domicilio, "online" se cercato online. */
   defaultMode?: "HOME" | "ONLINE";
   /** Problema scritto nella ricerca: arriva già scritto nella richiesta, dalla scheda e dal profilo. */
@@ -184,15 +200,7 @@ export function ResultsListWithMap({
   /** Ordine senza i pacchetti di visibilità (dalla descrizione del problema, decisione di Luca, §392). */
   merit?: boolean;
   /** "Scegli" su ogni scheda: fino a 5 professionisti a cui mandare la richiesta (docs/CHANGELOG.md §393). */
-  selection?: {
-    selectedIds: ReadonlySet<string>;
-    /** Si può ancora sceglierne un altro (sotto il massimo). */
-    canAdd: boolean;
-    max: number;
-    onToggle: (pro: ProfessionalSearchResult) => void;
-    /** Tocco su "Scegli" oltre il massimo: mostra l'avviso. */
-    onBlocked?: () => void;
-  };
+  selection?: ResultsSelection;
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
@@ -557,13 +565,15 @@ export function ResultsListWithMap({
   // Una scheda dei risultati: la stessa per la sezione "Potrebbero fare
   // anche questo lavoro" (scelta di Luca), lì senza "Scegli", perché le
   // richieste a più professionisti restano del mestiere cercato.
-  const renderCard = (pro: ProfessionalSearchResult, index: number, other = false) => (
+  const renderCard = (pro: ProfessionalSearchResult, index: number, other = false, otherSelection?: typeof selection) => (
     <ProfessionalCard
       key={pro.id}
       // Orari e prezzi aperti solo nella prima scheda (docs/CHANGELOG.md §349).
       defaultExpanded={!other && index === 0}
       reason={reasonFor?.(pro)}
-      action={selection && !other ? <ChooseToggle pro={pro} selection={selection} /> : undefined}
+      action={
+        other ? (otherSelection ? <ChooseToggle pro={pro} selection={otherSelection} /> : undefined) : selection ? <ChooseToggle pro={pro} selection={selection} /> : undefined
+      }
       businessName={pro.businessName}
       categoryLabel={pro.categoryLabel}
       otherCategoryLabels={pro.categories?.filter((category) => category.slug !== pro.categorySlug).map((category) => category.label)}
@@ -1171,7 +1181,7 @@ export function ResultsListWithMap({
                   {nextTradeSection.subtitle}
                 </Text>
               </YStack>
-              <YStack gap="3">{nextTradeSection.professionals.map((pro, index) => renderCard(pro, index, true))}</YStack>
+              <YStack gap="3">{nextTradeSection.professionals.map((pro, index) => renderCard(pro, index, true, nextTradeSection.selection))}</YStack>
               {nextTradeSection.moreHref && nextTradeSection.moreLabel ? (
                 <Link href={nextTradeSection.moreHref} className="results-next-trade-more">
                   {nextTradeSection.moreLabel}

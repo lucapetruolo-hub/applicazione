@@ -121,7 +121,7 @@ export function CategoryContent({
         />
       </div>
       {chosen.length > 0 ? (
-        <ChosenProsBar chosen={chosen} max={MAX_CHOSEN_PROFESSIONALS} href={chosenRequestHref(chosen, category.slug, "", city)} notice={limitNotice} />
+        <ChosenProsBar chosen={chosen} max={MAX_CHOSEN_PROFESSIONALS} href={chosenRequestHref(chosen, category.slug, "", city)} notice={limitNotice} category={category.slug} />
       ) : null}
     </div>
   );

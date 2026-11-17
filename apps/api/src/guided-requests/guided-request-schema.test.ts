@@ -59,9 +59,13 @@ describe("guidedRequestSchema: professionisti scelti", () => {
     expect(guidedRequestSchema.safeParse({ ...base, professionalProfileIds: [id(1), id(1)] }).success).toBe(false);
   });
 
-  it("mai insieme a un professionista singolo o ad altre categorie", () => {
+  it("mai insieme a un professionista singolo", () => {
     const chosen = { ...base, professionalProfileIds: [id(1), id(2)] };
     expect(guidedRequestSchema.safeParse({ ...chosen, professionalProfileId: id(3) }).success).toBe(false);
-    expect(guidedRequestSchema.safeParse({ ...chosen, extraCategorySlugs: ["elettricista"] }).success).toBe(false);
+  });
+
+  it("scelti di due mestieri: altre categorie sì (docs/changelog/2026-11-17-scelti-due-mestieri.md)", () => {
+    const chosen = { ...base, professionalProfileIds: [id(1), id(2)] };
+    expect(guidedRequestSchema.safeParse({ ...chosen, extraCategorySlugs: ["elettricista"] }).success).toBe(true);
   });
 });

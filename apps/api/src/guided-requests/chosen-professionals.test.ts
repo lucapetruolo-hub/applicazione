@@ -142,3 +142,43 @@ describe("GuidedRequestsService.create — doppio invio", () => {
     await expect(service.create("client-1", input)).resolves.toMatchObject({ matchedProfessionals: 2 });
   });
 });
+
+/** Scelti di due mestieri (docs/changelog/2026-11-17-scelti-due-mestieri.md): una richiesta per mestiere, ognuna ai suoi scelti. */
+describe("scelti di due mestieri", () => {
+  const categories = [
+    { id: "cat-mur", slug: "muratore" },
+    { id: "cat-fal", slug: "falegname" },
+  ];
+  type Grouping = { chosenByCategory: (ids: string[], c: typeof categories, s: string[]) => Promise<Map<string, string[]>> };
+
+  it("divide i scelti per mestiere, anche per una categoria in più del profilo", async () => {
+    const { service } = buildService([
+      { id: ids[0]!, businessName: "Edilizia Rossi", categoryId: "cat-mur" },
+      { id: ids[1]!, businessName: "Falegnameria Bianchi", categoryId: "cat-fal" },
+      { id: ids[2]!, businessName: "Tutto Casa", categoryId: "cat-tut", extraCategories: [{ id: "cat-fal" }] } as never,
+    ]);
+    const groups = await (service as unknown as Grouping).chosenByCategory(ids, categories, ["muratore", "falegname"]);
+    expect(groups.get("muratore")).toEqual([ids[0]]);
+    expect(groups.get("falegname")).toEqual([ids[1], ids[2]]);
+  });
+
+  it("chi non fa nessuno dei mestieri: rifiutata con il suo nome", async () => {
+    const { service } = buildService([
+      { id: ids[0]!, businessName: "Edilizia Rossi", categoryId: "cat-mur" },
+      { id: ids[1]!, businessName: "Idraulica Verdi", categoryId: "cat-idr" },
+    ]);
+    await expect((service as unknown as Grouping).chosenByCategory(ids.slice(0, 2), categories, ["muratore", "falegname"])).rejects.toThrow(
+      "Idraulica Verdi non fa questo lavoro",
+    );
+  });
+
+  it("un mestiere senza scelti: rifiutata", async () => {
+    const { service } = buildService([
+      { id: ids[0]!, businessName: "Edilizia Rossi", categoryId: "cat-mur" },
+      { id: ids[1]!, businessName: "Edilizia Neri", categoryId: "cat-mur" },
+    ]);
+    await expect((service as unknown as Grouping).chosenByCategory(ids.slice(0, 2), categories, ["muratore", "falegname"])).rejects.toThrow(
+      "almeno un professionista per ogni mestiere",
+    );
+  });
+});
