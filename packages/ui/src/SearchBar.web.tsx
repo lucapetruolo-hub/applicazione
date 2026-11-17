@@ -202,8 +202,13 @@ export function SearchBar(props: SearchBarProps) {
             size="5"
           />
           {wrapSearchButton(
-            <Button variant="primary" onPress={bar.runSearch}>
+            // Mentre cerca, la barra che si muove al posto della scritta, come
+            // negli altri pulsanti del sito (giro di prova del 17/11,
+            // docs/changelog/2026-11-17-ricerca-home-in-attesa.md): la scritta
+            // resta nascosta sotto, così il pulsante non cambia misura.
+            <Button variant="primary" onPress={bar.runSearch} aria-busy={bar.searching || undefined}>
               Cerca
+              {bar.searching ? props.searchingIndicator : null}
             </Button>,
           )}
         </div>
@@ -214,7 +219,7 @@ export function SearchBar(props: SearchBarProps) {
           </span>
         ) : null}
       </div>
-      {footer?.({ mode, fillQuery: bar.fillQuery, searchFor: bar.searchFor })}
+      {footer?.({ mode, fillQuery: bar.fillQuery, searchFor: bar.searchFor, searching: bar.searching })}
     </>
   );
 }

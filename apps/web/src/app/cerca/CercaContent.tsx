@@ -23,7 +23,8 @@ import styles from "./ResultsPage.module.css";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
 import { ResultsListWithMap, type MapPoolQuery } from "@/components/ResultsListWithMap";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
-import { ProblemBand } from "@/components/ProblemBand";
+import { ProblemBand, problemResultsHref } from "@/components/ProblemBand";
+import { CATEGORY_WHO } from "@/lib/problemChoices";
 import { ChosenProsBar, chosenRequestHref, type ProblemRequestHints } from "@/components/ChosenProsBar";
 import { saveLastSearchCity } from "@/lib/lastSearchCity";
 import { useChosenPros } from "@/lib/useChosenPros";
@@ -84,6 +85,7 @@ export function CercaContent({
   loadFailed,
   problem,
   alsoDoThisJob = [],
+  nextTrade,
 }: {
   city?: string;
   /** Centro del comune, per la mappa. */
@@ -105,6 +107,8 @@ export function CercaContent({
   problem?: ProblemSearch;
   /** Altri mestieri con quel lavoro tra le prestazioni (ricerca per problema). */
   alsoDoThisJob?: ProfessionalSearchResult[];
+  /** Dopo l'ultima pagina, l'altro mestiere proposto (ResultsListWithMap, `nextTradeSection`). */
+  nextTrade?: { slug: ProfessionalCategorySlug; professionals: ProfessionalSearchResult[]; total: number };
 }) {
   // Per le voci di "Quanto costa in media" della home (§398).
   useEffect(() => {
@@ -120,6 +124,7 @@ export function CercaContent({
     remove: removeChosen,
     undo: chosenUndo,
     selection,
+    selectionFor,
     limitNotice,
   } = useChosenPros({
     category: canChoose ? (problem?.chosen ?? null) : null,
@@ -317,6 +322,7 @@ export function CercaContent({
       questionDone={problem.questionDone}
       categoryCounts={problem.categoryCounts}
       otherTradesCount={alsoDoThisJob.length}
+      nearestOutsideKm={page.nearestOutsideKm}
       chosenPros={chosenPros}
       requestHints={problem.requestHints}
       photo={problem.photo}
@@ -348,6 +354,7 @@ export function CercaContent({
           city={city}
           cityCenter={cityCenter}
           header={header}
+          nearestInHeader={Boolean(problem && !problem.chosen && (problem.result.outOfService || problem.result.missingTrade))}
           defaultMode={online ? "ONLINE" : "HOME"}
           merit={Boolean(problem)}
           problemDescription={problem?.description}
@@ -361,6 +368,23 @@ export function CercaContent({
                 }
               : undefined
           }
+          nextTradeSection={
+            problem && nextTrade
+              ? {
+                  title: `Può farlo anche ${CATEGORY_WHO[nextTrade.slug]}`,
+                  subtitle: selection
+                    ? "L'altro mestiere proposto. Puoi sceglierli insieme ai primi: parte una richiesta per mestiere."
+                    : "L'altro mestiere proposto per questo lavoro.",
+                  professionals: nextTrade.professionals,
+                  // "Scegli" anche qui: si mandano insieme, una richiesta per
+                  // mestiere (scelta di Luca, docs/changelog/2026-11-17-scelti-due-mestieri.md).
+                  selection: selectionFor(nextTrade.slug),
+                  ...(nextTrade.total > nextTrade.professionals.length
+                    ? { moreHref: problemResultsHref(problem.description, city, { mestiere: nextTrade.slug, ...(problem.photo ? { foto: problem.photo } : {}) }), moreLabel: "Vedi tutti" }
+                    : {}),
+                }
+              : undefined
+          }
           selection={selection}
         />
       </div>
@@ -370,6 +394,7 @@ export function CercaContent({
           max={MAX_CHOSEN_PROFESSIONALS}
           href={chosenRequestHref(chosenPros, problem.chosen, problem.description, city, problem.requestHints)}
           notice={limitNotice}
+          category={problem.chosen}
         />
       ) : null}
     </div>

@@ -61,7 +61,7 @@ export const ADMIN_SECTIONS: NavSection[] = [
     label: "Richieste",
     icon: "send",
     tabs: [
-      { href: "/admin/richieste-da-seguire", label: "Ce ne occupiamo noi", icon: "heart-handshake", scope: "MODERATION", badge: (o) => o.openProblemTakeovers },
+      { href: "/admin/richieste-da-seguire", label: "Richieste in attesa", icon: "heart-handshake", scope: "MODERATION", badge: (o) => o.openProblemTakeovers },
       { href: "/admin/messaggi", label: "Messaggi dal sito", icon: "mail", scope: "MODERATION", badge: (o) => o.openMessages },
       { href: "/admin/richieste-generali", label: "Zone e richieste generali", icon: "map-pin", scope: "MODERATION", badge: (o) => o.closedGeneralRequestZones },
       { href: "/admin/richieste-eliminate", label: "Richieste eliminate", icon: "trash-2", scope: "MODERATION" },

@@ -652,7 +652,9 @@ export class ProfessionalsService {
         where: { AND: [baseWhere, { latitude: { gte: box.south, lte: box.north }, longitude: { gte: box.west, lte: box.east } }] },
         select: { id: true, latitude: true, longitude: true },
       });
-      distanceById = selectSearchArea(comune, candidates, SEARCH_RADIUS_KM, SEARCH_FALLBACK_MAX_KM);
+      // Un mestiere che quasi nessuno fa: fuori zona tutti quelli entro
+      // SEARCH_FALLBACK_MAX_KM, dal più vicino (docs/changelog/2026-11-17-mestiere-piu-vicino.md).
+      distanceById = selectSearchArea(comune, candidates, SEARCH_RADIUS_KM, SEARCH_FALLBACK_MAX_KM, offerKeywords.length > 0 ? "all" : "nearest");
       where = { ...baseWhere, id: { in: [...distanceById.keys()] } };
     } else if (city) {
       where = { ...baseWhere, city: { equals: city, mode: "insensitive" } };
@@ -810,11 +812,15 @@ export class ProfessionalsService {
     // (decisione §253) ma dopo chi può già mandare un preventivo (collaudo
     // C-13): un cliente non deve scegliere per primo chi non può rispondergli.
     const notReadyIds = new Set(profiles.filter((p) => identityVerificationNeeded(p)).map((p) => p.id));
+    // Nessuno nel raggio: tutti fuori zona, e conta prima la distanza
+    // (docs/changelog/2026-11-17-mestiere-piu-vicino.md).
+    const allOutside = results.length > 0 && results.every((row) => row.distanceKm !== undefined && row.distanceKm > SEARCH_RADIUS_KM);
     results.sort((a, b) => {
       const demotedDiff = Number(demotedIds.has(a.id)) - Number(demotedIds.has(b.id));
       if (demotedDiff !== 0) return demotedDiff;
       const notReadyDiff = Number(notReadyIds.has(a.id)) - Number(notReadyIds.has(b.id));
       if (notReadyDiff !== 0) return notReadyDiff;
+      if (allOutside && a.distanceKm !== b.distanceKm) return a.distanceKm! - b.distanceKm!;
       // Dalla descrizione del problema, prima chi fa proprio quel lavoro.
       if (problem && Boolean(a.matchedServiceId) !== Boolean(b.matchedServiceId)) return a.matchedServiceId ? -1 : 1;
       if (!merit && a.boosted !== b.boosted) return a.boosted ? -1 : 1;
@@ -1669,6 +1675,10 @@ export class ProfessionalsService {
         urgentEngagementRadiusKm: profile.urgentEngagementRadiusKm,
         remoteAvailable: profile.remoteAvailable,
       });
+    } else if (isActiveProfile) {
+      // Prestazioni o descrizione cambiate: le richieste in attesa di un mestiere
+      // che ora dichiara (docs/changelog/2026-11-17-richieste-in-attesa.md).
+      await this.guidedRequestsService.matchProfileToWaitingTrades(profile.id);
     }
 
     return {
@@ -2063,7 +2073,8 @@ export class ProfessionalsService {
           : null,
         guidedRequest: {
           id: lead.guidedRequest.id,
-          categoryLabel: lead.guidedRequest.category.label,
+          // Il mestiere chiesto, per una richiesta rimasta in attesa (docs/changelog/2026-11-17-richieste-in-attesa.md).
+          categoryLabel: lead.guidedRequest.waitingTrade ?? lead.guidedRequest.category.label,
           // Per i mestieri a visite ripetute il preventivo offre il lavoro ricorrente (docs/changelog/2026-11-09-lavori-ricorrenti.md).
           categorySlug: lead.guidedRequest.category.slug,
           description: lead.guidedRequest.description,

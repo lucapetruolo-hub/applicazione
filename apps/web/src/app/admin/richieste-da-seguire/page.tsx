@@ -1,18 +1,33 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { OUT_OF_SERVICE_LABELS, type ProblemSafety, type ProblemTakeoverAdmin } from "@professionisti/shared";
+import Link from "next/link";
+import {
+  OUT_OF_SERVICE_LABELS,
+  waitingTradeAd,
+  type MostRequestedTrade,
+  type ProblemSafety,
+  type ProblemTakeoverAdmin,
+  type WaitingRequestAdminGroup,
+  type WaitingRequestState,
+  type WaitingRequestsAdmin,
+} from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonTableRows } from "@/components/Skeleton";
+import { SITE_URL } from "@/lib/siteUrl";
 
 /**
- * "Richieste da seguire" (docs/CHANGELOG.md §392, decisione di Luca):
- * lavori che nessun professionista del sito fa, per cui il cliente ha
- * premuto "Prendete in carico la richiesta". Nessuna scadenza: restano
- * qui finché non si segnano come fatte.
+ * "Richieste in attesa" (docs/changelog/2026-11-17-richieste-in-attesa.md,
+ * decisioni di Luca del 17/11/2026): richieste complete per un mestiere che
+ * nessuno fa ancora vicino al cliente. Arrivano da sole a chi lo fa appena si
+ * iscrive: qui si vede per mestiere e zona chi reclutare, con un annuncio
+ * anonimo da copiare. Mai i contatti del cliente.
+ *
+ * Sotto "Di prima" le vecchie richieste "Prendete in carico la richiesta"
+ * (docs/CHANGELOG.md §392), da seguire a mano finché non sono fatte.
  */
 const SAFETY_LABEL: Record<ProblemSafety, string> = {
   gas: "Possibile pericolo: gas",
@@ -21,7 +36,189 @@ const SAFETY_LABEL: Record<ProblemSafety, string> = {
   "acqua-elettrico": "Possibile pericolo: acqua e corrente",
 };
 
-export default function AdminRichiesteDaSeguirePage() {
+type PageTab = "attesa" | "arrivate" | "chiuse" | "prima";
+
+const STATE_OF_TAB: Record<Exclude<PageTab, "prima">, WaitingRequestState> = { attesa: "WAITING", arrivate: "SENT", chiuse: "CLOSED" };
+
+const daysSince = (iso: string) => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / (24 * 60 * 60 * 1000)));
+const daysText = (days: number) => (days === 0 ? "da oggi" : days === 1 ? "da 1 giorno" : `da ${days} giorni`);
+
+export default function AdminRichiesteInAttesaPage() {
+  const { token } = useAuth();
+  const [tab, setTab] = useState<PageTab>("attesa");
+  const [data, setData] = useState<WaitingRequestsAdmin | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    apiClient
+      .adminWaitingRequests(token)
+      .then(setData)
+      .catch((err) => setError(errorMessage(err)));
+  }, [token]);
+
+  const count = (state: WaitingRequestState) => data?.rows.filter((row) => row.state === state).length ?? 0;
+  const rows = tab === "prima" || !data ? [] : data.rows.filter((row) => row.state === STATE_OF_TAB[tab]).reverse();
+
+  return (
+    <YStack>
+      <AdminPageHeader
+        title="Richieste in attesa"
+        description="Lavori che vicino al cliente non fa ancora nessuno. La richiesta arriva da sola a chi lo fa appena si iscrive: qui vedi chi cercare e dove."
+      />
+      <AdminTabs
+        tabs={[
+          { key: "attesa", label: data ? `In attesa (${count("WAITING")})` : "In attesa" },
+          { key: "arrivate", label: data ? `Arrivate (${count("SENT")})` : "Arrivate" },
+          { key: "chiuse", label: data ? `Chiuse (${count("CLOSED")})` : "Chiuse" },
+          { key: "prima", label: "Di prima" },
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
+      {data && data.mostRequested.length > 0 ? <MostRequested trades={data.mostRequested} /> : null}
+      {tab === "prima" ? (
+        <OldTakeovers />
+      ) : error ? (
+        <Text color={brand.urgenza}>{error}</Text>
+      ) : !data ? (
+        <SkeletonTableRows rows={4} cols={5} />
+      ) : (
+        <YStack gap="4">
+          {tab === "attesa" && data.groups.length > 0 ? <WaitingGroups groups={data.groups} /> : null}
+          {rows.length === 0 ? (
+            <Text color={brand.grafite70} marginTop="3">
+              {tab === "attesa" ? "Nessuna richiesta in attesa." : tab === "arrivate" ? "Nessuna richiesta arrivata a un professionista." : "Nessuna richiesta chiusa."}
+            </Text>
+          ) : (
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Mestiere</th>
+                    <th>Descrizione</th>
+                    <th>Zona</th>
+                    <th>Inviata</th>
+                    <th>Stato</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.trade}</td>
+                      <td style={{ maxWidth: 380 }}>{row.description}</td>
+                      <td>{row.city || row.zone}</td>
+                      <td>{formatAdminDate(row.createdAt)}</td>
+                      <td>
+                        {row.state === "WAITING" ? (
+                          <YStack gap={4} alignItems="flex-start">
+                            <AdminPill tone="warn">In attesa {daysText(daysSince(row.createdAt))}</AdminPill>
+                            {row.stillNeededAskedAt ? (
+                              <Text fontSize={13} color={brand.grafite70}>
+                                Chiesto «Ti serve ancora?»
+                              </Text>
+                            ) : null}
+                          </YStack>
+                        ) : row.state === "SENT" ? (
+                          <AdminPill tone="ok">{row.recipients === 1 ? "Arrivata a 1 professionista" : `Arrivata a ${row.recipients} professionisti`}</AdminPill>
+                        ) : (
+                          <AdminPill>{row.recipients > 0 ? "Chiusa" : "Chiusa senza nessuno"}</AdminPill>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </YStack>
+      )}
+    </YStack>
+  );
+}
+
+/**
+ * Contatore dei mestieri più richiesti (decisione di Luca del 17/11/2026,
+ * docs/changelog/2026-11-17-mestiere-piu-vicino.md): richieste in attesa e di
+ * prima insieme, degli ultimi 90 giorni.
+ */
+function MostRequested({ trades }: { trades: MostRequestedTrade[] }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? trades : trades.slice(0, 8);
+  return (
+    <YStack gap="2" marginBottom="4">
+      <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
+        Più richiesti
+      </Text>
+      <ol className="most-requested">
+        {shown.map((item) => (
+          <li key={item.trade}>
+            <span>{item.trade}</span>
+            <strong>{item.requests}</strong>
+          </li>
+        ))}
+      </ol>
+      <XStack gap="3" alignItems="center" flexWrap="wrap">
+        <Text fontSize={13} color={brand.grafite70}>
+          Richieste degli ultimi 90 giorni, nuove e di prima.
+        </Text>
+        {trades.length > 8 ? (
+          <button type="button" className="waiting-group-link most-requested-more" onClick={() => setAll((v) => !v)}>
+            {all ? "Mostra meno" : `Mostra tutti (${trades.length})`}
+          </button>
+        ) : null}
+      </XStack>
+    </YStack>
+  );
+}
+
+/** Chi cercare: mestiere e zona con più richieste in attesa, con l'annuncio anonimo da copiare. */
+function WaitingGroups({ groups }: { groups: WaitingRequestAdminGroup[] }) {
+  const [copied, setCopied] = useState<string | null>(null);
+  const copy = async (group: WaitingRequestAdminGroup) => {
+    const key = `${group.trade}|${group.zone}`;
+    try {
+      await navigator.clipboard.writeText(waitingTradeAd(group, SITE_URL));
+      setCopied(key);
+    } catch {
+      setCopied(null);
+    }
+  };
+  return (
+    <YStack gap="2">
+      <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
+        Chi cercare
+      </Text>
+      <div className="waiting-groups">
+        {groups.map((group) => {
+          const key = `${group.trade}|${group.zone}`;
+          return (
+            <div key={key} className="waiting-group">
+              <strong>{group.trade}</strong>
+              <span>{group.zone}</span>
+              <span>
+                {group.waiting === 1 ? "1 richiesta" : `${group.waiting} richieste`} · la più vecchia {daysText(daysSince(group.oldestCreatedAt))}
+              </span>
+              <XStack gap="2" flexWrap="wrap" marginTop="2">
+                <Button size="2" variant="secondary" onPress={() => void copy(group)}>
+                  {copied === key ? "Copiato" : "Copia annuncio"}
+                </Button>
+                <Link href="/admin/professionisti" className="waiting-group-link">
+                  Invita un professionista
+                </Link>
+              </XStack>
+            </div>
+          );
+        })}
+      </div>
+      <Text fontSize={13} color={brand.grafite70}>
+        L&apos;annuncio dice solo il mestiere, la zona e il numero. Se inviti chi fa il lavoro, scrivi il mestiere nei suoi servizi. Così le richieste gli arrivano da sole.
+      </Text>
+    </YStack>
+  );
+}
+
+function OldTakeovers() {
   const { token, user } = useAuth();
   const [tab, setTab] = useState<"aperte" | "fatte">("aperte");
   const [rows, setRows] = useState<ProblemTakeoverAdmin[] | null>(null);
@@ -67,15 +264,15 @@ export default function AdminRichiesteDaSeguirePage() {
     }
   };
 
-  // Prima i pericoli, poi la più vecchia (come in Da fare).
-  const sorted = rows && tab === "aperte" ? [...rows].sort((a, b) => Number(Boolean(b.safety)) - Number(Boolean(a.safety))) : rows;
+  // In ordine di arrivo, la prima ricevuta in cima (decisione di Luca del
+  // 17/11/2026): il pericolo resta segnato nella riga.
+  const sorted = rows ? [...rows].sort((a, b) => a.createdAt.localeCompare(b.createdAt)) : rows;
 
   return (
     <YStack>
-      <AdminPageHeader
-        title="Richieste da seguire"
-        description="Lavori che sul sito non fa nessuno. Il cliente ci chiede di trovare qualcuno. Contattalo e segna la richiesta come fatta."
-      />
+      <Text color={brand.grafite70} marginBottom="2">
+        Sono richieste di prima, in ordine di arrivo. Il cliente ci chiedeva di trovare qualcuno. Contattalo e poi segna la richiesta come fatta.
+      </Text>
       <AdminTabs
         tabs={[
           { key: "aperte", label: "Da seguire" },
@@ -99,6 +296,7 @@ export default function AdminRichiesteDaSeguirePage() {
           <table className="admin-table">
             <thead>
               <tr>
+                <th>N.</th>
                 <th>Lavoro</th>
                 <th>Descrizione</th>
                 <th>Città</th>
@@ -108,8 +306,9 @@ export default function AdminRichiesteDaSeguirePage() {
               </tr>
             </thead>
             <tbody>
-              {(sorted ?? []).map((row) => (
+              {(sorted ?? []).map((row, index) => (
                 <tr key={row.id}>
+                  <td>{index + 1}</td>
                   <td>
                     <YStack gap={4} alignItems="flex-start">
                       {row.safety ? <AdminPill tone="danger">{SAFETY_LABEL[row.safety]}</AdminPill> : null}

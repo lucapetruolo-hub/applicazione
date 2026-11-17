@@ -49,6 +49,8 @@ export function requestSentEmail(input: {
   chosen?: number;
   description?: string | null;
   summary?: RequestSummary;
+  /** Mestiere che nessuno fa ancora vicino al cliente (docs/changelog/2026-11-17-richieste-in-attesa.md). */
+  waiting?: boolean;
 }): RenderedEmail {
   const where = input.city ? ` a ${input.city}` : "";
   const count = input.requestsCount ?? 1;
@@ -68,6 +70,11 @@ export function requestSentEmail(input: {
     ? [
         `Abbiamo inviato la tua richiesta per **${input.category}${where}** ai ${input.chosen} professionisti che hai scelto${input.isUrgent ? ", segnalandola come urgente" : ""}.`,
         "Ti scriviamo a ogni preventivo: potrai confrontarli, fare domande in chat e scegliere con calma.",
+      ]
+    : input.waiting
+    ? [
+        `Abbiamo salvato la tua richiesta per **${input.category}${where}**.`,
+        "Oggi nessuno fa ancora questo lavoro vicino a te: la mandiamo da sola a chi lo fa appena si iscrive nella tua zona. Non sappiamo dirti quando, ma ti scriviamo noi. La richiesta resta valida 60 giorni.",
       ]
     : input.sentTo > 0
       ? [

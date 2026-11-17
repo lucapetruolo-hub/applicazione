@@ -84,6 +84,8 @@ const publicRoutes = [
   "POST /photo-handoff/:code/take",
   // "Lavori più cercati" della home (docs/changelog/2026-11-07-lavori-piu-cercati-home.md).
   "GET /popular-jobs",
+  "GET /request-board",
+  "GET /request-board/summary",
   // Prestazioni standard aggiunte dall'admin (§388), mostrate in iscrizione e nel profilo.
   "GET /service-names/standard",
   "GET /professionals/:id",
@@ -151,6 +153,8 @@ const selfAny = [
   "GET /guided-requests/me/last-address",
   "POST /guided-requests/photos",
   "POST /guided-requests/timeline-photos",
+  // Quante richieste in attesa di un mestiere ci sono vicino: solo numero e mestiere, mai dati del cliente.
+  "GET /guided-requests/waiting-nearby",
   "DELETE /notifications",
   "GET /notifications/history",
   "POST /notifications/mark-all-read",

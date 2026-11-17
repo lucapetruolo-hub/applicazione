@@ -287,3 +287,33 @@ function CategoryPanel({
     </div>
   );
 }
+
+/**
+ * Mestiere che nessuno fa ancora vicino al cliente, al posto della scheda
+ * della categoria (docs/changelog/2026-11-17-richieste-in-attesa.md, decisioni
+ * di Luca): stesso disegno, con lo stato "in attesa" e "Cambia" per tornare
+ * alla scelta normale (se basta un mestiere del sito la richiesta parte subito).
+ */
+export function WaitingTradeChoice({ trade, onChange }: { trade: string; onChange: () => void }) {
+  const noteId = useId();
+  return (
+    <div className="cat-choice-card" role="group" aria-label="Chi ti serve" aria-describedby={noteId}>
+      <div className="cat-choice-row">
+        <span className="cat-choice-icon cat-choice-icon-waiting" aria-hidden="true">
+          <Icon name="clock" size={22} color="#1E6B6E" strokeWidth={2} />
+        </span>
+        <span className="cat-choice-text">
+          <span className="cat-choice-name">
+            {trade} <span className="cat-choice-waiting">in attesa</span>
+          </span>
+          <span className="cat-choice-note" id={noteId}>
+            Oggi nessuno lo fa vicino a te. La mandiamo da sola a chi lo fa appena si iscrive nella tua zona.
+          </span>
+        </span>
+        <button type="button" className="cat-choice-change" onClick={onChange}>
+          Cambia
+        </button>
+      </div>
+    </div>
+  );
+}

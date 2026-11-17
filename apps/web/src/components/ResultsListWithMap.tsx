@@ -107,6 +107,20 @@ export type MapPoolQuery = Omit<ProfessionalSearchQuery, "city" | "track">;
  * Pagina mostrata: quella del server, oppure quella chiesta dal browser per
  * l'inquadratura della mappa (`bounds`), con il suo numero di pagina.
  */
+/** "Scegli" sulle schede (docs/CHANGELOG.md §393). */
+export type ResultsSelection = {
+  selectedIds: ReadonlySet<string>;
+  /** Si può ancora sceglierne un altro (sotto il massimo). */
+  canAdd: boolean;
+  max: number;
+  onToggle: (pro: ProfessionalSearchResult) => void;
+  /** Tocco su "Scegli" oltre il massimo: mostra l'avviso. */
+  onBlocked?: () => void;
+};
+
+/** Una sezione di schede sotto i risultati, con titolo e riga sotto. */
+export type OtherResultsSection = { title: string; subtitle: string; professionals: ProfessionalSearchResult[] };
+
 type AreaPage = { key: string; data: ProfessionalSearchPage };
 
 export function ResultsListWithMap({
@@ -118,8 +132,10 @@ export function ResultsListWithMap({
   city,
   cityCenter,
   header,
+  nearestInHeader = false,
   footer,
   otherSection,
+  nextTradeSection,
   defaultMode,
   problemDescription,
   reasonFor,
@@ -148,6 +164,8 @@ export function ResultsListWithMap({
   cityCenter?: [number, number];
   /** Contenuto mostrato in cima alla colonna sinistra, allineato con l'inizio della mappa (titolo/filtri categoria). */
   header?: ReactNode;
+  /** La riga "Nessun professionista entro…" la dice già l'intestazione (mestiere che quasi nessuno fa). */
+  nearestInHeader?: boolean;
   /**
    * Contenuto subito sotto le schede, nella stessa colonna (es. "[Lavoro] a
    * [città] in breve", docs/CHANGELOG.md §349): fuori dalla colonna finiva
@@ -160,7 +178,19 @@ export function ResultsListWithMap({
    * anche questo lavoro" nella ricerca per problema
    * (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md).
    */
-  otherSection?: { title: string; subtitle: string; professionals: ProfessionalSearchResult[] };
+  otherSection?: OtherResultsSection;
+  /**
+   * Dopo l'ultima pagina, i professionisti dell'altro mestiere proposto (es.
+   * "battiscopa staccato": finiti i muratori, i falegnami), con un titolo
+   * loro: due elenchi uno dopo l'altro, non mescolati (giro di prova del 17/11,
+   * docs/changelog/2026-11-17-ricerca-home-in-attesa.md).
+   */
+  nextTradeSection?: OtherResultsSection & {
+    moreHref?: string;
+    moreLabel?: string;
+    /** "Scegli" anche qui: la richiesta va anche a questo mestiere (docs/changelog/2026-11-17-scelti-due-mestieri.md). */
+    selection?: ResultsSelection;
+  };
   /** Tab di default della mini-agenda di ogni card (richiesta esplicita dell'utente): "a domicilio" se cercato a domicilio, "online" se cercato online. */
   defaultMode?: "HOME" | "ONLINE";
   /** Problema scritto nella ricerca: arriva già scritto nella richiesta, dalla scheda e dal profilo. */
@@ -170,15 +200,7 @@ export function ResultsListWithMap({
   /** Ordine senza i pacchetti di visibilità (dalla descrizione del problema, decisione di Luca, §392). */
   merit?: boolean;
   /** "Scegli" su ogni scheda: fino a 5 professionisti a cui mandare la richiesta (docs/CHANGELOG.md §393). */
-  selection?: {
-    selectedIds: ReadonlySet<string>;
-    /** Si può ancora sceglierne un altro (sotto il massimo). */
-    canAdd: boolean;
-    max: number;
-    onToggle: (pro: ProfessionalSearchResult) => void;
-    /** Tocco su "Scegli" oltre il massimo: mostra l'avviso. */
-    onBlocked?: () => void;
-  };
+  selection?: ResultsSelection;
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
@@ -543,13 +565,15 @@ export function ResultsListWithMap({
   // Una scheda dei risultati: la stessa per la sezione "Potrebbero fare
   // anche questo lavoro" (scelta di Luca), lì senza "Scegli", perché le
   // richieste a più professionisti restano del mestiere cercato.
-  const renderCard = (pro: ProfessionalSearchResult, index: number, other = false) => (
+  const renderCard = (pro: ProfessionalSearchResult, index: number, other = false, otherSelection?: typeof selection) => (
     <ProfessionalCard
       key={pro.id}
       // Orari e prezzi aperti solo nella prima scheda (docs/CHANGELOG.md §349).
       defaultExpanded={!other && index === 0}
       reason={reasonFor?.(pro)}
-      action={selection && !other ? <ChooseToggle pro={pro} selection={selection} /> : undefined}
+      action={
+        other ? (otherSelection ? <ChooseToggle pro={pro} selection={otherSelection} /> : undefined) : selection ? <ChooseToggle pro={pro} selection={selection} /> : undefined
+      }
       businessName={pro.businessName}
       categoryLabel={pro.categoryLabel}
       otherCategoryLabels={pro.categories?.filter((category) => category.slug !== pro.categorySlug).map((category) => category.label)}
@@ -1086,11 +1110,12 @@ export function ResultsListWithMap({
           </XStack>
           )}
           {header}
-          {page.nearestOutsideKm !== null ? (
+          {page.nearestOutsideKm !== null && !nearestInHeader ? (
             <YStack backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4" padding="3">
               <Text color={brand.grafite} fontSize={16}>
-                Nessun professionista entro {SEARCH_RADIUS_KM} km da {city}: ti mostriamo il più
-                vicino, a circa {page.nearestOutsideKm} km.
+                {page.total > 1
+                  ? `Nessun professionista entro ${SEARCH_RADIUS_KM} km da ${city}: ti mostriamo i più vicini, il primo a circa ${page.nearestOutsideKm} km.`
+                  : `Nessun professionista entro ${SEARCH_RADIUS_KM} km da ${city}: ti mostriamo il più vicino, a circa ${page.nearestOutsideKm} km.`}
               </Text>
             </YStack>
           ) : null}
@@ -1146,11 +1171,38 @@ export function ResultsListWithMap({
               <YStack gap="3">{otherSection.professionals.map((pro, index) => renderCard(pro, index, true))}</YStack>
             </section>
           ) : null}
+          {nextTradeSection && nextTradeSection.professionals.length > 0 && shown.page >= shown.pageCount && !bounds ? (
+            <section id="altro-mestiere" aria-labelledby="results-next-trade" className="results-other-section">
+              <YStack gap="1" marginBottom="2">
+                <Text id="results-next-trade" render="h2" fontFamily="heading" fontWeight="800" fontSize={20} color={brand.inchiostro}>
+                  {nextTradeSection.title}
+                </Text>
+                <Text fontSize={14} color={brand.grafite70}>
+                  {nextTradeSection.subtitle}
+                </Text>
+              </YStack>
+              <YStack gap="3">{nextTradeSection.professionals.map((pro, index) => renderCard(pro, index, true, nextTradeSection.selection))}</YStack>
+              {nextTradeSection.moreHref && nextTradeSection.moreLabel ? (
+                <Link href={nextTradeSection.moreHref} className="results-next-trade-more">
+                  {nextTradeSection.moreLabel}
+                </Link>
+              ) : null}
+            </section>
+          ) : null}
           {footer ? <div className="results-list-footer">{footer}</div> : null}
         </YStack>
       </div>
 
       <style jsx>{`
+        .results-next-trade-more {
+          display: inline-flex;
+          align-self: flex-start;
+          margin-top: var(--t-space-3, 12px);
+          min-height: 44px;
+          align-items: center;
+          font-weight: 600;
+          color: ${brand.cianografiaScuro};
+        }
         .results-cards {
           display: flex;
           flex-direction: column;

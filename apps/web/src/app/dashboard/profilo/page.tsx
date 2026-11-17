@@ -54,6 +54,7 @@ import { ChosenPlanChip } from "@/components/ChosenPlanChip";
 import { PageLoading } from "@/components/PageLoading";
 import { ButtonWaitBar } from "@/components/WaitBar";
 import { ServicesEditor, type EditableService } from "./_components/ServicesEditor";
+import { WaitingRequestsNearby } from "@/components/WaitingRequestsNearby";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 
@@ -1529,6 +1530,8 @@ export default function DashboardProfiloPage() {
             datalistNames={[...new Set([...ALL_SUGGESTED_SERVICES, ...Object.values(standardServices).flatMap((names) => names ?? [])])]}
             quickAddRef={servicesQuickAddRef}
           />
+          {/* Richieste in attesa del mestiere scritto (docs/changelog/2026-11-17-richieste-in-attesa.md). */}
+          <WaitingRequestsNearby token={token} city={city} texts={[...services.map((service) => service.name), certifications]} />
         </Surface>
 
         <Surface gap="3" id="profilo-lingue" className="profile-section">

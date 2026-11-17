@@ -44,7 +44,7 @@ export const ADMIN_QUEUE_KINDS: Record<AdminQueueKind, { label: string; group: A
   DAC7_DUE: { label: "Guadagni dei professionisti da mandare al fisco", group: "fisco", scope: "FINANCE" },
   CONTENT_REPORT: { label: "Segnalazione", group: "reclami", scope: "MODERATION" },
   REPORT_APPEAL: { label: "Chiede di rivedere una segnalazione già decisa", group: "reclami", scope: "MODERATION" },
-  PROBLEM_TAKEOVER: { label: "Ce ne occupiamo noi", group: "richieste", scope: "MODERATION" },
+  PROBLEM_TAKEOVER: { label: "Richiesta di prima da seguire", group: "richieste", scope: "MODERATION" },
   CONTACT_MESSAGE: { label: "Messaggio dal sito", group: "richieste", scope: "MODERATION" },
   VERIFICATION: { label: "Verifica del profilo", group: "persone", scope: "MODERATION" },
   CLOSED_ZONE: { label: "Zona dove le richieste non arrivano più", group: "richieste", scope: "MODERATION" },
