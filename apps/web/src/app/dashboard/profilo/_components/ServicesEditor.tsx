@@ -9,6 +9,7 @@ import {
   SERVICE_PRICE_UNIT_LABEL,
   canonicalServiceName,
   formatServicePrice,
+  similarServiceName,
   splitServiceList,
   type ProfessionalCategorySlug,
   type ServicePriceUnit,
@@ -312,6 +313,8 @@ export function ServicesEditor({
                   const summary = priceSummary(service);
                   const editing = service.open || !service.name.trim();
                   const label = service.name.trim() || "prestazione";
+                  // Avviso solo sulla seconda delle due: il professionista decide quale tenere.
+                  const similar = service.name.trim() ? similarServiceName(service.name, services.slice(0, index).map((other) => other.name)) : undefined;
                   return (
                     <YStack key={index} className="service-item" paddingVertical="3" gap="2" borderTopWidth={1} borderColor={brand.filetto}>
                       {editing ? (
@@ -398,6 +401,11 @@ export function ServicesEditor({
                           </XStack>
                         </XStack>
                       )}
+                      {similar ? (
+                        <Text fontSize={14} color={brand.grafite70}>
+                          Sembra uguale a &quot;{similar.trim()}&quot;: se è lo stesso lavoro, tienine uno solo.
+                        </Text>
+                      ) : null}
                     </YStack>
                   );
                 })}

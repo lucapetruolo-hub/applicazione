@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { POPULAR_SERVICES } from "./categories";
-import { canonicalServiceName, serviceNameKey, serviceNameMatches, splitServiceList } from "./serviceNames";
+import { canonicalServiceName, serviceNameKey, serviceNameMatches, similarServiceName, splitServiceList } from "./serviceNames";
 
 test("le varianti scritte a mano finiscono nella stessa voce", () => {
   for (const variant of ["riparazione perdite", "Riparazione perdita d'acqua", "RIPARAZIONE PERDITE D'ACQUA", "perdite"]) {
@@ -59,4 +59,14 @@ test("più lavori insieme: virgole, a capo, varianti del catalogo e doppioni", (
 
 test("più lavori insieme: testo vuoto non aggiunge niente", () => {
   assert.deepEqual(splitServiceList("  , ;\n "), { added: [], alreadyThere: 0 });
+});
+
+test("prestazioni che sembrano lo stesso lavoro", () => {
+  assert.equal(similarServiceName("Sostituzione rubinetto", ["Riparazione perdita d'acqua", "Sostituzione rubinetteria"]), "Sostituzione rubinetteria");
+  assert.equal(similarServiceName("Pulzia caldaia", ["Pulizia caldaia"]), "Pulizia caldaia");
+  assert.equal(similarServiceName("Pulizia vetri", ["Pulizia vetrine"]), undefined);
+  assert.equal(similarServiceName("Installazione caldaia", ["Installazione scaldabagno", "Sostituzione caldaia"]), undefined);
+  assert.equal(similarServiceName("Sostituzione sifone", ["Sostituzione sifone"]), undefined);
+  assert.equal(similarServiceName("Riparazione perdita d'acqua", ["Riparazione perdita"]), "Riparazione perdita");
+  assert.equal(similarServiceName("Pulizia vetri", ["Pulizia"]), undefined);
 });

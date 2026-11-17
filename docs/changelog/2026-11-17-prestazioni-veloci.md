@@ -42,6 +42,21 @@ ordinate per quello che cercano i clienti e un promemoria in "Oggi".
 - Il codice della sezione è passato in
   `apps/web/src/app/dashboard/profilo/_components/ServicesEditor.tsx`.
 
+**Secondo giro** (Luca, "si" alle migliorie del 17/11 pomeriggio):
+- **Avviso sui nomi quasi uguali**: sotto la seconda di due prestazioni che
+  sembrano lo stesso lavoro, "Sembra uguale a "…": se è lo stesso lavoro,
+  tienine uno solo." in grigio (non è un errore, decide il professionista).
+  `similarServiceName` in `packages/shared/src/serviceNames.ts`: quasi uguali
+  (`nearlySameServiceName`), stessa parola che inizia l'altra ("rubinetto" e
+  "rubinetteria", da 5 lettere) o un nome di almeno due parole con cui l'altro
+  comincia ("Riparazione perdita" e "Riparazione perdita d'acqua").
+- **Registrazione**: il professionista scrive le prime prestazioni nel primo
+  profilo (`/registrati` porta a `/dashboard/profilo`, modulo aperto), che
+  usa già la stessa sezione con "Aggiungi più lavori insieme". Nessun campo
+  doppio da aggiungere.
+- Prova con 5 professionisti veri sulla casella a virgole: da fare con i primi
+  iscritti.
+
 **Scartato.** "Aggiungi tutte le più cercate" con un tocco: porterebbe in cima
 alle ricerche chi non fa quel lavoro. Una sola casella con tutto l'elenco
 modificabile come testo: correggendo un nome si perdeva il prezzo, e un nome
@@ -52,5 +67,6 @@ con una virgola si spezzava in due.
   `service-names.test.ts` dell'API (somma delle varianti, soglia, dieci
   minuti), `e2e/tests/preventivo-veloce.spec.ts` (dal preventivo il modulo si
   apre sulle prestazioni, axe sulla sezione).
+- Foto dell'avviso in `anteprime/prestazioni-veloci/quasi-*.png`.
 - Foto prima/dopo da telefono e computer con un professionista di prova in
   `anteprime/prestazioni-veloci/`.

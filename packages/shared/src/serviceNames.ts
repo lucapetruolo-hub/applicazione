@@ -292,3 +292,37 @@ export function splitServiceList(text: string, existing: readonly string[] = [])
   }
   return { added, alreadyThere };
 }
+
+/**
+ * Nel profilo, un'altra prestazione che sembra lo stesso lavoro
+ * (docs/changelog/2026-11-17-prestazioni-veloci.md): quasi uguale
+ * (`nearlySameServiceName`) o con le stesse parole, una l'inizio dell'altra
+ * ("Sostituzione rubinetto" e "Sostituzione rubinetteria"), solo su parole di
+ * almeno 5 lettere, o un nome di almeno due parole con cui l'altro comincia
+ * ("Riparazione perdita" e "Riparazione perdita d'acqua"). Serve solo a un
+ * avviso: il professionista decide.
+ */
+export function similarServiceName(name: string, others: readonly string[]): string | undefined {
+  const key = serviceNameKey(name);
+  if (!key) return undefined;
+  const words = key.split(" ");
+  return others.find((other) => {
+    const otherKey = serviceNameKey(other);
+    if (!otherKey || otherKey === key) return false;
+    if (nearlySameServiceName(name, other)) return true;
+    const otherWords = otherKey.split(" ");
+    if (otherWords.length !== words.length) {
+      const [short, long] = otherWords.length < words.length ? [otherWords, words] : [words, otherWords];
+      return short.length >= 2 && short.every((word, i) => word === long[i]);
+    }
+    let differs = false;
+    for (let i = 0; i < words.length; i += 1) {
+      const a = words[i]!;
+      const b = otherWords[i]!;
+      if (a === b) continue;
+      if (differs || Math.min(a.length, b.length) < 5 || !(a.startsWith(b) || b.startsWith(a))) return false;
+      differs = true;
+    }
+    return differs;
+  });
+}
