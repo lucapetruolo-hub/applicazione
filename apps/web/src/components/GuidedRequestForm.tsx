@@ -1674,13 +1674,19 @@ export function GuidedRequestForm({
               <div className="guided-photo guided-photo-loading" role="status" aria-label="Caricamento della foto">
                 <UploadingDots dotSize={7} />
               </div>
-            ) : photos.length < MAX_PHOTOS ? (
+            ) : null}
+            {/* Il pulsante resta montato anche mentre una foto si carica: la finestra
+                "Scatta dal telefono" può ricevere più foto di fila
+                (docs/changelog/2026-11-17-piu-foto-dal-telefono.md). */}
+            {photos.length < MAX_PHOTOS ? (
               // Dal telefono si sceglie tra fotocamera, video e galleria (PhotoPicker).
               // La prima è per forza una foto del problema (scelta di Luca del 15/11): è
               // quella che guarda l'IA se dal testo non si capisce il mestiere. Poi anche video.
               <PhotoPicker
                 accept={photos.length === 0 ? "image/*" : "image/*,video/*"}
                 allowVideo={photos.length > 0}
+                maxPhotos={MAX_PHOTOS - photos.length}
+                disabled={isUploadingPhoto}
                 onFile={addPhoto}
                 className="guided-photo guided-photo-add"
                 label={photos.length === 0 ? "Aggiungi una foto del problema" : "Aggiungi una foto o un video"}
