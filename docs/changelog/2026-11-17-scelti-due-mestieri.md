@@ -44,3 +44,15 @@ richiesta del suo mestiere, come oggi, e i preventivi si confrontano insieme.
   falegname scelto). Foto in
   `collaudo/2026-11-17-giro-cliente-professionista/foto/` (`scelti-due-mestieri-*`,
   `richiesta-due-mestieri-*`).
+
+## Secondo giro: il mestiere si vede (sì di Luca, 17/11/2026)
+
+- Nella barra in basso dei scelti, da computer, con scelti di due mestieri ogni
+  nome porta il suo: "Ditta Rossi · muratore, Falegnameria Bianchi · falegname"
+  (`category` di `ChosenProsBar`, `tradeName` in `lib/problemChoices.ts`).
+- Nel riepilogo prima dell'invio, sotto "La richiesta arriva solo ai 2
+  professionisti che hai scelto", la riga "Partono 2 richieste: una al muratore
+  e una al falegname" (`toTrade`: al/all'/alla/a chi). Conta solo i mestieri
+  che hanno ancora uno scelto.
+- Verifica dal vivo in locale fino al riepilogo, telefono e computer: foto
+  `riepilogo-due-mestieri-*` e `scelti-due-mestieri-computer.png`.

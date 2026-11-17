@@ -392,6 +392,7 @@ export function CercaContent({
           max={MAX_CHOSEN_PROFESSIONALS}
           href={chosenRequestHref(chosenPros, problem.chosen, problem.description, city, problem.requestHints)}
           notice={limitNotice}
+          category={problem.chosen}
         />
       ) : null}
     </div>

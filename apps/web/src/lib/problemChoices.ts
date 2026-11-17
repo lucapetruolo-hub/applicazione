@@ -30,6 +30,20 @@ export const CATEGORY_WHO: Record<ProfessionalCategorySlug, string> = {
   babysitter: "una babysitter",
 };
 
+/** Il mestiere senza articolo: "muratore", "impresa di pulizie", "chi fa traslochi". */
+export function tradeName(slug: ProfessionalCategorySlug): string {
+  return CATEGORY_WHO[slug].replace(/^(un'|una |un )/, "");
+}
+
+/** "al muratore", "all'idraulico", "alla babysitter", "a chi fa traslochi". */
+export function toTrade(slug: ProfessionalCategorySlug): string {
+  const who = CATEGORY_WHO[slug];
+  if (who.startsWith("chi ")) return `a ${who}`;
+  if (who.startsWith("una ")) return `alla ${who.slice(4)}`;
+  const name = tradeName(slug);
+  return who.startsWith("un'") || /^[aeiou]/i.test(name) ? `all'${name}` : `al ${name}`;
+}
+
 /** "un muratore o un imbianchino", "a, b o c". */
 export function joinWithOr(items: string[]): string {
   return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} o ${items[items.length - 1]}`;

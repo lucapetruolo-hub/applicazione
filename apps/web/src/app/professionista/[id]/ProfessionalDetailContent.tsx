@@ -883,6 +883,7 @@ export function ProfessionalDetailContent({
             chosen={choice.search.chosen}
             max={MAX_CHOSEN_PROFESSIONALS}
             href={chosenRequestHref(choice.search.chosen, choice.search.category, choice.search.description, choice.search.city)}
+            category={choice.search.category}
           />
         ) : null}
         {/* Account in pausa per l'abbonamento (docs/CHANGELOG.md §162): il

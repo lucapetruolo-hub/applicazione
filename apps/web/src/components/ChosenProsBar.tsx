@@ -6,6 +6,7 @@ import { Button, ButtonArrow, Text, XStack, brand } from "@professionisti/ui";
 import { MagneticButton } from "./MagneticButton";
 import { ProfessionalAvatar } from "./ProfessionalAvatar";
 import { setChosenParams } from "@/lib/chosenParams";
+import { tradeName } from "@/lib/problemChoices";
 
 /**
  * Il minimo che serve del professionista scelto: nome e foto per la barra e il
@@ -68,8 +69,25 @@ export function chosenRequestHref(
  * Barra fissa in basso con i professionisti scelti, come quella del profilo
  * (§385): resta a portata di mano mentre si scorrono le schede.
  */
-export function ChosenProsBar({ chosen, max, href, notice }: { chosen: ChosenPro[]; max: number; href: string; notice?: string | null }) {
+export function ChosenProsBar({
+  chosen,
+  max,
+  href,
+  notice,
+  category,
+}: {
+  chosen: ChosenPro[];
+  max: number;
+  href: string;
+  notice?: string | null;
+  /** Mestiere della ricerca: con scelti di due mestieri ogni nome porta il suo ("Ditta Rossi · muratore"). */
+  category?: ProfessionalCategorySlug;
+}) {
   if (chosen.length === 0) return null;
+  const twoTrades = Boolean(category) && chosen.some((pro) => pro.requestCategory && pro.requestCategory !== category);
+  const names = chosen
+    .map((pro) => (twoTrades && category ? `${pro.businessName} · ${tradeName(pro.requestCategory ?? category)}` : pro.businessName))
+    .join(", ");
   return (
     <div className="chosen-bar" role="region" aria-label="Professionisti scelti">
       {/* Sempre nella pagina, così i lettori di schermo leggono l'avviso quando compare. */}
@@ -90,7 +108,7 @@ export function ChosenProsBar({ chosen, max, href, notice }: { chosen: ChosenPro
               {chosen.length === 1 ? "1 scelto" : `${chosen.length} scelti`} su {max}
             </Text>
             <Text fontSize={13} color={brand.grafite70} numberOfLines={1}>
-              {chosen.map((pro) => pro.businessName).join(", ")}
+              {names}
             </Text>
           </div>
         </div>
