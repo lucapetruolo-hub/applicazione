@@ -242,7 +242,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Preferenze (docs/CHANGELOG.md §152): suono e popup si possono
     // spegnere separatamente; la campanella e il numeretto restano.
     const prefs = notificationPrefsRef.current;
-    if (toAnnounce.length > 0 && prefs.sound) playNotificationSound();
+    if (toAnnounce.length > 0 && prefs.sound) {
+      // Richieste urgenti e problemi hanno un suono loro, le buone notizie
+      // la marimba, il resto il suono scelto (docs/changelog/2026-11-17-suoni-notifica.md).
+      // Il tono si legge dal testo della notifica, caricato solo qui.
+      void import("./notificationTopicStyle")
+        .then(({ notificationSoundKind }) => playNotificationSound(prefs.soundName, notificationSoundKind(toAnnounce)))
+        .catch(() => playNotificationSound(prefs.soundName));
+    }
     if (!prefs.popups) return;
     if (toAnnounce.length === 1) {
       // Caso comune: un solo evento in questo giro di poll, stesso

@@ -27,6 +27,7 @@ export * from "./away";
 export * from "./notifications";
 export * from "./notificationDefaults";
 export * from "./notificationSchemas";
+export * from "./notificationSounds";
 export * from "./completion";
 export * from "./jobIssues";
 export * from "./jobIssuesSchemas";

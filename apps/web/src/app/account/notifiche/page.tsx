@@ -11,12 +11,13 @@ import {
   notificationItemsFor,
   withNotificationItemChannel,
   type NotificationPreferences,
+  type NotificationSoundKey,
   type NotificationTopic,
 } from "@professionisti/shared";
 import { Button, Icon, Text, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { playNotificationSound } from "@/lib/notificationSound";
+import { NOTIFICATION_SOUND_OPTIONS, playNotificationSound } from "@/lib/notificationSound";
 import { NOTIFICATION_TOPIC_STYLE } from "@/lib/notificationTopicStyle";
 import { WhatsAppRemindersCard } from "@/components/WhatsAppRemindersCard";
 import { PageLoading } from "@/components/PageLoading";
@@ -83,6 +84,7 @@ export default function NotifichePage() {
   }
 
   const role = user.isProfessional ? "professional" : "client";
+  const soundName: NotificationSoundKey = notificationPrefs?.soundName ?? "dolce";
   const isAdmin = user.role === "ADMIN";
 
   return (
@@ -130,13 +132,36 @@ export default function NotifichePage() {
                 <SiteTile
                   icon="bell-ring"
                   label="Suono"
-                  description="Un suono leggero. Su iPhone non si sente in modalità silenziosa."
+                  description="Un suono leggero. Le richieste urgenti e le buone notizie hanno un suono loro. Su iPhone non si sente in modalità silenziosa."
                   checked={notificationPrefs.sound}
                   onChange={() => void save({ ...notificationPrefs, sound: !notificationPrefs.sound })}
                   extra={
-                    <button type="button" className="notif-link" onClick={() => playNotificationSound()}>
-                      Prova il suono
-                    </button>
+                    notificationPrefs.sound ? (
+                      <div className="nt-sound">
+                        <label className="nt-hour">
+                          <span>Scegli</span>
+                          <select
+                            value={soundName}
+                            onChange={(e) => {
+                              const next = e.target.value as NotificationSoundKey;
+                              // Si sente subito quello scelto: il cambio è un gesto, l'audio parte.
+                              playNotificationSound(next, "normal", { preview: true });
+                              void save({ ...notificationPrefs, soundName: next });
+                            }}
+                          >
+                            {NOTIFICATION_SOUND_OPTIONS.map((option) => (
+                              <option key={option.key} value={option.key}>
+                                {option.label}
+                                {option.key === "dolce" ? " (consigliato)" : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <button type="button" className="notif-link" onClick={() => playNotificationSound(soundName, "normal", { preview: true })}>
+                          Prova il suono
+                        </button>
+                      </div>
+                    ) : undefined
                   }
                 />
               </div>

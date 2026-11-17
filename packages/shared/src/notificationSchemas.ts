@@ -1,5 +1,6 @@
 import { z } from "zod";
 import "./zod";
+import { NOTIFICATION_SOUND_KEYS } from "./notificationSounds";
 
 /** Preferenze di notifica salvate (argomenti e canali in `notifications.ts`). */
 // Una vecchia chiave "sms" salvata nelle preferenze si ignora (zod la toglie).
@@ -18,6 +19,8 @@ export const notificationPreferencesSchema = z.object({
   popups: z.boolean(),
   /** Suono leggero quando arriva una notifica. */
   sound: z.boolean(),
+  /** Quale suono, tra `NOTIFICATION_SOUND_KEYS` (di serie "dolce"). */
+  soundName: z.enum(NOTIFICATION_SOUND_KEYS).optional(),
   /**
    * Canali dei singoli avvisi (`NotificationItem.key`), solo quelli cambiati:
    * un avviso parte su un canale se è acceso sia qui sia nell'argomento.

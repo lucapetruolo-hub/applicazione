@@ -3,6 +3,7 @@
 // docs/changelog/2026-10-30-velocita-telefono.md).
 import { DEFAULT_NOTIFICATION_PREFERENCES } from "./notificationDefaults";
 import type { NotificationPreferences } from "./notificationSchemas";
+import { NOTIFICATION_SOUND_KEYS } from "./notificationSounds";
 
 /**
  * Preferenze di notifica per argomento e canale (docs/CHANGELOG.md §152,
@@ -543,6 +544,7 @@ export function resolveNotificationPreferences(stored: unknown): NotificationPre
     const s = stored as Partial<NotificationPreferences>;
     if (typeof s.popups === "boolean") base.popups = s.popups;
     if (typeof s.sound === "boolean") base.sound = s.sound;
+    if (typeof s.soundName === "string" && (NOTIFICATION_SOUND_KEYS as readonly string[]).includes(s.soundName)) base.soundName = s.soundName;
     if (typeof s.digest === "boolean") base.digest = s.digest;
     if (typeof s.quietNight === "boolean") base.quietNight = s.quietNight;
     if (typeof s.quietNightUrgent === "boolean") base.quietNightUrgent = s.quietNightUrgent;
