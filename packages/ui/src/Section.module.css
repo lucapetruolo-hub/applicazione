@@ -58,13 +58,16 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
+  /* Una pagina può far scendere il link sotto il titolo (home, "Cosa
+     dicono i clienti": docs/changelog/2026-11-17-titolo-recensioni-una-riga.md). */
+  flex-wrap: var(--section-title-row-wrap, nowrap);
   gap: var(--t-space-3);
 }
 
 .titleMain {
   position: relative;
   flex-direction: column;
-  flex: 1 1 auto;
+  flex: 1 1 var(--section-title-main-basis, auto);
   min-width: 0;
 }
 
@@ -89,6 +92,13 @@
 
 .titleNote {
   color: var(--c-grafite70);
+  /* Di serie la frase grigia segue il titolo sulla stessa riga; una pagina
+     può metterla sotto, più piccola, invece di spezzarla a metà. */
+  display: var(--section-title-note-display, inline);
+  font-size: var(--section-title-note-size, inherit);
+  line-height: var(--section-title-note-line, inherit);
+  letter-spacing: var(--section-title-note-tracking, inherit);
+  margin-top: var(--section-title-note-gap, 0);
 }
 
 .titleNoteOnDark {

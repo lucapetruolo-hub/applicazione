@@ -105,28 +105,31 @@ export default function HomeContent({
         {professionals.length > 0 ? (
           <FadeInSection>
             {/* "Cosa dicono i clienti" (docs/CHANGELOG.md §349): il titolo
-                diceva professionisti e il contenuto erano recensioni. */}
-            <Section
-              title={hasReviews ? "Cosa dicono i clienti." : "Nuovi professionisti."}
-              // Seconda frase grigia come su apple.com (docs/changelog/2026-11-11-home-caroselli-larghi.md).
-              titleNote={hasReviews ? "Solo da lavori fatti tramite il sito." : "Appena arrivati sul sito."}
-              titleAction={
-                <Link href="/cerca" className="home-section-action">
-                  Vedi tutti
-                </Link>
-              }
-              maxWidth={1080}
-            >
-              <RecentReviews
-                summary={
-                  platformStats?.reviewCount !== undefined && platformStats.averageRating != null
-                    ? { count: platformStats.reviewCount, average: platformStats.averageRating }
-                    : null
+                diceva professionisti e il contenuto erano recensioni.
+                Senza andare a capo: docs/changelog/2026-11-17-titolo-recensioni-una-riga.md. */}
+            <div className={`is_View ${styles.oneLineTitle}`}>
+              <Section
+                title={hasReviews ? "Cosa dicono i clienti." : "Nuovi professionisti."}
+                // Seconda frase grigia come su apple.com (docs/changelog/2026-11-11-home-caroselli-larghi.md).
+                titleNote={hasReviews ? "Solo da lavori fatti tramite il sito." : "Appena arrivati sul sito."}
+                titleAction={
+                  <Link href="/cerca" className="home-section-action">
+                    Vedi tutti
+                  </Link>
                 }
-                onCount={setReviewCount}
-              />
-              <NewProfilesCarousel professionals={professionals} showTitle={hasReviews} />
-            </Section>
+                maxWidth={1080}
+              >
+                <RecentReviews
+                  summary={
+                    platformStats?.reviewCount !== undefined && platformStats.averageRating != null
+                      ? { count: platformStats.reviewCount, average: platformStats.averageRating }
+                      : null
+                  }
+                  onCount={setReviewCount}
+                />
+                <NewProfilesCarousel professionals={professionals} showTitle={hasReviews} />
+              </Section>
+            </div>
           </FadeInSection>
         ) : null}
 
