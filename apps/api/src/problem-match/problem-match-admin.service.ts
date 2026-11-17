@@ -414,11 +414,13 @@ export class ProblemMatchAdminService {
     // (docs/changelog/2026-11-17-mestiere-piu-vicino.md).
     const old = await this.prisma.problemTakeover.findMany({
       where: { createdAt: { gte: since }, OR: [{ outOfService: { not: null } }, { missingTrade: { not: null } }] },
-      select: { outOfService: true, missingTrade: true },
+      select: { outOfService: true, missingTrade: true, city: true },
       take: 2000,
     });
-    const oldTrades = old.map((row) => waitingTradeName({ key: row.outOfService, name: row.missingTrade }));
-    const mostRequested = countRequestedTrades([...rows.map((row) => row.trade), ...oldTrades]);
+    const mostRequested = countRequestedTrades([
+      ...rows.map((row) => ({ trade: row.trade, zone: row.zone })),
+      ...old.map((row) => ({ trade: waitingTradeName({ key: row.outOfService, name: row.missingTrade }), zone: missingTradeZone(row.city) })),
+    ]);
     return { groups: groupWaitingRequests(rows), rows, mostRequested };
   }
 

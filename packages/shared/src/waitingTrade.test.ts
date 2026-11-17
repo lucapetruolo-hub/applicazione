@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { guidedRequestSchema } from "./schemas";
 import {
   countRequestedTrades,
+  waitingInviteBio,
+  waitingInviteHref,
   groupWaitingRequests,
   textsMatchWaitingTrade,
   waitingTradeAd,
@@ -131,23 +133,65 @@ describe("groupWaitingRequests e waitingTradeAd", () => {
 });
 
 describe("countRequestedTrades", () => {
-  it("conta senza maiuscole, i più chiesti prima", () => {
+  it("conta senza maiuscole, i più chiesti prima, con le zone", () => {
     assert.deepEqual(
       countRequestedTrades([
-        "Antennista",
-        "antennista",
-        "Fabbro",
-        null,
-        "",
-        "Arrotino",
-        "ANTENNISTA",
-        "Arrotino",
+        { trade: "Antennista", zone: "Bari e provincia" },
+        { trade: "antennista", zone: "Bari e provincia" },
+        { trade: "Fabbro", zone: "Roma e provincia" },
+        { trade: null, zone: "Roma e provincia" },
+        { trade: "", zone: "Roma e provincia" },
+        { trade: "Arrotino", zone: "Senza città" },
+        { trade: "ANTENNISTA", zone: "Lecce e provincia" },
+        { trade: "Arrotino", zone: "Senza città" },
       ]),
       [
-        { trade: "Antennista", requests: 3 },
-        { trade: "Arrotino", requests: 2 },
-        { trade: "Fabbro", requests: 1 },
+        {
+          trade: "Antennista",
+          requests: 3,
+          zones: [
+            { zone: "Bari", requests: 2 },
+            { zone: "Lecce", requests: 1 },
+          ],
+        },
+        {
+          trade: "Arrotino",
+          requests: 2,
+          zones: [{ zone: "Senza città", requests: 2 }],
+        },
+        {
+          trade: "Fabbro",
+          requests: 1,
+          zones: [{ zone: "Roma", requests: 1 }],
+        },
       ],
     );
+  });
+});
+
+describe("invito precompilato", () => {
+  it("apre il modulo con il comune della zona e il mestiere", () => {
+    assert.equal(
+      waitingInviteHref({ trade: "Antennista", zone: "Bari e provincia" }),
+      "/admin/professionisti?mestiere=Antennista&citta=Bari",
+    );
+    assert.equal(
+      waitingInviteHref({ trade: "Antennista", zone: "Senza città" }),
+      "/admin/professionisti?mestiere=Antennista",
+    );
+  });
+  it("la presentazione di partenza basta a far arrivare le richieste in attesa", () => {
+    for (const trade of [
+      { key: "antennista" as const, name: "Antennista" },
+      { name: "Restauratore di mobili" },
+    ]) {
+      const name = waitingTradeName(trade)!;
+      assert.ok(
+        textsMatchWaitingTrade(waitingTradeKeywords(trade), [
+          waitingInviteBio(name),
+        ]),
+        name,
+      );
+    }
   });
 });
