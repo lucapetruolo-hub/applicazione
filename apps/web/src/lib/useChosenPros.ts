@@ -100,7 +100,7 @@ export function useChosenPros({
     }));
   }
 
-  // `requestCategory`: per le schede di "Può farlo anche…", scelte per l'altro
+  // `requestCategory`: per le schede di "Potrebbe farlo anche…", scelte per l'altro
   // mestiere proposto (docs/changelog/2026-11-17-scelti-due-mestieri.md).
   const selectionFor = (requestCategory?: ProfessionalCategorySlug) =>
     key

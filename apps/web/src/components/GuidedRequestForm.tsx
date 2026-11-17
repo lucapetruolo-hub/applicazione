@@ -417,7 +417,7 @@ export function GuidedRequestForm({
   // Più categorie insieme in una richiesta generale (docs/CHANGELOG.md
   // §259): all'invio diventa una richiesta per categoria. La prima scelta
   // guida l'esempio della descrizione.
-  // Con i scelti di due mestieri ("Può farlo anche…" nei risultati) arrivano
+  // Con i scelti di due mestieri ("Potrebbe farlo anche…" nei risultati) arrivano
   // anche le altre categorie: una richiesta per mestiere, ognuna ai suoi
   // scelti (docs/changelog/2026-11-17-scelti-due-mestieri.md).
   const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>(() => {

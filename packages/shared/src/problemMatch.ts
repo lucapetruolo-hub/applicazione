@@ -98,7 +98,7 @@ const RULES: readonly Rule[] = [
   // Elettricista (lettera a)
   { words: ["elettricist"], weights: { elettricista: 5 } },
   { words: ["salvavit", "differenzial", "magnetotermic", "quadro elettric", "quadretto", "impianto elettric", "salta la corrente", "salta corrente", "saltata la corrente", "va via la corrente", "senza corrente", "manca la corrente", "corrente"], weights: { elettricista: 3 } },
-  { words: ["presa", "prese", "interruttor", "lampadar", "plafonier", "punti luce", "punto luce", "faretto", "faretti", "illuminazion", "luce", "luci", "dimmer", "crepuscolar", "temporizzator", "invertitor", "cavi elettric", "cavo elettric", "fili elettric", "filo volante", "fili", "contatore", "domotic", "smart"], weights: { elettricista: 3 } },
+  { words: ["presa", "prese", "interruttor", "lampadar", "plafonier", "punti luce", "punto luce", "faretto", "faretti", "illuminazion", "luce", "luci ", "dimmer", "crepuscolar", "temporizzator", "invertitor", "cavi elettric", "cavo elettric", "fili elettric", "filo volante", "fili", "contatore", "domotic", "smart"], weights: { elettricista: 3 } },
   { words: ["citofon", "videocitofon", "campanell", "apriporta", "cicalin"], weights: { elettricista: 3 } },
   { words: ["fotocellul", "automazion", "cancello elettric", "cancello automatic", "motore", "motorizzat", "motorino", "telecomando", "elettric"], weights: { elettricista: 2 } },
   { words: ["ventilatore da soffitto", "ventilatore a soffitto", "ventilator", "fotocellul", "cancello elettric", "cancello automatic", "impianto allagato", "gruppo di continuita", "gruppo continuita", "elettroserratur"], weights: { elettricista: 5 } },
@@ -124,6 +124,11 @@ const RULES: readonly Rule[] = [
   { words: ["crepa", "crepe", "cavillatur", "intonac", "piastrell", "mattonell", "fughe", "massetto", "sottofondo", "solaio", "tramezz", "cartongesso", "controsoffitt", "muretto", "muro di cinta", "facciata", "cappotto", "efflorescenz", "vespaio", "foratoni", "laterizi", "cemento", "calcestruzz", "gres", "klinker", "vetrocemento", "nicchia", "tracce", "traccia", "rasare", "rasatura"], weights: { muratore: 3 } },
   { words: ["infiltraz", "infiltazion", "impermeabilizz", "impermebilizz", "lastrico", "terrazz", "balcon", "poggiolo", "guaina", "comignolo", "grondai", "pluvial", "umidita", "risalita", "bocche di lupo", "sgretol"], weights: { muratore: 3 } },
   // Tetti (tra le ricerche più frequenti su Google, analisi/servizi-piu-cercati.md).
+  // "luci " parola intera nella riga dell'elettricista: "lucidare il marmo" non è una luce.
+  // Marmo, levigatura e lucidatura: muratore, poi pulizie; il parquet resta al
+  // falegname (docs/changelog/2026-11-17-marmo-al-muratore.md).
+  { words: ["marmo", "marmi", "marmett"], weights: { muratore: 3, pulizie: 1 } },
+  { words: ["levigar", "levigatur", "lucidar", "lucidatur"], weights: { muratore: 1, pulizie: 1 } },
   { words: ["tetto", "tetti", "tegol", "coppi", "copertura del tetto", "rifare il tetto", "rifacimento del tetto", "lucernai", "abbaino"], weights: { muratore: 4 } },
   { words: ["muro", "muri", "parete", "pareti", "soffitto", "pavimento", "pavimentaz", "marciapied", "camino", "colonne", "buco nel muro", "foro nel muro"], weights: { muratore: 2 } },
 

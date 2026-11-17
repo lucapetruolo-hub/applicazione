@@ -9,6 +9,7 @@ import {
   type PendingProfileInvite,
   type ProfessionalCategorySlug,
   type ProfileInviteLink,
+  waitingInviteBio,
 } from "@professionisti/shared";
 import { Autocomplete, Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -52,6 +53,26 @@ export default function AdminProfessionistiPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   // Link aperto da "Mostra il link" (nessuna email inviata ora).
   const [linkViewed, setLinkViewed] = useState(false);
+
+  // Arrivo da "Richieste in attesa" › "Invita un professionista"
+  // (docs/changelog/2026-11-17-invito-precompilato.md): comune e mestiere già
+  // scritti. Il mestiere va nella presentazione perché è lì che le richieste in
+  // attesa lo cercano: si può cambiare, ma senza la parola non arrivano.
+  const [fromWaiting, setFromWaiting] = useState<{ trade: string; city: string } | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const trade = (params.get("mestiere") ?? "").trim().slice(0, 60);
+    const city = (params.get("citta") ?? "").trim().slice(0, 80);
+    if (!trade && !city) return;
+    // Lettura dell'indirizzo una volta sola all'apertura, come in GuidedRequestForm.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFromWaiting({ trade, city });
+    setForm((current) => ({
+      ...current,
+      city: city || current.city,
+      bio: trade && !current.bio ? waitingInviteBio(trade) : current.bio,
+    }));
+  }, []);
 
   // Primi 100 professionisti dell'offerta di lancio (docs/CHANGELOG.md §363).
   const [founders, setFounders] = useState<AdminFounders | null>(null);
@@ -211,6 +232,12 @@ export default function AdminProfessionistiPage() {
             <Text fontWeight="700" color={brand.grafite}>
               Nuovo profilo
             </Text>
+            {fromWaiting ? (
+              <Text fontSize="2" color={brand.grafite70} role="status">
+                Dalle richieste in attesa{fromWaiting.trade ? `: ${fromWaiting.trade}` : ""}
+                {fromWaiting.city ? ` a ${fromWaiting.city}` : ""}. Il mestiere è già nella presentazione. Lascialo: così le richieste gli arrivano da sole.
+              </Text>
+            ) : null}
             <XStack gap="2" flexWrap="wrap">
               <input aria-label="Nome" className="admin-input" style={{ flex: 1, minWidth: 200 }} placeholder="Nome *" value={form.name} onChange={(e) => update("name", e.target.value)} />
               <input aria-label="Cognome" className="admin-input" style={{ flex: 1, minWidth: 200 }} placeholder="Cognome" value={form.surname} onChange={(e) => update("surname", e.target.value)} />

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   OUT_OF_SERVICE_LABELS,
+  waitingInviteHref,
   waitingTradeAd,
   type MostRequestedTrade,
   type ProblemSafety,
@@ -140,7 +141,8 @@ export default function AdminRichiesteInAttesaPage() {
 /**
  * Contatore dei mestieri più richiesti (decisione di Luca del 17/11/2026,
  * docs/changelog/2026-11-17-mestiere-piu-vicino.md): richieste in attesa e di
- * prima insieme, degli ultimi 90 giorni.
+ * prima insieme, degli ultimi 90 giorni, con le zone accanto
+ * (docs/changelog/2026-11-17-invito-precompilato.md).
  */
 function MostRequested({ trades }: { trades: MostRequestedTrade[] }) {
   const [all, setAll] = useState(false);
@@ -153,7 +155,15 @@ function MostRequested({ trades }: { trades: MostRequestedTrade[] }) {
       <ol className="most-requested">
         {shown.map((item) => (
           <li key={item.trade}>
-            <span>{item.trade}</span>
+            <span>
+              {item.trade}
+              {item.zones.length > 0 ? (
+                <small className="most-requested-zones">
+                  {item.zones.slice(0, 4).map((z) => `${z.zone} ${z.requests}`).join(" · ")}
+                  {item.zones.length > 4 ? ` · altre ${item.zones.length - 4}` : ""}
+                </small>
+              ) : null}
+            </span>
             <strong>{item.requests}</strong>
           </li>
         ))}
@@ -203,7 +213,7 @@ function WaitingGroups({ groups }: { groups: WaitingRequestAdminGroup[] }) {
                 <Button size="2" variant="secondary" onPress={() => void copy(group)}>
                   {copied === key ? "Copiato" : "Copia annuncio"}
                 </Button>
-                <Link href="/admin/professionisti" className="waiting-group-link">
+                <Link href={waitingInviteHref(group)} className="waiting-group-link">
                   Invita un professionista
                 </Link>
               </XStack>
@@ -212,7 +222,7 @@ function WaitingGroups({ groups }: { groups: WaitingRequestAdminGroup[] }) {
         })}
       </div>
       <Text fontSize={13} color={brand.grafite70}>
-        L&apos;annuncio dice solo il mestiere, la zona e il numero. Se inviti chi fa il lavoro, scrivi il mestiere nei suoi servizi. Così le richieste gli arrivano da sole.
+        L&apos;annuncio dice solo il mestiere, la zona e il numero. &quot;Invita un professionista&quot; apre il modulo già scritto, con città e mestiere. Così le richieste gli arrivano da sole.
       </Text>
     </YStack>
   );
