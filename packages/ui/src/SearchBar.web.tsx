@@ -202,18 +202,13 @@ export function SearchBar(props: SearchBarProps) {
             size="5"
           />
           {wrapSearchButton(
-            // Mentre cerca: "Cerco…" con la rotellina, stessa larghezza di
-            // "Cerca" (le due scritte stanno una sopra l'altra), così niente si
-            // sposta sotto il dito (giro di prova del 17/11,
-            // docs/changelog/2026-11-17-ricerca-home-in-attesa.md).
+            // Mentre cerca, la barra che si muove al posto della scritta, come
+            // negli altri pulsanti del sito (giro di prova del 17/11,
+            // docs/changelog/2026-11-17-ricerca-home-in-attesa.md): la scritta
+            // resta nascosta sotto, così il pulsante non cambia misura.
             <Button variant="primary" onPress={bar.runSearch} aria-busy={bar.searching || undefined}>
-              <span className={`is_Text font_body ${styles.buttonLabels}`}>
-                <span className={bar.searching ? styles.buttonLabelHidden : undefined}>Cerca</span>
-                <span className={cx(styles.buttonBusy, !bar.searching && styles.buttonLabelHidden)} aria-hidden={!bar.searching}>
-                  <span className={styles.spinner} aria-hidden="true" />
-                  Cerco…
-                </span>
-              </span>
+              Cerca
+              {bar.searching ? props.searchingIndicator : null}
             </Button>,
           )}
         </div>

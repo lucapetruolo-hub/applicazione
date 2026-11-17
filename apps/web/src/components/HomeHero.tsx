@@ -26,6 +26,7 @@ import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "
 import { FieldCameraIcon } from "./FieldCameraIcon";
 import { GlowLights } from "./GlowLights";
 import { MagneticButton } from "./MagneticButton";
+import { ButtonWaitBar } from "./WaitBar";
 import styles from "./HomeHero.module.css";
 
 /**
@@ -226,6 +227,9 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
           <div className={`is_View ${styles.search}`}>
             <SearchBar
               searching={busy}
+              // La barra dei pulsanti del sito; con l'IA al lavoro (ricerca dal
+              // problema o con la foto) con i colori del velo, come la barra in cima.
+              searchingIndicator={<ButtonWaitBar label="Cerco chi ti serve…" tone={searching ? "velo" : "light"} />}
               wrapSearchButton={(button) => <MagneticButton block>{button}</MagneticButton>}
               onSearch={handleSearch}
               queryField={{

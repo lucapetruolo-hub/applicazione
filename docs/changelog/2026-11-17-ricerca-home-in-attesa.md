@@ -23,10 +23,16 @@ pensando…", sotto la tastiera.
 - `autocompleteModel.ts`: con l'elenco dentro la pagina (sotto gli 800 px)
   si chiude al `click`, non più al primo contatto. Sopra gli 800 px (elenco
   sopra la pagina) resta com'era.
-- "Cerca" diventa "Cerco…" con una rotellina dal primo tocco fino all'arrivo
-  nei risultati (`searching` di `SearchBar`, `submitting` in `HomeHero`,
-  spento dentro la transizione di navigazione). Le due scritte stanno una
-  sopra l'altra, così il pulsante non cambia larghezza.
+- Dal primo tocco fino all'arrivo nei risultati, dentro "Cerca" la barra che
+  si muove dei pulsanti del sito (`ButtonWaitBar`, `searching` e
+  `searchingIndicator` di `SearchBar`, `submitting` in `HomeHero`, spento
+  dentro la transizione di navigazione). Con l'IA al lavoro (ricerca dal
+  problema o con la foto) la barra ha i colori del velo e della barra in cima
+  (`.flow-bar--velo`, senza il verde che sul pulsante non si vede), scelta di
+  Luca: è l'unico pulsante con la barra colorata, gli altri restano bianchi
+  sui verdi e verdi sui bianchi. Una prima versione con "Cerco…" e una
+  rotellina non è piaciuta (17/11). La scritta resta sotto, nascosta, così il
+  pulsante non cambia misura.
 - Durante la ricerca un secondo tocco su "Cerca", sugli esempi o sul modo
   non fa nulla; gli esempi restano al loro posto ma spenti. Al tocco si
   chiude la tastiera, così si vedono "Cerco…" e le luci dell'attesa. Se la
@@ -46,7 +52,7 @@ pensando…", sotto la tastiera.
 **Verifica**:
 - Playwright, iPhone 13 e computer 1280 px, API finta lenta 9 s: prima un
   tocco su un esempio durante l'attesa cambiava il testo in "Scarico
-  intasato"; dopo "Cerco…" resta e il testo non cambia (esempi spenti).
+  intasato"; dopo nel pulsante c'è la barra e il testo non cambia (esempi spenti).
 - Claude Haiku con le istruzioni nuove: battiscopa staccato → muratore,
   falegname; battiscopa in legno → falegname, muratore; guarnizione finestra
   → falegname, tuttofare; guarnizione del rubinetto → idraulico; lavatrice →

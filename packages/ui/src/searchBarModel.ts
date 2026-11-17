@@ -101,11 +101,15 @@ export type SearchBarProps = {
   footer?: (api: { mode: SearchMode; fillQuery: (text: string) => void; searchFor: (text: string) => void; searching: boolean }) => ReactNode;
   /**
    * Ricerca già partita (home, giro di prova del 17/11,
-   * docs/changelog/2026-11-17-ricerca-home-in-attesa.md): "Cerca" diventa
-   * "Cerco…" e un secondo tocco, su "Cerca" o su un esempio, non fa nulla e
-   * non cambia il testo scritto.
+   * docs/changelog/2026-11-17-ricerca-home-in-attesa.md): un secondo tocco,
+   * su "Cerca" o su un esempio, non fa nulla e non cambia il testo scritto.
    */
   searching?: boolean;
+  /**
+   * Sul sito, dentro "Cerca" mentre `searching`: la barra di attesa del sito
+   * (ButtonWaitBar di apps/web). Nell'app "Cerca" diventa "Cerco…".
+   */
+  searchingIndicator?: ReactNode;
 };
 
 
