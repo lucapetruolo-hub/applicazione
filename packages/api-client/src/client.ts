@@ -1,4 +1,6 @@
 import type {
+  BoardPage,
+  BoardSummary,
   ProfessionalClient,
   ReviewHoldReason,
   AgendaAttention,
@@ -1407,6 +1409,14 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     /** Richieste per categoria, per mettere prima i lavori più cercati (docs/CHANGELOG.md §280). */
     /** "Lavori più cercati" in home: nomi dell'elenco suggerito, già in ordine. */
     getPopularJobs: () => request<PopularJobsResponse>("/popular-jobs"),
+    /** Bacheca "Lavori cercati" (docs/changelog/2026-11-17-bacheca-lavori-cercati.md): schede anonime, 20 per pagina. */
+    getRequestBoard: (trade: string, province?: string | null, page = 1) =>
+      request<BoardPage>(
+        `/request-board?mestiere=${encodeURIComponent(trade)}${province ? `&provincia=${encodeURIComponent(province)}` : ""}${page > 1 ? `&pagina=${page}` : ""}`,
+        { cache: "no-store" },
+      ),
+    /** Mestiere e provincia con almeno una scheda, per i link e per Google. */
+    getRequestBoardSummary: () => request<BoardSummary>("/request-board/summary", { cache: "no-store" }),
     adminPopularJobs: (token: string) =>
       request<PopularJobsAdminView>("/admin/popular-jobs", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     adminAddPopularJob: (token: string, input: PopularJobInput) =>

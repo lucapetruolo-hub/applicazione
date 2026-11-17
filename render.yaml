@@ -209,6 +209,14 @@ services:
       # "false" spegne le richieste generali (senza professionista scelto).
       - key: GENERAL_REQUESTS_ENABLED
         sync: false
+      # Bacheca "Lavori cercati" (docs/changelog/2026-11-17-bacheca-lavori-cercati.md):
+      # "true" mette nella bacheca pubblica le richieste non servite. Spenta
+      # finché Privacy, Termini e l'interruttore del cliente non sono pronti.
+      - key: REQUEST_BOARD_ENABLED
+        sync: false
+      # Tetto al giorno dei riassunti della bacheca scritti dall'IA (vuota = 200).
+      - key: REQUEST_BOARD_AI_DAILY_LIMIT
+        sync: false
       # Tetto al giorno delle chiamate a Google dalle pagine aperte a tutti
       # (suggerimenti di indirizzo, CAP, mappa fissa). Vuota = tetti di serie,
       # già vicini alla quota gratuita (apps/api/src/common/daily-budget.ts).

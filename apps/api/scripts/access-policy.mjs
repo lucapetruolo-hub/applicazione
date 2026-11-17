@@ -84,6 +84,8 @@ const publicRoutes = [
   "POST /photo-handoff/:code/take",
   // "Lavori più cercati" della home (docs/changelog/2026-11-07-lavori-piu-cercati-home.md).
   "GET /popular-jobs",
+  "GET /request-board",
+  "GET /request-board/summary",
   // Prestazioni standard aggiunte dall'admin (§388), mostrate in iscrizione e nel profilo.
   "GET /service-names/standard",
   "GET /professionals/:id",

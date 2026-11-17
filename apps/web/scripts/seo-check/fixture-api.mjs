@@ -74,6 +74,9 @@ createServer((req, res) => {
     const pro = [...PROFESSIONALS, TEST_PROFESSIONAL].find((p) => p.id === profile[1]);
     return pro ? send(res, 200, detail(pro)) : send(res, 404, { message: "Not Found", statusCode: 404 });
   }
+  // Bacheca "Lavori cercati" (docs/changelog/2026-11-17-bacheca-lavori-cercati.md): vuota.
+  if (url.pathname === "/request-board/summary") return send(res, 200, { rows: [] });
+  if (url.pathname === "/request-board") return send(res, 200, { cards: [], total: 0, page: 1, pageSize: 20 });
   if (url.pathname === "/stats/platform") {
     return send(res, 200, { totalUsers: 10, totalProfessionals: 3, reviewCount: 9, averageRating: 4.8 });
   }

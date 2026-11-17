@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { unstable_cache } from "next/cache";
-import { MIN_PROFESSIONALS_TO_INDEX_CITY, PROFESSIONAL_CATEGORIES, categorySubTags, comuneSlug, hasCategoryPrices, professionalPath } from "@professionisti/shared";
+import { MIN_PROFESSIONALS_TO_INDEX_CITY, PROFESSIONAL_CATEGORIES, categorySubTags, comuneSlug, hasCategoryPrices, professionalPath, provinceSlug } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { SITE_URL } from "@/lib/siteUrl";
 import { SITE_INDEXABLE } from "@/lib/siteIndexing";
@@ -120,7 +120,14 @@ async function dynamicEntries(): Promise<MetadataRoute.Sitemap> {
     .map((path) => ({ url: `${SITE_URL}${path}`, changeFrequency: "weekly", priority: 0.6 }));
   // Elenco "Quanto costa" solo se ha almeno una pagina mestiere (collaudo N-05).
   const priceIndexEntry: MetadataRoute.Sitemap = priceEntries.length > 0 ? [{ url: `${SITE_URL}/prezzi`, changeFrequency: "weekly", priority: 0.6 }] : [];
-  return [...categories, ...cityEntries, ...priceIndexEntry, ...priceEntries, ...professionalEntries];
+  // Bacheca "Lavori cercati" (docs/changelog/2026-11-17-bacheca-lavori-cercati.md):
+  // mestiere e provincia con almeno una scheda, come il noindex della pagina.
+  // Se la bacheca non risponde, il resto della sitemap resta.
+  const boardEntries: MetadataRoute.Sitemap = await apiClient
+    .getRequestBoardSummary()
+    .then(({ rows }) => (Array.isArray(rows) ? rows : []).map((row) => ({ url: `${SITE_URL}/lavora-con-noi/${row.trade}/${provinceSlug(row.province)}`, changeFrequency: "daily" as const, priority: 0.5 })))
+    .catch(() => []);
+  return [...categories, ...cityEntries, ...priceIndexEntry, ...priceEntries, ...boardEntries, ...professionalEntries];
 }
 
 const cachedDynamicEntries = unstable_cache(dynamicEntries, ["sitemap-dinamica"], { revalidate: 3600 });

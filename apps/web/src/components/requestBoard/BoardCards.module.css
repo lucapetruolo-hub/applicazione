@@ -1,0 +1,140 @@
+/* Bacheca "Lavori cercati" (docs/changelog/2026-11-17-bacheca-lavori-cercati.md). */
+.list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (min-width: 900px) {
+  .list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid #e7e0d7;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(43, 32, 19, 0.06);
+}
+.head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.icon {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #dff0f0;
+  color: #1e6b6e;
+}
+.title {
+  margin: 0;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 700;
+  color: #0f3b3b;
+}
+.meta {
+  margin-top: 2px;
+  font-size: 14px;
+  color: #5e5a54;
+}
+.summary {
+  margin: 0;
+  font-size: 15px;
+  line-height: 21px;
+  color: #1b1a18;
+}
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fact {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f5efe6;
+  font-size: 13px;
+  color: #3d3a35;
+}
+.fresh {
+  background: #e3f1e6;
+  color: #1d5b2c;
+  font-weight: 600;
+}
+/* "Rispondi" sempre in fondo alla scheda, anche con un testo corto (scelta di Luca). */
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #f0e9df;
+}
+.slots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #5e5a54;
+}
+.dots {
+  display: flex;
+  gap: 3px;
+}
+.dot {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e7e0d7;
+}
+.dotFull {
+  background: #1e6b6e;
+}
+.cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: #1e6b6e;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color 150ms ease, transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.cta:hover {
+  background: #186163;
+}
+.cta:active {
+  transform: scale(0.97);
+}
+.cta:focus-visible {
+  outline: 2px solid #186163;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cta {
+    transition: none;
+  }
+  .cta:active {
+    transform: none;
+  }
+}
