@@ -244,3 +244,12 @@ test("l'antenna non è un'anta: niente falegname né domanda sulle porte", () =>
   // "ante" da sola resta del falegname.
   assert.ok(matchProblem("le ante dell'armadio non chiudono").categories.some((c) => c.slug === "falegname"));
 });
+
+test("marmo levigato o lucidato: muratore, poi pulizie; lucidare non è una luce", () => {
+  for (const text of ["levigare il marmo", "lucidare il marmo", "lucidatura pavimento in marmo"]) {
+    const slugs = matchProblem(text).categories.map((c) => c.slug);
+    assert.deepEqual(slugs.slice(0, 2), ["muratore", "pulizie"], text);
+  }
+  assert.equal(matchProblem("levigatura parquet").categories[0]?.slug, "falegname");
+  assert.equal(matchProblem("cambiare le luci del bagno").categories[0]?.slug, "elettricista");
+});

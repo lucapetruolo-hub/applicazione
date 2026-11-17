@@ -24,3 +24,30 @@ version = "3.1.5"
 ecosystem = "npm"
 vulnerability.ignore = true
 reason = "Nessuna versione 3 corretta; solo ESLint jsx-a11y e fork-ts-checker, schemi di file nostri"
+
+# picomatch non ha una versione corretta di GHSA-fc5q-39xc-vjpf (ReDoS con
+# extglob ripetuti, ultima colpita la 4.0.7; eccezione approvata da Luca il
+# 17/11/2026, docs/changelog/2026-11-17-marmo-al-muratore.md). Lo usano solo
+# strumenti di sviluppo e di build (Metro, Jest, ricerca dei file), con schemi
+# di file scritti da noi, mai testi delle persone; l'API non lo usa. Solo le
+# versioni di oggi: una versione nuova torna a essere controllata.
+[[PackageOverrides]]
+name = "picomatch"
+version = "2.3.2"
+ecosystem = "npm"
+vulnerability.ignore = true
+reason = "Nessuna versione corretta; solo strumenti di sviluppo e build con schemi di file nostri, mai dati delle persone"
+
+[[PackageOverrides]]
+name = "picomatch"
+version = "4.0.4"
+ecosystem = "npm"
+vulnerability.ignore = true
+reason = "Nessuna versione corretta; solo strumenti di sviluppo e build con schemi di file nostri, mai dati delle persone"
+
+[[PackageOverrides]]
+name = "picomatch"
+version = "4.0.7"
+ecosystem = "npm"
+vulnerability.ignore = true
+reason = "Nessuna versione corretta; solo strumenti di sviluppo e build con schemi di file nostri, mai dati delle persone"
