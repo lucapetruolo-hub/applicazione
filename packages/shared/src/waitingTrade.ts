@@ -1,5 +1,9 @@
 import { cleanMissingTrade, missingTradeKeywords } from "./missingTrades";
-import { OUT_OF_SERVICE_KEYWORDS, OUT_OF_SERVICE_LABELS, type ProblemOutOfService } from "./problemMatch";
+import {
+  OUT_OF_SERVICE_KEYWORDS,
+  OUT_OF_SERVICE_LABELS,
+  type ProblemOutOfService,
+} from "./problemMatch";
 import type { ProfessionalCategorySlug } from "./categories";
 
 /**
@@ -13,14 +17,19 @@ import type { ProfessionalCategorySlug } from "./categories";
  */
 
 /** Categoria con cui si salva la richiesta finché nessuno la riceve: non decide a chi arriva. */
-export const WAITING_REQUEST_HOST_CATEGORY: ProfessionalCategorySlug = "tuttofare";
+export const WAITING_REQUEST_HOST_CATEGORY: ProfessionalCategorySlug =
+  "tuttofare";
 
 /** Giorni dopo i quali si chiede al cliente "Ti serve ancora?". */
 export const WAITING_REQUEST_STILL_NEEDED_DAYS = 30;
 
-export const WAITING_TRADE_KEYS = Object.keys(OUT_OF_SERVICE_LABELS) as ProblemOutOfService[];
+export const WAITING_TRADE_KEYS = Object.keys(
+  OUT_OF_SERVICE_LABELS,
+) as ProblemOutOfService[];
 
-export function isWaitingTradeKey(value: string | null | undefined): value is ProblemOutOfService {
+export function isWaitingTradeKey(
+  value: string | null | undefined,
+): value is ProblemOutOfService {
   return Boolean(value) && value! in OUT_OF_SERVICE_LABELS;
 }
 
@@ -29,24 +38,31 @@ export function isWaitingTradeKey(value: string | null | undefined): value is Pr
  * gli 8 lavori fuori servizio, altrimenti il nome scritto dall'IA ripulito.
  * Null se non è un mestiere (o è uno che il sito ha già).
  */
-export function waitingTradeName(trade: { key?: string | null; name?: string | null }): string | null {
+export function waitingTradeName(trade: {
+  key?: string | null;
+  name?: string | null;
+}): string | null {
   if (isWaitingTradeKey(trade.key)) return OUT_OF_SERVICE_LABELS[trade.key];
   return cleanMissingTrade(trade.name);
 }
 
 /** Parole che il professionista deve avere nelle prestazioni, nei patentini o nella descrizione. */
-export function waitingTradeKeywords(trade: { key?: string | null; name?: string | null }): string[] {
-  if (isWaitingTradeKey(trade.key)) return [...OUT_OF_SERVICE_KEYWORDS[trade.key]];
+export function waitingTradeKeywords(trade: {
+  key?: string | null;
+  name?: string | null;
+}): string[] {
+  if (isWaitingTradeKey(trade.key))
+    return [...OUT_OF_SERVICE_KEYWORDS[trade.key]];
   return trade.name ? missingTradeKeywords(trade.name) : [];
 }
 
 /** Il professionista fa questo lavoro? Stesso confronto della ricerca (senza maiuscole). */
-export function textsMatchWaitingTrade(keywords: readonly string[], texts: readonly (string | null | undefined)[]): boolean {
+export function textsMatchWaitingTrade(
+  keywords: readonly string[],
+  texts: readonly (string | null | undefined)[],
+): boolean {
   if (keywords.length === 0) return false;
-  const haystack = texts
-    .filter(Boolean)
-    .join("\n")
-    .toLowerCase();
+  const haystack = texts.filter(Boolean).join("\n").toLowerCase();
   return keywords.some((word) => haystack.includes(word.toLowerCase()));
 }
 
@@ -70,10 +86,19 @@ export type WaitingRequestAdminRow = {
   stillNeededAskedAt: string | null;
 };
 
-export type WaitingRequestAdminGroup = { trade: string; zone: string; waiting: number; oldestCreatedAt: string };
+export type WaitingRequestAdminGroup = {
+  trade: string;
+  zone: string;
+  waiting: number;
+  oldestCreatedAt: string;
+};
 
-/** Un mestiere che non abbiamo e quante volte è stato chiesto, in attesa e di prima insieme. */
-export type MostRequestedTrade = { trade: string; requests: number };
+/** Un mestiere che non abbiamo, quante volte è stato chiesto e dove (in attesa e di prima insieme). */
+export type MostRequestedTrade = {
+  trade: string;
+  requests: number;
+  zones: { zone: string; requests: number }[];
+};
 
 export type WaitingRequestsAdmin = {
   groups: WaitingRequestAdminGroup[];
@@ -83,38 +108,76 @@ export type WaitingRequestsAdmin = {
 };
 
 /**
- * Contatore dei mestieri più chiesti (decisione di Luca del 17/11/2026,
- * docs/changelog/2026-11-17-mestiere-piu-vicino.md): un nome per richiesta,
- * senza badare alle maiuscole; i più chiesti prima, a pari numero in ordine
- * alfabetico.
+ * Contatore dei mestieri più chiesti (decisioni di Luca del 17/11/2026,
+ * docs/changelog/2026-11-17-mestiere-piu-vicino.md e
+ * 2026-11-17-invito-precompilato.md): un nome per richiesta, senza badare alle
+ * maiuscole, e per ognuno le zone ("Bari 7, Lecce 3"); i più chiesti prima, a
+ * pari numero in ordine alfabetico.
  */
-export function countRequestedTrades(trades: readonly (string | null | undefined)[]): MostRequestedTrade[] {
-  const counts = new Map<string, MostRequestedTrade>();
-  for (const trade of trades) {
-    const name = trade?.trim();
+export function countRequestedTrades(
+  items: readonly { trade: string | null | undefined; zone: string }[],
+): MostRequestedTrade[] {
+  const counts = new Map<
+    string,
+    { trade: string; requests: number; zones: Map<string, number> }
+  >();
+  for (const item of items) {
+    const name = item.trade?.trim();
     if (!name) continue;
     const key = name.toLowerCase();
-    const found = counts.get(key);
-    if (found) found.requests += 1;
-    else counts.set(key, { trade: name, requests: 1 });
+    const found = counts.get(key) ?? {
+      trade: name,
+      requests: 0,
+      zones: new Map<string, number>(),
+    };
+    found.requests += 1;
+    const zone = item.zone.replace(/ e provincia$/, "");
+    found.zones.set(zone, (found.zones.get(zone) ?? 0) + 1);
+    counts.set(key, found);
   }
-  return [...counts.values()].sort((a, b) => b.requests - a.requests || a.trade.localeCompare(b.trade, "it"));
+  return [...counts.values()]
+    .map((item) => ({
+      trade: item.trade,
+      requests: item.requests,
+      zones: [...item.zones]
+        .map(([zone, requests]) => ({ zone, requests }))
+        .sort(
+          (a, b) =>
+            b.requests - a.requests || a.zone.localeCompare(b.zone, "it"),
+        ),
+    }))
+    .sort(
+      (a, b) => b.requests - a.requests || a.trade.localeCompare(b.trade, "it"),
+    );
 }
 
 /** Gruppi per mestiere e zona delle sole richieste ancora senza nessuno, i più numerosi prima. */
-export function groupWaitingRequests(rows: readonly WaitingRequestAdminRow[]): WaitingRequestAdminGroup[] {
+export function groupWaitingRequests(
+  rows: readonly WaitingRequestAdminRow[],
+): WaitingRequestAdminGroup[] {
   const groups = new Map<string, WaitingRequestAdminGroup>();
   for (const row of rows) {
     if (row.state !== "WAITING") continue;
     const key = `${row.trade.toLowerCase()}|${row.zone}`;
     const group = groups.get(key);
-    if (!group) groups.set(key, { trade: row.trade, zone: row.zone, waiting: 1, oldestCreatedAt: row.createdAt });
+    if (!group)
+      groups.set(key, {
+        trade: row.trade,
+        zone: row.zone,
+        waiting: 1,
+        oldestCreatedAt: row.createdAt,
+      });
     else {
       group.waiting += 1;
-      if (row.createdAt < group.oldestCreatedAt) group.oldestCreatedAt = row.createdAt;
+      if (row.createdAt < group.oldestCreatedAt)
+        group.oldestCreatedAt = row.createdAt;
     }
   }
-  return [...groups.values()].sort((a, b) => b.waiting - a.waiting || a.oldestCreatedAt.localeCompare(b.oldestCreatedAt));
+  return [...groups.values()].sort(
+    (a, b) =>
+      b.waiting - a.waiting ||
+      a.oldestCreatedAt.localeCompare(b.oldestCreatedAt),
+  );
 }
 
 /**
@@ -123,8 +186,36 @@ export function groupWaitingRequests(rows: readonly WaitingRequestAdminRow[]): W
  * resta un intermediario (CLAUDE.md §5 punto 18): sono richieste di
  * preventivo, il prezzo lo fa il professionista.
  */
-export function waitingTradeAd(group: Pick<WaitingRequestAdminGroup, "trade" | "zone" | "waiting">, siteUrl: string): string {
+export function waitingTradeAd(
+  group: Pick<WaitingRequestAdminGroup, "trade" | "zone" | "waiting">,
+  siteUrl: string,
+): string {
   const zone = group.zone === "Senza città" ? "" : ` (${group.zone})`;
-  const clients = group.waiting === 1 ? "1 cliente aspetta" : `${group.waiting} clienti aspettano`;
+  const clients =
+    group.waiting === 1
+      ? "1 cliente aspetta"
+      : `${group.waiting} clienti aspettano`;
   return `Fai il lavoro di ${group.trade.toLowerCase()}${zone}? Sul nostro sito ${clients} un preventivo per questo lavoro. Iscriviti: le richieste ti arrivano appena il profilo è attivo, e il prezzo lo decidi tu. ${siteUrl.replace(/\/$/, "")}/per-professionisti`;
+}
+
+/**
+ * "Invita un professionista" da Richieste in attesa (decisione di Luca del
+ * 17/11/2026, docs/changelog/2026-11-17-invito-precompilato.md): il modulo
+ * dell'Admin si apre con il comune della zona e il mestiere già scritto nella
+ * presentazione, così le richieste in attesa gli arrivano appena il profilo è
+ * attivo.
+ */
+export function waitingInviteHref(
+  group: Pick<WaitingRequestAdminGroup, "trade" | "zone">,
+): string {
+  const params = new URLSearchParams({ mestiere: group.trade });
+  const city =
+    group.zone === "Senza città" ? "" : group.zone.replace(/ e provincia$/, "");
+  if (city) params.set("citta", city);
+  return `/admin/professionisti?${params.toString()}`;
+}
+
+/** Presentazione di partenza con il mestiere: le parole che fanno arrivare le richieste in attesa. */
+export function waitingInviteBio(trade: string): string {
+  return `Faccio il lavoro di ${trade.trim().toLowerCase()}.`;
 }

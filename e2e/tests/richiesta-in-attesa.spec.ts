@@ -188,8 +188,19 @@ for (const [name, device] of [
     await expect(page.getByRole("button", { name: /Copia annuncio/ }).first()).toBeVisible();
     const most = page.locator(".most-requested");
     await expect(page.getByText("Più richiesti", { exact: true })).toBeVisible();
-    await expect(most.locator("li").filter({ hasText: "Antennista" })).toBeVisible();
+    const antennista = most.locator("li").filter({ hasText: "Antennista" });
+    await expect(antennista).toBeVisible();
+    // Accanto al mestiere le zone da cui arrivano le richieste.
+    await expect(antennista.locator(".most-requested-zones")).toContainText(/Bari \d+/);
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/4-admin-${name}.png`, fullPage: true });
+    // "Invita un professionista" apre il modulo già compilato.
+    const invite = page.locator(".waiting-group", { hasText: "Antennista" }).filter({ hasText: "Bari e provincia" }).getByRole("link", { name: "Invita un professionista" });
+    await expect(invite).toHaveAttribute("href", "/admin/professionisti?mestiere=Antennista&citta=Bari");
+    await invite.click();
+    await expect(page.getByText(/Dalle richieste in attesa: Antennista a Bari/)).toBeVisible();
+    await expect(page.getByLabel("Presentazione")).toHaveValue("Faccio il lavoro di antennista.");
+    await expect(page.getByPlaceholder(/Comune/)).toHaveValue("Bari");
+    if (SHOTS) await page.screenshot({ path: `${SHOTS}/6-invito-${name}.png`, fullPage: true });
     await page.context().close();
   });
 }

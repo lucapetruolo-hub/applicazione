@@ -11682,6 +11682,12 @@ textarea[id^="contatti-"][aria-invalid="true"] {
 .most-requested li span {
   flex: 1;
 }
+.most-requested-zones {
+  display: block;
+  margin-top: 2px;
+  color: #6f665d;
+  font-size: 13px;
+}
 .most-requested li strong {
   color: #0f3b3b;
   font-variant-numeric: tabular-nums;
