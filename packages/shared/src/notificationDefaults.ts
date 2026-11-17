@@ -16,6 +16,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   },
   popups: true,
   sound: true,
+  soundName: "dolce",
   // Impostazioni leggere fin dal primo giorno (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md):
   // le recensioni si vedono sul sito e nel profilo, l'email non serve a fare nulla.
   items: { "lavori.recensioni": { inApp: true, email: false } },

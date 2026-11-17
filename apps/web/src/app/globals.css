@@ -8891,6 +8891,16 @@ textarea[id^="contatti-"][aria-invalid="true"] {
 .nt-hour select:hover {
   border-color: #1b1a18;
 }
+/* Scelta del suono e "Prova il suono" sulla stessa riga, a capo se non c'è spazio (docs/changelog/2026-11-17-suoni-notifica.md). */
+.nt-sound {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+}
+.nt-sound .notif-link {
+  min-height: 40px;
+}
 .nt-check {
   display: flex;
   align-items: flex-start;

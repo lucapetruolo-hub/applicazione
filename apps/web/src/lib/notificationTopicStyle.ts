@@ -45,6 +45,23 @@ export function notificationTone(type: string, payload?: unknown): NotificationT
   return "neutral";
 }
 
+/**
+ * Quale suono per un gruppo di notifiche arrivate insieme
+ * (docs/changelog/2026-11-17-suoni-notifica.md): urgente se c'è una
+ * richiesta urgente (⚡) o un problema, buona notizia se ce n'è una, se no
+ * il suono scelto.
+ */
+export function notificationSoundKind(items: ReadonlyArray<{ type: string; payload?: unknown }>): "normal" | "good" | "urgent" {
+  let good = false;
+  for (const { type, payload } of items) {
+    if (notificationCopy(type, payload).icon === "⚡") return "urgent";
+    const tone = notificationTone(type, payload);
+    if (tone === "bad") return "urgent";
+    if (tone === "good") good = true;
+  }
+  return good ? "good" : "normal";
+}
+
 const GOOD_COLORS = { color: brand.verificato, tint: brand.cianografiaVelo };
 const BAD_COLORS = { color: brand.urgenza, tint: brand.urgenzaVelo };
 
