@@ -122,10 +122,11 @@ async function dynamicEntries(): Promise<MetadataRoute.Sitemap> {
   const priceIndexEntry: MetadataRoute.Sitemap = priceEntries.length > 0 ? [{ url: `${SITE_URL}/prezzi`, changeFrequency: "weekly", priority: 0.6 }] : [];
   // Bacheca "Lavori cercati" (docs/changelog/2026-11-17-bacheca-lavori-cercati.md):
   // mestiere e provincia con almeno una scheda, come il noindex della pagina.
-  const boardEntries: MetadataRoute.Sitemap = await apiClient.getRequestBoardSummary().then(
-    ({ rows }) => rows.map((row) => ({ url: `${SITE_URL}/lavora-con-noi/${row.trade}/${provinceSlug(row.province)}`, changeFrequency: "daily" as const, priority: 0.5 })),
-    () => [],
-  );
+  // Se la bacheca non risponde, il resto della sitemap resta.
+  const boardEntries: MetadataRoute.Sitemap = await apiClient
+    .getRequestBoardSummary()
+    .then(({ rows }) => (Array.isArray(rows) ? rows : []).map((row) => ({ url: `${SITE_URL}/lavora-con-noi/${row.trade}/${provinceSlug(row.province)}`, changeFrequency: "daily" as const, priority: 0.5 })))
+    .catch(() => []);
   return [...categories, ...cityEntries, ...priceIndexEntry, ...priceEntries, ...boardEntries, ...professionalEntries];
 }
 

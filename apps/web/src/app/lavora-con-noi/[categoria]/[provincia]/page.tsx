@@ -85,7 +85,7 @@ export default async function BoardProvincePage(props: { params: Promise<PagePar
   const [board, summary] = await Promise.all([loadBoard(found.trade, found.province, page), loadSummary()]);
   const cards = board?.cards ?? [];
   const total = board?.total ?? 0;
-  const otherTrades = summary.rows.filter((row) => row.province === found.province && row.trade !== found.trade);
+  const otherTrades = (summary.rows ?? []).filter((row) => row.province === found.province && row.trade !== found.trade);
   const hasMore = board ? page * board.pageSize < total : false;
   const register = `/registrati?ruolo=professionista${isProfessionalCategorySlug(found.trade) ? `&categoria=${found.trade}` : ""}`;
   const label = found.label.toLowerCase();
