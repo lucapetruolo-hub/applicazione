@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ServiceNamesService } from "./service-names.service";
+import { ServiceNamesService, rankSearchedServices } from "./service-names.service";
 import { ProblemMatchAdminService } from "./problem-match-admin.service";
 import { ProblemTakeoverService } from "./problem-takeover.service";
 
@@ -109,5 +109,37 @@ describe("ProblemTakeoverService", () => {
     expect(prisma.problemTakeover.create).toHaveBeenCalledWith({
       data: { userId: "u1", description: "orlo dei pantaloni", city: null, outOfService: null, missingTrade: "Sarto" },
     });
+  });
+});
+
+describe("Prestazioni più cercate dai clienti (docs/changelog/2026-11-17-prestazioni-veloci.md)", () => {
+  const same = (name: string) => (name === "Perdite" ? "Riparazione perdita d'acqua" : name);
+  it("somma le varianti, ordina per ricerche e scarta le cercate una volta", () => {
+    const ranked = rankSearchedServices(
+      [
+        { slug: "idraulico", service: "Sturatura scarichi", count: 3n },
+        { slug: "idraulico", service: "Riparazione perdita d'acqua", count: 2n },
+        { slug: "idraulico", service: "Perdite", count: 2n },
+        { slug: "idraulico", service: "Sostituzione sifone", count: 1n },
+        { slug: "elettricista", service: "Sostituzione presa", count: 1n },
+      ],
+      same,
+    );
+    expect(ranked).toEqual({ idraulico: ["Riparazione perdita d'acqua", "Sturatura scarichi"] });
+  });
+
+  it("legge il database una volta ogni dieci minuti", async () => {
+    const prisma = {
+      $queryRaw: vi.fn().mockResolvedValue([{ slug: "pulizie", service: "Pulizie di casa", count: 4n }]),
+      serviceNameAlias: { findMany: vi.fn().mockResolvedValue([]) },
+      standardServiceName: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const service = new ServiceNamesService(prisma as never);
+    const now = new Date("2026-11-17T10:00:00Z");
+    expect(await service.searchedByCategory(now)).toEqual({ pulizie: ["Pulizie di casa"] });
+    await service.searchedByCategory(new Date(now.getTime() + 5 * 60_000));
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    await service.searchedByCategory(new Date(now.getTime() + 11 * 60_000));
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
   });
 });

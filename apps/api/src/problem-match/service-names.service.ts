@@ -2,8 +2,17 @@ import { Inject, Injectable } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import { canonicalServiceName, serviceNameKey } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { countingFrom, sinceLaunch } from "../site-counts/counted";
 
 const ALIASES_TTL_MS = 60_000;
+/** Prestazioni più cercate: si ricontano ogni dieci minuti. */
+const SEARCHED_TTL_MS = 10 * 60_000;
+/** Ricerche degli ultimi 90 giorni (mai prima del lancio). */
+const SEARCHED_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
+/** Una prestazione cercata una volta sola non è ancora un segnale. */
+export const SEARCHED_MIN_COUNT = 2;
+/** Le prime per mestiere: bastano a ordinare le pillole del profilo. */
+const SEARCHED_PER_CATEGORY = 12;
 
 /**
  * Nome con cui contare una prestazione (docs/CHANGELOG.md §392): prima le
@@ -15,6 +24,7 @@ const ALIASES_TTL_MS = 60_000;
 export class ServiceNamesService {
   private aliases: { map: Map<string, string>; loadedAt: number } | null = null;
   private standard: { byCategory: Record<string, string[]>; loadedAt: number } | null = null;
+  private searched: { byCategory: Record<string, string[]>; loadedAt: number } | null = null;
 
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
@@ -50,8 +60,52 @@ export class ServiceNamesService {
     return this.standard.byCategory;
   }
 
+  /**
+   * Prestazioni più cercate dai clienti per mestiere, dalla descrizione del
+   * problema (`problem_descriptions.service`, primo mestiere proposto), in
+   * ordine di ricerche (docs/changelog/2026-11-17-prestazioni-veloci.md).
+   * Ordinano le pillole "Più cercati dai clienti" nel profilo. Descrizioni
+   * anonime: nessun account da escludere; dal lancio (§395).
+   */
+  async searchedByCategory(now: Date = new Date()): Promise<Record<string, string[]>> {
+    if (this.searched && now.getTime() - this.searched.loadedAt <= SEARCHED_TTL_MS) return this.searched.byCategory;
+    const since = sinceLaunch(new Date(now.getTime() - SEARCHED_WINDOW_MS), countingFrom(now));
+    const [rows, canonicalize] = await Promise.all([
+      this.prisma.$queryRaw<{ slug: string; service: string; count: bigint }[]>`
+        SELECT categories[1] AS slug, service, COUNT(*) AS count
+        FROM problem_descriptions
+        WHERE service IS NOT NULL AND cardinality(categories) > 0 AND "createdAt" >= ${since}
+        GROUP BY 1, 2`,
+      this.canonicalizer(),
+    ]);
+    this.searched = { byCategory: rankSearchedServices(rows, canonicalize), loadedAt: now.getTime() };
+    return this.searched.byCategory;
+  }
+
   forget() {
     this.aliases = null;
     this.standard = null;
+    this.searched = null;
   }
+}
+
+/** Somma le varianti con lo stesso nome del catalogo e tiene, per mestiere, le più cercate. */
+export function rankSearchedServices(rows: readonly { slug: string; service: string; count: bigint | number }[], canonicalize: (name: string) => string): Record<string, string[]> {
+  const counts = new Map<string, Map<string, number>>();
+  for (const row of rows) {
+    const bySlug = counts.get(row.slug) ?? new Map<string, number>();
+    const name = canonicalize(row.service);
+    bySlug.set(name, (bySlug.get(name) ?? 0) + Number(row.count));
+    counts.set(row.slug, bySlug);
+  }
+  const byCategory: Record<string, string[]> = {};
+  for (const [slug, bySlug] of counts) {
+    const names = [...bySlug]
+      .filter(([, count]) => count >= SEARCHED_MIN_COUNT)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "it"))
+      .slice(0, SEARCHED_PER_CATEGORY)
+      .map(([name]) => name);
+    if (names.length > 0) byCategory[slug] = names;
+  }
+  return byCategory;
 }

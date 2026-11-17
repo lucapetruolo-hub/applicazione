@@ -262,3 +262,33 @@ export function serviceCategoryOf<Slug extends keyof typeof POPULAR_SERVICES>(
   const name = canonicalServiceName(service.name);
   return categorySlugs.find((slug) => suggestedFor(slug).includes(name)) ?? categorySlugs[0];
 }
+
+/** Prestazioni al massimo in un profilo (`professionalServiceSchema`, `max(30)`). */
+export const MAX_PROFESSIONAL_SERVICES = 30;
+
+/**
+ * "Aggiungi più lavori insieme" nel profilo (docs/changelog/2026-11-17-prestazioni-veloci.md):
+ * il testo diviso a virgole, punti e virgola o a capo, ogni voce con il nome
+ * del catalogo se è una sua variante (stessa regola di `canonicalServiceName`,
+ * nessuna parola nuova nel dizionario), prima lettera maiuscola, senza doppioni
+ * e senza le voci già presenti in `existing`. Le voci di una lettera sola si scartano.
+ */
+export function splitServiceList(text: string, existing: readonly string[] = []): { added: string[]; alreadyThere: number } {
+  const seen = new Set(existing.map(serviceNameKey));
+  const added: string[] = [];
+  let alreadyThere = 0;
+  for (const piece of text.split(/[,;\n\r]+/)) {
+    const cleaned = piece.replace(/^[\s\-•*·.]+|[\s.]+$/g, "").replace(/\s+/g, " ").slice(0, 120);
+    if (cleaned.length < 2) continue;
+    const canonical = canonicalServiceName(cleaned);
+    const name = canonical.charAt(0).toLocaleUpperCase("it-IT") + canonical.slice(1);
+    const key = serviceNameKey(name);
+    if (seen.has(key)) {
+      alreadyThere += 1;
+      continue;
+    }
+    seen.add(key);
+    added.push(name);
+  }
+  return { added, alreadyThere };
+}

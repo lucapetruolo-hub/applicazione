@@ -11571,3 +11571,25 @@ textarea[id^="contatti-"][aria-invalid="true"] {
   margin-top: 1px;
   color: #1e6b6e;
 }
+
+/* Prestazioni nel profilo (docs/changelog/2026-11-17-prestazioni-veloci.md):
+   "Scopri di più" come un link dentro la frase, righe compatte che sul
+   telefono mettono prezzo e pulsanti sotto al nome. */
+.services-more {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: #186163;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.service-item:first-child {
+  border-top-width: 0 !important;
+}
+@media (max-width: 560px) {
+  .service-line .service-line-name {
+    flex-basis: 100% !important;
+  }
+}
