@@ -71,23 +71,26 @@ export default function HomeContent({
 
         {/* 2. Categorie. */}
         <FadeInSection>
-          <Section
-            title="Di cosa hai bisogno?"
-            titleNote="Trova chi c'è vicino a te."
-            // Da computer, per chi non arriva in fondo alla riga dove c'è la
-            // scheda "Non trovi il tuo lavoro?" (scelta di Luca,
-            // docs/changelog/2026-11-11-home-apertura-piu-alta.md). Da
-            // telefono la scheda si vede già nella griglia.
-            titleAction={
-              <Link href="/preventivo" className="home-section-action home-section-action--wide" onClick={goToProblemField}>
-                Non trovi il tuo lavoro?
-              </Link>
-            }
-            maxWidth={1080}
-          >
-            <CategoryStoryRail state={categoryRail} />
-            <PopularJobs data={popularJobs} />
-          </Section>
+          {/* Senza andare a capo: docs/changelog/2026-11-17-titolo-recensioni-una-riga.md. */}
+          <div className={`is_View ${styles.oneLineTitle} ${styles.oneLineTitleCategories}`}>
+            <Section
+              title="Di cosa hai bisogno?"
+              titleNote="Trova chi c'è vicino a te."
+              // Da computer, per chi non arriva in fondo alla riga dove c'è la
+              // scheda "Non trovi il tuo lavoro?" (scelta di Luca,
+              // docs/changelog/2026-11-11-home-apertura-piu-alta.md). Da
+              // telefono la scheda si vede già nella griglia.
+              titleAction={
+                <Link href="/preventivo" className="home-section-action home-section-action--wide" onClick={goToProblemField}>
+                  Non trovi il tuo lavoro?
+                </Link>
+              }
+              maxWidth={1080}
+            >
+              <CategoryStoryRail state={categoryRail} />
+              <PopularJobs data={popularJobs} />
+            </Section>
+          </div>
         </FadeInSection>
 
         {/* 3. Come funziona, con un preventivo d'esempio. */}

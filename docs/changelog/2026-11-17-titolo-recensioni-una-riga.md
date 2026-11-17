@@ -14,9 +14,19 @@ lavori fatti tramite il sito." non deve andare a capo.
 - Vale anche per "Nuovi professionisti. Appena arrivati sul sito.", la stessa
   sezione quando non ci sono ancora recensioni. Le altre sezioni non cambiano.
 
+**Secondo giro** (sì di Luca alle migliorie proposte):
+- Stessa disposizione per "Di cosa hai bisogno? Trova chi c'è vicino a te.",
+  che andava a capo tra 801 e circa 1270 px. Da computer resta a 44 px dove ci
+  sta e scende fino a circa 37 px a 1024 px; da tablet titolo e frase su due
+  righe (da telefono "Non trovi il tuo lavoro?" resta nascosto come prima).
+- Da telefono "Vedi tutti" subito sotto la frase grigia (niente spazio in più:
+  il link è già alto 44 px per il tocco).
+- La formula del computer ora legge `--one-line-ratio` e `--one-line-action`,
+  così ogni titolo usa le sue misure.
+
 **Come**: `Section.module.css` (packages/ui) legge quattro variabili nuove
 (`--section-title-row-wrap`, `--section-title-main-basis`,
-`--section-title-note-*`) con i valori di sempre come riserva; la home le
+`--section-title-note-*`, `--section-title-row-gap`) con i valori di sempre come riserva; la home le
 imposta solo sul contenitore `.oneLineTitle` di questa sezione
 (`HomeContent.module.css`).
 

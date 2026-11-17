@@ -61,7 +61,7 @@
   /* Una pagina può far scendere il link sotto il titolo (home, "Cosa
      dicono i clienti": docs/changelog/2026-11-17-titolo-recensioni-una-riga.md). */
   flex-wrap: var(--section-title-row-wrap, nowrap);
-  gap: var(--t-space-3);
+  gap: var(--section-title-row-gap, var(--t-space-3));
 }
 
 .titleMain {
