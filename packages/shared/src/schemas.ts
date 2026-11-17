@@ -161,6 +161,24 @@ export const contactMessageSchema = z
   });
 export type ContactMessageInput = z.infer<typeof contactMessageSchema>;
 
+/** "Rispondi" dalla bacheca "Lavori cercati": l'id della richiesta, niente altro. */
+export const boardReplySchema = z.object({ requestId: z.string().uuid("Richiesta non valida.") });
+export type BoardReplyInput = z.infer<typeof boardReplySchema>;
+
+/**
+ * "Avvisami alla prima richiesta" dalla bacheca vuota: una sola email, poi
+ * l'indirizzo si cancella (docs/changelog/2026-11-17-bacheca-rispondi.md).
+ */
+export const boardAlertSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Email non valida").max(254),
+  trade: z.string().min(1).max(40),
+  province: z.string().length(2),
+  // Honeypot anti-spam, stesso pattern di waitlistSignupSchema.
+  website: z.string().max(200).optional(),
+  turnstileToken: turnstileTokenSchema,
+});
+export type BoardAlertInput = z.infer<typeof boardAlertSchema>;
+
 export const resolveContactMessageSchema = z.object({
   resolved: z.boolean(),
 });

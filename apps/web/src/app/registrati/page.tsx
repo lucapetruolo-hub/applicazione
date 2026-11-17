@@ -403,6 +403,9 @@ function RegistratiForm() {
   const chosenInterval = parseBillingInterval(searchParams.get("rinnovo"));
   const role = isProfessional ? "PROFESSIONAL" : "CLIENT";
   const entityChoice = entityChoiceFromParam(searchParams.get("tipo"));
+  // "Rispondi" dalla bacheca: la richiesta scelta, portata fino a dopo l'iscrizione o l'accesso.
+  const boardRequestParam = searchParams.get("richiesta");
+  const boardRequestId = boardRequestParam && /^[0-9a-f-]{36}$/i.test(boardRequestParam) ? boardRequestParam : null;
   // L'ordine delle categorie "Che lavori fai?" si chiede appena si apre la
   // pagina: arrivati a quel passo le pillole compaiono subito, senza attesa
   // (docs/changelog/2026-11-02-categorie-telefono.md).
@@ -524,13 +527,17 @@ function RegistratiForm() {
     // pagina Abbonamento senza profilo mostrava solo "Completa il tuo
     // profilo" e il livello scelto si perdeva. Il profilo se lo porta dietro
     // fino alla scelta del piano (docs/changelog/2026-11-02-registrazione-pro-grafica.md).
-    const target = isNewUser
-      ? chosenTier
-        ? `/dashboard/profilo?livello=${chosenTier}`
-        : "/dashboard/profilo"
-      : chosenTier
-        ? `/dashboard/abbonamento?livello=${chosenTier}${chosenInterval ? `&rinnovo=${chosenInterval}` : ""}`
-        : "/dashboard";
+    // "Rispondi" dalla bacheca "Lavori cercati" (docs/changelog/2026-11-17-bacheca-rispondi.md):
+    // la richiesta si prende (o resta da parte fino al profilo visibile) e poi si va avanti.
+    const target = boardRequestId
+      ? `/rispondi?richiesta=${encodeURIComponent(boardRequestId)}${isNewUser ? "&nuovo=1" : ""}`
+      : isNewUser
+        ? chosenTier
+          ? `/dashboard/profilo?livello=${chosenTier}`
+          : "/dashboard/profilo"
+        : chosenTier
+          ? `/dashboard/abbonamento?livello=${chosenTier}${chosenInterval ? `&rinnovo=${chosenInterval}` : ""}`
+          : "/dashboard";
     // La pagina successiva può metterci qualche secondo: l'attesa resta
     // visibile finché arriva (docs/changelog/2026-11-10-barra-in-ogni-attesa.md).
     // Dal codice dell'email non c'è un pulsante in attesa: barra in cima.
@@ -888,7 +895,7 @@ function RegistratiForm() {
 
       <Text fontSize={16} textAlign="center" color={brand.grafite70}>
         Hai già un account?{" "}
-        <Link href="/accedi" style={{ textDecoration: "none" }}>
+        <Link href={boardRequestId ? `/accedi?redirect=${encodeURIComponent(`/rispondi?richiesta=${boardRequestId}`)}` : "/accedi"} style={{ textDecoration: "none" }}>
           <Text color={brand.cianografiaScuro} fontWeight="600">
             Accedi
           </Text>

@@ -196,6 +196,21 @@ export function boardTradeLabel(trade: BoardTrade): string {
   return PROFESSIONAL_CATEGORIES.find((category) => category.slug === trade)?.label ?? trade;
 }
 
+/**
+ * Parole delle pagine "Lavora con noi" per gli 8 lavori che il sito non ha
+ * tra le categorie (le categorie usano `CATEGORY_SEO_NOUN`).
+ */
+export const WAITING_TRADE_SEO: Record<ProblemOutOfService, { workTitle: string; findQuestion: string }> = {
+  antennista: { workTitle: "Lavoro per antennisti", findQuestion: "un antennista" },
+  disinfestazione: { workTitle: "Lavoro nella disinfestazione", findQuestion: "una ditta di disinfestazione" },
+  spurghi: { workTitle: "Lavoro negli spurghi", findQuestion: "una ditta di spurghi" },
+  spazzacamino: { workTitle: "Lavoro per spazzacamini", findQuestion: "uno spazzacamino" },
+  vetraio: { workTitle: "Lavoro per vetrai", findQuestion: "un vetraio" },
+  antifurto: { workTitle: "Lavoro per installatori di antifurto", findQuestion: "un installatore di antifurto" },
+  ascensori: { workTitle: "Lavoro per tecnici di ascensori", findQuestion: "un tecnico di ascensori" },
+  badante: { workTitle: "Lavoro come badante", findQuestion: "una badante" },
+};
+
 /** Una scheda pubblica: niente id del cliente, niente foto, niente via. */
 export type BoardCard = {
   /** Id della richiesta: serve al pulsante "Rispondi" (iscrizione e poi la richiesta nell'elenco). */
@@ -227,3 +242,21 @@ export type BoardPage = {
 export type BoardSummaryRow = { trade: BoardTrade; province: string; count: number };
 
 export type BoardSummary = { rows: BoardSummaryRow[] };
+
+/** Distanza massima tra la zona del professionista e il lavoro per rispondere dalla bacheca (decisione di Luca). */
+export const BOARD_REPLY_RADIUS_KM = 100;
+
+/**
+ * Esito di "Rispondi" (PR 2 della bacheca):
+ * - added: la richiesta è nel tuo elenco, manda il preventivo;
+ * - already: l'avevi già ricevuta;
+ * - saved: profilo non ancora completo o visibile, la richiesta ti arriva appena lo è;
+ * - other-trade: la richiesta è per un mestiere che non hai nel profilo;
+ * - too-far: oltre 100 km dalla tua zona;
+ * - no-online: il cliente chiede un lavoro online e tu non lo offri;
+ * - full: 5 preventivi già arrivati;
+ * - closed: non è più in bacheca (ritirata, scaduta, accettata).
+ */
+export type BoardReplyStatus = "added" | "already" | "saved" | "other-trade" | "too-far" | "no-online" | "full" | "closed";
+
+export type BoardReplyResult = { status: BoardReplyStatus; requestId: string; tradeLabel?: string };

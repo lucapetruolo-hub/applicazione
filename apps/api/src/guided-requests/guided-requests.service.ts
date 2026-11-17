@@ -9,6 +9,7 @@ import { reviewSummariesFor, type ReviewSummary } from "../reviews/review-summar
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { calculateDistanceKm } from "../common/geo.util";
+import { boardReplyProblem } from "../request-board/board-rules";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
@@ -1589,8 +1590,88 @@ export class GuidedRequestsService {
     }
   }
 
+  /**
+   * "Rispondi" dalla bacheca "Lavori cercati" (docs/changelog/2026-11-17-bacheca-rispondi.md):
+   * il professionista sceglie lui la richiesta, quindi niente avviso "Nuova
+   * richiesta" a lui; il cliente è avvisato se è il primo a riceverla, come
+   * per chi si iscrive dopo (§271). Chi chiama ha già controllato che la
+   * richiesta sia in bacheca e con posti liberi.
+   */
+  async addBoardLead(
+    professionalProfileId: string,
+    guidedRequestId: string,
+    now: Date = new Date(),
+  ): Promise<"added" | "already" | "saved" | "other-trade" | "too-far" | "no-online" | "closed"> {
+    if (!(await this.receivesRequests(professionalProfileId))) return "saved";
+    const [profile, request] = await Promise.all([
+      this.prisma.professionalProfile.findUnique({
+        where: { id: professionalProfileId },
+        select: {
+          id: true,
+          isDemo: true,
+          categoryId: true,
+          category: { select: { slug: true } },
+          extraCategories: { select: { slug: true } },
+          latitude: true,
+          longitude: true,
+          remoteAvailable: true,
+          bio: true,
+          certifications: true,
+          services: { select: { name: true, categorySlug: true } },
+        },
+      }),
+      this.prisma.guidedRequest.findUnique({
+        where: { id: guidedRequestId },
+        select: { id: true, clientId: true, city: true, serviceMode: true, createdAt: true, boardTrade: true, waitingTrade: true, waitingTradeKey: true },
+      }),
+    ]);
+    if (!profile || profile.isDemo || !request?.boardTrade) return "closed";
+    const problem = boardReplyProblem({
+      request: { ...request, boardTrade: request.boardTrade },
+      profile: {
+        categorySlugs: [profile.category.slug, ...profile.extraCategories.map((category) => category.slug)],
+        services: profile.services,
+        certifications: profile.certifications,
+        bio: profile.bio,
+        latitude: profile.latitude,
+        longitude: profile.longitude,
+        remoteAvailable: profile.remoteAvailable,
+      },
+    });
+    if (problem) return problem;
+
+    const isFirstRecipient = (await this.prisma.lead.count({ where: { guidedRequestId } })) === 0;
+    // Un lavoro che il sito non ha prende il mestiere del primo che risponde,
+    // come in `matchProfileToWaitingTrades`.
+    let categoryId: string | undefined;
+    if (isFirstRecipient && request.waitingTrade) {
+      const keywords = waitingTradeKeywords({ key: request.waitingTradeKey, name: request.waitingTrade });
+      const tradeService = profile.services.find((service) => service.categorySlug && textsMatchWaitingTrade(keywords, [service.name]));
+      const serviceCategory = tradeService?.categorySlug
+        ? await this.prisma.category.findUnique({ where: { slug: tradeService.categorySlug }, select: { id: true } })
+        : null;
+      categoryId = serviceCategory?.id ?? profile.categoryId;
+    }
+    try {
+      await this.prisma.lead.create({
+        data: { guidedRequestId, professionalProfileId, priceEurCents: LEAD_PRICE_STANDARD_EUR_CENTS, expiresAt: null, wasExpanded: true, fromBoardAt: now },
+      });
+    } catch (error) {
+      // Due tocchi insieme su "Rispondi": la seconda volta c'è già.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return "already";
+      throw error;
+    }
+    await this.prisma.guidedRequest.update({ where: { id: guidedRequestId }, data: { status: "MATCHED", ...(categoryId ? { categoryId } : {}) } });
+    if (isFirstRecipient) {
+      await this.notificationsService.notify(request.clientId, "REQUEST_MATCHED_LATER", { guidedRequestId });
+    }
+    await this.professionalMetricsService.recordRequestReceived(professionalProfileId);
+    await this.timelineService.log(guidedRequestId, professionalProfileId, "SYSTEM", "Hai scelto questa richiesta da \"Lavori cercati\": manda il tuo preventivo.");
+    return "added";
+  }
+
   /** Il professionista può ricevere richieste generali (stessi filtri di `matchProfilesForFanOut`)? */
-  private async receivesRequests(professionalProfileId: string): Promise<boolean> {
+  async receivesRequests(professionalProfileId: string): Promise<boolean> {
     const candidate = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
       select: {

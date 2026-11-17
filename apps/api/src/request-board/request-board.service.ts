@@ -1,14 +1,29 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Inject, Injectable, Logger } from "@nestjs/common";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import type { Prisma, PrismaClient } from "@professionisti/database";
-import { BOARD_PAGE_SIZE, type BoardPage, type BoardSummary, type BoardTrade, isBoardTrade } from "@professionisti/shared";
+import {
+  BOARD_MAX_QUOTES,
+  BOARD_PAGE_SIZE,
+  PROVINCE_NAMES,
+  boardTradeLabel,
+  isBoardTrade,
+  provinceSlug,
+  type BoardAlertInput,
+  type BoardPage,
+  type BoardReplyResult,
+  type BoardSummary,
+  type BoardTrade,
+} from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { DailyBudget } from "../common/daily-budget";
 import { opsAlert } from "../common/ops-alert";
 import { ScheduledJob } from "../common/scheduled-job";
 import { COUNTED_USER } from "../site-counts/counted";
+import { EmailService } from "../email/email.service";
+import { boardAlertEmail } from "../email/templates/board-emails";
+import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
 import {
   ACTIVE_QUOTE_STATUSES,
   boardCardOf,
@@ -30,6 +45,13 @@ const AI_DAILY_LIMIT = 200;
 const BATCH = 40;
 /** Schede lette al massimo per una pagina, prima dell'ordine per posti liberi. */
 const PAGE_SCAN_LIMIT = 300;
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** "Rispondi" in attesa del profilo: dopo 30 giorni la riga si cancella. */
+const CLAIM_DAYS = 30;
+/** "Avvisami alla prima richiesta" senza richieste: dopo 180 giorni l'email si cancella. */
+const ALERT_DAYS = 180;
+/** Righe guardate a ogni giro dei "Rispondi" in attesa. */
+const CLAIM_BATCH = 200;
 
 const summarySchema = z.object({
   title: z.string(),
@@ -66,7 +88,11 @@ export class RequestBoardService {
     "ia-bacheca",
   );
 
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    private readonly guidedRequests: GuidedRequestsService,
+    private readonly email: EmailService,
+  ) {}
 
   static enabled(): boolean {
     return process.env.REQUEST_BOARD_ENABLED?.trim() === "true";
@@ -116,6 +142,7 @@ export class RequestBoardService {
       select: { id: true, description: true, city: true, waitingTrade: true, waitingTradeKey: true, category: { select: { slug: true } } },
     });
     let listed = 0;
+    const listedPages = new Set<string>();
     for (const request of candidates) {
       const trade = boardTradeOf({ categorySlug: request.category.slug, waitingTrade: request.waitingTrade, waitingTradeKey: request.waitingTradeKey });
       const where = boardPlaceOf(request.city);
@@ -129,8 +156,11 @@ export class RequestBoardService {
         data: { boardAt: now, boardTitle: rewritten.title, boardSummary: rewritten.summary, boardPlace: where.place, boardProvince: where.province, boardTrade: trade },
       });
       listed += updated.count;
+      if (updated.count > 0) listedPages.add(`${trade}|${where.province}`);
     }
     if (listed > 0) this.logger.log(`Bacheca: ${listed} richieste nuove.`);
+    await this.sendAlerts(listedPages);
+    await this.prisma.boardAlert.deleteMany({ where: { createdAt: { lt: new Date(now.getTime() - ALERT_DAYS * DAY_MS) } } });
     return { listed };
   }
 
@@ -208,5 +238,91 @@ export class RequestBoardService {
         isBoardTrade(group.boardTrade) && group.boardProvince ? [{ trade: group.boardTrade, province: group.boardProvince, count: group._count._all }] : [],
       ),
     };
+  }
+
+  /**
+   * "Rispondi" (docs/changelog/2026-11-17-bacheca-rispondi.md): con il
+   * profilo visibile la richiesta entra subito nell'elenco, se il mestiere e
+   * la distanza vanno bene e ci sono ancora posti; senza profilo, o con il
+   * profilo non ancora visibile, resta da parte e arriva appena lo è.
+   */
+  async reply(userId: string, requestId: string, now: Date = new Date()): Promise<BoardReplyResult> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, professionalProfile: { select: { id: true } } } });
+    if (!user || user.role !== "PROFESSIONAL") throw new ForbiddenException("Per rispondere serve un account da professionista.");
+    const request = await this.prisma.guidedRequest.findFirst({
+      where: { id: requestId, ...this.listedWhere(now) },
+      select: { id: true, boardTrade: true, _count: { select: { quotes: { where: { status: { in: [...ACTIVE_QUOTE_STATUSES] } } } } } },
+    });
+    if (!request) return { status: "closed", requestId };
+    const tradeLabel = isBoardTrade(request.boardTrade) ? boardTradeLabel(request.boardTrade) : undefined;
+    const profileId = user.professionalProfile?.id;
+    if (profileId) {
+      const received = await this.prisma.lead.count({ where: { guidedRequestId: requestId, professionalProfileId: profileId } });
+      if (received > 0) return { status: "already", requestId, tradeLabel };
+    }
+    if (request._count.quotes >= BOARD_MAX_QUOTES) return { status: "full", requestId, tradeLabel };
+    const status = profileId ? await this.guidedRequests.addBoardLead(profileId, requestId, now) : "saved";
+    if (status === "saved") {
+      await this.prisma.boardClaim.upsert({
+        where: { userId_guidedRequestId: { userId, guidedRequestId: requestId } },
+        update: {},
+        create: { userId, guidedRequestId: requestId },
+      });
+    } else {
+      await this.prisma.boardClaim.deleteMany({ where: { userId, guidedRequestId: requestId } });
+    }
+    return { status, requestId, tradeLabel };
+  }
+
+  /**
+   * "Rispondi" in attesa: ogni 10 minuti prova di nuovo per chi nel frattempo
+   * ha il profilo visibile. Resta in attesa solo finché il profilo non lo è
+   * (al massimo 30 giorni); ogni altro esito chiude la riga.
+   */
+  @ScheduledJob("*/10 * * * *")
+  async processClaims(now: Date = new Date()): Promise<{ added: number }> {
+    await this.prisma.boardClaim.deleteMany({ where: { createdAt: { lt: new Date(now.getTime() - CLAIM_DAYS * DAY_MS) } } });
+    const claims = await this.prisma.boardClaim.findMany({
+      where: { user: { deletedAt: null, suspendedAt: null, professionalProfile: { isNot: null } } },
+      orderBy: { createdAt: "asc" },
+      take: CLAIM_BATCH,
+      select: { userId: true, guidedRequestId: true },
+    });
+    let added = 0;
+    for (const claim of claims) {
+      try {
+        const result = await this.reply(claim.userId, claim.guidedRequestId, now);
+        if (result.status === "added") added += 1;
+      } catch (error) {
+        this.logger.warn(`"Rispondi" in attesa non riuscito: riprova al prossimo giro. ${error instanceof Error ? error.message : ""}`);
+      }
+    }
+    return { added };
+  }
+
+  /** "Avvisami alla prima richiesta": un'email sola per mestiere e provincia. */
+  async addAlert(input: BoardAlertInput): Promise<{ ok: true }> {
+    if (!isBoardTrade(input.trade) || !PROVINCE_NAMES[input.province.toUpperCase()]) throw new BadRequestException("Mestiere o provincia non validi.");
+    await this.prisma.boardAlert.upsert({
+      where: { email_trade_province: { email: input.email, trade: input.trade, province: input.province.toUpperCase() } },
+      update: {},
+      create: { email: input.email, trade: input.trade, province: input.province.toUpperCase() },
+    });
+    return { ok: true };
+  }
+
+  /** Dopo il giro orario: avvisa chi aspettava quel mestiere in quella provincia, poi cancella l'email. */
+  private async sendAlerts(pages: Set<string>): Promise<void> {
+    for (const page of pages) {
+      const [trade, province] = page.split("|");
+      if (!isBoardTrade(trade) || !province) continue;
+      const alerts = await this.prisma.boardAlert.findMany({ where: { trade, province }, take: 500, select: { id: true, email: true } });
+      if (alerts.length === 0) continue;
+      const mail = boardAlertEmail({ tradeLabel: boardTradeLabel(trade), provinceName: PROVINCE_NAMES[province] ?? province, path: `/lavora-con-noi/${trade}/${provinceSlug(province)}` });
+      for (const alert of alerts) {
+        await this.email.send({ to: alert.email, ...mail });
+        await this.prisma.boardAlert.delete({ where: { id: alert.id } }).catch(() => undefined);
+      }
+    }
   }
 }

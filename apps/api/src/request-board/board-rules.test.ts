@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BOARD_MAX_QUOTES, provinceFromSlug, provinceSlug } from "@professionisti/shared";
-import { boardCardOf, boardPlaceOf, boardTextIsClean, boardTradeOf, sortBoardCards, type BoardRow } from "./board-rules";
+import { boardCardOf, boardPlaceOf, boardReplyProblem, boardTextIsClean, boardTradeOf, sortBoardCards, type BoardRow } from "./board-rules";
 
 const row = (over: Partial<BoardRow> = {}): BoardRow => ({
   id: "r1",
@@ -70,5 +70,46 @@ describe("bacheca: schede", () => {
     const b = boardCardOf(row({ id: "b", quoteCount: 0, boardAt: new Date("2026-11-09T00:00:00Z") }))!;
     const c = boardCardOf(row({ id: "c", quoteCount: 0, boardAt: new Date("2026-11-11T00:00:00Z") }))!;
     expect(sortBoardCards([a, b, c]).map((card) => card.id)).toEqual(["c", "b", "a"]);
+  });
+});
+
+describe("bacheca: chi può rispondere", () => {
+  // Professionista a Padova.
+  const profile = {
+    categorySlugs: ["idraulico"],
+    services: [{ name: "Sostituzione rubinetti", categorySlug: "idraulico" }],
+    certifications: null,
+    bio: null,
+    latitude: 45.4064,
+    longitude: 11.8768,
+    remoteAvailable: false,
+  };
+  const request = { boardTrade: "idraulico", waitingTrade: null, waitingTradeKey: null, serviceMode: "HOME", city: "Venezia" };
+
+  it("stesso mestiere entro 100 km: sì", () => {
+    expect(boardReplyProblem({ request, profile })).toBeNull();
+  });
+
+  it("mestiere diverso: no, ma va bene una prestazione di quel mestiere", () => {
+    expect(boardReplyProblem({ request: { ...request, boardTrade: "elettricista" }, profile })).toBe("other-trade");
+    const withService = { ...profile, services: [...profile.services, { name: "Prese e interruttori", categorySlug: "elettricista" }] };
+    expect(boardReplyProblem({ request: { ...request, boardTrade: "elettricista" }, profile: withService })).toBeNull();
+  });
+
+  it("oltre 100 km: no", () => {
+    expect(boardReplyProblem({ request: { ...request, city: "Roma" }, profile })).toBe("too-far");
+  });
+
+  it("lavoro online: solo a chi lo offre, a qualunque distanza", () => {
+    const online = { ...request, serviceMode: "ONLINE", city: "Roma" };
+    expect(boardReplyProblem({ request: online, profile })).toBe("no-online");
+    expect(boardReplyProblem({ request: online, profile: { ...profile, remoteAvailable: true } })).toBeNull();
+  });
+
+  it("lavoro che il sito non ha: servono le parole del lavoro nel profilo", () => {
+    const antenna = { ...request, boardTrade: "antennista", waitingTrade: "Antennista", waitingTradeKey: "antennista" };
+    expect(boardReplyProblem({ request: antenna, profile })).toBe("other-trade");
+    const antennista = { ...profile, categorySlugs: ["elettricista"], services: [{ name: "Installazione antenna TV", categorySlug: "elettricista" }] };
+    expect(boardReplyProblem({ request: antenna, profile: antennista })).toBeNull();
   });
 });

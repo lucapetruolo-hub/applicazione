@@ -34,7 +34,9 @@ import {
   cancellationTermsText,
   depositKeptOnLateCancel,
   toJobPaymentSummary,
+  BOARD_MAX_QUOTES,
 } from "@professionisti/shared";
+import { ACTIVE_QUOTE_STATUSES } from "../request-board/board-rules";
 import { PRISMA } from "../prisma/prisma.module";
 import { formatSlotForTimeline } from "../common/format-date.util";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -178,6 +180,18 @@ export class QuotesService {
     // si risponde sempre (docs/changelog/2026-11-08-canale-del-professionista.md).
     if ((!existingQuote || isResend) && professionalProfile.jobLimitReachedAt && !ownClientRequest(lead.guidedRequest, professionalProfile.id)) {
       throw new ForbiddenException(JOB_LIMIT_REACHED_MESSAGE);
+    }
+
+    // Richiesta presa da "Lavori cercati": al massimo 5 preventivi in tutto
+    // (decisione di Luca, docs/changelog/2026-11-17-bacheca-rispondi.md). Un
+    // preventivo già mandato resta modificabile.
+    if ((!existingQuote || isResend) && lead.fromBoardAt) {
+      const activeQuotes = await this.prisma.quote.count({
+        where: { guidedRequestId: input.requestId, professionalProfileId: { not: professionalProfile.id }, status: { in: [...ACTIVE_QUOTE_STATUSES] } },
+      });
+      if (activeQuotes >= BOARD_MAX_QUOTES) {
+        throw new ForbiddenException(`Il cliente ha già ricevuto ${BOARD_MAX_QUOTES} preventivi per questa richiesta: non se ne possono mandare altri.`);
+      }
     }
 
     // Modi di pagamento offerti al cliente (docs/CHANGELOG.md §237). Senza
