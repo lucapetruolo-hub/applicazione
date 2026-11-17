@@ -371,9 +371,10 @@ export function CercaContent({
                   title: `Può farlo anche ${CATEGORY_WHO[nextTrade.slug]}`,
                   subtitle: "L'altro mestiere proposto per questo lavoro.",
                   professionals: nextTrade.professionals,
-                  ...(nextTrade.total > nextTrade.professionals.length
-                    ? { moreHref: problemResultsHref(problem.description, city, { mestiere: nextTrade.slug, ...(problem.photo ? { foto: problem.photo } : {}) }), moreLabel: "Vedi tutti" }
-                    : {}),
+                  // Sempre il link all'elenco intero di quel mestiere, dove c'è "Scegli":
+                  // una richiesta va a un mestiere solo.
+                  moreHref: problemResultsHref(problem.description, city, { mestiere: nextTrade.slug, ...(problem.photo ? { foto: problem.photo } : {}) }),
+                  moreLabel: "Vedi tutti e scegli",
                 }
               : undefined
           }
