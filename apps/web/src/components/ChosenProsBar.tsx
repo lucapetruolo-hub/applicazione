@@ -22,6 +22,12 @@ export type ChosenPro = {
   city?: string;
   rating?: number | null;
   reviewCount?: number;
+  /**
+   * Mestiere della richiesta per cui è stato scelto, se non è quello della
+   * ricerca: scelto sotto "Può farlo anche…" (richiesta a due mestieri,
+   * docs/changelog/2026-11-17-scelti-due-mestieri.md).
+   */
+  requestCategory?: ProfessionalCategorySlug;
 };
 
 /** Indizi presi dal problema scritto (`timingFromProblem`, `comuneFromProblem`): il modulo li precompila, il cliente li può cambiare. */
@@ -47,6 +53,9 @@ export function chosenRequestHref(
   hints?: ProblemRequestHints,
 ): string {
   const params = new URLSearchParams({ categoria: category });
+  // Scelti anche dell'altro mestiere proposto: una richiesta per mestiere, ognuna ai suoi scelti.
+  const others = [...new Set(chosen.map((pro) => pro.requestCategory).filter((slug): slug is ProfessionalCategorySlug => Boolean(slug) && slug !== category))];
+  if (others.length > 0) params.set("altreCategorie", others.join(","));
   // Dalla ricerca per mestiere non c'è descrizione: si scrive nel modulo.
   if (description) params.set("descrizione", description);
   if (city) params.set("citta", city);

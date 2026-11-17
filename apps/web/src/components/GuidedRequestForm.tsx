@@ -417,9 +417,16 @@ export function GuidedRequestForm({
   // Più categorie insieme in una richiesta generale (docs/CHANGELOG.md
   // §259): all'invio diventa una richiesta per categoria. La prima scelta
   // guida l'esempio della descrizione.
-  const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>(
-    initialCategory && isProfessionalCategorySlug(initialCategory) ? [initialCategory] : [],
-  );
+  // Con i scelti di due mestieri ("Può farlo anche…" nei risultati) arrivano
+  // anche le altre categorie: una richiesta per mestiere, ognuna ai suoi
+  // scelti (docs/changelog/2026-11-17-scelti-due-mestieri.md).
+  const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>(() => {
+    if (!initialCategory || !isProfessionalCategorySlug(initialCategory)) return [];
+    const others = chosenMode
+      ? (searchParams.get("altreCategorie") ?? "").split(",").filter((slug): slug is ProfessionalCategorySlug => isProfessionalCategorySlug(slug) && slug !== initialCategory)
+      : [];
+    return [initialCategory, ...new Set(others)].slice(0, MAX_REQUEST_CATEGORIES);
+  });
   const categorySlug: ProfessionalCategorySlug | "" = categorySlugs[0] ?? "";
   const selectedCategories = categorySlugs
     .map((slug) => PROFESSIONAL_CATEGORIES.find((c) => c.slug === slug))
@@ -1247,10 +1254,16 @@ export function GuidedRequestForm({
           uploadedUrls.push(photo.url);
         }
       }
+      // Scelti di due mestieri: se con la X è stato tolto l'ultimo di un
+      // mestiere, quel mestiere non parte più
+      // (docs/changelog/2026-11-17-scelti-due-mestieri.md).
+      const doneByChosen = (slug: ProfessionalCategorySlug) =>
+        chosenPros.some((pro) => pro.categorySlug === slug || pro.categories?.some((category) => category.slug === slug));
+      const requestSlugs = chosenMode && chosenPros.length > 0 && categorySlugs.some(doneByChosen) ? categorySlugs.filter(doneByChosen) : categorySlugs;
       const response = await apiClient.createGuidedRequest(activeToken, {
         // In attesa di un mestiere: categoria di comodo, il server decide a chi arriva dal mestiere.
-        categorySlug: waitingTrade ? WAITING_REQUEST_HOST_CATEGORY : (categorySlug as ProfessionalCategorySlug),
-        extraCategorySlugs: professionalProfileId || chosenMode || waitingTrade ? [] : categorySlugs.slice(1),
+        categorySlug: waitingTrade ? WAITING_REQUEST_HOST_CATEGORY : ((requestSlugs[0] ?? categorySlug) as ProfessionalCategorySlug),
+        extraCategorySlugs: professionalProfileId || waitingTrade ? [] : requestSlugs.slice(1),
         ...(waitingTrade
           ? { waitingTrade, waitingTradeKey: isWaitingTradeKey(searchParams.get("attesaChiave")) ? (searchParams.get("attesaChiave") ?? undefined) : undefined }
           : {}),

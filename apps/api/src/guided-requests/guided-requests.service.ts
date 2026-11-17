@@ -170,9 +170,13 @@ export class GuidedRequestsService {
     if (categories.length !== slugs.length) {
       throw new BadRequestException("Categoria non valida.");
     }
+    // Scelti di due mestieri ("Può farlo anche…" nei risultati): ogni
+    // richiesta va solo ai suoi scelti, anche dove le richieste generali sono
+    // chiuse (docs/changelog/2026-11-17-scelti-due-mestieri.md).
+    const chosenBySlug = rest.professionalProfileIds?.length ? await this.chosenByCategory(rest.professionalProfileIds, categories, slugs) : null;
     for (const slug of slugs) {
       const category = categories.find((c) => c.slug === slug)!;
-      await this.assertGeneralRequestsOpen(category, input.city ?? null, true);
+      if (!chosenBySlug) await this.assertGeneralRequestsOpen(category, input.city ?? null, true);
       await this.assertNotDuplicate(clientId, category.id, input, null);
     }
     await this.assertAddressInCity(input);
@@ -183,7 +187,12 @@ export class GuidedRequestsService {
       const suggestedCategorySlug = slug === slugs[0] ? rest.suggestedCategorySlug : undefined;
       const created = await this.create(
         clientId,
-        { ...rest, categorySlug: slug as GuidedRequestInput["categorySlug"], suggestedCategorySlug },
+        {
+          ...rest,
+          categorySlug: slug as GuidedRequestInput["categorySlug"],
+          suggestedCategorySlug,
+          ...(chosenBySlug ? { professionalProfileIds: chosenBySlug.get(slug)! } : {}),
+        },
         { checksDone: true, submissionGroupId },
       );
       requests.push({ ...created, categorySlug: slug });
@@ -196,6 +205,7 @@ export class GuidedRequestsService {
       isUrgent: input.isUrgent,
       sentTo: requests.reduce((sum, r) => sum + r.matchedProfessionals, 0),
       direct: false,
+      ...(chosenBySlug ? { chosen: rest.professionalProfileIds!.length } : {}),
       description: input.description,
       summary: requestSummary(input),
     });
@@ -204,6 +214,35 @@ export class GuidedRequestsService {
       matchedProfessionals: requests.reduce((sum, r) => sum + r.matchedProfessionals, 0),
       requests,
     };
+  }
+
+  /**
+   * I professionisti scelti divisi per mestiere: ognuno va nella richiesta del
+   * primo mestiere che fa, tra quelli inviati. Ogni mestiere deve avere
+   * almeno un scelto, e nessun scelto può restare fuori
+   * (docs/changelog/2026-11-17-scelti-due-mestieri.md). Gli altri controlli
+   * (profilo sospeso, in pausa…) li fa `create` per ogni richiesta.
+   */
+  private async chosenByCategory(ids: string[], categories: { id: string; slug: string }[], slugs: string[]): Promise<Map<string, string[]>> {
+    const profiles = await this.prisma.professionalProfile.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, businessName: true, categoryId: true, extraCategories: { select: { id: true } } },
+    });
+    const bySlug = new Map<string, string[]>(slugs.map((slug) => [slug, []]));
+    for (const id of ids) {
+      const profile = profiles.find((candidate) => candidate.id === id);
+      if (!profile) throw new NotFoundException("Uno dei professionisti scelti non è più sul sito: torna ai risultati e scegline un altro.");
+      const slug = slugs.find((candidate) => {
+        const categoryId = categories.find((category) => category.slug === candidate)?.id;
+        return profile.categoryId === categoryId || profile.extraCategories.some((extra) => extra.id === categoryId);
+      });
+      if (!slug) throw new BadRequestException(`${profile.businessName} non fa questo lavoro: toglilo dalla scelta.`);
+      bySlug.get(slug)!.push(id);
+    }
+    if ([...bySlug.values()].some((list) => list.length === 0)) {
+      throw new BadRequestException("Scegli almeno un professionista per ogni mestiere della richiesta.");
+    }
+    return bySlug;
   }
 
   /**
@@ -617,7 +656,10 @@ export class GuidedRequestsService {
       const receivedMessage = input.professionalProfileId
         ? "Il cliente ha inviato una richiesta di preventivo direttamente a te."
         : chosenProfiles.length > 0
-          ? `Il cliente ha scelto te e ${chosenProfiles.length === 2 ? "un altro professionista" : `altri ${chosenProfiles.length - 1} professionisti`} per questa richiesta di preventivo.`
+          ? chosenProfiles.length === 1
+            ? // Scelti di due mestieri: per questo mestiere solo lui (docs/changelog/2026-11-17-scelti-due-mestieri.md).
+              "Il cliente ha scelto te per questa richiesta di preventivo."
+            : `Il cliente ha scelto te e ${chosenProfiles.length === 2 ? "un altro professionista" : `altri ${chosenProfiles.length - 1} professionisti`} per questa richiesta di preventivo.`
           : "Il cliente ha inviato una richiesta di preventivo, ricevuta anche da te.";
       await Promise.all(
         leadRecipients.map((profile) => this.timelineService.log(guidedRequest.id, profile.id, "CLIENT", receivedMessage)),
