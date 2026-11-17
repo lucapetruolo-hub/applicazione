@@ -227,6 +227,10 @@ services:
         sync: false
       - key: PROBLEM_PHOTO_IP_DAILY_LIMIT
         sync: false
+      # Facoltativa: codici "Scatta dal telefono" al giorno per indirizzo (30),
+      # docs/changelog/2026-11-16-scatta-dal-telefono.md.
+      - key: PHOTO_HANDOFF_IP_DAILY_LIMIT
+        sync: false
       - key: OPENROUTER_MODEL
         sync: false
       # WhatsApp: versione delle API di Meta e prezzi per il registro dei costi

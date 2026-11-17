@@ -75,6 +75,13 @@ const publicRoutes = [
   // "Segnala un errore" sotto la proposta dell'IA: pubblica come la ricerca, una volta per ricerca
   // e senza dire se l'id esiste (docs/changelog/2026-11-13-segnala-risposta-ia.md).
   "POST /problem-match/report",
+  // "Scatta dal telefono" (docs/changelog/2026-11-16-scatta-dal-telefono.md): si usa prima di
+  // accedere. Il codice del QR manda una sola foto; per prenderla serve la chiave del computer.
+  "POST /photo-handoff",
+  "POST /photo-handoff/:code/cancel",
+  "POST /photo-handoff/:code/open",
+  "POST /photo-handoff/:code/photo",
+  "POST /photo-handoff/:code/take",
   // "Lavori più cercati" della home (docs/changelog/2026-11-07-lavori-piu-cercati-home.md).
   "GET /popular-jobs",
   // Prestazioni standard aggiunte dall'admin (§388), mostrate in iscrizione e nel profilo.
