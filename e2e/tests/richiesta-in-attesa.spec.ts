@@ -37,6 +37,25 @@ test.beforeAll(async () => {
   ).id;
 });
 
+// L'admin ha sempre una richiesta in attesa da mostrare, anche quando la CI
+// divide le prove e quella del modulo gira su un'altra macchina.
+test.beforeAll(async () => {
+  const host = await prisma.category.findFirstOrThrow({ where: { slug: "tuttofare" } });
+  await prisma.guidedRequest.create({
+    data: {
+      clientId: ids.client,
+      categoryId: host.id,
+      description: `Parabola storta dopo il vento ${stamp}`,
+      city: "Bari",
+      serviceMode: "ONLINE",
+      timing: "WEEK",
+      waitingTrade: "Antennista",
+      waitingTradeKey: "antennista",
+      expiresAt: new Date(Date.now() + 60 * 24 * 3600_000),
+    },
+  });
+});
+
 test.afterAll(async () => {
   await prisma.guidedRequest.deleteMany({ where: { clientId: ids.client } });
   await prisma.$disconnect();
@@ -118,7 +137,7 @@ for (const [name, device] of [
   test(`admin: chi cercare per mestiere e zona (${name})`, async ({ browser }) => {
     const page = await adminPage(browser, device);
     await page.goto("/admin/richieste-da-seguire");
-    await expect(page.getByText("Chi cercare")).toBeVisible();
+    await expect(page.getByText("Chi cercare", { exact: true })).toBeVisible();
     await expect(page.getByText("Bari e provincia").first()).toBeVisible();
     await expect(page.getByRole("button", { name: /Copia annuncio/ }).first()).toBeVisible();
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/4-admin-${name}.png`, fullPage: true });
