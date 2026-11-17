@@ -391,8 +391,64 @@ function ChoiceLink({ href, label }: { href: string; label: string }) {
   );
 }
 
-export function SafetyNotice({ safety }: { safety: NonNullable<ProblemMatchResult["safety"]> }) {
+export function SafetyNotice({ safety, compact = false }: { safety: NonNullable<ProblemMatchResult["safety"]>; compact?: boolean }) {
   const text = PROBLEM_SAFETY_TEXTS[safety];
+  // Avviso piccolo nel modulo di richiesta (richiesta di Luca del 17/11/2026,
+  // docs/changelog/2026-11-17-avviso-sicurezza-richiesta-diretta.md): il
+  // pericolo e cosa fare subito in due righe, i passi completi a un tocco.
+  if (compact) {
+    return (
+      <div
+        role="note"
+        aria-label="Prima di tutto la sicurezza"
+        style={{
+          border: `1px solid ${brand.urgenza}`,
+          borderRadius: 10,
+          background: brand.urgenzaVelo,
+          padding: "10px 12px",
+          display: "flex",
+          gap: 8,
+          alignItems: "flex-start",
+        }}
+      >
+        <span style={{ flexShrink: 0, marginTop: 2, display: "inline-flex" }}>
+          <Icon name="triangle-alert" size={16} color={brand.urgenza} />
+        </span>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <Text fontSize={14} color={brand.grafite} lineHeight="20px">
+            <Text fontSize={14} fontWeight="700" color={brand.grafite}>
+              {text.title}
+            </Text>{" "}
+            {text.short}
+          </Text>
+          <details>
+            <summary
+              style={{
+                cursor: "pointer",
+                color: brand.cianografiaScuro,
+                fontWeight: 600,
+                fontSize: 14,
+                minHeight: 32,
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              Tutti i passi
+            </summary>
+            <ul style={{ margin: "2px 0 0", paddingLeft: 18, display: "flex", flexDirection: "column", gap: 2 }}>
+              {text.steps.map((step) => (
+                <li key={step}>
+                  <Text fontSize={14} color={brand.grafite}>
+                    {step}
+                  </Text>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </div>
+      </div>
+    );
+  }
   return (
     <YStack
       gap="2"

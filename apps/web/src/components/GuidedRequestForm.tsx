@@ -570,7 +570,12 @@ export function GuidedRequestForm({
   const suggestionsOn = !professionalProfileId && !chosenMode;
   const typedDescription = useDeferredValue(description.trim());
   const [checkedDescription, setCheckedDescription] = useState<{ text: string; result: ProblemMatchResult } | null>(null);
-  const localMatch = !suggestionsOn || typedDescription.length < 4 ? null : matchProblem(typedDescription);
+  // Il dizionario gira sempre (gratis, nel browser) per l'avviso di
+  // sicurezza; i mestieri suggeriti e l'IA solo nella richiesta generale:
+  // con professionisti scelti il mestiere è già il loro
+  // (docs/changelog/2026-11-17-avviso-sicurezza-richiesta-diretta.md).
+  const dictionaryMatch = typedDescription.length < 4 ? null : matchProblem(typedDescription);
+  const localMatch = suggestionsOn ? dictionaryMatch : null;
   const suggestion: ProblemMatchResult | null = !localMatch
     ? null
     : checkedDescription?.text === typedDescription
@@ -583,6 +588,7 @@ export function GuidedRequestForm({
   // la categoria già scelta, da controllare
   // (docs/changelog/2026-11-16-scelta-categoria-migliorie.md).
   const suggestionSure = suggestion !== null && (suggestion.source !== "dizionario" || localMatch?.confident === true);
+  const safety = suggestion?.safety ?? dictionaryMatch?.safety ?? null;
   const suggestedSlugs = suggestion?.categories ?? [];
   const categoryLabelOf = (slug: ProfessionalCategorySlug) => PROFESSIONAL_CATEGORIES.find((c) => c.slug === slug)?.label ?? slug;
   const autoSlug = suggestedSlugs[0] ?? null;
@@ -1616,7 +1622,7 @@ export function GuidedRequestForm({
             </div>
           ) : null}
         </YStack>
-        {suggestion?.safety ? <SafetyNotice safety={suggestion.safety} /> : null}
+        {safety ? <SafetyNotice safety={safety} compact /> : null}
         {openQuestion ? (
           <div className="guided-question" role="group" aria-label={openQuestion.text}>
             <Text fontWeight="700" fontSize={16} color={brand.grafite}>
