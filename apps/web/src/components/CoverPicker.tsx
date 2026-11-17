@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
+import { useState } from "react";
 import { Button, brand } from "@professionisti/ui";
 import { coverPresetsFor, profileCover } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { localPreviewUrl } from "@/lib/media";
 import { ImageCropModal } from "@/components/ImageCropModal";
+import { PhotoPicker } from "@/components/PhotoPicker";
 import { UploadingDots } from "@/components/UploadingDots";
 import styles from "./CoverPicker.module.css";
 
@@ -79,7 +80,6 @@ export function CoverPicker({
   value: CoverValue;
   onChange: (value: CoverValue) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [showPresets, setShowPresets] = useState(false);
   const [busy, setBusy] = useState<"upload" | "preset" | null>(null);
@@ -90,10 +90,7 @@ export function CoverPicker({
   const src = profileCover(value)?.src ?? null;
   const presets = coverPresetsFor(categorySlugs);
 
-  function handleFile(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  function handleFile(file: File) {
     setError(null);
     setCropSrc(localPreviewUrl(file));
   }
@@ -167,9 +164,16 @@ export function CoverPicker({
       </div>
 
       <div className={styles.actions}>
-        <Button variant="secondary" size="3" height={40} disabled={busy !== null} opacity={busy ? 0.6 : 1} onPress={() => inputRef.current?.click()}>
-          {value.coverImageUrl ? "Cambia foto" : "Carica una foto"}
-        </Button>
+        <PhotoPicker
+          accept="image/jpeg,image/png,image/webp"
+          disabled={busy !== null}
+          onFile={handleFile}
+          trigger={(open) => (
+            <Button variant="secondary" size="3" height={40} disabled={busy !== null} opacity={busy ? 0.6 : 1} onPress={open}>
+              {value.coverImageUrl ? "Cambia foto" : "Carica una foto"}
+            </Button>
+          )}
+        />
         <Button
           variant="secondary"
           size="3"
@@ -188,7 +192,6 @@ export function CoverPicker({
           </button>
         ) : null}
       </div>
-      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFile} hidden />
 
       <p className={styles.note}>Niente telefono, email o siti nell&apos;immagine: i contatti si scambiano dopo che il cliente accetta il preventivo.</p>
       {error ? (
