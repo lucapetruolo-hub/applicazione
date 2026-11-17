@@ -37,7 +37,7 @@ const BUTTON_BAR_AFTER_MS = 150;
  * e rossi, verde (`tone="green"`) sui pulsanti bianchi. La frase è subito
  * per il lettore di schermo.
  */
-export function ButtonWaitBar({ label, tone = "light" }: { label: string; tone?: "light" | "green" }) {
+export function ButtonWaitBar({ label, tone = "light" }: { label: string; tone?: "light" | "green" | "velo" }) {
   const [shown, setShown] = useState(false);
   useEffect(() => {
     const timer = window.setTimeout(() => setShown(true), BUTTON_BAR_AFTER_MS);
@@ -45,7 +45,7 @@ export function ButtonWaitBar({ label, tone = "light" }: { label: string; tone?:
   }, []);
   return (
     <span className={`button-wait-overlay${shown ? " is-shown" : ""}`}>
-      <span className={tone === "green" ? "flow-bar" : "flow-bar flow-bar--light"} aria-hidden="true" />
+      <span className={tone === "green" ? "flow-bar" : tone === "velo" ? "flow-bar flow-bar--velo" : "flow-bar flow-bar--light"} aria-hidden="true" />
       <span className="sr-only" role="status">
         {label}
       </span>

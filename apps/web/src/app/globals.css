@@ -835,6 +835,14 @@ body:has(.chosen-bar) {
     rgba(255, 255, 255, 0.45)
   );
 }
+/* Dentro "Cerca" in home, quando lavora l'intelligenza artificiale: i colori
+   del velo e della barra in cima, senza il verde che sul pulsante verde non si
+   vedrebbe, un po' più chiari (scelta di Luca, giro di prova del 17/11,
+   docs/changelog/2026-11-17-ricerca-home-in-attesa.md). */
+.flow-bar--velo {
+  width: 120px;
+  background-image: linear-gradient(90deg, #8fd0e6, #b9aaf0, #f3a6bb, #f7c08f, #f3a6bb, #b9aaf0, #8fd0e6);
+}
 /* Barra dentro un pulsante (ButtonWaitBar): sopra la scritta, che resta al
    suo posto e tiene la larghezza del pulsante; dopo 150 ms (.is-shown) la
    scritta si nasconde e compare la barra. */
@@ -856,7 +864,7 @@ body:has(.chosen-bar) {
 /* Nei pulsanti bianchi la barra resta verde come prima (scelta di Luca,
    docs/changelog/2026-11-13-barra-colori-velo.md): i colori del velo solo
    nella barra in cima e sulla mappa. */
-.button-wait-overlay .flow-bar:not(.flow-bar--light) {
+.button-wait-overlay .flow-bar:not(.flow-bar--light):not(.flow-bar--velo) {
   background-image: linear-gradient(90deg, #1e6b6e, #247c7c, #8ac6c8, #247c7c, #1e6b6e);
 }
 .button-wait-overlay.is-shown .flow-bar {
@@ -8034,6 +8042,13 @@ textarea[id^="contatti-"][aria-invalid="true"] {
 .hero-example:focus-visible {
   outline: 3px solid #247c7c;
   outline-offset: 2px;
+}
+/* Ricerca già partita: gli esempi restano al loro posto ma spenti, un tocco
+   non cambia il testo scritto (docs/changelog/2026-11-17-ricerca-home-in-attesa.md). */
+.hero-example:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
 }
 .hero-examples-label,
 .hero-example {

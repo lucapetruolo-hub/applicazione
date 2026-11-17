@@ -109,6 +109,8 @@ export function useAutocomplete<T>({
   listInFlowOnPhone = false,
 }: AutocompleteProps<T>) {
   const [isFocused, setIsFocused] = useState(false);
+  // Letto dagli ascoltatori del documento qui sotto, registrati una volta sola.
+  const listInFlowRef = useRef(false);
   // Opzione evidenziata con le frecce (-1 nessuna). 0 è la riga in cima se c'è.
   const [highlighted, setHighlighted] = useState(-1);
   const listboxId = `${useId().replace(/:/g, "")}-elenco`;
@@ -137,17 +139,28 @@ export function useAutocomplete<T>({
     };
     const doc = (globalThis as { document?: DocLike }).document;
     if (!doc) return;
-    function handlePointerDown(e: { target: unknown }) {
+    function closeIfOutside(e: { target: unknown }) {
       const node = containerRef.current as { contains?: (t: unknown) => boolean } | null;
       if (node && typeof node.contains === "function" && !node.contains(e.target)) {
         setIsFocused(false);
       }
     }
+    // Con l'elenco dentro la pagina (telefono) chiuderlo al primo contatto del
+    // dito spostava tutto in su prima del "click": il tocco su "Cerca" finiva
+    // sugli esempi "Prova" e cambiava il testo (giro di prova del 17/11,
+    // docs/changelog/2026-11-17-ricerca-home-in-attesa.md). Lì si chiude al
+    // "click", quando il tocco ha già raggiunto il pulsante giusto.
+    const phoneWidth = (globalThis as { matchMedia?: (query: string) => { matches: boolean } }).matchMedia?.("(max-width: 800px)");
+    function handlePointerDown(e: { target: unknown }) {
+      if (!(listInFlowRef.current && phoneWidth?.matches)) closeIfOutside(e);
+    }
     doc.addEventListener("mousedown", handlePointerDown);
     doc.addEventListener("touchstart", handlePointerDown);
+    doc.addEventListener("click", closeIfOutside);
     return () => {
       doc.removeEventListener("mousedown", handlePointerDown);
       doc.removeEventListener("touchstart", handlePointerDown);
+      doc.removeEventListener("click", closeIfOutside);
     };
   }, []);
 
@@ -172,6 +185,9 @@ export function useAutocomplete<T>({
 
   const showDropdown = isFocused && optionCount > 0;
   const listInFlow = listInFlowOnPhone && trimmedQuery.length > 0;
+  useEffect(() => {
+    listInFlowRef.current = listInFlow;
+  }, [listInFlow]);
   const activeIndex = showDropdown && highlighted >= 0 && highlighted < optionCount ? highlighted : -1;
 
   function choose(index: number) {
