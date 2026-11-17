@@ -41,6 +41,7 @@ import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { EngagementRadiusSection } from "@/components/EngagementRadiusSection";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
+import { PhotoPicker } from "@/components/PhotoPicker";
 import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 import { SaveBar } from "@/components/SaveBar";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
@@ -339,7 +340,6 @@ export default function DashboardProfiloPage() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingPortfolioPhoto, setIsUploadingPortfolioPhoto] = useState(false);
   const [portfolioPhotoError, setPortfolioPhotoError] = useState<string | null>(null);
-  const portfolioPhotoInputRef = useRef<HTMLInputElement>(null);
   // Posizione + raggi di ingaggio: sezione a parte (EngagementRadiusSection,
   // proprio bottone "Modifica"/"Salva"), non fa parte del form principale
   // sopra. Serve una posizione reale già geocodificata (latitude/longitude
@@ -889,11 +889,9 @@ export default function DashboardProfiloPage() {
     }
   }
 
-  async function handlePortfolioPhotoChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
+  // Dal file scelto, dalla webcam o dal telefono col codice QR (PhotoPicker,
+  // docs/changelog/2026-11-17-piu-foto-dal-telefono.md).
+  async function addPortfolioFile(file: File) {
     setPortfolioPhotoError(null);
     setIsUploadingPortfolioPhoto(true);
     try {
@@ -1867,43 +1865,28 @@ export default function DashboardProfiloPage() {
               </YStack>
             ))}
             {portfolioUrls.length < MAX_PORTFOLIO_PHOTOS ? (
-              <YStack
-                    width={88}
-                    height={88}
-                    borderRadius="3"
-                    borderWidth={1}
-                    borderColor={brand.filetto}
-                    borderStyle="dashed"
-                    alignItems="center"
-                    justifyContent="center"
-                    gap="1"
-                    cursor="pointer"
-                    opacity={isUploadingPortfolioPhoto ? 0.6 : 1}
-                    onPress={() => !isUploadingPortfolioPhoto && portfolioPhotoInputRef.current?.click()}
-                    role="button"
-                    aria-label="Aggiungi foto"
-                  >
+              // Come le foto della richiesta: dal telefono Scatta / Video / Galleria, dal
+              // computer webcam, "Scatta dal telefono" (più foto di fila) o file.
+              <PhotoPicker
+                accept="image/*,video/*"
+                allowVideo
+                maxPhotos={MAX_PORTFOLIO_PHOTOS - portfolioUrls.length}
+                disabled={isUploadingPortfolioPhoto}
+                onFile={(file) => void addPortfolioFile(file)}
+                className="portfolio-add"
+                label="Aggiungi una foto o un video del portfolio"
+              >
                 {isUploadingPortfolioPhoto ? (
                   <UploadingDots dotSize={7} />
                 ) : (
-                  <Text fontSize="7" color={brand.grafite70}>
+                  <span className="portfolio-add-plus" aria-hidden="true">
                     +
-                  </Text>
+                  </span>
                 )}
-                <Text fontSize={13} color={brand.grafite70}>
-                  {isUploadingPortfolioPhoto ? "Caricamento" : "Aggiungi"}
-                </Text>
-              </YStack>
+                <span aria-hidden="true">{isUploadingPortfolioPhoto ? "Caricamento" : "Aggiungi"}</span>
+              </PhotoPicker>
             ) : null}
           </YStack>
-          <input
-            ref={portfolioPhotoInputRef}
-            type="file"
-            accept="image/*,video/*"
-            onChange={handlePortfolioPhotoChange}
-            disabled={isUploadingPortfolioPhoto}
-            style={{ display: "none" }}
-          />
           {portfolioPhotoError ? (
             <Text color={brand.urgenza} fontSize={13}>
               {portfolioPhotoError}

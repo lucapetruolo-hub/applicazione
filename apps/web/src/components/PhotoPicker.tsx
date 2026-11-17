@@ -23,6 +23,7 @@ export function PhotoPicker({
   accept,
   allowVideo = false,
   disabled = false,
+  maxPhotos = 1,
   onFile,
   className,
   label,
@@ -32,6 +33,12 @@ export function PhotoPicker({
   accept: string;
   allowVideo?: boolean;
   disabled?: boolean;
+  /**
+   * Quante foto può mandare il telefono con "Scatta dal telefono" (posti ancora
+   * liberi; docs/changelog/2026-11-17-piu-foto-dal-telefono.md). Di serie una.
+   */
+  maxPhotos?: number;
+  /** Ogni foto scelta; con "Scatta dal telefono" una volta per foto arrivata. */
   onFile: (file: File) => void;
   /** Classe e nome accessibile del pulsante che apre la scelta. */
   className: string;
@@ -109,10 +116,9 @@ export function PhotoPicker({
               ) : sheet === "qr" ? (
                 <div className="photo-sheet photo-sheet-webcam" role="dialog" aria-modal="true" aria-label="Scatta dal telefono">
                   <PhoneHandoff
-                    onPhoto={(file) => {
-                      close();
-                      onFile(file);
-                    }}
+                    maxPhotos={maxPhotos}
+                    onPhoto={onFile}
+                    onDone={close}
                     onChooseFile={() => pick(galleryRef.current)}
                     onClose={close}
                   />

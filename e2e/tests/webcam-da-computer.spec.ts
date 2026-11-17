@@ -98,14 +98,19 @@ test("il telefono manda la foto e arriva da sola sul computer", async ({ browser
   await tel.goto(new URL(new URL(url).pathname, page.url()).toString());
   await expect(tel.getByRole("button", { name: "Scatta una foto" })).toBeEnabled({ timeout: 20_000 });
   await expect(page.getByText("Telefono collegato")).toBeVisible({ timeout: 10_000 });
-  await tel.locator("input[capture]").setInputFiles({ name: "guasto.png", mimeType: "image/png", buffer: PNG });
-  await tel.getByRole("button", { name: "Manda al computer" }).click();
-  await expect(tel.getByText("Fatto, la foto è sul computer")).toBeVisible();
+  // Nella richiesta si possono mandare più foto con lo stesso codice
+  // (docs/changelog/2026-11-17-piu-foto-dal-telefono.md): due, una dopo l'altra.
+  for (const n of [1, 2]) {
+    await tel.locator("input[capture]").setInputFiles({ name: `guasto-${n}.png`, mimeType: "image/png", buffer: PNG });
+    await tel.getByRole("button", { name: "Manda al computer" }).click();
+    await expect(tel.getByText(n === 1 ? "1 foto è arrivata sul computer" : `${n} foto sono arrivate sul computer`)).toBeVisible();
+    await expect(page.getByText(n === 1 ? "1 foto arrivata" : `${n} foto arrivate`)).toBeVisible({ timeout: 10_000 });
+  }
+  await page.getByRole("button", { name: "Fatto", exact: true }).click();
+  await expect(page.locator(".photo-sheet")).toHaveCount(0);
+  await expect(page.locator(".guided-photo img, .guided-photo video")).toHaveCount(2);
 
-  await expect(page.locator(".photo-sheet")).toHaveCount(0, { timeout: 10_000 });
-  await expect(page.getByRole("button", { name: "Aggiungi una foto o un video" })).toBeVisible();
-
-  // Lo stesso link non vale una seconda volta.
+  // Chiusa la finestra sul computer, lo stesso link non vale più.
   await tel.reload();
   await expect(tel.getByRole("heading", { name: "Questo codice è scaduto" })).toBeVisible();
   await phone.close();
