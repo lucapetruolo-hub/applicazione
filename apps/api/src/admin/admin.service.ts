@@ -1045,8 +1045,12 @@ export class AdminService {
           where: { verificationRequestedAt: { not: null }, verified: false, deletedAt: null, invitePendingAt: null },
         }),
         this.prisma.generalRequestBlock.count({ where: { reopenedAt: null } }),
-        // "Ce ne occupiamo noi" da seguire (docs/CHANGELOG.md §392).
-        this.prisma.problemTakeover.count({ where: { status: "OPEN" } }),
+        // Richieste di prima da seguire (docs/CHANGELOG.md §392) più quelle in attesa
+        // di un mestiere senza nessuno (docs/changelog/2026-11-17-richieste-in-attesa.md).
+        Promise.all([
+          this.prisma.problemTakeover.count({ where: { status: "OPEN" } }),
+          this.prisma.guidedRequest.count({ where: { waitingTrade: { not: null }, status: "OPEN", deletedByClientAt: null, leads: { none: {} } } }),
+        ]).then(([takeovers, waiting]) => takeovers + waiting),
       ]);
     // Da fare in Home (docs/changelog/2026-10-28-stripe-prova.md): contestazioni
     // in banca da rispondere con la scadenza più vicina, fatture scartate dallo SdI.

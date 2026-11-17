@@ -27,6 +27,8 @@ export type RequestSentScreenProps = {
   chosenNames?: string[] | null;
   /** Domanda "salvare i dati per la prossima volta?", gestita dal modulo. */
   saveDefaults: ReactNode;
+  /** Mestiere che nessuno fa ancora vicino al cliente (docs/changelog/2026-11-17-richieste-in-attesa.md). */
+  waitingTrade?: string | null;
 };
 
 /**
@@ -51,6 +53,7 @@ export function RequestSentScreen({
   requestsCount,
   chosenNames,
   saveDefaults,
+  waitingTrade = null,
 }: RequestSentScreenProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   // La pagina cambia sul posto dopo l'invio: si riparte dall'alto e il
@@ -89,7 +92,9 @@ export function RequestSentScreen({
     "La tua richiesta è arrivata ai professionisti della zona"
   );
 
-  const note = nobodyYet
+  const note = waitingTrade && nobodyYet
+    ? "Oggi nessuno fa ancora questo lavoro vicino a te: la mandiamo da sola a chi lo fa appena si iscrive nella tua zona. Non sappiamo dirti quando, ti scriviamo noi. Resta valida 60 giorni."
+    : nobodyYet
     ? "Per ora non c'è nessun professionista disponibile in zona: ti avvisiamo appena se ne iscrive uno."
     : direct
       ? [
@@ -123,7 +128,7 @@ export function RequestSentScreen({
               </svg>
             </span>
           </div>
-          <p className="request-sent-yay">{nobodyYet ? "Ci siamo quasi" : "Fatto!"}</p>
+          <p className="request-sent-yay">{waitingTrade && nobodyYet ? "Richiesta salvata" : nobodyYet ? "Ci siamo quasi" : "Fatto!"}</p>
           <h1 ref={headingRef} tabIndex={-1} className="request-sent-title">
             {heading}
           </h1>

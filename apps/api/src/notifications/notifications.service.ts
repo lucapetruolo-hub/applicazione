@@ -341,7 +341,8 @@ export class NotificationsService {
     const bookingId = id("bookingId");
     const quoteId = id("quoteId");
     const guidedRequestId = id("guidedRequestId");
-    const request = { select: { city: true, description: true, category: { select: { label: true } } } } as const;
+    // Il mestiere chiesto, per una richiesta in attesa di un mestiere (docs/changelog/2026-11-17-richieste-in-attesa.md).
+    const request = { select: { city: true, description: true, waitingTrade: true, category: { select: { label: true } } } } as const;
     if (bookingId) {
       const booking = await this.prisma.booking.findUnique({
         where: { id: bookingId },
@@ -356,7 +357,7 @@ export class NotificationsService {
         const bookingQuote = booking.quote ?? booking.recurringJob?.quote ?? null;
         return {
           ...EMPTY_EMAIL_CONTEXT,
-          category: bookingQuote?.guidedRequest.category.label ?? null,
+          category: bookingQuote ? (bookingQuote.guidedRequest.waitingTrade ?? bookingQuote.guidedRequest.category.label) : null,
           city: bookingQuote?.guidedRequest.city ?? null,
           businessName: booking.professionalProfile.businessName,
           description: bookingQuote?.guidedRequest.description ?? null,
@@ -372,7 +373,7 @@ export class NotificationsService {
       if (quote) {
         return {
           ...EMPTY_EMAIL_CONTEXT,
-          category: quote.guidedRequest.category.label,
+          category: quote.guidedRequest.waitingTrade ?? quote.guidedRequest.category.label,
           city: quote.guidedRequest.city,
           businessName: quote.professionalProfile.businessName,
           description: quote.guidedRequest.description,
@@ -390,7 +391,7 @@ export class NotificationsService {
       if (guidedRequest) {
         return {
           ...EMPTY_EMAIL_CONTEXT,
-          category: guidedRequest.category.label,
+          category: guidedRequest.waitingTrade ?? guidedRequest.category.label,
           city: guidedRequest.city,
           description: guidedRequest.description,
           businessName: professional?.businessName ?? null,

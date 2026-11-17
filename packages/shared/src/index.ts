@@ -81,6 +81,7 @@ export * from "./siteCounting";
 export * from "./serviceSearch";
 export * from "./problemMatch";
 export * from "./missingTrades";
+export * from "./waitingTrade";
 export * from "./problemHints";
 export * from "./problemServiceWords";
 export * from "./nameSearch";

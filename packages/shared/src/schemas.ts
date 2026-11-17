@@ -413,6 +413,18 @@ export const guidedRequestSchema = z
      * solo a contare in admin quante richieste la tengono e quante la cambiano.
      */
     suggestedCategorySlug: professionalCategorySlugSchema.optional(),
+    /**
+     * Richiesta in attesa di un mestiere che nessuno fa ancora vicino al
+     * cliente (docs/changelog/2026-11-17-richieste-in-attesa.md): uno degli
+     * 8 lavori fuori servizio (`waitingTradeKey`) o il nome proposto dall'IA
+     * (`waitingTrade`). Il server ricontrolla il nome con `waitingTradeName`.
+     */
+    waitingTradeKey: z.string().max(40).optional(),
+    waitingTrade: z.string().max(100).optional(),
+  })
+  .refine((data) => !(data.waitingTradeKey || data.waitingTrade) || (!data.professionalProfileId && !data.professionalProfileIds && data.extraCategorySlugs.length === 0 && !data.preferredDate), {
+    message: "Una richiesta in attesa di un mestiere va a tutti quelli che lo fanno, con un solo mestiere.",
+    path: ["waitingTrade"],
   })
   .refine((data) => Boolean(data.preferredDate) === Boolean(data.preferredTimeSlot), {
     message: "Data e fascia oraria preferita vanno indicate insieme.",

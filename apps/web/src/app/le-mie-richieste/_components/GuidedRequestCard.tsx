@@ -743,7 +743,10 @@ export function GuidedRequestCard({
   // (docs/changelog/2026-11-10-ripeti-richiesta-scelti.md). Nome e foto dalla
   // scheda, il modulo poi li ricarica e toglie chi non è più sul sito.
   const repeatParams = new URLSearchParams({
-    categoria: request.categorySlug,
+    // In attesa di un mestiere si rimanda in attesa dello stesso mestiere (docs/changelog/2026-11-17-richieste-in-attesa.md).
+    ...(request.waitingTrade
+      ? { attesa: request.waitingTrade.name, ...(request.waitingTrade.key ? { attesaChiave: request.waitingTrade.key } : {}) }
+      : { categoria: request.categorySlug }),
     ...(request.city ? { citta: request.city } : {}),
     descrizione: request.description,
     ...(request.address ? { via: request.address } : {}),

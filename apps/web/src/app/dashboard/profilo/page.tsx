@@ -55,6 +55,7 @@ import { ChosenPlanChip } from "@/components/ChosenPlanChip";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { PageLoading } from "@/components/PageLoading";
 import { ButtonWaitBar } from "@/components/WaitBar";
+import { WaitingRequestsNearby } from "@/components/WaitingRequestsNearby";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 /** Prestazioni suggerite visibili prima di "Altre" (con un solo mestiere, e per mestiere quando sono più d'uno). */
@@ -1707,6 +1708,8 @@ export default function DashboardProfiloPage() {
               </YStack>
             );
           })}
+          {/* Richieste in attesa del mestiere scritto (docs/changelog/2026-11-17-richieste-in-attesa.md). */}
+          <WaitingRequestsNearby token={token} city={city} texts={[...services.map((service) => service.name), certifications]} />
         </Surface>
 
         <Surface gap="3" id="profilo-lingue" className="profile-section">

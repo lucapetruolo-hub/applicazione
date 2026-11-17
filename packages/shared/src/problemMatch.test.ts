@@ -235,3 +235,12 @@ test("fotovoltaico: impianto, accumulo e wallbox all'elettricista, pulizia alle 
   // "Inverter" da solo è anche il condizionatore.
   assert.equal(matchProblem("il condizionatore inverter non raffredda").categories[0]?.slug, "climatizzazione");
 });
+
+test("l'antenna non è un'anta: niente falegname né domanda sulle porte", () => {
+  const match = matchProblem("l'antenna non prende i canali");
+  assert.equal(match.outOfService, "antennista");
+  assert.deepEqual(match.categories, []);
+  assert.equal(match.question, null);
+  // "ante" da sola resta del falegname.
+  assert.ok(matchProblem("le ante dell'armadio non chiudono").categories.some((c) => c.slug === "falegname"));
+});

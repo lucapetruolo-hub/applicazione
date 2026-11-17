@@ -112,7 +112,7 @@ export class GeneralRequestsService {
   async computeLoads(now: Date = new Date()): Promise<Map<ZoneKey, { categoryId: string; city: string; load: GeneralRequestLoad }>> {
     const since = new Date(now.getTime() - GENERAL_REQUESTS_WINDOW_DAYS * DAY_MS);
     const leads = await this.prisma.lead.findMany({
-      where: { createdAt: { gte: since }, guidedRequest: { professionalProfileId: null, chosenProfileIds: { isEmpty: true } } },
+      where: { createdAt: { gte: since }, guidedRequest: { professionalProfileId: null, chosenProfileIds: { isEmpty: true }, waitingTrade: null } },
       select: { guidedRequestId: true, professionalProfileId: true, createdAt: true, guidedRequest: { select: { categoryId: true, city: true } } },
     });
     const requestIds = [...new Set(leads.map((l) => l.guidedRequestId))];

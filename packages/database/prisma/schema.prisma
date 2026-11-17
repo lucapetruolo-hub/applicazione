@@ -1033,6 +1033,15 @@ model GuidedRequest {
   // suo, il lavoro non conta nei lavori del mese e si può rispondere anche
   // con i lavori esauriti. Falsa se il cliente era già arrivato a lui dal sito.
   fromProfessionalLink  Boolean                      @default(false)
+  // Richiesta in attesa di un mestiere che nessuno fa ancora vicino al
+  // cliente (docs/changelog/2026-11-17-richieste-in-attesa.md): nome del
+  // mestiere mostrato al cliente e chiave di uno degli 8 lavori fuori servizio
+  // (null per un mestiere proposto dall'IA). Arriva a chi ha quelle parole
+  // nelle prestazioni, nei patentini o nella descrizione, mai per categoria.
+  waitingTrade          String?
+  waitingTradeKey       String?
+  // Quando è partita la domanda "Ti serve ancora?" (30 giorni senza nessuno).
+  stillNeededAskedAt    DateTime?
 
   client              User                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
   category            Category             @relation(fields: [categoryId], references: [id])
@@ -1047,6 +1056,7 @@ model GuidedRequest {
   @@index([deletedByClientAt])
   @@index([clientId])
   @@index([professionalProfileId])
+  @@index([waitingTrade, status])
   @@map("guided_requests")
 }
 
