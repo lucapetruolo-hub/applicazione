@@ -51,6 +51,15 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
   const [problemSearch, setProblemSearch] = useState(false);
   const [readingPhoto, setReadingPhoto] = useState(false);
   const searching = (problemSearch && navigating) || readingPhoto;
+  // Dal primo tocco su "Cerca" fino all'arrivo nei risultati (giro di prova del
+  // 17/11, docs/changelog/2026-11-17-ricerca-home-in-attesa.md): il pulsante
+  // dice "Cerco…" e un secondo tocco, su "Cerca" o su un esempio che intanto è
+  // finito sotto il dito, non fa nulla. `submitting` copre anche i passi prima
+  // della navigazione (elenco dei comuni, foto); la navigazione lo spegne solo
+  // quando la pagina nuova è pronta, perché lo cambia dentro la transizione.
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const busy = submitting || navigating || readingPhoto;
   const searchingLabel = useThinkingLabel(searching ? PROBLEM_SEARCH_LABEL : undefined);
 
   // Ricerca con foto (docs/changelog/2026-11-13-ricerca-con-foto.md): facoltativa, accanto al testo.
@@ -90,16 +99,20 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
     setPhotoMessage(null);
   }
 
-  /** Torna false se la foto non si è potuta leggere per un guasto: allora si cerca con le parole scritte. */
-  async function searchWithPhoto(query: string, city: string, blob: Blob): Promise<boolean> {
+  /**
+   * "words" se la foto non si è potuta leggere per un guasto: allora si cerca
+   * con le parole scritte; "navigated" se parte la ricerca; "stopped" se resta
+   * un messaggio sotto il campo.
+   */
+  async function searchWithPhoto(query: string, city: string, blob: Blob): Promise<"words" | "navigated" | "stopped"> {
     setReadingPhoto(true);
     setPhotoMessage(null);
     try {
       const token = isTurnstileEnabled() ? await waitForTurnstile() : null;
       if (isTurnstileEnabled() && !token) {
-        if (query.trim()) return false;
+        if (query.trim()) return "words";
         setPhotoMessage(TURNSTILE_PENDING_MESSAGE);
-        return true;
+        return "stopped";
       }
       // Il token vale una volta sola: dopo l'invio se ne chiede uno nuovo.
       turnstileToken.current = null;
@@ -107,7 +120,7 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
       const result = await apiClient.analyzeProblemPhoto(blob, { description: query, city, turnstileToken: token ?? undefined });
       if (!result.photoId) {
         // IA occupata o senza risposta (banco di prova del 13/11): con il testo si cerca lo stesso.
-        if (result.check === "spenta" && query.trim()) return false;
+        if (result.check === "spenta" && query.trim()) return "words";
         setPhotoMessage(
           result.check === "non-pertinente"
             ? "Dalla foto non capiamo il problema. Scrivilo con parole tue, oppure prova con un'altra foto."
@@ -118,7 +131,7 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
                 "Con la sola foto ora non ci riusciamo. Scrivi due parole sul problema e tocca di nuovo Cerca: guardiamo la foto insieme alle parole.",
         );
         if (result.check === "spenta") document.querySelector<HTMLInputElement>('input[id$="-cosa"]')?.focus();
-        return true;
+        return "stopped";
       }
       // Con persone o documenti nella foto si cerca lo stesso, ma la foto non va nella richiesta (CLAUDE.md §5 punto 9).
       if (result.check === "ok") await rememberSearchPhoto(result.description, blob);
@@ -126,29 +139,54 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
       const params = new URLSearchParams({ problema: result.description, foto: result.photoId });
       if (city.trim()) params.set("citta", city.trim());
       setProblemSearch(true);
-      navigateWithTransition(() => startNavigation(() => router.push(`/cerca?${params.toString()}`)));
-      return true;
+      navigateWithTransition(() => startNavigation(() => finishSubmit(() => router.push(`/cerca?${params.toString()}`))));
+      return "navigated";
     } catch (error) {
-      if (query.trim()) return false;
+      if (query.trim()) return "words";
       setPhotoMessage(error instanceof Error ? error.message : "Ora non riusciamo a leggere la foto. Scrivi il problema con parole tue.");
-      return true;
+      return "stopped";
     } finally {
       setReadingPhoto(false);
     }
   }
 
+  /** Spegne `submitting` dentro la transizione: resta acceso finché la pagina dei risultati non è pronta. */
+  function finishSubmit(navigate: () => void) {
+    submittingRef.current = false;
+    setSubmitting(false);
+    navigate();
+  }
+
   async function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
-    if (photo && params.mode === "domicilio" && !params.professional) {
+    if (submittingRef.current || busy) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    // Chiude la tastiera del telefono: si vedono "Cerco…" e le luci dell'attesa.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    let navigated = false;
+    try {
+      if (photo && params.mode === "domicilio" && !params.professional) {
+        rememberSearchCity(params.city);
+        const outcome = await searchWithPhoto(params.query, params.city, photo.blob);
+        navigated = outcome === "navigated";
+        if (outcome !== "words") return;
+        forgetSearchPhoto();
+      }
       rememberSearchCity(params.city);
-      if (await searchWithPhoto(params.query, params.city, photo.blob)) return;
-      forgetSearchPhoto();
+      const destination = await buildSearchDestination(params);
+      const problem = destination.includes("problema=");
+      setProblemSearch(problem);
+      navigated = true;
+      // La ricerca dal problema qui ha già le luci e "Cerco chi ti serve…": niente barra in più.
+      navigateWithTransition(() => startNavigation(() => finishSubmit(() => router.push(destination))), problem ? undefined : destination);
+    } finally {
+      // Nessuna navigazione (foto non leggibile, col messaggio sotto il campo, o
+      // un guasto): "Cerca" torna toccabile per riprovare.
+      if (!navigated) {
+        submittingRef.current = false;
+        setSubmitting(false);
+      }
     }
-    rememberSearchCity(params.city);
-    const destination = await buildSearchDestination(params);
-    const problem = destination.includes("problema=");
-    setProblemSearch(problem);
-    // La ricerca dal problema qui ha già le luci e "Cerco chi ti serve…": niente barra in più.
-    navigateWithTransition(() => startNavigation(() => router.push(destination)), problem ? undefined : destination);
   }
 
   return (
@@ -187,6 +225,7 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
 
           <div className={`is_View ${styles.search}`}>
             <SearchBar
+              searching={busy}
               wrapSearchButton={(button) => <MagneticButton block>{button}</MagneticButton>}
               onSearch={handleSearch}
               queryField={{
@@ -207,7 +246,7 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
               }}
               // Un tocco su un esempio cerca subito (richiesta di Luca,
               // docs/changelog/2026-11-04-esempi-cercano-subito.md).
-              footer={({ mode, searchFor }) =>
+              footer={({ mode, searchFor, searching: searchBusy }) =>
                 mode === "domicilio" ? (
                   <>
                     {photoSearch && (photo || photoMessage) ? (
@@ -222,7 +261,7 @@ export function HomeHero({ examples, photoSearch = false }: { examples: ProblemE
                         ) : null}
                       </PhotoNote>
                     ) : null}
-                    <HeroExamples problems={heroExamples.visible} trades={heroExamples.trades} onPick={searchFor} />
+                    <HeroExamples problems={heroExamples.visible} trades={heroExamples.trades} onPick={searchFor} disabled={searchBusy} />
                   </>
                 ) : null
               }
@@ -361,14 +400,25 @@ function PhotoNote({ busy, message, children }: { busy: boolean; message: string
   );
 }
 
-function HeroExamples({ problems, trades, onPick }: { problems: readonly string[]; trades: readonly string[]; onPick: (text: string) => void }) {
+function HeroExamples({
+  problems,
+  trades,
+  onPick,
+  disabled,
+}: {
+  problems: readonly string[];
+  trades: readonly string[];
+  onPick: (text: string) => void;
+  /** Ricerca già partita: gli esempi si spengono, un tocco non cambia il testo scritto. */
+  disabled: boolean;
+}) {
   // Un modulo vero: prima che la pagina sia pronta un tocco su un esempio
   // apre comunque la ricerca (prima non faceva nulla); dopo, `onPick` cerca
   // come sempre, con la città scritta e le luci dell'attesa.
   return (
-    <form className="hero-examples" action="/cerca" method="get">
-      <ExampleRow label="Prova:" items={problems} onPick={onPick} fallback={problemFallback} />
-      <ExampleRow label="O scrivi solo chi cerchi:" items={trades} onPick={onPick} fallback={tradeFallback} />
+    <form className="hero-examples" action="/cerca" method="get" data-busy={disabled || undefined}>
+      <ExampleRow label="Prova:" items={problems} onPick={onPick} fallback={problemFallback} disabled={disabled} />
+      <ExampleRow label="O scrivi solo chi cerchi:" items={trades} onPick={onPick} fallback={tradeFallback} disabled={disabled} />
     </form>
   );
 }
@@ -390,11 +440,13 @@ function ExampleRow({
   items,
   onPick,
   fallback,
+  disabled,
 }: {
   label: string;
   items: readonly string[];
   onPick: (text: string) => void;
   fallback: (item: string) => ExampleFallback;
+  disabled: boolean;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ start: false, end: false, fits: true });
@@ -561,6 +613,7 @@ function ExampleRow({
             type="submit"
             {...fallback(item)}
             className="hero-example"
+            disabled={disabled}
             onClick={(event) => {
               event.preventDefault();
               onPick(item);

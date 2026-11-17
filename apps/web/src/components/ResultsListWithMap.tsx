@@ -107,6 +107,9 @@ export type MapPoolQuery = Omit<ProfessionalSearchQuery, "city" | "track">;
  * Pagina mostrata: quella del server, oppure quella chiesta dal browser per
  * l'inquadratura della mappa (`bounds`), con il suo numero di pagina.
  */
+/** Una sezione di schede sotto i risultati, con titolo e riga sotto. */
+export type OtherResultsSection = { title: string; subtitle: string; professionals: ProfessionalSearchResult[] };
+
 type AreaPage = { key: string; data: ProfessionalSearchPage };
 
 export function ResultsListWithMap({
@@ -120,6 +123,7 @@ export function ResultsListWithMap({
   header,
   footer,
   otherSection,
+  nextTradeSection,
   defaultMode,
   problemDescription,
   reasonFor,
@@ -160,7 +164,14 @@ export function ResultsListWithMap({
    * anche questo lavoro" nella ricerca per problema
    * (docs/changelog/2026-11-03-preventivo-descrizione-per-prima.md).
    */
-  otherSection?: { title: string; subtitle: string; professionals: ProfessionalSearchResult[] };
+  otherSection?: OtherResultsSection;
+  /**
+   * Dopo l'ultima pagina, i professionisti dell'altro mestiere proposto (es.
+   * "battiscopa staccato": finiti i muratori, i falegnami), con un titolo
+   * loro: due elenchi uno dopo l'altro, non mescolati (giro di prova del 17/11,
+   * docs/changelog/2026-11-17-ricerca-home-in-attesa.md).
+   */
+  nextTradeSection?: OtherResultsSection & { moreHref?: string; moreLabel?: string };
   /** Tab di default della mini-agenda di ogni card (richiesta esplicita dell'utente): "a domicilio" se cercato a domicilio, "online" se cercato online. */
   defaultMode?: "HOME" | "ONLINE";
   /** Problema scritto nella ricerca: arriva già scritto nella richiesta, dalla scheda e dal profilo. */
@@ -1146,11 +1157,38 @@ export function ResultsListWithMap({
               <YStack gap="3">{otherSection.professionals.map((pro, index) => renderCard(pro, index, true))}</YStack>
             </section>
           ) : null}
+          {nextTradeSection && nextTradeSection.professionals.length > 0 && shown.page >= shown.pageCount && !bounds ? (
+            <section id="altro-mestiere" aria-labelledby="results-next-trade" className="results-other-section">
+              <YStack gap="1" marginBottom="2">
+                <Text id="results-next-trade" render="h2" fontFamily="heading" fontWeight="800" fontSize={20} color={brand.inchiostro}>
+                  {nextTradeSection.title}
+                </Text>
+                <Text fontSize={14} color={brand.grafite70}>
+                  {nextTradeSection.subtitle}
+                </Text>
+              </YStack>
+              <YStack gap="3">{nextTradeSection.professionals.map((pro, index) => renderCard(pro, index, true))}</YStack>
+              {nextTradeSection.moreHref && nextTradeSection.moreLabel ? (
+                <Link href={nextTradeSection.moreHref} className="results-next-trade-more">
+                  {nextTradeSection.moreLabel}
+                </Link>
+              ) : null}
+            </section>
+          ) : null}
           {footer ? <div className="results-list-footer">{footer}</div> : null}
         </YStack>
       </div>
 
       <style jsx>{`
+        .results-next-trade-more {
+          display: inline-flex;
+          align-self: flex-start;
+          margin-top: var(--t-space-3, 12px);
+          min-height: 44px;
+          align-items: center;
+          font-weight: 600;
+          color: ${brand.cianografiaScuro};
+        }
         .results-cards {
           display: flex;
           flex-direction: column;

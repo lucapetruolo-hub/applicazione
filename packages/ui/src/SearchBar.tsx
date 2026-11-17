@@ -44,6 +44,7 @@ export function SearchBar(props: SearchBarProps) {
     setModeMenuOpen,
     modeMenuRef,
     customQueryField,
+    searching,
     runSearch,
     handleModeChange,
     chooseMode,
@@ -300,8 +301,8 @@ export function SearchBar(props: SearchBarProps) {
             size="5"
           />
           {wrapSearchButton(
-            <Button variant="primary" onPress={runSearch}>
-              Cerca
+            <Button variant="primary" onPress={runSearch} disabled={searching}>
+              {searching ? "Cerco…" : "Cerca"}
             </Button>
           )}
         </YStack>
@@ -312,7 +313,7 @@ export function SearchBar(props: SearchBarProps) {
           </Text>
         ) : null}
       </YStack>
-      {footer?.({ mode, fillQuery, searchFor })}
+      {footer?.({ mode, fillQuery, searchFor, searching })}
     </>
   );
 }

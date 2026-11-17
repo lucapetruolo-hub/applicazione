@@ -98,7 +98,14 @@ export type SearchBarProps = {
    * cursore, e `searchFor`, che lo scrive e fa subito partire la ricerca
    * (docs/changelog/2026-11-04-esempi-cercano-subito.md).
    */
-  footer?: (api: { mode: SearchMode; fillQuery: (text: string) => void; searchFor: (text: string) => void }) => ReactNode;
+  footer?: (api: { mode: SearchMode; fillQuery: (text: string) => void; searchFor: (text: string) => void; searching: boolean }) => ReactNode;
+  /**
+   * Ricerca già partita (home, giro di prova del 17/11,
+   * docs/changelog/2026-11-17-ricerca-home-in-attesa.md): "Cerca" diventa
+   * "Cerco…" e un secondo tocco, su "Cerca" o su un esempio, non fa nulla e
+   * non cambia il testo scritto.
+   */
+  searching?: boolean;
 };
 
 
@@ -180,6 +187,7 @@ export function useSearchBar({
   onNearMe,
   onQueryChange,
   queryField,
+  searching = false,
 }: SearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [city, setCity] = useState(initialCity);
@@ -216,11 +224,12 @@ export function useSearchBar({
   const currentProfessional = () => (selectedProfessional?.name === query ? selectedProfessional : undefined);
 
   function runSearch() {
+    if (searching) return;
     onSearch({ query, city, mode, professional: currentProfessional() });
   }
 
   function handleModeChange(next: SearchMode) {
-    if (next === mode) return;
+    if (next === mode || searching) return;
     setMode(next);
     if (searchOnModeChange) {
       onSearch({ query, city, mode: next, professional: currentProfessional() });
@@ -259,6 +268,7 @@ export function useSearchBar({
   }
 
   function searchFor(text: string) {
+    if (searching) return;
     handleQueryChange(text);
     onSearch({ query: text, city, mode });
   }
@@ -270,6 +280,7 @@ export function useSearchBar({
     query,
     city,
     setCity,
+    searching,
     mode,
     activeTab,
     fieldId,

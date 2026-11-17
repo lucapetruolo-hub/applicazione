@@ -8020,6 +8020,13 @@ textarea[id^="contatti-"][aria-invalid="true"] {
   outline: 3px solid #247c7c;
   outline-offset: 2px;
 }
+/* Ricerca già partita: gli esempi restano al loro posto ma spenti, un tocco
+   non cambia il testo scritto (docs/changelog/2026-11-17-ricerca-home-in-attesa.md). */
+.hero-example:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+}
 .hero-examples-label,
 .hero-example {
   flex-shrink: 0;

@@ -157,7 +157,11 @@ const RULES: readonly Rule[] = [
 
   // Falegname
   { words: ["falegnam", "legno", "parquet", "compensato", "mdf", "osb", "intarsi", "restaur", "su misura", "scrigno", "porta scorrevole", "porte scorrevoli", "anta scorrevole", "vasistas", "persiane", "persiana", "infissi", "infisso", "serramenti", "finestra", "finestre", "portafinestra", "porta finestra", "porte finestre", "cassonetto", "casetta in legno", "lucernari", "sedia", "tavolo", "tavolino", "como", "cassetti", "cassetto"], weights: { falegname: 3 } },
-  { words: ["porta", "porte", "anta", "ante", "cerniere", "battiscopa", "armadio", "armadi", "mobile", "mobili", "cucina"], weights: { falegname: 1, tuttofare: 1 } },
+  // Battiscopa: di solito in ceramica o marmo, si rimette con la colla del
+  // muratore; in legno ("legno" qui sopra) passa avanti il falegname (giro di
+  // prova del 17/11, docs/changelog/2026-11-17-ricerca-home-in-attesa.md).
+  { words: ["battiscopa", "zoccolino", "zoccolini"], weights: { muratore: 2, falegname: 1 } },
+  { words: ["porta", "porte", "anta", "ante", "cerniere", "armadio", "armadi", "mobile", "mobili", "cucina"], weights: { falegname: 1, tuttofare: 1 } },
 
   // Tutto Fare
   { words: ["tuttofare", "tutto fare", "piccoli lavori", "piccoli interventi", "piccole riparazioni", "lavoretti", "lavori manuali"], weights: { tuttofare: 5 } },

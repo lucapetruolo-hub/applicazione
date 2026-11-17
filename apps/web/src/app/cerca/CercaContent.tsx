@@ -23,7 +23,8 @@ import styles from "./ResultsPage.module.css";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
 import { ResultsListWithMap, type MapPoolQuery } from "@/components/ResultsListWithMap";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
-import { ProblemBand } from "@/components/ProblemBand";
+import { ProblemBand, problemResultsHref } from "@/components/ProblemBand";
+import { CATEGORY_WHO } from "@/lib/problemChoices";
 import { ChosenProsBar, chosenRequestHref, type ProblemRequestHints } from "@/components/ChosenProsBar";
 import { saveLastSearchCity } from "@/lib/lastSearchCity";
 import { useChosenPros } from "@/lib/useChosenPros";
@@ -84,6 +85,7 @@ export function CercaContent({
   loadFailed,
   problem,
   alsoDoThisJob = [],
+  nextTrade,
 }: {
   city?: string;
   /** Centro del comune, per la mappa. */
@@ -105,6 +107,8 @@ export function CercaContent({
   problem?: ProblemSearch;
   /** Altri mestieri con quel lavoro tra le prestazioni (ricerca per problema). */
   alsoDoThisJob?: ProfessionalSearchResult[];
+  /** Dopo l'ultima pagina, l'altro mestiere proposto (ResultsListWithMap, `nextTradeSection`). */
+  nextTrade?: { slug: ProfessionalCategorySlug; professionals: ProfessionalSearchResult[]; total: number };
 }) {
   // Per le voci di "Quanto costa in media" della home (§398).
   useEffect(() => {
@@ -358,6 +362,18 @@ export function CercaContent({
                   title: "Potrebbero fare anche questo lavoro",
                   subtitle: "Sono di un altro mestiere, ma tra i loro lavori c'è anche questo.",
                   professionals: alsoDoThisJob,
+                }
+              : undefined
+          }
+          nextTradeSection={
+            problem && nextTrade
+              ? {
+                  title: `Può farlo anche ${CATEGORY_WHO[nextTrade.slug]}`,
+                  subtitle: "L'altro mestiere proposto per questo lavoro.",
+                  professionals: nextTrade.professionals,
+                  ...(nextTrade.total > nextTrade.professionals.length
+                    ? { moreHref: problemResultsHref(problem.description, city, { mestiere: nextTrade.slug, ...(problem.photo ? { foto: problem.photo } : {}) }), moreLabel: "Vedi tutti" }
+                    : {}),
                 }
               : undefined
           }

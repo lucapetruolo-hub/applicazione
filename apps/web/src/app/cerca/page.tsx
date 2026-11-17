@@ -79,6 +79,26 @@ function alsoDoThisJob(
   });
 }
 
+/** Quanti professionisti dell'altro mestiere mostrare sotto l'ultima pagina; gli altri con "Vedi tutti". */
+const NEXT_TRADE_SHOWN = 10;
+
+/** I professionisti dell'altro mestiere proposto, senza chi è già nell'elenco o fa anche il primo mestiere. */
+function nextTradeList(
+  all: ProfessionalSearchResult[],
+  slug: ProfessionalCategorySlug,
+  chosen: ProfessionalCategorySlug | null,
+  shown: ProfessionalSearchResult[],
+): { slug: ProfessionalCategorySlug; professionals: ProfessionalSearchResult[]; total: number } | undefined {
+  const shownIds = new Set(shown.map((pro) => pro.id));
+  const list = all.filter(
+    (pro) =>
+      !shownIds.has(pro.id) &&
+      pro.categories.some((category) => category.slug === slug) &&
+      !pro.categories.some((category) => category.slug === chosen),
+  );
+  return list.length > 0 ? { slug, professionals: list.slice(0, NEXT_TRADE_SHOWN), total: list.length } : undefined;
+}
+
 /** Tutti i professionisti della zona, di ogni mestiere: un errore non rompe la pagina. */
 async function loadAllNearby(description: string, city: string | undefined, isOnline: boolean): Promise<ProfessionalSearchResult[] | null> {
   try {
@@ -283,6 +303,15 @@ async function ProblemResults({
       ]),
     );
   }
+  // Finito l'elenco del mestiere scelto, quello dell'altro mestiere proposto
+  // sotto, con un titolo suo (giro di prova del 17/11,
+  // docs/changelog/2026-11-17-ricerca-home-in-attesa.md): due elenchi in fila,
+  // mai mescolati. Solo senza filtri, che valgono per il primo mestiere.
+  const nextSlug = choices.find((slug) => slug !== chosen);
+  const nextTrade =
+    nextSlug && all && !loadFailed && activeResultFilterCount(filters) === 0
+      ? nextTradeList(all, nextSlug, chosen, [...page.results, ...alsoDo])
+      : undefined;
   const comune = city ? findComuneByName(city) : undefined;
 
   return (
@@ -300,6 +329,7 @@ async function ProblemResults({
         loadFailed={loadFailed}
         problem={problem}
         alsoDoThisJob={alsoDo}
+        nextTrade={nextTrade}
       />
     </div>
   );

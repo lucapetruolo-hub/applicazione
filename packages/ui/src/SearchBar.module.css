@@ -259,3 +259,47 @@
   font-size: 13px;
   color: var(--color10);
 }
+
+/* "Cerca" / "Cerco…" una sopra l'altra: il pulsante tiene la larghezza della
+   più lunga e non cambia misura quando parte la ricerca
+   (docs/changelog/2026-11-17-ricerca-home-in-attesa.md). */
+.buttonLabels {
+  /* Come la scritta di un pulsante "primary" (Button.web.tsx, BUTTON_TEXT). */
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  display: inline-grid;
+  justify-items: center;
+  align-items: center;
+}
+.buttonLabels > * {
+  grid-area: 1 / 1;
+}
+.buttonLabelHidden {
+  visibility: hidden;
+}
+.buttonBusy {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  animation: searchSpin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes searchSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.4s;
+  }
+}
