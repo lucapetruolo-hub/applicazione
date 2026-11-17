@@ -289,6 +289,30 @@ test("odore di gas: prima di tutto l'avviso di sicurezza", async ({ page }) => {
   await expect(page.getByRole("note", { name: "Prima di tutto la sicurezza" })).toBeVisible();
 });
 
+test("odore di gas a un professionista scelto: avviso piccolo, senza IA", async ({ page }) => {
+  // Richiesta diretta (docs/changelog/2026-11-17-avviso-sicurezza-richiesta-diretta.md):
+  // il mestiere è già quello del professionista, quindi niente IA, ma
+  // l'avviso di sicurezza del dizionario resta. "pro-prova" non esiste:
+  // con la rete che non risponde il modulo lo lascia.
+  let aiCalls = 0;
+  await page.route(`${API_URL}/professionals/pro-prova**`, (route) => route.abort());
+  await page.route(`${API_URL}/problem-match**`, (route) => {
+    aiCalls += 1;
+    return route.abort();
+  });
+  await page.goto("/preventivo?categoria=idraulico&professionista=pro-prova&nomeProfessionista=Mario%20Rossi");
+  await page.getByLabel("Descrivi il lavoro").fill("Sento odore di gas in cucina, viene dal tubo della caldaia");
+  const notice = page.getByRole("note", { name: "Prima di tutto la sicurezza" });
+  await expect(notice).toContainText("Odore di gas?");
+  await expect(notice.getByText("Apri porte e finestre.")).toBeHidden();
+  await notice.getByText("Tutti i passi").click();
+  await expect(notice.getByText("Apri porte e finestre.")).toBeVisible();
+  await page.getByLabel("Descrivi il lavoro").blur();
+  await page.waitForTimeout(2000);
+  expect(aiCalls).toBe(0);
+  await expect(page.getByText("Chi ti serve")).toHaveCount(0);
+});
+
 test("descrizione che non fa capire il mestiere: si sceglie dall'elenco", async ({ page }) => {
   await page.goto("/preventivo");
   await page.getByLabel("Descrivi il lavoro").fill("Mi serve una mano per una cosa");

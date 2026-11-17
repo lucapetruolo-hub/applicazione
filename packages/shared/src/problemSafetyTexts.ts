@@ -5,10 +5,14 @@ import type { ProblemSafety } from "./problemMatch";
  * §392). Testi fissi dalle fonti ufficiali (Italgas, Vigili del Fuoco,
  * ARERA, Protezione Civile: analisi/abbinamento-problema/testi-sicurezza.md),
  * decisi sempre dal dizionario, mai dall'intelligenza artificiale. Prima del
- * lancio li rilegge l'avvocato.
+ * lancio li rilegge l'avvocato. `title` e `short` sono il riassunto degli
+ * stessi passi per l'avviso piccolo del modulo di richiesta
+ * (docs/changelog/2026-11-17-avviso-sicurezza-richiesta-diretta.md).
  */
-export const PROBLEM_SAFETY_TEXTS: Record<ProblemSafety, { steps: readonly string[]; after: string }> = {
+export const PROBLEM_SAFETY_TEXTS: Record<ProblemSafety, { title: string; short: string; steps: readonly string[]; after: string }> = {
   gas: {
+    title: "Odore di gas?",
+    short: "Apri le finestre, chiudi il gas e non toccare interruttori. Poi esci e chiama da fuori il pronto intervento gas (numero sulla bolletta) o il 112.",
     steps: [
       "Apri porte e finestre.",
       "Chiudi la manopola del gas vicino al contatore (o la bombola).",
@@ -18,6 +22,8 @@ export const PROBLEM_SAFETY_TEXTS: Record<ProblemSafety, { steps: readonly strin
     after: "Poi, quando sei al sicuro, ecco chi può riparare l'impianto.",
   },
   elettrico: {
+    title: "Scintille, fumo o bruciato?",
+    short: "Non toccare nulla e, se puoi farlo senza pericolo, abbassa il generale. Con fumo o fiamme esci e chiama il 115 o il 112.",
     steps: [
       "Non toccare la presa, il cavo o il quadro.",
       "Se puoi farlo senza pericolo e lontano dal punto che fa scintille, abbassa l'interruttore generale.",
@@ -26,6 +32,8 @@ export const PROBLEM_SAFETY_TEXTS: Record<ProblemSafety, { steps: readonly strin
     after: "Poi ecco chi può controllare l'impianto.",
   },
   "acqua-elettrico": {
+    title: "Acqua vicino alla corrente?",
+    short: "Non toccare prese o apparecchi bagnati. Stacca il generale solo se è in un punto asciutto.",
     steps: [
       "Non toccare prese, interruttori o apparecchi con mani o piedi bagnati.",
       "Stacca la corrente dall'interruttore generale solo se è in un punto asciutto. Se è già sott'acqua, non avvicinarti.",
@@ -35,6 +43,8 @@ export const PROBLEM_SAFETY_TEXTS: Record<ProblemSafety, { steps: readonly strin
     after: "Poi ecco chi può controllare l'impianto.",
   },
   monossido: {
+    title: "Caldaia o stufa che fa fumo?",
+    short: "Spegnila, apri le finestre ed esci. Con mal di testa, nausea o sonnolenza chiama il 112.",
     steps: [
       "Spegni la caldaia o la stufa, apri le finestre ed esci all'aria aperta.",
       "Se qualcuno ha mal di testa, nausea o sonnolenza, chiama il 112.",
