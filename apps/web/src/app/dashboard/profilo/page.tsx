@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -337,7 +337,6 @@ export default function DashboardProfiloPage() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingPortfolioPhoto, setIsUploadingPortfolioPhoto] = useState(false);
   const [portfolioPhotoError, setPortfolioPhotoError] = useState<string | null>(null);
   // Posizione + raggi di ingaggio: sezione a parte (EngagementRadiusSection,
@@ -856,11 +855,7 @@ export default function DashboardProfiloPage() {
         }))
       : [{ key: "tutte", slug: null, label: null, rows: indexedServices, suggested: [] }];
 
-  function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
+  function handleImageFile(file: File) {
     setImageError(null);
     setCropImageSrc(localPreviewUrl(file));
   }
@@ -1137,34 +1132,33 @@ export default function DashboardProfiloPage() {
                 )}
               </YStack>
               <YStack gap="1" flex={1} maxWidth={400} alignItems="flex-start">
-                <Button
-                  variant="secondary"
-                  size="3"
-                  height={40}
-                  disabled={isUploadingImage}
-                  opacity={isUploadingImage ? 0.6 : 1}
-                  onPress={() => imageInputRef.current?.click()}
-                >
-                  {isUploadingImage ? (
-                    <XStack alignItems="center" gap="2">
-                      <Text color={brand.grafite} fontWeight="600">
-                        Caricamento
-                      </Text>
-                      <UploadingDots dotSize={4} color={brand.grafite} />
-                    </XStack>
-                  ) : imageUrl ? (
-                    "Cambia immagine"
-                  ) : (
-                    "Carica immagine"
-                  )}
-                </Button>
-                <input
-                  ref={imageInputRef}
-                  type="file"
+                <PhotoPicker
                   accept="image/*"
-                  onChange={handleImageChange}
                   disabled={isUploadingImage}
-                  style={{ display: "none" }}
+                  onFile={handleImageFile}
+                  trigger={(open) => (
+                    <Button
+                      variant="secondary"
+                      size="3"
+                      height={40}
+                      disabled={isUploadingImage}
+                      opacity={isUploadingImage ? 0.6 : 1}
+                      onPress={open}
+                    >
+                      {isUploadingImage ? (
+                        <XStack alignItems="center" gap="2">
+                          <Text color={brand.grafite} fontWeight="600">
+                            Caricamento
+                          </Text>
+                          <UploadingDots dotSize={4} color={brand.grafite} />
+                        </XStack>
+                      ) : imageUrl ? (
+                        "Cambia immagine"
+                      ) : (
+                        "Carica immagine"
+                      )}
+                    </Button>
+                  )}
                 />
                 {imageError ? (
                   <Text color={brand.urgenza} fontSize={13} flexShrink={1}>

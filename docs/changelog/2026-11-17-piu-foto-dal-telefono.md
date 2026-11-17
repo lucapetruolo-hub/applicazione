@@ -4,7 +4,9 @@
 `2026-11-16-scatta-dal-telefono.md` (PR #383): "più foto con lo stesso codice"
 e "lo stesso QR dove si aggiungono foto, come il portfolio del professionista".
 Luca ha risposto "sì" a tutte e due. "Copiare il link" era sconsigliata e non
-si fa.
+si fa. Poi, sempre il 17/11, "sì" anche al QR nella foto del profilo e nella
+copertina (proposta sconsigliata perché lì basta un file, scelta da Luca) e a
+togliere le colonne vecchie in una PR a parte tra qualche giorno.
 
 **Decisione.**
 - Un codice può valere più foto: nella richiesta di preventivo fino ai posti
@@ -18,6 +20,10 @@ si fa.
 - Il portfolio del professionista (`dashboard/profilo`) usa ora lo stesso
   pulsante foto (`PhotoPicker`) della richiesta: da computer webcam, telefono
   con il QR o file; da telefono il menu Scatta/Galleria. Restano foto e video.
+- Anche la **foto del profilo** e la **copertina** aprono la stessa scelta
+  (una foto sola), poi il solito ritaglio. I pulsanti restano quelli di prima
+  ("Carica immagine", "Carica una foto"): `PhotoPicker` ha l'opzione `trigger`
+  per usare un pulsante già esistente.
 
 **Come funziona (API).**
 - `photo_handoffs` ha `maxPhotos` e `sentCount`; le foto stanno in una tabella
@@ -41,4 +47,7 @@ si fa.
 - Prova vera computer + telefono (`e2e/tests/webcam-da-computer.spec.ts`): due
   foto mandate una dopo l'altra arrivano nella richiesta, "Fatto" chiude la
   finestra, poi il link non vale più.
+- Prova a mano con un professionista di prova: "Carica immagine" apre
+  "Scatta dal telefono" / "Scegli dal computer", la foto dal telefono arriva
+  nel ritaglio; "Carica una foto" della copertina apre la stessa scelta.
 - Foto in project-files `anteprime/webcam-da-computer/piu-foto-*.png`.
