@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ServiceNamesService } from "./service-names.service";
+import { ServiceNamesService, countSearchedServices, rankSearchedServices } from "./service-names.service";
 import { ProblemMatchAdminService } from "./problem-match-admin.service";
 import { ProblemTakeoverService } from "./problem-takeover.service";
 
@@ -21,9 +21,11 @@ describe("Prestazioni per mestiere (§388)", () => {
   function setup(
     services: { name: string; professionalProfileId: string; professionalProfile: ReturnType<typeof profile> }[],
     standard: object[] = [],
+    searches: { slug: string; service: string; count: bigint }[] = [],
   ) {
     const prisma = {
       professionalService: { findMany: vi.fn().mockResolvedValue(services) },
+      $queryRaw: vi.fn().mockResolvedValue(searches),
       serviceNameAlias: { findMany: vi.fn().mockResolvedValue([]) },
       standardServiceName: {
         findMany: vi.fn().mockResolvedValue(standard),
@@ -50,6 +52,22 @@ describe("Prestazioni per mestiere (§388)", () => {
       { name: "Pulizia pannelli solari", variants: ["Pulizia pannelli solari", "pulizia pannelli solari"], professionalCount: 2 },
     ]);
     expect(overview.categories.find((c) => c.slug === "tuttofare")?.handwritten[0]?.professionalCount).toBe(1);
+  });
+
+  it("accanto alle più cercate dai clienti, quanti professionisti le offrono", async () => {
+    const { service } = setup(
+      [{ name: "Sturatura scarichi", professionalProfileId: "p1", professionalProfile: profile("idraulico") }],
+      [],
+      [
+        { slug: "idraulico", service: "Sturatura scarichi", count: 40n },
+        { slug: "idraulico", service: "Sostituzione sifone", count: 3n },
+      ],
+    );
+    const idraulico = (await service.handwrittenServices()).categories.find((c) => c.slug === "idraulico");
+    expect(idraulico?.searched).toEqual([
+      { name: "Sturatura scarichi", searchCount: 40, professionalCount: 1 },
+      { name: "Sostituzione sifone", searchCount: 3, professionalCount: 0 },
+    ]);
   });
 
   it("una prestazione aggiunta alle standard non è più tra le scritte a mano", async () => {
@@ -109,5 +127,38 @@ describe("ProblemTakeoverService", () => {
     expect(prisma.problemTakeover.create).toHaveBeenCalledWith({
       data: { userId: "u1", description: "orlo dei pantaloni", city: null, outOfService: null, missingTrade: "Sarto" },
     });
+  });
+});
+
+describe("Prestazioni più cercate dai clienti (docs/changelog/2026-11-17-prestazioni-veloci.md)", () => {
+  const same = (name: string) => (name === "Perdite" ? "Riparazione perdita d'acqua" : name);
+  it("somma le varianti, ordina per ricerche e scarta le cercate una volta", () => {
+    const counts = countSearchedServices(
+      [
+        { slug: "idraulico", service: "Sturatura scarichi", count: 3n },
+        { slug: "idraulico", service: "Riparazione perdita d'acqua", count: 2n },
+        { slug: "idraulico", service: "Perdite", count: 2n },
+        { slug: "idraulico", service: "Sostituzione sifone", count: 1n },
+        { slug: "elettricista", service: "Sostituzione presa", count: 1n },
+      ],
+      same,
+    );
+    expect(counts.idraulico).toEqual({ "Sturatura scarichi": 3, "Riparazione perdita d'acqua": 4, "Sostituzione sifone": 1 });
+    expect(rankSearchedServices(counts)).toEqual({ idraulico: ["Riparazione perdita d'acqua", "Sturatura scarichi"] });
+  });
+
+  it("legge il database una volta ogni dieci minuti", async () => {
+    const prisma = {
+      $queryRaw: vi.fn().mockResolvedValue([{ slug: "pulizie", service: "Pulizie di casa", count: 4n }]),
+      serviceNameAlias: { findMany: vi.fn().mockResolvedValue([]) },
+      standardServiceName: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const service = new ServiceNamesService(prisma as never);
+    const now = new Date("2026-11-17T10:00:00Z");
+    expect(await service.searchedByCategory(now)).toEqual({ pulizie: ["Pulizie di casa"] });
+    await service.searchedByCategory(new Date(now.getTime() + 5 * 60_000));
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    await service.searchedByCategory(new Date(now.getTime() + 11 * 60_000));
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
   });
 });

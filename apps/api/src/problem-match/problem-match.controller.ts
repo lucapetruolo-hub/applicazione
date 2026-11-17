@@ -120,6 +120,13 @@ export class ServiceNamesController {
   standard() {
     return this.serviceNamesService.standardByCategory();
   }
+
+  /** Prestazioni più cercate dai clienti, per mestiere: solo ai professionisti con l'accesso (docs/changelog/2026-11-17-prestazioni-veloci.md). */
+  @UseGuards(JwtAuthGuard)
+  @Get("searched")
+  searched() {
+    return this.serviceNamesService.searchedByCategory();
+  }
 }
 
 /** "Mestieri richiesti" e "Richieste da seguire" (docs/CHANGELOG.md §392). */

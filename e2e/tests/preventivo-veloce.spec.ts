@@ -121,12 +121,14 @@ test("la manodopera parte dal prezzo dell'ultimo preventivo, e il profilo invita
   await expect(page.getByRole("textbox", { name: "Prezzo massimo in euro" }).first()).toHaveValue("60");
   await expect(page.getByText("La manodopera parte dal prezzo del tuo ultimo preventivo: cambialo se serve.")).toBeVisible();
 
+  // Dal link del preventivo il modulo si apre sulle prestazioni (docs/changelog/2026-11-17-prestazioni-veloci.md).
   await page.goto("/dashboard/profilo#profilo-prestazioni");
-  const hint = page.locator(".services-hint");
-  await expect(hint).toContainText("Aggiungi le prestazioni per rispondere più in fretta");
+  const hint = page.locator(".services-why");
+  await expect(hint).toContainText("Ogni lavoro che aggiungi ti fa trovare");
+  await expect(page.getByLabel("Aggiungi più lavori insieme")).toBeFocused();
   await hint.scrollIntoViewIfNeeded();
   await page.screenshot({ path: "test-results/preventivo-veloce-profilo-suggerimento.png" });
-  const axe = await new AxeBuilder({ page }).include(".services-hint").analyze();
+  const axe = await new AxeBuilder({ page }).include("#profilo-prestazioni").analyze();
   expect(axe.violations.filter((v) => v.impact === "critical" || v.impact === "serious")).toEqual([]);
   await page.context().close();
 });

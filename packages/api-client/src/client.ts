@@ -2748,6 +2748,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<void>(`/admin/problem-match/words/${encodeURIComponent(id)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
     /** Prestazioni standard aggiunte dall'admin (§388), da unire a `POPULAR_SERVICES`. */
     standardServices: () => request<StandardServicesByCategory>("/service-names/standard", { cache: "no-store" }),
+    /** Prestazioni più cercate dai clienti per mestiere, in ordine (docs/changelog/2026-11-17-prestazioni-veloci.md). */
+    searchedServices: (token: string) =>
+      request<StandardServicesByCategory>("/service-names/searched", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     adminAddStandardService: (token: string, input: { name: string; categorySlug: string }) =>
       request<StandardServiceAdmin>("/admin/problem-match/service-names/standard", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
     adminRemoveStandardService: (token: string, id: string) =>

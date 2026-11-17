@@ -50,6 +50,8 @@ export default function DashboardTodayPage() {
   const [subscription, setSubscription] = useState<MySubscription | null>(null);
   // Pausa scelta dal professionista (collaudo C-16): in Home solo mentre dura.
   const [awayUntil, setAwayUntil] = useState<string | null>(null);
+  // Prestazioni nel profilo: con meno di 3, il promemoria "Aggiungi i lavori che fai".
+  const [servicesCount, setServicesCount] = useState<number | null>(null);
   const [restrictions, setRestrictions] = useState<{ demotedUntil?: string | null; requestsBlockedUntil?: string | null } | null>(null);
   const [profileMissing, setProfileMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +95,7 @@ export default function DashboardTodayPage() {
         later((p: Awaited<ReturnType<typeof loadMyProfessionalProfile>>) => {
           setRestrictions(p ? { demotedUntil: p.demotedUntil, requestsBlockedUntil: p.requestsBlockedUntil } : null);
           setAwayUntil(p?.awayUntil ?? null);
+          setServicesCount(p ? p.services.length : null);
         }),
       )
       .catch(later(() => setRestrictions(null)));
@@ -473,6 +476,13 @@ export default function DashboardTodayPage() {
                       <AgendaNotice attention={user.agendaAttention} />
                     </div>
                   ) : null}
+                  {/* Prestazioni (docs/changelog/2026-11-17-prestazioni-veloci.md): a chi compare
+                      già nelle ricerche e ne ha meno di tre, perché ognuna lo fa trovare. */}
+                  {!profileHidden && servicesCount !== null && servicesCount < SERVICES_REMINDER_BELOW ? (
+                    <div className="today-slot" style={{ order: 5 }}>
+                      <ServicesNotice count={servicesCount} />
+                    </div>
+                  ) : null}
                   {/* Il canale del professionista (docs/changelog/2026-11-08-canale-del-professionista.md):
                       sempre in vista a chi compare già nelle ricerche, perché i suoi clienti sono la prima domanda al lancio. */}
                   {profileHidden ? null : (
@@ -644,6 +654,33 @@ function AgendaNotice({ attention }: { attention: AgendaAttention }) {
       </XStack>
       <Link href="/dashboard/agenda?tab=disponibilita" style={{ textDecoration: "none" }}>
         <CardButton tabIndex={-1}>Apri l'agenda</CardButton>
+      </Link>
+    </XStack>
+  );
+}
+
+/** Sotto questo numero di prestazioni, in Oggi il promemoria per aggiungerne. */
+const SERVICES_REMINDER_BELOW = 3;
+
+/** "Aggiungi i lavori che fai": ogni prestazione fa trovare il professionista quando un cliente descrive quel problema. */
+function ServicesNotice({ count }: { count: number }) {
+  return (
+    <XStack gap="3" alignItems="center" padding="4" borderRadius={16} backgroundColor={brand.cianografiaVelo} flexWrap="wrap">
+      <XStack flex={1} minWidth={240} gap="3" alignItems="center">
+        <YStack width={40} height={40} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor="#FFFFFF" flexShrink={0} aria-hidden>
+          <Icon name="search" size={20} color={brand.cianografiaScuro} />
+        </YStack>
+        <YStack flex={1} minWidth={0} gap={2}>
+          <Text fontWeight="800" color={brand.grafite}>
+            Aggiungi i lavori che fai
+          </Text>
+          <Text fontSize={16} color={brand.grafite70}>
+            {count === 0 ? "Non ne hai ancora: ognuno ti fa trovare dai clienti che descrivono quel problema." : `Ne hai ${count}: ognuno in più ti fa trovare dai clienti che descrivono quel problema.`}
+          </Text>
+        </YStack>
+      </XStack>
+      <Link href="/dashboard/profilo?campo=prestazioni" style={{ textDecoration: "none" }}>
+        <CardButton tabIndex={-1}>Aggiungi lavori</CardButton>
       </Link>
     </XStack>
   );

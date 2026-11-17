@@ -653,9 +653,18 @@ export type ServiceNamesAdminOverview = {
     /** `id` solo per quelle aggiunte dall'admin (si possono togliere). */
     standard: { name: string; id: string | null; professionalCount: number }[];
     handwritten: { name: string; variants: string[]; professionalCount: number }[];
+    /** Più cercate dai clienti negli ultimi 90 giorni (dal lancio), con quanti professionisti le offrono. */
+    searched: { name: string; searchCount: number; professionalCount: number }[];
   }[];
   aliases: { key: string; canonical: string }[];
 };
+/**
+ * Lavoro cercato tanto ma offerto da pochi: almeno 5 ricerche e più del
+ * doppio dei professionisti che lo offrono (Admin › Mestieri richiesti).
+ */
+export function fewProfessionalsForSearches(searchCount: number, professionalCount: number): boolean {
+  return searchCount >= 5 && searchCount > 2 * professionalCount;
+}
 export type StandardServiceAdmin = { id: string; categorySlug: string; name: string };
 /** Prestazioni standard aggiunte dall'admin, per categoria (`GET /service-names/standard`). */
 export type StandardServicesByCategory = Partial<Record<string, string[]>>;
