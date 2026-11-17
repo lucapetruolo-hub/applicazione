@@ -22,7 +22,7 @@ import { PROBLEM_PHOTO_MAX_BYTES } from "@professionisti/shared";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { clientIp } from "../common/client-ip";
 import { photoMediaType } from "../problem-match/problem-match.service";
-import { PhotoHandoffService, validCode } from "./photo-handoff.service";
+import { PhotoHandoffService, clampMaxPhotos, validCode } from "./photo-handoff.service";
 
 const EXPIRED = "Questo codice è scaduto. Dal computer apri di nuovo \"Scatta dal telefono\".";
 
@@ -38,11 +38,11 @@ export class PhotoHandoffController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post()
   @HttpCode(200)
-  async create(@Req() req: Parameters<typeof clientIp>[0]) {
+  async create(@Req() req: Parameters<typeof clientIp>[0], @Body() body: { maxPhotos?: unknown } | undefined) {
     if (!(await this.photoHandoffService.takeForIp(clientIp(req)))) {
       throw new HttpException("Per oggi hai aperto molti codici: scegli la foto dal computer.", HttpStatus.TOO_MANY_REQUESTS);
     }
-    return this.photoHandoffService.create();
+    return this.photoHandoffService.create(clampMaxPhotos(body?.maxPhotos));
   }
 
   /** Il telefono apre il link. */
@@ -50,12 +50,12 @@ export class PhotoHandoffController {
   @Post(":code/open")
   @HttpCode(200)
   async open(@Param("code") code: string) {
-    if (!validCode(code)) return { status: "expired" };
-    return { status: await this.photoHandoffService.open(code) };
+    if (!validCode(code)) return { status: "expired", sent: 0, max: 0 };
+    return this.photoHandoffService.open(code);
   }
 
-  /** Il telefono manda la foto, già rimpicciolita e senza posizione GPS. */
-  @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  /** Il telefono manda una foto, già rimpicciolita e senza posizione GPS. */
+  @Throttle({ default: { limit: 15, ttl: 60_000 } })
   @UseFilters(MulterExceptionFilter)
   @Post(":code/photo")
   @HttpCode(200)
@@ -65,15 +65,17 @@ export class PhotoHandoffController {
     if (!file) throw new BadRequestException("Nessuna foto caricata.");
     const mediaType = photoMediaType(file.buffer);
     if (!mediaType) throw new BadRequestException("La foto deve essere un'immagine JPEG, PNG o WebP.");
-    const result = await this.photoHandoffService.upload(code, file.buffer, mediaType);
-    if (result === "expired") throw new GoneException(EXPIRED);
-    if (result === "sent") throw new ConflictException("La foto è già arrivata sul computer.");
-    return { status: "sent" };
+    const outcome = await this.photoHandoffService.upload(code, file.buffer, mediaType);
+    if (outcome.result !== "ok") {
+      if (outcome.result === "expired") throw new GoneException(EXPIRED);
+      throw new ConflictException("Hai già mandato tutte le foto di questo codice.");
+    }
+    return { status: "sent", sent: outcome.sent, max: outcome.max };
   }
 
   /**
-   * Il computer chiede la foto ogni pochi secondi: 200 con l'immagine quando
-   * c'è (una volta sola), altrimenti lo stato in JSON.
+   * Il computer chiede le foto ogni pochi secondi: 200 con un'immagine quando
+   * ce n'è una (ognuna una volta sola), altrimenti lo stato in JSON.
    */
   @Throttle({ default: { limit: 40, ttl: 60_000 } })
   @Post(":code/take")

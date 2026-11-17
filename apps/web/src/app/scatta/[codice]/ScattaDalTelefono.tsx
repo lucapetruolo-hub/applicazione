@@ -8,10 +8,14 @@ import { shrinkPhoto } from "@/lib/photoSearch";
 
 type Stato = "apro" | "pronto" | "anteprima" | "invio" | "fatto" | "scaduto";
 
+/** Quante foto ha mandato e quante ne può mandare (docs/changelog/2026-11-17-piu-foto-dal-telefono.md). */
+type Conto = { sent: number; max: number };
+
 /**
  * Il telefono scatta (o sceglie dalla galleria), vede la foto e la manda al
  * computer. La foto si rimpicciolisce qui e perde la posizione GPS prima di
- * partire, come nella ricerca con foto.
+ * partire, come nella ricerca con foto. Se il computer ne aspetta più di una,
+ * dopo ogni invio si può scattare la successiva.
  */
 export function ScattaDalTelefono({ code }: { code: string }) {
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -19,6 +23,7 @@ export function ScattaDalTelefono({ code }: { code: string }) {
   const [stato, setStato] = useState<Stato>("apro");
   const [foto, setFoto] = useState<{ blob: Blob; url: string } | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
+  const [conto, setConto] = useState<Conto>({ sent: 0, max: 1 });
 
   useEffect(() => {
     let alive = true;
@@ -26,6 +31,7 @@ export function ScattaDalTelefono({ code }: { code: string }) {
       .openPhotoHandoff(code)
       .then((result) => {
         if (!alive) return;
+        if (result.max > 0) setConto({ sent: result.sent, max: result.max });
         setStato(result.status === "opened" ? "pronto" : result.status === "sent" ? "fatto" : "scaduto");
       })
       .catch(() => {
@@ -63,8 +69,11 @@ export function ScattaDalTelefono({ code }: { code: string }) {
     setStato("invio");
     setErrore(null);
     try {
-      await apiClient.sendPhotoHandoff(code, foto.blob);
-      setStato("fatto");
+      const sent = await apiClient.sendPhotoHandoff(code, foto.blob);
+      setConto(sent);
+      setFoto(null);
+      // Se il computer ne aspetta altre si torna ai pulsanti, con il conto.
+      setStato(sent.sent >= sent.max ? "fatto" : "pronto");
     } catch (error) {
       const status = (error as { status?: number }).status;
       if (status === 410) setStato("scaduto");
@@ -87,19 +96,29 @@ export function ScattaDalTelefono({ code }: { code: string }) {
         {stato === "fatto" ? (
           <div className="scatta-done" role="status">
             <CheckCircle2 size={48} strokeWidth={2} aria-hidden="true" />
-            <h1 className="scatta-title">Fatto, la foto è sul computer</h1>
+            <h1 className="scatta-title">{conto.sent > 1 ? "Fatto, le foto sono sul computer" : "Fatto, la foto è sul computer"}</h1>
             <p className="scatta-text">Torna al computer per continuare. Puoi chiudere questa pagina.</p>
           </div>
         ) : stato === "scaduto" ? (
           <div className="scatta-done scatta-expired" role="alert">
             <h1 className="scatta-title">Questo codice è scaduto</h1>
             <p className="scatta-text">
-              Il codice vale 10 minuti e per una sola foto. Dal computer apri di nuovo &quot;Scatta dal telefono&quot; e inquadra il codice nuovo.
+              Il codice vale 10 minuti, oppure si è chiusa la finestra sul computer. Dal computer apri di nuovo &quot;Scatta dal telefono&quot; e
+              inquadra il codice nuovo.
             </p>
           </div>
         ) : (
           <>
-            <h1 className="scatta-title">{stato === "anteprima" || stato === "invio" ? "Va bene questa foto?" : "Scatta la foto del problema"}</h1>
+            <h1 className="scatta-title">
+              {stato === "anteprima" || stato === "invio" ? "Va bene questa foto?" : conto.sent > 0 ? "Foto mandata" : conto.max > 1 ? "Scatta le foto" : "Scatta la foto del problema"}
+            </h1>
+            {conto.sent > 0 && stato !== "anteprima" && stato !== "invio" ? (
+              <p className="scatta-sent" role="status">
+                <CheckCircle2 size={20} strokeWidth={2} aria-hidden="true" />
+                {conto.sent === 1 ? "1 foto è arrivata sul computer" : `${conto.sent} foto sono arrivate sul computer`}. Puoi mandarne ancora{" "}
+                {conto.max - conto.sent}, oppure torna al computer e tocca &quot;Fatto&quot;.
+              </p>
+            ) : null}
             {foto && (stato === "anteprima" || stato === "invio") ? (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element -- foto locale (blob:), non un'immagine da ottimizzare */}
@@ -116,11 +135,17 @@ export function ScattaDalTelefono({ code }: { code: string }) {
               </>
             ) : (
               <>
-                <p className="scatta-text">Inquadra il problema da vicino, con buona luce. Niente persone o documenti. La foto arriva da sola sul computer.</p>
+                {conto.sent === 0 ? (
+                  <p className="scatta-text">
+                    {conto.max > 1
+                      ? `Puoi mandare fino a ${conto.max} foto, una alla volta: arrivano da sole sul computer. Niente persone o documenti.`
+                      : "Inquadra il problema da vicino, con buona luce. Niente persone o documenti. La foto arriva da sola sul computer."}
+                  </p>
+                ) : null}
                 <div className="scatta-actions">
                   <button type="button" className="webcam-primary scatta-wide" onClick={() => cameraRef.current?.click()} disabled={stato === "apro"}>
                     <Camera size={20} strokeWidth={2} aria-hidden="true" />
-                    Scatta una foto
+                    {conto.sent > 0 ? "Scatta un'altra foto" : "Scatta una foto"}
                   </button>
                   <button type="button" className="webcam-secondary scatta-wide" onClick={() => galleryRef.current?.click()} disabled={stato === "apro"}>
                     <ImageIcon size={20} strokeWidth={2} aria-hidden="true" />

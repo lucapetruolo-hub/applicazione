@@ -8,24 +8,42 @@ import { apiClient } from "@/lib/apiClient";
  * "Scatta dal telefono" nella finestra foto del computer (richiesta di Luca del
  * 16/11/2026, docs/changelog/2026-11-16-scatta-dal-telefono.md): un codice QR,
  * il telefono lo inquadra, scatta e la foto arriva qui da sola. Il computer
- * chiede ogni 2,5 secondi se è arrivata; il codice vale 10 minuti e una foto.
- * Chiudendo la finestra il codice si cancella.
+ * chiede ogni 2,5 secondi se è arrivata; il codice vale 10 minuti.
+ * Dal 17/11 (docs/changelog/2026-11-17-piu-foto-dal-telefono.md) un codice può
+ * valere più foto: nella richiesta e nel portfolio si mandano una dopo l'altra
+ * e arrivano qui man mano; nella ricerca della home resta una sola.
+ * Chiudendo la finestra il codice e le foto non prese si cancellano.
  */
 
 const POLL_MS = 2500;
 
-type Stato = "creo" | "attesa" | "collegato" | "arrivata" | "scaduto" | "errore";
+type Stato = "creo" | "attesa" | "collegato" | "scaduto" | "errore";
 
 export function PhoneHandoff({
+  maxPhotos = 1,
   onPhoto,
+  onDone,
   onChooseFile,
   onClose,
 }: {
+  /** Quante foto può mandare il telefono con questo codice. */
+  maxPhotos?: number;
+  /** Ogni foto arrivata, appena arriva. */
   onPhoto: (file: File) => void;
+  /** Tutte le foto arrivate (o "Fatto"): la finestra si chiude. */
+  onDone: () => void;
   /** "Scegli dal computer" se il codice non si riesce a preparare. */
   onChooseFile: () => void;
   onClose: () => void;
 }) {
+  // Fissato all'apertura: mentre arrivano le foto i posti liberi calano, ma il codice resta lo stesso.
+  const [max] = useState(() => Math.max(1, Math.min(10, Math.floor(maxPhotos) || 1)));
+  const [arrivate, setArrivate] = useState(0);
+  const arrivateRef = useRef(0);
+  const onDoneRef = useRef(onDone);
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
   // Sempre l'ultima funzione, senza far ripartire il giro delle domande a ogni disegno.
   const onPhotoRef = useRef(onPhoto);
   useEffect(() => {
@@ -37,22 +55,20 @@ export function PhoneHandoff({
   const generationRef = useRef(0);
   const [errore, setErrore] = useState<string | null>(null);
   const handoffRef = useRef<{ code: string; key: string } | null>(null);
-  const takenRef = useRef(false);
   const primaryRef = useRef<HTMLButtonElement>(null);
 
   const chiudiCodice = useCallback(() => {
     generationRef.current += 1;
     const handoff = handoffRef.current;
     handoffRef.current = null;
-    if (handoff && !takenRef.current) void apiClient.cancelPhotoHandoff(handoff.code, handoff.key);
+    if (handoff) void apiClient.cancelPhotoHandoff(handoff.code, handoff.key);
   }, []);
 
   const nuovoCodice = useCallback(async () => {
     chiudiCodice();
-    takenRef.current = false;
     const generation = generationRef.current;
     try {
-      const created = await apiClient.createPhotoHandoff();
+      const created = await apiClient.createPhotoHandoff(max);
       if (generation !== generationRef.current) {
         // La finestra si è chiusa o ha chiesto un altro codice nel frattempo.
         void apiClient.cancelPhotoHandoff(created.code, created.key);
@@ -66,7 +82,7 @@ export function PhoneHandoff({
       setErrore(error instanceof Error ? error.message : "Ora non riusciamo a preparare il codice. Scegli la foto dal computer.");
       setStato("errore");
     }
-  }, [chiudiCodice]);
+  }, [chiudiCodice, max]);
 
   useEffect(() => {
     // Il codice si chiede all'apertura: lo stato cambia solo dopo la risposta dell'API.
@@ -87,11 +103,15 @@ export function PhoneHandoff({
         const result = await apiClient.takePhotoHandoff(handoff.code, handoff.key);
         if (!alive) return;
         if (result.status === "sent") {
-          takenRef.current = true;
-          setStato("arrivata");
           const type = result.photo.type || "image/jpeg";
-          onPhotoRef.current(new File([result.photo], "foto-dal-telefono.jpg", { type }));
-        } else if (result.status === "opened") setStato("collegato");
+          onPhotoRef.current(new File([result.photo], `foto-dal-telefono-${Date.now()}.jpg`, { type }));
+          setStato("collegato");
+          arrivateRef.current += 1;
+          setArrivate(arrivateRef.current);
+          // Con una sola foto (o con l'ultima) la finestra si chiude da sola.
+          if (arrivateRef.current >= max) onDoneRef.current();
+        } else if (result.status === "done") onDoneRef.current();
+        else if (result.status === "opened") setStato("collegato");
         else if (result.status === "expired") setStato("scaduto");
       } catch {
         // Un giro andato male (rete): si riprova al prossimo.
@@ -103,7 +123,7 @@ export function PhoneHandoff({
       alive = false;
       window.clearInterval(timer);
     };
-  }, [stato]);
+  }, [stato, max]);
 
   useEffect(() => {
     if (stato === "scaduto" || stato === "errore") primaryRef.current?.focus();
@@ -124,11 +144,6 @@ export function PhoneHandoff({
           <strong>{stato === "scaduto" ? "Il codice è scaduto" : "Il codice non è pronto"}</strong>
           <p>{stato === "scaduto" ? "Vale 10 minuti. Prepariamone uno nuovo." : errore}</p>
         </div>
-      ) : stato === "arrivata" ? (
-        <div className="handoff-done" role="status">
-          <CheckCircle2 size={40} strokeWidth={2} aria-hidden="true" />
-          <strong>Foto arrivata</strong>
-        </div>
       ) : (
         <div className="handoff-body">
           <div className="handoff-qr">
@@ -143,13 +158,23 @@ export function PhoneHandoff({
           </div>
           <ol className="handoff-steps">
             <li>Apri la fotocamera del telefono e inquadra il codice.</li>
-            <li>Tocca il link che compare e scatta la foto del problema.</li>
-            <li>Tocca &quot;Manda al computer&quot;: la foto arriva qui da sola.</li>
+            <li>Tocca il link che compare e scatta la foto{max > 1 ? "" : " del problema"}.</li>
+            <li>
+              {max > 1
+                ? `Tocca "Manda al computer" per ogni foto, fino a ${max}: arrivano qui da sole.`
+                : 'Tocca "Manda al computer": la foto arriva qui da sola.'}
+            </li>
           </ol>
         </div>
       )}
 
-      {stato === "attesa" || stato === "collegato" ? (
+      {arrivate > 0 && (stato === "attesa" || stato === "collegato") ? (
+        <p className="handoff-status handoff-status-ok" role="status" aria-live="polite">
+          <CheckCircle2 size={18} strokeWidth={2} aria-hidden="true" />
+          {arrivate === 1 ? "1 foto arrivata" : `${arrivate} foto arrivate`}
+          {max - arrivate > 0 ? ` · puoi mandarne ancora ${max - arrivate}` : ""}
+        </p>
+      ) : stato === "attesa" || stato === "collegato" ? (
         <p className="handoff-status" role="status" aria-live="polite">
           <span className="handoff-dot" aria-hidden="true" />
           {stato === "collegato" ? "Telefono collegato: aspetto la foto…" : "Aspetto il telefono… Il codice vale 10 minuti."}
@@ -176,6 +201,10 @@ export function PhoneHandoff({
               Scegli dal computer
             </button>
           )
+        ) : arrivate > 0 ? (
+          <button type="button" className="webcam-primary" onClick={() => onDoneRef.current()}>
+            Fatto
+          </button>
         ) : (
           <button type="button" className="webcam-secondary" onClick={onClose}>
             Annulla
