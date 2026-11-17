@@ -151,13 +151,21 @@ function slugify(text: string): string {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/[^a-z0-9]+/g, "-");
+}
+
+/** Toglie i trattini ai bordi senza espressioni regolari (nessun testo può rallentarle). */
+function trimDashes(text: string): string {
+  let start = 0;
+  let end = text.length;
+  while (start < end && text[start] === "-") start += 1;
+  while (end > start && text[end - 1] === "-") end -= 1;
+  return text.slice(start, end);
 }
 
 /** "padova" per PD, "monza-e-brianza" per MB. */
 export function provinceSlug(code: string): string {
-  return slugify(PROVINCE_NAMES[code] ?? code);
+  return trimDashes(slugify(PROVINCE_NAMES[code] ?? code));
 }
 
 let provinceBySlug: Map<string, string> | null = null;
