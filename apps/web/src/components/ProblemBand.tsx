@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import dynamic from "next/dynamic";
+import { useState } from "react";
 import Link from "next/link";
 import {
   OUT_OF_SERVICE_LABELS,
@@ -11,18 +10,10 @@ import {
   type ProfessionalCategorySlug,
 } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
-import { apiClient } from "@/lib/apiClient";
-import { useAuth } from "@/lib/AuthContext";
 import { setRequestHints, type ChosenPro, type ProblemRequestHints } from "./ChosenProsBar";
 import { ChosenProsStrip } from "./ChosenProsStrip";
 import { ReportAiAnswer } from "./ReportAiAnswer";
 import { CATEGORY_WHO as WHO, joinWithOr, problemCategoryChoices } from "@/lib/problemChoices";
-
-// Accesso e registrazione (con i loro controlli dei campi) caricati solo
-// quando servono, al tocco di "Prendete in carico la richiesta": prima
-// stavano nel JavaScript di /cerca per tutti
-// (docs/changelog/2026-11-09-meno-javascript-comune.md).
-const InlineAuthGate = dynamic(() => import("./InlineAuthGate").then((module) => module.InlineAuthGate), { ssr: false });
 
 /**
  * Banda in cima ai risultati quando il cliente descrive il problema invece
@@ -30,7 +21,7 @@ const InlineAuthGate = dynamic(() => import("./InlineAuthGate").then((module) =>
  * avviso di sicurezza (solo dal dizionario), "Ti serve un…", una domanda
  * con le risposte da cliccare, "Chiedi preventivo a tutti" oppure a chi si
  * sceglie con "Scegli" (fino a 5, §393); per un lavoro che nessuna categoria
- * copre, chi lo dichiara oppure "Ce ne occupiamo noi".
+ * copre, chi lo dichiara oppure la richiesta in attesa (docs/changelog/2026-11-17-richieste-in-attesa.md).
  */
 
 function categoryLabel(slug: string): string {
@@ -98,6 +89,14 @@ export function ProblemBand({
   if (city) quoteParams.set("citta", city);
   setRequestHints(quoteParams, requestHints);
   const quoteHref = `/preventivo?${quoteParams.toString()}`;
+  // Richiesta in attesa di un mestiere che nessuno fa vicino (docs/changelog/2026-11-17-richieste-in-attesa.md).
+  const waitingHref = (trade: { key?: string; name?: string }) => {
+    const params = new URLSearchParams(quoteParams);
+    params.delete("categoria");
+    if (trade.key) params.set("attesaChiave", trade.key);
+    if (trade.name) params.set("attesa", trade.name);
+    return `/preventivo?${params.toString()}`;
+  };
   const shortText = description.length > 90 ? `${description.slice(0, 90)}…` : description;
   // Più mestieri e nessuna scelta del cliente: il titolo li nomina tutti, senza
   // dare per sicuro il primo (docs/changelog/2026-11-09-banda-mestieri-chiara.md).
@@ -120,7 +119,7 @@ export function ProblemBand({
     Boolean(missingTrade) || (chosen !== null && result.categories.includes(chosen) && (result.source === "ia" || Boolean(photo)));
 
   // Tutti i mestieri da scegliere a mano: nella banda se non abbiamo capito, sotto
-  // "Ce ne occupiamo noi" se l'IA propone un mestiere che il sito non ha.
+  // sotto la richiesta in attesa se l'IA propone un mestiere che il sito non ha.
   const chooseTrade = (
     <YStack gap="2">
       <Text fontSize={16} color={brand.grafite70}>
@@ -308,7 +307,7 @@ export function ProblemBand({
             Nessuna delle nostre categorie fa questo lavoro, ma questi professionisti dichiarano di farlo.
           </Text>
         ) : (
-          <TakeoverCard description={description} city={city} outOfService={result.outOfService} />
+          <WaitingRequestCard href={waitingHref({ key: result.outOfService })} trade={OUT_OF_SERVICE_LABELS[result.outOfService]} urgent={requestHints?.timing === "TODAY"} />
         )
       ) : missingTrade ? (
         <>
@@ -327,7 +326,7 @@ export function ProblemBand({
             </>
           ) : (
             <>
-              <TakeoverCard description={description} city={city} missingTrade={missingTrade} />
+              <WaitingRequestCard href={waitingHref({ name: missingTrade })} trade={missingTrade} urgent={requestHints?.timing === "TODAY"} />
               {chooseTrade}
             </>
           )}
@@ -471,102 +470,54 @@ export function SafetyHint({ safety }: { safety: NonNullable<ProblemMatchResult[
   );
 }
 
-/** "Ce ne occupiamo noi": nessuna scadenza, poi la ricerca normale (decisione di Luca). */
-function TakeoverCard({
-  description,
-  city,
-  outOfService,
-  missingTrade,
-}: {
-  description: string;
-  city?: string;
-  outOfService?: string;
-  missingTrade?: string;
-}) {
-  const { token } = useAuth();
-  const [state, setState] = useState<"idle" | "auth" | "sending" | "sent" | "declined" | "error">("idle");
-  const [pendingSend, setPendingSend] = useState(false);
-
-  const send = useCallback(
-    async (authToken: string) => {
-      setState("sending");
-      try {
-        await apiClient.createProblemTakeover(authToken, {
-          description,
-          city,
-          outOfService,
-          missingTrade,
-        });
-        setState("sent");
-      } catch {
-        setState("error");
-      }
-    },
-    [description, city, outOfService, missingTrade],
-  );
-
-  // Dopo l'accesso dentro la finestra si invia da qui, con il token nuovo del contesto.
-  useEffect(() => {
-    if (!pendingSend || !token) return;
-    // Avvia l'invio vero (chiamata all'API): solo un effetto può farlo.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPendingSend(false);
-    void send(token);
-  }, [pendingSend, token, send]);
-
-  const searchAll = city ? `/cerca?citta=${encodeURIComponent(city)}` : "/cerca";
-
-  if (state === "sent" || state === "declined") {
+/**
+ * Nessuno fa ancora questo lavoro vicino al cliente (docs/changelog/2026-11-17-richieste-in-attesa.md,
+ * decisioni di Luca del 17/11/2026, al posto di "Ce ne occupiamo noi" che
+ * faceva sembrare il sito chi fa il lavoro): il cliente lascia la richiesta
+ * completa con lo stesso modulo di sempre e arriva da sola a chi lo fa appena
+ * si iscrive nella sua zona. Per "Oggi" si dice subito che non c'è nessuno.
+ */
+function WaitingRequestCard({ href, trade, urgent }: { href: string; trade: string; urgent: boolean }) {
+  const [declined, setDeclined] = useState(false);
+  if (declined) {
     return (
       <YStack gap="2" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4" padding="4">
         <Text fontSize={16} color={brand.grafite} role="status">
-          {state === "sent"
-            ? "Fatto: ce ne occupiamo noi. Ti scriviamo all'email del tuo account appena troviamo chi può farlo, e scegli tu a chi chiedere il preventivo."
-            : "Va bene. Se ti serve altro, cerca tra tutti i professionisti."}
+          Va bene. Se ti serve altro, cerca tra tutti i professionisti qui sotto.
         </Text>
-        <Link href={searchAll} style={{ alignSelf: "flex-start" }}>
-          <Text color={brand.cianografiaScuro} fontWeight="600" fontSize={16}>
-            Vedi tutti i professionisti
-          </Text>
-        </Link>
       </YStack>
     );
   }
-
   return (
     <YStack gap="3" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="4" padding="4">
       <YStack gap="1">
         <Text fontFamily="heading" fontWeight="800" fontSize="6" color={brand.grafite}>
-          Ce ne occupiamo noi
+          Nessuno fa ancora questo lavoro vicino a te
         </Text>
         <Text fontSize={16} color={brand.grafite70}>
-          {missingTrade
-            ? "Se vuoi, cerchiamo noi qualcuno che lo faccia e ti scriviamo."
-            : "Per ora nessun professionista del sito fa questo lavoro qui. Se vuoi, cerchiamo noi qualcuno e ti scriviamo."}
+          {urgent ? "Per oggi non possiamo trovarti nessuno. Se va bene anche nei prossimi giorni, lascia" : "Lascia"} la richiesta
+          completa: la mandiamo a chi fa il lavoro di {trade.toLowerCase()} appena si iscrive nella tua zona. Il preventivo te lo fa lui, e scegli tu
+          se accettarlo.
         </Text>
       </YStack>
-      {state === "error" ? (
-        <Text fontSize={16} color={brand.urgenza} role="alert">
-          Non siamo riusciti a inviare la richiesta. Riprova.
-        </Text>
-      ) : null}
       <XStack gap="2" flexWrap="wrap">
-        <Button variant="primary" disabled={state === "sending"} onPress={() => (token ? void send(token) : setState("auth"))}>
-          {state === "sending" ? "Invio in corso..." : "Prendete in carico la richiesta"}
-        </Button>
-        <Button variant="secondary" onPress={() => setState("declined")}>
-          No grazie, non serve
+        <Link href={href} style={{ textDecoration: "none" }}>
+          <Button tabIndex={-1} variant="primary">
+            Lascia la richiesta
+          </Button>
+        </Link>
+        <Button variant="secondary" onPress={() => setDeclined(true)}>
+          No grazie
         </Button>
       </XStack>
-      {state === "auth" ? (
-        <InlineAuthGate
-          onClose={() => setState("idle")}
-          onAuthenticated={() => {
-            setState("idle");
-            setPendingSend(true);
-          }}
-        />
-      ) : null}
+      <details className="waiting-request-more">
+        <summary>Scopri di più</summary>
+        <ul>
+          <li>Non sappiamo dirti quando arriva qualcuno: ti scriviamo noi appena succede.</li>
+          <li>La richiesta resta valida 60 giorni. Dopo 30 giorni ti chiediamo se ti serve ancora, e puoi ritirarla quando vuoi.</li>
+          <li>Il professionista vede la città, la descrizione e le foto. Telefono e indirizzo solo dopo che accetti il suo preventivo.</li>
+        </ul>
+      </details>
     </YStack>
   );
 }

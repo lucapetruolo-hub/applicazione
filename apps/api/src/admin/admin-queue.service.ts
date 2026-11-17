@@ -324,7 +324,7 @@ export class AdminQueueService {
         key: `PROBLEM_TAKEOVER:${t.id}`,
         kind: "PROBLEM_TAKEOVER",
         href: "/admin/richieste-da-seguire",
-        title: "Ce ne occupiamo noi",
+        title: "Richiesta di prima da seguire",
         detail: short(t.description),
         who: [personName(t.user), t.city].filter(Boolean).join(" · "),
         amountEurCents: null,

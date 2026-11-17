@@ -165,6 +165,7 @@ import type {
   StandardServicesByCategory,
   MergeServiceNameInput,
   ProblemTakeoverAdmin,
+  WaitingRequestsAdmin,
   ClientInvoiceRequestInput,
   SeenCancellationTerms,
   ClientInvoiceRequestView,
@@ -303,7 +304,14 @@ export type ClientGuidedRequest = {
   /** Altre richieste dello stesso invio con più categorie (docs/CHANGELOG.md §259). */
   sentWith?: { id: string; categoryLabel: string }[];
   categorySlug: string;
+  /** Il mestiere in attesa al posto della categoria, se la richiesta è in attesa di un mestiere. */
   categoryLabel: string;
+  /**
+   * Mestiere che nessuno faceva vicino al cliente quando l'ha mandata
+   * (docs/changelog/2026-11-17-richieste-in-attesa.md): nome e chiave dei
+   * lavori fuori servizio, per "Ripeti la richiesta". Null per le altre.
+   */
+  waitingTrade?: { name: string; key: string | null } | null;
   description: string;
   city: string;
   /** Via, dove il professionista dovrà andare a svolgere il lavoro. */
@@ -694,7 +702,7 @@ export type AdminOverview = {
   verificationRequests: number;
   /** Zone con le richieste generali chiuse (docs/CHANGELOG.md §213). */
   closedGeneralRequestZones: number;
-  /** "Ce ne occupiamo noi" da seguire (docs/CHANGELOG.md §392). */
+  /** Richieste di prima da seguire (§392) più quelle in attesa di un mestiere senza nessuno (docs/changelog/2026-11-17-richieste-in-attesa.md). */
   openProblemTakeovers: number;
   /** Contestazioni in banca a cui rispondere e la scadenza più vicina (docs/changelog/2026-10-28-stripe-prova.md). */
   bankDisputesToAnswer: number;
@@ -2740,6 +2748,18 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       request<void>("/admin/problem-match/service-names/merge", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
     adminUnmergeServiceName: (token: string, key: string) =>
       request<void>(`/admin/problem-match/service-names/${encodeURIComponent(key)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
+    /** Richieste in attesa dei mestieri scritti dal professionista, vicino alla sua città (solo mestiere e numero). */
+    waitingRequestsNearby: (token: string, city: string, text: string) =>
+      request<{ trade: string; count: number }[]>(`/guided-requests/waiting-nearby?${new URLSearchParams({ citta: city, testo: text }).toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+    /** Richieste in attesa di un mestiere (docs/changelog/2026-11-17-richieste-in-attesa.md). */
+    adminWaitingRequests: (token: string) =>
+      request<WaitingRequestsAdmin>("/admin/problem-match/waiting-requests", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
     adminProblemTakeovers: (token: string, done?: boolean) =>
       request<ProblemTakeoverAdmin[]>(`/admin/problem-match/takeovers${done ? "?stato=fatte" : ""}`, {
         headers: { Authorization: `Bearer ${token}` },

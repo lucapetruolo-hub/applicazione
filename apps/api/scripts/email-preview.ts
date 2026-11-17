@@ -99,6 +99,7 @@ add("new_lead_urgente", "Richieste", "Professionista", renderEmail(notificationE
 notification("REQUEST_FORWARDED", "Cliente", "Richieste", { count: 3 });
 notification("REQUEST_FORWARD_NO_MATCH", "Cliente", "Richieste");
 notification("REQUEST_MATCHED_LATER", "Cliente", "Richieste");
+notification("WAITING_REQUEST_STILL_NEEDED", "Cliente", "Richieste");
 notification("GUIDED_REQUEST_EXPIRED", "Cliente", "Richieste");
 
 // Messaggi in chat non letti dopo 10 minuti (§332)

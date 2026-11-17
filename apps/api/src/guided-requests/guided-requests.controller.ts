@@ -209,6 +209,14 @@ export class GuidedRequestsController {
   // Indirizzo dell'ultima richiesta a domicilio, per precompilare la
   // richiesta nuova quando l'account non ne ha uno salvato
   // (docs/changelog/2026-11-08-collaudo-ux-cliente-pro.md).
+  // Richieste in attesa del mestiere che il professionista sta scrivendo, vicino
+  // alla sua città: solo mestiere e numero (docs/changelog/2026-11-17-richieste-in-attesa.md).
+  @UseGuards(JwtAuthGuard)
+  @Get("waiting-nearby")
+  waitingNearby(@Query("citta") city?: string, @Query("testo") text?: string) {
+    return this.guidedRequestsService.waitingNearby(String(city ?? "").slice(0, 100), String(text ?? "").slice(0, 3000));
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get("me/last-address")
   lastAddress(@Req() req: AuthenticatedRequest) {

@@ -7,7 +7,7 @@ import { testToken } from "../fixtures/preventivi";
  * Correzioni dopo la misura "dopo" del riordino dell'Admin
  * (docs/changelog/2026-11-03-admin-dopo-la-misura.md): il ricorso su un
  * problema chiede conferma, la persona compare accanto all'attività, "Ce ne
- * occupiamo noi" mostra il pericolo e "Prendo io", la scheda di un profilo
+ * occupiamo noi" (ora "Di prima" in Richieste in attesa) mostra il pericolo e "Prendo io", la scheda di un profilo
  * tolto dalla ricerca dice in che stato è.
  */
 const prisma = new PrismaClient();
@@ -164,10 +164,12 @@ test("Problemi: dopo un caricamento fallito, la lista arrivata toglie l'errore",
   await context.close();
 });
 
-test("Ce ne occupiamo noi: pericolo del gas e Prendo io anche nella pagina", async ({ browser, isMobile }) => {
+test("Richieste di prima: pericolo del gas e Prendo io anche nella pagina", async ({ browser, isMobile }) => {
   await prisma.adminCaseClaim.deleteMany({ where: { caseKey: `PROBLEM_TAKEOVER:${ids.takeover}` } });
   const { context, page } = await adminPage(browser, isMobile);
   await page.goto("/admin/richieste-da-seguire");
+  // Le vecchie richieste stanno sotto "Di prima" (docs/changelog/2026-11-17-richieste-in-attesa.md).
+  await page.getByRole("button", { name: "Di prima" }).click();
   const row = page.getByRole("row").filter({ hasText: `Sento odore di gas in cucina ${stamp}` });
   await expect(row.getByText("Possibile pericolo: gas")).toBeVisible();
   await row.getByRole("button", { name: "Prendo io" }).click();

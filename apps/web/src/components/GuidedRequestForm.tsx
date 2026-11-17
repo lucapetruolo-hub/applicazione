@@ -30,6 +30,9 @@ import {
   REQUEST_TIMINGS,
   REQUEST_TIMING_LABEL,
   timingForPreferredDate,
+  WAITING_REQUEST_HOST_CATEGORY,
+  isWaitingTradeKey,
+  waitingTradeName,
 } from "@professionisti/shared";
 import { Autocomplete, Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { MagneticButton } from "./MagneticButton";
@@ -52,7 +55,7 @@ import { PhotoPicker } from "@/components/PhotoPicker";
 import { TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
 import { GuidedRequestSkeleton } from "@/components/PageLoading";
 import { ButtonWaitBar } from "@/components/WaitBar";
-import { CategoryChoice } from "@/components/CategoryChoice";
+import { CategoryChoice, WaitingTradeChoice } from "@/components/CategoryChoice";
 import { WeekSlotPicker } from "@/components/WeekSlotPicker";
 import { SafetyNotice } from "@/components/ProblemBand";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
@@ -232,9 +235,20 @@ export function GuidedRequestForm({
   // scritto ("urgente", "domani", "con calma"): resta modificabile
   // (docs/changelog/2026-11-12-haiku-senza-ragionamento.md).
   const timingParam = searchParams.get("quando");
-  const [timing, setTiming] = useState<RequestTiming | null>(
-    isUrgentInitial ? "TODAY" : REQUEST_TIMINGS.find((value) => value === timingParam) ?? null,
+  // Mestiere che nessuno fa ancora vicino al cliente, arrivato dalla ricerca
+  // (docs/changelog/2026-11-17-richieste-in-attesa.md, decisioni di Luca): la
+  // richiesta resta in attesa e arriva da sola a chi lo fa appena si iscrive.
+  // "Cambia" torna alla scelta normale del mestiere.
+  const waitingTradeParam = waitingTradeName({ key: searchParams.get("attesaChiave"), name: searchParams.get("attesa") });
+  const [waitingMode, setWaitingMode] = useState(
+    Boolean(waitingTradeParam) && !isUrgentInitial && !searchParams.get("professionista") && !searchParams.get("scelti"),
   );
+  const waitingTrade = waitingMode ? waitingTradeParam : null;
+  const [timing, setTiming] = useState<RequestTiming | null>(() => {
+    const initial = isUrgentInitial ? "TODAY" : (REQUEST_TIMINGS.find((value) => value === timingParam) ?? null);
+    // Per oggi non si promette nessuno: la scelta torna al cliente, tra i prossimi giorni.
+    return waitingMode && initial === "TODAY" ? null : initial;
+  });
   const isUrgent = timing === "TODAY";
   // Frase per il lettore di schermo quando cambia l'urgenza: cosa cambia,
   // in poche parole (§344). Vuota all'apertura, così non legge nulla.
@@ -525,8 +539,14 @@ export function GuidedRequestForm({
         ? " Per ora nessuno accetta urgenze in zona."
         : ` Va a chi accetta urgenze in zona: ${reach.urgent === 1 ? "1 professionista" : `${reach.urgent} professionisti`}.`
       : "";
-  const urgencyDescription =
-    timing === "TODAY"
+  const urgencyDescription = waitingTrade
+    ? timing === "WEEK"
+      ? "Appena arriva, il professionista sa che ti serve entro pochi giorni."
+      : timing === "CALM"
+        ? "Appena arriva, il professionista sa che non hai fretta."
+        : // Decisione di Luca (17/11): per "Oggi" si dice subito che in giornata non c'è nessuno.
+          "Per oggi non c'è nessuno che fa questo lavoro vicino a te: scegli quando ti va bene nei prossimi giorni."
+    : timing === "TODAY"
       ? `Urgente: solo se serve entro 24 ore.${urgencyReachNote}`
       : timing === "WEEK"
         ? "Il professionista sa che ti serve entro pochi giorni."
@@ -567,7 +587,7 @@ export function GuidedRequestForm({
   // dizionario, gratis; uscendo dal campo lo stesso controllo della ricerca
   // (`POST /problem-match`, con l'intelligenza artificiale nei dubbi). La
   // prima categoria proposta è già scelta finché il cliente non ne tocca una.
-  const suggestionsOn = !professionalProfileId && !chosenMode;
+  const suggestionsOn = !professionalProfileId && !chosenMode && !waitingTrade;
   const typedDescription = useDeferredValue(description.trim());
   const [checkedDescription, setCheckedDescription] = useState<{ text: string; result: ProblemMatchResult } | null>(null);
   const localMatch = !suggestionsOn || typedDescription.length < 4 ? null : matchProblem(typedDescription);
@@ -982,8 +1002,9 @@ export function GuidedRequestForm({
         professionalVerified={professional?.verified ?? false}
         professionalKind={professional?.professionalKind ?? null}
         avgResponseTimeMinutes={professional?.avgResponseTimeMinutes ?? null}
-        categorySlug={selectedCategory?.slug ?? categorySlug}
-        categoryLabels={selectedCategories.map((c) => c.label)}
+        categorySlug={waitingTrade ? WAITING_REQUEST_HOST_CATEGORY : (selectedCategory?.slug ?? categorySlug)}
+        categoryLabels={waitingTrade ? [waitingTrade] : selectedCategories.map((c) => c.label)}
+        waitingTrade={waitingTrade}
         city={city}
         isUrgent={isUrgent}
         matchedProfessionals={result.matchedProfessionals}
@@ -1109,7 +1130,7 @@ export function GuidedRequestForm({
   function validateStep(which: 1 | 2): StepProblem | null {
     if (which === 1) {
       if (description.trim().length < 10) return { message: "Descrivi il lavoro con almeno 10 caratteri.", focus: "descrizione" };
-      if (!categorySlug) return { message: openQuestion ? "Rispondi alla domanda o scegli una categoria." : "Scegli almeno una categoria.", focus: "categorie" };
+      if (!categorySlug && !waitingTrade) return { message: openQuestion ? "Rispondi alla domanda o scegli una categoria." : "Scegli almeno una categoria.", focus: "categorie" };
       // Con un orario scelto in agenda la risposta si ricava dal giorno (vedi goToStep).
       if (!timing && !finalPreferredDate) return { message: "Scegli quando ti serve.", focus: "quando" };
       return null;
@@ -1157,7 +1178,7 @@ export function GuidedRequestForm({
         return;
       }
     }
-    if (next === 3 && !professionalProfileId && !chosenMode) {
+    if (next === 3 && !professionalProfileId && !chosenMode && !waitingTrade) {
       for (const slug of categorySlugs) {
         const availability = await apiClient.generalRequestAvailability(slug, city).catch(() => null);
         const closed = availability && !availability.open ? availability.closedScope : null;
@@ -1168,6 +1189,9 @@ export function GuidedRequestForm({
     }
     if (next === 3 && chosenMode) {
       setReach({ standard: chosenIds.length, urgent: chosenIds.length });
+    } else if (next === 3 && waitingTrade) {
+      // Nessuno vicino per ora: il riepilogo lo dice senza numero.
+      setReach(null);
     } else if (next === 3) {
       // Numero vero per il riepilogo; se l'API non risponde resta il testo senza numero.
       setReach(null);
@@ -1218,8 +1242,12 @@ export function GuidedRequestForm({
         }
       }
       const response = await apiClient.createGuidedRequest(activeToken, {
-        categorySlug: categorySlug as ProfessionalCategorySlug,
-        extraCategorySlugs: professionalProfileId || chosenMode ? [] : categorySlugs.slice(1),
+        // In attesa di un mestiere: categoria di comodo, il server decide a chi arriva dal mestiere.
+        categorySlug: waitingTrade ? WAITING_REQUEST_HOST_CATEGORY : (categorySlug as ProfessionalCategorySlug),
+        extraCategorySlugs: professionalProfileId || chosenMode || waitingTrade ? [] : categorySlugs.slice(1),
+        ...(waitingTrade
+          ? { waitingTrade, waitingTradeKey: isWaitingTradeKey(searchParams.get("attesaChiave")) ? (searchParams.get("attesaChiave") ?? undefined) : undefined }
+          : {}),
         description: description.trim(),
         city: city.trim() || undefined,
         address: street.trim() || undefined,
@@ -1458,7 +1486,7 @@ export function GuidedRequestForm({
               }
             />
           ) : (
-            <Text color={brand.grafite70}>{subtitle}</Text>
+            <Text color={brand.grafite70}>{waitingTrade ? "Descrivi il lavoro: oggi nessuno lo fa vicino a te, la richiesta aspetta il primo che si iscrive nella tua zona." : subtitle}</Text>
           )}
           {/* Sempre nella pagina, così i lettori di schermo leggono l'avviso quando compare. */}
           <Text role="status" color={brand.grafite70} fontSize={14} display={targetNotice ? "flex" : "none"}>
@@ -1725,7 +1753,19 @@ export function GuidedRequestForm({
           ) : null}
         </YStack>
 
-        {suggestionsOn || !selectedCategory ? (
+        {waitingTrade ? (
+          <YStack gap="2" id="guided-field-categorie">
+            <FieldLabel>Chi ti serve</FieldLabel>
+            <WaitingTradeChoice
+              trade={waitingTrade}
+              onChange={() => {
+                setWaitingMode(false);
+                setCategoriesByHand(false);
+                setCategorySlugs([]);
+              }}
+            />
+          </YStack>
+        ) : suggestionsOn || !selectedCategory ? (
           <YStack gap="2" id="guided-field-categorie">
             <XStack justifyContent="space-between" alignItems="baseline" gap="2">
               {/* "Chi ti serve" al posto di "Categorie", più parlato (scelta di Luca,
@@ -1826,6 +1866,7 @@ export function GuidedRequestForm({
               timing={timing}
               onChoose={chooseTiming}
               description={urgencyDescription}
+              withoutToday={Boolean(waitingTrade)}
             />
           </div>
         ) : null}
@@ -2093,7 +2134,8 @@ export function GuidedRequestForm({
             isUrgent={isUrgent}
             professionalName={professionalProfileId ? shownProfessionalName ?? "il professionista" : null}
             chosen={chosenMode ? { count: chosenIds.length, names: chosenNames } : null}
-            categoryLabels={selectedCategories.map((c) => c.label)}
+            categoryLabels={waitingTrade ? [waitingTrade] : selectedCategories.map((c) => c.label)}
+            waiting={Boolean(waitingTrade)}
             serviceMode={serviceMode}
             description={description}
             city={[postalCode, city].filter((v) => v.trim()).join(" ") + (province.trim() && city.trim() ? ` (${province.trim()})` : "")}
@@ -2271,6 +2313,7 @@ function RequestSummary({
   professionalName,
   chosen,
   categoryLabels,
+  waiting = false,
   serviceMode,
   description,
   city,
@@ -2290,6 +2333,8 @@ function RequestSummary({
   /** Professionisti scelti nei risultati (§393): quanti e, appena arrivano, i nomi. */
   chosen: { count: number; names: string[] } | null;
   categoryLabels: string[];
+  /** Richiesta in attesa di un mestiere che nessuno fa ancora vicino al cliente. */
+  waiting?: boolean;
   serviceMode: "HOME" | "ONLINE";
   description: string;
   city: string;
@@ -2350,7 +2395,11 @@ function RequestSummary({
           </ul>
         ) : (
           <ul>
-            {reachCount === 0 ? (
+            {waiting ? (
+              <li>
+                Oggi nessuno fa questo lavoro vicino a te: la teniamo aperta 60 giorni e la mandiamo da sola a chi lo fa appena si iscrive nella tua zona.
+              </li>
+            ) : reachCount === 0 ? (
               <li>
                 Per ora nessun professionista di {categoriesText} lavora nella tua zona: la lasciamo aperta e ti avvisiamo appena ce n&apos;è uno.
               </li>
@@ -2425,18 +2474,21 @@ function UrgencyControl({
   timing,
   onChoose,
   description,
+  withoutToday = false,
 }: {
   idPrefix: string;
   timing: RequestTiming | null;
   onChoose: (next: RequestTiming) => void;
   description: string | null;
+  /** Richiesta in attesa di un mestiere: "Oggi" non si offre (decisione di Luca, 17/11). */
+  withoutToday?: boolean;
 }) {
   // Tre scelte come pillole: radio veri, così frecce e lettore di schermo funzionano da soli.
   return (
     <fieldset className="guided-timing" aria-describedby={description ? `${idPrefix}-desc` : undefined}>
       <legend>Quando ti serve?</legend>
       <div className="guided-timing-options">
-        {REQUEST_TIMINGS.map((value) => (
+        {REQUEST_TIMINGS.filter((value) => !withoutToday || value !== "TODAY").map((value) => (
           <label key={value} className={`guided-timing-option${value === "TODAY" ? " is-today" : ""}`}>
             <input type="radio" name={idPrefix} value={value} checked={timing === value} onChange={() => onChoose(value)} />
             <span>
