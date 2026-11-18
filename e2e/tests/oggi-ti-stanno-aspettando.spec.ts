@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { PrismaClient } from "@professionisti/database";
-import { acceptQuote, COMPUTER, createClient, createProfessional, createRequestWithQuotes, pageAsClient, PHONE, wallDay, wallFromNow } from "../fixtures/preventivi";
+import { API_URL } from "../fixtures/env";
+import { acceptQuote, COMPUTER, createClient, createProfessional, createRequestWithQuotes, pageAsClient, PHONE, testToken, wallDay, wallFromNow } from "../fixtures/preventivi";
 
 /**
  * "Ti stanno aspettando" e "Lavori da chiudere" nella pagina Oggi
@@ -114,15 +115,42 @@ test("Ti stanno aspettando: problema, chat e fattura in cima, lavori da chiudere
   await expect(page.getByText("Aspetta da 3 ore")).toHaveCount(0);
   await expect(page.getByText("Fattura chiesta")).toHaveCount(0);
 
-  // Il cliente riscrive: la chat torna.
-  const chatRequest = await prisma.conversationEvent.findFirstOrThrow({ where: { professionalProfileId: pro.id, actor: "CLIENT" } });
-  await prisma.conversationEvent.create({ data: { guidedRequestId: chatRequest.guidedRequestId, professionalProfileId: pro.id, actor: "CLIENT", message: "Mi fa sapere?" } });
-  await page.reload();
+  // Il cliente riscrive dalla chat: la riga torna da sola, senza ricaricare la pagina.
+  const chatRequest = await prisma.conversationEvent.findFirstOrThrow({ where: { professionalProfileId: pro.id, actor: "CLIENT" }, include: { guidedRequest: true } });
+  const sent = await fetch(`${API_URL}/guided-requests/${chatRequest.guidedRequestId}/timeline`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${testToken(chatRequest.guidedRequest.clientId)}` },
+    body: JSON.stringify({ professionalProfileId: pro.id, message: "Mi fa sapere?" }),
+  });
+  expect(sent.ok).toBe(true);
   await expect(page.getByText("«Mi fa sapere?»")).toBeVisible();
 
   // "Lavoro terminato" da Oggi apre la finestra di chiusura in agenda.
   await closeLink.click();
   await expect(page).toHaveURL(/termina=1/);
   await expect(page.getByRole("dialog")).toBeVisible();
+  await page.context().close();
+});
+
+test("con un lavoro entro 2 ore, Oggi e domani sta sopra Ti stanno aspettando", async ({ browser }) => {
+  const start = wallFromNow(60);
+  test.skip(start.toISOString().slice(0, 10) !== wallFromNow(0).toISOString().slice(0, 10), "Tra un'ora è già domani.");
+  const pro = await createProfessional(prisma, "Marco Rossi Idraulica");
+  const anna = await createClient(prisma, "Anna");
+  const elena = await createClient(prisma, "Elena");
+  const chat = await createRequestWithQuotes(prisma, anna.id, [pro.id], { start: wallDay(4, "09:00") });
+  await prisma.conversationEvent.create({ data: { guidedRequestId: chat.request.id, professionalProfileId: pro.id, actor: "CLIENT", message: "Quando passa?" } });
+  const soon = await createRequestWithQuotes(prisma, elena.id, [pro.id], { start, end: wallFromNow(120) });
+  expect((await acceptQuote(elena.id, soon.quotes[0].id)).ok).toBe(true);
+
+  const page = await pageAsClient(browser, pro.userId, PHONE);
+  await page.goto("/dashboard");
+  const today = page.getByText("Oggi e domani", { exact: true });
+  const waiting = page.getByText("Ti stanno aspettando", { exact: true });
+  await expect(today).toBeVisible();
+  await expect(waiting).toBeVisible();
+  const [todayBox, waitingBox] = [await today.boundingBox(), await waiting.boundingBox()];
+  expect(todayBox!.y).toBeLessThan(waitingBox!.y);
+  if (SHOTS) await page.screenshot({ path: `${SHOTS}/telefono-lavoro-tra-poco.png` });
   await page.context().close();
 });

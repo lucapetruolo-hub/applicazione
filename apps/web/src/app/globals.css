@@ -2658,7 +2658,7 @@ button.today-more {
     align-items: center;
     column-gap: 12px;
   }
-  .today-insights .admin-kpi > :nth-child(3) {
+  .today-insights .admin-kpi > :nth-child(n + 3) {
     grid-column: 1 / -1;
   }
 }

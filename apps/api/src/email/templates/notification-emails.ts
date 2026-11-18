@@ -1341,6 +1341,18 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: proRequests("Segna il lavoro come terminato"),
   }),
+  // La mattina dopo un lavoro che nessuno ha chiuso: uno solo (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md).
+  JOB_TO_CLOSE: (_payload, ctx) => ({
+    kind: "notification",
+    subject: "Com'è andato il lavoro? Segnalo come terminato",
+    greeting: ctx.name,
+    title: "Segna il lavoro come terminato",
+    paragraphs: [
+      `Il lavoro per **${job(ctx)}** era fissato nei giorni scorsi e risulta ancora aperto.`,
+      "Segnalo come terminato con l'importo finale: così il cliente può confermarlo e lasciarti una recensione.",
+    ],
+    cta: proRequests("Segna il lavoro come terminato"),
+  }),
   JOB_CLOSE_EXPIRED: (_payload, ctx) => ({
     kind: "notification",
     tone: "urgent",

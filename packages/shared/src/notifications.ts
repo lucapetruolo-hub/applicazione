@@ -172,6 +172,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_AUTO_CONFIRMED",
       "JOB_CLOSE_REMINDER",
       "JOB_CLOSE_EXPIRED",
+      // Lavoro non chiuso da nessuno: un promemoria al professionista la mattina dopo (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md).
+      "JOB_TO_CLOSE",
       // Un solo promemoria della recensione a chi ha confermato il lavoro senza recensire (docs/changelog/2026-11-09-passaparola.md).
       "REVIEW_REMINDER",
       "ADMIN_JOB_NOT_CLOSED",
@@ -436,7 +438,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "lavori.chiusura",
     topic: "lavori",
-    types: ["JOB_COMPLETED", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "JOB_CLOSE_REMINDER", "JOB_CLOSE_EXPIRED", "REVIEW_REMINDER"],
+    types: ["JOB_COMPLETED", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "JOB_CLOSE_REMINDER", "JOB_CLOSE_EXPIRED", "JOB_TO_CLOSE", "REVIEW_REMINDER"],
     professional: { label: "Lavoro terminato", description: "La conferma del cliente e la chiusura del lavoro." },
     client: { label: "Lavoro terminato", description: "Quando il professionista lo segna come finito." },
   },

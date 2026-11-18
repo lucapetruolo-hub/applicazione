@@ -9,6 +9,7 @@ import { apiClient } from "@/lib/apiClient";
 import { loadMyProfessionalProfile, loadMySubscription } from "@/lib/myProfessionalProfile";
 import { useAuth } from "@/lib/AuthContext";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
+import { subscribeRealtimeEvents } from "@/lib/realtimeBus";
 import { classifyLeadStage } from "@/lib/requestStage";
 import { formatCompetitors, leadDeadlines } from "@/lib/leadDeadline";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
@@ -120,6 +121,15 @@ export default function DashboardTodayPage() {
     apiClient.agendaDaysAhead(token).then(later(setDaysAhead)).catch(() => {});
   }, [token]);
   useLiveRefresh(refreshInBackground, Boolean(token && user?.isProfessional && !noProfileYet));
+  // Un messaggio in chat (del cliente o tuo da un'altra scheda) non è sempre una
+  // notifica: la riga di "Ti stanno aspettando" compare o sparisce lo stesso,
+  // senza ricaricare (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md).
+  useEffect(() => {
+    if (!token || !user?.isProfessional || noProfileYet) return;
+    return subscribeRealtimeEvents((event) => {
+      if (event.kind === "chat_message") apiClient.myChatsAwaitingReply(token).then(later(setChatsWaiting)).catch(() => {});
+    });
+  }, [token, user?.isProfessional, noProfileYet]);
 
   // I conti alla rovescia si aggiornano da soli ogni minuto.
   useEffect(() => {
@@ -345,6 +355,101 @@ export default function DashboardTodayPage() {
   // Niente da rispondere, nessuno che aspetta e nessun lavoro da chiudere: lo si dice, in verde.
   const allDone = ready && !error && !quietStart && chatsWaiting !== null && toAnswer.length === 0 && waitingCount === 0 && toClose.length === 0;
 
+  // Un lavoro in corso o che inizia entro 2 ore: "Oggi e domani" sale sotto le sole richieste nuove,
+  // il prossimo lavoro deve vedersi senza scorrere (T2, docs/CHANGELOG.md §311;
+  // docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md).
+  const soonLimit = wallNow.getTime() + JOB_SOON_MS;
+  const jobSoon =
+    !loading &&
+    !error &&
+    upcoming.some((row) => {
+      if (row.closeBookingId) return false;
+      const start = new Date(row.arrival ? `${row.at.slice(0, 11)}${row.arrival}:00.000Z` : row.at).getTime();
+      const end = row.end ? new Date(row.end).getTime() : start + 60 * 60_000;
+      return start <= soonLimit && end > wallNow.getTime();
+    });
+  const todayAndTomorrow = (error ? null : loading ? (
+                  <Skeletons />
+                ) : (
+                <TodaySection title="Oggi e domani" action={{ href: "/dashboard/agenda", label: "Apri l'agenda" }}>
+                  {daysAhead === "failed" ? null : <WeatherStrip days={daysAhead} />}
+                  {upcoming.length === 0 ? (
+                    <EmptyLine text={quietStart ? "Nessun appuntamento né richiesta per ora: ti avvisiamo appena ne arriva una." : "Nessun appuntamento oggi e domani."} />
+                  ) : (
+                    upcoming.map(({ key, href, at, end, arrival, title, sub, navigateTo, onTheWay, phone, move, closeBookingId }, index) => (
+                      <Fragment key={key}>
+                        {/* I lavori raggruppati per giorno, con il riepilogo sopra (§333). */}
+                        {index === 0 || upcoming[index - 1]!.at.slice(0, 10) !== at.slice(0, 10) ? (
+                          <div className="today-day-head">
+                            <strong>{at.slice(0, 10) === startToday.toISOString().slice(0, 10) ? "Oggi" : "Domani"}</strong>
+                            <span>{jobsHeadline(upcoming.filter((row) => row.at.slice(0, 10) === at.slice(0, 10)).map((row) => row.job))}</span>
+                          </div>
+                        ) : null}
+                        <div className="today-appt">
+                          <Link href={href} className="today-row">
+                            <span className="today-time">
+                              <span className="today-time-band">{formatAppointmentTimeRange(at, end)}</span>
+                              {arrival ? (
+                                <span className="today-time-arrival" aria-label={`Arrivo verso le ${arrival}`}>
+                                  <Clock size={13} aria-hidden /> Arrivo {arrival}
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="today-row-main">
+                              <strong>{title}</strong>
+                              <span className="today-row-sub">{sub}</span>
+                              {move ? (
+                                <span className={move === "CLIENT" ? "today-move is-asked" : "today-move"}>
+                                  {move === "CLIENT" ? "Il cliente chiede di spostarlo" : "Nuova data proposta: in attesa del cliente"}
+                                </span>
+                              ) : null}
+                            </span>
+                          </Link>
+                          {/* "Naviga" e "Sto arrivando" diretti sui lavori di oggi
+                              (§352-§353): prima serviva aprire l'agenda e poi l'appuntamento. */}
+                          {at.slice(0, 10) === startToday.toISOString().slice(0, 10) && (navigateTo || onTheWay || phone || closeBookingId) ? (
+                            <div className="today-appt-actions">
+                              {closeBookingId ? (
+                                <Link className="today-nav" href={`/dashboard/agenda?booking=${closeBookingId}&termina=1`}>
+                                  <Check size={16} aria-hidden /> Lavoro terminato
+                                </Link>
+                              ) : null}
+                              {navigateTo && !closeBookingId ? (
+                                <a className="today-nav" href={navigateUrl(navigateTo)} target="_blank" rel="noreferrer" aria-label={`Naviga verso ${navigateTo}`}>
+                                  <Navigation size={16} aria-hidden /> Naviga
+                                </a>
+                              ) : null}
+                              {onTheWay && !closeBookingId ? (
+                                onTheWay.sentAt ? (
+                                  <span className="today-nav is-done" aria-live="polite">
+                                    <Check size={16} aria-hidden /> Avvisato alle {formatAppointmentTime(wallClockNow(new Date(onTheWay.sentAt)))}
+                                  </span>
+                                ) : (
+                                  <button type="button" className="today-nav is-secondary" disabled={onTheWaySending === onTheWay.bookingId} onClick={() => void sendOnTheWay(onTheWay.bookingId)}>
+                                    <Truck size={16} aria-hidden /> {onTheWaySending === onTheWay.bookingId ? "Invio..." : "Sto arrivando"}
+                                  </button>
+                                )
+                              ) : null}
+                              {/* "Chiama" come in agenda (§354); da telefono solo l'icona. */}
+                              {phone ? (
+                                <a className="today-nav is-secondary is-call" href={`tel:${phone.replace(/\s+/g, "")}`} aria-label={`Chiama ${phone}`}>
+                                  <Phone size={16} aria-hidden /> <span className="today-nav-text">Chiama</span>
+                                </a>
+                              ) : null}
+                              {onTheWay && onTheWayError === onTheWay.bookingId ? (
+                                <span className="today-nav-error" role="alert">
+                                  Avviso non inviato, riprova.
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      </Fragment>
+                    ))
+                  )}
+                </TodaySection>
+                ));
+
   return (
     <YStack width="100%" alignItems="center" paddingVertical="6" paddingHorizontal="4">
       <YStack width="100%" maxWidth={1180} gap="6">
@@ -380,6 +485,9 @@ export default function DashboardTodayPage() {
             ) : null}
           </TodaySection>
         ) : null}
+        {/* Lavoro entro 2 ore: subito sotto le richieste nuove (che restano prime, §403)
+            e sopra "Ti stanno aspettando" (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md). */}
+        {jobSoon ? todayAndTomorrow : null}
         {/* "Ti stanno aspettando" (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md):
             tutto quello in cui un cliente aspetta te, in cima come le richieste
             (§403). Prende il posto di "Date proposte dai clienti" e della
@@ -547,87 +655,7 @@ export default function DashboardTodayPage() {
                 {/* Finché richieste e lavori non arrivano solo uno scheletro senza
                     titolo: con le richieste in cima, "Oggi e domani" già disegnato
                     sarebbe poi scivolato giù (CLS, §334, §403). */}
-                {error ? null : loading ? (
-                  <Skeletons />
-                ) : (
-                <TodaySection title="Oggi e domani" action={{ href: "/dashboard/agenda", label: "Apri l'agenda" }}>
-                  {daysAhead === "failed" ? null : <WeatherStrip days={daysAhead} />}
-                  {upcoming.length === 0 ? (
-                    <EmptyLine text={quietStart ? "Nessun appuntamento né richiesta per ora: ti avvisiamo appena ne arriva una." : "Nessun appuntamento oggi e domani."} />
-                  ) : (
-                    upcoming.map(({ key, href, at, end, arrival, title, sub, navigateTo, onTheWay, phone, move, closeBookingId }, index) => (
-                      <Fragment key={key}>
-                        {/* I lavori raggruppati per giorno, con il riepilogo sopra (§333). */}
-                        {index === 0 || upcoming[index - 1]!.at.slice(0, 10) !== at.slice(0, 10) ? (
-                          <div className="today-day-head">
-                            <strong>{at.slice(0, 10) === startToday.toISOString().slice(0, 10) ? "Oggi" : "Domani"}</strong>
-                            <span>{jobsHeadline(upcoming.filter((row) => row.at.slice(0, 10) === at.slice(0, 10)).map((row) => row.job))}</span>
-                          </div>
-                        ) : null}
-                        <div className="today-appt">
-                          <Link href={href} className="today-row">
-                            <span className="today-time">
-                              <span className="today-time-band">{formatAppointmentTimeRange(at, end)}</span>
-                              {arrival ? (
-                                <span className="today-time-arrival" aria-label={`Arrivo verso le ${arrival}`}>
-                                  <Clock size={13} aria-hidden /> Arrivo {arrival}
-                                </span>
-                              ) : null}
-                            </span>
-                            <span className="today-row-main">
-                              <strong>{title}</strong>
-                              <span className="today-row-sub">{sub}</span>
-                              {move ? (
-                                <span className={move === "CLIENT" ? "today-move is-asked" : "today-move"}>
-                                  {move === "CLIENT" ? "Il cliente chiede di spostarlo" : "Nuova data proposta: in attesa del cliente"}
-                                </span>
-                              ) : null}
-                            </span>
-                          </Link>
-                          {/* "Naviga" e "Sto arrivando" diretti sui lavori di oggi
-                              (§352-§353): prima serviva aprire l'agenda e poi l'appuntamento. */}
-                          {at.slice(0, 10) === startToday.toISOString().slice(0, 10) && (navigateTo || onTheWay || phone || closeBookingId) ? (
-                            <div className="today-appt-actions">
-                              {closeBookingId ? (
-                                <Link className="today-nav" href={`/dashboard/agenda?booking=${closeBookingId}&termina=1`}>
-                                  <Check size={16} aria-hidden /> Lavoro terminato
-                                </Link>
-                              ) : null}
-                              {navigateTo && !closeBookingId ? (
-                                <a className="today-nav" href={navigateUrl(navigateTo)} target="_blank" rel="noreferrer" aria-label={`Naviga verso ${navigateTo}`}>
-                                  <Navigation size={16} aria-hidden /> Naviga
-                                </a>
-                              ) : null}
-                              {onTheWay && !closeBookingId ? (
-                                onTheWay.sentAt ? (
-                                  <span className="today-nav is-done" aria-live="polite">
-                                    <Check size={16} aria-hidden /> Avvisato alle {formatAppointmentTime(wallClockNow(new Date(onTheWay.sentAt)))}
-                                  </span>
-                                ) : (
-                                  <button type="button" className="today-nav is-secondary" disabled={onTheWaySending === onTheWay.bookingId} onClick={() => void sendOnTheWay(onTheWay.bookingId)}>
-                                    <Truck size={16} aria-hidden /> {onTheWaySending === onTheWay.bookingId ? "Invio..." : "Sto arrivando"}
-                                  </button>
-                                )
-                              ) : null}
-                              {/* "Chiama" come in agenda (§354); da telefono solo l'icona. */}
-                              {phone ? (
-                                <a className="today-nav is-secondary is-call" href={`tel:${phone.replace(/\s+/g, "")}`} aria-label={`Chiama ${phone}`}>
-                                  <Phone size={16} aria-hidden /> <span className="today-nav-text">Chiama</span>
-                                </a>
-                              ) : null}
-                              {onTheWay && onTheWayError === onTheWay.bookingId ? (
-                                <span className="today-nav-error" role="alert">
-                                  Avviso non inviato, riprova.
-                                </span>
-                              ) : null}
-                            </div>
-                          ) : null}
-                        </div>
-                      </Fragment>
-                    ))
-                  )}
-                </TodaySection>
-                )}
+                {jobSoon ? null : todayAndTomorrow}
                 {/* Domani più lavori nella stessa fascia lunga senza ora: si chiede verso che ora passa (docs/changelog/2026-11-11-fasce-ampie.md). */}
                 {!loading && !error ? (
                   <ArrivalTimesNotice
@@ -784,6 +812,8 @@ function TodaySection({ title, subtitle, count, action, children }: { title: str
 
 /** Richieste mostrate da telefono in "Da rispondere ora"; le altre con "Vedi tutte" (§403). */
 const PHONE_TO_ANSWER = 3;
+/** Entro quanto un lavoro porta "Oggi e domani" in cima alla pagina. */
+const JOB_SOON_MS = 2 * 60 * 60_000;
 /** Voci di "Ti stanno aspettando" e "Lavori da chiudere" mostrate dal computer prima di "Vedi tutte". */
 const WAITING_SHOWN_COMPUTER = 5;
 
@@ -828,7 +858,7 @@ function LeadToAnswerRow({ lead, extra = false }: { lead: ProfessionalLead; extr
 }
 
 function InsightsGrid({ insights }: { insights: ProfessionalInsights }) {
-  const cells: { label: string; value: string; compare: string | null; isText?: boolean }[] = [
+  const cells: { label: string; value: string; compare: string | null; isText?: boolean; extra?: string | null }[] = [
     // Niente "0" e "Media della zona: 0" finché nessuno ha visite: si legge "Nessuna ancora"
     // (docs/changelog/2026-11-08-prova-persone-simulate.md).
     insights.profileViews30d === 0 && !insights.areaAvgProfileViews30d
@@ -842,6 +872,11 @@ function InsightsGrid({ insights }: { insights: ProfessionalInsights }) {
       label: "Tempo medio di risposta",
       value: insights.avgResponseTimeMinutes !== null ? formatMinutes(insights.avgResponseTimeMinutes) : "—",
       compare: insights.areaAvgResponseTimeMinutes !== null ? `Media della zona: ${formatMinutes(insights.areaAvgResponseTimeMinutes)}` : null,
+      // In chat, di solito (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md): una riga sotto, con la zona.
+      extra:
+        insights.chatReplyMinutes != null
+          ? `In chat di solito ${formatMinutes(insights.chatReplyMinutes)}${insights.areaChatReplyMinutes != null ? ` (zona ${formatMinutes(insights.areaChatReplyMinutes)})` : ""}`
+          : null,
     },
     // Senza recensioni "Nessuna ancora", non "—" e "0 recensioni" (§353).
     insights.reviewCount === 0
@@ -859,6 +894,7 @@ function InsightsGrid({ insights }: { insights: ProfessionalInsights }) {
           <span className="admin-kpi-label">{cell.label}</span>
           <span className={cell.isText ? "admin-kpi-value is-text" : "admin-kpi-value"}>{cell.value}</span>
           {cell.compare ? <span style={{ fontSize: 13, color: "#5e5a54", fontWeight: 600 }}>{cell.compare}</span> : null}
+          {cell.extra ? <span style={{ fontSize: 13, color: "#5e5a54", fontWeight: 600 }}>{cell.extra}</span> : null}
         </div>
       ))}
     </div>

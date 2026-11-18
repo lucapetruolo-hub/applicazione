@@ -1,13 +1,15 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
-import { BAD_WORK_REPORT_DAYS } from "@professionisti/shared";
+import { BAD_WORK_REPORT_DAYS, wallClockNow, wallClockToday } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { TimelineService } from "../timeline/timeline.service";
 import { ScheduledJob } from "../common/scheduled-job";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** Il promemoria dei lavori non chiusi guarda solo i lavori finiti in questi ultimi giorni. */
+const CLOSE_REMINDER_LOOKBACK_DAYS = 3;
 
 // Solo una parte ha cliccato "Lavoro terminato" (docs/CHANGELOG.md §190,
 // decisione dell'utente): promemoria all'altra parte e chiusura d'ufficio
@@ -39,6 +41,36 @@ export class CompletionDeadlineService {
   async run(now: Date = new Date()): Promise<void> {
     await this.clientSilent(now);
     await this.professionalSilent(now);
+    await this.nobodyClosed(now);
+  }
+
+  /**
+   * Nessuno ha chiuso un lavoro dei giorni scorsi: un solo promemoria al
+   * professionista, dalle 8 del mattino dopo (ora italiana), perché da
+   * "Lavoro terminato" partono saldo, recensione e conteggio dei lavori
+   * (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md). Solo i lavori
+   * finiti negli ultimi giorni, per non mandarne di vecchi tutti insieme.
+   */
+  async nobodyClosed(now: Date): Promise<void> {
+    if (wallClockNow(now).getUTCHours() < 8) return;
+    const today = wallClockToday(now);
+    const oldest = new Date(today.getTime() - CLOSE_REMINDER_LOOKBACK_DAYS * DAY_MS);
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        status: "CONFIRMED",
+        closeReminderSentAt: null,
+        clientConfirmedCompletedAt: null,
+        refundRequested: false,
+        issue: { is: null },
+        OR: [{ scheduledEndAt: { gte: oldest, lt: today } }, { scheduledEndAt: null, scheduledAt: { gte: oldest, lt: today } }],
+      },
+      select: { id: true, quote: { select: { guidedRequestId: true } }, professionalProfile: { select: { userId: true } } },
+    });
+    for (const booking of bookings) {
+      const { count } = await this.prisma.booking.updateMany({ where: { id: booking.id, closeReminderSentAt: null }, data: { closeReminderSentAt: now } });
+      if (count === 0) continue;
+      await this.notificationsService.notify(booking.professionalProfile.userId, "JOB_TO_CLOSE", { bookingId: booking.id, guidedRequestId: booking.quote?.guidedRequestId ?? null });
+    }
   }
 
   private deadlineOf(since: Date): string {

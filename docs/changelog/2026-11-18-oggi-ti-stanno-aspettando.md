@@ -44,6 +44,23 @@ incassi in cima ed elenco delle notifiche.
   aspettare o da chiudere; prende il posto della riga vuota "Nessuna richiesta
   in attesa". Non a chi è appena iscritto (lì resta "Completa il profilo").
 
+**Secondo giro** (stesso giorno, sì di Luca alle migliorie proposte):
+- **Lavoro entro 2 ore** (o in corso): "Oggi e domani" sale subito sotto "Da
+  rispondere ora" e sopra "Ti stanno aspettando", così il prossimo lavoro si
+  vede senza scorrere (T2, §311). Le richieste nuove restano prime come deciso
+  da Luca il 28/10 (§403): sono al massimo 3 righe da telefono.
+- **Chat che compaiono da sole**: un messaggio in chat (evento `chat_message`
+  del tempo reale) ricarica le righe delle chat senza ricaricare la pagina.
+- **Promemoria la mattina dopo** per un lavoro che nessuno ha chiuso: prima
+  non esisteva (c'era solo quello dopo la conferma del cliente). Uno solo,
+  dalle 8 in ora italiana, solo per lavori finiti negli ultimi 3 giorni
+  (`JOB_TO_CLOSE`, argomento "Lavoro terminato", colonna
+  `bookings.closeReminderSentAt`, `CompletionDeadlineService.nobodyClosed`).
+- **Risposta in chat** in "Il tuo andamento": sotto il tempo medio di
+  risposta, "In chat di solito 25 min (zona 1 h)": valore di mezzo dei minuti
+  tra il messaggio del cliente e la risposta, dal lancio e senza account di
+  prova (§395), solo con almeno 3 risposte.
+
 **Dove**: logica in `packages/shared/src/todayToDo.ts`; API
 `GET /guided-requests/chat-threads/awaiting-reply`,
 `POST /guided-requests/:id/no-reply-needed` (TimelineService),

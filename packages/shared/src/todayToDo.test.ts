@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { bookingToClose, chatTurnOfProfessional, invoiceToDo, issueToDoForProfessional } from "./todayToDo";
+import { bookingToClose, chatReplyMinutes, chatTurnOfProfessional, invoiceToDo, issueToDoForProfessional, median } from "./todayToDo";
 import type { JobIssueSummary } from "./jobIssues";
 
 const at = (hour: number) => new Date(Date.UTC(2026, 10, 18, hour));
@@ -70,5 +70,17 @@ describe("invoiceToDo", () => {
     assert.equal(invoiceToDo({ ...receipt, courtesyDocument: null }), true);
     assert.equal(invoiceToDo({ ...receipt, courtesyDocument: { pdfDownloadedAt: "x", amountChanged: false } }), false);
     assert.equal(invoiceToDo({ ...receipt, courtesyDocument: { pdfDownloadedAt: "x", amountChanged: true } }), true);
+  });
+});
+
+describe("chatReplyMinutes", () => {
+  it("dal primo messaggio del cliente senza risposta alla risposta del professionista", () => {
+    const events = [ev("CLIENT", 8), ev("CLIENT", 9), ev("PROFESSIONAL", 10), ev("CLIENT", 11, { automatic: true }), ev("PROFESSIONAL", 12), ev("CLIENT", 13), ev("SYSTEM", 14), ev("PROFESSIONAL", 15, { automatic: true })];
+    assert.deepEqual(chatReplyMinutes(events), [120, 120]);
+  });
+  it("valore di mezzo", () => {
+    assert.equal(median([]), null);
+    assert.equal(median([5, 1, 100]), 5);
+    assert.equal(median([1, 3, 5, 100]), 4);
   });
 });

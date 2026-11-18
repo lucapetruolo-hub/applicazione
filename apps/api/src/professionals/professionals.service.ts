@@ -77,6 +77,10 @@ import {
   type ProblemOutOfService,
   serviceMatchingProblem,
   isRecurringFrequency,
+  CHAT_REPLY_MIN_SAMPLES,
+  chatReplyMinutes,
+  median,
+  type ChatTurnEvent,
 } from "@professionisti/shared";
 import { COUNTED_USER, countingFrom, daySinceLaunch } from "../site-counts/counted";
 import { recurringVisitInfo } from "../bookings/recurring-jobs.service";
@@ -1876,6 +1880,9 @@ export class ProfessionalsService {
       }),
     ]);
     const peerResponseTimes = peers.map((p) => p.metrics?.avgResponseTimeMinutes).filter((v): v is number => typeof v === "number");
+    const chatTimes = await this.chatReplyTimes([professionalProfileId, ...peers.map((p) => p.id)], since);
+    const myChat = chatTimes.get(professionalProfileId) ?? null;
+    const peerChat = peers.map((p) => chatTimes.get(p.id)).filter((v): v is number => typeof v === "number");
     const round = (value: number) => Math.round(value);
     return {
       areaLabel: `${profileCategories(me)
@@ -1889,7 +1896,40 @@ export class ProfessionalsService {
       reviewCount: reviews._count._all,
       profileViews30d: myViews._sum.count ?? 0,
       areaAvgProfileViews30d: peers.length > 0 ? round((peerViews._sum.count ?? 0) / peers.length) : null,
+      chatReplyMinutes: myChat !== null ? round(myChat) : null,
+      areaChatReplyMinutes: peerChat.length > 0 ? round(peerChat.reduce((sum, v) => sum + v, 0) / peerChat.length) : null,
     };
+  }
+
+  /**
+   * "Risposta in chat" di ogni professionista dal `since` (dal lancio, senza
+   * account di prova, CLAUDE.md §5 punto 17): valore di mezzo dei minuti tra
+   * il messaggio del cliente e la sua risposta, solo con almeno
+   * CHAT_REPLY_MIN_SAMPLES risposte (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md).
+   */
+  private async chatReplyTimes(professionalProfileIds: string[], since: Date): Promise<Map<string, number>> {
+    const events = await this.prisma.conversationEvent.findMany({
+      where: { professionalProfileId: { in: professionalProfileIds }, createdAt: { gte: since }, guidedRequest: { client: COUNTED_USER } },
+      orderBy: { createdAt: "asc" },
+      select: { professionalProfileId: true, guidedRequestId: true, actor: true, automatic: true, hiddenAt: true, createdAt: true },
+    });
+    const byThread = new Map<string, { profileId: string; events: ChatTurnEvent[] }>();
+    for (const event of events) {
+      const key = `${event.professionalProfileId}:${event.guidedRequestId}`;
+      const thread = byThread.get(key) ?? { profileId: event.professionalProfileId, events: [] };
+      thread.events.push({ actor: event.actor, automatic: event.automatic, hidden: event.hiddenAt !== null, createdAt: event.createdAt });
+      byThread.set(key, thread);
+    }
+    const samples = new Map<string, number[]>();
+    for (const thread of byThread.values()) {
+      samples.set(thread.profileId, [...(samples.get(thread.profileId) ?? []), ...chatReplyMinutes(thread.events)]);
+    }
+    const result = new Map<string, number>();
+    for (const [profileId, minutes] of samples) {
+      const value = minutes.length >= CHAT_REPLY_MIN_SAMPLES ? median(minutes) : null;
+      if (value !== null) result.set(profileId, value);
+    }
+    return result;
   }
 
   async getMyLeads(userId: string): Promise<ProfessionalLead[]> {

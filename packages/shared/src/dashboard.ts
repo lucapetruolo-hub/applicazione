@@ -568,6 +568,9 @@ export type ProfessionalInsights = {
   reviewCount: number;
   profileViews30d: number;
   areaAvgProfileViews30d: number | null;
+  /** Di solito quanto ci mette a rispondere in chat, in minuti (almeno 3 risposte). Facoltativa solo per un'API non ancora aggiornata. */
+  chatReplyMinutes?: number | null;
+  areaChatReplyMinutes?: number | null;
 };
 
 /**

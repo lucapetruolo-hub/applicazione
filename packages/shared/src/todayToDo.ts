@@ -104,3 +104,36 @@ export function invoiceToDo(booking: {
   if (booking.clientDocumentKind === "RECEIPT") return !booking.courtesyDocument?.pdfDownloadedAt || booking.courtesyDocument.amountChanged;
   return !booking.invoiceRequest.doneAt;
 }
+
+/**
+ * Minuti tra il primo messaggio del cliente rimasto senza risposta e la
+ * risposta del professionista, per ogni volta che è successo in una chat
+ * (eventi dal più vecchio): "Risposta in chat" in "Il tuo andamento"
+ * (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md). Stesse regole di
+ * `chatTurnOfProfessional`.
+ */
+export function chatReplyMinutes(oldestFirst: ChatTurnEvent[]): number[] {
+  const minutes: number[] = [];
+  let waitingSince: Date | null = null;
+  for (const event of oldestFirst) {
+    if (event.actor === "SYSTEM" || event.hidden) continue;
+    if (event.actor === "CLIENT") {
+      if (!event.automatic && !waitingSince) waitingSince = event.createdAt;
+      continue;
+    }
+    if (waitingSince) minutes.push(Math.max(0, (event.createdAt.getTime() - waitingSince.getTime()) / 60_000));
+    waitingSince = null;
+  }
+  return minutes;
+}
+
+/** Valore di mezzo: una risposta dopo un fine settimana non falsa "di solito". */
+export function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+}
+
+/** Sotto queste risposte il tempo in chat non si mostra: pochi casi direbbero poco. */
+export const CHAT_REPLY_MIN_SAMPLES = 3;

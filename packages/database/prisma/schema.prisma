@@ -1508,6 +1508,9 @@ model Booking {
   // §190): promemoria inviati all'altra parte, e quando il lavoro è stato
   // chiuso d'ufficio allo scadere del termine per segnalare un problema.
   completionReminderCount         Int       @default(0)
+  // Promemoria "Segna il lavoro come terminato" la mattina dopo, a lavoro non
+  // chiuso da nessuno (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md): uno solo.
+  closeReminderSentAt             DateTime?
   completionAutoClosedAt          DateTime?
   // Un solo promemoria della recensione a chi ha chiuso il lavoro senza
   // recensire (docs/changelog/2026-11-09-passaparola.md), uguale per tutti.

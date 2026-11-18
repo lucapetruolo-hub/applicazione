@@ -159,6 +159,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_AUTO_CONFIRMED: { icon: "✅", message: "Un lavoro è stato considerato terminato: non ci hai segnalato problemi in tempo." },
   REVIEW_REMINDER: { icon: "⭐", message: "Com'è andato il lavoro? Se vuoi, lascia una recensione: bastano un voto e due righe." },
   JOB_CLOSE_REMINDER: { icon: "⏳", message: "Il cliente ha confermato un lavoro terminato: segnalalo anche tu con l'importo finale." },
+  JOB_TO_CLOSE: { icon: "✅", message: "Un lavoro dei giorni scorsi è ancora aperto: segnalo come terminato con l'importo finale." },
   JOB_CLOSE_EXPIRED: { icon: "⚠️", message: "Non hai segnato come terminato in tempo un lavoro fissato con il cliente." },
   ADMIN_JOB_NOT_CLOSED: { icon: "⚠️", message: "Un professionista non ha chiuso un lavoro pagato online: soldi ancora bloccati." },
   JOB_ISSUE_SANCTION: { icon: "⛔", message: "Una segnalazione accolta ha una conseguenza sul tuo profilo: tocca per i dettagli." },
