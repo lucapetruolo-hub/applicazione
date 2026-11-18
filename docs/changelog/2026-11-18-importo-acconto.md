@@ -30,3 +30,16 @@ prove in `onlinePayments.test.ts`), usata da `RequestCard.tsx`.
 **Verifica**: prove di `packages/shared` verdi, typecheck e lint del sito.
 Foto prima/dopo da telefono e computer in `anteprime/importo-acconto/` (25%,
 100% con forbice, senza prezzi, sotto il minimo).
+
+**Secondo giro** (sì di Luca a due migliorie; no al netto dopo la trattenuta e
+ai pulsanti veloci 20/30/50%):
+- Il tetto dei 2.000 € online si vede mentre si scrive, in ocra scuro sotto la
+  riga dell'importo, con la stessa frase dell'invio (`onlineLimitProblem`).
+  Finché c'è l'avviso, la riga grigia che spiega il tetto si nasconde per non
+  dirlo due volte.
+- Dopo la casella solo "%": "dell'importo massimo" da telefono andava a capo da
+  solo, e la riga nuova già dice su quale cifra si calcola.
+- Coordinato con "Semplificare l'accettazione del preventivo" (PR #403): stesso
+  calcolo (`quoteDepositEurCents`) e stesse parole ("subito", "il resto, se
+  serve"), nessun conflitto tra i due rami.
+- Foto: `anteprime/importo-acconto/dopo2-*.png`.

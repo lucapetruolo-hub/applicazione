@@ -481,7 +481,13 @@ export function RequestCard({
       return { priceMinEurCents: cents(item.priceMin), priceMaxEurCents: cents(item.priceMax) };
     }),
   );
-  const depositPreview = depositPreviewLine(draftTotals, Number(depositPercentDraft.trim() || "x"), { perVisit: repeatChosen });
+  const liveOffered = paymentOptions.filter((choice) => !(repeatChosen && choice === "MIXED"));
+  const liveDepositPercent = Number(depositPercentDraft.trim() || "x");
+  const liveLimitProblem =
+    onlinePayments && Number.isInteger(liveDepositPercent) && liveDepositPercent >= MIN_DEPOSIT_PERCENT && liveDepositPercent <= MAX_DEPOSIT_PERCENT
+      ? onlineLimitProblem({ paymentOptions: liveOffered, depositPercent: liveDepositPercent, totalMaxEurCents: draftTotals.totalMaxEurCents, limitEurCents: onlineLimitEurCents })
+      : null;
+  const depositPreview = depositPreviewLine(draftTotals, liveDepositPercent, { perVisit: repeatChosen });
 
   function updateItem(index: number, field: "name" | "priceMin" | "priceMax", value: string) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
@@ -2030,8 +2036,9 @@ export function RequestCard({
                           onChange={(e) => setDepositPercentDraft(e.target.value)}
                           style={{ ...smallInputStyle, width: 72 }}
                         />
+                        {/* Solo "%": la spiegazione la dà la riga sotto, così da telefono non va a capo da sola. */}
                         <Text fontSize={16} color={brand.grafite}>
-                          % dell&apos;importo massimo
+                          %
                         </Text>
                       </XStack>
                     ) : null}
@@ -2044,6 +2051,12 @@ export function RequestCard({
                         aria-live="polite"
                       >
                         {depositPreview.text}
+                      </Text>
+                    ) : null}
+                    {/* Tetto dei pagamenti online detto mentre si scrive, non solo a Invia. */}
+                    {liveLimitProblem ? (
+                      <Text fontSize={14} fontWeight="600" color={brand.ottoneScuro} aria-live="polite">
+                        {liveLimitProblem}
                       </Text>
                     ) : null}
                     {/* Al 100% "acconto e saldo diretto" coincide con "tutto online": al cliente si mostra solo quello
@@ -2059,7 +2072,8 @@ export function RequestCard({
                         Con una forbice di prezzo il cliente paga subito il minimo e il resto, se serve, a lavoro finito con la stessa carta.
                       </Text>
                     ) : null}
-                    {paymentOptions.some(paymentChoiceIsOnline) && limitHint ? (
+                    {/* Con l'avviso del tetto in vista la riga grigia lo ripeterebbe. */}
+                    {paymentOptions.some(paymentChoiceIsOnline) && limitHint && !liveLimitProblem ? (
                       <Text fontSize={13} color={brand.grafite70}>
                         {limitHint}
                       </Text>
