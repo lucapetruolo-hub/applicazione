@@ -23,7 +23,7 @@ Avvisami?".
   bordata.
 - *Pagina vuota:* prima il pulsante "Iscriviti: le richieste ti arrivano da
   sole", sotto il link "Non sei pronto? Avvisami alla prima richiesta" che apre
-  il modulo di prima (proposta dell'esperto in attesa della scelta di Luca).
+  il modulo di prima (scelta di Luca del 18/11).
 
 **Motivo:** l'interruttore sta dove porta l'email e dove il professionista
 guarda le richieste; l'iscrizione è la strada principale, "Avvisami" tiene chi
