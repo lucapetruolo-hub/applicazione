@@ -571,7 +571,7 @@ function LeadToAnswerRow({ lead, extra = false }: { lead: ProfessionalLead; extr
   // (docs/changelog/2026-11-10-richiesta-solo-per-te.md); le altre hanno già
   // la riga "N altri professionisti".
   const personal = lead.guidedRequest.fromProfessionalLink
-    ? "Dal tuo link"
+    ? "Dal tuo link · fuori abbonamento"
     : lead.audience?.kind === "direct" || lead.audience?.kind === "chosen"
       ? leadAudienceLabel(lead.audience)
       : null;
@@ -713,7 +713,11 @@ function PersonalLinkNotice() {
             Porta i tuoi clienti
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
-            Chi ti scrive dal tuo link non conta nei lavori del mese.
+            I lavori dal tuo link{" "}
+            <Text render="span" fontWeight="700" color={brand.verificato}>
+              non contano nel tuo abbonamento
+            </Text>
+            .
           </Text>
         </YStack>
       </XStack>

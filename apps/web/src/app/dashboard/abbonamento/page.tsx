@@ -688,9 +688,14 @@ function AbbonamentoContent() {
               ) : null}
               {/* Canale del professionista (docs/changelog/2026-11-08-canale-del-professionista.md). */}
               <Text color={brand.grafite70} fontSize={16}>
+                {/* Stessa parte in verde di "Il tuo link" (docs/changelog/2026-11-18-link-fuori-abbonamento.md). */}
                 {sub.usage.ownClientJobs > 0
-                  ? `In più ${sub.usage.ownClientJobs === 1 ? "1 lavoro" : `${sub.usage.ownClientJobs} lavori`} dal tuo link, che non ${sub.usage.ownClientJobs === 1 ? "conta" : "contano"}. `
-                  : "I clienti che ti scrivono dal tuo link non contano. "}
+                  ? `In più ${sub.usage.ownClientJobs === 1 ? "1 lavoro" : `${sub.usage.ownClientJobs} lavori`} dal tuo link, che `
+                  : "I lavori dal tuo link "}
+                <Text render="span" fontSize={16} fontWeight="700" color={brand.verificato}>
+                  {sub.usage.ownClientJobs === 1 ? "non conta" : "non contano"} nel tuo abbonamento
+                </Text>
+                {". "}
                 <Link href="/dashboard/il-tuo-link" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
                   Il tuo link
                 </Link>

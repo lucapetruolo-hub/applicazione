@@ -1,0 +1,75 @@
+/*
+ * Fascia "Non contano nel tuo abbonamento" di "Il tuo link"
+ * (docs/changelog/2026-11-18-link-fuori-abbonamento.md): verde = buona
+ * notizia, sul velo verde come il bollino "Verificato". Un solo effetto
+ * leggero all'apertura: la fascia compare e la spunta "si posa" una volta.
+ * Con prefers-reduced-motion la regola globale di globals.css lo annulla.
+ */
+.band {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: var(--c-cianografiaVelo, #dff0f0);
+  animation: bandIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.check {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #325f54;
+  animation: checkIn 420ms cubic-bezier(0.34, 1.56, 0.64, 1) 160ms both;
+}
+
+.words {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+@keyframes bandIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes checkIn {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Indirizzo del link: a capo solo tra il sito e il codice ("/p/k7m2qa"). */
+.urlPart {
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .urlPart {
+    font-size: 16px;
+  }
+}
+
+/* Telefoni molto stretti: meglio a capo dentro che fuori dal riquadro. */
+@media (max-width: 359px) {
+  .urlPart {
+    white-space: normal;
+  }
+}
