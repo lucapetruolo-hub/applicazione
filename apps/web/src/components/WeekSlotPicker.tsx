@@ -173,9 +173,10 @@ export function WeekSlotPicker<S extends WeekSlot>({
                     const time = `${slot.startTime}–${slot.endTime}`;
                     if (isFull) {
                       return (
-                        <span key={`full-${time}`} className="slot-pill is-full" aria-label={`${time}, al completo`}>
+                        // Radio spento come una fascia non sceglibile: il lettore di schermo la legge "non disponibile".
+                        <button key={`full-${time}`} type="button" role="radio" aria-checked={false} disabled className="slot-pill is-full" aria-label={`${time}, al completo`}>
                           {time}
-                        </span>
+                        </button>
                       );
                     }
                     const free = slot as S;

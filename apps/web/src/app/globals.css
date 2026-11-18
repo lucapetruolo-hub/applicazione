@@ -7006,8 +7006,7 @@ a.admin-kpi:hover {
   display: inline-flex;
   align-items: center;
   font-size: 14px;
-  color: #5e5a54;
-  opacity: 0.7;
+  color: #5e5a54; /* senza trasparenza: contrasto 4,5:1 sul fondo crema */
 }
 /* Sul telefono le due fasce di un giorno stanno su una riga. */
 @media (max-width: 520px) {
