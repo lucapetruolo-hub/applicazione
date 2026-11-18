@@ -77,3 +77,19 @@ video passa dall'API e la richiesta parte lo stesso. Test
 `cloudinary-direct-video.test.ts`: la firma è quella di Cloudinary (SHA-1 dei
 parametri in ordine più il segreto). Da provare dal vivo con le chiavi vere:
 un video da iPhone in 4G (lo fa Luca).
+
+## Terzo giro: solo indirizzi del nostro Cloudinary, file saltati uno per uno
+
+**Richiesta** (Luca, "sì" alle migliorie proposte).
+
+**Decisione**:
+- `OwnMediaUrlsPipe` (`apps/api/src/common/own-media-urls.pipe.ts`), dopo la
+  validazione zod: `photoUrls` e `mediaUrls` accettano solo
+  `https://res.cloudinary.com/<CLOUDINARY_CLOUD_NAME>/…` nella richiesta
+  (creazione e modifica), nella chat, nella chiusura del lavoro e nelle
+  recensioni. Prima un indirizzo di un altro sito passava. Senza
+  `CLOUDINARY_CLOUD_NAME` (prove in locale) non controlla.
+- "Le mie richieste": con più file scelti insieme, uno che non va (troppo
+  lungo, rete) viene saltato e detto in una riga, gli altri si caricano.
+
+**Verifica**: test `own-media-urls.pipe.test.ts`; `typecheck` di sito e API.

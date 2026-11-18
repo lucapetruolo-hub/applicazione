@@ -438,20 +438,23 @@ export function GuidedRequestCard({
     setPhotoError(null);
     setIsUploadingPhoto(true);
     setUploadProgress(0);
-    try {
-      // Peso e durata controllati prima, video direttamente a Cloudinary con la
-      // percentuale (docs/changelog/2026-11-18-video-che-carica-ancora.md).
-      for (const file of kept) {
-        setUploadProgress(0);
+    // Peso e durata controllati prima, video direttamente a Cloudinary con la
+    // percentuale (docs/changelog/2026-11-18-video-che-carica-ancora.md). Un
+    // file che non va (troppo lungo, rete) non ferma gli altri: si salta e lo
+    // si dice sotto, uno per riga.
+    const problems: string[] = [];
+    for (const file of kept) {
+      setUploadProgress(0);
+      try {
         await checkMediaFile(file);
         const url = await uploadMediaFile(token, file, { onProgress: setUploadProgress });
         setPhotoUrls((prev) => [...prev, url].slice(0, MAX_REQUEST_PHOTOS));
+      } catch (err) {
+        problems.push(kept.length > 1 ? `${file.name}: ${uploadErrorMessage(err)}` : uploadErrorMessage(err));
       }
-    } catch (err) {
-      setPhotoError(uploadErrorMessage(err));
-    } finally {
-      setIsUploadingPhoto(false);
     }
+    setPhotoError(problems.length > 0 ? problems.join("\n") : null);
+    setIsUploadingPhoto(false);
   }
 
 
@@ -749,11 +752,13 @@ export function GuidedRequestCard({
               </Text>
             ) : null}
             <input ref={photoInputRef} type="file" accept="image/*,video/*" multiple onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
-            {photoError ? (
-              <Text color={brand.urgenza} fontSize={13}>
-                {photoError}
-              </Text>
-            ) : null}
+            {photoError
+              ? photoError.split("\n").map((line) => (
+                  <Text key={line} color={brand.urgenza} fontSize={13}>
+                    {line}
+                  </Text>
+                ))
+              : null}
           </YStack>
 
           {error ? (

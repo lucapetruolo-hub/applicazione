@@ -36,6 +36,7 @@ import {
   type TimelineUpdateInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { OwnMediaUrlsPipe } from "../common/own-media-urls.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
@@ -94,7 +95,7 @@ export class GuidedRequestsController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(guidedRequestSchema)) body: GuidedRequestInput) {
+  create(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(guidedRequestSchema), OwnMediaUrlsPipe) body: GuidedRequestInput) {
     return this.guidedRequestsService.createForCategories(req.user.userId, body);
   }
 
@@ -263,7 +264,7 @@ export class GuidedRequestsController {
   update(
     @Req() req: AuthenticatedRequest,
     @Param("id") id: string,
-    @Body(new ZodValidationPipe(guidedRequestUpdateSchema)) body: GuidedRequestUpdateInput,
+    @Body(new ZodValidationPipe(guidedRequestUpdateSchema), OwnMediaUrlsPipe) body: GuidedRequestUpdateInput,
   ) {
     return this.guidedRequestsService.update(req.user.userId, id, body);
   }
@@ -334,7 +335,7 @@ export class GuidedRequestsController {
   addTimelineUpdate(
     @Req() req: AuthenticatedRequest,
     @Param("id") id: string,
-    @Body(new ZodValidationPipe(timelineUpdateSchema)) body: TimelineUpdateInput,
+    @Body(new ZodValidationPipe(timelineUpdateSchema), OwnMediaUrlsPipe) body: TimelineUpdateInput,
   ) {
     return this.timelineService.addUpdate(req.user.userId, id, body.professionalProfileId, body.message, body.mediaUrls);
   }

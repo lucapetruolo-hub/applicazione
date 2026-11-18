@@ -3,6 +3,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
 import { isProfessionalCategorySlug, reviewReplySchema, reviewSchema, reviewShowcaseSchema, reviewUpdateSchema, type ReviewInput, type ReviewReplyInput, type ReviewShowcaseInput, type ReviewUpdateInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { OwnMediaUrlsPipe } from "../common/own-media-urls.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
@@ -52,7 +53,7 @@ export class ReviewsController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(reviewSchema)) body: ReviewInput) {
+  create(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(reviewSchema), OwnMediaUrlsPipe) body: ReviewInput) {
     return this.reviewsService.create(req.user.userId, body);
   }
 
@@ -60,7 +61,7 @@ export class ReviewsController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard)
   @Patch(":id")
-  update(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(reviewUpdateSchema)) body: ReviewUpdateInput) {
+  update(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(reviewUpdateSchema), OwnMediaUrlsPipe) body: ReviewUpdateInput) {
     return this.reviewsService.update(req.user.userId, id, body);
   }
 
