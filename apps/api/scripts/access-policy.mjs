@@ -281,6 +281,7 @@ const owned = {
   "PATCH /bookings/:id/cancel-by-professional": booking({ body: () => ({ reason: "Imprevisto improvviso" }) }),
   "PATCH /bookings/:id/client-confirm-complete": booking(),
   "PATCH /bookings/:id/complete": booking(),
+  "PATCH /bookings/:id/ask-early-completion": booking(),
   "POST /bookings/:id/issue": booking({ body: () => ({ type: "NO_SHOW", description: "Il professionista non si è presentato." }) }),
   "POST /bookings/:id/issue/appeal": booking({ body: () => ({ text: "Non sono d'accordo con la decisione presa." }) }),
   "PATCH /bookings/:id/issue/chat-outcome": booking({ body: () => ({ outcome: "RESOLVED" }) }),
