@@ -580,9 +580,14 @@ const BUILDERS: Record<string, Builder> = {
         paragraphs: [
           reminder
             ? `**${pro(ctx)}** ti ha proposto un'altra data per l'appuntamento per **${job(ctx)}** e aspetta ancora la tua risposta.`
-            : `**${pro(ctx)}** non può nella data che hai proposto per **${job(ctx)}** e te ne propone un'altra.`,
+            : payload.fromProfessional === true
+              ? `**${pro(ctx)}** ha bisogno di spostare l'appuntamento per **${job(ctx)}** e ti propone un'altra data.`
+              : `**${pro(ctx)}** non può nella data che hai proposto per **${job(ctx)}** e te ne propone un'altra.`,
           ...quotedNote(payload),
           "Se la accetti l'appuntamento si sposta, con il pagamento com'era. Se la rifiuti resta com'è.",
+          // Lo spostamento lo chiede il professionista: annullare non costa nulla
+          // finché la proposta aspetta una risposta (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+          ...(payload.fromProfessional === true ? ["Se nessuna data ti va bene, finché non rispondi puoi annullare il lavoro senza perdere l'acconto."] : []),
         ],
         details: changeDetails(ctx, payload, "Appuntamento di adesso", "Nuova proposta", true),
         cta: clientRequests(),
@@ -1302,6 +1307,19 @@ const BUILDERS: Record<string, Builder> = {
     paragraphs: [
       `**${pro(ctx)}** ha segnato come terminato il lavoro per **${job(ctx)}**.`,
       `Confermalo e lascia una recensione, oppure segnala un problema${str(payload.deadline) ? ` **entro ${formatDeadline(str(payload.deadline))}**` : ""}. Dopo quella data il lavoro sarà considerato terminato e non potrai più segnalare problemi.`,
+    ],
+    cta: { label: "Apri il lavoro", url: `${frontendUrl()}/le-mie-richieste` },
+  }),
+  // "Lavoro terminato" del professionista prima del giorno fissato
+  // (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+  JOB_EARLY_DONE_ASKED: (payload, ctx) => ({
+    kind: "notification",
+    subject: `${pro(ctx)} dice che il lavoro è già finito`,
+    greeting: ctx.name,
+    title: "Il lavoro è già finito?",
+    paragraphs: [
+      `**${pro(ctx)}** dice di aver già finito il lavoro per **${job(ctx)}**${str(payload.scheduledAt) ? `, fissato per ${new Date(str(payload.scheduledAt) ?? "").toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })}` : ""}.`,
+      "Se è così, confermalo: poi il professionista scrive l'importo finale e puoi lasciare una recensione. Se non è ancora finito, non fare niente: l'appuntamento resta com'è.",
     ],
     cta: { label: "Apri il lavoro", url: `${frontendUrl()}/le-mie-richieste` },
   }),

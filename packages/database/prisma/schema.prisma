@@ -1433,6 +1433,10 @@ model Booking {
   rescheduleProposedBy    String?
   // Promemoria a chi deve rispondere, dopo 12 ore senza risposta.
   rescheduleReminderAt    DateTime?
+  // "Lavoro terminato" premuto dal professionista prima del giorno fissato
+  // (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md): si chiede
+  // al cliente di confermare, e solo dopo la sua conferma il lavoro si chiude.
+  earlyCompletionAskedAt  DateTime?
   // Cosa ha letto il cliente su annullare e acconto accettando il preventivo
   // (docs/changelog/2026-11-13-annullare-pagina-aperta.md): frasi, cifre, ora
   // di lettura e di accettazione (tipo AcceptedTerms di packages/shared).
@@ -3913,4 +3917,23 @@ model PhotoHandoffPhoto {
   @@index([codeHash])
   @@index([createdAt])
   @@map("photo_handoff_photos")
+}
+
+// Ogni proposta di spostare un appuntamento già fissato, di chi l'ha chiesta e
+// se era dentro il preavviso per annullare: serve alle Statistiche del
+// professionista ("spostati all'ultimo momento",
+// docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md). Solo righe
+// nuove, mai modificate.
+model BookingReschedule {
+  id                    String   @id @default(uuid())
+  bookingId             String
+  professionalProfileId String
+  // "CLIENT" o "PROFESSIONAL", come Booking.rescheduleProposedBy.
+  proposedBy            String
+  // Chiesto dentro il preavviso per annullare dell'appuntamento di allora.
+  late                  Boolean
+  createdAt             DateTime @default(now())
+
+  @@index([professionalProfileId, createdAt])
+  @@map("booking_reschedules")
 }

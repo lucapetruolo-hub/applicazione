@@ -156,6 +156,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   ADMIN_JOB_BALANCE_UNPAID: { icon: "⚠️", message: "Un cliente non ha pagato il saldo di un lavoro entro 7 giorni." },
   // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
   JOB_CONFIRM_REMINDER: { icon: "⏳", message: "Il professionista ha terminato un lavoro: confermalo o segnala un problema." },
+  JOB_EARLY_DONE_ASKED: { icon: "✅", message: "Il professionista dice che il lavoro è già finito: confermalo se è così." },
   JOB_AUTO_CONFIRMED: { icon: "✅", message: "Un lavoro è stato considerato terminato: non ci hai segnalato problemi in tempo." },
   REVIEW_REMINDER: { icon: "⭐", message: "Com'è andato il lavoro? Se vuoi, lascia una recensione: bastano un voto e due righe." },
   JOB_CLOSE_REMINDER: { icon: "⏳", message: "Il cliente ha confermato un lavoro terminato: segnalalo anche tu con l'importo finale." },

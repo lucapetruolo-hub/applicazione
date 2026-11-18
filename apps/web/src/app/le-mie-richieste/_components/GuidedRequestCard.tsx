@@ -1442,7 +1442,9 @@ export function GuidedRequestCard({
           // Visita di un lavoro ricorrente: si salta solo questa, le altre restano.
           title={booking?.recurring && !booking.recurring.stoppedAt ? "Salta questa volta" : "Annulla il lavoro"}
           description={
-            booking && isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours)
+            // Spostamento chiesto dal professionista e senza risposta: annullare è gratis
+            // (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+            booking && isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours) && !booking.dateChange?.clientCancelsFree
               ? `Il professionista verrà avvisato. Mancano meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)}, il preavviso che aveva chiesto.${
                   keptDeposit(booking) > 0
                     ? ` Come scritto nel preventivo, l'acconto di ${formatEurCents(keptDeposit(booking))} non è rimborsabile: resta a lui.`

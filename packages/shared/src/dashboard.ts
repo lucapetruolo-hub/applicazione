@@ -404,6 +404,8 @@ export type ProfessionalBooking = {
    * `null` finché non ha ancora confermato.
    */
   clientConfirmedCompletedAt: string | null;
+  /** "Lavoro terminato" premuto prima del giorno fissato: si aspetta la conferma del cliente (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md). Facoltativa solo per un'API non ancora aggiornata. */
+  earlyCompletionAskedAt?: string | null;
   /** Foto/video del lavoro terminato allegate da ciascuna parte (richiesta esplicita dell'utente). */
   professionalCompletionPhotoUrls: string[];
   clientCompletionPhotoUrls: string[];
@@ -589,6 +591,14 @@ export type ProfessionalStatsTotals = {
   revenueEurCents: number;
   reviews: number;
   ratingAvg: number | null;
+  /**
+   * Appuntamenti già fissati che hai chiesto di spostare dentro il preavviso
+   * per annullare, e quelli chiesti dai clienti
+   * (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+   * Facoltativi solo per un'API non ancora aggiornata.
+   */
+  lateMovesByYou?: number;
+  lateMovesByClients?: number;
 };
 
 export type ProfessionalStatsBucket = {
@@ -626,4 +636,10 @@ export type BookingDateChange = {
   note: string | null;
   proposedBy: "CLIENT" | "PROFESSIONAL";
   requestedAt: string;
+  /**
+   * Lo spostamento l'ha chiesto per primo il professionista: finché il
+   * cliente non risponde può annullare senza perdere l'acconto
+   * (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+   */
+  clientCancelsFree: boolean;
 };

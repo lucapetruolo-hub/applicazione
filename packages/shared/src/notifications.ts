@@ -168,6 +168,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "ADMIN_SUSPICIOUS_ACCOUNTS",
       // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
       "JOB_CONFIRM_REMINDER",
+      // "Lavoro terminato" del professionista prima del giorno fissato: il cliente conferma (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+      "JOB_EARLY_DONE_ASKED",
       "JOB_AUTO_CONFIRMED",
       "JOB_CLOSE_REMINDER",
       "JOB_CLOSE_EXPIRED",
@@ -427,7 +429,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "lavori.chiusura",
     topic: "lavori",
-    types: ["JOB_COMPLETED", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "JOB_CLOSE_REMINDER", "JOB_CLOSE_EXPIRED", "REVIEW_REMINDER"],
+    types: ["JOB_COMPLETED", "JOB_CONFIRM_REMINDER", "JOB_EARLY_DONE_ASKED", "JOB_AUTO_CONFIRMED", "JOB_CLOSE_REMINDER", "JOB_CLOSE_EXPIRED", "REVIEW_REMINDER"],
     professional: { label: "Lavoro terminato", description: "La conferma del cliente e la chiusura del lavoro." },
     client: { label: "Lavoro terminato", description: "Quando il professionista lo segna come finito." },
   },

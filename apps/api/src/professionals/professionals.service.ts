@@ -2466,6 +2466,7 @@ export class ProfessionalsService {
       meetingLink: booking.meetingLink,
       onTheWayAt: booking.onTheWayAt?.toISOString() ?? null,
       clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
+      earlyCompletionAskedAt: booking.earlyCompletionAskedAt?.toISOString() ?? null,
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
       // Segnalazione del cliente sul lavoro, con la risposta del professionista (docs/CHANGELOG.md §164).

@@ -68,6 +68,12 @@ export function BookedDateChangeAnswer({
         afterText={formatQuoteDateRange(dateChange.start, dateChange.end)}
         note={dateChange.note}
       />
+      {dateChange.clientCancelsFree ? (
+        // Lo spostamento l'ha chiesto il professionista (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+        <Text fontSize={13} color={brand.grafite70} data-testid="reschedule-free-cancel">
+          Se nessuna data ti va bene, finché non rispondi puoi annullare il lavoro senza perdere l&apos;acconto.
+        </Text>
+      ) : null}
       {cancelLine ? (
         <Text
           fontSize={cancelLine.tone === "warning" ? 16 : 13}

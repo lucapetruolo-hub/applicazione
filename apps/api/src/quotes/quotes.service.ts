@@ -35,6 +35,7 @@ import {
   depositKeptOnLateCancel,
   toJobPaymentSummary,
   BOARD_MAX_QUOTES,
+  isLateCancellation,
 } from "@professionisti/shared";
 import { ACTIVE_QUOTE_STATUSES } from "../request-board/board-rules";
 import { PRISMA } from "../prisma/prisma.module";
@@ -626,6 +627,14 @@ export class QuotesService {
             ...(booking.clientCantComeAt ? {} : { clientCantComeAt: now }),
           },
         }),
+        this.prisma.bookingReschedule.create({
+          data: {
+            bookingId: booking.id,
+            professionalProfileId: quote.professionalProfileId,
+            proposedBy: "CLIENT",
+            late: isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours, now),
+          },
+        }),
       ]);
       await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_DATE_PROPOSED", {
         guidedRequestId: quote.guidedRequestId,
@@ -1020,16 +1029,23 @@ export class QuotesService {
     return { id: quote.id, status: quote.status };
   }
 
-  /** "Modifica" del professionista sull'altra data proposta per un appuntamento già fissato. */
+  /**
+   * "Modifica" del professionista sull'altra data proposta per un appuntamento
+   * già fissato, oppure "Proponi un'altra data" senza una proposta del cliente
+   * (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md): in tutti e
+   * due i casi il cliente accetta o rifiuta, e fino ad allora resta la data di
+   * adesso.
+   */
   private async counterProposeBookedDate(
     professionalProfileId: string,
-    quote: { id: string; guidedRequestId: string; estimatedStartDate: Date; estimatedEndDate: Date | null; clientProposedDate: Date; clientProposedEndDate: Date | null; guidedRequest: { clientId: string; serviceMode: "HOME" | "ONLINE" | null } },
-    booking: { id: string; status: string; scheduledAt: Date; scheduledEndAt: Date | null },
+    quote: { id: string; guidedRequestId: string; estimatedStartDate: Date; estimatedEndDate: Date | null; clientProposedDate: Date | null; clientProposedEndDate: Date | null; guidedRequest: { clientId: string; serviceMode: "HOME" | "ONLINE" | null } },
+    booking: { id: string; status: string; scheduledAt: Date; scheduledEndAt: Date | null; cancellationNoticeHours: number | null },
     input: ProposeQuoteDateInput,
   ) {
     if (booking.status !== "CONFIRMED" || booking.scheduledAt.getTime() <= wallClockNow().getTime()) {
       throw new ForbiddenException("Questo appuntamento non si può più spostare.");
     }
+
     let start: Date;
     let end: Date;
     if (input.isManual) {
@@ -1044,10 +1060,15 @@ export class QuotesService {
     end = keepJobDays({ estimatedStartDate: booking.scheduledAt, estimatedEndDate: booking.scheduledEndAt }, end);
     if (!appointmentStillAhead(start, end)) throw new BadRequestException("Scegli una data che deve ancora venire.");
     if (!scheduleChangeBetween({ start: booking.scheduledAt, end: booking.scheduledEndAt }, { start, end })) {
-      throw new BadRequestException("È la data dell'appuntamento: per tenerla rifiuta la proposta del cliente.");
+      throw new BadRequestException(
+        quote.clientProposedDate ? "È la data dell'appuntamento: per tenerla rifiuta la proposta del cliente." : "È la data dell'appuntamento: scegline un'altra.",
+      );
     }
     const note = input.note?.trim() || null;
-    const change = scheduleChangeBetween({ start: quote.clientProposedDate, end: quote.clientProposedEndDate }, { start, end }) ?? "both";
+    const change =
+      scheduleChangeBetween(quote.clientProposedDate ? { start: quote.clientProposedDate, end: quote.clientProposedEndDate } : { start: booking.scheduledAt, end: booking.scheduledEndAt }, { start, end }) ??
+      "both";
+    const now = new Date();
     await this.prisma.$transaction([
       this.prisma.quote.update({
         where: { id: quote.id },
@@ -1055,7 +1076,10 @@ export class QuotesService {
       }),
       this.prisma.booking.update({
         where: { id: booking.id },
-        data: { rescheduleRequestedAt: new Date(), rescheduleProposedBy: "PROFESSIONAL", rescheduleReminderAt: null },
+        data: { rescheduleRequestedAt: now, rescheduleProposedBy: "PROFESSIONAL", rescheduleReminderAt: null },
+      }),
+      this.prisma.bookingReschedule.create({
+        data: { bookingId: booking.id, professionalProfileId, proposedBy: "PROFESSIONAL", late: isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours, now) },
       }),
     ]);
     await this.notificationsService.notify(quote.guidedRequest.clientId, "QUOTE_DATE_CHANGED", {
@@ -1064,6 +1088,7 @@ export class QuotesService {
       bookingId: booking.id,
       booked: true,
       change,
+      ...(quote.clientProposedDate ? {} : { fromProfessional: true }),
       ...(note ? { note } : {}),
       from: slotPayload(booking.scheduledAt, booking.scheduledEndAt),
       to: slotPayload(start, end),
@@ -1138,7 +1163,16 @@ export class QuotesService {
       if (quote.booking.rescheduleProposedBy === "PROFESSIONAL") {
         throw new ForbiddenException("Hai proposto tu questa data: aspetta la risposta del cliente.");
       }
-      return this.counterProposeBookedDate(professionalProfile.id, { ...quote, clientProposedDate: quote.clientProposedDate }, quote.booking, input);
+      return this.counterProposeBookedDate(professionalProfile.id, quote, quote.booking, input);
+    }
+    // Anche senza una proposta del cliente: "Proponi un'altra data" sul lavoro
+    // fissato, stesso percorso (docs/changelog/2026-11-18-sposta-e-terminato-in-anticipo.md).
+    if (quote.booking && quote.status === "ACCEPTED") {
+      // Lavoro ricorrente: le visite si saltano dalla serie, non si spostano da qui.
+      if (quote.booking.recurringJobId) {
+        throw new ForbiddenException("Per un lavoro ricorrente usa \"Salta questa volta\" e scrivi al cliente.");
+      }
+      return this.counterProposeBookedDate(professionalProfile.id, quote, quote.booking, input);
     }
     if (quote.status !== "MODIFICATION_REQUESTED") {
       throw new ForbiddenException("Nessuna data proposta da modificare per questo preventivo.");
