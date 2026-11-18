@@ -21,6 +21,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { SITE_URL } from "@/lib/siteUrl";
 import { WaitBarSignal } from "@/components/WaitBar";
 import { PageLoading } from "@/components/PageLoading";
+import styles from "./il-tuo-link.module.css";
 
 const fieldStyle: CSSProperties = {
   width: "100%",
@@ -185,8 +186,22 @@ function PersonalLinkContent() {
           <Text render="h1" margin={0} fontFamily="heading" fontWeight="800" fontSize={30} color={brand.inchiostro}>
             Il tuo link
           </Text>
+          {/* Il vantaggio in evidenza, non in coda alla frase (docs/changelog/2026-11-18-link-fuori-abbonamento.md). */}
+          <div className={styles.band}>
+            <span className={styles.check} aria-hidden>
+              <Icon name="check" size={22} color="#FFFFFF" strokeWidth={2.5} />
+            </span>
+            <span className={styles.words}>
+              <Text render="span" fontSize={17} fontWeight="800" color={brand.verificato}>
+                Non contano nel tuo abbonamento
+              </Text>
+              <Text fontSize={15} color={brand.grafite}>
+                I lavori dei clienti del tuo link, anche quando hai finito quelli del mese.
+              </Text>
+            </span>
+          </div>
           <Text fontSize={16} color={brand.grafite70}>
-            Mandalo ai tuoi clienti: le loro richieste arrivano solo a te e i lavori non contano nel tuo abbonamento.{" "}
+            Mandalo ai tuoi clienti: le loro richieste arrivano solo a te.{" "}
             <button type="button" className="link-button" aria-expanded={moreOpen} onClick={() => setMoreOpen((open) => !open)}>
               {moreOpen ? "Chiudi" : "Scopri di più"}
             </button>
@@ -248,7 +263,13 @@ function PersonalLinkContent() {
                   ? link.opensThisPeriod > 0
                     ? "Ancora nessuna richiesta da lì."
                     : "Ancora nessuna richiesta dal tuo link in questo periodo."
-                  : `${link.opensThisPeriod > 0 ? "Da lì" : "In questo periodo"}: ${plural(link.requestsThisPeriod, "richiesta", "richieste")} e ${plural(link.jobsThisPeriod, "lavoro preso", "lavori presi")}, che non contano nel tuo abbonamento.`}
+                  : <>
+                      {`${link.opensThisPeriod > 0 ? "Da lì" : "In questo periodo"}: ${plural(link.requestsThisPeriod, "richiesta", "richieste")} e ${plural(link.jobsThisPeriod, "lavoro preso", "lavori presi")}, `}
+                      <Text render="span" fontSize={14} fontWeight="700" color={brand.verificato}>
+                        fuori abbonamento
+                      </Text>
+                      .
+                    </>}
               </Text>
             </Surface>
 
