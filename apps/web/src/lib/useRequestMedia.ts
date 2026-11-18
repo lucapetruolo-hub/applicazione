@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MEDIA_UPLOAD_MAX_BYTES, REQUEST_VIDEO_MAX_SECONDS } from "@professionisti/shared";
 import { ApiError } from "@professionisti/api-client";
-import { apiClient } from "@/lib/apiClient";
 import { localPreviewUrl } from "@/lib/media";
+import { MediaRejectedError, checkMediaFile, mediaSizeProblem, uploadErrorMessage, uploadMediaFile } from "@/lib/mediaUpload";
 import { frameFromVideo, withoutHiddenData } from "@/lib/photoSearch";
 
 /**
@@ -39,48 +38,6 @@ export type RequestMediaItem = {
 };
 
 type Prepared = { file: Blob };
-
-const SIZE_MB = 1024 * 1024;
-
-function sizeError(size: number, isVideo: boolean): string | null {
-  if (size <= MEDIA_UPLOAD_MAX_BYTES) return null;
-  const mb = Math.ceil(size / SIZE_MB);
-  const max = Math.round(MEDIA_UPLOAD_MAX_BYTES / SIZE_MB);
-  return isVideo
-    ? `Il video pesa ${mb} MB, il massimo è ${max} MB. Fanne uno più corto: mezzo minuto basta.`
-    : `La foto pesa ${mb} MB, il massimo è ${max} MB.`;
-}
-
-/** Un video più lungo del massimo: non si carica, va tolto (riprovare non serve). */
-class TooLongError extends Error {}
-
-/** Durata del video in secondi, o null se il browser non la sa leggere entro 4 secondi. */
-function videoDuration(file: File): Promise<number | null> {
-  return new Promise((resolve) => {
-    // localPreviewUrl: stesso indirizzo blob: delle anteprime, già passato da encodeURI (CodeQL).
-    const url = localPreviewUrl(file);
-    const video = document.createElement("video");
-    const finish = (value: number | null) => {
-      clearTimeout(timer);
-      URL.revokeObjectURL(url);
-      video.removeAttribute("src");
-      resolve(value);
-    };
-    const timer = setTimeout(() => finish(null), 4000);
-    video.preload = "metadata";
-    video.muted = true;
-    video.playsInline = true;
-    video.onloadedmetadata = () => finish(Number.isFinite(video.duration) ? video.duration : null);
-    video.onerror = () => finish(null);
-    video.src = url;
-  });
-}
-
-function durationText(seconds: number): string {
-  if (seconds < 90) return `${Math.round(seconds)} secondi`;
-  const minutes = Math.round(seconds / 60);
-  return `${minutes} minuti`;
-}
 
 export function useRequestMedia(token: string | null, maxItems: number) {
   const [items, setItems] = useState<RequestMediaItem[]>([]);
@@ -128,8 +85,7 @@ export function useRequestMedia(token: string | null, maxItems: number) {
       if (!prepared) throw new Error("File non trovato, aggiungilo di nuovo.");
       for (let attempt = 0; ; attempt++) {
         try {
-          const result = await apiClient.uploadGuidedRequestPhotoWithProgress(activeToken, prepared.file, onProgress, controller.signal);
-          return result.imageUrl;
+          return await uploadMediaFile(activeToken, prepared.file, { onProgress, signal: controller.signal });
         } catch (err) {
           const networkError = err instanceof ApiError && err.status === 0 && err.code !== "ABORTED";
           // La rete del telefono che cade un attimo: si riprova una volta, da capo.
@@ -152,14 +108,8 @@ export function useRequestMedia(token: string | null, maxItems: number) {
         uploadsRef.current.delete(id);
         abortRef.current.delete(id);
         // Troppo lungo: l'ha già segnato chi ha controllato la durata.
-        if (err instanceof TooLongError) throw err;
-        const message =
-          err instanceof ApiError && err.status === 0 && err.code !== "ABORTED"
-            ? "Connessione interrotta: controlla la rete e riprova."
-            : err instanceof Error
-              ? err.message
-              : "Caricamento non riuscito.";
-        if (exists(id)) patch(id, { status: "error", progress: 0, error: message });
+        if (err instanceof MediaRejectedError) throw err;
+        if (exists(id)) patch(id, { status: "error", progress: 0, error: uploadErrorMessage(err) });
         throw err;
       },
     );
@@ -175,7 +125,7 @@ export function useRequestMedia(token: string | null, maxItems: number) {
     if (options.onlyIfEmpty && itemsRef.current.length > 0) return false;
     const isVideo = picked.type.startsWith("video/");
     const id = localPreviewUrl(picked);
-    const tooBig = sizeError(picked.size, isVideo);
+    const tooBig = mediaSizeProblem(picked);
     update((prev) => [
       ...prev,
       { id, isVideo, status: tooBig ? "error" : "local", progress: 0, remoteUrl: null, error: tooBig, retryable: !tooBig },
@@ -187,20 +137,13 @@ export function useRequestMedia(token: string | null, maxItems: number) {
     // che così perde i dati nascosti e pesa meno
     // (docs/changelog/2026-11-14-foto-per-il-professionista.md). Se il
     // browser non sa aprirla (es. HEIC su Chrome per computer) parte com'è.
-    // Un video troppo lungo si ferma qui, prima di caricarlo. Se il browser
-    // non sa leggerne la durata parte lo stesso: decide il peso.
+    // Un video troppo lungo si ferma qui, prima di caricarlo (checkMediaFile).
     const prepared: Promise<Prepared> = isVideo
-      ? videoDuration(picked).then((seconds) => {
-          // Qualche secondo di tolleranza: "1 minuto" registrato a mano dura spesso 61-62 secondi.
-          if (seconds !== null && seconds > REQUEST_VIDEO_MAX_SECONDS + 5) {
-            throw new TooLongError(`Il video dura ${durationText(seconds)}, il massimo è 1 minuto. Fanne uno più corto.`);
-          }
-          return { file: picked };
-        })
+      ? checkMediaFile(picked).then(() => ({ file: picked }))
       : (options.cleaned ? Promise.resolve(picked as Blob) : withoutHiddenData(picked)).then((file) => ({ file }));
     preparedRef.current.set(id, prepared);
     prepared.catch((err: unknown) => {
-      if (!(err instanceof TooLongError) || !exists(id)) return;
+      if (!(err instanceof MediaRejectedError) || !exists(id)) return;
       preparedRef.current.delete(id);
       patch(id, { status: "error", progress: 0, error: err.message, retryable: false });
     });

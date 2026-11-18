@@ -24,6 +24,7 @@ import {
 import { Autocomplete, Avatar, Badge, BadgeInfo, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { setChosenParams } from "@/lib/chosenParams";
 import { apiClient } from "@/lib/apiClient";
+import { checkMediaFile, uploadErrorMessage, uploadMediaFile } from "@/lib/mediaUpload";
 import { useComuni } from "@/lib/comuniLazy";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { ProfessionalReviewsSummary } from "@/components/ProfessionalReviewsLink";
@@ -219,6 +220,7 @@ export function GuidedRequestCard({
   }
   const [photoUrls, setPhotoUrls] = useState<string[]>(request.photoUrls);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -413,11 +415,15 @@ export function GuidedRequestCard({
 
     setPhotoError(null);
     setIsUploadingPhoto(true);
+    setUploadProgress(0);
     try {
-      const result = await apiClient.uploadGuidedRequestPhoto(token, file);
-      setPhotoUrls((prev) => [...prev, result.imageUrl].slice(0, MAX_REQUEST_PHOTOS));
+      // Peso e durata controllati prima, video direttamente a Cloudinary con la
+      // percentuale (docs/changelog/2026-11-18-video-che-carica-ancora.md).
+      await checkMediaFile(file);
+      const url = await uploadMediaFile(token, file, { onProgress: setUploadProgress });
+      setPhotoUrls((prev) => [...prev, url].slice(0, MAX_REQUEST_PHOTOS));
     } catch (err) {
-      setPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
+      setPhotoError(uploadErrorMessage(err));
     } finally {
       setIsUploadingPhoto(false);
     }
@@ -684,7 +690,13 @@ export function GuidedRequestCard({
                   aria-label="Aggiungi foto"
                 >
                   {isUploadingPhoto ? (
-                    <UploadingDots dotSize={6} />
+                    uploadProgress > 0 ? (
+                      <Text fontSize={14} fontWeight="700" color={brand.grafite70} aria-label={`Caricamento: ${Math.round(uploadProgress * 100)}%`}>
+                        {Math.round(uploadProgress * 100)}%
+                      </Text>
+                    ) : (
+                      <UploadingDots dotSize={6} />
+                    )
                   ) : (
                     <Text fontSize="6" color={brand.grafite70}>
                       +

@@ -36,8 +36,10 @@ export const PROBLEM_PHOTO_MAX_EDGE = 1280;
 export const MEDIA_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
 
 /**
- * Durata massima di un video nella richiesta di preventivo: al professionista
+ * Durata massima di un video (richiesta di preventivo e chat): al professionista
  * basta un minuto per vedere il guasto, e il caricamento resta veloce anche in
- * 4G (docs/changelog/2026-11-18-video-che-carica-ancora.md).
+ * 4G (decisione di Luca del 18/11/2026,
+ * docs/changelog/2026-11-18-video-che-carica-ancora.md). Cloudinary taglia
+ * comunque oltre i 5 secondi in più.
  */
-export const REQUEST_VIDEO_MAX_SECONDS = 60;
+export const MEDIA_VIDEO_MAX_SECONDS = 60;

@@ -1864,6 +1864,20 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     uploadGuidedRequestPhoto: (token: string, file: Blob) =>
       uploadFile<{ imageUrl: string }>("/guided-requests/photos", token, file, "image"),
+    /**
+     * Permesso firmato per mandare un video direttamente a Cloudinary
+     * (docs/changelog/2026-11-18-video-che-carica-ancora.md). `forChat`: cartella della chat.
+     * 503 se Cloudinary non è configurato: allora si carica dal nostro server.
+     */
+    getVideoUploadTicket: (token: string, forChat = false) =>
+      request<{ uploadUrl: string; fields: Record<string, string> }>("/guided-requests/video-upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ forChat }),
+      }),
+    /** Allegato della chat con l'avanzamento da 0 a 1. */
+    uploadTimelinePhotoWithProgress: (token: string, file: Blob, onProgress?: (fraction: number) => void, signal?: AbortSignal) =>
+      uploadFileWithProgress<{ imageUrl: string }>("/guided-requests/timeline-photos", token, file, "image", onProgress, signal),
     /** Stesso caricamento, con l'avanzamento da 0 a 1 e la possibilità di fermarlo (video lunghi). */
     uploadGuidedRequestPhotoWithProgress: (token: string, file: Blob, onProgress?: (fraction: number) => void, signal?: AbortSignal) =>
       uploadFileWithProgress<{ imageUrl: string }>("/guided-requests/photos", token, file, "image", onProgress, signal),

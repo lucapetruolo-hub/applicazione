@@ -12,6 +12,7 @@ import {
   Query,
   Req,
   Res,
+  ServiceUnavailableException,
   UploadedFile,
   UseFilters,
   UseGuards,
@@ -24,6 +25,7 @@ import {
   guidedRequestSchema,
   guidedRequestUpdateSchema,
   MEDIA_UPLOAD_MAX_BYTES,
+  MEDIA_VIDEO_MAX_SECONDS,
   guidedRequestUserStateSchema,
   requestWithdrawSchema,
   type RequestWithdrawInput,
@@ -168,6 +170,20 @@ export class GuidedRequestsController {
     }
     const imageUrl = await this.cloudinaryService.uploadMedia(file, "timeline-updates");
     return { imageUrl };
+  }
+
+  // Video direttamente dal browser a Cloudinary (docs/changelog/2026-11-18-video-che-carica-ancora.md):
+  // qui solo il permesso firmato, il file non passa dall'API. `forChat` sceglie
+  // la cartella della chat invece di quella delle richieste. 503 senza
+  // Cloudinary: il sito ripiega su "photos"/"timeline-photos".
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @UseGuards(JwtAuthGuard)
+  @Post("video-upload")
+  signVideoUpload(@Body() body?: { forChat?: unknown }) {
+    const folder = body?.forChat === true ? "timeline-updates" : "guided-requests";
+    const ticket = this.cloudinaryService.signDirectVideoUpload(folder, MEDIA_VIDEO_MAX_SECONDS);
+    if (!ticket) throw new ServiceUnavailableException("Caricamento diretto dei video non configurato.");
+    return ticket;
   }
 
   // Proxy di download server-to-server per un documento allegato in chat

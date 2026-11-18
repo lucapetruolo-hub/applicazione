@@ -33,9 +33,9 @@ non arrivava al professionista.
   si carica o si invia.
 - Peso (50 MB, `MEDIA_UPLOAD_MAX_BYTES` in `packages/shared/src/limits.ts`,
   lo stesso numero dell'API) e durata (1 minuto con 5 secondi di tolleranza,
-  `REQUEST_VIDEO_MAX_SECONDS`) controllati appena si sceglie il video, con un
+  `MEDIA_VIDEO_MAX_SECONDS`) controllati appena si sceglie il video, con un
   messaggio chiaro, invece di scoprirlo dopo il caricamento. Il limite di 1
-  minuto è la proposta in attesa della scelta di Luca nel thread.
+  minuto è stato poi scelto da Luca (vedi sotto).
 - Da non registrati i file restano nel browser e si caricano all'invio, dopo
   l'accesso (Verbale Cognitivo F2.2, come prima).
 
@@ -45,3 +45,35 @@ foto e video; caricamento rifiutato due volte → la richiesta non parte e si
 legge il messaggio, nuovo Invia → parte con il video; video di 75 secondi →
 "Il video dura 75 secondi, il massimo è 1 minuto", video di 10 secondi
 caricato. `pnpm typecheck` e `pnpm lint` di `apps/web` puliti.
+
+## Secondo giro (stesso giorno): caricamento diretto, 480p, chat e "Le mie richieste"
+
+**Richiesta** (Luca): "ok caricamento diretto", video "anche più piccoli" di
+720p (scelto 480p), limite 1 minuto e 50 MB, stessa protezione nelle foto
+aggiunte dopo e negli allegati della chat, piano di Cloudinary nella checklist.
+
+**Decisione**:
+- I video vanno dal browser direttamente a Cloudinary
+  (`apps/web/src/lib/mediaUpload.ts`). L'API dà solo un permesso firmato
+  (`POST /guided-requests/video-upload`, `CloudinaryService.signDirectVideoUpload`)
+  che copre cartella, ora e trasformazione all'arrivo
+  `c_limit,w_854,h_854,du_65,q_auto`: Cloudinary salva solo la copia in 480p,
+  tagliata a 65 secondi anche se qualcuno salta il controllo del sito, e
+  ricodificata (senza la posizione GPS). Con tanto traffico il file non passa
+  più da Render. Foto e documenti restano sull'API (sono già piccoli).
+- Se Cloudinary non dà il permesso (503, non configurato) o rifiuta la firma, il
+  video passa dall'API come prima: il caricamento non si blocca mai.
+- CSP: `connect-src` ammette `https://api.cloudinary.com`.
+- "Le mie richieste" (foto aggiunte modificando una richiesta) e chat: stessi
+  controlli di peso e durata prima di caricare, percentuale, video diretti a
+  Cloudinary. Lì "Salva" e "Invia" erano già fermi durante il caricamento.
+- Durata unica `MEDIA_VIDEO_MAX_SECONDS` (60) in `packages/shared/src/limits.ts`.
+- Checklist del lancio, punto 5: piano di Cloudinary.
+
+**Verifica**: Playwright con API finta e Cloudinary intercettato: il video va a
+`api.cloudinary.com` con cartella e trasformazione firmate, non all'API, e la
+richiesta parte con l'indirizzo di Cloudinary; con il permesso spento (503) il
+video passa dall'API e la richiesta parte lo stesso. Test
+`cloudinary-direct-video.test.ts`: la firma è quella di Cloudinary (SHA-1 dei
+parametri in ordine più il segreto). Da provare dal vivo con le chiavi vere:
+un video da iPhone in 4G (lo fa Luca).
