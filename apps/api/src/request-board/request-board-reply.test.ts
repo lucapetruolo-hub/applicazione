@@ -13,7 +13,7 @@ function setup(options: { role?: string; profileId?: string | null; listed?: boo
     boardClaim: { upsert: vi.fn().mockResolvedValue({}), deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
   };
   const guidedRequests = { addBoardLead: vi.fn().mockResolvedValue(options.leadStatus ?? "added") };
-  const service = new RequestBoardService(prisma as never, guidedRequests as never, {} as never);
+  const service = new RequestBoardService(prisma as never, guidedRequests as never, {} as never, {} as never);
   return { service, prisma, guidedRequests };
 }
 

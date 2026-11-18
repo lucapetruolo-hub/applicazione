@@ -27,6 +27,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   QUOTE_REJECTED: { icon: "😕", message: "Il cliente ha rifiutato il tuo preventivo." },
   QUOTE_NOT_CHOSEN: { icon: "🙁", message: "Il cliente ha scelto un altro professionista." },
   REQUEST_WITHDRAWN: { icon: "↩️", message: "Il cliente ha ritirato una richiesta: non gli serve più." },
+  // Richiesta tenuta da parte da "Lavori cercati", arrivata con il profilo visibile (docs/changelog/2026-11-17-bacheca-rispondi.md).
+  BOARD_CLAIM_ARRIVED: { icon: "📌", message: "La richiesta che avevi scelto in Lavori cercati è nel tuo elenco: manda il preventivo." },
   QUOTE_WITHDRAWN: { icon: "↩️", message: "Il professionista ha ritirato il preventivo." },
   QUOTE_DEPOSIT_REFUNDED: { icon: "↩️", message: "Il preventivo non si poteva più confermare: ti abbiamo rimborsato l'acconto." },
   LEAD_DECLINED: { icon: "🙁", message: "Un professionista ha rifiutato la tua richiesta." },
@@ -311,6 +313,10 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   }
   if (type === "JOB_CLOSE_REMINDER" && data.immediate === true) {
     return { icon: "✅", message: `${who ?? "Il cliente"} ha confermato che il lavoro${jobSuffix} è terminato: segnalalo anche tu con l'importo finale.` };
+  }
+  if (type === "BOARD_CLAIM_ARRIVED" && text(data.category)) {
+    const where = text(data.city) ? ` a ${text(data.city)}` : "";
+    return { icon: "📌", message: `La richiesta che avevi scelto è nel tuo elenco (${text(data.category)}${where}): manda il preventivo.` };
   }
   if (type === "NEW_LEAD" && text(data.category)) {
     const where = text(data.city) ? ` a ${text(data.city)}` : "";

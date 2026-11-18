@@ -24,6 +24,7 @@ import { COUNTED_USER } from "../site-counts/counted";
 import { EmailService } from "../email/email.service";
 import { boardAlertEmail } from "../email/templates/board-emails";
 import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import {
   ACTIVE_QUOTE_STATUSES,
   boardCardOf,
@@ -92,6 +93,7 @@ export class RequestBoardService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly guidedRequests: GuidedRequestsService,
     private readonly email: EmailService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   static enabled(): boolean {
@@ -292,7 +294,15 @@ export class RequestBoardService {
     for (const claim of claims) {
       try {
         const result = await this.reply(claim.userId, claim.guidedRequestId, now);
-        if (result.status === "added") added += 1;
+        if (result.status !== "added") continue;
+        added += 1;
+        // Avviso solo sul sito (decisione di Luca): la richiesta che aveva tenuto da parte è nel suo elenco.
+        const request = await this.prisma.guidedRequest.findUnique({ where: { id: claim.guidedRequestId }, select: { boardPlace: true } });
+        await this.notifications.notify(claim.userId, "BOARD_CLAIM_ARRIVED", {
+          guidedRequestId: claim.guidedRequestId,
+          category: result.tradeLabel ?? null,
+          city: request?.boardPlace ?? null,
+        });
       } catch (error) {
         this.logger.warn(`"Rispondi" in attesa non riuscito: riprova al prossimo giro. ${error instanceof Error ? error.message : ""}`);
       }
