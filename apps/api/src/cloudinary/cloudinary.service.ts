@@ -112,6 +112,38 @@ export class CloudinaryService {
   }
 
   /**
+   * Permesso firmato per caricare UN video direttamente dal browser a
+   * Cloudinary, senza passare dal nostro server
+   * (docs/changelog/2026-11-18-video-che-carica-ancora.md, decisione di Luca:
+   * con tanto traffico un video da 50 MB teneva occupata l'API per tutto il
+   * caricamento). La firma copre cartella, ora e trasformazione: il browser
+   * non può cambiarle. La trasformazione all'arrivo sostituisce l'originale,
+   * così Cloudinary tiene solo la copia piccola:
+   * - 480p (lato lungo al massimo 854 px, scelta di Luca del 18/11);
+   * - al massimo la durata ammessa più 5 secondi (`du_`), anche se qualcuno
+   *   salta il controllo del sito;
+   * - compressione automatica; i dati nascosti (posizione GPS) non passano
+   *   nella copia ricodificata.
+   * Null se Cloudinary non è configurato: il sito ripiega sul caricamento dal server.
+   */
+  signDirectVideoUpload(folder: string, maxSeconds: number): { uploadUrl: string; fields: Record<string, string> } | null {
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    if (!this.isConfigured || !cloudName || !apiKey || !apiSecret) return null;
+    const params = {
+      folder,
+      timestamp: String(Math.floor(Date.now() / 1000)),
+      transformation: `c_limit,w_854,h_854,du_${maxSeconds + 5},q_auto`,
+    };
+    const signature = cloudinary.utils.api_sign_request(params, apiSecret);
+    return {
+      uploadUrl: `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/video/upload`,
+      fields: { ...params, api_key: apiKey, signature },
+    };
+  }
+
+  /**
    * Foto O video (richiesta esplicita dell'utente: "ovunque c'è la
    * possibilità di caricare le foto... fai in modo da poter caricare anche
    * i video") — usata dalle gallerie a più elementi (richiesta guidata,

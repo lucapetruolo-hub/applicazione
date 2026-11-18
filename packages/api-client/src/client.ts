@@ -1407,6 +1407,60 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     return body as T;
   }
 
+  /**
+   * Come `uploadFile`, ma dice quanto manca (da 0 a 1) e si può fermare: `fetch`
+   * non sa dire a che punto è un invio, `XMLHttpRequest` sì. Serve per i video
+   * della richiesta di preventivo, che da telefono possono metterci un minuto
+   * (docs/changelog/2026-11-18-video-che-carica-ancora.md). Un errore di rete ha
+   * stato 0.
+   */
+  function uploadFileWithProgress<T>(
+    path: string,
+    token: string,
+    file: Blob,
+    fieldName: string,
+    onProgress?: (fraction: number) => void,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const formData = new FormData();
+      formData.append(fieldName, file);
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${baseUrl}${path}`);
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && event.total > 0) onProgress?.(Math.min(1, event.loaded / event.total));
+      };
+      xhr.onload = () => {
+        let body: unknown = null;
+        try {
+          body = xhr.responseText ? (JSON.parse(xhr.responseText) as unknown) : null;
+        } catch {
+          body = null;
+        }
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(body as T);
+          return;
+        }
+        reportFailure({ method: "POST" }, path, xhr.status);
+        reject(new ApiError(extractErrorMessage(body, `Caricamento non riuscito (${xhr.status}).`), xhr.status));
+      };
+      xhr.onerror = () => {
+        reportFailure({ method: "POST" }, path, null);
+        reject(new ApiError("Connessione interrotta durante il caricamento.", 0));
+      };
+      xhr.onabort = () => reject(new ApiError("Caricamento annullato.", 0, "ABORTED"));
+      if (signal) {
+        if (signal.aborted) {
+          reject(new ApiError("Caricamento annullato.", 0, "ABORTED"));
+          return;
+        }
+        signal.addEventListener("abort", () => xhr.abort(), { once: true });
+      }
+      xhr.send(formData);
+    });
+  }
+
   return {
     health: () => request<{ status: string }>("/health"),
     /** Funzioni attive sul server (docs/CHANGELOG.md §170): oggi solo il pagamento online dei lavori. */
@@ -1820,6 +1874,23 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
 
     uploadGuidedRequestPhoto: (token: string, file: Blob) =>
       uploadFile<{ imageUrl: string }>("/guided-requests/photos", token, file, "image"),
+    /**
+     * Permesso firmato per mandare un video direttamente a Cloudinary
+     * (docs/changelog/2026-11-18-video-che-carica-ancora.md). `forChat`: cartella della chat.
+     * 503 se Cloudinary non è configurato: allora si carica dal nostro server.
+     */
+    getVideoUploadTicket: (token: string, forChat = false) =>
+      request<{ uploadUrl: string; fields: Record<string, string> }>("/guided-requests/video-upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ forChat }),
+      }),
+    /** Allegato della chat con l'avanzamento da 0 a 1. */
+    uploadTimelinePhotoWithProgress: (token: string, file: Blob, onProgress?: (fraction: number) => void, signal?: AbortSignal) =>
+      uploadFileWithProgress<{ imageUrl: string }>("/guided-requests/timeline-photos", token, file, "image", onProgress, signal),
+    /** Stesso caricamento, con l'avanzamento da 0 a 1 e la possibilità di fermarlo (video lunghi). */
+    uploadGuidedRequestPhotoWithProgress: (token: string, file: Blob, onProgress?: (fraction: number) => void, signal?: AbortSignal) =>
+      uploadFileWithProgress<{ imageUrl: string }>("/guided-requests/photos", token, file, "image", onProgress, signal),
 
     /**
      * Cronologia completa cliente↔professionista di una richiesta guidata
@@ -2301,8 +2372,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
     agendaWeather: (token: string) => request<WeatherDayAlert[]>("/agenda/weather", { headers: { Authorization: `Bearer ${token}` } }),
     agendaDaysAhead: (token: string) => request<DayAhead[]>("/agenda/days-ahead", { headers: { Authorization: `Bearer ${token}` } }),
     agendaZoneDemand: (token: string) => request<ZoneDemand>("/agenda/zone-demand", { headers: { Authorization: `Bearer ${token}` } }),
-    agendaDayRoute: (token: string, date: string) =>
-      request<DayRoute>(`/agenda/route?date=${encodeURIComponent(date)}`, { headers: { Authorization: `Bearer ${token}` } }),
+    /** `skip`: chiavi delle tappe tolte dal giro (caselle per fascia). */
+    agendaDayRoute: (token: string, date: string, skip: string[] = []) =>
+      request<DayRoute>(`/agenda/route?date=${encodeURIComponent(date)}${skip.length > 0 ? `&skip=${encodeURIComponent(skip.join(","))}` : ""}`, { headers: { Authorization: `Bearer ${token}` } }),
     calendarFeedStatus: (token: string) => request<CalendarFeedStatus>("/agenda/calendar-feed", { headers: { Authorization: `Bearer ${token}` } }),
     enableCalendarFeed: (token: string) => request<CalendarFeedStatus>("/agenda/calendar-feed", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
     disableCalendarFeed: (token: string) => request<CalendarFeedStatus>("/agenda/calendar-feed", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),

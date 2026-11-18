@@ -26,3 +26,20 @@ export const PROBLEM_DESCRIPTION_MAX = 1000;
  */
 export const PROBLEM_PHOTO_MAX_BYTES = 3 * 1024 * 1024;
 export const PROBLEM_PHOTO_MAX_EDGE = 1280;
+
+/**
+ * Peso massimo di una foto o di un video caricato (stesso limite dell'API,
+ * `MAX_MEDIA_SIZE_BYTES` dei controller): il sito lo controlla subito, così chi
+ * sceglie un video troppo pesante lo sa prima di aspettare il caricamento
+ * (docs/changelog/2026-11-18-video-che-carica-ancora.md).
+ */
+export const MEDIA_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
+
+/**
+ * Durata massima di un video (richiesta di preventivo e chat): al professionista
+ * basta un minuto per vedere il guasto, e il caricamento resta veloce anche in
+ * 4G (decisione di Luca del 18/11/2026,
+ * docs/changelog/2026-11-18-video-che-carica-ancora.md). Cloudinary taglia
+ * comunque oltre i 5 secondi in più.
+ */
+export const MEDIA_VIDEO_MAX_SECONDS = 60;

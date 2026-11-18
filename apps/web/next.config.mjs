@@ -21,6 +21,8 @@ function apiOrigin() {
 // (E2-03): nessuno script del sito lo usa (zod nel browser è `jitless`,
 // packages/shared/src/zod.ts), e senza uno script iniettato non può usare
 // `eval`. Solo in produzione: `next dev` usa `eval`.
+// api.cloudinary.com: i video vanno lì direttamente dal browser
+// (docs/changelog/2026-11-18-video-che-carica-ancora.md).
 const contentSecurityPolicy = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' blob: https://*.googleapis.com https://*.gstatic.com *.google.com https://*.ggpht.com *.googleusercontent.com https://challenges.cloudflare.com https://va.vercel-scripts.com",
@@ -28,7 +30,7 @@ const contentSecurityPolicy = [
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https://res.cloudinary.com",
-  `connect-src 'self' ${apiOrigin()} https://*.googleapis.com *.google.com https://*.gstatic.com https://challenges.cloudflare.com https://res.cloudinary.com data: blob:`,
+  `connect-src 'self' ${apiOrigin()} https://*.googleapis.com *.google.com https://*.gstatic.com https://challenges.cloudflare.com https://res.cloudinary.com https://api.cloudinary.com data: blob:`,
   "frame-src *.google.com https://challenges.cloudflare.com",
   "worker-src 'self' blob:",
   "form-action 'self'",

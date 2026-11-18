@@ -30,21 +30,23 @@ test("le righe del riquadro si leggono per intero e la cifra resta dentro il riq
   await page.goto(`/le-mie-richieste?open=${request.id}`);
   const card = page.locator(`#request-${request.id}`);
   await card.locator(`#quote-${quotes[0].id}`).getByText("Accetta preventivo", { exact: true }).click();
-  await expect(card.getByText("Prima di accettare", { exact: true })).toBeVisible();
+  // Si accetta in una finestra a parte (docs/changelog/2026-11-18-accettare-il-preventivo.md).
+  const dialog = page.getByRole("dialog", { name: "Accetta il preventivo" });
+  await expect(dialog.getByRole("heading", { name: "Accetta il preventivo" })).toBeVisible();
 
-  const amounts = card.getByTestId("quote-accept-amounts");
-  await expect(amounts.getByText("Paghi ora, online")).toBeVisible();
-  await expect(amounts.getByText("A lavoro finito, con la stessa carta")).toBeVisible();
-  await expect(amounts.getByText("Il resto, in automatico quando il professionista chiude il lavoro")).toBeVisible();
+  const amounts = dialog.getByTestId("quote-accept-amounts");
+  await expect(amounts.getByText("Paghi ora, con la carta")).toBeVisible();
+  await expect(amounts.getByText("A lavoro finito", { exact: true })).toBeVisible();
+  await expect(amounts.getByText("In automatico, sulla stessa carta")).toBeVisible();
 
   // Foto del riquadro per guardarlo a occhio (in locale: FOTO_PRIMA_DI_ACCETTARE=percorso.png).
   if (process.env.FOTO_PRIMA_DI_ACCETTARE) {
-    await card.getByText("Prima di accettare", { exact: true }).locator("xpath=../..").screenshot({ path: process.env.FOTO_PRIMA_DI_ACCETTARE });
+    await dialog.getByTestId("quote-accept-dialog").screenshot({ path: process.env.FOTO_PRIMA_DI_ACCETTARE });
   }
   const box = (await amounts.boundingBox())!;
   // Niente che sporge dal riquadro.
   expect(await amounts.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
-  for (const label of ["Paghi ora, online", "A lavoro finito, con la stessa carta", "Il resto, in automatico quando il professionista chiude il lavoro"]) {
+  for (const label of ["Paghi ora, con la carta", "In automatico, sulla stessa carta"]) {
     const text = amounts.getByText(label, { exact: true });
     const rect = (await text.boundingBox())!;
     // La colonna del testo è larga almeno 150 px: mai una lettera per riga.
@@ -60,5 +62,11 @@ test("le righe del riquadro si leggono per intero e la cifra resta dentro il riq
     expect(rect.x + rect.width).toBeLessThanOrEqual(box.x + box.width + 1);
     expect(rect.x).toBeGreaterThanOrEqual(box.x - 1);
   }
+  // La cifra del resto sta sulla riga di "A lavoro finito", non sotto la spiegazione.
+  const restLabel = (await amounts.getByText("A lavoro finito", { exact: true }).boundingBox())!;
+  const restHint = (await amounts.getByText("In automatico, sulla stessa carta").boundingBox())!;
+  const restAmount = (await amounts.getByText(/^(da|fino a) [\d]/).boundingBox())!;
+  expect(restAmount.y).toBeLessThan(restHint.y);
+  expect(Math.abs(restAmount.y + restAmount.height - (restLabel.y + restLabel.height))).toBeLessThanOrEqual(8);
   await page.context().close();
 });

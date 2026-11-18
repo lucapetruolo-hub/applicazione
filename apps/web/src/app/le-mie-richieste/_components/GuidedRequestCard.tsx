@@ -24,10 +24,12 @@ import {
 import { Autocomplete, Avatar, Badge, BadgeInfo, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { setChosenParams } from "@/lib/chosenParams";
 import { apiClient } from "@/lib/apiClient";
+import { checkMediaFile, uploadErrorMessage, uploadMediaFile } from "@/lib/mediaUpload";
 import { useComuni } from "@/lib/comuniLazy";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { ProfessionalReviewsSummary } from "@/components/ProfessionalReviewsLink";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { moveItem, usePhotoReorder } from "@/lib/usePhotoReorder";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
@@ -218,8 +220,22 @@ export function GuidedRequestCard({
     if (comune) setProvince(comune.province);
   }
   const [photoUrls, setPhotoUrls] = useState<string[]>(request.photoUrls);
+  // Ordine delle foto, come nel modulo di richiesta (richiesta di Luca del 18/11,
+  // docs/changelog/2026-11-18-luci-ia-solo-con-ia.md).
+  const {
+    containerRef: photoReorderRef,
+    itemProps: photoReorderItemProps,
+    announcement: photoReorderAnnouncement,
+  } = usePhotoReorder({
+    count: photoUrls.length,
+    move: (from, to) => setPhotoUrls((prev) => moveItem(prev, from, to)),
+    label: (index) => `Foto ${index + 1}`,
+  });
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  // Riga grigia (non un errore) quando si scelgono più file dei posti liberi.
+  const [photoNotice, setPhotoNotice] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -406,22 +422,41 @@ export function GuidedRequestCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenDocuments]);
 
+  // Più foto o video scelti insieme, fino al massimo (richiesta di Luca del 18/11,
+  // docs/changelog/2026-11-18-luci-ia-solo-con-ia.md): uno alla volta, nell'ordine scelto.
   async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (!file) return;
+    if (picked.length === 0) return;
+    const kept = picked.slice(0, Math.max(0, MAX_REQUEST_PHOTOS - photoUrls.length));
+    setPhotoNotice(
+      picked.length > kept.length
+        ? `Si possono aggiungere fino a ${MAX_REQUEST_PHOTOS} foto o video: ne abbiamo ${kept.length === 1 ? "aggiunto 1" : `aggiunti ${kept.length}`}.`
+        : null,
+    );
 
     setPhotoError(null);
     setIsUploadingPhoto(true);
-    try {
-      const result = await apiClient.uploadGuidedRequestPhoto(token, file);
-      setPhotoUrls((prev) => [...prev, result.imageUrl].slice(0, MAX_REQUEST_PHOTOS));
-    } catch (err) {
-      setPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
-    } finally {
-      setIsUploadingPhoto(false);
+    setUploadProgress(0);
+    // Peso e durata controllati prima, video direttamente a Cloudinary con la
+    // percentuale (docs/changelog/2026-11-18-video-che-carica-ancora.md). Un
+    // file che non va (troppo lungo, rete) non ferma gli altri: si salta e lo
+    // si dice sotto, uno per riga.
+    const problems: string[] = [];
+    for (const file of kept) {
+      setUploadProgress(0);
+      try {
+        await checkMediaFile(file);
+        const url = await uploadMediaFile(token, file, { onProgress: setUploadProgress });
+        setPhotoUrls((prev) => [...prev, url].slice(0, MAX_REQUEST_PHOTOS));
+      } catch (err) {
+        problems.push(kept.length > 1 ? `${file.name}: ${uploadErrorMessage(err)}` : uploadErrorMessage(err));
+      }
     }
+    setPhotoError(problems.length > 0 ? problems.join("\n") : null);
+    setIsUploadingPhoto(false);
   }
+
 
   function removePhoto(url: string) {
     setPhotoUrls((prev) => prev.filter((u) => u !== url));
@@ -655,9 +690,13 @@ export function GuidedRequestCard({
             <Text fontSize={13} color={brand.grafite70}>
               Foto o video (opzionale, fino a {MAX_REQUEST_PHOTOS})
             </Text>
-            <YStack flexDirection="row" flexWrap="wrap" gap="2">
-              {photoUrls.map((url) => (
-                <YStack key={url} width={72} height={72} borderRadius="3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+            <div ref={photoReorderRef} className="portfolio-thumbs">
+              {photoUrls.map((url, index) => (
+                <div
+                  key={url}
+                  className={photoUrls.length > 1 ? "portfolio-thumb portfolio-thumb-small reorder-item" : "portfolio-thumb portfolio-thumb-small"}
+                  {...(photoUrls.length > 1 ? photoReorderItemProps(index) : {})}
+                >
                   <MediaPreview url={url} />
                   <YStack
                     position="absolute"
@@ -676,7 +715,7 @@ export function GuidedRequestCard({
                   >
                     <X size={11} strokeWidth={2} color="white" />
                   </YStack>
-                </YStack>
+                </div>
               ))}
               {photoUrls.length < MAX_REQUEST_PHOTOS ? (
                 <YStack
@@ -695,7 +734,13 @@ export function GuidedRequestCard({
                   aria-label="Aggiungi foto"
                 >
                   {isUploadingPhoto ? (
-                    <UploadingDots dotSize={6} />
+                    uploadProgress > 0 ? (
+                      <Text fontSize={14} fontWeight="700" color={brand.grafite70} aria-label={`Caricamento: ${Math.round(uploadProgress * 100)}%`}>
+                        {Math.round(uploadProgress * 100)}%
+                      </Text>
+                    ) : (
+                      <UploadingDots dotSize={6} />
+                    )
                   ) : (
                     <Text fontSize="6" color={brand.grafite70}>
                       +
@@ -703,13 +748,28 @@ export function GuidedRequestCard({
                   )}
                 </YStack>
               ) : null}
-            </YStack>
-            <input ref={photoInputRef} type="file" accept="image/*,video/*" onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
-            {photoError ? (
-              <Text color={brand.urgenza} fontSize={13}>
-                {photoError}
+            </div>
+            {photoUrls.length > 1 ? (
+              <Text fontSize={13} color={brand.grafite70}>
+                Per cambiare l&apos;ordine, tieni premuta una foto e spostala.
               </Text>
             ) : null}
+            <span className="sr-only" aria-live="polite">
+              {photoReorderAnnouncement}
+            </span>
+            {photoNotice ? (
+              <Text fontSize={13} color={brand.grafite70} role="status">
+                {photoNotice}
+              </Text>
+            ) : null}
+            <input ref={photoInputRef} type="file" accept="image/*,video/*" multiple onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
+            {photoError
+              ? photoError.split("\n").map((line) => (
+                  <Text key={line} color={brand.urgenza} fontSize={13}>
+                    {line}
+                  </Text>
+                ))
+              : null}
           </YStack>
 
           {error ? (
@@ -853,6 +913,7 @@ export function GuidedRequestCard({
   const jobChosen = Boolean(booking && booking.status !== "CANCELED");
   const otherQuotes = request.quotes.filter((quote) => quote.id !== acceptedQuote?.id);
   const comparable = booking ? [] : comparableQuotes(request.quotes);
+  const sentToWithoutQuote = request.sentTo.filter((professional) => !request.quotes.some((quote) => quote.professionalProfileId === professional.id));
   // Nome e indirizzo della richiesta per precompilare la fattura (docs/CHANGELOG.md §378).
   const invoiceDefaults = {
     name: [request.recipientName, request.recipientSurname].filter(Boolean).join(" "),
@@ -1240,12 +1301,14 @@ export function GuidedRequestCard({
           ) : null}
 
           {/* Elenco dei destinatari solo per una richiesta diretta: una generale arriva a tutti i professionisti della zona (§211). */}
-          {request.professionalProfileId && request.sentTo.length > 0 && !booking ? (
+          {/* Chi ha già mandato il preventivo sta solo in "Preventivi ricevuti": prima lo stesso
+              professionista compariva due volte (docs/changelog/2026-11-18-accettare-il-preventivo.md). */}
+          {request.professionalProfileId && sentToWithoutQuote.length > 0 && !booking ? (
             <YStack gap="2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="3">
               <Text fontFamily="body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Inviata a
               </Text>
-              {request.sentTo.map((professional) => (
+              {sentToWithoutQuote.map((professional) => (
                 <XStack key={professional.id} gap="3" alignItems="center" backgroundColor={brand.gesso} borderRadius="3" padding="3" opacity={professional.declined ? 0.7 : 1}>
                   <Link href={`/professionista/${professional.id}`} style={{ textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}>
                     <XStack gap="3" alignItems="center">

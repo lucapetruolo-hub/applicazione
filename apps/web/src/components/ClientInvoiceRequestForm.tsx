@@ -64,13 +64,12 @@ export function invoiceFromProfessionalNote(receipt = false): string {
 
 /**
  * La riga sotto la casella, prima di spuntarla (collaudo dell'8/11, E6-12):
- * una frase sola che dice cosa succede e quali dati passano. Sostituisce
- * anche la riga "La ricevuta del pagamento non è la fattura" sopra.
+ * una frase sola che dice chi fa il documento e che gli passiamo i dati
+ * (quali dati, lo dicono i campi che si aprono spuntando).
  */
 function invoiceToggleNote(receipt: boolean): string {
-  return receipt
-    ? "Lavora senza partita IVA: la ricevuta la fa lui. Spunta qui e gli passiamo nome, codice fiscale e indirizzo."
-    : "La fa il professionista: spunta qui e gli passiamo nome, codice fiscale e indirizzo. La conferma del pagamento online non vale come fattura.";
+  // Mezza riga (18/11/2026, docs/changelog/2026-11-18-accettare-il-preventivo.md): prima erano due righe grigie.
+  return receipt ? "La fa lui, senza partita IVA: gli passiamo i tuoi dati." : "La fa il professionista: gli passiamo i tuoi dati.";
 }
 
 /** Casella "Chiedi la fattura a …" (o "la ricevuta"), chiusa finché non si spunta. */

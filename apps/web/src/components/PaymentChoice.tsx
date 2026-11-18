@@ -1,15 +1,13 @@
 "use client";
 
 import {
-  jobPaymentChoiceCopy,
   paymentChoiceIsOnline,
+  quotePaymentShortLine,
   quotePaymentSplit,
   quotePaymentSplitLine,
   type JobPaymentChoice,
-  UPFRONT_PAYMENT_NOTE,
 } from "@professionisti/shared";
-import Link from "next/link";
-import { Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Badge, Text, XStack, YStack, brand } from "@professionisti/ui";
 
 /**
  * Scelta del metodo di pagamento accettando un preventivo
@@ -36,15 +34,25 @@ const OFFER_TITLE: Record<JobPaymentChoice, string> = {
   DIRECT: "Direttamente al professionista, in contanti o con bonifico",
 };
 
+/** Nomi dei modi nella scelta "Come vuoi pagare?", più corti: le cifre stanno sotto. */
+const CHOICE_TITLE: Record<JobPaymentChoice, string> = {
+  ONLINE: "Con la carta, sul sito",
+  MIXED: "Acconto con la carta, il resto a lui",
+  DIRECT: "Diretto al professionista",
+};
+
 /** Le cifre di ora e di dopo: un solo conto in `packages/shared` (anche per il PDF del preventivo). */
 export const paymentSplit = quotePaymentSplit;
 export const paymentSplitLine = quotePaymentSplitLine;
 
 /**
  * Riga "Pagamento" nella scheda del preventivo, prima di accettare
- * (docs/CHANGELOG.md §339, semplificata il 05/11/2026): con un solo modo le
- * cifre di ora e di dopo; con più modi l'elenco, la scelta si fa accettando.
- * Così chi riceve più preventivi li confronta anche su come si paga.
+ * (docs/CHANGELOG.md §339, semplificata il 05/11/2026 e il 18/11/2026): un
+ * modo per riga, con le cifre in mezza riga. Le spiegazioni (quando arrivano
+ * i soldi al professionista, cosa succede annullando) le dice una volta sola
+ * la finestra "Accetta il preventivo"
+ * (docs/changelog/2026-11-18-accettare-il-preventivo.md). Così chi riceve più
+ * preventivi li confronta anche su come si paga, senza leggere un paragrafo.
  */
 export function PaymentOffer({
   priceTotals,
@@ -59,63 +67,29 @@ export function PaymentOffer({
 }) {
   const options = selectablePaymentChoices(offered, onlineAvailable);
   const onlineHidden = !onlineAvailable && offered.some(paymentChoiceIsOnline);
-  const only = options.length === 1 ? options[0] : undefined;
-  const anyOnline = options.some(paymentChoiceIsOnline);
   return (
-    <YStack gap={2} flex={1} minWidth={0}>
+    <YStack gap="2" flex={1} minWidth={0}>
       {options.length === 0 ? (
         <Text fontSize={16} fontWeight="600" color={brand.ottoneScuro}>
           Il professionista accetta solo il pagamento online, che non è ancora attivo: scrivigli dalla chat per accordarvi.
         </Text>
-      ) : only ? (
-        <Text fontSize={16} fontWeight="600" color={brand.grafite}>
-          {paymentSplitLine(only, priceTotals, depositPercent, true)}
-        </Text>
       ) : (
-        <>
-          {/* Più modi: un elenco numerato con "Puoi pagare in N modi", non
-              titoli in fila. Prima la spiegazione della carta finiva sotto
-              "Direttamente al professionista" e chi legge con fatica capiva il
-              contrario (docs/changelog/2026-11-08-prova-persone-simulate.md). */}
-          <Text fontSize={16} fontWeight="600" color={brand.grafite}>
-            Puoi pagare in {options.length === 2 ? "due" : "tre"} modi:
-          </Text>
-          {options.map((option, index) => (
-            <XStack key={option} gap={8} alignItems="flex-start">
-              <Text fontSize={16} fontWeight="700" color={brand.verificato} aria-hidden>
-                {index + 1}.
+        options.map((option) => {
+          const short = quotePaymentShortLine(option, priceTotals, depositPercent);
+          return (
+            <YStack key={option} gap={2}>
+              <Text fontSize={16} fontWeight="600" color={brand.grafite}>
+                {OFFER_TITLE[option]}
               </Text>
-              <YStack flex={1} minWidth={0} gap={2}>
-                <Text fontSize={16} fontWeight="600" color={brand.grafite}>
-                  {OFFER_TITLE[option]}
+              {short ? (
+                <Text fontSize={14} color={brand.grafite70}>
+                  {short}
                 </Text>
-                {paymentSplit(option, priceTotals, depositPercent) ? (
-                  <Text fontSize={14} color={brand.grafite70}>
-                    {paymentSplitLine(option, priceTotals, depositPercent, true)}.
-                  </Text>
-                ) : null}
-              </YStack>
-            </XStack>
-          ))}
-          <Text fontSize={13} color={brand.grafite70}>
-            Scegli quando accetti.
-            {anyOnline ? " Con la carta il professionista riceve i soldi quando confermi che il lavoro è fatto. " : " "}
-            {anyOnline ? (
-              <Link href="/termini#pagamenti" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
-                Scopri di più
-              </Link>
-            ) : null}
-          </Text>
-        </>
+              ) : null}
+            </YStack>
+          );
+        })
       )}
-      {anyOnline && only ? (
-        <Text fontSize={13} color={brand.grafite70}>
-          {depositPercent >= 100 ? UPFRONT_PAYMENT_NOTE : "Con la carta, sul sito. Il professionista riceve i soldi quando confermi che il lavoro è fatto."}{" "}
-          <Link href="/termini#pagamenti" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
-            Scopri di più
-          </Link>
-        </Text>
-      ) : null}
       {onlineHidden && options.length > 0 ? (
         <Text fontSize={13} color={brand.grafite70}>
           Il pagamento online con carta sarà disponibile a breve.
@@ -129,6 +103,14 @@ export function PaymentOffer({
 export function selectablePaymentChoices(offered: JobPaymentChoice[], onlineAvailable: boolean): JobPaymentChoice[] {
   return offered.filter((choice) => onlineAvailable || !paymentChoiceIsOnline(choice));
 }
+/**
+ * "Come vuoi pagare?" nella finestra "Accetta il preventivo"
+ * (docs/changelog/2026-11-18-accettare-il-preventivo.md): una riga per modo,
+ * le cifre in mezza riga, "Consigliato" come etichetta e non tra parentesi.
+ * Il diretto resta una riga sola (richiesta di Luca, §228). Le cifre complete
+ * e quando arrivano i soldi al professionista li dice il riepilogo sotto, una
+ * volta sola.
+ */
 export function PaymentChoice({
   value,
   onChange,
@@ -151,28 +133,22 @@ export function PaymentChoice({
   const options = selectablePaymentChoices(offered, onlineAvailable);
   const onlineHidden = !onlineAvailable && offered.some(paymentChoiceIsOnline);
   const totals = { totalMinEurCents: quoteMinEurCents, totalMaxEurCents: quoteMaxEurCents };
-  // Le cifre di ora e di dopo, non la percentuale (05/11/2026).
-  const depositLine = (option: JobPaymentChoice) =>
-    paymentSplit(option, totals, depositPercent) ? (
-      <Text fontSize={13} fontWeight="700" color={brand.grafite}>
-        {paymentSplitLine(option, totals, depositPercent, false)}
-      </Text>
-    ) : null;
+  const recommend = options.length > 1;
   return (
     <YStack gap="2" role="radiogroup" aria-label="Come vuoi pagare">
-      <Text fontWeight="800" color={brand.grafite}>
+      <Text fontWeight="800" fontSize={16} color={brand.grafite}>
         Come vuoi pagare?
       </Text>
       {options.map((option) => {
         const selected = value === option;
-        const copy = jobPaymentChoiceCopy(option, depositPercent);
+        const short = quotePaymentShortLine(option, totals, depositPercent);
         return (
           <label
             key={option}
             style={{
               display: "flex",
               gap: 12,
-              padding: 12,
+              padding: "12px 14px",
               borderRadius: 10,
               border: `2px solid ${selected ? brand.verificato : brand.filetto}`,
               background: selected ? "#E8F2F2" : "#fff",
@@ -192,16 +168,18 @@ export function PaymentChoice({
                 flexShrink: 0,
               }}
             />
-            <YStack gap={4} flex={1}>
-              <Text fontWeight="700" color={brand.grafite}>
-                {copy.title}
-              </Text>
-              {copy.body ? (
-                <Text fontSize={13} color={brand.grafite70}>
-                  {copy.body}
+            <YStack gap={2} flex={1} minWidth={0}>
+              <XStack gap="2" alignItems="center" flexWrap="wrap">
+                <Text fontWeight="700" fontSize={16} color={brand.grafite}>
+                  {CHOICE_TITLE[option]}
+                </Text>
+                {recommend && option === "ONLINE" ? <Badge variant="verificato">Consigliato</Badge> : null}
+              </XStack>
+              {short ? (
+                <Text fontSize={14} color={brand.grafite70}>
+                  {short}
                 </Text>
               ) : null}
-              {depositLine(option)}
             </YStack>
           </label>
         );

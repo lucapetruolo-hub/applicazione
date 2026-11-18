@@ -2353,9 +2353,33 @@ html.site-menu-open .profile-cta-bar {
 }
 .today-time {
   flex-shrink: 0;
-  min-width: 56px;
+  /* Larga quanto "Arrivo 10:30": i nomi restano tutti in colonna. */
+  min-width: 112px;
   font-weight: 800;
   font-size: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* Fascia completa e "Arrivo verso le" accanto al nome
+   (docs/changelog/2026-11-18-orari-oggi-e-giro.md). */
+.today-time-band {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.today-time-arrival {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e8f2f2;
+  color: #186163;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .today-empty {
   padding: 14px 16px;
@@ -10285,11 +10309,55 @@ textarea[id^="contatti-"][aria-invalid="true"] {
   outline: 2px solid #1e6b6e;
   outline-offset: 2px;
 }
-.guided-photo-loading {
+/* Stato di un riquadro: percentuale e barra mentre si carica, "Riprova" se non è
+   andato (docs/changelog/2026-11-18-video-che-carica-ancora.md). La X per
+   togliere resta sopra. */
+.guided-photo-state {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #faf6f1;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: rgba(15, 59, 59, 0.55);
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.guided-photo-bar {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.35);
+  overflow: hidden;
+}
+.guided-photo-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #ffffff;
+  transition: width 0.2s ease-out;
+}
+.guided-photo-state-error {
+  background: rgba(180, 35, 24, 0.82);
+  font-size: 13px;
+  cursor: pointer;
+}
+.guided-photo-state-error:focus-visible {
+  outline: 2px solid #1e6b6e;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .guided-photo-bar > span {
+    transition: none;
+  }
 }
 .guided-description-input {
   border: 2px solid transparent !important;
@@ -10310,6 +10378,19 @@ textarea[id^="contatti-"][aria-invalid="true"] {
   .guided-description-input {
     animation: none;
   }
+}
+/* Senza IA (professionisti scelti, attesa di un mestiere): niente luce, bordo
+   come gli altri campi del modulo e verde pieno mentre si scrive
+   (docs/changelog/2026-11-18-luci-ia-solo-con-ia.md). */
+.guided-description-input.guided-description-input--semplice {
+  border: 1px solid #8e867c !important;
+  background: #ffffff !important;
+  animation: none;
+}
+.guided-description-input.guided-description-input--semplice:focus {
+  outline: none;
+  border-color: #1e6b6e !important;
+  box-shadow: 0 0 0 1px #1e6b6e;
 }
 /* Sagoma di una pagina o del modulo di richiesta mentre arriva (collaudo
    08/11 E8-02, components/PageLoading.tsx): HTML semplice e sagome ferme,
@@ -11750,4 +11831,56 @@ textarea[id^="contatti-"][aria-invalid="true"] {
 }
 .waiting-nearby strong {
   color: #0f3b3b;
+}
+
+/* Miniature da riordinare trascinandole (lib/usePhotoReorder.ts,
+   docs/changelog/2026-11-18-luci-ia-solo-con-ia.md): niente menu del
+   telefono né trascinamento dell'immagine del browser; quella presa si
+   solleva un poco con un'ombra e resta sopra le altre. */
+.reorder-item {
+  cursor: grab;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: box-shadow 0.15s ease;
+}
+.reorder-item img,
+.reorder-item video {
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+.reorder-item[data-dragging="true"] {
+  cursor: grabbing;
+  z-index: 3;
+  box-shadow: 0 8px 20px rgba(15, 59, 59, 0.25);
+}
+.reorder-item:focus-visible {
+  outline: 2px solid #1e6b6e;
+  outline-offset: 2px;
+}
+
+/* Miniature del portfolio in Il mio profilo (prima in Tamagui, ora HTML per
+   poterle trascinare): stesse misure del pulsante "Aggiungi". */
+.portfolio-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.portfolio-thumb {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #e7e0d7;
+  box-sizing: border-box;
+}
+.portfolio-thumb-small {
+  width: 72px;
+  height: 72px;
+}
+.portfolio-thumb-mini {
+  width: 64px;
+  height: 64px;
 }

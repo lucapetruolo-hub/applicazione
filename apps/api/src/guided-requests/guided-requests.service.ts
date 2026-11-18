@@ -136,7 +136,11 @@ function tradeKeywordsWhere(keywords: readonly string[]): Prisma.ProfessionalPro
 }
 /** Testo confrontato senza maiuscole, spazi doppi e punteggiatura finale. */
 function sameRequestText(text: string | null | undefined): string {
-  return (text ?? "").toLowerCase().replace(/\s+/g, " ").replace(/[\s.!?]+$/u, "").trim();
+  const spaced = (text ?? "").toLowerCase().replace(/\s+/g, " ");
+  // Punteggiatura e spazi finali tolti senza espressione regolare con "$" (CodeQL: lenta su testi lunghi).
+  let end = spaced.length;
+  while (end > 0 && " .!?".includes(spaced[end - 1]!)) end--;
+  return spaced.slice(0, end).trim();
 }
 
 @Injectable()
@@ -969,7 +973,7 @@ export class GuidedRequestsService {
           // Modi di pagamento offerti (docs/CHANGELOG.md §237), coi valori di
           // serie per i preventivi vecchi; senza la verifica su Stripe del
           // professionista l'acconto online non si può scegliere (§241).
-          ...clientPaymentOffer(quote, stripeVerified(quote.professionalProfile.fiscalProfile), quotePriceTotals(quote.items).totalMaxEurCents),
+          ...clientPaymentOffer(quote, stripeVerified(quote.professionalProfile.fiscalProfile), quotePriceTotals(quote.items).totalMinEurCents),
           // Preavviso per annullare scelto nel preventivo (docs/CHANGELOG.md §347, §348), detto prima di Accetta.
           cancellationNoticeHours: quote.cancellationNoticeHours ?? quote.professionalProfile.cancellationNoticeHours,
           lateCancelKeepsDeposit: quote.lateCancelKeepsDeposit,

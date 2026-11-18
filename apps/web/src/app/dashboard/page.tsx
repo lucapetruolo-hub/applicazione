@@ -2,8 +2,8 @@
 
 import { Fragment, startTransition, useCallback, useEffect, useState } from "react";
 import Link from "@/components/IntentLink";
-import { Check, Navigation, Phone, Truck } from "lucide-react";
-import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, jobOccurrences, leadAudienceLabel, navigateUrl, scheduleChangeBetween, wallClockNow, wallClockToday, type AgendaAttention, type DayAhead, type ExternalJob, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
+import { Check, Clock, Navigation, Phone, Truck } from "lucide-react";
+import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, formatAppointmentTimeRange, jobDayCount, jobOccurrences, leadAudienceLabel, navigateUrl, scheduleChangeBetween, wallClockNow, wallClockToday, type AgendaAttention, type DayAhead, type ExternalJob, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
 import { Badge, Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { loadMyProfessionalProfile, loadMySubscription } from "@/lib/myProfessionalProfile";
@@ -175,7 +175,9 @@ export default function DashboardTodayPage() {
   // Un lavoro su più giorni compare oggi e domani con l'orario di quel giorno (§310).
   // `navigateTo`: indirizzo per "Naviga" (§352), solo a lavoro confermato.
   // `onTheWay`: "Sto arrivando" (§353), solo per un appuntamento confermato a domicilio.
-  type UpcomingRow = { key: string; href: string; at: string; title: string; sub: string; job: DayJobRow; navigateTo: string | null; onTheWay: { bookingId: string; sentAt: string | null } | null; phone: string | null };
+  // `end` e `arrival`: fascia completa e "Arrivo verso le" accanto al nome
+  // (docs/changelog/2026-11-18-orari-oggi-e-giro.md, richiesta di Luca).
+  type UpcomingRow = { key: string; href: string; at: string; end: string | null; arrival: string | null; title: string; sub: string; job: DayJobRow; navigateTo: string | null; onTheWay: { bookingId: string; sentAt: string | null } | null; phone: string | null };
   const inWindow = (start: Date) => start >= startToday && start < endTomorrow;
   const upcoming: UpcomingRow[] = [
     ...(bookings ?? [])
@@ -188,6 +190,9 @@ export default function DashboardTodayPage() {
             // Si apre l'appuntamento (indirizzo, Naviga, Chiama), non la richiesta (T3, §311).
             href: `/dashboard/agenda?booking=${booking.id}`,
             at: occurrence.start.toISOString(),
+            end: occurrence.end?.toISOString() ?? null,
+            // L'ora di arrivo vale per i lavori di un solo giorno, dentro la fascia (come in agenda).
+            arrival: arrivalInBand(booking.arrivalTime, booking.scheduledAt, booking.scheduledEndAt),
             title: booking.clientName ?? "Cliente",
             sub:
               ([booking.street && booking.houseNumber ? `${booking.street} ${booking.houseNumber}` : null, booking.city ?? booking.address, booking.items[0]?.name].filter(Boolean).join(" · ") || "Intervento") +
@@ -214,6 +219,8 @@ export default function DashboardTodayPage() {
             key: `external-${job.id}-${occurrence.start.toISOString()}`,
             href: `/dashboard/agenda?esterno=${job.id}`,
             at: occurrence.start.toISOString(),
+            end: occurrence.end?.toISOString() ?? null,
+            arrival: null,
             title: job.clientName,
             sub: [job.address, job.description].filter(Boolean).join(" · ") || "Lavoro aggiunto da te",
             job: { start: occurrence.start.toISOString(), end: occurrence.end?.toISOString() ?? null, city: cityOfAddress(job.address), online: false },
@@ -222,7 +229,7 @@ export default function DashboardTodayPage() {
             phone: job.clientPhone,
           })),
       ),
-  ].sort((a, b) => a.at.localeCompare(b.at));
+  ].sort((a, b) => upcomingSortKey(a).localeCompare(upcomingSortKey(b)));
 
   /** Avvisa il cliente che stai arrivando, come dall'agenda (§353). */
   async function sendOnTheWay(bookingId: string) {
@@ -344,7 +351,7 @@ export default function DashboardTodayPage() {
                   {upcoming.length === 0 ? (
                     <EmptyLine text={quietStart ? "Nessun appuntamento né richiesta per ora: ti avvisiamo appena ne arriva una." : "Nessun appuntamento oggi e domani."} />
                   ) : (
-                    upcoming.map(({ key, href, at, title, sub, navigateTo, onTheWay, phone }, index) => (
+                    upcoming.map(({ key, href, at, end, arrival, title, sub, navigateTo, onTheWay, phone }, index) => (
                       <Fragment key={key}>
                         {/* I lavori raggruppati per giorno, con il riepilogo sopra (§333). */}
                         {index === 0 || upcoming[index - 1]!.at.slice(0, 10) !== at.slice(0, 10) ? (
@@ -355,7 +362,14 @@ export default function DashboardTodayPage() {
                         ) : null}
                         <div className="today-appt">
                           <Link href={href} className="today-row">
-                            <span className="today-time">{formatAppointmentTime(at)}</span>
+                            <span className="today-time">
+                              <span className="today-time-band">{formatAppointmentTimeRange(at, end)}</span>
+                              {arrival ? (
+                                <span className="today-time-arrival" aria-label={`Arrivo verso le ${arrival}`}>
+                                  <Clock size={13} aria-hidden /> Arrivo {arrival}
+                                </span>
+                              ) : null}
+                            </span>
                             <span className="today-row-main">
                               <strong>{title}</strong>
                               <span className="today-row-sub">{sub}</span>
@@ -772,6 +786,20 @@ function formatDateTime(iso: string): string {
 }
 
 /** Comune di un indirizzo scritto a mano ("Via Roma 3, 04100 Latina" → "Latina"), per il riepilogo del giorno. */
+/**
+ * Ora di arrivo scritta dal professionista ("Arrivo verso le"), solo per un
+ * lavoro di un giorno e dentro la sua fascia: fuori non vale, come in agenda.
+ */
+function arrivalInBand(arrivalTime: string | null | undefined, startIso: string, endIso: string | null): string | null {
+  if (!arrivalTime || !endIso || jobDayCount(startIso, endIso) !== 1) return null;
+  return arrivalTime >= startIso.slice(11, 16) && arrivalTime < endIso.slice(11, 16) ? arrivalTime : null;
+}
+
+/** Con l'ora di arrivo il lavoro si mette a quell'ora, come in agenda e nel giro. */
+function upcomingSortKey(row: { at: string; arrival: string | null }): string {
+  return row.arrival ? `${row.at.slice(0, 11)}${row.arrival}` : row.at.slice(0, 16);
+}
+
 function cityOfAddress(address: string | null): string | null {
   const last = address?.split(",").pop()?.replace(/\b\d{5}\b/, "").trim();
   return last && address!.includes(",") ? last : null;

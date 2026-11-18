@@ -22,7 +22,7 @@ const EXAMPLE = onlineFeeExample();
  * "Scopri di più" sui pagamenti da /per-professionisti (docs/CHANGELOG.md
  * §174, richiesta dell'utente): spiega al professionista come viene pagato.
  * Stesse regole dei Termini (punto 5) e di /dashboard/fiscale (§168):
- * acconto 20% del massimo, saldo a lavoro chiuso, soldi bloccati fino alla
+ * acconto 20% del minimo (prima del massimo, docs/changelog/2026-11-18-importo-acconto.md), saldo a lavoro chiuso, soldi bloccati fino alla
  * conferma o 7 giorni, accredito meno la trattenuta unica del 7% + IVA, con
  * commissioni Stripe comprese (§378), con un esempio in euro; pagamento diretto
  * senza commissione. Finché Stripe non è attivo la pagina
@@ -161,7 +161,7 @@ export function PagamentiContent() {
 
         <Block title="Pagamento online">
           <Point n={1} title="Acconto">
-            Decidi tu quanto: da 1 a 100% dell&apos;importo massimo del preventivo (20% se non lo cambi). Il cliente lo paga con carta
+            Decidi tu quanto: da 1 a 100% del prezzo minimo del preventivo (20% se non lo cambi). Il cliente lo paga con carta
             quando accetta. Il saldo può essere online o diretto.
           </Point>
           <Point n={2} title="Saldo">

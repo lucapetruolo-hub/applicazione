@@ -1,12 +1,13 @@
-import { formatEurCents } from "./professionals";
+import { formatEur, formatEurCents, quotePriceTotals } from "./professionals";
 import { BANK_DISPUTE_OPEN_STATUSES, BANK_DISPUTE_REVIEW_STATUSES, type ProfessionalBankDispute } from "./bankDisputes";
 
 /**
  * Pagamento dei lavori (decisioni dell'utente del 29/09/2026,
  * docs/CHANGELOG.md §168). Accettando un preventivo il cliente sceglie come
  * pagare:
- * - **online con Stripe**: acconto del 20% dell'importo massimo del
- *   preventivo subito, saldo a lavoro chiuso sull'importo finale. Manovia
+ * - **online con Stripe**: acconto del 20% del prezzo minimo del
+ *   preventivo subito (prima del massimo, cambiato da Luca il 18/11/2026,
+ *   docs/changelog/2026-11-18-importo-acconto.md), saldo a lavoro chiuso sull'importo finale. Manovia
  *   tiene i soldi e li passa al professionista quando il cliente conferma il
  *   lavoro, o 7 giorni dopo la chiusura se il cliente non segnala nulla; con
  *   una segnalazione aperta restano fermi. Al professionista arriva l'importo
@@ -30,7 +31,13 @@ import { BANK_DISPUTE_OPEN_STATUSES, BANK_DISPUTE_REVIEW_STATUSES, type Professi
 export const jobPaymentChoices = ["ONLINE", "MIXED", "DIRECT"] as const;
 export type JobPaymentChoice = (typeof jobPaymentChoices)[number];
 
-/** Acconto predefinito: percentuale dell'importo massimo del preventivo (decisione dell'utente, §168). */
+/**
+ * Acconto predefinito: percentuale del prezzo minimo del preventivo (§168;
+ * dal 18/11/2026 sul minimo e non più sul massimo, decisione di Luca: così
+ * l'acconto non supera mai quello che il lavoro costa almeno, e non serve
+ * rimborsare il cliente se il prezzo finale è più basso del massimo,
+ * docs/changelog/2026-11-18-importo-acconto.md).
+ */
 export const ONLINE_DEPOSIT_PERCENT = 20;
 export const MIN_DEPOSIT_PERCENT = 1;
 export const MAX_DEPOSIT_PERCENT = 100;
@@ -39,17 +46,26 @@ export const MAX_DEPOSIT_PERCENT = 100;
 export const DEFAULT_QUOTE_PAYMENT_OPTIONS: JobPaymentChoice[] = ["ONLINE", "DIRECT"];
 
 /** Modi offerti da un preventivo e percentuale dell'acconto, con i valori di serie per i preventivi vecchi. */
-export function quotePaymentOffer(quote: { paymentOptions?: string[] | null; depositPercent?: number | null }): {
+export function quotePaymentOffer(quote: {
+  paymentOptions?: string[] | null;
+  depositPercent?: number | null;
+  /** Voci del preventivo: servono a capire se al 100% le due scelte online coincidono. */
+  items?: { priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
+}): {
   paymentOptions: JobPaymentChoice[];
   depositPercent: number;
 } {
   const depositPercent = quote.depositPercent ?? ONLINE_DEPOSIT_PERCENT;
+  // Al 100% "acconto online, saldo diretto" coincide con "tutto online" solo
+  // con un prezzo unico: si offre solo quello (docs/changelog/2026-11-13-annullare-data-passata.md).
+  // Con la forbice l'acconto è il minimo (decisione di Luca del 18/11/2026,
+  // docs/changelog/2026-11-18-importo-acconto.md) e le due scelte restano
+  // diverse: il resto con la stessa carta oppure direttamente al professionista.
+  const totals = quote.items ? quotePriceTotals(quote.items) : null;
+  const sameAsOnline = depositPercent >= 100 && !!totals && totals.totalMinEurCents >= totals.totalMaxEurCents;
   const saved = (quote.paymentOptions ?? [])
     .filter((o): o is JobPaymentChoice => (jobPaymentChoices as readonly string[]).includes(o))
-    // Con l'acconto al 100% "acconto online, saldo diretto" è lo stesso che
-    // "tutto online": si offre solo quello (richiesta di Luca,
-    // docs/changelog/2026-11-13-annullare-data-passata.md).
-    .map((o) => (o === "MIXED" && depositPercent >= 100 ? "ONLINE" : o));
+    .map((o) => (o === "MIXED" && sameAsOnline ? "ONLINE" : o));
   return {
     // Ordine fisso, qualunque sia quello salvato.
     paymentOptions: saved.length ? jobPaymentChoices.filter((o) => saved.includes(o)) : DEFAULT_QUOTE_PAYMENT_OPTIONS,
@@ -65,11 +81,11 @@ export function quotePaymentOffer(quote: { paymentOptions?: string[] | null; dep
 export function clientPaymentOffer(
   quote: { paymentOptions?: string[] | null; depositPercent?: number | null },
   professionalStripeVerified: boolean,
-  /** Importo massimo del preventivo: sotto il minimo di Stripe l'acconto online sparisce (collaudo I-01). */
-  totalMaxEurCents?: number,
+  /** Prezzo minimo del preventivo: con un acconto sotto il minimo di Stripe l'acconto online sparisce (collaudo I-01). */
+  totalMinEurCents?: number,
 ) {
   const offer = quotePaymentOffer(quote);
-  const tooLow = totalMaxEurCents !== undefined && onlineDepositEurCents(totalMaxEurCents, offer.depositPercent) < ONLINE_MIN_CHARGE_EUR_CENTS;
+  const tooLow = totalMinEurCents !== undefined && onlineDepositEurCents(totalMinEurCents, offer.depositPercent) < ONLINE_MIN_CHARGE_EUR_CENTS;
   if (professionalStripeVerified && !tooLow) return offer;
   const direct = offer.paymentOptions.filter((choice) => !paymentChoiceIsOnline(choice));
   return direct.length ? { ...offer, paymentOptions: direct } : offer;
@@ -248,13 +264,17 @@ export function jobPaymentChoiceCopy(
         depositPercent >= 100
           ? // Con una forbice di prezzo si paga il minimo (docs/changelog/2026-11-13-tutto-online-forbice.md).
             "Paghi ora con la carta. Se il prezzo va da un minimo a un massimo, ora paghi il minimo e il resto solo se serve, a lavoro finito. Il professionista riceve i soldi quando confermi il lavoro; se qualcosa va storto ti assistiamo noi."
-          : `Paghi ora un acconto del ${depositPercent}%. Il resto lo paghi a lavoro finito, in automatico con la stessa carta. Il professionista riceve i soldi quando confermi il lavoro; se qualcosa va storto ti assistiamo noi.`,
+          : `Paghi ora un acconto del ${depositPercent}% del prezzo minimo. Il resto lo paghi a lavoro finito, in automatico con la stessa carta. Il professionista riceve i soldi quando confermi il lavoro; se qualcosa va storto ti assistiamo noi.`,
     };
   }
   if (choice === "MIXED") {
     return {
       title: "Acconto online, saldo diretto al professionista",
-      body: `Paghi ora un acconto del ${depositPercent}%, il resto direttamente al professionista a lavoro finito.`,
+      body:
+        depositPercent >= 100
+          ? // Al 100% con la forbice: il minimo con la carta, il resto solo se serve (Luca, 18/11/2026, docs/changelog/2026-11-18-importo-acconto.md).
+            "Paghi ora con la carta il prezzo minimo. Se il prezzo finale è più alto, la differenza la paghi direttamente al professionista a lavoro finito."
+          : `Paghi ora un acconto del ${depositPercent}% del prezzo minimo, il resto direttamente al professionista a lavoro finito.`,
     };
   }
   // Una riga sola, senza spiegazioni (richiesta esplicita dell'utente, §228).
@@ -277,23 +297,51 @@ export const JOB_PAYMENT_STAGE_LABEL: Record<JobPaymentOnlineStage, string> = {
   REFUNDED: "Rimborsato",
 };
 
-/** Acconto sull'importo massimo del preventivo, arrotondato al centesimo. */
-export function onlineDepositEurCents(quoteMaxEurCents: number, depositPercent: number = ONLINE_DEPOSIT_PERCENT): number {
-  return Math.round((quoteMaxEurCents * depositPercent) / 100);
+/** Acconto sul prezzo minimo del preventivo, arrotondato al centesimo. */
+export function onlineDepositEurCents(quoteMinEurCents: number, depositPercent: number = ONLINE_DEPOSIT_PERCENT): number {
+  return Math.round((quoteMinEurCents * depositPercent) / 100);
 }
 
 /**
- * Quanto si paga accettando il preventivo. Di solito la percentuale del
- * professionista sul prezzo massimo; con "tutto online" (100%) e una forbice
- * di prezzo si paga il prezzo minimo e il resto a lavoro finito con la stessa
- * carta, solo se serve (decisione di Luca del 13/11/2026,
- * docs/changelog/2026-11-13-tutto-online-forbice.md): prima si pagava il
- * massimo e la differenza tornava, ma Stripe non restituisce la sua
- * commissione sulla parte rimborsata e la pagava il professionista.
+ * Quanto si paga accettando il preventivo: la percentuale del professionista
+ * sul prezzo minimo (decisione di Luca del 18/11/2026,
+ * docs/changelog/2026-11-18-importo-acconto.md). Prima era sul massimo e un
+ * acconto alto (es. 70%) poteva superare il prezzo finale, con un rimborso al
+ * cliente di cui Stripe non restituisce la commissione. Al 100% ("tutto
+ * online") si paga quindi il minimo e il resto a lavoro finito con la stessa
+ * carta, solo se serve (docs/changelog/2026-11-13-tutto-online-forbice.md).
  */
 export function quoteDepositEurCents(totals: { totalMinEurCents: number; totalMaxEurCents: number }, depositPercent: number = ONLINE_DEPOSIT_PERCENT): number {
-  if (depositPercentIsFull(depositPercent) && totals.totalMinEurCents > 0 && totals.totalMinEurCents < totals.totalMaxEurCents) return totals.totalMinEurCents;
-  return onlineDepositEurCents(totals.totalMaxEurCents, depositPercent);
+  return onlineDepositEurCents(totals.totalMinEurCents, depositPercent);
+}
+
+/**
+ * Riga sotto la percentuale nel modulo del preventivo: quanto paga subito il
+ * cliente con la carta, aggiornata mentre il professionista scrive (richiesta
+ * di Luca, docs/changelog/2026-11-18-importo-acconto.md). Stessa regola di
+ * `quoteDepositEurCents`: percentuale sul prezzo minimo (con dentro tutte le
+ * voci, anche il diritto di chiamata), al centesimo. `null` se la percentuale non è valida: l'errore lo dà l'invio.
+ */
+export function depositPreviewLine(
+  totals: { totalMinEurCents: number; totalMaxEurCents: number },
+  depositPercent: number,
+  options: { perVisit?: boolean } = {},
+): { text: string; tooLow: boolean } | null {
+  if (!Number.isInteger(depositPercent) || depositPercent < MIN_DEPOSIT_PERCENT || depositPercent > MAX_DEPOSIT_PERCENT) return null;
+  if (totals.totalMaxEurCents <= 0) return { text: "Scrivi i prezzi delle voci: qui vedi quanto paga subito il cliente con la carta.", tooLow: false };
+  const amount = quoteDepositEurCents(totals, depositPercent);
+  const visit = options.perVisit ? " a visita" : "";
+  if (amount < ONLINE_MIN_CHARGE_EUR_CENTS) {
+    return { text: `L'acconto sarebbe ${formatEurCents(amount)}, sotto 0,50 €, il minimo per pagare con la carta: alza la percentuale o il prezzo.`, tooLow: true };
+  }
+  const range = totals.totalMinEurCents > 0 && totals.totalMinEurCents < totals.totalMaxEurCents;
+  if (depositPercentIsFull(depositPercent)) {
+    return range
+      ? { text: `Il cliente paga subito ${formatEurCents(amount)}${visit} con la carta, il prezzo minimo. Il resto, se serve, a lavoro finito.`, tooLow: false }
+      : { text: `Il cliente paga subito tutto con la carta: ${formatEurCents(amount)}${visit}.`, tooLow: false };
+  }
+  const basis = range ? `${depositPercent}% di ${formatEur(totals.totalMinEurCents)}, il prezzo minimo` : `${depositPercent}% di ${formatEur(totals.totalMinEurCents)}`;
+  return { text: `Il cliente paga subito ${formatEurCents(amount)}${visit} con la carta (${basis}).`, tooLow: false };
 }
 
 /** "Tutto online": acconto al 100%. */
@@ -357,9 +405,24 @@ export function quotePaymentSplitLine(choice: JobPaymentChoice, totals: { totalM
       : `${formatEurCents(split.nowEurCents)} adesso con la carta, tutto il prezzo`;
   }
   if (split.nowIsMinimum) {
-    return `${formatEurCents(split.nowEurCents)} adesso con la carta, il prezzo minimo. Il resto (${quotePaymentRestText(split)}) a lavoro finito con la stessa carta, solo se il prezzo finale è più alto`;
+    return `${formatEurCents(split.nowEurCents)} adesso con la carta, il prezzo minimo. Il resto (${quotePaymentRestText(split)}) a lavoro finito ${split.restOnline ? "con la stessa carta" : "direttamente al professionista"}, solo se il prezzo finale è più alto`;
   }
   return `${formatEurCents(split.nowEurCents)} adesso con la carta, il resto (${quotePaymentRestText(split)}) a lavoro finito ${split.restOnline ? "con la stessa carta" : "direttamente al professionista"}`;
+}
+
+/**
+ * La stessa cosa in mezza riga, per la scheda del preventivo e la scelta del
+ * pagamento ("150,00 € subito, il resto solo se serve"): le cifre complete le
+ * dice una volta sola il riepilogo prima di accettare
+ * (docs/changelog/2026-11-18-accettare-il-preventivo.md).
+ */
+export function quotePaymentShortLine(choice: JobPaymentChoice, totals: { totalMinEurCents: number; totalMaxEurCents: number }, depositPercent: number): string | null {
+  const split = quotePaymentSplit(choice, totals, depositPercent);
+  if (!split) return null;
+  const now = `${formatEurCents(split.nowEurCents)} subito`;
+  if (split.restMaxEurCents === 0) return split.restIsRange ? `${now}, la differenza ti torna se costa meno` : `${now}, tutto il prezzo`;
+  if (split.nowIsMinimum) return `${now}, il resto solo se serve${split.restOnline ? "" : ", direttamente a lui"}`;
+  return `${now}, il resto a lavoro finito${split.restOnline ? "" : " direttamente a lui"}`;
 }
 
 /** Minimo che Stripe accetta per un pagamento con carta in euro (collaudo I-01). */
@@ -370,9 +433,9 @@ export const ONLINE_MIN_CHARGE_EUR_CENTS = 50;
  * può offrire il pagamento online, altrimenti il cliente "paga" 0 € e il
  * lavoro non si conferma mai (collaudo I-01).
  */
-export function onlineDepositTooLowProblem(input: { paymentOptions: readonly string[]; depositPercent: number; totalMaxEurCents: number }): string | null {
+export function onlineDepositTooLowProblem(input: { paymentOptions: readonly string[]; depositPercent: number; totalMinEurCents: number }): string | null {
   if (!input.paymentOptions.some((choice) => choice === "ONLINE" || choice === "MIXED")) return null;
-  if (onlineDepositEurCents(input.totalMaxEurCents, input.depositPercent) >= ONLINE_MIN_CHARGE_EUR_CENTS) return null;
+  if (onlineDepositEurCents(input.totalMinEurCents, input.depositPercent) >= ONLINE_MIN_CHARGE_EUR_CENTS) return null;
   return "Con questo prezzo l'acconto online sarebbe sotto 0,50 €, il minimo per pagare con la carta: scegli il pagamento diretto o alza il prezzo.";
 }
 

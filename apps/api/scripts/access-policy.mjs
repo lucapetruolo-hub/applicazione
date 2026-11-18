@@ -159,6 +159,8 @@ const selfAny = [
   "GET /guided-requests/me/last-address",
   "POST /guided-requests/photos",
   "POST /guided-requests/timeline-photos",
+  // Permesso firmato per caricare un video direttamente su Cloudinary (nessun dato di altri).
+  "POST /guided-requests/video-upload",
   // Quante richieste in attesa di un mestiere ci sono vicino: solo numero e mestiere, mai dati del cliente.
   "GET /guided-requests/waiting-nearby",
   "DELETE /notifications",
