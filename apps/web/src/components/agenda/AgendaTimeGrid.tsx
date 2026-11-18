@@ -29,7 +29,8 @@ export type AgendaGridEvent = {
   conflict?: boolean;
   /**
    * Appuntamento con un'altra data proposta (docs/changelog/2026-11-18-spostamento-in-oggi.md):
-   * "asked" = il cliente chiede di spostarlo (pillola ambra), "waiting" = l'ha proposta il professionista.
+   * "asked" = lo chiede il cliente, "waiting" = l'ha proposto il professionista. Pillola ambra per
+   * tutti e due, con "dal cliente" o "da te" (scelta di Luca del 18/11).
    */
   move?: "asked" | "waiting";
   onPress: () => void;
@@ -37,7 +38,7 @@ export type AgendaGridEvent = {
 
 /** Scritta della pillola dello spostamento, uguale a quella di Oggi. */
 export function moveLabel(move: "asked" | "waiting"): string {
-  return move === "asked" ? "Il cliente chiede di spostarlo" : "Nuova data proposta: in attesa del cliente";
+  return move === "asked" ? "Spostamento chiesto dal cliente" : "Spostamento chiesto da te: in attesa del cliente";
 }
 
 export type AgendaFreeBand = { date: string; start: number; end: number };
@@ -521,7 +522,7 @@ export function AgendaTimeGrid({
                             <b aria-hidden="true">
                               {event.recurring ? <Repeat className="ag-ev-repeat" size={10} strokeWidth={2.5} /> : null}
                               {minutesToLabel(event.start)}
-                              {event.move ? <span className={event.move === "asked" ? "ag-ev-move-dot is-asked" : "ag-ev-move-dot"} /> : null}
+                              {event.move ? <span className="ag-ev-move-dot" /> : null}
                             </b>
                           </>
                         ) : (
@@ -552,8 +553,9 @@ export function AgendaTimeGrid({
                               </span>
                             )}
                             {event.move && blockHeight >= 40 ? (
-                              <span className={event.move === "asked" ? "today-move is-asked ag-ev-move" : "today-move ag-ev-move"} aria-hidden="true">
-                                {event.move === "asked" ? "Da spostare" : "Nuova data"}
+                              <span className="today-move is-asked ag-ev-move" aria-hidden="true">
+                                Spostamento
+                                <small>{event.move === "asked" ? "dal cliente" : "da te"}</small>
                               </span>
                             ) : null}
                           </>
@@ -598,7 +600,7 @@ export function AgendaTimeGrid({
             <span>{eventTime(peek)}</span>
             {peek.detail && peek.detail !== peek.label ? <span>{peek.detail}</span> : null}
             {peek.place ? <span>{peek.place}</span> : null}
-            {peek.move ? <span className={peek.move === "asked" ? "today-move is-asked" : "today-move"}>{moveLabel(peek.move)}</span> : null}
+            {peek.move ? <span className="today-move is-asked">{moveLabel(peek.move)}</span> : null}
             <span className="ag-peek-label">{peek.label}</span>
           </div>
           <div className="ag-peek-actions">

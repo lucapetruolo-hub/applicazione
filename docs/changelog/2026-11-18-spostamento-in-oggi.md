@@ -32,3 +32,16 @@ foglio che si apre toccando il riquadro e dal lettore di schermo; sul telefono,
 dove la colonna della settimana è stretta, c'è un pallino dello stesso colore
 (`move` di `AgendaGridEvent`). Foto `agenda-spostamento-*` nella cartella del
 giro di prova.
+
+## Una sola parola, "Spostamento", e sempre ambra (Luca, 18/11/2026 sera)
+
+"Nuova data" faceva pensare che la data fosse già cambiata. Ora la parola è la
+stessa per tutti e due i casi, con chi l'ha chiesto, e la pillola è sempre
+ambra:
+- Oggi: "Spostamento dal cliente" o "Spostamento da te".
+- Agenda, nel riquadro: "Spostamento" con sotto "dal cliente" o "da te"; sul
+  telefono il pallino è ambra per tutti e due. Nel foglio che si apre toccando
+  il riquadro: "Spostamento chiesto dal cliente" o "Spostamento chiesto da te:
+  in attesa del cliente".
+- Il riquadro tratteggiato sulla data proposta resta "Nuova data proposta",
+  perché lì è davvero la data nuova.
