@@ -62,6 +62,11 @@ oltre i 100 km.
   "Lavori cercati della settimana" solo email nelle Notifiche, con "Non
   ricevere più email come questa" (`NotificationsService.sendOwnEmail`).
   Spenta finché `REQUEST_BOARD_ENABLED` non è `true`.
+  Si spegne e si riaccende dalla pagina Notifiche (richiesta di Luca del
+  18/11): l'email ha il link "Spegni o riaccendi questa email" a
+  `/account/notifiche?avviso=richieste.settimana`, che apre i singoli avvisi di
+  "Nuove richieste" e porta in vista la riga, colorata (anche passando da
+  "Accedi").
 
 **Motivo:** la bacheca si accende (`REQUEST_BOARD_ENABLED=true` su Render)
 solo con il cliente libero di toglierla, i testi legali aggiornati e un modo

@@ -5289,6 +5289,14 @@ a.admin-kpi:hover {
   padding: 10px 0;
   border-top: 1px solid #f1ebe3;
 }
+/* Riga aperta dal link di un'email (?avviso=...): si vede subito quale interruttore toccare. */
+.nt-items li.is-target {
+  background: var(--c-cianografiaVelo, #e6f2f2);
+  border-radius: 10px;
+  margin: 0 -10px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
 .nt-items li:first-child {
   border-top: none;
 }

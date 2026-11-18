@@ -46,6 +46,8 @@ export function boardWeeklyEmail(input: { name: string | null; cards: { id: stri
     detailsTitle: "Le richieste",
     details: shown.map((card) => ({ label: `${card.tradeLabel} · ${card.place}`, value: card.title, url: `${frontendUrl()}/rispondi?richiesta=${card.id}` })),
     ...(more > 0 ? { after: [more === 1 ? "C'è anche un'altra richiesta in Lavori cercati." : `Ci sono anche altre ${more} richieste in Lavori cercati.`] } : {}),
+    // Si spegne e si riaccende dalla pagina Notifiche (richiesta di Luca del 18/11).
+    secondaryLink: { label: "Spegni o riaccendi questa email", url: `${frontendUrl()}/account/notifiche?avviso=richieste.settimana` },
     ...(shown[0] ? { cta: { label: "Apri Lavori cercati", url: `${frontendUrl()}/lavora-con-noi/${shown[0].trade}` } } : {}),
   };
 }
