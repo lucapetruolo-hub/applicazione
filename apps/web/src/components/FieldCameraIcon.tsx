@@ -5,8 +5,11 @@ import { useId } from "react";
  * "Descrivi il lavoro", docs/changelog/2026-11-13-foto-nel-campo-di-ricerca.md):
  * contorno verde di marca, dentro la sfumatura dello sfondo del sito (pesca,
  * azzurro, menta, senza rosa: scelta di Luca). Decorativa: il nome lo dà il tasto.
+ * `tone="verde"`: verde pieno, dove l'IA non lavora (richiesta a professionisti
+ * scelti): la sfumatura ricorda le luci dell'IA
+ * (docs/changelog/2026-11-18-luci-ia-solo-con-ia.md).
  */
-export function FieldCameraIcon({ size = 22 }: { size?: number }) {
+export function FieldCameraIcon({ size = 22, tone = "sfumato" }: { size?: number; tone?: "sfumato" | "verde" }) {
   const gradient = `camera-${useId().replace(/:/g, "")}`;
   return (
     <svg
@@ -28,7 +31,7 @@ export function FieldCameraIcon({ size = 22 }: { size?: number }) {
       </defs>
       <path
         d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"
-        fill={`url(#${gradient})`}
+        fill={tone === "verde" ? "#1e6b6e" : `url(#${gradient})`}
         stroke="#1e6b6e"
         strokeWidth="1.8"
       />

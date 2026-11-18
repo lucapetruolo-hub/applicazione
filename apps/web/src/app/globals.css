@@ -10347,6 +10347,19 @@ textarea[id^="contatti-"][aria-invalid="true"] {
     animation: none;
   }
 }
+/* Senza IA (professionisti scelti, attesa di un mestiere): niente luce, bordo
+   come gli altri campi del modulo e verde pieno mentre si scrive
+   (docs/changelog/2026-11-18-luci-ia-solo-con-ia.md). */
+.guided-description-input.guided-description-input--semplice {
+  border: 1px solid #8e867c !important;
+  background: #ffffff !important;
+  animation: none;
+}
+.guided-description-input.guided-description-input--semplice:focus {
+  outline: none;
+  border-color: #1e6b6e !important;
+  box-shadow: 0 0 0 1px #1e6b6e;
+}
 /* Sagoma di una pagina o del modulo di richiesta mentre arriva (collaudo
    08/11 E8-02, components/PageLoading.tsx): HTML semplice e sagome ferme,
    stessa tinta delle altre sagome (.skeleton-shimmer). La riga in fondo dice
@@ -11786,4 +11799,56 @@ textarea[id^="contatti-"][aria-invalid="true"] {
 }
 .waiting-nearby strong {
   color: #0f3b3b;
+}
+
+/* Miniature da riordinare trascinandole (lib/usePhotoReorder.ts,
+   docs/changelog/2026-11-18-luci-ia-solo-con-ia.md): niente menu del
+   telefono né trascinamento dell'immagine del browser; quella presa si
+   solleva un poco con un'ombra e resta sopra le altre. */
+.reorder-item {
+  cursor: grab;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: box-shadow 0.15s ease;
+}
+.reorder-item img,
+.reorder-item video {
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+.reorder-item[data-dragging="true"] {
+  cursor: grabbing;
+  z-index: 3;
+  box-shadow: 0 8px 20px rgba(15, 59, 59, 0.25);
+}
+.reorder-item:focus-visible {
+  outline: 2px solid #1e6b6e;
+  outline-offset: 2px;
+}
+
+/* Miniature del portfolio in Il mio profilo (prima in Tamagui, ora HTML per
+   poterle trascinare): stesse misure del pulsante "Aggiungi". */
+.portfolio-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.portfolio-thumb {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #e7e0d7;
+  box-sizing: border-box;
+}
+.portfolio-thumb-small {
+  width: 72px;
+  height: 72px;
+}
+.portfolio-thumb-mini {
+  width: 64px;
+  height: 64px;
 }

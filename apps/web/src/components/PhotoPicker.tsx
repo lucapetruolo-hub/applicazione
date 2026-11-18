@@ -25,6 +25,7 @@ export function PhotoPicker({
   disabled = false,
   maxPhotos = 1,
   onFile,
+  onFiles,
   className,
   label,
   children,
@@ -41,6 +42,12 @@ export function PhotoPicker({
   maxPhotos?: number;
   /** Ogni foto scelta; con "Scatta dal telefono" una volta per foto arrivata. */
   onFile: (file: File) => void;
+  /**
+   * Se c'è, dalla galleria (o dal computer) si possono scegliere più file
+   * insieme, fino a `maxPhotos`, e arrivano tutti qui in una volta
+   * (richiesta di Luca, docs/changelog/2026-11-18-luci-ia-solo-con-ia.md).
+   */
+  onFiles?: (files: File[]) => void;
   /** Classe e nome accessibile del pulsante che apre la scelta. */
   className?: string;
   label?: string;
@@ -94,9 +101,11 @@ export function PhotoPicker({
   }, [sheet]);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files ?? []);
     event.target.value = "";
-    if (file) onFile(file);
+    if (files.length === 0) return;
+    if (onFiles) onFiles(files);
+    else if (files[0]) onFile(files[0]);
   };
 
   return (
@@ -108,7 +117,7 @@ export function PhotoPicker({
           {children}
         </button>
       )}
-      <input ref={galleryRef} type="file" accept={accept} hidden onChange={handleChange} />
+      <input ref={galleryRef} type="file" accept={accept} multiple={Boolean(onFiles) && maxPhotos > 1} hidden onChange={handleChange} />
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={handleChange} />
       {allowVideo ? <input ref={videoRef} type="file" accept="video/*" capture="environment" hidden onChange={handleChange} /> : null}
       {sheet

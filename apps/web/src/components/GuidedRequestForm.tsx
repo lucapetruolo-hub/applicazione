@@ -39,6 +39,7 @@ import { MagneticButton } from "./MagneticButton";
 import { ApiError, type LastRequestAddress } from "@professionisti/api-client";
 import { CATEGORY_WHO, joinWithOr, toTrade } from "@/lib/problemChoices";
 import { apiClient } from "@/lib/apiClient";
+import { usePhotoReorder } from "@/lib/usePhotoReorder";
 import { cameFromPersonalLink } from "@/lib/personalLink";
 import { setChosenParams } from "@/lib/chosenParams";
 import { useAuth } from "@/lib/AuthContext";
@@ -842,6 +843,20 @@ export function GuidedRequestForm({
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [leavingLosesWork]);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  // Riga grigia (non un errore, il rosso è solo per gli errori) quando si scelgono più file dei posti liberi.
+  const [photoNotice, setPhotoNotice] = useState<string | null>(null);
+  // Ordine delle foto: si trascinano col dito, col mouse o con le frecce
+  // (richiesta di Luca del 18/11, docs/changelog/2026-11-18-luci-ia-solo-con-ia.md).
+  const {
+    containerRef: photoReorderRef,
+    itemProps: photoReorderItemProps,
+    announcement: photoReorderAnnouncement,
+  } = usePhotoReorder({
+    count: photos.length,
+    move: (from, to) => media.move(from, to),
+    label: (index) => (photos[index]?.isVideo ? `Video ${index + 1}` : `Foto ${index + 1}`),
+  });
+
   // La foto della ricerca con foto, se la richiesta nasce da lì: già allegata, si può togliere
   // (docs/changelog/2026-11-13-ricerca-con-foto.md). Resta solo nel browser fino all'invio.
   const [photoFromSearch, setPhotoFromSearch] = useState(false);
@@ -866,6 +881,9 @@ export function GuidedRequestForm({
   const firstPhotoTriedRef = useRef("");
   // La prima foto dell'elenco; se il cliente ha tolto le foto e restano video,
   // un fotogramma del primo video.
+  // La prima foto deve essere una foto solo dove l'IA può guardarla.
+  const firstMustBePhoto = suggestionsOn;
+  const photoFirstOnly = firstMustBePhoto && photos.length === 0;
   const firstPhotoUrl = (photos.find((item) => !item.isVideo) ?? photos[0])?.id ?? null;
   const textNotUnderstoodByAi =
     notUnderstood && checkedDescription?.text === typedDescription && checkedDescription.result.categories.length === 0;
@@ -1345,7 +1363,22 @@ export function GuidedRequestForm({
     media.add(picked);
   }
 
+  // Più foto o video scelti insieme dalla galleria (richiesta di Luca del
+  // 18/11, docs/changelog/2026-11-18-luci-ia-solo-con-ia.md): nell'ordine
+  // scelto, fino a MAX_PHOTOS; quelli in più si dicono in una riga. Ognuno
+  // parte subito col suo riquadro (useRequestMedia).
+  async function addPhotos(picked: File[]) {
+    const kept = picked.slice(0, Math.max(0, MAX_PHOTOS - photos.length));
+    setPhotoNotice(
+      picked.length > kept.length
+        ? `Si possono aggiungere fino a ${MAX_PHOTOS} foto o video: ne abbiamo ${kept.length === 1 ? "aggiunto 1" : `aggiunti ${kept.length}`}.`
+        : null,
+    );
+    for (const file of kept) await addPhoto(file);
+  }
+
   function removePhoto(id: string) {
+    setPhotoNotice(null);
     media.remove(id);
   }
 
@@ -1570,11 +1603,14 @@ export function GuidedRequestForm({
         <YStack gap="2">
           <FieldLabel>Descrivi il lavoro</FieldLabel>
           {/* Primo campo, con la stessa luce del campo della home: due giri
-              all'apertura, verde pieno mentre si scrive. */}
+              all'apertura, verde pieno mentre si scrive. La luce dice "qui
+              lavora l'IA": con professionisti scelti (o in attesa di un
+              mestiere) l'IA è spenta e il campo è semplice come gli altri
+              (richiesta di Luca, docs/changelog/2026-11-18-luci-ia-solo-con-ia.md). */}
           <div className="guided-description-wrap">
             <textarea aria-label="Descrivi il lavoro"
               ref={descriptionRef}
-              className="guided-description-input"
+              className={suggestionsOn ? "guided-description-input" : "guided-description-input guided-description-input--semplice"}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               onBlur={() => checkDescription()}
@@ -1680,15 +1716,26 @@ export function GuidedRequestForm({
         <YStack gap="2">
           <FieldLabel>Foto per il professionista</FieldLabel>
           <Text fontSize={13} color={brand.grafite70}>
-            Prima una foto del problema da vicino, poi altre foto o video. Le vede il professionista: niente numeri di
-            telefono, documenti o persone.
+            {firstMustBePhoto
+              ? "Prima una foto del problema da vicino, poi altre foto o video. "
+              : `Fino a ${MAX_PHOTOS} foto o video del problema, anche più insieme. `}
+            Le vede il professionista: niente numeri di telefono, documenti o persone.
           </Text>
-          <div className="guided-photos" role="group" aria-label={`Foto e video per il professionista (fino a ${MAX_PHOTOS})`}>
-            {photos.map((photo) => {
+          <div
+            ref={photoReorderRef}
+            className="guided-photos"
+            role="group"
+            aria-label={`Foto e video per il professionista (fino a ${MAX_PHOTOS})`}
+          >
+            {photos.map((photo, index) => {
               const kind = photo.isVideo ? "il video" : "la foto";
               const percent = Math.round(photo.progress * 100);
               return (
-                <div key={photo.id} className="guided-photo">
+                <div
+                  key={photo.id}
+                  className={photos.length > 1 ? "guided-photo reorder-item" : "guided-photo"}
+                  {...(photos.length > 1 ? photoReorderItemProps(index) : {})}
+                >
                   <MediaPreview url={photo.id} forceVideo={photo.isVideo} style={{ borderRadius: 9 }} />
                   {/* Ogni riquadro dice a che punto è (docs/changelog/2026-11-18-video-che-carica-ancora.md). */}
                   {photo.status === "uploading" ? (
@@ -1721,16 +1768,19 @@ export function GuidedRequestForm({
               // Dal telefono si sceglie tra fotocamera, video e galleria (PhotoPicker).
               // La prima è per forza una foto del problema (scelta di Luca del 15/11): è
               // quella che guarda l'IA se dal testo non si capisce il mestiere. Poi anche video.
+              // Senza IA (professionisti scelti) anche la prima può essere un video
+              // (richiesta di Luca del 18/11, docs/changelog/2026-11-18-luci-ia-solo-con-ia.md).
               <PhotoPicker
-                accept={photos.length === 0 ? "image/*" : "image/*,video/*"}
-                allowVideo={photos.length > 0}
+                accept={photoFirstOnly ? "image/*" : "image/*,video/*"}
+                allowVideo={!photoFirstOnly}
                 maxPhotos={MAX_PHOTOS - photos.length}
                 onFile={addPhoto}
+                onFiles={addPhotos}
                 className="guided-photo guided-photo-add"
-                label={photos.length === 0 ? "Aggiungi una foto del problema" : "Aggiungi una foto o un video"}
+                label={photoFirstOnly ? "Aggiungi una foto del problema" : "Aggiungi una foto o un video"}
               >
-                <FieldCameraIcon />
-                <span aria-hidden="true">{photos.length === 0 ? "Foto del problema" : "Aggiungi"}</span>
+                <FieldCameraIcon tone={suggestionsOn ? "sfumato" : "verde"} />
+                <span aria-hidden="true">{photoFirstOnly ? "Foto del problema" : photos.length === 0 ? "Foto o video" : "Aggiungi"}</span>
               </PhotoPicker>
             ) : null}
           </div>
@@ -1750,6 +1800,19 @@ export function GuidedRequestForm({
           {media.uploadingCount > 0 ? (
             <Text color={brand.grafite70} fontSize={13}>
               {media.uploadingVideo ? "Il video si sta caricando: puoi andare avanti, la richiesta lo aspetta." : "La foto si sta caricando: puoi andare avanti, la richiesta la aspetta."}
+            </Text>
+          ) : null}
+          {photos.length > 1 ? (
+            <Text color={brand.grafite70} fontSize={13}>
+              Per cambiare l&apos;ordine, tieni premuta una foto e spostala.
+            </Text>
+          ) : null}
+          <span className="sr-only" aria-live="polite">
+            {photoReorderAnnouncement}
+          </span>
+          {photoNotice ? (
+            <Text color={brand.grafite70} fontSize={13} role="status">
+              {photoNotice}
             </Text>
           ) : null}
           {readingFirstPhoto ? (

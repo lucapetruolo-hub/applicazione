@@ -16,6 +16,7 @@ import {
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { LearnMoreToggle } from "@/components/LearnMore";
 import { MediaPreview } from "@/components/MediaPreview";
+import { moveItem, usePhotoReorder } from "@/lib/usePhotoReorder";
 import { UploadingDots } from "@/components/UploadingDots";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -97,8 +98,21 @@ export function CompleteJobModal({
   );
   const [extraRows, setExtraRows] = useState<ExtraRow[]>(quotedItems.length === 0 ? [{ name: jobName ?? "", price: "" }] : []);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  // Ordine delle foto: si trascinano col dito, col mouse o con le frecce
+  // (richiesta di Luca del 18/11, docs/changelog/2026-11-18-luci-ia-solo-con-ia.md).
+  const {
+    containerRef: photoReorderRef,
+    itemProps: photoReorderItemProps,
+    announcement: photoReorderAnnouncement,
+  } = usePhotoReorder({
+    count: photoUrls.length,
+    move: (from, to) => setPhotoUrls((prev) => moveItem(prev, from, to)),
+    label: (index) => `Foto ${index + 1}`,
+  });
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  // Riga grigia (non un errore) quando si scelgono più file dei posti liberi.
+  const [photoNotice, setPhotoNotice] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   // Casella da correggere: in rosso e con il cursore dentro (T8 del test dei compiti, docs/CHANGELOG.md §311).
@@ -150,22 +164,33 @@ export function CompleteJobModal({
     setExtraRows((prev) => prev.filter((_, i) => i !== index));
   }
 
+  // Più foto o video scelti insieme, fino al massimo (richiesta di Luca del 18/11,
+  // docs/changelog/2026-11-18-luci-ia-solo-con-ia.md): uno alla volta, nell'ordine scelto.
   async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (!file) return;
+    if (picked.length === 0) return;
+    const kept = picked.slice(0, Math.max(0, MAX_COMPLETION_PHOTOS - photoUrls.length));
+    setPhotoNotice(
+      picked.length > kept.length
+        ? `Si possono aggiungere fino a ${MAX_COMPLETION_PHOTOS} foto o video: ne abbiamo ${kept.length === 1 ? "aggiunto 1" : `aggiunti ${kept.length}`}.`
+        : null,
+    );
 
     setPhotoError(null);
     setIsUploadingPhoto(true);
     try {
-      const imageUrl = await uploadPhoto(file);
-      setPhotoUrls((prev) => [...prev, imageUrl].slice(0, MAX_COMPLETION_PHOTOS));
+      for (const file of kept) {
+        const imageUrl = await uploadPhoto(file);
+        setPhotoUrls((prev) => [...prev, imageUrl].slice(0, MAX_COMPLETION_PHOTOS));
+      }
     } catch (err) {
       setPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
     } finally {
       setIsUploadingPhoto(false);
     }
   }
+
 
   function removePhoto(url: string) {
     setPhotoUrls((prev) => prev.filter((u) => u !== url));
@@ -414,9 +439,13 @@ export function CompleteJobModal({
           <Text fontSize={13} color={brand.grafite70}>
             Foto o video del lavoro svolto (opzionale, fino a {MAX_COMPLETION_PHOTOS})
           </Text>
-          <YStack flexDirection="row" flexWrap="wrap" gap="2">
-            {photoUrls.map((url) => (
-              <YStack key={url} width={64} height={64} borderRadius="3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+          <div ref={photoReorderRef} className="portfolio-thumbs">
+            {photoUrls.map((url, index) => (
+              <div
+                key={url}
+                className={photoUrls.length > 1 ? "portfolio-thumb portfolio-thumb-mini reorder-item" : "portfolio-thumb portfolio-thumb-mini"}
+                {...(photoUrls.length > 1 ? photoReorderItemProps(index) : {})}
+              >
                 <MediaPreview url={url} />
                 <YStack
                   position="absolute"
@@ -435,7 +464,7 @@ export function CompleteJobModal({
                 >
                   <X size={11} strokeWidth={2} color="white" />
                 </YStack>
-              </YStack>
+              </div>
             ))}
             {photoUrls.length < MAX_COMPLETION_PHOTOS ? (
               <YStack
@@ -462,8 +491,21 @@ export function CompleteJobModal({
                 )}
               </YStack>
             ) : null}
-          </YStack>
-          <input ref={photoInputRef} type="file" accept="image/*,video/*" onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
+          </div>
+          {photoUrls.length > 1 ? (
+            <Text fontSize={13} color={brand.grafite70}>
+              Per cambiare l&apos;ordine, tieni premuta una foto e spostala.
+            </Text>
+          ) : null}
+          <span className="sr-only" aria-live="polite">
+            {photoReorderAnnouncement}
+          </span>
+          {photoNotice ? (
+            <Text fontSize={13} color={brand.grafite70} role="status">
+              {photoNotice}
+            </Text>
+          ) : null}
+          <input ref={photoInputRef} type="file" accept="image/*,video/*" multiple onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
           {photoError ? (
             <div role="alert">
               <Text color={brand.urgenza} fontSize={13}>

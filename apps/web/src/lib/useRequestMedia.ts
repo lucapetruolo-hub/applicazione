@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "@professionisti/api-client";
 import { localPreviewUrl } from "@/lib/media";
+import { moveItem } from "@/lib/usePhotoReorder";
 import { MediaRejectedError, checkMediaFile, mediaSizeProblem, uploadErrorMessage, uploadMediaFile } from "@/lib/mediaUpload";
 import { frameFromVideo, withoutHiddenData } from "@/lib/photoSearch";
 
@@ -170,6 +171,11 @@ export function useRequestMedia(token: string | null, maxItems: number) {
     update((prev) => prev.filter((item) => item.id !== id));
   }
 
+  /** Sposta un riquadro (trascinamento, docs/changelog/2026-11-18-luci-ia-solo-con-ia.md). */
+  function move(from: number, to: number) {
+    update((prev) => moveItem(prev, from, to));
+  }
+
   /** Riprova un file non caricato (da registrati). */
   function retry(id: string) {
     const activeToken = tokenRef.current;
@@ -193,12 +199,13 @@ export function useRequestMedia(token: string | null, maxItems: number) {
     });
     const results = await Promise.allSettled(jobs);
     if (results.some((result) => result.status === "rejected")) return null;
-    // Un riquadro tolto mentre si aspettava non va nella richiesta.
-    const kept = new Set(itemsRef.current.map((item) => item.id));
-    return current
-      .map((item, index) => ({ id: item.id, result: results[index]! }))
-      .filter(({ id }) => kept.has(id))
-      .map(({ result }) => (result as PromiseFulfilledResult<string>).value);
+    // L'ordine è quello dei riquadri adesso (si possono spostare mentre si
+    // aspetta); un riquadro tolto nel frattempo non va nella richiesta.
+    const urlById = new Map(current.map((item, index) => [item.id, (results[index] as PromiseFulfilledResult<string>).value]));
+    return itemsRef.current.flatMap((item) => {
+      const url = urlById.get(item.id);
+      return url ? [url] : [];
+    });
   }
 
   // Le anteprime nel browser si liberano quando si lascia il modulo.
@@ -220,6 +227,7 @@ export function useRequestMedia(token: string | null, maxItems: number) {
     items,
     add,
     remove,
+    move,
     retry,
     waitAll,
     uploadingCount: uploading.length,
