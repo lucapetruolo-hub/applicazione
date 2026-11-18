@@ -3,7 +3,7 @@
 import { Suspense, startTransition, useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarCheck, CalendarDays, CalendarX, ChevronLeft, ChevronRight, Navigation, PanelLeftClose, PanelLeftOpen, Phone, Plus, Search, Truck, X } from "lucide-react";
+import { CalendarCheck, CalendarDays, CalendarX, ChevronLeft, ChevronRight, EyeOff, Navigation, PanelLeftClose, PanelLeftOpen, Phone, Plus, Search, Truck, X } from "lucide-react";
 import {
   RECURRING_FREQUENCY_LABELS,
   agendaAttention,
@@ -80,6 +80,13 @@ import { WaitBarSignal } from "@/components/WaitBar";
 type AgendaTab = "calendario" | "orari" | "giro";
 type AgendaFilter = "conf" | "done" | "wait" | "ext" | "free";
 const ALL_FILTERS: AgendaFilter[] = ["conf", "done", "wait", "ext", "free"];
+const AGENDA_FILTER_ITEMS = [
+  { value: "conf", label: "Appuntamenti", swatch: "ag-swatch-conf" },
+  { value: "done", label: "Terminati", swatch: "ag-swatch-done" },
+  { value: "wait", label: "Preventivi in attesa", swatch: "ag-swatch-wait" },
+  { value: "ext", label: "Lavori esterni", swatch: "ag-swatch-ext" },
+  { value: "free", label: "Orari liberi", swatch: "ag-swatch-free" },
+] as const satisfies readonly { value: AgendaFilter; label: string; swatch: string }[];
 const ASIDE_HIDDEN_KEY = "agenda-colonna-nascosta";
 const VIEW_KEY = "agenda-vista";
 const CALENDAR_VIEWS: CalendarView[] = ["day", "week", "month", "year"];
@@ -343,6 +350,10 @@ function DashboardAgendaContent() {
 
   // Nuova agenda (docs/CHANGELOG.md §288).
   const [filters, setFilters] = useState<Set<AgendaFilter>>(() => new Set(ALL_FILTERS));
+  const hiddenFilters = AGENDA_FILTER_ITEMS.filter((item) => !filters.has(item.value));
+  function showAllFilters() {
+    setFilters(new Set(ALL_FILTERS));
+  }
   const [weather, setWeather] = useState<Map<string, WeatherDayAlert>>(new Map());
   const [offlineSavedAt, setOfflineSavedAt] = useState<string | null>(null);
   const [showCalendarLink, setShowCalendarLink] = useState(false);
@@ -2088,17 +2099,23 @@ function DashboardAgendaContent() {
                   if (bookingView === "month" || bookingView === "year") setBookingView("day");
                 }}
               />
-              <div className="ag-card">
-                <h3 style={{ marginBottom: 6 }}>Mostra</h3>
-                {(
-                  [
-                    { value: "conf", label: "Appuntamenti", swatch: "ag-swatch-conf" },
-                    { value: "done", label: "Terminati", swatch: "ag-swatch-done" },
-                    { value: "wait", label: "Preventivi in attesa", swatch: "ag-swatch-wait" },
-                    { value: "ext", label: "Lavori esterni", swatch: "ag-swatch-ext" },
-                    { value: "free", label: "Orari liberi", swatch: "ag-swatch-free" },
-                  ] as const
-                ).map((item) => (
+              {/* Voci spente in vista: casella color ottone, voce spenta evidenziata e "Mostra tutto"
+                  (docs/changelog/2026-11-18-filtri-spenti-in-vista.md). */}
+              <div className={hiddenFilters.length > 0 ? "ag-card ag-filters has-off" : "ag-card ag-filters"}>
+                <div className="ag-filters-head">
+                  <h3>Mostra</h3>
+                  {hiddenFilters.length > 0 ? (
+                    <button type="button" className="ag-link" onClick={showAllFilters}>
+                      Mostra tutto
+                    </button>
+                  ) : null}
+                </div>
+                {hiddenFilters.length > 0 ? (
+                  <p className="ag-filters-note" role="status">
+                    <EyeOff size={14} aria-hidden /> {hiddenFilters.length === 1 ? "1 voce nascosta" : `${hiddenFilters.length} voci nascoste`} nel calendario
+                  </p>
+                ) : null}
+                {AGENDA_FILTER_ITEMS.map((item) => (
                   <button
                     key={item.value}
                     type="button"
@@ -2115,7 +2132,11 @@ function DashboardAgendaContent() {
                   >
                     <i className={item.swatch} aria-hidden />
                     {item.label}
-                    {bookingView === "day" || bookingView === "week" ? <em>{filterCount(item.value)}</em> : null}
+                    {!filters.has(item.value) ? (
+                      <em className="ag-filter-off">Nascosti</em>
+                    ) : bookingView === "day" || bookingView === "week" ? (
+                      <em>{filterCount(item.value)}</em>
+                    ) : null}
                   </button>
                 ))}
               </div>
@@ -2141,6 +2162,19 @@ function DashboardAgendaContent() {
                 if (e.key === "Enter" || e.key === " ") rememberCalendar();
               }}
             >
+              {/* Con la colonna dei filtri chiusa (o da telefono, dove non c'è) le voci spente
+                  si dicono sopra il calendario: altrimenti un lavoro sparisce senza motivo visibile. */}
+              {hiddenFilters.length > 0 ? (
+                <div className={asideHidden ? "ag-banner warn ag-off-strip" : "ag-banner warn ag-off-strip with-aside"} role="status">
+                  <EyeOff size={16} aria-hidden style={{ flex: "none" }} />
+                  <span>
+                    Non stai vedendo: <strong>{hiddenFilters.map((item) => item.label).join(", ")}</strong>
+                  </span>
+                  <button type="button" className="ag-btn sm" onClick={showAllFilters}>
+                    Mostra tutto
+                  </button>
+                </div>
+              ) : null}
               <div className="ag-toolbar">
                 <button
                   type="button"

@@ -426,11 +426,67 @@
   cursor: pointer;
   text-align: left;
 }
+/* Voci spente in vista (docs/changelog/2026-11-18-filtri-spenti-in-vista.md):
+   la casella prende il velo ottone (avviso, non errore: il rosso resta agli
+   errori) e la voce spenta una pillola ottone con "Nascosti" a destra. */
+.ag-filters {
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+.ag-filters.has-off {
+  background: var(--ag-brass-veil);
+  box-shadow: inset 0 0 0 1.5px var(--ag-brass);
+}
+.ag-filters-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.ag-filters-head .ag-link {
+  font-size: 13px;
+}
+.ag-filters-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ag-brass-dark);
+}
+.ag-filters.has-off .ag-filter {
+  padding-left: 8px;
+  padding-right: 8px;
+  margin: 0 -8px;
+  width: calc(100% + 16px);
+  border-radius: 10px;
+}
 .ag-filter[aria-pressed="false"] {
-  color: var(--ag-muted);
+  color: var(--ag-brass-dark);
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--ag-brass);
+  font-weight: 600;
+  margin-top: 2px;
+  margin-bottom: 2px;
 }
 .ag-filter[aria-pressed="false"] i {
   opacity: 0.35;
+}
+.ag-filter em.ag-filter-off {
+  color: var(--ag-brass-dark);
+  font-weight: 600;
+}
+.ag-off-strip {
+  margin-bottom: 12px;
+}
+.ag-off-strip span {
+  min-width: 0;
+}
+@media (min-width: 1081px) {
+  .ag-off-strip.with-aside {
+    display: none;
+  }
 }
 .ag-filter i {
   width: 16px;
