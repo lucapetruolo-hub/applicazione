@@ -37,7 +37,8 @@ incassi in cima ed elenco delle notifiche.
 - **"Lavori da chiudere"** sotto "Oggi e domani": appuntamenti confermati dei
   giorni passati non ancora chiusi, con "Lavoro terminato" che apre subito la
   finestra in agenda (`?booking=<id>&termina=1`). Quelli di oggi restano in
-  "Oggi e domani", per non mostrarli due volte. Con un problema aperto o un
+  "Oggi e domani", per non mostrarli due volte: lì, a fascia finita, "Lavoro
+  terminato" prende il posto di "Naviga" e "Sto arrivando" (sì di Luca, stesso giorno). Con un problema aperto o un
   rimborso chiesto no: lo segue la riga del problema.
 - **"Tutto fatto."** in verde in cima quando non c'è nulla da rispondere, da
   aspettare o da chiudere; prende il posto della riga vuota "Nessuna richiesta

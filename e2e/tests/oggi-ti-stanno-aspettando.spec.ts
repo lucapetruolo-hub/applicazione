@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { PrismaClient } from "@professionisti/database";
-import { acceptQuote, COMPUTER, createClient, createProfessional, createRequestWithQuotes, pageAsClient, PHONE, wallDay } from "../fixtures/preventivi";
+import { acceptQuote, COMPUTER, createClient, createProfessional, createRequestWithQuotes, pageAsClient, PHONE, wallDay, wallFromNow } from "../fixtures/preventivi";
 
 /**
  * "Ti stanno aspettando" e "Lavori da chiudere" nella pagina Oggi
@@ -51,11 +51,22 @@ async function setUp() {
   const toClose = await createRequestWithQuotes(prisma, ornella.id, [pro.id], { start: wallDay(-1, "09:00"), end: wallDay(-1, "12:00") });
   expect((await acceptQuote(ornella.id, toClose.quotes[0].id)).ok).toBe(true);
   const toCloseJob = await prisma.booking.findFirstOrThrow({ where: { quoteId: toClose.quotes[0].id } });
-  return { pro, toCloseJob };
+  // 5. Lavoro di oggi già finito (solo se oggi è iniziato da almeno due ore).
+  const todayStart = wallFromNow(-120);
+  const todayJob =
+    todayStart.toISOString().slice(0, 10) === wallFromNow(0).toISOString().slice(0, 10)
+      ? await (async () => {
+          const silvia = await createClient(prisma, "Silvia");
+          const today = await createRequestWithQuotes(prisma, silvia.id, [pro.id], { start: todayStart, end: wallFromNow(-60) });
+          expect((await acceptQuote(silvia.id, today.quotes[0].id)).ok).toBe(true);
+          return prisma.booking.findFirstOrThrow({ where: { quoteId: today.quotes[0].id } });
+        })()
+      : null;
+  return { pro, toCloseJob, todayJob };
 }
 
 test("Ti stanno aspettando: problema, chat e fattura in cima, lavori da chiudere sotto", async ({ browser }) => {
-  const { pro, toCloseJob } = await setUp();
+  const { pro, toCloseJob, todayJob } = await setUp();
 
   if (SHOTS) {
     const desk = await pageAsClient(browser, pro.userId, COMPUTER);
@@ -83,6 +94,12 @@ test("Ti stanno aspettando: problema, chat e fattura in cima, lavori da chiudere
   await expect(page.getByText("Lavori da chiudere")).toBeVisible();
   const closeLink = page.getByRole("link", { name: /Ornella/ });
   await expect(closeLink).toHaveAttribute("href", `/dashboard/agenda?booking=${toCloseJob.id}&termina=1`);
+  // Lavoro di oggi già finito: in "Oggi e domani" con "Lavoro terminato" al posto di Naviga, non in "Lavori da chiudere".
+  if (todayJob) {
+    await expect(page.locator(`a[href="/dashboard/agenda?booking=${todayJob.id}&termina=1"]`)).toHaveText(/Lavoro terminato/);
+    await expect(page.getByRole("link", { name: /Naviga verso/ })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /Silvia/ })).toHaveCount(1);
+  }
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/telefono.png`, fullPage: true });
 
   // "Non serve risposta": la chat sparisce, anche ricaricando.

@@ -246,7 +246,7 @@ export default function DashboardTodayPage() {
   // `onTheWay`: "Sto arrivando" (§353), solo per un appuntamento confermato a domicilio.
   // `end` e `arrival`: fascia completa e "Arrivo verso le" accanto al nome
   // (docs/changelog/2026-11-18-orari-oggi-e-giro.md, richiesta di Luca).
-  type UpcomingRow = { key: string; href: string; at: string; end: string | null; arrival: string | null; title: string; sub: string; job: DayJobRow; navigateTo: string | null; onTheWay: { bookingId: string; sentAt: string | null } | null; phone: string | null; move: "CLIENT" | "PROFESSIONAL" | null };
+  type UpcomingRow = { key: string; href: string; at: string; end: string | null; arrival: string | null; title: string; sub: string; job: DayJobRow; navigateTo: string | null; onTheWay: { bookingId: string; sentAt: string | null } | null; phone: string | null; move: "CLIENT" | "PROFESSIONAL" | null; closeBookingId: string | null };
   const inWindow = (start: Date) => start >= startToday && start < endTomorrow;
   const upcoming: UpcomingRow[] = [
     ...(bookings ?? [])
@@ -274,6 +274,9 @@ export default function DashboardTodayPage() {
                   : booking.address
                 : null,
             onTheWay: booking.status === "CONFIRMED" && booking.serviceMode !== "ONLINE" ? { bookingId: booking.id, sentAt: booking.onTheWayAt ?? null } : null,
+            // Fascia già finita e lavoro non chiuso: "Lavoro terminato" al posto di Naviga e Sto arrivando
+            // (docs/changelog/2026-11-18-oggi-ti-stanno-aspettando.md).
+            closeBookingId: bookingToClose(booking, wallNow) ? booking.id : null,
             // Telefono solo a lavoro confermato (CLAUDE.md §5 punto 9).
             phone: booking.status === "CONFIRMED" ? (booking.recipientPhone ?? booking.clientPhone) : null,
             // Spostamento in sospeso: chiesto dal cliente o proposto da te.
@@ -297,6 +300,7 @@ export default function DashboardTodayPage() {
             job: { start: occurrence.start.toISOString(), end: occurrence.end?.toISOString() ?? null, city: cityOfAddress(job.address), online: false },
             navigateTo: job.address,
             onTheWay: null,
+            closeBookingId: null,
             phone: job.clientPhone,
             move: null,
           })),
@@ -551,7 +555,7 @@ export default function DashboardTodayPage() {
                   {upcoming.length === 0 ? (
                     <EmptyLine text={quietStart ? "Nessun appuntamento né richiesta per ora: ti avvisiamo appena ne arriva una." : "Nessun appuntamento oggi e domani."} />
                   ) : (
-                    upcoming.map(({ key, href, at, end, arrival, title, sub, navigateTo, onTheWay, phone, move }, index) => (
+                    upcoming.map(({ key, href, at, end, arrival, title, sub, navigateTo, onTheWay, phone, move, closeBookingId }, index) => (
                       <Fragment key={key}>
                         {/* I lavori raggruppati per giorno, con il riepilogo sopra (§333). */}
                         {index === 0 || upcoming[index - 1]!.at.slice(0, 10) !== at.slice(0, 10) ? (
@@ -582,14 +586,19 @@ export default function DashboardTodayPage() {
                           </Link>
                           {/* "Naviga" e "Sto arrivando" diretti sui lavori di oggi
                               (§352-§353): prima serviva aprire l'agenda e poi l'appuntamento. */}
-                          {at.slice(0, 10) === startToday.toISOString().slice(0, 10) && (navigateTo || onTheWay || phone) ? (
+                          {at.slice(0, 10) === startToday.toISOString().slice(0, 10) && (navigateTo || onTheWay || phone || closeBookingId) ? (
                             <div className="today-appt-actions">
-                              {navigateTo ? (
+                              {closeBookingId ? (
+                                <Link className="today-nav" href={`/dashboard/agenda?booking=${closeBookingId}&termina=1`}>
+                                  <Check size={16} aria-hidden /> Lavoro terminato
+                                </Link>
+                              ) : null}
+                              {navigateTo && !closeBookingId ? (
                                 <a className="today-nav" href={navigateUrl(navigateTo)} target="_blank" rel="noreferrer" aria-label={`Naviga verso ${navigateTo}`}>
                                   <Navigation size={16} aria-hidden /> Naviga
                                 </a>
                               ) : null}
-                              {onTheWay ? (
+                              {onTheWay && !closeBookingId ? (
                                 onTheWay.sentAt ? (
                                   <span className="today-nav is-done" aria-live="polite">
                                     <Check size={16} aria-hidden /> Avvisato alle {formatAppointmentTime(wallClockNow(new Date(onTheWay.sentAt)))}
