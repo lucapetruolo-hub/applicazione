@@ -23,6 +23,7 @@ import { Throttle } from "@nestjs/throttler";
 import {
   guidedRequestSchema,
   guidedRequestUpdateSchema,
+  MEDIA_UPLOAD_MAX_BYTES,
   guidedRequestUserStateSchema,
   requestWithdrawSchema,
   type RequestWithdrawInput,
@@ -44,7 +45,8 @@ import { MEDIA_UPLOAD_DIR } from "../common/media-upload";
 // Un video pesa naturalmente molto di più di una foto compressa: limite
 // più permissivo solo per questo endpoint (richiesta esplicita
 // dell'utente: "dai la possibilità di caricare anche i video").
-const MAX_MEDIA_SIZE_BYTES = 50 * 1024 * 1024;
+// Lo stesso numero lo controlla il sito prima di caricare (MEDIA_UPLOAD_MAX_BYTES).
+const MAX_MEDIA_SIZE_BYTES = MEDIA_UPLOAD_MAX_BYTES;
 // Documenti ammessi solo per l'allegato "File" della chat (richiesta
 // esplicita dell'utente: "in modo che puo essere caricata anche la fattura
 // o ricevuta") — elenco chiuso di formati realmente usati per fatture/
