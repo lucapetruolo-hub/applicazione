@@ -145,6 +145,11 @@ services:
       # dizionario. PROBLEM_MATCH_AI_DAILY_LIMIT cambia il tetto (3000).
       - key: ANTHROPIC_API_KEY
         sync: false
+      # Meteo dell'agenda (docs/changelog/2026-11-18-meteo-tre-giorni.md):
+      # chiave dell'abbonamento Open-Meteo per uso commerciale. Senza, l'API
+      # gratuita, con un tetto giornaliero condiviso con gli altri siti di Render.
+      - key: OPEN_METEO_API_KEY
+        sync: false
       # Ricerca con foto (docs/changelog/2026-11-13-ricerca-con-foto.md):
       # "true" la accende (serve anche ANTHROPIC_API_KEY). Spenta finché il
       # banco di prova con le foto non supera la soglia.
