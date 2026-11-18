@@ -55,6 +55,7 @@ import { PageLoading } from "@/components/PageLoading";
 import { ButtonWaitBar } from "@/components/WaitBar";
 import { ServicesEditor, type EditableService } from "./_components/ServicesEditor";
 import { WaitingRequestsNearby } from "@/components/WaitingRequestsNearby";
+import { moveItem, usePhotoReorder } from "@/lib/usePhotoReorder";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 
@@ -308,6 +309,18 @@ export default function DashboardProfiloPage() {
   // "un'idea dei lavori svolti". Distinte da imageUrl (la foto profilo
   // singola sopra).
   const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
+  // Ordine del portfolio: la prima foto è quella che si nota di più nel profilo.
+  // Si trascina col dito, col mouse o con le frecce (richiesta di Luca del 18/11,
+  // docs/changelog/2026-11-18-luci-ia-solo-con-ia.md).
+  const {
+    containerRef: portfolioReorderRef,
+    itemProps: portfolioReorderItemProps,
+    announcement: portfolioReorderAnnouncement,
+  } = usePhotoReorder({
+    count: portfolioUrls.length,
+    move: (from, to) => setPortfolioUrls((prev) => moveItem(prev, from, to)),
+    label: (index) => `Foto ${index + 1} del portfolio`,
+  });
   // Lingue parlate (richiesta esplicita dell'utente, filtro "Lingua parlata"
   // in ricerca): "Italiano" precompilato di default alla creazione,
   // rimovibile/estendibile — stesso pattern chip di subTags/servizi.
@@ -1660,9 +1673,13 @@ export default function DashboardProfiloPage() {
             Foto o video reali di lavori terminati: aiutano chi apre il tuo profilo a farsi un&apos;idea concreta di
             cosa sai fare.
           </Text>
-          <YStack flexDirection="row" flexWrap="wrap" gap="2">
-            {portfolioUrls.map((url) => (
-              <YStack key={url} width={88} height={88} borderRadius="3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+          <div ref={portfolioReorderRef} className="portfolio-thumbs">
+            {portfolioUrls.map((url, index) => (
+              <div
+                key={url}
+                className={portfolioUrls.length > 1 ? "portfolio-thumb reorder-item" : "portfolio-thumb"}
+                {...(portfolioUrls.length > 1 ? portfolioReorderItemProps(index) : {})}
+              >
                 <MediaPreview url={url} />
                 <YStack
                   position="absolute"
@@ -1681,7 +1698,7 @@ export default function DashboardProfiloPage() {
                 >
                   <X size={13} strokeWidth={2} color="white" />
                 </YStack>
-              </YStack>
+              </div>
             ))}
             {portfolioUrls.length < MAX_PORTFOLIO_PHOTOS ? (
               // Come le foto della richiesta: dal telefono Scatta / Video / Galleria, dal
@@ -1705,7 +1722,15 @@ export default function DashboardProfiloPage() {
                 <span aria-hidden="true">{isUploadingPortfolioPhoto ? "Caricamento" : "Aggiungi"}</span>
               </PhotoPicker>
             ) : null}
-          </YStack>
+          </div>
+          {portfolioUrls.length > 1 ? (
+            <Text fontSize={13} color={brand.grafite70}>
+              La prima foto è quella che si nota di più. Per cambiare l&apos;ordine, tieni premuta una foto e spostala.
+            </Text>
+          ) : null}
+          <span className="sr-only" aria-live="polite">
+            {portfolioReorderAnnouncement}
+          </span>
           {portfolioPhotoError ? (
             <Text color={brand.urgenza} fontSize={13}>
               {portfolioPhotoError}

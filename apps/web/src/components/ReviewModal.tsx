@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { ConsentCheckbox } from "@/components/ConsentCheckbox";
 import { MediaPreview } from "@/components/MediaPreview";
+import { moveItem, usePhotoReorder } from "@/lib/usePhotoReorder";
 import { UploadingDots } from "@/components/UploadingDots";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
@@ -56,6 +57,17 @@ export function ReviewModal({
   const [rating, setRating] = useState(initial?.rating ?? 5);
   const [comment, setComment] = useState(initial?.comment ?? "");
   const [mediaUrls, setMediaUrls] = useState<string[]>(initial?.mediaUrls ?? []);
+  // Ordine delle foto: si trascinano col dito, col mouse o con le frecce
+  // (richiesta di Luca del 18/11, docs/changelog/2026-11-18-luci-ia-solo-con-ia.md).
+  const {
+    containerRef: photoReorderRef,
+    itemProps: photoReorderItemProps,
+    announcement: photoReorderAnnouncement,
+  } = usePhotoReorder({
+    count: mediaUrls.length,
+    move: (from, to) => setMediaUrls((prev) => moveItem(prev, from, to)),
+    label: (index) => `Foto ${index + 1}`,
+  });
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -156,9 +168,13 @@ export function ReviewModal({
           <Text fontSize={13} color={brand.grafite70}>
             Foto o video (opzionale, fino a {MAX_REVIEW_MEDIA})
           </Text>
-          <YStack flexDirection="row" flexWrap="wrap" gap="2">
-            {mediaUrls.map((url) => (
-              <YStack key={url} width={64} height={64} borderRadius="3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+          <div ref={photoReorderRef} className="portfolio-thumbs">
+            {mediaUrls.map((url, index) => (
+              <div
+                key={url}
+                className={mediaUrls.length > 1 ? "portfolio-thumb portfolio-thumb-mini reorder-item" : "portfolio-thumb portfolio-thumb-mini"}
+                {...(mediaUrls.length > 1 ? photoReorderItemProps(index) : {})}
+              >
                 <MediaPreview url={url} />
                 <YStack
                   position="absolute"
@@ -177,7 +193,7 @@ export function ReviewModal({
                 >
                   <X size={11} strokeWidth={2} color="white" />
                 </YStack>
-              </YStack>
+              </div>
             ))}
             {mediaUrls.length < MAX_REVIEW_MEDIA ? (
               <YStack
@@ -204,7 +220,15 @@ export function ReviewModal({
                 )}
               </YStack>
             ) : null}
-          </YStack>
+          </div>
+          {mediaUrls.length > 1 ? (
+            <Text fontSize={13} color={brand.grafite70}>
+              Per cambiare l&apos;ordine, tieni premuta una foto e spostala.
+            </Text>
+          ) : null}
+          <span className="sr-only" aria-live="polite">
+            {photoReorderAnnouncement}
+          </span>
           <input ref={photoInputRef} type="file" accept="image/*,video/*" onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
           {photoError ? (
             <Text color={brand.urgenza} fontSize={13}>

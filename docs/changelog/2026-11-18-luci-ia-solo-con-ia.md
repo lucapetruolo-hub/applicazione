@@ -45,3 +45,31 @@ foto o video insieme, sempre fino a 5.
 **Verifica**: Playwright da computer: 6 immagini scelte insieme, 5 miniature
 e la riga grigia, sia con 2 scelti sia nella richiesta generale; con scelti
 `accept="image/*,video/*"` già alla prima casella, nella generale `image/*`.
+
+## Terzo giro: riordinare le foto trascinandole (sì di Luca, 18/11)
+
+**Richiesta**: spostare le miniature col dito per cambiare l'ordine; poi
+"vedi dove altro può essere usato" e sì a portfolio, foto aggiunte a una
+richiesta già mandata, foto a fine lavoro e foto della recensione (no alle
+segnalazioni di problemi, che servono come prova).
+
+**Decisione**: un pezzo comune, `apps/web/src/lib/usePhotoReorder.ts`, senza
+librerie: col dito si tiene premuta la miniatura 280 ms e poi si sposta (un
+tocco o uno scorrimento della pagina non la prendono), col mouse si prende
+subito, da tastiera frecce sinistra/destra; passando sopra un'altra miniatura
+si scambiano di posto, anche su più righe; la miniatura presa si solleva con
+un'ombra; il lettore di schermo sente "Spostata al posto N di M". Riga grigia
+"Per cambiare l'ordine, tieni premuta una foto e spostala." quando le foto
+sono almeno 2 (nel portfolio anche "La prima foto è quella che si nota di
+più"). Usato in: modulo di richiesta, portfolio di Il mio profilo, modifica di
+una richiesta in Le mie richieste, Completa il lavoro, recensione. Le
+miniature di questi quattro punti passano da Tamagui a HTML semplice
+(`.portfolio-thumb`), stesse misure di prima con angoli 10. L'ordine si salva
+come oggi, col salvataggio di ciascun modulo (gli elenchi sono già in ordine).
+
+**Verifica**: Playwright sul modulo: col mouse la prima foto portata in terza
+posizione; freccia sinistra (fuoco che resta sulla foto, annuncio letto); X
+che toglie ancora la foto; da iPhone 13 emulato uno scorrimento veloce non
+cambia nulla, la pressione lunga e lo spostamento portano la prima in quarta.
+Gli altri quattro punti usano lo stesso pezzo: controllati con tsc e lint,
+non provati dal vivo perché serve un account con dati.

@@ -39,6 +39,7 @@ import { MagneticButton } from "./MagneticButton";
 import { ApiError, type LastRequestAddress } from "@professionisti/api-client";
 import { CATEGORY_WHO, joinWithOr, toTrade } from "@/lib/problemChoices";
 import { apiClient } from "@/lib/apiClient";
+import { moveItem, usePhotoReorder } from "@/lib/usePhotoReorder";
 import { cameFromPersonalLink } from "@/lib/personalLink";
 import { setChosenParams } from "@/lib/chosenParams";
 import { useAuth } from "@/lib/AuthContext";
@@ -830,6 +831,18 @@ export function GuidedRequestForm({
   const [photoError, setPhotoError] = useState<string | null>(null);
   // Riga grigia (non un errore, il rosso è solo per gli errori) quando si scelgono più file dei posti liberi.
   const [photoNotice, setPhotoNotice] = useState<string | null>(null);
+  // Ordine delle foto: si trascinano col dito, col mouse o con le frecce
+  // (richiesta di Luca del 18/11, docs/changelog/2026-11-18-luci-ia-solo-con-ia.md).
+  const {
+    containerRef: photoReorderRef,
+    itemProps: photoReorderItemProps,
+    announcement: photoReorderAnnouncement,
+  } = usePhotoReorder({
+    count: photos.length,
+    move: (from, to) => setPhotos((prev) => moveItem(prev, from, to)),
+    label: (index) => (photos[index]?.isVideo ? `Video ${index + 1}` : `Foto ${index + 1}`),
+  });
+
   // La foto della ricerca con foto, se la richiesta nasce da lì: già allegata, si può togliere
   // (docs/changelog/2026-11-13-ricerca-con-foto.md). Resta solo nel browser fino all'invio.
   const [photoFromSearch, setPhotoFromSearch] = useState(false);
@@ -1732,9 +1745,14 @@ export function GuidedRequestForm({
               : `Fino a ${MAX_PHOTOS} foto o video del problema, anche più insieme. `}
             Le vede il professionista: niente numeri di telefono, documenti o persone.
           </Text>
-          <div className="guided-photos" role="group" aria-label={`Foto e video per il professionista (fino a ${MAX_PHOTOS})`}>
-            {photos.map((photo) => (
-              <div key={photo.url} className="guided-photo">
+          <div
+            ref={photoReorderRef}
+            className="guided-photos"
+            role="group"
+            aria-label={`Foto e video per il professionista (fino a ${MAX_PHOTOS})`}
+          >
+            {photos.map((photo, index) => (
+              <div key={photo.url} className={photos.length > 1 ? "guided-photo reorder-item" : "guided-photo"} {...(photos.length > 1 ? photoReorderItemProps(index) : {})}>
                 <MediaPreview url={photo.url} forceVideo={photo.isVideo} style={{ borderRadius: 9 }} />
                 <button type="button" className="field-photo-remove" onClick={() => removePhoto(photo.url)} aria-label="Togli la foto">
                   <X size={12} strokeWidth={3} color="white" />
@@ -1775,6 +1793,14 @@ export function GuidedRequestForm({
               {photoError}
             </Text>
           ) : null}
+          {photos.length > 1 ? (
+            <Text color={brand.grafite70} fontSize={13}>
+              Per cambiare l&apos;ordine, tieni premuta una foto e spostala.
+            </Text>
+          ) : null}
+          <span className="sr-only" aria-live="polite">
+            {photoReorderAnnouncement}
+          </span>
           {photoNotice ? (
             <Text color={brand.grafite70} fontSize={13} role="status">
               {photoNotice}
