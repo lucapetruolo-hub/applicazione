@@ -423,7 +423,7 @@ export class CourtesyCopyService {
       include: {
         client: { select: { name: true, surname: true } },
         jobPayment: true,
-        finalItems: { select: { name: true, priceEurCents: true } },
+        finalItems: { select: { name: true, priceEurCents: true }, orderBy: { position: "asc" } },
         professionalProfile: { select: { businessName: true, fiscalProfile: true } },
         quote: { select: { invoiceRequest: true, guidedRequest: { select: { description: true, category: { select: { label: true } } } } } },
       },

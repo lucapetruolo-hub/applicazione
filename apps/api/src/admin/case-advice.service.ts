@@ -287,7 +287,7 @@ const euro = (cents: number) => `${(cents / 100).toLocaleString("it-IT", { minim
 
 const bookingForAdvice = {
   jobPayment: { select: { paymentMethod: true, paidEurCents: true, refundedEurCents: true } },
-  quote: { select: { guidedRequestId: true, items: { select: { name: true, priceMinEurCents: true, priceMaxEurCents: true } } } },
+  quote: { select: { guidedRequestId: true, items: { select: { name: true, priceMinEurCents: true, priceMaxEurCents: true }, orderBy: { position: "asc" } } } },
 } as const;
 type BookingForAdvice = {
   clientId: string;

@@ -308,7 +308,7 @@ export class BookingsService implements OnModuleInit {
         guidedRequest: { include: { client: { select: { name: true, surname: true, phone: true } }, category: { select: { label: true } } } },
         booking: true,
         professionalProfile: true,
-        items: true,
+        items: { orderBy: { position: "asc" } },
       },
     });
     if (!quote) {
@@ -945,7 +945,7 @@ export class BookingsService implements OnModuleInit {
 
     const job = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { quote: { include: { items: true } }, recurringJob: { select: { quote: { include: { items: true } } } } },
+      include: { quote: { include: { items: { orderBy: { position: "asc" } } } }, recurringJob: { select: { quote: { include: { items: { orderBy: { position: "asc" } } } } } } },
     });
     if (!job || job.professionalProfileId !== professionalProfile.id) {
       throw new ForbiddenException("Questo lavoro non è tuo.");
@@ -1869,7 +1869,7 @@ export class BookingsService implements OnModuleInit {
       include: {
         professionalProfile: { include: { user: true } },
         review: true,
-        finalItems: true,
+        finalItems: { orderBy: { position: "asc" } },
         issue: true,
         jobPayment: true,
         // Richiesta esplicita dell'utente: "Lavori accettati" deve mostrare
@@ -1878,10 +1878,10 @@ export class BookingsService implements OnModuleInit {
         // solo i dati del professionista. Assente per le prenotazioni
         // dirette da agenda pubblica (bookAgendaSlot), che non hanno una
         // Quote/GuidedRequest collegata.
-        quote: { include: { items: true, guidedRequest: { include: { category: true } } } },
+        quote: { include: { items: { orderBy: { position: "asc" } }, guidedRequest: { include: { category: true } } } },
         // Visite di un lavoro ricorrente dopo la prima: preventivo e richiesta della serie
         // (docs/changelog/2026-11-09-lavori-ricorrenti.md).
-        recurringJob: { include: { quote: { include: { items: true, guidedRequest: { include: { category: true } } } } } },
+        recurringJob: { include: { quote: { include: { items: { orderBy: { position: "asc" } }, guidedRequest: { include: { category: true } } } } } },
       },
       orderBy: { scheduledAt: "desc" },
     });

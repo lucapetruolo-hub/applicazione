@@ -1657,14 +1657,14 @@ export class AdminService {
       orderBy: { updatedAt: "desc" },
       take: 200,
       include: {
-        finalItems: true,
+        finalItems: { orderBy: { position: "asc" } },
         jobPayment: true,
         courtesyDocument: { select: { kind: true, receiptNumber: true } },
         professionalProfile: { select: { id: true, userId: true, businessName: true } },
         client: { select: { id: true, name: true, surname: true, deletedAt: true } },
         quote: {
           select: {
-            items: true,
+            items: { orderBy: { position: "asc" } },
             guidedRequest: { select: { id: true, city: true, description: true, category: { select: { label: true } } } },
           },
         },

@@ -1348,6 +1348,10 @@ model QuoteItem {
   name             String
   priceMinEurCents Int?
   priceMaxEurCents Int?
+  // Ordine delle voci come le ha scritte il professionista: cresce da solo a
+  // ogni inserimento, anche dentro una createMany
+  // (docs/changelog/2026-11-18-ordine-voci-preventivo.md).
+  position         Int    @default(autoincrement())
 
   quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 
@@ -1644,6 +1648,9 @@ model BookingFinalItem {
   bookingId     String
   name          String
   priceEurCents Int
+  // Ordine delle voci come le ha scritte il professionista
+  // (docs/changelog/2026-11-18-ordine-voci-preventivo.md).
+  position      Int    @default(autoincrement())
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
