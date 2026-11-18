@@ -73,3 +73,12 @@ che toglie ancora la foto; da iPhone 13 emulato uno scorrimento veloce non
 cambia nulla, la pressione lunga e lo spostamento portano la prima in quarta.
 Gli altri quattro punti usano lo stesso pezzo: controllati con tsc e lint,
 non provati dal vivo perché serve un account con dati.
+
+## Quarto giro: più foto insieme anche negli altri punti (sì di Luca, 18/11)
+
+Portfolio (`PhotoPicker` con `onFiles`), foto aggiunte a una richiesta già
+mandata, Completa il lavoro e recensione (`<input multiple>`): si scelgono più
+foto o video insieme, si caricano uno alla volta nell'ordine scelto fino al
+massimo di ciascun punto (10 nel portfolio, 5 negli altri); quelli in più si
+dicono in una riga grigia, come nel modulo di richiesta. Controllato con tsc e
+lint.

@@ -232,6 +232,8 @@ export function GuidedRequestCard({
   });
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  // Riga grigia (non un errore) quando si scelgono più file dei posti liberi.
+  const [photoNotice, setPhotoNotice] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -418,22 +420,33 @@ export function GuidedRequestCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenDocuments]);
 
+  // Più foto o video scelti insieme, fino al massimo (richiesta di Luca del 18/11,
+  // docs/changelog/2026-11-18-luci-ia-solo-con-ia.md): uno alla volta, nell'ordine scelto.
   async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (!file) return;
+    if (picked.length === 0) return;
+    const kept = picked.slice(0, Math.max(0, MAX_REQUEST_PHOTOS - photoUrls.length));
+    setPhotoNotice(
+      picked.length > kept.length
+        ? `Si possono aggiungere fino a ${MAX_REQUEST_PHOTOS} foto o video: ne abbiamo ${kept.length === 1 ? "aggiunto 1" : `aggiunti ${kept.length}`}.`
+        : null,
+    );
 
     setPhotoError(null);
     setIsUploadingPhoto(true);
     try {
-      const result = await apiClient.uploadGuidedRequestPhoto(token, file);
-      setPhotoUrls((prev) => [...prev, result.imageUrl].slice(0, MAX_REQUEST_PHOTOS));
+      for (const file of kept) {
+        const result = await apiClient.uploadGuidedRequestPhoto(token, file);
+        setPhotoUrls((prev) => [...prev, result.imageUrl].slice(0, MAX_REQUEST_PHOTOS));
+      }
     } catch (err) {
       setPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
     } finally {
       setIsUploadingPhoto(false);
     }
   }
+
 
   function removePhoto(url: string) {
     setPhotoUrls((prev) => prev.filter((u) => u !== url));
@@ -717,7 +730,12 @@ export function GuidedRequestCard({
             <span className="sr-only" aria-live="polite">
               {photoReorderAnnouncement}
             </span>
-            <input ref={photoInputRef} type="file" accept="image/*,video/*" onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
+            {photoNotice ? (
+              <Text fontSize={13} color={brand.grafite70} role="status">
+                {photoNotice}
+              </Text>
+            ) : null}
+            <input ref={photoInputRef} type="file" accept="image/*,video/*" multiple onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
             {photoError ? (
               <Text color={brand.urgenza} fontSize={13}>
                 {photoError}

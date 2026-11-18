@@ -309,6 +309,8 @@ export default function DashboardProfiloPage() {
   // "un'idea dei lavori svolti". Distinte da imageUrl (la foto profilo
   // singola sopra).
   const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
+  // Riga grigia (non un errore) quando si scelgono più file dei posti liberi.
+  const [portfolioNotice, setPortfolioNotice] = useState<string | null>(null);
   // Ordine del portfolio: la prima foto è quella che si nota di più nel profilo.
   // Si trascina col dito, col mouse o con le frecce (richiesta di Luca del 18/11,
   // docs/changelog/2026-11-18-luci-ia-solo-con-ia.md).
@@ -897,6 +899,18 @@ export default function DashboardProfiloPage() {
     } finally {
       setIsUploadingPortfolioPhoto(false);
     }
+  }
+
+  // Più foto o video scelti insieme (richiesta di Luca del 18/11,
+  // docs/changelog/2026-11-18-luci-ia-solo-con-ia.md): uno alla volta, fino ai posti liberi.
+  async function addPortfolioFiles(files: File[]) {
+    const kept = files.slice(0, Math.max(0, MAX_PORTFOLIO_PHOTOS - portfolioUrls.length));
+    setPortfolioNotice(
+      files.length > kept.length
+        ? `Si possono aggiungere fino a ${MAX_PORTFOLIO_PHOTOS} foto o video: ne abbiamo ${kept.length === 1 ? "aggiunto 1" : `aggiunti ${kept.length}`}.`
+        : null,
+    );
+    for (const file of kept) await addPortfolioFile(file);
   }
 
   function removePortfolioPhoto(url: string) {
@@ -1709,6 +1723,7 @@ export default function DashboardProfiloPage() {
                 maxPhotos={MAX_PORTFOLIO_PHOTOS - portfolioUrls.length}
                 disabled={isUploadingPortfolioPhoto}
                 onFile={(file) => void addPortfolioFile(file)}
+                onFiles={(files) => void addPortfolioFiles(files)}
                 className="portfolio-add"
                 label="Aggiungi una foto o un video del portfolio"
               >
@@ -1731,6 +1746,11 @@ export default function DashboardProfiloPage() {
           <span className="sr-only" aria-live="polite">
             {portfolioReorderAnnouncement}
           </span>
+          {portfolioNotice ? (
+            <Text fontSize={13} color={brand.grafite70} role="status">
+              {portfolioNotice}
+            </Text>
+          ) : null}
           {portfolioPhotoError ? (
             <Text color={brand.urgenza} fontSize={13}>
               {portfolioPhotoError}
