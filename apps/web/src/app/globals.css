@@ -2353,9 +2353,33 @@ html.site-menu-open .profile-cta-bar {
 }
 .today-time {
   flex-shrink: 0;
-  min-width: 56px;
+  /* Larga quanto "Arrivo 10:30": i nomi restano tutti in colonna. */
+  min-width: 112px;
   font-weight: 800;
   font-size: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* Fascia completa e "Arrivo verso le" accanto al nome
+   (docs/changelog/2026-11-18-orari-oggi-e-giro.md). */
+.today-time-band {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.today-time-arrival {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e8f2f2;
+  color: #186163;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .today-empty {
   padding: 14px 16px;

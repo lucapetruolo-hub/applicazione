@@ -104,6 +104,8 @@ export type DayRouteStop = {
   longitude: number;
   /** `true` se la posizione è solo il centro del comune (indirizzo non trovato). */
   approximate: boolean;
+  /** "Arrivo verso le" scritto dal professionista ("HH:MM"), solo se vale per quel giorno. */
+  arrivalTime?: string | null;
 };
 
 /** Tratto tra una tappa e la successiva. */
@@ -118,7 +120,24 @@ export type DayRouteLeg = {
   tight: boolean;
 };
 
-export type DayRoute = { date: string; stops: DayRouteStop[]; legs: DayRouteLeg[] };
+/**
+ * `skipped`: le tappe tolte dal giro dal professionista (caselle per fascia,
+ * docs/changelog/2026-11-18-orari-oggi-e-giro.md), per rimetterle.
+ */
+export type DayRoute = { date: string; stops: DayRouteStop[]; legs: DayRouteLeg[]; skipped?: DayRouteStop[] };
+
+/** Al massimo tante tappe tolte in una richiesta del giro. */
+export const DAY_ROUTE_MAX_SKIPPED = 60;
+
+/** Chiavi delle tappe tolte, lette dal parametro `skip` ("booking-<id>,external-<id>"): quelle non valide si ignorano. */
+export function parseDayRouteSkip(value: string | null | undefined): Set<string> {
+  if (!value) return new Set();
+  const keys = value
+    .split(",")
+    .map((key) => key.trim())
+    .filter((key) => /^(booking|external)-[A-Za-z0-9_-]{1,64}$/.test(key));
+  return new Set(keys.slice(0, DAY_ROUTE_MAX_SKIPPED));
+}
 
 /** Link a Google Maps con tutte le tappe, nell'ordine (al massimo 9 intermedie, limite di Google). */
 export function dayRouteMapsUrl(stops: Pick<DayRouteStop, "latitude" | "longitude" | "address">[]): string | null {

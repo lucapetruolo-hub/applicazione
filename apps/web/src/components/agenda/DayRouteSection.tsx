@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Car, ChevronLeft, ChevronRight, Sparkles, TriangleAlert } from "lucide-react";
-import { dayRouteMapsUrl, formatAppointmentDate, formatAppointmentTimeRange, type DayRoute } from "@professionisti/shared";
+import { useEffect, useRef, useState } from "react";
+import { Car, ChevronDown, ChevronLeft, ChevronRight, ListChecks, Sparkles, TriangleAlert } from "lucide-react";
+import { dayRouteMapsUrl, formatAppointmentDate, formatAppointmentTimeRange, type DayRoute, type DayRouteStop } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { addDaysUtc, isSameDateUtc, toIsoDate } from "@/lib/calendarDates";
 
@@ -11,6 +11,42 @@ function travelLabel(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m ? `${h} h ${m} min` : `${h} h`;
+}
+
+/** Mattina, pomeriggio o sera dall'ora d'inizio della fascia (ora di parete in UTC). */
+function dayPartLabel(startIso: string): string {
+  const hour = Number(startIso.slice(11, 13));
+  return hour < 13 ? "Mattina" : hour < 18 ? "Pomeriggio" : "Sera";
+}
+
+type StopGroup = { key: string; label: string; range: string; stops: DayRouteStop[] };
+
+/**
+ * Tappe del giorno divise per fascia (stesso inizio e stessa fine), in ordine
+ * di orario e, dentro la fascia, di ora di arrivo: sono le caselle con cui il
+ * professionista sceglie chi mettere nel giro.
+ */
+export function groupStopsByBand(stops: DayRouteStop[]): StopGroup[] {
+  const sorted = [...stops].sort(
+    (a, b) => a.start.localeCompare(b.start) || (a.end ?? "").localeCompare(b.end ?? "") || (a.arrivalTime ?? "").localeCompare(b.arrivalTime ?? "") || a.title.localeCompare(b.title, "it"),
+  );
+  const groups: StopGroup[] = [];
+  for (const stop of sorted) {
+    const key = `${stop.start}|${stop.end ?? ""}`;
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.stops.push(stop);
+    else groups.push({ key, label: dayPartLabel(stop.start), range: formatAppointmentTimeRange(stop.start, stop.end), stops: [stop] });
+  }
+  return groups;
+}
+
+/** Casella della fascia intera: piena, vuota o "a metà" quando solo alcune tappe sono nel giro. */
+function BandCheckbox({ checked, mixed, label, onChange }: { checked: boolean; mixed: boolean; label: string; onChange: () => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = mixed;
+  }, [mixed]);
+  return <input ref={ref} type="checkbox" checked={checked} aria-checked={mixed ? "mixed" : checked} aria-label={label} onChange={onChange} />;
 }
 
 /**
@@ -25,23 +61,64 @@ export function DayRouteSection({ token, today, onOpenStop }: { token: string; t
   const dateStr = toIsoDate(date);
   // Risposta insieme al giorno a cui si riferisce: cambiando giorno si torna
   // al caricamento finché non arriva quella nuova.
-  const [answer, setAnswer] = useState<{ dateStr: string; route: DayRoute | null; error: string | null } | null>(null);
-  const current = answer?.dateStr === dateStr ? answer : null;
-  const route = current?.route ?? null;
-  const error = current?.error ?? null;
+  // Tappe tolte dal giro, per giorno (docs/changelog/2026-11-18-orari-oggi-e-giro.md,
+  // richiesta di Luca): tornando su un giorno la scelta resta finché la pagina è aperta.
+  const [skipByDate, setSkipByDate] = useState<Record<string, string[]>>({});
+  const skip = skipByDate[dateStr] ?? [];
+  const skipKey = skip.join(",");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // Risposta insieme al giorno e alle tappe tolte a cui si riferisce.
+  const [answer, setAnswer] = useState<{ dateStr: string; skipKey: string; route: DayRoute | null; error: string | null } | null>(null);
+  // Cambiando solo le tappe resta il giro di prima, un po' sbiadito, finché arriva il nuovo:
+  // niente riquadro vuoto a ogni casella.
+  const sameDay = answer?.dateStr === dateStr ? answer : null;
+  const updating = sameDay !== null && sameDay.skipKey !== skipKey;
+  const route = sameDay?.route ?? null;
+  const error = sameDay && !updating ? sameDay.error : null;
   const [mapFailedFor, setMapFailedFor] = useState<string | null>(null);
   const mapFailed = mapFailedFor === dateStr;
 
   useEffect(() => {
     let cancelled = false;
-    apiClient
-      .agendaDayRoute(token, dateStr)
-      .then((result) => !cancelled && setAnswer({ dateStr, route: result, error: null }))
-      .catch((err) => !cancelled && setAnswer({ dateStr, route: null, error: err instanceof Error ? err.message : "Giro non disponibile, riprova." }));
+    const keys = skipKey ? skipKey.split(",") : [];
+    // Più caselle di fila: si chiede il giro una volta sola, a scelta finita.
+    const timer = setTimeout(
+      () => {
+        apiClient
+          .agendaDayRoute(token, dateStr, keys)
+          .then((result) => !cancelled && setAnswer({ dateStr, skipKey, route: result, error: null }))
+          .catch((err) => !cancelled && setAnswer({ dateStr, skipKey, route: null, error: err instanceof Error ? err.message : "Giro non disponibile, riprova." }));
+      },
+      keys.length > 0 ? 350 : 0,
+    );
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
-  }, [token, dateStr]);
+  }, [token, dateStr, skipKey]);
+
+  const skipped = new Set(skip);
+  const allStops = route ? [...route.stops, ...(route.skipped ?? [])] : [];
+  const groups = groupStopsByBand(allStops);
+  const chosenCount = allStops.filter((stop) => !skipped.has(stop.key)).length;
+  function setSkip(next: Set<string>) {
+    setSkipByDate((prev) => ({ ...prev, [dateStr]: allStops.map((stop) => stop.key).filter((key) => next.has(key)) }));
+  }
+  function toggleStop(key: string) {
+    const next = new Set(skipped);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    setSkip(next);
+  }
+  function toggleGroup(group: StopGroup) {
+    const next = new Set(skipped);
+    const allIn = group.stops.every((stop) => !next.has(stop.key));
+    for (const stop of group.stops) {
+      if (allIn) next.add(stop.key);
+      else next.delete(stop.key);
+    }
+    setSkip(next);
+  }
 
   const tomorrow = addDaysUtc(today, 1);
   const dayName = isSameDateUtc(date, today)
@@ -78,6 +155,68 @@ export function DayRouteSection({ token, today, onOpenStop }: { token: string; t
         Le tappe a domicilio in ordine di orario, con il tempo di strada tra l&apos;una e l&apos;altra.
       </p>
 
+      {allStops.length > 1 ? (
+        <div className="ag-rt-pick">
+          <button type="button" className="ag-rt-pick-toggle" aria-expanded={pickerOpen} aria-controls="ag-rt-pick-list" onClick={() => setPickerOpen((open) => !open)}>
+            <ListChecks size={18} aria-hidden />
+            <span className="ag-rt-pick-title">Scegli le tappe</span>
+            <span className={`ag-rt-pick-count${chosenCount < allStops.length ? " is-partial" : ""}`} aria-live="polite">
+              {chosenCount} di {allStops.length}
+            </span>
+            <ChevronDown size={18} aria-hidden className="ag-rt-pick-chevron" />
+          </button>
+          {pickerOpen ? (
+            <div id="ag-rt-pick-list" className="ag-rt-pick-body">
+              <p className="ag-muted ag-rt-pick-hint">Togli i lavori che non fai tu o che salti: il giro si ricalcola con quelli scelti.</p>
+              {groups.map((group) => {
+                const inCount = group.stops.filter((stop) => !skipped.has(stop.key)).length;
+                const groupTitle = `${group.label} · ${group.range}`;
+                return (
+                  <fieldset key={group.key} className="ag-rt-band">
+                    <legend className="sr-only">{groupTitle}</legend>
+                    <label className="ag-rt-band-head">
+                      <BandCheckbox
+                        checked={inCount === group.stops.length}
+                        mixed={inCount > 0 && inCount < group.stops.length}
+                        label={`Tutta la fascia ${groupTitle}`}
+                        onChange={() => toggleGroup(group)}
+                      />
+                      <span className="ag-rt-band-name">
+                        <b>{group.label}</b> {group.range}
+                      </span>
+                      <span className="ag-muted ag-rt-band-count">
+                        {inCount} di {group.stops.length}
+                      </span>
+                    </label>
+                    <ul className="ag-rt-band-list">
+                      {group.stops.map((stop) => (
+                        <li key={stop.key}>
+                          <label className={`ag-rt-stop${skipped.has(stop.key) ? " is-off" : ""}`}>
+                            <input type="checkbox" checked={!skipped.has(stop.key)} onChange={() => toggleStop(stop.key)} />
+                            <span className="ag-rt-stop-text">
+                              <b>
+                                {stop.title}
+                                {stop.arrivalTime ? <span className="ag-rt-arrival">Arrivo {stop.arrivalTime}</span> : null}
+                              </b>
+                              <span className="ag-muted">{stop.address ?? "Indirizzo non indicato"}</span>
+                            </span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  </fieldset>
+                );
+              })}
+              {skip.length > 0 ? (
+                <button type="button" className="ag-md-all ag-rt-reset" onClick={() => setSkip(new Set())}>
+                  Rimetti tutte le tappe
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {error ? (
         <div className="ag-banner error" role="alert" style={{ marginTop: 14 }}>
           {error}
@@ -85,9 +224,9 @@ export function DayRouteSection({ token, today, onOpenStop }: { token: string; t
       ) : route === null ? (
         <div style={{ height: 220, borderRadius: 16, background: "#f6f1ec", marginTop: 14 }} aria-busy="true" aria-label="Carico il giro" />
       ) : route.stops.length === 0 ? (
-        <p style={{ marginTop: 18, fontSize: 14.5 }}>Nessun lavoro a domicilio in questo giorno.</p>
+        <p style={{ marginTop: 18, fontSize: 14.5 }}>{allStops.length > 0 ? "Nessuna tappa scelta: rimetti almeno un lavoro per vedere il giro." : "Nessun lavoro a domicilio in questo giorno."}</p>
       ) : (
-        <>
+        <div className={updating ? "ag-rt-updating" : undefined} aria-busy={updating || undefined}>
           {tightCount > 0 ? (
             <div className="ag-banner error" role="status" style={{ marginTop: 14 }}>
               <TriangleAlert size={18} aria-hidden />
@@ -126,6 +265,7 @@ export function DayRouteSection({ token, today, onOpenStop }: { token: string; t
                     <span style={{ minWidth: 0 }}>
                       <b style={{ display: "block", fontSize: 14.5 }}>
                         {formatAppointmentTimeRange(stop.start, stop.end)} · {stop.title}
+                        {stop.arrivalTime ? <span className="ag-rt-arrival">Arrivo {stop.arrivalTime}</span> : null}
                       </b>
                       <span className="ag-muted" style={{ fontSize: 13 }}>
                         {stop.address ?? "Indirizzo non indicato"}
@@ -150,7 +290,7 @@ export function DayRouteSection({ token, today, onOpenStop }: { token: string; t
               </span>
             ) : null}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

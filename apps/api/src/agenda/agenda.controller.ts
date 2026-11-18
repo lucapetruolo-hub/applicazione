@@ -80,10 +80,11 @@ export class AgendaController {
     return this.agendaService.zoneDemand(req.user.userId);
   }
 
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  // 40 al minuto: togliendo e rimettendo le tappe il giro si ricalcola a ogni scelta.
+  @Throttle({ default: { limit: 40, ttl: 60_000 } })
   @Get("route")
-  route(@Req() req: AuthenticatedRequest, @Query("date") date: string) {
-    return this.dayRouteService.dayRoute(req.user.userId, date ?? "");
+  route(@Req() req: AuthenticatedRequest, @Query("date") date: string, @Query("skip") skip?: string) {
+    return this.dayRouteService.dayRoute(req.user.userId, date ?? "", typeof skip === "string" ? skip : undefined);
   }
 
   @Get("calendar-feed")
