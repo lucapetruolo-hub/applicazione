@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import {
   arrivalWindowText, arrivalWindowEndBefore,
   DEFAULT_QUOTE_PAYMENT_OPTIONS,
+  formatPhoneForDisplay,
   MAX_DEPOSIT_PERCENT,
   MAX_JOB_DAYS,
   formatAppointmentTimeRange,
@@ -83,6 +84,7 @@ import { ProfessionalProblemModal } from "@/components/ProfessionalProblemModal"
 import { CardButton } from "@/components/CardButton";
 import { RecurringVisitsBox } from "@/components/RecurringVisitsBox";
 import { ContactButton } from "@/components/ContactButton";
+import { ContactTile } from "@/components/ContactTile";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { ProfessionalInvoiceRequestBox } from "@/components/ProfessionalInvoiceRequestBox";
 import { JobDocumentsModal } from "@/components/JobDocumentsModal";
@@ -456,6 +458,8 @@ export function RequestCard({
   // preventivo inviato, altrimenti la fascia richiesta dal cliente fin
   // dall'invio (se nata da una fascia generica dell'agenda pubblica,
   // stesso campo già mostrato in /le-mie-richieste).
+  // Appuntamento scritto nei "Dettagli cliente" (allora in alto solo a scheda chiusa).
+  const appointmentInDetails = Boolean(booking?.scheduledAt) && (stage === "accettata" || stage === "completata" || stage === "annullata");
   const collapsedDateTime = booking?.scheduledAt
     ? { label: "Appuntamento", text: formatSlotRange(booking.scheduledAt, booking.scheduledEndAt) }
     : lead.quote?.estimatedStartDate
@@ -1023,7 +1027,10 @@ export function RequestCard({
             (richiesta esplicita dell'utente, con screenshot annotato) —
             prima stava in fondo, appena sopra la freccetta di
             apertura/chiusura scheda. */}
-        {collapsedDateTime ? (
+        {/* A scheda aperta l'appuntamento e l'indirizzo stanno già nei "Dettagli
+            cliente": in alto restano solo a scheda chiusa
+            (docs/changelog/2026-11-18-dettagli-cliente-chiari.md). */}
+        {collapsedDateTime && !(isOpen && appointmentInDetails) ? (
           <XStack alignItems="center" gap="1">
             <Icon name="calendar" size={14} color={brand.grafite70} />
             <Text fontSize={16} fontWeight="700" color={brand.grafite}>
@@ -1050,12 +1057,14 @@ export function RequestCard({
             </Text>
           </XStack>
         ) : null}
-        <XStack alignItems="center" gap="1">
-          <Icon name="map-pin" size={14} color={brand.grafite70} />
-          <Text fontSize={16} color={brand.grafite70}>
-            {isOnline ? `Zona: ${gr.city}` : (revealedAddress ?? gr.city)}
-          </Text>
-        </XStack>
+        {isOpen ? null : (
+          <XStack alignItems="center" gap="1">
+            <Icon name="map-pin" size={14} color={brand.grafite70} />
+            <Text fontSize={16} color={brand.grafite70}>
+              {isOnline ? `Zona: ${gr.city}` : (revealedAddress ?? gr.city)}
+            </Text>
+          </XStack>
+        )}
 
         <XStack
           alignSelf="center"
@@ -1211,7 +1220,7 @@ export function RequestCard({
                       </Text>
                     ) : null}
                   </YStack>
-                  {booking?.scheduledAt && (stage === "accettata" || stage === "completata" || stage === "annullata") ? (
+                  {appointmentInDetails && booking?.scheduledAt ? (
                     <ClientDetailRow icon="calendar">{formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}</ClientDetailRow>
                   ) : null}
                   {isOnline ? (
@@ -1222,11 +1231,11 @@ export function RequestCard({
                   {revealedPhone || revealedEmail || (!isOnline && revealedAddress) ? (
                     <YStack gap="2" paddingTop="1">
                       <XStack gap={6}>
-                        {revealedPhone ? <ClientContactButton href={`tel:${revealedPhone}`} icon="phone" label="Chiama" /> : null}
-                        {whatsAppLink ? <ClientContactButton href={whatsAppLink} icon="message-circle" label="WhatsApp" external /> : null}
-                        {revealedEmail ? <ClientContactButton href={`mailto:${revealedEmail}`} icon="mail" label="Email" /> : null}
+                        {revealedPhone ? <ContactTile href={`tel:${revealedPhone}`} icon="phone" label="Chiama" /> : null}
+                        {whatsAppLink ? <ContactTile href={whatsAppLink} icon="message-circle" label="WhatsApp" external /> : null}
+                        {revealedEmail ? <ContactTile href={`mailto:${revealedEmail}`} icon="mail" label="Email" /> : null}
                         {!isOnline && revealedAddress ? (
-                          <ClientContactButton
+                          <ContactTile
                             href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(revealedAddress)}`}
                             icon="map-pin"
                             label="Mappa"
@@ -1238,7 +1247,7 @@ export function RequestCard({
                           pulsanti sopra fanno già chiamare e scrivere. */}
                       {revealedPhone || revealedEmail ? (
                         <Text fontSize={13} color={brand.grafite70} style={{ overflowWrap: "anywhere", userSelect: "text" }}>
-                          {[revealedPhone, revealedEmail].filter(Boolean).join(" · ")}
+                          {[revealedPhone ? formatPhoneForDisplay(revealedPhone) : null, revealedEmail].filter(Boolean).join(" · ")}
                         </Text>
                       ) : null}
                     </YStack>
@@ -2299,36 +2308,5 @@ function ClientDetailRow({ icon, children }: { icon: IconName; children: ReactNo
         {children}
       </Text>
     </XStack>
-  );
-}
-
-/** Pulsante dei contatti del cliente: tutti della stessa forma (icona sopra,
- *  scritta sotto, come la scheda di un contatto sul telefono), divisi in parti
- *  uguali sulla riga sia da telefono sia da computer. */
-function ClientContactButton({ href, icon, label, external }: { href: string; icon: IconName; label: string; external?: boolean }) {
-  return (
-    <a
-      href={href}
-      target={external ? "_blank" : undefined}
-      rel={external ? "noreferrer" : undefined}
-      aria-label={label}
-      style={{ flex: "1 1 0", minWidth: 0, textDecoration: "none" }}
-    >
-      <YStack
-        minHeight={60}
-        alignItems="center"
-        justifyContent="center"
-        gap={4}
-        paddingHorizontal={4}
-        paddingVertical={8}
-        borderRadius={10}
-        backgroundColor={`${brand.cianografiaVelo} hover:#CDE7E7`}
-      >
-        <Icon name={icon} size={20} color={brand.cianografiaScuro} strokeWidth={2} />
-        <Text fontSize="13px xs:12px" fontWeight="700" color={brand.cianografiaScuro} numberOfLines={1}>
-          {label}
-        </Text>
-      </YStack>
-    </a>
   );
 }

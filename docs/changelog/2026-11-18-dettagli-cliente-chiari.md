@@ -30,3 +30,22 @@ non c'è il pulsante Mappa.
 **Verifica**: foto da telefono (390 px) e computer (1280 px) in
 `anteprime/dettagli-cliente/` dei file del progetto, con nome della richiesta
 diverso dal nome dell'account; `tsc` e `eslint` del sito verdi.
+
+## Secondo giro (stesso giorno, sì di Luca alle tre migliorie)
+
+- **Numero con gli spazi**: `formatPhoneForDisplay` in
+  `packages/shared/src/phoneCountries.ts` ("+39 333 444 5555", "+39 06 1234
+  5678"), con prova in `phoneDisplay.test.ts`. Solo per leggerlo: i link `tel:`
+  usano il numero salvato.
+- **In alto nella scheda del professionista**: appuntamento e indirizzo restano
+  a scheda chiusa (è lì che servono, domanda di Luca) e spariscono a scheda
+  aperta, dove li scrive già il riquadro "Dettagli cliente".
+- **Stessi pulsanti dal lato del cliente** (`BookingSection.tsx`): Chiama e
+  Messaggi con la stessa forma (componente comune
+  `apps/web/src/components/ContactTile.tsx`) e il numero del professionista in
+  piccolo sotto. Niente WhatsApp né email lì: per il cliente la chat del sito
+  basta e tiene la cronologia.
+
+**Verifica**: foto `dopo2-*` in `anteprime/dettagli-cliente/` (scheda aperta e
+chiusa del professionista, scheda del cliente, telefono e computer); `tsc`,
+`pnpm lint` del sito e prova del numero verdi.
