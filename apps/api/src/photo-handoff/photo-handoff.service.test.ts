@@ -44,11 +44,14 @@ function tables() {
         rows.push({ openedAt: null, sentCount: 0, ...data });
       },
       findUnique: async ({ where }: { where: { codeHash: string } }) => rows.find((r) => r.codeHash === where.codeHash) ?? null,
-      updateMany: async ({ where, data }: { where: Record<string, unknown>; data: Partial<Row> }) => {
+      updateMany: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
         let count = 0;
         for (const row of rows) {
           if (!matches(row, where)) continue;
-          Object.assign(row, data);
+          const { sentCount, ...rest } = data as Omit<Partial<Row>, "sentCount"> & { sentCount?: number | { decrement: number } };
+          Object.assign(row, rest);
+          if (typeof sentCount === "number") row.sentCount = sentCount;
+          else if (sentCount) row.sentCount -= sentCount.decrement;
           count++;
         }
         return { count };
@@ -92,8 +95,31 @@ describe("Scatta dal telefono (docs/changelog/2026-11-16-scatta-dal-telefono.md)
     expect(taken.status === "sent" && taken.photo.equals(JPEG)).toBe(true);
     expect(db.photos).toHaveLength(0);
     expect(await service.take(code, key)).toEqual({ status: "done" });
+    // Il codice resta finché il computer chiude la finestra.
+    await service.cancel(code, key);
     expect(db.rows).toHaveLength(0);
     expect(await service.take(code, key)).toEqual({ status: "expired" });
+  });
+
+  it("il computer toglie una foto con la X: il posto torna libero (docs/changelog/2026-11-18-foto-dal-telefono-anteprime.md)", async () => {
+    const db = tables();
+    const service = new PhotoHandoffService(db as never);
+    const { code, key } = await service.create(2);
+    await service.upload(code, JPEG, "image/jpeg");
+    await service.upload(code, JPEG2, "image/jpeg");
+    expect(await service.upload(code, JPEG, "image/jpeg")).toEqual({ result: "full" });
+    await service.take(code, key);
+    await service.take(code, key);
+    expect(await service.take(code, key)).toEqual({ status: "done" });
+    // Solo con la chiave del computer.
+    expect(await service.release(code, code)).toBeNull();
+    expect(await service.release(code, key)).toEqual({ sent: 1, max: 2 });
+    expect(await service.open(code)).toEqual({ status: "opened", sent: 1, max: 2 });
+    expect(await service.upload(code, JPEG, "image/jpeg")).toEqual({ result: "ok", sent: 2, max: 2 });
+    // Mai sotto zero.
+    await service.release(code, key);
+    await service.release(code, key);
+    expect(await service.release(code, key)).toEqual({ sent: 0, max: 2 });
   });
 
   it("più foto con lo stesso codice (docs/changelog/2026-11-17-piu-foto-dal-telefono.md): una alla volta, in ordine", async () => {

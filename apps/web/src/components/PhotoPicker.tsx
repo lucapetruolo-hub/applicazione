@@ -140,6 +140,7 @@ export function PhotoPicker({
                   <PhoneHandoff
                     maxPhotos={maxPhotos}
                     onPhoto={onFile}
+                    onPhotos={onFiles}
                     onDone={close}
                     onChooseFile={() => pick(galleryRef.current)}
                     onClose={close}
