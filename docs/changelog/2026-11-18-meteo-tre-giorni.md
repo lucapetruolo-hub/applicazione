@@ -20,6 +20,22 @@ passaggio del mouse o con tocco", senza temperatura.
   giorno, che resta "apri il giorno" (un pulsante dentro un pulsante non è
   accessibile).
 
+**Secondo giro** (Luca, stesso giorno: "sì, possiamo aggiungerci oltre il nome
+del tempo anche la città, così è chiaro"):
+- Il meteo di ogni giorno dell'agenda è del comune del primo lavoro a
+  domicilio del giorno, come già in "Oggi"; senza lavori a domicilio, della
+  zona del profilo. Al massimo 6 comuni diversi nei 14 giorni (ognuno è una
+  chiamata a Open-Meteo, con un'ora di cache), oltre si usa la zona del
+  profilo. `WeatherDayAlert.place` porta il nome del comune; la ricerca dei
+  lavori del giorno è in comune con "Oggi" (`weatherPlaces`).
+- Nuvoletta grafica subito al passaggio del mouse sull'icona: tempo sopra,
+  comune sotto ("Nuvoloso / Roma"), larga quanto la colonna così non esce
+  mai dalla scheda; solo con il mouse (`hover: hover`). Nel giorno aperto:
+  "1 lavoro · 9 h libere · Nuvoloso · Roma".
+- `comuneInAddress` riconosce anche la provincia senza parentesi
+  ("00186 Roma RM"), il formato degli indirizzi scritti a mano nei lavori
+  esterni.
+
 **Verifica**: prove unitarie in `apps/api/src/agenda/agenda-tools.test.ts`
 (sereno nei 3 giorni, solo fenomeni dopo, giorni passati saltati); foto da
 computer e telefono con il meteo vero di Open-Meteo in

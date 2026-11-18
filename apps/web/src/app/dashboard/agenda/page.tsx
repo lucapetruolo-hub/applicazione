@@ -23,7 +23,7 @@ import {
   type ExternalJob,
   type ProfessionalBooking,
   type ProfessionalLead,
-  type WeatherCondition,
+  type WeatherDayAlert,
 } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -343,7 +343,7 @@ function DashboardAgendaContent() {
 
   // Nuova agenda (docs/CHANGELOG.md §288).
   const [filters, setFilters] = useState<Set<AgendaFilter>>(() => new Set(ALL_FILTERS));
-  const [weather, setWeather] = useState<Map<string, WeatherCondition>>(new Map());
+  const [weather, setWeather] = useState<Map<string, WeatherDayAlert>>(new Map());
   const [offlineSavedAt, setOfflineSavedAt] = useState<string | null>(null);
   const [showCalendarLink, setShowCalendarLink] = useState(false);
   const [completingBooking, setCompletingBooking] = useState<ProfessionalBooking | null>(null);
@@ -542,7 +542,7 @@ function DashboardAgendaContent() {
     if (!token) return;
     apiClient
       .agendaWeather(token)
-      .then((alerts) => startTransition(() => setWeather(new Map(alerts.map((a) => [a.date, a.kind])))))
+      .then((alerts) => startTransition(() => setWeather(new Map(alerts.map((a) => [a.date, a])))))
       .catch(() => {});
     apiClient
       .agendaWeekTemplate(token)
@@ -1583,7 +1583,7 @@ function DashboardAgendaContent() {
               >
                 {weekdayShortLabel(date)} <b>{date.getUTCDate()}</b>
                 {withWeather && weather.get(dateStr) ? (
-                  <WeatherIcon kind={weather.get(dateStr)!} size={12} />
+                  <WeatherIcon alert={weather.get(dateStr)!} size={12} />
                 ) : withWeather && busyDates.has(dateStr) ? (
                   <u aria-hidden />
                 ) : null}
@@ -2180,7 +2180,7 @@ function DashboardAgendaContent() {
                       {bookingView === "day" && dayWeather ? (
                         <>
                           {" · "}
-                          <WeatherIcon kind={dayWeather} size={13} withLabel />
+                          <WeatherIcon alert={dayWeather} size={13} mode="label" />
                         </>
                       ) : null}
                     </small>

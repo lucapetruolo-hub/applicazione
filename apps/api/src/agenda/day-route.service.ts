@@ -81,7 +81,7 @@ export function orderStops<T extends Point & { order: number }>(stops: T[], orig
  */
 export function comuneInAddress(address: string | null): string | null {
   if (!address) return null;
-  const parts = address.split(",").map((part) => part.replace(/\b\d{5}\b|\([A-Z]{2}\)/g, "").trim()).filter(Boolean).reverse();
+  const parts = address.split(",").map((part) => part.replace(/\b\d{5}\b|\([A-Z]{2}\)|\s[A-Z]{2}$/g, "").trim()).filter(Boolean).reverse();
   for (const part of parts) {
     const comune = findComuneByName(part);
     if (comune) return comune.name;

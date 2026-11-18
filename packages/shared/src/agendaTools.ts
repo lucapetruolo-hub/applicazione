@@ -84,7 +84,12 @@ export const WEATHER_CONDITION_LABEL: Record<WeatherCondition, string> = {
  * col sereno), più avanti solo col maltempo (richiesta di Luca,
  * docs/changelog/2026-11-18-meteo-tre-giorni.md).
  */
-export type WeatherDayAlert = { date: string; kind: WeatherCondition };
+export type WeatherDayAlert = {
+  date: string;
+  kind: WeatherCondition;
+  /** Comune del meteo: del primo lavoro a domicilio del giorno, o della zona del profilo. */
+  place?: string;
+};
 
 /** Giorni con l'icona meteo sempre, anche col bel tempo: oggi e i due successivi. */
 export const WEATHER_ALWAYS_DAYS = 3;

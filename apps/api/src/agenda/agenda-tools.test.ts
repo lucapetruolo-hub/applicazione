@@ -151,6 +151,7 @@ describe("comuneInAddress", () => {
   it("trova il comune nell'indirizzo scritto in un solo campo", () => {
     expect(comuneInAddress("Via Isonzo 40, Latina")).toBe("Latina");
     expect(comuneInAddress("Via Roma 1, 04011 Aprilia (LT)")).toBe("Aprilia");
+    expect(comuneInAddress("Via del Corso 10, 00186 Roma RM")).toBe("Roma");
     expect(comuneInAddress("Via senza città")).toBeNull();
     expect(comuneInAddress(null)).toBeNull();
   });
