@@ -1781,7 +1781,7 @@ export function GuidedRequestForm({
                 onFile={addPhoto}
                 onFiles={addPhotos}
                 className="guided-photo guided-photo-add"
-                label={photoFirstOnly ? "Aggiungi una foto del problema" : "Aggiungi foto o video"}
+                label={photoFirstOnly ? "Aggiungi una foto del problema" : "Aggiungi una foto o un video"}
               >
                 <FieldCameraIcon tone={suggestionsOn ? "sfumato" : "verde"} />
                 <span aria-hidden="true">{photoFirstOnly ? "Foto del problema" : photos.length === 0 ? "Foto o video" : "Aggiungi"}</span>
