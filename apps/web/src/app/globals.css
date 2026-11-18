@@ -6921,7 +6921,7 @@ a.admin-kpi:hover {
   border-bottom: none;
 }
 .week-slots-label {
-  width: 96px;
+  width: 100px;
   flex: none;
   font-size: 14px;
   font-weight: 700;
@@ -6932,6 +6932,12 @@ a.admin-kpi:hover {
 }
 .week-slots-weekday {
   text-transform: capitalize;
+}
+/* Data in grigio e più leggera sotto il giorno, come le colonne del profilo. */
+.week-slots-date {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: #5e5a54;
 }
 .week-slots-dot {
   display: inline-block;
@@ -6950,6 +6956,59 @@ a.admin-kpi:hover {
   font-weight: 600;
   color: #5e5a54;
 }
+/* Stesso aspetto dell'agenda del profilo pubblico (pillole verde chiaro,
+   testo verde scuro, al completo in grigio):
+   docs/changelog/2026-11-18-scelta-data-come-profilo.md. */
+/* Fasce in colonne uguali (come le righe dell'agenda del profilo): da
+   computer 4 in fila, da telefono 2, e gli stessi orari restano incolonnati
+   da un giorno all'altro. */
+.week-slots-day .slot-pills {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 8px;
+  max-width: 600px;
+}
+.week-slots-day .slot-pill {
+  justify-content: center;
+  padding: 0 6px;
+  text-align: center;
+  font-size: 14px;
+  border-color: transparent;
+  background: var(--c-cianografiaVelo, #dff0f0);
+  color: var(--c-cianografiaScuro, #186163);
+  font-weight: 700;
+}
+.week-slots-day .slot-pill:hover {
+  border-color: #247c7c;
+}
+.week-slots-day .slot-pill.is-on {
+  border-color: #247c7c;
+  background: #1e6b6e;
+  color: #fff;
+}
+.week-slots-day .slot-pill.is-full {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: #5e5a54;
+  font-weight: 600;
+  opacity: 0.55;
+  cursor: default;
+}
+.week-slots-day .slot-pill.is-full:hover {
+  border-color: transparent;
+}
+.week-slots-none {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+  color: #5e5a54;
+  opacity: 0.7;
+}
 /* Sul telefono le due fasce di un giorno stanno su una riga. */
 @media (max-width: 520px) {
   .week-slots-day {
@@ -6964,6 +7023,7 @@ a.admin-kpi:hover {
     display: block;
   }
   .week-slots-day .slot-pills {
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
     gap: 6px;
   }
   .week-slots-day .slot-pill {
@@ -7168,6 +7228,11 @@ a.admin-kpi:hover {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+/* Icona della scheda "Data e orario scelti": i colori delle pillole dell'agenda. */
+.slot-choice-icon {
+  background: var(--c-cianografiaVelo, #dff0f0);
+  color: var(--c-cianografiaScuro, #186163);
 }
 .cat-choice-text {
   flex: 1;
