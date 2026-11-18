@@ -5,6 +5,7 @@ import { useDialogFocus } from "@/lib/useDialogFocus";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { isVideoUrl } from "@/lib/media";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
+import { noSaveProps } from "@/lib/noSaveMedia";
 
 /**
  * Overlay a schermo intero per aprire in grande le foto (o i video, vedi
@@ -88,7 +89,16 @@ export function PhotoLightbox({
     return isVideoUrl(url) ? (
       // Video caricati dagli utenti: non esistono sottotitoli da collegare.
       // eslint-disable-next-line jsx-a11y/media-has-caption
-      <video src={url} controls autoPlay={i === initialIndex} playsInline className="lightbox-media" />
+      <video
+        src={url}
+        controls
+        controlsList="nodownload noplaybackrate"
+        disablePictureInPicture
+        autoPlay={i === initialIndex}
+        playsInline
+        {...noSaveProps}
+        className="lightbox-media no-save-media"
+      />
     ) : (
       // `<img>` grezzo deliberato, non `next/image`: la foto può avere
       // qualunque aspect ratio (caricata dall'utente, mai tracciata nel
@@ -100,7 +110,8 @@ export function PhotoLightbox({
         src={url}
         alt={photos.length > 1 ? `Foto ${i + 1} di ${photos.length}` : ""}
         loading={Math.abs(i - initialIndex) > 1 ? "lazy" : undefined}
-        className="lightbox-media"
+        {...noSaveProps}
+        className="lightbox-media no-save-media"
       />
     );
   }

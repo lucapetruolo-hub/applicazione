@@ -1720,8 +1720,8 @@ export function GuidedRequestForm({
           <FieldLabel>Foto per il professionista</FieldLabel>
           <Text fontSize={13} color={brand.grafite70}>
             {firstMustBePhoto
-              ? "Prima una foto del problema da vicino, poi altre foto o video. "
-              : `Fino a ${MAX_PHOTOS} foto o video del problema, anche più insieme. `}
+              ? "Prima una foto del problema da vicino, poi altre foto o video (massimo 1 minuto). "
+              : `Fino a ${MAX_PHOTOS} foto o video del problema, anche più insieme; i video al massimo 1 minuto. `}
             Le vede il professionista: niente numeri di telefono, documenti o persone.
           </Text>
           <div
@@ -1776,6 +1776,7 @@ export function GuidedRequestForm({
               <PhotoPicker
                 accept={photoFirstOnly ? "image/*" : "image/*,video/*"}
                 allowVideo={!photoFirstOnly}
+                videoHint="Massimo 1 minuto"
                 maxPhotos={MAX_PHOTOS - photos.length}
                 onFile={addPhoto}
                 onFiles={addPhotos}
