@@ -81,6 +81,7 @@ const publicRoutes = [
   "POST /photo-handoff/:code/cancel",
   "POST /photo-handoff/:code/open",
   "POST /photo-handoff/:code/photo",
+  "POST /photo-handoff/:code/release",
   "POST /photo-handoff/:code/take",
   // "Lavori più cercati" della home (docs/changelog/2026-11-07-lavori-piu-cercati-home.md).
   "GET /popular-jobs",
