@@ -16,6 +16,8 @@ import {
   type ProfessionalCategorySlug,
   type ProfessionalSearchPage,
   type ResultFilters,
+  PROVINCE_NAMES,
+  provinceOfCity,
 } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { SITE_INDEXABLE } from "@/lib/siteIndexing";
@@ -223,6 +225,15 @@ export async function CategoryResults({
         .then((reviews) => reviews.filter((review) => review.professional.city.trim().toLowerCase() === comune.name.toLowerCase()))
         .catch((): CityReview[] => [])
     : Promise.resolve([]);
+  // Richieste del mese nella provincia, solo da 10 in su (decisione di Luca, docs/changelog/2026-11-18-bacheca-cliente.md).
+  const provinceCode = comune ? provinceOfCity(comune.name) : null;
+  const demandPromise =
+    provinceCode && !loadFailed && page.facts.count > 0
+      ? apiClient
+          .getRequestDemand(category.slug, provinceCode)
+          .then((demand) => (demand.count ? { count: demand.count, provinceName: PROVINCE_NAMES[provinceCode] ?? provinceCode } : null))
+          .catch(() => null)
+      : Promise.resolve(null);
 
   // Tutti i professionisti della categoria (nessun filtro città, ma stesso
   // filtro online e stessi filtri): alimenta i puntini sulla mappa così,
@@ -255,6 +266,7 @@ export async function CategoryResults({
           facts={page.facts}
           pricePageHref={pricePagePromise}
           reviews={reviewsPromise}
+          monthRequests={demandPromise}
           subTag={subTag}
         />
       </Suspense>
@@ -292,10 +304,15 @@ export async function CategoryResults({
 async function CityFactsWhenReady({
   pricePageHref,
   reviews,
+  monthRequests,
   ...props
-}: Omit<ComponentProps<typeof CityFacts>, "pricePageHref" | "reviews"> & { pricePageHref: Promise<string | null>; reviews: Promise<CityReview[]> }) {
-  const [href, reviewList] = await Promise.all([pricePageHref, reviews]);
-  return <CityFacts {...props} pricePageHref={href} reviews={reviewList} />;
+}: Omit<ComponentProps<typeof CityFacts>, "pricePageHref" | "reviews" | "monthRequests"> & {
+  pricePageHref: Promise<string | null>;
+  reviews: Promise<CityReview[]>;
+  monthRequests: Promise<{ count: number; provinceName: string } | null>;
+}) {
+  const [href, reviewList, demand] = await Promise.all([pricePageHref, reviews, monthRequests]);
+  return <CityFacts {...props} pricePageHref={href} reviews={reviewList} monthRequests={demand} />;
 }
 
 async function PopularServicesLinksWhenReady({

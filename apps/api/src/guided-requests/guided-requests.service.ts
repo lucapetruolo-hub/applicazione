@@ -555,6 +555,8 @@ export class GuidedRequestsService {
               professionalProfileId: targetProfile?.id,
               forwardIfNoReply: !!targetProfile && input.forwardIfNoReply,
               forwardAt: targetProfile && input.forwardIfNoReply ? computeDirectForwardAt(input.isUrgent) : null,
+              // "Mostra in Lavori cercati" spento dal cliente: mai in bacheca.
+              boardOptOut: input.boardAllowed === false,
               chosenProfileIds: chosenProfiles.map((profile) => profile.id),
               fromProfessionalLink,
               preferredDate: resolvedSlot?.date,
@@ -724,6 +726,19 @@ export class GuidedRequestsService {
     };
   }
 
+  /**
+   * "Togli dai lavori cercati" (decisione di Luca, docs/changelog/2026-11-18-bacheca-cliente.md):
+   * la scheda sparisce subito dalla bacheca; rimessa, rientra al prossimo giro
+   * se ne ha ancora diritto. Solo il cliente della richiesta.
+   */
+  async setBoardAllowed(clientId: string, guidedRequestId: string, allowed: boolean): Promise<void> {
+    const updated = await this.prisma.guidedRequest.updateMany({
+      where: { id: guidedRequestId, clientId, deletedByClientAt: null },
+      data: { boardOptOut: !allowed },
+    });
+    if (updated.count === 0) throw new NotFoundException("Richiesta non trovata.");
+  }
+
   /** Richieste (con relativi lead) inviate dal cliente autenticato. */
   async listForClient(clientId: string) {
     const requests = await this.prisma.guidedRequest.findMany({
@@ -817,6 +832,9 @@ export class GuidedRequestsService {
         // In attesa di un mestiere: il cliente vede sempre il mestiere che ha chiesto.
         categoryLabel: request.waitingTrade ?? request.category.label,
         waitingTrade: request.waitingTrade ? { name: request.waitingTrade, key: request.waitingTradeKey } : null,
+        // "Lavori cercati": in bacheca adesso e scelta del cliente (docs/changelog/2026-11-18-bacheca-cliente.md).
+        onBoard: request.boardAt !== null && !request.boardOptOut,
+        boardOptOut: request.boardOptOut,
         description: request.description,
         city: request.city,
         address: request.address,

@@ -16,6 +16,12 @@ const PHRASES = [
   // Sembrava che il lavoro lo facesse il sito (decisione di Luca del 17/11/2026,
   // docs/changelog/2026-11-17-richieste-in-attesa.md).
   /\bce ne occupiamo noi\b/i,
+  // Bacheca "Lavori cercati": sono richieste di clienti, non lavoro che
+  // assegniamo noi (direttiva UE 2024/2831, docs/changelog/2026-11-18-bacheca-cliente.md).
+  /\blavori disponibili\b/i,
+  /\bincarichi (disponibili|da prendere|assegnati)\b/i,
+  /\bturni di lavoro\b/i,
+  /\bofferte di lavoro\b/i,
 ];
 // Canali che il sito non ha: i promemoria e gli avvisi arrivano per email e
 // su WhatsApp, mai per SMS (decisione di Luca del 28/10/2026,

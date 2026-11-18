@@ -25,6 +25,8 @@ import {
   guidedRequestUpdateSchema,
   guidedRequestUserStateSchema,
   requestWithdrawSchema,
+  requestBoardSettingSchema,
+  type RequestBoardSettingInput,
   type RequestWithdrawInput,
   timelineUpdateSchema,
   type GuidedRequestInput,
@@ -268,6 +270,14 @@ export class GuidedRequestsController {
   @HttpCode(204)
   restore(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
     return this.guidedRequestsService.restoreDeletedByClient(req.user.userId, id);
+  }
+
+  /** "Togli dai lavori cercati" o "Mostra in Lavori cercati" (docs/changelog/2026-11-18-bacheca-cliente.md): solo il cliente della richiesta. */
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id/board")
+  @HttpCode(204)
+  setBoard(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(requestBoardSettingSchema)) body: RequestBoardSettingInput) {
+    return this.guidedRequestsService.setBoardAllowed(req.user.userId, id, body.allowed);
   }
 
   /** Stato personale della scheda (archivia, silenzia, letta/da leggere, promemoria) — cliente o professionista. */

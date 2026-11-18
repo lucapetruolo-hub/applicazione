@@ -1,7 +1,7 @@
 import { BadRequestException, Body, Controller, Get, HttpCode, Post, Query, Req, UseGuards } from "@nestjs/common";
 import type { Request } from "express";
 import { Throttle } from "@nestjs/throttler";
-import { boardAlertSchema, boardReplySchema, isBoardTrade, PROVINCE_NAMES, type BoardAlertInput, type BoardReplyInput } from "@professionisti/shared";
+import { boardAlertSchema, boardReplySchema, isBoardTrade, isProfessionalCategorySlug, PROVINCE_NAMES, type BoardAlertInput, type BoardReplyInput } from "@professionisti/shared";
 import { ShortCache, SUMMARY_CACHE_MS } from "../common/short-cache";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
@@ -19,6 +19,7 @@ import { RequestBoardService } from "./request-board.service";
 export class RequestBoardController {
   private readonly pages = new ShortCache<Awaited<ReturnType<RequestBoardService["list"]>>>(SUMMARY_CACHE_MS);
   private readonly summaries = new ShortCache<Awaited<ReturnType<RequestBoardService["summary"]>>>(SUMMARY_CACHE_MS);
+  private readonly demands = new ShortCache<Awaited<ReturnType<RequestBoardService["demand"]>>>(SUMMARY_CACHE_MS);
 
   constructor(private readonly board: RequestBoardService) {}
 
@@ -35,6 +36,15 @@ export class RequestBoardController {
   @Get("summary")
   summary() {
     return this.summaries.get("tutte", () => this.board.summary());
+  }
+
+  /** Richieste del mese per mestiere e provincia, per le pagine /cerca: solo un numero, da 10 in su. */
+  @Get("demand")
+  demand(@Query("categoria") category?: string, @Query("provincia") province?: string) {
+    const code = province?.trim().toUpperCase() ?? "";
+    const slug = category?.trim() ?? "";
+    if (!isProfessionalCategorySlug(slug) || !PROVINCE_NAMES[code]) throw new BadRequestException("Mestiere o provincia non validi.");
+    return this.demands.get(`${slug}|${code}`, () => this.board.demand(slug, code));
   }
 
   @Throttle({ default: { limit: 20, ttl: 60_000 } })

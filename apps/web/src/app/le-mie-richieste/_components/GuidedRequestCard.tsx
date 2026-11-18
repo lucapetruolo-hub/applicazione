@@ -528,6 +528,17 @@ export function GuidedRequestCard({
     }
   }
 
+  // "Togli dai lavori cercati" / "Mostra in Lavori cercati" (docs/changelog/2026-11-18-bacheca-cliente.md).
+  async function handleBoard(allowed: boolean) {
+    setError(null);
+    try {
+      await apiClient.setGuidedRequestBoard(token, request.id, allowed);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    }
+  }
+
   async function handleCancelBooking(): Promise<void> {
     if (!booking) return;
     await apiClient.cancelMyBooking(token, booking.id);
@@ -817,6 +828,20 @@ export function GuidedRequestCard({
       menuActions.push({ icon: "rotate-ccw", text: "Chiedi di riaprire", onPress: handleReopenBooking });
     }
   } else if (!booking) {
+    // "Lavori cercati": solo per le richieste generali non urgenti ancora aperte.
+    const generalRequest = !request.professionalProfileId && (request.chosenProfileIds ?? []).length === 0 && !request.isUrgent;
+    if (generalRequest && request.status !== "CLOSED") {
+      menuActions.push(
+        request.boardOptOut
+          ? { icon: "eye", text: "Mostra in Lavori cercati", hint: "Senza nome, foto e indirizzo", onPress: () => void handleBoard(true) }
+          : {
+              icon: "eye-off",
+              text: "Togli dai lavori cercati",
+              hint: request.onBoard ? "Ora la vedono anche i professionisti non iscritti" : "Non la mostriamo ai professionisti non iscritti",
+              onPress: () => void handleBoard(false),
+            },
+      );
+    }
     // Una sola voce finché la richiesta non è diventata un lavoro (§343, al
     // posto di "Annulla richiesta" ed "Elimina definitivamente" del §130).
     menuActions.push({ icon: "trash-2", text: "Elimina richiesta", hint: "La ritiri anche per i professionisti", tone: "danger", onPress: () => setShowDeleteModal(true) });

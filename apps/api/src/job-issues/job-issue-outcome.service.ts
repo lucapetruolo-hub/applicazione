@@ -400,6 +400,8 @@ export class JobIssueOutcomeService {
         timing: original.timing ?? undefined,
         serviceMode: original.serviceMode ?? "HOME",
         forwardIfNoReply: false,
+        // Stessa scelta del cliente sulla richiesta di partenza.
+        boardAllowed: !original.boardOptOut,
       },
       { excludeProfileId: issue.booking.professionalProfileId },
     );

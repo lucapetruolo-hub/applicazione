@@ -30,6 +30,7 @@ import { COUNTED_USER, countingFrom, sinceLaunch } from "../site-counts/counted"
 import { ProblemMatchService } from "./problem-match.service";
 import { ServiceNamesService } from "./service-names.service";
 import { ServiceCatalogService } from "./service-catalog.service";
+import { boardListedWhere } from "../request-board/board-rules";
 
 /** Un nome scritto a mano da almeno tanti professionisti si propone da unire. */
 export const HANDWRITTEN_SUGGEST_MIN = 3;
@@ -430,7 +431,28 @@ export class ProblemMatchAdminService {
       ...rows.map((row) => ({ trade: row.trade, zone: row.zone })),
       ...old.map((row) => ({ trade: waitingTradeName({ key: row.outOfService, name: row.missingTrade }), zone: missingTradeZone(row.city) })),
     ]);
-    return { groups: groupWaitingRequests(rows), rows, mostRequested };
+    return { groups: groupWaitingRequests(rows), rows, mostRequested, board: await this.boardCounts(since, now) };
+  }
+
+  /**
+   * Misure della bacheca "Lavori cercati" (docs/changelog/2026-11-18-bacheca-cliente.md):
+   * quante richieste si vedono, quanti professionisti hanno risposto e con
+   * quanti preventivi, chi aspetta. Solo numeri, mai i contatti.
+   */
+  private async boardCounts(since: Date, now: Date) {
+    const [listed, optedOut, boardLeads, claimsPending, alertsPending] = await Promise.all([
+      this.prisma.guidedRequest.count({ where: boardListedWhere(now) }),
+      this.prisma.guidedRequest.count({ where: { boardAt: { not: null }, boardOptOut: true, createdAt: { gte: since } } }),
+      this.prisma.lead.findMany({ where: { fromBoardAt: { gte: since } }, select: { guidedRequestId: true, professionalProfileId: true }, take: 2000 }),
+      this.prisma.boardClaim.count(),
+      this.prisma.boardAlert.count(),
+    ]);
+    const quotes = boardLeads.length
+      ? await this.prisma.quote.count({
+          where: { OR: boardLeads.map((lead) => ({ guidedRequestId: lead.guidedRequestId, professionalProfileId: lead.professionalProfileId })) },
+        })
+      : 0;
+    return { listed, optedOut, replies: boardLeads.length, quotes, claimsPending, alertsPending };
   }
 
   async takeovers(status: "OPEN" | "DONE") {

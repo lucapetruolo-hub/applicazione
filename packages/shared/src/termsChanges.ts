@@ -76,6 +76,18 @@ export const TERMS_CHANGES: readonly TermsChange[] = [
     // Prima del lancio: nessun avviso agli account di prova.
     notify: false,
   },
+  {
+    // Bacheca "Lavori cercati" (docs/changelog/2026-11-18-bacheca-cliente.md).
+    version: "2026-11-18",
+    publishedAt: "2026-11-18",
+    effectiveAt: "2026-11-18",
+    summary: [
+      "Le richieste rimaste senza preventivi possono comparire, senza dati personali, nella pagina pubblica \"Lavori cercati\": il cliente le può togliere quando vuole.",
+      "Dalla pagina \"Lavori cercati\" un professionista risponde solo alle richieste del suo mestiere entro 100 km; al massimo 5 preventivi per richiesta.",
+    ],
+    // Prima del lancio: nessun avviso agli account di prova.
+    notify: false,
+  },
 ];
 
 export function findTermsChange(version: string): TermsChange | undefined {

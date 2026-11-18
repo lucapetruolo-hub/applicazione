@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { BoardReplyResult } from "@professionisti/shared";
+import type { BoardCard, BoardReplyResult } from "@professionisti/shared";
+import { BoardCards } from "@/components/requestBoard/BoardCards";
 import { useAuth } from "@/lib/AuthContext";
 import { apiClient } from "@/lib/apiClient";
 import styles from "@/components/requestBoard/BoardPage.module.css";
@@ -21,6 +22,9 @@ type View = {
   title: string;
   text: string;
   cta?: { label: string; href: string };
+  /** Con "troppo lontano": le richieste dello stesso mestiere più vicine ("sì" di Luca del 18/11). */
+  nearby?: BoardCard[];
+  now?: number;
 };
 
 function viewOf(result: BoardReplyResult): View {
@@ -41,10 +45,17 @@ function viewOf(result: BoardReplyResult): View {
         cta: { label: "Vai al profilo", href: "/dashboard/profilo" },
       };
     case "too-far":
-      return {
-        title: "Il lavoro è troppo lontano",
-        text: "Si risponde solo ai lavori entro 100 km dalla zona del tuo profilo.",
-      };
+      return result.nearby && result.nearby.length > 0
+        ? {
+            title: "Il lavoro è troppo lontano",
+            text: `Si risponde solo ai lavori entro 100 km dalla zona del tuo profilo. Questi${trade ? ` lavori da ${trade}` : ""} sono più vicini a te:`,
+            nearby: result.nearby,
+            now: Date.now(),
+          }
+        : {
+            title: "Il lavoro è troppo lontano",
+            text: "Si risponde solo ai lavori entro 100 km dalla zona del tuo profilo.",
+          };
     case "no-online":
       return {
         title: "Il cliente chiede un lavoro online",
@@ -128,6 +139,7 @@ function RispondiContent() {
         <>
           <h1 className={styles.title}>{shown.title}</h1>
           <p className={styles.lead}>{shown.text}</p>
+          {shown.nearby && shown.nearby.length > 0 ? <BoardCards cards={shown.nearby} now={shown.now ?? 0} /> : null}
           <div className={styles.replyActions}>
             {shown.cta ? (
               <Link className={styles.cta} href={shown.cta.href}>
