@@ -5,7 +5,8 @@ import { COMPUTER, PHONE, createClient, createProfessional, createRequestWithQuo
 
 /**
  * Date del preventivo (docs/changelog/2026-11-10-date-del-preventivo.md): gli
- * orari liberi una settimana alla volta, un giorno per riga. Il modulo si
+ * orari liberi sette giorni alla volta da oggi, un giorno per riga, con
+ * l'aspetto dell'agenda del profilo (docs/changelog/2026-11-18-scelta-data-come-profilo.md). Il modulo si
  * apre sulla settimana dell'orario chiesto dal cliente, già scelto e segnato
  * "chiesto dal cliente", anche quando è tra tre settimane. Stesso elenco nella
  * "Modifica" di una data proposta dal cliente, con la sua fascia segnata.
@@ -38,7 +39,10 @@ function weekdayInThreeWeeks(): Date {
   return day;
 }
 
-const dayLabel = (day: Date) => day.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+// Stesse scritte dell'agenda del profilo: "Mer 18 Nov" (docs/changelog/2026-11-18-scelta-data-come-profilo.md).
+const WEEKDAYS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+const MONTHS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
+const dayLabel = (day: Date) => `${WEEKDAYS[day.getUTCDay()]} ${day.getUTCDate()} ${MONTHS[day.getUTCMonth()]}`;
 
 async function setup() {
   const pro = await professionalWithWeeks("Settimane Idraulica");
@@ -74,8 +78,8 @@ for (const [device, size] of [["telefono", PHONE], ["computer", COMPUTER]] as co
     await expect(chosen).toBeVisible();
     await expect(chosen).toHaveAttribute("aria-checked", "true");
     await expect(page.locator(".week-slots-legend")).toHaveText(/Chiesto dal cliente/);
-    // Una settimana alla volta: al massimo sei giorni in vista, non cinque settimane di pillole.
-    expect(await page.locator(".week-slots-day").count()).toBeLessThanOrEqual(6);
+    // Sette giorni alla volta, non cinque settimane di pillole.
+    expect(await page.locator(".week-slots-day").count()).toBeLessThanOrEqual(7);
     await page.locator(".week-slots").scrollIntoViewIfNeeded();
     await page.screenshot({ path: `test-results/date-preventivo-${device}.png` });
 
@@ -85,10 +89,10 @@ for (const [device, size] of [["telefono", PHONE], ["computer", COMPUTER]] as co
     await expect(page.getByText(/Il cliente aveva chiesto/)).toBeVisible();
 
     // Le frecce cambiano settimana; la settimana dopo non ha l'orario chiesto né la legenda.
-    await page.getByRole("button", { name: "Settimana dopo" }).click();
+    await page.getByRole("button", { name: "Giorni successivi" }).click();
     await expect(day).toHaveCount(0);
     await expect(page.locator(".week-slots-legend")).toHaveCount(0);
-    await page.getByRole("button", { name: "Settimana prima" }).click();
+    await page.getByRole("button", { name: "Giorni precedenti" }).click();
     await expect(chosen).toBeVisible();
 
     const axe = await new AxeBuilder({ page }).include(".week-slots").analyze();
@@ -153,18 +157,29 @@ test.describe("richiesta del cliente", () => {
       const page = await context.newPage();
       await page.goto(`/preventivo?categoria=idraulico&professionista=${pro.id}&nomeProfessionista=Richiesta%20Settimane&modalita=HOME&data=${date}&fasciaOraria=14:00-20:00`);
 
+      // Orario già scelto nel profilo: una scheda con "Cambia", come "Chi ti serve".
+      const card = page.getByRole("group", { name: "Data e orario scelti" });
+      await expect(card).toContainText(`${dayLabel(chosen)} · 14:00–20:00`);
+      await expect(card).toContainText("A domicilio");
+      await card.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: `test-results/date-richiesta-scheda-${device}.png` });
+      await card.getByRole("button", { name: "Cambia" }).click();
+
       const group = page.getByRole("radiogroup", { name: `Orari di ${dayLabel(chosen)}` });
       const slot = group.getByRole("radio", { name: "14:00–20:00" });
       await expect(slot).toBeVisible();
       await expect(slot).toHaveAttribute("aria-checked", "true");
-      expect(await page.locator(".week-slots-day").count()).toBeLessThanOrEqual(6);
+      // Il fuoco non si perde con la scheda: va sull'orario scelto.
+      await expect(slot).toBeFocused();
+      expect(await page.locator(".week-slots-day").count()).toBeLessThanOrEqual(7);
       await page.locator(".slot-picker").scrollIntoViewIfNeeded();
       await page.screenshot({ path: `test-results/date-richiesta-cliente-${device}.png` });
 
-      // "Nessuna preferenza" toglie la scelta; le frecce cambiano settimana.
+      // "Nessuna preferenza" toglie la scelta e l'elenco resta aperto; le frecce cambiano giorni.
       await page.getByRole("radio", { name: "Nessuna preferenza" }).click();
       await expect(slot).toHaveAttribute("aria-checked", "false");
-      await page.getByRole("button", { name: "Settimana prima" }).click();
+      await expect(page.getByRole("group", { name: "Data e orario scelti" })).toHaveCount(0);
+      await page.getByRole("button", { name: "Giorni precedenti" }).click();
       await expect(group).toHaveCount(0);
 
       const axe = await new AxeBuilder({ page }).include(".slot-picker").analyze();
