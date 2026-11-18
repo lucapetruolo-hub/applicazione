@@ -192,7 +192,12 @@ produzione):
    docs/changelog/2026-11-08-legale-nel-codice.md). Nel pannello di Didit
    impostare la conservazione delle immagini del workflow e scriverne i
    giorni nella Privacy, punto 8 (domanda L7 per l'avvocato). E Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
-   `CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`).
+   `CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`). **Piano di Cloudinary**: il
+   gratuito vale circa 25 crediti al mese (circa 25 GB tra spazio e banda);
+   con i video delle richieste (480p, al massimo 1 minuto, circa 5-8 MB l'uno)
+   oltre un migliaio di video al mese serve il piano a pagamento (Plus, circa
+   90 $ al mese). Controllare l'uso nel pannello di Cloudinary il primo mese
+   (docs/changelog/2026-11-18-video-che-carica-ancora.md).
 5bis. **Resend reali** (`RESEND_API_KEY`, dominio verificato su Resend +
    `RESEND_FROM_EMAIL` corrispondente) — senza queste variabili i
    promemoria anti no-show (§9/`EmailService`, già implementati e

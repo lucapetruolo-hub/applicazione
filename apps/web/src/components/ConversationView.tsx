@@ -8,6 +8,7 @@ import { JOB_LIMIT_REACHED_MESSAGE, type ConversationEvent, type MySubscription 
 import { ApiError } from "@professionisti/api-client";
 import { Avatar, Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { checkMediaFile, uploadErrorMessage, uploadMediaFile } from "@/lib/mediaUpload";
 import { subscribeRealtimeEvents } from "@/lib/realtimeBus";
 import { markConversationOpen } from "@/lib/openConversations";
 import { ClientProfileModal } from "@/components/ClientProfileModal";
@@ -216,6 +217,7 @@ export function ConversationView({
   const [message, setMessage] = useState(initialMessage ?? "");
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -428,11 +430,16 @@ export function ConversationView({
   async function uploadFile(file: File) {
     setMediaError(null);
     setIsUploadingMedia(true);
+    setUploadProgress(0);
     try {
-      const result = await apiClient.uploadTimelinePhoto(token, file);
-      setMediaUrls((prev) => [...prev, result.imageUrl].slice(0, MAX_UPDATE_MEDIA));
+      // Peso e durata controllati prima, video direttamente a Cloudinary con la
+      // percentuale; "Invia" resta fermo finché non è caricato
+      // (docs/changelog/2026-11-18-video-che-carica-ancora.md).
+      await checkMediaFile(file);
+      const url = await uploadMediaFile(token, file, { forChat: true, onProgress: setUploadProgress });
+      setMediaUrls((prev) => [...prev, url].slice(0, MAX_UPDATE_MEDIA));
     } catch (err) {
-      setMediaError(err instanceof Error ? err.message : "Errore durante il caricamento del file.");
+      setMediaError(uploadErrorMessage(err));
     } finally {
       setIsUploadingMedia(false);
     }
@@ -931,6 +938,11 @@ export function ConversationView({
         {mediaError ? (
           <Text color={brand.urgenza} fontSize={13} paddingLeft={52}>
             {mediaError}
+          </Text>
+        ) : null}
+        {isUploadingMedia && uploadProgress > 0 ? (
+          <Text color={brand.grafite70} fontSize={13} paddingLeft={52}>
+            Caricamento dell&apos;allegato: {Math.round(uploadProgress * 100)}%. Puoi inviare appena è pronto.
           </Text>
         ) : null}
         {reportEventId ? (

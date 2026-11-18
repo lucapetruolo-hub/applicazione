@@ -39,7 +39,7 @@ import { MagneticButton } from "./MagneticButton";
 import { ApiError, type LastRequestAddress } from "@professionisti/api-client";
 import { CATEGORY_WHO, joinWithOr, toTrade } from "@/lib/problemChoices";
 import { apiClient } from "@/lib/apiClient";
-import { moveItem, usePhotoReorder } from "@/lib/usePhotoReorder";
+import { usePhotoReorder } from "@/lib/usePhotoReorder";
 import { cameFromPersonalLink } from "@/lib/personalLink";
 import { setChosenParams } from "@/lib/chosenParams";
 import { useAuth } from "@/lib/AuthContext";
@@ -64,8 +64,8 @@ import { useComuni } from "@/lib/comuniLazy";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 import { cleanPostalCode, postalCodeCityProblem, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
-import { localPreviewUrl } from "@/lib/media";
-import { frameFromVideo, searchPhotoFor, withoutHiddenData } from "@/lib/photoSearch";
+import { useRequestMedia } from "@/lib/useRequestMedia";
+import { searchPhotoFor } from "@/lib/photoSearch";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 
 /**
@@ -826,8 +826,22 @@ export function GuidedRequestForm({
   // nuova selezione carica subito come prima (`file: null`, `url` è già
   // l'URL Cloudinary reale). Richiesta esplicita dell'utente, "Verbale
   // Cognitivo" F2.2: anche le foto devono restare compilabili da anonimo.
-  const [photos, setPhotos] = useState<{ url: string; file: File | null; isVideo: boolean }[]>([]);
-  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  // Ogni riquadro ha il suo stato e la sua percentuale; "Invia" aspetta che
+  // tutto sia caricato (docs/changelog/2026-11-18-video-che-carica-ancora.md).
+  const media = useRequestMedia(token, MAX_PHOTOS);
+  const photos = media.items;
+  // Chiudere la pagina mentre un video si carica o la richiesta parte lo
+  // perderebbe: il browser chiede prima conferma.
+  const leavingLosesWork = isSubmitting || media.uploadingCount > 0;
+  useEffect(() => {
+    if (!leavingLosesWork) return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [leavingLosesWork]);
   const [photoError, setPhotoError] = useState<string | null>(null);
   // Riga grigia (non un errore, il rosso è solo per gli errori) quando si scelgono più file dei posti liberi.
   const [photoNotice, setPhotoNotice] = useState<string | null>(null);
@@ -839,24 +853,22 @@ export function GuidedRequestForm({
     announcement: photoReorderAnnouncement,
   } = usePhotoReorder({
     count: photos.length,
-    move: (from, to) => setPhotos((prev) => moveItem(prev, from, to)),
+    move: (from, to) => media.move(from, to),
     label: (index) => (photos[index]?.isVideo ? `Video ${index + 1}` : `Foto ${index + 1}`),
   });
 
   // La foto della ricerca con foto, se la richiesta nasce da lì: già allegata, si può togliere
   // (docs/changelog/2026-11-13-ricerca-con-foto.md). Resta solo nel browser fino all'invio.
   const [photoFromSearch, setPhotoFromSearch] = useState(false);
-  // Le copie piccole delle foto, per la prima foto da far guardare all'IA (sotto).
-  const photoBlobsRef = useRef(new Map<string, Blob>());
   useEffect(() => {
     const file = searchPhotoFor(searchParams.get("descrizione") ?? "");
     if (!file) return;
     // La foto è nel browser (sessionStorage), che il server non vede: si legge solo dopo il primo disegno.
-    const url = localPreviewUrl(file);
-    photoBlobsRef.current.set(url, file);
+    // È già rimpicciolita e senza GPS.
+    if (!media.add(file, { cleaned: true, onlyIfEmpty: true })) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPhotos((prev) => (prev.length > 0 ? prev : [{ url, file, isVideo: false }]));
     setPhotoFromSearch(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
   // Se dal testo l'IA non capisce il mestiere, guarda la prima foto per il
   // professionista (scelta di Luca, docs/changelog/2026-11-14-foto-per-il-professionista.md):
@@ -872,12 +884,12 @@ export function GuidedRequestForm({
   // La prima foto deve essere una foto solo dove l'IA può guardarla.
   const firstMustBePhoto = suggestionsOn;
   const photoFirstOnly = firstMustBePhoto && photos.length === 0;
-  const firstPhotoUrl = (photos.find((item) => !item.isVideo) ?? photos[0])?.url ?? null;
+  const firstPhotoUrl = (photos.find((item) => !item.isVideo) ?? photos[0])?.id ?? null;
   const textNotUnderstoodByAi =
     notUnderstood && checkedDescription?.text === typedDescription && checkedDescription.result.categories.length === 0;
   useEffect(() => {
     if (!textNotUnderstoodByAi || !firstPhotoUrl) return;
-    const blob = photoBlobsRef.current.get(firstPhotoUrl);
+    const blob = media.aiCopyOf(firstPhotoUrl);
     const key = `${typedDescription}\n${firstPhotoUrl}`;
     if (!blob || firstPhotoTriedRef.current === key) return;
     firstPhotoTriedRef.current = key;
@@ -910,7 +922,9 @@ export function GuidedRequestForm({
       cancelled = true;
       setReadingFirstPhoto(false);
     };
-  }, [textNotUnderstoodByAi, firstPhotoUrl, typedDescription, city]);
+    // aiCopiesVersion: il fotogramma di un video arriva dopo il riquadro.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [textNotUnderstoodByAi, firstPhotoUrl, typedDescription, city, media.aiCopiesVersion]);
   // Gate di autenticazione spostato al momento dell'invio (F2.2): il modulo
   // resta sempre compilabile da anonimo, il gate compare solo qui, senza
   // mai far perdere quanto già scritto/selezionato (nessuna navigazione).
@@ -1263,20 +1277,17 @@ export function GuidedRequestForm({
   async function doSubmit(activeToken: string) {
     setIsSubmitting(true);
     try {
-      // Le foto scelte prima di autenticarsi sono ancora solo locali
-      // (`file` valorizzato, `url` è un blob: di anteprima): caricate su
-      // Cloudinary solo ora che un token è garantito disponibile. Quelle
-      // già caricate (utente già loggato al momento della selezione)
-      // restano invariate.
-      const uploadedUrls: string[] = [];
-      for (const photo of photos) {
-        if (photo.file) {
-          const uploaded = await apiClient.uploadGuidedRequestPhoto(activeToken, photo.file);
-          uploadedUrls.push(uploaded.imageUrl);
-          URL.revokeObjectURL(photo.url);
-        } else {
-          uploadedUrls.push(photo.url);
-        }
+      // Prima tutte le foto e i video: quelli scelti prima dell'accesso si
+      // caricano ora, quelli che si stanno ancora caricando si aspettano
+      // (con la percentuale sopra il pulsante). La richiesta non parte mai
+      // senza un file che il cliente ha aggiunto
+      // (docs/changelog/2026-11-18-video-che-carica-ancora.md).
+      const uploadedUrls = await media.waitAll(activeToken);
+      if (!uploadedUrls) {
+        setError(
+          "Una foto o un video non si è caricato, quindi la richiesta non è partita. Riprova o toglilo nel primo passo, poi premi di nuovo Invia.",
+        );
+        return;
       }
       const response = await apiClient.createGuidedRequest(activeToken, {
         // In attesa di un mestiere: categoria di comodo, il server decide a chi arriva dal mestiere.
@@ -1342,50 +1353,20 @@ export function GuidedRequestForm({
     }
   }
 
+  // Il riquadro compare subito e il caricamento parte in sottofondo (da
+  // registrati; da non registrati all'invio, dopo l'accesso, F2.2): niente
+  // attese prima, così "Invia" non trova mai un file "a metà" che non sa di
+  // dover aspettare (docs/changelog/2026-11-18-video-che-carica-ancora.md).
+  // Cloudinary poi ridimensiona e comprime lato server.
   async function addPhoto(picked: File) {
-    if (photos.length >= MAX_PHOTOS) return;
-
     setPhotoError(null);
-    const isVideo = picked.type.startsWith("video/");
-    // Una foto del telefono porta spesso dentro la posizione GPS, cioè
-    // l'indirizzo di casa, che il professionista non vede prima
-    // dell'accettazione (CLAUDE.md §5 punto 9): la ridisegniamo nel browser
-    // come la foto della ricerca, che così perde i dati nascosti e pesa meno
-    // (docs/changelog/2026-11-14-foto-per-il-professionista.md). Se il
-    // browser non sa aprirla (es. HEIC su Chrome per computer) parte com'è.
-    const file = isVideo ? picked : await withoutHiddenData(picked);
-    // La copia per l'IA, usata solo se dal testo non si capisce il mestiere: la foto
-    // stessa, o per un video un fotogramma.
-    const aiCopy = isVideo ? await frameFromVideo(picked) : file;
-    if (token) {
-      setIsUploadingPhoto(true);
-      try {
-        // Cloudinary ridimensiona e comprime lato server (stessa
-        // trasformazione dell'immagine profilo professionista): una foto
-        // da cellulare può pesare diversi MB, qui viene ridotta prima di
-        // finire nel database come URL — richiesta esplicita dell'utente
-        // ("ridimensionala per occupare meno memoria").
-        const result = await apiClient.uploadGuidedRequestPhoto(token, file);
-        if (aiCopy) photoBlobsRef.current.set(result.imageUrl, aiCopy);
-        setPhotos((prev) => [...prev, { url: result.imageUrl, file: null, isVideo }].slice(0, MAX_PHOTOS));
-      } catch (err) {
-        setPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
-      } finally {
-        setIsUploadingPhoto(false);
-      }
-      return;
-    }
-    // Anonimo: nessun token per caricare su Cloudinary — resta locale con
-    // un'anteprima via blob:, caricata davvero solo al momento dell'invio
-    // (doSubmit, dopo il gate F2.2).
-    const previewUrl = localPreviewUrl(file);
-    if (aiCopy) photoBlobsRef.current.set(previewUrl, aiCopy);
-    setPhotos((prev) => [...prev, { url: previewUrl, file, isVideo }].slice(0, MAX_PHOTOS));
+    media.add(picked);
   }
 
   // Più foto o video scelti insieme dalla galleria (richiesta di Luca del
-  // 18/11, docs/changelog/2026-11-18-luci-ia-solo-con-ia.md): uno alla volta,
-  // nell'ordine scelto, fino a MAX_PHOTOS; quelli in più si dicono in una riga.
+  // 18/11, docs/changelog/2026-11-18-luci-ia-solo-con-ia.md): nell'ordine
+  // scelto, fino a MAX_PHOTOS; quelli in più si dicono in una riga. Ognuno
+  // parte subito col suo riquadro (useRequestMedia).
   async function addPhotos(picked: File[]) {
     const kept = picked.slice(0, Math.max(0, MAX_PHOTOS - photos.length));
     setPhotoNotice(
@@ -1396,14 +1377,9 @@ export function GuidedRequestForm({
     for (const file of kept) await addPhoto(file);
   }
 
-  function removePhoto(url: string) {
+  function removePhoto(id: string) {
     setPhotoNotice(null);
-    setPhotos((prev) => {
-      const target = prev.find((p) => p.url === url);
-      if (target?.file) URL.revokeObjectURL(target.url);
-      return prev.filter((p) => p.url !== url);
-    });
-    photoBlobsRef.current.delete(url);
+    media.remove(id);
   }
 
   // Campo della città: con il titolo "Città" nella consulenza online; a
@@ -1751,19 +1727,40 @@ export function GuidedRequestForm({
             role="group"
             aria-label={`Foto e video per il professionista (fino a ${MAX_PHOTOS})`}
           >
-            {photos.map((photo, index) => (
-              <div key={photo.url} className={photos.length > 1 ? "guided-photo reorder-item" : "guided-photo"} {...(photos.length > 1 ? photoReorderItemProps(index) : {})}>
-                <MediaPreview url={photo.url} forceVideo={photo.isVideo} style={{ borderRadius: 9 }} />
-                <button type="button" className="field-photo-remove" onClick={() => removePhoto(photo.url)} aria-label="Togli la foto">
-                  <X size={12} strokeWidth={3} color="white" />
-                </button>
-              </div>
-            ))}
-            {isUploadingPhoto ? (
-              <div className="guided-photo guided-photo-loading" role="status" aria-label="Caricamento della foto">
-                <UploadingDots dotSize={7} />
-              </div>
-            ) : null}
+            {photos.map((photo, index) => {
+              const kind = photo.isVideo ? "il video" : "la foto";
+              const percent = Math.round(photo.progress * 100);
+              return (
+                <div
+                  key={photo.id}
+                  className={photos.length > 1 ? "guided-photo reorder-item" : "guided-photo"}
+                  {...(photos.length > 1 ? photoReorderItemProps(index) : {})}
+                >
+                  <MediaPreview url={photo.id} forceVideo={photo.isVideo} style={{ borderRadius: 9 }} />
+                  {/* Ogni riquadro dice a che punto è (docs/changelog/2026-11-18-video-che-carica-ancora.md). */}
+                  {photo.status === "uploading" ? (
+                    <div className="guided-photo-state" role="img" aria-label={`Carico ${kind}: ${percent}%`}>
+                      {percent > 0 ? <span aria-hidden="true">{percent}%</span> : <UploadingDots dotSize={6} color="#ffffff" />}
+                      <span className="guided-photo-bar" aria-hidden="true">
+                        <span style={{ width: `${Math.max(4, percent)}%` }} />
+                      </span>
+                    </div>
+                  ) : photo.status === "error" ? (
+                    <button
+                      type="button"
+                      className="guided-photo-state guided-photo-state-error"
+                      onClick={() => (photo.retryable ? media.retry(photo.id) : removePhoto(photo.id))}
+                      aria-label={`${photo.isVideo ? "Video non caricato" : "Foto non caricata"}: ${photo.error ?? ""} ${photo.retryable ? "Tocca per riprovare." : "Tocca per toglierlo."}`}
+                    >
+                      <span aria-hidden="true">{photo.retryable ? "Riprova" : "Togli"}</span>
+                    </button>
+                  ) : null}
+                  <button type="button" className="field-photo-remove" onClick={() => removePhoto(photo.id)} aria-label={`Togli ${kind}`}>
+                    <X size={12} strokeWidth={3} color="white" />
+                  </button>
+                </div>
+              );
+            })}
             {/* Il pulsante resta montato anche mentre una foto si carica: la finestra
                 "Scatta dal telefono" può ricevere più foto di fila
                 (docs/changelog/2026-11-17-piu-foto-dal-telefono.md). */}
@@ -1777,7 +1774,6 @@ export function GuidedRequestForm({
                 accept={photoFirstOnly ? "image/*" : "image/*,video/*"}
                 allowVideo={!photoFirstOnly}
                 maxPhotos={MAX_PHOTOS - photos.length}
-                disabled={isUploadingPhoto}
                 onFile={addPhoto}
                 onFiles={addPhotos}
                 className="guided-photo guided-photo-add"
@@ -1791,6 +1787,19 @@ export function GuidedRequestForm({
           {photoError ? (
             <Text color={brand.urgenza} fontSize={13}>
               {photoError}
+            </Text>
+          ) : null}
+          {/* Il motivo di un file non caricato, sotto i riquadri (uno per riga). */}
+          {photos
+            .filter((photo) => photo.status === "error" && photo.error)
+            .map((photo) => (
+              <Text key={photo.id} role="alert" color={brand.urgenza} fontSize={13}>
+                {photo.isVideo ? "Video non caricato" : "Foto non caricata"}: {photo.error}
+              </Text>
+            ))}
+          {media.uploadingCount > 0 ? (
+            <Text color={brand.grafite70} fontSize={13}>
+              {media.uploadingVideo ? "Il video si sta caricando: puoi andare avanti, la richiesta lo aspetta." : "La foto si sta caricando: puoi andare avanti, la richiesta la aspetta."}
             </Text>
           ) : null}
           {photos.length > 1 ? (
@@ -2258,6 +2267,16 @@ export function GuidedRequestForm({
           </Text>
         ) : null}
 
+        {/* Un file che si carica ancora non ferma "Invia": la richiesta lo aspetta e
+            lo dice qui, con la percentuale (docs/changelog/2026-11-18-video-che-carica-ancora.md). */}
+        {step === 3 && media.uploadingCount > 0 ? (
+          <Text color={brand.grafite70} fontSize={14}>
+            {isSubmitting
+              ? `Aspettiamo che ${media.uploadingVideo ? "il video" : "la foto"} finisca di caricarsi (${Math.round(media.progress * 100)}%), poi la richiesta parte da sola. Non chiudere la pagina.`
+              : `${media.uploadingVideo ? "Il video" : "La foto"} si sta ancora caricando (${Math.round(media.progress * 100)}%). Puoi già inviare: la richiesta parte appena è pronto.`}
+          </Text>
+        ) : null}
+
         <XStack gap="2" flexWrap="wrap">
           {step > 1 ? (
             <Button variant="secondary" onPress={() => goToStep((step - 1) as 1 | 2)} flexGrow={1} flexBasis={120}>
@@ -2273,8 +2292,7 @@ export function GuidedRequestForm({
             <Button
               variant={isUrgent ? "urgent" : "primary"}
               onPress={() => handleSubmit()}
-              disabled={isSubmitting || isUploadingPhoto}
-              opacity={isUploadingPhoto && !isSubmitting ? 0.6 : 1}
+              disabled={isSubmitting}
               flexGrow={2}
               flexBasis={200}
             >

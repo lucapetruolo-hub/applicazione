@@ -12,6 +12,7 @@ import {
   Query,
   Req,
   Res,
+  ServiceUnavailableException,
   UploadedFile,
   UseFilters,
   UseGuards,
@@ -23,6 +24,8 @@ import { Throttle } from "@nestjs/throttler";
 import {
   guidedRequestSchema,
   guidedRequestUpdateSchema,
+  MEDIA_UPLOAD_MAX_BYTES,
+  MEDIA_VIDEO_MAX_SECONDS,
   guidedRequestUserStateSchema,
   requestWithdrawSchema,
   type RequestWithdrawInput,
@@ -33,6 +36,7 @@ import {
   type TimelineUpdateInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { OwnMediaUrlsPipe } from "../common/own-media-urls.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
@@ -44,7 +48,8 @@ import { MEDIA_UPLOAD_DIR } from "../common/media-upload";
 // Un video pesa naturalmente molto di più di una foto compressa: limite
 // più permissivo solo per questo endpoint (richiesta esplicita
 // dell'utente: "dai la possibilità di caricare anche i video").
-const MAX_MEDIA_SIZE_BYTES = 50 * 1024 * 1024;
+// Lo stesso numero lo controlla il sito prima di caricare (MEDIA_UPLOAD_MAX_BYTES).
+const MAX_MEDIA_SIZE_BYTES = MEDIA_UPLOAD_MAX_BYTES;
 // Documenti ammessi solo per l'allegato "File" della chat (richiesta
 // esplicita dell'utente: "in modo che puo essere caricata anche la fattura
 // o ricevuta") — elenco chiuso di formati realmente usati per fatture/
@@ -90,7 +95,7 @@ export class GuidedRequestsController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(guidedRequestSchema)) body: GuidedRequestInput) {
+  create(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(guidedRequestSchema), OwnMediaUrlsPipe) body: GuidedRequestInput) {
     return this.guidedRequestsService.createForCategories(req.user.userId, body);
   }
 
@@ -166,6 +171,20 @@ export class GuidedRequestsController {
     }
     const imageUrl = await this.cloudinaryService.uploadMedia(file, "timeline-updates");
     return { imageUrl };
+  }
+
+  // Video direttamente dal browser a Cloudinary (docs/changelog/2026-11-18-video-che-carica-ancora.md):
+  // qui solo il permesso firmato, il file non passa dall'API. `forChat` sceglie
+  // la cartella della chat invece di quella delle richieste. 503 senza
+  // Cloudinary: il sito ripiega su "photos"/"timeline-photos".
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @UseGuards(JwtAuthGuard)
+  @Post("video-upload")
+  signVideoUpload(@Body() body?: { forChat?: unknown }) {
+    const folder = body?.forChat === true ? "timeline-updates" : "guided-requests";
+    const ticket = this.cloudinaryService.signDirectVideoUpload(folder, MEDIA_VIDEO_MAX_SECONDS);
+    if (!ticket) throw new ServiceUnavailableException("Caricamento diretto dei video non configurato.");
+    return ticket;
   }
 
   // Proxy di download server-to-server per un documento allegato in chat
@@ -245,7 +264,7 @@ export class GuidedRequestsController {
   update(
     @Req() req: AuthenticatedRequest,
     @Param("id") id: string,
-    @Body(new ZodValidationPipe(guidedRequestUpdateSchema)) body: GuidedRequestUpdateInput,
+    @Body(new ZodValidationPipe(guidedRequestUpdateSchema), OwnMediaUrlsPipe) body: GuidedRequestUpdateInput,
   ) {
     return this.guidedRequestsService.update(req.user.userId, id, body);
   }
@@ -316,7 +335,7 @@ export class GuidedRequestsController {
   addTimelineUpdate(
     @Req() req: AuthenticatedRequest,
     @Param("id") id: string,
-    @Body(new ZodValidationPipe(timelineUpdateSchema)) body: TimelineUpdateInput,
+    @Body(new ZodValidationPipe(timelineUpdateSchema), OwnMediaUrlsPipe) body: TimelineUpdateInput,
   ) {
     return this.timelineService.addUpdate(req.user.userId, id, body.professionalProfileId, body.message, body.mediaUrls);
   }

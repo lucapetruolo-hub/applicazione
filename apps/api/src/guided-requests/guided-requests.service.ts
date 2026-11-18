@@ -136,7 +136,11 @@ function tradeKeywordsWhere(keywords: readonly string[]): Prisma.ProfessionalPro
 }
 /** Testo confrontato senza maiuscole, spazi doppi e punteggiatura finale. */
 function sameRequestText(text: string | null | undefined): string {
-  return (text ?? "").toLowerCase().replace(/\s+/g, " ").replace(/[\s.!?]+$/u, "").trim();
+  const spaced = (text ?? "").toLowerCase().replace(/\s+/g, " ");
+  // Punteggiatura e spazi finali tolti senza espressione regolare con "$" (CodeQL: lenta su testi lunghi).
+  let end = spaced.length;
+  while (end > 0 && " .!?".includes(spaced[end - 1]!)) end--;
+  return spaced.slice(0, end).trim();
 }
 
 @Injectable()

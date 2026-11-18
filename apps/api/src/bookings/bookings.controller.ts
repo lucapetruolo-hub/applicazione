@@ -31,6 +31,7 @@ import {
   type UpdateBookingNoteInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { OwnMediaUrlsPipe } from "../common/own-media-urls.pipe";
 import { VerifiedEmailGuard } from "../auth/verified-email.guard";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
@@ -151,7 +152,7 @@ export class BookingsController {
   /** Il professionista segnala un "Lavoro accettato" come terminato, con l'importo preciso (voci del preventivo + eventuali extra). */
   @UseGuards(JwtAuthGuard)
   @Patch(":id/complete")
-  complete(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(completeBookingSchema)) body: CompleteBookingInput) {
+  complete(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(completeBookingSchema), OwnMediaUrlsPipe) body: CompleteBookingInput) {
     return this.bookingsService.completeWithFinalAmount(req.user.userId, id, body);
   }
 
@@ -166,7 +167,7 @@ export class BookingsController {
   clientConfirmComplete(
     @Req() req: AuthenticatedRequest,
     @Param("id") id: string,
-    @Body(new ZodValidationPipe(clientConfirmCompleteSchema)) body: ClientConfirmCompleteInput,
+    @Body(new ZodValidationPipe(clientConfirmCompleteSchema), OwnMediaUrlsPipe) body: ClientConfirmCompleteInput,
   ) {
     return this.bookingsService.clientConfirmComplete(req.user.userId, id, body);
   }

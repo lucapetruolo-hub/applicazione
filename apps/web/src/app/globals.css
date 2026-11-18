@@ -10301,11 +10301,55 @@ textarea[id^="contatti-"][aria-invalid="true"] {
   outline: 2px solid #1e6b6e;
   outline-offset: 2px;
 }
-.guided-photo-loading {
+/* Stato di un riquadro: percentuale e barra mentre si carica, "Riprova" se non è
+   andato (docs/changelog/2026-11-18-video-che-carica-ancora.md). La X per
+   togliere resta sopra. */
+.guided-photo-state {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #faf6f1;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: rgba(15, 59, 59, 0.55);
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.guided-photo-bar {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.35);
+  overflow: hidden;
+}
+.guided-photo-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #ffffff;
+  transition: width 0.2s ease-out;
+}
+.guided-photo-state-error {
+  background: rgba(180, 35, 24, 0.82);
+  font-size: 13px;
+  cursor: pointer;
+}
+.guided-photo-state-error:focus-visible {
+  outline: 2px solid #1e6b6e;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .guided-photo-bar > span {
+    transition: none;
+  }
 }
 .guided-description-input {
   border: 2px solid transparent !important;

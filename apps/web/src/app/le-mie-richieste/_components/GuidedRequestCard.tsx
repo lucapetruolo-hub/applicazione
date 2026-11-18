@@ -24,6 +24,7 @@ import {
 import { Autocomplete, Avatar, Badge, BadgeInfo, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { setChosenParams } from "@/lib/chosenParams";
 import { apiClient } from "@/lib/apiClient";
+import { checkMediaFile, uploadErrorMessage, uploadMediaFile } from "@/lib/mediaUpload";
 import { useComuni } from "@/lib/comuniLazy";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { ProfessionalReviewsSummary } from "@/components/ProfessionalReviewsLink";
@@ -231,6 +232,7 @@ export function GuidedRequestCard({
     label: (index) => `Foto ${index + 1}`,
   });
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [photoError, setPhotoError] = useState<string | null>(null);
   // Riga grigia (non un errore) quando si scelgono più file dei posti liberi.
   const [photoNotice, setPhotoNotice] = useState<string | null>(null);
@@ -435,16 +437,24 @@ export function GuidedRequestCard({
 
     setPhotoError(null);
     setIsUploadingPhoto(true);
-    try {
-      for (const file of kept) {
-        const result = await apiClient.uploadGuidedRequestPhoto(token, file);
-        setPhotoUrls((prev) => [...prev, result.imageUrl].slice(0, MAX_REQUEST_PHOTOS));
+    setUploadProgress(0);
+    // Peso e durata controllati prima, video direttamente a Cloudinary con la
+    // percentuale (docs/changelog/2026-11-18-video-che-carica-ancora.md). Un
+    // file che non va (troppo lungo, rete) non ferma gli altri: si salta e lo
+    // si dice sotto, uno per riga.
+    const problems: string[] = [];
+    for (const file of kept) {
+      setUploadProgress(0);
+      try {
+        await checkMediaFile(file);
+        const url = await uploadMediaFile(token, file, { onProgress: setUploadProgress });
+        setPhotoUrls((prev) => [...prev, url].slice(0, MAX_REQUEST_PHOTOS));
+      } catch (err) {
+        problems.push(kept.length > 1 ? `${file.name}: ${uploadErrorMessage(err)}` : uploadErrorMessage(err));
       }
-    } catch (err) {
-      setPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
-    } finally {
-      setIsUploadingPhoto(false);
     }
+    setPhotoError(problems.length > 0 ? problems.join("\n") : null);
+    setIsUploadingPhoto(false);
   }
 
 
@@ -713,7 +723,13 @@ export function GuidedRequestCard({
                   aria-label="Aggiungi foto"
                 >
                   {isUploadingPhoto ? (
-                    <UploadingDots dotSize={6} />
+                    uploadProgress > 0 ? (
+                      <Text fontSize={14} fontWeight="700" color={brand.grafite70} aria-label={`Caricamento: ${Math.round(uploadProgress * 100)}%`}>
+                        {Math.round(uploadProgress * 100)}%
+                      </Text>
+                    ) : (
+                      <UploadingDots dotSize={6} />
+                    )
                   ) : (
                     <Text fontSize="6" color={brand.grafite70}>
                       +
@@ -736,11 +752,13 @@ export function GuidedRequestCard({
               </Text>
             ) : null}
             <input ref={photoInputRef} type="file" accept="image/*,video/*" multiple onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
-            {photoError ? (
-              <Text color={brand.urgenza} fontSize={13}>
-                {photoError}
-              </Text>
-            ) : null}
+            {photoError
+              ? photoError.split("\n").map((line) => (
+                  <Text key={line} color={brand.urgenza} fontSize={13}>
+                    {line}
+                  </Text>
+                ))
+              : null}
           </YStack>
 
           {error ? (
