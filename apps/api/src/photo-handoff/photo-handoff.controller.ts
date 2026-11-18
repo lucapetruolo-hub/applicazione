@@ -95,6 +95,17 @@ export class PhotoHandoffController {
     res.type(result.mediaType).send(result.photo);
   }
 
+  /** Il computer toglie una foto arrivata: il posto torna libero (docs/changelog/2026-11-18-foto-dal-telefono-anteprime.md). */
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Post(":code/release")
+  @HttpCode(200)
+  async release(@Param("code") code: string, @Body() body: { key?: unknown }) {
+    const key = body?.key;
+    const result = validCode(code) && validCode(key) ? await this.photoHandoffService.release(code, key) : null;
+    if (!result) throw new GoneException(EXPIRED);
+    return result;
+  }
+
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post(":code/cancel")
   @HttpCode(204)

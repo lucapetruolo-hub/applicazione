@@ -318,6 +318,10 @@ export type ClientGuidedRequest = {
    * lavori fuori servizio, per "Ripeti la richiesta". Null per le altre.
    */
   waitingTrade?: { name: string; key: string | null } | null;
+  /** In "Lavori cercati" adesso (docs/changelog/2026-11-18-bacheca-cliente.md). */
+  onBoard?: boolean;
+  /** Il cliente ha tolto la richiesta da "Lavori cercati". */
+  boardOptOut?: boolean;
   description: string;
   city: string;
   /** Via, dove il professionista dovrà andare a svolgere il lavoro. */
@@ -1475,6 +1479,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       ),
     /** Mestiere e provincia con almeno una scheda, per i link e per Google. */
     getRequestBoardSummary: () => request<BoardSummary>("/request-board/summary", { cache: "no-store" }),
+    /** Richieste del mese per mestiere e provincia (null sotto le 10), per le pagine /cerca. */
+    getRequestDemand: (category: string, province: string) =>
+      request<{ count: number | null }>(`/request-board/demand?categoria=${encodeURIComponent(category)}&provincia=${encodeURIComponent(province)}`, { cache: "no-store" }),
     /** "Rispondi" dalla bacheca: la richiesta entra nell'elenco, o resta da parte finché il profilo non è visibile. */
     replyToBoardRequest: (token: string, requestId: string) =>
       request<BoardReplyResult>("/request-board/reply", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ requestId }) }),
@@ -1845,6 +1852,9 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
         body: JSON.stringify({ reason }),
       }),
 
+    /** "Togli dai lavori cercati" (allowed false) o "Mostra in Lavori cercati" (true). */
+    setGuidedRequestBoard: (token: string, id: string, allowed: boolean) =>
+      request<null>(`/guided-requests/${id}/board`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ allowed }) }),
     /** "Annulla" pochi secondi dopo l'eliminazione. */
     restoreGuidedRequest: (token: string, id: string) =>
       request<null>(`/guided-requests/${id}/restore`, {
@@ -2802,6 +2812,13 @@ export function createApiClient({ baseUrl: rawBaseUrl, deviceId, trafficSource, 
       if ((response.headers.get("content-type") ?? "").startsWith("image/")) return { status: "sent", photo: await response.blob() };
       return (await response.json()) as { status: "waiting" | "opened" | "expired" | "done" };
     },
+    /** Il computer toglie una foto arrivata: il posto torna libero per il telefono (docs/changelog/2026-11-18-foto-dal-telefono-anteprime.md). */
+    releasePhotoHandoff: (code: string, key: string) =>
+      request<{ sent: number; max: number }>(`/photo-handoff/${encodeURIComponent(code)}/release`, {
+        method: "POST",
+        body: JSON.stringify({ key }),
+        cache: "no-store",
+      }),
     cancelPhotoHandoff: (code: string, key: string) =>
       fetch(`${baseUrl}/photo-handoff/${encodeURIComponent(code)}/cancel`, {
         method: "POST",

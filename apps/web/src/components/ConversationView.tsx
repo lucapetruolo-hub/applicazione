@@ -74,9 +74,10 @@ function formatDayLabel(iso: string): string {
 
 /** Voci del menu "allega" accanto al campo del messaggio. */
 const ATTACH_OPTIONS = [
-  { kind: "camera", icon: "camera", label: "Fotocamera" },
-  { kind: "gallery", icon: "video", label: "Foto o video" },
-  { kind: "document", icon: "file-text", label: "File" },
+  { kind: "camera", icon: "camera", label: "Fotocamera", hint: null },
+  // I video al massimo 1 minuto (docs/changelog/2026-11-18-video-che-carica-ancora.md).
+  { kind: "gallery", icon: "video", label: "Foto o video", hint: "Video al massimo 1 minuto" },
+  { kind: "document", icon: "file-text", label: "File", hint: null },
 ] as const;
 
 /**
@@ -1021,9 +1022,16 @@ export function ConversationView({
                     role="button"
                   >
                     <Icon name={item.icon} size={16} color={brand.grafite} />
-                    <Text fontSize={16} color={brand.grafite} fontWeight="600">
-                      {item.label}
-                    </Text>
+                    <YStack>
+                      <Text fontSize={16} color={brand.grafite} fontWeight="600">
+                        {item.label}
+                      </Text>
+                      {item.hint ? (
+                        <Text fontSize={13} color={brand.grafite70}>
+                          {item.hint}
+                        </Text>
+                      ) : null}
+                    </YStack>
                   </XStack>
                 ))}
               </YStack>

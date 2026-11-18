@@ -38,6 +38,7 @@ export function CityFacts({
   pricePageHref = null,
   subTag,
   reviews = [],
+  monthRequests = null,
 }: {
   categorySlug: ProfessionalCategorySlug;
   categoryLabel: string;
@@ -50,6 +51,8 @@ export function CityFacts({
   subTag?: string;
   /** Ultime recensioni del mestiere in questa città (collaudo N-04). */
   reviews?: CityReview[];
+  /** Richieste del mese nella provincia, solo da 10 in su (docs/changelog/2026-11-18-bacheca-cliente.md). */
+  monthRequests?: { count: number; provinceName: string } | null;
 }) {
   if (found.count === 0) return null;
   const noun = CATEGORY_SEO_NOUN[categorySlug];
@@ -69,6 +72,7 @@ export function CityFacts({
           averageRating
             ? { value: `${averageRating}/5`, label: `su ${reviewCount} ${reviewCount === 1 ? "recensione" : "recensioni"}` }
             : { value: "Gratis", label: "chiedere un preventivo" },
+          ...(monthRequests ? [{ value: String(monthRequests.count), label: `richieste questo mese in provincia di ${monthRequests.provinceName}` }] : []),
         ];
 
   // Pagine per servizio da collegare (docs/CHANGELOG.md §296): solo quelle

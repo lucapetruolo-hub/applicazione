@@ -81,11 +81,14 @@ const publicRoutes = [
   "POST /photo-handoff/:code/cancel",
   "POST /photo-handoff/:code/open",
   "POST /photo-handoff/:code/photo",
+  "POST /photo-handoff/:code/release",
   "POST /photo-handoff/:code/take",
   // "Lavori più cercati" della home (docs/changelog/2026-11-07-lavori-piu-cercati-home.md).
   "GET /popular-jobs",
   "GET /request-board",
   "GET /request-board/summary",
+  // Numero di richieste del mese per mestiere e provincia (solo da 10 in su), per le pagine /cerca.
+  "GET /request-board/demand",
   // "Avvisami alla prima richiesta" dalla bacheca vuota, senza account (Turnstile).
   "POST /request-board/alerts",
   // Prestazioni standard aggiunte dall'admin (§388), mostrate in iscrizione e nel profilo.
@@ -336,6 +339,7 @@ const owned = {
   "DELETE /guided-requests/:id": request(),
   "POST /guided-requests/:id/restore": request(),
   // Stato personale (archiviata, silenziata): del cliente e dei professionisti che l'hanno ricevuta.
+  "PATCH /guided-requests/:id/board": request({ body: () => ({ allowed: false }) }),
   "PATCH /guided-requests/:id/my-state": request({ owners: BOTH, body: () => ({ archived: true }) }),
   "GET /guided-requests/:id/status": request(),
   "GET /guided-requests/:id/timeline": request({ owners: BOTH, query: (f) => ({ professionalProfileId: f.profileA }) }),

@@ -165,6 +165,10 @@ export type ContactMessageInput = z.infer<typeof contactMessageSchema>;
 export const boardReplySchema = z.object({ requestId: z.string().uuid("Richiesta non valida.") });
 export type BoardReplyInput = z.infer<typeof boardReplySchema>;
 
+/** "Togli dai lavori cercati" / "Mostra in Lavori cercati" dalle richieste del cliente. */
+export const requestBoardSettingSchema = z.object({ allowed: z.boolean() });
+export type RequestBoardSettingInput = z.infer<typeof requestBoardSettingSchema>;
+
 /**
  * "Avvisami alla prima richiesta" dalla bacheca vuota: una sola email, poi
  * l'indirizzo si cancella (docs/changelog/2026-11-17-bacheca-rispondi.md).
@@ -407,6 +411,12 @@ export const guidedRequestSchema = z
      * può toglierla). Ignorata per le richieste generiche.
      */
     forwardIfNoReply: z.boolean().default(false),
+    /**
+     * "Mostra in Lavori cercati" (decisione di Luca, docs/changelog/2026-11-18-bacheca-cliente.md):
+     * acceso di serie; spento, la richiesta non va mai nella bacheca pubblica.
+     * Vale solo per le richieste generali.
+     */
+    boardAllowed: z.boolean().default(true),
     /**
      * Richiesta diretta partita dal link personale di quel professionista
      * (docs/changelog/2026-11-08-canale-del-professionista.md): il server la

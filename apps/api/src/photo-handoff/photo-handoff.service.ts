@@ -138,11 +138,23 @@ export class PhotoHandoffService {
       if (count === 0) return { status: "opened" };
       return { status: "sent", photo: Buffer.from(next.photo), mediaType: next.mediaType };
     }
-    if (row.sentCount >= row.maxPhotos) {
-      await this.prisma.photoHandoff.deleteMany({ where: { codeHash } });
-      return { status: "done" };
-    }
+    // Il codice resta fino alla chiusura della finestra (o ai 10 minuti): dal
+    // 18/11 il computer può togliere una foto e liberare il posto (`release`).
+    if (row.sentCount >= row.maxPhotos) return { status: "done" };
     return { status: row.openedAt ? "opened" : "waiting" };
+  }
+
+  /**
+   * Il computer toglie con la X una foto arrivata (docs/changelog/2026-11-18-foto-dal-telefono-anteprime.md):
+   * il posto torna libero e il telefono può mandarne un'altra con lo stesso codice.
+   */
+  async release(code: string, key: string, now: Date = new Date()): Promise<{ sent: number; max: number } | null> {
+    const codeHash = hash(code);
+    const row = await this.prisma.photoHandoff.findUnique({ where: { codeHash }, select: { keyHash: true, expiresAt: true } });
+    if (!row || !sameHash(row.keyHash, hash(key)) || row.expiresAt <= now) return null;
+    await this.prisma.photoHandoff.updateMany({ where: { codeHash, sentCount: { gt: 0 } }, data: { sentCount: { decrement: 1 } } });
+    const after = await this.prisma.photoHandoff.findUnique({ where: { codeHash }, select: { sentCount: true, maxPhotos: true } });
+    return after ? { sent: after.sentCount, max: after.maxPhotos } : null;
   }
 
   /** Il computer chiude la finestra: il codice e le foto non prese non servono più. */

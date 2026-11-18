@@ -46,7 +46,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
     // REQUEST_WITHDRAWN: al professionista, il cliente ha ritirato la richiesta (collaudo B-09).
     // WAITING_REQUEST_STILL_NEEDED: "Ti serve ancora?" dopo 30 giorni in attesa di un mestiere (docs/changelog/2026-11-17-richieste-in-attesa.md).
     // BOARD_CLAIM_ARRIVED: al professionista, è arrivata la richiesta che aveva scelto da "Lavori cercati" (docs/changelog/2026-11-17-bacheca-rispondi.md).
-    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_MATCHED_LATER", "REQUEST_SENT", "REQUEST_WITHDRAWN", "WAITING_REQUEST_STILL_NEEDED", "BOARD_CLAIM_ARRIVED"],
+    // BOARD_WEEKLY_DIGEST: solo email, il lunedì le richieste nuove di "Lavori cercati" del suo mestiere entro 100 km (docs/changelog/2026-11-18-bacheca-cliente.md).
+    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_MATCHED_LATER", "REQUEST_SENT", "REQUEST_WITHDRAWN", "WAITING_REQUEST_STILL_NEEDED", "BOARD_CLAIM_ARRIVED", "BOARD_WEEKLY_DIGEST"],
     activeChannels: ["inApp", "email"],
   },
   preventivi: {
@@ -347,6 +348,14 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
     // Solo sul sito, nessuna email (decisione di Luca, docs/changelog/2026-11-17-bacheca-rispondi.md).
     channels: ["inApp"],
     professional: { label: "Richieste scelte da Lavori cercati", description: "È arrivata nel tuo elenco una richiesta che avevi tenuto da parte." },
+  },
+  {
+    key: "richieste.settimana",
+    topic: "richieste",
+    types: ["BOARD_WEEKLY_DIGEST"],
+    // Solo email, una volta a settimana ("sì" di Luca del 18/11, docs/changelog/2026-11-18-bacheca-cliente.md).
+    channels: ["email"],
+    professional: { label: "Lavori cercati della settimana", description: "Il lunedì, le richieste nuove del tuo mestiere entro 100 km che non ti sono ancora arrivate." },
   },
   {
     key: "richieste.inviata",

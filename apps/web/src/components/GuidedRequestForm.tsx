@@ -269,6 +269,8 @@ export function GuidedRequestForm({
   // Richiesta diretta: inoltrarla ad altri se il professionista non
   // risponde in tempo (decisione dell'utente: attiva di default).
   const [forwardIfNoReply, setForwardIfNoReply] = useState(true);
+  // "Mostra in Lavori cercati", acceso di serie (docs/changelog/2026-11-18-bacheca-cliente.md).
+  const [boardAllowed, setBoardAllowed] = useState(true);
 
   const initialCategory = searchParams.get("categoria");
   const initialCity = searchParams.get("citta") ?? "";
@@ -1313,6 +1315,7 @@ export function GuidedRequestForm({
         professionalProfileId,
         professionalProfileIds: chosenMode ? chosenIds : undefined,
         forwardIfNoReply: professionalProfileId ? forwardIfNoReply : false,
+        boardAllowed,
         viaProfessionalLink: professionalProfileId && viaPersonalLink ? true : undefined,
         preferredDate: finalPreferredDate,
         preferredTimeSlot: finalPreferredTimeSlot,
@@ -1717,8 +1720,8 @@ export function GuidedRequestForm({
           <FieldLabel>Foto per il professionista</FieldLabel>
           <Text fontSize={13} color={brand.grafite70}>
             {firstMustBePhoto
-              ? "Prima una foto del problema da vicino, poi altre foto o video. "
-              : `Fino a ${MAX_PHOTOS} foto o video del problema, anche più insieme. `}
+              ? "Prima una foto del problema da vicino, poi altre foto o video (massimo 1 minuto). "
+              : `Fino a ${MAX_PHOTOS} foto o video del problema, anche più insieme; i video al massimo 1 minuto. `}
             Le vede il professionista: niente numeri di telefono, documenti o persone.
           </Text>
           <div
@@ -1773,6 +1776,7 @@ export function GuidedRequestForm({
               <PhotoPicker
                 accept={photoFirstOnly ? "image/*" : "image/*,video/*"}
                 allowVideo={!photoFirstOnly}
+                videoHint="Massimo 1 minuto"
                 maxPhotos={MAX_PHOTOS - photos.length}
                 onFile={addPhoto}
                 onFiles={addPhotos}
@@ -2239,6 +2243,8 @@ export function GuidedRequestForm({
             }
             forwardIfNoReply={forwardIfNoReply}
             onToggleForward={() => setForwardIfNoReply((v) => !v)}
+            boardAllowed={boardAllowed}
+            onToggleBoard={() => setBoardAllowed((v) => !v)}
             reach={reach}
             timing={timing}
             // Nel riepilogo non si richiede "Quando ti serve?": si legge nella riga del lavoro e si cambia con "Modifica".
@@ -2418,6 +2424,8 @@ function RequestSummary({
   slotLabel,
   forwardIfNoReply,
   onToggleForward,
+  boardAllowed,
+  onToggleBoard,
   reach,
   timing,
   urgencyControl,
@@ -2440,6 +2448,9 @@ function RequestSummary({
   slotLabel: string | null;
   forwardIfNoReply: boolean;
   onToggleForward: () => void;
+  /** "Mostra in Lavori cercati": solo per le richieste generali non urgenti. */
+  boardAllowed: boolean;
+  onToggleBoard: () => void;
   /** A quanti professionisti arriva (null finché non risponde l'API). */
   reach: GuidedRequestReach | null;
   timing: RequestTiming | null;
@@ -2534,6 +2545,19 @@ function RequestSummary({
             onToggle={onToggleForward}
             title="Inoltra se non risponde"
             description={`Se non risponde entro ${forwardTime}, la mandiamo ${forwardTargets}. ${professionalName} potrà comunque risponderti.`}
+          />
+        ) : null}
+        {!professionalName && !chosen && !isUrgent ? (
+          <SendOptionSwitch
+            id="guided-board"
+            checked={boardAllowed}
+            onToggle={onToggleBoard}
+            title="Mostra in Lavori cercati"
+            description={
+              waiting
+                ? "La mostriamo subito anche ai professionisti non ancora iscritti, così chi fa questo lavoro ti trova prima. Senza nome, foto e indirizzo."
+                : "Se in 2 giorni nessuno ti manda un preventivo, la mostriamo anche ai professionisti non ancora iscritti. Senza nome, foto e indirizzo."
+            }
           />
         ) : null}
       </div>

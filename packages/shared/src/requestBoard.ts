@@ -259,4 +259,10 @@ export const BOARD_REPLY_RADIUS_KM = 100;
  */
 export type BoardReplyStatus = "added" | "already" | "saved" | "other-trade" | "too-far" | "no-online" | "full" | "closed";
 
-export type BoardReplyResult = { status: BoardReplyStatus; requestId: string; tradeLabel?: string };
+export type BoardReplyResult = {
+  status: BoardReplyStatus;
+  requestId: string;
+  tradeLabel?: string;
+  /** Con "too-far": fino a 3 richieste dello stesso mestiere entro 100 km dalla zona del profilo, le più vicine prima. */
+  nearby?: BoardCard[];
+};

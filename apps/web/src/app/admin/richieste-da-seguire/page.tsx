@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   OUT_OF_SERVICE_LABELS,
+  type BoardAdminCounts,
   waitingInviteHref,
   waitingTradeAd,
   type MostRequestedTrade,
@@ -77,6 +78,7 @@ export default function AdminRichiesteInAttesaPage() {
         value={tab}
         onChange={setTab}
       />
+      {data?.board ? <BoardCounts counts={data.board} /> : null}
       {data && data.mostRequested.length > 0 ? <MostRequested trades={data.mostRequested} /> : null}
       {tab === "prima" ? (
         <OldTakeovers />
@@ -134,6 +136,39 @@ export default function AdminRichiesteInAttesaPage() {
           )}
         </YStack>
       )}
+    </YStack>
+  );
+}
+
+/**
+ * Misure della bacheca "Lavori cercati" (docs/changelog/2026-11-18-bacheca-cliente.md):
+ * solo numeri, per capire se la bacheca porta preventivi.
+ */
+function BoardCounts({ counts }: { counts: BoardAdminCounts }) {
+  const items = [
+    { label: "In bacheca adesso", value: counts.listed },
+    { label: "Risposte con «Rispondi»", value: counts.replies },
+    { label: "Preventivi da quelle risposte", value: counts.quotes },
+    { label: "Tenute da parte", value: counts.claimsPending },
+    { label: "Aspettano «Avvisami»", value: counts.alertsPending },
+    { label: "Tolte dal cliente", value: counts.optedOut },
+  ];
+  return (
+    <YStack gap="2" marginBottom="4">
+      <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
+        Lavori cercati
+      </Text>
+      <div className="waiting-groups">
+        {items.map((item) => (
+          <div key={item.label} className="waiting-group">
+            <strong>{item.value}</strong>
+            <span>{item.label}</span>
+          </div>
+        ))}
+      </div>
+      <Text fontSize={13} color={brand.grafite70}>
+        Risposte, preventivi e richieste tolte: ultimi 90 giorni. Gli altri numeri sono di oggi.
+      </Text>
     </YStack>
   );
 }

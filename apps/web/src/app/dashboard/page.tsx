@@ -166,6 +166,10 @@ export default function DashboardTodayPage() {
     .filter((lead) => classifyLeadStage(lead) === "da_quotare")
     .sort((a, b) => (a.expiresAt ?? "9999").localeCompare(b.expiresAt ?? "9999"));
   const datesToConfirm = (leads ?? []).filter((lead) => lead.quote?.status === "MODIFICATION_REQUESTED" && lead.quote.clientProposedDate);
+  // Appuntamenti già fissati che il cliente chiede di spostare: anche loro in
+  // "Date proposte dai clienti", non solo in Agenda e Richieste
+  // (docs/changelog/2026-11-18-spostamento-in-oggi.md, richiesta di Luca).
+  const movesToConfirm = (bookings ?? []).filter((b) => b.status === "CONFIRMED" && b.dateChange?.proposedBy === "CLIENT");
   const unreadMessages = accountMenuUnreadCounts(true, unreadNotifications)["/chat"] ?? 0;
 
   // Appuntamenti in ora di parete UTC: oggi e domani in Italia, docs/CHANGELOG.md §287.
@@ -177,7 +181,7 @@ export default function DashboardTodayPage() {
   // `onTheWay`: "Sto arrivando" (§353), solo per un appuntamento confermato a domicilio.
   // `end` e `arrival`: fascia completa e "Arrivo verso le" accanto al nome
   // (docs/changelog/2026-11-18-orari-oggi-e-giro.md, richiesta di Luca).
-  type UpcomingRow = { key: string; href: string; at: string; end: string | null; arrival: string | null; title: string; sub: string; job: DayJobRow; navigateTo: string | null; onTheWay: { bookingId: string; sentAt: string | null } | null; phone: string | null };
+  type UpcomingRow = { key: string; href: string; at: string; end: string | null; arrival: string | null; title: string; sub: string; job: DayJobRow; navigateTo: string | null; onTheWay: { bookingId: string; sentAt: string | null } | null; phone: string | null; move: "CLIENT" | "PROFESSIONAL" | null };
   const inWindow = (start: Date) => start >= startToday && start < endTomorrow;
   const upcoming: UpcomingRow[] = [
     ...(bookings ?? [])
@@ -207,6 +211,8 @@ export default function DashboardTodayPage() {
             onTheWay: booking.status === "CONFIRMED" && booking.serviceMode !== "ONLINE" ? { bookingId: booking.id, sentAt: booking.onTheWayAt ?? null } : null,
             // Telefono solo a lavoro confermato (CLAUDE.md §5 punto 9).
             phone: booking.status === "CONFIRMED" ? (booking.recipientPhone ?? booking.clientPhone) : null,
+            // Spostamento in sospeso: chiesto dal cliente o proposto da te.
+            move: booking.dateChange?.proposedBy ?? null,
           })),
       ),
     // Anche i lavori aggiunti a mano in agenda (§333).
@@ -227,6 +233,7 @@ export default function DashboardTodayPage() {
             navigateTo: job.address,
             onTheWay: null,
             phone: job.clientPhone,
+            move: null,
           })),
       ),
   ].sort((a, b) => upcomingSortKey(a).localeCompare(upcomingSortKey(b)));
@@ -265,7 +272,7 @@ export default function DashboardTodayPage() {
   const quietStart = Boolean(heroJourney) && !loading && !error && upcoming.length === 0 && toAnswer.length === 0 && unreadMessages === 0;
   const greetingName = user.businessName ?? user.name ?? "";
   const showToAnswerOnTop = !loading && !error && toAnswer.length > 0;
-  const showDatesOnTop = !loading && !error && datesToConfirm.length > 0;
+  const showDatesOnTop = !loading && !error && datesToConfirm.length + movesToConfirm.length > 0;
 
   return (
     <YStack width="100%" alignItems="center" paddingVertical="6" paddingHorizontal="4">
@@ -303,7 +310,24 @@ export default function DashboardTodayPage() {
           </TodaySection>
         ) : null}
         {showDatesOnTop ? (
-          <TodaySection title="Date proposte dai clienti" count={datesToConfirm.length}>
+          <TodaySection title="Date proposte dai clienti" count={datesToConfirm.length + movesToConfirm.length}>
+            {movesToConfirm.map((booking) => (
+              <Link
+                key={booking.id}
+                href={booking.guidedRequestId ? `/dashboard/richieste?open=${booking.guidedRequestId}` : `/dashboard/agenda?booking=${booking.id}`}
+                className="today-row"
+              >
+                <span className="today-row-main">
+                  <strong>
+                    {booking.categoryLabel ?? "Appuntamento"} · {booking.clientName ?? "Cliente"}
+                  </strong>
+                  <span className="today-row-sub">
+                    Chiede di spostarlo da {formatDateTime(booking.scheduledAt)} a {formatDateTime(booking.dateChange!.start)}
+                  </span>
+                </span>
+                <span className="today-row-cta">Rispondi</span>
+              </Link>
+            ))}
             {datesToConfirm.map((lead) => (
               <Link key={lead.id} href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} className="today-row">
                 <span className="today-row-main">
@@ -351,7 +375,7 @@ export default function DashboardTodayPage() {
                   {upcoming.length === 0 ? (
                     <EmptyLine text={quietStart ? "Nessun appuntamento né richiesta per ora: ti avvisiamo appena ne arriva una." : "Nessun appuntamento oggi e domani."} />
                   ) : (
-                    upcoming.map(({ key, href, at, end, arrival, title, sub, navigateTo, onTheWay, phone }, index) => (
+                    upcoming.map(({ key, href, at, end, arrival, title, sub, navigateTo, onTheWay, phone, move }, index) => (
                       <Fragment key={key}>
                         {/* I lavori raggruppati per giorno, con il riepilogo sopra (§333). */}
                         {index === 0 || upcoming[index - 1]!.at.slice(0, 10) !== at.slice(0, 10) ? (
@@ -373,6 +397,11 @@ export default function DashboardTodayPage() {
                             <span className="today-row-main">
                               <strong>{title}</strong>
                               <span className="today-row-sub">{sub}</span>
+                              {move ? (
+                                <span className={move === "CLIENT" ? "today-move is-asked" : "today-move"}>
+                                  {move === "CLIENT" ? "Il cliente chiede di spostarlo" : "Nuova data proposta: in attesa del cliente"}
+                                </span>
+                              ) : null}
                             </span>
                           </Link>
                           {/* "Naviga" e "Sto arrivando" diretti sui lavori di oggi
