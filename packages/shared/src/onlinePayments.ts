@@ -410,6 +410,21 @@ export function quotePaymentSplitLine(choice: JobPaymentChoice, totals: { totalM
   return `${formatEurCents(split.nowEurCents)} adesso con la carta, il resto (${quotePaymentRestText(split)}) a lavoro finito ${split.restOnline ? "con la stessa carta" : "direttamente al professionista"}`;
 }
 
+/**
+ * La stessa cosa in mezza riga, per la scheda del preventivo e la scelta del
+ * pagamento ("150,00 € subito, il resto solo se serve"): le cifre complete le
+ * dice una volta sola il riepilogo prima di accettare
+ * (docs/changelog/2026-11-18-accettare-il-preventivo.md).
+ */
+export function quotePaymentShortLine(choice: JobPaymentChoice, totals: { totalMinEurCents: number; totalMaxEurCents: number }, depositPercent: number): string | null {
+  const split = quotePaymentSplit(choice, totals, depositPercent);
+  if (!split) return null;
+  const now = `${formatEurCents(split.nowEurCents)} subito`;
+  if (split.restMaxEurCents === 0) return split.restIsRange ? `${now}, la differenza ti torna se costa meno` : `${now}, tutto il prezzo`;
+  if (split.nowIsMinimum) return `${now}, il resto solo se serve${split.restOnline ? "" : ", direttamente a lui"}`;
+  return `${now}, il resto a lavoro finito${split.restOnline ? "" : " direttamente a lui"}`;
+}
+
 /** Minimo che Stripe accetta per un pagamento con carta in euro (collaudo I-01). */
 export const ONLINE_MIN_CHARGE_EUR_CENTS = 50;
 

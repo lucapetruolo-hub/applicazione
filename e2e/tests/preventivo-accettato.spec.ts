@@ -84,7 +84,7 @@ test("percorso completo: Accetta, Appuntamento prenotato, biglietto con calendar
   const card = page.locator(`#request-${request.id}`);
   await card.locator(`#quote-${quotes[0].id}`).getByText("Accetta preventivo", { exact: true }).click();
   // Prima il riepilogo, poi l'impegno (collaudo A-07, M-02).
-  await expect(card.getByText("Prima di accettare", { exact: true })).toBeVisible();
+  await expect(card.getByRole("heading", { name: "Accetta il preventivo" })).toBeVisible();
   await expect(card.getByRole("link", { name: "Recesso e annullamento" })).toBeVisible();
   await card.getByText("Accetta con obbligo di pagare", { exact: true }).click();
 

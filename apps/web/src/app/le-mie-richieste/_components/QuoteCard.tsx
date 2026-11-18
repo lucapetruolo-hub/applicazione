@@ -33,7 +33,8 @@ import {
 } from "@professionisti/shared";
 import { PaymentChoice, PaymentOffer, paymentSplit, selectablePaymentChoices } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
-import { Avatar, Badge, BadgeInfo, ProfessionalKindBadge, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Avatar, Badge, BadgeInfo, Icon, ProfessionalKindBadge, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { ModalDialog } from "@/components/ModalDialog";
 import { ApiError } from "@professionisti/api-client";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -581,76 +582,99 @@ export function QuoteCard({
               </XStack>
             </XStack>
           ) : null}
+          {/* Accettare è un passaggio a parte, in una finestra (docs/changelog/2026-11-18-accettare-il-preventivo.md):
+              prima il riepilogo si apriva in fondo a una scheda già lunga e ripeteva
+              data, prezzo e pagamento tre volte. Da telefono i pulsanti stanno uno
+              sopra l'altro, larghi, con "Accetta" in alto dove si legge la cifra. */}
           {choosingPayment ? (
-            <YStack gap="3" paddingTop="2" borderTopWidth={1} borderTopColor={brand.filetto}>
-              {selectablePayments.length > 1 ? (
-                <PaymentChoice
-                  value={paymentMethod}
-                  onChange={setPaymentMethod}
-                  quoteMinEurCents={priceTotals.totalMinEurCents}
-                  quoteMaxEurCents={priceTotals.totalMaxEurCents}
-                  onlineAvailable={onlinePayments}
-                  offered={quote.paymentOptions}
-                  depositPercent={quote.depositPercent}
-                />
-              ) : null}
-              {paymentMethod ? (
-              <QuoteAcceptSummary
-                quote={quote}
-                dateText={`${formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}${quote.arrivalTime ? `, arrivo ${arrivalWindowText(quote.arrivalTime, quote.estimatedStartDate, quote.estimatedEndDate)}` : ""}`}
-                priceTotals={priceTotals}
-                payment={paymentMethod}
-                onlinePayments={onlinePayments}
-                now={now}
-              >
-                {/* Fattura chiesta al professionista, non a noi (§378): qui, quando si è deciso (05/11/2026). */}
-                <YStack gap="3">
-                  <InvoiceRequestToggle professionalName={quote.businessName} checked={invoiceWanted} receipt={quote.professionalKind === "PRIVATE"} onToggle={() => void toggleInvoice()} />
-                  {invoiceWanted ? <InvoiceRequestFields draft={invoiceDraft} onChange={setInvoiceDraft} errors={invoiceErrors} receipt={quote.professionalKind === "PRIVATE"} /> : null}
-                </YStack>
-              </QuoteAcceptSummary>
-              ) : null}
-              {/* Detrazioni per i lavori in casa (domanda 28 al commercialista): di solito serve il bonifico parlante (§378). */}
-              {categoryMayHaveTaxBonus(categorySlug) && selectablePayments.some(paymentChoiceIsOnline) ? (
-                <Text fontSize={13} color={brand.grafite70}>
-                  {TAX_BONUS_PAYMENT_NOTE.short}{" "}
-                  {taxBonusOpen ? (
-                    TAX_BONUS_PAYMENT_NOTE.more
-                  ) : (
-                    <Text fontSize={13} fontWeight="700" color={brand.cianografiaScuro} textDecorationLine="underline" cursor="pointer" role="button" onPress={() => setTaxBonusOpen(true)}>
-                      Scopri di più
+            <ModalDialog label="Accetta il preventivo" maxWidth={520} onClose={() => (isAccepting ? undefined : setChoosingPayment(false))}>
+              <YStack backgroundColor={brand.calce} borderRadius="3" padding="4 xs:3" gap="4" data-testid="quote-accept-dialog">
+                <XStack justifyContent="space-between" alignItems="flex-start" gap="3">
+                  <YStack flex={1} minWidth={0} gap={2}>
+                    {/* Il fuoco sul titolo: la finestra si apre dall'inizio e il lettore di schermo legge con chi e quando. */}
+                    <Text render="h2" tabIndex={-1} data-autofocus fontFamily="heading" fontWeight="800" fontSize={20} color={brand.inchiostro} margin={0} style={{ outline: "none" }}>
+                      Accetta il preventivo
                     </Text>
-                  )}
-                </Text>
-              ) : null}
-              {needsEmail ? (
-                <ClientEmailVerificationCard
-                  title="Conferma la tua email per fissare l'appuntamento"
-                  text="Ti abbiamo mandato un'email: premi il pulsante e l'accettazione va avanti da sola."
-                  autoSend
-                  allowChangeEmail
-                  onVerified={() => {
-                    setNeedsEmail(false);
-                    // Stessa scelta di pagamento e stessi dati della fattura di prima.
-                    void handleAccept(paymentMethod, true);
-                  }}
-                />
-              ) : null}
-              <XStack gap="2" flexWrap="wrap">
-                <CardButton
-                  tone="primary"
-                  arrow
-                  onPress={() => void handleAccept()}
-                  disabled={isAccepting || !paymentMethod || !selectablePayments.includes(paymentMethod)}
-                >
-                  {/* Il pulsante dice che nasce l'obbligo di pagare (collaudo A-07, Codice del consumo art. 51 c. 2). */}
-                  {isAccepting ? "Accettazione..." : acceptLabel}
-                </CardButton>
-                <CardButton onPress={() => setChoosingPayment(false)} disabled={isAccepting}>
-                  Annulla
-                </CardButton>
-              </XStack>
-            </YStack>
+                    <Text fontSize={15} color={brand.grafite}>
+                      <Text fontWeight="700">{quote.businessName}</Text> · {formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
+                      {quote.arrivalTime ? `, arrivo ${arrivalWindowText(quote.arrivalTime, quote.estimatedStartDate, quote.estimatedEndDate)}` : ""}
+                    </Text>
+                  </YStack>
+                  <button type="button" className="quote-compare-close" data-dialog-close onClick={() => setChoosingPayment(false)} disabled={isAccepting} aria-label="Chiudi">
+                    <Icon name="x" size={20} color={brand.grafite} />
+                  </button>
+                </XStack>
+                {selectablePayments.length > 1 ? (
+                  <YStack gap="2">
+                    <PaymentChoice
+                      value={paymentMethod}
+                      onChange={setPaymentMethod}
+                      quoteMinEurCents={priceTotals.totalMinEurCents}
+                      quoteMaxEurCents={priceTotals.totalMaxEurCents}
+                      onlineAvailable={onlinePayments}
+                      offered={quote.paymentOptions}
+                      depositPercent={quote.depositPercent}
+                    />
+                    {/* Detrazioni per i lavori in casa (domanda 28 al commercialista): accanto alla scelta, dove serve (§378). */}
+                    {categoryMayHaveTaxBonus(categorySlug) && selectablePayments.some((choice) => !paymentChoiceIsOnline(choice)) ? (
+                      <Text fontSize={13} color={brand.grafite70}>
+                        {TAX_BONUS_PAYMENT_NOTE.short}{" "}
+                        {taxBonusOpen ? (
+                          TAX_BONUS_PAYMENT_NOTE.more
+                        ) : (
+                          <Text fontSize={13} fontWeight="700" color={brand.cianografiaScuro} textDecorationLine="underline" cursor="pointer" role="button" onPress={() => setTaxBonusOpen(true)}>
+                            Scopri di più
+                          </Text>
+                        )}
+                      </Text>
+                    ) : null}
+                  </YStack>
+                ) : null}
+                {paymentMethod ? (
+                  <QuoteAcceptSummary quote={quote} priceTotals={priceTotals} payment={paymentMethod} onlinePayments={onlinePayments} now={now}>
+                    {/* Fattura chiesta al professionista, non a noi (§378): qui, quando si è deciso (05/11/2026). */}
+                    <YStack gap="3">
+                      <InvoiceRequestToggle professionalName={quote.businessName} checked={invoiceWanted} receipt={quote.professionalKind === "PRIVATE"} onToggle={() => void toggleInvoice()} />
+                      {invoiceWanted ? <InvoiceRequestFields draft={invoiceDraft} onChange={setInvoiceDraft} errors={invoiceErrors} receipt={quote.professionalKind === "PRIVATE"} /> : null}
+                    </YStack>
+                  </QuoteAcceptSummary>
+                ) : null}
+                {needsEmail ? (
+                  <ClientEmailVerificationCard
+                    title="Conferma la tua email per fissare l'appuntamento"
+                    text="Ti abbiamo mandato un'email: premi il pulsante e l'accettazione va avanti da sola."
+                    autoSend
+                    allowChangeEmail
+                    onVerified={() => {
+                      setNeedsEmail(false);
+                      // Stessa scelta di pagamento e stessi dati della fattura di prima.
+                      void handleAccept(paymentMethod, true);
+                    }}
+                  />
+                ) : null}
+                {error ? (
+                  <Text color={brand.urgenza} fontSize={16} role="alert">
+                    {error}
+                  </Text>
+                ) : null}
+                <XStack gap="2" flexDirection="row xs:column">
+                  <CardButton
+                    tone="primary"
+                    arrow
+                    flexGrow="xs:1"
+                    height="44px xs:48px"
+                    onPress={() => void handleAccept()}
+                    disabled={isAccepting || !paymentMethod || !selectablePayments.includes(paymentMethod)}
+                  >
+                    {/* Il pulsante dice che nasce l'obbligo di pagare (collaudo A-07, Codice del consumo art. 51 c. 2). */}
+                    {isAccepting ? "Accettazione..." : acceptLabel}
+                  </CardButton>
+                  <CardButton height="44px xs:48px" onPress={() => setChoosingPayment(false)} disabled={isAccepting}>
+                    Torna indietro
+                  </CardButton>
+                </XStack>
+              </YStack>
+            </ModalDialog>
           ) : null}
           {!isChoosingDate && confirmingReject ? (
             <YStack gap="2">
@@ -750,7 +774,7 @@ export function QuoteCard({
         </Text>
       ) : null}
 
-      {error ? (
+      {error && !choosingPayment ? (
         <Text color={brand.urgenza} fontSize={16}>
           {error}
         </Text>
