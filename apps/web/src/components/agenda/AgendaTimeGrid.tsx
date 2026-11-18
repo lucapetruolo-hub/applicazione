@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { CloudFog, CloudLightning, CloudRain, Repeat, Snowflake, Wind } from "lucide-react";
-import { WEATHER_ALERT_LABEL, type WeatherAlertKind } from "@professionisti/shared";
+import { Cloud, CloudFog, CloudLightning, CloudRain, CloudSun, Repeat, Snowflake, Sun, Wind } from "lucide-react";
+import { WEATHER_CONDITION_LABEL, type WeatherCondition } from "@professionisti/shared";
 import { isSameDateUtc, toIsoDate, weekdayShortLabel } from "@/lib/calendarDates";
 
 export type AgendaEventKind = "conf" | "pending" | "done" | "wait" | "ext" | "canceled";
@@ -46,7 +46,10 @@ const DEFAULT_TO = 20;
 const BOTTOM_GAP_PX = 16;
 const MIN_SCROLL_HEIGHT_PX = 320;
 
-const WEATHER_ICONS: Record<WeatherAlertKind, typeof CloudRain> = {
+const WEATHER_ICONS: Record<WeatherCondition, typeof CloudRain> = {
+  clear: Sun,
+  partly: CloudSun,
+  cloudy: Cloud,
   rain: CloudRain,
   storm: CloudLightning,
   snow: Snowflake,
@@ -54,10 +57,27 @@ const WEATHER_ICONS: Record<WeatherAlertKind, typeof CloudRain> = {
   fog: CloudFog,
 };
 
-export function WeatherIcon({ kind, size = 15 }: { kind: WeatherAlertKind; size?: number }) {
+/** Bel tempo in grigio chiaro, maltempo a colori: l'occhio va solo ai giorni a rischio (docs/changelog/2026-11-18-meteo-tre-giorni.md). */
+const CALM_WEATHER = new Set<WeatherCondition>(["clear", "partly", "cloudy"]);
+
+/**
+ * Icona meteo di un giorno. La spiegazione ("Pioggia") compare al passaggio del
+ * mouse; al tocco, il giorno si apre e la scrive per esteso (`withLabel`).
+ */
+export function WeatherIcon({ kind, size = 15, withLabel = false }: { kind: WeatherCondition; size?: number; withLabel?: boolean }) {
   const IconComponent = WEATHER_ICONS[kind];
+  const label = WEATHER_CONDITION_LABEL[kind];
+  const className = `ag-weather${CALM_WEATHER.has(kind) ? " calm" : ""}${withLabel ? " labeled" : ""}`;
+  if (withLabel) {
+    return (
+      <span className={className}>
+        <IconComponent size={size} strokeWidth={2} aria-hidden />
+        {label}
+      </span>
+    );
+  }
   return (
-    <span className="ag-weather" title={WEATHER_ALERT_LABEL[kind]} role="img" aria-label={WEATHER_ALERT_LABEL[kind]}>
+    <span className={className} title={label} role="img" aria-label={label}>
       <IconComponent size={size} strokeWidth={2} aria-hidden />
     </span>
   );
@@ -188,7 +208,7 @@ export function AgendaTimeGrid({
   events: AgendaGridEvent[];
   free: AgendaFreeBand[];
   closedDates: Set<string>;
-  weather: Map<string, WeatherAlertKind>;
+  weather: Map<string, WeatherCondition>;
   today: Date;
   nowMinutes: number;
   selectedKey: string | null;

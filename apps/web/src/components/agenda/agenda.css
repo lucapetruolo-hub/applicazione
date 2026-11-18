@@ -533,10 +533,25 @@
   color: var(--ag-muted);
 }
 .ag-weather {
+  position: relative;
   display: inline-flex;
   vertical-align: middle;
   margin-left: 4px;
   color: #4f6d8f;
+}
+/* Bel tempo in grigio chiaro: c'è, ma l'occhio va ai giorni col maltempo (docs/changelog/2026-11-18-meteo-tre-giorni.md). */
+.ag-weather.calm {
+  color: #a39a91;
+}
+/* Nel giorno aperto: icona e parola ("Pioggia"), stesso colore. */
+.ag-weather.labeled {
+  align-items: center;
+  gap: 3px;
+  margin-left: 0;
+  font-weight: 500;
+}
+.ag-weather.labeled.calm {
+  color: var(--ag-muted);
 }
 .ag-grid-scroll {
   max-height: 640px;

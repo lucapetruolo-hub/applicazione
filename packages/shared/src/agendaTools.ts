@@ -60,7 +60,6 @@ export type CalendarFeedStatus = { token: string | null };
 
 /** Fenomeni che meritano un'icona sul giorno (decisione dell'utente: solo un'icona, niente testo). */
 export type WeatherAlertKind = "rain" | "storm" | "snow" | "wind" | "fog";
-export type WeatherDayAlert = { date: string; kind: WeatherAlertKind };
 
 export const WEATHER_ALERT_LABEL: Record<WeatherAlertKind, string> = {
   rain: "Pioggia",
@@ -79,6 +78,16 @@ export const WEATHER_CONDITION_LABEL: Record<WeatherCondition, string> = {
   cloudy: "Nuvoloso",
   ...WEATHER_ALERT_LABEL,
 };
+
+/**
+ * Icona meteo di un giorno nell'agenda: oggi, domani e dopodomani sempre (anche
+ * col sereno), più avanti solo col maltempo (richiesta di Luca,
+ * docs/changelog/2026-11-18-meteo-tre-giorni.md).
+ */
+export type WeatherDayAlert = { date: string; kind: WeatherCondition };
+
+/** Giorni con l'icona meteo sempre, anche col bel tempo: oggi e i due successivi. */
+export const WEATHER_ALWAYS_DAYS = 3;
 
 export type DayForecast = { date: string; condition: WeatherCondition; tempMax: number | null; tempMin: number | null };
 

@@ -15,11 +15,33 @@ describe("icona meteo", () => {
     expect(weatherAlertKind(45, 0, 10)).toBe("fog");
     expect(weatherAlertKind(0, 0, 10)).toBeNull();
   });
-  it("tiene solo i giorni con un fenomeno", () => {
+  it("dopo dopodomani tiene solo i giorni con un fenomeno", () => {
     expect(
-      weatherAlerts({ daily: { time: ["2026-10-22", "2026-10-23"], weather_code: [0, 95], precipitation_probability_max: [0, 90], wind_gusts_10m_max: [10, 40] } }),
-    ).toEqual([{ date: "2026-10-23", kind: "storm" }]);
-    expect(weatherAlerts({})).toEqual([]);
+      weatherAlerts(
+        { daily: { time: ["2026-10-25", "2026-10-26"], weather_code: [0, 95], precipitation_probability_max: [0, 90], wind_gusts_10m_max: [10, 40] } },
+        "2026-10-22",
+      ),
+    ).toEqual([{ date: "2026-10-26", kind: "storm" }]);
+    expect(weatherAlerts({}, "2026-10-22")).toEqual([]);
+  });
+  it("da oggi a dopodomani mette sempre l'icona, anche col sereno, e salta i giorni passati della cache", () => {
+    expect(
+      weatherAlerts(
+        {
+          daily: {
+            time: ["2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25"],
+            weather_code: [0, 0, 2, 63, 3],
+            precipitation_probability_max: [0, 0, 0, 80, 0],
+            wind_gusts_10m_max: [10, 10, 10, 10, 10],
+          },
+        },
+        "2026-10-22",
+      ),
+    ).toEqual([
+      { date: "2026-10-22", kind: "clear" },
+      { date: "2026-10-23", kind: "partly" },
+      { date: "2026-10-24", kind: "rain" },
+    ]);
   });
 });
 
