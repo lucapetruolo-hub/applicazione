@@ -21,3 +21,27 @@ toglie valore alla luce dove invece lavora.
 **Verifica**: Playwright su `/preventivo` generale (luce con `label-badge-spin`),
 con un professionista e con 2 scelti (bordo 1px, nessuna animazione), da
 telefono e computer, anche mentre si scrive.
+
+## Secondo giro: foto e video (sì di Luca, 18/11)
+
+**Richiesta**: fotocamera di "Foto del problema" verde pieno dove l'IA non
+lavora; togliere l'obbligo di mettere per prima una foto; poter scegliere più
+foto o video insieme, sempre fino a 5.
+
+**Decisione**:
+- `FieldCameraIcon tone="verde"` con professionisti scelti (o attesa di un
+  mestiere): niente sfumatura pastello che ricorda le luci dell'IA.
+- Con professionisti scelti anche il primo file può essere un video (menu
+  "Fai un video" da subito, casella "Foto o video", testo "Fino a 5 foto o
+  video del problema, anche più insieme"). Nella richiesta generale la prima
+  resta una foto, perché è quella che l'IA guarda se dal testo non capisce il
+  mestiere (scelta di Luca del 15/11).
+- `PhotoPicker` con `onFiles`: dalla galleria o dal computer si scelgono più
+  file insieme, in tutti e due i percorsi; si caricano uno alla volta
+  nell'ordine scelto fino a 5; quelli in più si dicono in una riga grigia (il
+  rosso resta per gli errori). Le altre pagine che usano `PhotoPicker` (home,
+  profilo, copertina) restano a un file.
+
+**Verifica**: Playwright da computer: 6 immagini scelte insieme, 5 miniature
+e la riga grigia, sia con 2 scelti sia nella richiesta generale; con scelti
+`accept="image/*,video/*"` già alla prima casella, nella generale `image/*`.
