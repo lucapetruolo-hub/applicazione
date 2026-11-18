@@ -69,3 +69,18 @@ di cui Stripe non restituisce la commissione).
   pagamento" protegge chi era già su Stripe.
 - Prove aggiornate: shared (224), API (1632), più typecheck e lint.
 - Foto: `anteprime/importo-acconto/minimo-*.png`.
+
+**Quarto giro: le due scelte online restano anche al 100%** (sì di Luca, 18/11;
+cambia la decisione del 13/11). Con l'acconto sul minimo, al 100% con una
+forbice "Acconto online e saldo diretto" non coincide più con "tutto online":
+il cliente paga il minimo con la carta e l'eventuale differenza direttamente al
+professionista. Quindi:
+- `quotePaymentOffer` unisce le due scelte solo al 100% con un **prezzo unico**
+  (lì sono davvero uguali); legge le voci del preventivo, che server, PDF e
+  pagina del cliente gli passano già.
+- Testo per il cliente con "acconto e saldo diretto" al 100%: "Paghi ora con la
+  carta il prezzo minimo. Se il prezzo finale è più alto, la differenza la paghi
+  direttamente al professionista a lavoro finito." La riga con le cifre dice
+  "direttamente al professionista" invece di "con la stessa carta".
+- Nel modulo l'avviso "non vedrà Acconto online e saldo diretto" compare solo al
+  100% con un prezzo unico.

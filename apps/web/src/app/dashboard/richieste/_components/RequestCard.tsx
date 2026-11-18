@@ -2061,9 +2061,9 @@ export function RequestCard({
                     ) : null}
                     {/* Al 100% "acconto e saldo diretto" coincide con "tutto online": al cliente si mostra solo quello
                         (docs/changelog/2026-11-13-annullare-data-passata.md). */}
-                    {paymentOptions.includes("MIXED") && Number(depositPercentDraft) >= 100 ? (
+                    {paymentOptions.includes("MIXED") && Number(depositPercentDraft) >= 100 && draftTotals.totalMaxEurCents > 0 && draftTotals.totalMinEurCents >= draftTotals.totalMaxEurCents ? (
                       <Text fontSize={13} color={brand.grafite70}>
-                        Con l&apos;acconto al 100% il cliente paga tutto con la carta, quindi non vedrà &quot;{QUOTE_PAYMENT_OPTION_LABEL.MIXED}&quot;.
+                        Con l&apos;acconto al 100% e un prezzo unico il cliente paga tutto con la carta, quindi non vedrà &quot;{QUOTE_PAYMENT_OPTION_LABEL.MIXED}&quot;.
                       </Text>
                     ) : null}
                     {/* "Tutto online" con la forbice: il minimo subito (decisione di Luca, docs/changelog/2026-11-13-tutto-online-forbice.md). */}

@@ -1,4 +1,4 @@
-import { formatEur, formatEurCents } from "./professionals";
+import { formatEur, formatEurCents, quotePriceTotals } from "./professionals";
 import { BANK_DISPUTE_OPEN_STATUSES, BANK_DISPUTE_REVIEW_STATUSES, type ProfessionalBankDispute } from "./bankDisputes";
 
 /**
@@ -46,17 +46,26 @@ export const MAX_DEPOSIT_PERCENT = 100;
 export const DEFAULT_QUOTE_PAYMENT_OPTIONS: JobPaymentChoice[] = ["ONLINE", "DIRECT"];
 
 /** Modi offerti da un preventivo e percentuale dell'acconto, con i valori di serie per i preventivi vecchi. */
-export function quotePaymentOffer(quote: { paymentOptions?: string[] | null; depositPercent?: number | null }): {
+export function quotePaymentOffer(quote: {
+  paymentOptions?: string[] | null;
+  depositPercent?: number | null;
+  /** Voci del preventivo: servono a capire se al 100% le due scelte online coincidono. */
+  items?: { priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
+}): {
   paymentOptions: JobPaymentChoice[];
   depositPercent: number;
 } {
   const depositPercent = quote.depositPercent ?? ONLINE_DEPOSIT_PERCENT;
+  // Al 100% "acconto online, saldo diretto" coincide con "tutto online" solo
+  // con un prezzo unico: si offre solo quello (docs/changelog/2026-11-13-annullare-data-passata.md).
+  // Con la forbice l'acconto è il minimo (decisione di Luca del 18/11/2026,
+  // docs/changelog/2026-11-18-importo-acconto.md) e le due scelte restano
+  // diverse: il resto con la stessa carta oppure direttamente al professionista.
+  const totals = quote.items ? quotePriceTotals(quote.items) : null;
+  const sameAsOnline = depositPercent >= 100 && !!totals && totals.totalMinEurCents >= totals.totalMaxEurCents;
   const saved = (quote.paymentOptions ?? [])
     .filter((o): o is JobPaymentChoice => (jobPaymentChoices as readonly string[]).includes(o))
-    // Con l'acconto al 100% "acconto online, saldo diretto" è lo stesso che
-    // "tutto online": si offre solo quello (richiesta di Luca,
-    // docs/changelog/2026-11-13-annullare-data-passata.md).
-    .map((o) => (o === "MIXED" && depositPercent >= 100 ? "ONLINE" : o));
+    .map((o) => (o === "MIXED" && sameAsOnline ? "ONLINE" : o));
   return {
     // Ordine fisso, qualunque sia quello salvato.
     paymentOptions: saved.length ? jobPaymentChoices.filter((o) => saved.includes(o)) : DEFAULT_QUOTE_PAYMENT_OPTIONS,
@@ -261,7 +270,11 @@ export function jobPaymentChoiceCopy(
   if (choice === "MIXED") {
     return {
       title: "Acconto online, saldo diretto al professionista",
-      body: `Paghi ora un acconto del ${depositPercent}% del prezzo minimo, il resto direttamente al professionista a lavoro finito.`,
+      body:
+        depositPercent >= 100
+          ? // Al 100% con la forbice: il minimo con la carta, il resto solo se serve (Luca, 18/11/2026, docs/changelog/2026-11-18-importo-acconto.md).
+            "Paghi ora con la carta il prezzo minimo. Se il prezzo finale è più alto, la differenza la paghi direttamente al professionista a lavoro finito."
+          : `Paghi ora un acconto del ${depositPercent}% del prezzo minimo, il resto direttamente al professionista a lavoro finito.`,
     };
   }
   // Una riga sola, senza spiegazioni (richiesta esplicita dell'utente, §228).
@@ -392,7 +405,7 @@ export function quotePaymentSplitLine(choice: JobPaymentChoice, totals: { totalM
       : `${formatEurCents(split.nowEurCents)} adesso con la carta, tutto il prezzo`;
   }
   if (split.nowIsMinimum) {
-    return `${formatEurCents(split.nowEurCents)} adesso con la carta, il prezzo minimo. Il resto (${quotePaymentRestText(split)}) a lavoro finito con la stessa carta, solo se il prezzo finale è più alto`;
+    return `${formatEurCents(split.nowEurCents)} adesso con la carta, il prezzo minimo. Il resto (${quotePaymentRestText(split)}) a lavoro finito ${split.restOnline ? "con la stessa carta" : "direttamente al professionista"}, solo se il prezzo finale è più alto`;
   }
   return `${formatEurCents(split.nowEurCents)} adesso con la carta, il resto (${quotePaymentRestText(split)}) a lavoro finito ${split.restOnline ? "con la stessa carta" : "direttamente al professionista"}`;
 }

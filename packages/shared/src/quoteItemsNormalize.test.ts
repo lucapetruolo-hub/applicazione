@@ -11,7 +11,13 @@ test("voci del preventivo con la maiuscola", () => {
 });
 
 test("acconto al 100%: niente \"acconto online, saldo diretto\", resta \"tutto online\"", () => {
-  assert.deepEqual(quotePaymentOffer({ paymentOptions: ["ONLINE", "MIXED", "DIRECT"], depositPercent: 100 }).paymentOptions, ["ONLINE", "DIRECT"]);
-  assert.deepEqual(quotePaymentOffer({ paymentOptions: ["MIXED"], depositPercent: 100 }).paymentOptions, ["ONLINE"]);
+  const single = [{ priceMinEurCents: 5000, priceMaxEurCents: 5000 }];
+  const range = [{ priceMinEurCents: 5000, priceMaxEurCents: 8000 }];
+  // Prezzo unico al 100%: le due scelte online coincidono, resta "tutto online".
+  assert.deepEqual(quotePaymentOffer({ paymentOptions: ["ONLINE", "MIXED", "DIRECT"], depositPercent: 100, items: single }).paymentOptions, ["ONLINE", "DIRECT"]);
+  assert.deepEqual(quotePaymentOffer({ paymentOptions: ["MIXED"], depositPercent: 100, items: single }).paymentOptions, ["ONLINE"]);
+  // Con la forbice l'acconto è il minimo: restano tutte e due (Luca, 18/11/2026).
+  assert.deepEqual(quotePaymentOffer({ paymentOptions: ["ONLINE", "MIXED", "DIRECT"], depositPercent: 100, items: range }).paymentOptions, ["ONLINE", "MIXED", "DIRECT"]);
+  assert.deepEqual(quotePaymentOffer({ paymentOptions: ["MIXED"], depositPercent: 100 }).paymentOptions, ["MIXED"]);
   assert.deepEqual(quotePaymentOffer({ paymentOptions: ["ONLINE", "MIXED"], depositPercent: 30 }).paymentOptions, ["ONLINE", "MIXED"]);
 });
